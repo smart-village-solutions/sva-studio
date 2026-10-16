@@ -368,3 +368,8 @@ persistiert korrelierte Schritte dürfen wieder aufgenommen werden.
 ### Plugin-eigene Content-Mutationen
 
 Die gemeinsame Inhaltsliste löst Lösch- und Schnellstatusfähigkeiten über die vorhandenen Content-Beiträge im validierten Browser-Snapshot auf. Plugins besitzen Fachmapping und erlaubte Zielstatus; der Host behält Action-Prüfung, Principal-Ermittlung, Dialoge, Bulk-Ergebnisse und Refresh. Browserhandler werden erst am Browser-Einstieg gebunden und bleiben außerhalb der Node-Deskriptoren und Manifeste.
+
+
+## Bus-API-Key-Verwaltung
+
+Die bestehende zentrale Instanzverwaltung wird erweitert; es entstehen weder Tenant-Modul noch Plugin, Package oder zweite Key-Registry. Der Adapter im Auth-Runtime-Pfad kapselt ausschließlich Liste, Erstellung, Sperrung und Reaktivierung. Der vorhandene umfassende Bus-Admin-Token wird nur serverseitig verwendet.

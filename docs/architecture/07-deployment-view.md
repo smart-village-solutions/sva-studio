@@ -414,3 +414,8 @@ prozessübergreifende Vertrag liegt im versionierten Elternlauf-Snapshot.
 Der Main-Build erzeugt getrennte, OCI-gelabelte Images `sva-studio` und `sva-studio-ssf`; der Image-Verify bindet Repository, Commit, Digest, Laufzeit-Distribution und das positive/negative Workspace-Paketinventar an das eingebettete Manifest. Nur das reguläre Studio-Image wird in den bestehenden Dev-Promote-Pfad übergeben. Der authentifizierte SSF-/Media-Smoke und die vollständige Browser-/Server-Chunk-Provenienz bleiben offene Gates von #1408 vor dem eigenständigen Kasseler Cutover.
 
 Das SSF-Image enthält vorübergehend `@sva/waste-management-contracts`, weil die gemeinsam geladene Auth-Runtime Waste-Handler mit Laufzeitimporten auf dieses Paket exportiert. Waste-Plugin und Waste-Job-Runtime bleiben physisch ausgeschlossen. Die Trennung der Waste-Handler aus der generischen Auth-Runtime ist Gegenstand von #1506.
+
+
+## Bus-API-Key-Verwaltung
+
+`BUS_API_BASE_URL` ist eine optionale serverseitige HTTPS-Origin ohne Credentials, Pfad, Query oder Fragment; `BUS_API_ADMIN_TOKEN` ist ein optionales Secret im bestehenden geschützten Remote-Override. Beide werden ausschließlich dem App-Service zugeführt. Ohne Konfiguration bleibt die übrige Instanzverwaltung verfügbar. Lokales HTTP ist ausschließlich für Loopback und die expliziten lokalen Runtime-Profile erlaubt. Der reguläre Rollout folgt unverändert dem [kanonischen Prozess](../guides/studio-rollout-process.md); bislang wurden nur die lokale Testkonfiguration eingerichtet und lokale Testdienste gestartet. Zentrale Zielumgebungen wurden nicht konfiguriert oder ausgerollt.

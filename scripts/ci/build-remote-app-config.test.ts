@@ -26,9 +26,7 @@ const profile = Object.entries(remoteConfigContract)
 const overrides = Object.entries(remoteConfigContract)
   .filter(
     ([key, contract]) =>
-      contract.kind !== 'config' &&
-      key !== 'FALLOW_BROWSER_INGEST_KEY' &&
-      key !== 'BEACON_API_KEY'
+      contract.kind !== 'config' && key !== 'FALLOW_BROWSER_INGEST_KEY' && key !== 'BEACON_API_KEY'
   )
   .map(
     ([key, contract]) =>
@@ -37,6 +35,43 @@ const overrides = Object.entries(remoteConfigContract)
   .join('\n');
 
 describe('remote app config builder', () => {
+  it('keeps optional Bus credentials in protected overrides and passes them only to the app', () => {
+    expect(remoteConfigContract.BUS_API_BASE_URL).toMatchObject({ kind: 'config', type: 'url' });
+    expect(remoteConfigContract.BUS_API_ADMIN_TOKEN).toEqual({ kind: 'secret-value' });
+    const withoutBus = (source: string) =>
+      source
+        .split('\n')
+        .filter((line) => !line.startsWith('BUS_API_'))
+        .join('\n');
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'staging',
+        profile: withoutBus(profile),
+        overrides: withoutBus(overrides),
+      })
+    ).not.toThrow();
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'staging',
+        profile: `${profile}\nBUS_API_ADMIN_TOKEN=private`,
+        overrides: withoutBus(overrides),
+      })
+    ).toThrow();
+    const result = buildRemoteAppConfig({ environment: 'staging', profile, overrides });
+    expect(result.source).toContain('BUS_API_ADMIN_TOKEN=sensitive-BUS_API_ADMIN_TOKEN');
+    expect(
+      JSON.stringify({
+        keys: result.keys,
+        secretReferences: result.secretReferences,
+        configRevision: result.configRevision,
+      })
+    ).not.toContain('sensitive-BUS_API_ADMIN_TOKEN');
+    const compose = readFileSync(new URL('../../compose.yaml', import.meta.url), 'utf8');
+    expect(compose.split('  provisioner:')[0]).toContain(
+      'BUS_API_ADMIN_TOKEN=${BUS_API_ADMIN_TOKEN:-}'
+    );
+    expect(compose.split('  provisioner:')[1]).not.toContain('BUS_API_ADMIN_TOKEN');
+  });
   it('passes through an optional explicit Studio root host', () => {
     const source = profile.replace(
       'SVA_STUDIO_ROOT_HOST=value',
@@ -141,7 +176,9 @@ describe('remote app config builder', () => {
         )
       ).toBe(0);
       const config = readFileSync(join(directory, 'config.vars'), 'utf8');
-      expect(config).toContain('FALLOW_BROWSER_INGEST_KEY=fallow_pub_k1_test_browser_key_1234567890');
+      expect(config).toContain(
+        'FALLOW_BROWSER_INGEST_KEY=fallow_pub_k1_test_browser_key_1234567890'
+      );
       expect(config).toContain('BEACON_API_KEY=fallow_live_k1_test_server_key_1234567890');
       const output = readFileSync(githubOutput, 'utf8');
       expect(output).toMatch(/^config_revision=[0-9a-f]{64}$/mu);

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1860,
+  "body": "Plattform-Administratoren können Bus-API-Keys direkt im Bereich Betrieb einer Instanz erstellen, sperren und reaktivieren. Neue API-Keys werden einmalig zum Kopieren angezeigt. Änderungen werden mit dem ausführenden Benutzer protokolliert."
+}

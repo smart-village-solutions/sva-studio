@@ -1,6 +1,32 @@
 export type InstanceStatus =
   'requested' | 'validated' | 'provisioning' | 'active' | 'failed' | 'suspended' | 'archived';
 
+/** Bus metadata contains no raw key or hash; only creation returns key material. */
+export type InstanceBusKey = {
+  readonly keyId: string;
+  readonly owner: string;
+  readonly label?: string;
+  readonly contact?: string;
+  readonly createdBy?: string;
+  readonly createdAt: string;
+  readonly expiresAt?: string;
+  readonly revoked: boolean;
+  readonly revokedAt?: string;
+};
+export type CreateInstanceBusKey = { contact: string; createdBy: string; validThrough: string };
+export type InstanceBusKeyCreated = { keyId: string; apiKey: string; auditRecorded: boolean };
+
+/** Inclusive calendar date becomes the beginning of the following UTC day. */
+export const instanceBusKeyExpiresAt = (validThrough: string): string | undefined => {
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(validThrough)) return undefined;
+  const date = new Date(`${validThrough}T00:00:00.000Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== validThrough)
+    return undefined;
+  date.setUTCDate(date.getUTCDate() + 1);
+  if (date.getUTCFullYear() > 9999) return undefined;
+  return date.toISOString();
+};
+
 export type InstanceRealmMode = 'new' | 'existing';
 
 export type IamInstanceProvisioningOperation = 'create' | 'activate' | 'suspend' | 'archive';

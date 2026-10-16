@@ -43,6 +43,45 @@
 - **Evidenz:** `routes/admin/instances/-instance-detail-page.tsx` und zugehörige
   `-instance-detail-*-section.tsx`.
 
+### Bus-API-Keys unter Betrieb
+
+Nur persönliche Plattform-Superadmins mit `instance_registry_admin` auf dem Root-Host
+können Bus-API-Keys verwalten. Tenant-Administratoren erhalten keinen Zugriff.
+Der Bereich steht unter „IAM-Basis neu aufbauen“. „Key erstellen“ ist die erste Aktion
+unten links, gefolgt von „Metadaten neu laden“.
+Für Änderungen genügt eine normale interaktive Anmeldung mit geprüftem frischem
+Keycloak-Zeitnachweis. Das bestehende Frischefenster beträgt standardmäßig zehn Minuten.
+Ist es abgelaufen, führt „Erneut anmelden“ direkt hinter dem Fehlertext zur erforderlichen
+erneuten Anmeldung; anschließend muss die gewünschte Aktion bewusst wiederholt werden.
+Ort und Instanz-ID sind fest aus der Registry abgeleitet. Beim Erstellen werden die
+Kontakt-E-Mail des Kunden, die eigenen Initialen und „Gültig bis einschließlich“ bestätigt.
+Standard ist der 31. Dezember des beim Öffnen aktuellen Jahres in Europe/Berlin.
+Der tatsächliche Ablauf ist der Beginn des Folgetags in UTC: 31. Dezember 2026 ergibt
+1. Januar 2027 um 00:00 UTC. Historische Ablaufzeitpunkte bleiben exakt
+angezeigt; alte Keys können ohne Ablaufdatum bestehen.
+
+Den neuen Klartext-Key ausdrücklich kopieren und sicher im vorgesehenen Client hinterlegen.
+Der Dialog zeigt nur den API-Key, keine zusätzliche Key-ID. Nach erfolgreichem Kopieren
+über den Button schließt „Schließen“ den Dialog direkt. Andernfalls fragt es nach, ob
+der Key kopiert wurde. „Ja, ich habe den API-Key kopiert“ schließt den Dialog;
+„Nein, ich muss den API-Key noch kopieren“ führt zurück zur Anzeige desselben API-Keys.
+Die Kopierbestätigung erscheint links neben den Buttons im reservierten Platz.
+Schlägt das Kopieren fehl, erscheint die Fehlermeldung im Key-Dialog; der Wert kann
+manuell übernommen werden, und beim Schließen bleibt die Rückfrage bestehen.
+Nach dem Schließen oder Instanzwechsel ist keine erneute Anzeige möglich. Für Rotation
+zuerst einen neuen Key erstellen, im Client verteilen und prüfen, dann den alten Key bewusst
+mit Bestätigung sperren. Der Sperrdialog kennzeichnet die betroffene ID mit **Key-ID:**;
+die Sperrbuttons verwenden die rote Variante. Reaktivieren verlängert das Ablaufdatum nicht und ist nur bei
+gesperrten, noch gültigen Keys aktiver Instanzen möglich. Lesen und Sperren bleiben auch
+für suspendierte und archivierte Instanzen verfügbar.
+
+Bei unklarem Ausgang die neu geladenen Metadaten prüfen; ein Key kann trotz Timeout
+bereits erstellt worden sein. Einen nicht nutzbaren Key bewusst sperren und ersetzen.
+Bei unbestätigter Sperrung oder Reaktivierung nennt die Meldung die jeweilige Aktion;
+vor einem erneuten Versuch den neu geladenen Key-Status prüfen.
+Eine erfolgreiche Bus-Änderung mit Auditwarnung nicht wiederholen; die angezeigte Request-ID
+ermöglicht die Klärung. Fehlende Bus-Konfiguration betrifft nur diesen Bereich.
+
 ## `admin.templates` – Systemweite Templates verwalten
 
 - **Route / Typ / Owner:** `/admin/templates`, Detail, Host.

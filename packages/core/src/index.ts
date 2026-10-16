@@ -248,3 +248,9 @@ export {
   parseRuntimeProfile,
   validateRuntimeProfileEnv,
 } from './runtime-profile.js';
+export { instanceBusKeyExpiresAt } from './iam/account-instance-contract.js';
+export type {
+  InstanceBusKey,
+  CreateInstanceBusKey,
+  InstanceBusKeyCreated,
+} from './iam/account-instance-contract.js';

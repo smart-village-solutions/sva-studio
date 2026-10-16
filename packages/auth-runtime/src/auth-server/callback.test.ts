@@ -278,7 +278,7 @@ describe('handleCallback', () => {
     expect(mocks.runPostLoginTasks).toHaveBeenCalledWith('de-test', 'kc-user-1');
   });
 
-  it('stamps fresh reauth only for explicit reauth callbacks with a fresh auth_time claim', async () => {
+  it.each([true, false])('stamps fresh auth evidence for an interactive login (explicit reauth: %s)', async (freshReauthRequested) => {
     const { handleCallback } = await import('./callback.js');
 
     mocks.authorizationCodeGrant.mockResolvedValueOnce({
@@ -298,7 +298,7 @@ describe('handleCallback', () => {
         codeVerifier: 'verifier',
         nonce: 'nonce',
         createdAt: 1_999_500,
-        freshReauthRequested: true,
+        freshReauthRequested,
       },
     });
 
@@ -308,6 +308,25 @@ describe('handleCallback', () => {
         freshReauthAt: 2_000_000,
       })
     );
+  });
+
+  it.each([
+    { silent: true, authTime: 2_000, createdAt: 1_999_500 },
+    { silent: false, authTime: undefined, createdAt: 1_999_500 },
+    { silent: false, authTime: 1_000, createdAt: 2_000_000 },
+    { silent: false, authTime: (Date.now() + 60_000) / 1_000, createdAt: Date.now() },
+  ])('does not refresh auth evidence for silent, missing, stale or future claims: %j', async ({ silent, authTime, createdAt }) => {
+    const { handleCallback } = await import('./callback.js');
+    mocks.authorizationCodeGrant.mockResolvedValueOnce({
+      access_token: 'access-token', refresh_token: 'refresh-token', id_token: 'id-token',
+      expiresIn: () => 300,
+      claims: () => ({ sub: 'kc-user-1', auth_time: authTime }),
+    });
+    await handleCallback({
+      code: 'code-1', state: 'state-1', authConfig,
+      loginState: { kind: 'platform', codeVerifier: 'verifier', nonce: 'nonce', createdAt, silent },
+    });
+    expect(mocks.createSession).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ freshReauthAt: undefined }));
   });
 
   it('does not stamp fresh reauth when the callback lacks fresh auth evidence', async () => {

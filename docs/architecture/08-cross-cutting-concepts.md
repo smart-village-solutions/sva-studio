@@ -354,6 +354,8 @@ gleichzeitig beeinflussen.
 - Auth-Diagnostik für `/auth/me` verwendet denselben strukturierten Fehlervertrag wie übrige IAM-Endpunkte: `classification`, `status`, `recommendedAction`, `requestId` und allowlist-basierte `safeDetails`
 - Auth-Unterbrechungen klassifizieren zusätzlich nicht-sensitive `reason_code`-Werte wie `missing_session_cookie`, `invalid_session`, `session_expired`, `silent_recovery_timeout` oder `forced_reauth`
 - Eine neue Fresh-Reauth-Evidenz entsteht nur über einen serverseitig kontrollierten interaktiven Auth-Callback; Silent-SSO, Token-Refresh und reine Request-Marker erneuern dieses Sicherheitsfenster nicht
+- Auch eine normale interaktive Anmeldung zählt als Fresh-Reauth-Evidenz, wenn der geprüfte `auth_time`-Claim eine Anmeldung seit Beginn des Login-Vorgangs belegt. Ein zusätzlicher expliziter Reauth-Login ist dann innerhalb des bestehenden Frischefensters nicht erforderlich
+- Das gemeinsame Frischefenster für Instanzverwaltungsaktionen bleibt unverändert bei standardmäßig zehn Minuten ab dem geprüften Anmeldezeitpunkt; `SVA_AUTH_FRESH_REAUTH_WINDOW_MS` kann es umgebungsspezifisch überschreiben. Die Bus-Integration verlängert dieses Fenster nicht und ändert damit nicht die Zeitgrenze anderer Instanzverwaltungsaktionen
 - Browser-seitige Auth-Recovery-Flows erzeugen pro Vorfall eine `authFlowId`, damit `/auth/me`, Silent-SSO, Redirect auf `session-expired` und nachgelagerte Retry-Schritte gemeinsam korrelierbar bleiben
 - Ein lokaler Browser-Ringpuffer in `sessionStorage` darf in Development- oder Diagnosemodi die letzten Auth-Ereignisse eines Tabs speichern; er enthält keine Tokens und keine PII, sondern nur sichere Diagnosemetadaten wie `authFlowId`, `requestId`, `reason_code` und `recovery_step`
 - Zusätzlich darf ein explizit aktivierter lokaler Dev-Auth-Modus den OIDC-Loginpfad nur auf Entwicklerrechnern umgehen; er bleibt an lokale Env-Flags, sichtbare UI-Kennzeichnung und einen synthetischen Benutzerkontext gebunden
@@ -1201,3 +1203,8 @@ Laufzeitflags deaktivieren keine ausgelieferten Fähigkeiten. `studio` und `ssf`
   Inhaltsreads.
 - In diesem Zustand bleiben gespeicherte Sprachen und deren Texte erhalten und
   bearbeitbar; Änderungen und Ergänzungen von Sprachen sind deaktiviert.
+
+
+## Bus-API-Key-Verwaltung
+
+Bus-Key-Antworten einschließlich Fehlern sind `no-store`. Der Server projiziert ausschließlich bekannte Metadaten und filtert Labels exakt; nur die Erstellantwort enthält den einmaligen Klartext-Key. Kontakt-E-Mail, Key, Hash und Admin-Token werden nicht auditiert oder geloggt. Audit verwendet `instance_reconfigured` mit `area: bus_api_keys`, Aktion, Ergebnis, Key-ID sowie bestehender Akteur-/Request-ID. Der Browser hält Klartext nur im flüchtigen Komponentenstatus, verwirft ihn beim Schließen und Instanzwechsel und ignoriert alte Antworten auch bei A–B–A-Navigation. Writes haben keine automatischen Retries; unklare Ergebnisse führen zu Metadaten-Readback. Inklusive Datumswerte werden als UTC-Beginn des Folgetags berechnet; historische Zeitanteile bleiben exakt sichtbar.

@@ -1510,3 +1510,8 @@ Fehlerpfad:
 Vor Anzeige und Ausführung löst der Host den Content-Beitrag aus dem validierten Browser-Snapshot auf und prüft Zeilenzugriff, deklarierte Action, gegebenenfalls Mainserver-Laufzeitfreigabe sowie den Ressourcen-Principal. Fehlende Fähigkeiten oder nicht deklarierte Zielstatus führen zu einem kontrollierten Fehler ohne Client-Fallback. Der Plugin-Handler verwendet die bestehende API-/Servergrenze; serverseitige Validierung, Autorisierung und Audit bleiben maßgeblich.
 
 Event und POI lesen vor dem Statusupdate mit demselben Principal wie beim Schreiben. Detailabweichungen in unverändert zurückzuschreibenden Feldern oder unbekannten Feldgruppen verhindern das Update. Ausschließlich gezielt ersetzte Statusfelder und nachweislich nicht geschriebene Metadaten dürfen abweichen. Erfolg und Fehler gelangen in den bestehenden Dialog- und Refresh-Pfad; IAM-Bulk-Auswahl, Teilfehler und Retry bleiben unverändert.
+
+
+## Bus-API-Key-Verwaltung
+
+Jeder Bus-Key-Request benötigt eine persönliche Session mit gespeichertem Auth-Scope `platform`, Root-Host und `instance_registry_admin`. Bearer- und Tenant-Sessions erhalten keinen Zugriff. Mutationen prüfen zusätzlich CSRF und Fresh-Reauth. Die Registry wird vor jedem Bus-Aufruf geladen; nur aktive Instanzen dürfen neue Keys erhalten oder Keys reaktivieren. Listen und Lifecycle-Aufrufe senden immer das exakte Label. Nach bestätigtem Bus-Erfolg wird das bestehende Instanzaudit geschrieben; ein Auditfehler bleibt als `auditRecorded: false` bei erfolgreicher Antwort sichtbar und löst keine Wiederholung aus.

@@ -28,7 +28,10 @@ export type RootMainserverInterface = {
   } | null;
 };
 
-export type RootMainserverInterfaceListEntry = Pick<RootMainserverInterface, 'instanceId' | 'status' | 'errorCode'> & {
+export type RootMainserverInterfaceListEntry = Pick<
+  RootMainserverInterface,
+  'instanceId' | 'status' | 'errorCode'
+> & {
   readonly displayName: string;
 };
 
@@ -45,9 +48,11 @@ export const getRootMainserverInterface = (instanceId: string) =>
 export const saveRootMainserverInterface = (
   instanceId: string,
   payload: { graphqlBaseUrl: string; oauthTokenUrl: string; enabled: boolean }
-) => putJson<{ data: RootMainserverInterface }, typeof payload>(
-  `/api/v1/iam/instances/${encodeURIComponent(instanceId)}/mainserver-interface`, payload
-);
+) =>
+  putJson<{ data: RootMainserverInterface }, typeof payload>(
+    `/api/v1/iam/instances/${encodeURIComponent(instanceId)}/mainserver-interface`,
+    payload
+  );
 
 import type {
   CreateInstancePayload,

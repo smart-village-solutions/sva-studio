@@ -194,3 +194,44 @@ Der Bericht enthält mindestens:
 ## Abgrenzung zu generischen App-Smokes
 
 Der bestehende App-E2E-Smoke (`pnpm nx run sva-studio-react:test:e2e`) bleibt unverändert und prüft nur generische Browser- und Transportpfade. Die IAM-Abnahme läuft separat, weil sie eine reale IAM-Testumgebung mit Keycloak, Redis und Datenbank benötigt.
+
+
+## Ausstehende Abnahme der Bus-Key-Verwaltung
+
+Die lokale Implementierung ersetzt keinen Nachweis gegen die Zielumgebung. Vor Freigabe
+sind bestehende Bus-Labels exakt mit `instanceId` und ausgeschriebenem `displayName`
+abzugleichen. Unbekannte Zuordnungen werden manuell geklärt; Bestandskeys werden nicht
+automatisch umgeschrieben. Danach die getrennten Umgebungszugänge konfigurieren:
+`BUS_API_BASE_URL` im getrackten Remote-Profil und `BUS_API_ADMIN_TOKEN` ausschließlich im
+geschützten Override-Bundle. Keine `VITE_`-Variable und keine Ausgabe des Tokens verwenden.
+
+Mit mindestens zwei persönlichen Root-Realm-Konten sind Login und Zugriffsausschlüsse
+nachzuweisen. Eine normale interaktive Anmeldung mit geprüftem frischem `auth_time`-Claim
+muss die bestehenden Schreibaktionen innerhalb des unveränderten, standardmäßig
+zehnminütigen Frischefensters zulassen. Nach Ablauf müssen sie vor dem Bus-Aufruf
+abgelehnt werden; der Anmeldelink im Fehlertext muss einen expliziten Reauth-Login auslösen.
+Silent-SSO und Token-Refresh dürfen keinen neuen Frischenachweis erzeugen.
+
+In einer ausdrücklich freigegebenen Testumgebung einen Test-Key erstellen,
+Proxy-Aufruf mit `x-api-key` und dem konfigurierten `x-federal-state` prüfen, sperren (401)
+und noch gültigen Key reaktivieren (Erfolg). Anschließend Rotation mit zwei parallelen Keys
+und gezielter Sperrung des alten Keys prüfen. Bestehende Kundenkeys und manuelle Admin-Aufrufe
+müssen kompatibel bleiben. Screenshots, Traces und Berichte dürfen keinen Klartext-Key enthalten.
+
+Im Browser zusätzlich den Einmal-Key-Dialog prüfen: keine zusätzliche Key-ID, Kopierstatus
+in der Buttonzeile, direktes Schließen nach erfolgreichem Kopieren und sonst die Rückfrage
+mit Rückkehr zur Anzeige bei „Nein, ich muss den API-Key noch kopieren“. Clipboard-Ablehnung
+muss im Dialog sichtbar sein. Ein verspätetes Kopierergebnis darf keinen später erzeugten
+Key bestätigen; Tastaturfokus muss nach Dialogschluss zum auslösenden Bedienelement zurückkehren.
+
+Der isolierte lokale Bus-Test hat Erstellung, Sperrung und Reaktivierung sowie Metadaten
+und Audits bestätigt. Er verwendete einen Dummy-Upstream und ersetzt deshalb weder den
+Proxy-Nachweis noch die Abnahme gegen den tatsächlichen Ziel-Bus. Erfolgreiche und
+fehlgeschlagene Mutationen stehen in `iam.instance_audit_events` mit
+`event_type = instance_reconfigured` und `details.area = bus_api_keys`; der Bus korreliert
+seine Admin-Auditlogs über `x-request-id` und `x-admin-actor-id`. Direkte technische
+Bus-Aufrufe erzeugen kein Studio-Audit.
+
+Diese Nachweise, die echte Secret-Konfiguration und Rollouts sind noch offen.
+Der [kanonische Rollout](../guides/studio-rollout-process.md) bleibt allein maßgeblich;
+die Bus-Veröffentlichung 0.7.3 muss für diese Integration nicht erneut ausgeführt werden.

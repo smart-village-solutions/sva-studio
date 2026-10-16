@@ -141,3 +141,8 @@ lädt und validiert den Katalog für System- und Mandanteneditoren. Der Browser
 ruft SSF nicht direkt auf. Der Katalog wird nicht in Studio persistiert; ein
 Ausfall verhindert nur Sprachänderungen und das Hinzufügen von Sprachen, nicht
 die Bearbeitung vorhandener Texte.
+
+
+## Bus-API-Key-Verwaltung
+
+Studio verwaltet Bus-Kundenkeys über die interne Admin-API des Bus-Servers ab Version 0.7.3. Der Bus bleibt führend für Keys, Hashing und Proxy-Zugriff; Studio besitzt ausschließlich die persönliche Plattformautorisierung und den instanzgebundenen Bedienpfad unter Betrieb im Root-Instanzdetail.

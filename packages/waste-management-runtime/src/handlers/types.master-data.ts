@@ -1,5 +1,8 @@
 import type {
   WasteCollectionLocationRecord,
+  WasteAddressImpactCounts,
+  WasteAddressImpactPreview,
+  WasteAddressMutationPreviewInput,
   WasteFractionRecord,
   WasteGlobalDateShiftRecord,
   WasteHolidayRuleRecord,
@@ -20,6 +23,19 @@ import type { SaveWasteCustomRecurrencePresetsInput } from './custom-recurrence-
 import type { WasteTourDateShiftWriter } from './tour-date-shift-deps.js';
 
 export type WasteManagementHandlerMasterDataDeps = {
+  readonly previewWasteAddressMutation?: (
+    instanceId: string,
+    input: WasteAddressMutationPreviewInput
+  ) => Promise<WasteAddressImpactPreview>;
+  readonly mutateWasteAddressInTransaction?: (
+    instanceId: string,
+    input: WasteAddressMutationPreviewInput & {
+      readonly confirmationToken: string;
+      readonly name?: string;
+      readonly postalCode?: string | null;
+      readonly number?: string;
+    }
+  ) => Promise<WasteAddressImpactCounts>;
   readonly saveWasteFraction?: (
     instanceId: string,
     input: Omit<WasteFractionRecord, 'createdAt' | 'updatedAt'>

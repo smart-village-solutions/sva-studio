@@ -5,7 +5,7 @@ import type { WasteManagementHandlerDeps } from './types.js';
 import type { AuthenticatedRequestContext } from './types.js';
 import type { ApiErrorCode } from '@sva/core';
 
-type MappedPersistenceError = Readonly<{
+export type MappedPersistenceError = Readonly<{
   status: number;
   code: ApiErrorCode;
   message: string;
@@ -50,6 +50,28 @@ type UpdateMutationArgs<TSaved> = MutationBaseArgs<TSaved> &
     messages: UpdateMutationMessages;
     loadExisting: () => Promise<unknown | null>;
   }>;
+
+export const mapWasteAddressMutationPersistenceError = (error: unknown): MappedPersistenceError | undefined => {
+  const message = error instanceof Error ? error.message : '';
+  const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+  if (message === 'address_confirmation_required') return {
+    status: 409, code: 'conflict',
+    message: 'Bitte laden Sie die Folgen des Elternwechsels und bestätigen Sie die betroffenen E-Mail-Abos ausdrücklich.',
+    reasonCode: message,
+  };
+  if (code === '40001' || code === '40P01' || message === 'address_preview_stale' || message === 'address_data_inconsistent') return {
+    status: 409, code: 'conflict',
+    message: 'Die Vorschau ist nicht mehr aktuell oder die Adressdaten sind widersprüchlich. Bitte laden Sie die Vorschau erneut.',
+    reasonCode: message === 'address_data_inconsistent' ? message : 'address_preview_stale',
+  };
+  if (message === 'address_entity_not_found' || message === 'address_move_target_not_found') return {
+    status: 404, code: 'not_found', message: 'Der ausgewählte Adressdatensatz wurde nicht gefunden.', reasonCode: message,
+  };
+  if (message === 'address_move_unchanged' || message === 'invalid_address_move') return {
+    status: 400, code: 'invalid_request', message: 'Die ausgewählte Zuordnung ist ungültig oder bereits gesetzt.', reasonCode: message,
+  };
+  return undefined;
+};
 
 const isMissingDependencyError = (error: unknown): error is Error =>
   error instanceof Error && error.message.startsWith('missing_dependency:');

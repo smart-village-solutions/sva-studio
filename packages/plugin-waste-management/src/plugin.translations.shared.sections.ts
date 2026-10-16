@@ -1,13 +1,11 @@
-import {
-  createTabCard,
-  type WasteManagementTabCardCopy,
-} from './plugin.translations.shared.base.js';
+import { createTabCard, type WasteManagementTabCardCopy } from './plugin.translations.shared.base.js';
 
 type WasteManagementTabsCopy = Readonly<{
   ariaLabel: string;
   fractions: WasteManagementTabCardCopy;
   tours: WasteManagementTabCardCopy;
   locations: WasteManagementTabCardCopy;
+  masterData: WasteManagementTabCardCopy;
   scheduling: WasteManagementTabCardCopy;
   output: WasteManagementTabCardCopy;
   tools: WasteManagementTabCardCopy;
@@ -51,6 +49,16 @@ type WasteManagementLocationsWorkspaceCopy = Readonly<{
   sorting: Readonly<Record<string, string>>;
   coverage: Readonly<Record<string, string>>;
   table: Readonly<Record<string, string>>;
+  addresses: Readonly<{
+    types: Readonly<Record<string, string>>;
+    columns: Readonly<Record<string, string>>;
+    parent: Readonly<Record<string, string>>;
+    parentFilter: Readonly<Record<string, string>>;
+    create: Readonly<Record<string, string>>;
+    empty: Readonly<Record<string, string>>;
+    impact: Readonly<Record<string, string>>;
+    [key: string]: string | Readonly<Record<string, string>>;
+  }>;
 }>;
 
 type WasteManagementToolsCopy = Readonly<{
@@ -166,6 +174,7 @@ export const createWasteManagementTabsTranslations = <const TCopy extends WasteM
       fractions: createTabCard(copy.fractions),
       tours: createTabCard(copy.tours),
       locations: createTabCard(copy.locations),
+      masterData: createTabCard(copy.masterData),
       scheduling: createTabCard(copy.scheduling),
       output: createTabCard(copy.output),
       tools: createTabCard(copy.tools),
@@ -224,6 +233,7 @@ export const createWasteManagementLocationsWorkspaceTranslations = <
     sorting: copy.sorting,
     coverage: copy.coverage,
     table: copy.table,
+    addresses: copy.addresses,
   }) as const;
 
 export const createWasteManagementToolsTranslations = <

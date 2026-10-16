@@ -4,7 +4,7 @@ import {
   authorizeWasteMasterDataMutationPathRequest,
   authorizeWasteMasterDataMutationRequest,
 } from './master-data-request-guards.js';
-import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
+import { mapWasteAddressMutationPersistenceError, runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementMasterDataSchemas } from '../http-schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { requireDeps } from './utils.js';
@@ -70,6 +70,9 @@ export const wasteManagementStreetHandlers = {
     }
 
     const loadWasteStreet = requireDeps(deps.loadWasteStreetById, 'loadWasteStreetById');
+    const existingStreet = await loadWasteStreet(instanceId, streetId);
+    if (!existingStreet) return createApiError(404, 'not_found', 'Die Waste-Straße wurde nicht gefunden.', requestId);
+    const movesCity = existingStreet.cityId !== parsed.data.cityId;
 
     return runWasteUpdateMutation({
       deps,
@@ -85,14 +88,23 @@ export const wasteManagementStreetHandlers = {
         notFound: 'Die Waste-Straße wurde nicht gefunden.',
         verificationFailed: 'Die Waste-Straße konnte nicht verifiziert werden.',
         persistenceFailed: 'Die Waste-Straße konnte nicht gespeichert werden.',
+        mapPersistenceError: mapWasteAddressMutationPersistenceError,
       },
       loadExisting: () => loadWasteStreet(instanceId, streetId),
-      save: () =>
-        requireDeps(deps.saveWasteStreet, 'saveWasteStreet')(instanceId, {
+      save: () => {
+        if (movesCity) {
+          if (!parsed.data.confirmationToken) return Promise.reject(new Error('address_confirmation_required'));
+          return requireDeps(deps.mutateWasteAddressInTransaction, 'mutateWasteAddressInTransaction')(
+            instanceId,
+            { entityType: 'street', entityId: streetId, mode: 'move', targetParentId: parsed.data.cityId, confirmationToken: parsed.data.confirmationToken, name: parsed.data.name.trim() }
+          ).then(() => undefined);
+        }
+        return requireDeps(deps.saveWasteStreet, 'saveWasteStreet')(instanceId, {
           id: streetId,
           name: parsed.data.name.trim(),
           cityId: parsed.data.cityId,
-        }),
+        });
+      },
       loadSaved: () => loadWasteStreet(instanceId, streetId),
     });
   },

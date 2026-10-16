@@ -197,6 +197,8 @@ Modulen der jeweiligen Bausteine.
 - zeigt den Stand des separaten Terminabgleichs zum SVA Mainserver revisionsbasiert direkt unter dem ruhigen Seitenheader; der Lesepfad kombiniert die tenantlokale Waste-Quellrevision mit dem bestehenden zentralen Jobstore und führt weder Dry-Run noch Mainserver-Abfrage aus
 - zeigt für den laufenden CSV-Spezialimport eine fachnahe Live-Fortschrittskarte an, leitet Prozent und Zeilenstand aber weiterhin ausschließlich aus dem generischen Host-Jobvertrag ab
 - bietet unter den eingeklappten erweiterten Systemfunktionen die autorisierte Aktion zur Ergänzung fehlender Orts-Postleitzahlen an; Providerzugriff, Bewertung und Mutation bleiben vollständig hostgeführt
+- stellt Regionen, Orte, Straßen und Hausnummern im URL-gestützten Tab `Stammdaten` bereit; vorhandene Adressdialoge bearbeiten Namen, Postleitzahlen, Nummern und Elternzuordnungen, während Abholorte im eigenen Arbeitsbereich bleiben
+- zeigt vor Löschungen und Elternwechseln eine mandantengebundene Auswirkungsübersicht. Ein Elternwechsel mit betroffenen E-Mail-Abos benötigt eine gesonderte Bestätigung; Zuordnungsänderung sowie Löschung der Abos, ihrer Positionen und aller Outbox-Zeilen einschließlich `sent` erfolgen atomar. Touren, Fraktionen und allgemeine Terminregeln bleiben bestehen
 
 13. Instanz-Registry (`packages/instance-registry`)
 

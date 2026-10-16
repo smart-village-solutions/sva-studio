@@ -11,6 +11,7 @@ import {
 import { Select, StudioEmptyState, TabsContent, TabsList, TabsTrigger } from '@sva/studio-ui-react';
 
 import { WasteMasterDataPanel } from './waste-management.master-data-panel.js';
+import { WasteMasterDataAddressesPanel } from './waste-management.master-data-addresses-panel.js';
 import { WasteOverviewPanel } from './waste-management.overview-panel.js';
 import { WasteOutputPanel } from './waste-management.output-panel.js';
 import { WasteSchedulingPanel } from './waste-management.scheduling-panel.js';
@@ -27,6 +28,7 @@ const wasteManagementTabTranslationKeyMap = {
   fractions: 'fractions',
   tours: 'tours',
   locations: 'locations',
+  masterData: 'masterData',
   scheduling: 'scheduling',
   output: 'output',
   tools: 'tools',
@@ -37,6 +39,7 @@ const wasteManagementTabIconMap = {
   fractions: IconRecycle,
   tours: IconRoute,
   locations: IconMapPin,
+  masterData: IconDatabase,
   scheduling: IconCalendarClock,
   output: IconFileText,
   tools: IconDatabase,
@@ -46,6 +49,7 @@ const wasteManagementTabIconMap = {
 export const createWasteManagementTabContentMap = (
   search: WasteManagementSearchParams,
   access: WasteManagementUiAccess,
+  onAddressSearchChange: (patch: Partial<WasteManagementSearchParams>) => void,
   rawSearch: Readonly<Record<string, unknown>> = search
 ): Record<WasteManagementTabId, ReactNode> => ({
   fractions: <WasteMasterDataPanel search={search} tab="fractions" />,
@@ -57,6 +61,7 @@ export const createWasteManagementTabContentMap = (
     />
   ),
   locations: <WasteMasterDataPanel search={search} tab="locations" />,
+  masterData: <WasteMasterDataAddressesPanel search={search} canManage={access.canManageMasterData} onSearchChange={onAddressSearchChange} />,
   scheduling: <WasteSchedulingPanel search={search} rawSearch={rawSearch} />,
   output: <WasteOutputPanel />,
   settings: <WasteSettingsPanel />,

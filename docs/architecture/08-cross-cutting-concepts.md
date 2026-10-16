@@ -59,6 +59,7 @@ gleichzeitig beeinflussen.
 
 - Destruktive oder hochwirksame Aktionen verwenden den gemeinsamen `StudioDestructiveActionDialog`. Ziel, Konsequenz, Berechtigung, Mutation und Fehlermapping bleiben fachlich; Pending-Sperre, Fokusführung und persistenter Dialogfehler sind gemeinsame UI-Semantik.
 - Destruktives Feedback besitzt kein Undo. Ein Restore ist, sofern fachlich vorhanden, eine neue namespaced Action mit eigener Autorisierung und Darstellung.
+- Waste-Adresslöschungen und Elternwechsel zeigen vorab die mandantengebundene Auswirkung. Ein Wechsel mit betroffenen E-Mail-Abos braucht eine zweite Bestätigung; Adress- und Abholortänderungen sowie das Löschen der Abos, ihrer Positionen und aller Outbox-Zeilen einschließlich `sent` laufen in einer serialisierbaren Tenant-Transaktion. Eine veraltete Vorschau oder inkonsistente Adresskette wird ohne Commit abgewiesen.
 - Wenn die Ressource nach Erfolg nicht mehr sichtbar ist, transportiert der Router den Abschluss einmalig und ressourcengebunden zum nächsten stabilen Kontext. Die Zielroute übernimmt und entfernt diesen State mit `replace`.
 - Plugin-Jobs verwenden den zentralen Hostdatensatz als einzige Statuswahrheit. Fachbereiche zeigen mindestens Job-ID, initialen Status und Jobdetail-Link; Monitoring zeigt Progress, Runtime, History und Terminalergebnis.
 - Folgeaktionen werden ausschließlich aus Host-Capabilities abgeleitet. Für aktive Jobs ist derzeit `cancel` belegt; manueller Retry bleibt ohne expliziten Hostvertrag unsichtbar.

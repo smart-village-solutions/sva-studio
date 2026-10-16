@@ -1,11 +1,8 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
-  IconBuildingCommunity,
   IconChevronDown,
-  IconHome,
   IconMapPin,
   IconPlus,
-  IconRoute,
 } from '@tabler/icons-react';
 import { Button } from '@sva/studio-ui-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
@@ -27,42 +24,10 @@ type CreateMenuItem = Readonly<{
 }>;
 
 const useWasteLocationsCreateMenuItems = ({
-  onOpenCreateRegion,
-  onOpenCreateCity,
-  onOpenCreateStreet,
-  onOpenCreateHouseNumber,
   onOpenCreateLocation,
-}: WasteLocationsCreateMenuProps): readonly CreateMenuItem[] => {
+}: Pick<WasteLocationsCreateMenuProps, 'onOpenCreateLocation'>): readonly CreateMenuItem[] => {
   const pt = usePluginTranslation('wasteManagement');
   return [
-    {
-      id: 'create-region',
-      title: pt('masterData.locationsWorkspace.actions.createRegion'),
-      description: pt('masterData.locationsWorkspace.actions.createRegionHint'),
-      icon: <IconBuildingCommunity aria-hidden="true" className="h-4 w-4" />,
-      onSelect: onOpenCreateRegion,
-    },
-    {
-      id: 'create-city',
-      title: pt('masterData.locationsWorkspace.actions.createCity'),
-      description: pt('masterData.locationsWorkspace.actions.createCityHint'),
-      icon: <IconHome aria-hidden="true" className="h-4 w-4" />,
-      onSelect: onOpenCreateCity,
-    },
-    {
-      id: 'create-street',
-      title: pt('masterData.locationsWorkspace.actions.createStreet'),
-      description: pt('masterData.locationsWorkspace.actions.createStreetHint'),
-      icon: <IconRoute aria-hidden="true" className="h-4 w-4" />,
-      onSelect: onOpenCreateStreet,
-    },
-    {
-      id: 'create-house-number',
-      title: pt('masterData.locationsWorkspace.actions.createHouseNumber'),
-      description: pt('masterData.houseNumbers.description'),
-      icon: <IconHome aria-hidden="true" className="h-4 w-4" />,
-      onSelect: onOpenCreateHouseNumber,
-    },
     {
       id: 'create-location',
       title: pt('masterData.locationsWorkspace.actions.createLocation'),
@@ -110,10 +75,6 @@ const WasteLocationsCreateMenuList = ({
 );
 
 export const WasteLocationsCreateMenu = ({
-  onOpenCreateRegion,
-  onOpenCreateCity,
-  onOpenCreateStreet,
-  onOpenCreateHouseNumber,
   onOpenCreateLocation,
 }: WasteLocationsCreateMenuProps) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -148,10 +109,6 @@ export const WasteLocationsCreateMenu = ({
   }, [open]);
 
   const items = useWasteLocationsCreateMenuItems({
-    onOpenCreateRegion,
-    onOpenCreateCity,
-    onOpenCreateStreet,
-    onOpenCreateHouseNumber,
     onOpenCreateLocation,
   });
 

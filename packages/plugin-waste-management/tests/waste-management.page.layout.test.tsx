@@ -59,6 +59,10 @@ vi.mock('../src/waste-management.master-data-panel.js', () => ({
   WasteMasterDataPanel: ({ tab }: { readonly tab: string }) => <div>{`master-data:${tab}`}</div>,
 }));
 
+vi.mock('../src/waste-management.master-data-addresses-panel.js', () => ({
+  WasteMasterDataAddressesPanel: () => <div>address-master-data</div>,
+}));
+
 vi.mock('../src/waste-management.tours-panel.js', () => ({
   WasteToursPanel: () => <div>tours</div>,
 }));
@@ -115,10 +119,11 @@ describe('WasteManagementPageTabs', () => {
           tab: 'fractions',
         }}
         onTabChange={() => undefined}
+        onAddressSearchChange={() => undefined}
       />
     );
 
-    expect(tabsContentSpy).toHaveBeenCalledTimes(7);
+    expect(tabsContentSpy).toHaveBeenCalledTimes(8);
     expect(tabsContentSpy.mock.calls[0]?.[0]?.forceMount).toBeUndefined();
     expect(tabsContentSpy.mock.calls[1]?.[0]?.forceMount).toBeUndefined();
 
@@ -132,14 +137,15 @@ describe('WasteManagementPageTabs', () => {
           tab: 'tours',
         }}
         onTabChange={() => undefined}
+        onAddressSearchChange={() => undefined}
       />
     );
 
-    expect(tabsContentSpy).toHaveBeenCalledTimes(14);
+    expect(tabsContentSpy).toHaveBeenCalledTimes(16);
     expect(tabsContentSpy.mock.calls[0]?.[0]?.forceMount).toBe(true);
     expect(tabsContentSpy.mock.calls[1]?.[0]?.forceMount).toBeUndefined();
-    expect(tabsContentSpy.mock.calls[7]?.[0]?.forceMount).toBe(true);
-    expect(tabsContentSpy.mock.calls[8]?.[0]?.forceMount).toBeUndefined();
+    expect(tabsContentSpy.mock.calls[8]?.[0]?.forceMount).toBe(true);
+    expect(tabsContentSpy.mock.calls[9]?.[0]?.forceMount).toBeUndefined();
   });
 
   it('renders tab-specific info content inside each panel and no global badges', () => {
@@ -160,6 +166,7 @@ describe('WasteManagementPageTabs', () => {
           tourId: undefined,
         }}
         onTabChange={() => undefined}
+        onAddressSearchChange={() => undefined}
       />
     );
 
@@ -191,6 +198,7 @@ describe('WasteManagementPageTabs', () => {
           tourId: undefined,
         }}
         onTabChange={() => undefined}
+        onAddressSearchChange={() => undefined}
       />
     );
 
@@ -215,6 +223,7 @@ describe('WasteManagementPageTabs', () => {
           tourId: undefined,
         }}
         onTabChange={() => undefined}
+        onAddressSearchChange={() => undefined}
       />
     );
 
@@ -240,6 +249,7 @@ describe('WasteManagementPageTabs', () => {
           tourId: undefined,
         }}
         onTabChange={() => undefined}
+        onAddressSearchChange={() => undefined}
       />
     );
 
@@ -268,6 +278,7 @@ describe('WasteManagementPageTabs', () => {
           tourId: undefined,
         }}
         onTabChange={() => undefined}
+        onAddressSearchChange={() => undefined}
       />
     );
 
@@ -293,6 +304,7 @@ describe('WasteManagementPageTabs', () => {
           tourId: undefined,
         }}
         onTabChange={() => undefined}
+        onAddressSearchChange={() => undefined}
       />
     );
 

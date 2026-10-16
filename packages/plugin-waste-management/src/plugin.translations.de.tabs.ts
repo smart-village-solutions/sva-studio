@@ -16,10 +16,11 @@ export const wasteManagementPluginTranslationsDETabs = createWasteManagementTabs
   ],
   locations: [
     'Abholorte',
-    'Verwalten Sie Regionen, Orte, Straßen, Hausnummern und konkrete Abholorte in einem gemeinsamen Ortskontext.',
+    'Verwalten Sie konkrete Abholorte sowie ihre Tour- und Terminzuordnungen.',
     'Noch keine Abholorte vorhanden',
     'Sobald Regionen und Adressdaten gepflegt sind, erscheinen die Abholorte in diesem Bereich.',
   ],
+  masterData: ['Stammdaten', 'Pflegen Sie Regionen, Orte, Straßen und Hausnummern.', 'Keine Adressdaten vorhanden', 'Legen Sie eine Region an und bauen Sie die erforderliche Adresshierarchie auf.'],
   scheduling: [
     'Ausweichtermine',
     'Globale und tourbezogene Verschiebungen bleiben als eigener Scheduling-Kontext explizit sichtbar.',

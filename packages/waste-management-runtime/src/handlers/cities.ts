@@ -4,12 +4,41 @@ import {
   authorizeWasteMasterDataMutationPathRequest,
   authorizeWasteMasterDataMutationRequest,
 } from './master-data-request-guards.js';
-import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
+import { mapWasteAddressMutationPersistenceError, runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementMasterDataSchemas } from '../http-schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { normalizeOptionalString, requireDeps } from './utils.js';
 
 const { createWasteCitySchema, updateWasteCitySchema } = wasteManagementMasterDataSchemas;
+type CityUpdateInput = typeof updateWasteCitySchema._output;
+
+const saveCityUpdate = (
+  deps: WasteManagementHandlerDeps,
+  instanceId: string,
+  cityId: string,
+  nextRegionId: string | null,
+  movesRegion: boolean,
+  data: CityUpdateInput
+): (() => Promise<void>) => async () => {
+  if (!movesRegion) {
+    await requireDeps(deps.patchWasteCity, 'patchWasteCity')(instanceId, cityId, {
+      ...(data.name === undefined ? {} : { name: data.name.trim() }),
+      ...(data.postalCode === undefined ? {} : { postalCode: normalizeOptionalString(data.postalCode ?? undefined) ?? null }),
+      ...(data.regionId === undefined ? {} : { regionId: normalizeOptionalString(data.regionId ?? undefined) ?? null }),
+    });
+    return;
+  }
+  if (!data.confirmationToken) throw new Error('address_confirmation_required');
+  await requireDeps(deps.mutateWasteAddressInTransaction, 'mutateWasteAddressInTransaction')(
+    instanceId,
+    {
+      entityType: 'city', entityId: cityId, mode: 'move', targetParentId: nextRegionId ?? undefined,
+      confirmationToken: data.confirmationToken,
+      ...(data.name === undefined ? {} : { name: data.name.trim() }),
+      ...(data.postalCode === undefined ? {} : { postalCode: normalizeOptionalString(data.postalCode ?? undefined) ?? null }),
+    }
+  );
+};
 
 export const wasteManagementCityHandlers = {
   createWasteManagementCityInternal: async (
@@ -72,6 +101,12 @@ export const wasteManagementCityHandlers = {
     }
 
     const loadWasteCity = requireDeps(deps.loadWasteCityById, 'loadWasteCityById');
+    const existingCity = await loadWasteCity(instanceId, cityId);
+    if (!existingCity) return createApiError(404, 'not_found', 'Die Waste-Stadt wurde nicht gefunden.', requestId);
+    const nextRegionId = parsed.data.regionId === undefined
+      ? existingCity.regionId ?? null
+      : normalizeOptionalString(parsed.data.regionId ?? undefined) ?? null;
+    const movesRegion = (existingCity.regionId ?? null) !== nextRegionId;
 
     return runWasteUpdateMutation({
       deps,
@@ -87,18 +122,10 @@ export const wasteManagementCityHandlers = {
         notFound: 'Die Waste-Stadt wurde nicht gefunden.',
         verificationFailed: 'Die Waste-Stadt konnte nicht verifiziert werden.',
         persistenceFailed: 'Die Waste-Stadt konnte nicht gespeichert werden.',
+        mapPersistenceError: mapWasteAddressMutationPersistenceError,
       },
       loadExisting: () => loadWasteCity(instanceId, cityId),
-      save: () =>
-        requireDeps(deps.patchWasteCity, 'patchWasteCity')(instanceId, cityId, {
-          ...(parsed.data.name === undefined ? {} : { name: parsed.data.name.trim() }),
-          ...(parsed.data.postalCode === undefined
-            ? {}
-            : { postalCode: normalizeOptionalString(parsed.data.postalCode ?? undefined) ?? null }),
-          ...(parsed.data.regionId === undefined
-            ? {}
-            : { regionId: normalizeOptionalString(parsed.data.regionId ?? undefined) ?? null }),
-        }),
+      save: saveCityUpdate(deps, instanceId, cityId, nextRegionId, movesRegion, parsed.data),
       loadSaved: () => loadWasteCity(instanceId, cityId),
     });
   },

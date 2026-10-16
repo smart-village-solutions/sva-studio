@@ -3,7 +3,6 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { type WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
 import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
-
 import {
   normalizeWasteManagementSearchParams,
   type WasteManagementMasterDataTabId,
@@ -20,15 +19,15 @@ import { WasteManagementPageDescription } from './waste-management.page.descript
 import { useWasteManagementUiAccess } from './waste-management.ui-access.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { WasteManagementPageTabs } from './waste-management.page.layout.js';
-
 const toMasterDataTab = (tab: WasteManagementTabId): WasteManagementMasterDataTabId | undefined => {
   if (tab === 'fractions' || tab === 'locations') {
     return tab;
   }
 
+  if (tab === 'masterData') return 'locations';
+
   return undefined;
 };
-
 const updateSearch = (
   navigate: ReturnType<typeof useNavigate>,
   currentSearch: WasteManagementSearchParams,
@@ -253,6 +252,7 @@ export const WasteManagementPage = () => {
         access={uiAccess}
         visibleTabIds={uiAccess.visibleTabIds}
         onTabChange={(value) => updateSearch(navigate, search, { tab: value })}
+        onAddressSearchChange={(patch) => updateSearch(navigate, search, patch)}
       />
     </StudioOverviewPageTemplate>
   );

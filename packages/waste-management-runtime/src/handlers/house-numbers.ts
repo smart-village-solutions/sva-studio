@@ -4,7 +4,7 @@ import {
   authorizeWasteMasterDataMutationPathRequest,
   authorizeWasteMasterDataMutationRequest,
 } from './master-data-request-guards.js';
-import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
+import { mapWasteAddressMutationPersistenceError, runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementMasterDataSchemas } from '../http-schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { requireDeps } from './utils.js';
@@ -71,6 +71,9 @@ export const wasteManagementHouseNumberHandlers = {
     }
 
     const loadWasteHouseNumber = requireDeps(deps.loadWasteHouseNumberById, 'loadWasteHouseNumberById');
+    const existingHouseNumber = await loadWasteHouseNumber(instanceId, houseNumberId);
+    if (!existingHouseNumber) return createApiError(404, 'not_found', 'Die Waste-Hausnummer wurde nicht gefunden.', requestId);
+    const movesStreet = existingHouseNumber.streetId !== parsed.data.streetId;
 
     return runWasteUpdateMutation({
       deps,
@@ -86,14 +89,23 @@ export const wasteManagementHouseNumberHandlers = {
         notFound: 'Die Waste-Hausnummer wurde nicht gefunden.',
         verificationFailed: 'Die Waste-Hausnummer konnte nicht verifiziert werden.',
         persistenceFailed: 'Die Waste-Hausnummer konnte nicht gespeichert werden.',
+        mapPersistenceError: mapWasteAddressMutationPersistenceError,
       },
       loadExisting: () => loadWasteHouseNumber(instanceId, houseNumberId),
-      save: () =>
-        requireDeps(deps.saveWasteHouseNumber, 'saveWasteHouseNumber')(instanceId, {
+      save: () => {
+        if (movesStreet) {
+          if (!parsed.data.confirmationToken) return Promise.reject(new Error('address_confirmation_required'));
+          return requireDeps(deps.mutateWasteAddressInTransaction, 'mutateWasteAddressInTransaction')(
+            instanceId,
+            { entityType: 'houseNumber', entityId: houseNumberId, mode: 'move', targetParentId: parsed.data.streetId, confirmationToken: parsed.data.confirmationToken, number: parsed.data.number.trim() }
+          ).then(() => undefined);
+        }
+        return requireDeps(deps.saveWasteHouseNumber, 'saveWasteHouseNumber')(instanceId, {
           id: houseNumberId,
           number: parsed.data.number.trim(),
           streetId: parsed.data.streetId,
-        }),
+        });
+      },
       loadSaved: () => loadWasteHouseNumber(instanceId, houseNumberId),
     });
   },

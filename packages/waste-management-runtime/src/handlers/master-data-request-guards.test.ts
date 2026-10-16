@@ -69,6 +69,23 @@ describe('authorizeWasteMasterDataMutationRequest', () => {
     });
   });
 
+  it('rejects address master-data mutations without the plugin manage action', async () => {
+    const result = await authorizeWasteMasterDataMutationPathRequest(
+      new Request('https://studio.test/api/v1/waste-management/regions/region-1', {
+        method: 'DELETE',
+        headers: createHeaders(),
+      }),
+      actor,
+      createDeps('waste-management.tours.manage'),
+      { resourceIdName: 'regionId' }
+    );
+
+    expect(result).toBeInstanceOf(Response);
+    const response = result as Response;
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'forbidden' } });
+  });
+
   it('rejects update mutations without a path resource id', async () => {
     const result = await authorizeWasteMasterDataMutationPathRequest(
       new Request('https://studio.test/api/v1/waste-management/regions/', {

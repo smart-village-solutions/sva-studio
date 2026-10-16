@@ -56,6 +56,17 @@ export const createId = (): string => {
 export const compactOptionalString = (value: string): string | undefined =>
   value.trim() ? value.trim() : undefined;
 
+export const resolveWasteAddressSaveErrorMessage = (
+  code: string | null,
+  error: unknown,
+  messages: Readonly<{ forbidden: string; conflict: string; inconsistent: string; fallback: string }>
+): string => {
+  if (code === 'forbidden') return messages.forbidden;
+  if (code === 'conflict') return messages.conflict;
+  if (error instanceof Error && error.message === 'address_data_inconsistent') return messages.inconsistent;
+  return messages.fallback;
+};
+
 export const normalizeLocalizedTextRecord = (
   value: WasteLocalizedTextRecord
 ): WasteLocalizedTextRecord | undefined => {

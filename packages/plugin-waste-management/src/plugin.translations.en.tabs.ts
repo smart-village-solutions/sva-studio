@@ -16,10 +16,11 @@ export const wasteManagementPluginTranslationsENTabs = createWasteManagementTabs
   ],
   locations: [
     'Pickup locations',
-    'Manage regions, cities, streets, house numbers, and concrete pickup locations in one shared location context.',
+    'Manage concrete pickup locations and their tour and date assignments.',
     'No pickup locations yet',
     'As soon as regions and address data exist, pickup locations will appear in this area.',
   ],
+  masterData: ['Master data', 'Maintain regions, cities, streets, and house numbers.', 'No address data yet', 'Create a region to start building the required address hierarchy.'],
   scheduling: [
     'Schedule deviations',
     'Global and tour-related shifts remain visible as an explicit scheduling context.',

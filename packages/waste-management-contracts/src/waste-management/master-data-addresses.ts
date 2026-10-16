@@ -71,21 +71,4 @@ export type WasteHouseNumberListFilter = {
   readonly search?: string;
 };
 
-export type WasteCollectionLocationRecord = {
-  readonly id: string;
-  readonly cityId: string;
-  readonly regionId?: string;
-  readonly streetId?: string;
-  readonly houseNumberId?: string;
-  readonly active: boolean;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-};
-
-export type WasteCollectionLocationListFilter = {
-  readonly cityId?: string;
-  readonly regionId?: string;
-  readonly streetId?: string;
-  readonly houseNumberId?: string;
-  readonly active?: boolean;
-};
+export type * from './master-data-addresses.extended.js';

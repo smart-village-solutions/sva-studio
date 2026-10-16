@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createWasteMasterDataMutationHandlers } from '../src/waste-management.master-data-mutations.js';
+import { confirmWasteAddressMove } from '../src/waste-management.master-data-address-move.js';
 
 const apiMocks = vi.hoisted(() => ({
   updateWasteManagementRegion: vi.fn(async () => undefined),
@@ -12,6 +13,9 @@ const apiMocks = vi.hoisted(() => ({
 vi.mock('../src/waste-management.api.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../src/waste-management.api.js')>()),
   ...apiMocks,
+}));
+vi.mock('../src/waste-management.master-data-address-move.js', () => ({
+  confirmWasteAddressMove: vi.fn(async () => 'confirmation-required'),
 }));
 
 const createSubmitEvent = () =>
@@ -39,8 +43,9 @@ describe('waste master-data address entity mutations', () => {
       houseNumberForm: { id: 'house-1', number: '12a', streetId: 'street-1' },
       overview: {
         regions: [{ id: 'region-1' }],
-        cities: [{ id: 'city-1' }],
-        streets: [{ id: 'street-1' }],
+        cities: [{ id: 'city-1', regionId: 'region-1' }],
+        streets: [{ id: 'street-1', cityId: 'city-1' }],
+        houseNumbers: [{ id: 'house-1', streetId: 'street-1' }],
       },
       setSaving: vi.fn(),
       setMessage: vi.fn(),
@@ -70,5 +75,47 @@ describe('waste master-data address entity mutations', () => {
     expect(apiMocks.updateWasteManagementHouseNumber).toHaveBeenCalledOnce();
     expect(loadOverview).toHaveBeenCalledTimes(4);
     expect(loadCollectionLocationList).toHaveBeenCalledTimes(4);
+  });
+
+  it('treats clearing an optional city region as a confirmed parent move', async () => {
+    const form = document.createElement('form');
+    for (const [name, value] of [['name', 'Stadt Nord'], ['postalCode', '19300'], ['regionId', '']]) {
+      const input = document.createElement('input');
+      input.name = name;
+      input.value = value;
+      form.append(input);
+    }
+    const state = {
+      cityDialogMode: 'edit',
+      cityForm: { id: 'city-1', name: 'Stadt Nord', postalCode: '19300', regionId: 'region-1' },
+      overview: {
+        regions: [{ id: 'region-1', name: 'Nord' }],
+        cities: [{ id: 'city-1', name: 'Stadt Nord', postalCode: '19300', regionId: 'region-1' }],
+      },
+      setSaving: vi.fn(),
+      setMessage: vi.fn(),
+      setCityDialogOpen: vi.fn(),
+    };
+    const handlers = createWasteMasterDataMutationHandlers({
+      state: state as never,
+      pt: (key) => key,
+      search: {} as never,
+      loadOverview: vi.fn(async () => undefined),
+      loadCollectionLocationList: vi.fn(async () => undefined),
+      selectedCollectionLocationIds: [],
+    });
+
+    await handlers.onSubmitCity({ preventDefault: vi.fn(), currentTarget: form } as never);
+
+    expect(confirmWasteAddressMove).toHaveBeenCalledWith(expect.objectContaining({
+      entityType: 'city', entityId: 'city-1', targetParentId: undefined,
+      sourceLabel: 'Nord', targetLabel: 'masterData.locationsWorkspace.addresses.noParent',
+    }));
+    expect(apiMocks.updateWasteManagementCity).not.toHaveBeenCalled();
+    const moveInput = vi.mocked(confirmWasteAddressMove).mock.calls[0]?.[0];
+    await moveInput?.save('confirmation-token');
+    expect(apiMocks.updateWasteManagementCity).toHaveBeenCalledWith('city-1', expect.objectContaining({
+      regionId: null, confirmationToken: 'confirmation-token',
+    }));
   });
 });

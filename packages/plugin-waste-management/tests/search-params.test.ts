@@ -7,7 +7,9 @@ describe('waste-management search params', () => {
     expect(
       normalizeWasteManagementSearchParams({
         tab: 'bogus',
-        masterDataTab: 'bogus',
+        addressEntityType: 'region',
+      addressParentId: undefined,
+      masterDataTab: 'bogus',
         q: '  ',
         page: '0',
         pageSize: '999',
@@ -18,6 +20,8 @@ describe('waste-management search params', () => {
       })
     ).toEqual({
       tab: 'fractions',
+      addressEntityType: 'region',
+      addressParentId: undefined,
       masterDataTab: 'fractions',
       fractionsView: 'list',
       toursView: 'list',
@@ -59,7 +63,9 @@ describe('waste-management search params', () => {
     expect(
       normalizeWasteManagementSearchParams({
         tab: 'locations',
-        masterDataTab: 'locations',
+        addressEntityType: 'region',
+      addressParentId: undefined,
+      masterDataTab: 'locations',
         q: 'Bio',
         page: '3',
         pageSize: '50',
@@ -86,6 +92,8 @@ describe('waste-management search params', () => {
       })
     ).toEqual({
       tab: 'locations',
+      addressEntityType: 'region',
+      addressParentId: undefined,
       masterDataTab: 'locations',
       fractionsView: 'list',
       toursView: 'list',
@@ -127,10 +135,14 @@ describe('waste-management search params', () => {
     expect(
       normalizeWasteManagementSearchParams({
         tab: 'fractions',
-        masterDataTab: 'locations',
+        addressEntityType: 'region',
+      addressParentId: undefined,
+      masterDataTab: 'locations',
       })
     ).toEqual({
       tab: 'fractions',
+      addressEntityType: 'region',
+      addressParentId: undefined,
       masterDataTab: 'fractions',
       fractionsView: 'list',
       toursView: 'list',
@@ -176,6 +188,8 @@ describe('waste-management search params', () => {
       })
     ).toEqual({
       tab: 'fractions',
+      addressEntityType: 'region',
+      addressParentId: undefined,
       masterDataTab: 'fractions',
       fractionsView: 'list',
       toursView: 'list',
@@ -221,6 +235,8 @@ describe('waste-management search params', () => {
       })
     ).toEqual({
       tab: 'fractions',
+      addressEntityType: 'region',
+      addressParentId: undefined,
       masterDataTab: 'fractions',
       fractionsView: 'list',
       toursView: 'list',
@@ -267,6 +283,8 @@ describe('waste-management search params', () => {
       })
     ).toEqual({
       tab: 'tours',
+      addressEntityType: 'region',
+      addressParentId: undefined,
       masterDataTab: 'locations',
       fractionsView: 'list',
       toursView: 'create',
@@ -308,11 +326,15 @@ describe('waste-management search params', () => {
     expect(
       normalizeWasteManagementSearchParams({
         tab: 'fractions',
-        masterDataTab: 'fractions',
+        addressEntityType: 'region',
+      addressParentId: undefined,
+      masterDataTab: 'fractions',
         fractionsStatus: 'bogus',
       })
     ).toEqual({
       tab: 'fractions',
+      addressEntityType: 'region',
+      addressParentId: undefined,
       masterDataTab: 'fractions',
       fractionsView: 'list',
       toursView: 'list',
@@ -350,7 +372,9 @@ describe('waste-management search params', () => {
     expect(
       normalizeWasteManagementSearchParams({
         tab: 'fractions',
-        masterDataTab: 'fractions',
+        addressEntityType: 'region',
+      addressParentId: undefined,
+      masterDataTab: 'fractions',
         fractionsStatus: 'inactive',
       })
     ).toEqual(

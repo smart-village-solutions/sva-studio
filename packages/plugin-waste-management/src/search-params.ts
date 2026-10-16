@@ -1,8 +1,9 @@
 import type {
+  WasteAddressEntityType,
   WasteCollectionLocationSortDirection,
   WasteCollectionLocationSortMode,
 } from '@sva/waste-management-contracts';
-
+import { normalizeAddressEntityType } from './search-params.address.js';
 import {
   normalizeWasteCollectionLocationSortDirection,
   normalizeWasteCollectionLocationSortMode,
@@ -12,11 +13,11 @@ import {
   normalizeTourStatus,
   type WasteManagementTourStatusFilter,
 } from './search-params.tour-status.js';
-
 const wasteManagementTabs = [
   'fractions',
   'tours',
   'locations',
+  'masterData',
   'scheduling',
   'output',
   'tools',
@@ -39,7 +40,6 @@ const wasteManagementFractionSortFields = [
   'status',
 ] as const;
 const wasteManagementFractionSortDirections = ['asc', 'desc'] as const;
-
 export type WasteManagementTabId = (typeof wasteManagementTabs)[number];
 export type WasteManagementMasterDataTabId = (typeof wasteManagementMasterDataTabs)[number];
 type WasteManagementFractionsView = (typeof wasteManagementFractionsViews)[number];
@@ -54,10 +54,11 @@ export type WasteManagementSchedulingEntryType =
 export type WasteManagementFractionSortField = (typeof wasteManagementFractionSortFields)[number];
 export type WasteManagementFractionSortDirection =
   (typeof wasteManagementFractionSortDirections)[number];
-
 export type WasteManagementSearchParams = Readonly<{
   tab: WasteManagementTabId;
   masterDataTab: WasteManagementMasterDataTabId;
+  addressEntityType: WasteAddressEntityType;
+  addressParentId?: string;
   fractionsView: WasteManagementFractionsView;
   toursView: WasteManagementToursView;
   locationsView: WasteManagementLocationsView;
@@ -92,7 +93,6 @@ export type WasteManagementSearchParams = Readonly<{
   tourDateShiftId?: string;
   globalDateShiftId?: string;
 }>;
-
 const compactOptionalString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
     return undefined;
@@ -100,7 +100,6 @@ const compactOptionalString = (value: unknown): string | undefined => {
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : undefined;
 };
-
 const normalizeOptionalIsoDate = (value: unknown): string | undefined => {
   const normalized = compactOptionalString(value);
   if (!normalized || !/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
@@ -111,18 +110,15 @@ const normalizeOptionalIsoDate = (value: unknown): string | undefined => {
     ? undefined
     : normalized;
 };
-
 const normalizeTab = (value: unknown): WasteManagementTabId =>
   typeof value === 'string' && wasteManagementTabs.includes(value as WasteManagementTabId)
     ? (value as WasteManagementTabId)
     : 'fractions';
-
 const normalizeMasterDataTab = (value: unknown): WasteManagementMasterDataTabId =>
   typeof value === 'string' &&
   wasteManagementMasterDataTabs.includes(value as WasteManagementMasterDataTabId)
     ? (value as WasteManagementMasterDataTabId)
     : 'locations';
-
 const normalizeFractionsView = (value: unknown): WasteManagementFractionsView =>
   typeof value === 'string' &&
   wasteManagementFractionsViews.includes(value as WasteManagementFractionsView)
@@ -198,6 +194,8 @@ const normalizeMasterDataTabForTab = (
     return tab;
   }
 
+  if (tab === 'masterData') return 'locations';
+
   return masterDataTab;
 };
 
@@ -216,6 +214,8 @@ export const normalizeWasteManagementSearchParams = (
   return {
     tab,
     masterDataTab: normalizeMasterDataTabForTab(tab, normalizeMasterDataTab(search.masterDataTab)),
+    addressEntityType: normalizeAddressEntityType(search.addressEntityType),
+    addressParentId: compactOptionalString(search.addressParentId),
     fractionsView: normalizeFractionsView(search.fractionsView),
     toursView: normalizeToursView(search.toursView),
     locationsView: normalizeLocationsView(search.locationsView),

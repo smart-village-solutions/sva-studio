@@ -270,6 +270,7 @@ describe('waste-management.master-data-entity-dialogs components', () => {
         mode="edit"
         form={{ name: 'Hauptstraße', cityId: '' } as never}
         cities={[{ id: 'city-1', name: 'Musterstadt' }] as never}
+        regions={[]}
         saving={false}
         message={null}
         onOpenChange={() => undefined}
@@ -287,6 +288,8 @@ describe('waste-management.master-data-entity-dialogs components', () => {
         mode="edit"
         form={{ number: '12a', streetId: '' } as never}
         streets={[{ id: 'street-1', name: 'Hauptstraße' }] as never}
+        cities={[]}
+        regions={[]}
         saving={false}
         message={null}
         onOpenChange={() => undefined}
@@ -365,6 +368,7 @@ describe('waste-management.master-data-entity-dialogs components', () => {
         mode="create"
         form={{ id: 'street-1', name: '', cityId: '' } as never}
         cities={[{ id: 'city-1', name: 'Musterstadt' }] as never}
+        regions={[]}
         saving={false}
         message={null}
         onOpenChange={() => undefined}
@@ -383,6 +387,8 @@ describe('waste-management.master-data-entity-dialogs components', () => {
         mode="create"
         form={{ id: 'house-1', number: '', streetId: '' } as never}
         streets={[{ id: 'street-1', name: 'Hauptstraße' }] as never}
+        cities={[]}
+        regions={[]}
         saving={false}
         message={null}
         onOpenChange={() => undefined}

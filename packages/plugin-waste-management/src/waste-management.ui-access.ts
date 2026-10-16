@@ -7,6 +7,7 @@ const readOnlyTabIds = [
   'fractions',
   'tours',
   'locations',
+  'masterData',
   'scheduling',
 ] as const satisfies readonly WasteManagementTabId[];
 
@@ -16,6 +17,7 @@ export type WasteManagementUiAccess = Readonly<{
   canAccessTools: boolean;
   canDuplicateTour: boolean;
   canManageScheduling: boolean;
+  canManageMasterData: boolean;
   canRunInitialize: boolean;
   canRunMigrations: boolean;
   canEnrichPostalCodes: boolean;
@@ -41,6 +43,7 @@ export const deriveWasteManagementUiAccess = (
   const canRunSeed = grantedPermissions.has('waste-management.seed.execute');
   const canRunReset = grantedPermissions.has('waste-management.reset.execute');
   const canEnrichPostalCodes = grantedPermissions.has('waste-management.master-data.manage');
+  const canManageMasterData = canEnrichPostalCodes;
   const canManageTours = grantedPermissions.has('waste-management.tours.manage');
   const canManageScheduling = grantedPermissions.has('waste-management.scheduling.manage');
   const canAccessTools =
@@ -76,6 +79,7 @@ export const deriveWasteManagementUiAccess = (
     canAccessTools,
     canDuplicateTour: canManageTours && canManageScheduling,
     canManageScheduling,
+    canManageMasterData,
     canRunInitialize,
     canRunMigrations,
     canEnrichPostalCodes,

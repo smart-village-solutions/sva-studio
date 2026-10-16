@@ -30,6 +30,8 @@ const navigateMock = vi.fn();
 const searchState = {
   tab: 'tools',
   masterDataTab: 'locations',
+  addressEntityType: 'region',
+  addressParentId: undefined,
   q: 'Restmüll',
   page: 3,
   pageSize: 50,

@@ -33,6 +33,7 @@ export const WasteManagementPageTabs = ({
   access = defaultUiAccess,
   visibleTabIds = wasteManagementTabIds,
   onTabChange,
+  onAddressSearchChange,
 }: {
   readonly pt: Translate;
   readonly search: WasteManagementSearchParams;
@@ -40,8 +41,9 @@ export const WasteManagementPageTabs = ({
   readonly access?: WasteManagementUiAccess;
   readonly visibleTabIds?: readonly WasteManagementTabId[];
   readonly onTabChange: (value: WasteManagementTabId) => void;
+  readonly onAddressSearchChange: (patch: Partial<WasteManagementSearchParams>) => void;
 }) => {
-  const content = createWasteManagementTabContentMap(search, access, rawSearch);
+  const content = createWasteManagementTabContentMap(search, access, onAddressSearchChange, rawSearch);
   const activeTab = visibleTabIds.includes(search.tab)
     ? search.tab
     : (visibleTabIds[0] ?? search.tab);

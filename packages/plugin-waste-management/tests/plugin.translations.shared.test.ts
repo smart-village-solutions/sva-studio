@@ -41,6 +41,7 @@ describe('waste-management translation builders', () => {
         fractions: ['Fractions', 'Fractions body', 'No fractions', 'Add one'],
         tours: ['Tours', 'Tours body', 'No tours', 'Add one'],
         locations: ['Locations', 'Locations body', 'No locations', 'Add one'],
+        masterData: ['Master data', 'Master data body', 'No addresses', 'Add one'],
         scheduling: ['Scheduling', 'Scheduling body', 'No shifts', 'Add one'],
         output: ['Output', 'Output body', 'No output', 'Add one'],
         tools: ['Tools', 'Tools body', 'No tools', 'Add one'],
@@ -65,6 +66,12 @@ describe('waste-management translation builders', () => {
           title: 'Locations',
           body: 'Locations body',
           emptyTitle: 'No locations',
+          emptyBody: 'Add one',
+        },
+        masterData: {
+          title: 'Master data',
+          body: 'Master data body',
+          emptyTitle: 'No addresses',
           emptyBody: 'Add one',
         },
         scheduling: {
@@ -101,6 +108,7 @@ describe('waste-management translation builders', () => {
       fractions: ['Fraktionen', 'Fraktionen', 'Leer', 'Leer'],
       tours: ['Touren', 'Touren', 'Leer', 'Leer'],
       locations: ['Orte', 'Orte', 'Leer', 'Leer'],
+      masterData: ['Stammdaten', 'Stammdaten', 'Leer', 'Leer'],
       scheduling: ['Planung', 'Planung', 'Leer', 'Leer'],
       output: ['Ausgabe', 'Ausgabe', 'Leer', 'Leer'],
       tools: ['Tools', 'Tools', 'Leer', 'Leer'],

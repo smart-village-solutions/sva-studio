@@ -54,10 +54,7 @@ export {
   parseWasteManagementDataExchangeJson,
   serializeWasteManagementDataExchangeJson,
 } from './waste-management-data-exchange-json.js';
-export type {
-  WasteManagementDataExchangeIssue,
-  WasteManagementDataExchangeParseResult,
-} from './waste-management-data-exchange-json.js';
+export type { WasteManagementDataExchangeIssue, WasteManagementDataExchangeParseResult } from './waste-management-data-exchange-json.js';
 export type {
   WasteManagementDataEntityDefinition,
   WasteManagementDataExchangeEnvelope,
@@ -115,14 +112,7 @@ export type {
   WasteManagementSyncWasteTypesJobInput,
 } from './waste-management-operations-contract.js';
 export type { WasteManagementSyncMainserverJobInput } from './waste-management-sync-mainserver-job-input.js';
-export type {
-  WasteMainserverSourceRevisionRecord,
-  WasteMainserverSourceState,
-  WasteMainserverSuccessfulSyncSummary,
-  WasteMainserverSyncJobSummary,
-  WasteMainserverSyncStatusRecord,
-  WasteMainserverSyncStatusResponse,
-} from './waste-management-mainserver-sync-status.js';
+export type { WasteMainserverSourceRevisionRecord, WasteMainserverSourceState, WasteMainserverSuccessfulSyncSummary, WasteMainserverSyncJobSummary, WasteMainserverSyncStatusRecord, WasteMainserverSyncStatusResponse } from './waste-management-mainserver-sync-status.js';
 export { deriveWasteMainserverSyncStatus } from './waste-management-mainserver-sync-status.js';
 export {
   wasteTenantProvisioningContract,
@@ -130,6 +120,11 @@ export {
   type WasteTenantProvisioningStatus,
 } from './waste-tenant-provisioning-contract.js';
 export type {
+  WasteAddressEntityType,
+  WasteAddressEntityDeleteInput,
+  WasteAddressImpactCounts,
+  WasteAddressImpactPreview,
+  WasteAddressMutationPreviewInput,
   WasteDateShiftReasonType,
   WasteCollectionLocationListFilter,
   WasteCollectionLocationListItem,

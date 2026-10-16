@@ -53,16 +53,29 @@ export const buildRemoteAppConfig = (input: {
   environment: RemoteEnvironment;
   profile: string;
   overrides: string;
+  busApiAdminToken?: string;
 }) => {
   const profile = parseRemoteConfigLayer(input.environment, 'Remote-Profil', input.profile);
-  const overrides = parseRemoteConfigLayer(
-    input.environment,
-    'geschuetztes Override-Bundle',
-    input.overrides
+  const overrides = new Map(
+    parseRemoteConfigLayer(input.environment, 'geschuetztes Override-Bundle', input.overrides)
+      .values
   );
+  if (input.busApiAdminToken) {
+    if (
+      input.busApiAdminToken !== input.busApiAdminToken.trim() ||
+      /[\r\n]/u.test(input.busApiAdminToken)
+    )
+      fail(
+        input.environment,
+        'PROMOTE_CONFIG_INVALID',
+        'Das separate Bus-Admin-Secret ist ungueltig formatiert.',
+        'BUS_API_ADMIN_TOKEN ohne Zeilenumbrueche oder aeussere Leerzeichen setzen.'
+      );
+    overrides.set('BUS_API_ADMIN_TOKEN', input.busApiAdminToken);
+  }
   if (
     input.environment !== 'staging' &&
-    (overrides.values.has('FALLOW_BROWSER_INGEST_KEY') || overrides.values.has('BEACON_API_KEY'))
+    (overrides.has('FALLOW_BROWSER_INGEST_KEY') || overrides.has('BEACON_API_KEY'))
   )
     fail(
       input.environment,
@@ -79,7 +92,7 @@ export const buildRemoteAppConfig = (input: {
         'Den Secret-Wert in das geschuetzte Override-Bundle verschieben.'
       );
   }
-  for (const key of overrides.values.keys()) {
+  for (const key of overrides.keys()) {
     if (remoteConfigContract[key]?.kind === 'config')
       fail(
         input.environment,
@@ -88,7 +101,7 @@ export const buildRemoteAppConfig = (input: {
         'Den Schluessel in das getrackte Remote-Profil verschieben.'
       );
   }
-  const merged = new Map([...profile.values, ...overrides.values]);
+  const merged = new Map([...profile.values, ...overrides]);
   const missing = requiredRemoteConfigKeys.filter((key) => !merged.has(key));
   if (missing.length > 0)
     fail(
@@ -176,6 +189,7 @@ export const runBuildRemoteAppConfig = (
       environment,
       profile: readFileSync(resolve(profilePath), 'utf8'),
       overrides: [protectedOverrides, ...stagingBeaconOverrides].join('\n'),
+      busApiAdminToken: env.BUS_API_ADMIN_TOKEN,
     });
     writeConfigEvidenceOutputs(candidate, env.GITHUB_OUTPUT);
     writeFileSync(resolve(outputPath), candidate.source, { mode: 0o600 });

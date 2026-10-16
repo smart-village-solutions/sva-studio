@@ -383,6 +383,7 @@ jobs:
         id: remote_config
         env:
           PROMOTE_CONFIG_OVERRIDES: ${{ secrets.PROMOTE_CONFIG_OVERRIDES }}
+          BUS_API_ADMIN_TOKEN: ${{ secrets.BUS_API_ADMIN_TOKEN }}
           FALLOW_BROWSER_INGEST_KEY: ${{ secrets.FALLOW_BROWSER_INGEST_KEY }}
           BEACON_API_KEY: ${{ secrets.BEACON_API_KEY }}
         run: |

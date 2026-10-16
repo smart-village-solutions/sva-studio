@@ -202,8 +202,13 @@ Die lokale Implementierung ersetzt keinen Nachweis gegen die Zielumgebung. Vor F
 sind bestehende Bus-Labels exakt mit `instanceId` und ausgeschriebenem `displayName`
 abzugleichen. Unbekannte Zuordnungen werden manuell geklärt; Bestandskeys werden nicht
 automatisch umgeschrieben. Danach die getrennten Umgebungszugänge konfigurieren:
-`BUS_API_BASE_URL` im getrackten Remote-Profil und `BUS_API_ADMIN_TOKEN` ausschließlich im
-geschützten Override-Bundle. Keine `VITE_`-Variable und keine Ausgabe des Tokens verwenden.
+`BUS_API_BASE_URL` im getrackten Remote-Profil unter `config/runtime/remote/` und
+`BUS_API_ADMIN_TOKEN` als separates Secret im jeweiligen GitHub-Environment (`dev`,
+`staging`, `prod`). Der Promote-Workflow übernimmt den Token in die geschützte
+App-Konfiguration; das bestehende `PROMOTE_CONFIG_OVERRIDES` muss dafür nicht ersetzt
+werden. Das separate Secret hat Vorrang vor einem bisherigen Bus-Token im Bundle.
+Ohne separates Secret bleibt der Bundle-Wert gültig. Keine `VITE_`-Variable und keine
+Ausgabe des Tokens verwenden. Die Änderung wird beim nächsten regulären Promote wirksam.
 
 Mit mindestens zwei persönlichen Root-Realm-Konten sind Login und Zugriffsausschlüsse
 nachzuweisen. Eine normale interaktive Anmeldung mit geprüftem frischem `auth_time`-Claim

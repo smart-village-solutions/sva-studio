@@ -4,7 +4,8 @@ import { findSelectedWasteManagementInterfaceRecord } from '@sva/waste-managemen
 import { Pool } from 'pg';
 import { resolveWasteDataSource } from './repositories/data-source.server.js';
 import { createWasteMasterDataRepository } from './repositories/master-data.js';
-import { mutateWasteAddressInTransaction, previewWasteAddressMutation } from './repositories/address-mutations.js';
+import { mutateWasteAddressInTransaction } from './repositories/address-mutations.js';
+import { previewWasteAddressMutation } from './repositories/address-mutation-snapshot.js';
 import type { WasteAddressImpactPreview, WasteAddressMutationPreviewInput, WasteAddressImpactCounts } from '@sva/waste-management-contracts';
 import { createWasteProvisioningAccess } from './repositories/waste-provisioning-access.js';
 import type { WasteServerLoaderHost } from './server-loaders.js';

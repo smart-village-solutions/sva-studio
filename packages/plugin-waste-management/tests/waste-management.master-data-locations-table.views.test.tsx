@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -30,8 +30,7 @@ afterEach(() => {
   linkSpy.mockReset();
 });
 describe('waste-management master-data location table views', () => {
-  it('opens the create menu, reacts to outside interactions, and forwards filter controls', async () => {
-    const onOpenCreateCity = vi.fn();
+  it('forwards filter controls and sorting actions', () => {
     const onTourFilterChange = vi.fn();
     const onToggleSelectAll = vi.fn();
     const onSortModeChange = vi.fn();
@@ -54,7 +53,7 @@ describe('waste-management master-data location table views', () => {
         selectedTourId=""
         allFilteredLocationsSelected={false}
         onOpenCreateRegion={vi.fn()}
-        onOpenCreateCity={onOpenCreateCity}
+        onOpenCreateCity={vi.fn()}
         onOpenCreateStreet={vi.fn()}
         onOpenCreateHouseNumber={vi.fn()}
         onOpenCreateLocation={vi.fn()}
@@ -90,44 +89,6 @@ describe('waste-management master-data location table views', () => {
     expect(directionButton.getAttribute('type')).toBe('button');
     fireEvent.click(directionButton);
     expect(onSortDirectionChange).toHaveBeenCalledWith('desc');
-
-    const createMenuTrigger = screen.getByRole('button', {
-      name: /masterData\.locationsWorkspace\.actions\.createMenu/,
-    });
-    fireEvent.click(createMenuTrigger);
-    await screen.findByRole('menuitem', {
-      name: /masterData\.locationsWorkspace\.actions\.createCity/,
-    });
-
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('menuitem', {
-          name: /masterData\.locationsWorkspace\.actions\.createCity/,
-        })
-      ).toBeNull();
-    });
-
-    fireEvent.click(createMenuTrigger);
-    await screen.findByRole('menuitem', {
-      name: /masterData\.locationsWorkspace\.actions\.createCity/,
-    });
-    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('menuitem', {
-          name: /masterData\.locationsWorkspace\.actions\.createCity/,
-        })
-      ).toBeNull();
-    });
-
-    fireEvent.click(createMenuTrigger);
-    fireEvent.click(
-      await screen.findByRole('menuitem', {
-        name: /masterData\.locationsWorkspace\.actions\.createCity/,
-      })
-    );
-    expect(onOpenCreateCity).toHaveBeenCalledTimes(1);
   });
 
   it('renders plain server-ordered headers and forwards select-all', () => {

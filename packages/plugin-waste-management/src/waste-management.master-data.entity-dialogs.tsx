@@ -105,7 +105,7 @@ const WasteAddressMoveConfirmation = ({ controller }: { readonly controller: Con
       confirmLabel={pt(counts && counts.emailReminderSubscriptions > 0
         ? 'masterData.locationsWorkspace.addresses.moveConfirmSubscriptions'
         : 'masterData.locationsWorkspace.addresses.moveConfirm')}
-      pendingLabel={pt('common.saving')}
+      pendingLabel={pt('masterData.locationsWorkspace.addresses.moveSaving')}
       cancelLabel={pt('masterData.locationsWorkspace.addresses.cancel')}
       pending={controller.saving}
       confirmDisabled={Boolean(errorMessage)}

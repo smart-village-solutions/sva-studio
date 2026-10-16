@@ -178,7 +178,7 @@ export const WasteMasterDataAddressesPanel = ({
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StudioField id="waste-address-entity-type" label={pt('masterData.locationsWorkspace.addresses.typeLabel')}>
-          <Select id="waste-address-entity-type" value={entityType} onChange={(event) => onSearchChange({ addressEntityType: event.target.value as typeof entityType, addressParentId: undefined, page: 1 })}>
+          <Select id="waste-address-entity-type" value={entityType} onChange={(event) => onSearchChange({ addressEntityType: event.target.value as typeof entityType, addressParentId: undefined, q: '', page: 1 })}>
             {(['region', 'city', 'street', 'houseNumber'] as const).map((type) => <option key={type} value={type}>{pt(`masterData.locationsWorkspace.addresses.types.${type}`)}</option>)}
           </Select>
         </StudioField>
@@ -218,7 +218,7 @@ export const WasteMasterDataAddressesPanel = ({
           }}><IconEdit aria-hidden="true" className="h-4 w-4" /></Button>
           <Button type="button" variant="tertiary" size="icon" aria-label={pt('masterData.locationsWorkspace.addresses.delete', { value: row.name })} onClick={(event) => void openDelete(row, event.currentTarget)}><IconTrash aria-hidden="true" className="h-4 w-4" /></Button>
         </div> : null}
-        emptyState={<p className="text-sm text-muted-foreground">{filteredRows.length ? pt('masterData.locationsWorkspace.addresses.emptySearch') : pt(`masterData.locationsWorkspace.addresses.empty.${entityType}`)}</p>}
+        emptyState={allRows.length > 0 ? <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground"><p>{pt('masterData.locationsWorkspace.addresses.emptySearch')}</p><Button type="button" variant="secondary" onClick={() => onSearchChange({ addressParentId: undefined, q: '', page: 1 })}>{pt('masterData.locationsWorkspace.addresses.resetFilters')}</Button></div> : <p className="text-sm text-muted-foreground">{pt(`masterData.locationsWorkspace.addresses.empty.${entityType}`)}</p>}
       />
       <WastePanelTableBottomBar pt={pt} page={page} pageSize={search.pageSize} pageCount={pageCount} totalItems={filteredRows.length} onPageChange={(nextPage) => onSearchChange({ page: nextPage })} onPageSizeChange={(nextSize) => onSearchChange({ pageSize: nextSize, page: 1 })} />
       <WasteMasterDataEntityDialogs controller={controller} />

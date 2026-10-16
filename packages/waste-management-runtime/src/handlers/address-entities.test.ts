@@ -76,6 +76,23 @@ describe('Waste address impact handlers', () => {
     }
   });
 
+  it('audits failed address deletes with a bounded failure reason', async () => {
+    const deps = createDeps();
+    deps.mutateWasteAddressInTransaction.mockRejectedValueOnce(Object.assign(new Error('db failure with data'), { code: 'XX000' }));
+    const handlers = createWasteAddressEntityImpactHandlers(deps, withAuth);
+    const response = await handlers.deleteRegion(new Request('https://studio.test/api/v1/waste-management/regions/region-1', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json', origin: 'https://studio.test', 'x-requested-with': 'XMLHttpRequest' },
+      body: JSON.stringify({ confirmationToken: 'snapshot' }),
+    }));
+
+    expect(response.status).toBe(503);
+    expect(deps.emitAuditEvent).toHaveBeenCalledWith(expect.objectContaining({
+      outcome: 'failure',
+      pluginAction: expect.objectContaining({ result: 'failure', reasonCode: 'address_mutation_failed' }),
+    }));
+  });
+
   it('maps serialization conflicts to refreshable preview conflicts', async () => {
     const deps = createDeps();
     deps.mutateWasteAddressInTransaction.mockRejectedValueOnce(Object.assign(new Error('serialization'), { code: '40001' }));

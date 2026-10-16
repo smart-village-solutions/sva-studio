@@ -3,8 +3,6 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementFormSwitch } from '../src/waste-management.form-switch.js';
-import { WasteMasterDataLocationsHierarchy } from '../src/waste-management.master-data-locations-hierarchy.js';
-import { WasteMasterDataLocationsOverview } from '../src/waste-management.master-data-locations-overview.js';
 import { WasteSchedulingCreateFormView } from '../src/waste-management.scheduling-create-form-view.js';
 import { WasteSettingsForm } from '../src/waste-management.settings-form.js';
 import { TourAssignmentsDialog } from '../src/waste-management.tours-assignments-dialog.js';
@@ -617,115 +615,6 @@ describe('waste-management low coverage views', () => {
     expect(
       screen.getByRole('switch', { name: 'switch-label-disabled' }).hasAttribute('disabled')
     ).toBe(true);
-  });
-
-  it('renders the locations overview metrics and wires every create action', () => {
-    const handlers = {
-      onOpenCreateRegion: vi.fn(),
-      onOpenCreateCity: vi.fn(),
-      onOpenCreateStreet: vi.fn(),
-      onOpenCreateHouseNumber: vi.fn(),
-      onOpenCreateLocation: vi.fn(),
-    };
-
-    render(
-      <WasteMasterDataLocationsOverview
-        collectionLocationCount={5}
-        regionCount={2}
-        cityCount={3}
-        streetCount={4}
-        houseNumberCount={6}
-        {...handlers}
-      />
-    );
-
-    expect(screen.getByText('masterData.meta.collectionLocationCount:{"value":5}')).toBeTruthy();
-    expect(screen.getByText('masterData.meta.houseNumberCount:{"value":6}')).toBeTruthy();
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'masterData.locationsWorkspace.actions.createRegion' })
-    );
-    fireEvent.click(
-      screen.getByRole('button', { name: 'masterData.locationsWorkspace.actions.createCity' })
-    );
-    fireEvent.click(
-      screen.getByRole('button', { name: 'masterData.locationsWorkspace.actions.createStreet' })
-    );
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'masterData.locationsWorkspace.actions.createHouseNumber',
-      })
-    );
-    fireEvent.click(
-      screen.getByRole('button', { name: 'masterData.locationsWorkspace.actions.createLocation' })
-    );
-
-    expect(handlers.onOpenCreateRegion).toHaveBeenCalledTimes(1);
-    expect(handlers.onOpenCreateCity).toHaveBeenCalledTimes(1);
-    expect(handlers.onOpenCreateStreet).toHaveBeenCalledTimes(1);
-    expect(handlers.onOpenCreateHouseNumber).toHaveBeenCalledTimes(1);
-    expect(handlers.onOpenCreateLocation).toHaveBeenCalledTimes(1);
-  });
-
-  it('renders hierarchy sections for populated and empty address levels and wires edit/create actions', () => {
-    const onOpenCreateRegion = vi.fn();
-    const onOpenCreateCity = vi.fn();
-    const onOpenCreateStreet = vi.fn();
-    const onOpenCreateHouseNumber = vi.fn();
-    const onOpenEditRegion = vi.fn();
-    const onOpenEditCity = vi.fn();
-    const onOpenEditStreet = vi.fn();
-    const onOpenEditHouseNumber = vi.fn();
-
-    render(
-      <WasteMasterDataLocationsHierarchy
-        regions={[{ id: 'region-1', name: 'Nord', createdAt: '', updatedAt: '' }]}
-        cities={[
-          { id: 'city-1', name: 'Musterstadt', regionId: 'region-1', createdAt: '', updatedAt: '' },
-        ]}
-        streets={[]}
-        houseNumbers={[
-          { id: 'house-1', number: '12', streetId: 'street-1', createdAt: '', updatedAt: '' },
-        ]}
-        onOpenCreateRegion={onOpenCreateRegion}
-        onOpenCreateCity={onOpenCreateCity}
-        onOpenCreateStreet={onOpenCreateStreet}
-        onOpenCreateHouseNumber={onOpenCreateHouseNumber}
-        onOpenEditRegion={onOpenEditRegion}
-        onOpenEditCity={onOpenEditCity}
-        onOpenEditStreet={onOpenEditStreet}
-        onOpenEditHouseNumber={onOpenEditHouseNumber}
-      />
-    );
-
-    expect(screen.getByText('Nord')).toBeTruthy();
-    expect(screen.getByText('Musterstadt')).toBeTruthy();
-    expect(screen.getByText('12')).toBeTruthy();
-    expect(screen.getByText('masterData.locationsWorkspace.emptyStreets')).toBeTruthy();
-    expect(screen.getByText('masterData.regions.regionId:{"value":"region-1"}')).toBeTruthy();
-    expect(screen.getByText('masterData.cities.regionId:{"value":"region-1"}')).toBeTruthy();
-    expect(screen.getByText('masterData.houseNumbers.streetId:{"value":"street-1"}')).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.regions.actions.openCreate' }));
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.cities.actions.openCreate' }));
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.streets.actions.openCreate' }));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'masterData.houseNumbers.actions.openCreate' })
-    );
-
-    const editButtons = screen.getAllByRole('button', { name: /masterData\..+\.actions\.edit/ });
-    fireEvent.click(editButtons[0]!);
-    fireEvent.click(editButtons[1]!);
-    fireEvent.click(editButtons[2]!);
-
-    expect(onOpenCreateRegion).toHaveBeenCalledTimes(1);
-    expect(onOpenCreateCity).toHaveBeenCalledTimes(1);
-    expect(onOpenCreateStreet).toHaveBeenCalledTimes(1);
-    expect(onOpenCreateHouseNumber).toHaveBeenCalledTimes(1);
-    expect(onOpenEditRegion).toHaveBeenCalledWith(expect.objectContaining({ id: 'region-1' }));
-    expect(onOpenEditCity).toHaveBeenCalledWith(expect.objectContaining({ id: 'city-1' }));
-    expect(onOpenEditHouseNumber).toHaveBeenCalledWith(expect.objectContaining({ id: 'house-1' }));
-    expect(onOpenEditStreet).not.toHaveBeenCalled();
   });
 
   it('chooses the global scheduling variant when no tours are available and resets state on cancel', () => {

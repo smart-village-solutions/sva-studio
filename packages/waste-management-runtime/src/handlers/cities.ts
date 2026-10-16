@@ -4,7 +4,7 @@ import {
   authorizeWasteMasterDataMutationPathRequest,
   authorizeWasteMasterDataMutationRequest,
 } from './master-data-request-guards.js';
-import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
+import { mapWasteAddressMutationPersistenceError, runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementMasterDataSchemas } from '../http-schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { normalizeOptionalString, requireDeps } from './utils.js';
@@ -93,14 +93,7 @@ export const wasteManagementCityHandlers = {
         notFound: 'Die Waste-Stadt wurde nicht gefunden.',
         verificationFailed: 'Die Waste-Stadt konnte nicht verifiziert werden.',
         persistenceFailed: 'Die Waste-Stadt konnte nicht gespeichert werden.',
-        mapPersistenceError: (error) => {
-          const message = error instanceof Error ? error.message : '';
-          const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
-          if (message === 'address_confirmation_required') return { status: 409, code: 'conflict', message: 'Bitte laden Sie die Folgen des Elternwechsels und bestätigen Sie die betroffenen E-Mail-Abos ausdrücklich.', reasonCode: message };
-          if (code === '40001' || code === '40P01') return { status: 409, code: 'conflict', message: 'Die Adressdaten wurden gleichzeitig geändert. Bitte laden Sie die Vorschau erneut.', reasonCode: 'address_preview_stale' };
-          if (message === 'address_preview_stale' || message === 'address_data_inconsistent') return { status: 409, code: 'conflict', message: 'Die Vorschau ist nicht mehr aktuell oder die Adressdaten sind widersprüchlich. Bitte laden Sie die Vorschau erneut.', reasonCode: message };
-          return undefined;
-        },
+        mapPersistenceError: mapWasteAddressMutationPersistenceError,
       },
       loadExisting: () => loadWasteCity(instanceId, cityId),
       save: () => {

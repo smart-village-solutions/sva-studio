@@ -4,6 +4,7 @@ import { asApiItem, createApiError, parseRequestBody } from '@sva/server-runtime
 import { authorizeWasteMasterDataMutationPathRequest, authorizeWasteMasterDataMutationRequest } from './master-data-request-guards.js';
 import type { AuthenticatedRequestContext, WasteManagementHandlerDeps } from './types.js';
 import { emitWasteAuditEvent } from './auth.js';
+import { mapWasteAddressMutationPersistenceError } from './mutation-helpers.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
 import { requireDeps } from './utils.js';
 import { wasteManagementMasterDataSchemas } from '../http-schemas.js';
@@ -11,24 +12,10 @@ import { wasteManagementMasterDataSchemas } from '../http-schemas.js';
 const { wasteAddressDeleteSchema, wasteAddressMutationPreviewSchema } = wasteManagementMasterDataSchemas;
 
 const mapMutationError = (error: unknown): Response => {
-  const message = error instanceof Error ? error.message : '';
-  const code = typeof error === 'object' && error !== null && 'code' in error
-    ? String(error.code)
-    : '';
-  if (message === 'address_preview_stale' || message === 'address_data_inconsistent' || code === '40001' || code === '40P01') {
-    return createApiError(409, 'conflict', message === 'address_preview_stale'
-      ? 'Die Vorschau ist nicht mehr aktuell. Bitte laden Sie die Auswirkungen erneut.'
-      : message === 'address_data_inconsistent'
-        ? 'Die Adressdaten sind widersprüchlich. Es wurden keine Daten geändert.'
-        : 'Die Adressdaten wurden gleichzeitig geändert. Bitte laden Sie die Auswirkungen erneut.');
-  }
-  if (message === 'address_entity_not_found' || message === 'address_move_target_not_found') {
-    return createApiError(404, 'not_found', 'Der ausgewählte Adressdatensatz wurde nicht gefunden.');
-  }
-  if (message === 'address_move_unchanged' || message === 'invalid_address_move') {
-    return createApiError(400, 'invalid_request', 'Die ausgewählte Zuordnung ist ungültig oder bereits gesetzt.');
-  }
-  return createApiError(503, 'database_unavailable', 'Die Adressänderung konnte nicht gespeichert werden.');
+  const mapped = mapWasteAddressMutationPersistenceError(error);
+  return mapped
+    ? createApiError(mapped.status, mapped.code, mapped.message)
+    : createApiError(503, 'database_unavailable', 'Die Adressänderung konnte nicht gespeichert werden.');
 };
 
 const isMissingDependency = (error: unknown): boolean =>
@@ -84,6 +71,20 @@ export const createWasteAddressEntityImpactHandlers = (
           return Response.json(asApiItem({ counts }, authorized.requestId));
         } catch (error) {
           if (isMissingDependency(error)) throw error;
+          await emitWasteAuditEvent({
+            deps,
+            ctx,
+            instanceId: authorized.instanceId,
+            actionId,
+            result: 'failure',
+            reasonCode: error instanceof Error && [
+              'address_preview_stale', 'address_data_inconsistent', 'address_entity_not_found',
+              'address_move_target_not_found', 'address_move_unchanged', 'invalid_address_move',
+            ].includes(error.message) ? error.message : 'address_mutation_failed',
+            resourceType: `waste_${entityType}`,
+            resourceId: authorized.resourceId,
+            requestId: authorized.requestId,
+          });
           return mapMutationError(error);
         }
       });

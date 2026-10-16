@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { mutateWasteAddressInTransaction, previewWasteAddressMutation } from './address-mutations.js';
+import { mutateWasteAddressInTransaction } from './address-mutations.js';
+import { previewWasteAddressMutation } from './address-mutation-snapshot.js';
 import { outboxDispatchStatements } from './email-reminders.outbox-dispatch.js';
 import { applySchemaStatements } from '../operations/waste-management-operations.schema.js';
 
@@ -178,6 +179,15 @@ describe.skipIf(!databaseUrl)('Waste address mutations against PostgreSQL', () =
     expect(await readMainserverRevision()).toBeGreaterThan(revisionBeforeHouseMove);
     await expect(db().query(`SELECT number, street_id FROM waste_house_numbers WHERE id = $1`, [houseA])).resolves.toMatchObject({ rows: [{ number: '12B', street_id: streetB }] });
     await expect(db().query(`SELECT city_id, region_id, street_id, house_number_id FROM waste_collection_locations WHERE id = $1`, [locationA])).resolves.toMatchObject({ rows: [{ city_id: cityB, region_id: regionB, street_id: streetB, house_number_id: houseA }] });
+
+    const targetHierarchyPreviewInput = { entityType: 'houseNumber' as const, entityId: houseA2 as string, mode: 'move' as const, targetParentId: streetB as string };
+    const targetHierarchyPreview = await previewWasteAddressMutation(db(), targetHierarchyPreviewInput);
+    await db().query('UPDATE waste_cities SET region_id = $2 WHERE id = $1', [cityB, regionA]);
+    await expect(inTransaction(() => mutateWasteAddressInTransaction(db(), {
+      ...targetHierarchyPreviewInput,
+      confirmationToken: targetHierarchyPreview.token,
+    }))).rejects.toThrow('address_preview_stale');
+    await db().query('UPDATE waste_cities SET region_id = $2 WHERE id = $1', [cityB, regionB]);
 
     const staleDeleteInput = { entityType: 'houseNumber' as const, entityId: houseA2 as string, mode: 'delete' as const };
     const stale = await previewWasteAddressMutation(db(), staleDeleteInput);

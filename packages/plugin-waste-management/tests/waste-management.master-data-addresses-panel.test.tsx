@@ -40,13 +40,14 @@ vi.mock('@sva/studio-ui-react', () => ({
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
   Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
   StudioField: ({ children, label, id }: { children: React.ReactNode; label: string; id: string }) => <label htmlFor={id}>{label}{children}</label>,
-  StudioDataTable: ({ ariaLabel, data, columns, toolbarEnd, rowActions }: {
+  StudioDataTable: ({ ariaLabel, data, columns, toolbarEnd, rowActions, emptyState }: {
     ariaLabel: string;
     data: readonly { id: string }[];
     columns: readonly { id: string; cell: (row: never) => React.ReactNode }[];
     toolbarEnd?: React.ReactNode;
     rowActions?: (row: never) => React.ReactNode;
-  }) => <section aria-label={ariaLabel}>{toolbarEnd}{data.map((row) => <div key={row.id}>{columns.map((column) => <span key={column.id}>{column.cell(row as never)}</span>)}{rowActions?.(row as never)}</div>)}</section>,
+    emptyState?: React.ReactNode;
+  }) => <section aria-label={ariaLabel}>{toolbarEnd}{data.map((row) => <div key={row.id}>{columns.map((column) => <span key={column.id}>{column.cell(row as never)}</span>)}{rowActions?.(row as never)}</div>)}{data.length === 0 ? emptyState : null}</section>,
   StudioDestructiveActionDialog: () => null,
   StudioErrorState: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   StudioLoadingState: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -67,6 +68,18 @@ describe('Waste master-data addresses panel', () => {
     expect(screen.getByText('Nord')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.addresses.create.region' }));
     expect(controller.openCreateRegionDialog).toHaveBeenCalledOnce();
+  });
+
+  it('clears stale filters when switching level and offers a reset for filtered empty results', () => {
+    const onSearchChange = vi.fn();
+    render(<WasteMasterDataAddressesPanel search={{ ...search, q: 'not found' } as never} canManage onSearchChange={onSearchChange} />);
+
+    expect(screen.getByText('masterData.locationsWorkspace.addresses.emptySearch')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.addresses.resetFilters' }));
+    expect(onSearchChange).toHaveBeenCalledWith({ addressParentId: undefined, q: '', page: 1 });
+
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.addresses.typeLabel'), { target: { value: 'city' } });
+    expect(onSearchChange).toHaveBeenLastCalledWith({ addressEntityType: 'city', addressParentId: undefined, q: '', page: 1 });
   });
 
   it('keeps parent filtering in the route search state', () => {

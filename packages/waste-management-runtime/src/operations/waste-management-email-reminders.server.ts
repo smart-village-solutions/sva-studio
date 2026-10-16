@@ -219,11 +219,8 @@ export const createProcessEmailReminderOutboxOperation = (
   deps: WasteOperationRuntimeDeps
 ): WasteManagementOperationRuntime['processEmailReminderOutbox'] => async (instanceId, input) => {
   const startedAt = Date.now();
-  if (!deps.dispatchMail) {
-    throw new Error('mail_dispatch_not_configured');
-  }
   const reminderSettings = await loadWasteEmailReminderSettings(deps, instanceId);
-  if (!reminderSettings?.config.enabled) {
+  if (!reminderSettings) {
     return buildOperationSummary(startedAt, {
       operation: 'process-email-reminder-outbox',
       mode: 'skipped',
@@ -240,6 +237,34 @@ export const createProcessEmailReminderOutboxOperation = (
   if (Number.isNaN(referenceTime.getTime())) {
     throw new Error(`invalid_reference_time:${input.referenceTime}`);
   }
+  const reminderConfig = reminderSettings.config;
+  const cleanup = await withWasteClient(deps, instanceId, async ({ client }) => {
+    const reminderRepository = createWasteEmailReminderRepository(createSqlExecutor(client));
+    const expiredDoiCount = await reminderRepository.cancelExpiredDoiOutboxEntries({
+      now: referenceTime.toISOString(),
+    });
+    const expiredPendingCount = await reminderRepository.deleteExpiredPendingSubscriptions({
+      now: referenceTime.toISOString(),
+      pendingSubscriptionTtlHours: reminderConfig.pendingSubscriptionTtlHours,
+    });
+    return { expiredDoiCount, expiredPendingCount };
+  });
+  if (!reminderConfig.enabled) {
+    return buildOperationSummary(startedAt, {
+      operation: 'process-email-reminder-outbox',
+      mode: 'skipped',
+      reason: 'email_reminders_disabled',
+      leasedCount: 0,
+      sentCount: 0,
+      retryScheduledCount: 0,
+      failedCount: 0,
+      batchSize: 0,
+      ...cleanup,
+    });
+  }
+  if (!deps.dispatchMail) {
+    throw new Error('mail_dispatch_not_configured');
+  }
   const shouldMaterialize = input.materialize === 'if-reminder-due'
     ? await withWasteClient(deps, instanceId, async ({ client }) =>
         createWasteEmailReminderRepository(createSqlExecutor(client)).hasDueReminderOutboxEntries({
@@ -253,7 +278,6 @@ export const createProcessEmailReminderOutboxOperation = (
       referenceTime: referenceTime.toISOString(),
     });
   }
-  const reminderConfig = reminderSettings.config;
   const transportConfigs = await loadMailTransportConfigs(deps, instanceId);
   if (transportConfigs.size === 0) {
     throw new Error(`mail_transport_not_available:${reminderConfig.transportId}`);
@@ -278,13 +302,6 @@ export const createProcessEmailReminderOutboxOperation = (
 
   const details = await withWasteClient(deps, instanceId, async ({ client }) => {
     const reminderRepository = createWasteEmailReminderRepository(createSqlExecutor(client));
-    const expiredDoiCount = await reminderRepository.cancelExpiredDoiOutboxEntries({
-      now: referenceTime.toISOString(),
-    });
-    const expiredPendingCount = await reminderRepository.deleteExpiredPendingSubscriptions({
-      now: referenceTime.toISOString(),
-      pendingSubscriptionTtlHours: reminderConfig.pendingSubscriptionTtlHours,
-    });
     const leased = await reminderRepository.leaseDueOutboxEntries({
       now: referenceTime.toISOString(),
       limit: batchSize,
@@ -353,8 +370,7 @@ export const createProcessEmailReminderOutboxOperation = (
       retryScheduledCount,
       failedCount,
       batchSize,
-      expiredDoiCount,
-      expiredPendingCount,
+      ...cleanup,
     };
   });
 

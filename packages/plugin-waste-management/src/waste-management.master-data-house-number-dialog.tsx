@@ -108,13 +108,7 @@ const HouseNumberDialogForm = ({
   readonly cities: readonly WasteCityRecord[];
   readonly regions: readonly WasteRegionRecord[];
 }) => {
-  const {
-    clearErrors,
-    control,
-    formState: { errors },
-    handleSubmit,
-    register,
-  } = formApi;
+  const { clearErrors, control, formState: { errors }, handleSubmit, register } = formApi;
 
   const numberField = getStudioFormFieldProps({
     id: 'waste-house-number-value',

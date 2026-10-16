@@ -7,7 +7,7 @@ import { wasteMasterDataInputMappers } from './waste-management.master-data.form
 import { applySuccess } from './use-waste-master-data-state.js';
 import { confirmWasteAddressMove } from './waste-management.master-data-address-move.js';
 import type { WasteMasterDataSubmissionContext } from './waste-management.master-data.submission.types.js';
-import { resolveApiErrorCode } from './waste-management.page.support.js';
+import { resolveApiErrorCode, resolveWasteAddressSaveErrorMessage } from './waste-management.page.support.js';
 
 export const createWasteMasterDataStreetMutations = ({
   state,
@@ -75,14 +75,12 @@ export const createWasteMasterDataStreetMutations = ({
       const code = resolveApiErrorCode(saveError);
       state.setMessage({
         kind: 'error',
-        text:
-          code === 'forbidden'
-            ? pt('masterData.streets.messages.saveForbidden')
-            : code === 'conflict'
-              ? pt('masterData.locationsWorkspace.addresses.previewStale')
-              : saveError instanceof Error && saveError.message === 'address_data_inconsistent'
-                ? pt('masterData.locationsWorkspace.addresses.previewError')
-            : pt('masterData.streets.messages.saveError'),
+        text: resolveWasteAddressSaveErrorMessage(code, saveError, {
+          forbidden: pt('masterData.streets.messages.saveForbidden'),
+          conflict: pt('masterData.locationsWorkspace.addresses.previewStale'),
+          inconsistent: pt('masterData.locationsWorkspace.addresses.previewError'),
+          fallback: pt('masterData.streets.messages.saveError'),
+        }),
       });
     } finally {
       state.setSaving(false);

@@ -46,14 +46,70 @@ const lockSnapshotChildren = async (client: QueryClient, snapshot: AddressSnapsh
   }
 };
 
+type MutationInput = WasteAddressMutationPreviewInput & {
+  readonly confirmationToken: string;
+  readonly name?: string;
+  readonly postalCode?: string | null;
+  readonly number?: string;
+};
+
+const deleteAddressData = async (client: QueryClient, current: AddressSnapshot): Promise<void> => {
+  const deletions = [
+    ['waste_email_reminder_subscriptions', current.subscriptionIds],
+    ['waste_collection_locations', current.locationIds],
+    ['waste_tour_assignments', current.assignmentIds],
+    ['waste_house_numbers', current.houseNumberIds],
+    ['waste_streets', current.streetIds],
+    ['waste_cities', current.cityIds],
+    ['waste_regions', current.regionIds],
+  ] as const;
+  for (const [table, rowIds] of deletions) {
+    if (rowIds.length) {
+      const query = table === 'waste_tour_assignments'
+        ? 'DELETE FROM waste_tour_assignments a WHERE a.id = ANY($1::uuid[]) AND NOT EXISTS (SELECT 1 FROM waste_tour_assignment_locations l WHERE l.assignment_id = a.id)'
+        : `DELETE FROM ${table} WHERE id = ANY($1::uuid[])`;
+      await client.query(query, [rowIds]);
+    }
+  }
+};
+
+const removeAffectedSubscriptions = (client: QueryClient, current: AddressSnapshot): Promise<unknown> =>
+  current.subscriptionIds.length
+    ? client.query('DELETE FROM waste_email_reminder_subscriptions WHERE id = ANY($1::uuid[])', [current.subscriptionIds])
+    : Promise.resolve();
+
+const moveCity = async (client: QueryClient, input: MutationInput, current: AddressSnapshot): Promise<void> => {
+  await client.query('UPDATE waste_cities SET region_id = $2::uuid, name = COALESCE($3, name), postal_code = CASE WHEN $4::boolean THEN $5::text ELSE postal_code END, updated_at = NOW() WHERE id = $1::uuid', [input.entityId, input.targetParentId ?? null, input.name ?? null, input.postalCode !== undefined, input.postalCode ?? null]);
+  if (current.locationIds.length) await client.query('UPDATE waste_collection_locations SET region_id = $2::uuid, updated_at = NOW() WHERE id = ANY($1::uuid[])', [current.locationIds, input.targetParentId ?? null]);
+  await removeAffectedSubscriptions(client, current);
+};
+
+const moveStreet = async (client: QueryClient, input: MutationInput, current: AddressSnapshot): Promise<void> => {
+  const targetCity = await queryRows(client, 'SELECT region_id FROM waste_cities WHERE id = $1::uuid', [input.targetParentId]);
+  await client.query('UPDATE waste_streets SET city_id = $2::uuid, name = COALESCE($3, name), updated_at = NOW() WHERE id = $1::uuid', [input.entityId, input.targetParentId, input.name ?? null]);
+  if (current.locationIds.length) await client.query('UPDATE waste_collection_locations SET city_id = $2::uuid, region_id = $3::uuid, street_id = $4::uuid, updated_at = NOW() WHERE id = ANY($1::uuid[])', [current.locationIds, input.targetParentId, targetCity[0]?.region_id ?? null, input.entityId]);
+  await removeAffectedSubscriptions(client, current);
+};
+
+const moveHouseNumber = async (client: QueryClient, input: MutationInput, current: AddressSnapshot): Promise<void> => {
+  const targetStreet = await queryRows(client, 'SELECT city_id FROM waste_streets WHERE id = $1::uuid', [input.targetParentId]);
+  const targetCityId = targetStreet[0]?.city_id;
+  const targetCity = await queryRows(client, 'SELECT region_id FROM waste_cities WHERE id = $1::uuid', [targetCityId]);
+  await client.query('UPDATE waste_house_numbers SET street_id = $2::uuid, number = COALESCE($3, number), updated_at = NOW() WHERE id = $1::uuid', [input.entityId, input.targetParentId, input.number ?? null]);
+  if (current.locationIds.length) await client.query('UPDATE waste_collection_locations SET city_id = $2::uuid, region_id = $3::uuid, street_id = $4::uuid, house_number_id = $5::uuid, updated_at = NOW() WHERE id = ANY($1::uuid[])', [current.locationIds, targetCityId, targetCity[0]?.region_id ?? null, input.targetParentId, input.entityId]);
+  await removeAffectedSubscriptions(client, current);
+};
+
+const applyMove = (client: QueryClient, input: MutationInput, current: AddressSnapshot): Promise<void> => ({
+  city: () => moveCity(client, input, current),
+  street: () => moveStreet(client, input, current),
+  houseNumber: () => moveHouseNumber(client, input, current),
+  region: async () => { throw new Error('invalid_address_move'); },
+})[input.entityType]();
+
 export const mutateWasteAddressInTransaction = async (
   client: QueryClient,
-  input: WasteAddressMutationPreviewInput & {
-    readonly confirmationToken: string;
-    readonly name?: string;
-    readonly postalCode?: string | null;
-    readonly number?: string;
-  }
+  input: MutationInput
 ): Promise<WasteAddressImpactCounts> => {
   await lockAddressHierarchy(client, input);
   const beforeLocks = await buildAddressSnapshot(client, input);
@@ -61,32 +117,7 @@ export const mutateWasteAddressInTransaction = async (
   const current = await buildAddressSnapshot(client, input);
   if (current.preview.token !== input.confirmationToken) throw new Error('address_preview_stale');
   if (current.preview.counts.inconsistentCollectionLocations > 0) throw new Error('address_data_inconsistent');
-
-  const { entityType, entityId, mode, targetParentId } = input;
-  if (mode === 'delete') {
-    if (current.subscriptionIds.length) await client.query('DELETE FROM waste_email_reminder_subscriptions WHERE id = ANY($1::uuid[])', [current.subscriptionIds]);
-    if (current.locationIds.length) await client.query('DELETE FROM waste_collection_locations WHERE id = ANY($1::uuid[])', [current.locationIds]);
-    if (current.assignmentIds.length) await client.query('DELETE FROM waste_tour_assignments a WHERE a.id = ANY($1::uuid[]) AND NOT EXISTS (SELECT 1 FROM waste_tour_assignment_locations l WHERE l.assignment_id = a.id)', [current.assignmentIds]);
-    if (current.houseNumberIds.length) await client.query('DELETE FROM waste_house_numbers WHERE id = ANY($1::uuid[])', [current.houseNumberIds]);
-    if (current.streetIds.length) await client.query('DELETE FROM waste_streets WHERE id = ANY($1::uuid[])', [current.streetIds]);
-    if (current.cityIds.length) await client.query('DELETE FROM waste_cities WHERE id = ANY($1::uuid[])', [current.cityIds]);
-    if (current.regionIds.length) await client.query('DELETE FROM waste_regions WHERE id = ANY($1::uuid[])', [current.regionIds]);
-  } else if (entityType === 'city') {
-    await client.query('UPDATE waste_cities SET region_id = $2::uuid, name = COALESCE($3, name), postal_code = CASE WHEN $4::boolean THEN $5::text ELSE postal_code END, updated_at = NOW() WHERE id = $1::uuid', [entityId, targetParentId ?? null, input.name ?? null, input.postalCode !== undefined, input.postalCode ?? null]);
-    if (current.locationIds.length) await client.query('UPDATE waste_collection_locations SET region_id = $2::uuid, updated_at = NOW() WHERE id = ANY($1::uuid[])', [current.locationIds, targetParentId ?? null]);
-    if (current.subscriptionIds.length) await client.query('DELETE FROM waste_email_reminder_subscriptions WHERE id = ANY($1::uuid[])', [current.subscriptionIds]);
-  } else if (entityType === 'street') {
-    const targetCity = await queryRows(client, 'SELECT region_id FROM waste_cities WHERE id = $1::uuid', [targetParentId]);
-    await client.query('UPDATE waste_streets SET city_id = $2::uuid, name = COALESCE($3, name), updated_at = NOW() WHERE id = $1::uuid', [entityId, targetParentId, input.name ?? null]);
-    if (current.locationIds.length) await client.query('UPDATE waste_collection_locations SET city_id = $2::uuid, region_id = $3::uuid, street_id = $4::uuid, updated_at = NOW() WHERE id = ANY($1::uuid[])', [current.locationIds, targetParentId, targetCity[0]?.region_id ?? null, entityId]);
-    if (current.subscriptionIds.length) await client.query('DELETE FROM waste_email_reminder_subscriptions WHERE id = ANY($1::uuid[])', [current.subscriptionIds]);
-  } else {
-    const targetStreet = await queryRows(client, 'SELECT city_id FROM waste_streets WHERE id = $1::uuid', [targetParentId]);
-    const targetCityId = targetStreet[0]?.city_id;
-    const targetCity = await queryRows(client, 'SELECT region_id FROM waste_cities WHERE id = $1::uuid', [targetCityId]);
-    await client.query('UPDATE waste_house_numbers SET street_id = $2::uuid, number = COALESCE($3, number), updated_at = NOW() WHERE id = $1::uuid', [entityId, targetParentId, input.number ?? null]);
-    if (current.locationIds.length) await client.query('UPDATE waste_collection_locations SET city_id = $2::uuid, region_id = $3::uuid, street_id = $4::uuid, house_number_id = $5::uuid, updated_at = NOW() WHERE id = ANY($1::uuid[])', [current.locationIds, targetCityId, targetCity[0]?.region_id ?? null, targetParentId, entityId]);
-    if (current.subscriptionIds.length) await client.query('DELETE FROM waste_email_reminder_subscriptions WHERE id = ANY($1::uuid[])', [current.subscriptionIds]);
-  }
+  if (input.mode === 'delete') await deleteAddressData(client, current);
+  else await applyMove(client, input, current);
   return current.preview.counts;
 };

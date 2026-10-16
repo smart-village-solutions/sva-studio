@@ -104,13 +104,7 @@ const StreetDialogForm = ({
   readonly pt: ReturnType<typeof usePluginTranslation>;
   readonly saving: boolean;
 }) => {
-  const {
-    clearErrors,
-    control,
-    formState: { errors },
-    handleSubmit,
-    register,
-  } = formApi;
+  const { clearErrors, control, formState: { errors }, handleSubmit, register } = formApi;
 
   const nameField = getStudioFormFieldProps({
     id: 'waste-street-name',

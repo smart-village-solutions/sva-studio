@@ -119,7 +119,6 @@ const normalizeMasterDataTab = (value: unknown): WasteManagementMasterDataTabId 
   wasteManagementMasterDataTabs.includes(value as WasteManagementMasterDataTabId)
     ? (value as WasteManagementMasterDataTabId)
     : 'locations';
-
 const normalizeFractionsView = (value: unknown): WasteManagementFractionsView =>
   typeof value === 'string' &&
   wasteManagementFractionsViews.includes(value as WasteManagementFractionsView)

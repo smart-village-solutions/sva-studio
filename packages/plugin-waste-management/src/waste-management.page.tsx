@@ -3,7 +3,6 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { type WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
 import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
-
 import {
   normalizeWasteManagementSearchParams,
   type WasteManagementMasterDataTabId,

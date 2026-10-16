@@ -219,7 +219,7 @@ export const validateInterfaceMutationCsrf = async (request: Request): Promise<v
   // withAuthenticatedUser must first validate Bearer tokens on an opted-in route.
   if (request.headers.has('authorization')) return;
   const { validateCsrf } = await import('@sva/auth-runtime/server');
-  const response = validateCsrf(request);
+  const response = validateCsrf(request, undefined, { allowServerFnHeader: true });
   if (response) {
     throw Object.assign(new Error('csrf_validation_failed'), { statusCode: response.status });
   }

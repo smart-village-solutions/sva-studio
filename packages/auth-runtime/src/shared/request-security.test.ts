@@ -90,4 +90,44 @@ describe('shared request security', () => {
     expect(trustedRequest).toBeNull();
     delete process.env.IAM_CSRF_ALLOWED_ORIGINS;
   });
+
+  it('accepts the TanStack server-function header only on an opted-in, trusted server-function request', () => {
+    const request = (url: string, origin: string, header = 'true') =>
+      new Request(url, {
+        method: 'POST',
+        headers: { origin, 'x-tsr-serverfn': header },
+      });
+    const trusted = request(
+      'https://studio.example.test/_server/function-id',
+      'https://studio.example.test'
+    );
+
+    expect(validateCsrf(trusted)).not.toBeNull();
+    expect(validateCsrf(trusted, undefined, { allowServerFnHeader: true })).toBeNull();
+    expect(
+      validateCsrf(
+        request('https://studio.example.test/_server/function-id', 'https://evil.example.test'),
+        undefined,
+        { allowServerFnHeader: true }
+      )?.status
+    ).toBe(403);
+    expect(
+      validateCsrf(
+        request('https://studio.example.test/api/v1/interfaces', 'https://studio.example.test'),
+        undefined,
+        { allowServerFnHeader: true }
+      )?.status
+    ).toBe(403);
+    expect(
+      validateCsrf(
+        request(
+          'https://studio.example.test/_server/function-id',
+          'https://studio.example.test',
+          'false'
+        ),
+        undefined,
+        { allowServerFnHeader: true }
+      )?.status
+    ).toBe(403);
+  });
 });

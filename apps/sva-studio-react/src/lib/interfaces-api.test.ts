@@ -610,12 +610,32 @@ describe('interfaces app adapter', () => {
 
     await expect(saveSvaMainserverInterfaceSettings({ data: payload })).resolves.toEqual(config);
     expect(state.withAuthenticatedUser).toHaveBeenCalledWith(state.request, expect.any(Function));
+    expect(state.validateCsrf).toHaveBeenCalledWith(state.request, undefined, {
+      allowServerFnHeader: true,
+    });
     expect(state.saveSvaMainserverSettings).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       graphqlBaseUrl: payload.graphqlBaseUrl,
       oauthTokenUrl: payload.oauthTokenUrl,
       enabled: true,
     });
+  });
+
+  it('rejects a Mainserver server-function save when browser CSRF validation fails', async () => {
+    setAuthenticatedUserContext();
+    state.validateCsrf.mockReturnValueOnce(new Response(null, { status: 403 }));
+    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
+
+    await expect(
+      saveSvaMainserverInterfaceSettings({
+        data: {
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+      })
+    ).rejects.toThrow();
+    expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
   });
 
   it('sanitizes internal save errors before surfacing them to clients', async () => {
@@ -1096,7 +1116,10 @@ describe('interfaces app adapter', () => {
       graphqlBaseUrl: mainserverConfig.graphqlBaseUrl, oauthTokenUrl: mainserverConfig.oauthTokenUrl, enabled: true,
     }) });
     expect((await dispatchInterfacesApiRequest(request))?.status).toBe(403);
-    expect(state.validateCsrf).toHaveBeenCalledWith(request); expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
+    expect(state.validateCsrf).toHaveBeenCalledWith(request, undefined, {
+      allowServerFnHeader: true,
+    });
+    expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
   });
 
   it.each([

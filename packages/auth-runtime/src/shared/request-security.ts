@@ -50,9 +50,18 @@ export const isTrustedRequestOrigin = (
   return false;
 };
 
-export const validateCsrf = (request: Request, requestId?: string): Response | null => {
+export const validateCsrf = (
+  request: Request,
+  requestId?: string,
+  options?: Readonly<{ allowServerFnHeader?: boolean }>
+): Response | null => {
   const header = readString(request.headers.get('x-requested-with'));
-  if (header?.toLowerCase() !== 'xmlhttprequest') {
+  const isServerFnRequest =
+    options?.allowServerFnHeader === true &&
+    request.method.toUpperCase() === 'POST' &&
+    new URL(request.url).pathname.startsWith('/_server/') &&
+    request.headers.get('x-tsr-serverfn') === 'true';
+  if (header?.toLowerCase() !== 'xmlhttprequest' && !isServerFnRequest) {
     return createApiError(
       403,
       'csrf_validation_failed',

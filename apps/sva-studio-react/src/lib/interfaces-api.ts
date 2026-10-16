@@ -235,16 +235,17 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
       const dependencies = await loadSaveInterfacesDependencies();
       const payloadData = (data ?? {}) as SaveInterfacesPayload;
 
-      const response = await withAuthenticatedUser(dependencies.request, (ctx) =>
-        saveInterfacesSettingsForUser({
+      const response = await withAuthenticatedUser(dependencies.request, async (ctx) => {
+        await validateInterfaceMutationCsrf(dependencies.request);
+        return saveInterfacesSettingsForUser({
           ...dependencies,
           ctx: {
             sessionId: ctx.sessionId,
             user: ctx.user,
           },
           payloadData,
-        })
-      );
+        });
+      });
 
       const payload = await parseJson<SvaMainserverInstanceConfig | ErrorPayload>(response);
       if (response.ok && isSvaMainserverInstanceConfig(payload)) {

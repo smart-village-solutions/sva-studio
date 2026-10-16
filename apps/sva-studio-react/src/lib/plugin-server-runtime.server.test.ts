@@ -84,8 +84,12 @@ describe('plugin server runtime loader', () => {
     const bindings = await createPluginServerExecutionHandlersFromSnapshot({
       pluginSources: [source('waste-management')],
     });
-    expect(Object.keys(bindings)).toHaveLength(62);
+    expect(Object.keys(bindings)).toHaveLength(67);
     expect(bindings['waste-management.getHistory.get']).toBeTypeOf('function');
+    expect(bindings['waste-management.previewWasteAddressMutation.post']).toBeTypeOf('function');
+    for (const handler of ['deleteRegion', 'deleteCity', 'deleteStreet', 'deleteHouseNumber']) {
+      expect(bindings[`waste-management.${handler}.delete`]).toBeTypeOf('function');
+    }
   }, 15_000);
 
   it('passes only the composed Waste host capabilities to its server factory', async () => {

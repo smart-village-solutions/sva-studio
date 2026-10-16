@@ -51,46 +51,59 @@ const readConfiguration = () => {
   }
 };
 
+const callBusApi = async (
+  {
+    origin,
+    token,
+    actorId,
+    requestId,
+  }: { origin: string; token: string; actorId: string; requestId: string },
+  path: string,
+  method: 'GET' | 'POST',
+  body?: unknown
+): Promise<unknown> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const response = await fetch(new URL(path, origin), {
+      method,
+      redirect: 'error',
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: {
+        authorization: `Bearer ${token}`,
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        'x-admin-actor-id': actorId,
+        'x-request-id': requestId,
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    if (!response.ok) {
+      throw new BusApiError(
+        response.status === 404
+          ? 'bus_key_not_found'
+          : method === 'POST' && response.status >= 500
+            ? 'bus_outcome_unknown'
+            : 'bus_unavailable',
+        response.status === 404 ? 404 : 502
+      );
+    }
+    return await response.json();
+  } catch (error) {
+    if (error instanceof BusApiError) throw error;
+    throw new BusApiError(method === 'POST' ? 'bus_outcome_unknown' : 'bus_unavailable', 502);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 export const createBusApiClient = (actorId: string, requestId: string) => {
   if (!actorId.trim() || actorId.length > 256 || /[\p{Cc},]/u.test(actorId)) {
     throw new BusApiError('bus_unavailable', 502);
   }
   const { origin, token } = readConfiguration();
-  const call = async (path: string, method: 'GET' | 'POST', body?: unknown): Promise<unknown> => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8_000);
-    try {
-      const response = await fetch(new URL(path, origin), {
-        method,
-        redirect: 'error',
-        cache: 'no-store',
-        signal: controller.signal,
-        headers: {
-          authorization: `Bearer ${token}`,
-          ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-          'x-admin-actor-id': actorId,
-          'x-request-id': requestId,
-        },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
-      if (!response.ok) {
-        throw new BusApiError(
-          response.status === 404
-            ? 'bus_key_not_found'
-            : method === 'POST' && response.status >= 500
-              ? 'bus_outcome_unknown'
-              : 'bus_unavailable',
-          response.status === 404 ? 404 : 502
-        );
-      }
-      return await response.json();
-    } catch (error) {
-      if (error instanceof BusApiError) throw error;
-      throw new BusApiError(method === 'POST' ? 'bus_outcome_unknown' : 'bus_unavailable', 502);
-    } finally {
-      clearTimeout(timer);
-    }
-  };
+  const call = (path: string, method: 'GET' | 'POST', body?: unknown) =>
+    callBusApi({ origin, token, actorId, requestId }, path, method, body);
 
   return {
     list: async (instanceId: string): Promise<BusKeyMetadata[]> => {

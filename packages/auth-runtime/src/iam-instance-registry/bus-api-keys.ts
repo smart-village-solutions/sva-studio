@@ -68,12 +68,68 @@ const audit = async (input: {
   }
 };
 
-const handle = async (
+const parseTarget = (request: Request, action: Action) => {
+  const segments = new URL(request.url).pathname.split('/').filter(Boolean);
+  let instanceId: string;
+  let keyId: string | undefined;
+  try {
+    instanceId = decodeURIComponent(segments[4] ?? '');
+    keyId = segments[6] === undefined ? undefined : decodeURIComponent(segments[6]);
+  } catch {
+    return null;
+  }
+  if (
+    !isValidInstanceId(instanceId) ||
+    ((action === 'revoke' || action === 'activate') &&
+      (!keyId || keyId.length > 256 || /[\p{Cc}]/u.test(keyId)))
+  )
+    return null;
+  return { instanceId, keyId };
+};
+
+const createKey = async (
+  request: Request,
+  client: ReturnType<typeof createBusApiClient>,
+  instance: { displayName: string; instanceId: string }
+) => {
+  const parsed = createSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return null;
+  const expiresAt = instanceBusKeyExpiresAt(parsed.data.validThrough);
+  if (!expiresAt || Date.parse(expiresAt) <= Date.now()) return null;
+  return client.create({
+    owner: instance.displayName,
+    label: instance.instanceId,
+    contact: parsed.data.contact,
+    createdBy: parsed.data.createdBy,
+    expiresAt,
+  });
+};
+
+const mutateKey = async (
+  client: ReturnType<typeof createBusApiClient>,
+  instanceId: string,
+  keyId: string | undefined,
+  action: 'revoke' | 'activate',
+  requestId: string
+) => {
+  if (!keyId) return errorResponse(400, 'invalid_request', requestId);
+  if (action === 'activate') {
+    const key = (await client.list(instanceId)).find((item) => item.keyId === keyId);
+    if (!key) return errorResponse(404, 'bus_key_not_found', requestId);
+    if (!key.revoked || (key.expiresAt !== undefined && Date.parse(key.expiresAt) <= Date.now())) {
+      return errorResponse(409, 'bus_key_not_activatable', requestId);
+    }
+  }
+  await client.mutate(instanceId, keyId, action);
+  return { keyId };
+};
+
+const authorize = async (
   request: Request,
   ctx: AuthenticatedRequestContext,
   action: Action,
   requestId: string
-): Promise<Response> => {
+): Promise<Response | undefined> => {
   const context = { ...ctx, authKind: 'session' as const };
   const accessError = ensurePlatformAccess(request, context);
   if (accessError) return accessError;
@@ -85,21 +141,20 @@ const handle = async (
     const guardError = validateCsrf(request, requestId) ?? requireFreshReauth(request, context);
     if (guardError) return guardError;
   }
-  const segments = new URL(request.url).pathname.split('/').filter(Boolean);
-  let instanceId: string;
-  let keyId: string | undefined;
-  try {
-    instanceId = decodeURIComponent(segments[4] ?? '');
-    keyId = segments[6] === undefined ? undefined : decodeURIComponent(segments[6]);
-  } catch {
-    return errorResponse(400, 'invalid_request', requestId);
-  }
-  if (
-    !isValidInstanceId(instanceId) ||
-    ((action === 'revoke' || action === 'activate') &&
-      (!keyId || keyId.length > 256 || /[\p{Cc}]/u.test(keyId)))
-  )
-    return errorResponse(400, 'invalid_request', requestId);
+  return undefined;
+};
+
+const handle = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  action: Action,
+  requestId: string
+): Promise<Response> => {
+  const accessError = await authorize(request, ctx, action, requestId);
+  if (accessError) return accessError;
+  const target = parseTarget(request, action);
+  if (!target) return errorResponse(400, 'invalid_request', requestId);
+  const { instanceId, keyId } = target;
   const instance = await withRegistryRepository((repository) =>
     repository.getInstanceById(instanceId)
   );
@@ -113,32 +168,13 @@ const handle = async (
     if (action === 'list') return json(200, { data: await client.list(instanceId), requestId });
     let result: { keyId: string; apiKey?: string };
     if (action === 'create') {
-      const parsed = createSchema.safeParse(await request.json().catch(() => null));
-      if (!parsed.success) return errorResponse(400, 'invalid_request', requestId);
-      const expiresAt = instanceBusKeyExpiresAt(parsed.data.validThrough);
-      if (!expiresAt || Date.parse(expiresAt) <= Date.now())
-        return errorResponse(400, 'invalid_request', requestId);
-      result = await client.create({
-        owner: instance.displayName,
-        label: instance.instanceId,
-        contact: parsed.data.contact,
-        createdBy: parsed.data.createdBy,
-        expiresAt,
-      });
+      const created = await createKey(request, client, instance);
+      if (!created) return errorResponse(400, 'invalid_request', requestId);
+      result = created;
     } else {
-      if (!keyId) return errorResponse(400, 'invalid_request', requestId);
-      if (action === 'activate') {
-        const key = (await client.list(instanceId)).find((item) => item.keyId === keyId);
-        if (!key) return errorResponse(404, 'bus_key_not_found', requestId);
-        if (
-          !key.revoked ||
-          (key.expiresAt !== undefined && Date.parse(key.expiresAt) <= Date.now())
-        ) {
-          return errorResponse(409, 'bus_key_not_activatable', requestId);
-        }
-      }
-      await client.mutate(instanceId, keyId, action);
-      result = { keyId };
+      const mutation = await mutateKey(client, instanceId, keyId, action, requestId);
+      if (mutation instanceof Response) return mutation;
+      result = mutation;
     }
     const auditRecorded = await audit({
       instanceId,

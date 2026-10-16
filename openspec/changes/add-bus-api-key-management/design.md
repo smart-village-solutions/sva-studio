@@ -8,7 +8,7 @@ archivierter Bus-Change sind in [proposal.md](./proposal.md) verknüpft.
 
 Der vorhandene Pfad ist das Root-Instanzdetail in
 `apps/sva-studio-react/src/routes/admin/instances/`, dessen Instanz-Client
-`apps/sva-studio-react/src/lib/iam-api-instances.ts` und die Registry-/Auth-Runtime in
+`apps/sva-studio-react/src/lib/iam-api-instance-bus-keys.ts` und die Registry-/Auth-Runtime in
 `packages/instance-registry` und `packages/auth-runtime`. Plattformprüfung und
 Fresh-Reauth sind in `packages/instance-registry/src/http-guards.ts` vorhanden.
 Die serverseitige Einbindung orientiert sich am bestehenden Root-Instanz-Routing.

@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const api = vi.hoisted(() => ({ list: vi.fn(), create: vi.fn(), mutate: vi.fn() }));
-vi.mock('../../../lib/iam-api-instances', () => ({
+vi.mock('../../../lib/iam-api-instance-bus-keys', () => ({
   listInstanceBusKeys: api.list,
   createInstanceBusKey: api.create,
   mutateInstanceBusKey: api.mutate,

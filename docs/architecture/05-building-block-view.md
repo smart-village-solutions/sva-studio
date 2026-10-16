@@ -1125,4 +1125,4 @@ Browser-, Server-, Job-, Mainserver- und IAM-Eingaben werden am Build-Zeitpunkt 
 
 ## Bus-API-Key-Verwaltung
 
-`packages/auth-runtime/src/iam-instance-registry/bus-api-keys.ts` bindet persönliche Session, vorhandene Root-/Rollen-/CSRF-/Fresh-Reauth-Guards und Registry an. `bus-api-client.ts` kapselt den veröffentlichten Bus-Vertrag. Das bestehende Auth-Routing registriert die vier Endpunkte; der Instanz-HTTP-Client und die Karte im Bereich Betrieb konsumieren sie. Core führt Metadaten-/Einmalantwort-Typen und die UTC-Datumsarithmetik.
+`packages/auth-runtime/src/iam-instance-registry/bus-api-keys.ts` bindet persönliche Session, vorhandene Root-/Rollen-/CSRF-/Fresh-Reauth-Guards und Registry an. `bus-api-client.ts` kapselt den veröffentlichten Bus-Vertrag. Das bestehende Auth-Routing registriert die vier Endpunkte; `iam-api-instance-bus-keys.ts` und die Karte im Bereich Betrieb konsumieren sie. Die Karte bleibt die instanzgebundene Mount-Grenze; lokale Dateien für Zustand und Mutationen, Tabelle und Dialoge teilen die Darstellung ohne zusätzliche Zustandskopien auf. Core führt Metadaten-/Einmalantwort-Typen und die UTC-Datumsarithmetik.

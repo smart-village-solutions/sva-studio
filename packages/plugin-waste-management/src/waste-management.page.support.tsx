@@ -42,17 +42,6 @@ export const compactOptionalString = (value: string): string | undefined => {
 export const resolveApiErrorCode = (error: unknown): string | null =>
   error instanceof WasteManagementApiError ? error.code : null;
 
-export const resolveWasteAddressSaveErrorMessage = (
-  code: string | null,
-  error: unknown,
-  messages: Readonly<{ forbidden: string; conflict: string; inconsistent: string; fallback: string }>
-): string => {
-  if (code === 'forbidden') return messages.forbidden;
-  if (code === 'conflict') return messages.conflict;
-  if (error instanceof Error && error.message === 'address_data_inconsistent') return messages.inconsistent;
-  return messages.fallback;
-};
-
 export const formatUpdatedAt = (value?: string) => {
   if (!value) {
     return '—';

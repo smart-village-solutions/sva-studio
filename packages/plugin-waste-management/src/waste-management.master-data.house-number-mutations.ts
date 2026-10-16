@@ -4,10 +4,11 @@ import {
   updateWasteManagementHouseNumber,
 } from './waste-management.api.js';
 import { wasteMasterDataInputMappers } from './waste-management.master-data.forms.js';
+import { resolveWasteAddressSaveErrorMessage } from './waste-management.master-data.form-helpers.js';
 import { applySuccess } from './use-waste-master-data-state.js';
 import { confirmWasteAddressMove } from './waste-management.master-data-address-move.js';
 import type { WasteMasterDataSubmissionContext } from './waste-management.master-data.submission.types.js';
-import { resolveApiErrorCode, resolveWasteAddressSaveErrorMessage } from './waste-management.page.support.js';
+import { resolveApiErrorCode } from './waste-management.page.support.js';
 
 export const createWasteMasterDataHouseNumberMutations = ({
   state,

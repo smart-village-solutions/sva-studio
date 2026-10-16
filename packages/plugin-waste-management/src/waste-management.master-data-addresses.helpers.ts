@@ -1,5 +1,7 @@
 import type { WasteAddressEntityType, WasteCityRecord, WasteHouseNumberRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/waste-management-contracts';
+import type { StudioDataTableSorting } from '@sva/studio-ui-react';
 import type { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
+import type { WasteManagementSearchParams } from './search-params.js';
 
 export type EntityRecord = WasteRegionRecord | WasteCityRecord | WasteStreetRecord | WasteHouseNumberRecord;
 export type AddressRow = Readonly<{
@@ -13,6 +15,7 @@ export type AddressRow = Readonly<{
   sortValue: string;
   record: EntityRecord;
 }>;
+export type AddressSortingState = Extract<StudioDataTableSorting, { mode: 'external' }>['state'];
 type Overview = NonNullable<ReturnType<typeof useWasteMasterDataViewModel>['overview']>;
 type Lookups = Readonly<{
   overview: Overview;
@@ -85,4 +88,46 @@ export const recordParentId = (record: EntityRecord): string => {
   if ('cityId' in record) return record.cityId;
   if ('streetId' in record) return record.streetId;
   return '';
+};
+
+export const addressRowContext = (row: AddressRow): string =>
+  [row.name, row.parent, row.city].filter(Boolean).join(' · ');
+
+export const filterAddressRows = (rows: readonly AddressRow[], search: WasteManagementSearchParams): readonly AddressRow[] => {
+  const query = search.q.trim().toLocaleLowerCase('de-DE');
+  return rows
+    .filter((row) => !search.addressParentId || recordParentId(row.record) === search.addressParentId)
+    .filter((row) => !query || row.searchText.toLocaleLowerCase('de-DE').includes(query))
+    .sort((left, right) => left.sortValue.localeCompare(right.sortValue, 'de-DE', { numeric: search.addressEntityType === 'houseNumber', sensitivity: 'base' }) || left.id.localeCompare(right.id));
+};
+
+const addressSortValue = (row: AddressRow, columnId: string): string => columnId === 'postalCode'
+  ? ('postalCode' in row.record ? row.record.postalCode ?? '' : '')
+  : columnId === 'parent' ? [row.parent, row.city].filter(Boolean).join(' · ') : row.sortValue;
+
+export const sortAddressRows = (
+  rows: readonly AddressRow[], entityType: WasteAddressEntityType, sorting: AddressSortingState
+): readonly AddressRow[] => {
+  const sort = sorting[0];
+  if (!sort) return rows;
+  return [...rows].sort((left, right) => {
+    const compared = addressSortValue(left, sort.id).localeCompare(addressSortValue(right, sort.id), 'de-DE', {
+      numeric: entityType === 'houseNumber', sensitivity: 'base',
+    }) || left.id.localeCompare(right.id);
+    return sort.desc ? -compared : compared;
+  });
+};
+
+export const pageAddressRows = (rows: readonly AddressRow[], requestedPage: number, pageSize: number) => {
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const page = Math.min(requestedPage, pageCount);
+  return { page, pageCount, pageItems: rows.slice((page - 1) * pageSize, page * pageSize) };
+};
+
+export const missingAddressParentType = (
+  type: WasteAddressEntityType, cityCount: number, streetCount: number
+): WasteAddressEntityType | null => {
+  if ((type === 'street' || type === 'houseNumber') && cityCount === 0) return 'city';
+  if (type === 'houseNumber' && streetCount === 0) return 'street';
+  return null;
 };

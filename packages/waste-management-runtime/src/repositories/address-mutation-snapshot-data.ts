@@ -18,14 +18,14 @@ export const loadAddressHierarchy = async (client: QueryClient, entityType: Wast
   const result = { regions: [] as Row[], cities: [] as Row[], streets: [] as Row[], houses: [] as Row[] };
   if (entityType === 'region') {
     result.regions = [...selected];
-    result.cities = [...await queryRows(client, 'SELECT id, region_id FROM waste_cities WHERE region_id = $1::uuid', [entityId])];
+    result.cities = [...await queryRows(client, 'SELECT id, region_id FROM waste_cities WHERE region_id = $1::uuid ORDER BY id', [entityId])];
   } else if (entityType === 'city') result.cities = [...selected];
   else if (entityType === 'street') result.streets = [...selected];
   else result.houses = [...selected];
   const cityIds = entityType === 'city' || entityType === 'region' ? ids(result.cities) : entityType === 'street' ? unique([String(item.city_id)]) : [];
-  if (cityIds.length && entityType !== 'street') result.streets = [...await queryRows(client, 'SELECT id, city_id FROM waste_streets WHERE city_id = ANY($1::uuid[])', [cityIds])];
+  if (cityIds.length && entityType !== 'street') result.streets = [...await queryRows(client, 'SELECT id, city_id FROM waste_streets WHERE city_id = ANY($1::uuid[]) ORDER BY id', [cityIds])];
   const streetIds = entityType === 'houseNumber' ? unique([String(item.street_id)]) : ids(result.streets);
-  if (streetIds.length && entityType !== 'houseNumber') result.houses = [...await queryRows(client, 'SELECT id, street_id FROM waste_house_numbers WHERE street_id = ANY($1::uuid[])', [streetIds])];
+  if (streetIds.length && entityType !== 'houseNumber') result.houses = [...await queryRows(client, 'SELECT id, street_id FROM waste_house_numbers WHERE street_id = ANY($1::uuid[]) ORDER BY id', [streetIds])];
   return result;
 };
 

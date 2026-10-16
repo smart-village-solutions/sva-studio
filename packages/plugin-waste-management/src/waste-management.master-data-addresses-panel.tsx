@@ -1,16 +1,16 @@
 import { useMemo, useRef, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
+import type { WasteAddressEntityType } from '@sva/waste-management-contracts';
 
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
-import { recordParentId, rowsForType, type AddressRow } from './waste-management.master-data-addresses.helpers.js';
+import { filterAddressRows, pageAddressRows, rowsForType, sortAddressRows, type AddressRow, type AddressSortingState } from './waste-management.master-data-addresses.helpers.js';
 import { WasteMasterDataAddressesTable } from './waste-management.master-data-addresses-table.js';
 import { WasteMasterDataAddressDeleteDialog, type PendingAddressDelete } from './waste-management.master-data-address-delete-dialog.js';
 import { WasteMasterDataEntityDialogs } from './waste-management.master-data.entity-dialogs.js';
 import { deleteWasteAddressEntity, previewWasteAddressMutation } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
-
 export const WasteMasterDataAddressesPanel = ({
   search,
   canManage,
@@ -25,17 +25,12 @@ export const WasteMasterDataAddressesPanel = ({
   const triggerRef = useRef<HTMLElement | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingAddressDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [sortingByType, setSortingByType] = useState<Partial<Record<WasteAddressEntityType, AddressSortingState>>>({});
+  const sorting = sortingByType[search.addressEntityType] ?? [];
   const rows = useMemo(() => rowsForType(search.addressEntityType, controller.overview), [search.addressEntityType, controller.overview]);
-  const filteredRows = useMemo(() => {
-    const query = search.q.trim().toLocaleLowerCase('de-DE');
-    return rows
-      .filter((row) => !search.addressParentId || recordParentId(row.record) === search.addressParentId)
-      .filter((row) => !query || row.searchText.toLocaleLowerCase('de-DE').includes(query))
-      .sort((left, right) => left.sortValue.localeCompare(right.sortValue, 'de-DE', { numeric: search.addressEntityType === 'houseNumber', sensitivity: 'base' }) || left.id.localeCompare(right.id));
-  }, [rows, search.addressEntityType, search.addressParentId, search.q]);
-  const pageCount = Math.max(1, Math.ceil(filteredRows.length / search.pageSize));
-  const page = Math.min(search.page, pageCount);
-  const pageItems = filteredRows.slice((page - 1) * search.pageSize, page * search.pageSize);
+  const filteredRows = useMemo(() => filterAddressRows(rows, search), [rows, search.addressEntityType, search.addressParentId, search.q]);
+  const sortedRows = useMemo(() => sortAddressRows(filteredRows, search.addressEntityType, sorting), [filteredRows, search.addressEntityType, sorting]);
+  const { page, pageCount, pageItems } = pageAddressRows(sortedRows, search.page, search.pageSize);
 
   const loadPreview = async (row: AddressRow, previewFresh = false) => {
     try {
@@ -61,19 +56,23 @@ export const WasteMasterDataAddressesPanel = ({
     setDeleting(true);
     try {
       await deleteWasteAddressEntity(pendingDelete.row.type, pendingDelete.row.id, pendingDelete.preview.token);
-      setPendingDelete(null);
-      await controller.reloadOverview();
     } catch (error) {
       if (resolveApiErrorCode(error) === 'conflict') {
         await loadPreview(pendingDelete.row, true);
       } else {
         setPendingDelete({ ...pendingDelete, error: pt('masterData.locationsWorkspace.addresses.deleteError') });
       }
+      setDeleting(false);
+      return;
+    }
+    try {
+      await controller.reloadOverview();
     } finally {
+      triggerRef.current = typeof document === 'undefined' ? null : document.getElementById('waste-address-entity-type');
+      setPendingDelete(null);
       setDeleting(false);
     }
   };
-
   if (controller.loading) return <StudioLoadingState>{pt('masterData.messages.loading')}</StudioLoadingState>;
   if (controller.error) return <StudioErrorState>{controller.error}</StudioErrorState>;
   return (
@@ -82,6 +81,7 @@ export const WasteMasterDataAddressesPanel = ({
         pt={pt} controller={controller} search={search} canManage={canManage} allRows={rows}
         filteredRows={filteredRows} pageItems={pageItems} page={page} pageCount={pageCount}
         onSearchChange={onSearchChange} onOpenDelete={(row, trigger) => void openDelete(row, trigger)}
+        sorting={sorting} onSortingChange={(nextSorting) => { setSortingByType((current) => ({ ...current, [search.addressEntityType]: nextSorting })); onSearchChange({ page: 1 }); }}
       />
       <WasteMasterDataEntityDialogs controller={controller} />
       <WasteMasterDataAddressDeleteDialog

@@ -50,23 +50,29 @@ export const WasteMasterDataAddressDeleteDialog = ({
 const DeleteImpact = ({ pt, counts }: {
   pt: Props['pt'];
   counts: WasteAddressImpactPreview['counts'];
-}): ReactNode => (
-  <div className="space-y-2 text-sm">
-    <p>{pt('masterData.locationsWorkspace.addresses.impact.addresses', { regions: counts.regions, cities: counts.cities, streets: counts.streets, houseNumbers: counts.houseNumbers })}</p>
-    <p>{pt('masterData.locationsWorkspace.addresses.impact.locations', { count: counts.collectionLocations })}</p>
-    <p>{pt('masterData.locationsWorkspace.addresses.impact.subscriptions', { count: counts.emailReminderSubscriptions })}</p>
-    {counts.sentEmailReminderOutbox > 0 ? <p className="font-medium text-destructive">{pt('masterData.locationsWorkspace.addresses.impact.sent', { count: counts.sentEmailReminderOutbox })}</p> : null}
-    {counts.inconsistentCollectionLocations > 0 ? <p role="alert" className="text-destructive">{pt('masterData.locationsWorkspace.addresses.inconsistent', { count: counts.inconsistentCollectionLocations })}</p> : null}
-    <details>
-      <summary className="cursor-pointer font-medium">{pt('masterData.locationsWorkspace.addresses.details')}</summary>
-      <div className="mt-2 space-y-1">
-        <p>{pt('masterData.locationsWorkspace.addresses.impact.links', { count: counts.locationTourLinks })}</p>
-        <p>{pt('masterData.locationsWorkspace.addresses.impact.pickupDates', { count: counts.locationTourPickupDates })}</p>
-        <p>{pt('masterData.locationsWorkspace.addresses.impact.assignments', { removed: counts.fullyRemovedTourAssignments, retained: counts.retainedTourAssignments })}</p>
-        <p>{pt('masterData.locationsWorkspace.addresses.impact.subscriptionItems', { count: counts.emailReminderSubscriptionItems })}</p>
-        <p>{pt('masterData.locationsWorkspace.addresses.impact.outbox', { count: counts.emailReminderOutbox })}</p>
-      </div>
-    </details>
-    <p className="text-muted-foreground">{pt('masterData.locationsWorkspace.addresses.keptData')}</p>
-  </div>
-);
+}): ReactNode => {
+  const details = [
+    { key: 'links', count: counts.locationTourLinks, label: pt('masterData.locationsWorkspace.addresses.impact.links', { count: counts.locationTourLinks }) },
+    { key: 'pickupDates', count: counts.locationTourPickupDates, label: pt('masterData.locationsWorkspace.addresses.impact.pickupDates', { count: counts.locationTourPickupDates }) },
+    { key: 'assignments', count: counts.fullyRemovedTourAssignments + counts.retainedTourAssignments, label: pt('masterData.locationsWorkspace.addresses.impact.assignments', { removed: counts.fullyRemovedTourAssignments, retained: counts.retainedTourAssignments }) },
+    { key: 'subscriptionItems', count: counts.emailReminderSubscriptionItems, label: pt('masterData.locationsWorkspace.addresses.impact.subscriptionItems', { count: counts.emailReminderSubscriptionItems }) },
+    { key: 'outbox', count: counts.emailReminderOutbox, label: pt('masterData.locationsWorkspace.addresses.impact.outbox', { count: counts.emailReminderOutbox }) },
+  ].filter((impact) => impact.count > 0);
+  return (
+    <div className="space-y-2 text-sm">
+      <p>{pt('masterData.locationsWorkspace.addresses.impact.addresses', { regions: counts.regions, cities: counts.cities, streets: counts.streets, houseNumbers: counts.houseNumbers })}</p>
+      {impactRow(counts.collectionLocations, pt('masterData.locationsWorkspace.addresses.impact.locations', { count: counts.collectionLocations }))}
+      {impactRow(counts.emailReminderSubscriptions, pt('masterData.locationsWorkspace.addresses.impact.subscriptions', { count: counts.emailReminderSubscriptions }))}
+      {impactRow(counts.sentEmailReminderOutbox, pt('masterData.locationsWorkspace.addresses.impact.sent', { count: counts.sentEmailReminderOutbox }), 'font-medium text-destructive')}
+      {impactRow(counts.inconsistentCollectionLocations, pt('masterData.locationsWorkspace.addresses.inconsistent', { count: counts.inconsistentCollectionLocations }), 'text-destructive', 'alert')}
+      {details.length > 0 ? <details>
+        <summary className="cursor-pointer font-medium">{pt('masterData.locationsWorkspace.addresses.details')}</summary>
+        <div className="mt-2 space-y-1">{details.map((impact) => <p key={impact.key}>{impact.label}</p>)}</div>
+      </details> : null}
+      <p className="text-muted-foreground">{pt('masterData.locationsWorkspace.addresses.keptData')}</p>
+    </div>
+  );
+};
+
+const impactRow = (count: number, label: string, className?: string, role?: 'alert'): ReactNode =>
+  count > 0 ? <p className={className} role={role}>{label}</p> : null;

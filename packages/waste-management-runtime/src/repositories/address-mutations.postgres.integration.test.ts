@@ -189,6 +189,11 @@ describe.skipIf(!databaseUrl)('Waste address mutations against PostgreSQL', () =
     }))).rejects.toThrow('address_preview_stale');
     await db().query('UPDATE waste_cities SET region_id = $2 WHERE id = $1', [cityB, regionB]);
 
+    const stableHierarchyInput = { entityType: 'city' as const, entityId: cityB as string, mode: 'delete' as const };
+    const stableHierarchyPreview = await previewWasteAddressMutation(db(), stableHierarchyInput);
+    const repeatedHierarchyPreview = await previewWasteAddressMutation(db(), stableHierarchyInput);
+    expect(repeatedHierarchyPreview.token).toBe(stableHierarchyPreview.token);
+
     const staleDeleteInput = { entityType: 'houseNumber' as const, entityId: houseA2 as string, mode: 'delete' as const };
     const stale = await previewWasteAddressMutation(db(), staleDeleteInput);
     await db().query(`UPDATE waste_house_numbers SET number = '14B' WHERE id = $1`, [houseA2]);

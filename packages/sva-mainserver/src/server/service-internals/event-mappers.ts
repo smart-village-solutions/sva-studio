@@ -109,6 +109,13 @@ export const mapEventItemDetail = (
   const parentId = optionalNumber(parsed.data.parentId);
   const recurringType = optionalNumber(parsed.data.recurringType);
   const recurringInterval = optionalNumber(parsed.data.recurringInterval);
+  const repeatDuration = mapRepeatDuration(parsed.data.repeatDuration);
+  const location = mapLocation(parsed.data.location);
+  const organizer = mapOperatingCompany(parsed.data.organizer);
+  const accessibilityInformation = mapAccessibilityInformation(
+    parsed.data.accessibilityInformation
+  );
+  const dataProvider = mapDataProvider(parsed.data.dataProvider);
 
   return {
     data: {
@@ -135,9 +142,7 @@ export const mapEventItemDetail = (
         ? { sortDate: optionalString(parsed.data.sortDate) }
         : {}),
       ...(defined(parsed.data.repeat) ? { repeat: parsed.data.repeat } : {}),
-      ...(mapRepeatDuration(parsed.data.repeatDuration)
-        ? { repeatDuration: mapRepeatDuration(parsed.data.repeatDuration) }
-        : {}),
+      ...(repeatDuration ? { repeatDuration } : {}),
       ...(defined(parsed.data.recurring) ? { recurring: parsed.data.recurring } : {}),
       ...(recurringType !== undefined ? { recurringType } : {}),
       ...(recurringInterval !== undefined ? { recurringInterval } : {}),
@@ -145,28 +150,18 @@ export const mapEventItemDetail = (
       ...(category ? { categoryName: category.name } : {}),
       categories,
       addresses: (parsed.data.addresses ?? []).map(mapAddress).filter(defined),
-      ...(mapLocation(parsed.data.location) ? { location: mapLocation(parsed.data.location) } : {}),
+      ...(location ? { location } : {}),
       contacts: (parsed.data.contacts ?? []).map(mapContact).filter(defined),
       urls: (parsed.data.urls ?? []).map(mapWebUrl).filter(defined),
       mediaContents: (parsed.data.mediaContents ?? []).map(mapMediaContent),
-      ...(mapOperatingCompany(parsed.data.organizer)
-        ? { organizer: mapOperatingCompany(parsed.data.organizer) }
-        : {}),
+      ...(organizer ? { organizer } : {}),
       priceInformations: (parsed.data.priceInformations ?? []).map(mapPrice),
-      ...(mapAccessibilityInformation(parsed.data.accessibilityInformation)
-        ? {
-            accessibilityInformation: mapAccessibilityInformation(
-              parsed.data.accessibilityInformation
-            ),
-          }
-        : {}),
+      ...(accessibilityInformation ? { accessibilityInformation } : {}),
       tags: parsed.data.tagList ?? [],
       visible: parsed.data.visible !== false,
       createdAt,
       updatedAt: parsed.data.updatedAt ?? createdAt,
-      ...(mapDataProvider(parsed.data.dataProvider)
-        ? { dataProvider: mapDataProvider(parsed.data.dataProvider) }
-        : {}),
+      ...(dataProvider ? { dataProvider } : {}),
     },
     deviations: parsed.deviations,
   };

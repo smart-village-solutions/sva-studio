@@ -30,6 +30,32 @@ describe('resilient Mainserver detail mappers', () => {
     );
   });
 
+  it('maps optional event detail objects through the resilient response', () => {
+    const result = mapEventItemDetail({
+      id: 'event-2',
+      repeatDuration: { startDate: '2026-01-01', everyYear: false },
+      location: { district: 'Mitte', geoLocation: { latitude: '52.5', longitude: 13.4 } },
+      organizer: { name: 'Stadtmarketing', contact: { email: 'info@example.invalid' } },
+      accessibilityInformation: {
+        description: 'Stufenlos',
+        urls: [{ url: 'https://example.invalid/access' }],
+      },
+      dataProvider: { id: 'provider-1', name: 'Stadt' },
+    } as never);
+
+    expect(result.data).toMatchObject({
+      repeatDuration: { startDate: '2026-01-01', everyYear: false },
+      location: { district: 'Mitte', geoLocation: { latitude: 52.5, longitude: 13.4 } },
+      organizer: { name: 'Stadtmarketing', contact: { email: 'info@example.invalid' } },
+      accessibilityInformation: {
+        description: 'Stufenlos',
+        urls: [{ url: 'https://example.invalid/access' }],
+      },
+      dataProvider: { id: 'provider-1', name: 'Stadt' },
+    });
+    expect(result.deviations).toEqual([]);
+  });
+
   it('keeps valid POI list entries and rejects an invalid stable identity', () => {
     const result = mapPoiItemDetail({
       id: 'poi-1',

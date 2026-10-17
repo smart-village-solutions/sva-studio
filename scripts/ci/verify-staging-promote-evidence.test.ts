@@ -279,7 +279,9 @@ describe('staging parity evidence', () => {
     }, '2026-08-18T12:00:00.000Z');
     expect(matchesSuccessfulStagingEvidence(evidence, targetDigest, sourceSha, 'hotfix', expectedHotfix)).toBe(true);
     expect(matchesSuccessfulStagingEvidence(evidence, targetDigest, sourceSha)).toBe(false);
+    expect(matchesSuccessfulStagingEvidence(evidence, targetDigest, sourceSha, 'hotfix')).toBe(false);
     expect(matchesSuccessfulStagingEvidence(evidence, targetDigest, sourceSha, 'hotfix', { ...expectedHotfix, baseTag: 'studio-v0.10.3' })).toBe(false);
+    expect(matchesSuccessfulStagingEvidence(evidence, targetDigest, sourceSha, 'hotfix', { ...expectedHotfix, controllerSha: 'c'.repeat(40) })).toBe(false);
     expect(matchesSuccessfulStagingEvidence(stagingPromoteEvidence, targetDigest, sourceSha, 'hotfix', expectedHotfix)).toBe(false);
     expect(() => buildStagingPromoteEvidence({
       CHANGE_HEAD_SHA: sourceSha,

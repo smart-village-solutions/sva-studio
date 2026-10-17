@@ -77,6 +77,21 @@ describe('public waste runtime', () => {
     await runtime.dispose();
   });
 
+  it('returns a bodyless HEAD response for an invalid-config API error', async () => {
+    const runtime = await createPublicWasteRuntime({ assetsDir: process.cwd(), env: {} });
+    const url = 'http://localhost/api/public-waste/selection';
+    const getResponse = await runtime.handle(new Request(url));
+    const headResponse = await runtime.handle(new Request(url, { method: 'HEAD' }));
+
+    expect(headResponse.status).toBe(500);
+    expect(headResponse.headers.get('content-type')).toBe(getResponse.headers.get('content-type'));
+    expect(headResponse.headers.get('access-control-allow-origin')).toBe('*');
+    expect(headResponse.body).toBeNull();
+    await expect(headResponse.text()).resolves.toBe('');
+
+    await runtime.dispose();
+  });
+
   it('serves readable region metadata and the app shell for a region path', async () => {
     const assetsDir = await createAssetsDir();
     cleanupPaths.add(assetsDir);

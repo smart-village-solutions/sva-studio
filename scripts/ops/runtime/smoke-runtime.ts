@@ -230,15 +230,12 @@ export const isBlockingSmokeProbe = (
   probe: AcceptanceProbeResult,
   isReleaseSmoke: boolean,
 ) => {
-  if (['public-home', 'public-live', 'public-ready', 'public-auth-login', 'public-ingress-unknown-host'].includes(probe.name)) return true;
-  if (probe.name.startsWith('public-auth-login-')) return !isReleaseSmoke;
-
-  const isExplicitIngressProbe = probe.name.startsWith('public-ingress-https-')
-    || probe.name.startsWith('public-ingress-login-');
-  if (!isExplicitIngressProbe) return true;
   if (!isReleaseSmoke) return true;
-
-  return false;
+  return !(
+    probe.name.startsWith('public-auth-login-') ||
+    probe.name.startsWith('public-ingress-https-') ||
+    probe.name.startsWith('public-ingress-login-')
+  );
 };
 
 export const reportNonBlockingSmokeFailures = (

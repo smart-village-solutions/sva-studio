@@ -11,7 +11,7 @@ import {
   shouldRetryInternalProbeFailure,
   shouldRetryInternalVerify,
 } from './smoke.ts';
-import { createRuntimeSmokeOps } from './smoke-runtime.ts';
+import { createRuntimeSmokeOps, isBlockingSmokeProbe } from './smoke-runtime.ts';
 import { isExpectedOidcRedirect } from './acceptance-runtime-checks-core.ts';
 import { resolveStudioIngressContract } from './tenant-ingress-hosts.ts';
 
@@ -34,6 +34,21 @@ const createDoctorReport = (overrides: Partial<DoctorReport>): DoctorReport => (
 });
 
 describe('smoke helpers', () => {
+  it.each([
+    ['public-home', true],
+    ['public-auth-login', true],
+    ['public-ingress-unknown-host', true],
+    ['public-iam-context', true],
+    ['public-auth-login-tenant-a', false],
+    ['public-ingress-https-tenant-a.example.test', false],
+    ['public-ingress-login-tenant-a.example.test', false],
+  ] as const)('classifies %s as release blocking=%s', (name, releaseBlocking) => {
+    const probe = createProbe({ name });
+
+    expect(isBlockingSmokeProbe(probe, false)).toBe(true);
+    expect(isBlockingSmokeProbe(probe, true)).toBe(releaseBlocking);
+  });
+
   it('fails a persistent root 404 only after 50 attempts every 10 seconds by default', async () => {
     const wait = vi.fn<(ms: number) => Promise<void>>().mockResolvedValue();
     const runner = vi.fn<(env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>>()

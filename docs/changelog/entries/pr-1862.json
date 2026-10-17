@@ -1,0 +1,4 @@
+{
+  "prNumber": 1862,
+  "body": "Schnittstellen lassen sich im Studio wieder anlegen, bearbeiten und löschen. Die Sicherheitsprüfung erkennt dabei auch Browseranfragen des Schnittstellenformulars korrekt; das Speichern der Mainserver-Schnittstelle wird ebenfalls geprüft."
+}

@@ -85,13 +85,12 @@ export const isValidBackupRequest = (value: unknown, now = new Date()): value is
     !/^sha256:[a-f0-9]{64}$/u.test(request.deployImageDigest)
   )
     return false;
-  if (
-    typeof request.expiresAt !== 'string' ||
-    Number.isNaN(Date.parse(request.expiresAt)) ||
-    Date.parse(request.expiresAt) <= now.getTime() ||
-    Date.parse(request.expiresAt) > now.getTime() + 10 * 60_000
-  )
-    return false;
+  if (typeof request.expiresAt !== 'string') return false;
+  const expiresAt = Date.parse(request.expiresAt);
+  const nowMs = now.getTime();
+  if (Number.isNaN(expiresAt)) return false;
+  if (expiresAt <= nowMs) return false;
+  if (expiresAt > nowMs + 10 * 60_000) return false;
   return true;
 };
 

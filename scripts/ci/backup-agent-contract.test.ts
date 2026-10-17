@@ -89,5 +89,11 @@ describe('backup agent contract', () => {
     ).toBe(false);
     expect(isValidBackupRequest(stagingRequest, new Date('2026-07-30T10:00:00.000Z'))).toBe(false);
     expect(isValidBackupRequest(stagingRequest, new Date('2026-07-30T09:49:59.999Z'))).toBe(false);
+    expect(
+      isValidBackupRequest(
+        { ...stagingRequest, expiresAt: 'not-a-date' },
+        new Date('2026-07-30T09:50:00.000Z')
+      )
+    ).toBe(false);
   });
 });

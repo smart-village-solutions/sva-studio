@@ -5,28 +5,30 @@ import { pathToFileURL } from 'node:url';
 import type { CiFeedbackEvidence } from './ci-feedback-evidence.ts';
 import { validateCoverageShardEvidence } from './coverage-shard-evidence.ts';
 
-const findFile = (directory: string, fileName: string): string | null => {
+const findFiles = (directory: string, fileName: string): string[] => {
   if (!fs.existsSync(directory)) {
-    return null;
+    return [];
   }
+  const files: string[] = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      const nested = findFile(entryPath, fileName);
-      if (nested) {
-        return nested;
-      }
+      files.push(...findFiles(entryPath, fileName));
     } else if (entry.name === fileName) {
-      return entryPath;
+      files.push(entryPath);
     }
+    if (files.length > 1) return files;
   }
-  return null;
+  return files;
 };
 
 export const validateDownloadedCoverage = (rootDir: string, headSha: string): void => {
-  const feedbackPath = findFile(rootDir, 'coverage-coverage-complete.json');
+  const [feedbackPath, duplicate] = findFiles(rootDir, 'coverage-coverage-complete.json');
   if (!feedbackPath) {
     throw new Error('Coverage-Gesamtevidenz fehlt.');
+  }
+  if (duplicate) {
+    throw new Error('Coverage-Gesamtevidenz ist mehrfach vorhanden.');
   }
   const feedback = JSON.parse(fs.readFileSync(feedbackPath, 'utf8')) as CiFeedbackEvidence;
   if (feedback.schemaVersion !== 2 || feedback.headSha !== headSha || !feedback.plan) {

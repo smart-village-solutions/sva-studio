@@ -166,7 +166,9 @@ export const runLocalDevServerRunner = async (argv: readonly string[]) => {
   });
 
   if (child.pid === undefined) {
-    appendRunnerLogLine(logFile, 'Kindprozess konnte nicht gestartet werden.');
+    child.once('error', (error) => {
+      appendRunnerLogLine(logFile, `Kindprozess konnte nicht gestartet werden: ${error.message}`);
+    });
     clearLocalStateIfOwned(stateFile, process.pid);
     throw new Error('Kindprozess fuer lokalen Dev-Server konnte nicht gestartet werden.');
   }

@@ -65,7 +65,7 @@ const parseCollectionLocationFilters = (
   };
 };
 
-export const parseWasteCollectionLocationQuery = (
+const parseWasteCollectionLocationQuery = (
   request: Request
 ): ParsedLocationQuery<WasteCollectionLocationQuery> => {
   const filters = parseCollectionLocationFilters(request, listQueryKeys);
@@ -103,7 +103,7 @@ export const parseWasteCollectionLocationQuery = (
   };
 };
 
-export const parseWasteCollectionLocationSelectionFilter = (
+const parseWasteCollectionLocationSelectionFilter = (
   request: Request
 ): ParsedLocationQuery<WasteCollectionLocationSelectionFilter> =>
   parseCollectionLocationFilters(request, listFilterKeys);

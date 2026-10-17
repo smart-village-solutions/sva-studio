@@ -310,11 +310,16 @@ describe('installed plugin build inputs', () => {
   });
 
   it('keeps disabled packages in the catalog without loading their entrypoints', () => {
-    const disabled = createFixture({ enabled: false });
+    const disabled = createFixture({
+      enabled: false,
+      sdkVersion: '999.0.0',
+      runtimeRequirement: 'calendar.test',
+    });
     rmSync(join(disabled.packageRoot, 'dist'), { recursive: true, force: true });
     const sources = resolveInstalledPluginSources(disabled.appRoot, 'studio');
     expect(sources).toHaveLength(1);
     expect(sources[0]?.catalog.enabled).toBe(false);
+    expect(sources[0]?.files).toEqual({});
     expect(renderInstalledPluginInputs(sources, 'catalog')).toContain('"enabled":false');
     expect(renderInstalledPluginInputs(sources, 'client')).toContain('"pluginId":"calendar"');
     expect(renderInstalledPluginInputs(sources, 'client')).not.toContain('import(');

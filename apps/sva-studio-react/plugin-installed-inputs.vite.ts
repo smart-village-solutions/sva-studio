@@ -241,11 +241,20 @@ export const resolveInstalledPluginSources = (
     if (manifest.pluginId !== entry.pluginId) {
       throw new Error(`installed_plugin_manifest_mismatch:${entry.pluginId}`);
     }
-    if (entry.enabled && distribution === 'ssf' && manifest.entryPoints.jobs) {
+    const catalog = {
+      pluginId: entry.pluginId,
+      sourceType: entry.sourceType,
+      enabled: entry.enabled,
+      sourceRef: entry.sourceRef,
+    };
+    if (!entry.enabled) {
+      sources.push({ catalog, manifest, packageRoot, files: {} });
+      continue;
+    }
+    if (distribution === 'ssf' && manifest.entryPoints.jobs) {
       throw new Error(`installed_plugin_jobs_unsupported:${entry.pluginId}:ssf`);
     }
     if (
-      entry.enabled &&
       distribution === 'studio' &&
       manifest.entryPoints.jobs &&
       manifest.runtimeRequirements?.jobs !== 'waste-management.operations'
@@ -253,33 +262,25 @@ export const resolveInstalledPluginSources = (
       throw new Error(`installed_plugin_jobs_unsupported:${entry.pluginId}:studio`);
     }
     const files: Partial<Record<EntryKind, string>> = {};
-    if (entry.enabled) {
-      if (
-        manifest.sdkVersion !== studioHostPluginPlatform.sdkVersion ||
-        !satisfiesVersionRange(
-          studioHostPluginPlatform.studioVersion,
-          manifest.hostCompatibility.studioVersionRange
-        ) ||
-        manifest.hostCompatibility.requiredCapabilities?.some(
-          (capability) => !studioHostPluginPlatform.capabilities.includes(capability)
-        )
-      ) {
-        throw new Error(`installed_plugin_incompatible:${entry.pluginId}`);
-      }
-      for (const kind of ['browser', 'descriptor', 'server', 'jobs'] as const) {
-        const path = manifest.entryPoints[kind];
-        if (path) files[kind] = resolveEntryFile(packageRoot, entry.pluginId, kind, path);
-      }
-      if (!files.browser || !files.descriptor) {
-        throw new Error(`installed_plugin_entry_missing:${entry.pluginId}:browser_or_descriptor`);
-      }
+    if (
+      manifest.sdkVersion !== studioHostPluginPlatform.sdkVersion ||
+      !satisfiesVersionRange(
+        studioHostPluginPlatform.studioVersion,
+        manifest.hostCompatibility.studioVersionRange
+      ) ||
+      manifest.hostCompatibility.requiredCapabilities?.some(
+        (capability) => !studioHostPluginPlatform.capabilities.includes(capability)
+      )
+    ) {
+      throw new Error(`installed_plugin_incompatible:${entry.pluginId}`);
     }
-    const catalog = {
-      pluginId: entry.pluginId,
-      sourceType: entry.sourceType,
-      enabled: entry.enabled,
-      sourceRef: entry.sourceRef,
-    };
+    for (const kind of ['browser', 'descriptor', 'server', 'jobs'] as const) {
+      const path = manifest.entryPoints[kind];
+      if (path) files[kind] = resolveEntryFile(packageRoot, entry.pluginId, kind, path);
+    }
+    if (!files.browser || !files.descriptor) {
+      throw new Error(`installed_plugin_entry_missing:${entry.pluginId}:browser_or_descriptor`);
+    }
     sources.push({ catalog, manifest, packageRoot, files });
   }
   return sources;

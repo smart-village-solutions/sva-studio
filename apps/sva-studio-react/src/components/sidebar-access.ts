@@ -16,10 +16,10 @@ import { useAuth } from '../providers/auth-provider';
 import { useEffectiveAccess } from '../providers/effective-access-provider';
 import { useStudioBranding } from '../providers/studio-branding-provider';
 
-export const APP_LINK_PERMISSION = 'app.read';
-export const COCKPIT_LINK_PERMISSION = 'cockpit.read';
-export const MODULES_READ_PERMISSION = 'modules.read';
-export const CATEGORIES_READ_PERMISSION = 'categories.read';
+const APP_LINK_PERMISSION = 'app.read';
+const COCKPIT_LINK_PERMISSION = 'cockpit.read';
+const MODULES_READ_PERMISSION = 'modules.read';
+const CATEGORIES_READ_PERMISSION = 'categories.read';
 
 export const hasRequiredContentAccess = (
   requiredAction: string | undefined,
@@ -70,7 +70,7 @@ export const hasRequiredContentAccess = (
   }
 };
 
-export const hasPermissionAction = (
+const hasPermissionAction = (
   requiredAction: string,
   permissionActions: readonly string[] | undefined,
   isLoading: boolean

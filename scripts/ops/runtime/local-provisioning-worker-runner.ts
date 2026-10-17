@@ -175,7 +175,9 @@ export const runLocalProvisioningWorkerRunner = async (argv: readonly string[]) 
   });
 
   if (child.pid === undefined) {
-    appendRunnerLogLine(logFile, 'Kindprozess konnte nicht gestartet werden.');
+    child.once('error', (error) => {
+      appendRunnerLogLine(logFile, `Kindprozess konnte nicht gestartet werden: ${error.message}`);
+    });
     clearLocalWorkerStateIfOwned(stateFile, process.pid);
     throw new Error('Kindprozess fuer lokalen Keycloak-Provisioning-Worker konnte nicht gestartet werden.');
   }

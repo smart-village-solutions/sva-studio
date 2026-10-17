@@ -137,7 +137,8 @@ export const createPublicWasteRuntime = async (input: {
       if (isPublicWasteApiPath(url.pathname)) {
         if (bootstrapState.status !== 'ready' || !repositoryHandle) {
           const response = createInvalidConfigResponse(bootstrapState);
-          return corsApi ? withPublicWasteCors(response) : response;
+          if (corsApi) withPublicWasteCors(response);
+          return method === 'HEAD' ? toHeadResponse(response) : response;
         }
 
         const response = await dispatchPublicWasteApiRequest({

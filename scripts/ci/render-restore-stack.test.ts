@@ -1,3 +1,7 @@
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { renderRestoreStack } from './render-restore-stack.ts';
@@ -42,5 +46,26 @@ describe('restore maintenance stack rendering', () => {
         'stopped'
       )
     ).toThrow();
+  });
+
+  it('rejects a missing input flag instead of using a positional path', () => {
+    const directory = mkdtempSync(resolve(process.cwd(), '.render-restore-test-'));
+    const inputPath = resolve(directory, 'source.json');
+    const outputPath = resolve(directory, 'rendered.json');
+
+    try {
+      writeFileSync(inputPath, source, 'utf8');
+      const result = spawnSync(
+        process.execPath,
+        ['--import', 'tsx', resolve(import.meta.dirname, 'render-restore-stack.ts'), inputPath, '--output', outputPath, '--mode', 'stopped'],
+        { cwd: process.cwd(), encoding: 'utf8' },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('--input');
+      expect(existsSync(outputPath)).toBe(false);
+    } finally {
+      rmSync(directory, { force: true, recursive: true });
+    }
   });
 });

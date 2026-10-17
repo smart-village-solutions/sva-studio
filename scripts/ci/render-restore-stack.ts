@@ -32,9 +32,13 @@ export const renderRestoreStack = (source: string, mode: RestoreMaintenanceMode)
 
 const main = () => {
   const args = process.argv.slice(2);
-  const inputPath = args[args.indexOf('--input') + 1];
-  const outputPath = args[args.indexOf('--output') + 1];
-  const mode = args[args.indexOf('--mode') + 1];
+  const optionValue = (flag: string) => {
+    const index = args.indexOf(flag);
+    return index === -1 ? undefined : args[index + 1];
+  };
+  const inputPath = optionValue('--input');
+  const outputPath = optionValue('--output');
+  const mode = optionValue('--mode');
   if (!inputPath || !outputPath || (mode !== 'running' && mode !== 'stopped'))
     throw new Error(
       'Für --input, --output und --mode=running|stopped ist jeweils ein Wert erforderlich.'

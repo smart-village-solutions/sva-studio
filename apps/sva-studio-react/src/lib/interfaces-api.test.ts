@@ -623,6 +623,15 @@ describe('interfaces app adapter', () => {
 
   it('rejects a Mainserver server-function save when browser CSRF validation fails', async () => {
     setAuthenticatedUserContext();
+    state.withAuthenticatedUser.mockImplementationOnce(
+      async (_request: Request, handler: (ctx: { user: TestUser }) => Promise<Response>) => {
+        try {
+          return await handler({ user: defaultUser });
+        } catch {
+          return Response.json({ error: { code: 'internal_error' } }, { status: 500 });
+        }
+      }
+    );
     state.validateCsrf.mockReturnValueOnce(new Response(null, { status: 403 }));
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
 
@@ -634,7 +643,7 @@ describe('interfaces app adapter', () => {
           enabled: true,
         },
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ message: 'csrf_validation_failed', statusCode: 403 });
     expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
   });
 

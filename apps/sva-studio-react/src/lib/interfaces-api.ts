@@ -236,7 +236,14 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
       const payloadData = (data ?? {}) as SaveInterfacesPayload;
 
       const response = await withAuthenticatedUser(dependencies.request, async (ctx) => {
-        await validateInterfaceMutationCsrf(dependencies.request);
+        try {
+          await validateInterfaceMutationCsrf(dependencies.request);
+        } catch (error) {
+          if (error instanceof Error && error.message === 'csrf_validation_failed') {
+            return Response.json({ error: 'csrf_validation_failed' }, { status: 403 });
+          }
+          throw error;
+        }
         return saveInterfacesSettingsForUser({
           ...dependencies,
           ctx: {
@@ -251,12 +258,18 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
       if (response.ok && isSvaMainserverInstanceConfig(payload)) {
         return payload;
       }
+      if (response.status === 403 && isErrorPayload(payload) && payload.error === 'csrf_validation_failed') {
+        throw Object.assign(new Error('csrf_validation_failed'), { statusCode: 403 });
+      }
 
       throw createClientError(
         isErrorPayload(payload) ? payload : null,
         `Schnittstellen-Einstellungen konnten nicht gespeichert werden (HTTP ${response.status}).`
       );
     } catch (error) {
+      if (error instanceof Error && error.message === 'csrf_validation_failed') {
+        throw error;
+      }
       const { createSdkLogger } = await import('@sva/server-runtime');
       const logger = createSdkLogger({ component: COMPONENT });
       const payload =

@@ -93,6 +93,18 @@ describe('mutation-errors', () => {
     ).toMatchObject({ status: 409, code: 'auth_realm_conflict' });
   });
 
+  it.each([
+    ['tenant_admin_client_not_configured', 'tenant_admin_client_not_configured'],
+    ['tenant_admin_client_secret_missing', 'tenant_admin_client_secret_missing'],
+    ['tenant_auth_client_secret_missing', 'tenant_auth_client_secret_missing'],
+    [
+      'tenant_admin_client_not_configured:tenant_auth_client_secret_missing',
+      'tenant_admin_client_not_configured',
+    ],
+  ] as const)('keeps the tenant client blocker priority for %s', (message, code) => {
+    expect(classifyInstanceMutationError(new Error(message))).toEqual({ status: 409, code });
+  });
+
   it.each(['registry_hostname', 'registry_instance_id', 'realm_selection'])(
     'classifies the %s create-readiness blocker as a non-retryable conflict',
     (checkKey) => {

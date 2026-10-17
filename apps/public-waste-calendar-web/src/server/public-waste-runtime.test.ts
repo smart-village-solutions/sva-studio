@@ -547,4 +547,23 @@ describe('embedded public calendar HTTP access', () => {
     expect(page.headers.get('access-control-allow-origin')).toBeNull();
     await runtime.dispose();
   });
+
+  it('returns the same static asset status and content type for GET and HEAD', async () => {
+    const assetsDir = await createAssetsDir();
+    cleanupPaths.add(assetsDir);
+    await writeFile(join(assetsDir, 'robots.txt'), 'User-agent: *');
+    const runtime = await createPublicWasteRuntime({ assetsDir, env: {} });
+
+    for (const pathname of ['/robots.txt', '/missing.txt']) {
+      const get = await runtime.handle(new Request(`http://calendar.example${pathname}`));
+      const head = await runtime.handle(
+        new Request(`http://calendar.example${pathname}`, { method: 'HEAD' })
+      );
+      expect(head.status).toBe(get.status);
+      expect(head.headers.get('content-type')).toBe(get.headers.get('content-type'));
+      await expect(head.text()).resolves.toBe('');
+    }
+
+    await runtime.dispose();
+  });
 });

@@ -216,6 +216,41 @@ export const loadKeycloakDetailArtifacts = async (
     isTenantProvisioningFailureRetryable(createRun)
       ? createRun
       : undefined;
+  const nextAction = (() => {
+    if (instance.status === 'active') return null;
+    if (retryableCreateRun) {
+      return {
+        action: 'instance.provisioning.retry',
+        retryClass: 'safe',
+        runId: retryableCreateRun.id,
+      } as const;
+    }
+    if (createRun?.status === 'failed') {
+      return { action: 'instance.diagnose', retryClass: 'never' } as const;
+    }
+    if (activationReady) {
+      return { action: 'instance.status.activate', retryClass: 'never' } as const;
+    }
+    if (missingTenantSecretIsOnlyBlocker) {
+      return { action: 'instance.secret.rotate', retryClass: 'conditional' } as const;
+    }
+    if (keycloakRunInProgress) {
+      return { action: 'instance.readiness.refresh', retryClass: 'safe' } as const;
+    }
+    if (
+      keycloakRunFailed ||
+      (effectiveKeycloakPlan?.overallStatus === 'ready' && effectiveKeycloakPlanHasMutations)
+    ) {
+      return { action: 'instance.keycloak.execute', retryClass: 'conditional' } as const;
+    }
+    if (tenantIamStatus.access.status !== 'ready') {
+      return { action: 'instance.tenant-iam.probe', retryClass: 'safe' } as const;
+    }
+    if (tenantIamStatus.reconcile.status !== 'ready') {
+      return { action: 'instance.tenant-iam.reconcile', retryClass: 'safe' } as const;
+    }
+    return { action: 'instance.readiness.refresh', retryClass: 'safe' } as const;
+  })();
   const provisioningReadiness = {
     state:
       instance.status === 'active'
@@ -228,32 +263,7 @@ export const loadKeycloakDetailArtifacts = async (
               ? ('provisioning_waiting' as const)
               : ('unknown' as const),
     capabilities: backgroundCapabilities,
-    nextAction:
-      instance.status === 'active'
-        ? null
-        : retryableCreateRun
-          ? ({
-              action: 'instance.provisioning.retry',
-              retryClass: 'safe',
-              runId: retryableCreateRun.id,
-            } as const)
-          : createRun?.status === 'failed'
-            ? ({ action: 'instance.diagnose', retryClass: 'never' } as const)
-            : activationReady
-              ? ({ action: 'instance.status.activate', retryClass: 'never' } as const)
-              : missingTenantSecretIsOnlyBlocker
-                ? ({ action: 'instance.secret.rotate', retryClass: 'conditional' } as const)
-                : keycloakRunInProgress
-                  ? ({ action: 'instance.readiness.refresh', retryClass: 'safe' } as const)
-                  : keycloakRunFailed ||
-                      (effectiveKeycloakPlan?.overallStatus === 'ready' &&
-                        effectiveKeycloakPlanHasMutations)
-                    ? ({ action: 'instance.keycloak.execute', retryClass: 'conditional' } as const)
-                    : tenantIamStatus.access.status !== 'ready'
-                      ? ({ action: 'instance.tenant-iam.probe', retryClass: 'safe' } as const)
-                      : tenantIamStatus.reconcile.status !== 'ready'
-                        ? ({ action: 'instance.tenant-iam.reconcile', retryClass: 'safe' } as const)
-                        : ({ action: 'instance.readiness.refresh', retryClass: 'safe' } as const),
+    nextAction,
   };
 
   return buildInstanceDetail(

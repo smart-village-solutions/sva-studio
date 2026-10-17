@@ -193,6 +193,11 @@ export const mapNewsItemDetail = (item: SvaMainserverNewsItemFragment | null | u
 
   const payload = parseNewsPayload(parsed.data.payload);
   const categories = (parsed.data.categories ?? []).map(mapCategory).filter(defined);
+  const charactersToBeShown = parseCharactersToBeShown(parsed.data.charactersToBeShown);
+  const sourceUrl = mapWebUrl(parsed.data.sourceUrl);
+  const address = mapAddress(parsed.data.address);
+  const dataProvider = mapDataProvider(parsed.data.dataProvider);
+  const settings = mapSettings(parsed.data.settings);
 
   return {
     data: {
@@ -209,9 +214,7 @@ export const mapNewsItemDetail = (item: SvaMainserverNewsItemFragment | null | u
         ? { externalId: optionalString(parsed.data.externalId) }
         : {}),
       ...(defined(parsed.data.fullVersion) ? { fullVersion: parsed.data.fullVersion } : {}),
-      ...(defined(parseCharactersToBeShown(parsed.data.charactersToBeShown))
-        ? { charactersToBeShown: parseCharactersToBeShown(parsed.data.charactersToBeShown) }
-        : {}),
+      ...(defined(charactersToBeShown) ? { charactersToBeShown } : {}),
       ...(optionalString(parsed.data.newsType)
         ? { newsType: optionalString(parsed.data.newsType) }
         : {}),
@@ -223,13 +226,11 @@ export const mapNewsItemDetail = (item: SvaMainserverNewsItemFragment | null | u
         : {}),
       ...(payload.category ? { categoryName: payload.category } : {}),
       categories,
-      ...(mapWebUrl(parsed.data.sourceUrl) ? { sourceUrl: mapWebUrl(parsed.data.sourceUrl) } : {}),
-      ...(mapAddress(parsed.data.address) ? { address: mapAddress(parsed.data.address) } : {}),
+      ...(sourceUrl ? { sourceUrl } : {}),
+      ...(address ? { address } : {}),
       contentBlocks: mapContentBlocks(parsed.data.contentBlocks),
-      ...(mapDataProvider(parsed.data.dataProvider)
-        ? { dataProvider: mapDataProvider(parsed.data.dataProvider) }
-        : {}),
-      ...(mapSettings(parsed.data.settings) ? { settings: mapSettings(parsed.data.settings) } : {}),
+      ...(dataProvider ? { dataProvider } : {}),
+      ...(settings ? { settings } : {}),
       announcements: (parsed.data.announcements ?? []).map(mapAnnouncement),
       likeCount: parsed.data.likeCount ?? 0,
       likedByMe: parsed.data.likedByMe ?? false,

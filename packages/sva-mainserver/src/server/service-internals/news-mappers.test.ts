@@ -43,4 +43,36 @@ describe('news-mappers', () => {
       wasteLocationKeys: undefined,
     });
   });
+
+  it('maps optional detail values and omits empty nested values', () => {
+    const mapped = mapNewsItemDetail({
+      id: 'news-2',
+      payload: {},
+      charactersToBeShown: '0',
+      sourceUrl: { url: 'https://example.invalid/news' },
+      address: { city: 'Guben' },
+      dataProvider: { name: 'Redaktion' },
+      settings: { displayOnlySummary: 'true' },
+    } as never).data;
+
+    expect(mapped).toMatchObject({
+      charactersToBeShown: 0,
+      sourceUrl: { url: 'https://example.invalid/news' },
+      address: { city: 'Guben' },
+      dataProvider: { name: 'Redaktion' },
+      settings: { displayOnlySummary: 'true' },
+    });
+
+    const empty = mapNewsItemDetail({
+      id: 'news-3',
+      payload: {},
+      sourceUrl: { url: '' },
+      address: {},
+      dataProvider: {},
+      settings: {},
+    } as never).data;
+    for (const field of ['sourceUrl', 'address', 'dataProvider', 'settings']) {
+      expect(empty).not.toHaveProperty(field);
+    }
+  });
 });

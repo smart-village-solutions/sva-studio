@@ -62,5 +62,12 @@ describe('validate-downloaded-coverage', () => {
 
     expect(() => validateDownloadedCoverage(rootDir, 'head')).not.toThrow();
     expect(() => validateDownloadedCoverage(rootDir, 'stale')).toThrow(/ungültig/u);
+
+    fs.mkdirSync(path.join(rootDir, 'duplicate'));
+    fs.copyFileSync(
+      path.join(rootDir, 'artifacts/ci-feedback/coverage-coverage-complete.json'),
+      path.join(rootDir, 'duplicate/coverage-coverage-complete.json')
+    );
+    expect(() => validateDownloadedCoverage(rootDir, 'head')).toThrow(/mehrfach/u);
   });
 });

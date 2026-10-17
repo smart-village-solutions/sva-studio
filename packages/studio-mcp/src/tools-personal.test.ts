@@ -47,6 +47,17 @@ describe('personal MCP API request boundary', () => {
     expect(validatePersonalRequest({ ...valid, method: 'PATCH', path: 'api/v1/interfaces/s3-1', body: {} })).toBe('personal_route_not_allowed');
   });
 
+  it.each(['deactivate', 'send-password-setup-email'] as const)(
+    'allows only POST for the user %s action',
+    (action) => {
+      const path = `api/v1/iam/users/user-1/${action}`;
+      expect(validatePersonalRequest({ ...valid, method: 'POST', path })).toBeUndefined();
+      for (const method of ['GET', 'PATCH', 'DELETE'] as const) {
+        expect(validatePersonalRequest({ ...valid, method, path })).toBe('personal_route_not_allowed');
+      }
+    }
+  );
+
   it('keeps methods, body and collection pagination bounded', () => {
     expect(validatePersonalRequest({ ...valid, method: 'GET', body: {} })).toBe('get_body_not_allowed');
     expect(validatePersonalRequest({ ...valid, method: 'DELETE', path: 'api/v1/interfaces/s3-1', body: {} })).toBe('delete_body_not_allowed');

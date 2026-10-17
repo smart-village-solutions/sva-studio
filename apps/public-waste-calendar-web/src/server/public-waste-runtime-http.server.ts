@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { type PublicWasteBootstrapState } from '../lib/public-waste-bootstrap.server.js';
 import { resolvePublicWasteReadApiRoute } from '../lib/public-waste-api-routing.js';
@@ -113,8 +113,8 @@ export const serveStaticAsset = async (input: {
   const filePath = resolveStaticAssetPath(input.assetsDir, input.pathname);
 
   try {
-    const fileContents = await readFile(filePath);
-    const body = input.method === 'HEAD' ? null : fileContents;
+    if (input.method === 'HEAD') await stat(filePath);
+    const body = input.method === 'HEAD' ? null : await readFile(filePath);
     const response = new Response(body, {
       status: 200,
       headers: {

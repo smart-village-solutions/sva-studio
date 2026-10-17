@@ -62,7 +62,9 @@ const parseBaseUrl = (value: string | undefined): URL => {
   ) {
     throw new UserDocumentationError('documentation_not_configured', 503);
   }
-  url.pathname = `${url.pathname.replace(/\/+$/u, '')}/`;
+  let pathEnd = url.pathname.length;
+  while (pathEnd > 0 && url.pathname[pathEnd - 1] === '/') pathEnd--;
+  url.pathname = `${url.pathname.slice(0, pathEnd)}/`;
   return url;
 };
 

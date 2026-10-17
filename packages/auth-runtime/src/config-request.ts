@@ -9,6 +9,12 @@ import type { AuthConfig, RuntimeScopeRef } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth-config', level: 'info' });
 
+const trailingSlashStart = (value: string): number => {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '/') end--;
+  return end;
+};
+
 type RegistryEntry = Awaited<ReturnType<typeof loadInstanceByHostname>>;
 
 export type PersonalApiAuthBinding = {
@@ -58,9 +64,10 @@ export const resolvePersonalApiAuthBinding = async (
   }
   assertActiveRegistryEntry(host, registryEntry);
   const keycloakBaseUrl = process.env.KEYCLOAK_ADMIN_BASE_URL;
-  const issuer = registryEntry.authIssuerUrl ??
+  const issuer =
+    registryEntry.authIssuerUrl ??
     (keycloakBaseUrl
-      ? `${keycloakBaseUrl.replace(/\/+$/u, '')}/realms/${registryEntry.authRealm}`
+      ? `${keycloakBaseUrl.slice(0, trailingSlashStart(keycloakBaseUrl))}/realms/${registryEntry.authRealm}`
       : requireEnv('SVA_AUTH_ISSUER'));
   return {
     issuer,

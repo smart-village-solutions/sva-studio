@@ -24,6 +24,17 @@ const errorKeys: Readonly<Record<string, string>> = {
   unauthorized: 'accessDenied',
   forbidden: 'accessDenied',
 };
+const isSimpleEmail = (value: string): boolean => {
+  const at = value.indexOf('@');
+  const dot = value.lastIndexOf('.');
+  return (
+    at > 0 &&
+    at === value.lastIndexOf('@') &&
+    dot > at + 1 &&
+    dot < value.length - 1 &&
+    !/\s/u.test(value)
+  );
+};
 const yearEnd = () =>
   `${new Intl.DateTimeFormat('en', { timeZone: 'Europe/Berlin', year: 'numeric' }).format(new Date())}-12-31`;
 const useBusKeysState = (props: BusKeysProps) => {
@@ -198,7 +209,7 @@ const useBusKeyMutations = (state: ReturnType<typeof useBusKeysState>) => {
           !expiresAt ||
           Date.parse(expiresAt) <= Date.now() ||
           !/^[\p{L}\p{M}]{1,32}$/u.test(createdBy.trim()) ||
-          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(contact.trim())
+          !isSimpleEmail(contact.trim())
         ) {
           setError('invalid');
           return;

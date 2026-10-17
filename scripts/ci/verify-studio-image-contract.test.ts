@@ -177,6 +177,20 @@ describe('verify-studio-image-contract', () => {
     }
   );
 
+  it.each(['@vendor/..', '@vendor/Plugin'])(
+    'rejects malformed package refs in the runtime manifest and chunk provenance: %s',
+    (sourceRef) => {
+      const manifestInput = validInput('studio');
+      manifestInput.runtimeManifest.installedPlugins.push({ pluginId: 'calendar', sourceRef });
+      manifestInput.runtimeManifest.includedPluginIds.push('calendar');
+      expect(() => verify(manifestInput)).toThrow('runtime_manifest_mismatch');
+
+      const chunkInput = validInput('studio');
+      chunkInput.chunkProvenance.chunks[0]!.pluginPackages.push(sourceRef);
+      expect(() => verify(chunkInput)).toThrow('chunk_provenance_manifest_invalid');
+    }
+  );
+
   it.each(['studio', 'ssf'] as const)(
     'accepts the exact %s digest and inventory',
     (distribution) => {

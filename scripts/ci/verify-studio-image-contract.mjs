@@ -49,6 +49,11 @@ const fail = (code) => {
   throw new Error(code);
 };
 
+const isValidPackageRef = (name) =>
+  typeof name === 'string' &&
+  /^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(name) &&
+  !name.split('/').some((part) => part === '.' || part === '..');
+
 const verifyChunkProvenance = (
   distribution,
   selectedPluginIds,
@@ -103,11 +108,7 @@ const verifyChunkProvenance = (
     if (actual.get(chunk.path) !== chunk.sha256)
       fail(`chunk_provenance_hash_mismatch:${chunk.path}`);
     for (const name of chunk.pluginPackages) {
-      if (
-        typeof name !== 'string' ||
-        !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(name) ||
-        name.split('/').some((part) => part === '.' || part === '..')
-      ) {
+      if (!isValidPackageRef(name)) {
         fail('chunk_provenance_manifest_invalid');
       }
       if (excluded.has(name) || !allowed.has(name))
@@ -206,9 +207,7 @@ export const verifyStudioImageContract = (input) => {
       (entry) =>
         typeof entry?.pluginId !== 'string' ||
         !/^[a-z0-9-]+$/.test(entry.pluginId) ||
-        typeof entry.sourceRef !== 'string' ||
-        !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(entry.sourceRef) ||
-        entry.sourceRef.split('/').some((part) => part === '.' || part === '..')
+        !isValidPackageRef(entry.sourceRef)
     ) ||
     new Set(runtimeManifest.installedPlugins.map((entry) => entry.pluginId)).size !==
       runtimeManifest.installedPlugins.length ||

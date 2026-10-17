@@ -35,6 +35,16 @@ describe('plugin browser OIDC contract', () => {
       })
     ).toHaveLength(1);
   });
+  it('rejects a valid plugin client identity that collides with a Studio-owned client', () => {
+    for (const reserved of [
+      { authClientId: browser.clientId },
+      { authClientId: 'studio', tenantAdminClient: { clientId: browser.clientId } },
+    ]) {
+      expect(() =>
+        readPluginOidcClientRequirements({ ...reserved, pluginOidcClients: [browser] })
+      ).toThrow('plugin_oidc_client_requirement_invalid');
+    }
+  });
   it.each([
     { clientId: 'studio' },
     { clientId: 'studio-admin' },

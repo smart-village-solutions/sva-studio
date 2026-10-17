@@ -36,7 +36,16 @@ describe('previous Staging line config', () => {
   });
 
   it.each([
+    ['different run ID', { run: { ...run, id: run.id + 1 } }],
     ['stale attempt', { run: { ...run, run_attempt: 2 } }],
+    ['different workflow', { run: { ...run, path: '.github/workflows/build.yml' } }],
+    ['different branch', { run: { ...run, head_branch: 'release' } }],
+    ['different recorded run ID', { evidence: { ...evidence, run: { ...evidence.run, id: '1' } } }],
+    [
+      'different recorded attempt',
+      { evidence: { ...evidence, run: { ...evidence.run, attempt: 2 } } },
+    ],
+    ['missing config object', { evidence: { ...evidence, config: null } }],
     ['wrong environment', { evidence: { ...evidence, environment: 'prod' } }],
     [
       'wrong digest',
@@ -63,6 +72,6 @@ describe('previous Staging line config', () => {
   ])('rejects %s', (_, override: { run?: typeof run; evidence?: object }) => {
     expect(() =>
       validateStagingLineConfig(override.run ?? run, override.evidence ?? evidence, expected)
-    ).toThrow();
+    ).toThrow('Vorherige Staging-Config oder Secret-Referenzen sind nicht belegt.');
   });
 });

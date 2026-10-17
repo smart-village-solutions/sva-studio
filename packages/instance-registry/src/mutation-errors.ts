@@ -47,6 +47,12 @@ const stableConflictCodes = [
   'account_invitation_template_revision_conflict',
 ] as const;
 
+const tenantClientBlockerCodes = [
+  'tenant_admin_client_not_configured',
+  'tenant_admin_client_secret_missing',
+  'tenant_auth_client_secret_missing',
+] as const;
+
 const readMutationErrorMessage = (error: unknown): string => {
   const databaseError =
     typeof error === 'object' && error !== null
@@ -129,22 +135,11 @@ export const classifyInstanceMutationError = (
       code: 'plugin_activation_state_conflict',
     };
   }
-  if (message.includes('tenant_admin_client_not_configured')) {
+  const tenantClientBlockerCode = tenantClientBlockerCodes.find((code) => message.includes(code));
+  if (tenantClientBlockerCode) {
     return {
       status: 409,
-      code: 'tenant_admin_client_not_configured',
-    };
-  }
-  if (message.includes('tenant_admin_client_secret_missing')) {
-    return {
-      status: 409,
-      code: 'tenant_admin_client_secret_missing',
-    };
-  }
-  if (message.includes('tenant_auth_client_secret_missing')) {
-    return {
-      status: 409,
-      code: 'tenant_auth_client_secret_missing',
+      code: tenantClientBlockerCode,
     };
   }
   if (message.startsWith('keycloak_create_readiness_blocked:')) {

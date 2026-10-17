@@ -152,16 +152,18 @@ const registryFingerprintConfiguration = (instance: InstanceRegistryRecord) => {
   return configuration;
 };
 
+const DEFAULT_PLUGIN_SNAPSHOT: TenantProvisioningPluginSnapshot = {
+  lifecycles: [],
+  oidcClients: [],
+  activationPolicies: [],
+};
+
 export const buildTenantProvisioningSnapshot = (
   instance: InstanceRegistryRecord,
   input: CreateInstanceProvisioningInput,
   payloadFingerprint: string,
   automationMode: 'external' | 'kassel-traefik-file' = 'external',
-  pluginSnapshot: TenantProvisioningPluginSnapshot = {
-    lifecycles: [],
-    oidcClients: [],
-    activationPolicies: [],
-  }
+  pluginSnapshot: TenantProvisioningPluginSnapshot = DEFAULT_PLUGIN_SNAPSHOT
 ) => ({
   ...registryConfiguration(instance),
   registryFingerprint: buildPayloadFingerprint(registryFingerprintConfiguration(instance)),

@@ -8,6 +8,8 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 
 | Projekt                      | Typ     | Pfad                                   | Zweck                                                                                       |
 | ---------------------------- | ------- | -------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `project-report`             | App     | `apps/project-report/`                 | Öffentliche Projektberichterstattung                                                        |
+| `public-waste-calendar-web`  | App     | `apps/public-waste-calendar-web/`      | Öffentliche Webversion des Abfallkalenders                                                  |
 | `sva-studio-react`           | App     | `apps/sva-studio-react/`               | TanStack-Start-Frontend                                                                     |
 | `auth-runtime`               | Library | `packages/auth-runtime/`               | Authentifizierung, Session, OIDC, Runtime-Routen und Auth-Middleware                        |
 | `core`                       | Library | `packages/core/`                       | Framework-agnostische Kernlogik                                                             |
@@ -18,14 +20,29 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 | `iam-core`                   | Library | `packages/iam-core/`                   | Zentrale Autorisierungsverträge und Permission-Entscheidungen                               |
 | `iam-governance`             | Library | `packages/iam-governance/`             | Governance, Rechtstexte und Data-Subject-Rights                                             |
 | `instance-registry`          | Library | `packages/instance-registry/`          | Instanzverwaltung und Keycloak-Provisioning                                                 |
+| `mail-runtime`               | Library | `packages/mail-runtime/`               | Serverseitiger Mailversand und Transportkonfiguration                                       |
 | `media`                      | Library | `packages/media/`                      | Hostseitiger Medienvertrag und Referenz-Capability                                          |
 | `monitoring-client`          | Library | `packages/monitoring-client/`          | Logging, Metriken, OTel-Anbindung                                                           |
+| `plugin-assistant`           | Library | `packages/plugin-assistant/`           | Assistenten-Plugin und Header-Integration                                                   |
+| `plugin-categories`          | Library | `packages/plugin-categories/`          | Redaktionelle Verwaltung von Kategorien                                                     |
+| `plugin-cockpit`             | Library | `packages/plugin-cockpit/`             | Navigation zum externen Cockpit                                                             |
+| `plugin-cockpit-cards`       | Library | `packages/plugin-cockpit-cards/`       | Redaktionelle Verwaltung von Cockpit-Karten                                                 |
 | `plugin-events`              | Library | `packages/plugin-events/`              | Produktives Events-Plugin für CMS-Erweiterungspunkte                                        |
+| `plugin-faq`                 | Library | `packages/plugin-faq/`                 | Redaktionelle Verwaltung von FAQ-Inhalten                                                   |
+| `plugin-generic-items`       | Library | `packages/plugin-generic-items/`       | Redaktionelle Verwaltung freier GenericItem-Inhalte                                        |
 | `plugin-news`                | Library | `packages/plugin-news/`                | Produktives News-Plugin für CMS-Erweiterungspunkte                                          |
+| `plugin-notifications`       | Library | `packages/plugin-notifications/`       | Meldungs-Plugin und Header-Integration                                                      |
 | `plugin-poi`                 | Library | `packages/plugin-poi/`                 | Produktives POI-Plugin für CMS-Erweiterungspunkte                                           |
+| `plugin-projects`            | Library | `packages/plugin-projects/`            | Redaktionelle Verwaltung von Projektinhalten                                               |
 | `plugin-sdk`                 | Library | `packages/plugin-sdk/`                 | Frameworkfreie Plugin-/Host-Verträge einschließlich Pagination, Geocoding und Content-Media |
+| `plugin-search`              | Library | `packages/plugin-search/`              | Such-Plugin und Header-Integration                                                          |
+| `plugin-ssf`                 | Library | `packages/plugin-ssf/`                 | SSF-Plugin mit Browser- und Serverintegration                                               |
+| `plugin-surveys`             | Library | `packages/plugin-surveys/`             | Redaktionelle Verwaltung von Umfragen                                                       |
+| `plugin-waste-management`    | Library | `packages/plugin-waste-management/`    | Administrative Pflege des Abfallkalenders                                                   |
 | `routing`                    | Library | `packages/routing/`                    | Typsichere Routing-Factories und Route-Definitionen                                         |
 | `server-runtime`             | Library | `packages/server-runtime/`             | Kanonische Server-Runtime-Boundary für Logging, Kontext und Fehlerantworten                 |
+| `studio-mcp`                 | Library | `packages/studio-mcp/`                 | MCP-Server und API-Client für Studio                                                        |
+| `studio-module-iam`          | Library | `packages/studio-module-iam/`          | Gemeinsame Modul-IAM-Verträge für Host, Runtime und Provisioning                            |
 | `studio-ui-react`            | Library | `packages/studio-ui-react/`            | React/UI-Basis einschließlich gemeinsamer Map-, Media-Picker- und Retry-Orchestrierung      |
 | `sva-mainserver`             | Library | `packages/sva-mainserver/`             | Serverseitige Integration des externen SVA-Mainservers                                      |
 | `waste-management-contracts` | Library | `packages/waste-management-contracts/` | Gemeinsame Waste-Job-, Importprofil- und Abmeldetokenverträge                               |
@@ -35,7 +52,7 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 ## Ordner
 
 - apps/: laufende Anwendungen (z. B. sva-studio-react)
-- packages/: publishable Libraries und Plugins
+- packages/: Workspace-Libraries und Plugins
 - tooling/: gemeinsame Tools und Konfigurationen
 - scripts/: Automations-Skripte
 

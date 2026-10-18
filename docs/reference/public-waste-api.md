@@ -115,6 +115,8 @@ Fehlt `regionId` in `calendarQuery`, wird der Parameter ausgelassen. `cityId` un
 
 Der Verbraucher verbindet jede Kalenderantwort mit dem zugehörigen Katalogeintrag. Der Kalender behält dabei unverändert seine bestehende Terminberechnung, Fraktionsbezeichnungen, Verschiebungen und Vererbung über übergeordnete Abholorte.
 
+Die angebotenen E-Mail- und Kalendererinnerungen berücksichtigen Abfallarten aus direkten Tourverknüpfungen und aus datierten Tourzuweisungen für den ausgewählten Abholort. Eine Abfallart erscheint nur dann als Erinnerungsoption, wenn ihr jeweiliger Kanal aktiv ist und gültige Erinnerungszeitpunkte konfiguriert sind.
+
 ## Bewusste Nicht-Ziele
 
 Dieser Ausbau führt keine Quellenversion, keinen neuen fachlichen Abfallartencode, keine neue Termin-ID, keine Pagination und keinen Sammelendpunkt für alle Termine ein. Rate Limiting und weitere Ingress-Regeln werden getrennt von diesem fachlichen API-Change behandelt.

@@ -86,22 +86,36 @@ export const loadReminderOptions = async (
   const streetSelectionFilter = createStreetSelectionFilter(query.selection.streetId);
   const result = await execute<ReminderFractionRow>({
     text: `
+          WITH selected_locations AS (
+            SELECT cl.id
+            FROM ${schemaName}.waste_collection_locations cl
+            WHERE cl.active = true
+              AND cl.city_id = $1::uuid
+              ${streetSelectionFilter.text}
+              AND ($4::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $4::uuid)
+              AND ($5::uuid IS NULL OR cl.house_number_id IS NULL OR cl.house_number_id = $5::uuid)
+          ), selected_tours AS (
+            SELECT ltl.tour_id
+            FROM selected_locations cl
+            INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
+            UNION
+            SELECT assignment.tour_id
+            FROM selected_locations cl
+            INNER JOIN ${schemaName}.waste_tour_assignment_locations assignment_location
+              ON assignment_location.collection_location_id = cl.id
+            INNER JOIN ${schemaName}.waste_tour_assignments assignment
+              ON assignment.id = assignment_location.assignment_id
+          )
           SELECT DISTINCT
             f.id AS fraction_id,
             f.name AS fraction_label,
             f.color AS fraction_color,
             f.reminder_config
-          FROM ${schemaName}.waste_collection_locations cl
-          INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
-          INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
+          FROM selected_tours selected_tour
+          INNER JOIN ${schemaName}.waste_tours t ON t.id = selected_tour.tour_id
           INNER JOIN ${schemaName}.waste_fractions f ON f.id::text = ANY(t.waste_fraction_ids)
-          WHERE cl.active = true
-            AND t.status = 'published'
+          WHERE t.status = 'published'
             AND f.active = true
-            AND cl.city_id = $1::uuid
-            ${streetSelectionFilter.text}
-            AND ($4::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $4::uuid)
-            AND ($5::uuid IS NULL OR cl.house_number_id IS NULL OR cl.house_number_id = $5::uuid)
           ORDER BY f.name ASC;
         `,
     values: [

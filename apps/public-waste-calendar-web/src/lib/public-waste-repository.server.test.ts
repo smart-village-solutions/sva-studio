@@ -1194,6 +1194,13 @@ describe('public waste repository', () => {
         ],
       },
     ]);
+
+    const reminderQuery = execute.mock.calls[0]?.[0];
+    expect(reminderQuery?.text).toContain('waste_location_tour_links');
+    expect(reminderQuery?.text).toContain('waste_tour_assignment_locations');
+    expect(reminderQuery?.text).toContain('waste_tour_assignments');
+    expect(reminderQuery?.text).toContain('UNION');
+    expect(reminderQuery?.values).toEqual(['city-1', 'street-1', 'street-1', null, 'house-1']);
   });
 
   it('loads only calendar-capable reminder fractions with valid calendar slots for the current location', async () => {

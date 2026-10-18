@@ -141,6 +141,9 @@ describe('hotfix source contract', () => {
     expect(ssfBuildWorkflow).not.toContain('sva-studio-ssf:latest');
     expect(ssfBuildWorkflow).toContain('needs: build');
     expect(ssfBuildWorkflow).toContain('artifacts/runtime/ssf-image-verify ssf');
+    expect(ssfBuildWorkflow).toContain(
+      'ssf-image-verify-${{ github.run_id }}-${{ github.run_attempt }}'
+    );
     expect(ssfBuildWorkflow).toContain('Record verified SSF candidate');
     expect(ssfBuildWorkflow).not.toContain('promote.yml');
   });

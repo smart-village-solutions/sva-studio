@@ -106,7 +106,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: ssf-image-verify-${{ github.run_id }}
+          name: ssf-image-verify-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/runtime/ssf-image-verify
           if-no-files-found: warn
           retention-days: 14

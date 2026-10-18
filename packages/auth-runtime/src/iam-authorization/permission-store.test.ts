@@ -226,6 +226,17 @@ describe('resolveEffectivePermissions', () => {
     });
     expect(mocks.recordPermissionCacheRecompute).toHaveBeenCalledTimes(1);
     expect(mocks.cacheLogger.info).toHaveBeenCalledWith(
+      'Local permission snapshot expired',
+      expect.objectContaining({
+        operation: 'cache_stale_detected',
+        cache_layer: 'memory',
+        reason: 'ttl_expired',
+        age_s: 600,
+        max_ttl_s: 300,
+      })
+    );
+    expect(mocks.cacheLogger.warn).not.toHaveBeenCalled();
+    expect(mocks.cacheLogger.info).toHaveBeenCalledWith(
       'Permission snapshot recomputed after stale detection',
       expect.objectContaining({ operation: 'cache_invalidate', trigger: 'recompute' })
     );

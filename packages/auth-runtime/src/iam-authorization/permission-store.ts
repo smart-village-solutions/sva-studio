@@ -153,8 +153,10 @@ const resolveEffectivePermissionsAttempt = async (
 
   if (lookup.status === 'stale') {
     cacheMetricsState.staleLookups += 1;
-    cacheLogger.warn('Stale permission snapshot detected', {
+    cacheLogger.info('Local permission snapshot expired', {
       operation: 'cache_stale_detected',
+      cache_layer: 'memory',
+      reason: 'ttl_expired',
       age_s: lookup.ageSeconds,
       max_ttl_s: 300,
       ...buildRequestContext(input.instanceId),

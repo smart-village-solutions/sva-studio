@@ -11,6 +11,9 @@ import { WasteMasterDataAddressDeleteDialog, type PendingAddressDelete } from '.
 import { WasteMasterDataEntityDialogs } from './waste-management.master-data.entity-dialogs.js';
 import { deleteWasteAddressEntity, previewWasteAddressMutation } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
+
+const defaultAddressSorting: AddressSortingState = [{ id: 'name', desc: false }];
+
 export const WasteMasterDataAddressesPanel = ({
   search,
   canManage,
@@ -26,7 +29,7 @@ export const WasteMasterDataAddressesPanel = ({
   const [pendingDelete, setPendingDelete] = useState<PendingAddressDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [sortingByType, setSortingByType] = useState<Partial<Record<WasteAddressEntityType, AddressSortingState>>>({});
-  const sorting = sortingByType[search.addressEntityType] ?? [];
+  const sorting = sortingByType[search.addressEntityType] ?? defaultAddressSorting;
   const rows = useMemo(() => rowsForType(search.addressEntityType, controller.overview), [search.addressEntityType, controller.overview]);
   const filteredRows = useMemo(() => filterAddressRows(rows, search), [rows, search.addressEntityType, search.addressParentId, search.q]);
   const sortedRows = useMemo(() => sortAddressRows(filteredRows, search.addressEntityType, sorting), [filteredRows, search.addressEntityType, sorting]);

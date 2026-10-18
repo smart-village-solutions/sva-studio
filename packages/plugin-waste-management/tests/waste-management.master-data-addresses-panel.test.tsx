@@ -48,10 +48,15 @@ vi.mock('@sva/studio-ui-react', () => ({
     toolbarEnd?: React.ReactNode;
     rowActions?: (row: never) => React.ReactNode;
     emptyState?: React.ReactNode;
-    sorting?: { onChange?: (state: { id: string; desc: boolean }[]) => void };
+    sorting?: { state: { id: string; desc: boolean }[]; onChange?: (state: { id: string; desc: boolean }[]) => void };
     getRowId: (row: never) => string;
     labels: { selectAllRows: (label: string) => string; selectRow: (row: { rowId: string }) => string };
-  }) => <section aria-label={ariaLabel}>{toolbarEnd}<button type="button" onClick={() => sorting?.onChange?.([{ id: 'name', desc: true }])}>sort descending</button><span hidden>{labels.selectAllRows(ariaLabel)}</span>{data.map((row) => <div key={getRowId(row as never)} aria-label={labels.selectRow({ rowId: row.id })}>{columns.map((column) => <span key={column.id} data-sort-value={column.sortValue?.(row as never) ?? undefined}>{column.cell(row as never)}</span>)}{rowActions?.(row as never)}</div>)}{data.length === 0 ? emptyState : null}</section>,
+  }) => {
+    if (sorting?.state.length !== 1 || !columns.some((column) => column.id === sorting.state[0]?.id)) {
+      throw new Error('studio_data_table_external_sorting_requires_one_supported_field');
+    }
+    return <section aria-label={ariaLabel}>{toolbarEnd}<button type="button" onClick={() => sorting.onChange?.([{ id: 'name', desc: true }])}>sort descending</button><span hidden>{labels.selectAllRows(ariaLabel)}</span>{data.map((row) => <div key={getRowId(row as never)} aria-label={labels.selectRow({ rowId: row.id })}>{columns.map((column) => <span key={column.id} data-sort-value={column.sortValue?.(row as never) ?? undefined}>{column.cell(row as never)}</span>)}{rowActions?.(row as never)}</div>)}{data.length === 0 ? emptyState : null}</section>;
+  },
   StudioDestructiveActionDialog: ({ open, onConfirm, fallbackFocusRef, children, errorMessage, confirmDisabled }: {
     open: boolean; onConfirm: () => void; fallbackFocusRef?: { current: HTMLElement | null };
     children?: React.ReactNode; errorMessage?: string; confirmDisabled?: boolean;
@@ -79,6 +84,16 @@ describe('Waste master-data addresses panel', () => {
     };
     dialogState.fallbackFocusRef = null;
     vi.clearAllMocks();
+  });
+
+  it('opens each address level with a supported sort field', () => {
+    const onSearchChange = vi.fn();
+    const { rerender } = render(<WasteMasterDataAddressesPanel search={search} canManage onSearchChange={onSearchChange} />);
+
+    for (const addressEntityType of ['city', 'street', 'houseNumber', 'region'] as const) {
+      rerender(<WasteMasterDataAddressesPanel search={{ ...search, addressEntityType } as never} canManage onSearchChange={onSearchChange} />);
+      expect(screen.getByRole('region', { name: 'masterData.locationsWorkspace.addresses.tableLabel' })).toBeTruthy();
+    }
   });
 
   it('renders the selected address table and opens creation in Stammdaten', () => {

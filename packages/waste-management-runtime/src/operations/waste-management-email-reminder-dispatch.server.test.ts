@@ -239,7 +239,7 @@ describe('waste email reminder dispatch helpers', () => {
       }),
       subscriptionId: 'subscription-1',
       email: 'max@example.org',
-      locationLabel: 'Perleberg',
+      locationLabel: 'Gumtow, Alle Straßen Alle Hausnummern',
       fraction: {
         id: 'fraction-paper',
         name: 'Papier',
@@ -269,6 +269,8 @@ describe('waste email reminder dispatch helpers', () => {
 
     expect(payload.addresses).toEqual([{ kind: 'to', email: 'max@example.org' }]);
     expect(payload.templatePayload).not.toHaveProperty('serviceLabel');
+    expect(payload.templatePayload.locationLabel).toBe('Gumtow, alle Straßen und Hausnummern');
+    expect(payload.templatePayload.subject).toContain('Gumtow, alle Straßen und Hausnummern');
     expect(payload.templatePayload.hintText).toBe(
       ['Behälter am Vorabend bereitstellen.', '', '- Zufahrt freihalten'].join('\n')
     );
@@ -397,7 +399,7 @@ describe('waste email reminder dispatch helpers', () => {
         doiIntroText: 'Intro {{locationLabel}}',
         doiButtonLabel: 'Confirm',
         doiFallbackText: 'Fallback {{confirmUrl}}',
-        doiExpiryNoticeText: 'Expiry {{dataControllerLabel}}',
+        doiExpiryNoticeText: 'Expiry {{expiryHours}} hours for {{dataControllerLabel}}',
       }),
       transport: createTransport({
         defaultFromEmail: 'transport-from@invalid.example',
@@ -454,13 +456,29 @@ describe('waste email reminder dispatch helpers', () => {
         'Ort: Payload Place',
         'Confirm: https://invalid.example/confirm',
         'Fallback https://invalid.example/confirm',
-        'Expiry Payload Controller',
+        'Expiry 48 hours for Payload Controller',
         'Service: Payload Service',
         'Verantwortlich: Payload Controller',
         'Datenschutz: https://invalid.example/privacy',
         'Impressum: https://invalid.example/imprint',
       ].join('\n\n'),
     });
+  });
+
+  it('uses a readable catch-all address in DOI subject, text, and location', () => {
+    const message = buildDispatchMessage({
+      config: createReminderConfig(),
+      transport: createTransport(),
+      payload: createDoiPayload({
+        templatePayload: {
+          ...createDoiPayload().templatePayload,
+          locationLabel: 'Gumtow, Alle Straßen Alle Hausnummern',
+        },
+      }),
+    });
+
+    expect(message.subject).toContain('Gumtow, alle Straßen und Hausnummern');
+    expect(message.text).toContain('Ort: Gumtow, alle Straßen und Hausnummern');
   });
 
   it('uses configured DOI labels only when payload labels are absent', () => {

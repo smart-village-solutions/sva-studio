@@ -13,9 +13,10 @@ const buildStatusPageResponse = (input: {
   readonly title: string;
   readonly headline: string;
   readonly body: string;
+  readonly returnLink?: Readonly<{ href: string; label: string }>;
 }): Response =>
   new Response(
-    `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.title)}</title></head><body><main><h1>${escapeHtml(input.headline)}</h1><p>${escapeHtml(input.body)}</p></main></body></html>`,
+    `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.title)}</title></head><body><main><h1>${escapeHtml(input.headline)}</h1><p>${escapeHtml(input.body)}</p>${input.returnLink ? `<p><a href="${escapeHtml(input.returnLink.href)}">${escapeHtml(input.returnLink.label)}</a></p>` : ''}</main></body></html>`,
     {
       status: 200,
       headers: {
@@ -41,6 +42,10 @@ export const renderDoiSuccessPage = (config: WasteManagementEmailReminderConfig)
     title: config.doiSuccessHeadline ?? 'E-Mail-Erinnerung aktiviert',
     headline: config.doiSuccessHeadline ?? 'E-Mail-Erinnerung aktiviert',
     body: config.doiSuccessBody ?? 'Ihre E-Mail-Erinnerung ist jetzt aktiv.',
+    returnLink: {
+      href: config.publicBaseUrl,
+      label: config.serviceLabel ?? config.fromName,
+    },
   });
 
 export const renderDoiErrorPage = (

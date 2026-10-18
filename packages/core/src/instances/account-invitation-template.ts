@@ -94,7 +94,10 @@ const ALLOWED_TOKENS = new Set([
 ]);
 const TOKEN_PATTERN = /\{\{([a-zA-Z][a-zA-Z0-9]*)\}\}/g;
 const URI_SCHEME_PATTERN = /(?:https?|mailto|javascript)\s*:/i;
-const MARKUP_PATTERN = /<[^>]*>/;
+const containsMarkup = (value: string): boolean => {
+  const opening = value.indexOf('<');
+  return opening >= 0 && value.indexOf('>', opening + 1) >= 0;
+};
 
 export class AccountInvitationTemplateValidationError extends Error {
   readonly code = 'invalid_account_invitation_template';
@@ -120,7 +123,7 @@ const assertText = (
       `Der Wert muss zwischen 1 und ${maxLength} Zeichen enthalten.`
     );
   }
-  if (MARKUP_PATTERN.test(value)) {
+  if (containsMarkup(value)) {
     throw new AccountInvitationTemplateValidationError(field, 'HTML-Markup ist nicht erlaubt.');
   }
   if (URI_SCHEME_PATTERN.test(value)) {

@@ -6,6 +6,18 @@ import {
 } from './categories-fields.js';
 import { errorJson, parseJsonObjectBody } from './content-route-core.js';
 
+const isSimpleEmail = (value: string): boolean => {
+  const at = value.indexOf('@');
+  const dot = value.lastIndexOf('.');
+  return (
+    at > 0 &&
+    at === value.lastIndexOf('@') &&
+    dot > at + 1 &&
+    dot < value.length - 1 &&
+    !/\s/u.test(value)
+  );
+};
+
 const stringOrNull = (value: unknown, field: string): string | null | Response => {
   if (value === null) return null;
   if (typeof value !== 'string')
@@ -77,7 +89,7 @@ export const parseCategorySaveInput = async (
       'category_management_invalid_request',
       'Die Kategorienfelder sind ungültig.'
     );
-  if (typeof email === 'string' && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email))
+  if (typeof email === 'string' && email && !isSimpleEmail(email))
     return errorJson(
       400,
       'category_management_invalid_request',

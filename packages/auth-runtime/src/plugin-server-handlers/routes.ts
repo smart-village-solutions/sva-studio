@@ -6,7 +6,9 @@ import type {
 export const normalizePath = (path: string): string => {
   const trimmed = path.trim();
   if (trimmed === '/') return trimmed;
-  return trimmed.replace(/\/+$/, '');
+  let end = trimmed.length;
+  while (end > 0 && trimmed[end - 1] === '/') end--;
+  return trimmed.slice(0, end);
 };
 
 const pathSegments = (path: string): readonly string[] => path.split('/').filter(Boolean);

@@ -12,6 +12,18 @@ import type {
 } from './-instances-shared-types';
 import { INSTANCE_STATUS_LABELS } from './-instances-shared-types';
 
+const isSimpleEmail = (value: string): boolean => {
+  const at = value.indexOf('@');
+  const dot = value.lastIndexOf('.');
+  return (
+    at > 0 &&
+    at === value.lastIndexOf('@') &&
+    dot > at + 1 &&
+    dot < value.length - 1 &&
+    !/\s/u.test(value)
+  );
+};
+
 export const isTenantSecretUserInputRequired = (realmMode: 'new' | 'existing') =>
   realmMode === 'existing';
 
@@ -158,7 +170,7 @@ export const getCreateStepValidationIssues = (
             fieldId: 'instance-admin-email',
             message: t('admin.instances.wizard.validation.tenantAdminEmail'),
           }
-        : !/^\S+@\S+\.\S+$/u.test(trimValue(formValues.tenantAdminBootstrap.email))
+        : !isSimpleEmail(trimValue(formValues.tenantAdminBootstrap.email))
           ? {
               fieldId: 'instance-admin-email',
               message: t('admin.instances.wizard.validation.tenantAdminEmailFormat'),
@@ -329,11 +341,7 @@ export const createInstanceSettingsSchema = () =>
         lastName: z.string(),
       })
       .superRefine((values, ctx) => {
-        if (
-          values.username.trim() &&
-          values.email.trim() &&
-          !/^\S+@\S+\.\S+$/u.test(values.email.trim())
-        )
+        if (values.username.trim() && values.email.trim() && !isSimpleEmail(values.email.trim()))
           ctx.addIssue({
             code: 'custom',
             path: ['email'],

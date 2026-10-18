@@ -2,6 +2,12 @@ import { convert } from 'html-to-text';
 
 import { sanitizeRichTextHtml } from './rich-text-html.js';
 
+const trimLineEnd = (line: string): string => {
+  let end = line.length;
+  while (end > 0 && (line[end - 1] === ' ' || line[end - 1] === '\t')) end--;
+  return line.slice(0, end);
+};
+
 export const convertRichTextHtmlToPlainText = (
   value: string,
   options: Readonly<{ includeLinkUrls?: boolean; unorderedListItemPrefix?: string }> = {}
@@ -18,6 +24,8 @@ export const convertRichTextHtmlToPlainText = (
     ],
   })
     .replace(/\r\n?/gu, '\n')
-    .replace(/[ \t]+$/gmu, '')
+    .split('\n')
+    .map(trimLineEnd)
+    .join('\n')
     .replace(/\n{3,}/gu, '\n\n')
     .trim();

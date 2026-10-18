@@ -60,7 +60,10 @@ const parseKeycloakBaseUrl = (value: string, allowHttp: boolean): string => {
   ) {
     throw new Error('keycloak_admin_base_url_invalid');
   }
-  return url.toString().replace(/\/+$/, '');
+  const baseUrl = url.toString();
+  let end = baseUrl.length;
+  while (end > 0 && baseUrl[end - 1] === '/') end--;
+  return baseUrl.slice(0, end);
 };
 
 export const resolveProvisioningAuthIssuerUrl = (

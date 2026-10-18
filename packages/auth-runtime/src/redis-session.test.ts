@@ -175,6 +175,7 @@ describe('redis-backed auth runtime session store', () => {
     mocks.logger.error.mockClear();
     mocks.logger.info.mockClear();
     vi.unstubAllEnvs();
+    vi.stubEnv('ENCRYPTION_KEY', 'secret-key');
   });
 
   it('creates, reads, updates, indexes and deletes sessions through Redis', async () => {
@@ -383,6 +384,37 @@ describe('redis-backed auth runtime session store', () => {
       accessToken: 'invalid-value',
     });
   });
+
+  it.each(['local-keycloak', 'local-builder', 'studio'])(
+    'rejects session token reads and writes without ENCRYPTION_KEY in %s',
+    async (profile) => {
+      vi.stubEnv('SVA_RUNTIME_PROFILE', profile);
+      const session = createTestSession({
+        accessToken: 'access',
+        refreshToken: 'refresh',
+        idToken: 'id',
+      });
+      await createSession('session-encrypted', session, 60);
+      const storedBefore = [...mocks.redis.data.values()][0];
+
+      vi.stubEnv('ENCRYPTION_KEY', '');
+      await expect(createSession('session-plaintext', session, 60)).rejects.toThrow(
+        'ENCRYPTION_KEY'
+      );
+      await expect(getSession('session-encrypted')).rejects.toThrow('ENCRYPTION_KEY');
+      await expect(getSession('session-encrypted', { decryptTokens: false })).rejects.toThrow(
+        'ENCRYPTION_KEY'
+      );
+      await expect(
+        updateSession('session-encrypted', { accessToken: 'new-access' })
+      ).rejects.toThrow('ENCRYPTION_KEY');
+      expect(mocks.redis.data.size).toBe(1);
+      expect([...mocks.redis.data.values()][0]).toBe(storedBefore);
+      await expect(deleteSession('session-encrypted')).resolves.toBeUndefined();
+      await expect(listUserSessionIds('user-a')).resolves.toEqual([]);
+      expect(mocks.redis.data.size).toBe(0);
+    }
+  );
 
   it('can read session metadata without decrypting stored tokens', async () => {
     vi.stubEnv('ENCRYPTION_KEY', 'secret-key');

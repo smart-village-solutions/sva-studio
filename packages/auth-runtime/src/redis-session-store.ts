@@ -11,6 +11,7 @@ import {
   decryptSessionTokens,
   encryptSessionTokens,
   logGetSessionTimingIfEnabled,
+  requireSessionEncryptionKey,
   resolveSessionRedisTtlSeconds,
 } from './redis-session-support.js';
 import { getWorkspaceIdForScope } from './scope.js';
@@ -33,11 +34,11 @@ const readStoredSessionForDeletion = async (sessionId: string): Promise<Session 
     return undefined;
   }
 
-  return decryptSessionTokens(JSON.parse(data) as Session);
+  return JSON.parse(data) as Session;
 };
 
 /**
- * Create a new session in Redis with TTL (tokens encrypted if ENCRYPTION_KEY set).
+ * Create a new session in Redis with TTL and encrypted tokens.
  */
 export async function createSession(
   sessionId: string,
@@ -77,7 +78,7 @@ export async function createSession(
 }
 
 /**
- * Get a session from Redis (tokens decrypted if ENCRYPTION_KEY set).
+ * Get a session from Redis (tokens decrypted unless explicitly skipped).
  */
 export async function getSession(
   sessionId: string,
@@ -116,6 +117,8 @@ export async function getSession(
       });
       return undefined;
     }
+
+    requireSessionEncryptionKey();
 
     const jsonParseStartedAt = performance.now();
     let session = JSON.parse(data) as Session;

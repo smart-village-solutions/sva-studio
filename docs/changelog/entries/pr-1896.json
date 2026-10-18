@@ -1,0 +1,4 @@
+{
+  "prNumber": 1896,
+  "body": "Sitzungen werden nur noch mit einem konfigurierten Verschlüsselungsschlüssel gespeichert. Fehlt dieser, wird die Sitzung aus Sicherheitsgründen abgewiesen."
+}

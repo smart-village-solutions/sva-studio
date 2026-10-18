@@ -12,9 +12,9 @@ describe('auth-runtime crypto', () => {
     expect(decryptToken(encrypted, key)).toBe('access-token');
   });
 
-  it('keeps tokens unchanged when no encryption key is configured', () => {
-    expect(encryptToken('access-token', '')).toBe('access-token');
-    expect(decryptToken('access-token', '')).toBe('access-token');
+  it('rejects token operations without an encryption key', () => {
+    expect(() => encryptToken('access-token', '')).toThrow('ENCRYPTION_KEY');
+    expect(() => decryptToken('access-token', '')).toThrow('ENCRYPTION_KEY');
   });
 
   it('does not classify long arbitrary base64 values as encrypted', () => {

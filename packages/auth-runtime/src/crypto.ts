@@ -16,16 +16,10 @@ const hasFormatMagic = (buffer: Buffer): boolean =>
   buffer.length >= FORMAT_MAGIC.length && buffer.subarray(0, FORMAT_MAGIC.length).equals(FORMAT_MAGIC);
 
 export const encryptToken = (token: string, encryptionKey: string): string => {
-  if (!token) {
-    return token;
+  if (!encryptionKey.trim()) {
+    throw new Error('ENCRYPTION_KEY is required for token encryption');
   }
-  if (!encryptionKey) {
-    logger.warn('Token encryption disabled', {
-      operation: 'encrypt',
-      encryption_key_present: false,
-      security_impact: 'tokens_stored_unencrypted',
-      recommendation: 'Set ENCRYPTION_KEY environment variable',
-    });
+  if (!token) {
     return token;
   }
 
@@ -55,16 +49,10 @@ export const encryptToken = (token: string, encryptionKey: string): string => {
 };
 
 export const decryptToken = (encrypted: string, encryptionKey: string): string => {
-  if (!encrypted) {
-    return encrypted;
+  if (!encryptionKey.trim()) {
+    throw new Error('ENCRYPTION_KEY is required for token decryption');
   }
-  if (!encryptionKey) {
-    logger.warn('Token decryption disabled', {
-      operation: 'decrypt',
-      encryption_key_present: false,
-      security_impact: 'treating_as_unencrypted',
-      recommendation: 'Set ENCRYPTION_KEY environment variable',
-    });
+  if (!encrypted) {
     return encrypted;
   }
 

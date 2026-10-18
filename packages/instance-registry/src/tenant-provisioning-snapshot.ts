@@ -157,7 +157,6 @@ const DEFAULT_PLUGIN_SNAPSHOT: TenantProvisioningPluginSnapshot = {
   oidcClients: [],
   activationPolicies: [],
 };
-
 export const buildTenantProvisioningSnapshot = (
   instance: InstanceRegistryRecord,
   input: CreateInstanceProvisioningInput,

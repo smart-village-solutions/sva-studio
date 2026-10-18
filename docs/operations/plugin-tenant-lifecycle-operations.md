@@ -10,21 +10,39 @@ Der vorgelagerte Aktivierungsrichtlinien-Fleet-Reconcile exportiert ergänzend `
 
 ## Betriebsstatus der Alarmierung
 
-Die produktiven Studio-Profile exportieren derzeit keine OTEL-Metriken an einen betriebenen Collector. Lifecycle-Alerts sind deshalb bewusst nicht in der aktiven Prometheus-Regeldatei enthalten: `absent(...)` würde sonst gesunde Lanes als Ausfall melden, während Stale-Work-Metriken Prometheus nicht erreichen. [Issue #1237](https://github.com/smart-village-solutions/sva-studio/issues/1237) verfolgt den produktiven Exportpfad und die anschließende Aktivierung.
+Die produktiven Studio-Profile exportieren derzeit keine OTEL-Metriken an einen betriebenen Collector. Prometheus-Lifecycle-Alerts bleiben daher inaktiv; [Issue #1237](https://github.com/smart-village-solutions/sva-studio/issues/1237) verfolgt den produktiven Metrikexport. Die bestehenden Studio-Containerlogs erreichen bereits die Loki-Datenquelle von `logs.tpwd.de`. App- und Provisioner-Worker schreiben nach dem Rollout einmal pro Minute `plugin_tenant_lifecycle_health` mit `lane`, `ready` und `status`. Nur die App ergänzt den bestehenden sicheren DB-Aggregatsnapshot mit `stale_claim`, `due_work_count`, `generation_without_owner` und `observation_ok`. Diese Logfelder enthalten keine Instanz-, Plugin- oder Job-IDs.
 
-Bis dahin dienen der sichere Aggregatsnapshot, Runtime-Logs und die nachfolgenden berechtigten Diagnoseabfragen als Betriebsnachweis. Die vorbereiteten Alarmklassen bleiben der Zielvertrag für Issue #1237:
+Die Loki-Alerts werden erst aktiviert, wenn beide neuen Signale nach dem regulären Rollout in `logs.tpwd.de` nachgewiesen sind. Die bestehenden Studio-Slack-Kontaktpunkte und der Studio-Alert-Ordner sind dafür zu verwenden. Ein ausbleibendes Signal vor diesem Nachweis ist kein Ausfallbeleg.
+
+## Loki-Alert-Vertrag
+
+Alle Abfragen verwenden die vorhandene Loki-Datenquelle und werden alle 60 Sekunden ausgewertet. Für die fünf Zustandsregeln gilt `A >= 2` mit zwei Minuten Pending-Zeit. Die Zustandsabfragen setzen fehlende Treffer auf null; die separaten Signalausfallregeln erkennen ein ausgebliebenes Signal. Auswertungsfehler müssen sichtbar bleiben. Für die beiden Signalausfallregeln gilt `A > 0` mit zwei Minuten Pending-Zeit, nachdem das jeweilige Signal erstmals live nachgewiesen wurde. Die Alerts enthalten nur Alarmklasse, betroffene Lane und Runbook-Link; keine IDs oder Fehlertexte gehen an Slack.
+
+| Alertklasse | LogQL für A |
+| --- | --- |
+| `LaneUnavailable` | `sum by (lane) (count_over_time({swarm_service=~"studio_(app|provisioner)"} |= "plugin_tenant_lifecycle_health" \| json \| ready="false" [3m])) or vector(0)` |
+| `StaleClaim` | `sum(count_over_time({swarm_service="studio_app"} |= "plugin_tenant_lifecycle_health" \| json \| stale_claim > 0 [3m])) or vector(0)` |
+| `DueWorkStalled` | `sum(count_over_time({swarm_service="studio_app"} |= "plugin_tenant_lifecycle_health" \| json \| due_work_count > 0 [3m])) or vector(0)` |
+| `GenerationWithoutOwner` | `sum(count_over_time({swarm_service="studio_app"} |= "plugin_tenant_lifecycle_health" \| json \| generation_without_owner > 0 [3m])) or vector(0)` |
+| `ObservabilityUnavailable` | `sum(count_over_time({swarm_service="studio_app"} |= "plugin_tenant_lifecycle_health" \| json \| observation_ok="false" [3m])) or vector(0)` |
+| `AppSignalMissing` | `sum(absent_over_time({swarm_service="studio_app"} \|= "plugin_tenant_lifecycle_health" [5m])) or vector(0)` |
+| `ProvisionerSignalMissing` | `sum(absent_over_time({swarm_service="studio_provisioner"} \|= "plugin_tenant_lifecycle_health" [5m])) or vector(0)` |
+
+Die 3-Minuten-Fenster umfassen drei periodische Stichproben; die zusätzliche Pending-Zeit unterdrückt kurze Übergänge. `StaleClaim` berücksichtigt durch diesen Vorlauf das 150-Sekunden-Recovery-Budget. Die Signalausfallregeln erkennen sowohl einen ausgefallenen Worker als auch unterbrochenes Loki-Ingest. Bei einem `ObservabilityUnavailable`-Alarm sind die Stall-Zähler unbekannt, nicht null. Nach Auslösung mit dem untenstehenden Entscheidungspfad verifizieren und erst nach zwei gesunden Stichproben schließen.
+
+Die vorbereiteten Alarmklassen entsprechen dem bestehenden Metrikvertrag:
 
 ## Vorbereitete Alarmklassen
 
 | Alertklasse                | Sichere Aussage                                                                                           | Erste Prüfung                                                                     |
 | -------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `LaneUnavailable`          | Die privilegierte Lane fehlt oder meldet nicht bereit.                                                    | Provisioner-Service, Task-Neustarts und Runtime-Health prüfen.                    |
+| `LaneUnavailable`          | Eine Worker-Lane meldet nicht bereit.                                                                       | Betroffenen Service, Task-Neustarts und Runtime-Health prüfen.                    |
 | `StaleClaim`               | Ein öffentlicher Studio-Job-Claim besitzt seit mehr als 120 Sekunden keinen frischen Heartbeat.           | Ledger und Studio-Job gemeinsam lesen; das 150-Sekunden-Recovery-Budget beachten. |
 | `DueWorkStalled`           | Ein Studio-Job ist seit mehr als 120 Sekunden fällig oder eine Retry-/Recheck-Deadline ist überschritten. | Lane, persistierte Deadline und Jobstatus korrelieren.                            |
 | `GenerationWithoutOwner`   | `desired_generation > completed_generation`, aber kein aktiver öffentlicher Owner-Job ist vorhanden.      | Terminalevent und aktuellen Lifecycle-Vertrag prüfen.                             |
 | `ObservabilityUnavailable` | Der aggregierte, read-only DB-Snapshot konnte nicht erhoben werden.                                       | Datenbankverbindung, Migration `0091` und Funktionsrechte prüfen.                 |
 
-Zeitbudgets für Warning und Critical werden erst mit dem real betriebenen OTEL- und Prometheus-Pfad aus Issue #1237 verbindlich aktiviert und dort durch einen gezielten Metrikfluss nachgewiesen.
+Prometheus-Regeln werden erst mit dem real betriebenen OTEL-Pfad aus Issue #1237 aktiviert. Die LogQL-Abfragen ersetzen keine Metrikflussprüfung für diesen späteren Pfad.
 
 ## Autorisierte Korrelation
 

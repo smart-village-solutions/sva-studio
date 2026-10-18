@@ -1,6 +1,9 @@
 import * as graphileWorker from 'graphile-worker';
 
-import { recordPluginTenantLifecycleLaneHealth } from '../plugin-tenant-lifecycle/observability.js';
+import {
+  logPluginTenantLifecycleHealth,
+  recordPluginTenantLifecycleLaneHealth,
+} from '../plugin-tenant-lifecycle/observability.js';
 import { privilegedStudioJobTaskIdentifier, studioJobTaskIdentifier } from './runner-registry.js';
 import {
   createGraphileWorkerRunner,
@@ -22,6 +25,23 @@ export { queuePluginOperationJob, queueStudioJob } from './runner-queue.js';
 
 let runner: graphileWorker.WorkerPool | null = null;
 let privilegedRunner: graphileWorker.WorkerPool | null = null;
+const healthLogTimers: Partial<Record<'default' | 'privileged', ReturnType<typeof setInterval>>> = {};
+const healthLogIntervalMs = 60_000;
+
+const startHealthLogging = (lane: 'default' | 'privileged'): void => {
+  if (healthLogTimers[lane]) return;
+  const timer = setInterval(() => {
+    void logPluginTenantLifecycleHealth(lane);
+  }, healthLogIntervalMs);
+  timer.unref?.();
+  healthLogTimers[lane] = timer;
+};
+
+const stopHealthLogging = (lane: 'default' | 'privileged'): void => {
+  const timer = healthLogTimers[lane];
+  if (timer) clearInterval(timer);
+  delete healthLogTimers[lane];
+};
 let runnerHealth: StudioJobWorkerHealth = {
   ready: false,
   reasonCode: 'studio_job_worker_not_started',
@@ -70,7 +90,10 @@ export const ensureStudioJobWorkerStarted = async (
             error,
             options.onTerminalFailure,
             (failedRunner) => {
-              if (runner === failedRunner) runner = null;
+              if (runner === failedRunner) {
+                runner = null;
+                stopHealthLogging('default');
+              }
             }
           )
       ),
@@ -90,12 +113,16 @@ export const ensureStudioJobWorkerStarted = async (
           error,
           options.onTerminalFailure,
           (failedRunner) => {
-            if (runner === failedRunner) runner = null;
+            if (runner === failedRunner) {
+              runner = null;
+              stopHealthLogging('default');
+            }
           }
         );
       }
     );
     runner = startedRunner;
+    startHealthLogging('default');
   } catch (error) {
     updateRunnerHealth({
       ready: false,
@@ -139,7 +166,10 @@ export const ensurePrivilegedStudioJobWorkerStarted = async (
             error,
             options.onTerminalFailure,
             (failedRunner) => {
-              if (privilegedRunner === failedRunner) privilegedRunner = null;
+              if (privilegedRunner === failedRunner) {
+                privilegedRunner = null;
+                stopHealthLogging('privileged');
+              }
             }
           )
       ),
@@ -159,12 +189,16 @@ export const ensurePrivilegedStudioJobWorkerStarted = async (
           error,
           options.onTerminalFailure,
           (failedRunner) => {
-            if (privilegedRunner === failedRunner) privilegedRunner = null;
+            if (privilegedRunner === failedRunner) {
+              privilegedRunner = null;
+              stopHealthLogging('privileged');
+            }
           }
         );
       }
     );
     privilegedRunner = startedRunner;
+    startHealthLogging('privileged');
   } catch (error) {
     updatePrivilegedRunnerHealth({
       ready: false,
@@ -199,6 +233,7 @@ export const stopStudioJobWorker = async (): Promise<void> => {
   markStudioJobWorkerExplicitStop(runner);
   await runner.gracefulShutdown();
   runner = null;
+  stopHealthLogging('default');
   updateRunnerHealth({
     ready: false,
     reasonCode: 'studio_job_worker_stopped',
@@ -211,6 +246,7 @@ export const stopPrivilegedStudioJobWorker = async (): Promise<void> => {
   markStudioJobWorkerExplicitStop(privilegedRunner);
   await privilegedRunner.gracefulShutdown();
   privilegedRunner = null;
+  stopHealthLogging('privileged');
   updatePrivilegedRunnerHealth({
     ready: false,
     reasonCode: 'privileged_studio_job_worker_stopped',

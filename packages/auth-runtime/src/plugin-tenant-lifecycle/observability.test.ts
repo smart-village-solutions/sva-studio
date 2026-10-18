@@ -10,7 +10,7 @@ const state = vi.hoisted(() => ({
         observe: (instrument: { name: string }, value: number, attributes: object) => void;
       }) => Promise<void> | void)
     | undefined,
-  logger: { warn: vi.fn() },
+  logger: { info: vi.fn(), warn: vi.fn() },
   query: vi.fn(),
   resolvePool: vi.fn(),
   withIamAppDb: vi.fn(),
@@ -195,5 +195,65 @@ describe('plugin tenant lifecycle observability', () => {
         /instance_id|plugin_id|job_id|generation|request_id|correlation_id/i
       );
     }
+  });
+
+  it('logs bounded fleet stalls and lane health for Loki without tenant identifiers', async () => {
+    const observability = await import('./observability.js');
+    observability.recordPluginTenantLifecycleLaneHealth('default', {
+      ready: true,
+      status: 'running',
+    });
+
+    await observability.logPluginTenantLifecycleHealth('default');
+    expect(state.logger.info).toHaveBeenCalledWith('plugin_tenant_lifecycle_health', {
+      operation: 'plugin_tenant_lifecycle_health',
+      lane: 'default',
+      ready: true,
+      status: 'running',
+      observation_ok: true,
+      stale_claim: 1,
+      queued_due: 2,
+      retry_due: 3,
+      pending_recheck_due: 4,
+      generation_without_owner: 5,
+      due_work_count: 9,
+    });
+    expect(JSON.stringify(state.logger.info.mock.calls)).not.toMatch(
+      /instance_id|plugin_id|job_id|request_id|correlation_id/i
+    );
+  });
+
+  it('logs privileged lane health without reading the fleet database', async () => {
+    const observability = await import('./observability.js');
+    observability.recordPluginTenantLifecycleLaneHealth('privileged', {
+      ready: true,
+      status: 'running',
+    });
+
+    await observability.logPluginTenantLifecycleHealth('privileged');
+    expect(state.logger.info).toHaveBeenCalledWith('plugin_tenant_lifecycle_health', {
+      operation: 'plugin_tenant_lifecycle_health',
+      lane: 'privileged',
+      ready: true,
+      status: 'running',
+    });
+    expect(state.query).not.toHaveBeenCalled();
+  });
+
+  it('logs a failed snapshot as an observable failure without throwing', async () => {
+    state.query.mockRejectedValueOnce(new Error('database unavailable'));
+    const observability = await import('./observability.js');
+
+    await expect(observability.logPluginTenantLifecycleHealth('default')).resolves.toBeUndefined();
+    expect(state.logger.warn).toHaveBeenCalledWith('plugin_tenant_lifecycle_health', {
+      operation: 'plugin_tenant_lifecycle_health',
+      lane: 'default',
+      ready: false,
+      status: 'idle',
+      lane_reason_code: 'studio_job_worker_not_started',
+      observation_reason_code: 'database_query_failed',
+      observation_ok: false,
+      error_type: 'Error',
+    });
   });
 });

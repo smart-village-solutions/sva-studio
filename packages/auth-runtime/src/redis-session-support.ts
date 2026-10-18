@@ -39,11 +39,12 @@ export const logGetSessionTimingIfEnabled = (input: {
   });
 };
 
-/**
- * Get encryption key from environment
- */
-const getEncryptionKey = (): string => {
-  return process.env.ENCRYPTION_KEY || '';
+export const requireSessionEncryptionKey = (): string => {
+  const encryptionKey = process.env.ENCRYPTION_KEY;
+  if (!encryptionKey?.trim()) {
+    throw new Error('ENCRYPTION_KEY is required for Redis sessions');
+  }
+  return encryptionKey;
 };
 
 export const resolveSessionRedisTtlSeconds = (session: Session): number => {
@@ -67,11 +68,10 @@ export const resolveSessionRedisTtlSeconds = (session: Session): number => {
 };
 
 /**
- * Apply token encryption to session data if configured
+ * Encrypt session tokens before storage.
  */
 export const encryptSessionTokens = (session: Session): Session => {
-  const encryptionKey = getEncryptionKey();
-  if (!encryptionKey) return session;
+  const encryptionKey = requireSessionEncryptionKey();
 
   return {
     ...session,
@@ -84,11 +84,10 @@ export const encryptSessionTokens = (session: Session): Session => {
 };
 
 /**
- * Decrypt session tokens if configured
+ * Decrypt stored session tokens.
  */
 export const decryptSessionTokens = (session: Session): Session => {
-  const encryptionKey = getEncryptionKey();
-  if (!encryptionKey) return session;
+  const encryptionKey = requireSessionEncryptionKey();
 
   try {
     return {

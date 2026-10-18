@@ -25,7 +25,7 @@ Der aktuelle Repo-Ist-Stand ist kein reines Fundament mehr: Neben Routing, Auth,
 - Öffentliche, statische Web-App `project-report` für die read-only Projektstatusdarstellung über GitHub Pages; Bearbeitung ist ausschließlich im lokalen Entwicklungskontext möglich
 - Zentrales Routing (`@sva/core`, `@sva/routing`, `@sva/plugin-...`-Routen)
 - Auth-BFF-Endpunkte (`/auth/login`, `/auth/callback`, `/auth/me`, `/auth/logout`)
-- Session-Verwaltung mit Redis (inkl. optionaler Token-Verschlüsselung)
+- Session-Verwaltung mit Redis und verpflichtender Token-Verschlüsselung
 - IAM-Admin- und Governance-Flächen inklusive Rollen, Gruppen, DSR, Kontoregeln und Tenant-IAM-Diagnostik
 - Instanz-Registry und Provisioning-Control-Plane für Root-Host-Administration
 - Hostseitiges Medienmanagement über `/admin/media` mit S3-/MinIO-kompatibler Storage-Anbindung

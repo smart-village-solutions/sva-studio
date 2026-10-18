@@ -65,6 +65,7 @@ Für `studio` gilt zusätzlich ein expliziter Observability-Vertrag:
 Gemeinsam:
 
 - `SVA_RUNTIME_PROFILE`
+- `ENCRYPTION_KEY` (in allen Profilen Pflicht; fehlt der Schlüssel, werden Sessions weder angelegt noch aus dem Redis-Store ausgegeben)
 - `SVA_PUBLIC_BASE_URL`
 - `SVA_DOCUMENTATION_BASE_URL` (lokal optional; HTTPS-Basis der eigenständig veröffentlichten Anwenderdokumentation)
 - `OTEL_EXPORTER_OTLP_ENDPOINT`

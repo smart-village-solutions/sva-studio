@@ -143,7 +143,7 @@ gleichzeitig beeinflussen.
 - Session-Cookies: `httpOnly`, `sameSite=lax`, `secure` in Production
 - `Session.expiresAt` ist die fachlich führende Session-Gültigkeit; Cookie und Redis-TTL werden daraus abgeleitet
 - Sessions bleiben datensparsam und tragen nur Auth-Kern plus Lifecycle-Felder (`issuedAt`, `expiresAt`, `sessionVersion`)
-- Optionale Verschlüsselung von Tokens im Redis-Store via `ENCRYPTION_KEY`
+- Verpflichtende Verschlüsselung von Tokens im Redis-Store via `ENCRYPTION_KEY`; ohne Schlüssel werden Sessions weder angelegt noch aus dem Store ausgegeben
 - Sessionen führen nur den minimalen Auth-Kern (`sub/id`, `instanceId`, Rollen); Profilattribute wie Name und E-Mail gehören nicht zum Pflichtumfang der Session
 - Tenant-Sessions beziehen `instanceId` aus Host, Registry und Realm-Scope. Ein optionaler Token-Claim `instanceId` darf diesen Scope bestätigen, aber nicht ersetzen.
 - Forced Reauth pro Benutzer erfolgt über `minimumSessionVersion` und `forcedReauthAt`; Keycloak-Logout ist optional zuschaltbar

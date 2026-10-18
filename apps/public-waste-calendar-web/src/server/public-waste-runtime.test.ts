@@ -31,6 +31,108 @@ afterEach(async () => {
 });
 
 describe('public waste runtime', () => {
+  it('reads tenant reminder settings on each calendar request and honors deactivation', async () => {
+    const assetsDir = await createAssetsDir();
+    cleanupPaths.add(assetsDir);
+    const reminderConfig = {
+      enabled: true,
+      publicSignupEnabled: true,
+      transportId: 'mail-1',
+      publicBaseUrl: 'https://example.invalid/',
+      doiConfirmPath: '/email-reminders/confirm',
+      unsubscribePath: '/email-reminders/unsubscribe',
+      fromName: 'Abfallwirtschaft',
+      fromEmail: 'abfall@example.invalid',
+      privacyPolicyUrl: 'https://example.invalid/privacy',
+      imprintUrl: 'https://example.invalid/imprint',
+      consentLabel: 'Ich stimme zu.',
+      consentVersion: 'v1',
+      doiSubjectTemplate: 'Bestätigen',
+      doiIntroText: 'Bitte bestätigen.',
+      doiButtonLabel: 'Bestätigen',
+      reminderSubjectTemplate: 'Erinnerung',
+      reminderIntroTemplate: 'Demnächst wird geleert.',
+      unsubscribeLinkLabel: 'Abmelden',
+      unsubscribeSuccessHeadline: 'Abgemeldet',
+      unsubscribeSuccessBody: 'Sie sind abgemeldet.',
+      maxSubscriptionsPerEmailAndLocation: 3,
+      signupRateLimitPerIpPerHour: 10,
+      signupRateLimitPerEmailPerHour: 3,
+      doiTokenTtlHours: 24,
+      pendingSubscriptionTtlHours: 48,
+      materializationLookaheadDays: 7,
+    };
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ email_reminder_config: reminderConfig, email_reminder_signing_secret: 'secret' }],
+      })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            email_reminder_config: { ...reminderConfig, enabled: false },
+            email_reminder_signing_secret: 'secret',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ email_reminder_config: reminderConfig, email_reminder_signing_secret: null }],
+      });
+    const loadReminderOptions = vi
+      .fn()
+      .mockResolvedValue([
+        {
+          id: 'bio',
+          label: 'Bioabfall',
+          slots: [{ id: 'first', maxLeadDays: 2, defaultLeadDays: 1 }],
+        },
+      ]);
+    const runtime = await createPublicWasteRuntime({
+      assetsDir,
+      env: {
+        PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz',
+        PUBLIC_WASTE_DATABASE_URL: databaseUrlFor('bb-prignitz'),
+        PUBLIC_WASTE_SCHEMA_NAME: 'public',
+      },
+      createRepository: async () => ({
+        repository: {
+          listPublicLocations: vi.fn(),
+          listPublicRegions: vi.fn(),
+          listSelectionOptions: vi.fn(),
+          loadCalendarEntries: vi.fn().mockResolvedValue([]),
+          loadSelectionSummary: vi.fn().mockResolvedValue('Gumtow'),
+          loadReminderOptions,
+        },
+        pool: { query, connect: vi.fn() } as never,
+        schemaName: 'public',
+        dispose: async () => {},
+      }),
+    });
+
+    const calendarUrl =
+      'http://localhost/api/public-waste/calendar?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333';
+    const active = await runtime.handle(new Request(calendarUrl));
+    const inactive = await runtime.handle(new Request(calendarUrl));
+    const missingSecret = await runtime.handle(new Request(calendarUrl));
+
+    expect(active.status).toBe(200);
+    const activeCalendar = await active.json();
+    expect(activeCalendar).toMatchObject({
+      reminderSignup: { enabled: true, fractions: [{ id: 'bio' }] },
+    });
+    expect(JSON.stringify(activeCalendar)).not.toContain('secret');
+    expect(inactive.status).toBe(200);
+    expect((await inactive.json()).reminderSignup).toBeUndefined();
+    expect(missingSecret.status).toBe(200);
+    expect((await missingSecret.json()).reminderSignup).toBeUndefined();
+    expect(query).toHaveBeenCalledTimes(3);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('FROM waste_settings'), []);
+    await runtime.dispose();
+  });
+
   it('returns 200 for /health/live when config is valid', async () => {
     const assetsDir = await createAssetsDir();
     cleanupPaths.add(assetsDir);

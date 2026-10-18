@@ -22,6 +22,7 @@ import type {
   WasteMainserverSourceRevisionRecord,
   WastePdfStaticSettingsWriteInput,
   WastePdfStaticSettingsRecord,
+  WasteManagementEmailReminderConfig,
   WasteRegionListFilter,
   WasteRegionRecord,
   WasteStreetListFilter,
@@ -124,6 +125,12 @@ export const wasteMasterDataRepositoryContract = {
   deleteWasteCollectionLocation: defineRepositoryMethod<(id: string) => Promise<void>>(),
   getWastePdfStaticSettings:
     defineRepositoryMethod<() => Promise<WastePdfStaticSettingsRecord | null>>(),
+  getWasteEmailReminderSettings: defineRepositoryMethod<
+    () => Promise<{
+      readonly config: WasteManagementEmailReminderConfig;
+      readonly signingSecret?: string;
+    } | null>
+  >(),
   upsertWastePdfStaticSettings:
     defineRepositoryMethod<(input: WastePdfStaticSettingsWriteInput) => Promise<void>>(),
   listWasteHolidayRules:

@@ -251,6 +251,7 @@ Referenzen:
 - Der explizite Traefik-Router leitet seinen Host aus `PUBLIC_WASTE_PUBLIC_HOST` ab und bindet den vorhandenen ACME-Resolver `default` für automatisch erneuerte Einzelzertifikate ein.
 - Die Server-Runtime validiert Datenbankname und Public-Runtime-Rolle aus `PUBLIC_WASTE_DATABASE_URL` deterministisch gegen `PUBLIC_WASTE_INSTANCE_ID` und akzeptiert ausschließlich das Schema `public`; eine tenantfremde oder privilegiertere Verbindung verhindert den Bootstrap fail-closed.
 - `PUBLIC_WASTE_CONFIG_JSON` bleibt nur als lokaler oder kompatibilitätsbezogener Fallbackpfad erhalten und ist kein produktionsführender Betriebsvertrag.
+- Die produktive E-Mail-Erinnerung nutzt stattdessen `public.waste_settings` in der zugeordneten Tenant-Datenbank. Der Studio-Migrations-One-shot muss die beiden Reminder-Spalten vor dem Public-Waste-Release hinzufügen; ein erneutes Speichern der Waste-Einstellungen projiziert anschließend Konfiguration und Signierschlüssel.
 - Der Releasepfad wird ausschließlich über Git-Tags `waste-web-vX.Y.Z` ausgelöst. GitHub baut damit nur ein Waste-Web-Image und aktualisiert `PUBLIC_WASTE_IMAGE_TAG` in getrennten, GitHub-environment-gebundenen Deploy-Jobs für Prignitz und Frankfurt (Oder). Ein teilweiser Fehlschlag bleibt rot; ein bereits erfolgreich aktualisierter Zielstack wird nicht automatisch zurückgerollt.
 - Rollback folgt bewusst demselben einfachen Modell: vorigen SemVer-Tag in `PUBLIC_WASTE_IMAGE_TAG` eintragen und den Stack erneut deployen.
 

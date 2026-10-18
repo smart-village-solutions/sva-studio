@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { createSdkLogger } from '@sva/server-runtime';
 import type { WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
 import type {
   PublicWasteReminderSignupRequest,
@@ -15,6 +16,7 @@ import { createRepositoryHandle } from './public-waste-runtime-repository.server
 import {
   createDefaultReminderSignupSubmitter,
   createDefaultReminderPageHandler,
+  loadPublicWasteEmailReminderSettings,
 } from './public-waste-runtime-reminders.server.js';
 import {
   jsonResponse,
@@ -28,6 +30,8 @@ import {
   serveStaticAsset,
   dispatchPublicWasteApiRequest,
 } from './public-waste-runtime-http.server.js';
+
+const logger = createSdkLogger({ component: 'public-waste-calendar-web', level: 'info' });
 
 export const PUBLIC_WASTE_RUNTIME_APP_NAME = 'public-waste-calendar-web';
 
@@ -103,9 +107,7 @@ export const createPublicWasteRuntime = async (input: {
     input.submitReminderSignup ??
     (repositoryHandle ? createDefaultReminderSignupSubmitter({ repositoryHandle }) : undefined);
   const reminderPageHandler =
-    bootstrapState.status === 'ready' &&
-    bootstrapState.config.emailReminderConfig &&
-    repositoryHandle
+    bootstrapState.status === 'ready' && repositoryHandle
       ? createDefaultReminderPageHandler({ repositoryHandle })
       : null;
 
@@ -134,8 +136,34 @@ export const createPublicWasteRuntime = async (input: {
         return method === 'HEAD' ? toHeadResponse(response) : response;
       }
 
+      const needsReminderSettings =
+        url.pathname === '/api/public-waste/calendar' ||
+        url.pathname.startsWith('/api/public-waste/reminder-signups') ||
+        url.pathname.startsWith('/email-reminders/');
+      const reminderSettings =
+        repositoryHandle && needsReminderSettings
+          ? await loadPublicWasteEmailReminderSettings(repositoryHandle).catch(() => {
+              logger.warn('public_waste_email_reminder_settings_unavailable', {
+                instance_id:
+                  bootstrapState.status === 'ready' ? bootstrapState.config.instanceId : null,
+              });
+              return null;
+            })
+          : null;
+      const requestBootstrapState =
+        bootstrapState.status === 'ready' && reminderSettings
+          ? {
+              ...bootstrapState,
+              config: {
+                ...bootstrapState.config,
+                emailReminderConfig: reminderSettings.config,
+                emailReminderSigningSecret: reminderSettings.signingSecret,
+              },
+            }
+          : bootstrapState;
+
       if (isPublicWasteApiPath(url.pathname)) {
-        if (bootstrapState.status !== 'ready' || !repositoryHandle) {
+        if (requestBootstrapState.status !== 'ready' || !repositoryHandle) {
           const response = createInvalidConfigResponse(bootstrapState);
           if (corsApi) withPublicWasteCors(response);
           return method === 'HEAD' ? toHeadResponse(response) : response;
@@ -145,7 +173,7 @@ export const createPublicWasteRuntime = async (input: {
           request,
           pathname: url.pathname,
           repository: repositoryHandle.repository,
-          bootstrapState,
+          bootstrapState: requestBootstrapState,
           loadPdfStaticConfig: input.loadPdfStaticConfig,
           loadBrandingImage: input.loadBrandingImage,
           submitReminderSignup,
@@ -156,17 +184,17 @@ export const createPublicWasteRuntime = async (input: {
       }
 
       if (
-        bootstrapState.status === 'ready' &&
-        bootstrapState.config.emailReminderConfig &&
+        requestBootstrapState.status === 'ready' &&
+        requestBootstrapState.config.emailReminderConfig &&
         reminderPageHandler
       ) {
         const response = await reminderPageHandler({
           request,
           pathname: url.pathname,
-          reminderConfig: bootstrapState.config.emailReminderConfig,
+          reminderConfig: requestBootstrapState.config.emailReminderConfig,
           unsubscribeTokenSecret:
-            bootstrapState.config.emailReminderSigningSecret ??
-            bootstrapState.config.database.databaseUrl,
+            requestBootstrapState.config.emailReminderSigningSecret ??
+            requestBootstrapState.config.database.databaseUrl,
         });
         if (response) {
           return method === 'HEAD' ? toHeadResponse(response) : response;

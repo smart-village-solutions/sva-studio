@@ -14,6 +14,7 @@ const germanNumericCollationMigrationId = '20260824_01_add_german_numeric_collat
 const mainserverRevisionMigrationId = '20260827_01_add_mainserver_source_revision';
 const disruptionSettingsMigrationId = '20260901_01_add_waste_disruption_settings';
 const wasteTourStatusMigrationId = '20260915_01_add_waste_tour_status';
+const emailReminderSettingsMigrationId = '20261018_01_add_waste_email_reminder_settings';
 
 const namesFor = (instanceId: string) => ({
   appRole: `${instanceId}_app`,
@@ -79,7 +80,7 @@ const createAdminClient = (rows: readonly object[]) => ({
 describe('Waste-Tenant-Migration', () => {
   it('contains the additive postal-code, tour-shift, collation, and source-revision contracts', () => {
     expect(validateWasteTenantMigrations(wasteTenantMigrations)).toBe(wasteTenantMigrations);
-    expect(wasteTenantMigrations).toHaveLength(6);
+    expect(wasteTenantMigrations).toHaveLength(7);
     expect(wasteTenantMigrations[0]).toMatchObject({
       id: migrationId,
       statements: ['ALTER TABLE public.waste_cities ADD COLUMN IF NOT EXISTS postal_code TEXT;'],
@@ -159,6 +160,13 @@ describe('Waste-Tenant-Migration', () => {
     expect(wasteTenantMigrations[5]?.verification.sql).toContain(
       'sva_mainserver_revision_tours_update'
     );
+    expect(wasteTenantMigrations[6]).toMatchObject({ id: emailReminderSettingsMigrationId });
+    expect(wasteTenantMigrations[6]?.statements.join('\n')).toContain(
+      'email_reminder_config JSONB'
+    );
+    expect(wasteTenantMigrations[6]?.statements.join('\n')).toContain(
+      'email_reminder_signing_secret TEXT'
+    );
   });
 
   it('rejects duplicate migration identifiers before connecting to a tenant', () => {
@@ -187,7 +195,7 @@ describe('Waste-Tenant-Migration', () => {
 
     await expect(
       migrateWasteTenantDatabases({ adminClient, connectTenant, deriveNames: namesFor })
-    ).resolves.toEqual({ appliedMigrationCount: 12, migratedTenantCount: 2, status: 'ok' });
+    ).resolves.toEqual({ appliedMigrationCount: 14, migratedTenantCount: 2, status: 'ok' });
 
     for (const database of ['alpha_db', 'beta_db']) {
       const client = tenantClients.get(database);
@@ -230,6 +238,7 @@ describe('Waste-Tenant-Migration', () => {
         mainserverRevisionMigrationId,
         disruptionSettingsMigrationId,
         wasteTourStatusMigrationId,
+        emailReminderSettingsMigrationId,
       ],
     });
 

@@ -1,5 +1,8 @@
 import { Pool } from 'pg';
-import { createWasteEmailReminderRepository } from '@sva/waste-management-runtime/repositories';
+import {
+  createWasteEmailReminderRepository,
+  createWasteMasterDataRepository,
+} from '@sva/waste-management-runtime/repositories';
 import type { WasteEmailReminderPendingSignupInput } from '@sva/waste-management-runtime/repositories';
 import {
   createPublicWasteReminderPageHandler,
@@ -11,6 +14,19 @@ import type {
   PublicWasteReminderSignupSubmitter,
   PublicWasteReminderPageHandler,
 } from './public-waste-runtime.js';
+
+export const loadPublicWasteEmailReminderSettings = async (repositoryHandle: RepositoryHandle) => {
+  const repository = createWasteMasterDataRepository({
+    async execute(statement) {
+      const result = await repositoryHandle.pool.query(
+        statement.text,
+        statement.values ? [...statement.values] : undefined
+      );
+      return { rowCount: result.rowCount ?? 0, rows: result.rows };
+    },
+  });
+  return await repository.getWasteEmailReminderSettings();
+};
 
 const schemaIdentifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 

@@ -398,4 +398,22 @@ export const wasteTenantMigrations = Object.freeze([
       values: Object.freeze([]),
     }),
   }),
+  Object.freeze({
+    id: '20261018_01_add_waste_email_reminder_settings',
+    statements: Object.freeze([
+      'ALTER TABLE public.waste_settings ADD COLUMN IF NOT EXISTS email_reminder_config JSONB;',
+      'ALTER TABLE public.waste_settings ADD COLUMN IF NOT EXISTS email_reminder_signing_secret TEXT;',
+    ]),
+    verification: Object.freeze({
+      sql: `SELECT COUNT(*) = 2
+        AND BOOL_AND(is_nullable = 'YES')
+        AND BOOL_AND((column_name = 'email_reminder_config' AND data_type = 'jsonb')
+          OR (column_name = 'email_reminder_signing_secret' AND data_type = 'text')) AS satisfied
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'waste_settings'
+          AND column_name = ANY($1::text[]);`,
+      values: Object.freeze([['email_reminder_config', 'email_reminder_signing_secret']]),
+    }),
+  }),
 ]);

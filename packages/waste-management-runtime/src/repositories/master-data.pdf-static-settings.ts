@@ -2,6 +2,10 @@ import type {
   WastePdfStaticSettingsRecord,
   WastePdfStaticSettingsWriteInput,
 } from '@sva/waste-management-contracts';
+import {
+  readWasteManagementEmailReminderConfig,
+  readWasteManagementEmailReminderSigningSecret,
+} from '@sva/waste-management-contracts';
 
 import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
@@ -12,6 +16,11 @@ type WastePdfStaticSettingsRow = {
   readonly disruption_location_enabled: boolean | null;
   readonly disruption_all_locations_enabled: boolean | null;
   readonly updated_at: string | null;
+};
+
+type WasteEmailReminderSettingsRow = {
+  readonly email_reminder_config: unknown;
+  readonly email_reminder_signing_secret: string | null;
 };
 
 const mapWastePdfStaticSettingsRow = (
@@ -56,9 +65,11 @@ INSERT INTO waste_settings (
   pdf_branding_asset_url,
   pdf_contact_block,
   disruption_location_enabled,
-  disruption_all_locations_enabled
+  disruption_all_locations_enabled,
+  email_reminder_config,
+  email_reminder_signing_secret
 )
-VALUES ($1, $2, $3, $4, $5)
+VALUES ($1, $2, $3, $4, $5, $8::jsonb, $9)
 ON CONFLICT (id) DO UPDATE
 SET pdf_branding_asset_url = EXCLUDED.pdf_branding_asset_url,
     pdf_contact_block = EXCLUDED.pdf_contact_block,
@@ -66,6 +77,10 @@ SET pdf_branding_asset_url = EXCLUDED.pdf_branding_asset_url,
       ELSE waste_settings.disruption_location_enabled END,
     disruption_all_locations_enabled = CASE WHEN $7 THEN EXCLUDED.disruption_all_locations_enabled
       ELSE waste_settings.disruption_all_locations_enabled END,
+    email_reminder_config = CASE WHEN $10 THEN EXCLUDED.email_reminder_config
+      ELSE waste_settings.email_reminder_config END,
+    email_reminder_signing_secret = CASE WHEN $11 THEN EXCLUDED.email_reminder_signing_secret
+      ELSE waste_settings.email_reminder_signing_secret END,
     updated_at = NOW();
 `,
   values: [
@@ -76,14 +91,24 @@ SET pdf_branding_asset_url = EXCLUDED.pdf_branding_asset_url,
     input.disruptionAllLocationsEnabled ?? false,
     input.disruptionLocationEnabled !== undefined,
     input.disruptionAllLocationsEnabled !== undefined,
+    input.emailReminderConfig == null ? null : JSON.stringify(input.emailReminderConfig),
+    input.emailReminderSigningSecret ?? null,
+    input.emailReminderConfig !== undefined,
+    input.emailReminderSigningSecret !== undefined,
   ],
+});
+
+const buildWasteEmailReminderSettingsSelectStatement = (): SqlStatement => ({
+  text: `SELECT email_reminder_config, email_reminder_signing_secret
+FROM waste_settings WHERE id = TRUE LIMIT 1;`,
+  values: [],
 });
 
 export const createWastePdfStaticSettingsRepositoryPart = (
   executor: SqlExecutor
 ): Pick<
   WasteMasterDataRepository,
-  'getWastePdfStaticSettings' | 'upsertWastePdfStaticSettings'
+  'getWastePdfStaticSettings' | 'upsertWastePdfStaticSettings' | 'getWasteEmailReminderSettings'
 > => ({
   async getWastePdfStaticSettings() {
     const result = await executor.execute<WastePdfStaticSettingsRow>(
@@ -95,9 +120,30 @@ export const createWastePdfStaticSettingsRepositoryPart = (
   async upsertWastePdfStaticSettings(input) {
     await executor.execute(buildWastePdfStaticSettingsUpsertStatement(input));
   },
+  async getWasteEmailReminderSettings() {
+    const result = await executor.execute<WasteEmailReminderSettingsRow>(
+      buildWasteEmailReminderSettingsSelectStatement()
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    const config = readWasteManagementEmailReminderConfig({
+      emailReminderConfig: row.email_reminder_config,
+    });
+    if (!config) return null;
+    const signingSecret = readWasteManagementEmailReminderSigningSecret({
+      emailReminderConfig: row.email_reminder_config,
+      emailReminderSigningSecret: row.email_reminder_signing_secret,
+    });
+    if (config.enabled && !signingSecret) return null;
+    return {
+      config,
+      signingSecret,
+    };
+  },
 });
 
 export const wastePdfStaticSettingsStatements = {
   getWastePdfStaticSettings: buildWastePdfStaticSettingsSelectStatement,
   upsertWastePdfStaticSettings: buildWastePdfStaticSettingsUpsertStatement,
+  getWasteEmailReminderSettings: buildWasteEmailReminderSettingsSelectStatement,
 } as const;

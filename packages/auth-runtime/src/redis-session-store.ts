@@ -34,7 +34,7 @@ const readStoredSessionForDeletion = async (sessionId: string): Promise<Session 
     return undefined;
   }
 
-  return decryptSessionTokens(JSON.parse(data) as Session);
+  return JSON.parse(data) as Session;
 };
 
 /**

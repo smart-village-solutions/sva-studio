@@ -410,6 +410,9 @@ describe('redis-backed auth runtime session store', () => {
       ).rejects.toThrow('ENCRYPTION_KEY');
       expect(mocks.redis.data.size).toBe(1);
       expect([...mocks.redis.data.values()][0]).toBe(storedBefore);
+      await expect(deleteSession('session-encrypted')).resolves.toBeUndefined();
+      await expect(listUserSessionIds('user-a')).resolves.toEqual([]);
+      expect(mocks.redis.data.size).toBe(0);
     }
   );
 

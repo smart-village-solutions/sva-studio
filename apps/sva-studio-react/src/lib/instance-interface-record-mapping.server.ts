@@ -195,6 +195,7 @@ export const mapRecordToStoredEntry = (
       enabled: record.enabled,
       config: {
         transportId: coerceText(record.publicConfig.transportId),
+        transportType: coerceText(record.publicConfig.transportType),
         host:
           coerceText(record.publicConfig.host) || coerceOptionalText(record.publicConfig.endpoint),
         port:

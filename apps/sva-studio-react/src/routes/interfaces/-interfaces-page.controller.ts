@@ -6,7 +6,6 @@ import { t } from '../../i18n';
 import { readErrorMessage } from '../../lib/error-message-utils';
 import { getStudioPermissionDenialMessage } from '../../lib/studio-permission-denial-message';
 import {
-  deleteInstanceInterfaceServerFn,
   listInstanceInterfacesServerFn,
   saveSvaMainserverInterfaceSettings,
   upsertInstanceInterfaceServerFn,
@@ -17,6 +16,7 @@ import {
   type InstanceInterfaceDraft,
   type InstanceInterfaceType,
 } from '../../lib/instance-interfaces';
+import { useInterfaceDeletion, useMailInterfaceTest } from './-interfaces-page.actions';
 
 export const DEFAULT_AVAILABLE_TYPES: readonly InstanceInterfaceType[] = [
   'mainserver',
@@ -126,6 +126,14 @@ export const translateInterfacesErrorMessage = (error: unknown, fallback: string
       return t('interfaces.errors.supabaseRequiresWasteManagementModule');
     case 'secret_unreadable':
       return t('interfaces.errors.secretUnreadable');
+    case 'mail_test_disabled':
+      return t('interfaces.mailTest.errors.disabled');
+    case 'mail_test_recipient_missing':
+      return t('interfaces.mailTest.errors.recipientMissing');
+    case 'mail_test_invalid_config':
+      return t('interfaces.mailTest.errors.invalidConfig');
+    case 'mail_test_secret_missing':
+      return t('interfaces.mailTest.errors.secretMissing');
     case 'forbidden':
       return t('interfaces.errors.forbidden');
     case 'invalid_config':
@@ -150,27 +158,26 @@ const useServerFnRefs = () => {
   const listInterfaces = useServerFn(listInstanceInterfacesServerFn);
   const saveMainserver = useServerFn(saveSvaMainserverInterfaceSettings);
   const upsertInterface = useServerFn(upsertInstanceInterfaceServerFn);
-  const deleteInterface = useServerFn(deleteInstanceInterfaceServerFn);
   const listInterfacesRef = React.useRef(listInterfaces);
   const saveMainserverRef = React.useRef(saveMainserver);
   const upsertInterfaceRef = React.useRef(upsertInterface);
-  const deleteInterfaceRef = React.useRef(deleteInterface);
   listInterfacesRef.current = listInterfaces;
   saveMainserverRef.current = saveMainserver;
   upsertInterfaceRef.current = upsertInterface;
-  deleteInterfaceRef.current = deleteInterface;
 
   return {
     listInterfacesRef,
     saveMainserverRef,
     upsertInterfaceRef,
-    deleteInterfaceRef,
   };
 };
 
 export const useInterfacesPageController = () => {
-  const { listInterfacesRef, saveMainserverRef, upsertInterfaceRef, deleteInterfaceRef } =
-    useServerFnRefs();
+  const {
+    listInterfacesRef,
+    saveMainserverRef,
+    upsertInterfaceRef,
+  } = useServerFnRefs();
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
@@ -181,10 +188,10 @@ export const useInterfacesPageController = () => {
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [pickerType, setPickerType] = React.useState<InstanceInterfaceType>('s3');
   const [editState, setEditState] = React.useState<EditState>({ mode: 'closed' });
-  const [pendingDelete, setPendingDelete] = React.useState<InstanceInterface | null>(null);
-  const [deletePending, setDeletePending] = React.useState(false);
-  const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
-  const [deleteResultMessage, setDeleteResultMessage] = React.useState<string | null>(null);
+  const { mailTestPendingId, mailTestResult, onTestMail } = useMailInterfaceTest(
+    instanceId,
+    translateInterfacesErrorMessage
+  );
   const saveFeedback = useStudioSaveFeedback();
 
   const refresh = React.useCallback(
@@ -223,6 +230,8 @@ export const useInterfacesPageController = () => {
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const deletion = useInterfaceDeletion(instanceId, refresh, translateInterfacesErrorMessage);
 
   const onConfirmType = () => {
     saveFeedback.reset();
@@ -278,40 +287,6 @@ export const useInterfacesPageController = () => {
     }
   };
 
-  const onConfirmDelete = async () => {
-    if (!pendingDelete || deletePending) {
-      setPendingDelete(null);
-      return;
-    }
-
-    setDeletePending(true);
-    setDeleteErrorMessage(null);
-    setDeleteResultMessage(null);
-    try {
-      const result = await deleteInterfaceRef.current({
-        data: { instanceId, id: pendingDelete.id },
-      });
-      if (!result.deleted) {
-        throw new Error('interface_not_found');
-      }
-      const deletedName = pendingDelete.name;
-      const refreshed = await refresh(false);
-      if (!refreshed) {
-        setPendingDelete(null);
-        setDeleteResultMessage(t('interfaces.messages.refreshAfterDeleteError'));
-        return;
-      }
-      setPendingDelete(null);
-      setDeleteResultMessage(t('interfaces.messages.deleteSuccess', { name: deletedName }));
-    } catch (error) {
-      setDeleteErrorMessage(
-        translateInterfacesErrorMessage(error, t('interfaces.messages.deleteError'))
-      );
-    } finally {
-      setDeletePending(false);
-    }
-  };
-
   return {
     availableTypes,
     editState,
@@ -319,31 +294,19 @@ export const useInterfacesPageController = () => {
     instanceId,
     interfaces,
     isLoading,
-    deleteErrorMessage,
-    deletePending,
-    deleteResultMessage,
+    ...deletion,
+    mailTestPendingId,
+    mailTestResult,
     saveErrorMessage,
     saveStatus: saveFeedback.status,
-    pendingDelete,
     pickerOpen,
     pickerType,
     refresh,
     setEditState,
-    cancelDelete: () => {
-      if (deletePending) return;
-      setDeleteErrorMessage(null);
-      setPendingDelete(null);
-    },
-    dismissDeleteResult: () => setDeleteResultMessage(null),
-    requestDelete: (entry: InstanceInterface) => {
-      setDeleteErrorMessage(null);
-      setDeleteResultMessage(null);
-      setPendingDelete(entry);
-    },
     setPickerOpen,
     setPickerType,
     markDraftDirty: saveFeedback.markDirty,
-    onConfirmDelete,
+    onTestMail,
     onConfirmType,
     onSaveDraft,
   };

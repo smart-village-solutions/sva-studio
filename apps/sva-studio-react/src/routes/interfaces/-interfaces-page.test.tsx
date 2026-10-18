@@ -8,10 +8,13 @@ const state = vi.hoisted(() => {
   const saveToken = () => undefined;
   const upsertToken = () => undefined;
   const deleteToken = () => undefined;
+  const testMailToken = () => undefined;
 
   return {
     deleteInterface: vi.fn(),
     deleteToken,
+    testMailInterface: vi.fn(),
+    testMailToken,
     listInterfaces: vi.fn(),
     listToken,
     saveMainserver: vi.fn(),
@@ -27,12 +30,14 @@ vi.mock('@tanstack/react-start', () => ({
     if (serverFn === state.saveToken) return state.saveMainserver;
     if (serverFn === state.upsertToken) return state.upsertInterface;
     if (serverFn === state.deleteToken) return state.deleteInterface;
+    if (serverFn === state.testMailToken) return state.testMailInterface;
     throw new Error('Unexpected server function token');
   },
 }));
 
 vi.mock('../../lib/interfaces-api', () => ({
   deleteInstanceInterfaceServerFn: state.deleteToken,
+  testMailInterfaceServerFn: state.testMailToken,
   listInstanceInterfacesServerFn: state.listToken,
   saveSvaMainserverInterfaceSettings: state.saveToken,
   upsertInstanceInterfaceServerFn: state.upsertToken,
@@ -107,6 +112,7 @@ const mailTransportEntry = {
   updatedAt: '2026-03-15T20:03:00.000Z',
   config: {
     transportId: 'mail-transport-1',
+    transportType: 'smtp',
     host: 'smtp.example.org',
     port: '587',
     securityMode: 'starttls',
@@ -161,6 +167,7 @@ const createListResponse = (
 describe('InterfacesPage', () => {
   beforeEach(() => {
     state.deleteInterface.mockReset();
+    state.testMailInterface.mockReset();
     state.listInterfaces.mockReset();
     state.saveMainserver.mockReset();
     state.upsertInterface.mockReset();
@@ -621,6 +628,43 @@ describe('InterfacesPage', () => {
     expect(screen.getAllByText('-').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Deaktiviert').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Fehler').length).toBeGreaterThan(0);
+  });
+
+  it('shows SMTP acceptance and a safe SMTP error for manual mail tests', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mailTransportEntry]));
+    state.testMailInterface
+      .mockResolvedValueOnce({ status: 'sent', recipient: 'actor@example.test' })
+      .mockResolvedValueOnce({ status: 'failed', reason: 'authentication' });
+
+    render(<InterfacesPage />);
+    await screen.findAllByRole('button', { name: 'Test-E-Mail an mich senden' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Test-E-Mail an mich senden' })[0]!);
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toContain('actor@example.test');
+    });
+    expect(state.testMailInterface).toHaveBeenCalledWith({
+      data: { instanceId: 'de-musterhausen', id: 'mail-transport-1', locale: 'de' },
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Test-E-Mail an mich senden' })[0]!);
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain('Anmeldung abgelehnt');
+    });
+  });
+
+  it('does not offer the SMTP test for a provider API mail transport', async () => {
+    state.listInterfaces.mockResolvedValue(
+      createListResponse([
+        {
+          ...mailTransportEntry,
+          config: { ...mailTransportEntry.config, transportType: 'provider_api' },
+        },
+      ])
+    );
+
+    render(<InterfacesPage />);
+    await screen.findAllByText('Zentraler Mailversand');
+    expect(screen.queryByRole('button', { name: 'Test-E-Mail an mich senden' })).toBeNull();
   });
 
   it('closes picker and edit dialogs through their cancel actions', async () => {

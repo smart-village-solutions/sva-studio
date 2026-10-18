@@ -31,6 +31,7 @@ export type InstanceInterfacePostgresqlConfig = Readonly<{
 
 export type InstanceInterfaceMailTransportConfig = Readonly<{
   transportId: string;
+  transportType?: string;
   host: string;
   port: string;
   securityMode: MailTransportSecurityMode;

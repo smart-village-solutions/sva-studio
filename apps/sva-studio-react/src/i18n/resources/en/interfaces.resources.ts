@@ -184,6 +184,24 @@ export const interfacesENResources = {
     refreshAfterDeleteError:
       'The interface was deleted, but the list could not be refreshed. Please reload.',
   },
+  mailTest: {
+    messageSubject: 'Email interface test',
+    messageBody: 'This test email was sent through the mail interface in SVA Studio.',
+    action: 'Send test email to me',
+    sending: 'Sending test email…',
+    sent: 'The SMTP server accepted the test email for {{recipient}}. Please check your inbox.',
+    errors: {
+      connection: 'The SMTP server is unreachable or the connection was interrupted.',
+      authentication: 'The SMTP server rejected the login.',
+      tls: 'The TLS connection to the SMTP server failed.',
+      rejected: 'The SMTP server rejected the test email.',
+      unknown: 'The test email could not be sent.',
+      disabled: 'The mail interface is disabled.',
+      recipientMissing: 'The signed-in account has no valid email address.',
+      invalidConfig: 'The mail interface has invalid SMTP or sender settings.',
+      secretMissing: 'The stored SMTP password is missing.',
+    },
+  },
   errors: {
     configNotFound: 'No mainserver configuration exists for this instance yet.',
     integrationDisabled: 'The mainserver integration is currently disabled.',

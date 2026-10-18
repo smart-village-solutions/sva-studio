@@ -114,6 +114,7 @@ describe('waste email reminder transport config loader', () => {
     const configs = await loadMailTransportConfigs(deps, 'instance-1');
 
     expect(configs.get('transport-smtp')).toBeDefined();
+    expect(configs.get('mail-transport-1')).toBe(configs.get('transport-smtp'));
     expect(configs.get('transport-api')).toBeDefined();
     expect(configs.get('transport-smtp')).toMatchObject({
       transportType: 'smtp',
@@ -156,7 +157,7 @@ describe('waste email reminder transport config loader', () => {
 
     const configs = await loadMailTransportConfigs(deps, 'instance-1');
 
-    expect([...configs.keys()]).toEqual(['transport-fallback']);
+    expect([...configs.keys()]).toEqual(['fallback-transport', 'transport-fallback']);
   });
 
   it('fails closed when secret payloads cannot be decrypted into an object', async () => {

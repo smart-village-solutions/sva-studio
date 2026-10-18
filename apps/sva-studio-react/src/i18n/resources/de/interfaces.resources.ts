@@ -52,6 +52,24 @@ export const interfacesDEResources = {
     refreshAfterDeleteError:
       'Die Schnittstelle wurde gelöscht, die Liste konnte aber nicht aktualisiert werden. Bitte neu laden.',
   },
+  mailTest: {
+    messageSubject: 'Test der E-Mail-Schnittstelle',
+    messageBody: 'Diese Test-E-Mail wurde über die Mail-Schnittstelle im SVA Studio versendet.',
+    action: 'Test-E-Mail an mich senden',
+    sending: 'Test-E-Mail wird gesendet…',
+    sent: 'Der SMTP-Server hat die Test-E-Mail an {{recipient}} angenommen. Bitte den Posteingang prüfen.',
+    errors: {
+      connection: 'Der SMTP-Server ist nicht erreichbar oder die Verbindung wurde unterbrochen.',
+      authentication: 'Der SMTP-Server hat die Anmeldung abgelehnt.',
+      tls: 'Die TLS-Verbindung zum SMTP-Server ist fehlgeschlagen.',
+      rejected: 'Der SMTP-Server hat die Test-E-Mail abgelehnt.',
+      unknown: 'Die Test-E-Mail konnte nicht versendet werden.',
+      disabled: 'Die Mail-Schnittstelle ist deaktiviert.',
+      recipientMissing: 'Für das angemeldete Konto ist keine gültige E-Mail-Adresse hinterlegt.',
+      invalidConfig: 'Die Mail-Schnittstelle hat keine gültigen SMTP- oder Absenderdaten.',
+      secretMissing: 'Für die SMTP-Anmeldung fehlt das gespeicherte Passwort.',
+    },
+  },
   errors: {
     configNotFound: 'Für diese Instanz ist noch keine Mainserver-Konfiguration hinterlegt.',
     integrationDisabled: 'Die Mainserver-Integration ist derzeit deaktiviert.',

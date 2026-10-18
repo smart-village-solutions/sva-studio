@@ -682,6 +682,38 @@ describe('public waste reminder action characterization', () => {
     });
   });
 
+  it('shows a calendar link without retaining the DOI token or location in the URL', async () => {
+    const harness = createReminderActionHarness({
+      activationResult: {
+        status: 'activated',
+        subscriptionId: 'subscription-1',
+        locationLabel: 'Perleberg, Ackerstr. 12',
+      },
+    });
+    const confirmation = await invokeReminderAction({
+      handler: harness.handler,
+      pathname: reminderActionConfig.doiConfirmPath,
+      query: { token: 'doi-token' },
+    });
+    const redirectUrl = new URL(confirmation!.headers.get('location')!);
+    expect(redirectUrl.searchParams.has('token')).toBe(false);
+    expect(redirectUrl.searchParams.has('location')).toBe(false);
+
+    const page = await invokeReminderAction({
+      handler: harness.handler,
+      pathname: redirectUrl.pathname,
+      query: {
+        ...Object.fromEntries(redirectUrl.searchParams),
+        location: '<script>address</script>',
+      },
+    });
+    const html = await page!.text();
+    expect(html).toContain('Ihre Erinnerung ist nun aktiv.');
+    expect(html).toContain('<a href="https://example.invalid">Abfallwirtschaft</a>');
+    expect(html).not.toContain('doi-token');
+    expect(html).not.toContain('address');
+  });
+
   it.each([
     { status: 'activated' as const, expectedText: 'Aktiviert' },
     { status: 'expired' as const, expectedText: 'Der Bestaetigungslink ist abgelaufen.' },

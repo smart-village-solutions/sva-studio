@@ -41,6 +41,9 @@ const formatPickupDateLabel = (pickupDate: string): string =>
 const renderTemplate = (template: string, values: Readonly<Record<string, string>>): string =>
   template.replace(templatePlaceholderPattern, (_match, rawKey: string) => values[rawKey] ?? '');
 
+const formatEmailLocationLabel = (value: string): string =>
+  value.replace(/Alle Straßen Alle Hausnummern$/u, 'alle Straßen und Hausnummern');
+
 const buildUnsubscribeUrl = (
   config: WasteManagementEmailReminderConfig,
   input: {
@@ -119,7 +122,7 @@ export const buildReminderDispatchPayload = (input: {
   const pickupDateLabel = formatPickupDateLabel(input.pickupDate);
   const values = {
     fractionName: input.fraction.name,
-    locationLabel: input.locationLabel,
+    locationLabel: formatEmailLocationLabel(input.locationLabel),
     pickupDate: pickupDateLabel,
     unsubscribeUrl,
   } as const;
@@ -145,7 +148,7 @@ export const buildReminderDispatchPayload = (input: {
       reasonText: renderTemplate(input.config.reminderReasonText ?? '', values),
       unsubscribeLabel: input.config.unsubscribeLinkLabel,
       unsubscribeUrl,
-      locationLabel: input.locationLabel,
+      locationLabel: values.locationLabel,
       pickupDate: pickupDateLabel,
       fractionName: input.fraction.name,
       ...(hintText ? { hintText } : {}),
@@ -242,7 +245,8 @@ type DoiTemplateContext = Readonly<{
       | 'privacyPolicyUrl'
       | 'imprintUrl'
       | 'serviceLabel'
-      | 'dataControllerLabel',
+      | 'dataControllerLabel'
+      | 'expiryHours',
       string
     >
   >;
@@ -262,11 +266,12 @@ const resolveDoiTemplateContext = (
     dataControllerLabel,
     values: {
       confirmUrl: templatePayload.confirmUrl ?? '',
-      locationLabel: templatePayload.locationLabel ?? '',
+      locationLabel: formatEmailLocationLabel(templatePayload.locationLabel ?? ''),
       privacyPolicyUrl: templatePayload.privacyPolicyUrl ?? '',
       imprintUrl: templatePayload.imprintUrl ?? '',
       serviceLabel: serviceLabel ?? '',
       dataControllerLabel: dataControllerLabel ?? '',
+      expiryHours: String(config.doiTokenTtlHours),
     },
   };
 };
@@ -285,8 +290,8 @@ const buildDoiText = (input: {
   joinMailTextSections([
     renderOptionalDoiTemplate(input.config.doiPreheader, input.templateContext.values),
     renderTemplate(input.config.doiIntroText, input.templateContext.values),
-    normalizeMailTextLine(input.templatePayload.locationLabel)
-      ? `Ort: ${input.templatePayload.locationLabel}`
+    normalizeMailTextLine(input.templateContext.values.locationLabel)
+      ? `Ort: ${input.templateContext.values.locationLabel}`
       : undefined,
     input.config.doiButtonLabel
       ? `${input.config.doiButtonLabel}: ${input.templatePayload.confirmUrl}`

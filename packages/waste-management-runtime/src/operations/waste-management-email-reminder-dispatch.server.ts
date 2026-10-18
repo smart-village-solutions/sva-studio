@@ -238,18 +238,15 @@ const resolveReminderReplyToAddresses = (
 type DoiTemplateContext = Readonly<{
   serviceLabel: string | undefined;
   dataControllerLabel: string | undefined;
-  values: Readonly<
-    Record<
-      | 'confirmUrl'
-      | 'locationLabel'
-      | 'privacyPolicyUrl'
-      | 'imprintUrl'
-      | 'serviceLabel'
-      | 'dataControllerLabel'
-      | 'expiryHours',
-      string
-    >
-  >;
+  values: Readonly<{
+    confirmUrl: string;
+    locationLabel: string;
+    privacyPolicyUrl: string;
+    imprintUrl: string;
+    serviceLabel: string;
+    dataControllerLabel: string;
+    expiryHours: string;
+  }>;
 }>;
 
 const resolveDoiTemplateContext = (

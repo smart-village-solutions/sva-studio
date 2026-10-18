@@ -2,12 +2,11 @@
 
 ## Ziel
 
-Pull Requests mit erkennbarer Nutzerwirkung erhalten einen verständlichen
-Studio-Changelog-Eintrag. Rein interne Refactorings und routinemäßige Updates
-benötigen keinen Eintrag. Ein Update mit sichtbarer Fehler- oder
-Sicherheitswirkung kann einen knappen Nutzereintrag erhalten.
+Studio-Changelog-Einträge sind optional. Sie können für Änderungen mit
+Nutzerwirkung erstellt werden, die in GitHub-Release-Notes erscheinen sollen.
+Rein interne Refactorings und routinemäßige Updates benötigen keinen Eintrag.
 
-## Pflichtformat
+## Format für vorhandene Einträge
 
 Die Datei liegt immer unter:
 
@@ -24,7 +23,6 @@ Beispiel:
 
 Verbindliche Regeln:
 
-- ein Eintrag für die aktuelle PR ist bei erkennbarer Nutzerwirkung erforderlich
 - ältere Changelog-Dateien dürfen im selben PR ergänzt, überarbeitet oder bei fehlendem Nutzerbezug entfernt werden
 - `prNumber` muss zur PR-Nummer passen
 - `body` darf nicht leer sein

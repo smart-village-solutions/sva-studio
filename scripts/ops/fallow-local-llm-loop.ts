@@ -261,12 +261,6 @@ export function publish(cwd: string, group: Group, branch: string, base: string)
   const number = pr?.number ?? Number(prUrl.match(/\/(\d+)\s*$/)?.[1]);
   if (!Number.isInteger(number)) throw new Error(`Could not parse PR URL: ${prUrl}`);
   record(group.id, { base, status: 'pr-opened', pr: number, branch, at: new Date().toISOString() });
-  const entry = `docs/changelog/entries/pr-${number}.json`;
-  mkdirSync(join(cwd, 'docs/changelog/entries'), { recursive: true });
-  if (!existsSync(join(cwd, entry))) writeFileSync(join(cwd, entry), `${JSON.stringify({ prNumber: number, body: 'Allgemeine Verbesserungen' }, null, 2)}\n`);
-  command(cwd, 'git', ['add', '--', entry]);
-  if (command(cwd, 'git', ['diff', '--cached', '--name-only'])) command(cwd, 'git', ['commit', '-m', `docs: add changelog entry for PR #${number}`]);
-  command(cwd, 'git', ['push', 'origin', `HEAD:${branch}`], 120_000);
   command(cwd, 'gh', ['pr', 'edit', String(number), '--add-label', 'local-llm']);
   const finalHead = command(cwd, 'git', ['rev-parse', 'HEAD']);
   const prHead = JSON.parse(command(cwd, 'gh', ['pr', 'view', String(number), '--json', 'headRefOid'])) as { headRefOid: string };

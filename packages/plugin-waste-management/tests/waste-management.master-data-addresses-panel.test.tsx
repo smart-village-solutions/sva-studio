@@ -205,7 +205,7 @@ describe('Waste master-data addresses panel', () => {
     expect(await screen.findByText('masterData.locationsWorkspace.addresses.previewError')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'confirm-address-delete' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.addresses.reloadPreview' }));
-    expect((await screen.findByRole('button', { name: 'confirm-address-delete' }) as HTMLButtonElement).disabled).toBe(false);
+    await vi.waitFor(() => expect((screen.getByRole('button', { name: 'confirm-address-delete' }) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole('button', { name: 'confirm-address-delete' }));
     await vi.waitFor(() => expect(api.deleteWasteAddressEntity).toHaveBeenCalledWith('region', 'region-1', 'fresh-token'));
   });

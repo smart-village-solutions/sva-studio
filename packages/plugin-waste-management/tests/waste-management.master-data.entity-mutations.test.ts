@@ -118,4 +118,68 @@ describe('waste master-data address entity mutations', () => {
       regionId: null, confirmationToken: 'confirmation-token',
     }));
   });
+
+  it('requires a preview token before moving a street or house number to another parent', async () => {
+    const form = document.createElement('form');
+    for (const [name, value] of [['cityId', 'city-2'], ['streetId', 'street-2']]) {
+      const input = document.createElement('input');
+      input.name = name;
+      input.value = value;
+      form.append(input);
+    }
+    const state = {
+      streetDialogMode: 'edit',
+      streetForm: { id: 'street-1', name: 'Nordstraße', cityId: 'city-1' },
+      houseNumberDialogMode: 'edit',
+      houseNumberForm: { id: 'house-1', number: '12a', streetId: 'street-1' },
+      overview: {
+        regions: [{ id: 'region-1', name: 'Nord' }, { id: 'region-2', name: 'Süd' }],
+        cities: [
+          { id: 'city-1', name: 'Nordstadt', postalCode: '19300', regionId: 'region-1' },
+          { id: 'city-2', name: 'Südstadt', postalCode: '19400', regionId: 'region-2' },
+        ],
+        streets: [
+          { id: 'street-1', name: 'Nordstraße', cityId: 'city-1' },
+          { id: 'street-2', name: 'Südstraße', cityId: 'city-2' },
+        ],
+        houseNumbers: [{ id: 'house-1', number: '12a', streetId: 'street-1' }],
+      },
+      setSaving: vi.fn(),
+      setMessage: vi.fn(),
+      setStreetDialogOpen: vi.fn(),
+      setHouseNumberDialogOpen: vi.fn(),
+    };
+    const handlers = createWasteMasterDataMutationHandlers({
+      state: state as never,
+      pt: (key) => key,
+      search: {} as never,
+      loadOverview: vi.fn(async () => undefined),
+      loadCollectionLocationList: vi.fn(async () => undefined),
+      selectedCollectionLocationIds: [],
+    });
+
+    await handlers.onSubmitStreet({ preventDefault: vi.fn(), currentTarget: form } as never);
+    await handlers.onSubmitHouseNumber({ preventDefault: vi.fn(), currentTarget: form } as never);
+
+    expect(apiMocks.updateWasteManagementStreet).not.toHaveBeenCalled();
+    expect(apiMocks.updateWasteManagementHouseNumber).not.toHaveBeenCalled();
+    expect(confirmWasteAddressMove).toHaveBeenCalledWith(expect.objectContaining({
+      entityType: 'street', targetParentId: 'city-2', sourceLabel: '19300 · Nordstadt · Nord',
+      targetLabel: '19400 · Südstadt · Süd',
+    }));
+    expect(confirmWasteAddressMove).toHaveBeenCalledWith(expect.objectContaining({
+      entityType: 'houseNumber', targetParentId: 'street-2', sourceLabel: 'Nordstraße · 19300 · Nordstadt · Nord',
+      targetLabel: 'Südstraße · 19400 · Südstadt · Süd',
+    }));
+    for (const [index, update] of [apiMocks.updateWasteManagementStreet, apiMocks.updateWasteManagementHouseNumber].entries()) {
+      const moveInput = vi.mocked(confirmWasteAddressMove).mock.calls[index]?.[0];
+      await moveInput?.save('confirmation-token');
+      expect(update).toHaveBeenCalledWith(index === 0 ? 'street-1' : 'house-1', expect.objectContaining({
+        confirmationToken: 'confirmation-token',
+      }));
+      moveInput?.closeDialog();
+    }
+    expect(state.setStreetDialogOpen).toHaveBeenCalledWith(false);
+    expect(state.setHouseNumberDialogOpen).toHaveBeenCalledWith(false);
+  });
 });

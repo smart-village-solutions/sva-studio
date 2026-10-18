@@ -25,10 +25,10 @@ const run = {
 };
 const jobs = [
   { name: 'Build', status: 'completed', conclusion: 'success' },
-  { name: 'Verify distribution images', status: 'completed', conclusion: 'success' },
+  { name: 'Verify Studio images', status: 'completed', conclusion: 'success' },
 ];
 const evidence = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   runId: 123,
   attempt: 2,
   controllerSha,
@@ -36,13 +36,33 @@ const evidence = {
   baseTag: expected.baseTag,
   ref: expected.ref,
   studioDigest: digest,
-  ssfDigest: `sha256:${'d'.repeat(64)}`,
   backupAgentDigest: `sha256:${'e'.repeat(64)}`,
 };
 
 describe('controlled hotfix Build evidence', () => {
-  it('binds the exact run attempt, controller, source and all three image digests', () => {
+  it('binds the exact run attempt, controller, source and both central image digests', () => {
     expect(verifyHotfixBuildEvidence(run, jobs, evidence, expected)).toEqual(evidence);
+  });
+
+  it('accepts a verified legacy artifact with its SSF digest', () => {
+    const legacy = {
+      ...evidence,
+      schemaVersion: 1,
+      ssfDigest: `sha256:${'d'.repeat(64)}`,
+    };
+    const legacyJobs = [jobs[0], { ...jobs[1], name: 'Verify distribution images' }];
+    expect(verifyHotfixBuildEvidence(run, legacyJobs, legacy, expected)).toEqual(legacy);
+  });
+
+  it('rejects an SSF digest in the new central-only artifact', () => {
+    expect(() =>
+      verifyHotfixBuildEvidence(
+        run,
+        jobs,
+        { ...evidence, ssfDigest: `sha256:${'d'.repeat(64)}` },
+        expected
+      )
+    ).toThrow();
   });
 
   it.each([

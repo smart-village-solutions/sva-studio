@@ -9,9 +9,12 @@ const shaPattern = /^[a-f0-9]{40}$/u;
 const digestPattern = /^sha256:[a-f0-9]{64}$/u;
 const tagPattern = /^studio-v\d+\.\d+\.\d+$/u;
 const refPattern = /^refs\/heads\/hotfix\/[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const verificationJobBySchema = {
+  1: 'Verify distribution images',
+  2: 'Verify Studio images',
+} as const;
 
-export type HotfixBuildEvidence = Readonly<{
-  schemaVersion: 1;
+type HotfixBuildEvidenceBase = Readonly<{
   runId: number;
   attempt: number;
   controllerSha: string;
@@ -19,9 +22,12 @@ export type HotfixBuildEvidence = Readonly<{
   baseTag: string;
   ref: string;
   studioDigest: string;
-  ssfDigest: string;
   backupAgentDigest: string;
 }>;
+
+export type HotfixBuildEvidence =
+  | (HotfixBuildEvidenceBase & Readonly<{ schemaVersion: 1; ssfDigest: string }>)
+  | (HotfixBuildEvidenceBase & Readonly<{ schemaVersion: 2 }>);
 
 type WorkflowRun = Readonly<{
   id?: number;
@@ -40,11 +46,16 @@ type WorkflowJob = Readonly<{
   conclusion?: string | null;
 }>;
 
+const matchesSsfDigestSchema = (data: Record<string, unknown>): boolean =>
+  data.schemaVersion === 1
+    ? digestPattern.test(String(data.ssfDigest))
+    : data.ssfDigest === undefined;
+
 export const parseHotfixBuildEvidence = (value: unknown): HotfixBuildEvidence => {
   if (!value || typeof value !== 'object') throw new Error('Hotfix-Build-Evidenz fehlt.');
   const data = value as Record<string, unknown>;
   if (
-    data.schemaVersion !== 1 ||
+    ![1, 2].includes(data.schemaVersion as number) ||
     !Number.isSafeInteger(data.runId) ||
     Number(data.runId) < 1 ||
     !Number.isSafeInteger(data.attempt) ||
@@ -54,7 +65,7 @@ export const parseHotfixBuildEvidence = (value: unknown): HotfixBuildEvidence =>
     !tagPattern.test(String(data.baseTag)) ||
     !refPattern.test(String(data.ref)) ||
     !digestPattern.test(String(data.studioDigest)) ||
-    !digestPattern.test(String(data.ssfDigest)) ||
+    !matchesSsfDigestSchema(data) ||
     !digestPattern.test(String(data.backupAgentDigest))
   ) {
     throw new Error('Hotfix-Build-Evidenz verletzt den Vertrag.');
@@ -95,7 +106,7 @@ export const verifyHotfixBuildEvidence = (
   ) {
     throw new Error('Hotfix-Build-Run und angeforderter Digest stimmen nicht überein.');
   }
-  for (const name of ['Build', 'Verify distribution images']) {
+  for (const name of ['Build', verificationJobBySchema[evidence.schemaVersion]]) {
     const matches = jobs.filter((job) => job.name === name);
     if (
       matches.length !== 1 ||
@@ -123,7 +134,7 @@ const runId = (value: string): number => {
 
 export const writeHotfixBuildEvidence = (env: NodeJS.ProcessEnv = process.env): string => {
   const evidence = parseHotfixBuildEvidence({
-    schemaVersion: 1,
+    schemaVersion: 2,
     runId: runId(required(env, 'GITHUB_RUN_ID')),
     attempt: runId(required(env, 'GITHUB_RUN_ATTEMPT')),
     controllerSha: required(env, 'HOTFIX_CONTROLLER_SHA'),
@@ -131,7 +142,6 @@ export const writeHotfixBuildEvidence = (env: NodeJS.ProcessEnv = process.env): 
     baseTag: required(env, 'HOTFIX_BASE_TAG'),
     ref: required(env, 'HOTFIX_REF'),
     studioDigest: required(env, 'HOTFIX_STUDIO_DIGEST'),
-    ssfDigest: required(env, 'HOTFIX_SSF_DIGEST'),
     backupAgentDigest: required(env, 'HOTFIX_BACKUP_AGENT_DIGEST'),
   });
   const path = resolve(

@@ -1,0 +1,112 @@
+name: Build SSF
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: build-ssf-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build SSF
+    runs-on: ubuntu-latest
+    outputs:
+      image_digest: ${{ steps.build_image.outputs.digest }}
+      source_sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - name: Require main source
+        run: test "${GITHUB_REF}" = 'refs/heads/main'
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Bind built source revision
+        id: source
+        env:
+          EXPECTED_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse --verify HEAD)"
+          test "${source_sha}" = "${EXPECTED_SOURCE_SHA}"
+          echo "sha=${source_sha}" >> "${GITHUB_OUTPUT}"
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Prepare source-bound Studio changelog for image build
+        run: pnpm exec tsx scripts/ci/generate-studio-changelog-artifact.ts --output apps/sva-studio-react/.generated/studio-changelog.json
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push SSF Docker image
+        id: build_image
+        uses: docker/build-push-action@v5
+        with:
+          build-args: |
+            SVA_IMAGE_REVISION=${{ steps.source.outputs.sha }}
+            SVA_STUDIO_DISTRIBUTION=ssf
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/smart-village-solutions/sva-studio-ssf:${{ steps.source.outputs.sha }}
+
+  verify-image:
+    name: Verify SSF image
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.build.outputs.source_sha }}
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify SSF image
+        run: |
+          image="ghcr.io/smart-village-solutions/sva-studio-ssf@${{ needs.build.outputs.image_digest }}"
+          docker pull "${image}"
+          bash scripts/ci/verify-studio-image.sh \
+            "${image}" artifacts/runtime/ssf-image-verify ssf "${{ needs.build.outputs.source_sha }}"
+
+      - name: Record verified SSF candidate
+        env:
+          SSF_IMAGE_DIGEST: ${{ needs.build.outputs.image_digest }}
+          SSF_SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
+        run: |
+          printf 'Verified SSF candidate\n\nSource: `%s`\nImage: `ghcr.io/smart-village-solutions/sva-studio-ssf@%s`\n' \
+            "${SSF_SOURCE_SHA}" "${SSF_IMAGE_DIGEST}" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload image verification reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ssf-image-verify-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/runtime/ssf-image-verify
+          if-no-files-found: warn
+          retention-days: 14

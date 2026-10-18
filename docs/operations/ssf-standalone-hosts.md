@@ -249,8 +249,10 @@ Die Cutover-Schritte oben betreffen den Wechsel vom Standard-Studio zur
 SSF-Distribution. Für einen SSF-zu-SSF-Patch ohne Schema-, Queue- oder
 Host-/Issuer-Änderung werden stattdessen der aktuelle Live-Digest, die
 betroffenen Dienste und noch verarbeitbare Provisionierungsaufträge lesend
-geprüft. Der neue Digest muss zum Release-Commit und zur SSF-Distribution
-passen und die Image-Verifikation bestehen. Vor dem Update liegen eine
+geprüft. Der neue Digest stammt aus einem terminal erfolgreichen, manuell auf
+`main` gestarteten [Build SSF](../../.github/workflows/build-ssf.yml). Run,
+Quellcommit, Digest, OCI-Revision und SSF-Distribution müssen zum freigegebenen
+Release passen; die Image-Verifikation muss erfolgreich sein. Vor dem Update liegen eine
 aktuelle, auf Lesbarkeit geprüfte Sicherung der betroffenen Daten und
 Konfiguration sowie ein Rückweg zum bisherigen Digest vor; neue Schreibvorgänge
 werden bei dessen Bewertung berücksichtigt. App und Provisioner starten mit

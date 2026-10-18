@@ -136,10 +136,23 @@ export const createPublicWasteRuntime = async (input: {
         return method === 'HEAD' ? toHeadResponse(response) : response;
       }
 
+      const legacyReminderConfig =
+        bootstrapState.status === 'ready' ? bootstrapState.config.emailReminderConfig : undefined;
+      const legacyReminderPagePath =
+        legacyReminderConfig &&
+        [
+          legacyReminderConfig.doiConfirmPath,
+          legacyReminderConfig.unsubscribePath,
+          legacyReminderConfig.signupSuccessPath,
+          legacyReminderConfig.activationSuccessPath,
+          legacyReminderConfig.unsubscribeSuccessPath,
+          legacyReminderConfig.invalidTokenPath,
+        ].includes(url.pathname);
       const needsReminderSettings =
         url.pathname === '/api/public-waste/calendar' ||
         url.pathname.startsWith('/api/public-waste/reminder-signups') ||
-        url.pathname.startsWith('/email-reminders/');
+        url.pathname.startsWith('/email-reminders/') ||
+        Boolean(legacyReminderPagePath);
       const reminderSettings =
         repositoryHandle && needsReminderSettings
           ? await loadPublicWasteEmailReminderSettings(repositoryHandle).catch(() => {
@@ -151,13 +164,13 @@ export const createPublicWasteRuntime = async (input: {
             })
           : null;
       const requestBootstrapState =
-        bootstrapState.status === 'ready' && reminderSettings
+        bootstrapState.status === 'ready' && repositoryHandle && needsReminderSettings
           ? {
               ...bootstrapState,
               config: {
                 ...bootstrapState.config,
-                emailReminderConfig: reminderSettings.config,
-                emailReminderSigningSecret: reminderSettings.signingSecret,
+                emailReminderConfig: reminderSettings?.config,
+                emailReminderSigningSecret: reminderSettings?.signingSecret,
               },
             }
           : bootstrapState;

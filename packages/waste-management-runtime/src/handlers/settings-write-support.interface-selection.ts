@@ -26,20 +26,24 @@ export const resolveTargetInterfaceRecord = (
   const explicitMatch = selectedInterfaceId
     ? (interfaceRecords.find((record) => record.id === selectedInterfaceId) ?? null)
     : null;
-  if (explicitMatch) {
-    return explicitMatch;
+  if (selectedInterfaceId) {
+    return explicitMatch?.typeKey === 'postgresql' ? explicitMatch : null;
   }
 
   if (current.selectedInterfaceId) {
     const currentMatch = interfaceRecords.find(
       (record) => record.id === current.selectedInterfaceId
     );
-    if (currentMatch) {
+    if (currentMatch?.typeKey === 'postgresql') {
       return currentMatch;
     }
   }
 
-  return interfaceRecords.find((record) => isWasteManagementInterfaceSelected(record)) ?? null;
+  return (
+    interfaceRecords.find(
+      (record) => record.typeKey === 'postgresql' && isWasteManagementInterfaceSelected(record)
+    ) ?? null
+  );
 };
 
 const createInterfaceSettingsRecord = (

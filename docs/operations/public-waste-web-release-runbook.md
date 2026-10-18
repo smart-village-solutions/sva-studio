@@ -34,6 +34,9 @@ Tenant-Migration `20261018_01_add_waste_email_reminder_settings` angewandt
 haben. Nach dem Rollout der Studio- und Public-Waste-Version die bereits
 gespeicherten Waste-Einstellungen in Studio einmal erneut speichern, damit
 Konfiguration und Signierschlüssel in die Tenant-Datenbank projiziert werden.
+Fehlt die Projektion, ihr Signierschlüssel oder der Datenbankzugriff, bleiben
+Anmeldung und Reminder-Seiten auch bei gesetzter Legacy-Umgebungsvariable
+deaktiviert.
 Danach die Anmeldemöglichkeit an einem Standort mit aktivierter
 E-Mail-Fraktion und eine echte Double-Opt-In-Mail prüfen.
 

@@ -279,6 +279,42 @@ describe('waste-management settings write support', () => {
     expect(emitWasteAuditEventMock).not.toHaveBeenCalled();
   });
 
+  it('rejects a non-PostgreSQL reminder target before writing either store', async () => {
+    const objectStorage = createInterfaceRecord({
+      id: 'storage-1',
+      typeKey: 's3',
+      category: 'object_storage',
+      statusCheckKind: 's3',
+      publicConfig: {},
+    });
+    const saveExternalInterfaceRecord = vi.fn(async () => undefined);
+    const saveWastePdfStaticSettings = vi.fn(async () => undefined);
+    loadConfiguredWasteSettingsMock.mockResolvedValue(createSettings());
+
+    const response = await updateWasteManagementSettingsAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord(), objectStorage]),
+        saveExternalInterfaceRecord,
+        saveWastePdfStaticSettings,
+      },
+      ctx: actor,
+      instanceId: 'tenant-a',
+      requestId: 'req-1',
+      input: {
+        schemaName: 'wm',
+        enabled: true,
+        selectedInterfaceId: 'storage-1',
+        emailReminderConfig: createEmailReminderConfig(),
+        customRecurrencePresets: [],
+        deletedPresetFallbacks: {},
+      },
+    });
+
+    expect(response.status).toBe(400);
+    expect(saveExternalInterfaceRecord).not.toHaveBeenCalled();
+    expect(saveWastePdfStaticSettings).not.toHaveBeenCalled();
+  });
+
   it('rejects updates that change interface-managed PostgreSQL fields', async () => {
     loadConfiguredWasteSettingsMock.mockResolvedValue(createSettings());
     const saveExternalInterfaceRecord = vi.fn(async () => undefined);

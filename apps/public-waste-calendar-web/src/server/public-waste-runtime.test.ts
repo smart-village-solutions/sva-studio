@@ -80,22 +80,27 @@ describe('public waste runtime', () => {
       .mockResolvedValueOnce({
         rowCount: 1,
         rows: [{ email_reminder_config: reminderConfig, email_reminder_signing_secret: null }],
-      });
-    const loadReminderOptions = vi
-      .fn()
-      .mockResolvedValue([
-        {
-          id: 'bio',
-          label: 'Bioabfall',
-          slots: [{ id: 'first', maxLeadDays: 2, defaultLeadDays: 1 }],
-        },
-      ]);
+      })
+      .mockRejectedValueOnce(new Error('tenant settings unavailable'));
+    const loadReminderOptions = vi.fn().mockResolvedValue([
+      {
+        id: 'bio',
+        label: 'Bioabfall',
+        slots: [{ id: 'first', maxLeadDays: 2, defaultLeadDays: 1 }],
+      },
+    ]);
     const runtime = await createPublicWasteRuntime({
       assetsDir,
       env: {
-        PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz',
-        PUBLIC_WASTE_DATABASE_URL: databaseUrlFor('bb-prignitz'),
-        PUBLIC_WASTE_SCHEMA_NAME: 'public',
+        PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
+          instanceId: 'bb-prignitz',
+          database: {
+            databaseUrl: databaseUrlFor('bb-prignitz'),
+            schemaName: 'public',
+          },
+          emailReminderConfig: reminderConfig,
+          emailReminderSigningSecret: 'legacy-secret',
+        }),
       },
       createRepository: async () => ({
         repository: {
@@ -117,6 +122,7 @@ describe('public waste runtime', () => {
     const active = await runtime.handle(new Request(calendarUrl));
     const inactive = await runtime.handle(new Request(calendarUrl));
     const missingSecret = await runtime.handle(new Request(calendarUrl));
+    const unavailable = await runtime.handle(new Request(calendarUrl));
 
     expect(active.status).toBe(200);
     const activeCalendar = await active.json();
@@ -128,7 +134,9 @@ describe('public waste runtime', () => {
     expect((await inactive.json()).reminderSignup).toBeUndefined();
     expect(missingSecret.status).toBe(200);
     expect((await missingSecret.json()).reminderSignup).toBeUndefined();
-    expect(query).toHaveBeenCalledTimes(3);
+    expect(unavailable.status).toBe(200);
+    expect((await unavailable.json()).reminderSignup).toBeUndefined();
+    expect(query).toHaveBeenCalledTimes(4);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('FROM waste_settings'), []);
     await runtime.dispose();
   });
@@ -398,6 +406,36 @@ describe('public waste runtime', () => {
   it('renders the DOI activation page for configured reminder paths', async () => {
     const assetsDir = await createAssetsDir();
     cleanupPaths.add(assetsDir);
+    const reminderConfig = {
+      enabled: true,
+      publicSignupEnabled: true,
+      transportId: 'mail-1',
+      publicBaseUrl: 'https://example.invalid',
+      doiConfirmPath: '/erinnerungen/bestaetigen',
+      unsubscribePath: '/erinnerungen/abmelden',
+      fromName: 'Abfallwirtschaft',
+      fromEmail: 'abfall@example.invalid',
+      privacyPolicyUrl: 'https://example.invalid/datenschutz',
+      imprintUrl: 'https://example.invalid/impressum',
+      consentLabel: 'Ich stimme zu.',
+      consentVersion: 'v1',
+      doiSubjectTemplate: 'Bitte bestaetigen',
+      doiIntroText: 'Bitte bestaetigen.',
+      doiButtonLabel: 'Bestaetigen',
+      doiSuccessHeadline: 'Aktiviert',
+      doiSuccessBody: 'Ihre Erinnerung ist aktiv.',
+      reminderSubjectTemplate: 'Erinnerung',
+      reminderIntroTemplate: 'Nicht vergessen.',
+      unsubscribeLinkLabel: 'Abmelden',
+      unsubscribeSuccessHeadline: 'Abgemeldet',
+      unsubscribeSuccessBody: 'Sie erhalten keine weiteren E-Mails.',
+      maxSubscriptionsPerEmailAndLocation: 3,
+      signupRateLimitPerIpPerHour: 10,
+      signupRateLimitPerEmailPerHour: 3,
+      doiTokenTtlHours: 24,
+      pendingSubscriptionTtlHours: 48,
+      materializationLookaheadDays: 7,
+    };
 
     const poolConnect = vi.fn().mockResolvedValue({
       query: vi
@@ -429,36 +467,7 @@ describe('public waste runtime', () => {
             databaseUrl: databaseUrlFor('bb-prignitz'),
             schemaName: 'public',
           },
-          emailReminderConfig: {
-            enabled: true,
-            publicSignupEnabled: true,
-            transportId: 'mail-1',
-            publicBaseUrl: 'https://example.invalid',
-            doiConfirmPath: '/erinnerungen/bestaetigen',
-            unsubscribePath: '/erinnerungen/abmelden',
-            fromName: 'Abfallwirtschaft',
-            fromEmail: 'abfall@example.invalid',
-            privacyPolicyUrl: 'https://example.invalid/datenschutz',
-            imprintUrl: 'https://example.invalid/impressum',
-            consentLabel: 'Ich stimme zu.',
-            consentVersion: 'v1',
-            doiSubjectTemplate: 'Bitte bestaetigen',
-            doiIntroText: 'Bitte bestaetigen.',
-            doiButtonLabel: 'Bestaetigen',
-            doiSuccessHeadline: 'Aktiviert',
-            doiSuccessBody: 'Ihre Erinnerung ist aktiv.',
-            reminderSubjectTemplate: 'Erinnerung',
-            reminderIntroTemplate: 'Nicht vergessen.',
-            unsubscribeLinkLabel: 'Abmelden',
-            unsubscribeSuccessHeadline: 'Abgemeldet',
-            unsubscribeSuccessBody: 'Sie erhalten keine weiteren E-Mails.',
-            maxSubscriptionsPerEmailAndLocation: 3,
-            signupRateLimitPerIpPerHour: 10,
-            signupRateLimitPerEmailPerHour: 3,
-            doiTokenTtlHours: 24,
-            pendingSubscriptionTtlHours: 48,
-            materializationLookaheadDays: 7,
-          },
+          emailReminderConfig: reminderConfig,
         }),
       },
       createRepository: async () => ({
@@ -471,6 +480,26 @@ describe('public waste runtime', () => {
           loadReminderOptions: vi.fn(),
         },
         pool: {
+          query: vi
+            .fn()
+            .mockResolvedValueOnce({
+              rowCount: 1,
+              rows: [
+                {
+                  email_reminder_config: reminderConfig,
+                  email_reminder_signing_secret: 'projected-secret',
+                },
+              ],
+            })
+            .mockResolvedValueOnce({
+              rowCount: 1,
+              rows: [
+                {
+                  email_reminder_config: reminderConfig,
+                  email_reminder_signing_secret: null,
+                },
+              ],
+            }),
           connect: poolConnect,
         } as never,
         schemaName: 'public',
@@ -484,6 +513,11 @@ describe('public waste runtime', () => {
 
     expect(response.status).toBe(200);
     await expect(response.text()).resolves.toContain('Aktiviert');
+    const invalidProjection = await runtime.handle(
+      new Request('http://localhost/erinnerungen/bestaetigen?token=confirm-token')
+    );
+    expect(await invalidProjection.text()).not.toContain('Aktiviert');
+    expect(poolConnect).toHaveBeenCalledTimes(1);
 
     await runtime.dispose();
   });
@@ -491,6 +525,36 @@ describe('public waste runtime', () => {
   it('enforces the reminder subscription cap inside the signup transaction with an advisory lock', async () => {
     const assetsDir = await createAssetsDir();
     cleanupPaths.add(assetsDir);
+    const projectedReminderConfig = {
+      enabled: true,
+      publicSignupEnabled: true,
+      transportId: 'mail-1',
+      publicBaseUrl: 'https://example.invalid',
+      doiConfirmPath: '/erinnerungen/bestaetigen',
+      unsubscribePath: '/erinnerungen/abmelden',
+      fromName: 'Abfallwirtschaft',
+      fromEmail: 'abfall@example.invalid',
+      privacyPolicyUrl: 'https://example.invalid/datenschutz',
+      imprintUrl: 'https://example.invalid/impressum',
+      consentLabel: 'Ich stimme zu.',
+      consentVersion: 'v1',
+      doiSubjectTemplate: 'Bitte bestaetigen',
+      doiIntroText: 'Bitte bestaetigen.',
+      doiButtonLabel: 'Bestaetigen',
+      doiSuccessHeadline: 'Aktiviert',
+      doiSuccessBody: 'Ihre Erinnerung ist aktiv.',
+      reminderSubjectTemplate: 'Erinnerung',
+      reminderIntroTemplate: 'Nicht vergessen.',
+      unsubscribeLinkLabel: 'Abmelden',
+      unsubscribeSuccessHeadline: 'Abgemeldet',
+      unsubscribeSuccessBody: 'Sie erhalten keine weiteren E-Mails.',
+      maxSubscriptionsPerEmailAndLocation: 3,
+      signupRateLimitPerIpPerHour: 10,
+      signupRateLimitPerEmailPerHour: 3,
+      doiTokenTtlHours: 24,
+      pendingSubscriptionTtlHours: 48,
+      materializationLookaheadDays: 7,
+    };
 
     const query = vi
       .fn()
@@ -513,36 +577,7 @@ describe('public waste runtime', () => {
             databaseUrl: databaseUrlFor('bb-prignitz'),
             schemaName: 'public',
           },
-          emailReminderConfig: {
-            enabled: true,
-            publicSignupEnabled: true,
-            transportId: 'mail-1',
-            publicBaseUrl: 'https://example.invalid',
-            doiConfirmPath: '/erinnerungen/bestaetigen',
-            unsubscribePath: '/erinnerungen/abmelden',
-            fromName: 'Abfallwirtschaft',
-            fromEmail: 'abfall@example.invalid',
-            privacyPolicyUrl: 'https://example.invalid/datenschutz',
-            imprintUrl: 'https://example.invalid/impressum',
-            consentLabel: 'Ich stimme zu.',
-            consentVersion: 'v1',
-            doiSubjectTemplate: 'Bitte bestaetigen',
-            doiIntroText: 'Bitte bestaetigen.',
-            doiButtonLabel: 'Bestaetigen',
-            doiSuccessHeadline: 'Aktiviert',
-            doiSuccessBody: 'Ihre Erinnerung ist aktiv.',
-            reminderSubjectTemplate: 'Erinnerung',
-            reminderIntroTemplate: 'Nicht vergessen.',
-            unsubscribeLinkLabel: 'Abmelden',
-            unsubscribeSuccessHeadline: 'Abgemeldet',
-            unsubscribeSuccessBody: 'Sie erhalten keine weiteren E-Mails.',
-            maxSubscriptionsPerEmailAndLocation: 3,
-            signupRateLimitPerIpPerHour: 10,
-            signupRateLimitPerEmailPerHour: 3,
-            doiTokenTtlHours: 24,
-            pendingSubscriptionTtlHours: 48,
-            materializationLookaheadDays: 7,
-          },
+          emailReminderConfig: projectedReminderConfig,
         }),
       },
       createRepository: async () => ({
@@ -561,6 +596,15 @@ describe('public waste runtime', () => {
           ]),
         },
         pool: {
+          query: vi.fn().mockResolvedValue({
+            rowCount: 1,
+            rows: [
+              {
+                email_reminder_config: projectedReminderConfig,
+                email_reminder_signing_secret: 'projected-secret',
+              },
+            ],
+          }),
           connect: poolConnect,
         } as never,
         schemaName: 'public',

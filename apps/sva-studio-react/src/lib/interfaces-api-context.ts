@@ -27,6 +27,7 @@ export type AuthenticatedInterfacesUser = {
   readonly id: string;
   readonly instanceId?: string;
   readonly roles: string[];
+  readonly email?: string;
 };
 
 export type AuthenticatedInterfacesContext = {
@@ -44,7 +45,11 @@ export type SaveInterfacesDependencies = InterfacesRequestDependencies & {
 };
 
 export type InterfacesOperation =
-  'list_interfaces' | 'save_interfaces_settings' | 'upsert_interface' | 'delete_interface';
+  | 'list_interfaces'
+  | 'save_interfaces_settings'
+  | 'upsert_interface'
+  | 'delete_interface'
+  | 'test_mail_interface';
 
 export const loadInterfacesRequestDependencies = async (
   request?: Request

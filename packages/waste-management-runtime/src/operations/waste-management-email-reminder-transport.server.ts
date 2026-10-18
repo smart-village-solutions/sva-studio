@@ -145,12 +145,16 @@ export const loadMailTransportConfigs = async (
   if (deps.listInterfaceRecords) {
     if (!deps.revealSecret) throw new Error('waste_secret_reveal_unavailable');
     const records = await deps.listInterfaceRecords(instanceId);
-    return new Map(
-      records
-        .filter((record) => record.typeKey === 'mail_transport')
-        .map((record) => readMailTransportConfigFromRecord(record, deps.revealSecret!))
-        .flatMap((record) => (record ? [[record.transportId, record] as const] : [])),
-    );
+    const transports = records
+      .filter((record) => record.typeKey === 'mail_transport')
+      .flatMap((record) => {
+        const config = readMailTransportConfigFromRecord(record, deps.revealSecret!);
+        return config ? [{ id: record.id, config }] : [];
+      });
+    return new Map([
+      ...transports.map(({ config }) => [config.transportId, config] as const),
+      ...transports.map(({ id, config }) => [id, config] as const),
+    ]);
   }
 
   const fallback = await deps.loadDefaultInterfaceRecord?.(instanceId, 'mail_transport');
@@ -158,5 +162,5 @@ export const loadMailTransportConfigs = async (
   const config = fallback && deps.revealSecret
     ? readMailTransportConfigFromRecord(fallback, deps.revealSecret)
     : null;
-  return new Map(config ? [[config.transportId, config] as const] : []);
+  return new Map(fallback && config ? [[fallback.id, config], [config.transportId, config]] as const : []);
 };

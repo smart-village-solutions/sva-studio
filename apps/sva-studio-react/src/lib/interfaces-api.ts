@@ -34,6 +34,7 @@ import {
   resolveAvailableInterfaceTypes,
 } from './interfaces-api-list';
 import type { InstanceInterface, InstanceInterfaceDraft } from './instance-interfaces';
+import type { MailTestResult } from './instance-interface-mail-test.server';
 
 type InterfacesOverviewModel = SvaMainserverInterfacesOverview;
 
@@ -183,6 +184,52 @@ export const upsertInstanceInterfaceForRequest = async (
 export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' })
   .inputValidator((data: UpsertInstanceInterfaceInput) => data)
   .handler(async ({ data }): Promise<InstanceInterface> => upsertInstanceInterfaceForRequest(data));
+
+type TestMailInterfaceInput = Readonly<{ instanceId?: string; id: string }>;
+
+export const testMailInterfaceForRequest = async (
+  data: TestMailInterfaceInput,
+  request?: Request
+): Promise<MailTestResult> => {
+  if (
+    !data || typeof data.id !== 'string' || !data.id.trim() ||
+    (data.instanceId !== undefined && typeof data.instanceId !== 'string')
+  ) throw new Error('invalid_config');
+  const dependencies = await loadInterfacesRequestDependencies(request);
+  return runWithAuthenticatedInterfacesUser({
+    request: dependencies.request,
+    fallbackMessage: 'Test-E-Mail konnte nicht versendet werden.',
+    run: async (ctx) => {
+      await validateInterfaceMutationCsrf(dependencies.request);
+      const instanceId = await resolveAuthorizedInterfacesInstanceId(
+        dependencies.logger,
+        ctx,
+        'test_mail_interface',
+        data.instanceId
+      );
+      const { loadExternalInterfaceRecordById } = await import('@sva/data-repositories/server');
+      const record = await loadExternalInterfaceRecordById(instanceId, data.id);
+      if (!record || record.typeKey !== 'mail_transport' || record.ownerKind !== 'host') {
+        throw new Error('interface_not_found');
+      }
+      const { sendMailTransportTest } = await import('./instance-interface-mail-test.server.js');
+      const result = await sendMailTransportTest({ record, recipient: ctx.user.email ?? '' });
+      dependencies.logger.info('Mail interface test completed', {
+        operation: 'test_mail_interface',
+        workspace_id: instanceId,
+        interface_id: record.id,
+        user_id: ctx.user.id,
+        result: result.status,
+        ...(result.status === 'failed' ? { reason: result.reason } : {}),
+      });
+      return result;
+    },
+  });
+};
+
+export const testMailInterfaceServerFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: TestMailInterfaceInput) => data)
+  .handler(async ({ data }): Promise<MailTestResult> => testMailInterfaceForRequest(data));
 
 type DeleteInstanceInterfaceInput = Readonly<{
   instanceId?: string;

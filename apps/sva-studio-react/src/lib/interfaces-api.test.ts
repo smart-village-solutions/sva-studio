@@ -6,6 +6,8 @@ const state = vi.hoisted(() => ({
   loadSvaMainserverSettings: vi.fn(),
   listStoredInterfaces: vi.fn(),
   loadInstanceById: vi.fn(),
+  loadExternalInterfaceRecordById: vi.fn(),
+  sendMailTransportTest: vi.fn(),
   upsertStoredInterface: vi.fn(),
   getStoredInterface: vi.fn(),
   deleteStoredInterface: vi.fn(),
@@ -61,6 +63,11 @@ vi.mock('@sva/server-runtime', () => ({
 
 vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceById: state.loadInstanceById,
+  loadExternalInterfaceRecordById: state.loadExternalInterfaceRecordById,
+}));
+
+vi.mock('./instance-interface-mail-test.server.js', () => ({
+  sendMailTransportTest: state.sendMailTransportTest,
 }));
 
 vi.mock('./instance-interfaces-server.js', () => ({
@@ -81,6 +88,7 @@ describe('interfaces app adapter', () => {
     id: string;
     instanceId?: string;
     roles: string[];
+    email?: string;
   };
 
   const defaultUser: TestUser = {
@@ -103,6 +111,8 @@ describe('interfaces app adapter', () => {
     state.loadSvaMainserverInterfacesOverview.mockReset();
     state.listStoredInterfaces.mockReset();
     state.loadInstanceById.mockReset();
+    state.loadExternalInterfaceRecordById.mockReset();
+    state.sendMailTransportTest.mockReset();
     state.upsertStoredInterface.mockReset();
     state.getStoredInterface.mockReset();
     state.deleteStoredInterface.mockReset();
@@ -565,6 +575,44 @@ describe('interfaces app adapter', () => {
     ).rejects.toMatchObject({ message: 'csrf_validation_failed', statusCode: 403 });
 
     expect(state.upsertStoredInterface).not.toHaveBeenCalled();
+  });
+
+  it('sends interface tests only to the authenticated user after tenant authorization', async () => {
+    setAuthenticatedUserContext({ ...defaultUser, email: 'actor@example.test' });
+    const record = { id: 'mail-1', typeKey: 'mail_transport', ownerKind: 'host' };
+    state.loadExternalInterfaceRecordById.mockResolvedValue(record);
+    state.sendMailTransportTest.mockResolvedValue({ status: 'sent', recipient: 'actor@example.test' });
+    const { testMailInterfaceForRequest } = await import('./interfaces-api');
+
+    await expect(testMailInterfaceForRequest({ instanceId: 'de-musterhausen', id: 'mail-1' }, state.request))
+      .resolves.toEqual({ status: 'sent', recipient: 'actor@example.test' });
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'integration.manage' })
+    );
+    expect(state.sendMailTransportTest).toHaveBeenCalledWith({ record, recipient: 'actor@example.test' });
+  });
+
+  it('rejects cross-tenant and non-mail interface test requests before sending', async () => {
+    setAuthenticatedUserContext({ ...defaultUser, email: 'actor@example.test' });
+    const { testMailInterfaceForRequest } = await import('./interfaces-api');
+    await expect(testMailInterfaceForRequest({ instanceId: 'other-tenant', id: 'mail-1' }, state.request))
+      .rejects.toMatchObject({ message: 'forbidden' });
+    state.loadExternalInterfaceRecordById.mockResolvedValue({ id: 's3-1', typeKey: 's3', ownerKind: 'host' });
+    await expect(testMailInterfaceForRequest({ id: 's3-1' }, state.request))
+      .rejects.toMatchObject({ message: 'interface_not_found' });
+    state.loadExternalInterfaceRecordById.mockResolvedValue({ id: 'managed-mail', typeKey: 'mail_transport', ownerKind: 'plugin' });
+    await expect(testMailInterfaceForRequest({ id: 'managed-mail' }, state.request))
+      .rejects.toMatchObject({ message: 'interface_not_found' });
+    expect(state.sendMailTransportTest).not.toHaveBeenCalled();
+  });
+
+  it('requires a CSRF token for the mail test action', async () => {
+    setAuthenticatedUserContext({ ...defaultUser, email: 'actor@example.test' });
+    state.validateCsrf.mockReturnValueOnce(new Response(null, { status: 403 }));
+    const { testMailInterfaceForRequest } = await import('./interfaces-api');
+    await expect(testMailInterfaceForRequest({ id: 'mail-1' }, state.request))
+      .rejects.toMatchObject({ message: 'csrf_validation_failed', statusCode: 403 });
+    expect(state.loadExternalInterfaceRecordById).not.toHaveBeenCalled();
   });
 
   it('skips browser CSRF validation for a bearer request already accepted by auth middleware', async () => {

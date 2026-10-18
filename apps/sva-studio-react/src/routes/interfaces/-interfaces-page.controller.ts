@@ -9,6 +9,7 @@ import {
   deleteInstanceInterfaceServerFn,
   listInstanceInterfacesServerFn,
   saveSvaMainserverInterfaceSettings,
+  testMailInterfaceServerFn,
   upsertInstanceInterfaceServerFn,
 } from '../../lib/interfaces-api';
 import {
@@ -126,6 +127,14 @@ export const translateInterfacesErrorMessage = (error: unknown, fallback: string
       return t('interfaces.errors.supabaseRequiresWasteManagementModule');
     case 'secret_unreadable':
       return t('interfaces.errors.secretUnreadable');
+    case 'mail_test_disabled':
+      return t('interfaces.mailTest.errors.disabled');
+    case 'mail_test_recipient_missing':
+      return t('interfaces.mailTest.errors.recipientMissing');
+    case 'mail_test_invalid_config':
+      return t('interfaces.mailTest.errors.invalidConfig');
+    case 'mail_test_secret_missing':
+      return t('interfaces.mailTest.errors.secretMissing');
     case 'forbidden':
       return t('interfaces.errors.forbidden');
     case 'invalid_config':
@@ -151,26 +160,35 @@ const useServerFnRefs = () => {
   const saveMainserver = useServerFn(saveSvaMainserverInterfaceSettings);
   const upsertInterface = useServerFn(upsertInstanceInterfaceServerFn);
   const deleteInterface = useServerFn(deleteInstanceInterfaceServerFn);
+  const testMailInterface = useServerFn(testMailInterfaceServerFn);
   const listInterfacesRef = React.useRef(listInterfaces);
   const saveMainserverRef = React.useRef(saveMainserver);
   const upsertInterfaceRef = React.useRef(upsertInterface);
   const deleteInterfaceRef = React.useRef(deleteInterface);
+  const testMailInterfaceRef = React.useRef(testMailInterface);
   listInterfacesRef.current = listInterfaces;
   saveMainserverRef.current = saveMainserver;
   upsertInterfaceRef.current = upsertInterface;
   deleteInterfaceRef.current = deleteInterface;
+  testMailInterfaceRef.current = testMailInterface;
 
   return {
     listInterfacesRef,
     saveMainserverRef,
     upsertInterfaceRef,
     deleteInterfaceRef,
+    testMailInterfaceRef,
   };
 };
 
 export const useInterfacesPageController = () => {
-  const { listInterfacesRef, saveMainserverRef, upsertInterfaceRef, deleteInterfaceRef } =
-    useServerFnRefs();
+  const {
+    listInterfacesRef,
+    saveMainserverRef,
+    upsertInterfaceRef,
+    deleteInterfaceRef,
+    testMailInterfaceRef,
+  } = useServerFnRefs();
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
@@ -185,6 +203,11 @@ export const useInterfacesPageController = () => {
   const [deletePending, setDeletePending] = React.useState(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
   const [deleteResultMessage, setDeleteResultMessage] = React.useState<string | null>(null);
+  const [mailTestPendingId, setMailTestPendingId] = React.useState<string | null>(null);
+  const [mailTestResult, setMailTestResult] = React.useState<{
+    kind: 'success' | 'error';
+    message: string;
+  } | null>(null);
   const saveFeedback = useStudioSaveFeedback();
 
   const refresh = React.useCallback(
@@ -312,6 +335,30 @@ export const useInterfacesPageController = () => {
     }
   };
 
+  const onTestMail = async (entry: InstanceInterface) => {
+    if (entry.type !== 'mailTransport' || mailTestPendingId) return;
+    setMailTestPendingId(entry.id);
+    setMailTestResult(null);
+    try {
+      const result = await testMailInterfaceRef.current({ data: { instanceId, id: entry.id } });
+      setMailTestResult(
+        result.status === 'sent'
+          ? {
+              kind: 'success',
+              message: t('interfaces.mailTest.sent', { recipient: result.recipient }),
+            }
+          : { kind: 'error', message: t(`interfaces.mailTest.errors.${result.reason}`) }
+      );
+    } catch (error) {
+      setMailTestResult({
+        kind: 'error',
+        message: translateInterfacesErrorMessage(error, t('interfaces.mailTest.errors.unknown')),
+      });
+    } finally {
+      setMailTestPendingId(null);
+    }
+  };
+
   return {
     availableTypes,
     editState,
@@ -322,6 +369,8 @@ export const useInterfacesPageController = () => {
     deleteErrorMessage,
     deletePending,
     deleteResultMessage,
+    mailTestPendingId,
+    mailTestResult,
     saveErrorMessage,
     saveStatus: saveFeedback.status,
     pendingDelete,
@@ -344,6 +393,7 @@ export const useInterfacesPageController = () => {
     setPickerType,
     markDraftDirty: saveFeedback.markDirty,
     onConfirmDelete,
+    onTestMail,
     onConfirmType,
     onSaveDraft,
   };

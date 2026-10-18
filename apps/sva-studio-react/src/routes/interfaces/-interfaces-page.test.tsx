@@ -8,10 +8,13 @@ const state = vi.hoisted(() => {
   const saveToken = () => undefined;
   const upsertToken = () => undefined;
   const deleteToken = () => undefined;
+  const testMailToken = () => undefined;
 
   return {
     deleteInterface: vi.fn(),
     deleteToken,
+    testMailInterface: vi.fn(),
+    testMailToken,
     listInterfaces: vi.fn(),
     listToken,
     saveMainserver: vi.fn(),
@@ -27,12 +30,14 @@ vi.mock('@tanstack/react-start', () => ({
     if (serverFn === state.saveToken) return state.saveMainserver;
     if (serverFn === state.upsertToken) return state.upsertInterface;
     if (serverFn === state.deleteToken) return state.deleteInterface;
+    if (serverFn === state.testMailToken) return state.testMailInterface;
     throw new Error('Unexpected server function token');
   },
 }));
 
 vi.mock('../../lib/interfaces-api', () => ({
   deleteInstanceInterfaceServerFn: state.deleteToken,
+  testMailInterfaceServerFn: state.testMailToken,
   listInstanceInterfacesServerFn: state.listToken,
   saveSvaMainserverInterfaceSettings: state.saveToken,
   upsertInstanceInterfaceServerFn: state.upsertToken,
@@ -161,6 +166,7 @@ const createListResponse = (
 describe('InterfacesPage', () => {
   beforeEach(() => {
     state.deleteInterface.mockReset();
+    state.testMailInterface.mockReset();
     state.listInterfaces.mockReset();
     state.saveMainserver.mockReset();
     state.upsertInterface.mockReset();
@@ -621,6 +627,28 @@ describe('InterfacesPage', () => {
     expect(screen.getAllByText('-').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Deaktiviert').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Fehler').length).toBeGreaterThan(0);
+  });
+
+  it('shows SMTP acceptance and a safe SMTP error for manual mail tests', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mailTransportEntry]));
+    state.testMailInterface
+      .mockResolvedValueOnce({ status: 'sent', recipient: 'actor@example.test' })
+      .mockResolvedValueOnce({ status: 'failed', reason: 'authentication' });
+
+    render(<InterfacesPage />);
+    await screen.findAllByRole('button', { name: 'Test-E-Mail an mich senden' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Test-E-Mail an mich senden' })[0]!);
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toContain('actor@example.test');
+    });
+    expect(state.testMailInterface).toHaveBeenCalledWith({
+      data: { instanceId: 'de-musterhausen', id: 'mail-transport-1' },
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Test-E-Mail an mich senden' })[0]!);
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain('Anmeldung abgelehnt');
+    });
   });
 
   it('closes picker and edit dialogs through their cancel actions', async () => {

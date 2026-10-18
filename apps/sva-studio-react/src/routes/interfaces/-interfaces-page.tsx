@@ -94,7 +94,9 @@ const getInterfaceEndpoint = (entry: InstanceInterface): string => {
 const renderInterfaceRowActions = (
   row: InstanceInterface,
   setEditState: React.Dispatch<React.SetStateAction<EditState>>,
-  requestDelete: (entry: InstanceInterface) => void
+  requestDelete: (entry: InstanceInterface) => void,
+  onTestMail: (entry: InstanceInterface) => void,
+  mailTestPendingId: string | null
 ) => (
   <>
     <Button
@@ -105,6 +107,21 @@ const renderInterfaceRowActions = (
     >
       {t('admin.users.actions.edit')}
     </Button>
+    {row.type === 'mailTransport' ? (
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        disabled={!row.enabled || mailTestPendingId !== null}
+        onClick={() => onTestMail(row)}
+      >
+        {t(
+          mailTestPendingId === row.id
+            ? 'interfaces.mailTest.sending'
+            : 'interfaces.mailTest.action'
+        )}
+      </Button>
+    ) : null}
     <Button type="button" size="sm" variant="destructive" onClick={() => requestDelete(row)}>
       {t('interfaces.edit.deleteAction')}
     </Button>
@@ -124,6 +141,8 @@ export const InterfacesPage = () => {
     deleteErrorMessage,
     deletePending,
     deleteResultMessage,
+    mailTestPendingId,
+    mailTestResult,
     dismissDeleteResult,
     editState,
     errorMessage,
@@ -142,6 +161,7 @@ export const InterfacesPage = () => {
     saveErrorMessage,
     saveStatus,
     onConfirmDelete,
+    onTestMail,
     onConfirmType,
     onSaveDraft,
   } = useInterfacesPageController();
@@ -283,9 +303,30 @@ export const InterfacesPage = () => {
               {t('interfaces.create.action')}
             </Button>
           }
-          rowActions={(row) => renderInterfaceRowActions(row, setEditState, requestDelete)}
+          rowActions={(row) =>
+            renderInterfaceRowActions(
+              row,
+              setEditState,
+              requestDelete,
+              onTestMail,
+              mailTestPendingId
+            )
+          }
         />
       )}
+
+      {mailTestResult ? (
+        <Alert
+          role={mailTestResult.kind === 'error' ? 'alert' : 'status'}
+          className={
+            mailTestResult.kind === 'error'
+              ? 'border-destructive/40 bg-destructive/10 text-destructive'
+              : undefined
+          }
+        >
+          <AlertDescription>{mailTestResult.message}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {deleteResultMessage ? (
         <StudioPersistentActionResult

@@ -5,7 +5,7 @@
 - `Build` veröffentlicht Studio-Images nur für `main` und aktualisiert Dev automatisch.
 - App-E2E läuft kanonisch nach `main`-Push; `Promote` verlangt für Staging genau diese Evidenz und zusätzlich die OCI-Revision des Zieldigests.
 - Production verlangt dieselbe erfolgreiche Staging-Parität; der tatsächlich laufende Commit einer Zielumgebung muss derzeit Vorfahr von `change_head` sein.
-- Jeder normale PR muss einen Changelog-Eintrag liefern; der vorhandene Generator nimmt die neuesten 20 Einträge nach PR-Nummer.
+- Changelog-Einträge sind eine optionale Quelle für GitHub-Release-Notes; der Generator wählt Einträge anhand der Release-Grenze aus.
 
 ## Release-Identität und Veröffentlichung
 

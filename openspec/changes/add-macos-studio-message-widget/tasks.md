@@ -67,5 +67,5 @@
 - [ ] 8.1 Kleinste relevante Unit-, Type-, Server-Runtime-, Migrations-, native Build-/Test- und A11y-Gates nach jedem abgeschlossenen Änderungsblock ausführen.
 - [ ] 8.2 `openspec validate add-macos-studio-message-widget --strict`, `pnpm check:file-placement`, `pnpm check:studio-changelog` und `git diff --check` ausführen.
 - [ ] 8.3 Vor dem initialen Code-PR-Push den betroffenen Scope messen und nach Möglichkeit `pnpm test:pr` ausführen; breite Folgefix-Runs gemäß Repository-Regeln vermeiden.
-- [ ] 8.4 Nach Eröffnung des PR den verpflichtenden deutschen Eintrag `docs/changelog/entries/pr-<nummer>.json` ergänzen und committed validieren.
+- [ ] 8.4 Falls die Änderung in GitHub-Release-Notes erscheinen soll, nach Eröffnung des PR einen deutschen Eintrag `docs/changelog/entries/pr-<nummer>.json` ergänzen und committed validieren.
 - [ ] 8.5 Security-, Privacy-, Accessibility- und Architekturreview einschließlich neuer ADR-, Token-, RLS-, Deep-Link- und Widget-Snapshot-Grenzen abschließen.

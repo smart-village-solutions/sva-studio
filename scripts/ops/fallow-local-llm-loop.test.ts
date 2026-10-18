@@ -143,7 +143,7 @@ describe('workflow completion', () => {
 });
 
 describe('publication recovery', () => {
-  it('finishes the same Draft PR after interruption between PR creation and changelog', () => {
+  it('finishes the same Draft PR after interruption following PR creation', () => {
     const dir = mkdtempSync(join(tmpdir(), 'sva-fallow-recovery-'));
     const repo = join(dir, 'repo');
     const bare = join(dir, 'remote.git');
@@ -189,8 +189,7 @@ describe('publication recovery', () => {
       expect(runPublish).toThrow();
       expect(runPublish).not.toThrow();
       expect(readFileSync(createCount, 'utf8').trim().split('\n')).toHaveLength(1);
-      const entry = runGit(dir, ['--git-dir', bare, 'show', `${branch}:docs/changelog/entries/pr-42.json`]);
-      expect(JSON.parse(entry)).toEqual({ prNumber: 42, body: 'Allgemeine Verbesserungen' });
+      expect(runGit(dir, ['--git-dir', bare, 'ls-tree', '-r', '--name-only', branch])).toBe(source);
     } finally { rmSync(dir, { recursive: true, force: true }); }
   }, 15_000);
 });

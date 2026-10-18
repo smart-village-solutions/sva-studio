@@ -22,7 +22,7 @@ Das Repository SHALL einen lokalen Operator-Pfad bereitstellen, der geeignete Fa
 
 - **GIVEN** der exakte Diff, Fallow-Nachscan und die betroffenen Nx-/Dateiplatzierungs-Gates sind erfolgreich
 - **WHEN** der Controller den PR erstellt
-- **THEN** enthält dieser den erforderlichen Changelog-Eintrag und den Prüfkontext
+- **THEN** enthält dieser den Prüfkontext
 - **AND** bleibt ein Draft ohne automatischen Merge
 - **AND** der Lauf beobachtet die GitHub-Gates am finalen HEAD
 

@@ -2,11 +2,12 @@
 
 Die verbindlichen Entwicklungsrichtlinien stehen in [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md). Diese Datei enthält nur die Regeln, die bei der täglichen Agentenarbeit unmittelbar präsent sein müssen. Im Zweifel gilt `DEVELOPMENT_RULES.md`.
 
-## Harte Grenze: Projektverzeichnis und fremde Programme
+## Projektverzeichnis und fremde Programme
 
-- **Absolutes No-Go:** Ohne vorherige, eindeutige Absprache niemals auf Dateien außerhalb des aktuellen Projektverzeichnisses zugreifen oder Aktionen in anderen Programmen, Benutzerkonten oder externen Diensten ausführen. Das gilt auch für scheinbar naheliegende Hilfsmittel und alternative Wege wie AppleScript, Mail-Apps, Browser, MCP-Tools und CLIs.
-- Vor einer solchen Aktion müssen das konkrete Programm oder der Dienst, das verwendete Konto, die betroffenen Dateien oder Empfänger und die beabsichtigte Wirkung klar benannt und vom Nutzer dafür freigegeben sein. Eine allgemeine Aufgabenstellung oder Frage wie „Dann senden wir die Rundmail?“ ist **keine** Freigabe zur eigenständigen Wahl eines Programms oder Absenderkontos.
-- Insbesondere Nachrichtenversand, Veröffentlichung, Uploads und Änderungen an externen Systemen erst ausführen, wenn dieser konkrete Weg und seine Ziele ausdrücklich abgestimmt sind. Fehlt eine passende freigegebene Möglichkeit, anhalten und nachfragen; niemals stillschweigend auf ein anderes Programm oder Konto ausweichen.
+- Dateien außerhalb des aktuellen Projektverzeichnisses dürfen gelesen werden, wenn dies für die konkrete Aufgabe relevant ist. Änderungen außerhalb des Projektverzeichnisses, einschließlich Anlegen, Verschieben und Löschen von Dateien, brauchen unbedingt eine vorherige, gezielte Freigabe.
+- Aktionen in anderen Programmen, Benutzerkonten oder externen Diensten brauchen grundsätzlich eine vorherige, eindeutige Absprache. Dafür müssen das konkrete Programm oder der Dienst, das verwendete Konto, die betroffenen Dateien oder Empfänger und die beabsichtigte Wirkung klar benannt und vom Nutzer freigegeben sein. Das gilt auch für alternative Wege wie AppleScript, Mail-Apps, Browser, MCP-Tools und CLIs.
+- Ausnahme für die Repository-Arbeit: Wenn die konkrete Aufgabenstellung einen Pull Request oder Merge Request umfasst, dürfen der dafür nötige Branch-Push und die Erstellung des PRs oder MRs ohne gesonderte Freigabe erfolgen. Dienst, Konto, Repository und Zielbranch müssen aus dem Projektkontext eindeutig sein. Ein Merge ist von dieser Ausnahme nicht umfasst.
+- Nachrichtenversand, sonstige Veröffentlichungen und Uploads sowie weitere Änderungen an externen Systemen erst ausführen, wenn der konkrete Weg und seine Ziele ausdrücklich abgestimmt sind. Eine allgemeine Frage wie „Dann senden wir die Rundmail?“ ist keine Freigabe zur eigenständigen Wahl eines Programms oder Absenderkontos. Fehlt eine passende freigegebene Möglichkeit, anhalten und nachfragen; niemals stillschweigend auf ein anderes Programm oder Konto ausweichen.
 
 ## Code und Ownership
 

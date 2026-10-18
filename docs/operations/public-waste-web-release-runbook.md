@@ -28,6 +28,18 @@ Diese Variablen werden im Portainer-Stack gepflegt:
 Wert darf nur für lokale Entwicklung oder Legacy-Kompatibilität bestehen
 bleiben.
 
+Die E-Mail-Erinnerung wird aus `public.waste_settings` der zugehörigen
+Waste-Tenant-Datenbank gelesen. Vor der Aktivierung muss der Studio-Rollout die
+Tenant-Migration `20261018_01_add_waste_email_reminder_settings` angewandt
+haben. Nach dem Rollout der Studio- und Public-Waste-Version die bereits
+gespeicherten Waste-Einstellungen in Studio einmal erneut speichern, damit
+Konfiguration und Signierschlüssel in die Tenant-Datenbank projiziert werden.
+Fehlt die Projektion, ihr Signierschlüssel oder der Datenbankzugriff, bleiben
+Anmeldung und Reminder-Seiten auch bei gesetzter Legacy-Umgebungsvariable
+deaktiviert.
+Danach die Anmeldemöglichkeit an einem Standort mit aktivierter
+E-Mail-Fraktion und eine echte Double-Opt-In-Mail prüfen.
+
 `PUBLIC_WASTE_DATABASE_URL` muss die vom Waste-Provisionierer für
 `PUBLIC_WASTE_INSTANCE_ID` abgeleitete Public-Runtime-Rolle und genau die
 zugehörige tenantbezogene Datenbank verwenden. `PUBLIC_WASTE_SCHEMA_NAME` ist

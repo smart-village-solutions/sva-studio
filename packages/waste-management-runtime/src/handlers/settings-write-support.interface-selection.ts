@@ -26,20 +26,24 @@ export const resolveTargetInterfaceRecord = (
   const explicitMatch = selectedInterfaceId
     ? (interfaceRecords.find((record) => record.id === selectedInterfaceId) ?? null)
     : null;
-  if (explicitMatch) {
-    return explicitMatch;
+  if (selectedInterfaceId) {
+    return explicitMatch?.typeKey === 'postgresql' ? explicitMatch : null;
   }
 
   if (current.selectedInterfaceId) {
     const currentMatch = interfaceRecords.find(
       (record) => record.id === current.selectedInterfaceId
     );
-    if (currentMatch) {
+    if (currentMatch?.typeKey === 'postgresql') {
       return currentMatch;
     }
   }
 
-  return interfaceRecords.find((record) => isWasteManagementInterfaceSelected(record)) ?? null;
+  return (
+    interfaceRecords.find(
+      (record) => record.typeKey === 'postgresql' && isWasteManagementInterfaceSelected(record)
+    ) ?? null
+  );
 };
 
 const createInterfaceSettingsRecord = (
@@ -80,7 +84,7 @@ export const persistWasteSettingsInterfaceSelection = async ({
   readonly holidayStateCode?: WasteHolidayStateCode;
   readonly lastHolidaySyncStatus?: WasteHolidaySyncStatus;
   readonly lastSuccessfulHolidaySyncAt?: string;
-}): Promise<void> => {
+}): Promise<ExternalInterfaceRecord> => {
   const saveExternalInterfaceRecord = requireDeps(
     deps.saveExternalInterfaceRecord,
     'saveExternalInterfaceRecord'
@@ -88,35 +92,38 @@ export const persistWasteSettingsInterfaceSelection = async ({
   const recordsToPersist = interfaceRecords.filter(
     (record) => record.id === targetInterfaceRecord.id || isWasteManagementInterfaceSelected(record)
   );
+  let savedTarget: ExternalInterfaceRecord | null = null;
 
   for (const record of recordsToPersist) {
     const isTarget = record.id === targetInterfaceRecord.id;
-    await saveExternalInterfaceRecord(
-      createInterfaceSettingsRecord(record, {
-        selected: isTarget,
-        calendarWebUrl: isTarget
-          ? calendarWebUrl
-          : readWasteManagementCalendarWebUrl(record.publicConfig),
-        emailReminderConfig: isTarget
-          ? emailReminderConfig
-          : readWasteManagementEmailReminderConfig(record.publicConfig),
-        emailReminderSigningSecret: isTarget
-          ? emailReminderConfig
-            ? (emailReminderSigningSecret ??
-              readWasteManagementEmailReminderSigningSecret(record.publicConfig) ??
-              createEmailReminderSigningSecret())
-            : readWasteManagementEmailReminderSigningSecret(record.publicConfig)
-          : readWasteManagementEmailReminderSigningSecret(record.publicConfig),
-        holidayStateCode: isTarget
-          ? holidayStateCode
-          : readWasteManagementHolidayStateCode(record.publicConfig),
-        lastHolidaySyncStatus: isTarget
-          ? lastHolidaySyncStatus
-          : readWasteManagementHolidaySyncStatus(record.publicConfig),
-        lastSuccessfulHolidaySyncAt: isTarget
-          ? lastSuccessfulHolidaySyncAt
-          : readWasteManagementLastSuccessfulHolidaySyncAt(record.publicConfig),
-      })
-    );
+    const nextRecord = createInterfaceSettingsRecord(record, {
+      selected: isTarget,
+      calendarWebUrl: isTarget
+        ? calendarWebUrl
+        : readWasteManagementCalendarWebUrl(record.publicConfig),
+      emailReminderConfig: isTarget
+        ? emailReminderConfig
+        : readWasteManagementEmailReminderConfig(record.publicConfig),
+      emailReminderSigningSecret: isTarget
+        ? (emailReminderConfig ?? readWasteManagementEmailReminderConfig(record.publicConfig))
+          ? (emailReminderSigningSecret ??
+            readWasteManagementEmailReminderSigningSecret(record.publicConfig) ??
+            createEmailReminderSigningSecret())
+          : readWasteManagementEmailReminderSigningSecret(record.publicConfig)
+        : readWasteManagementEmailReminderSigningSecret(record.publicConfig),
+      holidayStateCode: isTarget
+        ? holidayStateCode
+        : readWasteManagementHolidayStateCode(record.publicConfig),
+      lastHolidaySyncStatus: isTarget
+        ? lastHolidaySyncStatus
+        : readWasteManagementHolidaySyncStatus(record.publicConfig),
+      lastSuccessfulHolidaySyncAt: isTarget
+        ? lastSuccessfulHolidaySyncAt
+        : readWasteManagementLastSuccessfulHolidaySyncAt(record.publicConfig),
+    });
+    await saveExternalInterfaceRecord(nextRecord);
+    if (isTarget) savedTarget = nextRecord;
   }
+  if (!savedTarget) throw new Error('waste_selected_interface_not_persisted');
+  return savedTarget;
 };

@@ -5158,5 +5158,7 @@ CREATE POLICY studio_jobs_observability_policy ON iam.studio_jobs FOR SELECT TO 
 -- Externe Waste-Tenant-Schemata sind bewusst nicht Bestandteil dieses zentralen Snapshots.
 -- Die Störungsoptionen in public.waste_settings werden über die versionierte Tenant-Migration
 -- 20260901_01_add_waste_disruption_settings gepflegt; siehe studio-db-schema.md, Abschnitt 9.
+-- E-Mail-Erinnerungskonfiguration und Signierschlüssel in public.waste_settings werden
+-- über 20261018_01_add_waste_email_reminder_settings im externen Tenant-Schema ergänzt.
 
 \unrestrict M4FCOWSk22Cit75bXmgV4b5AJWFT85WtvUgagN1B1Q6YTlRCcuVCOA5FmUaRFhq

@@ -1344,6 +1344,10 @@ describe('waste master data repository', () => {
       true,
       true,
       true,
+      null,
+      null,
+      false,
+      false,
     ]);
 
     const partialWrite = createExecutor();
@@ -1359,12 +1363,19 @@ describe('waste master data repository', () => {
       false,
       false,
       false,
+      null,
+      null,
+      false,
+      false,
     ]);
     expect(partialWrite.statements[0]?.text).toContain(
       'CASE WHEN $6 THEN EXCLUDED.disruption_location_enabled'
     );
     expect(partialWrite.statements[0]?.text).toContain(
       'CASE WHEN $7 THEN EXCLUDED.disruption_all_locations_enabled'
+    );
+    expect(partialWrite.statements[0]?.text).toContain(
+      'CASE WHEN $10 THEN EXCLUDED.email_reminder_config'
     );
   });
 

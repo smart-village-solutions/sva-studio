@@ -59,6 +59,8 @@ export type WastePdfStaticSettingsWriteInput = Readonly<{
   pdfContactBlock?: string;
   disruptionLocationEnabled?: boolean;
   disruptionAllLocationsEnabled?: boolean;
+  emailReminderConfig?: WasteManagementEmailReminderConfig | null;
+  emailReminderSigningSecret?: string | null;
 }>;
 
 export const wasteManagementDataSourceContract = {

@@ -1,4 +1,5 @@
 import { createApiError } from '@sva/server-runtime';
+import { readWasteManagementEmailReminderSigningSecret } from '@sva/waste-management-contracts';
 import type { AuthenticatedRequestContext, WasteManagementHandlerDeps } from './types.js';
 import { emitWasteAuditEvent } from './auth.js';
 import {
@@ -55,13 +56,7 @@ export const runWasteManagementHolidaySyncAfterValidation = async ({
   const lastHolidaySyncStatus =
     (await syncWasteHolidayState(deps, instanceId, writeContext.current.holidayStateCode)) ??
     'failed';
-  await deps.saveWastePdfStaticSettings?.(instanceId, {
-    pdfBrandingAssetUrl: normalizeOptionalTrimmedText(writeContext.current.pdfBrandingAssetUrl),
-    pdfContactBlock: normalizeOptionalTrimmedText(writeContext.current.pdfContactBlock),
-    disruptionLocationEnabled: writeContext.current.disruptionLocationEnabled,
-    disruptionAllLocationsEnabled: writeContext.current.disruptionAllLocationsEnabled,
-  });
-  await persistWasteSettingsInterfaceSelection({
+  const savedInterface = await persistWasteSettingsInterfaceSelection({
     deps,
     interfaceRecords: writeContext.interfaceRecords,
     targetInterfaceRecord,
@@ -73,6 +68,15 @@ export const runWasteManagementHolidaySyncAfterValidation = async ({
       lastHolidaySyncStatus !== 'failed'
         ? new Date().toISOString()
         : writeContext.current.lastSuccessfulHolidaySyncAt,
+  });
+  await deps.saveWastePdfStaticSettings?.(instanceId, {
+    pdfBrandingAssetUrl: normalizeOptionalTrimmedText(writeContext.current.pdfBrandingAssetUrl),
+    pdfContactBlock: normalizeOptionalTrimmedText(writeContext.current.pdfContactBlock),
+    disruptionLocationEnabled: writeContext.current.disruptionLocationEnabled,
+    disruptionAllLocationsEnabled: writeContext.current.disruptionAllLocationsEnabled,
+    emailReminderConfig: writeContext.current.emailReminderConfig ?? null,
+    emailReminderSigningSecret:
+      readWasteManagementEmailReminderSigningSecret(savedInterface.publicConfig) ?? null,
   });
 
   const saved = await reloadWasteSettingsOrError({ deps, instanceId, requestId });

@@ -31,6 +31,7 @@ describe('waste master-data repository contract', () => {
       'upsertWasteCollectionLocation',
       'deleteWasteCollectionLocation',
       'getWastePdfStaticSettings',
+      'getWasteEmailReminderSettings',
       'upsertWastePdfStaticSettings',
       'listWasteHolidayRules',
       'upsertWasteHolidayRule',

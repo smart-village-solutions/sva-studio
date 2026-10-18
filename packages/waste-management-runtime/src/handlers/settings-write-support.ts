@@ -2,7 +2,11 @@ import type {
   WasteHolidayStateCode,
   WasteManagementEmailReminderConfig,
 } from '@sva/waste-management-contracts';
-import { withFixedWasteEmailReminderPaths } from '@sva/waste-management-contracts';
+import {
+  readWasteManagementEmailReminderConfig,
+  readWasteManagementEmailReminderSigningSecret,
+  withFixedWasteEmailReminderPaths,
+} from '@sva/waste-management-contracts';
 import { createApiError } from '@sva/server-runtime';
 import type { AuthenticatedRequestContext, WasteManagementHandlerDeps } from './types.js';
 import { emitWasteAuditEvent } from './auth.js';
@@ -129,13 +133,7 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     disruptionLocationEnabled !== writeContext.current.disruptionLocationEnabled ||
     disruptionAllLocationsEnabled !== writeContext.current.disruptionAllLocationsEnabled;
 
-  await deps.saveWastePdfStaticSettings?.(instanceId, {
-    pdfBrandingAssetUrl: normalizedPdfStaticSettings.pdfBrandingAssetUrl,
-    pdfContactBlock: normalizedPdfStaticSettings.pdfContactBlock,
-    disruptionLocationEnabled,
-    disruptionAllLocationsEnabled,
-  });
-  await persistWasteSettingsInterfaceSelection({
+  const savedInterface = await persistWasteSettingsInterfaceSelection({
     deps,
     interfaceRecords: writeContext.interfaceRecords,
     targetInterfaceRecord,
@@ -144,6 +142,16 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     holidayStateCode: input.holidayStateCode,
     lastHolidaySyncStatus,
     lastSuccessfulHolidaySyncAt,
+  });
+  await deps.saveWastePdfStaticSettings?.(instanceId, {
+    pdfBrandingAssetUrl: normalizedPdfStaticSettings.pdfBrandingAssetUrl,
+    pdfContactBlock: normalizedPdfStaticSettings.pdfContactBlock,
+    disruptionLocationEnabled,
+    disruptionAllLocationsEnabled,
+    emailReminderConfig:
+      readWasteManagementEmailReminderConfig(savedInterface.publicConfig) ?? null,
+    emailReminderSigningSecret:
+      readWasteManagementEmailReminderSigningSecret(savedInterface.publicConfig) ?? null,
   });
   await requireDeps(deps.saveWasteCustomRecurrencePresets, 'saveWasteCustomRecurrencePresets')(
     instanceId,

@@ -279,6 +279,42 @@ describe('waste-management settings write support', () => {
     expect(emitWasteAuditEventMock).not.toHaveBeenCalled();
   });
 
+  it('rejects a non-PostgreSQL reminder target before writing either store', async () => {
+    const objectStorage = createInterfaceRecord({
+      id: 'storage-1',
+      typeKey: 's3',
+      category: 'object_storage',
+      statusCheckKind: 's3',
+      publicConfig: {},
+    });
+    const saveExternalInterfaceRecord = vi.fn(async () => undefined);
+    const saveWastePdfStaticSettings = vi.fn(async () => undefined);
+    loadConfiguredWasteSettingsMock.mockResolvedValue(createSettings());
+
+    const response = await updateWasteManagementSettingsAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord(), objectStorage]),
+        saveExternalInterfaceRecord,
+        saveWastePdfStaticSettings,
+      },
+      ctx: actor,
+      instanceId: 'tenant-a',
+      requestId: 'req-1',
+      input: {
+        schemaName: 'wm',
+        enabled: true,
+        selectedInterfaceId: 'storage-1',
+        emailReminderConfig: createEmailReminderConfig(),
+        customRecurrencePresets: [],
+        deletedPresetFallbacks: {},
+      },
+    });
+
+    expect(response.status).toBe(400);
+    expect(saveExternalInterfaceRecord).not.toHaveBeenCalled();
+    expect(saveWastePdfStaticSettings).not.toHaveBeenCalled();
+  });
+
   it('rejects updates that change interface-managed PostgreSQL fields', async () => {
     loadConfiguredWasteSettingsMock.mockResolvedValue(createSettings());
     const saveExternalInterfaceRecord = vi.fn(async () => undefined);
@@ -394,12 +430,15 @@ describe('waste-management settings write support', () => {
     });
 
     expect(syncWasteHolidayRules).toHaveBeenCalledWith('tenant-a', 'NW');
-    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
-      pdfBrandingAssetUrl: 'https://cdn.example/next.svg',
-      pdfContactBlock: 'Kontakt neu',
-      disruptionLocationEnabled: false,
-      disruptionAllLocationsEnabled: false,
-    });
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({
+        pdfBrandingAssetUrl: 'https://cdn.example/next.svg',
+        pdfContactBlock: 'Kontakt neu',
+        disruptionLocationEnabled: false,
+        disruptionAllLocationsEnabled: false,
+      })
+    );
     expect(saveWasteCustomRecurrencePresets).toHaveBeenCalledWith('tenant-a', {
       nextItems: [{ id: 'preset-1', name: '10 Tage', intervalDays: 10 }],
       deletedPresetFallbacks: { 'preset-legacy': { kind: 'default', value: 'none' } },
@@ -478,12 +517,15 @@ describe('waste-management settings write support', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
-      pdfBrandingAssetUrl: undefined,
-      pdfContactBlock: undefined,
-      disruptionLocationEnabled: false,
-      disruptionAllLocationsEnabled: false,
-    });
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({
+        pdfBrandingAssetUrl: undefined,
+        pdfContactBlock: undefined,
+        disruptionLocationEnabled: false,
+        disruptionAllLocationsEnabled: false,
+      })
+    );
   });
 
   it('persists independent disruption settings and queues the wasteTypes sync when they change', async () => {
@@ -532,12 +574,15 @@ describe('waste-management settings write support', () => {
       },
     });
 
-    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
-      pdfBrandingAssetUrl: undefined,
-      pdfContactBlock: undefined,
-      disruptionLocationEnabled: true,
-      disruptionAllLocationsEnabled: false,
-    });
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({
+        pdfBrandingAssetUrl: undefined,
+        pdfContactBlock: undefined,
+        disruptionLocationEnabled: true,
+        disruptionAllLocationsEnabled: false,
+      })
+    );
     expect(startPluginOperationJob).toHaveBeenCalledWith(
       expect.objectContaining({
         endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
@@ -727,7 +772,7 @@ describe('waste-management settings write support', () => {
     });
   });
 
-  it('saves pdf static settings before updating interface selection', async () => {
+  it('projects public settings after updating interface selection', async () => {
     loadConfiguredWasteSettingsMock
       .mockResolvedValueOnce(createSettings())
       .mockResolvedValueOnce(createSettings());
@@ -760,8 +805,7 @@ describe('waste-management settings write support', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(callOrder[0]).toBe('saveWastePdfStaticSettings');
-    expect(callOrder).toContain('saveExternalInterfaceRecord');
+    expect(callOrder).toEqual(['saveExternalInterfaceRecord', 'saveWastePdfStaticSettings']);
   });
 
   it('returns a verification error when saved settings cannot be reloaded', async () => {
@@ -879,12 +923,15 @@ describe('waste-management settings write support', () => {
         }),
       })
     );
-    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
-      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
-      pdfContactBlock: 'Abfallberatung',
-      disruptionLocationEnabled: false,
-      disruptionAllLocationsEnabled: false,
-    });
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({
+        pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+        pdfContactBlock: 'Abfallberatung',
+        disruptionLocationEnabled: false,
+        disruptionAllLocationsEnabled: false,
+      })
+    );
     expect(emitWasteAuditEventMock).toHaveBeenCalledWith(
       expect.objectContaining({
         actionId: 'waste-management.settings.holiday-sync.triggered',
@@ -900,7 +947,7 @@ describe('waste-management settings write support', () => {
     });
   });
 
-  it('saves pdf static settings before rewriting interface config during manual holiday sync', async () => {
+  it('projects settings after saving the interface during manual holiday sync', async () => {
     const current = createSettings({
       holidayStateCode: 'NW',
       pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
@@ -928,8 +975,7 @@ describe('waste-management settings write support', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(callOrder[0]).toBe('saveWastePdfStaticSettings');
-    expect(callOrder).toContain('saveExternalInterfaceRecord');
+    expect(callOrder).toEqual(['saveExternalInterfaceRecord', 'saveWastePdfStaticSettings']);
   });
 
   it('preserves legacy pdf values during manual holiday sync when only interface settings exist', async () => {
@@ -959,6 +1005,8 @@ describe('waste-management settings write support', () => {
       pdfContactBlock: 'Abfallberatung',
       disruptionLocationEnabled: false,
       disruptionAllLocationsEnabled: false,
+      emailReminderConfig: createEmailReminderConfig(),
+      emailReminderSigningSecret: expect.any(String),
     });
   });
 
@@ -966,6 +1014,7 @@ describe('waste-management settings write support', () => {
     const targetRecord = createInterfaceRecord();
     const saved = createSettings();
     const saveExternalInterfaceRecord = vi.fn(async () => undefined);
+    const saveWastePdfStaticSettings = vi.fn(async () => undefined);
 
     loadConfiguredWasteSettingsMock
       .mockResolvedValueOnce(createSettings())
@@ -975,6 +1024,7 @@ describe('waste-management settings write support', () => {
       deps: {
         listInterfaceRecords: vi.fn(async () => [targetRecord]),
         saveExternalInterfaceRecord,
+        saveWastePdfStaticSettings,
         loadWasteCustomRecurrencePresets: vi.fn(async () => []),
         saveWasteCustomRecurrencePresets: vi.fn(async () => undefined),
       },
@@ -1011,6 +1061,16 @@ describe('waste-management settings write support', () => {
             invalidTokenPath: '/email-reminders/token-invalid',
           }),
         }),
+      })
+    );
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({
+        emailReminderConfig: expect.objectContaining({
+          enabled: true,
+          doiConfirmPath: '/email-reminders/confirm',
+        }),
+        emailReminderSigningSecret: expect.any(String),
       })
     );
   });

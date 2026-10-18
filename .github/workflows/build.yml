@@ -43,7 +43,6 @@ jobs:
     outputs:
       backup_agent_image_digest: ${{ steps.build_backup_agent_image.outputs.digest }}
       image_digest: ${{ steps.build_image.outputs.digest }}
-      ssf_image_digest: ${{ steps.build_ssf_image.outputs.digest }}
       custom_image_digest: ${{ steps.build_custom_image.outputs.digest }}
       custom_plugin_ids: ${{ steps.custom_selection.outputs.plugin_ids }}
       source_sha: ${{ steps.source.outputs.sha }}
@@ -153,21 +152,6 @@ jobs:
             ghcr.io/smart-village-solutions/sva-studio:${{ steps.source.outputs.sha }}
             ${{ inputs.mode != 'hotfix' && 'ghcr.io/smart-village-solutions/sva-studio:latest' || '' }}
 
-      - name: Build and push SSF Docker image
-        id: build_ssf_image
-        uses: docker/build-push-action@v5
-        with:
-          build-args: |
-            SVA_IMAGE_REVISION=${{ steps.source.outputs.sha }}
-            SVA_STUDIO_DISTRIBUTION=ssf
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ghcr.io/smart-village-solutions/sva-studio-ssf:${{ steps.source.outputs.sha }}
-            ${{ inputs.mode != 'hotfix' && 'ghcr.io/smart-village-solutions/sva-studio-ssf:latest' || '' }}
-
       - name: Build and push custom Studio Docker image
         if: github.event_name == 'workflow_dispatch' && inputs.mode == 'main' && inputs.plugin_ids != ''
         id: build_custom_image
@@ -213,7 +197,7 @@ jobs:
       migration_mode: auto
 
   verify-images:
-    name: Verify distribution images
+    name: Verify Studio images
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -236,14 +220,6 @@ jobs:
           bash scripts/ci/verify-studio-image.sh \
             "ghcr.io/smart-village-solutions/sva-studio@${{ needs.build.outputs.image_digest }}" \
             artifacts/runtime/studio-image-verify studio "${{ needs.build.outputs.source_sha }}"
-
-      - name: Verify SSF image
-        run: |
-          docker pull "ghcr.io/smart-village-solutions/sva-studio-ssf@${{ needs.build.outputs.ssf_image_digest }}"
-          SVA_IMAGE_VERIFY_PORT=39081 SVA_IMAGE_VERIFY_POSTGRES_PORT=35434 \
-            bash scripts/ci/verify-studio-image.sh \
-              "ghcr.io/smart-village-solutions/sva-studio-ssf@${{ needs.build.outputs.ssf_image_digest }}" \
-              artifacts/runtime/ssf-image-verify ssf "${{ needs.build.outputs.source_sha }}"
 
       - name: Verify custom Studio image
         if: needs.build.outputs.custom_image_digest != ''
@@ -285,7 +261,6 @@ jobs:
           HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
           HOTFIX_REF: ${{ inputs.hotfix_ref }}
           HOTFIX_STUDIO_DIGEST: ${{ needs.build.outputs.image_digest }}
-          HOTFIX_SSF_DIGEST: ${{ needs.build.outputs.ssf_image_digest }}
           HOTFIX_BACKUP_AGENT_DIGEST: ${{ needs.build.outputs.backup_agent_image_digest }}
         run: node --experimental-strip-types scripts/ci/hotfix-build-evidence.ts write
 

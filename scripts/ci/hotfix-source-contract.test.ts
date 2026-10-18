@@ -24,6 +24,10 @@ const buildWorkflow = readFileSync(
   resolve(import.meta.dirname, '../../.github/workflows/build.yml'),
   'utf8'
 );
+const ssfBuildWorkflow = readFileSync(
+  resolve(import.meta.dirname, '../../.github/workflows/build-ssf.yml'),
+  'utf8'
+);
 const e2eWorkflow = readFileSync(
   resolve(import.meta.dirname, '../../.github/workflows/app-e2e.yml'),
   'utf8'
@@ -97,18 +101,18 @@ describe('hotfix source contract', () => {
     ).toThrow();
   });
 
-  it('keeps all hotfix images on the source SHA without moving any latest alias or Dev', () => {
+  it('keeps both central hotfix images on the source SHA without moving any latest alias or Dev', () => {
     expect(buildWorkflow).toContain('Validate hotfix source before checkout');
     expect(buildWorkflow).toContain('ref: ${{ steps.hotfix.outputs.source_sha || github.sha }}');
     expect(
       buildWorkflow.match(/SVA_IMAGE_REVISION=\$\{\{ steps\.source\.outputs\.sha \}\}/gu)
     ).toHaveLength(3);
-    expect(buildWorkflow.match(/:latest/g)).toHaveLength(3);
+    expect(buildWorkflow.match(/:latest/g)).toHaveLength(2);
     expect(
       buildWorkflow.match(
         /inputs\.mode != 'hotfix' && 'ghcr\.io\/smart-village-solutions\/sva-studio[^']*:latest'/gu
       )
-    ).toHaveLength(3);
+    ).toHaveLength(2);
     expect(buildWorkflow).toContain("if: github.event_name == 'push'");
     expect(buildWorkflow).toContain('needs.build.outputs.source_sha');
     expect(buildWorkflow).toContain('Verify backup agent image');
@@ -119,6 +123,26 @@ describe('hotfix source contract', () => {
       'hotfix-build-evidence-${{ github.run_id }}-${{ github.run_attempt }}'
     );
     expect(buildWorkflow).toContain('args+=(--base-ref "${HOTFIX_BASE_TAG}")');
+  });
+
+  it('keeps the manual SSF build outside the central Build and Dev gate', () => {
+    expect(buildWorkflow).not.toContain('SVA_STUDIO_DISTRIBUTION=ssf');
+    expect(buildWorkflow).not.toContain('sva-studio-ssf:');
+    expect(buildWorkflow).not.toContain('ssf_image_digest');
+    expect(buildWorkflow).not.toContain('HOTFIX_SSF_DIGEST');
+    expect(buildWorkflow).toContain('needs: [build, verify-images]');
+    expect(ssfBuildWorkflow).toContain('workflow_dispatch:');
+    expect(ssfBuildWorkflow).not.toMatch(/^ {2}push:/mu);
+    expect(ssfBuildWorkflow).toContain('test "${GITHUB_REF}" = \'refs/heads/main\'');
+    expect(ssfBuildWorkflow).toContain('group: build-ssf-main');
+    expect(ssfBuildWorkflow).toContain('ref: ${{ github.sha }}');
+    expect(ssfBuildWorkflow).toContain('EXPECTED_SOURCE_SHA: ${{ github.sha }}');
+    expect(ssfBuildWorkflow).toContain('SVA_STUDIO_DISTRIBUTION=ssf');
+    expect(ssfBuildWorkflow).not.toContain('sva-studio-ssf:latest');
+    expect(ssfBuildWorkflow).toContain('needs: build');
+    expect(ssfBuildWorkflow).toContain('artifacts/runtime/ssf-image-verify ssf');
+    expect(ssfBuildWorkflow).toContain('Record verified SSF candidate');
+    expect(ssfBuildWorkflow).not.toContain('promote.yml');
   });
 
   it('tests the validated hotfix SHA in the full App E2E job and writes controller evidence', () => {

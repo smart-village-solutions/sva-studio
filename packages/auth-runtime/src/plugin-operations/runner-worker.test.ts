@@ -5,10 +5,13 @@ const state = vi.hoisted(() => ({
   runTaskList: vi.fn(),
   resolvePool: vi.fn(),
   withInstanceDb: vi.fn(),
+  withIamAppDb: vi.fn(),
   resolveStudioJobWorkerPool: vi.fn(),
   createStudioJobTaskList: vi.fn(),
   getRegisteredStudioJobExecutionRegistry: vi.fn(),
   logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
     error: vi.fn(),
   },
 }));
@@ -20,6 +23,7 @@ vi.mock('graphile-worker', () => ({
 vi.mock('../db.js', () => ({
   resolvePool: state.resolvePool,
   withInstanceDb: state.withInstanceDb,
+  withIamAppDb: state.withIamAppDb,
   resolveStudioJobWorkerPool: state.resolveStudioJobWorkerPool,
 }));
 
@@ -42,6 +46,7 @@ describe('plugin operation runner worker', () => {
     delete process.env.SVA_PLUGIN_OPERATION_WORKER_LANE;
     state.resolvePool.mockReturnValue({ query: vi.fn(async () => undefined) });
     state.withInstanceDb.mockImplementation(async (_instanceId, work) => work(state.resolvePool()));
+    state.withIamAppDb.mockImplementation(async (work) => work(state.resolvePool()));
     state.resolveStudioJobWorkerPool.mockReturnValue({ id: 'worker-pool-1' });
     state.createStudioJobTaskList.mockReturnValue({ studio_job_execute: vi.fn() });
     state.runTaskList.mockImplementation((options: { events: EventEmitter }) => {
@@ -538,5 +543,30 @@ describe('plugin operation runner worker', () => {
     const { getStudioJobWorkerHealth } = await import('./runner-worker.js');
 
     expect(getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'disabled' });
+  });
+
+  it('emits a periodic lifecycle health signal and stops it with the worker', async () => {
+    vi.useFakeTimers();
+    state.resolvePool.mockReturnValue({
+      query: vi.fn(async () => ({ rows: [{ reason_code: 'queued_due', stall_count: '1' }] })),
+    });
+    const { ensureStudioJobWorkerStarted, stopStudioJobWorker } =
+      await import('./runner-worker.js');
+
+    try {
+      await ensureStudioJobWorkerStarted();
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(state.logger.info).toHaveBeenCalledWith(
+        'plugin_tenant_lifecycle_health',
+        expect.objectContaining({ lane: 'default', queued_due: 1, observation_ok: true })
+      );
+
+      await stopStudioJobWorker();
+      const logCount = state.logger.info.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(state.logger.info).toHaveBeenCalledTimes(logCount);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

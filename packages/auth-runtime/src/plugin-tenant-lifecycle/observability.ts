@@ -258,3 +258,35 @@ export const recordPluginTenantLifecycleLaneSuccess = (
 export const readPluginTenantLifecycleLaneSnapshot = (lane: Lane): LaneSnapshot => ({
   ...laneSnapshots[lane],
 });
+
+export const logPluginTenantLifecycleHealth = async (lane: Lane): Promise<void> => {
+  const health = readPluginTenantLifecycleLaneSnapshot(lane);
+  const metadata = {
+    operation: 'plugin_tenant_lifecycle_health',
+    lane,
+    ready: health.ready,
+    status: health.status,
+    ...(health.reasonCode ? { lane_reason_code: health.reasonCode } : {}),
+  };
+  if (lane === 'privileged') {
+    logger.info('plugin_tenant_lifecycle_health', metadata);
+    return;
+  }
+
+  try {
+    const stalls = await readCachedPluginTenantLifecycleStallSnapshot();
+    logger.info('plugin_tenant_lifecycle_health', {
+      ...metadata,
+      observation_ok: true,
+      ...stalls,
+      due_work_count: stalls.queued_due + stalls.retry_due + stalls.pending_recheck_due,
+    });
+  } catch (error) {
+    logger.warn('plugin_tenant_lifecycle_health', {
+      ...metadata,
+      observation_ok: false,
+      observation_reason_code: resolvePool() ? 'database_query_failed' : 'database_unavailable',
+      error_type: error instanceof Error ? error.name : typeof error,
+    });
+  }
+};

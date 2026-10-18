@@ -150,12 +150,14 @@ const hashContent = async (value: string): Promise<`sha256:${string}`> => {
   return `sha256:${hash}`;
 };
 
+const DEFAULT_DISRUPTION_SETTINGS: WasteDisruptionNotificationSettings = {
+  disruptionLocationEnabled: false,
+  disruptionAllLocationsEnabled: false,
+};
+
 export const buildWasteTypesStaticContent = async (
   fractions: readonly WasteFractionRecord[],
-  disruptionSettings: WasteDisruptionNotificationSettings = {
-    disruptionLocationEnabled: false,
-    disruptionAllLocationsEnabled: false,
-  }
+  disruptionSettings: WasteDisruptionNotificationSettings = DEFAULT_DISRUPTION_SETTINGS
 ): Promise<WasteTypesStaticContentArtifact> => {
   const fractionEntries = fractions
     .filter((fraction) => fraction.active)

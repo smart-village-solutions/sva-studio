@@ -120,20 +120,10 @@ export const buildInstanceDetail = (
   keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[] = [],
   tenantIamStatus?: IamTenantIamStatus,
   moduleIamStatus?: IamInstanceDetail['moduleIamStatus'],
-  provisioningReadiness: IamInstanceProvisioningReadiness = {
-    state: 'unknown',
-    capabilities: [],
-    nextAction: { action: 'instance.readiness.refresh', retryClass: 'safe' },
-  },
-  effectiveAccountInvitationTemplate: {
+  provisioningReadiness?: IamInstanceProvisioningReadiness,
+  effectiveAccountInvitationTemplate?: {
     template: IamInstanceDetail['effectiveAccountInvitationTemplate'];
     source: IamInstanceDetail['accountInvitationTemplateSource'];
-  } = {
-    template: instance.accountInvitationTemplate ?? {
-      ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
-      revision: 0,
-    },
-    source: instance.accountInvitationTemplate ? 'instance' : 'sva_default',
   },
   serverAccountInvitationTemplateRevision = 0
 ): IamInstanceDetail => ({
@@ -155,9 +145,19 @@ export const buildInstanceDetail = (
   keycloakProvisioningRuns,
   tenantIamStatus,
   moduleIamStatus,
-  provisioningReadiness,
-  effectiveAccountInvitationTemplate: effectiveAccountInvitationTemplate.template,
-  accountInvitationTemplateSource: effectiveAccountInvitationTemplate.source,
+  provisioningReadiness: provisioningReadiness ?? {
+    state: 'unknown',
+    capabilities: [],
+    nextAction: { action: 'instance.readiness.refresh', retryClass: 'safe' },
+  },
+  effectiveAccountInvitationTemplate: effectiveAccountInvitationTemplate?.template ??
+    instance.accountInvitationTemplate ?? {
+      ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+      revision: 0,
+    },
+  accountInvitationTemplateSource:
+    effectiveAccountInvitationTemplate?.source ??
+    (instance.accountInvitationTemplate ? 'instance' : 'sva_default'),
   serverAccountInvitationTemplateRevision,
 });
 

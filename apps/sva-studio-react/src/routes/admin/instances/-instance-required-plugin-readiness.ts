@@ -14,17 +14,19 @@ export type RequiredPluginReadinessAssessment = {
   readonly pluginIds: readonly string[];
 };
 
+const DEFAULT_LOAD_STATE = {
+  isLoading: false,
+  hasError: false,
+  requiredPluginIds: [],
+} as const;
+
 export const evaluateRequiredPluginReadiness = (
   plugins: readonly PluginTenantReadinessReadModel[],
   loadState: {
     readonly isLoading: boolean;
     readonly hasError: boolean;
     readonly requiredPluginIds: readonly string[];
-  } = {
-    isLoading: false,
-    hasError: false,
-    requiredPluginIds: [],
-  }
+  } = DEFAULT_LOAD_STATE
 ): RequiredPluginReadinessAssessment | null => {
   const expectedPluginIds = [...new Set(loadState.requiredPluginIds)].sort((left, right) =>
     left.localeCompare(right, 'de')

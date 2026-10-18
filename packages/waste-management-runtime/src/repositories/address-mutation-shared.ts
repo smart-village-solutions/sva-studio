@@ -1,4 +1,8 @@
-import type { WasteAddressEntityType, WasteAddressImpactCounts, WasteAddressImpactPreview } from '@sva/waste-management-contracts';
+import type {
+  WasteAddressEntityType,
+  WasteAddressImpactCounts,
+  WasteAddressImpactPreview,
+} from '@sva/waste-management-contracts';
 
 export type QueryClient = {
   query<TRow = Record<string, unknown>>(
@@ -32,8 +36,10 @@ export const parentColumnByType: Readonly<Partial<Record<WasteAddressEntityType,
 };
 
 export const asId = (row: Row): string => String(row.id);
-export const ids = (rows: readonly Row[]): readonly string[] => rows.map(asId).sort();
-export const unique = (values: readonly string[]): readonly string[] => [...new Set(values)].sort();
+export const ids = (rows: readonly Row[]): readonly string[] =>
+  rows.map(asId).sort((left, right) => left.localeCompare(right));
+export const unique = (values: readonly string[]): readonly string[] =>
+  [...new Set(values)].sort((left, right) => left.localeCompare(right));
 export const emptyCounts = (): WasteAddressImpactCounts => ({
   regions: 0,
   cities: 0,
@@ -52,10 +58,17 @@ export const emptyCounts = (): WasteAddressImpactCounts => ({
   inconsistentCollectionLocations: 0,
 });
 
-export const queryRows = async <TRow extends Row = Row>(client: QueryClient, text: string, values: readonly unknown[] = []): Promise<readonly TRow[]> =>
-  (await client.query<TRow>(text, values)).rows;
+export const queryRows = async <TRow extends Row = Row>(
+  client: QueryClient,
+  text: string,
+  values: readonly unknown[] = []
+): Promise<readonly TRow[]> => (await client.query<TRow>(text, values)).rows;
 
 export const lockIds = async (client: QueryClient, table: string, values: readonly string[]) => {
-  if (values.length) await queryRows(client, `SELECT id FROM ${table} WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`, [values]);
+  if (values.length)
+    await queryRows(
+      client,
+      `SELECT id FROM ${table} WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
+      [values]
+    );
 };
-

@@ -53,6 +53,8 @@ export const interfacesDEResources = {
       'Die Schnittstelle wurde gelöscht, die Liste konnte aber nicht aktualisiert werden. Bitte neu laden.',
   },
   mailTest: {
+    messageSubject: 'Test der E-Mail-Schnittstelle',
+    messageBody: 'Diese Test-E-Mail wurde über die Mail-Schnittstelle im SVA Studio versendet.',
     action: 'Test-E-Mail an mich senden',
     sending: 'Test-E-Mail wird gesendet…',
     sent: 'Der SMTP-Server hat die Test-E-Mail an {{recipient}} angenommen. Bitte den Posteingang prüfen.',

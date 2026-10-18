@@ -5,6 +5,7 @@ import {
 } from '@sva/core';
 import { createNodemailerMailDispatcher, type MailDispatcher } from '@sva/mail-runtime';
 
+import { createTranslator, type SupportedLocale } from '../i18n';
 import { parseSecretConfig } from './instance-interface-record-mapping.server.js';
 
 export type MailTestResult = Readonly<
@@ -45,6 +46,7 @@ const classifyMailError = (
 export const sendMailTransportTest = async (input: {
   readonly record: ExternalInterfaceRecord;
   readonly recipient: string;
+  readonly locale?: SupportedLocale;
   readonly dispatch?: MailDispatcher;
 }): Promise<MailTestResult> => {
   const { record } = input;
@@ -90,6 +92,7 @@ export const sendMailTransportTest = async (input: {
     ...(readText(config.username) ? { username: readText(config.username) } : {}),
     ...(secrets.password ? { password: secrets.password } : {}),
   };
+  const translate = createTranslator(input.locale);
 
   try {
     await (input.dispatch ?? createNodemailerMailDispatcher({}))({
@@ -103,8 +106,8 @@ export const sendMailTransportTest = async (input: {
             : {}),
         },
         to: [{ email: recipient }],
-        subject: 'Test der E-Mail-Schnittstelle',
-        text: 'Diese Test-E-Mail wurde über die Mail-Schnittstelle im SVA Studio versendet.',
+        subject: translate('interfaces.mailTest.messageSubject'),
+        text: translate('interfaces.mailTest.messageBody'),
       },
     });
     return { status: 'sent', recipient };

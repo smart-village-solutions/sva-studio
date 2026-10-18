@@ -1,7 +1,7 @@
 import { useServerFn } from '@tanstack/react-start';
 import React from 'react';
 
-import { t } from '../../i18n';
+import { getActiveLocale, t } from '../../i18n';
 import { deleteInstanceInterfaceServerFn, testMailInterfaceServerFn } from '../../lib/interfaces-api';
 import type { InstanceInterface } from '../../lib/instance-interfaces';
 
@@ -23,7 +23,9 @@ export const useMailInterfaceTest = (
     setMailTestPendingId(entry.id);
     setMailTestResult(null);
     try {
-      const result = await testMailInterfaceRef.current({ data: { instanceId, id: entry.id } });
+      const result = await testMailInterfaceRef.current({
+        data: { instanceId, id: entry.id, locale: getActiveLocale() },
+      });
       setMailTestResult(
         result.status === 'sent'
           ? {

@@ -1372,6 +1372,7 @@ describe('instance-interfaces-server', () => {
       expect.objectContaining({
         type: 'mailTransport',
         config: expect.objectContaining({
+          transportType: 'provider_api',
           host: 'https://api.mail.example',
           securityMode: 'starttls',
           authMode: 'basic',

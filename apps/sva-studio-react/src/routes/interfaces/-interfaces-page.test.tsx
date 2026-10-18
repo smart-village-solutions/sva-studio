@@ -112,6 +112,7 @@ const mailTransportEntry = {
   updatedAt: '2026-03-15T20:03:00.000Z',
   config: {
     transportId: 'mail-transport-1',
+    transportType: 'smtp',
     host: 'smtp.example.org',
     port: '587',
     securityMode: 'starttls',
@@ -642,13 +643,28 @@ describe('InterfacesPage', () => {
       expect(screen.getByRole('status').textContent).toContain('actor@example.test');
     });
     expect(state.testMailInterface).toHaveBeenCalledWith({
-      data: { instanceId: 'de-musterhausen', id: 'mail-transport-1' },
+      data: { instanceId: 'de-musterhausen', id: 'mail-transport-1', locale: 'de' },
     });
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Test-E-Mail an mich senden' })[0]!);
     await waitFor(() => {
       expect(screen.getByRole('alert').textContent).toContain('Anmeldung abgelehnt');
     });
+  });
+
+  it('does not offer the SMTP test for a provider API mail transport', async () => {
+    state.listInterfaces.mockResolvedValue(
+      createListResponse([
+        {
+          ...mailTransportEntry,
+          config: { ...mailTransportEntry.config, transportType: 'provider_api' },
+        },
+      ])
+    );
+
+    render(<InterfacesPage />);
+    await screen.findAllByText('Zentraler Mailversand');
+    expect(screen.queryByRole('button', { name: 'Test-E-Mail an mich senden' })).toBeNull();
   });
 
   it('closes picker and edit dialogs through their cancel actions', async () => {

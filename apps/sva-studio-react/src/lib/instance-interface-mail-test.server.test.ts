@@ -42,6 +42,19 @@ describe('mail interface test delivery', () => {
     );
   });
 
+  it('uses the selected language for the dispatched test message', async () => {
+    const dispatch = vi.fn(async () => ({}));
+    await sendMailTransportTest({ record, recipient: 'user@example.org', locale: 'en', dispatch });
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.objectContaining({
+          subject: 'Email interface test',
+          text: 'This test email was sent through the mail interface in SVA Studio.',
+        }),
+      })
+    );
+  });
+
   it.each([
     [{ code: 'EAUTH', response: 'password=secret' }, 'authentication'],
     [{ code: 'ETIMEDOUT' }, 'connection'],

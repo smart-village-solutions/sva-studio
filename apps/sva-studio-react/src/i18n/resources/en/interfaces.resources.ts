@@ -185,6 +185,8 @@ export const interfacesENResources = {
       'The interface was deleted, but the list could not be refreshed. Please reload.',
   },
   mailTest: {
+    messageSubject: 'Email interface test',
+    messageBody: 'This test email was sent through the mail interface in SVA Studio.',
     action: 'Send test email to me',
     sending: 'Sending test email…',
     sent: 'The SMTP server accepted the test email for {{recipient}}. Please check your inbox.',

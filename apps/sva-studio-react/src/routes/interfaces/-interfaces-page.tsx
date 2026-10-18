@@ -107,7 +107,7 @@ const renderInterfaceRowActions = (
     >
       {t('admin.users.actions.edit')}
     </Button>
-    {row.type === 'mailTransport' ? (
+    {row.type === 'mailTransport' && row.config.transportType === 'smtp' ? (
       <Button
         type="button"
         size="sm"

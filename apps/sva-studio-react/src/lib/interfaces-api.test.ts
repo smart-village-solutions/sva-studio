@@ -589,7 +589,11 @@ describe('interfaces app adapter', () => {
     expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'integration.manage' })
     );
-    expect(state.sendMailTransportTest).toHaveBeenCalledWith({ record, recipient: 'actor@example.test' });
+    expect(state.sendMailTransportTest).toHaveBeenCalledWith({
+      record,
+      recipient: 'actor@example.test',
+      locale: 'de',
+    });
   });
 
   it('rejects cross-tenant and non-mail interface test requests before sending', async () => {

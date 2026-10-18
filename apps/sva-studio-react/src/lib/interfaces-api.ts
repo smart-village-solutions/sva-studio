@@ -185,7 +185,7 @@ export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
   .inputValidator((data: UpsertInstanceInterfaceInput) => data)
   .handler(async ({ data }): Promise<InstanceInterface> => upsertInstanceInterfaceForRequest(data));
 
-type TestMailInterfaceInput = Readonly<{ instanceId?: string; id: string }>;
+type TestMailInterfaceInput = Readonly<{ instanceId?: string; id: string; locale?: 'de' | 'en' }>;
 
 export const testMailInterfaceForRequest = async (
   data: TestMailInterfaceInput,
@@ -193,7 +193,8 @@ export const testMailInterfaceForRequest = async (
 ): Promise<MailTestResult> => {
   if (
     !data || typeof data.id !== 'string' || !data.id.trim() ||
-    (data.instanceId !== undefined && typeof data.instanceId !== 'string')
+    (data.instanceId !== undefined && typeof data.instanceId !== 'string') ||
+    (data.locale !== undefined && data.locale !== 'de' && data.locale !== 'en')
   ) throw new Error('invalid_config');
   const dependencies = await loadInterfacesRequestDependencies(request);
   return runWithAuthenticatedInterfacesUser({
@@ -213,7 +214,11 @@ export const testMailInterfaceForRequest = async (
         throw new Error('interface_not_found');
       }
       const { sendMailTransportTest } = await import('./instance-interface-mail-test.server.js');
-      const result = await sendMailTransportTest({ record, recipient: ctx.user.email ?? '' });
+      const result = await sendMailTransportTest({
+        record,
+        recipient: ctx.user.email ?? '',
+        locale: data.locale ?? 'de',
+      });
       dependencies.logger.info('Mail interface test completed', {
         operation: 'test_mail_interface',
         workspace_id: instanceId,

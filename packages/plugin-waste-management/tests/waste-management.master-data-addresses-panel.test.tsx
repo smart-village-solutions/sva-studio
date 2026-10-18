@@ -41,20 +41,23 @@ vi.mock('@sva/studio-ui-react', () => ({
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
   Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
   StudioField: ({ children, label, id }: { children: React.ReactNode; label: string; id: string }) => <label htmlFor={id}>{label}{children}</label>,
-  StudioDataTable: ({ ariaLabel, data, columns, toolbarEnd, rowActions, emptyState, sorting }: {
+  StudioDataTable: ({ ariaLabel, data, columns, toolbarEnd, rowActions, emptyState, sorting, getRowId, labels }: {
     ariaLabel: string;
     data: readonly { id: string }[];
-    columns: readonly { id: string; cell: (row: never) => React.ReactNode }[];
+    columns: readonly { id: string; cell: (row: never) => React.ReactNode; sortValue?: (row: never) => string | number | null | undefined }[];
     toolbarEnd?: React.ReactNode;
     rowActions?: (row: never) => React.ReactNode;
     emptyState?: React.ReactNode;
     sorting?: { onChange?: (state: { id: string; desc: boolean }[]) => void };
-  }) => <section aria-label={ariaLabel}>{toolbarEnd}<button type="button" onClick={() => sorting?.onChange?.([{ id: 'name', desc: true }])}>sort descending</button>{data.map((row) => <div key={row.id}>{columns.map((column) => <span key={column.id}>{column.cell(row as never)}</span>)}{rowActions?.(row as never)}</div>)}{data.length === 0 ? emptyState : null}</section>,
-  StudioDestructiveActionDialog: ({ open, onConfirm, fallbackFocusRef }: {
+    getRowId: (row: never) => string;
+    labels: { selectAllRows: (label: string) => string; selectRow: (row: { rowId: string }) => string };
+  }) => <section aria-label={ariaLabel}>{toolbarEnd}<button type="button" onClick={() => sorting?.onChange?.([{ id: 'name', desc: true }])}>sort descending</button><span hidden>{labels.selectAllRows(ariaLabel)}</span>{data.map((row) => <div key={getRowId(row as never)} aria-label={labels.selectRow({ rowId: row.id })}>{columns.map((column) => <span key={column.id} data-sort-value={column.sortValue?.(row as never) ?? undefined}>{column.cell(row as never)}</span>)}{rowActions?.(row as never)}</div>)}{data.length === 0 ? emptyState : null}</section>,
+  StudioDestructiveActionDialog: ({ open, onConfirm, fallbackFocusRef, children, errorMessage, confirmDisabled }: {
     open: boolean; onConfirm: () => void; fallbackFocusRef?: { current: HTMLElement | null };
+    children?: React.ReactNode; errorMessage?: string; confirmDisabled?: boolean;
   }) => {
     dialogState.fallbackFocusRef = fallbackFocusRef ?? null;
-    return open ? <button type="button" onClick={onConfirm}>confirm-address-delete</button> : null;
+    return open ? <div>{errorMessage}<button type="button" disabled={confirmDisabled} onClick={onConfirm}>confirm-address-delete</button>{children}</div> : null;
   },
   StudioErrorState: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   StudioLoadingState: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -128,6 +131,21 @@ describe('Waste master-data addresses panel', () => {
     expect(screen.getByRole('button', { name: 'masterData.locationsWorkspace.addresses.delete: 12 · Hauptstraße · 12345 · Musterstadt · Nord' })).toBeTruthy();
   });
 
+  it.each([
+    { type: 'region', name: 'Nord', create: 'Region', edit: 'Region', context: 'Nord' },
+    { type: 'city', name: 'Musterstadt', create: 'City', edit: 'City', context: 'Musterstadt · Nord' },
+    { type: 'street', name: 'Hauptstraße', create: 'Street', edit: 'Street', context: 'Hauptstraße · 12345 · Musterstadt · Nord · Musterstadt' },
+    { type: 'houseNumber', name: '12', create: 'HouseNumber', edit: 'HouseNumber', context: '12 · Hauptstraße · 12345 · Musterstadt · Nord' },
+  ] as const)('opens create and edit actions for $type rows', ({ type, name, create, edit, context }) => {
+    render(<WasteMasterDataAddressesPanel search={{ ...search, addressEntityType: type } as never} canManage onSearchChange={vi.fn()} />);
+
+    expect(screen.getByText(name)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: `masterData.locationsWorkspace.addresses.create.${type}` }));
+    expect(controller[`openCreate${create}Dialog`]).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: `masterData.locationsWorkspace.addresses.edit: ${context}` }));
+    expect(controller[`openEdit${edit}Dialog`]).toHaveBeenCalledOnce();
+  });
+
   it('sorts the complete result set before choosing a page', () => {
     controller.overview = {
       ...controller.overview,
@@ -164,5 +182,31 @@ describe('Waste master-data addresses panel', () => {
 
     await screen.findByText('masterData.locationsWorkspace.addresses.empty.houseNumber');
     expect(dialogState.fallbackFocusRef?.current).toBe(screen.getByLabelText('masterData.locationsWorkspace.addresses.typeLabel'));
+  });
+
+  it('blocks deletion after a failed preview and retries before confirming', async () => {
+    const api = await import('../src/waste-management.api.js');
+    vi.mocked(api.previewWasteAddressMutation)
+      .mockRejectedValueOnce(new Error('preview unavailable'))
+      .mockResolvedValueOnce({
+        entityType: 'region', entityId: 'region-1', mode: 'delete', token: 'fresh-token',
+        counts: {
+          regions: 1, cities: 1, streets: 1, houseNumbers: 1, collectionLocations: 0,
+          locationTourLinks: 0, locationTourPickupDates: 0, tourAssignmentLocations: 0,
+          fullyRemovedTourAssignments: 0, retainedTourAssignments: 0, emailReminderSubscriptions: 0,
+          emailReminderSubscriptionItems: 0, emailReminderOutbox: 0, sentEmailReminderOutbox: 0,
+          inconsistentCollectionLocations: 0,
+        },
+      });
+    vi.mocked(api.deleteWasteAddressEntity).mockResolvedValue(undefined);
+    render(<WasteMasterDataAddressesPanel search={search} canManage onSearchChange={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.addresses.delete: Nord' }));
+    expect(await screen.findByText('masterData.locationsWorkspace.addresses.previewError')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'confirm-address-delete' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.addresses.reloadPreview' }));
+    expect((await screen.findByRole('button', { name: 'confirm-address-delete' }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'confirm-address-delete' }));
+    await vi.waitFor(() => expect(api.deleteWasteAddressEntity).toHaveBeenCalledWith('region', 'region-1', 'fresh-token'));
   });
 });

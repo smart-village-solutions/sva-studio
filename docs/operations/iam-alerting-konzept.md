@@ -73,6 +73,8 @@ Dieses Dokument definiert operative Alert-Regeln für den IAM-Service des SVA St
   2. Redis-Latenz, Command-Saturation und Evictions über `redis-exporter` prüfen
   3. auf erhöhte Recompute-Last oder fehlgeschlagene Invalidation-Events in den Logs korrelieren
 
+Ein einzelnes `cache_stale_detected` mit `reason=ttl_expired` meldet den regulären Ablauf eines lokalen Snapshots auf Info-Level. Für eine Cache-Störung sprechen erhöhte Recompute-Last oder Fehler wie `revision_read_failed`, `cache_lookup_failed`, `cache_store_failed` und `cache_invalidate_failed`.
+
 ### 7. Authorization-Cache ausgefallen
 
 - Metriken:

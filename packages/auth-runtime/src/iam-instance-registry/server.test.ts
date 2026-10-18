@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { instanceRegistryHandlers, withRootMainserverRegistryAccess } from './server.js';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
@@ -156,7 +157,6 @@ describe('iam-instance-registry/server', () => {
   });
 
   it('gives Bearer authentication precedence and binds the route action statically', async () => {
-    const { instanceRegistryHandlers } = await import('./server.js');
     const request = new Request('https://studio.example.org/api/v1/iam/instances', {
       method: 'POST',
       headers: { authorization: 'Bearer signed-token', cookie: 'session=browser-session' },
@@ -176,7 +176,6 @@ describe('iam-instance-registry/server', () => {
   it('keeps root Mainserver administration on the Root host and binds the update action', async () => {
     vi.stubEnv('SVA_STUDIO_ROOT_HOST', 'studio.example.org');
     try {
-      const { withRootMainserverRegistryAccess } = await import('./server.js');
       const work = vi.fn(async () => new Response('saved', { status: 200 }));
       const tenantResponse = await withRootMainserverRegistryAccess(
         new Request('https://tenant.studio.example.org/api/v1/iam/instances/demo/mainserver-interface', {
@@ -207,7 +206,6 @@ describe('iam-instance-registry/server', () => {
   ] as const)('rejects tenant-host Mainserver %s requests', async (actionId, path) => {
     vi.stubEnv('SVA_STUDIO_ROOT_HOST', 'studio.example.org');
     try {
-      const { withRootMainserverRegistryAccess } = await import('./server.js');
       const work = vi.fn(async () => new Response('unreachable'));
       const response = await withRootMainserverRegistryAccess(
         new Request(`https://tenant.studio.example.org${path}`, {
@@ -230,7 +228,6 @@ describe('iam-instance-registry/server', () => {
         work({ user: { id: 'admin-1', roles: ['instance_registry_admin'] }, request } as never)
     );
     try {
-      const { withRootMainserverRegistryAccess } = await import('./server.js');
       const work = vi.fn(async () => new Response('unreachable'));
       const response = await withRootMainserverRegistryAccess(
         new Request('https://studio.example.org/api/v1/iam/instances/demo/mainserver-interface', {
@@ -247,7 +244,6 @@ describe('iam-instance-registry/server', () => {
   });
 
   it('authorizes explicit tenant provisioning retries with instance.create', async () => {
-    const { instanceRegistryHandlers } = await import('./server.js');
     const request = new Request(
       'https://studio.example.org/api/v1/iam/instances/demo/provisioning/retry',
       { method: 'POST', headers: { authorization: 'Bearer signed-token' } }
@@ -263,7 +259,6 @@ describe('iam-instance-registry/server', () => {
   });
 
   it('authorizes draft readiness and realm discovery with instance.create', async () => {
-    const { instanceRegistryHandlers } = await import('./server.js');
     const draftRequest = new Request(
       'https://studio.example.org/api/v1/iam/instances/draft-readiness',
       { method: 'POST', headers: { authorization: 'Bearer draft-token' } }
@@ -289,7 +284,6 @@ describe('iam-instance-registry/server', () => {
   });
 
   it('never falls back to a browser session for malformed Authorization', async () => {
-    const { instanceRegistryHandlers } = await import('./server.js');
     const request = new Request('https://studio.example.org/api/v1/iam/instances', {
       headers: { authorization: 'Basic abc', cookie: 'session=browser-session' },
     });
@@ -301,7 +295,6 @@ describe('iam-instance-registry/server', () => {
   });
 
   it('binds readiness reads and lifecycle mutations to separate service actions', async () => {
-    const { instanceRegistryHandlers } = await import('./server.js');
     const readinessRequest = new Request(
       'https://studio.example.org/api/v1/iam/instances/tenant-a/plugin-readiness',
       { headers: { authorization: 'Bearer read-token' } }
@@ -362,7 +355,6 @@ describe('iam-instance-registry/server', () => {
       if (endpoint.operation) {
         state.resolvePluginTenantLifecycleServiceAction.mockResolvedValueOnce(endpoint.actionId);
       }
-      const { instanceRegistryHandlers } = await import('./server.js');
       const request = new Request(
         'https://studio.example.org/api/v1/iam/instances/tenant-a/plugin-readiness',
         endpoint.operation
@@ -403,7 +395,6 @@ describe('iam-instance-registry/server', () => {
   );
 
   it('rejects invalid lifecycle bodies before selecting or authenticating an action', async () => {
-    const { instanceRegistryHandlers } = await import('./server.js');
     const invalidResponse = new Response(null, { status: 400 });
     state.resolvePluginTenantLifecycleServiceAction.mockResolvedValueOnce(invalidResponse);
     const request = new Request(
@@ -422,7 +413,6 @@ describe('iam-instance-registry/server', () => {
   });
 
   it('routes audit requests through the authenticated registry handler', async () => {
-    const { instanceRegistryHandlers } = await import('./server.js');
     const collectionRequest = new Request('https://studio.example.org/api/v1/iam/instances/audit');
     const detailRequest = new Request('https://studio.example.org/api/v1/iam/instances/demo/audit');
 
@@ -445,7 +435,6 @@ describe('iam-instance-registry/server', () => {
   });
 
   it('exposes every registry operation through the session-authenticated wrapper', async () => {
-    const { instanceRegistryHandlers } = await import('./server.js');
     const handlers = Object.values(instanceRegistryHandlers);
     const responses = await Promise.all(
       handlers.map((handler) =>

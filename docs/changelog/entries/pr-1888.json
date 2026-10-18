@@ -1,4 +1,0 @@
-{
-  "prNumber": 1888,
-  "body": "Entwicklungsagenten dürfen für Projektaufgaben wieder Dateien außerhalb des Projektverzeichnisses lesen und bei passenden Aufgaben Pull Requests erstellen. Änderungen außerhalb des Projekts bleiben freigabepflichtig."
-}

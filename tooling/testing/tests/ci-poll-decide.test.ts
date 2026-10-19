@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const scriptPath = fileURLToPath(
-  new URL('../../.opencode/skills/monitor-ci/scripts/ci-poll-decide.mjs', import.meta.url)
+  new URL('../../../.opencode/skills/monitor-ci/scripts/ci-poll-decide.mjs', import.meta.url)
 );
 const decide = (ci: unknown, flags: string[] = []) =>
   JSON.parse(

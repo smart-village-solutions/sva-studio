@@ -1902,6 +1902,41 @@ const respond = (response, status, body) => {
   response.end(`${JSON.stringify(body)}\n`);
 };
 
+const respondCapabilities = async (incoming, response) => {
+  try {
+    const environment = resolveCapabilityEnvironment(incoming.url, incoming.headers.host);
+    if (environment !== 'staging' && environment !== 'prod')
+      return respond(response, 400, { error: 'invalid_request' });
+    if (!validRequestHost(environment, incoming.headers.host))
+      return respond(response, 400, { error: 'invalid_request' });
+    const auth = incoming.headers.authorization;
+    if (typeof auth !== 'string' || !auth.startsWith('Bearer '))
+      return respond(response, 401, { error: 'unauthorized' });
+    await verifyOidc(auth.slice('Bearer '.length), environment, 'backup-and-verify');
+    const agentRevision = readBackupAgentRevision();
+    if (!agentRevision) return respond(response, 503, { error: 'agent_misconfigured' });
+    return respond(response, 200, {
+      protocolVersions: [2],
+      agentRevision,
+      databaseTargets: ['ssf', 'studio', 'waste'],
+      resultFields: [
+        'bytes',
+        'database',
+        'deployImageDigest',
+        'environment',
+        'objectKey',
+        'requestId',
+        'sha256',
+        'status',
+        'steps',
+      ],
+      wasteInventory: true,
+    });
+  } catch {
+    return respond(response, 401, { error: 'unauthorized' });
+  }
+};
+
 export const createBackupAgentServer = () =>
   createServer(async (incoming, response) => {
     if (incoming.method === 'GET' && incoming.url === '/health/live')
@@ -1910,38 +1945,7 @@ export const createBackupAgentServer = () =>
       incoming.method === 'GET' &&
       new URL(incoming.url ?? '', 'http://backup-agent.internal').pathname === capabilityPath
     ) {
-      try {
-        const environment = resolveCapabilityEnvironment(incoming.url, incoming.headers.host);
-        if (environment !== 'staging' && environment !== 'prod')
-          return respond(response, 400, { error: 'invalid_request' });
-        if (!validRequestHost(environment, incoming.headers.host))
-          return respond(response, 400, { error: 'invalid_request' });
-        const auth = incoming.headers.authorization;
-        if (typeof auth !== 'string' || !auth.startsWith('Bearer '))
-          return respond(response, 401, { error: 'unauthorized' });
-        await verifyOidc(auth.slice('Bearer '.length), environment, 'backup-and-verify');
-        const agentRevision = readBackupAgentRevision();
-        if (!agentRevision) return respond(response, 503, { error: 'agent_misconfigured' });
-        return respond(response, 200, {
-          protocolVersions: [2],
-          agentRevision,
-          databaseTargets: ['ssf', 'studio', 'waste'],
-          resultFields: [
-            'bytes',
-            'database',
-            'deployImageDigest',
-            'environment',
-            'objectKey',
-            'requestId',
-            'sha256',
-            'status',
-            'steps',
-          ],
-          wasteInventory: true,
-        });
-      } catch {
-        return respond(response, 401, { error: 'unauthorized' });
-      }
+      return respondCapabilities(incoming, response);
     }
     const isBackup = incoming.url === requestPath;
     const isRestore = incoming.url === restoreRequestPath;

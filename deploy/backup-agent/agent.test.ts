@@ -7,6 +7,7 @@ import {
   archiveSchemaCompatible,
   backupDumpArgs,
   canonicalRequest,
+  createBackupAgentServer,
   canonicalRestoreRequest,
   buildRuntimePrincipalReconciliationSql,
   buildSsfRuntimePrincipalReconciliationSql,
@@ -872,5 +873,44 @@ describe('backup agent runtime contract', () => {
     await expect(
       runCommand(process.execPath, ['-e', 'setTimeout(() => {}, 60_000)'], { timeoutMs: 25 })
     ).rejects.toThrow(`${process.execPath}_timeout`);
+  });
+});
+
+describe('backup agent HTTP guards', () => {
+  const request = async (method: string, url: string, headers = {}) => {
+    const server = createBackupAgentServer();
+    return new Promise<{ status: number; body: unknown }>((resolve) => {
+      const response = {
+        writeHead: (status: number) => {
+          response.status = status;
+        },
+        status: 0,
+        end: (body: string) => resolve({ status: response.status, body: JSON.parse(body) }),
+      };
+      server.emit('request', { method, url, headers }, response);
+    });
+  };
+
+  it('keeps health and unknown route behavior without reading request bodies', async () => {
+    expect(await request('GET', '/health/live')).toEqual({ status: 200, body: { status: 'ok' } });
+    expect(await request('POST', '/unknown')).toEqual({
+      status: 404,
+      body: { error: 'not_found' },
+    });
+  });
+
+  it('rejects capability environments and hosts before authentication', async () => {
+    expect(await request('GET', '/_ops/backup/v1/capabilities?environment=dev')).toEqual({
+      status: 400,
+      body: { error: 'invalid_request' },
+    });
+    expect(
+      await request('GET', '/_ops/backup/v1/capabilities?environment=prod', { host: 'invalid' })
+    ).toEqual({ status: 400, body: { error: 'invalid_request' } });
+    expect(
+      await request('GET', '/_ops/backup/v1/capabilities?environment=prod', {
+        host: targets.prod.host,
+      })
+    ).toEqual({ status: 401, body: { error: 'unauthorized' } });
   });
 });

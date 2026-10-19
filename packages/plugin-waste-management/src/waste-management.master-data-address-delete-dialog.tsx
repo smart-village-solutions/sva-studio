@@ -67,7 +67,7 @@ const DeleteOptions = ({ pt, pendingDelete, deleting, targets, onChangeTransfer 
       {pendingDelete?.transfer ? <StudioField id="waste-address-transfer-target" label={pt('masterData.locationsWorkspace.addresses.transferTarget')}>
         <Select id="waste-address-transfer-target" value={pendingDelete.targetEntityId ?? ''} disabled={deleting} onChange={(event) => onChangeTransfer(true, event.target.value || undefined)}>
           <option value="">{pt('masterData.locationsWorkspace.addresses.selectTransferTarget')}</option>
-          {targets?.map((row) => <option key={row.id} value={row.id}>{[row.name, row.parent, row.city, row.region].filter(Boolean).join(' · ')}</option>)}
+          {targets?.map((row) => <option key={row.id} value={row.id}>{['postalCode' in row.record ? row.record.postalCode : undefined, row.name, row.parent, row.city, row.region].filter(Boolean).join(' · ')}</option>)}
         </Select>
       </StudioField> : null}
 </>;

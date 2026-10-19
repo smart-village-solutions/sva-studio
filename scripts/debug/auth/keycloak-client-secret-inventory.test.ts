@@ -138,9 +138,7 @@ it('exercises the complete CLI source with fail-closed synthetic dependencies', 
         encoding: 'utf8',
         env: {
           NODE_NO_WARNINGS: '1',
-          NODE_V8_COVERAGE: fileURLToPath(
-            new URL('../../../.coverage-inventory/', import.meta.url)
-          ),
+          NODE_V8_COVERAGE: process.env.NODE_V8_COVERAGE,
         },
       }
     )

@@ -138,29 +138,34 @@ function buildClusters(config: AdminExplorationConfig, stories: readonly AdminEx
     }));
 }
 
+function validateRequestedIds<T extends string | number>(
+  requested: readonly T[],
+  available: readonly T[],
+  filterName: string
+): void {
+  const availableIds = new Set(available);
+  const missingIds = requested.filter((id) => !availableIds.has(id));
+  if (missingIds.length > 0) {
+    throw new Error(
+      `AdminExploration ${filterName} filter matched no catalog entries: ${missingIds.join(', ')}`
+    );
+  }
+}
+
 function validateRequestedStoryFilters(
   config: AdminExplorationConfig,
   stories: readonly AdminExplorationStoryRecord[]
 ): void {
-  if (config.storyFilters.storyIds.length > 0) {
-    const availableStoryIds = new Set(stories.map((story) => story.id));
-    const missingStoryIds = config.storyFilters.storyIds.filter((storyId) => availableStoryIds.has(storyId) === false);
-
-    if (missingStoryIds.length > 0) {
-      throw new Error(`AdminExploration story id filter matched no catalog entries: ${missingStoryIds.join(', ')}`);
-    }
-  }
-
-  if (config.storyFilters.packageIds.length > 0) {
-    const availablePackageIds = new Set(stories.map((story) => story.packageId));
-    const missingPackageIds = config.storyFilters.packageIds.filter(
-      (packageId) => availablePackageIds.has(packageId) === false
-    );
-
-    if (missingPackageIds.length > 0) {
-      throw new Error(`AdminExploration package filter matched no catalog entries: ${missingPackageIds.join(', ')}`);
-    }
-  }
+  validateRequestedIds(
+    config.storyFilters.storyIds,
+    stories.map((story) => story.id),
+    'story id'
+  );
+  validateRequestedIds(
+    config.storyFilters.packageIds,
+    stories.map((story) => story.packageId),
+    'package'
+  );
 }
 
 function defaultEvidenceForCluster(cluster: AdminExplorationStoryCluster): readonly AdminExplorationStoryEvidenceInput[] {

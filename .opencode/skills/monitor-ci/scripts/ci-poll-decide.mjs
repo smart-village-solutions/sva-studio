@@ -102,16 +102,12 @@ function categorizeTasks() {
   const unverified = failedTaskIds.filter((t) => !verifiedSet.has(t));
   if (unverified.length === 0) return { category: 'all_verified' };
 
-  const e2e = unverified.filter((t) => {
-    const parts = t.split(':');
-    return parts.length >= 2 && parts[1].includes('e2e');
-  });
-  if (e2e.length === unverified.length) return { category: 'e2e_only' };
-
-  const verifiable = unverified.filter((t) => {
-    const parts = t.split(':');
+  const verifiable = unverified.filter((task) => {
+    const parts = task.split(':');
     return !(parts.length >= 2 && parts[1].includes('e2e'));
   });
+  if (verifiable.length === 0) return { category: 'e2e_only' };
+
   return { category: 'needs_local_verify', verifiableTaskIds: verifiable };
 }
 
@@ -121,11 +117,12 @@ function backoff(count) {
 }
 
 function hasStateChanged() {
-  if (prevCipeStatus && cipeStatus !== prevCipeStatus) return true;
-  if (prevShStatus && selfHealingStatus !== prevShStatus) return true;
-  if (prevVerificationStatus && verificationStatus !== prevVerificationStatus) return true;
-  if (prevFailureClassification && failureClassification !== prevFailureClassification) return true;
-  return false;
+  return [
+    [prevCipeStatus, cipeStatus],
+    [prevShStatus, selfHealingStatus],
+    [prevVerificationStatus, verificationStatus],
+    [prevFailureClassification, failureClassification],
+  ].some(([previous, current]) => previous && current !== previous);
 }
 
 function isTimedOut() {

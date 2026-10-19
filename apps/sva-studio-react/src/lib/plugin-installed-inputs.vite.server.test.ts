@@ -326,6 +326,19 @@ describe('installed plugin build inputs', () => {
     expect(renderInstalledPluginInputs(sources, 'server')).not.toContain('import(');
   });
 
+  it('validates package identity before skipping disabled entrypoints', () => {
+    const { appRoot, packageRoot } = createFixture({ enabled: false });
+    writeFileSync(join(packageRoot, 'package.json'), JSON.stringify({ name: '@vendor/other' }));
+    expect(() => resolveInstalledPluginSources(appRoot, 'studio')).toThrow(
+      'installed_plugin_package_mismatch:calendar'
+    );
+
+    writeFileSync(join(appRoot, 'package.json'), JSON.stringify({ dependencies: {} }));
+    expect(() => resolveInstalledPluginSources(appRoot, 'studio')).toThrow(
+      'installed_plugin_dependency_missing:calendar'
+    );
+  });
+
   it('fails before bundling when an entry is missing or escapes its package', () => {
     const missing = createFixture();
     rmSync(join(missing.packageRoot, 'dist', 'calendar-worker.js'));

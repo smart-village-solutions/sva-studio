@@ -205,6 +205,89 @@ const resolveEntryFile = (
   return actual;
 };
 
+const resolveEnabledPluginFiles = (
+  packageRoot: string,
+  manifest: PluginManifest,
+  distribution: Distribution
+): Partial<Record<EntryKind, string>> => {
+  if (distribution === 'ssf' && manifest.entryPoints.jobs) {
+    throw new Error(`installed_plugin_jobs_unsupported:${manifest.pluginId}:ssf`);
+  }
+  if (
+    distribution === 'studio' &&
+    manifest.entryPoints.jobs &&
+    manifest.runtimeRequirements?.jobs !== 'waste-management.operations'
+  ) {
+    throw new Error(`installed_plugin_jobs_unsupported:${manifest.pluginId}:studio`);
+  }
+  const files: Partial<Record<EntryKind, string>> = {};
+  if (
+    manifest.sdkVersion !== studioHostPluginPlatform.sdkVersion ||
+    !satisfiesVersionRange(
+      studioHostPluginPlatform.studioVersion,
+      manifest.hostCompatibility.studioVersionRange
+    ) ||
+    manifest.hostCompatibility.requiredCapabilities?.some(
+      (capability) => !studioHostPluginPlatform.capabilities.includes(capability)
+    )
+  ) {
+    throw new Error(`installed_plugin_incompatible:${manifest.pluginId}`);
+  }
+  for (const kind of ['browser', 'descriptor', 'server', 'jobs'] as const) {
+    const path = manifest.entryPoints[kind];
+    if (path) files[kind] = resolveEntryFile(packageRoot, manifest.pluginId, kind, path);
+  }
+  if (!files.browser || !files.descriptor) {
+    throw new Error(`installed_plugin_entry_missing:${manifest.pluginId}:browser_or_descriptor`);
+  }
+  return files;
+};
+
+const resolveInstalledPluginSource = (
+  appRoot: string,
+  distribution: Distribution,
+  dependencies: Record<string, unknown>,
+  entry: CatalogRecord
+): InstalledSource => {
+  if (!Object.hasOwn(dependencies, entry.sourceRef)) {
+    throw new Error(`installed_plugin_dependency_missing:${entry.pluginId}`);
+  }
+  let packageRoot: string;
+  try {
+    packageRoot = realpathSync(join(appRoot, 'node_modules', entry.sourceRef));
+  } catch {
+    throw new Error(`installed_plugin_manifest_missing:${entry.pluginId}`);
+  }
+  const manifestPath = join(packageRoot, 'plugin.manifest.json');
+  try {
+    if (!statSync(manifestPath).isFile()) throw new Error('not_file');
+  } catch {
+    throw new Error(`installed_plugin_manifest_missing:${entry.pluginId}`);
+  }
+  if (realpathSync(manifestPath) !== join(packageRoot, 'plugin.manifest.json')) {
+    throw new Error(`installed_plugin_manifest_invalid:${entry.pluginId}`);
+  }
+  const packageJson = readJson(join(packageRoot, 'package.json'));
+  if (!isRecord(packageJson) || packageJson.name !== entry.sourceRef) {
+    throw new Error(`installed_plugin_package_mismatch:${entry.pluginId}`);
+  }
+  const manifest = definePluginManifest(readJson(manifestPath) as PluginManifest);
+  if (manifest.pluginId !== entry.pluginId) {
+    throw new Error(`installed_plugin_manifest_mismatch:${entry.pluginId}`);
+  }
+  const catalog = {
+    pluginId: entry.pluginId,
+    sourceType: entry.sourceType,
+    enabled: entry.enabled,
+    sourceRef: entry.sourceRef,
+  };
+  if (!entry.enabled) {
+    return { catalog, manifest, packageRoot, files: {} };
+  }
+  const files = resolveEnabledPluginFiles(packageRoot, manifest, distribution);
+  return { catalog, manifest, packageRoot, files };
+};
+
 export const resolveInstalledPluginSources = (
   appRoot: string,
   distribution: Distribution,
@@ -213,77 +296,9 @@ export const resolveInstalledPluginSources = (
   const appPackage = readJson(join(appRoot, 'package.json'));
   if (!isRecord(appPackage)) throw new Error('studio_package_invalid');
   const dependencies = isRecord(appPackage.dependencies) ? appPackage.dependencies : {};
-  const sources: InstalledSource[] = [];
-  for (const entry of readCatalog(appRoot, distribution, selectedPluginIds)) {
-    if (!Object.hasOwn(dependencies, entry.sourceRef)) {
-      throw new Error(`installed_plugin_dependency_missing:${entry.pluginId}`);
-    }
-    let packageRoot: string;
-    try {
-      packageRoot = realpathSync(join(appRoot, 'node_modules', entry.sourceRef));
-    } catch {
-      throw new Error(`installed_plugin_manifest_missing:${entry.pluginId}`);
-    }
-    const manifestPath = join(packageRoot, 'plugin.manifest.json');
-    try {
-      if (!statSync(manifestPath).isFile()) throw new Error('not_file');
-    } catch {
-      throw new Error(`installed_plugin_manifest_missing:${entry.pluginId}`);
-    }
-    if (realpathSync(manifestPath) !== join(packageRoot, 'plugin.manifest.json')) {
-      throw new Error(`installed_plugin_manifest_invalid:${entry.pluginId}`);
-    }
-    const packageJson = readJson(join(packageRoot, 'package.json'));
-    if (!isRecord(packageJson) || packageJson.name !== entry.sourceRef) {
-      throw new Error(`installed_plugin_package_mismatch:${entry.pluginId}`);
-    }
-    const manifest = definePluginManifest(readJson(manifestPath) as PluginManifest);
-    if (manifest.pluginId !== entry.pluginId) {
-      throw new Error(`installed_plugin_manifest_mismatch:${entry.pluginId}`);
-    }
-    const catalog = {
-      pluginId: entry.pluginId,
-      sourceType: entry.sourceType,
-      enabled: entry.enabled,
-      sourceRef: entry.sourceRef,
-    };
-    if (!entry.enabled) {
-      sources.push({ catalog, manifest, packageRoot, files: {} });
-      continue;
-    }
-    if (distribution === 'ssf' && manifest.entryPoints.jobs) {
-      throw new Error(`installed_plugin_jobs_unsupported:${entry.pluginId}:ssf`);
-    }
-    if (
-      distribution === 'studio' &&
-      manifest.entryPoints.jobs &&
-      manifest.runtimeRequirements?.jobs !== 'waste-management.operations'
-    ) {
-      throw new Error(`installed_plugin_jobs_unsupported:${entry.pluginId}:studio`);
-    }
-    const files: Partial<Record<EntryKind, string>> = {};
-    if (
-      manifest.sdkVersion !== studioHostPluginPlatform.sdkVersion ||
-      !satisfiesVersionRange(
-        studioHostPluginPlatform.studioVersion,
-        manifest.hostCompatibility.studioVersionRange
-      ) ||
-      manifest.hostCompatibility.requiredCapabilities?.some(
-        (capability) => !studioHostPluginPlatform.capabilities.includes(capability)
-      )
-    ) {
-      throw new Error(`installed_plugin_incompatible:${entry.pluginId}`);
-    }
-    for (const kind of ['browser', 'descriptor', 'server', 'jobs'] as const) {
-      const path = manifest.entryPoints[kind];
-      if (path) files[kind] = resolveEntryFile(packageRoot, entry.pluginId, kind, path);
-    }
-    if (!files.browser || !files.descriptor) {
-      throw new Error(`installed_plugin_entry_missing:${entry.pluginId}:browser_or_descriptor`);
-    }
-    sources.push({ catalog, manifest, packageRoot, files });
-  }
-  return sources;
+  return readCatalog(appRoot, distribution, selectedPluginIds).map((entry) =>
+    resolveInstalledPluginSource(appRoot, distribution, dependencies, entry)
+  );
 };
 
 const registryPath = (source: InstalledSource, kind: EntryKind): string =>

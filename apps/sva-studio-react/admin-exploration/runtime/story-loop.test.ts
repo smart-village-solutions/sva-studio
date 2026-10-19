@@ -239,6 +239,22 @@ function createFakeChromiumForUserRoleAssignment() {
     loginClicked: false,
   };
 
+  function submitRoleCreation() {
+    state.createdRoleName = state.formValues['#create-role-key'] ?? null;
+    state.createdRoleDisplayName = state.formValues['#create-role-name'] ?? null;
+    state.createdRoleId = 'role-assign-123';
+    state.currentUrl = `https://de-musterhausen.example.test/admin/roles/${state.createdRoleId}`;
+  }
+
+  function submitUserCreation() {
+    const firstName = state.formValues['#create-user-first-name'] ?? '';
+    const lastName = state.formValues['#create-user-last-name'] ?? '';
+    state.createdUserDisplayName = `${firstName} ${lastName}`.trim();
+    state.createdUserEmail = state.formValues['#create-user-email'] ?? null;
+    state.createdUserId = 'user-role-123';
+    state.currentUrl = `https://de-musterhausen.example.test/admin/users/${state.createdUserId}`;
+  }
+
   function createLocator(query: { role?: string; selector?: string; roleName?: string | RegExp }) {
     const roleLabel = query.roleName instanceof RegExp ? query.roleName.source.toLowerCase() : '';
     const isVisible = () => {
@@ -270,20 +286,12 @@ function createFakeChromiumForUserRoleAssignment() {
           }
 
           if (roleLabel.includes('rolle anlegen')) {
-            state.createdRoleName = state.formValues['#create-role-key'] ?? null;
-            state.createdRoleDisplayName = state.formValues['#create-role-name'] ?? null;
-            state.createdRoleId = 'role-assign-123';
-            state.currentUrl = `https://de-musterhausen.example.test/admin/roles/${state.createdRoleId}`;
+            submitRoleCreation();
             return;
           }
 
           if (roleLabel.includes('nutzer anlegen')) {
-            const firstName = state.formValues['#create-user-first-name'] ?? '';
-            const lastName = state.formValues['#create-user-last-name'] ?? '';
-            state.createdUserDisplayName = `${firstName} ${lastName}`.trim();
-            state.createdUserEmail = state.formValues['#create-user-email'] ?? null;
-            state.createdUserId = 'user-role-123';
-            state.currentUrl = `https://de-musterhausen.example.test/admin/users/${state.createdUserId}`;
+            submitUserCreation();
             return;
           }
 

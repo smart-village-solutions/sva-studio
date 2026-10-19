@@ -6,6 +6,7 @@ import {
   createWasteManagementHouseNumber,
   createWasteManagementLocationTourLinksBulk,
   deleteWasteManagementHolidayRule,
+  deleteWasteAddressEntity,
   deleteWasteManagementFraction,
   createWasteManagementFraction,
   createWasteManagementGlobalDateShift,
@@ -83,6 +84,14 @@ describe('waste-management api client', () => {
       }),
       { status: 202, headers: { 'Content-Type': 'application/json' } }
     );
+
+  it('sends the optional merge target with the delete confirmation', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ data: { counts: {} } }), { status: 200 }));
+    await deleteWasteAddressEntity('street', 'source', 'snapshot', 'target');
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/waste-management/streets/source', expect.objectContaining({
+      method: 'DELETE', body: JSON.stringify({ confirmationToken: 'snapshot', targetEntityId: 'target' }),
+    }));
+  });
 
   it('loads waste settings through the host facade', async () => {
     fetchMock.mockResolvedValueOnce(

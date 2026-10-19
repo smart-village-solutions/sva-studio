@@ -88,7 +88,8 @@ const previewWasteAddressMutation = async (
 const deleteWasteAddressEntity = async (
   entityType: WasteAddressEntityDeleteInput['entityType'],
   entityId: string,
-  confirmationToken: string
+  confirmationToken: string,
+  targetEntityId?: string
 ): Promise<{ readonly counts: WasteAddressImpactPreview['counts'] }> => {
   const path = entityType === 'region' ? 'regions'
     : entityType === 'city' ? 'cities'
@@ -96,7 +97,7 @@ const deleteWasteAddressEntity = async (
         : 'house-numbers';
   return requestWasteManagementMutation(
     `/api/v1/waste-management/${path}/${encodeURIComponent(entityId)}`,
-    { confirmationToken },
+    { confirmationToken, ...(targetEntityId ? { targetEntityId } : {}) },
     'DELETE'
   );
 };

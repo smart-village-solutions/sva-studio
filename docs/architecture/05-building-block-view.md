@@ -198,6 +198,7 @@ Modulen der jeweiligen Bausteine.
 - zeigt für den laufenden CSV-Spezialimport eine fachnahe Live-Fortschrittskarte an, leitet Prozent und Zeilenstand aber weiterhin ausschließlich aus dem generischen Host-Jobvertrag ab
 - bietet unter den eingeklappten erweiterten Systemfunktionen die autorisierte Aktion zur Ergänzung fehlender Orts-Postleitzahlen an; Providerzugriff, Bewertung und Mutation bleiben vollständig hostgeführt
 - stellt Regionen, Orte, Straßen und Hausnummern im URL-gestützten Tab `Stammdaten` bereit; vorhandene Adressdialoge bearbeiten Namen, Postleitzahlen, Nummern und Elternzuordnungen, während Abholorte im eigenen Arbeitsbereich bleiben
+- erlaubt beim Löschen alternativ die Übertragung auf einen Zieleintrag derselben Art; führt Dubletten ausschließlich innerhalb desselben Ziel-Elterneintrags rekursiv zusammen und erhält Abholorte samt Touren-/Terminbezügen. Quell-Abos werden gelöscht; Vorschau und serialisierbare Transaktion binden Quelle und Ziel gemeinsam.
 - zeigt vor Löschungen und Elternwechseln eine mandantengebundene Auswirkungsübersicht. Ein Elternwechsel mit betroffenen E-Mail-Abos benötigt eine gesonderte Bestätigung; Zuordnungsänderung sowie Löschung der Abos, ihrer Positionen und aller Outbox-Zeilen einschließlich `sent` erfolgen atomar. Touren, Fraktionen und allgemeine Terminregeln bleiben bestehen
 
 13. Instanz-Registry (`packages/instance-registry`)

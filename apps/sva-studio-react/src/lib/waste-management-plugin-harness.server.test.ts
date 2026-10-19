@@ -77,6 +77,103 @@ describe('waste E2E facade dispatch', () => {
     expect(harness.requests.startedJobTypes).toEqual(['waste-management.seed-data']);
   });
 
+  it('dispatches preset changes and tour mutations against the same stored tours', async () => {
+    const { harness, request } = await createHarness();
+    const presets = [
+      { id: 'monthly', name: 'Monatlich', intervalDays: 28 },
+      { id: 'weekly', name: 'Wöchentlich', intervalDays: 7 },
+    ];
+    await request('PUT', 'settings', { customRecurrencePresets: presets });
+    const body = {
+      id: 'tour',
+      name: 'Papier',
+      wasteFractionIds: ['paper'],
+      customRecurrenceId: 'monthly',
+      firstDate: '2026-01-01',
+      endDate: '2026-12-31',
+    };
+    expect((await request('POST', 'tours', body)).response?.status).toBe(201);
+    expect(harness.requests.createdTours).toEqual([body]);
+    const readTour = async () => {
+      const result = await request('GET', 'tours');
+      return JSON.parse(result.response?.body ?? '{}').data.tours[0];
+    };
+    expect(await readTour()).toMatchObject({
+      customRecurrenceName: 'Monatlich',
+      customRecurrenceIntervalDays: 28,
+    });
+    await request('PUT', 'settings', {
+      customRecurrencePresets: [
+        { ...presets[0], name: 'Alle 30 Tage', intervalDays: 30 },
+        presets[1],
+      ],
+    });
+    expect(await readTour()).toMatchObject({
+      customRecurrenceName: 'Alle 30 Tage',
+      customRecurrenceIntervalDays: 30,
+    });
+    const validity = {
+      tourIds: ['tour'],
+      firstDate: { mode: 'set', value: '2026-02-01' },
+      endDate: { mode: 'clear' },
+    };
+    expect((await request('PUT', 'tours/bulk-validity', validity)).response?.status).toBe(200);
+    expect(harness.requests.tourValidityUpdates).toEqual([validity]);
+    expect(await readTour()).toMatchObject({ firstDate: '2026-02-01' });
+    expect((await readTour()).endDate).toBeUndefined();
+    const status = { tourIds: ['tour'], status: 'published' };
+    expect((await request('PUT', 'tours/bulk-status', status)).response?.status).toBe(200);
+    expect(harness.requests.tourStatusUpdates).toEqual([status]);
+    expect((await readTour()).status).toBe('published');
+
+    await request('PUT', 'settings', {
+      customRecurrencePresets: [presets[1]],
+      deletedPresetFallbacks: { monthly: { kind: 'preset', value: 'weekly' } },
+    });
+    expect(await readTour()).toMatchObject({
+      customRecurrenceId: 'weekly',
+      customRecurrenceName: 'Wöchentlich',
+      customRecurrenceIntervalDays: 7,
+    });
+    await request('PUT', 'settings', {
+      customRecurrencePresets: [],
+      deletedPresetFallbacks: { weekly: { kind: 'recurrence', value: 'weekly' } },
+    });
+    expect(await readTour()).toMatchObject({ recurrence: 'weekly' });
+    expect((await readTour()).customRecurrenceId).toBeUndefined();
+  });
+
+  it('rejects invalid bulk requests atomically and clears a removed preset without a fallback', async () => {
+    const { request } = await createHarness();
+    await request('POST', 'tours', { id: 'tour', name: 'On demand', recurrence: 'on-demand' });
+    expect(
+      (
+        await request('PUT', 'tours/bulk-validity', {
+          tourIds: ['tour'],
+          firstDate: { mode: 'clear' },
+        })
+      ).response?.status
+    ).toBe(400);
+    expect(
+      (await request('PUT', 'tours/bulk-validity', { tourIds: ['missing'] })).response?.status
+    ).toBe(400);
+    expect(
+      (await request('PUT', 'tours/bulk-status', { tourIds: ['tour'], status: 'invalid' })).response
+        ?.status
+    ).toBe(400);
+    expect(
+      (await request('PUT', 'tours/bulk-status', { tourIds: ['missing'], status: 'published' }))
+        .response?.status
+    ).toBe(400);
+    await request('POST', 'tours', { id: 'custom', name: 'Custom', customRecurrenceId: 'removed' });
+    await request('PUT', 'settings', { customRecurrencePresets: [] });
+    const result = await request('GET', 'tours');
+    const tours = JSON.parse(result.response?.body ?? '{}').data.tours;
+    expect(tours[0].customRecurrenceId).toBeUndefined();
+    expect(tours[1]).toMatchObject({ id: 'tour', status: 'draft', recurrence: 'on-demand' });
+    expect(tours[1].firstDate).toBeUndefined();
+  });
+
   it('preserves forbidden creation without mutating master data', async () => {
     const { harness, request } = await createHarness(false);
     const result = await request('POST', 'fractions', { id: 'forbidden' });

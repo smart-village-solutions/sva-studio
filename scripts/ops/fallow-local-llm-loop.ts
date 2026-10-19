@@ -35,16 +35,21 @@ function command(cwd: string, file: string, args: string[], timeout = 300_000, a
   return run.stdout.trim();
 }
 
+function eligibleFinding(f: Finding): boolean {
+  if (!/^apps\/[a-z0-9-]+\/src\/(?:lib|components\/ui)\/[a-z0-9./-]+\.tsx?$/.test(f.path)) return false;
+  if (f.path.split('/').includes('..')) return false;
+  if (/\/(auth|iam|plugins?|routes?|server|security|contracts?)\b/i.test(f.path) || /(?:auth|iam|plugin|security|permission|authorization|interfaces-api|map-geocoding-api|\.server\.|(?:^|\/)i18n\.|react-dom-server-compat)/i.test(f.path) || /(?:^|\/)index\./.test(f.path)) return false;
+  if (f.is_type_only || f.is_re_export || !/^[A-Za-z_$][\w$]*$/.test(f.export_name)) return false;
+  if (!f.actions?.some((a) => a.type === 'remove-export' && a.auto_fixable)) return false;
+  return true;
+}
+
 export function selectGroups(input: unknown): Group[] {
   const envelope = input as { kind?: string; unused_exports?: Finding[] };
   if (envelope.kind !== 'dead-code' || !Array.isArray(envelope.unused_exports)) throw new Error('Unexpected Fallow JSON');
   const byFile = new Map<string, Finding[]>();
   for (const f of envelope.unused_exports) {
-    if (!/^apps\/[a-z0-9-]+\/src\/(?:lib|components\/ui)\/[a-z0-9./-]+\.tsx?$/.test(f.path)) continue;
-    if (f.path.split('/').includes('..')) continue;
-    if (/\/(auth|iam|plugins?|routes?|server|security|contracts?)\b/i.test(f.path) || /(?:auth|iam|plugin|security|permission|authorization|interfaces-api|map-geocoding-api|\.server\.|(?:^|\/)i18n\.|react-dom-server-compat)/i.test(f.path) || /(?:^|\/)index\./.test(f.path)) continue;
-    if (f.is_type_only || f.is_re_export || !/^[A-Za-z_$][\w$]*$/.test(f.export_name)) continue;
-    if (!f.actions?.some((a) => a.type === 'remove-export' && a.auto_fixable)) continue;
+    if (!eligibleFinding(f)) continue;
     byFile.set(f.path, [...(byFile.get(f.path) || []), f]);
   }
   return [...byFile].filter(([, fs]) => fs.length >= 2 && fs.length <= 6 && new Set(fs.map((f) => f.line)).size === fs.length).map(([path, findings]) => ({

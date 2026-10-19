@@ -40,7 +40,7 @@ const withAuth = (_request: Request, handler: (request: Request, ctx: Authentica
 describe('Waste address impact handlers', () => {
   it('passes the validated preview into the authenticated tenant loader', async () => {
     const deps = createDeps();
-    const handlers = createWasteAddressEntityImpactHandlers(deps, withAuth);
+    const handlers = createWasteAddressEntityImpactHandlers(() => deps, withAuth);
     const request = new Request('https://studio.test/api/v1/waste-management/address-entities/impact-preview', {
       method: 'POST',
       headers: { 'content-type': 'application/json', origin: 'https://studio.test', 'x-requested-with': 'XMLHttpRequest' },
@@ -58,7 +58,7 @@ describe('Waste address impact handlers', () => {
       ['region', 'regions'], ['city', 'cities'], ['street', 'streets'], ['houseNumber', 'house-numbers'],
     ] as const) {
       const deps = createDeps();
-      const handlers = createWasteAddressEntityImpactHandlers(deps, withAuth);
+      const handlers = createWasteAddressEntityImpactHandlers(() => deps, withAuth);
       const action = type === 'region' ? handlers.deleteRegion
         : type === 'city' ? handlers.deleteCity
           : type === 'street' ? handlers.deleteStreet : handlers.deleteHouseNumber;
@@ -78,7 +78,7 @@ describe('Waste address impact handlers', () => {
 
   it('validates and forwards the merge target through the existing authenticated delete route', async () => {
     const deps = createDeps();
-    const handlers = createWasteAddressEntityImpactHandlers(deps, withAuth);
+    const handlers = createWasteAddressEntityImpactHandlers(() => deps, withAuth);
     const targetEntityId = '00000000-0000-4000-8000-000000000001';
     const request = (target: string) => new Request('https://studio.test/api/v1/waste-management/regions/source', {
       method: 'DELETE', headers: { 'content-type': 'application/json' },
@@ -95,7 +95,7 @@ describe('Waste address impact handlers', () => {
   it('audits failed address deletes with a bounded failure reason', async () => {
     const deps = createDeps();
     deps.mutateWasteAddressInTransaction.mockRejectedValueOnce(Object.assign(new Error('db failure with data'), { code: 'XX000' }));
-    const handlers = createWasteAddressEntityImpactHandlers(deps, withAuth);
+    const handlers = createWasteAddressEntityImpactHandlers(() => deps, withAuth);
     const response = await handlers.deleteRegion(new Request('https://studio.test/api/v1/waste-management/regions/region-1', {
       method: 'DELETE',
       headers: { 'content-type': 'application/json', origin: 'https://studio.test', 'x-requested-with': 'XMLHttpRequest' },
@@ -112,7 +112,7 @@ describe('Waste address impact handlers', () => {
   it('maps serialization conflicts to refreshable preview conflicts', async () => {
     const deps = createDeps();
     deps.mutateWasteAddressInTransaction.mockRejectedValueOnce(Object.assign(new Error('serialization'), { code: '40001' }));
-    const handlers = createWasteAddressEntityImpactHandlers(deps, withAuth);
+    const handlers = createWasteAddressEntityImpactHandlers(() => deps, withAuth);
     const response = await handlers.deleteRegion(new Request('https://studio.test/api/v1/waste-management/regions/region-1', {
       method: 'DELETE',
       headers: { 'content-type': 'application/json', origin: 'https://studio.test', 'x-requested-with': 'XMLHttpRequest' },

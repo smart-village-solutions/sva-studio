@@ -1,0 +1,4 @@
+{
+  "prNumber": 1902,
+  "body": "Die Auswirkungsvorschau und das Löschen beziehungsweise Zusammenführen von Waste-Adressdaten verwenden wieder die korrekten Berechtigungs- und Sicherheitsprüfungen. Ein Fehler, der das Laden der Vorschau verhinderte, wurde behoben. Löschungen werden mit dem ausführenden Benutzer protokolliert."
+}

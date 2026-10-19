@@ -80,7 +80,10 @@ export const createWasteAddressHandlers = (deps: WasteServerHandlerDeps) => {
     withAuthenticatedWasteManagementHandler,
   } = deps;
   return {
-    ...createWasteAddressEntityImpactHandlers(deps, withAuthenticatedWasteManagementHandler),
+    ...createWasteAddressEntityImpactHandlers(
+      (ctx) => ({ ...bindWasteAuditActor(ctx), ...deps }),
+      withAuthenticatedWasteManagementHandler
+    ),
     createCity: (request: Request): Promise<Response> =>
       withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
         createWasteManagementCityInternal(nextRequest, ctx, {

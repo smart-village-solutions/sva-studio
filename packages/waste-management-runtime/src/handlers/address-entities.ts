@@ -22,7 +22,7 @@ const isMissingDependency = (error: unknown): boolean =>
   error instanceof Error && error.message.startsWith('missing_dependency:');
 
 export const createWasteAddressEntityImpactHandlers = (
-  deps: WasteManagementHandlerDeps,
+  getRequestDeps: (ctx: AuthenticatedRequestContext) => WasteManagementHandlerDeps,
   withAuthenticatedWasteManagementHandler: (
     request: Request,
     handler: (request: Request, ctx: AuthenticatedRequestContext) => Promise<Response>
@@ -30,6 +30,7 @@ export const createWasteAddressEntityImpactHandlers = (
 ) => {
   const preview = (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, async (nextRequest, ctx) => {
+      const deps = getRequestDeps(ctx);
       const authorized = await authorizeWasteMasterDataMutationRequest(nextRequest, ctx, deps);
       if (authorized instanceof Response) return authorized;
       const parsed = await parseRequestBody(nextRequest, wasteAddressMutationPreviewSchema);
@@ -49,6 +50,7 @@ export const createWasteAddressEntityImpactHandlers = (
   const remove = (entityType: WasteAddressEntityType, resourceIdName: string, actionId: string) =>
     (request: Request): Promise<Response> =>
       withAuthenticatedWasteManagementHandler(request, async (nextRequest, ctx) => {
+        const deps = getRequestDeps(ctx);
         const authorized = await authorizeWasteMasterDataMutationPathRequest(nextRequest, ctx, deps, { resourceIdName });
         if (authorized instanceof Response) return authorized;
         const parsed = await parseRequestBody(nextRequest, wasteAddressDeleteSchema);

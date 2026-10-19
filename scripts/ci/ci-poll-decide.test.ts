@@ -10,7 +10,7 @@ const decide = (ci: unknown, flags: string[] = []) =>
     execFileSync(process.execPath, [scriptPath, JSON.stringify(ci), '0', 'medium', ...flags], {
       encoding: 'utf8',
       env: {
-        NODE_V8_COVERAGE: fileURLToPath(new URL('../../.coverage-ci-poll/', import.meta.url)),
+        NODE_V8_COVERAGE: process.env.NODE_V8_COVERAGE,
       },
     })
   );

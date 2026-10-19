@@ -21,6 +21,10 @@ import {
   parseWebUrls,
 } from './content-route-parsers.shared.js';
 
+// Omit only absent normalized fields; false, zero and empty relation lists remain values.
+const omitUndefined = <T extends object>(value: T): T =>
+  Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined)) as T;
+
 export const parseOpeningHours = (
   value: unknown
 ): readonly SvaMainserverOpeningHourInput[] | Response | undefined => {
@@ -45,19 +49,19 @@ export const parseOpeningHours = (
         'Öffnungszeiten müssen im Format HH:MM angegeben werden.'
       );
     }
-    openingHours.push({
-      ...(readString(item.weekday) ? { weekday: readString(item.weekday) } : {}),
-      ...(readString(item.dateFrom) ? { dateFrom: readString(item.dateFrom) } : {}),
-      ...(readString(item.dateTo) ? { dateTo: readString(item.dateTo) } : {}),
-      ...(timeFrom ? { timeFrom } : {}),
-      ...(timeTo ? { timeTo } : {}),
-      ...(readNumber(item.sortNumber) !== undefined
-        ? { sortNumber: readNumber(item.sortNumber) }
-        : {}),
-      ...(readBoolean(item.open) !== undefined ? { open: readBoolean(item.open) } : {}),
-      ...(readBoolean(item.useYear) !== undefined ? { useYear: readBoolean(item.useYear) } : {}),
-      ...(readString(item.description) ? { description: readString(item.description) } : {}),
-    });
+    openingHours.push(
+      omitUndefined({
+        weekday: readString(item.weekday),
+        dateFrom: readString(item.dateFrom),
+        dateTo: readString(item.dateTo),
+        timeFrom,
+        timeTo,
+        sortNumber: readNumber(item.sortNumber),
+        open: readBoolean(item.open),
+        useYear: readBoolean(item.useYear),
+        description: readString(item.description),
+      })
+    );
   }
   return openingHours;
 };
@@ -77,29 +81,21 @@ export const parsePrices = (
     if (!isRecord(item)) {
       return errorJson(400, 'invalid_request', 'Preis-Einträge müssen Objekte sein.');
     }
-    prices.push({
-      ...(readString(item.name) ? { name: readString(item.name) } : {}),
-      ...(readNumber(item.amount) !== undefined ? { amount: readNumber(item.amount) } : {}),
-      ...(readBoolean(item.groupPrice) !== undefined
-        ? { groupPrice: readBoolean(item.groupPrice) }
-        : {}),
-      ...(readNumber(item.ageFrom) !== undefined ? { ageFrom: readNumber(item.ageFrom) } : {}),
-      ...(readNumber(item.ageTo) !== undefined ? { ageTo: readNumber(item.ageTo) } : {}),
-      ...(readNumber(item.minAdultCount) !== undefined
-        ? { minAdultCount: readNumber(item.minAdultCount) }
-        : {}),
-      ...(readNumber(item.maxAdultCount) !== undefined
-        ? { maxAdultCount: readNumber(item.maxAdultCount) }
-        : {}),
-      ...(readNumber(item.minChildrenCount) !== undefined
-        ? { minChildrenCount: readNumber(item.minChildrenCount) }
-        : {}),
-      ...(readNumber(item.maxChildrenCount) !== undefined
-        ? { maxChildrenCount: readNumber(item.maxChildrenCount) }
-        : {}),
-      ...(readString(item.description) ? { description: readString(item.description) } : {}),
-      ...(readString(item.category) ? { category: readString(item.category) } : {}),
-    });
+    prices.push(
+      omitUndefined({
+        name: readString(item.name),
+        amount: readNumber(item.amount),
+        groupPrice: readBoolean(item.groupPrice),
+        ageFrom: readNumber(item.ageFrom),
+        ageTo: readNumber(item.ageTo),
+        minAdultCount: readNumber(item.minAdultCount),
+        maxAdultCount: readNumber(item.maxAdultCount),
+        minChildrenCount: readNumber(item.minChildrenCount),
+        maxChildrenCount: readNumber(item.maxChildrenCount),
+        description: readString(item.description),
+        category: readString(item.category),
+      })
+    );
   }
   return prices;
 };
@@ -143,11 +139,11 @@ export const parseOperatingCompany = (
     return undefined;
   }
 
-  return {
-    ...(name ? { name } : {}),
-    ...(address ? { address } : {}),
-    ...(contact ? { contact } : {}),
-  };
+  return omitUndefined({
+    name,
+    address,
+    contact,
+  });
 };
 
 export const parseMediaContents = (
@@ -169,14 +165,16 @@ export const parseMediaContents = (
     if (sourceUrl instanceof Response) {
       return sourceUrl;
     }
-    mediaContents.push({
-      ...(readString(media.captionText) ? { captionText: readString(media.captionText) } : {}),
-      ...(readString(media.copyright) ? { copyright: readString(media.copyright) } : {}),
-      ...(readString(media.contentType) ? { contentType: readString(media.contentType) } : {}),
-      ...(readNumber(media.height) !== undefined ? { height: readNumber(media.height) } : {}),
-      ...(readNumber(media.width) !== undefined ? { width: readNumber(media.width) } : {}),
-      ...(sourceUrl ? { sourceUrl } : {}),
-    });
+    mediaContents.push(
+      omitUndefined({
+        captionText: readString(media.captionText),
+        copyright: readString(media.copyright),
+        contentType: readString(media.contentType),
+        height: readNumber(media.height),
+        width: readNumber(media.width),
+        sourceUrl,
+      })
+    );
   }
   return mediaContents;
 };
@@ -223,9 +221,9 @@ export const parseAccessibilityInformation = (
     return urls;
   }
 
-  return {
-    ...(readString(value.description) ? { description: readString(value.description) } : {}),
-    ...(readString(value.types) ? { types: readString(value.types) } : {}),
-    ...(urls ? { urls } : {}),
-  };
+  return omitUndefined({
+    description: readString(value.description),
+    types: readString(value.types),
+    urls,
+  });
 };

@@ -1,14 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Exercise production guards rather than the legacy direct-handler setup mocks.
+vi.unmock('./handlers/auth.js');
+vi.unmock('./handlers/host-controls.js');
+
 const sharedWasteManagementDepsMock = vi.hoisted(() => ({
   dependencyMarker: 'shared-waste-management-deps',
-  authorizeAction: vi.fn(async () => null),
+  authorizeAction: vi.fn(async (): Promise<Response | null> => null),
+  validateCsrf: vi.fn((): Response | null => null),
+  getRequestId: () => 'req-address',
   emitAuditEvent: vi.fn(async () => undefined),
 }));
 
 const requestContextMock = vi.hoisted(() => ({
   instanceId: 'instance-1',
-  user: { id: 'user-1', email: 'actor@example.test', displayName: 'Actor' },
+  user: { id: 'user-1', instanceId: 'instance-1', email: 'actor@example.test', displayName: 'Actor' },
 }));
 
 const withAuthenticatedWasteManagementHandlerMock = vi.hoisted(() =>
@@ -137,6 +143,7 @@ const coreHandlerMocks = vi.hoisted(() => ({
 }));
 
 const loaderMocks = vi.hoisted(() => ({
+  previewWasteAddressMutation: vi.fn(async () => ({ token: 'address-preview' })),
   loadWasteMainserverSyncStatus: vi.fn(async () => null),
   loadMasterDataOverview: vi.fn(async () => null),
   loadMasterDataFractionsOverview: vi.fn(async () => null),
@@ -169,6 +176,7 @@ const loaderMocks = vi.hoisted(() => ({
 }));
 
 const saverMocks = vi.hoisted(() => ({
+  mutateWasteAddressInTransaction: vi.fn(async () => ({ regions: 1 })),
   saveWasteCustomRecurrencePresets: vi.fn(async () => null),
   saveWastePdfStaticSettings: vi.fn(async () => null),
   syncWasteHolidayRules: vi.fn(async () => 'success'),
@@ -219,6 +227,7 @@ const serverLoadersMock = {
     previewWasteAnnualTourTransfer: loaderMocks.previewWasteAnnualTourTransfer,
   },
   wasteManagementEntityLoaders: {
+    previewWasteAddressMutation: loaderMocks.previewWasteAddressMutation,
     loadWasteCustomRecurrencePresets: loaderMocks.loadWasteCustomRecurrencePresets,
     loadWasteCityById: loaderMocks.loadWasteCityById,
     loadWasteCollectionLocationById: loaderMocks.loadWasteCollectionLocationById,
@@ -241,6 +250,7 @@ const serverLoadersMock = {
     listWasteTourDateShiftsByTourId: loaderMocks.listWasteTourDateShiftsByTourId,
   },
   wasteManagementEntitySavers: {
+    mutateWasteAddressInTransaction: saverMocks.mutateWasteAddressInTransaction,
     saveWasteCustomRecurrencePresets: saverMocks.saveWasteCustomRecurrencePresets,
     saveWastePdfStaticSettings: saverMocks.saveWastePdfStaticSettings,
     syncWasteHolidayRules: saverMocks.syncWasteHolidayRules,
@@ -286,6 +296,64 @@ const wasteManagementHandlers = createWasteManagementHandlers({
 describe('wasteManagementHandlers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  const addressRoutes = [
+    ['previewWasteAddressMutation', 'address-entities/impact-preview', 'region', 'POST'],
+    ['deleteRegion', 'regions', 'region', 'DELETE'],
+    ['deleteCity', 'cities', 'city', 'DELETE'],
+    ['deleteStreet', 'streets', 'street', 'DELETE'],
+    ['deleteHouseNumber', 'house-numbers', 'houseNumber', 'DELETE'],
+  ] as const;
+  const sourceId = '00000000-0000-4000-8000-000000000001';
+  const targetEntityId = '00000000-0000-4000-8000-000000000002';
+  const addressRequest = (path: string, entityType: string, method: string) => new Request(
+    `https://studio.test/api/v1/waste-management/${path}${method === 'DELETE' ? `/${sourceId}` : ''}`,
+    {
+      method,
+      headers: { 'content-type': 'application/json', origin: 'https://studio.test', 'x-requested-with': 'XMLHttpRequest' },
+      body: JSON.stringify(method === 'POST'
+        ? { entityType, entityId: sourceId, mode: 'delete', targetEntityId }
+        : { confirmationToken: 'address-preview', targetEntityId }),
+    }
+  );
+
+  it.each(addressRoutes)('binds authorization, CSRF and actor-aware audit for %s', async (handler, path, entityType, method) => {
+    const request = addressRequest(path, entityType, method);
+    const response = await wasteManagementHandlers[handler](request);
+    expect(response.status).toBe(200);
+    expect(sharedWasteManagementDepsMock.authorizeAction).toHaveBeenCalledWith(expect.objectContaining({
+      instanceId: 'instance-1', keycloakSubject: 'user-1', action: 'waste-management.master-data.manage', requestId: 'req-address',
+    }));
+    expect(sharedWasteManagementDepsMock.validateCsrf).toHaveBeenCalledWith(request, 'req-address');
+    if (method === 'POST') {
+      expect(loaderMocks.previewWasteAddressMutation).toHaveBeenCalledWith('instance-1', { entityType, entityId: sourceId, mode: 'delete', targetEntityId });
+      await expect(response.json()).resolves.toMatchObject({ data: { token: 'address-preview' } });
+      expect(saverMocks.mutateWasteAddressInTransaction).not.toHaveBeenCalled();
+    } else {
+      expect(saverMocks.mutateWasteAddressInTransaction).toHaveBeenCalledWith('instance-1', { entityType, entityId: sourceId, mode: 'delete', confirmationToken: 'address-preview', targetEntityId });
+      expect(sharedWasteManagementDepsMock.emitAuditEvent).toHaveBeenCalledWith(expect.objectContaining({
+        actorUserId: 'user-1', actorEmail: 'actor@example.test', actorDisplayName: 'Actor', outcome: 'success',
+      }));
+    }
+  });
+
+  it.each(addressRoutes)('blocks %s before persistence when authorization is denied', async (handler, path, entityType, method) => {
+    sharedWasteManagementDepsMock.authorizeAction.mockResolvedValueOnce(new Response(null, { status: 403 }));
+    const response = await wasteManagementHandlers[handler](addressRequest(path, entityType, method));
+    expect(response.status).toBe(403);
+    expect(sharedWasteManagementDepsMock.validateCsrf).not.toHaveBeenCalled();
+    expect(loaderMocks.previewWasteAddressMutation).not.toHaveBeenCalled();
+    expect(saverMocks.mutateWasteAddressInTransaction).not.toHaveBeenCalled();
+  });
+
+  it.each(addressRoutes)('blocks %s before persistence when CSRF is rejected', async (handler, path, entityType, method) => {
+    sharedWasteManagementDepsMock.validateCsrf.mockReturnValueOnce(new Response(null, { status: 403 }));
+    const response = await wasteManagementHandlers[handler](addressRequest(path, entityType, method));
+    expect(response.status).toBe(403);
+    expect(sharedWasteManagementDepsMock.authorizeAction).toHaveBeenCalledOnce();
+    expect(loaderMocks.previewWasteAddressMutation).not.toHaveBeenCalled();
+    expect(saverMocks.mutateWasteAddressInTransaction).not.toHaveBeenCalled();
   });
 
   it('wires every handler to the authenticated wrapper and its delegated dependency set', async () => {

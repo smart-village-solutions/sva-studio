@@ -6,15 +6,15 @@ import { describe, expect, it } from 'vitest';
 
 // Evaluate only pure helpers: never load environment files or invoke main/auth/sync.
 const source = readFileSync(
-  new URL('./keycloak-client-secret-inventory.mjs', import.meta.url),
+  new URL('../../../scripts/debug/auth/keycloak-client-secret-inventory.mjs', import.meta.url),
   'utf8'
 );
 const argsSource = readFileSync(
-  new URL('./keycloak-client-secret-inventory.args.mjs', import.meta.url),
+  new URL('../../../scripts/debug/auth/keycloak-client-secret-inventory.args.mjs', import.meta.url),
   'utf8'
 ).replace(/^export /gm, '');
 const outputSource = readFileSync(
-  new URL('./keycloak-client-secret-inventory.output.mjs', import.meta.url),
+  new URL('../../../scripts/debug/auth/keycloak-client-secret-inventory.output.mjs', import.meta.url),
   'utf8'
 ).replace(/^export /gm, '');
 const helpers = runInNewContext(
@@ -87,7 +87,7 @@ it('keeps reveal, markdown and sync output safety checks before credential use',
 
 it('exercises the complete CLI source with fail-closed synthetic dependencies', () => {
   const scriptPath = fileURLToPath(
-    new URL('./keycloak-client-secret-inventory.mjs', import.meta.url)
+    new URL('../../../scripts/debug/auth/keycloak-client-secret-inventory.mjs', import.meta.url)
   );
   const harness = `
     import { readFileSync } from 'node:fs';

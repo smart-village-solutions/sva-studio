@@ -1,3 +1,4 @@
+import { buildAddressMergePlan } from './address-merge.js';
 import type {
   WasteAddressImpactCounts,
   WasteAddressImpactPreview,
@@ -74,7 +75,7 @@ const snapshotToken = (
   related: Awaited<ReturnType<typeof loadRelatedRows>>,
   counts: WasteAddressImpactCounts
 ): string => addressPreviewToken({
-  input: { entityType: input.entityType, entityId: input.entityId, mode: input.mode, ...(input.targetParentId ? { targetParentId: input.targetParentId } : {}) },
+  input: { entityType: input.entityType, entityId: input.entityId, mode: input.mode, ...(input.targetParentId ? { targetParentId: input.targetParentId } : {}), ...(input.targetEntityId ? { targetEntityId: input.targetEntityId } : {}) },
   hierarchy: idsByType,
   parents: {
     cities: hierarchy.cities.map((row) => [row.id, row.region_id]),
@@ -107,6 +108,7 @@ export const buildAddressSnapshot = async (
     loadMoveTargetState(client, input, hierarchy),
   ]);
   if (!selectedState) throw new Error('address_entity_not_found');
+  const merge = input.targetEntityId ? await buildAddressMergePlan(client, input) : undefined;
   const locations = await loadAffectedLocations(client, input, idsByType);
   const locationIds = ids(locations);
   const [inconsistent, subscriptions] = await Promise.all([
@@ -116,13 +118,13 @@ export const buildAddressSnapshot = async (
   const subscriptionIds = ids(subscriptions);
   const related = await loadRelatedRows(client, locationIds, subscriptionIds);
   const counts = impactCounts(input, idsByType, locationIds.length, subscriptionIds.length, inconsistent.size, related);
-  const token = snapshotToken(input, hierarchy, idsByType, selectedState, targetState, locations, subscriptionIds, related, counts);
+  const token = snapshotToken(input, hierarchy, idsByType, selectedState, merge ? [...targetState, ...merge.targetState] : targetState, locations, subscriptionIds, related, counts);
   return {
     ...idsByType,
     locationIds,
     subscriptionIds,
     assignmentIds: related.assignmentIds,
-    preview: { entityType: input.entityType, entityId: input.entityId, mode: input.mode, ...(input.targetParentId ? { targetParentId: input.targetParentId } : {}), token, counts },
+    preview: { entityType: input.entityType, entityId: input.entityId, mode: input.mode, ...(input.targetParentId ? { targetParentId: input.targetParentId } : {}), ...(input.targetEntityId ? { targetEntityId: input.targetEntityId } : {}), token, counts, ...(merge ? { merge: { merged: merge.merged, transferred: merge.transferred } } : {}) },
   };
 };
 

@@ -14,17 +14,36 @@ import { resolveApiErrorCode } from './waste-management.page.support.js';
 
 const defaultAddressSorting: AddressSortingState = [{ id: 'name', desc: false }];
 
-export const WasteMasterDataAddressesPanel = ({
-  search,
-  canManage,
-  onSearchChange,
-}: {
-  readonly search: WasteManagementSearchParams;
-  readonly canManage: boolean;
-  readonly onSearchChange: (patch: Partial<WasteManagementSearchParams>) => void;
+const loadDeletePreview = async ({ row, pt, previewSequence, setPendingDelete, previewFresh, transfer, targetEntityId }: {
+  row: AddressRow;
+  pt: ReturnType<typeof usePluginTranslation>;
+  previewSequence: { current: number };
+  setPendingDelete: (value: PendingAddressDelete) => void;
+  previewFresh: boolean;
+  transfer: boolean;
+  targetEntityId?: string;
 }) => {
+    const sequence = ++previewSequence.current;
+    try {
+      const preview = await previewWasteAddressMutation({ entityType: row.type, entityId: row.id, mode: 'delete', ...(targetEntityId ? { targetEntityId } : {}) });
+      if (sequence !== previewSequence.current) return;
+      setPendingDelete({ row, transfer, targetEntityId, preview, loading: false, ...(previewFresh ? { previewFresh, error: pt('masterData.locationsWorkspace.addresses.previewStale') } : {}) });
+    } catch {
+      if (sequence !== previewSequence.current) return;
+      setPendingDelete({ row, transfer, targetEntityId, loading: false, error: pt('masterData.locationsWorkspace.addresses.previewError') });
+    }
+};
+
+type PanelProps = Readonly<{
+  search: WasteManagementSearchParams;
+  canManage: boolean;
+  onSearchChange: (patch: Partial<WasteManagementSearchParams>) => void;
+}>;
+
+export const WasteMasterDataAddressesPanel = ({ search, canManage, onSearchChange }: PanelProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const controller = useWasteMasterDataViewModel(pt, search);
+  const previewSequence = useRef(0);
   const triggerRef = useRef<HTMLElement | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingAddressDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -35,14 +54,8 @@ export const WasteMasterDataAddressesPanel = ({
   const sortedRows = useMemo(() => sortAddressRows(filteredRows, search.addressEntityType, sorting), [filteredRows, search.addressEntityType, sorting]);
   const { page, pageCount, pageItems } = pageAddressRows(sortedRows, search.page, search.pageSize);
 
-  const loadPreview = async (row: AddressRow, previewFresh = false) => {
-    try {
-      const preview = await previewWasteAddressMutation({ entityType: row.type, entityId: row.id, mode: 'delete' });
-      setPendingDelete({ row, preview, loading: false, ...(previewFresh ? { previewFresh, error: pt('masterData.locationsWorkspace.addresses.previewStale') } : {}) });
-    } catch {
-      setPendingDelete({ row, loading: false, error: pt('masterData.locationsWorkspace.addresses.previewError') });
-    }
-  };
+  const loadPreview = (row: AddressRow, previewFresh = false, transfer = false, targetEntityId?: string) =>
+    loadDeletePreview({ row, pt, previewSequence, setPendingDelete, previewFresh, transfer, targetEntityId });
   const openDelete = async (row: AddressRow, trigger: HTMLElement) => {
     triggerRef.current = trigger;
     setPendingDelete({ row, loading: true });
@@ -50,18 +63,18 @@ export const WasteMasterDataAddressesPanel = ({
   };
   const reloadPreview = () => {
     if (!pendingDelete) return;
-    const { row } = pendingDelete;
-    setPendingDelete({ row, loading: true });
-    void loadPreview(row);
+    const { row, transfer, targetEntityId } = pendingDelete;
+    setPendingDelete({ row, transfer, targetEntityId, loading: true });
+    void loadPreview(row, false, transfer, targetEntityId);
   };
   const confirmDelete = async () => {
     if (!pendingDelete?.preview) return;
     setDeleting(true);
     try {
-      await deleteWasteAddressEntity(pendingDelete.row.type, pendingDelete.row.id, pendingDelete.preview.token);
+      await deleteWasteAddressEntity(pendingDelete.row.type, pendingDelete.row.id, pendingDelete.preview.token, pendingDelete.targetEntityId);
     } catch (error) {
       if (resolveApiErrorCode(error) === 'conflict') {
-        await loadPreview(pendingDelete.row, true);
+        await loadPreview(pendingDelete.row, true, pendingDelete.transfer, pendingDelete.targetEntityId);
       } else {
         setPendingDelete({ ...pendingDelete, error: pt('masterData.locationsWorkspace.addresses.deleteError') });
       }
@@ -89,7 +102,15 @@ export const WasteMasterDataAddressesPanel = ({
       <WasteMasterDataEntityDialogs controller={controller} />
       <WasteMasterDataAddressDeleteDialog
         pt={pt} pendingDelete={pendingDelete} deleting={deleting} triggerRef={triggerRef}
-        onCancel={() => setPendingDelete(null)} onConfirm={confirmDelete} onReloadPreview={reloadPreview}
+        targets={rows.filter((row) => row.id !== pendingDelete?.row.id)}
+        onChangeTransfer={(transfer, targetEntityId) => {
+          if (!pendingDelete || deleting) return;
+          ++previewSequence.current;
+          const { row } = pendingDelete;
+          setPendingDelete({ row, transfer, targetEntityId, loading: !transfer || Boolean(targetEntityId) });
+          if (!transfer || targetEntityId) void loadPreview(row, false, transfer, targetEntityId);
+        }}
+        onCancel={() => { ++previewSequence.current; setPendingDelete(null); }} onConfirm={confirmDelete} onReloadPreview={reloadPreview}
       />
     </div>
   );

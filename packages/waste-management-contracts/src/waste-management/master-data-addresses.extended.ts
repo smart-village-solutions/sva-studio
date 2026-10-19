@@ -23,8 +23,10 @@ export type WasteAddressImpactPreview = Readonly<{
   entityId: string;
   mode: 'delete' | 'move';
   targetParentId?: string;
+  targetEntityId?: string;
   token: string;
   counts: WasteAddressImpactCounts;
+  merge?: Readonly<{ merged: number; transferred: number }>;
 }>;
 
 /**
@@ -37,9 +39,11 @@ export type WasteAddressMutationPreviewInput = Readonly<{
   entityId: string;
   mode: 'delete' | 'move';
   targetParentId?: string;
+  targetEntityId?: string;
 }>;
 
 export type WasteAddressEntityDeleteInput = Readonly<{
+  targetEntityId?: string;
   entityType: WasteAddressEntityType;
   entityId: string;
   confirmationToken: string;

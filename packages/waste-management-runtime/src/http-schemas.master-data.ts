@@ -161,10 +161,11 @@ const wasteAddressMutationPreviewSchema = z.object({
   entityId: z.string().trim().min(1),
   mode: z.enum(['delete', 'move']),
   targetParentId: z.string().trim().min(1).optional(),
+  targetEntityId: z.string().uuid().optional(),
 });
 
 const wasteAddressDeleteSchema = z.object({
-  confirmationToken: z.string().trim().min(1),
+  targetEntityId: z.string().uuid().optional(),  confirmationToken: z.string().trim().min(1),
 });
 
 const createWasteCollectionLocationSchema = z.object({

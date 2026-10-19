@@ -1,0 +1,4 @@
+{
+  "prNumber": 1901,
+  "body": "In der Waste-Stammdatenverwaltung können zugehörige Daten beim Löschen einer Region, eines Ortes, einer Straße oder Hausnummer alternativ auf einen anderen Eintrag übertragen werden. Dubletten werden nur innerhalb desselben übergeordneten Eintrags zusammengeführt; gleichnamige Straßen in unterschiedlichen Orten bleiben getrennt. Touren- und Terminbezüge bleiben erhalten. Betroffene Erinnerungsabos werden gelöscht. Eine Vorschau zeigt die Folgen vor der Bestätigung."
+}

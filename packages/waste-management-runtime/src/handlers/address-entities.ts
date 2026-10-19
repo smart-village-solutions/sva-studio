@@ -56,7 +56,7 @@ export const createWasteAddressEntityImpactHandlers = (
         try {
           const counts = await requireDeps(deps.mutateWasteAddressInTransaction, 'mutateWasteAddressInTransaction')(
             authorized.instanceId,
-            { entityType, entityId: authorized.resourceId, mode: 'delete', confirmationToken: parsed.data.confirmationToken }
+            { entityType, entityId: authorized.resourceId, mode: 'delete', confirmationToken: parsed.data.confirmationToken, ...(parsed.data.targetEntityId ? { targetEntityId: parsed.data.targetEntityId } : {}) }
           );
           await emitWasteAuditEvent({
             deps,

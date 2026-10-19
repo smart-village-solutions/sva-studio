@@ -16,6 +16,11 @@ const db = () => {
   if (!client) throw new Error('integration client not initialized');
   return client;
 };
+const insert = async (sql: string, values: readonly unknown[] = []): Promise<string> => {
+  const id = (await db().query<{ id: string }>(sql, [...values])).rows[0]?.id;
+  if (!id) throw new Error('fixture_insert_failed');
+  return id;
+};
 const readMainserverRevision = async (): Promise<bigint> => {
   const result = await db().query<{ source_revision: string }>(
     'SELECT source_revision::text FROM waste_mainserver_source_state WHERE id = TRUE'
@@ -63,6 +68,95 @@ describe.skipIf(!databaseUrl)('Waste address mutations against PostgreSQL', () =
       await pool.query(`DROP SCHEMA IF EXISTS ${schemaName} CASCADE`);
       await pool.end();
     }
+  });
+
+  it('merges only siblings recursively, preserves both Hauptstr. in different cities, and transfers pickup relations atomically', async () => {
+    const region = (name: string) => insert('INSERT INTO waste_regions (name) VALUES ($1) RETURNING id', [name]);
+    const city = (name: string, parent: string, postalCode = '12345') => insert('INSERT INTO waste_cities (name, region_id, postal_code) VALUES ($1, $2, $3) RETURNING id', [name, parent, postalCode]);
+    const street = (name: string, parent: string) => insert('INSERT INTO waste_streets (name, city_id) VALUES ($1, $2) RETURNING id', [name, parent]);
+    const house = (number: string, parent: string) => insert('INSERT INTO waste_house_numbers (number, street_id) VALUES ($1, $2) RETURNING id', [number, parent]);
+    const location = (r: string, c: string, s: string, h: string) => insert('INSERT INTO waste_collection_locations (region_id, city_id, street_id, house_number_id) VALUES ($1, $2, $3, $4) RETURNING id', [r, c, s, h]);
+    const source = await region('Merge Quelle');
+    const target = await region('Merge Ziel');
+    const a = await city('Ort A', source);
+    const b = await city('Ort B', target);
+    const aStreet = await street('Hauptstr.', a);
+    const bStreet = await street('Hauptstr.', b);
+    const aHouse = await house('1', aStreet);
+    const bHouse = await house('1', bStreet);
+    const aLocation = await location(source, a, aStreet, aHouse);
+    await location(target, b, bStreet, bHouse);
+    const duplicateCity = await city('Ort A', target);
+    const duplicateStreet = await street('Hauptstr.', duplicateCity);
+    const duplicateHouse = await house('1', duplicateStreet);
+    const targetLocation = await location(target, duplicateCity, duplicateStreet, duplicateHouse);
+    await db().query('UPDATE waste_collection_locations SET active = FALSE WHERE id = $1', [targetLocation]);
+    const distinctPostalCity = await city('Ort A', source, '99999');
+    const movedStreet = await street('Nebenstr.', a);
+    const movedHouse = await house('2', movedStreet);
+    const movedLocation = await location(source, a, movedStreet, movedHouse);
+    const tour = await insert("INSERT INTO waste_tours (name, status, active) VALUES ('Merge Tour', 'published', TRUE) RETURNING id");
+    await db().query('INSERT INTO waste_location_tour_links (location_id, tour_id) VALUES ($1, $3), ($2, $3)', [aLocation, targetLocation, tour]);
+    await db().query("INSERT INTO waste_location_tour_pickup_dates (location_id, tour_id, pickup_date, note) VALUES ($1, $3, '2026-11-02', 'source note'), ($2, $3, '2026-11-02', 'target note')", [aLocation, targetLocation, tour]);
+    const assignment = await insert("INSERT INTO waste_tour_assignments (tour_id, pickup_date) VALUES ($1, '2026-11-02') RETURNING id", [tour]);
+    await db().query('INSERT INTO waste_tour_assignment_locations (assignment_id, collection_location_id) VALUES ($1, $2), ($1, $3)', [assignment, aLocation, targetLocation]);
+    const subscription = await insert("INSERT INTO waste_email_reminder_subscriptions (email, email_hash, region_id, city_id, street_id, house_number_id, location_label, consent_version, consent_accepted_at, doi_token_hash, unsubscribe_token_hash, expires_at) VALUES ('merge@example.test', 'merge-hash', $1, $2, $3, $4, 'private', 'v1', NOW(), 'merge-doi', 'merge-unsub', NOW() + INTERVAL '1 day') RETURNING id", [source, a, aStreet, aHouse]);
+    await db().query("INSERT INTO waste_email_reminder_outbox (subscription_id, message_kind, transport_id, template_key, send_at, dedupe_key, status, payload) VALUES ($1, 'reminder', 'mail', 'reminder.v1', NOW(), 'merge-outbox', 'sent', '{}')", [subscription]);
+    const input = { entityType: 'region' as const, entityId: source, mode: 'delete' as const, targetEntityId: target };
+    const preview = await previewWasteAddressMutation(db(), input);
+    expect(preview.merge).toEqual({ merged: 4, transferred: 3 });
+    expect(preview.counts.emailReminderSubscriptions).toBe(1);
+    await db().query("UPDATE waste_streets SET name = 'changed' WHERE id = $1", [duplicateStreet]);
+    await expect(inTransaction(() => mutateWasteAddressInTransaction(db(), { ...input, confirmationToken: preview.token }))).rejects.toThrow('address_preview_stale');
+    await db().query("UPDATE waste_streets SET name = 'Hauptstr.' WHERE id = $1", [duplicateStreet]);
+    const fresh = await previewWasteAddressMutation(db(), input);
+    await expect(inTransaction(async () => {
+      await mutateWasteAddressInTransaction(db(), { ...input, confirmationToken: fresh.token });
+      throw new Error('merge_rollback');
+    })).rejects.toThrow('merge_rollback');
+    expect((await db().query('SELECT id FROM waste_email_reminder_subscriptions WHERE id = $1', [subscription])).rowCount).toBe(1);
+    expect((await db().query('SELECT id FROM waste_regions WHERE id = $1', [source])).rowCount).toBe(1);
+    await inTransaction(() => mutateWasteAddressInTransaction(db(), { ...input, confirmationToken: fresh.token }));
+    expect((await db().query('SELECT id FROM waste_regions WHERE id = $1', [source])).rowCount).toBe(0);
+    expect((await db().query('SELECT id FROM waste_cities WHERE id = $1', [a])).rowCount).toBe(0);
+    expect((await db().query('SELECT id FROM waste_streets WHERE id = ANY($1::uuid[])', [[bStreet, duplicateStreet]])).rowCount).toBe(2);
+    expect((await db().query('SELECT city_id FROM waste_streets WHERE id = $1', [movedStreet])).rows).toEqual([{ city_id: duplicateCity }]);
+    expect((await db().query('SELECT region_id FROM waste_cities WHERE id = $1', [distinctPostalCity])).rows).toEqual([{ region_id: target }]);
+    expect((await db().query('SELECT region_id, city_id FROM waste_collection_locations WHERE id = $1', [movedLocation])).rows).toEqual([{ region_id: target, city_id: duplicateCity }]);
+    expect((await db().query('SELECT id FROM waste_collection_locations WHERE id = $1', [aLocation])).rowCount).toBe(0);
+    expect((await db().query('SELECT active FROM waste_collection_locations WHERE id = $1', [targetLocation])).rows).toEqual([{ active: true }]);
+    expect((await db().query('SELECT id FROM waste_location_tour_links WHERE location_id = $1', [targetLocation])).rowCount).toBe(1);
+    expect((await db().query('SELECT note FROM waste_location_tour_pickup_dates WHERE location_id = $1', [targetLocation])).rows).toEqual([{ note: 'target note\nsource note' }]);
+    expect((await db().query('SELECT collection_location_id FROM waste_tour_assignment_locations WHERE assignment_id = $1', [assignment])).rows).toEqual([{ collection_location_id: targetLocation }]);
+    expect((await db().query('SELECT id FROM waste_email_reminder_subscriptions WHERE id = $1', [subscription])).rowCount).toBe(0);
+    expect((await db().query("SELECT id FROM waste_email_reminder_outbox WHERE dedupe_key = 'merge-outbox'")).rowCount).toBe(0);
+  });
+
+  it.each(['city', 'street', 'houseNumber'] as const)('transfers %s across parents and rejects self-targets and changed targets', async (entityType) => {
+    const make = async (suffix: string) => {
+      const region = await insert('INSERT INTO waste_regions (name) VALUES ($1) RETURNING id', [suffix]);
+      const city = await insert('INSERT INTO waste_cities (name, region_id) VALUES ($1, $2) RETURNING id', [suffix, region]);
+      const street = await insert('INSERT INTO waste_streets (name, city_id) VALUES ($1, $2) RETURNING id', [suffix, city]);
+      const houseNumber = await insert("INSERT INTO waste_house_numbers (number, street_id) VALUES ('7', $1) RETURNING id", [street]);
+      return { region, city, street, houseNumber };
+    };
+    const source = await make(`source-${entityType}`);
+    const target = await make(`target-${entityType}`);
+    const loc = await insert('INSERT INTO waste_collection_locations (region_id, city_id, street_id, house_number_id) VALUES ($1, $2, $3, $4) RETURNING id', [source.region, source.city, source.street, source.houseNumber]);
+    const input = { entityType, entityId: source[entityType], mode: 'delete' as const, targetEntityId: target[entityType] };
+    await expect(previewWasteAddressMutation(db(), { ...input, targetEntityId: input.entityId })).rejects.toThrow('invalid_address_move');
+    await expect(previewWasteAddressMutation(db(), { ...input, targetEntityId: randomUUID() })).rejects.toThrow('address_entity_not_found');
+    const preview = await previewWasteAddressMutation(db(), input);
+    await expect(inTransaction(() => mutateWasteAddressInTransaction(db(), { ...input, targetEntityId: input.entityId, confirmationToken: preview.token }))).rejects.toThrow('invalid_address_move');
+    const otherTarget = await make(`other-${entityType}`);
+    await expect(inTransaction(() => mutateWasteAddressInTransaction(db(), { ...input, targetEntityId: otherTarget[entityType], confirmationToken: preview.token }))).rejects.toThrow('address_preview_stale');
+    await inTransaction(() => mutateWasteAddressInTransaction(db(), { ...input, confirmationToken: preview.token }));
+    const expected = {
+      region_id: target.region, city_id: target.city,
+      street_id: entityType === 'city' ? source.street : target.street,
+      house_number_id: entityType === 'city' ? source.houseNumber : target.houseNumber,
+    };
+    expect((await db().query('SELECT region_id, city_id, street_id, house_number_id FROM waste_collection_locations WHERE id = $1', [loc])).rows).toEqual([expected]);
   });
 
   it('requires the current preview and atomically removes address-scoped subscriptions and outbox while preserving neighboring assignments and tours', async () => {

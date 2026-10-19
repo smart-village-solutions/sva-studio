@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteMasterDataAddressesPanel } from '../src/waste-management.master-data-addresses-panel.js';
@@ -84,6 +84,26 @@ describe('Waste master-data addresses panel', () => {
     };
     dialogState.fallbackFocusRef = null;
     vi.clearAllMocks();
+  });
+
+  it('requires a target and a fresh target-bound preview before transferring and deleting', async () => {
+    const api = await import('../src/waste-management.api.js');
+    controller.overview.regions.push({ id: 'region-2', name: 'Süd' });
+    const counts = { regions: 1, cities: 0, streets: 0, houseNumbers: 0, collectionLocations: 0, locationTourLinks: 0, locationTourPickupDates: 0, tourAssignmentLocations: 0, fullyRemovedTourAssignments: 0, retainedTourAssignments: 0, emailReminderSubscriptions: 0, emailReminderSubscriptionItems: 0, emailReminderOutbox: 0, sentEmailReminderOutbox: 0, inconsistentCollectionLocations: 0 };
+    vi.mocked(api.previewWasteAddressMutation).mockResolvedValue({ entityType: 'region', entityId: 'region-1', mode: 'delete', token: 'merge-preview', counts, merge: { merged: 1, transferred: 0 } });
+    render(<WasteMasterDataAddressesPanel search={search} canManage onSearchChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.addresses.delete: Nord' }));
+    await screen.findByLabelText('masterData.locationsWorkspace.addresses.deleteMode');
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.addresses.deleteMode'), { target: { value: 'transfer' } });
+    expect(screen.getByText('confirm-address-delete').hasAttribute('disabled')).toBe(true);
+    const target = screen.getByLabelText('masterData.locationsWorkspace.addresses.transferTarget');
+    expect(target.querySelector('option[value="region-1"]')).toBeNull();
+    fireEvent.change(target, { target: { value: 'region-2' } });
+    await waitFor(() => expect(api.previewWasteAddressMutation).toHaveBeenLastCalledWith({ entityType: 'region', entityId: 'region-1', mode: 'delete', targetEntityId: 'region-2' }));
+    await waitFor(() => expect(screen.getByText('confirm-address-delete').hasAttribute('disabled')).toBe(false));
+    fireEvent.click(screen.getByText('confirm-address-delete'));
+    await waitFor(() => expect(api.deleteWasteAddressEntity).toHaveBeenCalledWith('region', 'region-1', 'merge-preview', 'region-2'));
+    expect(controller.reloadOverview).toHaveBeenCalled();
   });
 
   it('opens each address level with a supported sort field', () => {
@@ -222,6 +242,6 @@ describe('Waste master-data addresses panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.addresses.reloadPreview' }));
     await vi.waitFor(() => expect((screen.getByRole('button', { name: 'confirm-address-delete' }) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole('button', { name: 'confirm-address-delete' }));
-    await vi.waitFor(() => expect(api.deleteWasteAddressEntity).toHaveBeenCalledWith('region', 'region-1', 'fresh-token'));
+    await vi.waitFor(() => expect(api.deleteWasteAddressEntity).toHaveBeenCalledWith('region', 'region-1', 'fresh-token', undefined));
   });
 });

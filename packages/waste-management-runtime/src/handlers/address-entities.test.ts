@@ -76,6 +76,22 @@ describe('Waste address impact handlers', () => {
     }
   });
 
+  it('validates and forwards the merge target through the existing authenticated delete route', async () => {
+    const deps = createDeps();
+    const handlers = createWasteAddressEntityImpactHandlers(deps, withAuth);
+    const targetEntityId = '00000000-0000-4000-8000-000000000001';
+    const request = (target: string) => new Request('https://studio.test/api/v1/waste-management/regions/source', {
+      method: 'DELETE', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirmationToken: 'snapshot', targetEntityId: target }),
+    });
+    expect((await handlers.deleteRegion(request('invalid'))).status).toBe(400);
+    expect(deps.mutateWasteAddressInTransaction).not.toHaveBeenCalled();
+    expect((await handlers.deleteRegion(request(targetEntityId))).status).toBe(200);
+    expect(deps.mutateWasteAddressInTransaction).toHaveBeenCalledWith('tenant-a', {
+      entityType: 'region', entityId: 'source', mode: 'delete', confirmationToken: 'snapshot', targetEntityId,
+    });
+  });
+
   it('audits failed address deletes with a bounded failure reason', async () => {
     const deps = createDeps();
     deps.mutateWasteAddressInTransaction.mockRejectedValueOnce(Object.assign(new Error('db failure with data'), { code: 'XX000' }));

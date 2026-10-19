@@ -1,3 +1,4 @@
+import { applyAddressMerge, buildAddressMergePlan } from './address-merge.js';
 import type { WasteAddressImpactCounts, WasteAddressMutationPreviewInput } from '@sva/waste-management-contracts';
 import { ids, lockIds, queryRows, tableByType, parentColumnByType, unique, type QueryClient, type AddressSnapshot } from './address-mutation-shared.js';
 import { buildAddressSnapshot } from './address-mutation-snapshot.js';
@@ -111,13 +112,22 @@ export const mutateWasteAddressInTransaction = async (
   client: QueryClient,
   input: MutationInput
 ): Promise<WasteAddressImpactCounts> => {
-  await lockAddressHierarchy(client, input);
+  if (input.targetEntityId) {
+    if (input.mode !== 'delete' || input.targetEntityId === input.entityId) throw new Error('invalid_address_move');
+    for (const entityId of [input.entityId, input.targetEntityId].sort()) {
+      await lockAddressHierarchy(client, { ...input, entityId });
+    }
+  } else await lockAddressHierarchy(client, input);
   const beforeLocks = await buildAddressSnapshot(client, input);
   await lockSnapshotChildren(client, beforeLocks);
   const current = await buildAddressSnapshot(client, input);
   if (current.preview.token !== input.confirmationToken) throw new Error('address_preview_stale');
   if (current.preview.counts.inconsistentCollectionLocations > 0) throw new Error('address_data_inconsistent');
-  if (input.mode === 'delete') await deleteAddressData(client, current);
+  if (input.targetEntityId) {
+    const plan = await buildAddressMergePlan(client, input);
+    await removeAffectedSubscriptions(client, current);
+    await applyAddressMerge(client, plan, current.locationIds);
+  } else if (input.mode === 'delete') await deleteAddressData(client, current);
   else await applyMove(client, input, current);
   return current.preview.counts;
 };

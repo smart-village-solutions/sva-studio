@@ -41,27 +41,21 @@ so another local operator can compare values without exposing the secret text.
 `);
 };
 
+const booleanArguments = new Map([
+  ['--help', 'help'],
+  ['-h', 'help'],
+  ['--json', 'json'],
+  ['--markdown', 'markdown'],
+  ['--reveal', 'reveal'],
+  ['--sync-db', 'sync-db'],
+]);
+
 const parseArgs = (argv) => {
   const args = {};
   for (const raw of argv) {
-    if (raw === '--help' || raw === '-h') {
-      args.help = true;
-      continue;
-    }
-    if (raw === '--json') {
-      args.json = true;
-      continue;
-    }
-    if (raw === '--markdown') {
-      args.markdown = true;
-      continue;
-    }
-    if (raw === '--reveal') {
-      args.reveal = true;
-      continue;
-    }
-    if (raw === '--sync-db') {
-      args['sync-db'] = true;
+    const booleanKey = booleanArguments.get(raw);
+    if (booleanKey) {
+      args[booleanKey] = true;
       continue;
     }
     const match = raw.match(/^--([^=]+)=(.*)$/u);
@@ -418,6 +412,12 @@ const inspectClient = async ({ baseUrl, clientId, realm, reveal, token }) => {
 
 const formatCell = (value, width) => String(value ?? '').slice(0, width).padEnd(width, ' ');
 
+const formatTokenValidation = (validation) => {
+  if (!validation) return '';
+  if (validation.status === 'ok') return `ok:${validation.httpStatus}`;
+  return `${validation.reason ?? validation.status}:${validation.httpStatus ?? ''}`;
+};
+
 const printTable = (rows, reveal) => {
   const columns = [
     ['realm', 24],
@@ -434,11 +434,7 @@ const printTable = (rows, reveal) => {
   console.log(columns.map(([name, width]) => formatCell(name, width)).join('  '));
   console.log(columns.map(([, width]) => '-'.repeat(width)).join('  '));
   for (const row of rows) {
-    const token = row.tokenValidation
-      ? row.tokenValidation.status === 'ok'
-        ? `ok:${row.tokenValidation.httpStatus}`
-        : `${row.tokenValidation.reason ?? row.tokenValidation.status}:${row.tokenValidation.httpStatus ?? ''}`
-      : '';
+    const token = formatTokenValidation(row.tokenValidation);
     const values = {
       clientId: row.clientId,
       enabled: typeof row.enabled === 'boolean' ? String(row.enabled) : '',
@@ -479,16 +475,7 @@ const printMarkdown = (rows) => {
   console.log(sections.join('\n\n'));
 };
 
-const main = async () => {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.help) {
-    usage();
-    return;
-  }
-
-  loadEnvFiles(args['load-env-file'] ?? args['env-file']);
-  loadKeyringEnvFiles(args['keyring-env-file']);
-
+const validateOutputOptions = (args) => {
   const reveal = args.reveal === true;
   if (reveal && process.env.SVA_ALLOW_SECRET_OUTPUT !== '1') {
     throw new Error('--reveal verweigert: SVA_ALLOW_SECRET_OUTPUT=1 muss bewusst gesetzt sein.');
@@ -499,6 +486,21 @@ const main = async () => {
   if (args['sync-db'] && reveal) {
     throw new Error('--sync-db darf nicht mit --reveal kombiniert werden.');
   }
+
+  return reveal;
+};
+
+const main = async () => {
+  const args = parseArgs(process.argv.slice(2));
+  if (args.help) {
+    usage();
+    return;
+  }
+
+  loadEnvFiles(args['load-env-file'] ?? args['env-file']);
+  loadKeyringEnvFiles(args['keyring-env-file']);
+
+  const reveal = validateOutputOptions(args);
 
   const baseUrl = trimTrailingSlash(requireValue(args['base-url'] ?? process.env.KEYCLOAK_ADMIN_BASE_URL, 'KEYCLOAK_ADMIN_BASE_URL'));
   const adminRealm = requireValue(args['admin-realm'] ?? process.env.KEYCLOAK_ADMIN_REALM, 'KEYCLOAK_ADMIN_REALM');

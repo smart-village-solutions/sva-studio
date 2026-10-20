@@ -1,5 +1,5 @@
+import { recoverProjectionCredentials } from './iam-content-list-projection-credential-recovery.server.js';
 import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
-import { getWorkspaceContext } from '@sva/server-runtime';
 
 import {
   createListErrorResponse,
@@ -36,8 +36,14 @@ export { resetContentProjectionRuntimeStateForTests } from './iam-content-list-p
 
 export const refreshProjectedContents = async (
   ctx: AuthenticatedRequestContext,
-  input: { readonly visibleTypes?: readonly string[]; readonly force?: boolean }
+  input: {
+    readonly visibleTypes?: readonly string[];
+    readonly force?: boolean;
+    readonly recoverCredentials?: boolean;
+    readonly originalRequestId?: string;
+  }
 ): Promise<Response> => {
+  const { getWorkspaceContext } = await import('@sva/server-runtime');
   const normalizedVisibleTypes =
     input.visibleTypes?.filter(
       (value) => value.trim().length > 0 && value !== EMPTY_VISIBLE_TYPE_SENTINEL
@@ -64,13 +70,17 @@ export const refreshProjectedContents = async (
   });
   if (actorAccountResult instanceof Response) return actorAccountResult;
 
-  const refreshResult = await triggerMainserverProjectionRefreshBatch(
-    buildProjectionTargets(ctx, mainserverTypes, actorAccountResult),
-    { force: input.force === true, awaitCompletion: true, trigger: 'manual' }
-  );
+  const targets = buildProjectionTargets(ctx, mainserverTypes, actorAccountResult);
+  const refreshResult = input.recoverCredentials
+    ? await recoverProjectionCredentials(targets, input.force === true, input.originalRequestId)
+    : await triggerMainserverProjectionRefreshBatch(targets, {
+        force: input.force === true,
+        awaitCompletion: true,
+        trigger: 'manual',
+      });
   return new Response(
     JSON.stringify({
-      data: { status: refreshResult.status, syncStates: refreshResult.syncStates },
+      data: refreshResult,
       ...(getWorkspaceContext().requestId ? { requestId: getWorkspaceContext().requestId } : {}),
     }),
     { status: 200, headers: { 'Content-Type': 'application/json' } }

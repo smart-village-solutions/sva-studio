@@ -163,8 +163,7 @@ export const contentDEResources = {
     currentOwner: 'Aktueller Inhaber',
     noOwner: 'Kein eindeutiger Inhaber zugeordnet',
     ownerUnresolved: 'Keinem Account oder keiner Organisation eindeutig zugeordnet.',
-    ownerResolutionFailed:
-      'Die Account- oder Organisationszuordnung konnte nicht geprüft werden.',
+    ownerResolutionFailed: 'Die Account- oder Organisationszuordnung konnte nicht geprüft werden.',
     account: 'Persönlicher Account',
     organization: 'Organisation',
     verificationRequired:
@@ -261,6 +260,78 @@ export const contentDEResources = {
       'Der Inhalt ist im aktuellen Kontext nur lesbar. Felder und Speichern bleiben deaktiviert.',
     accessLoadError:
       'Der globale Inhaltskontext konnte nicht vollständig geladen werden. Einzelne Statusangaben bleiben erhalten.',
+  },
+  recovery: {
+    checking: 'Der Zugang wird automatisch erneut geprüft.',
+    failed:
+      'Die Inhalte konnten nicht aktualisiert werden. Die automatische Zugangsprüfung war nicht möglich oder nicht erfolgreich.',
+    unknown: 'Nicht verfügbar',
+    noSnapshot:
+      'Mindestens ein Inhaltstyp konnte noch nicht geladen werden. Die Übersicht ist möglicherweise unvollständig; dies bedeutet nicht, dass keine Inhalte existieren.',
+    snapshotRetained:
+      'Bereits geladene Inhalte bleiben sichtbar. Für die betroffenen Inhaltstypen gilt weiterhin der angezeigte letzte erfolgreiche Datenstand.',
+    contact: 'Bitte kopieren Sie die Diagnoseangaben und senden Sie diese an {{email}}.',
+    supportLabel: 'Diagnoseangaben für den Support',
+    copy: 'Diagnoseangaben kopieren',
+    copied: 'Die Diagnoseangaben wurden kopiert.',
+    sources: {
+      user: 'Persönlicher Zugang',
+      organization: 'Organisationszugang',
+      unknown: 'Zugangsquelle nicht bestimmbar',
+    },
+    outcomes: {
+      checking: 'Versuch begonnen; Abschluss nicht bestätigt',
+      restored: 'Bekannte Credential-Version lokal zurückgesichert',
+      reloaded: 'Vorhandene Credentials erneut gelesen',
+      not_possible: 'Wiederherstellung nicht möglich',
+      failed: 'Versuch fehlgeschlagen',
+    },
+    reasons: {
+      encryptionUnavailable:
+        'Die sichere Verschlüsselung ist nicht verfügbar. Es wurden keine Credentials zurückgeschrieben.',
+      contentFailed:
+        'Die vorhandenen Credentials sind wieder verfügbar, der anschließende Inhaltsabruf ist jedoch fehlgeschlagen.',
+      notApplicable:
+        'Für diesen Fehler ist keine automatische Rücksicherung von Credentials möglich.',
+      personalMissing:
+        'In Keycloak fehlen die persönlichen Mainserver-Zugangsdaten. Es wurden keine neuen Zugangsdaten angelegt.',
+      personalPartial: 'Die persönlichen Mainserver-Zugangsdaten in Keycloak sind unvollständig.',
+      keycloakUnavailable:
+        'Keycloak konnte nicht zuverlässig gelesen werden. Das Fehlen von Zugangsdaten ist nicht bestätigt.',
+      databaseUnavailable:
+        'Die Organisationsdaten konnten nicht zuverlässig gelesen oder gespeichert werden.',
+      organizationState:
+        'Der gespeicherte Organisationszustand erlaubt keine eindeutige Rücksicherung einer zuvor freigegebenen Version.',
+      accountMismatch:
+        'Die Zuordnung des technischen Keycloak-Accounts zur Organisation ist nicht eindeutig bestätigt.',
+      keycloakIncomplete:
+        'Der zugeordnete Keycloak-Account enthält kein vollständiges kanonisches Credential-Paar.',
+      versionMismatch:
+        'Die Keycloak-Kopie stimmt nicht mit den noch vorhandenen Organisationscredentials überein. Es wurde nichts überschrieben.',
+      bindingNotVerified:
+        'Die Keycloak-Version besitzt keine eindeutige aktuelle verifizierte Organisationsbindung.',
+      concurrentChange:
+        'Ein paralleler Vorgang hat den Zustand geändert. Die Rücksicherung hat nichts überschrieben.',
+      decryptionFailed:
+        'Gespeicherte Zugangsdaten konnten nicht entschlüsselt werden. Sie wurden nicht ersetzt.',
+      readbackFailed:
+        'Die lokale Rücksicherung konnte anschließend nicht vollständig zurückgelesen werden.',
+      principalNotAllowed:
+        'Der benötigte Zugang ist im aktuellen Organisationskontext nicht zulässig.',
+      notClaimed:
+        'Der automatische Versuch konnte nicht eindeutig reserviert werden oder wurde bereits bearbeitet.',
+      interrupted:
+        'Ein Wiederherstellungsversuch wurde begonnen, sein Abschluss ist jedoch nicht bestätigt.',
+      restored:
+        'Die bekannte Credential-Version wurde lokal zurückgesichert; der Inhaltsabruf ist weiterhin nicht erfolgreich.',
+      reloaded:
+        'Die vorhandenen Credentials wurden erneut gelesen; der Inhaltsabruf ist weiterhin nicht erfolgreich.',
+      failed: 'Der automatische Versuch konnte nicht erfolgreich abgeschlossen werden.',
+    },
+    supportText:
+      'Instanz: {{instance}}\nFunktion/Inhaltstyp: {{contentType}}\nErfasst (UTC): {{time}}\nQuelle: {{source}}\nFehlercode: {{code}}\nWiederherstellungsgrund: {{reason}}\nErgebnis: {{outcome}}\nUrsprüngliche Request-ID: {{requestId}}\nRecovery-Request-ID: {{recoveryRequestId}}',
+    copyFailure:
+      'Kopieren war nicht möglich. Sie können den Text im Feld markieren und manuell kopieren.',
   },
   sync: {
     refresh: 'Aktualisieren',

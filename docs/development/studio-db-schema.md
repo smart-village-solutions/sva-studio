@@ -246,6 +246,7 @@ Speichert organisationsgebundene Mainserver-Zugangsdaten pro `instance_id` und `
 - `provisioning_status`, `operation_reference`, `provisioning_phase`, `attempt_count`, `lease_expires_at`, sichere Fehlercodes und Zeitpunkte bilden den idempotenten Zustands- und Recovery-Vertrag ab.
 - Vollständige manuelle Bestands-Credentials starten in `verification_required`; unvollständige Bestände in `not_provisioned`.
 - API- und UI-Modelle geben nie das Secret zurück, sondern nur `mainserverApplicationSecretSet: boolean`.
+- Eine stille lokale Rücksicherung ist ausschließlich für verlorene Bestandteile derselben aktuell verifizierten Version im Zustand `ready` zulässig. Sie verändert weder Binding noch `last_verified_at`; Verschlüsselung und Audit werden atomar mit dem Write ausgeführt. Es entstehen keine neuen Tabellen oder Spalten.
 
 ### 2. Gruppen und Rollenrechte
 

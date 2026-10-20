@@ -65,6 +65,10 @@ vi.mock('../lib/browser-operation-logging', () => ({
   logBrowserOperationFailure: (...args: unknown[]) => logBrowserOperationFailureMock(...args),
 }));
 
+vi.mock('./use-organization-context', () => ({
+  useOrganizationContext: () => ({ context: { activeOrganizationId: 'org-1' } }),
+}));
+
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
 }));
@@ -87,6 +91,73 @@ describe('useContents', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('attempts silent recovery once for a persisted credential failure and keeps the support result', async () => {
+    asIamErrorMock.mockImplementation((error) => error);
+    const failure = {
+      status: 503,
+      code: 'mainserver_credentials_missing',
+      requestId: 'original-request',
+    };
+    listContentsMock.mockRejectedValue(failure);
+    refreshProjectedContentsMock.mockResolvedValue({
+      data: {
+        status: 'failed',
+        syncStates: [],
+        credentialRecovery: [
+          {
+            instanceId: 'tenant',
+            contentType: 'news.article',
+            source: 'user',
+            outcome: 'not_possible',
+            reasonCode: 'personal_credentials_missing',
+            occurredAt: '2026-10-20T10:00:00Z',
+            requestId: 'recovery-request',
+          },
+        ],
+      },
+    });
+    const { result } = renderHook(() => useContents(contentListQuery));
+    await waitFor(() =>
+      expect(result.current.credentialRecovery?.[0]?.reasonCode).toBe(
+        'personal_credentials_missing'
+      )
+    );
+    expect(refreshProjectedContentsMock).toHaveBeenCalledExactlyOnceWith({
+      visibleTypes: contentListQuery.visibleTypes,
+      recoverCredentials: true,
+      originalRequestId: 'original-request',
+    });
+    await act(async () => {
+      await result.current.refetch();
+    });
+    expect(refreshProjectedContentsMock).toHaveBeenCalledTimes(1);
+    expect(result.current.refreshProjectionPending).toBe(false);
+  });
+
+  it('discards a late recovery response when the authenticated scope is disabled', async () => {
+    asIamErrorMock.mockImplementation((error) => error);
+    listContentsMock.mockRejectedValue({ status: 503, code: 'mainserver_credentials_missing' });
+    let resolveRecovery!: (value: unknown) => void;
+    refreshProjectedContentsMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRecovery = resolve;
+      })
+    );
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useContents(contentListQuery, { enabled }),
+      { initialProps: { enabled: true } }
+    );
+    await waitFor(() => expect(refreshProjectedContentsMock).toHaveBeenCalledTimes(1));
+    rerender({ enabled: false });
+    await act(async () => {
+      resolveRecovery({
+        data: { status: 'failed', credentialRecovery: [{ reasonCode: 'stale_response' }] },
+      });
+    });
+    expect(result.current.credentialRecovery).toEqual([]);
+    expect(result.current.refreshProjectionPending).toBe(false);
   });
 
   it('loads content list items', async () => {

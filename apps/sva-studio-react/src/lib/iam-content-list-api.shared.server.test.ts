@@ -87,3 +87,46 @@ describe('iam content list api shared helpers', () => {
     });
   });
 });
+
+describe('persisted credential recovery diagnostics', () => {
+  it('projects only allowlisted fields and drops invalid request IDs', async () => {
+    const { readCredentialRecoveryMessage } = await import('./iam-content-list-api.shared');
+    expect(
+      readCredentialRecoveryMessage(
+        JSON.stringify({
+          credentialRecovery: {
+            instanceId: 'tenant',
+            contentType: 'news.article',
+            source: 'organization',
+            outcome: 'not_possible',
+            reasonCode: 'binding_not_verified',
+            occurredAt: '2026-10-20T10:00:00Z',
+            requestId: 'request-1',
+            originalRequestId: 'invalid@example.org',
+            apiSecret: 'never expose',
+            keycloakSubject: 'private',
+          },
+        })
+      )
+    ).toEqual({
+      instanceId: 'tenant',
+      contentType: 'news.article',
+      source: 'organization',
+      outcome: 'not_possible',
+      reasonCode: 'binding_not_verified',
+      occurredAt: '2026-10-20T10:00:00Z',
+      requestId: 'request-1',
+    });
+  });
+
+  it('ignores ordinary errors and malformed persisted data', async () => {
+    const { readCredentialRecoveryMessage } = await import('./iam-content-list-api.shared');
+    for (const value of [
+      'provider raw message',
+      '{"credentialRecovery":',
+      '{"credentialRecovery":{"source":"root"}}',
+    ]) {
+      expect(readCredentialRecoveryMessage(value)).toBeUndefined();
+    }
+  });
+});

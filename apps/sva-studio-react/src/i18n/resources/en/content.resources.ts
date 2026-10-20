@@ -253,6 +253,70 @@ export const contentENResources = {
     accessLoadError:
       'The global content context could not be loaded completely. Per-item states remain available.',
   },
+  recovery: {
+    checking: 'Access is being checked again automatically.',
+    failed:
+      'Content could not be refreshed. The automatic access check was unavailable or unsuccessful.',
+    unknown: 'Unavailable',
+    noSnapshot:
+      'At least one content type has not been loaded. This overview may be incomplete; this does not mean that no content exists.',
+    snapshotRetained:
+      'Previously loaded content remains visible. The displayed last successful refresh still applies to affected content types.',
+    contact: 'Please copy the diagnostic information and send it to {{email}}.',
+    supportLabel: 'Diagnostic information for support',
+    copy: 'Copy diagnostic information',
+    copied: 'Diagnostic information copied.',
+    sources: {
+      user: 'Personal access',
+      organization: 'Organization access',
+      unknown: 'Access source undetermined',
+    },
+    outcomes: {
+      checking: 'Attempt started; completion not confirmed',
+      restored: 'Known credential version restored locally',
+      reloaded: 'Existing credentials read again',
+      not_possible: 'Recovery not possible',
+      failed: 'Attempt failed',
+    },
+    reasons: {
+      encryptionUnavailable: 'Secure encryption is unavailable. No credentials were written.',
+      contentFailed:
+        'Existing credentials are available again, but the subsequent content request failed.',
+      notApplicable: 'Automatic credential recovery is not available for this failure.',
+      personalMissing:
+        'Personal Mainserver credentials are missing in Keycloak. No new credentials were created.',
+      personalPartial: 'Personal Mainserver credentials in Keycloak are incomplete.',
+      keycloakUnavailable:
+        'Keycloak could not be read reliably. Missing credentials have not been confirmed.',
+      databaseUnavailable: 'Organization data could not be read or saved reliably.',
+      organizationState:
+        'The stored organization state does not permit restoring an unambiguous previously approved version.',
+      accountMismatch:
+        'The technical Keycloak account has not been unambiguously confirmed for this organization.',
+      keycloakIncomplete:
+        'The associated Keycloak account does not contain a complete canonical credential pair.',
+      versionMismatch:
+        'The Keycloak copy differs from the remaining organization credentials. Nothing was overwritten.',
+      bindingNotVerified:
+        'The Keycloak version has no unambiguous currently verified organization binding.',
+      concurrentChange:
+        'A concurrent operation changed the state. Recovery did not overwrite anything.',
+      decryptionFailed: 'Stored credentials could not be decrypted and were not replaced.',
+      readbackFailed: 'Local recovery could not be fully confirmed by reading it back.',
+      principalNotAllowed:
+        'The required access is not permitted in the current organization context.',
+      notClaimed:
+        'The automatic attempt could not be reserved unambiguously or was already handled.',
+      interrupted: 'A recovery attempt was started, but its completion has not been confirmed.',
+      restored:
+        'The known credential version was restored locally; the content request is still unsuccessful.',
+      reloaded: 'Existing credentials were read again; the content request is still unsuccessful.',
+      failed: 'The automatic attempt could not complete successfully.',
+    },
+    supportText:
+      'Instance: {{instance}}\nFunction/content type: {{contentType}}\nRecorded (UTC): {{time}}\nSource: {{source}}\nError code: {{code}}\nRecovery reason: {{reason}}\nOutcome: {{outcome}}\nOriginal request ID: {{requestId}}\nRecovery request ID: {{recoveryRequestId}}',
+    copyFailure: 'Copying was unavailable. Select the text in the field and copy it manually.',
+  },
   sync: {
     refresh: 'Refresh',
     refreshing: 'Refreshing ...',

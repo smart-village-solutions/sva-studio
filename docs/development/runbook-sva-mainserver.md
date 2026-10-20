@@ -7,7 +7,7 @@ Dieses Runbook beschreibt Betrieb, Fehlerdiagnose und Notfallmaßnahmen für die
 ## Betriebsgrenzen
 
 - Studio greift ausschließlich serverseitig auf den Mainserver zu.
-- Credentials liegen pro Benutzer in Keycloak-Attributen.
+- Persönliche Credentials liegen in Keycloak-Attributen. Organisationscredentials werden verschlüsselt in `iam.organization_mainserver_credentials` geführt; der zugeordnete technische Keycloak-Account hält eine zusätzliche Kopie, die nicht pauschal neuer oder führend ist.
 - Instanzgebundene Endpunkte liegen in `iam.instance_integrations`.
 - Der Kill-Switch pro Instanz ist das Feld `enabled` in `iam.instance_integrations`.
 
@@ -69,6 +69,24 @@ nach einer Mutation respektiert diesen persistenten Cooldown und prüft einen
 dauerhaften Readiness-Fehler innerhalb desselben Recovery-Laufs nicht doppelt;
 nur ein manueller Refresh darf sofort erneut prüfen. Vorhandene Snapshot-Zeilen
 bleiben dabei erhalten.
+
+## Stille Wiederherstellung vorhandener Credentials
+
+Nach einem passenden Credential-Fehler stößt die Inhaltsübersicht einmal `POST /api/v1/iam/contents/refresh` mit `recoverCredentials: true` an. Die bestehende Session-/Inhaltsautorisierung wird erneut ausgewertet; zusätzlich gilt der zentrale Browser-CSRF-Schutz. Der Client kann keine Zielaccounts oder Credentialwerte vorgeben. Eine sichere `originalRequestId` dient ausschließlich der Korrelation. GET, Login, Listenpolling und Scheduler führen keine Credential-Rücksicherung aus.
+
+Persönliche Attribute werden einmal frisch aus dem instanzgebundenen Keycloak gelesen. Fehlende Attribute werden weder neu erzeugt noch über einen anderen Principal ersetzt. Eine Organisationsrücksicherung ist ausschließlich für eine vorhandene aktive Organisation im Zustand `ready` mit bisherigem Verifikationszeitpunkt und tatsächlichem lokalem Credential-Verlust zulässig. Sie verlangt eindeutige Account-/Membership-/Keycloak-Marker, ein vollständiges kanonisches Paar und genau dieselbe aktuelle verifizierte Organisationsbindung ohne konkurrierende Version oder Providerzuordnung. Vollständige abweichende DB-Credentials, ausstehende Verifikation, verlorene Zuordnung, historische/widerrufene Bindings und Entschlüsselungsfehler bleiben unangetastet.
+
+Die lokale Transaktion sperrt die relevanten Binding-, Credential-, Account- und Membership-Daten, prüft den Kandidaten erneut, schreibt verschlüsselt und auditiert `organization.mainserver_credentials_restored`. Binding und bisheriger `last_verified_at` bleiben erhalten. Ein Auditfehler rollt den Write zurück. Es gibt keine Mainserver-Provisionierung, Keycloak-Writes, Rotation oder Accountanlage. Die aktuelle externe Gültigkeit prüft erst der einmalig wiederholte normale Inhaltsabruf nach kanonischem Read-back.
+
+Der bestehende scopegebundene Sync-State speichert einen sicheren JSON-Diagnoseblock unter `last_error_message` mit dem äußeren Schlüssel `credentialRecovery`. Sein bedingtes Update reserviert den automatischen Versuch pro Fehlerzustand atomar. Nachfolgende Schedulerfehler erhalten den Block; neue Tabs und Prozesse lösen keine weitere automatische Cooldown-Vorziehung aus. Ein erfolgreicher Abgleich löscht wie bisher den Fehlerzustand. Ein ausdrücklich manuelles Aktualisieren darf erneut prüfen. Legacy-Sync-State ohne Accountscope erlaubt keine Rücksicherung.
+
+### Support bei verbleibendem Fehler
+
+Die bestehende Fehlerfläche erklärt Quelle, Einschränkung, erhaltenen Datenstand und Ergebnis des stillen Versuchs. Ein selektierbarer und kopierbarer Diagnoseblock nennt Instanz, Funktion/Inhaltstyp, Zeit mit Zeitzone, Fehler-/Ursachencode, ursprüngliche Request-ID soweit verfügbar, Recovery-Request-ID und Ergebnis. Der Nutzer kann ihn an **support@smart-village.solutions** senden; Studio verschickt keine E-Mail und lädt nichts hoch. Credentialwerte, Tokens, Fingerprints, Account-/Subject-IDs und personenbezogene Rohdaten sind ausgeschlossen.
+
+Wichtige sichere Recovery-Gründe: `personal_credentials_missing`, `personal_credentials_partial`, `keycloak_unavailable`, `organization_state_not_recoverable`, `technical_account_mismatch`, `keycloak_credentials_incomplete`, `credential_version_mismatch`, `binding_not_verified`, `concurrent_change`, `credential_decryption_failed`, `credential_encryption_unavailable`, `credential_readback_failed` und `content_refresh_failed`. Ein `checking` ohne Abschluss bestätigt keine Wiederherstellung; es kennzeichnet einen begonnenen oder unterbrochenen Versuch. Rücksicherungserfolg ist getrennt von Inhaltsaktualisierung zu beurteilen. Das Ereignis `mainserver_credential_recovery_finished` kann über Request-ID, Instanz und Inhaltstyp korreliert werden.
+
+Bei nicht erfüllten Voraussetzungen den konkreten Zustand untersuchen und den bestehenden freigegebenen Administrations-/Provisioningpfad nutzen. Keine automatische Rotation, Subject-Neuverknüpfung oder pauschale Übernahme der Keycloak-Kopie als Reparatur empfehlen. Weniger Warnungen oder allein vollständige Credential-Attribute sind kein Nachweis einer erfolgreichen Inhaltsaktualisierung.
 
 ## News-Operationen
 

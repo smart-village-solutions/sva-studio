@@ -144,3 +144,51 @@ export const createListErrorResponse = (
       headers: { 'Content-Type': 'application/json' },
     }
   );
+
+export const credentialRecoveryErrorCodes = new Set([
+  'mainserver_credentials_missing',
+  'mainserver_credentials_partial',
+  'mainserver_credentials_stale',
+  'mainserver_credentials_unavailable',
+]);
+
+// Only structured, server-produced safe diagnostics are persisted here, never credentials.
+export const credentialRecoveryMessagePrefix = '{"credentialRecovery":';
+export const readCredentialRecoveryMessage = (
+  message: string | null | undefined
+): import('./iam-api-content-types').ContentCredentialRecovery | undefined => {
+  if (!message?.startsWith(credentialRecoveryMessagePrefix)) return undefined;
+  try {
+    const value = JSON.parse(message).credentialRecovery;
+    if (
+      !value ||
+      typeof value.instanceId !== 'string' ||
+      !/^[a-zA-Z0-9_-]{1,128}$/.test(value.instanceId) ||
+      typeof value.contentType !== 'string' ||
+      !/^[a-z0-9.-]{1,128}$/.test(value.contentType) ||
+      !['user', 'organization', 'unknown'].includes(value.source) ||
+      !['checking', 'restored', 'reloaded', 'not_possible', 'failed'].includes(value.outcome) ||
+      typeof value.reasonCode !== 'string' ||
+      !/^[a-z_]+$/.test(value.reasonCode) ||
+      typeof value.occurredAt !== 'string' ||
+      !Number.isFinite(Date.parse(value.occurredAt))
+    )
+      return undefined;
+    const requestId = (input: unknown) =>
+      typeof input === 'string' && /^[a-zA-Z0-9-]{1,128}$/.test(input) ? input : undefined;
+    return {
+      instanceId: value.instanceId,
+      contentType: value.contentType,
+      source: value.source,
+      outcome: value.outcome,
+      reasonCode: value.reasonCode,
+      occurredAt: value.occurredAt,
+      ...(requestId(value.requestId) ? { requestId: requestId(value.requestId) } : {}),
+      ...(requestId(value.originalRequestId)
+        ? { originalRequestId: requestId(value.originalRequestId) }
+        : {}),
+    };
+  } catch {
+    return undefined;
+  }
+};

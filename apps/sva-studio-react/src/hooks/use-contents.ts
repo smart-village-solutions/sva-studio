@@ -16,6 +16,9 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
+import { useOrganizationContext } from './use-organization-context';
+import { credentialRecoveryErrorCodes } from '../lib/iam-content-list-api.shared';
+import type { ContentCredentialRecovery } from '../lib/iam-api-content-types';
 import { useIamAdminList } from './use-iam-admin-list';
 import { contentsLogger, SESSION_REFRESHED_EVENT } from './use-contents.shared.js';
 
@@ -23,6 +26,7 @@ type UseContentsResult = {
   readonly contents: readonly IamContentListItem[];
   readonly pagination: ApiPagination;
   readonly metadata: IamContentListMetadata | null;
+  readonly credentialRecovery?: readonly ContentCredentialRecovery[];
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
   readonly mutationError: IamHttpError | null;
@@ -200,11 +204,37 @@ export const useContents = (
   query: IamContentListQuery,
   options: UseContentsOptions = {}
 ): UseContentsResult => {
-  const { refreshSession } = useAuth();
+  const { refreshSession, user } = useAuth();
+  const organizationContext = useOrganizationContext();
   const enabled = options.enabled ?? true;
   const [pagination, setPagination] = React.useState<ApiPagination>(DEFAULT_CONTENT_PAGINATION);
   const [metadata, setMetadata] = React.useState<IamContentListMetadata | null>(null);
   const [refreshProjectionPending, setRefreshProjectionPending] = React.useState(false);
+  const [credentialRecovery, setCredentialRecovery] = React.useState<
+    readonly ContentCredentialRecovery[]
+  >([]);
+  const recoveryAttempted = React.useRef(new Set<string>());
+  const scope = JSON.stringify([
+    user?.id,
+    user?.instanceId,
+    organizationContext.context?.activeOrganizationId,
+    query.type,
+    query.visibleTypes,
+    enabled,
+  ]);
+  const mounted = React.useRef(true);
+  React.useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const currentScope = React.useRef(scope);
+  currentScope.current = scope;
+  React.useEffect(() => {
+    setCredentialRecovery([]);
+    setRefreshProjectionPending(false);
+  }, [scope]);
   const listItems = React.useCallback(() => listContents(query), [query]);
   const handleLoaded = React.useCallback(
     (response: {
@@ -214,6 +244,12 @@ export const useContents = (
       const nextPagination = response.pagination ?? DEFAULT_CONTENT_PAGINATION;
       setPagination((current) => reusePaginationIfUnchanged(current, nextPagination));
       setMetadata(response.metadata ?? null);
+      if (
+        !response.metadata ||
+        (!response.metadata.hasBlockingSyncGap &&
+          response.metadata.mainserverSyncStates.every((state) => !state.lastErrorCode))
+      )
+        setCredentialRecovery([]);
     },
     []
   );
@@ -232,9 +268,80 @@ export const useContents = (
   }, [enabled]);
 
   useContentProjectionRevalidation(
-    shouldRevalidateContentProjection(enabled, metadata),
+    shouldRevalidateContentProjection(enabled, metadata) ||
+      (enabled && adminList.error?.status === 503 && credentialRecovery.length === 0),
     adminList.refetch
   );
+
+  const failedState = metadata?.mainserverSyncStates.find(
+    (entry) => entry.lastErrorCode && credentialRecoveryErrorCodes.has(entry.lastErrorCode)
+  );
+  const recoveryError = failedState?.lastErrorCode ?? adminList.error?.code;
+  const failureKey = `${scope}:${failedState?.lastFailedAt ?? recoveryError}`;
+  React.useEffect(() => {
+    if (
+      !enabled ||
+      adminList.isLoading ||
+      refreshProjectionPending ||
+      !recoveryError ||
+      !credentialRecoveryErrorCodes.has(recoveryError) ||
+      failedState?.isSyncRunning ||
+      failedState?.credentialRecovery ||
+      recoveryAttempted.current.has(failureKey)
+    )
+      return;
+    recoveryAttempted.current.add(failureKey);
+    const capturedScope = scope;
+    setRefreshProjectionPending(true);
+    void refreshProjectedContents({
+      visibleTypes: query.type ? [query.type] : query.visibleTypes,
+      recoverCredentials: true,
+      ...(adminList.error?.requestId ? { originalRequestId: adminList.error.requestId } : {}),
+    })
+      .then(async (response) => {
+        if (!mounted.current || currentScope.current !== capturedScope) return;
+        if (response.data.credentialRecovery)
+          setCredentialRecovery(response.data.credentialRecovery);
+        // The server may still be finishing the original refresh; ordinary reads keep observing it.
+        if (response.data.status === 'already_running')
+          recoveryAttempted.current.delete(failureKey);
+        await adminList.refetch();
+      })
+      .catch((cause: unknown) => {
+        if (!mounted.current || currentScope.current !== capturedScope) return;
+        const error = asIamError(cause);
+        setCredentialRecovery([
+          {
+            instanceId: user?.instanceId ?? '',
+            contentType: query.type ?? query.visibleTypes?.[0] ?? '',
+            source: 'unknown',
+            outcome: 'failed',
+            reasonCode: 'recovery_failed',
+            occurredAt: new Date().toISOString(),
+            ...(error.requestId ? { requestId: error.requestId } : {}),
+            ...(adminList.error?.requestId ? { originalRequestId: adminList.error.requestId } : {}),
+          },
+        ]);
+      })
+      .finally(() => {
+        if (mounted.current && currentScope.current === capturedScope)
+          setRefreshProjectionPending(false);
+      });
+  }, [
+    enabled,
+    scope,
+    failureKey,
+    recoveryError,
+    failedState?.isSyncRunning,
+    failedState?.credentialRecovery,
+    adminList.isLoading,
+    refreshProjectionPending,
+    query.type,
+    query.visibleTypes,
+    adminList.error?.requestId,
+    adminList.refetch,
+    user?.instanceId,
+  ]);
 
   const runBulkMutation = React.useCallback(
     async (
@@ -244,12 +351,7 @@ export const useContents = (
         content: IamContentListItem | undefined
       ) => Promise<'accepted' | 'skipped'>
     ): Promise<ContentBulkMutationResult> =>
-      runContentBulkMutation(
-        input,
-        adminList.items,
-        adminList.refetchWithOutcome,
-        mutateOne
-      ),
+      runContentBulkMutation(input, adminList.items, adminList.refetchWithOutcome, mutateOne),
     [adminList]
   );
 
@@ -283,14 +385,22 @@ export const useContents = (
   const refreshProjectionForList = React.useCallback(
     async (input: { readonly force?: boolean } = {}) => {
       setRefreshProjectionPending(true);
+      const capturedScope = scope;
       try {
-        await refreshProjectedContents({
+        const response = await refreshProjectedContents({
           ...(refreshProjectionState.length > 0 ? { visibleTypes: refreshProjectionState } : {}),
           ...(input.force ? { force: true } : {}),
+          ...(input.force && recoveryError && credentialRecoveryErrorCodes.has(recoveryError)
+            ? { recoverCredentials: true }
+            : {}),
         });
-        await adminList.refetch();
-        return true;
+        if (!mounted.current || currentScope.current !== capturedScope) return false;
+        if (response.data?.credentialRecovery)
+          setCredentialRecovery(response.data.credentialRecovery);
+        const refreshed = await adminList.refetchWithOutcome();
+        return refreshed && response.data?.status !== 'failed';
       } catch (cause) {
+        if (!mounted.current || currentScope.current !== capturedScope) return false;
         const resolvedError = asIamError(cause);
         if (resolvedError.status === 401) {
           await refreshSession();
@@ -303,16 +413,18 @@ export const useContents = (
         adminList.setError(resolvedError);
         return false;
       } finally {
-        setRefreshProjectionPending(false);
+        if (mounted.current && currentScope.current === capturedScope)
+          setRefreshProjectionPending(false);
       }
     },
-    [adminList, refreshSession, refreshProjectionState]
+    [adminList, refreshSession, refreshProjectionState, scope, recoveryError]
   );
 
   return {
     contents: adminList.items,
     pagination,
     metadata,
+    credentialRecovery,
     isLoading: adminList.isLoading,
     error: adminList.error,
     mutationError: adminList.mutationError,

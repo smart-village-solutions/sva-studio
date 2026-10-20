@@ -1,3 +1,5 @@
+export { restoreOrganizationMainserverCredentials } from './iam-organizations/organization-mainserver-recovery.js';
+export type { OrganizationCredentialRecoveryReason } from './iam-organizations/organization-mainserver-recovery.js';
 export {
   configureInstanceRegistryPluginActivationPolicies,
   configureInstanceRegistryPluginRuntimeSnapshot,

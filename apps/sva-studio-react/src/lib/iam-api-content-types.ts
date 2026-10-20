@@ -20,6 +20,7 @@ export type IamContentProjectionSyncState = Readonly<{
   lastSucceededAt?: string;
   lastFailedAt?: string;
   lastErrorCode?: string;
+  credentialRecovery?: ContentCredentialRecovery;
   isStale: boolean;
   isSyncRunning: boolean;
   hasSnapshot: boolean;
@@ -55,11 +56,15 @@ export type IamContentListResponse = ApiListResponse<IamContentListItem> &
 export type RefreshProjectedContentsPayload = Readonly<{
   visibleTypes?: readonly string[];
   force?: boolean;
+  recoverCredentials?: boolean;
+  originalRequestId?: string;
 }>;
 
 export type RefreshProjectedContentsResult = Readonly<{
   status: 'accepted' | 'already_running' | 'completed' | 'failed';
   syncStates: readonly IamContentProjectionSyncState[];
+  credentialRecovery?: readonly ContentCredentialRecovery[];
+  requestId?: string;
 }>;
 
 export type MainserverAuthoringDiagnostics = Readonly<{
@@ -99,7 +104,19 @@ export type MainserverAuthoringDiagnostics = Readonly<{
       reconciliationStatus: 'complete' | 'failed' | 'pending' | 'reconciliation_required';
       attemptCount: number;
       lastErrorCode?: string;
+      credentialRecovery?: ContentCredentialRecovery;
       updatedAt: string;
     }>[];
   }>;
+}>;
+
+export type ContentCredentialRecovery = Readonly<{
+  instanceId: string;
+  contentType: string;
+  source: 'user' | 'organization' | 'unknown';
+  outcome: 'checking' | 'restored' | 'reloaded' | 'not_possible' | 'failed';
+  reasonCode: string;
+  occurredAt: string;
+  requestId?: string;
+  originalRequestId?: string;
 }>;

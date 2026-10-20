@@ -25,6 +25,14 @@ Technische Accounts müssen außerdem administrativ sichtbar und korrigierbar bl
 11. Hard Delete ist während einer aktiven Provisioning-Lease blockiert. Danach wird die technische Accountreferenz gelöst; gültige Organisations-Credentials und DataProvider-Bindungen bleiben erhalten.
 12. Reprovisionierung sendet `role: "studio"` erneut, verändert jedoch keine bestehende Mainserver-Rolle. Bestehende Nutzer werden nicht automatisch migriert. Cross-Tenant-Provisionierung wird mit HTTP `403`, eine ungültige Rolle mit HTTP `422` als sicherer, nicht wiederholbarer Provisioning-Fehler behandelt.
 
+## Präzisierung vom 20.10.2026: lokale Rücksicherung derselben Version
+
+Der autorisierte, CSRF-geschützte Inhalts-POST-Refresh darf ohne allgemeines Organisationsverwaltungsrecht ausschließlich einen lokalen Credential-Verlust im vorhandenen Zustand `ready` reparieren. Voraussetzung sind aktiver zulässiger Organisationskontext samt Membership, ein bestehender Verifikationszeitpunkt, eine eindeutige technische Accountzuordnung mit passenden Keycloak-Markern und ein kanonisches Paar mit exakt derselben aktuellen verifizierten Organisationsbindung. Das ist keine Befugnis, neue Credentialwerte zu setzen, eine andere Quelle zu wählen oder ungeklärte Zustände freizugeben.
+
+Vollständige abweichende Credentials, historische/widerrufene oder konkurrierende Bindings, ausstehende Verifikation, verlorene Accountzuordnung und Schlüsselprobleme verhindern die Rücksicherung. Sie erfolgt in einer kurzen lokalen Transaktion mit bestehenden Sperren, Verschlüsselung und sicherem Audit; bisherige externe Verifikation und Ownership bleiben unverändert. Keycloak ist eine zusätzliche Rücksicherungskopie, nicht die maßgebliche Organisationsquelle. Der Pfad schreibt weder nach Keycloak noch an den Mainserver-Provisioning-Endpunkt und benötigt keinen neuen technischen Zugang.
+
+Ein dauerhafter Marker im vorhandenen Projektions-Sync-State begrenzt den stillen Versuch. Nach kanonischem Read-back wird derselbe Inhaltsabruf einmal wiederholt; ein verbleibender Fehler liefert einen secretfreien kopierbaren Supporttext statt weiterer Mutationen. Die aktuelle externe Credential-Gültigkeit wird erst durch den regulären Inhaltsabruf beurteilt. Bestehende explizite Verwaltungs-/Provisioningverträge bleiben unverändert.
+
 ## Konsequenzen
 
 ### Positiv

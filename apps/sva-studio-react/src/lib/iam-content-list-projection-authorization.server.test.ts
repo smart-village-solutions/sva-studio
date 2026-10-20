@@ -5,6 +5,7 @@ import {
   ctx,
   fixture,
   listProjectedContentsForTest as listProjectedContents,
+  refreshProjectedContentsForTest as refreshProjectedContents,
   getProjectionTestState,
 } from './iam-content-list-projection.test-fixture.js';
 
@@ -12,6 +13,17 @@ const state = getProjectionTestState();
 
 describe('content projection authorization and blocking', () => {
   registerProjectionFixture();
+
+  it('does not let a recovery flag bypass content-read authorization', async () => {
+    state.resolveEffectivePermissions.mockResolvedValue({ ok: true, permissions: [] });
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      recoverCredentials: true,
+    });
+    expect(response.status).toBe(403);
+    expect(state.readEffectiveSvaMainserverCredentialsWithStatus).not.toHaveBeenCalled();
+    expect(state.withInstanceScopedDb).not.toHaveBeenCalled();
+  });
 
   it('derives row access from the resolved permissions without per-item reauthorization calls', async () => {
     fixture.projectionRows = [

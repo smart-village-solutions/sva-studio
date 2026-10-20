@@ -1,3 +1,4 @@
+import { readCredentialRecoveryMessage } from './iam-content-list-api.shared.js';
 import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 
 import type {
@@ -100,6 +101,9 @@ const deriveProjectionSyncState = (input: {
 
   return {
     contentType: input.target.contentType,
+    ...(readCredentialRecoveryMessage(input.row.last_error_message)
+      ? { credentialRecovery: readCredentialRecoveryMessage(input.row.last_error_message) }
+      : {}),
     ...optionalTimestamps,
     isStale:
       input.row.snapshot_invalidated ||

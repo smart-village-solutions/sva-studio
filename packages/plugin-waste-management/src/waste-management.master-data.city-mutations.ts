@@ -13,11 +13,11 @@ export const createWasteMasterDataCityMutations = ({
   loadOverview,
   loadCollectionLocationList,
 }: WasteMasterDataSubmissionContext) => ({
-  onSubmitCity: async (event: React.FormEvent<HTMLFormElement>) => {
+  onSubmitCity: async (event: React.FormEvent<HTMLFormElement>, form: HTMLFormElement) => {
     event.preventDefault();
+    const formData = new FormData(form);
     state.setSaving(true);
     state.setMessage(null);
-    const formData = new FormData(event.currentTarget);
     const submittedForm: CityFormState = {
       ...state.cityForm,
       name: String(formData.get('name') ?? state.cityForm.name),

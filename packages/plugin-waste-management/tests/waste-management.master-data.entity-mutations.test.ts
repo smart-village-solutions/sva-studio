@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createWasteMasterDataMutationHandlers } from '../src/waste-management.master-data-mutations.js';
 import { confirmWasteAddressMove } from '../src/waste-management.master-data-address-move.js';
+import { createSubmitHandler } from '../src/waste-management.master-data-entity-dialogs.shared.js';
 
 const apiMocks = vi.hoisted(() => ({
   updateWasteManagementRegion: vi.fn(async () => undefined),
@@ -65,9 +66,10 @@ describe('waste master-data address entity mutations', () => {
     });
 
     await handlers.onSubmitRegion(createSubmitEvent());
-    await handlers.onSubmitCity(createSubmitEvent());
-    await handlers.onSubmitStreet(createSubmitEvent());
-    await handlers.onSubmitHouseNumber(createSubmitEvent());
+    const event = createSubmitEvent();
+    await handlers.onSubmitCity(event, event.currentTarget);
+    await handlers.onSubmitStreet(event, event.currentTarget);
+    await handlers.onSubmitHouseNumber(event, event.currentTarget);
 
     expect(apiMocks.updateWasteManagementRegion).toHaveBeenCalledOnce();
     expect(apiMocks.updateWasteManagementCity).toHaveBeenCalledOnce();
@@ -75,6 +77,61 @@ describe('waste master-data address entity mutations', () => {
     expect(apiMocks.updateWasteManagementHouseNumber).toHaveBeenCalledOnce();
     expect(loadOverview).toHaveBeenCalledTimes(4);
     expect(loadCollectionLocationList).toHaveBeenCalledTimes(4);
+  });
+
+  it('passes the captured form to address updates after submit validation', async () => {
+    const form = document.createElement('form');
+    let targetAvailable = true;
+    const event = {
+      preventDefault: vi.fn(),
+      get currentTarget() { return targetAvailable ? form : null; },
+    } as unknown as React.FormEvent<HTMLFormElement>;
+    const state = {
+      cityDialogMode: 'edit',
+      cityForm: { id: 'city-1', name: 'Perleberg', postalCode: '19348', regionId: 'region-1' },
+      streetDialogMode: 'edit',
+      streetForm: { id: 'street-1', name: 'Am Hohen Ende', cityId: 'city-1' },
+      houseNumberDialogMode: 'edit',
+      houseNumberForm: { id: 'house-1', number: '1', streetId: 'street-1' },
+      overview: {
+        regions: [{ id: 'region-1', name: 'Stadt Perleberg' }],
+        cities: [{ id: 'city-1', name: 'Perleberg', regionId: 'region-1' }],
+        streets: [{ id: 'street-1', name: 'Am Hohen Ende', cityId: 'city-1' }],
+        houseNumbers: [{ id: 'house-1', number: '1', streetId: 'street-1' }],
+      },
+      setSaving: vi.fn(),
+      setMessage: vi.fn(),
+      setCityDialogOpen: vi.fn(),
+      setStreetDialogOpen: vi.fn(),
+      setHouseNumberDialogOpen: vi.fn(),
+    };
+    const handlers = createWasteMasterDataMutationHandlers({
+      state: state as never,
+      pt: (key) => key,
+      search: {} as never,
+      loadOverview: vi.fn(async () => undefined),
+      loadCollectionLocationList: vi.fn(async () => undefined),
+      selectedCollectionLocationIds: [],
+    });
+
+    const delayedSubmit = createSubmitHandler(
+      ((callback: () => void) => () => {
+        targetAvailable = false;
+        callback();
+      }) as never,
+      (submitEvent, submittedForm) => {
+        void handlers.onSubmitCity(submitEvent, submittedForm);
+        void handlers.onSubmitStreet(submitEvent, submittedForm);
+        void handlers.onSubmitHouseNumber(submitEvent, submittedForm);
+      }
+    );
+    delayedSubmit(event);
+    await vi.waitFor(() => expect(state.setSaving).toHaveBeenCalledTimes(6));
+
+    expect(apiMocks.updateWasteManagementCity).toHaveBeenCalledOnce();
+    expect(apiMocks.updateWasteManagementStreet).toHaveBeenCalledOnce();
+    expect(apiMocks.updateWasteManagementHouseNumber).toHaveBeenCalledOnce();
+    expect(state.setSaving).toHaveBeenCalledTimes(6);
   });
 
   it('treats clearing an optional city region as a confirmed parent move', async () => {
@@ -105,7 +162,7 @@ describe('waste master-data address entity mutations', () => {
       selectedCollectionLocationIds: [],
     });
 
-    await handlers.onSubmitCity({ preventDefault: vi.fn(), currentTarget: form } as never);
+    await handlers.onSubmitCity({ preventDefault: vi.fn(), currentTarget: form } as never, form);
 
     expect(confirmWasteAddressMove).toHaveBeenCalledWith(expect.objectContaining({
       entityType: 'city', entityId: 'city-1', targetParentId: undefined,
@@ -158,8 +215,8 @@ describe('waste master-data address entity mutations', () => {
       selectedCollectionLocationIds: [],
     });
 
-    await handlers.onSubmitStreet({ preventDefault: vi.fn(), currentTarget: form } as never);
-    await handlers.onSubmitHouseNumber({ preventDefault: vi.fn(), currentTarget: form } as never);
+    await handlers.onSubmitStreet({ preventDefault: vi.fn(), currentTarget: form } as never, form);
+    await handlers.onSubmitHouseNumber({ preventDefault: vi.fn(), currentTarget: form } as never, form);
 
     expect(apiMocks.updateWasteManagementStreet).not.toHaveBeenCalled();
     expect(apiMocks.updateWasteManagementHouseNumber).not.toHaveBeenCalled();

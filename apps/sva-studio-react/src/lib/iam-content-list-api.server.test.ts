@@ -186,11 +186,15 @@ describe('content list api dispatch', () => {
         }),
       })
     );
-    expect(state.refreshProjectedContents).toHaveBeenCalledWith(expect.anything(), {
-      visibleTypes: ['news.article'],
-      recoverCredentials: true,
-      originalRequestId: 'request-1',
-    });
+    expect(state.refreshProjectedContents).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        visibleTypes: ['news.article'],
+        recoverCredentials: true,
+        originalRequestId: 'request-1',
+      },
+      expect.any(Request)
+    );
     state.refreshProjectedContents.mockClear();
     await dispatchAggregatedContentListRequest(
       new Request('https://studio.test/api/v1/iam/contents/refresh', {

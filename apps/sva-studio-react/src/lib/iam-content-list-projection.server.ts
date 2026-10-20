@@ -1,5 +1,9 @@
 import { recoverProjectionCredentials } from './iam-content-list-projection-credential-recovery.server.js';
-import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
+import {
+  withAuthenticatedUser,
+  resolveEffectivePermissions,
+  type AuthenticatedRequestContext,
+} from '@sva/auth-runtime/server';
 
 import {
   createListErrorResponse,
@@ -41,7 +45,8 @@ export const refreshProjectedContents = async (
     readonly force?: boolean;
     readonly recoverCredentials?: boolean;
     readonly originalRequestId?: string;
-  }
+  },
+  request?: Request
 ): Promise<Response> => {
   const { getWorkspaceContext } = await import('@sva/server-runtime');
   const normalizedVisibleTypes =
@@ -72,7 +77,12 @@ export const refreshProjectedContents = async (
 
   const targets = buildProjectionTargets(ctx, mainserverTypes, actorAccountResult);
   const refreshResult = input.recoverCredentials
-    ? await recoverProjectionCredentials(targets, input.force === true, input.originalRequestId)
+    ? await recoverProjectionCredentials(
+        targets,
+        input.force === true,
+        input.originalRequestId,
+        (target) => reauthorizeProjectionRecovery(ctx, request, target.contentType)
+      )
     : await triggerMainserverProjectionRefreshBatch(targets, {
         force: input.force === true,
         awaitCompletion: true,
@@ -153,4 +163,44 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
     trigger: 'mutation_follow_up',
   });
   return undefined;
+};
+
+type RecoveryPermissionRevision = Extract<
+  Awaited<ReturnType<typeof resolveEffectivePermissions>>,
+  { ok: true }
+>['permissionRevision'];
+
+// Reuse the browser authentication path, including current session/org and lifecycle checks.
+export const reauthorizeProjectionRecovery = async (
+  original: AuthenticatedRequestContext,
+  request: Request | undefined,
+  contentType: string
+): Promise<RecoveryPermissionRevision | null> => {
+  let revision: RecoveryPermissionRevision | null = null;
+  if (!request) return null;
+  try {
+    await withAuthenticatedUser(request, async (current) => {
+      if (
+        current.sessionId !== original.sessionId ||
+        current.user.id !== original.user.id ||
+        current.user.instanceId !== original.user.instanceId ||
+        current.activeOrganizationId !== original.activeOrganizationId
+      ) {
+        return new Response(null, { status: 403 });
+      }
+      // Capture before authorizing: a later revision can only invalidate this proof at commit.
+      const resolved = await resolveEffectivePermissions({
+        instanceId: current.user.instanceId ?? '',
+        keycloakSubject: current.user.id,
+        ...(current.activeOrganizationId ? { organizationId: current.activeOrganizationId } : {}),
+      });
+      if (!resolved.ok || !resolved.permissionRevision) return new Response(null, { status: 403 });
+      const authorization = await authorizeRequestedTypes(current, [contentType]);
+      if (!(authorization instanceof Response)) revision = resolved.permissionRevision;
+      return new Response(null, { status: 204 });
+    });
+  } catch {
+    return null;
+  }
+  return revision;
 };

@@ -24,6 +24,12 @@ const input = {
   actorAccountId: actorId,
   actorSubject: 'actor-subject',
   requestId: 'request',
+  reauthorize: vi.fn(
+    async (): Promise<{ instanceRevision: number; userRevision: number } | null> => ({
+      instanceRevision: 1,
+      userRevision: 1,
+    })
+  ),
 };
 const credentials = { apiKey: 'application', apiSecret: 'fixture-only-secret' };
 const fingerprint = createMainserverCredentialFingerprint({
@@ -67,6 +73,8 @@ describe.skipIf(!databaseUrl)('organization recovery against PostgreSQL', () => 
       'organization_mainserver_credentials',
       'mainserver_data_provider_bindings',
       'activity_logs',
+      'permission_cache_instance_revisions',
+      'permission_cache_user_revisions',
     ]) {
       const beginning = snapshot.indexOf(`CREATE TABLE iam.${table} (`);
       if (beginning < 0) throw new Error(`schema snapshot missing ${table}`);
@@ -93,8 +101,9 @@ describe.skipIf(!databaseUrl)('organization recovery against PostgreSQL', () => 
   });
 
   beforeEach(async () => {
+    input.reauthorize.mockReset().mockResolvedValue({ instanceRevision: 1, userRevision: 1 });
     await db().query(
-      `TRUNCATE ${schema}.accounts, ${schema}.organizations, ${schema}.account_organizations, ${schema}.organization_mainserver_credentials, ${schema}.mainserver_data_provider_bindings, ${schema}.activity_logs`
+      `TRUNCATE ${schema}.accounts, ${schema}.organizations, ${schema}.account_organizations, ${schema}.organization_mainserver_credentials, ${schema}.mainserver_data_provider_bindings, ${schema}.activity_logs, ${schema}.permission_cache_instance_revisions, ${schema}.permission_cache_user_revisions`
     );
     await execute(
       "INSERT INTO iam.accounts (id, instance_id, keycloak_subject, status) VALUES ($1, 'tenant', 'actor-subject', 'active'), ($2, 'tenant', 'technical-subject', 'active')",
@@ -285,6 +294,33 @@ describe.skipIf(!databaseUrl)('organization recovery against PostgreSQL', () => 
       return attributes();
     });
     expect(await restoreOrganizationMainserverCredentials(input)).toBe('concurrent_change');
+    expect((await readCredentials()).mainserver_application_secret_ciphertext).toBeNull();
+  });
+  it.each(['instance', 'user'])(
+    'refuses a %s permission revision changed after fresh authorization',
+    async (scope) => {
+      input.reauthorize.mockImplementation(async () => {
+        if (scope === 'instance')
+          await execute(
+            "INSERT INTO iam.permission_cache_instance_revisions(instance_id, revision) VALUES ('tenant', 2)"
+          );
+        else
+          await execute(
+            "INSERT INTO iam.permission_cache_user_revisions(instance_id, keycloak_subject, revision) VALUES ('tenant', 'actor-subject', 2)"
+          );
+        return { instanceRevision: 1, userRevision: 1 };
+      });
+      expect(await restoreOrganizationMainserverCredentials(input)).toBe('principal_not_allowed');
+      expect((await readCredentials()).mainserver_application_secret_ciphertext).toBeNull();
+      expect(
+        (await execute('SELECT count(*)::int AS count FROM iam.activity_logs')).rows[0].count
+      ).toBe(0);
+    }
+  );
+
+  it('refuses lost session authorization after the candidate read without a partial write', async () => {
+    input.reauthorize.mockResolvedValue(null);
+    expect(await restoreOrganizationMainserverCredentials(input)).toBe('principal_not_allowed');
     expect((await readCredentials()).mainserver_application_secret_ciphertext).toBeNull();
   });
 });

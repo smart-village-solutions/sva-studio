@@ -9,6 +9,8 @@ import {
   getProjectionTestState,
 } from './iam-content-list-projection.test-fixture.js';
 
+import { reauthorizeProjectionRecovery } from './iam-content-list-projection.server';
+
 const state = getProjectionTestState();
 
 describe('content projection authorization and blocking', () => {
@@ -722,5 +724,86 @@ describe('content projection authorization and blocking', () => {
         total: 1,
       },
     });
+  });
+  it('reuses current permission resolution and its revision for an unchanged authenticated context', async () => {
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'news.read', resourceType: 'news' }],
+      permissionRevision: { instanceRevision: 7, userRevision: 9 },
+    });
+    expect(
+      await reauthorizeProjectionRecovery(
+        ctx,
+        new Request('https://studio.test/api/v1/iam/contents/refresh'),
+        'news.article'
+      )
+    ).toEqual({ instanceRevision: 7, userRevision: 9 });
+  });
+
+  it.each([
+    { sessionId: 'different-session' },
+    { activeOrganizationId: 'different-organization' },
+    { user: { ...ctx.user, id: 'different-subject' } },
+    { user: { ...ctx.user, instanceId: 'different-instance' } },
+  ])('rejects a changed authenticated context %j without using its permissions', async (change) => {
+    state.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
+      handler({ ...ctx, ...change })
+    );
+    expect(
+      await reauthorizeProjectionRecovery(ctx, new Request('https://studio.test'), 'news.article')
+    ).toBeNull();
+    expect(state.resolveEffectivePermissions).not.toHaveBeenCalled();
+  });
+
+  it('rejects a logged out or invalidated session', async () => {
+    state.withAuthenticatedUser.mockResolvedValue(new Response(null, { status: 401 }));
+    expect(
+      await reauthorizeProjectionRecovery(ctx, new Request('https://studio.test'), 'news.article')
+    ).toBeNull();
+    expect(state.resolveEffectivePermissions).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { ok: true, permissions: [], permissionRevision: { instanceRevision: 1, userRevision: 2 } },
+    { ok: false, error: 'database_unavailable' },
+    { ok: true, permissions: [{ action: 'news.read', resourceType: 'news' }] },
+  ])(
+    'fails closed after permission revocation or missing authorization evidence %j',
+    async (resolution) => {
+      state.resolveEffectivePermissions.mockResolvedValue(resolution);
+      expect(
+        await reauthorizeProjectionRecovery(ctx, new Request('https://studio.test'), 'news.article')
+      ).toBeNull();
+    }
+  );
+
+  it('requires the original browser request for continuation validation', async () => {
+    expect(await reauthorizeProjectionRecovery(ctx, undefined, 'news.article')).toBeNull();
+    expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
+  });
+  it('fails closed if the fresh authentication infrastructure is unavailable', async () => {
+    state.withAuthenticatedUser.mockRejectedValue(
+      new Error('private session infrastructure detail')
+    );
+    expect(
+      await reauthorizeProjectionRecovery(ctx, new Request('https://studio.test'), 'news.article')
+    ).toBeNull();
+    expect(state.resolveEffectivePermissions).not.toHaveBeenCalled();
+  });
+  it('rejects permission revocation between revision capture and type authorization', async () => {
+    state.resolveEffectivePermissions
+      .mockResolvedValueOnce({
+        ok: true,
+        permissions: [{ action: 'news.read', resourceType: 'news' }],
+        permissionRevision: { instanceRevision: 1, userRevision: 1 },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        permissions: [],
+        permissionRevision: { instanceRevision: 1, userRevision: 2 },
+      });
+    expect(
+      await reauthorizeProjectionRecovery(ctx, new Request('https://studio.test'), 'news.article')
+    ).toBeNull();
   });
 });

@@ -9,6 +9,11 @@ const mocks = vi.hoisted(() => ({
   lock: vi.fn(),
   protect: vi.fn(),
   reveal: vi.fn(),
+  reauthorize: vi.fn(),
+  revision: vi.fn(),
+}));
+vi.mock('../iam-authorization/permission-revision-store.js', () => ({
+  readPermissionRevisionVectorWithClient: mocks.revision,
 }));
 vi.mock('../iam-account-management/shared-runtime.js', () => ({
   withInstanceScopedDb: mocks.db,
@@ -30,6 +35,7 @@ const input = {
   actorAccountId: 'actor',
   actorSubject: 'actor-subject',
   requestId: 'request',
+  reauthorize: mocks.reauthorize,
 };
 const row = {
   application_id: 'application',
@@ -46,6 +52,8 @@ let attrs: Record<string, readonly string[]>;
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.reauthorize.mockResolvedValue({ instanceRevision: 1, userRevision: 1 });
+  mocks.revision.mockResolvedValue({ instanceRevision: 1, userRevision: 1 });
   current = { ...row };
   binding = [{ data_provider_id: 'provider' }];
   attrs = {
@@ -208,5 +216,27 @@ describe('restoreOrganizationMainserverCredentials', () => {
   it('propagates an audit failure through the transaction rollback boundary without false success', async () => {
     mocks.audit.mockRejectedValue(new Error('audit failed'));
     expect(await restoreOrganizationMainserverCredentials(input)).toBe('database_unavailable');
+  });
+  it('refuses a permission revoked during the Keycloak read without writing or auditing', async () => {
+    mocks.attributes.mockImplementation(async () => {
+      mocks.reauthorize.mockResolvedValue(null);
+      return attrs;
+    });
+    expect(await restoreOrganizationMainserverCredentials(input)).toBe('principal_not_allowed');
+    expect(writes()).toHaveLength(0);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it('refuses a revision changed between reauthorization and the locked commit', async () => {
+    mocks.revision.mockResolvedValue({ instanceRevision: 1, userRevision: 2 });
+    expect(await restoreOrganizationMainserverCredentials(input)).toBe('principal_not_allowed');
+    expect(writes()).toHaveLength(0);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+  it('does not write if the transaction cannot read the current permission revision', async () => {
+    mocks.revision.mockRejectedValue(new Error('revision store unavailable'));
+    expect(await restoreOrganizationMainserverCredentials(input)).toBe('database_unavailable');
+    expect(writes()).toHaveLength(0);
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 });

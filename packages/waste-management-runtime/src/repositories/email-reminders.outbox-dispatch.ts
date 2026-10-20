@@ -103,7 +103,7 @@ SET status = 'sent',
     leased_at = NULL,
     updated_at = $2::timestamptz,
     last_error = CASE
-      WHEN $3 IS NULL THEN NULL
+      WHEN $3::text IS NULL THEN NULL
       ELSE CONCAT('provider_message_id:', $3)
     END
 WHERE id = $1::uuid

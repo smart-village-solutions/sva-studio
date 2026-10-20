@@ -126,7 +126,8 @@ const commitRecovery = async (
     const currentRevision = await readPermissionRevisionVectorWithClient(
       client,
       input.instanceId,
-      input.actorSubject
+      input.actorSubject,
+      { lockForShare: true }
     );
     if (!revisionsEqual(currentRevision, authorizationRevision)) return 'principal_not_allowed';
     const result = await client.query(

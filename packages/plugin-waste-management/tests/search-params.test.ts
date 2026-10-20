@@ -9,6 +9,8 @@ describe('waste-management search params', () => {
         tab: 'bogus',
         addressEntityType: 'region',
       addressParentId: undefined,
+      addressSortBy: 'name',
+      addressSortDirection: 'asc',
       masterDataTab: 'bogus',
         q: '  ',
         page: '0',
@@ -22,6 +24,8 @@ describe('waste-management search params', () => {
       tab: 'fractions',
       addressEntityType: 'region',
       addressParentId: undefined,
+      addressSortBy: 'name',
+      addressSortDirection: 'asc',
       masterDataTab: 'fractions',
       fractionsView: 'list',
       toursView: 'list',
@@ -65,6 +69,8 @@ describe('waste-management search params', () => {
         tab: 'locations',
         addressEntityType: 'region',
       addressParentId: undefined,
+      addressSortBy: 'name',
+      addressSortDirection: 'asc',
       masterDataTab: 'locations',
         q: 'Bio',
         page: '3',
@@ -94,6 +100,8 @@ describe('waste-management search params', () => {
       tab: 'locations',
       addressEntityType: 'region',
       addressParentId: undefined,
+      addressSortBy: 'name',
+      addressSortDirection: 'asc',
       masterDataTab: 'locations',
       fractionsView: 'list',
       toursView: 'list',
@@ -137,12 +145,16 @@ describe('waste-management search params', () => {
         tab: 'fractions',
         addressEntityType: 'region',
       addressParentId: undefined,
+      addressSortBy: 'name',
+      addressSortDirection: 'asc',
       masterDataTab: 'locations',
       })
     ).toEqual({
       tab: 'fractions',
       addressEntityType: 'region',
       addressParentId: undefined,
+      addressSortBy: 'name',
+      addressSortDirection: 'asc',
       masterDataTab: 'fractions',
       fractionsView: 'list',
       toursView: 'list',
@@ -190,6 +202,8 @@ describe('waste-management search params', () => {
       tab: 'fractions',
       addressEntityType: 'region',
       addressParentId: undefined,
+      addressSortBy: 'name',
+      addressSortDirection: 'asc',
       masterDataTab: 'fractions',
       fractionsView: 'list',
       toursView: 'list',
@@ -237,6 +251,8 @@ describe('waste-management search params', () => {
       tab: 'fractions',
       addressEntityType: 'region',
       addressParentId: undefined,
+      addressSortBy: 'name',
+      addressSortDirection: 'asc',
       masterDataTab: 'fractions',
       fractionsView: 'list',
       toursView: 'list',
@@ -285,6 +301,8 @@ describe('waste-management search params', () => {
       tab: 'tours',
       addressEntityType: 'region',
       addressParentId: undefined,
+      addressSortBy: 'name',
+      addressSortDirection: 'asc',
       masterDataTab: 'locations',
       fractionsView: 'list',
       toursView: 'create',
@@ -328,6 +346,8 @@ describe('waste-management search params', () => {
         tab: 'fractions',
         addressEntityType: 'region',
       addressParentId: undefined,
+      addressSortBy: 'name',
+      addressSortDirection: 'asc',
       masterDataTab: 'fractions',
         fractionsStatus: 'bogus',
       })
@@ -335,6 +355,8 @@ describe('waste-management search params', () => {
       tab: 'fractions',
       addressEntityType: 'region',
       addressParentId: undefined,
+      addressSortBy: 'name',
+      addressSortDirection: 'asc',
       masterDataTab: 'fractions',
       fractionsView: 'list',
       toursView: 'list',
@@ -374,6 +396,8 @@ describe('waste-management search params', () => {
         tab: 'fractions',
         addressEntityType: 'region',
       addressParentId: undefined,
+      addressSortBy: 'name',
+      addressSortDirection: 'asc',
       masterDataTab: 'fractions',
         fractionsStatus: 'inactive',
       })
@@ -463,5 +487,34 @@ describe('waste-management search params', () => {
         tourWasteFractionId: 'fraction-tour-filter',
       })
     );
+  });
+});
+
+describe('address sorting search params', () => {
+  it.each([
+    ['region', 'parent', 'name'],
+    ['street', 'postalCode', 'name'],
+    ['houseNumber', 'postalCode', 'name'],
+    ['city', 'postalCode', 'postalCode'],
+    ['city', 'parent', 'parent'],
+    ['street', 'parent', 'parent'],
+    ['houseNumber', 'parent', 'parent'],
+    ['city', 'bogus', 'name'],
+  ])('validates %s sort field %s', (addressEntityType, addressSortBy, expected) => {
+    expect(
+      normalizeWasteManagementSearchParams({
+        addressEntityType,
+        addressSortBy,
+        addressSortDirection: 'desc',
+      })
+    ).toMatchObject({ addressSortBy: expected, addressSortDirection: 'desc' });
+  });
+  it('defaults an unsupported direction to ascending', () => {
+    expect(
+      normalizeWasteManagementSearchParams({
+        addressEntityType: 'city',
+        addressSortDirection: 'sideways',
+      })
+    ).toMatchObject({ addressSortBy: 'name', addressSortDirection: 'asc' });
   });
 });

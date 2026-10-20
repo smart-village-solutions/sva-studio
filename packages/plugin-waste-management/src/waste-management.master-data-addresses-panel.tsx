@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
-import type { WasteAddressEntityType } from '@sva/waste-management-contracts';
 
+import { normalizeAddressSortField } from './search-params.address.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
 import { filterAddressRows, pageAddressRows, rowsForType, sortAddressRows, type AddressRow, type AddressSortingState } from './waste-management.master-data-addresses.helpers.js';
@@ -11,8 +11,6 @@ import { WasteMasterDataAddressDeleteDialog, type PendingAddressDelete } from '.
 import { WasteMasterDataEntityDialogs } from './waste-management.master-data.entity-dialogs.js';
 import { deleteWasteAddressEntity, previewWasteAddressMutation } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
-
-const defaultAddressSorting: AddressSortingState = [{ id: 'name', desc: false }];
 
 const loadDeletePreview = async ({ row, pt, previewSequence, setPendingDelete, previewFresh, transfer, targetEntityId }: {
   row: AddressRow;
@@ -47,8 +45,10 @@ export const WasteMasterDataAddressesPanel = ({ search, canManage, onSearchChang
   const triggerRef = useRef<HTMLElement | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingAddressDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [sortingByType, setSortingByType] = useState<Partial<Record<WasteAddressEntityType, AddressSortingState>>>({});
-  const sorting = sortingByType[search.addressEntityType] ?? defaultAddressSorting;
+  const sorting: AddressSortingState = [{
+    id: normalizeAddressSortField(search.addressSortBy, search.addressEntityType),
+    desc: search.addressSortDirection === 'desc',
+  }];
   const rows = useMemo(() => rowsForType(search.addressEntityType, controller.overview), [search.addressEntityType, controller.overview]);
   const filteredRows = useMemo(() => filterAddressRows(rows, search), [rows, search.addressEntityType, search.addressParentId, search.q]);
   const sortedRows = useMemo(() => sortAddressRows(filteredRows, search.addressEntityType, sorting), [filteredRows, search.addressEntityType, sorting]);
@@ -97,7 +97,11 @@ export const WasteMasterDataAddressesPanel = ({ search, canManage, onSearchChang
         pt={pt} controller={controller} search={search} canManage={canManage} allRows={rows}
         filteredRows={filteredRows} pageItems={pageItems} page={page} pageCount={pageCount}
         onSearchChange={onSearchChange} onOpenDelete={(row, trigger) => void openDelete(row, trigger)}
-        sorting={sorting} onSortingChange={(nextSorting) => { setSortingByType((current) => ({ ...current, [search.addressEntityType]: nextSorting })); onSearchChange({ page: 1 }); }}
+        sorting={sorting} onSortingChange={([nextSort]) => onSearchChange({
+          addressSortBy: normalizeAddressSortField(nextSort?.id, search.addressEntityType),
+          addressSortDirection: nextSort?.desc ? 'desc' : 'asc',
+          page: 1,
+        })}
       />
       <WasteMasterDataEntityDialogs controller={controller} />
       <WasteMasterDataAddressDeleteDialog

@@ -2,9 +2,11 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { normalizeWasteManagementSearchParams } from '../src/search-params.js';
+
 import { WasteMasterDataAddressesPanel } from '../src/waste-management.master-data-addresses-panel.js';
 
-const dialogState = vi.hoisted(() => ({ fallbackFocusRef: null as { current: HTMLElement | null } | null }));
+const dialogState = vi.hoisted(() => ({ realTable: false, fallbackFocusRef: null as { current: HTMLElement | null } | null }));
 const controller = vi.hoisted(() => ({
   loading: false,
   error: null,
@@ -36,12 +38,14 @@ vi.mock('../src/waste-management.page.support.js', () => ({ resolveApiErrorCode:
 vi.mock('../src/waste-management.table-frame.js', () => ({
   WastePanelTableBottomBar: () => null,
 }));
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async (importOriginal) => {
+  const { StudioDataTable: RealStudioDataTable } = await importOriginal<typeof import('@sva/studio-ui-react')>();
+  return ({
   Button: ({ children, variant: _variant, size: _size, ...props }: React.ComponentProps<'button'> & { variant?: string; size?: string }) => <button {...props}>{children}</button>,
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
   Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
   StudioField: ({ children, label, id }: { children: React.ReactNode; label: string; id: string }) => <label htmlFor={id}>{label}{children}</label>,
-  StudioDataTable: ({ ariaLabel, data, columns, toolbarEnd, rowActions, emptyState, sorting, getRowId, labels }: {
+  StudioDataTable: (props: {
     ariaLabel: string;
     data: readonly { id: string }[];
     columns: readonly { id: string; cell: (row: never) => React.ReactNode; sortValue?: (row: never) => string | number | null | undefined }[];
@@ -52,6 +56,8 @@ vi.mock('@sva/studio-ui-react', () => ({
     getRowId: (row: never) => string;
     labels: { selectAllRows: (label: string) => string; selectRow: (row: { rowId: string }) => string };
   }) => {
+    if (dialogState.realTable) return React.createElement(RealStudioDataTable, props as React.ComponentProps<typeof RealStudioDataTable>);
+    const { ariaLabel, data, columns, toolbarEnd, rowActions, emptyState, sorting, getRowId, labels } = props;
     if (sorting?.state.length !== 1 || !columns.some((column) => column.id === sorting.state[0]?.id)) {
       throw new Error('studio_data_table_external_sorting_requires_one_supported_field');
     }
@@ -66,7 +72,8 @@ vi.mock('@sva/studio-ui-react', () => ({
   },
   StudioErrorState: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   StudioLoadingState: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
+  });
+});
 
 const search = {
   tab: 'masterData', masterDataTab: 'locations', addressEntityType: 'region', addressParentId: undefined,
@@ -82,6 +89,7 @@ describe('Waste master-data addresses panel', () => {
       streets: [{ id: 'street-1', name: 'Hauptstraße', cityId: 'city-1' }],
       houseNumbers: [{ id: 'house-1', number: '12', streetId: 'street-1' }],
     };
+    dialogState.realTable = false;
     dialogState.fallbackFocusRef = null;
     vi.clearAllMocks();
   });
@@ -105,6 +113,97 @@ describe('Waste master-data addresses panel', () => {
     await waitFor(() => expect(api.deleteWasteAddressEntity).toHaveBeenCalledWith('region', 'region-1', 'merge-preview', 'region-2'));
     expect(controller.reloadOverview).toHaveBeenCalled();
   });
+
+  it.each(['region', 'city', 'street', 'houseNumber'] as const)(
+    'keeps %s sorting after the route loading state remounts the panel',
+    (addressEntityType) => {
+      dialogState.realTable = true;
+      controller.overview.regions = [
+        { id: 'region-1', name: 'Alpha' },
+        { id: 'region-2', name: 'Zulu' },
+      ];
+      controller.overview.cities = [
+        { id: 'city-1', name: 'Alpha', postalCode: '19322', regionId: 'region-1' },
+        { id: 'city-2', name: 'Zulu', postalCode: '16866', regionId: 'region-2' },
+      ];
+      controller.overview.streets = [
+        { id: 'street-1', name: 'Alpha', cityId: 'city-1' },
+        { id: 'street-2', name: 'Zulu', cityId: 'city-2' },
+      ];
+      controller.overview.houseNumbers = [
+        { id: 'house-1', number: '2', streetId: 'street-1' },
+        { id: 'house-2', number: '10', streetId: 'street-2' },
+      ];
+      const RouteHarness = () => {
+        const [routeSearch, setRouteSearch] = React.useState(() =>
+          normalizeWasteManagementSearchParams({ ...search, addressEntityType, pageSize: 25 })
+        );
+        const [mount, setMount] = React.useState(0);
+        return (
+          <WasteMasterDataAddressesPanel
+            key={mount}
+            search={routeSearch}
+            canManage
+            onSearchChange={(patch) => {
+              setRouteSearch((current) =>
+                normalizeWasteManagementSearchParams({ ...current, ...patch })
+              );
+              setMount((current) => current + 1);
+            }}
+          />
+        );
+      };
+      const { container } = render(<RouteHarness />);
+      const names = () =>
+        [...container.querySelectorAll('tbody tr')].map(
+          (row) => row.querySelectorAll('td')[1]?.textContent
+        );
+      const first = addressEntityType === 'houseNumber' ? '2' : 'Alpha';
+      const last = addressEntityType === 'houseNumber' ? '10' : 'Zulu';
+      expect(names()).toEqual([first, last]);
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: `masterData.locationsWorkspace.addresses.columns.${addressEntityType}`,
+        })
+      );
+      expect(names()).toEqual([last, first]);
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: `masterData.locationsWorkspace.addresses.columns.${addressEntityType}`,
+        })
+      );
+      expect(names()).toEqual([first, last]);
+      if (addressEntityType !== 'region') {
+        const parentOrder = addressEntityType === 'street' ? [last, first] : [first, last];
+        fireEvent.click(
+          screen.getByRole('button', {
+            name: `masterData.locationsWorkspace.addresses.parent.${addressEntityType}`,
+          })
+        );
+        expect(names()).toEqual(parentOrder);
+        fireEvent.click(
+          screen.getByRole('button', {
+            name: `masterData.locationsWorkspace.addresses.parent.${addressEntityType}`,
+          })
+        );
+        expect(names()).toEqual([...parentOrder].reverse());
+      }
+      if (addressEntityType === 'city') {
+        fireEvent.click(
+          screen.getByRole('button', {
+            name: 'masterData.locationsWorkspace.addresses.columns.postalCode',
+          })
+        );
+        expect(names()).toEqual(['Zulu', 'Alpha']);
+        fireEvent.click(
+          screen.getByRole('button', {
+            name: 'masterData.locationsWorkspace.addresses.columns.postalCode',
+          })
+        );
+        expect(names()).toEqual(['Alpha', 'Zulu']);
+      }
+    }
+  );
 
   it('opens each address level with a supported sort field', () => {
     const onSearchChange = vi.fn();
@@ -186,10 +285,13 @@ describe('Waste master-data addresses panel', () => {
       ...controller.overview,
       regions: [{ id: 'region-a', name: 'Alpha' }, { id: 'region-z', name: 'Zulu' }],
     };
-    render(<WasteMasterDataAddressesPanel search={{ ...search, pageSize: 1 } as never} canManage onSearchChange={vi.fn()} />);
+    const onSearchChange = vi.fn();
+    const { rerender } = render(<WasteMasterDataAddressesPanel search={{ ...search, pageSize: 1 } as never} canManage onSearchChange={onSearchChange} />);
 
     expect(screen.getByText('Alpha')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'sort descending' }));
+    expect(onSearchChange).toHaveBeenCalledWith({ addressSortBy: 'name', addressSortDirection: 'desc', page: 1 });
+    rerender(<WasteMasterDataAddressesPanel search={{ ...search, ...onSearchChange.mock.calls[0][0], pageSize: 1 } as never} canManage onSearchChange={onSearchChange} />);
     expect(screen.getByText('Zulu')).toBeTruthy();
     expect(screen.queryByText('Alpha')).toBeNull();
   });

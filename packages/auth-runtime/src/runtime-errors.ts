@@ -1,3 +1,11 @@
+/** A session disappeared or expired before an update could be applied. */
+export class SessionNotFoundError extends Error {
+  constructor() {
+    super('Session no longer exists or has expired');
+    this.name = 'SessionNotFoundError';
+  }
+}
+
 export class SessionStoreUnavailableError extends Error {
   readonly cause?: unknown;
   readonly statusCode = 503;

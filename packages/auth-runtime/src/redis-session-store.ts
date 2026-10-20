@@ -1,3 +1,5 @@
+import { SessionNotFoundError } from './runtime-errors.js';
+
 import { emitAuthAuditEvent } from './audit-events.js';
 import { getRedisClient } from './redis.js';
 import {
@@ -169,7 +171,7 @@ export async function updateSession(sessionId: string, updates: Partial<Session>
   await trackSessionOperation('update_session', async () => {
     const currentSession = await getSession(sessionId);
     if (!currentSession) {
-      throw new Error(`Session not found: ${sessionId}`);
+      throw new SessionNotFoundError();
     }
 
     const updatedSession: Session = { ...currentSession, ...updates };

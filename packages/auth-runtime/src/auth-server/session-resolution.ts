@@ -4,7 +4,7 @@ import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
 import { isTokenErrorLike } from '../error-guards.js';
 import { buildLogContext } from '../log-context.js';
 import { deleteSession, getSession, updateSession } from '../redis-session.js';
-import { SessionStoreUnavailableError } from '../runtime-errors.js';
+import { SessionNotFoundError, SessionStoreUnavailableError } from '../runtime-errors.js';
 import type { RuntimeScopeRef, Session, SessionUser } from '../types.js';
 import { refreshSession } from './session-refresh.js';
 import { buildSessionUser, TOKEN_REFRESH_SKEW_MS } from './shared.js';
@@ -146,6 +146,15 @@ const handleRefreshFailure = async (input: {
 }): Promise<SessionResolutionResult> => {
   if (input.error instanceof SessionStoreUnavailableError) {
     throw input.error;
+  }
+
+  if (input.error instanceof SessionNotFoundError) {
+    logger.info('Session ended during token refresh', {
+      operation: 'refresh_token',
+      reason_code: 'session_ended_during_refresh',
+      ...buildLogContext(input.scope),
+    });
+    return { kind: 'invalid', reason: 'invalid_session' };
   }
 
   const now = Date.now();

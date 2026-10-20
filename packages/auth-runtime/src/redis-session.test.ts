@@ -294,8 +294,25 @@ describe('redis-backed auth runtime session store', () => {
 
     await expect(getSession('expired')).resolves.toBeUndefined();
     await expect(updateSession('missing', { accessToken: 'none' })).rejects.toThrow(
-      'Session not found: missing'
+      'Session no longer exists or has expired'
     );
+  });
+
+  it('does not restore a session that expires before an update', async () => {
+    const { SessionNotFoundError } = await import('./runtime-errors.js');
+    vi.useFakeTimers();
+    try {
+      const expiresAt = Date.now() + 100;
+      await createSession('refresh-expiry', createTestSession({ expiresAt }));
+      expect(await getSession('refresh-expiry')).toBeDefined();
+      vi.setSystemTime(expiresAt + 1);
+      await expect(
+        updateSession('refresh-expiry', { expiresAt: expiresAt + 60_000 })
+      ).rejects.toBeInstanceOf(SessionNotFoundError);
+      expect(await getSession('refresh-expiry')).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('uses worker and explicit redis key prefixes and applies configured ttl fallback values', async () => {

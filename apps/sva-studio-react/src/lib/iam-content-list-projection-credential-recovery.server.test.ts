@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   finish: vi.fn(),
   states: vi.fn(),
   refresh: vi.fn(),
+  authorize: vi.fn(),
 }));
 vi.mock('@sva/auth-runtime/server', () => ({
   readEffectiveSvaMainserverCredentialsWithStatus: mocks.read,
@@ -25,7 +26,12 @@ vi.mock('./iam-content-list-projection-sync.server.js', () => ({
   computeProjectionSyncStates: mocks.states,
   triggerMainserverProjectionRefreshBatch: mocks.refresh,
 }));
-import { recoverProjectionCredentials } from './iam-content-list-projection-credential-recovery.server';
+import { recoverProjectionCredentials as recoverProjectionCredentialsImpl } from './iam-content-list-projection-credential-recovery.server';
+const recoverProjectionCredentials = (
+  targets: Parameters<typeof recoverProjectionCredentialsImpl>[0],
+  manual: boolean,
+  originalRequestId?: string
+) => recoverProjectionCredentialsImpl(targets, manual, originalRequestId, mocks.authorize);
 const target = {
   instanceId: 'tenant',
   keycloakSubject: 'actor-subject',
@@ -42,6 +48,7 @@ const state = {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.authorize.mockResolvedValue({ instanceRevision: 1, userRevision: 1 });
   mocks.claim.mockResolvedValue(true);
   mocks.states.mockResolvedValue([state]);
   mocks.read.mockResolvedValue({ status: 'missing_credentials' });
@@ -85,6 +92,7 @@ describe('POST-only projection credential recovery', () => {
       actorAccountId: 'actor',
       actorSubject: 'actor-subject',
       requestId: 'recovery-request',
+      reauthorize: expect.any(Function),
     });
     expect(result.credentialRecovery[0]).toMatchObject({
       outcome: 'restored',
@@ -157,5 +165,36 @@ describe('POST-only projection credential recovery', () => {
     mocks.states.mockResolvedValue([{ ...state, lastErrorCode: 'database_unavailable' }]);
     await recoverProjectionCredentials([target], false);
     expect(mocks.claim).not.toHaveBeenCalled();
+  });
+  it('does not repeat a personal content request after permission or session loss', async () => {
+    mocks.read.mockResolvedValue({ status: 'ok', source: 'user' });
+    mocks.authorize.mockResolvedValue(null);
+    const result = await recoverProjectionCredentials([target], false);
+    expect(result.credentialRecovery[0]?.reasonCode).toBe('principal_not_allowed');
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
+  it('passes the live authorization guard into the organization write', async () => {
+    mocks.read.mockResolvedValue({ status: 'organization_mainserver_credentials_missing' });
+    mocks.restore.mockImplementation(async (input) => {
+      mocks.authorize.mockResolvedValue(null);
+      return (await input.reauthorize()) ? 'restored' : 'principal_not_allowed';
+    });
+    const result = await recoverProjectionCredentials([target], false);
+    expect(result.credentialRecovery[0]?.reasonCode).toBe('principal_not_allowed');
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
+  it('does not retry contents after a successful write when permission was subsequently revoked', async () => {
+    mocks.read
+      .mockResolvedValueOnce({ status: 'organization_mainserver_credentials_missing' })
+      .mockResolvedValueOnce({ status: 'ok', source: 'organization' });
+    mocks.authorize.mockResolvedValue(null);
+    const result = await recoverProjectionCredentials([target], false);
+    expect(result.credentialRecovery[0]).toMatchObject({
+      outcome: 'restored',
+      reasonCode: 'principal_not_allowed',
+    });
+    expect(mocks.refresh).not.toHaveBeenCalled();
   });
 });

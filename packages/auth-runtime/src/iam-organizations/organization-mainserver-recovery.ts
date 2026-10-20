@@ -1,3 +1,6 @@
+import type { PermissionRevisionVector } from '../iam-authorization/permission-store.keys.js';
+import { revisionsEqual } from '../iam-authorization/permission-store.keys.js';
+import { readPermissionRevisionVectorWithClient } from '../iam-authorization/permission-revision-store.js';
 import {
   createMainserverCredentialFingerprint,
   resolveMainserverCredentialReadiness,
@@ -16,6 +19,7 @@ type RecoveryInput = Readonly<{
   actorAccountId: string;
   actorSubject: string;
   requestId?: string;
+  reauthorize: () => Promise<PermissionRevisionVector | null>;
 }>;
 type RecoveryRow = {
   application_id: string | null;
@@ -27,6 +31,7 @@ type RecoveryRow = {
 };
 export type OrganizationCredentialRecoveryReason =
   | 'restored'
+  | 'principal_not_allowed'
   | 'organization_state_not_recoverable'
   | 'technical_account_mismatch'
   | 'keycloak_unavailable'
@@ -92,6 +97,8 @@ const commitRecovery = async (
   ciphertext: string,
   apiKey: string
 ): Promise<OrganizationCredentialRecoveryReason> => {
+  const authorizationRevision = await input.reauthorize();
+  if (!authorizationRevision) return 'principal_not_allowed';
   const params = [input.instanceId, input.organizationId, input.actorAccountId, input.actorSubject];
   return withInstanceScopedDb(input.instanceId, async (client) => {
     // Match the existing binding-writer lock order before locking credential/account rows.
@@ -116,6 +123,13 @@ const commitRecovery = async (
     ]);
     if (bindings.rows.length !== 1 || bindings.rows[0]?.data_provider_id !== providerId)
       return 'binding_not_verified';
+    const currentRevision = await readPermissionRevisionVectorWithClient(
+      client,
+      input.instanceId,
+      input.actorSubject,
+      { lockForShare: true }
+    );
+    if (!revisionsEqual(currentRevision, authorizationRevision)) return 'principal_not_allowed';
     const result = await client.query(
       `UPDATE iam.organization_mainserver_credentials
 SET mainserver_application_id = $3, mainserver_application_secret_ciphertext = $4,

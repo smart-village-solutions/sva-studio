@@ -527,3 +527,5 @@ pg_dump \
 - Vergleich Live-Dump gegen `packages/data/migrations/` automatisieren
 - ER-Darstellung oder tabellarische Spaltenübersicht aus dem Live-Dump generieren
 - Drift-Gate für `studio` definieren, damit fehlende Migrationen früher sichtbar werden
+
+Die Credential-Recovery kann bisher fehlende Zeilen in `iam.permission_cache_instance_revisions` und `iam.permission_cache_user_revisions` mit dem bereits geltenden impliziten Startwert `1` materialisieren. Das verändert keine Berechtigung und erhöht keine Revision. Beide Zeilen werden für den lokalen Credential-Commit gehalten (`FOR SHARE`), sodass die vorhandenen Revisions-UPSERTs mit der Rücksicherung serialisieren; ein Audit-/Write-Abbruch rollt auch diese Initialisierung zurück. Das SQL-Schema bleibt unverändert.

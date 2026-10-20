@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
   loggerWarn: vi.fn(),
   resolveActorAccountId: vi.fn(),
   resolveEffectivePermissions: vi.fn(),
+  withAuthenticatedUser: vi.fn(),
   readEffectiveSvaMainserverCredentialsWithStatus: vi.fn(),
   readMainserverScopeResolverMode: vi.fn(
     () => process.env.SVA_MAINSERVER_SCOPE_RESOLVER_MODE ?? 'shadow'
@@ -54,6 +55,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   readMainserverScopeResolverMode: state.readMainserverScopeResolverMode,
   resolveActorAccountId: state.resolveActorAccountId,
   resolveEffectivePermissions: state.resolveEffectivePermissions,
+  withAuthenticatedUser: state.withAuthenticatedUser,
   recordSuccessfulExternalContentDeletion: state.recordSuccessfulExternalContentDeletion,
   recordSuccessfulExternalContentMutation: state.recordSuccessfulExternalContentMutation,
   withInstanceScopedDb: state.withInstanceScopedDb,
@@ -157,6 +159,9 @@ export const registerProjectionFixture = (): void => {
     state.authorizeContentPrimitiveForUser.mockReset();
     state.resolveActorAccountId.mockReset();
     state.resolveEffectivePermissions.mockReset();
+    state.withAuthenticatedUser
+      .mockReset()
+      .mockImplementation(async (_request, handler) => handler(ctx));
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockReset();
     state.loadCurrentMainserverDataProviderBinding.mockReset();
     state.deferMainserverMutationProjection.mockReset();

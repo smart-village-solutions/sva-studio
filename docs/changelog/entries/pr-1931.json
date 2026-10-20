@@ -1,0 +1,4 @@
+{
+  "prNumber": 1931,
+  "body": "Verbesserungen in der Inhaltsübersicht\n\n- Bei bestimmten Problemen mit Mainserver-Zugangsdaten versucht das Studio einmal automatisch, vorhandene Zugangsdaten wieder verfügbar zu machen.\n- Falls Inhalte weiterhin nicht aktualisiert werden können, zeigt das Studio genauere Hinweise und kopierbare Diagnoseangaben für den Support."
+}

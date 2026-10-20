@@ -72,6 +72,7 @@ export type ContentProjectionSyncState = Readonly<{
   lastSucceededAt?: string;
   lastFailedAt?: string;
   lastErrorCode?: string;
+  credentialRecovery?: import('./iam-api-content-types').ContentCredentialRecovery;
   isStale: boolean;
   isSyncRunning: boolean;
   hasSnapshot: boolean;

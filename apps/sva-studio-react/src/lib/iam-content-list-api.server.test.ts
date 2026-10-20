@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   ensureFeature: vi.fn(),
+  validateCsrf: vi.fn(),
   getFeatureFlags: vi.fn(),
   withAuthenticatedUser: vi.fn(),
   authorizeInstancePermissionForUser: vi.fn(),
@@ -16,6 +17,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   ensureFeature: state.ensureFeature,
+  validateCsrf: state.validateCsrf,
   getFeatureFlags: state.getFeatureFlags,
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
@@ -37,6 +39,7 @@ import { dispatchAggregatedContentListRequest } from './iam-content-list-api.ser
 describe('content list api dispatch', () => {
   beforeEach(() => {
     state.ensureFeature.mockReset();
+    state.validateCsrf.mockReset().mockReturnValue(null);
     state.getFeatureFlags.mockReset();
     state.withAuthenticatedUser.mockReset();
     state.authorizeInstancePermissionForUser.mockReset();
@@ -131,9 +134,7 @@ describe('content list api dispatch', () => {
 
   it('rejects unsupported direct sort parameters with invalid_request', async () => {
     const response = await dispatchAggregatedContentListRequest(
-      new Request(
-        'https://studio.test/api/v1/iam/contents?sortBy=status&sortDirection=sideways'
-      )
+      new Request('https://studio.test/api/v1/iam/contents?sortBy=status&sortDirection=sideways')
     );
 
     expect(response?.status).toBe(400);
@@ -142,6 +143,66 @@ describe('content list api dispatch', () => {
     });
     expect(state.listProjectedContents).not.toHaveBeenCalled();
     expect(state.logger.error).not.toHaveBeenCalled();
+  });
+
+  it('rejects credential recovery before any handler work when CSRF validation fails', async () => {
+    const csrfError = Response.json({ error: { code: 'csrf_validation_failed' } }, { status: 403 });
+    state.validateCsrf.mockReturnValue(csrfError);
+    const response = await dispatchAggregatedContentListRequest(
+      new Request('https://studio.test/api/v1/iam/contents/refresh', {
+        method: 'POST',
+        body: JSON.stringify({ recoverCredentials: true, visibleTypes: ['news.article'] }),
+      })
+    );
+    expect(response).toBe(csrfError);
+    expect(state.refreshProjectedContents).not.toHaveBeenCalled();
+  });
+
+  it('does not misreport unavailable recovery persistence as invalid client input', async () => {
+    state.refreshProjectedContents.mockRejectedValue(new Error('private database detail'));
+    const response = await dispatchAggregatedContentListRequest(
+      new Request('https://studio.test/api/v1/iam/contents/refresh', {
+        method: 'POST',
+        body: JSON.stringify({ recoverCredentials: true }),
+      })
+    );
+    expect(response?.status).toBe(503);
+    expect(JSON.stringify(await response?.json())).not.toContain('private database detail');
+  });
+
+  it('forwards only the explicit recovery flag and a safe correlation ID', async () => {
+    state.refreshProjectedContents.mockResolvedValue(
+      Response.json({ data: { status: 'failed', syncStates: [] } })
+    );
+    await dispatchAggregatedContentListRequest(
+      new Request('https://studio.test/api/v1/iam/contents/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visibleTypes: ['news.article'],
+          recoverCredentials: true,
+          originalRequestId: 'request-1',
+          targetAccountId: 'foreign-account',
+        }),
+      })
+    );
+    expect(state.refreshProjectedContents).toHaveBeenCalledWith(expect.anything(), {
+      visibleTypes: ['news.article'],
+      recoverCredentials: true,
+      originalRequestId: 'request-1',
+    });
+    state.refreshProjectedContents.mockClear();
+    await dispatchAggregatedContentListRequest(
+      new Request('https://studio.test/api/v1/iam/contents/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recoverCredentials: 'true',
+          originalRequestId: 'unsafe@example.test',
+        }),
+      })
+    );
+    expect(state.refreshProjectedContents).toHaveBeenCalledWith(expect.anything(), {});
   });
 
   it('delegates POST /api/v1/iam/contents/refresh to the projected refresh handler', async () => {

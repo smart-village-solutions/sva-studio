@@ -1511,7 +1511,15 @@ Vor Anzeige und Ausführung löst der Host den Content-Beitrag aus dem validiert
 
 Event und POI lesen vor dem Statusupdate mit demselben Principal wie beim Schreiben. Detailabweichungen in unverändert zurückzuschreibenden Feldern oder unbekannten Feldgruppen verhindern das Update. Ausschließlich gezielt ersetzte Statusfelder und nachweislich nicht geschriebene Metadaten dürfen abweichen. Erfolg und Fehler gelangen in den bestehenden Dialog- und Refresh-Pfad; IAM-Bulk-Auswahl, Teilfehler und Retry bleiben unverändert.
 
-
 ## Bus-API-Key-Verwaltung
 
 Jeder Bus-Key-Request benötigt eine persönliche Session mit gespeichertem Auth-Scope `platform`, Root-Host und `instance_registry_admin`. Bearer- und Tenant-Sessions erhalten keinen Zugriff. Mutationen prüfen zusätzlich CSRF und Fresh-Reauth. Die Registry wird vor jedem Bus-Aufruf geladen; nur aktive Instanzen dürfen neue Keys erhalten oder Keys reaktivieren. Listen und Lifecycle-Aufrufe senden immer das exakte Label. Nach bestätigtem Bus-Erfolg wird das bestehende Instanzaudit geschrieben; ein Auditfehler bleibt als `auditRecorded: false` bei erfolgreicher Antwort sichtbar und löst keine Wiederholung aus.
+
+## Stille Credential-Recovery beim Inhaltsabruf
+
+1. Ein Inhaltsread oder Refresh meldet einen principalgebundenen Credential-Fehler. Die Oberfläche stößt einmal den vorhandenen POST-Refresh mit `recoverCredentials` an; GET und Scheduler schreiben keine Credentials.
+2. Der Host prüft Session, Instanz, Content-Recht und Browser-CSRF und reserviert den Versuch durch ein bedingtes Update des bestehenden scopegebundenen Sync-State. Persönliche Attribute werden frisch gelesen; organisatorische Rücksicherung benötigt bestehenden `ready`-Zustand, exakte Accountmarker und eine aktuelle passende verifizierte Credential-/DataProvider-Bindung.
+3. Nach dem externen Keycloak-Read werden Zustand und Zuordnung in einer kurzen lokalen Transaktion unter den vorhandenen Sperren erneut geprüft. Nur dieselbe bekannte Version wird verschlüsselt zurückgesichert und im selben Commit auditiert. Ein paralleler Write oder Auditfehler verhindert Teilpersistenz; Verifikationszeitpunkt und Binding bleiben erhalten.
+4. Nach kanonischem Read-back wird der aktuelle autorisierte Inhaltsabruf höchstens einmal wiederholt. Alte Antworten nach Kontextwechsel werden clientseitig verworfen. Ein weiterer Inhaltsfehler führt nicht zu einer zweiten Reparatur, sondern zu präzisen Supportangaben. Erfolg der lokalen Rücksicherung und Erfolg der Inhaltsaktualisierung bleiben getrennt.
+
+Die Reservierung bleibt über Prozesswechsel und nachfolgende Schedulerfehler erhalten; erfolgreicher Abgleich hebt den Fehlerzustand auf. Es gibt keine Mainserver-Provisionierung oder Keycloak-Schreiboperation. Details: [ADR-051](../adr/ADR-051-technische-accounts-und-organisations-mainserver-provisioning.md) und [Runbook](../development/runbook-sva-mainserver.md).

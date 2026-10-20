@@ -15,6 +15,11 @@ import {
   withProjectionSchemaModeRetry,
 } from './iam-content-list-projection-repository-schema.server.js';
 import {
+  claimProjectionCredentialRecoverySql,
+  scopedProjectionSyncFailedSql,
+  legacyProjectionSyncFailedSql,
+  scopedProjectionRefreshPhaseSql,
+  legacyProjectionRefreshPhaseSql,
   legacySnapshotInvalidationSql,
   legacySyncStateSelectSql,
   reserveProjectionGenerationSql,
@@ -309,51 +314,16 @@ export const markProjectionSyncFailed = async (
   errorMessage: string
 ): Promise<void> => {
   await withProjectionSyncStateClient(target, async (client, schemaMode) => {
-    if (schemaMode === 'scoped') {
-      await client.query(
-        `
-UPDATE iam.content_list_projection_sync_state
-SET
-  last_failed_at = NOW(),
-  last_error_code = $5,
-  last_error_message = $6,
-  snapshot_state = CASE WHEN iam.content_list_projection_sync_state.last_succeeded_at IS NULL THEN 'partial_failed' ELSE 'complete_failed' END,
-  is_total_final = FALSE,
-  updated_at = NOW()
-WHERE instance_id = $1
-  AND source_system = 'mainserver'
-  AND content_type = $2
-  AND sync_scope_key = $3
-  AND refresh_run_id = $4::uuid;
-        `,
-        [
-          target.instanceId,
-          target.contentType,
-          buildMainserverSyncScopeKey(target),
-          refreshRunId,
-          errorCode,
-          errorMessage,
-        ]
-      );
-      return;
-    }
-
     await client.query(
-      `
-UPDATE iam.content_list_projection_sync_state
-SET
-  last_failed_at = NOW(),
-  last_error_code = $4,
-  last_error_message = $5,
-  snapshot_state = CASE WHEN iam.content_list_projection_sync_state.last_succeeded_at IS NULL THEN 'partial_failed' ELSE 'complete_failed' END,
-  is_total_final = FALSE,
-  updated_at = NOW()
-WHERE instance_id = $1
-  AND source_system = 'mainserver'
-  AND content_type = $2
-  AND refresh_run_id = $3::uuid;
-      `,
-      [target.instanceId, target.contentType, refreshRunId, errorCode, errorMessage]
+      schemaMode === 'scoped' ? scopedProjectionSyncFailedSql : legacyProjectionSyncFailedSql,
+      [
+        target.instanceId,
+        target.contentType,
+        ...(schemaMode === 'scoped' ? [buildMainserverSyncScopeKey(target)] : []),
+        refreshRunId,
+        errorCode,
+        errorMessage,
+      ]
     );
   });
 };
@@ -365,26 +335,7 @@ export const markProjectionRefreshPhase = async (
 ): Promise<void> => {
   await withProjectionSyncStateClient(target, async (client, schemaMode) => {
     await client.query(
-      schemaMode === 'scoped'
-        ? `
-UPDATE iam.content_list_projection_sync_state
-SET refresh_phase = $5,
-    updated_at = NOW()
-WHERE instance_id = $1
-  AND source_system = 'mainserver'
-  AND content_type = $2
-  AND sync_scope_key = $3
-  AND refresh_run_id = $4::uuid;
-          `
-        : `
-UPDATE iam.content_list_projection_sync_state
-SET refresh_phase = $4,
-    updated_at = NOW()
-WHERE instance_id = $1
-  AND source_system = 'mainserver'
-  AND content_type = $2
-  AND refresh_run_id = $3::uuid;
-          `,
+      schemaMode === 'scoped' ? scopedProjectionRefreshPhaseSql : legacyProjectionRefreshPhaseSql,
       schemaMode === 'scoped'
         ? [
             target.instanceId,
@@ -394,6 +345,49 @@ WHERE instance_id = $1
             refreshPhase,
           ]
         : [target.instanceId, target.contentType, refreshRunId, refreshPhase]
+    );
+  });
+};
+
+export const claimProjectionCredentialRecovery = async (
+  target: ContentProjectionSyncTarget,
+  lastFailedAt: string,
+  recovery: import('./iam-api-content-types').ContentCredentialRecovery,
+  manual: boolean
+): Promise<boolean> =>
+  withInstanceScopedDb(target.instanceId, async (client) => {
+    // A legacy type-global sync row cannot authorize account-local recovery.
+    if ((await loadProjectionSyncStateSchemaMode(client, target.instanceId)) !== 'scoped')
+      return false;
+    const result = await client.query(claimProjectionCredentialRecoverySql, [
+      target.instanceId,
+      target.contentType,
+      buildMainserverSyncScopeKey(target),
+      JSON.stringify({ credentialRecovery: recovery }),
+      lastFailedAt,
+      manual,
+    ]);
+    return result.rowCount === 1;
+  });
+
+export const finishProjectionCredentialRecovery = async (
+  target: ContentProjectionSyncTarget,
+  recovery: import('./iam-api-content-types').ContentCredentialRecovery,
+  claimed: import('./iam-api-content-types').ContentCredentialRecovery
+): Promise<void> => {
+  await withInstanceScopedDb(target.instanceId, async (client) => {
+    await client.query(
+      `UPDATE iam.content_list_projection_sync_state
+SET last_error_message = $4, updated_at = NOW()
+WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
+ AND sync_scope_key = $3 AND last_error_message = $5;`,
+      [
+        target.instanceId,
+        target.contentType,
+        buildMainserverSyncScopeKey(target),
+        JSON.stringify({ credentialRecovery: recovery }),
+        JSON.stringify({ credentialRecovery: claimed }),
+      ]
     );
   });
 };

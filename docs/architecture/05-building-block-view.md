@@ -1127,7 +1127,10 @@ Browser-, Server-, Job-, Mainserver- und IAM-Eingaben werden am Build-Zeitpunkt 
 
 `@sva/plugin-sdk` beschreibt und validiert `ContentTypeDefinition.mutations` für Löschen und Statuswechsel. Die Plugin-Browser-Einstiege binden ihre bestehenden API-Clients; die Studio-Katalogmaterialisierung übernimmt ausschließlich diese zusätzlichen Fähigkeiten bei ansonsten übereinstimmenden Descriptor-Metadaten. Die gemeinsame Inhaltsliste konsumiert die Beiträge ohne fachtypabhängigen Mutationsdispatch.
 
-
 ## Bus-API-Key-Verwaltung
 
 `packages/auth-runtime/src/iam-instance-registry/bus-api-keys.ts` bindet persönliche Session, vorhandene Root-/Rollen-/CSRF-/Fresh-Reauth-Guards und Registry an. `bus-api-client.ts` kapselt den veröffentlichten Bus-Vertrag. Das bestehende Auth-Routing registriert die vier Endpunkte; `iam-api-instance-bus-keys.ts` und die Karte im Bereich Betrieb konsumieren sie. Die Karte bleibt die instanzgebundene Mount-Grenze; lokale Dateien für Zustand und Mutationen, Tabelle und Dialoge teilen die Darstellung ohne zusätzliche Zustandskopien auf. Core führt Metadaten-/Einmalantwort-Typen und die UTC-Datumsarithmetik.
+
+## Stille Mainserver-Credential-Wiederherstellung
+
+Der vorhandene POST-Projektionsrefresh in der App autorisiert Content-Typ und Actor und reserviert den einmaligen Versuch im persistierten accountgebundenen Sync-State. Die Auth-Runtime ergänzt in `iam-organizations/organization-mainserver-recovery.ts` die eng begrenzte lokale Rücksicherung über vorhandene Keycloak-Reader, Verschlüsselung, Binding-Sperren und Audit. Die Datenbank bleibt Organisations-Laufzeitquelle; weder ein neuer Dienst noch ein Recovery-Credentialgeber entsteht. Die bestehende Inhaltsoberfläche zeigt bei verbleibenden Fehlern sichere kopierbare Supportangaben; weitere Details stehen im [Mainserver-Runbook](../development/runbook-sva-mainserver.md).

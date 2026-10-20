@@ -53,7 +53,7 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-048 zentraler Backup-Agent mit gehärtetem HTTPS-Trigger](../adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md)
 - [ADR-049 kanonischer Permission-Katalog und additiver Reconcile](../adr/ADR-049-kanonischer-permission-katalog-und-additiver-reconcile.md)
 - [ADR-050 zentraler scopegebundener UI-Zugriff](../adr/ADR-050-zentraler-scopegebundener-ui-zugriff.md)
-- [ADR-051 technische Accounts und Organisations-Mainserver-Provisioning](../adr/ADR-051-technische-accounts-und-organisations-mainserver-provisioning.md)
+- [ADR-051 technische Accounts und Organisations-Mainserver-Provisioning](../adr/ADR-051-technische-accounts-und-organisations-mainserver-provisioning.md), einschließlich der Präzisierung zur stillen lokalen Rücksicherung derselben verifizierten Version vom 20.10.2026
 - [ADR-052 Create-Policy, Read-Scope und Bestandsprincipal trennen](../adr/ADR-052-create-policy-read-scope-und-bestandsprincipal.md)
 - [ADR-055 Waste-Mainserver-Abgleichsstatus über Quellrevision](../adr/ADR-055-waste-mainserver-abgleichsstatus-ueber-quellrevision.md)
 - [ADR-057 SSF-Service-Token und Runtime-Konfigurationsgrenze](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)

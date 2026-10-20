@@ -2,11 +2,9 @@ import React from 'react';
 import type { ApiPagination, IamContentListItem, IamContentListQuery } from '@sva/core';
 
 import {
-  asIamError,
   deleteContent,
   IamHttpError,
   listContents,
-  refreshProjectedContents,
   type IamContentListMetadata,
   updateContent,
 } from '../lib/iam-api';
@@ -16,13 +14,16 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
+import type { ContentCredentialRecovery } from '../lib/iam-api-content-types';
 import { useIamAdminList } from './use-iam-admin-list';
-import { contentsLogger, SESSION_REFRESHED_EVENT } from './use-contents.shared.js';
+import { contentsLogger } from './use-contents.shared.js';
+import { useContentCredentialRecovery } from './use-content-credential-recovery';
 
 type UseContentsResult = {
   readonly contents: readonly IamContentListItem[];
   readonly pagination: ApiPagination;
   readonly metadata: IamContentListMetadata | null;
+  readonly credentialRecovery?: readonly ContentCredentialRecovery[];
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
   readonly mutationError: IamHttpError | null;
@@ -81,18 +82,6 @@ const shouldRevalidateContentProjection = (
   (metadata.hasRunningMainserverSync ||
     metadata.hasStaleMainserverContent ||
     metadata.mainserverSyncStates.some((state) => state.snapshotState?.startsWith('partial_')));
-
-const getRefreshProjectionState = (
-  metadata: IamContentListMetadata | null,
-  visibleTypes: IamContentListQuery['visibleTypes']
-): readonly string[] =>
-  metadata?.mainserverSyncStates
-    ?.map((entry) => entry.contentType)
-    .filter((contentType) => typeof contentType === 'string' && contentType.length > 0) ??
-  visibleTypes?.filter(
-    (contentType) => typeof contentType === 'string' && contentType.length > 0
-  ) ??
-  [];
 
 const useContentProjectionRevalidation = (
   shouldRevalidate: boolean,
@@ -204,7 +193,6 @@ export const useContents = (
   const enabled = options.enabled ?? true;
   const [pagination, setPagination] = React.useState<ApiPagination>(DEFAULT_CONTENT_PAGINATION);
   const [metadata, setMetadata] = React.useState<IamContentListMetadata | null>(null);
-  const [refreshProjectionPending, setRefreshProjectionPending] = React.useState(false);
   const listItems = React.useCallback(() => listContents(query), [query]);
   const handleLoaded = React.useCallback(
     (response: {
@@ -231,8 +219,15 @@ export const useContents = (
     setPagination(DEFAULT_CONTENT_PAGINATION);
   }, [enabled]);
 
+  const {
+    credentialRecovery,
+    refreshProjectionPending,
+    refreshProjection: refreshProjectionForList,
+  } = useContentCredentialRecovery(query, enabled, metadata, adminList);
+
   useContentProjectionRevalidation(
-    shouldRevalidateContentProjection(enabled, metadata),
+    shouldRevalidateContentProjection(enabled, metadata) ||
+      (enabled && adminList.error?.status === 503 && credentialRecovery.length === 0),
     adminList.refetch
   );
 
@@ -244,12 +239,7 @@ export const useContents = (
         content: IamContentListItem | undefined
       ) => Promise<'accepted' | 'skipped'>
     ): Promise<ContentBulkMutationResult> =>
-      runContentBulkMutation(
-        input,
-        adminList.items,
-        adminList.refetchWithOutcome,
-        mutateOne
-      ),
+      runContentBulkMutation(input, adminList.items, adminList.refetchWithOutcome, mutateOne),
     [adminList]
   );
 
@@ -275,44 +265,11 @@ export const useContents = (
     [runBulkMutation]
   );
 
-  const refreshProjectionState = React.useMemo(
-    () => getRefreshProjectionState(metadata, query.visibleTypes),
-    [metadata, query.visibleTypes]
-  );
-
-  const refreshProjectionForList = React.useCallback(
-    async (input: { readonly force?: boolean } = {}) => {
-      setRefreshProjectionPending(true);
-      try {
-        await refreshProjectedContents({
-          ...(refreshProjectionState.length > 0 ? { visibleTypes: refreshProjectionState } : {}),
-          ...(input.force ? { force: true } : {}),
-        });
-        await adminList.refetch();
-        return true;
-      } catch (cause) {
-        const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401) {
-          await refreshSession();
-          contentsLogger.info(SESSION_REFRESHED_EVENT, {
-            operation: 'refresh_projected_contents',
-            status: resolvedError.status,
-            error_code: resolvedError.code,
-          });
-        }
-        adminList.setError(resolvedError);
-        return false;
-      } finally {
-        setRefreshProjectionPending(false);
-      }
-    },
-    [adminList, refreshSession, refreshProjectionState]
-  );
-
   return {
     contents: adminList.items,
     pagination,
     metadata,
+    credentialRecovery,
     isLoading: adminList.isLoading,
     error: adminList.error,
     mutationError: adminList.mutationError,

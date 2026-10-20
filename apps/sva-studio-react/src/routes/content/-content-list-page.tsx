@@ -1,3 +1,4 @@
+import { ContentSyncSupport } from './-content-sync-support';
 import type { IamContentListQuery } from '@sva/core';
 import {
   type MainserverPrincipalControlModel,
@@ -294,6 +295,18 @@ export const ContentListPage = ({
         />
       ) : null}
 
+      <ContentSyncSupport
+        diagnostics={contentsApi.credentialRecovery}
+        metadata={contentsApi.metadata}
+        error={contentsApi.error}
+        pending={
+          contentsApi.refreshProjectionPending ||
+          (contentsApi.metadata?.hasRunningMainserverSync &&
+            Boolean(contentsApi.credentialRecovery?.length))
+        }
+        instanceId={auth.user?.instanceId}
+        contentTypes={visibleTypes}
+      />
       {contentsApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
           <AlertDescription>{contentErrorMessage(contentsApi.error)}</AlertDescription>

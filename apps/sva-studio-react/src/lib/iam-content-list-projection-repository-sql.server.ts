@@ -363,3 +363,35 @@ DO UPDATE SET
   last_audit_event_ref = EXCLUDED.last_audit_event_ref,
   projection_updated_at = NOW();
 `;
+
+const projectionSyncFailedSql = (errorParameter: number, messageParameter: number): string => `
+UPDATE iam.content_list_projection_sync_state
+SET last_failed_at = NOW(), last_error_code = $${errorParameter},
+ last_error_message = CASE WHEN last_error_message LIKE '{"credentialRecovery":%' THEN last_error_message ELSE $${messageParameter} END,
+ snapshot_state = CASE WHEN iam.content_list_projection_sync_state.last_succeeded_at IS NULL THEN 'partial_failed' ELSE 'complete_failed' END,
+ is_total_final = FALSE, updated_at = NOW()
+WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2`;
+
+export const scopedProjectionSyncFailedSql = `${projectionSyncFailedSql(5, 6)}
+ AND sync_scope_key = $3 AND refresh_run_id = $4::uuid;`;
+export const legacyProjectionSyncFailedSql = `${projectionSyncFailedSql(4, 5)}
+ AND refresh_run_id = $3::uuid;`;
+
+export const scopedProjectionRefreshPhaseSql = `UPDATE iam.content_list_projection_sync_state
+SET refresh_phase = $5, updated_at = NOW()
+WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
+ AND sync_scope_key = $3 AND refresh_run_id = $4::uuid;`;
+
+export const legacyProjectionRefreshPhaseSql = `UPDATE iam.content_list_projection_sync_state
+SET refresh_phase = $4, updated_at = NOW()
+WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
+ AND refresh_run_id = $3::uuid;`;
+
+export const claimProjectionCredentialRecoverySql = `UPDATE iam.content_list_projection_sync_state
+SET last_error_message = $4, updated_at = NOW()
+WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
+ AND sync_scope_key = $3 AND last_failed_at = $5::timestamptz
+ AND (last_started_at IS NULL OR last_started_at <= last_failed_at)
+ AND last_error_code IN ('mainserver_credentials_missing', 'mainserver_credentials_partial', 'mainserver_credentials_stale', 'mainserver_credentials_unavailable')
+ AND ($6::boolean OR last_error_message IS NULL OR last_error_message NOT LIKE '{"credentialRecovery":%')
+RETURNING sync_scope_key;`;

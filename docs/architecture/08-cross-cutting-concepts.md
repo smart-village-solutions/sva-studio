@@ -1207,7 +1207,14 @@ Laufzeitflags deaktivieren keine ausgelieferten Fähigkeiten. `studio` und `ssf`
 - In diesem Zustand bleiben gespeicherte Sprachen und deren Texte erhalten und
   bearbeitbar; Änderungen und Ergänzungen von Sprachen sind deaktiviert.
 
-
 ## Bus-API-Key-Verwaltung
 
 Bus-Key-Antworten einschließlich Fehlern sind `no-store`. Der Server projiziert ausschließlich bekannte Metadaten und filtert Labels exakt; nur die Erstellantwort enthält den einmaligen Klartext-Key. Kontakt-E-Mail, Key, Hash und Admin-Token werden nicht auditiert oder geloggt. Audit verwendet `instance_reconfigured` mit `area: bus_api_keys`, Aktion, Ergebnis, Key-ID sowie bestehender Akteur-/Request-ID. Der Browser hält Klartext nur im flüchtigen Komponentenstatus, verwirft ihn beim Schließen und Instanzwechsel und ignoriert alte Antworten auch bei A–B–A-Navigation. Writes haben keine automatischen Retries; unklare Ergebnisse führen zu Metadaten-Readback. Inklusive Datumswerte werden als UTC-Beginn des Folgetags berechnet; historische Zeitanteile bleiben exakt sichtbar.
+
+## Autorisierungsgrenze und Diagnostik der stillen Credential-Recovery
+
+Der CSRF-geschützte POST-Refresh darf als interne Reparatur ausschließlich dieselbe bereits organisationsgebunden verifizierte Credential-Version zurücksichern. Die vorhandene Content-Autorisierung und eine aktuelle aktive Membership sind erforderlich; ein Redakteur erhält dadurch weder `iam.org.write` noch die Möglichkeit, beliebige Werte, Zielaccounts oder Principals zu setzen. Aktive Organisation, technischer Account, Keycloak-Marker, gespeicherte Bestandteile und aktuell eindeutige Bindung müssen übereinstimmen. Historische oder widerrufene Versionen, komplette abweichende Bestände, ausstehende Freigaben und Schlüsselprobleme bleiben fail-closed unverändert.
+
+Die Rücksicherung ist lokal atomar, verwendet die organisationsgebundene Verschlüsselung und schreibt den Auditnachweis im selben Commit. Sie ändert keine Rollen, Subjects, Ownership oder externen Credentials und behauptet keinen neuen Verifikationszeitpunkt. Ein bedingter Marker im vorhandenen Sync-State verhindert wiederholte automatische Reparatur über Tabs und Prozesse hinweg. Die normale Retry-Taktung und explizite manuelle Refreshmöglichkeit bleiben erhalten.
+
+Supportangaben sind eine explizite Allowlist: Instanz, Funktion/Inhaltstyp, Zeitpunkt mit Zeitzone, stabiler Fehler-/Ursachencode, Request-Korrelation und Recovery-Ergebnis. Keine Credentialwerte, Tokens, Fingerprints, Account-/Subject-IDs, Rohantworten oder personenbezogenen Benutzerdaten. Die Oberfläche übersetzt die Ursache in de/en, hält zugängliche Status-/Fehlermeldungen und einen selektierbaren Clipboard-Fallback bereit und nennt `support@smart-village.solutions`. Versand und Upload werden nicht ausgelöst.

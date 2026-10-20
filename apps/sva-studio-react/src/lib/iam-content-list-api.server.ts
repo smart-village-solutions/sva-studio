@@ -4,8 +4,8 @@ import {
   getFeatureFlags,
   loadMainserverAuthoringDiagnostics,
   withAuthenticatedUser,
+  validateCsrf,
 } from '@sva/auth-runtime/server';
-import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import {
   createListErrorResponse,
@@ -17,10 +17,10 @@ import {
   refreshProjectedContents,
 } from './iam-content-list-projection.server.js';
 
-const logger = createSdkLogger({ component: 'iam-content-list-api' });
-
 const handleMainserverAuthoringDiagnostics = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
+    const { createSdkLogger, getWorkspaceContext } = await import('@sva/server-runtime');
+    const logger = createSdkLogger({ component: 'iam-content-list-api' });
     const featureCheck = ensureFeature(
       getFeatureFlags(),
       'iam_admin',
@@ -70,6 +70,8 @@ const handleMainserverAuthoringDiagnostics = async (request: Request): Promise<R
 
 const handleProjectedContentList = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
+    const { createSdkLogger, getWorkspaceContext } = await import('@sva/server-runtime');
+    const logger = createSdkLogger({ component: 'iam-content-list-api' });
     const featureCheck = ensureFeature(
       getFeatureFlags(),
       'iam_admin',
@@ -107,6 +109,8 @@ const handleProjectedContentList = async (request: Request): Promise<Response> =
 
 const handleProjectedContentRefresh = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
+    const { createSdkLogger, getWorkspaceContext } = await import('@sva/server-runtime');
+    const logger = createSdkLogger({ component: 'iam-content-list-api' });
     const featureCheck = ensureFeature(
       getFeatureFlags(),
       'iam_admin',
@@ -118,10 +122,26 @@ const handleProjectedContentRefresh = async (request: Request): Promise<Response
 
     try {
       const rawBody = await request.text();
-      const payload = (rawBody.length > 0 ? JSON.parse(rawBody) : {}) as {
+      const parsed: unknown = rawBody.length > 0 ? JSON.parse(rawBody) : {};
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return createListErrorResponse(
+          400,
+          'invalid_request',
+          'Ungültige Refresh-Anfrage.',
+          getWorkspaceContext().requestId
+        );
+      }
+      const payload = parsed as {
         readonly visibleTypes?: unknown;
         readonly force?: unknown;
+        readonly recoverCredentials?: unknown;
+        readonly originalRequestId?: unknown;
       };
+
+      if (payload.recoverCredentials === true) {
+        const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
+        if (csrfError) return csrfError;
+      }
 
       const visibleTypes = Array.isArray(payload.visibleTypes)
         ? payload.visibleTypes.filter((value): value is string => typeof value === 'string')
@@ -130,12 +150,29 @@ const handleProjectedContentRefresh = async (request: Request): Promise<Response
       return await refreshProjectedContents(ctx, {
         ...(visibleTypes.length > 0 ? { visibleTypes } : {}),
         ...(payload.force === true ? { force: true } : {}),
+        ...(payload.recoverCredentials === true ? { recoverCredentials: true } : {}),
+        ...(typeof payload.originalRequestId === 'string' &&
+        /^[a-zA-Z0-9-]{1,128}$/.test(payload.originalRequestId)
+          ? { originalRequestId: payload.originalRequestId }
+          : {}),
       });
     } catch (error) {
+      if (error instanceof SyntaxError)
+        return createListErrorResponse(
+          400,
+          'invalid_request',
+          'Ungültige Refresh-Anfrage.',
+          getWorkspaceContext().requestId
+        );
+      logger.error('content_projection_refresh_failed', {
+        request_id: getWorkspaceContext().requestId,
+        instance_id: ctx.user.instanceId,
+        error_code: 'database_unavailable',
+      });
       return createListErrorResponse(
-        400,
-        'invalid_request',
-        'Ungültige Refresh-Anfrage.',
+        503,
+        'database_unavailable',
+        'Inhalte konnten nicht aktualisiert werden.',
         getWorkspaceContext().requestId
       );
     }

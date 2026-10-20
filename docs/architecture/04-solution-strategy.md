@@ -47,6 +47,7 @@ Architekturprinzipien auf IST-Basis.
 - Für tenant-spezifische Logins stammt `instanceId` aus Host, Registry und dem zugeordneten Realm-Scope; ein benutzerbezogener OIDC-Claim ist nur Interop-/Diagnoseartefakt und kein zweites Login-Gate
 - Externe SVA-Mainserver-Zugriffe laufen strikt serverseitig; Credentials werden policy-gesteuert aus aktivem Organisationskontext oder aus dem persönlichen Benutzerkontext aufgelöst
 - Mainserver-Credentials gelten erst nach einem instanz- und principalgebundenen Read-back als einsatzbereit; Projection-Refreshes brechen bei `missing`, `partial`, `stale` oder `unavailable` vor dem Upstream-Aufruf ab
+- Stille Credential-Recovery lädt vorhandene persönliche Attribute erneut oder sichert ausschließlich dieselbe bekannte verifizierte Organisationsversion aus dem eindeutig zugeordneten Keycloak-Account lokal zurück. Sie läuft nur im autorisierten, CSRF-geschützten POST-Refresh, verändert keine externe Identität und begründet keine allgemeine Credential-Verwaltungsberechtigung (Präzisierung von ADR-051).
 - Der SVA-Mainserver wird über ein dediziertes Integrationspaket mit client-sicheren Root-Exports und serverseitigem `./server`-Subpfad angebunden
 - Instanzbezogene Upstream-Endpunkte liegen in Postgres; Mainserver-Credentials liegen organisationsgebunden in Postgres oder personenbezogen in Keycloak, abhängig vom fachlichen Organisationskontext
 - Datenbankmigrationen bleiben SQL-first und werden über einen repository-lokalen, versionsgepinn­ten `goose`-Pfad statt über ad-hoc SQL-Ausführung standardisiert
@@ -368,7 +369,6 @@ persistiert korrelierte Schritte dürfen wieder aufgenommen werden.
 ### Plugin-eigene Content-Mutationen
 
 Die gemeinsame Inhaltsliste löst Lösch- und Schnellstatusfähigkeiten über die vorhandenen Content-Beiträge im validierten Browser-Snapshot auf. Plugins besitzen Fachmapping und erlaubte Zielstatus; der Host behält Action-Prüfung, Principal-Ermittlung, Dialoge, Bulk-Ergebnisse und Refresh. Browserhandler werden erst am Browser-Einstieg gebunden und bleiben außerhalb der Node-Deskriptoren und Manifeste.
-
 
 ## Bus-API-Key-Verwaltung
 

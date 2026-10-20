@@ -1,4 +1,4 @@
-import type { WasteAddressEntityType } from '@sva/waste-management-contracts';
+import type { WasteAddressEntityType, WasteCollectionLocationSortDirection } from '@sva/waste-management-contracts';
 
 const addressEntityTypes = ['region', 'city', 'street', 'houseNumber'] as const;
 
@@ -17,3 +17,10 @@ export const normalizeAddressSortField = (
   if (value === 'parent' && type !== 'region') return value;
   return 'name';
 };
+
+export type WasteAddressSearchParams = Readonly<{
+  addressEntityType: WasteAddressEntityType;
+  addressParentId?: string;
+  addressSortBy?: WasteAddressSortField;
+  addressSortDirection?: WasteCollectionLocationSortDirection;
+}>;

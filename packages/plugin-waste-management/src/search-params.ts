@@ -1,9 +1,8 @@
 import type {
-  WasteAddressEntityType,
   WasteCollectionLocationSortDirection,
   WasteCollectionLocationSortMode,
 } from '@sva/waste-management-contracts';
-import { normalizeAddressEntityType, normalizeAddressSortField, type WasteAddressSortField } from './search-params.address.js';
+import { normalizeAddressEntityType, normalizeAddressSortField, type WasteAddressSearchParams } from './search-params.address.js';
 import {
   normalizeWasteCollectionLocationSortDirection,
   normalizeWasteCollectionLocationSortMode,
@@ -57,10 +56,6 @@ export type WasteManagementFractionSortDirection =
 export type WasteManagementSearchParams = Readonly<{
   tab: WasteManagementTabId;
   masterDataTab: WasteManagementMasterDataTabId;
-  addressEntityType: WasteAddressEntityType;
-  addressParentId?: string;
-  addressSortBy?: WasteAddressSortField;
-  addressSortDirection?: WasteCollectionLocationSortDirection;
   fractionsView: WasteManagementFractionsView;
   toursView: WasteManagementToursView;
   locationsView: WasteManagementLocationsView;
@@ -94,7 +89,7 @@ export type WasteManagementSearchParams = Readonly<{
   schedulingOriginalDate?: string;
   tourDateShiftId?: string;
   globalDateShiftId?: string;
-}>;
+}> & WasteAddressSearchParams;
 const compactOptionalString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
     return undefined;

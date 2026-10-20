@@ -47,8 +47,7 @@ export const WasteMasterDataAddressesPanel = ({ search, canManage, onSearchChang
   const [deleting, setDeleting] = useState(false);
   const sorting: AddressSortingState = [{
     id: normalizeAddressSortField(search.addressSortBy, search.addressEntityType),
-    desc: search.addressSortDirection === 'desc',
-  }];
+    desc: search.addressSortDirection === 'desc' }];
   const rows = useMemo(() => rowsForType(search.addressEntityType, controller.overview), [search.addressEntityType, controller.overview]);
   const filteredRows = useMemo(() => filterAddressRows(rows, search), [rows, search.addressEntityType, search.addressParentId, search.q]);
   const sortedRows = useMemo(() => sortAddressRows(filteredRows, search.addressEntityType, sorting), [filteredRows, search.addressEntityType, sorting]);

@@ -239,20 +239,37 @@ function createFakeChromiumForUserRoleAssignment() {
     loginClicked: false,
   };
 
+  function submitRoleCreation() {
+    state.createdRoleName = state.formValues['#create-role-key'] ?? null;
+    state.createdRoleDisplayName = state.formValues['#create-role-name'] ?? null;
+    state.createdRoleId = 'role-assign-123';
+    state.currentUrl = `https://de-musterhausen.example.test/admin/roles/${state.createdRoleId}`;
+  }
+
+  function submitUserCreation() {
+    const firstName = state.formValues['#create-user-first-name'] ?? '';
+    const lastName = state.formValues['#create-user-last-name'] ?? '';
+    state.createdUserDisplayName = `${firstName} ${lastName}`.trim();
+    state.createdUserEmail = state.formValues['#create-user-email'] ?? null;
+    state.createdUserId = 'user-role-123';
+    state.currentUrl = `https://de-musterhausen.example.test/admin/users/${state.createdUserId}`;
+  }
+
   function createLocator(query: { role?: string; selector?: string; roleName?: string | RegExp }) {
+    const roleLabel = query.roleName instanceof RegExp ? query.roleName.source.toLowerCase() : '';
     const isVisible = () => {
       if (query.selector === '#role-assignment-search') {
         return state.currentUrl.includes('/admin/roles/') && state.activeRoleTab === 'assignments';
       }
 
-      if (query.roleName instanceof RegExp) {
-        const label = query.roleName.source.toLowerCase();
-        if (label.includes('zuweisungen')) {
-          return query.role === 'tab';
-        }
-        if (label.includes('zuweisen')) {
-          return state.activeRoleTab === 'assignments' && state.formValues['#role-assignment-search'] === state.createdUserEmail;
-        }
+      if (roleLabel.includes('zuweisungen')) {
+        return query.role === 'tab';
+      }
+      if (roleLabel.includes('zuweisen')) {
+        return (
+          state.activeRoleTab === 'assignments' &&
+          state.formValues['#role-assignment-search'] === state.createdUserEmail
+        );
       }
 
       return true;
@@ -262,31 +279,23 @@ function createFakeChromiumForUserRoleAssignment() {
       count: async () => (isVisible() ? 1 : 0),
       first: () => ({
         click: async () => {
-          if (query.selector === '#kc-login' || (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('login'))) {
+          if (query.selector === '#kc-login' || roleLabel.includes('login')) {
             state.loginClicked = true;
             state.currentUrl = 'https://de-musterhausen.example.test/dashboard';
             return;
           }
 
-          if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('rolle anlegen')) {
-            state.createdRoleName = state.formValues['#create-role-key'] ?? null;
-            state.createdRoleDisplayName = state.formValues['#create-role-name'] ?? null;
-            state.createdRoleId = 'role-assign-123';
-            state.currentUrl = `https://de-musterhausen.example.test/admin/roles/${state.createdRoleId}`;
+          if (roleLabel.includes('rolle anlegen')) {
+            submitRoleCreation();
             return;
           }
 
-          if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('nutzer anlegen')) {
-            const firstName = state.formValues['#create-user-first-name'] ?? '';
-            const lastName = state.formValues['#create-user-last-name'] ?? '';
-            state.createdUserDisplayName = `${firstName} ${lastName}`.trim();
-            state.createdUserEmail = state.formValues['#create-user-email'] ?? null;
-            state.createdUserId = 'user-role-123';
-            state.currentUrl = `https://de-musterhausen.example.test/admin/users/${state.createdUserId}`;
+          if (roleLabel.includes('nutzer anlegen')) {
+            submitUserCreation();
             return;
           }
 
-          if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('zuweisungen')) {
+          if (roleLabel.includes('zuweisungen')) {
             if (query.role !== 'tab') {
               throw new Error('Assignments control must be selected as a tab');
             }
@@ -294,7 +303,7 @@ function createFakeChromiumForUserRoleAssignment() {
             return;
           }
 
-          if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('zuweisen')) {
+          if (roleLabel.includes('zuweisen')) {
             if (state.createdRoleId !== null) {
               state.assignedRoleIds = [state.createdRoleId];
             }
@@ -747,7 +756,7 @@ describe('runAdminExplorationStoryLoop', () => {
     });
   });
 
-  it('rejects story id filters without catalog matches fail-closed', async () => {
+  it.each([{ packageIds: [] }, { packageIds: ['IAM-P9'] }])('rejects invalid story ids before package filters $packageIds', async ({ packageIds }) => {
     const storySourcePath = createTempCatalogFile();
     const reportsDirectory = mkdtempSync(join(tmpdir(), 'admin-exploration-story-loop-invalid-story-id-'));
     temporaryDirectories.push(reportsDirectory);
@@ -758,7 +767,7 @@ describe('runAdminExplorationStoryLoop', () => {
           ...createConfig(),
           storyFilters: {
             clusters: [],
-            packageIds: [],
+            packageIds,
             resume: false,
             storyIds: [81],
           },

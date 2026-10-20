@@ -33,6 +33,52 @@ const reasonKeys: Readonly<Record<string, string>> = {
   recovery_failed: 'failed',
 };
 
+type SyncStates = IamContentListMetadata['mainserverSyncStates'];
+const getSupportEntries = (
+  effectiveDiagnostics: readonly ContentCredentialRecovery[],
+  states: SyncStates,
+  fallback: ContentCredentialRecovery,
+  detectedAt: string
+): readonly ContentCredentialRecovery[] => {
+  const failedStates = states.filter((state) => state.lastErrorCode);
+  return effectiveDiagnostics.length > 0
+    ? effectiveDiagnostics
+    : failedStates.length > 0
+      ? failedStates.map((state) => ({
+          ...fallback,
+          contentType: state.contentType,
+          occurredAt: state.lastFailedAt ?? detectedAt,
+        }))
+      : [fallback];
+};
+
+const getSupportText = (
+  entries: readonly ContentCredentialRecovery[],
+  states: SyncStates,
+  contentTypes: readonly string[],
+  error: IamHttpError | null
+): string => {
+  const unknown = t('content.recovery.unknown');
+  return entries
+    .map((entry) =>
+      t('content.recovery.supportText', {
+        instance: entry.instanceId || unknown,
+        contentType: entry.contentType || contentTypes.join(', ') || unknown,
+        time: entry.occurredAt,
+        source: t(`content.recovery.sources.${entry.source}`),
+        code:
+          states.find((state) => state.contentType === entry.contentType)?.lastErrorCode ??
+          error?.code ??
+          unknown,
+        reason: entry.reasonCode,
+        outcome: t(`content.recovery.outcomes.${entry.outcome}`),
+        requestId: entry.originalRequestId ?? error?.requestId ?? unknown,
+        recoveryRequestId: entry.requestId ?? unknown,
+      })
+    )
+    .join('\n\n');
+};
+
 export const ContentSyncSupport = ({
   diagnostics = [],
   metadata,
@@ -80,36 +126,8 @@ export const ContentSyncSupport = ({
     occurredAt: detectedAt,
     ...(error?.requestId ? { originalRequestId: error.requestId } : {}),
   };
-  const failedStates = states.filter((state) => state.lastErrorCode);
-  const entries =
-    effectiveDiagnostics.length > 0
-      ? effectiveDiagnostics
-      : failedStates.length > 0
-        ? failedStates.map((state) => ({
-            ...fallback,
-            contentType: state.contentType,
-            occurredAt: state.lastFailedAt ?? detectedAt,
-          }))
-        : [fallback];
-  const unknown = t('content.recovery.unknown');
-  const text = entries
-    .map((entry) =>
-      t('content.recovery.supportText', {
-        instance: entry.instanceId || unknown,
-        contentType: entry.contentType || contentTypes.join(', ') || unknown,
-        time: entry.occurredAt,
-        source: t(`content.recovery.sources.${entry.source}`),
-        code:
-          states.find((state) => state.contentType === entry.contentType)?.lastErrorCode ??
-          error?.code ??
-          unknown,
-        reason: entry.reasonCode,
-        outcome: t(`content.recovery.outcomes.${entry.outcome}`),
-        requestId: entry.originalRequestId ?? error?.requestId ?? unknown,
-        recoveryRequestId: entry.requestId ?? unknown,
-      })
-    )
-    .join('\n\n');
+  const entries = getSupportEntries(effectiveDiagnostics, states, fallback, detectedAt);
+  const text = getSupportText(entries, states, contentTypes, error);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);

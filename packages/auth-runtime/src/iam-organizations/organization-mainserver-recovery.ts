@@ -84,6 +84,70 @@ const matchRemainingCredentials = (
   return undefined;
 };
 
+const commitRecovery = async (
+  input: RecoveryInput,
+  before: RecoveryRow,
+  fingerprint: string,
+  providerId: string,
+  ciphertext: string,
+  apiKey: string
+): Promise<OrganizationCredentialRecoveryReason> => {
+  const params = [input.instanceId, input.organizationId, input.actorAccountId, input.actorSubject];
+  return withInstanceScopedDb(input.instanceId, async (client) => {
+    // Match the existing binding-writer lock order before locking credential/account rows.
+    await lockMainserverDataProviderBindingScope(client, {
+      instanceId: input.instanceId,
+      principalType: 'organization',
+      principalId: input.organizationId,
+      credentialFingerprint: fingerprint,
+      dataProviderId: providerId,
+    });
+    const current = (
+      await client.query<RecoveryRow>(
+        `${recoveryRowSql} FOR UPDATE OF credentials FOR SHARE OF account, organization, membership, actor;`,
+        params
+      )
+    ).rows[0];
+    if (!current || JSON.stringify(current) !== JSON.stringify(before)) return 'concurrent_change';
+    const bindings = await client.query<{ data_provider_id: string }>(bindingSql, [
+      input.instanceId,
+      input.organizationId,
+      fingerprint,
+    ]);
+    if (bindings.rows.length !== 1 || bindings.rows[0]?.data_provider_id !== providerId)
+      return 'binding_not_verified';
+    const result = await client.query(
+      `UPDATE iam.organization_mainserver_credentials
+SET mainserver_application_id = $3, mainserver_application_secret_ciphertext = $4,
+ updated_by_account_id = $5::uuid, updated_at = NOW()
+WHERE instance_id = $1 AND organization_id = $2::uuid AND provisioning_status = 'ready'
+ AND technical_account_id = $6::uuid AND updated_at = $7::timestamptz;`,
+      [
+        input.instanceId,
+        input.organizationId,
+        apiKey,
+        ciphertext,
+        input.actorAccountId,
+        before.technical_account_id,
+        before.updated_at,
+      ]
+    );
+    if (result.rowCount !== 1) return 'concurrent_change';
+    await emitActivityLog(client, {
+      instanceId: input.instanceId,
+      accountId: input.actorAccountId,
+      eventType: 'organization.mainserver_credentials_restored',
+      result: 'success',
+      payload: {
+        operation: 'restore_known_organization_credentials',
+        organization_id: input.organizationId,
+      },
+      requestId: input.requestId,
+    });
+    return 'restored';
+  });
+};
+
 export const restoreOrganizationMainserverCredentials = async (
   input: RecoveryInput
 ): Promise<OrganizationCredentialRecoveryReason> => {
@@ -149,60 +213,14 @@ export const restoreOrganizationMainserverCredentials = async (
       return 'credential_encryption_unavailable';
     }
     if (!ciphertext?.startsWith('enc:v1:')) return 'credential_encryption_unavailable';
-    return await withInstanceScopedDb(input.instanceId, async (client) => {
-      // Match the existing binding-writer lock order before locking credential/account rows.
-      await lockMainserverDataProviderBindingScope(client, {
-        instanceId: input.instanceId,
-        principalType: 'organization',
-        principalId: input.organizationId,
-        credentialFingerprint: fingerprint,
-        dataProviderId: providerId,
-      });
-      const current = (
-        await client.query<RecoveryRow>(
-          `${recoveryRowSql} FOR UPDATE OF credentials FOR SHARE OF account, organization, membership, actor;`,
-          params
-        )
-      ).rows[0];
-      if (!current || JSON.stringify(current) !== JSON.stringify(before))
-        return 'concurrent_change';
-      const bindings = await client.query<{ data_provider_id: string }>(bindingSql, [
-        input.instanceId,
-        input.organizationId,
-        fingerprint,
-      ]);
-      if (bindings.rows.length !== 1 || bindings.rows[0]?.data_provider_id !== providerId)
-        return 'binding_not_verified';
-      const result = await client.query(
-        `UPDATE iam.organization_mainserver_credentials
-SET mainserver_application_id = $3, mainserver_application_secret_ciphertext = $4,
- updated_by_account_id = $5::uuid, updated_at = NOW()
-WHERE instance_id = $1 AND organization_id = $2::uuid AND provisioning_status = 'ready'
- AND technical_account_id = $6::uuid AND updated_at = $7::timestamptz;`,
-        [
-          input.instanceId,
-          input.organizationId,
-          candidate.credentials.apiKey,
-          ciphertext,
-          input.actorAccountId,
-          before.technical_account_id,
-          before.updated_at,
-        ]
-      );
-      if (result.rowCount !== 1) return 'concurrent_change';
-      await emitActivityLog(client, {
-        instanceId: input.instanceId,
-        accountId: input.actorAccountId,
-        eventType: 'organization.mainserver_credentials_restored',
-        result: 'success',
-        payload: {
-          operation: 'restore_known_organization_credentials',
-          organization_id: input.organizationId,
-        },
-        requestId: input.requestId,
-      });
-      return 'restored';
-    });
+    return await commitRecovery(
+      input,
+      before,
+      fingerprint,
+      providerId,
+      ciphertext,
+      candidate.credentials.apiKey
+    );
   } catch {
     return 'database_unavailable';
   }

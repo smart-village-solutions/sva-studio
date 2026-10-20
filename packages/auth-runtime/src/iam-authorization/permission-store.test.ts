@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getRedisPermissionSnapshot: vi.fn(),
@@ -73,6 +73,7 @@ vi.mock('./shared.js', () => ({
 }));
 
 describe('resolveEffectivePermissions', () => {
+  afterEach(() => vi.useRealTimers());
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.cacheMetricsState.lookups = 0;
@@ -152,6 +153,7 @@ describe('resolveEffectivePermissions', () => {
       hit: true,
       permissions: [{ action: 'events.read' }],
       version: 'redis-2',
+      createdAtMs: Date.now() - 240_000,
     });
     mocks.permissionSnapshotCache.set.mockReturnValueOnce({
       snapshotVersion: 'memory-2',
@@ -173,6 +175,47 @@ describe('resolveEffectivePermissions', () => {
     expect(mocks.permissionSnapshotCache.set).toHaveBeenCalledTimes(1);
     expect(mocks.loadPermissionsWithClient).not.toHaveBeenCalled();
   });
+
+  it.each([false, true])(
+    'does not renew Redis lifetime or serve stale grants when recompute fails: %s',
+    async (recomputeFails) => {
+      vi.useFakeTimers();
+      const { PermissionSnapshotCache } = await import('../iam-authorization-cache.js');
+      const { resolveEffectivePermissions } = await import('./permission-store.js');
+      const createdAtMs = Date.parse('2026-10-20T10:00:00Z');
+      vi.setSystemTime(createdAtMs + 299_999);
+      const cache = new PermissionSnapshotCache();
+      mocks.permissionSnapshotCache.get.mockImplementationOnce((key) => cache.get(key));
+      mocks.permissionSnapshotCache.set.mockImplementationOnce(
+        (...args: Parameters<typeof cache.set>) => cache.set(...args)
+      );
+      mocks.getRedisPermissionSnapshot.mockResolvedValueOnce({
+        hit: true,
+        permissions: [{ action: 'news.read' }],
+        version: 'redis-old',
+        createdAtMs,
+      });
+      const input = { instanceId: 'de-test', keycloakSubject: 'kc-user-1' };
+      expect(await resolveEffectivePermissions(input)).toMatchObject({
+        ok: true,
+        cacheStatus: 'hit',
+      });
+      vi.setSystemTime(createdAtMs + 300_000);
+      mocks.permissionSnapshotCache.get.mockImplementationOnce((key) => cache.get(key));
+      mocks.getRedisPermissionSnapshot.mockResolvedValueOnce({ hit: false, reason: 'expired' });
+      if (recomputeFails) {
+        mocks.loadPermissionsWithClient.mockRejectedValueOnce(new Error('database offline'));
+      } else {
+        mocks.loadPermissionsWithClient.mockResolvedValueOnce([]);
+      }
+      expect(await resolveEffectivePermissions(input)).toMatchObject(
+        recomputeFails
+          ? { ok: false, error: 'database_unavailable' }
+          : { ok: true, permissions: [], cacheStatus: 'recompute' }
+      );
+      expect(mocks.loadPermissionsWithClient).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it('fails closed when redis is unavailable', async () => {
     const { resolveEffectivePermissions } = await import('./permission-store.js');
@@ -289,7 +332,8 @@ describe('resolveEffectivePermissions', () => {
     expect(mocks.setRedisPermissionSnapshot).toHaveBeenCalledTimes(1);
     expect(mocks.setRedisPermissionSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ userRevision: 8 }),
-      [{ action: 'news.update' }]
+      [{ action: 'news.update' }],
+      expect.any(Number)
     );
     expect(mocks.permissionSnapshotCache.set).toHaveBeenCalledTimes(1);
     expect(mocks.permissionSnapshotCache.set).toHaveBeenCalledWith(
@@ -300,23 +344,73 @@ describe('resolveEffectivePermissions', () => {
     );
   });
 
-  it('fails closed when redis snapshot writes fail after recompute', async () => {
+  it.each(['redis_unavailable', 'snapshot_expired'])(
+    'fails closed when a Redis write fails: %s',
+    async (reason) => {
+      const { resolveEffectivePermissions } = await import('./permission-store.js');
+
+      mocks.setRedisPermissionSnapshot.mockResolvedValueOnce({
+        ok: false,
+        reason,
+      });
+
+      const result = await resolveEffectivePermissions({
+        instanceId: 'de-test',
+        keycloakSubject: 'kc-user-1',
+      });
+
+      expect(result).toEqual({ ok: false, error: 'database_unavailable' });
+      expect(mocks.logger.error).toHaveBeenCalledWith(
+        'Redis permission snapshot write failed after recompute',
+        expect.objectContaining({ operation: 'cache_store_failed', error: reason })
+      );
+    }
+  );
+
+  it('retains computation start time across database and Redis latency', async () => {
+    vi.useFakeTimers();
     const { resolveEffectivePermissions } = await import('./permission-store.js');
-
-    mocks.setRedisPermissionSnapshot.mockResolvedValueOnce({
-      ok: false,
-      reason: 'redis_unavailable',
+    const startedAtMs = Date.parse('2026-10-20T10:00:00Z');
+    vi.setSystemTime(startedAtMs);
+    mocks.loadPermissionsWithClient.mockImplementationOnce(async () => {
+      vi.setSystemTime(startedAtMs + 100_000);
+      return [];
     });
+    expect(
+      await resolveEffectivePermissions({ instanceId: 'de-test', keycloakSubject: 'kc-user-1' })
+    ).toMatchObject({ ok: true, permissions: [] });
+    expect(mocks.setRedisPermissionSnapshot).toHaveBeenCalledWith(
+      expect.any(Object),
+      [],
+      startedAtMs
+    );
+    expect(mocks.permissionSnapshotCache.set).toHaveBeenCalledWith(
+      expect.any(Object),
+      [],
+      startedAtMs,
+      'redis-1'
+    );
+  });
 
-    const result = await resolveEffectivePermissions({
-      instanceId: 'de-test',
-      keycloakSubject: 'kc-user-1',
-    });
-
-    expect(result).toEqual({ ok: false, error: 'database_unavailable' });
-    expect(mocks.logger.error).toHaveBeenCalledWith(
-      'Redis permission snapshot write failed after recompute',
-      expect.objectContaining({ operation: 'cache_store_failed', error: 'redis_unavailable' })
+  it('discards an overlong computation and recomputes time-dependent grants', async () => {
+    vi.useFakeTimers();
+    const { resolveEffectivePermissions } = await import('./permission-store.js');
+    const startedAtMs = Date.parse('2026-10-20T10:00:00Z');
+    vi.setSystemTime(startedAtMs);
+    mocks.loadPermissionsWithClient
+      .mockImplementationOnce(async () => {
+        vi.setSystemTime(startedAtMs + 300_000);
+        return [{ action: 'news.read' }];
+      })
+      .mockResolvedValueOnce([]);
+    expect(
+      await resolveEffectivePermissions({ instanceId: 'de-test', keycloakSubject: 'kc-user-1' })
+    ).toMatchObject({ ok: true, permissions: [] });
+    expect(mocks.loadPermissionsWithClient).toHaveBeenCalledTimes(2);
+    expect(mocks.setRedisPermissionSnapshot).toHaveBeenCalledExactlyOnceWith(
+      expect.any(Object),
+      [],
+      startedAtMs + 300_000
     );
   });
 

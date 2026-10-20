@@ -2,6 +2,8 @@ import type { EffectivePermission } from '@sva/iam-core';
 export type { CacheInvalidationEvent } from './iam-authorization-cache-events.js';
 export { parseInvalidationEvent } from './iam-authorization-cache-events.js';
 
+export const PERMISSION_SNAPSHOT_MAX_AGE_MS = 300_000;
+
 export interface PermissionSnapshotKey {
   readonly instanceId: string;
   readonly keycloakSubject: string;
@@ -43,7 +45,8 @@ const formatSnapshotKey = (key: PermissionSnapshotKey): string => {
   ].join(':');
 };
 
-const userScopeKey = (instanceId: string, keycloakSubject: string): string => `${instanceId}:${keycloakSubject}`;
+const userScopeKey = (instanceId: string, keycloakSubject: string): string =>
+  `${instanceId}:${keycloakSubject}`;
 
 export class PermissionSnapshotCache {
   private readonly snapshots = new Map<string, PermissionSnapshot>();
@@ -51,7 +54,7 @@ export class PermissionSnapshotCache {
   private readonly defaultVersion = 1;
 
   public constructor(
-    private readonly ttlMs = 300_000,
+    private readonly ttlMs = PERMISSION_SNAPSHOT_MAX_AGE_MS,
     private readonly maxStaleMs = 300_000
   ) {}
 

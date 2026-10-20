@@ -560,6 +560,16 @@ Das System SHALL effektive Berechtigungen als serialisierte, revisionsgebundene 
 - **AND** darf ein Ablauf-, Recompute- oder Eviction-Fenster keine revisionsveraltete Freigabe erzeugen
 - **AND** bleibt die Redis-Eviction-Policy Teil des Betriebsmodells, nicht der logischen Gültigkeit
 
+#### Scenario: Logische Gültigkeit bleibt über Cache-Ebenen begrenzt
+
+- **WHEN** ein Snapshot für eine Autorisierungsentscheidung gelesen wird
+- **THEN** ist er ab einem Alter von 300 Sekunden logisch ungültig, auch bei unveränderter Revision
+- **AND** bezeichnet `signed_at` den Beginn der Berechnung und bleibt beim Übernehmen aus Redis in L1 erhalten
+- **AND** verlängern Berechnung, Redis-Schreibzeit und L1-Übernahme diese Grenze nicht
+- **AND** werden zeitlich abgelaufene Rollen, Gruppenmitgliedschaften und Delegationen spätestens durch die nächste Neuberechnung innerhalb dieser Grenze berücksichtigt
+- **AND** bleibt die physische Redis-Basis-TTL bei 15 Minuten
+- **AND** führt ein fehlgeschlagener Recompute zu HTTP 503 statt zur Verwendung eines abgelaufenen Snapshots
+
 ### Requirement: Normierter Lese- und Schreibpfad für Snapshot-Auflösung
 
 Das System SHALL den Snapshot-Pfad für `POST /iam/authorize` und `GET /iam/me/permissions` in definierter, revisionssicherer Reihenfolge ausführen.
@@ -619,7 +629,7 @@ Das System SHALL relevante IAM-Mutationen durch monotone PostgreSQL-Revisionen l
 
 - **WHEN** ein `NOTIFY`-Event nicht verarbeitet wird
 - **THEN** erkennt der Revisionsread trotzdem jeden Snapshot der vorherigen Revision als ungültig
-- **AND** bleiben TTL und Cleanup ausschließlich physische Fallbacks
+- **AND** sind Eventzustellung und physisches Cleanup keine Voraussetzung für die Revisionsprüfung
 
 #### Scenario: Commit definiert die Gültigkeitsgrenze
 

@@ -2,6 +2,8 @@ import type { EffectivePermission } from '@sva/iam-core';
 import { createHash, createHmac } from 'node:crypto';
 import { createSdkLogger } from '@sva/server-runtime';
 
+import { PERMISSION_SNAPSHOT_MAX_AGE_MS } from '../iam-authorization-cache.js';
+
 import { getRedisClient } from '../redis.js';
 
 const logger = createSdkLogger({ component: 'iam-permission-cache', level: 'info' });
@@ -37,12 +39,11 @@ type StoredSnapshot = {
 };
 
 export type RedisSnapshotResult =
-  | { hit: true; permissions: readonly EffectivePermission[]; version: string }
-  | { hit: false; reason: 'miss' | 'integrity_error' | 'redis_unavailable' };
+  | { hit: true; permissions: readonly EffectivePermission[]; version: string; createdAtMs: number }
+  | { hit: false; reason: 'miss' | 'expired' | 'integrity_error' | 'redis_unavailable' };
 
 export type RedisSnapshotWriteResult =
-  | { ok: true; version: string }
-  | { ok: false; reason: 'redis_unavailable' };
+  { ok: true; version: string } | { ok: false; reason: 'redis_unavailable' | 'snapshot_expired' };
 
 const computeCtxHash = (value: string | undefined): string => {
   if (!value) return 'none';
@@ -80,11 +81,15 @@ const computeHmac = (data: string): string => {
 };
 
 const serializeSignedPayload = (
-  stored: Pick<StoredSnapshot, 'permissions' | 'version' | 'schema_version' | 'signed_at' | 'binding'>
-) =>
-  JSON.stringify(stored);
+  stored: Pick<
+    StoredSnapshot,
+    'permissions' | 'version' | 'schema_version' | 'signed_at' | 'binding'
+  >
+) => JSON.stringify(stored);
 
-export const getRedisPermissionSnapshot = async (key: PermSnapshotKey): Promise<RedisSnapshotResult> => {
+export const getRedisPermissionSnapshot = async (
+  key: PermSnapshotKey
+): Promise<RedisSnapshotResult> => {
   try {
     const redis = getRedisClient();
     const redisKey = buildRedisKey(key);
@@ -131,7 +136,16 @@ export const getRedisPermissionSnapshot = async (key: PermSnapshotKey): Promise<
       return { hit: false, reason: 'integrity_error' };
     }
 
-    return { hit: true, permissions: stored.permissions, version: stored.version };
+    const createdAtMs = Date.parse(signedAt);
+    const ageMs = Date.now() - createdAtMs;
+    if (!Number.isFinite(createdAtMs) || ageMs < 0) {
+      return { hit: false, reason: 'integrity_error' };
+    }
+    if (ageMs >= PERMISSION_SNAPSHOT_MAX_AGE_MS) {
+      return { hit: false, reason: 'expired' };
+    }
+
+    return { hit: true, permissions: stored.permissions, version: stored.version, createdAtMs };
   } catch (error) {
     logger.error('Redis permission snapshot get failed', {
       operation: 'snapshot_get',
@@ -143,13 +157,17 @@ export const getRedisPermissionSnapshot = async (key: PermSnapshotKey): Promise<
 
 export const setRedisPermissionSnapshot = async (
   key: PermSnapshotKey,
-  permissions: readonly EffectivePermission[]
+  permissions: readonly EffectivePermission[],
+  createdAtMs = Date.now()
 ): Promise<RedisSnapshotWriteResult> => {
   try {
     const redis = getRedisClient();
     const redisKey = buildRedisKey(key);
-    const version = createHash('sha256').update(JSON.stringify(permissions)).digest('hex').slice(0, 16);
-    const signedAt = new Date().toISOString();
+    const version = createHash('sha256')
+      .update(JSON.stringify(permissions))
+      .digest('hex')
+      .slice(0, 16);
+    const signedAt = new Date(createdAtMs).toISOString();
     const binding = buildBinding(key);
 
     const hmac = computeHmac(
@@ -171,6 +189,10 @@ export const setRedisPermissionSnapshot = async (
       hmac,
     };
     await redis.setex(redisKey, SNAPSHOT_TTL_SECONDS, JSON.stringify(stored));
+
+    if (Date.now() - createdAtMs >= PERMISSION_SNAPSHOT_MAX_AGE_MS) {
+      return { ok: false, reason: 'snapshot_expired' };
+    }
 
     logger.debug('Redis permission snapshot stored', {
       operation: 'snapshot_set',

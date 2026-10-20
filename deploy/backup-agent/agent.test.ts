@@ -1,52 +1,66 @@
+import { generateKeyPairSync, sign } from 'node:crypto';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-
 import { canonicalBackupRequest } from '../../scripts/ci/backup-agent-contract.ts';
-import { validateBackupRequest, validateRestoreRequest } from './request-validation.mjs';
-
+import {
+  validateBackupRequest,
+  validateRestoreRequest,
+  validTenantInstanceId,
+} from './request-validation.mjs';
 import {
   archiveSchemaCompatible,
-  backupDumpArgs,
-  canonicalRequest,
-  canonicalRestoreRequest,
-  buildRuntimePrincipalReconciliationSql,
-  buildSsfRuntimePrincipalReconciliationSql,
-  buildWasteRuntimePrincipalReconciliationSql,
-  deriveWasteDatabaseName,
-  deriveWasteInventoryTarget,
-  controlKeysFor,
   extractAppliedGooseVersion,
   isHistoricalSchemaRestoreCompatible,
   isRestoreSqlLineSupported,
-  minioAwsCompatibilityEnv,
-  parseWasteInventory,
-  readBackupAgentRevision,
-  restoreControlKeysFor,
-  runtimePrincipalProbeSql,
-  restoreSchemaResetSql,
   ssfArchiveSchemaCompatible,
-  ssfRestoreSchemaResetSql,
-  ssfRuntimePrincipalProbeSql,
-  resolveDatabaseTarget,
-  resolveCapabilityEnvironment,
-  runCommand,
-  safeErrorCode,
-  targets,
-  validateRuntimePrincipalProbe,
+  wasteArchiveSchemaCompatible,
+  writeCompatibleRestoreSql,
+} from './archive-operations.mjs';
+import { backupDumpArgs } from './backup-execution.mjs';
+import {
+  canonicalRequest,
+  canonicalRestoreRequest,
   validateOidcClaims,
-  validateDatabasePostchecks,
-  validateWasteDatabasePostchecks,
   validRequest,
   validRestoreRequest,
+} from './request-authorization.mjs';
+import { createBackupAgentServer } from './http-server.mjs';
+import {
+  buildRuntimePrincipalReconciliationSql,
+  buildSsfRuntimePrincipalReconciliationSql,
+  buildWasteRuntimePrincipalReconciliationSql,
+} from './principal-reconciliation.mjs';
+import {
+  deriveWasteDatabaseName,
+  deriveWasteInventoryTarget,
+  controlKeysFor,
+  readBackupAgentRevision,
+  restoreControlKeysFor,
+  resolveDatabaseTarget,
+  resolveCapabilityEnvironment,
+  targets,
   validRequestHost,
-  validTenantInstanceId,
-  waitForSessionDrain,
-  wasteArchiveSchemaCompatible,
+} from './runtime-config.mjs';
+import { minioAwsCompatibilityEnv, runCommand, safeErrorCode } from './runtime-io.mjs';
+import { parseWasteInventory, waitForSessionDrain } from './database-operations.mjs';
+import {
+  runtimePrincipalProbeSql,
+  ssfRuntimePrincipalProbeSql,
+  validateRuntimePrincipalProbe,
+  wasteRuntimePrincipalProbeSql,
+} from './principal-probes.mjs';
+import {
+  restoreSchemaResetSql,
+  ssfRestoreSchemaResetSql,
+  validateDatabasePostchecks,
+  validateWasteDatabasePostchecks,
   validateWasteImportInventory,
   wasteImportBackfillSql,
   wasteRuntimeConnectLockSql,
   wasteRestoreSchemaResetSql,
-  wasteRuntimePrincipalProbeSql,
-} from './agent.mjs';
+  writeWasteImportSql,
+} from './restore-data.mjs';
 
 const request = {
   version: 1,
@@ -872,5 +886,121 @@ describe('backup agent runtime contract', () => {
     await expect(
       runCommand(process.execPath, ['-e', 'setTimeout(() => {}, 60_000)'], { timeoutMs: 25 })
     ).rejects.toThrow(`${process.execPath}_timeout`);
+  });
+});
+
+describe('backup agent HTTP guards', () => {
+  const request = async (method: string, url: string, headers = {}) => {
+    const server = createBackupAgentServer();
+    return new Promise<{ status: number; body: unknown }>((resolve) => {
+      const response = {
+        writeHead: (status: number) => {
+          response.status = status;
+        },
+        status: 0,
+        end: (body: string) => resolve({ status: response.status, body: JSON.parse(body) }),
+      };
+      server.emit('request', { method, url, headers }, response);
+    });
+  };
+
+  it('keeps health and unknown route behavior without reading request bodies', async () => {
+    expect(await request('GET', '/health/live')).toEqual({ status: 200, body: { status: 'ok' } });
+    expect(await request('POST', '/unknown')).toEqual({
+      status: 404,
+      body: { error: 'not_found' },
+    });
+  });
+
+  it('rejects capability environments and hosts before authentication', async () => {
+    expect(await request('GET', '/_ops/backup/v1/capabilities?environment=dev')).toEqual({
+      status: 400,
+      body: { error: 'invalid_request' },
+    });
+    expect(
+      await request('GET', '/_ops/backup/v1/capabilities?environment=prod', { host: 'invalid' })
+    ).toEqual({ status: 400, body: { error: 'invalid_request' } });
+    expect(
+      await request('GET', '/_ops/backup/v1/capabilities?environment=prod', {
+        host: targets.prod.host,
+      })
+    ).toEqual({ status: 401, body: { error: 'unauthorized' } });
+  });
+});
+
+describe('previously unmeasured local verification and streaming seams', () => {
+  it('verifies a synthetic RSA token, caches mocked JWKS and rejects tampering', async () => {
+    const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const now = Math.floor(Date.now() / 1_000);
+    const claims = {
+      iss: 'https://token.actions.githubusercontent.com',
+      aud: 'fixture-audience',
+      exp: now + 60,
+      nbf: now - 1,
+      repository: 'fixture/repository',
+      environment: 'staging',
+      workflow_ref: 'fixture/repository/.github/workflows/fixture-backup.yml@refs/heads/main',
+    };
+    const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
+    const token = (header = { alg: 'RS256', kid: 'fixture-key' }) => {
+      const payload = `${encode(header)}.${encode(claims)}`;
+      return `${payload}.${sign('RSA-SHA256', Buffer.from(payload), privateKey).toString('base64url')}`;
+    };
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        keys: [{ ...publicKey.export({ format: 'jwk' }), kid: 'fixture-key' }],
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubEnv('BACKUP_AGENT_OIDC_AUDIENCE', 'fixture-audience');
+    vi.stubEnv('BACKUP_AGENT_GITHUB_REPOSITORY', 'fixture/repository');
+    vi.stubEnv('BACKUP_AGENT_ALLOWED_WORKFLOWS', 'fixture-backup.yml');
+    try {
+      vi.resetModules();
+      const { verifyOidc } = await import('./request-authorization.mjs');
+      await expect(verifyOidc(token(), 'staging', 'backup-and-verify')).resolves.toBeUndefined();
+      await expect(verifyOidc(token(), 'staging', 'backup-and-verify')).resolves.toBeUndefined();
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [header, payload] = token().split('.');
+      const tampered = `${header}.${payload}.${Buffer.alloc(256).toString('base64url')}`;
+      await expect(verifyOidc(tampered, 'staging', 'backup-and-verify')).rejects.toThrow(
+        'oidc_signature_invalid'
+      );
+      await expect(
+        verifyOidc(token({ alg: 'RS256', kid: 'foreign-key' }), 'staging', 'backup-and-verify')
+      ).rejects.toThrow('oidc_key_unknown');
+      await expect(
+        verifyOidc(token({ alg: 'HS256', kid: 'fixture-key' }), 'staging', 'backup-and-verify')
+      ).rejects.toThrow('oidc_header_invalid');
+      await expect(verifyOidc('malformed', 'staging', 'backup-and-verify')).rejects.toThrow(
+        'oidc_token_invalid'
+      );
+      expect(fetchMock).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('streams compatible restore SQL and a waste owner prefix using only local fixtures', async () => {
+    const scratch = resolve(import.meta.dirname, '../../.nx');
+    await mkdir(scratch, { recursive: true });
+    const directory = await mkdtemp(join(scratch, 'backup-stream-fixture-'));
+    try {
+      const source = join(directory, 'source.sql');
+      const restore = join(directory, 'restore.sql');
+      const waste = join(directory, 'waste.sql');
+      await writeFile(source, 'SELECT 1;\r\nSET transaction_timeout = 0;\r\nSELECT 2;\r\n', {
+        mode: 0o600,
+      });
+      await writeCompatibleRestoreSql(source, restore);
+      expect(await readFile(restore, 'utf8')).toBe('SELECT 1;\nSELECT 2;\n');
+      await writeWasteImportSql(source, waste, 'fixture_owner');
+      expect(await readFile(waste, 'utf8')).toBe(
+        'SET ROLE "fixture_owner";\nSELECT 1;\r\nSET transaction_timeout = 0;\r\nSELECT 2;\r\n'
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });

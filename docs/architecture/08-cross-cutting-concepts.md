@@ -142,6 +142,7 @@ gleichzeitig beeinflussen.
 - Signiertes Login-State-Cookie (HMAC)
 - Session-Cookies: `httpOnly`, `sameSite=lax`, `secure` in Production
 - `Session.expiresAt` ist die fachlich führende Session-Gültigkeit; Cookie und Redis-TTL werden daraus abgeleitet
+- Verschwindet eine Session während des Token-Refreshs vor dem Speichern durch Ablauf oder Löschung, wird der Request weiterhin als ungültige Session abgewiesen. Dieser erwartete Abbruch wird als `session_ended_during_refresh` auf INFO protokolliert; ungültige Tokens bleiben WARN, technische Refresh-Fehler ERROR und Redis-Ausfälle bleiben als Abhängigkeitsfehler sichtbar. Eine verlorene Session wird nicht wiederhergestellt und ihre Gültigkeit nicht verlängert.
 - Sessions bleiben datensparsam und tragen nur Auth-Kern plus Lifecycle-Felder (`issuedAt`, `expiresAt`, `sessionVersion`)
 - Verpflichtende Verschlüsselung von Tokens im Redis-Store via `ENCRYPTION_KEY`; ohne Schlüssel werden Sessions weder angelegt noch aus dem Store ausgegeben
 - Sessionen führen nur den minimalen Auth-Kern (`sub/id`, `instanceId`, Rollen); Profilattribute wie Name und E-Mail gehören nicht zum Pflichtumfang der Session

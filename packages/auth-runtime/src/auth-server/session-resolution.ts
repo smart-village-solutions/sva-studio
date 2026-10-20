@@ -4,7 +4,7 @@ import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
 import { isTokenErrorLike } from '../error-guards.js';
 import { buildLogContext } from '../log-context.js';
 import { deleteSession, getSession, updateSession } from '../redis-session.js';
-import { SessionStoreUnavailableError } from '../runtime-errors.js';
+import { SessionNotFoundError, SessionStoreUnavailableError } from '../runtime-errors.js';
 import type { RuntimeScopeRef, Session, SessionUser } from '../types.js';
 import { refreshSession } from './session-refresh.js';
 import { buildSessionUser, TOKEN_REFRESH_SKEW_MS } from './shared.js';
@@ -148,25 +148,25 @@ const handleRefreshFailure = async (input: {
     throw input.error;
   }
 
-  const now = Date.now();
-  if (isTokenErrorLike(input.error)) {
-    logger.warn('Token validation/refresh failed', {
+  if (input.error instanceof SessionNotFoundError) {
+    logger.info('Session ended during token refresh', {
       operation: 'refresh_token',
-      error_type: input.error instanceof Error ? input.error.constructor.name : typeof input.error,
-      has_refresh_token: Boolean(input.refreshToken),
-      session_expired: input.expiresAt ? input.expiresAt < now : false,
-      reason_code: 'token_refresh_failed',
+      reason_code: 'session_ended_during_refresh',
       ...buildLogContext(input.scope),
     });
-  } else {
-    logger.error('Token refresh failed', {
-      operation: 'refresh_token',
-      error_type: input.error instanceof Error ? input.error.constructor.name : typeof input.error,
-      reason_code: 'token_refresh_failed',
-      session_expired: input.expiresAt ? input.expiresAt < now : false,
-      ...buildLogContext(input.scope),
-    });
+    return { kind: 'invalid', reason: 'invalid_session' };
   }
+
+  const now = Date.now();
+  const tokenError = isTokenErrorLike(input.error);
+  logger[tokenError ? 'warn' : 'error'](tokenError ? 'Token validation/refresh failed' : 'Token refresh failed', {
+    operation: 'refresh_token',
+    error_type: input.error instanceof Error ? input.error.constructor.name : typeof input.error,
+    ...(tokenError ? { has_refresh_token: Boolean(input.refreshToken) } : {}),
+    session_expired: input.expiresAt ? input.expiresAt < now : false,
+    reason_code: 'token_refresh_failed',
+    ...buildLogContext(input.scope),
+  });
 
   if (input.expiresAt && input.expiresAt < now) {
     await deleteSession(input.sessionId);

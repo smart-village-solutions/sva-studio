@@ -481,6 +481,46 @@ describe('auth server session resolution', () => {
     expect(state.deleteSession).toHaveBeenCalledWith('session-1');
   });
 
+  it.each([4_000, 5_100])(
+    'rejects a session lost during refresh without warning or error (expiry %s)',
+    async (expiresAt) => {
+      const { SessionNotFoundError } = await import('../runtime-errors.js');
+      state.getSession.mockResolvedValue(createSession({ expiresAt }));
+      state.updateSession.mockRejectedValue(new SessionNotFoundError());
+
+      const { resolveSessionUser } = await import('./session.js');
+      await expect(resolveSessionUser('session-1')).resolves.toEqual({
+        kind: 'invalid',
+        reason: 'invalid_session',
+      });
+      expect(state.logger.info).toHaveBeenCalledWith(
+        'Session ended during token refresh',
+        expect.objectContaining({ reason_code: 'session_ended_during_refresh' })
+      );
+      expect(state.logger.warn).not.toHaveBeenCalled();
+      expect(state.logger.error).not.toHaveBeenCalled();
+      expect(state.deleteSession).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([true, false])(
+    'keeps token warnings and technical errors visible (token error %s)',
+    async (tokenError) => {
+      state.getSession.mockResolvedValue(createSession({ expiresAt: 4_000 }));
+      state.refreshTokenGrant.mockRejectedValue(new Error('provider rejected refresh'));
+      state.isTokenErrorLike.mockReturnValue(tokenError);
+      const { resolveSessionUser } = await import('./session.js');
+      await expect(resolveSessionUser('session-1')).resolves.toEqual({
+        kind: 'invalid',
+        reason: 'token_refresh_failed_after_expiry',
+      });
+      expect(tokenError ? state.logger.warn : state.logger.error).toHaveBeenCalledWith(
+        tokenError ? 'Token validation/refresh failed' : 'Token refresh failed',
+        expect.objectContaining({ reason_code: 'token_refresh_failed' })
+      );
+    }
+  );
+
   it('rethrows session store failures from the refresh path', async () => {
     const session = createSession({ expiresAt: 5_100, user: completeUser });
     state.getSession.mockResolvedValue(session);

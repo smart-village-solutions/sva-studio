@@ -1,0 +1,4 @@
+{
+  "prNumber": 1929,
+  "body": "E-Mail-Erinnerungen werden nach erfolgreichem Versand wieder zuverlässig als versendet markiert. Dadurch verursacht ein PostgreSQL-Typfehler keine fünf identischen Erinnerungen mehr."
+}

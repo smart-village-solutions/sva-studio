@@ -77,6 +77,8 @@ Ein einzelnes `cache_stale_detected` mit `reason=ttl_expired` meldet den regulä
 
 Permission-Snapshots gelten logisch höchstens 300 Sekunden ab Berechnungsbeginn. Die physische Redis-TTL bleibt bei 15 Minuten; ein Redis-Treffer verlängert die logische Frist beim Übernehmen in den lokalen Cache nicht. `miss_reason=expired` bezeichnet regulären logischen Ablauf und löst eine Neuberechnung aus. Zeitlich abgelaufene Rollen, Gruppenmitgliedschaften und Delegationen werden dadurch auch ohne Revisionswechsel neu ausgewertet. Aktive Änderungen werden weiterhin über den autoritativen Revisionsread erkannt. `cache_store_failed` mit `error=snapshot_expired` bezeichnet eine während des Redis-Writes ausgeschöpfte Gültigkeit; die Anfrage endet fail-closed.
 
+Schema 3 im privaten Redis-Keyspace `perm:v3` trennt den Zeitstempel ab Berechnungsbeginn von älteren Snapshot-Versionen. Neue Runtimes lesen keine `perm:v2`-Einträge und akzeptieren keine Schema-2-Payloads; alte Einträge laufen über ihre bestehende TTL aus. Der Versionswechsel erzeugt einmalige Cache-Misses. Die neue Garantie gilt nach vollständigem Austausch der alten App-Runtimes.
+
 Die Grenze gilt ab führendem Studio-IAM-Zustand und ersetzt keinen gesonderten Nachweis für verzögerte externe IAM-Projektionen. Für den Rollout sind synchronisierte App-Uhren erforderlich; Snapshots mit ungültigem oder zukünftigem signiertem Zeitstempel werden nicht als Treffer akzeptiert. Der lokale Testnachweis ersetzt weder Staging-Störungssimulation noch Production-Readback für Issue #1335. Eine Last- oder Performanceverbesserung ist mit dieser Korrektur nicht nachgewiesen; für spätere Optimierungen sind Recompute-Rate und Redis-Latenz vor und nach der Änderung zu vergleichen.
 
 ### 7. Authorization-Cache ausgefallen

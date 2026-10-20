@@ -9,8 +9,8 @@ import { getRedisClient } from '../redis.js';
 const logger = createSdkLogger({ component: 'iam-permission-cache', level: 'info' });
 
 const SNAPSHOT_TTL_SECONDS = 900;
-const SNAPSHOT_KEY_PREFIX = 'perm:v2';
-const SNAPSHOT_SCHEMA_VERSION = 2;
+const SNAPSHOT_KEY_PREFIX = 'perm:v3';
+const SNAPSHOT_SCHEMA_VERSION = 3;
 
 export type PermSnapshotKey = {
   instanceId: string;

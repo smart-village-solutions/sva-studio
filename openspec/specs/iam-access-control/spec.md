@@ -532,7 +532,7 @@ Das System SHALL effektive Berechtigungen als serialisierte, revisionsgebundene 
 #### Scenario: Snapshot-Key ist normiert, revisionsgebunden und kontextstabil
 
 - **WHEN** ein Permission-Snapshot geschrieben oder gelesen wird
-- **THEN** verwendet das System einen versionierten Key-Raum wie `perm:v2:{instanceId}:{userId}:{orgCtxHash}:{geoCtxHash}:ir{instanceRevision}:ur{userRevision}` oder einen semantisch gleichwertigen unveränderlich revisionsgebundenen Vertrag
+- **THEN** verwendet das System einen versionierten Key-Raum wie `perm:v3:{instanceId}:{userId}:{orgCtxHash}:{geoCtxHash}:ir{instanceRevision}:ur{userRevision}` oder einen semantisch gleichwertigen unveränderlich revisionsgebundenen Vertrag
 - **AND** `instanceId` trennt Mandanten strikt
 - **AND** `userId` adressiert den effektiven Benutzerkontext
 - **AND** `orgCtxHash` und `geoCtxHash` repräsentieren ihre Kontexte deterministisch ohne rohe Kontextdaten unnötig im Key zu exponieren
@@ -565,6 +565,7 @@ Das System SHALL effektive Berechtigungen als serialisierte, revisionsgebundene 
 - **WHEN** ein Snapshot für eine Autorisierungsentscheidung gelesen wird
 - **THEN** ist er ab einem Alter von 300 Sekunden logisch ungültig, auch bei unveränderter Revision
 - **AND** bezeichnet `signed_at` den Beginn der Berechnung und bleibt beim Übernehmen aus Redis in L1 erhalten
+- **AND** trennt Schema 3 im Key-Raum `perm:v3` diesen Zeitstempelvertrag von älteren Snapshots mit nachträglich gesetztem `signed_at`; ältere Schemas werden nicht übernommen
 - **AND** verlängern Berechnung, Redis-Schreibzeit und L1-Übernahme diese Grenze nicht
 - **AND** werden zeitlich abgelaufene Rollen, Gruppenmitgliedschaften und Delegationen spätestens durch die nächste Neuberechnung innerhalb dieser Grenze berücksichtigt
 - **AND** bleibt die physische Redis-Basis-TTL bei 15 Minuten

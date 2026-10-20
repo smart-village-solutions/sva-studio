@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
@@ -168,6 +170,55 @@ describe('redis permission snapshot server', () => {
     }
   );
 
+  it('isolates computation-start snapshots from the legacy Redis keyspace', async () => {
+    const { getRedisPermissionSnapshot, setRedisPermissionSnapshot } =
+      await import('./redis-permission-snapshot.server.js');
+    const key = { instanceId: 'tenant-a', userId: 'user-1', instanceRevision: 1, userRevision: 1 };
+    await setRedisPermissionSnapshot(key, []);
+    const [redisKey, , serialized] = state.redis.setex.mock.calls[0] as [string, number, string];
+    expect(redisKey).toBe('perm:v3:tenant-a:user-1:none:none:ir1:ur1');
+    expect(JSON.parse(serialized).schema_version).toBe(3);
+    state.redis.get.mockImplementationOnce(async (requestedKey: string) =>
+      requestedKey.startsWith('perm:v2:') ? serialized : null
+    );
+    await expect(getRedisPermissionSnapshot(key)).resolves.toEqual({ hit: false, reason: 'miss' });
+  });
+
+  it('rejects a correctly signed legacy schema with post-computation timestamp semantics', async () => {
+    process.env.REDIS_SNAPSHOT_HMAC_SECRET = 'test-legacy-secret';
+    const { getRedisPermissionSnapshot } = await import('./redis-permission-snapshot.server.js');
+    const legacy = {
+      permissions: [],
+      version: 'legacy',
+      schema_version: 2,
+      signed_at: new Date().toISOString(),
+      binding: {
+        instanceId: 'tenant-a',
+        userId: 'user-1',
+        organizationHash: 'none',
+        geoContextHash: 'none',
+        instanceRevision: 1,
+        userRevision: 1,
+      },
+    };
+    state.redis.get.mockResolvedValueOnce(
+      JSON.stringify({
+        ...legacy,
+        hmac: createHmac('sha256', 'test-legacy-secret')
+          .update(JSON.stringify(legacy))
+          .digest('hex'),
+      })
+    );
+    await expect(
+      getRedisPermissionSnapshot({
+        instanceId: 'tenant-a',
+        userId: 'user-1',
+        instanceRevision: 1,
+        userRevision: 1,
+      })
+    ).resolves.toEqual({ hit: false, reason: 'integrity_error' });
+  });
+
   it('rejects a snapshot whose Redis write exhausts its logical validity', async () => {
     vi.useFakeTimers();
     const createdAtMs = Date.parse('2026-10-20T10:00:00Z');
@@ -220,7 +271,7 @@ describe('redis permission snapshot server', () => {
       JSON.stringify({
         permissions: [{ actionId: 'news.read', scope: 'instance' }],
         version: 'forged',
-        schema_version: 2,
+        schema_version: 3,
         signed_at: new Date().toISOString(),
         hmac: 'publicly-forged',
         binding: {
@@ -294,7 +345,7 @@ describe('redis permission snapshot server', () => {
     expect(state.redis.scan).toHaveBeenCalledWith(
       '0',
       'MATCH',
-      'perm:v2:tenant-a:user-1:*',
+      'perm:v3:tenant-a:user-1:*',
       'COUNT',
       100
     );

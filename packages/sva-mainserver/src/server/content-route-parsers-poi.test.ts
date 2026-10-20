@@ -80,6 +80,41 @@ describe('content-route-parsers-poi', () => {
     ]);
   });
 
+  it('omits invalid optional fields while retaining false and zero as own values', () => {
+    expect(
+      parseOpeningHours([{ weekday: ' ', timeFrom: '', sortNumber: 0, open: false, useYear: null }])
+    ).toStrictEqual([{ sortNumber: 0, open: false }]);
+    expect(
+      parsePrices([{ name: ' ', amount: 'invalid', ageFrom: 0, groupPrice: false, category: null }])
+    ).toStrictEqual([{ ageFrom: 0, groupPrice: false }]);
+    expect(
+      parseMediaContents([{ captionText: ' ', height: 0, width: 'invalid', sourceUrl: null }])
+    ).toStrictEqual([{ height: 0 }]);
+    expect(
+      parseAccessibilityInformation({ description: ' ', types: null, urls: [] })
+    ).toStrictEqual({ urls: [] });
+    for (const parse of [
+      parseOpeningHours,
+      parsePrices,
+      parseMediaContents,
+      parseCertificates,
+      parseAccessibilityInformation,
+      parseOperatingCompany,
+    ]) {
+      expect(parse(null)).toBeUndefined();
+      expect(parse(undefined)).toBeUndefined();
+    }
+  });
+
+  it('keeps first failing opening-hour error and its exact response contract', async () => {
+    const response = parseOpeningHours([{ timeFrom: '24:00' }, null]) as Response;
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'invalid_request',
+      message: 'Öffnungszeiten müssen im Format HH:MM angegeben werden.',
+    });
+  });
+
   it('returns validation errors for malformed opening hours and prices', async () => {
     await expectInvalidRequest(parseOpeningHours('no-array') as Response);
     await expectInvalidRequest(parseOpeningHours([null]) as Response);

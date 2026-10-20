@@ -181,6 +181,41 @@ describe('shared Mainserver mappers', () => {
     ).toEqual(expect.objectContaining({ sortNumber: 0, open: false, useYear: false }));
   });
 
+  it('preserves own-key omission, raw strings and nullish scalar distinctions', () => {
+    expect(mapWebUrl({ id: '', url: '  ', description: ' ' })).toStrictEqual({
+      url: '  ',
+      description: ' ',
+    });
+    expect(mapCategory({ name: ' ', position: 0, children: [{ name: '' }] })).toStrictEqual({
+      name: ' ',
+      position: 0,
+      children: [],
+    });
+    expect(
+      mapPrice({ amount: 0, groupPrice: false, ageFrom: null, description: '' })
+    ).toStrictEqual({ amount: 0, groupPrice: false });
+    expect(mapMediaContent({ height: Number.NaN, width: null })).toStrictEqual({
+      height: Number.NaN,
+    });
+    expect(mapDate({ weekday: '', timeDescription: ' ' })).toStrictEqual({ timeDescription: ' ' });
+    expect(
+      mapAddress({ geoLocation: { latitude: '0 degrees', longitude: 'invalid' } })
+    ).toStrictEqual({ geoLocation: { latitude: 0 } });
+    expect(mapLocation({ geoLocation: { latitude: null, longitude: 0 } })).toStrictEqual({
+      geoLocation: { longitude: 0 },
+    });
+    expect(mapContact({ email: ' ', webUrls: [] })).toStrictEqual({ email: ' ', webUrls: [] });
+    expect(mapAccessibilityInformation({ description: ' ', urls: [] })).toStrictEqual({
+      description: ' ',
+      urls: [],
+    });
+    expect(mapOpeningHour({ sortNumber: 0, open: false, useYear: null })).toStrictEqual({
+      sortNumber: 0,
+      open: false,
+    });
+    expect(mapRepeatDuration({ everyYear: false })).toStrictEqual({ everyYear: false });
+  });
+
   it('omits empty optional structures and rejects invalid scalar conversions', () => {
     expect(parseCharactersToBeShown(null)).toBeUndefined();
     expect(parseCharactersToBeShown('  ')).toBeUndefined();

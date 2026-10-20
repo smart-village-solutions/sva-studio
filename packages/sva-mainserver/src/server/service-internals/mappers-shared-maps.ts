@@ -31,21 +31,32 @@ import {
   type CategoryLike,
 } from './mappers-shared-schemas.js';
 
+// Keep absent optional properties absent, including when callers inspect own keys.
+const omitUndefined = <T extends object>(value: T): T =>
+  Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined)) as T;
+
+const mapGeoLocation = (value: z.infer<typeof addressSchema>['geoLocation']) => {
+  if (!value) return undefined;
+  const coordinates = omitUndefined({
+    latitude: parseGeoCoordinate(value.latitude),
+    longitude: parseGeoCoordinate(value.longitude),
+  });
+  return Object.keys(coordinates).length > 0 ? coordinates : undefined;
+};
+
 export const mapDataProvider = (
   value: z.infer<typeof dataProviderSchema> | null | undefined
 ): SvaMainserverDataProvider | undefined => {
   if (!value) return undefined;
-  const dataProvider = {
-    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-    ...(optionalString(value.name) ? { name: optionalString(value.name) } : {}),
-    ...(optionalString(value.dataType) ? { dataType: optionalString(value.dataType) } : {}),
-    ...(optionalString(value.description)
-      ? { description: optionalString(value.description) }
-      : {}),
-    ...(optionalString(value.notice) ? { notice: optionalString(value.notice) } : {}),
-    ...(mapWebUrl(value.logo) ? { logo: mapWebUrl(value.logo) } : {}),
-    ...(mapAddress(value.address) ? { address: mapAddress(value.address) } : {}),
-  };
+  const dataProvider = omitUndefined({
+    id: optionalString(value.id),
+    name: optionalString(value.name),
+    dataType: optionalString(value.dataType),
+    description: optionalString(value.description),
+    notice: optionalString(value.notice),
+    logo: mapWebUrl(value.logo),
+    address: mapAddress(value.address),
+  });
   return Object.keys(dataProvider).length > 0 ? dataProvider : undefined;
 };
 
@@ -76,13 +87,11 @@ export const mapWebUrl = (
   if (!value?.url) {
     return undefined;
   }
-  return {
-    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+  return omitUndefined({
+    id: optionalString(value.id),
     url: value.url,
-    ...(optionalString(value.description)
-      ? { description: optionalString(value.description) }
-      : {}),
-  };
+    description: optionalString(value.description),
+  });
 };
 
 export const mapAddress = (
@@ -91,27 +100,16 @@ export const mapAddress = (
   if (!value) {
     return undefined;
   }
-  const geoLocation = value.geoLocation
-    ? {
-        ...(defined(parseGeoCoordinate(value.geoLocation.latitude))
-          ? { latitude: parseGeoCoordinate(value.geoLocation.latitude) }
-          : {}),
-        ...(defined(parseGeoCoordinate(value.geoLocation.longitude))
-          ? { longitude: parseGeoCoordinate(value.geoLocation.longitude) }
-          : {}),
-      }
-    : undefined;
-  const address = {
-    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-    ...(optionalString(value.addition) ? { addition: optionalString(value.addition) } : {}),
-    ...(optionalString(value.street) ? { street: optionalString(value.street) } : {}),
-    ...(optionalString(value.zip) ? { zip: optionalString(value.zip) } : {}),
-    ...(optionalString(value.city) ? { city: optionalString(value.city) } : {}),
-    ...(optionalString(value.kind) ? { kind: optionalString(value.kind) } : {}),
-    ...(geoLocation && (defined(geoLocation.latitude) || defined(geoLocation.longitude))
-      ? { geoLocation }
-      : {}),
-  };
+  const geoLocation = mapGeoLocation(value.geoLocation);
+  const address = omitUndefined({
+    id: optionalString(value.id),
+    addition: optionalString(value.addition),
+    street: optionalString(value.street),
+    zip: optionalString(value.zip),
+    city: optionalString(value.city),
+    kind: optionalString(value.kind),
+    geoLocation,
+  });
   return Object.keys(address).length > 0 ? address : undefined;
 };
 
@@ -119,16 +117,16 @@ export const mapCategory = (value: CategoryLike): SvaMainserverCategory | null =
   if (!value.name) {
     return null;
   }
-  return {
-    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+  return omitUndefined({
+    id: optionalString(value.id),
     name: value.name,
-    ...(optionalString(value.iconName) ? { iconName: optionalString(value.iconName) } : {}),
-    ...(optionalNumber(value.position) !== undefined ? { position: value.position as number } : {}),
-    ...(optionalString(value.tagList) ? { tagList: optionalString(value.tagList) } : {}),
-    ...(optionalString(value.createdAt) ? { createdAt: optionalString(value.createdAt) } : {}),
-    ...(optionalString(value.updatedAt) ? { updatedAt: optionalString(value.updatedAt) } : {}),
+    iconName: optionalString(value.iconName),
+    position: optionalNumber(value.position),
+    tagList: optionalString(value.tagList),
+    createdAt: optionalString(value.createdAt),
+    updatedAt: optionalString(value.updatedAt),
     children: (value.children ?? []).map(mapCategory).filter(defined),
-  };
+  });
 };
 
 const hasNonBlankString = (value: string | null | undefined): value is string =>
@@ -144,30 +142,28 @@ const hasIncompleteCategoryTree = (value: CategoryLike): boolean => {
 
 export const mapMediaContent = (
   value: z.infer<typeof mediaContentSchema>
-): SvaMainserverMediaContent => ({
-  ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-  ...(optionalString(value.captionText) ? { captionText: optionalString(value.captionText) } : {}),
-  ...(optionalString(value.copyright) ? { copyright: optionalString(value.copyright) } : {}),
-  ...(optionalNumber(value.height) !== undefined ? { height: value.height as number } : {}),
-  ...(optionalNumber(value.width) !== undefined ? { width: value.width as number } : {}),
-  ...(optionalString(value.contentType) ? { contentType: optionalString(value.contentType) } : {}),
-  ...(mapWebUrl(value.sourceUrl) ? { sourceUrl: mapWebUrl(value.sourceUrl) } : {}),
-});
+): SvaMainserverMediaContent =>
+  omitUndefined({
+    id: optionalString(value.id),
+    captionText: optionalString(value.captionText),
+    copyright: optionalString(value.copyright),
+    height: optionalNumber(value.height),
+    width: optionalNumber(value.width),
+    contentType: optionalString(value.contentType),
+    sourceUrl: mapWebUrl(value.sourceUrl),
+  });
 
-export const mapDate = (value: z.infer<typeof dateSchema>): SvaMainserverDate => ({
-  ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-  ...(optionalString(value.weekday) ? { weekday: optionalString(value.weekday) } : {}),
-  ...(optionalString(value.dateStart) ? { dateStart: optionalString(value.dateStart) } : {}),
-  ...(optionalString(value.dateEnd) ? { dateEnd: optionalString(value.dateEnd) } : {}),
-  ...(optionalString(value.timeStart) ? { timeStart: optionalString(value.timeStart) } : {}),
-  ...(optionalString(value.timeEnd) ? { timeEnd: optionalString(value.timeEnd) } : {}),
-  ...(optionalString(value.timeDescription)
-    ? { timeDescription: optionalString(value.timeDescription) }
-    : {}),
-  ...(optionalString(value.useOnlyTimeDescription)
-    ? { useOnlyTimeDescription: optionalString(value.useOnlyTimeDescription) }
-    : {}),
-});
+export const mapDate = (value: z.infer<typeof dateSchema>): SvaMainserverDate =>
+  omitUndefined({
+    id: optionalString(value.id),
+    weekday: optionalString(value.weekday),
+    dateStart: optionalString(value.dateStart),
+    dateEnd: optionalString(value.dateEnd),
+    timeStart: optionalString(value.timeStart),
+    timeEnd: optionalString(value.timeEnd),
+    timeDescription: optionalString(value.timeDescription),
+    useOnlyTimeDescription: optionalString(value.useOnlyTimeDescription),
+  });
 
 export const mapContact = (
   value: z.infer<typeof contactSchema> | null | undefined
@@ -175,15 +171,15 @@ export const mapContact = (
   if (!value) {
     return undefined;
   }
-  const contact = {
-    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-    ...(optionalString(value.firstName) ? { firstName: optionalString(value.firstName) } : {}),
-    ...(optionalString(value.lastName) ? { lastName: optionalString(value.lastName) } : {}),
-    ...(optionalString(value.phone) ? { phone: optionalString(value.phone) } : {}),
-    ...(optionalString(value.fax) ? { fax: optionalString(value.fax) } : {}),
-    ...(optionalString(value.email) ? { email: optionalString(value.email) } : {}),
+  const contact = omitUndefined({
+    id: optionalString(value.id),
+    firstName: optionalString(value.firstName),
+    lastName: optionalString(value.lastName),
+    phone: optionalString(value.phone),
+    fax: optionalString(value.fax),
+    email: optionalString(value.email),
     webUrls: (value.webUrls ?? []).map(mapWebUrl).filter(defined),
-  };
+  });
   return Object.keys(contact).length > 1 || contact.webUrls.length > 0 ? contact : undefined;
 };
 
@@ -193,27 +189,16 @@ export const mapLocation = (
   if (!value) {
     return undefined;
   }
-  const geoLocation = value.geoLocation
-    ? {
-        ...(defined(parseGeoCoordinate(value.geoLocation.latitude))
-          ? { latitude: parseGeoCoordinate(value.geoLocation.latitude) }
-          : {}),
-        ...(defined(parseGeoCoordinate(value.geoLocation.longitude))
-          ? { longitude: parseGeoCoordinate(value.geoLocation.longitude) }
-          : {}),
-      }
-    : undefined;
-  const location = {
-    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-    ...(optionalString(value.name) ? { name: optionalString(value.name) } : {}),
-    ...(optionalString(value.department) ? { department: optionalString(value.department) } : {}),
-    ...(optionalString(value.district) ? { district: optionalString(value.district) } : {}),
-    ...(optionalString(value.regionName) ? { regionName: optionalString(value.regionName) } : {}),
-    ...(optionalString(value.state) ? { state: optionalString(value.state) } : {}),
-    ...(geoLocation && (defined(geoLocation.latitude) || defined(geoLocation.longitude))
-      ? { geoLocation }
-      : {}),
-  };
+  const geoLocation = mapGeoLocation(value.geoLocation);
+  const location = omitUndefined({
+    id: optionalString(value.id),
+    name: optionalString(value.name),
+    department: optionalString(value.department),
+    district: optionalString(value.district),
+    regionName: optionalString(value.regionName),
+    state: optionalString(value.state),
+    geoLocation,
+  });
   return Object.keys(location).length > 0 ? location : undefined;
 };
 
@@ -223,37 +208,30 @@ export const mapOperatingCompany = (
   if (!value) {
     return undefined;
   }
-  const company = {
-    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-    ...(optionalString(value.name) ? { name: optionalString(value.name) } : {}),
-    ...(mapAddress(value.address) ? { address: mapAddress(value.address) } : {}),
-    ...(mapContact(value.contact) ? { contact: mapContact(value.contact) } : {}),
-  };
+  const company = omitUndefined({
+    id: optionalString(value.id),
+    name: optionalString(value.name),
+    address: mapAddress(value.address),
+    contact: mapContact(value.contact),
+  });
   return Object.keys(company).length > 0 ? company : undefined;
 };
 
-export const mapPrice = (value: z.infer<typeof priceSchema>): SvaMainserverPrice => ({
-  ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-  ...(optionalString(value.name) ? { name: optionalString(value.name) } : {}),
-  ...(optionalNumber(value.amount) !== undefined ? { amount: value.amount as number } : {}),
-  ...(defined(value.groupPrice) ? { groupPrice: value.groupPrice } : {}),
-  ...(optionalNumber(value.ageFrom) !== undefined ? { ageFrom: value.ageFrom as number } : {}),
-  ...(optionalNumber(value.ageTo) !== undefined ? { ageTo: value.ageTo as number } : {}),
-  ...(optionalNumber(value.minAdultCount) !== undefined
-    ? { minAdultCount: value.minAdultCount as number }
-    : {}),
-  ...(optionalNumber(value.maxAdultCount) !== undefined
-    ? { maxAdultCount: value.maxAdultCount as number }
-    : {}),
-  ...(optionalNumber(value.minChildrenCount) !== undefined
-    ? { minChildrenCount: value.minChildrenCount as number }
-    : {}),
-  ...(optionalNumber(value.maxChildrenCount) !== undefined
-    ? { maxChildrenCount: value.maxChildrenCount as number }
-    : {}),
-  ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
-  ...(optionalString(value.category) ? { category: optionalString(value.category) } : {}),
-});
+export const mapPrice = (value: z.infer<typeof priceSchema>): SvaMainserverPrice =>
+  omitUndefined({
+    id: optionalString(value.id),
+    name: optionalString(value.name),
+    amount: optionalNumber(value.amount),
+    groupPrice: value.groupPrice ?? undefined,
+    ageFrom: optionalNumber(value.ageFrom),
+    ageTo: optionalNumber(value.ageTo),
+    minAdultCount: optionalNumber(value.minAdultCount),
+    maxAdultCount: optionalNumber(value.maxAdultCount),
+    minChildrenCount: optionalNumber(value.minChildrenCount),
+    maxChildrenCount: optionalNumber(value.maxChildrenCount),
+    description: optionalString(value.description),
+    category: optionalString(value.category),
+  });
 
 export const mapAccessibilityInformation = (
   value: z.infer<typeof accessibilityInformationSchema> | null | undefined
@@ -261,14 +239,12 @@ export const mapAccessibilityInformation = (
   if (!value) {
     return undefined;
   }
-  const information = {
-    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-    ...(optionalString(value.description)
-      ? { description: optionalString(value.description) }
-      : {}),
-    ...(optionalString(value.types) ? { types: optionalString(value.types) } : {}),
+  const information = omitUndefined({
+    id: optionalString(value.id),
+    description: optionalString(value.description),
+    types: optionalString(value.types),
     urls: (value.urls ?? []).map(mapWebUrl).filter(defined),
-  };
+  });
   return Object.keys(information).length > 1 || information.urls.length > 0
     ? information
     : undefined;
@@ -280,12 +256,12 @@ export const mapRepeatDuration = (
   if (!value) {
     return undefined;
   }
-  const repeatDuration = {
-    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-    ...(optionalString(value.startDate) ? { startDate: optionalString(value.startDate) } : {}),
-    ...(optionalString(value.endDate) ? { endDate: optionalString(value.endDate) } : {}),
-    ...(defined(value.everyYear) ? { everyYear: value.everyYear } : {}),
-  };
+  const repeatDuration = omitUndefined({
+    id: optionalString(value.id),
+    startDate: optionalString(value.startDate),
+    endDate: optionalString(value.endDate),
+    everyYear: value.everyYear ?? undefined,
+  });
   return Object.keys(repeatDuration).length > 0 ? repeatDuration : undefined;
 };
 
@@ -294,18 +270,16 @@ export const mapOpeningHour = (
 ): SvaMainserverOpeningHour => {
   const sortNumber = optionalNumber(value.sortNumber);
 
-  return {
-    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-    ...(optionalString(value.weekday) ? { weekday: optionalString(value.weekday) } : {}),
-    ...(optionalString(value.dateFrom) ? { dateFrom: optionalString(value.dateFrom) } : {}),
-    ...(optionalString(value.dateTo) ? { dateTo: optionalString(value.dateTo) } : {}),
-    ...(optionalString(value.timeFrom) ? { timeFrom: optionalString(value.timeFrom) } : {}),
-    ...(optionalString(value.timeTo) ? { timeTo: optionalString(value.timeTo) } : {}),
-    ...(sortNumber !== undefined ? { sortNumber } : {}),
-    ...(defined(value.open) ? { open: value.open } : {}),
-    ...(defined(value.useYear) ? { useYear: value.useYear } : {}),
-    ...(optionalString(value.description)
-      ? { description: optionalString(value.description) }
-      : {}),
-  };
+  return omitUndefined({
+    id: optionalString(value.id),
+    weekday: optionalString(value.weekday),
+    dateFrom: optionalString(value.dateFrom),
+    dateTo: optionalString(value.dateTo),
+    timeFrom: optionalString(value.timeFrom),
+    timeTo: optionalString(value.timeTo),
+    sortNumber,
+    open: value.open ?? undefined,
+    useYear: value.useYear ?? undefined,
+    description: optionalString(value.description),
+  });
 };

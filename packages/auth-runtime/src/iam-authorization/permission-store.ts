@@ -1,3 +1,5 @@
+import { PERMISSION_SNAPSHOT_MAX_AGE_MS } from '../iam-authorization-cache.js';
+
 import {
   getRedisPermissionSnapshot,
   setRedisPermissionSnapshot,
@@ -37,6 +39,7 @@ import {
 type RecomputeCandidate =
   | Readonly<{
       status: 'current';
+      createdAtMs: number;
       permissions: ReturnType<typeof filterTenantEffectivePermissions>;
     }>
   | Readonly<{ status: 'stale' }>;
@@ -47,6 +50,7 @@ const recomputePermissions = async (
   input: PermissionLookupInput,
   expectedRevision: PermissionRevisionVector
 ): Promise<RecomputeCandidate> => {
+  const createdAtMs = Date.now();
   const candidate = await withInstanceScopedDb(
     input.instanceId,
     async (client): Promise<RecomputeCandidate> => {
@@ -62,7 +66,7 @@ const recomputePermissions = async (
       const permissions = filterTenantEffectivePermissions(
         await loadPermissionsWithClient(client, input)
       );
-      return { status: 'current', permissions };
+      return { status: 'current', permissions, createdAtMs };
     },
     { isolationLevel: 'repeatable read' }
   );
@@ -75,7 +79,10 @@ const recomputePermissions = async (
     input.instanceId,
     input.keycloakSubject
   );
-  return revisionsEqual(revisionBeforePublish, expectedRevision) ? candidate : { status: 'stale' };
+  return revisionsEqual(revisionBeforePublish, expectedRevision) &&
+    Date.now() - createdAtMs < PERMISSION_SNAPSHOT_MAX_AGE_MS
+    ? candidate
+    : { status: 'stale' };
 };
 
 const recomputePermissionsSingleFlight = (
@@ -181,7 +188,7 @@ const resolveEffectivePermissionsAttempt = async (
     const snapshot = permissionSnapshotCache.set(
       snapshotLookupKey,
       permissions,
-      Date.now(),
+      redisLookup.createdAtMs,
       redisLookup.version
     );
     iamCacheLookupCounter.add(1, { hit: true });
@@ -242,7 +249,11 @@ const resolveEffectivePermissionsAttempt = async (
         : { ok: false, error: 'database_unavailable' };
     }
     const permissions = candidate.permissions;
-    const redisWrite = await setRedisPermissionSnapshot(redisKey, permissions);
+    const redisWrite = await setRedisPermissionSnapshot(
+      redisKey,
+      permissions,
+      candidate.createdAtMs
+    );
     if (!redisWrite.ok) {
       logger.error('Redis permission snapshot write failed after recompute', {
         operation: 'cache_store_failed',
@@ -256,7 +267,7 @@ const resolveEffectivePermissionsAttempt = async (
     const snapshot = permissionSnapshotCache.set(
       snapshotLookupKey,
       permissions,
-      Date.now(),
+      candidate.createdAtMs,
       redisWrite.version
     );
     iamPermissionCacheLifecycleCounter.add(1, { operation: 'publish', outcome: 'success' });

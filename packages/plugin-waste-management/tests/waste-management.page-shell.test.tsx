@@ -32,6 +32,8 @@ const searchState = {
   masterDataTab: 'locations',
   addressEntityType: 'region',
   addressParentId: undefined,
+  addressSortBy: 'name',
+  addressSortDirection: 'asc',
   q: 'Restmüll',
   page: 3,
   pageSize: 50,

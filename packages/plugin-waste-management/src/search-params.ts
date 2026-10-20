@@ -1,9 +1,8 @@
 import type {
-  WasteAddressEntityType,
   WasteCollectionLocationSortDirection,
   WasteCollectionLocationSortMode,
 } from '@sva/waste-management-contracts';
-import { normalizeAddressEntityType } from './search-params.address.js';
+import { normalizeAddressEntityType, normalizeAddressSortField, type WasteAddressSearchParams } from './search-params.address.js';
 import {
   normalizeWasteCollectionLocationSortDirection,
   normalizeWasteCollectionLocationSortMode,
@@ -57,8 +56,6 @@ export type WasteManagementFractionSortDirection =
 export type WasteManagementSearchParams = Readonly<{
   tab: WasteManagementTabId;
   masterDataTab: WasteManagementMasterDataTabId;
-  addressEntityType: WasteAddressEntityType;
-  addressParentId?: string;
   fractionsView: WasteManagementFractionsView;
   toursView: WasteManagementToursView;
   locationsView: WasteManagementLocationsView;
@@ -92,7 +89,7 @@ export type WasteManagementSearchParams = Readonly<{
   schedulingOriginalDate?: string;
   tourDateShiftId?: string;
   globalDateShiftId?: string;
-}>;
+}> & WasteAddressSearchParams;
 const compactOptionalString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
     return undefined;
@@ -216,6 +213,8 @@ export const normalizeWasteManagementSearchParams = (
     masterDataTab: normalizeMasterDataTabForTab(tab, normalizeMasterDataTab(search.masterDataTab)),
     addressEntityType: normalizeAddressEntityType(search.addressEntityType),
     addressParentId: compactOptionalString(search.addressParentId),
+    addressSortBy: normalizeAddressSortField(search.addressSortBy, normalizeAddressEntityType(search.addressEntityType)),
+    addressSortDirection: normalizeWasteCollectionLocationSortDirection(search.addressSortDirection),
     fractionsView: normalizeFractionsView(search.fractionsView),
     toursView: normalizeToursView(search.toursView),
     locationsView: normalizeLocationsView(search.locationsView),

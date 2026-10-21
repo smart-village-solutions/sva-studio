@@ -22,7 +22,7 @@ export type BaseProps<TForm> = {
   readonly onOpenChange: (open: boolean) => void;
   readonly onChange: (patch: Partial<TForm>) => void;
   readonly onBeforeSubmit?: () => void;
-  readonly onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  readonly onSubmit: (event: React.FormEvent<HTMLFormElement>, form: HTMLFormElement) => void;
 };
 
 export const collectSummaryErrors = (
@@ -33,12 +33,13 @@ export const collectSummaryErrors = (
 export const createSubmitHandler =
   <TForm extends FieldValues>(
     handleSubmit: UseFormHandleSubmit<TForm>,
-    onSubmit: (event: React.FormEvent<HTMLFormElement>) => void,
+    onSubmit: (event: React.FormEvent<HTMLFormElement>, form: HTMLFormElement) => void,
     onBeforeSubmit?: () => void
   ) =>
   (event: React.FormEvent<HTMLFormElement>) => {
+    const form = event.currentTarget;
     onBeforeSubmit?.();
-    void handleSubmit(() => onSubmit(event))(event);
+    void handleSubmit(() => onSubmit(event, form))(event);
   };
 
 export const useResetOnFormContextChange = <TForm extends FieldValues>(

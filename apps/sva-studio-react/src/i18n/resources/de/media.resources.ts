@@ -1,4 +1,30 @@
 export const mediaDEResources = {
+  inventory: {
+    title: 'Bestand auf Schadsoftware prüfen',
+    hint: 'Manuell bis zu 25 Dateien im aktuellen Medienbestand prüfen. Höchstens 64 MiB je Datei. Der Bericht ist eine Momentaufnahme; Dateien bleiben unverändert und nutzbar.',
+    limit: 'Dateien pro Lauf',
+    start: 'Bestandsscan starten',
+    next: 'Nächsten Abschnitt prüfen',
+    pending: 'Bestandsscan wartet oder läuft …',
+    error: 'Der Bestandsscan oder der Berichtabruf ist fehlgeschlagen. Sie können ihn manuell erneut starten.',
+    report: 'Prüfbericht',
+    completedAt: 'Abgeschlossen: {{value}}',
+    empty: 'Keine weiteren Dateien in diesem Abschnitt.',
+    file: 'Datei',
+    result: 'Ergebnis',
+    reason: 'Hinweis',
+    checkedAt: 'Prüfzeitpunkt',
+    clean: 'Sauber',
+    infected: 'Fund',
+    unscannable: 'Nicht prüfbar',
+    reasons: {
+      size_limit: 'Größenlimit überschritten',
+      scanner_unavailable: 'Virenscanner nicht erreichbar',
+      signatures_stale: 'Virensignaturen zu alt',
+      scan_incomplete: 'Prüfung unvollständig',
+      read_failed: 'Datei nicht lesbar',
+    },
+  },
   page: {
     title: 'Medienbibliothek',
     subtitle:

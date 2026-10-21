@@ -321,6 +321,8 @@ const authServerMocks = vi.hoisted(() => {
       response('listContentOwnershipTargetsHandler')
     ),
     listMediaHandler: vi.fn(async () => response('listMediaHandler')),
+    startMediaInventoryScanHandler: vi.fn(async () => response('startMediaInventoryScanHandler')),
+    getMediaInventoryScanHandler: vi.fn(async () => response('getMediaInventoryScanHandler')),
     registerBucketMediaHandler: vi.fn(async () => response('registerBucketMediaHandler')),
     listMediaReferencesHandler: vi.fn(async () => response('listMediaReferencesHandler')),
     createMediaContentSaveOperationHandler: vi.fn(async () =>
@@ -496,6 +498,16 @@ describe('auth.routes.server', () => {
     expect(liveResponse.status).toBe(200);
     expect(authServerMocks.healthReadyHandler).toHaveBeenCalled();
     expect(authServerMocks.healthLiveHandler).toHaveBeenCalled();
+  });
+
+  it('dispatches manual inventory start and report routes to the auth runtime', async () => {
+    const start = resolveAuthHandlers('/api/v1/iam/media/inventory-scans')?.POST;
+    const report = resolveAuthHandlers('/api/v1/iam/media/inventory-scans/$scanId')?.GET;
+    expect(start).toBeDefined(); expect(report).toBeDefined();
+    await start?.({ request: new Request('http://localhost/api/v1/iam/media/inventory-scans', { method: 'POST' }) });
+    await report?.({ request: new Request('http://localhost/api/v1/iam/media/inventory-scans/scan-1') });
+    expect(authServerMocks.startMediaInventoryScanHandler).toHaveBeenCalledOnce();
+    expect(authServerMocks.getMediaInventoryScanHandler).toHaveBeenCalledOnce();
   });
 
   it('dispatches media upload completion routes to the auth runtime', async () => {

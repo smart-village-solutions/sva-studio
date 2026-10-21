@@ -12,6 +12,7 @@ import { getStudioPermissionDenialMessage } from '../../../lib/studio-permission
 import { useAccessDecision } from '../../../providers/effective-access-provider';
 
 import { MediaAssetGrid } from './-media-asset-grid.js';
+import { MediaInventoryScanSection } from './-media-inventory-scan-section.js';
 import { MediaIntakeShelf } from './-media-intake-shelf.js';
 import { MediaLibraryToolbar } from './-media-library-toolbar.js';
 
@@ -37,6 +38,10 @@ export const MediaLibraryPage = () => {
     kind: 'tenant',
     moduleId: 'media',
     actions: { mode: 'allOf', values: ['media.create'] },
+  });
+  const scanDecision = useAccessDecision({
+    kind: 'tenant', moduleId: 'media',
+    actions: { mode: 'allOf', values: ['media.read', 'media.update'] },
   });
   const canCreateMedia = createDecision.status === 'allowed';
   const navigate = useNavigate();
@@ -145,6 +150,7 @@ export const MediaLibraryPage = () => {
           {t('media.filters.clear')}
         </Button>
       </form>
+      {scanDecision.status === 'allowed' ? <MediaInventoryScanSection /> : null}
       <MediaLibraryToolbar
         page={cursorHistory.length + 1}
         limit={mediaApi.limit}

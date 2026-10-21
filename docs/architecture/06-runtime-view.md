@@ -1528,3 +1528,7 @@ Die Reservierung bleibt über Prozesswechsel und nachfolgende Schedulerfehler er
 ## Optionaler Medien-Virenscan
 
 Bei aktiviertem Scan reserviert die Initialisierung einen privaten Quarantäne-Key nach Prüfung von Bucket-ACL und fehlender Bucket-Policy. Der vorhandene Medienjob liest das Original, vergleicht Signaturnachweis und geladene ClamAV-Version und scannt per `INSTREAM`. Nur vollständig geprüfte und inhaltlich valide Bytes werden als claim-isolierte Originale/Varianten geschrieben. Die vorhandene kurze Finalisierung erhält ihre Claim-, Content-Save- und Quota-Prüfungen. Das Audit erfolgt vor der nachgelagerten Eingangsbereinigung; fehlgeschlagene Bereinigung darf verfügbare Ausgaben nicht zurücknehmen. Technische Fehler nutzen dieselben Job-Retries, Funde blockieren den Upload.
+
+### Manueller lesender Bestandsscan
+
+Die Medienbibliothek startet mit `media.read` und `media.update` sowie CSRF-Schutz einen instanzgebundenen Job `media.scan-existing` in der vorhandenen Queue `media-processing`. Ein Lauf liest maximal 25 Dateien mit höchstens 64 MiB je Datei aus dem konfigurierten Medienbestand und verwendet denselben ClamAV-Aufruf. Das vorhandene Job-Ergebnis hält den Bericht mit sauber, Fund oder nicht prüfbar; die Fortsetzung bleibt manuell. Der Worker hat ausschließlich lesende Storage-Abhängigkeiten und verändert weder Dateien noch Assets, Sichtbarkeit, Quoten oder Referenzen. Ein Fund bewirkt keine Sperre.

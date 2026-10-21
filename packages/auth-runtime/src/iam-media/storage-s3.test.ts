@@ -38,6 +38,19 @@ import {
 import { MediaStorageUnavailableError } from './storage-port.js';
 
 describe('media storage s3 adapter', () => {
+  it('bounds inventory reads and refuses a size change before collecting the body', async () => {
+    const collect = vi.fn(async () => Uint8Array.from([1, 2, 3]));
+    const destroy = vi.fn();
+    const send = vi.fn().mockResolvedValueOnce({ ContentLength: 3, Body: { transformToByteArray: collect }, ETag: 'checked' })
+      .mockResolvedValueOnce({ ContentLength: 4, Body: { transformToByteArray: collect, destroy } });
+    const port = createS3MediaStoragePort({ endpoint: 'https://s3.example.test', region: 'test', bucket: 'tenant-a', accessKeyId: 'test', secretAccessKey: 'test', signedUrlTtlSeconds: 900 }, { client: { send } as unknown as S3Client });
+    await expect(port.readObject({ instanceId: 'tenant-a', storageKey: 'existing.txt', maxBytes: 3 })).resolves.toMatchObject({ byteSize: 3, etag: 'checked' });
+    expect(send.mock.calls[0]?.[0].input).toMatchObject({ Bucket: 'tenant-a', Key: 'existing.txt', Range: 'bytes=0-3' });
+    await expect(port.readObject({ instanceId: 'tenant-a', storageKey: 'existing.txt', maxBytes: 3 })).rejects.toThrow('media_storage_size_limit');
+    expect(collect).toHaveBeenCalledOnce();
+    expect(destroy).toHaveBeenCalledOnce();
+  });
+
   it('uses a separate private intake bucket and refuses policies or public ACLs', async () => {
     vi.stubEnv('MEDIA_SCAN_ENABLED', 'true');
     vi.stubEnv('MEDIA_SCAN_QUARANTINE_BUCKET', 'intake');

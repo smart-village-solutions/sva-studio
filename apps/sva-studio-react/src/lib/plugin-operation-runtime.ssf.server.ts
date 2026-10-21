@@ -2,6 +2,7 @@ import {
   dsrExportStudioJobRegistration,
   mediaContentSaveRecoveryStudioJobRegistration,
   mediaUploadProcessingStudioJobRegistration,
+  mediaInventoryScanStudioJobRegistration,
   registerPluginOperationExecutionHandlers,
   registerStudioJobExecutionHandlers,
   type PluginOperationExecutionRegistration,
@@ -36,6 +37,7 @@ export const registerStudioPluginOperationHandlers = async (): Promise<
     dsrExportStudioJobRegistration,
     mediaContentSaveRecoveryStudioJobRegistration,
     mediaUploadProcessingStudioJobRegistration,
+    mediaInventoryScanStudioJobRegistration,
   ]);
   registerPluginOperationExecutionHandlers(handlers);
   return handlers;

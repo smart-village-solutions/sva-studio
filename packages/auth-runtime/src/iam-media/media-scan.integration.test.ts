@@ -10,6 +10,7 @@ import {
 } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createMediaInventoryScanHandler } from './inventory-scan-job.js';
 import { createS3MediaStoragePort } from './storage-s3.js';
 import { createMediaUploadProcessingService } from './processing.js';
 import type { MediaAssetRecord, MediaUploadSessionRecord } from '@sva/data-repositories';
@@ -299,15 +300,82 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       );
       expect(listed.Contents ?? []).toHaveLength(0);
     }, 30000);
+    it('reports existing clean and infected S3 files without changing their bytes or delivery', async () => {
+      const eicar = Buffer.from(
+        'WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=',
+        'base64'
+      );
+      const files = [
+        ['tenant-a/inventory/clean.jpg', original],
+        ['tenant-a/inventory/found.txt', eicar],
+      ] as const;
+      for (const [storageKey, body] of files)
+        await storage.writeObject({
+          instanceId: 'tenant-a',
+          storageKey,
+          body,
+          contentType: 'application/octet-stream',
+        });
+      const writeObject = vi.fn();
+      const deleteObject = vi.fn();
+      const handler = createMediaInventoryScanHandler({
+        resolveStoragePort: async () => ({
+          ...storage,
+          writeObject,
+          deleteObject,
+          listObjects: (input) => storage.listObjects({ ...input, prefix: 'tenant-a/inventory/' }),
+        }),
+        emitAuditEvent: vi.fn(),
+      });
+      vi.stubEnv('MEDIA_SCAN_ENABLED', 'false');
+      try {
+        const result = await handler({
+          job: { id: crypto.randomUUID(), instanceId: 'tenant-a', inputPayload: { limit: 2 } },
+          progressReporter: { reportProgress: vi.fn() },
+        } as never);
+        expect(result).toMatchObject({
+          resultPayload: {
+            plugin: {
+              report: {
+                entries: [
+                  { storageKey: files[0][0], verdict: 'clean' },
+                  { storageKey: files[1][0], verdict: 'infected' },
+                ],
+              },
+            },
+          },
+        });
+        expect(writeObject).not.toHaveBeenCalled();
+        expect(deleteObject).not.toHaveBeenCalled();
+        for (const [storageKey, body] of files) {
+          const response = await fetch(`${endpoint}/studio-public/${storageKey}`);
+          expect(response.ok).toBe(true);
+          expect(Buffer.from(await response.arrayBuffer())).toEqual(body);
+        }
+      } finally {
+        vi.stubEnv('MEDIA_SCAN_ENABLED', 'true');
+      }
+    }, 30000);
     it('rejects expired freshness without publishing or charging and preserves existing files', async () => {
       const proof = await readFile(signaturePath, 'utf8');
       const revision = proof.trim().split(' ')[1];
       const upload = await initialize(original);
       // The scanner owns this read-only app input on Linux; inject test state as its owner.
-      const writeProof = (proof: string) => execFileSync('docker', [
-        'exec', '--user', '0', '-i', scanner, 'sh', '-c',
-        'cat > /var/lib/clamav/studio-freshness',
-      ], { input: proof, stdio: ['pipe', 'pipe', 'pipe'] });
+      const writeProof = (proof: string) =>
+        execFileSync(
+          'docker',
+          [
+            'exec',
+            '--user',
+            '0',
+            '-i',
+            scanner,
+            'sh',
+            '-c',
+            'cat > /var/lib/clamav/studio-freshness',
+          ],
+          { input: proof, stdio: ['pipe', 'pipe', 'pipe'] }
+        );
       try {
         writeProof(`${Math.floor(Date.now() / 1000) - 72 * 3600} ${revision}\n`);
         await expect(upload.run()).rejects.toThrow('media_scan_stale');

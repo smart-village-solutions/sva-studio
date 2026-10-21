@@ -2,9 +2,9 @@
 
 ## Why
 
-Die Medienverwaltung besitzt Standardmetadaten, Inhaltsvalidierung und harte instanzbezogene Speicherquoten. `add-media-async-processing` verlagert die vorhandene Verarbeitung in Studio-Jobs. Für den nächsten Schritt genügen eine einfache Verschlagwortung und die Prüfung neuer Uploads auf Schadsoftware.
+Die Medienverwaltung besitzt Standardmetadaten, Inhaltsvalidierung und harte instanzbezogene Speicherquoten. `add-media-async-processing` verlagert die vorhandene Verarbeitung in Studio-Jobs. Für den nächsten Schritt genügen eine einfache Verschlagwortung, die Prüfung neuer Uploads auf Schadsoftware und ein manuell gestarteter lesender Bestandsscan mit Bericht.
 
-Die Scannerwahl ist in [ADR-068](../../../docs/adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md) festgehalten. Der ursprünglich breite Governance-Umfang wird auf diese beiden Fähigkeiten reduziert.
+Die Scannerwahl ist in [ADR-068](../../../docs/adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md) festgehalten. Der ursprünglich breite Governance-Umfang wird auf diese drei konkreten Fähigkeiten begrenzt.
 
 ## What Changes
 
@@ -15,6 +15,8 @@ Die Scannerwahl ist in [ADR-068](../../../docs/adr/ADR-068-clamav-als-virenscann
 - Plant ClamAV-Container, automatische Signaturupdates mit `freshclam`, persistente Signaturdaten und Diagnose im bestehenden Betriebsmodell. Nach 24 Stunden ohne bestätigte Aktualität wird gewarnt; nach 72 Stunden bleiben neue Freigaben gesperrt, bis die Aktualität der geladenen Signaturen wieder bestätigt ist. Bereits verfügbare Medien bleiben nutzbar.
 - Sperrt bei aktivem Scan zunächst die Neuregistrierung unregistrierter Bucket-Dateien, da sie heute unmittelbar `ready` werden. Bereits registrierte Medien bleiben nutzbar; eine automatische Bestandsprüfung wird nicht eingeführt.
 
+- Ergänzt auf ausdrücklichen Auftrag vom 21.10.2026 einen manuell gestarteten Bestandsscan des konfigurierten Medienbestands der aktuellen Instanz: höchstens 25 Dateien pro Durchlauf und 64 MiB pro Datei, Bericht mit `sauber`, `Fund` oder `nicht prüfbar` und manueller Fortsetzung. Der Scan verändert keine Dateien, Asset-Status, Sichtbarkeit, Quoten oder Berechtigungen und setzt keinen Upload-Scan-Nachweis.
+
 ## Out of Scope
 
 - Ordner, kontrollierte Kategorien, zentrale Tag-Verwaltung und Taxonomie-Berechtigungen
@@ -23,7 +25,7 @@ Die Scannerwahl ist in [ADR-068](../../../docs/adr/ADR-068-clamav-als-virenscann
 - Originalaustausch, Versionierung, Retention und neue Aufbewahrungssperren
 - Quota-Warnstufen sowie Änderungen an der vorhandenen harten Quotenabrechnung
 - mehrere Scanner, Scanner-Auswahl, externe Analysedienste und manuelle Scanfreigaben
-- automatische Neuprüfung des Bestands und ein neuer Import-Workflow
+- automatische Neuprüfung des Bestands, automatische Sperrung/Löschung bei Bestandsfunden und ein neuer Import-Workflow
 - neue Queue-, Worker-, Retry- oder Dead-Letter-Infrastruktur sowie eine allgemeine Medienjob-Plattform
 
 ## Impact

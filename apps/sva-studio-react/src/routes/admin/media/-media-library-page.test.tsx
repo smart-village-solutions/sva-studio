@@ -43,6 +43,11 @@ vi.mock('../../../hooks/use-media', () => ({
 }));
 
 describe('MediaLibraryPage', () => {
+  it('hides inventory scan when media.update is unavailable', () => {
+    accessState.deniedActions.add('media.update');
+    render(<MediaLibraryPage />);
+    expect(screen.queryByRole('button', { name: 'Bestandsscan starten' })).toBeNull();
+  });
   it('submits search and tag together and resets pagination when clearing filters', () => {
     render(<MediaLibraryPage />);
     fireEvent.change(screen.getByLabelText('Tags'), { target: { value: 'Park' } });

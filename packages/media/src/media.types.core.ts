@@ -1,3 +1,5 @@
+export const mediaScanLimits = { maxInventoryFiles: 25, maxBytes: 64 * 1024 * 1024 } as const;
+
 export const mediaLiterals = {
   types: ['image'],
   visibilities: ['public', 'protected'],

@@ -400,6 +400,7 @@ Kernidee:
 
 - Assets, Varianten, Upload-Sessions und Referenzen sind getrennt modelliert.
 - Optionale Medien-Tags liegen als validierte Liste im vorhandenen `media_assets.metadata`-JSONB. Suchtext und einzelner Tag-Filter werden innerhalb derselben Instanz serverseitig angewendet; dafür entsteht keine eigene Taxonomietabelle oder Schemamigration.
+- Der manuelle lesende Bestandsscan speichert seinen Bericht ausschließlich im vorhandenen Studio-Job-Ergebnis unter `result_payload.plugin.report`. Er verändert keine Asset-Datensätze oder Scan-Marker; dafür ist keine Schemamigration erforderlich.
 - Der erfolgreiche Scan neuer Uploads liegt als `scanStatus: clean` im vorhandenen `media_assets.technical`-JSONB und wird mit derselben Finalisierung gespeichert. Er hält die gewählte Sichtbarkeit für den vorhandenen Änderungspfad fest; zusätzliche Spalten oder Tabellen sind nicht erforderlich.
 - Speicherverbrauch und Limits werden relational pro Instanz geführt.
 - Content-Editoren halten neu gewählte Dateien zunächst ausschließlich als lokale Browser-Entwürfe. Erst beim fachlichen Speichern werden sie einer benutzergebundenen `media_content_save_operation` zugeordnet und als `provisional` hochgeladen.

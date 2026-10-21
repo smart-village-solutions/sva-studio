@@ -1,4 +1,30 @@
 export const mediaENResources = {
+  inventory: {
+    title: 'Scan existing files for malware',
+    hint: 'Manually scan up to 25 files in the current media storage. Maximum 64 MiB per file. The report is a snapshot; files remain unchanged and usable.',
+    limit: 'Files per run',
+    start: 'Start inventory scan',
+    next: 'Scan next section',
+    pending: 'Inventory scan is queued or running …',
+    error: 'The inventory scan or report request failed. You can start it again manually.',
+    report: 'Scan report',
+    completedAt: 'Completed: {{value}}',
+    empty: 'No further files in this section.',
+    file: 'File',
+    result: 'Result',
+    reason: 'Details',
+    checkedAt: 'Checked at',
+    clean: 'Clean',
+    infected: 'Detection',
+    unscannable: 'Unable to scan',
+    reasons: {
+      size_limit: 'Size limit exceeded',
+      scanner_unavailable: 'Virus scanner unavailable',
+      signatures_stale: 'Virus signatures too old',
+      scan_incomplete: 'Scan incomplete',
+      read_failed: 'File unreadable',
+    },
+  },
   page: {
     title: 'Media library',
     subtitle:

@@ -3,7 +3,6 @@ import {
   GetObjectCommand,
   GetBucketAclCommand,
   GetBucketPolicyCommand,
-  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -16,7 +15,7 @@ import type {
   PrepareMediaUploadInput,
   ResolveMediaDeliveryInput,
 } from './storage-port.js';
-import { MediaStorageObjectNotFoundError, MediaStorageUnavailableError } from './storage-port.js';
+import { MediaStorageUnavailableError } from './storage-port.js';
 import {
   createS3ClientConfig,
   resolveMediaStorageConfig,
@@ -24,6 +23,7 @@ import {
   type MediaStorageConfig,
 } from './storage-s3-config.js';
 import { createS3ListObjects, resolveStoragePrefix } from './storage-s3-listing.js';
+import { readS3MediaObject, statS3MediaObject } from './storage-s3-read.js';
 import { getMediaScanEnabled } from '../runtime-secrets.js';
 import { isMediaQuarantineKey, isPrivateMediaStorageKey } from './storage-key-paths.js';
 
@@ -54,23 +54,6 @@ const createPublicDeliveryUrl = (
     return null;
   }
   return `${publicBaseUrl}/${storageKey}`;
-};
-
-const isMissingS3ObjectError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const statusCode =
-    '$metadata' in error &&
-    typeof error.$metadata === 'object' &&
-    error.$metadata !== null &&
-    'httpStatusCode' in error.$metadata &&
-    typeof error.$metadata.httpStatusCode === 'number'
-      ? error.$metadata.httpStatusCode
-      : null;
-
-  return statusCode === 404 || error.name === 'NotFound' || error.name === 'NoSuchKey';
 };
 
 const resolveObjectBucket = (config: MediaStorageConfig, storageKey: string): string => {
@@ -196,50 +179,10 @@ export const createS3MediaStoragePort = (
     };
   };
 
-  const statObject = async (input: { instanceId: string; storageKey: string }) => {
-    try {
-      const response = await client.send(
-        new HeadObjectCommand({
-          Bucket: bucketForKey(input.storageKey),
-          Key: input.storageKey,
-        })
-      );
-
-      return {
-        byteSize: typeof response.ContentLength === 'number' ? response.ContentLength : 0,
-        contentType: response.ContentType,
-        etag: response.ETag,
-      };
-    } catch (error) {
-      if (isMissingS3ObjectError(error)) {
-        throw new MediaStorageObjectNotFoundError();
-      }
-
-      throw error;
-    }
-  };
-
-  const readObject = async (input: { instanceId: string; storageKey: string }) => {
-    if (isMediaQuarantineKey(input.storageKey)) {
-      const object = await statObject(input);
-      if (object.byteSize > 64 * 1024 * 1024) throw new MediaStorageUnavailableError();
-    }
-    const response = await client.send(
-      new GetObjectCommand({
-        Bucket: bucketForKey(input.storageKey),
-        Key: input.storageKey,
-      })
-    );
-    const body = response.Body
-      ? new Uint8Array(await response.Body.transformToByteArray())
-      : new Uint8Array();
-    return {
-      body,
-      byteSize: body.byteLength,
-      contentType: response.ContentType,
-      etag: response.ETag,
-    };
-  };
+  const statObject = (input: { instanceId: string; storageKey: string }) =>
+    statS3MediaObject(client, bucketForKey(input.storageKey), input.storageKey);
+  const readObject: MediaStoragePort['readObject'] = (input) =>
+    readS3MediaObject(client, bucketForKey(input.storageKey), input);
 
   const writeObject = async (input: {
     instanceId: string;

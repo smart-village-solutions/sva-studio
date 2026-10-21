@@ -148,3 +148,39 @@ Das System SHALL die beim Upload gewählte Sichtbarkeit nach erfolgreichem Scan 
 
 - **WHEN** ein vorhandenes Medium keinen nachträglichen Scan-Nachweis besitzt
 - **THEN** bleibt sein bisheriger Änderungsvertrag erhalten
+
+### Requirement: Manueller begrenzter Bestandsscan ohne Sperren
+
+Das System SHALL einen manuell gestarteten lesenden Bestandsscan in der vorhandenen Medienbibliothek anbieten. Ein Durchlauf SHALL höchstens 25 Dateien des konfigurierten instanzbezogenen Medienbestands prüfen, bestehende Größen-/Scanlimits einhalten und je Datei `sauber`, `Fund` oder `nicht prüfbar` berichten.
+
+#### Scenario: Berechtigter Benutzer startet einen Abschnitt
+
+- **WHEN** ein authentifizierter Benutzer mit `media.read` und `media.update` einen gültigen manuellen Scan startet
+- **THEN** wird nach CSRF- und Eingabeprüfung genau ein begrenzter Host-Job über den vorhandenen Job-/Queue-Pfad angelegt
+- **AND** kann der Bericht ausschließlich im autorisierten Instanzkontext abgerufen werden
+
+#### Scenario: Datei ist sauber oder infiziert
+
+- **WHEN** ClamAV die gelesenen Bytes vollständig als sauber beziehungsweise infiziert bewertet
+- **THEN** enthält der Bericht das entsprechende Ergebnis zum Prüfzeitpunkt
+- **AND** bleiben Datei, Asset-Status, Sichtbarkeit, Referenzen, Quoten und Berechtigungen unverändert
+- **AND** wird kein Upload-Scan-Nachweis am Bestandsasset gesetzt
+
+#### Scenario: Datei kann nicht vollständig geprüft werden
+
+- **WHEN** eine Datei größer als 64 MiB ist, nach dem Listing/HEAD über das Limit wächst oder ein Lese-/Scanfehler beziehungsweise ein bestehendes Scanlimit eintritt
+- **THEN** lautet das Ergebnis `nicht prüfbar` mit normiertem Grund
+- **AND** verhindert die begrenzte Leseoperation einen unbegrenzten Download
+- **AND** bleiben vorhandene Dateien bei diesem Ergebnis weiter nutzbar
+
+#### Scenario: Scanner oder Signaturnachweis ist nicht verfügbar
+
+- **WHEN** der Scanner ausfällt oder kein ausreichend aktueller geladener Signaturstand bestätigt ist
+- **THEN** enthält der Bericht `nicht prüfbar`
+- **AND** wird daraus keine Bestandssperre und keine wiederholte erfolglose Scan-Anfrage je verbleibender Datei abgeleitet
+
+#### Scenario: Weiterer Abschnitt ist vorhanden
+
+- **WHEN** der begrenzte Abschnitt einen weiteren Storage-Cursor liefert
+- **THEN** kann der Benutzer den nächsten Abschnitt ausdrücklich manuell starten
+- **AND** wird ohne diese Aktion kein weiterer Abschnitt eingeplant

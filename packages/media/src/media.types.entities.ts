@@ -55,3 +55,19 @@ export interface MediaDeletionDecision {
   allowed: boolean;
   reason: 'active_references' | 'legal_hold' | 'upload_incomplete' | null;
 }
+
+export type MediaInventoryScanVerdict = 'clean' | 'infected' | 'unscannable';
+export type MediaInventoryScanReason = 'size_limit' | 'scanner_unavailable' | 'signatures_stale' | 'scan_incomplete' | 'read_failed';
+export type MediaInventoryScanEntry = Readonly<{
+  storageKey: string;
+  byteSize: number;
+  verdict: MediaInventoryScanVerdict;
+  reason?: MediaInventoryScanReason;
+  checkedAt: string;
+  etag?: string;
+}>;
+export type MediaInventoryScanReport = Readonly<{
+  entries: readonly MediaInventoryScanEntry[];
+  nextCursor: string | null;
+  completedAt: string;
+}>;

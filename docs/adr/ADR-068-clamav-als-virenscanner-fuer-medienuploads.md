@@ -55,6 +55,12 @@ Die Alternativen sind mögliche Integrationswege, keine bereits durchgeführten 
 
 Für neu gescannte Medien bleibt die beim Upload gewählte Sichtbarkeit fest, auch bei später deaktiviertem Scanner. Eine Änderung erfordert einen neuen Upload. Der bestehende Prozessor hält den erfolgreichen Scan im technischen Metadatenobjekt fest; die vorhandene Änderungs-API sperrt Sichtbarkeitswechsel in beide Richtungen, lässt aber normale Metadatenänderungen zu. Bestandsmedien ohne Scan-Nachweis behalten ihren bisherigen Vertrag. Damit ist kein zusätzlicher Storage-Wechsel erforderlich.
 
+## Ergänzung vom 21.10.2026: Lesender Bestandsscan
+
+ClamAV wird zusätzlich für einen manuell gestarteten Bestandsscan im konfigurierten Medien-Bucket der aktuellen Instanz wiederverwendet. Ein Lauf umfasst höchstens 25 Dateien mit je höchstens 64 MiB; die Fortsetzung ist ebenfalls manuell. Die vorhandene Medien-Queue und der bestehende Job-Ergebnisspeicher genügen dafür. Es entstehen keine weitere Queue, Tabelle oder Scanner-Abstraktion.
+
+Der berechtigte Bericht unterscheidet **sauber**, **Fund** und **nicht prüfbar**. Scanner-Ausfall, fehlende oder veraltete Signaturen, Leseprobleme und überschrittene Grenzen ergeben nicht prüfbar. Dateien und Asset-Datensätze bleiben in allen Fällen unverändert und nutzbar; insbesondere entsteht kein Upload-Scan-Marker und keine Sichtbarkeitssperre für den Bestand. Automatische Neuprüfungen und Maßnahmen bei einem Fund bleiben außerhalb des Umfangs.
+
 ## Referenzen
 
 - [ADR-039: Medienmanagement als Host-Capability mit Storage- und Processing-Vertrag](./ADR-039-medienmanagement-host-capability-und-storage-vertrag.md)

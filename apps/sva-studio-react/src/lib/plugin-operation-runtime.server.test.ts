@@ -9,6 +9,7 @@ const createWasteManagementOperationRuntimeMock = vi.fn(() => ({}));
 vi.mock('@sva/auth-runtime/server', () => ({
   dsrExportStudioJobRegistration: { jobTypeId: 'studio.dsr-export' },
   mediaUploadProcessingStudioJobRegistration: { jobTypeId: 'media.process-upload' },
+  mediaInventoryScanStudioJobRegistration: { jobTypeId: 'media.scan-existing' },
   mediaContentSaveRecoveryStudioJobRegistration: {
     jobTypeId: 'media.content-save-recovery',
   },
@@ -216,6 +217,7 @@ describe('plugin operation runtime registration', () => {
       expect.objectContaining({ jobTypeId: 'studio.dsr-export' }),
       expect.objectContaining({ jobTypeId: 'media.content-save-recovery' }),
       expect.objectContaining({ jobTypeId: 'media.process-upload' }),
+      expect.objectContaining({ jobTypeId: 'media.scan-existing' }),
     ]);
     expect(handlers['waste-management.sync-mainserver']).toMatchObject({
       supportsCancellation: true,

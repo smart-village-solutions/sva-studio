@@ -50,3 +50,10 @@
 - Bestehende lange Funktionen ohne Vertragsänderung innerhalb ihrer Dateien aufgeteilt; Komplexitäts-Gate gegen `origin/main` ohne neue Findings erfolgreich. Keine neue Baseline oder Ausnahme.
 - SDK-Unterpfad in der vorhandenen gemeinsamen Plugin-Testkonfiguration und den bestehenden spezialisierten Aliaslisten ergänzt; tatsächliche Picker-/Cockpit-/SDK-Verbraucher erneut erfolgreich geprüft.
 - `main` integriert; beide kollidierenden Ergänzungen in arc42-Abschnitt 08 vollständig erhalten. Zielbetriebsabnahme und Scan-Aktivierung bleiben unverändert ausstehend.
+
+## 6. Manuell beauftragter Bestandsscan ohne Sperren
+
+- [ ] 6.1 Berichtvertrag und begrenzten lesenden Worker am bestehenden Medien-/Job-Pfad ergänzen; 25 Dateien/64 MiB und ausschließlich lesende Abhängigkeiten einschließlich Größenwechsel absichern
+- [ ] 6.2 Authentifizierten Start und Berichtabruf mit vorhandenen Rechten, CSRF, Instanzgrenze und atomarer Einplanung ergänzen; Runtime-Komposition in beiden Distributionen anschließen
+- [ ] 6.3 Manuellen Start, laufenden Status, übersetzten Bericht und manuelle Fortsetzung in vorhandener Medienbibliothek ergänzen; niemals Bestandsdateien oder Asset-Status sperren/ändern
+- [ ] 6.4 Direkte Unit-/Integrations-/UI-/Type-Nachweise für Ergebnisse, Limits, Fehler und unveränderten Bestand führen; Dokumentation, ADR und tatsächlichen finalen PR-Umfang aktualisieren

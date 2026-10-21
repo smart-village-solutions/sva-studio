@@ -312,3 +312,5 @@ export {
 } from './ssf-login-clients.js';
 
 export { mediaUploadProcessingStudioJobRegistration } from './iam-media/upload-processing-job.js';
+
+export { mediaInventoryScanStudioJobRegistration } from './iam-media/inventory-scan-job.js';

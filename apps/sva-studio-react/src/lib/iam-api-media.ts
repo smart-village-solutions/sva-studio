@@ -1,4 +1,5 @@
-import type { ApiItemResponse } from '@sva/core';
+import type { MediaInventoryScanReport } from '@sva/media';
+import type { ApiItemResponse, StudioJobStatus } from '@sva/core';
 
 import { IAM_HEADERS, patchJson, postJson, requestJson } from './iam-http-client';
 
@@ -99,3 +100,22 @@ export const deleteMedia = async (assetId: string): Promise<ApiItemResponse<{ id
     method: 'DELETE',
     headers: IAM_HEADERS,
   });
+
+export const startMediaInventoryScan = (payload: { limit: number; cursor?: string }) =>
+  postJson<ApiItemResponse<MediaInventoryScanJob>, typeof payload>(
+    '/api/v1/iam/media/inventory-scans',
+    payload,
+    true
+  );
+
+export const getMediaInventoryScan = (scanId: string, signal?: AbortSignal) =>
+  requestJson<ApiItemResponse<MediaInventoryScanJob>>(
+    `/api/v1/iam/media/inventory-scans/${encodeURIComponent(scanId)}`,
+    { signal }
+  );
+
+export type MediaInventoryScanJob = Readonly<{
+  id: string;
+  status: StudioJobStatus;
+  report?: MediaInventoryScanReport | null;
+}>;

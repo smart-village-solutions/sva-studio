@@ -121,6 +121,8 @@ export {
   getMediaHandler,
   getMediaUsageHandler,
   initializeMediaUploadHandler,
+  startMediaInventoryScanHandler,
+  getMediaInventoryScanHandler,
   registerBucketMediaHandler,
   listMediaReferencesHandler,
   listMediaHandler,

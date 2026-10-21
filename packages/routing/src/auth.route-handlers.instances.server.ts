@@ -127,6 +127,8 @@ export const instanceAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.listContentOwnershipTargetsHandler),
   },
   '/api/v1/iam/media': { GET: routeHandler(authRuntimeRoutes.listMediaHandler) },
+  '/api/v1/iam/media/inventory-scans': { POST: routeHandler(authRuntimeRoutes.startMediaInventoryScanHandler) },
+  '/api/v1/iam/media/inventory-scans/$scanId': { GET: routeHandler(authRuntimeRoutes.getMediaInventoryScanHandler) },
   '/api/v1/iam/media/register': {
     POST: routeHandler(authRuntimeRoutes.registerBucketMediaHandler),
   },

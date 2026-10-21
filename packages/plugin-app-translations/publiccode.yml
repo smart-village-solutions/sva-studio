@@ -1,4 +1,4 @@
-publiccodeYmlVersion: "0"
+publiccodeYmlVersion: '0'
 name: Mehrsprachigkeit
 url: https://github.com/smart-village-solutions/sva-studio
 platforms:
@@ -7,8 +7,8 @@ developmentStatus: development
 softwareType: addon
 description:
   de:
-    shortDescription: Lokale Katalogbasis mit Modulzugang und Bereitschaftsprüfung. Die
-      App-Integration und automatische Übersetzung sind noch nicht verfügbar.
+    shortDescription: Feste App-Texte lokal bearbeiten, kommunale Overrides verwalten und
+      unveränderliche Prüfstände erstellen.
     longDescription: Dieses Modul registriert die lokale Katalogbasis für Mehrsprachigkeit
       in der vorhandenen Studio-Modulverwaltung. Mandanten können das optionale Modul
       zugeordnet bekommen. Der Host prüft Modulzugang und Berechtigungen zusätzlich zum
@@ -16,8 +16,9 @@ description:
       redigierten Status des zentralen DeepL-Zugangs. Ein fehlender Zugang wird als
       eingeschränkte lokale Bereitschaft sichtbar. Ein vorhandener Schlüssel ist noch
       kein Nachweis eines erfolgreichen Anbieteraufrufs. Der gemeinsame Zugang bleibt
-      serverseitig. Dieses Modul enthält noch keinen Katalogeditor, keine automatische
-      Übersetzung und keine Veröffentlichung an den Main-Server. Eine Abschaltung oder
+      serverseitig. Ein gemeinsamer Editor verwaltet globale Standards und kommunale sprachbezogene
+      Overrides mit JSON-Manifestimport, Korrekturbestätigung und lokalen Prüfständen.
+      Automatische Übersetzung und Veröffentlichung an den Main-Server fehlen weiterhin. Eine Abschaltung oder
       Wiederaktivierung externer Sprachkataloge kann der lokale Abschnitt deshalb noch
       nicht bestätigen. Vor dem produktiven Einsatz sind diese weiteren Lieferabschnitte
       und ihre Integrationsnachweise erforderlich. Entwürfe und vorhandene Katalogstände
@@ -25,19 +26,21 @@ description:
       vorhandenen Hostvertrag statt einer eigenen Berechtigungsverwaltung.
     features:
       - Lokale Modulbereitschaft und konfigurierten DeepL-Zugang prüfen
-      - Organisationsgebundenen internen Katalogzugriff absichern
+      - Organisationsgebundene Katalogredaktion mit getrennten Berechtigungen
+      - Vollständige lokale Prüfstände erstellen und ansehen
   en:
     localisedName: Multilingual content
-    shortDescription: Local catalog basis with module access and readiness checks. App
-      integration and automatic translation are not available yet.
+    shortDescription: Edit fixed app texts locally, manage municipal overrides and create
+      immutable catalog snapshots.
     longDescription: This addon registers the local multilingual catalog basis with the
       existing Studio module management. Its tenant activation is optional. The host
       checks module access and permissions in addition to the active organization.
       Local readiness covers the catalog schema and a redacted marker for the shared
       DeepL credential. A missing credential is reported as degraded local readiness.
       A configured credential does not prove provider connectivity or language support.
-      Credentials stay on the server. This delivery does not provide a catalog editor,
-      automatic translation or publication to the main server. It cannot confirm remote
+      Credentials stay on the server. A shared editor manages global standards and municipal per-language overrides
+      with JSON manifest import, correction confirmation and local snapshots. This delivery
+      does not provide automatic translation or publication to the main server. It cannot confirm remote
       suspension or reactivation. Those operations require later delivery sections and
       integration evidence before productive use. Existing drafts and catalog sets are
       preserved when module activation changes. Actions use the existing host permission
@@ -46,7 +49,8 @@ description:
       multilingual support. No account or remote configuration is changed by registration.
     features:
       - Check local readiness and shared DeepL credential configuration
-      - Protect organization-bound internal catalog operations
+      - Edit organization-bound catalogs with separate permissions
+      - Create and inspect complete local catalog snapshots
 legal:
   license: EUPL-1.2
   mainCopyrightOwner: Smart Village Solutions SVS GmbH

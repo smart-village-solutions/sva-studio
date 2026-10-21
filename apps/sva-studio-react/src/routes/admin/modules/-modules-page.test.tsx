@@ -267,7 +267,7 @@ describe('ModulesPage', () => {
     });
   });
 
-  it('selects the first instance automatically, loads details, and renders assigned and available modules', async () => {
+  it('requires explicit instance selection before loading details or offering module mutations', async () => {
     const loadInstance = vi.fn().mockResolvedValue(true);
     const assignModule = vi.fn().mockResolvedValue(true);
     const revokeModule = vi.fn().mockResolvedValue(true);
@@ -284,6 +284,11 @@ describe('ModulesPage', () => {
     );
 
     render(<ModulesPage />);
+
+    expect(loadInstance).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Modul zuweisen' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeNull();
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'demo' } });
 
     await waitFor(() => {
       expect(loadInstance).toHaveBeenCalledWith('demo');
@@ -340,6 +345,10 @@ describe('ModulesPage', () => {
     expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', ['news']);
     expect(revokeModule).toHaveBeenCalledWith('demo', 'news');
     expect(assignModule).toHaveBeenCalledWith('demo', 'events');
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } });
+    expect(screen.queryByRole('button', { name: 'Modul zuweisen' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Modul entziehen' })).toBeNull();
+    expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('');
   });
 
   it('does not reload the selected instance on rerender when loadInstance is stable', async () => {
@@ -351,6 +360,7 @@ describe('ModulesPage', () => {
     );
 
     const { rerender } = render(<ModulesPage />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'demo' } });
 
     await waitFor(() => {
       expect(loadInstance).toHaveBeenCalledTimes(1);
@@ -374,6 +384,7 @@ describe('ModulesPage', () => {
     );
 
     render(<ModulesPage />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'demo' } });
 
     await waitFor(() =>
       expect(
@@ -470,6 +481,7 @@ describe('ModulesPage', () => {
       })
     );
     render(<ModulesPage />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'demo' } });
     expect(
       within(screen.getAllByRole('region', { name: contract.moduleId })[0]!).getByText(
         /Bereitschaft:/
@@ -500,6 +512,7 @@ describe('ModulesPage', () => {
       })
     );
     render(<ModulesPage />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'demo' } });
     const row = within(screen.getAllByRole('region', { name: contract.moduleId })[0]!);
     expect(row.getByText('Bereitschaft: Nicht verifiziert')).toBeTruthy();
     expect(
@@ -517,6 +530,7 @@ describe('ModulesPage', () => {
       })
     );
     render(<ModulesPage />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'demo' } });
     expect(screen.queryByRole('button', { name: 'Modul entziehen' })).toBeNull();
     const assign = within(screen.getByRole('region', { name: 'news' })).getByRole('button', {
       name: 'Modul zuweisen',
@@ -542,6 +556,7 @@ describe('ModulesPage', () => {
     );
 
     render(<ModulesPage />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'demo' } });
 
     expect(screen.getByText('removed-plugin')).toBeTruthy();
     expect(screen.getByText('Nicht verfügbar (historische Zuweisung)')).toBeTruthy();

@@ -1,4 +1,5 @@
 /** Runs against a migrated, disposable database only; never the Studio database. */
+import { createLanguageRepository } from './languages.js';
 import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
@@ -81,6 +82,102 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
   });
   afterAll(async () => {
     await pool?.end();
+  });
+  it('seals German independently of incomplete translations and keeps retry identities separate', async () => {
+    await transaction(global, async (repo) => {
+      const id = `${contractId}-de`;
+      const draft = await repo.importManifest({ ...manifest, contractId: id }, '0', ['de', 'en']);
+      const german = await repo.seal(id, draft.draftRevision, true);
+      expect(german.supportedLocales).toEqual(['de']);
+      expect(Object.keys(german.catalogs)).toEqual(['de']);
+      expect(await repo.seal(id, draft.draftRevision, true)).toEqual(german);
+      await expect(repo.seal(id, draft.draftRevision)).rejects.toThrow('catalog_incomplete');
+    });
+    await transaction(global, async (repo) => {
+      const id = `${contractId}-both`;
+      let draft = await repo.importManifest({ ...manifest, contractId: id }, '0', ['de', 'en']);
+      draft = await repo.editText(id, draft.draftRevision, 'en', 'title', 'Title');
+      draft = await repo.editText(id, draft.draftRevision, 'en', 'greeting', 'Hello {{name}}');
+      const german = await repo.seal(id, draft.draftRevision, true);
+      const translated = await repo.seal(id, draft.draftRevision);
+      expect(translated.id).not.toBe(german.id);
+      expect(translated.supportedLocales).toEqual(['de', 'en']);
+      expect(await repo.seal(id, draft.draftRevision, true)).toEqual(german);
+      expect(await repo.seal(id, draft.draftRevision)).toEqual(translated);
+    });
+  });
+  it('manages central languages with CAS, tenant RLS and locked module readiness', async () => {
+    const root = async <T>(
+      work: (repo: ReturnType<typeof createLanguageRepository>, client: PoolClient) => Promise<T>
+    ) =>
+      transaction(global, async (_catalog, client) =>
+        work(createLanguageRepository(client), client)
+      );
+    const tenantRead = (scope: CatalogScope) =>
+      transaction(scope, async (_catalog, client) =>
+        createLanguageRepository(client).assignments(tenantA)
+      );
+    await expect(root((repo) => repo.setAvailable('de', false, '1'))).rejects.toThrow(
+      'catalog_forbidden'
+    );
+    await expect(root((repo) => repo.setInstance(tenantA, 'en', true, '0'))).rejects.toThrow(
+      'catalog_forbidden'
+    );
+    await pool!.query(
+      "INSERT INTO iam.instance_modules(instance_id,module_id,effective_active) VALUES ($1,'app-translations',true)",
+      [tenantA]
+    );
+    await pool!.query(
+      "INSERT INTO iam.instance_plugin_lifecycle(instance_id,plugin_id,readiness_status,completed_generation) VALUES ($1,'app-translations','ready',1)",
+      [tenantA]
+    );
+    await root((repo) => repo.setInstance(tenantA, 'en', true, '0'));
+    await expect(root((repo) => repo.setInstance(tenantA, 'en', false, '0'))).rejects.toThrow(
+      'catalog_conflict'
+    );
+    expect((await tenantRead(a)).map((row) => row.locale)).toEqual(['en']);
+    expect(await tenantRead(c)).toEqual([]);
+    await expect(
+      transaction(a, async (_repo, client) =>
+        createLanguageRepository(client).setAvailable('en', false, '1')
+      )
+    ).rejects.toThrow('catalog_conflict');
+    await root((repo) => repo.setAvailable('en', false, '1'));
+    expect(
+      await transaction(a, async (_repo, client) =>
+        createLanguageRepository(client).enabledLocales(tenantA)
+      )
+    ).toEqual(['de']);
+    expect((await tenantRead(a))[0]?.enabled).toBe(true);
+    await expect(root((repo) => repo.setInstance(tenantA, 'en', true, '1'))).rejects.toThrow(
+      'catalog_forbidden'
+    );
+    await root((repo) => repo.setAvailable('en', true, '2'));
+    await pool!.query(
+      "UPDATE iam.instance_plugin_lifecycle SET access_state='suspended' WHERE instance_id=$1",
+      [tenantA]
+    );
+    await expect(root((repo) => repo.setInstance(tenantA, 'en', true, '1'))).rejects.toThrow(
+      'catalog_forbidden'
+    );
+    await root((repo) => repo.setInstance(tenantA, 'en', false, '1'));
+    expect((await tenantRead(a))[0]?.enabled).toBe(false);
+  });
+  it('lists only scoped drafts and releases while offering immutable global bases', async () => {
+    await transaction(a, (repo) => repo.createMunicipalDraft(globalRelease.id, ['de', 'en']));
+    const globalOverview = await transaction(global, (repo) => repo.overview());
+    expect(globalOverview.catalogs.some((row) => row.contractId === contractId)).toBe(true);
+    const own = await transaction(a, (repo) => repo.overview());
+    expect(own.catalogs.map((row) => row.contractId)).toContain(contractId);
+    expect(own.bases).toContainEqual(expect.objectContaining({ id: globalRelease.id }));
+    expect(JSON.stringify(own)).not.toContain('valuesByLocale');
+    for (const scope of [b, c]) {
+      const other = await transaction(scope, (repo) => repo.overview());
+      expect(other.catalogs).toEqual([]);
+      expect(other.releases).toEqual([]);
+    }
+    const effective = await transaction(a, (repo) => repo.readEffective(contractId));
+    expect(effective.baseCatalogs.en?.values.title).toBe('Send a report');
   });
   it('imports idempotently, preserves edits and rolls back invalid/changed manifests', async () => {
     await transaction(global, async (repo) => {

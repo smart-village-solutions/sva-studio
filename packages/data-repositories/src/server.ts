@@ -3,3 +3,5 @@ export * from './integrations/external-interfaces.server.js';
 export * from './instance-registry/server.js';
 
 export * from './app-translations.js';
+
+export * from './languages.js';

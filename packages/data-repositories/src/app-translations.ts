@@ -14,6 +14,8 @@ import {
   type CatalogRelease,
   type CatalogScope,
   type CatalogTexts,
+  type CatalogOverview,
+  type CatalogReleaseSummary,
 } from '@sva/core';
 
 export type CatalogSqlClient = {
@@ -115,10 +117,33 @@ export const createAppTranslationRepository = async (
   };
   return {
     loadDraft,
+    overview: async (): Promise<CatalogOverview> => {
+      const drafts = await client.query<CatalogOverview['catalogs'][number]>(
+        `SELECT contract_id AS "contractId", draft_revision::text AS "draftRevision", supported_locales AS "supportedLocales", base_release_id AS "baseReleaseId" FROM iam.app_translation_catalog_drafts WHERE ${scopeWhere} ORDER BY contract_id`,
+        params
+      );
+      const releaseColumns = `id, contract_id AS "contractId", catalog_set_revision::text AS "catalogSetRevision", supported_locales AS "supportedLocales", checksum`;
+      const releases = await client.query<CatalogReleaseSummary>(
+        `SELECT ${releaseColumns} FROM iam.app_translation_catalog_releases WHERE ${scopeWhere} ORDER BY contract_id, catalog_set_revision DESC`,
+        params
+      );
+      const bases =
+        scope.kind === 'municipal'
+          ? await client.query<CatalogReleaseSummary>(
+              `SELECT ${releaseColumns} FROM iam.app_translation_catalog_releases WHERE scope = 'global' ORDER BY contract_id, catalog_set_revision DESC`
+            )
+          : { rows: [] };
+      return { scope, catalogs: drafts.rows, releases: releases.rows, bases: bases.rows };
+    },
     loadRelease: (id: string) => loadRelease(id),
     readEffective: async (contractId: string) => {
       const draft = await loadDraft(contractId);
-      return { draft, values: resolveCatalogValues(draft, await baseOf(draft)) };
+      const base = await baseOf(draft);
+      return {
+        draft,
+        values: resolveCatalogValues(draft, base),
+        baseCatalogs: base?.catalogs ?? {},
+      };
     },
     importManifest: async (
       raw: unknown,
@@ -184,10 +209,7 @@ export const createAppTranslationRepository = async (
       catalogAssert(scope.kind === 'municipal', 'catalog_forbidden');
       const base = await loadRelease(baseReleaseId, true);
       const supportedLocales = validateCatalogLocales(locales);
-      catalogAssert(
-        supportedLocales.every((locale) => base.supportedLocales.includes(locale)),
-        'catalog_incomplete'
-      );
+      catalogAssert(base.supportedLocales.includes('de'), 'catalog_incomplete');
       await client.query(
         `INSERT INTO iam.app_translation_catalog_drafts(scope, instance_id, organization_id, contract_id, manifest_id, supported_locales, base_release_id) VALUES ('municipal',$1,$2,$3,$4,$5::jsonb,$6) ON CONFLICT DO NOTHING`,
         [
@@ -226,15 +248,20 @@ export const createAppTranslationRepository = async (
       catalogAssert(manifest.rows[0]);
       draft.manifest = manifest.rows[0].manifest;
       draft.supportedLocales = validateCatalogLocales(locales);
-      catalogAssert(
-        draft.supportedLocales.every((locale) => base.supportedLocales.includes(locale)),
-        'catalog_incomplete'
-      );
-      for (const [locale, values] of Object.entries(draft.valuesByLocale)) {
-        catalogAssert(draft.supportedLocales.includes(locale as AppTranslationLocale));
+      catalogAssert(base.supportedLocales.includes('de'), 'catalog_incomplete');
+      for (const values of Object.values(draft.valuesByLocale)) {
         for (const [key, text] of Object.entries(values))
           validateCatalogValue(draft.manifest, key, text.value);
       }
+      return save(draft);
+    },
+    configureLocales: async (
+      contractId: string,
+      expectedRevision: string,
+      locales: readonly AppTranslationLocale[]
+    ) => {
+      const draft = await locked(contractId, expectedRevision);
+      draft.supportedLocales = validateCatalogLocales(locales);
       return save(draft);
     },
     editText: async (
@@ -290,11 +317,22 @@ export const createAppTranslationRepository = async (
       text.confirmedSourceDigest = await catalogDigest(source.value);
       return save(draft);
     },
-    seal: async (contractId: string, expectedRevision: string): Promise<CatalogRelease> => {
-      const draft = await locked(contractId, expectedRevision);
+    seal: async (
+      contractId: string,
+      expectedRevision: string,
+      sourceOnly = false
+    ): Promise<CatalogRelease> => {
+      const stored = await locked(contractId, expectedRevision);
+      const draft = sourceOnly
+        ? {
+            ...stored,
+            supportedLocales: ['de'] as AppTranslationLocale[],
+            valuesByLocale: { de: stored.valuesByLocale.de ?? {} },
+          }
+        : stored;
       const existing = await client.query<{ payload: CatalogRelease }>(
-        `SELECT payload FROM iam.app_translation_catalog_releases WHERE ${scopeWhere} AND contract_id = $4 AND draft_revision = $5::bigint`,
-        [...params, contractId, draft.draftRevision]
+        `SELECT payload FROM iam.app_translation_catalog_releases WHERE ${scopeWhere} AND contract_id = $4 AND draft_revision = $5::bigint AND supported_locales = $6::jsonb`,
+        [...params, contractId, draft.draftRevision, JSON.stringify(draft.supportedLocales)]
       );
       if (existing.rows[0]) return existing.rows[0].payload;
       const current = await client.query<{ revision: string }>(

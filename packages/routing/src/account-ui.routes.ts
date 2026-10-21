@@ -11,6 +11,7 @@ export type AccountUiRouteGuardKey =
   | 'accountPrivacy'
   | 'accountPrivacyDetail'
   | 'accountRules'
+  | 'appTexts'
   | 'modules'
   | 'content'
   | 'contentCreate'
@@ -57,6 +58,11 @@ const accountUiRouteGuardDefinitions: Record<
   accountPrivacy: { kind: 'protected', route: uiRoutePaths.accountPrivacy },
   accountPrivacyDetail: { kind: 'protected', route: uiRoutePaths.accountPrivacyDetail },
   accountRules: { kind: 'protected', route: uiRoutePaths.accountRules },
+  appTexts: {
+    kind: 'protected',
+    route: uiRoutePaths.appTexts,
+    requiredPermissions: ['app-texts.catalog.read'],
+  },
   modules: {
     kind: 'protected',
     route: uiRoutePaths.modules,
@@ -222,6 +228,7 @@ export const createAccountUiRouteGuards = (diagnostics?: RoutingDiagnosticsHook)
     accountPrivacy: createAccountUiRouteGuard('accountPrivacy', diagnostics),
     accountPrivacyDetail: createAccountUiRouteGuard('accountPrivacyDetail', diagnostics),
     accountRules: createAccountUiRouteGuard('accountRules', diagnostics),
+    appTexts: createAccountUiRouteGuard('appTexts', diagnostics),
     modules: createAccountUiRouteGuard('modules', diagnostics),
     content: createAccountUiRouteGuard('content', diagnostics),
     contentCreate: createAccountUiRouteGuard('contentCreate', diagnostics),

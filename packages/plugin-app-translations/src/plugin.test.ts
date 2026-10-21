@@ -17,7 +17,7 @@ const context = (operation: string) =>
     throwIfCancellationRequested: vi.fn(),
   }) as unknown as PluginJobHandlerContext;
 describe('local multilingual module', () => {
-  it('registers namespaced IAM and lifecycle metadata without UI or public APIs', () => {
+  it('registers namespaced IAM and guarded editor metadata without remote APIs', () => {
     const registry = createBuildTimeRegistry({ plugins: [appTranslationsPlugin] });
     expect(registry.pluginRegistry.has('app-translations')).toBe(true);
     expect(registry.pluginTenantLifecycleRegistry.has('app-translations')).toBe(true);
@@ -39,8 +39,10 @@ describe('local multilingual module', () => {
     expect(appTranslationsPlugin.moduleIam?.systemRoles[0]?.permissionIds).not.toContain(
       'app-translations.manifestImport'
     );
-    expect(appTranslationsPlugin.routes).toEqual([]);
-    expect(appTranslationsPlugin.navigation).toEqual([]);
+    expect(appTranslationsPlugin.routes[0]?.path).toBe('/plugins/app-translations');
+    expect(appTranslationsPlugin.navigation[0]?.requiredAction).toBe(
+      'app-translations.catalog.read'
+    );
     expect(appTranslationsPlugin.serverHandlers).toBeUndefined();
     expect(definePluginManifest(manifest as PluginManifest).tenantActivationPolicy).toBe(
       'optional'

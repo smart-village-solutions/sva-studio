@@ -17,7 +17,9 @@ describe('server plugin catalog', () => {
     const registry = studioServerPluginCatalogReport.snapshot.registry;
     expect(registry.pluginRegistry.has('app-translations')).toBe(true);
     expect(registry.pluginTenantLifecycleRegistry.has('app-translations')).toBe(true);
-    expect(registry.pluginRegistry.get('app-translations')?.routes).toEqual([]);
+    expect(registry.pluginRegistry.get('app-translations')?.routes[0]?.path).toBe(
+      '/plugins/app-translations'
+    );
     expect(
       registry.pluginTenantLifecycleRegistry
         .get('app-translations')

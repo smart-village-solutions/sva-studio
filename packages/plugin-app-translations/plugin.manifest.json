@@ -7,7 +7,7 @@
   "sdkVersion": "0.0.1",
   "hostCompatibility": {
     "studioVersionRange": "^0.0.1",
-    "requiredCapabilities": ["iam", "jobs"]
+    "requiredCapabilities": ["routing", "navigation", "iam", "jobs"]
   },
   "entryPoints": {
     "descriptor": "./dist/descriptor.js",

@@ -92,12 +92,6 @@ const AdminModulesPage = () => {
   const pluginReadiness = usePluginTenantReadiness(selectedInstanceId);
 
   React.useEffect(() => {
-    if (!selectedInstanceId && instancesApi.instances[0]?.instanceId) {
-      setSelectedInstanceId(instancesApi.instances[0].instanceId);
-    }
-  }, [instancesApi.instances, selectedInstanceId]);
-
-  React.useEffect(() => {
     if (!selectedInstanceId) {
       return;
     }
@@ -126,14 +120,15 @@ const AdminModulesPage = () => {
 
       <StudioFilterSurface className="space-y-4">
         <div className="space-y-1">
-          <div className="font-medium text-foreground">
+          <label htmlFor="modules-instance" className="font-medium text-foreground">
             {t('admin.instances.instanceModules.instanceSelect.label')}
-          </div>
+          </label>
           <p className="text-sm text-muted-foreground">
             {t('admin.instances.instanceModules.instanceSelect.hint')}
           </p>
         </div>
         <select
+          id="modules-instance"
           className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
           value={selectedInstanceId}
           onChange={(event) => setSelectedInstanceId(event.target.value)}

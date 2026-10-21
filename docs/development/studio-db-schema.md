@@ -18,7 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
-- Finaler Soll-Snapshot zuletzt lokal ergänzt: `2026-10-20` (Katalogbasis 0106; keine neue Live-Erhebung)
+- Finaler Soll-Snapshot zuletzt lokal ergänzt: `2026-10-21` (Katalogbasis 0106 und Sprachverwaltung 0107; keine neue Live-Erhebung)
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung
@@ -79,6 +79,12 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
+
+### App-Texte und Sprachverwaltung — Migration 0107
+
+`iam.available_languages` verwaltet die zentrale Verfügbarkeit der 20 technisch unterstützten Sprachcodes mit CAS-Revision. Deutsch bleibt durch Constraint verfügbar. `iam.instance_languages` speichert ausschließlich zusätzliche instanzweite Sprachwünsche mit Revision, zusammengesetztem Primärschlüssel und Fremdschlüsseln auf Instanz/Sprachcode. Sperren löschen keine Zuordnungen oder Übersetzungen. Rootschreibrechte benötigen den verifizierten Plattformkontext; RLS erlaubt tenantseitig nur eigene Zuordnungen zu lesen. Die Aktivierung prüft zentrale Freigabe, aktive Instanz, Modul und abgeschlossene Bereitschaft erneut unter Zeilensperren; der bestehende Lifecycle-RLS wird dafür transaktionslokal im gewählten Instanzscope gelesen.
+
+Die Migration ergänzt außerdem `app-texts.catalog.read`, `.write` und `.publish` für vorhandene `system_admin`-Rollen und invalidiert den Berechtigungscache. Die deutsche Textbasis nutzt unverändert die drei Katalogtabellen aus 0106. Source- und mehrsprachige Versiegelung derselben Draftrevision teilen den Satzrevisionszähler, haben aber getrennte Retry-Identitäten nach Sprachmenge. Ein Rücklauf entfernt nur die zwei Sprachverwaltungstabellen; potenziell delegierte Hostrechte und Katalogdaten bleiben erhalten.
 
 ### Interne App-Katalogbasis — Migration 0106
 

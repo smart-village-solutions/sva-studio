@@ -6,6 +6,114 @@ info:
 servers:
   - url: /
 paths:
+  /api/v1/iam/app-translations:
+    description: >-
+      Lokaler Studio-Katalogeditor mit gespeicherter Session und Organisationsscope.
+      Der Modus source erfordert app-texts.catalog.read/write/publish und erlaubt nur Deutsch ohne Pluginpflicht.
+      Der Modus translations erfordert app-translations.catalog.read/write/publish, aktuellen Pluginzugang und aktivierte Sprachen.
+      Ausgangsbestand und Basiswechsel bleiben Hostoperationen. Root importiert nur Deutsch.
+      Alle Antworten sind no-store; Versiegelung ist keine App-Veröffentlichung.
+    parameters:
+      - name: X-SVA-Catalog-Mode
+        in: header
+        schema: { type: string, enum: [source, translations], default: translations }
+      - name: X-SVA-Catalog-Scope
+        in: header
+        description: JSON des zuvor geladenen Sessionbereichs; für POST Pflicht, keine Autorisierungsquelle.
+        schema: { type: string }
+    get:
+      summary: Katalogübersicht, Entwurf oder lokalen Prüfstand lesen
+      parameters:
+        - name: operation
+          in: query
+          schema: { type: string, enum: [overview, read, readRelease], default: overview }
+        - name: contractId
+          in: query
+          schema: { type: string }
+        - name: releaseId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: 'data enthält die scope- und sprachgefilterte Übersicht, Editordaten oder den lokalen Prüfstand nach Core-Katalogvertrag.' }
+        '400': { description: Ungültige Operation oder Parameter. }
+        '403': { description: Fehlender Session-, Scope-, Action- oder Pluginzugang. }
+        '404': { description: Katalog oder Prüfstand fehlt. }
+        '409': { description: Sessionbereich stimmt nicht mit dem geladenen Scope überein. }
+        '503': { description: Katalog oder Autorisierung nicht verfügbar. }
+    post:
+      summary: Katalogentwurf bearbeiten oder lokal versiegeln
+      description: >-
+        POST erfordert bestehenden CSRF-Schutz und Scopeheader. JSON maximal 1 MiB.
+        Operationspayloads werden strikt nach packages/auth-runtime/src/app-translations.ts validiert;
+        zusätzliche Felder und fremde Scopes werden abgewiesen. Revisionen sind Dezimalstrings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [operation]
+              properties:
+                operation:
+                  type: string
+                  enum: [import, createMunicipal, changeBase, configureLocales, edit, reset, confirm, seal]
+              description: Operationsspezifische Pflichtfelder, Manifest- und Wertevalidierung nach dem typisierten Core-Vertrag.
+      responses:
+        '200': { description: data enthält den gespeicherten Entwurf oder unveränderlichen lokalen Prüfstand. }
+        '400': { description: Ungültiger Vertrag, unvollständiger Satz oder ungeklärte Korrektur. }
+        '403': { description: Fehlende Berechtigung, CSRF oder unerlaubte Sprache beziehungsweise Hostoperation. }
+        '409': { description: Veraltete Scope-, Draft- oder Basisrevision. }
+        '413': { description: JSON überschreitet 1 MiB. }
+        '503': { description: Katalog oder Autorisierung nicht verfügbar. }
+  /api/v1/iam/languages:
+    description: >-
+      Ausschließlich verifizierte Root-/Plattformsession. Deutsch bleibt verfügbar.
+      Zusätzliche Instanzaktivierung benötigt zentrale Freigabe, aktive Instanz und bereiten/eingeschränkt bereiten Pluginzugang.
+      Sperren erhalten Texte und Zuordnungen; keine Remote-/App-Aktivierung. Antworten sind no-store.
+    get:
+      summary: Zentrale Sprachen und optional Zuordnungen einer ausdrücklich gewählten Instanz lesen
+      parameters:
+        - name: instanceId
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        '200': { description: 'data enthält languages (locale, available, revision), instanceId oder null, moduleAllowed und assignments (locale, enabled, revision).' }
+        '400': { description: Ungültige Parameter. }
+        '403': { description: Kein verifizierter Rootzugang. }
+        '503': { description: Sprachverwaltung nicht verfügbar. }
+    post:
+      summary: Zentrale Verfügbarkeit oder Instanzzuordnung revisionsgebunden ändern
+      description: Bestehender CSRF-Schutz, maximal 4 KiB, ausschließlich technisch unterstützte Sprachcodes und keine zusätzlichen Payloadfelder.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required: [operation, locale, available, expectedRevision]
+                  properties:
+                    operation: { const: availability }
+                    locale: { type: string }
+                    available: { type: boolean }
+                    expectedRevision: { type: string, pattern: '^(0|[1-9][0-9]{0,17})$' }
+                - type: object
+                  additionalProperties: false
+                  required: [operation, instanceId, locale, enabled, expectedRevision]
+                  properties:
+                    operation: { const: assignment }
+                    instanceId: { type: string, minLength: 1, maxLength: 128 }
+                    locale: { type: string }
+                    enabled: { type: boolean }
+                    expectedRevision: { type: string, pattern: '^(0|[1-9][0-9]{0,17})$' }
+      responses:
+        '200': { description: data enthält die aktuelle Sprachübersicht nach der Änderung. }
+        '400': { description: Ungültiger Code oder Payload. }
+        '403': { description: Kein Rootzugang, fehlendes CSRF, gesperrte Sprache oder unzureichender Modulstatus. }
+        '409': { description: Veraltete erwartete Revision. }
+        '413': { description: JSON überschreitet 4 KiB. }
+        '503': { description: Sprachverwaltung nicht verfügbar. }
   /health/live:
     get:
       summary: Prozess-Liveness

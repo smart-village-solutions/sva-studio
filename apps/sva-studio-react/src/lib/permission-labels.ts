@@ -5,6 +5,9 @@ import { t } from '../i18n';
 import { studioBuildTimeRegistry } from './plugins';
 
 const HOST_PERMISSION_TITLE_KEYS = {
+  'app-texts.catalog.read': 'permissionDenial.titles.appTextsRead',
+  'app-texts.catalog.write': 'permissionDenial.titles.appTextsWrite',
+  'app-texts.catalog.publish': 'permissionDenial.titles.appTextsPublish',
   'iam.user.read': 'permissionDenial.titles.iamUserRead',
   'iam.user.write': 'permissionDenial.titles.iamUserWrite',
   'iam.invitationTemplate.manage': 'permissionDenial.titles.iamInvitationTemplateManage',

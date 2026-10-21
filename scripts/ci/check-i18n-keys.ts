@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { DEFAULT_LOCALE, i18nResources } from '../../apps/sva-studio-react/src/i18n/resources';
+import { appTranslationsPlugin } from '../../packages/plugin-app-translations/src/descriptor';
 import { pluginCockpitCardsTranslations } from '../../packages/plugin-cockpit-cards/src/plugin.translations';
 import { pluginEventsTranslations } from '../../packages/plugin-events/src/plugin.translations';
 import { pluginFaqTranslations } from '../../packages/plugin-faq/src/plugin.translations';
@@ -20,6 +21,7 @@ const I18N_USAGE_PATTERN = /\b(?:t|pt)\(\s*(['"`])([^'"`]+)\1/g;
 
 export const SOURCE_ROOTS = [
   'apps/sva-studio-react/src',
+  'packages/plugin-app-translations/src',
   'packages/plugin-news/src',
   'packages/plugin-events/src',
   'packages/plugin-faq/src',
@@ -33,6 +35,7 @@ export const SOURCE_ROOTS = [
 
 const SOURCE_ROOT_CONFIGS = [
   { relativeRoot: 'apps/sva-studio-react/src', namespace: null },
+  { relativeRoot: 'packages/plugin-app-translations/src', namespace: 'appTranslations.ui' },
   { relativeRoot: 'packages/plugin-news/src', namespace: 'news' },
   { relativeRoot: 'packages/plugin-events/src', namespace: 'events' },
   { relativeRoot: 'packages/plugin-faq/src', namespace: 'faq' },
@@ -45,6 +48,7 @@ const SOURCE_ROOT_CONFIGS = [
 ] as const;
 
 const pluginTranslationResources = [
+  appTranslationsPlugin.translations ?? {},
   pluginNewsTranslations,
   pluginEventsTranslations,
   pluginFaqTranslations,

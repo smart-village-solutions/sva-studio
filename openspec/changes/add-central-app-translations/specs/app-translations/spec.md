@@ -41,7 +41,7 @@ Das System MUST vollständige globale und kommunale Katalogsätze intern prüfen
 
 ### Requirement: Lokaler Katalogeditor ohne externe Veröffentlichung
 
-Das System MUST globale Standardpflege im bestehenden Root-/Plattformpfad und kommunale Katalogpflege im optionalen Modul „Mehrsprachigkeit“ über dieselbe lokale Katalogbasis ermöglichen. Kommunale Reads, Änderungen und lokale Versiegelung MUST die getrennten Rechte `app-translations.catalog.read`, `app-translations.catalog.write` und `app-translations.catalog.publish` sowie den bestehenden Modul-/Organisationsscope prüfen. Globale Entwürfe und technischer JSON-Manifestimport MUST dem verifizierten Root-Kontext vorbehalten bleiben. Der Editor MUST Entwurf, sprachbezogene Vererbung/Overrides, Platzhalter, Korrekturstatus und Revisionskonflikte verständlich darstellen. „Prüfstand erstellen“ MUST ausschließlich einen vollständigen unveränderlichen lokalen Satz erzeugen; die Vorschau MUST ihn von einer App-Veröffentlichung unterscheiden. Ein synthetischer Deutsch-/Englisch-Testkatalog MUST ausschließlich kontrollierter lokaler Erprobung dienen, ohne automatische Seeds realer Mandanten, Fake-Übersetzungen oder zweite produktive App-Textquelle.
+Das System MUST globale Standardpflege im bestehenden Root-/Plattformpfad und deutsche kommunale Hostpflege ohne Modul sowie fremdsprachige Katalogpflege im optionalen Modul „Mehrsprachigkeit“ über dieselbe lokale Katalogbasis ermöglichen. Kommunale Fremdsprachenzugriffe, Änderungen und lokale Versiegelung MUST die getrennten Rechte `app-translations.catalog.read`, `app-translations.catalog.write` und `app-translations.catalog.publish` sowie den bestehenden Modul-/Organisationsscope prüfen. Globale Entwürfe und technischer JSON-Manifestimport MUST dem verifizierten Root-Kontext vorbehalten bleiben. Der Editor MUST Entwurf, sprachbezogene Vererbung/Overrides, Platzhalter, Korrekturstatus und Revisionskonflikte verständlich darstellen. „Prüfstand erstellen“ MUST ausschließlich einen vollständigen unveränderlichen lokalen Satz erzeugen; die Vorschau MUST ihn von einer App-Veröffentlichung unterscheiden. Ein synthetischer Deutsch-/Englisch-Testkatalog MUST ausschließlich kontrollierter lokaler Erprobung dienen, ohne automatische Seeds realer Mandanten, Fake-Übersetzungen oder zweite produktive App-Textquelle.
 
 #### Scenario: Kommunalen Entwurf speichern und gezielt zurücksetzen
 
@@ -197,21 +197,21 @@ Das System MUST bei Katalogpflege Standard/Override je Sprache, tatsächliche Ü
 - **AND** bleibt eine nicht nachgewiesene Pilotsprachenabdeckung eine offene Lieferabhängigkeit statt einer stillen Reduktion
 - **AND** gehören RTL und ein Original-anzeigen-Button je Element nicht zu V1
 
-### Requirement: Ein zentraler DeepL-Anbieter für beide Textstrecken
+### Requirement: DeepL-Zugang je Instanz für beide Textstrecken
 
-Das System MUST zunächst einen zentral betriebenen DeepL-Zugang für feste Kataloge und dynamische Inhalte verwenden. Gemeinsame feste Standards MUST einmal zentral übersetzt werden; kommunale Overrides MUST eigene Übersetzungen erhalten können. Dynamische Treffer MUST kommunal getrennt bleiben. Die öffentlich dokumentierte Sprachliste MUST von tatsächlicher Konto-/Featureabdeckung unterschieden werden. Vor Aktivierung MUST die aktuelle Sprach-/Featureabfrage für Textübersetzung geprüft und `en` bewusst einer Anbieterzielvariante zugeordnet werden; eine SDK-Konstante allein genügt nicht als Kontonachweis. Optionale Tag-/Glossar-/Formalitätsfähigkeiten MUST nicht aus bloßer Sprachverfügbarkeit abgeleitet werden. Anbieter-Secrets MUST serverseitig bleiben; kommunale Anbieterwahl, SSF-Adapter und Provider-Registry MUST nicht vorsorglich eingeführt werden. Manuelle Korrekturen MUST in der ersten Auslieferung auf feste Kataloge beschränkt bleiben; dynamische Korrekturworkflows MUST später separat geliefert werden.
+Das System MUST zunächst DeepL als gemeinsamen Anbietertyp für feste und dynamische Texte verwenden, aber Zugangsdaten je Instanz in der vorhandenen Schnittstellenverwaltung führen. Ein fremder Instanz-Key oder Environment-Key MUST nicht als impliziter Fallback dienen. Dynamische Treffer MUST kommunal getrennt bleiben. Gemeinsame deutsche Standards MUST zentral bleiben; ihre Übersetzungen, Aufträge und Kosten MUST je Instanz über deren eigenen Key geführt werden. Ein zusätzlicher zentraler Anbieterzugang und eine globale kostenpflichtige Fremdsprachenquelle MUST entfallen. Öffentliche Dokumentation MUST von tatsächlicher geprüfter Konto-/Featureabdeckung unterschieden werden. Zielvarianten und optionale HTML-/Glossar-/Formalitätsfähigkeiten MUST explizit validiert werden. Anbieter-Secrets MUST serverseitig bleiben; keine vorsorgliche Provider-Registry oder SSF-Adapter. Manuelle Korrekturen MUST zunächst auf feste Kataloge beschränkt bleiben.
 
 #### Scenario: Derselbe Standard und derselbe dynamische Text in zwei Kommunen
 
 - **GIVEN** zwei Kommunen verwenden denselben festen Standard und identische dynamische Texte
 - **WHEN** Übersetzungen benötigt werden
-- **THEN** übernehmen beide den einmal übersetzten festen Standard
+- **THEN** pinnen beide dieselbe deutsche Standardrevision, erzeugen ihre Standardübersetzungen aber instanzgebunden mit ihrem eigenen Key
 - **AND** teilen ihre dynamischen Texte keinen kommunalen Cacheeintrag
 - **AND** bleibt eine manuelle feste Korrektur vor Maschinenjobs geschützt
 
 ### Requirement: Sprachbezogene Overrides und automatische Standardübernahme
 
-Overrides MUST je Kommune, Schlüssel und Sprache gelten. Ohne eigenen Override MUST die Sprachfassung dem gemeinsamen Standard folgen, auch bei abweichendem kommunalen Deutsch. Weitere kommunale Sprach-Overrides MUST ausschließlich durch gezielte Bearbeitung beziehungsweise ausdrückliche Übernahmeaktion entstehen. Veröffentlichte Standardänderungen MUST automatisch neue kommunale Sätze aus zuletzt veröffentlichten Overrides erzeugen, ohne zusätzliche kommunale Freigabe. Unveröffentlichte kommunale Entwürfe und manuelle Korrekturen MUST erhalten bleiben und dürfen nicht still veröffentlicht oder ersetzt werden. Snapshot- und Konfliktregeln MUST auch für automatische Aufträge gelten.
+Overrides MUST je Kommune, Schlüssel und Sprache gelten. Ohne eigenen Override MUST die Sprachfassung der instanzgebundenen Übersetzung des gepinnten gemeinsamen deutschen Standards folgen, auch bei abweichendem kommunalen Deutsch. Weitere kommunale Sprach-Overrides MUST ausschließlich durch gezielte Bearbeitung beziehungsweise ausdrückliche Übernahmeaktion entstehen. Veröffentlichte Standardänderungen MUST automatisch neue kommunale Sätze aus zuletzt veröffentlichten Overrides erzeugen, ohne zusätzliche kommunale Freigabe. Unveröffentlichte kommunale Entwürfe und manuelle Korrekturen MUST erhalten bleiben und dürfen nicht still veröffentlicht oder ersetzt werden. Snapshot- und Konfliktregeln MUST auch für automatische Aufträge gelten.
 
 #### Scenario: Deutscher Override und fremdsprachiger Standard
 
@@ -318,13 +318,13 @@ Diese Regel MUST für alle dynamischen Inhalte einschließlich Bus gelten. Ände
 
 ### Requirement: Mehrsprachigkeit als optionales Tenant-Plugin
 
-Das System MUST Mehrsprachigkeit unter Plugin-ID `app-translations` über die vorhandene Plugininstallation, optionale instanzweite Modulaktivierung, Modul-IAM und Tenant-Lifecycle bereitstellen. Installation oder ein IAM-Grant allein MUST keinen Fachzugriff erlauben. Kataloge und kommunale Sprachwahl MUST zusätzlich organisationsgebunden bleiben; ein zweites Aktivierungsregister je Organisation MUST entfallen. Die interne Katalogbasis A MUST vor nutzbarer Fachfreigabe um die vorhandenen hostseitigen Pluginzugangsprüfungen ergänzt werden. Globale Standards/Manifestpflege und eng begrenzte Deutsch-/Cachewartung MUST mit eigenem berechtigtem Hostkontext möglich bleiben, ohne damit kommunale Übersetzungen freizuschalten.
+Das System MUST Mehrsprachigkeit unter Plugin-ID `app-translations` über die vorhandene Plugininstallation, optionale instanzweite Modulaktivierung, Modul-IAM und Tenant-Lifecycle bereitstellen. Installation oder ein IAM-Grant allein MUST keinen Fachzugriff erlauben. Katalogwerte MUST zusätzlich organisationsgebunden bleiben; die konfigurierten Zielsprachen MUST aus der instanzweiten Auswahl stammen; ein zweites Aktivierungsregister je Organisation MUST entfallen. Die interne Katalogbasis A MUST vor nutzbarer Fachfreigabe um die vorhandenen hostseitigen Pluginzugangsprüfungen ergänzt werden. Globale Standards/Manifestpflege und eng begrenzte Deutsch-/Cachewartung MUST mit eigenem berechtigtem Hostkontext möglich bleiben, ohne damit kommunale Übersetzungen freizuschalten.
 
 #### Scenario: Gleiche Instanz mit mehreren Organisationen
 
-- **GIVEN** das Modul ist für eine Instanz aktiviert und zwei Organisationen haben unterschiedliche Sprachwünsche
+- **GIVEN** das Modul ist für eine Instanz aktiviert und zwei Organisationen besitzen getrennte Katalogwerte
 - **WHEN** ein Benutzer den Katalogeditor öffnet oder der Service eine Übersetzung anfordert
-- **THEN** gelten gemeinsamer instanzweiter Pluginzugang und zusätzliche Rechte/Sprachauswahl der jeweils verifizierten Organisation
+- **THEN** gelten gemeinsamer instanzweiter Pluginzugang und zusätzliche Rechte der jeweils verifizierten Organisation und die instanzweite Sprachauswahl
 - **AND** erlaubt ein fremder Organisationskontext keinen Zugriff auf deren Daten
 
 ### Requirement: Modulabschaltung erhält Daten und beendet Fremdsprachennutzung
@@ -372,22 +372,21 @@ Die vorhandenen Hostübergänge MUST im lokalen Pluginanschluss gezielt angepass
 
 ### Requirement: Anbieterzugänge verwenden vorhandene Host-Secretpfade
 
-Das System MUST zum Start denselben zentralen DeepL-Zugang je Environment für feste und dynamische Texte aus dem vorhandenen serverseitigen Runtime-Secretpfad beziehen. Pluginoberflächen MUST lediglich redigierten Konfigurations-/Prüfstatus erhalten; Keys/Ciphertexts MUST nicht in Browserantworten, App-Builds, Jobpayloads oder Logs erscheinen. Fehlende/unlesbare Secrets MUST neue Anbieteraufrufe sicher verhindern. Rotation MUST vorhandene gültige Übersetzungen/Kataloge erhalten und MUST keine Anbieteridentität im dynamischen Cache-Key erfordern.
-
-Spätere eigene Mandantenschlüssel oder zusätzliche Anbieter MUST bei gesonderter Beauftragung den bestehenden hostseitigen Schnittstellenkatalog, instanzgebundene Resolver und datensatzgebundene Secretverschlüsselung erweitern. Diese Verträge MUST nicht als bereits vorhandene globale Plattform-Keyverwaltung oder organisationsweise Zugangsauswahl ausgegeben werden. V1 MUST ohne kommunale Providerwahl, zweite Secretablage oder vorsorgliche Provider-Registry auskommen.
+Das System MUST DeepL als benutzerkonfigurierte instanzgebundene Schnittstelle über vorhandene Typregistrierung, Hostresolver und datensatzgebundene Secretverschlüsselung verwalten. Browserantworten MUST ausschließlich redigierten Konfigurations-/Prüfstatus erhalten; Keys/Ciphertexts MUST nicht in Browserantworten, App-Builds, Jobpayloads oder Logs erscheinen. Fehlende/unlesbare Secrets MUST neue Anbieteraufrufe verhindern. Key-/Zugangskonfigurationswechsel MUST bisherigen positiven Prüfnachweis ungültig machen; verspätete Prüfantworten MUST eine geänderte Konfiguration nicht freischalten. Rotation MUST vorhandene gültige Übersetzungen erhalten und benötigt keine Anbieteridentität im dynamischen Cache-Key. Weitere Anbieter MUST erst mit konkretem Verbraucher ergänzt werden.
 
 #### Scenario: Key fehlt oder wird rotiert
 
-- **WHEN** der zentrale Zugang fehlt, unlesbar ist oder berechtigt rotiert wird
-- **THEN** gibt die Oberfläche ausschließlich sicheren Status aus und verwendet keinen fremden Mandantenzugang als Fallback
+- **WHEN** der Instanzzugang fehlt, unlesbar ist oder berechtigt rotiert wird
+- **THEN** gibt die Oberfläche ausschließlich sicheren Status aus und verwendet keinen fremden oder gemeinsamen Fallbackkey
 - **AND** bleiben vorhandene gültige Kataloge und autorisiert nutzbare fertige Übersetzungen erhalten
-- **AND** lösen fehlende Secrets keine Datenlöschung oder automatische Sprachabschaltung aus
+- **AND** erfordern neue abhängige Operationen einen gültigen Nachweis für die aktuelle Zugangskonfiguration
+
 
 ### Requirement: Dynamischen Übersetzungsstatus und Sprachfassungen im Inhaltsformular anzeigen
 
 Studio MUST als Hauptakteur der Übersetzungsverwaltung im jeweiligen Inhaltsformular den Status und fertige Sprachfassungen dynamischer Inhalte anzeigen. Diese Leseanzeige MUST von späterer manueller dynamischer Korrektur getrennt bleiben. Die konkrete Übermittlung und mögliche Speicherung des benötigten Originalbezugs MUST vor Implementierung abgestimmt werden; ein pauschaler Ausschluss von Originalbezug aus Studio MUST entfallen. Die Anzeige MUST aktuellen Organisations-/Pluginzugang und redaktionellen Inhaltszugriff serverseitig prüfen und darf alte Texte nicht als passende aktuelle Übersetzung ausgeben. Sie MUST keinen dauerhaften Originalreferenzbestand, Änderungs-/Verwendungsabgleich oder Übersetzungskopien in Originaldatensätzen einführen. Formular-/Vorschauabrufe MUST die 90-Tage-Frist nicht verlängern.
 
-Ein gemeinsamer Reiter „Übersetzungen“, konkrete Statusbeschriftungen, Laden erst beim tatsächlichen Öffnen, Hinweis bei ungespeicherten Textänderungen und ein reiner Cache-Leseweg ohne Jobanlage sind Empfehlungen aus Design 6.1, noch keine bestätigten UI-/API-Details. Ein Knopf zum Anfordern fehlender Übersetzungen ist nicht entschieden; diese Leseanforderung MUST weder eine solche Aktion noch automatische Übersetzung beim Speichern oder dynamische Korrekturrechte voraussetzen.
+Die Formularanzeige MUST rein lesend sein und darf keine fehlenden Übersetzungen anfordern, Jobs anlegen oder `last_used_at` verlängern. Ein gemeinsamer Reiter, konkrete Statusbeschriftungen, Laden erst beim tatsächlichen Öffnen und Hinweis bei ungespeicherten Textänderungen bleiben UI-Empfehlungen aus Design 6.1. Ein Knopf zum Anfordern fehlender Übersetzungen ist nicht entschieden; diese Leseanforderung MUST weder eine solche Aktion noch automatische Übersetzung beim Speichern oder dynamische Korrekturrechte voraussetzen.
 
 #### Scenario: Formular zeigt passende vorhandene Sprachfassungen
 
@@ -401,3 +400,42 @@ Ein gemeinsamer Reiter „Übersetzungen“, konkrete Statusbeschriftungen, Lade
 - **WHEN** die gespeicherte übersetzbare Vorlage oder der redaktionelle Inhaltszugriff wechselt
 - **THEN** gibt die Formularanzeige keine nicht mehr passende oder nicht mehr berechtigte Sprachfassung als aktuell aus
 - **AND** wird die konkrete sichere Neuabfrage/-zuordnung vor Implementierung festgelegt, ohne neue Quellreferenztabelle
+
+### Requirement: Deutsche Host-Texte ohne Mehrsprachigkeitsmodul
+
+Das System MUST gemeinsame und kommunale deutsche App-Texte unabhängig vom optionalen Mehrsprachigkeitsmodul bereitstellen. Rootimport MUST ausschließlich deutsche Ausgangstexte aus dem bestehenden JSON-Manifest übernehmen. Kommunale deutsche Pflege MUST eigene Hostrechte `app-texts.catalog.read`, `.write`, `.publish` und den aktiven Organisationsscope prüfen. Die deutsche Projektion MUST Fremdsprachenwerte ausblenden und Fremdsprachenmutationen verweigern. Deutsche Versiegelung MUST unabhängig von unvollständigen Übersetzungen möglich sein. Der Pluginmodus MUST deutsche Mutationen verweigern. Beide Ansichten MUST denselben Datenbestand verwenden und erhaltene Sprachwerte nicht löschen.
+
+#### Scenario: Deutsch bei deaktiviertem Modul
+
+- **GIVEN** eine aktive Kommune besitzt Hostrechte für deutsche Texte und kein aktives Mehrsprachigkeitsmodul
+- **WHEN** ihr Redakteur deutsche Texte liest, bearbeitet und einen vollständigen deutschen Prüfstand sichert
+- **THEN** sind die Operationen ohne Pluginzugang möglich und enthalten nur Deutsch
+- **AND** können weder gesetzte Modusheader noch Pluginrechte den Zugriff auf andere Sprachfassungen freischalten
+
+### Requirement: Sprachwahl in der instanzgebundenen DeepL-Konfiguration
+
+Das System MUST den Schnittstellentyp DeepL erst nach Mehrsprachigkeits-Modulaktivierung für die Instanz anbieten. Fehlender Anbieterzugang MUST Einrichtung/Diagnose erreichbar lassen; der Modulbereich MUST zunächst auf die nötige Einrichtung hinweisen. API-Key und instanzgebundene Zielsprachauswahl MUST innerhalb dieser Schnittstellenkonfiguration gepflegt werden. Einen separaten Hauptmenüpunkt „Sprachen“ MUST es nicht geben. Die ausdrückliche serverseitige Anbieterabfrage MUST unterstützte Textübersetzungsziele und Fähigkeiten laden, validieren und an die aktuelle Zugangskonfiguration binden. Deutsch MUST immer als Ausgangssprache verfügbar bleiben. Anbieterunterstützung MUST von technischer Studio-/Appfreigabe unterschieden werden. Abhängige Funktionen MUST serverseitig aktuelle Modul-/Zugangsbereitschaft und ausgewählte Sprache prüfen. Vorbereitete andere Plugins MUST denselben Instanzzugang verwenden und erhalten keinen Key. Setupstatus allein MUST keine noch nicht implementierte Übersetzungsfunktion behaupten.
+
+#### Scenario: Modul aktiv, DeepL noch nicht eingerichtet
+
+- **WHEN** eine Instanz das Modul aktiviert und noch keinen geprüften DeepL-Zugang besitzt
+- **THEN** kann ein entsprechend berechtigter Benutzer DeepL in der Schnittstellenverwaltung einrichten
+- **AND** erklärt der Modulbereich den fehlenden Schritt, ohne bereits Übersetzungsoperationen freizuschalten
+- **AND** bleiben deutsche Hosttexte nutzbar
+
+#### Scenario: Anbieterprüfung und Sprachauswahl
+
+- **WHEN** der berechtigte Benutzer mit dem gespeicherten Instanz-Key die Sprachen ausdrücklich abfragt
+- **THEN** werden ausschließlich gültige Zielsprachen und deren technische Nutzbarkeit dargestellt
+- **AND** können erlaubte Sprachen für diese Instanz gewählt werden, ohne ein fremdes Secret oder einen zweiten Sprachbestand zu verwenden
+
+#### Scenario: Verspätete Prüfung nach Keywechsel
+
+- **WHEN** während einer Anbieterprüfung der gespeicherte Zugang geändert wird
+- **THEN** darf die alte Antwort weder den neuen Zugang als geprüft markieren noch abhängige Funktionen freischalten
+
+#### Scenario: Anbieterfehler oder Abschaltung
+
+- **WHEN** der Zugang abgewiesen oder die Schnittstelle deaktiviert wird
+- **THEN** werden neue abhängige Anbieteroperationen gesperrt und bleibt die Einrichtung erreichbar
+- **AND** werden vorhandene Texte/Sprachfassungen nicht gelöscht und wird ein bloßer Anbieterausfall nicht als App-Sprachdeaktivierung behandelt

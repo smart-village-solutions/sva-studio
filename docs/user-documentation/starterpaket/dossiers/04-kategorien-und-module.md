@@ -23,8 +23,9 @@
 - **Route / Typ / Owner:** `/modules`, Übersicht, Host.
 - **Nutzerziel:** Modulfreigaben einer Instanz prüfen oder administrativ verwalten.
 - **Produktfakten:** Im Tenantkontext zeigt die Seite alle bekannten Module mit aktivem oder
-  inaktivem Status und Beschreibung. Ohne tenantgebundene Sitzung kann eine Instanz gewählt und
-  deren Module zugewiesen oder entzogen werden; zusätzlich bestehen Aktionen zum Neuaufbau der
+  inaktivem Status und Beschreibung. Ohne tenantgebundene Sitzung muss zuerst ausdrücklich eine
+  Instanz ausgewählt werden; es gibt keine automatische Vorauswahl. Erst danach können deren Module
+  zugewiesen oder entzogen werden; zusätzlich bestehen Aktionen zum Neuaufbau der
   IAM-Basis und zur Initialisierung der Tenant-Admin-Struktur.
 - **Kontextabhängig:** Die Verwaltungsansicht benötigt Instanz- und Modulrechte. Beim Entziehen
   werden zugehörige Berechtigungen und IAM-Basis entfernt.
@@ -34,3 +35,13 @@
   weiter zu Instanzdetails, Rollen und Berechtigungen.
 - **Evidenz:** `routes/admin/modules/-modules-page.tsx`,
   `i18n/resources/de/admin/instances/instanceModules.resources.ts`.
+
+## Deutsche App-Texte und Sprachen
+
+Root pflegt unter „Mobile-App → Gemeinsame App-Texte“ die deutschen Standards. Importiert wird eine von der App-Entwicklung vorbereitete JSON-Datei mit Textkennungen, Ausgangswerten und Platzhalterregeln; `texts.js` wird vorerst manuell in dieses Format überführt. Der Import erzeugt einen Entwurf. „Textstand sichern“ bleibt lokal und veröffentlicht nichts an die Mobile-App.
+
+Instanzen passen unter „Mobile-App → App-Texte“ die deutschen Texte mit eigenen Les-/Schreib-/Sicherungsrechten an. Das Mehrsprachigkeitsmodul ist dafür nicht nötig. Erst dort wird ein kommunaler Ausgangsbestand angelegt oder seine gemeinsame Basis ausdrücklich gewechselt.
+
+Der eigenständige Navigationspunkt „Sprachen“ wurde wieder entfernt. Die bisherige technische Sprachverwaltung wird im geplanten Abschnitt 2E durch die instanzgebundene DeepL-Schnittstellenkonfiguration abgelöst; deren Key-Einrichtung und Anbieter-Sprachabfrage sind noch nicht implementiert. Zusätzliche Sprachaktivierungen benötigen deren aktives, lokal betriebsbereites Mehrsprachigkeitsmodul. Deutsch bleibt immer verfügbar. Sperren löschen keine Texte oder gespeicherten Zuordnungen. Dieser lokale Abschnitt verändert noch keine Sprachwahl in ausgelieferten Apps und keine Studio-Oberflächensprache.
+
+Im kommunalen Modul „Mehrsprachigkeit“ übernimmt die Aktion „Aktuelle Sprachauswahl übernehmen“ die erlaubten zusätzlichen Sprachen in den bestehenden Entwurf. Dort werden Fremdsprachen bearbeitet; deutsche Ausgangstexte bleiben im Hostbereich. Bestehende Sprachkorrekturen bleiben bei einer Sperre gespeichert.

@@ -84,6 +84,26 @@ export type CatalogRelease = {
   state: 'sealed';
 };
 
+export type CatalogReleaseSummary = Pick<
+  CatalogRelease,
+  'id' | 'contractId' | 'catalogSetRevision' | 'supportedLocales' | 'checksum'
+>;
+export type CatalogOverview = {
+  scope: CatalogScope;
+  allowedLocales?: AppTranslationLocale[];
+  catalogs: (Pick<CatalogDraft, 'draftRevision' | 'supportedLocales' | 'baseReleaseId'> & {
+    contractId: string;
+  })[];
+  releases: CatalogReleaseSummary[];
+  bases: CatalogReleaseSummary[];
+};
+export type CatalogEditorData = {
+  draft: CatalogDraft;
+  values: CatalogTexts;
+  baseCatalogs: CatalogRelease['catalogs'];
+  allowedLocales?: AppTranslationLocale[];
+};
+
 export class AppTranslationError extends Error {
   constructor(
     readonly code:
@@ -352,4 +372,17 @@ export const prepareCatalogRelease = async (
     })),
   };
   return { catalogs, descriptor, checksum: await catalogDigest(descriptor) };
+};
+
+export type AvailableLanguage = {
+  locale: AppTranslationLocale;
+  available: boolean;
+  revision: string;
+};
+export type InstanceLanguage = { locale: AppTranslationLocale; enabled: boolean; revision: string };
+export type LanguageOverview = {
+  languages: AvailableLanguage[];
+  instanceId: string | null;
+  moduleAllowed: boolean;
+  assignments: InstanceLanguage[];
 };

@@ -4,6 +4,7 @@ import {
   IconFileText,
   IconHierarchy3,
   IconPackages,
+  IconDeviceMobile,
   IconPlugConnected,
   IconShieldCheck,
   IconShieldLock,
@@ -30,6 +31,7 @@ export const buildSidebarSystemItems = (
     canAccessAdminPrivacy,
     canAccessInterfaces,
     canAccessModules,
+    canAccessAppTexts,
     canAccessSystemTools,
   } = access;
   const userChildren: SidebarLeafItem[] = [
@@ -154,6 +156,29 @@ export const buildSidebarSystemItems = (
             to: '/admin/templates',
             label: t('shell.sidebar.templates'),
             icon: IconTemplate,
+          },
+        ]
+      : []),
+    ...(canAccessAdminInstances || canAccessAppTexts
+      ? [
+          {
+            kind: 'group' as const,
+            id: 'mobile-app',
+            label: t('shell.sidebar.mobileApp'),
+            icon: IconDeviceMobile,
+            children: [
+              {
+                kind: 'link' as const,
+                id: 'app-translations-standards',
+                to: canAccessAdminInstances ? '/admin/app-translations' : '/app-texts',
+                label: t(
+                  canAccessAdminInstances
+                    ? 'appTranslations.ui.standardsTitle'
+                    : 'appTranslations.ui.sourceTitle'
+                ),
+                icon: IconFileText,
+              },
+            ],
           },
         ]
       : []),

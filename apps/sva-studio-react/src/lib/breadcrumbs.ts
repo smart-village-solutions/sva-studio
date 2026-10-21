@@ -211,6 +211,30 @@ const breadcrumbRoutes: ReadonlyArray<
     ],
   },
   {
+    pattern: /^\/admin\/app-translations$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { label: t('shell.sidebar.mobileApp') },
+      { label: t('appTranslations.ui.standardsTitle') },
+    ],
+  },
+  {
+    pattern: /^\/app-texts$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { label: t('shell.sidebar.mobileApp') },
+      { label: t('appTranslations.ui.sourceTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/languages$/,
+    build: () => [overviewBreadcrumb(), { label: t('shell.sidebar.languages') }],
+  },
+  {
+    pattern: /^\/plugins\/app-translations$/,
+    build: () => [overviewBreadcrumb(), { label: t('appTranslations.ui.title') }],
+  },
+  {
     pattern: /^\/interfaces$/,
     build: () => [overviewBreadcrumb(), { label: t('interfaces.page.title') }],
   },

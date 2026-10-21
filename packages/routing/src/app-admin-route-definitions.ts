@@ -8,6 +8,24 @@ import { page, type UiRouteDefinition } from './app-route-definitions.js';
 
 export const adminUiRouteDefinitions: readonly UiRouteDefinition[] = [
   {
+    binding: 'appTexts',
+    path: uiRoutePaths.appTexts,
+    guard: 'appTexts',
+    documentation: page('mobile-app.texts', 'overview'),
+  },
+  {
+    binding: 'adminLanguages',
+    path: uiRoutePaths.adminLanguages,
+    guard: 'adminInstances',
+    documentation: page('admin.languages', 'overview'),
+  },
+  {
+    binding: 'adminAppTranslations',
+    path: uiRoutePaths.adminAppTranslations,
+    guard: 'adminInstances',
+    documentation: page('admin.app-translations', 'overview'),
+  },
+  {
     binding: 'adminUsers',
     path: uiRoutePaths.adminUsers,
     guard: 'adminUsers',

@@ -7,9 +7,11 @@
     "outDir": "dist",
     "rootDir": "src",
     "paths": {
-      "@sva/plugin-sdk": ["packages/plugin-sdk/dist/index.d.ts"]
-    }
+      "@sva/plugin-sdk": ["packages/plugin-sdk/dist/index.d.ts"],
+      "@sva/studio-ui-react": ["packages/studio-ui-react/dist/index.d.ts"]
+    },
+    "jsx": "react-jsx"
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.test.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }

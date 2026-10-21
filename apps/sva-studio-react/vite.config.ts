@@ -464,6 +464,9 @@ const config = defineConfig({
         '../../packages/plugin-waste-management/src/waste-management.job-definitions.ts'
       ),
       '@sva/media': resolveAppPath('../../packages/media/src/index.ts'),
+      '@sva/plugin-app-translations': resolveAppPath(
+        '../../packages/plugin-app-translations/src/index.ts'
+      ),
       '@sva/plugin-categories': resolveAppPath('../../packages/plugin-categories/src/index.ts'),
       '@sva/plugin-events': resolveAppPath('../../packages/plugin-events/src/index.ts'),
       '@sva/plugin-news': resolveAppPath('../../packages/plugin-news/src/index.ts'),
@@ -472,6 +475,9 @@ const config = defineConfig({
       '@sva/plugin-surveys': resolveAppPath('../../packages/plugin-surveys/src/index.ts'),
       '@sva/plugin-waste-management': resolveAppPath(
         '../../packages/plugin-waste-management/src/index.ts'
+      ),
+      '@sva/plugin-sdk/app-translations': resolveAppPath(
+        '../../packages/plugin-sdk/src/app-translations.ts'
       ),
       '@sva/plugin-sdk/route-documentation': resolveAppPath(
         '../../packages/plugin-sdk/src/route-documentation.ts'

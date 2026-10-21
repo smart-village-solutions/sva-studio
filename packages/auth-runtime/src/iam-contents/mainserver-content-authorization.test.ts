@@ -219,7 +219,7 @@ describe('Mainserver content authorization', () => {
     });
   });
 
-  it('does not let a matching organization binding bypass org_or_personal readiness', async () => {
+  it('allows a matching organization binding without a personal binding', async () => {
     state.loadBinding.mockImplementation(async (input: { principalType: string }) =>
       input.principalType === 'organization'
         ? { dataProviderId: 'provider-organization' }
@@ -233,9 +233,9 @@ describe('Mainserver content authorization', () => {
         dataProviderId: 'provider-organization',
       })
     ).resolves.toMatchObject({
-      allowed: false,
+      allowed: true,
       authorizationMode: 'exact',
-      reason: 'forbidden',
+      reason: 'allowed',
     });
   });
 
@@ -276,9 +276,9 @@ describe('Mainserver content authorization', () => {
         dataProviderId: 'provider-organization',
       })
     ).resolves.toMatchObject({
-      allowed: false,
+      allowed: true,
       authorizationMode: 'exact',
-      reason: 'forbidden',
+      reason: 'allowed',
     });
     expect(state.readCredentials).toHaveBeenCalledWith(
       expect.objectContaining({ actingPrincipalType: 'user' })
@@ -302,6 +302,37 @@ describe('Mainserver content authorization', () => {
           dataProviderId,
         })
       ).resolves.toMatchObject({ allowed: true, authorizationMode: 'exact' });
+    }
+  );
+
+  it.each(['news.read', 'news.update'])(
+    'allows %s for either verified owner without the other binding',
+    async (action) => {
+      for (const principalType of ['user', 'organization'] as const) {
+        state.loadBinding.mockImplementation(async (input: { principalType: string }) =>
+          input.principalType === principalType
+            ? { dataProviderId: 'matching-provider' }
+            : undefined
+        );
+        const input = {
+          ...context,
+          action,
+          actingPrincipalType: principalType,
+          permissions: [{ ...permission('organization'), action }],
+        };
+        await expect(
+          authorizeMainserverDataProviderAccess({
+            ...input,
+            dataProviderId: 'matching-provider',
+          })
+        ).resolves.toMatchObject({ allowed: true, authorizationMode: 'exact' });
+        await expect(
+          authorizeMainserverDataProviderAccess({
+            ...input,
+            dataProviderId: 'foreign-provider',
+          })
+        ).resolves.toMatchObject({ allowed: false });
+      }
     }
   );
 

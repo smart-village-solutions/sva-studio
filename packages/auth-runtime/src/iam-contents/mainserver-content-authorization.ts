@@ -253,15 +253,6 @@ const resolveBoundAuthorizationCandidate = (
   if (bindings.error) {
     return { allowed: false, authorizationMode: 'exact', reason: bindings.error };
   }
-  const ownReady = !bindings.needsOwn || Boolean(bindings.user);
-  const organizationReady =
-    !bindings.needsOrganization ||
-    (input.activeOrganizationId
-      ? Boolean(bindings.user && bindings.organization)
-      : Boolean(bindings.user));
-  if (!ownReady || !organizationReady) {
-    return { allowed: false, authorizationMode: 'exact', reason: 'forbidden' };
-  }
   if (
     bindings.user?.dataProviderId === input.dataProviderId &&
     isAllowedForOwnership(input, { ownerUserId: input.actorAccountId })
@@ -274,6 +265,16 @@ const resolveBoundAuthorizationCandidate = (
     isAllowedForOwnership(input, { ownerOrganizationId: input.activeOrganizationId })
   ) {
     return { allowed: true, authorizationMode: 'exact', reason: 'allowed' };
+  }
+  // A verified owner proves this resource independently of the other read view.
+  const ownReady = !bindings.needsOwn || Boolean(bindings.user);
+  const organizationReady =
+    !bindings.needsOrganization ||
+    (input.activeOrganizationId
+      ? Boolean(bindings.user && bindings.organization)
+      : Boolean(bindings.user));
+  if (!ownReady || !organizationReady) {
+    return { allowed: false, authorizationMode: 'exact', reason: 'forbidden' };
   }
   return { allowed: false, authorizationMode: 'exact', reason: 'data_provider_mismatch' };
 };

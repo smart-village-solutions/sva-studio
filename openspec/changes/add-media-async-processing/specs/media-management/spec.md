@@ -27,6 +27,9 @@ Das System SHALL vorhandene Standard-Bildvarianten über die bestehende Studio-J
 - **THEN** läuft der Medienjob weiter, ohne einen zweiten Auftrag zu starten
 - **AND** bleibt das Medium als „in Verarbeitung“ sichtbar, bis es fertiggestellt oder fehlgeschlagen ist
 - **AND** bleibt sein aktueller Zustand über den vorhandenen Asset-Lesepfad abrufbar
+- **AND** fragt eine geöffnete Detailansicht nach Ablauf der ersten 120 Sekunden den Zustand weiterhin alle zehn Sekunden ab, ohne überlappende Requests
+- **AND** beendet sie Folgeabfragen bei Fertigstellung oder einem Verarbeitungs-/Abruffehler und lädt die regulären Detaildaten einschließlich der dann zulässigen Delivery-URL neu
+- **AND** beendet ein Seiten- oder Asset-Wechsel Timer und laufende Statusabfragen; späte Antworten verändern die neue Ansicht nicht
 
 #### Scenario: Wartezeit beim Content-Speichern überschritten
 

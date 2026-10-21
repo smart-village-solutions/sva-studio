@@ -48,7 +48,7 @@ Bis `uploadStatus = processed` und `processingStatus = ready` sind neue Referenz
 
 Bei einer Zeitüberschreitung gilt:
 
-- Ein Bibliotheksupload wird weiterverarbeitet. Die Bibliothek wird neu geladen und zeigt das unfertige Medium mit „In Verarbeitung“. In der Detailansicht wird sein Zustand ebenfalls begrenzt nachgeladen.
+- Ein Bibliotheksupload wird weiterverarbeitet. Die Bibliothek wird neu geladen und zeigt das unfertige Medium mit „In Verarbeitung“. Die geöffnete Detailansicht prüft zunächst bis zu 120 Sekunden im bisherigen kurzen Intervall. Danach fragt sie den Status alle zehn Sekunden weiter ab; eine weitere Abfrage beginnt erst nach Ende der vorherigen, mit einem Zeitlimit von zehn Sekunden je Abruf. Fertigstellung oder ein Verarbeitungs-/Abruffehler lädt die regulären Detaildaten neu und beendet die Folgeabfragen. Sobald das Medium fertig ist, wird die Vorschau automatisch aufgelöst. Beim Verlassen der Seite oder Wechsel zu einem anderen Medium werden Timer und laufende Statusabfragen abgebrochen; späte Antworten werden verworfen.
 - Beim Content-Speichern wird der Versuch vor dem fachlichen Write mit einer Fehlermeldung beendet. Formulareingaben und lokale Dateientwürfe bleiben erhalten; die provisorischen Uploads dieses Versuchs werden über den bestehenden Abbruch-/Recovery-Pfad bereinigt. Bestehende Bibliotheksmedien und Referenzen bleiben erhalten. Es gibt keine automatische Wiederaufnahme.
 
 Fehlschläge bleiben fail-closed. Redigierte Fehlerdetails werden am Asset gespeichert; technische Storage-Details werden nicht in Fachmodulen offengelegt.

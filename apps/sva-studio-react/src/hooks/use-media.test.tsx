@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -34,10 +34,14 @@ const createDeferred = <T,>() => {
   };
 };
 
-const { waitForHostMediaUploadMock } = vi.hoisted(() => ({ waitForHostMediaUploadMock: vi.fn() }));
+const { waitForHostMediaUploadMock, getHostMediaAssetMock } = vi.hoisted(() => ({
+  waitForHostMediaUploadMock: vi.fn(),
+  getHostMediaAssetMock: vi.fn(),
+}));
 vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
   ...await importOriginal<typeof import('@sva/plugin-sdk')>(),
   waitForHostMediaUpload: waitForHostMediaUploadMock,
+  getHostMediaAsset: getHostMediaAssetMock,
 }));
 const listMediaMock = vi.fn();
 const getMediaMock = vi.fn();
@@ -1034,7 +1038,203 @@ describe('useMediaDetail', () => {
     await waitFor(() => expect(screen.getByTestId('delivery-url').textContent).toBe('https://cdn.test/ready.jpg'));
   });
 
+  describe('processing beyond the initial wait', () => {
+    const pendingAsset = {
+      id: 'asset-1',
+      mimeType: 'image/jpeg',
+      uploadStatus: 'pending',
+      processingStatus: 'pending',
+      metadata: {},
+      technical: {},
+    };
+    const readyAsset = { ...pendingAsset, uploadStatus: 'processed', processingStatus: 'ready' };
+    const startLongProcessing = async () => {
+      vi.useFakeTimers();
+      const waiting = createDeferred<void>();
+      waitForHostMediaUploadMock.mockReturnValue(waiting.promise);
+      getMediaMock.mockResolvedValue({ data: pendingAsset });
+      getMediaUsageMock.mockResolvedValue({
+        data: { assetId: 'asset-1', totalReferences: 0, references: [] },
+      });
+      getMediaDeliveryMock.mockResolvedValue({ data: { deliveryUrl: 'https://cdn.test/ready.jpg' } });
+      getHostMediaAssetMock.mockResolvedValue(pendingAsset);
+      const view = render(<MediaDetailProbe assetId="asset-1" />);
+      await act(async () => undefined);
+      expect(waitForHostMediaUploadMock).toHaveBeenCalledOnce();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(120000);
+        waiting.reject(
+          Object.assign(new Error('media_processing_timeout'), { code: 'media_processing_timeout' })
+        );
+      });
+      return view;
+    };
+    afterEach(() => {
+      cleanup();
+      vi.useRealTimers();
+    });
+
+    it('keeps polling every ten seconds after two minutes and resolves a late delivery automatically', async () => {
+      await startLongProcessing();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(9999);
+      });
+      expect(getHostMediaAssetMock).not.toHaveBeenCalled();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(getHostMediaAssetMock).toHaveBeenCalledOnce();
+      expect(getMediaUsageMock).toHaveBeenCalledOnce();
+      expect(getMediaDeliveryMock).not.toHaveBeenCalled();
+      getHostMediaAssetMock.mockResolvedValue(readyAsset);
+      getMediaMock.mockResolvedValue({ data: readyAsset });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10000);
+      });
+      expect(screen.getByTestId('delivery-url').textContent).toBe('https://cdn.test/ready.jpg');
+      expect(getMediaUsageMock).toHaveBeenCalledTimes(2);
+      expect(getMediaDeliveryMock).toHaveBeenCalledOnce();
+      expect(waitForHostMediaUploadMock).toHaveBeenCalledOnce();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30000);
+      });
+      expect(getHostMediaAssetMock).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(['failed', 'blocked'])(
+      'stops at %s and refreshes the failed asset without delivery',
+      async (uploadStatus) => {
+        await startLongProcessing();
+        const failed = { ...pendingAsset, uploadStatus, processingStatus: 'failed' };
+        getHostMediaAssetMock.mockResolvedValue(failed);
+        getMediaMock.mockResolvedValue({ data: failed });
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(10000);
+        });
+        expect(getMediaMock).toHaveBeenCalledTimes(2);
+        expect(getMediaDeliveryMock).not.toHaveBeenCalled();
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(30000);
+        });
+        expect(getHostMediaAssetMock).toHaveBeenCalledOnce();
+      }
+    );
+
+    it('refreshes a processing failure without starting the slow polling phase', async () => {
+      vi.useFakeTimers();
+      waitForHostMediaUploadMock.mockRejectedValue(
+        Object.assign(new Error('media_processing_failed'), { code: 'media_processing_failed' })
+      );
+      getMediaMock
+        .mockResolvedValueOnce({ data: pendingAsset })
+        .mockResolvedValue({
+          data: { ...pendingAsset, uploadStatus: 'failed', processingStatus: 'failed' },
+        });
+      getMediaUsageMock.mockResolvedValue({
+        data: { assetId: 'asset-1', totalReferences: 0, references: [] },
+      });
+      render(<MediaDetailProbe assetId="asset-1" />);
+      await act(async () => undefined);
+      expect(getMediaMock).toHaveBeenCalledTimes(2);
+      expect(getMediaDeliveryMock).not.toHaveBeenCalled();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(150000);
+      });
+      expect(getHostMediaAssetMock).not.toHaveBeenCalled();
+      expect(waitForHostMediaUploadMock).toHaveBeenCalledOnce();
+    });
+
+    it('does not overlap pending status requests', async () => {
+      await startLongProcessing();
+      const response = createDeferred<typeof pendingAsset>();
+      getHostMediaAssetMock.mockReturnValue(response.promise);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10000);
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30000);
+      });
+      expect(getHostMediaAssetMock).toHaveBeenCalledOnce();
+      await act(async () => {
+        response.resolve(pendingAsset);
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(9999);
+      });
+      expect(getHostMediaAssetMock).toHaveBeenCalledOnce();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(getHostMediaAssetMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('cancels a scheduled poll when leaving the detail page', async () => {
+      const view = await startLongProcessing();
+      view.unmount();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30000);
+      });
+      expect(getHostMediaAssetMock).not.toHaveBeenCalled();
+    });
+
+    it('aborts an in-flight poll and ignores its late result after leaving', async () => {
+      const view = await startLongProcessing();
+      const response = createDeferred<typeof readyAsset>();
+      getHostMediaAssetMock.mockReturnValue(response.promise);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10000);
+      });
+      const signal = getHostMediaAssetMock.mock.calls[0]?.[0].signal as AbortSignal;
+      expect(signal.aborted).toBe(false);
+      view.unmount();
+      expect(signal.aborted).toBe(true);
+      await act(async () => {
+        response.resolve(readyAsset);
+      });
+      expect(getMediaMock).toHaveBeenCalledOnce();
+      expect(getMediaDeliveryMock).not.toHaveBeenCalled();
+    });
+
+    it('stops on a status request error and exposes the regular refetch error', async () => {
+      await startLongProcessing();
+      getHostMediaAssetMock.mockRejectedValue(new Error('media_picker_http_503'));
+      getMediaMock.mockRejectedValue({ status: 503, code: 'database_unavailable' });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10000);
+      });
+      expect(screen.getByTestId('error-code').textContent).toBe('database_unavailable');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30000);
+      });
+      expect(getHostMediaAssetMock).toHaveBeenCalledOnce();
+      expect(getMediaDeliveryMock).not.toHaveBeenCalled();
+    });
+
+    it('aborts the old poll on asset change without restarting it for the previous asset', async () => {
+      const view = await startLongProcessing();
+      const response = createDeferred<typeof readyAsset>();
+      getHostMediaAssetMock.mockReturnValue(response.promise);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10000);
+      });
+      const signal = getHostMediaAssetMock.mock.calls[0]?.[0].signal as AbortSignal;
+      getMediaMock.mockResolvedValue({ data: { ...readyAsset, id: 'asset-2' } });
+      await act(async () => {
+        view.rerender(<MediaDetailProbe assetId="asset-2" />);
+      });
+      expect(signal.aborted).toBe(true);
+      await act(async () => {
+        response.resolve(readyAsset);
+      });
+      expect(screen.getByTestId('asset-id').textContent).toBe('asset-2');
+      expect(waitForHostMediaUploadMock).toHaveBeenCalledOnce();
+      expect(getMediaMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
   beforeEach(() => {
+    waitForHostMediaUploadMock.mockReset();
+    getHostMediaAssetMock.mockReset();
     refreshSessionMock.mockReset();
     getMediaMock.mockReset();
     getMediaUsageMock.mockReset();

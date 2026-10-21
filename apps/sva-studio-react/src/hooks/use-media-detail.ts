@@ -1,5 +1,5 @@
 import React from 'react';
-import { waitForHostMediaUpload } from '@sva/plugin-sdk';
+import { getHostMediaAsset, waitForHostMediaUpload } from '@sva/plugin-sdk';
 
 import {
   asIamError,
@@ -52,19 +52,57 @@ const shouldAutoResolveMediaDelivery = (
     asset.processingStatus === 'ready'
   );
 
-const usePendingMediaRefresh = (pendingAssetId: string | null, refetch: () => Promise<void>) => {
+const usePendingMediaRefresh = (
+  asset: IamRegisteredMediaAsset | null,
+  assetId: string | null,
+  refetch: () => Promise<void>
+) => {
+  const pendingAssetId =
+    asset?.id === assetId && asset?.processingStatus === 'pending' ? asset.id : null;
   React.useEffect(() => {
     if (!pendingAssetId) return;
     const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const refresh = () => {
       if (!controller.signal.aborted) void refetch();
+    };
+    const poll = async () => {
+      try {
+        const asset = await getHostMediaAsset({
+          fetch: globalThis.fetch.bind(globalThis),
+          assetId: pendingAssetId,
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]),
+        });
+        if (controller.signal.aborted) return;
+        if (
+          asset.processingStatus === 'pending' &&
+          asset.uploadStatus !== 'failed' &&
+          asset.uploadStatus !== 'blocked'
+        ) {
+          timer = setTimeout(() => void poll(), 10_000);
+          return;
+        }
+      } catch {
+        // The regular detail read exposes request errors and refreshes authentication.
+      }
+      refresh();
     };
     void waitForHostMediaUpload({
       fetch: globalThis.fetch.bind(globalThis),
       assetId: pendingAssetId,
       signal: controller.signal,
-    }).then(refresh, refresh);
-    return () => controller.abort();
+    }).then(refresh, (error: unknown) => {
+      if (controller.signal.aborted) return;
+      if (error instanceof Error && 'code' in error && error.code === 'media_processing_timeout') {
+        timer = setTimeout(() => void poll(), 10_000);
+      } else {
+        refresh();
+      }
+    });
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
   }, [pendingAssetId, refetch]);
 };
 
@@ -135,7 +173,7 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
     void refetch();
   }, [refetch]);
 
-  usePendingMediaRefresh(asset?.processingStatus === 'pending' ? asset.id : null, refetch);
+  usePendingMediaRefresh(asset, assetId, refetch);
 
   const runUpdate = React.useCallback(
     async (payload: UpdateMediaPayload) => {

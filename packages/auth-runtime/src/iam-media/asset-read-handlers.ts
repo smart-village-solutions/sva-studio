@@ -6,7 +6,7 @@ import {
   readMediaAssetId as readAssetId,
   resolveScopedMediaInstanceId as resolveScopedInstanceId,
 } from './request-context.js';
-import { canAccessMediaAsset } from './asset-support.js';
+import { canAccessMediaAsset, isMediaAssetReady } from './asset-support.js';
 import {
   emitMediaAuditEvent,
   mapMediaAuthorizationFailure as mapAuthorizationFailure,
@@ -212,6 +212,10 @@ export const getMediaDelivery = async (
           resourceId: assetId,
         });
         return mapAuthorizationFailure(authorization);
+      }
+
+      if (!isMediaAssetReady(asset)) {
+        return createApiError(409, 'conflict', 'Das Medium ist noch nicht zur Nutzung freigegeben.', getRequestId(), { reason: 'media_not_ready' });
       }
 
       const delivery = await storagePort.resolveDelivery({

@@ -65,6 +65,8 @@ export const getMediaStorageRegion = (): string =>
 export const getMediaStorageBucket = (): string | undefined =>
   readEnvOrSecret(['MEDIA_STORAGE_BUCKET', 'S3_BUCKET'], 'sva_studio_media_storage_bucket');
 
+export const getMediaScanEnabled = (): boolean => process.env.MEDIA_SCAN_ENABLED === 'true';
+
 export const getMediaStorageAccessKeyId = (): string | undefined =>
   readEnvOrSecret(
     ['MEDIA_STORAGE_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID'],

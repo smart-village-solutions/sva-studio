@@ -130,6 +130,8 @@ export const newsTranslationsDEEditor = {
     categoryOptionsLoading: 'Kategorien werden geladen.',
     categoryOptionsLoadError: 'Die Kategorien konnten nicht geladen werden.',
     imagePickerEmpty: 'Keine passenden Medien gefunden.',
+    mediaPickerLoading: 'Medien werden geladen.',
+    mediaPickerLoadError: 'Medien konnten nicht geladen werden.',
     mediaUploadInitializing: 'Upload wird vorbereitet.',
     mediaUploadUploading: 'Medium wird hochgeladen.',
     mediaUploadFinalizing: 'Medium wird eingepflegt.',

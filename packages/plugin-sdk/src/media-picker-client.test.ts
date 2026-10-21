@@ -10,6 +10,15 @@ import {
 } from './media-picker-client.js';
 
 describe('media picker client', () => {
+  it('excludes pending and failed media from library selection', async () => {
+    const fetch = vi.fn(async () => Response.json({ data: [
+      { id: 'ready', uploadStatus: 'processed', processingStatus: 'ready' },
+      { id: 'pending', uploadStatus: 'pending', processingStatus: 'pending' },
+      { id: 'failed', uploadStatus: 'failed', processingStatus: 'failed' },
+    ] }));
+    await expect(listHostMediaAssets({ fetch })).resolves.toEqual([{ id: 'ready', uploadStatus: 'processed', processingStatus: 'ready' }]);
+  });
+
   it('resolves the host delivery contract including the public-url marker', async () => {
     const delivery = { deliveryUrl: 'https://cdn.example.test/asset-1.jpg', expiresAt: '2099-01-01T00:00:00.000Z', isPublicUrl: true };
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: delivery }), { status: 200 }));
@@ -20,7 +29,7 @@ describe('media picker client', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('/api/v1/iam/media?')) {
-        return new Response(JSON.stringify({ data: [{ id: 'asset-1', metadata: { title: 'Titel' } }] }), { status: 200 });
+        return new Response(JSON.stringify({ data: [{ id: 'asset-1', metadata: { title: 'Titel' }, uploadStatus: 'processed', processingStatus: 'ready' }] }), { status: 200 });
       }
       if (url.includes('/api/v1/iam/media/references?')) {
         return new Response(JSON.stringify({ data: [{ id: 'ref-1', assetId: 'asset-1', role: 'teaser_image' }] }), { status: 200 });
@@ -36,7 +45,7 @@ describe('media picker client', () => {
       targetId: 'news-1',
     });
 
-    expect(assets).toEqual([{ id: 'asset-1', metadata: { title: 'Titel' } }]);
+    expect(assets).toEqual([{ id: 'asset-1', metadata: { title: 'Titel' }, uploadStatus: 'processed', processingStatus: 'ready' }]);
     expect(references).toEqual([{ id: 'ref-1', assetId: 'asset-1', role: 'teaser_image' }]);
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -61,14 +70,14 @@ describe('media picker client', () => {
         return new Response(JSON.stringify({ data: [] }), { status: 200 });
       }
       if (url === '/api/v1/iam/media?visibility=protected') {
-        return new Response(JSON.stringify({ data: [{ id: 'asset-2', visibility: 'protected' }] }), { status: 200 });
+        return new Response(JSON.stringify({ data: [{ id: 'asset-2', visibility: 'protected', uploadStatus: 'processed', processingStatus: 'ready' }] }), { status: 200 });
       }
       return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 });
     });
 
     await expect(listHostMediaAssets({ fetch: fetchMock as never })).resolves.toEqual([]);
     await expect(listHostMediaAssets({ fetch: fetchMock as never, visibility: 'protected' })).resolves.toEqual([
-      { id: 'asset-2', visibility: 'protected' },
+      { id: 'asset-2', visibility: 'protected', uploadStatus: 'processed', processingStatus: 'ready' },
     ]);
     await expect(
       listHostMediaReferencesByTarget({

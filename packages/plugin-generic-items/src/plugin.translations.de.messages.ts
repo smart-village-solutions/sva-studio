@@ -71,6 +71,8 @@ export const genericItemsTranslationsDeMessages = {
     createSuccess: 'Der generische Inhalt wurde erstellt.',
     updateSuccess: 'Der generische Inhalt wurde aktualisiert.',
     imagePickerEmpty: 'Keine passenden Bilder gefunden.',
+    mediaPickerLoading: 'Medien werden geladen.',
+    mediaPickerLoadError: 'Medien konnten nicht geladen werden.',
     mediaUploadInitializing: 'Upload wird vorbereitet.',
     mediaUploadUploading: 'Bild wird hochgeladen.',
     mediaUploadFinalizing: 'Bild wird eingebunden.',

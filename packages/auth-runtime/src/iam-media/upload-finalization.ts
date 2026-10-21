@@ -17,7 +17,7 @@ const persistUploadFailure = async (
 ): Promise<void> => {
   await service.upsertAsset({
     ...failure.asset,
-    uploadStatus: 'failed',
+    uploadStatus: failure.errorCode === 'media_scan_infected' ? 'blocked' : 'failed',
     processingStatus: 'failed',
     technical: {
       ...(failure.asset.technical ?? {}),
@@ -28,7 +28,7 @@ const persistUploadFailure = async (
 };
 
 export const failClaimedUpload = (
-  deps: MediaHttpHandlerDeps,
+  deps: Pick<MediaHttpHandlerDeps, 'withMediaService'>,
   failure: MediaUploadFailure
 ): Promise<MediaUploadFailureResult> =>
   deps.withMediaService(failure.instanceId, async (service) => {
@@ -44,7 +44,7 @@ export const failClaimedUpload = (
   });
 
 export const finalizeProcessedUpload = (
-  deps: MediaHttpHandlerDeps,
+  deps: Pick<MediaHttpHandlerDeps, 'withMediaService'>,
   finalization: MediaUploadFinalization
 ): Promise<MediaUploadFinalizationResult> =>
   deps.withMediaService(finalization.instanceId, async (service) => {

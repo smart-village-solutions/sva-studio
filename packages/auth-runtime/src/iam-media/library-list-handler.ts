@@ -1,3 +1,4 @@
+import { isMediaAssetReady } from './asset-support.js';
 import type { MediaVisibility } from '@sva/media';
 
 import { createApiError } from '../shared/request-helpers.js';
@@ -36,6 +37,8 @@ const isRegisteredListingAsset = (
   item: Awaited<ReturnType<typeof mergeMediaListingPage>>['items'][number]
 ): item is Awaited<ReturnType<typeof mergeMediaListingPage>>['items'][number] & {
   id: string;
+  uploadStatus: string;
+  processingStatus: string;
   instanceId: string;
   storageKey: string;
   mimeType: string;
@@ -48,6 +51,7 @@ const enrichListItemWithPreviewUrl = async (input: {
 }) => {
   if (
     !isRegisteredListingAsset(input.item) ||
+    !isMediaAssetReady(input.item) ||
     input.item.visibility !== 'public' ||
     !input.item.mimeType.startsWith('image/')
   ) {
@@ -77,6 +81,7 @@ const enrichListItemWithPreviewUrl = async (input: {
 
 type MediaListRequest = Readonly<{
   search?: string;
+  tag?: string;
   visibility?: MediaVisibility;
   limit: number;
   cursor?: MediaListingCursor;
@@ -141,10 +146,14 @@ const parseMediaListRequest = (request: Request): MediaListRequest | Response =>
   const limit = parseListLimit(url.searchParams);
   if (limit instanceof Response) return limit;
   const search = readOptionalListParam(url.searchParams, 'search');
-  const filters: MediaListingFilters = { search, visibility };
+  const tag = readOptionalListParam(url.searchParams, 'tag');
+  if (tag && [...tag.normalize('NFC').trim().replace(/\s+/gu, ' ')].length > 64) {
+    return createApiError(400, 'invalid_request', 'invalid_media_tags', getRequestId());
+  }
+  const filters: MediaListingFilters = { search, tag, visibility };
   const cursor = parseListCursor(url.searchParams, filters);
   if (cursor instanceof Response) return cursor;
-  return { search, visibility, limit, cursor, filters };
+  return { search, tag, visibility, limit, cursor, filters };
 };
 
 const loadMediaListingSources = async (input: {
@@ -152,12 +161,13 @@ const loadMediaListingSources = async (input: {
   instanceId: string;
   query: MediaListRequest;
 }) => {
-  const { search, visibility, cursor, limit } = input.query;
+  const { search, tag, visibility, cursor, limit } = input.query;
   const registeredAssets = await input.deps.withMediaService(input.instanceId, (service) =>
     service
       .listAssets({
         instanceId: input.instanceId,
         search,
+        tag,
         visibility,
         afterStorageKey: cursor?.afterStorageKey,
         order: 'storageKeyAsc',
@@ -166,7 +176,7 @@ const loadMediaListingSources = async (input: {
       })
       .then((assets) => assets.map(assertSupportedListAssetVisibility))
   );
-  if (visibility) {
+  if (visibility || tag) {
     return {
       registeredAssets,
       bucketObjects: [] as readonly MediaStorageObjectSummary[],

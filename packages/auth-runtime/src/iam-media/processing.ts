@@ -3,6 +3,8 @@ import { fileTypeFromBuffer } from 'file-type';
 import { MediaStorageUnavailableError, type MediaStoragePort } from './storage-port.js';
 import type { MediaService } from './service.js';
 import { cleanupReplacedClaimVariants, createMediaVariants } from './processing-variants.js';
+import { isMediaScanEnabled, MediaScanError, scanConfiguredMedia } from './clamav.js';
+import { isMediaQuarantineKey, mediaProcessingPrefix } from './storage-key-paths.js';
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
@@ -12,7 +14,8 @@ type MediaUploadProcessingFailureCode =
   | 'invalid_media_content'
   | 'upload_size_exceeded'
   | 'storage_quota_exceeded'
-  | 'upload_processing_superseded';
+  | 'upload_processing_superseded'
+  | 'media_scan_infected';
 
 export type MediaUploadFinalizationResult = 'finalized' | 'quota_exceeded' | 'claim_superseded';
 
@@ -38,7 +41,7 @@ export type MediaUploadFinalization = Readonly<{
 type MediaUploadProcessingResult =
   | Readonly<{
       ok: true;
-      asset: Record<string, any>;
+      asset: NonNullable<Awaited<ReturnType<MediaService['getAssetById']>>>;
       uploadSessionId: string;
     }>
   | Readonly<{
@@ -136,6 +139,8 @@ export const createMediaUploadProcessingService = (deps: {
     if (!asset) {
       return asErrorResult(404, 'asset_not_found');
     }
+    const quarantined = isMediaQuarantineKey(uploadSession.storageKey);
+    const privateOutput = quarantined && asset.visibility === 'protected';
 
     if (input.replacedClaimToken) {
       await cleanupReplacedClaimVariants({
@@ -143,6 +148,7 @@ export const createMediaUploadProcessingService = (deps: {
         instanceId: input.instanceId,
         assetId: String(asset.id),
         claimToken: input.replacedClaimToken,
+        privateOutput,
       });
     }
 
@@ -189,9 +195,13 @@ export const createMediaUploadProcessingService = (deps: {
         });
       }
 
+      const scanRequired = quarantined || isMediaScanEnabled();
+      if (scanRequired) await scanConfiguredMedia(object.body);
+
       const metadata = await sharp(object.body, { failOn: 'error' }).rotate().metadata();
       const technical = {
         ...(asset.technical ?? {}),
+        ...(scanRequired ? { scanStatus: 'clean' } : {}),
         width: metadata.width,
         height: metadata.height,
         contentType: detectedMimeType,
@@ -204,10 +214,22 @@ export const createMediaUploadProcessingService = (deps: {
         instanceId: input.instanceId,
         claimToken: input.claimToken,
         createId: deps.createId,
+        privateOutput,
       });
 
       let variantBytes = 0;
       persistenceStarted = true;
+      let publishedOriginalKey = asset.storageKey;
+      if (quarantined) {
+        publishedOriginalKey = `${mediaProcessingPrefix(input.instanceId, asset.id, input.claimToken, privateOutput)}original.${detectedFileType?.ext ?? 'bin'}`;
+        await deps.storagePort.writeObject({
+          instanceId: input.instanceId,
+          storageKey: publishedOriginalKey,
+          body: object.body,
+          contentType: detectedMimeType,
+        });
+        persistedVariantStorageKeys.push(publishedOriginalKey);
+      }
       for (const variant of variantsToPersist) {
         const writeResult = await deps.storagePort.writeObject({
           instanceId: input.instanceId,
@@ -221,6 +243,7 @@ export const createMediaUploadProcessingService = (deps: {
 
       const nextAsset = {
         ...asset,
+        storageKey: publishedOriginalKey,
         mimeType: detectedMimeType,
         uploadStatus: 'processed',
         processingStatus: 'ready',
@@ -261,6 +284,17 @@ export const createMediaUploadProcessingService = (deps: {
     } catch (error) {
       if (persistenceStarted) {
         await cleanupPersistedVariants();
+      }
+      if (error instanceof MediaScanError) {
+        if (error.code === 'media_scan_infected')
+          return markProcessingFailure({
+            deps,
+            claimToken: input.claimToken,
+            asset,
+            uploadSession,
+            errorCode: error.code,
+          });
+        throw error;
       }
       if (error instanceof MediaStorageUnavailableError || persistenceStarted) {
         throw error;

@@ -88,6 +88,7 @@ export const eventsDELabels = {
     mediaWidth: 'Breite',
     mediaHeight: 'Höhe',
     imageSearch: 'Bild suchen',
+    imageTags: 'Nach Tag filtern',
     tags: 'Tags',
     pointOfInterestId: 'Zugehöriger POI',
     pointOfInterestSearch: 'POI suchen',

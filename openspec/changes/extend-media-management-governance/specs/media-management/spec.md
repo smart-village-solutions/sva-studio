@@ -1,185 +1,150 @@
 ## ADDED Requirements
 
-### Requirement: Mehrsprachige globale Medienmetadaten
+### Requirement: Einfache Tags am Medien-Asset
 
-Das System SHALL Titel, Beschreibung und globalen Alt-Text eines Medien-Assets je unterstützter Instanzsprache speichern und über eine deterministische Fallback-Regel auflösen können.
+Das System SHALL registrierte Medien über eine optionale Tag-Liste im bestehenden Asset-Metadatenmodell organisieren, ohne eigene Tag-Entitäten, Ordner oder Kategorien einzuführen.
 
-#### Scenario: Redaktion pflegt sprachbezogene Asset-Metadaten
+#### Scenario: Tags werden gepflegt
 
-- **WHEN** ein berechtigter Benutzer globale Metadaten eines Assets in einer unterstützten Instanzsprache pflegt
-- **THEN** speichert das System Titel, Beschreibung und globalen Alt-Text sprachbezogen
-- **AND** Copyright, Lizenz und technische Metadaten bleiben von dieser Lokalisierung unberührt
-- **AND** verwendungsspezifische Metadaten einer `MediaReference` werden nicht überschrieben
+- **WHEN** ein berechtigter Benutzer Tags eines Assets hinzufügt oder entfernt
+- **THEN** validiert das System client- und serverseitig höchstens 20 Tags mit je 1 bis 64 Zeichen nach Unicode-NFC- und Leerzeichennormalisierung
+- **AND** werden gleiche Tags unabhängig von Groß-/Kleinschreibung einmal gespeichert, wobei die zuerst eingegebene Schreibweise angezeigt wird
+- **AND** bleiben Asset-Identität, andere Metadaten und Medienreferenzen unverändert
+- **AND** verändern nicht angegebene Tags einen Metadaten-Patch nicht; eine leere Liste entfernt alle Tags
 
-#### Scenario: Angeforderte Sprache fehlt
+#### Scenario: Bestehendes Asset hat keine Tags
 
-- **WHEN** für ein Asset kein Wert in der angeforderten Sprache vorhanden ist
-- **THEN** löst das System den Wert anhand der konfigurierten Fallback-Reihenfolge der Instanz auf
-- **AND** liefert es neben dem Wert die tatsächlich verwendete Sprache
-- **AND** kann die UI den Fallback für den Benutzer erkennbar darstellen
+- **WHEN** ein bereits vorhandenes Asset ohne Tag-Liste gelesen wird
+- **THEN** behandelt das System dies als leere Liste ohne erforderliche manuelle Nachpflege
 
-### Requirement: Getrennte Medienorganisation über Ordner, Tags und Kategorien
+### Requirement: Tags in bestehender Suche und Filterung
 
-Das System SHALL Assets instanzlokal über optionale hierarchische Ordner, normalisierte Tags und kontrollierte Kategorien organisieren können.
+Das System SHALL Tag-Begriffe in der vorhandenen Suche berücksichtigen und in Medienbibliothek sowie vorhandenem Medienpicker nach genau einem normalisierten Tag filtern können.
 
-#### Scenario: Redaktion organisiert ein Asset
+#### Scenario: Suche und Tag-Filter werden kombiniert
 
-- **WHEN** ein berechtigter Benutzer die redaktionelle Einordnung eines Assets ändert
-- **THEN** kann er das Asset optional genau einem Ordner sowie mehreren Tags und Kategorien zuordnen
-- **AND** Tags werden instanzlokal normalisiert
-- **AND** Kategorien werden gegen die kontrollierte Wertemenge der Instanz validiert
-- **AND** Asset-Identität und bestehende Medienreferenzen bleiben stabil
+- **WHEN** ein berechtigter Benutzer Suchtext und einen Tag-Filter setzt
+- **THEN** wendet das System beide Bedingungen serverseitig innerhalb des bestehenden Instanz- und Berechtigungsscope an
+- **AND** vergleicht es den Filter vollständig und unabhängig von Groß-/Kleinschreibung nach derselben Tag-Normalisierung
+- **AND** liefert es unter gesetztem Tag-Filter keine unregistrierten Bucket-Dateien
 
-#### Scenario: Medien werden anhand der Organisation gesucht
+#### Scenario: Filter wird während der Seitennavigation geändert
 
-- **WHEN** ein berechtigter Benutzer die Medienbibliothek nach Ordner, Tags oder Kategorien filtert
-- **THEN** wendet das System die Filter serverseitig innerhalb der aktiven Instanz an
-- **AND** kombiniert es die Filter mit der bestehenden Berechtigungs- und Mandantengrenze
-- **AND** die redaktionelle Einordnung erweitert keine Zugriffsrechte
+- **WHEN** sich der Tag-Filter ändert
+- **THEN** beginnt die Seitennavigation mit dem neuen Filter
+- **AND** wird ein Cursor eines anderen Filters nicht ungeprüft weiterverwendet
 
-#### Scenario: Taxonomiewert wird geändert oder entfernt
+### Requirement: ClamAV-Prüfung vor der Upload-Freigabe
 
-- **WHEN** ein Ordner, Tag oder eine Kategorie umbenannt, verschoben oder entfernt wird
-- **THEN** migriert oder entfernt das System betroffene Zuordnungen kontrolliert
-- **AND** bestehende Asset- und Referenzidentitäten bleiben unverändert
-- **AND** instanzfremde Zuordnungen werden nicht verändert
+Das System SHALL neue Uploads im bestehenden Medienjob vor Variantenverarbeitung und Freigabe über den internen ClamAV-Dienst prüfen. Nur eine vollständig abgeschlossene Prüfung ohne Fund darf die weitere Verarbeitung erlauben.
 
-### Requirement: Instanzlokale Hash-basierte Duplikaterkennung
+#### Scenario: Datei wird erfolgreich geprüft
 
-Das System SHALL validierte Uploads anhand eines kryptografisch geeigneten Hashes des tatsächlichen Dateiinhalts auf instanzlokale Duplikate prüfen.
+- **WHEN** ClamAV die Datei vollständig ohne Fund geprüft hat
+- **AND** die übrige Validierung und Verarbeitung erfolgreich sind
+- **THEN** darf die vorhandene Finalisierung das Asset unter gültigem Claim, offener Content-Speicheroperation soweit erforderlich und erfolgreicher Quotenprüfung auf `ready` setzen
+- **AND** verwendet sie dieselben geprüften Originalbytes für Veröffentlichung und Varianten
 
-#### Scenario: Upload entspricht einem sichtbaren vorhandenen Asset
+#### Scenario: Schadsoftware wird gefunden
 
-- **WHEN** der Inhalts-Hash eines validierten Uploads einem vorhandenen Asset derselben Instanz entspricht
-- **AND** der Benutzer dieses Asset lesen darf
-- **THEN** bietet das System kontrolliert Wiederverwendung, ausdrücklich bestätigte Duplikatanlage oder Abbruch an
-- **AND** erzeugt die Wiederverwendung kein zweites Storage-Objekt
-- **AND** prüft der Server die gewählte Entscheidung gegen die bestehenden Medienberechtigungen
+- **WHEN** ClamAV einen Fund meldet
+- **THEN** bleibt das Asset unreferenzierbar und wird im vorhandenen gesperrten Uploadzustand geführt
+- **AND** erfolgen weder Variantenfreigabe noch erfolgreiche Quotenbuchung
+- **AND** erhält der Benutzer eine verständliche übersetzte Fehlermeldung ohne Scanner-Interna
 
-#### Scenario: Hash-Treffer darf nicht offengelegt werden
+#### Scenario: Prüfung ist nicht erfolgreich abgeschlossen
 
-- **WHEN** ein übereinstimmender Hash nur in einer anderen Instanz oder an einem für den Benutzer nicht sichtbaren Asset existiert
-- **THEN** legt das System weder Existenz noch Metadaten des Treffers offen
-- **AND** gibt es keine rohen Inhalts-Hashes an den Client aus
+- **WHEN** der Scanner nicht erreichbar ist, ein Timeout, ungültige Antwort, überschrittenes Limit oder eine sonstige unvollständige Prüfung auftritt
+- **THEN** wird keine Scanfreigabe erteilt
+- **AND** verwenden technische Fehler die vorhandenen Studio-Job-Wiederholungen und nach deren Ausschöpfung den bestehenden Upload-Fehlerzustand
+- **AND** existiert kein automatischer Erfolgsfallback oder manueller Freigabebypass
 
-#### Scenario: Wiederverwendung oder Abbruch nach einem Direct Upload
+### Requirement: Geschützter Eingang und Bindung an geprüfte Bytes
 
-- **WHEN** zum Zeitpunkt der Duplikatentscheidung bereits ein temporäres Storage-Objekt oder eine Upload-Session existiert
-- **AND** der Benutzer Wiederverwendung oder Abbruch wählt
-- **THEN** versetzt das System die temporäre Upload-Session in einen terminalen Zustand
-- **AND** plant es die physische Entfernung des temporären Objekts idempotent über den kanonischen Medienjob-Vertrag aus `add-media-async-processing`
-- **AND** erzeugt es aus dem temporären Objekt weder ein neues `MediaAsset` noch eine neue `MediaReference`
-- **AND** bleiben dessen gespeicherte Bytes bis zur bestätigten physischen Löschung vollständig quotenwirksam
+Das System SHALL ungeprüfte und abgewiesene Uploads auch auf Storage-Ebene vor öffentlichem Abruf schützen und verhindern, dass nachträglich ausgetauschte Bytes vom Scanergebnis profitieren.
 
-#### Scenario: Kompensationsbereinigung eines temporären Uploads
+#### Scenario: Direkter Zugriff auf ungeprüften Upload
 
-- **WHEN** die physische Entfernung des temporären Upload-Objekts bestätigt wird
-- **THEN** reduziert das System die serverseitig ermittelte Speichernutzung atomar und höchstens einmal um dessen bestätigte gespeicherte Bytes
-- **AND** verändern wiederholte Bereinigungsversuche die Nutzung nicht erneut
-- **BUT** wenn die Entfernung nicht vollständig bestätigt werden kann, bleiben die Bytes quotenwirksam und der kanonische Medienjob-Vertrag wiederholt die Bereinigung
+- **WHEN** ein neuer Upload noch nicht freigegeben oder bereits abgewiesen ist
+- **THEN** erlauben weder Studio-Delivery und Preview noch direkte öffentliche Storage-URLs oder Bucket-Listings seine Nutzung
+- **AND** wird Scanbetrieb auf einer Storage-Anbindung ohne nachgewiesenen Zugriffsschutz nicht als geschützt aktiviert
 
-### Requirement: Sicherer Originalaustausch mit stabiler Asset-Identität
+#### Scenario: Upload-Eingang wird nach der Prüfung überschrieben
 
-Das System SHALL das Original eines Assets über einen versionierten, fail-closed Übergang austauschen können, ohne bestehende Medienreferenzen zu brechen.
+- **WHEN** eine noch gültige Upload-URL oder ein konkurrierender Schreibzugriff den Eingang nach der Prüfung verändert
+- **THEN** gelangen diese ungeprüften Bytes weder in das freigegebene Original noch in dessen Varianten
+- **AND** berechtigt das frühere Scanergebnis nicht zur Veröffentlichung der veränderten Datei
 
-#### Scenario: Neue Originalversion wird erfolgreich aktiviert
+#### Scenario: Verarbeitung wird überholt oder abgebrochen
 
-- **WHEN** ein berechtigter Benutzer das Original eines Assets ersetzt
-- **AND** die neue Version Validierung, Malware-Prüfung und erforderliche Variantenverarbeitung erfolgreich abschließt
-- **THEN** aktiviert das System die neue Originalversion atomar
-- **AND** `MediaAsset`-ID, `MediaReference`-IDs und fachliche Rollen bleiben stabil
-- **AND** Varianten werden aus der neuen Originalversion erzeugt und erhalten cache-sichere technische Identitäten
+- **WHEN** der Claim eines Versuchs überholt oder seine provisorische Content-Speicheroperation abgebrochen wird
+- **THEN** darf der Versuch weder ein Asset freigeben noch fremde Verarbeitungsobjekte löschen
+- **AND** erfolgen Bereinigung und Quotenbehandlung über die bestehenden Pfade ohne doppelte Buchung oder Abzug nie gebuchter Bytes
 
-#### Scenario: Neue Originalversion kann nicht freigegeben werden
+### Requirement: Kein scanfreier Weg für neue Bucket-Registrierungen
 
-- **WHEN** Validierung, Malware-Prüfung oder erforderliche Variantenverarbeitung einer neuen Originalversion fehlschlägt
-- **THEN** bleibt die bisher aktive Originalversion führend und nutzbar
-- **AND** die fehlerhafte Version wird nicht an bestehende Referenzen ausgeliefert
-- **AND** der Benutzer erhält einen redigierten, nachvollziehbaren Status
+Das System SHALL bei aktivem Scan die Neuregistrierung bisher unregistrierter Bucket-Dateien zunächst abweisen, solange dieser bestehende Pfad keinen Scan vor `ready` gewährleistet.
 
-#### Scenario: Konkurrierende Replace-Aktivierung ist veraltet
+#### Scenario: Neue Bucket-Datei soll unmittelbar registriert werden
 
-- **GIVEN** zwei Replace-Vorgänge wurden mit derselben erwarteten aktiven Originalversion oder Revision gestartet
-- **WHEN** der erste Vorgang seine neue Version erfolgreich per Compare-and-swap aktiviert
-- **AND** der zweite Vorgang anschließend seine Kandidatenversion aktivieren will
-- **THEN** weist das System die zweite Aktivierung als Konflikt zurück
-- **AND** bleiben die vom ersten Vorgang aktivierte Version und deren Retention- und Quota-Zustand unverändert
-- **AND** wechselt die veraltete Kandidatenversion kontrolliert in den fehlgeschlagenen Retention- und Bereinigungspfad
+- **WHEN** bei aktivem Scan eine bisher unregistrierte Bucket-Datei als Asset angelegt werden soll
+- **THEN** weist das System dies mit einer verständlichen Meldung ab
+- **AND** erzeugt es daraus kein ungeprüftes `ready`-Asset
 
-### Requirement: Retention und Quota-Abrechnung von Originalversionen
+#### Scenario: Bereits registriertes Medium wird verwendet
 
-Das System SHALL inaktive und fehlgeschlagene Originalversionen nach instanzbezogenen Retention-Regeln bereinigen und ihre gespeicherten Bytes bis zur bestätigten physischen Löschung konsistent auf die harte Speicherquote anrechnen.
+- **WHEN** ein bestehendes registriertes Medium gelesen oder verwendet wird
+- **THEN** bleibt dessen vorhandener Lebenszyklus maßgeblich
+- **AND** behauptet das System dafür keinen nachträglichen Scan-Nachweis und startet keine automatische Bestandsprüfung
 
-#### Scenario: Erfolgreicher Replace startet die Retention der Altversion
+### Requirement: Automatische Signaturpflege und bestehende Betriebsdiagnose
 
-- **WHEN** eine neue Originalversion erfolgreich aktiviert wird
-- **THEN** markiert das System die zuvor aktive Originalversion als inaktiv und nicht mehr auslieferbar
-- **AND** berechnet es aus der zum Übergangszeitpunkt gültigen instanzbezogenen Retention-Regel einen unveränderlichen Bereinigungszeitpunkt
-- **AND** bleiben die Altversion und ihre ausschließlich daraus abgeleiteten Varianten bis zur bestätigten physischen Löschung vollständig quotenwirksam
+Das System SHALL ClamAV gemäß ADR-068 intern betreiben, die offiziellen Signaturen automatisch mit `freshclam` aktualisieren, persistent speichern und vom Scanner nachladen lassen.
 
-#### Scenario: Inaktive Altversion erreicht ihren Bereinigungszeitpunkt
+#### Scenario: Signaturen werden aktualisiert oder Container neu gestartet
 
-- **WHEN** eine abgelöste Originalversion ihren beim Replace berechneten Bereinigungszeitpunkt erreicht
-- **AND** keine dokumentierte Aufbewahrungssperre besteht
-- **THEN** entfernt ein idempotenter Cleanup die Altversion und ihre ausschließlich daraus abgeleiteten Varianten
-- **AND** die aktive Originalversion, Asset-Identität und Medienreferenzen bleiben unverändert
+- **WHEN** neue Signaturen bereitstehen oder der Scanner-Container neu startet
+- **THEN** werden Signaturdaten automatisch aktualisiert beziehungsweise aus dem persistenten Volume wiederverwendet
+- **AND** lädt der Scanner aktualisierte Signaturen ohne Studio-Deployment
 
-#### Scenario: Fehlgeschlagene Version erreicht ihren Bereinigungszeitpunkt
+#### Scenario: Aktualitätsbestätigung bleibt aus
 
-- **WHEN** eine niemals aktivierte Originalversion ihren aus der Fehler-Retention berechneten Bereinigungszeitpunkt erreicht
-- **AND** keine dokumentierte Aufbewahrungssperre besteht
-- **THEN** entfernt ein idempotenter Cleanup die Originalversion und ihre ausschließlich daraus abgeleiteten Varianten
-- **AND** bestehende aktive Versionen, Asset-Identität und Medienreferenzen bleiben unverändert
+- **WHEN** seit der letzten bestätigten Aktualität der tatsächlich geladenen Signaturen 24 Stunden vergangen sind
+- **THEN** warnt das vorhandene Monitoring
+- **AND** werden ab 72 Stunden ohne diesen Nachweis keine neuen Uploads mehr freigegeben
+- **AND** bleiben bereits verfügbare Medien nutzbar
+- **AND** setzt weder ein bloßer Scanner-Ping noch ein Updateversuch oder Container-Neustart die Frist zurück
 
-#### Scenario: Physische Bereinigung wird bestätigt
+#### Scenario: Aktualität wird initial oder erneut bestätigt
 
-- **WHEN** Originalversion und zugehörige Varianten nach Ablauf der Retention physisch vollständig gelöscht wurden
-- **THEN** reduziert das System die serverseitig ermittelte Speichernutzung atomar und höchstens einmal um die bestätigten gespeicherten Bytes
-- **AND** nachfolgende Cleanup-Wiederholungen verändern die Nutzung nicht erneut
+- **WHEN** die Aktualität der Signaturen erfolgreich geprüft und der dazu passende geladene Signaturstand bestätigt wurde
+- **THEN** gilt der Zeitpunkt als neuer Aktualitätsnachweis, auch wenn kein Update verfügbar war
+- **AND** darf eine wegen der 72-Stunden-Grenze gesperrte Freigabe nach erneuter Prüfung der übrigen Bedingungen fortgesetzt werden
+- **AND** werden ohne initialen Nachweis keine Uploads freigegeben
 
-#### Scenario: Physische Bereinigung schlägt fehl
+#### Scenario: Scanner fällt innerhalb der Aktualitätsfrist aus
 
-- **WHEN** die Löschung einer inaktiven oder fehlgeschlagenen Version nicht vollständig bestätigt werden kann
-- **THEN** bleiben ihre gespeicherten Bytes vollständig quotenwirksam
-- **AND** wird die Bereinigung über den kanonischen Medienjob-Vertrag erneut versucht
-- **AND** führt dieser Governance-Pfad keine eigene Queue-, Retry- oder Dead-Letter-Infrastruktur ein
+- **WHEN** ein Scanner-Ausfall oder eine unvollständige Prüfung eintritt, obwohl der Aktualitätsnachweis noch keine 72 Stunden alt ist
+- **THEN** wird der Upload unabhängig von der Aktualitätsfrist nicht freigegeben
+- **AND** wird ein einzelner Updatefehler bei weiterhin zulässigem Aktualitätsnachweis und erfolgreichem Scan nicht allein als Scanfehler gewertet
 
-### Requirement: Malware-Prüfung als Freigabe-Gate
+### Requirement: Feste Sichtbarkeit neu gescannter Medien
 
-Das System SHALL neue Originaldateien über einen produktneutralen Malware-Scanner-Port prüfen und nur nach einem Ergebnis `clean` zur Nutzung freigeben.
+Das System SHALL die beim Upload gewählte Sichtbarkeit nach erfolgreichem Scan und Freigabe festhalten. Für eine andere Sichtbarkeit ist ein neuer Upload erforderlich; ein später deaktivierter Scanner hebt diese Regel nicht auf.
 
-#### Scenario: Scan bestätigt eine unauffällige Datei
+#### Scenario: Sichtbarkeit eines gescannten Mediums soll wechseln
 
-- **WHEN** der Malware-Scanner für eine validierte Originaldatei das Ergebnis `clean` liefert
-- **THEN** darf das System den weiteren Freigabe- oder Aktivierungspfad fortsetzen
-- **AND** die Freigabe bleibt zusätzlich von den übrigen Validierungs- und Processing-Regeln abhängig
+- **WHEN** ein freigegebenes, neu gescanntes Medium von `public` zu `protected` oder umgekehrt geändert werden soll
+- **THEN** weist die bestehende Metadaten-API die Änderung mit HTTP 409 und dem Grund `media_visibility_fixed` ab
+- **AND** bleiben gleichzeitig übermittelte Metadaten unverändert
+- **AND** erläutert die Mediendetailansicht den erforderlichen neuen Upload
 
-#### Scenario: Datei ist gefährlich oder nicht verlässlich geprüft
+#### Scenario: Metadaten eines gescannten Mediums werden gepflegt
 
-- **WHEN** der Scan `infected`, `scan_failed`, `unavailable` oder `unknown` ergibt
-- **THEN** bleibt das neue Asset oder die neue Originalversion fail-closed und nicht referenzierbar
-- **AND** eine Replace-Operation lässt die bisher aktive Version unverändert
-- **AND** Benutzer erhalten keine Scanner-Interna, Storage-Secrets oder sensitiven Dateidetails
+- **WHEN** Titel, Alternativtext oder Tags eines neu gescannten Mediums geändert werden und die Sichtbarkeit unverändert bleibt oder ausgelassen wird
+- **THEN** bleibt die Metadatenpflege möglich und der Scan-Nachweis erhalten
 
-#### Scenario: Scan wird asynchron ausgeführt
+#### Scenario: Bestandsmedium ohne Scan-Nachweis
 
-- **WHEN** ein Malware-Scan außerhalb des synchronen Upload-Pfads ausgeführt wird
-- **THEN** verwendet er den kanonischen Medienjob-Vertrag aus `add-media-async-processing`
-- **AND** dieser Governance-Pfad führt keine eigene Queue-, Retry- oder Dead-Letter-Infrastruktur ein
-
-### Requirement: Instanzbezogene Quota-Frühwarnung
-
-Das System SHALL berechtigte Benutzer anhand konfigurierbarer instanzbezogener Warnschwellen vor dem Erreichen der bestehenden harten Speicherquote informieren.
-
-#### Scenario: Speichernutzung erreicht eine Warnschwelle
-
-- **WHEN** die serverseitig ermittelte Speichernutzung einer Instanz eine konfigurierte Warnschwelle erreicht
-- **THEN** zeigt das System berechtigten Benutzern Warnstufe, aktuelle Nutzung und harte Grenze an
-- **AND** Uploads bleiben bis zur autoritativen harten Grenze nach den übrigen Regeln möglich
-- **AND** der Client kann Nutzungswert oder Warnstatus nicht als Entscheidungsquelle vorgeben
-
-#### Scenario: Benutzer darf Quota-Daten nicht sehen
-
-- **WHEN** ein Benutzer ohne ausreichende Berechtigung einen Medien- oder Upload-Kontext öffnet
-- **THEN** werden ihm weder Quota-Warnung noch interne Nutzungs- und Grenzwerte offengelegt
-- **AND** die serverseitige Durchsetzung der harten Quote bleibt unverändert aktiv
+- **WHEN** ein vorhandenes Medium keinen nachträglichen Scan-Nachweis besitzt
+- **THEN** bleibt sein bisheriger Änderungsvertrag erhalten

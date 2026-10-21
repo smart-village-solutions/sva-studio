@@ -81,6 +81,9 @@ function cockpitCardPickerLabels(pt: (key: string) => string): StudioMediaPicker
     },
     library: {
       searchLabel: pt('media.search'),
+      tagLabel: pt('media.tagFilter'),
+      loadError: pt('messages.mediaError'),
+      loading: pt('media.loading'),
       empty: pt('media.empty'),
       select: pt('actions.selectImage'),
     },

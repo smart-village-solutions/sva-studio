@@ -80,6 +80,7 @@ export const genericItemsTranslationsDe = {
       mediaCopyright: 'Copyright',
       mediaContentType: 'Medientyp',
       imageSearch: 'Bildsuche',
+      imageTags: 'Nach Tag filtern',
       locations: 'Orte',
       locationsHelp: 'Ortsbezüge mit Namen, Verwaltungsfeldern und optionalen Kartenkoordinaten.',
       locationName: 'Ortsname',

@@ -1,4 +1,6 @@
 services:
+  clamav:
+    platform: linux/amd64
   app:
     build: .
     ports:

@@ -8,6 +8,7 @@ const createPluginJobExecutionHandlersMock = vi.fn(() => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   dsrExportStudioJobRegistration: { jobTypeId: 'studio.dsr-export' },
+  mediaUploadProcessingStudioJobRegistration: { jobTypeId: 'media.process-upload' },
   mediaContentSaveRecoveryStudioJobRegistration: {
     jobTypeId: 'media.content-save-recovery',
   },
@@ -96,6 +97,7 @@ describe('SSF Studio distribution inputs', () => {
     expect(registerStudioJobExecutionHandlersMock).toHaveBeenCalledWith([
       { jobTypeId: 'studio.dsr-export' },
       { jobTypeId: 'media.content-save-recovery' },
+      { jobTypeId: 'media.process-upload' },
     ]);
     expect(registerPluginOperationExecutionHandlersMock).toHaveBeenCalledOnce();
   });

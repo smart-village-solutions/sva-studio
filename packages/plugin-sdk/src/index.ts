@@ -217,6 +217,7 @@ export {
   isSupportedContentMediaUploadFile,
   completeHostMediaUpload,
   uploadHostMediaFile,
+  waitForHostMediaUpload,
   definePluginModuleIamContract,
   definePluginPermissions,
   definePluginContentTypes,

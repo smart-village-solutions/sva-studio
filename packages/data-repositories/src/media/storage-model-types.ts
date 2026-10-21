@@ -42,6 +42,7 @@ export type MediaUsageImpact = {
 export type MediaAssetListFilter = {
   readonly instanceId: string;
   readonly search?: string;
+  readonly tag?: string;
   readonly visibility?: string;
   readonly afterStorageKey?: string;
   readonly order?: 'updatedAtDesc' | 'storageKeyAsc';

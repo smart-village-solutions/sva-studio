@@ -43,6 +43,16 @@ vi.mock('../../../hooks/use-media', () => ({
 }));
 
 describe('MediaLibraryPage', () => {
+  it('submits search and tag together and resets pagination when clearing filters', () => {
+    render(<MediaLibraryPage />);
+    fireEvent.change(screen.getByLabelText('Tags'), { target: { value: 'Park' } });
+    fireEvent.change(screen.getByLabelText('Suche'), { target: { value: 'Rathaus' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Filtern' }));
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ cursor: undefined, limit: 36, search: 'Rathaus', tag: 'Park' });
+    fireEvent.click(screen.getByRole('button', { name: 'Filter zurücksetzen' }));
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ cursor: undefined, limit: 36 });
+  });
+
   const uploadFileMock = vi.fn();
 
   beforeEach(() => {
@@ -350,7 +360,7 @@ describe('MediaLibraryPage', () => {
       reset: vi.fn(),
     });
     rerender(<MediaLibraryPage />);
-    expect(screen.getByText('Upload wird abgeschlossen …')).toBeTruthy();
+    expect(screen.getByText('Bild wird verarbeitet …')).toBeTruthy();
 
     useSingleFileMediaUploadMock.mockReturnValue({
       phase: 'error',

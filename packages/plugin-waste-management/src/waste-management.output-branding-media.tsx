@@ -32,6 +32,9 @@ const createMediaPickerLabels = (
   },
   library: {
     searchLabel: translate('output.pdf.mediaPicker.searchLabel'),
+    tagLabel: translate('output.pdf.mediaPicker.tagLabel'),
+    loading: translate('output.pdf.mediaPicker.loading'),
+    loadError: translate('output.pdf.mediaPicker.loadError'),
     empty: translate('output.pdf.mediaPicker.empty'),
     select: translate('output.pdf.mediaPicker.select'),
   },

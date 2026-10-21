@@ -195,6 +195,9 @@ export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAsse
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {isRegisteredMediaAsset(asset) && asset.processingStatus === 'pending' ? (
+            <Badge variant="outline">{t('media.processingStatus.pending')}</Badge>
+          ) : null}
           <Badge variant="outline">{fileType}</Badge>
           <span>{formatByteSize(asset.byteSize)}</span>
           <span>{usageCountLabel(referenceCount, usageStatus)}</span>

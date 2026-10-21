@@ -399,12 +399,14 @@ Kernmodell für hochgeladene und referenzierte Medien:
 Kernidee:
 
 - Assets, Varianten, Upload-Sessions und Referenzen sind getrennt modelliert.
+- Optionale Medien-Tags liegen als validierte Liste im vorhandenen `media_assets.metadata`-JSONB. Suchtext und einzelner Tag-Filter werden innerhalb derselben Instanz serverseitig angewendet; dafür entsteht keine eigene Taxonomietabelle oder Schemamigration.
+- Der erfolgreiche Scan neuer Uploads liegt als `scanStatus: clean` im vorhandenen `media_assets.technical`-JSONB und wird mit derselben Finalisierung gespeichert. Er hält die gewählte Sichtbarkeit für den vorhandenen Änderungspfad fest; zusätzliche Spalten oder Tabellen sind nicht erforderlich.
 - Speicherverbrauch und Limits werden relational pro Instanz geführt.
 - Content-Editoren halten neu gewählte Dateien zunächst ausschließlich als lokale Browser-Entwürfe. Erst beim fachlichen Speichern werden sie einer benutzergebundenen `media_content_save_operation` zugeordnet und als `provisional` hochgeladen.
 - Provisorische Assets sind nicht Teil der Medienbibliothek. Nach erfolgreichem Content-Write ersetzt ein atomarer Commit die Zielreferenzen und aktiviert die zugehörigen Assets; bei einem eindeutig fehlgeschlagenen Write werden die provisorischen Objekte über denselben Operationskontext entfernt.
 - Aktive Assets werden für die gemeinsame Cursor-Paginierung mit dem Bucket über einen binär (`COLLATE "C"`) sortierten Storage-Key-Index gelesen.
 - `provisional_operation_id`, `provisional_owner_subject`, `provisional_draft_id` und `provisional_expires_at` begrenzen Zugriff, Idempotenz und spätere Reconciliation. Unklare Write-Ausgänge werden nicht durch voreiliges Löschen verschleiert.
-- `media_upload_sessions.claim_token` grenzt jeden Verarbeitungsversuch eindeutig ab. Varianten liegen bis zur token-geschützten Finalisierung unter claim-isolierten Storage-Keys. Dadurch kann ein durch Recovery abgelöster Verarbeiter weder veröffentlichte Varianten überschreiben noch Objekte eines anderen Claims löschen. Die Finalisierung provisorischer Assets sperrt zusätzlich die zugehörige Content-Speicheroperation und akzeptiert nur `preparing` oder `uploading`.
+- Die Annahme eines Medienuploads speichert Session-Claim, Studio-Job und Graphile-Enqueue atomar; die Session-ID dient als stabile Job-ID. `media_upload_sessions.claim_token` wird vom Worker bei jedem Versuch erneuert und grenzt dessen Verarbeitung eindeutig ab. Varianten liegen bis zur token-geschützten Finalisierung unter claim-isolierten Storage-Keys. Dadurch kann ein durch Recovery abgelöster Verarbeiter weder veröffentlichte Varianten überschreiben noch Objekte eines anderen Claims löschen. Die Finalisierung provisorischer Assets sperrt zusätzlich die zugehörige Content-Speicheroperation und akzeptiert nur `preparing` oder `uploading`.
 
 ### 8. Technische Hilfs- und Betriebsdaten
 

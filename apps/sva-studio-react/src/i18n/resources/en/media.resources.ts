@@ -63,6 +63,8 @@ export const mediaENResources = {
     },
   },
   detail: {
+    visibilityFixedHint:
+      'Visibility remains fixed after a scanned upload. To change visibility, upload the media again.',
     subtitle:
       'Review preview context, delivery, metadata, and usage impact inside one shared asset workspace.',
     loadError: 'The media detail view could not be loaded.',
@@ -86,6 +88,8 @@ export const mediaENResources = {
     technicalDescription: 'Technical identity, status values, and delivery data for the asset.',
   },
   filters: {
+    apply: 'Filter',
+    clear: 'Reset filters',
     searchLabel: 'Search',
     searchPlaceholder: 'Search by title, alt text, or MIME type',
     visibilityLabel: 'Visibility',
@@ -110,6 +114,8 @@ export const mediaENResources = {
     openUsage: 'Open usage impact',
   },
   fields: {
+    tags: 'Tags',
+    tagsHint: 'One tag per line; up to 20 tags with 64 characters each.',
     title: 'Title',
     altText: 'Alt text',
     description: 'Description',
@@ -145,7 +151,7 @@ export const mediaENResources = {
     blocked: 'Blocked',
   },
   processingStatus: {
-    pending: 'Pending',
+    pending: 'Processing',
     ready: 'Ready',
     failed: 'Failed',
   },
@@ -221,7 +227,10 @@ export const mediaENResources = {
     upload: {
       initializing: 'Preparing upload …',
       uploading: 'Uploading file …',
-      finalizing: 'Finalizing upload …',
+      finalizing: 'Processing image …',
+      processingTimeout:
+        'Processing is taking longer. The image continues processing in the background and remains visible in the library.',
+      processingFailed: 'The image could not be processed.',
       success: 'Upload complete. Opening the detail view …',
       error: 'The upload could not be completed.',
     },
@@ -271,6 +280,9 @@ export const mediaENResources = {
     altTextHint: 'Will be completed later during editorial review.',
   },
   errors: {
+    infected:
+      'The file was blocked because suspected malware was detected. Please upload a safe file.',
+    invalidTags: 'Please use up to 20 tags with 1 to 64 characters each.',
     forbidden: 'Insufficient permissions for this media action.',
     databaseUnavailable: 'Media data could not be processed because of a database problem.',
     notFound: 'The requested media asset could not be found.',

@@ -310,3 +310,5 @@ export {
   readInstanceSsfLoginClientsReady,
   readInstanceSsfProvisioningLoginClientsReady,
 } from './ssf-login-clients.js';
+
+export { mediaUploadProcessingStudioJobRegistration } from './iam-media/upload-processing-job.js';

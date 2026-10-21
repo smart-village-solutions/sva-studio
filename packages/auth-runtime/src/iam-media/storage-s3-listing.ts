@@ -64,7 +64,7 @@ export const createS3ListObjects =
   }): Promise<MediaStorageObjectList> => {
     const instancePrefix = resolveStoragePrefix(input.instanceId, config.bucket);
     const requestedPrefix = input.prefix?.replace(/^\/+/, '') ?? '';
-    const prefix = requestedPrefix.startsWith(instancePrefix)
+    const prefix = requestedPrefix.startsWith(`.protected/${input.instanceId}/`) || requestedPrefix.startsWith(instancePrefix)
       ? requestedPrefix
       : `${instancePrefix}${requestedPrefix}`;
     const response = await client.send(

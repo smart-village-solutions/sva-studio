@@ -63,6 +63,8 @@ export const mediaDEResources = {
     },
   },
   detail: {
+    visibilityFixedHint:
+      'Die Sichtbarkeit bleibt nach dem gescannten Upload fest. Für eine andere Sichtbarkeit laden Sie das Medium erneut hoch.',
     subtitle:
       'Prüfen Sie Vorschau, Delivery, Metadaten und Nutzungsimpact in einem gemeinsamen Asset-Workspace.',
     loadError: 'Die Mediendetailansicht konnte nicht geladen werden.',
@@ -86,6 +88,8 @@ export const mediaDEResources = {
     technicalDescription: 'Technische Identität, Statuswerte und Delivery-Daten des Assets.',
   },
   filters: {
+    apply: 'Filtern',
+    clear: 'Filter zurücksetzen',
     searchLabel: 'Suche',
     searchPlaceholder: 'Nach Titel, Alternativtext oder MIME-Typ suchen',
     visibilityLabel: 'Sichtbarkeit',
@@ -110,6 +114,8 @@ export const mediaDEResources = {
     openUsage: 'Usage-Impact öffnen',
   },
   fields: {
+    tags: 'Tags',
+    tagsHint: 'Ein Tag pro Zeile; höchstens 20 Tags mit jeweils 64 Zeichen.',
     title: 'Titel',
     altText: 'Alternativtext',
     description: 'Beschreibung',
@@ -145,7 +151,7 @@ export const mediaDEResources = {
     blocked: 'Blockiert',
   },
   processingStatus: {
-    pending: 'Ausstehend',
+    pending: 'In Verarbeitung',
     ready: 'Bereit',
     failed: 'Fehlgeschlagen',
   },
@@ -224,7 +230,10 @@ export const mediaDEResources = {
     upload: {
       initializing: 'Upload wird vorbereitet …',
       uploading: 'Datei wird hochgeladen …',
-      finalizing: 'Upload wird abgeschlossen …',
+      finalizing: 'Bild wird verarbeitet …',
+      processingTimeout:
+        'Die Verarbeitung dauert länger. Das Medium wird im Hintergrund weiterverarbeitet und bleibt in der Bibliothek sichtbar.',
+      processingFailed: 'Das Bild konnte nicht verarbeitet werden.',
       success: 'Upload abgeschlossen. Die Detailansicht wird geöffnet …',
       error: 'Der Upload konnte nicht abgeschlossen werden.',
     },
@@ -274,6 +283,9 @@ export const mediaDEResources = {
     altTextHint: 'Wird bei der Registrierung später fachlich ergänzt.',
   },
   errors: {
+    infected:
+      'Die Datei wurde wegen eines Schadsoftware-Verdachts gesperrt. Bitte lade eine unbedenkliche Datei hoch.',
+    invalidTags: 'Bitte verwende höchstens 20 Tags mit jeweils 1 bis 64 Zeichen.',
     forbidden: 'Unzureichende Berechtigungen für diese Medienaktion.',
     databaseUnavailable:
       'Die Mediendaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.',

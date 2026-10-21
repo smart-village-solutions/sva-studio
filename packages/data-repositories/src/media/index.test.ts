@@ -201,6 +201,7 @@ describe('media repository', () => {
       })
     ).resolves.toHaveLength(1);
     expect(statements[1]?.text).toContain('OR lower(storage_key) LIKE $2');
+    expect(statements[1]?.text).toContain('lower(media_tag.value) LIKE $2');
     expect(statements[1]?.values).toEqual(['tenant-a', '%rathaus%', 'public', 10, 20]);
   });
 
@@ -612,6 +613,17 @@ describe('media repository', () => {
     });
   });
 
+  it('rotates a fresh uploaded claim only when requested by the processing job', async () => {
+    const { executor, statements } = createQueuedExecutor([[{ ...uploadSessionRow,
+      status: 'uploaded', claim_token: 'new-claim', replaced_claim_token: 'old-claim',
+    }]]);
+    const result = await createMediaRepository(executor).claimUploadSession('tenant-a', 'upload-1', true);
+    expect(result).toMatchObject({ claimToken: 'new-claim', replacedClaimToken: 'old-claim' });
+    expect(statements[0]?.values).toEqual(['tenant-a', 'upload-1', 600, true]);
+    expect(statements[0]?.text).toContain('claim_token = gen_random_uuid()');
+    expect(statements[0]?.text).toContain('$4::boolean OR updated_at');
+  });
+
   it('claims pending upload sessions atomically and applies actual usage within quota', async () => {
     const claimedSessionRow = {
       ...uploadSessionRow,
@@ -664,7 +676,7 @@ describe('media repository', () => {
     expect(statements[0]?.text).not.toContain(
       ')\n  AND (expires_at IS NULL OR expires_at > NOW())\nRETURNING'
     );
-    expect(statements[0]?.values).toEqual(['tenant-a', 'upload-1', 600]);
+    expect(statements[0]?.values).toEqual(['tenant-a', 'upload-1', 600, false]);
     expect(statements[2]?.text).toContain('ON CONFLICT (instance_id) DO UPDATE');
     expect(statements[2]?.text).toContain(
       'iam.media_storage_usage.total_bytes + EXCLUDED.total_bytes <='

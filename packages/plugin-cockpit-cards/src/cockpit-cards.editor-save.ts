@@ -133,7 +133,9 @@ export async function saveCockpitCard(values: CockpitCardFormValues, context: Sa
           addStudioCreatedSaveFeedback(previous, 'cockpit-cards', result.saved.id),
       });
   } catch (cause) {
-    const reason = cause instanceof Error ? cause.message : '';
+    const mediaProcessingError = cause instanceof Error && 'code' in cause &&
+      (cause.code === 'media_processing_timeout' || cause.code === 'media_processing_failed');
+    const reason = cause instanceof Error && !mediaProcessingError ? cause.message : '';
     setMutationError(
       cause instanceof Error && 'code' in cause && cause.code === 'visibility_update_failed'
         ? pt('messages.visibilitySavePartialFailure')

@@ -1,5 +1,6 @@
 import { asApiItem, createApiError, parseRequestBody } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
+import { getMediaScanEnabled } from '../runtime-secrets.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { MediaStorageObjectNotFoundError, MediaStorageUnavailableError } from './storage-port.js';
 import { registerBucketMediaSchema } from './schemas.js';
@@ -75,6 +76,7 @@ const registerAuthorizedBucketMedia = async (input: {
       asApiItem(assertSupportedListAssetVisibility(existing), getRequestId())
     );
   }
+  if (getMediaScanEnabled()) return createApiError(409, 'conflict', 'media_scan_import_unavailable', getRequestId(), { reason: 'media_scan_import_unavailable' });
   const bucketObject = await readRegistrationObject({
     deps: input.deps,
     ctx: input.ctx,

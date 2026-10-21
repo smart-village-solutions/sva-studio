@@ -50,6 +50,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     fax: 'Fax',
     mediaPlaceholder: 'Medium auswählen',
     imageSearch: 'Dateiname filtern',
+    imageTags: 'Nach Tag filtern',
     imageFileName: 'Dateiname',
     assetId: 'Asset-ID',
     attachmentAsset: 'Weiteres Medium',

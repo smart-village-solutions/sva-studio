@@ -34,6 +34,11 @@ const createDeferred = <T,>() => {
   };
 };
 
+const { waitForHostMediaUploadMock } = vi.hoisted(() => ({ waitForHostMediaUploadMock: vi.fn() }));
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@sva/plugin-sdk')>(),
+  waitForHostMediaUpload: waitForHostMediaUploadMock,
+}));
 const listMediaMock = vi.fn();
 const getMediaMock = vi.fn();
 const getMediaUsageMock = vi.fn();
@@ -742,6 +747,20 @@ describe('useCreateMediaUpload', () => {
 });
 
 describe('useSingleFileMediaUpload', () => {
+  it('keeps finalizing until the accepted background job becomes ready', async () => {
+    const pending = createDeferred<void>();
+    waitForHostMediaUploadMock.mockReturnValue(pending.promise);
+    initializeMediaUploadMock.mockResolvedValue({ data: { assetId: 'asset-1', uploadSessionId: 'upload-1', uploadUrl: 'https://uploads.test/file', method: 'PUT', headers: {} } });
+    completeMediaUploadMock.mockResolvedValue({ data: { assetId: 'asset-1', uploadSessionId: 'upload-1', status: 'processing' } });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 200 })));
+    render(<SingleFileUploadProbe />);
+    fireEvent.change(screen.getByTestId('file-input'), { target: { files: [new File(['image'], 'fixture.jpg', { type: 'image/jpeg' })] } });
+    await waitFor(() => expect(screen.getByTestId('upload-phase').textContent).toBe('finalizing'));
+    expect(waitForHostMediaUploadMock).toHaveBeenCalledWith(expect.objectContaining({ assetId: 'asset-1' }));
+    pending.resolve();
+    await waitFor(() => expect(screen.getByTestId('upload-phase').textContent).toBe('success'));
+  });
+
   beforeEach(() => {
     refreshSessionMock.mockReset();
     initializeMediaUploadMock.mockReset();
@@ -1001,6 +1020,20 @@ describe('deriveMimeTypeFromUnregisteredMedia', () => {
 });
 
 describe('useMediaDetail', () => {
+  it('keeps unfinished media out of delivery and refreshes after background processing finishes', async () => {
+    const pending = createDeferred<void>();
+    waitForHostMediaUploadMock.mockReturnValue(pending.promise);
+    const asset = { id: 'asset-1', mimeType: 'image/jpeg', uploadStatus: 'pending', processingStatus: 'pending', metadata: {}, technical: {} };
+    getMediaMock.mockResolvedValueOnce({ data: asset }).mockResolvedValue({ data: { ...asset, uploadStatus: 'processed', processingStatus: 'ready' } });
+    getMediaUsageMock.mockResolvedValue({ data: { assetId: 'asset-1', totalReferences: 0, references: [] } });
+    getMediaDeliveryMock.mockResolvedValue({ data: { deliveryUrl: 'https://cdn.test/ready.jpg' } });
+    render(<MediaDetailProbe assetId="asset-1" />);
+    await waitFor(() => expect(waitForHostMediaUploadMock).toHaveBeenCalledWith(expect.objectContaining({ assetId: 'asset-1', signal: expect.any(AbortSignal) })));
+    expect(getMediaDeliveryMock).not.toHaveBeenCalled();
+    pending.resolve();
+    await waitFor(() => expect(screen.getByTestId('delivery-url').textContent).toBe('https://cdn.test/ready.jpg'));
+  });
+
   beforeEach(() => {
     refreshSessionMock.mockReset();
     getMediaMock.mockReset();

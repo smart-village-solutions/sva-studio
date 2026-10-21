@@ -38,6 +38,62 @@ import {
 import { MediaStorageUnavailableError } from './storage-port.js';
 
 describe('media storage s3 adapter', () => {
+  it('uses a separate private intake bucket and refuses policies or public ACLs', async () => {
+    vi.stubEnv('MEDIA_SCAN_ENABLED', 'true');
+    vi.stubEnv('MEDIA_SCAN_QUARANTINE_BUCKET', 'intake');
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce({
+        Owner: { ID: 'owner' },
+        Grants: [{ Grantee: { Type: 'CanonicalUser', ID: 'owner' } }],
+      })
+      .mockRejectedValueOnce(Object.assign(new Error(), { name: 'NoSuchBucketPolicy' }));
+    const signed = vi.fn(async () => 'https://private.example.test/put');
+    const port = createS3MediaStoragePort(
+      {
+        endpoint: 'https://s3.example.test',
+        region: 'eu-central-1',
+        bucket: 'public',
+        accessKeyId: 'test',
+        secretAccessKey: 'test',
+        signedUrlTtlSeconds: 900,
+      },
+      { client: { send } as unknown as S3Client, getSignedUrl: signed }
+    );
+    const input = {
+      instanceId: 'tenant-a',
+      assetId: 'asset-1',
+      uploadSessionId: 'session-1',
+      mediaType: 'image',
+      mimeType: 'image/png',
+      byteSize: 12,
+    };
+    const upload = await port.prepareUpload(input);
+    expect(upload.storageKey).toBe('.quarantine/tenant-a/asset-1/session-1');
+    expect(signed.mock.calls[0]?.[1].input.Bucket).toBe('intake');
+    await expect(
+      port.resolveDelivery({
+        instanceId: 'tenant-a',
+        assetId: 'asset-1',
+        storageKey: upload.storageKey,
+        visibility: 'public',
+      })
+    ).rejects.toThrow('media_storage_unavailable');
+    send.mockResolvedValueOnce({
+      Owner: { ID: 'owner' },
+      Grants: [{ Grantee: { Type: 'Group', URI: 'public' } }],
+    });
+    await expect(port.prepareUpload(input)).rejects.toThrow('media_storage_unavailable');
+    send
+      .mockResolvedValueOnce({
+        Owner: { ID: 'owner' },
+        Grants: [{ Grantee: { Type: 'CanonicalUser', ID: 'owner' } }],
+      })
+      .mockResolvedValueOnce({ Policy: '{}' });
+    await expect(port.prepareUpload(input)).rejects.toThrow('media_storage_unavailable');
+    vi.stubEnv('MEDIA_SCAN_QUARANTINE_BUCKET', 'public');
+    await expect(port.prepareUpload(input)).rejects.toThrow('media_storage_unavailable');
+  });
   beforeEach(() => {
     vi.unstubAllEnvs();
     listExternalInterfaceRecordsMock.mockReset();

@@ -111,6 +111,12 @@ export const buildRemoteAppConfig = (input: {
       'Remote-Profil und geschuetztes Override-Bundle vervollstaendigen.'
     );
   for (const [key, value] of merged) validateRemoteConfigValue(input.environment, key, value);
+  if (merged.get('MEDIA_SCAN_ENABLED') === 'true' &&
+      (merged.get('MEDIA_CLAMAV_REPLICAS') !== '1' || !merged.get('MEDIA_SCAN_QUARANTINE_BUCKET'))) {
+    fail(input.environment, 'PROMOTE_CONFIG_INVALID',
+      'Aktiver Medien-Scan benötigt eine Scanner-Replik und einen privaten Eingangs-Bucket.',
+      'MEDIA_CLAMAV_REPLICAS=1 und MEDIA_SCAN_QUARANTINE_BUCKET im freigegebenen Remote-Profil setzen.');
+  }
   const keys = [...merged.keys()].sort();
   const source = `${keys.map((key) => `${key}=${merged.get(key) ?? ''}`).join('\n')}\n`;
   const configRevision = createHash('sha256')

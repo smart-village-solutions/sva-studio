@@ -75,6 +75,9 @@ const pickerLabels = (
   },
   library: {
     searchLabel: pt('media.search'),
+    tagLabel: pt('media.tagFilter'),
+    loadError: pt('media.loadError'),
+    loading: pt('media.loading'),
     empty: pt('media.empty'),
     select: pt('media.select'),
   },

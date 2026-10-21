@@ -48,6 +48,9 @@ export type StudioMediaPickerOverlayLabels = Readonly<{
   }>;
   library: Readonly<{
     searchLabel: string;
+    tagLabel?: string;
+    loadError?: string;
+    loading?: string;
     empty: string;
     select: string;
   }>;

@@ -7,9 +7,12 @@ export type HostMediaAssetListItem = Readonly<{
   visibility?: string;
   mimeType?: string;
   previewUrl?: string | null;
+  uploadStatus?: string;
+  processingStatus?: string;
 }>;
 
 export type HostMediaAssetMetadata = Readonly<{
+  tags?: string[];
   title?: string | null;
   description?: string | null;
   altText?: string | null;
@@ -48,6 +51,7 @@ export const getHostMediaAssetFileName = (asset: Pick<HostMediaAssetDetail, 'id'
 };
 
 export type UpdateHostMediaMetadataInput = Readonly<{
+  tags?: string[];
   title?: string | null;
   description?: string | null;
   altText?: string | null;
@@ -65,10 +69,13 @@ export type HostMediaReferenceSelection = Readonly<{
 export const listHostMediaAssets = async (input: {
   readonly fetch: FetchLike;
   readonly search?: string;
+  readonly tag?: string;
+  readonly signal?: AbortSignal;
   readonly visibility?: 'public' | 'protected';
   readonly instanceId?: string;
 }): Promise<readonly HostMediaAssetListItem[]> => {
   const searchParams = new URLSearchParams();
+  if (input.tag) searchParams.set('tag', input.tag);
   if (input.search) {
     searchParams.set('search', input.search);
   }
@@ -82,15 +89,17 @@ export const listHostMediaAssets = async (input: {
   const response = await requestJson<{ data: readonly HostMediaAssetListItem[] }>({
     fetch: input.fetch,
     url: `/api/v1/iam/media${searchParams.size > 0 ? `?${searchParams.toString()}` : ''}`,
+    init: input.signal ? { signal: input.signal } : undefined,
     errorFactory: (failingResponse) => new Error(`media_picker_http_${failingResponse.status}`),
   });
-  return response.data;
+  return response.data.filter((asset) => asset.uploadStatus === 'processed' && asset.processingStatus === 'ready');
 };
 
 export const getHostMediaAsset = async (input: {
   readonly fetch: FetchLike;
   readonly assetId: string;
   readonly instanceId?: string;
+  readonly signal?: AbortSignal;
 }): Promise<HostMediaAssetDetail> => {
   const searchParams = new URLSearchParams();
   if (input.instanceId) {
@@ -103,6 +112,7 @@ export const getHostMediaAsset = async (input: {
       searchParams.size > 0 ? `?${searchParams.toString()}` : ''
     }`,
     errorFactory: (failingResponse) => new Error(`media_picker_http_${failingResponse.status}`),
+    init: { signal: input.signal },
   });
   return response.data;
 };

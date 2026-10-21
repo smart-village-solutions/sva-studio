@@ -1,6 +1,8 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  GetBucketAclCommand,
+  GetBucketPolicyCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -22,6 +24,8 @@ import {
   type MediaStorageConfig,
 } from './storage-s3-config.js';
 import { createS3ListObjects, resolveStoragePrefix } from './storage-s3-listing.js';
+import { getMediaScanEnabled } from '../runtime-secrets.js';
+import { isMediaQuarantineKey, isPrivateMediaStorageKey } from './storage-key-paths.js';
 
 export { createS3ClientConfig, resolveMediaStorageConfig } from './storage-s3-config.js';
 
@@ -77,6 +81,35 @@ export const createS3MediaStoragePort = (
   }
 ): MediaStoragePort => {
   const client = options?.client ?? new S3Client(createS3ClientConfig(config));
+  const bucketForKey = (storageKey: string): string => {
+    if (!isPrivateMediaStorageKey(storageKey)) return config.bucket;
+    const bucket = process.env.MEDIA_SCAN_QUARANTINE_BUCKET;
+    if (!bucket || bucket === config.bucket) throw new MediaStorageUnavailableError();
+    return bucket;
+  };
+
+  const assertPrivateIntake = async (storageKey: string) => {
+    const bucket = bucketForKey(storageKey);
+    const acl = await client.send(new GetBucketAclCommand({ Bucket: bucket }));
+    if (
+      !acl.Owner?.ID ||
+      !acl.Grants?.length ||
+      acl.Grants.some(
+        (grant) =>
+          grant.Grantee?.Type !== 'CanonicalUser' ||
+          (grant.Grantee.ID !== undefined && grant.Grantee.ID !== acl.Owner?.ID)
+      )
+    )
+      throw new MediaStorageUnavailableError();
+    try {
+      await client.send(new GetBucketPolicyCommand({ Bucket: bucket }));
+    } catch (error) {
+      // The intake bucket accepts no bucket policy, including one granting anonymous access.
+      if (error instanceof Error && error.name === 'NoSuchBucketPolicy') return;
+      throw new MediaStorageUnavailableError();
+    }
+    throw new MediaStorageUnavailableError();
+  };
   const signedUrl =
     options?.getSignedUrl ??
     ((targetClient, command, expiresIn) => getSignedUrl(targetClient, command, { expiresIn }));
@@ -84,14 +117,27 @@ export const createS3MediaStoragePort = (
   const toExpiresAt = (): string =>
     new Date(Date.now() + config.signedUrlTtlSeconds * 1000).toISOString();
 
-  const listObjects = createS3ListObjects(client, config);
+  const publicListing = createS3ListObjects(client, config);
+  const listObjects: MediaStoragePort['listObjects'] = (input) => {
+    if (input.prefix?.startsWith(`.protected/${input.instanceId}/`)) {
+      return createS3ListObjects(client, {
+        ...config,
+        bucket: bucketForKey(input.prefix),
+        publicBaseUrl: undefined,
+      })(input);
+    }
+    return publicListing(input);
+  };
 
   const prepareUpload = async (input: PrepareMediaUploadInput): Promise<MediaUploadPreparation> => {
-    const storageKey = createStorageKey(input, config.bucket);
+    const storageKey = getMediaScanEnabled()
+      ? `.quarantine/${input.instanceId}/${input.assetId}/${input.uploadSessionId}`
+      : createStorageKey(input, config.bucket);
+    if (getMediaScanEnabled()) await assertPrivateIntake(storageKey);
     const uploadUrl = await signedUrl(
       client,
       new PutObjectCommand({
-        Bucket: config.bucket,
+        Bucket: bucketForKey(storageKey),
         Key: storageKey,
         ContentType: input.mimeType,
         ContentLength: input.byteSize,
@@ -119,7 +165,8 @@ export const createS3MediaStoragePort = (
   const resolveDelivery = async (
     input: ResolveMediaDeliveryInput
   ): Promise<MediaDeliveryResolution> => {
-    if (input.visibility === 'public') {
+    if (isMediaQuarantineKey(input.storageKey)) throw new MediaStorageUnavailableError();
+    if (input.visibility === 'public' && !isPrivateMediaStorageKey(input.storageKey)) {
       const publicUrl = createPublicDeliveryUrl(config.publicBaseUrl, input.storageKey);
       if (publicUrl) {
         return {
@@ -133,7 +180,7 @@ export const createS3MediaStoragePort = (
     const deliveryUrl = await signedUrl(
       client,
       new GetObjectCommand({
-        Bucket: config.bucket,
+        Bucket: bucketForKey(input.storageKey),
         Key: input.storageKey,
       }),
       config.signedUrlTtlSeconds
@@ -150,7 +197,7 @@ export const createS3MediaStoragePort = (
     try {
       const response = await client.send(
         new HeadObjectCommand({
-          Bucket: config.bucket,
+          Bucket: bucketForKey(input.storageKey),
           Key: input.storageKey,
         })
       );
@@ -170,9 +217,13 @@ export const createS3MediaStoragePort = (
   };
 
   const readObject = async (input: { instanceId: string; storageKey: string }) => {
+    if (isMediaQuarantineKey(input.storageKey)) {
+      const object = await statObject(input);
+      if (object.byteSize > 64 * 1024 * 1024) throw new MediaStorageUnavailableError();
+    }
     const response = await client.send(
       new GetObjectCommand({
-        Bucket: config.bucket,
+        Bucket: bucketForKey(input.storageKey),
         Key: input.storageKey,
       })
     );
@@ -195,7 +246,7 @@ export const createS3MediaStoragePort = (
   }) => {
     const response = await client.send(
       new PutObjectCommand({
-        Bucket: config.bucket,
+        Bucket: bucketForKey(input.storageKey),
         Key: input.storageKey,
         Body: input.body,
         ContentType: input.contentType,
@@ -211,7 +262,7 @@ export const createS3MediaStoragePort = (
   const deleteObject = async (input: { instanceId: string; storageKey: string }) => {
     await client.send(
       new DeleteObjectCommand({
-        Bucket: config.bucket,
+        Bucket: bucketForKey(input.storageKey),
         Key: input.storageKey,
       })
     );

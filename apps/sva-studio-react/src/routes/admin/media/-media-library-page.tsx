@@ -2,6 +2,8 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 import { Button, StudioPageTitle } from '@sva/studio-ui-react';
 import { useMediaLibrary, useSingleFileMediaUpload } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
@@ -41,13 +43,20 @@ export const MediaLibraryPage = () => {
   const [cursor, setCursor] = React.useState<string | undefined>();
   const [cursorHistory, setCursorHistory] = React.useState<readonly (string | undefined)[]>([]);
   const [limit, setLimit] = React.useState(36);
-  const mediaApi = useMediaLibrary({ cursor, limit });
+  const [filters, setFilters] = React.useState({ search: '', tag: '' });
+  const mediaApi = useMediaLibrary({
+    cursor,
+    limit,
+    ...(filters.search ? { search: filters.search } : {}),
+    ...(filters.tag ? { tag: filters.tag } : {}),
+  });
   const singleFileUpload = useSingleFileMediaUpload();
 
   const handleFileSelected = React.useCallback(
     async (file: File) => {
       const result = await singleFileUpload.uploadFile(file);
       if (!result) {
+        await mediaApi.refetch();
         return;
       }
 
@@ -56,7 +65,7 @@ export const MediaLibraryPage = () => {
         params: { mediaId: result.assetId },
       });
     },
-    [navigate, singleFileUpload]
+    [navigate, singleFileUpload, mediaApi.refetch]
   );
 
   if (mediaApi.isLoading) {
@@ -100,6 +109,42 @@ export const MediaLibraryPage = () => {
           }}
         />
       ) : null}
+      <form
+        key={JSON.stringify(filters)}
+        className="flex flex-wrap items-end gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          setCursor(undefined);
+          setCursorHistory([]);
+          setFilters({
+            search: String(data.get('search') ?? '').trim(),
+            tag: String(data.get('tag') ?? '').trim(),
+          });
+        }}
+      >
+        <div className="space-y-1">
+          <Label htmlFor="media-search">{t('media.filters.searchLabel')}</Label>
+          <Input id="media-search" name="search" defaultValue={filters.search} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="media-tag-filter">{t('media.fields.tags')}</Label>
+          <Input id="media-tag-filter" name="tag" maxLength={64} defaultValue={filters.tag} />
+        </div>
+        <Button type="submit">{t('media.filters.apply')}</Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={(event) => {
+            event.currentTarget.form?.reset();
+            setCursor(undefined);
+            setCursorHistory([]);
+            setFilters({ search: '', tag: '' });
+          }}
+        >
+          {t('media.filters.clear')}
+        </Button>
+      </form>
       <MediaLibraryToolbar
         page={cursorHistory.length + 1}
         limit={mediaApi.limit}

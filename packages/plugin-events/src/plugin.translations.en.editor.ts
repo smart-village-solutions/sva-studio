@@ -37,6 +37,8 @@ export const eventsENEditor = {
     locationMapUnavailable: 'The map view is currently disabled for this instance.',
     locationMapError: 'The map view could not be loaded. Manual editing remains available.',
     imagePickerEmpty: 'No matching media found.',
+  mediaPickerLoading: 'Loading media.',
+  mediaPickerLoadError: 'Media could not be loaded.',
     mediaUploadInitializing: 'Preparing upload.',
     mediaUploadUploading: 'Uploading media.',
     mediaUploadFinalizing: 'Finalizing media.',

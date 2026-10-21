@@ -54,6 +54,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     fax: 'Fax',
     mediaPlaceholder: 'Select media',
     imageSearch: 'Filter by file name',
+    imageTags: 'Filter by tag',
     imageFileName: 'File name',
     assetId: 'Asset ID',
     attachmentAsset: 'Additional media',

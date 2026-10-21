@@ -65,6 +65,7 @@ export const newsTranslationsENLabels = {
     mediaWidth: 'Width',
     mediaHeight: 'Height',
     imageSearch: 'Search image',
+    imageTags: 'Filter by tag',
     technicalDetails: 'Technical details',
     dataProvider: 'Data provider',
     dataProviderUnavailable: 'Not available yet',

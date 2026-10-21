@@ -1,4 +1,15 @@
 import { genericItemsTranslationsDe } from './plugin.translations.de.js';
 
-// TODO(generic-items): replace the temporary German fallback with real English copy.
-export const genericItemsTranslationsEn = genericItemsTranslationsDe;
+// Existing copy continues to use the German fallback; new media labels are translated.
+export const genericItemsTranslationsEn = {
+  ...genericItemsTranslationsDe,
+  genericItems: {
+    ...genericItemsTranslationsDe.genericItems,
+    fields: { ...genericItemsTranslationsDe.genericItems.fields, imageTags: 'Filter by tag' },
+    messages: {
+      ...genericItemsTranslationsDe.genericItems.messages,
+      mediaPickerLoading: 'Loading media.',
+      mediaPickerLoadError: 'Media could not be loaded.',
+    },
+  },
+};

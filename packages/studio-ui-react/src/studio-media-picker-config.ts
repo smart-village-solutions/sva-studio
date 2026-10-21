@@ -20,6 +20,9 @@ export const createStudioMediaPickerLabels = (
   },
   library: {
     searchLabel: translate('fields.imageSearch'),
+    tagLabel: translate('fields.imageTags'),
+    loadError: translate('messages.mediaPickerLoadError'),
+    loading: translate('messages.mediaPickerLoading'),
     empty: translate('messages.imagePickerEmpty'),
     select: translate('actions.selectImage'),
   },

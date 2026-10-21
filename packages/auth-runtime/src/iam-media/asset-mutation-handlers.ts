@@ -11,7 +11,7 @@ import {
   resolveScopedMediaInstanceId as resolveScopedInstanceId,
 } from './request-context.js';
 import { mergeMediaMetadata } from './metadata.js';
-import { canAccessMediaAsset } from './asset-support.js';
+import { canAccessMediaAsset, isMediaAssetReady } from './asset-support.js';
 import {
   emitMediaAuditEvent,
   mapMediaAuthorizationFailure as mapAuthorizationFailure,
@@ -77,6 +77,40 @@ export const updateMedia = async (
       resourceId: assetId,
     });
     return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
+  }
+
+  if (!isMediaAssetReady(asset)) {
+    return createApiError(
+      409,
+      'conflict',
+      'Das Medium ist noch nicht zur Bearbeitung freigegeben.',
+      getRequestId(),
+      { reason: 'media_not_ready' }
+    );
+  }
+
+  if (
+    asset.technical?.scanStatus === 'clean' &&
+    parsed.data.visibility !== undefined &&
+    parsed.data.visibility !== asset.visibility
+  ) {
+    await emitMediaAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.metadataUpdate',
+      result: 'denied',
+      reasonCode: 'media_visibility_fixed',
+      resourceType: 'media_asset',
+      resourceId: assetId,
+    });
+    return createApiError(
+      409,
+      'conflict',
+      'Die Sichtbarkeit gescannter Medien bleibt nach dem Upload fest. Bitte laden Sie das Medium mit der gewünschten Sichtbarkeit erneut hoch.',
+      getRequestId(),
+      { reason: 'media_visibility_fixed' }
+    );
   }
 
   const usageImpact = await deps.withMediaService(instanceId, (service) =>

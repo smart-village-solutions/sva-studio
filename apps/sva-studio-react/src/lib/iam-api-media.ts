@@ -20,6 +20,7 @@ export const listMedia = async (
   query: MediaListQuery = {}
 ): Promise<MediaCursorListResponse<IamMediaAsset>> => {
   const params = new URLSearchParams();
+  if (query.tag) params.set('tag', query.tag);
 
   if (query.search) {
     params.set('search', query.search);

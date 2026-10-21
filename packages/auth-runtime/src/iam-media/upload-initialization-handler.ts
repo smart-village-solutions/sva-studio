@@ -2,6 +2,7 @@ import type { MediaUploadSessionRecord } from '@sva/data-repositories';
 
 import { asApiItem, createApiError, parseRequestBody } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
+import { getMediaScanEnabled } from '../runtime-secrets.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { uploadInitializationSchema } from './schemas.js';
 import {
@@ -262,6 +263,9 @@ export const initializeUpload = async (
     return mapAuthorizationFailure(authorization);
   }
 
+  if (getMediaScanEnabled() && parsed.data.byteSize > 64 * 1024 * 1024) {
+    return createApiError(413, 'invalid_request', 'Die Datei überschreitet das Scan-Limit von 64 MiB.', getRequestId(), { reason: 'upload_size_exceeded', maxBytes: 64 * 1024 * 1024 });
+  }
   const contentSaveOperationId = parsed.data.contentSaveOperationId;
   if (contentSaveOperationId) {
     const existingUpload = await prepareExistingContentSaveUpload({

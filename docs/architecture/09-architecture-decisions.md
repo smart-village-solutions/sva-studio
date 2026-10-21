@@ -64,9 +64,11 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-064 Serverseitige Keycloak-Realm-Baseline](../adr/ADR-064-serverseitige-keycloak-realm-baseline.md)
 - [ADR-065 Mainserver-Projektionsabgleich über Scope-Grenzen](../adr/ADR-065-mainserver-projektionsabgleich-ueber-scope-grenzen.md)
 - [ADR-066 Versionierte Studio-Releases und Prod-basierte Hotfix-Linie](../adr/ADR-066-versionierte-studio-releases-und-hotfix-linie.md)
+- [ADR-068 ClamAV als Virenscanner für Medienuploads](../adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md) — Accepted: interner Streaming-Scan, automatische Signaturpflege und getrennte Lizenzgrenze; Umsetzung und Aktivierung stehen aus.
 
 ### Zuordnung zu arc42-Abschnitten
 
+- Abschnitt 05/06/07/08/10/11 (Bausteine, Scan-Ablauf, Betrieb, Lizenzgrenze, Qualität und Risiken): ADR-068
 - Abschnitt 04/07/09/10/11 (Release-Linien, Staging-Wechsel, Qualität und Risiko): ADR-066
 
 - Abschnitt 03/05/08 (Kontext/Bausteine/Querschnitt): ADR-009, ADR-011

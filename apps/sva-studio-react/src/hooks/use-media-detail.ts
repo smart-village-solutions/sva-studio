@@ -1,4 +1,5 @@
 import React from 'react';
+import { waitForHostMediaUpload } from '@sva/plugin-sdk';
 
 import {
   asIamError,
@@ -46,7 +47,8 @@ const shouldAutoResolveMediaDelivery = (
     asset &&
     !delivery &&
     autoResolvedDeliveryAssetId !== asset.id &&
-    asset.mimeType.startsWith('image/')
+    asset.mimeType.startsWith('image/') &&
+    asset.uploadStatus === 'processed' && asset.processingStatus === 'ready'
   );
 
 export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => {
@@ -115,6 +117,16 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
   React.useEffect(() => {
     void refetch();
   }, [refetch]);
+
+  const pendingAssetId = asset?.processingStatus === 'pending' ? asset.id : null;
+  React.useEffect(() => {
+    if (!pendingAssetId) return;
+    const controller = new AbortController();
+    const refresh = () => { if (!controller.signal.aborted) void refetch(); };
+    void waitForHostMediaUpload({ fetch: globalThis.fetch.bind(globalThis), assetId: pendingAssetId, signal: controller.signal })
+      .then(refresh, refresh);
+    return () => controller.abort();
+  }, [pendingAssetId, refetch]);
 
   const runUpdate = React.useCallback(
     async (payload: UpdateMediaPayload) => {

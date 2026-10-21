@@ -57,6 +57,8 @@ export const poiMessagesEn = {
   mediaPickerAssetLoadError: 'The media asset could not be loaded.',
   mediaPickerMetadataSaveError: 'The metadata could not be saved.',
   imagePickerEmpty: 'No images found.',
+  mediaPickerLoading: 'Loading media.',
+  mediaPickerLoadError: 'Media could not be loaded.',
   mediaMoveUp: 'Move up',
   mediaMoveDown: 'Move down',
   mediaRefreshMetadata: 'Update metadata from media library',

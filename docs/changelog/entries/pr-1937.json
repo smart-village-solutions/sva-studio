@@ -1,0 +1,4 @@
+{
+  "prNumber": 1937,
+  "body": "Medienuploads werden im Hintergrund verarbeitet und erst nach erfolgreichem Abschluss verfügbar. Medien lassen sich mit Tags pflegen und in Bibliothek und Auswahl danach suchen. Optional prüft ein interner ClamAV-Dienst neue Uploads vor der Freigabe; bei gescannten Medien bleibt die gewählte Sichtbarkeit fest. Die Scan-Aktivierung erfordert eine separate Abnahme im Zielbetrieb."
+}

@@ -22,7 +22,7 @@ import {
   toInstancePermissionApiErrorCode,
 } from '../instance-permission-authorization.js';
 import { createJsonItemResponse } from './core.shared.js';
-import { normalizeStudioJobDetail } from './job-detail-read-model.js';
+import { normalizeStudioJobDetail, redactStudioJobResult } from './job-detail-read-model.js';
 import { normalizeStudioJobListItem } from './job-list-read-model.js';
 import { withStudioJobRepository } from './repository.js';
 import { getRegisteredPluginOperationExecutionRegistry } from './runner.js';
@@ -204,7 +204,7 @@ export const deletePluginOperationJobHandler = async (request: Request): Promise
             return repository.deleteJob(instanceId, jobId);
           });
           if (!job) return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', requestId);
-          return createJsonItemResponse(200, job, requestId);
+          return createJsonItemResponse(200, redactStudioJobResult(job), requestId);
         } catch (error) {
           if (error instanceof Error && error.message === 'job_not_terminal') {
             return createApiError(

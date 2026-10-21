@@ -800,6 +800,45 @@ describe('plugin operations handlers', () => {
     });
   });
 
+  it('keeps file reports private in generic GET and DELETE responses for monitoring-only actors', async () => {
+    middlewareState.authorizeInstancePermissionForUser.mockImplementation(async ({ action }) =>
+      action.startsWith('iam.monitoring.')
+        ? { ok: true, permissions: [] }
+        : { ok: false, status: 403, error: 'forbidden' }
+    );
+    const report = { items: [{ storageKey: 'confidential/file.pdf', status: 'infected' }] };
+    const job = {
+      id: 'job-1',
+      instanceId: 'tenant-a',
+      source: 'host',
+      jobTypeId: 'media.scan-existing',
+      status: 'succeeded',
+      resultPayload: { plugin: { report } },
+      history: [],
+      updatedAt: '2026-05-09T12:00:00.000Z',
+    };
+    const deleteJob = vi.fn(async () => job);
+    repositoryState.withStudioJobRepository.mockImplementation(async (_id, work) =>
+      work({ getJobDetail: vi.fn(async () => job), deleteJob })
+    );
+    const url =
+      'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111';
+    const getResponse = await getPluginOperationJobHandler(new Request(url));
+    expect(getResponse.status).toBe(200);
+    expect((await getResponse.json()).data.resultPayload).toBeUndefined();
+    const deleteResponse = await deletePluginOperationJobHandler(
+      new Request(url, {
+        method: 'DELETE',
+        headers: { Origin: 'https://studio.test', 'X-Requested-With': 'XMLHttpRequest' },
+      })
+    );
+    expect(deleteResponse.status).toBe(200);
+    const deleted = (await deleteResponse.json()).data;
+    expect(deleted.id).toBe('job-1');
+    expect(deleted.resultPayload).toBeUndefined();
+    expect(deleteJob).toHaveBeenCalledOnce();
+  });
+
   it('rejects deletion of queued or running plugin operation jobs', async () => {
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({

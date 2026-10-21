@@ -1,5 +1,6 @@
 import type {
   StudioJobDetail,
+  StudioJobRecord,
   StudioJobEventHostDetails,
   StudioJobEventDetails,
   StudioJobEventPresentation,
@@ -116,18 +117,22 @@ export const createStudioJobRuntimeDiagnostics = (
   };
 };
 
+// File-level inventory reports require media permissions through the dedicated endpoint.
+export const redactStudioJobResult = <T extends StudioJobRecord>(job: T): T => ({
+  ...job,
+  resultPayload:
+    job.source === 'host' && job.jobTypeId === 'media.scan-existing'
+      ? undefined
+      : job.resultPayload,
+});
+
 export const normalizeStudioJobDetail = (
   job: StudioJobDetail,
   options?: NormalizeStudioJobDetailOptions
 ): StudioJobDetail => {
   const history = normalizeHistory(job);
   const normalizedJob = {
-    ...job,
-    // File-level inventory reports require media permissions through the dedicated endpoint.
-    resultPayload:
-      job.source === 'host' && job.jobTypeId === 'media.scan-existing'
-        ? undefined
-        : job.resultPayload,
+    ...redactStudioJobResult(job),
     history,
   } satisfies StudioJobDetail;
   const latestEvent = resolveLatestStudioJobEvent(history);

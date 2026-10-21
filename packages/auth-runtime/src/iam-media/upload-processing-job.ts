@@ -12,6 +12,7 @@ import { cleanupReplacedClaimVariants } from './processing-variants.js';
 import { createMediaUploadProcessingService } from './processing.js';
 import { failClaimedUpload, finalizeProcessedUpload } from './upload-finalization.js';
 import type { MediaHttpHandlerDeps } from './http-support.js';
+import type { MediaService } from './service.js';
 import { MediaScanError } from './clamav.js';
 import { isMediaQuarantineKey } from './storage-key-paths.js';
 
@@ -82,6 +83,142 @@ type ProcessingDeps = Pick<
   readonly getJobAttempts: (instanceId: string, jobId: string) => Promise<number>;
 };
 
+type ProcessingJob = Parameters<StudioJobExecutionHandler>[0]['job'];
+type UploadSession = NonNullable<Awaited<ReturnType<MediaService['getUploadSessionById']>>>;
+type UploadAsset = NonNullable<Awaited<ReturnType<MediaService['getAssetById']>>>;
+
+const emitUploadCompletion = (
+  deps: ProcessingDeps,
+  job: ProcessingJob,
+  session: UploadSession,
+  asset: UploadAsset
+) =>
+  deps.emitAuditEvent({
+    eventType: 'plugin_action_authorized',
+    scope: { kind: 'instance', instanceId: job.instanceId },
+    workspaceId: job.instanceId,
+    requestId: job.requestId,
+    outcome: 'success',
+    pluginAction: {
+      actionId:
+        asset.lifecycleStatus === 'provisional'
+          ? 'media.contentDraftUploaded'
+          : 'media.uploadComplete',
+      actionNamespace: 'media',
+      actionOwner: 'host',
+      result: 'success',
+      reasonCode: isMediaQuarantineKey(session.storageKey)
+        ? 'media_scan_clean'
+        : 'variants_generated',
+      resourceType: 'media_asset',
+      resourceId: asset.id,
+    },
+  });
+
+const isPermanentProcessingFailure = (error: unknown): boolean =>
+  error instanceof Error &&
+  'cause' in error &&
+  typeof error.cause === 'object' &&
+  error.cause !== null &&
+  'category' in error.cause &&
+  error.cause.category === 'permanent';
+
+const failProcessingAttempt = async (
+  deps: ProcessingDeps,
+  job: ProcessingJob,
+  session: UploadSession,
+  asset: UploadAsset,
+  claimed: UploadSession,
+  claimToken: string,
+  error: unknown
+): Promise<never> => {
+  const scanCode =
+    error instanceof MediaScanError
+      ? error.code
+      : error instanceof Error && error.message === 'media_scan_infected'
+        ? error.message
+        : undefined;
+  if (scanCode)
+    await deps.emitAuditEvent({
+      eventType: 'plugin_action_authorized',
+      scope: { kind: 'instance', instanceId: job.instanceId },
+      workspaceId: job.instanceId,
+      requestId: job.requestId,
+      outcome: 'failure',
+      pluginAction: {
+        actionId: 'media.uploadComplete',
+        actionNamespace: 'media',
+        actionOwner: 'host',
+        result: 'failure',
+        reasonCode: scanCode,
+        resourceType: 'media_asset',
+        resourceId: asset.id,
+      },
+    });
+  const permanent = isPermanentProcessingFailure(error);
+  const currentAsset = await deps.withMediaService(job.instanceId, (service) =>
+    service.getAssetById(job.instanceId, asset.id)
+  );
+  if (
+    !permanent &&
+    currentAsset?.processingStatus !== 'ready' &&
+    (await deps.getJobAttempts(job.instanceId, job.id)) >= job.maxAttempts
+  ) {
+    const failed = await failClaimedUpload(deps, {
+      instanceId: job.instanceId,
+      claimToken,
+      asset,
+      uploadSession: claimed,
+      errorCode: error instanceof MediaScanError ? error.code : 'media_processing_failed',
+    });
+    if (failed === 'failed' && isMediaQuarantineKey(session.storageKey)) {
+      try {
+        const storage = await deps.resolveStoragePort(job.instanceId);
+        await storage.deleteObject({
+          instanceId: job.instanceId,
+          storageKey: session.storageKey,
+        });
+      } catch {
+        /* The existing explicit job retry can repeat rejected-upload cleanup. */
+      }
+    }
+  }
+  // Storage errors may contain keys or signed URLs. Only the stable reason enters job diagnostics.
+  throw permanent ? error : new Error('media_processing_unavailable');
+};
+
+const recoverFinishedUpload = async (
+  deps: ProcessingDeps,
+  job: ProcessingJob,
+  session: UploadSession,
+  asset: UploadAsset
+) => {
+  if (session.status === 'validated' && asset.processingStatus === 'ready') {
+    if (isMediaQuarantineKey(session.storageKey)) {
+      try {
+        await emitUploadCompletion(deps, job, session, asset);
+        const storage = await deps.resolveStoragePort(job.instanceId);
+        await storage.deleteObject({
+          instanceId: job.instanceId,
+          storageKey: session.storageKey,
+        });
+      } catch {
+        throw new Error('media_processing_unavailable');
+      }
+    }
+    return {};
+  }
+  if (session.status === 'failed' && isMediaQuarantineKey(session.storageKey)) {
+    try {
+      const storage = await deps.resolveStoragePort(job.instanceId);
+      await storage.deleteObject({ instanceId: job.instanceId, storageKey: session.storageKey });
+    } catch {
+      throw new Error('media_processing_unavailable');
+    }
+    return { resultPayload: { plugin: { status: 'rejected_upload_cleaned' } } };
+  }
+};
+
 export const createMediaUploadProcessingHandler =
   (deps: ProcessingDeps): StudioJobExecutionHandler =>
   async ({ job, progressReporter }) => {
@@ -98,52 +235,8 @@ export const createMediaUploadProcessingHandler =
         )
       : null;
     if (!session || !asset) return { resultPayload: { plugin: { status: 'removed' } } };
-    const emitCompletion = () =>
-      deps.emitAuditEvent({
-        eventType: 'plugin_action_authorized',
-        scope: { kind: 'instance', instanceId: job.instanceId },
-        workspaceId: job.instanceId,
-        requestId: job.requestId,
-        outcome: 'success',
-        pluginAction: {
-          actionId:
-            asset.lifecycleStatus === 'provisional'
-              ? 'media.contentDraftUploaded'
-              : 'media.uploadComplete',
-          actionNamespace: 'media',
-          actionOwner: 'host',
-          result: 'success',
-          reasonCode: isMediaQuarantineKey(session.storageKey)
-            ? 'media_scan_clean'
-            : 'variants_generated',
-          resourceType: 'media_asset',
-          resourceId: asset.id,
-        },
-      });
-    if (session.status === 'validated' && asset.processingStatus === 'ready') {
-      if (isMediaQuarantineKey(session.storageKey)) {
-        try {
-          await emitCompletion();
-          const storage = await deps.resolveStoragePort(job.instanceId);
-          await storage.deleteObject({
-            instanceId: job.instanceId,
-            storageKey: session.storageKey,
-          });
-        } catch {
-          throw new Error('media_processing_unavailable');
-        }
-      }
-      return {};
-    }
-    if (session.status === 'failed' && isMediaQuarantineKey(session.storageKey)) {
-      try {
-        const storage = await deps.resolveStoragePort(job.instanceId);
-        await storage.deleteObject({ instanceId: job.instanceId, storageKey: session.storageKey });
-      } catch {
-        throw new Error('media_processing_unavailable');
-      }
-      return { resultPayload: { plugin: { status: 'rejected_upload_cleaned' } } };
-    }
+    const completed = await recoverFinishedUpload(deps, job, session, asset);
+    if (completed) return completed;
     // Renew even a fresh claim on a technical retry; obsolete attempts cannot publish or delete its variants.
     const claimed = await deps.withMediaService(job.instanceId, (service) =>
       service.claimUploadSession(job.instanceId, uploadSessionId, true)
@@ -187,7 +280,7 @@ export const createMediaUploadProcessingHandler =
         ...(claimed.replacedClaimToken ? { replacedClaimToken: claimed.replacedClaimToken } : {}),
       });
       if (!result.ok) throw permanentFailure(result.errorCode);
-      await emitCompletion();
+      await emitUploadCompletion(deps, job, session, asset);
       if (isMediaQuarantineKey(session.storageKey))
         await storagePort.deleteObject({
           instanceId: job.instanceId,
@@ -195,63 +288,7 @@ export const createMediaUploadProcessingHandler =
         });
       return { resultPayload: { plugin: { assetId: asset.id } } };
     } catch (error) {
-      const scanCode =
-        error instanceof MediaScanError
-          ? error.code
-          : error instanceof Error && error.message === 'media_scan_infected'
-            ? error.message
-            : undefined;
-      if (scanCode)
-        await deps.emitAuditEvent({
-          eventType: 'plugin_action_authorized',
-          scope: { kind: 'instance', instanceId: job.instanceId },
-          workspaceId: job.instanceId,
-          requestId: job.requestId,
-          outcome: 'failure',
-          pluginAction: {
-            actionId: 'media.uploadComplete',
-            actionNamespace: 'media',
-            actionOwner: 'host',
-            result: 'failure',
-            reasonCode: scanCode,
-          },
-        });
-      const permanent =
-        error instanceof Error &&
-        'cause' in error &&
-        typeof error.cause === 'object' &&
-        error.cause !== null &&
-        'category' in error.cause &&
-        error.cause.category === 'permanent';
-      const currentAsset = await deps.withMediaService(job.instanceId, (service) =>
-        service.getAssetById(job.instanceId, asset.id)
-      );
-      if (
-        !permanent &&
-        currentAsset?.processingStatus !== 'ready' &&
-        (await deps.getJobAttempts(job.instanceId, job.id)) >= job.maxAttempts
-      ) {
-        const failed = await failClaimedUpload(deps, {
-          instanceId: job.instanceId,
-          claimToken,
-          asset,
-          uploadSession: claimed,
-          errorCode: error instanceof MediaScanError ? error.code : 'media_processing_failed',
-        });
-        if (failed === 'failed' && isMediaQuarantineKey(session.storageKey)) {
-          try {
-            const storage = await deps.resolveStoragePort(job.instanceId);
-            await storage.deleteObject({
-              instanceId: job.instanceId,
-              storageKey: session.storageKey,
-            });
-          } catch {
-            /* The existing explicit job retry can repeat rejected-upload cleanup. */
-          }
-        }
-      }
-      // Storage errors may contain keys or signed URLs. Only the stable reason enters job diagnostics.
-      throw permanent ? error : new Error('media_processing_unavailable');
+      return failProcessingAttempt(deps, job, session, asset, claimed, claimToken, error);
     }
   };
 

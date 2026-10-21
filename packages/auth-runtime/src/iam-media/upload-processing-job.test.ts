@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import sharp from 'sharp';
+import { scanConfiguredMedia, MediaScanError } from './clamav.js';
 
 import {
   createMediaUploadProcessingHandler,
@@ -81,6 +82,28 @@ const setup = async () => {
 };
 
 describe('media processing job', () => {
+  it('records the rejected asset in the scan failure audit without quota booking', async () => {
+    const { service, run, emitAuditEvent } = await setup();
+    service.getUploadSessionById.mockResolvedValue({
+      ...session,
+      storageKey: '.quarantine/tenant-a/asset-1/session',
+    });
+    vi.mocked(scanConfiguredMedia).mockRejectedValueOnce(new MediaScanError('media_scan_infected'));
+    await expect(run()).rejects.toThrow('media_scan_infected');
+    expect(service.tryApplyStorageUsageWithinQuota).not.toHaveBeenCalled();
+    expect(emitAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scope: { kind: 'instance', instanceId },
+        pluginAction: expect.objectContaining({
+          result: 'failure',
+          reasonCode: 'media_scan_infected',
+          resourceType: 'media_asset',
+          resourceId: asset.id,
+        }),
+      })
+    );
+  });
+
   it('marks only successfully scanned intake files as clean when scanning is later disabled', async () => {
     const { service, run } = await setup();
     const quarantinedSession = { ...session, storageKey: '.quarantine/tenant-a/asset-1/session-1' };

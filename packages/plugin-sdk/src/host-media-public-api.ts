@@ -25,5 +25,4 @@ export {
   completeHostMediaUpload,
   initializeHostMediaUpload,
   uploadHostMediaFile,
-  waitForHostMediaUpload,
 } from './media-upload-client.js';

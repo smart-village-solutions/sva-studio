@@ -1,6 +1,5 @@
 import { isMediaAssetReady } from './asset-support.js';
 import type { MediaVisibility } from '@sva/media';
-
 import { createApiError } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
@@ -32,7 +31,6 @@ import {
   assertSupportedListAssetVisibility,
   isMediaVisibility,
 } from './asset-record-support.js';
-
 const isRegisteredListingAsset = (
   item: Awaited<ReturnType<typeof mergeMediaListingPage>>['items'][number]
 ): item is Awaited<ReturnType<typeof mergeMediaListingPage>>['items'][number] & {
@@ -44,7 +42,6 @@ const isRegisteredListingAsset = (
   mimeType: string;
   visibility: MediaVisibility;
 } => 'id' in item;
-
 const enrichListItemWithPreviewUrl = async (input: {
   readonly storagePort: MediaStoragePort;
   readonly item: Awaited<ReturnType<typeof mergeMediaListingPage>>['items'][number];
@@ -57,7 +54,6 @@ const enrichListItemWithPreviewUrl = async (input: {
   ) {
     return input.item;
   }
-
   try {
     const delivery = await input.storagePort.resolveDelivery({
       instanceId: input.item.instanceId,
@@ -65,11 +61,9 @@ const enrichListItemWithPreviewUrl = async (input: {
       storageKey: input.item.storageKey,
       visibility: input.item.visibility,
     });
-
     if (!delivery?.deliveryUrl || delivery.isPublicUrl !== true) {
       return input.item;
     }
-
     return {
       ...input.item,
       previewUrl: delivery.deliveryUrl,
@@ -78,7 +72,6 @@ const enrichListItemWithPreviewUrl = async (input: {
     return input.item;
   }
 };
-
 type MediaListRequest = Readonly<{
   search?: string;
   tag?: string;
@@ -87,7 +80,6 @@ type MediaListRequest = Readonly<{
   cursor?: MediaListingCursor;
   filters: MediaListingFilters;
 }>;
-
 const MAX_MEDIA_LIST_LIMIT = 144;
 
 const readOptionalListParam = (params: URLSearchParams, key: string): string | undefined => {

@@ -48,8 +48,25 @@ const shouldAutoResolveMediaDelivery = (
     !delivery &&
     autoResolvedDeliveryAssetId !== asset.id &&
     asset.mimeType.startsWith('image/') &&
-    asset.uploadStatus === 'processed' && asset.processingStatus === 'ready'
+    asset.uploadStatus === 'processed' &&
+    asset.processingStatus === 'ready'
   );
+
+const usePendingMediaRefresh = (pendingAssetId: string | null, refetch: () => Promise<void>) => {
+  React.useEffect(() => {
+    if (!pendingAssetId) return;
+    const controller = new AbortController();
+    const refresh = () => {
+      if (!controller.signal.aborted) void refetch();
+    };
+    void waitForHostMediaUpload({
+      fetch: globalThis.fetch.bind(globalThis),
+      assetId: pendingAssetId,
+      signal: controller.signal,
+    }).then(refresh, refresh);
+    return () => controller.abort();
+  }, [pendingAssetId, refetch]);
+};
 
 export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => {
   const { refreshSession } = useAuth();
@@ -118,15 +135,7 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
     void refetch();
   }, [refetch]);
 
-  const pendingAssetId = asset?.processingStatus === 'pending' ? asset.id : null;
-  React.useEffect(() => {
-    if (!pendingAssetId) return;
-    const controller = new AbortController();
-    const refresh = () => { if (!controller.signal.aborted) void refetch(); };
-    void waitForHostMediaUpload({ fetch: globalThis.fetch.bind(globalThis), assetId: pendingAssetId, signal: controller.signal })
-      .then(refresh, refresh);
-    return () => controller.abort();
-  }, [pendingAssetId, refetch]);
+  usePendingMediaRefresh(asset?.processingStatus === 'pending' ? asset.id : null, refetch);
 
   const runUpdate = React.useCallback(
     async (payload: UpdateMediaPayload) => {

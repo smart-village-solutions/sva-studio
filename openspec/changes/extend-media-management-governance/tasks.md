@@ -43,3 +43,10 @@
 - Vier erneut ausgeführte echte ClamAV-/Storage-Integrationsfälle erfolgreich; der erfolgreiche Scan-Nachweis ist für öffentliche und geschützte Ausgaben belegt und fehlt beim abgewiesenen EICAR-Upload.
 - 13 Tests der Mediendetailansicht erfolgreich, einschließlich übersetztem Hinweis nur bei gescannten Medien. Der dabei aufgedeckte SDK-Unterpfadkonflikt ist in den vorhandenen Vite-/Vitest-Aliaslisten behoben.
 - Auth- und App-Typprüfungen, Server-Runtime-Check sowie Dokumentations-, Dateiplatzierungs-, OpenSpec- und Diff-Prüfungen erneut erfolgreich. ESLint der ergänzend geänderten Dateien ohne Fehler; bekannte Warnungen bleiben bestehen. Keine zusätzlichen Packages, Services, Tabellen oder Ausführungspfade für die Sichtbarkeitssperre.
+
+### Vorbereitung von PR #1937 (21.10.2026)
+
+- Fachreviews für Code, Tests, System-Assurance, Security, Interoperabilität, Logging, Performance, Dokumentation, UI/i18n, Nutzerpfade und Betrieb durchgeführt. Drei kleine Befunde korrigiert: Asset-Bezug im Scan-Ablehnungs-Audit, sicherer übersetzter Cockpit-Fehlertext bei Malware-Fund und aktuelle ADR-Statusaussage.
+- Bestehende lange Funktionen ohne Vertragsänderung innerhalb ihrer Dateien aufgeteilt; Komplexitäts-Gate gegen `origin/main` ohne neue Findings erfolgreich. Keine neue Baseline oder Ausnahme.
+- SDK-Unterpfad in der vorhandenen gemeinsamen Plugin-Testkonfiguration und den bestehenden spezialisierten Aliaslisten ergänzt; tatsächliche Picker-/Cockpit-/SDK-Verbraucher erneut erfolgreich geprüft.
+- `main` integriert; beide kollidierenden Ergänzungen in arc42-Abschnitt 08 vollständig erhalten. Zielbetriebsabnahme und Scan-Aktivierung bleiben unverändert ausstehend.

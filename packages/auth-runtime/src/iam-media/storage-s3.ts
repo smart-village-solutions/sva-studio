@@ -73,6 +73,35 @@ const isMissingS3ObjectError = (error: unknown): boolean => {
   return statusCode === 404 || error.name === 'NotFound' || error.name === 'NoSuchKey';
 };
 
+const resolveObjectBucket = (config: MediaStorageConfig, storageKey: string): string => {
+  if (!isPrivateMediaStorageKey(storageKey)) return config.bucket;
+  const bucket = process.env.MEDIA_SCAN_QUARANTINE_BUCKET;
+  if (!bucket || bucket === config.bucket) throw new MediaStorageUnavailableError();
+  return bucket;
+};
+
+const assertPrivateIntakeBucket = async (client: S3Client, bucket: string): Promise<void> => {
+  const acl = await client.send(new GetBucketAclCommand({ Bucket: bucket }));
+  if (
+    !acl.Owner?.ID ||
+    !acl.Grants?.length ||
+    acl.Grants.some(
+      (grant) =>
+        grant.Grantee?.Type !== 'CanonicalUser' ||
+        (grant.Grantee.ID !== undefined && grant.Grantee.ID !== acl.Owner?.ID)
+    )
+  )
+    throw new MediaStorageUnavailableError();
+  try {
+    await client.send(new GetBucketPolicyCommand({ Bucket: bucket }));
+  } catch (error) {
+    // The intake bucket accepts no bucket policy, including one granting anonymous access.
+    if (error instanceof Error && error.name === 'NoSuchBucketPolicy') return;
+    throw new MediaStorageUnavailableError();
+  }
+  throw new MediaStorageUnavailableError();
+};
+
 export const createS3MediaStoragePort = (
   config: MediaStorageConfig,
   options?: {
@@ -81,35 +110,9 @@ export const createS3MediaStoragePort = (
   }
 ): MediaStoragePort => {
   const client = options?.client ?? new S3Client(createS3ClientConfig(config));
-  const bucketForKey = (storageKey: string): string => {
-    if (!isPrivateMediaStorageKey(storageKey)) return config.bucket;
-    const bucket = process.env.MEDIA_SCAN_QUARANTINE_BUCKET;
-    if (!bucket || bucket === config.bucket) throw new MediaStorageUnavailableError();
-    return bucket;
-  };
-
-  const assertPrivateIntake = async (storageKey: string) => {
-    const bucket = bucketForKey(storageKey);
-    const acl = await client.send(new GetBucketAclCommand({ Bucket: bucket }));
-    if (
-      !acl.Owner?.ID ||
-      !acl.Grants?.length ||
-      acl.Grants.some(
-        (grant) =>
-          grant.Grantee?.Type !== 'CanonicalUser' ||
-          (grant.Grantee.ID !== undefined && grant.Grantee.ID !== acl.Owner?.ID)
-      )
-    )
-      throw new MediaStorageUnavailableError();
-    try {
-      await client.send(new GetBucketPolicyCommand({ Bucket: bucket }));
-    } catch (error) {
-      // The intake bucket accepts no bucket policy, including one granting anonymous access.
-      if (error instanceof Error && error.name === 'NoSuchBucketPolicy') return;
-      throw new MediaStorageUnavailableError();
-    }
-    throw new MediaStorageUnavailableError();
-  };
+  const bucketForKey = (storageKey: string) => resolveObjectBucket(config, storageKey);
+  const assertPrivateIntake = (storageKey: string) =>
+    assertPrivateIntakeBucket(client, bucketForKey(storageKey));
   const signedUrl =
     options?.getSignedUrl ??
     ((targetClient, command, expiresIn) => getSignedUrl(targetClient, command, { expiresIn }));

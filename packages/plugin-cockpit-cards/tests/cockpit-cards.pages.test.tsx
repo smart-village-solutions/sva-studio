@@ -538,8 +538,8 @@ describe('cockpit cards pages', () => {
     expect(await screen.findByText('messages.deleteError')).toBeTruthy();
   });
 
-  it('keeps form values and hides technical media timeout codes on save failure', async () => {
-    state.create.mockRejectedValue(Object.assign(new Error('media_processing_timeout'), { code: 'media_processing_timeout' }));
+  it.each(['media_processing_timeout', 'media_processing_failed', 'media_scan_infected'])('keeps form values and hides technical media code %s on save failure', async (code) => {
+    state.create.mockRejectedValue(Object.assign(new Error(code), { code }));
     render(<CockpitCardsCreatePage />);
     await screen.findByRole('option', { name: 'Startseite' });
     fillRequiredFields();
@@ -548,7 +548,7 @@ describe('cockpit cards pages', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
     expect(await screen.findByText('messages.saveError')).toBeTruthy();
     expect((titleInput as HTMLInputElement).value).toBe(previous);
-    expect(screen.queryByText('media_processing_timeout')).toBeNull();
+    expect(screen.queryByText(code)).toBeNull();
   });
 
   it('uses the generic save error for non-Error rejections', async () => {

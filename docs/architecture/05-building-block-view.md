@@ -829,12 +829,12 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 9. Auth-Runtime (`packages/auth-runtime`)
    - hostseitige Media-HTTP-Endpunkte
    - interner Storage-Port und S3-/MinIO-Adapter
-   - Audit, Autorisierung und Upload-Processing für Medien
-   - `iam-media/processing.ts` koordiniert Claim, Finalisierung und Fehlerpfade; `processing-variants.ts` erzeugt Bildvarianten und bereinigt Varianten abgelöster Claims. `storage-s3.ts` hält den Storage-Port, während `storage-s3-config.ts` die Instanz-/Umgebungskonfiguration und `storage-s3-listing.ts` die tenantgebundene Objektauflistung tragen.
+   - Audit, Autorisierung und Upload-Processing für Medien über den hosteigenen Studio-Job `media.process-upload` in der vorhandenen Graphile-Runtime
+   - `iam-media/upload-processing-job.ts` verbindet atomare Annahme und vorhandene Jobausführung; `iam-media/processing.ts` koordiniert die Verarbeitung mit Finalisierung und Fehlerpfaden; `processing-variants.ts` erzeugt Bildvarianten und bereinigt Varianten abgelöster Claims. `storage-s3.ts` hält den Storage-Port, während `storage-s3-config.ts` die Instanz-/Umgebungskonfiguration und `storage-s3-listing.ts` die tenantgebundene Objektauflistung tragen.
    - hält `iam-media/core.ts` als schmale öffentliche Fassade; Bibliotheks-/Asset-, Upload-, Content-Save- und Referenz-Handler sowie Request-, Schema- und HTTP-Helfer liegen in fachlich getrennten Modulen
    - verbindet registrierte Assets und Bucket-Objekte über einen versionierten Storage-Key-Cursor, ohne Gesamtzählung oder vollständigen Bucket-Scan
 10. Studio-Frontend (`apps/sva-studio-react/src/routes/admin/media/*`, `src/hooks/use-media.ts`)
-    - startet in `/admin/media` den Browser-Flow `initialize -> signed PUT -> complete`
+    - startet in `/admin/media` den Browser-Flow `initialize -> signed PUT -> complete -> ready`; Upload-Hook und SDK warten begrenzt über den vorhandenen Asset-Lesepfad auf die Freigabe
     - trennt Bibliotheks-UI, Upload-Orchestrierung und Detailnavigation bewusst in eigene Bausteine und navigiert cursorbasiert vor und zurück
 
 ### Ergänzung 2026-06: POI-Geocoding- und Media-Bridges
@@ -1134,3 +1134,7 @@ Browser-, Server-, Job-, Mainserver- und IAM-Eingaben werden am Build-Zeitpunkt 
 ## Stille Mainserver-Credential-Wiederherstellung
 
 Der vorhandene POST-Projektionsrefresh in der App autorisiert Content-Typ und Actor und reserviert den einmaligen Versuch im persistierten accountgebundenen Sync-State. Die Auth-Runtime ergänzt in `iam-organizations/organization-mainserver-recovery.ts` die eng begrenzte lokale Rücksicherung über vorhandene Keycloak-Reader, Verschlüsselung, Binding-Sperren und Audit. Die Datenbank bleibt Organisations-Laufzeitquelle; weder ein neuer Dienst noch ein Recovery-Credentialgeber entsteht. Die bestehende Inhaltsoberfläche zeigt bei verbleibenden Fehlern sichere kopierbare Supportangaben; weitere Details stehen im [Mainserver-Runbook](../development/runbook-sva-mainserver.md).
+
+## Minimale Medienorganisation und Scan-Gate
+
+Tags erweitern das vorhandene Asset-Metadatenfeld und die instanzbezogene Suche ohne eigene Taxonomie. Der gemeinsame Picker nutzt bei Suchtext/Tag die bestehende Host-API. `iam-media/clamav.ts` ergänzt den konkreten ClamAV-Protokollaufruf in der vorhandenen Medienverarbeitung; Quarantäne und geschützte Ausgaben liegen auf demselben S3-Dienst in einem separaten privaten Bucket. Maßgeblich ist [ADR-068](../adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md); die Scan-Aktivierung bleibt eine gesonderte Betriebsabnahme.

@@ -37,6 +37,11 @@ const mediaErrorMessage = (error: IamHttpError | null): string => {
 };
 
 export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
+  const updateDecision = useAccessDecision({
+    kind: 'tenant',
+    moduleId: 'media',
+    actions: { mode: 'allOf', values: ['media.update'] },
+  });
   const deleteDecision = useAccessDecision({
     kind: 'tenant',
     moduleId: 'media',
@@ -106,7 +111,16 @@ export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,1fr)]">
         <div className="space-y-6">
-          <MediaDetailMetadataSection asset={mediaApi.asset} />
+          <MediaDetailMetadataSection
+            key={`${mediaApi.asset.id}:${mediaApi.asset.updatedAt ?? ''}`}
+            asset={mediaApi.asset}
+            canEditTags={
+              updateDecision.status === 'allowed' &&
+              mediaApi.asset.processingStatus === 'ready' &&
+              mediaApi.asset.uploadStatus === 'processed'
+            }
+            onSaveTags={(tags) => mediaApi.updateMedia({ metadata: { tags } })}
+          />
           <MediaDetailImageControlsSection asset={mediaApi.asset} />
         </div>
         <div className="space-y-6">

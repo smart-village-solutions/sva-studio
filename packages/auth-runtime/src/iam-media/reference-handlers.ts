@@ -1,6 +1,7 @@
 import { asApiItem, createApiError, parseRequestBody } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
+import { isMediaAssetReady } from './asset-support.js';
 import { replaceReferencesSchema } from './schemas.js';
 import {
   getMediaRequestId as getRequestId,
@@ -22,7 +23,7 @@ const findMissingAssetIds = (
     const missing: string[] = [];
     for (const assetId of assetIds) {
       const asset = await service.getAssetById(instanceId, assetId);
-      if (!asset || asset.lifecycleStatus === 'provisional') missing.push(assetId);
+      if (!asset || asset.lifecycleStatus === 'provisional' || !isMediaAssetReady(asset)) missing.push(assetId);
     }
     return missing;
   });

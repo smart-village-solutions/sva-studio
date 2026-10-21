@@ -35,6 +35,14 @@ const overrides = Object.entries(remoteConfigContract)
   .join('\n');
 
 describe('remote app config builder', () => {
+  it('accepts explicit scanner activation and only zero or one scanner replica', () => {
+    const source = profile.replace('MEDIA_SCAN_ENABLED=false', 'MEDIA_SCAN_ENABLED=true').replace('MEDIA_CLAMAV_REPLICAS=0', 'MEDIA_CLAMAV_REPLICAS=1');
+    expect(buildRemoteAppConfig({ environment: 'staging', profile: source, overrides }).source).toContain('MEDIA_SCAN_ENABLED=true\n');
+    expect(() => buildRemoteAppConfig({ environment: 'staging', profile: source.replace('MEDIA_CLAMAV_REPLICAS=1', 'MEDIA_CLAMAV_REPLICAS=2'), overrides })).toThrow();
+    expect(() => buildRemoteAppConfig({ environment: 'staging', profile: source.replace('MEDIA_SCAN_ENABLED=true', 'MEDIA_SCAN_ENABLED=yes'), overrides })).toThrow();
+    expect(() => buildRemoteAppConfig({ environment: 'staging', profile: source.replace('MEDIA_CLAMAV_REPLICAS=1', 'MEDIA_CLAMAV_REPLICAS=0'), overrides })).toThrow();
+    expect(() => buildRemoteAppConfig({ environment: 'staging', profile: source.replace('MEDIA_SCAN_QUARANTINE_BUCKET=value', 'MEDIA_SCAN_QUARANTINE_BUCKET='), overrides })).toThrow();
+  });
   it('adds the separate Bus token when the existing bundle has no Bus entry', () => {
     const existingBundle = overrides
       .split('\n')

@@ -2,6 +2,27 @@
 # Monitoring Stack Health + Resource Alerts
 
 groups:
+  - name: media_scan
+    interval: 30s
+    rules:
+      - alert: MediaScanSignatureCheckOverdue
+        expr: (media_scan_signature_check_age_seconds >= 86400) and on(instance) (media_scan_enabled == 1)
+        for: 5m
+        labels:
+          severity: warning
+          component: media-scan
+        annotations:
+          summary: "Aktualität der Virensignaturen seit 24 Stunden nicht bestätigt"
+          description: "FreshClam und den geladenen Signaturstand prüfen. Nach 72 Stunden werden neue Freigaben gesperrt."
+      - alert: MediaScanReleaseBlocked
+        expr: (media_scan_signature_check_age_seconds >= 259200) and on(instance) (media_scan_enabled == 1)
+        for: 1m
+        labels:
+          severity: critical
+          component: media-scan
+        annotations:
+          summary: "Medienfreigaben wegen fehlender Signaturaktualität gesperrt"
+          description: "Aktualitätsprüfung und Scanner-Reload wiederherstellen; bestehende Medien bleiben nutzbar."
   - name: monitoring_stack_health
     interval: 30s
     rules:

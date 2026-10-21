@@ -14,6 +14,8 @@ vi.mock('@sva/monitoring-client/logging', () => ({
 
 import {
   asIamError,
+  startMediaInventoryScan,
+  getMediaInventoryScan,
   activateInstance,
   assignInstanceModule,
   bootstrapInstanceAdminStructure,
@@ -1265,6 +1267,17 @@ describe('iam-api user sync helper', () => {
     browserLoggerMock.info.mockReset();
     browserLoggerMock.warn.mockReset();
     browserLoggerMock.error.mockReset();
+  });
+
+  it('starts a bounded inventory job with CSRF headers and reads its report', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify({ data: { id: 'scan-1', status: 'queued' } }), { status: 202, headers: { 'Content-Type': 'application/json' } }));
+    await startMediaInventoryScan({ limit: 3, cursor: 'next' });
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/iam/media/inventory-scans', expect.objectContaining({
+      method: 'POST', headers: expect.objectContaining({ 'X-Requested-With': 'XMLHttpRequest' }), body: JSON.stringify({ limit: 3, cursor: 'next' }),
+    }));
+    await getMediaInventoryScan('scan-1');
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/iam/media/inventory-scans/scan-1', expect.anything());
   });
 
   it('posts to the keycloak sync endpoint with CSRF headers', async () => {

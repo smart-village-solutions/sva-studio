@@ -14,3 +14,5 @@ export {
   ContentMediaSaveError,
 } from './content-media-persistence.js';
 export type { UpdateHostMediaMetadataInput } from './media-picker-client.js';
+export { listHostMediaAssets } from './media-picker-client.js';
+export { waitForHostMediaUpload } from './media-upload-client.js';

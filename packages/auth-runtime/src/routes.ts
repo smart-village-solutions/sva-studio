@@ -75,6 +75,8 @@ export const authRoutePaths = [
   '/api/v1/iam/contents/$contentId/transfer-ownership',
   '/api/v1/iam/contents/$contentId/ownership-targets',
   '/api/v1/iam/media',
+  '/api/v1/iam/media/inventory-scans',
+  '/api/v1/iam/media/inventory-scans/$scanId',
   '/api/v1/iam/media/register',
   '/api/v1/iam/media/references',
   '/api/v1/iam/media/content-save-operations',

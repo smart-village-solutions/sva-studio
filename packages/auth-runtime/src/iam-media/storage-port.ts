@@ -55,6 +55,7 @@ export type ResolveMediaDeliveryInput = Readonly<{
 export type ReadMediaObjectInput = Readonly<{
   instanceId: string;
   storageKey: string;
+  maxBytes?: number;
 }>;
 
 export type StatMediaObjectInput = Readonly<{
@@ -133,3 +134,10 @@ export const createUnavailableMediaStoragePort = (): MediaStoragePort => ({
     throw new MediaStorageUnavailableError();
   },
 });
+
+export class MediaStorageSizeLimitError extends Error {
+  constructor() {
+    super('media_storage_size_limit');
+    this.name = 'MediaStorageSizeLimitError';
+  }
+}

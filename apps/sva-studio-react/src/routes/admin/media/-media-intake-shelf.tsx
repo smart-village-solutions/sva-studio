@@ -16,11 +16,18 @@ const isSupportedUploadFile = (file: File) => acceptedMimeTypes.has(file.type);
 const uploadErrorMessage = (error: IamHttpError | Error | null) => {
   const permissionMessage = getStudioPermissionDenialMessage(error);
   if (permissionMessage) return permissionMessage;
+  if (error && 'status' in error && error.status === 413) return t('media.errors.uploadSizeExceeded');
   if (!error || !('code' in error) || typeof error.code !== 'string') {
     return t('media.library.upload.error');
   }
 
   switch (error.code) {
+    case 'media_scan_infected':
+      return t('media.errors.infected');
+    case 'media_processing_timeout':
+      return t('media.library.upload.processingTimeout');
+    case 'media_processing_failed':
+      return t('media.library.upload.processingFailed');
     case 'forbidden':
       return t('media.errors.forbidden');
     case 'database_unavailable':

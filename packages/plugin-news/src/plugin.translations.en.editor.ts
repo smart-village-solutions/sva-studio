@@ -127,6 +127,8 @@ export const newsTranslationsENEditor = {
     categoryOptionsLoading: 'Loading categories.',
     categoryOptionsLoadError: 'Failed to load categories.',
     imagePickerEmpty: 'No matching media found.',
+    mediaPickerLoading: 'Loading media.',
+    mediaPickerLoadError: 'Media could not be loaded.',
     mediaUploadInitializing: 'Preparing upload.',
     mediaUploadUploading: 'Uploading media.',
     mediaUploadFinalizing: 'Finalizing media.',

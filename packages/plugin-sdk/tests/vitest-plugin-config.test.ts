@@ -19,6 +19,7 @@ describe('createPluginVitestConfig', () => {
         '/packages/core/src/rich-text-html-policy.ts'
       ),
       '@sva/core': expect.stringContaining('/packages/core/src/index.ts'),
+      '@sva/plugin-sdk/content-media': expect.stringContaining('/packages/plugin-sdk/src/content-media-contracts-public-api.ts'),
       '@sva/plugin-sdk': expect.stringContaining('/packages/plugin-sdk/src/index.ts'),
       '@sva/studio-ui-react': expect.stringContaining('/packages/studio-ui-react/src/index.ts'),
       '@sva/plugin-example/pages': expect.stringContaining('/packages/plugin-events/src/events.pages.tsx'),

@@ -1,3 +1,4 @@
+import { getHostMediaAsset } from './media-picker-client.js';
 import { requestJson, type FetchLike } from './http-client.js';
 
 export type HostMediaUploadVisibility = 'public' | 'protected';
@@ -45,7 +46,9 @@ export const initializeHostMediaUpload = async (input: {
   const response = await requestJson<{ data: InitializeHostMediaUploadResult }>({
     fetch: input.fetch,
     url: '/api/v1/iam/media/upload-sessions',
-    errorFactory: (failingResponse) => new Error(`media_upload_http_${failingResponse.status}`),
+    errorFactory: (failingResponse) => failingResponse.status === 413
+      ? Object.assign(new Error('media_upload_http_413'), { code: 'upload_size_exceeded' })
+      : new Error(`media_upload_http_${failingResponse.status}`),
     init: {
       method: 'POST',
       headers: {
@@ -81,6 +84,47 @@ export const completeHostMediaUpload = async (input: {
     },
   });
   return response.data;
+};
+
+// Bound both status polling and each status request; a timeout never starts another upload/job.
+export const waitForHostMediaUpload = async (input: {
+  readonly fetch: FetchLike;
+  readonly assetId: string;
+  readonly instanceId?: string;
+  readonly signal?: AbortSignal;
+}): Promise<void> => {
+  const deadline = Date.now() + 120_000;
+  while (Date.now() < deadline) {
+    input.signal?.throwIfAborted();
+    let asset: Awaited<ReturnType<typeof getHostMediaAsset>>;
+    try {
+      const timeout = AbortSignal.timeout(deadline - Date.now());
+      asset = await getHostMediaAsset({
+        ...input,
+        signal: input.signal ? AbortSignal.any([input.signal, timeout]) : timeout,
+      });
+    } catch (error) {
+      if (Date.now() >= deadline) break;
+      throw error;
+    }
+    if (asset.uploadStatus === 'processed' && asset.processingStatus === 'ready') return;
+    if (
+      asset.processingStatus === 'failed' ||
+      asset.uploadStatus === 'failed' ||
+      asset.uploadStatus === 'blocked'
+    ) {
+      const failure = asset.technical?.lastError;
+      const code = typeof failure === 'object' && failure !== null && 'code' in failure && failure.code === 'media_scan_infected'
+        ? 'media_scan_infected' : 'media_processing_failed';
+      throw Object.assign(new Error(code), {
+        code,
+      });
+    }
+    await new Promise<void>((resolve) =>
+      setTimeout(resolve, Math.min(1000, deadline - Date.now()))
+    );
+  }
+  throw Object.assign(new Error('media_processing_timeout'), { code: 'media_processing_timeout' });
 };
 
 const putFileToSignedUrl = async (input: {
@@ -137,6 +181,14 @@ export const uploadHostMediaFile = async (input: {
     uploadSessionId: initialized.uploadSessionId,
     instanceId: input.instanceId,
   });
+
+  if (completed.status !== 'processed') {
+    await waitForHostMediaUpload({
+      fetch: input.fetch,
+      assetId: completed.assetId,
+      instanceId: input.instanceId,
+    });
+  }
 
   return {
     assetId: completed.assetId,

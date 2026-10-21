@@ -282,11 +282,11 @@ Schulden auf IST-Basis.
 - Wahrscheinlichkeit: mittel
 - Maßnahme: `assignedModules` als kanonischen Session- und Routing-Kontext verwenden, Plugin-Navigation fail-closed ausblenden und Modul-IAM-Baseline nach jeder Mutation neu herstellen
 
-43. Synchrone Medienverarbeitung im MVP-Upload-Pfad
+43. Wartezeiten bei asynchroner Medienverarbeitung
 
-- Impact: mittel bis hoch (größere Bilder oder zusätzliche Presets erhöhen Latenz und koppeln Verarbeitungsfehler direkt an Request-Antworten)
+- Impact: mittel (Worker-Rückstau oder große Bilder verzögern die Freigabe und können die begrenzte UI-Wartezeit überschreiten)
 - Wahrscheinlichkeit: mittel
-- Maßnahme: Folge-Change `openspec/changes/add-media-async-processing/` für Queue-/Worker-Pfad, Retry-Strategie und entkoppelte Variantenverarbeitung umsetzen
+- Maßnahme: Standardvarianten über vorhandene Studio-Jobs verarbeiten; Queue- und Fehlerzustand dort diagnostizieren. Die UI wartet begrenzt auf `ready`; Bibliotheksjobs laufen nach Timeout weiter, Content-Speicherversuche verwenden den vorhandenen Abbruch-/Recovery-Pfad.
 
 44. Öffentlicher Plugin-Operations-Vertrag könnte vor der ersten Runner-Integration zu früh als vollständig wahrgenommen werden
 
@@ -395,7 +395,7 @@ Schulden auf IST-Basis.
 - Die Live-Paritäts-Wiederverwendung für identische Digests reduziert Drift-Risiko, ersetzt aber keinen späteren echten Off-Cluster-Paritäts-Pfad für neue Digests
 - Plugin-Registrierung ist jetzt metadatenbasiert, aber noch nicht runtime-dynamisch
 - Content-Payloads bleiben in Postgres generisch als JSON abgelegt; Typsicherheit wird aktuell im Serververtrag und nicht in der Datenbank erzwungen
-- Medienvarianten werden im MVP synchron beim Upload-Abschluss erzeugt; ein entkoppelter Async-Worker ist als Folgearbeit unter `openspec/changes/add-media-async-processing/` vorgesehen
+- Medienvarianten werden über den vorhandenen Studio-Job-Worker erzeugt. Ein gemessener Performanceengpass oder ein Produktions-Rollout ist damit nicht nachgewiesen.
 
 ### Nachverfolgung
 
@@ -709,3 +709,10 @@ Referenzen:
 ### Distributionsdrift
 
 Ein versehentlich übernommener allgemeiner Plugin-Glob oder Seiten-Import kann eine ausgeschlossene Fähigkeit erneut in ein Image ziehen. Profilierte Eingabemodule und Seiten-Bindings begrenzen die Importkante. Ein Buildzeit-Nachweis ordnet alle finalen Browser- und Server-JavaScript-Dateien ihren Plugin-Quellmodulen und finalen Hashes zu; die Image-Verifikation hasht die Dateien im Container erneut und verwirft unbekannte Dateien, geänderte Bytes oder ausgeschlossene Quellen. Für manuelle Custom-Builds bindet ein OCI-Fingerabdruck zusätzlich die normalisierte Plugin-Menge an Manifest und Chunk-Provenienz. Das Zusatzimage wird im Build veröffentlicht; erst die anschließende eigene Image-Verifikation gibt seinen Digest als geprüftes Artefakt frei und bleibt außerhalb der automatischen Dev-Promotion; die Kassel-Instanz benötigt weiterhin einen separat geprüften Digest-Rollout.
+
+## Aktivierung des ClamAV-Scan-Gates
+
+- Das Scan-Gate ist standardmäßig aus; eine vorhandene Codeanbindung belegt keinen produktiven Schutz. Vor Aktivierung sind Bucket-Policy/ACL, direkte anonyme Zugriffe, geladene Signaturen und Diagnose im Zielbetrieb zu prüfen. Anbindungen ohne den erforderlichen privaten Bucket oder ohne unterstützte ACL-/Policy-Auskunft bleiben gesperrt.
+- FreshClam- oder Scanner-Ausfall kann neue Medienfreigaben verhindern. Nach 24 Stunden ohne bestätigte Aktualität wird gewarnt, nach 72 Stunden gesperrt; vorhandene Medien bleiben nutzbar. Containerupdates und Fehlalarme bleiben Betriebsaufgaben.
+- Neue Bucket-Registrierungen sind im Scanbetrieb zunächst gesperrt. Ein späterer gescannter Import und eine automatische Bestandsprüfung gehören zu einem gesondert begründeten Bedarf.
+- Direkte öffentliche Ausgaben entstehen erst nach Scan und Inhaltsvalidierung, die S3-Schreibvorgänge und Datenbankfinalisierung sind jedoch keine verteilte Transaktion. Claim-isolierte Keys und bestehende Bereinigung begrenzen Fehlerfolgen; nie gebuchte Bytes werden nicht von der Quote abgezogen.

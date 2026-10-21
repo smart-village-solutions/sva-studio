@@ -116,6 +116,20 @@ describe('MediaDetailPage', () => {
     vi.useRealTimers();
   });
 
+  it('explains fixed visibility only for successfully scanned uploads', () => {
+    const media = useMediaDetailMock();
+    const hint =
+      'Die Sichtbarkeit bleibt nach dem gescannten Upload fest. Für eine andere Sichtbarkeit laden Sie das Medium erneut hoch.';
+    const view = render(<MediaDetailPage assetId="asset-2" />);
+    expect(screen.queryByText(hint)).toBeNull();
+    useMediaDetailMock.mockReturnValue({
+      ...media,
+      asset: { ...media.asset, technical: { scanStatus: 'clean' } },
+    });
+    view.rerender(<MediaDetailPage assetId="asset-2" />);
+    expect(screen.getByText(hint)).toBeTruthy();
+  });
+
   it('renders the asset workspace header with preview-independent status and action context', () => {
     render(<MediaDetailPage assetId="asset-2" />);
 

@@ -12,6 +12,10 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: /^@sva\/plugin-sdk\/content-media$/,
+        replacement: resolve(__dirname, './packages/plugin-sdk/src/content-media-contracts-public-api.ts'),
+      },
+      {
         find: /^@sva\/data\/server$/,
         replacement: resolve(__dirname, './packages/data/src/server.ts'),
       },

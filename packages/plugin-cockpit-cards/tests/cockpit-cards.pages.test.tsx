@@ -538,6 +538,19 @@ describe('cockpit cards pages', () => {
     expect(await screen.findByText('messages.deleteError')).toBeTruthy();
   });
 
+  it.each(['media_processing_timeout', 'media_processing_failed', 'media_scan_infected'])('keeps form values and hides technical media code %s on save failure', async (code) => {
+    state.create.mockRejectedValue(Object.assign(new Error(code), { code }));
+    render(<CockpitCardsCreatePage />);
+    await screen.findByRole('option', { name: 'Startseite' });
+    fillRequiredFields();
+    const titleInput = screen.getByLabelText('fields.text');
+    const previous = (titleInput as HTMLInputElement).value;
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
+    expect(await screen.findByText('messages.saveError')).toBeTruthy();
+    expect((titleInput as HTMLInputElement).value).toBe(previous);
+    expect(screen.queryByText(code)).toBeNull();
+  });
+
   it('uses the generic save error for non-Error rejections', async () => {
     state.create.mockRejectedValue('save failed');
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');

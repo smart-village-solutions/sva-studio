@@ -321,6 +321,10 @@ const authServerMocks = vi.hoisted(() => {
       response('listContentOwnershipTargetsHandler')
     ),
     listMediaHandler: vi.fn(async () => response('listMediaHandler')),
+    mediaInventoryScanHandlers: {
+      start: vi.fn(async () => response('startMediaInventoryScanHandler')),
+      get: vi.fn(async () => response('getMediaInventoryScanHandler')),
+    },
     registerBucketMediaHandler: vi.fn(async () => response('registerBucketMediaHandler')),
     listMediaReferencesHandler: vi.fn(async () => response('listMediaReferencesHandler')),
     createMediaContentSaveOperationHandler: vi.fn(async () =>
@@ -498,6 +502,21 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.healthLiveHandler).toHaveBeenCalled();
   });
 
+  it('dispatches manual inventory start and report routes to the auth runtime', async () => {
+    const start = resolveAuthHandlers('/api/v1/iam/media/inventory-scans')?.POST;
+    const report = resolveAuthHandlers('/api/v1/iam/media/inventory-scans/$scanId')?.GET;
+    expect(start).toBeDefined();
+    expect(report).toBeDefined();
+    await start?.({
+      request: new Request('http://localhost/api/v1/iam/media/inventory-scans', { method: 'POST' }),
+    });
+    await report?.({
+      request: new Request('http://localhost/api/v1/iam/media/inventory-scans/scan-1'),
+    });
+    expect(authServerMocks.mediaInventoryScanHandlers.start).toHaveBeenCalledOnce();
+    expect(authServerMocks.mediaInventoryScanHandlers.get).toHaveBeenCalledOnce();
+  });
+
   it('dispatches media upload completion routes to the auth runtime', async () => {
     const handlers = resolveAuthHandlers(
       '/api/v1/iam/media/upload-sessions/$uploadSessionId/complete'
@@ -659,7 +678,9 @@ describe('auth.routes.server', () => {
   it('dispatches all four instance Bus key operations to the session-only facade', async () => {
     const base = '/api/v1/iam/instances/$instanceId/bus-api-keys';
     const collection = resolveAuthHandlers(base);
-    const request = new Request('https://studio.example.test/api/v1/iam/instances/demo/bus-api-keys');
+    const request = new Request(
+      'https://studio.example.test/api/v1/iam/instances/demo/bus-api-keys'
+    );
     await collection.GET?.({ request });
     await collection.POST?.({ request });
     await resolveAuthHandlers(`${base}/$keyId/revoke`).POST?.({ request });

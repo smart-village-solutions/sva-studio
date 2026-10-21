@@ -86,6 +86,18 @@ async function saveContent(
   }
 }
 
+const readableSaveErrorReason = (cause: unknown): string => {
+  if (!(cause instanceof Error)) return '';
+  if (
+    'code' in cause &&
+    ['media_processing_timeout', 'media_processing_failed', 'media_scan_infected'].includes(
+      String(cause.code)
+    )
+  )
+    return '';
+  return cause.message;
+};
+
 export async function saveCockpitCard(values: CockpitCardFormValues, context: SaveContext) {
   const { mediaUsages, saveFeedback, setMutationError, pt } = context;
   setMutationError(null);
@@ -133,7 +145,7 @@ export async function saveCockpitCard(values: CockpitCardFormValues, context: Sa
           addStudioCreatedSaveFeedback(previous, 'cockpit-cards', result.saved.id),
       });
   } catch (cause) {
-    const reason = cause instanceof Error ? cause.message : '';
+    const reason = readableSaveErrorReason(cause);
     setMutationError(
       cause instanceof Error && 'code' in cause && cause.code === 'visibility_update_failed'
         ? pt('messages.visibilitySavePartialFailure')

@@ -1,10 +1,22 @@
-import { mediaLiterals } from '@sva/media';
+import { mediaLiterals, mediaTagLimit, normalizeMediaTags } from '@sva/media';
 import { z } from 'zod';
 
 const instanceIdSchema = z.string().trim().min(1).optional();
 const visibilitySchema = z.enum(mediaLiterals.visibilities);
 
 const editableMetadataSchema = z.object({
+  tags: z
+    .array(z.string())
+    .max(mediaTagLimit)
+    .transform((values, ctx) => {
+      try {
+        return normalizeMediaTags(values);
+      } catch {
+        ctx.addIssue({ code: 'custom', message: 'invalid_media_tags' });
+        return z.NEVER;
+      }
+    })
+    .optional(),
   title: z.string().trim().min(1).max(512).nullable().optional(),
   description: z.string().trim().min(1).max(5000).nullable().optional(),
   altText: z.string().trim().min(1).max(512).nullable().optional(),

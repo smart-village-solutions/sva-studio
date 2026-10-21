@@ -1718,6 +1718,28 @@ paths:
     post:
       summary: Speicheroperation abbrechen
       responses: {default: {description: "Antwort des Endpunkts."}}
+  /api/v1/iam/media/inventory-scans:
+    post:
+      summary: Begrenzten lesenden Bestandsscan manuell starten
+      description: Erfordert media.read und media.update sowie CSRF-Schutz. Verändert oder sperrt keine Medien.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limit: {type: integer, minimum: 1, maximum: 25, default: 25}
+                cursor: {type: string, minLength: 1, maxLength: 4096}
+      responses:
+        '202': {description: Scan als Studio-Job eingereiht.}
+        default: {description: Fehler im bestehenden IAM-Fehlerformat.}
+  /api/v1/iam/media/inventory-scans/{scanId}:
+    parameters: [{name: scanId, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      summary: Status und Bericht eines Bestandsscans lesen
+      description: Instanzgebunden; erfordert media.read und media.update. Bericht je Datei sauber, Fund oder nicht prüfbar, höchstens 64 MiB je Datei.
+      responses: {default: {description: Job-Status und optionaler Bericht im bestehenden API-Item-Format.}}
   /api/v1/iam/media/upload-sessions:
     post:
       summary: Medien-Upload starten

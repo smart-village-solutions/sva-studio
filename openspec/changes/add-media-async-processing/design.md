@@ -1,17 +1,31 @@
-# Design: Asynchrone Medienverarbeitung
+# Design: Bestehende Bildverarbeitung im Studio-Job
 
-## Zielbild
+## Ablauf
 
-Der Folge-Change löst teure oder fehleranfällige Bildverarbeitung aus dem synchronen Request-Pfad. Upload-Abschluss bestätigt nur Validierung und Job-Annahme; Varianten, seltene Presets und nachgelagerte Prüfungen laufen in einem dedizierten Worker.
+Die bestehende Verarbeitung aus `packages/auth-runtime/src/iam-media/processing.ts` läuft über einen hosteigenen Studio-Job. Graphile Worker ist vorhanden; eine neue Infrastruktur oder ein eigener Worker-Dienst ist nicht erforderlich.
 
-## Leitplanken
+1. Der Browser überträgt die Datei wie bisher direkt an den Storage.
+2. Der Upload-Abschluss plant den Job dauerhaft ein und bestätigt dessen Annahme. Das Medium ist damit noch nicht validiert oder nutzbar. Bei fehlgeschlagener Einplanung wird kein Erfolg bestätigt; ein erneuter Abschluss darf keinen zweiten aktiven Auftrag erzeugen.
+3. Der Job führt die bestehende Inhaltsvalidierung, Metadatenextraktion und Standard-Variantengenerierung aus. Die vorhandene kurze Finalisierung prüft Claim und Quote vor der Veröffentlichung als `ready`.
+4. Upload-UI und SDK warten über begrenzte Statusabfragen am vorhandenen Asset-Lesepfad auf `ready` oder einen Fehler. Die geöffnete Detailansicht wartet zunächst ebenfalls bis zu 120 Sekunden; ist das Medium danach weiter in Verarbeitung, fragt sie seinen Zustand alle zehn Sekunden ab. Eine Folgeabfrage wird erst nach Ende der vorherigen geplant; jede späte Statusabfrage ist auf zehn Sekunden begrenzt. Bei Fertigstellung oder einem Verarbeitungs-/Abruffehler werden die regulären Detaildaten neu geladen und die Folgeabfragen beendet. Seiten- oder Asset-Wechsel brechen Timer und laufende Abfragen ab und verwerfen späte Antworten. Ein Timeout bestätigt keinen Upload-Erfolg und startet keine zweite Verarbeitung.
+5. Erst bei `ready` endet der Upload-Ablauf erfolgreich. Beim Content-Speichern folgen erst dann Delivery-Auflösung, Content-Persistenz und Referenzabschluss. Unfertige Medien bleiben für neue Verwendungen und fachliche Auslieferung gesperrt.
 
-- kein Fachmodul erhält direkten Zugriff auf Queue- oder Storage-Artefakte
-- Upload- und Asset-Status bleiben fail-closed und auditierbar
-- bestehende `MediaReference`-Verträge und Delivery-Pfade bleiben kompatibel
+Der synchrone Aufruf der Variantengenerierung im Upload-Request entfällt. Die vorhandene Verarbeitungslogik wird weiterverwendet; es gibt keinen alternativen Sofortpfad für kleine Dateien.
 
-## Offene Entscheidungen
+## Zeitüberschreitung beim Warten
 
-- konkrete Queue-Technologie
-- Retry-Strategie und Dead-Letter-Policy
-- Trennung zwischen eager Kleinstvarianten und vollständig asynchroner Verarbeitung
+- **Medienbibliothek:** Nur das Warten der Oberfläche endet. Der angenommene Job läuft weiter; das Medium bleibt als „in Verarbeitung“ sichtbar, bis der vorhandene Lesepfad `ready` oder einen Fehler meldet. Es wird kein zweiter Job gestartet.
+- **Content-Speichern:** Der Speicherversuch endet vor der Content-Persistenz mit einer verständlichen Fehlermeldung. Die Formulareingaben bleiben erhalten. Die provisorischen Uploads dieses Versuchs werden über den vorhandenen Abbruch-/Recovery-Pfad bereinigt; bestehende Bibliotheksmedien und Referenzen bleiben erhalten. Eine automatische Wiederaufnahme dieses Speichervorgangs wird nicht eingeführt.
+
+Die Annahme speichert Upload-Claim, Job und Enqueue in derselben kurzen Datenbanktransaktion. Ein bei der Annahme abgelöster alter Claim bleibt mit seinem Token im Job erhalten, damit dessen Varianten ebenfalls über die vorhandene Bereinigung entfernt werden. Die Upload-Session-ID dient als stabile Job-ID; wiederholte Abschlussaufrufe lesen diesen Auftrag. Der Worker erneuert den Claim für jeden Versuch, sodass ein überholter Versuch seine Varianten weder veröffentlichen noch fremde Varianten bereinigen kann. Storage- und Bildoperationen laufen weiterhin außerhalb der Transaktion.
+
+## Erhaltene Garantien
+
+- Medienjobs nutzen die vorhandenen Studio-Job-Status, technischen Wiederholungsversuche und redigierten Betriebsdiagnosen. Terminale Jobs werden nur über den bestehenden expliziten Wiederanstoß erneut ausgeführt.
+- Wiederholte Abschlüsse und Job-Ausführungen erzeugen keine doppelte Veröffentlichung oder Quotenbuchung. Claim-Token und claim-isolierte Varianten bleiben maßgeblich.
+- Ein abgebrochener provisorischer Content-Speichervorgang darf durch einen verspäteten Job nicht aktiviert werden. Seine Bereinigung bleibt im vorhandenen Recovery-Pfad.
+- Die bestehende Quotenprüfung bleibt vor `ready` verbindlich. Quotenüberschreitungen und Verarbeitungsfehler verwenden die vorhandenen Fehler- und Bereinigungspfade.
+
+## Abgrenzung
+
+Dieser Change baut ausschließlich den Standard-Variantenpfad um. Scan, Replace und Retention erhalten hier keine vorgezogenen Verträge oder Erweiterungspunkte. Spätere fachliche Jobs verwenden ebenfalls die vorhandene Studio-Job-Fähigkeit; sie benötigen keine zusätzliche Medienjob-Plattform. Die bestehende Regel für seltene, bedarfsgesteuerte Varianten wird nicht erweitert.

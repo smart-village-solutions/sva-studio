@@ -86,6 +86,7 @@ export default defineConfig({
       '@sva/monitoring-client/logging': resolve(__dirname, '../monitoring-client/src/logging.ts'),
       '@sva/monitoring-client': resolve(__dirname, '../monitoring-client/src/index.ts'),
       '@sva/plugin-ssf/provisioning': resolve(__dirname, '../plugin-ssf/src/provisioning.ts'),
+      '@sva/plugin-sdk/content-media': resolve(__dirname, '../plugin-sdk/src/content-media-contracts-public-api.ts'),
       '@sva/plugin-sdk': resolve(__dirname, '../plugin-sdk/src/index.ts'),
       '@sva/studio-module-iam': resolve(__dirname, '../studio-module-iam/src/index.ts'),
       '@sva/media': resolve(__dirname, '../media/src/index.ts'),

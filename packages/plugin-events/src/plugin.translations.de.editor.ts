@@ -42,6 +42,8 @@ export const eventsDEEditor = {
     locationMapError:
       'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
     imagePickerEmpty: 'Keine passenden Medien gefunden.',
+  mediaPickerLoading: 'Medien werden geladen.',
+  mediaPickerLoadError: 'Medien konnten nicht geladen werden.',
     mediaUploadInitializing: 'Upload wird vorbereitet.',
     mediaUploadUploading: 'Medium wird hochgeladen.',
     mediaUploadFinalizing: 'Medium wird eingepflegt.',

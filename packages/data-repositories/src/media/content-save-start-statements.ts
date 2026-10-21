@@ -140,6 +140,8 @@ WITH eligible_operation AS (
   JOIN iam.media_assets AS asset
     ON asset.id = desired.asset_id
    AND asset.instance_id = $2
+   AND asset.upload_status = 'processed'
+   AND asset.processing_status = 'ready'
    AND (
      asset.lifecycle_status = 'active'
      OR (

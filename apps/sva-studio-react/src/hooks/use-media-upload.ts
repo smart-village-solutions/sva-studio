@@ -1,4 +1,5 @@
 import React from 'react';
+import { waitForHostMediaUpload } from '@sva/plugin-sdk';
 
 import {
   asIamError,
@@ -181,6 +182,9 @@ export const useSingleFileMediaUpload = (): UseSingleFileMediaUploadResult => {
           upload_session_id: nextUploadSessionId,
         });
         const completed = await completeMediaUpload(nextUploadSessionId);
+        if (completed.data.status !== 'processed') {
+          await waitForHostMediaUpload({ fetch: globalThis.fetch.bind(globalThis), assetId: completed.data.assetId });
+        }
         setPhase('success');
         logBrowserOperationSuccess(mediaLogger, 'media_upload_complete_succeeded', {
           operation: 'complete_media_upload',

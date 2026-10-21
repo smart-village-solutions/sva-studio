@@ -1,5 +1,7 @@
 import { asApiItem, createApiError, parseRequestBody } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
+import { getMediaScanEnabled } from '../runtime-secrets.js';
+import { isPrivateMediaStorageKey } from './storage-key-paths.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { MediaStorageObjectNotFoundError, MediaStorageUnavailableError } from './storage-port.js';
 import { registerBucketMediaSchema } from './schemas.js';
@@ -50,11 +52,14 @@ const registerAuthorizedBucketMedia = async (input: {
   instanceId: string;
   data: BucketRegistration;
 }): Promise<Response> => {
-  if (isGeneratedVariantStorageKey(input.instanceId, input.data.storageKey)) {
+  if (
+    isPrivateMediaStorageKey(input.data.storageKey) ||
+    isGeneratedVariantStorageKey(input.instanceId, input.data.storageKey)
+  ) {
     return createApiError(
       400,
       'invalid_request',
-      'Generierte Varianten koennen nicht als eigenstaendige Medienobjekte registriert werden.',
+      'Interne Storage-Objekte können nicht als eigenständige Medienobjekte registriert werden.',
       getRequestId()
     );
   }
@@ -75,6 +80,7 @@ const registerAuthorizedBucketMedia = async (input: {
       asApiItem(assertSupportedListAssetVisibility(existing), getRequestId())
     );
   }
+  if (getMediaScanEnabled()) return createApiError(409, 'conflict', 'media_scan_import_unavailable', getRequestId(), { reason: 'media_scan_import_unavailable' });
   const bucketObject = await readRegistrationObject({
     deps: input.deps,
     ctx: input.ctx,

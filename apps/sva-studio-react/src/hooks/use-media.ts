@@ -64,7 +64,8 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
     latestRequestRef.current = requestId;
     logBrowserOperationStart(mediaLogger, 'media_library_refetch_started', {
       operation: 'list_media',
-      search: query.search ?? null,
+      has_search: Boolean(query.search?.trim()),
+      has_tag_filter: Boolean(query.tag?.trim()),
       visibility: query.visibility ?? null,
     });
     setIsLoading(true);
@@ -182,7 +183,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
         operation: 'list_media',
       });
     }
-  }, [refreshSession, query.cursor, query.limit, query.search, query.visibility]);
+  }, [refreshSession, query.cursor, query.limit, query.search, query.tag, query.visibility]);
 
   React.useEffect(() => {
     void refetch();

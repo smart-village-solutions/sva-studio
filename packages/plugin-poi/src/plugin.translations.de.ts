@@ -50,6 +50,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     fax: 'Fax',
     mediaPlaceholder: 'Medium auswählen',
     imageSearch: 'Dateiname filtern',
+    imageTags: 'Nach Tag filtern',
     imageFileName: 'Dateiname',
     assetId: 'Asset-ID',
     attachmentAsset: 'Weiteres Medium',
@@ -124,10 +125,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     removeCategory: 'Kategorie {{name}} entfernen',
   },
   messages: poiMessagesDe,
-  tabs: {
-    ariaLabel: 'Detailbereiche',
-    mobileLabel: 'Bereich auswählen',
-  },
+  tabs: { ariaLabel: 'Detailbereiche', mobileLabel: 'Bereich auswählen' },
   detailTabs: {
     basis: { title: 'Basis', description: 'Stammdaten und Veröffentlichungsstatus.' },
     content: {

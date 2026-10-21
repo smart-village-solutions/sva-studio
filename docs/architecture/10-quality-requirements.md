@@ -531,3 +531,7 @@ Referenzen:
 
 - Der Standardbuild darf weder SSF-Plugin-Code noch SSF-IAM- oder Job-Beiträge enthalten.
 - Das SSF-Artefakt enthält nur SSF und Media; Image-Label, eingebettetes Manifest und geprüfter Digest müssen übereinstimmen.
+
+## Nachweise für Tags und ClamAV
+
+Tag-Normalisierung, Patch-Semantik, serverseitige Suche und Cursor-Bindung werden gezielt getestet; PostgreSQL belegt die instanzisolierte Filterabfrage. Der lokale Integrationstest mit echtem ClamAV und einer isolierten S3-Testinstanz prüft anonyme Zugriffssperre, EICAR-Ablehnung, Signaturablauf und die Veröffentlichung derselben geprüften Bytes trotz Überschreiben des Eingangs. Die 24-/72-Stunden-Regel wird mit kontrollierter Zeit geprüft. Diese lokale Evidenz ersetzt nicht die Storage-/Monitoring-Abnahme im Zielbetrieb.

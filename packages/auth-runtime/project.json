@@ -42,7 +42,9 @@
         "cwd": ".",
         "commands": [
           "node --import tsx scripts/ci/verify-graphile-worker-database-contract.ts",
-          "node --import tsx scripts/ci/verify-plugin-lifecycle-database-contract.ts"
+          "node --import tsx scripts/ci/verify-plugin-lifecycle-database-contract.ts",
+          "RUN_POSTGRES_INTEGRATION=1 pnpm exec tsx scripts/ci/run-vitest-target.ts --root packages/auth-runtime --config vitest.config.ts --testFiles=src/iam-media/upload-processing-job.postgres.integration.test.ts",
+          "RUN_MEDIA_SCAN_INTEGRATION=1 pnpm exec tsx scripts/ci/run-vitest-target.ts --root packages/auth-runtime --config vitest.config.ts --testFiles=src/iam-media/media-scan.integration.test.ts"
         ],
         "parallel": false
       }

@@ -68,6 +68,8 @@ export const poiMessagesDe = {
   mediaPickerAssetLoadError: 'Das Medium konnte nicht geladen werden.',
   mediaPickerMetadataSaveError: 'Die Metadaten konnten nicht gespeichert werden.',
   imagePickerEmpty: 'Keine Bilder gefunden.',
+  mediaPickerLoading: 'Medien werden geladen.',
+  mediaPickerLoadError: 'Medien konnten nicht geladen werden.',
   mediaMoveUp: 'Nach oben verschieben',
   mediaMoveDown: 'Nach unten verschieben',
   mediaRefreshMetadata: 'Metadaten aus Mediathek aktualisieren',

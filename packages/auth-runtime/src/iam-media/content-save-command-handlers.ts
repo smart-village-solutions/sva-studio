@@ -1,3 +1,4 @@
+import { isMediaAssetReady } from './asset-support.js';
 import { asApiItem, createApiError, parseRequestBody } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
@@ -52,14 +53,19 @@ export const replaceContentSaveOperationReferences = async (
     ...reference,
     id: reference.id ?? deps.createId(),
   }));
-  const successful = await deps.withMediaService(operationContext.instanceId, (service) =>
-    service.replaceContentSaveOperationReferences({
+  const successful = await deps.withMediaService(operationContext.instanceId, async (service) => {
+    for (const reference of references) {
+      const asset = await service.getAssetById(operationContext.instanceId, reference.assetId);
+      if (!asset || !isMediaAssetReady(asset)) return false;
+      if (asset.lifecycleStatus === 'provisional' && (asset.provisionalOperationId !== operationContext.operationId || asset.provisionalOwnerSubject !== ctx.user.id)) return false;
+    }
+    return service.replaceContentSaveOperationReferences({
       instanceId: operationContext.instanceId,
       operationId: operationContext.operationId,
       actorSubject: ctx.user.id,
       references,
-    })
-  );
+    });
+  });
   return successful
     ? jsonResponse(
         200,

@@ -6,13 +6,23 @@ export const buildAssetFilterClauses = (filter: Omit<MediaAssetListFilter, 'limi
   const values: unknown[] = [filter.instanceId];
 
   if (filter.search?.trim()) {
-    values.push(`%${filter.search.trim().toLowerCase()}%`);
+    values.push(`%${filter.search.normalize('NFC').trim().toLowerCase()}%`);
     clauses.push(`(
       lower(coalesce(metadata->>'title', '')) LIKE $${values.length}
       OR lower(coalesce(metadata->>'altText', '')) LIKE $${values.length}
       OR lower(mime_type) LIKE $${values.length}
       OR lower(storage_key) LIKE $${values.length}
+      OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(
+        CASE WHEN jsonb_typeof(metadata->'tags') = 'array' THEN metadata->'tags' ELSE '[]'::jsonb END
+      ) AS media_tag(value) WHERE lower(media_tag.value) LIKE $${values.length})
     )`);
+  }
+
+  if (filter.tag) {
+    values.push(filter.tag.normalize('NFC').trim().replace(/\s+/gu, ' '));
+    clauses.push(`EXISTS (SELECT 1 FROM jsonb_array_elements_text(
+      CASE WHEN jsonb_typeof(metadata->'tags') = 'array' THEN metadata->'tags' ELSE '[]'::jsonb END
+    ) AS media_tag(value) WHERE lower(media_tag.value) = lower($${values.length}::text))`);
   }
 
   if (filter.visibility?.trim()) {

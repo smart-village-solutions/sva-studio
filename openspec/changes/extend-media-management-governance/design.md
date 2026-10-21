@@ -1,97 +1,75 @@
-# Design: Verbleibende Medien-Governance
+# Design: Tags und Virenscan im bestehenden Medienpfad
 
-## Kontext
+## Umfang und bestehende Pfade
 
-Das Medienmanagement besitzt bereits ein kanonisches Asset-/Varianten-/Referenzmodell, globale redaktionelle Basis-Metadaten, einen validierten Upload-Pfad und harte instanzbezogene Speicherquoten. Der Change erweitert diese Basis gezielt um weiterhin offene Governance-Funktionen.
+Dieser Change liefert zwei begrenzte Erweiterungen: Tags für registrierte Medien und einen ClamAV-Scan für neue Uploads. Grundlage sind das vorhandene Asset-/Metadatenmodell sowie der Medienjob aus `add-media-async-processing`. Scan-Aufruf und Storage-Operationen laufen außerhalb der kurzen Finalisierungstransaktion. Es entstehen keine neue Job-Plattform, Scanner-Auswahl oder Versionsverwaltung.
 
-Die Erweiterung besteht aus zwei fachlichen Bereichen:
+## 1. Tags ohne Taxonomieverwaltung
 
-- redaktionelle Auffindbarkeit und globale Mehrsprachigkeit
-- Betriebssicherheit beim Anlegen, Prüfen und Austauschen von Assets
+Tags sind eine optionale Liste einfacher Begriffe im vorhandenen JSON-Metadatenfeld des Assets. Bestehende Assets ohne Tags entsprechen einer leeren Liste. Ein berechtigter Benutzer kann Tags bei der Metadatenpflege hinzufügen oder entfernen; es gibt keine eigenständigen Tag-Entitäten, globale Umbenennung oder Verwaltungsseite.
 
-Diese Bereiche bleiben in einem Change, erhalten aber getrennte Verträge und Arbeitspakete. So entsteht keine implizite Kopplung zwischen Taxonomie und Upload-Sicherheit.
+Tags werden client- und serverseitig begrenzt und validiert: höchstens 20 Tags je Asset, je 1 bis 64 Zeichen nach Normalisierung. Die Normalisierung verwendet Unicode-NFC, entfernt äußere Leerzeichen und fasst innere Leerzeichen zusammen. Vergleich und Filter sind unabhängig von Groß-/Kleinschreibung; gleiche Begriffe werden einmal gespeichert. Die zuerst eingegebene Schreibweise bleibt für die Anzeige erhalten. Nicht angegebene Tags verändern bei einem Metadaten-Patch nichts; eine leere Liste entfernt alle Tags.
 
-## Ziele
+Die vorhandene serverseitige Suche findet zusätzlich Tag-Begriffe. Der minimale Filter wählt genau einen Tag und vergleicht ihn vollständig nach derselben Normalisierung. Suchtext und Tag-Filter werden gemeinsam angewendet. Der Filter gehört in die vorhandene Cursor-Bindung; Filterwechsel starten eine neue Seitennavigation. Unregistrierte Bucket-Dateien haben keine Tags und erscheinen bei gesetztem Tag-Filter nicht. Instanzscope und bestehende Berechtigungen bleiben maßgeblich. Bibliothek und vorhandener Picker verwenden denselben API-Vertrag; keine zusätzliche Suchinfrastruktur.
 
-- globale Asset-Metadaten in unterstützten Instanzsprachen pflegbar und deterministisch lesbar machen
-- Medien durch Ordner, Tags und kontrollierte Kategorien auffindbar machen
-- identische Uploads innerhalb einer Instanz früh erkennen
-- ein Original austauschen, ohne Asset-Identität oder bestehende Referenzen zu brechen
-- ungeprüfte oder gefährliche Dateien nicht zur Nutzung freigeben
-- berechtigte Benutzer rechtzeitig vor Erreichen der harten Speicherquote warnen
-- sicherheits- und governance-relevante Entscheidungen revisionssicher auditieren
+## 2. ClamAV im vorhandenen Verarbeitungsjob
 
-## Nicht-Ziele
+Die Produkt- und Lizenzentscheidung steht in [ADR-068](../../../docs/adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md). Ein einzelner interner ClamAV-Dienst wird über `clamd`/`INSTREAM` angesprochen. `libclamav` wird nicht eingebunden; es gibt keinen generischen Scanner-Provider-Verbund.
 
-- bestehende Felder für Copyright oder Lizenz neu modellieren
-- Pflichtfeldregeln für Copyright oder Lizenz ohne abgestimmten fachlichen Anwendungsfall einführen
-- harte Speicherquoten neu implementieren
-- rollenbezogene Upload-Raten oder rollenabhängige Dateigrößen einführen
-- eine eigene Queue-, Worker-, Retry- oder Dead-Letter-Plattform schaffen
-- Zugriffsrechte aus Ordnern, Tags oder Kategorien ableiten
-- globale Asset-Metadaten als Ersatz für verwendungsspezifische Angaben an `MediaReference` definieren
+1. Ein neuer Upload wird in einem tatsächlich geschützten Storage-Eingang abgelegt. Sein Empfang ist keine Freigabe.
+2. Der vorhandene Upload-Abschluss nimmt den Medienjob dauerhaft an. Der bestehende Claim schützt jeden Verarbeitungsversuch.
+3. Der Job prüft Größen-/Inhaltsgrenzen und scannt das Original vor der Variantenverarbeitung. Nur ein vollständig abgeschlossenes Ergebnis ohne Fund erlaubt die weitere Verarbeitung. Limits dürfen nicht stillschweigend zu einer unvollständigen Prüfung mit Erfolg führen.
+4. Varianten und freigegebenes Original müssen aus denselben geprüften Bytes entstehen. Eine noch gültige Upload-URL oder ein konkurrierender Schreibzugriff darf die zur Veröffentlichung bestimmten Bytes nach dem Scan nicht austauschen. Der vom Browser beschreibbare Eingang wird nicht selbst zum unveränderlich freigegebenen Original erklärt.
+5. Claim, offene Content-Speicheroperation, Validierung und harte Quote bleiben vor `ready` verbindlich. Der Scan ersetzt keine dieser Prüfungen. Veröffentlichung und nachgelagerte Bereinigung müssen diese Grenzen ebenfalls beachten; überholte Versuche dürfen keine fremden Ergebnisse veröffentlichen oder löschen.
 
-## Entscheidungen
+Ungeprüfte, abgewiesene und bereits bereinigte Uploads dürfen weder über Delivery/Preview noch über direkte Storage-URLs oder Bucket-Listings nutzbar werden. Der bestehende S3-Port verwendet einen separaten privaten Quarantäne-Bucket auf demselben ausgewählten S3-Dienst und mit denselben Zugangsdaten. Vor der Reservierung prüft er die private Owner-ACL ohne Gruppenfreigaben und das Fehlen einer Bucket-Policy; unterstützt die Anbindung diese Auskunft nicht, bleibt die Reservierung gesperrt. Der Browser kann ausschließlich den Eingangs-Key beschreiben. Original und Varianten entstehen aus dem gescannten Speicherinhalt in claim-isolierten Ausgabepfaden; geschützte Ausgaben bleiben im privaten Bucket und werden signiert ausgeliefert. Es gibt keinen neuen Storage-Dienst und keine zweite Storage-Abstraktion. Der tatsächliche Zugriffsschutz einschließlich vorgeschalteter Gateways bleibt vor Aktivierung im Zielbetrieb nachzuweisen.
 
-### 1. Mehrsprachigkeit erweitert globale Asset-Metadaten
+Der bestehende Pfad `asset-registration-handler.ts` setzt unregistrierte Bucket-Dateien unmittelbar auf `ready`. Diese Neuregistrierung wird bei aktivem Scan zunächst verständlich abgewiesen. Bereits registrierte Medien behalten ihren bisherigen Lebenszyklus und erhalten keinen nachträglich behaupteten Scan-Nachweis. Ein neuer Import-Workflow und die automatische Bestandsprüfung gehören nicht zu diesem Abschnitt.
 
-Titel, Beschreibung und globaler Alt-Text können je unterstützter Instanzsprache gespeichert werden. Die Instanz definiert eine Standardsprache und eine geordnete Fallback-Regel. APIs liefern neben dem aufgelösten Wert auch die tatsächlich verwendete Sprache, damit die UI einen Fallback kenntlich machen kann.
+## 3. Status, Fehler und Bereinigung
 
-Copyright, Lizenz und technische Metadaten bleiben sprachunabhängig, solange kein konkreter fachlicher Bedarf für lokalisierte Rechteangaben beschlossen wird. Verwendungsbezogene Alternativtexte oder Bildaussagen können weiterhin an einer konkreten `MediaReference` liegen und werden nicht durch den globalen Alt-Text überschrieben.
+Die vorhandenen Upload-/Processing-Status bleiben bestehen. Ein Fund führt in den vorhandenen gesperrten Uploadzustand mit einem normierten Fehlergrund. Technische Scanfehler verwenden die vorhandenen Job-Wiederholungen; nach deren Ausschöpfung endet der Upload im vorhandenen Fehlerzustand. Timeout, Verbindungsfehler, ungültige Antwort, Größenlimit und sonstige unvollständige Prüfung werden niemals als Freigabe interpretiert. Es gibt keinen manuellen Bypass.
 
-### 2. Ordner, Tags und Kategorien haben getrennte Semantik
+Die UI wartet wie im Async-Change auf `ready`. Bei einer Zeitüberschreitung gelten dessen bestehende Regeln: Bibliotheksjob läuft weiter; beim Content-Speichern bleiben Formulardaten erhalten und die vorhandene Abbruch-/Recovery-Verarbeitung bereinigt provisorische Uploads. Eine neue automatische Wiederaufnahme wird nicht eingeführt.
 
-- Ein Asset kann optional genau einem hierarchischen Ordner zugeordnet werden.
-- Tags sind instanzlokale, normalisierte redaktionelle Suchbegriffe und können mehrfach vergeben werden.
-- Kategorien stammen aus einer instanzlokal kontrollierten Wertemenge und können mehrfach vergeben werden.
+Abgewiesene Dateien und nicht mehr benötigte Eingangsobjekte verwenden die bestehenden Bereinigungs- und Recovery-Pfade. Keine Quotenbuchung allein aufgrund eines Scan-Ergebnisses: Die bestehende erfolgreiche Finalisierung bleibt maßgeblich; nie gebuchte Bytes dürfen bei einer Bereinigung nicht von der Nutzung abgezogen werden. Wiederholte Ausführung darf weder doppelt buchen noch fremde Objekte löschen. Es entsteht keine allgemeine Retention-Verwaltung.
 
-Alle drei Dimensionen unterstützen serverseitige Suche und Filterung. Umbenennen, Verschieben oder Entfernen verändert weder die Asset-Identität noch seine fachlichen Referenzen. Keine Dimension erweitert den sichtbaren Instanz- oder Berechtigungsscope.
+## 4. Betrieb und Signaturpflege
 
-### 3. Duplikaterkennung ist instanzlokal und entscheidungsorientiert
+Der ClamAV-Container bleibt intern erreichbar, da `clamd` TCP-Verbindungen nicht selbst authentifiziert oder verschlüsselt. `freshclam` prüft automatisch auf Updates; die Datenbank wird persistent gespeichert und von `clamd` nachgeladen. Signaturupdates benötigen kein Studio-Deployment. Scanner-Software und Container werden zusätzlich über den regulären freigegebenen Rollout-Prozess aktualisiert.
 
-Nach erfolgreicher Inhaltsvalidierung wird ein kryptografisch geeigneter Hash des tatsächlichen Dateiinhalts gebildet. Treffer werden ausschließlich innerhalb derselben Instanz gesucht. Die API liefert eine kontrollierte Entscheidung: vorhandenes Asset wiederverwenden, Upload mit ausdrücklich bestätigtem Duplikat fortsetzen oder Upload abbrechen.
+Erreichbarkeit, fehlgeschlagene Updates und die Aktualität der tatsächlich geladenen Signaturen werden im vorhandenen Monitoring sichtbar. Ein neuer Monitor-Dienst oder Workflow wird nicht eingeführt. Der reguläre Compose-Pfad enthält einen intern erreichbaren ClamAV-Dienst mit standardmäßig null Replikaten und deaktiviertem Scan-Gate; drei optionale Felder erweitern den vorhandenen Remote-Konfigurationsvertrag. Aktivierung erfordert eine Replik und einen privaten Bucket. Die Scan-Größe ist auf 64 MiB begrenzt; größere neue Uploads werden vor der Reservierung mit HTTP 413 abgewiesen. Die am 20.10.2026 abgestimmte Regel lautet: Nach 24 Stunden ohne bestätigte Aktualität wird gewarnt; nach 72 Stunden werden neue Uploads nicht mehr freigegeben. Bereits verfügbare Medien bleiben nutzbar. Die Sperre endet erst, wenn ein erfolgreicher Aktualitätscheck und der passende geladene Signaturstand bestätigt sind. Auch ein erfolgreicher Check ohne verfügbares Update zählt als Aktualitätsbestätigung; ein bloßer Scanner-Ping, Container-Neustart oder Updateversuch setzt die Frist nicht zurück. Ohne initialen Nachweis wird keine Freigabe erteilt. Scanner-Ausfall und unvollständige Scans sperren unabhängig von diesen Fristen.
 
-Die Wiederverwendung erzeugt kein zweites Storage-Objekt. Ein bewusst angelegtes Duplikat bleibt ein eigenständiges Asset. Welche Entscheidung zulässig ist, wird serverseitig anhand der bestehenden Medienberechtigungen geprüft; Hashes und instanzfremde Treffer werden nicht offengelegt.
+Ein einzelner Updatefehler bei weiterhin zulässigem Aktualitätsnachweis sperrt nicht automatisch alle Uploads. Stream-/Scan-Limits decken die erlaubten Uploadgrößen ab; Ressourcen berücksichtigen den zusätzlichen Bedarf beim Signatur-Reload gemäß ADR-068.
 
-Existiert zum Entscheidungszeitpunkt bereits ein temporäres Direct-Upload-Objekt oder eine Upload-Session, führen Wiederverwendung und Abbruch beide in einen terminalen, idempotent bereinigbaren Zustand. Die Kompensationsbereinigung läuft über den kanonischen Medienjob-Vertrag. Temporäre Bytes bleiben bis zur bestätigten physischen Löschung quotenwirksam; erst danach wird die Nutzung atomar und höchstens einmal reduziert. Fehlgeschlagene Bereinigungen verändern die Nutzung nicht und werden wiederholt.
+## 5. Audit und Diagnose
 
-### 4. Replace verwendet einen versionierten, fail-closed Übergang
+Tag-Änderungen nutzen den vorhandenen Metadaten-Auditpfad. Scan-Freigaben und Ablehnungen verwenden vorhandene instanzbezogene Audit-Ereignisse mit Ergebnis, normiertem Reason-Code, Asset-/Job-Bezug, pseudonymisiertem Actor beziehungsweise Systemakteur und vorhandener Request-/Trace-Korrelation. Kein neues Audit-Subsystem.
 
-Ein Replace erzeugt zunächst eine neue interne Originalversion desselben `MediaAsset`. Die bisher aktive Version und alle bestehenden `MediaReference`-IDs bleiben unverändert nutzbar, bis Validierung, Malware-Prüfung und erforderliche Varianten der neuen Version erfolgreich abgeschlossen sind.
+Dateiinhalte, Tagwerte, rohe Scanner-Antworten, Signaturnamen, Storage-Keys, Secrets und Klartext-PII werden nicht protokolliert. Nutzer sehen übersetzte verständliche Status-/Fehlertexte; technische Diagnose bleibt redigiert.
 
-Erst danach wird die neue Version atomar aktiv. Jeder Replace erfasst dafür die erwartete aktive Vorgängerversion beziehungsweise deren Revision. Die Aktivierung verwendet einen Compare-and-swap-Vertrag und gelingt nur, wenn dieser Erwartungswert weiterhin aktuell ist. Eine konkurrierend veraltete Kandidatenversion darf weder aktiv werden noch Retention oder Quota der inzwischen führenden Version verändern; sie wechselt kontrolliert in den fehlgeschlagenen Bereinigungszustand. Bei sonstigen Fehlern bleibt die bisherige Version führend. Veraltete Varianten werden nicht unter unveränderten technischen Cache-Identitäten weiterverwendet.
+## Abnahme und Grenzen
 
-Jede Instanz besitzt verbindliche Retention-Regeln für abgelöste und fehlgeschlagene Originalversionen. Beim Übergang in einen inaktiven oder fehlgeschlagenen Zustand berechnet der Server einen unveränderlichen Bereinigungszeitpunkt. Nach dessen Ablauf entfernt ein idempotenter Cleanup die Version und alle ausschließlich daraus abgeleiteten Varianten, sofern keine dokumentierte Aufbewahrungssperre besteht. Bis die physische Löschung bestätigt ist, zählen sämtliche gespeicherten Bytes weiterhin vollständig zur harten Speicherquote; ein fehlgeschlagener Cleanup reduziert die Nutzung nicht und wird über die kanonische Processing-Infrastruktur erneut ausgeführt.
+Nachzuweisen sind Tag-Validierung, Patch-Semantik, Suche/Filter samt Cursor- und Mandantentrennung sowie der Scan-Erfolg, Fund und alle unvollständigen Prüfungen. Integrationstests belegen dieselben geprüften/veröffentlichten Bytes, fehlenden öffentlichen Zugriff vor Freigabe, gesperrte Neuregistrierung, Claim-/Abbruchrennen und unveränderte Quotenbuchung. Ein lokaler Scanner-Vertragstest umfasst eine harmlose Datei und die standardisierte EICAR-Testdatei.
 
-### 5. Malware-Prüfung ist ein produktneutraler Freigabevertrag
+Die Auslieferung des Scans benötigt zusätzlich den Nachweis der tatsächlichen Storage-Policy, geladener Signaturen und automatischer Updates im Zielbetrieb. Lokale Tests ersetzen weder diese Abnahme noch die separate Deployment-Freigabe. Tags können unabhängig vom noch nicht aktivierten Scanner nachgewiesen werden; eine Pflicht zu künstlich getrennten PRs entsteht daraus nicht.
 
-Der Medienkern spricht einen internen Scanner-Port an und kennt kein konkretes Scannerprodukt. Ein Asset oder eine neue Replace-Version wird erst nutzbar, wenn das Ergebnis `clean` vorliegt. Ergebnisse wie `infected`, `scan_failed`, `unavailable` oder `unknown` bleiben fail-closed und geben keine Scanner-Interna an Benutzer aus.
+## Feste Sichtbarkeit neu gescannter Medien
 
-Dieser Change definiert Scan-Auftrag, Ergebnis und Freigabewirkung. Asynchrone Scans sowie Kompensations- und Retention-Cleanups nutzen verbindlich die von `add-media-async-processing` bereitgestellte Job-, Retry- und Betriebsinfrastruktur; der Governance-Change führt keine parallele Orchestrierung ein.
+Am 21.10.2026 wurde die kleine Variante freigegeben: Die beim Upload gewählte Sichtbarkeit bleibt für neu gescannte Medien fest. Eine Änderung erfordert einen neuen Upload mit der gewünschten Sichtbarkeit. Ein bloßer Metadatenwechsel kann zuvor öffentlichen Storage-Objekten den direkten Zugriff nicht entziehen; ein zusätzlicher Storage-Wechsel gehört nicht zu diesem Lieferumfang.
 
-### 6. Quota-Warnungen ergänzen, aber verändern die harte Grenze nicht
+Der bestehende Prozessor setzt `technical.scanStatus = clean` erst nach erfolgreicher Prüfung und persistiert den Nachweis mit der vorhandenen Finalisierung. Die Metadaten-API verweigert anschließend Änderungen von `public` zu `protected` und umgekehrt mit HTTP 409 und dem normierten Grund `media_visibility_fixed`, bevor Metadaten geschrieben werden. Die Sperre gilt auch bei später deaktiviertem Scan. Unveränderte oder ausgelassene Sichtbarkeit erlaubt weiterhin Metadatenänderungen; Bestandsmedien ohne diesen Nachweis behalten ihren bisherigen Vertrag. Vor Abschluss der Verarbeitung verhindert bereits die bestehende Bearbeitungssperre einen Sichtbarkeitswechsel.
 
-Eine Instanz kann mindestens eine Warnschwelle unterhalb ihrer harten Speicherquote konfigurieren. Bei Erreichen sehen berechtigte Benutzer die aktuelle Nutzung, die harte Grenze und die erreichte Warnstufe. Warnungen blockieren keinen Upload; die vorhandene atomare Prüfung der harten Quote bleibt autoritativ.
+## Manueller lesender Bestandsscan (Auftrag vom 21.10.2026)
 
-Warnungen werden aus der serverseitig ermittelten Nutzung abgeleitet. Clients dürfen weder Nutzungswerte noch Warnstatus als Entscheidungsquelle vorgeben.
+Die Medienbibliothek startet einen Host-Job `media.scan-existing` über denselben Studio-/Graphile-Pfad und dieselbe Medienqueue. Pro manuellem Durchlauf werden höchstens 25 vorhandene Dateien im konfigurierten instanzbezogenen Medienbestand gelistet und nacheinander mit ClamAV geprüft. Der vorhandene S3-Cursor erlaubt einen weiteren manuell gestarteten Abschnitt; es gibt keine automatische Fortsetzung oder Bestandsüberwachung.
 
-### 7. Audit-Ereignisse bilden Entscheidungen statt sensitive Rohdaten ab
+Je Datei gelten höchstens 64 MiB. Große Dateien werden ohne Download als `nicht prüfbar` gemeldet. Der bestehende Storage-Port erhält für diesen konkreten Leser eine begrenzte Range-Leseoption, damit auch ein Größenwechsel nach dem Listing/HEAD keinen unbegrenzten Download auslöst. Der konkrete Scanner prüft auch Nicht-Bilddateien; seine bestehenden Inhalts-/Archivlimits und die bestätigte Signaturaktualität bleiben maßgeblich. Fund ergibt `Fund`, saubere vollständige Prüfung `sauber`, Lese-/Scanfehler oder überschrittene Grenzen `nicht prüfbar`. Ein systemischer Scanner-Ausfall beziehungsweise veraltete Signaturen werden für die übrigen Dateien desselben Durchlaufs berichtet, ohne dieselbe erfolglose Anfrage für jede Datei zu wiederholen.
 
-Audit-Ereignisse erfassen Aktion, Ergebnis, Instanz, pseudonymisierten Actor, Zielreferenz, Reason-Code sowie Request-/Trace-Korrelation. Auditiert werden mindestens Duplikatentscheidungen, Scan-Ergebnisse, Replace-Übergänge, Änderungen an lokalisierten Metadaten und Taxonomie sowie Quota-Warnschwellen.
+Der Job hat ausschließlich lesende Storage-Methoden. Er schreibt seinen Bericht mit Dateischlüssel, geprüftem Zeitpunkt/ETag soweit vorhanden, Größe und normiertem Ergebnis in das vorhandene Job-Ergebnis. Er schreibt keine Assets, Referenzen, Quoten, Sichtbarkeiten, Storage-Objekte oder Zugriffsregeln und setzt insbesondere kein `technical.scanStatus = clean` am Bestand. Der Bericht beschreibt die gelesenen Bytes zum Prüfzeitpunkt; es entstehen keine automatische Sperre, Freigabe oder nachträgliche Vertrauenszusage für veränderte Dateien. Bestehende Dateien bleiben bei allen Ergebnissen nutzbar.
 
-Dateiinhalte, rohe Hashes, Scanner-Interna, Storage-Keys, Secrets und Klartext-PII gehören weder in Audit-Ereignisse noch in operative Logs.
+Start und Berichtabruf verwenden den authentifizierten Instanzkontext sowie vorhandene `media.read`-/`media.update`-Berechtigungen; Start zusätzlich den bestehenden CSRF-Schutz. Die Einplanung erfolgt atomar mit Job und Queue-Eintrag im vorhandenen Repository-Pfad. Eine automatische technische Neuprüfung wird mit einem Versuch vermieden; erneutes Prüfen bleibt eine manuelle Aktion. Fortschritt und Abschluss-Audit enthalten Job-/Instanzbezug und normierte Gründe, keine Dateischlüssel oder Scanner-Rohantworten. Der vorhandene ClamAV-Dienst muss erreichbar sein; die Prüfung des Bestands ist unabhängig vom Freigabeflag für neue Uploads.
 
-## Fehler- und Übergangsverhalten
+Die vorhandene Medienbibliothek bietet Start, laufenden Status und einen übersetzten Bericht für die drei Ergebnisse sowie den nächsten manuellen Abschnitt. Direkte Tests belegen Instanz-/Berechtigungs-/CSRF-Grenzen, Größenlimit einschließlich Größenwechsel, Scannerfehler, Fortsetzung und unveränderte Bestandsdateien/Assets bei allen Ergebnissen. Dafür entstehen weder neue Tabellen noch ein weiterer Scanner oder Worker-Dienst.
 
-- Fehlende Übersetzungen lösen den dokumentierten Fallback aus und werden in der UI erkennbar dargestellt.
-- Ungültige oder entfernte Taxonomiewerte werden serverseitig abgewiesen; bestehende Zuordnungen werden bei Taxonomieänderungen kontrolliert migriert oder entfernt.
-- Ein Hash-Treffer legt nur Assets offen, die der Benutzer innerhalb derselben Instanz lesen darf.
-- Wiederverwendung oder Abbruch bereinigen bereits angelegte temporäre Upload-Objekte idempotent; bis zur bestätigten Löschung bleiben deren Bytes quotenwirksam.
-- Scan- oder Processing-Fehler lassen neue Uploads unreferenzierbar und Replace-Vorgänge auf der bisherigen aktiven Version.
-- Eine veraltete konkurrierende Replace-Aktivierung wird durch den Vergleich mit der erwarteten aktiven Revision abgewiesen und verändert weder aktive Version noch deren Retention oder Quota.
-- Inaktive und fehlgeschlagene Originalversionen bleiben bis zur bestätigten physischen Löschung quotenwirksam; Cleanup-Fehler verändern die abgerechnete Nutzung nicht.
-- Quota-Warnungen bleiben informativ; erst die bestehende harte Quota blockiert atomar.
-
-## Abnahme
-
-Die Umsetzung ist abnahmefähig, wenn die einzelnen Verträge durch Unit- und Integrationstests belegt sind, Mandantentrennung und Fail-closed-Verhalten nachgewiesen sind und die Benutzer- sowie Betriebsdokumentation den neuen Lebenszyklus beschreibt.
+Das generische Job-Monitoring blendet das Ergebnis von `host/media.scan-existing` aus. Der Dateibericht bleibt ausschließlich über den Medien-Endpunkt mit `media.read` und `media.update` abrufbar; ein vorhandenes Monitoring-Leserecht allein genügt nicht.

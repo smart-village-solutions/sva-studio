@@ -43,9 +43,9 @@ export const createUploadMethods = (
     );
     return result.rows[0] ? mapUploadSessionRow(result.rows[0]) : null;
   },
-  async claimUploadSession(instanceId, sessionId) {
+  async claimUploadSession(instanceId, sessionId, reclaimUploaded) {
     const result = await executor.execute<MediaUploadSessionRow>(
-      claimUploadSessionStatement(instanceId, sessionId)
+      claimUploadSessionStatement(instanceId, sessionId, reclaimUploaded)
     );
     return result.rows[0] ? mapUploadSessionRow(result.rows[0]) : null;
   },

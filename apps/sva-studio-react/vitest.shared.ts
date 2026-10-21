@@ -212,6 +212,9 @@ export const sharedVitestConfig = defineConfig({
       '@sva/plugin-sdk/route-documentation': fileURLToPath(
         new URL('../../packages/plugin-sdk/src/route-documentation.ts', import.meta.url)
       ),
+      '@sva/plugin-sdk/content-media': fileURLToPath(
+        new URL('../../packages/plugin-sdk/src/content-media-contracts-public-api.ts', import.meta.url)
+      ),
       '@sva/plugin-sdk': fileURLToPath(
         new URL('../../packages/plugin-sdk/src/index.ts', import.meta.url)
       ),

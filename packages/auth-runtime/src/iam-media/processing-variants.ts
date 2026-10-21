@@ -7,6 +7,7 @@ import {
 } from '@sva/media';
 import type { MediaService } from './service.js';
 import type { MediaStoragePort } from './storage-port.js';
+import { mediaProcessingPrefix } from './storage-key-paths.js';
 
 const buildVariantStorageKey = (input: {
   readonly instanceId: string;
@@ -14,16 +15,18 @@ const buildVariantStorageKey = (input: {
   readonly claimToken: string;
   readonly variantKey: string;
   readonly format: string;
+  readonly privateOutput?: boolean;
 }): string =>
-  `${input.instanceId}/variants/${input.assetId}/${input.claimToken}/${input.variantKey}.${input.format}`;
+  `${mediaProcessingPrefix(input.instanceId, input.assetId, input.claimToken, input.privateOutput)}${input.variantKey}.${input.format}`;
 
 export const cleanupReplacedClaimVariants = async (input: {
   readonly storagePort: Pick<MediaStoragePort, 'listObjects' | 'deleteObject'>;
   readonly instanceId: string;
   readonly assetId: string;
   readonly claimToken: string;
+  readonly privateOutput?: boolean;
 }): Promise<void> => {
-  const prefix = `${input.instanceId}/variants/${input.assetId}/${input.claimToken}/`;
+  const prefix = mediaProcessingPrefix(input.instanceId, input.assetId, input.claimToken, input.privateOutput);
   let cursor: string | undefined;
 
   do {
@@ -181,6 +184,7 @@ export const createMediaVariants = async (input: {
   readonly instanceId: string;
   readonly claimToken: string;
   readonly createId: () => string;
+  readonly privateOutput?: boolean;
 }) => {
   const variantsToPersist: Array<{
     id: string;
@@ -209,6 +213,7 @@ export const createMediaVariants = async (input: {
       claimToken: input.claimToken,
       variantKey: preset.key,
       format: preset.format,
+      privateOutput: input.privateOutput,
     });
     const variantMetadata = await sharp(variantBuffer).metadata();
     variantsToPersist.push({

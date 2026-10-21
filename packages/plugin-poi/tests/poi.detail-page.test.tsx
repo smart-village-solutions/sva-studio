@@ -460,12 +460,24 @@ describe('PoiDetailPage', () => {
       expect(screen.getByLabelText('Dateiname filtern')).toBeTruthy();
     });
 
+    const searchFetch = vi.fn(async () => Response.json({
+      data: [{
+        id: 'asset-2', fileName: 'stadtpark.jpg', mimeType: 'image/jpeg',
+        previewUrl: 'https://cdn.example.test/stadtpark.jpg', visibility: 'public',
+        metadata: { title: 'Stadtpark' }, uploadStatus: 'processed', processingStatus: 'ready',
+      }],
+    }));
+    vi.stubGlobal('fetch', searchFetch);
     fireEvent.change(screen.getByLabelText('Dateiname filtern'), {
       target: { value: 'stadtpark' },
     });
     const dialog = screen.getByRole('dialog');
+    await waitFor(() => expect(within(dialog).getByText('Stadtpark')).toBeTruthy());
+    expect(searchFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/iam/media?search=stadtpark&visibility=public'),
+      expect.anything()
+    );
     expect(within(dialog).queryByText('Rathaus außen')).toBeNull();
-    expect(within(dialog).getByText('Stadtpark')).toBeTruthy();
     expect(within(dialog).queryByText('Intern')).toBeNull();
     expect(within(dialog).queryByText('Ohne URL')).toBeNull();
 

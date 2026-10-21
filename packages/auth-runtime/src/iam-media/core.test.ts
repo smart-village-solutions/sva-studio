@@ -1,8 +1,16 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createMediaHttpHandlers } from './core.js';
 import { decodeMediaListingCursor } from './listing-cursor.js';
 import { MediaStorageObjectNotFoundError, MediaStorageUnavailableError } from './storage-port.js';
+
+const { scheduleUploadProcessing } = vi.hoisted(() => ({ scheduleUploadProcessing: vi.fn() }));
+vi.mock('./upload-processing-job.js', () => ({
+  scheduleMediaUploadProcessing: scheduleUploadProcessing,
+}));
+beforeEach(() => {
+  scheduleUploadProcessing.mockReset().mockResolvedValue('queued');
+});
 
 const allowAuthorization = vi.fn(async () => ({ ok: true }) as const);
 const emitAuditEvent = vi.fn(async () => undefined);
@@ -110,6 +118,70 @@ const createService = () => ({
 });
 
 describe('media http handlers', () => {
+  it('blocks new bucket registrations and oversized uploads when scanning is active', async () => {
+    vi.stubEnv('MEDIA_SCAN_ENABLED', 'true');
+    try {
+      const service = createService();
+      const prepareUpload = vi.fn();
+      const handlers = createMediaHttpHandlers({
+        withMediaService: async (_id, work) => work(service as never),
+        storagePort: { prepareUpload } as never,
+        authorizeAction: allowAuthorization,
+        createId: () => 'id',
+        now: () => new Date().toISOString(),
+        emitAuditEvent,
+      });
+      const response = await handlers.registerBucketMedia(
+        new Request('http://localhost/api/v1/iam/media/register-bucket', {
+          method: 'POST',
+          body: JSON.stringify({
+            storageKey: 'tenant-a/test.jpg',
+            fileName: 'test.jpg',
+            byteSize: 100,
+            mimeType: 'image/jpeg',
+          }),
+        }),
+        createContext()
+      );
+      expect(response.status).toBe(409);
+      expect(service.upsertAsset).not.toHaveBeenCalled();
+      const oversized = await handlers.initializeUpload(
+        new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+          method: 'POST',
+          body: JSON.stringify({ byteSize: 64 * 1024 * 1024 + 1, mimeType: 'image/jpeg' }),
+        }),
+        createContext()
+      );
+      expect(oversized.status).toBe(413);
+      expect(prepareUpload).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('does not query unregistered objects for an exact tag filter', async () => {
+    const service = createService();
+    service.listAssets.mockResolvedValue([]);
+    const listObjects = vi.fn();
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_id, work) => work(service as never),
+      storagePort: { listObjects } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id',
+      now: () => new Date().toISOString(),
+      emitAuditEvent,
+    });
+    const response = await handlers.listMedia(
+      new Request('http://localhost/api/v1/iam/media?tag=Park'),
+      createContext()
+    );
+    expect(response.status).toBe(200);
+    expect(service.listAssets).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'tenant-a', tag: 'Park' })
+    );
+    expect(listObjects).not.toHaveBeenCalled();
+  });
+
   it('adds preview URLs to registered public image assets in the library response', async () => {
     const service = createService();
     service.listAssets = vi.fn(async () => [
@@ -1584,6 +1656,47 @@ describe('media http handlers', () => {
     );
   });
 
+  it.each([
+    '.protected/tenant-a/variants/asset/claim/thumb.webp',
+    '.protected/tenant-b/variants/asset/claim/thumb.webp',
+    '.quarantine/tenant-a/asset/session',
+    '.quarantine/tenant-b/asset/session',
+  ])('rejects private bucket registration with scanning disabled: %s', async (storageKey) => {
+    vi.stubEnv('MEDIA_SCAN_ENABLED', 'false');
+    try {
+      const service = createService();
+      const statObject = vi.fn(async () => ({ byteSize: 42 }));
+      const handlers = createMediaHttpHandlers({
+        withMediaService: async (_id, work) => work(service as never),
+        storagePort: { statObject } as never,
+        authorizeAction: allowAuthorization,
+        createId: () => 'asset-registered',
+        now: () => '2026-10-21T12:00:00.000Z',
+        emitAuditEvent,
+      });
+      const response = await handlers.registerBucketMedia(
+        new Request('http://localhost/api/v1/iam/media/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            storageKey,
+            fileName: 'private.webp',
+            byteSize: 42,
+            mimeType: 'image/webp',
+            visibility: 'public',
+          }),
+        }),
+        createContext()
+      );
+      expect(response.status).toBe(400);
+      expect(statObject).not.toHaveBeenCalled();
+      expect(service.getAssetByStorageKey).not.toHaveBeenCalled();
+      expect(service.upsertAsset).not.toHaveBeenCalled();
+      expect(service.applyStorageUsageDelta).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('rejects registration of generated variant objects', async () => {
     const service = createService();
 
@@ -1846,6 +1959,87 @@ describe('media http handlers', () => {
     );
   });
 
+  it.each(['public', 'protected'] as const)(
+    'rejects changing %s visibility of scanned media without writing any metadata',
+    async (visibility) => {
+      const service = createService();
+      const asset = await service.getAssetById('tenant-a', 'asset-1');
+      if (!asset) throw new Error('Missing test asset');
+      service.getAssetById.mockResolvedValue({
+        ...asset,
+        visibility,
+        technical: { scanStatus: 'clean' },
+      });
+      const audit = vi.fn(async () => undefined);
+      const handlers = createMediaHttpHandlers({
+        withMediaService: async (_instanceId, work) => work(service as never),
+        storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+        authorizeAction: allowAuthorization,
+        createId: () => 'id-1',
+        now: () => '2026-04-29T19:00:00.000Z',
+        emitAuditEvent: audit,
+      });
+      const response = await handlers.updateMedia(
+        new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            visibility: visibility === 'public' ? 'protected' : 'public',
+            metadata: { tags: ['changed'] },
+          }),
+        }),
+        createContext()
+      );
+      expect(response.status).toBe(409);
+      await expect(response.json()).resolves.toMatchObject({
+        error: { code: 'conflict', details: { reason: 'media_visibility_fixed' } },
+      });
+      expect(service.upsertAsset).not.toHaveBeenCalled();
+      expect(service.getUsageImpact).not.toHaveBeenCalled();
+      expect(audit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pluginAction: expect.objectContaining({
+            reasonCode: 'media_visibility_fixed',
+            result: 'denied',
+          }),
+          scope: expect.objectContaining({ instanceId: 'tenant-a' }),
+        })
+      );
+    }
+  );
+
+  it.each([undefined, 'protected'])(
+    'allows tag updates to scanned media with visibility %s',
+    async (visibility) => {
+      const service = createService();
+      const asset = await service.getAssetById('tenant-a', 'asset-1');
+      if (!asset) throw new Error('Missing test asset');
+      service.getAssetById.mockResolvedValue({ ...asset, technical: { scanStatus: 'clean' } });
+      const handlers = createMediaHttpHandlers({
+        withMediaService: async (_instanceId, work) => work(service as never),
+        storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+        authorizeAction: allowAuthorization,
+        createId: () => 'id-1',
+        now: () => '2026-04-29T19:00:00.000Z',
+        emitAuditEvent,
+      });
+      const response = await handlers.updateMedia(
+        new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a', {
+          method: 'PATCH',
+          body: JSON.stringify({ visibility, metadata: { tags: ['Rathaus'] } }),
+        }),
+        createContext()
+      );
+      expect(response.status).toBe(200);
+      expect(service.upsertAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          visibility: 'protected',
+          technical: { scanStatus: 'clean' },
+          metadata: { tags: ['Rathaus'] },
+        })
+      );
+    }
+  );
+
   it('allows clearing existing media metadata fields with explicit null values', async () => {
     const service = createService();
     service.getAssetById = vi.fn(async () => ({
@@ -2006,167 +2200,140 @@ describe('media http handlers', () => {
     });
   });
 
-  it('completes an uploaded media session through the processing service', async () => {
+  it('rejects unfinished content-save references before changing an existing reference set', async () => {
+    const operationId = '00000000-0000-4000-8000-000000000001';
+    const assetId = '00000000-0000-4000-8000-000000000002';
     const service = createService();
-    const storagePort = {
-      prepareUpload: vi.fn(),
-      resolveDelivery: vi.fn(),
-      readObject: vi.fn(async () => ({
-        body: await import('sharp').then((module) =>
-          module
-            .default({
-              create: {
-                width: 1200,
-                height: 800,
-                channels: 3,
-                background: { r: 20, g: 20, b: 20 },
-              },
-            })
-            .jpeg()
-            .toBuffer()
-        ),
-        byteSize: 1024,
-        contentType: 'image/jpeg',
-      })),
-      writeObject: vi.fn(async ({ body }: { body: Uint8Array }) => ({
-        byteSize: body.byteLength,
-      })),
-      deleteObject: vi.fn(async () => undefined),
-    };
+    service.getContentSaveOperation.mockResolvedValue({
+      id: operationId,
+      instanceId: 'tenant-a',
+      actorSubject: 'kc-user-1',
+      targetType: 'news',
+      status: 'uploading',
+    } as never);
+    const existing = await service.getAssetById('tenant-a', assetId);
+    if (!existing) throw new Error('fixture_asset_missing');
+    service.getAssetById.mockResolvedValue({
+      ...existing,
+      uploadStatus: 'pending',
+      processingStatus: 'pending',
+    });
     const handlers = createMediaHttpHandlers({
       withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: storagePort as never,
+      storagePort: {} as never,
       authorizeAction: allowAuthorization,
       createId: () => 'id-1',
       now: () => '2026-04-29T19:00:00.000Z',
       emitAuditEvent,
     });
-
-    const response = await handlers.completeUpload(
+    const response = await handlers.replaceContentSaveOperationReferences(
       new Request(
-        'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
+        `http://localhost/api/v1/iam/media/content-save-operations/${operationId}/references`,
         {
-          method: 'POST',
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            instanceId: 'tenant-a',
+            references: [{ assetId, role: 'teaser_image' }],
+          }),
         }
       ),
       createContext()
     );
-
-    expect(response.status).toBe(200);
-    expect(service.lockUploadSessionClaim).toHaveBeenCalledWith({
-      instanceId: 'tenant-a',
-      sessionId: 'upload-1',
-      claimToken: '00000000-0000-4000-8000-000000000099',
-    });
-  });
-
-  it('retries a stale uploaded claim after processing throws instead of leaving it stuck', async () => {
-    const service = createService();
-    service.getUploadSessionById = vi.fn(async () => ({
-      id: 'upload-1',
-      instanceId: 'tenant-a',
-      assetId: 'asset-1',
-      storageKey: 'tenant-a/originals/asset-1.jpg',
-      mimeType: 'image/jpeg',
-      byteSize: 1234,
-      status: 'uploaded',
-    }));
-    const storagePort = {
-      readObject: vi.fn(async () => {
-        throw new MediaStorageUnavailableError('storage unavailable');
-      }),
-    };
-    const handlers = createMediaHttpHandlers({
-      withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: storagePort as never,
-      authorizeAction: allowAuthorization,
-      createId: () => 'id-1',
-      now: () => '2026-04-29T19:00:00.000Z',
-      emitAuditEvent,
-    });
-    const request = () =>
-      new Request(
-        'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
-        { method: 'POST' }
-      );
-
-    expect((await handlers.completeUpload(request(), createContext())).status).toBe(503);
-    expect((await handlers.completeUpload(request(), createContext())).status).toBe(503);
-    expect(service.claimUploadSession).toHaveBeenCalledTimes(2);
-    expect(storagePort.readObject).toHaveBeenCalledTimes(2);
-  });
-
-  it('keeps a fresh uploaded claim exclusive when it cannot be reclaimed', async () => {
-    const service = createService();
-    service.getUploadSessionById = vi.fn(async () => ({
-      id: 'upload-1',
-      instanceId: 'tenant-a',
-      assetId: 'asset-1',
-      storageKey: 'tenant-a/originals/asset-1.jpg',
-      mimeType: 'image/jpeg',
-      byteSize: 1234,
-      status: 'uploaded',
-    }));
-    service.claimUploadSession = vi.fn(async () => null);
-    const storagePort = { readObject: vi.fn() };
-    const handlers = createMediaHttpHandlers({
-      withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: storagePort as never,
-      authorizeAction: allowAuthorization,
-      createId: () => 'id-1',
-      now: () => '2026-04-29T19:00:00.000Z',
-      emitAuditEvent,
-    });
-
-    const response = await handlers.completeUpload(
-      new Request(
-        'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
-        { method: 'POST' }
-      ),
-      createContext()
-    );
-
     expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toMatchObject({
-      error: { details: { reason: 'upload_processing_in_progress' } },
-    });
-    expect(service.claimUploadSession).toHaveBeenCalledTimes(1);
-    expect(storagePort.readObject).not.toHaveBeenCalled();
+    expect(service.replaceContentSaveOperationReferences).not.toHaveBeenCalled();
   });
 
-  it('returns the completed result when another request wins the upload claim', async () => {
+  it('authorizes delivery before revealing whether an asset is ready', async () => {
     const service = createService();
-    service.getUploadSessionById = vi
-      .fn()
-      .mockResolvedValueOnce({
-        id: 'upload-1',
-        instanceId: 'tenant-a',
-        assetId: 'asset-1',
-        storageKey: 'tenant-a/originals/asset-1.jpg',
-        mimeType: 'image/jpeg',
-        byteSize: 1234,
-        status: 'pending',
-      })
-      .mockResolvedValueOnce({
-        id: 'upload-1',
-        instanceId: 'tenant-a',
-        assetId: 'asset-1',
-        storageKey: 'tenant-a/originals/asset-1.jpg',
-        mimeType: 'image/jpeg',
-        byteSize: 1234,
-        status: 'validated',
-      });
-    service.claimUploadSession = vi.fn(async () => null);
-    const storagePort = { readObject: vi.fn() };
+    const existing = await service.getAssetById('tenant-a', 'asset-1');
+    if (!existing) throw new Error('fixture_asset_missing');
+    service.getAssetById.mockResolvedValue({
+      ...existing,
+      uploadStatus: 'pending',
+      processingStatus: 'pending',
+    });
     const handlers = createMediaHttpHandlers({
       withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: storagePort as never,
+      storagePort: {} as never,
+      authorizeAction: async () => ({
+        ok: false,
+        error: 'forbidden',
+        status: 403,
+        message: 'Forbidden',
+      }),
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const response = await handlers.getMediaDelivery(
+      new Request('http://localhost/api/v1/iam/media/asset-1/delivery?instanceId=tenant-a'),
+      createContext()
+    );
+    expect(response.status).toBe(403);
+    expect(await response.text()).not.toContain('media_not_ready');
+  });
+
+  it('blocks delivery, metadata mutation and new references for unfinished media', async () => {
+    const service = createService();
+    service.getAssetById.mockResolvedValue({
+      ...(await service.getAssetById('tenant-a', 'asset-1'))!,
+      uploadStatus: 'pending',
+      processingStatus: 'pending',
+    });
+    const resolveDelivery = vi.fn();
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { resolveDelivery } as never,
       authorizeAction: allowAuthorization,
       createId: () => 'id-1',
       now: () => '2026-04-29T19:00:00.000Z',
       emitAuditEvent,
     });
+    const response = await handlers.getMediaDelivery(
+      new Request('http://localhost/api/v1/iam/media/asset-1/delivery?instanceId=tenant-a'),
+      createContext()
+    );
+    expect(response.status).toBe(409);
+    expect(resolveDelivery).not.toHaveBeenCalled();
+    const refs = await handlers.replaceReferences(
+      new Request('http://localhost/api/v1/iam/media/references', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instanceId: 'tenant-a',
+          targetType: 'news',
+          targetId: 'news-1',
+          references: [{ assetId: 'asset-1', role: 'teaser_image' }],
+        }),
+      }),
+      createContext()
+    );
+    expect(refs.status).toBe(404);
+    expect(service.replaceReferences).not.toHaveBeenCalled();
+    const update = await handlers.updateMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instanceId: 'tenant-a', metadata: { title: 'new' } }),
+      }),
+      createContext()
+    );
+    expect(update.status).toBe(409);
+    expect(service.upsertAsset).not.toHaveBeenCalled();
+  });
 
+  it('accepts a durable media job without reading or processing storage in the request', async () => {
+    const service = createService();
+    const readObject = vi.fn();
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { readObject } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
     const response = await handlers.completeUpload(
       new Request(
         'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
@@ -2174,12 +2341,64 @@ describe('media http handlers', () => {
       ),
       createContext()
     );
-
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     await expect(response.json()).resolves.toMatchObject({
-      data: { assetId: 'asset-1', uploadSessionId: 'upload-1', status: 'processed' },
+      data: { assetId: 'asset-1', status: 'processing' },
     });
-    expect(storagePort.readObject).not.toHaveBeenCalled();
+    expect(scheduleUploadProcessing).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'tenant-a', uploadSessionId: 'upload-1' })
+    );
+    expect(readObject).not.toHaveBeenCalled();
+    expect(service.claimUploadSession).not.toHaveBeenCalled();
+  });
+
+  it('returns a redacted error when media job acceptance fails', async () => {
+    scheduleUploadProcessing.mockRejectedValue(new Error('private queue details'));
+    const service = createService();
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: {} as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const response = await handlers.completeUpload(
+      new Request(
+        'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
+        { method: 'POST' }
+      ),
+      createContext()
+    );
+    expect(response.status).toBe(503);
+    const body = await response.text();
+    expect(body).toContain('media_processing_enqueue_failed');
+    expect(body).not.toContain('private queue details');
+  });
+
+  it('returns completed uploads idempotently without scheduling another job', async () => {
+    const service = createService();
+    service.getUploadSessionById.mockResolvedValue({
+      ...(await service.getUploadSessionById('tenant-a', 'upload-1')),
+      status: 'validated',
+    });
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: {} as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const response = await handlers.completeUpload(
+      new Request(
+        'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
+        { method: 'POST' }
+      ),
+      createContext()
+    );
+    expect(response.status).toBe(200);
+    expect(scheduleUploadProcessing).not.toHaveBeenCalled();
   });
 
   it('passes the resolved request instance into media reference authorization when no session instance is active', async () => {
@@ -2215,56 +2434,6 @@ describe('media http handlers', () => {
         targetId: '1517831',
       },
     });
-  });
-
-  it('returns a server error when upload completion hits infrastructure failures after persistence starts', async () => {
-    const service = createService();
-    const storagePort = {
-      prepareUpload: vi.fn(),
-      resolveDelivery: vi.fn(),
-      readObject: vi.fn(async () => ({
-        body: await import('sharp').then((module) =>
-          module
-            .default({
-              create: {
-                width: 1200,
-                height: 800,
-                channels: 3,
-                background: { r: 20, g: 20, b: 20 },
-              },
-            })
-            .jpeg()
-            .toBuffer()
-        ),
-        byteSize: 1024,
-        contentType: 'image/jpeg',
-      })),
-      writeObject: vi
-        .fn()
-        .mockResolvedValueOnce({ byteSize: 256 })
-        .mockRejectedValueOnce(new Error('s3_write_failed')),
-      deleteObject: vi.fn(async () => undefined),
-    };
-    const handlers = createMediaHttpHandlers({
-      withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: storagePort as never,
-      authorizeAction: allowAuthorization,
-      createId: () => 'id-1',
-      now: () => '2026-04-29T19:00:00.000Z',
-      emitAuditEvent,
-    });
-
-    await expect(
-      handlers.completeUpload(
-        new Request(
-          'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
-          {
-            method: 'POST',
-          }
-        ),
-        createContext()
-      )
-    ).rejects.toThrow('s3_write_failed');
   });
 
   it('blocks deletion when an asset still has active references', async () => {

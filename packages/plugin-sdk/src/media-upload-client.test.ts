@@ -4,9 +4,52 @@ import {
   completeHostMediaUpload,
   initializeHostMediaUpload,
   uploadHostMediaFile,
+  waitForHostMediaUpload,
 } from './media-upload-client.js';
 
 describe('media upload client', () => {
+  it('reports a blocked malware upload using only the stable error code', async () => {
+    const fetch = vi.fn(async () => Response.json({ data: { uploadStatus: 'blocked', processingStatus: 'failed', technical: { lastError: { code: 'media_scan_infected', message: 'scanner-internal-detail' } } } }));
+    await expect(waitForHostMediaUpload({ fetch, assetId: 'asset-1' })).rejects.toMatchObject({ code: 'media_scan_infected', message: 'media_scan_infected' });
+  });
+
+  it('returns a stable size error when initialization rejects a file before transfer', async () => {
+    const fetch = vi.fn(async () => new Response(null, { status: 413 }));
+    await expect(initializeHostMediaUpload({ fetch, payload: { mimeType: 'image/jpeg', byteSize: 65 * 1024 * 1024 } })).rejects.toMatchObject({ code: 'upload_size_exceeded' });
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it('waits for actual ready state on the scoped asset endpoint', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetch = vi.fn().mockResolvedValueOnce(Response.json({ data: { uploadStatus: 'pending', processingStatus: 'pending' } }))
+        .mockResolvedValueOnce(Response.json({ data: { uploadStatus: 'processed', processingStatus: 'ready' } }));
+      const waiting = waitForHostMediaUpload({ fetch, assetId: 'asset-1', instanceId: 'tenant-a' });
+      await vi.advanceTimersByTimeAsync(1000);
+      await waiting;
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(fetch).toHaveBeenCalledWith('/api/v1/iam/media/asset-1?instanceId=tenant-a', expect.objectContaining({ signal: expect.any(AbortSignal) }));
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('times out without creating or completing another upload', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetch = vi.fn(async () => Response.json({ data: { uploadStatus: 'pending', processingStatus: 'pending' } }));
+      const waiting = waitForHostMediaUpload({ fetch, assetId: 'asset-1' });
+      const rejected = expect(waiting).rejects.toMatchObject({ code: 'media_processing_timeout' });
+      await vi.advanceTimersByTimeAsync(120_000);
+      await rejected;
+      expect(fetch.mock.calls.every(([url]) => String(url) === '/api/v1/iam/media/asset-1')).toBe(true);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('fails immediately on terminal processing errors', async () => {
+    const fetch = vi.fn(async () => Response.json({ data: { uploadStatus: 'failed', processingStatus: 'failed' } }));
+    await expect(waitForHostMediaUpload({ fetch, assetId: 'asset-1' })).rejects.toMatchObject({ code: 'media_processing_failed' });
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
   it('initializes and completes host-side upload sessions through the iam media contract', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -200,6 +243,9 @@ describe('media upload client', () => {
           }),
           { status: 200 },
         );
+      }
+      if (url === '/api/v1/iam/media/asset-4?instanceId=de-demo') {
+        return Response.json({ data: { uploadStatus: 'processed', processingStatus: 'ready' } });
       }
       return new Response(JSON.stringify({ error: 'unexpected' }), { status: 500 });
     });

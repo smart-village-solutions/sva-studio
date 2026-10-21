@@ -351,6 +351,11 @@ export const MediaDetailWorkspaceHeader = ({
               {asset.metadata.title?.trim() || asset.id}
             </StudioPageTitle>
             <p className="max-w-2xl text-sm text-muted-foreground">{t('media.detail.subtitle')}</p>
+            {asset.technical.scanStatus === 'clean' ? (
+              <p className="max-w-2xl text-sm text-muted-foreground">
+                {t('media.detail.visibilityFixedHint')}
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline">{t(`media.visibility.${asset.visibility}`)}</Badge>
               <Badge variant="outline">{t(`media.uploadStatus.${asset.uploadStatus}`)}</Badge>

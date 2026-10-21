@@ -5,6 +5,7 @@ export type MediaUploadStatus = 'pending' | 'validated' | 'processed' | 'failed'
 export type MediaProcessingStatus = 'pending' | 'ready' | 'failed';
 
 export type MediaMetadata = Readonly<{
+  tags?: string[];
   title?: string;
   description?: string;
   altText?: string;
@@ -95,6 +96,7 @@ export type CompleteMediaUploadResponse = Readonly<{
 }>;
 
 export type UpdateMediaMetadataPayload = Readonly<{
+  tags?: string[];
   title?: string | null;
   description?: string | null;
   altText?: string | null;
@@ -128,6 +130,7 @@ export type IamMediaDelivery = Readonly<{
 
 export type MediaListQuery = {
   readonly search?: string;
+  readonly tag?: string;
   readonly visibility?: MediaVisibility | 'all';
   readonly cursor?: string;
   readonly limit?: number;

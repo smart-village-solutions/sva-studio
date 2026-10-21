@@ -6,6 +6,8 @@ import type { AuthenticatedRequestContext } from '../middleware.js';
 import type { MediaService } from './service.js';
 import { MediaStorageUnavailableError, type MediaStoragePort } from './storage-port.js';
 import type { MediaPrimitiveAuthorizationResult } from './server-authorization.js';
+import type { scheduleMediaUploadProcessing } from './upload-processing-job.js';
+import type { scheduleMediaInventoryScan, getMediaInventoryScan } from './inventory-scan-job.js';
 import type { scheduleMediaContentSaveRecovery } from './content-save-recovery.js';
 import { getMediaRequestId } from './request-context.js';
 
@@ -30,6 +32,9 @@ export type MediaHttpHandlerDeps = {
   readonly createId: () => string;
   readonly now: () => string;
   readonly emitAuditEvent: typeof emitAuthAuditEvent;
+  readonly scheduleInventoryScan?: typeof scheduleMediaInventoryScan;
+  readonly getInventoryScan?: typeof getMediaInventoryScan;
+  readonly scheduleUploadProcessing?: typeof scheduleMediaUploadProcessing;
   readonly scheduleContentSaveRecovery?: typeof scheduleMediaContentSaveRecovery;
 };
 

@@ -65,6 +65,7 @@ export const newsTranslationsDELabels = {
     mediaWidth: 'Breite',
     mediaHeight: 'Höhe',
     imageSearch: 'Bild suchen',
+    imageTags: 'Nach Tag filtern',
     technicalDetails: 'Technische Details',
     dataProvider: 'Datenanbieter',
     dataProviderUnavailable: 'Noch nicht verfügbar',

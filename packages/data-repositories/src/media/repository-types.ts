@@ -54,7 +54,8 @@ export type MediaRepository = {
   ): Promise<MediaUploadSessionRecord | null>;
   claimUploadSession(
     instanceId: string,
-    sessionId: string
+    sessionId: string,
+    reclaimUploaded?: boolean
   ): Promise<MediaUploadSessionRecord | null>;
   lockUploadSessionClaim(input: {
     readonly instanceId: string;

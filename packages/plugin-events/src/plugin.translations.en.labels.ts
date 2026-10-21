@@ -88,6 +88,7 @@ export const eventsENLabels = {
     mediaWidth: 'Width',
     mediaHeight: 'Height',
     imageSearch: 'Search image',
+    imageTags: 'Filter by tag',
     tags: 'Tags',
     pointOfInterestId: 'Related POI',
     pointOfInterestSearch: 'Search POI',

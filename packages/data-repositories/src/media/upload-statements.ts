@@ -181,7 +181,8 @@ export const UPLOAD_SESSION_STALE_CLAIM_SECONDS = 10 * 60;
 
 export const claimUploadSessionStatement = (
   instanceId: string,
-  sessionId: string
+  sessionId: string,
+  reclaimUploaded = false
 ): SqlStatement => ({
   text: `
 WITH claimable AS (
@@ -196,7 +197,7 @@ WITH claimable AS (
       )
       OR (
         status = 'uploaded'
-        AND updated_at < NOW() - ($3 * INTERVAL '1 second')
+        AND ($4::boolean OR updated_at < NOW() - ($3 * INTERVAL '1 second'))
       )
     )
   FOR UPDATE
@@ -221,7 +222,7 @@ RETURNING
   sessions.created_at,
   sessions.updated_at;
 `,
-  values: [instanceId, sessionId, UPLOAD_SESSION_STALE_CLAIM_SECONDS],
+  values: [instanceId, sessionId, UPLOAD_SESSION_STALE_CLAIM_SECONDS, reclaimUploaded],
 });
 
 export const lockUploadSessionClaimStatement = (input: {

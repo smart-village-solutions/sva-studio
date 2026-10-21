@@ -16,9 +16,15 @@ import {
   triggerMainserverProjectionRefreshBatch,
 } from './iam-content-list-projection-sync.server.js';
 
+type RecoveryAuthorization = Parameters<
+  typeof restoreOrganizationMainserverCredentials
+>[0]['reauthorize'];
+type AuthorizeTarget = (target: ContentProjectionSyncTarget) => ReturnType<RecoveryAuthorization>;
+
 const recoverCredentials = async (
   target: ContentProjectionSyncTarget,
-  requestId: string
+  requestId: string,
+  reauthorize: RecoveryAuthorization
 ): Promise<Pick<ContentCredentialRecovery, 'source' | 'outcome' | 'reasonCode'>> => {
   const credentials = await readEffectiveSvaMainserverCredentialsWithStatus({
     instanceId: target.instanceId,
@@ -72,6 +78,7 @@ const recoverCredentials = async (
     actorAccountId: target.actorAccountId,
     actorSubject: target.keycloakSubject,
     requestId,
+    reauthorize,
   });
   if (reason !== 'restored')
     return { source: 'organization', outcome: 'not_possible', reasonCode: reason };
@@ -94,7 +101,8 @@ const recoverCredentials = async (
 export const recoverProjectionCredentials = async (
   targets: readonly ContentProjectionSyncTarget[],
   manual: boolean,
-  originalRequestId?: string
+  originalRequestId: string | undefined,
+  authorize: AuthorizeTarget
 ) => {
   const { createSdkLogger, getWorkspaceContext } = await import('@sva/server-runtime');
   const recoveryLogger = createSdkLogger({ component: 'iam-content-list-credential-recovery' });
@@ -135,20 +143,25 @@ export const recoverProjectionCredentials = async (
     try {
       result = {
         ...claimed,
-        ...(await recoverCredentials(target, claimed.requestId ?? randomUUID())),
+        ...(await recoverCredentials(target, claimed.requestId ?? randomUUID(), () =>
+          authorize(target)
+        )),
       };
       if (result.outcome === 'restored' || result.outcome === 'reloaded') {
-        try {
-          const refreshed = await triggerMainserverProjectionRefreshBatch([target], {
-            force: true,
-            awaitCompletion: true,
-            trigger: 'manual',
-          });
-          if (refreshed.status === 'failed')
+        if (!(await authorize(target))) {
+          result = { ...result, reasonCode: 'principal_not_allowed' };
+        } else
+          try {
+            const refreshed = await triggerMainserverProjectionRefreshBatch([target], {
+              force: true,
+              awaitCompletion: true,
+              trigger: 'manual',
+            });
+            if (refreshed.status === 'failed')
+              result = { ...result, reasonCode: 'content_refresh_failed' };
+          } catch {
             result = { ...result, reasonCode: 'content_refresh_failed' };
-        } catch {
-          result = { ...result, reasonCode: 'content_refresh_failed' };
-        }
+          }
       }
     } catch {
       result = { ...claimed, outcome: 'failed', reasonCode: 'recovery_failed' };

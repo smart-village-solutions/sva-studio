@@ -22,7 +22,7 @@ export const WasteMasterDataEntityDialogs = ({ controller }: { readonly controll
       }}
       onChange={(patch) => controller.setFractionForm((current: FractionFormState) => ({ ...current, ...patch }))}
       onBeforeSubmit={() => controller.setMessage(null)}
-      onSubmit={controller.onSubmitFraction}
+      onSubmit={(event) => controller.onSubmitFraction(event)}
     />
     <WasteAddressEntityDialogs controller={controller} />
     <WasteAddressMoveConfirmation controller={controller} />

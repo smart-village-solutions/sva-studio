@@ -16,15 +16,15 @@ export const createWasteMasterDataHouseNumberMutations = ({
   loadOverview,
   loadCollectionLocationList,
 }: WasteMasterDataSubmissionContext) => ({
-  onSubmitHouseNumber: async (event: React.FormEvent<HTMLFormElement>) => {
+  onSubmitHouseNumber: async (event: React.FormEvent<HTMLFormElement>, form: HTMLFormElement) => {
     event.preventDefault();
+    const formData = new FormData(form);
     state.setSaving(true);
     state.setMessage(null);
-    const formData = new FormData(event.currentTarget);
     const streetId =
       String(formData.get('streetId') ?? state.houseNumberForm.streetId).trim() ||
       state.houseNumberForm.streetId ||
-      wasteMasterDataInputMappers.resolveSingleSelectValue(event.currentTarget, 'streetId') ||
+      wasteMasterDataInputMappers.resolveSingleSelectValue(form, 'streetId') ||
       state.overview?.streets[0]?.id ||
       '';
     const submittedForm: HouseNumberFormState = {

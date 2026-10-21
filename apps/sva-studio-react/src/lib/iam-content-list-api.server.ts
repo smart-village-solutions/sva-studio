@@ -147,7 +147,7 @@ const handleProjectedContentRefresh = async (request: Request): Promise<Response
         ? payload.visibleTypes.filter((value): value is string => typeof value === 'string')
         : [];
 
-      return await refreshProjectedContents(ctx, {
+      const refreshInput = {
         ...(visibleTypes.length > 0 ? { visibleTypes } : {}),
         ...(payload.force === true ? { force: true } : {}),
         ...(payload.recoverCredentials === true ? { recoverCredentials: true } : {}),
@@ -155,7 +155,10 @@ const handleProjectedContentRefresh = async (request: Request): Promise<Response
         /^[a-zA-Z0-9-]{1,128}$/.test(payload.originalRequestId)
           ? { originalRequestId: payload.originalRequestId }
           : {}),
-      });
+      };
+      return await (payload.recoverCredentials === true
+        ? refreshProjectedContents(ctx, refreshInput, request)
+        : refreshProjectedContents(ctx, refreshInput));
     } catch (error) {
       if (error instanceof SyntaxError)
         return createListErrorResponse(

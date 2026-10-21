@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import {
@@ -32,6 +32,7 @@ const credentials = {
 let endpoint: string;
 let s3: S3Client;
 let signaturePath: string;
+let scanner: string;
 let original: Buffer;
 let storage: ReturnType<typeof createS3MediaStoragePort>;
 
@@ -43,7 +44,7 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       const signatures = join(root, '.nx/media-clamav-db');
       await mkdir(signatures, { recursive: true });
       signaturePath = join(signatures, 'studio-freshness');
-      const scanner = `studio-media-scan-${process.pid}`;
+      scanner = `studio-media-scan-${process.pid}`;
       const compose = JSON.parse(
         docker(
           'compose',
@@ -302,15 +303,17 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       const proof = await readFile(signaturePath, 'utf8');
       const revision = proof.trim().split(' ')[1];
       const upload = await initialize(original);
+      // The scanner owns this read-only app input on Linux; inject test state as its owner.
+      const writeProof = (proof: string) => execFileSync('docker', [
+        'exec', '--user', '0', '-i', scanner, 'sh', '-c',
+        'cat > /var/lib/clamav/studio-freshness',
+      ], { input: proof, stdio: ['pipe', 'pipe', 'pipe'] });
       try {
-        await writeFile(
-          signaturePath,
-          `${Math.floor(Date.now() / 1000) - 72 * 3600} ${revision}\n`
-        );
+        writeProof(`${Math.floor(Date.now() / 1000) - 72 * 3600} ${revision}\n`);
         await expect(upload.run()).rejects.toThrow('media_scan_stale');
         expect(upload.finalized).not.toHaveBeenCalled();
       } finally {
-        await writeFile(signaturePath, proof);
+        writeProof(proof);
       }
     }, 30000);
   }

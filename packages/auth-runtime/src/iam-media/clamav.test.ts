@@ -1,8 +1,30 @@
+import type { ObservableCallback } from '@opentelemetry/api';
 import { createServer, type AddressInfo, type Server } from 'node:net';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { checkClamAvFreshness, scanWithClamAv, scanConfiguredMedia } from './clamav.js';
+
+const metricCallbacks = vi.hoisted(() => new Map<string, ObservableCallback>());
+vi.mock('@opentelemetry/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@opentelemetry/api')>();
+  return {
+    ...actual,
+    metrics: {
+      ...actual.metrics,
+      getMeter: (name: string) =>
+        name === 'sva.media.scan'
+          ? {
+              createObservableGauge: (metric: string) => ({
+                addCallback: (callback: ObservableCallback) =>
+                  metricCallbacks.set(metric, callback),
+              }),
+              createCounter: () => ({ add: vi.fn() }),
+            }
+          : actual.metrics.getMeter(name),
+    },
+  };
+});
 
 const servers: Server[] = [];
 const directories: string[] = [];
@@ -17,6 +39,47 @@ afterEach(async () => {
 });
 
 describe('ClamAV upload scan', () => {
+  it.each([
+    'fresh',
+    'warning',
+    'revision-mismatch',
+    'expired',
+    'missing-proof',
+    'timeout',
+    'invalid-config',
+    'disabled',
+  ] as const)('observes loaded signature freshness for monitoring: %s', async (mode) => {
+    const directory = await mkdtemp(join(process.cwd(), '.studio-clamav-'));
+    directories.push(directory);
+    const state = join(directory, 'state');
+    const ageSeconds = mode === 'expired' ? 72 * 3600 : mode === 'warning' ? 25 * 3600 : 0;
+    if (mode !== 'missing-proof')
+      await writeFile(state, `${Math.floor(Date.now() / 1000) - ageSeconds} 43\n`);
+    const server = createServer((socket) =>
+      socket.on('data', () => {
+        if (mode !== 'timeout')
+          socket.end(`ClamAV 1.4/${mode === 'revision-mismatch' ? '42' : '43'}/date\0`);
+      })
+    );
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    vi.stubEnv('MEDIA_SCAN_ENABLED', mode === 'disabled' ? 'false' : 'true');
+    vi.stubEnv('MEDIA_CLAMAV_HOST', mode === 'invalid-config' ? '' : '127.0.0.1');
+    vi.stubEnv('MEDIA_CLAMAV_PORT', String((server.address() as AddressInfo).port));
+    vi.stubEnv('MEDIA_CLAMAV_TIMEOUT_MS', '100');
+    vi.stubEnv('MEDIA_CLAMAV_SIGNATURE_STATE_PATH', state);
+    const observe = vi.fn();
+    const callback = metricCallbacks.get('media_scan_signature_check_age_seconds');
+    expect(callback).toBeTypeOf('function');
+    await callback?.({ observe });
+    if (mode === 'disabled') expect(observe).not.toHaveBeenCalled();
+    else if (mode === 'fresh' || mode === 'warning') {
+      expect(observe).toHaveBeenCalledOnce();
+      expect(observe.mock.calls[0]?.[0]).toBeGreaterThanOrEqual(ageSeconds);
+      expect(observe.mock.calls[0]?.[0]).toBeLessThan(ageSeconds + 5);
+    } else expect(observe).toHaveBeenCalledExactlyOnceWith(72 * 3600);
+  });
+
   it('rejects a scanner that accepts the connection but never completes its reply', async () => {
     const server = createServer((socket) => {
       socket.on('data', () => undefined);

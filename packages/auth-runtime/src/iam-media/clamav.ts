@@ -1,6 +1,5 @@
 import { createConnection } from 'node:net';
 import { readFile } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
 import { metrics } from '@opentelemetry/api';
 import { createSdkLogger } from '@sva/server-runtime';
 import { getMediaScanEnabled } from '../runtime-secrets.js';
@@ -12,13 +11,17 @@ meter
   .addCallback((result) => result.observe(isMediaScanEnabled() ? 1 : 0));
 meter
   .createObservableGauge('media_scan_signature_check_age_seconds', { unit: 's' })
-  .addCallback((result) => {
+  .addCallback(async (result) => {
     if (!isMediaScanEnabled()) return;
     try {
-      const state = readFileSync(process.env.MEDIA_CLAMAV_SIGNATURE_STATE_PATH ?? '', 'utf8');
-      const proof = /^(\d+) (\d+)\n?$/.exec(state);
-      const age = proof ? Date.now() / 1000 - Number(proof[1]) : -1;
-      result.observe(age >= -5 && Number.isFinite(age) ? Math.max(0, age) : 72 * 3600);
+      const config = resolveClamAvConfig();
+      // Bound collection independently of the longer file-scan timeout.
+      const version = await exchange(
+        { ...config, timeoutMs: Math.min(config.timeoutMs, 1000) },
+        'VERSION'
+      );
+      const state = await readFile(config.signatureStatePath, 'utf8');
+      result.observe(checkClamAvFreshness(state, version) / 1000);
     } catch {
       result.observe(72 * 3600);
     }
@@ -137,7 +140,7 @@ export const scanWithClamAv = async (body: Uint8Array, config: ClamAvConfig): Pr
   }
 };
 
-export const scanConfiguredMedia = async (body: Uint8Array): Promise<void> => {
+const resolveClamAvConfig = (): ClamAvConfig => {
   const host = process.env.MEDIA_CLAMAV_HOST;
   const port = Number(process.env.MEDIA_CLAMAV_PORT ?? 3310);
   const timeoutMs = Number(process.env.MEDIA_CLAMAV_TIMEOUT_MS ?? 30000);
@@ -153,5 +156,8 @@ export const scanConfiguredMedia = async (body: Uint8Array): Promise<void> => {
     timeoutMs > 120000
   )
     throw new MediaScanError('media_scan_unavailable');
-  await scanWithClamAv(body, { host, port, timeoutMs, signatureStatePath });
+  return { host, port, timeoutMs, signatureStatePath };
 };
+
+export const scanConfiguredMedia = async (body: Uint8Array): Promise<void> =>
+  scanWithClamAv(body, resolveClamAvConfig());

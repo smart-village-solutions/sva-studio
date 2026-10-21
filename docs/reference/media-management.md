@@ -60,6 +60,8 @@ Fehlverhalten im Frontend:
 - Schlägt nur der Abschluss fehl, existiert bereits ein reserviertes Asset im Pending-Zustand und kann technisch nachverfolgt werden.
 - Überschreiten die tatsächlichen Bytes bei der Job-Finalisierung das Kontingent, wird die Freigabe abgelehnt und die bereits erzeugten Storage-Objekte werden kompensierend entfernt.
 
+Das Abbrechen provisorischer Uploads zieht nur zuvor gebuchte Bytes und Asset-Zahlen vom Kontingent ab. Ausstehende, fehlgeschlagene und blockierte Uploads waren nicht gebucht und vermindern deshalb auch beim wiederholten Bereinigen keinen vorhandenen Verbrauch.
+
 ## Medienrollen
 
 Fachmodule referenzieren Medien nicht über rohe URLs, sondern über hostseitige Medienreferenzen mit Rollen.
@@ -104,6 +106,8 @@ Registrierte Medien besitzen optional bis zu 20 Tags mit je 1–64 Zeichen. Die 
 
 Die Scannerwahl ist in [ADR-068](../adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md) festgehalten. Der Scan ist standardmäßig deaktiviert und benötigt vor seiner Aktivierung den nachgewiesenen Storage-Schutz sowie einen regulär freigegebenen Rollout. Der bestehende Async-Change allein aktiviert keinen Scanner.
 
+Die internen Schlüssel `.quarantine/` und `.protected/` sind dauerhaft vom normalen Bucket-Import ausgeschlossen. Jeder Zugriff auf den gemeinsamen privaten Bucket ist an den exakten Instanzpräfix gebunden; geschützte Ausgaben werden nur als geschützte Medien ausgeliefert. Diese Grenzen gelten auch bei deaktivierter Scan-Anforderung.
+
 ### Konfiguration und privater Eingang
 
 | Einstellung | Bedeutung |
@@ -129,6 +133,8 @@ Nach 24 Stunden ohne bestätigte Aktualität warnt das vorhandene Monitoring; ab
 
 Technische Fehler verwenden die vorhandenen Studio-Job-Wiederholungen. Ein Fund blockiert den Upload; Nutzer erhalten eine verständliche Meldung ohne Signaturnamen. Der erfolgreiche Finalisierungspfad bucht Speicher weiterhin genau einmal. Die Eingangsbereinigung erfolgt nach Finalisierung und Audit; ein Fehler darf verfügbare Ausgaben oder die Quotenbuchung nicht zurücknehmen. Der bestehende explizite Job-Retry kann die Eingangsbereinigung eines bereits finalisierten oder abgewiesenen Uploads wiederholen, ohne neue Freigabe oder zweite Verarbeitung. Operative Logs und Audit enthalten ausschließlich normierte Gründe und zulässige Korrelation, keine Dateiinhalte, Scanner-Rohantworten oder Tagwerte.
 
+Die Metrikerfassung vergleicht den Signaturnachweis mit der über `VERSION` abgefragten, tatsächlich geladenen Revision. Ein abweichender Stand, fehlender Nachweis, ungültige Konfiguration oder nicht erreichbarer Scanner meldet den Sperrwert von 72 Stunden; die Versionsabfrage ist auf höchstens eine Sekunde begrenzt.
+
 Die vorhandenen OTEL-Instrumente `media_scan_enabled`, `media_scan_signature_check_age_seconds` und `media_scan_results_total` machen Aktivierung, Check-Alter und Ergebnisse sichtbar. Die Prometheus-Regeln für die 24-/72-Stunden-Grenzen setzen ein gemeldetes aktiviertes Scan-Gate voraus; sie erzeugen keinen Alarm allein wegen einer noch nicht aktivierten Funktion. Vor Aktivierung müssen die tatsächliche Metrikübernahme und die Scanner-Erreichbarkeit im Zielbetrieb geprüft werden.
 
 ### Feste Sichtbarkeit nach gescanntem Upload
@@ -143,7 +149,7 @@ Die Medienbibliothek bietet Berechtigten mit `media.read` und `media.update` ein
 
 `POST /api/v1/iam/media/inventory-scans` nimmt `{ limit, cursor? }` mit CSRF-Schutz entgegen und plant den hosteigenen Job `media.scan-existing` atomar über die vorhandene Queue `media-processing` ein. `GET /api/v1/iam/media/inventory-scans/{scanId}` liefert berechtigt und instanzgebunden Status und Bericht. Pro Datei erscheinen **sauber**, **Fund** oder **nicht prüfbar**, ergänzt um normierte Fehlergründe und Prüfzeitpunkt. Ein Scanner-Ausfall oder veraltete Signaturen beendet die Einzelprüfungen; verbleibende Dateien werden ebenfalls als nicht prüfbar berichtet. Der nächste Abschnitt startet nur per manuellem Klick, ohne automatische Fortsetzung oder Wiederholung.
 
-Der Bericht bleibt im bestehenden Job-Ergebnis (`result_payload.plugin.report`). Er ist eine Momentaufnahme der gelesenen Bytes mit Objektkennung (ETag, soweit verfügbar). Dateischlüssel erscheinen ausschließlich im medienberechtigten Bericht, nicht in Logs oder Audit. Das generische Job-Monitoring blendet diesen Ergebnisbericht aus; `iam.monitoring.read` allein gewährt keinen Zugriff darauf. Der Worker besitzt ausschließlich lesende Storage-Abhängigkeiten: keine Dateiänderung, Löschung, Sperre, Quotenbuchung, Referenzänderung oder Aktualisierung von Asset-Metadaten, Sichtbarkeit und Scan-Markern. Auch ein Fund bleibt nutzbar; eine weitere Maßnahme ist eine separate manuelle Entscheidung.
+Der Bericht bleibt im bestehenden Job-Ergebnis (`result_payload.plugin.report`). Er ist eine Momentaufnahme der gelesenen Bytes mit Objektkennung (ETag, soweit verfügbar). Dateischlüssel erscheinen ausschließlich im medienberechtigten Bericht, nicht in Logs oder Audit. Das generische Job-Monitoring blendet diesen Ergebnisbericht aus; `iam.monitoring.read` und `iam.monitoring.write` gewähren auch beim generischen Löschen eines Jobs keinen Zugriff darauf. Laufender Scan, Bericht und Fortsetzungscursor bleiben beim Nachladen oder einem Ladefehler der Medienliste erhalten. Der Worker besitzt ausschließlich lesende Storage-Abhängigkeiten: keine Dateiänderung, Löschung, Sperre, Quotenbuchung, Referenzänderung oder Aktualisierung von Asset-Metadaten, Sichtbarkeit und Scan-Markern. Auch ein Fund bleibt nutzbar; eine weitere Maßnahme ist eine separate manuelle Entscheidung.
 
 Der manuelle Scan benötigt einen erreichbaren ClamAV-Dienst und gültigen Signaturnachweis, unabhängig von `MEDIA_SCAN_ENABLED` für neue Uploads. Die bestehenden 24-/72-Stunden-Regeln und Scanner-Limits gelten weiterhin; ein fehlender Nachweis wird als nicht prüfbar berichtet. Eine Aktivierung oder ein Scan tatsächlicher Zielbestände ist separat abzustimmen.
 

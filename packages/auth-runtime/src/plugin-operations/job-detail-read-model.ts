@@ -123,6 +123,11 @@ export const normalizeStudioJobDetail = (
   const history = normalizeHistory(job);
   const normalizedJob = {
     ...job,
+    // File-level inventory reports require media permissions through the dedicated endpoint.
+    resultPayload:
+      job.source === 'host' && job.jobTypeId === 'media.scan-existing'
+        ? undefined
+        : job.resultPayload,
     history,
   } satisfies StudioJobDetail;
   const latestEvent = resolveLatestStudioJobEvent(history);

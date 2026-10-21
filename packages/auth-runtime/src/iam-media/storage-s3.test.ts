@@ -35,9 +35,31 @@ import {
   createS3MediaStoragePort,
   resolveMediaStorageConfig,
 } from './storage-s3.js';
+import { readS3MediaObject, statS3MediaObject } from './storage-s3-read.js';
+import { mediaScanLimits } from '@sva/media';
 import { MediaStorageUnavailableError } from './storage-port.js';
 
 describe('media storage s3 adapter', () => {
+  it.each([undefined, 3])('refuses missing or misleading length metadata in a bounded read: %s', async (ContentLength) => {
+    const collect = vi.fn(async () => Uint8Array.from([1, 2, 3, 4]));
+    const destroy = vi.fn();
+    const send = vi.fn(async () => ({ ContentLength, Body: { transformToByteArray: collect, destroy } }));
+    await expect(readS3MediaObject({ send } as unknown as S3Client, 'bucket', { instanceId: 'tenant-a', storageKey: 'existing', maxBytes: 3 })).rejects.toThrow('media_storage_size_limit');
+    expect(collect).toHaveBeenCalledTimes(ContentLength === undefined ? 0 : 1);
+    expect(destroy).toHaveBeenCalledTimes(ContentLength === undefined ? 1 : 0);
+  });
+  it('preserves the private intake size guard before requesting a body', async () => {
+    const send = vi.fn(async () => ({ ContentLength: mediaScanLimits.maxBytes + 1 }));
+    await expect(readS3MediaObject({ send } as unknown as S3Client, 'intake', { instanceId: 'tenant-a', storageKey: '.quarantine/tenant-a/asset/session' })).rejects.toBeInstanceOf(MediaStorageUnavailableError);
+    expect(send).toHaveBeenCalledOnce();
+  });
+  it('maps missing object metadata separately from storage connection failures', async () => {
+    const missing = Object.assign(new Error('not found'), { $metadata: { httpStatusCode: 404 } });
+    const failed = new Error('connection failed');
+    const send = vi.fn().mockRejectedValueOnce(missing).mockRejectedValueOnce(failed);
+    await expect(statS3MediaObject({ send } as unknown as S3Client, 'bucket', 'existing')).rejects.toThrow('media_storage_object_not_found');
+    await expect(statS3MediaObject({ send } as unknown as S3Client, 'bucket', 'existing')).rejects.toBe(failed);
+  });
   it('bounds inventory reads and refuses a size change before collecting the body', async () => {
     const collect = vi.fn(async () => Uint8Array.from([1, 2, 3]));
     const destroy = vi.fn();

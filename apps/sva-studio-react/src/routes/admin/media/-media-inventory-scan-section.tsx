@@ -1,4 +1,5 @@
 import React from 'react';
+import { studioJobContract } from '@sva/core';
 import { Button, Input } from '@sva/studio-ui-react';
 import { mediaScanLimits, type MediaInventoryScanReport } from '@sva/media';
 import { Label } from '../../../components/ui/label';
@@ -50,8 +51,7 @@ export const MediaInventoryScanSection = () => {
   const [starting, setStarting] = React.useState(false);
   const [error, setError] = React.useState(false);
   const id = React.useId();
-  const pending =
-    job?.status === 'queued' || job?.status === 'running' || job?.status === 'retrying';
+  const pending = Boolean(job && !studioJobContract.isTerminalStatus(job.status));
 
   const jobId = job?.id;
   React.useEffect(() => {
@@ -63,7 +63,7 @@ export const MediaInventoryScanSection = () => {
         const response = await getMediaInventoryScan(jobId, controller.signal);
         if (controller.signal.aborted) return;
         setJob(response.data);
-        if (['queued', 'running', 'retrying'].includes(response.data.status))
+        if (!studioJobContract.isTerminalStatus(response.data.status))
           timer = setTimeout(() => void refresh(), 1500);
       } catch {
         if (!controller.signal.aborted) {
@@ -98,6 +98,8 @@ export const MediaInventoryScanSection = () => {
       setStarting(false);
     }
   };
+  const report = job?.report;
+  const nextCursor = report?.nextCursor;
   const failed = error || job?.status === 'failed' || job?.status === 'cancelled';
 
   return (
@@ -135,13 +137,9 @@ export const MediaInventoryScanSection = () => {
         {starting || pending ? <p>{t('media.inventory.pending')}</p> : null}
         {failed ? <p className="text-destructive">{t('media.inventory.error')}</p> : null}
       </div>
-      {job?.report ? <InventoryReport report={job.report} /> : null}
-      {job?.report?.nextCursor ? (
-        <Button
-          type="button"
-          disabled={starting || pending}
-          onClick={() => void start(job.report?.nextCursor ?? undefined)}
-        >
+      {report ? <InventoryReport report={report} /> : null}
+      {nextCursor ? (
+        <Button type="button" disabled={starting || pending} onClick={() => void start(nextCursor)}>
           {t('media.inventory.next')}
         </Button>
       ) : null}

@@ -100,7 +100,9 @@ export const getMediaDeliveryHandler = async (request: Request): Promise<Respons
 export const deleteMediaHandler = async (request: Request): Promise<Response> =>
   withMediaRequest(request, mediaHttpHandlers.deleteMedia);
 
-export const startMediaInventoryScanHandler = async (request: Request): Promise<Response> =>
-  withMediaRequest(request, mediaHttpHandlers.startInventoryScan);
-export const getMediaInventoryScanHandler = async (request: Request): Promise<Response> =>
-  withMediaRequest(request, mediaHttpHandlers.getInventoryScan);
+export const mediaInventoryScanHandlers = {
+  start: async (request: Request): Promise<Response> =>
+    withMediaRequest(request, mediaHttpHandlers.startInventoryScan),
+  get: async (request: Request): Promise<Response> =>
+    withMediaRequest(request, mediaHttpHandlers.getInventoryScan),
+};

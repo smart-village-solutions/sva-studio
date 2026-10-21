@@ -1,3 +1,4 @@
+import type { StudioJobDetail } from '@sva/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -10,6 +11,31 @@ import {
 } from './job-detail-read-model.js';
 
 describe('job detail read model', () => {
+  it.each([
+    { source: 'host', jobTypeId: 'media.scan-existing', hidden: true },
+    { source: 'plugin', jobTypeId: 'media.scan-existing', hidden: false },
+    { source: 'host', jobTypeId: 'media.process-upload', hidden: false },
+  ] as const)(
+    'keeps only the inventory report outside generic monitoring: %j',
+    ({ source, jobTypeId, hidden }) => {
+      const resultPayload = {
+        plugin: {
+          report: { entries: [{ storageKey: 'private-file-name.txt', verdict: 'infected' }] },
+        },
+      };
+      const job = {
+        source,
+        jobTypeId,
+        status: 'succeeded',
+        history: [],
+        resultPayload,
+      } as unknown as StudioJobDetail;
+      const detail = normalizeStudioJobDetail(job);
+      expect(detail.resultPayload).toEqual(hidden ? undefined : resultPayload);
+      expect(job.resultPayload).toEqual(resultPayload);
+      if (hidden) expect(JSON.stringify(detail)).not.toContain('private-file-name.txt');
+    }
+  );
   it('computes runtime diagnostics and exposes the latest event for polling UIs', () => {
     const detail = normalizeStudioJobDetail(
       {

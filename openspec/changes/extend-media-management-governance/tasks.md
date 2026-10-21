@@ -53,7 +53,16 @@
 
 ## 6. Manuell beauftragter Bestandsscan ohne Sperren
 
-- [ ] 6.1 Berichtvertrag und begrenzten lesenden Worker am bestehenden Medien-/Job-Pfad ergänzen; 25 Dateien/64 MiB und ausschließlich lesende Abhängigkeiten einschließlich Größenwechsel absichern
-- [ ] 6.2 Authentifizierten Start und Berichtabruf mit vorhandenen Rechten, CSRF, Instanzgrenze und atomarer Einplanung ergänzen; Runtime-Komposition in beiden Distributionen anschließen
-- [ ] 6.3 Manuellen Start, laufenden Status, übersetzten Bericht und manuelle Fortsetzung in vorhandener Medienbibliothek ergänzen; niemals Bestandsdateien oder Asset-Status sperren/ändern
-- [ ] 6.4 Direkte Unit-/Integrations-/UI-/Type-Nachweise für Ergebnisse, Limits, Fehler und unveränderten Bestand führen; Dokumentation, ADR und tatsächlichen finalen PR-Umfang aktualisieren
+- [x] 6.1 Berichtvertrag und begrenzten lesenden Worker am bestehenden Medien-/Job-Pfad ergänzen; 25 Dateien/64 MiB und ausschließlich lesende Abhängigkeiten einschließlich Größenwechsel absichern
+- [x] 6.2 Authentifizierten Start und Berichtabruf mit vorhandenen Rechten, CSRF, Instanzgrenze und atomarer Einplanung ergänzen; Runtime-Komposition in beiden Distributionen anschließen
+- [x] 6.3 Manuellen Start, laufenden Status, übersetzten Bericht und manuelle Fortsetzung in vorhandener Medienbibliothek ergänzen; niemals Bestandsdateien oder Asset-Status sperren/ändern
+- [x] 6.4 Direkte Unit-/Integrations-/UI-/Type-Nachweise für Ergebnisse, Limits, Fehler und unveränderten Bestand führen; Dokumentation, ADR und tatsächlichen finalen PR-Umfang aktualisieren
+
+### Lokaler Nachweis des manuellen Bestandsscans (21.10.2026)
+
+- Begrenzung, Größenwechsel, drei Ergebnisse, Scanner-Ausfall, atomare Einplanung, Instanzgrenze, CSRF und Report-Rechte gezielt geprüft. Zusätzliche Regressionen belegen begrenzte S3-Abrufe auch bei fehlender/falscher Größenangabe und die unveränderte private Eingangsgrenze.
+- 32 UI-Tests, 57 API-Client-Tests, 39 Routing-Tests und 24 Runtime-Kompositionstests erfolgreich. Der neue Job ist in normaler und SSF-Distribution registriert; die Fortsetzung bleibt ausdrücklich manuell.
+- Fünf echte ClamAV-/S3-Integrationsfälle erfolgreich. Der neue Bestandsfall meldet sauber und Fund bei deaktiviertem Upload-Scan-Schalter; beide Dateien bleiben danach bytegleich öffentlich abrufbar. Keine echten Zielbestände oder Benutzerkonten verwendet.
+- App- und Auth-Typprüfung sowie vollständiger Server-Runtime-Check erfolgreich; nach der Report-Redaktion den Auth-Runtime-Check gezielt bestätigt. Generisches Job-Monitoring zeigt keinen Dateibericht, andere Jobs bleiben unverändert.
+- Dokumentations-, OpenAPI-, OpenSpec-, Dateiplatzierungs- und Diff-Prüfungen erfolgreich; Komplexitäts-Gate ohne neue Findings. Die vier zuvor belegten direkten ESLint-Modulgrenzenfehler in der bestehenden Runtime-Komposition bleiben außerhalb dieser Änderung; zusätzliche Dateien sind ohne Lint-Fehler.
+- Keine neue Tabelle, Queue, Worker-Plattform oder Scanner-Abstraktion. Neuer Worker und UI-Abschnitt liefern den manuellen Bericht; S3-Leseoperationen aus dem bisherigen großen Adapter in ein internes Modul verschoben und dort erweitert, ohne parallelen Lesepfad. Task 5.3 bleibt für den Zielbetrieb offen.

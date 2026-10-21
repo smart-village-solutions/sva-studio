@@ -60,7 +60,9 @@ describe('manual inventory scan UI', () => {
   it('rejects limits beyond the server bound before requesting a scan', () => {
     render(<MediaInventoryScanSection />);
     fireEvent.change(screen.getByLabelText('Dateien pro Lauf'), { target: { value: '26' } });
-    fireEvent.submit(screen.getByRole('button', { name: 'Bestandsscan starten' }).closest('form')!);
+    const form = screen.getByRole('button', { name: 'Bestandsscan starten' }).closest('form');
+    if (!form) throw new Error('Expected scan form');
+    fireEvent.submit(form);
     expect(api.start).not.toHaveBeenCalled();
   });
   it.each(['start', 'get'] as const)(

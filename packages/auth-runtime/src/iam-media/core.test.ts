@@ -1656,6 +1656,47 @@ describe('media http handlers', () => {
     );
   });
 
+  it.each([
+    '.protected/tenant-a/variants/asset/claim/thumb.webp',
+    '.protected/tenant-b/variants/asset/claim/thumb.webp',
+    '.quarantine/tenant-a/asset/session',
+    '.quarantine/tenant-b/asset/session',
+  ])('rejects private bucket registration with scanning disabled: %s', async (storageKey) => {
+    vi.stubEnv('MEDIA_SCAN_ENABLED', 'false');
+    try {
+      const service = createService();
+      const statObject = vi.fn(async () => ({ byteSize: 42 }));
+      const handlers = createMediaHttpHandlers({
+        withMediaService: async (_id, work) => work(service as never),
+        storagePort: { statObject } as never,
+        authorizeAction: allowAuthorization,
+        createId: () => 'asset-registered',
+        now: () => '2026-10-21T12:00:00.000Z',
+        emitAuditEvent,
+      });
+      const response = await handlers.registerBucketMedia(
+        new Request('http://localhost/api/v1/iam/media/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            storageKey,
+            fileName: 'private.webp',
+            byteSize: 42,
+            mimeType: 'image/webp',
+            visibility: 'public',
+          }),
+        }),
+        createContext()
+      );
+      expect(response.status).toBe(400);
+      expect(statObject).not.toHaveBeenCalled();
+      expect(service.getAssetByStorageKey).not.toHaveBeenCalled();
+      expect(service.upsertAsset).not.toHaveBeenCalled();
+      expect(service.applyStorageUsageDelta).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('rejects registration of generated variant objects', async () => {
     const service = createService();
 

@@ -56,8 +56,17 @@ const createPublicDeliveryUrl = (
   return `${publicBaseUrl}/${storageKey}`;
 };
 
-const resolveObjectBucket = (config: MediaStorageConfig, storageKey: string): string => {
+const resolveObjectBucket = (
+  config: MediaStorageConfig,
+  storageKey: string,
+  instanceId: string
+): string => {
   if (!isPrivateMediaStorageKey(storageKey)) return config.bucket;
+  if (
+    !storageKey.startsWith(`.protected/${instanceId}/`) &&
+    !storageKey.startsWith(`.quarantine/${instanceId}/`)
+  )
+    throw new MediaStorageUnavailableError();
   const bucket = process.env.MEDIA_SCAN_QUARANTINE_BUCKET;
   if (!bucket || bucket === config.bucket) throw new MediaStorageUnavailableError();
   return bucket;
@@ -93,9 +102,10 @@ export const createS3MediaStoragePort = (
   }
 ): MediaStoragePort => {
   const client = options?.client ?? new S3Client(createS3ClientConfig(config));
-  const bucketForKey = (storageKey: string) => resolveObjectBucket(config, storageKey);
-  const assertPrivateIntake = (storageKey: string) =>
-    assertPrivateIntakeBucket(client, bucketForKey(storageKey));
+  const bucketForKey = (storageKey: string, instanceId: string) =>
+    resolveObjectBucket(config, storageKey, instanceId);
+  const assertPrivateIntake = (storageKey: string, instanceId: string) =>
+    assertPrivateIntakeBucket(client, bucketForKey(storageKey, instanceId));
   const signedUrl =
     options?.getSignedUrl ??
     ((targetClient, command, expiresIn) => getSignedUrl(targetClient, command, { expiresIn }));
@@ -105,10 +115,11 @@ export const createS3MediaStoragePort = (
 
   const publicListing = createS3ListObjects(client, config);
   const listObjects: MediaStoragePort['listObjects'] = (input) => {
-    if (input.prefix?.startsWith(`.protected/${input.instanceId}/`)) {
+    if (input.prefix && isPrivateMediaStorageKey(input.prefix)) {
+      if (isMediaQuarantineKey(input.prefix)) throw new MediaStorageUnavailableError();
       return createS3ListObjects(client, {
         ...config,
-        bucket: bucketForKey(input.prefix),
+        bucket: bucketForKey(input.prefix, input.instanceId),
         publicBaseUrl: undefined,
       })(input);
     }
@@ -119,11 +130,11 @@ export const createS3MediaStoragePort = (
     const storageKey = getMediaScanEnabled()
       ? `.quarantine/${input.instanceId}/${input.assetId}/${input.uploadSessionId}`
       : createStorageKey(input, config.bucket);
-    if (getMediaScanEnabled()) await assertPrivateIntake(storageKey);
+    if (getMediaScanEnabled()) await assertPrivateIntake(storageKey, input.instanceId);
     const uploadUrl = await signedUrl(
       client,
       new PutObjectCommand({
-        Bucket: bucketForKey(storageKey),
+        Bucket: bucketForKey(storageKey, input.instanceId),
         Key: storageKey,
         ContentType: input.mimeType,
         ContentLength: input.byteSize,
@@ -152,6 +163,8 @@ export const createS3MediaStoragePort = (
     input: ResolveMediaDeliveryInput
   ): Promise<MediaDeliveryResolution> => {
     if (isMediaQuarantineKey(input.storageKey)) throw new MediaStorageUnavailableError();
+    if (isPrivateMediaStorageKey(input.storageKey) && input.visibility !== 'protected')
+      throw new MediaStorageUnavailableError();
     if (input.visibility === 'public' && !isPrivateMediaStorageKey(input.storageKey)) {
       const publicUrl = createPublicDeliveryUrl(config.publicBaseUrl, input.storageKey);
       if (publicUrl) {
@@ -166,7 +179,7 @@ export const createS3MediaStoragePort = (
     const deliveryUrl = await signedUrl(
       client,
       new GetObjectCommand({
-        Bucket: bucketForKey(input.storageKey),
+        Bucket: bucketForKey(input.storageKey, input.instanceId),
         Key: input.storageKey,
       }),
       config.signedUrlTtlSeconds
@@ -180,9 +193,9 @@ export const createS3MediaStoragePort = (
   };
 
   const statObject = (input: { instanceId: string; storageKey: string }) =>
-    statS3MediaObject(client, bucketForKey(input.storageKey), input.storageKey);
+    statS3MediaObject(client, bucketForKey(input.storageKey, input.instanceId), input.storageKey);
   const readObject: MediaStoragePort['readObject'] = (input) =>
-    readS3MediaObject(client, bucketForKey(input.storageKey), input);
+    readS3MediaObject(client, bucketForKey(input.storageKey, input.instanceId), input);
 
   const writeObject = async (input: {
     instanceId: string;
@@ -192,7 +205,7 @@ export const createS3MediaStoragePort = (
   }) => {
     const response = await client.send(
       new PutObjectCommand({
-        Bucket: bucketForKey(input.storageKey),
+        Bucket: bucketForKey(input.storageKey, input.instanceId),
         Key: input.storageKey,
         Body: input.body,
         ContentType: input.contentType,
@@ -208,7 +221,7 @@ export const createS3MediaStoragePort = (
   const deleteObject = async (input: { instanceId: string; storageKey: string }) => {
     await client.send(
       new DeleteObjectCommand({
-        Bucket: bucketForKey(input.storageKey),
+        Bucket: bucketForKey(input.storageKey, input.instanceId),
         Key: input.storageKey,
       })
     );

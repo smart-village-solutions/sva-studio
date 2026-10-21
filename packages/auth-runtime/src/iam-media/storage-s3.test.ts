@@ -73,6 +73,77 @@ describe('media storage s3 adapter', () => {
     expect(destroy).toHaveBeenCalledOnce();
   });
 
+  it.each(['.protected/tenant-b/file.webp', '.quarantine/tenant-b/asset/session'])(
+    'rejects foreign private keys before any storage operation: %s',
+    async (storageKey) => {
+      vi.stubEnv('MEDIA_SCAN_QUARANTINE_BUCKET', 'intake');
+      const send = vi.fn();
+      const signed = vi.fn();
+      const port = createS3MediaStoragePort(
+        {
+          endpoint: 'https://s3.example.test',
+          region: 'test',
+          bucket: 'tenant-a',
+          accessKeyId: 'test',
+          secretAccessKey: 'test',
+          signedUrlTtlSeconds: 900,
+        },
+        { client: { send } as unknown as S3Client, getSignedUrl: signed }
+      );
+      const input = { instanceId: 'tenant-a', storageKey };
+      const operations = [
+        () => port.statObject(input),
+        () => port.readObject(input),
+        () => port.writeObject({ ...input, body: new Uint8Array(), contentType: 'image/webp' }),
+        () => port.deleteObject(input),
+        () => port.resolveDelivery({ ...input, assetId: 'asset', visibility: 'protected' }),
+        () => port.listObjects({ instanceId: 'tenant-a', prefix: storageKey, limit: 1 }),
+      ];
+      for (const operation of operations) {
+        await expect(
+          Promise.resolve().then(async () => { await operation(); })
+        ).rejects.toBeInstanceOf(MediaStorageUnavailableError);
+      }
+      expect(send).not.toHaveBeenCalled();
+      expect(signed).not.toHaveBeenCalled();
+    }
+  );
+
+  it('only delivers own protected keys with protected visibility, even with scanning disabled', async () => {
+    vi.stubEnv('MEDIA_SCAN_ENABLED', 'false');
+    vi.stubEnv('MEDIA_SCAN_QUARANTINE_BUCKET', 'intake');
+    const signed = vi
+      .fn<(client: S3Client, command: PutObjectCommand | GetObjectCommand) => Promise<string>>()
+      .mockResolvedValue('https://private.example.test/get');
+    const port = createS3MediaStoragePort(
+      {
+        endpoint: 'https://s3.example.test',
+        region: 'test',
+        bucket: 'tenant-a',
+        accessKeyId: 'test',
+        secretAccessKey: 'test',
+        signedUrlTtlSeconds: 900,
+      },
+      { client: { send: vi.fn() } as unknown as S3Client, getSignedUrl: signed }
+    );
+    const input = {
+      instanceId: 'tenant-a',
+      storageKey: '.protected/tenant-a/variants/asset/file.webp',
+      assetId: 'asset',
+    };
+    await expect(port.resolveDelivery({ ...input, visibility: 'public' })).rejects.toBeInstanceOf(
+      MediaStorageUnavailableError
+    );
+    expect(signed).not.toHaveBeenCalled();
+    await expect(port.resolveDelivery({ ...input, visibility: 'protected' })).resolves.toMatchObject({
+      isPublicUrl: false,
+    });
+    expect(signed.mock.calls[0]?.[1].input).toMatchObject({
+      Bucket: 'intake',
+      Key: input.storageKey,
+    });
+  });
+
   it('uses a separate private intake bucket and refuses policies or public ACLs', async () => {
     vi.stubEnv('MEDIA_SCAN_ENABLED', 'true');
     vi.stubEnv('MEDIA_SCAN_QUARANTINE_BUCKET', 'intake');

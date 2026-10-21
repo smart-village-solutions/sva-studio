@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createEmptyInstanceInterfaceDraft,
   type InstanceInterfaceDraft,
+  type InstanceInterfaceDeepL,
 } from '../../lib/instance-interfaces';
 import { InterfaceForm, TypePickerDialog } from './-interfaces-page.dialogs';
 
@@ -65,6 +66,172 @@ describe('interfaces-page dialogs', () => {
     cleanup();
   });
 
+  it('requires saved credentials before the explicit DeepL query and offers only verified supported targets', () => {
+    const onChange = vi.fn(),
+      onCheck = vi.fn();
+    const draft = createEmptyInstanceInterfaceDraft('deepl');
+    if (draft.type !== 'deepl') throw new Error('fixture');
+    const props = {
+      draft,
+      saveStatus: 'idle' as const,
+      saveErrorMessage: null,
+      onChange,
+      onCancel: vi.fn(),
+      onSubmit: vi.fn(),
+      onCheckDeepL: onCheck,
+    };
+    const { rerender } = render(<InterfaceForm {...props} />);
+    const check = screen.getByRole('button', {
+      name: /Verbindung (erneut )?prüfen/,
+    }) as HTMLButtonElement;
+    expect(check.disabled).toBe(true);
+    expect(onCheck).not.toHaveBeenCalled();
+    const entry: InstanceInterfaceDeepL = {
+      id: 'deepl-a',
+      instanceId: 'a',
+      type: 'deepl',
+      name: 'DeepL',
+      enabled: true,
+      status: 'connected',
+      apiKeyConfigured: true,
+      createdAt: 'now',
+      updatedAt: 'now',
+      config: {
+        revision: 'r1',
+        credentialRevision: 'k1',
+        verifiedCredentialRevision: 'k1',
+        plan: 'pro',
+        englishVariant: 'en-GB',
+        selectedLocales: [],
+        availableLanguages: [
+          { code: 'en-GB', name: 'English', tagHandling: true },
+          { code: 'en-US', name: 'English (American)', tagHandling: true },
+          { code: 'sv', name: 'Swedish', tagHandling: true },
+          { code: 'da', name: 'Danish', tagHandling: true },
+          { code: 'ar', name: 'Arabic', tagHandling: true },
+        ],
+      },
+    };
+    const saved = { ...draft, config: { ...draft.config, revision: 'r1' } };
+    rerender(<InterfaceForm {...props} draft={saved} deepLEntry={entry} />);
+    expect((screen.getByLabelText('Englisch') as HTMLInputElement).disabled).toBe(false);
+    expect(screen.queryByLabelText('Variante für Englisch')).toBeNull();
+    expect(
+      screen.getAllByRole('checkbox').map((checkbox) => checkbox.closest('label')?.textContent)
+    ).toEqual(['Arabisch', 'Dänisch', 'Englisch', 'Schwedisch']);
+    expect(screen.getByRole('checkbox', { name: 'Arabisch' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Verbindung (erneut )?prüfen/ }));
+    expect(onCheck).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByLabelText('Englisch'));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ config: expect.objectContaining({ selectedLocales: ['en'] }) })
+    );
+    const english = { ...saved, config: { ...saved.config, selectedLocales: ['en' as const] } };
+    rerender(<InterfaceForm {...props} draft={english} deepLEntry={entry} />);
+    expect(
+      (screen.getByRole('button', { name: 'Verbindung erneut prüfen' }) as HTMLButtonElement)
+        .disabled
+    ).toBe(false);
+    expect(screen.queryByText(/Speichere die Konfiguration vor der Prüfung/)).toBeNull();
+    const variant = screen.getByLabelText('Variante für Englisch');
+    expect(variant.closest('div')?.contains(screen.getByLabelText('Englisch'))).toBe(true);
+    fireEvent.change(variant, { target: { value: 'en-US' } });
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({ englishVariant: 'en-US', selectedLocales: ['en'] }),
+      })
+    );
+    const portuguese = {
+      ...entry,
+      config: {
+        ...entry.config,
+        availableLanguages: [
+          { code: 'pt-PT', name: 'Portuguese (Portugal)', tagHandling: true },
+          { code: 'pt-BR', name: 'Portuguese (Brazil)', tagHandling: true },
+          { code: 'zh-Hans', name: 'Chinese (Simplified)', tagHandling: true },
+          { code: 'zh-Hant', name: 'Chinese (Traditional)', tagHandling: true },
+        ],
+      },
+    };
+    rerender(<InterfaceForm {...props} draft={saved} deepLEntry={portuguese} />);
+    expect(screen.queryByLabelText('Variante für Portugiesisch')).toBeNull();
+    fireEvent.click(screen.getByLabelText('Portugiesisch'));
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ config: expect.objectContaining({ selectedLocales: ['pt-PT'] }) })
+    );
+    rerender(
+      <InterfaceForm
+        {...props}
+        draft={{ ...saved, config: { ...saved.config, selectedLocales: ['pt-PT'] } }}
+        deepLEntry={portuguese}
+      />
+    );
+    fireEvent.change(screen.getByLabelText('Variante für Portugiesisch'), {
+      target: { value: 'pt-BR' },
+    });
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ config: expect.objectContaining({ selectedLocales: ['pt-BR'] }) })
+    );
+    rerender(
+      <InterfaceForm
+        {...props}
+        draft={{ ...saved, config: { ...saved.config, selectedLocales: ['zh-Hans'] } }}
+        deepLEntry={portuguese}
+      />
+    );
+    fireEvent.change(screen.getByLabelText('Variante für Chinesisch'), {
+      target: { value: 'zh-Hant' },
+    });
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ config: expect.objectContaining({ selectedLocales: ['zh-Hant'] }) })
+    );
+    const displayNames = vi
+      .spyOn(Intl.DisplayNames.prototype, 'of')
+      .mockImplementation((code) => code);
+    try {
+      const rare = {
+        ...entry,
+        config: {
+          ...entry.config,
+          availableLanguages: [{ code: 'ace', name: 'Acehnese', tagHandling: true }],
+        },
+      };
+      rerender(<InterfaceForm {...props} draft={saved} deepLEntry={rare} />);
+      expect(screen.getByLabelText('Acehnese')).toBeTruthy();
+    } finally {
+      displayNames.mockRestore();
+    }
+    const americanOnly = {
+      ...entry,
+      config: {
+        ...entry.config,
+        availableLanguages: [{ code: 'en-US', name: 'English (American)', tagHandling: true }],
+      },
+    };
+    rerender(<InterfaceForm {...props} draft={saved} deepLEntry={americanOnly} />);
+    fireEvent.click(screen.getByLabelText('Englisch'));
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({ englishVariant: 'en-US', selectedLocales: ['en'] }),
+      })
+    );
+    rerender(
+      <InterfaceForm
+        {...props}
+        draft={{ ...saved, config: { ...saved.config, apiKey: 'rotated' } }}
+        deepLEntry={entry}
+      />
+    );
+    expect((screen.getByLabelText('Englisch') as HTMLInputElement).disabled).toBe(true);
+    expect(
+      (
+        screen.getByRole('button', {
+          name: /Verbindung (erneut )?prüfen/,
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true);
+    expect((screen.getByLabelText('API-Key') as HTMLInputElement).type).toBe('password');
+  });
   it('returns null when the type picker is closed and forwards cancel or confirm actions when open', () => {
     const onCancel = vi.fn();
     const onConfirm = vi.fn();

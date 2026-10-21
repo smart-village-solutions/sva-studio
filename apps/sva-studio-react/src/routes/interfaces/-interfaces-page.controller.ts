@@ -6,6 +6,7 @@ import { t } from '../../i18n';
 import { readErrorMessage } from '../../lib/error-message-utils';
 import { getStudioPermissionDenialMessage } from '../../lib/studio-permission-denial-message';
 import {
+  checkDeepLInterfaceServerFn,
   listInstanceInterfacesServerFn,
   saveSvaMainserverInterfaceSettings,
   upsertInstanceInterfaceServerFn,
@@ -56,6 +57,19 @@ export type EditState =
   | { mode: 'edit'; entry: InstanceInterface; draft: InstanceInterfaceDraft };
 
 export const draftFromEntry = (entry: InstanceInterface): InstanceInterfaceDraft => {
+  if (entry.type === 'deepl')
+    return {
+      type: 'deepl',
+      name: entry.name,
+      enabled: entry.enabled,
+      config: {
+        plan: entry.config.plan,
+        englishVariant: entry.config.englishVariant,
+        selectedLocales: entry.config.selectedLocales,
+        revision: entry.config.revision,
+        apiKey: '',
+      },
+    };
   if (entry.type === 'mainserver') {
     return {
       type: 'mainserver',
@@ -109,6 +123,8 @@ export const translateInterfacesErrorMessage = (error: unknown, fallback: string
   if (permissionMessage) return permissionMessage;
   const message = readErrorMessage(error, fallback);
 
+  if (message.startsWith('deepl_') || message === 'interface_conflict')
+    return t(`interfaces.deepl.errors.${message}`);
   switch (message) {
     case 'invalid_interfaces_payload':
       return t('interfaces.messages.loadError');
@@ -155,6 +171,7 @@ export const buildUpsertPayload = (
 });
 
 const useServerFnRefs = () => {
+  const checkDeepL = useServerFn(checkDeepLInterfaceServerFn);
   const listInterfaces = useServerFn(listInstanceInterfacesServerFn);
   const saveMainserver = useServerFn(saveSvaMainserverInterfaceSettings);
   const upsertInterface = useServerFn(upsertInstanceInterfaceServerFn);
@@ -166,6 +183,7 @@ const useServerFnRefs = () => {
   upsertInterfaceRef.current = upsertInterface;
 
   return {
+    checkDeepL,
     listInterfacesRef,
     saveMainserverRef,
     upsertInterfaceRef,
@@ -173,11 +191,8 @@ const useServerFnRefs = () => {
 };
 
 export const useInterfacesPageController = () => {
-  const {
-    listInterfacesRef,
-    saveMainserverRef,
-    upsertInterfaceRef,
-  } = useServerFnRefs();
+  const { checkDeepL, listInterfacesRef, saveMainserverRef, upsertInterfaceRef } =
+    useServerFnRefs();
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
@@ -192,6 +207,8 @@ export const useInterfacesPageController = () => {
     instanceId,
     translateInterfacesErrorMessage
   );
+  const [deepLChecking, setDeepLChecking] = React.useState(false);
+  const [deepLCheckFailed, setDeepLCheckFailed] = React.useState(false);
   const saveFeedback = useStudioSaveFeedback();
 
   const refresh = React.useCallback(
@@ -249,6 +266,7 @@ export const useInterfacesPageController = () => {
       return;
     }
 
+    setDeepLCheckFailed(false);
     const operationId = saveFeedback.beginSaving();
     try {
       const draft = editState.draft;
@@ -287,7 +305,39 @@ export const useInterfacesPageController = () => {
     }
   };
 
+  const onCheckDeepL = async () => {
+    if (editState.mode !== 'edit' || editState.entry.type !== 'deepl') return;
+    setDeepLChecking(true);
+    setDeepLCheckFailed(false);
+    setSaveErrorMessage(null);
+    try {
+      const result = await checkDeepL({ data: { id: editState.entry.id } });
+      const updated = await refresh(false);
+      if (!updated) throw new Error(t('interfaces.deepl.refreshFailed'));
+      const entry = updated?.entries.find((item) => item.id === editState.entry.id);
+      if (entry)
+        setEditState((current) =>
+          current.mode === 'edit' && current.entry.id === entry.id ? { ...current, entry } : current
+        );
+      if (!result.ok) {
+        setDeepLCheckFailed(true);
+        setSaveErrorMessage(
+          t(`interfaces.deepl.errors.${result.errorCode ?? 'deepl_unavailable'}`)
+        );
+      }
+    } catch (error) {
+      setDeepLCheckFailed(true);
+      setSaveErrorMessage(
+        translateInterfacesErrorMessage(error, t('interfaces.deepl.checkFailed'))
+      );
+    } finally {
+      setDeepLChecking(false);
+    }
+  };
   return {
+    deepLChecking,
+    onRetryForm: deepLCheckFailed ? onCheckDeepL : onSaveDraft,
+    onCheckDeepL,
     availableTypes,
     editState,
     errorMessage,

@@ -1,3 +1,4 @@
+import { deepLInterfaceDraftSchema } from './instance-interfaces';
 import { mailTransportContract } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { dispatchRootMainserverInterfacesRequest } from '@sva/sva-mainserver/server';
@@ -94,6 +95,7 @@ const mapGeocodingDraft = base
 const upsertInput = z
   .object({
     draft: z.discriminatedUnion('type', [
+      deepLInterfaceDraftSchema,
       s3Draft,
       supabaseDraft,
       postgresqlDraft,
@@ -114,6 +116,7 @@ const readInterfaceId = (pathname: string): string | null => {
 };
 
 const secretFieldsByType: Readonly<Record<string, readonly string[]>> = {
+  deepl: ['apiKey'],
   s3: ['secretAccessKey'],
   supabase: ['databaseUrl', 'serviceRoleKey'],
   postgresql: ['databaseUrl'],
@@ -121,11 +124,15 @@ const secretFieldsByType: Readonly<Record<string, readonly string[]>> = {
   mapGeocoding: ['apiKey'],
 };
 
-const withoutSecrets = <T extends {
-  readonly type?: string;
-  readonly config?: unknown;
-  readonly statusMessage?: unknown;
-}>(entry: T) => {
+const withoutSecrets = <
+  T extends {
+    readonly type?: string;
+    readonly config?: unknown;
+    readonly statusMessage?: unknown;
+  },
+>(
+  entry: T
+) => {
   const { statusMessage: _statusMessage, ...safeEntry } = entry;
   const fields = entry.type ? secretFieldsByType[entry.type] : undefined;
   if (!fields || !entry.config || typeof entry.config !== 'object' || Array.isArray(entry.config)) {
@@ -210,8 +217,10 @@ const handleDelete = async (request: Request, id: string): Promise<Response> => 
 
 export const dispatchInterfacesApiRequest = async (request: Request): Promise<Response | null> => {
   const { pathname } = new URL(request.url);
-  if (pathname === '/api/v1/iam/instances/mainserver-interfaces' ||
-      /^\/api\/v1\/iam\/instances\/[^/]+\/mainserver-interface$/u.test(pathname)) {
+  if (
+    pathname === '/api/v1/iam/instances/mainserver-interfaces' ||
+    /^\/api\/v1\/iam\/instances\/[^/]+\/mainserver-interface$/u.test(pathname)
+  ) {
     return dispatchRootMainserverInterfacesRequest(request);
   }
   if (pathname === '/api/v1/interfaces/mainserver') {

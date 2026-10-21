@@ -232,7 +232,11 @@ const breadcrumbRoutes: ReadonlyArray<
   },
   {
     pattern: /^\/plugins\/app-translations$/,
-    build: () => [overviewBreadcrumb(), { label: t('appTranslations.ui.title') }],
+    build: () => [
+      overviewBreadcrumb(),
+      { label: t('shell.sidebar.app') },
+      { label: t('appTranslations.ui.title') },
+    ],
   },
   {
     pattern: /^\/interfaces$/,

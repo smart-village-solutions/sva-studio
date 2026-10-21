@@ -105,19 +105,36 @@ export const appTranslationsPlugin: PluginDescriptor = {
       appTranslations: {
         ui: {
           title: 'Mehrsprachigkeit',
+          languageTag: 'de',
           sourceTitle: 'App-Texte',
-          sourceRequired:
-            'Lege zuerst unter Mobile-App → App-Texte einen deutschen Ausgangsbestand an.',
+          setupTitle: 'DeepL-Schnittstelle einrichten',
+          setupReady: 'DeepL-Schnittstelle bereit',
+          setupLink: 'Schnittstellen öffnen',
+          setupAdmin:
+            'Bitte einen Instanzadministrator mit dem Recht zur Schnittstellenverwaltung um Einrichtung bitten.',
+          setupReasons: {
+            not_configured:
+              'Für diese Instanz muss zuerst ein eigener DeepL-Zugang eingerichtet werden.',
+            disabled: 'Die DeepL-Schnittstelle ist deaktiviert.',
+            secret_missing: 'Ein lesbarer DeepL-API-Key fehlt.',
+            check_required: 'Verbindung prüfen und verfügbare Sprachen laden.',
+            languages_required:
+              'In der geprüften Schnittstelle mindestens eine Zielsprache auswählen und speichern.',
+            ready:
+              'Die geprüften und ausgewählten Sprachen sind für die lokale Katalogbearbeitung verfügbar. Automatische Übersetzungen und App-Auslieferung folgen später.',
+          },
+          catalog_setup_required:
+            'Bitte zuerst die DeepL-Schnittstelle vollständig einrichten und prüfen. Vorhandene Texte bleiben erhalten.',
+          sourceRequired: 'Lege zuerst unter App → App-Texte einen deutschen Ausgangsbestand an.',
           sourceDescription:
             'Deutsche App-Texte für deine Kommune anpassen. Dafür wird das Modul Mehrsprachigkeit nicht benötigt.',
           configureLanguages: 'Aktuelle Sprachauswahl übernehmen',
           configureLanguagesHelp:
-            'Übernimmt die zentral für diese Instanz aktivierten Sprachen in den Entwurf. Vorhandene Übersetzungen bleiben erhalten. Deutsche Texte werden unter Mobile-App → App-Texte bearbeitet.',
+            'Übernimmt die zentral für diese Instanz aktivierten Sprachen in den Entwurf. Vorhandene Übersetzungen bleiben erhalten. Deutsche Texte werden unter App → App-Texte bearbeitet.',
           standardsTitle: 'Gemeinsame App-Texte',
-          description:
-            'Feste Beschriftungen und Hinweise der Mobile-App für deine Kommune anpassen.',
+          description: 'Feste Beschriftungen und Hinweise der App für deine Kommune anpassen.',
           standardsDescription:
-            'Gemeinsame Beschriftungen, Schaltflächen und Hinweise für die Mobile-Apps aller Kommunen pflegen.',
+            'Gemeinsame Beschriftungen, Schaltflächen und Hinweise für die Apps aller Kommunen pflegen.',
           importFile: 'App-Textdatei (JSON)',
           locales: {
             de: 'Deutsch',
@@ -173,14 +190,14 @@ export const appTranslationsPlugin: PluginDescriptor = {
           source: 'Tatsächliche deutsche Quelle',
           standard: 'Gepinnter Standard',
           reload: 'Neu laden',
-          discardReload: 'Eingabe verwerfen und neu laden',
-          saved: 'App-Texte in Studio gespeichert. Noch nicht an Mobile-Apps ausgeliefert.',
+          discard: 'Eingabe verwerfen',
+          saved: 'App-Texte in Studio gespeichert. Noch nicht an Apps ausgeliefert.',
           loading: 'Kataloge werden geladen …',
           scope: 'Gültigkeit',
           global: 'Für alle Kommunen',
           import: 'App-Texte aus der Entwicklung übernehmen',
           importHelp:
-            'Wähle die von der App-Entwicklung bereitgestellte JSON-Datei mit Textkennungen, deutschen Ausgangstexten und Platzhalterregeln aus (maximal 1 MiB). Die Dateiauswahl importiert einen bearbeitbaren Entwurf in Studio. In den Mobile-Apps ändert sich dadurch noch nichts.',
+            'Wähle die von der App-Entwicklung bereitgestellte JSON-Datei mit Textkennungen, deutschen Ausgangstexten und Platzhalterregeln aus (maximal 1 MiB). Die Dateiauswahl importiert einen bearbeitbaren Entwurf in Studio. In den Apps ändert sich dadurch noch nichts.',
           languages: 'Sprachen',
           manifest: 'Textdefinition (Version)',
           catalogs: 'App-Textbestände',
@@ -198,7 +215,7 @@ export const appTranslationsPlugin: PluginDescriptor = {
           preview: 'Textstand ansehen',
           noReleases: 'Noch kein vollständiger Textstand gesichert.',
           localOnly:
-            'Dieser Textstand ist in Studio gesichert und unveränderlich. Er wird noch nicht an Mobile-Apps ausgeliefert.',
+            'Dieser Textstand ist in Studio gesichert und unveränderlich. Er wird noch nicht an Apps ausgeliefert.',
           catalog_conflict:
             'Der Entwurf oder Organisationskontext hat sich geändert. Die Eingabe bleibt erhalten. Bitte bewusst neu laden und abgleichen.',
           catalog_incomplete:
@@ -224,7 +241,7 @@ export const appTranslationsPlugin: PluginDescriptor = {
           local: 'Lokale Katalogbasis prüfen — App-Integration noch nicht verfügbar',
           schema: 'Lokale Katalogbasis',
           provider: 'Zentraler DeepL-Zugang konfiguriert',
-          remoteUnavailable: 'Remote-Lifecycle noch nicht verfügbar',
+          invalidContext: 'Ungültiger Modulauftrag',
         },
       },
     },
@@ -232,17 +249,35 @@ export const appTranslationsPlugin: PluginDescriptor = {
       appTranslations: {
         ui: {
           title: 'Multilingual content',
+          languageTag: 'en',
           sourceTitle: 'App texts',
-          sourceRequired: 'First create the German source under Mobile app → App texts.',
+          setupTitle: 'Set up the DeepL interface',
+          setupReady: 'DeepL interface ready',
+          setupLink: 'Open interfaces',
+          setupAdmin:
+            'Ask an instance administrator with interface management permission to complete setup.',
+          setupReasons: {
+            not_configured: 'First configure a dedicated DeepL account for this instance.',
+            disabled: 'The DeepL interface is disabled.',
+            secret_missing: 'A readable DeepL API key is missing.',
+            check_required: 'Check the connection and load available languages.',
+            languages_required:
+              'Select and save at least one target language in the verified interface.',
+            ready:
+              'Verified and selected languages are available for local catalog editing. Automatic translations and app delivery will follow later.',
+          },
+          catalog_setup_required:
+            'First complete and verify DeepL setup. Existing texts are retained.',
+          sourceRequired: 'First create the German source under App → App texts.',
           sourceDescription:
             'Customize German app texts for your municipality without the multilingual module.',
           configureLanguages: 'Apply current language selection',
           configureLanguagesHelp:
-            'Apply the languages enabled for this instance to the draft. Existing translations are retained. Edit German texts under Mobile app → App texts.',
+            'Apply the languages enabled for this instance to the draft. Existing translations are retained. Edit German texts under App → App texts.',
           standardsTitle: 'Shared app texts',
-          description: 'Customize fixed mobile app labels and messages for your municipality.',
+          description: 'Customize fixed app labels and messages for your municipality.',
           standardsDescription:
-            'Manage shared labels, buttons and messages for the mobile apps of all municipalities.',
+            'Manage shared labels, buttons and messages for the apps of all municipalities.',
           importFile: 'App text file (JSON)',
           locales: {
             de: 'German',
@@ -298,14 +333,14 @@ export const appTranslationsPlugin: PluginDescriptor = {
           source: 'Actual German source',
           standard: 'Pinned standard',
           reload: 'Reload',
-          discardReload: 'Discard input and reload',
-          saved: 'App texts saved in Studio. Not delivered to mobile apps yet.',
+          discard: 'Discard input',
+          saved: 'App texts saved in Studio. Not delivered to apps yet.',
           loading: 'Loading catalogs …',
           scope: 'Applies to',
           global: 'For all municipalities',
           import: 'Import app texts from development',
           importHelp:
-            'Select the JSON file supplied by app development with text identifiers, German source texts and placeholder rules (up to 1 MiB). Selecting the file imports an editable draft into Studio. It does not change any mobile app yet.',
+            'Select the JSON file supplied by app development with text identifiers, German source texts and placeholder rules (up to 1 MiB). Selecting the file imports an editable draft into Studio. It does not change any app yet.',
           languages: 'Languages',
           manifest: 'Text definition version',
           catalogs: 'App text collections',
@@ -322,7 +357,7 @@ export const appTranslationsPlugin: PluginDescriptor = {
           preview: 'View text snapshot',
           noReleases: 'No complete text snapshot saved yet.',
           localOnly:
-            'This text snapshot is saved in Studio and cannot be changed. It is not delivered to mobile apps yet.',
+            'This text snapshot is saved in Studio and cannot be changed. It is not delivered to apps yet.',
           catalog_conflict:
             'The draft or organization context has changed. Your input is preserved. Explicitly reload and compare.',
           catalog_incomplete:
@@ -347,7 +382,7 @@ export const appTranslationsPlugin: PluginDescriptor = {
           local: 'Check local catalog basis — app integration is not available yet',
           schema: 'Local catalog basis',
           provider: 'Central DeepL credential configured',
-          remoteUnavailable: 'Remote lifecycle is not available yet',
+          invalidContext: 'Invalid module lifecycle request',
         },
       },
     },

@@ -1,13 +1,23 @@
 /** Runs against a migrated, disposable database only; never the Studio database. */
-import { createLanguageRepository } from './languages.js';
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { Pool, type PoolClient } from 'pg';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
-import { type CatalogScope, type CatalogManifest, type CatalogRelease } from '@sva/core';
+import {
+  type CatalogScope,
+  type CatalogManifest,
+  type CatalogRelease,
+  type ExternalInterfaceRecord,
+} from '@sva/core';
 import {
   createAppTranslationRepository,
   type AppTranslationRepository,
 } from './app-translations.js';
+import {
+  saveDeepLInterfaceRecord,
+  saveDeepLInterfaceCheck,
+  loadExternalInterfaceRecordById,
+} from './integrations/external-interfaces.server.js';
 const url = process.env.APP_TRANSLATIONS_TEST_DATABASE_URL;
 const pool = url ? new Pool({ connectionString: url, max: 4 }) : null;
 const suffix = randomUUID().slice(0, 8);
@@ -83,6 +93,98 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
   afterAll(async () => {
     await pool?.end();
   });
+  it('isolates DeepL config with RLS and serializes config, checks and module revocation', async () => {
+    if (
+      !process.env.IAM_DATABASE_URL ||
+      !new URL(process.env.IAM_DATABASE_URL).pathname.endsWith('_test')
+    )
+      throw new Error('disposable_interface_database_required');
+    await pool!.query(
+      "INSERT INTO iam.instance_modules(instance_id,module_id,effective_active) VALUES ($1,'app-translations',true)",
+      [tenantA]
+    );
+    await pool!.query(
+      "INSERT INTO iam.instance_plugin_lifecycle(instance_id,plugin_id,readiness_status,completed_generation) VALUES ($1,'app-translations','ready',1)",
+      [tenantA]
+    );
+    const record: ExternalInterfaceRecord = {
+      id: `deepl-${suffix}`,
+      instanceId: tenantA,
+      typeKey: 'deepl',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'DeepL',
+      alias: 'deepl',
+      enabled: true,
+      isDefault: true,
+      category: 'api',
+      statusCheckKind: 'deepl',
+      visibleStatus: 'unknown',
+      secretConfigCiphertext: 'synthetic-cipher',
+      publicConfig: {
+        revision: 'r1',
+        credentialRevision: 'k1',
+        plan: 'pro',
+        englishVariant: 'en-GB',
+        selectedLocales: [],
+        availableLanguages: [],
+      },
+    };
+    await saveDeepLInterfaceRecord(record, '0');
+    expect(await loadExternalInterfaceRecordById(tenantB, record.id)).toBeNull();
+    await expect(
+      saveDeepLInterfaceRecord({ ...record, id: `second-${suffix}` }, '0')
+    ).rejects.toMatchObject({ code: '23505' });
+    const languages = [{ code: 'en-GB', name: 'English', tagHandling: true }];
+    await saveDeepLInterfaceCheck({
+      instanceId: tenantA,
+      interfaceId: record.id,
+      expectedRevision: 'r1',
+      checkedAt: new Date().toISOString(),
+      languages,
+    });
+    const checked = await loadExternalInterfaceRecordById(tenantA, record.id);
+    expect(checked?.publicConfig.verifiedCredentialRevision).toBe('k1');
+    const outcomes = await Promise.allSettled(
+      ['r2', 'r3'].map((revision) =>
+        saveDeepLInterfaceRecord(
+          { ...record, publicConfig: { ...record.publicConfig, revision } },
+          'r1'
+        )
+      )
+    );
+    expect(outcomes.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(outcomes.filter((result) => result.status === 'rejected')).toHaveLength(1);
+    await expect(
+      saveDeepLInterfaceCheck({
+        instanceId: tenantA,
+        interfaceId: record.id,
+        expectedRevision: 'r1',
+        checkedAt: new Date().toISOString(),
+        languages,
+      })
+    ).rejects.toThrow('interface_conflict');
+    const current = await loadExternalInterfaceRecordById(tenantA, record.id);
+    await pool!.query(
+      "UPDATE iam.instance_plugin_lifecycle SET access_state='suspended' WHERE instance_id=$1 AND plugin_id='app-translations'",
+      [tenantA]
+    );
+    await expect(
+      saveDeepLInterfaceCheck({
+        instanceId: tenantA,
+        interfaceId: record.id,
+        expectedRevision: String(current?.publicConfig.revision),
+        checkedAt: new Date().toISOString(),
+        languages,
+      })
+    ).rejects.toThrow('deepl_module_unavailable');
+    await expect(
+      saveDeepLInterfaceRecord(current!, String(current?.publicConfig.revision))
+    ).rejects.toThrow('deepl_module_unavailable');
+    expect(
+      (await loadExternalInterfaceRecordById(tenantA, record.id))?.secretConfigCiphertext
+    ).toBe('synthetic-cipher');
+  });
   it('seals German independently of incomplete translations and keeps retry identities separate', async () => {
     await transaction(global, async (repo) => {
       const id = `${contractId}-de`;
@@ -105,63 +207,6 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
       expect(await repo.seal(id, draft.draftRevision, true)).toEqual(german);
       expect(await repo.seal(id, draft.draftRevision)).toEqual(translated);
     });
-  });
-  it('manages central languages with CAS, tenant RLS and locked module readiness', async () => {
-    const root = async <T>(
-      work: (repo: ReturnType<typeof createLanguageRepository>, client: PoolClient) => Promise<T>
-    ) =>
-      transaction(global, async (_catalog, client) =>
-        work(createLanguageRepository(client), client)
-      );
-    const tenantRead = (scope: CatalogScope) =>
-      transaction(scope, async (_catalog, client) =>
-        createLanguageRepository(client).assignments(tenantA)
-      );
-    await expect(root((repo) => repo.setAvailable('de', false, '1'))).rejects.toThrow(
-      'catalog_forbidden'
-    );
-    await expect(root((repo) => repo.setInstance(tenantA, 'en', true, '0'))).rejects.toThrow(
-      'catalog_forbidden'
-    );
-    await pool!.query(
-      "INSERT INTO iam.instance_modules(instance_id,module_id,effective_active) VALUES ($1,'app-translations',true)",
-      [tenantA]
-    );
-    await pool!.query(
-      "INSERT INTO iam.instance_plugin_lifecycle(instance_id,plugin_id,readiness_status,completed_generation) VALUES ($1,'app-translations','ready',1)",
-      [tenantA]
-    );
-    await root((repo) => repo.setInstance(tenantA, 'en', true, '0'));
-    await expect(root((repo) => repo.setInstance(tenantA, 'en', false, '0'))).rejects.toThrow(
-      'catalog_conflict'
-    );
-    expect((await tenantRead(a)).map((row) => row.locale)).toEqual(['en']);
-    expect(await tenantRead(c)).toEqual([]);
-    await expect(
-      transaction(a, async (_repo, client) =>
-        createLanguageRepository(client).setAvailable('en', false, '1')
-      )
-    ).rejects.toThrow('catalog_conflict');
-    await root((repo) => repo.setAvailable('en', false, '1'));
-    expect(
-      await transaction(a, async (_repo, client) =>
-        createLanguageRepository(client).enabledLocales(tenantA)
-      )
-    ).toEqual(['de']);
-    expect((await tenantRead(a))[0]?.enabled).toBe(true);
-    await expect(root((repo) => repo.setInstance(tenantA, 'en', true, '1'))).rejects.toThrow(
-      'catalog_forbidden'
-    );
-    await root((repo) => repo.setAvailable('en', true, '2'));
-    await pool!.query(
-      "UPDATE iam.instance_plugin_lifecycle SET access_state='suspended' WHERE instance_id=$1",
-      [tenantA]
-    );
-    await expect(root((repo) => repo.setInstance(tenantA, 'en', true, '1'))).rejects.toThrow(
-      'catalog_forbidden'
-    );
-    await root((repo) => repo.setInstance(tenantA, 'en', false, '1'));
-    expect((await tenantRead(a))[0]?.enabled).toBe(false);
   });
   it('lists only scoped drafts and releases while offering immutable global bases', async () => {
     await transaction(a, (repo) => repo.createMunicipalDraft(globalRelease.id, ['de', 'en']));
@@ -416,5 +461,86 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
     expect(await transaction(global, (repo) => repo.loadRelease(globalRelease.id))).toEqual(
       globalRelease
     );
+  });
+  it('restores additional language selections across migration 108 rollback and reapply', async () => {
+    const sql = await readFile(
+      new URL('../../data/migrations/0108_instance_deepl_interface.sql', import.meta.url),
+      'utf8'
+    );
+    const [up, down] = sql.split('-- +goose Down');
+    if (!pool || !up || !down) throw new Error('migration_test_fixture_required');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const locales = ['ar', 'fr-CA', 'pt-BR', 'zh-Hant'];
+      await client.query(
+        `UPDATE iam.instance_external_interfaces SET public_config_json = jsonb_set(public_config_json,'{selectedLocales}',$2::jsonb) WHERE id=$1`,
+        [`deepl-${suffix}`, JSON.stringify(locales)]
+      );
+      const before = await client.query(
+        'SELECT secret_config_ciphertext FROM iam.instance_external_interfaces WHERE id=$1',
+        [`deepl-${suffix}`]
+      );
+      await client.query(down);
+      const restored = await client.query(
+        'SELECT locale FROM iam.instance_languages WHERE instance_id=$1 AND enabled ORDER BY locale',
+        [tenantA]
+      );
+      expect(restored.rows.map((row: { locale: string }) => row.locale)).toEqual(locales);
+      await client.query(up);
+      const after = await client.query(
+        'SELECT secret_config_ciphertext, public_config_json FROM iam.instance_external_interfaces WHERE id=$1',
+        [`deepl-${suffix}`]
+      );
+      expect(after.rows[0].secret_config_ciphertext).toBe(before.rows[0].secret_config_ciphertext);
+      expect(after.rows[0].public_config_json.selectedLocales).toEqual(locales);
+      expect(
+        await client.query('SELECT id FROM iam.app_translation_catalog_releases WHERE id=$1', [
+          globalRelease.id,
+        ])
+      ).toMatchObject({ rowCount: 1 });
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+    }
+  });
+  it('persists and seals additional canonical languages without changing German source texts', async () => {
+    const base = await transaction(global, async (repo) => {
+      const draft = await repo.importManifest(
+        { ...manifest, contractId: `${contractId}-wide` },
+        '0',
+        ['de']
+      );
+      return repo.seal(draft.manifest.contractId, draft.draftRevision);
+    });
+    await transaction(a, async (repo) => {
+      let draft = await repo.createMunicipalDraft(base.id, [
+        'de',
+        'ar',
+        'fr-CA',
+        'pt-BR',
+        'zh-Hant',
+      ]);
+      for (const locale of ['ar', 'fr-CA', 'pt-BR', 'zh-Hant']) {
+        draft = await repo.editText(
+          draft.manifest.contractId,
+          draft.draftRevision,
+          locale,
+          'title',
+          `Title ${locale}`
+        );
+        draft = await repo.editText(
+          draft.manifest.contractId,
+          draft.draftRevision,
+          locale,
+          'greeting',
+          `Hello {{name}} ${locale}`
+        );
+      }
+      const release = await repo.seal(draft.manifest.contractId, draft.draftRevision);
+      expect(release.supportedLocales).toEqual(['ar', 'de', 'fr-CA', 'pt-BR', 'zh-Hant']);
+      expect(release.catalogs['pt-BR']?.values.title).toBe('Title pt-BR');
+      expect(release.catalogs.de?.values.title).toBe('Meldung senden');
+    });
   });
 });

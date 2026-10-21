@@ -5270,59 +5270,8 @@ GRANT SELECT, INSERT ON iam.app_translation_manifests, iam.app_translation_catal
 GRANT SELECT, INSERT, UPDATE ON iam.app_translation_catalog_drafts TO iam_app;
 
 
--- Sprachverwaltung, Migration 0107 (21. Oktober 2026)
-CREATE TABLE iam.available_languages (
-  locale TEXT PRIMARY KEY CHECK (locale ~ '^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$'),
-  available BOOLEAN NOT NULL DEFAULT true,
-  revision BIGINT NOT NULL DEFAULT 1 CHECK (revision > 0),
-  CHECK (locale <> 'de' OR available)
-);
-CREATE TABLE iam.instance_languages (
-  instance_id TEXT NOT NULL REFERENCES iam.instances(id) ON DELETE CASCADE,
-  locale TEXT NOT NULL REFERENCES iam.available_languages(locale),
-  enabled BOOLEAN NOT NULL DEFAULT true,
-  revision BIGINT NOT NULL DEFAULT 1 CHECK (revision > 0),
-  PRIMARY KEY (instance_id, locale),
-  CHECK (locale <> 'de')
-);
-INSERT INTO iam.available_languages(locale) VALUES
-  ('de'),
-  ('en'),
-  ('uk'),
-  ('es'),
-  ('it'),
-  ('pt-PT'),
-  ('el'),
-  ('ko'),
-  ('id'),
-  ('zh-Hans'),
-  ('ja'),
-  ('th'),
-  ('tr'),
-  ('pl'),
-  ('da'),
-  ('sv'),
-  ('fi'),
-  ('ru'),
-  ('lv'),
-  ('ro');
-ALTER TABLE iam.available_languages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE iam.available_languages FORCE ROW LEVEL SECURITY;
-ALTER TABLE iam.instance_languages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE iam.instance_languages FORCE ROW LEVEL SECURITY;
-CREATE POLICY languages_read ON iam.available_languages FOR SELECT TO iam_app USING (true);
-CREATE POLICY languages_root_update ON iam.available_languages FOR UPDATE TO iam_app
-USING (nullif(current_setting('app.catalog_platform', true), '') = 'true' AND iam.current_instance_id() IS NULL)
-WITH CHECK (nullif(current_setting('app.catalog_platform', true), '') = 'true' AND iam.current_instance_id() IS NULL);
-CREATE POLICY instance_languages_read ON iam.instance_languages FOR SELECT TO iam_app
-USING (instance_id = iam.current_instance_id() OR (nullif(current_setting('app.catalog_platform', true), '') = 'true' AND iam.current_instance_id() IS NULL));
-CREATE POLICY instance_languages_root_write ON iam.instance_languages FOR ALL TO iam_app
-USING (nullif(current_setting('app.catalog_platform', true), '') = 'true' AND iam.current_instance_id() IS NULL)
-WITH CHECK (nullif(current_setting('app.catalog_platform', true), '') = 'true' AND iam.current_instance_id() IS NULL);
-REVOKE ALL ON iam.available_languages, iam.instance_languages FROM iam_app;
-GRANT SELECT, UPDATE ON iam.available_languages TO iam_app;
-GRANT SELECT, INSERT, UPDATE ON iam.instance_languages TO iam_app;
-
+-- Instanzgebundene DeepL-Konfiguration, Migration 0108
+CREATE UNIQUE INDEX idx_instance_deepl_interface ON iam.instance_external_interfaces(instance_id) WHERE type_key='deepl';
 
 --
 -- PostgreSQL database dump complete

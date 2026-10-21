@@ -35,7 +35,7 @@ export const shellENResources = {
     chooseHelp: 'Select the instance whose languages you want to manage.',
     moduleRequired: 'Additional languages require an active and ready multilingual module.',
     assignmentHelp:
-      'German remains available. Disabled languages and modules retain their assignments and texts. Mobile app integration will follow later.',
+      'German remains available. Disabled languages and modules retain their assignments and texts. App integration will follow later.',
     unavailable: 'Centrally disabled',
   },
   appName: 'SVA Studio',
@@ -186,7 +186,7 @@ export const shellENResources = {
     instances: 'Instances',
     templates: 'Templates',
     languages: 'Languages',
-    mobileApp: 'Mobile app',
+    mobileApp: 'App',
     invitationTemplate: 'Invitation template',
     roles: 'Roles',
     groups: 'Groups',

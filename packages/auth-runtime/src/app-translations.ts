@@ -1,13 +1,15 @@
 /** Session-authorized catalog operations and their local editor transport. */
 import {
-  APP_TRANSLATION_LOCALES,
+  APP_TRANSLATION_MAX_LOCALES,
+  isAppTranslationLocale,
   AppTranslationError,
   type CatalogScope,
   type AppTranslationLocale,
+  type DeepLSetupStatus,
+  type ExternalInterfaceRecord,
 } from '@sva/core';
 import {
   createAppTranslationRepository,
-  createLanguageRepository,
   type AppTranslationRepository,
 } from '@sva/data-repositories/server';
 import { evaluateAuthorizeDecision } from '@sva/iam-core';
@@ -20,16 +22,17 @@ import { ensurePlatformAccess } from './iam-instance-registry/http.js';
 import { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
 import { withIamAppDb } from './db.js';
 import { readConfiguredPluginTenantAccess } from './plugin-tenant-lifecycle/access.js';
-import { getAppTranslationsDeepLApiKey } from './runtime-secrets.js';
+import { getDeepLSetupStatus, readDeepLSetupStatus } from './app-translations-deepl.js';
 
 const logger = createSdkLogger({ component: 'app-translations' });
 const contractId = z.string().regex(/^[a-z][a-z0-9-]{0,63}$/);
 const expectedRevision = z.string().regex(/^(0|[1-9][0-9]{0,17})$/);
-const locales = z.array(z.enum(APP_TRANSLATION_LOCALES)).min(1).max(APP_TRANSLATION_LOCALES.length);
+const localeSchema = z.string().refine(isAppTranslationLocale);
+const locales = z.array(localeSchema).min(1).max(APP_TRANSLATION_MAX_LOCALES);
 const textFields = {
   contractId,
   expectedRevision,
-  locale: z.enum(APP_TRANSLATION_LOCALES),
+  locale: localeSchema,
   key: z.string().min(1).max(128),
 };
 const operationSchema = z.discriminatedUnion('operation', [
@@ -74,7 +77,7 @@ const dispatch = (
   repo: AppTranslationRepository,
   op: Operation,
   sourceOnly = false,
-  allowedLocales: readonly (typeof APP_TRANSLATION_LOCALES)[number][] = ['de']
+  allowedLocales: readonly AppTranslationLocale[] = ['de']
 ) => {
   switch (op.operation) {
     case 'configureLocales':
@@ -141,6 +144,7 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
       if (!session || session.userId !== ctx.user.id)
         return response(403, { error: 'catalog_forbidden' });
       let scope: CatalogScope;
+      let canManageInterfaces = false;
       if (session.auth?.kind === 'platform' && !ctx.user.instanceId) {
         // The existing Root administrator policy grants these explicit catalog actions.
         if (ensurePlatformAccess(request, { ...ctx, authKind: 'session' }))
@@ -167,6 +171,15 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
           organizationId: scope.organizationId,
         });
         if (!permissions.ok) return response(503, { error: 'catalog_unavailable' });
+        canManageInterfaces = evaluateAuthorizeDecision(
+          {
+            instanceId: scope.instanceId,
+            action: 'integration.manage',
+            resource: { type: 'integration', organizationId: scope.organizationId },
+            context: { organizationId: scope.organizationId },
+          },
+          permissions.permissions
+        ).allowed;
         if (
           !evaluateAuthorizeDecision(
             {
@@ -198,11 +211,27 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
           );
           if (!active.rows[0]) throw new AppTranslationError('catalog_forbidden');
         }
+        let setup: DeepLSetupStatus | undefined;
+        if (scope.kind === 'municipal' && !sourceOnly) {
+          await client.query("SELECT set_config('app.instance_id', $1, true)", [scope.instanceId]);
+          if (!isRead) {
+            const module = await client.query(
+              `SELECT m.module_id FROM iam.instance_modules m JOIN iam.instance_plugin_lifecycle l ON l.instance_id=m.instance_id AND l.plugin_id=m.module_id WHERE m.instance_id=$1 AND m.module_id='app-translations' AND m.effective_active AND l.access_state='active' FOR SHARE OF m,l`,
+              [scope.instanceId]
+            );
+            if (!module.rows[0]) throw new AppTranslationError('catalog_forbidden');
+          }
+          // Hold the saved configuration through mutation, so rotation or language changes cannot race a seal.
+          const provider = await client.query<ExternalInterfaceRecord>(
+            `SELECT id,type_key AS "typeKey",owner_kind AS "ownerKind",enabled,public_config_json AS "publicConfig",secret_config_ciphertext AS "secretConfigCiphertext",last_check_status AS "lastCheckStatus" FROM iam.instance_external_interfaces WHERE instance_id=$1 AND type_key='deepl' AND owner_kind='host' AND is_default ${isRead ? '' : 'FOR SHARE'}`,
+            [scope.instanceId]
+          );
+          setup = getDeepLSetupStatus(provider.rows[0] ?? null);
+          if (!isRead && !setup.ready) throw new AppTranslationError('catalog_setup_required');
+        }
         const repo = await createAppTranslationRepository(client, scope);
         const allowedLocales: readonly AppTranslationLocale[] =
-          sourceOnly || scope.kind === 'global'
-            ? (['de'] as const)
-            : await createLanguageRepository(client).enabledLocales(scope.instanceId);
+          sourceOnly || !setup ? ['de'] : ['de', ...setup.selectedLocales];
         if (!sourceOnly && 'locale' in op && !allowedLocales.includes(op.locale))
           throw new AppTranslationError('catalog_forbidden');
         if (
@@ -269,6 +298,8 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
           return {
             ...value,
             allowedLocales: [...allowedLocales],
+            setup,
+            canManageInterfaces,
             releases: value.releases.filter((row) =>
               row.supportedLocales.every((locale) => allowedLocales.includes(locale))
             ),
@@ -280,6 +311,8 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
           return {
             ...value,
             allowedLocales,
+            setup,
+            canManageInterfaces,
             draft: {
               ...value.draft,
               supportedLocales: selected,
@@ -307,13 +340,15 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
     } catch (error) {
       if (error instanceof AppTranslationError) {
         const status =
-          error.code === 'catalog_conflict'
+          error.code === 'catalog_setup_required'
             ? 409
-            : error.code === 'catalog_forbidden'
-              ? 403
-              : error.code === 'catalog_not_found'
-                ? 404
-                : 400;
+            : error.code === 'catalog_conflict'
+              ? 409
+              : error.code === 'catalog_forbidden'
+                ? 403
+                : error.code === 'catalog_not_found'
+                  ? 404
+                  : 400;
         return response(status, { error: error.code });
       }
       logger.error('Internal catalog operation failed', {
@@ -340,13 +375,12 @@ export const readAppTranslationsLocalReadiness = async (
         AND to_regclass('iam.app_translation_manifests') IS NOT NULL
         AND to_regclass('iam.app_translation_catalog_drafts') IS NOT NULL
         AND to_regclass('iam.app_translation_catalog_releases') IS NOT NULL
-        AND to_regclass('iam.available_languages') IS NOT NULL
-        AND to_regclass('iam.instance_languages') IS NOT NULL AS ready`,
+        AND EXISTS(SELECT 1 FROM iam.external_interface_types WHERE type_key='deepl') AS ready`,
       [instanceId]
     );
     return result.rows[0]?.ready === true;
   });
-  return { schemaReady, providerConfigured: Boolean(getAppTranslationsDeepLApiKey()) };
+  return { schemaReady, providerConfigured: (await readDeepLSetupStatus(instanceId)).ready };
 };
 
 /** UI transport only; the session facade owns every operation's authorization. */

@@ -114,14 +114,6 @@
       }
     },
     {
-      "id": "admin.languages",
-      "path": "/admin/languages",
-      "pageType": "overview",
-      "owner": {
-        "kind": "host"
-      }
-    },
-    {
       "id": "admin.legal-texts.create",
       "path": "/admin/legal-texts/new",
       "pageType": "create",

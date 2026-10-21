@@ -5,13 +5,14 @@ import type {
   MailTransportSecurityMode,
 } from '@sva/core';
 import type {
+  InstanceInterfaceDeepL,
   InstanceInterfaceS3,
   InstanceInterfaceSupabase,
   InstanceInterfacePostgresql,
   InstanceInterfaceMailTransport,
   InstanceInterfaceMapGeocoding,
 } from './instance-interfaces';
-import { mailTransportContract } from '@sva/core';
+import { readDeepLSettings, mailTransportContract } from '@sva/core';
 import { revealField } from '@sva/auth-runtime/server';
 import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
 
@@ -54,8 +55,17 @@ export type StoredMapGeocoding = Omit<
   'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
 >;
 
+export type StoredDeepL = Omit<
+  InstanceInterfaceDeepL,
+  'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+>;
 export type StoredEntry =
-  StoredS3 | StoredSupabase | StoredPostgresql | StoredMailTransport | StoredMapGeocoding;
+  | StoredDeepL
+  | StoredS3
+  | StoredSupabase
+  | StoredPostgresql
+  | StoredMailTransport
+  | StoredMapGeocoding;
 export type StoredInterfaceType = StoredEntry['type'];
 
 export type PersistedStoredEntry = StoredEntry &
@@ -102,7 +112,7 @@ export const parseSecretConfig = (
 
 export const mapStoredTypeToKey = (
   type: StoredInterfaceType
-): 's3' | 'supabase' | 'postgresql' | 'mail_transport' | 'map_geocoding' =>
+): 's3' | 'supabase' | 'postgresql' | 'mail_transport' | 'map_geocoding' | 'deepl' =>
   type === 'mailTransport' ? 'mail_transport' : type === 'mapGeocoding' ? 'map_geocoding' : type;
 
 const coerceOptionalText = (value: unknown): string => (typeof value === 'string' ? value : '');
@@ -122,6 +132,24 @@ export const mapRecordToStoredEntry = (
   const createdAt = record.createdAt ?? nowIso();
   const updatedAt = record.updatedAt ?? createdAt;
 
+  if (record.typeKey === 'deepl') {
+    const config = readDeepLSettings(record.publicConfig);
+    if (!config) return null;
+    return {
+      id: record.id,
+      instanceId: record.instanceId,
+      type: 'deepl',
+      name: record.displayName,
+      enabled: record.enabled,
+      apiKeyConfigured: Boolean(record.secretConfigCiphertext),
+      config,
+      createdAt,
+      updatedAt,
+      visibleStatus: record.visibleStatus,
+      lastCheckedAt: record.lastCheckedAt,
+      lastCheckErrorCode: record.lastCheckErrorCode,
+    };
+  }
   if (record.typeKey === 's3') {
     return {
       id: record.id,

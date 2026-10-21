@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
     auth: { kind: 'instance', instanceId: 'tenant' },
   },
   allowed: false,
+  providerReady: true,
   locales: ['de', 'en'] as string[],
   platformError: null as Response | null,
   csrfError: null as Response | null,
@@ -41,10 +42,18 @@ vi.mock('./iam-authorization/permission-store.js', () => ({
 }));
 vi.mock('@sva/data-repositories/server', () => ({
   createAppTranslationRepository: (...args: unknown[]) => state.createRepo(...args),
-  createLanguageRepository: () => ({ enabledLocales: async () => state.locales }),
 }));
 vi.mock('./plugin-tenant-lifecycle/access.js', () => ({
   readConfiguredPluginTenantAccess: (...args: unknown[]) => state.pluginAccess(...args),
+}));
+vi.mock('./app-translations-deepl.js', () => ({
+  getDeepLSetupStatus: () => ({
+    ready: state.providerReady,
+    reason: state.providerReady ? 'ready' : 'check_required',
+    interfaceId: 'deepl',
+    selectedLocales: state.locales.filter((locale) => locale !== 'de'),
+  }),
+  readDeepLSetupStatus: async () => ({ ready: state.providerReady }),
 }));
 vi.mock('./db.js', () => ({ withIamAppDb: (...args: unknown[]) => state.db(...args) }));
 import {
@@ -58,6 +67,7 @@ describe('internal catalog session facade', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     state.allowed = false;
+    state.providerReady = true;
     state.locales = ['de', 'en'];
     state.pluginAccess.mockResolvedValue({ allowed: true, reason: 'ready' });
     state.platformError = null;
@@ -154,6 +164,38 @@ describe('internal catalog session facade', () => {
       (await executeAppTranslationOperation(sourceRequest, { ...op, locale: 'en' })).status
     ).toBe(403);
     expect((await executeAppTranslationOperation(request, op)).status).toBe(403);
+  });
+  it('authorizes additional canonical languages only while selected for this instance', async () => {
+    state.permissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        {
+          action: 'app-translations.catalog.write',
+          resourceType: 'app-translations',
+          organizationId: state.ctx.activeOrganizationId,
+        },
+      ],
+    });
+    state.locales = ['de', 'ar', 'fr-CA'];
+    const operation = {
+      operation: 'edit',
+      contractId: 'ui',
+      expectedRevision: '1',
+      locale: 'fr-CA',
+      key: 'title',
+      value: 'Titre',
+    };
+    state.repo.editText.mockResolvedValue({
+      supportedLocales: ['de', 'fr-CA'],
+      valuesByLocale: {},
+    });
+    expect((await executeAppTranslationOperation(request, operation)).status).toBe(200);
+    expect(
+      (await executeAppTranslationOperation(request, { ...operation, locale: 'pt-BR' })).status
+    ).toBe(403);
+    expect(
+      (await executeAppTranslationOperation(request, { ...operation, locale: '../bad' })).status
+    ).toBe(400);
   });
   it('cannot change the German base through plugin-only write rights', async () => {
     state.allowed = true;
@@ -465,9 +507,9 @@ describe('internal catalog session facade', () => {
       "SELECT set_config('app.instance_id', $1, true)",
       ['tenant-a'],
     ]);
-    vi.stubEnv('APP_TRANSLATIONS_DEEPL_API_KEY', 'private-rotated');
+    state.providerReady = false;
     const status = await readAppTranslationsLocalReadiness('tenant-b');
-    expect(status).toEqual({ schemaReady: true, providerConfigured: true });
+    expect(status).toEqual({ schemaReady: true, providerConfigured: false });
     expect(JSON.stringify(status)).not.toContain('private');
     query.mockResolvedValue({ rows: [{ ready: false }] });
     expect((await readAppTranslationsLocalReadiness('tenant-b')).schemaReady).toBe(false);
@@ -475,6 +517,22 @@ describe('internal catalog session facade', () => {
     await expect(readAppTranslationsLocalReadiness('tenant-a')).rejects.toThrow(
       'database_unavailable'
     );
+  });
+  it('keeps existing translations readable but blocks new dependent mutations without provider readiness', async () => {
+    state.allowed = true;
+    state.providerReady = false;
+    expect(
+      (await executeAppTranslationOperation(request, { operation: 'read', contractId: 'ui' }))
+        .status
+    ).toBe(200);
+    const result = await executeAppTranslationOperation(request, {
+      operation: 'seal',
+      contractId: 'ui',
+      expectedRevision: '1',
+    });
+    expect(result.status).toBe(409);
+    expect(await result.json()).toEqual({ error: 'catalog_setup_required' });
+    expect(state.repo.seal).not.toHaveBeenCalled();
   });
   it('requires the platform guard for global imports and does not trust a tenant role alone', async () => {
     state.ctx.user.instanceId = undefined;

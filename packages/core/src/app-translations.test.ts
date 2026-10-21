@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  readDeepLSettings,
+  deepLTargetCode,
   canonicalCatalogJson,
   catalogDigest,
   prepareCatalogRelease,
@@ -107,7 +109,7 @@ describe('fixed app catalogs', () => {
       validateCatalogManifest({ ...manifest, appCompatibility: { minVersion: 'invalid' } })
     ).toThrow();
     expect(() => validateCatalogLocales(['en'])).toThrow();
-    expect(() => validateCatalogLocales(['de', 'xx'])).toThrow();
+    expect(() => validateCatalogLocales(['de', '../xx'])).toThrow();
   });
   it('seals all approved languages under one set revision without a provider', async () => {
     const multilingual = structuredClone(draft);
@@ -174,5 +176,35 @@ describe('fixed app catalogs', () => {
     await expect(
       prepareCatalogRelease(municipal, { ...base, manifestId: 'other' }, '2')
     ).rejects.toThrow('catalog_conflict');
+  });
+});
+
+describe('DeepL settings', () => {
+  const config = {
+    revision: 'v1',
+    credentialRevision: 'key1',
+    plan: 'pro',
+    englishVariant: 'en-GB',
+    selectedLocales: ['en'],
+    availableLanguages: [{ code: 'en-GB', name: 'English', tagHandling: true }],
+  };
+  it('requires supported unique targets and keeps the English variant explicit', () => {
+    expect(readDeepLSettings(config)?.selectedLocales).toEqual(['en']);
+    expect(deepLTargetCode('en', 'en-GB')).toBe('en-GB');
+    for (const selectedLocales of [['de'], ['de-CH'], ['../xx'], ['en', 'en'], ['pt-PT', 'pt-BR']])
+      expect(readDeepLSettings({ ...config, selectedLocales })).toBeUndefined();
+    expect(readDeepLSettings({ ...config, availableLanguages: [{}] })).toBeUndefined();
+    expect(
+      readDeepLSettings({ ...config, selectedLocales: ['ar', 'fr-CA', 'pt-BR', 'zh-Hant'] })
+        ?.selectedLocales
+    ).toEqual(['ar', 'fr-CA', 'pt-BR', 'zh-Hant']);
+    expect(validateCatalogLocales(['de', 'ar', 'fr-CA', 'pt-BR', 'zh-Hant'])).toEqual([
+      'ar',
+      'de',
+      'fr-CA',
+      'pt-BR',
+      'zh-Hant',
+    ]);
+    expect(() => validateCatalogLocales(['de', 'pt-br'])).toThrow();
   });
 });

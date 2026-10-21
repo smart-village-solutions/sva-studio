@@ -9,8 +9,11 @@ const state = vi.hoisted(() => {
   const upsertToken = () => undefined;
   const deleteToken = () => undefined;
   const testMailToken = () => undefined;
+  const deepLToken = () => undefined;
 
   return {
+    checkDeepL: vi.fn(),
+    deepLToken,
     deleteInterface: vi.fn(),
     deleteToken,
     testMailInterface: vi.fn(),
@@ -26,6 +29,7 @@ const state = vi.hoisted(() => {
 
 vi.mock('@tanstack/react-start', () => ({
   useServerFn: (serverFn: unknown) => {
+    if (serverFn === state.deepLToken) return state.checkDeepL;
     if (serverFn === state.listToken) return state.listInterfaces;
     if (serverFn === state.saveToken) return state.saveMainserver;
     if (serverFn === state.upsertToken) return state.upsertInterface;
@@ -36,6 +40,7 @@ vi.mock('@tanstack/react-start', () => ({
 }));
 
 vi.mock('../../lib/interfaces-api', () => ({
+  checkDeepLInterfaceServerFn: state.deepLToken,
   deleteInstanceInterfaceServerFn: state.deleteToken,
   testMailInterfaceServerFn: state.testMailToken,
   listInstanceInterfacesServerFn: state.listToken,
@@ -156,7 +161,7 @@ const mapGeocodingEntry = {
 const createListResponse = (
   entries: readonly unknown[],
   availableTypes: readonly (
-    'mainserver' | 's3' | 'supabase' | 'mailTransport' | 'mapGeocoding'
+    'deepl' | 'mainserver' | 's3' | 'supabase' | 'mailTransport' | 'mapGeocoding'
   )[] = ['mainserver', 's3', 'supabase', 'mailTransport', 'mapGeocoding']
 ) => ({
   instanceId: 'de-musterhausen',
@@ -166,6 +171,7 @@ const createListResponse = (
 
 describe('InterfacesPage', () => {
   beforeEach(() => {
+    state.checkDeepL.mockReset();
     state.deleteInterface.mockReset();
     state.testMailInterface.mockReset();
     state.listInterfaces.mockReset();
@@ -177,6 +183,69 @@ describe('InterfacesPage', () => {
     cleanup();
   });
 
+  it('retries the DeepL check without saving, preserves a changed name and reports a failed result refresh', async () => {
+    const entry = {
+      id: 'deepl-a',
+      instanceId: 'de-musterhausen',
+      type: 'deepl',
+      name: 'DeepL',
+      enabled: true,
+      status: 'connected',
+      apiKeyConfigured: true,
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+      config: {
+        revision: 'r1',
+        credentialRevision: 'k1',
+        verifiedCredentialRevision: 'k1',
+        plan: 'pro',
+        englishVariant: 'en-GB',
+        selectedLocales: [],
+        availableLanguages: [
+          { code: 'fr-FR', name: 'French', tagHandling: true },
+          { code: 'fr-CA', name: 'French (Canadian)', tagHandling: true },
+        ],
+      },
+    };
+    state.listInterfaces.mockResolvedValue(createListResponse([entry], ['deepl']));
+    state.checkDeepL
+      .mockResolvedValueOnce({ ok: false, errorCode: 'deepl_rate_limited' })
+      .mockResolvedValue({ ok: true });
+    render(<InterfacesPage />);
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Bearbeiten' }))[0]!);
+    const name = screen.getByLabelText('Anzeigename');
+    fireEvent.change(name, { target: { value: 'Own DeepL' } });
+    expect(
+      (
+        screen.getByRole('button', {
+          name: /Verbindung (erneut )?prüfen/,
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(false);
+    fireEvent.click(screen.getByLabelText('Französisch'));
+    fireEvent.change(screen.getByLabelText('Variante für Französisch'), {
+      target: { value: 'fr-CA' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Verbindung (erneut )?prüfen/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Erneut versuchen' }));
+    await waitFor(() => expect(state.checkDeepL).toHaveBeenCalledTimes(2));
+    expect(state.upsertInterface).not.toHaveBeenCalled();
+    expect((screen.getByLabelText('Anzeigename') as HTMLInputElement).value).toBe('Own DeepL');
+    expect((screen.getByLabelText('Französisch') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('Variante für Französisch') as HTMLSelectElement).value).toBe(
+      'fr-CA'
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Erneut versuchen' })).toBeNull()
+    );
+    state.listInterfaces.mockRejectedValueOnce(new Error('refresh unavailable'));
+    fireEvent.click(screen.getByRole('button', { name: /Verbindung (erneut )?prüfen/ }));
+    expect(
+      await screen.findByText(
+        'Prüfung beendet, aber der aktuelle Schnittstellenstand konnte nicht geladen werden. Bitte erneut versuchen.'
+      )
+    ).toBeTruthy();
+  });
   it('loads the interface table and saves mainserver settings through the dedicated endpoint', async () => {
     state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry, s3Entry]));
     state.saveMainserver.mockResolvedValue({

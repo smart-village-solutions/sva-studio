@@ -1,4 +1,5 @@
 const externalInterfaceTypeKeys = [
+  'deepl',
   'sva_mainserver',
   's3',
   'supabase',
@@ -9,6 +10,7 @@ const externalInterfaceOwnerKinds = ['host', 'plugin'] as const;
 const externalInterfaceCategories = ['api', 'object_storage', 'database', 'feed'] as const;
 const externalInterfaceStatusCheckKinds = [
   'none',
+  'deepl',
   'sva_mainserver',
   's3',
   'supabase',

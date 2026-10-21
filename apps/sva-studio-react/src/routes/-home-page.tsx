@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { Heart } from 'lucide-react';
 
 import { t } from '../i18n';
@@ -167,6 +168,7 @@ const HomeAuthErrorBanner = ({
 );
 
 export const HomePage = () => {
+  const navigate = useNavigate();
   const { appName, profile: brandingProfile } = useStudioBranding();
   const {
     user,
@@ -191,7 +193,7 @@ export const HomePage = () => {
   );
 
   React.useEffect(() => {
-    if (initialRouteState?.consumedAuthSearch) {
+    if (initialRouteState?.consumedAuthSearch && !initialRouteState.shouldStartLoginRedirect) {
       clearConsumedHomeAuthSearch();
     }
   }, [initialRouteState]);
@@ -201,12 +203,25 @@ export const HomePage = () => {
   }, [error, sessionRecoveryFailed]);
 
   React.useEffect(() => {
-    if (!shouldStartLoginRedirect || isLoading || isAuthenticated) {
+    if (!shouldStartLoginRedirect || isLoading) {
+      return;
+    }
+
+    if (isAuthenticated) {
+      if (
+        authReturnTo &&
+        authReturnTo !== '/' &&
+        new URL(authReturnTo, window.location.origin).origin === window.location.origin
+      ) {
+        void navigate({ href: authReturnTo, replace: true });
+      } else {
+        clearConsumedHomeAuthSearch();
+      }
       return;
     }
 
     window.location.replace(createLoginHref(authReturnTo ?? undefined));
-  }, [authReturnTo, isAuthenticated, isLoading, shouldStartLoginRedirect]);
+  }, [authReturnTo, isAuthenticated, isLoading, navigate, shouldStartLoginRedirect]);
 
   const authError =
     authStateError ??

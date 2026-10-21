@@ -73,6 +73,33 @@ describe('catalog editor', () => {
       registerPluginTranslationResolver((key) => key);
     }
   });
+  it('discards input locally without changing search, selection or list scroll', () => {
+    const mutate = vi.fn();
+    render(
+      <CatalogEditor data={data} busy={false} canWrite mutate={mutate} onDirtyChange={vi.fn()} />
+    );
+    expect(screen.queryByRole('button', { name: 'appTranslations.ui.discard' })).toBeNull();
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+    const savedInput = field.value;
+    const search = screen.getByRole('searchbox') as HTMLInputElement;
+    fireEvent.change(search, { target: { value: 'greeting' } });
+    const selected = screen.getByRole('button', { pressed: true });
+    const list = screen.getByRole('list');
+    list.scrollTop = 80;
+    fireEvent.change(field, { target: { value: 'Neue Eingabe' } });
+    const discard = screen.getByRole('button', { name: 'appTranslations.ui.discard' });
+    expect(discard.parentElement).toBe(
+      screen.getByRole('button', { name: 'appTranslations.ui.save' }).parentElement
+    );
+    fireEvent.click(discard);
+    expect(field.value).toBe(savedInput);
+    expect(search.value).toBe('greeting');
+    expect(screen.getByRole('button', { pressed: true })).toBe(selected);
+    expect(screen.getByRole('list')).toBe(list);
+    expect(list.scrollTop).toBe(80);
+    expect(screen.queryByRole('button', { name: 'appTranslations.ui.discard' })).toBeNull();
+    expect(mutate).not.toHaveBeenCalled();
+  });
   it('validates placeholders locally and retains input when a save conflicts', async () => {
     const mutate = vi.fn(async () => false);
     render(

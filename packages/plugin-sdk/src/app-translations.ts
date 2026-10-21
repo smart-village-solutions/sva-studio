@@ -1,15 +1,15 @@
 /** Public browser contract for the host-owned fixed catalog editor. */
 export {
   APP_TRANSLATION_LOCALES,
+  APP_TRANSLATION_MAX_LOCALES,
+  isAppTranslationLocale,
+  appTranslationLanguage,
   catalogDigest,
   validateCatalogManifest,
   validateCatalogValue,
 } from '@sva/core';
 export type {
   AppTranslationLocale,
-  AvailableLanguage,
-  InstanceLanguage,
-  LanguageOverview,
   CatalogDraft,
   CatalogEditorData,
   CatalogManifest,
@@ -17,4 +17,12 @@ export type {
   CatalogRelease,
   CatalogScope,
   CatalogValue,
+} from '@sva/core';
+
+export {
+  deepLTargetCode,
+  readDeepLSettings,
+  type DeepLLanguage,
+  type DeepLSettings,
+  type DeepLSetupStatus,
 } from '@sva/core';

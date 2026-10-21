@@ -1,4 +1,3 @@
-import { LanguagesPage } from '../routes/admin/languages/-languages-page';
 import { CatalogsPage } from '@sva/plugin-app-translations';
 import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings } from '@sva/routing';
 import { normalizeOrganizationDetailTab } from '@sva/routing/route-search';
@@ -197,7 +196,6 @@ export const coreAppRouteBindings = {
   adminInstanceDetail: InstanceDetailRoutePage,
   adminTemplates: TemplatesPage,
   appTexts: () => <CatalogsPage />,
-  adminLanguages: LanguagesPage,
   adminAppTranslations: () => <CatalogsPage platform />,
   adminRoles: RolesRoutePage,
   adminRoleCreate: RoleCreatePage,

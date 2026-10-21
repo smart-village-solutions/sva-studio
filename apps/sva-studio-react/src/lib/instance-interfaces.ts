@@ -1,7 +1,13 @@
-import type { MailTransportAuthMode, MailTransportSecurityMode } from '@sva/core';
+import { z } from 'zod';
+import {
+  APP_TRANSLATION_MAX_LOCALES,
+  appTranslationLanguage,
+  isAppTranslationLocale,
+} from '@sva/core';
+import type { DeepLSettings, MailTransportAuthMode, MailTransportSecurityMode } from '@sva/core';
 
 export type InstanceInterfaceType =
-  'mainserver' | 's3' | 'supabase' | 'postgresql' | 'mailTransport' | 'mapGeocoding';
+  'deepl' | 'mainserver' | 's3' | 'supabase' | 'postgresql' | 'mailTransport' | 'mapGeocoding';
 
 export type InstanceInterfaceStatus = 'connected' | 'error' | 'disabled' | 'unknown';
 
@@ -108,7 +114,11 @@ export type InstanceInterfaceMapGeocoding = InstanceInterfaceBase &
     config: InstanceInterfaceMapGeocodingConfig;
   }>;
 
+export type InstanceInterfaceDeepL = InstanceInterfaceBase &
+  Readonly<{ type: 'deepl'; apiKeyConfigured: boolean; config: DeepLSettings }>;
+
 export type InstanceInterface =
+  | InstanceInterfaceDeepL
   | InstanceInterfaceMainserver
   | InstanceInterfaceS3
   | InstanceInterfaceSupabase
@@ -117,6 +127,14 @@ export type InstanceInterface =
   | InstanceInterfaceMapGeocoding;
 
 export type InstanceInterfaceDraft =
+  | {
+      type: 'deepl';
+      name: string;
+      enabled: boolean;
+      config: Pick<DeepLSettings, 'plan' | 'englishVariant' | 'selectedLocales' | 'revision'> & {
+        apiKey: string;
+      };
+    }
   | {
       type: 'mainserver';
       name: string;
@@ -158,6 +176,10 @@ export const instanceInterfaceTypeMeta: Record<
   InstanceInterfaceType,
   { titleKey: string; descriptionKey: string }
 > = {
+  deepl: {
+    titleKey: 'interfaces.types.deepl.label',
+    descriptionKey: 'interfaces.types.deepl.description',
+  },
   mainserver: {
     titleKey: 'interfaces.types.mainserver.label',
     descriptionKey: 'interfaces.types.mainserver.description',
@@ -187,6 +209,19 @@ export const instanceInterfaceTypeMeta: Record<
 export const createEmptyInstanceInterfaceDraft = (
   type: InstanceInterfaceType
 ): InstanceInterfaceDraft => {
+  if (type === 'deepl')
+    return {
+      type: 'deepl',
+      name: 'DeepL',
+      enabled: true,
+      config: {
+        plan: 'pro',
+        englishVariant: 'en-GB',
+        selectedLocales: [],
+        apiKey: '',
+        revision: '0',
+      },
+    };
   if (type === 'mainserver') {
     return {
       type: 'mainserver',
@@ -275,3 +310,34 @@ export const createEmptyInstanceInterfaceDraft = (
     },
   };
 };
+
+export const deepLInterfaceDraftSchema = z
+  .object({
+    type: z.literal('deepl'),
+    name: z.string().trim().min(1).max(120),
+    enabled: z.boolean(),
+    config: z
+      .object({
+        plan: z.enum(['free', 'pro']),
+        englishVariant: z.enum(['en-GB', 'en-US']),
+        selectedLocales: z
+          .array(
+            z
+              .string()
+              .refine(
+                (locale) =>
+                  isAppTranslationLocale(locale) && appTranslationLanguage(locale) !== 'de'
+              )
+          )
+          .max(APP_TRANSLATION_MAX_LOCALES)
+          .refine(
+            (locales) =>
+              locales.every(isAppTranslationLocale) &&
+              new Set(locales.map(appTranslationLanguage)).size === locales.length
+          ),
+        revision: z.string().min(1).max(128),
+        apiKey: z.string().max(4096),
+      })
+      .strict(),
+  })
+  .strict();

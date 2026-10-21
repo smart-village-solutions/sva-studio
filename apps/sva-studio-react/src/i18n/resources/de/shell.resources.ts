@@ -36,7 +36,7 @@ export const shellDEResources = {
     moduleRequired:
       'Zusätzliche Sprachen erfordern ein aktiviertes und betriebsbereites Modul Mehrsprachigkeit.',
     assignmentHelp:
-      'Deutsch bleibt verfügbar. Gesperrte Sprachen und deaktivierte Module behalten ihre Zuordnungen und Texte; diese werden dadurch nicht gelöscht. Die Anbindung an die Mobile-App folgt später.',
+      'Deutsch bleibt verfügbar. Gesperrte Sprachen und deaktivierte Module behalten ihre Zuordnungen und Texte; diese werden dadurch nicht gelöscht. Die Anbindung an die App folgt später.',
     unavailable: 'Zentral gesperrt',
   },
   appName: 'SVA Studio',
@@ -191,7 +191,7 @@ export const shellDEResources = {
     instances: 'Instanzen',
     templates: 'Templates',
     languages: 'Sprachen',
-    mobileApp: 'Mobile-App',
+    mobileApp: 'App',
     invitationTemplate: 'Einladungsvorlage',
     roles: 'Rollen',
     groups: 'Gruppen',

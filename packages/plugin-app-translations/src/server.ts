@@ -15,13 +15,12 @@ export const createPluginJobExecutionHandlers = (
     if (
       !context.job.instanceId ||
       !operation ||
-      !['provision', 'reconcile', 'readiness'].includes(operation)
+      !['provision', 'reconcile', 'readiness', 'suspend', 'reactivate'].includes(operation)
     ) {
-      // Remote suspend/reactivate cannot be confirmed by a local-only implementation.
-      throw Object.assign(new Error('app_translations_remote_lifecycle_unavailable'), {
+      throw Object.assign(new Error('app_translations_invalid_lifecycle_context'), {
         cause: {
-          code: 'app-translations.remote-lifecycle-unavailable',
-          messageKey: 'appTranslations.readiness.remoteUnavailable',
+          code: 'app-translations.invalid-lifecycle-context',
+          messageKey: 'appTranslations.readiness.invalidContext',
           retry: { kind: 'terminal' },
         },
       });

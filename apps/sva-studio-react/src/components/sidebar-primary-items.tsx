@@ -2,7 +2,10 @@ import {
   IconAppWindow,
   IconArticle,
   IconCategory,
+  IconDeviceMobile,
+  IconFileText,
   IconGauge,
+  IconLanguage,
   IconLayoutDashboard,
   IconPhoto,
   IconPlugConnected,
@@ -69,7 +72,12 @@ const resolvePluginNavigationItems = (access: SidebarAccess) => {
       to: item.to,
       href: item.href,
       label: t(resolvedTitleKey),
-      icon: item.id === 'cockpit.navigation' ? IconGauge : pluginIconBySection[item.section],
+      icon:
+        item.id === 'app-translations.navigation'
+          ? IconLanguage
+          : item.id === 'cockpit.navigation'
+            ? IconGauge
+            : pluginIconBySection[item.section],
       section: item.section,
       moduleId: getStudioPluginNavigationModuleId(item),
       accessScope: resolvedAccessRequirement?.kind,
@@ -90,6 +98,8 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
     canAccessMedia,
     canAccessCategories,
     canAccessApplicationLink,
+    canAccessAppTexts,
+    canAccessAdminInstances,
   } = access;
   const pluginNavigationItems = resolvePluginNavigationItems(access);
   const pluginDataManagementItems = pluginNavigationItems.filter(
@@ -204,19 +214,44 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
     ...pluginDataManagementItems,
   ];
 
+  const appChildren: SidebarLeafItem[] = [
+    ...(canAccessAppTexts && !canAccessAdminInstances
+      ? [
+          {
+            kind: 'link' as const,
+            id: 'app-texts',
+            to: '/app-texts',
+            label: t('appTranslations.ui.sourceTitle'),
+            icon: IconFileText,
+          },
+        ]
+      : []),
+    ...pluginApplicationItems.filter((item) => item.moduleId === 'app-translations'),
+  ];
   const applicationItems: SidebarItem[] = [
-    ...(canAccessApplicationLink
+    ...(appChildren.length > 0
+      ? [
+          {
+            kind: 'group' as const,
+            id: 'app',
+            label: t('shell.sidebar.app'),
+            icon: IconDeviceMobile,
+            children: appChildren,
+          },
+        ]
+      : []),
+    ...(canAccessApplicationLink && appChildren.length === 0
       ? [
           {
             kind: 'link' as const,
             id: 'app',
             to: '/app',
             label: t('shell.sidebar.app'),
-            icon: IconAppWindow,
+            icon: IconDeviceMobile,
           },
         ]
       : []),
-    ...pluginApplicationItems,
+    ...pluginApplicationItems.filter((item) => item.moduleId !== 'app-translations'),
   ];
 
   const overviewItem: SidebarLeafItem = {

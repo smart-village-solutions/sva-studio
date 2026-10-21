@@ -195,6 +195,7 @@ export const createAppTranslationRepository = async (
       draft.supportedLocales = supportedLocales;
       for (const [locale, values] of Object.entries(draft.valuesByLocale)) {
         catalogAssert(supportedLocales.includes(locale as AppTranslationLocale));
+        catalogAssert(values);
         for (const [key, text] of Object.entries(values))
           validateCatalogValue(manifest, key, text.value);
       }
@@ -250,6 +251,7 @@ export const createAppTranslationRepository = async (
       draft.supportedLocales = validateCatalogLocales(locales);
       catalogAssert(base.supportedLocales.includes('de'), 'catalog_incomplete');
       for (const values of Object.values(draft.valuesByLocale)) {
+        catalogAssert(values);
         for (const [key, text] of Object.entries(values))
           validateCatalogValue(draft.manifest, key, text.value);
       }

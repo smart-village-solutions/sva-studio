@@ -91,13 +91,42 @@ describe('local multilingual module', () => {
     });
     expect(evaluatePluginTenantAccess(model).allowed).toBe(false);
   });
-  it.each(['suspend', 'reactivate'])('never falsely confirms remote %s', async (operation) => {
+  it.each(['suspend', 'reactivate'])(
+    'completes local %s without a configured provider',
+    async (operation) => {
+      const readLocalReadiness = vi.fn(async () => ({
+        schemaReady: true,
+        providerConfigured: false,
+      }));
+      const result = await createPluginJobExecutionHandlers({ readLocalReadiness })[
+        APP_TRANSLATIONS_LIFECYCLE_JOB
+      ]!(context(operation));
+      expect(readLocalReadiness).toHaveBeenCalledWith('tenant-a');
+      expect(result?.resultPayload).toEqual({ plugin: { localOnly: true } });
+      expect(result?.tenantLifecycle?.checks).toEqual([
+        { checkId: 'app-translations.schema', status: 'ready' },
+        { checkId: 'app-translations.provider', status: 'degraded' },
+      ]);
+    }
+  );
+  it('keeps missing schema blocking during reactivation', async () => {
+    const result = await createPluginJobExecutionHandlers({
+      readLocalReadiness: async () => ({ schemaReady: false, providerConfigured: false }),
+    })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(context('reactivate'));
+    expect(result?.tenantLifecycle?.checks).toContainEqual({
+      checkId: 'app-translations.schema',
+      status: 'blocked',
+    });
+  });
+  it('rejects unsupported lifecycle operations', async () => {
     const readLocalReadiness = vi.fn();
     await expect(
       createPluginJobExecutionHandlers({ readLocalReadiness })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(
-        context(operation)
+        context('unknown')
       )
-    ).rejects.toMatchObject({ cause: { code: 'app-translations.remote-lifecycle-unavailable' } });
+    ).rejects.toMatchObject({
+      cause: { code: 'app-translations.invalid-lifecycle-context' },
+    });
     expect(readLocalReadiness).not.toHaveBeenCalled();
   });
 });

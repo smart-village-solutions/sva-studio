@@ -14,12 +14,6 @@ export const adminUiRouteDefinitions: readonly UiRouteDefinition[] = [
     documentation: page('mobile-app.texts', 'overview'),
   },
   {
-    binding: 'adminLanguages',
-    path: uiRoutePaths.adminLanguages,
-    guard: 'adminInstances',
-    documentation: page('admin.languages', 'overview'),
-  },
-  {
     binding: 'adminAppTranslations',
     path: uiRoutePaths.adminAppTranslations,
     guard: 'adminInstances',

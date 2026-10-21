@@ -18,7 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
-- Finaler Soll-Snapshot zuletzt lokal ergänzt: `2026-10-21` (Katalogbasis 0106 und Sprachverwaltung 0107; keine neue Live-Erhebung)
+- Finaler Soll-Snapshot zuletzt lokal ergänzt: `2026-10-21` (Katalogbasis 0106, Hostrechte 0107 und instanzgebundene DeepL-Schnittstelle 0108; keine neue Live-Erhebung)
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung
@@ -80,11 +80,11 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
 
-### App-Texte und Sprachverwaltung — Migration 0107
+### App-Texte und instanzgebundene DeepL-Schnittstelle — Migrationen 0107/0108
 
-`iam.available_languages` verwaltet die zentrale Verfügbarkeit der 20 technisch unterstützten Sprachcodes mit CAS-Revision. Deutsch bleibt durch Constraint verfügbar. `iam.instance_languages` speichert ausschließlich zusätzliche instanzweite Sprachwünsche mit Revision, zusammengesetztem Primärschlüssel und Fremdschlüsseln auf Instanz/Sprachcode. Sperren löschen keine Zuordnungen oder Übersetzungen. Rootschreibrechte benötigen den verifizierten Plattformkontext; RLS erlaubt tenantseitig nur eigene Zuordnungen zu lesen. Die Aktivierung prüft zentrale Freigabe, aktive Instanz, Modul und abgeschlossene Bereitschaft erneut unter Zeilensperren; der bestehende Lifecycle-RLS wird dafür transaktionslokal im gewählten Instanzscope gelesen.
+Migration `0108_instance_deepl_interface.sql` löst die Sprachbestände aus 0107 ab. Ein hostverwalteter `deepl`-Schnittstellendatensatz je Instanz speichert Tarif, explizite Englischvariante, ausgewählte technisch unterstützte Zielsprachen, geprüfte Anbieterantwort und Konfigurations-/Zugangsrevisionen in `public_config_json`. Der API-Key liegt ausschließlich datensatzgebunden verschlüsselt in `secret_config_ciphertext`. Ein partieller Unique-Index erzwingt eine DeepL-Schnittstelle je Instanz; vorhandene FORCE-RLS isoliert Instanzen. Änderungen und Prüfergebnisse verwenden die erwartete Konfigurationsrevision; modulgebundene Mutationen sperren Modul-/Lifecyclezeilen. Katalogmutationen sperren zusätzlich die aktuelle Schnittstelle. Alte Sprachzuordnungen bleiben für Rollback als `legacyLanguageAssignments`/`legacyLanguageAvailability` im vorhandenen Datensatz erhalten, ohne Runtimeverbraucher oder zweite Freigabequelle. Platzhalter besitzen weder Key noch Prüfnachweis. Down stellt 0107-Sprachtabellen einschließlich inzwischen ausgewählter zusätzlicher DeepL-Sprachkennungen wieder her und erhält DeepL-Secrets sowie sämtliche Katalogdaten.
 
-Die Migration ergänzt außerdem `app-texts.catalog.read`, `.write` und `.publish` für vorhandene `system_admin`-Rollen und invalidiert den Berechtigungscache. Die deutsche Textbasis nutzt unverändert die drei Katalogtabellen aus 0106. Source- und mehrsprachige Versiegelung derselben Draftrevision teilen den Satzrevisionszähler, haben aber getrennte Retry-Identitäten nach Sprachmenge. Ein Rücklauf entfernt nur die zwei Sprachverwaltungstabellen; potenziell delegierte Hostrechte und Katalogdaten bleiben erhalten.
+Migration 0107 ergänzt außerdem `app-texts.catalog.read`, `.write` und `.publish` für vorhandene `system_admin`-Rollen und invalidiert den Berechtigungscache. Die deutsche Textbasis nutzt unverändert die drei Katalogtabellen aus 0106. Source- und mehrsprachige Versiegelung derselben Draftrevision teilen den Satzrevisionszähler, haben aber getrennte Retry-Identitäten nach Sprachmenge. Ein Rücklauf von 0107 entfernt nur die zwei Sprachverwaltungstabellen; potenziell delegierte Hostrechte und Katalogdaten bleiben erhalten.
 
 ### Interne App-Katalogbasis — Migration 0106
 

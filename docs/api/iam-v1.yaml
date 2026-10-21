@@ -10,7 +10,8 @@ paths:
     description: >-
       Lokaler Studio-Katalogeditor mit gespeicherter Session und Organisationsscope.
       Der Modus source erfordert app-texts.catalog.read/write/publish und erlaubt nur Deutsch ohne Pluginpflicht.
-      Der Modus translations erfordert app-translations.catalog.read/write/publish, aktuellen Pluginzugang und aktivierte Sprachen.
+      Der Modus translations erfordert app-translations.catalog.read/write/publish, aktuellen Pluginzugang und die in der eigenen DeepL-Schnittstelle gewählten Sprachen.
+      Neue abhängige Mutationen benötigen deren aktuelle Bereitschaft; vorhandene autorisierte Texte bleiben bei Ausfällen lesbar.
       Ausgangsbestand und Basiswechsel bleiben Hostoperationen. Root importiert nur Deutsch.
       Alle Antworten sind no-store; Versiegelung ist keine App-Veröffentlichung.
     parameters:
@@ -62,58 +63,10 @@ paths:
         '200': { description: data enthält den gespeicherten Entwurf oder unveränderlichen lokalen Prüfstand. }
         '400': { description: Ungültiger Vertrag, unvollständiger Satz oder ungeklärte Korrektur. }
         '403': { description: Fehlende Berechtigung, CSRF oder unerlaubte Sprache beziehungsweise Hostoperation. }
-        '409': { description: Veraltete Scope-, Draft- oder Basisrevision. }
+        '409': { description: 'Veraltete Scope-, Draft- oder Basisrevision oder catalog_setup_required bei unvollständiger DeepL-Einrichtung.' }
         '413': { description: JSON überschreitet 1 MiB. }
         '503': { description: Katalog oder Autorisierung nicht verfügbar. }
-  /api/v1/iam/languages:
-    description: >-
-      Ausschließlich verifizierte Root-/Plattformsession. Deutsch bleibt verfügbar.
-      Zusätzliche Instanzaktivierung benötigt zentrale Freigabe, aktive Instanz und bereiten/eingeschränkt bereiten Pluginzugang.
-      Sperren erhalten Texte und Zuordnungen; keine Remote-/App-Aktivierung. Antworten sind no-store.
-    get:
-      summary: Zentrale Sprachen und optional Zuordnungen einer ausdrücklich gewählten Instanz lesen
-      parameters:
-        - name: instanceId
-          in: query
-          schema: { type: string, minLength: 1, maxLength: 128 }
-      responses:
-        '200': { description: 'data enthält languages (locale, available, revision), instanceId oder null, moduleAllowed und assignments (locale, enabled, revision).' }
-        '400': { description: Ungültige Parameter. }
-        '403': { description: Kein verifizierter Rootzugang. }
-        '503': { description: Sprachverwaltung nicht verfügbar. }
-    post:
-      summary: Zentrale Verfügbarkeit oder Instanzzuordnung revisionsgebunden ändern
-      description: Bestehender CSRF-Schutz, maximal 4 KiB, ausschließlich technisch unterstützte Sprachcodes und keine zusätzlichen Payloadfelder.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              oneOf:
-                - type: object
-                  additionalProperties: false
-                  required: [operation, locale, available, expectedRevision]
-                  properties:
-                    operation: { const: availability }
-                    locale: { type: string }
-                    available: { type: boolean }
-                    expectedRevision: { type: string, pattern: '^(0|[1-9][0-9]{0,17})$' }
-                - type: object
-                  additionalProperties: false
-                  required: [operation, instanceId, locale, enabled, expectedRevision]
-                  properties:
-                    operation: { const: assignment }
-                    instanceId: { type: string, minLength: 1, maxLength: 128 }
-                    locale: { type: string }
-                    enabled: { type: boolean }
-                    expectedRevision: { type: string, pattern: '^(0|[1-9][0-9]{0,17})$' }
-      responses:
-        '200': { description: data enthält die aktuelle Sprachübersicht nach der Änderung. }
-        '400': { description: Ungültiger Code oder Payload. }
-        '403': { description: Kein Rootzugang, fehlendes CSRF, gesperrte Sprache oder unzureichender Modulstatus. }
-        '409': { description: Veraltete erwartete Revision. }
-        '413': { description: JSON überschreitet 4 KiB. }
-        '503': { description: Sprachverwaltung nicht verfügbar. }
+
   /health/live:
     get:
       summary: Prozess-Liveness

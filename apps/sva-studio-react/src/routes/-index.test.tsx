@@ -4,6 +4,7 @@ import React from 'react';
 
 import { HomePage } from './-home-page';
 
+const navigateMock = vi.hoisted(() => vi.fn());
 const useAuthMock = vi.fn();
 type HomeContentAccessMockState = {
   access: { canRead: boolean; canCreate: boolean } | null;
@@ -22,6 +23,7 @@ const useContentAccessMock = vi.fn<() => HomeContentAccessMockState>(() => ({
 const readLatestAuthDiagnosticSnapshotMock = vi.fn(() => ({}));
 
 vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => navigateMock,
   useMatches: ({ select }: { select: (matches: unknown[]) => unknown }) => select([]),
   createFileRoute: () => () => ({}),
   Link: ({
@@ -72,6 +74,7 @@ describe('HomePage', () => {
     readLatestAuthDiagnosticSnapshotMock.mockReset();
     readLatestAuthDiagnosticSnapshotMock.mockReturnValue({});
     useAuthMock.mockReset();
+    navigateMock.mockReset();
     useContentAccessMock.mockReset();
     useContentAccessMock.mockReturnValue({
       access: { canRead: true, canCreate: true },
@@ -430,6 +433,57 @@ describe('HomePage', () => {
     expect(replaceMock).toHaveBeenCalledWith('/auth/login?returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
     replaceSpy.mockRestore();
   });
+
+  it.each(['/interfaces', '/interfaces?tab=deepl#languages'])(
+    'returns a recovered authenticated session to %s after a document reload',
+    (returnTo) => {
+      const session = {
+        user: null,
+        isAuthenticated: false,
+        isLoading: true,
+        error: null,
+      };
+      useAuthMock.mockReturnValue(session);
+      globalThis.history.replaceState(
+        {},
+        '',
+        `/?auth=login&returnTo=${encodeURIComponent(returnTo)}`
+      );
+      const replaceSpy = vi.spyOn(window.location, 'replace').mockImplementation(() => undefined);
+      try {
+        const view = render(<HomePage />);
+        expect(window.location.search).toBe(`?auth=login&returnTo=${encodeURIComponent(returnTo)}`);
+        expect(replaceSpy).not.toHaveBeenCalled();
+        view.unmount();
+        useAuthMock.mockReturnValue({ ...session, isAuthenticated: true, isLoading: false });
+        render(<HomePage />);
+        expect(navigateMock).toHaveBeenCalledExactlyOnceWith({ href: returnTo, replace: true });
+        expect(replaceSpy).not.toHaveBeenCalled();
+      } finally {
+        replaceSpy.mockRestore();
+      }
+    }
+  );
+
+  it.each(['/', 'https://evil.example', '//evil.example', '/\\evil.example', '/auth/callback'])(
+    'does not redirect an authenticated session to unsafe or default target %s',
+    (returnTo) => {
+      useAuthMock.mockReturnValue({ user: null, isAuthenticated: true, isLoading: false });
+      globalThis.history.replaceState(
+        {},
+        '',
+        `/?auth=login&returnTo=${encodeURIComponent(returnTo)}`
+      );
+      const replaceSpy = vi.spyOn(window.location, 'replace').mockImplementation(() => undefined);
+      try {
+        render(<HomePage />);
+        expect(replaceSpy).not.toHaveBeenCalled();
+        expect(navigateMock).not.toHaveBeenCalled();
+      } finally {
+        replaceSpy.mockRestore();
+      }
+    }
+  );
 
   it('shows generic auth load error from auth provider state', () => {
     useAuthMock.mockReturnValue({

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  APP_TRANSLATION_LOCALES,
   catalogDigest,
   validateCatalogValue,
   type AppTranslationLocale,
@@ -25,10 +26,20 @@ export const CatalogEditor = ({
   onDirtyChange: (dirty: boolean) => void;
 }) => {
   const pt = usePluginTranslation('appTranslations.ui');
+  const displayNames = new Intl.DisplayNames([pt('languageTag') === 'en' ? 'en' : 'de'], {
+    type: 'language',
+  });
+  const languageName = (locale: string) =>
+    (APP_TRANSLATION_LOCALES as readonly string[]).includes(locale)
+      ? pt(`locales.${locale}`)
+      : (displayNames.of(locale) ?? locale);
   const locales = [...data.draft.supportedLocales].sort(
     (left, right) =>
       Number(right === 'de') - Number(left === 'de') ||
-      pt(`locales.${left}`).localeCompare(pt(`locales.${right}`), 'de')
+      languageName(left).localeCompare(
+        languageName(right),
+        pt('languageTag') === 'en' ? 'en' : 'de'
+      )
   );
   const [selectedLocale, setLocale] = useState<AppTranslationLocale>('de');
   const locale = data.draft.supportedLocales.includes(selectedLocale) ? selectedLocale : 'de';
@@ -64,16 +75,16 @@ export const CatalogEditor = ({
       ? data.baseCatalogs.de?.values[key]
       : data.values.de?.[key]?.value;
   const base = data.baseCatalogs[locale]?.values[key];
+  const savedValue = data.values[locale]?.[key]?.value;
+  const savedInput =
+    definition?.type === 'stringArray'
+      ? JSON.stringify(savedValue ?? [], null, 2)
+      : String(savedValue ?? '');
   useEffect(() => {
-    const value = data.values[locale]?.[key]?.value;
-    setInput(
-      definition?.type === 'stringArray'
-        ? JSON.stringify(value ?? [], null, 2)
-        : String(value ?? '')
-    );
+    setInput(savedInput);
     setDirty(false);
     setInvalid(false);
-  }, [data, locale, key, definition?.type]);
+  }, [data, locale, key, savedInput]);
   useEffect(() => {
     onDirtyChange(dirty);
   }, [dirty, onDirtyChange]);
@@ -139,7 +150,7 @@ export const CatalogEditor = ({
           >
             {locales.map((value) => (
               <option key={value} value={value}>
-                {pt(`locales.${value}`)}
+                {languageName(value)}
               </option>
             ))}
           </Select>
@@ -238,6 +249,7 @@ export const CatalogEditor = ({
             {pt('value')}
             <Textarea
               lang={locale}
+              dir="auto"
               value={input}
               disabled={!canEdit || busy}
               aria-invalid={invalid}
@@ -271,6 +283,20 @@ export const CatalogEditor = ({
             >
               {pt('save')}
             </Button>
+            {dirty && (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => {
+                  setInput(savedInput);
+                  setDirty(false);
+                  setInvalid(false);
+                }}
+              >
+                {pt('discard')}
+              </Button>
+            )}
             {data.draft.scope.kind === 'municipal' && (
               <Button
                 type="button"
@@ -306,7 +332,7 @@ export const CatalogEditor = ({
             </div>
             <div>
               <h3 className="text-sm font-medium">{pt('standard')}</h3>
-              <pre lang={locale} className="whitespace-pre-wrap break-words text-sm">
+              <pre dir="auto" lang={locale} className="whitespace-pre-wrap break-words text-sm">
                 {base === undefined
                   ? pt('none')
                   : typeof base === 'string'

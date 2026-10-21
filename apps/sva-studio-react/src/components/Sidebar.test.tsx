@@ -703,12 +703,12 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
   });
 
-  it('groups shared app texts under Mobile-App and expands the active root path', () => {
+  it('groups shared app texts under App and expands the active root path', () => {
     renderSidebar({
       user: createSidebarUser({ roles: ['instance_registry_admin'] }),
       route: '/admin/app-translations',
     });
-    const group = screen.getByRole('button', { name: 'Mobile-App' });
+    const group = screen.getByRole('button', { name: 'App' });
     expect(group.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByRole('link', { name: 'Gemeinsame App-Texte' }).getAttribute('href')).toBe(
       '/admin/app-translations'
@@ -733,9 +733,32 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Sprachen' })).toBeNull();
   });
 
-  it('does not expose the central mobile app group in a municipal session', () => {
+  it('nests multilingual navigation under App and keeps German texts in the same group', () => {
+    studioPluginNavigationMock.items = [...(appTranslationsPlugin.navigation ?? [])];
+    renderSidebar({
+      user: createSidebarUser({
+        instanceId: 'demo',
+        roles: ['system_admin'],
+        assignedModules: ['app-translations'],
+        permissionActions: ['app-texts.catalog.read', 'app-translations.catalog.read'],
+      }),
+      route: '/plugins/app-translations',
+    });
+    const group = screen.getByRole('button', { name: 'App' });
+    expect(group.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getAllByRole('button', { name: 'App' })).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Mehrsprachigkeit' }).getAttribute('href')).toBe(
+      '/plugins/app-translations'
+    );
+    expect(screen.getByRole('link', { name: 'App-Texte' }).getAttribute('href')).toBe('/app-texts');
+    fireEvent.click(group);
+    expect(screen.queryByRole('link', { name: 'Mehrsprachigkeit' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'App-Texte' })).toBeNull();
+  });
+
+  it('does not expose the central app group in a municipal session', () => {
     renderSidebar({ user: createSidebarUser({ instanceId: 'demo', roles: ['system_admin'] }) });
-    expect(screen.queryByRole('button', { name: 'Mobile-App' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'App' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Gemeinsame App-Texte' })).toBeNull();
   });
 

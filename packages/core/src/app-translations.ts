@@ -1,4 +1,5 @@
 /** Internal fixed-catalog contract; no provider, transport or UI dependencies. */
+/** Pilot defaults only; the provider's verified target list controls tenant availability. */
 export const APP_TRANSLATION_LOCALES = [
   'de',
   'en',
@@ -21,7 +22,20 @@ export const APP_TRANSLATION_LOCALES = [
   'lv',
   'ro',
 ] as const;
-export type AppTranslationLocale = (typeof APP_TRANSLATION_LOCALES)[number];
+export type AppTranslationLocale = string;
+export const APP_TRANSLATION_MAX_LOCALES = 500;
+export const isAppTranslationLocale = (value: unknown): value is AppTranslationLocale => {
+  if (typeof value !== 'string' || value.length > 32) return false;
+  try {
+    return (
+      Intl.getCanonicalLocales(value)[0] === value && new Intl.Locale(value).baseName === value
+    );
+  } catch {
+    return false;
+  }
+};
+export const appTranslationLanguage = (locale: AppTranslationLocale): string =>
+  new Intl.Locale(locale).language;
 export type CatalogValue = string | readonly string[];
 export type CatalogScope =
   { kind: 'global' } | { kind: 'municipal'; instanceId: string; organizationId: string };
@@ -91,6 +105,8 @@ export type CatalogReleaseSummary = Pick<
 export type CatalogOverview = {
   scope: CatalogScope;
   allowedLocales?: AppTranslationLocale[];
+  setup?: DeepLSetupStatus;
+  canManageInterfaces?: boolean;
   catalogs: (Pick<CatalogDraft, 'draftRevision' | 'supportedLocales' | 'baseReleaseId'> & {
     contractId: string;
   })[];
@@ -102,12 +118,15 @@ export type CatalogEditorData = {
   values: CatalogTexts;
   baseCatalogs: CatalogRelease['catalogs'];
   allowedLocales?: AppTranslationLocale[];
+  setup?: DeepLSetupStatus;
+  canManageInterfaces?: boolean;
 };
 
 export class AppTranslationError extends Error {
   constructor(
     readonly code:
       | 'invalid_catalog'
+      | 'catalog_setup_required'
       | 'catalog_conflict'
       | 'catalog_incomplete'
       | 'catalog_review_required'
@@ -183,10 +202,10 @@ const fields = (value: Record<string, unknown>, names: readonly string[]): void 
   catalogAssert(Object.keys(value).every((key) => names.includes(key)));
 export const validateCatalogLocales = (input: unknown): AppTranslationLocale[] => {
   catalogAssert(
-    Array.isArray(input) && input.length > 0 && input.length <= APP_TRANSLATION_LOCALES.length
+    Array.isArray(input) && input.length > 0 && input.length <= APP_TRANSLATION_MAX_LOCALES
   );
   catalogAssert(
-    input.every((locale) => APP_TRANSLATION_LOCALES.includes(locale as AppTranslationLocale)) &&
+    input.every(isAppTranslationLocale) &&
       new Set(input).size === input.length &&
       input.includes('de')
   );
@@ -374,15 +393,72 @@ export const prepareCatalogRelease = async (
   return { catalogs, descriptor, checksum: await catalogDigest(descriptor) };
 };
 
-export type AvailableLanguage = {
-  locale: AppTranslationLocale;
-  available: boolean;
+export type DeepLLanguage = Readonly<{ code: string; name: string; tagHandling: boolean }>;
+export type DeepLSettings = Readonly<{
   revision: string;
-};
-export type InstanceLanguage = { locale: AppTranslationLocale; enabled: boolean; revision: string };
-export type LanguageOverview = {
-  languages: AvailableLanguage[];
-  instanceId: string | null;
-  moduleAllowed: boolean;
-  assignments: InstanceLanguage[];
+  credentialRevision: string;
+  verifiedCredentialRevision?: string;
+  plan: 'free' | 'pro';
+  englishVariant: 'en-GB' | 'en-US';
+  selectedLocales: readonly AppTranslationLocale[];
+  availableLanguages: readonly DeepLLanguage[];
+}>;
+export type DeepLSetupStatus = Readonly<{
+  ready: boolean;
+  reason:
+    | 'not_configured'
+    | 'disabled'
+    | 'secret_missing'
+    | 'check_required'
+    | 'languages_required'
+    | 'ready';
+  interfaceId: string | null;
+  selectedLocales: readonly AppTranslationLocale[];
+}>;
+export const deepLTargetCode = (
+  locale: AppTranslationLocale,
+  englishVariant: DeepLSettings['englishVariant'],
+  available?: readonly DeepLLanguage[]
+): string =>
+  locale === 'en' && (!available || available.some((language) => language.code === englishVariant))
+    ? englishVariant
+    : locale;
+export const readDeepLSettings = (
+  value: Readonly<Record<string, unknown>>
+): DeepLSettings | undefined => {
+  if (
+    typeof value.revision !== 'string' ||
+    typeof value.credentialRevision !== 'string' ||
+    !['free', 'pro'].includes(String(value.plan)) ||
+    !['en-GB', 'en-US'].includes(String(value.englishVariant)) ||
+    !Array.isArray(value.selectedLocales) ||
+    value.selectedLocales.length > APP_TRANSLATION_MAX_LOCALES ||
+    value.selectedLocales.some(
+      (locale) => !isAppTranslationLocale(locale) || appTranslationLanguage(locale) === 'de'
+    ) ||
+    new Set(value.selectedLocales.map(appTranslationLanguage)).size !==
+      value.selectedLocales.length ||
+    !Array.isArray(value.availableLanguages) ||
+    value.availableLanguages.length > 500 ||
+    value.availableLanguages.some(
+      (language) =>
+        !language ||
+        typeof language !== 'object' ||
+        !isAppTranslationLocale(language.code) ||
+        typeof language.name !== 'string' ||
+        typeof language.tagHandling !== 'boolean'
+    )
+  )
+    return undefined;
+  return {
+    revision: value.revision,
+    credentialRevision: value.credentialRevision,
+    ...(typeof value.verifiedCredentialRevision === 'string'
+      ? { verifiedCredentialRevision: value.verifiedCredentialRevision }
+      : {}),
+    plan: value.plan as DeepLSettings['plan'],
+    englishVariant: value.englishVariant as DeepLSettings['englishVariant'],
+    selectedLocales: value.selectedLocales as AppTranslationLocale[],
+    availableLanguages: value.availableLanguages as DeepLLanguage[],
+  };
 };

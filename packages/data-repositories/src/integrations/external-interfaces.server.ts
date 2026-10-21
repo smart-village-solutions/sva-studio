@@ -39,7 +39,9 @@ export const saveExternalInterfaceTypeDefinition = async (
   } = {}
 ): Promise<void> => {
   await withDefaultDatabase('default', options.getDatabaseUrl, async (client) => {
-    await createExternalInterfaceRepository(createExecutor(client)).upsertTypeDefinition(definition);
+    await createExternalInterfaceRepository(createExecutor(client)).upsertTypeDefinition(
+      definition
+    );
   });
 };
 
@@ -84,7 +86,10 @@ export const loadDefaultExternalInterfaceRecord = async (
   } = {}
 ): Promise<ExternalInterfaceRecord | null> =>
   withDefaultDatabase(instanceId, options.getDatabaseUrl, async (client) =>
-    createExternalInterfaceRepository(createExecutor(client)).getDefaultByTypeKey(instanceId, typeKey)
+    createExternalInterfaceRepository(createExecutor(client)).getDefaultByTypeKey(
+      instanceId,
+      typeKey
+    )
   );
 
 export const saveExternalInterfaceRecord = async (
@@ -119,3 +124,56 @@ export const saveExternalInterfaceConnectionCheck = async (
     await createExternalInterfaceRepository(createExecutor(client)).updateConnectionCheck(check);
   });
 };
+
+/** DeepL is configured by the tenant but available only while its module is active. */
+export const saveDeepLInterfaceRecord = async (
+  record: ExternalInterfaceRecord,
+  expectedRevision: string
+): Promise<void> => {
+  if (record.typeKey !== 'deepl' || record.ownerKind !== 'host') throw new Error('invalid_config');
+  await withDefaultDatabase(record.instanceId, undefined, async (client) => {
+    const module = await client.query(
+      `SELECT m.module_id FROM iam.instance_modules m JOIN iam.instance_plugin_lifecycle l ON l.instance_id=m.instance_id AND l.plugin_id=m.module_id WHERE m.instance_id=$1 AND m.module_id='app-translations' AND m.effective_active AND l.access_state='active' FOR SHARE OF m,l`,
+      [record.instanceId]
+    );
+    if (!module.rows[0]) throw new Error('deepl_module_unavailable');
+    const current = await client.query<{ revision: string }>(
+      `SELECT public_config_json->>'revision' AS revision FROM iam.instance_external_interfaces WHERE instance_id=$1 AND id=$2 AND type_key='deepl' AND owner_kind='host' FOR UPDATE`,
+      [record.instanceId, record.id]
+    );
+    if ((current.rows[0]?.revision ?? '0') !== expectedRevision)
+      throw new Error('interface_conflict');
+    await createExternalInterfaceRepository(createExecutor(client)).upsert(record);
+  });
+};
+
+/** Compare the exact saved configuration before accepting an asynchronous provider response. */
+export const saveDeepLInterfaceCheck = async (input: {
+  instanceId: string;
+  interfaceId: string;
+  expectedRevision: string;
+  checkedAt: string;
+  languages?: readonly import('@sva/core').DeepLLanguage[];
+  errorCode?: string;
+}): Promise<void> =>
+  withDefaultDatabase(input.instanceId, undefined, async (client) => {
+    const module = await client.query(
+      `SELECT m.module_id FROM iam.instance_modules m JOIN iam.instance_plugin_lifecycle l ON l.instance_id=m.instance_id AND l.plugin_id=m.module_id WHERE m.instance_id=$1 AND m.module_id='app-translations' AND m.effective_active AND l.access_state='active' FOR SHARE OF m,l`,
+      [input.instanceId]
+    );
+    if (!module.rows[0]) throw new Error('deepl_module_unavailable');
+    const result = await client.query(
+      `UPDATE iam.instance_external_interfaces SET public_config_json=public_config_json || CASE WHEN $5::jsonb IS NOT NULL THEN jsonb_build_object('availableLanguages',$5::jsonb,'verifiedCredentialRevision',public_config_json->>'credentialRevision') ELSE '{}'::jsonb END,visible_status=$6,last_checked_at=$4::timestamptz,last_check_status=$7,last_check_error_code=$8,last_check_error_message=NULL,updated_at=now() WHERE instance_id=$1 AND id=$2 AND type_key='deepl' AND owner_kind='host' AND enabled AND public_config_json->>'revision'=$3 RETURNING id`,
+      [
+        input.instanceId,
+        input.interfaceId,
+        input.expectedRevision,
+        input.checkedAt,
+        input.languages ? JSON.stringify(input.languages) : null,
+        input.errorCode ? 'error' : 'ok',
+        input.errorCode ? 'failed' : 'succeeded',
+        input.errorCode ?? null,
+      ]
+    );
+    if (result.rowCount !== 1) throw new Error('interface_conflict');
+  });

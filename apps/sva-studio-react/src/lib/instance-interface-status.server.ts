@@ -58,6 +58,8 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
     };
   }
 
+  if (entry.type === 'deepl') return { status: 'unknown', checkedAt };
+
   if (entry.type === 's3') {
     if (!entry.config.endpoint || !entry.config.bucket || !entry.config.accessKeyId) {
       return {

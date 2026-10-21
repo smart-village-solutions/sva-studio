@@ -31,7 +31,6 @@ export const buildSidebarSystemItems = (
     canAccessAdminPrivacy,
     canAccessInterfaces,
     canAccessModules,
-    canAccessAppTexts,
     canAccessSystemTools,
   } = access;
   const userChildren: SidebarLeafItem[] = [
@@ -159,7 +158,7 @@ export const buildSidebarSystemItems = (
           },
         ]
       : []),
-    ...(canAccessAdminInstances || canAccessAppTexts
+    ...(canAccessAdminInstances
       ? [
           {
             kind: 'group' as const,
@@ -170,12 +169,8 @@ export const buildSidebarSystemItems = (
               {
                 kind: 'link' as const,
                 id: 'app-translations-standards',
-                to: canAccessAdminInstances ? '/admin/app-translations' : '/app-texts',
-                label: t(
-                  canAccessAdminInstances
-                    ? 'appTranslations.ui.standardsTitle'
-                    : 'appTranslations.ui.sourceTitle'
-                ),
+                to: '/admin/app-translations',
+                label: t('appTranslations.ui.standardsTitle'),
                 icon: IconFileText,
               },
             ],

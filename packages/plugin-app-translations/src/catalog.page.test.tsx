@@ -66,6 +66,27 @@ describe('catalog overview', () => {
       )
     );
   });
+  it.each([true, false])(
+    'explains setup and exposes the interface link only with its own permission (%s)',
+    async (canManageInterfaces) => {
+      vi.mocked(requestCatalog).mockResolvedValue({
+        scope: { kind: 'municipal', instanceId: 'a', organizationId: 'org' },
+        catalogs: [],
+        releases: [],
+        bases: [],
+        setup: { ready: false, reason: 'not_configured', interfaceId: null, selectedLocales: [] },
+        canManageInterfaces,
+      });
+      render(<CatalogsPage sourceOnly={false} />);
+      await screen.findByText('appTranslations.ui.setupTitle');
+      expect(!!screen.queryByRole('link', { name: 'appTranslations.ui.setupLink' })).toBe(
+        canManageInterfaces
+      );
+      if (!canManageInterfaces)
+        expect(screen.getByText('appTranslations.ui.setupAdmin')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'appTranslations.ui.seal' })).toBeNull();
+    }
+  );
   it('does not show global data when the transport returns a municipal scope', async () => {
     vi.mocked(requestCatalog).mockResolvedValue({
       scope: { kind: 'municipal', instanceId: 'a', organizationId: 'org' },

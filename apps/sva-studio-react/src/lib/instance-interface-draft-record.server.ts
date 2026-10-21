@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import type { ExternalInterfaceRecord } from '@sva/core';
+import {
+  appTranslationLanguage,
+  isAppTranslationLocale,
+  deepLTargetCode,
+  readDeepLSettings,
+  type ExternalInterfaceRecord,
+} from '@sva/core';
 import {
   loadDefaultExternalInterfaceRecord,
   loadExternalInterfaceRecordById,
@@ -161,7 +167,7 @@ export const buildRecordFromDraft = async (input: {
   readonly instanceId: string;
   readonly draft: Extract<
     InstanceInterfaceDraft,
-    { type: 's3' | 'supabase' | 'postgresql' | 'mailTransport' | 'mapGeocoding' }
+    { type: 's3' | 'supabase' | 'postgresql' | 'mailTransport' | 'mapGeocoding' | 'deepl' }
   >;
   readonly existingId?: string;
 }): Promise<ExternalInterfaceRecord> => {
@@ -219,7 +225,8 @@ export const buildRecordFromDraft = async (input: {
       interface_id: interfaceId,
       error_message: error instanceof Error ? error.message : String(error),
     });
-    throw error;
+    if (input.draft.type === 'deepl' && input.draft.config.apiKey.trim()) previousSecrets = {};
+    else throw error;
   }
 
   if (existing && existing.typeKey !== mapStoredTypeToKey(input.draft.type)) {
@@ -248,6 +255,80 @@ export const buildRecordFromDraft = async (input: {
     previousSecrets,
   } as const;
 
+  if (input.draft.type === 'deepl') {
+    const config = input.draft.config;
+    const previous = existing ? readDeepLSettings(existing.publicConfig) : undefined;
+    if (config.revision !== (previous?.revision ?? '0')) throw new Error('interface_conflict');
+    const apiKey = config.apiKey.trim() || previousSecrets.apiKey || '';
+    if (input.draft.enabled && !apiKey) throw new Error('deepl_secret_missing');
+    const changed =
+      !previous ||
+      (!existing?.enabled && input.draft.enabled) ||
+      config.plan !== previous.plan ||
+      (!!config.apiKey.trim() && config.apiKey.trim() !== previousSecrets.apiKey);
+    const selected = [...config.selectedLocales];
+    if (
+      selected.some((locale) => !previous?.selectedLocales.includes(locale)) &&
+      (existing?.lastCheckStatus !== 'succeeded' ||
+        previous?.verifiedCredentialRevision !== previous?.credentialRevision)
+    )
+      throw new Error('invalid_config');
+    if (
+      selected.some((locale) => !isAppTranslationLocale(locale)) ||
+      new Set(selected.map(appTranslationLanguage)).size !== selected.length ||
+      selected.some(
+        (locale) =>
+          appTranslationLanguage(locale) === 'de' ||
+          !(changed
+            ? previous?.selectedLocales.includes(locale)
+            : previous?.availableLanguages.some(
+                (language) =>
+                  language.code ===
+                  deepLTargetCode(locale, config.englishVariant, previous?.availableLanguages)
+              ))
+      )
+    )
+      throw new Error('invalid_config');
+    const ciphertext = buildSecretCiphertext({
+      interfaceId,
+      secretConfig: apiKey ? { apiKey } : {},
+    });
+    if (apiKey && !ciphertext) throw new Error('deepl_secret_unavailable');
+    return {
+      id: interfaceId,
+      instanceId: input.instanceId,
+      typeKey: 'deepl',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: input.draft.name.trim(),
+      alias: 'deepl',
+      enabled: input.draft.enabled,
+      isDefault: true,
+      category: 'api',
+      authMode: 'api_key',
+      baseUrl: config.plan === 'free' ? 'https://api-free.deepl.com' : 'https://api.deepl.com',
+      publicConfig: {
+        ...existing?.publicConfig,
+        revision: randomUUID(),
+        credentialRevision: changed ? randomUUID() : previous!.credentialRevision,
+        verifiedCredentialRevision: changed ? null : (previous?.verifiedCredentialRevision ?? null),
+        plan: config.plan,
+        englishVariant: config.englishVariant,
+        selectedLocales: selected,
+        availableLanguages: changed ? [] : (previous?.availableLanguages ?? []),
+      },
+      secretConfigCiphertext: ciphertext,
+      statusCheckKind: 'deepl',
+      visibleStatus: !input.draft.enabled
+        ? 'disabled'
+        : changed
+          ? 'unknown'
+          : (existing?.visibleStatus ?? 'unknown'),
+      lastCheckStatus: changed ? undefined : existing?.lastCheckStatus,
+      lastCheckedAt: changed ? undefined : existing?.lastCheckedAt,
+      lastCheckErrorCode: changed ? undefined : existing?.lastCheckErrorCode,
+    };
+  }
   return input.draft.type === 's3'
     ? buildS3Record({ ...sharedInput, draft: input.draft })
     : input.draft.type === 'supabase'

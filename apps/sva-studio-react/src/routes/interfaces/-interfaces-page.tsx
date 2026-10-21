@@ -72,6 +72,8 @@ const getDisplayStatus = (entry: InstanceInterface): DisplayStatus =>
     : entry.status;
 
 const getInterfaceEndpoint = (entry: InstanceInterface): string => {
+  if (entry.type === 'deepl')
+    return entry.config.plan === 'free' ? 'api-free.deepl.com' : 'api.deepl.com';
   if (entry.type === 'mainserver') return entry.config.graphqlBaseUrl || '-';
   if (entry.type === 's3') {
     const { endpoint, bucket } = entry.config;
@@ -136,6 +138,9 @@ const getEditCardTitle = (editState: Exclude<EditState, { mode: 'closed' }>): st
 export const InterfacesPage = () => {
   const deleteFocusFallbackRef = React.useRef<HTMLButtonElement>(null);
   const {
+    deepLChecking,
+    onCheckDeepL,
+    onRetryForm,
     availableTypes,
     cancelDelete,
     deleteErrorMessage,
@@ -348,6 +353,13 @@ export const InterfacesPage = () => {
           <CardContent>
             <InterfaceForm
               draft={editState.draft}
+              deepLEntry={
+                editState.mode === 'edit' && editState.entry.type === 'deepl'
+                  ? editState.entry
+                  : undefined
+              }
+              deepLChecking={deepLChecking}
+              onCheckDeepL={() => void onCheckDeepL()}
               hasStoredMapApiKey={
                 editState.mode === 'edit' &&
                 editState.entry.type === 'mapGeocoding' &&
@@ -363,6 +375,7 @@ export const InterfacesPage = () => {
               }}
               onCancel={() => setEditState({ mode: 'closed' })}
               onSubmit={() => void onSaveDraft()}
+              onRetry={() => void onRetryForm()}
             />
           </CardContent>
         </Card>

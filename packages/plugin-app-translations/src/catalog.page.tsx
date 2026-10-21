@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
+  APP_TRANSLATION_LOCALES,
   validateCatalogManifest,
   type CatalogDraft,
   type CatalogEditorData,
@@ -23,14 +24,24 @@ export const CatalogsPage = ({
   sourceOnly = true,
 }: { platform?: boolean; sourceOnly?: boolean } = {}) => {
   const pt = usePluginTranslation('appTranslations.ui');
+  const displayNames = new Intl.DisplayNames([pt('languageTag') === 'en' ? 'en' : 'de'], {
+    type: 'language',
+  });
+  const languageName = (locale: string) =>
+    (APP_TRANSLATION_LOCALES as readonly string[]).includes(locale)
+      ? pt(`locales.${locale}`)
+      : (displayNames.of(locale) ?? locale);
   const languageNames = (locales: readonly string[]) =>
     [...locales]
       .sort(
         (left, right) =>
           Number(right === 'de') - Number(left === 'de') ||
-          pt(`locales.${left}`).localeCompare(pt(`locales.${right}`), 'de')
+          languageName(left).localeCompare(
+            languageName(right),
+            pt('languageTag') === 'en' ? 'en' : 'de'
+          )
       )
-      .map((locale) => pt(`locales.${locale}`))
+      .map(languageName)
       .join(', ');
   const access = useSyncExternalStore(
     subscribeSessionAccessSnapshot,
@@ -49,10 +60,13 @@ export const CatalogsPage = ({
   const [reload, setReload] = useState(0);
   const [editorVersion, setEditorVersion] = useState(0);
   const permissionNamespace = sourceOnly ? 'app-texts' : 'app-translations';
+  const ready = sourceOnly || overview?.setup?.ready === true;
   const canWrite =
-    platform || access.permissionActions.includes(`${permissionNamespace}.catalog.write`);
+    ready &&
+    (platform || access.permissionActions.includes(`${permissionNamespace}.catalog.write`));
   const canPublish =
-    platform || access.permissionActions.includes(`${permissionNamespace}.catalog.publish`);
+    ready &&
+    (platform || access.permissionActions.includes(`${permissionNamespace}.catalog.publish`));
   const catalog = <T,>(
     operation: Readonly<Record<string, unknown>>,
     scope?: CatalogOverview['scope'],
@@ -172,6 +186,10 @@ export const CatalogsPage = ({
       setBusy(false);
     }
   };
+  const reloadCatalog = () => {
+    setEditorVersion((value) => value + 1);
+    setReload((value) => value + 1);
+  };
   return (
     <StudioOverviewPageTemplate
       title={pt(platform ? 'standardsTitle' : sourceOnly ? 'sourceTitle' : 'title')}
@@ -179,16 +197,8 @@ export const CatalogsPage = ({
         platform ? 'standardsDescription' : sourceOnly ? 'sourceDescription' : 'description'
       )}
       primaryAction={
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={busy}
-          onClick={() => {
-            setEditorVersion((value) => value + 1);
-            setReload((value) => value + 1);
-          }}
-        >
-          {pt(dirty ? 'discardReload' : 'reload')}
+        <Button type="button" variant="secondary" disabled={busy || dirty} onClick={reloadCatalog}>
+          {pt('reload')}
         </Button>
       }
     >
@@ -199,6 +209,7 @@ export const CatalogsPage = ({
         >
           {pt(
             [
+              'catalog_setup_required',
               'catalog_conflict',
               'catalog_incomplete',
               'catalog_review_required',
@@ -225,6 +236,22 @@ export const CatalogsPage = ({
               ? pt('global')
               : `${overview.scope.instanceId} / ${overview.scope.organizationId}`}
           </p>
+          {!sourceOnly && overview.setup && (
+            <section
+              role="status"
+              className="space-y-2 rounded-lg border border-border bg-card p-5"
+            >
+              <h2 className="font-semibold">{pt(ready ? 'setupReady' : 'setupTitle')}</h2>
+              <p>{pt(`setupReasons.${overview.setup.reason}`)}</p>
+              {overview.canManageInterfaces ? (
+                <a className="underline" href="/interfaces">
+                  {pt('setupLink')}
+                </a>
+              ) : (
+                <p>{pt('setupAdmin')}</p>
+              )}
+            </section>
+          )}
           {platform && (
             <section
               className="space-y-4 rounded-lg border border-border bg-card p-6"

@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   loadExternalInterfaceRecordById: vi.fn(),
   loadDefaultExternalInterfaceRecord: vi.fn(),
   saveExternalInterfaceRecord: vi.fn(),
+  saveDeepLInterfaceRecord: vi.fn(),
   deleteExternalInterfaceRecord: vi.fn(),
   protectField: vi.fn((value: string | undefined, aad: string) =>
     value ? `${aad}:${value}` : null
@@ -24,6 +25,7 @@ vi.mock('@sva/data-repositories/server', () => ({
   loadExternalInterfaceRecordById: state.loadExternalInterfaceRecordById,
   loadDefaultExternalInterfaceRecord: state.loadDefaultExternalInterfaceRecord,
   saveExternalInterfaceRecord: state.saveExternalInterfaceRecord,
+  saveDeepLInterfaceRecord: state.saveDeepLInterfaceRecord,
   deleteExternalInterfaceRecord: state.deleteExternalInterfaceRecord,
 }));
 
@@ -73,6 +75,149 @@ describe('instance-interfaces-server', () => {
     state.logger.error.mockReset();
   });
 
+  it('retains the encrypted DeepL key, validates language evidence and invalidates it on rotation or reactivation', async () => {
+    const { buildRecordFromDraft } = await import('./instance-interface-draft-record.server');
+    const { mapRecordToStoredEntry } = await import('./instance-interface-record-mapping.server');
+    const { createEmptyInstanceInterfaceDraft, deepLInterfaceDraftSchema } =
+      await import('./instance-interfaces');
+    const draft = createEmptyInstanceInterfaceDraft('deepl');
+    if (draft.type !== 'deepl') throw new Error('fixture');
+    draft.config.apiKey = 'private-key';
+    const record = await buildRecordFromDraft({ instanceId: 'de-test', draft });
+    expect(record.baseUrl).toBe('https://api.deepl.com');
+    expect(record.secretConfigCiphertext).toContain('private-key');
+    expect(JSON.stringify(mapRecordToStoredEntry(record))).not.toMatch(
+      /private-key|secretConfigCiphertext/
+    );
+    const verified = {
+      ...record,
+      lastCheckStatus: 'succeeded' as const,
+      visibleStatus: 'ok' as const,
+      publicConfig: {
+        ...record.publicConfig,
+        availableLanguages: [{ code: 'en-GB', name: 'English', tagHandling: true }],
+        verifiedCredentialRevision: record.publicConfig.credentialRevision,
+      },
+    };
+    state.loadExternalInterfaceRecordById.mockResolvedValue(verified);
+    draft.config = {
+      ...draft.config,
+      apiKey: '',
+      revision: String(record.publicConfig.revision),
+      selectedLocales: ['en'],
+    };
+    const saved = await buildRecordFromDraft({
+      instanceId: 'de-test',
+      draft,
+      existingId: record.id,
+    });
+    expect(saved.secretConfigCiphertext).toBe(record.secretConfigCiphertext);
+    expect(saved.publicConfig.verifiedCredentialRevision).toBe(
+      verified.publicConfig.verifiedCredentialRevision
+    );
+    expect(saved.publicConfig.selectedLocales).toEqual(['en']);
+    const expanded = {
+      ...verified,
+      publicConfig: {
+        ...verified.publicConfig,
+        availableLanguages: [
+          { code: 'ar', name: 'Arabic', tagHandling: true },
+          { code: 'fr-CA', name: 'French (Canadian)', tagHandling: true },
+          { code: 'pt-PT', name: 'Portuguese (Portugal)', tagHandling: true },
+          { code: 'pt-BR', name: 'Portuguese (Brazil)', tagHandling: true },
+          { code: 'zh-Hant', name: 'Chinese (Traditional)', tagHandling: true },
+        ],
+      },
+    };
+    state.loadExternalInterfaceRecordById.mockResolvedValue(expanded);
+    const additional = await buildRecordFromDraft({
+      instanceId: 'de-test',
+      draft: {
+        ...draft,
+        config: { ...draft.config, selectedLocales: ['ar', 'fr-CA', 'pt-BR', 'zh-Hant'] },
+      },
+      existingId: record.id,
+    });
+    expect(additional.publicConfig.selectedLocales).toEqual(['ar', 'fr-CA', 'pt-BR', 'zh-Hant']);
+    for (const locale of ['not_a_locale', ''])
+      expect(
+        deepLInterfaceDraftSchema.safeParse({
+          ...draft,
+          config: { ...draft.config, selectedLocales: [locale] },
+        }).success
+      ).toBe(false);
+    for (const selectedLocales of [['pt-PT', 'pt-BR'], ['xx'], ['de-CH'], ['not_a_locale'], ['']])
+      await expect(
+        buildRecordFromDraft({
+          instanceId: 'de-test',
+          draft: { ...draft, config: { ...draft.config, selectedLocales } },
+          existingId: record.id,
+        })
+      ).rejects.toThrow('invalid_config');
+    state.loadExternalInterfaceRecordById.mockResolvedValue(verified);
+
+    await expect(
+      buildRecordFromDraft({
+        instanceId: 'de-test',
+        draft: { ...draft, config: { ...draft.config, selectedLocales: ['uk'] } },
+        existingId: record.id,
+      })
+    ).rejects.toThrow('invalid_config');
+    await expect(
+      buildRecordFromDraft({
+        instanceId: 'de-test',
+        draft: { ...draft, config: { ...draft.config, revision: 'stale' } },
+        existingId: record.id,
+      })
+    ).rejects.toThrow('interface_conflict');
+    const selectedVerified = {
+      ...verified,
+      publicConfig: { ...verified.publicConfig, selectedLocales: ['en'] },
+    };
+    state.loadExternalInterfaceRecordById.mockResolvedValue(selectedVerified);
+    const rotated = await buildRecordFromDraft({
+      instanceId: 'de-test',
+      draft: { ...draft, config: { ...draft.config, apiKey: 'rotated' } },
+      existingId: record.id,
+    });
+    expect(rotated.publicConfig.verifiedCredentialRevision).toBeNull();
+    expect(rotated.lastCheckStatus).toBeUndefined();
+    expect(rotated.publicConfig.availableLanguages).toEqual([]);
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      ...selectedVerified,
+      enabled: false,
+    });
+    const reactivated = await buildRecordFromDraft({
+      instanceId: 'de-test',
+      draft,
+      existingId: record.id,
+    });
+    expect(reactivated.lastCheckStatus).toBeUndefined();
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      ...selectedVerified,
+      secretConfigCiphertext: 'unreadable',
+    });
+    state.revealField.mockImplementationOnce(() => {
+      throw new Error('unreadable');
+    });
+    await expect(
+      buildRecordFromDraft({ instanceId: 'de-test', draft, existingId: record.id })
+    ).rejects.toThrow();
+    const replaced = await buildRecordFromDraft({
+      instanceId: 'de-test',
+      draft: { ...draft, config: { ...draft.config, apiKey: 'replacement' } },
+      existingId: record.id,
+    });
+    expect(replaced.secretConfigCiphertext).toContain('replacement');
+    state.protectField.mockReturnValueOnce(null as unknown as string);
+    await expect(
+      buildRecordFromDraft({
+        instanceId: 'de-test',
+        draft: { ...draft, config: { ...draft.config, apiKey: 'replacement' } },
+        existingId: record.id,
+      })
+    ).rejects.toThrow('deepl_secret_unavailable');
+  });
   it('reports custom interface storage as available and projects persisted registry rows', async () => {
     state.listExternalInterfaceRecords.mockResolvedValue([
       {
@@ -644,9 +789,9 @@ describe('instance-interfaces-server', () => {
 
     const { upsertStoredInterface } = await import('./instance-interfaces-server');
 
-    await expect(
-      upsertStoredInterface('de-test', createMapGeocodingDraft())
-    ).rejects.toThrow('interface_type_not_registered');
+    await expect(upsertStoredInterface('de-test', createMapGeocodingDraft())).rejects.toThrow(
+      'interface_type_not_registered'
+    );
   });
 
   it('clears stale optional map geocoding fields when they are removed during updates', async () => {

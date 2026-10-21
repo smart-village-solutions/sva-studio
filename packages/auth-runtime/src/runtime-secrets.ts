@@ -29,10 +29,6 @@ const readEnvOrSecret = (envNames: readonly string[], secretName: string): strin
 
 const LOCAL_RUNTIME_PROFILES = new Set(['local-builder', 'local-keycloak']);
 
-/** Shared provider credential; never copied into tenant configuration. */
-export const getAppTranslationsDeepLApiKey = (): string | undefined =>
-  readEnvOrSecret(['APP_TRANSLATIONS_DEEPL_API_KEY'], 'sva_studio_app_translations_deepl_api_key');
-
 export const getAuthClientSecret = (): string | undefined =>
   readEnvOrSecret(['SVA_AUTH_CLIENT_SECRET'], 'sva_studio_app_auth_client_secret');
 

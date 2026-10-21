@@ -35,6 +35,8 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
     const tenant = 'media-test-a';
     const tables = [
       'media_assets',
+      'media_content_save_operations',
+      'media_content_save_operation_references',
       'media_variants',
       'media_upload_sessions',
       'media_storage_usage',
@@ -177,6 +179,101 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
         });
       });
     });
+
+    it.each([false, true])(
+      'only releases booked quota when abandoning provisional assets (ready: %s)',
+      async (includeReady) => {
+        const instanceId = `media-quota-${includeReady}`;
+        const operationId = randomUUID();
+        const actorSubject = 'draft-owner';
+        const identity = { instanceId, operationId, actorSubject };
+        const statuses = [
+          { uploadStatus: 'pending', processingStatus: 'pending' },
+          { uploadStatus: 'validated', processingStatus: 'pending' },
+          { uploadStatus: 'failed', processingStatus: 'failed' },
+          { uploadStatus: 'blocked', processingStatus: 'failed' },
+          ...(includeReady ? [{ uploadStatus: 'processed', processingStatus: 'ready' } as const] : []),
+        ] as const;
+        const ids: string[] = [];
+        await withRepositories(instanceId, async ({ media }) => {
+          await media.createContentSaveOperation({
+            id: operationId,
+            instanceId,
+            actorSubject,
+            targetType: 'news',
+            status: 'abandon_pending',
+            expiresAt: new Date(Date.now() + 60000).toISOString(),
+          });
+          await media.upsertStorageUsage({ instanceId, totalBytes: 1000, assetCount: 10 });
+          for (const status of statuses) {
+            const id = randomUUID();
+            ids.push(id);
+            if (status.processingStatus === 'ready') {
+              expect(
+                await media.tryApplyStorageUsageWithinQuota({
+                  instanceId,
+                  totalBytes: 150,
+                  assetCount: 1,
+                })
+              ).toBe(true);
+            }
+            await media.upsertAsset({
+              id,
+              instanceId,
+              storageKey: `${instanceId}/${id}.jpg`,
+              mediaType: 'image',
+              mimeType: 'image/jpeg',
+              byteSize: 100,
+              visibility: 'public',
+              ...status,
+              metadata: {},
+              technical: { variantBytes: 50 },
+              lifecycleStatus: 'provisional',
+              provisionalOperationId: operationId,
+              provisionalOwnerSubject: actorSubject,
+              provisionalDraftId: randomUUID(),
+              provisionalExpiresAt: new Date(Date.now() + 60000).toISOString(),
+            });
+          }
+        });
+        const readUsage = async () => {
+          const usage = await withRepositories(instanceId, ({ media }) =>
+            media.getStorageUsage(instanceId)
+          );
+          return { totalBytes: Number(usage?.totalBytes), assetCount: usage?.assetCount };
+        };
+        const expectedBefore = {
+          totalBytes: includeReady ? 1150 : 1000,
+          assetCount: includeReady ? 11 : 10,
+        };
+        expect(await readUsage()).toMatchObject(expectedBefore);
+        expect(
+          await withRepositories(instanceId, ({ media }) =>
+            media.finalizeContentSaveOperationCleanup({ ...identity, actorSubject: 'other-actor' })
+          )
+        ).toBe(false);
+        expect(await readUsage()).toMatchObject(expectedBefore);
+        expect(
+          await withRepositories(instanceId, ({ media }) =>
+            media.finalizeContentSaveOperationCleanup(identity)
+          )
+        ).toBe(true);
+        for (const id of ids)
+          expect(
+            await withRepositories(instanceId, ({ media }) => media.getAssetById(instanceId, id))
+          ).toBeNull();
+        expect(
+          await withRepositories(instanceId, ({ media }) => media.getContentSaveOperation(identity))
+        ).toMatchObject({ status: 'abandoned' });
+        expect(await readUsage()).toMatchObject({ totalBytes: 1000, assetCount: 10 });
+        expect(
+          await withRepositories(instanceId, ({ media }) =>
+            media.finalizeContentSaveOperationCleanup(identity)
+          )
+        ).toBe(true);
+        expect(await readUsage()).toMatchObject({ totalBytes: 1000, assetCount: 10 });
+      }
+    );
 
     it('searches and filters tags inside the tenant in actual PostgreSQL', async () => {
       await withRepositories(tenant, async ({ media }) => {

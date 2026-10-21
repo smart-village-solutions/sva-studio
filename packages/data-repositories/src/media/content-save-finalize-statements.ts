@@ -122,6 +122,9 @@ WITH eligible_operation AS (
     AND asset.provisional_operation_id = eligible_operation.id
     AND asset.lifecycle_status = 'provisional'
   RETURNING
+    asset.id,
+    asset.upload_status,
+    asset.processing_status,
     asset.byte_size,
     CASE
       WHEN COALESCE(asset.technical->>'variantBytes', '') ~ '^[0-9]+$'
@@ -133,6 +136,9 @@ WITH eligible_operation AS (
     COUNT(*)::integer AS asset_count,
     COALESCE(SUM(byte_size + variant_bytes), 0)::bigint AS total_bytes
   FROM deleted_assets
+  -- Only successful finalization books usage, atomically with these statuses.
+  WHERE upload_status = 'processed'
+    AND processing_status = 'ready'
 ), usage_updated AS (
   UPDATE iam.media_storage_usage AS usage
   SET total_bytes = GREATEST(0, usage.total_bytes - deleted_totals.total_bytes),
@@ -153,6 +159,8 @@ WITH eligible_operation AS (
       SELECT 1
       FROM iam.media_assets AS asset
       WHERE asset.provisional_operation_id = operation.id
+        -- Sibling CTE writes are visible here through RETURNING, not the table snapshot.
+        AND asset.id NOT IN (SELECT id FROM deleted_assets)
     )
     AND (SELECT COUNT(*) FROM deleted_operation_references) >= 0
     AND (SELECT COUNT(*) FROM usage_updated) >= 0

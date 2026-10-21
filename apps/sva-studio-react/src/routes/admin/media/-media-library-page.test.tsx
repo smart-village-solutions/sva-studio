@@ -1,8 +1,15 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MediaLibraryPage } from './-media-library-page';
+
+const inventoryApi = vi.hoisted(() => ({ start: vi.fn(), get: vi.fn() }));
+vi.mock('../../../lib/iam-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../lib/iam-api')>()),
+  startMediaInventoryScan: inventoryApi.start,
+  getMediaInventoryScan: inventoryApi.get,
+}));
 
 const accessState = vi.hoisted(() => ({ deniedActions: new Set<string>() }));
 
@@ -43,6 +50,58 @@ vi.mock('../../../hooks/use-media', () => ({
 }));
 
 describe('MediaLibraryPage', () => {
+  it('preserves the running scan, report and continuation cursor across library reloads and errors', async () => {
+    inventoryApi.start.mockResolvedValue({ data: { id: 'scan-1', status: 'queued' } });
+    let complete: (value: unknown) => void = () => undefined;
+    inventoryApi.get.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        })
+    );
+    const { rerender } = render(<MediaLibraryPage />);
+    const loaded = useMediaLibraryMock.mock.results.at(-1)?.value;
+    fireEvent.change(screen.getByLabelText('Dateien pro Lauf'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Bestandsscan starten' }));
+    await waitFor(() =>
+      expect(inventoryApi.get).toHaveBeenCalledWith('scan-1', expect.any(AbortSignal))
+    );
+    const signal = inventoryApi.get.mock.calls[0]?.[1] as AbortSignal;
+    useMediaLibraryMock.mockReturnValue({ ...loaded, isLoading: true });
+    rerender(<MediaLibraryPage />);
+    expect(signal.aborted).toBe(false);
+    complete({
+      data: {
+        id: 'scan-1',
+        status: 'succeeded',
+        report: {
+          completedAt: '2026-10-21T08:00:00Z',
+          nextCursor: 'next-page',
+          entries: [
+            {
+              storageKey: 'tenant-a/found.txt',
+              verdict: 'infected',
+              checkedAt: '2026-10-21T08:00:00Z',
+              byteSize: 68,
+            },
+          ],
+        },
+      },
+    });
+    await screen.findByText('Fund');
+    useMediaLibraryMock.mockReturnValue({ ...loaded, error: { code: 'database_unavailable' } });
+    rerender(<MediaLibraryPage />);
+    expect(screen.getByText('Fund')).toBeTruthy();
+    useMediaLibraryMock.mockReturnValue(loaded);
+    rerender(<MediaLibraryPage />);
+    expect(screen.getByText('Fund')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Nächsten Abschnitt prüfen' }));
+    await waitFor(() =>
+      expect(inventoryApi.start).toHaveBeenLastCalledWith({ limit: 3, cursor: 'next-page' })
+    );
+    expect(inventoryApi.start).toHaveBeenCalledTimes(2);
+  });
+
   it('hides inventory scan when media.update is unavailable', () => {
     accessState.deniedActions.add('media.update');
     render(<MediaLibraryPage />);
@@ -62,6 +121,8 @@ describe('MediaLibraryPage', () => {
 
   beforeEach(() => {
     accessState.deniedActions.clear();
+    inventoryApi.start.mockReset();
+    inventoryApi.get.mockReset().mockResolvedValue({ data: { id: 'scan-1', status: 'succeeded' } });
     useMediaLibraryMock.mockReset();
     useSingleFileMediaUploadMock.mockReset();
     uploadFileMock.mockReset();

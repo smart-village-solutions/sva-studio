@@ -40,7 +40,8 @@ export const MediaLibraryPage = () => {
     actions: { mode: 'allOf', values: ['media.create'] },
   });
   const scanDecision = useAccessDecision({
-    kind: 'tenant', moduleId: 'media',
+    kind: 'tenant',
+    moduleId: 'media',
     actions: { mode: 'allOf', values: ['media.read', 'media.update'] },
   });
   const canCreateMedia = createDecision.status === 'allowed';
@@ -72,24 +73,6 @@ export const MediaLibraryPage = () => {
     },
     [navigate, singleFileUpload, mediaApi.refetch]
   );
-
-  if (mediaApi.isLoading) {
-    return (
-      <section data-testid="media-library-page">
-        <p className="text-sm text-muted-foreground">{t('media.messages.loading')}</p>
-      </section>
-    );
-  }
-
-  if (mediaApi.error) {
-    return (
-      <section data-testid="media-library-page">
-        <Alert className="border-destructive/40 text-destructive">
-          <AlertDescription>{mediaErrorMessage(mediaApi.error)}</AlertDescription>
-        </Alert>
-      </section>
-    );
-  }
 
   return (
     <section className="space-y-6" data-testid="media-library-page">
@@ -151,38 +134,48 @@ export const MediaLibraryPage = () => {
         </Button>
       </form>
       {scanDecision.status === 'allowed' ? <MediaInventoryScanSection /> : null}
-      <MediaLibraryToolbar
-        page={cursorHistory.length + 1}
-        limit={mediaApi.limit}
-        itemCount={mediaApi.assets.length}
-        canGoBack={cursorHistory.length > 0}
-        canGoForward={mediaApi.hasNextPage && mediaApi.nextCursor !== null}
-        onPrevious={() => {
-          const previousCursor = cursorHistory.at(-1);
-          setCursorHistory((current) => current.slice(0, -1));
-          setCursor(previousCursor);
-        }}
-        onNext={() => {
-          if (!mediaApi.nextCursor) return;
-          setCursorHistory((current) => [...current, cursor]);
-          setCursor(mediaApi.nextCursor ?? undefined);
-        }}
-        onLimitChange={(nextLimit) => {
-          setLimit(nextLimit);
-          setCursor(undefined);
-          setCursorHistory([]);
-        }}
-      />
-      {mediaApi.assets.length > 0 ? (
-        <MediaAssetGrid
-          assets={mediaApi.assets}
-          usageByAssetId={mediaApi.usageByAssetId}
-          usageStatusByAssetId={mediaApi.usageStatusByAssetId}
-        />
-      ) : (
-        <Alert>
-          <AlertDescription>{t('media.empty.body')}</AlertDescription>
+      {mediaApi.isLoading ? (
+        <p className="text-sm text-muted-foreground">{t('media.messages.loading')}</p>
+      ) : mediaApi.error ? (
+        <Alert className="border-destructive/40 text-destructive">
+          <AlertDescription>{mediaErrorMessage(mediaApi.error)}</AlertDescription>
         </Alert>
+      ) : (
+        <>
+          <MediaLibraryToolbar
+            page={cursorHistory.length + 1}
+            limit={mediaApi.limit}
+            itemCount={mediaApi.assets.length}
+            canGoBack={cursorHistory.length > 0}
+            canGoForward={mediaApi.hasNextPage && mediaApi.nextCursor !== null}
+            onPrevious={() => {
+              const previousCursor = cursorHistory.at(-1);
+              setCursorHistory((current) => current.slice(0, -1));
+              setCursor(previousCursor);
+            }}
+            onNext={() => {
+              if (!mediaApi.nextCursor) return;
+              setCursorHistory((current) => [...current, cursor]);
+              setCursor(mediaApi.nextCursor ?? undefined);
+            }}
+            onLimitChange={(nextLimit) => {
+              setLimit(nextLimit);
+              setCursor(undefined);
+              setCursorHistory([]);
+            }}
+          />
+          {mediaApi.assets.length > 0 ? (
+            <MediaAssetGrid
+              assets={mediaApi.assets}
+              usageByAssetId={mediaApi.usageByAssetId}
+              usageStatusByAssetId={mediaApi.usageStatusByAssetId}
+            />
+          ) : (
+            <Alert>
+              <AlertDescription>{t('media.empty.body')}</AlertDescription>
+            </Alert>
+          )}
+        </>
       )}
     </section>
   );

@@ -15,7 +15,7 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.ts'],
-    exclude: ['dist/**', 'coverage/**', 'node_modules/**'],
+    exclude: ['dist/**', 'coverage/**', 'node_modules/**', 'src/**/*.postgres.integration.test.ts'],
     environment: 'node',
     coverage: sharedCoverageConfig,
   },

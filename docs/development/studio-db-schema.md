@@ -18,7 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
-- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-08-31`
+- Finaler Soll-Snapshot zuletzt lokal ergänzt: `2026-10-20` (Katalogbasis 0106; keine neue Live-Erhebung)
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung
@@ -79,6 +79,18 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
+
+### Interne App-Katalogbasis — Migration 0106
+
+Die additive Migration `0106_app_translation_catalog_basis.sql` ergänzt ausschließlich drei Tabellen im Schema `iam`:
+
+- `app_translation_manifests`: unveränderliche Manifeste, Unique Vertrag/Version und Digest.
+- `app_translation_catalog_drafts`: genau ein Draft je globalem Vertrag beziehungsweise Instanz/Organisation/Vertrag. Sprachmenge und sprachbezogene Werte/Override-Metadaten liegen gemeinsam als JSONB vor; bedingte Draftrevision und Zeilensperre sichern konkurrierende Änderungen.
+- `app_translation_catalog_releases`: vollständige unveränderliche lokale Sätze mit einer gemeinsamen Satzrevision, gepinnter Manifest-/Basis-/Draftidentität, Sprachsnapshot-Nutzlasten und Prüfsummen. Zustand ausschließlich `sealed`, noch keine Remote-Aktivierung oder Veröffentlichung.
+
+Partielle Unique-Indizes unterscheiden globale und kommunale Scopes; kommunale Zeilen haben einen zusammengesetzten FK auf die echte Instanz-/Organisationsbindung. Alle drei Tabellen erzwingen RLS auch für den Owner. Der interne Serverpfad setzt transaktionslokal `app.instance_id`, `app.organization_id` und `app.catalog_platform` stets gemeinsam neu. Globale Drafts/Importe benötigen Plattformkontext; kommunale Runtimezugriffe sehen nur die eigene Organisation und unveränderliche globale Basissätze. Globale Manifeste und Basissätze enthalten öffentliche Katalogtexte, keine persönlichen Nutzerwerte. Runtime-Schreibrechte sind explizit begrenzt, unabhängig von Default-Grants; Trigger verbieten Änderungen/Löschungen an Manifesten und versiegelten Sätzen. Die DB-Settings werden ausschließlich nach serverseitiger Session-/Actionprüfung gesetzt und sind keine Autorisierungsquelle aus App-Payloads.
+
+Die interne Implementierung liegt in Core, Data-Repositories und Auth-Runtime; kein dynamischer Cache, neuer Serviceclient oder zusätzlicher Jobpfad. `executeAppTranslationOperation` nutzt die vorhandene Session-/CSRF-/Root-Prüfung beziehungsweise tenantseitige Actionprüfung samt aktiver Organisation. Vollständige Tests verwenden `APP_TRANSLATIONS_TEST_DATABASE_URL` ausschließlich mit einer disponiblen, auf `_test` endenden Datenbank. Die Migration wurde mit PostgreSQL 16 einschließlich vollständigem Up → Down → Up geprüft; das ist kein Nachweis einer Änderung der laufenden Studio-Datenbank.
 
 ### Getrennte SSF-Plugin-Datenbank
 

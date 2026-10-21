@@ -314,3 +314,4 @@ export {
 export { mediaUploadProcessingStudioJobRegistration } from './iam-media/upload-processing-job.js';
 
 export { mediaInventoryScanStudioJobRegistration } from './iam-media/inventory-scan-job.js';
+export { executeAppTranslationOperation, readAppTranslationsLocalReadiness } from './app-translations.js';

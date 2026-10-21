@@ -1,5 +1,11 @@
 [
   {
+    "pluginId": "app-translations",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-app-translations"
+  },
+  {
     "pluginId": "categories",
     "sourceType": "workspace",
     "enabled": true,

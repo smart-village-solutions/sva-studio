@@ -254,3 +254,5 @@ export type {
   CreateInstanceBusKey,
   InstanceBusKeyCreated,
 } from './iam/account-instance-contract.js';
+
+export * from './app-translations.js';

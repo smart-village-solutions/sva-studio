@@ -20,6 +20,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   registerPluginOperationExecutionHandlers: registerPluginOperationExecutionHandlersMock,
   registerStudioJobExecutionHandlers: registerStudioJobExecutionHandlersMock,
   listActiveInstanceIdsForWorker: listActiveInstanceIdsForWorkerMock,
+  readAppTranslationsLocalReadiness: vi.fn(),
   resolveInstanceKeycloakProjectionTenant: vi.fn(),
 }));
 
@@ -195,6 +196,51 @@ describe('plugin operation runtime registration', () => {
       vi.clearAllTimers();
       vi.useRealTimers();
     }
+  });
+
+  it('connects the multilingual lifecycle to redacted host readiness without a remote capability', async () => {
+    const jobTypeId = 'app-translations.lifecycle';
+    const jobType = {
+      jobTypeId,
+      ownerPluginId: 'app-translations',
+      queue: 'plugin-operations',
+      startPolicy: 'dedicated',
+    };
+    vi.doMock('./plugin-catalog.server.js', () => ({
+      studioServerPluginCatalogReport: {
+        snapshot: {
+          pluginSources: [
+            createJobPluginSource({
+              pluginId: 'app-translations',
+              sourceRef: 'packages/plugin-app-translations',
+              jobsEntry: './dist/server.js',
+              runtimeRequirement: 'app-translations.local',
+            }),
+          ],
+          registry: { jobTypes: [jobType], pluginJobTypeRegistry: new Map([[jobTypeId, jobType]]) },
+        },
+      },
+    }));
+    const auth = await import('@sva/auth-runtime/server');
+    vi.mocked(auth.readAppTranslationsLocalReadiness).mockResolvedValue({
+      schemaReady: true,
+      providerConfigured: false,
+    });
+    const mod = await import('./plugin-operation-runtime.server');
+    const handlers = await mod.registerStudioPluginOperationHandlers();
+    const ctx = {
+      job: { instanceId: 'tenant-local' },
+      tenantLifecycle: { operation: 'readiness' },
+      throwIfCancellationRequested: vi.fn(),
+    } as unknown as import('@sva/plugin-sdk').PluginJobHandlerContext;
+    const result = await handlers[jobTypeId]!.handler(ctx);
+    expect(auth.readAppTranslationsLocalReadiness).toHaveBeenCalledWith('tenant-local');
+    expect(result?.resultPayload).toEqual({ plugin: { localOnly: true } });
+    expect(result?.tenantLifecycle?.checks).toContainEqual({
+      checkId: 'app-translations.provider',
+      status: 'degraded',
+    });
+    expect(handlers[jobTypeId]?.executionLane).toBe('default');
   });
 
   it('registers only regular Studio plugin operation handlers after coverage validation', async () => {

@@ -125,6 +125,8 @@ describe('installed plugin build inputs', () => {
     expect(code).toContain('Nachrichten');
     expect(code).toContain('Erstellt und veröffentlicht Nachrichten');
     expect(code).toContain('Mediathek');
+    expect(code).toContain('"app-translations":{"name":"Mehrsprachigkeit"');
+    expect(code).toContain('Lokale Katalogbasis mit Modulzugang und Bereitschaftsprüfung.');
     expect(code).not.toContain('Smart Speech Flow');
   });
 

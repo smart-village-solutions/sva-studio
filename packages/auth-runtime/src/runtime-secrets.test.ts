@@ -1,7 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+const readSecretFile = vi.hoisted(() =>
+  vi.fn<(...args: unknown[]) => string>(() => {
+    throw new Error('not_available');
+  })
+);
+vi.mock('node:fs', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('node:fs')>()),
+  readFileSync: readSecretFile,
+}));
 
 import {
   getAppDbPassword,
+  getAppTranslationsDeepLApiKey,
   getAuthClientSecret,
   getAuthStateSecret,
   getIamDatabaseUrl,
@@ -22,6 +32,9 @@ import {
 describe('auth runtime secrets', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
+    readSecretFile.mockReset().mockImplementation(() => {
+      throw new Error('not_available');
+    });
   });
 
   it('reads trimmed env secrets and provisioner fallback values', () => {
@@ -38,6 +51,26 @@ describe('auth runtime secrets', () => {
 
     vi.stubEnv('KEYCLOAK_PROVISIONER_CLIENT_SECRET', ' provisioner-secret ');
     expect(getKeycloakProvisionerClientSecret()).toBe('provisioner-secret');
+  });
+
+  it('reads the shared DeepL credential on every call so rotation is immediate', () => {
+    vi.stubEnv('APP_TRANSLATIONS_DEEPL_API_KEY', ' first-key ');
+    expect(getAppTranslationsDeepLApiKey()).toBe('first-key');
+    vi.stubEnv('APP_TRANSLATIONS_DEEPL_API_KEY', 'second-key');
+    expect(getAppTranslationsDeepLApiKey()).toBe('second-key');
+  });
+
+  it('uses only the shared secret file and fails closed when missing, unreadable or empty', () => {
+    vi.stubEnv('APP_TRANSLATIONS_DEEPL_API_KEY', '');
+    readSecretFile.mockReturnValueOnce(' file-key ');
+    expect(getAppTranslationsDeepLApiKey()).toBe('file-key');
+    expect(readSecretFile).toHaveBeenLastCalledWith(
+      '/run/secrets/sva_studio_app_translations_deepl_api_key',
+      'utf8'
+    );
+    expect(getAppTranslationsDeepLApiKey()).toBeUndefined();
+    readSecretFile.mockReturnValueOnce('   ');
+    expect(getAppTranslationsDeepLApiKey()).toBeUndefined();
   });
 
   it('derives IAM database urls with encoded credentials when explicit urls are absent or invalid', () => {

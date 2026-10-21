@@ -30,6 +30,32 @@ describe('instance registry repository module iam', () => {
     expect(statements[0]?.text).toContain("identifier => 'plugin_tenant_lifecycle_retry'");
     expect(statements[0]?.values).toEqual(['tenant-a', 'events', 'events-1:1', true, false]);
   });
+  it('keeps a completed suspension unchanged after module revocation', async () => {
+    const { executor } = createQueuedExecutor([
+      [
+        {
+          effective_active: false,
+          lifecycle_exists: true,
+          active_job_id: null,
+          persisted: false,
+          suspend_completed: true,
+        },
+      ],
+    ]);
+    await expect(
+      createInstanceRegistryRepository(executor).persistPluginTenantLifecycleReconcileIntents({
+        instanceId: 'tenant-a',
+        lifecycles: [
+          {
+            pluginId: 'app-translations',
+            operations: [{ operation: 'suspend', jobTypeId: 'app-translations.lifecycle' }],
+          },
+        ],
+        forcePluginIds: ['app-translations'],
+      })
+    ).resolves.toEqual([]);
+  });
+
   it('suspends an existing lifecycle when a suspendable module is deactivated', async () => {
     const { executor, statements } = createQueuedExecutor([
       [{ effective_active: false, lifecycle_exists: true, active_job_id: null, persisted: true }],

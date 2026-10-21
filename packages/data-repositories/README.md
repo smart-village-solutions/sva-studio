@@ -107,3 +107,17 @@ Der Build läuft über `tsc -p packages/data-repositories/tsconfig.lib.json`. `c
 - [Laufzeitsicht (arc42 §6)](../../docs/architecture/06-runtime-view.md)
 - [Monorepo-Übersicht](../../docs/reference/monorepo.md)
 - [README von `@sva/data`](../data/README.md)
+
+## Interne App-Katalogbasis
+
+`createAppTranslationRepository(client, authorizedScope)` aus `@sva/data-repositories/server` muss innerhalb einer bestehenden Transaktion mit `iam_app` aufgerufen werden. Die Sessionfassade autorisiert vorher; die Factory ersetzt alle transaktionslokalen Scope-Settings. Globale und kommunale Entwürfe werden getrennt gehalten, vollständige Sätze atomar unveränderlich versiegelt. Import, Bearbeitung/Reset, Basiswechsel und Korrekturbestätigung verwenden die Typ-/Platzhalterregeln aus Core. Ein Retry derselben Draftbasis liefert denselben Satz.
+
+Die PostgreSQL-Integrationstests laufen mit `APP_TRANSLATIONS_TEST_DATABASE_URL` gegen eine vorher migrierte disponible Datenbank mit Namenssuffix `_test`. Ohne diese Variable werden sie übersprungen; das ist kein bestandener PostgreSQL-Nachweis. Tests verwenden `SET LOCAL ROLE iam_app`, zwei Organisationen derselben Instanz, eine weitere Instanz und konkurrierende Verbindungen. Keine produktive Datenbank als Testziel verwenden.
+
+PostgreSQL-Nachweis: `APP_TRANSLATIONS_TEST_DATABASE_URL=… pnpm nx run data-repositories:test:integration`. Dieser Target ist ungecacht, verlangt die explizite Datenbank und verwendet `vitest.integration.config.ts`; die DB-Dateien sind aus Unit-/Coverage-Läufen ausgeschlossen.
+
+## Plugin-Lifecycle: lokale Hostübergänge
+
+Bei Modulabwahl nach abgeschlossener Suspendierung bleibt der bestätigte Lifecycle ohne neue Pendinggeneration erhalten. Beide Wiederzuordnungspfade erhalten den suspendierten Zustand bis erfolgreichem `completeLifecycle(reactivate)`. Eine unvollständige oder fehlgeschlagene Suspendierung wird nicht als abgeschlossen behandelt; bestehende Konflikt-/Workergrenzen bleiben bestehen. Dafür sind keine Schemaänderungen nötig.
+
+`plugin-tenant-lifecycle.postgres.integration.test.ts` prüft diese Übergänge im bestehenden ungecachten `test:integration`-Target mit derselben disponiblen Datenbank-URL wie die Katalogtests (`APP_TRANSLATIONS_TEST_DATABASE_URL`, Datenbankname endet auf `_test`). Voraussetzungen sind die regulären Studio-Migrationen und `deploy/portainer/migrate-graphile-worker.mjs` auf dieser isolierten Datenbank. Die Tests verwenden `iam_app`, die echte Enqueuefunktion und kontrollierte Lifecycle-Abschlussresultate; keine Remote-/Appintegration.

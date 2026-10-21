@@ -2,6 +2,7 @@ import type { StudioPluginCatalogConfigEntry } from './plugin-catalog-loader.js'
 import { installedPluginCatalogConfig } from 'virtual:studio-installed-plugin-catalog';
 
 const workspacePluginCatalogConfig = [
+  { pluginId: 'app-translations', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-app-translations' },
   { pluginId: 'categories', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-categories' },
   { pluginId: 'news', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-news' },
   { pluginId: 'events', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-events' },

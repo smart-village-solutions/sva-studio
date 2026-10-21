@@ -44,6 +44,14 @@
         "cwd": "packages/data-repositories",
         "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
+    },
+    "test:integration": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "packages/data-repositories",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.integration.config.ts"
+      }
     }
   },
   "tags": ["scope:data-repositories", "type:lib", "pii:yes", "credentials:yes"]

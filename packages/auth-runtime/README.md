@@ -95,3 +95,11 @@ Das veröffentlichte `package.json` exportiert neben dem Root-Entry gezielt die 
 - [docs/architecture/12-glossary.md](../../docs/architecture/12-glossary.md)
 - [docs/adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md](../../docs/adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md)
 - [docs/adr/ADR-021-per-user-sva-mainserver-delegation.md](../../docs/adr/ADR-021-per-user-sva-mainserver-delegation.md)
+
+## Interne feste App-Kataloge
+
+`executeAppTranslationOperation(request, input)` aus `@sva/auth-runtime/server` bietet intern die Operationen `import`, `createMunicipal`, `changeBase`, `read`, `readRelease`, `edit`, `reset`, `confirm` und `seal`. Kein HTTP-Endpunkt wird registriert. Instanz und Organisation kommen ausschließlich aus der gespeicherten Session; Payload-Scopefelder werden abgewiesen. Mutationen benötigen POST/CSRF. Tenantrechte sind die expliziten `app-translations.catalog.read`, `app-translations.catalog.write` beziehungsweise `app-translations.catalog.publish`; die verifizierte Root-Session mit bestehender Root-Admin-Policy verwaltet globale Standards und Manifestimport. Die interne Fassade vergibt selbst keine Tenantgrants; das optionale Plugin registriert seine drei kommunalen Katalogrechte im bestehenden Modul-IAM-Abgleich nach ausdrücklicher Zuordnung.
+
+Manifestformat und zulässige Werte sind in `@sva/core` typisiert und streng validiert. Revisionen sind Dezimalstrings. Fehlende Sprachwerte oder prüfbedürftige Korrekturen verhindern `seal`; das Ergebnis bleibt ausschließlich lokal `sealed`. Keine DeepL-/UI-/Main-Server-/Buildintegration in diesem Abschnitt.
+
+Abschnitt 2B ergänzt den aktuellen Pluginzugang vor kommunalem Repositoryzugriff. `readAppTranslationsLocalReadiness(instanceId)` ist ein Hostaufruf für aktive Instanz und vorhandenes Katalogschema; er liefert ausschließlich `schemaReady` und `providerConfigured`. Der Key wird über `APP_TRANSLATIONS_DEEPL_API_KEY` oder `/run/secrets/sva_studio_app_translations_deepl_api_key` gelesen und niemals als Status ausgegeben. Kein Provideraufruf und keine Remotebereitschaft werden dadurch behauptet. Die Studio-Composition injiziert diese Funktion in den lokalen Pluginjob; neue Service-/Statusrouten gehören nicht zu 2B.

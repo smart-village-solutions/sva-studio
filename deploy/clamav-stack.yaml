@@ -39,7 +39,22 @@ services:
     networks:
       - default
     healthcheck:
-      test: ['CMD', 'clamdscan', '--ping=1']
+      test:
+        - CMD-SHELL
+        - |
+          set -eu
+          clamdscan --ping=1 >/dev/null
+          version=$$(clamdscan --version)
+          loaded=$${version#*/}
+          loaded=$${loaded%%/*}
+          case "$$loaded" in ''|*[!0-9]*) exit 1 ;; esac
+          awk -v now="$$(date +%s)" -v loaded="$$loaded" '
+            NR != 1 || $$0 !~ /^[0-9]+ [0-9]+$$/ ||
+            length($$1) > 12 || length($$2) > 12 ||
+            $$1 > now + 5 || now - $$1 >= 259200 ||
+            ($$2 "") != (loaded "") { exit 1 }
+            END { if (NR != 1) exit 1 }
+          ' /var/lib/clamav/studio-freshness
       interval: 30s
       timeout: 5s
       retries: 3

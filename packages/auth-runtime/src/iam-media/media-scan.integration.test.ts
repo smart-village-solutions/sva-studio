@@ -34,6 +34,7 @@ let endpoint: string;
 let s3: S3Client;
 let signaturePath: string;
 let scanner: string;
+let scannerHealthcheck: string;
 let original: Buffer;
 let storage: ReturnType<typeof createS3MediaStoragePort>;
 
@@ -62,6 +63,7 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       const command = compose.services.clamav.command.map((part: string) =>
         part.replace(/\$\$/g, '$')
       );
+      scannerHealthcheck = compose.services.clamav.healthcheck.test[1].replace(/\$\$/g, '$');
       docker(
         'run',
         '--detach',
@@ -164,6 +166,45 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       s3?.destroy();
       vi.unstubAllEnvs();
       for (const name of started.splice(0).reverse()) docker('rm', '--force', name);
+    });
+
+    const writeProof = (proof: string) =>
+      execFileSync(
+        'docker',
+        [
+          'exec',
+          '--user',
+          '0',
+          '-i',
+          scanner,
+          'sh',
+          '-c',
+          'cat > /var/lib/clamav/studio-freshness',
+        ],
+        { input: proof, stdio: ['pipe', 'pipe', 'pipe'] }
+      );
+
+    it('reports healthy only for a fresh proof matching the loaded daemon revision', async () => {
+      const proof = await readFile(signaturePath, 'utf8');
+      const revision = proof.trim().split(' ')[1];
+      const now = Math.floor(Date.now() / 1000);
+      const check = () => docker('exec', scanner, 'sh', '-ec', scannerHealthcheck);
+      expect(check).not.toThrow();
+      try {
+        for (const invalid of [
+          `${now - 72 * 3600} ${revision}\n`,
+          `${now + 60} ${revision}\n`,
+          `${now} 1\n`,
+          `${now} ${revision}\nextra\n`,
+          '',
+        ]) {
+          writeProof(invalid);
+          expect(check).toThrow();
+        }
+      } finally {
+        writeProof(proof);
+      }
+      expect(check).not.toThrow();
     });
 
     const initialize = async (body: Uint8Array, visibility: 'public' | 'protected' = 'public') => {
@@ -361,21 +402,6 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
       const revision = proof.trim().split(' ')[1];
       const upload = await initialize(original);
       // The scanner owns this read-only app input on Linux; inject test state as its owner.
-      const writeProof = (proof: string) =>
-        execFileSync(
-          'docker',
-          [
-            'exec',
-            '--user',
-            '0',
-            '-i',
-            scanner,
-            'sh',
-            '-c',
-            'cat > /var/lib/clamav/studio-freshness',
-          ],
-          { input: proof, stdio: ['pipe', 'pipe', 'pipe'] }
-        );
       try {
         writeProof(`${Math.floor(Date.now() / 1000) - 72 * 3600} ${revision}\n`);
         await expect(upload.run()).rejects.toThrow('media_scan_stale');

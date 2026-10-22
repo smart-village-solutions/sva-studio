@@ -87,6 +87,7 @@
 ### Regulärer Staging-Rollout mit freigegebenem Übergang (22.10.2026)
 
 - Der Nutzer hat den regulären Rollout ohne Wartungsfenster, App-Pause, Bucket-Sperre oder feste Übergangsfrist freigegeben. Nach der Aktivierung neu initialisierte Uploads verwenden den privaten Eingang und die Prüfung. Zuvor ausgestellte öffentliche Upload-URLs behalten ihre bisherige Gültigkeit; dieser vorübergehende Altpfad wird bewusst akzeptiert und blockiert die Aktivierung nicht.
+- Der bestehende Prozessor bindet den Scan ausschließlich an den bei Initialisierung gewählten Quarantäne-Eingang. Alte öffentliche Uploads erhalten durch einen inzwischen aktiven Schalter keinen falschen `clean`-Nachweis; private Eingänge bleiben auch nach Abschalten scanpflichtig. Der echte Job-Regressionstest belegt den Übergang und beide Schalterstellungen.
 - Bereits begonnene Uploads werden nicht eigens abgebrochen, gesperrt oder gelöscht. Der bestehende Lebenszyklus bleibt maßgeblich; ein neuer Scan-Nachweis wird nicht allein durch die Aktivierung behauptet. Production bleibt unverändert.
 - Für den Merge-Commit von PR #1949 wurden zwei getrennte Main-Push-E2E-Runs registriert (`39817079641`, `39817338791`). Der vorhandene Quellenvertrag lehnt mehrere Run-IDs für denselben Commit ab. Die vorliegende Anpassung erhält deshalb einen neuen, vollständig regulär zu prüfenden Quellstand; Gate, Nachweisauswahl und vorhandene Run-Historie bleiben unverändert. Kein aus diesem mehrdeutigen Quellstand gebautes Image wird nach Staging promotet.
 

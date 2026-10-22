@@ -75,3 +75,10 @@
 - Harmlosen Testinhalt authentifiziert geschrieben und bytegleich gelesen; anonymer GET wurde mit HTTP 403 abgewiesen. Das Testobjekt wurde gelöscht und der leere Testpräfix anschließend bestätigt. Vorhandene Medien wurden nicht verändert.
 - Der Server unterstützt kein `PutBucketCors` pro Bucket (HTTP 501). Der vorhandene serverweite CORS-Pfad erlaubt den Staging-Upload: echter OPTIONS-Preflight mit Staging-Origin und PUT ergibt HTTP 200 mit passendem erlaubtem Origin und Methode. Keine globale CORS-Einstellung geändert.
 - Upload-Scan bleibt bis erfolgreicher Scanner-Bereitschaft und abgeschlossener Zielprüfung ausgeschaltet. Task 5.3 ist weiterhin offen; diese Vorbereitung ist keine Production-Abnahme oder Production-App-Freigabe.
+
+
+### Freigegebene Staging-Aktivierung mit manueller Kontrolle (22.10.2026)
+
+- Gemeinsamer Scanner mit einer Replik bereit; erfolgreiche stündliche Aktualitätsbestätigung und passende geladene Revision, saubere Probe und EICAR-Ablehnung aus der Staging-App nachgewiesen. Privater Eingang und bestehende öffentliche Medien sind geprüft.
+- Der automatische 24-Stunden-Warnalarm ist noch nicht wirksam, weil die Scan-Metriken nicht in Prometheus ankommen. Der Nutzer hat Staging vorläufig mit täglicher manueller Kontrolle gemäß Medienreferenz freigegeben; die automatische Sperre ohne Nachweis beziehungsweise ab 72 Stunden bleibt unverändert. Production und Dev bleiben deaktiviert.
+- Das Staging-Profil setzt `MEDIA_SCAN_ENABLED=true`; die tatsächliche Aktivierung und Abnahme erfolgt erst durch den regulären quellgebundenen Build-/Promote-Pfad. Task 5.3 bleibt für den vollständigen Zielbetriebsnachweis einschließlich automatischem Alarm offen. Kein Bestandsscan ist freigegeben.

@@ -22,12 +22,18 @@ jobs:
       - name: checkout
         uses: actions/checkout@v7
 
+      - name: setup Node.js runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
       - name: render dedicated scanner stack
         run: |
           set -euo pipefail
           docker compose --env-file /dev/null --project-name studio-clamav \
-            -f deploy/clamav-stack.yaml config --format json \
-            | jq 'del(.name) + {version: "3.8"}' > "${RUNNER_TEMP}/clamav-stack.json"
+            -f deploy/clamav-stack.yaml config --format json > "${RUNNER_TEMP}/clamav-compose.json"
+          node --experimental-strip-types scripts/ci/render-quantum-stack.ts \
+            --input "${RUNNER_TEMP}/clamav-compose.json" --output "${RUNNER_TEMP}/clamav-stack.json"
           jq -e '.services | keys == ["clamav"]' "${RUNNER_TEMP}/clamav-stack.json"
 
       - name: setup quantum-cli

@@ -1,0 +1,67 @@
+services:
+  clamav:
+    image: clamav/clamav:1.4_base@sha256:41f0d067c0f2e87a7083d4ca202373aeec18dd0a3f8619c1a8c8556d747705e2
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        set -eu
+
+        update_signatures() {
+          freshclam --quiet || return 1
+          database=/var/lib/clamav/daily.cld
+          [ -f "$$database" ] || database=/var/lib/clamav/daily.cvd
+          revision=$$(sigtool --info "$$database" | awk '$$1 == "Version:" { print $$2 }')
+          case "$$revision" in ''|*[!0-9]*) return 1 ;; esac
+          proof=/var/lib/clamav/studio-freshness
+          printf '%s %s\n' "$$(date +%s)" "$$revision" > "$$proof.tmp"
+          chmod 644 "$$proof.tmp"
+          mv "$$proof.tmp" "$$proof"
+        }
+
+        update_signatures || true
+        clamd --foreground &
+        scanner_pid=$$!
+        trap 'kill "$$scanner_pid" 2>/dev/null || true; exit 0' TERM INT
+        while kill -0 "$$scanner_pid" 2>/dev/null; do
+          sleep 3600 &
+          wait $$! || true
+          update_signatures || true
+        done
+        wait "$$scanner_pid"
+    environment:
+      CLAMD_CONF_StreamMaxLength: 64M
+      CLAMD_CONF_MaxFileSize: 64M
+      CLAMD_CONF_MaxScanSize: 128M
+      CLAMD_CONF_AlertExceedsMax: 'yes'
+    volumes:
+      - clamav-data:/var/lib/clamav
+    networks:
+      - default
+    healthcheck:
+      test: ['CMD', 'clamdscan', '--ping=1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30m
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: any
+        delay: 10s
+      resources:
+        reservations:
+          memory: 3G
+        limits:
+          memory: 4G
+
+volumes:
+  clamav-data:
+    name: studio-clamav-signatures
+
+networks:
+  default:
+    driver: overlay

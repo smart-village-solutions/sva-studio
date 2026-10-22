@@ -73,3 +73,12 @@ Start und Berichtabruf verwenden den authentifizierten Instanzkontext sowie vorh
 Die vorhandene Medienbibliothek bietet Start, laufenden Status und einen übersetzten Bericht für die drei Ergebnisse sowie den nächsten manuellen Abschnitt. Direkte Tests belegen Instanz-/Berechtigungs-/CSRF-Grenzen, Größenlimit einschließlich Größenwechsel, Scannerfehler, Fortsetzung und unveränderte Bestandsdateien/Assets bei allen Ergebnissen. Dafür entstehen weder neue Tabellen noch ein weiterer Scanner oder Worker-Dienst.
 
 Das generische Job-Monitoring blendet das Ergebnis von `host/media.scan-existing` aus. Der Dateibericht bleibt ausschließlich über den Medien-Endpunkt mit `media.read` und `media.update` abrufbar; ein vorhandenes Monitoring-Leserecht allein genügt nicht.
+
+
+## Gemeinsamer Scanner auf dem SVA-Server (freigegeben am 22.10.2026)
+
+Dev, Staging und Production verwenden genau eine ClamAV-Instanz im eigenen Stack `studio-clamav`. Kassel/SSF gehört nicht zu diesem Umfang. Das vorhandene gepinnte Scanner-Image, INSTREAM-Protokoll, Stunden-Update, Ressourcenlimit sowie der Revisions-/Aktualitätsnachweis bleiben bestehen. Der Scanner veröffentlicht keinen Port und besitzt keine S3-Zugangsdaten. Nur die App-Services verbinden sich mit seinem internen Overlay; sie lesen das gemeinsame Signaturvolume ausschließlich schreibgeschützt. Scanner und Verbraucher bleiben an `node-005.sva` gebunden.
+
+Die Einführung erfolgt in zwei unabhängig betreibbaren Abschnitten: zuerst den gemeinsamen Infrastruktur-Stack über einen manuell geschützten GitHub-Workflow starten und prüfen; danach die App-Stacks im vorhandenen Build-/Promote-Pfad auf dessen Netzwerk, Host und Volume umstellen. So benötigt ein automatischer Dev-Promote keine noch fehlende Infrastruktur. Die lokalen Compose-Tests beziehen denselben Scanner-Vertrag, betreiben ihren Scanner aber separat. Die bisherigen Scannerdefinitionen je zentraler App-Umgebung entfallen.
+
+Zunächst wird ausschließlich Staging nach Storage-/Signatur-/EICAR-Abnahme für neue Uploads aktiviert. Dev und Production bleiben beim Upload-Scan ausgeschaltet; insbesondere gibt es keinen Production-App-Rollout und keine Prüfung realer Bestandsdateien als Teil dieses Auftrags. Ein Scanner-Ausfall kann alle angeschlossenen Umgebungen betreffen; neue Uploads bleiben dann gemäß bestehendem Vertrag ohne Freigabe, vorhandene Medien bleiben nutzbar. Beim Abschalten der Scan-Anforderung bleibt der private Bucket samt Inhalt und Berechtigungen erhalten.

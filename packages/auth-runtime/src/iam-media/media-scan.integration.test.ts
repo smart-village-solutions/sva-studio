@@ -52,7 +52,7 @@ describe.skipIf(process.env.RUN_MEDIA_SCAN_INTEGRATION !== '1')(
           '--env-file',
           '/dev/null',
           '-f',
-          join(root, 'compose.yaml'),
+          join(root, 'deploy/clamav-stack.yaml'),
           'config',
           '--no-interpolate',
           '--format',

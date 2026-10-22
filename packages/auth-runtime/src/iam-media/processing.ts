@@ -3,7 +3,7 @@ import { fileTypeFromBuffer } from 'file-type';
 import { MediaStorageUnavailableError, type MediaStoragePort } from './storage-port.js';
 import type { MediaService } from './service.js';
 import { cleanupReplacedClaimVariants, createMediaVariants } from './processing-variants.js';
-import { isMediaScanEnabled, MediaScanError, scanConfiguredMedia } from './clamav.js';
+import { MediaScanError, scanConfiguredMedia } from './clamav.js';
 import { isMediaQuarantineKey, mediaProcessingPrefix } from './storage-key-paths.js';
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -195,13 +195,14 @@ export const createMediaUploadProcessingService = (deps: {
         });
       }
 
-      const scanRequired = quarantined || isMediaScanEnabled();
-      if (scanRequired) await scanConfiguredMedia(object.body);
+      // The intake path fixes the scan contract at initialization. Legacy public
+      // upload URLs remain writable and cannot receive an immutable scan proof.
+      if (quarantined) await scanConfiguredMedia(object.body);
 
       const metadata = await sharp(object.body, { failOn: 'error' }).rotate().metadata();
       const technical = {
         ...(asset.technical ?? {}),
-        ...(scanRequired ? { scanStatus: 'clean' } : {}),
+        ...(quarantined ? { scanStatus: 'clean' } : {}),
         width: metadata.width,
         height: metadata.height,
         contentType: detectedMimeType,

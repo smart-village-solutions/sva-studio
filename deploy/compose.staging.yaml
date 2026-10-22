@@ -88,6 +88,8 @@ services:
           memory: 256M
 
   redis:
+    # Cutover-Pin: entfernen, sobald compose.yaml denselben in Staging geprüften Digest festlegt.
+    image: redis:7-alpine@sha256:892022f9f18c26c92c30e15194d132f90044af87b94a491a75429bbc3982eab1
     networks:
       - default
     deploy:
@@ -105,6 +107,8 @@ services:
           memory: 256M
 
   postgres:
+    # Cutover-Pin: entfernen, sobald compose.yaml denselben in Staging geprüften Digest festlegt.
+    image: postgres:16-alpine@sha256:deb28ee471183cb0c303113dac9b2433c51eeeeb678def7af9a9ec5820367815
     networks:
       - default
     deploy:

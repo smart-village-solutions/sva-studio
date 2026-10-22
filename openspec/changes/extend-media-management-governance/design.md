@@ -87,3 +87,8 @@ Zunächst wird ausschließlich Staging nach Storage-/Signatur-/EICAR-Abnahme fü
 
 
 Die Staging-Aktivierung erfolgt gemäß ausdrücklicher Freigabe vom 22.10.2026 als regulärer Rollout: Danach neu initialisierte Uploads verwenden privaten Eingang und Prüfung; vorher ausgestellte öffentliche Upload-URLs laufen nach ihrem bestehenden Vertrag aus. Ihr Ablauf ist keine Freigabebedingung. Eine feste Übergangsfrist, App-Pause, zusätzliche Bucket-Sperre und erzwungene Upload-Abbrüche sind nicht Bestandteil dieses Übergangs. Die frühere Wartungsplanung ist damit ersetzt.
+
+
+## Production-Aktivierung nach ausdrücklichem Auftrag (22.10.2026)
+
+Die anschließende Nutzerfreigabe erweitert die ursprüngliche Staging-Ausnahme auf Production. Das bestehende Production-Profil setzt `MEDIA_SCAN_ENABLED=true` und `MEDIA_SCAN_QUARANTINE_BUCKET=studio-media-private-production`. Der gemeinsame Scanner, sein Signaturvolume, die tägliche manuelle Kontrolle und die automatischen Freigabesperren werden unverändert verwendet. Die tatsächlichen privaten ACL-/Policy-Guards wurden für alle 23 eingerichteten Production-Speicheranbindungen geprüft; eine isolierte Schreib-/Leseprobe war anonym gesperrt und wurde entfernt. Der gleiche reguläre Übergang gilt ohne App-Pause oder zusätzliche Wartefrist. Keine Runtime-, Schema-, Workflow- oder Scanner-Service-Änderung.

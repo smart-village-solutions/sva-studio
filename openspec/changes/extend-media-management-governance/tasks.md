@@ -79,6 +79,6 @@
 
 ### Freigegebene Staging-Aktivierung mit manueller Kontrolle (22.10.2026)
 
-- Gemeinsamer Scanner mit einer Replik bereit; erfolgreiche stündliche Aktualitätsbestätigung und passende geladene Revision, saubere Probe und EICAR-Ablehnung aus der Staging-App nachgewiesen. Privater Eingang und bestehende öffentliche Medien sind geprüft.
+- Gemeinsamer Scanner mit einer Replik bereit; die konkreten Zielnachweise einschließlich Lauf-IDs, Prüfzeitpunkten, Probeumfang und Grenzen stehen in [PR #1949](https://github.com/smart-village-solutions/sva-studio/pull/1949).
 - Der automatische 24-Stunden-Warnalarm ist noch nicht wirksam, weil die Scan-Metriken nicht in Prometheus ankommen. Der Nutzer hat Staging vorläufig mit täglicher manueller Kontrolle gemäß Medienreferenz freigegeben; die automatische Sperre ohne Nachweis beziehungsweise ab 72 Stunden bleibt unverändert. Production und Dev bleiben deaktiviert.
 - Das Staging-Profil setzt `MEDIA_SCAN_ENABLED=true`; die tatsächliche Aktivierung und Abnahme erfolgt erst durch den regulären quellgebundenen Build-/Promote-Pfad. Task 5.3 bleibt für den vollständigen Zielbetriebsnachweis einschließlich automatischem Alarm offen. Kein Bestandsscan ist freigegeben.

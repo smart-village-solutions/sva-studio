@@ -15,7 +15,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 
 ### Medienmanagement im Betriebsprofil
 
-- Der gemeinsame ClamAV-Stack `studio-clamav` stellt eine Scanner-Replik mit einem Limit von 4 GiB und persistenten Signaturen für die zentralen Umgebungen bereit. Sein manueller Infrastruktur-Rollout ist unabhängig vom App-Promote; der Anschluss der Verbraucher folgt erst nach erfolgreicher Scanner-Bereitschaft. Kassel/SSF bleibt ausgenommen.
+- Der gemeinsame ClamAV-Stack `studio-clamav` stellt eine Scanner-Replik mit einem Limit von 4 GiB und persistenten Signaturen für die zentralen Umgebungen bereit. Sein manueller Infrastruktur-Rollout ist unabhängig vom App-Promote; die App-Verbraucher verwenden sein externes Overlay und ein schreibgeschütztes gemeinsames Signaturvolume. Kassel/SSF bleibt ausgenommen.
 
 - Medienoriginale und Varianten liegen in einem S3-kompatiblen Objektspeicher; das Referenzziel im MVP ist MinIO.
 - Die Studio-Runtime hält Bucket- und Zugangsdaten als Betriebsgeheimnisse; diese Informationen werden nicht in Plugin- oder Fachverträge gespiegelt.

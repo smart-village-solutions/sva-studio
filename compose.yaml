@@ -17,7 +17,7 @@ services:
       - "HOST=0.0.0.0"
       - "PORT=3000"
       - "MEDIA_SCAN_ENABLED=${MEDIA_SCAN_ENABLED:-false}"
-      - "MEDIA_CLAMAV_HOST=clamav"
+      - "MEDIA_CLAMAV_HOST=${MEDIA_CLAMAV_HOST:-clamav}"
       - "MEDIA_CLAMAV_SIGNATURE_STATE_PATH=/var/lib/clamav/studio-freshness"
       - "MEDIA_SCAN_QUARANTINE_BUCKET=${MEDIA_SCAN_QUARANTINE_BUCKET:-}"
       - "BUS_API_BASE_URL=${BUS_API_BASE_URL:-}"

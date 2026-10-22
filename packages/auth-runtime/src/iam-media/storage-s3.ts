@@ -74,8 +74,16 @@ const resolveObjectBucket = (
 
 const assertPrivateIntakeBucket = async (client: S3Client, bucket: string): Promise<void> => {
   const acl = await client.send(new GetBucketAclCommand({ Bucket: bucket }));
+  // MinIO represents its private-only ACL as one unnamed canonical FULL_CONTROL grant.
+  // The policy read below remains mandatory; every actual bucket policy is rejected.
+  const implicitOwner =
+    !acl.Owner?.ID &&
+    acl.Grants?.length === 1 &&
+    acl.Grants[0].Permission === 'FULL_CONTROL' &&
+    acl.Grants[0].Grantee?.Type === 'CanonicalUser' &&
+    Object.keys(acl.Grants[0].Grantee).length === 1;
   if (
-    !acl.Owner?.ID ||
+    (!acl.Owner?.ID && !implicitOwner) ||
     !acl.Grants?.length ||
     acl.Grants.some(
       (grant) =>

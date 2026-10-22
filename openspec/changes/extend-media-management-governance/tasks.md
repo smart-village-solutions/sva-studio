@@ -66,3 +66,12 @@
 - App- und Auth-Typprüfung sowie vollständiger Server-Runtime-Check erfolgreich; nach der Report-Redaktion den Auth-Runtime-Check gezielt bestätigt. Generisches Job-Monitoring zeigt keinen Dateibericht, andere Jobs bleiben unverändert.
 - Dokumentations-, OpenAPI-, OpenSpec-, Dateiplatzierungs- und Diff-Prüfungen erfolgreich; Komplexitäts-Gate ohne neue Findings. Die vier zuvor belegten direkten ESLint-Modulgrenzenfehler in der bestehenden Runtime-Komposition bleiben außerhalb dieser Änderung; zusätzliche Dateien sind ohne Lint-Fehler.
 - Keine neue Tabelle, Queue, Worker-Plattform oder Scanner-Abstraktion. Neuer Worker und UI-Abschnitt liefern den manuellen Bericht; S3-Leseoperationen aus dem bisherigen großen Adapter in ein internes Modul verschoben und dort erweitert, ohne parallelen Lesepfad. Task 5.3 bleibt für den Zielbetrieb offen.
+
+
+### Staging-Vorbereitung des gemeinsamen Scanners (22.10.2026)
+
+- Gemeinsamer Scanner-Vertrag in PR #1943 vorbereitet; der erste Infrastruktur-Rollout wurde vor Stack-Erstellung wegen eines von Quantum abgelehnten `entrypoint: null` gestoppt. Der enge Folgefix verwendet den vorhandenen kanonischen Quantum-Renderer.
+- Privaten Bucket `studio-media-private-staging` auf der bereits konfigurierten S3-Anbindung der Staging-Sandbox angelegt. `GetBucketPolicy` bestätigt keine Policy; die MinIO-ACL entspricht genau der privaten Platzhalterantwort ohne IDs. Die Runtime-Kompatibilität erhält Negativtests für fremde IDs, Gruppen, weitere Grants und Policies.
+- Harmlosen Testinhalt authentifiziert geschrieben und bytegleich gelesen; anonymer GET wurde mit HTTP 403 abgewiesen. Das Testobjekt wurde gelöscht und der leere Testpräfix anschließend bestätigt. Vorhandene Medien wurden nicht verändert.
+- Der Server unterstützt kein `PutBucketCors` pro Bucket (HTTP 501). Der vorhandene serverweite CORS-Pfad erlaubt den Staging-Upload: echter OPTIONS-Preflight mit Staging-Origin und PUT ergibt HTTP 200 mit passendem erlaubtem Origin und Methode. Keine globale CORS-Einstellung geändert.
+- Upload-Scan bleibt bis erfolgreicher Scanner-Bereitschaft und abgeschlossener Zielprüfung ausgeschaltet. Task 5.3 ist weiterhin offen; diese Vorbereitung ist keine Production-Abnahme oder Production-App-Freigabe.

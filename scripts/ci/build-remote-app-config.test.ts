@@ -35,13 +35,23 @@ const overrides = Object.entries(remoteConfigContract)
   .join('\n');
 
 describe('remote app config builder', () => {
-  it('accepts explicit scanner activation and only zero or one scanner replica', () => {
-    const source = profile.replace('MEDIA_SCAN_ENABLED=false', 'MEDIA_SCAN_ENABLED=true').replace('MEDIA_CLAMAV_REPLICAS=0', 'MEDIA_CLAMAV_REPLICAS=1');
+  it('requires the shared scanner host and private bucket for activation', () => {
+    const source = profile.replace('MEDIA_SCAN_ENABLED=false', 'MEDIA_SCAN_ENABLED=true');
     expect(buildRemoteAppConfig({ environment: 'staging', profile: source, overrides }).source).toContain('MEDIA_SCAN_ENABLED=true\n');
-    expect(() => buildRemoteAppConfig({ environment: 'staging', profile: source.replace('MEDIA_CLAMAV_REPLICAS=1', 'MEDIA_CLAMAV_REPLICAS=2'), overrides })).toThrow();
-    expect(() => buildRemoteAppConfig({ environment: 'staging', profile: source.replace('MEDIA_SCAN_ENABLED=true', 'MEDIA_SCAN_ENABLED=yes'), overrides })).toThrow();
-    expect(() => buildRemoteAppConfig({ environment: 'staging', profile: source.replace('MEDIA_CLAMAV_REPLICAS=1', 'MEDIA_CLAMAV_REPLICAS=0'), overrides })).toThrow();
-    expect(() => buildRemoteAppConfig({ environment: 'staging', profile: source.replace('MEDIA_SCAN_QUARANTINE_BUCKET=value', 'MEDIA_SCAN_QUARANTINE_BUCKET='), overrides })).toThrow();
+    for (const invalid of [
+      source.replace('MEDIA_CLAMAV_HOST=studio-clamav_clamav', 'MEDIA_CLAMAV_HOST='),
+      source.replace('MEDIA_CLAMAV_HOST=studio-clamav_clamav', 'MEDIA_CLAMAV_HOST=other-scanner'),
+      source.replace('MEDIA_SCAN_QUARANTINE_BUCKET=value', 'MEDIA_SCAN_QUARANTINE_BUCKET='),
+      source.replace('MEDIA_SCAN_ENABLED=true', 'MEDIA_SCAN_ENABLED=yes'),
+    ]) {
+      expect(() => buildRemoteAppConfig({ environment: 'staging', profile: invalid, overrides })).toThrow();
+    }
+  });
+
+  it('preserves the private bucket when the upload scan is disabled', () => {
+    const result = buildRemoteAppConfig({ environment: 'staging', profile, overrides });
+    expect(result.source).toContain('MEDIA_SCAN_ENABLED=false\n');
+    expect(result.source).toContain('MEDIA_SCAN_QUARANTINE_BUCKET=value\n');
   });
   it('adds the separate Bus token when the existing bundle has no Bus entry', () => {
     const existingBundle = overrides

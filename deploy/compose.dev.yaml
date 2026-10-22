@@ -9,6 +9,7 @@ services:
     networks:
       - network-node-005
       - default
+      - media-scan
     deploy:
       replicas: 1
       placement:
@@ -126,6 +127,14 @@ services:
           memory: 1G
 
 networks:
+  media-scan:
+    external: true
+    name: studio-clamav_default
   default:
   network-node-005:
     external: true
+
+volumes:
+  clamav-data:
+    external: true
+    name: studio-clamav-signatures

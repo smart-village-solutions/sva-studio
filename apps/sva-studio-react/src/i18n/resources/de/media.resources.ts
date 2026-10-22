@@ -1,4 +1,11 @@
 export const mediaDEResources = {
+  scan: {
+    title: 'Virenprüfung',
+    clean: 'Geprüft – kein Schadsoftware-Fund',
+    infected: 'Schadsoftware-Verdacht – Datei gesperrt',
+    unavailable: 'Prüfung nicht möglich',
+    unknown: 'Kein Prüfergebnis vorhanden',
+  },
   inventory: {
     title: 'Bestand auf Schadsoftware prüfen',
     hint: 'Manuell bis zu 25 Dateien im aktuellen Medienbestand prüfen. Höchstens 64 MiB je Datei. Der Bericht ist eine Momentaufnahme; Dateien bleiben unverändert und nutzbar.',

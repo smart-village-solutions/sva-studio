@@ -1,9 +1,9 @@
 import { useNavigate } from '@tanstack/react-router';
 
-import { Alert, AlertDescription } from '../../../components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '../../../components/ui/alert';
 import { useMediaDetail } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
-import type { IamHttpError } from '../../../lib/iam-api';
+import type { IamHttpError, IamRegisteredMediaAsset } from '../../../lib/iam-api';
 import { getStudioPermissionDenialMessage } from '../../../lib/studio-permission-denial-message';
 import { useAccessDecision } from '../../../providers/effective-access-provider';
 
@@ -34,6 +34,25 @@ const mediaErrorMessage = (error: IamHttpError | null): string => {
     default:
       return t('media.detail.loadError');
   }
+};
+
+const resolveMediaScanResult = (
+  asset: IamRegisteredMediaAsset
+): 'infected' | 'clean' | 'unavailable' | 'unknown' => {
+  const lastError = asset.technical.lastError;
+  const errorCode =
+    typeof lastError === 'object' && lastError !== null && 'code' in lastError
+      ? lastError.code
+      : undefined;
+
+  if (asset.uploadStatus === 'blocked' || errorCode === 'media_scan_infected') return 'infected';
+  if (asset.technical.scanStatus === 'clean') return 'clean';
+  if (
+    errorCode === 'media_scan_unavailable' ||
+    errorCode === 'media_scan_stale' ||
+    errorCode === 'media_scan_incomplete'
+  ) return 'unavailable';
+  return 'unknown';
 };
 
 export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
@@ -87,6 +106,8 @@ export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
     );
   }
 
+  const scanResult = resolveMediaScanResult(mediaApi.asset);
+
   return (
     <section className="space-y-6" data-testid="media-detail-page" data-asset-id={assetId}>
       {mediaApi.mutationError ? (
@@ -108,6 +129,15 @@ export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
             : publicDeliveryDecision.status === 'allowed'
         }
       />
+
+      <Alert
+        role="status"
+        aria-labelledby="media-scan-title"
+        className={scanResult === 'infected' ? 'border-destructive/40 text-destructive' : undefined}
+      >
+        <AlertTitle id="media-scan-title">{t('media.scan.title')}</AlertTitle>
+        <AlertDescription>{t(`media.scan.${scanResult}`)}</AlertDescription>
+      </Alert>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,1fr)]">
         <div className="space-y-6">

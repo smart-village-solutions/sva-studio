@@ -1,4 +1,11 @@
 export const mediaENResources = {
+  scan: {
+    title: 'Virus scan',
+    clean: 'Scanned – no malware detected',
+    infected: 'Suspected malware – file blocked',
+    unavailable: 'Scan could not be completed',
+    unknown: 'No scan result available',
+  },
   inventory: {
     title: 'Scan existing files for malware',
     hint: 'Manually scan up to 25 files in the current media storage. Maximum 64 MiB per file. The report is a snapshot; files remain unchanged and usable.',

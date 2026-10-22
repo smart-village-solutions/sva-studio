@@ -1,0 +1,4 @@
+{
+  "prNumber": 1949,
+  "body": "Staging prüft neue Medienuploads mit dem gemeinsamen ClamAV. Bis zur Anbindung des automatischen Warnalarms gilt die ausdrücklich freigegebene tägliche manuelle Signaturkontrolle; die automatische Freigabesperre bei fehlenden oder veralteten Signaturen bleibt bestehen. Dev und Production bleiben deaktiviert."
+}

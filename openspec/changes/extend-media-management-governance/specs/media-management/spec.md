@@ -110,10 +110,20 @@ Das System SHALL ClamAV gemäß ADR-068 intern betreiben, die offiziellen Signat
 #### Scenario: Aktualitätsbestätigung bleibt aus
 
 - **WHEN** seit der letzten bestätigten Aktualität der tatsächlich geladenen Signaturen 24 Stunden vergangen sind
-- **THEN** warnt das vorhandene Monitoring
+- **THEN** warnt das vorhandene Monitoring; ausschließlich für die am 22.10.2026 ausdrücklich freigegebene vorläufige Staging-Ausnahme erfolgt diese Warnung durch die tägliche manuelle Betriebskontrolle
 - **AND** werden ab 72 Stunden ohne diesen Nachweis keine neuen Uploads mehr freigegeben
 - **AND** bleiben bereits verfügbare Medien nutzbar
 - **AND** setzt weder ein bloßer Scanner-Ping noch ein Updateversuch oder Container-Neustart die Frist zurück
+
+#### Scenario: Vorläufige manuelle Staging-Kontrolle
+
+- **GIVEN** die ausdrücklich freigegebene Staging-Ausnahme und die noch fehlende Metrikübernahme für den automatischen 24-Stunden-Warnalarm
+- **WHEN** der Staging-Upload-Scan aktiviert wird
+- **THEN** prüft der Betrieb täglich Nachweisalter und Übereinstimmung mit der geladenen Revision, dokumentiert das Ergebnis und eskaliert ab 24 Stunden ohne bestätigte Aktualität manuell
+- **AND** bleiben fehlender Nachweis, Scanner-Ausfall und mindestens 72 Stunden alte Signaturen automatische Freigabesperren
+- **AND** wird das Staging-Gate über den regulären Rollout deaktiviert, wenn die tägliche Kontrolle nicht gewährleistet ist; der private Bucket bleibt erhalten
+- **AND** endet die Ausnahme mit nachgewiesener Metrikübernahme und automatischem Alarm
+- **AND** bleiben Dev und Production deaktiviert und Bestandsscans separat freizugeben
 
 #### Scenario: Aktualität wird initial oder erneut bestätigt
 

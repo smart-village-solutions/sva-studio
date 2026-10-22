@@ -1,0 +1,4 @@
+{
+  "prNumber": 1947,
+  "body": "Die Bereitschaftsprüfung des zentralen Virenscanners verarbeitet nun auch die von der Remote-Shell gelieferten CRLF-Zeilenenden korrekt. Fehlende oder verfälschte Bestätigungen werden weiterhin abgewiesen."
+}

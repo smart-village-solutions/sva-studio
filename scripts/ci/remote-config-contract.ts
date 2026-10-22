@@ -126,7 +126,7 @@ export const remoteConfigContract: Readonly<Record<string, RemoteConfigKeyContra
   WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME: { kind: 'secret-reference', required: true },
   ENABLE_OTEL: { kind: 'config', type: 'boolean' },
   MEDIA_SCAN_ENABLED: { kind: 'config', type: 'boolean' },
-  MEDIA_CLAMAV_REPLICAS: { kind: 'config', type: 'string', allowedValues: ['0', '1'] },
+  MEDIA_CLAMAV_HOST: { kind: 'config', type: 'string', allowedValues: ['studio-clamav_clamav'] },
   MEDIA_SCAN_QUARANTINE_BUCKET: { kind: 'config', type: 'string' },
   QUANTUM_ENDPOINT_ID: { kind: 'config', type: 'integer' },
   SVA_ENABLE_MONITORING: { kind: 'config', type: 'boolean' },

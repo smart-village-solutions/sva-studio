@@ -200,6 +200,49 @@ describe('media storage s3 adapter', () => {
     vi.stubEnv('MEDIA_SCAN_QUARANTINE_BUCKET', 'public');
     await expect(port.prepareUpload(input)).rejects.toThrow('media_storage_unavailable');
   });
+  it('accepts only the canonical MinIO private ACL placeholder without owner identifiers', async () => {
+    vi.stubEnv('MEDIA_SCAN_ENABLED', 'true');
+    vi.stubEnv('MEDIA_SCAN_QUARANTINE_BUCKET', 'intake');
+    const privateAcl = {
+      Owner: {},
+      Grants: [{ Grantee: { Type: 'CanonicalUser' }, Permission: 'FULL_CONTROL' }],
+    };
+    const send = vi.fn();
+    const signed = vi.fn(async () => 'https://private.example.test/put');
+    const port = createS3MediaStoragePort(
+      {
+        endpoint: 'https://s3.example.test', region: 'eu-central-1', bucket: 'public',
+        accessKeyId: 'test', secretAccessKey: 'test', signedUrlTtlSeconds: 900,
+      },
+      { client: { send } as unknown as S3Client, getSignedUrl: signed }
+    );
+    const prepare = () => port.prepareUpload({
+      instanceId: 'tenant-a', assetId: 'asset', uploadSessionId: 'session',
+      mediaType: 'image', mimeType: 'image/png', byteSize: 12,
+    });
+    send.mockResolvedValueOnce(privateAcl)
+      .mockRejectedValueOnce(Object.assign(new Error(), { name: 'NoSuchBucketPolicy' }));
+    await expect(prepare()).resolves.toMatchObject({ storageKey: '.quarantine/tenant-a/asset/session' });
+
+    for (const acl of [
+      { Owner: {}, Grants: [{ Grantee: { Type: 'CanonicalUser', ID: 'other' }, Permission: 'FULL_CONTROL' }] },
+      { Owner: {}, Grants: [...privateAcl.Grants, ...privateAcl.Grants] },
+      { Owner: {}, Grants: [{ Grantee: { Type: 'CanonicalUser' }, Permission: 'READ' }] },
+      { Owner: {}, Grants: [{ Grantee: { Type: 'CanonicalUser', URI: 'public' }, Permission: 'FULL_CONTROL' }] },
+      { Owner: {}, Grants: [{ Grantee: { Type: 'Group', URI: 'public' }, Permission: 'FULL_CONTROL' }] },
+      { Owner: {}, Grants: [] },
+    ]) {
+      send.mockResolvedValueOnce(acl);
+      await expect(prepare()).rejects.toThrow('media_storage_unavailable');
+    }
+    send.mockResolvedValueOnce(privateAcl).mockResolvedValueOnce({ Policy: '{}' });
+    await expect(prepare()).rejects.toThrow('media_storage_unavailable');
+    send.mockResolvedValueOnce(privateAcl)
+      .mockRejectedValueOnce(Object.assign(new Error(), { name: 'AccessDenied' }));
+    await expect(prepare()).rejects.toThrow('media_storage_unavailable');
+    expect(signed).toHaveBeenCalledOnce();
+  });
+
   beforeEach(() => {
     vi.unstubAllEnvs();
     listExternalInterfaceRecordsMock.mockReset();

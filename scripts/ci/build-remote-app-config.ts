@@ -112,10 +112,10 @@ export const buildRemoteAppConfig = (input: {
     );
   for (const [key, value] of merged) validateRemoteConfigValue(input.environment, key, value);
   if (merged.get('MEDIA_SCAN_ENABLED') === 'true' &&
-      (merged.get('MEDIA_CLAMAV_REPLICAS') !== '1' || !merged.get('MEDIA_SCAN_QUARANTINE_BUCKET'))) {
+      (!merged.get('MEDIA_CLAMAV_HOST') || !merged.get('MEDIA_SCAN_QUARANTINE_BUCKET'))) {
     fail(input.environment, 'PROMOTE_CONFIG_INVALID',
-      'Aktiver Medien-Scan benötigt eine Scanner-Replik und einen privaten Eingangs-Bucket.',
-      'MEDIA_CLAMAV_REPLICAS=1 und MEDIA_SCAN_QUARANTINE_BUCKET im freigegebenen Remote-Profil setzen.');
+      'Aktiver Medien-Scan benötigt den gemeinsamen Scanner-Host und einen privaten Eingangs-Bucket.',
+      'MEDIA_CLAMAV_HOST=studio-clamav_clamav und MEDIA_SCAN_QUARANTINE_BUCKET im freigegebenen Remote-Profil setzen.');
   }
   const keys = [...merged.keys()].sort();
   const source = `${keys.map((key) => `${key}=${merged.get(key) ?? ''}`).join('\n')}\n`;

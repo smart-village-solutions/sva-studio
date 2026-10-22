@@ -1,0 +1,4 @@
+{
+  "prNumber": 1944,
+  "body": "Die Bereitstellung des gemeinsamen ClamAV-Dienstes verwendet den bestehenden Quantum-Renderer und vermeidet dadurch ungültige leere Compose-Einträge."
+}

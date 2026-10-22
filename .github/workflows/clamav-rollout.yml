@@ -59,7 +59,7 @@ jobs:
           for attempt in $(seq 1 120); do
             if quantum-cli exec --endpoint "${QUANTUM_ENDPOINT}" \
               --stack studio-clamav --service clamav \
-              --command "sh -ec 'echo ${health_probe_base64} | base64 -d | sh -e && echo STUDIO_CLAMAV_READY'" \
+              --command "sh -ec 'echo ${health_probe_base64} | base64 -d | sh -e && echo STUDIO_CLAMAV_READY && sleep 1'" \
               2>/dev/null | tr -d '\000' | sed 's/\^@//g' \
               | grep -x 'STUDIO_CLAMAV_READY' > /dev/null; then
               if quantum-cli ps --endpoint "${QUANTUM_ENDPOINT}" \

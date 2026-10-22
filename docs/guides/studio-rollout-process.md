@@ -51,6 +51,12 @@ Der zentrale Agent akzeptiert nur den engen, OIDC- und HMAC-gesicherten Vertrag 
 
 `Promote` trennt Workflow-Steuerung und Release-Quellstand durch zwei vollständige Git-Checkouts. Der normale Workspace enthält `change_head` mit vollständiger Historie; `${{ github.workflow_sha }}` liegt mit Tiefe 1 unter `.promote-controller/`. Fehlerklassifikation, Evidenz und die controllerseitigen Remote- und Konvergenzprüfungen laufen aus dem Controller-Checkout. Releaseverträge wie Image- und Deploy-Contract sowie Compose-Dateien, Runtime-Profile, Diff-Auswertung, One-shot-Jobs und Deploy-Render bleiben an den Release-Workspace gebunden. Ein fehlgeschlagener Release-Checkout wird fail-closed im Source-Contract klassifiziert, nachdem Controller und dessen Node-Runtime verfügbar sind. Abhängigkeiten werden genau einmal im Release-Workspace installiert; eine manuelle Controller-Dateiliste oder ein zweiter Installationsschritt existiert nicht.
 
+## Gemeinsamer ClamAV-Dienst als vorbereitende Infrastruktur
+
+Der manuell gestartete Workflow `ClamAV Rollout` richtet ausschließlich den dedizierten Stack `studio-clamav` auf dem SVA-Endpoint ein. Er verwendet das geschützte Environment `prod`, das im Compose-Vertrag gepinnte Scanner-Image, genau eine Replik und persistente Signaturen. Es wird kein Port veröffentlicht. Der Workflow wartet auf geladene Signaturen und genau einen laufenden Scanner; seine Status-Evidenz enthält keine Service-Environments oder Zugangsdaten.
+
+Dieser Infrastruktur-Schritt aktiviert keinen Upload-Scan und verändert keine App-Stacks. Die anschließende Anbindung und Aktivierung einer Umgebung bleiben an deren versionierte Konfiguration, Betriebsabnahme und den nachfolgend definierten Build-/Promote-Pfad gebunden. Bei einer ersten Einführung wird der Scanner vor den Verbraucheränderungen bereitgestellt, damit automatische Dev-Promotes nicht auf ein fehlendes Netzwerk oder Signaturvolume treffen.
+
 ## Phase 1: Image bauen und Dev aktualisieren
 
 Ein Push nach `main` startet [Build](../../.github/workflows/build.yml):

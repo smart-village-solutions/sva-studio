@@ -1,6 +1,11 @@
 services:
   clamav:
+    extends:
+      file: deploy/clamav-stack.yaml
+      service: clamav
     platform: linux/amd64
+    deploy:
+      replicas: ${MEDIA_CLAMAV_REPLICAS:-0}
   app:
     build: .
     ports:

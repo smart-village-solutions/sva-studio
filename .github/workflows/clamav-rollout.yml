@@ -1,0 +1,84 @@
+name: ClamAV Rollout
+run-name: Roll out shared Studio ClamAV
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-clamav-rollout
+  cancel-in-progress: false
+
+jobs:
+  rollout:
+    if: github.ref == 'refs/heads/main'
+    name: roll out shared scanner
+    environment: prod
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: checkout
+        uses: actions/checkout@v7
+
+      - name: render dedicated scanner stack
+        run: |
+          set -euo pipefail
+          docker compose --env-file /dev/null --project-name studio-clamav \
+            -f deploy/clamav-stack.yaml config --format json \
+            | jq 'del(.name) + {version: "3.8"}' > "${RUNNER_TEMP}/clamav-stack.json"
+          jq -e '.services | keys == ["clamav"]' "${RUNNER_TEMP}/clamav-stack.json"
+
+      - name: setup quantum-cli
+        uses: hostwithquantum/setup-quantum-cli@v2.0.0
+        with:
+          api-key: ${{ secrets.QUANTUM_API_KEY }}
+          version: 3.2.1
+
+      - name: deploy dedicated scanner stack
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+        run: |
+          set -euo pipefail
+          quantum-cli stacks deploy --file "${RUNNER_TEMP}/clamav-stack.json" \
+            --stack studio-clamav --endpoint "${QUANTUM_ENDPOINT}"
+
+      - name: wait for loaded signatures and one running scanner
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+        run: |
+          set -euo pipefail
+          health_probe_base64="$(jq -r '.services.clamav.healthcheck.test[1] | gsub("\\$\\$"; "$")' "${RUNNER_TEMP}/clamav-stack.json" | base64 -w0)"
+          for attempt in $(seq 1 120); do
+            if quantum-cli exec --endpoint "${QUANTUM_ENDPOINT}" \
+              --stack studio-clamav --service clamav \
+              --command "sh -ec 'echo ${health_probe_base64} | base64 -d | sh -e && echo STUDIO_CLAMAV_READY'" \
+              2>/dev/null | tr -d '\000' | sed 's/\^@//g' \
+              | grep -x 'STUDIO_CLAMAV_READY' > /dev/null; then
+              if quantum-cli ps --endpoint "${QUANTUM_ENDPOINT}" \
+                --stack studio-clamav --service clamav --output json \
+                | jq -e '.stacks["studio-clamav"][]
+                  | select(.service.Spec.Name == "studio-clamav_clamav")
+                  | {service: .service.Spec.Name,
+                     image: .service.Spec.TaskTemplate.ContainerSpec.Image,
+                     replicas: .service.Spec.Mode.Replicated.Replicas,
+                     running: ([.tasks[] | select(.Status.State == "running")] | length)}
+                  | select(.replicas == 1 and .running == 1)' \
+                > "${RUNNER_TEMP}/clamav-state.json"; then
+                cat "${RUNNER_TEMP}/clamav-state.json"
+                exit 0
+              fi
+            fi
+            sleep 15
+          done
+          echo 'Shared scanner did not become ready within 30 minutes.' >&2
+          exit 1
+
+      - name: retain scanner state
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: shared-clamav-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/clamav-state.json
+          if-no-files-found: ignore

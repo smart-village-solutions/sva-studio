@@ -1,0 +1,4 @@
+{
+  "prNumber": 1943,
+  "body": "Für Dev, Staging und Production wird ein gemeinsamer ClamAV-Dienst vorbereitet. Signaturen und Scanner-Speicher werden dadurch nur einmal benötigt. Die Aktivierung des Upload-Scans erfolgt weiterhin erst nach Abnahme der jeweiligen Umgebung."
+}

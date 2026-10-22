@@ -1,6 +1,8 @@
 /** Session-authorized catalog operations and their local editor transport. */
 import {
   APP_TRANSLATION_MAX_LOCALES,
+  deepLTargetCode,
+  readDeepLSettings,
   isAppTranslationLocale,
   AppTranslationError,
   type CatalogScope,
@@ -24,6 +26,13 @@ import { withIamAppDb } from './db.js';
 import { readConfiguredPluginTenantAccess } from './plugin-tenant-lifecycle/access.js';
 import { getDeepLSetupStatus, readDeepLSetupStatus } from './app-translations-deepl.js';
 
+import {
+  catalogTranslationRequest,
+  startCatalogTranslation,
+  readCatalogTranslationJob,
+  catalogTranslationStatus,
+} from './app-translations-jobs.js';
+
 const logger = createSdkLogger({ component: 'app-translations' });
 const contractId = z.string().regex(/^[a-z][a-z0-9-]{0,63}$/);
 const expectedRevision = z.string().regex(/^(0|[1-9][0-9]{0,17})$/);
@@ -37,6 +46,8 @@ const textFields = {
 };
 const operationSchema = z.discriminatedUnion('operation', [
   z.object({ operation: z.literal('overview') }).strict(),
+  catalogTranslationRequest,
+  z.object({ operation: z.literal('translationStatus'), contractId }).strict(),
   z.object({ operation: z.literal('configureLocales'), contractId, expectedRevision }).strict(),
   z.object({ operation: z.literal('read'), contractId }).strict(),
   z.object({ operation: z.literal('readRelease'), releaseId: z.uuid() }).strict(),
@@ -68,7 +79,7 @@ type Operation = z.infer<typeof operationSchema>;
 const actionFor = (op: Operation): string =>
   op.operation === 'import'
     ? 'app-translations.manifestImport'
-    : ['overview', 'read', 'readRelease'].includes(op.operation)
+    : ['overview', 'read', 'readRelease', 'translationStatus'].includes(op.operation)
       ? 'app-translations.catalog.read'
       : op.operation === 'seal'
         ? 'app-translations.catalog.publish'
@@ -77,9 +88,13 @@ const dispatch = (
   repo: AppTranslationRepository,
   op: Operation,
   sourceOnly = false,
-  allowedLocales: readonly AppTranslationLocale[] = ['de']
+  allowedLocales: readonly AppTranslationLocale[] = ['de'],
+  targetCodes: Readonly<Record<string, string>> = {}
 ) => {
   switch (op.operation) {
+    case 'translate':
+    case 'translationStatus':
+      throw new AppTranslationError('catalog_forbidden');
     case 'configureLocales':
       return repo.configureLocales(op.contractId, op.expectedRevision, allowedLocales);
     case 'overview':
@@ -95,13 +110,26 @@ const dispatch = (
     case 'changeBase':
       return repo.changeBase(op.contractId, op.expectedRevision, op.baseReleaseId, op.locales);
     case 'edit':
-      return repo.editText(op.contractId, op.expectedRevision, op.locale, op.key, op.value);
+      return repo.editText(
+        op.contractId,
+        op.expectedRevision,
+        op.locale,
+        op.key,
+        op.value,
+        targetCodes[op.locale]
+      );
     case 'reset':
       return repo.resetOverride(op.contractId, op.expectedRevision, op.locale, op.key);
     case 'confirm':
-      return repo.confirmCorrection(op.contractId, op.expectedRevision, op.locale, op.key);
+      return repo.confirmCorrection(
+        op.contractId,
+        op.expectedRevision,
+        op.locale,
+        op.key,
+        targetCodes[op.locale]
+      );
     case 'seal':
-      return repo.seal(op.contractId, op.expectedRevision, sourceOnly);
+      return repo.seal(op.contractId, op.expectedRevision, sourceOnly, targetCodes);
   }
 };
 const response = (status: number, value: unknown) =>
@@ -119,10 +147,12 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
     const sourceOnly = mode === 'source';
     if (
       sourceOnly &&
-      (op.operation === 'configureLocales' ||
+      (op.operation === 'translate' ||
+        op.operation === 'translationStatus' ||
+        op.operation === 'configureLocales' ||
         op.operation === 'confirm' ||
         ('locale' in op && op.locale !== 'de') ||
-        ('locales' in op && (op.locales.length !== 1 || op.locales[0] !== 'de')))
+        ('locales' in op && op.locales && (op.locales.length !== 1 || op.locales[0] !== 'de')))
     )
       return response(403, { error: 'catalog_forbidden' });
     if (
@@ -135,7 +165,7 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
     const action = sourceOnly
       ? actionFor(op).replace('app-translations.', 'app-texts.')
       : actionFor(op);
-    const isRead = ['overview', 'read', 'readRelease'].includes(op.operation);
+    const isRead = ['overview', 'read', 'readRelease', 'translationStatus'].includes(op.operation);
     if (!isRead && request.method !== 'POST')
       return response(405, { error: 'invalid_catalog_method' });
     if (!isRead && validateCsrf(request)) return response(403, { error: 'catalog_forbidden' });
@@ -212,6 +242,7 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
           if (!active.rows[0]) throw new AppTranslationError('catalog_forbidden');
         }
         let setup: DeepLSetupStatus | undefined;
+        let targetCodes: Record<string, string> = {};
         if (scope.kind === 'municipal' && !sourceOnly) {
           await client.query("SELECT set_config('app.instance_id', $1, true)", [scope.instanceId]);
           if (!isRead) {
@@ -227,6 +258,16 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
             [scope.instanceId]
           );
           setup = getDeepLSetupStatus(provider.rows[0] ?? null);
+          const settings = provider.rows[0]
+            ? readDeepLSettings(provider.rows[0].publicConfig)
+            : undefined;
+          if (settings)
+            targetCodes = Object.fromEntries(
+              settings.selectedLocales.map((locale) => [
+                locale,
+                deepLTargetCode(locale, settings.englishVariant, settings.availableLanguages),
+              ])
+            );
           if (!isRead && !setup.ready) throw new AppTranslationError('catalog_setup_required');
         }
         const repo = await createAppTranslationRepository(client, scope);
@@ -237,6 +278,7 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
         if (
           !sourceOnly &&
           'locales' in op &&
+          op.locales &&
           op.locales.some((locale) => !allowedLocales.includes(locale))
         )
           throw new AppTranslationError('catalog_forbidden');
@@ -245,7 +287,16 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
           if (draft.supportedLocales.some((locale) => !allowedLocales.includes(locale)))
             throw new AppTranslationError('catalog_conflict');
         }
-        const value = await dispatch(repo, op, sourceOnly, allowedLocales);
+        if (op.operation === 'translate' || op.operation === 'translationStatus') {
+          if (scope.kind !== 'municipal' || sourceOnly)
+            throw new AppTranslationError('catalog_forbidden');
+          return op.operation === 'translate'
+            ? startCatalogTranslation(client, scope, ctx.user.id, op)
+            : catalogTranslationStatus(
+                await readCatalogTranslationJob(client, scope, op.contractId)
+              );
+        }
+        const value = await dispatch(repo, op, sourceOnly, allowedLocales, targetCodes);
         if (sourceOnly) {
           const onlyGerman = (locales: readonly string[]) =>
             locales.length === 1 && locales[0] === 'de';
@@ -256,6 +307,7 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
                 ...value.draft,
                 supportedLocales: ['de'],
                 valuesByLocale: { de: value.draft.valuesByLocale.de ?? {} },
+                machineStandardValuesByLocale: {},
               },
               values: { de: value.values.de ?? {} },
               baseCatalogs: { de: value.baseCatalogs.de },
@@ -265,19 +317,20 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
               ...value,
               supportedLocales: ['de'],
               valuesByLocale: { de: value.valuesByLocale.de ?? {} },
+              machineStandardValuesByLocale: {},
             };
           if ('bases' in value)
             return {
               ...value,
               catalogs: value.catalogs.map((row) => ({ ...row, supportedLocales: ['de'] })),
-              releases: value.releases.filter((row) => onlyGerman(row.supportedLocales)),
               bases: value.bases.filter((row) => onlyGerman(row.supportedLocales)),
             };
-          if (!onlyGerman(value.supportedLocales))
+          if (op.operation !== 'readRelease' && !onlyGerman(value.supportedLocales))
             throw new AppTranslationError('catalog_forbidden');
         }
         if (
           !sourceOnly &&
+          op.operation !== 'readRelease' &&
           'state' in value &&
           value.supportedLocales.some((locale) => !allowedLocales.includes(locale))
         )
@@ -285,6 +338,11 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
         if (!sourceOnly && 'valuesByLocale' in value)
           return {
             ...value,
+            machineStandardValuesByLocale: Object.fromEntries(
+              Object.entries(value.machineStandardValuesByLocale ?? {}).filter(([locale]) =>
+                allowedLocales.includes(locale)
+              )
+            ),
             supportedLocales: value.supportedLocales.filter((locale) =>
               allowedLocales.includes(locale)
             ),
@@ -300,9 +358,6 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
             allowedLocales: [...allowedLocales],
             setup,
             canManageInterfaces,
-            releases: value.releases.filter((row) =>
-              row.supportedLocales.every((locale) => allowedLocales.includes(locale))
-            ),
           };
         if (!sourceOnly && 'draft' in value) {
           const selected = value.draft.supportedLocales.filter((locale) =>
@@ -311,11 +366,17 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
           return {
             ...value,
             allowedLocales,
+            targetCodes,
             setup,
             canManageInterfaces,
             draft: {
               ...value.draft,
               supportedLocales: selected,
+              machineStandardValuesByLocale: Object.fromEntries(
+                Object.entries(value.draft.machineStandardValuesByLocale ?? {}).filter(([locale]) =>
+                  selected.includes(locale)
+                )
+              ),
               valuesByLocale: Object.fromEntries(
                 Object.entries(value.draft.valuesByLocale).filter(([locale]) =>
                   selected.includes(locale as (typeof selected)[number])
@@ -375,6 +436,7 @@ export const readAppTranslationsLocalReadiness = async (
         AND to_regclass('iam.app_translation_manifests') IS NOT NULL
         AND to_regclass('iam.app_translation_catalog_drafts') IS NOT NULL
         AND to_regclass('iam.app_translation_catalog_releases') IS NOT NULL
+        AND EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='iam' AND table_name='app_translation_catalog_drafts' AND column_name='machine_standard_values_by_locale')
         AND EXISTS(SELECT 1 FROM iam.external_interface_types WHERE type_key='deepl') AS ready`,
       [instanceId]
     );
@@ -388,7 +450,7 @@ export const appTranslationCatalogHandler = async (request: Request): Promise<Re
   if (request.method === 'GET') {
     const params = new URL(request.url).searchParams;
     const operation = params.get('operation') ?? 'overview';
-    if (!['overview', 'read', 'readRelease'].includes(operation))
+    if (!['overview', 'read', 'readRelease', 'translationStatus'].includes(operation))
       return response(405, { error: 'invalid_catalog_method' });
     return executeAppTranslationOperation(
       request,

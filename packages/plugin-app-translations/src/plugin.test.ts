@@ -6,7 +6,11 @@ import {
   definePluginManifest,
 } from '@sva/plugin-sdk';
 import manifest from '../plugin.manifest.json';
-import { appTranslationsPlugin, APP_TRANSLATIONS_LIFECYCLE_JOB } from './descriptor.js';
+import {
+  appTranslationsPlugin,
+  APP_TRANSLATIONS_LIFECYCLE_JOB,
+  APP_TRANSLATIONS_CATALOG_JOB,
+} from './descriptor.js';
 import { createPluginJobExecutionHandlers } from './server.js';
 import type { PluginJobHandlerContext, PluginManifest } from '@sva/plugin-sdk';
 
@@ -17,6 +21,21 @@ const context = (operation: string) =>
     throwIfCancellationRequested: vi.fn(),
   }) as unknown as PluginJobHandlerContext;
 describe('local multilingual module', () => {
+  it('registers a dedicated cancellable catalog job and delegates to the secret-free host callback', async () => {
+    expect(
+      appTranslationsPlugin.jobTypes?.find((job) => job.jobTypeId === APP_TRANSLATIONS_CATALOG_JOB)
+    ).toMatchObject({ startPolicy: 'dedicated', supportsCancellation: true });
+    const translateCatalog = vi
+      .fn()
+      .mockResolvedValue({ resultPayload: { summary: { processedItems: 1 } } });
+    const handler = createPluginJobExecutionHandlers({
+      readLocalReadiness: vi.fn(),
+      translateCatalog,
+    })[APP_TRANSLATIONS_CATALOG_JOB]!;
+    const input = context('unused');
+    await handler(input);
+    expect(translateCatalog).toHaveBeenCalledWith(input);
+  });
   it('registers namespaced IAM and guarded editor metadata without remote APIs', () => {
     const registry = createBuildTimeRegistry({ plugins: [appTranslationsPlugin] });
     expect(registry.pluginRegistry.has('app-translations')).toBe(true);

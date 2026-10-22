@@ -1,8 +1,9 @@
 /** Local lifecycle handler. The host injects status only, never provider secrets. */
 import type { PluginJobExecutionHandler } from '@sva/plugin-sdk';
-import { APP_TRANSLATIONS_LIFECYCLE_JOB } from './descriptor.js';
+import { APP_TRANSLATIONS_LIFECYCLE_JOB, APP_TRANSLATIONS_CATALOG_JOB } from './descriptor.js';
 
 export type AppTranslationsLocalRuntime = {
+  readonly translateCatalog?: PluginJobExecutionHandler;
   readonly readLocalReadiness: (
     instanceId: string
   ) => Promise<{ readonly schemaReady: boolean; readonly providerConfigured: boolean }>;
@@ -10,6 +11,13 @@ export type AppTranslationsLocalRuntime = {
 export const createPluginJobExecutionHandlers = (
   runtime: AppTranslationsLocalRuntime
 ): Readonly<Record<string, PluginJobExecutionHandler>> => ({
+  [APP_TRANSLATIONS_CATALOG_JOB]: async (context) => {
+    if (!runtime.translateCatalog)
+      throw Object.assign(new Error('catalog_unavailable'), {
+        cause: { retry: { kind: 'terminal' } },
+      });
+    return runtime.translateCatalog(context);
+  },
   [APP_TRANSLATIONS_LIFECYCLE_JOB]: async (context) => {
     const operation = context.tenantLifecycle?.operation;
     if (

@@ -5270,6 +5270,9 @@ GRANT SELECT, INSERT ON iam.app_translation_manifests, iam.app_translation_catal
 GRANT SELECT, INSERT, UPDATE ON iam.app_translation_catalog_drafts TO iam_app;
 
 
+-- Maschinelle Standardwerte bleiben unter eigenen Sprachkorrekturen, Migration 0109
+ALTER TABLE iam.app_translation_catalog_drafts ADD COLUMN machine_standard_values_by_locale JSONB NOT NULL DEFAULT '{}' CHECK (jsonb_typeof(machine_standard_values_by_locale) = 'object');
+
 -- Instanzgebundene DeepL-Konfiguration, Migration 0108
 CREATE UNIQUE INDEX idx_instance_deepl_interface ON iam.instance_external_interfaces(instance_id) WHERE type_key='deepl';
 

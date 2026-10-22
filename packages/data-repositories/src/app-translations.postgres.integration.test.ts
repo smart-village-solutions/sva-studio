@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { Pool, type PoolClient } from 'pg';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import {
+  catalogDigest,
   type CatalogScope,
   type CatalogManifest,
   type CatalogRelease,
@@ -69,6 +70,9 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
   beforeAll(async () => {
     if (!pool || !url || !/^\/[^/]+_test$/.test(new URL(url).pathname))
       throw new Error('disposable_test_database_required');
+    await pool.query(
+      `INSERT INTO iam.external_interface_types(type_key,owner_kind,owner_id,display_name,category,public_schema_json,secret_schema_json,status_check_kind) VALUES ('deepl','host','host','DeepL','api','{}','{}','deepl') ON CONFLICT DO NOTHING`
+    );
     await pool.query(
       `INSERT INTO iam.instances(id, display_name, primary_hostname, tenant_admin_client_id, auth_realm, auth_client_id) VALUES ($1,'Catalog A',$3,'tenant-admin',$1,'studio'), ($2,'Catalog B',$4,'tenant-admin',$2,'studio')`,
       [tenantA, tenantB, `${tenantA}.test`, `${tenantB}.test`]
@@ -212,6 +216,13 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
     await transaction(a, (repo) => repo.createMunicipalDraft(globalRelease.id, ['de', 'en']));
     const globalOverview = await transaction(global, (repo) => repo.overview());
     expect(globalOverview.catalogs.some((row) => row.contractId === contractId)).toBe(true);
+    expect(globalOverview.releases).toContainEqual(
+      expect.objectContaining({
+        id: globalRelease.id,
+        draftRevision: globalRelease.draftRevision,
+        supportedLocales: ['de', 'en'],
+      })
+    );
     const own = await transaction(a, (repo) => repo.overview());
     expect(own.catalogs.map((row) => row.contractId)).toContain(contractId);
     expect(own.bases).toContainEqual(expect.objectContaining({ id: globalRelease.id }));
@@ -266,13 +277,19 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
       expect(sealed.catalogs.en!.values.title).toBe('Send a report');
     });
   });
-  it('protects manual corrections after actual source changes and never writes partial sets', async () => {
+  it('protects legacy manual corrections after actual source changes and never writes partial sets', async () => {
     await transaction(b, (repo) => repo.createMunicipalDraft(globalRelease.id, ['de', 'en']));
     let revision = await transaction(
       b,
       async (repo) =>
         (await repo.editText(contractId, '1', 'en', 'title', 'Send your report')).draftRevision
     );
+    await transaction(b, async (_repo, client) => {
+      await client.query(
+        "UPDATE iam.app_translation_catalog_drafts SET values_by_locale=values_by_locale #- '{en,title,sourceKind}' WHERE contract_id=$1",
+        [contractId]
+      );
+    });
     revision = await transaction(
       b,
       async (repo) =>
@@ -542,5 +559,139 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
       expect(release.catalogs['pt-BR']?.values.title).toBe('Title pt-BR');
       expect(release.catalogs.de?.values.title).toBe('Meldung senden');
     });
+  });
+  it('blocks an unbound legacy English correction and seals it after explicit variant confirmation', async () => {
+    const id = `${contractId}-legacy`;
+    let draft = await transaction(global, (repo) =>
+      repo.importManifest({ ...manifest, contractId: id }, '0', ['de', 'en'])
+    );
+    for (const [key, value] of [
+      ['title', 'Send a report'],
+      ['greeting', 'Hello {{name}}'],
+    ] as const)
+      draft = await transaction(global, (repo) =>
+        repo.editText(id, draft.draftRevision, 'en', key, value)
+      );
+    const targets = { en: 'en-GB' };
+    await expect(
+      transaction(global, (repo) => repo.seal(id, draft.draftRevision, false, targets))
+    ).rejects.toThrow('catalog_review_required');
+    for (const key of ['title', 'greeting'])
+      draft = await transaction(global, (repo) =>
+        repo.confirmCorrection(id, draft.draftRevision, 'en', key, 'en-GB')
+      );
+    const release = await transaction(global, (repo) =>
+      repo.seal(id, draft.draftRevision, false, targets)
+    );
+    expect(release.catalogs.en?.values.title).toBe('Send a report');
+    expect(release.supportedLocales).toEqual(['de', 'en']);
+    const overview = await transaction(global, (repo) => repo.overview());
+    expect(overview.releases).toContainEqual(
+      expect.objectContaining({
+        id: release.id,
+        draftRevision: draft.draftRevision,
+        supportedLocales: ['de', 'en'],
+      })
+    );
+  });
+  it('keeps machine standards beneath manual corrections and applies each batch atomically', async () => {
+    const id = `${contractId}-machine`;
+    const basis = await transaction(global, async (repo) => {
+      const draft = await repo.importManifest({ ...manifest, contractId: id }, '0', ['de']);
+      return repo.seal(id, draft.draftRevision);
+    });
+    let draft = await transaction(a, (repo) => repo.createMunicipalDraft(basis.id, ['de', 'fr']));
+    const sourceDigest = await catalogDigest('Meldung senden');
+    const standard = {
+      locale: 'fr',
+      key: 'title',
+      value: 'Envoyer',
+      sourceKind: 'standard' as const,
+      sourceDigest,
+      targetCode: 'fr',
+    };
+    draft = await transaction(a, (repo) =>
+      repo.applyMachineBatch(id, draft.draftRevision, [standard])
+    );
+    draft = await transaction(a, (repo) =>
+      repo.editText(id, draft.draftRevision, 'fr', 'title', 'Ma correction', 'fr')
+    );
+    const own = draft.valuesByLocale.fr!.title!;
+    await expect(
+      transaction(a, (repo) => repo.applyMachineBatch(id, draft.draftRevision, [standard]))
+    ).rejects.toThrow('catalog_conflict');
+    expect((await transaction(a, (repo) => repo.readEffective(id))).values.fr!.title!.value).toBe(
+      'Ma correction'
+    );
+    draft = await transaction(a, (repo) =>
+      repo.editText(id, draft.draftRevision, 'de', 'title', 'Eigener Text')
+    );
+    const municipalDigest = await catalogDigest('Eigener Text');
+    const overrideDigest = await catalogDigest(own);
+    draft = await transaction(a, (repo) =>
+      repo.applyMachineBatch(id, draft.draftRevision, [
+        {
+          ...standard,
+          value: 'Nouvelle traduction',
+          sourceKind: 'municipal',
+          sourceDigest: municipalDigest,
+          overrideDigest,
+        },
+      ])
+    );
+    expect(draft.valuesByLocale.fr!.title!.origin).toBe('machine');
+    draft = await transaction(a, (repo) =>
+      repo.resetOverride(id, draft.draftRevision, 'fr', 'title')
+    );
+    expect((await transaction(a, (repo) => repo.readEffective(id))).values.fr!.title!.value).toBe(
+      'Envoyer'
+    );
+    draft = await transaction(a, (repo) =>
+      repo.editText(id, draft.draftRevision, 'fr', 'title', 'Encore', 'fr')
+    );
+    const replacedDigest = await catalogDigest(draft.valuesByLocale.fr!.title);
+    draft = await transaction(a, (repo) =>
+      repo.applyMachineBatch(id, draft.draftRevision, [
+        { ...standard, overrideDigest: replacedDigest },
+      ])
+    );
+    expect(draft.valuesByLocale.fr?.title).toBeUndefined();
+    expect(draft.machineStandardValuesByLocale?.fr?.title?.origin).toBe('machine');
+    const before = draft;
+    await expect(
+      transaction(a, (repo) =>
+        repo.applyMachineBatch(id, draft.draftRevision, [
+          standard,
+          { ...standard, key: 'greeting', value: 'Token missing' },
+        ])
+      )
+    ).rejects.toThrow('invalid_catalog');
+    expect(await transaction(a, (repo) => repo.loadDraft(id))).toEqual(before);
+    draft = await transaction(a, (repo) =>
+      repo.editText(id, draft.draftRevision, 'de', 'title', 'Eigener Text')
+    );
+    expect((await transaction(a, (repo) => repo.readEffective(id))).values.fr!.title!.value).toBe(
+      'Envoyer'
+    );
+    const migration = await readFile(
+      new URL('../../data/migrations/0109_app_translation_machine_standards.sql', import.meta.url),
+      'utf8'
+    );
+    const [up, down] = migration.split('-- +goose Down');
+    const preserved = await pool!.query(
+      `SELECT values_by_locale, machine_standard_values_by_locale FROM iam.app_translation_catalog_drafts WHERE id=$1`,
+      [draft.id]
+    );
+    await pool!.query(down!);
+    await pool!.query(up!);
+    expect(
+      (
+        await pool!.query(
+          `SELECT values_by_locale, machine_standard_values_by_locale FROM iam.app_translation_catalog_drafts WHERE id=$1`,
+          [draft.id]
+        )
+      ).rows
+    ).toEqual(preserved.rows);
+    expect(await transaction(global, (repo) => repo.loadRelease(basis.id))).toEqual(basis);
   });
 });

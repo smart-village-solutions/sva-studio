@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { CatalogEditorData } from '@sva/plugin-sdk/app-translations';
 import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
-import { CatalogEditor } from './catalog.editor.js';
+import { catalogDigest } from '@sva/plugin-sdk/app-translations';
+import { CatalogEditor, catalogSealIssues } from './catalog.editor.js';
 
 registerPluginTranslationResolver((key) => key);
 afterEach(cleanup);
@@ -42,6 +43,269 @@ const data: CatalogEditorData = {
   baseCatalogs: {},
 };
 describe('catalog editor', () => {
+  it('identifies missing and invalid translations without blocking a German-only snapshot', async () => {
+    const catalog = structuredClone(data);
+    expect(await catalogSealIssues(catalog, false)).toEqual([
+      { locale: 'en', key: 'greeting', reason: 'missing' },
+    ]);
+    catalog.values.en = {
+      greeting: {
+        origin: 'default',
+        sourceDigest: '',
+        confirmedSourceDigest: null,
+        value: 'Missing required placeholder',
+      },
+    };
+    expect(await catalogSealIssues(catalog, false)).toEqual([
+      { locale: 'en', key: 'greeting', reason: 'invalid_catalog' },
+    ]);
+    expect(await catalogSealIssues(catalog, true)).toEqual([]);
+  });
+  it('offers German translation only on a saved municipal German override', () => {
+    const catalog = structuredClone(data);
+    catalog.draft.scope = { kind: 'municipal', instanceId: 'tenant', organizationId: 'org' };
+    const props = {
+      canWrite: true,
+      sourceOnly: false,
+      busy: false,
+      mutate: vi.fn(),
+      onDirtyChange: vi.fn(),
+      translate: vi.fn(),
+    };
+    const { rerender } = render(<CatalogEditor {...props} data={catalog} />);
+    expect(
+      screen.queryByRole('group', { name: 'appTranslations.ui.transferMunicipal' })
+    ).toBeNull();
+    catalog.draft.valuesByLocale.de = {
+      greeting: {
+        value: 'Unser Hallo {{name}}',
+        origin: 'manual',
+        sourceDigest: '',
+        confirmedSourceDigest: null,
+      },
+    };
+    catalog.values.de = catalog.draft.valuesByLocale.de;
+    rerender(<CatalogEditor {...props} data={catalog} />);
+    expect(
+      screen.getByRole('group', { name: 'appTranslations.ui.transferMunicipal' })
+    ).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('appTranslations.ui.language'), {
+      target: { value: 'en' },
+    });
+    expect(
+      screen.queryByRole('group', { name: 'appTranslations.ui.transferMunicipal' })
+    ).toBeNull();
+    fireEvent.change(screen.getByLabelText('appTranslations.ui.language'), {
+      target: { value: 'de' },
+    });
+    expect(
+      screen.getByRole('group', { name: 'appTranslations.ui.transferMunicipal' })
+    ).toBeTruthy();
+  });
+  it('separates selected target languages from each manual overwrite confirmation and resets consent when selection changes', async () => {
+    const catalog = structuredClone(data);
+    catalog.draft.scope = { kind: 'municipal', instanceId: 'tenant', organizationId: 'org' };
+    catalog.draft.supportedLocales = ['de', 'en', 'fr', 'es'];
+    const own = {
+      value: 'Unser Hallo {{name}}',
+      origin: 'manual' as const,
+      sourceDigest: '',
+      confirmedSourceDigest: null,
+    };
+    catalog.draft.valuesByLocale = {
+      de: { greeting: own },
+      en: { greeting: { ...own, value: 'My correction {{name}}' } },
+      fr: { greeting: { ...own, value: 'Ma correction {{name}}' } },
+    };
+    catalog.values.de = { greeting: own };
+    const translate = vi.fn().mockResolvedValue(true);
+    render(
+      <CatalogEditor
+        data={catalog}
+        canWrite
+        sourceOnly={false}
+        busy={false}
+        mutate={vi.fn()}
+        onDirtyChange={vi.fn()}
+        translate={translate}
+      />
+    );
+    const button = screen.getByRole('button', { name: 'appTranslations.ui.transferMunicipal' });
+    fireEvent.click(screen.getByLabelText('appTranslations.ui.locales.es'));
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(translate).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: 'municipal', locales: ['es'], confirmations: {} })
+      )
+    );
+    translate.mockClear();
+    fireEvent.click(screen.getByLabelText('appTranslations.ui.locales.en'));
+    fireEvent.click(screen.getByLabelText('Französisch'));
+    expect(button).toHaveProperty('disabled', true);
+    const confirmations = screen.getAllByRole('checkbox', {
+      name: /appTranslations.ui.replaceManual/,
+    });
+    expect(confirmations).toHaveLength(2);
+    const [englishConfirmation, frenchConfirmation] = confirmations;
+    if (!englishConfirmation || !frenchConfirmation)
+      throw new Error('missing confirmation controls');
+    fireEvent.click(englishConfirmation);
+    expect(button).toHaveProperty('disabled', true);
+    fireEvent.click(frenchConfirmation);
+    expect(button).toHaveProperty('disabled', false);
+    fireEvent.click(button);
+    await waitFor(async () =>
+      expect(translate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: 'municipal',
+          key: 'greeting',
+          locales: ['es', 'en', 'fr'],
+          confirmations: {
+            en: {
+              sourceDigest: await catalogDigest(own.value),
+              overrideDigest: await catalogDigest(catalog.draft.valuesByLocale.en?.greeting),
+            },
+            fr: {
+              sourceDigest: await catalogDigest(own.value),
+              overrideDigest: await catalogDigest(catalog.draft.valuesByLocale.fr?.greeting),
+            },
+          },
+        })
+      )
+    );
+    fireEvent.click(screen.getByLabelText('Französisch'));
+    expect(button).toHaveProperty('disabled', true);
+    expect(
+      screen.getByRole('checkbox', { name: /appTranslations.ui.replaceManual/ })
+    ).toHaveProperty('checked', false);
+  });
+  it.each(
+    (['standard', 'municipal', 'legacy', 'missing', 'default'] as const).flatMap((kind) =>
+      [false, true].map((ownGerman) => ({ kind, ownGerman }))
+    )
+  )(
+    'retranslates $kind text with own German override=$ownGerman using the matching source',
+    async ({ kind, ownGerman }) => {
+      const catalog = structuredClone(data);
+      catalog.draft.scope = { kind: 'municipal', instanceId: 'tenant', organizationId: 'org' };
+      const standard = 'Standard {{name}}';
+      const municipal = 'Kommunal {{name}}';
+      catalog.baseCatalogs.de = { values: { greeting: standard } } as NonNullable<
+        CatalogEditorData['baseCatalogs']['de']
+      >;
+      const german = {
+        value: ownGerman ? municipal : standard,
+        origin: ownGerman ? ('manual' as const) : ('default' as const),
+        sourceDigest: '',
+        confirmedSourceDigest: null,
+      };
+      catalog.values.de = { greeting: german };
+      if (ownGerman) catalog.draft.valuesByLocale.de = { greeting: german };
+      const manual = kind !== 'missing' && kind !== 'default';
+      const foreign = {
+        value: 'Foreign {{name}}',
+        origin: manual ? ('manual' as const) : ('default' as const),
+        ...(kind === 'standard' || kind === 'municipal' ? { sourceKind: kind } : {}),
+        sourceDigest: '',
+        confirmedSourceDigest: null,
+      };
+      if (kind !== 'missing') catalog.values.en = { greeting: foreign };
+      if (manual) catalog.draft.valuesByLocale.en = { greeting: foreign };
+      const translate = vi.fn().mockResolvedValue(true);
+      render(
+        <CatalogEditor
+          data={catalog}
+          canWrite
+          sourceOnly={false}
+          busy={false}
+          mutate={vi.fn()}
+          onDirtyChange={vi.fn()}
+          translate={translate}
+        />
+      );
+      fireEvent.change(screen.getByLabelText('appTranslations.ui.language'), {
+        target: { value: 'en' },
+      });
+      if (manual) fireEvent.click(screen.getByLabelText('appTranslations.ui.replaceManual'));
+      fireEvent.click(screen.getByRole('button', { name: 'appTranslations.ui.translateKey' }));
+      const mode =
+        ownGerman && (kind === 'municipal' || kind === 'legacy') ? 'municipal' : 'standard';
+      await waitFor(async () =>
+        expect(translate).toHaveBeenCalledWith({
+          mode,
+          key: 'greeting',
+          locales: ['en'],
+          confirmations: manual
+            ? {
+                en: {
+                  sourceDigest: await catalogDigest(mode === 'municipal' ? municipal : standard),
+                  overrideDigest: await catalogDigest(foreign),
+                },
+              }
+            : {},
+        })
+      );
+      const sourceHeading = screen.getByRole('heading', { name: 'appTranslations.ui.source' });
+      expect(sourceHeading.nextElementSibling?.textContent).toBe(
+        kind === 'standard' || kind === 'default' ? standard : german.value
+      );
+    }
+  );
+  it('requires explicit confirmation before replacing a manual translation and binds it to both digests', async () => {
+    const catalog = structuredClone(data);
+    catalog.draft.scope = { kind: 'municipal', instanceId: 'tenant', organizationId: 'org' };
+    catalog.baseCatalogs.de = { values: { greeting: 'Hallo {{name}}' } } as NonNullable<
+      CatalogEditorData['baseCatalogs']['de']
+    >;
+    const own = {
+      value: 'Correction {{name}}',
+      origin: 'manual' as const,
+      sourceKind: 'standard' as const,
+      sourceDigest: '',
+      confirmedSourceDigest: '',
+    };
+    catalog.draft.valuesByLocale.en = { greeting: own };
+    catalog.values.en = { greeting: own };
+    const translate = vi.fn().mockResolvedValue(true);
+    render(
+      <CatalogEditor
+        data={catalog}
+        canWrite
+        sourceOnly={false}
+        busy={false}
+        mutate={vi.fn()}
+        onDirtyChange={vi.fn()}
+        translate={translate}
+      />
+    );
+    fireEvent.change(screen.getByLabelText('appTranslations.ui.language'), {
+      target: { value: 'en' },
+    });
+    const button = screen.getByRole('button', { name: 'appTranslations.ui.translateKey' });
+    expect(button).toHaveProperty('disabled', true);
+    fireEvent.click(screen.getByLabelText('appTranslations.ui.replaceManual'));
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(translate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: 'standard',
+          key: 'greeting',
+          locales: ['en'],
+          confirmations: {
+            en: {
+              sourceDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+              overrideDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+            },
+          },
+        })
+      )
+    );
+    fireEvent.change(screen.getByLabelText('appTranslations.ui.value'), {
+      target: { value: 'Unsaved {{name}}' },
+    });
+    expect(button).toHaveProperty('disabled', true);
+    expect(translate).toHaveBeenCalledTimes(1);
+  });
   it('orders language options by translated name with German first without changing the draft', () => {
     const labels: Record<string, string> = {
       'appTranslations.ui.locales.de': 'Deutsch',

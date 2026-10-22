@@ -242,7 +242,10 @@ const runPersistedJob = async (
       await deps.onExecutionTerminal?.({ job, error: errorPayload, reason: 'missing_handler' });
       return;
     }
-    const result = await handler({ job, ...handlerContext });
+    const result = await handler({
+      job: { ...job, status: 'running', attempts, workerId },
+      ...handlerContext,
+    });
     assertLeaseOwned();
     await deps.onExecutionSucceeded?.({ job, result });
     try {
@@ -253,6 +256,19 @@ const runPersistedJob = async (
       throw error;
     }
   } catch (error) {
+    // Domain batches may commit a checkpoint directly, before reporting progress in memory.
+    const persisted = await repository.getJobById(job.instanceId, job.id);
+    if (
+      persisted?.status === 'running' &&
+      (persisted.attempts !== attempts || persisted.workerId !== workerId)
+    )
+      throw Object.assign(new Error(`studio_job_lease_lost:${job.id}`), {
+        cause: { code: 'studio_job_lease_lost' },
+      });
+    const progress =
+      persisted?.attempts === attempts && persisted.workerId === workerId
+        ? persisted.progress
+        : getLatestProgress();
     if (isPluginOperationCancellationError(error)) {
       const errorPayload: StudioJobError = {
         code: 'plugin_operation_cancelled',
@@ -265,7 +281,7 @@ const runPersistedJob = async (
         startedAt,
         workerId,
         message: error.message,
-        progress: getLatestProgress(),
+        progress,
         cancelRequestedAt: error.cancelRequestedAt,
       });
       await deps.onExecutionTerminal?.({ job, error: errorPayload, reason: 'cancelled' });
@@ -280,7 +296,7 @@ const runPersistedJob = async (
       maxAttempts,
       startedAt,
       workerId,
-      progress: getLatestProgress(),
+      progress,
     });
     if (!failure.finalFailure) throw error;
     await deps.onExecutionTerminal?.({ job, error: failure.errorPayload, reason: 'failed' });

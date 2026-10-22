@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   catalogAssert,
   catalogDigest,
+  catalogTextSource,
   prepareCatalogRelease,
   resolveCatalogValues,
   validateCatalogLocales,
@@ -14,6 +15,8 @@ import {
   type CatalogRelease,
   type CatalogScope,
   type CatalogTexts,
+  type CatalogText,
+  type CatalogValue,
   type CatalogOverview,
   type CatalogReleaseSummary,
 } from '@sva/core';
@@ -31,6 +34,7 @@ type DraftRow = {
   draft_revision: string;
   supported_locales: AppTranslationLocale[];
   values_by_locale: CatalogTexts;
+  machine_standard_values_by_locale: CatalogTexts;
   base_release_id: string | null;
 };
 const uuid = (value: unknown): value is string =>
@@ -79,6 +83,7 @@ export const createAppTranslationRepository = async (
       draftRevision: row.draft_revision,
       supportedLocales: row.supported_locales,
       valuesByLocale: row.values_by_locale,
+      machineStandardValuesByLocale: row.machine_standard_values_by_locale ?? {},
       baseReleaseId: row.base_release_id,
     };
   };
@@ -96,7 +101,7 @@ export const createAppTranslationRepository = async (
     draft.baseReleaseId ? loadRelease(draft.baseReleaseId, true) : Promise.resolve(null);
   const save = async (draft: CatalogDraft): Promise<CatalogDraft> => {
     const result = await client.query(
-      `UPDATE iam.app_translation_catalog_drafts SET manifest_id = $2, supported_locales = $3::jsonb, values_by_locale = $4::jsonb, base_release_id = $5, draft_revision = draft_revision + 1, updated_at = now() WHERE id = $1 AND draft_revision = $6::bigint RETURNING id`,
+      `UPDATE iam.app_translation_catalog_drafts SET manifest_id = $2, supported_locales = $3::jsonb, values_by_locale = $4::jsonb, base_release_id = $5, machine_standard_values_by_locale = $7::jsonb, draft_revision = draft_revision + 1, updated_at = now() WHERE id = $1 AND draft_revision = $6::bigint RETURNING id`,
       [
         draft.id,
         draft.manifestId,
@@ -104,6 +109,7 @@ export const createAppTranslationRepository = async (
         JSON.stringify(draft.valuesByLocale),
         draft.baseReleaseId,
         draft.draftRevision,
+        JSON.stringify(draft.machineStandardValuesByLocale ?? {}),
       ]
     );
     catalogAssert(result.rowCount === 1, 'catalog_conflict');
@@ -122,7 +128,7 @@ export const createAppTranslationRepository = async (
         `SELECT contract_id AS "contractId", draft_revision::text AS "draftRevision", supported_locales AS "supportedLocales", base_release_id AS "baseReleaseId" FROM iam.app_translation_catalog_drafts WHERE ${scopeWhere} ORDER BY contract_id`,
         params
       );
-      const releaseColumns = `id, contract_id AS "contractId", catalog_set_revision::text AS "catalogSetRevision", supported_locales AS "supportedLocales", checksum`;
+      const releaseColumns = `id, contract_id AS "contractId", catalog_set_revision::text AS "catalogSetRevision", draft_revision::text AS "draftRevision", supported_locales AS "supportedLocales", checksum`;
       const releases = await client.query<CatalogReleaseSummary>(
         `SELECT ${releaseColumns} FROM iam.app_translation_catalog_releases WHERE ${scopeWhere} ORDER BY contract_id, catalog_set_revision DESC`,
         params
@@ -271,19 +277,38 @@ export const createAppTranslationRepository = async (
       expectedRevision: string,
       locale: AppTranslationLocale,
       key: string,
-      value: unknown
+      value: unknown,
+      targetCode?: string
     ) => {
       const draft = await locked(contractId, expectedRevision);
       catalogAssert(draft.supportedLocales.includes(locale));
       const validValue = validateCatalogValue(draft.manifest, key, value);
       const effective = resolveCatalogValues(draft, await baseOf(draft));
-      const source = locale === 'de' ? validValue : effective.de?.[key]?.value;
+      const current = effective[locale]?.[key];
+      const sourceKind =
+        current?.sourceKind ??
+        (current?.origin === 'default' && draft.scope.kind === 'municipal'
+          ? 'standard'
+          : 'municipal');
+      const source =
+        locale === 'de'
+          ? validValue
+          : catalogTextSource(draft, await baseOf(draft), key, {
+              ...effective[locale]?.[key],
+              value: validValue,
+              origin: 'manual',
+              sourceDigest: '',
+              confirmedSourceDigest: null,
+              sourceKind,
+            });
       catalogAssert(source !== undefined, 'catalog_incomplete');
       const digest = await catalogDigest(source);
       draft.valuesByLocale[locale] ??= {};
       draft.valuesByLocale[locale]![key] = {
         value: validValue,
         origin: 'manual',
+        sourceKind,
+        ...(targetCode ? { targetCode } : {}),
         sourceDigest: digest,
         confirmedSourceDigest: digest,
       };
@@ -308,21 +333,74 @@ export const createAppTranslationRepository = async (
       contractId: string,
       expectedRevision: string,
       locale: AppTranslationLocale,
-      key: string
+      key: string,
+      targetCode?: string
     ) => {
       const draft = await locked(contractId, expectedRevision);
       catalogAssert(locale !== 'de' && draft.supportedLocales.includes(locale));
       const text = draft.valuesByLocale[locale]?.[key];
       catalogAssert(text?.origin === 'manual');
-      const source = resolveCatalogValues(draft, await baseOf(draft)).de?.[key];
-      catalogAssert(source, 'catalog_incomplete');
-      text.confirmedSourceDigest = await catalogDigest(source.value);
+      const source = catalogTextSource(draft, await baseOf(draft), key, text);
+      catalogAssert(source !== undefined, 'catalog_incomplete');
+      text.confirmedSourceDigest = await catalogDigest(source);
+      if (targetCode) text.targetCode = targetCode;
+      return save(draft);
+    },
+    applyMachineBatch: async (
+      contractId: string,
+      expectedRevision: string,
+      entries: readonly {
+        locale: string;
+        key: string;
+        value: CatalogValue;
+        sourceDigest: string;
+        targetCode: string;
+        sourceKind: 'standard' | 'municipal';
+        overrideDigest?: string;
+      }[]
+    ) => {
+      catalogAssert(scope.kind === 'municipal', 'catalog_forbidden');
+      const draft = await locked(contractId, expectedRevision);
+      const base = await baseOf(draft);
+      catalogAssert(entries.length > 0 && entries.length <= 50);
+      for (const entry of entries) {
+        catalogAssert(entry.locale !== 'de' && draft.supportedLocales.includes(entry.locale));
+        const text: CatalogText = {
+          value: validateCatalogValue(draft.manifest, entry.key, entry.value),
+          origin: 'machine',
+          sourceKind: entry.sourceKind,
+          targetCode: entry.targetCode,
+          sourceDigest: entry.sourceDigest,
+          confirmedSourceDigest: null,
+        };
+        const source = catalogTextSource(draft, base, entry.key, text);
+        catalogAssert(
+          source !== undefined && (await catalogDigest(source)) === entry.sourceDigest,
+          'catalog_conflict'
+        );
+        const own = draft.valuesByLocale[entry.locale]?.[entry.key];
+        if (own?.origin === 'manual' || entry.overrideDigest !== undefined)
+          catalogAssert(
+            entry.overrideDigest !== undefined &&
+              (await catalogDigest(own ?? null)) === entry.overrideDigest,
+            'catalog_conflict'
+          );
+        const values =
+          entry.sourceKind === 'standard'
+            ? (draft.machineStandardValuesByLocale ??= {})
+            : draft.valuesByLocale;
+        values[entry.locale] ??= {};
+        values[entry.locale]![entry.key] = text;
+        if (entry.sourceKind === 'standard' && entry.overrideDigest !== undefined)
+          delete draft.valuesByLocale[entry.locale]?.[entry.key];
+      }
       return save(draft);
     },
     seal: async (
       contractId: string,
       expectedRevision: string,
-      sourceOnly = false
+      sourceOnly = false,
+      targetCodes?: Readonly<Record<string, string>>
     ): Promise<CatalogRelease> => {
       const stored = await locked(contractId, expectedRevision);
       const draft = sourceOnly
@@ -330,20 +408,34 @@ export const createAppTranslationRepository = async (
             ...stored,
             supportedLocales: ['de'] as AppTranslationLocale[],
             valuesByLocale: { de: stored.valuesByLocale.de ?? {} },
+            machineStandardValuesByLocale: {},
           }
         : stored;
       const existing = await client.query<{ payload: CatalogRelease }>(
         `SELECT payload FROM iam.app_translation_catalog_releases WHERE ${scopeWhere} AND contract_id = $4 AND draft_revision = $5::bigint AND supported_locales = $6::jsonb`,
         [...params, contractId, draft.draftRevision, JSON.stringify(draft.supportedLocales)]
       );
-      if (existing.rows[0]) return existing.rows[0].payload;
+      if (existing.rows[0]) {
+        await prepareCatalogRelease(
+          draft,
+          await baseOf(draft),
+          existing.rows[0].payload.catalogSetRevision,
+          targetCodes
+        );
+        return existing.rows[0].payload;
+      }
       const current = await client.query<{ revision: string }>(
         `SELECT coalesce(max(catalog_set_revision),0)::text AS revision FROM iam.app_translation_catalog_releases WHERE ${scopeWhere} AND contract_id = $4`,
         [...params, contractId]
       );
       const nextRevision = (BigInt(current.rows[0]?.revision ?? '0') + 1n).toString();
       revision(nextRevision);
-      const prepared = await prepareCatalogRelease(draft, await baseOf(draft), nextRevision);
+      const prepared = await prepareCatalogRelease(
+        draft,
+        await baseOf(draft),
+        nextRevision,
+        targetCodes
+      );
       const release: CatalogRelease = {
         id: randomUUID(),
         scope,

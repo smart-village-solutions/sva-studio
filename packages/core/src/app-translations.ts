@@ -55,7 +55,9 @@ export type CatalogManifest = {
 };
 export type CatalogText = {
   value: CatalogValue;
-  origin: 'default' | 'manual';
+  origin: 'default' | 'manual' | 'machine';
+  sourceKind?: 'standard' | 'municipal';
+  targetCode?: string;
   sourceDigest: string;
   confirmedSourceDigest: string | null;
 };
@@ -68,6 +70,7 @@ export type CatalogDraft = {
   draftRevision: string;
   supportedLocales: AppTranslationLocale[];
   valuesByLocale: CatalogTexts;
+  machineStandardValuesByLocale?: CatalogTexts;
   baseReleaseId: string | null;
 };
 export type CatalogArtifact = {
@@ -100,7 +103,7 @@ export type CatalogRelease = {
 
 export type CatalogReleaseSummary = Pick<
   CatalogRelease,
-  'id' | 'contractId' | 'catalogSetRevision' | 'supportedLocales' | 'checksum'
+  'id' | 'contractId' | 'catalogSetRevision' | 'draftRevision' | 'supportedLocales' | 'checksum'
 >;
 export type CatalogOverview = {
   scope: CatalogScope;
@@ -120,11 +123,13 @@ export type CatalogEditorData = {
   allowedLocales?: AppTranslationLocale[];
   setup?: DeepLSetupStatus;
   canManageInterfaces?: boolean;
+  targetCodes?: Record<string, string>;
 };
 
 export class AppTranslationError extends Error {
   constructor(
     readonly code:
+      | 'deepl_text_too_large'
       | 'invalid_catalog'
       | 'catalog_setup_required'
       | 'catalog_conflict'
@@ -313,15 +318,78 @@ export const resolveCatalogValues = (
         { value, origin: 'default', sourceDigest: '', confirmedSourceDigest: null },
       ])
     );
+    for (const [key, text] of Object.entries(draft.machineStandardValuesByLocale?.[locale] ?? {}))
+      if (Object.prototype.hasOwnProperty.call(draft.manifest.keys, key))
+        result[locale]![key] = structuredClone(text);
     for (const [key, text] of Object.entries(draft.valuesByLocale[locale] ?? {}))
       result[locale]![key] = structuredClone(text);
   }
   return result;
 };
+/** Legacy corrections retain their previous effective-German source binding. */
+export const catalogTextSource = (
+  draft: CatalogDraft,
+  base: CatalogRelease | null,
+  key: string,
+  text: CatalogText
+): CatalogValue | undefined => {
+  if (text.sourceKind === 'standard') return base?.catalogs.de?.values[key];
+  catalogAssert(
+    draft.scope.kind === 'global'
+      ? base === null
+      : Boolean(
+          base &&
+          base.scope.kind === 'global' &&
+          base.contractId === draft.manifest.contractId &&
+          base.manifestId === draft.manifestId &&
+          base.id === draft.baseReleaseId
+        ),
+    'catalog_conflict'
+  );
+  if (!draft.supportedLocales.includes('de')) return undefined;
+  const own = draft.valuesByLocale.de?.[key];
+  if (own) return own.value;
+  const machine = draft.machineStandardValuesByLocale?.de?.[key];
+  if (machine && Object.prototype.hasOwnProperty.call(draft.manifest.keys, key))
+    return machine.value;
+  return base?.catalogs.de?.values[key];
+};
+
+export const catalogTextIsCurrent = async (
+  text: CatalogText,
+  source: CatalogValue | undefined,
+  targetCode?: string
+): Promise<boolean> =>
+  source !== undefined &&
+  (!targetCode || text.targetCode === targetCode) &&
+  (text.origin === 'manual' ? text.confirmedSourceDigest : text.sourceDigest) ===
+    (await catalogDigest(source));
+
+export const catalogTranslationSource = async (
+  data: CatalogEditorData,
+  mode: 'missing' | 'municipal' | 'standard',
+  locale: string,
+  key: string,
+  targetCode: string
+) => {
+  const source =
+    mode === 'municipal' ? data.values.de?.[key]?.value : data.baseCatalogs.de?.values[key];
+  catalogAssert(source !== undefined, 'catalog_conflict');
+  if (mode === 'missing') {
+    if (data.draft.valuesByLocale[locale]?.[key]?.origin === 'manual') return undefined;
+    const standard = data.draft.machineStandardValuesByLocale?.[locale]?.[key];
+    if (standard && (await catalogTextIsCurrent(standard, source, targetCode))) return undefined;
+    if (!standard && data.values[locale]?.[key]?.origin === 'default' && locale !== 'en')
+      return undefined;
+  }
+  return source;
+};
+
 export const prepareCatalogRelease = async (
   draft: CatalogDraft,
   base: CatalogRelease | null,
-  revision: string
+  revision: string,
+  targetCodes?: Readonly<Record<string, string>>
 ) => {
   catalogAssert(/^[1-9][0-9]{0,19}$/.test(revision));
   const effective = resolveCatalogValues(draft, base);
@@ -339,14 +407,15 @@ export const prepareCatalogRelease = async (
       const text = effective[locale]?.[key];
       catalogAssert(text, 'catalog_incomplete');
       values[key] = validateCatalogValue(draft.manifest, key, text.value);
-      if (
-        locale !== 'de' &&
-        Object.prototype.hasOwnProperty.call(draft.valuesByLocale[locale] ?? {}, key)
-      ) {
-        const source = effective.de?.[key];
-        catalogAssert(source, 'catalog_incomplete');
+      if (locale !== 'de' && text.origin !== 'default') {
         catalogAssert(
-          text.confirmedSourceDigest === (await catalogDigest(source.value)),
+          await catalogTextIsCurrent(
+            text,
+            catalogTextSource(draft, base, key, text),
+            text.origin === 'machine' || text.targetCode || locale === 'en'
+              ? targetCodes?.[locale]
+              : undefined
+          ),
           'catalog_review_required'
         );
       }

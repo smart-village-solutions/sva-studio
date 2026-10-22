@@ -4,6 +4,7 @@ import {
   deepLTargetCode,
   canonicalCatalogJson,
   catalogDigest,
+  catalogTextSource,
   prepareCatalogRelease,
   validateCatalogLocales,
   validateCatalogManifest,
@@ -12,6 +13,7 @@ import {
   type CatalogManifest,
   APP_TRANSLATION_LOCALES,
   type CatalogRelease,
+  type CatalogText,
 } from './app-translations.js';
 const manifest: CatalogManifest = {
   contractId: 'ui-v1',
@@ -46,6 +48,68 @@ const draft: CatalogDraft = {
   },
 };
 describe('fixed app catalogs', () => {
+  it('resolves only the requested German source with the existing value precedence', async () => {
+    const base: CatalogRelease = {
+      id: 'base',
+      scope: { kind: 'global' },
+      manifestId: 'manifest',
+      contractId: manifest.contractId,
+      catalogSetRevision: '1',
+      draftRevision: '1',
+      baseReleaseId: null,
+      supportedLocales: ['de'],
+      state: 'sealed',
+      ...(await prepareCatalogRelease({ ...draft, supportedLocales: ['de'] }, null, '1')),
+    };
+    const municipal: CatalogDraft = {
+      ...structuredClone(draft),
+      scope: { kind: 'municipal', instanceId: 'a', organizationId: 'org' },
+      baseReleaseId: base.id,
+      machineStandardValuesByLocale: {
+        de: {
+          greeting: {
+            value: 'Maschinelle Quelle',
+            origin: 'machine',
+            sourceDigest: '',
+            confirmedSourceDigest: null,
+          },
+        },
+      },
+    };
+    municipal.valuesByLocale.de!.greeting!.value = '';
+    municipal.valuesByLocale.en = {};
+    for (const values of [municipal.valuesByLocale.de!, municipal.valuesByLocale.en])
+      Object.defineProperty(values, 'unrelated', {
+        enumerable: true,
+        get() {
+          throw new Error('unrelated_value_read');
+        },
+      });
+    const legacy: CatalogText = {
+      value: 'Translation',
+      origin: 'manual',
+      sourceDigest: '',
+      confirmedSourceDigest: null,
+    };
+    for (const text of [legacy, { ...legacy, sourceKind: 'municipal' as const }]) {
+      expect(catalogTextSource(municipal, base, 'greeting', text)).toBe('');
+      expect(() =>
+        catalogTextSource(municipal, { ...base, id: 'other' }, 'greeting', text)
+      ).toThrow('catalog_conflict');
+    }
+    expect(
+      catalogTextSource(municipal, base, 'greeting', { ...legacy, sourceKind: 'standard' })
+    ).toBe('Hallo {{name}}');
+    delete municipal.valuesByLocale.de!.greeting;
+    expect(catalogTextSource(municipal, base, 'greeting', legacy)).toBe('Maschinelle Quelle');
+    delete municipal.machineStandardValuesByLocale!.de!.greeting;
+    expect(catalogTextSource(municipal, base, 'greeting', legacy)).toBe('Hallo {{name}}');
+    expect(catalogTextSource(draft, null, 'greeting', legacy)).toBe('Hallo {{name}}');
+    expect(
+      catalogTextSource({ ...draft, valuesByLocale: {} }, null, 'greeting', legacy)
+    ).toBeUndefined();
+    expect(() => catalogTextSource(draft, base, 'greeting', legacy)).toThrow('catalog_conflict');
+  });
   it('canonicalizes without normalizing text, rejects unsafe JSON and validates placeholders', async () => {
     expect(canonicalCatalogJson({ z: '😀', a: '\n' })).toBe('{"a":"\\n","z":"😀"}');
     expect(await catalogDigest({ a: 1, z: 'x' })).toBe(await catalogDigest({ z: 'x', a: 1 }));
@@ -131,6 +195,73 @@ describe('fixed app catalogs', () => {
         (artifact) => artifact.catalogSetRevision === '17' && artifact.fallbackKeys.length === 0
       )
     ).toBe(true);
+  });
+  it('keeps machine standards under manual corrections and validates their real source', async () => {
+    const base: CatalogRelease = {
+      id: 'base',
+      scope: { kind: 'global' },
+      manifestId: 'manifest',
+      contractId: manifest.contractId,
+      catalogSetRevision: '1',
+      draftRevision: '1',
+      baseReleaseId: null,
+      supportedLocales: ['de'],
+      state: 'sealed',
+      ...(await prepareCatalogRelease({ ...draft, supportedLocales: ['de'] }, null, '1')),
+    };
+    const standardDigest = await catalogDigest('Hallo {{name}}');
+    const municipal: CatalogDraft = {
+      ...structuredClone(draft),
+      scope: { kind: 'municipal', instanceId: 'a', organizationId: 'org' },
+      baseReleaseId: base.id,
+      machineStandardValuesByLocale: {
+        en: {
+          greeting: {
+            value: 'Hello {{name}}',
+            origin: 'machine',
+            sourceDigest: standardDigest,
+            confirmedSourceDigest: null,
+            sourceKind: 'standard',
+            targetCode: 'en-GB',
+          },
+        },
+      },
+    };
+    municipal.valuesByLocale.de!.greeting!.value = 'Guten Tag {{name}}';
+    municipal.machineStandardValuesByLocale!.en!.retired = structuredClone(
+      municipal.machineStandardValuesByLocale!.en!.greeting!
+    );
+    expect(
+      (await prepareCatalogRelease(municipal, base, '2', { en: 'en-GB' })).catalogs.en?.values
+        .retired
+    ).toBeUndefined();
+    expect(municipal.machineStandardValuesByLocale!.en!.retired).toBeDefined();
+    expect(
+      (await prepareCatalogRelease(municipal, base, '2', { en: 'en-GB' })).catalogs.en?.values
+        .greeting
+    ).toBe('Hello {{name}}');
+    municipal.valuesByLocale.en = {
+      greeting: {
+        value: 'Welcome {{name}}',
+        origin: 'manual',
+        sourceDigest: standardDigest,
+        confirmedSourceDigest: standardDigest,
+        sourceKind: 'standard',
+        targetCode: 'en-GB',
+      },
+    };
+    expect(
+      (await prepareCatalogRelease(municipal, base, '3', { en: 'en-GB' })).catalogs.en?.values
+        .greeting
+    ).toBe('Welcome {{name}}');
+    await expect(prepareCatalogRelease(municipal, base, '4', { en: 'en-US' })).rejects.toThrow(
+      'catalog_review_required'
+    );
+    delete municipal.valuesByLocale.en;
+    municipal.machineStandardValuesByLocale!.en!.greeting!.sourceDigest = 'stale';
+    await expect(prepareCatalogRelease(municipal, base, '5', { en: 'en-GB' })).rejects.toThrow(
+      'catalog_review_required'
+    );
   });
   it('keeps inherited languages independent from a German municipal override', async () => {
     const source = structuredClone(draft);

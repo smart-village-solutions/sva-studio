@@ -10,6 +10,7 @@ import {
   storePluginOperationArtifact,
   listActiveInstanceIdsForWorker,
   readAppTranslationsLocalReadiness,
+  runCatalogTranslation,
 } from '@sva/auth-runtime/server';
 import {
   loadDefaultExternalInterfaceRecord,
@@ -186,7 +187,10 @@ const resolvePluginJobModule = (input: {
 };
 
 const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
-  'app-translations.local': () => ({ readLocalReadiness: readAppTranslationsLocalReadiness }),
+  'app-translations.local': () => ({
+    readLocalReadiness: readAppTranslationsLocalReadiness,
+    translateCatalog: runCatalogTranslation,
+  }),
   'waste-management.operations': () =>
     createWasteManagementOperationRuntime({
       dispatchMail: createNodemailerMailDispatcher({}),

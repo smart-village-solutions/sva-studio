@@ -41,7 +41,7 @@ Das System MUST vollständige globale und kommunale Katalogsätze intern prüfen
 
 ### Requirement: Lokaler Katalogeditor ohne externe Veröffentlichung
 
-Das System MUST globale Standardpflege im bestehenden Root-/Plattformpfad und deutsche kommunale Hostpflege ohne Modul sowie fremdsprachige Katalogpflege im optionalen Modul „Mehrsprachigkeit“ über dieselbe lokale Katalogbasis ermöglichen. Kommunale Fremdsprachenzugriffe, Änderungen und lokale Versiegelung MUST die getrennten Rechte `app-translations.catalog.read`, `app-translations.catalog.write` und `app-translations.catalog.publish` sowie den bestehenden Modul-/Organisationsscope prüfen. Globale Entwürfe und technischer JSON-Manifestimport MUST dem verifizierten Root-Kontext vorbehalten bleiben. Der Editor MUST Entwurf, sprachbezogene Vererbung/Overrides, Platzhalter, Korrekturstatus und Revisionskonflikte verständlich darstellen. „Prüfstand erstellen“ MUST ausschließlich einen vollständigen unveränderlichen lokalen Satz erzeugen; die Vorschau MUST ihn von einer App-Veröffentlichung unterscheiden. Ein synthetischer Deutsch-/Englisch-Testkatalog MUST ausschließlich kontrollierter lokaler Erprobung dienen, ohne automatische Seeds realer Mandanten, Fake-Übersetzungen oder zweite produktive App-Textquelle.
+Das System MUST globale Standardpflege im bestehenden Root-/Plattformpfad und deutsche kommunale Hostpflege ohne Modul sowie fremdsprachige Katalogpflege im optionalen Modul „Mehrsprachigkeit“ über dieselbe lokale Katalogbasis ermöglichen. Kommunale Fremdsprachenzugriffe, Änderungen und lokale Versiegelung MUST die getrennten Rechte `app-translations.catalog.read`, `app-translations.catalog.write` und `app-translations.catalog.publish` sowie den bestehenden Modul-/Organisationsscope prüfen. Globale Entwürfe und technischer JSON-Manifestimport MUST dem verifizierten Root-Kontext vorbehalten bleiben. Der Editor MUST Entwurf, sprachbezogene Vererbung/Overrides, Platzhalter, Korrekturstatus und Revisionskonflikte verständlich darstellen. „Textstand sichern“ MUST ausschließlich einen vollständigen unveränderlichen lokalen Satz erzeugen; die Vorschau MUST ihn von einer App-Veröffentlichung unterscheiden. Ein synthetischer Deutsch-/Englisch-Testkatalog MUST ausschließlich kontrollierter lokaler Erprobung dienen, ohne automatische Seeds realer Mandanten, Fake-Übersetzungen oder zweite produktive App-Textquelle.
 
 #### Scenario: Kommunalen Entwurf speichern und gezielt zurücksetzen
 
@@ -381,7 +381,6 @@ Das System MUST DeepL als benutzerkonfigurierte instanzgebundene Schnittstelle �
 - **AND** bleiben vorhandene gültige Kataloge und autorisiert nutzbare fertige Übersetzungen erhalten
 - **AND** erfordern neue abhängige Operationen einen gültigen Nachweis für die aktuelle Zugangskonfiguration
 
-
 ### Requirement: Dynamischen Übersetzungsstatus und Sprachfassungen im Inhaltsformular anzeigen
 
 Studio MUST als Hauptakteur der Übersetzungsverwaltung im jeweiligen Inhaltsformular den Status und fertige Sprachfassungen dynamischer Inhalte anzeigen. Diese Leseanzeige MUST von späterer manueller dynamischer Korrektur getrennt bleiben. Die konkrete Übermittlung und mögliche Speicherung des benötigten Originalbezugs MUST vor Implementierung abgestimmt werden; ein pauschaler Ausschluss von Originalbezug aus Studio MUST entfallen. Die Anzeige MUST aktuellen Organisations-/Pluginzugang und redaktionellen Inhaltszugriff serverseitig prüfen und darf alte Texte nicht als passende aktuelle Übersetzung ausgeben. Sie MUST keinen dauerhaften Originalreferenzbestand, Änderungs-/Verwendungsabgleich oder Übersetzungskopien in Originaldatensätzen einführen. Formular-/Vorschauabrufe MUST die 90-Tage-Frist nicht verlängern.
@@ -403,7 +402,7 @@ Die Formularanzeige MUST rein lesend sein und darf keine fehlenden Übersetzunge
 
 ### Requirement: Deutsche Host-Texte ohne Mehrsprachigkeitsmodul
 
-Das System MUST gemeinsame und kommunale deutsche App-Texte unabhängig vom optionalen Mehrsprachigkeitsmodul bereitstellen. Rootimport MUST ausschließlich deutsche Ausgangstexte aus dem bestehenden JSON-Manifest übernehmen. Kommunale deutsche Pflege MUST eigene Hostrechte `app-texts.catalog.read`, `.write`, `.publish` und den aktiven Organisationsscope prüfen. Die deutsche Projektion MUST Fremdsprachenwerte ausblenden und Fremdsprachenmutationen verweigern. Deutsche Versiegelung MUST unabhängig von unvollständigen Übersetzungen möglich sein. Der Pluginmodus MUST deutsche Mutationen verweigern. Beide Ansichten MUST denselben Datenbestand verwenden und erhaltene Sprachwerte nicht löschen.
+Das System MUST gemeinsame und kommunale deutsche App-Texte unabhängig vom optionalen Mehrsprachigkeitsmodul bereitstellen. Rootimport MUST ausschließlich deutsche Ausgangstexte aus dem bestehenden JSON-Manifest übernehmen. Kommunale deutsche Pflege MUST eigene Hostrechte `app-texts.catalog.read`, `.write`, `.publish` und den aktiven Organisationsscope prüfen. Die deutsche Bearbeitungsprojektion MUST Fremdsprachenwerte ausblenden und Fremdsprachenmutationen verweigern. Übersicht und unveränderliche Vorschau gesicherter Textstände MUST in beiden Ansichten alle enthaltenen Sprachen und den gesicherten Bearbeitungsstand desselben autorisierten Scopes anzeigen, auch bei inzwischen deaktivierten Sprachen; dadurch MUST NOT ein fremdsprachiges Schreibrecht entstehen. Deutsche Versiegelung MUST unabhängig von unvollständigen Übersetzungen möglich sein. Der Pluginmodus MUST deutsche Mutationen verweigern. Beide Ansichten MUST denselben Datenbestand verwenden und erhaltene Sprachwerte nicht löschen.
 
 #### Scenario: Deutsch bei deaktiviertem Modul
 
@@ -439,3 +438,62 @@ Das System MUST den Schnittstellentyp DeepL erst nach Mehrsprachigkeits-Modulakt
 - **WHEN** der Zugang abgewiesen oder die Schnittstelle deaktiviert wird
 - **THEN** werden neue abhängige Anbieteroperationen gesperrt und bleibt die Einrichtung erreichbar
 - **AND** werden vorhandene Texte/Sprachfassungen nicht gelöscht und wird ein bloßer Anbieterausfall nicht als App-Sprachdeaktivierung behandelt
+
+### Requirement: Instanzgebundene Maschinenübersetzung fester App-Texte lokal vorbereiten
+
+Das System MUST im vorhandenen kommunalen Mehrsprachigkeitseditor fehlende oder veraltete feste Sprachwerte ausdrücklich über den geprüften eigenen DeepL-Zugang erzeugen können. Start MUST aktuelle Session-/Organisationsbindung, `app-translations.catalog.write`, CSRF, Modulzugang, gültige Zugangsevidenz und übernommene erlaubte Zielsprachen prüfen. Deutschpflege MUST unabhängig bleiben. Reines Lesen, Speichern oder Auswählen einer Sprache MUST keinen Anbieterjob auslösen. Die Vorbereitung MUST weder veröffentlichen noch eine Appaktivierung oder einen abgeschlossenen dynamischen Übersetzungsdienst behaupten. Sie MUST denselben fachlichen Übersetzungspfad für die spätere Veröffentlichung vorbereiten.
+
+Maschinelle Standardwerte MUST im bestehenden Draft von eigenen Sprachkorrekturen getrennt bleiben. Standardquelle MUST die gepinnte unveränderliche deutsche globale Basis sein; ein deutscher kommunaler Override MUST andere Sprachstandards nicht automatisch verändern. Eine ausdrückliche gezielte Übernahme MUST eigene Sprachfassungen aus gespeichertem kommunalem Deutsch erzeugen können. Manuelle Korrekturen MUST vorrangig bleiben und von Bulk-/Retryjobs unangetastet bleiben. Eine gezielte Neuübersetzung eines manuellen Werts MUST eine ausdrückliche, an Sprache/Schlüssel, Quelle, aktuellen Override und Revision gebundene Ersetzungsbestätigung verlangen. Änderung der tatsächlichen Quelle beziehungsweise Zielvariante MUST Korrekturentscheidungen erneut erfordern, ohne Werte zu löschen. Reset MUST nur den eigenen Wert entfernen und die passende aktuelle maschinelle Standardfassung beziehungsweise einen erklärbaren Fehlzustand zeigen; kein impliziter Anbieteraufruf. Bestehende Manuellwerte und versiegelte Kataloge MUST erhalten bleiben.
+
+Die Ausführung MUST bestehende Studio-Pluginjobs und Graphile nutzen. Start/Enqueue und Batchübernahme/Draftrevision/Checkpoint MUST jeweils atomar sein. Jobpayloads MUST weder Textkopien noch Secrets oder Sessiontokens enthalten; Texte MUST aus den gepinnten beziehungsweise unverändert validierten Katalogquellen kommen. Ein Claimverlust, redaktioneller Konkurrenzschreibzugriff, geänderter Zugang/Zielcode, Sprach-/Modulsperre oder überholte Lifecyclegeneration MUST die spätere Übernahme verhindern. Provideraufrufe MUST außerhalb DB-Transaktionen liegen. Bereits bestätigte Batches MUST bei Wiederaufnahme erhalten und übersprungen werden; unbekannter Providerabschluss vor Commit MUST nicht als kostensicheres Exactly-once behauptet werden. Fortschritt, Konflikt und Fehler MUST verständlich sichtbar sein; reine Statusabrufe MUST autorisiert und nebenwirkungsfrei bleiben.
+
+Strings/Stringarrays MUST in unveränderter Zuordnung und mit exakt validierten Platzhaltern übernommen werden. Ungültige, unvollständige, zu große oder veraltete Antworten MUST ohne Überschreiben bestehender Texte abgewiesen werden. Providerhost, Request-/Antwortgrößen, Parallelität, Timeout und Retries MUST nach Design 8.5 begrenzt sein. Technisch gültige Maschinenwerte MUST ohne obligatorische sprachliche Einzelabnahme lokal sicherbar sein; unvollständige oder ungeklärte Korrekturen MUST die vollständige Fremdsprachenversiegelung verhindern. Main-Server-/Appauslieferung MUST ein eigener späterer Schritt bleiben.
+
+#### Scenario: Fehlende Übersetzungen über eigenen Instanzzugang
+
+- **GIVEN** eine Organisation besitzt eine deutsche gepinnte Basis und drei übernommene erlaubte Zielsprachen
+- **WHEN** eine berechtigte Redaktion ausdrücklich fehlende Übersetzungen erstellen lässt
+- **THEN** verarbeitet ein Katalogjob die gültigen deutschen Standardtexte in begrenzten DeepL-Batches mit dem eigenen Instanz-Key
+- **AND** werden geprüfte Ergebnisse im bestehenden Entwurf sichtbar, ohne die App oder historische Snapshots zu ändern
+- **AND** verursacht ein erneuter Start ohne fehlende oder veraltete Werte keinen Anbieteraufruf
+
+#### Scenario: Kommunales Deutsch und Sprachkorrektur bleiben getrennt
+
+- **GIVEN** der gepinnte Standard lautet „Meldung senden“ und der kommunale deutsche Override „Schaden melden“
+- **WHEN** eine fehlende englische Standardfassung erzeugt wird
+- **THEN** ist deren Quelle ausschließlich „Meldung senden“
+- **AND** entsteht eine Übersetzung von „Schaden melden“ erst durch die gezielte Aktion für diesen gespeicherten kommunalen Text
+- **AND** bleiben vorhandene manuelle englische Korrekturen ohne ausdrückliche einzelne Ersetzungsbestätigung erhalten
+
+#### Scenario: Manuelle Korrektur während laufender Anbieteranfrage
+
+- **GIVEN** ein Job besitzt einen gepinnten Quell-/Override-/Draftstand
+- **WHEN** eine Redaktion während der Anbieteranfrage einen Wert korrigiert oder zurücksetzt
+- **THEN** wird die verspätete Batchantwort als Konflikt verworfen und bleibt die redaktionelle Änderung erhalten
+- **AND** kann ein neuer ausdrücklicher Lauf aktuelle bereits gespeicherte Maschinenwerte überspringen, ohne einen alten Auftrag auf die neue Revision umzubasieren
+
+#### Scenario: Quelle oder Zielvariante einer Korrektur ändert sich
+
+- **WHEN** die tatsächliche deutsche Quelle oder der konkrete Zielcode einer manuellen Korrektur geändert wird
+- **THEN** bleibt der Korrekturinhalt bestehen und benötigt vor neuer Fremdsprachenversiegelung eine Bestätigung oder gezielte Neuübersetzung
+- **AND** invalidiert ein davon unabhängiger deutscher Override keinen geerbten Sprachstandard
+- **AND** wird ein Legacy-Manuellwert nicht automatisch als Maschinenwert interpretiert
+
+#### Scenario: Wiederaufnahme nach gespeichertem Batch
+
+- **GIVEN** Batchwerte, neue Draftrevision und Jobcheckpoint sind gemeinsam committed
+- **WHEN** der Worker vor der Abschlussmeldung abbricht und ein neuer Claim übernimmt
+- **THEN** setzt der Job hinter dem bestätigten Batch fort, ohne ihn erneut beim Anbieter anzufordern
+- **AND** kann eine Antwort des alten Claims keine Werte oder Fortschrittsstände mehr ändern
+
+#### Scenario: Keywechsel oder Suspendierung während einer Anfrage
+
+- **WHEN** während eines laufenden Batches der Zugang rotiert, eine Sprache deaktiviert oder das Modul suspendiert und reaktiviert wird
+- **THEN** wird die Antwort unter der alten Bindung nicht übernommen
+- **AND** bleiben vorhandene Texte erhalten, ohne dass der alte Auftrag die neue Konfiguration oder Modulfreigabe verändert
+
+#### Scenario: Ungültige Platzhalter oder unvollständiges Array
+
+- **WHEN** DeepL Platzhalter verändert, Ergebnisse in falscher Anzahl liefert oder ein Arrayelement fehlt
+- **THEN** bleibt der gesamte betroffene Batch beziehungsweise Arraywert unverändert und wird ein sicherer Fehler angezeigt
+- **AND** wird kein fehlerhafter Teilsatz versiegelt oder auf Deutsch ersatzbefüllt

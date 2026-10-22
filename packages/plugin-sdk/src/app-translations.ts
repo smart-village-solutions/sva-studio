@@ -5,6 +5,8 @@ export {
   isAppTranslationLocale,
   appTranslationLanguage,
   catalogDigest,
+  catalogTextIsCurrent,
+  catalogTranslationSource,
   validateCatalogManifest,
   validateCatalogValue,
 } from '@sva/core';

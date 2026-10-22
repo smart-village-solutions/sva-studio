@@ -9,7 +9,7 @@ paths:
   /api/v1/iam/app-translations:
     description: >-
       Lokaler Studio-Katalogeditor mit gespeicherter Session und Organisationsscope.
-      Der Modus source erfordert app-texts.catalog.read/write/publish und erlaubt nur Deutsch ohne Pluginpflicht.
+      Der Modus source erfordert app-texts.catalog.read/write/publish und beschränkt die Bearbeitung auf Deutsch ohne Pluginpflicht. Übersicht und unveränderliche Vorschau gesicherter Textstände zeigen in beiden Modi alle enthaltenen Sprachen desselben autorisierten Scopes, auch bei inzwischen deaktivierten Sprachen.
       Der Modus translations erfordert app-translations.catalog.read/write/publish, aktuellen Pluginzugang und die in der eigenen DeepL-Schnittstelle gewählten Sprachen.
       Neue abhängige Mutationen benötigen deren aktuelle Bereitschaft; vorhandene autorisierte Texte bleiben bei Ausfällen lesbar.
       Ausgangsbestand und Basiswechsel bleiben Hostoperationen. Root importiert nur Deutsch.
@@ -23,11 +23,16 @@ paths:
         description: JSON des zuvor geladenen Sessionbereichs; für POST Pflicht, keine Autorisierungsquelle.
         schema: { type: string }
     get:
-      summary: Katalogübersicht, Entwurf oder lokalen Prüfstand lesen
+      summary: Katalogübersicht, Entwurf, lokalen Prüfstand oder organisationsgebundenen Übersetzungsstatus lesen
       parameters:
         - name: operation
           in: query
-          schema: { type: string, enum: [overview, read, readRelease], default: overview }
+          schema:
+            {
+              type: string,
+              enum: [overview, read, readRelease, translationStatus],
+              default: overview,
+            }
         - name: contractId
           in: query
           schema: { type: string }
@@ -35,7 +40,10 @@ paths:
           in: query
           schema: { type: string, format: uuid }
       responses:
-        '200': { description: 'data enthält die scope- und sprachgefilterte Übersicht, Editordaten oder den lokalen Prüfstand nach Core-Katalogvertrag.' }
+        '200':
+          {
+            description: 'data enthält die scope- und sprachgefilterte Übersicht, Editordaten oder den lokalen Prüfstand nach Core-Katalogvertrag.',
+          }
         '400': { description: Ungültige Operation oder Parameter. }
         '403': { description: Fehlender Session-, Scope-, Action- oder Pluginzugang. }
         '404': { description: Katalog oder Prüfstand fehlt. }
@@ -47,6 +55,15 @@ paths:
         POST erfordert bestehenden CSRF-Schutz und Scopeheader. JSON maximal 1 MiB.
         Operationspayloads werden strikt nach packages/auth-runtime/src/app-translations.ts validiert;
         zusätzliche Felder und fremde Scopes werden abgewiesen. Revisionen sind Dezimalstrings.
+        translate ist ausschließlich im Modus translations verfügbar und verlangt catalog.write.
+        Pflichtfelder sind contractId, expectedRevision und mode (missing, standard oder municipal).
+        missing bearbeitet fehlende/veraltete gepinnte Standardtexte ohne manuelle Korrekturen zu ersetzen.
+        standard und municipal verlangen einen einzelnen key und können locales eingrenzen;
+        municipal verwendet einen gespeicherten eigenen deutschen Text. Jede Ersetzung manueller Werte
+        verlangt confirmations je Sprache mit sourceDigest und overrideDigest, jeweils SHA-256.
+        Ohne Revisionstreffer wird keine neue Arbeit angelegt. Ein bereits aktiver Auftrag desselben Entwurfs
+        wird wiedergegeben. data enthält nur id, status, progress und einen sicheren Fehlercode;
+        niemals Texte oder Credentials. Statuslesen erzeugt keine Anbieterarbeit.
       requestBody:
         required: true
         content:
@@ -57,13 +74,35 @@ paths:
               properties:
                 operation:
                   type: string
-                  enum: [import, createMunicipal, changeBase, configureLocales, edit, reset, confirm, seal]
+                  enum:
+                    [
+                      import,
+                      createMunicipal,
+                      changeBase,
+                      configureLocales,
+                      edit,
+                      reset,
+                      confirm,
+                      seal,
+                      translate,
+                    ]
               description: Operationsspezifische Pflichtfelder, Manifest- und Wertevalidierung nach dem typisierten Core-Vertrag.
       responses:
-        '200': { description: data enthält den gespeicherten Entwurf oder unveränderlichen lokalen Prüfstand. }
+        '200':
+          {
+            description: data enthält den gespeicherten Entwurf,
+            unveränderlichen lokalen Prüfstand oder den deduplizierten Übersetzungsauftrag.,
+          }
         '400': { description: Ungültiger Vertrag, unvollständiger Satz oder ungeklärte Korrektur. }
-        '403': { description: Fehlende Berechtigung, CSRF oder unerlaubte Sprache beziehungsweise Hostoperation. }
-        '409': { description: 'Veraltete Scope-, Draft- oder Basisrevision oder catalog_setup_required bei unvollständiger DeepL-Einrichtung.' }
+        '403':
+          {
+            description: Fehlende Berechtigung,
+            CSRF oder unerlaubte Sprache beziehungsweise Hostoperation.,
+          }
+        '409':
+          {
+            description: 'Veraltete Scope-, Draft- oder Basisrevision oder catalog_setup_required bei unvollständiger DeepL-Einrichtung.',
+          }
         '413': { description: JSON überschreitet 1 MiB. }
         '503': { description: Katalog oder Autorisierung nicht verfügbar. }
 
@@ -1676,106 +1715,106 @@ paths:
         '200':
           description: Ausstehende Rechtstexte geladen.
   /api/v1/iam/users/{userId}/keycloak-roles:
-    parameters: [{name: userId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: userId, in: path, required: true, schema: { type: string } }]
     get:
       summary: Keycloak-Rollen eines Benutzers lesen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
     patch:
       summary: Keycloak-Rollen eines Benutzers ändern
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/users/{userId}/deactivate:
-    parameters: [{name: userId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: userId, in: path, required: true, schema: { type: string } }]
     post:
       summary: Benutzer deaktivieren
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/users/{userId}/reprovision-mainserver:
-    parameters: [{name: userId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: userId, in: path, required: true, schema: { type: string } }]
     post:
       summary: Mainserver-Zugang eines Benutzers erneut bereitstellen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/users/bulk-reprovision-mainserver:
     post:
       summary: Mainserver-Zugänge gesammelt erneut bereitstellen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/users/me/invitation-template:
     get:
       summary: Einladungsvorlage des Mandanten lesen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
     patch:
       summary: Einladungsvorlage des Mandanten ändern
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/organizations/{organizationId}/provision-mainserver:
-    parameters: [{name: organizationId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: organizationId, in: path, required: true, schema: { type: string } }]
     post:
       summary: Organisation im Mainserver bereitstellen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/keycloak-roles:
     get:
       summary: Verfügbare Keycloak-Rollen lesen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/templates/account-invitation:
     get:
       summary: Zentrale Kontoeinladungsvorlage lesen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
     patch:
       summary: Zentrale Kontoeinladungsvorlage ändern
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/contents/{contentId}/transfer-ownership:
-    parameters: [{name: contentId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: contentId, in: path, required: true, schema: { type: string } }]
     post:
       summary: Inhaltseigentum übertragen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/contents/{contentId}/ownership-targets:
-    parameters: [{name: contentId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: contentId, in: path, required: true, schema: { type: string } }]
     get:
       summary: Mögliche Ziele für die Eigentumsübertragung lesen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media:
     get:
       summary: Medien auflisten
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media/register:
     post:
       summary: Vorhandenes Bucket-Medium registrieren
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media/references:
     get:
       summary: Medienreferenzen lesen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
     put:
       summary: Medienreferenzen ersetzen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media/content-save-operations:
     post:
       summary: Speicheroperation für Inhalt und Medien anlegen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media/content-save-operations/{operationId}/references:
-    parameters: [{name: operationId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: operationId, in: path, required: true, schema: { type: string } }]
     put:
       summary: Referenzen einer Speicheroperation ersetzen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media/content-save-operations/{operationId}/content-saved:
-    parameters: [{name: operationId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: operationId, in: path, required: true, schema: { type: string } }]
     post:
       summary: Inhalt einer Speicheroperation als gespeichert markieren
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media/content-save-operations/{operationId}/saving-content:
-    parameters: [{name: operationId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: operationId, in: path, required: true, schema: { type: string } }]
     post:
       summary: Speicheroperation als laufend markieren
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media/content-save-operations/{operationId}/outcome-unknown:
-    parameters: [{name: operationId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: operationId, in: path, required: true, schema: { type: string } }]
     post:
       summary: Unbekanntes Speicherergebnis markieren
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media/content-save-operations/{operationId}/commit:
-    parameters: [{name: operationId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: operationId, in: path, required: true, schema: { type: string } }]
     post:
       summary: Speicheroperation abschließen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media/content-save-operations/{operationId}/abandon:
-    parameters: [{name: operationId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: operationId, in: path, required: true, schema: { type: string } }]
     post:
       summary: Speicheroperation abbrechen
       responses: {default: {description: "Antwort des Endpunkts."}}
@@ -1815,23 +1854,23 @@ paths:
         Antwortprojektionen enthalten weder Grundlage noch Bearbeitungszustand.
       responses: {default: {description: "Antwort des Endpunkts."}}
   /api/v1/iam/media/upload-sessions/{uploadSessionId}/complete:
-    parameters: [{name: uploadSessionId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: uploadSessionId, in: path, required: true, schema: { type: string } }]
     post:
       summary: Medien-Upload abschließen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media/{assetId}:
-    parameters: [{name: assetId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: assetId, in: path, required: true, schema: { type: string } }]
     get:
       summary: Medium lesen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
     patch:
       summary: Medium ändern
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
     delete:
       summary: Medium löschen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/media/{assetId}/usage:
-    parameters: [{name: assetId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: assetId, in: path, required: true, schema: { type: string } }]
     get:
       summary: Verwendung eines Mediums lesen
       description: Die optionale editingSource zeigt assetId und title der tatsächlichen Grundlage nur nach deren eigener Leseberechtigung, ohne private Schlüssel oder URLs. Bearbeitbare Kopien stehen getrennt unter editingDependencies mit total und berechtigt sichtbaren items aus assetId und optionalem title. totalReferences zählt weiterhin ausschließlich Inhaltsreferenzen.
@@ -1859,73 +1898,77 @@ paths:
         '404': {description: Medium nicht verfügbar oder fremder lokaler Entwurf.}
         '409': {description: Medium nicht bereit oder Editorzustand inkompatibel.}
   /api/v1/iam/media/{assetId}/delivery:
-    parameters: [{name: assetId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: assetId, in: path, required: true, schema: { type: string } }]
     get:
       summary: Medium ausliefern
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /iam/governance/workflows/{caseId}:
-    parameters: [{name: caseId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
     get:
       summary: Governance-Fall lesen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /iam/governance/legal-consents/export:
     get:
       summary: Rechtliche Einwilligungen exportieren
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /iam/admin/deletion-rules:
     get:
       summary: Löschregeln verwalten
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
     post:
       summary: Löschregeln ändern
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /iam/me/deletion-rules:
     get:
       summary: Eigene Löschregeln lesen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /iam/me/deletion-rules/content-preference:
     post:
       summary: Eigene Inhaltspräferenz für Löschregeln ändern
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /iam/me/permission-change-requests:
     post:
       summary: Berechtigungsänderung beantragen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /iam/me/data-subject-rights/cases/{caseId}:
-    parameters: [{name: caseId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
     get:
       summary: Eigenen Datenschutzfall lesen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /iam/admin/data-subject-rights/cases/{caseId}:
-    parameters: [{name: caseId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
     get:
       summary: Datenschutzfall administrativ lesen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/plugin-operations/jobs:
     get:
       summary: Plugin-Aufträge auflisten
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
     post:
       summary: Plugin-Auftrag starten
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/plugin-operations/jobs/{jobId}:
-    parameters: [{name: jobId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: jobId, in: path, required: true, schema: { type: string } }]
     get:
       summary: Plugin-Auftrag lesen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
     delete:
       summary: Plugin-Auftrag löschen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/plugin-operations/jobs/{jobId}/artifacts/{artifactId}:
-    parameters: [{name: jobId, in: path, required: true, schema: {type: string}}, {name: artifactId, in: path, required: true, schema: {type: string}}]
+    parameters:
+      [
+        { name: jobId, in: path, required: true, schema: { type: string } },
+        { name: artifactId, in: path, required: true, schema: { type: string } },
+      ]
     get:
       summary: Artefakt eines Plugin-Auftrags herunterladen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/plugin-operations/jobs/{jobId}/cancel:
-    parameters: [{name: jobId, in: path, required: true, schema: {type: string}}]
+    parameters: [{ name: jobId, in: path, required: true, schema: { type: string } }]
     post:
       summary: Plugin-Auftrag abbrechen
-      responses: {default: {description: "Antwort des Endpunkts."}}
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
 components:
   parameters:
     Page:
@@ -2044,7 +2087,12 @@ components:
                     code:
                       type: string
                       enum:
-                        [keycloak_user_not_ready, keycloak_unavailable, execute_actions_email_not_supported, internal_error]
+                        [
+                          keycloak_user_not_ready,
+                          keycloak_unavailable,
+                          execute_actions_email_not_supported,
+                          internal_error,
+                        ]
                     message:
                       type: string
                     retryable:
@@ -2824,7 +2872,8 @@ components:
           additionalProperties: true
     DsrSelfServiceOverview:
       type: object
-      required: [instanceId, accountId, nonEssentialProcessingAllowed, legalHolds, requests, exportJobs]
+      required:
+        [instanceId, accountId, nonEssentialProcessingAllowed, legalHolds, requests, exportJobs]
       properties:
         instanceId:
           type: string

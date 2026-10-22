@@ -7,7 +7,9 @@ export const requestCatalog = async <T>(
   signal?: AbortSignal,
   mode: 'source' | 'translations' = 'source'
 ): Promise<T> => {
-  const read = ['overview', 'read', 'readRelease'].includes(String(operation.operation));
+  const read = ['overview', 'read', 'readRelease', 'translationStatus'].includes(
+    String(operation.operation)
+  );
   const headers = createMainserverJsonRequestHeaders();
   headers.set('X-SVA-Catalog-Mode', mode);
   if (scope) headers.set('X-SVA-Catalog-Scope', JSON.stringify(scope));

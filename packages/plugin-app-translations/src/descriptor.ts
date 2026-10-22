@@ -6,6 +6,7 @@ import {
   type PluginDescriptor,
 } from '@sva/plugin-sdk';
 
+export const APP_TRANSLATIONS_CATALOG_JOB = 'app-translations.catalog-translate';
 export const APP_TRANSLATIONS_LIFECYCLE_JOB = 'app-translations.lifecycle';
 const tenantPermissionIds = [
   'app-translations.catalog.read',
@@ -70,6 +71,14 @@ export const appTranslationsPlugin: PluginDescriptor = {
   }),
   jobTypes: [
     {
+      jobTypeId: APP_TRANSLATIONS_CATALOG_JOB,
+      supportsCancellation: true,
+      queue: 'app-translations',
+      displayName: 'DeepL',
+      descriptionKey: 'appTranslations.ui.translateMissing',
+      startPolicy: 'dedicated',
+    },
+    {
       jobTypeId: APP_TRANSLATIONS_LIFECYCLE_JOB,
       queue: 'plugin-operations',
       displayName: 'Mehrsprachigkeit',
@@ -104,6 +113,38 @@ export const appTranslationsPlugin: PluginDescriptor = {
     de: {
       appTranslations: {
         ui: {
+          translateMissing: 'Fehlende Übersetzungen erstellen',
+          nothingToTranslate:
+            'Keine fehlenden oder veralteten Übersetzungen. Es wurde kein Auftrag gestartet.',
+          translationPlan: '{{count}} zu übersetzende Texte. Zielsprachen:',
+          translationProgress:
+            'Gespeichert: {{translated}} · Übersprungen: {{skipped}} · Noch offen: {{pending}}',
+          translateHelp:
+            'Übersetzt fehlende oder veraltete Standardtexte aus dem gepinnten deutschen Ausgangsstand mit dem DeepL-Zugang dieser Instanz. Manuelle Korrekturen bleiben erhalten. Es können DeepL-Kosten entstehen. Keine App-Auslieferung.',
+          translateKey: 'Diesen Text neu übersetzen',
+          machine: 'Maschinell übersetzt',
+          replaceManual: 'Manuelle Korrektur für diese Sprache ausdrücklich ersetzen',
+          transferMunicipal: 'Diesen deutschen Text übersetzen',
+          transferHelp:
+            'Übersetzt diesen gespeicherten eigenen deutschen Text per DeepL in die ausgewählten Sprachen. Das Überschreiben manueller Korrekturen muss für jede betroffene Sprache gesondert bestätigt werden. Es können DeepL-Kosten entstehen.',
+          replaceManualTargets: 'Manuelle Korrekturen überschreiben',
+          jobStatus: {
+            queued: 'Übersetzung vorgemerkt',
+            running: 'Übersetzung läuft',
+            retrying: 'Wiederholungsversuch vorgemerkt',
+            succeeded: 'Übersetzung abgeschlossen',
+            failed: 'Übersetzung gestoppt — Ursache beheben und erneut starten',
+            cancelled: 'Übersetzung abgebrochen',
+          },
+          deepl_auth_failed: 'DeepL hat den Zugang abgelehnt. API-Key prüfen.',
+          deepl_quota_exceeded: 'Das DeepL-Kontingent ist ausgeschöpft.',
+          deepl_rate_limited:
+            'DeepL begrenzt die Anfragen. Ein begrenzter Wiederholungsversuch folgt.',
+          deepl_unavailable: 'DeepL ist gerade nicht erreichbar. Bitte später erneut versuchen.',
+          deepl_invalid_response:
+            'Die DeepL-Antwort war ungültig. Der betroffene Batch wurde nicht gespeichert.',
+          deepl_text_too_large:
+            'Ein Text überschreitet die zulässige Anfragegröße und muss geprüft werden.',
           title: 'Mehrsprachigkeit',
           languageTag: 'de',
           sourceTitle: 'App-Texte',
@@ -121,7 +162,7 @@ export const appTranslationsPlugin: PluginDescriptor = {
             languages_required:
               'In der geprüften Schnittstelle mindestens eine Zielsprache auswählen und speichern.',
             ready:
-              'Die geprüften und ausgewählten Sprachen sind für die lokale Katalogbearbeitung verfügbar. Automatische Übersetzungen und App-Auslieferung folgen später.',
+              'Die geprüften und ausgewählten Sprachen sind für die lokale Katalogbearbeitung verfügbar. Automatische Übersetzungen können ausdrücklich gestartet werden. Die App-Auslieferung folgt später.',
           },
           catalog_setup_required:
             'Bitte zuerst die DeepL-Schnittstelle vollständig einrichten und prüfen. Vorhandene Texte bleiben erhalten.',
@@ -208,9 +249,14 @@ export const appTranslationsPlugin: PluginDescriptor = {
           chooseBasis: 'Gemeinsamen Textstand auswählen',
           choose: 'Bitte auswählen',
           changeBasis: 'Ausgangsstand übernehmen',
+          currentBasis: 'Aktuell verwendete zentrale Basis',
+          switchBasis: 'Ausgangsstand wechseln',
+          cancelBasisChange: 'Abbrechen',
           create: 'Eigenen App-Textentwurf anlegen',
           draftRevision: 'Bearbeitungsstand',
           seal: 'Textstand sichern',
+          sealBlocked:
+            'Der Textstand wurde nicht gesichert. Prüfe die folgenden Texte; ein Klick öffnet den betroffenen Eintrag. Manuelle Korrekturen bleiben erhalten.',
           releases: 'Gesicherte Textstände',
           preview: 'Textstand ansehen',
           noReleases: 'Noch kein vollständiger Textstand gesichert.',
@@ -221,7 +267,7 @@ export const appTranslationsPlugin: PluginDescriptor = {
           catalog_incomplete:
             'Zum Sichern fehlen noch gültige App-Texte in einer oder mehreren ausgewählten Sprachen.',
           catalog_review_required:
-            'Die deutsche Quelle hat sich geändert. Bitte die erhaltene manuelle Korrektur prüfen und bestätigen.',
+            'Die deutsche Quelle oder Zielvariante hat sich geändert. Manuelle Korrektur prüfen und bestätigen oder den betroffenen Text ausdrücklich neu übersetzen.',
           catalog_forbidden:
             'Für diesen Katalogzugriff fehlen Berechtigung, Organisation oder Modulbereitschaft.',
           catalog_not_found: 'Dieser App-Textbestand wurde nicht gefunden.',
@@ -248,6 +294,35 @@ export const appTranslationsPlugin: PluginDescriptor = {
     en: {
       appTranslations: {
         ui: {
+          translateMissing: 'Create missing translations',
+          nothingToTranslate: 'No missing or outdated translations. No job was started.',
+          translationPlan: '{{count}} texts to translate. Target languages:',
+          translationProgress:
+            'Saved: {{translated}} · Skipped: {{skipped}} · Still pending: {{pending}}',
+          translateHelp:
+            'Translate missing or outdated standard texts from the pinned German source using this instance’s DeepL account. Manual corrections are retained. DeepL charges may apply. No app delivery.',
+          translateKey: 'Translate this text again',
+          machine: 'Machine translated',
+          replaceManual: 'Explicitly replace the manual correction for this language',
+          transferMunicipal: 'Translate this German text',
+          transferHelp:
+            'Uses DeepL to translate this saved municipal German text into the selected languages. Overwriting manual corrections requires separate confirmation for each affected language. DeepL charges may apply.',
+          replaceManualTargets: 'Confirm overwriting manual corrections',
+          jobStatus: {
+            queued: 'Translation queued',
+            running: 'Translation running',
+            retrying: 'Retry queued',
+            succeeded: 'Translation completed',
+            failed: 'Translation stopped — resolve the cause and start again',
+            cancelled: 'Translation cancelled',
+          },
+          deepl_auth_failed: 'DeepL rejected the credentials. Check the API key.',
+          deepl_quota_exceeded: 'The DeepL quota has been exhausted.',
+          deepl_rate_limited: 'DeepL is limiting requests. A bounded retry will follow.',
+          deepl_unavailable: 'DeepL is currently unavailable. Please try again later.',
+          deepl_invalid_response:
+            'DeepL returned an invalid response. The affected batch was not saved.',
+          deepl_text_too_large: 'A text exceeds the request size limit and needs review.',
           title: 'Multilingual content',
           languageTag: 'en',
           sourceTitle: 'App texts',
@@ -264,7 +339,7 @@ export const appTranslationsPlugin: PluginDescriptor = {
             languages_required:
               'Select and save at least one target language in the verified interface.',
             ready:
-              'Verified and selected languages are available for local catalog editing. Automatic translations and app delivery will follow later.',
+              'Verified and selected languages are available for local catalog editing. Automatic translations can be started explicitly. App delivery will follow later.',
           },
           catalog_setup_required:
             'First complete and verify DeepL setup. Existing texts are retained.',
@@ -350,9 +425,14 @@ export const appTranslationsPlugin: PluginDescriptor = {
           chooseBasis: 'Select a shared text snapshot',
           choose: 'Please select',
           changeBasis: 'Use this starting point',
+          currentBasis: 'Current central starting point',
+          switchBasis: 'Change starting point',
+          cancelBasisChange: 'Cancel',
           create: 'Create a municipal app text draft',
           draftRevision: 'Draft revision',
           seal: 'Save text snapshot',
+          sealBlocked:
+            'The text snapshot was not saved. Review the following texts; click an entry to open it. Manual corrections are preserved.',
           releases: 'Saved text snapshots',
           preview: 'View text snapshot',
           noReleases: 'No complete text snapshot saved yet.',
@@ -363,7 +443,7 @@ export const appTranslationsPlugin: PluginDescriptor = {
           catalog_incomplete:
             'Valid app texts are still missing for one or more selected languages. Complete them before saving a snapshot.',
           catalog_review_required:
-            'The German source has changed. Review and confirm the preserved manual correction.',
+            'The German source or target variant has changed. Review and confirm a manual correction or explicitly translate the affected text again.',
           catalog_forbidden:
             'Permission, organization or module readiness is missing for this catalog access.',
           catalog_not_found: 'This catalog version was not found.',

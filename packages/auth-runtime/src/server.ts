@@ -325,3 +325,5 @@ export {
   getDeepLSetupStatus,
   readDeepLSetupStatus,
 } from './app-translations-deepl.js';
+
+export { runCatalogTranslation } from './app-translations-jobs.js';

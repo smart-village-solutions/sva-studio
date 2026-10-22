@@ -86,6 +86,10 @@ Migration `0108_instance_deepl_interface.sql` löst die Sprachbestände aus 0107
 
 Migration 0107 ergänzt außerdem `app-texts.catalog.read`, `.write` und `.publish` für vorhandene `system_admin`-Rollen und invalidiert den Berechtigungscache. Die deutsche Textbasis nutzt unverändert die drei Katalogtabellen aus 0106. Source- und mehrsprachige Versiegelung derselben Draftrevision teilen den Satzrevisionszähler, haben aber getrennte Retry-Identitäten nach Sprachmenge. Ein Rücklauf von 0107 entfernt nur die zwei Sprachverwaltungstabellen; potenziell delegierte Hostrechte und Katalogdaten bleiben erhalten.
 
+### Maschinelle Standardwerte — Migration 0109
+
+Der bestehende Draft erhält `machine_standard_values_by_locale` als JSONB-Objekt mit leerem Default. Bestehende Zeilen/RLS und die eigenen Werte in `values_by_locale` bleiben erhalten. Das additive Feld bleibt bei Down absichtlich bestehen, damit generierte Standards nicht verloren gehen; ältere Runtimes ignorieren es, erneutes Up erhält die Daten. Es entsteht keine weitere Katalog-/Auftragstabelle.
+
 ### Interne App-Katalogbasis — Migration 0106
 
 Die additive Migration `0106_app_translation_catalog_basis.sql` ergänzt ausschließlich drei Tabellen im Schema `iam`:

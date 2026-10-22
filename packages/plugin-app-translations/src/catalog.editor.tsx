@@ -1,14 +1,55 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   APP_TRANSLATION_LOCALES,
   catalogDigest,
+  catalogTextIsCurrent,
   validateCatalogValue,
   type AppTranslationLocale,
   type CatalogEditorData,
   type CatalogValue,
 } from '@sva/plugin-sdk/app-translations';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Input, Select, StudioPagination, Textarea } from '@sva/studio-ui-react';
+import { Button, Checkbox, Input, Select, StudioPagination, Textarea } from '@sva/studio-ui-react';
+
+/** Match the release checks without changing or confirming any stored value. */
+export const catalogSealIssues = async (data: CatalogEditorData, sourceOnly: boolean) => {
+  const issues: {
+    locale: string;
+    key: string;
+    reason: 'missing' | 'invalid_catalog' | 'reviewRequired';
+  }[] = [];
+  for (const locale of sourceOnly ? ['de'] : data.draft.supportedLocales) {
+    for (const key of Object.keys(data.draft.manifest.keys)) {
+      const text = data.values[locale]?.[key];
+      if (!text) {
+        issues.push({ locale, key, reason: 'missing' });
+        continue;
+      }
+      try {
+        validateCatalogValue(data.draft.manifest, key, text.value);
+      } catch {
+        issues.push({ locale, key, reason: 'invalid_catalog' });
+        continue;
+      }
+      if (locale === 'de' || text.origin === 'default') continue;
+      const source =
+        text.sourceKind === 'standard'
+          ? data.baseCatalogs.de?.values[key]
+          : data.values.de?.[key]?.value;
+      if (
+        !(await catalogTextIsCurrent(
+          text,
+          source,
+          text.origin === 'machine' || text.targetCode || locale === 'en'
+            ? data.targetCodes?.[locale]
+            : undefined
+        ))
+      )
+        issues.push({ locale, key, reason: 'reviewRequired' });
+    }
+  }
+  return issues;
+};
 
 export const CatalogEditor = ({
   data,
@@ -17,13 +58,17 @@ export const CatalogEditor = ({
   busy,
   mutate,
   onDirtyChange,
+  translate,
+  requestedSelection,
 }: {
   data: CatalogEditorData;
+  requestedSelection?: { locale: string; key: string };
   canWrite: boolean;
   sourceOnly?: boolean;
   busy: boolean;
   mutate: (operation: Record<string, unknown>) => Promise<boolean>;
   onDirtyChange: (dirty: boolean) => void;
+  translate?: (options: Record<string, unknown>) => Promise<boolean>;
 }) => {
   const pt = usePluginTranslation('appTranslations.ui');
   const displayNames = new Intl.DisplayNames([pt('languageTag') === 'en' ? 'en' : 'de'], {
@@ -41,6 +86,7 @@ export const CatalogEditor = ({
         pt('languageTag') === 'en' ? 'en' : 'de'
       )
   );
+  const section = useRef<HTMLElement>(null);
   const [selectedLocale, setLocale] = useState<AppTranslationLocale>('de');
   const locale = data.draft.supportedLocales.includes(selectedLocale) ? selectedLocale : 'de';
   const [key, setKey] = useState(Object.keys(data.draft.manifest.keys)[0] ?? '');
@@ -49,7 +95,25 @@ export const CatalogEditor = ({
   const [input, setInput] = useState('');
   const [dirty, setDirty] = useState(false);
   const [invalid, setInvalid] = useState(false);
+  const [replaceConfirmed, setReplaceConfirmed] = useState(false);
+  const [transferTargets, setTransferTargets] = useState<string[]>([]);
+  const [transferConfirmations, setTransferConfirmations] = useState<string[]>([]);
+  const manualTransferTargets = transferTargets.filter(
+    (target) => data.draft.valuesByLocale[target]?.[key]?.origin === 'manual'
+  );
   const [reviewRequired, setReviewRequired] = useState(false);
+  useEffect(() => {
+    if (!requestedSelection) return;
+    setLocale(requestedSelection.locale);
+    setKey(requestedSelection.key);
+    setQuery('');
+    setPage(
+      Math.floor(Object.keys(data.draft.manifest.keys).indexOf(requestedSelection.key) / 25) + 1
+    );
+    section.current?.focus();
+    section.current?.scrollIntoView?.({ block: 'start' });
+  }, [requestedSelection]);
+
   const matchingKeys = useMemo(() => {
     const term = query.trim().toLocaleLowerCase();
     return Object.keys(data.draft.manifest.keys).filter((candidate) => {
@@ -70,11 +134,21 @@ export const CatalogEditor = ({
   const definition = data.draft.manifest.keys[key];
   const own = data.draft.valuesByLocale[locale]?.[key];
   const effective = data.values[locale]?.[key];
+  const translationMode =
+    data.draft.valuesByLocale.de?.[key]?.origin === 'manual' &&
+    (effective?.sourceKind === 'municipal' || (own?.origin === 'manual' && !own.sourceKind))
+      ? 'municipal'
+      : 'standard';
   const source =
-    locale !== 'de' && !own && effective && data.draft.scope.kind === 'municipal'
+    locale !== 'de' &&
+    effective &&
+    (effective.sourceKind === 'standard' || (!own && effective.origin === 'default')) &&
+    data.draft.scope.kind === 'municipal'
       ? data.baseCatalogs.de?.values[key]
       : data.values.de?.[key]?.value;
-  const base = data.baseCatalogs[locale]?.values[key];
+  const base =
+    data.draft.machineStandardValuesByLocale?.[locale]?.[key]?.value ??
+    data.baseCatalogs[locale]?.values[key];
   const savedValue = data.values[locale]?.[key]?.value;
   const savedInput =
     definition?.type === 'stringArray'
@@ -84,21 +158,32 @@ export const CatalogEditor = ({
     setInput(savedInput);
     setDirty(false);
     setInvalid(false);
-  }, [data, locale, key, savedInput]);
+  }, [locale, key, savedInput]);
+  useEffect(() => {
+    setReplaceConfirmed(false);
+    setTransferTargets([]);
+    setTransferConfirmations([]);
+  }, [locale, key, data.draft.draftRevision]);
   useEffect(() => {
     onDirtyChange(dirty);
   }, [dirty, onDirtyChange]);
   useEffect(() => {
     let active = true;
     setReviewRequired(false);
-    if (locale !== 'de' && own?.origin === 'manual' && source !== undefined)
-      void catalogDigest(source).then((digest) => {
-        if (active) setReviewRequired(digest !== own.confirmedSourceDigest);
+    if (locale !== 'de' && effective && effective.origin !== 'default')
+      void catalogTextIsCurrent(
+        effective,
+        source,
+        effective.origin === 'machine' || effective.targetCode || locale === 'en'
+          ? data.targetCodes?.[locale]
+          : undefined
+      ).then((current) => {
+        if (active) setReviewRequired(!current);
       });
     return () => {
       active = false;
     };
-  }, [locale, own, source]);
+  }, [locale, effective, source, data.targetCodes]);
   if (!definition) return <p>{pt('empty')}</p>;
   const save = async () => {
     let value: CatalogValue;
@@ -112,7 +197,7 @@ export const CatalogEditor = ({
       setInvalid(true);
       return;
     }
-    await mutate({
+    const saved = await mutate({
       operation: 'edit',
       contractId: data.draft.manifest.contractId,
       expectedRevision: data.draft.draftRevision,
@@ -120,6 +205,10 @@ export const CatalogEditor = ({
       key,
       value,
     });
+    if (saved) {
+      setDirty(false);
+      setInvalid(false);
+    }
   };
   const fieldOperation = (operation: 'reset' | 'confirm') =>
     mutate({
@@ -129,8 +218,41 @@ export const CatalogEditor = ({
       locale,
       key,
     });
+  const translateKey = async (
+    mode: 'standard' | 'municipal',
+    targets: string[],
+    confirmedTargets: readonly string[] = []
+  ) => {
+    if (
+      !translate ||
+      targets.some(
+        (target) =>
+          data.draft.valuesByLocale[target]?.[key]?.origin === 'manual' &&
+          !confirmedTargets.includes(target)
+      )
+    )
+      return;
+    const sourceValue =
+      mode === 'municipal' ? data.values.de?.[key]?.value : data.baseCatalogs.de?.values[key];
+    const confirmations = Object.fromEntries(
+      await Promise.all(
+        targets
+          .filter((target) => data.draft.valuesByLocale[target]?.[key]?.origin === 'manual')
+          .map(async (target) => [
+            target,
+            {
+              sourceDigest: await catalogDigest(sourceValue),
+              overrideDigest: await catalogDigest(data.draft.valuesByLocale[target]![key]),
+            },
+          ])
+      )
+    );
+    await translate({ mode, key, locales: targets, confirmations });
+  };
   return (
     <section
+      ref={section}
+      tabIndex={-1}
       className="space-y-5 rounded-lg border border-border bg-card p-6"
       aria-labelledby="catalog-editor-heading"
     >
@@ -238,7 +360,17 @@ export const CatalogEditor = ({
             </div>
             <div>
               <dt className="text-muted-foreground">{pt('origin')}</dt>
-              <dd>{pt(!effective ? 'missing' : own ? 'own' : 'inherited')}</dd>
+              <dd>
+                {pt(
+                  !effective
+                    ? 'missing'
+                    : effective.origin === 'machine'
+                      ? 'machine'
+                      : own
+                        ? 'own'
+                        : 'inherited'
+                )}
+              </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">{pt('status')}</dt>
@@ -307,7 +439,7 @@ export const CatalogEditor = ({
                 {pt('reset')}
               </Button>
             )}
-            {reviewRequired && (
+            {reviewRequired && own?.origin === 'manual' && (
               <Button
                 type="button"
                 variant="secondary"
@@ -318,6 +450,108 @@ export const CatalogEditor = ({
               </Button>
             )}
           </div>
+          {!sourceOnly && canWrite && translate && locale !== 'de' && (
+            <div className="space-y-2">
+              {own?.origin === 'manual' && (
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    type="checkbox"
+                    checked={replaceConfirmed}
+                    disabled={busy || dirty}
+                    onChange={(event) => setReplaceConfirmed(event.target.checked)}
+                  />
+                  {pt('replaceManual')}
+                </label>
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy || dirty || (own?.origin === 'manual' && !replaceConfirmed)}
+                onClick={() =>
+                  void translateKey(
+                    translationMode,
+                    [locale],
+                    replaceConfirmed ? [locale] : []
+                  )
+                }
+              >
+                {pt('translateKey')}
+              </Button>
+            </div>
+          )}
+          {!sourceOnly &&
+            canWrite &&
+            translate &&
+            locale === 'de' &&
+            data.draft.scope.kind === 'municipal' &&
+            own?.origin === 'manual' && (
+              <fieldset
+                className="space-y-2 rounded-md border border-border p-3"
+                disabled={busy || dirty}
+              >
+                <legend>{pt('transferMunicipal')}</legend>
+                <p className="text-sm text-muted-foreground">{pt('transferHelp')}</p>
+                {locales
+                  .filter((target) => target !== 'de')
+                  .map((target) => (
+                    <label key={target} className="flex items-center gap-2">
+                      <Checkbox
+                        type="checkbox"
+                        checked={transferTargets.includes(target)}
+                        onChange={(event) => {
+                          setTransferTargets((current) =>
+                            event.target.checked
+                              ? [...current, target]
+                              : current.filter((entry) => entry !== target)
+                          );
+                          setTransferConfirmations([]);
+                        }}
+                      />
+                      {languageName(target)}
+                    </label>
+                  ))}
+                {manualTransferTargets.length > 0 && (
+                  <div
+                    role="group"
+                    aria-label={pt('replaceManualTargets')}
+                    className="space-y-2 border-t border-border pt-3"
+                  >
+                    <p className="text-sm font-medium">{pt('replaceManualTargets')}</p>
+                    {manualTransferTargets.map((target) => (
+                      <label key={target} className="flex items-center gap-2">
+                        <Checkbox
+                          type="checkbox"
+                          checked={transferConfirmations.includes(target)}
+                          onChange={(event) =>
+                            setTransferConfirmations((current) =>
+                              event.target.checked
+                                ? [...current, target]
+                                : current.filter((entry) => entry !== target)
+                            )
+                          }
+                        />
+                        {languageName(target)} · {pt('replaceManual')}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={
+                    busy ||
+                    dirty ||
+                    !transferTargets.length ||
+                    manualTransferTargets.some((target) => !transferConfirmations.includes(target))
+                  }
+                  onClick={() =>
+                    void translateKey('municipal', transferTargets, transferConfirmations)
+                  }
+                >
+                  {pt('transferMunicipal')}
+                </Button>
+              </fieldset>
+            )}
           {dirty && (
             <p role="status" className="text-sm text-muted-foreground">
               {pt('unsaved')}

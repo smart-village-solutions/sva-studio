@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as catalogJobs from './app-translations-jobs.js';
 const state = vi.hoisted(() => ({
   ctx: {
     sessionId: 'session',
@@ -18,6 +19,7 @@ const state = vi.hoisted(() => ({
   repo: {
     overview: vi.fn(),
     loadDraft: vi.fn(),
+    loadRelease: vi.fn(),
     editText: vi.fn(),
     readEffective: vi.fn(),
     seal: vi.fn(),
@@ -39,6 +41,9 @@ vi.mock('./iam-instance-registry/http.js', () => ({
 }));
 vi.mock('./iam-authorization/permission-store.js', () => ({
   resolveEffectivePermissions: (...args: unknown[]) => state.permissions(...args),
+}));
+vi.mock('./iam-authorization/permission-store.queries.js', () => ({
+  loadPermissionsWithClient: vi.fn(),
 }));
 vi.mock('@sva/data-repositories/server', () => ({
   createAppTranslationRepository: (...args: unknown[]) => state.createRepo(...args),
@@ -63,6 +68,64 @@ import {
 } from './app-translations.js';
 const request = new Request('https://tenant.test/internal', { method: 'POST' });
 describe('internal catalog session facade', () => {
+  it('starts translations only with write permission, CSRF, matching scope and a strict payload', async () => {
+    const start = vi
+      .spyOn(catalogJobs, 'startCatalogTranslation')
+      .mockResolvedValue({ id: 'job', status: 'queued', progress: undefined, error: undefined });
+    const operation = {
+      operation: 'translate',
+      contractId: 'ui',
+      expectedRevision: '1',
+      mode: 'missing',
+    };
+    try {
+      state.allowed = true;
+      expect((await executeAppTranslationOperation(request, operation)).status).toBe(403);
+      state.permissions.mockResolvedValue({
+        ok: true,
+        permissions: [
+          {
+            action: 'app-translations.catalog.write',
+            resourceType: 'app-translations',
+            organizationId: state.ctx.activeOrganizationId,
+          },
+        ],
+      });
+      state.csrfError = new Response(null, { status: 403 });
+      expect((await executeAppTranslationOperation(request, operation)).status).toBe(403);
+      state.csrfError = null;
+      expect(
+        (
+          await executeAppTranslationOperation(
+            new Request(request, { headers: { 'X-SVA-Catalog-Scope': 'wrong' } }),
+            operation
+          )
+        ).status
+      ).toBe(409);
+      expect(
+        (
+          await executeAppTranslationOperation(
+            new Request(request, { headers: { 'X-SVA-Catalog-Mode': 'source' } }),
+            operation
+          )
+        ).status
+      ).toBe(403);
+      expect(
+        (await executeAppTranslationOperation(request, { ...operation, url: 'https://other.test' }))
+          .status
+      ).toBe(400);
+      expect(start).not.toHaveBeenCalled();
+      expect((await executeAppTranslationOperation(request, operation)).status).toBe(200);
+      expect(start).toHaveBeenCalledWith(
+        expect.anything(),
+        { kind: 'municipal', instanceId: 'tenant', organizationId: state.ctx.activeOrganizationId },
+        'user',
+        operation
+      );
+    } finally {
+      start.mockRestore();
+    }
+  });
   afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     vi.clearAllMocks();
@@ -91,7 +154,31 @@ describe('internal catalog session facade', () => {
     }));
     state.createRepo.mockResolvedValue(state.repo);
     state.db.mockImplementation(async (work) =>
-      work({ query: async () => ({ rows: [{ id: 'org' }] }) })
+      work({
+        query: async (sql: string) => ({
+          rows: sql.includes('instance_external_interfaces')
+            ? [
+                {
+                  id: 'deepl',
+                  publicConfig: {
+                    revision: 'r1',
+                    credentialRevision: 'k1',
+                    plan: 'pro',
+                    englishVariant: 'en-GB',
+                    selectedLocales: state.locales.filter((locale) => locale !== 'de'),
+                    availableLanguages: state.locales
+                      .filter((locale) => locale !== 'de')
+                      .map((locale) => ({
+                        code: locale === 'en' ? 'en-GB' : locale,
+                        name: locale,
+                        tagHandling: false,
+                      })),
+                  },
+                },
+              ]
+            : [{ id: 'org' }],
+        }),
+      })
     );
     state.repo.loadDraft.mockResolvedValue({ supportedLocales: ['de'] });
     state.repo.editText.mockResolvedValue({
@@ -112,7 +199,7 @@ describe('internal catalog session facade', () => {
       valuesByLocale: { de: {} },
     });
   });
-  it('allows German host access without the module and never returns translated values', async () => {
+  it('keeps the German editor restricted without requiring the multilingual module', async () => {
     const sourceRequest = new Request(request, { headers: { 'X-SVA-Catalog-Mode': 'source' } });
     state.pluginAccess.mockResolvedValue({ allowed: false });
     state.permissions.mockResolvedValue({
@@ -137,6 +224,64 @@ describe('internal catalog session facade', () => {
         .status
     ).toBe(403);
   });
+  it.each(['source', 'translations'])(
+    'lists and previews all scoped immutable snapshots in %s mode without enabling foreign edits',
+    async (mode) => {
+      const namespace = mode === 'source' ? 'app-texts' : 'app-translations';
+      state.allowed = true;
+      state.locales = ['de'];
+      state.permissions.mockResolvedValue({
+        ok: true,
+        permissions: [
+          {
+            action: `${namespace}.catalog.read`,
+            resourceType: namespace,
+            organizationId: state.ctx.activeOrganizationId,
+          },
+        ],
+      });
+      const catalogRequest = new Request(request, { headers: { 'X-SVA-Catalog-Mode': mode } });
+      const release = {
+        id: '33333333-3333-4333-8333-333333333333',
+        state: 'sealed',
+        contractId: 'ui',
+        supportedLocales: ['de', 'en', 'fr', 'pt-PT'],
+        catalogSetRevision: '2',
+        draftRevision: '97',
+        catalogs: { de: { values: { title: 'Titel' } }, en: { values: { title: 'Title' } } },
+      };
+      state.repo.overview.mockResolvedValue({
+        catalogs: [{ supportedLocales: ['de', 'en'] }],
+        releases: [release],
+        bases: [],
+      });
+      state.repo.loadRelease.mockResolvedValue(release);
+      const overview = await executeAppTranslationOperation(catalogRequest, {
+        operation: 'overview',
+      });
+      expect(overview.status).toBe(200);
+      expect((await overview.json()).data.releases).toEqual([release]);
+      const preview = await executeAppTranslationOperation(catalogRequest, {
+        operation: 'readRelease',
+        releaseId: release.id,
+      });
+      expect(preview.status).toBe(200);
+      expect((await preview.json()).data).toEqual(release);
+      expect(
+        (
+          await executeAppTranslationOperation(catalogRequest, {
+            operation: 'edit',
+            contractId: 'ui',
+            expectedRevision: '98',
+            locale: 'en',
+            key: 'title',
+            value: 'New',
+          })
+        ).status
+      ).toBe(403);
+      expect(state.repo.editText).not.toHaveBeenCalled();
+    }
+  );
   it('rejects foreign language edits in source mode and requires independent host rights for German writes', async () => {
     const sourceRequest = new Request(request, { headers: { 'X-SVA-Catalog-Mode': 'source' } });
     state.permissions.mockResolvedValue({
@@ -232,7 +377,7 @@ describe('internal catalog session facade', () => {
         })
       ).status
     ).toBe(200);
-    expect(state.repo.seal).toHaveBeenCalledWith('ui', '1', true);
+    expect(state.repo.seal).toHaveBeenCalledWith('ui', '1', true, {});
     expect(state.pluginAccess).not.toHaveBeenCalled();
   });
   it('hides disabled translations and denies their modification while retaining storage', async () => {

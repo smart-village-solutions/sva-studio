@@ -1,0 +1,4 @@
+{
+  "prNumber": 1945,
+  "body": "Die zentralen Studio-Umgebungen verwenden denselben ClamAV-Dienst und gemeinsame Signaturen. Der private Medien-Eingang unterstützt die vorhandene MinIO-Anbindung; die Scan-Aktivierung erfolgt weiterhin separat nach Abnahme."
+}

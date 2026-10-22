@@ -9,8 +9,23 @@ import {
   parseArgs,
 } from './promote-one-shot-job.ts';
 import { OneShotJobError } from '../ops/runtime/one-shot-job-lifecycle.ts';
+import { pickInternalNetworkName } from '../ops/runtime/internal-network.ts';
 
 describe('promote one-shot job', () => {
+  it.each(['studio-dev', 'studio-staging', 'studio'])(
+    'keeps one-shot jobs on the database network after %s joins the shared scanner',
+    (stack) => {
+      expect(
+        pickInternalNetworkName(['network-node-005', 'studio-clamav_default', `${stack}_default`])
+      ).toBe(`${stack}_default`);
+    }
+  );
+
+  it('does not treat the scanner-only overlay as a database network', () => {
+    expect(
+      pickInternalNetworkName(['public', 'network-node-005', 'studio-clamav_default'])
+    ).toBeUndefined();
+  });
   it('accepts production one-shot jobs', () => {
     expect(parseArgs(['--kind', 'migration', '--environment', 'prod'])).toEqual({
       environment: 'prod',

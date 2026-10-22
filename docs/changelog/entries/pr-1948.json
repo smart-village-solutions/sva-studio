@@ -1,0 +1,4 @@
+{
+  "prNumber": 1948,
+  "body": "Isolierte Datenbankjobs wählen auch nach der Anbindung des gemeinsamen Virenscanners weiterhin das Datenbanknetz ihrer Umgebung. Candidate-Prüfung, Migration, Bootstrap und Restore verwenden dadurch nicht versehentlich das Scanner-Netz."
+}

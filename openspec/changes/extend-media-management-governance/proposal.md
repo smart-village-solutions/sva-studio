@@ -49,3 +49,8 @@ Am 22.10.2026 hat der Nutzer den gemeinsamen Scanner für die zentralen Umgebung
 
 
 Die Staging-Aktivierung erfolgt gemäß ausdrücklicher Freigabe vom 22.10.2026 als regulärer Rollout: Danach neu initialisierte Uploads verwenden privaten Eingang und Prüfung; vorher ausgestellte öffentliche Upload-URLs laufen nach ihrem bestehenden Vertrag aus. Ihr Ablauf ist keine Freigabebedingung. Eine feste Übergangsfrist, App-Pause, zusätzliche Bucket-Sperre und erzwungene Upload-Abbrüche sind nicht Bestandteil dieses Übergangs. Die frühere Wartungsplanung ist damit ersetzt.
+
+
+## Anschließende Production-Freigabe (22.10.2026)
+
+Nach erfolgreichem regulärem App-Promote hat der Nutzer auch die Aktivierung des Upload-Virenscans in Production beauftragt. Dies erweitert die oben dokumentierte ursprüngliche Staging-Freigabe: Production nutzt denselben gemeinsamen Scanner und die bestehende tägliche manuelle Signaturkontrolle, solange der automatische 24-Stunden-Warnalarm fehlt. Der eigene private Eingang `studio-media-private-production` wurde auf dem vorhandenen S3-Dienst abgenommen. Die automatische 72-Stunden-/Ausfallsperre bleibt wirksam; Dev bleibt deaktiviert und Bestandsscans bleiben separat freizugeben. Der reguläre Übergang ohne feste Wartezeit, App-Pause oder zusätzliche Sperre gilt auch für Production.

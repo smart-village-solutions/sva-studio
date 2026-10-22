@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MediaDetailPage } from './-media-detail-page';
@@ -114,6 +114,81 @@ describe('MediaDetailPage', () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+  });
+
+  it.each([
+    {
+      name: 'a successfully scanned upload',
+      technical: { scanStatus: 'clean' },
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      result: 'Geprüft – kein Schadsoftware-Fund',
+    },
+    {
+      name: 'a blocked infected upload',
+      technical: { lastError: { code: 'media_scan_infected' } },
+      uploadStatus: 'blocked',
+      processingStatus: 'failed',
+      result: 'Schadsoftware-Verdacht – Datei gesperrt',
+    },
+    ...['media_scan_unavailable', 'media_scan_stale', 'media_scan_incomplete'].map((code) => ({
+      name: code,
+      technical: { lastError: { code } },
+      uploadStatus: 'failed',
+      processingStatus: 'failed',
+      result: 'Prüfung nicht möglich',
+    })),
+    {
+      name: 'a legacy asset without scan evidence',
+      technical: {},
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      result: 'Kein Prüfergebnis vorhanden',
+    },
+    {
+      name: 'an unrelated processing failure',
+      technical: { lastError: { code: 'invalid_media_content' } },
+      uploadStatus: 'failed',
+      processingStatus: 'failed',
+      result: 'Kein Prüfergebnis vorhanden',
+    },
+  ])('shows the stored scan result for $name', ({ technical, uploadStatus, processingStatus, result }) => {
+    const media = useMediaDetailMock();
+    useMediaDetailMock.mockReturnValue({
+      ...media,
+      asset: { ...media.asset, technical, uploadStatus, processingStatus },
+      delivery: null,
+    });
+
+    render(<MediaDetailPage assetId="asset-2" />);
+
+    const status = screen.getByRole('status', { name: 'Virenprüfung' });
+    expect(within(status).getByText(result)).toBeTruthy();
+    expect(status.textContent).not.toContain('media_scan_');
+    expect(status.textContent).not.toContain('invalid_media_content');
+    if (result !== 'Geprüft – kein Schadsoftware-Fund') {
+      expect(within(status).queryByText('Geprüft – kein Schadsoftware-Fund')).toBeNull();
+    }
+  });
+
+  it('updates the scan result when the refreshed asset becomes ready', () => {
+    const media = useMediaDetailMock();
+    useMediaDetailMock.mockReturnValue({
+      ...media,
+      asset: { ...media.asset, technical: {}, uploadStatus: 'pending', processingStatus: 'pending' },
+      delivery: null,
+    });
+    const view = render(<MediaDetailPage assetId="asset-2" />);
+    expect(screen.getByText('Kein Prüfergebnis vorhanden')).toBeTruthy();
+
+    useMediaDetailMock.mockReturnValue({
+      ...media,
+      asset: { ...media.asset, technical: { scanStatus: 'clean' } },
+    });
+    view.rerender(<MediaDetailPage assetId="asset-2" />);
+
+    expect(screen.getByText('Geprüft – kein Schadsoftware-Fund')).toBeTruthy();
+    expect(screen.queryByText('Kein Prüfergebnis vorhanden')).toBeNull();
   });
 
   it('explains fixed visibility only for successfully scanned uploads', () => {

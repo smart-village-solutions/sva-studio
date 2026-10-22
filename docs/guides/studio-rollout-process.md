@@ -55,7 +55,7 @@ Der zentrale Agent akzeptiert nur den engen, OIDC- und HMAC-gesicherten Vertrag 
 
 Der manuell gestartete Workflow `ClamAV Rollout` richtet ausschließlich den dedizierten Stack `studio-clamav` auf dem SVA-Endpoint ein. Er verwendet das geschützte Environment `prod`, das im Compose-Vertrag gepinnte Scanner-Image, genau eine Replik und persistente Signaturen. Es wird kein Port veröffentlicht. Der Workflow wartet auf geladene Signaturen und genau einen laufenden Scanner; seine Status-Evidenz enthält keine Service-Environments oder Zugangsdaten.
 
-Dieser Infrastruktur-Schritt aktiviert keinen Upload-Scan und verändert keine App-Stacks. Die anschließende Anbindung und Aktivierung einer Umgebung bleiben an deren versionierte Konfiguration, Betriebsabnahme und den nachfolgend definierten Build-/Promote-Pfad gebunden. Bei einer ersten Einführung wird der Scanner vor den Verbraucheränderungen bereitgestellt, damit automatische Dev-Promotes nicht auf ein fehlendes Netzwerk oder Signaturvolume treffen.
+Dieser Infrastruktur-Schritt aktiviert keinen Upload-Scan und verändert keine App-Stacks. Die anschließende Anbindung und Aktivierung einer Umgebung bleiben an deren versionierte Konfiguration, Betriebsabnahme und den nachfolgend definierten Build-/Promote-Pfad gebunden. Bei einer ersten Einführung wird der Scanner vor den Verbraucheränderungen bereitgestellt, damit automatische Dev-Promotes nicht auf ein fehlendes Netzwerk oder Signaturvolume treffen. Die bestehende Netzauswahl für isolierte Datenbankjobs darf das zusätzliche Scanner-Overlay nicht als Datenbanknetz wählen; Candidate, Migration, Bootstrap, Backup und Restore bleiben am internen Netz der jeweiligen Umgebung.
 
 ## Phase 1: Image bauen und Dev aktualisieren
 

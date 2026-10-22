@@ -36,7 +36,15 @@ Das System SHALL Tag-Begriffe in der vorhandenen Suche berücksichtigen und in M
 
 ### Requirement: ClamAV-Prüfung vor der Upload-Freigabe
 
-Das System SHALL neue Uploads im bestehenden Medienjob vor Variantenverarbeitung und Freigabe über den internen ClamAV-Dienst prüfen. Nur eine vollständig abgeschlossene Prüfung ohne Fund darf die weitere Verarbeitung erlauben.
+Das System SHALL nach Aktivierung neu initialisierte Uploads im bestehenden Medienjob vor Variantenverarbeitung und Freigabe über den internen ClamAV-Dienst prüfen. Nur eine vollständig abgeschlossene Prüfung ohne Fund darf die weitere Verarbeitung erlauben.
+
+#### Scenario: Regulärer Übergang bei der Staging-Aktivierung
+
+- **WHEN** der freigegebene Staging-Rollout die Scan-Anforderung aktiviert
+- **THEN** verwenden danach neu initialisierte Uploads den privaten Eingang und die Scan-Prüfung
+- **AND** behalten zuvor ausgestellte öffentliche Upload-URLs ihre bisherige Gültigkeit
+- **AND** blockieren diese Alt-URLs den Rollout nicht; es gibt keine feste Wartefrist, App-Pause, zusätzliche Bucket-Sperre oder erzwungenen Upload-Abbruch
+- **AND** behauptet die Aktivierung für frühere Uploads allein keinen Scan-Nachweis
 
 #### Scenario: Datei wird erfolgreich geprüft
 
@@ -65,7 +73,7 @@ Das System SHALL ungeprüfte und abgewiesene Uploads auch auf Storage-Ebene vor 
 
 #### Scenario: Direkter Zugriff auf ungeprüften Upload
 
-- **WHEN** ein neuer Upload noch nicht freigegeben oder bereits abgewiesen ist
+- **WHEN** ein nach Aktivierung neu initialisierter Upload noch nicht freigegeben oder bereits abgewiesen ist
 - **THEN** erlauben weder Studio-Delivery und Preview noch direkte öffentliche Storage-URLs oder Bucket-Listings seine Nutzung
 - **AND** wird Scanbetrieb auf einer Storage-Anbindung ohne nachgewiesenen Zugriffsschutz nicht als geschützt aktiviert
 

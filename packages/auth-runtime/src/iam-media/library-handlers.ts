@@ -25,6 +25,7 @@ import {
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { deleteMedia, updateMedia } from './asset-mutation-handlers.js';
 import { getMedia, getMediaDelivery, getMediaUsage } from './asset-read-handlers.js';
+import { getMediaEditing } from './asset-editing-handler.js';
 import { registerBucketMedia } from './asset-registration-handler.js';
 import type { MediaHttpHandlerDeps } from './http-support.js';
 import { listMedia } from './library-list-handler.js';
@@ -142,6 +143,8 @@ export const createMediaLibraryHandlers = (deps: MediaHttpHandlerDeps) => ({
     getInventoryScan(deps, request, ctx),
   listMedia: (request: Request, ctx: AuthenticatedRequestContext) => listMedia(deps, request, ctx),
   getMedia: (request: Request, ctx: AuthenticatedRequestContext) => getMedia(deps, request, ctx),
+  getMediaEditing: (request: Request, ctx: AuthenticatedRequestContext) =>
+    getMediaEditing(deps, request, ctx),
   getMediaUsage: (request: Request, ctx: AuthenticatedRequestContext) =>
     getMediaUsage(deps, request, ctx),
   registerBucketMedia: (request: Request, ctx: AuthenticatedRequestContext) =>

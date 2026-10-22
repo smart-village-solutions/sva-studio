@@ -2,6 +2,7 @@ import { asApiItem, createApiError, parseRequestBody } from '../shared/request-h
 import { jsonResponse } from '../db.js';
 import { getMediaScanEnabled } from '../runtime-secrets.js';
 import { isPrivateMediaStorageKey } from './storage-key-paths.js';
+import { toMediaAssetResponse } from './asset-support.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { MediaStorageObjectNotFoundError, MediaStorageUnavailableError } from './storage-port.js';
 import { registerBucketMediaSchema } from './schemas.js';
@@ -77,10 +78,13 @@ const registerAuthorizedBucketMedia = async (input: {
     });
     return jsonResponse(
       200,
-      asApiItem(assertSupportedListAssetVisibility(existing), getRequestId())
+      asApiItem(toMediaAssetResponse(assertSupportedListAssetVisibility(existing)), getRequestId())
     );
   }
-  if (getMediaScanEnabled()) return createApiError(409, 'conflict', 'media_scan_import_unavailable', getRequestId(), { reason: 'media_scan_import_unavailable' });
+  if (getMediaScanEnabled())
+    return createApiError(409, 'conflict', 'media_scan_import_unavailable', getRequestId(), {
+      reason: 'media_scan_import_unavailable',
+    });
   const bucketObject = await readRegistrationObject({
     deps: input.deps,
     ctx: input.ctx,
@@ -136,7 +140,7 @@ const registerAuthorizedBucketMedia = async (input: {
     resourceType: 'media_asset',
     resourceId: assetId,
   });
-  return jsonResponse(201, asApiItem(asset, getRequestId()));
+  return jsonResponse(201, asApiItem(toMediaAssetResponse(asset), getRequestId()));
 };
 
 export const registerBucketMedia = async (

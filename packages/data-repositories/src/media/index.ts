@@ -1,5 +1,7 @@
 import type { SqlExecutor } from '../iam/repositories/types.js';
 import type { MediaRepository } from './repository-types.js';
+import * as asset_lifecycle_statements from './asset-lifecycle-statements.js';
+import { createAssetLifecycleMethods } from './asset-lifecycle-methods.js';
 import * as asset_statements from './asset-statements.js';
 import * as asset_list_statements from './asset-list-statements.js';
 import * as upload_statements from './upload-statements.js';
@@ -19,6 +21,7 @@ export type * from './repository-types.js';
 
 export const createMediaRepository = (executor: SqlExecutor): MediaRepository => ({
   ...createAssetMethods(executor),
+  ...createAssetLifecycleMethods(executor),
   ...createUploadMethods(executor),
   ...createStorageMethods(executor),
   ...createReferenceMethods(executor),
@@ -29,6 +32,10 @@ export const createMediaRepository = (executor: SqlExecutor): MediaRepository =>
 export const mediaStatements = {
   upsertAsset: asset_statements.upsertAssetStatement,
   getAssetById: asset_statements.getAssetByIdStatement,
+  lockAssetById: asset_lifecycle_statements.lockAssetByIdStatement,
+  listEditingCopies: asset_lifecycle_statements.listEditingCopiesStatement,
+  claimAssetDeletion: asset_lifecycle_statements.claimAssetDeletionStatement,
+  finalizeAssetDeletion: asset_lifecycle_statements.finalizeAssetDeletionStatement,
   getAssetByStorageKey: asset_statements.getAssetByStorageKeyStatement,
   getProvisionalAssetByDraft: asset_statements.getProvisionalAssetByDraftStatement,
   listAssetsByOperation: asset_statements.listAssetsByOperationStatement,
@@ -53,6 +60,7 @@ export const mediaStatements = {
   getStorageQuota: storage_reference_statements.getStorageQuotaStatement,
   deleteReferencesForTarget: storage_reference_statements.deleteReferencesForTargetStatement,
   insertReference: storage_reference_statements.insertReferenceStatement,
+  lockReferenceAssets: storage_reference_statements.lockReferenceAssetsStatement,
   listReferencesByAssetId: storage_reference_statements.listReferencesByAssetIdStatement,
   listReferencesByTarget: storage_reference_statements.listReferencesByTargetStatement,
   createContentSaveOperation: content_save_start_statements.createContentSaveOperationStatement,

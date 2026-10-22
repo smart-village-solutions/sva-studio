@@ -19,7 +19,16 @@ const canDeleteMediaAsset = (input: {
     };
   }
 
-  if (input.asset.uploadStatus !== 'processed' || input.asset.processingStatus !== 'ready') {
+  const terminalFailure =
+    input.asset.processingStatus === 'failed' &&
+    ['failed', 'blocked'].includes(input.asset.uploadStatus);
+  const pending =
+    input.asset.uploadStatus === 'pending' && input.asset.processingStatus === 'pending';
+  if (
+    !terminalFailure &&
+    !pending &&
+    (input.asset.uploadStatus !== 'processed' || input.asset.processingStatus !== 'ready')
+  ) {
     return {
       allowed: false,
       reason: 'upload_incomplete',

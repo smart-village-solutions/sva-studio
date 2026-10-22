@@ -130,11 +130,15 @@ WITH eligible_operation AS (
       WHEN COALESCE(asset.technical->>'variantBytes', '') ~ '^[0-9]+$'
         THEN (asset.technical->>'variantBytes')::bigint
       ELSE 0
-    END AS variant_bytes
+    END AS variant_bytes,
+    CASE WHEN COALESCE(asset.technical->>'editingSourceBytes', '') ~ '^[0-9]+$'
+      THEN (asset.technical->>'editingSourceBytes')::bigint ELSE 0 END AS editing_source_bytes,
+    CASE WHEN COALESCE(asset.technical->>'editingDocumentBytes', '') ~ '^[0-9]+$'
+      THEN (asset.technical->>'editingDocumentBytes')::bigint ELSE 0 END AS editing_document_bytes
 ), deleted_totals AS (
   SELECT
     COUNT(*)::integer AS asset_count,
-    COALESCE(SUM(byte_size + variant_bytes), 0)::bigint AS total_bytes
+    COALESCE(SUM(byte_size + variant_bytes + editing_source_bytes + editing_document_bytes), 0)::bigint AS total_bytes
   FROM deleted_assets
   -- Only successful finalization books usage, atomically with these statuses.
   WHERE upload_status = 'processed'

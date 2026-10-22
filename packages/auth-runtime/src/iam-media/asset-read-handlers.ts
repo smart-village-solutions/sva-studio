@@ -6,7 +6,7 @@ import {
   readMediaAssetId as readAssetId,
   resolveScopedMediaInstanceId as resolveScopedInstanceId,
 } from './request-context.js';
-import { canAccessMediaAsset, isMediaAssetReady } from './asset-support.js';
+import { canAccessMediaAsset, isMediaAssetReady, toMediaAssetResponse } from './asset-support.js';
 import {
   emitMediaAuditEvent,
   mapMediaAuthorizationFailure as mapAuthorizationFailure,
@@ -76,7 +76,7 @@ export const getMedia = async (
     resourceId: assetId,
   });
 
-  return jsonResponse(200, asApiItem(asset, getRequestId()));
+  return jsonResponse(200, asApiItem(toMediaAssetResponse(asset), getRequestId()));
 };
 
 export const getMediaUsage = async (
@@ -112,9 +112,51 @@ export const getMediaUsage = async (
     return mapAuthorizationFailure(authorization);
   }
 
-  const usage = await deps.withMediaService(instanceId, (service) =>
-    service.getUsageImpact(instanceId, assetId)
+  const asset = await deps.withMediaService(instanceId, (service) =>
+    service.getAssetById(instanceId, assetId)
   );
+  if (!asset || !canAccessMediaAsset(asset, ctx.user.id)) {
+    return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
+  }
+  const { usage, copies } = await deps.withMediaService(instanceId, async (service) => ({
+    usage: await service.getUsageImpact(instanceId, assetId),
+    copies: await service.listEditingCopies(instanceId, assetId),
+  }));
+  const visibleCopies: { assetId: string; title?: string }[] = [];
+  for (const copy of copies) {
+    const copyAuthorization = await deps.authorizeAction({
+      ctx,
+      instanceId,
+      action: 'media.read',
+      resource: { assetId: copy.id },
+    });
+    if (copyAuthorization.ok)
+      visibleCopies.push({
+        assetId: copy.id,
+        title: typeof copy.metadata.title === 'string' ? copy.metadata.title : undefined,
+      });
+  }
+  let editingSource: { assetId: string; title?: string } | undefined;
+  const sourceAssetId = asset.editingSourceAssetId;
+  if (sourceAssetId) {
+    const sourceAuthorization = await deps.authorizeAction({
+      ctx,
+      instanceId,
+      action: 'media.read',
+      resource: { assetId: sourceAssetId },
+    });
+    if (sourceAuthorization.ok) {
+      const source = await deps.withMediaService(instanceId, (service) =>
+        service.getAssetById(instanceId, sourceAssetId)
+      );
+      if (source && canAccessMediaAsset(source, ctx.user.id)) {
+        editingSource = {
+          assetId: source.id,
+          title: typeof source.metadata.title === 'string' ? source.metadata.title : undefined,
+        };
+      }
+    }
+  }
   await emitMediaAuditEvent({
     deps,
     ctx,
@@ -125,7 +167,17 @@ export const getMediaUsage = async (
     resourceType: 'media_asset',
     resourceId: assetId,
   });
-  return jsonResponse(200, asApiItem(usage, getRequestId()));
+  return jsonResponse(
+    200,
+    asApiItem(
+      {
+        ...usage,
+        editingSource,
+        editingDependencies: { total: copies.length, items: visibleCopies },
+      },
+      getRequestId()
+    )
+  );
 };
 
 const rejectMediaDelivery = async (input: {
@@ -166,6 +218,7 @@ export const getMediaDelivery = async (
     return assetId;
   }
 
+  const assetRequest = { deps, ctx, instanceId, assetId };
   return withMediaStorageGuard(
     async () => {
       const storagePort = await resolveMediaStoragePort(deps, instanceId);
@@ -173,22 +226,10 @@ export const getMediaDelivery = async (
         service.getAssetById(instanceId, assetId)
       );
       if (!asset || !canAccessMediaAsset(asset, ctx.user.id)) {
-        return rejectMediaDelivery({
-          deps,
-          ctx,
-          instanceId,
-          assetId,
-          reasonCode: 'asset_not_found',
-        });
+        return rejectMediaDelivery({ ...assetRequest, reasonCode: 'asset_not_found' });
       }
       if (!isMediaVisibility(asset.visibility)) {
-        return rejectMediaDelivery({
-          deps,
-          ctx,
-          instanceId,
-          assetId,
-          reasonCode: 'invalid_visibility',
-        });
+        return rejectMediaDelivery({ ...assetRequest, reasonCode: 'invalid_visibility' });
       }
       const visibility = asset.visibility;
       const authorization = await deps.authorizeAction({
@@ -215,7 +256,13 @@ export const getMediaDelivery = async (
       }
 
       if (!isMediaAssetReady(asset)) {
-        return createApiError(409, 'conflict', 'Das Medium ist noch nicht zur Nutzung freigegeben.', getRequestId(), { reason: 'media_not_ready' });
+        return createApiError(
+          409,
+          'conflict',
+          'Das Medium ist noch nicht zur Nutzung freigegeben.',
+          getRequestId(),
+          { reason: 'media_not_ready' }
+        );
       }
 
       const delivery = await storagePort.resolveDelivery({

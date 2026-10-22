@@ -1743,6 +1743,15 @@ paths:
   /api/v1/iam/media/upload-sessions:
     post:
       summary: Medien-Upload starten
+      description: >-
+        Instanzgebundener Upload mit media.create. Optionale metadata enthalten title,
+        altText, description, copyright, license, tags und focusPoint. editing enthält
+        den begrenzten Filerobot-Zustand (version 1, editorVersion 5.0.0-beta.159) sowie
+        genau eine autorisierte sourceAssetId oder die lokale source-Beschreibung mit
+        mimeType und byteSize. Lokale Grundlagen erhalten ein zusätzliches privates
+        sourceUpload-Ziel. Ausgabe und Grundlage müssen vor complete übertragen sein;
+        Scan, Quote und Verarbeitung geben sie nur gemeinsam frei. Öffentliche
+        Antwortprojektionen enthalten weder Grundlage noch Bearbeitungszustand.
       responses: {default: {description: "Antwort des Endpunkts."}}
   /api/v1/iam/media/upload-sessions/{uploadSessionId}/complete:
     parameters: [{name: uploadSessionId, in: path, required: true, schema: {type: string}}]
@@ -1764,7 +1773,30 @@ paths:
     parameters: [{name: assetId, in: path, required: true, schema: {type: string}}]
     get:
       summary: Verwendung eines Mediums lesen
+      description: Die optionale editingSource zeigt assetId und title der tatsächlichen Grundlage nur nach deren eigener Leseberechtigung, ohne private Schlüssel oder URLs. Bearbeitbare Kopien stehen getrennt unter editingDependencies mit total und berechtigt sichtbaren items aus assetId und optionalem title. totalReferences zählt weiterhin ausschließlich Inhaltsreferenzen.
       responses: {default: {description: "Antwort des Endpunkts."}}
+  /api/v1/iam/media/{assetId}/editing:
+    parameters: [{name: assetId, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      summary: Private Bearbeitungsgrundlage und letzten Editorzustand lesen
+      description: >-
+        Prüft media.read und bei geschützten Assets zusätzlich media.deliver.protected
+        jeweils für die ausgewählte Kopie und ihre tatsächliche Grundlage. Nur bereite
+        Assets sind zugelassen. API-Item mit assetId, sourceAssetId, sourceUrl,
+        sourceExpiresAt und optionalem document. Die Quelle wird ausschließlich
+        zeitlich begrenzt signiert; keine Storage-Keys. document ist auf 8 MiB,
+        200 Annotationen und eingebettete PNG-/JPEG-/WebP-Ressourcen von jeweils 4 MiB
+        begrenzt. Version oder Editorversion außerhalb des unterstützten Vertrags
+        führt zu 409 statt stiller Zustandsverluste.
+      responses:
+        '200':
+          description: Privater Editor-Lesevertrag im API-Item-Format.
+          headers:
+            Cache-Control: {schema: {type: string, const: 'private, no-store'}}
+            Referrer-Policy: {schema: {type: string, const: 'no-referrer'}}
+        '403': {description: Fehlende Berechtigung für Kopie oder Grundlage.}
+        '404': {description: Medium nicht verfügbar oder fremder lokaler Entwurf.}
+        '409': {description: Medium nicht bereit oder Editorzustand inkompatibel.}
   /api/v1/iam/media/{assetId}/delivery:
     parameters: [{name: assetId, in: path, required: true, schema: {type: string}}]
     get:

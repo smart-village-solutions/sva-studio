@@ -1,10 +1,13 @@
+import * as React from 'react';
+import { Textarea } from './textarea.js';
+import { useContentMediaTranslation } from '@sva/plugin-sdk/content-media';
+import { mediaMetadataLimits } from '@sva/media';
 import { Input } from './input.js';
 import {
   type StudioMediaPickerMetadataDraft,
   type StudioMediaPickerMetadataField,
   type StudioMediaPickerOverlayLabels,
 } from './studio-media-picker-overlay.shared.js';
-import { Textarea } from './textarea.js';
 
 const metadataFieldDefinitions: readonly Readonly<{
   key: StudioMediaPickerMetadataField;
@@ -49,6 +52,7 @@ export const StudioMediaPickerReviewFields = ({
               disabled={!isMetadataEditable}
               id={id}
               value={metadataDraft[key]}
+              maxLength={mediaMetadataLimits[key]}
               onChange={(event) => onMetadataChange(key, event.target.value)}
             />
           </div>
@@ -56,3 +60,56 @@ export const StudioMediaPickerReviewFields = ({
       })}
   </div>
 );
+
+export const CentralMetadataFields = ({
+  draft,
+  tags,
+  canEdit,
+  isSaving,
+  onChange,
+  onTagsChange,
+}: Readonly<{
+  draft: StudioMediaPickerMetadataDraft;
+  tags: string;
+  canEdit: boolean;
+  isSaving: boolean;
+  onChange: (key: StudioMediaPickerMetadataField, value: string) => void;
+  onTagsChange: (value: string) => void;
+}>) => {
+  const t = useContentMediaTranslation();
+  const tagsId = React.useId();
+  return (
+    <>
+      <StudioMediaPickerReviewFields
+        isMetadataEditable={canEdit && !isSaving}
+        labels={{
+          fields: {
+            title: t('fields.title'),
+            altText: t('fields.altText'),
+            description: t('fields.description'),
+            copyright: t('fields.copyright'),
+            license: t('fields.license'),
+          },
+        }}
+        metadataDraft={draft}
+        onMetadataChange={onChange}
+        visibleMetadataFields={defaultStudioMediaPickerMetadataFields}
+      />
+      <div className="space-y-2">
+        <label htmlFor={tagsId} className="text-sm font-medium">
+          {t('fields.tags')}
+        </label>
+        <Textarea
+          id={tagsId}
+          value={tags}
+          disabled={!canEdit || isSaving}
+          aria-describedby={`${tagsId}-hint`}
+          onChange={(event) => onTagsChange(event.target.value)}
+        />
+        <p id={`${tagsId}-hint`} className="text-sm text-muted-foreground">
+          {t('fields.tagsHint')}
+        </p>
+      </div>
+    </>
+  );
+};

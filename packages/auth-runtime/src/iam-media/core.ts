@@ -41,7 +41,12 @@ export const listMediaHandler = async (request: Request): Promise<Response> =>
   withMediaRequest(request, mediaHttpHandlers.listMedia);
 
 export const getMediaHandler = async (request: Request): Promise<Response> =>
-  withMediaRequest(request, mediaHttpHandlers.getMedia);
+  withMediaRequest(
+    request,
+    /\/media\/[^/]+\/editing$/.test(new URL(request.url).pathname)
+      ? mediaHttpHandlers.getMediaEditing
+      : mediaHttpHandlers.getMedia
+  );
 
 export const getMediaUsageHandler = async (request: Request): Promise<Response> =>
   withMediaRequest(request, mediaHttpHandlers.getMediaUsage);

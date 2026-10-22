@@ -1,7 +1,10 @@
 import * as React from 'react';
 
 import { revokeBrowserObjectUrl } from './content-media-usage.js';
-import type { StudioMediaPickerAssetDetail } from './studio-media-picker-overlay.shared.js';
+import {
+  createMetadataDraft,
+  type StudioMediaPickerAssetDetail,
+} from './studio-media-picker-overlay.shared.js';
 import {
   type StudioMediaPickerOverlayOptions,
   useStudioMediaPickerOverlayActions,
@@ -43,8 +46,22 @@ export const useStudioMediaPickerOverlay = <TAssetDetail extends StudioMediaPick
     state.close();
   }, [state.close, state.reviewAsset]);
 
+  const openAsset = React.useCallback(
+    (asset: TAssetDetail) => {
+      state.openLibrary();
+      state.actions.setReviewAsset(asset);
+      state.actions.setMetadataDraft(createMetadataDraft(asset));
+      state.actions.setMode('review');
+    },
+    [state.openLibrary, state.actions]
+  );
+
   return {
     open: state.open,
+    openAsset,
+    canConfirmSelection: Boolean(
+      state.reviewAsset && (!canAcceptAsset || canAcceptAsset(state.reviewAsset as TAssetDetail))
+    ),
     mode: state.mode,
     reviewSource: state.reviewSource,
     searchValue: state.searchValue,
@@ -63,5 +80,8 @@ export const useStudioMediaPickerOverlay = <TAssetDetail extends StudioMediaPick
     updateMetadataField: actions.updateMetadataField,
     goBackFromReview: actions.goBackFromReview,
     confirmSelection: actions.confirmSelection,
+    saveCentralMetadata: actions.saveCentralMetadata,
+    applyImageEdit: actions.applyImageEdit,
+    updateImageFocus: actions.updateImageFocus,
   } as const;
 };

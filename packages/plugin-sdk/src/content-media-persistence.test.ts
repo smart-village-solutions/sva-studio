@@ -1,3 +1,4 @@
+import { createMediaEditingDocument } from '@sva/media';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -11,23 +12,45 @@ describe('content media persistence', () => {
     let reads = 0;
     const fetch = vi.fn(async (request: RequestInfo | URL) => {
       const url = String(request);
-      if (url.endsWith('/content-save-operations')) return Response.json({ data: { id: 'operation-1' } });
-      if (url.endsWith('/upload-sessions')) return Response.json({ data: {
-        assetId: 'asset-new', uploadSessionId: 'session-1', uploadUrl: 'https://storage.test/file', method: 'PUT', headers: {},
-      } });
-      if (url.includes('/complete')) return Response.json({ data: { assetId: 'asset-new', uploadSessionId: 'session-1', status: 'processing' } });
+      if (url.endsWith('/content-save-operations'))
+        return Response.json({ data: { id: 'operation-1' } });
+      if (url.endsWith('/upload-sessions'))
+        return Response.json({
+          data: {
+            assetId: 'asset-new',
+            uploadSessionId: 'session-1',
+            uploadUrl: 'https://storage.test/file',
+            method: 'PUT',
+            headers: {},
+          },
+        });
+      if (url.includes('/complete'))
+        return Response.json({
+          data: { assetId: 'asset-new', uploadSessionId: 'session-1', status: 'processing' },
+        });
       if (url.endsWith('/media/asset-new')) {
         reads++;
-        return Response.json({ data: { uploadStatus: !pending && reads > 1 ? 'processed' : 'pending', processingStatus: !pending && reads > 1 ? 'ready' : 'pending' } });
+        return Response.json({
+          data: {
+            uploadStatus: !pending && reads > 1 ? 'processed' : 'pending',
+            processingStatus: !pending && reads > 1 ? 'ready' : 'pending',
+          },
+        });
       }
-      if (url.endsWith('/delivery')) return Response.json({ data: { deliveryUrl: 'https://cdn.test/asset-new.jpg' } });
+      if (url.endsWith('/delivery'))
+        return Response.json({ data: { deliveryUrl: 'https://cdn.test/asset-new.jpg' } });
       return Response.json({ data: {} });
     });
     const saveContent = vi.fn(async () => ({ id: 'content-1' }));
     const file = new File(['image'], 'file.jpg', { type: 'image/jpeg' });
-    const input = { fetch, saveContent, getTargetId: (saved: { id: string }) => saved.id, targetType: 'news',
+    const input = {
+      fetch,
+      saveContent,
+      getTargetId: (saved: { id: string }) => saved.id,
+      targetType: 'news',
       references: [{ assetId: 'library-existing', role: 'header_image' }],
-      drafts: [{ draftId: 'draft-1', file, role: 'teaser_image' }] };
+      drafts: [{ draftId: 'draft-1', file, role: 'teaser_image' }],
+    };
     return { fetch, saveContent, input };
   };
 
@@ -41,8 +64,13 @@ describe('content media persistence', () => {
       expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/delivery'))).toBe(false);
       await vi.advanceTimersByTimeAsync(1000);
       await saving;
-      expect(saveContent).toHaveBeenCalledWith([expect.objectContaining({ persistentUrl: 'https://cdn.test/asset-new.jpg' })], expect.anything());
-    } finally { vi.useRealTimers(); }
+      expect(saveContent).toHaveBeenCalledWith(
+        [expect.objectContaining({ persistentUrl: 'https://cdn.test/asset-new.jpg' })],
+        expect.anything()
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('abandons only provisional uploads on timeout, preserving local drafts and existing library references', async () => {
@@ -55,11 +83,19 @@ describe('content media persistence', () => {
       await vi.advanceTimersByTimeAsync(120_000);
       await rejected;
       expect(saveContent).not.toHaveBeenCalled();
-      expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/operation-1/abandon'))).toBe(true);
-      expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/delivery') || String(url).endsWith('/commit'))).toBe(false);
+      expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/operation-1/abandon'))).toBe(
+        true
+      );
+      expect(
+        fetch.mock.calls.some(
+          ([url]) => String(url).endsWith('/delivery') || String(url).endsWith('/commit')
+        )
+      ).toBe(false);
       expect(input.drafts).toEqual(originalDrafts);
       expect(input.references).toEqual([{ assetId: 'library-existing', role: 'header_image' }]);
-    } finally { vi.useRealTimers(); }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('saves the content before replacing references', async () => {
@@ -195,6 +231,11 @@ describe('content media persistence', () => {
           {
             draftId: '00000000-0000-4000-8000-000000000001',
             file: new File(['image'], 'image.jpg', { type: 'image/jpeg' }),
+            metadata: { title: 'Bearbeitet', altText: 'Eigener Alternativtext', tags: ['Park'] },
+            editing: {
+              document: createMediaEditingDocument({ annotations: {} }),
+              sourceAssetId: '123e4567-e89b-42d3-a456-426614174000',
+            },
             role: 'gallery_item',
             sortOrder: 0,
           },
@@ -219,6 +260,17 @@ describe('content media persistence', () => {
       calls.indexOf('content')
     );
     expect(calls.at(-1)).toContain('/commit');
+    expect(requestBodies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metadata: { title: 'Bearbeitet', altText: 'Eigener Alternativtext', tags: ['Park'] },
+          editing: {
+            document: createMediaEditingDocument({ annotations: {} }),
+            sourceAssetId: '123e4567-e89b-42d3-a456-426614174000',
+          },
+        }),
+      ])
+    );
     expect(phases).toEqual(['uploading', 'saving_content', 'linking_media']);
     expect(requestBodies[0]).toEqual(
       expect.objectContaining({ operationId: expect.stringMatching(/^[0-9a-f-]{36}$/iu) })

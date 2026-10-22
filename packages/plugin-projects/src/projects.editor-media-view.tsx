@@ -42,7 +42,14 @@ export function ProjectMediaPicker({
       uploadPhase={mediaPicker.uploadPhase}
       isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
       isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
-      isMetadataEditable={canUpdateMedia}
+      canConfirmSelection={mediaPicker.canConfirmSelection}
+      isMetadataEditable
+      visibleMetadataFields={['altText', 'description', 'copyright']}
+      persistenceContext="content"
+      canEditCentralMetadata={canUpdateMedia}
+      onSaveCentralMetadata={mediaPicker.saveCentralMetadata}
+      onApplyImageEdit={canUploadMedia ? mediaPicker.applyImageEdit : undefined}
+      onImageFocusChange={mediaPicker.updateImageFocus}
       isAssetSelectable={(asset) => mediaUsages.every((usage) => usage.assetId !== asset.id)}
       onAddManual={addManualMedia}
       onClose={mediaPicker.close}

@@ -71,7 +71,9 @@ function useMediaAssets() {
           description: asset.metadata.description ?? '',
           copyright: asset.metadata.copyright ?? '',
           license: asset.metadata.license ?? '',
+          tags: asset.metadata.tags,
         },
+        hasEditingDocument: asset.hasEditingDocument,
       };
     },
     []
@@ -93,6 +95,7 @@ function acceptAsset(
   )
     return;
   const persistentUrl = asset.localDraft ? '' : (asset.persistentUrl ?? '');
+  const central = asset.centralMetadata ?? asset.metadata;
   const usage: ContentMediaUsage = {
     uiId: `cockpit-card-asset-${asset.id}-${mediaUsages.length}`,
     assetId: asset.localDraft ? undefined : asset.id,
@@ -108,10 +111,10 @@ function acceptAsset(
     referenceStatus: 'pending',
     assetSnapshot: toContentMediaAssetSnapshot({
       persistentUrl,
-      altText: asset.metadata.altText || asset.fileName,
-      caption: asset.metadata.description || asset.title,
-      credit: asset.metadata.copyright,
-      license: asset.metadata.license,
+      altText: central.altText || asset.fileName,
+      caption: central.description || asset.title,
+      credit: central.copyright,
+      license: central.license,
     }),
   };
   const next = [...mediaUsages, usage];

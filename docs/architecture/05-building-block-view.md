@@ -111,6 +111,8 @@ Modulen der jeweiligen Bausteine.
 9. Data Client und Data Repositories (`packages/data-client`, `packages/data-repositories`)
    - `@sva/data-client`: client-sicherer HTTP-DataClient mit Schema-Validierung
    - `@sva/data-repositories`: serverseitige Repository-Fassaden und DB-nahe Operationen
+   - `@sva/media` hält die gemeinsamen Metadatengrenzen, begrenzten versionierten Filerobot-Dokumente und die Fokus-Zuschnittgeometrie für Server und Vorschau. `@sva/studio-ui-react` lädt den Editor nur im Browser und trennt Inhaltsangaben, ausdrückliche zentrale Speicherung und lokale Kopien; `@sva/plugin-sdk` trägt Metadaten und Bearbeitungsgrundlage durch den vorhandenen Upload-/Content-Save-Pfad.
+   - Mediengrundlagen und Bearbeitungszustand liegen am bestehenden Asset-Modell; der vorhandene Job verarbeitet und verbucht alle Bestandteile zusammen. Ein autorisierter Editor-Lesepfad gibt private Ressourcen kurzlebig frei. Repository-Sperren schützen Grundlagen vor Löschung und verhindern neue Kopien/Referenzen nach Löschbeginn; ein zusätzlicher Worker oder Verlaufsdienst ist nicht erforderlich.
    - der öffentliche Medien-Repository-Entrypoint `media/index.ts` hält `createMediaRepository`, `mediaStatements` und die Typverträge; interne Module trennen Asset-, Upload-, Storage-/Referenz- und Content-Save-Statements, Row-Mapping und Repository-Methoden ohne Änderung der SQL- oder Tenant-Verträge
    - enthält den führenden zentralen Job-Store für generische Studio-Jobs im Studio-Postgres
    - hält zusätzlich den kanonischen Registry-Store für `external_interface_types` und `instance_external_interfaces`

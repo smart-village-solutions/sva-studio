@@ -1,3 +1,5 @@
+import * as React from 'react';
+import type { MediaEditorialMetadataPatch } from '@sva/media';
 import { useNavigate } from '@tanstack/react-router';
 
 import { Alert, AlertDescription, AlertTitle } from '../../../components/ui/alert';
@@ -51,11 +53,18 @@ const resolveMediaScanResult = (
     errorCode === 'media_scan_unavailable' ||
     errorCode === 'media_scan_stale' ||
     errorCode === 'media_scan_incomplete'
-  ) return 'unavailable';
+  )
+    return 'unavailable';
   return 'unknown';
 };
 
 export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
+  const [metadataDraft, setMetadataDraft] = React.useState<MediaEditorialMetadataPatch>();
+  const createDecision = useAccessDecision({
+    kind: 'tenant',
+    moduleId: 'media',
+    actions: { mode: 'allOf', values: ['media.create'] },
+  });
   const updateDecision = useAccessDecision({
     kind: 'tenant',
     moduleId: 'media',
@@ -142,16 +151,26 @@ export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,1fr)]">
         <div className="space-y-6">
           <MediaDetailMetadataSection
-            key={`${mediaApi.asset.id}:${mediaApi.asset.updatedAt ?? ''}`}
+            key={mediaApi.asset.id}
             asset={mediaApi.asset}
-            canEditTags={
+            canEdit={
               updateDecision.status === 'allowed' &&
               mediaApi.asset.processingStatus === 'ready' &&
               mediaApi.asset.uploadStatus === 'processed'
             }
-            onSaveTags={(tags) => mediaApi.updateMedia({ metadata: { tags } })}
+            onDraftChange={setMetadataDraft}
+            onSave={(metadata) => mediaApi.updateMedia({ metadata })}
           />
-          <MediaDetailImageControlsSection asset={mediaApi.asset} />
+          <MediaDetailImageControlsSection
+            asset={mediaApi.asset}
+            metadataDraft={metadataDraft}
+            canCreateCopy={
+              createDecision.status === 'allowed' &&
+              (mediaApi.asset.visibility === 'public'
+                ? publicDeliveryDecision.status === 'allowed'
+                : protectedDeliveryDecision.status === 'allowed')
+            }
+          />
         </div>
         <div className="space-y-6">
           <MediaDetailUsageSection usage={mediaApi.usage} />

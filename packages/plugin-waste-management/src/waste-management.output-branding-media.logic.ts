@@ -11,11 +11,13 @@ import {
   subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
   uploadHostMediaFile,
+  type UploadHostMediaFileResult,
   type HostMediaAssetDetail,
   type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
 import {
   isPersistableContentMediaUrl,
+  revokeBrowserObjectUrl,
   useStudioMediaPickerOverlay,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
@@ -57,7 +59,9 @@ const toMediaPickerDetail = (
       description: asset.metadata.description?.trim() ?? '',
       copyright: asset.metadata.copyright?.trim() ?? '',
       license: asset.metadata.license?.trim() ?? '',
+      tags: asset.metadata.tags,
     },
+    hasEditingDocument: asset.hasEditingDocument,
   };
 };
 
@@ -106,8 +110,62 @@ const useMediaLibrary = () => {
   return { assets, assetsRef, capabilities, error, isLoading, refresh, setAssets, setError };
 };
 
+const acceptBrandingMediaAsset = async (
+  asset: WasteBrandingMediaPickerAsset,
+  loadAsset: (assetId: string) => Promise<WasteBrandingMediaPickerAsset>,
+  refresh: () => Promise<readonly HostMediaAssetListItem[]>,
+  onChange: (value: string) => void,
+  transferred: { current: { draftId: string; upload: UploadHostMediaFileResult } | null },
+  onTransfer: (draftId: string) => void
+) => {
+  let selected = asset;
+  if (asset.localDraft?.editing) {
+    const uploaded = await uploadHostMediaFile({
+      fetch: globalThis.fetch.bind(globalThis),
+      file: asset.localDraft.file,
+      transferred:
+        transferred.current?.draftId === asset.localDraft.id
+          ? transferred.current.upload
+          : undefined,
+      onTransferred: (upload) => {
+        transferred.current = { draftId: asset.localDraft!.id, upload };
+        onTransfer(asset.localDraft!.id);
+      },
+      visibility: 'public',
+      editing: asset.localDraft.editing,
+      metadata: {
+        ...asset.localDraft.metadata,
+        ...asset.metadata,
+        tags: asset.metadata.tags ? [...asset.metadata.tags] : undefined,
+      },
+    });
+    selected = await loadAsset(uploaded.assetId);
+    await refresh();
+  }
+  if (!selected.persistentUrl || !isPublicPersistableAsset(selected))
+    throw new Error('media_asset_unavailable');
+  onChange(selected.persistentUrl);
+  if (asset.localDraft) revokeBrowserObjectUrl(asset.previewUrl);
+};
+
+const uploadBrandingFile = async (
+  file: File,
+  refresh: () => Promise<readonly HostMediaAssetListItem[]>
+) => {
+  const uploaded = await uploadHostMediaFile({
+    fetch: globalThis.fetch.bind(globalThis),
+    file,
+    mediaType: 'image',
+    visibility: 'public',
+  });
+  await refresh();
+  return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
+};
+
 export const useWasteBrandingMediaController = (onChange: (value: string) => void) => {
   const library = useMediaLibrary();
+  const [transferredDraftId, setTransferredDraftId] = useState<string | null>(null);
+  const transferred = useRef<{ draftId: string; upload: UploadHostMediaFileResult } | null>(null);
   const loadAsset = useCallback(
     async (assetId: string) => {
       const [asset, delivery] = await Promise.all([
@@ -128,22 +186,18 @@ export const useWasteBrandingMediaController = (onChange: (value: string) => voi
   );
   const picker = useStudioMediaPickerOverlay<WasteBrandingMediaPickerAsset>({
     onAccept: (asset) =>
-      asset.persistentUrl && isPublicPersistableAsset(asset) && onChange(asset.persistentUrl),
-    canAcceptAsset: isPublicPersistableAsset,
-    editableMetadataFields: library.capabilities.canEditAssetMetadata
-      ? ['title', 'altText', 'description', 'copyright', 'license']
-      : [],
+      acceptBrandingMediaAsset(
+        asset,
+        loadAsset,
+        library.refresh,
+        onChange,
+        transferred,
+        setTransferredDraftId
+      ),
+    canAcceptAsset: (asset) =>
+      Boolean(asset.localDraft?.editing) || isPublicPersistableAsset(asset),
     isSupportedUploadFile: isSupportedContentMediaUploadFile,
-    uploadAsset: async (file) => {
-      const uploaded = await uploadHostMediaFile({
-        fetch: globalThis.fetch.bind(globalThis),
-        file,
-        mediaType: 'image',
-        visibility: 'public',
-      });
-      await library.refresh();
-      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
-    },
+    uploadAsset: (file) => uploadBrandingFile(file, library.refresh),
     loadAsset,
     saveAssetMetadata: async (assetId, metadata) => {
       await updateHostMediaAsset({
@@ -174,6 +228,7 @@ export const useWasteBrandingMediaController = (onChange: (value: string) => voi
     picker.close,
   ]);
   return {
+    isUploadTransferred: transferredDraftId === picker.reviewAsset?.localDraft?.id,
     mediaAssets: library.assets,
     mediaCapabilities: library.capabilities,
     mediaLibraryError: library.error,

@@ -71,6 +71,7 @@ export const acceptNewsMediaAsset = (
     asset.localDraft ? currentMedia : [...currentMedia, persistedMedia],
     { shouldDirty: true }
   );
+  const central = asset.centralMetadata ?? asset.metadata;
   setMediaUsages((current) => [
     ...current,
     {
@@ -87,10 +88,10 @@ export const acceptNewsMediaAsset = (
       sortOrder: current.length,
       assetSnapshot: toContentMediaAssetSnapshot({
         persistentUrl,
-        altText: asset.metadata.altText || asset.fileName,
-        caption: asset.metadata.description || asset.title,
-        credit: asset.metadata.copyright,
-        license: asset.metadata.license,
+        altText: central.altText || asset.fileName,
+        caption: central.description || asset.title,
+        credit: central.copyright,
+        license: central.license,
       }),
       referenceStatus: 'pending',
       additionalData: {

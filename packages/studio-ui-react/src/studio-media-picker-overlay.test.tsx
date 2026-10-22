@@ -1,3 +1,4 @@
+import { createMediaEditingDocument } from '@sva/media';
 import * as React from 'react';
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -211,7 +212,7 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it('starts in upload mode, uploads, switches to review, and only accepts after metadata save', async () => {
+  it('accepts content-specific metadata without writing central metadata', async () => {
     const asset = createAsset();
     const onAccept = vi.fn();
     const uploadAsset = vi.fn(async () => ({ assetId: asset.id }));
@@ -261,10 +262,7 @@ describe('useStudioMediaPickerOverlay', () => {
       await result.current.confirmSelection();
     });
 
-    expect(saveAssetMetadata).toHaveBeenCalledWith(
-      asset.id,
-      expect.objectContaining({ title: 'Updated title' })
-    );
+    expect(saveAssetMetadata).not.toHaveBeenCalled();
     expect(onAccept).toHaveBeenCalledWith(
       expect.objectContaining({
         id: asset.id,
@@ -274,7 +272,7 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(result.current.open).toBe(false);
   });
 
-  it('saves only explicitly editable metadata fields', async () => {
+  it('keeps non-editable metadata untouched in the content selection', async () => {
     const asset = createAsset({
       title: 'hero.jpg',
       metadata: {
@@ -288,10 +286,11 @@ describe('useStudioMediaPickerOverlay', () => {
     const saveAssetMetadata = vi.fn(async (_assetId: string, metadata) =>
       createAsset({ metadata: { ...asset.metadata, ...metadata } })
     );
+    const onAccept = vi.fn();
     const { result } = renderHook(() =>
       useStudioMediaPickerOverlay({
         editableMetadataFields: ['altText'],
-        onAccept: vi.fn(),
+        onAccept,
         isSupportedUploadFile: () => true,
         uploadAsset: vi.fn(),
         loadAsset: vi.fn(async () => asset),
@@ -304,9 +303,78 @@ describe('useStudioMediaPickerOverlay', () => {
     act(() => result.current.updateMetadataField('altText', 'Updated alt text'));
     await act(async () => result.current.confirmSelection());
 
+    expect(saveAssetMetadata).not.toHaveBeenCalled();
+    expect(onAccept).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          altText: 'Updated alt text',
+          description: 'Hidden description',
+        }),
+        centralMetadata: asset.metadata,
+      })
+    );
+  });
+
+  it('saves central metadata only through the explicit action while preserving the content draft', async () => {
+    const asset = createAsset();
+    const onAccept = vi.fn();
+    const saveAssetMetadata = vi.fn(async () =>
+      createAsset({ metadata: { ...asset.metadata, altText: 'Zentral neu' } })
+    );
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        onAccept,
+        isSupportedUploadFile: () => true,
+        loadAsset: async () => asset,
+        saveAssetMetadata,
+      })
+    );
+    act(() => result.current.openLibrary());
+    await act(async () => result.current.selectAsset(asset));
+    act(() => result.current.updateMetadataField('altText', 'Nur für diesen Inhalt'));
+    await act(async () =>
+      expect(
+        await result.current.saveCentralMetadata({ altText: 'Zentral neu', tags: ['Park'] })
+      ).toBe(true)
+    );
     expect(saveAssetMetadata).toHaveBeenCalledWith(asset.id, {
-      altText: 'Updated alt text',
+      altText: 'Zentral neu',
+      tags: ['Park'],
     });
+    expect(result.current.metadataDraft.altText).toBe('Nur für diesen Inhalt');
+    expect(result.current.open).toBe(true);
+    expect(onAccept).not.toHaveBeenCalled();
+    await act(async () => result.current.confirmSelection());
+    expect(onAccept).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ altText: 'Nur für diesen Inhalt' }),
+        centralMetadata: expect.objectContaining({ altText: 'Zentral neu' }),
+      })
+    );
+  });
+
+  it('keeps central and content drafts when explicit central saving fails', async () => {
+    const asset = createAsset();
+    const saveAssetMetadata = vi.fn(async () => {
+      throw new Error('failure');
+    });
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        onAccept: vi.fn(),
+        isSupportedUploadFile: () => true,
+        loadAsset: async () => asset,
+        saveAssetMetadata,
+      })
+    );
+    act(() => result.current.openLibrary());
+    await act(async () => result.current.selectAsset(asset));
+    act(() => result.current.updateMetadataField('altText', 'Eigener Entwurf'));
+    await act(async () =>
+      expect(await result.current.saveCentralMetadata({ title: 'Neuer Titel' })).toBe(false)
+    );
+    expect(result.current.metadataDraft.altText).toBe('Eigener Entwurf');
+    expect(result.current.errorCode).toBe('metadata_save_failed');
+    expect(result.current.open).toBe(true);
   });
 
   it('preserves the upload preview url until the host asset exposes one itself', async () => {
@@ -400,6 +468,40 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:local-close');
     createObjectUrl.mockRestore();
     revokeObjectUrl.mockRestore();
+  });
+
+  it('retains a local draft when replacement fails and releases it only after successful replacement', async () => {
+    const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:replacement');
+    const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const asset = createAsset();
+    const loadAsset = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(asset);
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        onAccept: vi.fn(),
+        isSupportedUploadFile: () => true,
+        createLocalAsset: createLocalStudioMediaPickerAsset,
+        loadAsset,
+        saveAssetMetadata: vi.fn(),
+      })
+    );
+    await act(async () =>
+      result.current.uploadFile(new File(['local'], 'local.jpg', { type: 'image/jpeg' }))
+    );
+    act(() => result.current.updateMetadataField('altText', 'Eigener Entwurf'));
+    const local = result.current.reviewAsset;
+    await act(async () => result.current.selectAsset(asset));
+    expect(result.current.reviewAsset).toBe(local);
+    expect(result.current.metadataDraft.altText).toBe('Eigener Entwurf');
+    expect(result.current.errorCode).toBe('asset_load_failed');
+    expect(revoke).not.toHaveBeenCalled();
+    await act(async () => result.current.selectAsset(asset));
+    expect(result.current.reviewAsset?.id).toBe(asset.id);
+    expect(revoke).toHaveBeenCalledExactlyOnceWith('blob:replacement');
+    create.mockRestore();
+    revoke.mockRestore();
   });
 
   it('keeps the close action stable while no local preview changes', () => {
@@ -540,5 +642,138 @@ describe('useStudioMediaPickerOverlay', () => {
 
     expect(result.current.mode).toBe('library');
     expect(onAccept).not.toHaveBeenCalled();
+  });
+  it('keeps an edited library image local and preserves content overrides, creation metadata and focus until acceptance', async () => {
+    const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:edited');
+    const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const asset = createAsset({ metadata: { ...createAsset().metadata, tags: ['Stadt'] } });
+    const accept = vi.fn();
+    const upload = vi.fn();
+    const save = vi.fn();
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        onAccept: accept,
+        isSupportedUploadFile: () => true,
+        uploadAsset: upload,
+        loadAsset: async () => asset,
+        saveAssetMetadata: save,
+      })
+    );
+    await act(async () => {
+      result.current.openLibrary();
+      await result.current.selectAsset(asset);
+    });
+    act(() => result.current.updateMetadataField('altText', 'Mein Inhalt'));
+    const file = new File(['rendered'], 'copy.png', { type: 'image/png' });
+    const editing = {
+      sourceAssetId: 'source-root',
+      document: createMediaEditingDocument({ annotations: {} }),
+    };
+    act(() => result.current.applyImageEdit({ file, editing }));
+    act(() => result.current.updateImageFocus({ x: 0.2, y: 0.8 }));
+    expect(upload).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    expect(accept).not.toHaveBeenCalled();
+    expect(result.current.reviewAsset?.id).not.toBe(asset.id);
+    expect(asset.metadata.altText).toBe('Alt');
+    await act(async () => result.current.confirmSelection());
+    expect(accept).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ altText: 'Mein Inhalt' }),
+        centralMetadata: expect.objectContaining({ altText: 'Alt' }),
+        localDraft: expect.objectContaining({
+          file,
+          editing,
+          metadata: expect.objectContaining({
+            altText: 'Alt',
+            tags: ['Stadt'],
+            focusPoint: { x: 0.2, y: 0.8 },
+          }),
+        }),
+      })
+    );
+    expect(revoke).not.toHaveBeenCalled();
+    create.mockRestore();
+    revoke.mockRestore();
+  });
+
+  it('retains the local foundation and adds the edited title only once across repeated edits', async () => {
+    const create = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValueOnce('blob:local')
+      .mockReturnValueOnce('blob:first')
+      .mockReturnValueOnce('blob:second');
+    const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        onAccept: vi.fn(),
+        isSupportedUploadFile: () => true,
+        createLocalAsset: createLocalStudioMediaPickerAsset,
+        loadAsset: vi.fn(),
+        saveAssetMetadata: vi.fn(),
+      })
+    );
+    const sourceFile = new File(['original'], 'source.jpg', { type: 'image/jpeg' });
+    await act(async () => result.current.uploadFile(sourceFile));
+    const document = createMediaEditingDocument({ annotations: {} });
+    act(() =>
+      result.current.applyImageEdit({
+        file: new File(['one'], 'one.png'),
+        editing: { sourceFile, document },
+      })
+    );
+    const title = result.current.reviewAsset?.title;
+    act(() =>
+      result.current.applyImageEdit({
+        file: new File(['two'], 'two.png'),
+        editing: { sourceFile, document },
+      })
+    );
+    expect(result.current.reviewAsset?.title).toBe(title);
+    expect(result.current.reviewAsset?.localDraft?.editing?.sourceFile).toBe(sourceFile);
+    expect(revoke).toHaveBeenNthCalledWith(1, 'blob:local');
+    expect(revoke).toHaveBeenNthCalledWith(2, 'blob:first');
+    act(() => result.current.close());
+    expect(revoke).toHaveBeenNthCalledWith(3, 'blob:second');
+    create.mockRestore();
+    revoke.mockRestore();
+  });
+  it('waits for immediate completion before closing and preserves the draft if saving fails', async () => {
+    const asset = createAsset();
+    let finish: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const accept = vi.fn(() => pending);
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        onAccept: accept,
+        isSupportedUploadFile: () => true,
+        loadAsset: async () => asset,
+        saveAssetMetadata: vi.fn(),
+      })
+    );
+    act(() => result.current.openAsset(asset));
+    let completion: Promise<void> | undefined;
+    await act(async () => {
+      completion = result.current.confirmSelection();
+    });
+    expect(result.current.isSavingReviewAsset).toBe(true);
+    expect(result.current.open).toBe(true);
+    await act(async () => {
+      finish?.();
+      await completion;
+    });
+    expect(result.current.open).toBe(false);
+    accept.mockRejectedValueOnce(new Error('upload unavailable'));
+    act(() => {
+      result.current.openAsset(asset);
+      result.current.updateMetadataField('title', 'Mein Entwurf');
+    });
+    await act(async () => result.current.confirmSelection());
+    expect(result.current.open).toBe(true);
+    expect(result.current.metadataDraft.title).toBe('Mein Entwurf');
+    expect(result.current.errorCode).toBe('metadata_save_failed');
+    expect(result.current.isSavingReviewAsset).toBe(false);
   });
 });

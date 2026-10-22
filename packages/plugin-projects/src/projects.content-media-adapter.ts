@@ -1,4 +1,8 @@
-import { isPersistableContentMediaUrl, type ContentMediaAssetSnapshot, type ContentMediaUsage } from '@sva/studio-ui-react';
+import {
+  isPersistableContentMediaUrl,
+  type ContentMediaAssetSnapshot,
+  type ContentMediaUsage,
+} from '@sva/studio-ui-react';
 
 import type { ProjectImage } from './projects.api-types.js';
 
@@ -6,10 +10,12 @@ type ProjectImageRecord = ProjectImage & Readonly<Record<string, unknown>>;
 
 const text = (value: string | undefined): string => value?.trim() ?? '';
 
-export const resolveProjectPersistentDeliveryUrl = (delivery: Readonly<{
-  deliveryUrl: string;
-  isPublicUrl?: boolean;
-}>): string | null =>
+export const resolveProjectPersistentDeliveryUrl = (
+  delivery: Readonly<{
+    deliveryUrl: string;
+    isPublicUrl?: boolean;
+  }>
+): string | null =>
   delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl)
     ? delivery.deliveryUrl
     : null;
@@ -61,6 +67,13 @@ export const projectAssetToMediaUsage = (input: {
     copyright: string;
     license: string;
   }>;
+  readonly centralMetadata?: Readonly<{
+    title: string;
+    altText: string;
+    description: string;
+    copyright: string;
+    license: string;
+  }>;
   readonly sortOrder: number;
 }): ContentMediaUsage => {
   const assetSnapshot: ContentMediaAssetSnapshot = {
@@ -81,7 +94,15 @@ export const projectAssetToMediaUsage = (input: {
     license: assetSnapshot.license,
     role: 'gallery_item',
     sortOrder: input.sortOrder,
-    assetSnapshot,
+    assetSnapshot: input.centralMetadata
+      ? {
+          persistentUrl: input.persistentUrl,
+          altText: input.centralMetadata.altText || input.metadata.fileName,
+          caption: input.centralMetadata.description || input.centralMetadata.title,
+          credit: input.centralMetadata.copyright,
+          license: input.centralMetadata.license,
+        }
+      : assetSnapshot,
     referenceStatus: 'pending',
   };
 };

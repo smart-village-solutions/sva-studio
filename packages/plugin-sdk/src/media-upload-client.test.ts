@@ -1,3 +1,4 @@
+import { createMediaEditingDocument } from '@sva/media';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -7,46 +8,205 @@ import {
   waitForHostMediaUpload,
 } from './media-upload-client.js';
 
+it('resumes transferred bytes after an uncertain completion without initializing or PUT again', async () => {
+  const fetch = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('network'))
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: { assetId: 'copy', uploadSessionId: 'session', status: 'processed' },
+        }),
+        { status: 200 }
+      )
+    );
+  const input = {
+    fetch,
+    file: new File(['bytes'], 'copy.png', { type: 'image/png' }),
+    transferred: { assetId: 'copy', uploadSessionId: 'session' },
+  };
+  await expect(uploadHostMediaFile(input)).rejects.toThrow('network');
+  await expect(uploadHostMediaFile(input)).resolves.toMatchObject({ assetId: 'copy' });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(
+    fetch.mock.calls.every(([url]) => String(url).includes('/upload-sessions/session/complete'))
+  ).toBe(true);
+});
+
 describe('media upload client', () => {
+  it.each([false, true])(
+    'transfers the private local foundation before completing an edited upload (source failure: %s)',
+    async (failSource) => {
+      const document = createMediaEditingDocument({ annotations: {} });
+      const sourceFile = new File(['original'], 'source.jpg', { type: 'image/jpeg' });
+      const outputFile = new File(['output'], 'edited.png', { type: 'image/png' });
+      const calls: string[] = [];
+      let payload: unknown;
+      const fetch = vi.fn(async (request: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(request);
+        calls.push(url);
+        if (url.endsWith('/upload-sessions')) {
+          payload = JSON.parse(String(init?.body));
+          return Response.json({
+            data: {
+              assetId: 'copy',
+              uploadSessionId: 'session',
+              uploadUrl: 'https://storage.test/output',
+              method: 'PUT',
+              headers: {},
+              sourceUpload: {
+                uploadUrl: 'https://storage.test/source',
+                method: 'PUT',
+                headers: {},
+              },
+            },
+          });
+        }
+        if (url === 'https://storage.test/source') {
+          expect(init?.body).toBe(sourceFile);
+          return new Response(null, { status: failSource ? 503 : 200 });
+        }
+        if (url.endsWith('/complete'))
+          return Response.json({
+            data: { assetId: 'copy', uploadSessionId: 'session', status: 'processed' },
+          });
+        expect(init?.body).toBe(outputFile);
+        return new Response(null, { status: 200 });
+      });
+      const uploading = uploadHostMediaFile({
+        fetch,
+        file: outputFile,
+        metadata: { title: ' Bearbeitet ', tags: [' Park '] },
+        editing: { document, sourceFile },
+      });
+      if (failSource) await expect(uploading).rejects.toThrow('media_upload_put_failed:503');
+      else await expect(uploading).resolves.toMatchObject({ assetId: 'copy' });
+      expect(payload).toMatchObject({
+        metadata: { title: 'Bearbeitet', tags: ['Park'] },
+        editing: { document, source: { mimeType: 'image/jpeg', byteSize: sourceFile.size } },
+      });
+      expect(calls.filter((url) => url.endsWith('/complete'))).toHaveLength(failSource ? 0 : 1);
+      expect(calls.slice(1, 3)).toEqual([
+        'https://storage.test/output',
+        'https://storage.test/source',
+      ]);
+    }
+  );
+
+  it('rejects an incomplete source-upload contract before transferring output or completing it', async () => {
+    const fetch = vi.fn(async () =>
+      Response.json({
+        data: {
+          assetId: 'copy',
+          uploadSessionId: 'session',
+          uploadUrl: 'https://storage.test/output',
+          headers: {},
+          method: 'PUT',
+        },
+      })
+    );
+    await expect(
+      uploadHostMediaFile({
+        fetch,
+        file: new File(['out'], 'out.png', { type: 'image/png' }),
+        editing: {
+          document: createMediaEditingDocument({}),
+          sourceFile: new File(['source'], 'source.png', { type: 'image/png' }),
+        },
+      })
+    ).rejects.toThrow('media_upload_source_contract_mismatch');
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it('rejects invalid metadata before creating server-side upload state', async () => {
+    const fetch = vi.fn();
+    await expect(
+      initializeHostMediaUpload({
+        fetch,
+        payload: { mimeType: 'image/png', byteSize: 10, metadata: { title: 'a'.repeat(513) } },
+      })
+    ).rejects.toThrow('invalid_media_metadata:title');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('reports a blocked malware upload using only the stable error code', async () => {
-    const fetch = vi.fn(async () => Response.json({ data: { uploadStatus: 'blocked', processingStatus: 'failed', technical: { lastError: { code: 'media_scan_infected', message: 'scanner-internal-detail' } } } }));
-    await expect(waitForHostMediaUpload({ fetch, assetId: 'asset-1' })).rejects.toMatchObject({ code: 'media_scan_infected', message: 'media_scan_infected' });
+    const fetch = vi.fn(async () =>
+      Response.json({
+        data: {
+          uploadStatus: 'blocked',
+          processingStatus: 'failed',
+          technical: {
+            lastError: { code: 'media_scan_infected', message: 'scanner-internal-detail' },
+          },
+        },
+      })
+    );
+    await expect(waitForHostMediaUpload({ fetch, assetId: 'asset-1' })).rejects.toMatchObject({
+      code: 'media_scan_infected',
+      message: 'media_scan_infected',
+    });
   });
 
   it('returns a stable size error when initialization rejects a file before transfer', async () => {
     const fetch = vi.fn(async () => new Response(null, { status: 413 }));
-    await expect(initializeHostMediaUpload({ fetch, payload: { mimeType: 'image/jpeg', byteSize: 65 * 1024 * 1024 } })).rejects.toMatchObject({ code: 'upload_size_exceeded' });
+    await expect(
+      initializeHostMediaUpload({
+        fetch,
+        payload: { mimeType: 'image/jpeg', byteSize: 65 * 1024 * 1024 },
+      })
+    ).rejects.toMatchObject({ code: 'upload_size_exceeded' });
     expect(fetch).toHaveBeenCalledOnce();
   });
 
   it('waits for actual ready state on the scoped asset endpoint', async () => {
     vi.useFakeTimers();
     try {
-      const fetch = vi.fn().mockResolvedValueOnce(Response.json({ data: { uploadStatus: 'pending', processingStatus: 'pending' } }))
-        .mockResolvedValueOnce(Response.json({ data: { uploadStatus: 'processed', processingStatus: 'ready' } }));
+      const fetch = vi
+        .fn()
+        .mockResolvedValueOnce(
+          Response.json({ data: { uploadStatus: 'pending', processingStatus: 'pending' } })
+        )
+        .mockResolvedValueOnce(
+          Response.json({ data: { uploadStatus: 'processed', processingStatus: 'ready' } })
+        );
       const waiting = waitForHostMediaUpload({ fetch, assetId: 'asset-1', instanceId: 'tenant-a' });
       await vi.advanceTimersByTimeAsync(1000);
       await waiting;
       expect(fetch).toHaveBeenCalledTimes(2);
-      expect(fetch).toHaveBeenCalledWith('/api/v1/iam/media/asset-1?instanceId=tenant-a', expect.objectContaining({ signal: expect.any(AbortSignal) }));
-    } finally { vi.useRealTimers(); }
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/v1/iam/media/asset-1?instanceId=tenant-a',
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('times out without creating or completing another upload', async () => {
     vi.useFakeTimers();
     try {
-      const fetch = vi.fn(async () => Response.json({ data: { uploadStatus: 'pending', processingStatus: 'pending' } }));
+      const fetch = vi.fn(async () =>
+        Response.json({ data: { uploadStatus: 'pending', processingStatus: 'pending' } })
+      );
       const waiting = waitForHostMediaUpload({ fetch, assetId: 'asset-1' });
       const rejected = expect(waiting).rejects.toMatchObject({ code: 'media_processing_timeout' });
       await vi.advanceTimersByTimeAsync(120_000);
       await rejected;
-      expect(fetch.mock.calls.every(([url]) => String(url) === '/api/v1/iam/media/asset-1')).toBe(true);
-    } finally { vi.useRealTimers(); }
+      expect(fetch.mock.calls.every(([url]) => String(url) === '/api/v1/iam/media/asset-1')).toBe(
+        true
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('fails immediately on terminal processing errors', async () => {
-    const fetch = vi.fn(async () => Response.json({ data: { uploadStatus: 'failed', processingStatus: 'failed' } }));
-    await expect(waitForHostMediaUpload({ fetch, assetId: 'asset-1' })).rejects.toMatchObject({ code: 'media_processing_failed' });
+    const fetch = vi.fn(async () =>
+      Response.json({ data: { uploadStatus: 'failed', processingStatus: 'failed' } })
+    );
+    await expect(waitForHostMediaUpload({ fetch, assetId: 'asset-1' })).rejects.toMatchObject({
+      code: 'media_processing_failed',
+    });
     expect(fetch).toHaveBeenCalledOnce();
   });
 
@@ -67,7 +227,7 @@ describe('media upload client', () => {
               initializedAt: '2026-06-21T09:00:00.000Z',
             },
           }),
-          { status: 200 },
+          { status: 200 }
         );
       }
       if (url === '/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=de-demo') {
@@ -79,7 +239,7 @@ describe('media upload client', () => {
               status: 'validated',
             },
           }),
-          { status: 200 },
+          { status: 200 }
         );
       }
       return new Response(JSON.stringify({ error: 'unexpected' }), { status: 500 });
@@ -94,7 +254,7 @@ describe('media upload client', () => {
           visibility: 'protected',
           instanceId: 'de-demo',
         },
-      }),
+      })
     ).resolves.toMatchObject({
       assetId: 'asset-1',
       uploadSessionId: 'upload-1',
@@ -105,7 +265,7 @@ describe('media upload client', () => {
         fetch: fetchMock as never,
         uploadSessionId: 'upload-1',
         instanceId: 'de-demo',
-      }),
+      })
     ).resolves.toEqual({
       assetId: 'asset-1',
       uploadSessionId: 'upload-1',
@@ -130,7 +290,7 @@ describe('media upload client', () => {
               initializedAt: '2026-06-21T09:00:00.000Z',
             },
           }),
-          { status: 200 },
+          { status: 200 }
         );
       }
       if (url === 'https://uploads.example/asset-2') {
@@ -148,7 +308,7 @@ describe('media upload client', () => {
               previewUrl: 'https://cdn.example.test/asset-2.png',
             },
           }),
-          { status: 200 },
+          { status: 200 }
         );
       }
       return new Response(JSON.stringify({ error: 'unexpected' }), { status: 500 });
@@ -162,7 +322,7 @@ describe('media upload client', () => {
         file,
         visibility: 'protected',
         instanceId: 'de-demo',
-      }),
+      })
     ).resolves.toEqual({
       assetId: 'asset-2',
       uploadSessionId: 'upload-2',
@@ -187,7 +347,7 @@ describe('media upload client', () => {
               initializedAt: '2026-06-21T09:00:00.000Z',
             },
           }),
-          { status: 200 },
+          { status: 200 }
         );
       }
       if (url === 'https://uploads.example/asset-3') {
@@ -201,7 +361,7 @@ describe('media upload client', () => {
         fetch: fetchMock as never,
         file: new File(['image'], 'broken.png', { type: 'image/png' }),
         instanceId: 'de-demo',
-      }),
+      })
     ).rejects.toThrow('media_upload_put_failed:500');
   });
 
@@ -226,7 +386,7 @@ describe('media upload client', () => {
               initializedAt: '2026-06-21T09:00:00.000Z',
             },
           }),
-          { status: 200 },
+          { status: 200 }
         );
       }
       if (url === 'https://uploads.example/asset-4') {
@@ -241,7 +401,7 @@ describe('media upload client', () => {
               status: 'validated',
             },
           }),
-          { status: 200 },
+          { status: 200 }
         );
       }
       if (url === '/api/v1/iam/media/asset-4?instanceId=de-demo') {
@@ -255,7 +415,7 @@ describe('media upload client', () => {
         fetch: fetchMock as never,
         file: new File(['img'], 'ctx.webp', { type: 'image/webp' }),
         instanceId: 'de-demo',
-      }),
+      })
     ).resolves.toEqual({
       assetId: 'asset-4',
       uploadSessionId: 'upload-4',

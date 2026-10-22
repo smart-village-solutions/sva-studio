@@ -19,6 +19,8 @@ gleichzeitig beeinflussen.
 
 ### Accessibility und interaktive Aktionen
 
+Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerobot-bildeditor-mit-begrenzter-accessibility-abweichung.md) ausdrücklich die bekannten Accessibility-Lücken der spezialisierten Filerobot-Werkzeug-/Canvas-Oberfläche. Die Ausnahme betrifft weder Studio-eigene Dialograhmen, Metadaten, Status und Abschlussaktionen noch den gewöhnlichen Medienauswahlpfad. Die Einschränkung wird im bestehenden Accessibility Statement und am Editoreinstieg benannt. Der Editor wird browserseitig verzögert geladen und verwendet Studio-Übersetzungen, lokale Schriftwahl und semantische Theme-Farben; Cloud- und KI-Funktionen sind deaktiviert.
+
 - Studio-Buttons folgen WCAG 2.1 AA und dem gemeinsamen Vertrag aus `@sva/studio-ui-react`; Default- und Forest-Theme werden jeweils in Light und Dark geprüft.
 - Semantische Action-Tokens halten Textkontrast bei mindestens 4,5:1 sowie Fokus- und relevante UI-Kontraste bei mindestens 3:1. Zustände verwenden explizite Farben statt untergrundabhängiger Alpha-Mischungen.
 - Primary, Secondary und Tertiary bilden die fachliche Aktionshierarchie ab; Destructive kennzeichnet das Risiko zusätzlich zu Bestätigung und Autorisierung.

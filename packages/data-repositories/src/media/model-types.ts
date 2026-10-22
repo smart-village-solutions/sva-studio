@@ -15,6 +15,10 @@ export type MediaAssetRecord = {
   readonly provisionalOwnerSubject?: string;
   readonly provisionalDraftId?: string;
   readonly provisionalExpiresAt?: string;
+  readonly editingSourceAssetId?: string;
+  readonly editingSourceKey?: string;
+  readonly editingDocument?: Readonly<Record<string, unknown>>;
+  readonly deletionPending?: boolean;
   readonly metadata: Readonly<Record<string, unknown>>;
   readonly technical: Readonly<Record<string, unknown>>;
   readonly createdAt?: string;

@@ -9,6 +9,7 @@ import {
 } from '../plugin-operations/runner.js';
 import { withMediaService } from './repository.js';
 import { createConfiguredMediaStoragePortForInstance } from './storage-s3.js';
+import { deleteMediaEditingObjects } from './processing-editing.js';
 import type { MediaStoragePort } from './storage-port.js';
 
 const logger = createSdkLogger({ component: 'media-content-save-recovery', level: 'info' });
@@ -49,6 +50,7 @@ export const cleanupMediaContentSaveOperation = async (input: CleanupInput): Pro
         storageKey: variant.storageKey,
       });
     }
+    await deleteMediaEditingObjects(storagePort, input.instanceId, asset);
   }
 
   const finalized = await withMediaService(input.instanceId, (service) =>

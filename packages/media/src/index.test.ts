@@ -72,8 +72,28 @@ describe('@sva/media', () => {
     });
   });
 
+  it.each(['failed', 'blocked', 'pending'] as const)(
+    'allows cleanup of reference-free %s assets subject to repository session guards',
+    (status) => {
+      expect(
+        canDeleteMediaAsset({
+          asset: {
+            ...baseAsset,
+            uploadStatus: status,
+            processingStatus: status === 'pending' ? 'pending' : 'failed',
+          },
+          references: [],
+        }).allowed
+      ).toBe(true);
+    }
+  );
+
   it('publishes central preset defaults for thumbnail, teaser, and hero usage', () => {
-    expect(defaultMediaPresets.map((preset) => preset.key)).toEqual(['thumbnail', 'teaser', 'hero']);
+    expect(defaultMediaPresets.map((preset) => preset.key)).toEqual([
+      'thumbnail',
+      'teaser',
+      'hero',
+    ]);
     expect(defaultMediaPresets.find((preset) => preset.key === 'hero')).toEqual(
       expect.objectContaining({
         width: 1600,

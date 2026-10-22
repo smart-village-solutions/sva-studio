@@ -3,7 +3,16 @@ import type { ContentMediaUsage } from './content-media-usage.js';
 export const contentMediaUsagesToLocalDrafts = (usages: readonly ContentMediaUsage[]) =>
   usages.flatMap((usage) =>
     usage.localDraft
-      ? [{ draftId: usage.localDraft.id, file: usage.localDraft.file, role: usage.role, sortOrder: usage.sortOrder }]
+      ? [
+          {
+            draftId: usage.localDraft.id,
+            file: usage.localDraft.file,
+            metadata: usage.localDraft.metadata,
+            editing: usage.localDraft.editing,
+            role: usage.role,
+            sortOrder: usage.sortOrder,
+          },
+        ]
       : []
   );
 

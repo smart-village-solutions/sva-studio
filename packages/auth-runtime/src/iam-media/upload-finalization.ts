@@ -1,6 +1,10 @@
+import type { MediaService } from './service.js';
+import { getMediaEditingIntakeKeys } from './processing-editing.js';
 import type { MediaHttpHandlerDeps } from './http-support.js';
 import type {
   MediaUploadFailure,
+  MediaUploadProcessingFailureCode,
+  MediaUploadProcessingResult,
   MediaUploadFailureResult,
   MediaUploadFinalization,
   MediaUploadFinalizationResult,
@@ -17,6 +21,9 @@ const persistUploadFailure = async (
 ): Promise<void> => {
   await service.upsertAsset({
     ...failure.asset,
+    // Terminal failures cannot be resumed and must not keep the original locked forever.
+    editingSourceAssetId: undefined,
+    editingDocument: undefined,
     uploadStatus: failure.errorCode === 'media_scan_infected' ? 'blocked' : 'failed',
     processingStatus: 'failed',
     technical: {
@@ -84,3 +91,63 @@ export const finalizeProcessedUpload = (
     await service.upsertUploadSession(finalization.uploadSession);
     return 'finalized';
   });
+
+export const markProcessingFailure = async (input: {
+  readonly deps: {
+    readonly storagePort: Pick<
+      {
+        deleteObject: (input: {
+          readonly instanceId: string;
+          readonly storageKey: string;
+        }) => Promise<void>;
+      },
+      'deleteObject'
+    >;
+    readonly failUpload: (failure: MediaUploadFailure) => Promise<MediaUploadFailureResult>;
+  };
+  readonly claimToken: string;
+  readonly asset: Awaited<ReturnType<MediaService['getAssetById']>>;
+  readonly uploadSession: Awaited<ReturnType<MediaService['getUploadSessionById']>>;
+  readonly errorCode: MediaUploadProcessingFailureCode;
+}): Promise<Extract<MediaUploadProcessingResult, { ok: false }>> => {
+  if (!input.asset || !input.uploadSession) {
+    return { ok: false, status: 404, errorCode: 'asset_not_found' };
+  }
+
+  const failureResult = await input.deps.failUpload({
+    instanceId: String(input.uploadSession.instanceId),
+    claimToken: input.claimToken,
+    asset: input.asset,
+    uploadSession: input.uploadSession,
+    errorCode: input.errorCode,
+  });
+  if (failureResult === 'claim_superseded') {
+    return { ok: false, status: 409, errorCode: 'upload_processing_superseded' };
+  }
+
+  const instanceId = String(input.uploadSession.instanceId);
+  await Promise.allSettled(
+    [
+      ...new Set([
+        String(input.uploadSession.storageKey),
+        ...getMediaEditingIntakeKeys(input.asset),
+      ]),
+    ].map((storageKey) =>
+      input.deps.storagePort.deleteObject({
+        instanceId,
+        storageKey,
+      })
+    )
+  );
+
+  return {
+    ok: false,
+    status:
+      input.errorCode === 'upload_size_exceeded'
+        ? 413
+        : input.errorCode === 'storage_quota_exceeded'
+          ? 409
+          : 422,
+    errorCode: input.errorCode,
+  };
+};

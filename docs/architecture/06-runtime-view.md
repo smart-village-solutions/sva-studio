@@ -1149,7 +1149,7 @@ Fehlerpfad:
 1. Redaktion öffnet `/admin/poi/$id` oder den Create-Pfad; `PoiDetailPage` lädt POI-Daten und Host-Media-Assets getrennt.
 2. Im Bereich `Ort` fragt der Browser zunächst die hostseitige Map-Konfiguration ab und verwendet danach nur die normierten IAM-Endpunkte für Adresssuche oder Reverse-Geocoding.
 3. Ein übernommener Treffer synchronisiert Adressfelder sowie Koordinaten; Geocoding-Fehler bleiben lokal im Bereich und blockieren den restlichen Editor nicht.
-4. Im Bereich `Medieninhalte` startet ein Upload den Host-Flow `initialize -> signed PUT -> complete`; im Review bleibt die Asset-Bearbeitung ohne `media.update` schreibgeschützt, die explizite Übernahme aber möglich.
+4. Im Bereich `Medieninhalte` startet ein Upload den Host-Flow `initialize -> signed PUT -> complete`; im Review bleiben Inhaltsangaben unabhängig von `media.update` bearbeitbar; nur die ausdrückliche zentrale Metadatenspeicherung benötigt dieses Recht. Eine Bildkopie benötigt `media.create` und den autorisierten Zugriff auf ihre Grundlage.
 5. Vor der Übernahme löst der Host eine persistierbare Delivery-URL auf. Ablauffähige oder signierte URLs werden fail-closed nicht in `mediaContents` geschrieben.
 6. Beim Speichern persistiert der Editor zuerst den strukturierten POI-Write-Pfad inklusive `mediaContents` im Mainserver und ersetzt danach die geordneten `gallery_item`-Referenzen für die stabile POI-ID.
 7. Ein Referenzteilfehler verändert den erfolgreichen Mainserver-Snapshot nicht; „Referenzen erneut speichern“ wiederholt keinen POI-Schreibzugriff.
@@ -1532,3 +1532,13 @@ Bei aktiviertem Scan reserviert die Initialisierung einen privaten Quarantäne-K
 ### Manueller lesender Bestandsscan
 
 Die Medienbibliothek startet mit `media.read` und `media.update` sowie CSRF-Schutz einen instanzgebundenen Job `media.scan-existing` in der vorhandenen Queue `media-processing`. Ein Lauf liest maximal 25 Dateien mit höchstens 64 MiB je Datei aus dem konfigurierten Medienbestand und verwendet denselben ClamAV-Aufruf. Das vorhandene Job-Ergebnis hält den Bericht mit sauber, Fund oder nicht prüfbar; die Fortsetzung bleibt manuell. Der Worker hat ausschließlich lesende Storage-Abhängigkeiten und verändert weder Dateien noch Assets, Sichtbarkeit, Quoten oder Referenzen. Ein Fund bewirkt keine Sperre. Laufender Scan und Bericht bleiben in der Bibliothek unabhängig vom Ladezustand der Medienliste erhalten. Die Bereinigung abgebrochener provisorischer Uploads zieht nur atomar gebuchte Kontingente erfolgreich finalisierter Assets ab; ungebuchte Uploads verändern den vorhandenen Verbrauch nicht.
+
+
+## Weiterbearbeitbare Medienkopien
+
+1. Der gemeinsame Picker oder die Mediendetailansicht liest die Kopie und ihre tatsächliche Grundlage über den autorisierten Editor-Lesepfad; normale Projektionen enthalten keine privaten Zustände oder Ressourcen-Keys.
+2. Filerobot wird ausschließlich im Browser geladen. Der Host setzt Übersetzungen, Themes und lokale Schriftwahl und deaktiviert Cloud-/KI-Dienste. Abbruch lässt Original und Inhaltsentwurf unverändert.
+3. Der Host exportiert ein PNG und einen begrenzten versionierten Zustand. Lokale Originale oder der autorisierte Root-Asset-Bezug bleiben als Grundlage erhalten. Angaben und drei Fokusvarianten werden vor dem Speichern gezeigt.
+4. Die Mediathek speichert eine neue Kopie unmittelbar. Sechs Content-Plugins übertragen ihre lokalen Kopien erst im vorhandenen Content-Save-Ablauf; Waste speichert die öffentliche Kopie sofort und übernimmt nur deren dauerhafte URL in die noch ungespeicherte Konfiguration.
+5. Der vorhandene Medienjob prüft Ausgabe, Grundlage und eingebettete Bildressourcen einschließlich aktiver Scanpflicht. Nur der aktuelle Claim darf alle Bestandteile freigeben und deren tatsächliche Bytes samt Zustandsdokument verbuchen. Private Ressourcen bleiben auch ohne Scan privat.
+6. Kopienanlage und Quellenlöschung sperren dieselbe Grundlage. Löschung markiert das Asset vor Storage-I/O; neue Referenzen/Kopien sind danach ausgeschlossen. Referenzen, offene Content-Save-Verwendungen und abhängige Kopien blockieren die Löschung. Wiederholung nach einem Storage-Fehler darf Kontingente nicht mehrfach korrigieren.

@@ -109,8 +109,163 @@ const createQueuedExecutor = (queuedRows: readonly (readonly Record<string, unkn
 };
 
 describe('media repository', () => {
+  it('round-trips private editing data without letting ordinary upserts clear a deletion claim', async () => {
+    const document = { version: 1, editor: 'filerobot', state: { annotations: {} } };
+    const { executor, statements } = createQueuedExecutor([
+      [
+        {
+          ...assetRow,
+          editing_source_asset_id: 'source-1',
+          editing_document: document,
+          deletion_pending: true,
+        },
+      ],
+      [assetRow],
+      [{ ...assetRow, id: 'source-1', lifecycle_status: 'active' }],
+      [],
+    ]);
+    const repository = createMediaRepository(executor);
+    const asset = await repository.getAssetById('tenant-a', 'asset-1');
+    expect(asset).toMatchObject({
+      editingSourceAssetId: 'source-1',
+      editingDocument: document,
+      deletionPending: true,
+    });
+    if (!asset) throw new Error('fixture_asset_missing');
+    await repository.upsertAsset({ ...asset, deletionPending: false });
+    expect(statements[1]?.text).toContain('FOR UPDATE');
+    expect(statements[3]?.values.slice(16)).toEqual(['source-1', null, JSON.stringify(document)]);
+    expect(statements[3]?.text).not.toContain('deletion_pending =');
+  });
+
+  it('locks the existing root before checking dependencies for a visibility change', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [assetRow],
+      [{ id: 'provisional-copy' }],
+    ]);
+    const repository = createMediaRepository(executor);
+    await expect(
+      repository.upsertAsset({
+        id: assetRow.id,
+        instanceId: assetRow.instance_id,
+        storageKey: assetRow.storage_key,
+        mediaType: 'image',
+        mimeType: 'image/jpeg',
+        byteSize: 1024,
+        visibility: 'protected',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {},
+        technical: {},
+      })
+    ).rejects.toThrow('media_visibility_fixed');
+    expect(statements[0]?.text).toContain('FOR UPDATE');
+    expect(statements[1]?.text).not.toContain('lifecycle_status');
+    expect(statements).toHaveLength(2);
+  });
+
+  it('maps a private local source and keeps it out of library queries', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [
+        {
+          ...assetRow,
+          editing_source_key: '.protected/tenant-a/asset-1/source.jpg',
+          editing_document: { version: 1 },
+          deletion_pending: false,
+        },
+      ],
+      [],
+    ]);
+    const repository = createMediaRepository(executor);
+    expect(await repository.getAssetById('tenant-a', 'asset-1')).toMatchObject({
+      editingSourceKey: '.protected/tenant-a/asset-1/source.jpg',
+      editingDocument: { version: 1 },
+      deletionPending: false,
+    });
+    await repository.listAssets({ instanceId: 'tenant-a' });
+    expect(statements[1]?.text).not.toContain('editing_document');
+    expect(statements[1]?.text).not.toContain('editing_source_key');
+  });
+
+  it.each([
+    undefined,
+    { deletion_pending: true },
+    { lifecycle_status: 'provisional' },
+    { upload_status: 'pending' },
+    { processing_status: 'failed' },
+    { editing_source_asset_id: 'other-source' },
+    { visibility: 'protected' },
+  ])(
+    'rejects an unavailable or incompatible editing source before writing a copy: %o',
+    async (override) => {
+      const { executor, statements } = createQueuedExecutor([
+        [],
+        override ? [{ ...assetRow, lifecycle_status: 'active', ...override }] : [],
+      ]);
+      await expect(
+        createMediaRepository(executor).upsertAsset({
+          id: 'copy',
+          instanceId: 'tenant-a',
+          storageKey: 'tenant-a/copy.jpg',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 100,
+          visibility: 'public',
+          uploadStatus: 'pending',
+          processingStatus: 'pending',
+          metadata: {},
+          technical: {},
+          editingSourceAssetId: 'asset-1',
+        })
+      ).rejects.toThrow('media_editing_source_unavailable');
+      expect(statements).toHaveLength(2);
+    }
+  );
+
+  it('claims deletion after a source lock and finalizes quota only for a deleted row', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [],
+      [assetRow],
+      [{ id: 'asset-1' }],
+      [{ deleted: true }],
+      [{ deleted: false }],
+      [],
+      [],
+    ]);
+    const repository = createMediaRepository(executor);
+    expect(await repository.claimAssetDeletion('tenant-a', 'asset-1')).toBe(true);
+    expect(statements[1]?.text).toContain('FOR UPDATE');
+    expect(statements[2]?.text).toContain('editing_source_asset_id = $2');
+    expect(statements[2]?.text).toContain('iam.media_content_save_operation_references');
+    expect(await repository.finalizeAssetDeletion('tenant-a', 'asset-1')).toBe(true);
+    expect(await repository.finalizeAssetDeletion('tenant-a', 'asset-1')).toBe(false);
+    expect(statements[3]?.text).toContain('deletion_pending = true');
+    expect(statements[3]?.text).toContain('editingSourceBytes');
+    expect(await repository.claimAssetDeletion('tenant-a', 'missing')).toBe(false);
+    expect(statements).toHaveLength(7);
+  });
+
+  it('returns a blocked deletion claim without hiding readable editing copies', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [],
+      [assetRow],
+      [],
+      [
+        { id: 'copy-1', metadata: { title: 'Bearbeitet' } },
+        { id: 'copy-2', metadata: null },
+      ],
+    ]);
+    const repository = createMediaRepository(executor);
+    expect(await repository.claimAssetDeletion('tenant-a', 'asset-1')).toBe(false);
+    expect(await repository.listEditingCopies('tenant-a', 'asset-1')).toEqual([
+      { id: 'copy-1', metadata: { title: 'Bearbeitet' } },
+      { id: 'copy-2', metadata: {} },
+    ]);
+    expect(statements[3]?.text).toContain("lifecycle_status = 'active'");
+  });
+
   it('upserts assets and serializes metadata payloads', async () => {
-    const { executor, statements } = createQueuedExecutor([[]]);
+    const { executor, statements } = createQueuedExecutor([[], []]);
     const repository = createMediaRepository(executor);
 
     await repository.upsertAsset({
@@ -127,19 +282,19 @@ describe('media repository', () => {
       technical: { width: 1200 },
     });
 
-    expect(statements[0]?.text.includes('INSERT INTO iam.media_assets')).toBe(true);
-    expect(statements[0]?.values.slice(0, 4)).toEqual([
+    expect(statements[1]?.text.includes('INSERT INTO iam.media_assets')).toBe(true);
+    expect(statements[1]?.values.slice(0, 4)).toEqual([
       'asset-1',
       'tenant-a',
       'tenant-a/originals/asset-1.jpg',
       'image',
     ]);
-    expect(statements[0]?.values[9]).toBe(JSON.stringify({ title: 'Rathaus' }));
-    expect(statements[0]?.values[11]).toBe('active');
+    expect(statements[1]?.values[9]).toBe(JSON.stringify({ title: 'Rathaus' }));
+    expect(statements[1]?.values[11]).toBe('active');
   });
 
   it('persists provisional ownership and keeps provisional assets out of library queries', async () => {
-    const { executor, statements } = createQueuedExecutor([[], []]);
+    const { executor, statements } = createQueuedExecutor([[], [], []]);
     const repository = createMediaRepository(executor);
     await repository.upsertAsset({
       id: 'asset-draft',
@@ -161,14 +316,14 @@ describe('media repository', () => {
     });
     await repository.listAssets({ instanceId: 'tenant-a' });
 
-    expect(statements[0]?.values.slice(11)).toEqual([
+    expect(statements[1]?.values.slice(11, 16)).toEqual([
       'provisional',
       '00000000-0000-4000-8000-000000000001',
       'user-1',
       '00000000-0000-4000-8000-000000000002',
       '2026-08-18T00:00:00.000Z',
     ]);
-    expect(statements[1]?.text).toContain("lifecycle_status = 'active'");
+    expect(statements[2]?.text).toContain("lifecycle_status = 'active'");
   });
 
   it('maps asset lookups and filtered asset listings', async () => {
@@ -305,8 +460,30 @@ describe('media repository', () => {
     expect(statements[0]?.values).toEqual(['tenant-b', 'asset-1']);
   });
 
+  it('keeps existing references when an asset is being deleted', async () => {
+    const { executor, statements } = createQueuedExecutor([[], []]);
+    const repository = createMediaRepository(executor);
+    const references = [
+      { id: 'ref', assetId: 'asset-1', targetType: 'news', targetId: 'news-1', role: 'teaser' },
+    ];
+    await expect(
+      repository.replaceReferences({
+        instanceId: 'tenant-a',
+        targetType: 'news',
+        targetId: 'news-1',
+        references,
+      })
+    ).rejects.toThrow('media_reference_asset_unavailable');
+    expect(
+      await repository.replaceContentSaveOperationReferences({ ...contentSaveIdentity, references })
+    ).toBe(false);
+    expect(statements).toHaveLength(2);
+    expect(statements.every(({ text }) => !text.includes('DELETE FROM'))).toBe(true);
+  });
+
   it('replaces target references and exposes usage impact', async () => {
     const { executor, statements } = createQueuedExecutor([
+      [{ id: 'asset-1' }, { id: 'asset-2' }],
       [],
       [],
       [],
@@ -339,9 +516,11 @@ describe('media repository', () => {
       ],
     });
 
-    expect(statements[0]?.text.includes('DELETE FROM iam.media_references')).toBe(true);
-    expect(statements[1]?.values.slice(0, 4)).toEqual(['ref-1', 'tenant-a', 'asset-1', 'news']);
-    expect(statements[2]?.values.slice(0, 4)).toEqual(['ref-2', 'tenant-a', 'asset-2', 'news']);
+    expect(statements[0]?.text).toContain('FOR UPDATE');
+    expect(statements[0]?.values).toEqual(['tenant-a', ['asset-1', 'asset-2']]);
+    expect(statements[1]?.text.includes('DELETE FROM iam.media_references')).toBe(true);
+    expect(statements[2]?.values.slice(0, 4)).toEqual(['ref-1', 'tenant-a', 'asset-1', 'news']);
+    expect(statements[3]?.values.slice(0, 4)).toEqual(['ref-2', 'tenant-a', 'asset-2', 'news']);
 
     await expect(repository.getUsageImpact('tenant-a', 'asset-1')).resolves.toEqual({
       assetId: 'asset-1',
@@ -614,10 +793,21 @@ describe('media repository', () => {
   });
 
   it('rotates a fresh uploaded claim only when requested by the processing job', async () => {
-    const { executor, statements } = createQueuedExecutor([[{ ...uploadSessionRow,
-      status: 'uploaded', claim_token: 'new-claim', replaced_claim_token: 'old-claim',
-    }]]);
-    const result = await createMediaRepository(executor).claimUploadSession('tenant-a', 'upload-1', true);
+    const { executor, statements } = createQueuedExecutor([
+      [
+        {
+          ...uploadSessionRow,
+          status: 'uploaded',
+          claim_token: 'new-claim',
+          replaced_claim_token: 'old-claim',
+        },
+      ],
+    ]);
+    const result = await createMediaRepository(executor).claimUploadSession(
+      'tenant-a',
+      'upload-1',
+      true
+    );
     expect(result).toMatchObject({ claimToken: 'new-claim', replacedClaimToken: 'old-claim' });
     expect(statements[0]?.values).toEqual(['tenant-a', 'upload-1', 600, true]);
     expect(statements[0]?.text).toContain('claim_token = gen_random_uuid()');
@@ -795,6 +985,7 @@ describe('media repository', () => {
       [contentSaveOperationRow],
       [contentSaveOperationRow],
       [],
+      [{ id: 'asset-1' }],
       [{ successful: true }],
       [{ successful: false }],
       [{}],
@@ -896,20 +1087,20 @@ describe('media repository', () => {
       false
     );
 
-    expect(statements).toHaveLength(16);
+    expect(statements).toHaveLength(17);
     expect(statements[0]?.text).toContain('INSERT INTO iam.media_content_save_operations');
-    expect(statements[3]?.text).toContain(
+    expect(statements[4]?.text).toContain(
       'DELETE FROM iam.media_content_save_operation_references'
     );
-    expect(statements[3]?.values.slice(0, 3)).toEqual([
+    expect(statements[4]?.values.slice(0, 3)).toEqual([
       contentSaveOperationRow.id,
       'tenant-a',
       'actor-1',
     ]);
-    expect(statements[5]?.text).toContain("status = 'content_saved'");
-    expect(statements[8]?.text).toContain('INSERT INTO iam.media_references');
-    expect(statements[12]?.text).toContain("status = 'reconciliation_required'");
-    expect(statements[14]?.text).toContain('DELETE FROM iam.media_assets');
+    expect(statements[6]?.text).toContain("status = 'content_saved'");
+    expect(statements[9]?.text).toContain('INSERT INTO iam.media_references');
+    expect(statements[13]?.text).toContain("status = 'reconciliation_required'");
+    expect(statements[15]?.text).toContain('DELETE FROM iam.media_assets');
   });
 
   it('claims only expired safe states and preserves unknown or confirmed outcomes', () => {

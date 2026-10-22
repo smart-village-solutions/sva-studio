@@ -4,7 +4,11 @@ import {
   replaceHostMediaReferences,
   type HostMediaReferenceSelection,
 } from './media-picker-client.js';
-import { uploadHostMediaFile } from './media-upload-client.js';
+import {
+  uploadHostMediaFile,
+  type HostMediaUploadMetadata,
+  type HostMediaEditingUpload,
+} from './media-upload-client.js';
 import {
   abandonHostMediaContentSaveOperation,
   commitHostMediaContentSaveOperation,
@@ -58,6 +62,8 @@ export class ContentMediaSaveError extends Error {
 export type ContentMediaLocalDraft = Readonly<{
   draftId: string;
   file: File;
+  metadata?: HostMediaUploadMetadata;
+  editing?: HostMediaEditingUpload;
   role: string;
   sortOrder?: number;
 }>;
@@ -101,13 +107,14 @@ const saveWithoutLocalDrafts = async <TSaved>(
   input: ContentMediaSaveInput<TSaved>
 ): Promise<ContentMediaReferenceSyncResult<TSaved>> => {
   const saved = await input.saveContent([]);
-  const sync = () => replaceHostMediaReferences({
-    fetch: input.fetch,
-    targetType: input.targetType,
-    targetId: input.getTargetId(saved),
-    references: input.references,
-    instanceId: input.instanceId,
-  }).then(() => undefined);
+  const sync = () =>
+    replaceHostMediaReferences({
+      fetch: input.fetch,
+      targetType: input.targetType,
+      targetId: input.getTargetId(saved),
+      references: input.references,
+      instanceId: input.instanceId,
+    }).then(() => undefined);
   try {
     await sync();
     return { status: 'complete', saved, resolutions: [] };
@@ -128,6 +135,8 @@ const prepareLocalMediaDrafts = async <TSaved>(
     const uploaded = await uploadHostMediaFile({
       fetch: input.fetch,
       file: draft.file,
+      metadata: draft.metadata,
+      editing: draft.editing,
       visibility: 'public',
       mediaType: 'image',
       instanceId: input.instanceId,
@@ -160,14 +169,18 @@ const prepareLocalMediaDrafts = async <TSaved>(
   return resolutions;
 };
 
-const handleLocalMediaSaveFailure = async <TSaved>(input: ContentMediaSaveInput<TSaved>, context: {
-  readonly operationId: string;
-  readonly contentSaveStarted: boolean;
-  readonly error: unknown;
-}): Promise<never> => {
-  const httpStatus = typeof context.error === 'object' && context.error !== null && 'httpStatus' in context.error
-    ? Number((context.error as { readonly httpStatus?: unknown }).httpStatus)
-    : Number.NaN;
+const handleLocalMediaSaveFailure = async <TSaved>(
+  input: ContentMediaSaveInput<TSaved>,
+  context: {
+    readonly operationId: string;
+    readonly contentSaveStarted: boolean;
+    readonly error: unknown;
+  }
+): Promise<never> => {
+  const httpStatus =
+    typeof context.error === 'object' && context.error !== null && 'httpStatus' in context.error
+      ? Number((context.error as { readonly httpStatus?: unknown }).httpStatus)
+      : Number.NaN;
   const safelyRejected = Number.isFinite(httpStatus) && httpStatus >= 400 && httpStatus < 500;
   if (!context.contentSaveStarted || safelyRejected) {
     input.onPhaseChange?.('cleanup');
@@ -175,9 +188,15 @@ const handleLocalMediaSaveFailure = async <TSaved>(input: ContentMediaSaveInput<
       fetch: input.fetch,
       operationId: context.operationId,
       instanceId: input.instanceId,
-      errorCode: Number.isFinite(httpStatus) ? `content_save_http_${httpStatus}` : 'content_save_preflight_failed',
-    }).then(() => true, () => false);
-    if (!abandoned) throw new ContentMediaSaveError('cleanup_pending', context.operationId, context.error);
+      errorCode: Number.isFinite(httpStatus)
+        ? `content_save_http_${httpStatus}`
+        : 'content_save_preflight_failed',
+    }).then(
+      () => true,
+      () => false
+    );
+    if (!abandoned)
+      throw new ContentMediaSaveError('cleanup_pending', context.operationId, context.error);
     throw context.error;
   }
 
@@ -214,7 +233,11 @@ const saveWithLocalDrafts = async <TSaved>(
     input.onPhaseChange?.('saving_content');
     saved = await input.saveContent(resolutions, { operationId: operation.id });
   } catch (error) {
-    return handleLocalMediaSaveFailure(input, { operationId: operation.id, contentSaveStarted, error });
+    return handleLocalMediaSaveFailure(input, {
+      operationId: operation.id,
+      contentSaveStarted,
+      error,
+    });
   }
   const targetId = input.getTargetId(saved);
   const sync = async () => {

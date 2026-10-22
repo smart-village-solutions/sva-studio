@@ -11,6 +11,9 @@ import {
 } from './studio-media-picker-overlay.shared.js';
 import {
   useConfirmSelectionAction,
+  useApplyMediaImageEditAction,
+  useMediaImageFocusAction,
+  useSaveCentralMetadataAction,
   withPreviewUrlFallback,
   type StudioMediaPickerMetadataUpdate,
 } from './use-studio-media-picker-overlay.confirm.js';
@@ -23,7 +26,7 @@ export type StudioMediaPickerUploadAssetResult = Readonly<{
 
 export type StudioMediaPickerOverlayOptions<TAssetDetail extends StudioMediaPickerAssetDetail> =
   Readonly<{
-    onAccept: (asset: TAssetDetail) => void;
+    onAccept: (asset: TAssetDetail) => void | Promise<void>;
     isSupportedUploadFile: (file: File) => boolean;
     uploadAsset?: (file: File) => Promise<StudioMediaPickerUploadAssetResult>;
     createLocalAsset?: (input: {
@@ -61,6 +64,9 @@ const useReviewAssetLoader = <TAssetDetail extends StudioMediaPickerAssetDetail>
         if (currentRequestId !== requestId.current) {
           return false;
         }
+        if (state.reviewAsset?.localDraft) {
+          revokeBrowserObjectUrl(state.reviewAsset.previewUrl);
+        }
         actions.setReviewAsset(asset);
         actions.setMetadataDraft(createMetadataDraft(asset));
         actions.setReviewSource(source);
@@ -70,7 +76,6 @@ const useReviewAssetLoader = <TAssetDetail extends StudioMediaPickerAssetDetail>
         if (currentRequestId !== requestId.current) {
           return false;
         }
-        actions.setReviewAsset(null);
         actions.setErrorCode('asset_load_failed');
         actions.setMode('review');
         return false;
@@ -80,7 +85,7 @@ const useReviewAssetLoader = <TAssetDetail extends StudioMediaPickerAssetDetail>
         }
       }
     },
-    [actions, loadAsset]
+    [actions, loadAsset, state.reviewAsset]
   );
 };
 
@@ -212,13 +217,20 @@ export const useStudioMediaPickerOverlayActions = <
     state,
     reviewAsset,
     state.metadataDraft,
-    saveAssetMetadata,
     onAccept,
     canAcceptAsset,
     editableMetadataFields
   );
 
+  const saveCentralMetadata = useSaveCentralMetadataAction(state, reviewAsset, saveAssetMetadata);
+
+  const applyImageEdit = useApplyMediaImageEditAction(state);
+  const updateImageFocus = useMediaImageFocusAction(state);
+
   return {
+    applyImageEdit,
+    updateImageFocus,
+    saveCentralMetadata,
     selectAsset,
     uploadFile,
     updateMetadataField,

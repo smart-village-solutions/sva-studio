@@ -43,6 +43,7 @@ export type PrepareMediaUploadInput = Readonly<{
   mediaType: string;
   mimeType: string;
   byteSize: number;
+  privateInput?: boolean;
 }>;
 
 export type ResolveMediaDeliveryInput = Readonly<{

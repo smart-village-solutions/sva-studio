@@ -10,11 +10,12 @@ import { withMediaService, withMediaUploadJobRepositories } from './repository.j
 import { createConfiguredMediaStoragePortForInstance } from './storage-s3.js';
 import { cleanupReplacedClaimVariants } from './processing-variants.js';
 import { createMediaUploadProcessingService } from './processing.js';
+import { getMediaEditingIntakeKeys } from './processing-editing.js';
 import { failClaimedUpload, finalizeProcessedUpload } from './upload-finalization.js';
 import type { MediaHttpHandlerDeps } from './http-support.js';
 import type { MediaService } from './service.js';
 import { MediaScanError } from './clamav.js';
-import { isMediaQuarantineKey } from './storage-key-paths.js';
+import { isMediaQuarantineKey, isPrivateMediaStorageKey } from './storage-key-paths.js';
 
 export const mediaUploadProcessingJobTypeId = 'media.process-upload';
 const queueName = 'media-processing';
@@ -171,13 +172,10 @@ const failProcessingAttempt = async (
       uploadSession: claimed,
       errorCode: error instanceof MediaScanError ? error.code : 'media_processing_failed',
     });
-    if (failed === 'failed' && isMediaQuarantineKey(session.storageKey)) {
+    if (failed === 'failed' && isPrivateMediaStorageKey(session.storageKey)) {
       try {
         const storage = await deps.resolveStoragePort(job.instanceId);
-        await storage.deleteObject({
-          instanceId: job.instanceId,
-          storageKey: session.storageKey,
-        });
+        await cleanupUploadIntakes(storage, job.instanceId, session, asset);
       } catch {
         /* The existing explicit job retry can repeat rejected-upload cleanup. */
       }
@@ -187,6 +185,17 @@ const failProcessingAttempt = async (
   throw permanent ? error : new Error('media_processing_unavailable');
 };
 
+const cleanupUploadIntakes = async (
+  storage: Pick<MediaHttpHandlerDeps['storagePort'], 'deleteObject'>,
+  instanceId: string,
+  session: UploadSession,
+  asset: UploadAsset
+): Promise<void> => {
+  for (const storageKey of new Set([session.storageKey, ...getMediaEditingIntakeKeys(asset)])) {
+    await storage.deleteObject({ instanceId, storageKey });
+  }
+};
+
 const recoverFinishedUpload = async (
   deps: ProcessingDeps,
   job: ProcessingJob,
@@ -194,24 +203,21 @@ const recoverFinishedUpload = async (
   asset: UploadAsset
 ) => {
   if (session.status === 'validated' && asset.processingStatus === 'ready') {
-    if (isMediaQuarantineKey(session.storageKey)) {
+    if (isPrivateMediaStorageKey(session.storageKey)) {
       try {
         await emitUploadCompletion(deps, job, session, asset);
         const storage = await deps.resolveStoragePort(job.instanceId);
-        await storage.deleteObject({
-          instanceId: job.instanceId,
-          storageKey: session.storageKey,
-        });
+        await cleanupUploadIntakes(storage, job.instanceId, session, asset);
       } catch {
         throw new Error('media_processing_unavailable');
       }
     }
     return {};
   }
-  if (session.status === 'failed' && isMediaQuarantineKey(session.storageKey)) {
+  if (session.status === 'failed' && isPrivateMediaStorageKey(session.storageKey)) {
     try {
       const storage = await deps.resolveStoragePort(job.instanceId);
-      await storage.deleteObject({ instanceId: job.instanceId, storageKey: session.storageKey });
+      await cleanupUploadIntakes(storage, job.instanceId, session, asset);
     } catch {
       throw new Error('media_processing_unavailable');
     }
@@ -257,7 +263,8 @@ export const createMediaUploadProcessingHandler =
           assetId: asset.id,
           claimToken: job.inputPayload.replacedClaimToken,
           privateOutput:
-            isMediaQuarantineKey(session.storageKey) && asset.visibility === 'protected',
+            isPrivateMediaStorageKey(session.storageKey) && asset.visibility === 'protected',
+          privateSource: Boolean(asset.editingSourceKey),
         });
       }
       const result = await createMediaUploadProcessingService({
@@ -281,11 +288,8 @@ export const createMediaUploadProcessingHandler =
       });
       if (!result.ok) throw permanentFailure(result.errorCode);
       await emitUploadCompletion(deps, job, session, asset);
-      if (isMediaQuarantineKey(session.storageKey))
-        await storagePort.deleteObject({
-          instanceId: job.instanceId,
-          storageKey: session.storageKey,
-        });
+      if (isPrivateMediaStorageKey(session.storageKey))
+        await cleanupUploadIntakes(storagePort, job.instanceId, session, asset);
       return { resultPayload: { plugin: { assetId: asset.id } } };
     } catch (error) {
       return failProcessingAttempt(deps, job, session, asset, claimed, claimToken, error);

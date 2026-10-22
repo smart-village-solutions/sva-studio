@@ -151,6 +151,21 @@ VALUES ($1, $2, $3, $4, $5, $6, $7);
   ],
 });
 
+export const lockReferenceAssetsStatement = (
+  instanceId: string,
+  assetIds: readonly string[]
+): SqlStatement => ({
+  text: `
+SELECT id FROM iam.media_assets
+WHERE instance_id = $1 AND id = ANY($2::uuid[])
+  AND upload_status = 'processed' AND processing_status = 'ready'
+  AND deletion_pending = false
+ORDER BY id
+FOR UPDATE;
+`,
+  values: [instanceId, [...new Set(assetIds)].sort()],
+});
+
 export const listReferencesByAssetIdStatement = (
   instanceId: string,
   assetId: string

@@ -11,7 +11,12 @@ import {
   resolveScopedMediaInstanceId as resolveScopedInstanceId,
 } from './request-context.js';
 import { mergeMediaMetadata } from './metadata.js';
-import { canAccessMediaAsset, isMediaAssetReady } from './asset-support.js';
+import {
+  canAccessMediaAsset,
+  toMediaAssetResponse,
+  rejectMediaMetadataChange,
+  persistMediaMetadataUpdate,
+} from './asset-support.js';
 import {
   emitMediaAuditEvent,
   mapMediaAuthorizationFailure as mapAuthorizationFailure,
@@ -19,55 +24,8 @@ import {
   withMediaStorageGuard,
   type MediaHttpHandlerDeps,
 } from './http-support.js';
+import { deleteMediaEditingObjects } from './processing-editing.js';
 import { asMediaAsset, asMediaReferences } from './asset-record-support.js';
-
-const rejectMediaMetadataChange = async (
-  deps: MediaHttpHandlerDeps,
-  ctx: AuthenticatedRequestContext,
-  instanceId: string,
-  asset: Parameters<typeof isMediaAssetReady>[0] & {
-    id: string;
-    visibility: string;
-    technical?: Readonly<Record<string, unknown>>;
-  },
-  visibility: string | undefined
-): Promise<Response | null> => {
-  if (!isMediaAssetReady(asset)) {
-    return createApiError(
-      409,
-      'conflict',
-      'Das Medium ist noch nicht zur Bearbeitung freigegeben.',
-      getRequestId(),
-      { reason: 'media_not_ready' }
-    );
-  }
-
-  if (
-    asset.technical?.scanStatus === 'clean' &&
-    visibility !== undefined &&
-    visibility !== asset.visibility
-  ) {
-    await emitMediaAuditEvent({
-      deps,
-      ctx,
-      instanceId,
-      actionId: 'media.metadataUpdate',
-      result: 'denied',
-      reasonCode: 'media_visibility_fixed',
-      resourceType: 'media_asset',
-      resourceId: asset.id,
-    });
-    return createApiError(
-      409,
-      'conflict',
-      'Die Sichtbarkeit gescannter Medien bleibt nach dem Upload fest. Bitte laden Sie das Medium mit der gewünschten Sichtbarkeit erneut hoch.',
-      getRequestId(),
-      { reason: 'media_visibility_fixed' }
-    );
-  }
-
-  return null;
-};
 
 export const updateMedia = async (
   deps: MediaHttpHandlerDeps,
@@ -75,9 +33,7 @@ export const updateMedia = async (
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
   const parsed = await parseRequestBody(request, metadataUpdateSchema);
-  if (!parsed.ok) {
-    return createApiError(400, 'invalid_request', parsed.message, getRequestId());
-  }
+  if (!parsed.ok) return createApiError(400, 'invalid_request', parsed.message, getRequestId());
 
   const instanceScope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
   if (!instanceScope.ok) {
@@ -146,9 +102,8 @@ export const updateMedia = async (
     metadata: mergeMediaMetadata(asset.metadata, parsed.data.metadata),
   };
 
-  await deps.withMediaService(instanceId, async (service) => {
-    await service.upsertAsset(updatedAsset);
-  });
+  const updateError = await persistMediaMetadataUpdate(deps, instanceId, updatedAsset);
+  if (updateError) return updateError;
 
   await emitMediaAuditEvent({
     deps,
@@ -166,17 +121,10 @@ export const updateMedia = async (
     resourceId: assetId,
   });
 
-  return jsonResponse(200, asApiItem({ ...updatedAsset, usageImpact }, getRequestId()));
-};
-
-const readVariantBytes = (technical: Readonly<Record<string, unknown>> | undefined): number => {
-  if (typeof technical?.variantBytes === 'number' && Number.isFinite(technical.variantBytes)) {
-    return technical.variantBytes;
-  }
-  return typeof technical?.variantTotalBytes === 'number' &&
-    Number.isFinite(technical.variantTotalBytes)
-    ? technical.variantTotalBytes
-    : 0;
+  return jsonResponse(
+    200,
+    asApiItem({ ...toMediaAssetResponse(updatedAsset), usageImpact }, getRequestId())
+  );
 };
 
 const deleteAuthorizedAsset = async (input: {
@@ -227,6 +175,20 @@ const deleteAuthorizedAsset = async (input: {
       }
     );
   }
+  const claimed = await input.deps.withMediaService(input.instanceId, (service) =>
+    service.claimAssetDeletion(input.instanceId, input.assetId)
+  );
+  if (!claimed) {
+    return createApiError(
+      409,
+      'conflict',
+      'Das Medium wird noch für Inhalte oder die Bildbearbeitung benötigt.',
+      getRequestId(),
+      {
+        reason: 'media_delete_blocked',
+      }
+    );
+  }
   const variants = await input.deps.withMediaService(input.instanceId, (service) =>
     service.listVariantsByAssetId(input.instanceId, input.assetId)
   );
@@ -237,14 +199,10 @@ const deleteAuthorizedAsset = async (input: {
       storageKey: variant.storageKey,
     });
   }
-  await input.deps.withMediaService(input.instanceId, async (service) => {
-    await service.deleteAsset(input.instanceId, input.assetId);
-    await service.applyStorageUsageDelta({
-      instanceId: input.instanceId,
-      totalBytesDelta: -(Number(asset.byteSize) + readVariantBytes(asset.technical)),
-      assetCountDelta: -1,
-    });
-  });
+  await deleteMediaEditingObjects(storagePort, input.instanceId, asset);
+  await input.deps.withMediaService(input.instanceId, (service) =>
+    service.finalizeAssetDeletion(input.instanceId, input.assetId)
+  );
   await emitMediaAuditEvent({
     ...input,
     actionId: 'media.delete',

@@ -1,3 +1,7 @@
+import type {
+  HostMediaUploadMetadata,
+  HostMediaEditingUpload,
+} from '@sva/plugin-sdk/content-media';
 import { isPersistableMediaAssetUrl } from '@sva/core';
 
 export type ContentMediaAssetSnapshot = Readonly<{
@@ -16,6 +20,8 @@ export type ContentMediaUsage = Readonly<{
   localDraft?: Readonly<{
     id: string;
     file: File;
+    metadata?: HostMediaUploadMetadata;
+    editing?: HostMediaEditingUpload;
   }>;
   altText: string;
   caption: string;

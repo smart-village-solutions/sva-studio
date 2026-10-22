@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createMediaEditingDocument } from '@sva/media';
 
 import { createMediaHttpHandlers } from './core.js';
 import { decodeMediaListingCursor } from './listing-cursor.js';
@@ -114,6 +115,10 @@ const createService = () => ({
   tryApplyStorageUsageWithinQuota: vi.fn(async () => true),
   deleteVariantsByAssetId: vi.fn(async () => undefined),
   deleteAsset: vi.fn(async () => undefined),
+  claimAssetDeletion: vi.fn(async () => true),
+  finalizeAssetDeletion: vi.fn(async () => true),
+  listEditingCopies: vi.fn(async () => []),
+  listReferencesByAssetId: vi.fn(async () => []),
   replaceReferences: vi.fn(async () => undefined),
 });
 
@@ -1040,6 +1045,217 @@ describe('media http handlers', () => {
     });
   });
 
+  it('initializes an edited local upload with a separate private foundation and create-time metadata', async () => {
+    const service = createService();
+    const prepareUpload = vi.fn(async ({ uploadSessionId }) => ({
+      uploadUrl: `https://upload.test/${uploadSessionId}`,
+      method: 'PUT',
+      storageKey: `.protected/tenant-a/asset/intake/${uploadSessionId}`,
+      expiresAt: '2026-10-23T12:00:00Z',
+    }));
+    const authorizeAction = vi.fn(allowAuthorization);
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload } as never,
+      authorizeAction,
+      createId: () => 'new-id',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const document = createMediaEditingDocument({ annotations: {}, annotationIds: [] });
+    const response = await handlers.initializeUpload(
+      new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          mimeType: 'image/png',
+          byteSize: 100,
+          metadata: { title: 'Bearbeitet', altText: null, tags: [' Park '] },
+          editing: { document, source: { mimeType: 'image/jpeg', byteSize: 200 } },
+        }),
+      }),
+      createContext()
+    );
+    expect(response.status).toBe(201);
+    expect(prepareUpload).toHaveBeenCalledTimes(2);
+    expect(prepareUpload.mock.calls.every(([input]) => input.privateInput === true)).toBe(true);
+    expect(service.upsertAsset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: { title: 'Bearbeitet', tags: ['Park'] },
+        editingDocument: document,
+        editingSourceKey: '.protected/tenant-a/asset/intake/new-id-source',
+        technical: expect.objectContaining({
+          editingSourceMimeType: 'image/jpeg',
+          editingSourceUploadBytes: 200,
+        }),
+      })
+    );
+    const body = await response.text();
+    expect(body).toContain('"sourceUpload"');
+    expect(body).not.toContain('editingDocument');
+    expect(body).not.toContain('.protected/');
+    expect(authorizeAction).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'media.update' })
+    );
+  });
+
+  it('retries the same edited content draft and rejects reusing its identity for a changed design', async () => {
+    const service = createService();
+    const operationId = '123e4567-e89b-42d3-a456-426614174000';
+    service.getContentSaveOperation.mockResolvedValue({ id: operationId, status: 'preparing' });
+    const prepareUpload = vi.fn(async ({ uploadSessionId }) => ({
+      uploadUrl: `https://upload.test/${uploadSessionId}`,
+      method: 'PUT',
+      storageKey: `.protected/tenant-a/new/intake/${uploadSessionId}`,
+      expiresAt: '2026-10-23T12:00:00Z',
+    }));
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'new-id',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const payload = {
+      mimeType: 'image/png',
+      byteSize: 100,
+      uploadContext: 'content-save',
+      contentSaveOperationId: operationId,
+      draftId: '123e4567-e89b-42d3-a456-426614174001',
+      metadata: { title: 'Bearbeitet' },
+      editing: {
+        document: createMediaEditingDocument({}),
+        source: { mimeType: 'image/png', byteSize: 200 },
+      },
+    };
+    const request = (data = payload) =>
+      new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    expect((await handlers.initializeUpload(request(), createContext())).status).toBe(201);
+    service.getProvisionalAssetByDraft.mockResolvedValue(service.upsertAsset.mock.calls[0][0]);
+    service.getUploadSessionByAssetId.mockResolvedValue(
+      service.upsertUploadSession.mock.calls[0][0]
+    );
+    const repeated = await handlers.initializeUpload(request(), createContext());
+    expect(repeated.status).toBe(200);
+    expect(await repeated.json()).toMatchObject({
+      data: { assetId: 'new-id', sourceUpload: { uploadUrl: 'https://upload.test/new-id-source' } },
+    });
+    const changed = {
+      ...payload,
+      editing: { ...payload.editing, document: createMediaEditingDocument({ filter: 'Sepia' }) },
+    };
+    expect((await handlers.initializeUpload(request(changed), createContext())).status).toBe(409);
+    expect(prepareUpload).toHaveBeenCalledTimes(4);
+  });
+
+  it('creates a copy from the actual root while inheriting only editorial metadata from the selected copy', async () => {
+    const service = createService();
+    const selectedId = '123e4567-e89b-42d3-a456-426614174000';
+    const rootId = '123e4567-e89b-42d3-a456-426614174001';
+    const base = await service.getAssetById('tenant-a', selectedId);
+    service.getAssetById.mockImplementation(async (_tenant, id) => ({
+      ...base,
+      id,
+      ...(id === selectedId ? { editingSourceAssetId: rootId } : {}),
+      metadata: {
+        title: 'Vorlage',
+        altText: 'Alt',
+        description: 'Beschreibung',
+        tags: ['Park'],
+        crop: { x: 1 },
+        focusPoint: { x: 1, y: 1 },
+      },
+    }));
+    const prepareUpload = vi.fn(async () => ({
+      uploadUrl: 'https://upload.test/put',
+      method: 'PUT',
+      storageKey: '.protected/tenant-a/new/intake',
+      expiresAt: '2026-10-23T12:00:00Z',
+    }));
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'new-id',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const response = await handlers.initializeUpload(
+      new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          mimeType: 'image/png',
+          byteSize: 100,
+          visibility: 'protected',
+          metadata: { title: 'Vorlage · Bearbeitet', altText: null },
+          editing: { document: createMediaEditingDocument({}), sourceAssetId: selectedId },
+        }),
+      }),
+      createContext()
+    );
+    expect(response.status).toBe(201);
+    expect(service.upsertAsset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        editingSourceAssetId: rootId,
+        editingSourceKey: undefined,
+        metadata: { title: 'Vorlage · Bearbeitet', description: 'Beschreibung', tags: ['Park'] },
+      })
+    );
+    expect(prepareUpload).toHaveBeenCalledOnce();
+  });
+
+  it.each(['visibility', 'rights', 'deletion race'])(
+    'rejects an unsafe editing source: %s',
+    async (failure) => {
+      const service = createService();
+      if (failure === 'deletion race')
+        service.upsertAsset.mockRejectedValue(new Error('media_editing_source_unavailable'));
+      const prepareUpload = vi.fn(async () => ({
+        uploadUrl: 'https://upload.test/put',
+        method: 'PUT',
+        storageKey: '.protected/tenant-a/new/intake',
+        expiresAt: '2026-10-23T12:00:00Z',
+      }));
+      const handlers = createMediaHttpHandlers({
+        withMediaService: async (_instanceId, work) => work(service as never),
+        storagePort: { prepareUpload } as never,
+        authorizeAction: async ({ action }) =>
+          failure === 'rights' && action === 'media.read'
+            ? ({
+                ok: false,
+                status: 403,
+                error: 'forbidden',
+                message: 'Keine Quellenberechtigung',
+              } as const)
+            : ({ ok: true } as const),
+        createId: () => 'new-id',
+        now: () => '2026-04-29T19:00:00.000Z',
+        emitAuditEvent,
+      });
+      const response = await handlers.initializeUpload(
+        new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+          method: 'POST',
+          body: JSON.stringify({
+            mimeType: 'image/png',
+            byteSize: 100,
+            visibility: failure === 'visibility' ? 'public' : 'protected',
+            editing: {
+              document: createMediaEditingDocument({}),
+              sourceAssetId: '123e4567-e89b-42d3-a456-426614174000',
+            },
+          }),
+        }),
+        createContext()
+      );
+      expect(response.status).toBe(failure === 'rights' ? 403 : 409);
+      if (failure !== 'deletion race') expect(prepareUpload).not.toHaveBeenCalled();
+      expect(service.upsertUploadSession).not.toHaveBeenCalled();
+    }
+  );
+
   it('initializes uploads through the storage port after quota validation', async () => {
     const service = createService();
     const storagePort = {
@@ -1959,16 +2175,22 @@ describe('media http handlers', () => {
     );
   });
 
-  it.each(['public', 'protected'] as const)(
-    'rejects changing %s visibility of scanned media without writing any metadata',
-    async (visibility) => {
+  it.each([
+    ['public', false],
+    ['protected', false],
+    ['public', true],
+    ['protected', true],
+  ] as const)(
+    'rejects changing %s visibility of scanned or edited media without writing any metadata',
+    async (visibility, edited) => {
       const service = createService();
       const asset = await service.getAssetById('tenant-a', 'asset-1');
       if (!asset) throw new Error('Missing test asset');
       service.getAssetById.mockResolvedValue({
         ...asset,
         visibility,
-        technical: { scanStatus: 'clean' },
+        technical: edited ? {} : { scanStatus: 'clean' },
+        ...(edited ? { editingSourceAssetId: 'source-1' } : {}),
       });
       const audit = vi.fn(async () => undefined);
       const handlers = createMediaHttpHandlers({
@@ -2436,6 +2658,301 @@ describe('media http handlers', () => {
     });
   });
 
+  it('keeps editing dependencies distinct from content references and filters unreadable copy details', async () => {
+    const service = createService();
+    service.listEditingCopies.mockResolvedValue([
+      { id: 'visible-copy', metadata: { title: 'Bearbeitet' } },
+      { id: 'hidden-copy', metadata: { title: 'Privater Titel' } },
+    ]);
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: {} as never,
+      authorizeAction: async ({ resource }) =>
+        resource?.assetId === 'hidden-copy'
+          ? ({ ok: false, status: 403, error: 'forbidden', message: 'Verboten' } as const)
+          : ({ ok: true } as const),
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const response = await handlers.getMediaUsage(
+      new Request('http://localhost/api/v1/iam/media/asset-1/usage?instanceId=tenant-a'),
+      createContext()
+    );
+    const data = await response.json();
+    expect(data).toMatchObject({
+      data: {
+        totalReferences: 1,
+        editingDependencies: {
+          total: 2,
+          items: [{ assetId: 'visible-copy', title: 'Bearbeitet' }],
+        },
+      },
+    });
+    expect(JSON.stringify(data)).not.toContain('Privater Titel');
+  });
+
+  it.each([true, false])(
+    'discloses the editing foundation only with its own read authorization: %s',
+    async (allowed) => {
+      const service = createService();
+      const asset = await service.getAssetById('tenant-a', 'asset-1');
+      service.getAssetById.mockImplementation(async (_instance, id) =>
+        id === 'source-1'
+          ? { ...asset, id, metadata: { title: 'Quellbild' } }
+          : { ...asset, editingSourceAssetId: 'source-1' }
+      );
+      const handlers = createMediaHttpHandlers({
+        withMediaService: async (_instance, work) => work(service as never),
+        storagePort: {} as never,
+        authorizeAction: async ({ resource }) =>
+          !allowed && resource?.assetId === 'source-1'
+            ? ({ ok: false, status: 403, error: 'forbidden', message: 'Verboten' } as const)
+            : ({ ok: true } as const),
+        createId: () => 'id-1',
+        now: () => '2026-04-29T19:00:00.000Z',
+        emitAuditEvent,
+      });
+      const response = await handlers.getMediaUsage(
+        new Request('http://localhost/api/v1/iam/media/asset-1/usage?instanceId=tenant-a'),
+        createContext()
+      );
+      const { data } = await response.json();
+      expect(data.editingSource).toEqual(
+        allowed ? { assetId: 'source-1', title: 'Quellbild' } : undefined
+      );
+      if (!allowed) expect(JSON.stringify(data)).not.toContain('source-1');
+    }
+  );
+
+  it('reports a reference/deletion race as conflict without claiming success', async () => {
+    const service = createService();
+    service.replaceReferences.mockRejectedValue(new Error('media_reference_asset_unavailable'));
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: {} as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const response = await handlers.replaceReferences(
+      new Request('http://localhost/api/v1/iam/media/references', {
+        method: 'PUT',
+        body: JSON.stringify({
+          targetType: 'news',
+          targetId: 'news-1',
+          references: [{ assetId: '123e4567-e89b-42d3-a456-426614174000', role: 'teaser_image' }],
+        }),
+      }),
+      createContext()
+    );
+    expect(response.status).toBe(409);
+  });
+
+  it('loads the authorized private foundation and portable state only through the editor endpoint', async () => {
+    const service = createService();
+    const root = await service.getAssetById('tenant-a', 'source-1');
+    const document = createMediaEditingDocument({ annotations: {}, annotationIds: [] });
+    service.getAssetById.mockImplementation(async (_instanceId, id) =>
+      id === 'copy-1'
+        ? { ...root, id, editingSourceAssetId: 'source-1', editingDocument: document }
+        : { ...root, id, editingSourceKey: '.protected/tenant-a/source-1/source.jpg' }
+    );
+    const resolveDelivery = vi.fn(async () => ({
+      deliveryUrl: 'https://private.test/signed',
+      expiresAt: '2026-10-23T12:00:00Z',
+    }));
+    const authorizeAction = vi.fn(allowAuthorization);
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { resolveDelivery } as never,
+      authorizeAction,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const response = await handlers.getMediaEditing(
+      new Request('http://localhost/api/v1/iam/media/copy-1/editing?instanceId=tenant-a'),
+      createContext()
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(await response.json()).toMatchObject({
+      data: {
+        sourceAssetId: 'source-1',
+        sourceUrl: 'https://private.test/signed',
+        document,
+      },
+    });
+    expect(resolveDelivery).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      assetId: 'source-1',
+      storageKey: '.protected/tenant-a/source-1/source.jpg',
+      visibility: 'protected',
+    });
+    for (const id of ['copy-1', 'source-1']) {
+      expect(authorizeAction).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'media.read', resource: { assetId: id } })
+      );
+      expect(authorizeAction).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'media.deliver.protected', resource: { assetId: id } })
+      );
+    }
+  });
+
+  it.each([
+    ['missing', null, 404],
+    ['foreign draft', { lifecycleStatus: 'provisional', provisionalOwnerSubject: 'other' }, 404],
+    ['pending', { uploadStatus: 'pending' }, 409],
+    ['deleting', { deletionPending: true }, 409],
+    ['invalid visibility', { visibility: 'unexpected' }, 500],
+    ['incompatible state', { editingDocument: { version: 99 } }, 409],
+  ])('does not deliver editor resources for %s', async (_label, override, status) => {
+    const service = createService();
+    const asset = await service.getAssetById('tenant-a', 'asset-1');
+    service.getAssetById.mockResolvedValue(override === null ? null : { ...asset, ...override });
+    const resolveDelivery = vi.fn();
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { resolveDelivery } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    expect(
+      (
+        await handlers.getMediaEditing(
+          new Request('http://localhost/api/v1/iam/media/asset-1/editing?instanceId=tenant-a'),
+          createContext()
+        )
+      ).status
+    ).toBe(status);
+    expect(resolveDelivery).not.toHaveBeenCalled();
+  });
+
+  it('checks actual source rights before releasing a copy design or signed foundation', async () => {
+    const service = createService();
+    const asset = await service.getAssetById('tenant-a', 'asset-1');
+    service.getAssetById.mockResolvedValue({ ...asset, editingSourceAssetId: 'source-1' });
+    const resolveDelivery = vi.fn();
+    const authorizeAction = vi.fn(async ({ resource }) =>
+      resource?.assetId === 'source-1'
+        ? ({
+            ok: false,
+            error: 'forbidden',
+            status: 403,
+            message: 'Keine Quellenberechtigung.',
+          } as const)
+        : ({ ok: true } as const)
+    );
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { resolveDelivery } as never,
+      authorizeAction,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    expect(
+      (
+        await handlers.getMediaEditing(
+          new Request('http://localhost/api/v1/iam/media/asset-1/editing?instanceId=tenant-a'),
+          createContext()
+        )
+      ).status
+    ).toBe(403);
+    expect(resolveDelivery).not.toHaveBeenCalled();
+    expect(service.getAssetById).not.toHaveBeenCalledWith('tenant-a', 'source-1');
+  });
+
+  it('redacts editing sources and documents from the ordinary detail response', async () => {
+    const service = createService();
+    const asset = await service.getAssetById('tenant-a', 'asset-1');
+    service.getAssetById.mockResolvedValue({
+      ...asset,
+      editingSourceAssetId: 'source-private',
+      editingSourceKey: '.protected/tenant-a/private-source.jpg',
+      editingDocument: { version: 1, state: { annotations: { secret: 'private design' } } },
+      technical: {
+        width: 100,
+        editingSourceIntakeKey: '.quarantine/tenant-a/private-source',
+        uploadDraftFingerprint: 'internal-fingerprint',
+      },
+    });
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: {} as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const response = await handlers.getMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a'),
+      createContext()
+    );
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain('"hasEditingDocument":true');
+    for (const value of [
+      'editingDocument',
+      'editingSource',
+      'private-source',
+      'private design',
+      'internal-fingerprint',
+    ])
+      expect(body).not.toContain(value);
+  });
+
+  it('blocks a copy or reference race before touching storage', async () => {
+    const service = createService();
+    service.claimAssetDeletion.mockResolvedValue(false);
+    const storagePort = { deleteObject: vi.fn() };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const response = await handlers.deleteMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a', {
+        method: 'DELETE',
+      }),
+      createContext()
+    );
+    expect(response.status).toBe(409);
+    expect(storagePort.deleteObject).not.toHaveBeenCalled();
+    expect(service.finalizeAssetDeletion).not.toHaveBeenCalled();
+  });
+
+  it('retains a deletion claim on storage failure and can finish on retry', async () => {
+    const service = createService();
+    const deleteObject = vi
+      .fn()
+      .mockRejectedValueOnce(new MediaStorageUnavailableError())
+      .mockResolvedValue(undefined);
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { deleteObject } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const request = () =>
+      new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a', {
+        method: 'DELETE',
+      });
+    expect((await handlers.deleteMedia(request(), createContext())).status).toBe(503);
+    expect(service.finalizeAssetDeletion).not.toHaveBeenCalled();
+    expect((await handlers.deleteMedia(request(), createContext())).status).toBe(200);
+    expect(service.finalizeAssetDeletion).toHaveBeenCalledOnce();
+  });
+
   it('blocks deletion when an asset still has active references', async () => {
     const service = createService();
     service.listReferencesByAssetId = vi.fn(async () => [
@@ -2527,15 +3044,12 @@ describe('media http handlers', () => {
       instanceId: 'tenant-a',
       storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
     });
-    expect(service.deleteAsset).toHaveBeenCalledWith('tenant-a', 'asset-1');
-    expect(service.applyStorageUsageDelta).toHaveBeenCalledWith({
-      instanceId: 'tenant-a',
-      totalBytesDelta: -(1234 + 456),
-      assetCountDelta: -1,
-    });
+    expect(service.claimAssetDeletion).toHaveBeenCalledWith('tenant-a', 'asset-1');
+    expect(service.finalizeAssetDeletion).toHaveBeenCalledWith('tenant-a', 'asset-1');
+    expect(service.applyStorageUsageDelta).not.toHaveBeenCalled();
   });
 
-  it('falls back to legacy variantTotalBytes when deleting existing media assets', async () => {
+  it('deletes a private local editing source before finalizing its asset', async () => {
     const service = createService();
     service.getAssetById = vi.fn(async () => ({
       id: 'asset-1',
@@ -2547,6 +3061,7 @@ describe('media http handlers', () => {
       visibility: 'protected',
       uploadStatus: 'processed',
       processingStatus: 'ready',
+      editingSourceKey: '.protected/tenant-a/asset-1/source.jpg',
       metadata: {},
       technical: {
         variantTotalBytes: 789,
@@ -2576,10 +3091,10 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(service.applyStorageUsageDelta).toHaveBeenCalledWith({
+    expect(storagePort.deleteObject).toHaveBeenLastCalledWith({
       instanceId: 'tenant-a',
-      totalBytesDelta: -(1234 + 789),
-      assetCountDelta: -1,
+      storageKey: '.protected/tenant-a/asset-1/source.jpg',
     });
+    expect(service.finalizeAssetDeletion).toHaveBeenCalledWith('tenant-a', 'asset-1');
   });
 });

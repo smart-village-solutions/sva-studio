@@ -40,6 +40,7 @@ export {
   createContentMediaUiId,
   createManualContentMediaUsage,
   revokeContentMediaUsageObjectUrls,
+  revokeBrowserObjectUrl,
   isPersistableContentMediaUrl,
   moveContentMediaUsage,
   normalizeContentMediaUsageOrder,

@@ -1,3 +1,4 @@
+import { assertMediaEditingSource } from './asset-lifecycle-methods.js';
 import type { MediaRepository } from './repository-types.js';
 import type { SqlExecutor } from '../iam/repositories/types.js';
 import type { MediaAssetRow, MediaVariantRow } from './rows.js';
@@ -31,6 +32,7 @@ export const createAssetMethods = (
   | 'listVariantsByAssetId'
 > => ({
   async upsertAsset(input) {
+    await assertMediaEditingSource(executor, input);
     await executor.execute(upsertAssetStatement(input));
   },
   async getAssetById(instanceId, assetId) {

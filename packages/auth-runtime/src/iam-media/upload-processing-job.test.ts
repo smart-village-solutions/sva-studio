@@ -124,26 +124,71 @@ describe('media processing job', () => {
     }
   });
 
-  it.each(['true', 'false'])('scans private intake when the upload switch is %s', async (enabled) => {
-    vi.stubEnv('MEDIA_SCAN_ENABLED', enabled);
-    vi.mocked(scanConfiguredMedia).mockClear();
-    try {
-      const { service, run } = await setup();
-      const quarantinedSession = { ...session, storageKey: '.quarantine/tenant-a/asset-1/session-1' };
-      service.getUploadSessionById.mockResolvedValue(quarantinedSession);
-      service.claimUploadSession.mockResolvedValue(quarantinedSession);
-      service.getAssetById.mockResolvedValue({ ...asset, storageKey: quarantinedSession.storageKey });
-      await run();
-      expect(scanConfiguredMedia).toHaveBeenCalledOnce();
-      expect(service.upsertAsset).toHaveBeenCalledWith(
-        expect.objectContaining({
-          processingStatus: 'ready',
-          technical: expect.objectContaining({ scanStatus: 'clean' }),
-        })
-      );
-    } finally {
-      vi.unstubAllEnvs();
+  it.each(['true', 'false'])(
+    'scans private intake when the upload switch is %s',
+    async (enabled) => {
+      vi.stubEnv('MEDIA_SCAN_ENABLED', enabled);
+      vi.mocked(scanConfiguredMedia).mockClear();
+      try {
+        const { service, run } = await setup();
+        const quarantinedSession = {
+          ...session,
+          storageKey: '.quarantine/tenant-a/asset-1/session-1',
+        };
+        service.getUploadSessionById.mockResolvedValue(quarantinedSession);
+        service.claimUploadSession.mockResolvedValue(quarantinedSession);
+        service.getAssetById.mockResolvedValue({
+          ...asset,
+          storageKey: quarantinedSession.storageKey,
+        });
+        await run();
+        expect(scanConfiguredMedia).toHaveBeenCalledOnce();
+        expect(service.upsertAsset).toHaveBeenCalledWith(
+          expect.objectContaining({
+            processingStatus: 'ready',
+            technical: expect.objectContaining({ scanStatus: 'clean' }),
+          })
+        );
+      } finally {
+        vi.unstubAllEnvs();
+      }
     }
+  );
+
+  it('retries cleanup of a local editing source without treating private storage as scan proof', async () => {
+    const { storage, service, emitAuditEvent, run } = await setup();
+    const outputIntake = '.protected/tenant-a/intake/output';
+    const sourceIntake = '.protected/tenant-a/intake/source';
+    service.getUploadSessionById.mockResolvedValue({
+      ...session,
+      status: 'validated',
+      storageKey: outputIntake,
+    });
+    service.getAssetById.mockResolvedValue({
+      ...asset,
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      editingSourceKey: '.protected/tenant-a/variants/asset-1/claim/source.jpg',
+      technical: { editingSourceIntakeKey: sourceIntake, editingOutputIntakeKey: outputIntake },
+    });
+    storage.deleteObject
+      .mockImplementationOnce(async () => undefined)
+      .mockRejectedValueOnce(new Error('cleanup interrupted'));
+    await expect(run()).rejects.toThrow('media_processing_unavailable');
+    storage.deleteObject.mockResolvedValue(undefined);
+    await expect(run()).resolves.toEqual({});
+    expect(storage.deleteObject).toHaveBeenCalledWith({ instanceId, storageKey: sourceIntake });
+    expect(storage.deleteObject).not.toHaveBeenCalledWith({
+      instanceId,
+      storageKey: '.protected/tenant-a/variants/asset-1/claim/source.jpg',
+    });
+    expect(emitAuditEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        pluginAction: expect.objectContaining({ reasonCode: 'media_scan_clean' }),
+      })
+    );
+    expect(service.tryApplyStorageUsageWithinQuota).not.toHaveBeenCalled();
+    expect(storage.writeObject).not.toHaveBeenCalled();
   });
 
   it('keeps finalized files and quota when intake cleanup fails, and retries only cleanup', async () => {

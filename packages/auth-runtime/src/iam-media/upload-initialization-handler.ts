@@ -1,10 +1,19 @@
-import type { MediaUploadSessionRecord } from '@sva/data-repositories';
+import {
+  prepareExistingContentSaveUpload,
+  prepareSourceUpload,
+  uploadResponse,
+  uploadFingerprint,
+} from './upload-preparation.js';
+import type { MediaAssetRecord } from '@sva/data-repositories';
 
+import { mediaMetadataTextFields } from '@sva/media';
 import { asApiItem, createApiError, parseRequestBody } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
 import { getMediaScanEnabled } from '../runtime-secrets.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { uploadInitializationSchema } from './schemas.js';
+import { readAuthorizedMediaEditingAsset } from './asset-editing-handler.js';
+import { mergeMediaMetadata } from './metadata.js';
 import {
   getMediaRequestId as getRequestId,
   resolveBodyScopedMediaInstanceId as resolveBodyScopedInstanceId,
@@ -19,142 +28,45 @@ import {
 
 type UploadInitialization = ReturnType<(typeof uploadInitializationSchema)['parse']>;
 
-const prepareExistingContentSaveUpload = async (input: {
-  deps: MediaHttpHandlerDeps;
-  ctx: AuthenticatedRequestContext;
-  instanceId: string;
-  data: UploadInitialization;
-  contentSaveOperationId: string;
-}): Promise<Response | null> => {
-  const draftId = input.data.draftId;
-  if (!draftId) {
-    return createApiError(
-      400,
-      'invalid_request',
-      'Eine Content-Speicheroperation benötigt eine Draft-ID.',
-      getRequestId()
-    );
-  }
-  const operation = await input.deps.withMediaService(input.instanceId, (service) =>
-    service.getContentSaveOperation({
-      instanceId: input.instanceId,
-      operationId: input.contentSaveOperationId,
-      actorSubject: input.ctx.user.id,
-    })
+const resolveEditingSource = async (
+  deps: MediaHttpHandlerDeps,
+  ctx: AuthenticatedRequestContext,
+  instanceId: string,
+  data: UploadInitialization
+): Promise<
+  { root: MediaAssetRecord; metadata: Readonly<Record<string, unknown>> } | Response | undefined
+> => {
+  if (!data.editing?.sourceAssetId) return undefined;
+  const selected = await readAuthorizedMediaEditingAsset(
+    deps,
+    ctx,
+    instanceId,
+    data.editing.sourceAssetId
   );
-  if (!operation || !['preparing', 'uploading'].includes(operation.status)) {
+  if (selected instanceof Response) return selected;
+  const root = selected.editingSourceAssetId
+    ? await readAuthorizedMediaEditingAsset(deps, ctx, instanceId, selected.editingSourceAssetId)
+    : selected;
+  if (root instanceof Response) return root;
+  if (
+    root.editingSourceAssetId ||
+    root.lifecycleStatus === 'provisional' ||
+    root.visibility !== data.visibility
+  ) {
     return createApiError(
       409,
       'conflict',
-      'Die Content-Speicheroperation ist nicht mehr für Uploads geöffnet.',
+      'Die Bearbeitungsgrundlage ist für diese Kopie nicht verfügbar.',
       getRequestId(),
-      { reason: 'content_save_operation_not_open' }
+      { reason: 'media_editing_source_unavailable' }
     );
   }
-
-  const asset = await input.deps.withMediaService(input.instanceId, (service) =>
-    service.getProvisionalAssetByDraft({
-      instanceId: input.instanceId,
-      operationId: input.contentSaveOperationId,
-      draftId,
-      actorSubject: input.ctx.user.id,
-    })
-  );
-  if (!asset) return null;
-  const draftMatches =
-    asset.mimeType === input.data.mimeType &&
-    asset.byteSize === input.data.byteSize &&
-    asset.visibility === input.data.visibility &&
-    asset.mediaType === input.data.mediaType;
-  if (!draftMatches) {
-    return createApiError(
-      409,
-      'conflict',
-      'Die Draft-ID wurde bereits für eine andere Datei verwendet.',
-      getRequestId(),
-      { reason: 'content_save_draft_reuse' }
-    );
-  }
-
-  const uploadSession = await input.deps.withMediaService(input.instanceId, (service) =>
-    service.getUploadSessionByAssetId(input.instanceId, asset.id)
-  );
-  if (!uploadSession) {
-    return createApiError(
-      409,
-      'conflict',
-      'Die Upload-Session des Medienentwurfs fehlt.',
-      getRequestId(),
-      { reason: 'content_save_upload_session_missing' }
-    );
-  }
-
-  return withMediaStorageGuard(() => retryExistingUpload(input, asset.id, uploadSession), {
-    deps: input.deps,
-    ctx: input.ctx,
-    instanceId: input.instanceId,
-    actionId: 'media.uploadInitializeRetry',
-    resourceType: 'media_asset',
-    resourceId: asset.id,
-  });
-};
-
-const retryExistingUpload = async (
-  input: Parameters<typeof prepareExistingContentSaveUpload>[0],
-  assetId: string,
-  uploadSession: MediaUploadSessionRecord
-): Promise<Response> => {
-  if (uploadSession.status !== 'pending') {
-    return createApiError(
-      409,
-      'conflict',
-      'Die Upload-Session wird bereits verarbeitet oder ist abgeschlossen.',
-      getRequestId(),
-      { reason: 'content_save_upload_session_not_pending' }
-    );
-  }
-  const storagePort = await resolveMediaStoragePort(input.deps, input.instanceId);
-  const upload = await storagePort.prepareUpload({
-    instanceId: input.instanceId,
-    assetId,
-    uploadSessionId: uploadSession.id,
-    mediaType: input.data.mediaType,
-    mimeType: input.data.mimeType,
-    byteSize: input.data.byteSize,
-  });
-  const refreshed = await input.deps.withMediaService(input.instanceId, (service) =>
-    service.refreshPendingUploadSession({
-      instanceId: input.instanceId,
-      sessionId: uploadSession.id,
-      storageKey: upload.storageKey,
-      expiresAt: upload.expiresAt,
-    })
-  );
-  if (!refreshed) {
-    return createApiError(
-      409,
-      'conflict',
-      'Die Upload-Session wird bereits verarbeitet oder ist abgeschlossen.',
-      getRequestId(),
-      { reason: 'content_save_upload_session_not_pending' }
-    );
-  }
-  return jsonResponse(
-    200,
-    asApiItem(
-      {
-        assetId,
-        uploadSessionId: uploadSession.id,
-        uploadUrl: upload.uploadUrl,
-        method: upload.method,
-        headers: upload.headers ?? {},
-        expiresAt: upload.expiresAt,
-        status: 'pending',
-        initializedAt: input.deps.now(),
-      },
-      getRequestId()
+  const metadata = Object.fromEntries(
+    [...mediaMetadataTextFields, 'tags'].flatMap((key) =>
+      selected.metadata[key] === undefined ? [] : [[key, selected.metadata[key]]]
     )
   );
+  return { root, metadata };
 };
 
 const initializeNewUpload = async (input: {
@@ -163,6 +75,7 @@ const initializeNewUpload = async (input: {
   instanceId: string;
   data: UploadInitialization;
   contentSaveOperationId?: string;
+  source?: { root: MediaAssetRecord; metadata: Readonly<Record<string, unknown>> };
 }): Promise<Response> => {
   const storagePort = await resolveMediaStoragePort(input.deps, input.instanceId);
   const assetId = input.deps.createId();
@@ -174,7 +87,15 @@ const initializeNewUpload = async (input: {
     mediaType: input.data.mediaType,
     mimeType: input.data.mimeType,
     byteSize: input.data.byteSize,
+    ...(input.data.editing ? { privateInput: true } : {}),
   });
+  const sourceUpload = await prepareSourceUpload(
+    storagePort,
+    input.data,
+    input.instanceId,
+    assetId,
+    uploadSessionId
+  );
   await input.deps.withMediaService(input.instanceId, async (service) => {
     await service.upsertAsset({
       id: assetId,
@@ -193,8 +114,21 @@ const initializeNewUpload = async (input: {
       provisionalExpiresAt: input.contentSaveOperationId
         ? new Date(Date.parse(input.deps.now()) + 24 * 60 * 60 * 1000).toISOString()
         : undefined,
-      metadata: {},
-      technical: {},
+      metadata: mergeMediaMetadata(input.source?.metadata ?? {}, input.data.metadata ?? {}),
+      editingSourceAssetId: input.source?.root.id,
+      editingSourceKey: sourceUpload?.storageKey,
+      editingDocument: input.data.editing?.document,
+      technical: {
+        uploadDraftFingerprint: uploadFingerprint(input.data),
+        ...(input.data.editing ? { editingOutputIntakeKey: upload.storageKey } : {}),
+        ...(input.data.editing?.source
+          ? {
+              editingSourceMimeType: input.data.editing.source.mimeType,
+              editingSourceUploadBytes: input.data.editing.source.byteSize,
+              editingSourceIntakeKey: sourceUpload?.storageKey,
+            }
+          : {}),
+      },
     });
     await service.upsertUploadSession({
       id: uploadSessionId,
@@ -226,6 +160,7 @@ const initializeNewUpload = async (input: {
         method: upload.method,
         headers: upload.headers ?? {},
         expiresAt: upload.expiresAt,
+        sourceUpload: uploadResponse(sourceUpload),
         status: 'pending',
         initializedAt: input.deps.now(),
       },
@@ -263,9 +198,17 @@ export const initializeUpload = async (
     return mapAuthorizationFailure(authorization);
   }
 
-  if (getMediaScanEnabled() && parsed.data.byteSize > 64 * 1024 * 1024) {
-    return createApiError(413, 'invalid_request', 'Die Datei überschreitet das Scan-Limit von 64 MiB.', getRequestId(), { reason: 'upload_size_exceeded', maxBytes: 64 * 1024 * 1024 });
+  if ((getMediaScanEnabled() || parsed.data.editing) && parsed.data.byteSize > 64 * 1024 * 1024) {
+    return createApiError(
+      413,
+      'invalid_request',
+      'Die Datei überschreitet das Scan-Limit von 64 MiB.',
+      getRequestId(),
+      { reason: 'upload_size_exceeded', maxBytes: 64 * 1024 * 1024 }
+    );
   }
+  const source = await resolveEditingSource(deps, ctx, instanceId, parsed.data);
+  if (source instanceof Response) return source;
   const contentSaveOperationId = parsed.data.contentSaveOperationId;
   if (contentSaveOperationId) {
     const existingUpload = await prepareExistingContentSaveUpload({
@@ -279,7 +222,29 @@ export const initializeUpload = async (
   }
 
   return withMediaStorageGuard(
-    () => initializeNewUpload({ deps, ctx, instanceId, data: parsed.data, contentSaveOperationId }),
+    async () => {
+      try {
+        return await initializeNewUpload({
+          deps,
+          ctx,
+          instanceId,
+          data: parsed.data,
+          contentSaveOperationId,
+          source,
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message === 'media_editing_source_unavailable') {
+          return createApiError(
+            409,
+            'conflict',
+            'Die Bearbeitungsgrundlage wird gelöscht oder ist nicht mehr verfügbar.',
+            getRequestId(),
+            { reason: 'media_editing_source_unavailable' }
+          );
+        }
+        throw error;
+      }
+    },
     {
       deps,
       ctx,

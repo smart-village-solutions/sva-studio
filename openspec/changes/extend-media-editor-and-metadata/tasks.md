@@ -34,7 +34,9 @@
 - [x] 5.1 Gezielte Unit-/Typ-/Integrations-/Browsernachweise je Lieferabschnitt; Server-Runtime, Migration/Datenintegrität, Security, i18n und Platzierung prüfen.
 - [x] 5.2 Aktuelle Medien-/Anwenderdokumentation, Accessibility Statement und arc42 05/06/08 fortschreiben.
 - [x] 5.3 Lokale Coverage-/Komplexitätsgates und referenzierte Anforderungen am endgültigen Stand auditieren; fremde Änderungen ausschließen.
-- [ ] 5.4 Kohärenten Branch pushen und PR nach main erstellen; GitHub-Gates für den exakten finalen HEAD bis zum terminalen Ergebnis auswerten. Kein Merge/Rollout.
+- [x] 5.4 Kohärenten Branch pushen und [PR #1956](https://github.com/smart-village-solutions/sva-studio/pull/1956) nach main erstellen. Kein Merge/Rollout.
+
+Die abschließende Übergabe setzt die Auswertung der GitHub-Gates für den exakten finalen PR-HEAD bis zum terminalen Ergebnis voraus. Der aktuelle Status und die SHA-gebundenen Nachweise stehen im verlinkten PR; lokale Vorprüfungen ersetzen diese Gesamtauswertung nicht.
 
 ## Kritische Invarianten und Nachweise
 

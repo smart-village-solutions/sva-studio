@@ -21,7 +21,7 @@
     "@sva/plugin-sdk": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
     "react-hook-form": "^7.80.0",
-    "zod": "^3.25.76"
+    "zod": "^4.6.6"
   },
   "peerDependencies": {
     "@tanstack/react-router": "^1.170.8",

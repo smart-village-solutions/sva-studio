@@ -18,7 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
-- Finaler Soll-Snapshot zuletzt lokal ergänzt: `2026-10-21` (Katalogbasis 0106, Hostrechte 0107 und instanzgebundene DeepL-Schnittstelle 0108; keine neue Live-Erhebung)
+- Finaler Soll-Snapshot zuletzt lokal ergänzt: `2026-10-21` (Katalogbasis 0107, Hostrechte 0108 und instanzgebundene DeepL-Schnittstelle 0109; nach Rebase am 23. Oktober 2026 umnummeriert; keine neue Live-Erhebung)
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung
@@ -80,19 +80,19 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
 
-### App-Texte und instanzgebundene DeepL-Schnittstelle — Migrationen 0107/0108
+### App-Texte und instanzgebundene DeepL-Schnittstelle — Migrationen 0108/0109
 
-Migration `0108_instance_deepl_interface.sql` löst die Sprachbestände aus 0107 ab. Ein hostverwalteter `deepl`-Schnittstellendatensatz je Instanz speichert Tarif, explizite Englischvariante, ausgewählte technisch unterstützte Zielsprachen, geprüfte Anbieterantwort und Konfigurations-/Zugangsrevisionen in `public_config_json`. Der API-Key liegt ausschließlich datensatzgebunden verschlüsselt in `secret_config_ciphertext`. Ein partieller Unique-Index erzwingt eine DeepL-Schnittstelle je Instanz; vorhandene FORCE-RLS isoliert Instanzen. Änderungen und Prüfergebnisse verwenden die erwartete Konfigurationsrevision; modulgebundene Mutationen sperren Modul-/Lifecyclezeilen. Katalogmutationen sperren zusätzlich die aktuelle Schnittstelle. Alte Sprachzuordnungen bleiben für Rollback als `legacyLanguageAssignments`/`legacyLanguageAvailability` im vorhandenen Datensatz erhalten, ohne Runtimeverbraucher oder zweite Freigabequelle. Platzhalter besitzen weder Key noch Prüfnachweis. Down stellt 0107-Sprachtabellen einschließlich inzwischen ausgewählter zusätzlicher DeepL-Sprachkennungen wieder her und erhält DeepL-Secrets sowie sämtliche Katalogdaten.
+Migration `0109_instance_deepl_interface.sql` löst die Sprachbestände aus 0108 ab. Ein hostverwalteter `deepl`-Schnittstellendatensatz je Instanz speichert Tarif, explizite Englischvariante, ausgewählte technisch unterstützte Zielsprachen, geprüfte Anbieterantwort und Konfigurations-/Zugangsrevisionen in `public_config_json`. Der API-Key liegt ausschließlich datensatzgebunden verschlüsselt in `secret_config_ciphertext`. Ein partieller Unique-Index erzwingt eine DeepL-Schnittstelle je Instanz; vorhandene FORCE-RLS isoliert Instanzen. Änderungen und Prüfergebnisse verwenden die erwartete Konfigurationsrevision; modulgebundene Mutationen sperren Modul-/Lifecyclezeilen. Katalogmutationen sperren zusätzlich die aktuelle Schnittstelle. Alte Sprachzuordnungen bleiben für Rollback als `legacyLanguageAssignments`/`legacyLanguageAvailability` im vorhandenen Datensatz erhalten, ohne Runtimeverbraucher oder zweite Freigabequelle. Platzhalter besitzen weder Key noch Prüfnachweis. Down stellt 0108-Sprachtabellen einschließlich inzwischen ausgewählter zusätzlicher DeepL-Sprachkennungen wieder her und erhält DeepL-Secrets sowie sämtliche Katalogdaten.
 
-Migration 0107 ergänzt außerdem `app-texts.catalog.read`, `.write` und `.publish` für vorhandene `system_admin`-Rollen und invalidiert den Berechtigungscache. Die deutsche Textbasis nutzt unverändert die drei Katalogtabellen aus 0106. Source- und mehrsprachige Versiegelung derselben Draftrevision teilen den Satzrevisionszähler, haben aber getrennte Retry-Identitäten nach Sprachmenge. Ein Rücklauf von 0107 entfernt nur die zwei Sprachverwaltungstabellen; potenziell delegierte Hostrechte und Katalogdaten bleiben erhalten.
+Migration 0108 ergänzt außerdem `app-texts.catalog.read`, `.write` und `.publish` für vorhandene `system_admin`-Rollen und invalidiert den Berechtigungscache. Die deutsche Textbasis nutzt unverändert die drei Katalogtabellen aus 0107. Source- und mehrsprachige Versiegelung derselben Draftrevision teilen den Satzrevisionszähler, haben aber getrennte Retry-Identitäten nach Sprachmenge. Ein Rücklauf von 0108 entfernt nur die zwei Sprachverwaltungstabellen; potenziell delegierte Hostrechte und Katalogdaten bleiben erhalten.
 
-### Maschinelle Standardwerte — Migration 0109
+### Maschinelle Standardwerte — Migration 0110
 
 Der bestehende Draft erhält `machine_standard_values_by_locale` als JSONB-Objekt mit leerem Default. Bestehende Zeilen/RLS und die eigenen Werte in `values_by_locale` bleiben erhalten. Das additive Feld bleibt bei Down absichtlich bestehen, damit generierte Standards nicht verloren gehen; ältere Runtimes ignorieren es, erneutes Up erhält die Daten. Es entsteht keine weitere Katalog-/Auftragstabelle.
 
-### Interne App-Katalogbasis — Migration 0106
+### Interne App-Katalogbasis — Migration 0107
 
-Die additive Migration `0106_app_translation_catalog_basis.sql` ergänzt ausschließlich drei Tabellen im Schema `iam`:
+Die additive Migration `0107_app_translation_catalog_basis.sql` ergänzt ausschließlich drei Tabellen im Schema `iam`:
 
 - `app_translation_manifests`: unveränderliche Manifeste, Unique Vertrag/Version und Digest.
 - `app_translation_catalog_drafts`: genau ein Draft je globalem Vertrag beziehungsweise Instanz/Organisation/Vertrag. Sprachmenge und sprachbezogene Werte/Override-Metadaten liegen gemeinsam als JSONB vor; bedingte Draftrevision und Zeilensperre sichern konkurrierende Änderungen.
@@ -101,6 +101,22 @@ Die additive Migration `0106_app_translation_catalog_basis.sql` ergänzt ausschl
 Partielle Unique-Indizes unterscheiden globale und kommunale Scopes; kommunale Zeilen haben einen zusammengesetzten FK auf die echte Instanz-/Organisationsbindung. Alle drei Tabellen erzwingen RLS auch für den Owner. Der interne Serverpfad setzt transaktionslokal `app.instance_id`, `app.organization_id` und `app.catalog_platform` stets gemeinsam neu. Globale Drafts/Importe benötigen Plattformkontext; kommunale Runtimezugriffe sehen nur die eigene Organisation und unveränderliche globale Basissätze. Globale Manifeste und Basissätze enthalten öffentliche Katalogtexte, keine persönlichen Nutzerwerte. Runtime-Schreibrechte sind explizit begrenzt, unabhängig von Default-Grants; Trigger verbieten Änderungen/Löschungen an Manifesten und versiegelten Sätzen. Die DB-Settings werden ausschließlich nach serverseitiger Session-/Actionprüfung gesetzt und sind keine Autorisierungsquelle aus App-Payloads.
 
 Die interne Implementierung liegt in Core, Data-Repositories und Auth-Runtime; kein dynamischer Cache, neuer Serviceclient oder zusätzlicher Jobpfad. `executeAppTranslationOperation` nutzt die vorhandene Session-/CSRF-/Root-Prüfung beziehungsweise tenantseitige Actionprüfung samt aktiver Organisation. Vollständige Tests verwenden `APP_TRANSLATIONS_TEST_DATABASE_URL` ausschließlich mit einer disponiblen, auf `_test` endenden Datenbank. Die Migration wurde mit PostgreSQL 16 einschließlich vollständigem Up → Down → Up geprüft; das ist kein Nachweis einer Änderung der laufenden Studio-Datenbank.
+
+### Lokale Korrektur der Migrationskollision 0106 nach Rebase
+
+Die bereits in `main` veröffentlichte `0106_iam_media_editing_sources.sql` bleibt unverändert. Die vier unveröffentlichten App-Migrationen wurden ohne SQL-Änderung auf `0107_app_translation_catalog_basis.sql`, `0108_host_app_texts_and_languages.sql`, `0109_instance_deepl_interface.sql` und `0110_app_translation_machine_standards.sql` verschoben. Neue Datenbanken und Bestände mit dem regulären Medienstand 106 verwenden den normalen Goose-Up-Pfad.
+
+Die lokale Vorschau `sva_studio_bus_test` hatte dagegen bereits die alte App-Kette 106–109 angewendet und noch keine Medien-106-Felder. Ein normaler Up-Lauf oder bloßes Umnummerieren der Dateien genügt dafür nicht. Nach vollständiger Sicherung und Wiederherstellungsprobe verwendet dieser **lokale Sonderfall** das eng begrenzte Skript `scripts/ops/reconcile-app-translation-migrations.ts` mit der lokal gesetzten `IAM_DATABASE_URL`:
+
+```sh
+node --import tsx scripts/ops/reconcile-app-translation-migrations.ts
+```
+
+Das Skript akzeptiert im CLI nur Loopback-Ziele und ausschließlich die vollständig angewendete alte Kette mit passender Katalog-/DeepL-Schemasignatur und fehlenden Medienfeldern. Es sperrt Historie und betroffene Bestände mit kurzen Timeouts, verschiebt die vier vorhandenen Goose-Versionsidentitäten um eins und führt den unveränderten Up-Teil der Medienmigration 106 aus. Erst zusammen mit deren erfolgreichem Historieneintrag wird die Transaktion bestätigt. ID und Zeitstempel der bisherigen Historieneinträge bleiben erhalten. Ein zusätzlicher bestätigter Abschlussmarker 110 bleibt der letzte Historieneintrag, weil Goose den aktuellen Stand aus dem letzten Eintrag statt aus der höchsten Versionsnummer ermittelt; die SQL-Migration 110 wird dabei nicht erneut ausgeführt. Kataloge, manuelle Korrekturen, Maschinenwerte, Releases samt Prüfsummen und Schnittstellen einschließlich verschlüsselter Secrets werden weder erneut importiert noch überschrieben. Bestehende Medien erhalten nur die neuen Nullable-/Defaultfelder. Inhaltsfingerprints vor/nach der Änderung müssen innerhalb derselben gesperrten Transaktion gleich bleiben; sonst Rollback.
+
+Ein bereits korrigierter vollständiger Stand 106–110 ist ein No-op. Teilstände, Rollbackhistorien, neue unbekannte Versionen oder gemischte Schemas werden abgewiesen; sie erfordern eine eigene Bestandsprüfung. Das Skript ist keine automatische Rolloutmigration und darf nicht auf regulären Dev-/Staging-/Produktionsbeständen ausgeführt werden. Insbesondere kein Down der alten App-Basis: Das würde die Katalogtabellen löschen. Die vorherige lokale Sicherung bleibt bis zum Abschluss der Abnahme erhalten.
+
+Direkte Nachweise stehen in `scripts/ops/runtime/goose.behavior.test.ts`: eindeutige Versionsnummern im echten Dateibestand sowie, mit `APP_TRANSLATION_MIGRATION_TEST_URL` auf einer disponiblen `_test`-Kopie, verlustfreie Neuzuordnung, wiederholter No-op, Ablehnung unklarer Historie und atomarer Rollback bei DDL-Fehler. Zusätzlich wird die vollständige Goose-Kette auf einer frischen Datenbank mit Up bis Medien-106 → Up bis 110 → Down → Up geprüft. Die regulären PostgreSQL-Katalogtests verwenden die neuen Dateinamen. Am 23. Oktober 2026 wurden acht gezielte Versions-/Reparaturtests und 16 bestehende PostgreSQL-Katalogtests erfolgreich ausgeführt. Die lokale Vorschau wurde anschließend auf den kanonischen Stand korrigiert: Goose meldet 110 und keine offenen Migrationen; Wiederholung ist ein No-op. Unabhängige vollständige Zeilenfingerprints bestätigen den Erhalt von einem Manifest, zwei Entwürfen, sechs Releases und drei Schnittstellen. Der lokale Medienbestand war leer; ein synthetischer bestehender Mediendatensatz wurde auf der Testkopie zusätzlich geprüft. Geschützte Vorher-Sicherung, Fingerprints und eine nachherige vollständige Sicherung einschließlich Grants liegen lokal unter `artifacts/db-backups/app-translations-0106-20261023/` und sind nicht Teil des Git-Änderungssatzes.
 
 ### Getrennte SSF-Plugin-Datenbank
 

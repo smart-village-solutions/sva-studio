@@ -5180,7 +5180,7 @@ CREATE POLICY studio_jobs_observability_policy ON iam.studio_jobs FOR SELECT TO 
 
 
 --
--- App-Katalogbasis aus Migration 0106 (lokal gegen PostgreSQL 16 geprüft)
+-- App-Katalogbasis aus Migration 0107 (lokal gegen PostgreSQL 16 geprüft)
 --
 CREATE TABLE iam.app_translation_manifests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -5270,10 +5270,10 @@ GRANT SELECT, INSERT ON iam.app_translation_manifests, iam.app_translation_catal
 GRANT SELECT, INSERT, UPDATE ON iam.app_translation_catalog_drafts TO iam_app;
 
 
--- Maschinelle Standardwerte bleiben unter eigenen Sprachkorrekturen, Migration 0109
+-- Maschinelle Standardwerte bleiben unter eigenen Sprachkorrekturen, Migration 0110
 ALTER TABLE iam.app_translation_catalog_drafts ADD COLUMN machine_standard_values_by_locale JSONB NOT NULL DEFAULT '{}' CHECK (jsonb_typeof(machine_standard_values_by_locale) = 'object');
 
--- Instanzgebundene DeepL-Konfiguration, Migration 0108
+-- Instanzgebundene DeepL-Konfiguration, Migration 0109
 CREATE UNIQUE INDEX idx_instance_deepl_interface ON iam.instance_external_interfaces(instance_id) WHERE type_key='deepl';
 
 --

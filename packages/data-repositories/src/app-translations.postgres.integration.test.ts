@@ -479,9 +479,9 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
       globalRelease
     );
   });
-  it('restores additional language selections across migration 108 rollback and reapply', async () => {
+  it('restores additional language selections across migration 109 rollback and reapply', async () => {
     const sql = await readFile(
-      new URL('../../data/migrations/0108_instance_deepl_interface.sql', import.meta.url),
+      new URL('../../data/migrations/0109_instance_deepl_interface.sql', import.meta.url),
       'utf8'
     );
     const [up, down] = sql.split('-- +goose Down');
@@ -674,7 +674,7 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
       'Envoyer'
     );
     const migration = await readFile(
-      new URL('../../data/migrations/0109_app_translation_machine_standards.sql', import.meta.url),
+      new URL('../../data/migrations/0110_app_translation_machine_standards.sql', import.meta.url),
       'utf8'
     );
     const [up, down] = migration.split('-- +goose Down');

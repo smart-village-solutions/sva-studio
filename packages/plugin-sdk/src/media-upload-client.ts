@@ -1,8 +1,55 @@
+import {
+  normalizeMediaMetadataPatch,
+  parseMediaEditingDocument,
+  type MediaEditorialMetadataPatch,
+  type MediaEditingDocument,
+  type MediaFocusPoint,
+} from '@sva/media';
 import { getHostMediaAsset } from './media-picker-client.js';
 import { requestJson, type FetchLike } from './http-client.js';
 
 export type HostMediaUploadVisibility = 'public' | 'protected';
 export type HostMediaUploadContext = 'library' | 'content-save';
+
+export type HostMediaUploadMetadata = MediaEditorialMetadataPatch & {
+  focusPoint?: MediaFocusPoint | null;
+};
+export type HostMediaEditingUpload = Readonly<{ document: MediaEditingDocument }> &
+  (
+    | Readonly<{ sourceFile: File; sourceAssetId?: never }>
+    | Readonly<{ sourceAssetId: string; sourceFile?: never }>
+  );
+export type HostMediaEditingUploadPayload = Readonly<{ document: MediaEditingDocument }> &
+  (
+    | Readonly<{ source: { mimeType: string; byteSize: number }; sourceAssetId?: never }>
+    | Readonly<{ sourceAssetId: string; source?: never }>
+  );
+
+const normalizeUploadMetadata = (metadata: HostMediaUploadMetadata): HostMediaUploadMetadata => {
+  const point = metadata.focusPoint;
+  if (
+    point &&
+    ![point.x, point.y].every((value) => Number.isFinite(value) && value >= 0 && value <= 1)
+  ) {
+    throw new Error('invalid_media_metadata:focusPoint');
+  }
+  return {
+    ...normalizeMediaMetadataPatch(metadata),
+    ...(point === undefined ? {} : { focusPoint: point }),
+  };
+};
+
+const toEditingPayload = (editing: HostMediaEditingUpload): HostMediaEditingUploadPayload => {
+  const document = parseMediaEditingDocument(editing.document);
+  if (editing.sourceFile && editing.sourceAssetId) throw new Error('invalid_media_editor_source');
+  if (editing.sourceFile)
+    return {
+      document,
+      source: { mimeType: editing.sourceFile.type, byteSize: editing.sourceFile.size },
+    };
+  if (!editing.sourceAssetId) throw new Error('invalid_media_editor_source');
+  return { document, sourceAssetId: editing.sourceAssetId };
+};
 
 export type InitializeHostMediaUploadInput = Readonly<{
   mediaType?: 'image';
@@ -13,6 +60,8 @@ export type InitializeHostMediaUploadInput = Readonly<{
   uploadContext?: HostMediaUploadContext;
   contentSaveOperationId?: string;
   draftId?: string;
+  metadata?: HostMediaUploadMetadata;
+  editing?: HostMediaEditingUploadPayload;
 }>;
 
 export type InitializeHostMediaUploadResult = Readonly<{
@@ -24,6 +73,12 @@ export type InitializeHostMediaUploadResult = Readonly<{
   expiresAt: string;
   status: string;
   initializedAt: string;
+  sourceUpload?: Readonly<{
+    uploadUrl: string;
+    method: string;
+    headers: Readonly<Record<string, string>>;
+    expiresAt: string;
+  }>;
 }>;
 
 export type CompleteHostMediaUploadResult = Readonly<{
@@ -39,6 +94,12 @@ export type UploadHostMediaFileResult = Readonly<{
   previewUrl?: string | null;
 }>;
 
+export type HostMediaUploadCheckpoint = Readonly<{
+  initialized: InitializeHostMediaUploadResult;
+  outputTransferred: boolean;
+  sourceTransferred: boolean;
+}>;
+
 export const initializeHostMediaUpload = async (input: {
   readonly fetch: FetchLike;
   readonly payload: InitializeHostMediaUploadInput;
@@ -46,16 +107,30 @@ export const initializeHostMediaUpload = async (input: {
   const response = await requestJson<{ data: InitializeHostMediaUploadResult }>({
     fetch: input.fetch,
     url: '/api/v1/iam/media/upload-sessions',
-    errorFactory: (failingResponse) => failingResponse.status === 413
-      ? Object.assign(new Error('media_upload_http_413'), { code: 'upload_size_exceeded' })
-      : new Error(`media_upload_http_${failingResponse.status}`),
+    errorFactory: (failingResponse) =>
+      failingResponse.status === 413
+        ? Object.assign(new Error('media_upload_http_413'), { code: 'upload_size_exceeded' })
+        : new Error(`media_upload_http_${failingResponse.status}`),
     init: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
       },
-      body: JSON.stringify(input.payload),
+      body: JSON.stringify({
+        ...input.payload,
+        ...(input.payload.metadata
+          ? { metadata: normalizeUploadMetadata(input.payload.metadata) }
+          : {}),
+        ...(input.payload.editing
+          ? {
+              editing: {
+                ...input.payload.editing,
+                document: parseMediaEditingDocument(input.payload.editing.document),
+              },
+            }
+          : {}),
+      }),
     },
   });
   return response.data;
@@ -114,8 +189,13 @@ export const waitForHostMediaUpload = async (input: {
       asset.uploadStatus === 'blocked'
     ) {
       const failure = asset.technical?.lastError;
-      const code = typeof failure === 'object' && failure !== null && 'code' in failure && failure.code === 'media_scan_infected'
-        ? 'media_scan_infected' : 'media_processing_failed';
+      const code =
+        typeof failure === 'object' &&
+        failure !== null &&
+        'code' in failure &&
+        failure.code === 'media_scan_infected'
+          ? 'media_scan_infected'
+          : 'media_processing_failed';
       throw Object.assign(new Error(code), {
         code,
       });
@@ -153,28 +233,58 @@ export const uploadHostMediaFile = async (input: {
   readonly uploadContext?: HostMediaUploadContext;
   readonly contentSaveOperationId?: string;
   readonly draftId?: string;
+  readonly metadata?: HostMediaUploadMetadata;
+  readonly editing?: HostMediaEditingUpload;
+  /** Retain from initialization onward; retries transfer only missing files in the same session. */
+  readonly checkpoint?: HostMediaUploadCheckpoint;
+  readonly onCheckpoint?: (checkpoint: HostMediaUploadCheckpoint) => void;
 }): Promise<UploadHostMediaFileResult> => {
-  const initialized = await initializeHostMediaUpload({
-    fetch: input.fetch,
-    payload: {
-      mediaType: input.mediaType,
-      mimeType: input.file.type,
-      byteSize: input.file.size,
-      visibility: input.visibility,
-      instanceId: input.instanceId,
-      uploadContext: input.uploadContext,
-      contentSaveOperationId: input.contentSaveOperationId,
-      draftId: input.draftId,
-    },
-  });
+  let checkpoint = input.checkpoint;
+  if (!checkpoint) {
+    const initialized = await initializeHostMediaUpload({
+      fetch: input.fetch,
+      payload: {
+        mediaType: input.mediaType,
+        mimeType: input.file.type,
+        byteSize: input.file.size,
+        visibility: input.visibility,
+        instanceId: input.instanceId,
+        uploadContext: input.uploadContext,
+        contentSaveOperationId: input.contentSaveOperationId,
+        draftId: input.draftId,
+        metadata: input.metadata,
+        editing: input.editing ? toEditingPayload(input.editing) : undefined,
+      },
+    });
 
-  await putFileToSignedUrl({
-    fetch: input.fetch,
-    uploadUrl: initialized.uploadUrl,
-    method: initialized.method,
-    headers: initialized.headers,
-    file: input.file,
-  });
+    checkpoint = { initialized, outputTransferred: false, sourceTransferred: false };
+    input.onCheckpoint?.(checkpoint);
+  }
+  const { initialized } = checkpoint;
+  const sourceFile = input.editing?.sourceFile;
+  if (Boolean(sourceFile) !== Boolean(initialized.sourceUpload))
+    throw new Error('media_upload_source_contract_mismatch');
+  if (!checkpoint.outputTransferred) {
+    await putFileToSignedUrl({
+      fetch: input.fetch,
+      uploadUrl: initialized.uploadUrl,
+      method: initialized.method,
+      headers: initialized.headers,
+      file: input.file,
+    });
+
+    checkpoint = { ...checkpoint, outputTransferred: true };
+    input.onCheckpoint?.(checkpoint);
+  }
+  if (sourceFile && initialized.sourceUpload && !checkpoint.sourceTransferred) {
+    await putFileToSignedUrl({
+      fetch: input.fetch,
+      ...initialized.sourceUpload,
+      file: sourceFile,
+    });
+    checkpoint = { ...checkpoint, sourceTransferred: true };
+    input.onCheckpoint?.(checkpoint);
+  }
 
   const completed = await completeHostMediaUpload({
     fetch: input.fetch,

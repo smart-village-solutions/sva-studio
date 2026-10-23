@@ -1,3 +1,4 @@
+import type { MediaService } from './service.js';
 import { asApiItem, createApiError, parseRequestBody } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
@@ -23,10 +24,33 @@ const findMissingAssetIds = (
     const missing: string[] = [];
     for (const assetId of assetIds) {
       const asset = await service.getAssetById(instanceId, assetId);
-      if (!asset || asset.lifecycleStatus === 'provisional' || !isMediaAssetReady(asset)) missing.push(assetId);
+      if (!asset || asset.lifecycleStatus === 'provisional' || !isMediaAssetReady(asset))
+        missing.push(assetId);
     }
     return missing;
   });
+
+const persistMediaReferences = async (
+  deps: MediaHttpHandlerDeps,
+  instanceId: string,
+  input: Parameters<MediaService['replaceReferences']>[0]
+): Promise<Response | null> => {
+  try {
+    await deps.withMediaService(instanceId, (service) => service.replaceReferences(input));
+  } catch (error) {
+    if (error instanceof Error && error.message === 'media_reference_asset_unavailable') {
+      return createApiError(
+        409,
+        'conflict',
+        'Ein Medium ist nicht mehr zur Verwendung verfügbar.',
+        getRequestId(),
+        { reason: 'media_not_ready' }
+      );
+    }
+    throw error;
+  }
+  return null;
+};
 
 const replaceReferences = async (
   deps: MediaHttpHandlerDeps,
@@ -89,14 +113,13 @@ const replaceReferences = async (
     role: reference.role,
     sortOrder: reference.sortOrder,
   }));
-  await deps.withMediaService(instanceId, (service) =>
-    service.replaceReferences({
-      instanceId,
-      targetType: parsed.data.targetType,
-      targetId: parsed.data.targetId,
-      references,
-    })
-  );
+  const conflict = await persistMediaReferences(deps, instanceId, {
+    instanceId,
+    targetType: parsed.data.targetType,
+    targetId: parsed.data.targetId,
+    references,
+  });
+  if (conflict) return conflict;
   await emitMediaAuditEvent({
     deps,
     ctx,

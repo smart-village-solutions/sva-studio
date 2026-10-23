@@ -1,6 +1,7 @@
 // prettier-ignore
 export { pluginSdkPackageRoles, pluginSdkVersion, type PluginSdkPackageRole } from './sdk-metadata.js';
 export { satisfiesVersionRange } from './plugin-platform/version-range.js';
+export type { HostMediaUploadCheckpoint } from './media-upload-client.js';
 // prettier-ignore
 export type { PluginServerHandlerAccessRequirement, PluginServerHandlerExecutionContext, PluginServerHandlerModuleFactory, PluginServerExecutionHandler, PluginTechnicalServiceAccessRequirement, PluginTechnicalServiceTenantContext } from './plugins.js';
 export type {
@@ -37,6 +38,10 @@ export type {
   HostMediaAssetListItem,
   HostMediaAssetMetadata,
   HostMediaDelivery,
+  HostMediaEditingData,
+  HostMediaEditingUpload,
+  HostMediaEditingUploadPayload,
+  HostMediaUploadMetadata,
   HostMediaReferenceSelection,
   HostMediaUploadVisibility,
   InitializeHostMediaUploadInput,
@@ -207,6 +212,7 @@ export {
   getHostMediaAssetPersistentUrl,
   listHostMediaAssets,
   getHostMediaAsset,
+  getHostMediaEditing,
   getHostMediaDelivery,
   getHostMediaAssetFileName,
   updateHostMediaAsset,

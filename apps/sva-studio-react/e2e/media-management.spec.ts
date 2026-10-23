@@ -1,3 +1,5 @@
+import AxeBuilder from '@axe-core/playwright';
+import { createMediaEditingDocument, type MediaEditingDocument } from '@sva/media';
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 
@@ -23,9 +25,12 @@ type MediaAssetRecord = {
     altText?: string;
     copyright?: string;
     license?: string;
+    tags?: string[];
     focusPoint?: { x: number; y: number };
     crop?: { x: number; y: number; width: number; height: number };
   };
+  previewUrl?: string;
+  hasEditingDocument?: boolean;
   technical: Record<string, unknown>;
   readonly createdAt: string;
   updatedAt: string;
@@ -380,4 +385,272 @@ test.describe('media management', () => {
     await expect(page.getByText('Der Upload konnte nicht abgeschlossen werden.')).toBeVisible();
     await expect(page).toHaveURL(/\/admin\/media(?:\?|$)/);
   });
+});
+
+test('real image editor exports and restores editable copies without external editor requests', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  await mockSharedShellRequests(page);
+  await page.goto('/interfaces');
+  await expectAppShellReady(page);
+  const source = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 800;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#346b81';
+    ctx.fillRect(0, 0, 1200, 800);
+    ctx.fillStyle = '#e9bc62';
+    ctx.fillRect(0, 0, 300, 800);
+    return canvas.toDataURL('image/png');
+  });
+  const sourceBytes = Buffer.from(source.split(',')[1]!, 'base64');
+  const original: MediaAssetRecord = {
+    id: '11111111-1111-4111-8111-111111111111',
+    instanceId: 'de-musterhausen',
+    storageKey: 'fixture/original.png',
+    mediaType: 'image',
+    mimeType: 'image/png',
+    byteSize: sourceBytes.length,
+    visibility: 'public',
+    uploadStatus: 'processed',
+    processingStatus: 'ready',
+    metadata: {
+      title: 'Originalbild',
+      altText: 'Zweifarbiges Testmotiv',
+      copyright: 'Redaktion',
+      tags: ['Test'],
+    },
+    technical: { width: 1200, height: 800 },
+    previewUrl: '/media-editor-fixture.png',
+    createdAt: '2026-10-22T12:00:00.000Z',
+    updatedAt: '2026-10-22T12:00:00.000Z',
+  };
+  const originalSnapshot = structuredClone(original);
+  const assets = new Map([[original.id, original]]);
+  const docs = new Map<string, MediaEditingDocument>();
+  const uploads: Buffer[] = [];
+  const payloads: Array<{
+    metadata: MediaAssetRecord['metadata'];
+    editing: { sourceAssetId: string; document: MediaEditingDocument };
+  }> = [];
+  let nextId = '';
+  await page.route('**/media-editor-fixture.png', (route) =>
+    route.fulfill({ contentType: 'image/png', body: sourceBytes })
+  );
+  await page.route('**/media-editor-upload', async (route) => {
+    uploads.push(route.request().postDataBuffer()!);
+    await route.fulfill({ status: 200 });
+  });
+  await page.route('**/api/v1/iam/media**', async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path.endsWith('/upload-sessions') && request.method() === 'POST') {
+      const body = request.postDataJSON();
+      payloads.push(body);
+      nextId = `22222222-2222-4222-8222-${String(payloads.length).padStart(12, '0')}`;
+      docs.set(nextId, body.editing.document);
+      assets.set(nextId, {
+        ...original,
+        id: nextId,
+        metadata: body.metadata,
+        hasEditingDocument: true,
+      });
+      await route.fulfill({
+        json: {
+          data: {
+            assetId: nextId,
+            uploadSessionId: 'fixture-session',
+            uploadUrl: new URL('/media-editor-upload', request.url()).href,
+            method: 'PUT',
+            headers: {},
+            expiresAt: '2099-01-01T00:00:00Z',
+            status: 'initialized',
+            initializedAt: '2026-10-22T12:00:00Z',
+          },
+        },
+      });
+      return;
+    }
+    if (path.endsWith('/complete')) {
+      await route.fulfill({
+        json: {
+          data: { assetId: nextId, uploadSessionId: 'fixture-session', status: 'processed' },
+        },
+      });
+      return;
+    }
+    const match = path.match(/\/media\/([^/]+)(?:\/(editing|usage))?$/);
+    if (!match) {
+      await route.fulfill({ json: { data: [...assets.values()] } });
+      return;
+    }
+    const id = match[1]!;
+    if (match[2] === 'editing') {
+      await route.fulfill({
+        json: {
+          data: {
+            assetId: id,
+            sourceAssetId: original.id,
+            sourceUrl: new URL('/media-editor-fixture.png', request.url()).href,
+            sourceExpiresAt: '2099-01-01T00:00:00Z',
+            document: docs.get(id),
+          },
+        },
+      });
+      return;
+    }
+    if (match[2] === 'usage') {
+      await route.fulfill({ json: { data: { assetId: id, totalReferences: 0, references: [] } } });
+      return;
+    }
+    await route.fulfill({ json: { data: assets.get(id) } });
+  });
+  // Representative persisted annotations exercise native image hydration in the actual library.
+  docs.set(
+    original.id,
+    createMediaEditingDocument({
+      annotations: {
+        text: {
+          id: 'text',
+          name: 'Text',
+          text: 'Redaktioneller Hinweis',
+          x: 90,
+          y: 90,
+          width: 420,
+          height: 70,
+          fill: '#ffffff',
+          fontSize: 36,
+          fontFamily: 'Arial',
+          scaleX: 1,
+          scaleY: 1,
+          rotation: 0,
+          opacity: 1,
+        },
+        rect: {
+          id: 'rect',
+          name: 'Rect',
+          x: 600,
+          y: 200,
+          width: 160,
+          height: 110,
+          fill: '#cc3344',
+          stroke: '#ffffff',
+          strokeWidth: 3,
+          scaleX: 1,
+          scaleY: 1,
+          rotation: 0,
+          opacity: 1,
+        },
+        inserted: {
+          id: 'inserted',
+          name: 'Image',
+          image: source,
+          originalImage: source,
+          x: 850,
+          y: 500,
+          width: 180,
+          height: 120,
+          scaleX: 1,
+          scaleY: 1,
+          rotation: 0,
+          opacity: 1,
+        },
+      },
+      annotationIds: ['text', 'rect', 'inserted'],
+    })
+  );
+  await navigateClientSide(page, `/admin/media/${original.id}`);
+  await expect(page.getByRole('heading', { name: 'Originalbild', exact: true })).toBeVisible();
+  const unexpected: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (['http:', 'https:'].includes(url.protocol) && url.origin !== new URL(page.url()).origin)
+      unexpected.push(url.origin + url.pathname);
+  });
+  const openEditor = async () => {
+    await page.getByRole('button', { name: 'Bild bearbeiten', exact: true }).click();
+    await expect(page.locator('.FIE_root')).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => page.locator('.FIE_root canvas').count()).toBeGreaterThan(0);
+    await expect(
+      page.getByRole('button', { name: 'Weiter zu Angaben und Vorschau' })
+    ).toBeEnabled();
+    await expect(
+      page.locator('.FIE_root').getByText('Zuschneiden', { exact: true }).first()
+    ).toBeVisible();
+  };
+  await openEditor();
+  for (const theme of ['sva-default', 'sva-forest'])
+    for (const dark of [false, true]) {
+      await page.evaluate(
+        ({ theme, dark }) => {
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.classList.toggle('dark', dark);
+        },
+        { theme, dark }
+      );
+      // Remount to resolve semantic colors from the current Studio theme.
+      await page.getByRole('button', { name: 'Bearbeitung verwerfen und zurück' }).click();
+      await openEditor();
+      await page.screenshot({
+        path: testInfo.outputPath(`${theme}-${dark ? 'dark' : 'light'}.png`),
+        fullPage: false,
+      });
+    }
+  await page.getByRole('button', { name: 'Weiter zu Angaben und Vorschau' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Wichtiger Bildbereich und Vorschau' })
+  ).toBeVisible();
+  await expect(page.getByRole('slider')).toHaveCount(2);
+  await page.getByRole('slider', { name: 'Horizontaler Bildbereich' }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('slider', { name: 'Horizontaler Bildbereich' })).toHaveValue('51');
+  await page.getByRole('button', { name: 'Als neues Bild speichern', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(nextId));
+  await expect.poll(() => uploads.length).toBe(1);
+  expect(payloads[0]!.editing.sourceAssetId).toBe(original.id);
+  expect(payloads[0]!.metadata.tags).toEqual(['Test']);
+  expect(payloads[0]!.metadata.focusPoint).toEqual({ x: 0.51, y: 0.5 });
+  expect(payloads[0]!.editing.document.state.annotationIds).toEqual(['text', 'rect', 'inserted']);
+  expect(JSON.stringify(payloads[0]!.editing.document)).not.toContain('http');
+  expect(uploads[0]!.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+  expect(uploads[0]!.equals(sourceBytes)).toBe(false);
+  await openEditor();
+  await page.getByRole('button', { name: 'Weiter zu Angaben und Vorschau' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Wichtiger Bildbereich und Vorschau' })
+  ).toBeVisible();
+  await page.setViewportSize({ width: 320, height: 900 });
+  await expect(
+    page.getByRole('button', { name: 'Als neues Bild speichern', exact: true })
+  ).toBeVisible();
+  const hostOverflow = await page
+    .getByRole('dialog')
+    .evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+  expect(hostOverflow).toBe(false);
+  await page.screenshot({ path: testInfo.outputPath('host-320px.png'), fullPage: true });
+  const axe = await new AxeBuilder({ page })
+    .include('[role="dialog"]')
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+    .analyze();
+  expect(axe.violations).toEqual([]);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%';
+  });
+  await expect(
+    page.getByRole('button', { name: 'Als neues Bild speichern', exact: true })
+  ).toBeVisible();
+  expect(await page.getByRole('dialog').evaluate((el) => el.scrollWidth > el.clientWidth + 1)).toBe(
+    false
+  );
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '';
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.getByRole('button', { name: 'Als neues Bild speichern', exact: true }).click();
+  await expect.poll(() => uploads.length).toBe(2);
+  expect(uploads[1]!.equals(uploads[0]!)).toBe(true);
+  expect(assets.get(original.id)).toEqual(originalSnapshot);
+  expect(unexpected).toEqual([]);
 });

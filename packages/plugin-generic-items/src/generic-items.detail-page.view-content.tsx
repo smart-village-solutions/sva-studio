@@ -117,6 +117,7 @@ export const GenericItemsMediaPickerView = ({
       }
       isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
       isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
+      canConfirmSelection={mediaPicker.canConfirmSelection}
       labels={mediaPickerLabels}
       metadataDraft={mediaPicker.metadataDraft}
       mode={mediaPicker.mode}
@@ -128,7 +129,13 @@ export const GenericItemsMediaPickerView = ({
       onClose={mediaPicker.close}
       onConfirmSelection={() => void mediaPicker.confirmSelection()}
       onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
-      isMetadataEditable={canUpdateMedia}
+      isMetadataEditable
+      visibleMetadataFields={['altText', 'description', 'copyright']}
+      persistenceContext="content"
+      canEditCentralMetadata={canUpdateMedia}
+      onSaveCentralMetadata={mediaPicker.saveCentralMetadata}
+      onApplyImageEdit={canUploadMedia ? mediaPicker.applyImageEdit : undefined}
+      onImageFocusChange={mediaPicker.updateImageFocus}
       onOpenMediaManagement={(assetId) =>
         void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })
       }

@@ -1,3 +1,5 @@
+import { mediaImageEditorResources, mediaEditorResources } from './media-editor.resources';
+
 export const mediaDEResources = {
   scan: {
     title: 'Virenprüfung',
@@ -13,7 +15,8 @@ export const mediaDEResources = {
     start: 'Bestandsscan starten',
     next: 'Nächsten Abschnitt prüfen',
     pending: 'Bestandsscan wartet oder läuft …',
-    error: 'Der Bestandsscan oder der Berichtabruf ist fehlgeschlagen. Sie können ihn manuell erneut starten.',
+    error:
+      'Der Bestandsscan oder der Berichtabruf ist fehlgeschlagen. Sie können ihn manuell erneut starten.',
     report: 'Prüfbericht',
     completedAt: 'Abgeschlossen: {{value}}',
     empty: 'Keine weiteren Dateien in diesem Abschnitt.',
@@ -129,6 +132,7 @@ export const mediaDEResources = {
     visibilityAll: 'Alle Sichtbarkeiten',
   },
   actions: {
+    discardMetadata: 'Änderungen verwerfen',
     create: 'Medium vorbereiten',
     selectFiles: 'Dateien auswählen',
     copyPublicUrl: 'Öffentliche URL kopieren',
@@ -199,21 +203,8 @@ export const mediaDEResources = {
     headerUpdatedAt: 'Geändert',
     headerActions: 'Aktionen',
   },
-  editor: {
-    createTitle: 'Medienupload vorbereiten',
-    createSubtitle:
-      'Initialisieren Sie einen Upload und erhalten Sie die signierte Ziel-URL für das Medienobjekt.',
-    detailTitle: 'Medium bearbeiten',
-    detailSubtitle: 'Pflegen Sie Metadaten, Sichtbarkeit und prüfen Sie die aktuelle Verwendung.',
-    uploadCardTitle: 'Upload anlegen',
-    uploadCardDescription:
-      'Der MVP initialisiert den Upload serverseitig und liefert die signierte Upload-URL zurück.',
-    uploadReadyTitle: 'Upload bereit',
-    uploadReadyDescription:
-      'Diese Daten können jetzt für den eigentlichen Datei-Upload verwendet werden.',
-    metadataTitle: 'Metadaten',
-    metadataDescription: 'Bearbeiten Sie fachliche Metadaten und die Sichtbarkeit des Mediums.',
-  },
+  filerobot: mediaImageEditorResources,
+  editor: mediaEditorResources,
   meta: {
     title: 'Technische Daten',
     id: 'Asset-ID',
@@ -231,6 +222,14 @@ export const mediaDEResources = {
     deliveryUrl: 'Auslieferungs-URL',
   },
   usage: {
+    editingSource: 'Bearbeitungsgrundlage:',
+    sourceImage: 'Ursprüngliches Bild',
+    editingDependencies: 'Bearbeitbare Kopien: {{count}}',
+    editingDependenciesHint:
+      'Dieses Bild dient als Bearbeitungsgrundlage. Solange Kopien darauf verweisen, kann es nicht gelöscht werden.',
+    editedCopy: 'Bearbeitete Kopie',
+    hiddenEditingDependencies: 'Weitere Kopien sind für dich nicht einsehbar.',
+
     title: 'Nutzungstransparenz',
     subtitle: 'Aktive Referenzen dieses Mediums in Host- oder Fachmodulen.',
     pageTitle: 'Usage-Impact',
@@ -318,6 +317,9 @@ export const mediaDEResources = {
   errors: {
     infected:
       'Die Datei wurde wegen eines Schadsoftware-Verdachts gesperrt. Bitte lade eine unbedenkliche Datei hoch.',
+    invalidMetadata: 'Bitte beachte die maximale Länge der Bildangaben.',
+    metadataSave:
+      'Die Angaben konnten nicht gespeichert werden. Deine Änderungen bleiben erhalten.',
     invalidTags: 'Bitte verwende höchstens 20 Tags mit jeweils 1 bis 64 Zeichen.',
     forbidden: 'Unzureichende Berechtigungen für diese Medienaktion.',
     databaseUnavailable:

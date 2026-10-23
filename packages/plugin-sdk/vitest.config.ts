@@ -9,6 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@sva/core': resolve(currentDir, '../core/src/index.ts'),
+      '@sva/media': resolve(currentDir, '../media/src/index.ts'),
     },
   },
   test: {

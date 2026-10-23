@@ -59,7 +59,10 @@ const toPickerDetail = (
       description: asset.metadata.description?.trim() ?? '',
       copyright: asset.metadata.copyright?.trim() ?? '',
       license: asset.metadata.license?.trim() ?? '',
+      tags: asset.metadata.tags,
     },
+    instanceId: asset.instanceId,
+    hasEditingDocument: asset.hasEditingDocument,
   };
 };
 
@@ -88,6 +91,7 @@ function acceptProjectMedia(asset: StudioMediaPickerAssetDetail, input: PickerIn
       persistentUrl: asset.localDraft ? '' : (asset.persistentUrl ?? ''),
       previewUrl: asset.previewUrl,
       metadata: { ...asset.metadata, fileName: asset.fileName },
+      centralMetadata: asset.centralMetadata,
       sortOrder: input.mediaUsages.length,
     }),
     assetId: asset.localDraft ? undefined : asset.id,

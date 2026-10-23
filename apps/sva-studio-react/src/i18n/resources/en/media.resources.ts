@@ -1,3 +1,5 @@
+import { mediaImageEditorResources, mediaEditorResources } from './media-editor.resources';
+
 export const mediaENResources = {
   scan: {
     title: 'Virus scan',
@@ -129,6 +131,7 @@ export const mediaENResources = {
     visibilityAll: 'All visibilities',
   },
   actions: {
+    discardMetadata: 'Discard changes',
     create: 'Prepare media',
     selectFiles: 'Select files',
     copyPublicUrl: 'Copy public URL',
@@ -199,19 +202,8 @@ export const mediaENResources = {
     headerUpdatedAt: 'Updated',
     headerActions: 'Actions',
   },
-  editor: {
-    createTitle: 'Prepare media upload',
-    createSubtitle: 'Initialize an upload and receive the signed target URL for the media asset.',
-    detailTitle: 'Edit media',
-    detailSubtitle: 'Maintain metadata, visibility, and inspect current usage.',
-    uploadCardTitle: 'Create upload',
-    uploadCardDescription:
-      'The MVP initializes uploads server-side and returns the signed upload URL.',
-    uploadReadyTitle: 'Upload ready',
-    uploadReadyDescription: 'These values can now be used for the actual file upload.',
-    metadataTitle: 'Metadata',
-    metadataDescription: 'Edit business metadata and the asset visibility.',
-  },
+  filerobot: mediaImageEditorResources,
+  editor: mediaEditorResources,
   meta: {
     title: 'Technical details',
     id: 'Asset ID',
@@ -229,6 +221,14 @@ export const mediaENResources = {
     deliveryUrl: 'Delivery URL',
   },
   usage: {
+    editingSource: 'Editing foundation:',
+    sourceImage: 'Original image',
+    editingDependencies: 'Editable copies: {{count}}',
+    editingDependenciesHint:
+      'This image is an editing foundation. It cannot be deleted while copies refer to it.',
+    editedCopy: 'Edited copy',
+    hiddenEditingDependencies: 'Other copies are not visible to you.',
+
     title: 'Usage transparency',
     subtitle: 'Active references for this asset in host or domain modules.',
     pageTitle: 'Usage impact',
@@ -315,6 +315,8 @@ export const mediaENResources = {
   errors: {
     infected:
       'The file was blocked because suspected malware was detected. Please upload a safe file.',
+    invalidMetadata: 'Please respect the maximum length of the image details.',
+    metadataSave: 'The details could not be saved. Your changes have been kept.',
     invalidTags: 'Please use up to 20 tags with 1 to 64 characters each.',
     forbidden: 'Insufficient permissions for this media action.',
     databaseUnavailable: 'Media data could not be processed because of a database problem.',

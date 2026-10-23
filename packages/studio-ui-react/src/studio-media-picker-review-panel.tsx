@@ -1,4 +1,11 @@
-import { Button } from './button.js';
+import { useContentMediaTranslation } from '@sva/plugin-sdk/content-media';
+import { StudioMediaImagePreview } from './media-image-preview.js';
+import { ReviewPanelActions, ReviewPanelExtras } from './studio-media-picker-review-actions.js';
+import { StudioMediaImageEditor } from './media-image-editor.js';
+import type { StudioMediaImageEdit } from './media-image-editor-state.js';
+import * as React from 'react';
+import type { MediaEditorialMetadataPatch, MediaFocusPoint } from '@sva/media';
+import { StudioMediaPickerCentralMetadata } from './studio-media-picker-central-metadata.js';
 import {
   studioMediaPickerPreviewClassName,
   type StudioMediaPickerAssetDetail,
@@ -14,7 +21,7 @@ import {
 
 const StudioMediaPreview = ({ alt, url }: Readonly<{ alt: string; url?: string | null }>) =>
   url ? (
-    <img alt={alt} className="h-full w-full object-cover" src={url} />
+    <img alt={alt} className="h-full w-full object-contain" src={url} />
   ) : (
     <div className="px-4 text-center text-sm text-muted-foreground">{alt}</div>
   );
@@ -51,63 +58,8 @@ const ReviewAssetPreview = ({
   </div>
 );
 
-const ReviewPanelActions = ({
-  isLoadingReviewAsset,
-  isSavingReviewAsset,
-  labels,
-  onBackFromReview,
-  onClose,
-  onConfirmSelection,
-  onOpenMediaManagement,
-  reviewAsset,
-  reviewSource,
-}: Readonly<{
-  isLoadingReviewAsset: boolean;
-  isSavingReviewAsset: boolean;
-  labels: Pick<StudioMediaPickerOverlayLabels, 'actions'>;
-  onBackFromReview: () => void;
-  onClose: () => void;
-  onConfirmSelection: () => void | Promise<void>;
-  onOpenMediaManagement?: (assetId: string) => void | Promise<void>;
-  reviewAsset: StudioMediaPickerAssetDetail | null;
-  reviewSource: StudioMediaPickerReviewSource;
-}>) => {
-  const isBusy = isLoadingReviewAsset || isSavingReviewAsset;
-
-  return (
-    <div className="flex flex-wrap justify-between gap-3 border-t border-border/60 pt-4">
-      <div className="flex flex-wrap gap-3">
-        <Button type="button" disabled={isBusy} variant="secondary" onClick={onBackFromReview}>
-          {reviewSource === 'library' ? labels.actions.backToLibrary : labels.actions.backToUpload}
-        </Button>
-        {reviewAsset && onOpenMediaManagement ? (
-          <Button
-            type="button"
-            disabled={isBusy}
-            variant="secondary"
-            onClick={() => void onOpenMediaManagement(reviewAsset.id)}
-          >
-            {labels.actions.openMediaManagement}
-          </Button>
-        ) : null}
-      </div>
-      <div className="flex flex-wrap gap-3">
-        <Button type="button" disabled={isBusy} variant="secondary" onClick={onClose}>
-          {labels.actions.cancel}
-        </Button>
-        <Button
-          type="button"
-          disabled={isLoadingReviewAsset || isSavingReviewAsset || !reviewAsset}
-          onClick={() => void onConfirmSelection()}
-        >
-          {labels.actions.useMedia}
-        </Button>
-      </div>
-    </div>
-  );
-};
-
 export type StudioMediaPickerReviewPanelProps = Readonly<{
+  onWorkspaceDirtyChange?: (dirty: boolean) => void;
   reviewSource: StudioMediaPickerReviewSource;
   reviewAsset: StudioMediaPickerAssetDetail | null;
   metadataDraft: StudioMediaPickerMetadataDraft;
@@ -117,6 +69,10 @@ export type StudioMediaPickerReviewPanelProps = Readonly<{
   isLoadingReviewAsset?: boolean;
   isSavingReviewAsset?: boolean;
   isMetadataEditable?: boolean;
+  canConfirmSelection?: boolean;
+  initialEditorOpen?: boolean;
+  isUploadInitialized?: boolean;
+  persistenceContext?: 'content' | 'library' | 'settings';
   onMetadataChange: <Key extends MetadataKey>(
     key: Key,
     value: StudioMediaPickerMetadataDraft[Key]
@@ -126,32 +82,44 @@ export type StudioMediaPickerReviewPanelProps = Readonly<{
   onConfirmSelection: () => void | Promise<void>;
   onOpenMediaManagement?: (assetId: string) => void | Promise<void>;
   visibleMetadataFields?: readonly StudioMediaPickerMetadataField[];
+  canEditCentralMetadata?: boolean;
+  onImageFocusChange?: (focus: MediaFocusPoint) => void;
+  onApplyImageEdit?: (result: StudioMediaImageEdit) => void | Promise<void>;
+  onSaveCentralMetadata?: (metadata: MediaEditorialMetadataPatch) => Promise<boolean>;
 }>;
 
-export const StudioMediaPickerReviewPanel = ({
-  feedbackMessage,
-  feedbackTone = 'default',
-  isLoadingReviewAsset = false,
-  isSavingReviewAsset = false,
-  isMetadataEditable = true,
-  labels,
-  metadataDraft,
-  onBackFromReview,
-  onClose,
-  onConfirmSelection,
-  onMetadataChange,
-  onOpenMediaManagement,
-  reviewAsset,
-  reviewSource,
-  visibleMetadataFields = defaultStudioMediaPickerMetadataFields,
-}: StudioMediaPickerReviewPanelProps) => {
+const ReviewPanelMetadata = (
+  props: StudioMediaPickerReviewPanelProps & {
+    headingRef: React.RefObject<HTMLHeadingElement | null>;
+  }
+) => {
+  const t = useContentMediaTranslation();
+  const {
+    feedbackMessage,
+    feedbackTone = 'default',
+    isLoadingReviewAsset,
+    labels,
+    metadataDraft,
+    onMetadataChange,
+    reviewAsset,
+    isMetadataEditable = true,
+    visibleMetadataFields = defaultStudioMediaPickerMetadataFields,
+  } = props;
   return (
-    <div className="space-y-5">
+    <>
       <div className="space-y-1">
-        <h3 className="text-lg font-semibold text-foreground">{labels.review.title}</h3>
+        <h3
+          ref={props.headingRef}
+          tabIndex={-1}
+          className="rounded-sm text-lg font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {labels.review.title}
+        </h3>
         <p className="text-sm text-muted-foreground">{labels.review.description}</p>
+        {props.persistenceContext === 'content' ? (
+          <p className="text-sm text-muted-foreground">{t('editor.contentMetadataHint')}</p>
+        ) : null}
       </div>
-
       {feedbackMessage ? (
         <p
           aria-live="polite"
@@ -160,7 +128,6 @@ export const StudioMediaPickerReviewPanel = ({
           {feedbackMessage}
         </p>
       ) : null}
-
       {isLoadingReviewAsset || !reviewAsset ? (
         <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
           {labels.review.description}
@@ -177,17 +144,85 @@ export const StudioMediaPickerReviewPanel = ({
           />
         </div>
       )}
+    </>
+  );
+};
 
+export const StudioMediaPickerReviewPanel = (props: StudioMediaPickerReviewPanelProps) => {
+  const {
+    reviewAsset,
+    onApplyImageEdit,
+    onSaveCentralMetadata,
+    canEditCentralMetadata = false,
+    isLoadingReviewAsset = false,
+    isSavingReviewAsset = false,
+  } = props;
+  const [showEditor, setShowEditor] = React.useState(props.initialEditorOpen ?? false);
+  const [showCentral, setShowCentral] = React.useState(false);
+  const reviewHeadingRef = React.useRef<HTMLHeadingElement>(null);
+  const editorButtonRef = React.useRef<HTMLButtonElement>(null);
+  const centralButtonRef = React.useRef<HTMLButtonElement>(null);
+  React.useEffect(() => {
+    setShowCentral(false);
+  }, [reviewAsset?.id]);
+  if (showEditor && reviewAsset && onApplyImageEdit)
+    return (
+      <StudioMediaImageEditor
+        asset={reviewAsset}
+        onDirtyChange={props.onWorkspaceDirtyChange}
+        onCancel={() => {
+          props.onWorkspaceDirtyChange?.(false);
+          setShowEditor(false);
+          requestAnimationFrame(() => editorButtonRef.current?.focus());
+        }}
+        onApply={async (result) => {
+          await onApplyImageEdit(result);
+          props.onWorkspaceDirtyChange?.(false);
+          setShowEditor(false);
+          requestAnimationFrame(() => reviewHeadingRef.current?.focus());
+        }}
+      />
+    );
+  if (showCentral && reviewAsset && onSaveCentralMetadata)
+    return (
+      <StudioMediaPickerCentralMetadata
+        asset={reviewAsset}
+        persistenceContext={props.persistenceContext}
+        onDirtyChange={props.onWorkspaceDirtyChange}
+        canEdit={canEditCentralMetadata || Boolean(reviewAsset.localDraft)}
+        isSaving={isSavingReviewAsset}
+        onSave={onSaveCentralMetadata}
+        contentDraft={props.metadataDraft}
+        visibleFields={props.visibleMetadataFields ?? defaultStudioMediaPickerMetadataFields}
+        onContentChange={props.onMetadataChange}
+        onBack={() => {
+          setShowCentral(false);
+          requestAnimationFrame(() => centralButtonRef.current?.focus());
+        }}
+      />
+    );
+  return (
+    <div className="space-y-5">
+      <ReviewPanelMetadata {...props} headingRef={reviewHeadingRef} />
+      {reviewAsset?.localDraft?.editing && reviewAsset.previewUrl && props.onImageFocusChange ? (
+        <StudioMediaImagePreview
+          disabled={props.isUploadInitialized}
+          url={reviewAsset.previewUrl}
+          focus={reviewAsset.localDraft.metadata?.focusPoint ?? { x: 0.5, y: 0.5 }}
+          onFocusChange={props.onImageFocusChange}
+        />
+      ) : null}
+      <ReviewPanelExtras
+        props={props}
+        centralButtonRef={centralButtonRef}
+        editorButtonRef={editorButtonRef}
+        openCentral={() => setShowCentral(true)}
+        openEditor={() => setShowEditor(true)}
+      />
       <ReviewPanelActions
+        {...props}
         isLoadingReviewAsset={isLoadingReviewAsset}
         isSavingReviewAsset={isSavingReviewAsset}
-        labels={labels}
-        onBackFromReview={onBackFromReview}
-        onClose={onClose}
-        onConfirmSelection={onConfirmSelection}
-        onOpenMediaManagement={onOpenMediaManagement}
-        reviewAsset={reviewAsset}
-        reviewSource={reviewSource}
       />
     </div>
   );

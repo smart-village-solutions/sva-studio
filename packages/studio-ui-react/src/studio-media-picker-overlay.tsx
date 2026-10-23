@@ -1,3 +1,9 @@
+import { StudioConfirmDialog } from './studio-confirm-dialog.js';
+import { createMetadataDraft } from './studio-media-picker-overlay.shared.js';
+import * as React from 'react';
+import { useContentMediaTranslation } from '@sva/plugin-sdk/content-media';
+import type { StudioMediaImageEdit } from './media-image-editor-state.js';
+import type { MediaEditorialMetadataPatch, MediaFocusPoint } from '@sva/media';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './dialog.js';
 import { MediaIntakePanel } from './media-intake-panel.js';
 import { StudioMediaPickerLibraryPanel } from './studio-media-picker-library-panel.js';
@@ -28,6 +34,7 @@ export { useStudioMediaPickerOverlay } from './use-studio-media-picker-overlay.j
 export { createLocalStudioMediaPickerAsset } from './studio-media-picker-local-asset.js';
 
 type StudioMediaPickerOverlayProps = Readonly<{
+  onWorkspaceDirtyChange?: (dirty: boolean) => void;
   open: boolean;
   mode: StudioMediaPickerMode;
   reviewSource: StudioMediaPickerReviewSource;
@@ -52,6 +59,14 @@ type StudioMediaPickerOverlayProps = Readonly<{
   isLoadingReviewAsset?: boolean;
   isSavingReviewAsset?: boolean;
   isMetadataEditable?: boolean;
+  canConfirmSelection?: boolean;
+  initialEditorOpen?: boolean;
+  isUploadInitialized?: boolean;
+  persistenceContext?: 'content' | 'library' | 'settings';
+  canEditCentralMetadata?: boolean;
+  onImageFocusChange?: (focus: MediaFocusPoint) => void;
+  onApplyImageEdit?: (result: StudioMediaImageEdit) => void | Promise<void>;
+  onSaveCentralMetadata?: (metadata: MediaEditorialMetadataPatch) => Promise<boolean>;
   visibleMetadataFields?: readonly StudioMediaPickerMetadataField[];
   isAssetSelectable?: (asset: StudioMediaPickerAssetSummary) => boolean;
   feedbackMessage?: string | null;
@@ -60,159 +75,158 @@ type StudioMediaPickerOverlayProps = Readonly<{
   canUpload?: boolean;
 }>;
 
-const StudioMediaPickerOverlayBody = ({
-  assets,
-  feedbackMessage,
-  feedbackTone,
-  isAssetSelectable,
-  isLoadingReviewAsset,
-  isSavingReviewAsset,
-  isMetadataEditable,
-  labels,
-  metadataDraft,
-  mode,
-  onBackFromReview,
-  onClose,
-  onConfirmSelection,
-  onMetadataChange,
-  onOpenMediaManagement,
-  onSearchValueChange,
-  onSelectAsset,
-  onUploadFile,
-  reviewAsset,
-  reviewSource,
-  searchValue,
-  uploadPhase,
-  visibleMetadataFields,
-}: Omit<StudioMediaPickerOverlayProps, 'open' | 'onChangeMode' | 'onAddManual'>) => (
-  <div className="max-h-[72vh] overflow-y-auto pr-1">
-    {mode === 'library' ? (
-      <StudioMediaPickerLibraryPanel
-        assets={assets}
-        isLoadingReviewAsset={isLoadingReviewAsset}
-        isAssetSelectable={isAssetSelectable}
-        labels={labels.library}
-        onSearchValueChange={onSearchValueChange}
-        onSelectAsset={onSelectAsset}
-        searchValue={searchValue}
-      />
-    ) : null}
+const StudioMediaPickerOverlayBody = (
+  props: Omit<StudioMediaPickerOverlayProps, 'open' | 'onChangeMode' | 'onAddManual'>
+) => {
+  const {
+    assets,
+    feedbackMessage,
+    feedbackTone,
+    isAssetSelectable,
+    isLoadingReviewAsset,
+    labels,
+    mode,
+    onSearchValueChange,
+    onSelectAsset,
+    onUploadFile,
+    searchValue,
+    uploadPhase,
+  } = props;
+  return (
+    <div className="max-h-[72vh] overflow-y-auto pr-1">
+      {mode === 'library' ? (
+        <StudioMediaPickerLibraryPanel
+          assets={assets}
+          isLoadingReviewAsset={isLoadingReviewAsset}
+          isAssetSelectable={isAssetSelectable}
+          labels={labels.library}
+          onSearchValueChange={onSearchValueChange}
+          onSelectAsset={onSelectAsset}
+          searchValue={searchValue}
+        />
+      ) : null}
 
-    {mode === 'upload' ? (
-      <MediaIntakePanel
-        accept="image/jpeg,image/png,image/webp"
-        browseActionLabel={labels.upload.browseAction}
-        description={labels.upload.description}
-        inputTestId="media-upload-input"
-        onFileSelected={(file) => void onUploadFile(file)}
-        phase={uploadPhase}
-        regionLabel={labels.upload.regionLabel}
-        statusMessage={feedbackMessage}
-        statusTone={feedbackTone}
-        supportLabel={labels.upload.supportLabel}
-        title={labels.upload.title}
-      />
-    ) : null}
+      {mode === 'upload' ? (
+        <MediaIntakePanel
+          accept="image/jpeg,image/png,image/webp"
+          browseActionLabel={labels.upload.browseAction}
+          description={labels.upload.description}
+          inputTestId="media-upload-input"
+          onFileSelected={(file) => void onUploadFile(file)}
+          phase={uploadPhase}
+          regionLabel={labels.upload.regionLabel}
+          statusMessage={feedbackMessage}
+          statusTone={feedbackTone}
+          supportLabel={labels.upload.supportLabel}
+          title={labels.upload.title}
+        />
+      ) : null}
 
-    {mode === 'review' ? (
-      <StudioMediaPickerReviewPanel
-        feedbackMessage={feedbackMessage}
-        feedbackTone={feedbackTone}
-        isLoadingReviewAsset={isLoadingReviewAsset}
-        isSavingReviewAsset={isSavingReviewAsset}
-        isMetadataEditable={isMetadataEditable}
-        labels={labels}
-        metadataDraft={metadataDraft}
-        onBackFromReview={onBackFromReview}
-        onClose={onClose}
-        onConfirmSelection={onConfirmSelection}
-        onMetadataChange={onMetadataChange}
-        onOpenMediaManagement={onOpenMediaManagement}
-        reviewAsset={reviewAsset}
-        reviewSource={reviewSource}
-        visibleMetadataFields={visibleMetadataFields}
-      />
-    ) : null}
-  </div>
-);
+      {mode === 'review' ? <StudioMediaPickerReviewPanel {...props} /> : null}
+    </div>
+  );
+};
 
-export const StudioMediaPickerOverlay = ({
-  assets,
-  canUpload = true,
-  feedbackMessage,
-  feedbackTone = 'default',
-  isAssetSelectable,
-  isLoadingReviewAsset = false,
-  isSavingReviewAsset = false,
-  isMetadataEditable = true,
-  labels,
-  metadataDraft,
-  mode,
-  onAddManual,
-  onBackFromReview,
-  onChangeMode,
-  onClose,
-  onConfirmSelection,
-  onMetadataChange,
-  onOpenMediaManagement,
-  onSearchValueChange,
-  onSelectAsset,
-  onUploadFile,
-  open,
-  reviewAsset,
-  reviewSource,
-  searchValue,
-  uploadPhase,
-  visibleMetadataFields,
-}: StudioMediaPickerOverlayProps) => {
+const useMediaCloseGuard = (
+  props: StudioMediaPickerOverlayProps,
+  workspaceDirty: boolean,
+  onConfirm: () => void
+) => {
+  const dirty =
+    workspaceDirty ||
+    Boolean(props.reviewAsset?.localDraft) ||
+    Boolean(
+      props.reviewAsset &&
+      JSON.stringify(createMetadataDraft(props.reviewAsset)) !== JSON.stringify(props.metadataDraft)
+    );
+  const close = () => {
+    if (dirty) onConfirm();
+    else props.onClose();
+  };
+  React.useEffect(() => {
+    if (!props.open || !dirty) return;
+    const guard = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, [dirty, props.open]);
+  return close;
+};
+
+export const StudioMediaPickerOverlay = (props: StudioMediaPickerOverlayProps) => {
+  const {
+    canUpload = true,
+    isLoadingReviewAsset = false,
+    isSavingReviewAsset = false,
+    labels,
+    mode,
+    onAddManual,
+    onChangeMode,
+    onClose,
+    open,
+    uploadPhase,
+  } = props;
+  const t = useContentMediaTranslation();
+  const [confirmDiscard, setConfirmDiscard] = React.useState(false);
+  const [workspaceDirty, setWorkspaceDirty] = React.useState(false);
+  React.useEffect(() => {
+    if (!open) setWorkspaceDirty(false);
+  }, [open]);
+  const close = useMediaCloseGuard(props, workspaceDirty, () => setConfirmDiscard(true));
   const isUploadBusy =
     uploadPhase === 'initializing' || uploadPhase === 'uploading' || uploadPhase === 'finalizing';
   const isBusy = isLoadingReviewAsset || isSavingReviewAsset || isUploadBusy;
   const visibleMode = !canUpload && mode === 'upload' ? 'library' : mode;
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen && !isBusy ? onClose() : undefined)}>
-      <DialogContent className="max-h-[92vh] w-[min(96vw,1080px)] max-w-none overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>{labels.title}</DialogTitle>
-          <DialogDescription>{labels.description}</DialogDescription>
-        </DialogHeader>
+    <>
+      <StudioConfirmDialog
+        open={open && confirmDiscard}
+        title={t('editor.discardChanges')}
+        description={t('editor.discardHint')}
+        confirmLabel={t('editor.discardAction')}
+        cancelLabel={t('editor.keepEditing')}
+        onCancel={() => setConfirmDiscard(false)}
+        onConfirm={() => {
+          setConfirmDiscard(false);
+          onClose();
+        }}
+      />
+      <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen && !isBusy ? close() : undefined)}>
+        <DialogContent className="max-h-[92vh] w-[min(96vw,1080px)] max-w-none overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>{labels.title}</DialogTitle>
+            <DialogDescription>{labels.description}</DialogDescription>
+          </DialogHeader>
 
-        <StudioMediaPickerModeActions
-          canUpload={canUpload}
-          disabled={isBusy}
-          labels={labels.modes}
-          mode={visibleMode}
-          onAddManual={onAddManual}
-          onChangeMode={onChangeMode}
-          onClose={onClose}
-        />
-        <StudioMediaPickerOverlayBody
-          assets={assets}
-          feedbackMessage={feedbackMessage}
-          feedbackTone={feedbackTone}
-          isAssetSelectable={isAssetSelectable}
-          isLoadingReviewAsset={isLoadingReviewAsset}
-          isSavingReviewAsset={isSavingReviewAsset}
-          isMetadataEditable={isMetadataEditable}
-          labels={labels}
-          metadataDraft={metadataDraft}
-          mode={visibleMode}
-          onBackFromReview={onBackFromReview}
-          onClose={onClose}
-          onConfirmSelection={onConfirmSelection}
-          onMetadataChange={onMetadataChange}
-          onOpenMediaManagement={onOpenMediaManagement}
-          onSearchValueChange={onSearchValueChange}
-          onSelectAsset={onSelectAsset}
-          onUploadFile={onUploadFile}
-          reviewAsset={reviewAsset}
-          reviewSource={reviewSource}
-          searchValue={searchValue}
-          uploadPhase={uploadPhase}
-          visibleMetadataFields={visibleMetadataFields}
-        />
-      </DialogContent>
-    </Dialog>
+          {visibleMode !== 'review' ? (
+            <StudioMediaPickerModeActions
+              canUpload={canUpload}
+              disabled={isBusy}
+              labels={labels.modes}
+              mode={visibleMode}
+              onAddManual={onAddManual}
+              onChangeMode={onChangeMode}
+              onClose={onClose}
+            />
+          ) : null}
+          <StudioMediaPickerOverlayBody
+            {...props}
+            onClose={close}
+            {...(props.isUploadInitialized
+              ? {
+                  isMetadataEditable: false,
+                  onApplyImageEdit: undefined,
+                  onSaveCentralMetadata: undefined,
+                }
+              : {})}
+            onWorkspaceDirtyChange={setWorkspaceDirty}
+            mode={visibleMode}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };

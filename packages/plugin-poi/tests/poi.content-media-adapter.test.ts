@@ -75,4 +75,50 @@ describe('POI content media adapter', () => {
       referenceStatus: 'pending',
     });
   });
+
+  it.each([
+    { altText: 'Zentraler Alternativtext', description: 'Zentrale Bildunterschrift' },
+    { altText: '', description: '' },
+  ])('preserves content overrides separately from central metadata %j', (central) => {
+    const usage = poiAssetToUsage({
+      assetId: 'asset-1',
+      persistentUrl: 'https://example.test/image.jpg',
+      sortOrder: 0,
+      metadata: {
+        title: 'Titel im Inhalt',
+        fileName: 'image.jpg',
+        altText: 'Alternativtext im Inhalt',
+        description: 'Bildunterschrift im Inhalt',
+        copyright: 'Credit im Inhalt',
+        license: 'Eigene Lizenzangabe',
+      },
+      centralMetadata: {
+        title: 'Zentraler Titel',
+        ...central,
+        copyright: 'Zentraler Credit',
+        license: 'CC0',
+      },
+    });
+    expect(usage.assetSnapshot).toEqual({
+      persistentUrl: 'https://example.test/image.jpg',
+      altText: central.altText || 'image.jpg',
+      caption: central.description || 'Zentraler Titel',
+      credit: 'Zentraler Credit',
+      license: 'CC0',
+    });
+    expect(poiMediaUsagesToContents([usage])).toEqual([
+      {
+        sourceUrl: {
+          url: 'https://example.test/image.jpg',
+          description: 'Alternativtext im Inhalt',
+        },
+        captionText: 'Bildunterschrift im Inhalt',
+        copyright: 'Credit im Inhalt',
+        contentType: 'image',
+        width: undefined,
+        height: undefined,
+      },
+    ]);
+    expect(usage.license).toBe('Eigene Lizenzangabe');
+  });
 });

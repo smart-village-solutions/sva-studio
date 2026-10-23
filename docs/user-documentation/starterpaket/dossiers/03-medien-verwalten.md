@@ -45,10 +45,13 @@ Löschen beeinflussen.
 - **Route / Typ / Owner:** `/admin/media/$mediaId`, Detail, Host.
 - **Nutzerziel:** Vorschau, Delivery, Qualitätsstatus, Metadaten und Verwendung gemeinsam prüfen.
 - **Produktfakten:** Bearbeitbar sind Titel, Alternativtext, Beschreibung, Copyright, Lizenz,
-  Sichtbarkeit sowie Bildfokus und Zuschnitt. Technische Angaben umfassen Asset-ID, Storage-Key,
+  Tags und Sichtbarkeit. „Bild bearbeiten“ öffnet Zuschnitt, Drehen, Filter, Text, Formen,
+  eingefügte Bilder, Wasserzeichen und Größenänderung. „Weiter zu Angaben und Vorschau“ zeigt
+  Angaben und wichtige Bildbereiche der neuen Kopie. „Als neues Bild speichern“ legt ein neues
+  Medium an; das bisherige Bild und seine Verwendungen bleiben erhalten. Technische Angaben umfassen Asset-ID, Storage-Key,
   MIME-Typ, Größe, Upload- und Verarbeitungsstatus. Öffentliche URLs können kopiert und als QR-Code
   ausgegeben werden.
-- **Kontextabhängig:** Aktive Referenzen blockieren das Löschen, nicht jedoch Änderungen an den
+- **Kontextabhängig:** Aktive Referenzen und abhängige bearbeitbare Kopien blockieren das Löschen, nicht jedoch Änderungen an den
   Metadaten. Ein Objekt aus dem Bucket kann zunächst unregistriert sein und muss als Medium
   registriert werden.
 - **Redaktionelle Leitfragen:** Welche Metadaten sind für Barrierefreiheit erforderlich? Wann ist ein
@@ -86,3 +89,11 @@ Löschen beeinflussen.
   Mediendetail oder weiter zum referenzierenden Inhalt.
 - **Evidenz:** `routes/admin/media/-media-usage-page.tsx`,
   `i18n/resources/de/media.resources.ts`.
+
+## Gemeinsame Medienauswahl in Inhalten
+
+Die Angaben im Auswahlfenster gelten zunächst für den aktuellen Inhalt. Über „Angaben in der Mediathek öffnen“ lassen sich alle zentralen Angaben und Tags ausdrücklich speichern. Eigene Inhaltsangaben bleiben erhalten; zentrale Werte lassen sich danach gezielt übernehmen. Bereits veröffentlichte Inhalte ändern sich dadurch nicht.
+
+Bei „Bild bearbeiten“ bleibt die Kopie zunächst im lokalen Entwurf. Erst „Inhalt speichern“ lädt sie hoch. Abbrechen verwirft die lokale Bearbeitung. Für Waste-Branding wird die Kopie dagegen unmittelbar in der Mediathek gespeichert und ausgewählt; die Konfiguration muss danach separat gespeichert werden. Manuelle Links können weiterhin verwendet werden.
+
+Der spezialisierte Bildeditor ist derzeit nicht vollständig mit Tastatur und Screenreader bedienbar. Diese bekannte Einschränkung ist in [ADR-069](../../../adr/ADR-069-filerobot-bildeditor-mit-begrenzter-accessibility-abweichung.md) festgehalten. Metadaten, Auswahl und Speicheraktionen gehören weiterhin zum regulären Studio-Bedienrahmen.

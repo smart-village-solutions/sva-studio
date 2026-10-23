@@ -2,6 +2,7 @@ import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createMediaUploadProcessingService } from './processing.js';
+import { cleanupReplacedClaimVariants } from './processing-variants.js';
 
 const createAsset = (overrides: Record<string, unknown> = {}) => ({
   id: 'asset-1',
@@ -82,6 +83,34 @@ const createFailUpload = (service: {
   );
 
 describe('media upload processing service', () => {
+  it('cleans both public output and private foundation files for an obsolete public editing claim', async () => {
+    const storage = {
+      listObjects: vi
+        .fn()
+        .mockResolvedValueOnce({
+          items: [{ storageKey: 'tenant-a/variants/asset-1/old/original.png' }],
+          nextCursor: null,
+        })
+        .mockResolvedValueOnce({
+          items: [{ storageKey: '.protected/tenant-a/variants/asset-1/old/source.jpg' }],
+          nextCursor: null,
+        }),
+      deleteObject: vi.fn(),
+    };
+    await cleanupReplacedClaimVariants({
+      storagePort: storage,
+      instanceId: 'tenant-a',
+      assetId: 'asset-1',
+      claimToken: 'old',
+      privateSource: true,
+    });
+    expect(storage.listObjects).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ prefix: '.protected/tenant-a/variants/asset-1/old/' })
+    );
+    expect(storage.deleteObject).toHaveBeenCalledTimes(2);
+  });
+
   it('removes every variant page from the replaced claim before continuing', async () => {
     const service = {
       getUploadSessionById: vi.fn(async () => createUploadSession({ status: 'validated' })),

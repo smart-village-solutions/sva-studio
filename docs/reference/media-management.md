@@ -1,6 +1,6 @@
 # Medienmanagement
 
-Dieser Guide beschreibt den aktuellen MVP-Umgang mit Medien im Studio für Redakteure und Instanzverantwortliche.
+Dieser Guide beschreibt den aktuellen Umgang mit Medien im Studio für Redakteure und Instanzverantwortliche.
 
 ## Zielgruppe
 
@@ -11,12 +11,12 @@ Dieser Guide beschreibt den aktuellen MVP-Umgang mit Medien im Studio für Redak
 
 Der kanonische Einstieg liegt unter `/admin/media`.
 
-Dort stehen im MVP zur Verfügung:
+Dort stehen zur Verfügung:
 
 - Medienbibliothek mit Suche und Sichtbarkeitsfilter
 - cursorbasierte Navigation in binärer S3-Storage-Key-Reihenfolge; bei der Zusammenführung von Datenbank und Bucket wird der Cursor nur bis zum von beiden Quellen vollständig gelesenen Bereich vorgeschoben, die Oberfläche zeigt bewusst keine teure Gesamtzahl an
 - direkter Single-File-Upload für neue Bilder aus der Bibliothek
-- Metadatenpflege für Titel, Alternativtext, Beschreibung, Copyright und Lizenz
+- Metadatenpflege für Titel, Alternativtext, Beschreibung, Copyright, Lizenz und Tags
 - Nutzungsanzeige (`Usage-Impact`) für aktive Referenzen
 - kontrollierte Auslieferung für öffentliche und geschützte Medien
 
@@ -96,9 +96,31 @@ Ein Asset kann im MVP nicht gelöscht werden, wenn:
 
 - aktive Referenzen existieren
 - der Upload oder die Verarbeitung nicht in einem löschbaren Zustand sind
-- weitere Schutzregeln künftig eingreifen
+- bearbeitbare Kopien die Grundlage weiterhin benötigen
 
 Metadaten- und Sichtbarkeitsänderungen laufen ebenfalls über den hostseitigen Medienvertrag und werden auditierbar verarbeitet.
+
+## Metadaten und Bildbearbeitung
+
+Titel und Alternativtext sind auf je 512, Beschreibung auf 5.000 sowie Copyright und Lizenz auf je 512 Zeichen begrenzt. Ausgelassene Patch-Felder bleiben erhalten; `null` leert ein Feld ausdrücklich. Tags werden normalisiert und dedupliziert (höchstens 20 mit je 64 Zeichen).
+
+Metadatenänderungen sperren das aktuelle Asset und führen Prüfung, Zusammenführung und Speicherung in derselben Transaktion aus. Parallele Änderungen anderer Felder bleiben dadurch erhalten; ein inzwischen gelöschtes oder zur Löschung markiertes Medium wird nicht wiederhergestellt. Der Editor übernimmt die Instanz des ausgewählten Mediums auch für den geschützten Abruf seiner Bearbeitungsgrundlage.
+
+Im gemeinsamen Medienpicker gelten die sichtbaren Angaben für den aktuellen Inhalt. „Angaben in der Mediathek öffnen“ führt innerhalb desselben Dialogs zu allen fünf zentralen Textfeldern und Tags. Erst „In der Mediathek speichern“ ändert das vorhandene Medium und erfordert `media.update`. Eigene Inhaltsangaben bleiben dabei erhalten; anschließend lassen sich unterstützte Felder einzeln aus dem zentralen Stand übernehmen. Eigene Abweichungen sind dabei zunächst nicht ausgewählt. Bestehende Inhalte werden nicht automatisch geändert.
+
+„Bild bearbeiten“ öffnet den vollständigen Filerobot-Editor: Zuschnitt, Drehen, Spiegeln, Feinabstimmung, Filter, Text, Formen, Zeichnungen, eingefügte Bilder, Wasserzeichen und Größenänderung mit Rückgängig/Wiederholen. Er wird ausschließlich im Browser nachgeladen; Übersetzungen, Schriftwahl und Farbschema kommen aus dem Studio. Cloudimage, KI und entfernte Schrift-/Übersetzungsdienste sind deaktiviert. Die bekannte Einschränkung der Tastatur-/Screenreader-Bedienung der Spezialwerkzeuge steht sichtbar am Einstieg und in [ADR-069](../adr/ADR-069-filerobot-bildeditor-mit-begrenzter-accessibility-abweichung.md). Studio-Rahmen und Metadaten bleiben von dieser Ausnahme ausgenommen.
+
+Nach der Bearbeitung erscheinen die Angaben der Kopie und eine Vorschau für Vorschaubild (320 × 320), Teaser (800 × 450) und Titelbild (1.600 × 900). Zwei native Regler bestimmen den wichtigen Bildbereich. Eine Warnung bei Vergrößerung berät und blockiert das Speichern nicht. Original, ursprüngliche Metadaten und bestehende Verwendungen bleiben unverändert. Die Kopie übernimmt zunächst die fünf Textfelder und Tags; Alternativtext und Beschreibung sollten nach sichtbaren Änderungen geprüft werden. Zuschnitt und Bildfokus werden für die neue Ausgabe bestimmt.
+
+In der Mediathek erzeugt „Als neues Bild speichern“ die Kopie unmittelbar und öffnet deren Detailansicht. Sobald die Upload-Sitzung angelegt ist, bleiben Bild, Metadaten und Fokus für diesen Upload fest. Wiederholungen behalten dieselbe Sitzung und übertragen nur fehlende Dateien; nach vollständiger Übertragung setzen sie ausschließlich den Abschluss fort. Abgelaufene Upload-Ziele melden einen Fehler und erzeugen keine zweite Kopie. Ungespeicherte Änderungen beim Schließen werden mit dem vorhandenen Studio-Bestätigungsdialog geschützt. In News, Events, POI, Projects, Generic Items und Cockpit Cards bleiben Datei und Bearbeitung zunächst im lokalen Inhaltsentwurf; erst das Speichern des Inhalts startet den bestehenden Content-Save-Pfad. News/Events/POI/Projects/Generic Items verwenden ihre vorhandenen Felder für Alternativtext, Beschreibung und Copyright; Cockpit Cards verwenden Alternativtext. Vollständige zentrale Angaben werden dadurch nicht als zusätzliche Fachfelder eingeführt. In Mediathek und Einstellungen werden ausdrücklich gespeicherte Angaben der lokalen Kopie auch bei der anschließenden Bestätigung übernommen. Manuelle Medienlinks bleiben verfügbar. Waste-Branding speichert eine bearbeitete Kopie unmittelbar als öffentliches Medium und wählt ihre dauerhafte URL aus; die Konfiguration wird anschließend separat gespeichert.
+
+### Weiterbearbeitung und Schutz der Grundlage
+
+Jede Bearbeitung erzeugt ein neues Asset mit einem begrenzten, versionierten Zustand (`filerobot`, `5.0.0-beta.159`, Dokumentversion 1) und einem Bezug zur tatsächlichen Grundlage. Lokale Originale werden zusammen mit dem Zustand privat aufbewahrt; referenzierte Grundlagen bleiben an dieselbe Instanz und Sichtbarkeit gebunden. Der bestehende Upload-Job validiert, scannt bei aktivierter Scanpflicht und verbucht Ausgabe, private Ressourcen und Zustand gemeinsam im Kontingent. Fehler oder überholte Claims dürfen keine Teilfreigabe bewirken. Auch bei deaktiviertem Scan ist der private Ressourcen-Bucket erforderlich und wird mit dem vorhandenen Storage-Guard geprüft.
+
+Nur `GET /api/v1/iam/media/{assetId}/editing` gibt nach eigener Leseprüfung für Kopie und tatsächliche Grundlage sowie gegebenenfalls `media.deliver.protected` eine kurzlebige signierte Quell-URL und den Zustand zurück (`private, no-store`, `no-referrer`). Normale Asset-/Bibliotheksantworten enthalten keine privaten Schlüssel, Zustände oder Quellbezüge. Eingefügte Bildressourcen sind begrenzte eingebettete PNG/JPEG/WebP-Daten; entfernte Ressourcen werden abgelehnt. Der Zustand ist auf 8 MiB, einzelne Ressourcen auf 4 MiB und Anmerkungen auf 200 begrenzt.
+
+Die Nutzungsansicht trennt Inhaltsreferenzen von bearbeitbaren Kopien und zeigt einen Link zur Grundlage nur mit deren eigener Leseberechtigung. Eine Grundlage kann nicht gelöscht werden, solange Kopien sie benötigen; auch provisorische Kopien schützen sie, ohne in fremden Bibliotheken sichtbar zu werden. Löschung markiert das Asset vor Storage-I/O unter derselben Sperre wie neue Kopien und Referenzen. Terminal fehlgeschlagene Kopien lösen ihren Quellbezug. Fehlgeschlagene Medien lassen sich bereinigen; nie abgeschlossene Uploads erst nach Ablauf aller signierten Upload-URLs, ohne laufende Verarbeitung. Session-Sperren verhindern dabei eine konkurrierende Verarbeitungsannahme. Auch beim unmittelbaren Verwerfen eines Inhaltsentwurfs werden eigene private Bildgrundlagen und Eingangsdateien vor der Datenbankfinalisierung gelöscht; gemeinsam referenzierte Grundlagen bleiben erhalten. Fehlgeschlagene Storage-Bereinigung bleibt wiederholbar; nur erfolgreich gebuchte Medien korrigieren bei endgültiger Löschung einmalig das Kontingent. Es gibt keinen zusätzlichen Verlaufsdienst und keine neue Freigabestufe für Redakteure.
 
 ## Tags und optionaler ClamAV-Scan
 

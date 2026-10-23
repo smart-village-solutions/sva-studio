@@ -399,6 +399,8 @@ Kernmodell für hochgeladene und referenzierte Medien:
 Kernidee:
 
 - Assets, Varianten, Upload-Sessions und Referenzen sind getrennt modelliert.
+- Weiterbearbeitbare Bilder ergänzen `media_assets` um `editing_source_asset_id` (instanzgebundener Selbstbezug mit `ON DELETE RESTRICT` und Index), `editing_source_key` (ausschließlich private Grundlage) und `editing_document` (privates, versioniert validiertes JSON-Objekt). Quellbezug und eigene Grundlagendatei schließen einander aus; normale API-Projektionen enthalten diese Felder nicht. Es entsteht keine Versionshistorie oder weitere Tabelle.
+- `media_assets.deletion_pending` markiert einen begonnenen Löschvorgang vor Storage-I/O. Der normale Asset-Upsert ändert diese Markierung nicht. Kopienanlage und Referenzanlage müssen die betroffene Quelle im bestehenden Transaktionspfad sperren und diese Markierung prüfen; nach einem Storage-Fehler bleibt die Löschung wiederholbar.
 - Optionale Medien-Tags liegen als validierte Liste im vorhandenen `media_assets.metadata`-JSONB. Suchtext und einzelner Tag-Filter werden innerhalb derselben Instanz serverseitig angewendet; dafür entsteht keine eigene Taxonomietabelle oder Schemamigration.
 - Der manuelle lesende Bestandsscan speichert seinen Bericht ausschließlich im vorhandenen Studio-Job-Ergebnis unter `result_payload.plugin.report`. Er verändert keine Asset-Datensätze oder Scan-Marker; dafür ist keine Schemamigration erforderlich.
 - Der erfolgreiche Scan neuer Uploads liegt als `scanStatus: clean` im vorhandenen `media_assets.technical`-JSONB und wird mit derselben Finalisierung gespeichert. Er hält die gewählte Sichtbarkeit für den vorhandenen Änderungspfad fest; zusätzliche Spalten oder Tabellen sind nicht erforderlich.

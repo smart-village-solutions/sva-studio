@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import {
   defaultMediaPresets,
+  resolveMediaFocusCrop,
   type MediaCrop,
   type MediaFocusPoint,
   type MediaPreset,
@@ -25,24 +26,31 @@ export const cleanupReplacedClaimVariants = async (input: {
   readonly assetId: string;
   readonly claimToken: string;
   readonly privateOutput?: boolean;
+  readonly privateSource?: boolean;
 }): Promise<void> => {
-  const prefix = mediaProcessingPrefix(input.instanceId, input.assetId, input.claimToken, input.privateOutput);
-  let cursor: string | undefined;
+  const prefixes = [
+    mediaProcessingPrefix(input.instanceId, input.assetId, input.claimToken, input.privateOutput),
+  ];
+  if (input.privateSource && !input.privateOutput)
+    prefixes.push(mediaProcessingPrefix(input.instanceId, input.assetId, input.claimToken, true));
+  for (const prefix of prefixes) {
+    let cursor: string | undefined;
 
-  do {
-    const page = await input.storagePort.listObjects({
-      instanceId: input.instanceId,
-      limit: 1000,
-      prefix,
-      ...(cursor ? { cursor } : {}),
-    });
-    await Promise.all(
-      page.items.map(({ storageKey }) =>
-        input.storagePort.deleteObject({ instanceId: input.instanceId, storageKey })
-      )
-    );
-    cursor = page.nextCursor ?? undefined;
-  } while (cursor);
+    do {
+      const page = await input.storagePort.listObjects({
+        instanceId: input.instanceId,
+        limit: 1000,
+        prefix,
+        ...(cursor ? { cursor } : {}),
+      });
+      await Promise.all(
+        page.items.map(({ storageKey }) =>
+          input.storagePort.deleteObject({ instanceId: input.instanceId, storageKey })
+        )
+      );
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
+  }
 };
 
 const isMediaFocusPoint = (value: unknown): value is MediaFocusPoint =>
@@ -93,58 +101,6 @@ const createVariantBuffer = async (input: {
   const sourceWidth = sourceMetadata.width;
   const sourceHeight = sourceMetadata.height;
 
-  const extractAroundFocusPoint = () => {
-    if (!input.focusPoint || !input.preset.height || !sourceWidth || !sourceHeight) {
-      return;
-    }
-
-    const targetAspectRatio = input.preset.width / input.preset.height;
-    const sourceAspectRatio = sourceWidth / sourceHeight;
-    if (!Number.isFinite(targetAspectRatio) || !Number.isFinite(sourceAspectRatio)) {
-      return;
-    }
-
-    if (sourceAspectRatio > targetAspectRatio) {
-      const extractWidth = Math.max(
-        1,
-        Math.min(sourceWidth, Math.round(sourceHeight * targetAspectRatio))
-      );
-      const focusX = Math.max(0, Math.min(1, input.focusPoint.x));
-      const left = Math.max(
-        0,
-        Math.min(sourceWidth - extractWidth, Math.round(focusX * sourceWidth - extractWidth / 2))
-      );
-      image.extract({
-        left,
-        top: 0,
-        width: extractWidth,
-        height: sourceHeight,
-      });
-      return;
-    }
-
-    if (sourceAspectRatio < targetAspectRatio) {
-      const extractHeight = Math.max(
-        1,
-        Math.min(sourceHeight, Math.round(sourceWidth / targetAspectRatio))
-      );
-      const focusY = Math.max(0, Math.min(1, input.focusPoint.y));
-      const top = Math.max(
-        0,
-        Math.min(
-          sourceHeight - extractHeight,
-          Math.round(focusY * sourceHeight - extractHeight / 2)
-        )
-      );
-      image.extract({
-        left: 0,
-        top,
-        width: sourceWidth,
-        height: extractHeight,
-      });
-    }
-  };
-
   if (input.crop) {
     image.extract({
       left: Math.max(0, Math.round(input.crop.x)),
@@ -153,7 +109,15 @@ const createVariantBuffer = async (input: {
       height: Math.max(1, Math.round(input.crop.height)),
     });
   } else {
-    extractAroundFocusPoint();
+    if (input.focusPoint && sourceWidth && sourceHeight) {
+      const focused = resolveMediaFocusCrop(
+        sourceWidth,
+        sourceHeight,
+        input.preset,
+        input.focusPoint
+      );
+      if (focused) image.extract(focused);
+    }
   }
 
   const resized = image.resize({

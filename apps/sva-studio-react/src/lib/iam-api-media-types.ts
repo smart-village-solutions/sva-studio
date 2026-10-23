@@ -38,6 +38,8 @@ export type IamRegisteredMediaAsset = Readonly<{
   createdAt?: string;
   updatedAt?: string;
   previewUrl?: string | null;
+  hasEditingDocument?: boolean;
+  deletionPending?: boolean;
 }>;
 
 export type IamUnregisteredMediaAsset = Readonly<{
@@ -69,6 +71,11 @@ export type IamMediaUsageImpact = Readonly<{
   assetId: string;
   totalReferences: number;
   references: readonly IamMediaUsageReference[];
+  editingSource?: Readonly<{ assetId: string; title?: string }>;
+  editingDependencies?: Readonly<{
+    total: number;
+    items: readonly Readonly<{ assetId: string; title?: string }>[];
+  }>;
 }>;
 
 export type InitializeMediaUploadPayload = Readonly<{

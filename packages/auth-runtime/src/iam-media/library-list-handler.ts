@@ -1,5 +1,6 @@
-import { isMediaAssetReady } from './asset-support.js';
+import { isMediaAssetReady, toMediaAssetResponse } from './asset-support.js';
 import type { MediaVisibility } from '@sva/media';
+import type { MediaAssetRecord } from '@sva/data-repositories';
 import { createApiError } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
@@ -33,15 +34,7 @@ import {
 } from './asset-record-support.js';
 const isRegisteredListingAsset = (
   item: Awaited<ReturnType<typeof mergeMediaListingPage>>['items'][number]
-): item is Awaited<ReturnType<typeof mergeMediaListingPage>>['items'][number] & {
-  id: string;
-  uploadStatus: string;
-  processingStatus: string;
-  instanceId: string;
-  storageKey: string;
-  mimeType: string;
-  visibility: MediaVisibility;
-} => 'id' in item;
+): item is MediaAssetRecord & { visibility: MediaVisibility } => 'id' in item;
 const enrichListItemWithPreviewUrl = async (input: {
   readonly storagePort: MediaStoragePort;
   readonly item: Awaited<ReturnType<typeof mergeMediaListingPage>>['items'][number];
@@ -252,7 +245,9 @@ const listMediaWithStorage = async (input: {
         : null;
     const requestId = getRequestId();
     return jsonResponse(200, {
-      data: items,
+      data: items.map((item) =>
+        isRegisteredListingAsset(item) ? toMediaAssetResponse(item) : item
+      ),
       pagination: {
         limit: input.query.limit,
         nextCursor,

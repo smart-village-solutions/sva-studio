@@ -1,8 +1,9 @@
+import { failClaimedUpload } from './upload-finalization.js';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 import sharp from 'sharp';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -14,6 +15,7 @@ import {
 
 import { enqueueStudioJobWithClient } from '../plugin-operations/runner-queue.js';
 import { createMediaService } from './service.js';
+import { createMediaHttpHandlers } from './core.js';
 import type { withMediaUploadJobRepositories } from './repository.js';
 import {
   createMediaUploadProcessingHandler,
@@ -35,6 +37,7 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
     const tenant = 'media-test-a';
     const tables = [
       'media_assets',
+      'media_references',
       'media_content_save_operations',
       'media_content_save_operation_references',
       'media_variants',
@@ -141,6 +144,9 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
             : 'id';
         await pool.query(`ALTER TABLE iam.${table} ADD PRIMARY KEY (${primaryKey})`);
       }
+      await pool.query('ALTER TABLE iam.media_assets ADD UNIQUE (instance_id, id)');
+      await pool.query(`ALTER TABLE iam.media_assets ADD FOREIGN KEY (instance_id, editing_source_asset_id)
+        REFERENCES iam.media_assets(instance_id, id) ON DELETE RESTRICT`);
       await pool.query('CREATE UNIQUE INDEX ON iam.media_variants (asset_id, variant_key)');
       await pool.query('CREATE UNIQUE INDEX ON iam.studio_jobs (instance_id, idempotency_key)');
     }, 120_000);
@@ -154,6 +160,7 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
       sessionId = randomUUID();
       assetId = randomUUID();
       await withRepositories(tenant, async ({ media }) => {
+        await media.upsertStorageUsage({ instanceId: tenant, totalBytes: 0, assetCount: 0 });
         await media.upsertAsset({
           id: assetId,
           instanceId: tenant,
@@ -180,6 +187,301 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
       });
     });
 
+    const repositoryForClient = (client: PoolClient) =>
+      createMediaRepository({
+        execute: async <TRow>(statement: SqlStatement) => {
+          const result = await client.query(statement.text, [...statement.values]);
+          return { rowCount: result.rowCount ?? 0, rows: result.rows as TRow[] };
+        },
+      });
+
+    const readyAsset = async () => {
+      const asset = await withRepositories(tenant, ({ media }) =>
+        media.getAssetById(tenant, assetId)
+      );
+      if (!asset) throw new Error('fixture_asset_missing');
+      const ready = { ...asset, uploadStatus: 'processed', processingStatus: 'ready' };
+      await withRepositories(tenant, ({ media }) => media.upsertAsset(ready));
+      return ready;
+    };
+
+    const waitForAssetLock = async () => {
+      for (let attempt = 0; attempt < 200; attempt++) {
+        const result = await pool.query(`SELECT 1 FROM pg_stat_activity
+          WHERE datname = current_database() AND wait_event_type = 'Lock'
+            AND query LIKE '%iam.media_assets%'`);
+        if (result.rowCount) return;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      throw new Error('fixture_expected_asset_lock');
+    };
+
+    it.each(['metadata', 'delete'] as const)(
+      'reads the latest locked asset after a concurrent %s transaction commits',
+      async (operation) => {
+        const asset = await readyAsset();
+        const client = await pool.connect();
+        let updating: Promise<Response> | undefined;
+        const handlers = createMediaHttpHandlers({
+          withMediaService: (instance, work) =>
+            withRepositories(instance, ({ media }) => work(media)),
+          authorizeAction: async () => ({ ok: true }),
+          storagePort: {} as never,
+          emitAuditEvent: async () => undefined,
+        });
+        try {
+          await client.query('BEGIN');
+          const repository = repositoryForClient(client);
+          if (operation === 'metadata') {
+            await repository.upsertAsset({ ...asset, metadata: { tags: ['Concurrent tag'] } });
+          } else {
+            expect(await repository.claimAssetDeletion(tenant, assetId)).toBe(true);
+            expect(await repository.finalizeAssetDeletion(tenant, assetId)).toBe(true);
+          }
+          updating = handlers.updateMedia(
+            new Request(`http://localhost/api/v1/iam/media/${assetId}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ metadata: { title: 'New title' } }),
+            }),
+            { user: { id: 'actor', instanceId: tenant } } as never
+          );
+          await waitForAssetLock();
+          await client.query('COMMIT');
+          const response = await updating;
+          expect(response.status).toBe(operation === 'metadata' ? 200 : 404);
+          const persisted = await withRepositories(tenant, ({ media }) =>
+            media.getAssetById(tenant, assetId)
+          );
+          if (operation === 'metadata')
+            expect(persisted?.metadata).toEqual({ title: 'New title', tags: ['Concurrent tag'] });
+          else expect(persisted).toBeNull();
+        } finally {
+          await client.query('ROLLBACK');
+          client.release();
+          await updating;
+        }
+      }
+    );
+
+    it('releases a terminally failed copy foundation and permits cleanup without subtracting booked usage', async () => {
+      const source = {
+        ...(await readyAsset()),
+        id: randomUUID(),
+        storageKey: `${tenant}/source.jpg`,
+      };
+      const copy = {
+        ...source,
+        id: assetId,
+        editingSourceAssetId: source.id,
+        uploadStatus: 'pending',
+        processingStatus: 'pending',
+      };
+      await withRepositories(tenant, async ({ media }) => {
+        await media.upsertAsset(source);
+        await media.upsertAsset(copy);
+        await media.upsertStorageUsage({ instanceId: tenant, totalBytes: 1000, assetCount: 4 });
+      });
+      const claimed = await withRepositories(tenant, ({ media }) =>
+        media.claimUploadSession(tenant, sessionId)
+      );
+      if (!claimed?.claimToken) throw new Error('fixture_claim_missing');
+      expect(
+        await failClaimedUpload(
+          {
+            withMediaService: (instance, work) =>
+              withRepositories(instance, ({ media }) => work(media)),
+          },
+          {
+            instanceId: tenant,
+            asset: copy,
+            uploadSession: claimed,
+            claimToken: claimed.claimToken,
+            errorCode: 'media_scan_infected',
+          }
+        )
+      ).toBe('failed');
+      await withRepositories(tenant, async ({ media }) => {
+        expect((await media.getAssetById(tenant, assetId))?.editingSourceAssetId).toBeUndefined();
+        expect(await media.claimAssetDeletion(tenant, source.id)).toBe(true);
+        expect(await media.claimAssetDeletion(tenant, assetId)).toBe(true);
+        expect(await media.finalizeAssetDeletion(tenant, assetId)).toBe(true);
+        const usage = await media.getStorageUsage(tenant);
+        expect(Number(usage?.totalBytes)).toBe(1000);
+        expect(usage?.assetCount).toBe(4);
+      });
+    });
+
+    it('keeps live pending sessions and only deletes abandoned uploads after signed URLs expire', async () => {
+      await withRepositories(tenant, async ({ media }) => {
+        expect(await media.claimAssetDeletion(tenant, assetId)).toBe(false);
+      });
+      await pool.query(
+        "UPDATE iam.media_upload_sessions SET expires_at = '2000-01-01' WHERE id = $1",
+        [sessionId]
+      );
+      await withRepositories(tenant, async ({ media }) => {
+        await media.upsertStorageUsage({ instanceId: tenant, totalBytes: 1000, assetCount: 4 });
+        expect(await media.claimAssetDeletion(tenant, assetId)).toBe(true);
+        expect(await media.claimUploadSession(tenant, sessionId)).toBeNull();
+        expect(await media.finalizeAssetDeletion(tenant, assetId)).toBe(true);
+        const usage = await media.getStorageUsage(tenant);
+        expect(Number(usage?.totalBytes)).toBe(1000);
+        expect(usage?.assetCount).toBe(4);
+      });
+    });
+
+    it('observes a concurrently committed copy before claiming source deletion', async () => {
+      const source = await readyAsset();
+      const client = await pool.connect();
+      let deleting: Promise<boolean> | undefined;
+      try {
+        await client.query('BEGIN');
+        await repositoryForClient(client).upsertAsset({
+          ...source,
+          id: randomUUID(),
+          storageKey: `${tenant}/${randomUUID()}.jpg`,
+          editingSourceAssetId: source.id,
+        });
+        deleting = withRepositories(tenant, ({ media }) =>
+          media.claimAssetDeletion(tenant, source.id)
+        );
+        await waitForAssetLock();
+        await client.query('COMMIT');
+        expect(await deleting).toBe(false);
+        expect(
+          (await withRepositories(tenant, ({ media }) => media.getAssetById(tenant, source.id)))
+            ?.deletionPending
+        ).toBe(false);
+      } finally {
+        await client.query('ROLLBACK');
+        client.release();
+        await deleting;
+      }
+    });
+
+    it('rejects a copy waiting on a deletion claim and prevents new references', async () => {
+      const source = await readyAsset();
+      const client = await pool.connect();
+      let copying: Promise<PromiseSettledResult<unknown>[]> | undefined;
+      try {
+        await client.query('BEGIN');
+        expect(await repositoryForClient(client).claimAssetDeletion(tenant, source.id)).toBe(true);
+        copying = Promise.allSettled([
+          withRepositories(tenant, ({ media }) =>
+            media.upsertAsset({
+              ...source,
+              id: randomUUID(),
+              storageKey: `${tenant}/${randomUUID()}.jpg`,
+              editingSourceAssetId: source.id,
+            })
+          ),
+        ]);
+        await waitForAssetLock();
+        await client.query('COMMIT');
+        expect((await copying)[0]).toMatchObject({
+          status: 'rejected',
+          reason: new Error('media_editing_source_unavailable'),
+        });
+        await expect(
+          withRepositories(tenant, ({ media }) =>
+            media.replaceReferences({
+              instanceId: tenant,
+              targetType: 'news',
+              targetId: 'news-1',
+              references: [
+                {
+                  id: randomUUID(),
+                  assetId: source.id,
+                  targetType: 'news',
+                  targetId: 'news-1',
+                  role: 'teaser_image',
+                },
+              ],
+            })
+          )
+        ).rejects.toThrow('media_reference_asset_unavailable');
+      } finally {
+        await client.query('ROLLBACK');
+        client.release();
+        await copying;
+      }
+    });
+
+    it('blocks deletion for a real content operation reference', async () => {
+      const source = await readyAsset();
+      const operationId = randomUUID();
+      await withRepositories(tenant, async ({ media }) => {
+        await media.createContentSaveOperation({
+          id: operationId,
+          instanceId: tenant,
+          actorSubject: 'actor',
+          targetType: 'news',
+          status: 'preparing',
+          expiresAt: new Date(Date.now() + 60000).toISOString(),
+        });
+        expect(
+          await media.replaceContentSaveOperationReferences({
+            instanceId: tenant,
+            operationId,
+            actorSubject: 'actor',
+            references: [{ id: randomUUID(), assetId: source.id, role: 'teaser_image' }],
+          })
+        ).toBe(true);
+        expect(await media.claimAssetDeletion(tenant, source.id)).toBe(false);
+      });
+    });
+
+    it.each(['variantBytes', 'variantTotalBytes'])(
+      'finalizes source/state quota once, including legacy %s',
+      async (variantKey) => {
+        const source = await readyAsset();
+        await withRepositories(tenant, async ({ media }) => {
+          await media.upsertAsset({
+            ...source,
+            byteSize: 100,
+            technical: { [variantKey]: 50, editingSourceBytes: 20, editingDocumentBytes: 10 },
+          });
+          await media.upsertStorageUsage({ instanceId: tenant, totalBytes: 1000, assetCount: 4 });
+          expect(await media.claimAssetDeletion(tenant, source.id)).toBe(true);
+          expect(await media.finalizeAssetDeletion(tenant, source.id)).toBe(true);
+          expect(await media.finalizeAssetDeletion(tenant, source.id)).toBe(false);
+          const usage = await media.getStorageUsage(tenant);
+          expect(Number(usage?.totalBytes)).toBe(820);
+          expect(usage?.assetCount).toBe(3);
+        });
+      }
+    );
+
+    it('enforces tenant-bound source references and private source keys in PostgreSQL', async () => {
+      const source = await readyAsset();
+      const otherId = randomUUID();
+      await withRepositories('media-test-b', ({ media }) =>
+        media.upsertAsset({
+          ...source,
+          id: otherId,
+          instanceId: 'media-test-b',
+          storageKey: `media-test-b/${otherId}.jpg`,
+        })
+      );
+      await expect(
+        pool.query('UPDATE iam.media_assets SET editing_source_asset_id = $1 WHERE id = $2', [
+          otherId,
+          source.id,
+        ])
+      ).rejects.toMatchObject({ code: '23503' });
+      await expect(
+        pool.query('UPDATE iam.media_assets SET editing_source_key = $1 WHERE id = $2', [
+          'public/source.jpg',
+          source.id,
+        ])
+      ).rejects.toMatchObject({ code: '23514' });
+      await expect(
+        pool.query('UPDATE iam.media_assets SET editing_source_asset_id = id WHERE id = $1', [
+          source.id,
+        ])
+      ).rejects.toMatchObject({ code: '23514' });
+    });
+
     it.each([false, true])(
       'only releases booked quota when abandoning provisional assets (ready: %s)',
       async (includeReady) => {
@@ -192,7 +494,9 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
           { uploadStatus: 'validated', processingStatus: 'pending' },
           { uploadStatus: 'failed', processingStatus: 'failed' },
           { uploadStatus: 'blocked', processingStatus: 'failed' },
-          ...(includeReady ? [{ uploadStatus: 'processed', processingStatus: 'ready' } as const] : []),
+          ...(includeReady
+            ? [{ uploadStatus: 'processed', processingStatus: 'ready' } as const]
+            : []),
         ] as const;
         const ids: string[] = [];
         await withRepositories(instanceId, async ({ media }) => {
@@ -212,7 +516,7 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
               expect(
                 await media.tryApplyStorageUsageWithinQuota({
                   instanceId,
-                  totalBytes: 150,
+                  totalBytes: 180,
                   assetCount: 1,
                 })
               ).toBe(true);
@@ -227,7 +531,7 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
               visibility: 'public',
               ...status,
               metadata: {},
-              technical: { variantBytes: 50 },
+              technical: { variantBytes: 50, editingSourceBytes: 20, editingDocumentBytes: 10 },
               lifecycleStatus: 'provisional',
               provisionalOperationId: operationId,
               provisionalOwnerSubject: actorSubject,
@@ -243,7 +547,7 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
           return { totalBytes: Number(usage?.totalBytes), assetCount: usage?.assetCount };
         };
         const expectedBefore = {
-          totalBytes: includeReady ? 1150 : 1000,
+          totalBytes: includeReady ? 1180 : 1000,
           assetCount: includeReady ? 11 : 10,
         };
         expect(await readUsage()).toMatchObject(expectedBefore);
@@ -280,8 +584,12 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
         const asset = await media.getAssetById(tenant, assetId);
         if (!asset) throw new Error('fixture_asset_missing');
         await media.upsertAsset({ ...asset, metadata: { tags: ['Grünes Rathaus', 'Park'] } });
-        expect(await media.listAssets({ instanceId: tenant, tag: 'GRÜNES Rathaus' })).toHaveLength(1);
-        expect(await media.listAssets({ instanceId: tenant, search: 'rathaus', tag: 'park' })).toHaveLength(1);
+        expect(await media.listAssets({ instanceId: tenant, tag: 'GRÜNES Rathaus' })).toHaveLength(
+          1
+        );
+        expect(
+          await media.listAssets({ instanceId: tenant, search: 'rathaus', tag: 'park' })
+        ).toHaveLength(1);
         expect(await media.listAssets({ instanceId: tenant, tag: 'missing' })).toHaveLength(0);
         expect(await media.listAssets({ instanceId: 'media-test-b', tag: 'park' })).toHaveLength(0);
       });

@@ -7,6 +7,7 @@ import {
   insertReferenceStatement,
   listReferencesByAssetIdStatement,
   listReferencesByTargetStatement,
+  lockReferenceAssetsStatement,
 } from './storage-reference-statements.js';
 
 export const createReferenceMethods = (
@@ -16,6 +17,13 @@ export const createReferenceMethods = (
   'replaceReferences' | 'listReferencesByAssetId' | 'listReferencesByTarget' | 'getUsageImpact'
 > => ({
   async replaceReferences(input) {
+    const assetIds = [...new Set(input.references.map(({ assetId }) => assetId))];
+    if (assetIds.length > 0) {
+      const locked = await executor.execute(
+        lockReferenceAssetsStatement(input.instanceId, assetIds)
+      );
+      if (locked.rowCount !== assetIds.length) throw new Error('media_reference_asset_unavailable');
+    }
     await executor.execute(
       deleteReferencesForTargetStatement(input.instanceId, input.targetType, input.targetId)
     );

@@ -715,3 +715,15 @@ Abnahme sind dadurch nicht vorweggenommen.
 Zuordnung:
 
 - Abschnitt 05/06/08/09: ADR-067
+
+### Fortschreibung 2026-10: Filerobot-Bildeditor und begrenzte Accessibility-Abweichung
+
+[ADR-069](../adr/ADR-069-filerobot-bildeditor-mit-begrenzter-accessibility-abweichung.md)
+akzeptiert Filerobot als Integrationsweg für den vollständigen Medieneditor und
+die bekannten Accessibility-Lücken seiner spezialisierten Werkzeug-/Canvas-Oberfläche.
+Die Studio-eigenen Auswahlwege, Formulare, Dialograhmen und Abschlussaktionen
+behalten ihre Anforderungen. Die Ausnahme ist keine Implementierungs- oder Rollout-Freigabe.
+
+Zuordnung:
+
+- Abschnitt 05/08/09/10/11: ADR-069; die konkrete Runtime wird bei Umsetzung fortgeschrieben.

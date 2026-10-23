@@ -1,3 +1,7 @@
+import type {
+  HostMediaUploadMetadata,
+  HostMediaEditingUpload,
+} from '@sva/plugin-sdk/content-media';
 export type StudioMediaPickerMode = 'library' | 'upload' | 'review';
 export type StudioMediaPickerReviewSource = 'library' | 'upload';
 export type StudioMediaPickerUploadPhase =
@@ -29,11 +33,16 @@ export type StudioMediaPickerAssetSummary = Readonly<{
 
 export type StudioMediaPickerAssetDetail = StudioMediaPickerAssetSummary &
   Readonly<{
-    metadata: StudioMediaPickerMetadataDraft;
+    instanceId?: string;
+    metadata: StudioMediaPickerMetadataDraft & { tags?: readonly string[] };
+    centralMetadata?: StudioMediaPickerMetadataDraft;
+    hasEditingDocument?: boolean;
     persistentUrl?: string | null;
     localDraft?: Readonly<{
       id: string;
       file: File;
+      metadata?: HostMediaUploadMetadata;
+      editing?: HostMediaEditingUpload;
     }>;
   }>;
 

@@ -1,5 +1,14 @@
+import { useWasteBrandingMediaController } from '../src/waste-management.output-branding-media.logic.js';
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { publishSessionAccessSnapshot, resetSessionAccessSnapshot } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -1171,6 +1180,84 @@ describe('WasteOutputPanel', () => {
     expect(saveButton.disabled).toBe(false);
     fireEvent.submit(saveButton.closest('form')!);
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+  it('saves an edited copy immediately without writing Mainserver content or the settings form', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: [
+        'waste-management.settings.manage',
+        'media.read',
+        'media.create',
+        'media.reference.manage',
+      ],
+      assignedModules: ['waste-management'],
+      roles: [],
+    });
+    const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:edited-logo');
+    const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const change = vi.fn();
+    const { result, unmount } = renderHook(() => useWasteBrandingMediaController(change));
+    act(() => result.current.mediaPicker.openLibrary());
+    await act(async () =>
+      result.current.mediaPicker.selectAsset({
+        id: 'asset-logo',
+        title: 'Logo',
+        fileName: 'logo.png',
+        visibility: 'public',
+      })
+    );
+    const file = new File(['rendered'], 'copy.png', { type: 'image/png' });
+    const editing = {
+      sourceAssetId: 'asset-logo',
+      document: {
+        version: 1,
+        editor: 'filerobot',
+        editorVersion: '5.0.0-beta.159',
+        state: { annotations: {} },
+      },
+    } as const;
+    act(() => result.current.mediaPicker.applyImageEdit({ file, editing }));
+    expect(mediaMocks.uploadHostMediaFile).not.toHaveBeenCalled();
+    expect(change).not.toHaveBeenCalled();
+    mediaMocks.uploadHostMediaFile.mockImplementationOnce(async (input) => {
+      const upload = { assetId: 'asset-uploaded-logo', uploadSessionId: 'session-copy' };
+      input.onCheckpoint?.({
+        initialized: {
+          ...upload,
+          uploadUrl: 'https://storage.test/output',
+          method: 'PUT',
+          headers: {},
+          expiresAt: '2099-01-01T00:00:00Z',
+          initializedAt: '2026-10-23T00:00:00Z',
+          status: 'pending',
+        },
+        outputTransferred: true,
+        sourceTransferred: false,
+      });
+      return upload;
+    });
+    mediaMocks.getHostMediaAsset.mockRejectedValueOnce(new Error('delivery read unavailable'));
+    await act(async () => result.current.mediaPicker.confirmSelection());
+    expect(result.current.mediaPicker.open).toBe(true);
+    expect(result.current.isUploadInitialized).toBe(true);
+    expect(change).not.toHaveBeenCalled();
+    await act(async () => result.current.mediaPicker.confirmSelection());
+    expect(mediaMocks.uploadHostMediaFile.mock.calls[1][0].checkpoint).toMatchObject({
+      initialized: { assetId: 'asset-uploaded-logo', uploadSessionId: 'session-copy' },
+      outputTransferred: true,
+    });
+
+    expect(mediaMocks.uploadHostMediaFile).toHaveBeenCalledWith(
+      expect.objectContaining({ file, editing, visibility: 'public' })
+    );
+    expect(mediaMocks.uploadHostMediaFile.mock.calls[0][0].contentSaveOperationId).toBeUndefined();
+    expect(mediaMocks.updateHostMediaAsset).not.toHaveBeenCalled();
+    expect(apiMocks.updateWasteManagementSettings).not.toHaveBeenCalled();
+    expect(change).toHaveBeenCalledWith('https://cdn.example/asset-uploaded-logo.png');
+    expect(result.current.mediaPicker.open).toBe(false);
+    unmount();
+    create.mockRestore();
+    revoke.mockRestore();
   });
 });
 

@@ -178,6 +178,9 @@ export const instanceAuthHandlerMap = {
   '/api/v1/iam/media/$assetId/delivery': {
     GET: routeHandler(authRuntimeRoutes.getMediaDeliveryHandler),
   },
+  '/api/v1/iam/media/$assetId/editing': {
+    GET: routeHandler(authRuntimeRoutes.getMediaHandler),
+  },
   '/api/v1/iam/legal-texts': {
     GET: routeHandler(authRuntimeRoutes.listLegalTextsHandler),
     POST: routeHandler(authRuntimeRoutes.createLegalTextHandler),

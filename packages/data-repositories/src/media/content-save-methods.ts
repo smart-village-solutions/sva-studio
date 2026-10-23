@@ -3,6 +3,7 @@ import type { SqlExecutor } from '../iam/repositories/types.js';
 import type { MediaRepository } from './repository-types.js';
 import type { MediaContentSaveOperationRow } from './rows.js';
 import { mapContentSaveOperationRow } from './rows.js';
+import { lockReferenceAssetsStatement } from './storage-reference-statements.js';
 import {
   markContentSaveOperationContentSavedStatement,
   markContentSaveOperationSavingContentStatement,
@@ -52,6 +53,13 @@ export const createContentSaveMethods = (
   async replaceContentSaveOperationReferences(
     input: Parameters<MediaRepository['replaceContentSaveOperationReferences']>[0]
   ) {
+    const assetIds = [...new Set(input.references.map(({ assetId }) => assetId))];
+    if (assetIds.length > 0) {
+      const locked = await executor.execute(
+        lockReferenceAssetsStatement(input.instanceId, assetIds)
+      );
+      if (locked.rowCount !== assetIds.length) return false;
+    }
     const result = await executor.execute<{ readonly successful: boolean }>(
       replaceContentSaveOperationReferencesStatement(input)
     );

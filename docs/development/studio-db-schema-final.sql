@@ -1618,6 +1618,14 @@ CREATE TABLE iam.media_assets (
     provisional_owner_subject text,
     provisional_draft_id uuid,
     provisional_expires_at timestamp with time zone,
+    editing_source_asset_id uuid,
+    editing_source_key text,
+    editing_document jsonb,
+    deletion_pending boolean DEFAULT false NOT NULL,
+    CONSTRAINT media_assets_editing_document_object_chk CHECK (((editing_document IS NULL) OR (jsonb_typeof(editing_document) = 'object'::text))),
+    CONSTRAINT media_assets_editing_source_exclusive_chk CHECK (((editing_source_asset_id IS NULL) OR (editing_source_key IS NULL))),
+    CONSTRAINT media_assets_editing_source_not_self_chk CHECK (((editing_source_asset_id IS NULL) OR (editing_source_asset_id <> id))),
+    CONSTRAINT media_assets_editing_source_private_chk CHECK (((editing_source_key IS NULL) OR starts_with(editing_source_key, (('.protected/'::text || instance_id) || '/'::text)) OR starts_with(editing_source_key, (('.quarantine/'::text || instance_id) || '/'::text)))),
     CONSTRAINT media_assets_lifecycle_status_chk CHECK ((lifecycle_status = ANY (ARRAY['provisional'::text, 'active'::text]))),
     CONSTRAINT media_assets_media_type_chk CHECK ((media_type = 'image'::text)),
     CONSTRAINT media_assets_processing_status_chk CHECK ((processing_status = ANY (ARRAY['pending'::text, 'ready'::text, 'failed'::text]))),
@@ -2613,6 +2621,13 @@ ALTER TABLE ONLY iam.mainserver_mutation_journal
 ALTER TABLE ONLY iam.media_assets
     ADD CONSTRAINT media_assets_pkey PRIMARY KEY (id);
 
+--
+-- Name: media_assets media_assets_instance_id_id_key; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.media_assets
+    ADD CONSTRAINT media_assets_instance_id_id_key UNIQUE (instance_id, id);
+
 
 --
 -- Name: media_content_save_operation_references media_content_save_operation_references_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
@@ -3291,6 +3306,12 @@ CREATE INDEX idx_media_assets_active_storage_key_binary ON iam.media_assets USIN
 --
 
 CREATE UNIQUE INDEX idx_media_assets_instance_storage_key ON iam.media_assets USING btree (instance_id, storage_key);
+
+--
+-- Name: idx_media_assets_editing_source; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_media_assets_editing_source ON iam.media_assets USING btree (instance_id, editing_source_asset_id) WHERE (editing_source_asset_id IS NOT NULL);
 
 
 --
@@ -4468,6 +4489,13 @@ ALTER TABLE ONLY iam.media_assets
 
 ALTER TABLE ONLY iam.media_assets
     ADD CONSTRAINT media_assets_provisional_operation_id_fkey FOREIGN KEY (provisional_operation_id) REFERENCES iam.media_content_save_operations(id) ON DELETE RESTRICT;
+
+--
+-- Name: media_assets media_assets_editing_source_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.media_assets
+    ADD CONSTRAINT media_assets_editing_source_fkey FOREIGN KEY (instance_id, editing_source_asset_id) REFERENCES iam.media_assets(instance_id, id) ON DELETE RESTRICT;
 
 
 --

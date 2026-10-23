@@ -88,7 +88,15 @@ describe('media content save recovery', () => {
   it('deletes operation-owned storage before atomically finalizing database cleanup', async () => {
     const storagePort = { deleteObject: vi.fn(async () => undefined) };
     state.service.listAssetsByOperation.mockResolvedValue([
-      { id: 'asset-1', storageKey: 'tenant-a/originals/asset-1.jpg' },
+      {
+        id: 'asset-1',
+        storageKey: 'tenant-a/originals/asset-1.jpg',
+        editingSourceKey: '.protected/tenant-a/asset-1/source.jpg',
+        technical: {
+          editingSourceIntakeKey: '.quarantine/tenant-a/asset-1/source',
+          editingOutputIntakeKey: '.quarantine/tenant-a/asset-1/output',
+        },
+      },
     ]);
     state.service.listVariantsByAssetId.mockResolvedValue([
       { storageKey: 'tenant-a/variants/asset-1/thumbnail.webp' },
@@ -109,6 +117,13 @@ describe('media content save recovery', () => {
       instanceId: 'tenant-a',
       storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
     });
+    for (const storageKey of [
+      '.protected/tenant-a/asset-1/source.jpg',
+      '.quarantine/tenant-a/asset-1/source',
+      '.quarantine/tenant-a/asset-1/output',
+    ]) {
+      expect(storagePort.deleteObject).toHaveBeenCalledWith({ instanceId: 'tenant-a', storageKey });
+    }
     expect(state.service.finalizeContentSaveOperationCleanup).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       operationId: 'operation-1',

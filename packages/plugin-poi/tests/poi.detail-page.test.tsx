@@ -492,6 +492,13 @@ describe('PoiDetailPage', () => {
       expect(screen.getByRole('button', { name: 'Medium übernehmen' })).toBeTruthy();
     });
 
+    fireEvent.click(screen.getByRole('button', { name: 'media.editor.editImage' }));
+    await waitFor(() => expect(searchFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/iam/media/asset-2/editing?instanceId=instance-1'),
+      expect.anything()
+    ));
+    fireEvent.click(screen.getByRole('button', { name: 'media.editor.cancelEditing' }));
+
     fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() => {

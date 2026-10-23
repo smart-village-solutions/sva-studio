@@ -16,6 +16,13 @@ import type {
 export type MediaRepository = {
   upsertAsset(input: MediaAssetRecord): Promise<void>;
   getAssetById(instanceId: string, assetId: string): Promise<MediaAssetRecord | null>;
+  lockAssetById(instanceId: string, assetId: string): Promise<MediaAssetRecord | null>;
+  listEditingCopies(
+    instanceId: string,
+    assetId: string
+  ): Promise<readonly Pick<MediaAssetRecord, 'id' | 'metadata'>[]>;
+  claimAssetDeletion(instanceId: string, assetId: string): Promise<boolean>;
+  finalizeAssetDeletion(instanceId: string, assetId: string): Promise<boolean>;
   getAssetByStorageKey(instanceId: string, storageKey: string): Promise<MediaAssetRecord | null>;
   getProvisionalAssetByDraft(input: {
     readonly instanceId: string;

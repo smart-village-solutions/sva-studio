@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   mediaLiterals,
+  resolveMediaFocusCrop,
   type MediaAsset,
   type MediaDeletionDecision,
   type MediaMetadata,
@@ -13,7 +14,13 @@ describe('media type contracts', () => {
   it('publishes the canonical literal value sets for runtime consumers', () => {
     expect(mediaLiterals.types).toEqual(['image']);
     expect(mediaLiterals.visibilities).toEqual(['public', 'protected']);
-    expect(mediaLiterals.uploadStatuses).toEqual(['pending', 'validated', 'processed', 'failed', 'blocked']);
+    expect(mediaLiterals.uploadStatuses).toEqual([
+      'pending',
+      'validated',
+      'processed',
+      'failed',
+      'blocked',
+    ]);
     expect(mediaLiterals.processingStatuses).toEqual(['pending', 'ready', 'failed']);
     expect(mediaLiterals.roles).toEqual([
       'thumbnail',
@@ -73,5 +80,32 @@ describe('media type contracts', () => {
     expect(variant.generationStatus).toBe('ready');
     expect(reference.role).toBe('hero_image');
     expect(decision.reason).toBe('active_references');
+  });
+});
+
+describe('media focus extraction', () => {
+  it.each([
+    [1200, 600, 320, 320, { x: 0, y: 0.5 }, { left: 0, top: 0, width: 600, height: 600 }],
+    [1200, 600, 320, 320, { x: 1, y: 0.5 }, { left: 600, top: 0, width: 600, height: 600 }],
+    [600, 1200, 800, 450, { x: 0.5, y: 1 }, { left: 0, top: 862, width: 600, height: 338 }],
+    [600, 1200, 800, 450, { x: 0.5, y: -1 }, { left: 0, top: 0, width: 600, height: 338 }],
+  ])(
+    'matches the bounded server crop for %s x %s',
+    (width, height, targetWidth, targetHeight, focus, expected) => {
+      expect(
+        resolveMediaFocusCrop(width, height, { width: targetWidth, height: targetHeight }, focus)
+      ).toEqual(expected);
+    }
+  );
+  it('retains the whole image at an identical ratio and rejects invalid dimensions', () => {
+    expect(
+      resolveMediaFocusCrop(1600, 900, { width: 800, height: 450 }, { x: 1, y: 0 })
+    ).toBeUndefined();
+    expect(
+      resolveMediaFocusCrop(0, 900, { width: 800, height: 450 }, { x: 0.5, y: 0.5 })
+    ).toBeUndefined();
+    expect(
+      resolveMediaFocusCrop(1200, 900, { width: 800, height: 450 }, { x: NaN, y: 0.5 })
+    ).toBeUndefined();
   });
 });

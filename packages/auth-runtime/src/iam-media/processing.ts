@@ -1,14 +1,20 @@
+import { markProcessingFailure } from './upload-finalization.js';
 import sharp from 'sharp';
 import { fileTypeFromBuffer } from 'file-type';
 import { MediaStorageUnavailableError, type MediaStoragePort } from './storage-port.js';
 import type { MediaService } from './service.js';
 import { cleanupReplacedClaimVariants, createMediaVariants } from './processing-variants.js';
 import { MediaScanError, scanConfiguredMedia } from './clamav.js';
-import { isMediaQuarantineKey, mediaProcessingPrefix } from './storage-key-paths.js';
+import {
+  isMediaQuarantineKey,
+  isPrivateMediaStorageKey,
+  mediaProcessingPrefix,
+} from './storage-key-paths.js';
+import { getMediaEditingIntakeKeys, prepareMediaEditingData } from './processing-editing.js';
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
-type MediaUploadProcessingFailureCode =
+export type MediaUploadProcessingFailureCode =
   | 'upload_session_not_found'
   | 'asset_not_found'
   | 'invalid_media_content'
@@ -38,7 +44,7 @@ export type MediaUploadFinalization = Readonly<{
   totalBytes: number;
 }>;
 
-type MediaUploadProcessingResult =
+export type MediaUploadProcessingResult =
   | Readonly<{
       ok: true;
       asset: NonNullable<Awaited<ReturnType<MediaService['getAssetById']>>>;
@@ -58,56 +64,6 @@ const asErrorResult = (
   status,
   errorCode,
 });
-
-const markProcessingFailure = async (input: {
-  readonly deps: {
-    readonly storagePort: Pick<
-      {
-        deleteObject: (input: {
-          readonly instanceId: string;
-          readonly storageKey: string;
-        }) => Promise<void>;
-      },
-      'deleteObject'
-    >;
-    readonly failUpload: (failure: MediaUploadFailure) => Promise<MediaUploadFailureResult>;
-  };
-  readonly claimToken: string;
-  readonly asset: Awaited<ReturnType<MediaService['getAssetById']>>;
-  readonly uploadSession: Awaited<ReturnType<MediaService['getUploadSessionById']>>;
-  readonly errorCode: MediaUploadProcessingFailureCode;
-}): Promise<Extract<MediaUploadProcessingResult, { ok: false }>> => {
-  if (!input.asset || !input.uploadSession) {
-    return asErrorResult(404, 'asset_not_found');
-  }
-
-  const failureResult = await input.deps.failUpload({
-    instanceId: String(input.uploadSession.instanceId),
-    claimToken: input.claimToken,
-    asset: input.asset,
-    uploadSession: input.uploadSession,
-    errorCode: input.errorCode,
-  });
-  if (failureResult === 'claim_superseded') {
-    return asErrorResult(409, 'upload_processing_superseded');
-  }
-
-  await Promise.allSettled([
-    input.deps.storagePort.deleteObject({
-      instanceId: String(input.uploadSession.instanceId),
-      storageKey: String(input.uploadSession.storageKey),
-    }),
-  ]);
-
-  return asErrorResult(
-    input.errorCode === 'upload_size_exceeded'
-      ? 413
-      : input.errorCode === 'storage_quota_exceeded'
-        ? 409
-        : 422,
-    input.errorCode
-  );
-};
 
 export const createMediaUploadProcessingService = (deps: {
   readonly service: Pick<MediaService, 'getUploadSessionById' | 'getAssetById'>;
@@ -140,7 +96,8 @@ export const createMediaUploadProcessingService = (deps: {
       return asErrorResult(404, 'asset_not_found');
     }
     const quarantined = isMediaQuarantineKey(uploadSession.storageKey);
-    const privateOutput = quarantined && asset.visibility === 'protected';
+    const privateIntake = isPrivateMediaStorageKey(uploadSession.storageKey);
+    const privateOutput = privateIntake && asset.visibility === 'protected';
 
     if (input.replacedClaimToken) {
       await cleanupReplacedClaimVariants({
@@ -149,6 +106,7 @@ export const createMediaUploadProcessingService = (deps: {
         assetId: String(asset.id),
         claimToken: input.replacedClaimToken,
         privateOutput,
+        privateSource: Boolean(asset.editingSourceKey),
       });
     }
 
@@ -199,7 +157,22 @@ export const createMediaUploadProcessingService = (deps: {
       // upload URLs remain writable and cannot receive an immutable scan proof.
       if (quarantined) await scanConfiguredMedia(object.body);
 
-      const metadata = await sharp(object.body, { failOn: 'error' }).rotate().metadata();
+      const editing = await prepareMediaEditingData({
+        asset,
+        storage: deps.storagePort,
+        scanRequired: quarantined,
+      });
+      const renderedFormat =
+        detectedMimeType === 'image/jpeg'
+          ? 'jpeg'
+          : detectedMimeType === 'image/webp'
+            ? 'webp'
+            : 'png';
+      const renderedBody = editing
+        ? await sharp(object.body, { failOn: 'error' }).rotate().toFormat(renderedFormat).toBuffer()
+        : object.body;
+
+      const metadata = await sharp(renderedBody, { failOn: 'error' }).rotate().metadata();
       const technical = {
         ...(asset.technical ?? {}),
         ...(quarantined ? { scanStatus: 'clean' } : {}),
@@ -210,7 +183,7 @@ export const createMediaUploadProcessingService = (deps: {
       };
 
       const variantsToPersist = await createMediaVariants({
-        body: object.body,
+        body: renderedBody,
         asset,
         instanceId: input.instanceId,
         claimToken: input.claimToken,
@@ -221,12 +194,23 @@ export const createMediaUploadProcessingService = (deps: {
       let variantBytes = 0;
       persistenceStarted = true;
       let publishedOriginalKey = asset.storageKey;
-      if (quarantined) {
+      let editingSourceKey = asset.editingSourceKey;
+      if (editing?.source) {
+        editingSourceKey = `${mediaProcessingPrefix(input.instanceId, asset.id, input.claimToken, true)}source.${editing.source.extension}`;
+        persistedVariantStorageKeys.push(editingSourceKey);
+        await deps.storagePort.writeObject({
+          instanceId: input.instanceId,
+          storageKey: editingSourceKey,
+          body: editing.source.body,
+          contentType: editing.source.contentType,
+        });
+      }
+      if (privateIntake) {
         publishedOriginalKey = `${mediaProcessingPrefix(input.instanceId, asset.id, input.claimToken, privateOutput)}original.${detectedFileType?.ext ?? 'bin'}`;
         await deps.storagePort.writeObject({
           instanceId: input.instanceId,
           storageKey: publishedOriginalKey,
-          body: object.body,
+          body: renderedBody,
           contentType: detectedMimeType,
         });
         persistedVariantStorageKeys.push(publishedOriginalKey);
@@ -245,12 +229,21 @@ export const createMediaUploadProcessingService = (deps: {
       const nextAsset = {
         ...asset,
         storageKey: publishedOriginalKey,
+        byteSize: renderedBody.byteLength,
+        editingSourceKey,
+        ...(editing ? { editingDocument: editing.document } : {}),
         mimeType: detectedMimeType,
         uploadStatus: 'processed',
         processingStatus: 'ready',
         technical: {
           ...technical,
           variantBytes,
+          ...(editing
+            ? {
+                editingSourceBytes: editing.source?.body.byteLength ?? 0,
+                editingDocumentBytes: editing.documentBytes,
+              }
+            : {}),
         },
       };
 
@@ -262,7 +255,11 @@ export const createMediaUploadProcessingService = (deps: {
         variants: variantsToPersist.map(
           ({ body: _body, contentType: _contentType, ...variant }) => variant
         ),
-        totalBytes: object.byteSize + variantBytes,
+        totalBytes:
+          renderedBody.byteLength +
+          variantBytes +
+          (editing?.source?.body.byteLength ?? 0) +
+          (editing?.documentBytes ?? 0),
       });
       if (finalized === 'claim_superseded') {
         await cleanupPersistedVariants();
@@ -270,7 +267,11 @@ export const createMediaUploadProcessingService = (deps: {
       }
       if (finalized === 'quota_exceeded') {
         await Promise.allSettled(
-          [...persistedVariantStorageKeys, String(uploadSession.storageKey)].map((storageKey) =>
+          [
+            ...persistedVariantStorageKeys,
+            String(uploadSession.storageKey),
+            ...getMediaEditingIntakeKeys(asset),
+          ].map((storageKey) =>
             deps.storagePort.deleteObject({ instanceId: input.instanceId, storageKey })
           )
         );

@@ -14,6 +14,10 @@ export type MediaAssetRow = {
   readonly provisional_owner_subject: string | null;
   readonly provisional_draft_id: string | null;
   readonly provisional_expires_at: string | null;
+  readonly editing_source_asset_id?: string | null;
+  readonly editing_source_key?: string | null;
+  readonly editing_document?: Record<string, unknown> | null;
+  readonly deletion_pending?: boolean;
   readonly metadata: Record<string, unknown> | null;
   readonly technical: Record<string, unknown> | null;
   readonly created_at: string | null;

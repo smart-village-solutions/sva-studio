@@ -6,7 +6,10 @@ const text = (value: string | undefined) => value?.trim() ?? '';
 
 export const poiMediaContentsToUsages = (
   mediaContents: readonly PoiMediaContent[],
-  references: readonly Readonly<{ assetId?: string; status: ContentMediaUsage['referenceStatus'] }>[] = []
+  references: readonly Readonly<{
+    assetId?: string;
+    status: ContentMediaUsage['referenceStatus'];
+  }>[] = []
 ): readonly ContentMediaUsage[] =>
   mediaContents.map((media, sortOrder) => ({
     uiId: `poi-media-${sortOrder}-${encodeURIComponent(media.sourceUrl?.url ?? '')}`,
@@ -17,7 +20,8 @@ export const poiMediaContentsToUsages = (
     credit: text(media.copyright),
     role: 'gallery_item',
     sortOrder,
-    referenceStatus: references[sortOrder]?.status ?? (references.length > 0 ? 'missing' : 'pending'),
+    referenceStatus:
+      references[sortOrder]?.status ?? (references.length > 0 ? 'missing' : 'pending'),
     additionalData: {
       original: media,
       contentType: text(media.contentType),
@@ -26,7 +30,9 @@ export const poiMediaContentsToUsages = (
     },
   }));
 
-export const poiMediaUsagesToContents = (usages: readonly ContentMediaUsage[]): readonly PoiMediaContent[] =>
+export const poiMediaUsagesToContents = (
+  usages: readonly ContentMediaUsage[]
+): readonly PoiMediaContent[] =>
   usages.map((usage) => ({
     ...(typeof usage.additionalData?.original === 'object' && usage.additionalData.original !== null
       ? usage.additionalData.original
@@ -34,9 +40,13 @@ export const poiMediaUsagesToContents = (usages: readonly ContentMediaUsage[]): 
     sourceUrl: { url: usage.persistentUrl, description: usage.altText },
     captionText: usage.caption,
     copyright: usage.credit,
-    contentType: typeof usage.additionalData?.contentType === 'string' ? usage.additionalData.contentType : undefined,
+    contentType:
+      typeof usage.additionalData?.contentType === 'string'
+        ? usage.additionalData.contentType
+        : undefined,
     width: typeof usage.additionalData?.width === 'number' ? usage.additionalData.width : undefined,
-    height: typeof usage.additionalData?.height === 'number' ? usage.additionalData.height : undefined,
+    height:
+      typeof usage.additionalData?.height === 'number' ? usage.additionalData.height : undefined,
   }));
 
 export const poiAssetToUsage = (input: {
@@ -46,6 +56,13 @@ export const poiAssetToUsage = (input: {
   readonly metadata: Readonly<{
     title: string;
     fileName: string;
+    altText: string;
+    description: string;
+    copyright: string;
+    license: string;
+  }>;
+  readonly centralMetadata?: Readonly<{
+    title: string;
     altText: string;
     description: string;
     copyright: string;
@@ -71,7 +88,15 @@ export const poiAssetToUsage = (input: {
     license: snapshot.license,
     role: 'gallery_item',
     sortOrder: input.sortOrder,
-    assetSnapshot: snapshot,
+    assetSnapshot: input.centralMetadata
+      ? {
+          persistentUrl: input.persistentUrl,
+          altText: input.centralMetadata.altText || input.metadata.fileName,
+          caption: input.centralMetadata.description || input.centralMetadata.title,
+          credit: input.centralMetadata.copyright,
+          license: input.centralMetadata.license,
+        }
+      : snapshot,
     referenceStatus: 'pending',
     additionalData: { contentType: 'image' },
   };

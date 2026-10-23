@@ -144,6 +144,9 @@ export const toNewsMediaPickerDetail = (
       description: asset.metadata.description?.trim() ?? '',
       copyright: asset.metadata.copyright?.trim() ?? '',
       license: asset.metadata.license?.trim() ?? '',
+      tags: asset.metadata.tags,
     },
+    instanceId: asset.instanceId,
+    hasEditingDocument: asset.hasEditingDocument,
   };
 };

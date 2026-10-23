@@ -91,6 +91,7 @@ export const authRoutePaths = [
   '/api/v1/iam/media/$assetId',
   '/api/v1/iam/media/$assetId/usage',
   '/api/v1/iam/media/$assetId/delivery',
+  '/api/v1/iam/media/$assetId/editing',
   '/api/v1/iam/legal-texts',
   '/api/v1/iam/legal-texts/$legalTextVersionId',
   '/api/v1/iam/admin/reconcile',

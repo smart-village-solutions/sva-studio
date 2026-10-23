@@ -19,6 +19,7 @@ Aktueller Stand:
 - Kernnavigation, Standardformulare und wesentliche Interaktionspfade müssen ohne Maus nutzbar sein.
 - Neue UI-Änderungen sollen vor Merge auf offensichtliche Accessibility-Regressions geprüft werden.
 - Bekannte Lücken werden offen dokumentiert und nicht als Vollkonformität dargestellt.
+- Die Bildbearbeitung ist derzeit nicht vollständig mit Tastatur und Screenreader bedienbar. Die bewusst akzeptierte Ausnahme betrifft ausschließlich die spezialisierten Filerobot-Werkzeuge und die Canvas-Arbeitsfläche; [ADR-069](../adr/ADR-069-filerobot-bildeditor-mit-begrenzter-accessibility-abweichung.md) hält Umfang und Grenzen fest. Normale Medienauswahl, Metadatenformulare, Studio-Dialoge, Statusmeldungen, Variantenvorschau und Speicheraktionen behalten ihre Accessibility-Anforderungen. Eine gleichwertige barrierefreie Bildbearbeitung wird nicht behauptet.
 
 ## Verbindliche Regeln
 
@@ -55,7 +56,7 @@ Aktueller Stand:
 Accessibility ist Teil der allgemeinen Teststrategie:
 
 - High-Level-Strategie: `../development/testing-strategy.md`
-- Browser- und Assistive-Technology-Matrix: `../BROWSER-SUPPORT.md`
+- Browser- und Assistive-Technology-Matrix: [Browser-Support](../reference/browser-support.md)
 - allgemeine Test- und Coverage-Governance: `../development/testing-coverage.md`
 
 Mindesterwartung vor Merge:
@@ -72,7 +73,7 @@ Automatisierte Prüfpfade:
 
 ## Unterstützte Browser und Assistive Technologies
 
-Die verbindliche Matrix für Browser, Geräte und Screenreader liegt unter `../BROWSER-SUPPORT.md`. Diese Richtlinie dupliziert die Matrix bewusst nicht.
+Die verbindliche Matrix für Browser, Geräte und Screenreader liegt unter [Browser-Support](../reference/browser-support.md). Diese Richtlinie dupliziert die Matrix bewusst nicht.
 
 ## Bekannte Lücken und Roadmap
 
@@ -100,6 +101,6 @@ Für gute Reproduzierbarkeit sollten Meldungen enthalten:
 ## Verweise
 
 - Content-Guidelines: `./content-guidelines.md`
-- Browser-Support: `../BROWSER-SUPPORT.md`
+- Browser-Support: [Browser-Support](../reference/browser-support.md)
 - Testing-Strategie: `../development/testing-strategy.md`
 - Entwicklungsregeln: `../../DEVELOPMENT_RULES.md`

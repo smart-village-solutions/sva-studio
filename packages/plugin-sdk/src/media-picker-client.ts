@@ -1,4 +1,5 @@
 import { requestJson, type FetchLike } from './http-client.js';
+import { parseMediaEditingDocument, type MediaEditingDocument } from '@sva/media';
 
 export type HostMediaAssetListItem = Readonly<{
   id: string;
@@ -9,6 +10,7 @@ export type HostMediaAssetListItem = Readonly<{
   previewUrl?: string | null;
   uploadStatus?: string;
   processingStatus?: string;
+  deletionPending?: boolean;
 }>;
 
 export type HostMediaAssetMetadata = Readonly<{
@@ -35,7 +37,39 @@ export type HostMediaAssetDetail = Readonly<{
   createdAt?: string;
   updatedAt?: string;
   previewUrl?: string | null;
+  hasEditingDocument?: boolean;
+  deletionPending?: boolean;
 }>;
+
+export type HostMediaEditingData = Readonly<{
+  assetId: string;
+  sourceAssetId: string;
+  sourceUrl: string;
+  sourceExpiresAt: string;
+  document?: MediaEditingDocument;
+}>;
+
+export const getHostMediaEditing = async (input: {
+  readonly fetch: FetchLike;
+  readonly assetId: string;
+  readonly instanceId?: string;
+  readonly signal?: AbortSignal;
+}): Promise<HostMediaEditingData> => {
+  const query = new URLSearchParams();
+  if (input.instanceId) query.set('instanceId', input.instanceId);
+  const response = await requestJson<{ data: HostMediaEditingData }>({
+    fetch: input.fetch,
+    url: `/api/v1/iam/media/${encodeURIComponent(input.assetId)}/editing${query.size ? `?${query}` : ''}`,
+    init: { signal: input.signal, cache: 'no-store' },
+    errorFactory: (failure) => new Error(`media_editor_http_${failure.status}`),
+  });
+  return {
+    ...response.data,
+    document: response.data.document
+      ? parseMediaEditingDocument(response.data.document)
+      : undefined,
+  };
+};
 
 export type HostMediaDelivery = Readonly<{
   deliveryUrl: string;
@@ -44,7 +78,9 @@ export type HostMediaDelivery = Readonly<{
   isPublicUrl?: boolean;
 }>;
 
-export const getHostMediaAssetFileName = (asset: Pick<HostMediaAssetDetail, 'id' | 'storageKey'>): string => {
+export const getHostMediaAssetFileName = (
+  asset: Pick<HostMediaAssetDetail, 'id' | 'storageKey'>
+): string => {
   const storageKeyParts = asset.storageKey.split('/');
   const fileName = storageKeyParts[storageKeyParts.length - 1]?.trim();
   return fileName || asset.id;
@@ -92,7 +128,12 @@ export const listHostMediaAssets = async (input: {
     init: input.signal ? { signal: input.signal } : undefined,
     errorFactory: (failingResponse) => new Error(`media_picker_http_${failingResponse.status}`),
   });
-  return response.data.filter((asset) => asset.uploadStatus === 'processed' && asset.processingStatus === 'ready');
+  return response.data.filter(
+    (asset) =>
+      asset.uploadStatus === 'processed' &&
+      asset.processingStatus === 'ready' &&
+      !asset.deletionPending
+  );
 };
 
 export const getHostMediaAsset = async (input: {

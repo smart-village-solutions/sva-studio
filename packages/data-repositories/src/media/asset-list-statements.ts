@@ -63,6 +63,7 @@ SELECT
   provisional_owner_subject,
   provisional_draft_id,
   provisional_expires_at,
+  deletion_pending,
   metadata,
   technical,
   created_at,

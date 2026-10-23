@@ -498,11 +498,15 @@ describe('NewsDetailPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Medium aus der Bibliothek hinzufügen' }));
     fireEvent.click(await screen.findByRole('button', { name: 'news.actions.selectImage' }));
-    await screen.findByDisplayValue('Bibliotheksbild');
+    fireEvent.change(await screen.findByDisplayValue('Alt'), {
+      target: { value: 'Alternativtext für diese Meldung' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
     await waitFor(() =>
       expect(screen.getByDisplayValue('https://cdn.example.test/upload-fallback.jpg')).toBeTruthy()
     );
+    expect(vi.mocked(updateHostMediaAsset)).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('Alternativtext für diese Meldung')).toBeTruthy();
 
     vi.mocked(getHostMediaAsset).mockResolvedValueOnce({
       id: 'asset-library',

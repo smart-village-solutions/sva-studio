@@ -95,7 +95,15 @@ export const BrandingMediaPickerControls = ({
         isAssetSelectable={(asset) => asset.visibility === 'public'}
         isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
         isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
-        isMetadataEditable={mediaCapabilities.canEditAssetMetadata}
+        canConfirmSelection={mediaPicker.canConfirmSelection}
+        isMetadataEditable={Boolean(mediaPicker.reviewAsset?.localDraft)}
+        visibleMetadataFields={mediaPicker.reviewAsset?.localDraft ? undefined : []}
+        canEditCentralMetadata={mediaCapabilities.canEditAssetMetadata}
+        onSaveCentralMetadata={mediaPicker.saveCentralMetadata}
+        onApplyImageEdit={mediaCapabilities.canUpload ? mediaPicker.applyImageEdit : undefined}
+        onImageFocusChange={mediaPicker.updateImageFocus}
+        isUploadInitialized={controller.isUploadInitialized}
+        persistenceContext="settings"
         labels={labels}
         metadataDraft={mediaPicker.metadataDraft}
         mode={mediaPicker.mode}

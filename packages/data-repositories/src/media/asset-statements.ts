@@ -19,11 +19,15 @@ INSERT INTO iam.media_assets (
   provisional_operation_id,
   provisional_owner_subject,
   provisional_draft_id,
-  provisional_expires_at
+  provisional_expires_at,
+  editing_source_asset_id,
+  editing_source_key,
+  editing_document
 )
 VALUES (
   $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb,
-  $12, $13::uuid, $14, $15::uuid, $16::timestamptz
+  $12, $13::uuid, $14, $15::uuid, $16::timestamptz,
+  $17::uuid, $18, $19::jsonb
 )
 ON CONFLICT (id) DO UPDATE
 SET storage_key = EXCLUDED.storage_key,
@@ -40,6 +44,9 @@ SET storage_key = EXCLUDED.storage_key,
     provisional_owner_subject = EXCLUDED.provisional_owner_subject,
     provisional_draft_id = EXCLUDED.provisional_draft_id,
     provisional_expires_at = EXCLUDED.provisional_expires_at,
+    editing_source_asset_id = EXCLUDED.editing_source_asset_id,
+    editing_source_key = EXCLUDED.editing_source_key,
+    editing_document = EXCLUDED.editing_document,
     updated_at = NOW();
 `,
   values: [
@@ -59,6 +66,9 @@ SET storage_key = EXCLUDED.storage_key,
     input.provisionalOwnerSubject ?? null,
     input.provisionalDraftId ?? null,
     input.provisionalExpiresAt ?? null,
+    input.editingSourceAssetId ?? null,
+    input.editingSourceKey ?? null,
+    input.editingDocument ? JSON.stringify(input.editingDocument) : null,
   ],
 });
 
@@ -79,6 +89,10 @@ SELECT
   provisional_owner_subject,
   provisional_draft_id,
   provisional_expires_at,
+  editing_source_asset_id,
+  editing_source_key,
+  editing_document,
+  deletion_pending,
   metadata,
   technical,
   created_at,
@@ -111,6 +125,10 @@ SELECT
   provisional_owner_subject,
   provisional_draft_id,
   provisional_expires_at,
+  editing_source_asset_id,
+  editing_source_key,
+  editing_document,
+  deletion_pending,
   metadata,
   technical,
   created_at,
@@ -154,6 +172,10 @@ SELECT
   provisional_owner_subject,
   provisional_draft_id,
   provisional_expires_at,
+  editing_source_asset_id,
+  editing_source_key,
+  editing_document,
+  deletion_pending,
   metadata,
   technical,
   created_at,
@@ -190,6 +212,10 @@ SELECT
   provisional_owner_subject,
   provisional_draft_id,
   provisional_expires_at,
+  editing_source_asset_id,
+  editing_source_key,
+  editing_document,
+  deletion_pending,
   metadata,
   technical,
   created_at,

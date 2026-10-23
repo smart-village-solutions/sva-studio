@@ -362,33 +362,22 @@ describe('projects pages', () => {
       deliveryUrl: 'https://example.test/persistent.jpg',
       isPublicUrl: true,
     });
-    state.updateAsset.mockResolvedValue({
-      id: 'image-1',
-      fileName: 'Bild.jpg',
-      mimeType: 'image/jpeg',
-      visibility: 'public',
-      metadata: {
-        title: 'Neue Vorschau',
-        altText: 'Alt',
-        description: 'Beschreibung',
-        copyright: 'Stadt',
-        license: 'CC0',
-      },
-    });
     render(<ProjectsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
     fireEvent.click(await screen.findByRole('button', { name: 'media.select' }));
-    await screen.findByDisplayValue('Vorschau');
-    fireEvent.change(screen.getByDisplayValue('Vorschau'), { target: { value: 'Neue Vorschau' } });
+    fireEvent.change(await screen.findByLabelText('fields.altText'), {
+      target: { value: 'Neue Bildbeschreibung' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'media.useMedia' }));
 
     await waitFor(() =>
       expect(screen.getByDisplayValue('https://example.test/persistent.jpg')).toBeTruthy()
     );
     expect(state.getAsset).toHaveBeenCalledWith(expect.objectContaining({ assetId: 'image-1' }));
-    expect(state.updateAsset).toHaveBeenCalledWith(expect.objectContaining({ assetId: 'image-1' }));
+    expect(state.updateAsset).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('Neue Bildbeschreibung')).toBeTruthy();
     state.getAsset.mockResolvedValueOnce({
       id: 'image-1',
       mimeType: 'image/jpeg',

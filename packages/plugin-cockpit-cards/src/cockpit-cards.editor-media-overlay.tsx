@@ -46,7 +46,12 @@ export function CockpitCardMediaOverlay({
       uploadPhase={mediaPicker.uploadPhase}
       isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
       isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
-      isMetadataEditable={canUpdateMedia}
+      canConfirmSelection={mediaPicker.canConfirmSelection}
+      isMetadataEditable
+      canEditCentralMetadata={canUpdateMedia}
+      onSaveCentralMetadata={mediaPicker.saveCentralMetadata}
+      onApplyImageEdit={canUploadMedia ? mediaPicker.applyImageEdit : undefined}
+      onImageFocusChange={mediaPicker.updateImageFocus}
       visibleMetadataFields={cockpitCardMetadataFields}
       feedbackMessage={mediaPicker.errorCode ? pt('messages.mediaError') : null}
       feedbackTone={mediaPicker.errorCode ? 'error' : 'default'}

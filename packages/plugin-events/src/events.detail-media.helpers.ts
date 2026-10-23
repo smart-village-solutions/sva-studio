@@ -92,7 +92,10 @@ export const toEventsMediaPickerDetail = (
       description: asset.metadata.description?.trim() ?? '',
       copyright: asset.metadata.copyright?.trim() ?? '',
       license: asset.metadata.license?.trim() ?? '',
+      tags: asset.metadata.tags,
     },
+    instanceId: asset.instanceId,
+    hasEditingDocument: asset.hasEditingDocument,
   };
 };
 
@@ -154,6 +157,7 @@ const createSelectedMediaUsage = (
   persistentUrl: string,
   sortOrder: number
 ): ContentMediaUsage => {
+  const central = asset.centralMetadata ?? asset.metadata;
   const altText = asset.metadata.altText || asset.fileName;
   const caption = asset.metadata.description || asset.title;
   return {
@@ -170,10 +174,10 @@ const createSelectedMediaUsage = (
     sortOrder,
     assetSnapshot: toContentMediaAssetSnapshot({
       persistentUrl,
-      altText,
-      caption,
-      credit: asset.metadata.copyright,
-      license: asset.metadata.license,
+      altText: central.altText || asset.fileName,
+      caption: central.description || central.title,
+      credit: central.copyright,
+      license: central.license,
     }),
     referenceStatus: 'pending',
     additionalData: { contentType: nextMedia.contentType ?? 'image', width: '', height: '' },

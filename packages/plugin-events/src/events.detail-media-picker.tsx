@@ -130,6 +130,7 @@ export function EventsDetailMediaPicker({
       }
       isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
       isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
+      canConfirmSelection={mediaPicker.canConfirmSelection}
       labels={mediaPickerLabels}
       metadataDraft={mediaPicker.metadataDraft}
       mode={mediaPicker.mode}
@@ -150,7 +151,13 @@ export function EventsDetailMediaPicker({
       open={mediaPicker.open}
       reviewAsset={mediaPicker.reviewAsset}
       reviewSource={mediaPicker.reviewSource}
-      isMetadataEditable={canUpdateMedia}
+      isMetadataEditable
+      visibleMetadataFields={['altText', 'description', 'copyright']}
+      persistenceContext="content"
+      canEditCentralMetadata={canUpdateMedia}
+      onSaveCentralMetadata={mediaPicker.saveCentralMetadata}
+      onApplyImageEdit={canUploadMedia ? mediaPicker.applyImageEdit : undefined}
+      onImageFocusChange={mediaPicker.updateImageFocus}
       searchValue={mediaPicker.searchValue}
       uploadPhase={mediaPicker.uploadPhase}
     />

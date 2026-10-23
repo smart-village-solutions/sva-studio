@@ -90,7 +90,10 @@ export const toGenericItemsMediaPickerDetail = (
       description: asset.metadata.description?.trim() ?? '',
       copyright: asset.metadata.copyright?.trim() ?? '',
       license: asset.metadata.license?.trim() ?? '',
+      tags: asset.metadata.tags,
     },
+    instanceId: asset.instanceId,
+    hasEditingDocument: asset.hasEditingDocument,
   };
 };
 
@@ -114,10 +117,10 @@ export const createSelectedMediaUsage = (
   additionalData: { contentType, width: '', height: '' },
   assetSnapshot: toContentMediaAssetSnapshot({
     persistentUrl,
-    altText: asset.metadata.altText || asset.fileName,
-    caption: asset.metadata.description || asset.title,
-    credit: asset.metadata.copyright,
-    license: asset.metadata.license,
+    altText: (asset.centralMetadata ?? asset.metadata).altText || asset.fileName,
+    caption: (asset.centralMetadata ?? asset.metadata).description || asset.title,
+    credit: (asset.centralMetadata ?? asset.metadata).copyright,
+    license: (asset.centralMetadata ?? asset.metadata).license,
   }),
   referenceStatus: 'pending',
 });

@@ -58,7 +58,10 @@ const toPoiMediaPickerDetail = (
       description: asset.metadata.description?.trim() ?? '',
       copyright: asset.metadata.copyright?.trim() ?? '',
       license: asset.metadata.license?.trim() ?? '',
+      tags: asset.metadata.tags,
     },
+    instanceId: asset.instanceId,
+    hasEditingDocument: asset.hasEditingDocument,
   };
 };
 
@@ -89,6 +92,7 @@ const acceptPoiAsset = (asset: PoiMediaPickerAsset, input: PickerInput) => {
       persistentUrl: asset.localDraft ? '' : (asset.persistentUrl ?? ''),
       previewUrl: asset.previewUrl,
       metadata: { ...asset.metadata, fileName: asset.fileName },
+      centralMetadata: asset.centralMetadata,
       sortOrder: mediaUsages.length,
     }),
     assetId: asset.localDraft ? undefined : asset.id,

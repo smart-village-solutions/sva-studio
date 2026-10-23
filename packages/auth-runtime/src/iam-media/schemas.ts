@@ -1,4 +1,10 @@
-import { mediaLiterals, mediaTagLimit, normalizeMediaTags } from '@sva/media';
+import {
+  mediaLiterals,
+  mediaMetadataLimits,
+  mediaTagLimit,
+  normalizeMediaTags,
+  parseMediaEditingDocument,
+} from '@sva/media';
 import { z } from 'zod';
 
 const instanceIdSchema = z.string().trim().min(1).optional();
@@ -17,12 +23,43 @@ const editableMetadataSchema = z.object({
       }
     })
     .optional(),
-  title: z.string().trim().min(1).max(512).nullable().optional(),
-  description: z.string().trim().min(1).max(5000).nullable().optional(),
-  altText: z.string().trim().min(1).max(512).nullable().optional(),
-  copyright: z.string().trim().min(1).max(512).nullable().optional(),
-  license: z.string().trim().min(1).max(512).nullable().optional(),
+  title: z.string().trim().min(1).max(mediaMetadataLimits.title).nullable().optional(),
+  description: z.string().trim().min(1).max(mediaMetadataLimits.description).nullable().optional(),
+  altText: z.string().trim().min(1).max(mediaMetadataLimits.altText).nullable().optional(),
+  copyright: z.string().trim().min(1).max(mediaMetadataLimits.copyright).nullable().optional(),
+  license: z.string().trim().min(1).max(mediaMetadataLimits.license).nullable().optional(),
 });
+
+const focusPointSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
+const editingDocumentSchema = z.unknown().transform((input, ctx) => {
+  try {
+    return parseMediaEditingDocument(input);
+  } catch {
+    ctx.addIssue({ code: 'custom', message: 'invalid_media_editor_document' });
+    return z.NEVER;
+  }
+});
+const editingUploadSchema = z
+  .object({
+    document: editingDocumentSchema,
+    sourceAssetId: z.string().uuid().optional(),
+    source: z
+      .object({
+        mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+        byteSize: z
+          .number()
+          .int()
+          .positive()
+          .max(64 * 1024 * 1024),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .refine(
+    ({ sourceAssetId, source }) => Boolean(sourceAssetId) !== Boolean(source),
+    'invalid_media_editor_source'
+  );
 
 export const uploadInitializationSchema = z
   .object({
@@ -34,6 +71,10 @@ export const uploadInitializationSchema = z
     uploadContext: z.enum(['library', 'content-save']).default('library'),
     contentSaveOperationId: z.string().uuid().optional(),
     draftId: z.string().uuid().optional(),
+    metadata: editableMetadataSchema
+      .extend({ focusPoint: focusPointSchema.nullable().optional() })
+      .optional(),
+    editing: editingUploadSchema.optional(),
   })
   .refine(
     ({ uploadContext, contentSaveOperationId, draftId }) =>

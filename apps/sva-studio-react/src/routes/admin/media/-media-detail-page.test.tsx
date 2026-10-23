@@ -4,6 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MediaDetailPage } from './-media-detail-page';
 
+const getMediaEditingMock = vi.hoisted(() => vi.fn());
+vi.mock('@sva/plugin-sdk/content-media', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk/content-media')>()),
+  getHostMediaEditing: getMediaEditingMock,
+}));
+
 const accessState = vi.hoisted(() => ({ deniedActions: new Set<string>() }));
 
 vi.mock('../../../providers/effective-access-provider', () => ({
@@ -51,6 +57,7 @@ vi.mock('../../../hooks/use-media', () => ({
 describe('MediaDetailPage', () => {
   beforeEach(() => {
     accessState.deniedActions.clear();
+    getMediaEditingMock.mockReset();
     useMediaDetailMock.mockReset();
     navigateMock.mockReset();
     qrCodeToDataUrlMock.mockReset();
@@ -152,30 +159,38 @@ describe('MediaDetailPage', () => {
       processingStatus: 'failed',
       result: 'Kein Prüfergebnis vorhanden',
     },
-  ])('shows the stored scan result for $name', ({ technical, uploadStatus, processingStatus, result }) => {
-    const media = useMediaDetailMock();
-    useMediaDetailMock.mockReturnValue({
-      ...media,
-      asset: { ...media.asset, technical, uploadStatus, processingStatus },
-      delivery: null,
-    });
+  ])(
+    'shows the stored scan result for $name',
+    ({ technical, uploadStatus, processingStatus, result }) => {
+      const media = useMediaDetailMock();
+      useMediaDetailMock.mockReturnValue({
+        ...media,
+        asset: { ...media.asset, technical, uploadStatus, processingStatus },
+        delivery: null,
+      });
 
-    render(<MediaDetailPage assetId="asset-2" />);
+      render(<MediaDetailPage assetId="asset-2" />);
 
-    const status = screen.getByRole('status', { name: 'Virenprüfung' });
-    expect(within(status).getByText(result)).toBeTruthy();
-    expect(status.textContent).not.toContain('media_scan_');
-    expect(status.textContent).not.toContain('invalid_media_content');
-    if (result !== 'Geprüft – kein Schadsoftware-Fund') {
-      expect(within(status).queryByText('Geprüft – kein Schadsoftware-Fund')).toBeNull();
+      const status = screen.getByRole('status', { name: 'Virenprüfung' });
+      expect(within(status).getByText(result)).toBeTruthy();
+      expect(status.textContent).not.toContain('media_scan_');
+      expect(status.textContent).not.toContain('invalid_media_content');
+      if (result !== 'Geprüft – kein Schadsoftware-Fund') {
+        expect(within(status).queryByText('Geprüft – kein Schadsoftware-Fund')).toBeNull();
+      }
     }
-  });
+  );
 
   it('updates the scan result when the refreshed asset becomes ready', () => {
     const media = useMediaDetailMock();
     useMediaDetailMock.mockReturnValue({
       ...media,
-      asset: { ...media.asset, technical: {}, uploadStatus: 'pending', processingStatus: 'pending' },
+      asset: {
+        ...media.asset,
+        technical: {},
+        uploadStatus: 'pending',
+        processingStatus: 'pending',
+      },
       delivery: null,
     });
     const view = render(<MediaDetailPage assetId="asset-2" />);
@@ -486,5 +501,58 @@ describe('MediaDetailPage', () => {
     render(<MediaDetailPage assetId="asset-2" />);
 
     expect(screen.queryByRole('button', { name: 'Medium löschen' })).toBeNull();
+  });
+  it('offers creating an edited copy without requiring permission to change the original metadata', () => {
+    accessState.deniedActions.add('media.update');
+    render(<MediaDetailPage assetId="asset-2" />);
+    expect(screen.getByRole('button', { name: 'Bild bearbeiten' })).toBeTruthy();
+    expect((screen.getByLabelText('Titel') as HTMLInputElement).disabled).toBe(true);
+    expect(
+      screen.getByText(
+        'Die Bildbearbeitung ist derzeit nicht vollständig mit Tastatur und Screenreader bedienbar.'
+      )
+    ).toBeTruthy();
+  });
+
+  it('hides image editing without creation permission or protected source access', () => {
+    accessState.deniedActions.add('media.create');
+    const { unmount } = render(<MediaDetailPage assetId="asset-2" />);
+    expect(screen.queryByRole('button', { name: 'Bild bearbeiten' })).toBeNull();
+    unmount();
+    accessState.deniedActions.clear();
+    accessState.deniedActions.add('media.deliver.protected');
+    const current = useMediaDetailMock();
+    useMediaDetailMock.mockReturnValue({
+      ...current,
+      asset: { ...current.asset, visibility: 'protected' },
+    });
+    render(<MediaDetailPage assetId="asset-2" />);
+    expect(screen.queryByRole('button', { name: 'Bild bearbeiten' })).toBeNull();
+  });
+
+  it('preserves unsaved source metadata when opening and cancelling the image workspace', async () => {
+    getMediaEditingMock.mockImplementation(() => new Promise(() => undefined));
+    const current = useMediaDetailMock();
+    render(<MediaDetailPage assetId="asset-2" />);
+    fireEvent.change(screen.getByLabelText('Titel'), {
+      target: { value: 'Noch nicht gespeichert' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Bild bearbeiten' }));
+    await waitFor(() =>
+      expect(getMediaEditingMock).toHaveBeenCalledWith(
+        expect.objectContaining({ assetId: 'asset-2' })
+      )
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /Bearbeitung verwerfen und zurück|media.editor.cancelEditing/,
+      })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Arbeitsraum schließen' }));
+    expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe(
+      'Noch nicht gespeichert'
+    );
+    expect(current.updateMedia).not.toHaveBeenCalled();
+    expect(getMediaEditingMock.mock.calls[0][0].signal.aborted).toBe(true);
   });
 });

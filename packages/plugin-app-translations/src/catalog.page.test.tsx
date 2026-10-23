@@ -167,6 +167,183 @@ describe('catalog overview', () => {
     expect(screen.queryByRole('button', { name: 'appTranslations.ui.switchBasis' })).toBeNull();
   });
   it.each([true, false])(
+    'distinguishes unsaved input, a stored draft and its sealed revision (sourceOnly=%s)',
+    async (sourceOnly) => {
+      publishSessionAccessSnapshot({
+        isResolved: true,
+        permissionActions: [
+          'app-texts.catalog.write',
+          'app-texts.catalog.publish',
+          'app-translations.catalog.write',
+          'app-translations.catalog.publish',
+        ],
+        roles: [],
+        assignedModules: ['app-translations'],
+      });
+      registerPluginTranslationResolver((key, variables) =>
+        key.endsWith('.draftSealed') ? `${key} ${variables?.revision}` : key
+      );
+      const scope = { kind: 'municipal' as const, instanceId: 'tenant', organizationId: 'org' };
+      const digest = await catalogDigest('Hallo');
+      const editLocale = sourceOnly ? 'de' : 'en';
+      const editor: CatalogEditorData = {
+        draft: {
+          id: 'draft',
+          scope,
+          manifestId: 'manifest',
+          draftRevision: '2',
+          baseReleaseId: null,
+          supportedLocales: sourceOnly ? ['de'] : ['de', 'en'],
+          valuesByLocale: {},
+          manifest: {
+            contractId: 'ui',
+            manifestVersion: '1',
+            appCompatibility: { minVersion: '1.0.0' },
+            keys: {
+              greeting: {
+                type: 'string',
+                defaultValue: 'Hallo',
+                placeholders: {},
+                allowEmpty: false,
+              },
+            },
+          },
+        },
+        values: {
+          de: {
+            greeting: {
+              value: 'Hallo',
+              origin: 'default',
+              sourceDigest: '',
+              confirmedSourceDigest: null,
+            },
+          },
+        },
+        baseCatalogs: {},
+        targetCodes: { en: 'en-GB' },
+      };
+      if (!sourceOnly)
+        editor.values.en = {
+          greeting: {
+            value: 'Hello',
+            origin: 'manual',
+            sourceDigest: digest,
+            confirmedSourceDigest: digest,
+            targetCode: 'en-GB',
+          },
+        };
+      const releases = [
+        {
+          id: 'old',
+          contractId: 'ui',
+          draftRevision: '1',
+          catalogSetRevision: '1',
+          supportedLocales: ['de'],
+        },
+        {
+          id: 'unrelated',
+          contractId: 'other',
+          draftRevision: '2',
+          catalogSetRevision: '2',
+          supportedLocales: ['de'],
+        },
+      ];
+      vi.mocked(requestCatalog).mockImplementation(async (operation) => {
+        if (operation.operation === 'overview')
+          return {
+            scope,
+            catalogs: [{ contractId: 'ui' }],
+            releases,
+            bases: [],
+            setup: { ready: true, reason: 'ready' },
+          };
+        if (operation.operation === 'read') return structuredClone(editor);
+        if (operation.operation === 'translationStatus') return null;
+        if (operation.operation === 'edit') {
+          editor.draft.draftRevision = String(Number(editor.draft.draftRevision) + 1);
+          editor.values[editLocale]!.greeting!.value = String(operation.value);
+          return structuredClone(editor.draft);
+        }
+        if (operation.operation === 'seal') {
+          const release = {
+            id: 'new',
+            contractId: 'ui',
+            draftRevision: editor.draft.draftRevision,
+            catalogSetRevision: '2',
+            supportedLocales: ['de'],
+          };
+          releases.unshift(release);
+          return { ...release, state: 'sealed', catalogs: {} };
+        }
+        throw new Error(`Unexpected operation: ${operation.operation}`);
+      });
+      const page = render(<CatalogsPage sourceOnly={sourceOnly} />);
+      await screen.findByRole('heading', { name: 'appTranslations.ui.draftTitle' });
+      expect(screen.getByText('appTranslations.ui.draftUnsealed')).toBeTruthy();
+      if (!sourceOnly)
+        fireEvent.change(screen.getByLabelText('appTranslations.ui.language'), {
+          target: { value: 'en' },
+        });
+      await waitFor(() =>
+        expect(screen.getByLabelText('appTranslations.ui.value')).toHaveProperty(
+          'value',
+          sourceOnly ? 'Hallo' : 'Hello'
+        )
+      );
+      fireEvent.change(screen.getByLabelText('appTranslations.ui.value'), {
+        target: { value: 'Neu' },
+      });
+      await screen.findByText('appTranslations.ui.draftUnsaved');
+      fireEvent.click(screen.getByRole('button', { name: 'appTranslations.ui.save' }));
+      await screen.findByText('appTranslations.ui.saved');
+      expect(screen.getByText('appTranslations.ui.draftUnsealed')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'appTranslations.ui.seal' }));
+      await screen.findByText('appTranslations.ui.sealed');
+      expect(screen.getByText('appTranslations.ui.draftSealed 2')).toBeTruthy();
+      expect(
+        screen.getByRole('heading', { name: 'appTranslations.ui.currentStateTitle' })
+      ).toBeTruthy();
+      const sealedButton = screen.getByRole('button', { name: 'appTranslations.ui.seal' });
+      expect(sealedButton).toHaveProperty('disabled', true);
+      fireEvent.click(sealedButton);
+      expect(requestCatalog.mock.calls.filter(([op]) => op.operation === 'seal')).toHaveLength(1);
+      page.unmount();
+      render(<CatalogsPage sourceOnly={sourceOnly} />);
+      await screen.findByText('appTranslations.ui.draftSealed 2');
+      expect(
+        screen.getByRole('heading', { name: 'appTranslations.ui.currentStateTitle' })
+      ).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'appTranslations.ui.seal' })).toHaveProperty(
+        'disabled',
+        true
+      );
+      if (!sourceOnly)
+        fireEvent.change(screen.getByLabelText('appTranslations.ui.language'), {
+          target: { value: 'en' },
+        });
+      await waitFor(() =>
+        expect(screen.getByLabelText('appTranslations.ui.value')).toHaveProperty('value', 'Neu')
+      );
+      fireEvent.change(screen.getByLabelText('appTranslations.ui.value'), {
+        target: { value: 'Weitere Änderung' },
+      });
+      await screen.findByText('appTranslations.ui.draftUnsaved');
+      expect(screen.queryByText('appTranslations.ui.draftSealed 2')).toBeNull();
+      expect(screen.getByRole('heading', { name: 'appTranslations.ui.draftTitle' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'appTranslations.ui.seal' })).toHaveProperty(
+        'disabled',
+        true
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'appTranslations.ui.save' }));
+      await screen.findByText('appTranslations.ui.saved');
+      expect(screen.getByText('appTranslations.ui.draftUnsealed')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'appTranslations.ui.seal' })).toHaveProperty(
+        'disabled',
+        false
+      );
+    }
+  );
+  it.each([true, false])(
     'shows multilingual saved snapshots and their draft revision in both page modes (sourceOnly=%s)',
     async (sourceOnly) => {
       const scope = { kind: 'municipal' as const, instanceId: 'tenant', organizationId: 'org' };
@@ -366,6 +543,136 @@ describe('catalog overview', () => {
     ).toHaveLength(polls);
     expect(screen.queryByText(/appTranslations.ui.jobStatus/)).toBeNull();
   });
+  it.each([
+    ['hides historical completion when nothing is missing', false, 'succeeded', false],
+    ['shows historical completion when translations are still missing', true, 'succeeded', true],
+    ['shows a running job even when nothing is missing', false, 'running', true],
+  ])('%s', async (_name, missing, status, visible) => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: ['app-translations.catalog.write'],
+      roles: [],
+      assignedModules: ['app-translations'],
+    });
+    const scope = { kind: 'municipal' as const, instanceId: 'tenant', organizationId: 'org' };
+    const digest = await catalogDigest('Hallo');
+    const translation = {
+      value: 'Hello',
+      origin: 'manual' as const,
+      sourceDigest: digest,
+      confirmedSourceDigest: digest,
+    };
+    const editor: CatalogEditorData = {
+      draft: {
+        id: 'draft',
+        scope,
+        manifestId: 'manifest',
+        draftRevision: '1',
+        manifest: {
+          contractId: 'ui',
+          manifestVersion: '1',
+          appCompatibility: { minVersion: '1.0.0' },
+          keys: {
+            greeting: {
+              type: 'string',
+              defaultValue: 'Hallo',
+              placeholders: {},
+              allowEmpty: false,
+            },
+          },
+        },
+        supportedLocales: ['de', 'en'],
+        valuesByLocale: missing ? {} : { en: { greeting: translation } },
+        baseReleaseId: 'base',
+      },
+      values: {
+        de: { greeting: { ...translation, value: 'Hallo', origin: 'default' } },
+        ...(missing ? {} : { en: { greeting: translation } }),
+      },
+      baseCatalogs: {
+        de: {
+          schemaVersion: 1,
+          instanceId: null,
+          organizationId: null,
+          contractId: 'ui',
+          catalogSetRevision: '1',
+          locale: 'de',
+          appCompatibility: { minVersion: '1.0.0' },
+          sourceRevision: '1',
+          values: { greeting: 'Hallo' },
+          fallbackKeys: [],
+          checksum: digest,
+        },
+      },
+    };
+    let job = {
+      id: 'historical',
+      status,
+      progress: {
+        completedSteps: 1,
+        totalSteps: 1,
+        details: { locale: 'en', translated: 1, skipped: 0 },
+      },
+    };
+    vi.mocked(requestCatalog).mockImplementation(async (operation) => {
+      if (operation.operation === 'overview')
+        return {
+          scope,
+          catalogs: [{ contractId: 'ui' }],
+          releases: [],
+          bases: [],
+          setup: { ready: true, reason: 'ready' },
+        };
+      if (operation.operation === 'read') return structuredClone(editor);
+      if (operation.operation === 'translate') {
+        job = { ...job, id: 'just-started' };
+        editor.draft.valuesByLocale = { en: { greeting: translation } };
+        editor.values.en = { greeting: translation };
+      }
+      return job;
+    });
+    const page = render(<CatalogsPage sourceOnly={false} />);
+    const plan = await screen.findByText(/appTranslations.ui.translationPlan/);
+    expect(plan.textContent).toContain(`appTranslations.ui.locales.en: ${missing ? 1 : 0}`);
+    const jobStatus = () => screen.queryByText(/appTranslations.ui.jobStatus/);
+    const progressDetails = () => screen.queryByText(/appTranslations.ui.translationProgress/);
+    await waitFor(() => {
+      expect(Boolean(jobStatus())).toBe(visible);
+      expect(Boolean(progressDetails())).toBe(visible);
+    });
+    const translateButton = screen.getByRole('button', {
+      name: 'appTranslations.ui.translateMissing',
+    });
+    expect(translateButton).toHaveProperty('disabled', !missing || status === 'running');
+    if (!missing) {
+      fireEvent.click(translateButton);
+      expect(requestCatalog.mock.calls.some(([op]) => op.operation === 'translate')).toBe(false);
+    }
+    if (missing) {
+      fireEvent.click(screen.getByRole('button', { name: 'appTranslations.ui.translateMissing' }));
+      await screen.findByText(/appTranslations.ui.jobStatus.succeeded/);
+      expect(progressDetails()).toBeTruthy();
+      await waitFor(() => {
+        expect(translateButton).toHaveProperty('disabled', true);
+        expect(screen.getByText(/appTranslations.ui.translationPlan/).textContent).toContain(
+          'appTranslations.ui.locales.en: 0'
+        );
+      });
+      page.unmount();
+      render(<CatalogsPage sourceOnly={false} />);
+      await screen.findByText(/appTranslations.ui.translationPlan/);
+      expect(jobStatus()).toBeNull();
+      expect(progressDetails()).toBeNull();
+    }
+    if (status === 'running') {
+      expect(screen.getByText('appTranslations.ui.draftTranslating')).toBeTruthy();
+      job = { ...job, status: 'succeeded' };
+      await waitFor(
+        () => expect(jobStatus()?.textContent).toContain('appTranslations.ui.jobStatus.succeeded'),
+        { timeout: 3000 }
+      );
+    }
+  });
   it('starts only explicitly and keeps dirty text, search and selection while polling a persisted job', async () => {
     publishSessionAccessSnapshot({
       isResolved: true,
@@ -404,7 +711,7 @@ describe('catalog overview', () => {
         baseReleaseId: 'basis',
       },
       values: { de: { greeting: source } },
-      baseCatalogs: {},
+      baseCatalogs: { de: { values: { greeting: 'Hallo' } } },
     };
     let job: {
       id: string;
@@ -444,6 +751,7 @@ describe('catalog overview', () => {
       name: 'appTranslations.ui.translateMissing',
     });
     expect(requestCatalog.mock.calls.some(([op]) => op.operation === 'translate')).toBe(false);
+    await waitFor(() => expect(button).toHaveProperty('disabled', false));
     fireEvent.click(button);
     await screen.findByText(/appTranslations.ui.jobStatus.running/);
     expect(

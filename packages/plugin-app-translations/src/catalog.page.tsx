@@ -73,8 +73,11 @@ export const CatalogsPage = ({
   const [requestedSelection, setRequestedSelection] = useState<{ locale: string; key: string }>();
   const [reload, setReload] = useState(0);
   const [job, setJob] = useState<TranslationJob>(null);
+  const [recentJobId, setRecentJobId] = useState<string | null>(null);
   const [translationCounts, setTranslationCounts] = useState<Record<string, number> | null>(null);
   const jobActive = Boolean(job && ['queued', 'running', 'retrying'].includes(job.status));
+  const hasMissingTranslations = Object.values(translationCounts ?? {}).some((count) => count > 0);
+  const showJobProgress = jobActive || job?.id === recentJobId || hasMissingTranslations;
   const [jobVersion, setJobVersion] = useState(0);
   const [editorVersion, setEditorVersion] = useState(0);
   const permissionNamespace = sourceOnly ? 'app-texts' : 'app-translations';
@@ -96,6 +99,7 @@ export const CatalogsPage = ({
     setError('');
     setData(null);
     setJob(null);
+    setRecentJobId(null);
     setDirty(false);
     setPreview(null);
     setChoosingBase(false);
@@ -125,6 +129,7 @@ export const CatalogsPage = ({
     const controller = new AbortController();
     setData(null);
     setJob(null);
+    setRecentJobId(null);
     setDirty(false);
     setPreview(null);
     setChoosingBase(false);
@@ -163,9 +168,10 @@ export const CatalogsPage = ({
         );
         if (controller.signal.aborted) return;
         setJob(current);
-        if (current && ['queued', 'running', 'retrying'].includes(current.status))
+        if (current && ['queued', 'running', 'retrying'].includes(current.status)) {
+          setRecentJobId(current.id);
           timer = setTimeout(() => void poll(), 2000);
-        else if (current && !dirty) {
+        } else if (current && !dirty) {
           const updated = await catalog<CatalogEditorData>(
             { operation: 'read', contractId },
             overview.scope,
@@ -238,8 +244,10 @@ export const CatalogsPage = ({
         overview.scope
       );
       setJob(current);
-      if (current) setJobVersion((value) => value + 1);
-      else setNotice('nothingToTranslate');
+      if (current) {
+        setRecentJobId(current.id);
+        setJobVersion((value) => value + 1);
+      } else setNotice('nothingToTranslate');
       return true;
     } catch (reason) {
       setError(errorCode(reason));
@@ -270,7 +278,7 @@ export const CatalogsPage = ({
       setDirty(false);
       if ('state' in result && result.state === 'sealed') setPreview(result);
       setSealIssues([]);
-      setNotice('saved');
+      setNotice('state' in result && result.state === 'sealed' ? 'sealed' : 'saved');
       return true;
     } catch (reason) {
       setError(errorCode(reason));
@@ -297,6 +305,17 @@ export const CatalogsPage = ({
   };
   const releases =
     overview?.releases.filter((release) => !contractId || release.contractId === contractId) ?? [];
+  const savedDraftRelease = releases.find(
+    (release) => release.draftRevision === data?.draft.draftRevision
+  );
+  const draftStatus = dirty
+    ? 'draftUnsaved'
+    : jobActive
+      ? 'draftTranslating'
+      : savedDraftRelease
+        ? 'draftSealed'
+        : 'draftUnsealed';
+  const canSeal = canPublish && !busy && !dirty && !jobActive && !savedDraftRelease;
   const selectedBase = overview?.bases.find((base) => base.id === baseId);
   const existingDraft = overview?.catalogs.find((row) => row.contractId === contractId);
   const currentBaseId = data?.draft.baseReleaseId ?? existingDraft?.baseReleaseId;
@@ -342,7 +361,7 @@ export const CatalogsPage = ({
     }
   };
   const seal = async () => {
-    if (!data || busy || dirty) return;
+    if (!data || !canSeal) return;
     setBusy(true);
     try {
       const issues = await catalogSealIssues(data, sourceOnly);
@@ -553,24 +572,6 @@ export const CatalogsPage = ({
           {contractId && !data && !error && <p role="status">{pt('loading')}</p>}
           {data && (
             <>
-              <dl className="flex flex-wrap gap-6 rounded-lg bg-muted p-4 text-sm">
-                <div>
-                  <dt>{pt('manifest')}</dt>
-                  <dd>{data.draft.manifest.manifestVersion}</dd>
-                </div>
-                <div>
-                  <dt>{pt('draftRevision')}</dt>
-                  <dd>{data.draft.draftRevision}</dd>
-                </div>
-                <div>
-                  <dt>{pt('basis')}</dt>
-                  <dd>{data.draft.baseReleaseId ?? pt('none')}</dd>
-                </div>
-                <div>
-                  <dt>{pt('languages')}</dt>
-                  <dd>{languageNames(data.draft.supportedLocales)}</dd>
-                </div>
-              </dl>
               {!sourceOnly && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">{pt('configureLanguagesHelp')}</p>
@@ -609,12 +610,12 @@ export const CatalogsPage = ({
                   <Button
                     type="button"
                     variant="secondary"
-                    disabled={!canWrite || busy || dirty || jobActive}
+                    disabled={!canWrite || busy || dirty || jobActive || !hasMissingTranslations}
                     onClick={() => void translate({ mode: 'missing' })}
                   >
                     {pt('translateMissing')}
                   </Button>
-                  {job && (
+                  {showJobProgress && job && (
                     <p role="status">
                       {pt(`jobStatus.${job.status}`)}{' '}
                       {job.progress
@@ -622,18 +623,20 @@ export const CatalogsPage = ({
                         : ''}
                     </p>
                   )}
-                  {typeof job?.progress?.details?.translated === 'number' && typeof job.progress.details.skipped === 'number' && (
-                    <p className="text-sm text-muted-foreground">
-                      {job.progress.details.locale
-                        ? `${languageName(job.progress.details.locale)} · `
-                        : ''}
-                      {pt('translationProgress', {
-                        translated: job.progress.details.translated ?? 0,
-                        skipped: job.progress.details.skipped ?? 0,
-                        pending: job.progress.totalSteps - job.progress.completedSteps,
-                      })}
-                    </p>
-                  )}
+                  {showJobProgress &&
+                    typeof job?.progress?.details?.translated === 'number' &&
+                    typeof job.progress.details.skipped === 'number' && (
+                      <p className="text-sm text-muted-foreground">
+                        {job.progress.details.locale
+                          ? `${languageName(job.progress.details.locale)} · `
+                          : ''}
+                        {pt('translationProgress', {
+                          translated: job.progress.details.translated ?? 0,
+                          skipped: job.progress.details.skipped ?? 0,
+                          pending: job.progress.totalSteps - job.progress.completedSteps,
+                        })}
+                      </p>
+                    )}
                   {job?.error && (
                     <p role="alert" className="text-destructive">
                       {pt(job.error)}
@@ -652,13 +655,42 @@ export const CatalogsPage = ({
                 onDirtyChange={setDirty}
                 translate={!sourceOnly && !jobActive ? translate : undefined}
               />
-              <Button
-                type="button"
-                disabled={!canPublish || busy || dirty}
-                onClick={() => void seal()}
+              <section
+                className={`space-y-3 rounded-lg border p-4 ${
+                  draftStatus === 'draftSealed'
+                    ? 'border-border bg-card'
+                    : 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200'
+                }`}
+                aria-labelledby="catalog-draft-heading"
               >
-                {pt('seal')}
-              </Button>
+                <h2 id="catalog-draft-heading" className="text-lg font-semibold">
+                  {pt(draftStatus === 'draftSealed' ? 'currentStateTitle' : 'draftTitle')}
+                </h2>
+                <p role="status" className="font-medium">
+                  {pt(draftStatus, { revision: savedDraftRelease?.catalogSetRevision ?? '' })}
+                </p>
+                <dl className="flex flex-wrap gap-6 text-sm">
+                  <div>
+                    <dt>{pt('manifest')}</dt>
+                    <dd>{data.draft.manifest.manifestVersion}</dd>
+                  </div>
+                  <div>
+                    <dt>{pt('draftRevision')}</dt>
+                    <dd>{data.draft.draftRevision}</dd>
+                  </div>
+                  <div>
+                    <dt>{pt('basis')}</dt>
+                    <dd>{data.draft.baseReleaseId ?? pt('none')}</dd>
+                  </div>
+                  <div>
+                    <dt>{pt('languages')}</dt>
+                    <dd>{languageNames(data.draft.supportedLocales)}</dd>
+                  </div>
+                </dl>
+                <Button type="button" disabled={!canSeal} onClick={() => void seal()}>
+                  {pt('seal')}
+                </Button>
+              </section>
               {sealIssues.length > 0 && (
                 <div role="alert" className="space-y-2 rounded-md border border-destructive/40 p-4">
                   <p>{pt('sealBlocked')}</p>

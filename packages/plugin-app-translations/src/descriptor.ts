@@ -232,7 +232,19 @@ export const appTranslationsPlugin: PluginDescriptor = {
           standard: 'Gepinnter Standard',
           reload: 'Neu laden',
           discard: 'Eingabe verwerfen',
-          saved: 'App-Texte in Studio gespeichert. Noch nicht an Apps ausgeliefert.',
+          saved: 'Entwurf in Studio gespeichert. Noch nicht an Apps ausgeliefert.',
+          sealed:
+            'Textstand gesichert. Der Entwurf bleibt weiter bearbeitbar. Noch nicht an Apps ausgeliefert.',
+          draftTitle: 'Aktueller Entwurf',
+          currentStateTitle: 'Aktueller Stand',
+          draftUnsaved:
+            'Ungespeicherte Eingaben. Zuerst den Entwurf speichern, danach den Textstand sichern.',
+          draftUnsealed:
+            'Dieser Entwurf ist in Studio gespeichert, aber noch nicht als Textstand gesichert.',
+          draftSealed:
+            'Dieser Bearbeitungsstand ist als Textstand {{revision}} gesichert. Neue Änderungen erfolgen weiterhin im Entwurf.',
+          draftTranslating:
+            'Der Entwurf wird gerade übersetzt. Den abgeschlossenen Stand anschließend als Textstand sichern.',
           loading: 'Kataloge werden geladen …',
           scope: 'Gültigkeit',
           global: 'Für alle Kommunen',
@@ -409,7 +421,17 @@ export const appTranslationsPlugin: PluginDescriptor = {
           standard: 'Pinned standard',
           reload: 'Reload',
           discard: 'Discard input',
-          saved: 'App texts saved in Studio. Not delivered to apps yet.',
+          saved: 'Draft saved in Studio. Not delivered to apps yet.',
+          sealed: 'Text snapshot saved. The draft remains editable. Not delivered to apps yet.',
+          draftTitle: 'Current draft',
+          currentStateTitle: 'Current state',
+          draftUnsaved: 'Unsaved input. Save the draft first, then save a text snapshot.',
+          draftUnsealed:
+            'This draft is stored in Studio but has not yet been saved as a text snapshot.',
+          draftSealed:
+            'This draft revision is saved as text snapshot {{revision}}. Further changes are made in the draft.',
+          draftTranslating:
+            'The draft is being translated. Save the completed revision as a text snapshot afterwards.',
           loading: 'Loading catalogs …',
           scope: 'Applies to',
           global: 'For all municipalities',

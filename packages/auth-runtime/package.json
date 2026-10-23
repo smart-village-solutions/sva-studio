@@ -68,8 +68,8 @@
     "openid-client": "^6.8.4",
     "pg": "^8.22.0",
     "postcss": "^8.5.23",
-    "sanitize-html": "^2.17.7",
-    "sharp": "^0.35.4",
+    "sanitize-html": "^2.18.1",
+    "sharp": "^0.35.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {

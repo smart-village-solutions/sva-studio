@@ -36,6 +36,15 @@ veröffentlicht. Dadurch werden Textänderungen ohne neuen Studio-Build sichtbar
   öffentliche Hilfe-Repository. Push und PR-Erstellung erfolgen anschließend ausschließlich mit
   dem repository-lokalen `GITHUB_TOKEN` des Hilfe-Repositories.
 
+## Redaktioneller Einstieg
+
+Im geladenen Hilfe-Dialog öffnet „Auf GitHub bearbeiten“ die zugehörige Quelldatei
+`docs/pages/<Seiten-ID>.md` auf dem Branch `main` im Repository
+`smart-village-solutions/sva-studio-user-documentation` in einem neuen Tab. Der Link verwendet
+die bestätigte Seiten-ID und übergibt keine Benutzer-, Mandanten- oder Datensatzdaten.
+Anmeldung, Bearbeitungsrechte und Veröffentlichung bleiben beim Dokumentations-Repository.
+Auch bei leerem Hilfetext ist der Link verfügbar; bei einem Ladefehler wird er nicht angezeigt.
+
 ## Betrieb
 
 Ohne `SVA_DOCUMENTATION_BASE_URL` bleibt das Studio fachlich vollständig nutzbar. Das Overlay zeigt

@@ -97,6 +97,62 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
   afterAll(async () => {
     await pool?.end();
   });
+  it('exports immutable multilingual App snapshots with RLS and no writes', async () => {
+    const appManifest: CatalogManifest = JSON.parse(
+      await readFile(
+        new URL('../../core/tests/fixtures/mobile-texts/manifest.json', import.meta.url),
+        'utf8'
+      )
+    );
+    const base = await transaction(global, async (repo, client) => {
+      const draft = await repo.importManifest(appManifest, '0', ['de', 'en']);
+      const english = Object.fromEntries(
+        Object.entries(draft.valuesByLocale.de!).map(([key, text]) => [
+          key,
+          { ...text, value: `en: ${text.value}` },
+        ])
+      );
+      await client.query(
+        "UPDATE iam.app_translation_catalog_drafts SET values_by_locale = jsonb_set(values_by_locale, '{en}', $1::jsonb) WHERE id = $2",
+        [JSON.stringify(english), draft.id]
+      );
+      return repo.seal(appManifest.contractId, draft.draftRevision);
+    });
+    const saved = await transaction(a, async (repo) => {
+      const draft = await repo.createMunicipalDraft(base.id, ['de', 'en']);
+      return repo.seal(appManifest.contractId, draft.draftRevision);
+    });
+    const original = await transaction(a, async (repo, client) => {
+      await client.query('SET TRANSACTION READ ONLY');
+      const source = await repo.exportTexts(saved.id);
+      expect(source).toContain('"en":');
+      expect(source).toContain('"de":');
+      return source;
+    });
+    await transaction(a, async (repo) => {
+      const current = await repo.readEffective(appManifest.contractId);
+      await repo.editText(
+        appManifest.contractId,
+        current.draft.draftRevision,
+        'de',
+        'close',
+        'Changed draft'
+      );
+    });
+    expect(await transaction(a, (repo) => repo.exportTexts(saved.id))).toBe(original);
+    await expect(transaction(b, (repo) => repo.exportTexts(saved.id))).rejects.toThrow(
+      'catalog_not_found'
+    );
+    await expect(transaction(c, (repo) => repo.exportTexts(saved.id))).rejects.toThrow(
+      'catalog_not_found'
+    );
+    await expect(transaction(global, (repo) => repo.exportTexts(saved.id))).rejects.toThrow(
+      'catalog_forbidden'
+    );
+    await expect(transaction(a, (repo) => repo.exportTexts(randomUUID()))).rejects.toThrow(
+      'catalog_not_found'
+    );
+  });
   it('isolates DeepL config with RLS and serializes config, checks and module revocation', async () => {
     if (
       !process.env.IAM_DATABASE_URL ||

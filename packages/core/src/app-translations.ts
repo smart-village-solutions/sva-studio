@@ -129,6 +129,7 @@ export type CatalogEditorData = {
 export class AppTranslationError extends Error {
   constructor(
     readonly code:
+      | 'catalog_export_incompatible'
       | 'deepl_text_too_large'
       | 'invalid_catalog'
       | 'catalog_setup_required'

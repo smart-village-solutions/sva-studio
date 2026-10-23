@@ -595,3 +595,48 @@ Vergleichspunkt ist der unveränderte Zwischencommit `0a69b272a`; geprüft wurde
 - ESLint aller 24 geänderten/neuen TypeScriptdateien zeigt weiterhin genau die drei bekannten Lazy-/Static-Import-Befunde im Host-Wiring (Zeilen 13, 20, 38) und 174 Warnungen; keine zusätzlichen ESLint-Fehler aus den Reviewkorrekturen. Der vollständige App-Typecheck wurde nicht wiederholt; die früher dokumentierten vier fremden App-Typefehler werden durch die grünen Paket-Typechecks nicht als behoben ausgegeben. Der Plugin-Architekturguard bleibt bei den drei bekannten warn-only Serverkanten für App-Translations, SSF und Waste.
 
 Die isolierte Datenbank `sva_catalog_2f_review_test` wurde nach den Nachweisen entfernt. Reale Nutzerdaten, Korrekturen, Basiszuordnungen und Textstände wurden für diesen Abschluss nicht verändert; Anbieter-HTTP blieb in den Tests synthetisch. Der Nutzer hat zuvor einen erfolgreichen realen Lauf mit 4.380/4.380 angezeigt; das ersetzt weder sprachliche Qualitätskontrolle noch einen von uns ausgeführten authentifizierten Browserabschluss. Kein Commit, kein Push, kein Deployment und keine Keycloak-/Stagingänderung.
+
+
+## Zwischenabschluss 2G — 23. Oktober 2026
+
+### Meta und Liefergrenze
+
+| Feld | Stand |
+| --- | --- |
+| Vergleichspunkt | `d82c1ff3982d1f3bfb65e194023498771890ba7b` plus alle uncommitteten 2G-Dateien einschließlich neuer Export-/Referenztests |
+| Geprüfter Code-/Konfigurationsstand | SHA-256 `4baf7fceaa8b8b576ba29839407d1b1fd0698eb08de97bddab39c9da0f886c95` über 19 geänderte/neue TS-, TSX-, JS-, JSON- und YAML-Dateien, sortiert, jeweils Pfad + NUL + Inhalt + NUL; Markdown separat fachlich geprüft |
+| Auftrag | Studio-Download einer gemeinsamen mehrsprachigen `texts.js`, Funktionserhalt, historische Textstände und Akkordeons mit Downloadlinks |
+| Ausdrückliche Grenze | „Nur Studio-Export; App-Anschluss bleibt offen“; kein Commit und kein Push |
+| Reviewer | Drei unabhängige Reviews: Standards/Codequalität/Sicherheit/Interoperabilität/Logging; Spezifikation/Testqualität; UX/Accessibility/Usability/i18n/Dokumentation/Performance |
+| Zuschnitt | Fachrisiken gemäß Trigger-Matrix zusammengefasst; keine neue Infrastruktur oder Migration, daher kein zusätzlicher Operationsreview |
+
+**Empfehlung: Zwischenabschluss des freigegebenen Studio-Umfangs.** Alle drei Reviewer haben die Korrekturen gezielt nachgeprüft und melden keine verbleibenden abschlussblockierenden Befunde. Die vorhandenen `texts.…`-Ausdrücke werden im Export erhalten; eine vollständig bestätigte App-Integration wird weiterhin nicht behauptet.
+
+### Standards
+
+| Befund | Korrektur | Nachprüfung |
+| --- | --- | --- |
+| P2: Neuer HTTP-Transporttest ersetzte `fetch` direkt und erfüllte die verbindliche MSW-Vorgabe nicht | Vorhandenen `studioMswServer`, `http` und `HttpResponse` verwenden; `tooling-testing` per Paketmanager als `workspace:*`-DevDependency verlinken | Sechs tatsächliche Transporttests mit MSW grün; unabhängiger Testreview bestätigt die Auflösung |
+| P2 aus UX-Perspektive: Native Download-URL verlor den Quellenmodus | `downloadTexts` akzeptiert ausschließlich `source` oder `translations` als optionalen Querymodus; der Link trägt den jeweiligen Modus, widersprüchliche Header-/Queryangaben werden abgewiesen | Native Links beider Modi, fehlende Leserechte sowie ungültige/widersprüchliche Modi geprüft; Standards- und UX-Reviewer bestätigen denselben Autorisierungsvertrag |
+
+Der zweite Befund wurde im Sicherheitsreview zunächst als nicht blockierender Bedienhinweis und im UX-Review als P2 bewertet. Er wurde behoben; es verbleibt kein offener Bewertungskonflikt. Session, Organisation, Manifest-/Releasemetadaten und Sprachprüfsummen bleiben unabhängig vom Transportmodus geprüft. Download erzeugt keinen Anbieteraufruf, Job, Schreibzugriff oder neuen Textstand. Unbekannte Formate blockieren die gesamte Datei.
+
+### Spezifikation, Dokumentation und Bedienabläufe
+
+- P3: Der Designkopf bezeichnete 2G noch als nicht freigegebene Planung. Kopfstatus und historische Beschreibung sind jetzt konsistent mit Abschnitt 8.6, Proposal und Tasks: Studio umgesetzt, App-Anschluss L.7 offen.
+- Jeder Stand besitzt ein unabhängiges natives `details`/`summary`-Akkordeon. Sprachen und Bearbeitungsstand bleiben zugeklappt sichtbar; Vorschau und Textdownload stehen im jeweiligen geöffneten Stand. Wiederöffnen verwendet die bereits geladene unveränderliche Vorschau. Deutsche Bearbeitung bleibt deutsch.
+- Download-Lade-/Fehlerpfade erhalten ungespeicherte Editorwerte. Ein Kontextwechsel oder Unmount bricht ausstehende Blobdownloads ab. Der native Linkpfad und der abgefangene normale Klick verwenden dieselben zum Seitenmodus gehörenden Leserechte.
+- Testreview: Eine zusätzliche Fast-check-Property ist hier nicht erforderlich. Die Exportdefinition ist an genau ein geprüftes Manifest gebunden; vollständige unabhängige Referenztests über 1460 Pfade und 22 Funktionen sowie adversariale Literal-/Tokenfälle begrenzen den relevanten Eingaberaum. Diese Entscheidung erweitert das Format nicht auf unbekannte App-Vorlagen.
+- Keine neue Kontroll- oder Infrastrukturplattform: Der bestehende Katalogpfad wurde um einen Exportbaustein und eine lesende Operation erweitert; die separate Einzelvorschau wurde durch Vorschauen im jeweiligen Akkordeon ersetzt. Die zusätzliche Abhängigkeit dient ausschließlich den vorgeschriebenen HTTP-Tests.
+
+### Direkte Nachweise und Prüfgrenzen
+
+- Abschlussrunde: 34 Session-/Katalogtests und 27 Pluginfälle (21 Seiten-/Akkordeonfälle plus sechs MSW-Transportfälle) grün. Geprüft sind insbesondere direkte Downloadlinks mit beiden Rechtepfaden, feste Attachmentheader, Fehlerablehnung, unabhängiges Öffnen/Schließen und unveränderte ungespeicherte Werte.
+- Unveränderte Implementierungsnachweise aus dieser Sitzung: fünf Core-Exporttests gegen die gehashte echte App-Referenz, alle 1460 tatsächlichen Schlüsselpfade und 22 Funktionen, deutsche und fremdsprachige Ausgaben, Defaults und sprachlokale Lookups, zwei Runtime-Appnamen, TypeScript/CommonJS-Direkt- und Barrel-Live-Bindings, sichere Literale, Ganzsatzablehnung und Größenlimits.
+- Ein echter PostgreSQL-Export-/RLS-Test lief in der getrennten, anschließend entfernten Datenbank `sva_texts_export_test`. Export in READ ONLY, historische Bytegleichheit nach späterem Edit und Sperre anderer Organisationen/Instanzen wurden nachgewiesen. In der Abschlussrunde erfolgte keine erneute DB-Mutation.
+- Die fünf vorhandenen kommunalen Stände wurden zusätzlich in einer READ-ONLY-Transaktion zweimal exportiert: 1/3 enthalten Deutsch, 2/4/5 Deutsch, Englisch, Französisch und Portugiesisch (Portugal). Die Ausgaben waren je Stand bytegleich; keine bestehenden Texte oder Stände wurden geändert.
+- Finales `pnpm check:server-runtime`: alle 20 Pakete mit Builds und Runtimechecks grün. Plugin-Typecheck samt 16 Abhängigkeitsbuilds grün; damit auch die betroffenen Core-, Repository- und Auth-Pakete kompiliert.
+- i18n-Keyprüfung (DE/EN), OpenAPI, Plugin-UI-Grenzen und striktes OpenSpec grün. Der Architekturguard bleibt bei den drei bereits dokumentierten warn-only Serverkanten für App-Translations, SSF und Waste; die neue reine Testabhängigkeit fügt keinen Befund hinzu. ESLint der Reviewfixdateien hat keine Fehler; 19 Non-null-Assertion-Warnungen in Tests bleiben sichtbar.
+- Dokumentationslinks/-indizes, Dateiablage und `git diff --check` sind auch nach Aufnahme dieses Abschlussnachweises grün. Keine breite affected-/Gesamtsuite und keine neue Coverage-Messung; die gezielten Pfade liefern den proportionalen Abschlussnachweis.
+
+Keine automatische Browser-/Screenreader-Abnahme, kein kostenpflichtiger DeepL-Livetest, kein tatsächlicher Expo-/Metro-Build und keine Änderungen im benachbarten App-Repository. App-Bootstrap, React-Aktualisierung vorab berechneter Titel/Optionen sowie vollständige App-Kompatibilität bleiben L.7. Main-Server-Publikation und automatische App-Auslieferung bleiben weitere Abschnitte. Kein Commit, kein Push und kein Deployment.

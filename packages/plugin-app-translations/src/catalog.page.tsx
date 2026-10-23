@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   APP_TRANSLATION_LOCALES,
   catalogTranslationSource,
@@ -15,8 +15,11 @@ import {
   usePluginTranslation,
 } from '@sva/plugin-sdk';
 import { Button, Input, Select, StudioOverviewPageTemplate } from '@sva/studio-ui-react';
-import { requestCatalog } from './catalog.api.js';
+import { requestCatalog, requestCatalogDownload } from './catalog.api.js';
 import { CatalogEditor, catalogSealIssues } from './catalog.editor.js';
+
+type ReleasePreview =
+  { status: 'loading' } | { status: 'ready'; release: CatalogRelease } | { status: 'error' };
 
 type TranslationJob = {
   id: string;
@@ -62,12 +65,18 @@ export const CatalogsPage = ({
   const [overview, setOverview] = useState<CatalogOverview | null>(null);
   const [contractId, setContractId] = useState('');
   const [data, setData] = useState<CatalogEditorData | null>(null);
-  const [preview, setPreview] = useState<CatalogRelease | null>(null);
+  const [previews, setPreviews] = useState<Record<string, ReleasePreview>>({});
   const [baseId, setBaseId] = useState('');
   const [choosingBase, setChoosingBase] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const downloadController = useRef<AbortController | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  useEffect(() => {
+    setDownloadingId(null);
+    return () => downloadController.current?.abort();
+  }, [overview, sourceOnly]);
   const [notice, setNotice] = useState('');
   const [sealIssues, setSealIssues] = useState<Awaited<ReturnType<typeof catalogSealIssues>>>([]);
   const [requestedSelection, setRequestedSelection] = useState<{ locale: string; key: string }>();
@@ -101,7 +110,7 @@ export const CatalogsPage = ({
     setJob(null);
     setRecentJobId(null);
     setDirty(false);
-    setPreview(null);
+    setPreviews({});
     setChoosingBase(false);
     setBaseId('');
     setSealIssues([]);
@@ -131,7 +140,7 @@ export const CatalogsPage = ({
     setJob(null);
     setRecentJobId(null);
     setDirty(false);
-    setPreview(null);
+    setPreviews({});
     setChoosingBase(false);
     setBaseId('');
     setSealIssues([]);
@@ -276,7 +285,11 @@ export const CatalogsPage = ({
       setContractId(nextContract);
       setData(nextData);
       setDirty(false);
-      if ('state' in result && result.state === 'sealed') setPreview(result);
+      if ('state' in result && result.state === 'sealed')
+        setPreviews((current) => ({
+          ...current,
+          [result.id]: { status: 'ready', release: result },
+        }));
       setSealIssues([]);
       setNotice('state' in result && result.state === 'sealed' ? 'sealed' : 'saved');
       return true;
@@ -346,18 +359,49 @@ export const CatalogsPage = ({
       setBaseId('');
     }
   };
-  const loadPreview = async (id: string) => {
+  const downloadTexts = async (releaseId: string) => {
     if (!overview) return;
-    setBusy(true);
+    downloadController.current?.abort();
+    const controller = new AbortController();
+    downloadController.current = controller;
+    setDownloadingId(releaseId);
     setError('');
+    setNotice('');
     try {
-      setPreview(
-        await catalog<CatalogRelease>({ operation: 'readRelease', releaseId: id }, overview.scope)
+      const blob = await requestCatalogDownload(
+        releaseId,
+        overview.scope,
+        controller.signal,
+        sourceOnly ? 'source' : 'translations'
       );
-    } catch (reason) {
-      setError(errorCode(reason));
+      if (controller.signal.aborted) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'texts.js';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      setNotice('downloadedTexts');
+    } catch (cause) {
+      if (!controller.signal.aborted) setError(errorCode(cause));
     } finally {
-      setBusy(false);
+      if (!controller.signal.aborted) setDownloadingId(null);
+    }
+  };
+  const loadPreview = async (id: string) => {
+    if (!overview || previews[id]?.status === 'loading' || previews[id]?.status === 'ready') return;
+    setPreviews((current) => ({ ...current, [id]: { status: 'loading' } }));
+    try {
+      const release = await catalog<CatalogRelease>(
+        { operation: 'readRelease', releaseId: id },
+        overview.scope
+      );
+      setPreviews((current) => ({ ...current, [id]: { status: 'ready', release } }));
+    } catch (reason) {
+      setPreviews((current) => ({ ...current, [id]: { status: 'error' } }));
+      setError(errorCode(reason));
     }
   };
   const seal = async () => {
@@ -395,6 +439,7 @@ export const CatalogsPage = ({
         >
           {pt(
             [
+              'catalog_export_incompatible',
               'catalog_setup_required',
               'deepl_text_too_large',
               'catalog_conflict',
@@ -721,48 +766,58 @@ export const CatalogsPage = ({
             <h2 id="catalog-releases-heading" className="text-lg font-semibold">
               {pt('releases')}
             </h2>
-            {releases.map((release) => (
-              <div key={release.id} className="space-y-1">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={busy || dirty}
-                  onClick={() => void loadPreview(release.id)}
+            {releases.map((release) => {
+              const preview = previews[release.id];
+              return (
+                <details
+                  key={release.id}
+                  className="rounded-lg border border-border p-4"
+                  onToggle={(event) => {
+                    if (event.currentTarget.open) void loadPreview(release.id);
+                  }}
                 >
-                  {pt('preview')} {release.contractId} / {release.catalogSetRevision}
-                </Button>
-                <p className="text-sm text-muted-foreground">
-                  {pt('languages')}: {languageNames(release.supportedLocales)} ·{' '}
-                  {pt('draftRevision')}: {release.draftRevision}
-                </p>
-              </div>
-            ))}
+                  <summary className="cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+                    <span className="font-medium">
+                      {pt('preview')} {release.contractId} / {release.catalogSetRevision}
+                    </span>
+                    <span className="mt-1 block text-sm text-muted-foreground">
+                      {pt('languages')}: {languageNames(release.supportedLocales)} ·{' '}
+                      {pt('draftRevision')}: {release.draftRevision}
+                    </span>
+                  </summary>
+                  <div className="mt-4 space-y-3">
+                    {!platform && (
+                      <a
+                        href={`/api/v1/iam/app-translations?operation=downloadTexts&releaseId=${encodeURIComponent(release.id)}&mode=${sourceOnly ? 'source' : 'translations'}`}
+                        download="texts.js"
+                        aria-disabled={downloadingId !== null}
+                        className="inline-block rounded-sm text-sm underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-disabled:cursor-wait aria-disabled:opacity-50"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          if (downloadingId === null) void downloadTexts(release.id);
+                        }}
+                      >
+                        {pt(downloadingId === release.id ? 'downloadingTexts' : 'downloadTexts')}
+                      </a>
+                    )}
+                    <p className="text-sm text-muted-foreground">{pt('localOnly')}</p>
+                    {preview?.status === 'loading' && <p role="status">{pt('loading')}</p>}
+                    {preview?.status === 'error' && <p role="alert">{pt('catalog_unavailable')}</p>}
+                    {preview?.status === 'ready' && (
+                      <pre
+                        tabIndex={0}
+                        aria-label={`${pt('preview')} / ${release.catalogSetRevision}`}
+                        className="max-h-[36rem] overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-4 text-xs"
+                      >
+                        {JSON.stringify(preview.release, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                </details>
+              );
+            })}
             {releases.length === 0 && <p>{pt('noReleases')}</p>}
           </section>
-          {preview && (
-            <section
-              className="space-y-3 rounded-lg border border-border p-5"
-              aria-labelledby="catalog-preview-heading"
-            >
-              <h2 id="catalog-preview-heading" className="text-lg font-semibold">
-                {pt('preview')} / {preview.catalogSetRevision}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {pt('languages')}: {languageNames(preview.supportedLocales)} · {pt('draftRevision')}
-                : {preview.draftRevision}
-              </p>
-              <p role="status" className="text-sm text-muted-foreground">
-                {pt('localOnly')}
-              </p>
-              <pre
-                tabIndex={0}
-                aria-label={pt('preview')}
-                className="max-h-[36rem] overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-4 text-xs"
-              >
-                {JSON.stringify(preview, null, 2)}
-              </pre>
-            </section>
-          )}
         </>
       )}
     </StudioOverviewPageTemplate>

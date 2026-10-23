@@ -256,3 +256,8 @@ export type {
 } from './iam/account-instance-contract.js';
 
 export * from './app-translations.js';
+
+export {
+  exportCatalogTextsJs,
+  CATALOG_TEXTS_EXPORT_MAX_BYTES,
+} from './app-translations-texts-export.js';

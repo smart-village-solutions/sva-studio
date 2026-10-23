@@ -30,7 +30,7 @@ paths:
           schema:
             {
               type: string,
-              enum: [overview, read, readRelease, translationStatus],
+              enum: [overview, read, readRelease, translationStatus, downloadTexts],
               default: overview,
             }
         - name: contractId
@@ -39,12 +39,32 @@ paths:
         - name: releaseId
           in: query
           schema: { type: string, format: uuid }
+        - name: mode
+          in: query
+          description: Nur bei downloadTexts; nativer Downloadlink verwendet dieselben Leserechte wie der Seitenmodus. Widerspruch zu X-SVA-Catalog-Mode wird abgewiesen. Ohne beide Angaben gilt translations.
+          schema: { type: string, enum: [source, translations] }
       responses:
         '200':
+          description: 'data enthält die Übersicht, Editordaten oder den lokalen Prüfstand. downloadTexts mit releaseId liefert ausschließlich einen gesicherten kommunalen Stand als gemeinsame texts.js mit allen enthaltenen Sprachen, höchstens 8 MiB; keine Anbieter- oder Schreiboperation.'
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: 'Bei downloadTexts fest attachment; filename="texts.js"'
+            Cache-Control:
+              schema: { type: string }
+              description: 'private, no-store beim Dateidownload'
+            X-Content-Type-Options:
+              schema: { type: string }
+              description: nosniff
+          content:
+            text/javascript:
+              schema: { type: string }
+            application/json:
+              schema: { type: object }
+        '400':
           {
-            description: 'data enthält die scope- und sprachgefilterte Übersicht, Editordaten oder den lokalen Prüfstand nach Core-Katalogvertrag.',
+            description: Ungültige Operation oder Parameter beziehungsweise inkompatibler oder beschädigter Exportstand.,
           }
-        '400': { description: Ungültige Operation oder Parameter. }
         '403': { description: Fehlender Session-, Scope-, Action- oder Pluginzugang. }
         '404': { description: Katalog oder Prüfstand fehlt. }
         '409': { description: Sessionbereich stimmt nicht mit dem geladenen Scope überein. }

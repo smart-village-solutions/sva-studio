@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppTranslationError } from '@sva/core';
 import * as catalogJobs from './app-translations-jobs.js';
 const state = vi.hoisted(() => ({
   ctx: {
@@ -20,6 +21,7 @@ const state = vi.hoisted(() => ({
     overview: vi.fn(),
     loadDraft: vi.fn(),
     loadRelease: vi.fn(),
+    exportTexts: vi.fn(),
     editText: vi.fn(),
     readEffective: vi.fn(),
     seal: vi.fn(),
@@ -699,5 +701,118 @@ describe('internal catalog session facade', () => {
     expect((await executeAppTranslationOperation(request, op)).status).toBe(200);
     expect(state.createRepo.mock.calls[0]?.[1]).toEqual({ kind: 'global' });
     expect(state.pluginAccess).not.toHaveBeenCalled();
+  });
+  describe('texts.js snapshot download', () => {
+    it.each(['source', 'translations'])(
+      'returns an authenticated attachment in %s mode without mutations or provider readiness',
+      async (mode) => {
+        state.allowed = true;
+        state.providerReady = false;
+        const namespace = mode === 'source' ? 'app-texts' : 'app-translations';
+        state.permissions.mockResolvedValue({
+          ok: true,
+          permissions: [
+            {
+              action: `${namespace}.catalog.read`,
+              resourceType: namespace,
+              organizationId: state.ctx.activeOrganizationId,
+            },
+          ],
+        });
+        state.repo.exportTexts.mockResolvedValue('export const texts = {};');
+        const response = await appTranslationCatalogHandler(
+          new Request(
+            'https://studio.test/api/v1/iam/app-translations?operation=downloadTexts&releaseId=22222222-2222-4222-8222-222222222222',
+            {
+              headers: { 'X-SVA-Catalog-Mode': mode },
+            }
+          )
+        );
+        expect(response.status).toBe(200);
+        expect(response.headers.get('Content-Type')).toBe('text/javascript; charset=utf-8');
+        expect(response.headers.get('Content-Disposition')).toBe('attachment; filename="texts.js"');
+        expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+        expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
+        expect(await response.text()).toBe('export const texts = {};');
+        expect(state.repo.exportTexts).toHaveBeenCalledWith('22222222-2222-4222-8222-222222222222');
+        expect(state.repo.editText).not.toHaveBeenCalled();
+        expect(state.repo.seal).not.toHaveBeenCalled();
+      }
+    );
+    it.each(['catalog_not_found', 'catalog_export_incompatible'] as const)(
+      'returns a safe error instead of an attachment for %s',
+      async (code) => {
+        state.allowed = true;
+        state.repo.exportTexts.mockRejectedValue(new AppTranslationError(code));
+        const response = await appTranslationCatalogHandler(
+          new Request(
+            'https://studio.test/api/v1/iam/app-translations?operation=downloadTexts&releaseId=22222222-2222-4222-8222-222222222222'
+          )
+        );
+        expect(response.status).toBe(code === 'catalog_not_found' ? 404 : 400);
+        expect(response.headers.has('Content-Disposition')).toBe(false);
+        expect(await response.json()).toEqual({ error: code });
+      }
+    );
+    it.each(['source', 'translations'])(
+      'supports native %s download links with the same read permissions',
+      async (mode) => {
+        state.allowed = true;
+        state.providerReady = false;
+        const namespace = mode === 'source' ? 'app-texts' : 'app-translations';
+        state.permissions.mockResolvedValue({
+          ok: true,
+          permissions: [
+            {
+              action: `${namespace}.catalog.read`,
+              resourceType: namespace,
+              organizationId: state.ctx.activeOrganizationId,
+            },
+          ],
+        });
+        state.repo.exportTexts.mockResolvedValue('export let texts = {};');
+        const url = `https://studio.test/api/v1/iam/app-translations?operation=downloadTexts&releaseId=22222222-2222-4222-8222-222222222222&mode=${mode}`;
+        expect((await appTranslationCatalogHandler(new Request(url))).status).toBe(200);
+        if (mode === 'source') expect(state.pluginAccess).not.toHaveBeenCalled();
+        state.repo.exportTexts.mockClear();
+        expect(
+          (
+            await appTranslationCatalogHandler(
+              new Request(url.replace(`mode=${mode}`, 'mode=invalid'))
+            )
+          ).status
+        ).toBe(400);
+        expect(
+          (
+            await appTranslationCatalogHandler(
+              new Request(url, {
+                headers: { 'X-SVA-Catalog-Mode': mode === 'source' ? 'translations' : 'source' },
+              })
+            )
+          ).status
+        ).toBe(400);
+        state.permissions.mockResolvedValue({ ok: true, permissions: [] });
+        expect((await appTranslationCatalogHandler(new Request(url))).status).toBe(403);
+        expect(state.repo.exportTexts).not.toHaveBeenCalled();
+      }
+    );
+    it('rejects missing permission, malformed ids and stale organization bindings before export', async () => {
+      const operation = {
+        operation: 'downloadTexts',
+        releaseId: '22222222-2222-4222-8222-222222222222',
+      };
+      const request = new Request('https://studio.test/api/v1/iam/app-translations', {
+        headers: { 'X-SVA-Catalog-Mode': 'source' },
+      });
+      expect((await executeAppTranslationOperation(request, operation)).status).toBe(403);
+      state.allowed = true;
+      expect(
+        (await executeAppTranslationOperation(request, { ...operation, releaseId: '../bad' }))
+          .status
+      ).toBe(400);
+      state.session.activeOrganizationId = 'foreign';
+      expect((await executeAppTranslationOperation(request, operation)).status).toBe(403);
+      expect(state.repo.exportTexts).not.toHaveBeenCalled();
+    });
   });
 });

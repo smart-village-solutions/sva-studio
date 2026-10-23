@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import {
+  MainserverApiError,
   registerPluginTranslationResolver,
   publishSessionAccessSnapshot,
   resetSessionAccessSnapshot,
 } from '@sva/plugin-sdk';
 import { CatalogsPage } from './catalog.page.js';
-import { requestCatalog } from './catalog.api.js';
+import { requestCatalog, requestCatalogDownload } from './catalog.api.js';
 import manifest from '../tests/fixtures/catalog-demo.json';
 import { appTranslationsPlugin } from './descriptor.js';
 import {
@@ -15,14 +16,16 @@ import {
   type CatalogRelease,
   validateCatalogManifest,
 } from '@sva/plugin-sdk/app-translations';
-vi.mock('./catalog.api.js', () => ({ requestCatalog: vi.fn() }));
+vi.mock('./catalog.api.js', () => ({ requestCatalog: vi.fn(), requestCatalogDownload: vi.fn() }));
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
   resetSessionAccessSnapshot();
 });
 beforeEach(() => {
   vi.mocked(requestCatalog).mockReset();
+  vi.mocked(requestCatalogDownload).mockReset();
   registerPluginTranslationResolver((key) => key);
 });
 describe('catalog overview', () => {
@@ -356,35 +359,59 @@ describe('catalog overview', () => {
         state: 'sealed',
         catalogs: {},
       } as CatalogRelease;
+      const older = { ...release, id: 'older', catalogSetRevision: '1' };
       vi.mocked(requestCatalog).mockImplementation(async (operation) =>
         operation.operation === 'overview'
           ? {
               scope,
               catalogs: [],
-              releases: [release],
+              releases: [release, older],
               bases: [],
               setup: { ready: true, reason: 'ready' },
             }
-          : release
+          : operation.releaseId === older.id
+            ? older
+            : release
       );
       render(<CatalogsPage sourceOnly={sourceOnly} />);
-      const button = await screen.findByRole('button', {
-        name: 'appTranslations.ui.preview ui / 2',
-      });
+      const button = await screen.findByText('appTranslations.ui.preview ui / 2');
       expect(button.parentElement?.textContent).toContain('appTranslations.ui.draftRevision: 97');
       expect(button.parentElement?.textContent).toContain('Französisch');
       expect(button.parentElement?.textContent).toContain('appTranslations.ui.locales.pt-PT');
-      fireEvent.click(button);
-      await screen.findByRole('heading', { name: 'appTranslations.ui.preview / 2' });
+      const details = button.closest('details')!;
+      expect(details.open).toBe(false);
+      fireEvent.click(button.closest('summary')!);
+      await screen.findByLabelText('appTranslations.ui.preview / 2');
+      expect(details.open).toBe(true);
       expect(requestCatalog).toHaveBeenCalledWith(
         { operation: 'readRelease', releaseId: 'release' },
         scope,
         undefined,
         sourceOnly ? 'source' : 'translations'
       );
-      expect(screen.getByLabelText('appTranslations.ui.preview').textContent).toContain(
+      expect(screen.getByLabelText('appTranslations.ui.preview / 2').textContent).toContain(
         '"draftRevision": "97"'
       );
+      const other = screen.getByText('appTranslations.ui.preview ui / 1').closest('details')!;
+      expect(other.open).toBe(false);
+      fireEvent.click(other.querySelector('summary')!);
+      await screen.findByLabelText('appTranslations.ui.preview / 1');
+      expect(details.open).toBe(true);
+      expect(other.open).toBe(true);
+      expect(
+        within(details).getByRole('link', { name: 'appTranslations.ui.downloadTexts' })
+      ).toBeTruthy();
+      const reads = vi
+        .mocked(requestCatalog)
+        .mock.calls.filter(([op]) => op.operation === 'readRelease').length;
+      fireEvent.click(button.closest('summary')!);
+      expect(details.open).toBe(false);
+      expect(other.open).toBe(true);
+      fireEvent.click(button.closest('summary')!);
+      await waitFor(() => expect(details.open).toBe(true));
+      expect(
+        vi.mocked(requestCatalog).mock.calls.filter(([op]) => op.operation === 'readRelease')
+      ).toHaveLength(reads);
     }
   );
   it('locates a legacy correction blocking sealing and shows languages and draft revision on the saved snapshot', async () => {
@@ -476,7 +503,7 @@ describe('catalog overview', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'appTranslations.ui.confirm' }));
     await waitFor(() => expect(seal).toHaveProperty('disabled', false));
     fireEvent.click(seal);
-    const preview = await screen.findByRole('button', { name: /appTranslations.ui.preview ui.*2/ });
+    const preview = await screen.findByText(/appTranslations.ui.preview ui.*2/);
     expect(preview.parentElement?.textContent).toContain('appTranslations.ui.draftRevision: 96');
     expect(preview.parentElement?.textContent).toContain(
       'appTranslations.ui.locales.de, appTranslations.ui.locales.en'
@@ -871,5 +898,156 @@ describe('catalog overview', () => {
       expect(screen.getByRole('alert').textContent).toBe('appTranslations.ui.catalog_forbidden')
     );
     expect(screen.queryByLabelText('appTranslations.ui.importFile')).toBeNull();
+  });
+});
+
+describe('snapshot download', () => {
+  it.each([true, false])(
+    'downloads a specific saved release without refreshing the editor (sourceOnly=%s)',
+    async (sourceOnly) => {
+      const scope = { kind: 'municipal' as const, instanceId: 'tenant', organizationId: 'org' };
+      publishSessionAccessSnapshot({
+        isResolved: true,
+        permissionActions: ['app-texts.catalog.write', 'app-translations.catalog.write'],
+        roles: [],
+        assignedModules: ['app-translations'],
+      });
+      const text = {
+        value: 'Stored text',
+        origin: 'default' as const,
+        sourceDigest: '',
+        confirmedSourceDigest: null,
+      };
+      const editor: CatalogEditorData = {
+        draft: {
+          id: 'draft',
+          scope,
+          manifestId: 'manifest',
+          draftRevision: '100',
+          baseReleaseId: null,
+          supportedLocales: ['de', 'en'],
+          valuesByLocale: {},
+          manifest: {
+            contractId: 'ui',
+            manifestVersion: '1',
+            appCompatibility: { minVersion: '1.0.0' },
+            keys: {
+              close: {
+                type: 'string',
+                defaultValue: 'Stored text',
+                placeholders: {},
+                allowEmpty: false,
+              },
+            },
+          },
+        },
+        values: { de: { close: text }, en: { close: text } },
+        baseCatalogs: {},
+      };
+      vi.mocked(requestCatalog).mockImplementation(async (op) =>
+        op.operation === 'overview'
+          ? {
+              scope,
+              catalogs: [{ contractId: 'ui' }],
+              bases: [],
+              setup: { ready: true, reason: 'ready' },
+              releases: [
+                {
+                  id: 'old',
+                  contractId: 'ui',
+                  catalogSetRevision: '2',
+                  draftRevision: '97',
+                  supportedLocales: ['de', 'en'],
+                },
+              ],
+            }
+          : editor
+      );
+      vi.mocked(requestCatalogDownload).mockResolvedValue(new Blob(['export const texts = {};']));
+      const create = vi.fn(() => 'blob:snapshot');
+      const revoke = vi.fn();
+      vi.stubGlobal(
+        'URL',
+        class extends URL {
+          static createObjectURL = create;
+          static revokeObjectURL = revoke;
+        }
+      );
+      const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+        expect(this.download).toBe('texts.js');
+        expect(this.href).toBe('blob:snapshot');
+      });
+      render(<CatalogsPage sourceOnly={sourceOnly} />);
+      fireEvent.click(
+        (await screen.findByText('appTranslations.ui.preview ui / 2')).closest('summary')!
+      );
+      const button = await screen.findByRole('link', { name: 'appTranslations.ui.downloadTexts' });
+      expect(
+        new URL(button.getAttribute('href')!, 'https://studio.test').searchParams.get('mode')
+      ).toBe(sourceOnly ? 'source' : 'translations');
+      const input = await screen.findByLabelText('appTranslations.ui.value');
+      fireEvent.change(input, { target: { value: 'Unsaved correction' } });
+      const requests = vi.mocked(requestCatalog).mock.calls.length;
+      fireEvent.click(button);
+      await screen.findByText('appTranslations.ui.downloadedTexts');
+      expect(requestCatalogDownload).toHaveBeenCalledWith(
+        'old',
+        scope,
+        expect.any(AbortSignal),
+        sourceOnly ? 'source' : 'translations'
+      );
+      expect(click).toHaveBeenCalledOnce();
+      expect(input).toHaveProperty('value', 'Unsaved correction');
+      expect(requestCatalog).toHaveBeenCalledTimes(requests);
+      await waitFor(() => expect(revoke).toHaveBeenCalledWith('blob:snapshot'));
+      vi.mocked(requestCatalogDownload).mockRejectedValue(
+        new MainserverApiError('catalog_export_incompatible')
+      );
+      fireEvent.click(button);
+      await screen.findByText('appTranslations.ui.catalog_export_incompatible');
+      expect(input).toHaveProperty('value', 'Unsaved correction');
+      expect(create).toHaveBeenCalledOnce();
+      expect(requestCatalog).toHaveBeenCalledTimes(requests);
+      click.mockRestore();
+    }
+  );
+  it('aborts an outstanding download on unmount and creates no file', async () => {
+    vi.mocked(requestCatalog).mockResolvedValue({
+      scope: { kind: 'municipal', instanceId: 'tenant', organizationId: 'org' },
+      catalogs: [],
+      bases: [],
+      releases: [
+        {
+          id: 'old',
+          contractId: 'ui',
+          catalogSetRevision: '2',
+          draftRevision: '97',
+          supportedLocales: ['de'],
+        },
+      ],
+    });
+    let finish!: (value: Blob) => void;
+    vi.mocked(requestCatalogDownload).mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    const create = vi.fn();
+    vi.stubGlobal(
+      'URL',
+      class extends URL {
+        static createObjectURL = create;
+      }
+    );
+    const view = render(<CatalogsPage />);
+    fireEvent.click(
+      (await screen.findByText('appTranslations.ui.preview ui / 2')).closest('summary')!
+    );
+    fireEvent.click(await screen.findByRole('link', { name: 'appTranslations.ui.downloadTexts' }));
+    const signal = vi.mocked(requestCatalogDownload).mock.calls[0]![2];
+    view.unmount();
+    expect(signal.aborted).toBe(true);
+    await act(async () => finish(new Blob(['ignored'])));
+    expect(create).not.toHaveBeenCalled();
   });
 });

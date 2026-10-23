@@ -74,7 +74,65 @@ Das System MUST globale und kommunale Entwürfe von unveränderlichen veröffent
 - **THEN** verwendet er ausschließlich die unveränderlichen Standardwerte von S1 und die gepinnten veröffentlichten kommunalen Overrides
 - **AND** bleibt S2 unveröffentlicht, ohne die gepinnte Standardbasis von S1 zu verändern
 
+### Requirement: Manueller mehrsprachiger texts.js-Download aus lokalen Textständen
+
+Das System MUST einen explizit gewählten gesicherten kommunalen Textstand als eine gemeinsame `texts.js` mit Deutsch und allen in diesem Stand gespeicherten Sprachfassungen herunterladen lassen. Das Modul MUST einen benannten Export `textsByLocale` mit vollständiger bisheriger Schlüsselstruktur je Sprachcode und einen aktiven benannten Export `texts` sowie eine zentrale Operation `setTextsLocale(locale)` bereitstellen. Deutsch MUST Start-/Fallbacksprache sein; nach Auswahl MUST jeder erneut ausgewertete bestehende `texts.…`-Zugriff die aktive vollständige Sprachfassung liefern. Bisherige direkte und über den Config-Re-Export vermittelte Imports MUST erhalten bleiben, ohne Sprachparameter oder Umstellung auf Locale-Zweige an jeder Textstelle. Separate Sprachdateien oder wechselnde Importpfade MUST dafür nicht erforderlich sein. Beide Katalogseiten MUST Download, enthaltene Sprachen und Bearbeitungsstand am gesicherten Stand zugänglich machen; App-Texte MUST weiterhin ausschließlich deutsche Werte bearbeiten lassen.
+
+Das System MUST Funktionen, Aufrufparameter, Fallbackausdrücke, sprachinterne Textverweise und dynamische App-Namen erhalten; übersetzte Funktionsanteile MUST die gewählte Sprache verwenden. Eine geprüfte versionierte Exportdefinition MUST an das Manifest und die technische App-Vorlage gebunden sein. Unbekannte oder inkompatible Definitionen MUST vor Ausgabe abgewiesen werden. Übersetzungstexte MUST ausschließlich als sicher escapte Daten ausgegeben werden; beliebiger importierter JavaScript-Code MUST nicht ausgeführt werden.
+
+Der Download MUST ausschließlich lesend mit den Scope- und Leserechten der kommunalen Textstandvorschau erfolgen und Release-ID, Manifest, Sprachmenge und Prüfsummen prüfen. Fehler in einer Sprachfassung MUST den gesamten Export blockieren; stille Ersatzwerte oder Teildateien sind nicht zulässig. Derselbe Textstand und dieselbe Exportformatversion MUST bytegleiche Dateien ergeben. Der Download MUST unabhängig von späteren Entwurfs-/Sprachauswahländerungen sein und MUST keine DeepL-Anfragen, Jobs, Speicherung oder Appaktivierung auslösen. Der lokale Export MUST vom späteren bestätigt aktivierten Main-Server-Buildexport getrennt bleiben. Die App-Anbindung der Sprachwahl MUST gesondert abgestimmt und ihre tatsächliche Import-/Build-Kompatibilität nachgewiesen werden; der Dateidownload allein MUST nicht als funktionierender Runtime-Sprachwechsel gelten.
+
+#### Scenario: Eine Datei enthält den vollständigen gesicherten Sprachsatz
+
+- **GIVEN** ein gesicherter kommunaler Stand enthält Deutsch, Englisch, Französisch und Portugiesisch (Portugal)
+- **WHEN** ein berechtigter Nutzer ihn auf einer der beiden Katalogseiten herunterlädt
+- **THEN** enthält eine `texts.js` alle vier vollständigen Sprachobjekte unter ihren gespeicherten Sprachcodes
+- **AND** bleiben bestehende `texts`-Imports kompatibel und die Bearbeitung unter App-Texte deutsch
+- **AND** sind Sprachen und Bearbeitungsstand vor dem Download sichtbar
+
+#### Scenario: Textfunktionen und App-Namen bleiben funktionsfähig
+
+- **GIVEN** die kompatible App-Vorlage enthält 22 Textfunktionen und zwei dynamische App-Namen
+- **WHEN** die exportierten Sprachobjekte mit repräsentativen Argumenten und unterschiedlichen App-Namen geprüft werden
+- **THEN** bleiben Signaturen, Platzhalter und die Fallbacklogik `maxPerPerson || 1` erhalten
+- **AND** verwenden Funktionsausgaben und interne Textverweise die jeweilige Sprachfassung
+- **AND** lesen beide dynamischen Titel weiterhin den App-Namen zur Laufzeit
+- **AND** werden bisheriger und neuer Export über den tatsächlichen App-Importpfad geprüft und der vereinbarte Compile-/Bundle-Nachweis erbracht
+
+#### Scenario: Zentrale Locale steuert bestehende Textzugriffe
+
+- **GIVEN** bestehende App-Verbraucher importieren `texts` direkt oder über den Config-Re-Export
+- **WHEN** der zentrale App-Anschluss eine enthaltene Locale vor der sichtbaren Navigation oder bei bewusstem Sprachwechsel setzt
+- **THEN** liefern unveränderte `texts.…`-Ausdrücke einschließlich Funktionsaufrufen die passende Sprachfassung
+- **AND** sehen bereits importierte Verbraucher denselben Wechsel unter dem tatsächlichen Expo-/Metro-Transform
+- **AND** bleiben wirksame Locale und React-Zustand konsistent; nicht enthaltene Locales führen zum vollständigen deutschen Fallback
+
+#### Scenario: Vorab berechnete Beschriftungen werden aktualisiert
+
+- **GIVEN** Tabs, Navigationstitel, Formularoptionen oder Textaliase wurden vor dem Sprachwechsel erzeugt
+- **WHEN** die App die zentrale Locale wechselt
+- **THEN** erzeugt beziehungsweise aktualisiert der App-Anschluss diese sprachabhängigen Werte und invalidiert betroffene Memos/State
+- **AND** ist ein Setter oder Render allein kein ausreichender Nachweis für unveränderte Modulkonstanten
+- **AND** bleiben bestehende Textzugriffssyntax, ungespeicherte Formularwerte, redaktionelle Titel und Navigationszustand erhalten
+- **AND** wird diese App-Kompatibilität erst nach gezielten Verbraucher- und Buildtests als abgenommen markiert
+
+#### Scenario: Historischer Download bleibt reproduzierbar und rein lesend
+
+- **GIVEN** ein berechtigter Nutzer hat einen gesicherten Stand heruntergeladen
+- **WHEN** später Entwurf, Sprachauswahl oder DeepL-Bereitschaft geändert werden und derselbe Stand erneut heruntergeladen wird
+- **THEN** entstehen bei gleicher Exportformatversion bytegleiche Dateien mit der ursprünglichen Sprachmenge
+- **AND** erfolgen keine Schreibzugriffe, Übersetzungsjobs oder Veröffentlichungen
+
+#### Scenario: Unberechtigter oder unvollständiger Export wird abgewiesen
+
+- **GIVEN** Leserechte fehlen, der Stand gehört zu einer fremden Organisation oder eine Sprache verletzt Integrität, Platzhalter oder Vorlagenkompatibilität
+- **WHEN** ein Download angefordert wird
+- **THEN** wird keine Datei und kein fremder Text ausgegeben
+- **AND** entsteht kein teilweise exportierter oder still mit deutschen Ersatzwerten vervollständigter Sprachsatz
+
 ### Requirement: Reproduzierbarer lesender Buildexport
+
+Dieser spätere Main-Server-Vertrag MUST unabhängig vom lokalen manuellen Download aus Abschnitt 2G erfüllt werden; dieser ersetzt die bestätigte Main-Server-Aktivierung nicht.
 
 Das System MUST für App-Builds einen erfolgreich übertragenen und bestätigt aktivierten kommunalen Katalogsatz mit Deutsch und **allen kommunal angebotenen Zielsprachen** bereitstellen. Kommune, Satzrevision, enthaltene Sprachsnapshots, Vertrag, Kompatibilität und Prüfsummen MUST gepinnt sein. Buildexporte MUST ausschließlich lesend und frei von technischen Secrets sein. Bootstraptexte für Sprachwechsel, Fehler und Sprachsperren MUST aus derselben Quelle Bestandteil der vollständigen Kataloge sein; ein kleiner Bootstrap-Auszug allein MUST deren Bündelung nicht ersetzen. App-Buildskripte gehören nicht zu diesem Studio-Planungsauftrag.
 

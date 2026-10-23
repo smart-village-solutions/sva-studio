@@ -271,6 +271,11 @@ export const appTranslationsPlugin: PluginDescriptor = {
             'Der Textstand wurde nicht gesichert. Prüfe die folgenden Texte; ein Klick öffnet den betroffenen Eintrag. Manuelle Korrekturen bleiben erhalten.',
           releases: 'Gesicherte Textstände',
           preview: 'Textstand ansehen',
+          downloadTexts: 'texts.js herunterladen',
+          downloadingTexts: 'texts.js wird erstellt …',
+          downloadedTexts: 'texts.js heruntergeladen. Noch nicht an Apps ausgeliefert.',
+          catalog_export_incompatible:
+            'Dieser Textstand ist nicht mit dem unterstützten texts.js-Format kompatibel.',
           noReleases: 'Noch kein vollständiger Textstand gesichert.',
           localOnly:
             'Dieser Textstand ist in Studio gesichert und unveränderlich. Er wird noch nicht an Apps ausgeliefert.',
@@ -457,6 +462,11 @@ export const appTranslationsPlugin: PluginDescriptor = {
             'The text snapshot was not saved. Review the following texts; click an entry to open it. Manual corrections are preserved.',
           releases: 'Saved text snapshots',
           preview: 'View text snapshot',
+          downloadTexts: 'Download texts.js',
+          downloadingTexts: 'Preparing texts.js …',
+          downloadedTexts: 'texts.js downloaded. Not yet delivered to apps.',
+          catalog_export_incompatible:
+            'This snapshot is incompatible with the supported texts.js format.',
           noReleases: 'No complete text snapshot saved yet.',
           localOnly:
             'This text snapshot is saved in Studio and cannot be changed. It is not delivered to apps yet.',

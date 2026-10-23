@@ -2,6 +2,8 @@
 import { randomUUID } from 'node:crypto';
 import {
   catalogAssert,
+  exportCatalogTextsJs,
+  CATALOG_TEXTS_EXPORT_MAX_BYTES,
   catalogDigest,
   catalogTextSource,
   prepareCatalogRelease,
@@ -142,6 +144,42 @@ export const createAppTranslationRepository = async (
       return { scope, catalogs: drafts.rows, releases: releases.rows, bases: bases.rows };
     },
     loadRelease: (id: string) => loadRelease(id),
+    exportTexts: async (id: string) => {
+      catalogAssert(scope.kind === 'municipal', 'catalog_forbidden');
+      catalogAssert(uuid(id));
+      const row = await client.query<{
+        manifest: CatalogManifest;
+        payload: CatalogRelease | null;
+        digest: string;
+        manifestId: string;
+        checksum: string;
+        catalogSetRevision: string;
+        draftRevision: string;
+        supportedLocales: string[];
+      }>(
+        `SELECT m.manifest, m.digest, r.manifest_id AS "manifestId", r.checksum, r.catalog_set_revision::text AS "catalogSetRevision", r.draft_revision::text AS "draftRevision", r.supported_locales AS "supportedLocales", CASE WHEN octet_length(r.payload::text) <= $5 THEN r.payload ELSE NULL END AS payload
+         FROM iam.app_translation_catalog_releases r JOIN iam.app_translation_manifests m ON m.id = r.manifest_id
+         WHERE r.id = $1 AND r.scope = 'municipal' AND r.instance_id = $2 AND r.organization_id = $3::uuid AND r.contract_id = $4`,
+        [id, instanceId, organizationId, 'sva-mobile-app-texts', CATALOG_TEXTS_EXPORT_MAX_BYTES]
+      );
+      const entry = row.rows[0];
+      catalogAssert(entry, 'catalog_not_found');
+      catalogAssert(entry.payload);
+      catalogAssert(
+        entry.payload.checksum === entry.checksum &&
+          entry.payload.catalogSetRevision === entry.catalogSetRevision &&
+          entry.payload.draftRevision === entry.draftRevision &&
+          JSON.stringify(entry.payload.supportedLocales) ===
+            JSON.stringify(entry.supportedLocales) &&
+          entry.payload.manifestId === entry.manifestId &&
+          entry.payload.id === id &&
+          entry.payload.scope.kind === 'municipal' &&
+          entry.payload.scope.instanceId === instanceId &&
+          entry.payload.scope.organizationId === organizationId
+      );
+      catalogAssert((await catalogDigest(entry.manifest)) === entry.digest);
+      return exportCatalogTextsJs(entry.payload, entry.manifest);
+    },
     readEffective: async (contractId: string) => {
       const draft = await loadDraft(contractId);
       const base = await baseOf(draft);

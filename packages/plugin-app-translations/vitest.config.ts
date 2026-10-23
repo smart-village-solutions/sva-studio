@@ -13,6 +13,9 @@ export default defineConfig({
       '@sva/plugin-sdk/app-translations': fileURLToPath(
         new URL('../plugin-sdk/src/app-translations.ts', import.meta.url)
       ),
+      '@sva/plugin-sdk/content-media': fileURLToPath(
+        new URL('../plugin-sdk/src/content-media-contracts-public-api.ts', import.meta.url)
+      ),
       '@sva/plugin-sdk': fileURLToPath(new URL('../plugin-sdk/src/index.ts', import.meta.url)),
     },
   },

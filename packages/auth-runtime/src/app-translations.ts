@@ -52,6 +52,13 @@ const operationSchema = z.discriminatedUnion('operation', [
   z.object({ operation: z.literal('read'), contractId }).strict(),
   z.object({ operation: z.literal('readRelease'), releaseId: z.uuid() }).strict(),
   z
+    .object({
+      operation: z.literal('downloadTexts'),
+      releaseId: z.uuid(),
+      mode: z.enum(['source', 'translations']).optional(),
+    })
+    .strict(),
+  z
     .object({ operation: z.literal('import'), manifest: z.unknown(), expectedRevision, locales })
     .strict(),
   z.object({ operation: z.literal('createMunicipal'), baseReleaseId: z.uuid(), locales }).strict(),
@@ -79,7 +86,9 @@ type Operation = z.infer<typeof operationSchema>;
 const actionFor = (op: Operation): string =>
   op.operation === 'import'
     ? 'app-translations.manifestImport'
-    : ['overview', 'read', 'readRelease', 'translationStatus'].includes(op.operation)
+    : ['overview', 'read', 'readRelease', 'downloadTexts', 'translationStatus'].includes(
+          op.operation
+        )
       ? 'app-translations.catalog.read'
       : op.operation === 'seal'
         ? 'app-translations.catalog.publish'
@@ -92,6 +101,7 @@ const dispatch = (
   targetCodes: Readonly<Record<string, string>> = {}
 ) => {
   switch (op.operation) {
+    case 'downloadTexts':
     case 'translate':
     case 'translationStatus':
       throw new AppTranslationError('catalog_forbidden');
@@ -141,7 +151,10 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
     const parsed = operationSchema.safeParse(raw);
     if (!parsed.success) return response(400, { error: 'invalid_catalog' });
     const op = parsed.data;
-    const mode = request.headers.get('x-sva-catalog-mode');
+    const headerMode = request.headers.get('x-sva-catalog-mode');
+    const mode = op.operation === 'downloadTexts' ? (op.mode ?? headerMode) : headerMode;
+    if (op.operation === 'downloadTexts' && op.mode && headerMode && op.mode !== headerMode)
+      return response(400, { error: 'invalid_catalog' });
     if (mode !== null && !['source', 'translations'].includes(mode))
       return response(400, { error: 'invalid_catalog' });
     const sourceOnly = mode === 'source';
@@ -165,7 +178,13 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
     const action = sourceOnly
       ? actionFor(op).replace('app-translations.', 'app-texts.')
       : actionFor(op);
-    const isRead = ['overview', 'read', 'readRelease', 'translationStatus'].includes(op.operation);
+    const isRead = [
+      'overview',
+      'read',
+      'readRelease',
+      'downloadTexts',
+      'translationStatus',
+    ].includes(op.operation);
     if (!isRead && request.method !== 'POST')
       return response(405, { error: 'invalid_catalog_method' });
     if (!isRead && validateCsrf(request)) return response(403, { error: 'catalog_forbidden' });
@@ -296,6 +315,10 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
                 await readCatalogTranslationJob(client, scope, op.contractId)
               );
         }
+        if (op.operation === 'downloadTexts') {
+          if (scope.kind !== 'municipal') throw new AppTranslationError('catalog_forbidden');
+          return { download: await repo.exportTexts(op.releaseId) };
+        }
         const value = await dispatch(repo, op, sourceOnly, allowedLocales, targetCodes);
         if (sourceOnly) {
           const onlyGerman = (locales: readonly string[]) =>
@@ -397,6 +420,15 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
         }
         return value;
       });
+      if (result && 'download' in result)
+        return new Response(result.download, {
+          headers: {
+            'Content-Type': 'text/javascript; charset=utf-8',
+            'Content-Disposition': 'attachment; filename="texts.js"',
+            'Cache-Control': 'private, no-store',
+            'X-Content-Type-Options': 'nosniff',
+          },
+        });
       return response(200, { data: result });
     } catch (error) {
       if (error instanceof AppTranslationError) {
@@ -450,7 +482,9 @@ export const appTranslationCatalogHandler = async (request: Request): Promise<Re
   if (request.method === 'GET') {
     const params = new URL(request.url).searchParams;
     const operation = params.get('operation') ?? 'overview';
-    if (!['overview', 'read', 'readRelease', 'translationStatus'].includes(operation))
+    if (
+      !['overview', 'read', 'readRelease', 'downloadTexts', 'translationStatus'].includes(operation)
+    )
       return response(405, { error: 'invalid_catalog_method' });
     return executeAppTranslationOperation(
       request,

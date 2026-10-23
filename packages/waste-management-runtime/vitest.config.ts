@@ -12,6 +12,7 @@ export default defineConfig({
       '@sva/core/rich-text-html': resolve(currentDir, '../core/src/rich-text-html.ts'),
       '@sva/core/rich-text-html-policy': resolve(currentDir, '../core/src/rich-text-html-policy.ts'),
       '@sva/core': resolve(currentDir, '../core/src/index.ts'),
+      '@sva/media': resolve(currentDir, '../media/src/index.ts'),
       '@sva/monitoring-client/logging': resolve(currentDir, '../monitoring-client/src/logging.ts'),
       '@sva/plugin-sdk/content-media': resolve(currentDir, '../plugin-sdk/src/content-media-contracts-public-api.ts'),
       '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),

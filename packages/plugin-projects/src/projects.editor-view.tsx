@@ -1,22 +1,13 @@
-import { usePluginTranslation, type HostMediaAssetListItem } from '@sva/plugin-sdk';
+import { ProjectEditorForm, type ViewInput } from './projects.editor-form.js';
+import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
-  MainserverPrincipalControl,
-  resolveMainserverPrincipalOptions,
   StudioDetailPageTemplate,
-  StudioDetailTabs,
-  StudioFormSummaryErrors,
-  StudioMediaReferenceRetryAction,
   StudioSaveButton,
-  type ContentMediaUsage,
   type MainserverPrincipalControlModel,
-  type MainserverPrincipalType,
   type StudioDetailTabDefinition,
-  type useStudioMediaReferenceSync,
-  type useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import { Link, type useNavigate } from '@tanstack/react-router';
-import type React from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { useProjectEditorMedia } from './projects.editor-media.js';
 import { ProjectMediaPicker } from './projects.editor-media-view.js';
@@ -27,133 +18,6 @@ import { type createProjectSaveHandler } from './projects.editor-save.js';
 import type { ProjectFormValues } from './projects.validation.js';
 
 type Translate = ReturnType<typeof usePluginTranslation>;
-
-type ViewInput = Readonly<{
-  pt: Translate;
-  mode: 'create' | 'edit';
-  onCreateSaved: () => void;
-  createdContentId: string | null;
-  form: UseFormReturn<ProjectFormValues>;
-  principalControl?: MainserverPrincipalControlModel;
-  actingPrincipalType: MainserverPrincipalType;
-  setActingPrincipalType: React.Dispatch<React.SetStateAction<MainserverPrincipalType>>;
-  canSave: boolean;
-  canDelete: boolean;
-  canUploadMedia: boolean;
-  canUpdateMedia: boolean;
-  mediaSavePhaseKey: string | null;
-  mediaAssets: readonly HostMediaAssetListItem[];
-  mediaUsages: readonly ContentMediaUsage[];
-  mediaPicker: ReturnType<typeof useProjectEditorMedia>['mediaPicker'];
-  addManualMedia: () => string;
-  mediaReferenceSync: ReturnType<typeof useStudioMediaReferenceSync>;
-  saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
-  retryCreatedContentId: string | null;
-  setRetryCreatedContentId: React.Dispatch<React.SetStateAction<string | null>>;
-  mutationError?: string;
-  setMutationError: React.Dispatch<React.SetStateAction<string | undefined>>;
-  tabs: readonly StudioDetailTabDefinition<ProjectTab>[];
-  tab: ProjectTab;
-  setTab: React.Dispatch<React.SetStateAction<ProjectTab>>;
-  save: ReturnType<typeof createProjectSaveHandler>;
-  deleteDialogOpen: boolean;
-  deletePending: boolean;
-  deleteError?: string;
-  setDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  setDeleteError: React.Dispatch<React.SetStateAction<string | undefined>>;
-  removeProject: () => Promise<void>;
-  navigate: ReturnType<typeof useNavigate>;
-}>;
-
-function ProjectEditorForm({
-  pt,
-  mode,
-  form,
-  mutationError,
-  mediaReferenceSync,
-  setRetryCreatedContentId,
-  setMutationError,
-  retryCreatedContentId,
-  navigate,
-  principalControl,
-  actingPrincipalType,
-  setActingPrincipalType,
-  tabs,
-  tab,
-  setTab,
-  save,
-  onCreateSaved,
-  createdContentId,
-}: ViewInput) {
-  const formId = `project-${mode}-form`;
-  const summaryErrors = Object.entries(form.formState.errors).map(([field, error]) => ({
-    field: `project-${field}`,
-    message: error?.message?.toString() ?? pt('validation.summary'),
-  }));
-  return (
-    <form id={formId} className="space-y-5" onSubmit={(event) => void save(event)} noValidate>
-      {createdContentId ? (
-        <p>
-          <Link to="/admin/projects/$id" params={{ id: createdContentId }}>
-            {pt('create.openSaved')}
-          </Link>
-        </p>
-      ) : null}
-      {mutationError ? (
-        <p role="alert" className="text-sm text-destructive">
-          {mutationError}
-        </p>
-      ) : null}
-      <StudioMediaReferenceRetryAction
-        controller={mediaReferenceSync}
-        label={pt('actions.retryMediaReferences')}
-        onSuccess={async () => {
-          onCreateSaved();
-          setRetryCreatedContentId(null);
-          setMutationError(undefined);
-          if (retryCreatedContentId) {
-            try {
-              await navigate({
-                to: '/admin/projects/$id',
-                params: { id: retryCreatedContentId },
-              });
-            } catch {
-              setMutationError(pt('create.navigationFailed'));
-            }
-          }
-        }}
-        onFailure={() => setMutationError(pt('messages.mediaReferencePartialFailure'))}
-      />
-      <StudioFormSummaryErrors errors={summaryErrors} title={pt('validation.summary')} />
-      {mode === 'create' ? (
-        <p className="text-sm text-muted-foreground">{pt('create.intro')}</p>
-      ) : null}
-      <MainserverPrincipalControl
-        id="projects-acting-principal"
-        label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-        description={pt('principal.description')}
-        value={actingPrincipalType}
-        options={resolveMainserverPrincipalOptions(principalControl, {
-          value: actingPrincipalType,
-          label: pt(`principal.${actingPrincipalType}`),
-        })}
-        onChange={setActingPrincipalType}
-      />
-      {mode === 'create' ? (
-        tabs[0]?.panel
-      ) : (
-        <StudioDetailTabs
-          ariaLabel={pt('tabs.ariaLabel')}
-          mobileSelectLabel={pt('tabs.ariaLabel')}
-          tabs={tabs}
-          value={tab}
-          onValueChange={setTab}
-          keepMounted
-        />
-      )}
-    </form>
-  );
-}
 
 type ControllerInput = Readonly<{
   pt: Translate;
@@ -170,6 +34,31 @@ type ControllerInput = Readonly<{
   tabs: readonly StudioDetailTabDefinition<ProjectTab>[];
 }>;
 
+function ProjectPrimaryAction(props: ViewInput) {
+  const { mode, pt, saveFeedback, mediaReferenceSync, mediaSavePhaseKey } = props;
+  const formId = `project-${mode}-form`;
+  return (
+    <div className="flex flex-col items-end gap-1">
+      {mode === 'create' ? (
+        <p className="text-sm text-muted-foreground">
+          {pt('create.effect', { status: pt(`status.${props.form.watch('status')}`) })}
+        </p>
+      ) : null}
+      <StudioSaveButton
+        type="submit"
+        form={formId}
+        status={saveFeedback.status}
+        disabled={mediaReferenceSync.hasPendingRetry}
+        labels={{
+          idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
+          saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
+          saved: pt('actions.saved'),
+        }}
+      />
+    </div>
+  );
+}
+
 export function ProjectEditorView({ state, deletion, media, ...base }: ControllerInput) {
   const props: ViewInput = {
     ...base,
@@ -178,18 +67,7 @@ export function ProjectEditorView({ state, deletion, media, ...base }: Controlle
     ...media,
     canDelete: state.accessCapabilities.canDelete,
   };
-  const {
-    pt,
-    mode,
-    canDelete,
-    canSave,
-    setDeleteError,
-    setDeleteDialogOpen,
-    saveFeedback,
-    mediaReferenceSync,
-    mediaSavePhaseKey,
-  } = props;
-  const formId = `project-${mode}-form`;
+  const { pt, mode, canDelete, setDeleteError, setDeleteDialogOpen } = props;
   return (
     <StudioDetailPageTemplate
       title={pt(mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}
@@ -213,28 +91,7 @@ export function ProjectEditorView({ state, deletion, media, ...base }: Controlle
           ) : null}
         </div>
       }
-      primaryAction={
-        canSave ? (
-          <div className="flex flex-col items-end gap-1">
-            {mode === 'create' ? (
-              <p className="text-sm text-muted-foreground">
-                {pt('create.effect', { status: pt(`status.${props.form.watch('status')}`) })}
-              </p>
-            ) : null}
-            <StudioSaveButton
-              type="submit"
-              form={formId}
-              status={saveFeedback.status}
-              disabled={mediaReferenceSync.hasPendingRetry}
-              labels={{
-                idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
-                saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
-                saved: pt('actions.saved'),
-              }}
-            />
-          </div>
-        ) : undefined
-      }
+      primaryAction={props.canSave ? <ProjectPrimaryAction {...props} /> : undefined}
     >
       <ProjectMediaPicker {...props} />
       <ProjectEditorForm {...props} />

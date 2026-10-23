@@ -86,17 +86,11 @@ const EventsDetailStatus = ({
   </>
 );
 
-export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
+function EventsEditorFields(props: EventsDetailPageViewProps) {
   const {
-    methods,
     pt,
-    deletion,
     media,
     canUploadMedia,
-    canUpdateMedia,
-    navigate,
-    formId,
-    submit,
     mode,
     contentId,
     tabs,
@@ -112,6 +106,41 @@ export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
     mediaReferencesReady,
     saveFeedback,
   } = props;
+  return (
+    <EventsDetailEditorTabs
+      pt={pt}
+      mode={mode}
+      contentId={contentId}
+      tabs={tabs}
+      activeTab={activeTab}
+      handleTabChange={handleTabChange}
+      warmTab={warmTab}
+      visitedTabs={visitedTabs}
+      categoryOptions={categoryOptions}
+      categoryOptionsError={categoryOptionsError}
+      categoryOptionsLoading={categoryOptionsLoading}
+      loadedItem={loadedItem}
+      mediaUsages={media.mediaUsages}
+      addManualMedia={media.addManualMedia}
+      onChangeMediaUsages={(usages) => {
+        media.setMediaUsages(usages);
+        media.setRequiresReferenceSync(
+          (current) => current || usages.some((usage) => Boolean(usage.assetId))
+        );
+      }}
+      canSelectMedia={canSelectMedia}
+      canUploadMedia={canUploadMedia}
+      mediaEditingDisabled={!mediaReferencesReady || saveFeedback.status === 'saving'}
+      onOpenMediaPicker={(pickerMode) =>
+        pickerMode === 'upload' ? media.mediaPicker.openUpload() : media.mediaPicker.openLibrary()
+      }
+    />
+  );
+}
+
+export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
+  const { methods, pt, deletion, media, canUploadMedia, canUpdateMedia, navigate, formId, submit } =
+    props;
   return (
     <>
       <EventsDetailDeleteDialog
@@ -136,36 +165,7 @@ export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
         className="space-y-5"
       >
         <EventsDetailStatus {...props} />
-        <EventsDetailEditorTabs
-          pt={pt}
-          mode={mode}
-          contentId={contentId}
-          tabs={tabs}
-          activeTab={activeTab}
-          handleTabChange={handleTabChange}
-          warmTab={warmTab}
-          visitedTabs={visitedTabs}
-          categoryOptions={categoryOptions}
-          categoryOptionsError={categoryOptionsError}
-          categoryOptionsLoading={categoryOptionsLoading}
-          loadedItem={loadedItem}
-          mediaUsages={media.mediaUsages}
-          addManualMedia={media.addManualMedia}
-          onChangeMediaUsages={(usages) => {
-            media.setMediaUsages(usages);
-            media.setRequiresReferenceSync(
-              (current) => current || usages.some((usage) => Boolean(usage.assetId))
-            );
-          }}
-          canSelectMedia={canSelectMedia}
-          canUploadMedia={canUploadMedia}
-          mediaEditingDisabled={!mediaReferencesReady || saveFeedback.status === 'saving'}
-          onOpenMediaPicker={(pickerMode) =>
-            pickerMode === 'upload'
-              ? media.mediaPicker.openUpload()
-              : media.mediaPicker.openLibrary()
-          }
-        />
+        <EventsEditorFields {...props} />
       </form>
     </>
   );

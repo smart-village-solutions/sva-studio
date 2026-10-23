@@ -132,6 +132,21 @@ const didDeclineGlobalPush = (
   globalThis.window.confirm(pt(resolveGlobalPushConfirmationKey(wasteTargetingAvailability))) ===
     false;
 
+function useCreatedNewsNavigation() {
+  const navigate = useNavigate();
+  const navigateToCreatedDetail = React.useCallback(
+    (createdContentId: string) =>
+      navigate({
+        to: '/admin/news/$id',
+        params: { id: createdContentId },
+        state: (previous) => addNewsCreatedSaveFeedback(previous, createdContentId),
+      }),
+    [navigate]
+  );
+
+  return navigateToCreatedDetail;
+}
+
 export const useNewsDetailSave = ({
   methods,
   canSave,
@@ -156,18 +171,9 @@ export const useNewsDetailSave = ({
   completeCreateSave,
   retryCreatedContentId,
 }: NewsDetailSaveOptions) => {
-  const navigate = useNavigate();
   const { reset } = methods;
   const confirmedCreateId = React.useRef<string | null>(null);
-  const navigateToCreatedDetail = React.useCallback(
-    (createdContentId: string) =>
-      navigate({
-        to: '/admin/news/$id',
-        params: { id: createdContentId },
-        state: (previous) => addNewsCreatedSaveFeedback(previous, createdContentId),
-      }),
-    [navigate]
-  );
+  const navigateToCreatedDetail = useCreatedNewsNavigation();
 
   const saveCurrentItem = methods.handleSubmit(
     async (values) => {

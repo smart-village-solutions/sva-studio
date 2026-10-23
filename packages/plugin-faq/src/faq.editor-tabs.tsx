@@ -148,6 +148,21 @@ const FaqSettingsTab = ({ form, pt, create = false }: FaqEditorTabProps & { crea
   );
 };
 
+const FaqCreateFields = ({ form, pt }: FaqEditorTabProps) => {
+  return (
+    <div className="space-y-5">
+      <StudioDetailCard title={pt('create.contentTitle')}>
+        <FaqQuestionField form={form} pt={pt} />
+        <FaqContentTab form={form} pt={pt} />
+      </StudioDetailCard>
+      <StudioDetailCard title={pt('create.settingsTitle')}>
+        <FaqLanguageField form={form} pt={pt} />
+        <FaqSettingsTab form={form} pt={pt} create />
+      </StudioDetailCard>
+    </div>
+  );
+};
+
 export const FaqEditorTabs = ({
   activeTab,
   contentId,
@@ -163,20 +178,7 @@ export const FaqEditorTabs = ({
   onTabChange: (tab: FaqTab) => void;
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>) => {
-  if (mode === 'create') {
-    return (
-      <div className="space-y-5">
-        <StudioDetailCard title={pt('create.contentTitle')}>
-          <FaqQuestionField form={form} pt={pt} />
-          <FaqContentTab form={form} pt={pt} />
-        </StudioDetailCard>
-        <StudioDetailCard title={pt('create.settingsTitle')}>
-          <FaqLanguageField form={form} pt={pt} />
-          <FaqSettingsTab form={form} pt={pt} create />
-        </StudioDetailCard>
-      </div>
-    );
-  }
+  if (mode === 'create') return <FaqCreateFields form={form} pt={pt} />;
   const tabs: readonly StudioDetailTabDefinition<FaqTab>[] = [
     {
       id: 'basis',

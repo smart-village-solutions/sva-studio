@@ -107,3 +107,24 @@ export const poiMessagesDe = {
   categoryOptionsLoading: 'Kategorien werden geladen.',
   categoryOptionsLoadError: 'Die Kategorien konnten nicht geladen werden.',
 } as const;
+
+export const poiHistoryDe = {
+  loading: 'Historie wird geladen.',
+  error: 'Historie konnte nicht geladen werden.',
+  createHint: 'Speichern Sie den Ort, bevor die Historie verfügbar ist.',
+  tableLabel: 'Historie des Ortes',
+  sourceNotice:
+    'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
+  emptySummary: 'Keine weiteren Änderungsdetails.',
+  columns: {
+    time: 'Zeitpunkt',
+    action: 'Aktion',
+    actor: 'Bearbeitet von',
+    summary: 'Zusammenfassung',
+  },
+  actions: { created: 'Erstellt', updated: 'Aktualisiert', statusChanged: 'Status geändert' },
+  empty: {
+    title: 'Noch keine Historie verfügbar.',
+    description: 'Für diesen Ort wurden noch keine Studio-Änderungen erfasst.',
+  },
+};

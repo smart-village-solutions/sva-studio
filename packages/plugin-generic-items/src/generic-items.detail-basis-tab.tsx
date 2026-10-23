@@ -1,11 +1,6 @@
+import { GenericItemsMetaCard } from './generic-items.detail-meta-card.js';
 import { readFieldError } from '@sva/plugin-sdk';
-import {
-  Checkbox,
-  Input,
-  StudioField,
-  StudioFieldGroup,
-  getStudioFormFieldProps,
-} from '@sva/studio-ui-react';
+import { Checkbox, Input, StudioField, getStudioFormFieldProps } from '@sva/studio-ui-react';
 import { Controller, useFormContext } from 'react-hook-form';
 
 import { GenericItemsCategoryMultiselect } from './generic-items.category-multiselect.js';
@@ -60,24 +55,39 @@ export const GenericItemsCategoriesField = ({
   );
 };
 
-const GenericItemsIdentityCard = ({
-  availableCategories,
-  categoryOptionsError,
-  categoryOptionsLoading,
-  labels,
-  createSection,
-}: Readonly<
-  Pick<
-    GenericItemsDetailBasisTabProps,
-    | 'availableCategories'
-    | 'categoryOptionsError'
-    | 'categoryOptionsLoading'
-    | 'labels'
-    | 'createSection'
-  >
->) => {
+function GenericItemsVisibleField({ labels }: Readonly<{ labels: Record<string, string> }>) {
   const {
     control,
+    formState: { errors },
+  } = useFormContext<GenericItemsDetailFormValues>();
+  const visibleField = getStudioFormFieldProps({
+    id: 'generic-item-visible',
+    hasDescription: true,
+    error: errors.visible,
+  });
+
+  return (
+    <StudioField {...visibleField} label={labels.visible} description={labels.visibleHelp}>
+      <Controller
+        name="visible"
+        control={control}
+        render={({ field }) => (
+          <Checkbox
+            {...visibleField.controlProps}
+            checked={Boolean(field.value)}
+            onChange={(event) => field.onChange(event.currentTarget.checked)}
+          />
+        )}
+      />
+    </StudioField>
+  );
+}
+
+function GenericItemsIdentityFields({
+  labels,
+  createSection,
+}: Pick<GenericItemsDetailBasisTabProps, 'labels' | 'createSection'>) {
+  const {
     register,
     formState: { errors },
   } = useFormContext<GenericItemsDetailFormValues>();
@@ -91,12 +101,6 @@ const GenericItemsIdentityCard = ({
     hasDescription: true,
     error: errors.genericType,
   });
-  const visibleField = getStudioFormFieldProps({
-    id: 'generic-item-visible',
-    hasDescription: true,
-    error: errors.visible,
-  });
-
   const titleInput = (
     <StudioField {...titleField} label={labels.title} description={labels.titleHelp} required>
       <Input {...titleField.controlProps} required {...register('title')} />
@@ -112,6 +116,30 @@ const GenericItemsIdentityCard = ({
       <Input {...genericTypeField.controlProps} required {...register('genericType')} />
     </StudioField>
   );
+  return (
+    <>
+      {createSection === 'identity' ? (
+        <>
+          {typeInput}
+          {titleInput}
+        </>
+      ) : !createSection ? (
+        <>
+          {titleInput}
+          {typeInput}
+        </>
+      ) : null}
+    </>
+  );
+}
+
+const GenericItemsIdentityCard = ({
+  availableCategories,
+  categoryOptionsError,
+  categoryOptionsLoading,
+  labels,
+  createSection,
+}: GenericItemsDetailBasisTabProps) => {
   return (
     <GenericItemsDetailCard
       title={
@@ -129,33 +157,11 @@ const GenericItemsIdentityCard = ({
             : labels.identityDescription
       }
     >
-      {createSection === 'identity' ? (
-        <>
-          {typeInput}
-          {titleInput}
-        </>
-      ) : !createSection ? (
-        <>
-          {titleInput}
-          {typeInput}
-        </>
-      ) : null}
+      <GenericItemsIdentityFields labels={labels} createSection={createSection} />
       {!createSection || createSection === 'publication' ? (
         <>
           {' '}
-          <StudioField {...visibleField} label={labels.visible} description={labels.visibleHelp}>
-            <Controller
-              name="visible"
-              control={control}
-              render={({ field }) => (
-                <Checkbox
-                  {...visibleField.controlProps}
-                  checked={Boolean(field.value)}
-                  onChange={(event) => field.onChange(event.currentTarget.checked)}
-                />
-              )}
-            />
-          </StudioField>
+          <GenericItemsVisibleField labels={labels} />
         </>
       ) : null}
       {!createSection || createSection === 'categories' ? (
@@ -168,77 +174,6 @@ const GenericItemsIdentityCard = ({
             labels={labels}
           />
         </>
-      ) : null}
-    </GenericItemsDetailCard>
-  );
-};
-
-const GenericItemsMetaCard = ({
-  labels,
-  createSection,
-}: Readonly<Pick<GenericItemsDetailBasisTabProps, 'labels' | 'createSection'>>) => {
-  const {
-    register,
-    formState: { errors },
-  } = useFormContext<GenericItemsDetailFormValues>();
-  const keywordsField = getStudioFormFieldProps({
-    id: 'generic-item-keywords',
-    hasDescription: true,
-    error: errors.keywords,
-  });
-  const externalIdField = getStudioFormFieldProps({
-    id: 'generic-item-external-id',
-    error: errors.externalId,
-  });
-  const publicationDateField = getStudioFormFieldProps({
-    id: 'generic-item-publication-date',
-    hasDescription: true,
-    error: errors.publicationDate,
-  });
-  const publishedAtField = getStudioFormFieldProps({
-    id: 'generic-item-published-at',
-    hasDescription: true,
-    error: errors.publishedAt,
-  });
-
-  return (
-    <GenericItemsDetailCard
-      title={createSection === 'publication' ? labels.publicationDate : labels.metaTitle}
-      description={
-        createSection === 'publication' ? labels.publicationDateHelp : labels.metaDescription
-      }
-    >
-      {!createSection || createSection === 'technical' ? (
-        <StudioFieldGroup columns={2}>
-          <StudioField {...keywordsField} label={labels.keywords} description={labels.keywordsHelp}>
-            <Input {...keywordsField.controlProps} {...register('keywords')} />
-          </StudioField>
-        </StudioFieldGroup>
-      ) : null}
-      <StudioFieldGroup columns={2}>
-        {!createSection || createSection === 'technical' ? (
-          <StudioField {...externalIdField} label={labels.externalId}>
-            <Input {...externalIdField.controlProps} {...register('externalId')} />
-          </StudioField>
-        ) : null}
-        {!createSection || createSection === 'publication' ? (
-          <StudioField
-            {...publicationDateField}
-            label={labels.publicationDate}
-            description={labels.publicationDateHelp}
-          >
-            <Input {...publicationDateField.controlProps} {...register('publicationDate')} />
-          </StudioField>
-        ) : null}
-      </StudioFieldGroup>
-      {!createSection || createSection === 'publication' ? (
-        <StudioField
-          {...publishedAtField}
-          label={labels.publishedAt}
-          description={labels.publishedAtHelp}
-        >
-          <Input {...publishedAtField.controlProps} {...register('publishedAt')} />
-        </StudioField>
       ) : null}
     </GenericItemsDetailCard>
   );

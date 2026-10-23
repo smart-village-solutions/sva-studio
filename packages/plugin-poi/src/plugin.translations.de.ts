@@ -1,3 +1,5 @@
+import { poiHistoryDe } from './plugin.translations.de.messages.js';
+import { poiCreateTranslations } from './plugin.translations.create.js';
 import { createPoiLocaleTranslations } from './plugin.translations.shared.js';
 import { poiMessagesDe } from './plugin.translations.de.messages.js';
 import { poiDeleteActionTranslationsDe } from './plugin.translations.de.delete-actions.js';
@@ -8,39 +10,7 @@ const poiEditorTranslations = {
   editDescription: 'Aktualisieren oder löschen Sie den Ort.',
 };
 export const poiTranslationsDe = createPoiLocaleTranslations({
-  create: {
-    nameHelp: 'Wie heißt der Ort? Der Name ist erforderlich.',
-    categoriesHelp: 'Ordnen Sie den Ort den passenden vorhandenen Kategorien zu.',
-    activeHelp: 'Legt fest, ob der Ort als aktiv gespeichert wird.',
-    mobileDescriptionHelp:
-      'Beschreiben Sie den Ort kurz. Dieser Text wird getrennt von der ausführlichen Beschreibung gespeichert.',
-    createActive: 'Aktiv anlegen',
-    createInactive: 'Inaktiv anlegen',
-    intro:
-      'Erstellen Sie einen Ort. Beginnen Sie mit Name und Standort; Bilder und weitere Angaben können Sie ergänzen.',
-    navigation: 'Zu einem Formularabschnitt springen',
-    optional: 'optional',
-    filled: 'Angaben vorhanden',
-    empty: 'Noch keine Angaben',
-    activeEffect:
-      'Der Ort wird als aktiv gespeichert. Öffnungszeiten steuern keine zeitgesteuerte Veröffentlichung.',
-    inactiveEffect: 'Der Ort wird als inaktiv gespeichert.',
-    editHint: 'Nach dem Anlegen öffnen Sie den gespeicherten Ort im gewohnten Editor mit Tabs.',
-    sections: {
-      name: 'Name',
-      location: 'Standort',
-      description: 'Beschreibung',
-      media: 'Medien',
-      categories: 'Kategorien',
-      openingHours: 'Öffnungszeiten hinzufügen',
-      contact: 'Kontakt ergänzen',
-      links: 'Weitere Links ergänzen',
-      prices: 'Preise ergänzen',
-      operator: 'Betreiber ergänzen',
-      technical: 'Technische Angaben',
-      active: 'Aktiv',
-    },
-  },
+  create: poiCreateTranslations.de,
   navigation: { title: 'Orte' },
   list: { title: 'Orte', description: 'Orte aus dem Mainserver bearbeiten.' },
   detail: poiEditorTranslations,
@@ -235,26 +205,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
       },
     },
   },
-  history: {
-    loading: 'Historie wird geladen.',
-    error: 'Historie konnte nicht geladen werden.',
-    createHint: 'Speichern Sie den Ort, bevor die Historie verfügbar ist.',
-    tableLabel: 'Historie des Ortes',
-    sourceNotice:
-      'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
-    emptySummary: 'Keine weiteren Änderungsdetails.',
-    columns: {
-      time: 'Zeitpunkt',
-      action: 'Aktion',
-      actor: 'Bearbeitet von',
-      summary: 'Zusammenfassung',
-    },
-    actions: { created: 'Erstellt', updated: 'Aktualisiert', statusChanged: 'Status geändert' },
-    empty: {
-      title: 'Noch keine Historie verfügbar.',
-      description: 'Für diesen Ort wurden noch keine Studio-Änderungen erfasst.',
-    },
-  },
+  history: poiHistoryDe,
   empty: { title: 'Noch keine Orte vorhanden', description: 'Legen Sie den ersten Ort an.' },
   pagination: {
     ariaLabel: 'Seitennavigation der Orte',

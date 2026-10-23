@@ -1,7 +1,7 @@
+import { GenericItemsMediaPickerView } from './generic-items.detail-page.view-media.js';
 import { Link } from '@tanstack/react-router';
 import { Button, StudioDetailPageTemplate, StudioSaveButton } from '@sva/studio-ui-react';
 import {
-  GenericItemsMediaPickerView,
   GenericItemsStatusView,
   GenericItemsDeleteDialogView,
   type GenericItemsDetailPageViewModel,

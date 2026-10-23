@@ -92,3 +92,18 @@ export const poiMessagesEn = {
   categoryOptionsLoading: 'Loading categories.',
   categoryOptionsLoadError: 'Failed to load categories.',
 } as const;
+
+export const poiHistoryEn = {
+  loading: 'Loading history.',
+  error: 'History could not be loaded.',
+  createHint: 'Save the POI before history becomes available.',
+  tableLabel: 'POI history',
+  sourceNotice: 'This history only contains changes made through Studio.',
+  emptySummary: 'No further change details.',
+  columns: { time: 'Time', action: 'Action', actor: 'Changed by', summary: 'Summary' },
+  actions: { created: 'Created', updated: 'Updated', statusChanged: 'Status changed' },
+  empty: {
+    title: 'No history available yet.',
+    description: 'No Studio changes have been recorded for this POI yet.',
+  },
+};

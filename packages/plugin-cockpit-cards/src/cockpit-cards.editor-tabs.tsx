@@ -59,6 +59,20 @@ function contentTab({
   };
 }
 
+type CockpitCardEditorTabsInput = Readonly<{
+  pt: ReturnType<typeof usePluginTranslation>;
+  form: UseFormReturn<CockpitCardFormValues>;
+  mode: 'create' | 'edit';
+  contentId?: string;
+  link: string;
+  options: readonly { id: string; name: string }[];
+  categoriesState: 'loading' | 'error' | 'ready';
+  media: ReturnType<typeof useCockpitCardMedia>;
+  canSelectMedia: boolean;
+  canUploadMedia: boolean;
+  saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
+}>;
+
 export function cockpitCardEditorTabs({
   pt,
   form,
@@ -71,19 +85,7 @@ export function cockpitCardEditorTabs({
   canSelectMedia,
   canUploadMedia,
   saveFeedback,
-}: Readonly<{
-  pt: ReturnType<typeof usePluginTranslation>;
-  form: UseFormReturn<CockpitCardFormValues>;
-  mode: 'create' | 'edit';
-  contentId?: string;
-  link: string;
-  options: readonly { id: string; name: string }[];
-  categoriesState: 'loading' | 'error' | 'ready';
-  media: ReturnType<typeof useCockpitCardMedia>;
-  canSelectMedia: boolean;
-  canUploadMedia: boolean;
-  saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
-}>): readonly StudioDetailTabDefinition<Tab>[] {
+}: CockpitCardEditorTabsInput): readonly StudioDetailTabDefinition<Tab>[] {
   if (mode === 'create') {
     return [
       {

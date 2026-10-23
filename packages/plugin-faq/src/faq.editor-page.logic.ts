@@ -1,3 +1,11 @@
+import {
+  hasStudioCreatedSaveFeedback,
+  removeStudioSaveFeedback,
+  type useStudioSaveFeedback,
+} from '@sva/studio-ui-react';
+import type { useNavigate } from '@tanstack/react-router';
+import type { usePluginTranslation } from '@sva/plugin-sdk';
+import { useStudioEditorLeaveGuard } from '@sva/studio-ui-react';
 import type { NavigateOptions } from '@tanstack/react-router';
 import type { UseFormReturn } from 'react-hook-form';
 import type { MainserverPrincipalType } from '@sva/studio-ui-react';
@@ -166,4 +174,71 @@ export const useFaqEditorActions = ({
   };
 
   return { deletePending, onDelete, onSubmit };
+};
+
+export function useFaqCreateGuard(mode: 'create' | 'edit', form: UseFormReturn<FaqFormValues>) {
+  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
+  const savedRevision = React.useRef(0);
+  const createdContentIdRef = React.useRef<string | null>(null);
+  const leaveGuard = useStudioEditorLeaveGuard({
+    enabled: mode === 'create',
+    hasUnsavedChanges: form.formState.isDirty,
+  });
+  React.useEffect(() => {
+    const subscription = form.watch((_values, { name }) => {
+      if (name) leaveGuard.markChanged();
+    });
+    return () => subscription.unsubscribe();
+  }, [form, leaveGuard]);
+  const onCreateStarted = () => {
+    if (createdContentIdRef.current) return false;
+    savedRevision.current = leaveGuard.captureRevision();
+    return true;
+  };
+  const onCreateConfirmed = (id: string) => {
+    createdContentIdRef.current = id;
+    setCreatedContentId(id);
+  };
+  const onCreateSaved = (id: string) => {
+    onCreateConfirmed(id);
+
+    if (leaveGuard.acknowledgeSaved(savedRevision.current)) form.reset(form.getValues());
+  };
+
+  return { createdContentId, onCreateStarted, onCreateSaved };
+}
+
+export const useFaqInitialSaveFeedback = ({
+  contentId,
+  loading,
+  locationState,
+  navigate,
+  saveFeedback,
+}: Readonly<{
+  contentId?: string;
+  loading: boolean;
+  locationState: unknown;
+  navigate: ReturnType<typeof useNavigate>;
+  saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
+}>) => {
+  const shownRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (
+      loading ||
+      shownRef.current ||
+      !hasStudioCreatedSaveFeedback(locationState, 'faq', contentId)
+    ) {
+      return;
+    }
+
+    shownRef.current = true;
+    saveFeedback.showSaved();
+    void navigate({
+      to: '/admin/faq/$id',
+      params: { id: contentId ?? '' },
+      replace: true,
+      state: (previous) => removeStudioSaveFeedback(previous),
+    });
+  }, [contentId, loading, locationState, navigate, saveFeedback]);
 };

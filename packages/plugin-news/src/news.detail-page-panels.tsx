@@ -89,26 +89,11 @@ type NewsDetailPanelsOptions = Readonly<{
   contentId?: string;
 }>;
 
-export const createNewsDetailPanels = ({
-  pt,
-  dirtyTabs,
-  categoryOptions,
-  principalControl,
-  actingPrincipalType,
-  setActingPrincipalType,
-  categoryOptionsError,
-  categoryOptionsLoading,
-  mode,
+function createNewsSettingsPanel({
   loadedItem,
-  mediaUsages,
-  addManualMedia,
-  setMediaUsages,
-  setRequiresReferenceSync,
-  canSelectMedia,
-  canUploadMedia,
-  saveFeedback,
-  mediaPicker,
   canSendPushNotification,
+  mode,
+  pt,
   wasteOverview,
   wasteTargetingAvailability,
   loadWasteTargetingOverview,
@@ -117,8 +102,55 @@ export const createNewsDetailPanels = ({
   methods,
   setScheduledPublicationInput,
   setInvalidScheduledPublicationInput,
-  contentId,
-}: NewsDetailPanelsOptions) => {
+}: NewsDetailPanelsOptions) {
+  return (
+    <NewsDetailSettingsTab
+      loadedItem={loadedItem}
+      canSendPushNotification={canSendPushNotification}
+      mode={mode}
+      pt={pt}
+      wasteOverview={wasteOverview}
+      wasteTargetingAvailability={wasteTargetingAvailability}
+      onLoadWasteOverview={loadWasteTargetingOverview}
+      scheduledPublicationField={{
+        value: scheduledPublicationInput,
+        isInvalid: invalidScheduledPublicationInput,
+        onChange: (nextValue) => {
+          const { isInvalid, normalizedValue } = parseDatetimeLocalInput(
+            nextValue,
+            methods.getValues('scheduledPublicationAt')
+          );
+          setScheduledPublicationInput(nextValue);
+          setInvalidScheduledPublicationInput(isInvalid);
+          return normalizedValue;
+        },
+      }}
+    />
+  );
+}
+
+export const createNewsDetailPanels = (options: NewsDetailPanelsOptions) => {
+  const {
+    pt,
+    dirtyTabs,
+    categoryOptions,
+    principalControl,
+    actingPrincipalType,
+    setActingPrincipalType,
+    categoryOptionsError,
+    categoryOptionsLoading,
+    mode,
+    loadedItem,
+    mediaUsages,
+    addManualMedia,
+    setMediaUsages,
+    setRequiresReferenceSync,
+    canSelectMedia,
+    canUploadMedia,
+    saveFeedback,
+    mediaPicker,
+    contentId,
+  } = options;
   const basisProps: React.ComponentProps<typeof NewsDetailBasisTab> = {
     availableCategories: categoryOptions,
     principalControl,
@@ -143,30 +175,7 @@ export const createNewsDetailPanels = ({
       pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary(),
     pt,
   };
-  const settingsPanel = (
-    <NewsDetailSettingsTab
-      loadedItem={loadedItem}
-      canSendPushNotification={canSendPushNotification}
-      mode={mode}
-      pt={pt}
-      wasteOverview={wasteOverview}
-      wasteTargetingAvailability={wasteTargetingAvailability}
-      onLoadWasteOverview={loadWasteTargetingOverview}
-      scheduledPublicationField={{
-        value: scheduledPublicationInput,
-        isInvalid: invalidScheduledPublicationInput,
-        onChange: (nextValue) => {
-          const { isInvalid, normalizedValue } = parseDatetimeLocalInput(
-            nextValue,
-            methods.getValues('scheduledPublicationAt')
-          );
-          setScheduledPublicationInput(nextValue);
-          setInvalidScheduledPublicationInput(isInvalid);
-          return normalizedValue;
-        },
-      }}
-    />
-  );
+  const settingsPanel = createNewsSettingsPanel(options);
   if (mode === 'create') {
     return createNewsDetailTabDefinitions([
       {

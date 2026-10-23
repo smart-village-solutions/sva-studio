@@ -1,3 +1,4 @@
+import { useGenericItemsCreateMediaGuard } from './generic-items.detail-page.create-guard.js';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -16,7 +17,6 @@ import {
   type ContentMediaUsage,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
-  useStudioEditorLeaveGuard,
   useStudioMediaReferenceSync,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
@@ -74,10 +74,6 @@ export function GenericItemsDetailPage({
       saveFeedback.markDirty();
     }
   }, [methods.formState.isDirty, saveFeedback.markDirty]);
-  const summaryErrors = React.useMemo(
-    () => createSummaryErrors(methods.formState.errors),
-    [methods.formState.errors]
-  );
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<
     import('./generic-items.api-types.js').GenericItemContentItem | null
@@ -96,61 +92,14 @@ export function GenericItemsDetailPage({
     mediaUsages,
     setMediaUsages: setMediaUsagesState,
   });
-  const [mediaDirty, setMediaDirty] = React.useState(false);
-  const partialSaveRevision = React.useRef<number | null>(null);
-  const createdContentIdRef = React.useRef<string | null>(null);
-  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
-  const rootLeaveGuard = useStudioEditorLeaveGuard({
-    enabled: mode === 'create',
-    hasUnsavedChanges:
-      methods.formState.isDirty ||
-      (mediaDirty && (createdContentId !== null || mediaUsages.length > 0)) ||
-      mediaReferenceSync.hasPendingRetry,
-  });
-  React.useEffect(() => {
-    if (mode !== 'create') return;
-    const subscription = methods.watch((_values, { name }) => {
-      if (name) rootLeaveGuard.markChanged();
-    });
-    return () => subscription.unsubscribe();
-  }, [methods, mode, rootLeaveGuard]);
-  const setMediaUsages = React.useCallback<
-    React.Dispatch<React.SetStateAction<readonly ContentMediaUsage[]>>
-  >(
-    (update) => {
-      if (mode === 'create') {
-        rootLeaveGuard.markChanged();
-        setMediaDirty(true);
-      }
-      setMediaUsagesState(update);
-    },
-    [mode, rootLeaveGuard]
-  );
-  const leaveGuard = React.useMemo(() => {
-    const acknowledgeSaved = (revision: number) => {
-      if (mode !== 'create' || !rootLeaveGuard.acknowledgeSaved(revision)) return false;
-      methods.reset(methods.getValues());
-      setMediaDirty(false);
-      return true;
-    };
-    return {
-      createdContentId,
-      hasCreated: () => createdContentIdRef.current !== null,
-      rememberCreated: (id: string) => {
-        createdContentIdRef.current = id;
-        setCreatedContentId(id);
-      },
-      captureRevision: rootLeaveGuard.captureRevision,
-      acknowledgeSaved,
-      rememberPartialSave: (revision: number) => {
-        partialSaveRevision.current = revision;
-      },
-      acknowledgeReferenceRetry: () => {
-        if (partialSaveRevision.current !== null) acknowledgeSaved(partialSaveRevision.current);
-        partialSaveRevision.current = null;
-      },
-    };
-  }, [methods, mode, rootLeaveGuard, createdContentId]);
+  const { mediaDirty, createdContentId, setMediaUsages, leaveGuard } =
+    useGenericItemsCreateMediaGuard(
+      methods,
+      mode,
+      mediaUsages,
+      setMediaUsagesState,
+      mediaReferenceSync.hasPendingRetry
+    );
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
@@ -254,7 +203,7 @@ export function GenericItemsDetailPage({
     methods,
     labels,
     mediaPickerLabels,
-    summaryErrors,
+    summaryErrors: createSummaryErrors(methods.formState.errors),
     status,
     setStatus,
     actingPrincipalType,

@@ -197,5 +197,15 @@ export function useProjectEditorMedia(input: MediaInput) {
   React.useEffect(() => {
     void refreshMediaAssets();
   }, [refreshMediaAssets]);
-  return { mediaAssets, mediaPicker, addManualMedia };
+  const changeMediaUsages = (usages: readonly ContentMediaUsage[]) => {
+    input.onMediaChanged();
+    input.setRequiresReferenceSync(
+      (required) =>
+        required ||
+        input.mediaUsages.some((usage) => Boolean(usage.assetId)) ||
+        usages.some((usage) => Boolean(usage.assetId))
+    );
+    input.setMediaUsages(usages);
+  };
+  return { mediaAssets, mediaPicker, addManualMedia, changeMediaUsages };
 }

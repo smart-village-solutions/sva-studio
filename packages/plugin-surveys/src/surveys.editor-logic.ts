@@ -1,3 +1,4 @@
+import { createSurveyEditorSubmit } from './surveys.editor-save.js';
 import React from 'react';
 import { type UseFormReturn } from 'react-hook-form';
 import {
@@ -6,7 +7,7 @@ import {
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
 
-import { createSurvey, getSurveyDetail, updateSurvey } from './surveys.api.js';
+import { getSurveyDetail } from './surveys.api.js';
 import {
   createDefaultSurveyDetailFormValues,
   type SurveyDetailFormValues,
@@ -14,7 +15,6 @@ import {
 import {
   getSurveyEditorErrorMessage,
   mapSurveyItemToFormValues,
-  toSurveyMutationInput,
   type SurveyEditorMode,
 } from './surveys.editor.shared.js';
 import type { SurveyContentItem } from './surveys.types.js';
@@ -116,85 +116,29 @@ const useSurveyEditorLoader = ({
   ]);
 };
 
-const createSurveyEditorSubmit = (input: {
-  readonly methods: UseFormReturn<SurveyDetailFormValues>;
-  readonly leaveGuard: ReturnType<typeof useStudioEditorLeaveGuard>;
-  readonly createdContentIdRef: Readonly<{ current: string | null }>;
-  readonly rememberCreated: (id: string) => void;
-  readonly mode: SurveyEditorMode;
-  readonly contentId?: string;
-  readonly loadedItem: SurveyContentItem | null;
-  readonly actingPrincipalType: MainserverPrincipalType;
-  readonly pt: SurveyEditorTranslation;
-  readonly navigateToCreatedDetail: (contentId: string) => Promise<void>;
-  readonly setLoadedItem: React.Dispatch<React.SetStateAction<SurveyContentItem | null>>;
-  readonly setStatus: React.Dispatch<React.SetStateAction<SurveyEditorStatus>>;
-  readonly saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
-}) =>
-  input.methods.handleSubmit(
-    async (values) => {
-      if (input.mode === 'create' && input.createdContentIdRef.current !== null) return;
-      const leaveRevision = input.leaveGuard.captureRevision();
-      let operationId: number | null = null;
-      try {
-        if (input.mode === 'edit' && !input.contentId) {
-          input.setStatus({ kind: 'error', text: input.pt('messages.missingContentId') });
-          return;
-        }
-        if (input.mode === 'edit' && !input.loadedItem) {
-          input.setStatus({ kind: 'error', text: input.pt('messages.loadError') });
-          return;
-        }
-
-        operationId = input.saveFeedback.beginSaving();
-        const mutation = toSurveyMutationInput(values, input.loadedItem);
-        const contentId = input.contentId;
-        const mutationResult =
-          input.mode === 'create'
-            ? await createSurvey(mutation, input.actingPrincipalType)
-            : await updateSurvey(
-                contentId as string,
-                mutation,
-                input.loadedItem ?? undefined,
-                input.actingPrincipalType
-              );
-        const savedItem =
-          input.mode === 'edit' && input.loadedItem?.results && mutationResult.results === undefined
-            ? { ...mutationResult, results: input.loadedItem.results }
-            : mutationResult;
-
-        if (input.mode === 'create') input.rememberCreated(savedItem.id);
-        input.setLoadedItem(savedItem);
-        if (input.mode !== 'create') input.methods.reset(mapSurveyItemToFormValues(savedItem));
-        else if (input.leaveGuard.acknowledgeSaved(leaveRevision))
-          input.methods.reset(input.methods.getValues());
-        input.setStatus(null);
-        input.saveFeedback.markSaved(operationId);
-
-        if (input.mode === 'create') {
-          await input.navigateToCreatedDetail(savedItem.id);
-        }
-      } catch (error) {
-        if (input.mode === 'create' && input.createdContentIdRef.current !== null) {
-          input.setStatus({ kind: 'success', text: input.pt('messages.createdNavigationError') });
-          return;
-        }
-        if (operationId !== null) {
-          input.saveFeedback.markFailed(operationId);
-        }
-        input.setStatus({
-          kind: 'error',
-          text: getSurveyEditorErrorMessage(
-            error,
-            input.mode === 'create'
-              ? input.pt('messages.createError')
-              : input.pt('messages.updateError')
-          ),
-        });
-      }
-    },
-    () => input.saveFeedback.reset()
-  );
+function useSurveyCreateGuard(
+  mode: SurveyEditorMode,
+  methods: UseFormReturn<SurveyDetailFormValues>
+) {
+  const createdContentIdRef = React.useRef<string | null>(null);
+  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
+  const rememberCreated = React.useCallback((id: string) => {
+    createdContentIdRef.current = id;
+    setCreatedContentId(id);
+  }, []);
+  const leaveGuard = useStudioEditorLeaveGuard({
+    enabled: mode === 'create',
+    hasUnsavedChanges: methods.formState.isDirty,
+  });
+  React.useEffect(() => {
+    if (mode !== 'create') return;
+    const subscription = methods.watch((_values, { name }) => {
+      if (name) leaveGuard.markChanged();
+    });
+    return () => subscription.unsubscribe();
+  }, [methods, mode, leaveGuard]);
+  return { createdContentIdRef, createdContentId, rememberCreated, leaveGuard };
+}
 
 export const useSurveyEditorController = ({
   mode,
@@ -220,23 +164,8 @@ export const useSurveyEditorController = ({
   const [loadedItem, setLoadedItem] = React.useState<SurveyContentItem | null>(null);
   const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
   const saveFeedback = useStudioSaveFeedback();
-  const createdContentIdRef = React.useRef<string | null>(null);
-  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
-  const rememberCreated = React.useCallback((id: string) => {
-    createdContentIdRef.current = id;
-    setCreatedContentId(id);
-  }, []);
-  const leaveGuard = useStudioEditorLeaveGuard({
-    enabled: mode === 'create',
-    hasUnsavedChanges: methods.formState.isDirty,
-  });
-  React.useEffect(() => {
-    if (mode !== 'create') return;
-    const subscription = methods.watch((_values, { name }) => {
-      if (name) leaveGuard.markChanged();
-    });
-    return () => subscription.unsubscribe();
-  }, [methods, mode, leaveGuard]);
+  const { createdContentIdRef, createdContentId, rememberCreated, leaveGuard } =
+    useSurveyCreateGuard(mode, methods);
   const initialSaveFeedbackShownRef = React.useRef(false);
   React.useEffect(() => {
     if (methods.formState.isDirty) {

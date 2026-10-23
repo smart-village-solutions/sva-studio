@@ -80,14 +80,9 @@ export function PoiDetailBasisTab({
     error: translateFieldError(readFieldError<FieldError>(errors.basis?.categories), pt),
     hasDescription: true,
   });
+  const summaryFields = { name: [nameField], categories: [categoryField], active: [] };
   const summaryErrors = collectSummaryErrors(
-    section === 'name'
-      ? [nameField]
-      : section === 'categories'
-        ? [categoryField]
-        : section === 'active'
-          ? []
-          : [nameField, categoryField]
+    section ? summaryFields[section] : [nameField, categoryField]
   );
 
   return (

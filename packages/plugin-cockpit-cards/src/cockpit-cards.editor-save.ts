@@ -101,6 +101,15 @@ const readableSaveErrorReason = (cause: unknown): string => {
   return cause.message;
 };
 
+function cockpitCardSaveError(cause: unknown, pt: SaveContext['pt']) {
+  const reason = readableSaveErrorReason(cause);
+  return cause instanceof Error && 'code' in cause && cause.code === 'visibility_update_failed'
+    ? pt('messages.visibilitySavePartialFailure')
+    : reason
+      ? pt('messages.saveErrorWithReason').replace('{{reason}}', reason)
+      : pt('messages.saveError');
+}
+
 export async function saveCockpitCard(values: CockpitCardFormValues, context: SaveContext) {
   const { mediaUsages, saveFeedback, setMutationError, pt } = context;
   setMutationError(null);
@@ -156,14 +165,7 @@ export async function saveCockpitCard(values: CockpitCardFormValues, context: Sa
       }
     }
   } catch (cause) {
-    const reason = readableSaveErrorReason(cause);
-    setMutationError(
-      cause instanceof Error && 'code' in cause && cause.code === 'visibility_update_failed'
-        ? pt('messages.visibilitySavePartialFailure')
-        : reason
-          ? pt('messages.saveErrorWithReason').replace('{{reason}}', reason)
-          : pt('messages.saveError')
-    );
+    setMutationError(cockpitCardSaveError(cause, pt));
     saveFeedback.markFailed(operationId);
   }
 }

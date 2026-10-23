@@ -2,17 +2,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   StudioErrorState,
-  useStudioEditorLeaveGuard,
   StudioLoadingState,
   type MainserverPrincipalControlModel,
 } from '@sva/studio-ui-react';
 import { useLocation, useNavigate, useParams } from '@tanstack/react-router';
-import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { useProjectEditorDelete } from './projects.editor-delete.js';
 import { useProjectEditorMedia } from './projects.editor-media.js';
 import { createProjectSaveHandler } from './projects.editor-save.js';
-import { useProjectEditorState } from './projects.editor-state.js';
+import { useProjectCreateGuard, useProjectEditorState } from './projects.editor-state.js';
 import { createProjectTabs } from './projects.editor-tabs.js';
 import { ProjectEditorView } from './projects.editor-view.js';
 import { createDefaultProjectFormValues } from './projects.model.js';
@@ -20,15 +18,13 @@ import { projectFormSchema, type ProjectFormValues } from './projects.validation
 
 export { ProjectsListPage } from './projects.list-page.js';
 
-function ProjectEditor({
-  mode,
-  contentId,
-  principalControl,
-}: Readonly<{
+type ProjectEditorProps = Readonly<{
   mode: 'create' | 'edit';
   contentId?: string;
   principalControl?: MainserverPrincipalControlModel;
-}>) {
+}>;
+
+function ProjectEditor({ mode, contentId, principalControl }: ProjectEditorProps) {
   const pt = usePluginTranslation('projects');
   const navigate = useNavigate();
   const form = useForm<ProjectFormValues>({
@@ -49,45 +45,8 @@ function ProjectEditor({
     navigate,
     pt,
   });
-  const [mediaDirty, setMediaDirty] = React.useState(false);
-  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
-  const savedRevision = React.useRef(0);
-  const createdContentIdRef = React.useRef<string | null>(null);
-  const leaveGuard = useStudioEditorLeaveGuard({
-    enabled: mode === 'create',
-    hasUnsavedChanges:
-      form.formState.isDirty ||
-      (mediaDirty && (createdContentId !== null || state.mediaUsages.length > 0)) ||
-      state.mediaReferenceSync.hasPendingRetry,
-  });
-  React.useEffect(() => {
-    const subscription = form.watch((_values, { name }) => {
-      if (name) leaveGuard.markChanged();
-    });
-    return () => subscription.unsubscribe();
-  }, [form, leaveGuard]);
-  const markMediaChanged = () => {
-    setMediaDirty(true);
-    leaveGuard.markChanged();
-  };
-  const onCreateStarted = () => {
-    if (createdContentIdRef.current) return false;
-    savedRevision.current = leaveGuard.captureRevision();
-    return true;
-  };
-  const onCreateConfirmed = (id: string) => {
-    createdContentIdRef.current = id;
-    setCreatedContentId(id);
-  };
-  const onCreateSaved = () => {
-    if (mode !== 'create') return;
-
-    if (leaveGuard.acknowledgeSaved(savedRevision.current)) {
-      form.reset(form.getValues());
-      setMediaDirty(false);
-      state.setRequiresReferenceSync(false);
-    }
-  };
+  const { createdContentId, markMediaChanged, onCreateStarted, onCreateConfirmed, onCreateSaved } =
+    useProjectCreateGuard(mode, form, state);
   const media = useProjectEditorMedia({
     onMediaChanged: markMediaChanged,
     form,
@@ -119,16 +78,7 @@ function ProjectEditor({
     onAddManualMedia: media.addManualMedia,
     onOpenMediaPicker: (pickerMode) =>
       pickerMode === 'upload' ? media.mediaPicker.openUpload() : media.mediaPicker.openLibrary(),
-    onMediaChange: (usages) => {
-      markMediaChanged();
-      state.setRequiresReferenceSync(
-        (required) =>
-          required ||
-          state.mediaUsages.some((usage) => Boolean(usage.assetId)) ||
-          usages.some((usage) => Boolean(usage.assetId))
-      );
-      state.setMediaUsages(usages);
-    },
+    onMediaChange: media.changeMediaUsages,
   });
   return (
     <ProjectEditorView
@@ -150,13 +100,13 @@ function ProjectEditor({
 
 export const ProjectsCreatePage = ({
   principalControl,
-}: Readonly<{ principalControl?: MainserverPrincipalControlModel }> = {}) => (
+}: Pick<ProjectEditorProps, 'principalControl'> = {}) => (
   <ProjectEditor mode="create" principalControl={principalControl} />
 );
 
 export const ProjectsEditPage = ({
   principalControl,
-}: Readonly<{ principalControl?: MainserverPrincipalControlModel }> = {}) => {
+}: Pick<ProjectEditorProps, 'principalControl'> = {}) => {
   const params = useParams({ strict: false }) as { id?: string; contentId?: string };
   return (
     <ProjectEditor

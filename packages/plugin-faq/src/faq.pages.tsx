@@ -9,20 +9,22 @@ import {
   usePluginTranslation,
 } from '@sva/plugin-sdk';
 import {
-  hasStudioCreatedSaveFeedback,
-  removeStudioSaveFeedback,
   StudioErrorState,
   StudioLoadingState,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
   useStudioSaveFeedback,
-  useStudioEditorLeaveGuard,
 } from '@sva/studio-ui-react';
 import React from 'react';
 import { useForm } from 'react-hook-form';
 
 import type { FaqTab } from './faq.editor-tabs.js';
-import { useFaqEditorActions, useFaqEditorLoader } from './faq.editor-page.logic.js';
+import {
+  useFaqCreateGuard,
+  useFaqInitialSaveFeedback,
+  useFaqEditorActions,
+  useFaqEditorLoader,
+} from './faq.editor-page.logic.js';
 import { FaqEditorView } from './faq-editor-view.js';
 import { FaqListPage } from './faq-list-page.js';
 import { faqFormSchema } from './faq.model.js';
@@ -74,41 +76,6 @@ const useFaqMutationAccess = (
   return { canDelete: accessCapabilities.canDelete, canSave };
 };
 
-const useFaqInitialSaveFeedback = ({
-  contentId,
-  loading,
-  locationState,
-  navigate,
-  saveFeedback,
-}: Readonly<{
-  contentId?: string;
-  loading: boolean;
-  locationState: unknown;
-  navigate: ReturnType<typeof useNavigate>;
-  saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
-}>) => {
-  const shownRef = React.useRef(false);
-
-  React.useEffect(() => {
-    if (
-      loading ||
-      shownRef.current ||
-      !hasStudioCreatedSaveFeedback(locationState, 'faq', contentId)
-    ) {
-      return;
-    }
-
-    shownRef.current = true;
-    saveFeedback.showSaved();
-    void navigate({
-      to: '/admin/faq/$id',
-      params: { id: contentId ?? '' },
-      replace: true,
-      state: (previous) => removeStudioSaveFeedback(previous),
-    });
-  }, [contentId, loading, locationState, navigate, saveFeedback]);
-};
-
 const useFaqActingPrincipal = (principalControl?: MainserverPrincipalControlModel) => {
   const [value, setValue] = React.useState<MainserverPrincipalType>(
     principalControl?.value ?? 'user'
@@ -144,48 +111,40 @@ const useFaqSave = ({
     }
   );
 
+const useFaqForm = () => {
+  const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
+  const saveFeedback = useStudioSaveFeedback();
+  React.useEffect(() => {
+    if (form.formState.isDirty) saveFeedback.markDirty();
+  }, [form.formState.isDirty, saveFeedback.markDirty]);
+  return { form, saveFeedback };
+};
+
+function createFaqFormSubmit(
+  canSave: boolean,
+  save: ReturnType<typeof useFaqSave>
+): React.FormEventHandler<HTMLFormElement> {
+  return (event) => {
+    if (!canSave) {
+      event.preventDefault();
+      return;
+    }
+    void save(event);
+  };
+}
+
 const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps) => {
   const pt = usePluginTranslation('faq');
   const navigate = useNavigate();
   const location = useLocation();
-  const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
-  const saveFeedback = useStudioSaveFeedback();
-  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
-  const savedRevision = React.useRef(0);
-  const createdContentIdRef = React.useRef<string | null>(null);
-  const leaveGuard = useStudioEditorLeaveGuard({
-    enabled: mode === 'create',
-    hasUnsavedChanges: form.formState.isDirty,
-  });
-  React.useEffect(() => {
-    const subscription = form.watch((_values, { name }) => {
-      if (name) leaveGuard.markChanged();
-    });
-    return () => subscription.unsubscribe();
-  }, [form, leaveGuard]);
-  const onCreateStarted = () => {
-    if (createdContentIdRef.current) return false;
-    savedRevision.current = leaveGuard.captureRevision();
-    return true;
-  };
-  const onCreateConfirmed = (id: string) => {
-    createdContentIdRef.current = id;
-    setCreatedContentId(id);
-  };
-  const onCreateSaved = (id: string) => {
-    onCreateConfirmed(id);
-
-    if (leaveGuard.acknowledgeSaved(savedRevision.current)) form.reset(form.getValues());
-  };
+  const { form, saveFeedback } = useFaqForm();
+  const { createdContentId, onCreateStarted, onCreateSaved } = useFaqCreateGuard(mode, form);
 
   const [activeTab, setActiveTab] = React.useState<FaqTab>('basis');
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
   const [actingPrincipalType, setActingPrincipalType] = useFaqActingPrincipal(principalControl);
-  React.useEffect(() => {
-    if (form.formState.isDirty) saveFeedback.markDirty();
-  }, [form.formState.isDirty, saveFeedback.markDirty]);
   const { existingPayload, loadedItem, loadError, loading, resourceAccess } = useFaqEditorLoader({
     contentId,
     form,
@@ -241,13 +200,7 @@ const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps
         if (!canDelete) return;
         if (await onDelete()) setDeleteDialogOpen(false);
       }}
-      onSubmit={(event) => {
-        if (!canSave) {
-          event.preventDefault();
-          return;
-        }
-        void save(event);
-      }}
+      onSubmit={createFaqFormSubmit(canSave, save)}
       principalControl={principalControl}
       pt={pt}
       saveErrorMessage={saveErrorMessage}

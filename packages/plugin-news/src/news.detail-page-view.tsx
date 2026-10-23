@@ -154,79 +154,32 @@ const createNewsDetailPageActions = ({
   ),
 });
 
-export const NewsDetailPageView = ({
-  mode,
-  pt,
-  canSave,
-  formId,
-  mediaReferenceSync,
-  saveFeedback,
-  mediaSavePhaseKey,
-  accessCapabilities,
-  setDeleteErrorMessage,
-  setDeleteDialogOpen,
-  deletePending,
-  deleteLabel,
-  methods,
-  mediaAssets,
-  canUploadMedia,
-  mediaPickerFeedback,
-  isAssetSelectable,
-  mediaPicker,
-  mediaPickerLabels,
-  addManualMedia,
-  canUpdateMedia,
-  saveCurrentItem,
-  deleteNavigationFailed,
-  statusMessage,
-  retryCreatedContentId,
-  navigateToCreatedDetail,
-  completeCreateSave,
-  setStatusMessage,
-  tabs,
-  activeTab,
-  handleTabChange,
-  warmTab,
-  visitedTabs,
-  deleteDialogOpen,
-  deleteErrorMessage,
-  onDelete,
-}: NewsDetailPageViewProps) => {
+export const NewsDetailPageView = (props: NewsDetailPageViewProps) => {
+  const {
+    mode,
+    pt,
+    formId,
+    methods,
+    saveCurrentItem,
+    tabs,
+    deleteDialogOpen,
+    deleteLabel,
+    deletePending,
+    deleteErrorMessage,
+    onDelete,
+    setDeleteErrorMessage,
+    setDeleteDialogOpen,
+  } = props;
   return (
     <StudioDetailPageTemplate
       title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
       description={
         mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')
       }
-      {...createNewsDetailPageActions({
-        canSave,
-        formId,
-        mediaReferenceSync,
-        saveFeedback,
-        mediaSavePhaseKey,
-        pt,
-        mode,
-        accessCapabilities,
-        setDeleteErrorMessage,
-        setDeleteDialogOpen,
-        deletePending,
-        deleteLabel,
-        methods,
-      })}
+      {...createNewsDetailPageActions(props)}
     >
       <FormProvider {...methods}>
-        <NewsDetailMediaPicker
-          {...{
-            mediaAssets,
-            canUploadMedia,
-            mediaPickerFeedback,
-            isAssetSelectable,
-            mediaPicker,
-            mediaPickerLabels,
-            addManualMedia,
-            canUpdateMedia,
-          }}
-        />
+        <NewsDetailMediaPicker {...props} />
         <form
           id={formId}
           onSubmit={(event) => {
@@ -234,25 +187,8 @@ export const NewsDetailPageView = ({
             void saveCurrentItem();
           }}
         >
-          <NewsDetailSaveStatus
-            {...{
-              deleteNavigationFailed,
-              statusMessage,
-              pt,
-              saveFeedback,
-              saveCurrentItem,
-              retryCreatedContentId,
-              navigateToCreatedDetail,
-              completeCreateSave,
-              setStatusMessage,
-              mediaReferenceSync,
-            }}
-          />
-          {mode === 'create' ? (
-            tabs[0]?.panel
-          ) : (
-            <NewsDetailTabs {...{ tabs, activeTab, handleTabChange, warmTab, visitedTabs, pt }} />
-          )}
+          <NewsDetailSaveStatus {...props} />
+          {mode === 'create' ? tabs[0]?.panel : <NewsDetailTabs {...props} />}
         </form>
       </FormProvider>
       <StudioDestructiveActionDialog

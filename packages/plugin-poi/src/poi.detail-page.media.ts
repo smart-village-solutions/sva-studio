@@ -35,13 +35,13 @@ type MediaInput = Readonly<{
   pt: ReturnType<typeof usePluginTranslation>;
 }>;
 
-export const usePoiDetailMedia = ({ instanceId, mode, methods, pt }: MediaInput) => {
-  const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
-  const [mediaUsages, setMediaUsagesState] = React.useState<readonly ContentMediaUsage[]>([]);
-  const mediaReferenceSync = useStudioMediaReferenceSync({
-    mediaUsages,
-    setMediaUsages: setMediaUsagesState,
-  });
+function usePoiCreateMediaGuard(
+  methods: UseFormReturn<PoiDetailFormValues>,
+  mode: 'create' | 'edit',
+  mediaUsages: readonly ContentMediaUsage[],
+  setMediaUsagesState: React.Dispatch<React.SetStateAction<readonly ContentMediaUsage[]>>,
+  hasPendingRetry: boolean
+) {
   const [mediaDirty, setMediaDirty] = React.useState(false);
   const partialSaveRevision = React.useRef<number | null>(null);
   const createdContentIdRef = React.useRef<string | null>(null);
@@ -51,7 +51,7 @@ export const usePoiDetailMedia = ({ instanceId, mode, methods, pt }: MediaInput)
     hasUnsavedChanges:
       methods.formState.isDirty ||
       (mediaDirty && (createdContentId !== null || mediaUsages.length > 0)) ||
-      mediaReferenceSync.hasPendingRetry,
+      hasPendingRetry,
   });
   React.useEffect(() => {
     if (mode !== 'create') return;
@@ -104,6 +104,23 @@ export const usePoiDetailMedia = ({ instanceId, mode, methods, pt }: MediaInput)
       },
     };
   }, [methods, mode, rootLeaveGuard, createdContentId]);
+  return { mediaDirty, setMediaUsages, leaveGuard };
+}
+
+export const usePoiDetailMedia = ({ instanceId, mode, methods, pt }: MediaInput) => {
+  const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
+  const [mediaUsages, setMediaUsagesState] = React.useState<readonly ContentMediaUsage[]>([]);
+  const mediaReferenceSync = useStudioMediaReferenceSync({
+    mediaUsages,
+    setMediaUsages: setMediaUsagesState,
+  });
+  const { mediaDirty, setMediaUsages, leaveGuard } = usePoiCreateMediaGuard(
+    methods,
+    mode,
+    mediaUsages,
+    setMediaUsagesState,
+    mediaReferenceSync.hasPendingRetry
+  );
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
   const [mediaReferencesReady, setMediaReferencesReady] = React.useState(mode === 'create');
   const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);

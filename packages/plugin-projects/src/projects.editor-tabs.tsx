@@ -1,16 +1,11 @@
-import {
-  fetchIamContentHistory,
-  formatDateTimeInEditorTimeZone,
-  getHostMediaAsset,
-  getHostMediaDelivery,
-  usePluginTranslation,
-} from '@sva/plugin-sdk';
+import { loadProjectAssetSnapshot } from './projects.images.js';
+import { ProjectHistoryTab } from './projects.history.js';
+import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   ContentOwnershipPanelSlot,
   Input,
   RichTextHtmlEditor,
   Select,
-  StudioContentHistory,
   StudioDetailCard,
   StudioField,
   Textarea,
@@ -19,7 +14,6 @@ import {
 } from '@sva/studio-ui-react';
 import { Controller, type UseFormReturn } from 'react-hook-form';
 import type { ProjectContentItem } from './projects.api-types.js';
-import { resolveProjectPersistentDeliveryUrl } from './projects.content-media-adapter.js';
 import { ProjectImages } from './projects.images.js';
 import type { ProjectFormValues } from './projects.validation.js';
 
@@ -112,23 +106,6 @@ const richTextLabels = (pt: Translate) => ({
   linkPrompt: pt('richText.linkInput'),
 });
 
-async function loadAssetSnapshot(usage: ContentMediaUsage) {
-  if (!usage.assetId) throw new Error('asset_unavailable');
-  const [asset, delivery] = await Promise.all([
-    getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }),
-    getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }),
-  ]);
-  const persistentUrl = resolveProjectPersistentDeliveryUrl(delivery);
-  if (!persistentUrl) throw new Error('asset_unavailable');
-  return {
-    persistentUrl,
-    altText: asset.metadata.altText ?? '',
-    caption: asset.metadata.description ?? '',
-    credit: asset.metadata.copyright ?? '',
-    license: asset.metadata.license ?? '',
-  };
-}
-
 function ContentTab(props: TabInput) {
   const { pt, form } = props;
   return (
@@ -169,7 +146,7 @@ function ContentTab(props: TabInput) {
         mediaEditingDisabled={props.mediaEditingDisabled}
         onAddManualMedia={props.onAddManualMedia}
         onOpenMediaPicker={props.onOpenMediaPicker}
-        onLoadAssetSnapshot={loadAssetSnapshot}
+        onLoadAssetSnapshot={loadProjectAssetSnapshot}
       />
     </div>
   );
@@ -220,38 +197,6 @@ function SettingsTab({ pt, form, item }: TabInput) {
   );
 }
 
-function HistoryTab({ pt, contentId }: TabInput) {
-  return (
-    <StudioContentHistory
-      contentId={contentId}
-      loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'projects.project' })}
-      labels={{
-        loading: pt('history.loading'),
-        error: pt('history.error'),
-        empty: pt('history.empty'),
-        createHint: pt('history.createHint'),
-        tableLabel: pt('history.tableLabel'),
-        time: pt('history.columns.time'),
-        action: pt('history.columns.action'),
-        actor: pt('history.columns.actor'),
-        summary: pt('history.columns.summary'),
-        sourceNotice: pt('history.sourceNotice'),
-        emptySummary: pt('history.emptySummary'),
-      }}
-      formatAction={(action) =>
-        pt(
-          action === 'created'
-            ? 'history.actions.created'
-            : action === 'status_changed'
-              ? 'history.actions.statusChanged'
-              : 'history.actions.updated'
-        )
-      }
-      formatDate={(value) => formatDateTimeInEditorTimeZone(value) ?? value}
-    />
-  );
-}
-
 export function createProjectTabs(
   input: TabInput
 ): readonly StudioDetailTabDefinition<ProjectTab>[] {
@@ -293,7 +238,7 @@ export function createProjectTabs(
       id: 'history',
       label: input.pt('tabs.history'),
       icon: 'history',
-      panel: <HistoryTab {...input} />,
+      panel: <ProjectHistoryTab {...input} />,
     },
   ];
 }

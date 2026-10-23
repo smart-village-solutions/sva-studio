@@ -1,5 +1,13 @@
+import type { UseFormReturn } from 'react-hook-form';
+import type { usePluginTranslation } from '@sva/plugin-sdk';
+import type { SurveyDetailFormValues } from './surveys.detail-form.js';
 import { Link } from '@tanstack/react-router';
-import { Button, StudioSaveButton, type StudioSaveStatus } from '@sva/studio-ui-react';
+import {
+  Button,
+  StudioFormSummary,
+  StudioSaveButton,
+  type StudioSaveStatus,
+} from '@sva/studio-ui-react';
 
 import { type SurveyEditorMode } from './surveys.editor.shared.js';
 
@@ -49,5 +57,26 @@ export function SurveyEditorPrimaryAction({
         }}
       />
     </div>
+  );
+}
+
+export function SurveyCreatedResult({
+  createdContentId,
+  methods,
+  pt,
+}: Readonly<{
+  createdContentId: string;
+  methods: UseFormReturn<SurveyDetailFormValues>;
+  pt: ReturnType<typeof usePluginTranslation>;
+}>) {
+  return (
+    <StudioFormSummary kind="success">
+      {methods.formState.isDirty ? (
+        <span className="block">{pt('messages.unsavedAfterCreate')}</span>
+      ) : null}
+      <Link to="/admin/surveys/$id" params={{ id: createdContentId }}>
+        {pt('actions.openSavedContent')}
+      </Link>
+    </StudioFormSummary>
   );
 }

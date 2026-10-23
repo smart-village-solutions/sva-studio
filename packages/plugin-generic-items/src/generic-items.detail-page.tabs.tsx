@@ -115,25 +115,14 @@ const createGenericItemsDetailTabs = ({
   },
 ];
 
-export const GenericItemsDetailTabs = ({
-  mode,
-  activeTab,
-  categoryOptions,
-  categoryOptionsError,
-  categoryOptionsLoading,
-  contentId,
-  labels,
-  onAddManualMedia,
-  onOpenMediaPicker,
-  onTabChange,
+function GenericItemsTechnicalCard({
+  basis,
   pt,
-  mediaUsages,
-  onChangeMediaUsages,
-  canSelectMedia,
-  canUploadMedia,
-  mediaEditingDisabled,
-  onLoadAssetSnapshot,
-}: GenericItemsDetailTabsProps) => {
+}: Readonly<{
+  basis: React.ComponentProps<typeof GenericItemsDetailBasisTab>;
+  pt: GenericItemsDetailTabsProps['pt'];
+}>) {
+  const { labels } = basis;
   const {
     control,
     formState: { errors },
@@ -141,83 +130,90 @@ export const GenericItemsDetailTabs = ({
   const keywords = useWatch({ control, name: 'keywords' });
   const externalId = useWatch({ control, name: 'externalId' });
   const payload = useWatch({ control, name: 'payloadText' });
-  if (mode === 'create') {
-    const basis = {
-      availableCategories: categoryOptions,
-      categoryOptionsError,
-      categoryOptionsLoading,
-      labels,
-    };
-    const media = {
-      labels,
-      onAddManualMedia,
-      onOpenMediaPicker,
-      mediaUsages,
-      onChangeMediaUsages,
-      canSelectMedia,
-      canUploadMedia,
-      mediaEditingDisabled,
-      onLoadAssetSnapshot,
-    };
-    return (
-      <StudioSection title={pt('create.heading')}>
-        <nav aria-label={pt('create.navigation')} className="flex flex-wrap gap-3">
-          <a href="#generic-create-content">{labels.contentBlocks}</a>
-          <a href="#generic-create-links">{labels.webUrls}</a>
-          <a href="#generic-create-relations">{labels.relationsTitle}</a>
-          <a href="#generic-create-publication">{labels.publicationDate}</a>
-        </nav>
-        <GenericItemsDetailBasisTab {...basis} createSection="identity" />
-        <section id="generic-create-content" tabIndex={-1}>
-          <GenericItemsContentText labels={labels} createMode />
-          <GenericItemsContentLinksMedia {...media} section="media" />
-          <GenericItemsDetailBasisTab {...basis} createSection="categories" />
-        </section>
-        <section id="generic-create-links" tabIndex={-1}>
-          <GenericItemsContentLinksMedia {...media} section="links" />
-        </section>
-        <section id="generic-create-relations" tabIndex={-1}>
-          <GenericItemsContentRelations labels={labels} createMode />
-        </section>
-        <GenericItemsContentSchedule labels={labels} createMode />
-        <GenericItemsContentSecondary labels={labels} createMode />
-        <GenericItemsDetailCard
-          title={pt('create.technical')}
-          collapsible
-          invalid={Boolean(errors.keywords || errors.externalId || errors.payloadText)}
-          summary={pt(
-            keywords || externalId || (payload.trim() && payload.trim() !== '{}')
-              ? 'create.technicalPresent'
-              : 'create.technicalEmpty'
-          )}
-        >
-          <GenericItemsDetailBasisTab {...basis} createSection="technical" />
-          <GenericItemsDetailSettingsTab labels={labels} />
-        </GenericItemsDetailCard>
-        <section id="generic-create-publication" tabIndex={-1}>
-          <GenericItemsDetailBasisTab {...basis} createSection="publication" />
-        </section>
-      </StudioSection>
-    );
-  }
-  const tabs = createGenericItemsDetailTabs({
-    activeTab,
+  return (
+    <GenericItemsDetailCard
+      title={pt('create.technical')}
+      collapsible
+      invalid={Boolean(errors.keywords || errors.externalId || errors.payloadText)}
+      summary={pt(
+        keywords || externalId || (payload.trim() && payload.trim() !== '{}')
+          ? 'create.technicalPresent'
+          : 'create.technicalEmpty'
+      )}
+    >
+      <GenericItemsDetailBasisTab {...basis} createSection="technical" />
+      <GenericItemsDetailSettingsTab labels={labels} />
+    </GenericItemsDetailCard>
+  );
+}
+
+function GenericItemsCreateFields(props: GenericItemsDetailTabsProps) {
+  const {
     categoryOptions,
     categoryOptionsError,
     categoryOptionsLoading,
-    contentId,
     labels,
+    pt,
     onAddManualMedia,
     onOpenMediaPicker,
-    onTabChange,
-    pt,
     mediaUsages,
     onChangeMediaUsages,
     canSelectMedia,
     canUploadMedia,
     mediaEditingDisabled,
     onLoadAssetSnapshot,
-  });
+  } = props;
+  const basis = {
+    availableCategories: categoryOptions,
+    categoryOptionsError,
+    categoryOptionsLoading,
+    labels,
+  };
+  const media = {
+    labels,
+    onAddManualMedia,
+    onOpenMediaPicker,
+    mediaUsages,
+    onChangeMediaUsages,
+    canSelectMedia,
+    canUploadMedia,
+    mediaEditingDisabled,
+    onLoadAssetSnapshot,
+  };
+  return (
+    <StudioSection title={pt('create.heading')}>
+      <nav aria-label={pt('create.navigation')} className="flex flex-wrap gap-3">
+        <a href="#generic-create-content">{labels.contentBlocks}</a>
+        <a href="#generic-create-links">{labels.webUrls}</a>
+        <a href="#generic-create-relations">{labels.relationsTitle}</a>
+        <a href="#generic-create-publication">{labels.publicationDate}</a>
+      </nav>
+      <GenericItemsDetailBasisTab {...basis} createSection="identity" />
+      <section id="generic-create-content" tabIndex={-1}>
+        <GenericItemsContentText labels={labels} createMode />
+        <GenericItemsContentLinksMedia {...media} section="media" />
+        <GenericItemsDetailBasisTab {...basis} createSection="categories" />
+      </section>
+      <section id="generic-create-links" tabIndex={-1}>
+        <GenericItemsContentLinksMedia {...media} section="links" />
+      </section>
+      <section id="generic-create-relations" tabIndex={-1}>
+        <GenericItemsContentRelations labels={labels} createMode />
+      </section>
+      <GenericItemsContentSchedule labels={labels} createMode />
+      <GenericItemsContentSecondary labels={labels} createMode />
+      <GenericItemsTechnicalCard basis={basis} pt={pt} />
+      <section id="generic-create-publication" tabIndex={-1}>
+        <GenericItemsDetailBasisTab {...basis} createSection="publication" />
+      </section>
+    </StudioSection>
+  );
+}
+
+export const GenericItemsDetailTabs = (props: GenericItemsDetailTabsProps) => {
+  const { mode, activeTab, onTabChange, pt } = props;
+  if (mode === 'create') return <GenericItemsCreateFields {...props} />;
+  const tabs = createGenericItemsDetailTabs(props);
 
   return (
     <StudioDetailTabs

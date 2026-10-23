@@ -11,18 +11,13 @@ import {
 import type { EventsDetailFormValues } from './events.detail-form.js';
 import { useEventsMediaPicker } from './events.detail-media-picker.js';
 
-export const useEventsDetailMedia = (
+function useEventsCreateMediaGuard(
   methods: UseFormReturn<EventsDetailFormValues>,
-  pt: ReturnType<typeof usePluginTranslation>,
-  mode: 'create' | 'edit'
-) => {
-  const [mediaUsages, setMediaUsagesState] = React.useState<readonly ContentMediaUsage[]>([]);
-  const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
-  const [mediaReferencesReady, setMediaReferencesReady] = React.useState(mode === 'create');
-  const mediaReferenceSync = useStudioMediaReferenceSync({
-    mediaUsages,
-    setMediaUsages: setMediaUsagesState,
-  });
+  mode: 'create' | 'edit',
+  mediaUsages: readonly ContentMediaUsage[],
+  setMediaUsagesState: React.Dispatch<React.SetStateAction<readonly ContentMediaUsage[]>>,
+  hasPendingRetry: boolean
+) {
   const [mediaDirty, setMediaDirty] = React.useState(false);
   const partialSaveRevision = React.useRef<number | null>(null);
   const createdContentIdRef = React.useRef<string | null>(null);
@@ -32,7 +27,7 @@ export const useEventsDetailMedia = (
     hasUnsavedChanges:
       methods.formState.isDirty ||
       (mediaDirty && (createdContentId !== null || mediaUsages.length > 0)) ||
-      mediaReferenceSync.hasPendingRetry,
+      hasPendingRetry,
   });
   React.useEffect(() => {
     if (mode !== 'create') return;
@@ -87,6 +82,28 @@ export const useEventsDetailMedia = (
       },
     };
   }, [methods, mode, rootLeaveGuard, createdContentId]);
+  return { mediaDirty, setMediaUsages, leaveGuard };
+}
+
+export const useEventsDetailMedia = (
+  methods: UseFormReturn<EventsDetailFormValues>,
+  pt: ReturnType<typeof usePluginTranslation>,
+  mode: 'create' | 'edit'
+) => {
+  const [mediaUsages, setMediaUsagesState] = React.useState<readonly ContentMediaUsage[]>([]);
+  const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
+  const [mediaReferencesReady, setMediaReferencesReady] = React.useState(mode === 'create');
+  const mediaReferenceSync = useStudioMediaReferenceSync({
+    mediaUsages,
+    setMediaUsages: setMediaUsagesState,
+  });
+  const { mediaDirty, setMediaUsages, leaveGuard } = useEventsCreateMediaGuard(
+    methods,
+    mode,
+    mediaUsages,
+    setMediaUsagesState,
+    mediaReferenceSync.hasPendingRetry
+  );
   const picker = useEventsMediaPicker(
     methods,
     pt,

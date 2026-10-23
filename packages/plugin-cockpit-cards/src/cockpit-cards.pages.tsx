@@ -1,12 +1,11 @@
+import { useCockpitCardCreateMedia } from './cockpit-cards.editor-create.js';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
-  useStudioMediaReferenceSync,
-  useStudioEditorLeaveGuard,
+  type useStudioMediaReferenceSync,
   StudioErrorState,
   StudioLoadingState,
   type MainserverPrincipalControlModel,
 } from '@sva/studio-ui-react';
-import * as React from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 
 import { cockpitCardEditorTabs } from './cockpit-cards.editor-tabs.js';
@@ -58,50 +57,14 @@ function Editor(params: EditorParams) {
   const navigate = useNavigate();
   const editor = useCockpitCardForm();
   const principal = useCockpitCardPrincipal(principalControl);
-  const [mediaDirty, setMediaDirty] = React.useState(false);
-  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
-  const savedRevision = React.useRef(0);
-  const createdContentIdRef = React.useRef<string | null>(null);
-  const markMediaChanged = () => {
-    setMediaDirty(true);
-    leaveGuard.markChanged();
-  };
-  const media = useCockpitCardMedia(editor.form, markMediaChanged);
-  const mediaReferenceSync = useStudioMediaReferenceSync({
-    mediaUsages: media.mediaUsages,
-    setMediaUsages: media.setMediaUsages,
-  });
-  const leaveGuard = useStudioEditorLeaveGuard({
-    enabled: mode === 'create',
-    hasUnsavedChanges:
-      editor.form.formState.isDirty ||
-      (mediaDirty && (createdContentId !== null || media.mediaUsages.length > 0)) ||
-      mediaReferenceSync.hasPendingRetry,
-  });
-  React.useEffect(() => {
-    const subscription = editor.form.watch((_values, { name }) => {
-      if (name) leaveGuard.markChanged();
-    });
-    return () => subscription.unsubscribe();
-  }, [editor.form, leaveGuard]);
-  const onCreateStarted = () => {
-    if (createdContentIdRef.current) return false;
-    savedRevision.current = leaveGuard.captureRevision();
-    return true;
-  };
-  const onCreateConfirmed = (id: string) => {
-    createdContentIdRef.current = id;
-    setCreatedContentId(id);
-  };
-  const onCreateSaved = () => {
-    if (mode !== 'create') return;
-
-    if (leaveGuard.acknowledgeSaved(savedRevision.current)) {
-      editor.form.reset(editor.form.getValues());
-      setMediaDirty(false);
-      media.setRequiresReferenceSync(false);
-    }
-  };
+  const {
+    media,
+    mediaReferenceSync,
+    createdContentId,
+    onCreateStarted,
+    onCreateConfirmed,
+    onCreateSaved,
+  } = useCockpitCardCreateMedia(mode, editor.form);
   const categories = useCategories();
   const load = useCockpitCardLoad({
     mode,
@@ -140,31 +103,22 @@ function Editor(params: EditorParams) {
   return <EditorContent params={params} data={data} />;
 }
 
-function EditorContent({
-  params,
-  data,
-}: Readonly<{
-  params: EditorParams;
-  data: EditorData;
-}>) {
-  const { mode, contentId, principalControl } = params;
+function createEditorSubmit(params: EditorParams, data: EditorData) {
+  const { mode, contentId } = params;
   const {
-    pt,
-    navigate,
     editor,
+    access,
     principal,
+    load,
     media,
     mediaReferenceSync,
-    categories,
-    load,
-    access,
-    deletion,
+    navigate,
+    pt,
     onCreateStarted,
     onCreateSaved,
     onCreateConfirmed,
-    createdContentId,
   } = data;
-  const save = editor.form.handleSubmit(
+  return editor.form.handleSubmit(
     (values) =>
       access.canSave
         ? saveCockpitCard(values, {
@@ -191,6 +145,30 @@ function EditorContent({
       editor.setTab(cockpitCardValidationTab(errors));
     }
   );
+}
+
+function EditorContent({
+  params,
+  data,
+}: Readonly<{
+  params: EditorParams;
+  data: EditorData;
+}>) {
+  const { mode, contentId, principalControl } = params;
+  const {
+    pt,
+    editor,
+    principal,
+    media,
+    mediaReferenceSync,
+    categories,
+    load,
+    access,
+    deletion,
+    onCreateSaved,
+    createdContentId,
+  } = data;
+  const save = createEditorSubmit(params, data);
   const view: EditorViewProps = {
     mode,
     contentId,

@@ -34,15 +34,7 @@ const hasText = (value: unknown): boolean => {
   return value !== null && typeof value === 'object' && Object.values(value).some(hasText);
 };
 
-export function EventsDetailCreate(props: ComponentProps<typeof EventsDetailEditorTabs>) {
-  const { pt } = props;
-  const { control } = useFormContext<EventsDetailFormValues>();
-  const content = useWatch({ control, name: 'content' });
-  const visible = useWatch({ control, name: 'settings.visible' });
-  const externalId = useWatch({ control, name: 'settings.externalId' });
-  const basisProps = { ...props, availableCategories: props.categoryOptions };
-  const capabilities = useEventsMapCapabilities();
-  const summary = (value: unknown) => pt(hasText(value) ? 'create.filled' : 'create.empty');
+function EventsCreateNavigation({ pt }: Pick<ComponentProps<typeof EventsDetailEditorTabs>, 'pt'>) {
   const nav = [
     'title',
     'dates',
@@ -59,56 +51,39 @@ export function EventsDetailCreate(props: ComponentProps<typeof EventsDetailEdit
     'publication',
   ] as const;
   return (
-    <div className="space-y-6">
-      <p>{pt('create.intro')}</p>
-      <nav aria-label={pt('create.navigation')} className="flex flex-wrap gap-3">
-        {nav.map((id) => (
-          <a
-            key={id}
-            href={`#event-create-${id}`}
-            onClick={(event) => {
-              const target = event.currentTarget.ownerDocument.getElementById(`event-create-${id}`);
-              if (!target) return;
-              event.preventDefault();
-              target.focus();
-              target.scrollIntoView?.({ block: 'start' });
-            }}
-          >
-            {pt(`create.sections.${id}`)}
-          </a>
-        ))}
-      </nav>
-      <div id="event-create-title" tabIndex={-1}>
-        <EventsDetailBasisTab {...basisProps} section="title" />
-      </div>
-      <div id="event-create-dates" tabIndex={-1}>
-        <EventsDateSection pt={pt} />
-      </div>
-      <div id="event-create-recurrence" tabIndex={-1}>
-        <EventsDetailBasisTab {...basisProps} section="recurrence" />
-      </div>
-      <div id="event-create-addresses" tabIndex={-1}>
-        <EventsAddressSection pt={pt} capabilities={capabilities} />
-      </div>
-      <div id="event-create-description" tabIndex={-1}>
-        <EventsDescriptionSection pt={pt} />
-      </div>
-      <div id="event-create-media" tabIndex={-1}>
-        <EventsMediaSection
-          pt={pt}
-          mediaUsages={props.mediaUsages}
-          onAddManualMedia={props.addManualMedia}
-          onChangeMediaUsages={props.onChangeMediaUsages}
-          canSelectMedia={props.canSelectMedia}
-          canUploadMedia={props.canUploadMedia}
-          mediaEditingDisabled={props.mediaEditingDisabled}
-          onOpenMediaPicker={props.onOpenMediaPicker}
-          onLoadAssetSnapshot={loadEventsContentAssetSnapshot}
-        />
-      </div>
-      <div id="event-create-categories" tabIndex={-1}>
-        <EventsDetailBasisTab {...basisProps} section="categories" />
-      </div>
+    <nav aria-label={pt('create.navigation')} className="flex flex-wrap gap-3">
+      {nav.map((id) => (
+        <a
+          key={id}
+          href={`#event-create-${id}`}
+          onClick={(event) => {
+            const target = event.currentTarget.ownerDocument.getElementById(`event-create-${id}`);
+            if (!target) return;
+            event.preventDefault();
+            target.focus();
+            target.scrollIntoView?.({ block: 'start' });
+          }}
+        >
+          {pt(`create.sections.${id}`)}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+function EventsCreateOptionalFields({
+  pt,
+  capabilities,
+}: Readonly<{
+  pt: ComponentProps<typeof EventsDetailEditorTabs>['pt'];
+  capabilities: ReturnType<typeof useEventsMapCapabilities>;
+}>) {
+  const { control } = useFormContext<EventsDetailFormValues>();
+  const content = useWatch({ control, name: 'content' });
+  const externalId = useWatch({ control, name: 'settings.externalId' });
+  const summary = (value: unknown) => pt(hasText(value) ? 'create.filled' : 'create.empty');
+  return (
+    <>
       <details>
         <summary id="event-create-organizer">
           {pt('create.sections.organizer')} · {pt('create.optional')} ·{' '}
@@ -141,6 +116,52 @@ export function EventsDetailCreate(props: ComponentProps<typeof EventsDetailEdit
         </summary>
         <EventsDetailSettingsTab pt={pt} section="technical" />
       </details>
+    </>
+  );
+}
+
+export function EventsDetailCreate(props: ComponentProps<typeof EventsDetailEditorTabs>) {
+  const { pt } = props;
+  const { control } = useFormContext<EventsDetailFormValues>();
+  const visible = useWatch({ control, name: 'settings.visible' });
+  const basisProps = { ...props, availableCategories: props.categoryOptions };
+  const capabilities = useEventsMapCapabilities();
+  return (
+    <div className="space-y-6">
+      <p>{pt('create.intro')}</p>
+      <EventsCreateNavigation pt={pt} />
+      <div id="event-create-title" tabIndex={-1}>
+        <EventsDetailBasisTab {...basisProps} section="title" />
+      </div>
+      <div id="event-create-dates" tabIndex={-1}>
+        <EventsDateSection pt={pt} />
+      </div>
+      <div id="event-create-recurrence" tabIndex={-1}>
+        <EventsDetailBasisTab {...basisProps} section="recurrence" />
+      </div>
+      <div id="event-create-addresses" tabIndex={-1}>
+        <EventsAddressSection pt={pt} capabilities={capabilities} />
+      </div>
+      <div id="event-create-description" tabIndex={-1}>
+        <EventsDescriptionSection pt={pt} />
+      </div>
+      <div id="event-create-media" tabIndex={-1}>
+        <EventsMediaSection
+          pt={pt}
+          mediaUsages={props.mediaUsages}
+          onAddManualMedia={props.addManualMedia}
+          onChangeMediaUsages={props.onChangeMediaUsages}
+          canSelectMedia={props.canSelectMedia}
+          canUploadMedia={props.canUploadMedia}
+          mediaEditingDisabled={props.mediaEditingDisabled}
+          onOpenMediaPicker={props.onOpenMediaPicker}
+          onLoadAssetSnapshot={loadEventsContentAssetSnapshot}
+        />
+      </div>
+      <div id="event-create-categories" tabIndex={-1}>
+        <EventsDetailBasisTab {...basisProps} section="categories" />
+      </div>
+      <EventsCreateOptionalFields pt={pt} capabilities={capabilities} />
       <div id="event-create-publication" tabIndex={-1}>
         <EventsDetailSettingsTab pt={pt} section="publication" />
         <StudioSection description={pt(visible ? 'create.visibleEffect' : 'create.hiddenEffect')}>

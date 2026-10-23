@@ -1,39 +1,10 @@
+import { poiHistoryEn } from './plugin.translations.en.messages.js';
+import { poiCreateTranslations } from './plugin.translations.create.js';
 import { createPoiLocaleTranslations } from './plugin.translations.shared.js';
 import { poiMessagesEn } from './plugin.translations.en.messages.js';
 
 export const poiTranslationsEn = createPoiLocaleTranslations({
-  create: {
-    nameHelp: 'What is the place called? A name is required.',
-    categoriesHelp: 'Assign the place to suitable existing categories.',
-    activeHelp: 'Determines whether the place is saved as active.',
-    mobileDescriptionHelp:
-      'Describe the place briefly. This text is stored separately from the full description.',
-    createActive: 'Create as active',
-    createInactive: 'Create as inactive',
-    intro:
-      'Create a place. Start with its name and location; add images and further details as needed.',
-    navigation: 'Jump to a form section',
-    optional: 'optional',
-    filled: 'Details entered',
-    empty: 'No details yet',
-    activeEffect: 'The place will be saved as active. Opening hours do not schedule publication.',
-    inactiveEffect: 'The place will be saved as inactive.',
-    editHint: 'After creation, open the saved place in the familiar editor with tabs.',
-    sections: {
-      name: 'Name',
-      location: 'Location',
-      description: 'Description',
-      media: 'Media',
-      categories: 'Categories',
-      openingHours: 'Add opening hours',
-      contact: 'Add contact',
-      links: 'Add further links',
-      prices: 'Add prices',
-      operator: 'Add operator',
-      technical: 'Technical details',
-      active: 'Active',
-    },
-  },
+  create: poiCreateTranslations.en,
   navigation: { title: 'POI' },
   list: { title: 'POI', description: 'Edit Mainserver points of interest.' },
   detail: {
@@ -238,20 +209,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
       },
     },
   },
-  history: {
-    loading: 'Loading history.',
-    error: 'History could not be loaded.',
-    createHint: 'Save the POI before history becomes available.',
-    tableLabel: 'POI history',
-    sourceNotice: 'This history only contains changes made through Studio.',
-    emptySummary: 'No further change details.',
-    columns: { time: 'Time', action: 'Action', actor: 'Changed by', summary: 'Summary' },
-    actions: { created: 'Created', updated: 'Updated', statusChanged: 'Status changed' },
-    empty: {
-      title: 'No history available yet.',
-      description: 'No Studio changes have been recorded for this POI yet.',
-    },
-  },
+  history: poiHistoryEn,
   empty: { title: 'No POI yet', description: 'Create the first POI.' },
   pagination: {
     ariaLabel: 'POI pagination',

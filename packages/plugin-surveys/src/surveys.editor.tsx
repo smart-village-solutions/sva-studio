@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from '@tanstack/react-router';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm, type UseFormReturn } from 'react-hook-form';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
@@ -20,7 +20,11 @@ import {
   createDefaultSurveyDetailFormValues,
   type SurveyDetailFormValues,
 } from './surveys.detail-form.js';
-import { SurveyEditorActions, SurveyEditorPrimaryAction } from './surveys.editor.actions.js';
+import {
+  SurveyCreatedResult,
+  SurveyEditorActions,
+  SurveyEditorPrimaryAction,
+} from './surveys.editor.actions.js';
 import { useSurveyEditorController } from './surveys.editor-logic.js';
 import { type SurveyEditorMode, type SurveyEditorTabId } from './surveys.editor.shared.js';
 import { SurveyCreateFields, createSurveyEditorTabs } from './surveys.editor-tabs.js';
@@ -153,6 +157,24 @@ const useSurveyTabs = (
     [contentId, loadedItem, mode, pt]
   );
 
+function createSurveyNavigation(navigate: ReturnType<typeof useNavigate>, contentId?: string) {
+  return {
+    onInitialSavedConsumed: () =>
+      navigate({
+        to: '/admin/surveys/$id',
+        params: { id: contentId ?? '' },
+        replace: true,
+        state: (previous) => removeStudioSaveFeedback(previous),
+      }),
+    navigateToCreatedDetail: (id: string) =>
+      navigate({
+        to: '/admin/surveys/$id',
+        params: { id },
+        state: (previous) => addStudioCreatedSaveFeedback(previous, 'surveys', id),
+      }),
+  };
+}
+
 export const SurveyEditorPage = ({
   mode,
   contentId,
@@ -178,19 +200,7 @@ export const SurveyEditorPage = ({
       pt,
       actingPrincipalType,
       initiallySaved: hasStudioCreatedSaveFeedback(location.state, 'surveys', contentId),
-      onInitialSavedConsumed: () =>
-        navigate({
-          to: '/admin/surveys/$id',
-          params: { id: contentId ?? '' },
-          replace: true,
-          state: (previous) => removeStudioSaveFeedback(previous),
-        }),
-      navigateToCreatedDetail: (id) =>
-        navigate({
-          to: '/admin/surveys/$id',
-          params: { id },
-          state: (previous) => addStudioCreatedSaveFeedback(previous, 'surveys', id),
-        }),
+      ...createSurveyNavigation(navigate, contentId),
     });
   const tabs = useSurveyTabs(pt, mode, loadedItem, contentId);
   const access = useMutationAccess(mode, canUpdate, loadedItem?.status, resourceAccess, methods);
@@ -216,14 +226,7 @@ export const SurveyEditorPage = ({
       }
     >
       {mode === 'create' && createdContentId ? (
-        <StudioFormSummary kind="success">
-          {methods.formState.isDirty ? (
-            <span className="block">{pt('messages.unsavedAfterCreate')}</span>
-          ) : null}
-          <Link to="/admin/surveys/$id" params={{ id: createdContentId }}>
-            {pt('actions.openSavedContent')}
-          </Link>
-        </StudioFormSummary>
+        <SurveyCreatedResult createdContentId={createdContentId} methods={methods} pt={pt} />
       ) : null}
       <SurveyEditorForm
         actingPrincipalType={actingPrincipalType}

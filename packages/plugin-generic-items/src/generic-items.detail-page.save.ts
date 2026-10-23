@@ -85,22 +85,7 @@ const saveWithOptionalReferences = async ({
       })
     : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
 
-export const useGenericItemsPageSave = ({
-  methods,
-  canSave,
-  mode,
-  actingPrincipalType,
-  contentId,
-  mediaUsages,
-  requiresReferenceSync,
-  mediaReferenceSync,
-  leaveGuard,
-  saveFeedback,
-  setStatus,
-  setMediaSavePhaseKey,
-  navigate,
-  pt,
-}: Readonly<{
+type GenericItemsSaveInput = Readonly<{
   methods: UseFormReturn<GenericItemsDetailFormValues>;
   canSave: boolean;
   leaveGuard: Readonly<{
@@ -121,7 +106,24 @@ export const useGenericItemsPageSave = ({
   setMediaSavePhaseKey: React.Dispatch<React.SetStateAction<string | null>>;
   navigate: NavigateFn;
   pt: (key: string) => string;
-}>) => {
+}>;
+
+export const useGenericItemsPageSave = ({
+  methods,
+  canSave,
+  mode,
+  actingPrincipalType,
+  contentId,
+  mediaUsages,
+  requiresReferenceSync,
+  mediaReferenceSync,
+  leaveGuard,
+  saveFeedback,
+  setStatus,
+  setMediaSavePhaseKey,
+  navigate,
+  pt,
+}: GenericItemsSaveInput) => {
   const onSubmit = methods.handleSubmit(
     async (values) => {
       if (!canSave || (mode === 'create' && leaveGuard.hasCreated())) return;

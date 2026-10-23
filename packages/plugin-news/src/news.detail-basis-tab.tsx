@@ -56,18 +56,67 @@ const formatMetadataDate = (value?: string) => {
   return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
-export function NewsDetailBasisTab({
+function NewsPrincipalCard({
   section,
-  availableCategories,
   principalControl,
   actingPrincipalType,
   onActingPrincipalTypeChange,
-  categoryOptionsError,
-  categoryOptionsLoading,
   mode,
   loadedItem,
   pt,
 }: NewsDetailBasisTabProps) {
+  return (
+    <NewsDetailCard
+      title={pt(section === 'principal' ? 'fields.createAs' : 'cards.basis.authorMeta.title')}
+      description={pt(
+        section === 'principal'
+          ? 'fields.actingPrincipalHelp'
+          : 'cards.basis.authorMeta.description'
+      )}
+    >
+      <MainserverPrincipalControl
+        id="news-acting-principal"
+        label={mode === 'create' ? pt('fields.createAs') : pt('fields.actAs')}
+        description={pt('fields.actingPrincipalHelp')}
+        value={actingPrincipalType}
+        options={
+          principalControl?.kind === 'selectable'
+            ? principalControl.options
+            : [
+                {
+                  value: principalControl?.value ?? actingPrincipalType,
+                  label: principalControl?.label ?? pt(`principals.${actingPrincipalType}`),
+                },
+              ]
+        }
+        onChange={onActingPrincipalTypeChange}
+        contextOptions={mode === 'create' ? principalControl?.contextOptions : undefined}
+        onContextChange={mode === 'create' ? principalControl?.onContextChange : undefined}
+      />
+
+      {mode === 'edit' ? (
+        <dl className="grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm md:grid-cols-3">
+          <div className="space-y-1">
+            <dt className="font-medium text-foreground">{pt('fields.createdAt')}</dt>
+            <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.createdAt)}</dd>
+          </div>
+          <div className="space-y-1">
+            <dt className="font-medium text-foreground">{pt('fields.publishedAt')}</dt>
+            <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.publishedAt)}</dd>
+          </div>
+          <div className="space-y-1">
+            <dt className="font-medium text-foreground">{pt('fields.updatedAt')}</dt>
+            <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.updatedAt)}</dd>
+          </div>
+        </dl>
+      ) : null}
+    </NewsDetailCard>
+  );
+}
+
+export function NewsDetailBasisTab(props: NewsDetailBasisTabProps) {
+  const { section, availableCategories, categoryOptionsError, categoryOptionsLoading, mode, pt } =
+    props;
   const {
     control,
     formState: { errors },
@@ -153,59 +202,7 @@ export function NewsDetailBasisTab({
         </NewsDetailCard>
       ) : null}
 
-      {!section || section === 'principal' ? (
-        <NewsDetailCard
-          title={pt(section === 'principal' ? 'fields.createAs' : 'cards.basis.authorMeta.title')}
-          description={pt(
-            section === 'principal'
-              ? 'fields.actingPrincipalHelp'
-              : 'cards.basis.authorMeta.description'
-          )}
-        >
-          <MainserverPrincipalControl
-            id="news-acting-principal"
-            label={mode === 'create' ? pt('fields.createAs') : pt('fields.actAs')}
-            description={pt('fields.actingPrincipalHelp')}
-            value={actingPrincipalType}
-            options={
-              principalControl?.kind === 'selectable'
-                ? principalControl.options
-                : [
-                    {
-                      value: principalControl?.value ?? actingPrincipalType,
-                      label: principalControl?.label ?? pt(`principals.${actingPrincipalType}`),
-                    },
-                  ]
-            }
-            onChange={onActingPrincipalTypeChange}
-            contextOptions={mode === 'create' ? principalControl?.contextOptions : undefined}
-            onContextChange={mode === 'create' ? principalControl?.onContextChange : undefined}
-          />
-
-          {mode === 'edit' ? (
-            <dl className="grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm md:grid-cols-3">
-              <div className="space-y-1">
-                <dt className="font-medium text-foreground">{pt('fields.createdAt')}</dt>
-                <dd className="text-muted-foreground">
-                  {formatMetadataDate(loadedItem?.createdAt)}
-                </dd>
-              </div>
-              <div className="space-y-1">
-                <dt className="font-medium text-foreground">{pt('fields.publishedAt')}</dt>
-                <dd className="text-muted-foreground">
-                  {formatMetadataDate(loadedItem?.publishedAt)}
-                </dd>
-              </div>
-              <div className="space-y-1">
-                <dt className="font-medium text-foreground">{pt('fields.updatedAt')}</dt>
-                <dd className="text-muted-foreground">
-                  {formatMetadataDate(loadedItem?.updatedAt)}
-                </dd>
-              </div>
-            </dl>
-          ) : null}
-        </NewsDetailCard>
-      ) : null}
+      {!section || section === 'principal' ? <NewsPrincipalCard {...props} /> : null}
     </div>
   );
 }

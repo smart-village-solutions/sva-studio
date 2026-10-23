@@ -1,35 +1,6 @@
+import { eventsDECreate, eventsDEValidation } from './plugin.translations.de.labels.js';
 export const eventsDEEditor = {
-  create: {
-    titleHelp: 'Wie heißt die Veranstaltung? Der Titel ist erforderlich.',
-    createVisible: 'Sichtbar anlegen',
-    createHidden: 'Nicht sichtbar anlegen',
-    intro:
-      'Erstellen Sie eine Veranstaltung. Beginnen Sie mit Titel, Termin und Ort; weitere Angaben können Sie ergänzen.',
-    navigation: 'Zu einem Formularabschnitt springen',
-    optional: 'optional',
-    filled: 'Angaben vorhanden',
-    empty: 'Noch keine Angaben',
-    visibleEffect:
-      'Die Veranstaltung wird mit aktivierter Sichtbarkeit gespeichert. Die Termine beschreiben die Veranstaltung und steuern keine zeitgesteuerte Veröffentlichung.',
-    hiddenEffect: 'Die Veranstaltung wird mit deaktivierter Sichtbarkeit gespeichert.',
-    editHint:
-      'Nach dem Anlegen öffnen Sie die gespeicherte Veranstaltung im gewohnten Editor mit Tabs.',
-    sections: {
-      title: 'Titel',
-      dates: 'Termine',
-      recurrence: 'Wiederholung',
-      addresses: 'Ort / Adressen',
-      description: 'Beschreibung',
-      media: 'Medien',
-      categories: 'Kategorien',
-      organizer: 'Veranstalter ergänzen',
-      contacts: 'Kontakte ergänzen',
-      links: 'Links ergänzen',
-      prices: 'Eintrittspreise ergänzen',
-      technical: 'Technische Angaben',
-      publication: 'Sichtbarkeit',
-    },
-  },
+  create: eventsDECreate,
   messages: {
     createdNavigationError:
       'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
@@ -268,16 +239,7 @@ export const eventsDEEditor = {
     assetValue: 'Mediathek',
     contentValue: 'Inhalt',
   },
-  validation: {
-    title: 'Die Überschrift ist erforderlich.',
-    dates: 'Datumswerte müssen gültig sein.',
-    urls: 'URLs müssen mit https:// beginnen.',
-    categories: 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
-    priceInformations: 'Preisangaben müssen valide Zahlen enthalten.',
-    geoLocation: 'Koordinaten müssen gültige Breiten- und Längengrade sein.',
-    organizerName:
-      'Geben Sie einen Namen für den Veranstalter ein oder entfernen Sie die übrigen Veranstalterangaben.',
-  },
+  validation: eventsDEValidation,
   values: {
     mediaContentTypes: {
       unspecified: 'Nicht gesetzt',

@@ -131,6 +131,53 @@ const GenericItemsWebUrls = ({ labels }: Readonly<{ labels: Record<string, strin
   );
 };
 
+type GenericItemsLinksMediaProps = Readonly<{
+  labels: Record<string, string>;
+  section?: 'media' | 'links';
+  onAddManualMedia: () => string;
+  onOpenMediaPicker: (mode: 'library' | 'upload') => void;
+  mediaUsages?: readonly ContentMediaUsage[];
+  onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
+  canSelectMedia?: boolean;
+  canUploadMedia?: boolean;
+  mediaEditingDisabled?: boolean;
+  onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
+}>;
+
+type GenericMediaTypeFieldProps = Parameters<
+  NonNullable<React.ComponentProps<typeof ContentMediaUsageBlock>['renderAdditionalFields']>
+>[0] &
+  Readonly<{ labels: Record<string, string> }>;
+
+function GenericMediaTypeField({ labels, usage, update }: GenericMediaTypeFieldProps) {
+  return (
+    <StudioField
+      id={`generic-item-media-${usage.uiId}-content-type`}
+      label={labels.mediaContentType}
+    >
+      <Select
+        id={`generic-item-media-${usage.uiId}-content-type`}
+        value={String(usage.additionalData?.contentType ?? '')}
+        onChange={(event) =>
+          update({
+            additionalData: {
+              ...usage.additionalData,
+              contentType: event.currentTarget.value,
+            },
+          })
+        }
+      >
+        <option value="">{labels.mediaTypeUnspecified}</option>
+        <option value="image">{labels.mediaTypeimage}</option>
+        <option value="audio">{labels.mediaTypeaudio}</option>
+        <option value="video">{labels.mediaTypevideo}</option>
+        <option value="logo">{labels.mediaTypelogo}</option>
+        <option value="attachment">{labels.mediaTypeattachment}</option>
+      </Select>
+    </StudioField>
+  );
+}
+
 export const GenericItemsContentLinksMedia = ({
   labels,
   section,
@@ -142,18 +189,7 @@ export const GenericItemsContentLinksMedia = ({
   canUploadMedia = true,
   mediaEditingDisabled = false,
   onLoadAssetSnapshot,
-}: Readonly<{
-  labels: Record<string, string>;
-  section?: 'media' | 'links';
-  onAddManualMedia: () => string;
-  onOpenMediaPicker: (mode: 'library' | 'upload') => void;
-  mediaUsages?: readonly ContentMediaUsage[];
-  onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
-  canSelectMedia?: boolean;
-  canUploadMedia?: boolean;
-  mediaEditingDisabled?: boolean;
-  onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
-}>) => {
+}: GenericItemsLinksMediaProps) => {
   const { control, setValue } = useFormContext<GenericItemsDetailFormValues>();
   const {
     formState: { errors: useFormErrors },
@@ -189,32 +225,7 @@ export const GenericItemsContentLinksMedia = ({
             onLoadAssetSnapshot={onLoadAssetSnapshot}
             supportedFields={{ altText: true, caption: true, credit: true, license: false }}
             showHeader={false}
-            renderAdditionalFields={({ usage, update }) => (
-              <StudioField
-                id={`generic-item-media-${usage.uiId}-content-type`}
-                label={labels.mediaContentType}
-              >
-                <Select
-                  id={`generic-item-media-${usage.uiId}-content-type`}
-                  value={String(usage.additionalData?.contentType ?? '')}
-                  onChange={(event) =>
-                    update({
-                      additionalData: {
-                        ...usage.additionalData,
-                        contentType: event.currentTarget.value,
-                      },
-                    })
-                  }
-                >
-                  <option value="">{labels.mediaTypeUnspecified}</option>
-                  <option value="image">{labels.mediaTypeimage}</option>
-                  <option value="audio">{labels.mediaTypeaudio}</option>
-                  <option value="video">{labels.mediaTypevideo}</option>
-                  <option value="logo">{labels.mediaTypelogo}</option>
-                  <option value="attachment">{labels.mediaTypeattachment}</option>
-                </Select>
-              </StudioField>
-            )}
+            renderAdditionalFields={(field) => <GenericMediaTypeField {...field} labels={labels} />}
             labels={createMediaLabels(labels)}
           />
         </div>

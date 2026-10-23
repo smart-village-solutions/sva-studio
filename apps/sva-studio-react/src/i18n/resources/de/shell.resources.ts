@@ -6,6 +6,7 @@ export const shellDEResources = {
     loadingStatus: 'Inhalt wird geladen.',
   },
   contextualHelp: {
+    editOnGitHub: 'Auf GitHub bearbeiten',
     open: 'Hilfe öffnen',
     close: 'Hilfe schließen',
     title: 'Hilfe zu dieser Seite',

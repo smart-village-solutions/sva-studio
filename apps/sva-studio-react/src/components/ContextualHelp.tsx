@@ -200,10 +200,20 @@ export const ContextualHelp = ({
           )}
         </div>
         {state.kind === 'ready' ? (
-          <div className="border-t border-border px-6 py-4">
+          <div className="flex flex-wrap gap-3 border-t border-border px-6 py-4">
             <Button asChild variant="secondary">
               <a href={state.payload.websiteUrl} target="_blank" rel="noopener noreferrer">
                 {t('shell.contextualHelp.openWebsite')}
+                <IconExternalLink aria-hidden="true" className="size-4" />
+              </a>
+            </Button>
+            <Button asChild variant="secondary">
+              <a
+                href={`https://github.com/smart-village-solutions/sva-studio-user-documentation/edit/main/docs/pages/${encodeURIComponent(state.payload.id)}.md`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t('shell.contextualHelp.editOnGitHub')}
                 <IconExternalLink aria-hidden="true" className="size-4" />
               </a>
             </Button>

@@ -6,6 +6,7 @@ export const shellENResources = {
     loadingStatus: 'Content is loading.',
   },
   contextualHelp: {
+    editOnGitHub: 'Edit on GitHub',
     open: 'Open help',
     close: 'Close help',
     title: 'Help for this page',

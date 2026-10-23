@@ -35,6 +35,7 @@ describe('ContextualHelp accessibility', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Hilfe zu dieser Seite' });
     expect(screen.getByRole('button', { name: 'Hilfe schließen' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Auf GitHub bearbeiten' })).toBeTruthy();
     await expect(expectNoA11yViolations(dialog)).resolves.toBeUndefined();
 
     fireEvent.keyDown(dialog, { key: 'Escape' });

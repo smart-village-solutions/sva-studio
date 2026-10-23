@@ -353,6 +353,49 @@ describe('useStudioMediaPickerOverlay', () => {
     );
   });
 
+  it.each(['library', 'settings', 'content'] as const)(
+    'keeps explicitly saved local metadata when accepting in the %s context',
+    async (persistenceContext) => {
+      const localMetadata = { title: 'Neue Kopie', altText: 'Neuer Alttext', tags: ['Park'] };
+      const asset = createAsset({
+        localDraft: {
+          id: 'local-copy',
+          file: new File(['copy'], 'copy.png', { type: 'image/png' }),
+          metadata: createAsset().metadata,
+        },
+      });
+      const onAccept = vi.fn();
+      const saveAssetMetadata = vi.fn();
+      const { result } = renderHook(() =>
+        useStudioMediaPickerOverlay({
+          persistenceContext,
+          onAccept,
+          isSupportedUploadFile: () => true,
+          loadAsset: async () => asset,
+          saveAssetMetadata,
+        })
+      );
+      act(() => result.current.openAsset(asset));
+      act(() => result.current.updateMetadataField('altText', 'Eigener Inhaltsalttext'));
+      await act(async () => {
+        expect(await result.current.saveCentralMetadata(localMetadata)).toBe(true);
+      });
+      await act(async () => result.current.confirmSelection());
+      expect(saveAssetMetadata).not.toHaveBeenCalled();
+      expect(onAccept).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            ...localMetadata,
+            title: persistenceContext === 'content' ? asset.metadata.title : localMetadata.title,
+            altText:
+              persistenceContext === 'content' ? 'Eigener Inhaltsalttext' : localMetadata.altText,
+          }),
+          localDraft: expect.objectContaining({ metadata: expect.objectContaining(localMetadata) }),
+        })
+      );
+    }
+  );
+
   it('keeps central and content drafts when explicit central saving fails', async () => {
     const asset = createAsset();
     const saveAssetMetadata = vi.fn(async () => {

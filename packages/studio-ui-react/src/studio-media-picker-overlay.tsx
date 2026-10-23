@@ -61,7 +61,7 @@ type StudioMediaPickerOverlayProps = Readonly<{
   isMetadataEditable?: boolean;
   canConfirmSelection?: boolean;
   initialEditorOpen?: boolean;
-  isUploadTransferred?: boolean;
+  isUploadInitialized?: boolean;
   persistenceContext?: 'content' | 'library' | 'settings';
   canEditCentralMetadata?: boolean;
   onImageFocusChange?: (focus: MediaFocusPoint) => void;
@@ -215,7 +215,7 @@ export const StudioMediaPickerOverlay = (props: StudioMediaPickerOverlayProps) =
           <StudioMediaPickerOverlayBody
             {...props}
             onClose={close}
-            {...(props.isUploadTransferred
+            {...(props.isUploadInitialized
               ? {
                   isMetadataEditable: false,
                   onApplyImageEdit: undefined,

@@ -71,7 +71,7 @@ export type StudioMediaPickerReviewPanelProps = Readonly<{
   isMetadataEditable?: boolean;
   canConfirmSelection?: boolean;
   initialEditorOpen?: boolean;
-  isUploadTransferred?: boolean;
+  isUploadInitialized?: boolean;
   persistenceContext?: 'content' | 'library' | 'settings';
   onMetadataChange: <Key extends MetadataKey>(
     key: Key,
@@ -206,7 +206,7 @@ export const StudioMediaPickerReviewPanel = (props: StudioMediaPickerReviewPanel
       <ReviewPanelMetadata {...props} headingRef={reviewHeadingRef} />
       {reviewAsset?.localDraft?.editing && reviewAsset.previewUrl && props.onImageFocusChange ? (
         <StudioMediaImagePreview
-          disabled={props.isUploadTransferred}
+          disabled={props.isUploadInitialized}
           url={reviewAsset.previewUrl}
           focus={reviewAsset.localDraft.metadata?.focusPoint ?? { x: 0.5, y: 0.5 }}
           onFocusChange={props.onImageFocusChange}

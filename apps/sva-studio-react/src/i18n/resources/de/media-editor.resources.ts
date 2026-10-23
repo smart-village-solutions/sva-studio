@@ -139,8 +139,8 @@ export const mediaEditorResources = {
   discardHint: 'Die ungespeicherten Änderungen gehen dabei verloren.',
   discardAction: 'Änderungen verwerfen',
   keepEditing: 'Weiter bearbeiten',
-  copyTransferred:
-    'Die Datei wurde bereits übertragen. Erneutes Speichern setzt den Abschluss fort; die Angaben bleiben für diesen Upload unverändert.',
+  copyInitialized:
+    'Der Upload wurde begonnen. Erneutes Speichern setzt ihn fort; Bild und Angaben bleiben für diesen Upload unverändert.',
 
   discardChanges: 'Ungespeicherte Änderungen verwerfen?',
   refreshTitle: 'Angaben für diesen Inhalt übernehmen',

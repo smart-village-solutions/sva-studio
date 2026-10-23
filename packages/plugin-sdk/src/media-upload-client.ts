@@ -94,6 +94,12 @@ export type UploadHostMediaFileResult = Readonly<{
   previewUrl?: string | null;
 }>;
 
+export type HostMediaUploadCheckpoint = Readonly<{
+  initialized: InitializeHostMediaUploadResult;
+  outputTransferred: boolean;
+  sourceTransferred: boolean;
+}>;
+
 export const initializeHostMediaUpload = async (input: {
   readonly fetch: FetchLike;
   readonly payload: InitializeHostMediaUploadInput;
@@ -229,12 +235,12 @@ export const uploadHostMediaFile = async (input: {
   readonly draftId?: string;
   readonly metadata?: HostMediaUploadMetadata;
   readonly editing?: HostMediaEditingUpload;
-  /** Immediate library consumers retain this after transfer to resume idempotent completion. */
-  readonly transferred?: UploadHostMediaFileResult;
-  readonly onTransferred?: (upload: UploadHostMediaFileResult) => void;
+  /** Retain from initialization onward; retries transfer only missing files in the same session. */
+  readonly checkpoint?: HostMediaUploadCheckpoint;
+  readonly onCheckpoint?: (checkpoint: HostMediaUploadCheckpoint) => void;
 }): Promise<UploadHostMediaFileResult> => {
-  let transferred = input.transferred;
-  if (!transferred) {
+  let checkpoint = input.checkpoint;
+  if (!checkpoint) {
     const initialized = await initializeHostMediaUpload({
       fetch: input.fetch,
       payload: {
@@ -251,9 +257,14 @@ export const uploadHostMediaFile = async (input: {
       },
     });
 
-    const sourceFile = input.editing?.sourceFile;
-    if (Boolean(sourceFile) !== Boolean(initialized.sourceUpload))
-      throw new Error('media_upload_source_contract_mismatch');
+    checkpoint = { initialized, outputTransferred: false, sourceTransferred: false };
+    input.onCheckpoint?.(checkpoint);
+  }
+  const { initialized } = checkpoint;
+  const sourceFile = input.editing?.sourceFile;
+  if (Boolean(sourceFile) !== Boolean(initialized.sourceUpload))
+    throw new Error('media_upload_source_contract_mismatch');
+  if (!checkpoint.outputTransferred) {
     await putFileToSignedUrl({
       fetch: input.fetch,
       uploadUrl: initialized.uploadUrl,
@@ -262,21 +273,22 @@ export const uploadHostMediaFile = async (input: {
       file: input.file,
     });
 
-    if (sourceFile && initialized.sourceUpload) {
-      await putFileToSignedUrl({
-        fetch: input.fetch,
-        ...initialized.sourceUpload,
-        file: sourceFile,
-      });
-    }
-
-    transferred = { assetId: initialized.assetId, uploadSessionId: initialized.uploadSessionId };
-    input.onTransferred?.(transferred);
+    checkpoint = { ...checkpoint, outputTransferred: true };
+    input.onCheckpoint?.(checkpoint);
+  }
+  if (sourceFile && initialized.sourceUpload && !checkpoint.sourceTransferred) {
+    await putFileToSignedUrl({
+      fetch: input.fetch,
+      ...initialized.sourceUpload,
+      file: sourceFile,
+    });
+    checkpoint = { ...checkpoint, sourceTransferred: true };
+    input.onCheckpoint?.(checkpoint);
   }
 
   const completed = await completeHostMediaUpload({
     fetch: input.fetch,
-    uploadSessionId: transferred.uploadSessionId,
+    uploadSessionId: initialized.uploadSessionId,
     instanceId: input.instanceId,
   });
 

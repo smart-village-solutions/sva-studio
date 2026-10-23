@@ -2,6 +2,7 @@ import { asApiItem, createApiError, parseRequestBody } from '../shared/request-h
 import { jsonResponse } from '../db.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { contentSaveOperationCommandSchema } from './schemas.js';
+import { deleteMediaEditingObjects } from './processing-editing.js';
 import {
   getMediaRequestId as getRequestId,
   readMediaContentSaveOperationId as readContentSaveOperationId,
@@ -40,6 +41,7 @@ const cleanupContentSaveAssets = async (input: {
         storageKey: variant.storageKey,
       });
     }
+    await deleteMediaEditingObjects(storagePort, input.instanceId, asset);
   }
   const finalized = await input.deps.withMediaService(input.instanceId, (service) =>
     service.finalizeContentSaveOperationCleanup({

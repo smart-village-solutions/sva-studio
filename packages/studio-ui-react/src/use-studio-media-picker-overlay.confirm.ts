@@ -97,10 +97,16 @@ export const useConfirmSelectionAction = <TAssetDetail extends StudioMediaPicker
 export const useSaveCentralMetadataAction = <TAssetDetail extends StudioMediaPickerAssetDetail>(
   state: ReturnType<typeof useStudioMediaPickerOverlayState>,
   reviewAsset: TAssetDetail | null,
-  saveAssetMetadata: (
-    assetId: string,
-    metadata: StudioMediaPickerMetadataUpdate
-  ) => Promise<TAssetDetail>
+  {
+    saveAssetMetadata,
+    persistenceContext = 'content',
+  }: Readonly<{
+    saveAssetMetadata: (
+      assetId: string,
+      metadata: StudioMediaPickerMetadataUpdate
+    ) => Promise<TAssetDetail>;
+    persistenceContext?: 'content' | 'library' | 'settings';
+  }>
 ) => {
   const { actions } = state;
   return React.useCallback(
@@ -120,7 +126,7 @@ export const useSaveCentralMetadataAction = <TAssetDetail extends StudioMediaPic
             ),
             ...(metadata.tags ? { tags: metadata.tags } : {}),
           };
-          actions.setReviewAsset({
+          const saved = {
             ...reviewAsset,
             title: nextMetadata.title,
             metadata: nextMetadata,
@@ -128,13 +134,18 @@ export const useSaveCentralMetadataAction = <TAssetDetail extends StudioMediaPic
               ...reviewAsset.localDraft,
               metadata: { ...reviewAsset.localDraft.metadata, ...metadata },
             },
-          });
+          };
+          actions.setReviewAsset(saved);
+          if (persistenceContext !== 'content')
+            actions.setMetadataDraft(createMetadataDraft(saved));
         } else {
           const saved = withPreviewUrlFallback(
             await saveAssetMetadata(reviewAsset.id, metadata),
             reviewAsset.previewUrl
           );
           actions.setReviewAsset(saved);
+          if (persistenceContext !== 'content')
+            actions.setMetadataDraft(createMetadataDraft(saved));
         }
         return true;
       } catch {
@@ -144,7 +155,7 @@ export const useSaveCentralMetadataAction = <TAssetDetail extends StudioMediaPic
         actions.setIsSavingReviewAsset(false);
       }
     },
-    [actions, reviewAsset, saveAssetMetadata]
+    [actions, persistenceContext, reviewAsset, saveAssetMetadata]
   );
 };
 

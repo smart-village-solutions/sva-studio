@@ -41,6 +41,7 @@ export type StudioMediaPickerOverlayOptions<TAssetDetail extends StudioMediaPick
     ) => Promise<TAssetDetail>;
     canAcceptAsset?: (asset: TAssetDetail) => boolean;
     editableMetadataFields?: readonly StudioMediaPickerMetadataField[];
+    persistenceContext?: 'content' | 'library' | 'settings';
   }>;
 
 const useReviewAssetLoader = <TAssetDetail extends StudioMediaPickerAssetDetail>(
@@ -172,7 +173,6 @@ export const useStudioMediaPickerOverlayActions = <
     isSupportedUploadFile,
     loadAsset,
     onAccept,
-    saveAssetMetadata,
     uploadAsset,
   } = options;
   const { actions } = state;
@@ -222,7 +222,7 @@ export const useStudioMediaPickerOverlayActions = <
     editableMetadataFields
   );
 
-  const saveCentralMetadata = useSaveCentralMetadataAction(state, reviewAsset, saveAssetMetadata);
+  const saveCentralMetadata = useSaveCentralMetadataAction(state, reviewAsset, options);
 
   const applyImageEdit = useApplyMediaImageEditAction(state);
   const updateImageFocus = useMediaImageFocusAction(state);

@@ -6,6 +6,7 @@ import {
   initializeHostMediaUpload,
   uploadHostMediaFile,
   waitForHostMediaUpload,
+  type HostMediaUploadCheckpoint,
 } from './media-upload-client.js';
 
 it('resumes transferred bytes after an uncertain completion without initializing or PUT again', async () => {
@@ -23,7 +24,20 @@ it('resumes transferred bytes after an uncertain completion without initializing
   const input = {
     fetch,
     file: new File(['bytes'], 'copy.png', { type: 'image/png' }),
-    transferred: { assetId: 'copy', uploadSessionId: 'session' },
+    checkpoint: {
+      initialized: {
+        assetId: 'copy',
+        uploadSessionId: 'session',
+        uploadUrl: 'https://storage.test/output',
+        method: 'PUT',
+        headers: {},
+        expiresAt: '2000-01-01T00:00:00.000Z',
+        initializedAt: '2000-01-01T00:00:00.000Z',
+        status: 'pending',
+      },
+      outputTransferred: true,
+      sourceTransferred: false,
+    },
   };
   await expect(uploadHostMediaFile(input)).rejects.toThrow('network');
   await expect(uploadHostMediaFile(input)).resolves.toMatchObject({ assetId: 'copy' });
@@ -34,6 +48,71 @@ it('resumes transferred bytes after an uncertain completion without initializing
 });
 
 describe('media upload client', () => {
+  it.each(['output', 'source'] as const)(
+    'resumes the same initialized session after a failed %s PUT without repeating successful transfers',
+    async (failedPart) => {
+      let checkpoint: HostMediaUploadCheckpoint | undefined;
+      let failed = false;
+      const fetch = vi.fn(async (request: RequestInfo | URL) => {
+        const url = String(request);
+        if (url.endsWith('/upload-sessions'))
+          return Response.json({
+            data: {
+              assetId: 'copy',
+              uploadSessionId: 'session',
+              uploadUrl: 'https://storage.test/output',
+              method: 'PUT',
+              headers: {},
+              sourceUpload: {
+                uploadUrl: 'https://storage.test/source',
+                method: 'PUT',
+                headers: {},
+              },
+            },
+          });
+        if (url === `https://storage.test/${failedPart}` && !failed) {
+          failed = true;
+          return new Response(null, { status: 503 });
+        }
+        if (url.endsWith('/complete'))
+          return Response.json({
+            data: {
+              assetId: 'copy',
+              uploadSessionId: 'session',
+              status: 'processed',
+            },
+          });
+        return new Response(null, { status: 200 });
+      });
+      const input = {
+        fetch,
+        file: new File(['out'], 'copy.png', { type: 'image/png' }),
+        editing: {
+          document: createMediaEditingDocument({}),
+          sourceFile: new File(['in'], 'source.jpg', { type: 'image/jpeg' }),
+        },
+        onCheckpoint: (next: HostMediaUploadCheckpoint) => {
+          checkpoint = next;
+        },
+      };
+      await expect(uploadHostMediaFile(input)).rejects.toThrow('media_upload_put_failed:503');
+      expect(checkpoint?.initialized.uploadSessionId).toBe('session');
+      expect(checkpoint?.outputTransferred).toBe(failedPart === 'source');
+      await expect(uploadHostMediaFile({ ...input, checkpoint })).resolves.toMatchObject({
+        assetId: 'copy',
+      });
+      const calls = fetch.mock.calls.map(([url]) => String(url));
+      expect(calls.filter((url) => url.endsWith('/upload-sessions'))).toHaveLength(1);
+      expect(calls.filter((url) => url === 'https://storage.test/output')).toHaveLength(
+        failedPart === 'output' ? 2 : 1
+      );
+      expect(calls.filter((url) => url === 'https://storage.test/source')).toHaveLength(
+        failedPart === 'source' ? 2 : 1
+      );
+      expect(calls.filter((url) => url.endsWith('/complete'))).toHaveLength(1);
+    }
+  );
+
   it.each([false, true])(
     'transfers the private local foundation before completing an edited upload (source failure: %s)',
     async (failSource) => {

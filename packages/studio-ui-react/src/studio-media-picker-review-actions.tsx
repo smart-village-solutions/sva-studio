@@ -98,7 +98,7 @@ export const ReviewPanelExtras = ({
   const isBusy = isLoadingReviewAsset || isSavingReviewAsset;
   return (
     <>
-      {props.isUploadTransferred ? <p role="status">{t('editor.copyTransferred')}</p> : null}
+      {props.isUploadInitialized ? <p role="status">{t('editor.copyInitialized')}</p> : null}
       {reviewAsset && onApplyImageEdit ? (
         <div className="space-y-2">
           <Button

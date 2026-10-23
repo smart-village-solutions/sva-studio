@@ -139,8 +139,8 @@ export const mediaEditorResources = {
   discardHint: 'The unsaved changes will be lost.',
   discardAction: 'Discard changes',
   keepEditing: 'Continue editing',
-  copyTransferred:
-    'The file has already been transferred. Save again to resume completion; its details remain fixed for this upload.',
+  copyInitialized:
+    'The upload has started. Save again to resume it; the image and its details remain fixed for this upload.',
 
   discardChanges: 'Discard unsaved changes?',
   refreshTitle: 'Apply metadata to this content',

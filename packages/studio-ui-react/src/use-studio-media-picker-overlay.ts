@@ -18,6 +18,7 @@ export const useStudioMediaPickerOverlay = <TAssetDetail extends StudioMediaPick
   isSupportedUploadFile,
   loadAsset,
   onAccept,
+  persistenceContext,
   saveAssetMetadata,
   uploadAsset,
 }: StudioMediaPickerOverlayOptions<TAssetDetail>) => {
@@ -29,6 +30,7 @@ export const useStudioMediaPickerOverlay = <TAssetDetail extends StudioMediaPick
     isSupportedUploadFile,
     loadAsset,
     onAccept,
+    persistenceContext,
     saveAssetMetadata,
     uploadAsset,
   });

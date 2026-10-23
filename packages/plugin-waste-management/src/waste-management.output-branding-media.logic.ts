@@ -11,7 +11,7 @@ import {
   subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
   uploadHostMediaFile,
-  type UploadHostMediaFileResult,
+  type HostMediaUploadCheckpoint,
   type HostMediaAssetDetail,
   type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
@@ -116,21 +116,19 @@ const acceptBrandingMediaAsset = async (
   loadAsset: (assetId: string) => Promise<WasteBrandingMediaPickerAsset>,
   refresh: () => Promise<readonly HostMediaAssetListItem[]>,
   onChange: (value: string) => void,
-  transferred: { current: { draftId: string; upload: UploadHostMediaFileResult } | null },
-  onTransfer: (draftId: string) => void
+  checkpoint: { current: { draftId: string; upload: HostMediaUploadCheckpoint } | null },
+  onInitialize: (draftId: string) => void
 ) => {
   let selected = asset;
   if (asset.localDraft?.editing) {
     const uploaded = await uploadHostMediaFile({
       fetch: globalThis.fetch.bind(globalThis),
       file: asset.localDraft.file,
-      transferred:
-        transferred.current?.draftId === asset.localDraft.id
-          ? transferred.current.upload
-          : undefined,
-      onTransferred: (upload) => {
-        transferred.current = { draftId: asset.localDraft!.id, upload };
-        onTransfer(asset.localDraft!.id);
+      checkpoint:
+        checkpoint.current?.draftId === asset.localDraft.id ? checkpoint.current.upload : undefined,
+      onCheckpoint: (upload) => {
+        checkpoint.current = { draftId: asset.localDraft!.id, upload };
+        onInitialize(asset.localDraft!.id);
       },
       visibility: 'public',
       editing: asset.localDraft.editing,
@@ -165,8 +163,8 @@ const uploadBrandingFile = async (
 
 export const useWasteBrandingMediaController = (onChange: (value: string) => void) => {
   const library = useMediaLibrary();
-  const [transferredDraftId, setTransferredDraftId] = useState<string | null>(null);
-  const transferred = useRef<{ draftId: string; upload: UploadHostMediaFileResult } | null>(null);
+  const [initializedDraftId, setInitializedDraftId] = useState<string | null>(null);
+  const checkpoint = useRef<{ draftId: string; upload: HostMediaUploadCheckpoint } | null>(null);
   const loadAsset = useCallback(
     async (assetId: string) => {
       const [asset, delivery] = await Promise.all([
@@ -186,14 +184,15 @@ export const useWasteBrandingMediaController = (onChange: (value: string) => voi
     [library.assetsRef]
   );
   const picker = useStudioMediaPickerOverlay<WasteBrandingMediaPickerAsset>({
+    persistenceContext: 'settings',
     onAccept: (asset) =>
       acceptBrandingMediaAsset(
         asset,
         loadAsset,
         library.refresh,
         onChange,
-        transferred,
-        setTransferredDraftId
+        checkpoint,
+        setInitializedDraftId
       ),
     canAcceptAsset: (asset) =>
       Boolean(asset.localDraft?.editing) || isPublicPersistableAsset(asset),
@@ -229,7 +228,7 @@ export const useWasteBrandingMediaController = (onChange: (value: string) => voi
     picker.close,
   ]);
   return {
-    isUploadTransferred: transferredDraftId === picker.reviewAsset?.localDraft?.id,
+    isUploadInitialized: initializedDraftId === picker.reviewAsset?.localDraft?.id,
     mediaAssets: library.assets,
     mediaCapabilities: library.capabilities,
     mediaLibraryError: library.error,

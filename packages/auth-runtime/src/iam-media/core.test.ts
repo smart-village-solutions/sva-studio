@@ -56,6 +56,7 @@ const createService = () => {
     commitContentSaveOperation: vi.fn(async () => true),
     markContentSaveOperationAbandonPending: vi.fn(async () => true),
     finalizeContentSaveOperationAbandoned: vi.fn(async () => true),
+    finalizeContentSaveOperationCleanup: vi.fn(async () => true),
     listAssetsByOperation: vi.fn(async () => []),
     getUsageImpact: vi.fn(async (_instanceId: string, assetId: string) => ({
       assetId,
@@ -130,6 +131,74 @@ const createService = () => {
 };
 
 describe('media http handlers', () => {
+  it.each([false, true])(
+    'deletes only owned editing files before finalizing content abandonment (shared source: %s)',
+    async (sharedSource) => {
+      const service = createService();
+      const storageKey = 'tenant-a/originals/asset-1.jpg';
+      const editingSourceKey = '.protected/tenant-a/asset-1/source.jpg';
+      const intakeKeys = [
+        '.quarantine/tenant-a/asset-1/source',
+        '.quarantine/tenant-a/asset-1/output',
+      ];
+      service.listAssetsByOperation.mockResolvedValue([
+        {
+          id: 'asset-1',
+          storageKey,
+          ...(sharedSource ? { editingSourceAssetId: 'root-1' } : { editingSourceKey }),
+          technical: {
+            editingSourceIntakeKey: intakeKeys[0],
+            editingOutputIntakeKey: intakeKeys[1],
+          },
+        },
+      ] as never);
+      const deleteObject = vi.fn(
+        async (_input: { storageKey: string; instanceId: string }) => undefined
+      );
+      const handlers = createMediaHttpHandlers({
+        withMediaService: async (_id, work) => work(service as never),
+        storagePort: { deleteObject } as never,
+        authorizeAction: allowAuthorization,
+        createId: () => 'id',
+        now: () => new Date().toISOString(),
+        emitAuditEvent,
+      });
+      const request = () =>
+        new Request(
+          'http://localhost/api/v1/iam/media/content-save-operations/operation-1/abandon',
+          {
+            method: 'POST',
+            body: JSON.stringify({ instanceId: 'tenant-a' }),
+          }
+        );
+      if (!sharedSource) {
+        deleteObject
+          .mockImplementationOnce(async () => undefined)
+          .mockImplementationOnce(async () => undefined)
+          .mockRejectedValueOnce(new MediaStorageUnavailableError());
+        expect(
+          (await handlers.abandonContentSaveOperation(request(), createContext())).status
+        ).toBe(503);
+        expect(service.finalizeContentSaveOperationCleanup).not.toHaveBeenCalled();
+        deleteObject.mockClear();
+      }
+      expect((await handlers.abandonContentSaveOperation(request(), createContext())).status).toBe(
+        200
+      );
+      const expectedKeys = [
+        storageKey,
+        'tenant-a/variants/asset-1/thumbnail.webp',
+        ...intakeKeys,
+        ...(sharedSource ? [] : [editingSourceKey]),
+      ];
+      expect(deleteObject.mock.calls.map(([input]) => input.storageKey)).toEqual(expectedKeys);
+      expect(service.finalizeContentSaveOperationCleanup).toHaveBeenCalledOnce();
+      expect(
+        service.finalizeContentSaveOperationCleanup.mock.invocationCallOrder[0]
+      ).toBeGreaterThan(Math.max(...deleteObject.mock.invocationCallOrder));
+    }
+  );
+
   it('blocks new bucket registrations and oversized uploads when scanning is active', async () => {
     vi.stubEnv('MEDIA_SCAN_ENABLED', 'true');
     try {

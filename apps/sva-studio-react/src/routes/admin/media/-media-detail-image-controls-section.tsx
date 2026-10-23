@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import {
   getHostMediaAssetFileName,
   uploadHostMediaFile,
-  type UploadHostMediaFileResult,
+  type HostMediaUploadCheckpoint,
 } from '@sva/plugin-sdk';
 import { normalizeMediaMetadataPatch, type MediaEditorialMetadataPatch } from '@sva/media';
 import {
@@ -100,13 +100,14 @@ export const MediaDetailImageControlsSection = ({
   metadataDraft?: MediaEditorialMetadataPatch;
 }>) => {
   const navigate = useNavigate();
-  const [transferredDraftId, setTransferredDraftId] = React.useState<string | null>(null);
-  const transferred = React.useRef<{ draftId: string; upload: UploadHostMediaFileResult } | null>(
+  const [initializedDraftId, setInitializedDraftId] = React.useState<string | null>(null);
+  const checkpoint = React.useRef<{ draftId: string; upload: HostMediaUploadCheckpoint } | null>(
     null
   );
   const created = React.useRef<{ draftId: string; assetId: string } | null>(null);
   const detail = toPickerAsset(asset, metadataDraft);
   const picker = useStudioMediaPickerOverlay({
+    persistenceContext: 'library',
     isSupportedUploadFile: () => false,
     loadAsset: async () => detail,
     saveAssetMetadata: async () => detail,
@@ -118,11 +119,11 @@ export const MediaDetailImageControlsSection = ({
         const uploaded = await uploadHostMediaFile({
           fetch: globalThis.fetch.bind(globalThis),
           file: local.file,
-          transferred:
-            transferred.current?.draftId === local.id ? transferred.current.upload : undefined,
-          onTransferred: (upload) => {
-            transferred.current = { draftId: local.id, upload };
-            setTransferredDraftId(local.id);
+          checkpoint:
+            checkpoint.current?.draftId === local.id ? checkpoint.current.upload : undefined,
+          onCheckpoint: (upload) => {
+            checkpoint.current = { draftId: local.id, upload };
+            setInitializedDraftId(local.id);
           },
           visibility: asset.visibility,
           instanceId: asset.instanceId,
@@ -188,7 +189,7 @@ export const MediaDetailImageControlsSection = ({
         }
         feedbackMessage={picker.errorCode ? t('media.editor.imageError') : null}
         feedbackTone="error"
-        isUploadTransferred={transferredDraftId === picker.reviewAsset?.localDraft?.id}
+        isUploadInitialized={initializedDraftId === picker.reviewAsset?.localDraft?.id}
         persistenceContext="library"
         initialEditorOpen
       />

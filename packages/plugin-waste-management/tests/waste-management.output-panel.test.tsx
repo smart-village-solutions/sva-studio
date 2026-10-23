@@ -1221,18 +1221,30 @@ describe('WasteOutputPanel', () => {
     expect(change).not.toHaveBeenCalled();
     mediaMocks.uploadHostMediaFile.mockImplementationOnce(async (input) => {
       const upload = { assetId: 'asset-uploaded-logo', uploadSessionId: 'session-copy' };
-      input.onTransferred?.(upload);
+      input.onCheckpoint?.({
+        initialized: {
+          ...upload,
+          uploadUrl: 'https://storage.test/output',
+          method: 'PUT',
+          headers: {},
+          expiresAt: '2099-01-01T00:00:00Z',
+          initializedAt: '2026-10-23T00:00:00Z',
+          status: 'pending',
+        },
+        outputTransferred: true,
+        sourceTransferred: false,
+      });
       return upload;
     });
     mediaMocks.getHostMediaAsset.mockRejectedValueOnce(new Error('delivery read unavailable'));
     await act(async () => result.current.mediaPicker.confirmSelection());
     expect(result.current.mediaPicker.open).toBe(true);
-    expect(result.current.isUploadTransferred).toBe(true);
+    expect(result.current.isUploadInitialized).toBe(true);
     expect(change).not.toHaveBeenCalled();
     await act(async () => result.current.mediaPicker.confirmSelection());
-    expect(mediaMocks.uploadHostMediaFile.mock.calls[1][0].transferred).toEqual({
-      assetId: 'asset-uploaded-logo',
-      uploadSessionId: 'session-copy',
+    expect(mediaMocks.uploadHostMediaFile.mock.calls[1][0].checkpoint).toMatchObject({
+      initialized: { assetId: 'asset-uploaded-logo', uploadSessionId: 'session-copy' },
+      outputTransferred: true,
     });
 
     expect(mediaMocks.uploadHostMediaFile).toHaveBeenCalledWith(

@@ -43,7 +43,7 @@ vi.mock('@sva/studio-ui-react', async (original) => ({
           Kopie speichern
         </button>
         <output data-testid="transfer-state">
-          {props.isUploadTransferred ? 'fixed' : 'editable'}
+          {props.isUploadInitialized ? 'fixed' : 'editable'}
         </output>
       </div>
     ) : null,
@@ -53,7 +53,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it('resumes transferred bytes and fixes the copy inputs until completion without writing the source', async () => {
+it('retains the initialized upload and fixes copy inputs before transfer without writing the source', async () => {
   const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:review-copy');
   const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
   const asset: IamRegisteredMediaAsset = {
@@ -70,11 +70,25 @@ it('resumes transferred bytes and fixes the copy inputs until completion without
     technical: {},
   };
   const original = structuredClone(asset);
+  const checkpoint = {
+    initialized: {
+      assetId: 'copy-1',
+      uploadSessionId: 'session-1',
+      uploadUrl: 'https://storage.test/output',
+      method: 'PUT',
+      headers: {},
+      expiresAt: '2099-01-01T00:00:00Z',
+      initializedAt: '2026-10-23T00:00:00Z',
+      status: 'pending',
+    },
+    outputTransferred: false,
+    sourceTransferred: false,
+  };
   upload
     .mockReset()
     .mockImplementationOnce(async (input) => {
-      input.onTransferred({ assetId: 'copy-1', uploadSessionId: 'session-1' });
-      throw new Error('processing status unavailable');
+      input.onCheckpoint(checkpoint);
+      throw new Error('transfer unavailable');
     })
     .mockResolvedValueOnce({ assetId: 'copy-1', uploadSessionId: 'session-1' });
   navigate.mockReset().mockResolvedValue(undefined);
@@ -104,7 +118,7 @@ it('resumes transferred bytes and fixes the copy inputs until completion without
   );
   expect(upload).toHaveBeenCalledTimes(2);
   expect(upload.mock.calls[1][0]).toMatchObject({
-    transferred: { assetId: 'copy-1', uploadSessionId: 'session-1' },
+    checkpoint,
     visibility: 'protected',
     instanceId: 'tenant-1',
     metadata: { altText: 'Neuer Alttext', tags: ['Stadt'] },

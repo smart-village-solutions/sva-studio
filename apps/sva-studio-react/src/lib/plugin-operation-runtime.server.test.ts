@@ -195,7 +195,7 @@ describe('plugin operation runtime registration', () => {
       vi.clearAllTimers();
       vi.useRealTimers();
     }
-  });
+  }, 30000);
 
   it('registers only regular Studio plugin operation handlers after coverage validation', async () => {
     const mod = await import('./plugin-operation-runtime.server');

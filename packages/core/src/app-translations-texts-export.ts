@@ -1,4 +1,5 @@
-/** texts.js format v1 for mobile-app ca0eb0375; source SHA-256 f213f1b08a758c555931734391b0733be2ba380aeded557e1a2618972511e114.
+/** Reviewed texts.js formats: v1 for mobile-app ca0eb0375; source SHA-256 f213f1b08a758c555931734391b0733be2ba380aeded557e1a2618972511e114.
+ * v2 targets mobile-app 5.0.0 (master 608c01b5a plus the central locale controls).
  * Function signatures and key segmentation were checked against the GPL-3.0 App reference.
  */
 import {
@@ -36,7 +37,40 @@ const functions: Readonly<Record<string, readonly string[]>> = {
   'wallet.detail.deleteConfirmationMessage': ['value'],
   'weather.alertsText': ['from', 'to'],
 };
-const appNameKeys = new Set(['screenTitles.home', 'screenTitles.events']);
+const manifestV2Digest = '5ead916a8b42364d87252736d481268076132044efb0cd962ce3448717ce62d1';
+const functionsV2: Readonly<Record<string, readonly string[]>> = {
+  ...functions,
+  'bus.locationFilter.resetTo': ['areaName'],
+  'floorPlan.floorChanged': ['title'],
+  'participationProject.categoryCount': ['count'],
+  'participationProject.completedCount': ['count'],
+  'voucher.detailScreen.discountAmount': ['amount'],
+  'voucher.detailScreen.discountPercentage': ['percentage'],
+  'wasteCalendar.scheduledWasteReminderCount': ['count'],
+};
+const pluralKeys = new Set([
+  'participationProject.categoryCount',
+  'wasteCalendar.scheduledWasteReminderCount',
+]);
+const interpolate = (value: string, args: readonly string[], key: string): string => {
+  const parts: string[] = [];
+  let start = 0;
+  for (const match of value.matchAll(/\{\{([A-Za-z][A-Za-z0-9_]*)\}\}/g)) {
+    parts.push(literal(value.slice(start, match.index)));
+    const token = match[1];
+    catalogAssert(token && args.includes(token));
+    const parameter =
+      key === 'voucher.detailScreen.frequency'
+        ? token === 'maxPerPerson'
+          ? '(maxPerPerson || 1)'
+          : 'catalog.voucher.detailScreen[frequency]'
+        : token;
+    parts.push(`String(${parameter})`);
+    start = match.index + match[0].length;
+  }
+  parts.push(literal(value.slice(start)));
+  return parts.join('+');
+};
 export const CATALOG_TEXTS_EXPORT_MAX_BYTES = 8 * 1024 * 1024;
 const literal = (value: unknown) =>
   JSON.stringify(value)
@@ -52,7 +86,16 @@ export const exportCatalogTextsJs = async (
   rawManifest: CatalogManifest
 ): Promise<string> => {
   const manifest = validateCatalogManifest(rawManifest);
-  catalogAssert((await catalogDigest(manifest)) === manifestDigest, 'catalog_export_incompatible');
+  const digest = await catalogDigest(manifest);
+  catalogAssert(
+    digest === manifestDigest || digest === manifestV2Digest,
+    'catalog_export_incompatible'
+  );
+  const version = digest === manifestV2Digest ? 2 : 1;
+  const signatures = version === 2 ? functionsV2 : functions;
+  const appNameKeys = new Set(
+    version === 2 ? ['screenTitles.home'] : ['screenTitles.home', 'screenTitles.events']
+  );
   catalogAssert(/^[1-9][0-9]{0,19}$/.test(release.catalogSetRevision));
   catalogAssert(release.state === 'sealed' && release.scope.kind === 'municipal');
   catalogAssert(release.contractId === manifest.contractId);
@@ -105,30 +148,19 @@ export const exportCatalogTextsJs = async (
       catalogAssert(artifact);
       const value = artifact.values[key];
       catalogAssert(value !== undefined);
-      const args = Object.prototype.hasOwnProperty.call(functions, key)
-        ? functions[key]
+      const args = Object.prototype.hasOwnProperty.call(signatures, key)
+        ? signatures[key]
         : undefined;
       let expression: string;
       if (appNameKeys.has(key)) expression = 'appJson.expo.name';
       else if (args) {
-        catalogAssert(typeof value === 'string');
-        const parts: string[] = [];
-        let start = 0;
-        for (const match of value.matchAll(/\{\{([A-Za-z][A-Za-z0-9_]*)\}\}/g)) {
-          parts.push(literal(value.slice(start, match.index)));
-          const token = match[1];
-          catalogAssert(token && args.includes(token));
-          const parameter =
-            key === 'voucher.detailScreen.frequency'
-              ? token === 'maxPerPerson'
-                ? '(maxPerPerson || 1)'
-                : 'catalog.voucher.detailScreen[frequency]'
-              : token;
-          parts.push(`String(${parameter})`);
-          start = match.index + match[0].length;
+        if (version === 2 && pluralKeys.has(key)) {
+          catalogAssert(Array.isArray(value) && value.length === 2);
+          expression = `(count)=>count===1?${interpolate(value[0]!, args, key)}:${interpolate(value[1]!, args, key)}`;
+        } else {
+          catalogAssert(typeof value === 'string');
+          expression = `(${args.join(',')})=>${interpolate(value, args, key)}`;
         }
-        parts.push(literal(value.slice(start)));
-        expression = `(${args.join(',')})=>${parts.join('+')}`;
       } else expression = literal(value);
       // Segments are unambiguous only because this exact manifest is bound to the reviewed App tree.
       const path = key.split('.');
@@ -147,7 +179,7 @@ export const exportCatalogTextsJs = async (
     }
     catalogs.push(`${literal(locale)}:(()=>{const catalog=${renderTree(tree)};return catalog;})()`);
   }
-  const source = `// Studio texts.js format 1; sealed revision ${release.catalogSetRevision}\nimport appJson from '../../app.json';\nexport const textsByLocale={${catalogs.join(',')}};\nexport let texts=textsByLocale.de;\nexport function setTextsLocale(locale){const selected=typeof locale==='string'&&Object.prototype.hasOwnProperty.call(textsByLocale,locale)?locale:'de';texts=textsByLocale[selected];return selected;}\n`;
+  const source = `// Studio texts.js format ${version}; sealed revision ${release.catalogSetRevision}\nimport appJson from '../../app.json';\nexport const textsByLocale={${catalogs.join(',')}};\nexport let texts=textsByLocale.de;\nexport function setTextsLocale(locale){const selected=typeof locale==='string'&&Object.prototype.hasOwnProperty.call(textsByLocale,locale)?locale:'de';texts=textsByLocale[selected];return selected;}\n`;
   catalogAssert(new TextEncoder().encode(source).length <= CATALOG_TEXTS_EXPORT_MAX_BYTES);
   return source;
 };

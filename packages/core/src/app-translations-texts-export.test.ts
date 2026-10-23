@@ -23,7 +23,11 @@ const scope = {
   instanceId: 'town',
   organizationId: '11111111-1111-4111-8111-111111111111',
 };
-const release = async (overrides: Record<string, string> = {}) => {
+const release = async (
+  overrides: Record<string, string | readonly string[]> = {},
+  selectedManifest = manifest
+) => {
+  const manifest = selectedManifest;
   const values: CatalogTexts = {};
   for (const locale of ['de', 'en', 'fr'])
     values[locale] = Object.fromEntries(
@@ -33,7 +37,10 @@ const release = async (overrides: Record<string, string> = {}) => {
           value:
             locale === 'de'
               ? definition.defaultValue
-              : (overrides[key] ?? `${locale}: ${definition.defaultValue}`),
+              : (overrides[key] ??
+                (Array.isArray(definition.defaultValue)
+                  ? definition.defaultValue.map((part) => `${locale}: ${part}`)
+                  : `${locale}: ${definition.defaultValue}`)),
           origin: 'default' as const,
           sourceDigest: '',
           confirmedSourceDigest: null,
@@ -256,5 +263,72 @@ describe('sealed multilingual texts.js export', () => {
     const invalidRevision = await release();
     invalidRevision.catalogSetRevision = '1\nmalicious';
     await expect(exportCatalogTextsJs(invalidRevision, manifest)).rejects.toThrow();
+  });
+});
+
+describe('mobile-app 5 texts.js format', () => {
+  const manifestV2 = validateCatalogManifest(
+    JSON.parse(readFileSync(new URL('manifest-v2.json', fixture), 'utf8'))
+  );
+  it('preserves all current strings, call signatures, plurals and the locale-local frequency lookup', async () => {
+    const sourceV2 = readFileSync(new URL('texts-v2.reference.js', fixture), 'utf8');
+    expect(createHash('sha256').update(sourceV2).digest('hex')).toBe(
+      'b11cda843f97d979b0dd389cdc19a2175c8867d85a1c7ff0fd97d782500159e5'
+    );
+    const referenceV2 = load(sourceV2).texts;
+    const result = load(await exportCatalogTextsJs(await release({}, manifestV2), manifestV2));
+    const entries = leaves(referenceV2);
+    expect(entries).toHaveLength(1860);
+    expect(entries.filter(([, value]) => typeof value === 'function')).toHaveLength(29);
+    expect(
+      leaves(result.texts)
+        .map(([path]) => path)
+        .sort()
+    ).toEqual(entries.map(([path]) => path).sort());
+    for (const [path, value] of entries) {
+      const actual = get(result.texts, path);
+      if (typeof value !== 'function') expect(actual).toEqual(value);
+      else {
+        expect(callable(actual).length).toBe(value.length);
+        for (const first of [undefined, null, 0, 1, 2, '1', 'example']) {
+          const args = Array.from({ length: value.length }, (_, index) =>
+            index ? 'daily' : first
+          );
+          expect(callable(actual)(...args)).toBe(value(...args));
+          expect(callable(get(result.textsByLocale.en!, path))(...args)).toBe(
+            `en: ${value(...args)}`.replace('pro Person pro Tag', 'pro Person en: pro Tag')
+          );
+        }
+      }
+    }
+    const englishFrequency = callable(
+      get(result.textsByLocale.en!, ['voucher', 'detailScreen', 'frequency'])
+    );
+    result.setTextsLocale('fr');
+    expect(englishFrequency(0, 'daily')).toBe('en: 1x pro Person en: pro Tag einlösbar');
+    expect(get(result.texts, ['screenTitles', 'events'])).toBe('fr: Veranstaltungen');
+    expect(result.setTextsLocale('unknown')).toBe('de');
+  });
+  it('requires both translated plural branches and permits reordering placeholders', async () => {
+    const snapshot = await release(
+      {
+        'participationProject.categoryCount': ['one item ({{count}})', 'items: {{count}}'],
+        'wasteCalendar.scheduledWasteReminderCount': [
+          'one reminder ({{count}})',
+          'reminders: {{count}}',
+        ],
+      },
+      manifestV2
+    );
+    const result = load(await exportCatalogTextsJs(snapshot, manifestV2));
+    const count = callable(
+      get(result.textsByLocale.en!, ['participationProject', 'categoryCount'])
+    );
+    expect(count(1)).toBe('one item (1)');
+    expect(count(2)).toBe('items: 2');
+    expect(count('1')).toBe('items: 1');
+    await expect(
+      release({ 'participationProject.categoryCount': ['missing count'] }, manifestV2)
+    ).rejects.toThrow();
   });
 });

@@ -339,3 +339,17 @@ describe('DeepL settings', () => {
     expect(() => validateCatalogLocales(['de', 'pt-br'])).toThrow();
   });
 });
+
+it('retains retired translations in the draft while exporting only current manifest keys', async () => {
+  const upgraded = structuredClone(draft);
+  upgraded.supportedLocales = ['de'];
+  upgraded.valuesByLocale.de!.retired = {
+    value: 'Erhalten',
+    origin: 'manual',
+    sourceDigest: '',
+    confirmedSourceDigest: null,
+  };
+  const release = await prepareCatalogRelease(upgraded, null, '2');
+  expect(release.catalogs.de!.values).toEqual({ greeting: 'Hallo {{name}}' });
+  expect(upgraded.valuesByLocale.de!.retired!.value).toBe('Erhalten');
+});

@@ -228,7 +228,7 @@ export const createAppTranslationRepository = async (
       }
       if (draft.manifestId === entry.id) {
         catalogAssert(
-          JSON.stringify(draft.supportedLocales) === JSON.stringify(supportedLocales),
+          supportedLocales.every((locale) => draft.supportedLocales.includes(locale)),
           'catalog_conflict'
         );
         return draft;
@@ -236,12 +236,16 @@ export const createAppTranslationRepository = async (
       catalogAssert(draft.draftRevision === expectedRevision, 'catalog_conflict');
       draft.manifestId = entry.id;
       draft.manifest = manifest;
-      draft.supportedLocales = supportedLocales;
+      // Importing a new source never removes existing target languages or their values.
+      draft.supportedLocales = validateCatalogLocales([
+        ...new Set([...draft.supportedLocales, ...supportedLocales]),
+      ]);
       for (const [locale, values] of Object.entries(draft.valuesByLocale)) {
-        catalogAssert(supportedLocales.includes(locale as AppTranslationLocale));
+        catalogAssert(draft.supportedLocales.includes(locale as AppTranslationLocale));
         catalogAssert(values);
         for (const [key, text] of Object.entries(values))
-          validateCatalogValue(manifest, key, text.value);
+          if (Object.prototype.hasOwnProperty.call(manifest.keys, key))
+            validateCatalogValue(manifest, key, text.value);
       }
       for (const [key, value] of Object.entries(defaults.de!))
         if (!draft.valuesByLocale.de![key]) draft.valuesByLocale.de![key] = value;
@@ -297,7 +301,8 @@ export const createAppTranslationRepository = async (
       for (const values of Object.values(draft.valuesByLocale)) {
         catalogAssert(values);
         for (const [key, text] of Object.entries(values))
-          validateCatalogValue(draft.manifest, key, text.value);
+          if (Object.prototype.hasOwnProperty.call(draft.manifest.keys, key))
+            validateCatalogValue(draft.manifest, key, text.value);
       }
       return save(draft);
     },

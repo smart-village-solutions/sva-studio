@@ -2,6 +2,8 @@
 
 ## Why
 
+**Aktuelle Fortsetzung 23. Oktober:** Der Nutzer hat inzwischen den App-Anschluss gegen master 5.0.0 und den Studio-Formatabgleich freigegeben. Nach anschließender Korrektur erfolgt die Locale-Wahl zentral vor dem App-Modulimport; ein angekündigter und bestätigter automatischer Neustart ersetzt die ursprünglich geplanten Ergänzungen in allen React-Verbrauchern. Maßgeblich ist Design 8.7. Keine gespeicherten Studio-Kataloge verändern, kein Commit und kein Push.
+
 Kommunen sollen sämtliche zulässigen App-Anzeigetexte mehrsprachig anbieten können. Studio/PostgreSQL ist die bearbeitbare Quelle für feste Texte einschließlich Deutsch, gemeinsame Standards, kommunale Overrides und wiederverwendbare dynamische Übersetzungen. Host-i18n und SSF-Konfigurationssprachen erfüllen diesen Fachvertrag nicht.
 
 **Auftrag / Stand 23. Oktober 2026:** Abschnitt 2F einschließlich UX-Korrekturen ist im lokalen Zwischencommit `eaebfef02` gesichert. Abschnitt **2G ist für den Studio-Export freigegeben und umgesetzt**: eine gemeinsame `texts.js` mit allen Sprachen eines gesicherten Textstands. Die ausdrückliche Liefergrenze des Nutzers lautet „Nur Studio-Export; App-Anschluss bleibt offen“. Das benachbarte App-Repository und App-Builds bleiben unverändert. Kein Commit und kein Push für diese Umsetzung; automatische Main-Server-/Appauslieferung bleibt offen.

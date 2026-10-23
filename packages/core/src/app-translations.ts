@@ -323,7 +323,8 @@ export const resolveCatalogValues = (
       if (Object.prototype.hasOwnProperty.call(draft.manifest.keys, key))
         result[locale]![key] = structuredClone(text);
     for (const [key, text] of Object.entries(draft.valuesByLocale[locale] ?? {}))
-      result[locale]![key] = structuredClone(text);
+      if (Object.prototype.hasOwnProperty.call(draft.manifest.keys, key))
+        result[locale]![key] = structuredClone(text);
   }
   return result;
 };

@@ -4,7 +4,6 @@ import {
   type useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import type { useNavigate } from '@tanstack/react-router';
-import type { usePluginTranslation } from '@sva/plugin-sdk';
 import { useStudioEditorLeaveGuard } from '@sva/studio-ui-react';
 import type { NavigateOptions } from '@tanstack/react-router';
 import type { UseFormReturn } from 'react-hook-form';

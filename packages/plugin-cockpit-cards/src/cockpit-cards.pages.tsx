@@ -162,7 +162,6 @@ function EditorContent({
     media,
     mediaReferenceSync,
     categories,
-    load,
     access,
     deletion,
     onCreateSaved,

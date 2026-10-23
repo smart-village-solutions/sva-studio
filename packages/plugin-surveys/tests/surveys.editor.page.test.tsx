@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const navigateMock = vi.fn();
@@ -7,6 +7,7 @@ const submitMock = vi.fn();
 const controllerState = vi.hoisted(() => ({
   actingPrincipalType: 'user' as 'user' | 'organization',
   isLoading: false,
+  createdContentId: null as string | null,
   loadedItem: null as null | { status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' },
   resourceAccess: {} as Readonly<Record<string, boolean>>,
   status: null as null | { kind: 'success' | 'error'; text: string },
@@ -28,7 +29,15 @@ const accessState = vi.hoisted(() => ({
 }));
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Link: ({
+    children,
+    to,
+    params,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    params?: { id: string };
+  }) => <a href={params ? to.replace('$id', params.id) : to}>{children}</a>,
   useNavigate: () => navigateMock,
   useLocation: () => ({ state: {} }),
 }));
@@ -115,7 +124,7 @@ vi.mock('../src/surveys.editor-logic.js', () => ({
       navigateToCreatedDetail('survey-created');
     });
     return {
-      createdContentId: null,
+      createdContentId: controllerState.createdContentId,
       isLoading: controllerState.isLoading,
       loadedItem: controllerState.loadedItem,
       resourceAccess: controllerState.resourceAccess,
@@ -132,6 +141,7 @@ describe('SurveyEditorPage', () => {
     cleanup();
     controllerState.actingPrincipalType = 'user';
     controllerState.isLoading = false;
+    controllerState.createdContentId = null;
     controllerState.loadedItem = null;
     controllerState.resourceAccess = {};
     controllerState.status = null;
@@ -205,6 +215,37 @@ describe('SurveyEditorPage', () => {
       })
     ).toEqual({ preserved: true });
   });
+
+  it.each([false, true])(
+    'keeps a confirmed survey reachable without allowing duplicate create (newer inputs: %s)',
+    async (hasNewerInputs) => {
+      const view = render(<SurveyEditorPage mode="create" />);
+      controllerState.createdContentId = 'survey-created';
+      view.rerender(<SurveyEditorPage mode="create" />);
+      if (hasNewerInputs) {
+        fireEvent.change(screen.getByLabelText('fields.title'), {
+          target: { value: 'Newer survey title' },
+        });
+      }
+      await waitFor(() => {
+        expect(Boolean(screen.queryByText('messages.unsavedAfterCreate'))).toBe(hasNewerInputs);
+      });
+
+      expect(
+        screen.getByRole('link', { name: 'actions.openSavedContent' }).getAttribute('href')
+      ).toBe('/admin/surveys/survey-created');
+      const title = screen.getByLabelText('fields.title') as HTMLInputElement;
+      expect(title.value).toBe(hasNewerInputs ? 'Newer survey title' : '');
+      expect(title.matches(':disabled')).toBe(false);
+      expect(
+        screen
+          .getAllByRole('button', { name: /^actions.create/ })
+          .every((button) => button.hasAttribute('disabled'))
+      ).toBe(true);
+      fireEvent.submit(document.getElementById('survey-detail-form') as HTMLFormElement);
+      expect(submitMock).not.toHaveBeenCalled();
+    }
+  );
 
   it('fails closed for scoped edits until the Mainserver grants resource access', () => {
     controllerState.loadedItem = { status: 'DRAFT' };

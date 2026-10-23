@@ -60,6 +60,10 @@ export const genericItemsTranslationsDeMessages = {
     pageLabel: 'Seite {{page}}',
   },
   messages: {
+    createdNavigationError:
+      'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
+    unsavedAfterCreate:
+      'Der Inhalt wurde angelegt. Neuere Eingaben in diesem Formular sind noch nicht gespeichert.',
     loading: 'Generische Inhalte werden geladen.',
     loadError: 'Generische Inhalte konnten nicht geladen werden.',
     missingContent: 'Der angeforderte generische Inhalt konnte nicht geladen werden.',

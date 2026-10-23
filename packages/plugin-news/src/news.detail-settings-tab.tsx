@@ -124,6 +124,7 @@ function NewsPushNotificationCard({
             </span>
             <span id="news-push-notification-hint" className="block text-muted-foreground">
               {pt('cards.settings.push.toggleHint')}
+              {publicationMode !== 'immediate' ? ` ${pt('create.pushResetHint')}` : ''}
             </span>
           </span>
         </label>
@@ -280,9 +281,22 @@ export function NewsDetailSettingsTab({
   });
   const summaryErrors = collectSummaryErrors([scheduledPublicationBindings]);
 
+  const publicationCard = (
+    <NewsPublicationCard
+      control={control}
+      loadedItem={loadedItem}
+      mode={mode}
+      pt={pt}
+      publicationMode={publicationMode}
+      scheduledPublicationBindings={scheduledPublicationBindings}
+      scheduledPublicationField={scheduledPublicationField}
+    />
+  );
   return (
     <div className="space-y-6">
       <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
+      {mode === 'create' ? publicationCard : null}
+
       {canSendPushNotification || loadedItem?.pushNotificationsSentAt ? (
         <NewsPushNotificationCard
           control={control}
@@ -295,15 +309,7 @@ export function NewsDetailSettingsTab({
           onLoadWasteOverview={onLoadWasteOverview}
         />
       ) : null}
-      <NewsPublicationCard
-        control={control}
-        loadedItem={loadedItem}
-        mode={mode}
-        pt={pt}
-        publicationMode={publicationMode}
-        scheduledPublicationBindings={scheduledPublicationBindings}
-        scheduledPublicationField={scheduledPublicationField}
-      />
+      {mode === 'edit' ? publicationCard : null}
     </div>
   );
 }

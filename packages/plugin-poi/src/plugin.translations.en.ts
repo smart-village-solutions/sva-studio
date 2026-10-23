@@ -2,6 +2,38 @@ import { createPoiLocaleTranslations } from './plugin.translations.shared.js';
 import { poiMessagesEn } from './plugin.translations.en.messages.js';
 
 export const poiTranslationsEn = createPoiLocaleTranslations({
+  create: {
+    nameHelp: 'What is the place called? A name is required.',
+    categoriesHelp: 'Assign the place to suitable existing categories.',
+    activeHelp: 'Determines whether the place is saved as active.',
+    mobileDescriptionHelp:
+      'Describe the place briefly. This text is stored separately from the full description.',
+    createActive: 'Create as active',
+    createInactive: 'Create as inactive',
+    intro:
+      'Create a place. Start with its name and location; add images and further details as needed.',
+    navigation: 'Jump to a form section',
+    optional: 'optional',
+    filled: 'Details entered',
+    empty: 'No details yet',
+    activeEffect: 'The place will be saved as active. Opening hours do not schedule publication.',
+    inactiveEffect: 'The place will be saved as inactive.',
+    editHint: 'After creation, open the saved place in the familiar editor with tabs.',
+    sections: {
+      name: 'Name',
+      location: 'Location',
+      description: 'Description',
+      media: 'Media',
+      categories: 'Categories',
+      openingHours: 'Add opening hours',
+      contact: 'Add contact',
+      links: 'Add further links',
+      prices: 'Add prices',
+      operator: 'Add operator',
+      technical: 'Technical details',
+      active: 'Active',
+    },
+  },
   navigation: { title: 'POI' },
   list: { title: 'POI', description: 'Edit Mainserver points of interest.' },
   detail: {
@@ -84,7 +116,10 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     updatedAt: 'Updated',
   },
   richText: {
-    mode: 'Editor view', visualMode: 'WYSIWYG', htmlMode: 'HTML', blockType: 'Text format',
+    mode: 'Editor view',
+    visualMode: 'WYSIWYG',
+    htmlMode: 'HTML',
+    blockType: 'Text format',
     heading2: 'Heading 2',
     heading3: 'Heading 3',
     heading4: 'Heading 4',
@@ -102,6 +137,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     applyLink: 'Apply link',
   },
   actions: {
+    openSavedContent: 'Open saved content',
     create: 'Create',
     update: 'Save changes',
     save: 'Save',

@@ -62,6 +62,26 @@ describe('server request helpers', () => {
     ).resolves.toMatchObject({ ok: false, message: expect.stringContaining('title:') });
   });
 
+  it('preserves transformations and rejects invalid input through the consumed validator contract', async () => {
+    const schema = z.object({ title: z.string().trim().min(1) });
+    const validator = { safeParse: schema.safeParse };
+    const request = (body: string) => new Request('https://example.test', { method: 'POST', body });
+
+    await expect(parseRequestBody(request('{"title":"  News  "}'), validator)).resolves.toEqual({
+      ok: true,
+      data: { title: 'News' },
+      rawBody: '{"title":"  News  "}',
+    });
+    await expect(parseRequestBody(request('{"title":"   "}'), validator)).resolves.toMatchObject({
+      ok: false,
+      message: expect.stringContaining('title:'),
+    });
+    await expect(parseRequestBody(request('{"title":42}'), validator)).resolves.toMatchObject({
+      ok: false,
+      message: expect.stringContaining('title:'),
+    });
+  });
+
   it('reads pagination, path, instance and idempotency values', async () => {
     const request = new Request(
       'https://example.test/api/v1/items/item-1?page=-1&pageSize=200&instanceId= instance-1 '

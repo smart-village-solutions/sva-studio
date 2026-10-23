@@ -1,4 +1,11 @@
 export const contentDEResources = {
+  leaveGuard: {
+    title: 'Ungespeicherte Eingaben verwerfen?',
+    description:
+      'Ihre Änderungen wurden noch nicht gespeichert. Wenn Sie diese Seite verlassen, gehen die ungespeicherten Eingaben verloren.',
+    discard: 'Verwerfen und verlassen',
+    stay: 'Weiterbearbeiten',
+  },
   page: {
     title: 'Inhalte',
     subtitle:

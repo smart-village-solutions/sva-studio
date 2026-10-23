@@ -1,10 +1,12 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   useStudioMediaReferenceSync,
+  useStudioEditorLeaveGuard,
   StudioErrorState,
   StudioLoadingState,
   type MainserverPrincipalControlModel,
 } from '@sva/studio-ui-react';
+import * as React from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 
 import { cockpitCardEditorTabs } from './cockpit-cards.editor-tabs.js';
@@ -44,6 +46,10 @@ type EditorData = Readonly<{
   load: ReturnType<typeof useCockpitCardLoad>;
   access: ReturnType<typeof useCockpitCardAccess>;
   deletion: ReturnType<typeof useCockpitCardDelete>;
+  onCreateStarted: () => boolean;
+  onCreateConfirmed: (id: string) => void;
+  createdContentId: string | null;
+  onCreateSaved: () => void;
 }>;
 
 function Editor(params: EditorParams) {
@@ -52,11 +58,50 @@ function Editor(params: EditorParams) {
   const navigate = useNavigate();
   const editor = useCockpitCardForm();
   const principal = useCockpitCardPrincipal(principalControl);
-  const media = useCockpitCardMedia(editor.form);
+  const [mediaDirty, setMediaDirty] = React.useState(false);
+  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
+  const savedRevision = React.useRef(0);
+  const createdContentIdRef = React.useRef<string | null>(null);
+  const markMediaChanged = () => {
+    setMediaDirty(true);
+    leaveGuard.markChanged();
+  };
+  const media = useCockpitCardMedia(editor.form, markMediaChanged);
   const mediaReferenceSync = useStudioMediaReferenceSync({
     mediaUsages: media.mediaUsages,
     setMediaUsages: media.setMediaUsages,
   });
+  const leaveGuard = useStudioEditorLeaveGuard({
+    enabled: mode === 'create',
+    hasUnsavedChanges:
+      editor.form.formState.isDirty ||
+      (mediaDirty && (createdContentId !== null || media.mediaUsages.length > 0)) ||
+      mediaReferenceSync.hasPendingRetry,
+  });
+  React.useEffect(() => {
+    const subscription = editor.form.watch((_values, { name }) => {
+      if (name) leaveGuard.markChanged();
+    });
+    return () => subscription.unsubscribe();
+  }, [editor.form, leaveGuard]);
+  const onCreateStarted = () => {
+    if (createdContentIdRef.current) return false;
+    savedRevision.current = leaveGuard.captureRevision();
+    return true;
+  };
+  const onCreateConfirmed = (id: string) => {
+    createdContentIdRef.current = id;
+    setCreatedContentId(id);
+  };
+  const onCreateSaved = () => {
+    if (mode !== 'create') return;
+
+    if (leaveGuard.acknowledgeSaved(savedRevision.current)) {
+      editor.form.reset(editor.form.getValues());
+      setMediaDirty(false);
+      media.setRequiresReferenceSync(false);
+    }
+  };
   const categories = useCategories();
   const load = useCockpitCardLoad({
     mode,
@@ -85,8 +130,12 @@ function Editor(params: EditorParams) {
     mediaReferenceSync,
     categories,
     load,
-    access,
+    access: { ...access, canSave: access.canSave && !createdContentId },
     deletion,
+    onCreateStarted,
+    onCreateSaved,
+    onCreateConfirmed,
+    createdContentId,
   };
   return <EditorContent params={params} data={data} />;
 }
@@ -110,6 +159,10 @@ function EditorContent({
     load,
     access,
     deletion,
+    onCreateStarted,
+    onCreateSaved,
+    onCreateConfirmed,
+    createdContentId,
   } = data;
   const save = editor.form.handleSubmit(
     (values) =>
@@ -127,6 +180,9 @@ function EditorContent({
             pt,
             setMediaSavePhaseKey: editor.setMediaSavePhaseKey,
             setMutationError: editor.setMutationError,
+            onCreateConfirmed,
+            onCreateStarted,
+            onCreateSaved,
           })
         : undefined,
     (errors) => {
@@ -146,6 +202,8 @@ function EditorContent({
     ...principal,
     ...access,
     ...deletion,
+    onCreateSaved,
+    createdContentId,
     summaryErrors: cockpitCardSummaryErrors(editor.form, pt),
     tabs: cockpitCardEditorTabs({
       pt,

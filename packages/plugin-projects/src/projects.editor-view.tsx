@@ -31,6 +31,8 @@ type Translate = ReturnType<typeof usePluginTranslation>;
 type ViewInput = Readonly<{
   pt: Translate;
   mode: 'create' | 'edit';
+  onCreateSaved: () => void;
+  createdContentId: string | null;
   form: UseFormReturn<ProjectFormValues>;
   principalControl?: MainserverPrincipalControlModel;
   actingPrincipalType: MainserverPrincipalType;
@@ -80,6 +82,8 @@ function ProjectEditorForm({
   tab,
   setTab,
   save,
+  onCreateSaved,
+  createdContentId,
 }: ViewInput) {
   const formId = `project-${mode}-form`;
   const summaryErrors = Object.entries(form.formState.errors).map(([field, error]) => ({
@@ -88,6 +92,13 @@ function ProjectEditorForm({
   }));
   return (
     <form id={formId} className="space-y-5" onSubmit={(event) => void save(event)} noValidate>
+      {createdContentId ? (
+        <p>
+          <Link to="/admin/projects/$id" params={{ id: createdContentId }}>
+            {pt('create.openSaved')}
+          </Link>
+        </p>
+      ) : null}
       {mutationError ? (
         <p role="alert" className="text-sm text-destructive">
           {mutationError}
@@ -96,19 +107,27 @@ function ProjectEditorForm({
       <StudioMediaReferenceRetryAction
         controller={mediaReferenceSync}
         label={pt('actions.retryMediaReferences')}
-        onSuccess={() => {
+        onSuccess={async () => {
+          onCreateSaved();
           setRetryCreatedContentId(null);
           setMutationError(undefined);
           if (retryCreatedContentId) {
-            void navigate({
-              to: '/admin/projects/$id',
-              params: { id: retryCreatedContentId },
-            });
+            try {
+              await navigate({
+                to: '/admin/projects/$id',
+                params: { id: retryCreatedContentId },
+              });
+            } catch {
+              setMutationError(pt('create.navigationFailed'));
+            }
           }
         }}
         onFailure={() => setMutationError(pt('messages.mediaReferencePartialFailure'))}
       />
       <StudioFormSummaryErrors errors={summaryErrors} title={pt('validation.summary')} />
+      {mode === 'create' ? (
+        <p className="text-sm text-muted-foreground">{pt('create.intro')}</p>
+      ) : null}
       <MainserverPrincipalControl
         id="projects-acting-principal"
         label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
@@ -120,14 +139,18 @@ function ProjectEditorForm({
         })}
         onChange={setActingPrincipalType}
       />
-      <StudioDetailTabs
-        ariaLabel={pt('tabs.ariaLabel')}
-        mobileSelectLabel={pt('tabs.ariaLabel')}
-        tabs={tabs}
-        value={tab}
-        onValueChange={setTab}
-        keepMounted
-      />
+      {mode === 'create' ? (
+        tabs[0]?.panel
+      ) : (
+        <StudioDetailTabs
+          ariaLabel={pt('tabs.ariaLabel')}
+          mobileSelectLabel={pt('tabs.ariaLabel')}
+          tabs={tabs}
+          value={tab}
+          onValueChange={setTab}
+          keepMounted
+        />
+      )}
     </form>
   );
 }
@@ -135,6 +158,8 @@ function ProjectEditorForm({
 type ControllerInput = Readonly<{
   pt: Translate;
   mode: 'create' | 'edit';
+  onCreateSaved: () => void;
+  createdContentId: string | null;
   form: UseFormReturn<ProjectFormValues>;
   principalControl?: MainserverPrincipalControlModel;
   navigate: ReturnType<typeof useNavigate>;
@@ -191,6 +216,11 @@ export function ProjectEditorView({ state, deletion, media, ...base }: Controlle
       primaryAction={
         canSave ? (
           <div className="flex flex-col items-end gap-1">
+            {mode === 'create' ? (
+              <p className="text-sm text-muted-foreground">
+                {pt('create.effect', { status: pt(`status.${props.form.watch('status')}`) })}
+              </p>
+            ) : null}
             <StudioSaveButton
               type="submit"
               form={formId}

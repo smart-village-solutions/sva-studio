@@ -1,9 +1,29 @@
 import React from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { ContentOwnershipPanelSlot, type StudioDetailTabDefinition } from '@sva/studio-ui-react';
+import {
+  ContentOwnershipPanelSlot,
+  StudioSection,
+  type StudioDetailTabDefinition,
+} from '@sva/studio-ui-react';
 
-import { SurveyDetailBasisTab, type SurveyTargetAreaOption } from './surveys.detail-basis-tab.js';
-import { SurveyDetailContentTab } from './surveys.detail-content-tab.js';
+import {
+  SurveyIdentityCard,
+  SurveyScheduleCard,
+  SurveyTargetAreaCard,
+  SurveyStatusField,
+  SurveyDetailBasisTab,
+  type SurveyTargetAreaOption,
+} from './surveys.detail-basis-tab.js';
+import {
+  SurveyDescriptionCard,
+  SurveyParticipationCard,
+  SurveyNoticesCard,
+  SurveyDetailContentTab,
+} from './surveys.detail-content-tab.js';
+import { SurveyDetailCard } from './surveys.detail-card.js';
+import { SurveyQuestionListEditor } from './surveys.question-list-editor.js';
+import { useFormContext, useWatch } from 'react-hook-form';
+import type { SurveyDetailFormValues } from './surveys.detail-form.js';
 import { SurveyDetailHistoryTab } from './surveys.detail-history-tab.js';
 import { SurveyDetailModerationTab } from './surveys.detail-moderation-tab.js';
 import { SurveyDetailResultsTab } from './surveys.detail-results-tab.js';
@@ -89,3 +109,52 @@ export const createSurveyEditorTabs = (
     },
   ];
 };
+
+export function SurveyCreateFields({
+  pt,
+}: Readonly<{ pt: ReturnType<typeof usePluginTranslation> }>) {
+  const { control } = useFormContext<SurveyDetailFormValues>();
+  const basis = useWatch({ control, name: 'basis' });
+  return (
+    <StudioSection title={pt('create.heading')}>
+      <p>{pt('create.intro')}</p>
+      <nav aria-label={pt('create.navigation')} className="flex flex-wrap gap-3">
+        <a href="#survey-create-text">{pt('create.text')}</a>
+        <a href="#survey-create-questions">{pt('cards.content.questions.title')}</a>
+        <a href="#survey-create-participation">{pt('create.participation')}</a>
+        <a href="#survey-create-status">{pt('fields.status')}</a>
+      </nav>
+      <section id="survey-create-text" tabIndex={-1}>
+        <SurveyIdentityCard pt={pt} titleOnly />
+        <SurveyDescriptionCard pt={pt} />
+      </section>
+      <section id="survey-create-questions" tabIndex={-1}>
+        <SurveyDetailCard
+          title={pt('cards.content.questions.title')}
+          description={pt('create.help.questions')}
+        >
+          <SurveyQuestionListEditor pt={pt} />
+        </SurveyDetailCard>
+      </section>
+      <section id="survey-create-participation" tabIndex={-1}>
+        <SurveyTargetAreaCard pt={pt} availableTargetAreas={[]} />
+        <SurveyScheduleCard pt={pt} />
+        <SurveyParticipationCard pt={pt} section="anonymity" />
+        <SurveyNoticesCard pt={pt} />
+        <SurveyParticipationCard pt={pt} section="results" />
+      </section>
+      <section id="survey-create-status" tabIndex={-1}>
+        <SurveyDetailCard title={pt('fields.status')} description={pt('create.help.status')}>
+          <SurveyStatusField pt={pt} />
+        </SurveyDetailCard>
+        <p>{pt(`create.effect.${basis.status}`)}</p>
+        <p>
+          {pt('create.effect.schedule', {
+            start: basis.startAt || pt('create.noLimit'),
+            end: basis.endAt || pt('create.noLimit'),
+          })}
+        </p>
+      </section>
+    </StudioSection>
+  );
+}

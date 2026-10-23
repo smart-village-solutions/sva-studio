@@ -189,7 +189,9 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
   );
   const routeDocumentation = resolveActiveRouteDocumentation(matches);
   const isRouterPending = useRouterState({
-    select: (state) => state.status === 'pending' || state.isLoading,
+    select: (state) =>
+      (state.status === 'pending' || state.isLoading) &&
+      state.location.href !== state.resolvedLocation?.href,
   });
   const currentPathname = useRouterState({
     select: (state) => state.location.pathname,

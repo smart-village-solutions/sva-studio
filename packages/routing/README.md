@@ -15,6 +15,7 @@ Das Package trennt Routing-Definition und Seiten-Bindings von der eigentlichen A
 | `@sva/routing/guards` | Guard-Helfer für geschützte und administrative UI-Routen |
 | `@sva/routing/plugins` | Plugin-Route-Factories, Guard-Mapping und Search-State für Admin-Ressourcen |
 | `@sva/routing/auth` | kanonische Auth-Routen für den Client |
+| `@sva/routing/documentation` | Framework-unabhängige Dokumentationsmetadaten, aktive Dokumentations-ID und Seitenkatalog |
 
 Wichtige Exporte sind unter anderem `getClientRouteFactories()`, `getServerRouteFactories()`, `createProtectedRoute()`, `getPluginRouteFactories()`, `routePaths`, `normalizeIamTab()`, `normalizeRoleDetailTab()` sowie die Diagnostik-Typen `RoutingDiagnosticsHook`, `RoutingDiagnosticEvent` und `RoutingDenyReason`.
 
@@ -42,6 +43,8 @@ routePaths.ui.adminUsers;
 ```
 
 Für geschützte UI-Bereiche stehen die Subpaths `@sva/routing/guards` und `@sva/routing/plugins` bereit. Routing-Diagnostik bleibt standardmäßig still und wird nur aktiv, wenn bewusst ein `RoutingDiagnosticsHook` injiziert wird.
+
+Der Root-Rahmen benötigt `resolveActiveRouteDocumentation()` synchron aus dem separaten Unterpfad `@sva/routing/documentation`. Dieser enthält ausschließlich Metadaten-Helfer und einen Type-Import des SDK-Vertrags; er lädt keine Route-Factories oder Servermodule. Die Nx-Lazy-Import-Prüfung nimmt deshalb exakt diesen Unterpfad aus, da sie den Source-Alias im isolierten Dateilauf nicht als separaten Package-Einstieg erkennt. Statische Imports des lazy geladenen Haupteinstiegs sowie die übrigen Abhängigkeitsgrenzen bleiben geprüft.
 
 ## Projektstruktur
 

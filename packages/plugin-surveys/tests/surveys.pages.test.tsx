@@ -217,67 +217,28 @@ describe('survey editor pages', () => {
     useParamsMock.mockReturnValue({ contentId: 'survey-123' });
   });
 
-  it('renders the shared editor frame with all survey tabs in create mode', () => {
+  it('renders ordered create fields in one form without tabs or pending workspaces', () => {
     const view = render(<SurveyCreatePage />);
     const scoped = within(view.container);
-
     expect(scoped.getByRole('heading', { name: 'Umfrage anlegen' })).toBeTruthy();
-    expect(scoped.getByRole('tab', { name: 'Basis' })).toBeTruthy();
-    expect(scoped.getByRole('tab', { name: 'Inhalt' })).toBeTruthy();
-    expect(scoped.getByRole('tab', { name: 'Moderation' })).toBeTruthy();
-    expect(scoped.getByRole('tab', { name: 'Ergebnisse' })).toBeTruthy();
-    expect(scoped.getByRole('tab', { name: 'Historie' })).toBeTruthy();
+    expect(scoped.queryByRole('tablist')).toBeNull();
+    expect(view.container.querySelectorAll('form')).toHaveLength(1);
+    const title = scoped.getByLabelText('Titel');
+    const status = scoped.getByLabelText('Status');
+    expect(title.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(scoped.queryByText('Die Historie wird nach dem ersten Speichern verfügbar.')).toBeNull();
     expect(
-      scoped.getByRole('tab', { name: 'Basis' }).querySelector('svg')?.getAttribute('aria-hidden')
-    ).toBe('true');
-    expect(
-      scoped
-        .getByRole('tab', { name: 'Moderation' })
-        .querySelector('svg')
-        ?.getAttribute('aria-hidden')
-    ).toBe('true');
-    expect(
-      scoped
-        .getByRole('tab', { name: 'Ergebnisse' })
-        .querySelector('svg')
-        ?.getAttribute('aria-hidden')
-    ).toBe('true');
-    expect(scoped.getAllByRole('tablist')).toHaveLength(1);
-    expect(scoped.getByRole('heading', { name: 'Identität' })).toBeTruthy();
+      scoped.queryByText('Metadaten erscheinen nach dem ersten Speichern der Umfrage.')
+    ).toBeNull();
+    const link = scoped.getByRole('link', { name: 'create.participation' });
+    expect(view.container.querySelector(link.getAttribute('href')!)).toBeTruthy();
   });
 
-  it('keeps create-only unavailable tabs visible and explains their pending state', () => {
-    const view = render(<SurveyCreatePage />);
-    const scoped = within(view.container);
-    const tabSelect = scoped.getByRole('combobox', { name: 'Umfrage-Bereiche' });
-
-    fireEvent.change(tabSelect, { target: { value: 'moderation' } });
-    expect(
-      scoped.getByText('Freitext-Freigaben werden nach dem ersten Speichern verfügbar.')
-    ).toBeTruthy();
-    expect(
-      scoped.getByText(
-        'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.'
-      )
-    ).toBeTruthy();
-
-    fireEvent.change(tabSelect, { target: { value: 'results' } });
-    expect(scoped.getByText('Kompakter Überblick über die laufende Umfrage.')).toBeTruthy();
-    expect(
-      scoped.getAllByText(
-        'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.'
-      ).length
-    ).toBeGreaterThan(0);
-
-    fireEvent.change(tabSelect, { target: { value: 'history' } });
-    expect(scoped.getByText('Die Historie wird nach dem ersten Speichern verfügbar.')).toBeTruthy();
-  });
-
-  it('switches desktop tabs by click and keeps the shared panel surface styling', () => {
-    const view = render(<SurveyCreatePage />);
+  it('switches desktop edit tabs by click and keeps the shared panel surface styling', async () => {
+    const view = render(<SurveyEditPage />);
     const scoped = within(view.container);
 
-    fireEvent.click(scoped.getByRole('tab', { name: 'Inhalt' }));
+    fireEvent.click(await scoped.findByRole('tab', { name: 'Inhalt' }));
     const activePanel = scoped
       .getAllByRole('tabpanel')
       .find((panel) => panel.getAttribute('data-state') === 'active');

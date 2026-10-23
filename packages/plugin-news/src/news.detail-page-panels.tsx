@@ -5,6 +5,7 @@ import {
   isPersistableContentMediaUrl,
   toContentMediaAssetSnapshot,
   useStudioSaveFeedback,
+  StudioSection,
   type ContentMediaUsage,
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
@@ -118,6 +119,74 @@ export const createNewsDetailPanels = ({
   setInvalidScheduledPublicationInput,
   contentId,
 }: NewsDetailPanelsOptions) => {
+  const basisProps: React.ComponentProps<typeof NewsDetailBasisTab> = {
+    availableCategories: categoryOptions,
+    principalControl,
+    actingPrincipalType,
+    onActingPrincipalTypeChange: setActingPrincipalType,
+    categoryOptionsError,
+    categoryOptionsLoading,
+    mode,
+    loadedItem,
+    pt,
+  };
+  const contentProps: React.ComponentProps<typeof NewsDetailContentTab> = {
+    mediaUsages,
+    onAddManualMedia: addManualMedia,
+    onChangeMediaUsages: (usages) =>
+      updateNewsMediaUsages(usages, setMediaUsages, setRequiresReferenceSync),
+    canSelectMedia,
+    canUploadMedia,
+    mediaEditingDisabled: saveFeedback.status === 'saving',
+    onLoadAssetSnapshot: loadNewsAssetSnapshot,
+    onOpenMediaPicker: (pickerMode) =>
+      pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary(),
+    pt,
+  };
+  const settingsPanel = (
+    <NewsDetailSettingsTab
+      loadedItem={loadedItem}
+      canSendPushNotification={canSendPushNotification}
+      mode={mode}
+      pt={pt}
+      wasteOverview={wasteOverview}
+      wasteTargetingAvailability={wasteTargetingAvailability}
+      onLoadWasteOverview={loadWasteTargetingOverview}
+      scheduledPublicationField={{
+        value: scheduledPublicationInput,
+        isInvalid: invalidScheduledPublicationInput,
+        onChange: (nextValue) => {
+          const { isInvalid, normalizedValue } = parseDatetimeLocalInput(
+            nextValue,
+            methods.getValues('scheduledPublicationAt')
+          );
+          setScheduledPublicationInput(nextValue);
+          setInvalidScheduledPublicationInput(isInvalid);
+          return normalizedValue;
+        },
+      }}
+    />
+  );
+  if (mode === 'create') {
+    return createNewsDetailTabDefinitions([
+      {
+        id: 'basis',
+        label: pt('tabs.basis.label'),
+        panel: (
+          <StudioSection title={pt('create.heading')}>
+            <p>{pt('create.intro')}</p>
+            <NewsDetailBasisTab {...basisProps} section="principal" />
+            <NewsDetailBasisTab {...basisProps} section="title" />
+            <NewsDetailContentTab {...contentProps} section="text" createMode />
+            <NewsDetailContentTab {...contentProps} section="media" createMode />
+            <NewsDetailBasisTab {...basisProps} section="categories" />
+            <NewsDetailContentTab {...contentProps} section="source" createMode />
+            {settingsPanel}
+          </StudioSection>
+        ),
+      },
+    ]);
+  }
   return createNewsDetailTabDefinitions([
     {
       id: 'basis',
@@ -126,19 +195,7 @@ export const createNewsDetailPanels = ({
       description: pt('tabs.basis.description'),
       hasChanges: dirtyTabs.basis,
       changeLabel: pt('tabs.changeLabel'),
-      panel: (
-        <NewsDetailBasisTab
-          availableCategories={categoryOptions}
-          principalControl={principalControl}
-          actingPrincipalType={actingPrincipalType}
-          onActingPrincipalTypeChange={setActingPrincipalType}
-          categoryOptionsError={categoryOptionsError}
-          categoryOptionsLoading={categoryOptionsLoading}
-          mode={mode}
-          loadedItem={loadedItem}
-          pt={pt}
-        />
-      ),
+      panel: <NewsDetailBasisTab {...basisProps} />,
     },
     {
       id: 'content',
@@ -147,23 +204,7 @@ export const createNewsDetailPanels = ({
       description: pt('tabs.content.description'),
       hasChanges: dirtyTabs.content,
       changeLabel: pt('tabs.changeLabel'),
-      panel: (
-        <NewsDetailContentTab
-          mediaUsages={mediaUsages}
-          onAddManualMedia={addManualMedia}
-          onChangeMediaUsages={(usages) =>
-            updateNewsMediaUsages(usages, setMediaUsages, setRequiresReferenceSync)
-          }
-          canSelectMedia={canSelectMedia}
-          canUploadMedia={canUploadMedia}
-          mediaEditingDisabled={saveFeedback.status === 'saving'}
-          onLoadAssetSnapshot={loadNewsAssetSnapshot}
-          onOpenMediaPicker={(pickerMode) =>
-            pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
-          }
-          pt={pt}
-        />
-      ),
+      panel: <NewsDetailContentTab {...contentProps} />,
     },
     {
       id: 'settings',
@@ -172,30 +213,7 @@ export const createNewsDetailPanels = ({
       description: pt('tabs.settings.description'),
       hasChanges: dirtyTabs.settings,
       changeLabel: pt('tabs.changeLabel'),
-      panel: (
-        <NewsDetailSettingsTab
-          loadedItem={loadedItem}
-          canSendPushNotification={canSendPushNotification}
-          mode={mode}
-          pt={pt}
-          wasteOverview={wasteOverview}
-          wasteTargetingAvailability={wasteTargetingAvailability}
-          onLoadWasteOverview={loadWasteTargetingOverview}
-          scheduledPublicationField={{
-            value: scheduledPublicationInput,
-            isInvalid: invalidScheduledPublicationInput,
-            onChange: (nextValue) => {
-              const { isInvalid, normalizedValue } = parseDatetimeLocalInput(
-                nextValue,
-                methods.getValues('scheduledPublicationAt')
-              );
-              setScheduledPublicationInput(nextValue);
-              setInvalidScheduledPublicationInput(isInvalid);
-              return normalizedValue;
-            },
-          }}
-        />
-      ),
+      panel: settingsPanel,
     },
     {
       id: 'history',

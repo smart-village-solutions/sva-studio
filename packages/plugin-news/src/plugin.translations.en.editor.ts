@@ -1,4 +1,30 @@
 export const newsTranslationsENEditor = {
+  create: {
+    savedWithNewChanges:
+      'The news item was created. Further changes have not been saved. When opening the saved item, you can discard those changes or stay here.',
+    heading: 'News content',
+    intro:
+      'Create a news item. Start with the title and text; media, categories and source are optional.',
+    introHelp: 'Optional introduction for the first content block. The main text follows below.',
+    sourceOptional: 'Add source (optional)',
+    sourcePresent: 'Source entered',
+    sourceEmpty: 'No source entered',
+    pushResetHint:
+      'Draft or scheduled publication clears the push selection. Enable it again for immediate publication if you want to send a notification.',
+    actions: {
+      draft: 'Create draft',
+      immediate: 'Publish now',
+      scheduled: 'Create scheduled news',
+    },
+    effect: {
+      draft:
+        'The news item is saved with draft status and is not published. Continue editing it later from the content list.',
+      immediate: 'The news item is published immediately.',
+      scheduled: 'The news item is saved with the selected publication time {{date}}.',
+    },
+    noPush: 'No push notification will be sent.',
+    push: 'A push notification is also requested for the following target area: {{target}}.',
+  },
   values: {
     yes: 'Yes',
     no: 'No',

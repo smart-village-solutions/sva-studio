@@ -4,7 +4,10 @@ import { useFormContext, useWatch } from 'react-hook-form';
 import { PoiDetailSectionCard } from './poi.detail-section-card.js';
 import type { PoiDetailFormValues } from './poi.detail-form.js';
 
-export function PoiDetailDescriptionTab({ pt }: Readonly<{ pt: (key: string) => string }>) {
+export function PoiDetailDescriptionTab({
+  pt,
+  showName = true,
+}: Readonly<{ pt: (key: string) => string; showName?: boolean }>) {
   const { control, setValue } = useFormContext<PoiDetailFormValues>();
   const name = useWatch({ control, name: 'name' }) ?? '';
   const description = useWatch({ control, name: 'content.description' }) ?? '';
@@ -19,10 +22,15 @@ export function PoiDetailDescriptionTab({ pt }: Readonly<{ pt: (key: string) => 
   ];
 
   return (
-    <PoiDetailSectionCard title={pt('cards.description.text.title')} description={pt('cards.description.text.description')}>
-      <StudioField id="poi-content-name" label={pt('fields.name')}>
-        <Input id="poi-content-name" value={name} readOnly />
-      </StudioField>
+    <PoiDetailSectionCard
+      title={pt('cards.description.text.title')}
+      description={pt('cards.description.text.description')}
+    >
+      {showName ? (
+        <StudioField id="poi-content-name" label={pt('fields.name')}>
+          <Input id="poi-content-name" value={name} readOnly />
+        </StudioField>
+      ) : null}
       <div className="space-y-1">
         <label id={descriptionLabelId} htmlFor="poi-description" className="text-sm font-medium">
           {pt('fields.description')}
@@ -31,7 +39,9 @@ export function PoiDetailDescriptionTab({ pt }: Readonly<{ pt: (key: string) => 
           id="poi-description"
           labelId={descriptionLabelId}
           value={description}
-          onChange={(nextValue) => setValue('content.description', nextValue, { shouldDirty: true })}
+          onChange={(nextValue) =>
+            setValue('content.description', nextValue, { shouldDirty: true })
+          }
           blockTypeOptions={blockTypeOptions}
           toolbarLabels={{
             mode: pt('richText.mode'),
@@ -51,11 +61,17 @@ export function PoiDetailDescriptionTab({ pt }: Readonly<{ pt: (key: string) => 
           }}
         />
       </div>
-      <StudioField id="poi-mobile-description" label={pt('fields.mobileDescription')}>
+      <StudioField
+        id="poi-mobile-description"
+        label={pt('fields.mobileDescription')}
+        description={pt('create.mobileDescriptionHelp')}
+      >
         <Input
           id="poi-mobile-description"
           value={mobileDescription}
-          onChange={(event) => setValue('content.mobileDescription', event.target.value, { shouldDirty: true })}
+          onChange={(event) =>
+            setValue('content.mobileDescription', event.target.value, { shouldDirty: true })
+          }
         />
       </StudioField>
     </PoiDetailSectionCard>

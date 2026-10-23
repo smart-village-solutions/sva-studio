@@ -40,27 +40,44 @@ type TabInput = Readonly<{
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
 }>;
 
+function ProjectLanguageField({ pt, form }: Pick<TabInput, 'pt' | 'form'>) {
+  return (
+    <StudioField
+      id="project-language"
+      label={pt('fields.language')}
+      description={pt('create.languageHelp')}
+    >
+      <Input
+        id="project-language"
+        aria-describedby="project-language-description"
+        aria-invalid={Boolean(form.formState.errors.language)}
+        {...form.register('language')}
+      />
+    </StudioField>
+  );
+}
+
 function BasisTab({ pt, form, mode }: TabInput) {
   return (
     <div className="space-y-4">
       {mode === 'edit' ? <ContentOwnershipPanelSlot /> : null}
-      <StudioField id="project-language" label={pt('fields.language')}>
-        <Input
-          id="project-language"
-          aria-invalid={Boolean(form.formState.errors.language)}
-          {...form.register('language')}
-        />
-      </StudioField>
-      <StudioField id="project-title" label={pt('fields.title')}>
+      {mode === 'edit' ? <ProjectLanguageField pt={pt} form={form} /> : null}
+      <StudioField id="project-title" label={pt('fields.title')} required>
         <Input
           id="project-title"
+          aria-required="true"
           aria-invalid={Boolean(form.formState.errors.title)}
           {...form.register('title')}
         />
       </StudioField>
-      <StudioField id="project-description" label={pt('fields.description')}>
+      <StudioField
+        id="project-description"
+        label={pt('fields.description')}
+        description={pt('create.optional')}
+      >
         <Textarea
           id="project-description"
+          aria-describedby="project-description-description"
           className="min-h-28"
           aria-invalid={Boolean(form.formState.errors.description)}
           {...form.register('description')}
@@ -116,7 +133,7 @@ function ContentTab(props: TabInput) {
   const { pt, form } = props;
   return (
     <div className="space-y-5">
-      <StudioDetailCard title={pt('fields.fullText')}>
+      <StudioDetailCard title={pt('fields.fullText')} description={pt('create.optional')}>
         <div className="space-y-1">
           <label
             id="project-full-text-label"
@@ -161,9 +178,14 @@ function ContentTab(props: TabInput) {
 function SettingsTab({ pt, form, item }: TabInput) {
   return (
     <div className="space-y-4">
-      <StudioField id="project-status" label={pt('fields.status')}>
+      <StudioField
+        id="project-status"
+        label={pt('fields.status')}
+        description={pt('create.statusHelp')}
+      >
         <Select
           id="project-status"
+          aria-describedby="project-status-description"
           aria-invalid={Boolean(form.formState.errors.status)}
           {...form.register('status')}
         >
@@ -233,6 +255,26 @@ function HistoryTab({ pt, contentId }: TabInput) {
 export function createProjectTabs(
   input: TabInput
 ): readonly StudioDetailTabDefinition<ProjectTab>[] {
+  if (input.mode === 'create') {
+    return [
+      {
+        id: 'content',
+        label: input.pt('tabs.content'),
+        panel: (
+          <div className="space-y-5">
+            <StudioDetailCard title={input.pt('create.contentTitle')}>
+              <BasisTab {...input} />
+            </StudioDetailCard>
+            <ContentTab {...input} />
+            <StudioDetailCard title={input.pt('create.settingsTitle')}>
+              <ProjectLanguageField {...input} />
+              <SettingsTab {...input} />
+            </StudioDetailCard>
+          </div>
+        ),
+      },
+    ];
+  }
   return [
     { id: 'basis', label: input.pt('tabs.basis'), icon: 'basis', panel: <BasisTab {...input} /> },
     {

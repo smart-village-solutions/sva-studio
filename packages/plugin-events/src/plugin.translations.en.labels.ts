@@ -127,6 +127,7 @@ export const eventsENLabels = {
     updatedAt: 'Updated',
   },
   actions: {
+    openSavedContent: 'Open saved content',
     retryMediaReferences: 'Retry media references',
     cancel: 'Cancel',
     create: 'Create',

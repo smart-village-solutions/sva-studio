@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import {
   MainserverPrincipalControl,
   StudioDetailPageTemplate,
@@ -47,6 +48,7 @@ type FaqEditorViewProps = Readonly<{
   canSave: boolean;
   actingPrincipalType: MainserverPrincipalType;
   contentId?: string;
+  createdContentId: string | null;
   deleteDialogOpen: boolean;
   deleteErrorMessage: string | null;
   deletePending: boolean;
@@ -73,12 +75,18 @@ const FaqEditorPrimaryAction = ({
   mode,
   pt,
   saveStatus,
+  form,
 }: Pick<
   FaqEditorViewProps,
-  'canSave' | 'deletePending' | 'formId' | 'mode' | 'pt' | 'saveStatus'
+  'canSave' | 'deletePending' | 'formId' | 'mode' | 'pt' | 'saveStatus' | 'form'
 >) =>
   canSave ? (
     <div className="flex flex-col items-end gap-1">
+      {mode === 'create' ? (
+        <p className="text-sm text-muted-foreground">
+          {pt(form.watch('visible') ? 'create.visibleEffect' : 'create.hiddenEffect')}
+        </p>
+      ) : null}
       <StudioSaveButton
         type="submit"
         form={formId}
@@ -112,6 +120,13 @@ export const FaqEditorView = (props: FaqEditorViewProps) => (
   >
     <FormProvider {...props.form}>
       <form id={props.formId} className="space-y-5" onSubmit={props.onSubmit} noValidate>
+        {props.createdContentId ? (
+          <p>
+            <Link to="/admin/faq/$id" params={{ id: props.createdContentId }}>
+              {props.pt('create.openSaved')}
+            </Link>
+          </p>
+        ) : null}
         {props.saveErrorMessage ? (
           <StudioFormSummary kind="error">{props.saveErrorMessage}</StudioFormSummary>
         ) : null}
@@ -131,6 +146,9 @@ export const FaqEditorView = (props: FaqEditorViewProps) => (
           })}
           onChange={props.setActingPrincipalType}
         />
+        {props.mode === 'create' ? (
+          <p className="text-sm text-muted-foreground">{props.pt('create.intro')}</p>
+        ) : null}
         <FaqEditorTabs
           activeTab={props.activeTab}
           contentId={props.contentId}

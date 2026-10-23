@@ -130,7 +130,7 @@ const focusInvalidEventField = ({
     setActiveTab('content');
     setPendingFocusId('event-organizer-name');
   } else if (validationErrors.includes('urls')) {
-    methods.setFocus('content.urls.0.url');
+    setPendingFocusId('event-url');
     setActiveTab('content');
   }
 };

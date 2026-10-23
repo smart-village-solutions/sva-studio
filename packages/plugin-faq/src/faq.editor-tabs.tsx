@@ -4,6 +4,7 @@ import {
   getStudioFormFieldProps,
   Input,
   StudioDetailTabs,
+  StudioDetailCard,
   StudioField,
   Textarea,
   type StudioDetailTabDefinition,
@@ -20,32 +21,50 @@ type FaqEditorTabProps = Readonly<{
   pt: (key: string) => string;
 }>;
 
-const FaqBasisTab = ({ form, pt }: FaqEditorTabProps) => {
+const FaqQuestionField = ({ form, pt }: FaqEditorTabProps) => {
   const question = getStudioFormFieldProps({
     id: 'faq-question',
     error: form.formState.errors.question,
   });
+  return (
+    <StudioField
+      id={question.id}
+      label={pt('fields.question')}
+      required
+      error={question.error ? pt('validation.required') : undefined}
+    >
+      <Input aria-required="true" {...question.controlProps} {...form.register('question')} />
+    </StudioField>
+  );
+};
+const FaqLanguageField = ({ form, pt }: FaqEditorTabProps) => {
   const languageCode = getStudioFormFieldProps({
     id: 'faq-language-code',
     error: form.formState.errors.languageCode,
+    hasDescription: true,
   });
+  return (
+    <StudioField
+      id={languageCode.id}
+      label={pt('fields.languageCode')}
+      required
+      description={pt('create.languageHelp')}
+      error={languageCode.error ? pt('validation.languageCode') : undefined}
+    >
+      <Input
+        aria-required="true"
+        {...languageCode.controlProps}
+        {...form.register('languageCode')}
+      />
+    </StudioField>
+  );
+};
 
+const FaqBasisTab = ({ form, pt }: FaqEditorTabProps) => {
   return (
     <div className="space-y-4">
-      <StudioField
-        id={question.id}
-        label={pt('fields.question')}
-        error={question.error ? pt('validation.required') : undefined}
-      >
-        <Input {...question.controlProps} {...form.register('question')} />
-      </StudioField>
-      <StudioField
-        id={languageCode.id}
-        label={pt('fields.languageCode')}
-        error={languageCode.error ? pt('validation.languageCode') : undefined}
-      >
-        <Input {...languageCode.controlProps} {...form.register('languageCode')} />
-      </StudioField>
+      <FaqQuestionField form={form} pt={pt} />
+      <FaqLanguageField form={form} pt={pt} />
     </div>
   );
 };
@@ -60,35 +79,58 @@ const FaqContentTab = ({ form, pt }: FaqEditorTabProps) => {
     <StudioField
       id={answer.id}
       label={pt('fields.answer')}
+      required
       error={answer.error ? pt('validation.answer') : undefined}
     >
-      <Textarea {...answer.controlProps} className="min-h-32" {...form.register('answer')} />
+      <Textarea
+        aria-required="true"
+        {...answer.controlProps}
+        className="min-h-32"
+        {...form.register('answer')}
+      />
     </StudioField>
   );
 };
 
-const FaqSettingsTab = ({ form, pt }: FaqEditorTabProps) => {
+const FaqPublicationField = ({ form, pt }: FaqEditorTabProps) => (
+  <StudioField
+    id="faq-publication-date"
+    label={pt('fields.publicationDate')}
+    description={pt('create.dateHelp')}
+  >
+    <Input
+      id="faq-publication-date"
+      aria-describedby="faq-publication-date-description"
+      {...form.register('publicationDate')}
+    />
+  </StudioField>
+);
+
+const FaqSettingsTab = ({ form, pt, create = false }: FaqEditorTabProps & { create?: boolean }) => {
   const sortWeight = getStudioFormFieldProps({
     id: 'faq-sort-weight',
     error: form.formState.errors.sortWeight,
+    hasDescription: true,
   });
 
   return (
     <div className="space-y-4">
-      <StudioField id="faq-publication-date" label={pt('fields.publicationDate')}>
-        <Input id="faq-publication-date" {...form.register('publicationDate')} />
-      </StudioField>
+      {!create ? <FaqPublicationField form={form} pt={pt} /> : null}
       <StudioField
         id={sortWeight.id}
         label={pt('fields.sortWeight')}
+        required
+        description={pt('create.weightHelp')}
         error={sortWeight.error ? pt('validation.sortWeight') : undefined}
       >
         <Input
           {...sortWeight.controlProps}
+          aria-required="true"
           type="number"
           {...form.register('sortWeight', { valueAsNumber: true })}
         />
       </StudioField>
+      {create ? <FaqPublicationField form={form} pt={pt} /> : null}
       <StudioField id="faq-visible" label={pt('fields.visible')}>
         <Controller
           name="visible"
@@ -121,6 +163,20 @@ export const FaqEditorTabs = ({
   onTabChange: (tab: FaqTab) => void;
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>) => {
+  if (mode === 'create') {
+    return (
+      <div className="space-y-5">
+        <StudioDetailCard title={pt('create.contentTitle')}>
+          <FaqQuestionField form={form} pt={pt} />
+          <FaqContentTab form={form} pt={pt} />
+        </StudioDetailCard>
+        <StudioDetailCard title={pt('create.settingsTitle')}>
+          <FaqLanguageField form={form} pt={pt} />
+          <FaqSettingsTab form={form} pt={pt} create />
+        </StudioDetailCard>
+      </div>
+    );
+  }
   const tabs: readonly StudioDetailTabDefinition<FaqTab>[] = [
     {
       id: 'basis',

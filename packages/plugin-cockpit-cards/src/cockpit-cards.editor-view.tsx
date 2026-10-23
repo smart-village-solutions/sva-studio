@@ -26,7 +26,9 @@ import type { CockpitCardFormValues } from './cockpit-cards.types.js';
 export type Tab = 'basis' | 'content' | 'settings' | 'history';
 export type EditorViewProps = Readonly<{
   mode: 'create' | 'edit';
+  onCreateSaved: () => void;
   contentId?: string;
+  createdContentId: string | null;
   principalControl?: MainserverPrincipalControlModel;
   pt: ReturnType<typeof usePluginTranslation>;
   form: UseFormReturn<CockpitCardFormValues>;
@@ -92,6 +94,11 @@ function EditorPrimaryAction({ view }: { view: EditorViewProps }) {
   const { canSave, pt, mode, deletePending, saveFeedback, mediaSavePhaseKey } = view;
   return canSave ? (
     <div className="flex flex-col items-end gap-1">
+      {mode === 'create' ? (
+        <p className="text-sm text-muted-foreground">
+          {pt(view.form.watch('visible') ? 'create.visibleEffect' : 'create.hiddenEffect')}
+        </p>
+      ) : null}
       <StudioSaveButton
         type="submit"
         form={`cockpit-card-${mode}-form`}
@@ -125,6 +132,13 @@ function EditorForm({ view }: { view: EditorViewProps }) {
   } = view;
   return (
     <form id={`cockpit-card-${mode}-form`} className="space-y-5" onSubmit={onSubmit} noValidate>
+      {view.createdContentId ? (
+        <p>
+          <Link to="/admin/cockpit-cards/$id" params={{ id: view.createdContentId }}>
+            {pt('create.openSaved')}
+          </Link>
+        </p>
+      ) : null}
       {mutationError ? (
         <p role="alert" className="text-sm text-destructive">
           {mutationError}
@@ -133,7 +147,10 @@ function EditorForm({ view }: { view: EditorViewProps }) {
       <StudioMediaReferenceRetryAction
         controller={mediaReferenceSync}
         label={pt('actions.retryMediaReferences')}
-        onSuccess={() => setMutationError(null)}
+        onSuccess={() => {
+          view.onCreateSaved();
+          setMutationError(null);
+        }}
         onFailure={() => setMutationError(pt('messages.mediaReferencePartialFailure'))}
       />
       <StudioFormSummaryErrors
@@ -145,6 +162,9 @@ function EditorForm({ view }: { view: EditorViewProps }) {
           else setTab('basis');
         }}
       />
+      {mode === 'create' ? (
+        <p className="text-sm text-muted-foreground">{pt('create.intro')}</p>
+      ) : null}
       <MainserverPrincipalControl
         id="cockpit-card-acting-principal"
         label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
@@ -156,14 +176,18 @@ function EditorForm({ view }: { view: EditorViewProps }) {
         })}
         onChange={setActingPrincipalType}
       />
-      <StudioDetailTabs
-        ariaLabel={pt('tabs.ariaLabel')}
-        mobileSelectLabel={pt('tabs.mobileLabel')}
-        tabs={tabs}
-        value={tab}
-        onValueChange={setTab}
-        keepMounted
-      />
+      {mode === 'create' ? (
+        tabs[0]?.panel
+      ) : (
+        <StudioDetailTabs
+          ariaLabel={pt('tabs.ariaLabel')}
+          mobileSelectLabel={pt('tabs.mobileLabel')}
+          tabs={tabs}
+          value={tab}
+          onValueChange={setTab}
+          keepMounted
+        />
+      )}
     </form>
   );
 }

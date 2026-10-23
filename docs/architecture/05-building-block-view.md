@@ -971,6 +971,12 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
 - `@sva/studio-ui-react` besitzt den Map-Lifecycle, Media-Picker-Konfiguration sowie den Media-Reference-Sync-Controller und seine Retry-Aktion.
 - Plugins besitzen weiterhin Payload, Mutation, Navigation, Übersetzung und bundlelokales Laden der MapLibre-Runtime.
 
+### Redaktionelle Create-Komposition
+
+- Die acht Content-Plugins komponieren ihre vorhandenen Feldabschnitte für die Neuanlage als Onepager und für gespeicherte Inhalte weiterhin in den bestehenden Tabs. Feldfolge, Hilfetexte und die Erklärung der fachlichen Speicherwirkung bleiben pluginlokal.
+- `@sva/studio-ui-react` bleibt der öffentliche Kapselungspunkt für Seitenrahmen, Felder, Medien, Aktionen und Fehlerdarstellung. Native Abschnittselemente ergänzen die Komposition ohne neue Registry, Formular-Engine oder Plugin-API.
+- Formular-/Submit-Owner, Autorisierung, Mutations- und Medienreferenzverträge bleiben unverändert. Eine wertfreie React-Anbindung (`StudioEditorLeaveGuardProvider`/`useStudioEditorLeaveGuard`) verbindet die acht Create-Editoren mit einem Host-Rahmen am bestehenden Plugin-Editorpfad. Router-Blocker, nativer Reload-/Schließschutz und der vorhandene Bestätigungsdialog bleiben im Host; Plugins importieren keine App-Module. Keine SDK-/Manifest-Erweiterung oder globale Guard-Registry.
+
 ### Zielbild 2026-09: SSF-Control-Plane-Bausteine
 
 - Studio Core besitzt die kanonische Instanzidentität, Realm- und

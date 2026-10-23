@@ -8,6 +8,39 @@ const poiEditorTranslations = {
   editDescription: 'Aktualisieren oder löschen Sie den Ort.',
 };
 export const poiTranslationsDe = createPoiLocaleTranslations({
+  create: {
+    nameHelp: 'Wie heißt der Ort? Der Name ist erforderlich.',
+    categoriesHelp: 'Ordnen Sie den Ort den passenden vorhandenen Kategorien zu.',
+    activeHelp: 'Legt fest, ob der Ort als aktiv gespeichert wird.',
+    mobileDescriptionHelp:
+      'Beschreiben Sie den Ort kurz. Dieser Text wird getrennt von der ausführlichen Beschreibung gespeichert.',
+    createActive: 'Aktiv anlegen',
+    createInactive: 'Inaktiv anlegen',
+    intro:
+      'Erstellen Sie einen Ort. Beginnen Sie mit Name und Standort; Bilder und weitere Angaben können Sie ergänzen.',
+    navigation: 'Zu einem Formularabschnitt springen',
+    optional: 'optional',
+    filled: 'Angaben vorhanden',
+    empty: 'Noch keine Angaben',
+    activeEffect:
+      'Der Ort wird als aktiv gespeichert. Öffnungszeiten steuern keine zeitgesteuerte Veröffentlichung.',
+    inactiveEffect: 'Der Ort wird als inaktiv gespeichert.',
+    editHint: 'Nach dem Anlegen öffnen Sie den gespeicherten Ort im gewohnten Editor mit Tabs.',
+    sections: {
+      name: 'Name',
+      location: 'Standort',
+      description: 'Beschreibung',
+      media: 'Medien',
+      categories: 'Kategorien',
+      openingHours: 'Öffnungszeiten hinzufügen',
+      contact: 'Kontakt ergänzen',
+      links: 'Weitere Links ergänzen',
+      prices: 'Preise ergänzen',
+      operator: 'Betreiber ergänzen',
+      technical: 'Technische Angaben',
+      active: 'Aktiv',
+    },
+  },
   navigation: { title: 'Orte' },
   list: { title: 'Orte', description: 'Orte aus dem Mainserver bearbeiten.' },
   detail: poiEditorTranslations,
@@ -80,7 +113,10 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     updatedAt: 'Aktualisiert',
   },
   richText: {
-    mode: 'Editoransicht', visualMode: 'WYSIWYG', htmlMode: 'HTML', blockType: 'Textformat',
+    mode: 'Editoransicht',
+    visualMode: 'WYSIWYG',
+    htmlMode: 'HTML',
+    blockType: 'Textformat',
     heading2: 'Überschrift 2',
     heading3: 'Überschrift 3',
     heading4: 'Überschrift 4',
@@ -98,6 +134,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     applyLink: 'Link setzen',
   },
   actions: {
+    openSavedContent: 'Gespeicherten Inhalt öffnen',
     create: 'Anlegen',
     update: 'Änderungen speichern',
     save: 'Speichern',

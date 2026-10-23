@@ -25,6 +25,9 @@ import type { MainserverPrincipalType } from '@sva/studio-ui-react';
 type SavedItem = Awaited<ReturnType<typeof getCockpitCard>>;
 type SaveContext = Readonly<{
   mode: 'create' | 'edit';
+  onCreateStarted: () => boolean;
+  onCreateConfirmed: (id: string) => void;
+  onCreateSaved: () => void;
   contentId?: string;
   actingPrincipalType: MainserverPrincipalType;
   loadedItem: SavedItem | null;
@@ -101,6 +104,7 @@ const readableSaveErrorReason = (cause: unknown): string => {
 export async function saveCockpitCard(values: CockpitCardFormValues, context: SaveContext) {
   const { mediaUsages, saveFeedback, setMutationError, pt } = context;
   setMutationError(null);
+  if (context.mode === 'create' && !context.onCreateStarted()) return;
   const operationId = saveFeedback.beginSaving();
   context.setMediaSavePhaseKey(null);
   try {
@@ -124,6 +128,7 @@ export async function saveCockpitCard(values: CockpitCardFormValues, context: Sa
             context.setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
         })
       : { status: 'complete' as const, saved: await save(), resolutions: [] };
+    if (context.mode === 'create') context.onCreateConfirmed(result.saved.id);
     const handledResult = context.mediaReferenceSync.consumeSaveResult(result);
     if (handledResult.referenceFailed || partial.failed) {
       setMutationError(
@@ -137,13 +142,19 @@ export async function saveCockpitCard(values: CockpitCardFormValues, context: Sa
       return;
     }
     saveFeedback.markSaved(operationId);
-    if (context.mode === 'create')
-      await context.navigate({
-        to: '/admin/cockpit-cards/$id',
-        params: { id: result.saved.id },
-        state: (previous) =>
-          addStudioCreatedSaveFeedback(previous, 'cockpit-cards', result.saved.id),
-      });
+    if (context.mode === 'create') context.onCreateSaved();
+    if (context.mode === 'create') {
+      try {
+        await context.navigate({
+          to: '/admin/cockpit-cards/$id',
+          params: { id: result.saved.id },
+          state: (previous) =>
+            addStudioCreatedSaveFeedback(previous, 'cockpit-cards', result.saved.id),
+        });
+      } catch {
+        setMutationError(pt('create.navigationFailed'));
+      }
+    }
   } catch (cause) {
     const reason = readableSaveErrorReason(cause);
     setMutationError(

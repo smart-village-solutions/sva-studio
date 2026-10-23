@@ -1,6 +1,6 @@
 # Studio-Form-Migrationsinventur
 
-Stand: 2026-08-30
+Stand: 2026-10-23
 
 Grundlage: Reale Codeinspektion der im OpenSpec-Change `add-studio-data-form-and-test-foundations` referenzierten Host- und Plugin-Formulare. Mehrfachnennungen desselben Pfads stehen für getrennte Formular- oder formularnahe Teilflüsse.
 
@@ -159,3 +159,14 @@ weder mitgeschrieben noch zurückgesetzt. Formular- und Vorlagensave teilen eine
 lokale Sperre; Konflikte bleiben im Editor erhalten. Neue Secret-Eingaben werden
 nur nach erfolgreichem Settings-Save gelöscht. Diese Migration verändert keine
 HTTP-Verträge und führt keine globale Formularabstraktion ein.
+
+
+### Create-Onepager für redaktionelle Inhalte
+
+Nachrichten, Veranstaltungen, Orte/POI, FAQ, Cockpit-Karten, Projekte, Umfragen und generische Items verwenden beim Anlegen eine durchgehende fachliche Feldkomposition. Gespeicherte Inhalte behalten ihre bisherigen Edit-Tabs einschließlich Historie und bei Umfragen Moderation/Ergebnisse. Create und Edit teilen weiterhin denselben führenden Formularzustand, die Feldkomponenten, Mapper, Validierungen und Submit-/Medienreferenzverträge; die Umordnung migriert weder Resolver noch HTTP-Pfade.
+
+Die sieben redaktionellen Typen erhalten kurze Einstiegshilfen, direkt zugeordnete Feldhilfen und eine Erklärung der bestehenden Speicherwirkung. Generische Items bleiben ein technischer Sonderfall. Zusatzbereiche bleiben gemountet; Öffnen/Schließen verwirft keine Werte. Fehler öffnen betroffene Bereiche vor dem Fokus. Vorhandene News-Zustände für Medien-Teilerfolg und fehlgeschlagene Weiterleitung bleiben erhalten.
+
+Die acht Create-Editoren melden ungespeicherte Formular- und Medienänderungen über `useStudioEditorLeaveGuard` aus `@sva/studio-ui-react`. Der Host besitzt Router-Blocker, bestehenden Bestätigungsdialog und nativen Reload-/Schließschutz; die UI-Anbindung erhält keine Formularwerte und kennt keinen Router. Eine vor dem Save erfasste lokale Revision verhindert, dass spätere Eingaben durch Save oder Medien-Retry als gespeichert quittiert werden. Bestätigte Inhalts-IDs verhindern doppelte Anlage und bleiben über die vorhandene Edit-Route erreichbar. Es gibt keine neue SDK-/Manifest-API, Formular-Engine, globale Registry, Autosave- oder Wiederherstellungsgarantie. Der bestehende manuelle Validierungs-/Resolverstatus der einzelnen Plugins bleibt unverändert.
+
+Die Nachweise folgen den geänderten Pfaden: Create-Feldfolge/-Erreichbarkeit, bestehender Save-Input und Edit-Erhalt pro Plugin sowie gezielte Klapp-/Fehlerfokus-, Medien- und Statusnachweise. Bestehende Browserflows decken einfache und komplexe Anlage ab. Ein Durchlauf mit tatsächlich ungeschulten Redakteuren ist ein eigener Verständlichkeitsnachweis und wird nicht durch automatisierte Tests ersetzt.

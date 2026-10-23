@@ -1,5 +1,40 @@
 export const eventsDEEditor = {
+  create: {
+    titleHelp: 'Wie heißt die Veranstaltung? Der Titel ist erforderlich.',
+    createVisible: 'Sichtbar anlegen',
+    createHidden: 'Nicht sichtbar anlegen',
+    intro:
+      'Erstellen Sie eine Veranstaltung. Beginnen Sie mit Titel, Termin und Ort; weitere Angaben können Sie ergänzen.',
+    navigation: 'Zu einem Formularabschnitt springen',
+    optional: 'optional',
+    filled: 'Angaben vorhanden',
+    empty: 'Noch keine Angaben',
+    visibleEffect:
+      'Die Veranstaltung wird mit aktivierter Sichtbarkeit gespeichert. Die Termine beschreiben die Veranstaltung und steuern keine zeitgesteuerte Veröffentlichung.',
+    hiddenEffect: 'Die Veranstaltung wird mit deaktivierter Sichtbarkeit gespeichert.',
+    editHint:
+      'Nach dem Anlegen öffnen Sie die gespeicherte Veranstaltung im gewohnten Editor mit Tabs.',
+    sections: {
+      title: 'Titel',
+      dates: 'Termine',
+      recurrence: 'Wiederholung',
+      addresses: 'Ort / Adressen',
+      description: 'Beschreibung',
+      media: 'Medien',
+      categories: 'Kategorien',
+      organizer: 'Veranstalter ergänzen',
+      contacts: 'Kontakte ergänzen',
+      links: 'Links ergänzen',
+      prices: 'Eintrittspreise ergänzen',
+      technical: 'Technische Angaben',
+      publication: 'Sichtbarkeit',
+    },
+  },
   messages: {
+    createdNavigationError:
+      'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
+    unsavedAfterCreate:
+      'Der Inhalt wurde angelegt. Neuere Eingaben in diesem Formular sind noch nicht gespeichert.',
     mediaReferencePartialFailure:
       'Der Inhalt wurde gespeichert, die Medienreferenzen jedoch nicht. Sie können die Referenzen erneut speichern.',
     mediaReferenceRetrySuccess: 'Die Medienreferenzen wurden gespeichert.',
@@ -42,8 +77,8 @@ export const eventsDEEditor = {
     locationMapError:
       'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
     imagePickerEmpty: 'Keine passenden Medien gefunden.',
-  mediaPickerLoading: 'Medien werden geladen.',
-  mediaPickerLoadError: 'Medien konnten nicht geladen werden.',
+    mediaPickerLoading: 'Medien werden geladen.',
+    mediaPickerLoadError: 'Medien konnten nicht geladen werden.',
     mediaUploadInitializing: 'Upload wird vorbereitet.',
     mediaUploadUploading: 'Medium wird hochgeladen.',
     mediaUploadFinalizing: 'Medium wird eingepflegt.',

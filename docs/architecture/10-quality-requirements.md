@@ -535,3 +535,12 @@ Referenzen:
 ## Nachweise für Tags und ClamAV
 
 Tag-Normalisierung, Patch-Semantik, serverseitige Suche und Cursor-Bindung werden gezielt getestet; PostgreSQL belegt die instanzisolierte Filterabfrage. Der lokale Integrationstest mit echtem ClamAV und einer isolierten S3-Testinstanz prüft anonyme Zugriffssperre, EICAR-Ablehnung, Signaturablauf und die Veröffentlichung derselben geprüften Bytes trotz Überschreiben des Eingangs. Die 24-/72-Stunden-Regel wird mit kontrollierter Zeit geprüft. Diese lokale Evidenz ersetzt nicht die Storage-/Monitoring-Abnahme im Zielbetrieb.
+
+
+### Akzeptanz der redaktionellen Create-Onepager
+
+- Alle acht zuständigen Create-Ansichten zeigen die bisherigen zulässigen Eingaben ohne Editor-Tabwechsel. Die gespeicherten Edit-Ansichten behalten ihre Funktionen und bestehenden Save-Inputs.
+- Zusatzabschnitte erhalten Werte und Medienreihenfolge; fehlerhafte geschlossene Abschnitte werden vor dem Fehlerfokus geöffnet. Beide Primäraktionen verwenden denselben Submit-Zustand und lösen keine parallele Anlage aus.
+- Redaktionelle Hilfen und Speicherwirkung sind in de/en vorhanden und über Tastatur sowie assistive Technik erreichbar. Generische Items benötigen keinen gesonderten Einsteigerflow.
+- Der Create-Verlassensschutz unterscheidet unveränderte Formulare, tatsächliche Eingaben und bloßes Öffnen des Medienpickers. Abbrechen erhält Eingaben; Verwerfen erreicht das Ziel. Bestätigte Saves warnen nicht erneut, spätere Eingaben während Save/Medien-Retry bleiben geschützt und bestätigte Anlagen werden nicht dupliziert.
+- Gezielte Plugin-Tests und repräsentative Browserflows belegen das technische Verhalten. Zusätzlich prüfen ungeschulte Personen Nachricht und Veranstaltung ohne mündliche Klickhilfe; dieser Verständlichkeitsnachweis bleibt bis zu einem tatsächlich durchgeführten Durchlauf offen.

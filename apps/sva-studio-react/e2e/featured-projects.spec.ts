@@ -6,6 +6,10 @@ import {
   navigateClientSide,
 } from './news-plugin.fixtures';
 
+if (process.env.PLAYWRIGHT_RUNTIME_PROFILE === 'local-builder') {
+  test.use({ storageState: { cookies: [], origins: [] } });
+}
+
 const projectUser = {
   user: {
     id: 'kc-editor-1',
@@ -124,10 +128,10 @@ test('creates, publishes, reorders and deletes a featured project with multiple 
 
   await gotoHomeAsAuthenticatedUser(page);
   await navigateClientSide(page, '/admin/projects/new');
+  await expect(page.getByRole('tablist')).toHaveCount(0);
   await page.locator('#project-language').fill('de-x-kommunal');
   await page.locator('#project-title').fill('Neue Brücke');
   await page.locator('#project-description').fill('Projektbeschreibung');
-  await page.getByRole('tab', { name: /Inhalt|projects\.tabs\.content/ }).click();
   await page.locator('#project-fullText').fill('Ausführlicher Projekttext');
   await page.getByRole('button', { name: /Medium hinzufügen|projects\.media\.add/ }).click();
   await page.getByRole('button', { name: /Medium hinzufügen|projects\.media\.add/ }).click();
@@ -147,7 +151,6 @@ test('creates, publishes, reorders and deletes a featured project with multiple 
     .getByLabel(/Alternativtext|projects\.fields\.altText/)
     .nth(1)
     .fill('Baustelle');
-  await page.getByRole('tab', { name: /Einstellungen|projects\.tabs\.settings/ }).click();
   await page.locator('#project-status').selectOption('published');
   await expect(
     page.getByRole('textbox', { name: /Erstellen als|projects\.principal\.createAs/ })

@@ -11,6 +11,7 @@ import { useOrganizationContext } from '../hooks/use-organization-context';
 import { t } from '../i18n';
 import { studioBuildTimeRegistry } from '../lib/plugins';
 import { useAuth } from '../providers/auth-provider';
+import { ContentEditorLeaveBoundary } from './content-editor-leave-boundary';
 import { MainserverPrincipalBoundary } from './mainserver-principal-control';
 import { MainserverResourcePrincipalBoundary } from './mainserver-resource-principal-boundary';
 
@@ -86,45 +87,52 @@ const PluginContentView = ({
   }
 
   return (
-    <MainserverPrincipalBoundary>
-      {(principalControl) => {
-        if (!binding.allowPrincipalContextSwitch) return makePage(principalControl);
-        const activeOrganizationId = organizationContext.context?.activeOrganizationId;
-        const memberOrganizations = user?.roles?.includes('system_admin')
-          ? (organizationContext.context?.organizations.filter(
-              (organization) => organization.isActive
-            ) ?? [])
-          : [];
-        const contextOptions: MainserverPrincipalContextOption[] = [
-          ...(activeOrganizationId &&
-          principalControl.kind === 'fixed' &&
-          principalControl.value === 'organization'
-            ? [{ value: 'personal' as const, label: t('shell.header.organizationContextPersonal') }]
-            : []),
-          ...memberOrganizations
-            .filter((organization) => organization.organizationId !== activeOrganizationId)
-            .map((organization) => ({
-              value: `organization:${organization.organizationId}` as const,
-              label: organization.displayName,
-            })),
-        ];
-        return makePage({
-          ...principalControl,
-          contextOptions,
-          onContextChange: (selection) => {
-            if (selection === 'personal') {
-              void organizationContext.switchOrganization(null);
-              return;
-            }
-            const organization = memberOrganizations.find(
-              (candidate) => `organization:${candidate.organizationId}` === selection
-            );
-            if (organization)
-              void organizationContext.switchOrganization(organization.organizationId);
-          },
-        });
-      }}
-    </MainserverPrincipalBoundary>
+    <ContentEditorLeaveBoundary>
+      <MainserverPrincipalBoundary>
+        {(principalControl) => {
+          if (!binding.allowPrincipalContextSwitch) return makePage(principalControl);
+          const activeOrganizationId = organizationContext.context?.activeOrganizationId;
+          const memberOrganizations = user?.roles?.includes('system_admin')
+            ? (organizationContext.context?.organizations.filter(
+                (organization) => organization.isActive
+              ) ?? [])
+            : [];
+          const contextOptions: MainserverPrincipalContextOption[] = [
+            ...(activeOrganizationId &&
+            principalControl.kind === 'fixed' &&
+            principalControl.value === 'organization'
+              ? [
+                  {
+                    value: 'personal' as const,
+                    label: t('shell.header.organizationContextPersonal'),
+                  },
+                ]
+              : []),
+            ...memberOrganizations
+              .filter((organization) => organization.organizationId !== activeOrganizationId)
+              .map((organization) => ({
+                value: `organization:${organization.organizationId}` as const,
+                label: organization.displayName,
+              })),
+          ];
+          return makePage({
+            ...principalControl,
+            contextOptions,
+            onContextChange: (selection) => {
+              if (selection === 'personal') {
+                void organizationContext.switchOrganization(null);
+                return;
+              }
+              const organization = memberOrganizations.find(
+                (candidate) => `organization:${candidate.organizationId}` === selection
+              );
+              if (organization)
+                void organizationContext.switchOrganization(organization.organizationId);
+            },
+          });
+        }}
+      </MainserverPrincipalBoundary>
+    </ContentEditorLeaveBoundary>
   );
 };
 

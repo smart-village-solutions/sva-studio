@@ -1,3 +1,4 @@
+import type { usePoiDetailMedia } from './poi.detail-page.media.js';
 import type { Dispatch, SetStateAction } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { type NavigateFn } from '@tanstack/react-router';
@@ -55,6 +56,7 @@ const deviationFormPaths: Readonly<
 type SaveInput = Readonly<{
   methods: UseFormReturn<PoiDetailFormValues>;
   canSave: boolean;
+  leaveGuard: ReturnType<typeof usePoiDetailMedia>['leaveGuard'];
   mode: 'create' | 'edit';
   actingPrincipalType: MainserverPrincipalType;
   contentId?: string;
@@ -177,7 +179,7 @@ export const usePoiDetailSave = (input: SaveInput) => {
     pt,
   } = input;
   return methods.handleSubmit(async (values) => {
-    if (!canSave) return;
+    if (!canSave || (mode === 'create' && input.leaveGuard.hasCreated())) return;
     methods.clearErrors();
     setStatus(null);
     const validation = validatePoiSubmission({
@@ -194,6 +196,7 @@ export const usePoiDetailSave = (input: SaveInput) => {
       return;
     }
     const payload = validation.payload;
+    const leaveRevision = input.leaveGuard.captureRevision();
     const operationId = saveFeedback.beginSaving();
     setMediaSavePhaseKey(null);
     try {
@@ -204,9 +207,11 @@ export const usePoiDetailSave = (input: SaveInput) => {
       }
       const saveContent = createPoiSaveContent(input, values, payload, correctedDegradedFields);
       const result = await savePoiWithMedia(input, saveContent);
+      if (mode === 'create') input.leaveGuard.rememberCreated(result.saved.id);
       const handledResult = mediaReferenceSync.consumeSaveResult(result);
       const saved = handledResult.saved;
       if (handledResult.referenceFailed) {
+        input.leaveGuard.rememberPartialSave(leaveRevision);
         setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
         saveFeedback.markFailed(operationId);
         return;
@@ -214,6 +219,7 @@ export const usePoiDetailSave = (input: SaveInput) => {
       setStatus(null);
       saveFeedback.markSaved(operationId);
       if (mode === 'create') {
+        input.leaveGuard.acknowledgeSaved(leaveRevision);
         await navigate({
           to: '/admin/poi/$id',
           params: { id: saved.id },
@@ -221,6 +227,10 @@ export const usePoiDetailSave = (input: SaveInput) => {
         });
       }
     } catch (saveError) {
+      if (mode === 'create' && input.leaveGuard.hasCreated()) {
+        setStatus({ kind: 'success', text: pt('messages.createdNavigationError') });
+        return;
+      }
       setStatus({
         kind: 'error',
         text: saveError instanceof PoiApiError ? saveError.message : pt('messages.saveError'),

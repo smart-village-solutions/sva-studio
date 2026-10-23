@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLocation, useNavigate } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm, type UseFormReturn } from 'react-hook-form';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
@@ -23,7 +23,7 @@ import {
 import { SurveyEditorActions, SurveyEditorPrimaryAction } from './surveys.editor.actions.js';
 import { useSurveyEditorController } from './surveys.editor-logic.js';
 import { type SurveyEditorMode, type SurveyEditorTabId } from './surveys.editor.shared.js';
-import { createSurveyEditorTabs } from './surveys.editor-tabs.js';
+import { SurveyCreateFields, createSurveyEditorTabs } from './surveys.editor-tabs.js';
 import { useSurveyMutationAccess as useMutationAccess } from './surveys.lifecycle-access.js';
 
 const formId = 'survey-detail-form';
@@ -109,13 +109,17 @@ const SurveyEditorForm = ({
         pt={pt}
       />
       <fieldset className="min-w-0 space-y-5 border-0 p-0" disabled={!canEdit}>
-        <StudioDetailTabs
-          ariaLabel={pt('tabs.ariaLabel')}
-          tabs={tabs}
-          value={activeTab}
-          onValueChange={onActiveTabChange}
-          keepMounted
-        />
+        {mode === 'create' ? (
+          <SurveyCreateFields pt={pt} />
+        ) : (
+          <StudioDetailTabs
+            ariaLabel={pt('tabs.ariaLabel')}
+            tabs={tabs}
+            value={activeTab}
+            onValueChange={onActiveTabChange}
+            keepMounted
+          />
+        )}
       </fieldset>
     </form>
   </FormProvider>
@@ -166,7 +170,7 @@ export const SurveyEditorPage = ({
   const [activeTab, setActiveTab] = React.useState<SurveyEditorTabId>('basis');
   const [actingPrincipalType, setActingPrincipalType] = useSurveyActingPrincipal(principalControl);
   const methods = useSurveyForm();
-  const { isLoading, loadedItem, resourceAccess, saveStatus, status, submit } =
+  const { createdContentId, isLoading, loadedItem, resourceAccess, saveStatus, status, submit } =
     useSurveyEditorController({
       mode,
       contentId,
@@ -202,19 +206,30 @@ export const SurveyEditorPage = ({
       actions={<SurveyEditorActions pt={pt} />}
       primaryAction={
         <SurveyEditorPrimaryAction
-          disabled={!access.canSave}
+          disabled={!access.canSave || (mode === 'create' && createdContentId !== null)}
           mode={mode}
           formId={formId}
           pt={pt}
           saveStatus={saveStatus}
+          createStatus={methods.watch('basis.status')}
         />
       }
     >
+      {mode === 'create' && createdContentId ? (
+        <StudioFormSummary kind="success">
+          {methods.formState.isDirty ? (
+            <span className="block">{pt('messages.unsavedAfterCreate')}</span>
+          ) : null}
+          <Link to="/admin/surveys/$id" params={{ id: createdContentId }}>
+            {pt('actions.openSavedContent')}
+          </Link>
+        </StudioFormSummary>
+      ) : null}
       <SurveyEditorForm
         actingPrincipalType={actingPrincipalType}
         activeTab={activeTab}
         canEdit={access.canEdit}
-        canSave={access.canSave}
+        canSave={access.canSave && !(mode === 'create' && createdContentId !== null)}
         loadedItem={loadedItem}
         methods={methods}
         mode={mode}

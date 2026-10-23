@@ -115,6 +115,7 @@ vi.mock('../src/surveys.editor-logic.js', () => ({
       navigateToCreatedDetail('survey-created');
     });
     return {
+      createdContentId: null,
       isLoading: controllerState.isLoading,
       loadedItem: controllerState.loadedItem,
       resourceAccess: controllerState.resourceAccess,

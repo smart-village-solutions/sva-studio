@@ -112,6 +112,9 @@ type NewsDetailSaveOptions = Readonly<{
   setLoadedItem: React.Dispatch<React.SetStateAction<NewsContentItem | null>>;
   setScheduledPublicationInput: React.Dispatch<React.SetStateAction<string>>;
   setInvalidScheduledPublicationInput: React.Dispatch<React.SetStateAction<boolean>>;
+  captureCreateSave: () => void;
+  completeCreateSave: () => boolean;
+  retryCreatedContentId: string | null;
 }>;
 
 const didDeclineGlobalPush = (
@@ -149,9 +152,13 @@ export const useNewsDetailSave = ({
   setLoadedItem,
   setScheduledPublicationInput,
   setInvalidScheduledPublicationInput,
+  captureCreateSave,
+  completeCreateSave,
+  retryCreatedContentId,
 }: NewsDetailSaveOptions) => {
   const navigate = useNavigate();
   const { reset } = methods;
+  const confirmedCreateId = React.useRef<string | null>(null);
   const navigateToCreatedDetail = React.useCallback(
     (createdContentId: string) =>
       navigate({
@@ -164,7 +171,8 @@ export const useNewsDetailSave = ({
 
   const saveCurrentItem = methods.handleSubmit(
     async (values) => {
-      if (!canSave) return;
+      if (!canSave || (mode === 'create' && (retryCreatedContentId || confirmedCreateId.current)))
+        return;
       if (didDeclineGlobalPush(values, loadedItem, pt, wasteTargetingAvailability)) return;
       if (mediaReferenceSync.hasPendingRetry) {
         setStatusMessage({
@@ -179,6 +187,7 @@ export const useNewsDetailSave = ({
         return;
       }
 
+      captureCreateSave();
       const operationId = saveFeedback.beginSaving();
       setMediaSavePhaseKey(null);
       try {
@@ -194,6 +203,7 @@ export const useNewsDetailSave = ({
           mediaReferenceSync,
         });
         const saved = handledResult.saved;
+        if (mode === 'create') confirmedCreateId.current = saved.id;
         if (handledResult.referenceFailed) {
           setRetryCreatedContentId(mode === 'create' ? saved.id : null);
           setStatusMessage({
@@ -205,6 +215,10 @@ export const useNewsDetailSave = ({
         }
 
         if (mode === 'create') {
+          setRetryCreatedContentId(saved.id);
+          if (!completeCreateSave()) {
+            setStatusMessage({ source: 'navigation', text: pt('create.savedWithNewChanges') });
+          }
           saveFeedback.markSaved(operationId);
           try {
             await navigateToCreatedDetail(saved.id);

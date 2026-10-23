@@ -43,7 +43,7 @@ export function ProjectImages({
   };
 
   return (
-    <StudioDetailCard title={pt('fields.images')}>
+    <StudioDetailCard title={pt('fields.images')} description={pt('create.optional')}>
       <ContentMediaUsageBlock
         disabled={mediaEditingDisabled}
         usages={usages}

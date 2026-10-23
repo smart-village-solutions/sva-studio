@@ -88,7 +88,7 @@ export function ContentFields({
   };
   return (
     <div className="space-y-5">
-      <StudioDetailCard title={pt('fields.text')}>
+      <StudioDetailCard title={pt('fields.text')} description={pt('create.optional')}>
         <StudioField id="cockpit-card-text" label={pt('fields.text')}>
           <Textarea
             id="cockpit-card-text"
@@ -98,7 +98,7 @@ export function ContentFields({
           />
         </StudioField>
       </StudioDetailCard>
-      <StudioDetailCard title={pt('fields.images')}>
+      <StudioDetailCard title={pt('fields.images')} description={pt('create.optional')}>
         <ContentMediaUsageBlock
           disabled={mediaEditingDisabled}
           usages={mediaUsages}

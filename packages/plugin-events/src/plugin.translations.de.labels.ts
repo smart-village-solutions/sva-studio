@@ -127,6 +127,7 @@ export const eventsDELabels = {
     updatedAt: 'Aktualisiert',
   },
   actions: {
+    openSavedContent: 'Gespeicherten Inhalt öffnen',
     retryMediaReferences: 'Referenzen erneut speichern',
     cancel: 'Abbrechen',
     create: 'Anlegen',

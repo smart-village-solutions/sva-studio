@@ -94,6 +94,7 @@ export const useGenericItemsPageSave = ({
   mediaUsages,
   requiresReferenceSync,
   mediaReferenceSync,
+  leaveGuard,
   saveFeedback,
   setStatus,
   setMediaSavePhaseKey,
@@ -102,6 +103,13 @@ export const useGenericItemsPageSave = ({
 }: Readonly<{
   methods: UseFormReturn<GenericItemsDetailFormValues>;
   canSave: boolean;
+  leaveGuard: Readonly<{
+    hasCreated: () => boolean;
+    rememberCreated: (id: string) => void;
+    captureRevision: () => number;
+    acknowledgeSaved: (revision: number) => boolean;
+    rememberPartialSave: (revision: number) => void;
+  }>;
   mode: 'create' | 'edit';
   actingPrincipalType: MainserverPrincipalType;
   contentId?: string;
@@ -116,8 +124,9 @@ export const useGenericItemsPageSave = ({
 }>) => {
   const onSubmit = methods.handleSubmit(
     async (values) => {
-      if (!canSave) return;
+      if (!canSave || (mode === 'create' && leaveGuard.hasCreated())) return;
       setStatus(null);
+      const leaveRevision = leaveGuard.captureRevision();
       const operationId = saveFeedback.beginSaving();
       setMediaSavePhaseKey(null);
       try {
@@ -134,22 +143,30 @@ export const useGenericItemsPageSave = ({
           mediaUsages,
           setMediaSavePhaseKey,
         });
+        if (mode === 'create') leaveGuard.rememberCreated(result.saved.id);
         const handledResult = mediaReferenceSync.consumeSaveResult(result);
         if (handledResult.referenceFailed) {
+          leaveGuard.rememberPartialSave(leaveRevision);
           setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
           saveFeedback.markFailed(operationId);
           return;
         }
         setStatus(null);
         saveFeedback.markSaved(operationId);
-        if (mode === 'create')
+        if (mode === 'create') {
+          leaveGuard.acknowledgeSaved(leaveRevision);
           await navigate({
             to: '/admin/generic-items/$id',
             params: { id: result.saved.id },
             state: (previous) =>
               addStudioCreatedSaveFeedback(previous, 'generic-items', result.saved.id),
           });
+        }
       } catch {
+        if (mode === 'create' && leaveGuard.hasCreated()) {
+          setStatus({ kind: 'success', text: pt('messages.createdNavigationError') });
+          return;
+        }
         setStatus({ kind: 'error', text: pt('messages.saveError') });
         saveFeedback.markFailed(operationId);
       }

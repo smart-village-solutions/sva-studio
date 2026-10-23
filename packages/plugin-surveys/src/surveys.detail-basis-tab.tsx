@@ -17,16 +17,20 @@ export type SurveyTargetAreaOption = Readonly<{
 const formatMetadataDate = (value?: string) =>
   value ? (formatDateTimeInEditorTimeZone(value) ?? value) : '--.--.-- --:--';
 
-function SurveyIdentityCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
+export function SurveyIdentityCard({
+  pt,
+  titleOnly = false,
+}: Readonly<{ pt: SurveyContentTranslate; titleOnly?: boolean }>) {
   const {
     register,
-    setValue,
     formState: { errors },
   } = useFormContext<SurveyDetailFormValues>();
-  const status = useWatch({ name: 'basis.status' }) ?? 'DRAFT';
 
   return (
-    <SurveyDetailCard title={pt('cards.basis.identity.title')} description={pt('cards.basis.identity.description')}>
+    <SurveyDetailCard
+      title={pt('cards.basis.identity.title')}
+      description={pt('cards.basis.identity.description')}
+    >
       <div className="space-y-4">
         <StudioField
           id="survey-title"
@@ -36,30 +40,44 @@ function SurveyIdentityCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
         >
           <Input id="survey-title" required {...register('title', { required: 'titleRequired' })} />
         </StudioField>
-        <StudioField id="survey-status" label={pt('fields.status')}>
-          <Select
-            id="survey-status"
-            value={status}
-            onChange={(event) =>
-              setValue('basis.status', event.target.value as SurveyDetailFormValues['basis']['status'], {
-                shouldDirty: true,
-              })
-            }
-          >
-            <option value="DRAFT">{pt('fields.statusOptions.draft')}</option>
-            <option value="ACTIVE">{pt('fields.statusOptions.active')}</option>
-            <option value="ARCHIVED">{pt('fields.statusOptions.archived')}</option>
-          </Select>
-        </StudioField>
+        {!titleOnly ? <SurveyStatusField pt={pt} /> : null}
       </div>
     </SurveyDetailCard>
   );
 }
-function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
+export function SurveyStatusField({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
+  const { control, setValue } = useFormContext<SurveyDetailFormValues>();
+  const status = useWatch({ control, name: 'basis.status' }) ?? 'DRAFT';
+  return (
+    <StudioField id="survey-status" label={pt('fields.status')}>
+      <Select
+        id="survey-status"
+        value={status}
+        onChange={(event) =>
+          setValue(
+            'basis.status',
+            event.target.value as SurveyDetailFormValues['basis']['status'],
+            {
+              shouldDirty: true,
+            }
+          )
+        }
+      >
+        <option value="DRAFT">{pt('fields.statusOptions.draft')}</option>
+        <option value="ACTIVE">{pt('fields.statusOptions.active')}</option>
+        <option value="ARCHIVED">{pt('fields.statusOptions.archived')}</option>
+      </Select>
+    </StudioField>
+  );
+}
+export function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
   const { register } = useFormContext<SurveyDetailFormValues>();
 
   return (
-    <SurveyDetailCard title={pt('cards.basis.schedule.title')} description={pt('cards.basis.schedule.description')}>
+    <SurveyDetailCard
+      title={pt('cards.basis.schedule.title')}
+      description={pt('cards.basis.schedule.description')}
+    >
       <div className="space-y-4">
         <StudioField id="survey-start-at" label={pt('fields.startAt')}>
           <Input id="survey-start-at" type="datetime-local" {...register('basis.startAt')} />
@@ -72,7 +90,7 @@ function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
     </SurveyDetailCard>
   );
 }
-function SurveyTargetAreaCard({
+export function SurveyTargetAreaCard({
   availableTargetAreas,
   pt,
 }: Readonly<{
@@ -108,7 +126,10 @@ function SurveyTargetAreaCard({
     );
 
   return (
-    <SurveyDetailCard title={pt('cards.basis.targetArea.title')} description={pt('cards.basis.targetArea.description')}>
+    <SurveyDetailCard
+      title={pt('cards.basis.targetArea.title')}
+      description={pt('cards.basis.targetArea.description')}
+    >
       <div className="space-y-4">
         <SurveyTargetAreaInput
           availableTargetAreas={availableTargetAreas}
@@ -204,11 +225,17 @@ function SurveyMetadataCard({
   pt,
 }: Readonly<{
   mode: 'create' | 'edit';
-  loadedItem: Pick<SurveyContentItem, 'createdAt' | 'updatedAt' | 'publishedAt' | 'archivedAt'> | null;
+  loadedItem: Pick<
+    SurveyContentItem,
+    'createdAt' | 'updatedAt' | 'publishedAt' | 'archivedAt'
+  > | null;
   pt: SurveyContentTranslate;
 }>) {
   return (
-    <SurveyDetailCard title={pt('cards.basis.metadata.title')} description={pt('cards.basis.metadata.description')}>
+    <SurveyDetailCard
+      title={pt('cards.basis.metadata.title')}
+      description={pt('cards.basis.metadata.description')}
+    >
       {mode === 'create' ? (
         <p className="text-sm text-muted-foreground">{pt('messages.metadataCreateHint')}</p>
       ) : (
@@ -241,7 +268,10 @@ export function SurveyDetailBasisTab({
   pt,
 }: Readonly<{
   mode: 'create' | 'edit';
-  loadedItem: Pick<SurveyContentItem, 'createdAt' | 'updatedAt' | 'publishedAt' | 'archivedAt'> | null;
+  loadedItem: Pick<
+    SurveyContentItem,
+    'createdAt' | 'updatedAt' | 'publishedAt' | 'archivedAt'
+  > | null;
   availableTargetAreas: readonly SurveyTargetAreaOption[];
   pt: SurveyContentTranslate;
 }>) {

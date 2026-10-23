@@ -59,8 +59,10 @@ const ContentBlockBody = ({
 
 export const GenericItemsContentText = ({
   labels,
+  createMode = false,
 }: Readonly<{
   labels: Record<string, string>;
+  createMode?: boolean;
 }>) => {
   const { control, setValue } = useFormContext<GenericItemsDetailFormValues>();
   const contentBlocksArray = useFieldArray({ control, name: 'contentBlocks' });
@@ -102,7 +104,14 @@ export const GenericItemsContentText = ({
                 </Button>
               ) : null}
             </div>
-            <StudioField id={`generic-item-content-block-title-${index}`} label={labels.title}>
+            <StudioField
+              id={`generic-item-content-block-title-${index}`}
+              label={
+                createMode
+                  ? `${labels.title} (${labels.contentBlockItem} ${index + 1})`
+                  : labels.title
+              }
+            >
               <Input
                 id={`generic-item-content-block-title-${index}`}
                 value={contentBlock.title}

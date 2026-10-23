@@ -3,6 +3,7 @@ export const pluginSurveysStructureTranslations = {
     title: 'Umfragen',
   },
   actions: {
+    openSavedContent: 'Gespeicherten Inhalt öffnen',
     create: 'Umfrage anlegen',
     edit: 'Umfrage ansehen',
     update: 'Umfrage speichern',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FormProvider, type UseFormReturn } from 'react-hook-form';
+import { FormProvider, useWatch, type UseFormReturn } from 'react-hook-form';
 import { Link, type NavigateFn } from '@tanstack/react-router';
 import { usePluginTranslation, resolveStandardContentAccessCapabilities } from '@sva/plugin-sdk';
 import {
@@ -89,6 +89,7 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
     mediaPickerLabels,
     navigate,
   } = view;
+  const active = useWatch({ control: methods.control, name: 'basis.active' });
   return (
     <FormProvider {...methods}>
       <StudioDetailPageTemplate
@@ -103,8 +104,15 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
                 type="submit"
                 form={formId}
                 status={saveFeedback.status}
+                disabled={mode === 'create' && media.leaveGuard.createdContentId !== null}
                 labels={{
-                  idle: pt('actions.save'),
+                  idle: pt(
+                    mode === 'create'
+                      ? active
+                        ? 'create.createActive'
+                        : 'create.createInactive'
+                      : 'actions.save'
+                  ),
                   saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
                   saved: pt('actions.saved'),
                 }}
@@ -197,7 +205,16 @@ export function PoiDetailForm({ view }: Readonly<{ view: PoiDetailPageViewModel 
   } = view;
   const { mediaReferenceSync } = media;
   return (
-    <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5" noValidate>
+    <form
+      onInvalidCapture={(event) =>
+        event.target instanceof HTMLElement &&
+        event.target.closest('details')?.setAttribute('open', '')
+      }
+      id={formId}
+      onSubmit={(event) => void submit(event)}
+      className="space-y-5"
+      noValidate
+    >
       {deleteNavigationFailed ? (
         <StudioPersistentActionResult
           kind="success"
@@ -211,6 +228,17 @@ export function PoiDetailForm({ view }: Readonly<{ view: PoiDetailPageViewModel 
         />
       ) : null}
       {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+      {mode === 'create' && media.leaveGuard.createdContentId ? (
+        <StudioFormSummary kind="success">
+          {!mediaReferenceSync.hasPendingRetry &&
+          (view.methods.formState.isDirty || media.mediaDirty) ? (
+            <span className="block">{pt('messages.unsavedAfterCreate')}</span>
+          ) : null}
+          <Link to="/admin/poi/$id" params={{ id: media.leaveGuard.createdContentId }}>
+            {pt('actions.openSavedContent')}
+          </Link>
+        </StudioFormSummary>
+      ) : null}
       <MainserverPrincipalControl
         id="poi-acting-principal"
         label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
@@ -232,9 +260,10 @@ export function PoiDetailForm({ view }: Readonly<{ view: PoiDetailPageViewModel 
       <StudioMediaReferenceRetryAction
         controller={mediaReferenceSync}
         label={pt('messages.mediaReferenceRetry')}
-        onSuccess={() =>
-          setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') })
-        }
+        onSuccess={() => {
+          media.leaveGuard.acknowledgeReferenceRetry();
+          setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
+        }}
         onFailure={() =>
           setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
         }

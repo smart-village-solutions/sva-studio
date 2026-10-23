@@ -23,12 +23,14 @@ export function SurveyEditorPrimaryAction({
   formId,
   pt,
   saveStatus,
+  createStatus,
 }: Readonly<{
   mode: SurveyEditorMode;
   disabled?: boolean;
   formId: string;
   pt: (key: string) => string;
   saveStatus: StudioSaveStatus;
+  createStatus?: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
 }>) {
   return (
     <div className="flex flex-col items-end gap-1">
@@ -38,7 +40,10 @@ export function SurveyEditorPrimaryAction({
         disabled={disabled}
         status={saveStatus}
         labels={{
-          idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
+          idle:
+            mode === 'create' && createStatus
+              ? `${pt('actions.create')} (${pt(`fields.statusOptions.${createStatus === 'DRAFT' ? 'draft' : createStatus === 'ACTIVE' ? 'active' : 'archived'}`)})`
+              : pt(mode === 'create' ? 'actions.create' : 'actions.update'),
           saving: pt('actions.saving'),
           saved: pt('actions.saved'),
         }}

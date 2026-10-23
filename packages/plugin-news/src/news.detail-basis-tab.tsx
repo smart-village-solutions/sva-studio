@@ -17,6 +17,7 @@ import type {
 } from './news.types.js';
 
 export type NewsDetailBasisTabProps = Readonly<{
+  section?: 'title' | 'categories' | 'principal';
   availableCategories: readonly NewsCategoryOption[];
   principalControl?: NewsPrincipalControl;
   actingPrincipalType: 'organization' | 'user';
@@ -56,6 +57,7 @@ const formatMetadataDate = (value?: string) => {
 };
 
 export function NewsDetailBasisTab({
+  section,
   availableCategories,
   principalControl,
   actingPrincipalType,
@@ -75,6 +77,7 @@ export function NewsDetailBasisTab({
 
   const titleField = getStudioFormFieldProps({
     id: 'news-title',
+    hasDescription: true,
     error: translateFieldError(errors.title, pt),
   });
   const categoriesField = getStudioFormFieldProps({
@@ -82,97 +85,127 @@ export function NewsDetailBasisTab({
     error: translateFieldError(readFieldError<FieldError>(errors.categories), pt),
     hasDescription: true,
   });
-  const summaryErrors = collectSummaryErrors([titleField, categoriesField]);
+  const summaryErrors = collectSummaryErrors(
+    section === 'principal'
+      ? []
+      : section === 'title'
+        ? [titleField]
+        : section === 'categories'
+          ? [categoriesField]
+          : [titleField, categoriesField]
+  );
 
   return (
     <div className="space-y-6">
       {mode === 'edit' ? <ContentOwnershipPanelSlot /> : null}
       <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
 
-      <NewsDetailCard
-        title={pt('cards.basis.titleCategories.title')}
-        description={pt('cards.basis.titleCategories.description')}
-      >
-        <StudioField
-          {...titleField}
-          label={pt('fields.title')}
-          description={pt('fields.characterCount', { count: title.length })}
-          required
+      {section !== 'principal' ? (
+        <NewsDetailCard
+          title={pt(
+            section === 'title'
+              ? 'fields.title'
+              : section === 'categories'
+                ? 'fields.categories'
+                : 'cards.basis.titleCategories.title'
+          )}
+          description={section ? undefined : pt('cards.basis.titleCategories.description')}
         >
-          <Input {...titleField.controlProps} required {...register('title')} />
-        </StudioField>
+          {section !== 'categories' ? (
+            <StudioField
+              {...titleField}
+              label={pt('fields.title')}
+              description={pt('fields.characterCount', { count: title.length })}
+              required
+            >
+              <Input {...titleField.controlProps} required {...register('title')} />
+            </StudioField>
+          ) : null}
 
-        <StudioField
-          {...categoriesField}
-          label={pt('fields.categories')}
-          description={pt('fields.categoriesHelp')}
-        >
-          <Controller
-            name="categories"
-            control={control}
-            render={({ field }) => (
-              <NewsCategoryMultiselect
-                availableCategories={availableCategories}
-                emptyText={pt('fields.categoriesEmpty')}
-                errorMessage={categoryOptionsError ?? undefined}
-                loading={categoryOptionsLoading}
-                helpText={pt('fields.categoriesHelp')}
-                inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
-                loadingText={pt('messages.categoryOptionsLoading')}
-                searchLabel={pt('fields.categoriesSearch')}
-                unavailableText={pt('fields.categoryUnavailable')}
-                removeLabel={(name) => pt('actions.removeCategory', { name })}
-                value={field.value}
-                onChange={field.onChange}
+          {section !== 'title' ? (
+            <StudioField
+              {...categoriesField}
+              label={pt('fields.categories')}
+              description={pt('fields.categoriesHelp')}
+            >
+              <Controller
+                name="categories"
+                control={control}
+                render={({ field }) => (
+                  <NewsCategoryMultiselect
+                    availableCategories={availableCategories}
+                    emptyText={pt('fields.categoriesEmpty')}
+                    errorMessage={categoryOptionsError ?? undefined}
+                    loading={categoryOptionsLoading}
+                    helpText={pt('fields.categoriesHelp')}
+                    inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
+                    loadingText={pt('messages.categoryOptionsLoading')}
+                    searchLabel={pt('fields.categoriesSearch')}
+                    unavailableText={pt('fields.categoryUnavailable')}
+                    removeLabel={(name) => pt('actions.removeCategory', { name })}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
               />
-            )}
+            </StudioField>
+          ) : null}
+        </NewsDetailCard>
+      ) : null}
+
+      {!section || section === 'principal' ? (
+        <NewsDetailCard
+          title={pt(section === 'principal' ? 'fields.createAs' : 'cards.basis.authorMeta.title')}
+          description={pt(
+            section === 'principal'
+              ? 'fields.actingPrincipalHelp'
+              : 'cards.basis.authorMeta.description'
+          )}
+        >
+          <MainserverPrincipalControl
+            id="news-acting-principal"
+            label={mode === 'create' ? pt('fields.createAs') : pt('fields.actAs')}
+            description={pt('fields.actingPrincipalHelp')}
+            value={actingPrincipalType}
+            options={
+              principalControl?.kind === 'selectable'
+                ? principalControl.options
+                : [
+                    {
+                      value: principalControl?.value ?? actingPrincipalType,
+                      label: principalControl?.label ?? pt(`principals.${actingPrincipalType}`),
+                    },
+                  ]
+            }
+            onChange={onActingPrincipalTypeChange}
+            contextOptions={mode === 'create' ? principalControl?.contextOptions : undefined}
+            onContextChange={mode === 'create' ? principalControl?.onContextChange : undefined}
           />
-        </StudioField>
-      </NewsDetailCard>
 
-      <NewsDetailCard
-        title={pt('cards.basis.authorMeta.title')}
-        description={pt('cards.basis.authorMeta.description')}
-      >
-        <MainserverPrincipalControl
-          id="news-acting-principal"
-          label={mode === 'create' ? pt('fields.createAs') : pt('fields.actAs')}
-          description={pt('fields.actingPrincipalHelp')}
-          value={actingPrincipalType}
-          options={
-            principalControl?.kind === 'selectable'
-              ? principalControl.options
-              : [
-                  {
-                    value: principalControl?.value ?? actingPrincipalType,
-                    label: principalControl?.label ?? pt(`principals.${actingPrincipalType}`),
-                  },
-                ]
-          }
-          onChange={onActingPrincipalTypeChange}
-          contextOptions={mode === 'create' ? principalControl?.contextOptions : undefined}
-          onContextChange={mode === 'create' ? principalControl?.onContextChange : undefined}
-        />
-
-        {mode === 'edit' ? (
-          <dl className="grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm md:grid-cols-3">
-            <div className="space-y-1">
-              <dt className="font-medium text-foreground">{pt('fields.createdAt')}</dt>
-              <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.createdAt)}</dd>
-            </div>
-            <div className="space-y-1">
-              <dt className="font-medium text-foreground">{pt('fields.publishedAt')}</dt>
-              <dd className="text-muted-foreground">
-                {formatMetadataDate(loadedItem?.publishedAt)}
-              </dd>
-            </div>
-            <div className="space-y-1">
-              <dt className="font-medium text-foreground">{pt('fields.updatedAt')}</dt>
-              <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.updatedAt)}</dd>
-            </div>
-          </dl>
-        ) : null}
-      </NewsDetailCard>
+          {mode === 'edit' ? (
+            <dl className="grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm md:grid-cols-3">
+              <div className="space-y-1">
+                <dt className="font-medium text-foreground">{pt('fields.createdAt')}</dt>
+                <dd className="text-muted-foreground">
+                  {formatMetadataDate(loadedItem?.createdAt)}
+                </dd>
+              </div>
+              <div className="space-y-1">
+                <dt className="font-medium text-foreground">{pt('fields.publishedAt')}</dt>
+                <dd className="text-muted-foreground">
+                  {formatMetadataDate(loadedItem?.publishedAt)}
+                </dd>
+              </div>
+              <div className="space-y-1">
+                <dt className="font-medium text-foreground">{pt('fields.updatedAt')}</dt>
+                <dd className="text-muted-foreground">
+                  {formatMetadataDate(loadedItem?.updatedAt)}
+                </dd>
+              </div>
+            </dl>
+          ) : null}
+        </NewsDetailCard>
+      ) : null}
     </div>
   );
 }

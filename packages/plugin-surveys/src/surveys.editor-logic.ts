@@ -1,6 +1,10 @@
 import React from 'react';
 import { type UseFormReturn } from 'react-hook-form';
-import { useStudioSaveFeedback, type MainserverPrincipalType } from '@sva/studio-ui-react';
+import {
+  useStudioEditorLeaveGuard,
+  useStudioSaveFeedback,
+  type MainserverPrincipalType,
+} from '@sva/studio-ui-react';
 
 import { createSurvey, getSurveyDetail, updateSurvey } from './surveys.api.js';
 import {
@@ -114,6 +118,9 @@ const useSurveyEditorLoader = ({
 
 const createSurveyEditorSubmit = (input: {
   readonly methods: UseFormReturn<SurveyDetailFormValues>;
+  readonly leaveGuard: ReturnType<typeof useStudioEditorLeaveGuard>;
+  readonly createdContentIdRef: Readonly<{ current: string | null }>;
+  readonly rememberCreated: (id: string) => void;
   readonly mode: SurveyEditorMode;
   readonly contentId?: string;
   readonly loadedItem: SurveyContentItem | null;
@@ -126,6 +133,8 @@ const createSurveyEditorSubmit = (input: {
 }) =>
   input.methods.handleSubmit(
     async (values) => {
+      if (input.mode === 'create' && input.createdContentIdRef.current !== null) return;
+      const leaveRevision = input.leaveGuard.captureRevision();
       let operationId: number | null = null;
       try {
         if (input.mode === 'edit' && !input.contentId) {
@@ -154,8 +163,11 @@ const createSurveyEditorSubmit = (input: {
             ? { ...mutationResult, results: input.loadedItem.results }
             : mutationResult;
 
+        if (input.mode === 'create') input.rememberCreated(savedItem.id);
         input.setLoadedItem(savedItem);
-        input.methods.reset(mapSurveyItemToFormValues(savedItem));
+        if (input.mode !== 'create') input.methods.reset(mapSurveyItemToFormValues(savedItem));
+        else if (input.leaveGuard.acknowledgeSaved(leaveRevision))
+          input.methods.reset(input.methods.getValues());
         input.setStatus(null);
         input.saveFeedback.markSaved(operationId);
 
@@ -163,6 +175,10 @@ const createSurveyEditorSubmit = (input: {
           await input.navigateToCreatedDetail(savedItem.id);
         }
       } catch (error) {
+        if (input.mode === 'create' && input.createdContentIdRef.current !== null) {
+          input.setStatus({ kind: 'success', text: input.pt('messages.createdNavigationError') });
+          return;
+        }
         if (operationId !== null) {
           input.saveFeedback.markFailed(operationId);
         }
@@ -204,6 +220,23 @@ export const useSurveyEditorController = ({
   const [loadedItem, setLoadedItem] = React.useState<SurveyContentItem | null>(null);
   const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
   const saveFeedback = useStudioSaveFeedback();
+  const createdContentIdRef = React.useRef<string | null>(null);
+  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
+  const rememberCreated = React.useCallback((id: string) => {
+    createdContentIdRef.current = id;
+    setCreatedContentId(id);
+  }, []);
+  const leaveGuard = useStudioEditorLeaveGuard({
+    enabled: mode === 'create',
+    hasUnsavedChanges: methods.formState.isDirty,
+  });
+  React.useEffect(() => {
+    if (mode !== 'create') return;
+    const subscription = methods.watch((_values, { name }) => {
+      if (name) leaveGuard.markChanged();
+    });
+    return () => subscription.unsubscribe();
+  }, [methods, mode, leaveGuard]);
   const initialSaveFeedbackShownRef = React.useRef(false);
   React.useEffect(() => {
     if (methods.formState.isDirty) {
@@ -232,6 +265,9 @@ export const useSurveyEditorController = ({
   }, [initiallySaved, isLoading, onInitialSavedConsumed, saveFeedback]);
   const submit = createSurveyEditorSubmit({
     methods,
+    leaveGuard,
+    createdContentIdRef,
+    rememberCreated,
     mode,
     contentId,
     loadedItem,
@@ -243,5 +279,13 @@ export const useSurveyEditorController = ({
     saveFeedback,
   });
 
-  return { isLoading, loadedItem, resourceAccess, saveStatus: saveFeedback.status, status, submit };
+  return {
+    createdContentId,
+    isLoading,
+    loadedItem,
+    resourceAccess,
+    saveStatus: saveFeedback.status,
+    status,
+    submit,
+  };
 };

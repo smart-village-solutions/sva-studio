@@ -1,5 +1,37 @@
 export const eventsENEditor = {
+  create: {
+    titleHelp: 'What is the event called? A title is required.',
+    createVisible: 'Create as visible',
+    createHidden: 'Create as hidden',
+    intro:
+      'Create an event. Start with its title, date and location; add further details as needed.',
+    navigation: 'Jump to a form section',
+    optional: 'optional',
+    filled: 'Details entered',
+    empty: 'No details yet',
+    visibleEffect:
+      'The event will be saved with visibility enabled. Event dates do not schedule publication.',
+    hiddenEffect: 'The event will be saved with visibility disabled.',
+    editHint: 'After creation, open the saved event in the familiar editor with tabs.',
+    sections: {
+      title: 'Title',
+      dates: 'Dates',
+      recurrence: 'Recurrence',
+      addresses: 'Location / addresses',
+      description: 'Description',
+      media: 'Media',
+      categories: 'Categories',
+      organizer: 'Add organizer',
+      contacts: 'Add contacts',
+      links: 'Add links',
+      prices: 'Add admission prices',
+      technical: 'Technical details',
+      publication: 'Visibility',
+    },
+  },
   messages: {
+    createdNavigationError: 'The content was created, but the editing view could not be opened.',
+    unsavedAfterCreate: 'The content was created. Newer changes in this form have not been saved.',
     mediaReferencePartialFailure:
       'The content was saved, but its media references were not. You can retry the references.',
     mediaReferenceRetrySuccess: 'The media references were saved.',
@@ -37,8 +69,8 @@ export const eventsENEditor = {
     locationMapUnavailable: 'The map view is currently disabled for this instance.',
     locationMapError: 'The map view could not be loaded. Manual editing remains available.',
     imagePickerEmpty: 'No matching media found.',
-  mediaPickerLoading: 'Loading media.',
-  mediaPickerLoadError: 'Media could not be loaded.',
+    mediaPickerLoading: 'Loading media.',
+    mediaPickerLoadError: 'Media could not be loaded.',
     mediaUploadInitializing: 'Preparing upload.',
     mediaUploadUploading: 'Uploading media.',
     mediaUploadFinalizing: 'Finalizing media.',

@@ -15,6 +15,7 @@ import type { EventsDetailPageViewProps } from './events.detail-page-view.js';
 
 const EventsDetailStatus = ({
   deletion,
+  methods,
   status,
   pt,
   actingPrincipalType,
@@ -40,6 +41,17 @@ const EventsDetailStatus = ({
       />
     ) : null}
     {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+    {mode === 'create' && media.leaveGuard.createdContentId ? (
+      <StudioFormSummary kind="success">
+        {!media.mediaReferenceSync.hasPendingRetry &&
+        (methods.formState.isDirty || media.mediaDirty) ? (
+          <span className="block">{pt('messages.unsavedAfterCreate')}</span>
+        ) : null}
+        <Link to="/admin/events/$id" params={{ id: media.leaveGuard.createdContentId }}>
+          {pt('actions.openSavedContent')}
+        </Link>
+      </StudioFormSummary>
+    ) : null}
     <MainserverPrincipalControl
       id="events-acting-principal"
       label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
@@ -63,9 +75,10 @@ const EventsDetailStatus = ({
     <StudioMediaReferenceRetryAction
       controller={media.mediaReferenceSync}
       label={pt('actions.retryMediaReferences')}
-      onSuccess={() =>
-        setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') })
-      }
+      onSuccess={() => {
+        media.leaveGuard.acknowledgeReferenceRetry();
+        setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
+      }}
       onFailure={() =>
         setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
       }
@@ -112,7 +125,16 @@ export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
         canUpdateMedia={canUpdateMedia}
         navigate={navigate}
       />
-      <form id={formId} noValidate onSubmit={(event) => void submit(event)} className="space-y-5">
+      <form
+        onInvalidCapture={(event) =>
+          event.target instanceof HTMLElement &&
+          event.target.closest('details')?.setAttribute('open', '')
+        }
+        id={formId}
+        noValidate
+        onSubmit={(event) => void submit(event)}
+        className="space-y-5"
+      >
         <EventsDetailStatus {...props} />
         <EventsDetailEditorTabs
           pt={pt}

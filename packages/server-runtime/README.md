@@ -26,6 +26,8 @@ Der Einstiegspunkt ist `src/index.ts`. Er exportiert eine kleine, auf Server-Lau
   `createWorkspaceContextMiddleware`, `runWithWorkspaceContext`, `getWorkspaceContext`, `setWorkspaceContext`, `extractWorkspaceId`, `MissingWorkspaceIdError`
 - Server-Bootstrap und Fehlerantworten:
   `initializeOtelSdk`, `toJsonErrorResponse`
+- JSON-Request-Validierung:
+  `parseRequestBody` benötigt ausschließlich `safeParse(unknown)` mit typisiertem Erfolgswert oder Fehler-Issues (`path`, `message`). Der Vertrag übernimmt keine versionsspezifischen Zod-Parse-Optionen. Bestehende Zod-Schemata werden weiterhin vollständig ausgeführt; Transformationen, Validierungsfehler und die Behandlung ungültigen JSONs bleiben erhalten. Verbraucher wie der Instance-Registry-Adapter leiten ihren Schemaparameter von dieser Funktion ab, statt über Workspace-Paketgrenzen konkrete Zod-Klassen verschiedener Minorversionen zu vergleichen.
 - Instanzkonfiguration:
   `getInstanceConfig`, `parseInstanceIdFromHost`, `isCanonicalAuthHost`, `resetInstanceConfigCache`
 

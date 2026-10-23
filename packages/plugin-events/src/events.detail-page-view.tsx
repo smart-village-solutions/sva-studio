@@ -1,4 +1,4 @@
-import { FormProvider, type UseFormReturn } from 'react-hook-form';
+import { FormProvider, useWatch, type UseFormReturn } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { resolveStandardContentAccessCapabilities, usePluginTranslation } from '@sva/plugin-sdk';
 import {
@@ -59,20 +59,33 @@ const EventsDetailSaveAction = ({
   saveFeedback,
   mediaSavePhaseKey,
   pt,
-}: EventsDetailPageViewProps) => (
-  <div className="flex flex-col items-end gap-1">
-    <StudioSaveButton
-      type="submit"
-      form={formId}
-      status={saveFeedback.status}
-      labels={{
-        idle: pt('actions.save'),
-        saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
-        saved: pt('actions.saved'),
-      }}
-    />
-  </div>
-);
+  methods,
+  mode,
+  media,
+}: EventsDetailPageViewProps) => {
+  const visible = useWatch({ control: methods.control, name: 'settings.visible' });
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <StudioSaveButton
+        type="submit"
+        form={formId}
+        status={saveFeedback.status}
+        disabled={mode === 'create' && media.leaveGuard.createdContentId !== null}
+        labels={{
+          idle: pt(
+            mode === 'create'
+              ? visible
+                ? 'create.createVisible'
+                : 'create.createHidden'
+              : 'actions.save'
+          ),
+          saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
+          saved: pt('actions.saved'),
+        }}
+      />
+    </div>
+  );
+};
 
 const EventsDetailNavigationActions = ({
   mode,

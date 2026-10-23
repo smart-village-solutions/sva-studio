@@ -43,6 +43,12 @@ Die Komponenten sind bewusst zustandsarm gehalten. Fachlogik, Datenladen, Übers
 
 Für Content-Medien stellt `ContentMediaUsageBlock` genau die primäre Aktion „Medium hinzufügen“ bereit. Sie öffnet den `StudioMediaPickerOverlay` im Upload-Modus. Der Picker zeigt Upload als primäre und aktive Aktion, die Bibliothek als sekundäre Aktion und die Linkeingabe als tertiären Textlink. Alle Beschriftungen werden vom konsumierenden Feature über den typisierten Label-Vertrag und dessen Übersetzungen geliefert.
 
+### Verlassensschutz für Create-Editoren
+
+`StudioEditorLeaveGuardProvider` und `useStudioEditorLeaveGuard` verbinden einen Editor mit dem Host, ohne Formularwerte oder Routing in die UI-Library zu übernehmen. Der Host registriert genau den aktiven Checker, besitzt Router-Blocker und Bestätigungsdialog und entfernt die Registrierung beim Unmount. Plugins aktivieren den Hook nur für Create und melden ihren tatsächlichen Dirty-Zustand einschließlich lokaler Medienänderungen; Picker öffnen allein ist keine Änderung.
+
+Benutzereingaben rufen `markChanged()` für den Revisionszähler auf; ob offene Änderungen vorliegen, bestimmt weiterhin `hasUnsavedChanges`. Ein benanntes Initialisierungsereignis allein macht ein sauberes Formular nicht dirty. Vor dem Speichern wird `captureRevision()` erfasst. Erst nach vollständig bestätigtem Save beziehungsweise Medien-Retry erlaubt `acknowledgeSaved(revision)` bei Rückgabe `true`, den eigenen Formular-/Medienausgangspunkt zurückzusetzen. Eine spätere Eingabe verhindert diese Quittierung und hält den Schutz auch dann aktiv, wenn RHF wieder seinen ursprünglichen Default sieht, der bestätigte Serverstand aber inzwischen abweicht; ein laufender Save deaktiviert den Schutz nicht. Für einen Retry bleibt die ursprüngliche Save-Revision maßgeblich. Ohne Provider bleibt der Editor eigenständig renderbar. Autosave, Persistenz, Navigation und fachliche Recovery gehören nicht zu dieser Anbindung.
+
 ## Projektstruktur
 
 ```text

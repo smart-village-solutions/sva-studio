@@ -1,4 +1,8 @@
 export const poiMessagesDe = {
+  createdNavigationError:
+    'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
+  unsavedAfterCreate:
+    'Der Inhalt wurde angelegt. Neuere Eingaben in diesem Formular sind noch nicht gespeichert.',
   loading: 'Orte werden geladen.',
   loadError: 'Orte konnten nicht geladen werden.',
   missingContent: 'Der Ort konnte nicht geladen werden.',

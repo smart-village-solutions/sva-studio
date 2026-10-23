@@ -3,6 +3,7 @@ import { FormProvider, type UseFormReturn } from 'react-hook-form';
 import { Link } from '@tanstack/react-router';
 import {
   type HostMediaAssetListItem,
+  formatDateTimeInEditorTimeZone,
   resolveStandardContentAccessCapabilities,
 } from '@sva/plugin-sdk';
 import {
@@ -54,8 +55,8 @@ type NewsDetailPageViewProps = Readonly<{
   statusMessage: StatusMessage | null;
   retryCreatedContentId: string | null;
   navigateToCreatedDetail: (id: string) => Promise<void>;
+  completeCreateSave: () => boolean;
   setStatusMessage: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
-  setRetryCreatedContentId: React.Dispatch<React.SetStateAction<string | null>>;
   tabs: ReturnType<typeof createNewsDetailTabDefinitions>;
   activeTab: NewsDetailTabId;
   handleTabChange: (tab: NewsDetailTabId) => void;
@@ -65,6 +66,20 @@ type NewsDetailPageViewProps = Readonly<{
   deleteErrorMessage: string | null;
   onDelete: () => Promise<void>;
 }>;
+
+const newsCreateEffect = (values: NewsDetailFormValues, pt: PluginTranslator): string => {
+  const publication = pt(`create.effect.${values.publicationMode}`, {
+    date:
+      formatDateTimeInEditorTimeZone(values.scheduledPublicationAt) ??
+      values.scheduledPublicationAt,
+  });
+  if (values.publicationMode !== 'immediate' || !values.pushNotificationEnabled)
+    return `${publication} ${pt('create.noPush')}`;
+  const target = values.wasteLocationKeys.length
+    ? values.wasteLocationKeys.map((key) => `${key.street}, ${key.zip} ${key.city}`).join('; ')
+    : pt('targeting.mode.global');
+  return `${publication} ${pt('create.push', { target })}`;
+};
 
 const createNewsDetailPageActions = ({
   canSave,
@@ -79,6 +94,7 @@ const createNewsDetailPageActions = ({
   setDeleteDialogOpen,
   deletePending,
   deleteLabel,
+  methods,
 }: Pick<
   NewsDetailPageViewProps,
   | 'canSave'
@@ -93,6 +109,7 @@ const createNewsDetailPageActions = ({
   | 'setDeleteDialogOpen'
   | 'deletePending'
   | 'deleteLabel'
+  | 'methods'
 >) => ({
   primaryAction: canSave ? (
     <div className="flex flex-col items-end gap-1">
@@ -102,11 +119,17 @@ const createNewsDetailPageActions = ({
         disabled={mediaReferenceSync.hasPendingRetry}
         status={saveFeedback.status}
         labels={{
-          idle: pt('actions.save'),
+          idle:
+            mode === 'create'
+              ? pt(`create.actions.${methods.watch('publicationMode')}`)
+              : pt('actions.save'),
           saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
           saved: pt('actions.saved'),
         }}
       />
+      {mode === 'create' ? (
+        <p className="text-sm text-muted-foreground">{newsCreateEffect(methods.watch(), pt)}</p>
+      ) : null}
     </div>
   ) : undefined,
   actions: (
@@ -158,8 +181,8 @@ export const NewsDetailPageView = ({
   statusMessage,
   retryCreatedContentId,
   navigateToCreatedDetail,
+  completeCreateSave,
   setStatusMessage,
-  setRetryCreatedContentId,
   tabs,
   activeTab,
   handleTabChange,
@@ -188,6 +211,7 @@ export const NewsDetailPageView = ({
         setDeleteDialogOpen,
         deletePending,
         deleteLabel,
+        methods,
       })}
     >
       <FormProvider {...methods}>
@@ -219,12 +243,16 @@ export const NewsDetailPageView = ({
               saveCurrentItem,
               retryCreatedContentId,
               navigateToCreatedDetail,
+              completeCreateSave,
               setStatusMessage,
-              setRetryCreatedContentId,
               mediaReferenceSync,
             }}
           />
-          <NewsDetailTabs {...{ tabs, activeTab, handleTabChange, warmTab, visitedTabs, pt }} />
+          {mode === 'create' ? (
+            tabs[0]?.panel
+          ) : (
+            <NewsDetailTabs {...{ tabs, activeTab, handleTabChange, warmTab, visitedTabs, pt }} />
+          )}
         </form>
       </FormProvider>
       <StudioDestructiveActionDialog

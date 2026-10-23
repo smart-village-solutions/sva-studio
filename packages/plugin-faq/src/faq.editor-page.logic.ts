@@ -97,9 +97,13 @@ export const useFaqEditorActions = ({
   setDeleteErrorMessage,
   setSaveErrorMessage,
   actingPrincipalType,
+  onCreateStarted,
+  onCreateSaved,
 }: Readonly<{
   contentId?: string;
   existingPayload: unknown;
+  onCreateStarted: () => boolean;
+  onCreateSaved: (id: string) => void;
   mode: 'create' | 'edit';
   navigate: Navigate;
   pt: Translation;
@@ -114,12 +118,18 @@ export const useFaqEditorActions = ({
     try {
       const input = mapFaqFormValuesToGenericItemInput(values, existingPayload);
       if (mode === 'create') {
+        if (!onCreateStarted()) return false;
         const item = await createFaq(input, actingPrincipalType);
-        await navigate({
-          to: '/admin/faq/$id',
-          params: { id: item.id },
-          state: (previous) => addStudioCreatedSaveFeedback(previous, 'faq', item.id),
-        });
+        onCreateSaved(item.id);
+        try {
+          await navigate({
+            to: '/admin/faq/$id',
+            params: { id: item.id },
+            state: (previous) => addStudioCreatedSaveFeedback(previous, 'faq', item.id),
+          });
+        } catch {
+          setSaveErrorMessage(pt('create.navigationFailed'));
+        }
       } else if (contentId) {
         await updateFaq(contentId, input, actingPrincipalType);
       }

@@ -1,6 +1,24 @@
+import { StudioEditorLeaveGuardProvider } from '@sva/studio-ui-react';
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const renderGuarded = (element: React.ReactElement) => {
+  let check = () => false;
+  const view = render(
+    <StudioEditorLeaveGuardProvider
+      register={(next) => {
+        check = next;
+        return () => {
+          check = () => false;
+        };
+      }}
+    >
+      {element}
+    </StudioEditorLeaveGuardProvider>
+  );
+  return { ...view, hasUnsavedChanges: () => check() };
+};
 
 const state = vi.hoisted(() => ({
   createFaqMock: vi.fn(),
@@ -102,19 +120,49 @@ describe('faq editor pages', () => {
     state.params = { id: 'faq-1' };
   });
 
+  it('keeps the untouched create form clean after empty optional fields register', async () => {
+    const { FaqCreatePage } = await import('../src/faq.pages.js');
+    const guarded = renderGuarded(<FaqCreatePage />);
+    const publicationDate = screen.getByLabelText('fields.publicationDate');
+    expect((publicationDate as HTMLInputElement).value).toBe('');
+    fireEvent.focus(publicationDate);
+    fireEvent.blur(publicationDate);
+    await waitFor(() => expect(guarded.hasUnsavedChanges()).toBe(false));
+  });
+
   it('creates a faq entry with normalized payload fields', async () => {
     state.createFaqMock.mockResolvedValue({ id: 'faq-new' });
     const { FaqCreatePage } = await import('../src/faq.pages.js');
 
-    render(<FaqCreatePage />);
+    const guarded = renderGuarded(<FaqCreatePage />);
+    expect(guarded.hasUnsavedChanges()).toBe(false);
+    state.navigateMock.mockImplementationOnce(async () => {
+      expect(guarded.hasUnsavedChanges()).toBe(false);
+    });
 
-    const basisTab = screen.getByRole('tab', { name: 'tabs.basis.label' });
-    expect(basisTab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.getByLabelText('fields.sortWeight').getAttribute('aria-required')).toBe('true');
+    const ids = [...document.querySelectorAll('form input, form textarea')].map(
+      (field) => field.id
+    );
+    expect(ids.filter((id) => id !== 'faq-acting-principal')).toEqual([
+      'faq-question',
+      'faq-answer',
+      'faq-language-code',
+      'faq-sort-weight',
+      'faq-publication-date',
+      'faq-visible',
+    ]);
+    expect(screen.getAllByRole('button', { name: 'actions.create' })).toHaveLength(2);
+    expect(screen.getAllByText('create.visibleEffect')).toHaveLength(2);
+    fireEvent.click(screen.getByLabelText('fields.visible'));
+    expect(screen.getAllByText('create.hiddenEffect')).toHaveLength(2);
+    fireEvent.click(screen.getByLabelText('fields.visible'));
 
     fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Neue Frage' } });
-    visitTab('tabs.content.label');
+
     fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Eine Antwort' } });
-    visitTab('tabs.settings.label');
+
     fireEvent.change(screen.getByLabelText('fields.languageCode'), { target: { value: 'en-us' } });
     fireEvent.change(screen.getByLabelText('fields.sortWeight'), { target: { value: '7' } });
     fireEvent.click(primaryAction('actions.create'));
@@ -141,6 +189,51 @@ describe('faq editor pages', () => {
       )
     );
   }, 30_000);
+
+  it('keeps changes made after submit protected after the create completes', async () => {
+    let complete!: (value: { id: string }) => void;
+    state.createFaqMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        })
+    );
+    const { FaqCreatePage } = await import('../src/faq.pages.js');
+    const guarded = renderGuarded(<FaqCreatePage />);
+    fireEvent.change(screen.getByLabelText('fields.question'), {
+      target: { value: 'Gespeicherte Frage' },
+    });
+    fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Antwort' } });
+    fireEvent.click(primaryAction('actions.create'));
+    await waitFor(() => expect(state.createFaqMock).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByLabelText('fields.question'), {
+      target: { value: 'Spätere Änderung' },
+    });
+    await act(async () => {
+      complete({ id: 'faq-created' });
+    });
+    expect(guarded.hasUnsavedChanges()).toBe(true);
+    expect(screen.getByDisplayValue('Spätere Änderung')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'actions.create' })).toBeNull();
+    fireEvent.submit(document.querySelector('form')!);
+    expect(state.createFaqMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays clean and cannot create again if navigation fails after confirmed creation', async () => {
+    state.createFaqMock.mockResolvedValueOnce({ id: 'faq-created' });
+    state.navigateMock.mockRejectedValueOnce(new Error('navigation failed'));
+    const { FaqCreatePage } = await import('../src/faq.pages.js');
+    const guarded = renderGuarded(<FaqCreatePage />);
+    fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Frage' } });
+    fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Antwort' } });
+    fireEvent.click(primaryAction('actions.create'));
+    await screen.findByText('create.navigationFailed');
+    expect(screen.getByText('create.openSaved')).toBeTruthy();
+    expect(guarded.hasUnsavedChanges()).toBe(false);
+    expect(screen.queryByRole('button', { name: 'actions.create' })).toBeNull();
+    fireEvent.submit(document.querySelector('form')!);
+    expect(state.createFaqMock).toHaveBeenCalledTimes(1);
+  });
 
   it('keeps the faq tab order and supports the responsive tab selector', async () => {
     state.getFaqMock.mockResolvedValue({
@@ -233,7 +326,7 @@ describe('faq editor pages', () => {
     render(<FaqCreatePage />);
     state.createFaqMock.mockRejectedValueOnce(new Error('save failed'));
     fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Neue Frage' } });
-    visitTab('tabs.content.label');
+
     fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Eine Antwort' } });
     fireEvent.click(primaryAction('actions.create'));
 
@@ -252,10 +345,10 @@ describe('faq editor pages', () => {
     const { FaqCreatePage } = await import('../src/faq.pages.js');
     const { FaqApiError } = await import('../src/faq.api.js');
 
-    render(<FaqCreatePage />);
+    const guarded = renderGuarded(<FaqCreatePage />);
 
     fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Neue Frage' } });
-    visitTab('tabs.content.label');
+
     fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Eine Antwort' } });
     fireEvent.click(primaryAction('actions.create'));
 
@@ -267,6 +360,7 @@ describe('faq editor pages', () => {
       ).toBe(true)
     );
 
+    expect(guarded.hasUnsavedChanges()).toBe(true);
     rejectRequest?.(new FaqApiError('forbidden', 'Nicht erlaubt.'));
 
     await screen.findByText('messages.saveErrorWithReason');
@@ -277,6 +371,7 @@ describe('faq editor pages', () => {
           .every((button) => !button.hasAttribute('disabled'))
       ).toBe(true)
     );
+    expect(guarded.hasUnsavedChanges()).toBe(true);
   });
 
   it('shows a load error when the edit route is missing its content id', async () => {
@@ -328,9 +423,9 @@ describe('faq editor pages', () => {
     render(<FaqCreatePage />);
 
     fireEvent.change(screen.getByLabelText('fields.question'), { target: { value: 'Neue Frage' } });
-    visitTab('tabs.content.label');
+
     fireEvent.change(screen.getByLabelText('fields.answer'), { target: { value: 'Eine Antwort' } });
-    visitTab('tabs.settings.label');
+
     fireEvent.change(screen.getByLabelText('fields.sortWeight'), { target: { value: '1.5' } });
     fireEvent.click(primaryAction('actions.create'));
 

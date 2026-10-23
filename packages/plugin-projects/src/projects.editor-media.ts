@@ -68,6 +68,7 @@ const toPickerDetail = (
 
 type MediaInput = Readonly<{
   form: UseFormReturn<ProjectFormValues>;
+  onMediaChanged: () => void;
   mediaUsages: readonly ContentMediaUsage[];
   setMediaUsages: React.Dispatch<React.SetStateAction<readonly ContentMediaUsage[]>>;
   setRequiresReferenceSync: React.Dispatch<React.SetStateAction<boolean>>;
@@ -97,6 +98,7 @@ function acceptProjectMedia(asset: StudioMediaPickerAssetDetail, input: PickerIn
     assetId: asset.localDraft ? undefined : asset.id,
     localDraft: asset.localDraft,
   };
+  input.onMediaChanged();
   const next = [...input.mediaUsages, usage];
   input.setMediaUsages(next);
   input.form.setValue(
@@ -173,6 +175,7 @@ export function useProjectEditorMedia(input: MediaInput) {
   }, []);
   const mediaPicker = useProjectMediaPicker({ ...input, mediaAssetsRef, refreshMediaAssets });
   const addManualMedia = React.useCallback(() => {
+    input.onMediaChanged();
     const usage = createManualContentMediaUsage({ sortOrder: input.mediaUsages.length });
     const nextUsages = [...input.mediaUsages, usage];
     input.setMediaUsages(nextUsages);
@@ -184,7 +187,13 @@ export function useProjectEditorMedia(input: MediaInput) {
       (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
     );
     return usage.uiId;
-  }, [input.form, input.mediaUsages, input.setMediaUsages, input.setRequiresReferenceSync]);
+  }, [
+    input.form,
+    input.mediaUsages,
+    input.setMediaUsages,
+    input.setRequiresReferenceSync,
+    input.onMediaChanged,
+  ]);
   React.useEffect(() => {
     void refreshMediaAssets();
   }, [refreshMediaAssets]);

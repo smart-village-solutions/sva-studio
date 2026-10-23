@@ -1,4 +1,10 @@
 export const contentENResources = {
+  leaveGuard: {
+    title: 'Discard unsaved changes?',
+    description: 'Your changes have not been saved. Leaving this page discards the unsaved input.',
+    discard: 'Discard and leave',
+    stay: 'Continue editing',
+  },
   page: {
     title: 'Content',
     subtitle: 'Manage generic content with core metadata, JSON payloads, and auditable history.',

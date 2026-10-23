@@ -59,6 +59,9 @@ export type GenericItemsDetailPageViewModel = Readonly<{
   setMediaUsages: React.Dispatch<React.SetStateAction<readonly ContentMediaUsage[]>>;
   setRequiresReferenceSync: React.Dispatch<React.SetStateAction<boolean>>;
   mediaReferenceSync: ReturnType<typeof useStudioMediaReferenceSync>;
+  acknowledgeReferenceRetry: () => void;
+  createdContentId: string | null;
+  hasUnsavedAfterCreate: boolean;
   accessCapabilities: ReturnType<typeof resolveStandardContentAccessCapabilities>;
   canSelectMedia: boolean;
   canUploadMedia: boolean;
@@ -164,6 +167,7 @@ export const GenericItemsStatusView = ({
     principalControl,
     setActingPrincipalType,
     mediaReferenceSync,
+    acknowledgeReferenceRetry,
     setStatus,
   } = view;
   return (
@@ -186,6 +190,16 @@ export const GenericItemsStatusView = ({
           {status.text}
         </StudioFormSummary>
       ) : null}
+      {mode === 'create' && view.createdContentId ? (
+        <StudioFormSummary kind="success">
+          {view.hasUnsavedAfterCreate ? (
+            <span className="block">{pt('messages.unsavedAfterCreate')}</span>
+          ) : null}
+          <Link to="/admin/generic-items/$id" params={{ id: view.createdContentId }}>
+            {pt('actions.openSavedContent')}
+          </Link>
+        </StudioFormSummary>
+      ) : null}
       <MainserverPrincipalControl
         id="generic-items-acting-principal"
         label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
@@ -200,9 +214,10 @@ export const GenericItemsStatusView = ({
       <StudioMediaReferenceRetryAction
         controller={mediaReferenceSync}
         label={pt('actions.retryMediaReferences')}
-        onSuccess={() =>
-          setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') })
-        }
+        onSuccess={() => {
+          acknowledgeReferenceRetry();
+          setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
+        }}
         onFailure={() =>
           setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
         }

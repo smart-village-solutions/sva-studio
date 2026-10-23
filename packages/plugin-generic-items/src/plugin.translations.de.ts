@@ -3,6 +3,14 @@ import { genericItemsTranslationsDeMessages } from './plugin.translations.de.mes
 
 export const genericItemsTranslationsDe = {
   genericItems: {
+    create: {
+      heading: 'Generischen Inhalt erfassen',
+      optional: 'Optional',
+      navigation: 'Zu einem Inhaltsabschnitt springen',
+      technical: 'Weitere technische Angaben (optional)',
+      technicalPresent: 'Angaben vorhanden',
+      technicalEmpty: 'Keine zusätzlichen Angaben',
+    },
     navigation: {
       title: 'Generische Inhalte',
     },

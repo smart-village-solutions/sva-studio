@@ -1,4 +1,31 @@
 export const newsTranslationsDEEditor = {
+  create: {
+    savedWithNewChanges:
+      'Die Nachricht wurde angelegt. Weitere Änderungen sind noch nicht gespeichert. Beim Öffnen der gespeicherten Nachricht können Sie diese verwerfen oder hier weiter bearbeiten.',
+    heading: 'Nachricht erfassen',
+    intro:
+      'Erstellen Sie eine Nachricht. Beginnen Sie mit Titel und Text; Medien, Kategorien und Quelle sind optional.',
+    introHelp: 'Optionaler Einleitungstext des ersten Inhaltsblocks. Der Haupttext folgt darunter.',
+    sourceOptional: 'Quelle ergänzen (optional)',
+    sourcePresent: 'Quelle eingetragen',
+    sourceEmpty: 'Keine Quelle eingetragen',
+    pushResetHint:
+      'Bei Entwurf oder geplanter Veröffentlichung wird die Push-Auswahl zurückgesetzt. Für einen Versand müssen Sie sie bei sofortiger Veröffentlichung erneut aktivieren.',
+    actions: {
+      draft: 'Entwurf anlegen',
+      immediate: 'Jetzt veröffentlichen',
+      scheduled: 'Geplante Nachricht anlegen',
+    },
+    effect: {
+      draft:
+        'Die Nachricht wird mit Status Entwurf gespeichert und nicht veröffentlicht. Sie können sie später über die Inhaltsliste weiterbearbeiten.',
+      immediate: 'Die Nachricht wird sofort sichtbar veröffentlicht.',
+      scheduled:
+        'Die Nachricht wird mit dem gewählten Veröffentlichungszeitpunkt {{date}} gespeichert.',
+    },
+    noPush: 'Es wird keine Push-Benachrichtigung versendet.',
+    push: 'Zusätzlich wird eine Push-Benachrichtigung für folgendes Zielgebiet angefordert: {{target}}.',
+  },
   values: {
     yes: 'Ja',
     no: 'Nein',

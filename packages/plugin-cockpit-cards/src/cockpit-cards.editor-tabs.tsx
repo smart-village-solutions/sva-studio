@@ -1,9 +1,18 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { type StudioDetailTabDefinition, type useStudioSaveFeedback } from '@sva/studio-ui-react';
+import {
+  StudioDetailCard,
+  type StudioDetailTabDefinition,
+  type useStudioSaveFeedback,
+} from '@sva/studio-ui-react';
 import type { UseFormReturn } from 'react-hook-form';
 
 import { ContentFields } from './cockpit-cards.content-fields.js';
-import { BasisFields, SettingsFields } from './cockpit-cards.editor-fields.js';
+import {
+  BasisFields,
+  SettingsFields,
+  HeadingField,
+  CockpitCardCreateSettings,
+} from './cockpit-cards.editor-fields.js';
 import type { useCockpitCardMedia } from './cockpit-cards.editor-media.js';
 import type { Tab } from './cockpit-cards.editor-view.js';
 import { CockpitCardsHistory } from './cockpit-cards.history.js';
@@ -24,7 +33,7 @@ function contentTab({
   canUploadMedia: boolean;
   saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
 }>): StudioDetailTabDefinition<Tab> {
-  const { mediaUsages, setMediaUsages, mediaPicker, addManualMedia, loadAssetSnapshot } = media;
+  const { mediaUsages, changeMediaUsages, mediaPicker, addManualMedia, loadAssetSnapshot } = media;
   return {
     id: 'content',
     label: pt('tabs.content.label'),
@@ -36,7 +45,7 @@ function contentTab({
         form={form}
         pt={pt}
         mediaUsages={mediaUsages}
-        onMediaUsagesChange={setMediaUsages}
+        onMediaUsagesChange={changeMediaUsages}
         canSelectMedia={canSelectMedia}
         canUploadMedia={canUploadMedia}
         mediaEditingDisabled={saveFeedback.status === 'saving'}
@@ -75,6 +84,29 @@ export function cockpitCardEditorTabs({
   canUploadMedia: boolean;
   saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
 }>): readonly StudioDetailTabDefinition<Tab>[] {
+  if (mode === 'create') {
+    return [
+      {
+        id: 'content',
+        label: pt('tabs.content.label'),
+        panel: (
+          <div className="space-y-5">
+            <StudioDetailCard title={pt('create.contentTitle')}>
+              <HeadingField form={form} pt={pt} />
+            </StudioDetailCard>
+            {contentTab({ pt, form, media, canSelectMedia, canUploadMedia, saveFeedback }).panel}
+            <CockpitCardCreateSettings
+              form={form}
+              pt={pt}
+              link={link}
+              options={options}
+              categoriesState={categoriesState}
+            />
+          </div>
+        ),
+      },
+    ];
+  }
   return [
     {
       id: 'basis',

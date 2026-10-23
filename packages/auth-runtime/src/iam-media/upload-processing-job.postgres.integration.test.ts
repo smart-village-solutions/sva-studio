@@ -15,6 +15,7 @@ import {
 
 import { enqueueStudioJobWithClient } from '../plugin-operations/runner-queue.js';
 import { createMediaService } from './service.js';
+import { createMediaHttpHandlers } from './core.js';
 import type { withMediaUploadJobRepositories } from './repository.js';
 import {
   createMediaUploadProcessingHandler,
@@ -214,6 +215,53 @@ describe.skipIf(process.env.RUN_POSTGRES_INTEGRATION !== '1')(
       }
       throw new Error('fixture_expected_asset_lock');
     };
+
+    it.each(['metadata', 'delete'] as const)(
+      'reads the latest locked asset after a concurrent %s transaction commits',
+      async (operation) => {
+        const asset = await readyAsset();
+        const client = await pool.connect();
+        let updating: Promise<Response> | undefined;
+        const handlers = createMediaHttpHandlers({
+          withMediaService: (instance, work) =>
+            withRepositories(instance, ({ media }) => work(media)),
+          authorizeAction: async () => ({ ok: true }),
+          storagePort: {} as never,
+          emitAuditEvent: async () => undefined,
+        });
+        try {
+          await client.query('BEGIN');
+          const repository = repositoryForClient(client);
+          if (operation === 'metadata') {
+            await repository.upsertAsset({ ...asset, metadata: { tags: ['Concurrent tag'] } });
+          } else {
+            expect(await repository.claimAssetDeletion(tenant, assetId)).toBe(true);
+            expect(await repository.finalizeAssetDeletion(tenant, assetId)).toBe(true);
+          }
+          updating = handlers.updateMedia(
+            new Request(`http://localhost/api/v1/iam/media/${assetId}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ metadata: { title: 'New title' } }),
+            }),
+            { user: { id: 'actor', instanceId: tenant } } as never
+          );
+          await waitForAssetLock();
+          await client.query('COMMIT');
+          const response = await updating;
+          expect(response.status).toBe(operation === 'metadata' ? 200 : 404);
+          const persisted = await withRepositories(tenant, ({ media }) =>
+            media.getAssetById(tenant, assetId)
+          );
+          if (operation === 'metadata')
+            expect(persisted?.metadata).toEqual({ title: 'New title', tags: ['Concurrent tag'] });
+          else expect(persisted).toBeNull();
+        } finally {
+          await client.query('ROLLBACK');
+          client.release();
+          await updating;
+        }
+      }
+    );
 
     it('releases a terminally failed copy foundation and permits cleanup without subtracting booked usage', async () => {
       const source = {

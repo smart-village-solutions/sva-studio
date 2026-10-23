@@ -107,6 +107,7 @@ describe('media image editor boundary', () => {
     const loaded = await loadMediaImageEditorSource(
       {
         ...asset,
+        instanceId: 'selected-instance',
         localDraft: {
           id: 'draft',
           file: new File([], 'copy.png'),
@@ -116,10 +117,25 @@ describe('media image editor boundary', () => {
       signal
     );
     expect(getHostMediaEditing).toHaveBeenCalledWith(
-      expect.objectContaining({ assetId: 'root', signal })
+      expect.objectContaining({ assetId: 'root', instanceId: 'selected-instance', signal })
     );
     expect(loaded.document).toBe(document);
     expect(loaded.source).toEqual({ sourceAssetId: 'root' });
+  });
+  it('forwards the selected instance when opening an existing asset', async () => {
+    vi.mocked(getHostMediaEditing).mockResolvedValue({
+      assetId: 'a',
+      sourceAssetId: 'a',
+      sourceUrl: 'https://private.test/x',
+      sourceExpiresAt: 'soon',
+    });
+    await loadMediaImageEditorSource(
+      { ...asset, instanceId: 'selected-instance' },
+      new AbortController().signal
+    );
+    expect(getHostMediaEditing).toHaveBeenCalledWith(
+      expect.objectContaining({ assetId: 'a', instanceId: 'selected-instance' })
+    );
   });
   it('exports an explicitly encoded PNG with actual canvas dimensions', async () => {
     const canvas = document.createElement('canvas');

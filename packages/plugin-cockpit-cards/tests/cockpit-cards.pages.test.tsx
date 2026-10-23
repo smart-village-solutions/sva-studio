@@ -243,19 +243,6 @@ describe('cockpit cards pages', () => {
       deliveryUrl: 'https://example.test/persistent.jpg',
       isPublicUrl: true,
     });
-    state.updateAsset.mockResolvedValue({
-      id: 'image-1',
-      fileName: 'bild.jpg',
-      mimeType: 'image/jpeg',
-      visibility: 'public',
-      metadata: {
-        title: 'Neuer Titel',
-        altText: 'Alt',
-        description: 'Beschreibung',
-        copyright: 'Stadt',
-        license: 'CC0',
-      },
-    });
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
@@ -275,7 +262,8 @@ describe('cockpit cards pages', () => {
       expect(screen.getByDisplayValue('https://example.test/persistent.jpg')).toBeTruthy()
     );
     expect(state.getAsset).toHaveBeenCalledWith(expect.objectContaining({ assetId: 'image-1' }));
-    expect(state.updateAsset).toHaveBeenCalledWith(expect.objectContaining({ assetId: 'image-1' }));
+    expect(state.updateAsset).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('Neuer Alternativtext')).toBeTruthy();
     state.getAsset.mockResolvedValueOnce({
       id: 'image-1',
       mimeType: 'image/jpeg',

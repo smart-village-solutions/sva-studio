@@ -73,6 +73,7 @@ function useMediaAssets() {
           license: asset.metadata.license ?? '',
           tags: asset.metadata.tags,
         },
+        instanceId: asset.instanceId,
         hasEditingDocument: asset.hasEditingDocument,
       };
     },

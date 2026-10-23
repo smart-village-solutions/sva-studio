@@ -7,8 +7,9 @@ import { nitro } from 'nitro/vite';
 import { fileURLToPath, URL } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { instrument } from 'oxc-coverage-instrument';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createRequire } from 'node:module';
 import {
   createInstalledPluginInputsPlugin,
   createModulePublicCodePlugin,
@@ -308,7 +309,11 @@ const config = defineConfig({
       'react-style-singleton': resolveAppPath(
         '../../node_modules/.pnpm/node_modules/react-style-singleton/dist/es2015'
       ),
-      tslib: resolveAppPath('../../node_modules/.pnpm/node_modules/tslib/tslib.es6.mjs'),
+      tslib: createRequire(
+        realpathSync(
+          resolveAppPath('../../node_modules/.pnpm/node_modules/react-remove-scroll/package.json')
+        )
+      ).resolve('tslib/tslib.es6.mjs'),
       'use-callback-ref': resolveAppPath(
         '../../node_modules/.pnpm/node_modules/use-callback-ref/dist/es2015'
       ),

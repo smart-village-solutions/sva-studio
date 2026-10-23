@@ -54,6 +54,7 @@ export const loadMediaImageEditorSource = async (
   const loaded = await getHostMediaEditing({
     fetch: globalThis.fetch.bind(globalThis),
     assetId: editing?.sourceAssetId ?? asset.id,
+    instanceId: asset.instanceId,
     signal,
   });
   return {

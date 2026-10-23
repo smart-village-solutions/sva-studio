@@ -25,102 +25,109 @@ const createContext = (...args: [instanceId?: string]) =>
     },
   }) as never;
 
-const createService = () => ({
-  listAssets: vi.fn(async () => [{ id: 'asset-1' }]),
-  countAssets: vi.fn(async () => 31),
-  getAssetById: vi.fn(async (_instanceId: string, assetId: string) =>
-    assetId === 'missing'
-      ? null
-      : {
-          id: assetId,
-          instanceId: 'tenant-a',
-          storageKey: `tenant-a/originals/${assetId}.jpg`,
-          mediaType: 'image',
-          mimeType: 'image/jpeg',
-          byteSize: 1234,
-          visibility: 'protected',
-          uploadStatus: 'processed',
-          processingStatus: 'ready',
-          metadata: {},
-          technical: {},
-        }
-  ),
-  getAssetByStorageKey: vi.fn(async () => null),
-  getProvisionalAssetByDraft: vi.fn(async () => null),
-  getContentSaveOperation: vi.fn(async () => null),
-  lockOpenContentSaveOperationForUpload: vi.fn(async () => true),
-  createContentSaveOperation: vi.fn(async (input) => input),
-  replaceContentSaveOperationReferences: vi.fn(async () => true),
-  markContentSaveOperationContentSaved: vi.fn(async () => true),
-  commitContentSaveOperation: vi.fn(async () => true),
-  markContentSaveOperationAbandonPending: vi.fn(async () => true),
-  finalizeContentSaveOperationAbandoned: vi.fn(async () => true),
-  listAssetsByOperation: vi.fn(async () => []),
-  getUsageImpact: vi.fn(async (_instanceId: string, assetId: string) => ({
-    assetId,
-    totalReferences: 1,
-    references: [],
-  })),
-  getUploadSessionById: vi.fn(async (_instanceId: string, uploadSessionId: string) => ({
-    id: uploadSessionId,
-    instanceId: 'tenant-a',
-    assetId: 'asset-1',
-    storageKey: 'tenant-a/originals/asset-1.jpg',
-    mimeType: 'image/jpeg',
-    byteSize: 1234,
-    status: 'pending',
-  })),
-  getUploadSessionByAssetId: vi.fn(async () => null),
-  claimUploadSession: vi.fn(async (_instanceId: string, uploadSessionId: string) => ({
-    id: uploadSessionId,
-    instanceId: 'tenant-a',
-    assetId: 'asset-1',
-    storageKey: 'tenant-a/originals/asset-1.jpg',
-    mimeType: 'image/jpeg',
-    byteSize: 1234,
-    status: 'uploaded',
-    claimToken: '00000000-0000-4000-8000-000000000099',
-  })),
-  lockUploadSessionClaim: vi.fn(async () => true),
-  getStorageUsage: vi.fn(async () => null),
-  listVariantsByAssetId: vi.fn(async () => [
-    {
-      id: 'variant-1',
+const createService = () => {
+  const service = {
+    listAssets: vi.fn(async () => [{ id: 'asset-1' }]),
+    countAssets: vi.fn(async () => 31),
+    getAssetById: vi.fn(async (_instanceId: string, assetId: string) =>
+      assetId === 'missing'
+        ? null
+        : {
+            id: assetId,
+            instanceId: 'tenant-a',
+            storageKey: `tenant-a/originals/${assetId}.jpg`,
+            mediaType: 'image',
+            mimeType: 'image/jpeg',
+            byteSize: 1234,
+            visibility: 'protected',
+            uploadStatus: 'processed',
+            processingStatus: 'ready',
+            metadata: {},
+            technical: {},
+          }
+    ),
+    getAssetByStorageKey: vi.fn(async () => null),
+    getProvisionalAssetByDraft: vi.fn(async () => null),
+    getContentSaveOperation: vi.fn(async () => null),
+    lockOpenContentSaveOperationForUpload: vi.fn(async () => true),
+    createContentSaveOperation: vi.fn(async (input) => input),
+    replaceContentSaveOperationReferences: vi.fn(async () => true),
+    markContentSaveOperationContentSaved: vi.fn(async () => true),
+    commitContentSaveOperation: vi.fn(async () => true),
+    markContentSaveOperationAbandonPending: vi.fn(async () => true),
+    finalizeContentSaveOperationAbandoned: vi.fn(async () => true),
+    listAssetsByOperation: vi.fn(async () => []),
+    getUsageImpact: vi.fn(async (_instanceId: string, assetId: string) => ({
+      assetId,
+      totalReferences: 1,
+      references: [],
+    })),
+    getUploadSessionById: vi.fn(async (_instanceId: string, uploadSessionId: string) => ({
+      id: uploadSessionId,
+      instanceId: 'tenant-a',
       assetId: 'asset-1',
-      storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
-    },
-  ]),
-  listReferencesByTarget: vi.fn(async () => [
-    {
-      id: 'reference-1',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      status: 'pending',
+    })),
+    getUploadSessionByAssetId: vi.fn(async () => null),
+    claimUploadSession: vi.fn(async (_instanceId: string, uploadSessionId: string) => ({
+      id: uploadSessionId,
+      instanceId: 'tenant-a',
       assetId: 'asset-1',
-      targetType: 'news',
-      targetId: 'news-1',
-      role: 'teaser_image',
-    },
-  ]),
-  wouldExceedStorageQuota: vi.fn(async () => ({
-    instanceId: 'tenant-a',
-    currentBytes: 100,
-    additionalBytes: 200,
-    maxBytes: 1000,
-    wouldExceed: false,
-  })),
-  upsertAsset: vi.fn(async () => undefined),
-  upsertUploadSession: vi.fn(async () => undefined),
-  refreshPendingUploadSession: vi.fn(async () => true),
-  upsertVariant: vi.fn(async () => undefined),
-  upsertStorageUsage: vi.fn(async () => undefined),
-  applyStorageUsageDelta: vi.fn(async () => undefined),
-  tryApplyStorageUsageWithinQuota: vi.fn(async () => true),
-  deleteVariantsByAssetId: vi.fn(async () => undefined),
-  deleteAsset: vi.fn(async () => undefined),
-  claimAssetDeletion: vi.fn(async () => true),
-  finalizeAssetDeletion: vi.fn(async () => true),
-  listEditingCopies: vi.fn(async () => []),
-  listReferencesByAssetId: vi.fn(async () => []),
-  replaceReferences: vi.fn(async () => undefined),
-});
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      status: 'uploaded',
+      claimToken: '00000000-0000-4000-8000-000000000099',
+    })),
+    lockUploadSessionClaim: vi.fn(async () => true),
+    getStorageUsage: vi.fn(async () => null),
+    listVariantsByAssetId: vi.fn(async () => [
+      {
+        id: 'variant-1',
+        assetId: 'asset-1',
+        storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
+      },
+    ]),
+    listReferencesByTarget: vi.fn(async () => [
+      {
+        id: 'reference-1',
+        assetId: 'asset-1',
+        targetType: 'news',
+        targetId: 'news-1',
+        role: 'teaser_image',
+      },
+    ]),
+    wouldExceedStorageQuota: vi.fn(async () => ({
+      instanceId: 'tenant-a',
+      currentBytes: 100,
+      additionalBytes: 200,
+      maxBytes: 1000,
+      wouldExceed: false,
+    })),
+    upsertAsset: vi.fn(async () => undefined),
+    upsertUploadSession: vi.fn(async () => undefined),
+    refreshPendingUploadSession: vi.fn(async () => true),
+    upsertVariant: vi.fn(async () => undefined),
+    upsertStorageUsage: vi.fn(async () => undefined),
+    applyStorageUsageDelta: vi.fn(async () => undefined),
+    tryApplyStorageUsageWithinQuota: vi.fn(async () => true),
+    deleteVariantsByAssetId: vi.fn(async () => undefined),
+    deleteAsset: vi.fn(async () => undefined),
+    claimAssetDeletion: vi.fn(async () => true),
+    finalizeAssetDeletion: vi.fn(async () => true),
+    listEditingCopies: vi.fn(async () => []),
+    listReferencesByAssetId: vi.fn(async () => []),
+    replaceReferences: vi.fn(async () => undefined),
+  };
+  return Object.assign(service, {
+    lockAssetById: vi.fn((instanceId: string, assetId: string) =>
+      service.getAssetById(instanceId, assetId)
+    ),
+  });
+};
 
 describe('media http handlers', () => {
   it('blocks new bucket registrations and oversized uploads when scanning is active', async () => {
@@ -1870,6 +1877,61 @@ describe('media http handlers', () => {
     expect(service.upsertAsset).toHaveBeenCalledWith(
       expect.objectContaining({ storageKey: 'tenant-b/originals/photo.jpg' })
     );
+  });
+
+  it('merges a metadata patch into the current locked asset without reverting unrelated changes', async () => {
+    const service = createService();
+    const asset = await service.getAssetById('tenant-a', 'asset-1');
+    if (!asset) throw new Error('Missing test asset');
+    service.lockAssetById.mockResolvedValue({
+      ...asset,
+      metadata: { tags: ['Parallel gespeichert'] },
+      technical: { editingSourceBytes: 500, editingDocumentBytes: 200 },
+    });
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const response = await handlers.updateMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ metadata: { title: 'Neuer Titel' } }),
+      }),
+      createContext()
+    );
+    expect(response.status).toBe(200);
+    expect(service.upsertAsset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: { title: 'Neuer Titel', tags: ['Parallel gespeichert'] },
+        technical: { editingSourceBytes: 500, editingDocumentBytes: 200 },
+      })
+    );
+  });
+
+  it('does not recreate an asset deleted before the metadata transaction acquires its lock', async () => {
+    const service = createService();
+    service.lockAssetById.mockResolvedValue(null);
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const response = await handlers.updateMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ metadata: { title: 'Neuer Titel' } }),
+      }),
+      createContext()
+    );
+    expect(response.status).toBe(404);
+    expect(service.upsertAsset).not.toHaveBeenCalled();
   });
 
   it.each([

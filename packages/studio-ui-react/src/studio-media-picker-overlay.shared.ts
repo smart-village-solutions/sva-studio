@@ -33,6 +33,7 @@ export type StudioMediaPickerAssetSummary = Readonly<{
 
 export type StudioMediaPickerAssetDetail = StudioMediaPickerAssetSummary &
   Readonly<{
+    instanceId?: string;
     metadata: StudioMediaPickerMetadataDraft & { tags?: readonly string[] };
     centralMetadata?: StudioMediaPickerMetadataDraft;
     hasEditingDocument?: boolean;

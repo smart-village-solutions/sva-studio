@@ -77,6 +77,7 @@ const toPickerAsset = (
     mimeType: asset.mimeType,
     visibility: asset.visibility,
     previewUrl: asset.previewUrl,
+    instanceId: asset.instanceId,
     hasEditingDocument: asset.hasEditingDocument,
     metadata: {
       title: draft?.title ?? asset.metadata.title ?? '',

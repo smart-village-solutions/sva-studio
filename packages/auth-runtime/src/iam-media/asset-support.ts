@@ -3,6 +3,7 @@ import type { AuthenticatedRequestContext } from '../middleware.js';
 import { emitMediaAuditEvent, type MediaHttpHandlerDeps } from './http-support.js';
 import { getMediaRequestId as getRequestId } from './request-context.js';
 import type { MediaService } from './service.js';
+import { mergeMediaMetadata } from './metadata.js';
 
 export const canAccessMediaAsset = (
   asset: NonNullable<Awaited<ReturnType<MediaService['getAssetById']>>>,
@@ -96,12 +97,43 @@ export const rejectMediaMetadataChange = async (
 
 export const persistMediaMetadataUpdate = async (
   deps: MediaHttpHandlerDeps,
+  ctx: AuthenticatedRequestContext,
   instanceId: string,
-  asset: Parameters<MediaService['upsertAsset']>[0]
-): Promise<Response | null> => {
+  assetId: string,
+  patch: Readonly<{ visibility?: string; metadata: Readonly<Record<string, unknown>> }>
+): Promise<Response | Parameters<MediaService['upsertAsset']>[0]> => {
   try {
-    await deps.withMediaService(instanceId, (service) => service.upsertAsset(asset));
-    return null;
+    return await deps.withMediaService(instanceId, async (service) => {
+      const asset = await service.lockAssetById(instanceId, assetId);
+      if (!asset || !canAccessMediaAsset(asset, ctx.user.id)) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.metadataUpdate',
+          result: 'failure',
+          reasonCode: 'asset_not_found',
+          resourceType: 'media_asset',
+          resourceId: assetId,
+        });
+        return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
+      }
+      const rejected = await rejectMediaMetadataChange(
+        deps,
+        ctx,
+        instanceId,
+        asset,
+        patch.visibility
+      );
+      if (rejected) return rejected;
+      const updatedAsset = {
+        ...asset,
+        visibility: patch.visibility ?? asset.visibility,
+        metadata: mergeMediaMetadata(asset.metadata, patch.metadata),
+      };
+      await service.upsertAsset(updatedAsset);
+      return updatedAsset;
+    });
   } catch (error) {
     if (error instanceof Error && error.message === 'media_visibility_fixed')
       return createApiError(

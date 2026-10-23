@@ -10,11 +10,9 @@ import {
   resolveBodyScopedMediaInstanceId as resolveBodyScopedInstanceId,
   resolveScopedMediaInstanceId as resolveScopedInstanceId,
 } from './request-context.js';
-import { mergeMediaMetadata } from './metadata.js';
 import {
   canAccessMediaAsset,
   toMediaAssetResponse,
-  rejectMediaMetadataChange,
   persistMediaMetadataUpdate,
 } from './asset-support.js';
 import {
@@ -66,44 +64,12 @@ export const updateMedia = async (
     return mapAuthorizationFailure(authorization);
   }
 
-  const asset = await deps.withMediaService(instanceId, (service) =>
-    service.getAssetById(instanceId, assetId)
-  );
-  if (!asset || !canAccessMediaAsset(asset, ctx.user.id)) {
-    await emitMediaAuditEvent({
-      deps,
-      ctx,
-      instanceId,
-      actionId: 'media.metadataUpdate',
-      result: 'failure',
-      reasonCode: 'asset_not_found',
-      resourceType: 'media_asset',
-      resourceId: assetId,
-    });
-    return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
-  }
-
-  const visibilityError = await rejectMediaMetadataChange(
-    deps,
-    ctx,
-    instanceId,
-    asset,
-    parsed.data.visibility
-  );
-  if (visibilityError) return visibilityError;
+  const updatedAsset = await persistMediaMetadataUpdate(deps, ctx, instanceId, assetId, parsed.data);
+  if (updatedAsset instanceof Response) return updatedAsset;
 
   const usageImpact = await deps.withMediaService(instanceId, (service) =>
     service.getUsageImpact(instanceId, assetId)
   );
-
-  const updatedAsset = {
-    ...asset,
-    visibility: parsed.data.visibility ?? asset.visibility,
-    metadata: mergeMediaMetadata(asset.metadata, parsed.data.metadata),
-  };
-
-  const updateError = await persistMediaMetadataUpdate(deps, instanceId, updatedAsset);
-  if (updateError) return updateError;
 
   await emitMediaAuditEvent({
     deps,

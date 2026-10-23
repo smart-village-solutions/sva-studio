@@ -32,6 +32,8 @@ const useMediaImageEditor = (
   const [failed, setFailed] = React.useState(false);
   const [attempt, setAttempt] = React.useState(0);
   React.useEffect(() => {
+    // Vite removes the browser-only library from the production SSR dependency graph.
+    if ((import.meta as ImportMeta & { readonly env?: { readonly SSR?: boolean } }).env?.SSR) return;
     const controller = new AbortController();
     let source: Awaited<ReturnType<typeof loadMediaImageEditorSource>> | undefined;
     setLoaded(undefined);

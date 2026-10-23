@@ -61,6 +61,7 @@ const toMediaPickerDetail = (
       license: asset.metadata.license?.trim() ?? '',
       tags: asset.metadata.tags,
     },
+    instanceId: asset.instanceId,
     hasEditingDocument: asset.hasEditingDocument,
   };
 };

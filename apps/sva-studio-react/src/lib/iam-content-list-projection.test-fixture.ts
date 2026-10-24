@@ -13,7 +13,7 @@ const state = vi.hoisted(() => ({
   loggerDebug: vi.fn(),
   loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
-  resolveActorAccountId: vi.fn(),
+  resolveActorAccountIdWithProvision: vi.fn(),
   resolveEffectivePermissions: vi.fn(),
   withAuthenticatedUser: vi.fn(),
   readEffectiveSvaMainserverCredentialsWithStatus: vi.fn(),
@@ -53,7 +53,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   readEffectiveSvaMainserverCredentialsWithStatus:
     state.readEffectiveSvaMainserverCredentialsWithStatus,
   readMainserverScopeResolverMode: state.readMainserverScopeResolverMode,
-  resolveActorAccountId: state.resolveActorAccountId,
+  resolveActorAccountIdWithProvision: state.resolveActorAccountIdWithProvision,
   resolveEffectivePermissions: state.resolveEffectivePermissions,
   withAuthenticatedUser: state.withAuthenticatedUser,
   recordSuccessfulExternalContentDeletion: state.recordSuccessfulExternalContentDeletion,
@@ -157,7 +157,7 @@ export const registerProjectionFixture = (): void => {
     fixture.syncScopeKeyColumnAvailable = true;
     fixture.projectionScopeKeyColumnAvailable = true;
     state.authorizeContentPrimitiveForUser.mockReset();
-    state.resolveActorAccountId.mockReset();
+    state.resolveActorAccountIdWithProvision.mockReset();
     state.resolveEffectivePermissions.mockReset();
     state.withAuthenticatedUser
       .mockReset()
@@ -216,7 +216,7 @@ export const registerProjectionFixture = (): void => {
         { action: 'surveys.read', resourceType: 'surveys' },
       ],
     });
-    state.resolveActorAccountId.mockResolvedValue('account-1');
+    state.resolveActorAccountIdWithProvision.mockResolvedValue('account-1');
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockImplementation(
       async (input: { actingPrincipalType?: 'organization' | 'user' }) => ({
         status: 'ok',

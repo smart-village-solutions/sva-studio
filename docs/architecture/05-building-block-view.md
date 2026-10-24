@@ -57,6 +57,7 @@ Modulen der jeweiligen Bausteine.
    - der Startup-Guard in `auth.routes.server.ts` prüft ausschließlich das Auth-Route-Mapping gegen `authRoutePaths`; er ist keine allgemeine Plugin- oder Router-Vollständigkeitsprüfung
 4. Auth Runtime (`packages/auth-runtime`)
    - OIDC-Flows, Session-Store, Cookies, Auth-Middleware, Runtime-Health und Auth-/HTTP-Handler
+   - Instanzgebundene Akteur-Lookups der App verwenden die vorhandene Runtime-Komposition `resolveActorAccountIdWithProvision`; reine Lesezugriffe setzen `mayProvisionMissingActorMembership: false` und lösen keine JIT-Provisionierung aus.
    - die Governance-HTTP-Handler liegen getrennt nach Workflow, Fallliste, Compliance-/Consent-Export und Self-Service unter `iam-governance/`; `core.ts` bleibt der bestehende Route-Importvertrag, und gemeinsame DB-/Berechtigungshelfer bleiben auf diesen Handlerbereich begrenzt
    - der bestehende Plugin-Runtime-Snapshot trägt einen optionalen Account-Create-Beitrag; die gemeinsame Benutzeranlage ruft ihn auf oder erzeugt nur Core-Attribute und importiert keine SSF-Runtime
    - Runtime-Adapter für fachliche IAM-, Governance-, Content- und Registry-Routen
@@ -71,6 +72,7 @@ Modulen der jeweiligen Bausteine.
    - definiert den frameworkfreien Readiness- und Access-Entscheid für tenantbezogene Plugin-Lifecycles; Datenbanktopologie und Fachprüfungen bleiben plugin-owned
    - erweitert um deklarative `externalInterfaceTypes`, damit Plugins zusätzliche Schnittstellentyp-Metadaten beisteuern können, ohne eigene Persistenz- oder Secret-Pfade einzuführen
    - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities
+   - Die laufzeitgebundene Feldverschlüsselung (`getEncryptionConfig`, `protectField`, `revealField`) liegt in `@sva/server-runtime`; `iam-admin` und `auth-runtime` erhalten ihre bisherigen Exportpfade als Re-Exports derselben Implementierung und desselben Konfigurationscaches. Schlüsselauflösung, AAD und Produktions-Fallback bleiben unverändert.
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext, OTEL-Bootstrap und zentraler Resolver für External-Interface-Secrets und Statusprüfungen
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
    - Zielbild Plugin-Plattform v2: zusätzlich serialisierbarer Manifest-Vertrag, hostgeführter Katalog, Loader zur Snapshot-Materialisierung und host-owned Runtime-Boundaries für pluginseitige Server-, Job- und Integrationsbeiträge

@@ -57,3 +57,7 @@ Die Implementierung liegt für den PR auf `feature/vouchers-plugin-pr`. Mainserv
 - Strikte OpenSpec-Validierung, Dateiplatzierung, Dokumentationsprüfung und `git diff --check` erfolgreich.
 
 **4.4 bleibt offen**, bis die vollständigen finalen CI-/Coverage-Gates und die dafür erforderlichen Nachweise vorliegen. Ein grüner lokaler Unit-Lauf wird nicht als bestandene Live-Abnahme oder als Freigabe für Production gewertet.
+
+### PR #1972 auf aktuellem main
+
+Der isolierte PR-Worktree basiert auf `58dafeba5` und enthält keine fremden Keycloak-/Smoke-Änderungen. Auf dieser Basis wurden `nx run plugin-vouchers:test:coverage` (46 Tests, identische Coverage) sowie `complexity-gate --base=origin/main` erneut erfolgreich ausgeführt. Das diffbezogene Komplexitätsgate prüft jetzt 66 Dateien: keine neuen Findings, ein bestehender getrackter Export-Befund in `service.ts`. Die weiter oben genannten roten globalen Befunde beziehen sich auf den früheren, vollständigen Lauf vor der Aktualisierung der Basis und sind kein aktueller PR-Gatestatus. Vollständige GitHub-CI und Live-Abnahmen bleiben gesondert offen.

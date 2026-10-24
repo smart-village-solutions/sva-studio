@@ -9,12 +9,30 @@ import {
   getProjectionTestState,
 } from './iam-content-list-projection.test-fixture.js';
 
+import { resolveProjectionActorAccountId } from './iam-content-list-projection-authorization.server.js';
+
 import { reauthorizeProjectionRecovery } from './iam-content-list-projection.server';
 
 const state = getProjectionTestState();
 
 describe('content projection authorization and blocking', () => {
   registerProjectionFixture();
+
+  it('uses the tenant-bound actor lookup without provisioning accounts', async () => {
+    await expect(resolveProjectionActorAccountId({
+      ctx,
+      instanceId: 'de-musterhausen',
+      mainserverTypes: ['news.article'],
+      visibilityRules: [],
+      permissions: [],
+    })).resolves.toBe('account-1');
+    expect(state.resolveActorAccountIdWithProvision).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: ctx.user.id,
+      mayProvisionMissingActorMembership: false,
+    });
+    expect(state.withInstanceScopedDb).not.toHaveBeenCalled();
+  });
 
   it('does not let a recovery flag bypass content-read authorization', async () => {
     state.resolveEffectivePermissions.mockResolvedValue({ ok: true, permissions: [] });

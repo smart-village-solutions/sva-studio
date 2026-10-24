@@ -19,9 +19,9 @@
   "dependencies": {
     "@sva/plugin-sdk": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "^5.9.1",
     "react-hook-form": "^7.80.0",
-    "zod": "^3.25.76"
+    "zod": "^4.6.6"
   },
   "peerDependencies": {
     "@tanstack/react-router": "^1.170.8",
@@ -33,7 +33,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitest/coverage-v8": "^5.0.3",
-    "happy-dom": "^20.14.5",
+    "happy-dom": "^21.0.4",
     "vitest": "^5.0.3"
   }
 }

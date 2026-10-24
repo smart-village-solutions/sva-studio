@@ -384,7 +384,7 @@ describe('content projection reconciliation scopes', () => {
       force: true,
     });
 
-    state.resolveActorAccountId.mockResolvedValue('account-2');
+    state.resolveActorAccountIdWithProvision.mockResolvedValue('account-2');
     state.listSvaMainserverNews.mockRejectedValue(new Error('account-2 refresh blocked'));
 
     const response = await listProjectedContents(
@@ -578,7 +578,7 @@ describe('content projection reconciliation scopes', () => {
   });
 
   it('returns a deterministic API error when manual refresh cannot resolve the actor account', async () => {
-    state.resolveActorAccountId.mockRejectedValueOnce(new Error('db unavailable'));
+    state.resolveActorAccountIdWithProvision.mockRejectedValueOnce(new Error('db unavailable'));
 
     const response = await refreshProjectedContents(ctx, {
       visibleTypes: ['news.article'],
@@ -596,7 +596,7 @@ describe('content projection reconciliation scopes', () => {
   });
 
   it('returns a deterministic API error when manual refresh gets no actor account for mainserver types', async () => {
-    state.resolveActorAccountId.mockResolvedValueOnce(undefined);
+    state.resolveActorAccountIdWithProvision.mockResolvedValueOnce(undefined);
 
     const response = await refreshProjectedContents(ctx, {
       visibleTypes: ['news.article'],

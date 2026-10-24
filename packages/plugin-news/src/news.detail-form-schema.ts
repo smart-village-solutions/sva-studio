@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { isPersistableManualContentMediaUrl } from '@sva/studio-ui-react';
 import { z } from 'zod';
-import type { NewsDetailEditorialFormValues, NewsMediaContentFormValue } from './news.types.js';
+import type { NewsDetailEditorialFormValues, NewsDetailFormValues, NewsMediaContentFormValue } from './news.types.js';
 
 const isValidDateString = (value: string): boolean =>
   Number.isNaN(new Date(value).getTime()) === false;
@@ -70,7 +70,7 @@ const legacySnapshotSchema = z
       .optional(),
     pointOfInterestId: z.string().optional(),
     pushNotificationsSentAt: z.string().optional(),
-    payload: z.record(z.unknown()).optional(),
+    payload: z.record(z.string(), z.unknown()).optional(),
     legacyContentBlocks: z
       .array(
         z.object({
@@ -205,7 +205,9 @@ export const newsDetailFormSchema = z
     }
   });
 
-export const newsDetailFormResolver = zodResolver(newsDetailFormSchema as never);
+export const newsDetailFormResolver = zodResolver<NewsDetailFormValues, unknown, NewsDetailFormValues>(
+  z.preprocess((values: NewsDetailFormValues) => values, newsDetailFormSchema)
+);
 
 export const syncPublicationModeFromPublishedAt = (
   values: NewsDetailEditorialFormValues,

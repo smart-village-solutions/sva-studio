@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   compareCockpitCardRecords,
+  cockpitCardFormSchema,
   isCockpitCardGenericItem,
   mapCockpitCardFormValuesToGenericItemInput,
   mapGenericItemToCockpitCardFormValues,
@@ -22,6 +23,10 @@ const values = {
 };
 
 describe('cockpit card model', () => {
+  it('normalizes an omitted optional link to the form string default', () => {
+    expect(cockpitCardFormSchema.parse({ ...values, link: undefined }).link).toBe('');
+  });
+
   it('maps the constrained form to GenericItem fields and preserves payload', () => {
     expect(
       mapCockpitCardFormValuesToGenericItemInput(values, {

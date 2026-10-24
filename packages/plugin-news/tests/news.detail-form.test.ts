@@ -260,6 +260,15 @@ describe('news.detail-form', () => {
     });
   });
 
+  it('retains the location-key default when parsing older form values', () => {
+    const values = createDefaultNewsDetailFormValues();
+    expect(newsDetailFormSchema.parse({
+      ...values,
+      title: 'News title',
+      wasteLocationKeys: undefined,
+    }).wasteLocationKeys).toEqual([]);
+  });
+
   it('accepts the simplified schema without public legacy fields', async () => {
     await expect(
       newsDetailFormSchema.parseAsync({

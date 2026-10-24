@@ -175,7 +175,6 @@ export const eventsDECreate = {
   createHidden: 'Verborgen speichern',
   intro:
     'Erstellen Sie eine Veranstaltung. Beginnen Sie mit Titel, Termin und Ort; weitere Angaben können Sie ergänzen.',
-  navigation: 'Zu einem Formularabschnitt springen',
   optional: 'optional',
   filled: 'Angaben vorhanden',
   empty: 'Noch keine Angaben',

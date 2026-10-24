@@ -115,17 +115,11 @@ export function SurveyCreateFields({
   const { control } = useFormContext<SurveyDetailFormValues>();
   const basis = useWatch({ control, name: 'basis' });
   return (
-    <StudioSection>
+    <StudioSection className="space-y-6">
       <p>{pt('create.intro')}</p>
-      <nav aria-label={pt('create.navigation')} className="flex flex-wrap gap-2 text-sm [&_a]:rounded-md [&_a]:border [&_a]:border-border [&_a]:px-3 [&_a]:py-2 [&_a]:text-primary hover:[&_a]:underline">
-        <a href="#survey-create-text">{pt('create.text')}</a>
-        <a href="#survey-create-questions">{pt('cards.content.questions.title')}</a>
-        <a href="#survey-create-participation">{pt('create.participation')}</a>
-        <a href="#survey-create-status">{pt('fields.status')}</a>
-      </nav>
-      <section id="survey-create-text" tabIndex={-1}>
+      <section id="survey-create-text" tabIndex={-1} className="space-y-4">
         <SurveyIdentityCard pt={pt} titleOnly />
-        <details>
+        <details className="open:space-y-4">
           <summary>{pt('cards.content.descriptions.title')}</summary>
           <SurveyDescriptionCard pt={pt} />
         </details>
@@ -138,26 +132,26 @@ export function SurveyCreateFields({
           <SurveyQuestionListEditor pt={pt} createMode />
         </SurveyDetailCard>
       </section>
-      <section id="survey-create-participation" tabIndex={-1}>
-        <details>
+      <section id="survey-create-participation" tabIndex={-1} className="space-y-4">
+        <details className="open:space-y-4">
           <summary>{pt('cards.basis.targetArea.title')}</summary>
           <SurveyTargetAreaCard pt={pt} availableTargetAreas={[]} />
         </details>
-        <details>
+        <details className="open:space-y-4">
           <summary>{pt('cards.basis.schedule.title')}</summary>
           <SurveyScheduleCard pt={pt} />
         </details>
         <SurveyParticipationCard pt={pt} section="anonymity" createMode />
-        <details>
+        <details className="open:space-y-4">
           <summary>{pt('create.results')}</summary>
           <SurveyParticipationCard pt={pt} section="results" createMode />
         </details>
       </section>
-      <section id="survey-create-status" tabIndex={-1}>
+      <section id="survey-create-status" tabIndex={-1} className="space-y-3">
         <SurveyDetailCard title={pt('fields.status')} description={pt('create.help.status')}>
           <SurveyStatusField pt={pt} />
         </SurveyDetailCard>
-        <p>
+        <p className="text-sm text-muted-foreground">
           {pt('create.effect.schedule', {
             start: basis.startAt || pt('create.noLimit'),
             end: basis.endAt || pt('create.noLimit'),

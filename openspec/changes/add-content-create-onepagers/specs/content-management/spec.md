@@ -157,7 +157,7 @@ Das System SHALL vorhandene Feldabschnitte, Formularzustände und Submit-Pfade f
 
 - **WHEN** ein Benutzer Events, POI, generische Inhalte oder Umfragen auf schmalem Bildschirm öffnet
 - **THEN** bleiben Feld-, DOM- und Fokusreihenfolge fachlich identisch zur breiten Darstellung
-- **AND** führt die kompakte Sprungnavigation zu sichtbaren Abschnitten ohne Tab- oder Routenwechsel
+- **AND** führt das Formular ohne vorgelagerte Bereichsliste linear durch die Abschnitte
 
 
 ### Requirement: Redaktionelle Onepager geben aufgabenbezogene Orientierung
@@ -291,11 +291,11 @@ Das System SHALL an den durch den Onepager veränderten Darstellungsstellen best
 - **THEN** bleibt die bestehende Rückmeldung mit Öffnen-Aktion für die gespeicherte ID erhalten
 - **AND** wird keine erneute Anlage angeboten und ein angebundener Verlassensschutz behandelt den Save als bestätigt
 
-#### Scenario: Sprungnavigation wird bei geänderten Eingaben verwendet
+#### Scenario: Zusatzbereich wird bei geänderten Eingaben geöffnet
 
-- **WHEN** ein Redakteur einen Abschnittssprung innerhalb des Formulars aktiviert
-- **THEN** löst der Sprung keine Verlassenswarnung aus
-- **AND** liegt das native Sprungziel auf einer sichtbaren Überschrift beziehungsweise einem Klapptrigger und ermöglicht eine nachvollziehbare Tastaturfortsetzung
+- **WHEN** ein Redakteur einen nativen Klapptrigger im Formular aktiviert
+- **THEN** öffnet sich der Zusatzbereich ohne Verlassenswarnung
+- **AND** bleiben vorhandene Eingaben erhalten und die Felder per Tastatur erreichbar
 
 
 #### Scenario: Weitere Eingaben entstehen während Save oder Medien-Retry

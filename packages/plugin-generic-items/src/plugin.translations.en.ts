@@ -8,7 +8,6 @@ export const genericItemsTranslationsEn = {
     create: {
       heading: 'Generic content',
       optional: 'Optional',
-      navigation: 'Jump to a content section',
       technical: 'Additional technical details (optional)',
       technicalPresent: 'Details entered',
       technicalEmpty: 'No additional details',

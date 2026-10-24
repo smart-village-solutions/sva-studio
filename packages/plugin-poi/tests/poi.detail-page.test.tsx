@@ -686,11 +686,7 @@ describe('PoiDetailPage', () => {
     fireEvent.click(screen.getByLabelText('Aktiv'));
     expect(screen.getAllByRole('button', { name: 'Aktiv anlegen' })).toHaveLength(1);
     expect(screen.getByText('poi.create.activeEffect')).toBeTruthy();
-    expect(document.querySelector('nav a')?.getAttribute('href')).toBe('#poi-create-name');
-    const sectionTarget = document.getElementById('poi-create-media')!;
-    fireEvent.click(document.querySelector('a[href="#poi-create-media"]')!);
-    expect(document.activeElement).toBe(sectionTarget);
-    expect(sectionTarget.closest('details')?.open).toBe(false);
+    expect(document.querySelector('nav')).toBeNull();
     expect(hasUnsavedChanges()).toBe(true);
   });
 

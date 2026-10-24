@@ -14,7 +14,6 @@ export function PoiDetailCreate({
 }: Readonly<{ view: PoiDetailPageViewModel; content: ReactNode }>) {
   const { pt, methods } = view;
   const externalId = useWatch({ control: methods.control, name: 'settings.externalId' });
-  const nav = ['name', 'location', 'description', 'media', 'active'] as const;
   const basisProps = { ...view, availableCategories: view.categoryOptions };
   return (
     <div className="space-y-6">
@@ -24,26 +23,6 @@ export function PoiDetailCreate({
           {pt('create.categoryUnavailable')}
         </p>
       ) : null}
-      <nav
-        aria-label={pt('create.navigation')}
-        className="flex flex-wrap gap-2 text-sm [&_a]:rounded-md [&_a]:border [&_a]:border-border [&_a]:px-3 [&_a]:py-2 [&_a]:text-primary [&_a]:underline-offset-4 hover:[&_a]:underline"
-      >
-        {nav.map((id) => (
-          <a
-            key={id}
-            href={`#poi-create-${id}`}
-            onClick={(event) => {
-              const target = event.currentTarget.ownerDocument.getElementById(`poi-create-${id}`);
-              if (!target) return;
-              event.preventDefault();
-              target.focus();
-              target.scrollIntoView?.({ block: 'start' });
-            }}
-          >
-            {pt(`create.sections.${id}`)}
-          </a>
-        ))}
-      </nav>
       <div id="poi-create-name" tabIndex={-1}>
         <PoiDetailBasisTab {...basisProps} section="name" />
       </div>

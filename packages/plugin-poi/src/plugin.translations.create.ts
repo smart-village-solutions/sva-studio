@@ -15,7 +15,6 @@ export const poiCreateTranslations = {
     createInactive: 'Verborgen speichern',
     intro:
       'Erstellen Sie einen Ort. Beginnen Sie mit Name und Standort; Bilder und weitere Angaben können Sie ergänzen.',
-    navigation: 'Zu einem Formularabschnitt springen',
     optional: 'optional',
     filled: 'Angaben vorhanden',
     empty: 'Noch keine Angaben',
@@ -54,7 +53,6 @@ export const poiCreateTranslations = {
     createInactive: 'Save hidden',
     intro:
       'Create a place. Start with its name and location; add images and further details as needed.',
-    navigation: 'Jump to a form section',
     optional: 'optional',
     filled: 'Details entered',
     empty: 'No details yet',

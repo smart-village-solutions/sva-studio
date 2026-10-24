@@ -127,3 +127,17 @@ Die spätere ausdrückliche Nutzerfreigabe ersetzt die vorherige Begrenzung „n
 - Nach dem ersten Push meldete das strengere App-Type-Gate zwei ungenutzte Bindings in den berührten Plugin-Dateien. Beide sind entfernt; `pnpm nx run sva-studio-react:test:types` ist einschließlich der 29 abhängigen Targets lokal grün. Keine zusätzliche Logik und keine Test-/Konfigurationsänderung.
 
 - Der vollständige CI-Coverage-Lauf für `b23283d18` zeigte bei Umfragen 98,81 % Funktionsabdeckung gegenüber dem unveränderten Minimum von 99 %. Das Coverage-Artefakt identifizierte den ausgelagerten `SurveyCreatedResult` als ungetestet. Zwei Fälle im vorhandenen Seitentest prüfen nun den Link zum bestätigten Datensatz, die Sperre doppelter Anlage und den weiter editierbaren, gewarnten Zustand bei späteren Eingaben. Der gezielte Plugin-Coverage-Lauf ist grün; die vorhandene Floor-/Regressionsauswertung bewertet 99,21 % Funktionen ohne Fehler. Produktionscode, Grenzwerte und Baseline bleiben unverändert.
+
+## Redaktionelle Vereinfachung (freigegeben 24.10.2026)
+
+- [x] Gemeinsame Create-Aktionen und kompakte feste Identität
+- [x] Sieben redaktionelle Create-Kompositionen vereinfachen; Edit und generische Inhalte erhalten
+- [x] Sichere Create-Defaults und bedingte Push-/Ergebnisoptionen
+- [x] Verständliche Fehler und i18n (de/en)
+- [x] Gezielte Unit-/Typ-/Lint-Prüfungen und Browser-Nachweis
+
+### Nachweise der redaktionellen Vereinfachung
+
+- Umsetzung auf `feature/content-create-usability` vom aktuellen `origin/main` nach Merge von PR #1959. Maximale Bereiche: sieben redaktionelle Plugin-Editoren, vorhandene UI-Komponenten und ihre Tests/Übersetzungen sowie bestehende OpenSpec-/Architekturdokumentation. Generische Inhalte, Server-/DB-Verträge, IAM-Regeln, SDK und Deployment sind nicht geändert. Keine neuen Dateien, Packages, Dependencies oder Renderer.
+- Gezielt geprüft: Unit-Tests der sieben Editorpfade, sichere Create-Defaults, unveränderte gespeicherte Sichtbarkeit, Verlassensschutz, fehlgeschlagene/gleichzeitige Saves, bedingte Ergebnisfreigabe ohne Wertverlust, verständliche Credential-Fehler ohne Backenddetails sowie gemeinsame Principal- und Fehlerfokus-Komponenten. Plugin-/UI-Typechecks und Lint sowie der vollständige App-Typecheck sind grün.
+- Chromium mit lokalen Mock-Daten: alle sieben Create-Seiten bei 1280 und 390 Pixeln ohne horizontales Überlaufen und mit einer erreichbaren Speicheraktion; zusätzlich FAQ-CRUD, automatischem Accessibility-Check mit Axe und Verlassensschutz sowie News-CRUD mit optionaler Einleitung, Medien und Push. Eine fokussierte Datumsangabe bleibt auf schmalem Bildschirm oberhalb der Aktionsleiste; die Assertion wartet auf die vorhandene native Scrollanimation. Screenshots wurden visuell geprüft. Keine Anmeldung oder Mutation in externen Umgebungen; ein menschlicher Redakteurstest wird damit nicht behauptet.

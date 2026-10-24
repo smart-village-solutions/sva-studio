@@ -101,12 +101,28 @@ const FaqEditorPrimaryAction = ({
     </div>
   ) : undefined;
 
+function FaqPrincipal(props: FaqEditorViewProps) {
+  return (
+    <MainserverPrincipalControl
+      fixedLabel={props.mode === 'create' ? props.pt('create.responsible') : undefined}
+      id="faq-acting-principal"
+      label={props.pt(props.mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+      description={props.pt('principal.description')}
+      value={props.actingPrincipalType}
+      options={resolveMainserverPrincipalOptions(props.principalControl, {
+        value: props.actingPrincipalType,
+        label: props.pt(`principal.${props.actingPrincipalType}`),
+      })}
+      onChange={props.setActingPrincipalType}
+    />
+  );
+}
+
 export const FaqEditorView = (props: FaqEditorViewProps) => (
   <StudioDetailPageTemplate
+    stickyActions={props.mode === 'create'}
     title={props.pt(props.mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}
-    description={props.pt(
-      props.mode === 'create' ? 'editor.createDescription' : 'editor.editDescription'
-    )}
+    description={props.mode === 'edit' ? props.pt('editor.editDescription') : undefined}
     actions={
       <FaqEditorActions
         canDelete={props.canDelete}
@@ -135,17 +151,7 @@ export const FaqEditorView = (props: FaqEditorViewProps) => (
           title={props.pt('validation.summaryTitle')}
           onSelectError={({ field }) => props.setActiveTab(fieldTabs[field] ?? 'basis')}
         />
-        <MainserverPrincipalControl
-          id="faq-acting-principal"
-          label={props.pt(props.mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-          description={props.pt('principal.description')}
-          value={props.actingPrincipalType}
-          options={resolveMainserverPrincipalOptions(props.principalControl, {
-            value: props.actingPrincipalType,
-            label: props.pt(`principal.${props.actingPrincipalType}`),
-          })}
-          onChange={props.setActingPrincipalType}
-        />
+        {props.mode === 'edit' ? <FaqPrincipal {...props} /> : null}
         {props.mode === 'create' ? (
           <p className="text-sm text-muted-foreground">{props.pt('create.intro')}</p>
         ) : null}
@@ -157,6 +163,7 @@ export const FaqEditorView = (props: FaqEditorViewProps) => (
           onTabChange={props.setActiveTab}
           pt={props.pt}
         />
+        {props.mode === 'create' ? <FaqPrincipal {...props} /> : null}
       </form>
     </FormProvider>
     {props.canDelete ? (

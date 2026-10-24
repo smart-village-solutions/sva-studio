@@ -85,6 +85,20 @@ export function PoiDetailBasisTab({
     section ? summaryFields[section] : [nameField, categoryField]
   );
 
+  if (section === 'name')
+    return (
+      <div className="space-y-3">
+      <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationError')} />
+      <StudioField {...nameField} label={pt('fields.name')} required>
+        <Input
+          {...nameField.controlProps}
+          required
+          value={name}
+          onChange={(event) => setValue('name', event.target.value, { shouldDirty: true })}
+        />
+      </StudioField>
+      </div>
+    );
   return (
     <div className="space-y-6">
       <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationError')} />
@@ -92,7 +106,7 @@ export function PoiDetailBasisTab({
         title={pt(section ? `fields.${section}` : 'cards.basis.identity.title')}
         description={pt(section ? `create.${section}Help` : 'cards.basis.identity.description')}
       >
-        {!section || section === 'name' ? (
+        {!section ? (
           <StudioField {...nameField} label={pt('fields.name')} required>
             <Input
               {...nameField.controlProps}
@@ -115,9 +129,9 @@ export function PoiDetailBasisTab({
                 <PoiCategoryMultiselect
                   availableCategories={availableCategories}
                   emptyText={pt('fields.categoriesEmpty')}
-                  errorMessage={categoryOptionsError ?? undefined}
+                  errorMessage={categoryOptionsError ? pt('create.categoryUnavailable') : undefined}
                   loading={categoryOptionsLoading}
-                  helpText={pt('fields.categoriesHelp')}
+                  helpText=""
                   inputId="poi-category"
                   inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
                   loadingText={pt('messages.categoryOptionsLoading')}

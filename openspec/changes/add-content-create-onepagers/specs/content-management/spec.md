@@ -105,7 +105,7 @@ Das System MUST FAQ und Kacheln weiterhin ausschließlich über ihre jeweiligen 
 
 ### Requirement: Redaktionelle Neuanlage verwendet typgerechte Onepager
 
-Das System SHALL für Nachrichten, Veranstaltungen, POI, generische Inhalte, FAQ, Cockpit-Karten, Projekte und Umfragen die bestehenden Create-Routen als durchgehende Onepager ohne Editor-Tabs darstellen. Feldreihenfolge, Gruppierung und Zusatzabschnitte SHALL den acht typbezogenen Listen des Change-Designs entsprechen. Vorhandene Fachfelder, Defaults, Pflichtigkeit, Berechtigungen und Mutationsverträge SHALL erhalten bleiben. Die Kategorienverwaltung, Abfallwirtschaft und der generische Kern-Inhaltseditor sind von dieser Layoutmigration ausgeschlossen; vorhandene Kategorienauswahlen und News-Push-Zielgebiete bleiben innerhalb der acht Formulare verfügbar.
+Das System SHALL für Nachrichten, Veranstaltungen, POI, generische Inhalte, FAQ, Cockpit-Karten, Projekte und Umfragen die bestehenden Create-Routen als durchgehende Onepager ohne Editor-Tabs darstellen. Feldreihenfolge, Gruppierung und Zusatzabschnitte SHALL den acht typbezogenen Listen des Change-Designs entsprechen. Vorhandene Fachfelder, Pflichtigkeit, Berechtigungen und Mutationsverträge SHALL erhalten bleiben. Neue Orte und Veranstaltungen SHALL mit deaktivierter öffentlicher Sichtbarkeit starten; gespeicherte Werte bleiben unverändert. Die Kategorienverwaltung, Abfallwirtschaft und der generische Kern-Inhaltseditor sind von dieser Layoutmigration ausgeschlossen; vorhandene Kategorienauswahlen und News-Push-Zielgebiete bleiben innerhalb der acht Formulare verfügbar.
 
 #### Scenario: Ein neuer redaktioneller Inhalt wird erfasst
 
@@ -147,10 +147,10 @@ Das System SHALL vorhandene Feldabschnitte, Formularzustände und Submit-Pfade f
 - **AND** sind Fehlermeldung und Feld per Tastatur und gegebenenfalls Fehlerzusammenfassung erreichbar
 - **AND** bleiben alle Eingaben nach fehlgeschlagenem Speichern erhalten
 
-#### Scenario: Derselbe Inhalt wird über eine der beiden Aktionen angelegt
+#### Scenario: Derselbe Submit-Pfad bleibt erhalten
 
-- **WHEN** der Benutzer die Anlegen-Aktion im Seitenkopf oder nach dem letzten Formularabschnitt auslöst
-- **THEN** verwenden beide denselben bestehenden Submit-Pfad und identische Lade-, Disabled- und Berechtigungszustände
+- **WHEN** der Benutzer die beim Scrollen erreichbare redaktionelle Create-Aktion auslöst
+- **THEN** verwendet sie denselben bestehenden Submit-Pfad und dessen Lade-, Disabled- und Berechtigungszustände
 - **AND** entstehen keine separaten Abschnitts-Submits oder neuen Persistenzpfade
 
 #### Scenario: Komplexes Formular wird auf schmalem Bildschirm bedient
@@ -162,7 +162,7 @@ Das System SHALL vorhandene Feldabschnitte, Formularzustände und Submit-Pfade f
 
 ### Requirement: Redaktionelle Onepager geben aufgabenbezogene Orientierung
 
-Das System SHALL für Nachrichten, Veranstaltungen, POI, FAQ, Cockpit-Karten, Projekte und Umfragen eine kurze typbezogene Einstiegshilfe sowie verständliche Abschnittsnamen und direkt zugeordnete Feldhilfen anbieten. Bestehende Pflichtangaben und optionale Ergänzungen SHALL eindeutig und zugänglich erkennbar sein, ohne Pflichtigkeit, Defaults oder Validierungen zu verändern. Generische Inhalte bleiben ein technischer Sonderfall ohne redaktionellen Einsteigerflow; die gemeinsamen technischen und Accessibility-Anforderungen gelten weiterhin.
+Das System SHALL für Nachrichten, Veranstaltungen, POI, FAQ, Cockpit-Karten, Projekte und Umfragen eine kurze typbezogene Einstiegshilfe sowie verständliche Abschnittsnamen und direkt zugeordnete Feldhilfen anbieten. Bestehende Pflichtangaben und optionale Ergänzungen SHALL eindeutig und zugänglich erkennbar sein, ohne Pflichtigkeit oder Validierungen zu verändern; die explizit freigegebenen verborgenen Create-Defaults für Orte und Veranstaltungen gelten. Generische Inhalte bleiben ein technischer Sonderfall ohne redaktionellen Einsteigerflow; die gemeinsamen technischen und Accessibility-Anforderungen gelten weiterhin.
 
 #### Scenario: Ungeschulter Redakteur beginnt einen Inhalt
 
@@ -182,7 +182,7 @@ Das System SHALL für Nachrichten, Veranstaltungen, POI, FAQ, Cockpit-Karten, Pr
 
 ### Requirement: Create erklärt die tatsächliche Speicher- und Veröffentlichungswirkung
 
-Das System SHALL unmittelbar bei den abschließenden Aktionen am Formularende die aus bestehenden Einstellungen und Verträgen ableitbare Speicher-, Status- beziehungsweise Veröffentlichungswirkung verständlich erklären. Die Erklärung SHALL auf Änderungen der maßgeblichen Eingaben reagieren. Die obere Aktion SHALL dieselbe Wirkung durch eine kurze zustandsabhängige Bezeichnung und gegebenenfalls einen Push-Hinweis erkennen lassen, ohne zweite ausführliche Zusammenfassung. Sie SHALL keine neue Status-, Terminierungs- oder Versandlogik einführen und keine unbelegte Wirkung behaupten.
+Das System SHALL unmittelbar bei den abschließenden Aktionen am Formularende die aus bestehenden Einstellungen und Verträgen ableitbare Speicher-, Status- beziehungsweise Veröffentlichungswirkung verständlich erklären. Die Erklärung SHALL auf Änderungen der maßgeblichen Eingaben reagieren. Die redaktionelle Create-Aktion SHALL beim Scrollen erreichbar sein und dieselbe Wirkung durch ihre zustandsabhängige Bezeichnung erkennen lassen. Sie SHALL keine neue Status-, Terminierungs- oder Versandlogik einführen und keine unbelegte Wirkung behaupten.
 
 #### Scenario: Nachrichten-Einstellungen ändern sich
 
@@ -280,8 +280,8 @@ Das System SHALL an den durch den Onepager veränderten Darstellungsstellen best
 
 #### Scenario: Submit läuft bereits
 
-- **WHEN** das Anlegen über einen der beiden Submit-Auslöser läuft
-- **THEN** sind beide Auslöser über denselben Zustand gegen paralleles Auslösen gesperrt
+- **WHEN** das Anlegen über den bestehenden Submit-Auslöser läuft
+- **THEN** ist erneutes Absenden über den bestehenden Zustand gesperrt
 - **AND** folgen Erfolg und Navigation ausschließlich dem bestätigten Ergebnis
 
 
@@ -312,3 +312,20 @@ Das System SHALL an den durch den Onepager veränderten Darstellungsstellen best
 - **THEN** bleibt eine zweite Create-Mutation gesperrt
 - **AND** bietet der bestehende Statusbereich einen Link zur vorhandenen Edit-Route des gespeicherten Inhalts
 - **AND** durchläuft dieser Link bei weiteren offenen Änderungen dieselbe Verlassenswarnung
+
+#### Scenario: Redaktioneller Einstieg mit erreichbarer Speicherwirkung
+
+- **WHEN** ein Redakteur einen der sieben redaktionellen Inhaltstypen neu anlegt
+- **THEN** stehen Titel und Kernaufgabe vor optionalen Ergänzungen
+- **AND** bleibt die bestehende Speicheraktion mit ihrer tatsächlichen Wirkung beim Scrollen erreichbar
+- **AND** erscheint eine feste verantwortliche Identität als Text, während mehrere Identitäten auswählbar bleiben
+- **AND** werden Zusatzbereiche bei einem zugeordneten Validierungsfehler geöffnet, ohne Eingaben zu verlieren
+
+#### Scenario: Abhängige Optionen ohne Wertverlust
+
+- **WHEN** eine neue Nachricht nicht sofort veröffentlicht wird
+- **THEN** bleiben Push-Controls verborgen und der bestehende Rücksetzvertrag gilt
+- **AND** erscheint die Zielgebietsauswahl erst bei aktiviertem Push
+- **WHEN** bei einer neuen Umfrage die Ergebnisanzeige ausgeschaltet wird
+- **THEN** bleibt die Ergebnisfreigabe verborgen, ihr eingegebener Wert aber erhalten
+- **AND** bleiben Anonymität sowie Datenschutz- und Transparenzhinweise direkt zugänglich

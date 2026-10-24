@@ -10,6 +10,14 @@ import { validatePoiForm } from '../src/poi.validation.js';
 import type { PoiContentItem } from '../src/poi.types.js';
 
 describe('poi.detail-form', () => {
+  it('creates hidden content and serializes only an explicit visibility choice', () => {
+    const values = createDefaultPoiDetailFormValues();
+    expect(values.basis.active).toBe(false);
+    expect(mapPoiDetailFormValuesToInput(values).active).toBe(false);
+    values.basis.active = true;
+    expect(mapPoiDetailFormValuesToInput(values).active).toBe(true);
+  });
+
   it('maps a poi item into the fixed tab form model', () => {
     expect(
       mapPoiItemToDetailFormValues({

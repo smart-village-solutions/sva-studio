@@ -16,6 +16,7 @@ import { resolveEventsMapGeocodingMessageKey } from './events.map-geocoding-mess
 type Translator = (key: string) => string;
 
 export function EventsGeoAddressFields({
+  createMode = false,
   pt,
   addition,
   additionId,
@@ -43,6 +44,7 @@ export function EventsGeoAddressFields({
   onStreetChange,
   onZipChange,
 }: Readonly<{
+  createMode?: boolean;
   pt: Translator;
   addition: string;
   additionId: string;
@@ -195,12 +197,6 @@ export function EventsGeoAddressFields({
         </div>
       ) : null}
 
-      {geocodingError ? (
-        <Alert>
-          <AlertDescription>{geocodingError}</AlertDescription>
-        </Alert>
-      ) : null}
-
       {mapEnabled && mapStyleUrl ? (
         <EventsLocationMap
           styleUrl={mapStyleUrl}
@@ -217,42 +213,46 @@ export function EventsGeoAddressFields({
         </Alert>
       )}
 
-      {mapError ? (
-        <Alert>
-          <AlertDescription>{mapError}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <StudioFieldGroup columns={2}>
-        <StudioField
-          id={latitudeId}
-          label={pt('fields.latitude')}
-          error={geoLocationError}
-          errorId={`${latitudeId}-error`}
-        >
-          <Input
+      {[geocodingError, mapError].map((message, index) =>
+        message ? (
+          <Alert key={index}>
+            <AlertDescription>{message}</AlertDescription>
+          </Alert>
+        ) : null
+      )}
+      <details open={createMode ? undefined : true}>
+        <summary hidden={!createMode}>{pt('create.coordinates')}</summary>
+        <StudioFieldGroup columns={2}>
+          <StudioField
             id={latitudeId}
-            aria-describedby={geoLocationError ? `${latitudeId}-error` : undefined}
-            aria-invalid={geoLocationError ? true : undefined}
-            value={latitude}
-            onChange={(event) => onLatitudeChange(event.target.value)}
-          />
-        </StudioField>
-        <StudioField
-          id={longitudeId}
-          label={pt('fields.longitude')}
-          error={geoLocationError}
-          errorId={`${longitudeId}-error`}
-        >
-          <Input
+            label={pt('fields.latitude')}
+            error={geoLocationError}
+            errorId={`${latitudeId}-error`}
+          >
+            <Input
+              id={latitudeId}
+              aria-describedby={geoLocationError ? `${latitudeId}-error` : undefined}
+              aria-invalid={geoLocationError ? true : undefined}
+              value={latitude}
+              onChange={(event) => onLatitudeChange(event.target.value)}
+            />
+          </StudioField>
+          <StudioField
             id={longitudeId}
-            aria-describedby={geoLocationError ? `${longitudeId}-error` : undefined}
-            aria-invalid={geoLocationError ? true : undefined}
-            value={longitude}
-            onChange={(event) => onLongitudeChange(event.target.value)}
-          />
-        </StudioField>
-      </StudioFieldGroup>
+            label={pt('fields.longitude')}
+            error={geoLocationError}
+            errorId={`${longitudeId}-error`}
+          >
+            <Input
+              id={longitudeId}
+              aria-describedby={geoLocationError ? `${longitudeId}-error` : undefined}
+              aria-invalid={geoLocationError ? true : undefined}
+              value={longitude}
+              onChange={(event) => onLongitudeChange(event.target.value)}
+            />
+          </StudioField>
+        </StudioFieldGroup>
+      </details>
     </div>
   );
 }

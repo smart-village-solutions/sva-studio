@@ -14,7 +14,10 @@ import type {
   PoiPriceFormValue,
 } from './poi.detail-form.types.js';
 
-export const createDefaultGeoLocation = (): PoiFormGeoLocationValue => ({ latitude: '', longitude: '' });
+export const createDefaultGeoLocation = (): PoiFormGeoLocationValue => ({
+  latitude: '',
+  longitude: '',
+});
 
 export const createDefaultAddress = (): PoiAddressFormValue => ({
   addition: '',
@@ -94,7 +97,7 @@ export const createDefaultPoiDetailFormValues = (): PoiDetailFormValues => ({
   name: '',
   basis: {
     categories: [],
-    active: true,
+    active: false,
   },
   content: {
     description: '',

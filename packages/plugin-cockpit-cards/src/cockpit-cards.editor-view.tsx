@@ -114,6 +114,23 @@ function EditorPrimaryAction({ view }: { view: EditorViewProps }) {
   ) : null;
 }
 
+function EditorPrincipal(view: EditorViewProps) {
+  return (
+    <MainserverPrincipalControl
+      fixedLabel={view.mode === 'create' ? view.pt('create.responsible') : undefined}
+      id="cockpit-card-acting-principal"
+      label={view.pt(view.mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+      description={view.pt('principal.description')}
+      value={view.actingPrincipalType}
+      options={resolveMainserverPrincipalOptions(view.principalControl, {
+        value: view.actingPrincipalType,
+        label: view.pt(`principal.${view.actingPrincipalType}`),
+      })}
+      onChange={view.setActingPrincipalType}
+    />
+  );
+}
+
 function EditorForm({ view }: { view: EditorViewProps }) {
   const {
     mode,
@@ -124,9 +141,6 @@ function EditorForm({ view }: { view: EditorViewProps }) {
     mediaReferenceSync,
     summaryErrors,
     setTab,
-    actingPrincipalType,
-    setActingPrincipalType,
-    principalControl,
     tabs,
     tab,
   } = view;
@@ -165,17 +179,7 @@ function EditorForm({ view }: { view: EditorViewProps }) {
       {mode === 'create' ? (
         <p className="text-sm text-muted-foreground">{pt('create.intro')}</p>
       ) : null}
-      <MainserverPrincipalControl
-        id="cockpit-card-acting-principal"
-        label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-        description={pt('principal.description')}
-        value={actingPrincipalType}
-        options={resolveMainserverPrincipalOptions(principalControl, {
-          value: actingPrincipalType,
-          label: pt(`principal.${actingPrincipalType}`),
-        })}
-        onChange={setActingPrincipalType}
-      />
+      {mode === 'edit' ? <EditorPrincipal {...view} /> : null}
       {mode === 'create' ? (
         tabs[0]?.panel
       ) : (
@@ -188,6 +192,7 @@ function EditorForm({ view }: { view: EditorViewProps }) {
           keepMounted
         />
       )}
+      {mode === 'create' ? <EditorPrincipal {...view} /> : null}
     </form>
   );
 }
@@ -209,8 +214,9 @@ export function CockpitCardEditorView(view: EditorViewProps) {
   } = view;
   return (
     <StudioDetailPageTemplate
+      stickyActions={mode === 'create'}
       title={pt(mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}
-      description={pt(mode === 'create' ? 'editor.createDescription' : 'editor.editDescription')}
+      description={mode === 'edit' ? pt('editor.editDescription') : undefined}
       actions={<EditorActions view={view} />}
       primaryAction={<EditorPrimaryAction view={view} />}
     >

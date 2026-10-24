@@ -31,7 +31,7 @@ export const pluginFaqTranslations = {
       principal: {
         createAs: 'Erstellen als',
         actAs: 'Handeln als',
-        description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+        description: 'Wählen Sie, in wessen Namen Sie arbeiten.',
         organization: 'Aktive Organisation',
         user: 'Persönlicher Account',
         dataProvider: 'Ursprünglicher DataProvider',
@@ -150,7 +150,7 @@ export const pluginFaqTranslations = {
       principal: {
         createAs: 'Create as',
         actAs: 'Act as',
-        description: 'Determines the credentials for this Mainserver action.',
+        description: 'Choose who you are acting on behalf of.',
         organization: 'Active organization',
         user: 'Personal account',
         dataProvider: 'Original DataProvider',

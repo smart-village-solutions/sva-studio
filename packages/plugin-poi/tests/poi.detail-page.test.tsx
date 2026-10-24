@@ -23,6 +23,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createPoi,
+  PoiApiError,
   deletePoi,
   getPoi,
   getPoiDetail,
@@ -54,7 +55,7 @@ vi.mock('../src/poi.api.js', () => ({
   getPoiDetail: vi.fn(),
   listPoiCategories: vi.fn(async () => []),
   listPoi: vi.fn(),
-  PoiApiError: class PoiApiError extends Error {},
+  PoiApiError: class PoiApiError extends Error { constructor(public readonly code: string, message = code) { super(message); } },
   updatePoi: vi.fn(),
 }));
 
@@ -139,8 +140,23 @@ vi.mock('@sva/plugin-sdk', async () => {
 });
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, params }: { children: React.ReactNode; to: string; params?: Record<string, string> }) => (
-    <a href={Object.entries(params ?? {}).reduce((path, [key, value]) => path.replace(`$${key}`, value), to)}>{children}</a>
+  Link: ({
+    children,
+    to,
+    params,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    params?: Record<string, string>;
+  }) => (
+    <a
+      href={Object.entries(params ?? {}).reduce(
+        (path, [key, value]) => path.replace(`$${key}`, value),
+        to
+      )}
+    >
+      {children}
+    </a>
   ),
   useNavigate: () => navigateMock,
   useLocation: () => ({ state: {} }),
@@ -388,7 +404,7 @@ describe('PoiDetailPage', () => {
     vi.mocked(createPoi).mockRejectedValueOnce(new Error('network timeout'));
     render(<PoiDetailPage mode="create" />);
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Unsaved draft' } });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
     await waitFor(() => expect(createPoi).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByText('poi.messages.saveError')).toBeTruthy());
     expect(hasUnsavedChanges()).toBe(true);
@@ -410,7 +426,7 @@ describe('PoiDetailPage', () => {
     });
     render(<PoiDetailPage mode="create" />);
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Before save' } });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
     await waitFor(() => expect(createPoi).toHaveBeenCalledTimes(1));
     expect(hasUnsavedChanges()).toBe(true);
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'After save started' } });
@@ -422,7 +438,9 @@ describe('PoiDetailPage', () => {
     expect(hasUnsavedChanges()).toBe(true);
     expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('After save started');
     expect(screen.getByRole('link', { name: 'poi.actions.openSavedContent' })).toBeTruthy();
-    await act(async () => { fireEvent.submit(document.querySelector('form')!); });
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form')!);
+    });
     await waitFor(() => expect(createPoi).toHaveBeenCalledTimes(1));
   });
 
@@ -628,13 +646,23 @@ describe('PoiDetailPage', () => {
     });
   }, 30_000);
 
+  it.each(['missing_credentials', 'organization_mainserver_credentials_missing'])('explains credential failures without backend details: %s', async (code) => {
+    vi.mocked(createPoi).mockRejectedValueOnce(new PoiApiError(code, 'API-Key or API-Secret missing'));
+    render(<PoiDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Name'), {target: {value: 'New content'}});
+    fireEvent.click(screen.getAllByRole('button', {name: /Speichern|anlegen/})[0]!);
+    await waitFor(() => expect(screen.getByText('poi.create.saveUnavailable')).toBeTruthy());
+    expect(screen.queryByText(/API-Key/)).toBeNull();
+    expect(screen.getByDisplayValue('New content')).toBeTruthy();
+  });
+
   it('renders Create without tabs or history and keeps a single ordered form', async () => {
     render(<PoiDetailPage mode="create" />);
     await screen.findByLabelText('Name');
     expect(hasUnsavedChanges()).toBe(false);
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Historie' })).toBeNull();
-    expect(screen.getAllByRole('button', { name: /Speichern|anlegen/ })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /Speichern|anlegen/ })).toHaveLength(1);
     const ids = [...document.querySelectorAll('[id^="poi-create-"]')].map((element) => element.id);
     expect(ids).toEqual(
       [
@@ -654,13 +682,13 @@ describe('PoiDetailPage', () => {
     );
     expect(document.querySelectorAll('form')).toHaveLength(1);
     expect(document.querySelector('details')?.open).toBe(false);
-    expect(screen.getAllByRole('button', { name: 'Aktiv anlegen' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Inaktiv anlegen' })).toHaveLength(1);
     fireEvent.click(screen.getByLabelText('Aktiv'));
-    expect(screen.getAllByRole('button', { name: 'Inaktiv anlegen' })).toHaveLength(2);
-    expect(screen.getByText('poi.create.inactiveEffect')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Aktiv anlegen' })).toHaveLength(1);
+    expect(screen.getByText('poi.create.activeEffect')).toBeTruthy();
     expect(document.querySelector('nav a')?.getAttribute('href')).toBe('#poi-create-name');
-    const sectionTarget = document.getElementById('poi-create-links')!;
-    fireEvent.click(document.querySelector('a[href="#poi-create-links"]')!);
+    const sectionTarget = document.getElementById('poi-create-media')!;
+    fireEvent.click(document.querySelector('a[href="#poi-create-media"]')!);
     expect(document.activeElement).toBe(sectionTarget);
     expect(sectionTarget.closest('details')?.open).toBe(false);
     expect(hasUnsavedChanges()).toBe(true);
@@ -744,7 +772,7 @@ describe('PoiDetailPage', () => {
     expect(screen.queryByLabelText('Barrierefreiheits-Typen')).toBeNull();
     expect(screen.queryByLabelText('Zertifikat')).toBeNull();
     expect(screen.queryByLabelText('Payload')).toBeNull();
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
@@ -754,7 +782,7 @@ describe('PoiDetailPage', () => {
   it('keeps the missing name reachable in Create', async () => {
     render(<PoiDetailPage mode="create" />);
 
-    fireEvent.click((await screen.findAllByRole('button', { name: /Speichern|anlegen/ }))[1]!);
+    fireEvent.click((await screen.findAllByRole('button', { name: /Speichern|anlegen/ }))[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
@@ -773,7 +801,7 @@ describe('PoiDetailPage', () => {
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     fireEvent.click(screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' }));
     fireEvent.click(screen.getByLabelText('Verwaltung'));
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).toHaveBeenCalledWith(
@@ -796,7 +824,7 @@ describe('PoiDetailPage', () => {
       target: { value: 'http://invalid.example' },
     });
     switchSection('basis');
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
@@ -819,7 +847,7 @@ describe('PoiDetailPage', () => {
     const section = document.getElementById('poi-create-operator')!.closest('details')!;
     fireEvent.click(section.querySelector('summary')!);
     expect(section.open).toBe(false);
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
@@ -841,7 +869,7 @@ describe('PoiDetailPage', () => {
       target: { value: 'http://invalid.example/contact' },
     });
     switchSection('basis');
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
@@ -863,7 +891,7 @@ describe('PoiDetailPage', () => {
       target: { value: 'ftp://invalid.example/media.jpg' },
     });
     switchSection('basis');
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
@@ -891,7 +919,7 @@ describe('PoiDetailPage', () => {
     });
 
     switchSection('content');
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(updatePoi)).not.toHaveBeenCalled();
@@ -917,7 +945,7 @@ describe('PoiDetailPage', () => {
       target: { value: '13' },
     });
     switchSection('basis');
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
@@ -1011,7 +1039,7 @@ describe('PoiDetailPage', () => {
       expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(updatePoi)).toHaveBeenCalledWith(
@@ -1061,7 +1089,7 @@ describe('PoiDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'poi.messages.mediaRefreshMetadata' }));
     await screen.findByText('poi.messages.mediaRefreshTitle');
     fireEvent.click(screen.getByRole('button', { name: 'poi.actions.back' }));
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
     await screen.findByText('poi.messages.mediaReferencePartialFailure');
     fireEvent.click(screen.getByRole('button', { name: 'poi.messages.mediaReferenceRetry' }));
     await waitFor(() => expect(retry).toHaveBeenCalledTimes(1));
@@ -1100,7 +1128,7 @@ describe('PoiDetailPage', () => {
     });
     expect(screen.queryByDisplayValue('service,amt')).toBeNull();
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(updatePoi)).toHaveBeenCalledWith(
@@ -1188,7 +1216,7 @@ describe('PoiDetailPage', () => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(updatePoi)).toHaveBeenCalledWith(
@@ -1235,7 +1263,7 @@ describe('PoiDetailPage', () => {
       expect(screen.getByRole('button', { name: 'Entfernen' })).toBeTruthy();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }));
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(updatePoi)).toHaveBeenCalledWith(
@@ -1258,7 +1286,7 @@ describe('PoiDetailPage', () => {
     render(<PoiDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).toHaveBeenCalledTimes(1);
@@ -1318,7 +1346,7 @@ describe('PoiDetailPage', () => {
       expect(screen.getByDisplayValue('https://cdn.example.test/rathaus-aussen.jpg')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).toHaveBeenCalledWith(
@@ -1387,7 +1415,7 @@ describe('PoiDetailPage', () => {
       expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/)
     );
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).toHaveBeenCalledWith(
@@ -1443,7 +1471,7 @@ describe('PoiDetailPage', () => {
     render(<PoiDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(screen.getByText('poi.messages.saveError')).toBeTruthy();

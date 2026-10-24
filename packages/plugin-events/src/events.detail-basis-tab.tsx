@@ -78,22 +78,25 @@ export function EventsDetailBasisTab({
     },
   ];
 
+  if (section === 'title')
+    return (
+      <StudioField id="event-title" label={pt('fields.title')} required>
+        <Input
+          id="event-title"
+          required
+          value={title}
+          onChange={(event) => setValue('title', event.target.value, { shouldDirty: true })}
+        />
+      </StudioField>
+    );
   return (
     <div className="space-y-6">
-      {!section || section === 'title' || section === 'categories' ? (
+      {!section || section === 'categories' ? (
         <EventsDetailCard
-          title={pt(
-            section === 'title'
-              ? 'fields.title'
-              : section === 'categories'
-                ? 'fields.categories'
-                : 'cards.basis.identity.title'
-          )}
-          description={pt(
-            section === 'title' ? 'create.titleHelp' : 'cards.basis.identity.description'
-          )}
+          title={pt(section === 'categories' ? 'fields.categories' : 'cards.basis.identity.title')}
+          description={pt('cards.basis.identity.description')}
         >
-          {section !== 'categories' ? (
+          {!section ? (
             <StudioField id="event-title" label={pt('fields.title')} required>
               <Input
                 id="event-title"
@@ -103,35 +106,33 @@ export function EventsDetailBasisTab({
               />
             </StudioField>
           ) : null}
-          {section !== 'title' ? (
-            <StudioField
-              id="event-categories"
-              label={pt('fields.categories')}
-              description={pt('fields.categoriesHelp')}
-            >
-              <Controller
-                name="basis.categories"
-                control={control}
-                render={({ field }) => (
-                  <EventsCategoryMultiselect
-                    availableCategories={availableCategories}
-                    emptyText={pt('fields.categoriesEmpty')}
-                    errorMessage={categoryOptionsError ?? undefined}
-                    loading={categoryOptionsLoading}
-                    helpText={pt('fields.categoriesHelp')}
-                    inputId="event-category"
-                    inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
-                    loadingText={pt('messages.categoryOptionsLoading')}
-                    searchLabel={pt('fields.categoriesSearch')}
-                    unavailableText={pt('fields.categoryUnavailable')}
-                    removeLabel={(name) => pt('actions.removeCategory').replace('{{name}}', name)}
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-            </StudioField>
-          ) : null}
+          <StudioField
+            id="event-categories"
+            label={pt('fields.categories')}
+            description={pt('fields.categoriesHelp')}
+          >
+            <Controller
+              name="basis.categories"
+              control={control}
+              render={({ field }) => (
+                <EventsCategoryMultiselect
+                  availableCategories={availableCategories}
+                  emptyText={pt('fields.categoriesEmpty')}
+                  errorMessage={categoryOptionsError ? pt('create.categoryUnavailable') : undefined}
+                  loading={categoryOptionsLoading}
+                  helpText=""
+                  inputId="event-category"
+                  inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
+                  loadingText={pt('messages.categoryOptionsLoading')}
+                  searchLabel={pt('fields.categoriesSearch')}
+                  unavailableText={pt('fields.categoryUnavailable')}
+                  removeLabel={(name) => pt('actions.removeCategory').replace('{{name}}', name)}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </StudioField>
         </EventsDetailCard>
       ) : null}
 

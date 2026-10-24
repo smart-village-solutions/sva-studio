@@ -234,7 +234,7 @@ describe('projects pages', () => {
       'project-language',
       'project-status',
     ]);
-    expect(screen.getAllByRole('button', { name: 'actions.create' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'actions.create' })).toHaveLength(1);
     fillRequiredFields();
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));

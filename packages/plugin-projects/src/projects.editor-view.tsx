@@ -70,8 +70,9 @@ export function ProjectEditorView({ state, deletion, media, ...base }: Controlle
   const { pt, mode, canDelete, setDeleteError, setDeleteDialogOpen } = props;
   return (
     <StudioDetailPageTemplate
+      stickyActions={mode === 'create'}
       title={pt(mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}
-      description={pt(mode === 'create' ? 'editor.createDescription' : 'editor.editDescription')}
+      description={mode === 'edit' ? pt('editor.editDescription') : undefined}
       actions={
         <div className="flex gap-2">
           <Button asChild variant="secondary">

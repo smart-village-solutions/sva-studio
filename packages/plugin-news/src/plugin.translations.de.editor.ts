@@ -1,11 +1,18 @@
 export const newsTranslationsDEEditor = {
   create: {
+    saveUnavailable:
+      'Speichern ist derzeit nicht möglich. Bitte lassen Sie Ihre Verbindung zur Inhaltsverwaltung durch die Administration prüfen.',
+    responsible: 'Verantwortlich:',
+    introOptional: 'Einleitung ergänzen',
+    categoryUnavailable:
+      'Kategorien können derzeit nicht geladen werden. Bitte wenden Sie sich an Ihre Administration.',
+    noPushHint: 'Bei Entwurf oder geplanter Veröffentlichung wird kein Push versendet.',
     savedWithNewChanges:
       'Die Nachricht wurde angelegt. Weitere Änderungen sind noch nicht gespeichert. Beim Öffnen der gespeicherten Nachricht können Sie diese verwerfen oder hier weiter bearbeiten.',
     heading: 'Nachricht erfassen',
     intro:
       'Erstellen Sie eine Nachricht. Beginnen Sie mit Titel und Text; Medien, Kategorien und Quelle sind optional.',
-    introHelp: 'Optionaler Einleitungstext des ersten Inhaltsblocks. Der Haupttext folgt darunter.',
+    introHelp: 'Optionaler kurzer Einstieg in die Nachricht.',
     sourceOptional: 'Quelle ergänzen (optional)',
     sourcePresent: 'Quelle eingetragen',
     sourceEmpty: 'Keine Quelle eingetragen',
@@ -18,7 +25,7 @@ export const newsTranslationsDEEditor = {
     },
     effect: {
       draft:
-        'Die Nachricht wird mit Status Entwurf gespeichert und nicht veröffentlicht. Sie können sie später über die Inhaltsliste weiterbearbeiten.',
+        'Als Entwurf gespeichert, noch nicht öffentlich.',
       immediate: 'Die Nachricht wird sofort sichtbar veröffentlicht.',
       scheduled:
         'Die Nachricht wird mit dem gewählten Veröffentlichungszeitpunkt {{date}} gespeichert.',

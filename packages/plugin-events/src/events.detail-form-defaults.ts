@@ -90,7 +90,7 @@ export const createDefaultEventsDetailFormValues = (): EventsDetailFormValues =>
     accessibilityInformation: createDefaultAccessibilityInformation(),
   },
   settings: {
-    visible: true,
+    visible: false,
     externalId: '',
     keywords: '',
     tags: '',

@@ -9,6 +9,14 @@ import { hasEventOrganizerContent } from '../src/events.detail-form-structured-s
 import type { EventContentItem } from '../src/events.types.js';
 
 describe('events.detail-form', () => {
+  it('creates hidden content and serializes only an explicit visibility choice', () => {
+    const values = createDefaultEventsDetailFormValues();
+    expect(values.settings.visible).toBe(false);
+    expect(mapEventsDetailFormValuesToInput(values).visible).toBe(false);
+    values.settings.visible = true;
+    expect(mapEventsDetailFormValuesToInput(values).visible).toBe(true);
+  });
+
   it('omits the organizer when all organizer fields contain only default placeholders', () => {
     expect(
       mapEventsDetailFormValuesToInput(createDefaultEventsDetailFormValues())

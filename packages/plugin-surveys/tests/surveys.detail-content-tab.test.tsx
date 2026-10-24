@@ -3,7 +3,10 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { SurveyDetailContentTab } from '../src/surveys.detail-content-tab.js';
+import {
+  SurveyDetailContentTab,
+  SurveyParticipationCard,
+} from '../src/surveys.detail-content-tab.js';
 import {
   createDefaultSurveyDetailFormValues,
   type SurveyDetailFormValues,
@@ -67,7 +70,8 @@ const pt = (key: string, variables?: Readonly<Record<string, string | number>>) 
   }
 
   return Object.entries(variables).reduce(
-    (value, [variableName, variableValue]) => value.replace(`{{${variableName}}}`, String(variableValue)),
+    (value, [variableName, variableValue]) =>
+      value.replace(`{{${variableName}}}`, String(variableValue)),
     template
   );
 };
@@ -115,8 +119,12 @@ describe('SurveyDetailContentTab', () => {
 
     fireEvent.change(screen.getByLabelText('Kurzbeschreibung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Langtext' } });
-    fireEvent.change(screen.getByLabelText('Datenschutzhinweis'), { target: { value: 'Datenschutz' } });
-    fireEvent.change(screen.getByLabelText('Transparenzhinweis'), { target: { value: 'Transparenz' } });
+    fireEvent.change(screen.getByLabelText('Datenschutzhinweis'), {
+      target: { value: 'Datenschutz' },
+    });
+    fireEvent.change(screen.getByLabelText('Transparenzhinweis'), {
+      target: { value: 'Transparenz' },
+    });
     fireEvent.click(screen.getByLabelText('Anonyme Teilnahme'));
     fireEvent.click(screen.getByLabelText('Ergebnisse in der App anzeigen'));
     fireEvent.change(screen.getByLabelText('Ergebnisfreigabe'), {
@@ -187,17 +195,53 @@ describe('SurveyDetailContentTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Frage 1 nach unten' }));
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Antwort hinzufügen' })[1]!);
-    fireEvent.change(screen.getAllByLabelText(/^Antwort \d+$/)[1]!, { target: { value: 'Option A' } });
-    fireEvent.change(screen.getAllByLabelText(/^Antwort \d+$/)[2]!, { target: { value: 'Option B' } });
+    fireEvent.change(screen.getAllByLabelText(/^Antwort \d+$/)[1]!, {
+      target: { value: 'Option A' },
+    });
+    fireEvent.change(screen.getAllByLabelText(/^Antwort \d+$/)[2]!, {
+      target: { value: 'Option B' },
+    });
     fireEvent.click(screen.getAllByRole('button', { name: 'Antwort 1 nach unten' })[1]!);
     fireEvent.click(screen.getByRole('button', { name: 'Werte lesen' }));
 
-    expect(valuesRef.current?.content.questions.map((question) => question.title)).toEqual(['Frage B', 'Frage A']);
-    expect(valuesRef.current?.content.questions.map((question) => question.position)).toEqual([0, 1]);
+    expect(valuesRef.current?.content.questions.map((question) => question.title)).toEqual([
+      'Frage B',
+      'Frage A',
+    ]);
+    expect(valuesRef.current?.content.questions.map((question) => question.position)).toEqual([
+      0, 1,
+    ]);
     expect(valuesRef.current?.content.questions[1]?.options.map((option) => option.title)).toEqual([
       'Option B',
       'Option A',
     ]);
-    expect(valuesRef.current?.content.questions[1]?.options.map((option) => option.position)).toEqual([0, 1]);
+    expect(
+      valuesRef.current?.content.questions[1]?.options.map((option) => option.position)
+    ).toEqual([0, 1]);
   });
+});
+
+it('keeps the selected result release when toggling its create-only controls', () => {
+  function Wrapper() {
+    const methods = useForm<SurveyDetailFormValues>({
+      defaultValues: createDefaultSurveyDetailFormValues(),
+    });
+    return (
+      <FormProvider {...methods}>
+        <SurveyParticipationCard pt={pt} section="results" createMode />
+      </FormProvider>
+    );
+  }
+  render(<Wrapper />);
+  expect(screen.queryByLabelText('Ergebnisfreigabe')).toBeNull();
+  fireEvent.click(screen.getByLabelText('Ergebnisse in der App anzeigen'));
+  fireEvent.change(screen.getByLabelText('Ergebnisfreigabe'), {
+    target: { value: 'AFTER_SUBMISSION' },
+  });
+  fireEvent.click(screen.getByLabelText('Ergebnisse in der App anzeigen'));
+  expect(screen.queryByLabelText('Ergebnisfreigabe')).toBeNull();
+  fireEvent.click(screen.getByLabelText('Ergebnisse in der App anzeigen'));
+  expect((screen.getByLabelText('Ergebnisfreigabe') as HTMLSelectElement).value).toBe(
+    'AFTER_SUBMISSION'
+  );
 });

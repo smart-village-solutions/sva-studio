@@ -22,6 +22,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createEvent,
+  EventsApiError,
   deleteEvent,
   getEvent,
   getEventDetail,
@@ -54,7 +55,7 @@ const openEventExtras = () => {
 vi.mock('../src/events.api.js', () => ({
   createEvent: vi.fn(),
   deleteEvent: vi.fn(),
-  EventsApiError: class EventsApiError extends Error {},
+  EventsApiError: class EventsApiError extends Error { constructor(public readonly code: string, message = code) { super(message); } },
   getEvent: vi.fn(),
   getEventDetail: vi.fn(),
   listEventCategories: vi.fn(async () => []),
@@ -114,8 +115,23 @@ vi.mock('@sva/studio-ui-react', async () => {
 });
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, params }: { children: React.ReactNode; to: string; params?: Record<string, string> }) => (
-    <a href={Object.entries(params ?? {}).reduce((path, [key, value]) => path.replace(`$${key}`, value), to)}>{children}</a>
+  Link: ({
+    children,
+    to,
+    params,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    params?: Record<string, string>;
+  }) => (
+    <a
+      href={Object.entries(params ?? {}).reduce(
+        (path, [key, value]) => path.replace(`$${key}`, value),
+        to
+      )}
+    >
+      {children}
+    </a>
   ),
   useNavigate: () => navigateMock,
   useLocation: () => ({ state: {} }),
@@ -331,7 +347,7 @@ describe('EventsDetailPage', () => {
         target: { files: [new File(['image'], 'draft.jpg', { type: 'image/jpeg' })] },
       });
       fireEvent.click(await screen.findByRole('button', { name: 'Medium übernehmen' }));
-      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
       const retryButton = await screen.findByRole('button', {
         name: 'events.actions.retryMediaReferences',
       });
@@ -349,7 +365,9 @@ describe('EventsDetailPage', () => {
       expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe(
         editAfterPartial ? 'Newer title' : 'Draft event'
       );
-      await act(async () => { fireEvent.submit(document.querySelector('form')!); });
+      await act(async () => {
+        fireEvent.submit(document.querySelector('form')!);
+      });
       await waitFor(() => expect(createEvent).toHaveBeenCalledTimes(1));
     }
   );
@@ -371,7 +389,7 @@ describe('EventsDetailPage', () => {
     vi.mocked(createEvent).mockRejectedValueOnce(new Error('network timeout'));
     render(<EventsDetailPage mode="create" />);
     fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Unsaved draft' } });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
     await waitFor(() => expect(createEvent).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByText('events.messages.saveError')).toBeTruthy());
     expect(hasUnsavedChanges()).toBe(true);
@@ -393,7 +411,7 @@ describe('EventsDetailPage', () => {
     });
     render(<EventsDetailPage mode="create" />);
     fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Before save' } });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
     await waitFor(() => expect(createEvent).toHaveBeenCalledTimes(1));
     expect(hasUnsavedChanges()).toBe(true);
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'After save started' } });
@@ -405,7 +423,9 @@ describe('EventsDetailPage', () => {
     expect(hasUnsavedChanges()).toBe(true);
     expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe('After save started');
     expect(screen.getByRole('link', { name: 'events.actions.openSavedContent' })).toBeTruthy();
-    await act(async () => { fireEvent.submit(document.querySelector('form')!); });
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form')!);
+    });
     await waitFor(() => expect(createEvent).toHaveBeenCalledTimes(1));
   });
 
@@ -484,12 +504,12 @@ describe('EventsDetailPage', () => {
       fireEvent.change(input, { target: { value: invalidInterval } });
       const form = input.closest('form')!;
       const validity = vi.spyOn(form, 'reportValidity');
-      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
       await waitFor(() => expect(validity).toHaveBeenCalled());
       expect(validity.mock.results[0]?.value).toBe(false);
       expect(createEvent).not.toHaveBeenCalled();
       fireEvent.change(input, { target: { value: '2' } });
-      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
       await waitFor(() => expect(createEvent).toHaveBeenCalled());
       expect(vi.mocked(createEvent).mock.calls[0]?.[0]).toEqual(
         expect.objectContaining({ recurringInterval: '2' })
@@ -497,13 +517,23 @@ describe('EventsDetailPage', () => {
     }
   );
 
+  it.each(['missing_credentials', 'organization_mainserver_credentials_missing'])('explains credential failures without backend details: %s', async (code) => {
+    vi.mocked(createEvent).mockRejectedValueOnce(new EventsApiError(code, 'API-Key or API-Secret missing'));
+    render(<EventsDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Titel'), {target: {value: 'New content'}});
+    fireEvent.click(screen.getAllByRole('button', {name: /Speichern|anlegen/})[0]!);
+    await waitFor(() => expect(screen.getByText('events.create.saveUnavailable')).toBeTruthy());
+    expect(screen.queryByText(/API-Key/)).toBeNull();
+    expect(screen.getByDisplayValue('New content')).toBeTruthy();
+  });
+
   it('renders Create without tabs or history and keeps a single ordered form', async () => {
     render(<EventsDetailPage mode="create" />);
     await screen.findByLabelText('Titel');
     expect(hasUnsavedChanges()).toBe(false);
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Historie' })).toBeNull();
-    expect(screen.getAllByRole('button', { name: /Speichern|anlegen/ })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /Speichern|anlegen/ })).toHaveLength(1);
     const ids = [...document.querySelectorAll('[id^="event-create-"]')].map(
       (element) => element.id
     );
@@ -526,13 +556,13 @@ describe('EventsDetailPage', () => {
     );
     expect(document.querySelectorAll('form')).toHaveLength(1);
     expect(document.querySelector('details')?.open).toBe(false);
-    expect(screen.getAllByRole('button', { name: 'Sichtbar anlegen' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Nicht sichtbar anlegen' })).toHaveLength(1);
     fireEvent.click(screen.getByLabelText('Sichtbar'));
-    expect(screen.getAllByRole('button', { name: 'Nicht sichtbar anlegen' })).toHaveLength(2);
-    expect(screen.getByText('events.create.hiddenEffect')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Sichtbar anlegen' })).toHaveLength(1);
+    expect(screen.getByText('events.create.visibleEffect')).toBeTruthy();
     expect(document.querySelector('nav a')?.getAttribute('href')).toBe('#event-create-title');
-    const sectionTarget = document.getElementById('event-create-links')!;
-    fireEvent.click(document.querySelector('a[href="#event-create-links"]')!);
+    const sectionTarget = document.getElementById('event-create-media')!;
+    fireEvent.click(document.querySelector('a[href="#event-create-media"]')!);
     expect(document.activeElement).toBe(sectionTarget);
     expect(sectionTarget.closest('details')?.open).toBe(false);
     expect(hasUnsavedChanges()).toBe(true);
@@ -619,7 +649,7 @@ describe('EventsDetailPage', () => {
       (screen.getByLabelText('Startdatum', { selector: '#event-date-start-1' }) as HTMLInputElement)
         .value
     ).toBe('09.10.2026');
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
     await waitFor(() => expect(updateEvent).toHaveBeenCalled());
     expect(vi.mocked(updateEvent).mock.calls[0]?.[1].dates).toEqual([
       expect.objectContaining({ dateStart: '2026-09-08', dateEnd: '2026-09-10' }),
@@ -638,7 +668,7 @@ describe('EventsDetailPage', () => {
     const input = await screen.findByLabelText('Startdatum', { selector: '#event-date-start-1' });
     fireEvent.change(input, { target: { value: '31.02.' } });
     fireEvent.click(screen.getByRole('tab', { name: 'Basis' }));
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
     await waitFor(() => expect(document.activeElement).toBe(input));
     expect(updateEvent).not.toHaveBeenCalled();
     expect((input as HTMLInputElement).value).toBe('31.02.');
@@ -653,7 +683,7 @@ describe('EventsDetailPage', () => {
     fireEvent.change(screen.getByLabelText('URL'), {
       target: { value: 'http://example.com/events' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createEvent)).not.toHaveBeenCalled();
@@ -665,7 +695,7 @@ describe('EventsDetailPage', () => {
   it('keeps the missing title reachable in Create', async () => {
     render(<EventsDetailPage mode="create" />);
 
-    fireEvent.click((await screen.findAllByRole('button', { name: /Speichern|anlegen/ }))[1]!);
+    fireEvent.click((await screen.findAllByRole('button', { name: /Speichern|anlegen/ }))[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createEvent)).not.toHaveBeenCalled();
@@ -682,7 +712,7 @@ describe('EventsDetailPage', () => {
     fireEvent.change(await screen.findByLabelText('URL'), {
       target: { value: 'http://invalid.example' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createEvent)).not.toHaveBeenCalled();
@@ -708,7 +738,7 @@ describe('EventsDetailPage', () => {
     const organizerSection = document.getElementById('event-create-organizer')!.closest('details')!;
     fireEvent.click(organizerSection.querySelector('summary')!);
     expect(organizerSection.open).toBe(false);
-    const saveButton = screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1];
+    const saveButton = screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0];
     if (!saveButton) throw new Error('event_save_button_missing');
     fireEvent.click(saveButton);
 
@@ -751,7 +781,7 @@ describe('EventsDetailPage', () => {
       selector: '#event-organizer-latitude',
     });
     fireEvent.change(latitude, { target: { value: '51.4' } });
-    const saveButton = screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1];
+    const saveButton = screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0];
     if (!saveButton) throw new Error('event_save_button_missing');
     fireEvent.click(saveButton);
 
@@ -789,7 +819,7 @@ describe('EventsDetailPage', () => {
       expect(screen.getByDisplayValue('Stadtfest')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(updateEvent)).toHaveBeenCalledTimes(1);
@@ -837,7 +867,7 @@ describe('EventsDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'events.media.refresh' }));
     await screen.findByText('events.media.refreshTitle');
     fireEvent.click(screen.getByRole('button', { name: 'events.actions.cancel' }));
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
     await screen.findByText('events.messages.mediaReferencePartialFailure');
     fireEvent.click(screen.getByRole('button', { name: 'events.actions.retryMediaReferences' }));
     await waitFor(() => expect(retry).toHaveBeenCalledTimes(1));
@@ -898,7 +928,7 @@ describe('EventsDetailPage', () => {
     });
     openEventExtras();
     fireEvent.change(screen.getByLabelText('Externe ID'), { target: { value: 'event-ext-1' } });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(createEvent)).toHaveBeenCalledTimes(1);
@@ -908,7 +938,7 @@ describe('EventsDetailPage', () => {
           categoryName: 'Kultur',
           categories: [{ name: 'Kultur' }],
           externalId: 'event-ext-1',
-          visible: true,
+          visible: false,
         }),
         'user'
       );
@@ -937,7 +967,7 @@ describe('EventsDetailPage', () => {
     render(<EventsDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Neues Event' } });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(screen.getByText('events.messages.saveError')).toBeTruthy();
@@ -1047,7 +1077,7 @@ describe('EventsDetailPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neues Stadtfest' } });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(vi.mocked(updateEvent)).toHaveBeenCalledTimes(1);

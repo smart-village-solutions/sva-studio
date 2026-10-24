@@ -17,7 +17,6 @@ import {
 import {
   SurveyDescriptionCard,
   SurveyParticipationCard,
-  SurveyNoticesCard,
   SurveyDetailContentTab,
 } from './surveys.detail-content-tab.js';
 import { SurveyDetailCard } from './surveys.detail-card.js';
@@ -116,9 +115,9 @@ export function SurveyCreateFields({
   const { control } = useFormContext<SurveyDetailFormValues>();
   const basis = useWatch({ control, name: 'basis' });
   return (
-    <StudioSection title={pt('create.heading')}>
+    <StudioSection>
       <p>{pt('create.intro')}</p>
-      <nav aria-label={pt('create.navigation')} className="flex flex-wrap gap-3">
+      <nav aria-label={pt('create.navigation')} className="flex flex-wrap gap-2 text-sm [&_a]:rounded-md [&_a]:border [&_a]:border-border [&_a]:px-3 [&_a]:py-2 [&_a]:text-primary hover:[&_a]:underline">
         <a href="#survey-create-text">{pt('create.text')}</a>
         <a href="#survey-create-questions">{pt('cards.content.questions.title')}</a>
         <a href="#survey-create-participation">{pt('create.participation')}</a>
@@ -126,28 +125,38 @@ export function SurveyCreateFields({
       </nav>
       <section id="survey-create-text" tabIndex={-1}>
         <SurveyIdentityCard pt={pt} titleOnly />
-        <SurveyDescriptionCard pt={pt} />
+        <details>
+          <summary>{pt('cards.content.descriptions.title')}</summary>
+          <SurveyDescriptionCard pt={pt} />
+        </details>
       </section>
       <section id="survey-create-questions" tabIndex={-1}>
         <SurveyDetailCard
           title={pt('cards.content.questions.title')}
           description={pt('create.help.questions')}
         >
-          <SurveyQuestionListEditor pt={pt} />
+          <SurveyQuestionListEditor pt={pt} createMode />
         </SurveyDetailCard>
       </section>
       <section id="survey-create-participation" tabIndex={-1}>
-        <SurveyTargetAreaCard pt={pt} availableTargetAreas={[]} />
-        <SurveyScheduleCard pt={pt} />
-        <SurveyParticipationCard pt={pt} section="anonymity" />
-        <SurveyNoticesCard pt={pt} />
-        <SurveyParticipationCard pt={pt} section="results" />
+        <details>
+          <summary>{pt('cards.basis.targetArea.title')}</summary>
+          <SurveyTargetAreaCard pt={pt} availableTargetAreas={[]} />
+        </details>
+        <details>
+          <summary>{pt('cards.basis.schedule.title')}</summary>
+          <SurveyScheduleCard pt={pt} />
+        </details>
+        <SurveyParticipationCard pt={pt} section="anonymity" createMode />
+        <details>
+          <summary>{pt('create.results')}</summary>
+          <SurveyParticipationCard pt={pt} section="results" createMode />
+        </details>
       </section>
       <section id="survey-create-status" tabIndex={-1}>
         <SurveyDetailCard title={pt('fields.status')} description={pt('create.help.status')}>
           <SurveyStatusField pt={pt} />
         </SurveyDetailCard>
-        <p>{pt(`create.effect.${basis.status}`)}</p>
         <p>
           {pt('create.effect.schedule', {
             start: basis.startAt || pt('create.noLimit'),

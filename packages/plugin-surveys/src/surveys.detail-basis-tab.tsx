@@ -23,6 +23,17 @@ export function SurveyIdentityCard({
     formState: { errors },
   } = useFormContext<SurveyDetailFormValues>();
 
+  if (titleOnly)
+    return (
+      <StudioField
+        id="survey-title"
+        label={pt('fields.title')}
+        required
+        error={errors.title?.message ? pt(`validation.${errors.title.message}`) : undefined}
+      >
+        <Input id="survey-title" required {...register('title', { required: 'titleRequired' })} />
+      </StudioField>
+    );
   return (
     <SurveyDetailCard
       title={pt('cards.basis.identity.title')}

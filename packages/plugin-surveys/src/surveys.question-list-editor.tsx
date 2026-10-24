@@ -46,7 +46,10 @@ const applyPendingDelete = (
   return true;
 };
 
-export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
+export function SurveyQuestionListEditor({
+  pt,
+  createMode = false,
+}: Readonly<{ pt: SurveyContentTranslate; createMode?: boolean }>) {
   const { setValue } = useFormContext<SurveyDetailFormValues>();
   const questions: SurveyQuestionFormValues[] = useWatch({ name: 'content.questions' }) ?? [];
   const [pendingDelete, setPendingDelete] = React.useState<PendingDeleteState>(null);
@@ -103,12 +106,12 @@ export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTra
       <Button
         ref={addQuestionFocusRef}
         type="button"
-        variant="secondary"
+        variant={createMode && !questions.length ? 'primary' : 'secondary'}
         onClick={() =>
           updateQuestions([...questions, createDefaultSurveyQuestion(questions.length)])
         }
       >
-        {pt('actions.addQuestion')}
+        {pt(createMode && !questions.length ? 'create.firstQuestion' : 'actions.addQuestion')}
       </Button>
       <SurveyQuestionDeleteDialog
         pt={pt}

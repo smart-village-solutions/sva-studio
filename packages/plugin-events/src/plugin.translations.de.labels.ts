@@ -32,7 +32,7 @@ export const eventsDELabels = {
   principal: {
     createAs: 'Erstellen als',
     actAs: 'Handeln als',
-    description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+    description: 'Wählen Sie, in wessen Namen Sie arbeiten.',
     organization: 'Aktive Organisation',
     user: 'Persönlicher Account',
     dataProvider: 'Ursprünglicher DataProvider',
@@ -163,9 +163,16 @@ export const eventsDELabels = {
 } as const;
 
 export const eventsDECreate = {
+  saveUnavailable:
+    'Speichern ist derzeit nicht möglich. Bitte lassen Sie Ihre Verbindung zur Inhaltsverwaltung durch die Administration prüfen.',
+  responsible: 'Verantwortlich:',
+  coordinates: 'Position manuell angeben',
+  categoryUnavailable:
+    'Kategorien können derzeit nicht geladen werden. Bitte wenden Sie sich an Ihre Administration.',
+  dateExtras: 'Weitere Zeitangaben',
   titleHelp: 'Wie heißt die Veranstaltung? Der Titel ist erforderlich.',
-  createVisible: 'Sichtbar anlegen',
-  createHidden: 'Nicht sichtbar anlegen',
+  createVisible: 'Sichtbar speichern',
+  createHidden: 'Verborgen speichern',
   intro:
     'Erstellen Sie eine Veranstaltung. Beginnen Sie mit Titel, Termin und Ort; weitere Angaben können Sie ergänzen.',
   navigation: 'Zu einem Formularabschnitt springen',
@@ -174,7 +181,7 @@ export const eventsDECreate = {
   empty: 'Noch keine Angaben',
   visibleEffect:
     'Die Veranstaltung wird mit aktivierter Sichtbarkeit gespeichert. Die Termine beschreiben die Veranstaltung und steuern keine zeitgesteuerte Veröffentlichung.',
-  hiddenEffect: 'Die Veranstaltung wird mit deaktivierter Sichtbarkeit gespeichert.',
+  hiddenEffect: 'Die Veranstaltung wird gespeichert und bleibt öffentlich verborgen.',
   editHint:
     'Nach dem Anlegen öffnen Sie die gespeicherte Veranstaltung im gewohnten Editor mit Tabs.',
   sections: {

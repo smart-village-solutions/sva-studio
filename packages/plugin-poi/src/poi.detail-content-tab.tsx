@@ -58,17 +58,23 @@ export function PoiDetailContentTab({
     return (
       <div className="space-y-6">
         <div id="poi-create-location" tabIndex={-1}>
-          <PoiDetailLocationTab pt={pt} />
+          <PoiDetailLocationTab pt={pt} createMode />
         </div>
         <div id="poi-create-description" tabIndex={-1}>
           <PoiDetailDescriptionTab pt={pt} showName={false} />
         </div>
-        <div id="poi-create-media" tabIndex={-1}>
+        <details>
+          <summary id="poi-create-media">
+            {pt('create.sections.media')} · {pt('create.optional')}
+          </summary>
           {media}
-        </div>
-        <div id="poi-create-categories" tabIndex={-1}>
+        </details>
+        <details>
+          <summary id="poi-create-categories">
+            {pt('create.sections.categories')} · {pt('create.optional')}
+          </summary>
           {categories}
-        </div>
+        </details>
         <details>
           <summary id="poi-create-openingHours">
             {pt('create.sections.openingHours')} · {pt('create.optional')} ·{' '}

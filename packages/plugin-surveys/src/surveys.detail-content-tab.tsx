@@ -46,18 +46,61 @@ export function SurveyDescriptionCard({ pt }: Readonly<{ pt: SurveyContentTransl
   );
 }
 
+function SurveyResultRelease({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
+  const { setValue } = useFormContext<SurveyDetailFormValues>();
+  const resultVisibility = useWatch({ name: 'content.resultVisibility' }) ?? 'NONE';
+  return (
+    <StudioField
+      id="survey-result-visibility"
+      description={pt('create.help.resultVisibility')}
+      label={pt('fields.resultVisibility')}
+    >
+      <Select
+        aria-describedby="survey-result-visibility-description"
+        id="survey-result-visibility"
+        value={resultVisibility}
+        onChange={(event) =>
+          setValue(
+            'content.resultVisibility',
+            event.target.value as SurveyDetailFormValues['content']['resultVisibility'],
+            {
+              shouldDirty: true,
+            }
+          )
+        }
+      >
+        {surveyResultVisibilityValues.map((visibility) => (
+          <option key={visibility} value={visibility}>
+            {pt(resultVisibilityLabelKey[visibility])}
+          </option>
+        ))}
+      </Select>
+    </StudioField>
+  );
+}
+
 export function SurveyParticipationCard({
   pt,
   section,
-}: Readonly<{ pt: SurveyContentTranslate; section?: 'anonymity' | 'results' }>) {
+  createMode = false,
+}: Readonly<{
+  createMode?: boolean;
+  pt: SurveyContentTranslate;
+  section?: 'anonymity' | 'results';
+}>) {
   const { setValue } = useFormContext<SurveyDetailFormValues>();
   const isAnonymous = useWatch({ name: 'content.isAnonymous' }) ?? false;
   const showResultsInApp = useWatch({ name: 'content.showResultsInApp' }) ?? false;
-  const resultVisibility = useWatch({ name: 'content.resultVisibility' }) ?? 'NONE';
 
   return (
     <SurveyDetailCard
-      title={pt('cards.content.participation.title')}
+      title={pt(
+        createMode
+          ? section === 'results'
+            ? 'create.results'
+            : 'create.privacy'
+          : 'cards.content.participation.title'
+      )}
       description={pt('cards.content.participation.description')}
     >
       <div className="space-y-4">
@@ -93,47 +136,23 @@ export function SurveyParticipationCard({
                 }
               />
             </StudioField>
-            <StudioField
-              id="survey-result-visibility"
-              description={pt('create.help.resultVisibility')}
-              label={pt('fields.resultVisibility')}
-            >
-              <Select
-                aria-describedby="survey-result-visibility-description"
-                id="survey-result-visibility"
-                value={resultVisibility}
-                onChange={(event) =>
-                  setValue(
-                    'content.resultVisibility',
-                    event.target.value as SurveyDetailFormValues['content']['resultVisibility'],
-                    {
-                      shouldDirty: true,
-                    }
-                  )
-                }
-              >
-                {surveyResultVisibilityValues.map((visibility) => (
-                  <option key={visibility} value={visibility}>
-                    {pt(resultVisibilityLabelKey[visibility])}
-                  </option>
-                ))}
-              </Select>
-            </StudioField>
+            {!createMode || showResultsInApp ? <SurveyResultRelease pt={pt} /> : null}
           </>
         ) : null}
+        {createMode && section === 'anonymity' ? <SurveyNoticesCard pt={pt} plain /> : null}
       </div>
     </SurveyDetailCard>
   );
 }
 
-export function SurveyNoticesCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
+export function SurveyNoticesCard({
+  pt,
+  plain = false,
+}: Readonly<{ pt: SurveyContentTranslate; plain?: boolean }>) {
   const { register } = useFormContext<SurveyDetailFormValues>();
 
-  return (
-    <SurveyDetailCard
-      title={pt('cards.content.notices.title')}
-      description={pt('cards.content.notices.description')}
-    >
+  const fields = (
+    <>
       <div className="space-y-4">
         <StudioField
           id="survey-privacy-notice"
@@ -158,6 +177,16 @@ export function SurveyNoticesCard({ pt }: Readonly<{ pt: SurveyContentTranslate 
           />
         </StudioField>
       </div>
+    </>
+  );
+  return plain ? (
+    fields
+  ) : (
+    <SurveyDetailCard
+      title={pt('cards.content.notices.title')}
+      description={pt('cards.content.notices.description')}
+    >
+      {fields}
     </SurveyDetailCard>
   );
 }

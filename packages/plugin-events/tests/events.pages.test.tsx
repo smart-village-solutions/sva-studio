@@ -297,7 +297,7 @@ describe('EventsListPage', () => {
     fireEvent.change(await screen.findByLabelText('Medien-URL'), {
       target: { value: 'https://example.com/event.jpg' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(createEvent).toHaveBeenCalledWith(
@@ -342,7 +342,7 @@ describe('EventsListPage', () => {
       expect(screen.getByLabelText('Startdatum')).toBeTruthy();
     });
     fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-02-31' } });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBe('true');
@@ -350,7 +350,7 @@ describe('EventsListPage', () => {
     expect(createEvent).not.toHaveBeenCalled();
     expect((screen.getByLabelText('Startdatum') as HTMLInputElement).value).toBe('2026-02-31');
     fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '28.02.2026' } });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
     await waitFor(() => {
       expect(createEvent).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Konzertabend', dates: [{ dateStart: '2026-02-28' }] }),
@@ -390,7 +390,7 @@ describe('EventsListPage', () => {
       expect(screen.getByDisplayValue('Header')).toBeTruthy();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Medium entfernen' }));
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(updateEvent).toHaveBeenCalledWith(

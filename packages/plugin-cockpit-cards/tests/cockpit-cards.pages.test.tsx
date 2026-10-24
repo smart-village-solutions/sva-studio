@@ -252,10 +252,10 @@ describe('cockpit cards pages', () => {
       'cockpit-card-publication',
       'cockpit-card-visible',
     ]);
-    expect(screen.getAllByRole('button', { name: 'actions.create' })).toHaveLength(2);
-    expect(screen.getAllByText('create.visibleEffect')).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'actions.create' })).toHaveLength(1);
+    expect(screen.getAllByText('create.visibleEffect')).toHaveLength(1);
     fireEvent.click(screen.getByLabelText('fields.visible'));
-    expect(screen.getAllByText('create.hiddenEffect')).toHaveLength(2);
+    expect(screen.getAllByText('create.hiddenEffect')).toHaveLength(1);
     fireEvent.click(screen.getByLabelText('fields.visible'));
   });
 

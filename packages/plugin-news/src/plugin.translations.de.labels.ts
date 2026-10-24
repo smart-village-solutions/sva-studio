@@ -71,8 +71,7 @@ export const newsTranslationsDELabels = {
     dataProviderUnavailable: 'Noch nicht verfügbar',
     createAs: 'Erstellen als',
     actAs: 'Handeln als',
-    actingPrincipalHelp:
-      'Legt fest, welche Mainserver-Zugangsdaten für diesen Schreibvorgang verwendet werden.',
+    actingPrincipalHelp: 'Wählen Sie, in wessen Namen Sie arbeiten.',
     visible: 'Sichtbar',
     visibleFor: 'Sichtbarkeit für {{title}}',
     likeCount: 'Likes',

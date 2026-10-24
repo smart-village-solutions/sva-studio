@@ -156,7 +156,11 @@ export function EventsDetailPage({
     if (!pendingFocusId) return;
     const element = globalThis.document?.getElementById(pendingFocusId);
     if (!element) return;
-    element.closest('details')?.setAttribute('open', '');
+    let details = element.closest('details');
+    while (details) {
+      details.open = true;
+      details = details.parentElement?.closest('details') ?? null;
+    }
     element.focus();
     setPendingFocusId(null);
   }, [activeTab, pendingFocusId]);

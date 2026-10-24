@@ -1,5 +1,9 @@
 export const pluginSurveysContentEnTranslations = {
   create: {
+    responsible: 'Responsible:',
+    firstQuestion: 'Add first question',
+    results: 'Results',
+    privacy: 'Participation and privacy',
     heading: 'Survey content',
     intro: 'Create a survey. Start with the title and questions; other details are optional.',
     navigation: 'Jump to a survey section',
@@ -32,7 +36,7 @@ export const pluginSurveysContentEnTranslations = {
   principal: {
     createAs: 'Create as',
     actAs: 'Act as',
-    description: 'Determines the credentials for this Mainserver action.',
+    description: 'Choose who you are acting on behalf of.',
     organization: 'Active organization',
     user: 'Personal account',
     dataProvider: 'Original DataProvider',

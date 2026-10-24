@@ -407,7 +407,7 @@ describe('PoiListPage', () => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(createPoi).toHaveBeenCalledWith(
@@ -462,7 +462,7 @@ describe('PoiListPage', () => {
     fireEvent.change(nameInput as HTMLInputElement, {
       target: { value: 'Aktualisierte Stadtbibliothek' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(updatePoi).toHaveBeenCalledWith(
@@ -563,7 +563,7 @@ describe('PoiListPage', () => {
       expect(screen.getByDisplayValue('Stadtbibliothek')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'poi.actions.saved' })).toHaveLength(2);
@@ -576,7 +576,7 @@ describe('PoiListPage', () => {
     fireEvent.change(document.getElementById('poi-link-url-0') as HTMLInputElement, {
       target: { value: 'http://invalid.example' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'poi.actions.saved' })).toBeNull();

@@ -44,7 +44,8 @@ export const eventsDEEditor = {
       'Für die Ermittlung von Geo-Koordinaten fehlen die erforderlichen Berechtigungen.',
     locationGeocodeUnauthorized:
       'Die Sitzung für die Ermittlung von Geo-Koordinaten ist abgelaufen. Bitte laden Sie die Seite neu.',
-    locationMapUnavailable: 'Die Kartenansicht ist für diese Instanz derzeit deaktiviert.',
+    locationMapUnavailable:
+      'Die Karte ist derzeit nicht verfügbar. Sie können die Adresse eingeben und Koordinaten manuell ergänzen.',
     locationMapError:
       'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
     imagePickerEmpty: 'Keine passenden Medien gefunden.',
@@ -128,8 +129,8 @@ export const eventsDEEditor = {
         description: 'Überschrift und redaktionelle Grundkategorie der Veranstaltung.',
       },
       recurrence: {
-        title: 'Serien-Logik',
-        description: 'Wiederholung und Ausspielungsrhythmus der Veranstaltung.',
+        title: 'Wiederholung',
+        description: 'Wiederholung und Rhythmus der Veranstaltung.',
       },
       relations: { title: 'Verknüpfungen', description: 'Verknüpfung zu anderen Studio-Inhalten.' },
       meta: { title: 'Metadaten', description: 'Zeitliche Einordnung des Eintrags.' },

@@ -32,7 +32,7 @@ export const eventsENLabels = {
   principal: {
     createAs: 'Create as',
     actAs: 'Act as',
-    description: 'Determines the credentials for this Mainserver action.',
+    description: 'Choose who you are acting on behalf of.',
     organization: 'Active organization',
     user: 'Personal account',
     dataProvider: 'Original DataProvider',

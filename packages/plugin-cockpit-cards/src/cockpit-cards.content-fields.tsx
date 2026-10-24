@@ -62,6 +62,7 @@ function contentMediaLabels(pt: (key: string) => string) {
 export function ContentFields({
   form,
   pt,
+  createMode = false,
   mediaUsages,
   onMediaUsagesChange,
   canSelectMedia,
@@ -71,6 +72,7 @@ export function ContentFields({
   onOpenMediaPicker,
   onLoadAssetSnapshot,
 }: Readonly<{
+  createMode?: boolean;
   form: ReturnType<typeof useForm<CockpitCardFormValues>>;
   pt: (key: string) => string;
   mediaUsages: readonly ContentMediaUsage[];
@@ -98,25 +100,28 @@ export function ContentFields({
           />
         </StudioField>
       </StudioDetailCard>
-      <StudioDetailCard title={pt('fields.images')} description={pt('create.optional')}>
-        <ContentMediaUsageBlock
-          disabled={mediaEditingDisabled}
-          usages={mediaUsages}
-          onChange={changeUsages}
-          onAddManual={onAddManualMedia}
-          onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
-          onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
-          onLoadAssetSnapshot={onLoadAssetSnapshot}
-          showHeader={false}
-          supportedFields={{ altText: true, caption: false, credit: false, license: false }}
-          labels={contentMediaLabels(pt)}
-        />
-        {form.formState.errors.images ? (
-          <p role="alert" className="text-sm text-destructive">
-            {pt('validation.images')}
-          </p>
-        ) : null}
-      </StudioDetailCard>
+      <details open={createMode ? undefined : true}>
+        <summary hidden={!createMode}>{pt('fields.images')}</summary>
+        <StudioDetailCard title={pt('fields.images')} description={pt('create.optional')}>
+          <ContentMediaUsageBlock
+            disabled={mediaEditingDisabled}
+            usages={mediaUsages}
+            onChange={changeUsages}
+            onAddManual={onAddManualMedia}
+            onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
+            onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
+            onLoadAssetSnapshot={onLoadAssetSnapshot}
+            showHeader={false}
+            supportedFields={{ altText: true, caption: false, credit: false, license: false }}
+            labels={contentMediaLabels(pt)}
+          />
+          {form.formState.errors.images ? (
+            <p role="alert" className="text-sm text-destructive">
+              {pt('validation.images')}
+            </p>
+          ) : null}
+        </StudioDetailCard>
+      </details>
     </div>
   );
 }

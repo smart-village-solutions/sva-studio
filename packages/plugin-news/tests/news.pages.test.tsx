@@ -592,6 +592,16 @@ describe('News editor pages', () => {
     vi.mocked(fetchIamContentHistory).mockResolvedValue([]);
   });
 
+  it.each(['missing_credentials', 'organization_mainserver_credentials_missing'])('explains credential failures without backend details: %s', async (code) => {
+    vi.mocked(createNews).mockRejectedValueOnce(new NewsApiError(code, 'API-Key or API-Secret missing'));
+    render(<NewsCreatePage />);
+    fireEvent.change(screen.getByLabelText('Titel'), {target: {value: 'New content'}});
+    clickPrimaryAction('News anlegen');
+    await waitFor(() => expect(screen.getByText('news.create.saveUnavailable')).toBeTruthy());
+    expect(screen.queryByText(/API-Key/)).toBeNull();
+    expect(screen.getByDisplayValue('New content')).toBeTruthy();
+  });
+
   it('allows creating news without content body', async () => {
     render(<NewsCreatePage />);
 
@@ -622,9 +632,8 @@ describe('News editor pages', () => {
     );
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Erstellen als') as HTMLInputElement).value).toBe(
-        'Stadt Musterhausen'
-      );
+      expect(screen.getByText('Stadt Musterhausen')).toBeTruthy();
+      expect(screen.queryByRole('textbox', { name: 'Erstellen als' })).toBeNull();
     });
     expect(screen.queryByLabelText('Autor')).toBeNull();
   });
@@ -814,8 +823,11 @@ describe('News editor pages', () => {
     expect(screen.getByRole('button', { name: 'Kategorie Allgemein entfernen' })).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Rathaus'));
     expect(screen.getByRole('button', { name: 'Kategorie Rathaus entfernen' })).toBeTruthy();
-    await openReleaseTab();
+    await openSettingsTab();
+    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
+    await openReleaseTab();
+    expect(screen.queryByRole('checkbox', { name: /Push-Benachrichtigung senden/ })).toBeNull();
     fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
       target: { value: '2026-04-14T09:30' },
     });
@@ -922,13 +934,13 @@ describe('News editor pages', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Globale News' } });
     await openSettingsTab();
+    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
     expect(loadNewsWasteMasterData).not.toHaveBeenCalled();
     fireEvent.click(
       screen.getByRole('button', { name: /targeting\.actions\.edit|Auswahl bearbeiten/ })
     );
     await waitFor(() => expect(loadNewsWasteMasterData).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
-    fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
     clickPrimaryAction('News anlegen');
 
     await waitFor(() =>

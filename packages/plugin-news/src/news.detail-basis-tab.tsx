@@ -65,6 +65,29 @@ function NewsPrincipalCard({
   loadedItem,
   pt,
 }: NewsDetailBasisTabProps) {
+  const principal = (
+    <MainserverPrincipalControl
+      fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
+      id="news-acting-principal"
+      label={mode === 'create' ? pt('fields.createAs') : pt('fields.actAs')}
+      description={pt('fields.actingPrincipalHelp')}
+      value={actingPrincipalType}
+      options={
+        principalControl?.kind === 'selectable'
+          ? principalControl.options
+          : [
+              {
+                value: principalControl?.value ?? actingPrincipalType,
+                label: principalControl?.label ?? pt(`principals.${actingPrincipalType}`),
+              },
+            ]
+      }
+      onChange={onActingPrincipalTypeChange}
+      contextOptions={mode === 'create' ? principalControl?.contextOptions : undefined}
+      onContextChange={mode === 'create' ? principalControl?.onContextChange : undefined}
+    />
+  );
+  if (mode === 'create') return principal;
   return (
     <NewsDetailCard
       title={pt(section === 'principal' ? 'fields.createAs' : 'cards.basis.authorMeta.title')}
@@ -74,25 +97,7 @@ function NewsPrincipalCard({
           : 'cards.basis.authorMeta.description'
       )}
     >
-      <MainserverPrincipalControl
-        id="news-acting-principal"
-        label={mode === 'create' ? pt('fields.createAs') : pt('fields.actAs')}
-        description={pt('fields.actingPrincipalHelp')}
-        value={actingPrincipalType}
-        options={
-          principalControl?.kind === 'selectable'
-            ? principalControl.options
-            : [
-                {
-                  value: principalControl?.value ?? actingPrincipalType,
-                  label: principalControl?.label ?? pt(`principals.${actingPrincipalType}`),
-                },
-              ]
-        }
-        onChange={onActingPrincipalTypeChange}
-        contextOptions={mode === 'create' ? principalControl?.contextOptions : undefined}
-        onContextChange={mode === 'create' ? principalControl?.onContextChange : undefined}
-      />
+      {principal}
 
       {mode === 'edit' ? (
         <dl className="grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm md:grid-cols-3">
@@ -126,7 +131,7 @@ export function NewsDetailBasisTab(props: NewsDetailBasisTabProps) {
 
   const titleField = getStudioFormFieldProps({
     id: 'news-title',
-    hasDescription: true,
+    hasDescription: section !== 'title',
     error: translateFieldError(errors.title, pt),
   });
   const categoriesField = getStudioFormFieldProps({
@@ -144,6 +149,15 @@ export function NewsDetailBasisTab(props: NewsDetailBasisTabProps) {
           : [titleField, categoriesField]
   );
 
+  if (section === 'title')
+    return (
+      <div className="space-y-3">
+        <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
+        <StudioField {...titleField} label={pt('fields.title')} required>
+          <Input {...titleField.controlProps} required {...register('title')} />
+        </StudioField>
+      </div>
+    );
   return (
     <div className="space-y-6">
       {mode === 'edit' ? <ContentOwnershipPanelSlot /> : null}
@@ -152,11 +166,7 @@ export function NewsDetailBasisTab(props: NewsDetailBasisTabProps) {
       {section !== 'principal' ? (
         <NewsDetailCard
           title={pt(
-            section === 'title'
-              ? 'fields.title'
-              : section === 'categories'
-                ? 'fields.categories'
-                : 'cards.basis.titleCategories.title'
+            section === 'categories' ? 'fields.categories' : 'cards.basis.titleCategories.title'
           )}
           description={section ? undefined : pt('cards.basis.titleCategories.description')}
         >
@@ -171,34 +181,32 @@ export function NewsDetailBasisTab(props: NewsDetailBasisTabProps) {
             </StudioField>
           ) : null}
 
-          {section !== 'title' ? (
-            <StudioField
-              {...categoriesField}
-              label={pt('fields.categories')}
-              description={pt('fields.categoriesHelp')}
-            >
-              <Controller
-                name="categories"
-                control={control}
-                render={({ field }) => (
-                  <NewsCategoryMultiselect
-                    availableCategories={availableCategories}
-                    emptyText={pt('fields.categoriesEmpty')}
-                    errorMessage={categoryOptionsError ?? undefined}
-                    loading={categoryOptionsLoading}
-                    helpText={pt('fields.categoriesHelp')}
-                    inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
-                    loadingText={pt('messages.categoryOptionsLoading')}
-                    searchLabel={pt('fields.categoriesSearch')}
-                    unavailableText={pt('fields.categoryUnavailable')}
-                    removeLabel={(name) => pt('actions.removeCategory', { name })}
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-            </StudioField>
-          ) : null}
+          <StudioField
+            {...categoriesField}
+            label={pt('fields.categories')}
+            description={pt('fields.categoriesHelp')}
+          >
+            <Controller
+              name="categories"
+              control={control}
+              render={({ field }) => (
+                <NewsCategoryMultiselect
+                  availableCategories={availableCategories}
+                  emptyText={pt('fields.categoriesEmpty')}
+                  errorMessage={categoryOptionsError ? pt('create.categoryUnavailable') : undefined}
+                  loading={categoryOptionsLoading}
+                  helpText=""
+                  inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
+                  loadingText={pt('messages.categoryOptionsLoading')}
+                  searchLabel={pt('fields.categoriesSearch')}
+                  unavailableText={pt('fields.categoryUnavailable')}
+                  removeLabel={(name) => pt('actions.removeCategory', { name })}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </StudioField>
         </NewsDetailCard>
       ) : null}
 

@@ -42,6 +42,7 @@ export function PoiFormStatus({ view }: Readonly<{ view: PoiDetailPageViewModel 
         </StudioFormSummary>
       ) : null}
       <MainserverPrincipalControl
+        fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
         id="poi-acting-principal"
         label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
         description={pt('principal.description')}

@@ -1,5 +1,9 @@
 export const pluginSurveysContentTranslations = {
   create: {
+    responsible: 'Verantwortlich:',
+    firstQuestion: 'Erste Frage hinzufügen',
+    results: 'Ergebnisse',
+    privacy: 'Teilnahme und Datenschutz',
     heading: 'Umfrage erfassen',
     intro:
       'Erstellen Sie eine Umfrage. Beginnen Sie mit Titel und Fragen; weitere Angaben sind optional.',
@@ -34,7 +38,7 @@ export const pluginSurveysContentTranslations = {
   principal: {
     createAs: 'Erstellen als',
     actAs: 'Handeln als',
-    description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+    description: 'Wählen Sie, in wessen Namen Sie arbeiten.',
     organization: 'Aktive Organisation',
     user: 'Persönlicher Account',
     dataProvider: 'Ursprünglicher DataProvider',

@@ -46,6 +46,7 @@ export const resolveMainserverPrincipalOptions = (
 export type MainserverPrincipalControlProps = Readonly<{
   id: string;
   label: string;
+  fixedLabel?: string;
   description?: string;
   value: MainserverPrincipalType;
   options: readonly MainserverPrincipalOption[];
@@ -64,6 +65,7 @@ const resolveOptionLabel = (
 export const MainserverPrincipalControl = ({
   id,
   label,
+  fixedLabel,
   description,
   value,
   options,
@@ -85,24 +87,31 @@ export const MainserverPrincipalControl = ({
 
   return (
     <div className="space-y-4">
-      <StudioField id={id} label={label} description={description}>
-        {options.length + contextOptions.length > 1 ? (
-          <Select id={id} value={value} onChange={handleChange}>
-            {options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-            {contextOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        ) : (
-          <Input id={id} readOnly value={resolveOptionLabel(options, value)} />
-        )}
-      </StudioField>
+      {fixedLabel && options.length + contextOptions.length === 1 ? (
+        <dl className="flex flex-wrap gap-x-2 text-sm">
+          <dt className="text-muted-foreground">{fixedLabel}</dt>
+          <dd className="font-medium">{resolveOptionLabel(options, value)}</dd>
+        </dl>
+      ) : (
+        <StudioField id={id} label={label} description={description}>
+          {options.length + contextOptions.length > 1 ? (
+            <Select id={id} value={value} onChange={handleChange}>
+              {options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+              {contextOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <Input id={id} readOnly value={resolveOptionLabel(options, value)} />
+          )}
+        </StudioField>
+      )}
 
       {dataProvider !== undefined && dataProviderLabel && dataProviderUnavailableLabel ? (
         <dl className="rounded-xl border border-border/60 bg-muted/20 p-4 text-sm">

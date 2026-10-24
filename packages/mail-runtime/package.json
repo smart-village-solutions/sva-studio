@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@sva/core": "workspace:*",
-    "nodemailer": "^10.0.2"
+    "nodemailer": "^10.1.4"
   },
   "devDependencies": {
     "@types/nodemailer": "^8.0.1",

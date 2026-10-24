@@ -21,7 +21,7 @@
     "@sva/studio-ui-react": "workspace:*",
     "@hookform/resolvers": "^3.10.0",
     "react-hook-form": "^7.80.0",
-    "zod": "^3.25.76"
+    "zod": "^4.6.6"
   },
   "peerDependencies": {
     "@tanstack/react-router": "^1.170.8",

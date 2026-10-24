@@ -8,7 +8,6 @@ import {
   type ResolvedMainserverOwnershipSource,
 } from '@sva/auth-runtime/server';
 
-import type { SvaMainserverProjectionContentType } from '../types.js';
 import { errorJson, isResponse, json } from './content-route-core.js';
 import {
   loadOwnershipItem,
@@ -34,7 +33,7 @@ import { getSvaMainserverSurvey } from './service.js';
 
 const routePrefix = '/api/v1/mainserver/content-ownership/';
 const MAX_OWNERSHIP_TARGET_SEARCH_LENGTH = 200;
-const supportedContentTypes = new Set<SvaMainserverProjectionContentType>([
+const supportedContentTypes = new Set<ContentOwnershipRouteMatch['contentType']>([
   'news.article',
   'events.event-record',
   'poi.point-of-interest',
@@ -44,8 +43,10 @@ const supportedContentTypes = new Set<SvaMainserverProjectionContentType>([
   'projects.project',
   'surveys.survey',
 ]);
-const isProjectionContentType = (value: string): value is SvaMainserverProjectionContentType =>
-  supportedContentTypes.has(value as SvaMainserverProjectionContentType);
+const isProjectionContentType = (
+  value: string
+): value is ContentOwnershipRouteMatch['contentType'] =>
+  supportedContentTypes.has(value as ContentOwnershipRouteMatch['contentType']);
 
 const matchRoute = (request: Request): ContentOwnershipRouteMatch | null => {
   const pathname = new URL(request.url).pathname;
@@ -84,7 +85,6 @@ const resolveActor = async (
     },
   });
 };
-
 const handleTargets = async (
   request: Request,
   route: ContentOwnershipRouteMatch,

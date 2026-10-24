@@ -220,6 +220,7 @@ export const toMainserverContentType = (value: string): MainserverContentType | 
     value === 'generic-items.generic-item' ||
     value === 'faq.faq' ||
     value === 'cockpit-cards.cockpit-card' ||
+    value === 'vouchers.voucher' ||
     value === 'projects.project' ||
     value === 'surveys.survey'
   ) {

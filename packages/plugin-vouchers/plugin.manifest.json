@@ -1,0 +1,13 @@
+{
+  "pluginId": "vouchers",
+  "manifestVersion": 1,
+  "extensionTier": "feature",
+  "tenantActivationPolicy": "optional",
+  "version": "0.0.1",
+  "sdkVersion": "0.0.1",
+  "hostCompatibility": {
+    "studioVersionRange": "^0.0.1",
+    "requiredCapabilities": ["routing", "navigation", "iam"]
+  },
+  "entryPoints": { "descriptor": "./dist/plugin.js", "browser": "./dist/index.js" }
+}

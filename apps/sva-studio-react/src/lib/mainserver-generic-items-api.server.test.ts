@@ -2,11 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   dispatchSvaMainserverGenericItemsRequest: vi.fn(),
+  dispatchSvaMainserverVouchersRequest: vi.fn().mockResolvedValue(null),
   refreshProjectionAfterMainserverMutation: vi.fn(),
 }));
 
 vi.mock('@sva/sva-mainserver/server', () => ({
   dispatchSvaMainserverGenericItemsRequest: state.dispatchSvaMainserverGenericItemsRequest,
+  dispatchSvaMainserverVouchersRequest: state.dispatchSvaMainserverVouchersRequest,
 }));
 
 vi.mock('./mainserver-projection-refresh.server', () => ({
@@ -44,7 +46,9 @@ describe('mainserver generic items app adapter', () => {
 
   it('refreshes the project projection after successful project mutations', async () => {
     const response = new Response('project', { status: 201 });
-    const request = new Request('https://studio.test/api/v1/mainserver/projects', { method: 'POST' });
+    const request = new Request('https://studio.test/api/v1/mainserver/projects', {
+      method: 'POST',
+    });
     state.dispatchSvaMainserverGenericItemsRequest.mockResolvedValue(response);
 
     await expect(dispatchMainserverGenericItemsRequest(request)).resolves.toBe(response);
@@ -53,5 +57,19 @@ describe('mainserver generic items app adapter', () => {
       response,
       'projects.project'
     );
+  });
+  it('dispatches the optional voucher plugin through the existing adapter', async () => {
+    const response = new Response(JSON.stringify({ data: { id: '1' } }), { status: 200 });
+    const request = new Request('https://studio.test/api/v1/mainserver/vouchers/commit', {
+      method: 'POST',
+    });
+    state.dispatchSvaMainserverVouchersRequest.mockResolvedValueOnce(response);
+    await expect(dispatchMainserverGenericItemsRequest(request)).resolves.toBe(response);
+    expect(state.refreshProjectionAfterMainserverMutation).toHaveBeenCalledWith(
+      request,
+      response,
+      'vouchers.voucher'
+    );
+    expect(state.dispatchSvaMainserverGenericItemsRequest).not.toHaveBeenCalled();
   });
 });

@@ -12,6 +12,7 @@ import { validateCsrf } from '../iam-account-management/csrf.js';
 import { validateContentTypePayload } from './content-type-registry.js';
 import { authorizeUpdateContentActions } from './mutation-authorization.js';
 import {
+  rejectVoucherCoreMutation,
   createFailureResponse,
   createFailureResponseFromResponse,
   logCreateFailure,
@@ -82,6 +83,8 @@ export const createContentResponse = async (
   if (prepared instanceof Response) {
     return prepared;
   }
+  const voucherError = rejectVoucherCoreMutation(prepared.parsedData.contentType, actor.requestId);
+  if (voucherError) return voucherError;
   const parsedData = {
     ...prepared.parsedData,
     organizationId: actor.activeOrganizationId,
@@ -189,6 +192,8 @@ export const updateContentResponse = async (
   if (authorizationError) {
     return authorizationError;
   }
+  const voucherError = rejectVoucherCoreMutation(currentContent.contentType, actor.requestId);
+  if (voucherError) return voucherError;
 
   try {
     const updatedId = await updateContent({
@@ -255,7 +260,6 @@ export const deleteContentResponse = async (
       return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
     }
     const currentContent = mapContentListItem(currentRow);
-
     const authorizationError = await authorizeContentAction(actor, 'content.delete', {
       contentId,
       contentType: currentContent.contentType,
@@ -267,6 +271,8 @@ export const deleteContentResponse = async (
     if (authorizationError) {
       return authorizationError;
     }
+    const voucherError = rejectVoucherCoreMutation(currentContent.contentType, actor.requestId);
+    if (voucherError) return voucherError;
 
     const deletedId = await deleteContent({
       instanceId: actor.instanceId,

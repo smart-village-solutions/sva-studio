@@ -1242,3 +1242,8 @@ Der bei der Initialisierung gewählte Eingang bindet den Scan-Vertrag. Nur Uploa
 Tags bleiben validierte globale Asset-Metadaten mit bestehender Instanz-/IAM-Grenze. Sie erweitern keine Berechtigungen; Tagwerte werden nicht geloggt. ClamAV bleibt als GPLv2-Dienst über das dokumentierte Scan-Protokoll vom EUPL-Code getrennt, ohne `libclamav`-Linking. Das Scan-Gate akzeptiert ausschließlich vollständig geprüfte Bytes mit bestätigter Signaturaktualität. Ein Scanner-Ping ist kein Aktualitätsnachweis; Detailregeln stehen in [ADR-068](../adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md).
 
 Der Dateibericht des Bestandsscans wird ausschließlich über den medienberechtigten Endpunkt ausgeliefert. Generische Job-Antworten beim Lesen und Löschen verwenden dieselbe Ergebnisredaktion; Monitoring-Rechte erweitern keine Medienrechte. Die Signaturaltersmetrik prüft dieselbe Übereinstimmung zwischen Aktualitätsnachweis und geladener ClamAV-Revision wie der Scan und meldet Ausfall oder Abweichung als Sperrwert.
+
+
+## Gutscheinidentität und Save-Bestätigung
+
+Die fachliche Gutscheinidentität in `payload.id` überlebt wechselnde Mainserver-IDs. Die Bestätigung ist an aktuellen Gesamtbestand, Formular und Principal-Kontext gebunden. CSRF, Idempotenz und Operationsjournal bleiben im vorhandenen Host-Vertrag. Medienreferenzen und Core-Historie werden nach eindeutiger Rückzuordnung erhalten. Siehe [Gutscheinreferenz](../reference/vouchers.md).

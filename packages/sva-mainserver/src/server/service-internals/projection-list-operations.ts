@@ -144,6 +144,15 @@ const definitions: Record<SvaMainserverProjectionContentType, ProjectionDefiniti
     order: 'updatedAt_DESC',
     paginated: true,
   },
+  'vouchers.voucher': {
+    document: svaMainserverGenericItemProjectionListDocument,
+    operationName: 'SvaMainserverGenericItemProjectionList',
+    responseField: 'genericItems',
+    contentType: 'vouchers.voucher',
+    titleField: 'title',
+    order: 'updatedAt_DESC',
+    paginated: true,
+  },
   'faq.faq': {
     document: svaMainserverGenericItemProjectionListDocument,
     operationName: 'SvaMainserverGenericItemProjectionList',

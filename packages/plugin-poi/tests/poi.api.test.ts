@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createPoi, listPoi, listPoiCategories, PoiApiError } from '../src/poi.api.js';
+import { createPoi, updatePoi, listPoi, listPoiCategories, PoiApiError } from '../src/poi.api.js';
 
 const defaultListQuery = {
   page: 1,
@@ -65,5 +65,52 @@ describe('poi api', () => {
     );
 
     await expect(listPoi({ page: 1, pageSize: 25 })).rejects.toBeInstanceOf(PoiApiError);
+  });
+  it('confirms the full voucher reset before committing a location update', async () => {
+    const fetchMock = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      if (init?.method === undefined)
+        return Response.json(
+          { data: { id: 'voucher-poi-1', name: 'Ort' } },
+          { headers: { 'X-SVA-Context-Binding': 'v1.context' } }
+        );
+      const headers = new Headers(init.headers);
+      if (headers.has('X-SVA-Voucher-Reset-Mode'))
+        return Response.json({
+          voucherReset: {
+            required: true,
+            id: 'attempt',
+            fingerprint: 'snapshot',
+            affected: [{ title: 'Alt' }],
+          },
+        });
+      expect(headers.get('X-SVA-Voucher-Reset-Id')).toBe('attempt');
+      return Response.json({ data: { id: 'voucher-poi-1', name: 'Neu' } });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const confirm = vi.fn().mockReturnValue(true);
+    vi.stubGlobal('confirm', confirm);
+    await expect(
+      updatePoi('voucher-poi-1', { name: 'Neu' }, 'organization')
+    ).resolves.toMatchObject({ name: 'Neu' });
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+  it('does not mutate when the editor cancels a voucher reset', async () => {
+    const fetchMock = vi.fn(async (_url: unknown, init?: RequestInit) =>
+      init?.method === undefined
+        ? Response.json(
+            { data: { id: 'voucher-poi-2', name: 'Ort' } },
+            { headers: { 'X-SVA-Context-Binding': 'v1.context' } }
+          )
+        : Response.json({
+            voucherReset: { required: true, id: 'attempt', fingerprint: 'snapshot', affected: [] },
+          })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('confirm', () => false);
+    await expect(updatePoi('voucher-poi-2', { name: 'Neu' }, 'organization')).rejects.toMatchObject(
+      { code: 'voucher_reset_cancelled' }
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

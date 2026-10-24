@@ -12,6 +12,7 @@ export type ContentReadAction =
   | 'faq.read'
   | 'cockpit-cards.read'
   | 'projects.read'
+  | 'vouchers.read'
   | 'surveys.read';
 export type ContentAuthorizationAction = IamContentPrimitiveAction | ContentReadAction;
 

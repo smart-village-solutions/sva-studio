@@ -1,3 +1,4 @@
+import { rejectVoucherCoreMutation } from './mutation-helpers.js';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import {
@@ -68,6 +69,8 @@ export const transferContentOwnershipResponse = async (
     ownerOrganizationId: currentContent.ownerOrganizationId,
   });
   if (authorizationError) return authorizationError;
+  const voucherError = rejectVoucherCoreMutation(currentContent.contentType, actor.requestId);
+  if (voucherError) return voucherError;
   try {
     const result = await transferContentOwnership({
       instanceId: actor.instanceId,

@@ -1,5 +1,6 @@
+import { PoiFormStatus } from './poi.detail-page.view-status.js';
 import React from 'react';
-import { FormProvider, type UseFormReturn } from 'react-hook-form';
+import { FormProvider, useWatch, type UseFormReturn } from 'react-hook-form';
 import { Link, type NavigateFn } from '@tanstack/react-router';
 import { usePluginTranslation, resolveStandardContentAccessCapabilities } from '@sva/plugin-sdk';
 import {
@@ -7,12 +8,6 @@ import {
   createStudioMediaPickerLabels,
   StudioDetailPageTemplate,
   StudioDestructiveActionDialog,
-  StudioFormSummary,
-  StudioPersistentActionResult,
-  MainserverDeviationSummary,
-  MainserverPrincipalControl,
-  resolveMainserverPrincipalOptions,
-  StudioMediaReferenceRetryAction,
   StudioSaveButton,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
@@ -84,11 +79,8 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
     setDeleteErrorMessage,
     setDeleteDialogOpen,
     media,
-    canUploadMedia,
-    canUpdateMedia,
-    mediaPickerLabels,
-    navigate,
   } = view;
+  const active = useWatch({ control: methods.control, name: 'basis.active' });
   return (
     <FormProvider {...methods}>
       <StudioDetailPageTemplate
@@ -103,8 +95,15 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
                 type="submit"
                 form={formId}
                 status={saveFeedback.status}
+                disabled={mode === 'create' && media.leaveGuard.createdContentId !== null}
                 labels={{
-                  idle: pt('actions.save'),
+                  idle: pt(
+                    mode === 'create'
+                      ? active
+                        ? 'create.createActive'
+                        : 'create.createInactive'
+                      : 'actions.save'
+                  ),
                   saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
                   saved: pt('actions.saved'),
                 }}
@@ -133,13 +132,7 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
           </div>
         }
       >
-        <PoiDetailMediaOverlay
-          media={media}
-          canUploadMedia={canUploadMedia}
-          canUpdateMedia={canUpdateMedia}
-          mediaPickerLabels={mediaPickerLabels}
-          navigate={navigate}
-        />
+        <PoiDetailMediaOverlay {...view} />
         <PoiDetailForm view={view} />
       </StudioDetailPageTemplate>
       <PoiDeleteDialog view={view} />
@@ -180,65 +173,19 @@ function PoiDeleteDialog({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
 }
 
 export function PoiDetailForm({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
-  const {
-    mode,
-    formId,
-    submit,
-    deleteNavigationFailed,
-    pt,
-    status,
-    actingPrincipalType,
-    principalControl,
-    setActingPrincipalType,
-    deviations,
-    deviationFieldLabels,
-    media,
-    setStatus,
-  } = view;
-  const { mediaReferenceSync } = media;
+  const { formId, submit } = view;
   return (
-    <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5" noValidate>
-      {deleteNavigationFailed ? (
-        <StudioPersistentActionResult
-          kind="success"
-          title={pt('messages.deleteSuccess')}
-          description={pt('messages.deleteNavigationError')}
-          actions={
-            <Button asChild size="sm" variant="secondary">
-              <Link to="/admin/content">{pt('actions.back')}</Link>
-            </Button>
-          }
-        />
-      ) : null}
-      {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
-      <MainserverPrincipalControl
-        id="poi-acting-principal"
-        label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-        description={pt('principal.description')}
-        value={actingPrincipalType}
-        options={resolveMainserverPrincipalOptions(principalControl, {
-          value: actingPrincipalType,
-          label: pt(`principal.${actingPrincipalType}`),
-        })}
-        onChange={setActingPrincipalType}
-      />
-      <MainserverDeviationSummary
-        deviations={deviations}
-        title={pt('messages.degradedDataWarning')}
-        fieldLabel={(field) =>
-          pt('messages.degradedField', { field: deviationFieldLabels[field] ?? field })
-        }
-      />
-      <StudioMediaReferenceRetryAction
-        controller={mediaReferenceSync}
-        label={pt('messages.mediaReferenceRetry')}
-        onSuccess={() =>
-          setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') })
-        }
-        onFailure={() =>
-          setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
-        }
-      />
+    <form
+      onInvalidCapture={(event) =>
+        event.target instanceof HTMLElement &&
+        event.target.closest('details')?.setAttribute('open', '')
+      }
+      id={formId}
+      onSubmit={(event) => void submit(event)}
+      className="space-y-5"
+      noValidate
+    >
+      <PoiFormStatus view={view} />
       <PoiDetailTabs view={view} />
     </form>
   );

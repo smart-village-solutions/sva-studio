@@ -1,7 +1,7 @@
+import { GenericItemsMediaPickerView } from './generic-items.detail-page.view-media.js';
 import { Link } from '@tanstack/react-router';
 import { Button, StudioDetailPageTemplate, StudioSaveButton } from '@sva/studio-ui-react';
 import {
-  GenericItemsMediaPickerView,
   GenericItemsStatusView,
   GenericItemsDeleteDialogView,
   type GenericItemsDetailPageViewModel,
@@ -77,9 +77,11 @@ export const GenericItemsDetailPageView = ({
         canSave ? (
           <div className="flex flex-col items-end gap-1">
             <StudioSaveButton
-              type="button"
+              type={mode === 'create' ? 'submit' : 'button'}
+              form={mode === 'create' ? 'generic-item-create-form' : undefined}
               status={saveFeedback.status}
-              onClick={() => void onSubmit()}
+              disabled={mode === 'create' && view.createdContentId !== null}
+              onClick={mode === 'edit' ? () => void onSubmit() : undefined}
               labels={{
                 idle: mode === 'create' ? pt('actions.create') : pt('actions.update'),
                 saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
@@ -105,7 +107,20 @@ export const GenericItemsDetailPageView = ({
     >
       <GenericItemsMediaPickerView view={view} />
       <GenericItemsStatusView view={view} />
-      <GenericItemsEditorTabsView view={view} />
+      {mode === 'create' ? (
+        <form
+          id="generic-item-create-form"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!methods.formState.isSubmitting) void onSubmit();
+          }}
+        >
+          <GenericItemsEditorTabsView view={view} />
+        </form>
+      ) : (
+        <GenericItemsEditorTabsView view={view} />
+      )}
       <GenericItemsDeleteDialogView view={view} />
     </StudioDetailPageTemplate>
   );

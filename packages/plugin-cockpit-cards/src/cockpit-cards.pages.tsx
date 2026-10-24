@@ -1,6 +1,7 @@
+import { useCockpitCardCreateMedia } from './cockpit-cards.editor-create.js';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
-  useStudioMediaReferenceSync,
+  type useStudioMediaReferenceSync,
   StudioErrorState,
   StudioLoadingState,
   type MainserverPrincipalControlModel,
@@ -44,6 +45,10 @@ type EditorData = Readonly<{
   load: ReturnType<typeof useCockpitCardLoad>;
   access: ReturnType<typeof useCockpitCardAccess>;
   deletion: ReturnType<typeof useCockpitCardDelete>;
+  onCreateStarted: () => boolean;
+  onCreateConfirmed: (id: string) => void;
+  createdContentId: string | null;
+  onCreateSaved: () => void;
 }>;
 
 function Editor(params: EditorParams) {
@@ -52,11 +57,14 @@ function Editor(params: EditorParams) {
   const navigate = useNavigate();
   const editor = useCockpitCardForm();
   const principal = useCockpitCardPrincipal(principalControl);
-  const media = useCockpitCardMedia(editor.form);
-  const mediaReferenceSync = useStudioMediaReferenceSync({
-    mediaUsages: media.mediaUsages,
-    setMediaUsages: media.setMediaUsages,
-  });
+  const {
+    media,
+    mediaReferenceSync,
+    createdContentId,
+    onCreateStarted,
+    onCreateConfirmed,
+    onCreateSaved,
+  } = useCockpitCardCreateMedia(mode, editor.form);
   const categories = useCategories();
   const load = useCockpitCardLoad({
     mode,
@@ -85,33 +93,32 @@ function Editor(params: EditorParams) {
     mediaReferenceSync,
     categories,
     load,
-    access,
+    access: { ...access, canSave: access.canSave && !createdContentId },
     deletion,
+    onCreateStarted,
+    onCreateSaved,
+    onCreateConfirmed,
+    createdContentId,
   };
   return <EditorContent params={params} data={data} />;
 }
 
-function EditorContent({
-  params,
-  data,
-}: Readonly<{
-  params: EditorParams;
-  data: EditorData;
-}>) {
-  const { mode, contentId, principalControl } = params;
+function createEditorSubmit(params: EditorParams, data: EditorData) {
+  const { mode, contentId } = params;
   const {
-    pt,
-    navigate,
     editor,
+    access,
     principal,
+    load,
     media,
     mediaReferenceSync,
-    categories,
-    load,
-    access,
-    deletion,
+    navigate,
+    pt,
+    onCreateStarted,
+    onCreateSaved,
+    onCreateConfirmed,
   } = data;
-  const save = editor.form.handleSubmit(
+  return editor.form.handleSubmit(
     (values) =>
       access.canSave
         ? saveCockpitCard(values, {
@@ -127,6 +134,9 @@ function EditorContent({
             pt,
             setMediaSavePhaseKey: editor.setMediaSavePhaseKey,
             setMutationError: editor.setMutationError,
+            onCreateConfirmed,
+            onCreateStarted,
+            onCreateSaved,
           })
         : undefined,
     (errors) => {
@@ -135,6 +145,29 @@ function EditorContent({
       editor.setTab(cockpitCardValidationTab(errors));
     }
   );
+}
+
+function EditorContent({
+  params,
+  data,
+}: Readonly<{
+  params: EditorParams;
+  data: EditorData;
+}>) {
+  const { mode, contentId, principalControl } = params;
+  const {
+    pt,
+    editor,
+    principal,
+    media,
+    mediaReferenceSync,
+    categories,
+    access,
+    deletion,
+    onCreateSaved,
+    createdContentId,
+  } = data;
+  const save = createEditorSubmit(params, data);
   const view: EditorViewProps = {
     mode,
     contentId,
@@ -146,6 +179,8 @@ function EditorContent({
     ...principal,
     ...access,
     ...deletion,
+    onCreateSaved,
+    createdContentId,
     summaryErrors: cockpitCardSummaryErrors(editor.form, pt),
     tabs: cockpitCardEditorTabs({
       pt,

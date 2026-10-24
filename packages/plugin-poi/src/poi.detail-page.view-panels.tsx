@@ -94,6 +94,18 @@ export const createPoiTabPanels = ({
     ),
     content: (
       <PoiDetailContentTab
+        create={mode === 'create'}
+        categories={
+          <PoiDetailBasisTab
+            availableCategories={categoryOptions}
+            categoryOptionsError={categoryOptionsError}
+            categoryOptionsLoading={categoryOptionsLoading}
+            loadedItem={loadedItem}
+            mode={mode}
+            pt={pt}
+            section="categories"
+          />
+        }
         canSelectMedia={canSelectMedia}
         canUploadMedia={canUploadMedia}
         mediaEditingDisabled={!mediaReferencesReady || saveStatus === 'saving'}

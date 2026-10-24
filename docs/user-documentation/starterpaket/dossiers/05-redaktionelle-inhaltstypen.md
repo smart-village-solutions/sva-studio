@@ -9,11 +9,29 @@ zusätzlich Löschen, Historie und den ursprünglichen DataProvider zeigen. Medi
 mehreren Schritten gespeichert, sodass Inhalt und Medienreferenzen unterschiedliche Ergebnisse
 haben können.
 
+Beim Anlegen stehen die vorhandenen Eingaben auf einer durchgehenden Seite ohne Editor-Tabs.
+Beginnen Sie mit Titel beziehungsweise Frage und Hauptinhalt; ergänzende Angaben sind als optional
+erkennbar. Aufklappbare Bereiche zeigen bereits vorhandene Angaben und behalten diese beim
+Schließen. Am Abschluss wird die Wirkung der gewählten Einstellungen erklärt; bei Nachrichten
+ist auch am oberen Aktionsbutton erkennbar, ob ein Entwurf angelegt, eine Veröffentlichung geplant
+oder sofort veröffentlicht wird und ob Push vorgesehen ist. Gespeicherte Inhalte verwenden
+weiterhin die bisherigen Bearbeitungs-Tabs.
+
+Ein Entwurf kann nur bei Inhaltstypen mit bereits vorhandenem Entwurfsmodus gespeichert und später
+über die Inhaltsliste weiterbearbeitet werden. Ohne erfolgreiches Speichern gibt es keine
+Autosave- oder Wiederherstellungsgarantie beim Verlassen beziehungsweise Neuladen. Beim Anlegen
+warnt das Studio vor dem Verlassen mit ungespeicherten Änderungen: „Weiterbearbeiten“ erhält
+die Eingaben, „Verwerfen und verlassen“ verlässt das Formular. Beim Neuladen oder Schließen
+verwendet der Browser seine eigene Warnung. Änderungen während des Speicherns bleiben als
+ungespeichert geschützt. Wurde der Inhalt bereits angelegt, führt „Gespeicherten Inhalt öffnen“
+zur angelegten Fassung; eine zweite Anlage wird verhindert. Fehler lassen
+sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür geöffnet.
+
 ## `cockpit-cards.content.create` – Kachel anlegen
 
 - **Route / Typ / Owner:** `/admin/cockpit-cards/new`, Anlegen, Plugin `cockpit-cards`.
 - **Nutzerziel:** Eine neue Cockpit-Kachel mit Text, Bild und Zielverlinkung vorbereiten.
-- **Produktfakten:** Bereiche sind Basis, Inhalt und Einstellungen. Felder umfassen Überschrift,
+- **Produktfakten:** Alle Eingaben stehen beim Anlegen auf einer Seite. Felder umfassen Überschrift,
   Sprachcode, Kategorie, Klartext, Bilder, Link und Linktext, Öffnen im neuen Tab, Sortiergewicht,
   Sichtbarkeit und Veröffentlichungszeitpunkt. Bilder können aus der Mediathek, per Upload oder
   über HTTPS-URL kommen.
@@ -43,13 +61,14 @@ haben können.
 - **Route / Typ / Owner:** `/admin/events/new`, Anlegen, Plugin `events`.
 - **Nutzerziel:** Eine Veranstaltung mit Termin, Ort, Kontakt und Veröffentlichung erfassen.
 - **Produktfakten:** Erfasst werden Titel, Beschreibung, Kategorien, Sichtbarkeit, einzelne oder
-  wiederkehrende Termine, Zeit-Hinweise, Veranstalter, Kontakte, Adresse und Karte, POI-Bezug,
-  Links, Preise, Barrierefreiheit, Tags und Medien. Wiederholungen unterstützen Tage, Wochen,
+  wiederkehrende Termine, Zeit-Hinweise, Veranstalter, Kontakte, Adresse und Karte,
+  Links, Preise und Medien. Optionale Ergänzungen sind direkt erreichbar; technische Angaben
+  bleiben geschlossen. Wiederholungen unterstützen Tage, Wochen,
   Monate oder Jahre sowie Wochentage. Die Beschreibung lässt sich visuell oder als HTML bearbeiten.
 - **Validierung:** Titel erforderlich; gültige Datumswerte, HTTPS-URLs, valide Preise und Geo-
   Koordinaten. Kategorienamen sind auf 128 Zeichen begrenzt.
-- **Leitfragen / Stichwörter:** Einzeltermin oder Wiederholung? Adresse oder POI? Nur Zeit-Hinweis?
-  Veranstaltung, Terminserie, Veranstaltungsort, Preis, Barrierefreiheit.
+- **Leitfragen / Stichwörter:** Einzeltermin oder Wiederholung? Welche Adresse? Nur Zeit-Hinweis?
+  Veranstaltung, Terminserie, Veranstaltungsort, Preis.
 - **Evidenz:** `packages/plugin-events/src/events.detail-*.tsx`,
   `packages/plugin-events/src/plugin.translations.ts`.
 
@@ -72,7 +91,7 @@ haben können.
 
 - **Route / Typ / Owner:** `/admin/faq/new`, Anlegen, Plugin `faq`.
 - **Nutzerziel:** Eine häufige Frage mit Antwort und Veröffentlichungsmerkmalen erfassen.
-- **Produktfakten:** Bereiche sind Basis, Inhalt und Einstellungen. Felder sind Frage, Antwort als
+- **Produktfakten:** Alle Eingaben stehen beim Anlegen auf einer Seite. Felder sind Frage, Antwort als
   Klartext, BCP-47-Sprachcode, ganzzahliges Sortiergewicht, Sichtbarkeit und
   Veröffentlichungszeitpunkt.
 - **Validierung:** Frage und gültige Textantwort sind erforderlich; Sprachcode und Sortiergewicht
@@ -96,7 +115,7 @@ haben können.
 ## `generic-items.content.create` – Generischen Inhalt anlegen
 
 - **Route / Typ / Owner:** `/admin/generic-items/new`, Anlegen, Plugin `generic-items`.
-- **Nutzerziel:** Einen frei modellierbaren Inhalt anlegen, wenn kein enger Fachtyp passt.
+- **Nutzerziel:** Als technischer Sonderfall einen frei modellierbaren Inhalt anlegen, wenn kein enger Fachtyp passt.
 - **Produktfakten:** Neben Überschrift, freiem Inhaltstyp, Sichtbarkeit und Veröffentlichung stehen
   Content-Blocks, Kategorien, Kontakte, Weblinks, Adressen, Orte, Termine, Öffnungszeiten,
   Barrierefreiheit, Preise, Medien und freies JSON zur Verfügung. Content-Blocks lassen sich
@@ -126,8 +145,8 @@ haben können.
 
 - **Route / Typ / Owner:** `/admin/news/new`, Anlegen, Plugin `news`.
 - **Nutzerziel:** Eine Nachricht als Entwurf, sofort oder zeitgesteuert veröffentlichen.
-- **Produktfakten:** Tabs sind Basis, Inhalte und Einstellungen. Felder umfassen Überschrift,
-  Kategorien, Schlagwörter, Einleitung, Richtext, Medien, Quelle, Veröffentlichungsmodus und
+- **Produktfakten:** Die Seite ordnet Überschrift, Einleitung, Richtext, Medien, Kategorien,
+  optionale Quelle und Veröffentlichungsmodus ohne Tabwechsel an. Hinzu kommt
   optional Push. Der Richtext lässt sich visuell oder als HTML bearbeiten; Links, Überschriften
   und Listen stehen in der visuellen Ansicht bereit. Push kann global oder auf ausgewählte
   Abholorte begrenzt werden; die Nachricht selbst bleibt dabei öffentlich sichtbar.
@@ -158,11 +177,11 @@ haben können.
 
 - **Route / Typ / Owner:** `/admin/poi/new`, Anlegen, Plugin `poi`.
 - **Nutzerziel:** Einen Ort mit Beschreibung, Lage, Kontakt und Öffnungszeiten erfassen.
-- **Produktfakten:** Der Editor umfasst Basis, Inhalt und Einstellungen mit Name, Aktivstatus,
-  Kategorien, Beschreibungen, Kontakt, Adresse und Karte, Betreiber, Öffnungszeiten, Links, Preise,
-  Barrierefreiheit, Medien sowie technische Zusatzdaten. Die Beschreibung lässt sich visuell oder
+- **Produktfakten:** Die Seite ordnet Name, Standort/Adresse und Karte, Beschreibungen, Medien
+  und Kategorien vor den optionalen Angaben für Öffnungszeiten, Kontakt, weitere Links, Preise
+  und Betreiber an. Externe ID bleibt ein geschlossener technischer Zusatz; Aktiv steht am Abschluss. Die Beschreibung lässt sich visuell oder
   als HTML bearbeiten.
-- **Validierung:** Name erforderlich; HTTPS-URLs, gültige Koordinaten, Kategorien und JSON werden
+- **Validierung:** Name erforderlich; HTTPS-URLs, gültige Koordinaten und Kategorien werden
   geprüft.
 - **Leitfragen / Stichwörter:** Was gehört zum Ort und was zum Betreiber? Welche Adresse und
   Öffnungszeiten sind öffentlich relevant? POI, Ort, Betreiber, Öffnungszeit, Karte.
@@ -187,8 +206,9 @@ haben können.
 
 - **Route / Typ / Owner:** `/admin/projects/new`, Anlegen, Plugin `projects`.
 - **Nutzerziel:** Ein Featured Project mit Text, Bildern und Veröffentlichungsstatus erstellen.
-- **Produktfakten:** Felder umfassen Sprache, Titel, Kurzbeschreibung, Richtext, geordnete Bilder
-  mit Alternativtext, Bildunterschrift und Nachweis sowie Status und Veröffentlichungszeitpunkt.
+- **Produktfakten:** Die Feldfolge ist Titel, Kurzbeschreibung, Richtext, geordnete Bilder
+  mit Alternativtext, Bildunterschrift und Nachweis, Sprache und Status. Veröffentlichungsmetadaten
+  sind systemgeführt; der Status erhält seine bestehende Bedeutung.
   Bilder kommen aus Mediathek, Upload oder dauerhafter URL. Der Richtext lässt sich visuell oder als
   HTML bearbeiten.
 - **Lebenszyklus:** Entwurf, veröffentlicht oder archiviert.
@@ -214,9 +234,10 @@ haben können.
 
 - **Route / Typ / Owner:** `/admin/surveys/new`, Anlegen, Plugin `surveys`.
 - **Nutzerziel:** Rahmen, Teilnahmebedingungen und Fragen einer Umfrage definieren.
-- **Produktfakten:** Basis und Inhalt umfassen Titel, Status, Laufzeit, Zielgebiete, Kurz- und
-  Langbeschreibung, anonyme Teilnahme, Ergebnisfreigabe, Datenschutz- und Transparenzhinweis sowie
-  geordnete Fragen. Fragetypen sind Einfach-, Mehrfach- und Freitextvarianten; Fragen können
+- **Produktfakten:** Die Feldfolge beginnt mit Titel, Kurz- und Langbeschreibung sowie
+  geordneten Fragen. Danach folgen Teilnahmegebiet, Laufzeit, Anonymität, Datenschutz- und
+  Transparenzhinweis, Ergebnisdarstellung und Status. Moderation, Ergebnisse und Historie sind
+  erst nach erfolgreicher Anlage erreichbar. Fragetypen sind Einfach-, Mehrfach- und Freitextvarianten; Fragen können
   verpflichtend sein.
 - **Lebenszyklus:** Entwurf, aktiv oder archiviert. Ohne Enddatum bleibt die Umfrage unbefristet.
 - **Leitfragen / Stichwörter:** Welche Ergebnisfreigabe ist datenschutzgerecht? Welche Frageart

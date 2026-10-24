@@ -1,7 +1,10 @@
+import { poiHistoryEn } from './plugin.translations.en.messages.js';
+import { poiCreateTranslations } from './plugin.translations.create.js';
 import { createPoiLocaleTranslations } from './plugin.translations.shared.js';
 import { poiMessagesEn } from './plugin.translations.en.messages.js';
 
 export const poiTranslationsEn = createPoiLocaleTranslations({
+  create: poiCreateTranslations.en,
   navigation: { title: 'POI' },
   list: { title: 'POI', description: 'Edit Mainserver points of interest.' },
   detail: {
@@ -84,7 +87,10 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     updatedAt: 'Updated',
   },
   richText: {
-    mode: 'Editor view', visualMode: 'WYSIWYG', htmlMode: 'HTML', blockType: 'Text format',
+    mode: 'Editor view',
+    visualMode: 'WYSIWYG',
+    htmlMode: 'HTML',
+    blockType: 'Text format',
     heading2: 'Heading 2',
     heading3: 'Heading 3',
     heading4: 'Heading 4',
@@ -102,6 +108,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     applyLink: 'Apply link',
   },
   actions: {
+    openSavedContent: 'Open saved content',
     create: 'Create',
     update: 'Save changes',
     save: 'Save',
@@ -202,20 +209,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
       },
     },
   },
-  history: {
-    loading: 'Loading history.',
-    error: 'History could not be loaded.',
-    createHint: 'Save the POI before history becomes available.',
-    tableLabel: 'POI history',
-    sourceNotice: 'This history only contains changes made through Studio.',
-    emptySummary: 'No further change details.',
-    columns: { time: 'Time', action: 'Action', actor: 'Changed by', summary: 'Summary' },
-    actions: { created: 'Created', updated: 'Updated', statusChanged: 'Status changed' },
-    empty: {
-      title: 'No history available yet.',
-      description: 'No Studio changes have been recorded for this POI yet.',
-    },
-  },
+  history: poiHistoryEn,
   empty: { title: 'No POI yet', description: 'Create the first POI.' },
   pagination: {
     ariaLabel: 'POI pagination',

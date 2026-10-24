@@ -84,9 +84,14 @@ export const reportPluginArchitectureBoundaryGuardResult = (
     return false;
   }
 
-  logger.warn('Plugin-Boundary-Guard meldet nicht erlaubte interne Plugin-Kanten.');
+  logger.warn('Plugin-Boundary-Guard meldet Architektur-Befunde zur Prüfung.');
   for (const violation of result.unallowlistedViolations) {
-    logger.warn(`- [${violation.kind ?? 'unknown'}] ${violation.relativePath} -> ${violation.resolvedTarget ?? violation.subject}`);
+    const rule = violation.kind ? `${violation.rule}:${violation.kind}` : violation.rule;
+    const subject =
+      violation.rule === 'workspace-import'
+        ? `${violation.relativePath} -> ${violation.resolvedTarget ?? violation.subject}`
+        : `${violation.relativePath}: ${violation.subject}`;
+    logger.warn(`- [${rule}] ${subject} – ${violation.message}`);
   }
   return true;
 };

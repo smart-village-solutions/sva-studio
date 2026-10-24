@@ -1,9 +1,11 @@
+import { projectCreateTranslations } from './plugin.translations.create.js';
 import type { PluginTranslations } from '@sva/plugin-sdk';
 
 import { projectRichTextTranslations } from './plugin.translations.rich-text.js';
 
 const de = {
   projects: {
+    create: projectCreateTranslations.de,
     navigation: { title: 'Projekte' },
     actions: {
       create: 'Projekt anlegen',
@@ -173,6 +175,7 @@ const de = {
 const en = {
   projects: {
     ...de.projects,
+    create: projectCreateTranslations.en,
     navigation: { title: 'Projects' },
     actions: {
       ...de.projects.actions,

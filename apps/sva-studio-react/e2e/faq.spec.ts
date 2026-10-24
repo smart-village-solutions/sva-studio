@@ -7,6 +7,10 @@ import {
   navigateClientSide,
 } from './news-plugin.fixtures';
 
+if (process.env.PLAYWRIGHT_RUNTIME_PROFILE === 'local-builder') {
+  test.use({ storageState: { cookies: [], origins: [] } });
+}
+
 const faqUser = {
   user: {
     id: 'kc-editor-1',
@@ -29,7 +33,8 @@ const faqPermissions = {
   evaluatedAt: '2026-08-23T12:00:00.000Z',
 };
 
-test('opens, creates, updates and deletes an FAQ across its editor tabs', async ({ page }) => {
+test('creates an FAQ on one page and retains edit tabs for update and delete', async ({ page }) => {
+  test.setTimeout(60_000);
   await mockSharedShellRequests(page);
   let faq: Record<string, unknown> | undefined;
   let createdBody: Record<string, unknown> | undefined;
@@ -220,10 +225,46 @@ test('opens, creates, updates and deletes an FAQ across its editor tabs', async 
   expect(
     accessibility.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))
   ).toEqual([]);
+  await expect(page.getByRole('tablist')).toHaveCount(0);
+
+  // An unchanged create form can be left without confirmation.
+  await page.getByRole('link', { name: 'Zurück', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await navigateClientSide(page, '/admin/faq/new');
+  await page.locator('#faq-question').fill('Ungespeicherte Frage');
+
+  // Internal navigation can be cancelled without losing input, or explicitly confirmed.
+  await page.getByRole('link', { name: 'Zurück', exact: true }).click();
+  const leaveDialog = page.getByRole('alertdialog', { name: 'Ungespeicherte Eingaben verwerfen?' });
+  await expect(leaveDialog).toBeVisible();
+  await leaveDialog.getByRole('button', { name: 'Weiterbearbeiten' }).click();
+  await expect(page).toHaveURL(/\/admin\/faq\/new$/);
+  await expect(page.locator('#faq-question')).toHaveValue('Ungespeicherte Frage');
+  await page.getByRole('link', { name: 'Zurück', exact: true }).click();
+  await leaveDialog.getByRole('button', { name: 'Verwerfen und verlassen' }).click();
+  await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
+  await navigateClientSide(page, '/admin/faq/new');
+
+  // Browser Back reaches the same host guard rather than silently discarding the form.
+  await page.locator('#faq-question').fill('Frage nach Browser-Zurück');
+  await page.evaluate(() => window.history.back());
+  await expect(leaveDialog).toBeVisible();
+  await leaveDialog.getByRole('button', { name: 'Weiterbearbeiten' }).click();
+  await expect(page).toHaveURL(/\/admin\/faq\/new$/);
+  await expect(page.locator('#faq-question')).toHaveValue('Frage nach Browser-Zurück');
+
+  // Chromium's native reload warning preserves the current document when dismissed.
+  const nativeDialogPromise = page.waitForEvent('dialog');
+  const reloadResult = page.reload({ timeout: 5_000 }).then(() => null, (error: unknown) => error);
+  const nativeDialog = await nativeDialogPromise;
+  expect(nativeDialog.type()).toBe('beforeunload');
+  await nativeDialog.dismiss();
+  const reloadError = await reloadResult;
+  expect(reloadError).toBeInstanceOf(Error);
+  await expect(page.locator('#faq-question')).toHaveValue('Frage nach Browser-Zurück');
   await page.locator('#faq-question').fill('Wie erreiche ich das Bürgerbüro?');
-  await page.getByRole('tab', { name: 'Inhalt' }).click();
   await page.locator('#faq-answer').fill('Mit Bus und Bahn.');
-  await page.getByRole('tab', { name: 'Einstellungen' }).click();
   await page.locator('#faq-sort-weight').fill('7');
   await page.getByRole('button', { name: 'FAQ anlegen' }).last().click();
 
@@ -237,6 +278,7 @@ test('opens, creates, updates and deletes an FAQ across its editor tabs', async 
   });
 
   await expect(page).toHaveURL(/\/admin\/faq\/faq-1$/);
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
   await page.getByRole('tab', { name: 'Inhalt' }).click();
   await page.locator('#faq-answer').fill('Mit Bus, Bahn und Fahrrad.');
   await page.getByRole('tab', { name: 'Historie' }).click();

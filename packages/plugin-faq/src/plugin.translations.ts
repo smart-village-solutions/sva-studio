@@ -1,8 +1,10 @@
+import { faqCreateTranslations } from './plugin.translations.create.js';
 import type { PluginTranslations } from '@sva/plugin-sdk';
 
 export const pluginFaqTranslations = {
   de: {
     faq: {
+      create: faqCreateTranslations.de,
       navigation: { title: 'FAQ' },
       actions: {
         back: 'Zurück',
@@ -121,6 +123,7 @@ export const pluginFaqTranslations = {
   },
   en: {
     faq: {
+      create: faqCreateTranslations.en,
       navigation: { title: 'FAQ' },
       actions: {
         back: 'Back',

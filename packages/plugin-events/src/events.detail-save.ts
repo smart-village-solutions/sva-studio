@@ -1,3 +1,4 @@
+import type { useEventsDetailMedia } from './events.detail-media.js';
 import type { Dispatch, SetStateAction } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { useNavigate } from '@tanstack/react-router';
@@ -37,6 +38,7 @@ export const eventsErrorMessage = (
 type SaveContext = Readonly<{
   methods: UseFormReturn<EventsDetailFormValues>;
   canSave: boolean;
+  leaveGuard: ReturnType<typeof useEventsDetailMedia>['leaveGuard'];
   mediaUsages: readonly ContentMediaUsage[];
   setStatus: Dispatch<SetStateAction<EventsStatusMessage | null>>;
   pt: ReturnType<typeof usePluginTranslation>;
@@ -137,6 +139,7 @@ const persistWithMedia = async (
     : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
 
 const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormValues) => {
+  const leaveRevision = context.leaveGuard.captureRevision();
   const operationId = context.saveFeedback.beginSaving();
   context.setMediaSavePhaseKey(null);
   try {
@@ -158,8 +161,10 @@ const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormVa
       context,
       createSaveContent(context, values, correctedFields)
     );
+    if (context.mode === 'create') context.leaveGuard.rememberCreated(result.saved.id);
     const handledResult = context.mediaReferenceSync.consumeSaveResult(result);
     if (handledResult.referenceFailed) {
+      context.leaveGuard.rememberPartialSave(leaveRevision);
       context.setStatus({
         kind: 'error',
         text: context.pt('messages.mediaReferencePartialFailure'),
@@ -170,6 +175,7 @@ const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormVa
     context.setStatus(null);
     context.saveFeedback.markSaved(operationId);
     if (context.mode === 'create') {
+      context.leaveGuard.acknowledgeSaved(leaveRevision);
       await context.navigate({
         to: '/admin/events/$id',
         params: { id: handledResult.saved.id },
@@ -178,6 +184,10 @@ const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormVa
       });
     }
   } catch (saveError) {
+    if (context.mode === 'create' && context.leaveGuard.hasCreated()) {
+      context.setStatus({ kind: 'success', text: context.pt('messages.createdNavigationError') });
+      return;
+    }
     context.setStatus({
       kind: 'error',
       text: eventsErrorMessage(context.pt, saveError, 'messages.saveError'),
@@ -189,7 +199,8 @@ const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormVa
 export const createEventsDetailSubmit = (context: SaveContext) =>
   context.methods.handleSubmit(
     async (values, event) => {
-      if (!context.canSave) return;
+      if (!context.canSave || (context.mode === 'create' && context.leaveGuard.hasCreated()))
+        return;
       const form = event?.target;
       if (form instanceof HTMLFormElement && !form.reportValidity()) return;
       context.setStatus(null);

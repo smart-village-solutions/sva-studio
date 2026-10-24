@@ -1,8 +1,26 @@
+import { StudioEditorLeaveGuardProvider } from '@sva/studio-ui-react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProjectsCreatePage, ProjectsEditPage, ProjectsListPage } from '../src/projects.pages.js';
+
+const renderGuarded = (element: React.ReactElement) => {
+  let check = () => false;
+  const view = render(
+    <StudioEditorLeaveGuardProvider
+      register={(next) => {
+        check = next;
+        return () => {
+          check = () => false;
+        };
+      }}
+    >
+      {element}
+    </StudioEditorLeaveGuardProvider>
+  );
+  return { ...view, hasUnsavedChanges: () => check() };
+};
 
 const state = vi.hoisted(() => ({
   ProjectsApiError: class ProjectsApiError extends Error {
@@ -139,7 +157,7 @@ const fillRequiredFields = () => {
   });
   fireEvent.change(screen.getByLabelText('fields.title'), { target: { value: 'Neues Projekt' } });
   fireEvent.change(screen.getByLabelText('fields.description'), { target: { value: 'Kurztext' } });
-  fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
+
   fireEvent.change(screen.getByLabelText('fields.fullText'), {
     target: { value: '<p>Inhalt</p>' },
   });
@@ -187,15 +205,36 @@ describe('projects pages', () => {
     };
   });
 
-  it('renders the domain and history tabs and creates a normalized project', async () => {
-    render(<ProjectsCreatePage />);
+  it('creates a normalized project through one page without create history', async () => {
+    const guarded = renderGuarded(<ProjectsCreatePage />);
+    expect(guarded.hasUnsavedChanges()).toBe(false);
+    state.navigate.mockImplementationOnce(async () => {
+      expect(guarded.hasUnsavedChanges()).toBe(false);
+    });
 
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'tabs.basis',
-      'tabs.content',
-      'tabs.settings',
-      'tabs.history',
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByText('history.createHint')).toBeNull();
+    const ids = [...document.querySelectorAll('form input, form textarea, form select')].map(
+      (field) => field.id
+    );
+    expect(
+      ids.filter((id) =>
+        [
+          'project-title',
+          'project-description',
+          'project-fullText',
+          'project-language',
+          'project-status',
+        ].includes(id)
+      )
+    ).toEqual([
+      'project-title',
+      'project-description',
+      'project-fullText',
+      'project-language',
+      'project-status',
     ]);
+    expect(screen.getAllByRole('button', { name: 'actions.create' })).toHaveLength(2);
     fillRequiredFields();
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
@@ -316,7 +355,6 @@ describe('projects pages', () => {
       },
     ]);
     render(<ProjectsCreatePage />);
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
 
     const addMedia = await screen.findByRole('button', { name: 'media.add' });
     expect(screen.queryByRole('button', { name: 'actions.selectImage' })).toBeNull();
@@ -363,7 +401,7 @@ describe('projects pages', () => {
       isPublicUrl: true,
     });
     render(<ProjectsCreatePage />);
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
+
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
     fireEvent.click(await screen.findByRole('button', { name: 'media.select' }));
@@ -388,10 +426,12 @@ describe('projects pages', () => {
     expect(await screen.findByText('media.refreshTitle')).toBeTruthy();
   });
 
-  it('accepts a supported image locally without uploading it', async () => {
-    render(<ProjectsCreatePage />);
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
+  it('accepts a supported image locally and returns clean when it is removed', async () => {
+    const guarded = renderGuarded(<ProjectsCreatePage />);
+    expect(guarded.hasUnsavedChanges()).toBe(false);
+
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+    expect(guarded.hasUnsavedChanges()).toBe(false);
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: { files: [new File(['image'], 'upload.jpg', { type: 'image/jpeg' })] },
     });
@@ -403,6 +443,10 @@ describe('projects pages', () => {
     expect((screen.getByLabelText('fields.imageUrl') as HTMLInputElement).value).toBe('');
     expect(state.upload).not.toHaveBeenCalled();
     expect(state.getAsset).not.toHaveBeenCalled();
+    expect(guarded.hasUnsavedChanges()).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'actions.removeImage' }));
+    await waitFor(() => expect(guarded.hasUnsavedChanges()).toBe(false));
+    expect(state.create).not.toHaveBeenCalled();
   });
 
   it('hides library and upload entry points without media permissions while retaining manual URLs', async () => {
@@ -419,7 +463,6 @@ describe('projects pages', () => {
       roles: [],
     };
     render(<ProjectsCreatePage />);
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
 
     expect(screen.queryByRole('button', { name: 'actions.selectImage' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'actions.uploadImage' })).toBeNull();
@@ -480,52 +523,61 @@ describe('projects pages', () => {
     expect(state.getDetail).toHaveBeenNthCalledWith(3, 'project-1', 'user');
   });
 
-  it('binds a created project after retrying a partial reference failure', async () => {
-    state.listAssets.mockResolvedValue([
-      { id: 'image-1', fileName: 'Bild.jpg', mimeType: 'image/jpeg', visibility: 'public' },
-    ]);
-    state.getAsset.mockResolvedValue({
-      id: 'image-1',
-      fileName: 'Bild.jpg',
-      mimeType: 'image/jpeg',
-      visibility: 'public',
-      metadata: {},
-    });
-    state.getDelivery.mockResolvedValue({
-      deliveryUrl: 'https://example.test/persistent.jpg',
-      isPublicUrl: true,
-    });
-    state.create.mockResolvedValue(project);
-    const retry = vi.fn().mockResolvedValue(undefined);
-    state.saveWithReferences.mockImplementationOnce(
-      async (input: { saveContent: () => Promise<unknown> }) => ({
-        status: 'reference_failed',
-        saved: await input.saveContent(),
-        retryReferenceSync: retry,
-      })
-    );
-    render(<ProjectsCreatePage />);
-    fillRequiredFields();
-    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
-    fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'media.select' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'media.useMedia' }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
-    await screen.findByText('messages.mediaReferencePartialFailure');
-    expect(
-      screen
-        .getAllByRole('button', { name: 'actions.create' })
-        .every((button) => button.hasAttribute('disabled'))
-    ).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'actions.retryMediaReferences' }));
-    await waitFor(() =>
-      expect(state.navigate).toHaveBeenCalledWith({
-        to: '/admin/projects/$id',
-        params: { id: 'project-1' },
-      })
-    );
-    expect(state.create).toHaveBeenCalledTimes(1);
-  });
+  it.each([false, true])(
+    'binds a created project after retrying a partial reference failure (later changes: %s)',
+    async (changedAfterSubmit) => {
+      state.listAssets.mockResolvedValue([
+        { id: 'image-1', fileName: 'Bild.jpg', mimeType: 'image/jpeg', visibility: 'public' },
+      ]);
+      state.getAsset.mockResolvedValue({
+        id: 'image-1',
+        fileName: 'Bild.jpg',
+        mimeType: 'image/jpeg',
+        visibility: 'public',
+        metadata: {},
+      });
+      state.getDelivery.mockResolvedValue({
+        deliveryUrl: 'https://example.test/persistent.jpg',
+        isPublicUrl: true,
+      });
+      state.create.mockResolvedValue(project);
+      const retry = vi.fn().mockResolvedValue(undefined);
+      state.saveWithReferences.mockImplementationOnce(
+        async (input: { saveContent: () => Promise<unknown> }) => ({
+          status: 'reference_failed',
+          saved: await input.saveContent(),
+          retryReferenceSync: retry,
+        })
+      );
+      const guarded = renderGuarded(<ProjectsCreatePage />);
+      fillRequiredFields();
+      fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+      fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'media.select' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'media.useMedia' }));
+      fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
+      await screen.findByText('messages.mediaReferencePartialFailure');
+      expect(screen.queryByRole('button', { name: 'actions.create' })).toBeNull();
+      expect(screen.getByText('create.openSaved')).toBeTruthy();
+      expect(guarded.hasUnsavedChanges()).toBe(true);
+      if (changedAfterSubmit)
+        fireEvent.change(screen.getByLabelText('fields.title'), {
+          target: { value: 'Spätere Änderung' },
+        });
+      if (!changedAfterSubmit) state.navigate.mockRejectedValueOnce(new Error('navigation failed'));
+      fireEvent.click(screen.getByRole('button', { name: 'actions.retryMediaReferences' }));
+      await waitFor(() =>
+        expect(state.navigate).toHaveBeenCalledWith({
+          to: '/admin/projects/$id',
+          params: { id: 'project-1' },
+        })
+      );
+      expect(state.create).toHaveBeenCalledTimes(1);
+      if (!changedAfterSubmit) await screen.findByText('create.navigationFailed');
+      expect(guarded.hasUnsavedChanges()).toBe(changedAfterSubmit);
+      if (changedAfterSubmit) expect(screen.getByDisplayValue('Spätere Änderung')).toBeTruthy();
+    }
+  );
 
   it('saves canonical ordered references after content and retries only a failed reference sync', async () => {
     state.params = { id: 'project-1' };

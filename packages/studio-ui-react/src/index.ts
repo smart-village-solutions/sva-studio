@@ -1,5 +1,10 @@
 export { Alert, AlertDescription, AlertTitle } from './alert.js';
 export {
+  StudioEditorLeaveGuardProvider,
+  useStudioEditorLeaveGuard,
+  type StudioEditorLeaveGuardRegister,
+} from './studio-editor-leave-guard.js';
+export {
   ContentOwnershipPanel,
   type ContentOwnershipPanelLabels,
   type ContentOwnershipPanelOwner,

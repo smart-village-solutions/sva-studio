@@ -129,21 +129,26 @@ function acceptAsset(
   void refreshMediaAssets();
 }
 
-export function useCockpitCardMedia(form: UseFormReturn<CockpitCardFormValues>) {
+export function useCockpitCardMedia(
+  form: UseFormReturn<CockpitCardFormValues>,
+  onMediaChanged: () => void
+) {
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
   const { mediaAssets, refreshMediaAssets, toDetail } = useMediaAssets();
   const mediaPicker = useStudioMediaPickerOverlay<StudioMediaPickerAssetDetail>({
     editableMetadataFields: cockpitCardMetadataFields,
-    onAccept: (asset) =>
-      acceptAsset(
+    onAccept: (asset) => {
+      onMediaChanged();
+      return acceptAsset(
         asset,
         mediaUsages,
         form,
         setMediaUsages,
         setRequiresReferenceSync,
         refreshMediaAssets
-      ),
+      );
+    },
     canAcceptAsset: (asset) =>
       Boolean(
         (asset.localDraft ||
@@ -175,6 +180,7 @@ export function useCockpitCardMedia(form: UseFormReturn<CockpitCardFormValues>) 
     },
   });
   const addManualMedia = React.useCallback(() => {
+    onMediaChanged();
     const usage = createManualContentMediaUsage({ sortOrder: mediaUsages.length });
     const nextUsages = [...mediaUsages, usage];
     setMediaUsages(nextUsages);
@@ -183,12 +189,16 @@ export function useCockpitCardMedia(form: UseFormReturn<CockpitCardFormValues>) 
       (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
     );
     return usage.uiId;
-  }, [form, mediaUsages]);
+  }, [form, mediaUsages, onMediaChanged]);
   const loadAssetSnapshot = (usage: ContentMediaUsage) =>
     loadCockpitCardAssetSnapshot(usage, toDetail);
   return {
     mediaUsages,
     setMediaUsages,
+    changeMediaUsages: (next: readonly ContentMediaUsage[]) => {
+      onMediaChanged();
+      setMediaUsages(next);
+    },
     requiresReferenceSync,
     setRequiresReferenceSync,
     mediaAssets,

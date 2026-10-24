@@ -57,12 +57,60 @@ const ContentBlockBody = ({
   );
 };
 
-export const GenericItemsContentText = ({
+function ContentBlockFields({
   labels,
+  createMode,
+  index,
+  contentBlock,
 }: Readonly<{
   labels: Record<string, string>;
+  createMode: boolean;
+  index: number;
+  contentBlock: GenericItemsDetailFormValues['contentBlocks'][number];
+}>) {
+  const { setValue } = useFormContext<GenericItemsDetailFormValues>();
+  return (
+    <>
+      <StudioField
+        id={`generic-item-content-block-title-${index}`}
+        label={
+          createMode ? `${labels.title} (${labels.contentBlockItem} ${index + 1})` : labels.title
+        }
+      >
+        <Input
+          id={`generic-item-content-block-title-${index}`}
+          value={contentBlock.title}
+          onChange={(event) =>
+            setValue(`contentBlocks.${index}.title`, event.target.value, {
+              shouldDirty: true,
+            })
+          }
+        />
+      </StudioField>
+      <StudioField id={`generic-item-content-block-intro-${index}`} label={labels.intro}>
+        <Textarea
+          id={`generic-item-content-block-intro-${index}`}
+          value={contentBlock.intro}
+          onChange={(event) =>
+            setValue(`contentBlocks.${index}.intro`, event.target.value, {
+              shouldDirty: true,
+            })
+          }
+        />
+      </StudioField>
+      <ContentBlockBody labels={labels} index={index} value={contentBlock.body} />
+    </>
+  );
+}
+
+export const GenericItemsContentText = ({
+  labels,
+  createMode = false,
+}: Readonly<{
+  labels: Record<string, string>;
+  createMode?: boolean;
 }>) => {
-  const { control, setValue } = useFormContext<GenericItemsDetailFormValues>();
+  const { control } = useFormContext<GenericItemsDetailFormValues>();
   const contentBlocksArray = useFieldArray({ control, name: 'contentBlocks' });
   const contentBlocks = useWatch({ control, name: 'contentBlocks' }) ?? [];
   return (
@@ -102,29 +150,12 @@ export const GenericItemsContentText = ({
                 </Button>
               ) : null}
             </div>
-            <StudioField id={`generic-item-content-block-title-${index}`} label={labels.title}>
-              <Input
-                id={`generic-item-content-block-title-${index}`}
-                value={contentBlock.title}
-                onChange={(event) =>
-                  setValue(`contentBlocks.${index}.title`, event.target.value, {
-                    shouldDirty: true,
-                  })
-                }
-              />
-            </StudioField>
-            <StudioField id={`generic-item-content-block-intro-${index}`} label={labels.intro}>
-              <Textarea
-                id={`generic-item-content-block-intro-${index}`}
-                value={contentBlock.intro}
-                onChange={(event) =>
-                  setValue(`contentBlocks.${index}.intro`, event.target.value, {
-                    shouldDirty: true,
-                  })
-                }
-              />
-            </StudioField>
-            <ContentBlockBody labels={labels} index={index} value={contentBlock.body} />
+            <ContentBlockFields
+              labels={labels}
+              createMode={createMode}
+              index={index}
+              contentBlock={contentBlock}
+            />
           </div>
         ))}
       </div>

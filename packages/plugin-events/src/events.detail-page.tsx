@@ -156,6 +156,7 @@ export function EventsDetailPage({
     if (!pendingFocusId) return;
     const element = globalThis.document?.getElementById(pendingFocusId);
     if (!element) return;
+    element.closest('details')?.setAttribute('open', '');
     element.focus();
     setPendingFocusId(null);
   }, [activeTab, pendingFocusId]);
@@ -185,6 +186,7 @@ export function EventsDetailPage({
     contentId,
     requiresReferenceSync,
     mediaReferenceSync,
+    leaveGuard: media.leaveGuard,
     navigate,
   });
 

@@ -1,3 +1,4 @@
+import { EventsDetailCreate } from './events.detail-create.js';
 import { loadEventsContentAssetSnapshot } from './events.detail-media-actions.js';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
@@ -162,6 +163,7 @@ const EventsDetailTabPanels = ({
 );
 
 export function EventsDetailEditorTabs(props: Props) {
+  if (props.mode === 'create') return <EventsDetailCreate {...props} />;
   return (
     <Tabs
       value={props.activeTab}

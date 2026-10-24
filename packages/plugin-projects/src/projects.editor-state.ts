@@ -1,3 +1,4 @@
+import { useStudioEditorLeaveGuard } from '@sva/studio-ui-react';
 import {
   hasContentLifecycleAccess,
   readSessionAccessSnapshot,
@@ -133,4 +134,53 @@ export function useProjectEditorState({
     loadError,
     ...access,
   };
+}
+
+export function useProjectCreateGuard(
+  mode: 'create' | 'edit',
+  form: import('react-hook-form').UseFormReturn<
+    import('./projects.validation.js').ProjectFormValues
+  >,
+  state: ReturnType<typeof useProjectEditorState>
+) {
+  const [mediaDirty, setMediaDirty] = React.useState(false);
+  const [createdContentId, setCreatedContentId] = React.useState<string | null>(null);
+  const savedRevision = React.useRef(0);
+  const createdContentIdRef = React.useRef<string | null>(null);
+  const leaveGuard = useStudioEditorLeaveGuard({
+    enabled: mode === 'create',
+    hasUnsavedChanges:
+      form.formState.isDirty ||
+      (mediaDirty && (createdContentId !== null || state.mediaUsages.length > 0)) ||
+      state.mediaReferenceSync.hasPendingRetry,
+  });
+  React.useEffect(() => {
+    const subscription = form.watch((_values, { name }) => {
+      if (name) leaveGuard.markChanged();
+    });
+    return () => subscription.unsubscribe();
+  }, [form, leaveGuard]);
+  const markMediaChanged = () => {
+    setMediaDirty(true);
+    leaveGuard.markChanged();
+  };
+  const onCreateStarted = () => {
+    if (createdContentIdRef.current) return false;
+    savedRevision.current = leaveGuard.captureRevision();
+    return true;
+  };
+  const onCreateConfirmed = (id: string) => {
+    createdContentIdRef.current = id;
+    setCreatedContentId(id);
+  };
+  const onCreateSaved = () => {
+    if (mode !== 'create') return;
+
+    if (leaveGuard.acknowledgeSaved(savedRevision.current)) {
+      form.reset(form.getValues());
+      setMediaDirty(false);
+      state.setRequiresReferenceSync(false);
+    }
+  };
+  return { createdContentId, markMediaChanged, onCreateStarted, onCreateConfirmed, onCreateSaved };
 }

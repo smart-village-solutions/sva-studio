@@ -22,7 +22,7 @@ const applyPoiBasisErrors = (
 ) => {
   if (validationErrors.includes('name')) {
     methods.setError('name', { type: 'manual', message: 'name' });
-    methods.setFocus('name');
+    focusFieldById('poi-name');
     setActiveTab('basis');
   }
   if (validationErrors.includes('categories')) {
@@ -33,7 +33,7 @@ const applyPoiBasisErrors = (
   if (validationErrors.includes('webUrls')) {
     methods.setError('content.webUrls.0.url', { type: 'manual', message: 'webUrls' });
     if (!validationErrors.includes('name') && !validationErrors.includes('categories')) {
-      methods.setFocus('content.webUrls.0.url');
+      focusFieldById('poi-link-url-0');
     }
     setActiveTab('content');
   }
@@ -65,6 +65,7 @@ const applyPoiContentErrors = (
   if (validationErrors.includes('priceInformations')) {
     methods.setError('content.prices.0.amount', { type: 'manual', message: 'priceInformations' });
     setActiveTab('content');
+    focusFieldById('poi-price-amount-0');
   }
   if (validationErrors.includes('mediaContents')) {
     const invalidMediaIndex = values.content.mediaContents.findIndex((entry) => {

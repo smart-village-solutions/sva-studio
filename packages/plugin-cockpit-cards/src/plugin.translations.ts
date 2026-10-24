@@ -1,3 +1,4 @@
+import { cockpitCardsCreateTranslations } from './plugin.translations.create.js';
 import type { PluginTranslations } from '@sva/plugin-sdk';
 import { cockpitCardsHistoryTranslations } from './cockpit-cards.history-translations.js';
 import { cockpitCardsMediaTranslations } from './cockpit-cards.media-translations.js';
@@ -5,6 +6,7 @@ import { cockpitCardsDeleteDialogTranslations } from './cockpit-cards.delete-tra
 export const pluginCockpitCardsTranslations = {
   de: {
     'cockpit-cards': {
+      create: cockpitCardsCreateTranslations.de,
       navigation: { title: 'Kacheln' },
       actions: {
         back: 'Zurück',
@@ -132,6 +134,7 @@ export const pluginCockpitCardsTranslations = {
   },
   en: {
     'cockpit-cards': {
+      create: cockpitCardsCreateTranslations.en,
       navigation: { title: 'Cockpit Cards' },
       actions: {
         back: 'Back',

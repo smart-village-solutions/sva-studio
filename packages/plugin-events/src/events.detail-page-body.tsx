@@ -15,6 +15,7 @@ import type { EventsDetailPageViewProps } from './events.detail-page-view.js';
 
 const EventsDetailStatus = ({
   deletion,
+  methods,
   status,
   pt,
   actingPrincipalType,
@@ -40,6 +41,17 @@ const EventsDetailStatus = ({
       />
     ) : null}
     {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+    {mode === 'create' && media.leaveGuard.createdContentId ? (
+      <StudioFormSummary kind="success">
+        {!media.mediaReferenceSync.hasPendingRetry &&
+        (methods.formState.isDirty || media.mediaDirty) ? (
+          <span className="block">{pt('messages.unsavedAfterCreate')}</span>
+        ) : null}
+        <Link to="/admin/events/$id" params={{ id: media.leaveGuard.createdContentId }}>
+          {pt('actions.openSavedContent')}
+        </Link>
+      </StudioFormSummary>
+    ) : null}
     <MainserverPrincipalControl
       id="events-acting-principal"
       label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
@@ -63,9 +75,10 @@ const EventsDetailStatus = ({
     <StudioMediaReferenceRetryAction
       controller={media.mediaReferenceSync}
       label={pt('actions.retryMediaReferences')}
-      onSuccess={() =>
-        setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') })
-      }
+      onSuccess={() => {
+        media.leaveGuard.acknowledgeReferenceRetry();
+        setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
+      }}
       onFailure={() =>
         setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
       }
@@ -73,17 +86,11 @@ const EventsDetailStatus = ({
   </>
 );
 
-export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
+function EventsEditorFields(props: EventsDetailPageViewProps) {
   const {
-    methods,
     pt,
-    deletion,
     media,
     canUploadMedia,
-    canUpdateMedia,
-    navigate,
-    formId,
-    submit,
     mode,
     contentId,
     tabs,
@@ -100,6 +107,41 @@ export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
     saveFeedback,
   } = props;
   return (
+    <EventsDetailEditorTabs
+      pt={pt}
+      mode={mode}
+      contentId={contentId}
+      tabs={tabs}
+      activeTab={activeTab}
+      handleTabChange={handleTabChange}
+      warmTab={warmTab}
+      visitedTabs={visitedTabs}
+      categoryOptions={categoryOptions}
+      categoryOptionsError={categoryOptionsError}
+      categoryOptionsLoading={categoryOptionsLoading}
+      loadedItem={loadedItem}
+      mediaUsages={media.mediaUsages}
+      addManualMedia={media.addManualMedia}
+      onChangeMediaUsages={(usages) => {
+        media.setMediaUsages(usages);
+        media.setRequiresReferenceSync(
+          (current) => current || usages.some((usage) => Boolean(usage.assetId))
+        );
+      }}
+      canSelectMedia={canSelectMedia}
+      canUploadMedia={canUploadMedia}
+      mediaEditingDisabled={!mediaReferencesReady || saveFeedback.status === 'saving'}
+      onOpenMediaPicker={(pickerMode) =>
+        pickerMode === 'upload' ? media.mediaPicker.openUpload() : media.mediaPicker.openLibrary()
+      }
+    />
+  );
+}
+
+export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
+  const { methods, pt, deletion, media, canUploadMedia, canUpdateMedia, navigate, formId, submit } =
+    props;
+  return (
     <>
       <EventsDetailDeleteDialog
         deletion={deletion}
@@ -112,38 +154,18 @@ export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
         canUpdateMedia={canUpdateMedia}
         navigate={navigate}
       />
-      <form id={formId} noValidate onSubmit={(event) => void submit(event)} className="space-y-5">
+      <form
+        onInvalidCapture={(event) =>
+          event.target instanceof HTMLElement &&
+          event.target.closest('details')?.setAttribute('open', '')
+        }
+        id={formId}
+        noValidate
+        onSubmit={(event) => void submit(event)}
+        className="space-y-5"
+      >
         <EventsDetailStatus {...props} />
-        <EventsDetailEditorTabs
-          pt={pt}
-          mode={mode}
-          contentId={contentId}
-          tabs={tabs}
-          activeTab={activeTab}
-          handleTabChange={handleTabChange}
-          warmTab={warmTab}
-          visitedTabs={visitedTabs}
-          categoryOptions={categoryOptions}
-          categoryOptionsError={categoryOptionsError}
-          categoryOptionsLoading={categoryOptionsLoading}
-          loadedItem={loadedItem}
-          mediaUsages={media.mediaUsages}
-          addManualMedia={media.addManualMedia}
-          onChangeMediaUsages={(usages) => {
-            media.setMediaUsages(usages);
-            media.setRequiresReferenceSync(
-              (current) => current || usages.some((usage) => Boolean(usage.assetId))
-            );
-          }}
-          canSelectMedia={canSelectMedia}
-          canUploadMedia={canUploadMedia}
-          mediaEditingDisabled={!mediaReferencesReady || saveFeedback.status === 'saving'}
-          onOpenMediaPicker={(pickerMode) =>
-            pickerMode === 'upload'
-              ? media.mediaPicker.openUpload()
-              : media.mediaPicker.openLibrary()
-          }
-        />
+        <EventsEditorFields {...props} />
       </form>
     </>
   );

@@ -28,6 +28,9 @@ type SaveInput = Readonly<{
   form: UseFormReturn<ProjectFormValues>;
   pt: Translate;
   mode: 'create' | 'edit';
+  onCreateStarted: () => boolean;
+  onCreateConfirmed: (id: string) => void;
+  onCreateSaved: () => void;
   contentId?: string;
   canSave: boolean;
   actingPrincipalType: MainserverPrincipalType;
@@ -97,6 +100,7 @@ async function completeProjectSave(
   input: SaveInput,
   operationId: number
 ) {
+  if (input.mode === 'create') input.onCreateConfirmed(result.saved.id);
   const handledResult = input.mediaReferenceSync.consumeSaveResult(result);
   if (handledResult.referenceFailed) {
     input.setRetryCreatedContentId(input.mode === 'create' ? result.saved.id : null);
@@ -107,11 +111,16 @@ async function completeProjectSave(
   input.setRetryCreatedContentId(null);
   input.saveFeedback.markSaved(operationId);
   if (input.mode === 'create') {
-    await input.navigate({
-      to: '/admin/projects/$id',
-      params: { id: result.saved.id },
-      state: (previous) => addStudioCreatedSaveFeedback(previous, 'projects', result.saved.id),
-    });
+    input.onCreateSaved();
+    try {
+      await input.navigate({
+        to: '/admin/projects/$id',
+        params: { id: result.saved.id },
+        state: (previous) => addStudioCreatedSaveFeedback(previous, 'projects', result.saved.id),
+      });
+    } catch {
+      input.setMutationError(input.pt('create.navigationFailed'));
+    }
   } else if (input.contentId) {
     input.setItem(result.saved);
     input.form.reset(projectToFormValues(result.saved));
@@ -126,6 +135,7 @@ export function createProjectSaveHandler(input: SaveInput) {
         input.setMutationError(input.pt('messages.mediaReferencePartialFailure'));
         return;
       }
+      if (input.mode === 'create' && !input.onCreateStarted()) return;
       input.setMutationError(undefined);
       const operationId = input.saveFeedback.beginSaving();
       input.setMediaSavePhaseKey(null);

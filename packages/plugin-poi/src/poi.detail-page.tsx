@@ -126,7 +126,9 @@ export function PoiDetailPage({
   );
   const focusFieldById = React.useCallback((fieldId: string) => {
     globalThis.setTimeout(() => {
-      globalThis.document.getElementById(fieldId)?.focus();
+      const element = globalThis.document.getElementById(fieldId);
+      element?.closest('details')?.setAttribute('open', '');
+      element?.focus();
     }, 0);
   }, []);
 
@@ -177,6 +179,7 @@ export function PoiDetailPage({
     mediaUsages,
     requiresReferenceSync,
     mediaReferenceSync,
+    leaveGuard: media.leaveGuard,
     saveFeedback,
     setStatus,
     setMediaSavePhaseKey,

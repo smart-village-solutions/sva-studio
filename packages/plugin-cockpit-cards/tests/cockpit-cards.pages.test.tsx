@@ -1,7 +1,25 @@
+import { StudioEditorLeaveGuardProvider } from '@sva/studio-ui-react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CockpitCardsCreatePage } from '../src/cockpit-cards.pages.js';
+
+const renderGuarded = (element: React.ReactElement) => {
+  let check = () => false;
+  const view = render(
+    <StudioEditorLeaveGuardProvider
+      register={(next) => {
+        check = next;
+        return () => {
+          check = () => false;
+        };
+      }}
+    >
+      {element}
+    </StudioEditorLeaveGuardProvider>
+  );
+  return { ...view, hasUnsavedChanges: () => check() };
+};
 
 const state = vi.hoisted(() => ({
   create: vi.fn(),
@@ -157,7 +175,7 @@ const record = {
 const fillRequiredFields = () => {
   fireEvent.change(screen.getByLabelText('fields.heading'), { target: { value: 'Neue Karte' } });
   fireEvent.change(screen.getByLabelText('fields.category'), { target: { value: 'Startseite' } });
-  fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
+
   fireEvent.change(screen.getByLabelText('fields.text'), { target: { value: 'Neuer Text' } });
   fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
   fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
@@ -213,15 +231,32 @@ describe('cockpit cards pages', () => {
 
   it('places text and image controls together', () => {
     render(<CockpitCardsCreatePage />);
-    const tablist = screen.getByRole('tablist', { name: 'tabs.ariaLabel' });
-    const basisTab = screen.getByRole('tab', { name: 'tabs.basis.label' });
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
-    const contentPanel = screen.getByLabelText('fields.text').closest('[role="tabpanel"]');
-    const addImage = screen.getByRole('button', { name: 'media.add' });
-    expect(tablist.className).toContain('ml-[10px]');
-    expect(basisTab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
-    expect(contentPanel?.className).toContain('mt-0');
-    expect(contentPanel?.contains(addImage)).toBe(true);
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.getByLabelText('fields.sortWeight').getAttribute('aria-required')).toBe('true');
+    expect(screen.getByLabelText('fields.text')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'media.add' })).toBeTruthy();
+    const ids = [...document.querySelectorAll('form input, form textarea, form select')].map(
+      (field) => field.id
+    );
+    expect(
+      ids.filter((id) => id.startsWith('cockpit-card-') && id !== 'cockpit-card-acting-principal')
+    ).toEqual([
+      'cockpit-card-heading',
+      'cockpit-card-text',
+      'cockpit-card-link',
+      'cockpit-card-link-text',
+      'cockpit-card-open-new-tab',
+      'cockpit-card-category',
+      'cockpit-card-language',
+      'cockpit-card-weight',
+      'cockpit-card-publication',
+      'cockpit-card-visible',
+    ]);
+    expect(screen.getAllByRole('button', { name: 'actions.create' })).toHaveLength(2);
+    expect(screen.getAllByText('create.visibleEffect')).toHaveLength(2);
+    fireEvent.click(screen.getByLabelText('fields.visible'));
+    expect(screen.getAllByText('create.hiddenEffect')).toHaveLength(2);
+    fireEvent.click(screen.getByLabelText('fields.visible'));
   });
 
   it('reviews and accepts a linked image from the media library', async () => {
@@ -245,7 +280,7 @@ describe('cockpit cards pages', () => {
     });
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
+
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
     await screen.findAllByRole('button', { name: 'actions.selectImage' });
@@ -274,32 +309,72 @@ describe('cockpit cards pages', () => {
     expect(await screen.findByText('media.refreshTitle')).toBeTruthy();
   });
 
-  it('accepts a supported image locally without uploading it', async () => {
-    const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
-    render(<CockpitCardsCreatePage />);
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
-    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
-    fireEvent.change(screen.getByTestId('media-upload-input'), {
-      target: { files: [new File(['image'], 'upload.jpg', { type: 'image/jpeg' })] },
-    });
-    await screen.findByLabelText('media.altText');
-    fireEvent.click(screen.getByRole('button', { name: 'media.use' }));
-    await waitFor(() =>
-      expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/)
-    );
-    expect((screen.getByLabelText('fields.imageUrl') as HTMLInputElement).value).toBe('');
-    expect(state.upload).not.toHaveBeenCalled();
-    expect(state.getAsset).not.toHaveBeenCalled();
-  });
+  it.each([false, true, 'removed'] as const)(
+    'accepts a supported image locally without uploading it (scenario: %s)',
+    async (changedAfterSubmit) => {
+      const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
+      const guarded = renderGuarded(<CockpitCardsCreatePage />);
+      expect(guarded.hasUnsavedChanges()).toBe(false);
+
+      fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+      expect(guarded.hasUnsavedChanges()).toBe(false);
+      fireEvent.change(screen.getByTestId('media-upload-input'), {
+        target: { files: [new File(['image'], 'upload.jpg', { type: 'image/jpeg' })] },
+      });
+      await screen.findByLabelText('media.altText');
+      fireEvent.click(screen.getByRole('button', { name: 'media.use' }));
+      await waitFor(() =>
+        expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/)
+      );
+      expect((screen.getByLabelText('fields.imageUrl') as HTMLInputElement).value).toBe('');
+      expect(state.upload).not.toHaveBeenCalled();
+      expect(state.getAsset).not.toHaveBeenCalled();
+      expect(guarded.hasUnsavedChanges()).toBe(true);
+      if (changedAfterSubmit === 'removed') {
+        fireEvent.click(screen.getByRole('button', { name: 'actions.removeImage' }));
+        await waitFor(() => expect(guarded.hasUnsavedChanges()).toBe(false));
+        expect(state.create).not.toHaveBeenCalled();
+        return;
+      }
+
+      const retry = vi.fn().mockResolvedValue(undefined);
+      state.saveWithReferences.mockResolvedValueOnce({
+        status: 'reference_failed',
+        saved: { id: 'card-created' },
+        retryReferenceSync: retry,
+      });
+      fireEvent.change(screen.getByLabelText('fields.heading'), { target: { value: 'Kachel' } });
+      await screen.findByRole('option', { name: 'Startseite' });
+      fireEvent.change(screen.getByLabelText('fields.category'), {
+        target: { value: 'Startseite' },
+      });
+      fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
+      await screen.findByText('messages.mediaReferencePartialFailure');
+      expect(guarded.hasUnsavedChanges()).toBe(true);
+      if (changedAfterSubmit)
+        fireEvent.change(screen.getByLabelText('fields.text'), {
+          target: { value: 'Spätere Änderung' },
+        });
+      fireEvent.click(screen.getByRole('button', { name: 'actions.retryMediaReferences' }));
+      await waitFor(() => expect(retry).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(guarded.hasUnsavedChanges()).toBe(changedAfterSubmit));
+      if (changedAfterSubmit) expect(screen.getByDisplayValue('Spätere Änderung')).toBeTruthy();
+    }
+  );
 
   it('creates a card with the complete normalized payload', async () => {
     state.create.mockResolvedValue({ id: 'card-new' });
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
-    render(<CockpitCardsCreatePage />);
+    const guarded = renderGuarded(<CockpitCardsCreatePage />);
+    expect(guarded.hasUnsavedChanges()).toBe(false);
+    state.navigate.mockImplementationOnce(async () => {
+      expect(guarded.hasUnsavedChanges()).toBe(false);
+    });
+
     await screen.findByRole('option', { name: 'Startseite' });
     fillRequiredFields();
     fireEvent.change(screen.getByLabelText('fields.languageCode'), { target: { value: 'en-us' } });
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.settings.label' }));
+
     fireEvent.change(screen.getByLabelText('fields.link'), {
       target: { value: 'https://example.test/ziel' },
     });
@@ -393,7 +468,7 @@ describe('cockpit cards pages', () => {
     };
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
+
     expect(screen.queryByRole('button', { name: 'actions.selectImage' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'actions.uploadImage' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
@@ -480,7 +555,7 @@ describe('cockpit cards pages', () => {
     state.create.mockRejectedValue(new Error('save failed'));
     const failedDependencies = render(<CockpitCardsCreatePage />);
     await screen.findByText('messages.categoriesError');
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
+
     expect(screen.getByRole('button', { name: 'media.add' })).toBeTruthy();
     failedDependencies.unmount();
 
@@ -501,18 +576,14 @@ describe('cockpit cards pages', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
     expect(await screen.findByText('messages.validationError')).toBeTruthy();
     expect(screen.getByLabelText('fields.heading').getAttribute('aria-invalid')).toBe('true');
-    expect(
-      screen.getByRole('tab', { name: 'tabs.basis.label' }).getAttribute('aria-selected')
-    ).toBe('true');
+    expect(screen.queryByRole('tablist')).toBeNull();
     fireEvent.change(screen.getByLabelText('fields.heading'), { target: { value: 'Kachel' } });
     fireEvent.change(screen.getByLabelText('fields.category'), { target: { value: 'Startseite' } });
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
+
     fireEvent.change(screen.getByLabelText('fields.text'), { target: { value: '<b>Kachel</b>' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
     await waitFor(() =>
-      expect(
-        screen.getByRole('tab', { name: 'tabs.content.label' }).getAttribute('aria-selected')
-      ).toBe('true')
+      expect(screen.getByLabelText('fields.text').getAttribute('aria-invalid')).toBe('true')
     );
     create.unmount();
 
@@ -526,18 +597,21 @@ describe('cockpit cards pages', () => {
     expect(await screen.findByText('messages.deleteError')).toBeTruthy();
   });
 
-  it.each(['media_processing_timeout', 'media_processing_failed', 'media_scan_infected'])('keeps form values and hides technical media code %s on save failure', async (code) => {
-    state.create.mockRejectedValue(Object.assign(new Error(code), { code }));
-    render(<CockpitCardsCreatePage />);
-    await screen.findByRole('option', { name: 'Startseite' });
-    fillRequiredFields();
-    const titleInput = screen.getByLabelText('fields.text');
-    const previous = (titleInput as HTMLInputElement).value;
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
-    expect(await screen.findByText('messages.saveError')).toBeTruthy();
-    expect((titleInput as HTMLInputElement).value).toBe(previous);
-    expect(screen.queryByText(code)).toBeNull();
-  });
+  it.each(['media_processing_timeout', 'media_processing_failed', 'media_scan_infected'])(
+    'keeps form values and hides technical media code %s on save failure',
+    async (code) => {
+      state.create.mockRejectedValue(Object.assign(new Error(code), { code }));
+      render(<CockpitCardsCreatePage />);
+      await screen.findByRole('option', { name: 'Startseite' });
+      fillRequiredFields();
+      const titleInput = screen.getByLabelText('fields.text');
+      const previous = (titleInput as HTMLInputElement).value;
+      fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
+      expect(await screen.findByText('messages.saveError')).toBeTruthy();
+      expect((titleInput as HTMLInputElement).value).toBe(previous);
+      expect(screen.queryByText(code)).toBeNull();
+    }
+  );
 
   it('uses the generic save error for non-Error rejections', async () => {
     state.create.mockRejectedValue('save failed');
@@ -584,18 +658,15 @@ describe('cockpit cards pages', () => {
 
     expect(await screen.findByText('messages.visibilitySavePartialFailure')).toBeTruthy();
     expect(state.saveWithReferences).toHaveBeenCalledOnce();
-    expect(state.update).toHaveBeenCalledWith(
-      'card-1',
-      expect.any(Object),
-      expect.any(String),
-      { contentMediaSaveOperationId: 'media-operation-1' }
-    );
+    expect(state.update).toHaveBeenCalledWith('card-1', expect.any(Object), expect.any(String), {
+      contentMediaSaveOperationId: 'media-operation-1',
+    });
   });
 
   it('adds, reorders and removes manual images through the shared block', async () => {
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
+
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));

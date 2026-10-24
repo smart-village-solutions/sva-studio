@@ -1,3 +1,4 @@
+import { PoiDetailCreate } from './poi.detail-create.js';
 import {
   Select,
   StudioDetailTabIcon,
@@ -133,6 +134,7 @@ export function PoiDetailTabs({ view }: Readonly<{ view: PoiDetailPageViewModel 
     media,
     pt,
   });
+  if (mode === 'create') return <PoiDetailCreate view={view} content={tabPanels.content} />;
   return (
     <Tabs
       value={activeTab}

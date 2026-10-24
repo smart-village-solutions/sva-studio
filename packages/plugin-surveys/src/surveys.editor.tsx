@@ -20,10 +20,14 @@ import {
   createDefaultSurveyDetailFormValues,
   type SurveyDetailFormValues,
 } from './surveys.detail-form.js';
-import { SurveyEditorActions, SurveyEditorPrimaryAction } from './surveys.editor.actions.js';
+import {
+  SurveyCreatedResult,
+  SurveyEditorActions,
+  SurveyEditorPrimaryAction,
+} from './surveys.editor.actions.js';
 import { useSurveyEditorController } from './surveys.editor-logic.js';
 import { type SurveyEditorMode, type SurveyEditorTabId } from './surveys.editor.shared.js';
-import { createSurveyEditorTabs } from './surveys.editor-tabs.js';
+import { SurveyCreateFields, createSurveyEditorTabs } from './surveys.editor-tabs.js';
 import { useSurveyMutationAccess as useMutationAccess } from './surveys.lifecycle-access.js';
 
 const formId = 'survey-detail-form';
@@ -109,13 +113,17 @@ const SurveyEditorForm = ({
         pt={pt}
       />
       <fieldset className="min-w-0 space-y-5 border-0 p-0" disabled={!canEdit}>
-        <StudioDetailTabs
-          ariaLabel={pt('tabs.ariaLabel')}
-          tabs={tabs}
-          value={activeTab}
-          onValueChange={onActiveTabChange}
-          keepMounted
-        />
+        {mode === 'create' ? (
+          <SurveyCreateFields pt={pt} />
+        ) : (
+          <StudioDetailTabs
+            ariaLabel={pt('tabs.ariaLabel')}
+            tabs={tabs}
+            value={activeTab}
+            onValueChange={onActiveTabChange}
+            keepMounted
+          />
+        )}
       </fieldset>
     </form>
   </FormProvider>
@@ -149,6 +157,24 @@ const useSurveyTabs = (
     [contentId, loadedItem, mode, pt]
   );
 
+function createSurveyNavigation(navigate: ReturnType<typeof useNavigate>, contentId?: string) {
+  return {
+    onInitialSavedConsumed: () =>
+      navigate({
+        to: '/admin/surveys/$id',
+        params: { id: contentId ?? '' },
+        replace: true,
+        state: (previous) => removeStudioSaveFeedback(previous),
+      }),
+    navigateToCreatedDetail: (id: string) =>
+      navigate({
+        to: '/admin/surveys/$id',
+        params: { id },
+        state: (previous) => addStudioCreatedSaveFeedback(previous, 'surveys', id),
+      }),
+  };
+}
+
 export const SurveyEditorPage = ({
   mode,
   contentId,
@@ -166,7 +192,7 @@ export const SurveyEditorPage = ({
   const [activeTab, setActiveTab] = React.useState<SurveyEditorTabId>('basis');
   const [actingPrincipalType, setActingPrincipalType] = useSurveyActingPrincipal(principalControl);
   const methods = useSurveyForm();
-  const { isLoading, loadedItem, resourceAccess, saveStatus, status, submit } =
+  const { createdContentId, isLoading, loadedItem, resourceAccess, saveStatus, status, submit } =
     useSurveyEditorController({
       mode,
       contentId,
@@ -174,19 +200,7 @@ export const SurveyEditorPage = ({
       pt,
       actingPrincipalType,
       initiallySaved: hasStudioCreatedSaveFeedback(location.state, 'surveys', contentId),
-      onInitialSavedConsumed: () =>
-        navigate({
-          to: '/admin/surveys/$id',
-          params: { id: contentId ?? '' },
-          replace: true,
-          state: (previous) => removeStudioSaveFeedback(previous),
-        }),
-      navigateToCreatedDetail: (id) =>
-        navigate({
-          to: '/admin/surveys/$id',
-          params: { id },
-          state: (previous) => addStudioCreatedSaveFeedback(previous, 'surveys', id),
-        }),
+      ...createSurveyNavigation(navigate, contentId),
     });
   const tabs = useSurveyTabs(pt, mode, loadedItem, contentId);
   const access = useMutationAccess(mode, canUpdate, loadedItem?.status, resourceAccess, methods);
@@ -202,19 +216,23 @@ export const SurveyEditorPage = ({
       actions={<SurveyEditorActions pt={pt} />}
       primaryAction={
         <SurveyEditorPrimaryAction
-          disabled={!access.canSave}
+          disabled={!access.canSave || (mode === 'create' && createdContentId !== null)}
           mode={mode}
           formId={formId}
           pt={pt}
           saveStatus={saveStatus}
+          createStatus={methods.watch('basis.status')}
         />
       }
     >
+      {mode === 'create' && createdContentId ? (
+        <SurveyCreatedResult createdContentId={createdContentId} methods={methods} pt={pt} />
+      ) : null}
       <SurveyEditorForm
         actingPrincipalType={actingPrincipalType}
         activeTab={activeTab}
         canEdit={access.canEdit}
-        canSave={access.canSave}
+        canSave={access.canSave && !(mode === 'create' && createdContentId !== null)}
         loadedItem={loadedItem}
         methods={methods}
         mode={mode}

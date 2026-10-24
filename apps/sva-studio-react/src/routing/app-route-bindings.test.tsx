@@ -90,6 +90,7 @@ vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
 }));
 
 vi.mock('@tanstack/react-router', () => ({
+  useBlocker: () => ({ status: 'idle', proceed: undefined, reset: undefined }),
   useParams: () => routeState.params,
   useSearch: () => routeState.search,
   useLocation: () => ({ pathname: '/admin/media' }),

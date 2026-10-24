@@ -534,6 +534,12 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Enforcement erfolgt über Nx-`depConstraints`, ESLint-Importverbote und den CI-Check `pnpm check:plugin-ui-boundary`.
 - Das IAM-Acceptance-Gate ist bewusst ein separates Nx-Target ohne PR-CI-Zwang, weil es reale Laufzeitabhängigkeiten gegen eine dedizierte Testumgebung prüft
 
+### Redaktionelle Neuanlage und Fehlerdarstellung
+
+- Create-Onepager verwenden dieselben Feld- und Speicherverträge wie die tabbasierte Bearbeitung. Geschlossene Zusatzbereiche erhalten Eingaben; betroffene Bereiche werden vor dem Fehlerfokus geöffnet. Abschnittssprünge bleiben lokal und führen zu sichtbaren Überschriften beziehungsweise Klapptriggern.
+- Hilfen, Fehler und zustandsabhängige Speicherhinweise kommen aus den de/en-Ressourcen des zuständigen Plugins. Neue Texte erklären ausschließlich belegte Wirkungen; Datum, Sichtbarkeit und Fachstatus werden nicht pauschal mit Veröffentlichung gleichgesetzt.
+- Bestehende Fehler-, Retry- und Teilerfolgszustände bleiben erhalten; die Layoutmigration begründet keine allgemeine Fehlerbehandlungs- oder Recovery-Sanierung. Die acht Create-Editoren verwenden die gemeinsame wertfreie UI-Anbindung für den Host-Verlassensschutz: Pfadwechsel erfordern bei Änderungen eine Bestätigung, lokale Abschnittssprünge und das Öffnen des Medienpickers bleiben unbehelligt. Reload/Schließen nutzt den nativen Browserdialog. Eine erneute Router-Ladephase derselben URL, etwa nach abgebrochenem Browser-Zurück, entfernt den bestehenden Editor nicht zugunsten des Shell-Ladeskeletts. Der Guard bleibt während eines laufenden Saves aktiv; nur die bestätigte erfasste Revision darf den lokalen Dirty-Ausgangspunkt zurücksetzen. Spätere Eingaben bleiben auch beim Medien-Retry geschützt. Bestätigte Inhalts-IDs verhindern doppelte Anlage, auch wenn die Weiterleitung scheitert. Eine Wiederherstellungsgarantie für ungespeicherte Eingaben entsteht nicht.
+
 ### TypeScript-, Bundler- und Node-ESM-Vertrag
 
 - Das Monorepo nutzt `moduleResolution: "Bundler"` für produktive Dev-Tooling-Pfade mit Vite, `tsx` und Vitest

@@ -39,6 +39,7 @@ const defaults: CockpitCardFormValues = {
   linkText: '',
   openInNewTab: false,
   visible: true,
+  publicationDate: '',
 };
 
 export function useCockpitCardForm() {

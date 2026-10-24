@@ -1,3 +1,5 @@
+import { poiHistoryDe } from './plugin.translations.de.messages.js';
+import { poiCreateTranslations } from './plugin.translations.create.js';
 import { createPoiLocaleTranslations } from './plugin.translations.shared.js';
 import { poiMessagesDe } from './plugin.translations.de.messages.js';
 import { poiDeleteActionTranslationsDe } from './plugin.translations.de.delete-actions.js';
@@ -8,6 +10,7 @@ const poiEditorTranslations = {
   editDescription: 'Aktualisieren oder löschen Sie den Ort.',
 };
 export const poiTranslationsDe = createPoiLocaleTranslations({
+  create: poiCreateTranslations.de,
   navigation: { title: 'Orte' },
   list: { title: 'Orte', description: 'Orte aus dem Mainserver bearbeiten.' },
   detail: poiEditorTranslations,
@@ -80,7 +83,10 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     updatedAt: 'Aktualisiert',
   },
   richText: {
-    mode: 'Editoransicht', visualMode: 'WYSIWYG', htmlMode: 'HTML', blockType: 'Textformat',
+    mode: 'Editoransicht',
+    visualMode: 'WYSIWYG',
+    htmlMode: 'HTML',
+    blockType: 'Textformat',
     heading2: 'Überschrift 2',
     heading3: 'Überschrift 3',
     heading4: 'Überschrift 4',
@@ -98,6 +104,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     applyLink: 'Link setzen',
   },
   actions: {
+    openSavedContent: 'Gespeicherten Inhalt öffnen',
     create: 'Anlegen',
     update: 'Änderungen speichern',
     save: 'Speichern',
@@ -198,26 +205,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
       },
     },
   },
-  history: {
-    loading: 'Historie wird geladen.',
-    error: 'Historie konnte nicht geladen werden.',
-    createHint: 'Speichern Sie den Ort, bevor die Historie verfügbar ist.',
-    tableLabel: 'Historie des Ortes',
-    sourceNotice:
-      'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
-    emptySummary: 'Keine weiteren Änderungsdetails.',
-    columns: {
-      time: 'Zeitpunkt',
-      action: 'Aktion',
-      actor: 'Bearbeitet von',
-      summary: 'Zusammenfassung',
-    },
-    actions: { created: 'Erstellt', updated: 'Aktualisiert', statusChanged: 'Status geändert' },
-    empty: {
-      title: 'Noch keine Historie verfügbar.',
-      description: 'Für diesen Ort wurden noch keine Studio-Änderungen erfasst.',
-    },
-  },
+  history: poiHistoryDe,
   empty: { title: 'Noch keine Orte vorhanden', description: 'Legen Sie den ersten Ort an.' },
   pagination: {
     ariaLabel: 'Seitennavigation der Orte',

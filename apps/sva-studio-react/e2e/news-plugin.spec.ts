@@ -22,6 +22,10 @@ import {
   routeUnifiedContentOverview,
 } from './news-plugin.routes';
 
+if (process.env.PLAYWRIGHT_RUNTIME_PROFILE === 'local-builder') {
+  test.use({ storageState: { cookies: [], origins: [] } });
+}
+
 test.describe('news plugin', () => {
   test.describe.configure({ timeout: 90_000 });
 
@@ -203,7 +207,7 @@ test.describe('news plugin', () => {
     await categorySearch.fill('Kultur');
     await page.getByRole('checkbox', { name: 'Kultur' }).check();
     await expect(categoryTrigger).toContainText('Allgemein, Kultur');
-    await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
+    await expect(page.getByRole('tab', { name: /Inhalte|news\.tabs\.content/ })).toHaveCount(0);
     await page.locator('#news-content-intro').fill('Kurztext');
     const bodyEditorContainer = page.locator('[data-rich-text-editor-id="news-content-body"]');
     const bodyEditor = page.locator('#news-content-body');
@@ -235,6 +239,11 @@ test.describe('news plugin', () => {
     await bodyHtmlSource.fill('<h2>Inhalt <em>aktualisiert</em></h2>');
     await bodyEditorContainer.getByRole('button', { name: 'HTML' }).click();
     await expect(bodyEditor.locator('h2')).toContainText('Inhalt aktualisiert');
+    await page
+      .locator('details')
+      .filter({ has: page.locator('#news-source-url') })
+      .locator('summary')
+      .click();
     await page.locator('#news-source-url').fill('https://example.com/news/source');
     await page.locator('#news-source-description').fill('Quellseite');
     await page
@@ -244,7 +253,9 @@ test.describe('news plugin', () => {
       .getByLabel(/Medien-URL|news\.fields\.mediaUrl/)
       .fill('https://example.com/news/image.jpg');
     await page.getByLabel(/Bildunterschrift|news\.fields\.mediaCaption/).fill('Titelbild');
-    await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
+    await expect(page.getByRole('tab', { name: /Einstellungen|news\.tabs\.settings/ })).toHaveCount(
+      0
+    );
     await page.getByRole('radio', { name: /Entwurf|news\.publicationModes\.draft/ }).click();
     const pushCheckbox = page.getByRole('checkbox', {
       name: /Push-Benachrichtigung senden|news\.fields\.pushNotification/,
@@ -260,7 +271,9 @@ test.describe('news plugin', () => {
       await dialog.accept();
     });
     await page
-      .getByRole('button', { name: /Speichern|news\.actions\.save/ })
+      .getByRole('button', {
+        name: /Jetzt veröffentlichen|Sofort veröffentlichen|news\.create\.actions\.immediate/,
+      })
       .last()
       .click();
     await expect.poll(() => newsItems.length).toBe(1);
@@ -495,7 +508,7 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/news/new');
     await expectPluginPageHeading(page, /Nachricht anlegen|news\.editor\.createTitle/);
     await page.getByLabel(/Überschrift|news\.fields\.title/).fill('News mit Bild');
-    await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
+    await expect(page.getByRole('tab', { name: /Inhalte|news\.tabs\.content/ })).toHaveCount(0);
     await page
       .getByRole('button', { name: /Medium hinzufügen|news\.messages\.mediaPickerTitle/ })
       .click();
@@ -528,7 +541,10 @@ test.describe('news plugin', () => {
       buffer: Buffer.from('image'),
     });
     await page.getByRole('button', { name: /Medium übernehmen|mediaPicker\.confirm/ }).click();
-    await navigateClientSide(page, '/');
+    const leaveDraft = navigateClientSide(page, '/');
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('button', { name: 'Verwerfen und verlassen' }).click();
+    await leaveDraft;
     await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
     await navigateClientSide(page, '/admin/news/new');
     await expectPluginPageHeading(page, /Nachricht anlegen|news\.editor\.createTitle/);
@@ -536,7 +552,7 @@ test.describe('news plugin', () => {
     expect(mediaMutations).toEqual([]);
 
     await page.getByLabel(/Überschrift|news\.fields\.title/).fill('News mit Bild');
-    await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
+    await expect(page.getByRole('tab', { name: /Inhalte|news\.tabs\.content/ })).toHaveCount(0);
     await page
       .getByRole('button', { name: /Medium hinzufügen|news\.messages\.mediaPickerTitle/ })
       .click();
@@ -548,7 +564,7 @@ test.describe('news plugin', () => {
     await page.getByRole('button', { name: /Medium übernehmen|mediaPicker\.confirm/ }).click();
 
     await page
-      .getByRole('button', { name: /Speichern|news\.actions\.save/ })
+      .getByRole('button', { name: /Entwurf anlegen|news\.create\.actions\.draft/ })
       .last()
       .click();
     await expect

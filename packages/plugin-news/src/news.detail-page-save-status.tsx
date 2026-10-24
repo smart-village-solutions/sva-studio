@@ -7,6 +7,7 @@ import {
   useStudioMediaReferenceSync,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
+import { addNewsCreatedSaveFeedback } from './news.save-feedback.js';
 import type { PluginTranslator, StatusMessage } from './news.detail-page.helpers.js';
 
 export const NewsDetailSaveStatus = ({
@@ -18,8 +19,8 @@ export const NewsDetailSaveStatus = ({
   retryCreatedContentId,
   navigateToCreatedDetail,
   setStatusMessage,
-  setRetryCreatedContentId,
   mediaReferenceSync,
+  completeCreateSave,
 }: Readonly<{
   deleteNavigationFailed: boolean;
   statusMessage: StatusMessage | null;
@@ -29,8 +30,8 @@ export const NewsDetailSaveStatus = ({
   retryCreatedContentId: string | null;
   navigateToCreatedDetail: (id: string) => Promise<void>;
   setStatusMessage: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
-  setRetryCreatedContentId: React.Dispatch<React.SetStateAction<string | null>>;
   mediaReferenceSync: ReturnType<typeof useStudioMediaReferenceSync>;
+  completeCreateSave: () => boolean;
 }>) => (
   <>
     {deleteNavigationFailed ? (
@@ -51,64 +52,59 @@ export const NewsDetailSaveStatus = ({
         retryLabel={
           statusMessage.source === 'save'
             ? pt('actions.retry')
-            : statusMessage.source === 'navigation'
-              ? pt('actions.openCreatedDetail')
-              : statusMessage.source === 'reference'
-                ? pt('actions.retryMediaReferences')
-                : undefined
+            : statusMessage.source === 'reference'
+              ? pt('actions.retryMediaReferences')
+              : undefined
         }
         retryDisabled={saveFeedback.status === 'saving'}
         onRetry={
           statusMessage.source === 'save'
             ? () => void saveCurrentItem()
-            : statusMessage.source === 'navigation' && retryCreatedContentId
+            : statusMessage.source === 'reference' && mediaReferenceSync.hasPendingRetry
               ? () => {
                   const operationId = saveFeedback.beginSaving();
-                  void navigateToCreatedDetail(retryCreatedContentId).then(
+                  void mediaReferenceSync.retryReferenceSync().then(
                     () => {
-                      setStatusMessage(null);
-                      setRetryCreatedContentId(null);
+                      const clean = completeCreateSave();
+                      setStatusMessage(
+                        clean
+                          ? null
+                          : { source: 'navigation', text: pt('create.savedWithNewChanges') }
+                      );
                       saveFeedback.markSaved(operationId);
+                      if (clean && retryCreatedContentId) {
+                        void navigateToCreatedDetail(retryCreatedContentId).catch(() => {
+                          setStatusMessage({
+                            source: 'navigation',
+                            text: pt('messages.detailNavigationError'),
+                          });
+                          saveFeedback.markFailed(operationId);
+                        });
+                      }
                     },
-                    () => saveFeedback.markFailed(operationId)
+                    () => {
+                      setStatusMessage({
+                        source: 'reference',
+                        text: pt('messages.mediaReferencePartialFailure'),
+                      });
+                      saveFeedback.markFailed(operationId);
+                    }
                   );
                 }
-              : mediaReferenceSync.hasPendingRetry
-                ? () => {
-                    const operationId = saveFeedback.beginSaving();
-                    void mediaReferenceSync.retryReferenceSync().then(
-                      () => {
-                        setStatusMessage(null);
-                        saveFeedback.markSaved(operationId);
-                        if (retryCreatedContentId) {
-                          const createdContentId = retryCreatedContentId;
-                          void navigateToCreatedDetail(createdContentId).then(
-                            () => setRetryCreatedContentId(null),
-                            () => {
-                              setRetryCreatedContentId(createdContentId);
-                              setStatusMessage({
-                                source: 'navigation',
-                                text: pt('messages.detailNavigationError'),
-                              });
-                              saveFeedback.markFailed(operationId);
-                            }
-                          );
-                        } else {
-                          setRetryCreatedContentId(null);
-                        }
-                      },
-                      () => {
-                        setStatusMessage({
-                          source: 'reference',
-                          text: pt('messages.mediaReferencePartialFailure'),
-                        });
-                        saveFeedback.markFailed(operationId);
-                      }
-                    );
-                  }
-                : undefined
+              : undefined
         }
       />
+    ) : null}
+    {retryCreatedContentId ? (
+      <p>
+        <Link
+          to="/admin/news/$id"
+          params={{ id: retryCreatedContentId }}
+          state={(previous) => addNewsCreatedSaveFeedback(previous, retryCreatedContentId)}
+        >
+          {pt('actions.openCreatedDetail')}
+        </Link>
+      </p>
     ) : null}
   </>
 );

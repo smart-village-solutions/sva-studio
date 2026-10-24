@@ -1,4 +1,34 @@
 export const pluginSurveysContentEnTranslations = {
+  create: {
+    heading: 'Survey content',
+    intro: 'Create a survey. Start with the title and questions; other details are optional.',
+    navigation: 'Jump to a survey section',
+    text: 'Title and description',
+    participation: 'Participation settings',
+    noLimit: 'not limited',
+    help: {
+      shortDescription: 'Optional short summary of the survey.',
+      description: 'Optional description of the survey.',
+      anonymity:
+        'Sets the existing anonymous participation option. Explain how data is handled in the privacy notice.',
+      results: 'Determines whether results should appear in the app.',
+      resultVisibility:
+        'Determines whether results are released never, after participation, or after the survey ends.',
+      privacy: 'Optional information about how participant data is handled.',
+      transparency: 'Optional information about the purpose and use of the results.',
+      questions:
+        'Choose single choice, multiple choice or free text for each question. Types with text allow additional text for answer options.',
+      status:
+        'Draft, active or archived: the schedule does not replace a status change. An expired schedule does not archive the survey automatically.',
+    },
+    effect: {
+      DRAFT: 'The survey is saved as a draft. Continue editing it later from the content list.',
+      ACTIVE:
+        'The survey is saved with Active status. The configured schedule remains in effect and does not change the status automatically.',
+      ARCHIVED: 'The survey is saved with Archived status.',
+      schedule: 'Saved schedule: start {{start}}, end {{end}}.',
+    },
+  },
   principal: {
     createAs: 'Create as',
     actAs: 'Act as',
@@ -9,6 +39,8 @@ export const pluginSurveysContentEnTranslations = {
     unavailable: 'Unavailable',
   },
   messages: {
+    createdNavigationError: 'The content was created, but the editing view could not be opened.',
+    unsavedAfterCreate: 'The content was created. Newer changes in this form have not been saved.',
     createPendingHint:
       'This section is already visible, but it will only be populated with data after the first save.',
     sectionPlaceholder:

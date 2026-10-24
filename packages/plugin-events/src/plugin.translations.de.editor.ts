@@ -1,5 +1,11 @@
+import { eventsDECreate, eventsDEValidation } from './plugin.translations.de.labels.js';
 export const eventsDEEditor = {
+  create: eventsDECreate,
   messages: {
+    createdNavigationError:
+      'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
+    unsavedAfterCreate:
+      'Der Inhalt wurde angelegt. Neuere Eingaben in diesem Formular sind noch nicht gespeichert.',
     mediaReferencePartialFailure:
       'Der Inhalt wurde gespeichert, die Medienreferenzen jedoch nicht. Sie können die Referenzen erneut speichern.',
     mediaReferenceRetrySuccess: 'Die Medienreferenzen wurden gespeichert.',
@@ -42,8 +48,8 @@ export const eventsDEEditor = {
     locationMapError:
       'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
     imagePickerEmpty: 'Keine passenden Medien gefunden.',
-  mediaPickerLoading: 'Medien werden geladen.',
-  mediaPickerLoadError: 'Medien konnten nicht geladen werden.',
+    mediaPickerLoading: 'Medien werden geladen.',
+    mediaPickerLoadError: 'Medien konnten nicht geladen werden.',
     mediaUploadInitializing: 'Upload wird vorbereitet.',
     mediaUploadUploading: 'Medium wird hochgeladen.',
     mediaUploadFinalizing: 'Medium wird eingepflegt.',
@@ -233,16 +239,7 @@ export const eventsDEEditor = {
     assetValue: 'Mediathek',
     contentValue: 'Inhalt',
   },
-  validation: {
-    title: 'Die Überschrift ist erforderlich.',
-    dates: 'Datumswerte müssen gültig sein.',
-    urls: 'URLs müssen mit https:// beginnen.',
-    categories: 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
-    priceInformations: 'Preisangaben müssen valide Zahlen enthalten.',
-    geoLocation: 'Koordinaten müssen gültige Breiten- und Längengrade sein.',
-    organizerName:
-      'Geben Sie einen Namen für den Veranstalter ein oder entfernen Sie die übrigen Veranstalterangaben.',
-  },
+  validation: eventsDEValidation,
   values: {
     mediaContentTypes: {
       unspecified: 'Nicht gesetzt',

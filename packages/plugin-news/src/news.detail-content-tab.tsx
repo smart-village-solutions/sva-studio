@@ -1,9 +1,10 @@
+import { NewsContentMediaSection } from './news.detail-content-media.js';
+import { useLayoutEffect, useRef } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import {
   ContentMediaUsageBlock,
   Input,
   RichTextHtmlEditor,
-  Select,
   StudioField,
   StudioFormSummaryErrors,
   contentMediaUsagesToMainserver,
@@ -14,13 +15,14 @@ import {
 import { NewsDetailCard } from './news.detail-card.js';
 import {
   collectSummaryErrors,
-  createNewsMediaUsageLabels,
   type ContentFieldBindings,
   readNestedFieldError,
   translateFieldError,
 } from './news.detail-content-tab.helpers.js';
 import type { NewsDetailFormValues } from './news.types.js';
 export type NewsDetailContentTabProps = Readonly<{
+  section?: 'text' | 'media' | 'source';
+  createMode?: boolean;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onAddManualMedia: () => string;
   mediaUsages?: readonly ContentMediaUsage[];
@@ -33,6 +35,7 @@ export type NewsDetailContentTabProps = Readonly<{
 }>;
 type NewsContentTextSectionProps = Readonly<{
   pt: NewsDetailContentTabProps['pt'];
+  createMode?: boolean;
   title: string;
   intro: string;
   contentBody: string;
@@ -43,6 +46,7 @@ type NewsContentTextSectionProps = Readonly<{
 function NewsContentTextSection({
   pt,
   title,
+  createMode,
   intro,
   contentBody,
   introField,
@@ -57,9 +61,12 @@ function NewsContentTextSection({
     { value: 'blockquote' as const, label: pt('richText.blockquote') },
   ];
   const toolbarLabels = {
-    mode: pt('richText.mode'), visualMode: pt('richText.visualMode'),
-    htmlMode: pt('richText.htmlMode'), blockType: pt('richText.blockType'),
-    bulletList: pt('richText.bulletList'), orderedList: pt('richText.orderedList'),
+    mode: pt('richText.mode'),
+    visualMode: pt('richText.visualMode'),
+    htmlMode: pt('richText.htmlMode'),
+    blockType: pt('richText.blockType'),
+    bulletList: pt('richText.bulletList'),
+    orderedList: pt('richText.orderedList'),
     bold: pt('richText.bold'),
     italic: pt('richText.italic'),
     underline: pt('richText.underline'),
@@ -76,9 +83,11 @@ function NewsContentTextSection({
       title={pt('cards.content.text.title')}
       description={pt('cards.content.text.description')}
     >
-      <StudioField id="news-content-headline" label={pt('fields.headline')}>
-        <Input id="news-content-headline" value={title} readOnly />
-      </StudioField>
+      {!createMode ? (
+        <StudioField id="news-content-headline" label={pt('fields.headline')}>
+          <Input id="news-content-headline" value={title} readOnly />
+        </StudioField>
+      ) : null}
 
       <div className="space-y-1">
         <label id={introLabelId} htmlFor={introField.id} className="text-sm font-medium">
@@ -95,7 +104,9 @@ function NewsContentTextSection({
           toolbarLabels={toolbarLabels}
         />
         <p id={introField.descriptionId} className="text-xs text-muted-foreground">
-          {pt('fields.characterCount', { count: intro.length })}
+          {createMode
+            ? pt('create.introHelp')
+            : pt('fields.characterCount', { count: intro.length })}
         </p>
         {introField.error ? (
           <p id={introField.errorId} className="text-sm text-destructive">
@@ -131,77 +142,11 @@ function NewsContentTextSection({
   );
 }
 
-type NewsContentMediaSectionProps = Readonly<{
-  pt: NewsDetailContentTabProps['pt'];
-  mediaField: ContentFieldBindings;
-  mediaUsages: readonly ContentMediaUsage[];
-  onChange: (usages: readonly ContentMediaUsage[]) => void;
-  canSelectMedia: boolean; canUploadMedia: boolean; mediaEditingDisabled: boolean;
-  onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
-  onOpenMediaPicker: (mode: 'library' | 'upload') => void;
-  onAddManualMedia: () => string;
-}>;
-
-function NewsContentMediaSection({
-  pt,
-  mediaField,
-  mediaUsages,
-  onChange,
-  canSelectMedia,
-  canUploadMedia,
-  mediaEditingDisabled,
-  onLoadAssetSnapshot,
-  onAddManualMedia,
-  onOpenMediaPicker,
-}: NewsContentMediaSectionProps) {
-  return (
-    <NewsDetailCard
-      title={pt('cards.content.media.title')}
-      description={pt('cards.content.media.description')}
-    >
-      <div id={mediaField.id}>
-        <ContentMediaUsageBlock
-          disabled={mediaEditingDisabled}
-          usages={mediaUsages}
-          onChange={onChange}
-          onAddManual={onAddManualMedia}
-          onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
-          onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
-          onLoadAssetSnapshot={onLoadAssetSnapshot}
-          supportedFields={{ altText: true, caption: true, credit: true, license: false }}
-          showHeader={false}
-          renderAdditionalFields={({ usage, update }) => (
-            <StudioField
-              id={`content-media-${usage.uiId}-content-type`}
-              label={pt('fields.mediaContentType')}
-            >
-              <Select
-                id={`content-media-${usage.uiId}-content-type`}
-                value={String(usage.additionalData?.contentType ?? '')}
-                onChange={(event) =>
-                  update({
-                    additionalData: {
-                      ...usage.additionalData,
-                      contentType: event.currentTarget.value,
-                    },
-                  })
-                }
-              >
-                <option value="">{pt('values.mediaContentTypes.unspecified')}</option>
-                <option value="image">{pt('values.mediaContentTypes.image')}</option>
-              </Select>
-            </StudioField>
-          )}
-          labels={createNewsMediaUsageLabels(pt)}
-        />
-      </div>
-    </NewsDetailCard>
-  );
-}
 type NewsContentSourceSectionProps = Readonly<{
   pt: NewsDetailContentTabProps['pt'];
   sourceUrlField: ContentFieldBindings;
   sourceTextField: ContentFieldBindings;
+  collapsible?: boolean;
   register: ReturnType<typeof useFormContext<NewsDetailFormValues>>['register'];
 }>;
 
@@ -209,24 +154,57 @@ function NewsContentSourceSection({
   pt,
   sourceUrlField,
   sourceTextField,
+  collapsible,
   register,
 }: NewsContentSourceSectionProps) {
-  return (
-    <NewsDetailCard
-      title={pt('cards.content.source.title')}
-      description={pt('cards.content.source.description')}
-    >
+  const { control } = useFormContext<NewsDetailFormValues>();
+  const source = useWatch({ control, name: 'sourceUrl' });
+  const details = useRef<HTMLDetailsElement>(null);
+  useLayoutEffect(() => {
+    if ((sourceUrlField.error || sourceTextField.error) && details.current)
+      details.current.open = true;
+  }, [sourceUrlField.error, sourceTextField.error]);
+  const fields = (
+    <>
       <StudioField {...sourceUrlField} label={pt('fields.sourceUrl')}>
         <Input {...sourceUrlField.controlProps} type="url" {...register('sourceUrl.url')} />
       </StudioField>
       <StudioField {...sourceTextField} label={pt('fields.sourceUrlDescription')}>
         <Input {...sourceTextField.controlProps} {...register('sourceUrlDescription')} />
       </StudioField>
+    </>
+  );
+  return collapsible ? (
+    <details
+      ref={details}
+      onInvalidCapture={() => {
+        if (details.current) details.current.open = true;
+      }}
+    >
+      <summary>
+        {pt('create.sourceOptional')} —{' '}
+        {pt(source?.url ? 'create.sourcePresent' : 'create.sourceEmpty')}
+      </summary>
+      <p>
+        {pt(
+          sourceUrlField.error ? 'messages.validationSummary' : 'cards.content.source.description'
+        )}
+      </p>
+      {fields}
+    </details>
+  ) : (
+    <NewsDetailCard
+      title={pt('cards.content.source.title')}
+      description={pt('cards.content.source.description')}
+    >
+      {fields}
     </NewsDetailCard>
   );
 }
 
 export function NewsDetailContentTab({
+  section,
+  createMode,
   onOpenMediaPicker,
   onAddManualMedia,
   pt,
@@ -259,10 +237,12 @@ export function NewsDetailContentTab({
 
   const introField = getStudioFormFieldProps({
     id: 'news-content-intro',
+    hasDescription: true,
     error: translateFieldError(errors.contentIntro, pt),
   });
   const bodyField = getStudioFormFieldProps({
     id: 'news-content-body',
+    hasDescription: true,
     error: translateFieldError(errors.contentBody, pt),
   });
   const sourceUrlField = getStudioFormFieldProps({
@@ -277,43 +257,54 @@ export function NewsDetailContentTab({
     id: 'news-content-media',
     error: translateFieldError(readNestedFieldError(errors.contentMedia), pt),
   });
-  const summaryErrors = collectSummaryErrors([
-    introField,
-    bodyField,
-    sourceUrlField,
-    sourceTextField,
-    mediaField,
-  ]);
+  const summaryErrors = collectSummaryErrors(
+    section === 'text'
+      ? [introField, bodyField]
+      : section === 'media'
+        ? [mediaField]
+        : section === 'source'
+          ? [sourceUrlField, sourceTextField]
+          : [introField, bodyField, sourceUrlField, sourceTextField, mediaField]
+  );
 
   return (
     <div className="space-y-6">
       <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
-      <NewsContentTextSection
-        pt={pt}
-        title={title}
-        intro={intro}
-        contentBody={contentBody}
-        introField={introField}
-        bodyField={bodyField}
-        setValue={setValue}
-      />
-      <NewsContentMediaSection
-        pt={pt}
-        mediaField={mediaField}
-        mediaUsages={resolvedUsages}
-        onChange={changeMedia}
-        canSelectMedia={canSelectMedia} canUploadMedia={canUploadMedia}
-        mediaEditingDisabled={mediaEditingDisabled}
-        onLoadAssetSnapshot={onLoadAssetSnapshot}
-        onAddManualMedia={onAddManualMedia}
-        onOpenMediaPicker={onOpenMediaPicker}
-      />
-      <NewsContentSourceSection
-        pt={pt}
-        sourceUrlField={sourceUrlField}
-        sourceTextField={sourceTextField}
-        register={register}
-      />
+      {!section || section === 'text' ? (
+        <NewsContentTextSection
+          pt={pt}
+          title={title}
+          createMode={createMode}
+          intro={intro}
+          contentBody={contentBody}
+          introField={introField}
+          bodyField={bodyField}
+          setValue={setValue}
+        />
+      ) : null}
+      {!section || section === 'media' ? (
+        <NewsContentMediaSection
+          pt={pt}
+          mediaField={mediaField}
+          mediaUsages={resolvedUsages}
+          onChange={changeMedia}
+          canSelectMedia={canSelectMedia}
+          canUploadMedia={canUploadMedia}
+          mediaEditingDisabled={mediaEditingDisabled}
+          onLoadAssetSnapshot={onLoadAssetSnapshot}
+          onAddManualMedia={onAddManualMedia}
+          onOpenMediaPicker={onOpenMediaPicker}
+        />
+      ) : null}
+      {!section || section === 'source' ? (
+        <NewsContentSourceSection
+          collapsible={createMode}
+          pt={pt}
+          sourceUrlField={sourceUrlField}
+          sourceTextField={sourceTextField}
+          register={register}
+        />
+      ) : null}
     </div>
   );
 }

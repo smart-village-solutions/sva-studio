@@ -1,6 +1,6 @@
+import { SurveyMetadataCard } from './surveys.detail-metadata-card.js';
 // fallow-ignore-file code-duplication
 import React from 'react';
-import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { Button, Input, Select, StudioField } from '@sva/studio-ui-react';
 
@@ -14,19 +14,20 @@ export type SurveyTargetAreaOption = Readonly<{
   label: string;
 }>;
 
-const formatMetadataDate = (value?: string) =>
-  value ? (formatDateTimeInEditorTimeZone(value) ?? value) : '--.--.-- --:--';
-
-function SurveyIdentityCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
+export function SurveyIdentityCard({
+  pt,
+  titleOnly = false,
+}: Readonly<{ pt: SurveyContentTranslate; titleOnly?: boolean }>) {
   const {
     register,
-    setValue,
     formState: { errors },
   } = useFormContext<SurveyDetailFormValues>();
-  const status = useWatch({ name: 'basis.status' }) ?? 'DRAFT';
 
   return (
-    <SurveyDetailCard title={pt('cards.basis.identity.title')} description={pt('cards.basis.identity.description')}>
+    <SurveyDetailCard
+      title={pt('cards.basis.identity.title')}
+      description={pt('cards.basis.identity.description')}
+    >
       <div className="space-y-4">
         <StudioField
           id="survey-title"
@@ -36,30 +37,44 @@ function SurveyIdentityCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
         >
           <Input id="survey-title" required {...register('title', { required: 'titleRequired' })} />
         </StudioField>
-        <StudioField id="survey-status" label={pt('fields.status')}>
-          <Select
-            id="survey-status"
-            value={status}
-            onChange={(event) =>
-              setValue('basis.status', event.target.value as SurveyDetailFormValues['basis']['status'], {
-                shouldDirty: true,
-              })
-            }
-          >
-            <option value="DRAFT">{pt('fields.statusOptions.draft')}</option>
-            <option value="ACTIVE">{pt('fields.statusOptions.active')}</option>
-            <option value="ARCHIVED">{pt('fields.statusOptions.archived')}</option>
-          </Select>
-        </StudioField>
+        {!titleOnly ? <SurveyStatusField pt={pt} /> : null}
       </div>
     </SurveyDetailCard>
   );
 }
-function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
+export function SurveyStatusField({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
+  const { control, setValue } = useFormContext<SurveyDetailFormValues>();
+  const status = useWatch({ control, name: 'basis.status' }) ?? 'DRAFT';
+  return (
+    <StudioField id="survey-status" label={pt('fields.status')}>
+      <Select
+        id="survey-status"
+        value={status}
+        onChange={(event) =>
+          setValue(
+            'basis.status',
+            event.target.value as SurveyDetailFormValues['basis']['status'],
+            {
+              shouldDirty: true,
+            }
+          )
+        }
+      >
+        <option value="DRAFT">{pt('fields.statusOptions.draft')}</option>
+        <option value="ACTIVE">{pt('fields.statusOptions.active')}</option>
+        <option value="ARCHIVED">{pt('fields.statusOptions.archived')}</option>
+      </Select>
+    </StudioField>
+  );
+}
+export function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
   const { register } = useFormContext<SurveyDetailFormValues>();
 
   return (
-    <SurveyDetailCard title={pt('cards.basis.schedule.title')} description={pt('cards.basis.schedule.description')}>
+    <SurveyDetailCard
+      title={pt('cards.basis.schedule.title')}
+      description={pt('cards.basis.schedule.description')}
+    >
       <div className="space-y-4">
         <StudioField id="survey-start-at" label={pt('fields.startAt')}>
           <Input id="survey-start-at" type="datetime-local" {...register('basis.startAt')} />
@@ -72,7 +87,7 @@ function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
     </SurveyDetailCard>
   );
 }
-function SurveyTargetAreaCard({
+export function SurveyTargetAreaCard({
   availableTargetAreas,
   pt,
 }: Readonly<{
@@ -108,7 +123,10 @@ function SurveyTargetAreaCard({
     );
 
   return (
-    <SurveyDetailCard title={pt('cards.basis.targetArea.title')} description={pt('cards.basis.targetArea.description')}>
+    <SurveyDetailCard
+      title={pt('cards.basis.targetArea.title')}
+      description={pt('cards.basis.targetArea.description')}
+    >
       <div className="space-y-4">
         <SurveyTargetAreaInput
           availableTargetAreas={availableTargetAreas}
@@ -198,42 +216,6 @@ function SelectedTargetAreas({
     </div>
   );
 }
-function SurveyMetadataCard({
-  mode,
-  loadedItem,
-  pt,
-}: Readonly<{
-  mode: 'create' | 'edit';
-  loadedItem: Pick<SurveyContentItem, 'createdAt' | 'updatedAt' | 'publishedAt' | 'archivedAt'> | null;
-  pt: SurveyContentTranslate;
-}>) {
-  return (
-    <SurveyDetailCard title={pt('cards.basis.metadata.title')} description={pt('cards.basis.metadata.description')}>
-      {mode === 'create' ? (
-        <p className="text-sm text-muted-foreground">{pt('messages.metadataCreateHint')}</p>
-      ) : (
-        <dl className="grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm md:grid-cols-2">
-          <div className="space-y-1">
-            <dt className="font-medium text-foreground">{pt('fields.createdAt')}</dt>
-            <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.createdAt)}</dd>
-          </div>
-          <div className="space-y-1">
-            <dt className="font-medium text-foreground">{pt('fields.updatedAt')}</dt>
-            <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.updatedAt)}</dd>
-          </div>
-          <div className="space-y-1">
-            <dt className="font-medium text-foreground">{pt('fields.publishedAt')}</dt>
-            <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.publishedAt)}</dd>
-          </div>
-          <div className="space-y-1">
-            <dt className="font-medium text-foreground">{pt('fields.archivedAt')}</dt>
-            <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.archivedAt)}</dd>
-          </div>
-        </dl>
-      )}
-    </SurveyDetailCard>
-  );
-}
 export function SurveyDetailBasisTab({
   mode,
   loadedItem,
@@ -241,7 +223,10 @@ export function SurveyDetailBasisTab({
   pt,
 }: Readonly<{
   mode: 'create' | 'edit';
-  loadedItem: Pick<SurveyContentItem, 'createdAt' | 'updatedAt' | 'publishedAt' | 'archivedAt'> | null;
+  loadedItem: Pick<
+    SurveyContentItem,
+    'createdAt' | 'updatedAt' | 'publishedAt' | 'archivedAt'
+  > | null;
   availableTargetAreas: readonly SurveyTargetAreaOption[];
   pt: SurveyContentTranslate;
 }>) {

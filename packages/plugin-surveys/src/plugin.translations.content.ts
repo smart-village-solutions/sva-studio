@@ -1,4 +1,36 @@
 export const pluginSurveysContentTranslations = {
+  create: {
+    heading: 'Umfrage erfassen',
+    intro:
+      'Erstellen Sie eine Umfrage. Beginnen Sie mit Titel und Fragen; weitere Angaben sind optional.',
+    navigation: 'Zu einem Umfrageabschnitt springen',
+    text: 'Titel und Beschreibung',
+    participation: 'Teilnahmebedingungen',
+    noLimit: 'nicht begrenzt',
+    help: {
+      shortDescription: 'Optionale kurze Zusammenfassung der Umfrage.',
+      description: 'Optionaler Beschreibungstext zur Umfrage.',
+      anonymity:
+        'Legt die vorhandene Einstellung für anonyme Teilnahme fest. Erläutern Sie den Umgang mit Daten im Datenschutzhinweis.',
+      results: 'Bestimmt, ob Ergebnisse in der App angezeigt werden sollen.',
+      resultVisibility:
+        'Legt fest, ob Ergebnisse nie, nach Teilnahme oder nach Umfrageende freigegeben werden.',
+      privacy: 'Optionaler Hinweis zum Umgang mit den Daten der Teilnehmenden.',
+      transparency: 'Optionaler Hinweis zum Zweck und zur Verwendung der Ergebnisse.',
+      questions:
+        'Wählen Sie je Frage Einzelwahl, Mehrfachwahl oder Freitext. Die Varianten mit Freitext erlauben ergänzende Texte zu Antwortoptionen.',
+      status:
+        'Entwurf, aktiv oder archiviert: Die Laufzeit ersetzt keine Statusänderung. Ein abgelaufener Zeitraum archiviert die Umfrage nicht automatisch.',
+    },
+    effect: {
+      DRAFT:
+        'Die Umfrage wird als Entwurf gespeichert. Sie können sie später über die Inhaltsliste weiterbearbeiten.',
+      ACTIVE:
+        'Die Umfrage wird mit Status Aktiv gespeichert. Die eingestellte Laufzeit bleibt maßgeblich; sie ändert den Status nicht automatisch.',
+      ARCHIVED: 'Die Umfrage wird mit Status Archiviert gespeichert.',
+      schedule: 'Gespeicherte Laufzeit: Start {{start}}, Ende {{end}}.',
+    },
+  },
   principal: {
     createAs: 'Erstellen als',
     actAs: 'Handeln als',
@@ -9,6 +41,10 @@ export const pluginSurveysContentTranslations = {
     unavailable: 'Nicht verfügbar',
   },
   messages: {
+    createdNavigationError:
+      'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
+    unsavedAfterCreate:
+      'Der Inhalt wurde angelegt. Neuere Eingaben in diesem Formular sind noch nicht gespeichert.',
     createPendingHint:
       'Dieser Bereich ist bereits sichtbar, wird aber erst nach dem ersten Speichern mit Daten gefüllt.',
     sectionPlaceholder:

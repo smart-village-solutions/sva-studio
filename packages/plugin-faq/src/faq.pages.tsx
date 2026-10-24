@@ -9,8 +9,6 @@ import {
   usePluginTranslation,
 } from '@sva/plugin-sdk';
 import {
-  hasStudioCreatedSaveFeedback,
-  removeStudioSaveFeedback,
   StudioErrorState,
   StudioLoadingState,
   type MainserverPrincipalControlModel,
@@ -21,7 +19,12 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 
 import type { FaqTab } from './faq.editor-tabs.js';
-import { useFaqEditorActions, useFaqEditorLoader } from './faq.editor-page.logic.js';
+import {
+  useFaqCreateGuard,
+  useFaqInitialSaveFeedback,
+  useFaqEditorActions,
+  useFaqEditorLoader,
+} from './faq.editor-page.logic.js';
 import { FaqEditorView } from './faq-editor-view.js';
 import { FaqListPage } from './faq-list-page.js';
 import { faqFormSchema } from './faq.model.js';
@@ -33,6 +36,7 @@ const defaultValues: FaqFormValues = {
   languageCode: 'de',
   sortWeight: 0,
   visible: true,
+  publicationDate: '',
 };
 
 type FaqEditorPageProps = Readonly<{
@@ -72,41 +76,6 @@ const useFaqMutationAccess = (
   return { canDelete: accessCapabilities.canDelete, canSave };
 };
 
-const useFaqInitialSaveFeedback = ({
-  contentId,
-  loading,
-  locationState,
-  navigate,
-  saveFeedback,
-}: Readonly<{
-  contentId?: string;
-  loading: boolean;
-  locationState: unknown;
-  navigate: ReturnType<typeof useNavigate>;
-  saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
-}>) => {
-  const shownRef = React.useRef(false);
-
-  React.useEffect(() => {
-    if (
-      loading ||
-      shownRef.current ||
-      !hasStudioCreatedSaveFeedback(locationState, 'faq', contentId)
-    ) {
-      return;
-    }
-
-    shownRef.current = true;
-    saveFeedback.showSaved();
-    void navigate({
-      to: '/admin/faq/$id',
-      params: { id: contentId ?? '' },
-      replace: true,
-      state: (previous) => removeStudioSaveFeedback(previous),
-    });
-  }, [contentId, loading, locationState, navigate, saveFeedback]);
-};
-
 const useFaqActingPrincipal = (principalControl?: MainserverPrincipalControlModel) => {
   const [value, setValue] = React.useState<MainserverPrincipalType>(
     principalControl?.value ?? 'user'
@@ -142,27 +111,53 @@ const useFaqSave = ({
     }
   );
 
+const useFaqForm = () => {
+  const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
+  const saveFeedback = useStudioSaveFeedback();
+  React.useEffect(() => {
+    if (form.formState.isDirty) saveFeedback.markDirty();
+  }, [form.formState.isDirty, saveFeedback.markDirty]);
+  return { form, saveFeedback };
+};
+
+function createFaqFormSubmit(
+  canSave: boolean,
+  save: ReturnType<typeof useFaqSave>
+): React.FormEventHandler<HTMLFormElement> {
+  return (event) => {
+    if (!canSave) {
+      event.preventDefault();
+      return;
+    }
+    void save(event);
+  };
+}
+
 const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps) => {
   const pt = usePluginTranslation('faq');
   const navigate = useNavigate();
   const location = useLocation();
-  const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
-  const saveFeedback = useStudioSaveFeedback();
+  const { form, saveFeedback } = useFaqForm();
+  const { createdContentId, onCreateStarted, onCreateSaved } = useFaqCreateGuard(mode, form);
+
   const [activeTab, setActiveTab] = React.useState<FaqTab>('basis');
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
   const [actingPrincipalType, setActingPrincipalType] = useFaqActingPrincipal(principalControl);
-  React.useEffect(() => {
-    if (form.formState.isDirty) saveFeedback.markDirty();
-  }, [form.formState.isDirty, saveFeedback.markDirty]);
   const { existingPayload, loadedItem, loadError, loading, resourceAccess } = useFaqEditorLoader({
     contentId,
     form,
     mode,
     actingPrincipalType,
   });
-  const { canDelete, canSave } = useFaqMutationAccess(mode, form, loadedItem, resourceAccess);
+  const { canDelete, canSave: canMutate } = useFaqMutationAccess(
+    mode,
+    form,
+    loadedItem,
+    resourceAccess
+  );
+  const canSave = canMutate && !createdContentId;
   useFaqInitialSaveFeedback({
     contentId,
     loading,
@@ -179,6 +174,8 @@ const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps
     setDeleteErrorMessage,
     setSaveErrorMessage,
     actingPrincipalType,
+    onCreateStarted,
+    onCreateSaved,
   });
   const save = useFaqSave({ form, onSubmit, pt, saveFeedback, setSaveErrorMessage });
   const formId = `faq-${mode}-form`;
@@ -197,18 +194,13 @@ const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps
       form={form}
       formId={formId}
       loadedItem={loadedItem}
+      createdContentId={createdContentId}
       mode={mode}
       onDelete={async () => {
         if (!canDelete) return;
         if (await onDelete()) setDeleteDialogOpen(false);
       }}
-      onSubmit={(event) => {
-        if (!canSave) {
-          event.preventDefault();
-          return;
-        }
-        void save(event);
-      }}
+      onSubmit={createFaqFormSubmit(canSave, save)}
       principalControl={principalControl}
       pt={pt}
       saveErrorMessage={saveErrorMessage}

@@ -283,28 +283,38 @@ describe('NewsDetailPage', () => {
     resetSessionAccessSnapshot();
   });
 
-  it('renders the same save action in the page header and after the editor', async () => {
+  it('renders one reachable save action after the editor', async () => {
     render(<NewsDetailPage mode="create" />);
 
-    await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Entwurf anlegen' })).toHaveLength(2);
-    });
+    const action = await screen.findByRole('button', { name: 'Entwurf anlegen' });
+    expect(screen.getAllByRole('button', { name: 'Entwurf anlegen' })).toHaveLength(1);
+    expect(action.closest('header')).toBeNull();
+    expect(action.closest('.sticky')).not.toBeNull();
   });
 
-  it('keeps publication effects and both actions in sync and explains push reset', async () => {
+  it('keeps the save action and publication effects in sync and resets push', async () => {
     render(<NewsDetailPage mode="create" />);
-    expect(await screen.findAllByRole('button', { name: 'Entwurf anlegen' })).toHaveLength(2);
-    expect(screen.getAllByText(/mit Status Entwurf gespeichert/)).toHaveLength(2);
+    expect(await screen.findByRole('button', { name: 'Entwurf anlegen' })).toBeTruthy();
+    expect(screen.getAllByText(/Als Entwurf gespeichert, noch nicht öffentlich/)).toHaveLength(1);
+    expect(screen.queryByRole('checkbox', { name: 'Push-Benachrichtigung senden' })).toBeNull();
     fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
-    expect(screen.getAllByRole('button', { name: 'Jetzt veröffentlichen' })).toHaveLength(2);
-    const push = screen.getByRole('checkbox', { name: 'Push-Benachrichtigung senden' });
-    fireEvent.click(push);
-    expect(screen.getAllByText(/Push-Benachrichtigung für folgendes Zielgebiet/)).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Jetzt veröffentlichen' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Push-Benachrichtigung senden' }));
+    expect(screen.getAllByText(/Push-Benachrichtigung für folgendes Zielgebiet/)).toHaveLength(1);
     fireEvent.click(screen.getByRole('radio', { name: /Zeitgesteuert/ }));
-    await waitFor(() => expect((push as HTMLInputElement).checked).toBe(false));
-    expect(screen.getAllByRole('button', { name: 'Geplante Nachricht anlegen' })).toHaveLength(2);
-    expect(screen.getByText(/Push-Auswahl zurückgesetzt/)).toBeTruthy();
-    expect(screen.getAllByText(/keine Push-Benachrichtigung versendet/)).toHaveLength(2);
+    expect(screen.queryByRole('checkbox', { name: 'Push-Benachrichtigung senden' })).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Geplante Nachricht anlegen' })).toHaveLength(1);
+    expect(
+      screen.getByText(/Bei Entwurf oder geplanter Veröffentlichung wird kein Push versendet/)
+    ).toBeTruthy();
+    expect(screen.getAllByText(/keine Push-Benachrichtigung versendet/)).toHaveLength(1);
+    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
+    await waitFor(() => {
+      expect(
+        (screen.getByRole('checkbox', { name: 'Push-Benachrichtigung senden' }) as HTMLInputElement)
+          .checked
+      ).toBe(false);
+    });
   });
 
   it('opens an invalid source before error focus and retains it on collapse', async () => {
@@ -315,7 +325,7 @@ describe('NewsDetailPage', () => {
     details.open = true;
     fireEvent.change(source, { target: { value: 'http://insecure.test' } });
     details.open = false;
-    fireEvent.click(screen.getAllByRole('button', { name: 'Entwurf anlegen' })[1]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Entwurf anlegen' }));
     await waitFor(() => expect(details.open).toBe(true));
     expect((source as HTMLInputElement).value).toBe('http://insecure.test');
     await waitFor(() => expect(document.activeElement).toBe(source));
@@ -676,9 +686,9 @@ describe('NewsDetailPage', () => {
       />
     );
 
-    const principalInput = await screen.findByLabelText('Erstellen als');
-    expect((principalInput as HTMLInputElement).value).toBe('Stadt Musterhausen');
-    expect(principalInput.getAttribute('readonly')).not.toBeNull();
+    expect(await screen.findByText('Stadt Musterhausen')).toBeTruthy();
+    expect(screen.getByText('Verantwortlich:')).toBeTruthy();
+    expect(screen.queryByLabelText('Erstellen als')).toBeNull();
     expect(screen.queryByLabelText('Autor')).toBeNull();
   });
 
@@ -728,18 +738,16 @@ describe('NewsDetailPage', () => {
   it('defaults to a fixed personal principal when no principal policy is provided', async () => {
     render(<NewsDetailPage mode="create" />);
 
-    const principalInput = await screen.findByLabelText('Erstellen als');
-    expect((principalInput as HTMLInputElement).value).toBe('Persönlich');
-    expect(principalInput.getAttribute('readonly')).not.toBeNull();
+    expect(await screen.findByText('Persönlich')).toBeTruthy();
+    expect(screen.getByText('Verantwortlich:')).toBeTruthy();
+    expect(screen.queryByLabelText('Erstellen als')).toBeNull();
     expect(screen.queryByLabelText('Autor')).toBeNull();
   });
 
   it('applies a later principal policy update', async () => {
     const { rerender } = render(<NewsDetailPage mode="create" />);
 
-    expect(((await screen.findByLabelText('Erstellen als')) as HTMLInputElement).value).toBe(
-      'Persönlich'
-    );
+    expect(await screen.findByText('Persönlich')).toBeTruthy();
 
     rerender(
       <NewsDetailPage
@@ -748,11 +756,9 @@ describe('NewsDetailPage', () => {
       />
     );
 
-    await waitFor(() => {
-      expect((screen.getByLabelText('Erstellen als') as HTMLInputElement).value).toBe(
-        'Stadt Musterhausen'
-      );
-    });
+    expect(await screen.findByText('Stadt Musterhausen')).toBeTruthy();
+    expect(screen.queryByText('Persönlich')).toBeNull();
+    expect(screen.queryByLabelText('Erstellen als')).toBeNull();
   });
 
   it('shows one create form with ordered fields and no tabs or duplicate headline', async () => {
@@ -760,8 +766,8 @@ describe('NewsDetailPage', () => {
     const title = await screen.findByLabelText('Titel');
     const intro = screen.getByLabelText('Einleitung');
     const body = screen.getByLabelText('Inhalt');
-    expect(title.compareDocumentPosition(intro) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(intro.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(title.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(body.compareDocumentPosition(intro) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByLabelText('Headline')).toBeNull();
     expect(document.querySelectorAll('form')).toHaveLength(1);

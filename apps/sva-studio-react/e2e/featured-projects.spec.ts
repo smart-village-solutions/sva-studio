@@ -133,6 +133,10 @@ test('creates, publishes, reorders and deletes a featured project with multiple 
   await page.locator('#project-title').fill('Neue Brücke');
   await page.locator('#project-description').fill('Projektbeschreibung');
   await page.locator('#project-fullText').fill('Ausführlicher Projekttext');
+  await page
+    .locator('summary')
+    .filter({ hasText: /^Bilder$/ })
+    .click();
   await page.getByRole('button', { name: /Medium hinzufügen|projects\.media\.add/ }).click();
   await page.getByRole('button', { name: /Medium hinzufügen|projects\.media\.add/ }).click();
   await page
@@ -152,9 +156,8 @@ test('creates, publishes, reorders and deletes a featured project with multiple 
     .nth(1)
     .fill('Baustelle');
   await page.locator('#project-status').selectOption('published');
-  await expect(
-    page.getByRole('textbox', { name: /Erstellen als|projects\.principal\.createAs/ })
-  ).toHaveValue('Editor One');
+  await expect(page.getByRole('term')).toHaveText('Verantwortlich:');
+  await expect(page.getByRole('definition')).toHaveText('Editor One');
   await page
     .getByRole('button', { name: /Projekt anlegen|projects\.actions\.create/ })
     .last()

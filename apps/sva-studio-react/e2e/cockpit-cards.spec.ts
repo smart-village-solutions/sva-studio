@@ -163,14 +163,26 @@ test('persists Kachel text and media across create, update and reload before del
     accessibility.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))
   ).toEqual([]);
   await page.locator('#cockpit-card-heading').fill('Bürgerbüro');
+  await page
+    .locator('summary')
+    .filter({ hasText: /^Kategorie$/ })
+    .click();
   await page.locator('#cockpit-card-category').selectOption('Service');
   await page.locator('#cockpit-card-text').fill('Herbstangebote der Volkshochschule');
+  await page
+    .locator('summary')
+    .filter({ hasText: /^Bilder$/ })
+    .click();
   await page.getByRole('button', { name: 'Medium hinzufügen' }).click();
   await page.getByRole('button', { name: 'Medium hinzufügen' }).click();
   await page.getByLabel('Bild-URL').nth(0).fill('https://example.test/buergerbuero-aussen.jpg');
   await page.getByLabel('Alternativtext').nth(0).fill('Eingang des Bürgerbüros');
   await page.getByLabel('Bild-URL').nth(1).fill('https://example.test/buergerbuero-innen.jpg');
   await page.getByLabel('Alternativtext').nth(1).fill('Wartebereich des Bürgerbüros');
+  await page
+    .locator('summary')
+    .filter({ hasText: /^Link$/ })
+    .click();
   await page.locator('#cockpit-card-link').fill('https://example.test/buergerbuero');
   await page.locator('#cockpit-card-link-text').fill('Zum Bürgerbüro');
   await page.locator('#cockpit-card-open-new-tab').check();

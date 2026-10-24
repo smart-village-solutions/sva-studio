@@ -50,6 +50,8 @@ docker compose -f compose.yaml -f compose.monitoring.yaml down
 
 ## Was wird geprüft
 
+Die CRUD-Szenarien für Kacheln und Projekte öffnen im Erstellungsformular die benötigten `summary`-Aufklapper, bevor sie Kategorie, Bilder oder Link bearbeiten. Die verantwortliche Person wird als Text geprüft; der Bearbeitungsablauf bleibt tab-basiert.
+
 - Browser-Smoketest für Kernrouten:
   - `/`
   - `/interfaces`

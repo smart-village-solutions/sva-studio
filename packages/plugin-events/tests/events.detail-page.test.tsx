@@ -560,11 +560,7 @@ describe('EventsDetailPage', () => {
     fireEvent.click(screen.getByLabelText('Sichtbar'));
     expect(screen.getAllByRole('button', { name: 'Sichtbar anlegen' })).toHaveLength(1);
     expect(screen.getByText('events.create.visibleEffect')).toBeTruthy();
-    expect(document.querySelector('nav a')?.getAttribute('href')).toBe('#event-create-title');
-    const sectionTarget = document.getElementById('event-create-media')!;
-    fireEvent.click(document.querySelector('a[href="#event-create-media"]')!);
-    expect(document.activeElement).toBe(sectionTarget);
-    expect(sectionTarget.closest('details')?.open).toBe(false);
+    expect(document.querySelector('nav')).toBeNull();
     expect(hasUnsavedChanges()).toBe(true);
   });
 

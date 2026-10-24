@@ -143,3 +143,15 @@ Die spätere ausdrückliche Nutzerfreigabe ersetzt die vorherige Begrenzung „n
 - Chromium mit lokalen Mock-Daten: alle sieben Create-Seiten bei 1280 und 390 Pixeln ohne horizontales Überlaufen und mit einer erreichbaren Speicheraktion; zusätzlich FAQ-CRUD, automatischem Accessibility-Check mit Axe und Verlassensschutz sowie News-CRUD mit optionaler Einleitung, Medien und Push. Eine fokussierte Datumsangabe bleibt auf schmalem Bildschirm oberhalb der Aktionsleiste; die Assertion wartet auf die vorhandene native Scrollanimation. Screenshots wurden visuell geprüft. Keine Anmeldung oder Mutation in externen Umgebungen; ein menschlicher Redakteurstest wird damit nicht behauptet.
 
 - PR zur freigegebenen redaktionellen Überarbeitung: [#1967](https://github.com/smart-village-solutions/sva-studio/pull/1967), Branch `feature/content-create-usability` gegen `main`. Lokale Prüfungen sind vom abschließenden GitHub-CI-Status zu unterscheiden; kein Merge oder Rollout.
+
+
+### Folgekorrektur: Linearer Formularablauf und Umfrage-Abstände (24.10.2026)
+
+- PR-Ziel: Vorgelagerte Bereichslisten entfernen und fehlende Abstände im Umfrage-Create-Onepager ergänzen.
+- Nicht-Ziele: Speicherverhalten, Berechtigungen, Server-/DB-Verträge und Tabs gespeicherter Inhalte verändern. Maximaler Scope: Create-Kompositionen von Events, POI, Umfragen und generischen Inhalten, zugehörige Übersetzungen/Tests, bestehende Spezifikation und Studio-Changelog.
+- Bereichslisten samt lokaler Sprunglogik und ungenutzter de/en-Beschriftungen entfernt; bestehende Formularabschnitte und Klapptrigger bleiben erhalten.
+- Umfragen: Abstandsstufen zwischen Hauptabschnitten, innerhalb der Text-/Teilnahmeabschnitte, bei geöffneten Zusatzbereichen und vor dem Laufzeithinweis ergänzt. Keine neue Komponente oder Konfigurationsschicht.
+- Nachweise: 38 Event-, 40 POI-, 10 Generic-Items- und 9 Survey-Editor-Tests grün; Survey-Datei nach der Abstandskorrektur erneut mit 9 grünen Tests geprüft. Wegen hängender lokaler Nx-Plugin-Erkennung wurde der bestehende Vitest-Target-Runner direkt mit Dateifilter aufgerufen. OpenSpec-Validierung und `git diff --check` grün.
+- Der vorhandene Event-Browserfall öffnet den Zusatzbereich jetzt direkt per Tastatur. Dieser Browserfall und die visuelle Abnahme wurden für die Folgekorrektur noch nicht ausgeführt; Unit-Tests ersetzen diesen Nachweis nicht.
+
+- Browserabschluss für PR #1969: Drei gezielte Chromium-Fälle im lokalen Mock-Profil grün: Event-CRUD mit Fehleröffnung/Fokus und direkter Tastaturbedienung des Links-Zusatzbereichs, POI-CRUD und alle sieben redaktionellen Erstellungsseiten bei 1280/390 Pixeln. Umfrage vollständig mit geschlossenen/geöffneten Zusatzbereichen aufgenommen und visuell geprüft; kein horizontales Überlaufen. Veraltete Kategorie-/Speicherselektoren korrigiert und die POI-Mock-Antwort um den konsistenten Sichtbarkeitswert des verborgenen Testdatensatzes ergänzt. Keine Produkt- oder Autorisierungslogik geändert. Das ist ein Mock-/Browsernachweis, kein Nachweis einer Live-Mainserver-Integration.

@@ -7,7 +7,6 @@ export const pluginSurveysContentTranslations = {
     heading: 'Umfrage erfassen',
     intro:
       'Erstellen Sie eine Umfrage. Beginnen Sie mit Titel und Fragen; weitere Angaben sind optional.',
-    navigation: 'Zu einem Umfrageabschnitt springen',
     text: 'Titel und Beschreibung',
     participation: 'Teilnahmebedingungen',
     noLimit: 'nicht begrenzt',

@@ -230,8 +230,15 @@ describe('survey editor pages', () => {
     expect(
       scoped.queryByText('Metadaten erscheinen nach dem ersten Speichern der Umfrage.')
     ).toBeNull();
-    const link = scoped.getByRole('link', { name: 'create.participation' });
-    expect(view.container.querySelector(link.getAttribute('href')!)).toBeTruthy();
+    expect(scoped.queryByRole('navigation')).toBeNull();
+    const participation = view.container.querySelector('#survey-create-participation');
+    expect(participation).not.toBeNull();
+    expect(
+      title.compareDocumentPosition(participation!) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      participation!.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
   it('switches desktop edit tabs by click and keeps the shared panel surface styling', async () => {

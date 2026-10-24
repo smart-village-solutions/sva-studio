@@ -33,32 +33,6 @@ const hasText = (value: unknown): boolean => {
   return value !== null && typeof value === 'object' && Object.values(value).some(hasText);
 };
 
-function EventsCreateNavigation({ pt }: Pick<ComponentProps<typeof EventsDetailEditorTabs>, 'pt'>) {
-  const nav = ['title', 'dates', 'addresses', 'description', 'media', 'publication'] as const;
-  return (
-    <nav
-      aria-label={pt('create.navigation')}
-      className="flex flex-wrap gap-2 text-sm [&_a]:rounded-md [&_a]:border [&_a]:border-border [&_a]:px-3 [&_a]:py-2 [&_a]:text-primary [&_a]:underline-offset-4 hover:[&_a]:underline"
-    >
-      {nav.map((id) => (
-        <a
-          key={id}
-          href={`#event-create-${id}`}
-          onClick={(event) => {
-            const target = event.currentTarget.ownerDocument.getElementById(`event-create-${id}`);
-            if (!target) return;
-            event.preventDefault();
-            target.focus();
-            target.scrollIntoView?.({ block: 'start' });
-          }}
-        >
-          {pt(`create.sections.${id}`)}
-        </a>
-      ))}
-    </nav>
-  );
-}
-
 function EventsCreateOptionalFields({
   pt,
   capabilities,
@@ -120,7 +94,6 @@ export function EventsDetailCreate(props: ComponentProps<typeof EventsDetailEdit
           {pt('create.categoryUnavailable')}
         </p>
       ) : null}
-      <EventsCreateNavigation pt={pt} />
       <div id="event-create-title" tabIndex={-1}>
         <EventsDetailBasisTab {...basisProps} section="title" />
       </div>

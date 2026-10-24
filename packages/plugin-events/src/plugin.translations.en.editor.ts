@@ -12,7 +12,6 @@ export const eventsENEditor = {
     createHidden: 'Save hidden',
     intro:
       'Create an event. Start with its title, date and location; add further details as needed.',
-    navigation: 'Jump to a form section',
     optional: 'optional',
     filled: 'Details entered',
     empty: 'No details yet',

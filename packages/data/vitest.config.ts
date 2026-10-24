@@ -19,6 +19,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '@sva/core/security': resolve(__dirname, '../core/src/security/index.ts'),
       '@sva/core': resolve(__dirname, '../core/src/index.ts'),
       '@sva/data-client': resolve(__dirname, '../data-client/src/index.ts'),
       '@sva/data-repositories/server': resolve(__dirname, '../data-repositories/src/server.ts'),

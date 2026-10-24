@@ -337,7 +337,14 @@ test('editorial create pages keep their core fields and save action usable on na
       await page.setViewportSize({width, height: 800});
       await page.evaluate(() => window.scrollTo(0, 0));
       await expect(save).toBeInViewport();
-      await page.screenshot({path: `test-results/create-${type}-${width}.png`});
+      await page.screenshot({path: `test-results/create-${type}-${width}.png`, fullPage: type === 'surveys'});
+      if (type === 'surveys') {
+        const summaries = await page.locator('#survey-create-text > details > summary, #survey-create-participation > details > summary').all();
+        for (const summary of summaries) await summary.click();
+        await page.screenshot({path: `test-results/create-surveys-${width}-expanded.png`, fullPage: true});
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        for (const summary of summaries) await summary.click();
+      }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       if (type === 'faq' && width === 390) {
         const publication = page.locator('#faq-publication-date');

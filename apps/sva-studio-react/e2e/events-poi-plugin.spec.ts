@@ -58,6 +58,7 @@ test.describe('events and POI plugins', () => {
       /Ort anlegen|POI anlegen|poi\.detail\.createTitle|poi\.editor\.createTitle/
     );
     await page.locator('#poi-name').fill('Rathaus');
+    await page.locator('#poi-create-categories').click();
     await selectExistingCategory(page, 'poi-category', 'Verwaltung');
     await expect(page.getByRole('tablist')).toHaveCount(0);
     await page.locator('#poi-description').fill('Zentraler Servicepunkt');
@@ -71,7 +72,7 @@ test.describe('events and POI plugins', () => {
     await page.locator('#poi-opening-weekday-0').selectOption('MO');
     await page.locator('#poi-opening-time-from-0').fill('09:00');
     await page
-      .getByRole('button', { name: /Aktiv anlegen|Inaktiv anlegen/ })
+      .getByRole('button', { name: 'Verborgen speichern' })
       .last()
       .click();
     await page.getByRole('tab', { name: /Basis|poi\.detailTabs\.basis\.title/ }).click();
@@ -120,6 +121,7 @@ test.describe('events and POI plugins', () => {
     await navigateClientSide(page, '/admin/events/new');
     await expectEventOrPoiEditorReady(page, '/admin/events/new');
     await page.locator('#event-title').fill('Stadtfest');
+    await page.locator('#event-create-categories').click();
     await selectExistingCategory(page, 'event-category', 'Kultur');
     await expect(page.getByRole('tablist')).toHaveCount(0);
     await page.locator('#event-description').fill('Sommerfest in der Innenstadt');
@@ -133,7 +135,7 @@ test.describe('events and POI plugins', () => {
     await page.locator('#event-url').fill('invalid-url');
     await page.locator('#event-create-links').click();
     await page
-      .getByRole('button', { name: /Sichtbar anlegen|Nicht sichtbar anlegen/ })
+      .getByRole('button', { name: 'Verborgen speichern' })
       .last()
       .click();
     await expect(page.locator('#event-url')).toBeVisible();
@@ -142,7 +144,7 @@ test.describe('events and POI plugins', () => {
     expect(events).toHaveLength(0);
     await page.locator('#event-url').fill('https://example.com/event');
     await page
-      .getByRole('button', { name: /Sichtbar anlegen|Nicht sichtbar anlegen/ })
+      .getByRole('button', { name: 'Verborgen speichern' })
       .last()
       .click();
     await expect(page.getByRole('combobox', { name: 'Bereich auswählen' })).toBeVisible();

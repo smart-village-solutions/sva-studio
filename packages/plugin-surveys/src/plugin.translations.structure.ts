@@ -31,8 +31,7 @@ export const pluginSurveysStructureTranslations = {
   pages: {
     createTitle: 'Umfrage anlegen',
     editTitle: 'Umfrage bearbeiten',
-    createDescription:
-      'Die Umfrage wird im normalen Content-Flow vorbereitet und nutzt bereits den stabilen Editor-Rahmen.',
+    createDescription: 'Erstellen Sie eine Umfrage mit Titel und Fragen.',
     editDescription:
       'Die Umfrage ist in die normale Content-Struktur eingebunden und nutzt denselben Editor-Rahmen wie im Create-Fall.',
   },

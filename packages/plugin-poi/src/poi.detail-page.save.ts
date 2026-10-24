@@ -27,6 +27,15 @@ import type { PoiDetailTabId } from './poi.detail-tabs.js';
 import { poiMediaUsagesToContents } from './poi.content-media-adapter.js';
 import { validatePoiSubmission } from './poi.detail-page.validation.js';
 
+const poiSaveErrorMessage = (saveError: unknown, pt: (key: string) => string) =>
+  saveError instanceof PoiApiError
+    ? ['missing_credentials', 'organization_mainserver_credentials_missing'].includes(
+        saveError.code
+      )
+      ? pt('create.saveUnavailable')
+      : saveError.message
+    : pt('messages.saveError');
+
 export type PoiStatusMessage = Readonly<{ kind: 'success' | 'error'; text: string }>;
 
 const deviationFormPaths: Readonly<
@@ -233,7 +242,7 @@ export const usePoiDetailSave = (input: SaveInput) => {
       }
       setStatus({
         kind: 'error',
-        text: saveError instanceof PoiApiError ? saveError.message : pt('messages.saveError'),
+        text: poiSaveErrorMessage(saveError, pt),
       });
       saveFeedback.markFailed(operationId);
     }

@@ -33,7 +33,8 @@ export const poiMessagesDe = {
     'Für die Ermittlung von Geo-Koordinaten fehlen die erforderlichen Berechtigungen.',
   locationGeocodeUnauthorized:
     'Die Sitzung für die Ermittlung von Geo-Koordinaten ist abgelaufen. Bitte laden Sie die Seite neu.',
-  locationMapUnavailable: 'Die Kartenansicht ist für diese Instanz derzeit deaktiviert.',
+  locationMapUnavailable:
+    'Die Karte ist derzeit nicht verfügbar. Sie können die Adresse eingeben und Koordinaten manuell ergänzen.',
   locationMapError:
     'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
   mediaUploadInitializing: 'Upload wird vorbereitet.',

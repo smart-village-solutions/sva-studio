@@ -56,6 +56,7 @@ export function SurveyEditorPrimaryAction({
           saved: pt('actions.saved'),
         }}
       />
+      {mode === 'create' && createStatus ? <p className="text-sm text-muted-foreground">{pt(`create.effect.${createStatus}`)}</p> : null}
     </div>
   );
 }

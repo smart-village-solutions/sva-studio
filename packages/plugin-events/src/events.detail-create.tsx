@@ -3,7 +3,6 @@
  * Bestehende Feldabschnitte verwalten ihre Eingaben; der bestehende Editor behält den Submit.
  */
 import { useFormContext, useWatch } from 'react-hook-form';
-import { StudioSection } from '@sva/studio-ui-react';
 import { EventsDetailBasisTab } from './events.detail-basis-tab.js';
 import { EventsDetailSettingsTab } from './events.detail-settings-tab.js';
 import {
@@ -35,23 +34,12 @@ const hasText = (value: unknown): boolean => {
 };
 
 function EventsCreateNavigation({ pt }: Pick<ComponentProps<typeof EventsDetailEditorTabs>, 'pt'>) {
-  const nav = [
-    'title',
-    'dates',
-    'recurrence',
-    'addresses',
-    'description',
-    'media',
-    'categories',
-    'organizer',
-    'contacts',
-    'links',
-    'prices',
-    'technical',
-    'publication',
-  ] as const;
+  const nav = ['title', 'dates', 'addresses', 'description', 'media', 'publication'] as const;
   return (
-    <nav aria-label={pt('create.navigation')} className="flex flex-wrap gap-3">
+    <nav
+      aria-label={pt('create.navigation')}
+      className="flex flex-wrap gap-2 text-sm [&_a]:rounded-md [&_a]:border [&_a]:border-border [&_a]:px-3 [&_a]:py-2 [&_a]:text-primary [&_a]:underline-offset-4 hover:[&_a]:underline"
+    >
       {nav.map((id) => (
         <a
           key={id}
@@ -122,30 +110,39 @@ function EventsCreateOptionalFields({
 
 export function EventsDetailCreate(props: ComponentProps<typeof EventsDetailEditorTabs>) {
   const { pt } = props;
-  const { control } = useFormContext<EventsDetailFormValues>();
-  const visible = useWatch({ control, name: 'settings.visible' });
   const basisProps = { ...props, availableCategories: props.categoryOptions };
   const capabilities = useEventsMapCapabilities();
   return (
     <div className="space-y-6">
       <p>{pt('create.intro')}</p>
+      {props.categoryOptionsError ? (
+        <p role="status" className="text-sm text-destructive">
+          {pt('create.categoryUnavailable')}
+        </p>
+      ) : null}
       <EventsCreateNavigation pt={pt} />
       <div id="event-create-title" tabIndex={-1}>
         <EventsDetailBasisTab {...basisProps} section="title" />
       </div>
       <div id="event-create-dates" tabIndex={-1}>
-        <EventsDateSection pt={pt} />
+        <EventsDateSection pt={pt} createMode />
       </div>
-      <div id="event-create-recurrence" tabIndex={-1}>
+      <details>
+        <summary id="event-create-recurrence">
+          {pt('create.sections.recurrence')} · {pt('create.optional')}
+        </summary>
         <EventsDetailBasisTab {...basisProps} section="recurrence" />
-      </div>
+      </details>
       <div id="event-create-addresses" tabIndex={-1}>
-        <EventsAddressSection pt={pt} capabilities={capabilities} />
+        <EventsAddressSection pt={pt} capabilities={capabilities} createMode />
       </div>
       <div id="event-create-description" tabIndex={-1}>
         <EventsDescriptionSection pt={pt} />
       </div>
-      <div id="event-create-media" tabIndex={-1}>
+      <details>
+        <summary id="event-create-media">
+          {pt('create.sections.media')} · {pt('create.optional')}
+        </summary>
         <EventsMediaSection
           pt={pt}
           mediaUsages={props.mediaUsages}
@@ -157,16 +154,17 @@ export function EventsDetailCreate(props: ComponentProps<typeof EventsDetailEdit
           onOpenMediaPicker={props.onOpenMediaPicker}
           onLoadAssetSnapshot={loadEventsContentAssetSnapshot}
         />
-      </div>
-      <div id="event-create-categories" tabIndex={-1}>
+      </details>
+      <details>
+        <summary id="event-create-categories">
+          {pt('create.sections.categories')} · {pt('create.optional')}
+        </summary>
         <EventsDetailBasisTab {...basisProps} section="categories" />
-      </div>
+      </details>
       <EventsCreateOptionalFields pt={pt} capabilities={capabilities} />
       <div id="event-create-publication" tabIndex={-1}>
         <EventsDetailSettingsTab pt={pt} section="publication" />
-        <StudioSection description={pt(visible ? 'create.visibleEffect' : 'create.hiddenEffect')}>
-          <p>{pt('create.editHint')}</p>
-        </StudioSection>
+
       </div>
     </div>
   );

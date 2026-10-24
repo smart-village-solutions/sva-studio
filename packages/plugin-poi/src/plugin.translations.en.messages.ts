@@ -24,7 +24,8 @@ export const poiMessagesEn = {
   locationGeocodeTimeout: 'Resolving geo coordinates took too long. Please try again.',
   locationGeocodeForbidden: 'Missing permission to resolve geo coordinates.',
   locationGeocodeUnauthorized: 'The geocoding session has expired. Please reload the page.',
-  locationMapUnavailable: 'The map view is currently disabled for this instance.',
+  locationMapUnavailable:
+    'The map is currently unavailable. You can enter the address and add coordinates manually.',
   locationMapError: 'The map view could not be loaded. Manual editing remains available.',
   mediaUploadInitializing: 'Preparing upload.',
   mediaUploadUploading: 'Uploading media.',

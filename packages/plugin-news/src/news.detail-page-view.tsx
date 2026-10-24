@@ -172,10 +172,9 @@ export const NewsDetailPageView = (props: NewsDetailPageViewProps) => {
   } = props;
   return (
     <StudioDetailPageTemplate
+      stickyActions={mode === 'create'}
       title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
-      description={
-        mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')
-      }
+      description={mode === 'edit' ? pt('editor.editDescription') : undefined}
       {...createNewsDetailPageActions(props)}
     >
       <FormProvider {...methods}>

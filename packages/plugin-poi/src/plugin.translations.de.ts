@@ -18,7 +18,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
   principal: {
     createAs: 'Erstellen als',
     actAs: 'Handeln als',
-    description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+    description: 'Wählen Sie, in wessen Namen Sie arbeiten.',
     organization: 'Aktive Organisation',
     user: 'Persönlicher Account',
     dataProvider: 'Ursprünglicher DataProvider',
@@ -27,7 +27,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
   fields: {
     name: 'Name',
     description: 'Beschreibung',
-    mobileDescription: 'Mobile Beschreibung',
+    mobileDescription: 'Kurzbeschreibung',
     active: 'Aktiv',
     categoryName: 'Kategorie',
     categories: 'Kategorien',

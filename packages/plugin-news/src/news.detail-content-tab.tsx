@@ -78,10 +78,35 @@ function NewsContentTextSection({
   };
   const introLabelId = `${introField.id}-label`;
   const bodyLabelId = `${bodyField.id}-label`;
+  const introduction = (
+    <div className="space-y-1">
+      <label id={introLabelId} htmlFor={introField.id} className="text-sm font-medium">
+        {pt('fields.contentIntro')}
+      </label>
+      <RichTextHtmlEditor
+        id={introField.id}
+        labelId={introLabelId}
+        describedBy={introField.controlProps['aria-describedby']}
+        ariaInvalid={introField.controlProps['aria-invalid'] === true}
+        value={intro}
+        onChange={(nextValue) => setValue('contentIntro', nextValue, { shouldDirty: true })}
+        blockTypeOptions={blockTypeOptions}
+        toolbarLabels={toolbarLabels}
+      />
+      <p id={introField.descriptionId} className="text-xs text-muted-foreground">
+        {createMode ? pt('create.introHelp') : pt('fields.characterCount', { count: intro.length })}
+      </p>
+      {introField.error ? (
+        <p id={introField.errorId} className="text-sm text-destructive">
+          {introField.error}
+        </p>
+      ) : null}
+    </div>
+  );
   return (
     <NewsDetailCard
       title={pt('cards.content.text.title')}
-      description={pt('cards.content.text.description')}
+      description={createMode ? undefined : pt('cards.content.text.description')}
     >
       {!createMode ? (
         <StudioField id="news-content-headline" label={pt('fields.headline')}>
@@ -89,32 +114,7 @@ function NewsContentTextSection({
         </StudioField>
       ) : null}
 
-      <div className="space-y-1">
-        <label id={introLabelId} htmlFor={introField.id} className="text-sm font-medium">
-          {pt('fields.contentIntro')}
-        </label>
-        <RichTextHtmlEditor
-          id={introField.id}
-          labelId={introLabelId}
-          describedBy={introField.controlProps['aria-describedby']}
-          ariaInvalid={introField.controlProps['aria-invalid'] === true}
-          value={intro}
-          onChange={(nextValue) => setValue('contentIntro', nextValue, { shouldDirty: true })}
-          blockTypeOptions={blockTypeOptions}
-          toolbarLabels={toolbarLabels}
-        />
-        <p id={introField.descriptionId} className="text-xs text-muted-foreground">
-          {createMode
-            ? pt('create.introHelp')
-            : pt('fields.characterCount', { count: intro.length })}
-        </p>
-        {introField.error ? (
-          <p id={introField.errorId} className="text-sm text-destructive">
-            {introField.error}
-          </p>
-        ) : null}
-      </div>
-
+      {!createMode ? introduction : null}
       <div className="space-y-1">
         <label id={bodyLabelId} htmlFor={bodyField.id} className="text-sm font-medium">
           {pt('fields.contentBody')}
@@ -138,6 +138,12 @@ function NewsContentTextSection({
           </p>
         ) : null}
       </div>
+      {createMode ? (
+        <details>
+          <summary>{pt('create.introOptional')}</summary>
+          {introduction}
+        </details>
+      ) : null}
     </NewsDetailCard>
   );
 }

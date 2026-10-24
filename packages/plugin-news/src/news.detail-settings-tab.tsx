@@ -60,13 +60,8 @@ const createManualFieldError = (message: string): FieldError => ({
   message,
 });
 
-const formatMetadataDate = (value?: string) => {
-  if (!value) {
-    return missingDateValue;
-  }
-
-  return formatDateTimeInEditorTimeZone(value) ?? value;
-};
+const formatMetadataDate = (value?: string) =>
+  value ? (formatDateTimeInEditorTimeZone(value) ?? value) : missingDateValue;
 
 function NewsPushNotificationCard({
   control,
@@ -87,6 +82,7 @@ function NewsPushNotificationCard({
   wasteTargetingAvailability: WasteTargetingAvailability;
   onLoadWasteOverview: () => Promise<boolean>;
 }>) {
+  const pushEnabled = useWatch({ control, name: 'pushNotificationEnabled' });
   return (
     <NewsDetailCard
       title={pt('cards.settings.push.title')}
@@ -129,7 +125,9 @@ function NewsPushNotificationCard({
           </span>
         </label>
       ) : null}
-      {canSendPushNotification && wasteTargetingAvailability !== 'forbidden' ? (
+      {canSendPushNotification &&
+      (pushEnabled || Boolean(loadedItem)) &&
+      wasteTargetingAvailability !== 'forbidden' ? (
         <NewsDetailTargetingSection
           overview={wasteOverview}
           pt={pt}
@@ -272,14 +270,12 @@ export function NewsDetailSettingsTab({
     }
   }, [publicationMode, setValue]);
 
-  const scheduledPublicationError = scheduledPublicationField.isInvalid
-    ? createManualFieldError(pt('validation.scheduledPublicationAt'))
-    : translateFieldError(errors.scheduledPublicationAt, pt);
   const scheduledPublicationBindings = getStudioFormFieldProps({
     id: 'news-scheduled-publication-at',
-    error: scheduledPublicationError,
+    error: scheduledPublicationField.isInvalid
+      ? createManualFieldError(pt('validation.scheduledPublicationAt'))
+      : translateFieldError(errors.scheduledPublicationAt, pt),
   });
-  const summaryErrors = collectSummaryErrors([scheduledPublicationBindings]);
 
   const publicationCard = (
     <NewsPublicationCard
@@ -294,10 +290,14 @@ export function NewsDetailSettingsTab({
   );
   return (
     <div className="space-y-6">
-      <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
+      <StudioFormSummaryErrors
+        errors={collectSummaryErrors([scheduledPublicationBindings])}
+        title={pt('messages.validationSummary')}
+      />
       {mode === 'create' ? publicationCard : null}
 
-      {canSendPushNotification || loadedItem?.pushNotificationsSentAt ? (
+      {(mode === 'edit' || publicationMode === 'immediate') &&
+      (canSendPushNotification || loadedItem?.pushNotificationsSentAt) ? (
         <NewsPushNotificationCard
           control={control}
           loadedItem={loadedItem}
@@ -308,6 +308,9 @@ export function NewsDetailSettingsTab({
           wasteTargetingAvailability={wasteTargetingAvailability}
           onLoadWasteOverview={onLoadWasteOverview}
         />
+      ) : null}
+      {mode === 'create' && publicationMode !== 'immediate' ? (
+        <p className="text-sm text-muted-foreground">{pt('create.noPushHint')}</p>
       ) : null}
       {mode === 'edit' ? publicationCard : null}
     </div>

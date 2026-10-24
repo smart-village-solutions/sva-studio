@@ -1,5 +1,6 @@
 export const faqCreateTranslations = {
   de: {
+    responsible: 'Verantwortlich:',
     openSaved: 'Gespeicherten Inhalt öffnen',
     navigationFailed:
       'Der Inhalt ist gespeichert. Das automatische Öffnen ist fehlgeschlagen. Öffnen Sie ihn über den Link.',
@@ -18,6 +19,7 @@ export const faqCreateTranslations = {
       'Beginnen Sie mit Frage und Antwort. Mit * markierte Angaben sind erforderlich; ergänzen Sie danach Sprache und Einstellungen.',
   },
   en: {
+    responsible: 'Responsible:',
     openSaved: 'Open saved content',
     navigationFailed:
       'The content is saved. Opening it automatically failed. Use the link to open it.',

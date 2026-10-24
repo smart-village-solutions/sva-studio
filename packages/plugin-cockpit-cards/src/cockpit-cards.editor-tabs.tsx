@@ -1,9 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import {
-  StudioDetailCard,
-  type StudioDetailTabDefinition,
-  type useStudioSaveFeedback,
-} from '@sva/studio-ui-react';
+import { type StudioDetailTabDefinition, type useStudioSaveFeedback } from '@sva/studio-ui-react';
 import type { UseFormReturn } from 'react-hook-form';
 
 import { ContentFields } from './cockpit-cards.content-fields.js';
@@ -19,6 +15,7 @@ import { CockpitCardsHistory } from './cockpit-cards.history.js';
 import type { CockpitCardFormValues } from './cockpit-cards.types.js';
 
 function contentTab({
+  mode,
   pt,
   form,
   media,
@@ -26,6 +23,7 @@ function contentTab({
   canUploadMedia,
   saveFeedback,
 }: Readonly<{
+  mode: 'create' | 'edit';
   pt: ReturnType<typeof usePluginTranslation>;
   form: UseFormReturn<CockpitCardFormValues>;
   media: ReturnType<typeof useCockpitCardMedia>;
@@ -42,6 +40,7 @@ function contentTab({
     icon: 'content',
     panel: (
       <ContentFields
+        createMode={mode === 'create'}
         form={form}
         pt={pt}
         mediaUsages={mediaUsages}
@@ -93,10 +92,11 @@ export function cockpitCardEditorTabs({
         label: pt('tabs.content.label'),
         panel: (
           <div className="space-y-5">
-            <StudioDetailCard title={pt('create.contentTitle')}>
-              <HeadingField form={form} pt={pt} />
-            </StudioDetailCard>
-            {contentTab({ pt, form, media, canSelectMedia, canUploadMedia, saveFeedback }).panel}
+            <HeadingField form={form} pt={pt} />
+            {
+              contentTab({ mode, pt, form, media, canSelectMedia, canUploadMedia, saveFeedback })
+                .panel
+            }
             <CockpitCardCreateSettings
               form={form}
               pt={pt}
@@ -126,7 +126,7 @@ export function cockpitCardEditorTabs({
         />
       ),
     },
-    contentTab({ pt, form, media, canSelectMedia, canUploadMedia, saveFeedback }),
+    contentTab({ mode, pt, form, media, canSelectMedia, canUploadMedia, saveFeedback }),
     {
       id: 'settings',
       label: pt('tabs.settings.label'),

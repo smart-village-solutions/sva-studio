@@ -136,18 +136,21 @@ function ContentTab(props: TabInput) {
           />
         </div>
       </StudioDetailCard>
-      <ProjectImages
-        form={form}
-        pt={pt}
-        usages={props.mediaUsages}
-        onChange={props.onMediaChange}
-        canSelectMedia={props.canSelectMedia}
-        canUploadMedia={props.canUploadMedia}
-        mediaEditingDisabled={props.mediaEditingDisabled}
-        onAddManualMedia={props.onAddManualMedia}
-        onOpenMediaPicker={props.onOpenMediaPicker}
-        onLoadAssetSnapshot={loadProjectAssetSnapshot}
-      />
+      <details open={props.mode === 'create' ? undefined : true}>
+        <summary hidden={!(props.mode === 'create')}>{pt('fields.images')}</summary>
+        <ProjectImages
+          form={form}
+          pt={pt}
+          usages={props.mediaUsages}
+          onChange={props.onMediaChange}
+          canSelectMedia={props.canSelectMedia}
+          canUploadMedia={props.canUploadMedia}
+          mediaEditingDisabled={props.mediaEditingDisabled}
+          onAddManualMedia={props.onAddManualMedia}
+          onOpenMediaPicker={props.onOpenMediaPicker}
+          onLoadAssetSnapshot={loadProjectAssetSnapshot}
+        />
+      </details>
     </div>
   );
 }
@@ -207,9 +210,7 @@ export function createProjectTabs(
         label: input.pt('tabs.content'),
         panel: (
           <div className="space-y-5">
-            <StudioDetailCard title={input.pt('create.contentTitle')}>
-              <BasisTab {...input} />
-            </StudioDetailCard>
+            <BasisTab {...input} />
             <ContentTab {...input} />
             <StudioDetailCard title={input.pt('create.settingsTitle')}>
               <ProjectLanguageField {...input} />

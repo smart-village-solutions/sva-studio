@@ -31,6 +31,18 @@ import type { PoiCategoryOption, PoiContentItem } from './poi.types.js';
 
 type StatusMessage = Readonly<{ kind: 'success' | 'error'; text: string }>;
 
+const focusFieldById = (fieldId: string) => {
+  globalThis.setTimeout(() => {
+    const element = globalThis.document.getElementById(fieldId);
+    let details = element?.closest('details');
+    while (details) {
+      details.open = true;
+      details = details.parentElement?.closest('details') ?? null;
+    }
+    element?.focus();
+  }, 0);
+};
+
 export function PoiDetailPage({
   mode,
   contentId,
@@ -124,13 +136,6 @@ export function PoiDetailPage({
     () => createStudioMediaPickerLabels(pt, { titleFieldKey: 'fields.name' }),
     [pt]
   );
-  const focusFieldById = React.useCallback((fieldId: string) => {
-    globalThis.setTimeout(() => {
-      const element = globalThis.document.getElementById(fieldId);
-      element?.closest('details')?.setAttribute('open', '');
-      element?.focus();
-    }, 0);
-  }, []);
 
   const media = usePoiDetailMedia({ instanceId, mode, methods, pt });
   const {

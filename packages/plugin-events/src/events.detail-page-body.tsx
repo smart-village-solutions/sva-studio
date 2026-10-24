@@ -53,6 +53,7 @@ const EventsDetailStatus = ({
       </StudioFormSummary>
     ) : null}
     <MainserverPrincipalControl
+      fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
       id="events-acting-principal"
       label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
       description={pt('principal.description')}

@@ -33,7 +33,12 @@ export const eventsErrorMessage = (
   pt: ReturnType<typeof usePluginTranslation>,
   error: unknown,
   fallbackKey: string
-) => (error instanceof EventsApiError ? error.message : pt(fallbackKey));
+) =>
+  error instanceof EventsApiError
+    ? ['missing_credentials', 'organization_mainserver_credentials_missing'].includes(error.code)
+      ? pt('create.saveUnavailable')
+      : error.message
+    : pt(fallbackKey);
 
 type SaveContext = Readonly<{
   methods: UseFormReturn<EventsDetailFormValues>;

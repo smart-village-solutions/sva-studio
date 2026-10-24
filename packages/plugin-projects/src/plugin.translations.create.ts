@@ -1,5 +1,6 @@
 export const projectCreateTranslations = {
   de: {
+    responsible: 'Verantwortlich:',
     openSaved: 'Gespeicherten Inhalt öffnen',
     navigationFailed:
       'Der Inhalt ist gespeichert. Das automatische Öffnen ist fehlgeschlagen. Öffnen Sie ihn über den Link.',
@@ -15,6 +16,7 @@ export const projectCreateTranslations = {
       'Das Projekt wird mit dem Status „{{status}}“ angelegt. Dieser Status allein bestätigt keine öffentliche Veröffentlichung.',
   },
   en: {
+    responsible: 'Responsible:',
     openSaved: 'Open saved content',
     navigationFailed:
       'The content is saved. Opening it automatically failed. Use the link to open it.',

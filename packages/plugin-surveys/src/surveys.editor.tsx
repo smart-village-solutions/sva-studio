@@ -48,6 +48,7 @@ const SurveyPrincipalControl = ({
   pt: ReturnType<typeof usePluginTranslation>;
 }>) => (
   <MainserverPrincipalControl
+    fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
     id="survey-acting-principal"
     label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
     description={pt('principal.description')}
@@ -90,44 +91,50 @@ const SurveyEditorForm = ({
   status: ReturnType<typeof useSurveyEditorController>['status'];
   submit: ReturnType<typeof useSurveyEditorController>['submit'];
   tabs: ReturnType<typeof createSurveyEditorTabs>;
-}>) => (
-  <FormProvider {...methods}>
-    <form
-      id={formId}
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (canSave) void submit();
-      }}
-      className="space-y-5"
-    >
-      {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
-      {!canSave ? (
-        <StudioFormSummary kind="error">{pt('messages.updateUnavailable')}</StudioFormSummary>
-      ) : null}
-      <SurveyPrincipalControl
-        actingPrincipalType={actingPrincipalType}
-        loadedItem={loadedItem}
-        mode={mode}
-        onChange={onPrincipalChange}
-        principalControl={principalControl}
-        pt={pt}
-      />
-      <fieldset className="min-w-0 space-y-5 border-0 p-0" disabled={!canEdit}>
-        {mode === 'create' ? (
-          <SurveyCreateFields pt={pt} />
-        ) : (
-          <StudioDetailTabs
-            ariaLabel={pt('tabs.ariaLabel')}
-            tabs={tabs}
-            value={activeTab}
-            onValueChange={onActiveTabChange}
-            keepMounted
-          />
-        )}
-      </fieldset>
-    </form>
-  </FormProvider>
-);
+}>) => {
+  const principal = (
+    <SurveyPrincipalControl
+      actingPrincipalType={actingPrincipalType}
+      loadedItem={loadedItem}
+      mode={mode}
+      onChange={onPrincipalChange}
+      principalControl={principalControl}
+      pt={pt}
+    />
+  );
+  return (
+    <FormProvider {...methods}>
+      <form
+        id={formId}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (canSave) void submit();
+        }}
+        className="space-y-5"
+      >
+        {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+        {!canSave ? (
+          <StudioFormSummary kind="error">{pt('messages.updateUnavailable')}</StudioFormSummary>
+        ) : null}
+        {mode === 'edit' ? principal : null}
+        <fieldset className="min-w-0 space-y-5 border-0 p-0" disabled={!canEdit}>
+          {mode === 'create' ? (
+            <SurveyCreateFields pt={pt} />
+          ) : (
+            <StudioDetailTabs
+              ariaLabel={pt('tabs.ariaLabel')}
+              tabs={tabs}
+              value={activeTab}
+              onValueChange={onActiveTabChange}
+              keepMounted
+            />
+          )}
+        </fieldset>
+        {mode === 'create' ? principal : null}
+      </form>
+    </FormProvider>
+  );
+};
 
 const useSurveyActingPrincipal = (principalControl?: MainserverPrincipalControlModel) => {
   const [value, setValue] = React.useState<MainserverPrincipalType>(
@@ -211,8 +218,9 @@ export const SurveyEditorPage = ({
 
   return (
     <StudioDetailPageTemplate
+      stickyActions={mode === 'create'}
       title={pt(mode === 'create' ? 'pages.createTitle' : 'pages.editTitle')}
-      description={pt(mode === 'create' ? 'pages.createDescription' : 'pages.editDescription')}
+      description={mode === 'edit' ? pt('pages.editDescription') : undefined}
       actions={<SurveyEditorActions pt={pt} />}
       primaryAction={
         <SurveyEditorPrimaryAction

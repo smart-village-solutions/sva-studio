@@ -29,7 +29,7 @@ Geschlossene Zusatzabschnitte nennen ihren Inhalt und Zustand, etwa „2 Kontakt
 
 Unmittelbar bei den abschließenden Aktionen nach dem letzten Abschnitt steht eine kurze, bei Einstellungsänderungen aktualisierte Erklärung der belegten Speicherwirkung. Beispiele für Nachrichten sind „Die Nachricht wird als Entwurf gespeichert und ist noch nicht öffentlich“ oder bei entsprechender Einstellung die sofortige beziehungsweise geplante Veröffentlichung. Bei Push werden zusätzliche Benachrichtigung und ausgewähltes Zielgebiet ausdrücklich genannt; deaktivierter Push darf nicht als Versand angekündigt werden. Bestehende Bestätigungen bleiben erhalten.
 
-Für andere Typen werden ausschließlich deren tatsächliche Status-/Sichtbarkeitsverträge beschrieben. Ein Datum allein begründet keine zeitgesteuerte Veröffentlichung; ein Projektstatus darf nicht mit dem systemgeführten `published` gleichgesetzt werden. Die Erklärung ist eine Darstellung des bestehenden Formularzustands, kein eigener Publikationsplaner und keine zusätzliche Bestätigungsstufe. Der Submit im Seitenkopf macht dieselbe Wirkung durch eine kurze zustandsabhängige Aktionsbezeichnung und bei aktiviertem News-Push einen erkennbaren Hinweis deutlich. Beide Darstellungen werden aus demselben Formularzustand abgeleitet; keine zweite ausführliche Zusammenfassung oder zusätzliche Bestätigung.
+Für andere Typen werden ausschließlich deren tatsächliche Status-/Sichtbarkeitsverträge beschrieben. Ein Datum allein begründet keine zeitgesteuerte Veröffentlichung; ein Projektstatus darf nicht mit dem systemgeführten `published` gleichgesetzt werden. Die Erklärung ist eine Darstellung des bestehenden Formularzustands, kein eigener Publikationsplaner und keine zusätzliche Bestätigungsstufe. Die beim Scrollen erreichbare Aktion verwendet eine kurze zustandsabhängige Bezeichnung und die aus demselben Formularzustand abgeleitete Wirkung; keine zusätzliche Bestätigung.
 
 ### Fehler, Unterbrechen und Wiederaufnahme
 
@@ -72,7 +72,7 @@ Während des laufenden Submits sind beide Auslöser über denselben Zustand gege
 - Hauptabschnitte sind offen. Zusatzabschnitte sind kompakt beziehungsweise geschlossen, bieten bei häufig benötigten Ergänzungen einen direkt sichtbaren fachlichen Einstieg und zeigen eine Zusammenfassung vorhandener Eingaben. Sie bleiben unmittelbar auf derselben Seite erreichbar. FAQ benötigt keine Klappbereiche.
 - Optionale Listen verwenden vorhandene Hinzufügen-/Entfernen-/Sortierfunktionen. Keine Änderung der Defaultwerte oder Serialisierung leerer Einträge nur zur optischen Bereinigung.
 - Bedingt verfügbare Felder werden nach bestehenden Regeln gezeigt oder deaktiviert. Ein geschlossenes Feldset darf keine Werte löschen; eine fachlich erforderliche Bereinigung bei Bedingungswechsel, etwa Push bei geplantem News-Publishing, bleibt bestehen. Direkt am betroffenen Bereich erklären, welche Option nicht verfügbar ist beziehungsweise zurückgesetzt wurde; keine generische Änderungs- oder Undo-Infrastruktur.
-- Speichern/Anlegen und Abbrechen nutzen vorhandene Aktionen; Submit ist im Seitenkopf und nach dem letzten Abschnitt erreichbar. Beide Submit-Auslöser verwenden identische Lade-, Disabled- und Berechtigungszustände. Keine zusätzliche Sticky-Leiste erforderlich.
+- Speichern/Anlegen und Abbrechen nutzen vorhandene Aktionen; Redaktionelle Create-Seiten zeigen eine beim Scrollen erreichbare Submit-Aktion mit den vorhandenen Lade-, Disabled- und Berechtigungszuständen. Für die sieben redaktionellen Create-Seiten bleibt die bestehende untere Aktion im gemeinsamen Seitenrahmen beim Scrollen erreichbar; sie verdeckt weder Fokus noch Fehlermeldungen. Generische Inhalte und Edit bleiben unverändert.
 - Lange Formulare (Events, POI, generische Inhalte, Umfragen) bieten eine kompakte native Sprungnavigation zu Abschnitten ohne neuen Routen-/Search-Parameter. Sie blendet keine anderen Abschnitte aus. Abschnittssprünge verlassen das Formular nicht und lösen keine Verlassenswarnung aus. Native Fragmentziele liegen auf sichtbaren Überschriften beziehungsweise Klapptriggern; nach Tastaturaktivierung ist die Fortsetzung am Ziel nachvollziehbar. Bei Summary-Zielen ergänzt nachgewiesen unzureichendes natives Fokusverhalten eine kurze lokale Zielfokussierung am vorhandenen Link; dessen `href` bleibt als Fallback erhalten. Kein eigener Fokusmanager.
 - Labels, Hilfen und Fehlermeldungen verwenden Übersetzungsschlüssel in Deutsch und Englisch. Die Umsetzung erfüllt WCAG 2.1 AA mit semantischen Überschriften, Labels, Tastaturbedienung und nachvollziehbarem Fokus.
 - Validierung öffnet betroffene Zusatzabschnitte, bevor der bestehende Fehlerfokus greift. Eine vorhandene Fehlerzusammenfassung verweist auf erreichbare Felder. Öffnen/Schließen sendet das Formular nicht ab.
@@ -80,17 +80,17 @@ Während des laufenden Submits sind beide Auslöser über denselben Zustand gege
 
 ## Feldinventur und Reihenfolge je Inhaltstyp
 
-Die Nummerierung bestimmt die Reihenfolge. „Zusatz“ bezeichnet einen standardmäßig geschlossenen Abschnitt mit sichtbarem fachlichem Einstieg und Zustandszusammenfassung gemäß den obigen Regeln. Aufgeführt werden vorhandene fachliche Eingaben; unterstützte Medienmetadaten bleiben in der bestehenden Medienkomponente. Die Listen definieren keine neuen Modellfelder und ändern weder Pflichtigkeit noch Defaults.
+Die Nummerierung bestimmt die Reihenfolge. „Zusatz“ bezeichnet einen standardmäßig geschlossenen Abschnitt mit sichtbarem fachlichem Einstieg und Zustandszusammenfassung gemäß den obigen Regeln. Aufgeführt werden vorhandene fachliche Eingaben; unterstützte Medienmetadaten bleiben in der bestehenden Medienkomponente. Die Listen definieren keine neuen Modellfelder und ändern keine Pflichtigkeit; die freigegebene Nachschärfung setzt ausschließlich die Create-Defaults für Orte und Veranstaltungen auf verborgen.
 
 ### Nachrichten
 
 Quelle: `packages/plugin-news/src/news.detail-form-schema.ts`, `news.detail-basis-tab.tsx`, `news.detail-content-tab.tsx`, `news.detail-settings-tab.tsx`.
 
 1. **Titel:** einzeiliges Hauptfeld.
-2. **Einleitung:** mehrzeiliger Teaser.
-3. **Nachrichtentext:** bestehender Rich-Text-Editor.
-4. **Medien:** vorhandene Medienauswahl mit Vorschau, Reihenfolge und unterstützten Metadaten wie Alternativtext, Bildunterschrift und Copyright.
-5. **Kategorien:** bestehende Mehrfachauswahl.
+2. **Nachrichtentext:** bestehender Rich-Text-Editor.
+3. **Einleitung (Zusatz):** vorhandener optionaler Rich-Text-Teaser.
+4. **Medien (Zusatz):** vorhandene Medienauswahl mit Vorschau, Reihenfolge und unterstützten Metadaten wie Alternativtext, Bildunterschrift und Copyright.
+5. **Kategorien (Zusatz):** bestehende Mehrfachauswahl.
 6. **Quelle (Zusatz):** Quell-URL und sichtbarer beschreibender Linktext zusammen; interne kompatible Beschreibungsfelder nicht doppelt darstellen.
 7. **Veröffentlichung:** Entwurf, sofort oder geplant; Datum und Uhrzeit nur bei geplanter Veröffentlichung.
 8. **Push:** bestehende berechtigungsabhängige Option, nur bei sofortiger Veröffentlichung aktivierbar; vorhandene Bestätigung für globalen Push bleibt bestehen.
@@ -104,11 +104,11 @@ Quelle: `packages/plugin-events/src/events.detail-form-types.ts`, `events.detail
 
 1. **Titel:** einzeiliges Hauptfeld.
 2. **Termine:** wiederholbare Einträge mit Beginn-/Enddatum, Beginn-/Endzeit, Wochentag, Zeitbeschreibung und „nur Zeitbeschreibung“ gemäß bestehender Oberfläche.
-3. **Wiederholung:** aktivieren, Wiederholungstyp, Intervall und bei wöchentlicher Wiederholung Wochentage; bestehende Regeln und internen Kompatibilitätsfelder beibehalten.
+3. **Wiederholung (Zusatz):** aktivieren, Wiederholungstyp, Intervall und bei wöchentlicher Wiederholung Wochentage; bestehende Regeln und internen Kompatibilitätsfelder beibehalten.
 4. **Ort/Adressen:** bestehende Adressliste mit Zusatz, Straße, PLZ, Ort, Adressart und Koordinaten soweit heute sichtbar; Karte und Geocoding unmittelbar zuordnen.
 5. **Beschreibung:** vorhandener Texteditor.
-6. **Medien:** bestehende Medienauswahl, Vorschau, Reihenfolge und Metadaten.
-7. **Kategorien:** Mehrfachauswahl.
+6. **Medien (Zusatz):** bestehende Medienauswahl, Vorschau, Reihenfolge und Metadaten.
+7. **Kategorien (Zusatz):** Mehrfachauswahl.
 8. **Veranstalter (Zusatz):** Name, Anschrift, Kontakt und bestehende Geo-Eingaben zusammen.
 9. **Kontakte (Zusatz):** wiederholbare Ansprechpartner mit Vorname, Nachname, E-Mail, Telefon, Fax und Weblinks samt Beschreibung.
 10. **Links (Zusatz):** wiederholbare URL-/Beschreibungspaare.
@@ -204,15 +204,15 @@ Autor, `published`, `publishedAt`, Erstellungs-/Änderungszeitpunkt bleiben syst
 Quelle: `packages/plugin-surveys/src/surveys.detail-form.ts`, `surveys.detail-content-model.ts`, `surveys.detail-content-tab.tsx`.
 
 1. **Titel:** einzeiliges Hauptfeld.
-2. **Kurzbeschreibung:** mehrzeiliges Textfeld.
-3. **Beschreibung:** bestehender Textbereich.
+2. **Kurzbeschreibung (Zusatz):** mehrzeiliges Textfeld.
+3. **Beschreibung (Zusatz):** bestehender Textbereich.
 4. **Fragen:** sortierbare flache Abschnitte mit Titel, Beschreibung, Fragetyp und Pflichtfrage. Antwortoptionen mit Titel und gegebenenfalls Freitextoption unmittelbar bei der Frage; Positionswerte werden durch die bestehende Reihenfolge geführt.
-5. **Teilnahmegebiet:** vorhandene Zielgebietsauswahl.
-6. **Laufzeit:** Start und Ende zusammen.
+5. **Teilnahmegebiet (Zusatz):** vorhandene Zielgebietsauswahl.
+6. **Laufzeit (Zusatz):** Start und Ende zusammen.
 7. **Anonymität:** bestehender Schalter.
 8. **Datenschutzhinweis:** Textbereich.
 9. **Transparenzhinweis:** Textbereich.
-10. **Ergebnisdarstellung:** „Ergebnisse in der App anzeigen“ und Freigabe nie/nach Teilnahme/nach Umfrageende zusammen.
+10. **Ergebnisdarstellung (Zusatz):** „Ergebnisse in der App anzeigen“ und Freigabe nie/nach Teilnahme/nach Umfrageende zusammen.
 11. **Status:** bestehende Auswahl `DRAFT`, `ACTIVE`, `ARCHIVED` mit unveränderten Voraussetzungen.
 
 Alle fünf Fragetypen bleiben erhalten. Fragen und Optionen bleiben inline, ohne innere Tabs oder verschachtelte Cards. Bestehende Löschbestätigungen bleiben bestehen. Moderation, Ergebnisse und Historie erscheinen erst im gespeicherten Edit-Workspace.
@@ -233,7 +233,7 @@ Zuerst bestehende öffentliche Bausteine prüfen und den zuständigen Pfad erwei
 
 Create und Edit sind unterschiedliche Kompositionen derselben Feldabschnitte im vorhandenen Editor. Ein Feld wird je Modus nur einmal gemountet; DOM-IDs und RHF-Registrierungen dürfen nicht doppelt entstehen. Neue kleine pluginlokale Abschnitte sind nur bei fehlender Wiederverwendbarkeit der bisherigen Tab-Komponente zulässig; sie ersetzen dann deren Inline-Felder auch im Edit-Modus im selben Lieferabschnitt.
 
-Es entsteht keine generische Feldbeschreibung, kein schemaabhängiger Renderer und keine neue Plugin-SDK-/Manifest-API. Die freigegebene schmale React-Anbindung für den Verlassensschutz ist der einzige neue öffentliche UI-Vertrag. Bestehende host-owned Autorisierung, Credential-/Principal-Bindung, Validierung, Save-/Medienreferenz-Retry und Navigation nach erfolgreicher Mutation bleiben unverändert. Karten, Rich-Text und Medienpicker werden nicht parallel für verborgene Edit-Panels im Create-Modus gemountet.
+Es entsteht keine generische Feldbeschreibung, kein schemaabhängiger Renderer und keine neue Plugin-SDK-/Manifest-API. Neben der schmalen React-Anbindung für den Verlassensschutz erweitert die freigegebene Nachschärfung ausschließlich bestehende UI-Komponenten um die rein präsentationsbezogenen Props `stickyActions` und `fixedLabel`. Bestehende host-owned Autorisierung, Credential-/Principal-Bindung, Validierung, Save-/Medienreferenz-Retry und Navigation nach erfolgreicher Mutation bleiben unverändert. Karten, Rich-Text und Medienpicker werden nicht parallel für verborgene Edit-Panels im Create-Modus gemountet.
 
 ## Risiken und Nachweise
 
@@ -251,3 +251,11 @@ Die Lieferung kann pluginweise innerhalb dieses Changes erfolgen; jede umgestell
 Ein moderierter Durchlauf mit ungeschulten Personen wurde nicht durchgeführt. Nach ausdrücklicher Nutzerentscheidung wird die Praxistauglichkeit anhand des Kundenfeedbacks bewertet; ein solcher Vorabtest ist kein aktueller Abschlussblocker. Automatisierte Editor- und Browserprüfungen belegen das technische Verhalten, ersetzen aber keinen menschlichen Verständlichkeitsnachweis.
 
 Bei der Auswertung des Kundenfeedbacks stehen das Erkennen von Pflichtangaben und optionalen Ergänzungen, die erfolgreiche Anlage sowie das Verständnis der bestehenden Veröffentlichungs- und Push-Wirkung im Vordergrund. Rückmeldungen zu korrigierbaren Fehlern und zum Unterbrechen mit ungespeicherten Eingaben dienen gezielten Verbesserungen. Generische Inhalte bleiben vom redaktionellen Einsteigeranspruch ausgenommen und behalten sämtliche technischen, Validierungs- und Accessibility-Nachweise.
+
+## Freigegebene redaktionelle Vereinfachung (24.10.2026)
+
+Der Nutzer hat die Überarbeitung aller sieben redaktionellen Create-Seiten freigegeben. Generische Inhalte sind ausgenommen. Titel und Kernaufgabe stehen zuerst, Ergänzungen werden mit nativen Details bedarfsgerecht angeboten; kurze FAQ bleiben offen. Die Auswahl der verantwortlichen Identität erscheint nur bei mehreren Möglichkeiten, sonst als kompakte Anzeige. Neue Veranstaltungen und Orte werden standardmäßig verborgen gespeichert; es entstehen keine neuen Statuswerte. Bestehende gespeicherte Inhalte behalten ihre Werte und Edit-Tabs.
+
+Die vorhandene gemeinsame Aktionsleiste wird für diese Create-Seiten sticky verwendet und zeigt die tatsächliche Speicherwirkung. Nachrichten zeigen Push nur bei sofortiger Veröffentlichung und das Zielgebiet erst nach Aktivierung. Bestehende Rücksetzregeln und Bestätigungen bleiben erhalten. Bei Umfragen bleiben Teilnahme und Datenschutzhinweise sichtbar; Ergebnisfreigabe erscheint erst bei aktivierter Ergebnisanzeige. Ausblenden löscht keine Eingaben. Termin-Sonderfälle und manuelle Koordinaten werden nachgeordnet angeboten. Technische Fehlertexte werden durch verständliche Auswirkungen und nächste Schritte ersetzt.
+
+Ownership bleibt unverändert: Fachregeln, Reihenfolge und Übersetzungen im Plugin; rein visuelle Erweiterungen im bestehenden UI-Package. Keine neue Dependency, Datenstruktur, Persistenz oder Formular-Engine. Nachweise: Create-Defaults und Edit-Erhaltung, bedingte Push-/Ergebnisdarstellung ohne Werteverlust, Fehleröffnung und Fokus, Principal-Auswahl sowie erreichbare Aktionen bei Desktop- und schmaler Ansicht.

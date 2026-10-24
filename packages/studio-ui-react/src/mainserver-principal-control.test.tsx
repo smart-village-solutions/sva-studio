@@ -11,6 +11,34 @@ const labels = {
 afterEach(cleanup);
 
 describe('MainserverPrincipalControl', () => {
+  it('shows a fixed create identity as text while preserving a real choice', () => {
+    const { rerender } = render(
+      <MainserverPrincipalControl
+        id="principal"
+        label="Erstellen als"
+        fixedLabel="Verantwortlich:"
+        value="user"
+        options={[{ value: 'user', label: 'Redakteurin' }]}
+        onChange={vi.fn()}
+      />
+    );
+    expect(screen.getByText('Verantwortlich:')).toBeTruthy();
+    expect(screen.getByText('Redakteurin')).toBeTruthy();
+    expect(screen.queryByRole('textbox')).toBeNull();
+    rerender(
+      <MainserverPrincipalControl
+        id="principal"
+        label="Erstellen als"
+        fixedLabel="Verantwortlich:"
+        value="user"
+        options={[{ value: 'user', label: 'Redakteurin' }]}
+        contextOptions={[{ value: 'organization:one', label: 'Stadt' }]}
+        onChange={vi.fn()}
+      />
+    );
+    expect(screen.getByRole('combobox', { name: 'Erstellen als' })).toBeTruthy();
+  });
+
   it('offers only typed principals and reports a deliberate change', () => {
     const onChange = vi.fn();
     render(

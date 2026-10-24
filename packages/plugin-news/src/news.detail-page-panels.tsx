@@ -182,14 +182,25 @@ export const createNewsDetailPanels = (options: NewsDetailPanelsOptions) => {
         id: 'basis',
         label: pt('tabs.basis.label'),
         panel: (
-          <StudioSection title={pt('create.heading')}>
+          <StudioSection>
             <p>{pt('create.intro')}</p>
-            <NewsDetailBasisTab {...basisProps} section="principal" />
+            {categoryOptionsError ? (
+              <p role="status" className="text-sm text-destructive">
+                {pt('create.categoryUnavailable')}
+              </p>
+            ) : null}
             <NewsDetailBasisTab {...basisProps} section="title" />
             <NewsDetailContentTab {...contentProps} section="text" createMode />
-            <NewsDetailContentTab {...contentProps} section="media" createMode />
-            <NewsDetailBasisTab {...basisProps} section="categories" />
+            <details>
+              <summary>{pt('cards.content.media.title')}</summary>
+              <NewsDetailContentTab {...contentProps} section="media" createMode />
+            </details>
+            <details>
+              <summary>{pt('fields.categories')}</summary>
+              <NewsDetailBasisTab {...basisProps} section="categories" />
+            </details>
             <NewsDetailContentTab {...contentProps} section="source" createMode />
+            <NewsDetailBasisTab {...basisProps} section="principal" />
             {settingsPanel}
           </StudioSection>
         ),

@@ -1,5 +1,6 @@
 export const cockpitCardsCreateTranslations = {
   de: {
+    responsible: 'Verantwortlich:',
     openSaved: 'Gespeicherten Inhalt öffnen',
     navigationFailed:
       'Der Inhalt ist gespeichert. Das automatische Öffnen ist fehlgeschlagen. Öffnen Sie ihn über den Link.',
@@ -17,6 +18,7 @@ export const cockpitCardsCreateTranslations = {
       'Beginnen Sie mit der Überschrift. Mit * markierte Angaben sind erforderlich; Bilder, Text und Verlinkung sind optional.',
   },
   en: {
+    responsible: 'Responsible:',
     openSaved: 'Open saved content',
     navigationFailed:
       'The content is saved. Opening it automatically failed. Use the link to open it.',

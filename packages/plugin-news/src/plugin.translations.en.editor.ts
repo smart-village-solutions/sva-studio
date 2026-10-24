@@ -1,11 +1,18 @@
 export const newsTranslationsENEditor = {
   create: {
+    saveUnavailable:
+      'Saving is currently unavailable. Please ask your administrator to check your connection to content management.',
+    responsible: 'Responsible:',
+    introOptional: 'Add introduction',
+    categoryUnavailable:
+      'Categories cannot be loaded right now. Please contact your administrator.',
+    noPushHint: 'Drafts and scheduled publications do not send push notifications.',
     savedWithNewChanges:
       'The news item was created. Further changes have not been saved. When opening the saved item, you can discard those changes or stay here.',
     heading: 'News content',
     intro:
       'Create a news item. Start with the title and text; media, categories and source are optional.',
-    introHelp: 'Optional introduction for the first content block. The main text follows below.',
+    introHelp: 'Optional short introduction to the news item.',
     sourceOptional: 'Add source (optional)',
     sourcePresent: 'Source entered',
     sourceEmpty: 'No source entered',
@@ -18,7 +25,7 @@ export const newsTranslationsENEditor = {
     },
     effect: {
       draft:
-        'The news item is saved with draft status and is not published. Continue editing it later from the content list.',
+        'Saved as a draft, not yet public.',
       immediate: 'The news item is published immediately.',
       scheduled: 'The news item is saved with the selected publication time {{date}}.',
     },

@@ -83,6 +83,7 @@ const EventsDetailSaveAction = ({
           saved: pt('actions.saved'),
         }}
       />
+      {mode === 'create' ? <p className="text-sm text-muted-foreground">{pt(visible ? 'create.visibleEffect' : 'create.hiddenEffect')}</p> : null}
     </div>
   );
 };
@@ -117,9 +118,10 @@ export function EventsDetailPageView(props: EventsDetailPageViewProps) {
   return (
     <FormProvider {...methods}>
       <StudioDetailPageTemplate
+        stickyActions={mode === 'create'}
         title={mode === 'create' ? pt('detail.createTitle') : pt('detail.editTitle')}
         description={
-          mode === 'create' ? pt('detail.createDescription') : pt('detail.editDescription')
+          mode === 'edit' ? pt('detail.editDescription') : undefined
         }
         primaryAction={canSave ? <EventsDetailSaveAction {...props} /> : undefined}
         actions={<EventsDetailNavigationActions {...props} />}

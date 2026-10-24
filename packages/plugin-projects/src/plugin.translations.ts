@@ -34,13 +34,13 @@ const de = {
     editor: {
       createTitle: 'Projekt anlegen',
       editTitle: 'Projekt bearbeiten',
-      createDescription: 'Ein neues Featured Project erstellen.',
+      createDescription: 'Erstellen Sie ein neues Projekt.',
       editDescription: 'Inhalte, Bilder und Veröffentlichungsstatus bearbeiten.',
     },
     principal: {
       createAs: 'Erstellen als',
       actAs: 'Handeln als',
-      description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+      description: 'Wählen Sie, in wessen Namen Sie arbeiten.',
       organization: 'Aktive Organisation',
       user: 'Persönlicher Account',
       dataProvider: 'Ursprünglicher DataProvider',
@@ -186,7 +186,7 @@ const en = {
     principal: {
       createAs: 'Create as',
       actAs: 'Act as',
-      description: 'Determines the credentials for this Mainserver action.',
+      description: 'Choose who you are acting on behalf of.',
       organization: 'Active organization',
       user: 'Personal account',
       dataProvider: 'Original DataProvider',

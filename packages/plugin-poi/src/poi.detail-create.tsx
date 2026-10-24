@@ -4,7 +4,6 @@
  */
 import type { ReactNode } from 'react';
 import { useWatch } from 'react-hook-form';
-import { StudioSection } from '@sva/studio-ui-react';
 import { PoiDetailBasisTab } from './poi.detail-basis-tab.js';
 import { PoiDetailAdvancedTab } from './poi.detail-advanced-tab.js';
 import type { PoiDetailPageViewModel } from './poi.detail-page.view.js';
@@ -14,27 +13,21 @@ export function PoiDetailCreate({
   content,
 }: Readonly<{ view: PoiDetailPageViewModel; content: ReactNode }>) {
   const { pt, methods } = view;
-  const active = useWatch({ control: methods.control, name: 'basis.active' });
   const externalId = useWatch({ control: methods.control, name: 'settings.externalId' });
-  const nav = [
-    'name',
-    'location',
-    'description',
-    'media',
-    'categories',
-    'openingHours',
-    'contact',
-    'links',
-    'prices',
-    'operator',
-    'technical',
-    'active',
-  ] as const;
+  const nav = ['name', 'location', 'description', 'media', 'active'] as const;
   const basisProps = { ...view, availableCategories: view.categoryOptions };
   return (
     <div className="space-y-6">
       <p>{pt('create.intro')}</p>
-      <nav aria-label={pt('create.navigation')} className="flex flex-wrap gap-3">
+      {view.categoryOptionsError ? (
+        <p role="status" className="text-sm text-destructive">
+          {pt('create.categoryUnavailable')}
+        </p>
+      ) : null}
+      <nav
+        aria-label={pt('create.navigation')}
+        className="flex flex-wrap gap-2 text-sm [&_a]:rounded-md [&_a]:border [&_a]:border-border [&_a]:px-3 [&_a]:py-2 [&_a]:text-primary [&_a]:underline-offset-4 hover:[&_a]:underline"
+      >
         {nav.map((id) => (
           <a
             key={id}
@@ -64,9 +57,7 @@ export function PoiDetailCreate({
       </details>
       <div id="poi-create-active" tabIndex={-1}>
         <PoiDetailBasisTab {...basisProps} section="active" />
-        <StudioSection description={pt(active ? 'create.activeEffect' : 'create.inactiveEffect')}>
-          <p>{pt('create.editHint')}</p>
-        </StudioSection>
+
       </div>
     </div>
   );

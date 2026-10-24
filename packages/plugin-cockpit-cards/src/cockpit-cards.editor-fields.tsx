@@ -219,8 +219,14 @@ export function CockpitCardCreateSettings(
 ) {
   return (
     <div className="space-y-4">
-      <LinkFields {...props} />
-      <CategoryField {...props} />
+      <details>
+        <summary>{props.pt('fields.link')}</summary>
+        <LinkFields {...props} />
+      </details>
+      <details>
+        <summary>{props.pt('fields.category')}</summary>
+        <CategoryField {...props} />
+      </details>
       <LanguageField {...props} />
       <WeightField {...props} />
       <PublicationField {...props} />

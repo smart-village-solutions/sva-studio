@@ -226,6 +226,19 @@ test('creates an FAQ on one page and retains edit tabs for update and delete', a
     accessibility.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))
   ).toEqual([]);
   await expect(page.getByRole('tablist')).toHaveCount(0);
+  const createAction = page.getByRole('button', { name: 'FAQ anlegen', exact: true });
+  await expect(createAction).toHaveCount(1);
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    for (const position of [0, 400]) {
+      await page.evaluate((top) => window.scrollTo(0, top), position);
+      await expect(createAction).toBeInViewport();
+    }
+  }
+  await page.screenshot({ path: 'test-results/faq-create-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+
 
   // An unchanged create form can be left without confirmation.
   await page.getByRole('link', { name: 'Zurück', exact: true }).click();
@@ -296,4 +309,47 @@ test('creates an FAQ on one page and retains edit tabs for update and delete', a
   await page.getByRole('alertdialog').getByRole('button', { name: 'FAQ löschen' }).click();
   await expect.poll(() => deleted).toBe(true);
   await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
+});
+
+
+test('editorial create pages keep their core fields and save action usable on narrow screens', async ({ page }) => {
+  test.setTimeout(120_000);
+  const modules = ['news', 'events', 'poi', 'surveys', 'faq', 'cockpit-cards', 'projects'];
+  const permissionActions = modules.flatMap((module) => ['read', 'create', 'update', 'delete'].map((action) => `${module}.${action}`));
+  await page.route('**/api/v1/**', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({data: [], pagination: {page: 1, pageSize: 25, total: 0, hasNextPage: false}})}));
+  await mockSharedShellRequests(page);
+  await page.route('**/auth/me', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({user: {...faqUser.user, assignedModules: modules, permissionActions}})}));
+  await page.route('**/iam/me/permissions?**', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({...faqPermissions, permissions: permissionActions.map((action) => ({action, resourceType: action.split('.')[0]}))})}));
+  await page.route('**/api/v1/mainserver/mutation-capabilities', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({data: {enabledActions: permissionActions}})}));
+  await gotoHomeAsAuthenticatedUser(page);
+  const pages = [
+    ['news', '#news-title'], ['events', '#event-title'], ['poi', '#poi-name'],
+    ['surveys', '#survey-title'], ['faq', '#faq-question'],
+    ['cockpit-cards', '#cockpit-card-heading'], ['projects', '#project-title'],
+  ] as const;
+  for (const [type, field] of pages) {
+    await navigateClientSide(page, `/admin/${type}/new`);
+    await expect(page.locator(field)).toBeVisible();
+    await expect(page.getByRole('tablist')).toHaveCount(0);
+    const save = page.locator('button[type="submit"][form]');
+    await expect(save).toHaveCount(1);
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({width, height: 800});
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect(save).toBeInViewport();
+      await page.screenshot({path: `test-results/create-${type}-${width}.png`});
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      if (type === 'faq' && width === 390) {
+        const publication = page.locator('#faq-publication-date');
+        await publication.focus();
+        await expect.poll(async () => {
+          const fieldBox = await publication.boundingBox();
+          const barBox = await page.locator('.sticky').filter({has: save}).boundingBox();
+          if (!fieldBox || !barBox) throw new Error('Missing focused field or action bar');
+          return fieldBox.y + fieldBox.height - barBox.y;
+        }).toBeLessThanOrEqual(0);
+      }
+
+    }
+  }
 });

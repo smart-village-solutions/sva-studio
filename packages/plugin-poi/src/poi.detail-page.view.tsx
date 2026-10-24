@@ -84,9 +84,10 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
   return (
     <FormProvider {...methods}>
       <StudioDetailPageTemplate
+        stickyActions={mode === 'create'}
         title={mode === 'create' ? pt('detail.createTitle') : pt('detail.editTitle')}
         description={
-          mode === 'create' ? pt('detail.createDescription') : pt('detail.editDescription')
+          mode === 'edit' ? pt('detail.editDescription') : undefined
         }
         primaryAction={
           canSave ? (
@@ -108,6 +109,7 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
                   saved: pt('actions.saved'),
                 }}
               />
+              {mode === 'create' ? <p className="text-sm text-muted-foreground">{pt(active ? 'create.activeEffect' : 'create.inactiveEffect')}</p> : null}
             </div>
           ) : undefined
         }

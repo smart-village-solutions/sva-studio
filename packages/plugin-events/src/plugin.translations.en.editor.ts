@@ -1,8 +1,15 @@
 export const eventsENEditor = {
   create: {
+    saveUnavailable:
+      'Saving is currently unavailable. Please ask your administrator to check your connection to content management.',
+    responsible: 'Responsible:',
+    coordinates: 'Enter coordinates manually',
+    categoryUnavailable:
+      'Categories cannot be loaded right now. Please contact your administrator.',
+    dateExtras: 'Additional time details',
     titleHelp: 'What is the event called? A title is required.',
-    createVisible: 'Create as visible',
-    createHidden: 'Create as hidden',
+    createVisible: 'Save as visible',
+    createHidden: 'Save hidden',
     intro:
       'Create an event. Start with its title, date and location; add further details as needed.',
     navigation: 'Jump to a form section',
@@ -11,7 +18,7 @@ export const eventsENEditor = {
     empty: 'No details yet',
     visibleEffect:
       'The event will be saved with visibility enabled. Event dates do not schedule publication.',
-    hiddenEffect: 'The event will be saved with visibility disabled.',
+    hiddenEffect: 'The event will be saved and remain hidden from the public.',
     editHint: 'After creation, open the saved event in the familiar editor with tabs.',
     sections: {
       title: 'Title',
@@ -66,7 +73,8 @@ export const eventsENEditor = {
     locationGeocodeTimeout: 'Resolving geo coordinates took too long. Please try again.',
     locationGeocodeForbidden: 'Missing permission to resolve geo coordinates.',
     locationGeocodeUnauthorized: 'The geocoding session has expired. Please reload the page.',
-    locationMapUnavailable: 'The map view is currently disabled for this instance.',
+    locationMapUnavailable:
+      'The map is currently unavailable. You can enter the address and add coordinates manually.',
     locationMapError: 'The map view could not be loaded. Manual editing remains available.',
     imagePickerEmpty: 'No matching media found.',
     mediaPickerLoading: 'Loading media.',
@@ -138,7 +146,7 @@ export const eventsENEditor = {
   cards: {
     basis: {
       identity: { title: 'Title & category', description: 'Title and editorial base category.' },
-      recurrence: { title: 'Series logic', description: 'Recurrence and publication rhythm.' },
+      recurrence: { title: 'Recurrence', description: 'Recurrence and publication rhythm.' },
       relations: { title: 'Relations', description: 'Links to other Studio content.' },
       meta: { title: 'Metadata', description: 'Temporal information for the record.' },
     },

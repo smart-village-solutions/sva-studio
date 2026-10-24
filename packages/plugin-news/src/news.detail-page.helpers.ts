@@ -76,6 +76,11 @@ export const resolveNewsErrorMessage = (
   fallbackKey: string
 ) => {
   if (error instanceof NewsApiError) {
+    if (
+      error.code === 'missing_credentials' ||
+      error.code === 'organization_mainserver_credentials_missing'
+    )
+      return pt('create.saveUnavailable');
     const key = errorMessageTranslationKeys[error.code];
     if (key) {
       const genericMessage = pt(key);

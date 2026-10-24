@@ -128,17 +128,19 @@ export function ProjectEditorForm(props: ViewInput) {
       {mode === 'create' ? (
         <p className="text-sm text-muted-foreground">{pt('create.intro')}</p>
       ) : null}
-      <MainserverPrincipalControl
-        id="projects-acting-principal"
-        label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-        description={pt('principal.description')}
-        value={actingPrincipalType}
-        options={resolveMainserverPrincipalOptions(principalControl, {
-          value: actingPrincipalType,
-          label: pt(`principal.${actingPrincipalType}`),
-        })}
-        onChange={setActingPrincipalType}
-      />
+      {mode === 'edit' ? (
+        <MainserverPrincipalControl
+          id="projects-acting-principal"
+          label={pt('principal.actAs')}
+          description={pt('principal.description')}
+          value={actingPrincipalType}
+          options={resolveMainserverPrincipalOptions(principalControl, {
+            value: actingPrincipalType,
+            label: pt(`principal.${actingPrincipalType}`),
+          })}
+          onChange={setActingPrincipalType}
+        />
+      ) : null}
       {mode === 'create' ? (
         tabs[0]?.panel
       ) : (
@@ -151,6 +153,20 @@ export function ProjectEditorForm(props: ViewInput) {
           keepMounted
         />
       )}
+      {mode === 'create' ? (
+        <MainserverPrincipalControl
+          fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
+          id="projects-acting-principal"
+          label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+          description={pt('principal.description')}
+          value={actingPrincipalType}
+          options={resolveMainserverPrincipalOptions(principalControl, {
+            value: actingPrincipalType,
+            label: pt(`principal.${actingPrincipalType}`),
+          })}
+          onChange={setActingPrincipalType}
+        />
+      ) : null}
     </form>
   );
 }

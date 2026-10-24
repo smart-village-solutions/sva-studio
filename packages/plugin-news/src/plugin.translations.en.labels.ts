@@ -71,8 +71,7 @@ export const newsTranslationsENLabels = {
     dataProviderUnavailable: 'Not available yet',
     createAs: 'Create as',
     actAs: 'Act as',
-    actingPrincipalHelp:
-      'Determines which Mainserver credentials are used for this write operation.',
+    actingPrincipalHelp: 'Choose who you are acting on behalf of.',
     visible: 'Visible',
     visibleFor: 'Visibility for {{title}}',
     likeCount: 'Likes',

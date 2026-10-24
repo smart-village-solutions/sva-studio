@@ -253,6 +253,33 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByText('Fehler')).toBeTruthy();
   });
 
+  it('keeps a single create submit action outside the header and reveals native validation errors', () => {
+    render(
+      <StudioDetailPageTemplate
+        stickyActions
+        title="Create"
+        primaryAction={
+          <Button type="submit" form="create-form">
+            Save draft
+          </Button>
+        }
+      >
+        <form id="create-form">
+          <details>
+            <summary>Additional details</summary>
+            <Input id="optional-field" required />
+          </details>
+        </form>
+      </StudioDetailPageTemplate>
+    );
+    const action = screen.getByRole('button', { name: 'Save draft' });
+    expect(action.closest('header')).toBeNull();
+    expect(action.closest('.sticky')).toBeTruthy();
+    const field = document.getElementById('optional-field')!;
+    fireEvent.invalid(field);
+    expect(field.closest('details')?.open).toBe(true);
+  });
+
   it('renders the same detail-page primary action in the header and after the content', () => {
     render(
       <StudioDetailPageTemplate

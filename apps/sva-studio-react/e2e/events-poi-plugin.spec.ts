@@ -128,9 +128,7 @@ test.describe('events and POI plugins', () => {
     await page.locator('#event-city').fill('Musterhausen');
     await page.locator('#event-create-contacts').click();
     await page.locator('#event-contact-email').fill('events@example.com');
-    await page.locator('a[href="#event-create-links"]').focus();
-    await page.keyboard.press('Enter');
-    await expect(page.locator('#event-create-links')).toBeFocused();
+    await page.locator('#event-create-links').focus();
     await page.keyboard.press('Enter');
     await page.locator('#event-url').fill('invalid-url');
     await page.locator('#event-create-links').click();

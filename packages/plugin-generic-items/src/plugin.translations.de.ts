@@ -6,7 +6,6 @@ export const genericItemsTranslationsDe = {
     create: {
       heading: 'Generischen Inhalt erfassen',
       optional: 'Optional',
-      navigation: 'Zu einem Inhaltsabschnitt springen',
       technical: 'Weitere technische Angaben (optional)',
       technicalPresent: 'Angaben vorhanden',
       technicalEmpty: 'Keine zusätzlichen Angaben',

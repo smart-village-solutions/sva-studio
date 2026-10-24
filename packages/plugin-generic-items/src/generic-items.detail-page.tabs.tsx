@@ -182,12 +182,6 @@ function GenericItemsCreateFields(props: GenericItemsDetailTabsProps) {
   };
   return (
     <StudioSection title={pt('create.heading')}>
-      <nav aria-label={pt('create.navigation')} className="flex flex-wrap gap-3">
-        <a href="#generic-create-content">{labels.contentBlocks}</a>
-        <a href="#generic-create-links">{labels.webUrls}</a>
-        <a href="#generic-create-relations">{labels.relationsTitle}</a>
-        <a href="#generic-create-publication">{labels.publicationDate}</a>
-      </nav>
       <GenericItemsDetailBasisTab {...basis} createSection="identity" />
       <section id="generic-create-content" tabIndex={-1}>
         <GenericItemsContentText labels={labels} createMode />

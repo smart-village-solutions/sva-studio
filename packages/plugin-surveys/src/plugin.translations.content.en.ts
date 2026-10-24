@@ -6,7 +6,6 @@ export const pluginSurveysContentEnTranslations = {
     privacy: 'Participation and privacy',
     heading: 'Survey content',
     intro: 'Create a survey. Start with the title and questions; other details are optional.',
-    navigation: 'Jump to a survey section',
     text: 'Title and description',
     participation: 'Participation settings',
     noLimit: 'not limited',

@@ -25,11 +25,13 @@ Wichtig ist daher:
 
 ## Injizierte Workspace-Abhängigkeiten beim Build
 
-Bei `injectWorkspacePackages: true` können installierte pnpm-Paketkopien noch ohne die später gebauten `dist`-Dateien vorliegen. `auth-runtime:build` und `auth-runtime:test:types` führen deshalb nach `^build` den bestehenden Helfer `scripts/ci/sync-injected-workspace-packages.ts` für `packages/auth-runtime` aus, bevor TypeScript die Package-Exports auflöst.
+Bei `injectWorkspacePackages: true` können installierte pnpm-Paketkopien noch ohne die später gebauten `dist`-Dateien vorliegen. Die Targets `build` und `test:types` von `auth-runtime` und `waste-management-runtime` führen deshalb nach `^build` den bestehenden Helfer `scripts/ci/sync-injected-workspace-packages.ts` für ihr jeweiliges Package aus, bevor TypeScript die Package-Exports auflöst.
 
-Beide Targets sind ungecacht: Der Sync verändert installierte Paketkopien außerhalb der deklarierten Build-Outputs und muss auch nach einer frischen Installation mit gecachten Dependency-Builds laufen. Die Dependency-Builds selbst behalten ihr Cache-Verhalten.
+Diese Targets sind ungecacht: Der Sync verändert installierte Paketkopien außerhalb der deklarierten Build-Outputs und muss auch nach einer frischen Installation mit gecachten Dependency-Builds laufen. Die Dependency-Builds selbst behalten ihr Cache-Verhalten.
 
-Die Sync-Helfer und die Runtime-Guards aktualisieren gemeinsame installierte `dist`-Verzeichnisse. Deshalb laufen `auth-runtime:build`, `auth-runtime:test:types`, `public-waste-calendar-web:build`, `public-waste-calendar-web:test:unit` und alle `check:runtime`-Targets mit `parallelism: false`. Nx führt diese Tasks innerhalb eines Task-Runners exklusiv aus; Dependency-Builds behalten ihre Parallelität. Das verhindert überlappende Lösch- und Kopiervorgänge, die sonst mit `EEXIST` scheitern können. Mehrere unabhängige Nx-Prozesse dürfen denselben installierten Workspace während dieser Vorgänge nicht gleichzeitig verändern.
+Die Sync-Helfer und die Runtime-Guards aktualisieren gemeinsame installierte `dist`-Verzeichnisse. Deshalb laufen `auth-runtime:build`, `auth-runtime:test:types`, `waste-management-runtime:build`, `waste-management-runtime:test:types`, `public-waste-calendar-web:build`, `public-waste-calendar-web:test:unit` und alle `check:runtime`-Targets mit `parallelism: false`. Nx führt diese Tasks innerhalb eines Task-Runners exklusiv aus; Dependency-Builds behalten ihre Parallelität. Das verhindert überlappende Lösch- und Kopiervorgänge, die sonst mit `EEXIST` scheitern können. Mehrere unabhängige Nx-Prozesse dürfen denselben installierten Workspace während dieser Vorgänge nicht gleichzeitig verändern.
+
+Ein pnpm-Update kann bisherige `link:`-Auflösungen in injizierte `file:`-Paketkopien umwandeln. Deshalb muss dieser Buildpfad auch mit einem frisch installierten, von pnpm erzeugten Lockfile funktionieren. Ein erfolgreiches `mail-runtime:build` allein genügt nicht: `waste-management-runtime` benötigt dessen Deklarationen zusätzlich in der installierten Paketkopie. Fehlende Deklarationen dort sind ein Workspace-Buildfehler und kein Beleg für eine inkompatible aktualisierte Dependency.
 
 ## Was als Runtime-Import zählt
 

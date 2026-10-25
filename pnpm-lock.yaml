@@ -1758,7 +1758,7 @@ importers:
         version: 4.6.6
     devDependencies:
       graphql:
-        specifier: ^16.14.2
+        specifier: 16.14.2
         version: 16.14.2
       '@vitest/coverage-v8':
         specifier: ^5.0.3

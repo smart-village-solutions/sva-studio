@@ -11,6 +11,7 @@ import { pluginNewsTranslations } from '../../packages/plugin-news/src/plugin.tr
 import { pluginPoiTranslations } from '../../packages/plugin-poi/src/plugin.translations';
 import { pluginProjectsTranslations } from '../../packages/plugin-projects/src/plugin.translations';
 import { pluginSurveysTranslations } from '../../packages/plugin-surveys/src/plugin.translations';
+import { pluginVouchersTranslations } from '../../packages/plugin-vouchers/src/plugin.translations';
 import { wasteManagementPluginTranslations } from '../../packages/plugin-waste-management/src/plugin.translations';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -53,6 +54,7 @@ const pluginTranslationResources = [
   pluginPoiTranslations,
   pluginProjectsTranslations,
   pluginSurveysTranslations,
+  pluginVouchersTranslations,
   wasteManagementPluginTranslations,
 ] as const;
 

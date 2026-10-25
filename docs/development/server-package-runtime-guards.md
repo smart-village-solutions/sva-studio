@@ -33,6 +33,8 @@ Die Sync-Helfer und die Runtime-Guards aktualisieren gemeinsame installierte `di
 
 Ein pnpm-Update kann bisherige `link:`-Auflösungen in injizierte `file:`-Paketkopien umwandeln. Deshalb muss dieser Buildpfad auch mit einem frisch installierten, von pnpm erzeugten Lockfile funktionieren. Ein erfolgreiches `mail-runtime:build` allein genügt nicht: `waste-management-runtime` benötigt dessen Deklarationen zusätzlich in der installierten Paketkopie. Fehlende Deklarationen dort sind ein Workspace-Buildfehler und kein Beleg für eine inkompatible aktualisierte Dependency.
 
+Vitest verwendet für die bestehenden Workspace-Quellcode-Auflösungen die gemeinsame Konfiguration `apps/sva-studio-react/vitest.shared.ts`. Dazu gehören auch der Root-Export von `@sva/plugin-projects` und der Subpfad `@sva/plugin-ssf/descriptor`. Diese Testimporte müssen bereits ohne gebaute `dist`-Dateien in den injizierten Paketkopien auflösbar sein; Typ- und Runtime-Gates prüfen die gebauten Exporte gesondert.
+
 Exportierte Factory-Funktionen müssen ihre Rückgabetypen auch über injizierte Paketkopien portabel benennen können. Wenn eine inferierte Deklaration auf interne Typen eines anderen Packages verweist, ist eine explizite Annotation über dessen öffentliche Exporte erforderlich. `createWastePluginServerDependencies` verwendet dafür die `ReturnType`-Typen der vorhandenen öffentlichen Runtime-Factorys.
 
 ## Was als Runtime-Import zählt

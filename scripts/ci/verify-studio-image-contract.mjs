@@ -18,6 +18,7 @@ const regularPlugins = [
   'poi',
   'projects',
   'surveys',
+  'vouchers',
   'waste-management',
 ];
 const pluginIds = { studio: regularPlugins, ssf: ['ssf'] };
@@ -27,6 +28,7 @@ const workspacePluginIds = [
   'events',
   'poi',
   'generic-items',
+  'vouchers',
   'faq',
   'cockpit',
   'cockpit-cards',
@@ -77,12 +79,12 @@ const verifyChunkProvenance = (
     ...selectedPluginIds.map((id) => `plugin-${id}`),
     ...installedPlugins.map((entry) => entry.sourceRef),
   ]);
-  const excluded = new Set(
-    [
-      ...workspacePluginIds.filter((id) => !selectedPluginIds.includes(id)).map((id) => `plugin-${id}`),
-      ...(distribution === 'ssf' ? ['waste-management-contracts', 'waste-management-runtime'] : []),
-    ]
-  );
+  const excluded = new Set([
+    ...workspacePluginIds
+      .filter((id) => !selectedPluginIds.includes(id))
+      .map((id) => `plugin-${id}`),
+    ...(distribution === 'ssf' ? ['waste-management-contracts', 'waste-management-runtime'] : []),
+  ]);
   const paths = new Set();
   const actual = new Map();
   for (const file of files) {

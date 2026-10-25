@@ -1658,6 +1658,7 @@ describe('iam data subject rights handlers', () => {
       sortDirection: 'asc',
       type: 'deletion',
       status: 'accepted',
+      includeAccountRegistrations: false,
     });
     expect(response.status).toBe(200);
     await expect(expectJson(response)).resolves.toEqual({
@@ -1666,6 +1667,27 @@ describe('iam data subject rights handlers', () => {
       requestId: 'req-test',
     });
   });
+
+  it.each([['system_admin', true], ['support_admin', false]])(
+    'derives registration-event visibility from the %s session for list and detail',
+    async (role, includeAccountRegistrations) => {
+      const { listAdminDataSubjectRightsCasesHandler, getAdminDataSubjectRightsCaseHandler } = await import('./core.js');
+      mocks.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
+        handler({ user: { ...baseUser, roles: [role] } })
+      );
+      const caseId = '123e4567-e89b-42d3-a456-426614174000';
+      const baseUrl = 'http://localhost/iam/admin/data-subject-rights/cases';
+      const query = '?instanceId=de-test&includeAccountRegistrations=true';
+      expect((await listAdminDataSubjectRightsCasesHandler(new Request(baseUrl + query))).status).toBe(200);
+      expect((await getAdminDataSubjectRightsCaseHandler(new Request(`${baseUrl}/${caseId}${query}`))).status).toBe(200);
+      expect(mocks.listAdminDsrCases).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({
+        instanceId: 'de-test', includeAccountRegistrations,
+      }));
+      expect(mocks.getAdminDsrCase).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({
+        instanceId: 'de-test', caseId, includeAccountRegistrations,
+      }));
+    }
+  );
 
   it('guards admin DSR case detail and maps not-found or backend failures', async () => {
     const { getAdminDataSubjectRightsCaseHandler } = await import('./core.js');

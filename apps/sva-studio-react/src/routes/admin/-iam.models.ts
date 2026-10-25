@@ -47,6 +47,7 @@ const DSR_TYPE_TRANSLATION_KEY_BY_VALUE = {
   legal_hold: 'admin.iam.dsr.types.legal_hold',
   profile_correction: 'admin.iam.dsr.types.profile_correction',
   recipient_notification: 'admin.iam.dsr.types.recipient_notification',
+  account_registration: 'admin.iam.dsr.types.account_registration',
 } as const;
 
 const DSR_STATUS_TRANSLATION_KEY_BY_VALUE = {
@@ -236,8 +237,15 @@ export const filterPermissions = (
   });
 };
 
-export const mapDsrStatusToTranslationKey = (item: Pick<IamDsrCaseListItem, 'canonicalStatus'>) => {
-  return mapDsrCanonicalStatusToTranslationKey(item.canonicalStatus);
+export const formatDsrTitle = (item: Pick<IamDsrCaseListItem, 'type' | 'title'>): string =>
+  item.type === 'account_registration' ? t('admin.iam.dsr.registration.title') : item.title;
+
+export const mapDsrStatusToTranslationKey = (
+  item: Pick<IamDsrCaseListItem, 'canonicalStatus'> & Partial<Pick<IamDsrCaseListItem, 'type'>>
+) => {
+  return item.type === 'account_registration'
+    ? 'admin.iam.dsr.registration.recorded'
+    : mapDsrCanonicalStatusToTranslationKey(item.canonicalStatus);
 };
 
 export const mapDsrStatusTone = (item: Pick<IamDsrCaseListItem, 'canonicalStatus'>) => {

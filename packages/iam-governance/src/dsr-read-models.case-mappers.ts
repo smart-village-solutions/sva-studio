@@ -2,6 +2,7 @@ import type { IamDsrCanonicalStatus, IamDsrCaseListItem } from '@sva/core';
 
 import { resolveGovernancePersonDisplayName, revealGovernanceField } from './person-display.js';
 import type {
+  AccountRegistrationRow,
   ExportJobRow,
   LegalHoldRow,
   PersonColumns,
@@ -211,3 +212,20 @@ export const mapRecipientNotificationRow = (row: RecipientNotificationRow): IamD
     },
   };
 };
+
+export const mapAccountRegistrationRow = (row: AccountRegistrationRow): IamDsrCaseListItem => ({
+  id: row.id,
+  type: 'account_registration',
+  canonicalStatus: 'completed',
+  rawStatus: 'success',
+  title: 'account_registration',
+  summary: readPersonName(row),
+  targetAccountId: row.account_id,
+  targetDisplayName: readPersonName(row),
+  createdAt: row.created_at,
+  completedAt: row.created_at,
+  metadata: {
+    eventType: row.event_type,
+    roleAssignmentState: 'pending_at_registration',
+  },
+});

@@ -19,6 +19,11 @@ export const shellDEResources = {
     empty: 'Für diese Seite ist noch kein Hilfetext hinterlegt.',
     openWebsite: 'Vollständige Dokumentation öffnen',
   },
+  roleAssignmentPending: {
+    title: 'Anmeldung erfolgreich',
+    message:
+      'Ihr Konto wurde durch Ihre erste Anmeldung im Studio erfasst. Ihnen wurden noch keine Rollen und Berechtigungen zugewiesen. Diese kann die zuständige Administration jetzt vergeben. Bitte wenden Sie sich dafür an Ihre Ansprechperson.',
+  },
   permissionsDegraded: {
     message:
       'Berechtigungen konnten nicht vollständig geladen werden. Einige Bereiche sind vorübergehend nicht erreichbar.',

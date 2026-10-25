@@ -11,6 +11,8 @@ import { ContextualHelpBoundary } from './ContextualHelpBoundary';
 import Header from './Header';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
+import { useEffectiveAccess } from '../providers/effective-access-provider';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 type LegalTextAcceptanceDialogComponent =
   typeof import('./LegalTextAcceptanceDialog').LegalTextAcceptanceDialog;
@@ -116,7 +118,28 @@ export default function AppShell({
   sidebarSlot,
   documentationPageId,
 }: AppShellProps) {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    isLoading: isAuthLoading,
+    hasResolvedSession,
+    isRecoveringSession,
+    error: authError,
+  } = useAuth();
+  const effectiveAccess = useEffectiveAccess();
+  const showRoleAssignmentPending =
+    isAuthenticated &&
+    hasResolvedSession &&
+    !isAuthLoading &&
+    !isRecoveringSession &&
+    !authError &&
+    user?.permissionStatus === 'ok' &&
+    user.roles.length === 0 &&
+    user.permissionActions?.length === 0 &&
+    effectiveAccess.snapshot.status === 'ready' &&
+    effectiveAccess.snapshot.scope.kind === 'tenant' &&
+    effectiveAccess.snapshot.scope.instanceId === user.instanceId &&
+    effectiveAccess.permissionActions.length === 0;
   const [isHydrated, setIsHydrated] = React.useState(false);
   const showSidebar = isAuthenticated && !isAuthLoading;
   const showBreadcrumbs = isHydrated && currentPathname !== '/';
@@ -181,6 +204,14 @@ export default function AppShell({
               <React.Suspense fallback={null}>
                 <LazyPermissionsDegradedBanner />
               </React.Suspense>
+              {showRoleAssignmentPending ? (
+                <Alert role="status" aria-live="polite" aria-labelledby="role-assignment-pending-title">
+                  <AlertTitle id="role-assignment-pending-title">
+                    {t('shell.roleAssignmentPending.title')}
+                  </AlertTitle>
+                  <AlertDescription>{t('shell.roleAssignmentPending.message')}</AlertDescription>
+                </Alert>
+              ) : null}
               {documentationPageId ? (
                 <ContextualHelpBoundary
                   key={documentationPageId}

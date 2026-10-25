@@ -71,6 +71,71 @@ describe('iam-data-subject-rights/read-models', () => {
     expect(descending.map(({ id }) => id)).toEqual(['a', 'b', 'c', 'missing']);
   });
 
+  const registration = {
+    id: 'registration-1',
+    account_id: 'account-new',
+    event_type: 'user.jit_provisioned',
+    created_at: '2026-10-25T10:00:00.000Z',
+    display_name_ciphertext: 'New User',
+    first_name_ciphertext: null,
+    last_name_ciphertext: null,
+    keycloak_subject: 'kc-new-user',
+  };
+
+  const registrationClient = () => ({
+    query: vi.fn(async (sql: string) => ({
+      rowCount: sql.includes('WITH registrations AS') ? 1 : 0,
+      rows: sql.includes('WITH registrations AS') ? [registration] : [],
+    })),
+  });
+
+  it('includes the historical first-login event only for explicitly authorized admin reads', async () => {
+    const client = registrationClient();
+    const input = { instanceId: 'tenant-a', page: 1, pageSize: 20 };
+    const hidden = await listAdminDsrCases(client, input);
+    expect(hidden.items).toEqual([]);
+    expect(client.query.mock.calls.some(([sql]) => sql.includes('iam.activity_logs'))).toBe(false);
+
+    const result = await listAdminDsrCases(client, { ...input, includeAccountRegistrations: true });
+    expect(result.total).toBe(1);
+    expect(result.items[0]).toMatchObject({
+      id: registration.id,
+      type: 'account_registration',
+      targetAccountId: registration.account_id,
+      targetDisplayName: 'New User',
+      createdAt: registration.created_at,
+      canonicalStatus: 'completed',
+      metadata: { roleAssignmentState: 'pending_at_registration' },
+    });
+  });
+
+  it('uses the same tenant-scoped, deduplicated creation event for list and detail', async () => {
+    const client = registrationClient();
+    const item = await getAdminDsrCase(client, {
+      instanceId: 'tenant-a',
+      caseId: registration.id,
+      relatedAccountId: registration.account_id,
+      includeAccountRegistrations: true,
+    });
+    expect(item?.id).toBe(registration.id);
+    expect(client.query).toHaveBeenLastCalledWith(
+      expect.stringContaining('WITH registrations AS'),
+      ['tenant-a', registration.account_id, registration.id]
+    );
+    const [sql] = client.query.mock.calls.at(-1)!;
+    expect(sql).toContain('activity.instance_id = $1');
+    expect(sql).toContain('account.instance_id = registration.instance_id');
+    expect(sql).toContain("activity.event_type IN ('user.jit_provisioned', 'account_created')");
+    expect(sql).toContain("activity.result = 'success'");
+    expect(sql).toContain('DISTINCT ON (activity.account_id)');
+    expect(sql.indexOf('DISTINCT ON')).toBeLessThan(sql.indexOf('registration.id = $3'));
+
+    const hidden = await getAdminDsrCase(registrationClient(), {
+      instanceId: 'tenant-a', caseId: registration.id,
+    });
+    expect(hidden).toBeNull();
+  });
+
   it('loads the self-service overview with requests, exports and legal holds', async () => {
     const client = buildClient(
       {

@@ -3,7 +3,7 @@ import {
   StudioDetailPageTemplate,
 } from '@sva/studio-ui-react';
 import type { IamDsrCaseListItem } from '@sva/core';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
 import { t } from '../../i18n';
@@ -16,6 +16,7 @@ import {
 import { getAdminDsrCase } from '../../lib/iam-api';
 import { useEffectiveAuth } from '../../providers/effective-access-provider';
 import {
+  formatDsrTitle,
   mapDsrStatusToTranslationKey,
   mapDsrStatusTone,
   mapDsrTypeToTranslationKey,
@@ -42,17 +43,36 @@ const DetailField = ({ label, value }: Readonly<{ label: string; value: string }
   </div>
 );
 
-const DsrDetailContent = ({ item }: Readonly<{ item: IamDsrCaseListItem }>) => {
+const DsrDetailContent = ({ item, canReadUsers }: Readonly<{
+  item: IamDsrCaseListItem;
+  canReadUsers: boolean;
+}>) => {
   const requesterName = item.requesterDisplayName ?? item.actorDisplayName ?? '—';
   const completedAt = formatDateTime(item.completedAt ?? item.updatedAt);
 
   return (
     <>
+      {item.type === 'account_registration' ? (
+        <Alert>
+          <AlertDescription>
+            <p>{t('admin.iam.dsr.registration.description')}</p>
+            {canReadUsers && item.targetAccountId ? (
+              <Link
+                to="/admin/users/$userId"
+                params={{ userId: item.targetAccountId }}
+                className="mt-2 inline-block font-medium underline underline-offset-4"
+              >
+                {t('admin.iam.dsr.registration.openUser')}
+              </Link>
+            ) : null}
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <Card>
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
-              <CardTitle>{item.title}</CardTitle>
+              <CardTitle>{formatDsrTitle(item)}</CardTitle>
               <p className="text-sm text-muted-foreground">{item.summary}</p>
             </div>
             <Badge className={mapDsrStatusTone(item)} variant="outline">
@@ -62,7 +82,7 @@ const DsrDetailContent = ({ item }: Readonly<{ item: IamDsrCaseListItem }>) => {
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2">
           <DetailField label={t('admin.iam.shared.type', { value: '' }).replace(': ', '')} value={t(mapDsrTypeToTranslationKey(item.type))} />
-          <DetailField label={t('admin.iam.shared.status')} value={item.rawStatus} />
+          <DetailField label={t('admin.iam.shared.status')} value={item.type === 'account_registration' ? t('admin.iam.dsr.registration.recorded') : item.rawStatus} />
           <DetailField label={t('admin.iam.shared.targetLabel')} value={item.targetDisplayName ?? '—'} />
           <DetailField label={t('admin.iam.shared.requester')} value={requesterName} />
           <DetailField label={t('admin.iam.dsr.columns.createdAt')} value={formatDateTime(item.createdAt)} />
@@ -158,7 +178,7 @@ export function IamDsrDetailPage({ caseId }: Readonly<{ caseId: string }>) {
 
   return (
     <StudioDetailPageTemplate
-      title={item?.title ?? t('admin.iam.dsr.detail.title')}
+      title={item ? formatDsrTitle(item) : t('admin.iam.dsr.detail.title')}
       description={t('admin.iam.dsr.detail.subtitle')}
       actions={
         <Button type="button" variant="secondary" onClick={handleBackClick}>
@@ -177,7 +197,7 @@ export function IamDsrDetailPage({ caseId }: Readonly<{ caseId: string }>) {
           <AlertDescription>{t('admin.iam.dsr.detail.notFound')}</AlertDescription>
         </Alert>
       ) : null}
-      {item ? <DsrDetailContent item={item} /> : null}
+      {item ? <DsrDetailContent item={item} canReadUsers={user?.permissionActions?.includes('iam.user.read') === true} /> : null}
     </StudioDetailPageTemplate>
   );
 }

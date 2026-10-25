@@ -247,6 +247,13 @@ Fehlerpfad:
 - Die Detailansicht darf historische Vorgänge nicht implizit aus einer limitierten Overview-Liste rekonstruieren; der Laufzeitpfad bleibt immer ein expliziter Detail-Read.
 - Regeln und Datenschutzaktivitäten bleiben UI-seitig getrennt, teilen sich aber denselben Account-Self-Service-Einstieg im Header-Menü.
 
+### Erste Anmeldung ohne lokale Rollen
+
+1. Die erfolgreiche Anmeldung legt das lokale IAM-Konto über die bestehenden Auth-Audit-/JIT-Pfade an. Dabei werden keine lokalen Rollen automatisch vergeben. Die Kontoanlage wird bereits einmalig als `account_created` beziehungsweise `user.jit_provisioned` in `iam.activity_logs` festgehalten.
+2. Die Studio-Shell zeigt „Anmeldung erfolgreich“, wenn die Sitzung erfolgreich aufgelöst wurde und sowohl lokale Rollen als auch bestätigte effektive Berechtigungen fehlen. Die Anzeige erklärt die Erfassung beim ersten Login und verweist auf die zuständige Administration. Unaufgelöste, ladende oder fehlerhafte Berechtigungsstände sowie laufende Sitzungswiederherstellungen werden nicht als ausstehende Rechtezuweisung dargestellt. Nach bestätigter Rollenzuweisung entfällt der Hinweis.
+3. Der bestehende Datenschutzbereich unter `/admin/iam?tab=dsr` projiziert die Kontoanlage zusätzlich als `account_registration`. Dafür sind die lokale Rolle `system_admin` und die bestehende Berechtigung `iam.dsr.read` erforderlich; ein Request-Parameter kann diese Freigabe nicht erteilen. Die Abfrage bleibt instanzgebunden und wählt pro Konto dasselbe früheste Ereignis für Liste und Detail. Weitere Anmeldungen und Seitenaufrufe erzeugen keine zusätzlichen Einträge.
+4. Das Ereignis dokumentiert „Erste Anmeldung – Rechtezuweisung ausstehend“ zum damaligen Zeitpunkt. Der Status „Ereignis erfasst“ beschreibt die erfolgreiche Protokollierung, nicht eine Freigabe des Kontos. Spätere Rechteänderungen verändern die Historie nicht; es gelten die bestehenden Audit-Aufbewahrungsregeln. In der Detailansicht führt ein Link bei vorhandener Berechtigung `iam.user.read` zum Benutzerkonto für die manuelle Rollenvergabe.
+
 ### Account-Self-Service: Passwort- und E-Mail-Wechsel über Keycloak-AIA
 
 1. Ein authentifizierter Benutzer wählt im Header-Menü `Passwort ändern`.

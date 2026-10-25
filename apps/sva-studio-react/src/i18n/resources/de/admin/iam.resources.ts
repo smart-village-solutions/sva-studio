@@ -205,6 +205,13 @@ export const iamAdminDEResources = {
     },
   },
   dsr: {
+    registration: {
+      title: 'Erste Anmeldung – Rechtezuweisung ausstehend',
+      description:
+        'Bei der ersten Anmeldung wurde dieses Konto im Studio erfasst. Zu diesem Zeitpunkt waren noch keine lokalen Rollen zugewiesen. Prüfen Sie das Benutzerkonto und vergeben Sie bei Bedarf die passenden Rollen und Berechtigungen. Dieses Ereignis dokumentiert den damaligen Zustand; spätere Rechtezuweisungen ändern den Eintrag nicht.',
+      openUser: 'Benutzerkonto öffnen',
+      recorded: 'Ereignis erfasst',
+    },
     tableAriaLabel: 'Datenschutzfälle',
     tableCaption: 'Tabelle der Datenschutzfälle',
     detailLink: 'Datenschutzfall-Detail öffnen',
@@ -245,6 +252,7 @@ export const iamAdminDEResources = {
       legal_hold: 'Rechtliche Sperre',
       profile_correction: 'Profilkorrektur',
       recipient_notification: 'Empfängerbenachrichtigung',
+      account_registration: 'Erste Anmeldung',
     },
   },
   deletionRules: {

@@ -2,6 +2,7 @@ import type { QueryClient } from './query-client.js';
 
 import type {
   AdminDsrSourceRows,
+  AccountRegistrationRow,
   DsrFilters,
   ExportJobRow,
   LegalHoldRow,
@@ -170,6 +171,44 @@ ORDER BY notification.created_at DESC;
     [input.instanceId, input.relatedAccountId ?? null, input.caseId ?? null]
   );
 
+// Both first-login account creation paths already emit an immutable event.
+// Deduplicate before applying caseId so list and detail select the same event.
+const queryAdminAccountRegistrations = (client: QueryClient, input: DsrFilters) =>
+  client.query<AccountRegistrationRow>(
+    `
+WITH registrations AS (
+  SELECT DISTINCT ON (activity.account_id)
+    activity.id,
+    activity.account_id,
+    activity.instance_id,
+    activity.event_type,
+    activity.created_at
+  FROM iam.activity_logs activity
+  WHERE activity.instance_id = $1
+    AND activity.event_type IN ('user.jit_provisioned', 'account_created')
+    AND activity.result = 'success'
+  ORDER BY activity.account_id, activity.created_at, activity.id
+)
+SELECT
+  registration.id,
+  registration.account_id::text,
+  registration.event_type,
+  registration.created_at::text,
+  account.display_name_ciphertext,
+  account.first_name_ciphertext,
+  account.last_name_ciphertext,
+  account.keycloak_subject
+FROM registrations registration
+JOIN iam.accounts account
+  ON account.id = registration.account_id
+ AND account.instance_id = registration.instance_id
+WHERE ($2::uuid IS NULL OR registration.account_id = $2::uuid)
+  AND ($3::uuid IS NULL OR registration.id = $3::uuid)
+ORDER BY registration.created_at DESC;
+`,
+    [input.instanceId, input.relatedAccountId ?? null, input.caseId ?? null]
+  );
+
 export const loadAdminDsrRows = async (client: QueryClient, input: DsrFilters): Promise<AdminDsrSourceRows> => {
   const requests = await queryAdminRequests(client, input);
   const exportJobs = await queryAdminExportJobs(client, input);
@@ -183,5 +222,8 @@ export const loadAdminDsrRows = async (client: QueryClient, input: DsrFilters): 
     legalHolds: legalHolds.rows,
     profileCorrections: profileCorrections.rows,
     recipientNotifications: recipientNotifications.rows,
+    accountRegistrations: input.includeAccountRegistrations
+      ? (await queryAdminAccountRegistrations(client, input)).rows
+      : [],
   };
 };

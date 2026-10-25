@@ -75,6 +75,14 @@ export const saveVoucherEditor = async (
         'voucher_content_conflict',
         'voucher_confirmation_required',
         'voucher_no_changes',
+        'voucher_media_unavailable',
+        'voucher_ownership_conflict',
+        'voucher_snapshot_incomplete',
+        'voucher_poi_provider_unsupported',
+        'voucher_inactive_categories',
+        'voucher_dependents_unsupported',
+        'voucher_identity_conflict',
+        'csrf_validation_failed',
       ].includes(error.code)
     ) {
       sessionStorage.removeItem(pendingKey);

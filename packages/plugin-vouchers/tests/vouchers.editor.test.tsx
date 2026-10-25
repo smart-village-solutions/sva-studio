@@ -422,6 +422,40 @@ it('fails a confirmed write conflict safely and allows correction without a pend
   expect(sessionStorage.getItem('voucher-pending:user:2')).toBeNull();
   expect((screen.getByLabelText(labels.fields.title) as HTMLInputElement).value).toBe('Neu');
 });
+it.each([
+  'voucher_media_unavailable',
+  'voucher_ownership_conflict',
+  'voucher_snapshot_incomplete',
+  'voucher_poi_provider_unsupported',
+  'voucher_inactive_categories',
+  'voucher_dependents_unsupported',
+  'voucher_identity_conflict',
+] as const)(
+  'allows correction after the pre-write rejection %s, including after reload',
+  async (code) => {
+    state.commit.mockRejectedValue(new MainserverApiError(code));
+    await edit();
+    fireEvent.click(screen.getByRole('button', { name: labels.actions.update }));
+    await screen.findByRole('alertdialog');
+    fireEvent.click(screen.getByRole('button', { name: labels.actions.confirm }));
+    await screen.findByText(labels.errors[code]);
+    expect(sessionStorage.getItem('voucher-pending:user:2')).toBeNull();
+    expect(screen.queryByRole('button', { name: labels.actions.reconcile })).toBeNull();
+    fireEvent.change(screen.getByLabelText(labels.fields.title), {
+      target: { value: 'Korrigiert' },
+    });
+    expect((screen.getByLabelText(labels.fields.title) as HTMLInputElement).value).toBe(
+      'Korrigiert'
+    );
+    cleanup();
+    render(<VoucherEditor id="2" />);
+    await waitFor(() =>
+      expect((screen.getByLabelText(labels.fields.title) as HTMLInputElement).value).toBe(
+        'Eintritt'
+      )
+    );
+  }
+);
 it('shows a successful save link when navigation fails and prevents duplicate creation', async () => {
   state.navigate.mockRejectedValue(new Error('navigation_failed'));
   await edit();

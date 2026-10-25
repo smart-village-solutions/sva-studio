@@ -22,7 +22,7 @@
     "@sva/studio-ui-react": "workspace:*",
     "maplibre-gl": "^6.9.0",
     "react-hook-form": "^7.80.0",
-    "zod": "^4.6.6"
+    "zod": "^4.6.7"
   },
   "peerDependencies": {
     "@tanstack/react-router": "^1.170.8",

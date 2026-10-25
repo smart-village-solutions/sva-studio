@@ -232,7 +232,7 @@ importers:
         version: link:../../packages/waste-management-contracts
       '@sva/waste-management-runtime':
         specifier: workspace:*
-        version: file:packages/waste-management-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+        version: link:../../packages/waste-management-runtime
       '@tabler/icons-react':
         specifier: ^3.46.0
         version: 3.46.0(react@19.3.0)
@@ -302,7 +302,7 @@ importers:
         version: 0.6.6
       '@hookform/resolvers':
         specifier: ^5.9.1
-        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.6)
+        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.7)
       '@kern-ux/native':
         specifier: ^2.6.4
         version: 2.6.4
@@ -347,31 +347,31 @@ importers:
         version: file:packages/monitoring-client(@opentelemetry/core@2.8.0(@opentelemetry/api@1.10.0))
       '@sva/plugin-categories':
         specifier: workspace:*
-        version: file:packages/plugin-categories(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
+        version: link:../../packages/plugin-categories
       '@sva/plugin-cockpit':
         specifier: workspace:*
         version: link:../../packages/plugin-cockpit
       '@sva/plugin-cockpit-cards':
         specifier: workspace:*
-        version: file:packages/plugin-cockpit-cards(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ajv@8.20.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: link:../../packages/plugin-cockpit-cards
       '@sva/plugin-events':
         specifier: workspace:*
         version: file:packages/plugin-events(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@sva/plugin-faq':
         specifier: workspace:*
-        version: file:packages/plugin-faq(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ajv@8.20.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: link:../../packages/plugin-faq
       '@sva/plugin-generic-items':
         specifier: workspace:*
         version: file:packages/plugin-generic-items(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ajv@8.20.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@sva/plugin-news':
         specifier: workspace:*
-        version: file:packages/plugin-news(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ajv@8.20.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: link:../../packages/plugin-news
       '@sva/plugin-poi':
         specifier: workspace:*
         version: file:packages/plugin-poi(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@sva/plugin-projects':
         specifier: workspace:*
-        version: file:packages/plugin-projects(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ajv@8.20.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: link:../../packages/plugin-projects
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
@@ -380,7 +380,7 @@ importers:
         version: file:packages/plugin-ssf(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
       '@sva/plugin-surveys':
         specifier: workspace:*
-        version: file:packages/plugin-surveys(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: link:../../packages/plugin-surveys
       '@sva/plugin-vouchers':
         specifier: workspace:*
         version: link:../../packages/plugin-vouchers
@@ -466,8 +466,8 @@ importers:
         specifier: ^3.5.0
         version: 3.6.0
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.12.1
@@ -582,7 +582,7 @@ importers:
         version: link:../waste-management-contracts
       '@sva/waste-management-runtime':
         specifier: workspace:*
-        version: file:packages/waste-management-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+        version: link:../waste-management-runtime
       cookie-es:
         specifier: ^3.1.1
         version: 3.1.1
@@ -614,8 +614,8 @@ importers:
         specifier: ^0.35.5
         version: 0.35.5(@types/node@25.9.1)
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@types/pg':
         specifier: ^8.20.0
@@ -686,8 +686,8 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@opentelemetry/api@1.10.0)(@types/node@25.9.1)(@vitest/coverage-v8@5.0.3)(happy-dom@21.0.4)(jsdom@29.1.1)(msw@2.15.0(@types/node@25.9.1)(typescript@7.0.2))(vite@8.3.5(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
 
   packages/data-client:
     dependencies:
@@ -695,8 +695,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^5.0.3
@@ -742,8 +742,8 @@ importers:
         specifier: workspace:*
         version: link:../studio-module-iam
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^5.0.3
@@ -779,8 +779,8 @@ importers:
         specifier: ^2.18.1
         version: 2.18.1
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@types/sanitize-html':
         specifier: ^2.16.1
@@ -804,8 +804,8 @@ importers:
         specifier: workspace:*
         version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@types/pg':
         specifier: ^8.20.0
@@ -960,7 +960,7 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^5.9.1
-        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.6)
+        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.7)
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -980,8 +980,8 @@ importers:
         specifier: ^7.80.0
         version: 7.80.0(react@19.3.0)
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -1049,7 +1049,7 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^5.9.1
-        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.6)
+        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.7)
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -1069,8 +1069,8 @@ importers:
         specifier: ^7.80.0
         version: 7.80.0(react@19.3.0)
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -1095,7 +1095,7 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^5.9.1
-        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.6)
+        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.7)
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -1118,8 +1118,8 @@ importers:
         specifier: ^7.80.0
         version: 7.80.0(react@19.3.0)
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -1144,7 +1144,7 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^5.9.1
-        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.6)
+        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.7)
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -1164,8 +1164,8 @@ importers:
         specifier: ^7.80.0
         version: 7.80.0(react@19.3.0)
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -1258,7 +1258,7 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^5.9.1
-        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.6)
+        version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.7)
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -1278,8 +1278,8 @@ importers:
         specifier: ^7.80.0
         version: 7.80.0(react@19.3.0)
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -1365,8 +1365,8 @@ importers:
         specifier: ^2.18.1
         version: 2.18.1
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -1492,7 +1492,7 @@ importers:
         version: link:../waste-management-contracts
       '@sva/waste-management-runtime':
         specifier: workspace:*
-        version: file:packages/waste-management-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+        version: link:../waste-management-runtime
       '@tabler/icons-react':
         specifier: ^3.46.0
         version: 3.46.0(react@19.3.0)
@@ -1589,8 +1589,8 @@ importers:
         specifier: ^4.9.0
         version: 4.9.0
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^5.0.3
@@ -1603,7 +1603,7 @@ importers:
     dependencies:
       '@modelcontextprotocol/sdk':
         specifier: 1.32.0
-        version: 1.32.0(zod@4.6.6)
+        version: 1.32.0(zod@4.6.7)
       '@sva/instance-registry':
         specifier: workspace:*
         version: link:../instance-registry
@@ -1614,8 +1614,8 @@ importers:
         specifier: ^8.12.2
         version: 8.12.3
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^5.0.3
@@ -1758,8 +1758,8 @@ importers:
         specifier: workspace:*
         version: link:../waste-management-contracts
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^5.0.3
@@ -1820,8 +1820,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@sva/iam-core':
         specifier: workspace:*
@@ -4246,6 +4246,7 @@ packages:
   '@opentelemetry/propagator-jaeger@2.11.0':
     resolution: {integrity: sha512-RUOqgoIqXOPQTOhpBrs07Y8sBlxVoLY5Fka6ueZ0prW+k6fWQsba/nHDY4gm+gmfuwtRqbX5Y9YKhDvktjbIqQ==}
     engines: {node: ^18.19.0 || >=20.6.0}
+    deprecated: Package no longer supported. See https://github.com/open-telemetry/opentelemetry-js/pull/7077
     peerDependencies:
       '@opentelemetry/api': '>=1.0.0 <1.10.0'
 
@@ -4316,12 +4317,14 @@ packages:
   '@opentelemetry/sdk-trace-base@2.11.0':
     resolution: {integrity: sha512-H19x/TX/LZdqiYOjM7fqtSxwlplC5pgelavqbQdHbhdq0q/AI/TGkM2dfGuuynTXmJPeF2HoZVoPDu+TGoW78A==}
     engines: {node: ^18.19.0 || >=20.6.0}
+    deprecated: Use @opentelemetry/sdk-trace package
     peerDependencies:
       '@opentelemetry/api': '>=1.3.0 <1.10.0'
 
   '@opentelemetry/sdk-trace-node@2.11.0':
     resolution: {integrity: sha512-CuvCMJmZxswhNLlM2LfuLOW3h3fZujA4hsG4B+Sz4dX2zvaXO8Ng74cnDHWD64gLszTlhiG3c0iNUjj4g+0/sA==}
     engines: {node: ^18.19.0 || >=20.6.0}
+    deprecated: Use @opentelemetry/sdk-trace package
     peerDependencies:
       '@opentelemetry/api': '>=1.0.0 <1.10.0'
 
@@ -6033,29 +6036,8 @@ packages:
   '@sva/monitoring-client@file:packages/monitoring-client':
     resolution: {directory: packages/monitoring-client, type: directory}
 
-  '@sva/plugin-categories@file:packages/plugin-categories':
-    resolution: {directory: packages/plugin-categories, type: directory}
-    peerDependencies:
-      '@tanstack/react-router': 1.170.41
-      react: ^19.3.0
-      react-dom: ^19.3.0
-
-  '@sva/plugin-cockpit-cards@file:packages/plugin-cockpit-cards':
-    resolution: {directory: packages/plugin-cockpit-cards, type: directory}
-    peerDependencies:
-      '@tanstack/react-router': 1.170.41
-      react: ^19.3.0
-      react-dom: ^19.3.0
-
   '@sva/plugin-events@file:packages/plugin-events':
     resolution: {directory: packages/plugin-events, type: directory}
-    peerDependencies:
-      '@tanstack/react-router': 1.170.41
-      react: ^19.3.0
-      react-dom: ^19.3.0
-
-  '@sva/plugin-faq@file:packages/plugin-faq':
-    resolution: {directory: packages/plugin-faq, type: directory}
     peerDependencies:
       '@tanstack/react-router': 1.170.41
       react: ^19.3.0
@@ -6068,22 +6050,8 @@ packages:
       react: ^19.3.0
       react-dom: ^19.3.0
 
-  '@sva/plugin-news@file:packages/plugin-news':
-    resolution: {directory: packages/plugin-news, type: directory}
-    peerDependencies:
-      '@tanstack/react-router': 1.170.41
-      react: ^19.3.0
-      react-dom: ^19.3.0
-
   '@sva/plugin-poi@file:packages/plugin-poi':
     resolution: {directory: packages/plugin-poi, type: directory}
-    peerDependencies:
-      '@tanstack/react-router': 1.170.41
-      react: ^19.3.0
-      react-dom: ^19.3.0
-
-  '@sva/plugin-projects@file:packages/plugin-projects':
-    resolution: {directory: packages/plugin-projects, type: directory}
     peerDependencies:
       '@tanstack/react-router': 1.170.41
       react: ^19.3.0
@@ -6095,13 +6063,6 @@ packages:
   '@sva/plugin-ssf@file:packages/plugin-ssf':
     resolution: {directory: packages/plugin-ssf, type: directory}
     peerDependencies:
-      react: ^19.3.0
-      react-dom: ^19.3.0
-
-  '@sva/plugin-surveys@file:packages/plugin-surveys':
-    resolution: {directory: packages/plugin-surveys, type: directory}
-    peerDependencies:
-      '@tanstack/react-router': 1.170.41
       react: ^19.3.0
       react-dom: ^19.3.0
 
@@ -10825,9 +10786,6 @@ packages:
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
-  zod@4.6.6:
-    resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
-
   zod@4.6.7:
     resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
@@ -12609,13 +12567,13 @@ snapshots:
     dependencies:
       hono: 4.13.11
 
-  '@hookform/resolvers@5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.6)':
+  '@hookform/resolvers@5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.7)':
     dependencies:
       '@standard-schema/utils': 0.3.0
       react-hook-form: 7.80.0(react@19.3.0)
     optionalDependencies:
       ajv: 8.20.0
-      zod: 4.6.6
+      zod: 4.6.7
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -12886,7 +12844,7 @@ snapshots:
       '@types/geojson': 7946.0.16
       pbf: 5.1.0
 
-  '@modelcontextprotocol/sdk@1.32.0(zod@4.6.6)':
+  '@modelcontextprotocol/sdk@1.32.0(zod@4.6.7)':
     dependencies:
       '@hono/node-server': 1.19.17(hono@4.13.11)
       ajv: 8.20.0
@@ -12903,8 +12861,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.6.6
-      zod-to-json-schema: 3.25.2(zod@4.6.6)
+      zod: 4.6.7
+      zod-to-json-schema: 3.25.2(zod@4.6.7)
     transitivePeerDependencies:
       - supports-color
 
@@ -15427,7 +15385,7 @@ snapshots:
       postcss: 8.5.23
       sanitize-html: 2.18.1
       sharp: 0.35.5(@types/node@25.9.1)
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/core'
       - '@types/node'
@@ -15462,7 +15420,7 @@ snapshots:
       postcss: 8.5.23
       sanitize-html: 2.18.1
       sharp: 0.35.5(@types/node@25.9.1)
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/core'
       - '@types/node'
@@ -15497,7 +15455,7 @@ snapshots:
       postcss: 8.5.23
       sanitize-html: 2.18.1
       sharp: 0.35.5(@types/node@25.9.1)
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/core'
       - '@types/node'
@@ -15537,7 +15495,7 @@ snapshots:
       '@sva/iam-core': file:packages/iam-core
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.10.0))
       '@sva/studio-module-iam': file:packages/studio-module-iam
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/core'
       - supports-color
@@ -15548,7 +15506,7 @@ snapshots:
       '@sva/iam-core': file:packages/iam-core
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/studio-module-iam': file:packages/studio-module-iam
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/core'
       - supports-color
@@ -15562,7 +15520,7 @@ snapshots:
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.10.0))
       postcss: 8.5.23
       sanitize-html: 2.18.1
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/core'
       - supports-color
@@ -15574,7 +15532,7 @@ snapshots:
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       postcss: 8.5.23
       sanitize-html: 2.18.1
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/core'
       - supports-color
@@ -15584,7 +15542,7 @@ snapshots:
       '@sva/core': file:packages/core
       '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.8.0(@opentelemetry/api@1.10.0))
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.10.0))
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/core'
       - pg-native
@@ -15595,7 +15553,7 @@ snapshots:
       '@sva/core': file:packages/core
       '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/core'
       - pg-native
@@ -15642,65 +15600,6 @@ snapshots:
       - '@opentelemetry/core'
       - supports-color
 
-  '@sva/plugin-categories@file:packages/plugin-categories(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)':
-    dependencies:
-      '@sva/plugin-sdk': file:packages/plugin-sdk
-      '@sva/studio-ui-react': file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
-      '@tanstack/react-router': 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@floating-ui/dom'
-      - '@tiptap/core'
-      - '@tiptap/pm'
-      - '@types/react'
-      - '@types/react-dom'
-      - konva
-      - react-hook-form
-
-  '@sva/plugin-cockpit-cards@file:packages/plugin-cockpit-cards(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ajv@8.20.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
-    dependencies:
-      '@hookform/resolvers': 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.6)
-      '@sva/plugin-sdk': file:packages/plugin-sdk
-      '@sva/studio-ui-react': file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
-      '@tanstack/react-router': 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-      react-hook-form: 7.80.0(react@19.3.0)
-      zod: 4.6.6
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@floating-ui/dom'
-      - '@sinclair/typebox'
-      - '@standard-schema/spec'
-      - '@tiptap/core'
-      - '@tiptap/pm'
-      - '@types/react'
-      - '@types/react-dom'
-      - '@typeschema/main'
-      - '@vinejs/vine'
-      - ajv
-      - ajv-errors
-      - ajv-formats
-      - arktype
-      - ata-validator
-      - class-transformer
-      - class-validator
-      - computed-types
-      - effect
-      - fluentvalidation-ts
-      - fp-ts
-      - io-ts
-      - joi
-      - konva
-      - nope-validator
-      - superstruct
-      - typanion
-      - valibot
-      - vest
-      - yup
-
   '@sva/plugin-events@file:packages/plugin-events(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
       '@sva/plugin-sdk': file:packages/plugin-sdk
@@ -15719,51 +15618,9 @@ snapshots:
       - '@types/react-dom'
       - konva
 
-  '@sva/plugin-faq@file:packages/plugin-faq(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ajv@8.20.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
-    dependencies:
-      '@hookform/resolvers': 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.6)
-      '@sva/plugin-sdk': file:packages/plugin-sdk
-      '@sva/studio-ui-react': file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
-      '@tanstack/react-router': 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-      react-hook-form: 7.80.0(react@19.3.0)
-      zod: 4.6.6
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@floating-ui/dom'
-      - '@sinclair/typebox'
-      - '@standard-schema/spec'
-      - '@tiptap/core'
-      - '@tiptap/pm'
-      - '@types/react'
-      - '@types/react-dom'
-      - '@typeschema/main'
-      - '@vinejs/vine'
-      - ajv
-      - ajv-errors
-      - ajv-formats
-      - arktype
-      - ata-validator
-      - class-transformer
-      - class-validator
-      - computed-types
-      - effect
-      - fluentvalidation-ts
-      - fp-ts
-      - io-ts
-      - joi
-      - konva
-      - nope-validator
-      - superstruct
-      - typanion
-      - valibot
-      - vest
-      - yup
-
   '@sva/plugin-generic-items@file:packages/plugin-generic-items(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ajv@8.20.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
-      '@hookform/resolvers': 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.6)
+      '@hookform/resolvers': 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.7)
       '@sva/plugin-sdk': file:packages/plugin-sdk
       '@sva/studio-ui-react': file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
       '@tanstack/react-router': 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -15771,49 +15628,7 @@ snapshots:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
       react-hook-form: 7.80.0(react@19.3.0)
-      zod: 4.6.6
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@floating-ui/dom'
-      - '@sinclair/typebox'
-      - '@standard-schema/spec'
-      - '@tiptap/core'
-      - '@tiptap/pm'
-      - '@types/react'
-      - '@types/react-dom'
-      - '@typeschema/main'
-      - '@vinejs/vine'
-      - ajv
-      - ajv-errors
-      - ajv-formats
-      - arktype
-      - ata-validator
-      - class-transformer
-      - class-validator
-      - computed-types
-      - effect
-      - fluentvalidation-ts
-      - fp-ts
-      - io-ts
-      - joi
-      - konva
-      - nope-validator
-      - superstruct
-      - typanion
-      - valibot
-      - vest
-      - yup
-
-  '@sva/plugin-news@file:packages/plugin-news(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ajv@8.20.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
-    dependencies:
-      '@hookform/resolvers': 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.6)
-      '@sva/plugin-sdk': file:packages/plugin-sdk
-      '@sva/studio-ui-react': file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
-      '@tanstack/react-router': 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-      react-hook-form: 7.80.0(react@19.3.0)
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@babel/core'
       - '@floating-ui/dom'
@@ -15864,48 +15679,6 @@ snapshots:
       - '@types/react-dom'
       - konva
 
-  '@sva/plugin-projects@file:packages/plugin-projects(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ajv@8.20.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
-    dependencies:
-      '@hookform/resolvers': 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.6)
-      '@sva/plugin-sdk': file:packages/plugin-sdk
-      '@sva/studio-ui-react': file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
-      '@tanstack/react-router': 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-      react-hook-form: 7.80.0(react@19.3.0)
-      zod: 4.6.6
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@floating-ui/dom'
-      - '@sinclair/typebox'
-      - '@standard-schema/spec'
-      - '@tiptap/core'
-      - '@tiptap/pm'
-      - '@types/react'
-      - '@types/react-dom'
-      - '@typeschema/main'
-      - '@vinejs/vine'
-      - ajv
-      - ajv-errors
-      - ajv-formats
-      - arktype
-      - ata-validator
-      - class-transformer
-      - class-validator
-      - computed-types
-      - effect
-      - fluentvalidation-ts
-      - fp-ts
-      - io-ts
-      - joi
-      - konva
-      - nope-validator
-      - superstruct
-      - typanion
-      - valibot
-      - vest
-      - yup
-
   '@sva/plugin-sdk@file:packages/plugin-sdk':
     dependencies:
       '@sva/core': file:packages/core
@@ -15921,7 +15694,7 @@ snapshots:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
       sanitize-html: 2.18.1
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@babel/core'
       - '@floating-ui/dom'
@@ -15932,23 +15705,6 @@ snapshots:
       - konva
       - pg-native
       - react-hook-form
-
-  '@sva/plugin-surveys@file:packages/plugin-surveys(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
-    dependencies:
-      '@sva/plugin-sdk': file:packages/plugin-sdk
-      '@sva/studio-ui-react': file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
-      '@tanstack/react-router': 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-      react-hook-form: 7.80.0(react@19.3.0)
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@floating-ui/dom'
-      - '@tiptap/core'
-      - '@tiptap/pm'
-      - '@types/react'
-      - '@types/react-dom'
-      - konva
 
   '@sva/routing@file:packages/routing(@opentelemetry/core@2.8.0(@opentelemetry/api@1.10.0))(@types/node@25.9.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3)':
     dependencies:
@@ -16041,7 +15797,7 @@ snapshots:
       '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.8.0(@opentelemetry/api@1.10.0))
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.10.0))
       '@sva/waste-management-contracts': file:packages/waste-management-contracts
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/core'
       - '@types/node'
@@ -16393,7 +16149,7 @@ snapshots:
       jiti: 2.7.0
       magic-string: 0.30.21
       prettier: 3.9.6
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - supports-color
 
@@ -16407,7 +16163,7 @@ snapshots:
       '@tanstack/router-utils': 1.162.3
       chokidar: 5.0.0
       unplugin: 3.3.0(esbuild@0.28.1)(rolldown@1.2.15)(rollup@4.59.0)(vite@8.3.3(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
-      zod: 4.6.6
+      zod: 4.6.7
     optionalDependencies:
       '@tanstack/react-router': 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       vite: 8.3.3(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0)
@@ -16465,7 +16221,7 @@ snapshots:
       ufo: 1.6.4
       vitefu: 1.1.3(vite@8.3.3(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
       xmlbuilder2: 4.0.3
-      zod: 4.6.6
+      zod: 4.6.7
     optionalDependencies:
       vite: 8.3.3(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0)
     transitivePeerDependencies:
@@ -21529,15 +21285,13 @@ snapshots:
       compress-commons: 4.1.2
       readable-stream: 3.6.2
 
-  zod-to-json-schema@3.25.2(zod@4.6.6):
+  zod-to-json-schema@3.25.2(zod@4.6.7):
     dependencies:
-      zod: 4.6.6
+      zod: 4.6.7
 
   zod@3.25.76: {}
 
   zod@4.4.3: {}
-
-  zod@4.6.6: {}
 
   zod@4.6.7: {}
 

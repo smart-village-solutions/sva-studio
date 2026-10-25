@@ -26,11 +26,6 @@ export function VoucherEditorHeader({ state: s, actions }: Props) {
   });
   return (
     <>
-      <Link to="/admin/vouchers" className="underline">
-        {s.t('actions.back')}
-      </Link>
-      <h1 className="text-2xl font-semibold">{s.t(s.id ? 'editor.edit' : 'editor.create')}</h1>
-      <p className="text-muted-foreground">{s.t('editor.intro')}</p>
       <fieldset
         disabled={s.busy || s.hasChanges || s.unknown}
         className="space-y-4 rounded-2xl border border-border/60 bg-card p-5"

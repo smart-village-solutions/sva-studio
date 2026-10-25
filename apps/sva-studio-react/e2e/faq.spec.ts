@@ -314,7 +314,7 @@ test('creates an FAQ on one page and retains edit tabs for update and delete', a
 
 test('editorial create pages keep their core fields and save action usable on narrow screens', async ({ page }) => {
   test.setTimeout(120_000);
-  const modules = ['news', 'events', 'poi', 'surveys', 'faq', 'cockpit-cards', 'projects'];
+  const modules = ['news', 'events', 'poi', 'surveys', 'faq', 'cockpit-cards', 'projects', 'generic-items', 'vouchers'];
   const permissionActions = modules.flatMap((module) => ['read', 'create', 'update', 'delete'].map((action) => `${module}.${action}`));
   await page.route('**/api/v1/**', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({data: [], pagination: {page: 1, pageSize: 25, total: 0, hasNextPage: false}})}));
   await mockSharedShellRequests(page);
@@ -326,6 +326,7 @@ test('editorial create pages keep their core fields and save action usable on na
     ['news', '#news-title'], ['events', '#event-title'], ['poi', '#poi-name'],
     ['surveys', '#survey-title'], ['faq', '#faq-question'],
     ['cockpit-cards', '#cockpit-card-heading'], ['projects', '#project-title'],
+    ['generic-items', '#generic-item-title'], ['vouchers', '#voucher-title'],
   ] as const;
   for (const [type, field] of pages) {
     await navigateClientSide(page, `/admin/${type}/new`);
@@ -337,11 +338,31 @@ test('editorial create pages keep their core fields and save action usable on na
       await page.setViewportSize({width, height: 800});
       await page.evaluate(() => window.scrollTo(0, 0));
       await expect(save).toBeInViewport();
-      await page.screenshot({path: `test-results/create-${type}-${width}.png`, fullPage: type === 'surveys'});
+      const actionBar = page.locator('.sticky').filter({has: save});
+      const rightInset = await actionBar.evaluate((bar) => {
+        const button = bar.querySelector('button[type="submit"]');
+        if (!button) throw new Error('Missing submit action');
+        return bar.getBoundingClientRect().right - button.getBoundingClientRect().right;
+      });
+      expect(rightInset).toBeGreaterThanOrEqual(0);
+      expect(rightInset).toBeLessThanOrEqual(24);
+      const card = page.locator('[data-slot="studio-detail-card"]:visible').first();
+      await expect(card).toBeVisible();
+      expect(await actionBar.evaluate((element) => getComputedStyle(element).backgroundColor))
+        .toBe(await card.evaluate((element) => getComputedStyle(element).backgroundColor));
+      const nestedSurfaces = page.locator(':is(details, [data-slot="studio-detail-card"]) :is(details, [data-slot="studio-detail-card"])');
+      for (const surface of await nestedSurfaces.all()) {
+        expect(await surface.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return {border: style.borderTopWidth, padding: style.paddingTop, background: style.backgroundColor};
+        })).toEqual({border: '0px', padding: '0px', background: 'rgba(0, 0, 0, 0)'});
+      }
+      await page.screenshot({path: test.info().outputPath(`create-${type}-${width}.png`), fullPage: true});
       if (type === 'surveys') {
         const summaries = await page.locator('#survey-create-text > details > summary, #survey-create-participation > details > summary').all();
         for (const summary of summaries) await summary.click();
-        await page.screenshot({path: `test-results/create-surveys-${width}-expanded.png`, fullPage: true});
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({path: test.info().outputPath(`create-surveys-${width}-expanded.png`), fullPage: true});
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         for (const summary of summaries) await summary.click();
       }

@@ -19,7 +19,10 @@ export function StudioDetailCard({
   className,
 }: StudioDetailCardProps) {
   return (
-    <section className={cn('space-y-4 rounded-2xl border border-border/60 bg-card p-5', className)}>
+    <section
+      data-slot="studio-detail-card"
+      className={cn('space-y-4 rounded-2xl border border-border/60 bg-card p-5', className)}
+    >
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <h3 className="text-base font-semibold text-card-foreground">{title}</h3>

@@ -69,6 +69,7 @@ export const GenericItemsDetailPageView = ({
   } = view;
   return (
     <StudioDetailPageTemplate
+      stickyActions={mode === 'create'}
       title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
       description={
         mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')

@@ -388,7 +388,7 @@ describe('GenericItemsDetailPage', () => {
     render(<GenericItemsDetailPage mode="create" />);
     fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Unsaved draft' } });
     fireEvent.change(screen.getByLabelText('Generic-Type'), { target: { value: 'custom' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Generic Item anlegen' })[1]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
     await waitFor(() => expect(createGenericItem).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByText('Fehler')).toBeTruthy());
     expect(hasUnsavedChanges()).toBe(true);
@@ -411,7 +411,7 @@ describe('GenericItemsDetailPage', () => {
     render(<GenericItemsDetailPage mode="create" />);
     fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Before save' } });
     fireEvent.change(screen.getByLabelText('Generic-Type'), { target: { value: 'custom' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Generic Item anlegen' })[1]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
     await waitFor(() => expect(createGenericItem).toHaveBeenCalledTimes(1));
     expect(hasUnsavedChanges()).toBe(true);
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'After save started' } });
@@ -452,7 +452,7 @@ describe('GenericItemsDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Freier Eintrag' } });
     fireEvent.change(screen.getByLabelText('Generic-Type'), { target: { value: 'faq' } });
     expect(hasUnsavedChanges()).toBe(true);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Generic Item anlegen' })[1]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
 
     await waitFor(() => {
       expect(createGenericItem).toHaveBeenCalledWith(
@@ -481,7 +481,7 @@ describe('GenericItemsDetailPage', () => {
     details.open = true;
     fireEvent.change(payload, { target: { value: '{invalid' } });
     details.open = false;
-    fireEvent.click(screen.getAllByRole('button', { name: 'Generic Item anlegen' })[1]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
     await waitFor(() => expect(details.open).toBe(true));
     expect((payload as HTMLTextAreaElement).value).toBe('{invalid');
     expect(createGenericItem).not.toHaveBeenCalled();
@@ -502,7 +502,7 @@ describe('GenericItemsDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Kategorie Rathaus entfernen' })).toBeTruthy();
     });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Generic Item anlegen' })[1]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
 
     await waitFor(() => {
       expect(createGenericItem).toHaveBeenCalledWith(

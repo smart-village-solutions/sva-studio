@@ -24,6 +24,8 @@ describe('check-i18n-keys', () => {
     expect(keys.has('cockpit-cards.editor.createTitle')).toBe(true);
     expect(keys.has('poi.navigation.title')).toBe(true);
     expect(keys.has('surveys.pages.createTitle')).toBe(true);
+    expect(keys.has('vouchers.editor.create')).toBe(true);
+    expect(keys.has('vouchers.editor.edit')).toBe(true);
     expect(keys.has('wasteManagement.page.title')).toBe(true);
   });
 

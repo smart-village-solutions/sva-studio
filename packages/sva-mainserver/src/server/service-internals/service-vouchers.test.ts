@@ -170,6 +170,54 @@ describe('voucher aggregate write', () => {
     expect(result.dates).toEqual([{ dateStart: null, dateEnd: null }]);
     expect(poi.vouchers[0]?.dates).toEqual([date]);
   });
+  it('retains unedited image metadata and opaque payload while rebinding a library asset', async () => {
+    const { poi, service, fingerprint } = setup();
+    const [target] = poi.vouchers;
+    if (!target) throw new Error('Missing voucher fixture');
+    Object.assign(target, {
+      mediaContents: [
+        {
+          ...blank(voucherPoiWriteFields.vouchers.mediaContents),
+          contentType: 'image',
+          captionText: 'Old caption',
+          copyright: 'Credit',
+          height: 480,
+          width: 640,
+          payload: { studioMediaAssetId: 'old-id', opaque: 'keep' },
+          sourceUrl: { url: 'https://example.test/image.jpg', description: 'Alt text' },
+        },
+      ],
+    });
+    const assetId = '40000000-0000-4000-8000-000000000001';
+    await service.writeVoucher({
+      ...connection,
+      poiId: '1',
+      voucherId: '2',
+      creationId: 'attempt',
+      expectedFingerprint: fingerprint(),
+      voucher: {
+        ...input,
+        mediaContents: [
+          {
+            contentType: 'image',
+            hostMediaAssetId: assetId,
+            captionText: 'New caption',
+            sourceUrl: { url: 'https://example.test/image.jpg' },
+          },
+        ],
+      },
+    });
+    expect(poi.vouchers[0]?.mediaContents).toEqual([
+      expect.objectContaining({
+        captionText: 'New caption',
+        copyright: 'Credit',
+        height: 480,
+        width: 640,
+        payload: { studioMediaAssetId: assetId, opaque: 'keep' },
+        sourceUrl: { url: 'https://example.test/image.jpg', description: 'Alt text' },
+      }),
+    ]);
+  });
   it('uses the pre-issued creation identity exactly once', async () => {
     const { execute, service, fingerprint } = setup();
     const result = await service.writeVoucher({
@@ -293,11 +341,9 @@ describe('voucher provider reads and pagination', () => {
       ...voucher(String(index), `uuid-${index}`),
       pointOfInterest: null,
     }));
-    execute
-      .mockResolvedValueOnce({ genericItems: unrelated })
-      .mockResolvedValueOnce({
-        genericItems: [voucher('200', 'uuid-200'), voucher('201', 'uuid-201')],
-      });
+    execute.mockResolvedValueOnce({ genericItems: unrelated }).mockResolvedValueOnce({
+      genericItems: [voucher('200', 'uuid-200'), voucher('201', 'uuid-201')],
+    });
     const result = await service.listVouchers({
       ...connection,
       page: 1,

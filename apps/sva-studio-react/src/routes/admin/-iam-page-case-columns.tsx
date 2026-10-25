@@ -11,6 +11,7 @@ import {
 } from './-iam-page-display';
 import { formatDateTime } from './-iam-page-shared';
 import {
+  formatDsrTitle,
   formatGovernanceTitle,
   mapDsrStatusToTranslationKey,
   mapDsrStatusTone,
@@ -78,7 +79,7 @@ export const buildDsrColumns = (): readonly StudioColumnDef<IamDsrCaseListItem>[
           className="font-semibold text-foreground underline-offset-4 hover:underline"
           href={`/admin/iam/dsr/${item.id}`}
         >
-          {item.title}
+          {formatDsrTitle(item)}
         </a>
         <p className="text-xs text-muted-foreground">{item.summary}</p>
       </div>

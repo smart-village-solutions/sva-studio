@@ -36,7 +36,8 @@ export type IamDsrCaseType =
   | 'export_job'
   | 'legal_hold'
   | 'profile_correction'
-  | 'recipient_notification';
+  | 'recipient_notification'
+  | 'account_registration';
 
 export type IamDsrCanonicalStatus = 'queued' | 'in_progress' | 'completed' | 'blocked' | 'failed';
 

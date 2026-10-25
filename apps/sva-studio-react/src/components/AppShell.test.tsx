@@ -6,9 +6,18 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AppShell from './AppShell';
+import { setActiveLocale } from '../i18n';
 
 const useAuthMock = vi.fn();
 const retryEffectiveAccessMock = vi.fn();
+const effectiveAccessMock = {
+  snapshot: {
+    status: 'ready',
+    scope: { kind: 'tenant', instanceId: 'tenant-a' },
+  },
+  permissionActions: [] as string[],
+  retry: retryEffectiveAccessMock,
+};
 
 /**
  * Mockt den TanStack-Link für DOM-basierte Komponententests.
@@ -39,10 +48,7 @@ vi.mock('../providers/auth-provider', () => ({
 }));
 
 vi.mock('../providers/effective-access-provider', () => ({
-  useEffectiveAccess: () => ({
-    snapshot: { status: 'ready' },
-    retry: retryEffectiveAccessMock,
-  }),
+  useEffectiveAccess: () => effectiveAccessMock,
 }));
 
 vi.mock('../hooks/use-organization-context', () => ({
@@ -117,11 +123,14 @@ vi.mock('./Sidebar', () => ({
  */
 afterEach(() => {
   cleanup();
+  setActiveLocale('de');
   useAuthMock.mockReset();
   retryEffectiveAccessMock.mockReset();
 });
 
 beforeEach(() => {
+  effectiveAccessMock.snapshot = { status: 'ready', scope: { kind: 'tenant', instanceId: 'tenant-a' } };
+  effectiveAccessMock.permissionActions = [];
   useAuthMock.mockReturnValue({
     user: {
       id: 'user-1',
@@ -170,6 +179,85 @@ describe('AppShell', () => {
     expect(screen.getByText('Inhalt')).toBeTruthy();
     expect(screen.getByText('Inhalt').closest('div')?.className).toContain('space-y-4');
     expect(screen.queryByTestId('runtime-health-indicator')).toBeNull();
+  });
+
+  const setRolelessSession = () => {
+    const auth = {
+      ...useAuthMock(),
+      user: {
+        id: 'user-1',
+        instanceId: 'tenant-a',
+        roles: [] as string[],
+        permissionActions: [] as string[],
+        permissionStatus: 'ok',
+      },
+      hasResolvedSession: true,
+      isRecoveringSession: false,
+    };
+    useAuthMock.mockReturnValue(auth);
+    return auth;
+  };
+
+  it('explains successful registration and pending role assignment on any Studio page', () => {
+    setRolelessSession();
+    const view = render(<AppShell currentPathname="/content">Inhalt</AppShell>);
+
+    const notice = screen.getByRole('status', { name: 'Anmeldung erfolgreich' });
+    expect(notice.getAttribute('aria-live')).toBe('polite');
+    expect(notice.textContent).toContain('Ihre erste Anmeldung');
+    expect(notice.textContent).toContain('zuständige Administration');
+
+    view.rerender(<AppShell currentPathname="/account">Profil</AppShell>);
+    expect(screen.getByRole('status', { name: 'Anmeldung erfolgreich' })).toBeTruthy();
+  });
+
+  it.each(['anonymous', 'loading', 'unresolved', 'recovering', 'error', 'degraded', 'unknownPermissions'])(
+    'does not confuse %s sessions with pending role assignment',
+    (state) => {
+      const auth = setRolelessSession();
+      useAuthMock.mockReturnValue({
+        ...auth,
+        ...(state === 'anonymous' ? { user: null, isAuthenticated: false } : {}),
+        ...(state === 'loading' ? { isLoading: true } : {}),
+        ...(state === 'unresolved' ? { hasResolvedSession: false } : {}),
+        ...(state === 'recovering' ? { isRecoveringSession: true } : {}),
+        ...(state === 'error' ? { error: new Error('session failed') } : {}),
+        ...(state === 'degraded' ? { user: { ...auth.user, permissionStatus: 'degraded' } } : {}),
+        ...(state === 'unknownPermissions' ? { user: { ...auth.user, permissionActions: undefined } } : {}),
+      });
+      render(<AppShell>Inhalt</AppShell>);
+      expect(screen.queryByRole('status', { name: 'Anmeldung erfolgreich' })).toBeNull();
+    }
+  );
+
+  it.each(['loading', 'unresolved', 'error', 'foreignTenant', 'platform', 'permissions'])(
+    'does not show the notice for a %s effective-access snapshot',
+    (state) => {
+      setRolelessSession();
+      if (state === 'foreignTenant') effectiveAccessMock.snapshot.scope.instanceId = 'tenant-b';
+      else if (state === 'platform') effectiveAccessMock.snapshot.scope.kind = 'platform';
+      else if (state === 'permissions') effectiveAccessMock.permissionActions = ['news.read'];
+      else effectiveAccessMock.snapshot.status = state;
+      render(<AppShell>Inhalt</AppShell>);
+      expect(screen.queryByRole('status', { name: 'Anmeldung erfolgreich' })).toBeNull();
+    }
+  );
+
+  it('removes the notice once roles are assigned, including roles without effective actions', () => {
+    const auth = setRolelessSession();
+    const view = render(<AppShell>Inhalt</AppShell>);
+    expect(screen.getByRole('status', { name: 'Anmeldung erfolgreich' })).toBeTruthy();
+
+    useAuthMock.mockReturnValue({ ...auth, user: { ...auth.user, roles: ['editor'] } });
+    view.rerender(<AppShell>Inhalt</AppShell>);
+    expect(screen.queryByRole('status', { name: 'Anmeldung erfolgreich' })).toBeNull();
+  });
+
+  it('renders the pending-assignment notice in English', () => {
+    setRolelessSession();
+    setActiveLocale('en');
+    render(<AppShell>Content</AppShell>);
+    expect(screen.getByRole('status', { name: 'Sign-in successful' }).textContent).toContain('Your administrator');
   });
 
   it('versteckt die Breadcrumbs auf der Startseite', async () => {

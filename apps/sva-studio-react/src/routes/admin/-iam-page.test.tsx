@@ -708,6 +708,23 @@ describe('IamViewerPage', () => {
     });
   });
 
+  it('renders a localized first-login event with a detail link and recorded status', async () => {
+    listAdminDsrCasesMock.mockResolvedValue({ data: [{
+      id: 'registration-1', type: 'account_registration', canonicalStatus: 'completed', rawStatus: 'success',
+      title: 'account_registration', summary: 'Neues Konto', targetDisplayName: 'Neues Konto',
+      createdAt: '2026-10-25T10:00:00.000Z', metadata: {},
+    }] });
+    useAuthMock.mockReturnValue({ user: adminUser, isLoading: false, error: null, refreshSession: vi.fn() });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['dsr']);
+    render(<IamViewerPage activeTab="dsr" />);
+    const links = await screen.findAllByRole('link', { name: 'Erste Anmeldung – Rechtezuweisung ausstehend' });
+    expect(links[0].getAttribute('href')).toBe('/admin/iam/dsr/registration-1');
+    expect(screen.getAllByText('Ereignis erfasst').length).toBeGreaterThan(0);
+    expect(screen.queryByText('account_registration')).toBeNull();
+  });
+
   it('renders DSR rows as detail links without inline detail pane content', async () => {
     listAdminDsrCasesMock.mockResolvedValue({
       data: [

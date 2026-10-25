@@ -62,6 +62,7 @@ export const dsrTypeOptions = [
   'legal_hold',
   'profile_correction',
   'recipient_notification',
+  'account_registration',
 ] as const;
 
 export const dsrStatusOptions = [

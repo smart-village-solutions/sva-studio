@@ -3,6 +3,7 @@ import type { AuthorizeResponse, EffectivePermission } from '@sva/iam-core';
 
 import {
   filterPermissions,
+  formatDsrTitle,
   formatGovernanceTitle,
   formatPermissionAreaLabel,
   formatPermissionSourceKindLabels,
@@ -203,6 +204,17 @@ describe('iam.models', () => {
     expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'completed' })).toBe('admin.iam.dsr.status.completed');
     expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'blocked' })).toBe('admin.iam.dsr.status.blocked');
     expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'failed' })).toBe('admin.iam.dsr.status.failed');
+  });
+
+  it('localizes registration events as recorded historical first-login states', () => {
+    expect(formatDsrTitle({ type: 'account_registration', title: 'account_registration' })).toBe(
+      'Erste Anmeldung – Rechtezuweisung ausstehend'
+    );
+    expect(formatDsrTitle({ type: 'request', title: 'Auskunft' })).toBe('Auskunft');
+    expect(mapDsrStatusToTranslationKey({ type: 'account_registration', canonicalStatus: 'completed' })).toBe(
+      'admin.iam.dsr.registration.recorded'
+    );
+    expect(mapDsrTypeToTranslationKey('account_registration')).toBe('admin.iam.dsr.types.account_registration');
   });
 
   it('maps IAM tab, governance type and DSR filter values to static translation keys', () => {

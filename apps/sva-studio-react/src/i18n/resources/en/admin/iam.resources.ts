@@ -196,6 +196,13 @@ export const iamAdminENResources = {
     },
   },
   dsr: {
+    registration: {
+      title: 'First sign-in – role assignment pending',
+      description:
+        'This account was registered in Studio during its first sign-in. No local roles had been assigned at that time. Review the user account and assign the appropriate roles and permissions if needed. This event records the state at that time; later role assignments do not change it.',
+      openUser: 'Open user account',
+      recorded: 'Event recorded',
+    },
     tableAriaLabel: 'Privacy cases',
     tableCaption: 'Privacy cases table',
     detailLink: 'Open privacy case detail',
@@ -236,6 +243,7 @@ export const iamAdminENResources = {
       legal_hold: 'Legal hold',
       profile_correction: 'Profile correction',
       recipient_notification: 'Recipient notification',
+      account_registration: 'First sign-in',
     },
   },
   deletionRules: {

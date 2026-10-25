@@ -197,6 +197,7 @@ export const listAdminDataSubjectRightsCasesHandler = async (
             status,
             sortBy,
             sortDirection,
+            includeAccountRegistrations: user.roles.includes('system_admin'),
           })
         );
         return jsonResponse(
@@ -257,6 +258,7 @@ export const getAdminDataSubjectRightsCaseHandler = async (request: Request): Pr
           getAdminDsrCase(client, {
             instanceId,
             caseId,
+            includeAccountRegistrations: user.roles.includes('system_admin'),
           })
         );
 

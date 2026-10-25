@@ -146,6 +146,30 @@ describe('voucher aggregate write', () => {
       dateStart: '2026-02-01',
     });
   });
+  it('preserves weekday and time rules when editing content without date boundaries', async () => {
+    const { poi, service, fingerprint } = setup();
+    const date = {
+      ...blank(voucherPoiWriteFields.vouchers.dates),
+      weekday: 'Monday',
+      timeStart: '09:00',
+      timeEnd: '12:00',
+      timeDescription: 'Morning',
+      useOnlyTimeDescription: false,
+    };
+    const [target] = poi.vouchers;
+    if (!target) throw new Error('Missing voucher fixture');
+    target.dates = [date];
+    const result = await service.writeVoucher({
+      ...connection,
+      poiId: '1',
+      voucherId: '2',
+      voucher: { ...input, body: 'Alt', discountValue: 20, maxPerPerson: 2, dateStart: undefined },
+      creationId: 'attempt',
+      expectedFingerprint: fingerprint(),
+    });
+    expect(result.dates).toEqual([{ dateStart: null, dateEnd: null }]);
+    expect(poi.vouchers[0]?.dates).toEqual([date]);
+  });
   it('uses the pre-issued creation identity exactly once', async () => {
     const { execute, service, fingerprint } = setup();
     const result = await service.writeVoucher({
@@ -201,17 +225,15 @@ describe('voucher aggregate write', () => {
 
 describe('generic item mutation bypass protection', () => {
   it('rejects Voucher creation, update and deletion in the generic writer without a provider mutation', async () => {
-    const execute = vi
-      .fn()
-      .mockResolvedValue({
-        genericItem: {
-          id: '2',
-          title: 'Alt',
-          genericType: 'Voucher',
-          visible: false,
-          payload: { id: 'uuid-2' },
-        },
-      });
+    const execute = vi.fn().mockResolvedValue({
+      genericItem: {
+        id: '2',
+        title: 'Alt',
+        genericType: 'Voucher',
+        visible: false,
+        payload: { id: 'uuid-2' },
+      },
+    });
     const service = createItemService({
       loadValidatedInstanceConfig: vi.fn(),
       loadListCredentialMetadata: vi.fn(),

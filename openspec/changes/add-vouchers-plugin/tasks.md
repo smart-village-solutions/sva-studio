@@ -61,3 +61,11 @@ Die Implementierung liegt für den PR auf `feature/vouchers-plugin-pr`. Mainserv
 ### PR #1972 auf aktuellem main
 
 Der isolierte PR-Worktree basiert auf `58dafeba5` und enthält keine fremden Keycloak-/Smoke-Änderungen. Auf dieser Basis wurden `nx run plugin-vouchers:test:coverage` (46 Tests, identische Coverage) sowie `complexity-gate --base=origin/main` erneut erfolgreich ausgeführt. Das diffbezogene Komplexitätsgate prüft jetzt 66 Dateien: keine neuen Findings, ein bestehender getrackter Export-Befund in `service.ts`. Die weiter oben genannten roten globalen Befunde beziehen sich auf den früheren, vollständigen Lauf vor der Aktualisierung der Basis und sind kein aktueller PR-Gatestatus. Vollständige GitHub-CI und Live-Abnahmen bleiben gesondert offen.
+
+### Review-Korrekturen am 25.10.2026
+
+- Recovery prüft den vollständigen vorbereiteten Sollzustand einschließlich POI, Geschwistergutscheinen, Kontingent, Medien und opaken Payload-Feldern. Der Sollzustand bleibt im bestehenden serverseitigen Idempotenzdatensatz; nur frisch generierte technische Update-Metadaten sind ausgenommen. Gezielte Routenprüfung: 18 Tests grün.
+- Inhaltskorrekturen erhalten Wochentags- und Uhrzeitregeln auch ohne Datumsgrenzen. Der Adaptertest prüft sowohl den zurückgegebenen Datumsbereich als auch die tatsächlich gespeicherten Zeitmetadaten.
+- Bekannte Ablehnungen vor dem Write entfernen den Pending-Marker und erlauben Korrekturen samt Reload. Tatsächlich unklare Ausgänge bleiben gesperrt. Der Ortsfilter lädt weitere Ergebnisseiten auch nach einer leeren autorisierten Seite. Gezielte UI-Regressionen: 10 Tests grün.
+- Plugin-Typecheck und Mainserver-Server-Runtime-Prüfung erfolgreich. Der GraphQL-Specifier im Lockfile entspricht der exakten Manifestversion; unbeabsichtigte Importer- und Workspace-Auflösungsänderungen wurden verworfen. Installation mit `--frozen-lockfile --ignore-scripts` erfolgreich.
+- Die vollständige CI am neuen PR-HEAD und die bereits dokumentierten isolierten Mainserver-/App-/UX-Abnahmen bleiben gesonderte Nachweise. Keine externen Testdaten und kein Rollout.

@@ -24,7 +24,13 @@ import {
   syncVoucherMedia,
   reconcileVoucherReferences,
 } from './poi-route-vouchers.js';
-import { raw, records, voucherSnapshotHash } from './vouchers-snapshot.js';
+import {
+  raw,
+  records,
+  voucherSnapshotHash,
+  voucherWriteMatches,
+  rawRecordSchema,
+} from './vouchers-snapshot.js';
 import { TYPE, BASE, local } from './vouchers-route-access.js';
 export const reconcile = async (request: Request, ctx: AuthenticatedRequestContext) => {
   if (validateCsrf(request))
@@ -75,6 +81,9 @@ export const reconcile = async (request: Request, ctx: AuthenticatedRequestConte
     aggregate.poi.payload == null ||
     raw(aggregate.poi.payload).studioVoucherOperationId !== parsed.data.preparationId
   )
+    return errorJson(409, 'voucher_outcome_unknown', 'voucher_outcome_unknown');
+  const expected = z.object({ expectedSnapshot: rawRecordSchema }).safeParse(prepared.responseBody);
+  if (!expected.success || !voucherWriteMatches(aggregate.poi, expected.data.expectedSnapshot))
     return errorJson(409, 'voucher_outcome_unknown', 'voucher_outcome_unknown');
   const matches = records(aggregate.poi.vouchers).filter(
     (item) => item.payload != null && raw(item.payload).id === binding.voucherIdentity

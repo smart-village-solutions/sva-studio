@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { buildVoucherWrite } from './service-internals/service-vouchers.js';
 import { z } from 'zod';
 import {
   completeIdempotency,
@@ -43,16 +44,32 @@ async function preparedVoucherResult(
     principal: actor.actingPrincipalType,
     credential: actor.credentialFingerprint,
   });
-  const siblingIdentities = Object.fromEntries(
-    aggregate.siblings.map((item) => [
-      String(item.id),
-      item.payload != null && typeof raw(item.payload).id === 'string' && raw(item.payload).id
-        ? raw(item.payload).id
-        : item.id === body.voucherId
-          ? preparationId
-          : randomUUID(),
-    ])
-  );
+  const siblingIdentities = z
+    .record(z.string(), z.string())
+    .parse(
+      Object.fromEntries(
+        aggregate.siblings.map((item) => [
+          String(item.id),
+          item.payload != null && typeof raw(item.payload).id === 'string' && raw(item.payload).id
+            ? raw(item.payload).id
+            : item.id === body.voucherId
+              ? preparationId
+              : randomUUID(),
+        ])
+      )
+    );
+  const { expected } = buildVoucherWrite(aggregate, {
+    voucher: body.voucher,
+    voucherId: body.voucherId,
+    creationId: preparationId,
+    siblingIdentities,
+  });
+  // These two technical values are freshly assigned by the writer. All content,
+  // including opaque payload fields and the operation identity, must survive.
+  const payload: Record<string, unknown> = { ...expected.payload };
+  delete payload.studioUpdatedAt;
+  delete payload.studioUpdateId;
+  const expectedSnapshot = { ...expected, payload };
   const data = {
     preparationId,
     operation: body.voucherId ? 'update' : 'create',
@@ -74,7 +91,7 @@ async function preparedVoucherResult(
     idempotencyKey: preparationId,
     status: 'COMPLETED',
     responseStatus: 200,
-    responseBody: data,
+    responseBody: { ...data, expectedSnapshot },
   });
   return json({ data });
 }

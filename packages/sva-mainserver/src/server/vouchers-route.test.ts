@@ -91,7 +91,12 @@ beforeEach(() => {
       dataProvider: { id: 'provider' },
       vouchers: [{ id: '2', title: 'Alt' }],
     },
-    snapshot: {},
+    snapshot: {
+      name: 'Ort',
+      payload: { opaque: 'keep' },
+      mediaContents: [{ captionText: 'Keep' }],
+      vouchers: [{ title: 'Alt' }],
+    },
     fingerprint,
   });
   state.access.mockResolvedValue({ 'vouchers.read': true });
@@ -231,14 +236,22 @@ describe('voucher recovery', () => {
   it('reads back by pre-issued identity after response loss without another provider write', async () => {
     const prepared = await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher }));
     const { data } = await prepared!.json();
-    state.reserve.mockResolvedValue({ status: 'replay', responseBody: data, responseStatus: 200 });
+    const binding = state.complete.mock.calls.at(-1)![0].responseBody;
+    expect(data).not.toHaveProperty('expectedSnapshot');
+    state.reserve.mockResolvedValue({
+      status: 'replay',
+      responseBody: binding,
+      responseStatus: 200,
+    });
     state.aggregate.mockResolvedValue({
       poi: {
-        payload: { studioVoucherOperationId: data.preparationId },
-        vouchers: [
-          { id: '99', payload: { id: data.voucherIdentity } },
-          { id: '2', title: voucher.title, payload: { id: data.siblingIdentities['2'] } },
-        ],
+        ...binding.expectedSnapshot,
+        vouchers: binding.expectedSnapshot.vouchers.map(
+          (item: Record<string, unknown>, index: number) => ({
+            ...item,
+            id: index === 0 ? '2' : '99',
+          })
+        ),
       },
     });
     state.detail.mockResolvedValue({
@@ -253,6 +266,37 @@ describe('voucher recovery', () => {
     expect(await response?.json()).toMatchObject({ data: { id: '99' } });
     expect(state.write).not.toHaveBeenCalled();
   });
+  it.each(['poi', 'sibling', 'voucher', 'payload', 'media'] as const)(
+    'does not confirm recovery when the provider lost %s content',
+    async (field) => {
+      const prepared = await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher }));
+      const { data } = await prepared!.json();
+      const binding = state.complete.mock.calls.at(-1)![0].responseBody;
+      const poi = structuredClone(binding.expectedSnapshot);
+      poi.vouchers = poi.vouchers.map((item: Record<string, unknown>, index: number) => ({
+        ...item,
+        id: String(index + 10),
+      }));
+      if (field === 'poi') poi.name = 'Lost';
+      if (field === 'payload') delete poi.payload.opaque;
+      if (field === 'media') poi.mediaContents = [];
+      if (field === 'sibling') poi.vouchers[0].title = 'Lost';
+      if (field === 'voucher') poi.vouchers[1].quota.maxQuantity = 1;
+      state.reserve.mockResolvedValue({
+        status: 'replay',
+        responseBody: binding,
+        responseStatus: 200,
+      });
+      state.aggregate.mockResolvedValue({ poi });
+      const response = await dispatchSvaMainserverVouchersRequest(
+        request('reconcile', { preparationId: data.preparationId, payloadHash: data.payloadHash })
+      );
+      expect(response?.status).toBe(409);
+      expect(await response?.json()).toMatchObject({ error: 'voucher_outcome_unknown' });
+      expect(state.finalize).not.toHaveBeenCalled();
+      expect(state.write).not.toHaveBeenCalled();
+    }
+  );
   it('rejects changed context and ambiguous identities without a write', async () => {
     const prepared = await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher }));
     const { data } = await prepared!.json();
@@ -304,7 +348,12 @@ describe('editor read version', () => {
     target.title = 'Changed elsewhere';
     state.aggregate.mockResolvedValue({
       poi: { dataProvider: { id: 'provider' }, vouchers: [target] },
-      snapshot: {},
+      snapshot: {
+        name: 'Ort',
+        payload: { opaque: 'keep' },
+        mediaContents: [{ captionText: 'Keep' }],
+        vouchers: [{ title: 'Alt' }],
+      },
       fingerprint,
     });
     const response = await dispatchSvaMainserverVouchersRequest(
@@ -322,7 +371,12 @@ describe('editor read version', () => {
     const target = existingVoucher();
     state.aggregate.mockResolvedValue({
       poi: { id: '1', name: 'Ort', dataProvider: { id: 'provider' }, vouchers: [target] },
-      snapshot: {},
+      snapshot: {
+        name: 'Ort',
+        payload: { opaque: 'keep' },
+        mediaContents: [{ captionText: 'Keep' }],
+        vouchers: [{ title: 'Alt' }],
+      },
       fingerprint,
     });
     state.local.mockImplementation(({ action }) =>

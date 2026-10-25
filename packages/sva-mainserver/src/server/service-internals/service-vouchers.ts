@@ -154,37 +154,7 @@ const writeVoucher = async (
   const current = await getVoucherPoi(context, input);
   if (current.fingerprint !== input.expectedFingerprint)
     throw new Error('voucher_content_conflict');
-  const existing = records(current.poi.vouchers);
-  const index = input.voucherId ? existing.findIndex((v) => v.id === input.voucherId) : -1;
-  if (input.voucherId && index < 0) throw new Error('voucher_content_conflict');
-  const currentPayload =
-    index < 0 || existing[index]?.payload == null ? {} : raw(existing[index]?.payload);
-  const uuid =
-    typeof currentPayload.id === 'string' && currentPayload.id
-      ? currentPayload.id
-      : input.creationId;
-  const next = buildSiblingSnapshots(current.snapshot, existing, input.siblingIdentities);
-  const controlled = applyVoucherFields(
-    index < 0 ? undefined : next[index],
-    input.voucher,
-    currentPayload,
-    uuid
-  );
-  const updated = index < 0 ? controlled : { ...next[index], ...controlled };
-  if (index < 0) next.push(updated);
-  else next[index] = updated;
-  // Strip read-only values from unchanged siblings using the same field inventory.
-  const vouchers = next.map((item) =>
-    voucherWriteSnapshot(item, voucherPoiWriteFields.vouchers, false)
-  );
-  const expected = {
-    ...current.snapshot,
-    payload: {
-      ...withUpdatedPayload(undefined, current.snapshot.payload),
-      studioVoucherOperationId: input.creationId,
-    },
-    vouchers,
-  };
+  const { existing, next, uuid, updated, expected } = buildVoucherWrite(current, input);
   await execute(
     context,
     input,
@@ -221,6 +191,49 @@ const writeVoucher = async (
     voucherIdChanges,
   };
 };
+// Shared by preparation and writing so recovery checks the same complete aggregate.
+export function buildVoucherWrite(
+  current: Pick<Awaited<ReturnType<typeof getVoucherPoi>>, 'poi' | 'snapshot'>,
+  input: {
+    voucherId?: string;
+    voucher: VoucherInput;
+    creationId: string;
+    siblingIdentities?: Readonly<Record<string, string>>;
+  }
+) {
+  const existing = records(current.poi.vouchers);
+  const index = input.voucherId ? existing.findIndex((v) => v.id === input.voucherId) : -1;
+  if (input.voucherId && index < 0) throw new Error('voucher_content_conflict');
+  const currentPayload =
+    index < 0 || existing[index]?.payload == null ? {} : raw(existing[index]?.payload);
+  const uuid =
+    typeof currentPayload.id === 'string' && currentPayload.id
+      ? currentPayload.id
+      : input.creationId;
+  const next = buildSiblingSnapshots(current.snapshot, existing, input.siblingIdentities);
+  const controlled = applyVoucherFields(
+    index < 0 ? undefined : next[index],
+    input.voucher,
+    currentPayload,
+    uuid
+  );
+  const updated = index < 0 ? controlled : { ...next[index], ...controlled };
+  if (index < 0) next.push(updated);
+  else next[index] = updated;
+  // Strip read-only values from unchanged siblings using the same field inventory.
+  const vouchers = next.map((item) =>
+    voucherWriteSnapshot(item, voucherPoiWriteFields.vouchers, false)
+  );
+  const expected = {
+    ...current.snapshot,
+    payload: {
+      ...withUpdatedPayload(undefined, current.snapshot.payload),
+      studioVoucherOperationId: input.creationId,
+    },
+    vouchers,
+  };
+  return { existing, next, uuid, updated, expected };
+}
 export const createVoucherService = (context: VoucherServiceContext) => ({
   listVouchers: (input: Parameters<typeof listVouchers>[1]) => listVouchers(context, input),
   getVoucher: (input: Parameters<typeof getVoucher>[1]) => getVoucher(context, input),
@@ -263,7 +276,10 @@ function applyVoucherFields(
         { ...dates[0], ...controlled.dates[0] },
         ...dates.slice(1),
       ] as typeof controlled.dates;
-    else controlled.dates = dates.slice(1) as typeof controlled.dates;
+    else
+      controlled.dates = dates.map((date, index) =>
+        index === 0 ? { ...date, dateStart: null, dateEnd: null } : date
+      ) as typeof controlled.dates;
     const media = records(previous?.mediaContents ?? []);
     controlled.mediaContents = controlled.mediaContents.map((item) => {
       const old = media.find((candidate) => raw(candidate.sourceUrl).url === item.sourceUrl.url);

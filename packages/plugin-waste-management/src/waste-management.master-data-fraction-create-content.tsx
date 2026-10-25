@@ -13,10 +13,12 @@ import {
 import { FractionReminderSection } from './waste-management.master-data-fraction-reminder-section.js';
 import { validateFractionForm } from './waste-management.master-data-fraction-validation.js';
 import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
+import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 
 type WasteMasterDataFractionCreateContentProps = {
   readonly mode: 'create' | 'edit';
   readonly form: FractionFormState;
+  readonly message?: StatusMessage | null;
   readonly saving: boolean;
   readonly onChange: (patch: Partial<FractionFormState>) => void;
   readonly onCancel: () => void;
@@ -54,6 +56,7 @@ const getFractionCreateCopy = (
 export const WasteMasterDataFractionCreateContent = ({
   mode,
   form,
+  message = null,
   saving,
   onChange,
   onCancel,
@@ -82,6 +85,8 @@ export const WasteMasterDataFractionCreateContent = ({
   return (
     <div className="space-y-6">
       <StudioPageHeader title={title} description={description} actions={topActions} />
+
+      <StatusNotice message={message} />
 
       <form
         id="waste-fraction-create-form"

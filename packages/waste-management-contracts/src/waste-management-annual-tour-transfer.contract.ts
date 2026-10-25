@@ -13,7 +13,10 @@ export const wasteAnnualTourTransferLimits = { tours: 1_000, relationships: 100_
 export class WasteAnnualTourTransferError extends Error {
   public constructor(
     public readonly code:
-      'invalid_source_year' | 'batch_limit_exceeded' | 'replacement_date_invalid',
+      | 'invalid_source_year'
+      | 'batch_limit_exceeded'
+      | 'replacement_date_invalid'
+      | 'first_target_date_invalid',
     public readonly replacement?: Readonly<{ sourceResourceId: string; expectedYear: number }>
   ) {
     super(code);
@@ -38,6 +41,10 @@ export type WasteAnnualTourTransferClassification =
 export type WasteAnnualTourTransferReplacementDate = Readonly<{
   sourceResourceId: string;
   targetDate: string;
+}>;
+export type WasteAnnualTourTransferFirstTargetDate = Readonly<{
+  sourceTourId: string;
+  firstDate: string;
 }>;
 export type WasteAnnualTourTransferConflict = Readonly<{
   kind: 'possible-parallel-planning' | 'target-identity-conflict';
@@ -111,6 +118,7 @@ export type WasteAnnualTourTransferCreateInput = Readonly<{
   sourceYear: number;
   selectedTourIds: readonly string[];
   replacementDates: readonly WasteAnnualTourTransferReplacementDate[];
+  firstTargetDates?: readonly WasteAnnualTourTransferFirstTargetDate[];
   acknowledgedConflictTourIds: readonly string[];
   previewFingerprint: string;
 }>;

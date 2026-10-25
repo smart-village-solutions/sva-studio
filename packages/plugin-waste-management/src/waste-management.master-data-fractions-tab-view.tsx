@@ -20,7 +20,7 @@ const navigateToFractionsRoute = (
   search: WasteManagementSearchParams,
   fractionsView: WasteManagementSearchParams['fractionsView'],
   wasteFractionId?: string,
-  options?: { readonly replace?: boolean },
+  options?: { readonly replace?: boolean }
 ) =>
   navigate({
     to: '/plugins/waste-management',
@@ -40,6 +40,7 @@ const WasteMasterDataFractionsFormView = ({
   <WasteMasterDataFractionCreateContent
     mode={search.fractionsView === 'edit' ? 'edit' : 'create'}
     form={controller.fractionForm}
+    message={controller.message}
     saving={controller.saving}
     onChange={(patch) => controller.setFractionForm((current) => ({ ...current, ...patch }))}
     onCancel={() => {
@@ -100,11 +101,15 @@ const WasteMasterDataFractionsListView = ({
     }}
     page={search.page}
     pageSize={search.pageSize}
-    onPageChange={(page) => void navigate({ to: '/plugins/waste-management', search: { ...search, page } })}
+    onPageChange={(page) =>
+      void navigate({ to: '/plugins/waste-management', search: { ...search, page } })
+    }
     onSyncPageChange={(page) =>
-      void navigate({ to: '/plugins/waste-management', search: { ...search, page }, replace: true })}
+      void navigate({ to: '/plugins/waste-management', search: { ...search, page }, replace: true })
+    }
     onPageSizeChange={(pageSize) =>
-      void navigate({ to: '/plugins/waste-management', search: { ...search, page: 1, pageSize } })}
+      void navigate({ to: '/plugins/waste-management', search: { ...search, page: 1, pageSize } })
+    }
     saving={controller.saving}
   />
 );
@@ -119,8 +124,16 @@ export const WasteMasterDataFractionsTabView = ({
   const navigate = useNavigate();
 
   if (search.fractionsView !== 'list') {
-    return <WasteMasterDataFractionsFormView controller={controller} navigate={navigate} search={search} />;
+    return (
+      <WasteMasterDataFractionsFormView
+        controller={controller}
+        navigate={navigate}
+        search={search}
+      />
+    );
   }
 
-  return <WasteMasterDataFractionsListView controller={controller} navigate={navigate} search={search} />;
+  return (
+    <WasteMasterDataFractionsListView controller={controller} navigate={navigate} search={search} />
+  );
 };

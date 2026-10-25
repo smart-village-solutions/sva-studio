@@ -3,6 +3,7 @@ import type { WasteAnnualTourTransferMappedTour } from './waste-management-annua
 import {
   continueWasteAnnualTourCadence,
   replaceWasteAnnualYear,
+  parseWasteAnnualIsoDate,
   wasteAnnualEndOfYear,
   wasteAnnualStartOfYear,
 } from './waste-management-annual-tour-transfer.dates.js';
@@ -35,6 +36,7 @@ type ValidityMappingInput = Readonly<{
   sourceYear: number;
   targetYear: number;
   replacements: ReadonlyMap<string, string>;
+  firstTargetDate?: string;
 }>;
 
 type ValidityBoundaries = Readonly<{
@@ -47,10 +49,20 @@ const resolveValidityBoundaries = (
 ): ValidityBoundaries | ValidityMappingResult => {
   const sourceYearStart = wasteAnnualStartOfYear(input.sourceYear);
   const sourceYearEnd = wasteAnnualEndOfYear(input.sourceYear);
+  const interval = wasteAnnualIntervalForTour(input.tour);
+  const first = input.tour.firstDate ? parseWasteAnnualIsoDate(input.tour.firstDate) : null;
+  const yearStart = parseWasteAnnualIsoDate(sourceYearStart);
+  const earlyYearCadence =
+    interval !== null &&
+    first &&
+    yearStart &&
+    first.getTime() >= yearStart.getTime() &&
+    first.getUTCFullYear() === input.sourceYear &&
+    first.getUTCMonth() === 0;
   const sourceStart =
     input.tour.recurrence === 'yearly' && input.tour.firstDate
       ? input.tour.firstDate
-      : input.tour.firstDate && input.tour.firstDate > sourceYearStart
+      : input.tour.firstDate && input.tour.firstDate > sourceYearStart && !earlyYearCadence
         ? input.tour.firstDate
         : sourceYearStart;
   const sourceEnd =
@@ -82,6 +94,12 @@ const mapIntervalValidity = (
 ): ValidityMappingResult => {
   if (!input.tour.firstDate) {
     return { ok: false, blocker: 'invalid_planning_data', replacementResourceIds: [] };
+  }
+  if (input.firstTargetDate) {
+    return input.firstTargetDate >= boundaries.targetStart &&
+      input.firstTargetDate <= boundaries.targetEnd
+      ? { ok: true, validity: { firstDate: input.firstTargetDate, endDate: boundaries.targetEnd } }
+      : { ok: false, blocker: 'invalid_planning_data', replacementResourceIds: [] };
   }
   const cadence = continueWasteAnnualTourCadence({
     sourceFirstDate: input.tour.firstDate,

@@ -84,6 +84,8 @@ export const wasteManagementPluginTranslationsENSchedulingScopes = {
       followUpModeUnset: 'No follow-up effect',
       description: 'Description',
       hasYear: 'Year-specific',
+      hasYearHint:
+        'On: only for the year of the original date. Off: repeats every year on the same calendar day. A year-specific rule takes precedence for that year.',
     },
     dialog: {
       createTitle: 'Create tour-related shift',

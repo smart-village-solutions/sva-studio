@@ -84,6 +84,8 @@ export const wasteManagementPluginTranslationsDESchedulingScopes = {
       followUpModeUnset: 'Kein Folgeeffekt',
       description: 'Beschreibung',
       hasYear: 'Jahresbezug',
+      hasYearHint:
+        'Aktiv: nur für das Jahr des ursprünglichen Termins. Inaktiv: jährlich am gleichen Kalendertag. Eine Regel mit Jahresbezug hat für dieses Jahr Vorrang.',
     },
     dialog: {
       createTitle: 'Tourbezogenen Ausweichtermin anlegen',

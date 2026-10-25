@@ -66,6 +66,75 @@ const links = [
 afterEach(() => cleanup());
 
 describe('WasteLocationFractionCoverageCheck', () => {
+  it('checks a full planning year with draft tours and allows a published-only comparison', () => {
+    const draftTour = {
+      ...tours[0],
+      id: 'draft-paper-2027',
+      firstDate: '2027-01-07',
+      endDate: '2027-12-31',
+      recurrence: 'biweekly' as const,
+      status: 'draft' as const,
+    };
+    render(
+      <WasteLocationFractionCoverageCheck
+        locations={[locations[2]]}
+        fractions={fractions}
+        tours={[draftTour]}
+        links={[{ ...links[1], tourId: draftTour.id }]}
+        onReplaceLocationSelection={vi.fn()}
+        onOpenBulkAssignments={vi.fn()}
+        onOpenEditLocation={vi.fn()}
+        getLocationLabel={(location) => location.id}
+      />
+    );
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.fraction'), {
+      target: { value: 'paper' },
+    });
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.year'), {
+      target: { value: '2027' },
+    });
+    expect(
+      (
+        screen.getByLabelText(
+          'masterData.locationsWorkspace.coverage.startDate'
+        ) as HTMLInputElement
+      ).value
+    ).toBe('2027-01-01');
+    expect(
+      (screen.getByLabelText('masterData.locationsWorkspace.coverage.endDate') as HTMLInputElement)
+        .value
+    ).toBe('2027-12-31');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' })
+    );
+    expect(
+      screen.getByText('masterData.locationsWorkspace.coverage.complete:{"value":1}')
+    ).toBeTruthy();
+    expect(screen.getByText('masterData.locationsWorkspace.coverage.planningNotice')).toBeTruthy();
+    expect(
+      screen.getByText('masterData.locationsWorkspace.coverage.assignmentNotice')
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText('masterData.locationsWorkspace.coverage.includeDrafts'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' })
+    );
+    expect(screen.getByText('masterData.locationsWorkspace.coverage.missing')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.year'), {
+      target: { value: '202' },
+    });
+    expect(
+      (
+        screen.getByLabelText(
+          'masterData.locationsWorkspace.coverage.startDate'
+        ) as HTMLInputElement
+      ).value
+    ).toBe('');
+    expect(
+      (screen.getByLabelText('masterData.locationsWorkspace.coverage.endDate') as HTMLInputElement)
+        .value
+    ).toBe('');
+  });
   it.each([
     ['loading', 'masterData.locationsWorkspace.coverage.fractionsLoading'],
     ['error', 'masterData.locationsWorkspace.coverage.fractionsLoadError'],

@@ -6,6 +6,7 @@ import { useWasteToursViewModel } from './use-waste-tours-view-model.js';
 import { toWasteFractionEditSearch } from './waste-management.cross-link.navigation.js';
 import {
   createDefaultTourForm,
+  mapTourToDuplicateForm,
   mapTourWithPickupDatesToForm,
 } from './waste-management.tours.shared.js';
 
@@ -133,12 +134,7 @@ const createToursFormNavigation = (
     controller.setDialogMode('create');
     resetToursFormState(controller);
     controller.setSelectedTour(null);
-    controller.setTourForm({
-      ...mapTourWithPickupDatesToForm(tour, []),
-      id: createDefaultTourForm().id,
-      name: `${tour.name} (Kopie)`,
-      status: 'draft',
-    });
+    controller.setTourForm(mapTourToDuplicateForm(tour));
     void navigate({
       to: '/plugins/waste-management',
       search: toDuplicateTourSearch(search, tour.id),

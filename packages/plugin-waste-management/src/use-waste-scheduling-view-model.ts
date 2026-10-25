@@ -38,7 +38,9 @@ export const useWasteSchedulingViewModel = (pt: Translate, search: WasteManageme
     holidayRules: state.overview?.holidayRules ?? [],
     allSchedulingEntries,
     schedulingEntries: filterSchedulingTableEntries(allSchedulingEntries, search),
-    tourAssignments: state.overview?.tourAssignments ?? [],
+    tourAssignments: (state.overview?.tourAssignments ?? []).filter(
+      (assignment) => !search.tourId || assignment.tourId === search.tourId
+    ),
     assignmentLocationOptions,
     ...actions,
     ...mutations,

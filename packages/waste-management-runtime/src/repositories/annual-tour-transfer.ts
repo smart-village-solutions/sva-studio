@@ -13,14 +13,19 @@ import { writeWasteAnnualMappedTours } from './annual-tour-transfer-write.js';
 
 type WasteRepository = ReturnType<typeof createWasteMasterDataRepository>;
 type WasteAnnualTourTransferClient = {
-  query: <TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) => Promise<{
+  query: <TRow = Record<string, unknown>>(
+    text: string,
+    values?: readonly unknown[]
+  ) => Promise<{
     readonly rowCount: number | null;
     readonly rows: readonly TRow[];
   }>;
 };
 
 const createSqlExecutor = (client: WasteAnnualTourTransferClient): SqlExecutor => ({
-  async execute<TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> {
+  async execute<TRow = Record<string, unknown>>(
+    statement: SqlStatement
+  ): Promise<SqlExecutionResult<TRow>> {
     const result = await client.query<TRow>(statement.text, statement.values);
     return { rowCount: result.rowCount ?? 0, rows: result.rows };
   },
@@ -132,6 +137,7 @@ IN SHARE ROW EXCLUSIVE MODE;`);
       target: snapshot,
       selectedTourIds: input.create.selectedTourIds,
       replacementDates: input.create.replacementDates,
+      firstTargetDates: input.create.firstTargetDates,
       allowObsoleteReplacementDates: true,
     });
     if (preview.previewFingerprint !== input.create.previewFingerprint) {

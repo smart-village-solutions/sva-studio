@@ -8,6 +8,7 @@ import { WasteSchedulingFormContent } from './waste-management.scheduling-form-c
 import { resolveSchedulingEntryTypeFromShiftContext } from './waste-management.scheduling.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { clearTourShiftCreateContext } from './waste-management.tour-shift-navigation.js';
+import { toWasteTourEditSearch } from './waste-management.cross-link.navigation.js';
 import type { TourShiftCreateContextResolution } from './waste-management.tour-shift-navigation.js';
 
 type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
@@ -170,7 +171,10 @@ export const WasteSchedulingCreateFormView = (props: WasteSchedulingCreateFormVi
     controller.setMessage(null);
     void navigate({
       to: '/plugins/waste-management',
-      search: createSchedulingListSearch(search),
+      search:
+        tourShiftCreateContext.kind === 'valid'
+          ? toWasteTourEditSearch(createSchedulingListSearch(search), tourShiftCreateContext.tourId)
+          : createSchedulingListSearch(search),
     });
   };
 

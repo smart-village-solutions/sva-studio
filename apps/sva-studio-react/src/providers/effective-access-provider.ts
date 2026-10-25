@@ -88,9 +88,10 @@ const usePublishSessionAccessSnapshot = (
   roles: readonly string[] | undefined
 ): void => {
   React.useEffect(() => {
-    const isResolved = snapshot.status === 'ready' || snapshot.status === 'error';
+    const isResolved = snapshot.status === 'ready';
     publishSessionAccessSnapshot({
       isResolved,
+      hasError: snapshot.status === 'error',
       permissionActions: collectPermissionActions(snapshot),
       unscopedPermissionActions:
         snapshot.status === 'ready' && snapshot.scope.kind === 'tenant' && 'permissions' in snapshot
@@ -156,11 +157,12 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
       return;
     }
 
+    const instanceId = auth.user.instanceId;
     const organizationId = organizationContext.context?.activeOrganizationId ?? null;
     const scope = {
       kind: 'tenant' as const,
       authGeneration: generation,
-      instanceId: auth.user.instanceId,
+      instanceId,
       organizationId,
       moduleAssignmentGeneration: generation,
     };
@@ -182,23 +184,45 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
     const abortController = new AbortController();
     setSnapshot({ status: 'loading', scope, generation });
 
-    void fetchWithRequestTimeout(
-      buildPermissionsPath(auth.user.instanceId, organizationId),
-      { signal: abortController.signal },
-      { timeoutMs: 10_000 }
-    )
-      .then(async (response) => {
+    const loadPermissions = async () => {
+      const request = () =>
+        fetchWithRequestTimeout(
+          buildPermissionsPath(instanceId, organizationId),
+          { signal: abortController.signal },
+          { timeoutMs: 10_000 }
+        );
+      let response;
+      try {
+        response = await request();
         if (!response.ok) {
           throw await readIamErrorResponse(response, { emitEffectiveAccessInvalidation: false });
         }
-        const payload: unknown = await response.json();
-        if (!isMePermissionsResponse(payload) || payload.instanceId !== auth.user?.instanceId) {
-          throw new IamHttpError({
-            status: 502,
-            code: 'invalid_response',
-            message: 'invalid_response',
-          });
+      } catch (cause) {
+        const status = asIamError(cause).status;
+        if (abortController.signal.aborted || (status !== 429 && status < 500)) {
+          throw cause;
         }
+        await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 500));
+        if (abortController.signal.aborted) return;
+        response = await request();
+        if (!response.ok) {
+          throw await readIamErrorResponse(response, { emitEffectiveAccessInvalidation: false });
+        }
+      }
+      const payload: unknown = await response.json();
+      if (!isMePermissionsResponse(payload) || payload.instanceId !== instanceId) {
+        throw new IamHttpError({
+          status: 502,
+          code: 'invalid_response',
+          message: 'invalid_response',
+        });
+      }
+      return payload;
+    };
+
+    void loadPermissions()
+      .then((payload) => {
+        if (!payload) return;
         if (generationRef.current !== generation) {
           return;
         }
@@ -219,7 +243,7 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
         setSnapshot({ status: 'error', scope, generation, errorCode: error.code });
         logBrowserOperationFailure(effectiveAccessLogger, 'effective_access_load_failed', error, {
           operation: 'load_effective_access',
-          instance_id: auth.user?.instanceId,
+          instance_id: instanceId,
         });
       });
 
@@ -276,7 +300,7 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
           isAuthenticated: auth.isAuthenticated,
           requirement,
           snapshot,
-      }),
+        }),
       invalidate,
       retry,
     }),

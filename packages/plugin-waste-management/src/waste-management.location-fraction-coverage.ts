@@ -22,6 +22,7 @@ type CoverageCheckInput = Readonly<{
   fractionId: string;
   startDate: string;
   endDate: string;
+  includeDrafts?: boolean;
 }>;
 
 const shiftIsoDate = (date: string, days: number): string => {
@@ -35,9 +36,23 @@ const findCoverageGaps = (
   startDate: string,
   endDate: string
 ): readonly WasteLocationFractionCoverageGap[] => {
+  const isRecurringTour = (tour: WasteTourRecord): boolean =>
+    tour.recurrence === 'weekly' ||
+    tour.recurrence === 'biweekly' ||
+    tour.recurrence === 'fourweekly' ||
+    Boolean(tour.customRecurrenceIntervalDays && tour.customRecurrenceIntervalDays > 0);
   const intervals = tours
     .map((tour) => ({
-      startDate: tour.firstDate && tour.firstDate > startDate ? tour.firstDate : startDate,
+      startDate:
+        tour.firstDate &&
+        tour.firstDate > startDate &&
+        !(
+          isRecurringTour(tour) &&
+          tour.firstDate.slice(0, 7) === `${startDate.slice(0, 4)}-01` &&
+          startDate.endsWith('-01-01')
+        )
+          ? tour.firstDate
+          : startDate,
       endDate: tour.endDate && tour.endDate < endDate ? tour.endDate : endDate,
     }))
     .filter((interval) => interval.startDate <= interval.endDate)
@@ -85,10 +100,15 @@ export const checkLocationFractionCoverage = ({
   fractionId,
   startDate,
   endDate,
+  includeDrafts = false,
 }: CoverageCheckInput): readonly WasteLocationFractionCoverageIssue[] => {
   const matchingTourById = new Map(
     tours
-      .filter((tour) => tour.status === 'published' && tour.wasteFractionIds.includes(fractionId))
+      .filter(
+        (tour) =>
+          (tour.status === 'published' || (includeDrafts && tour.status === 'draft')) &&
+          tour.wasteFractionIds.includes(fractionId)
+      )
       .map((tour) => [tour.id, tour] as const)
   );
   const toursByLocationId = new Map<string, WasteTourRecord[]>();

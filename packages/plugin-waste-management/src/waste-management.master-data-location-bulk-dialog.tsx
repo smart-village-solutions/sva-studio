@@ -51,7 +51,7 @@ export const BulkLocationAssignmentsDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>{pt('masterData.collectionLocations.bulk.dialog.title')}</DialogTitle>
           <DialogDescription>
@@ -60,39 +60,41 @@ export const BulkLocationAssignmentsDialog = ({
             })}
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={onSubmit}>
-          <StatusNotice message={message} />
-          <StudioFieldGroup>
-            <StudioField
-              id="waste-bulk-tour-link-tour-id"
-              label={pt('masterData.collectionLocations.bulk.fields.tourId')}
-            >
-              <Select
+        <form className="flex min-h-0 flex-1 flex-col gap-4" onSubmit={onSubmit}>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+            <StatusNotice message={message} />
+            <StudioFieldGroup>
+              <StudioField
                 id="waste-bulk-tour-link-tour-id"
-                value={form.tourId}
-                onChange={(event) => onChange({ tourId: event.target.value })}
+                label={pt('masterData.collectionLocations.bulk.fields.tourId')}
               >
-                <option value="">
-                  {pt('masterData.collectionLocations.bulk.fields.tourUnset')}
-                </option>
-                {tours.map((tour) => (
-                  <option key={tour.id} value={tour.id}>
-                    {tour.name}
+                <Select
+                  id="waste-bulk-tour-link-tour-id"
+                  value={form.tourId}
+                  onChange={(event) => onChange({ tourId: event.target.value })}
+                >
+                  <option value="">
+                    {pt('masterData.collectionLocations.bulk.fields.tourUnset')}
                   </option>
+                  {tours.map((tour) => (
+                    <option key={tour.id} value={tour.id}>
+                      {tour.name}
+                    </option>
+                  ))}
+                </Select>
+              </StudioField>
+            </StudioFieldGroup>
+            <div className="space-y-2 rounded-md border border-border/60 p-3">
+              <p className="text-sm font-medium">
+                {pt('masterData.collectionLocations.bulk.selectedTitle')}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {selectedLocations.map((location) => (
+                  <Badge key={location.id} variant="outline">
+                    {location.label}
+                  </Badge>
                 ))}
-              </Select>
-            </StudioField>
-          </StudioFieldGroup>
-          <div className="space-y-2 rounded-md border border-border/60 p-3">
-            <p className="text-sm font-medium">
-              {pt('masterData.collectionLocations.bulk.selectedTitle')}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {selectedLocations.map((location) => (
-                <Badge key={location.id} variant="outline">
-                  {location.label}
-                </Badge>
-              ))}
+              </div>
             </div>
           </div>
           <DialogFooter>

@@ -16,6 +16,7 @@ const searchMock = vi.fn(() => ({
 }));
 const uiAccessMock = vi.hoisted(() => ({
   isResolved: true,
+  hasError: false,
   visibleTabIds: [
     'fractions',
     'tours',
@@ -398,6 +399,7 @@ describe('WasteManagementPage', () => {
     cleanup();
     Object.assign(uiAccessMock, {
       isResolved: true,
+      hasError: false,
       visibleTabIds: [
         'fractions',
         'tours',
@@ -858,6 +860,16 @@ describe('WasteManagementPage', () => {
     expect(await screen.findByText('wasteManagement.tools.messages.jobStarted')).toBeTruthy();
     expect(await screen.findByText('wasteManagement.tools.meta.lastJobTitle')).toBeTruthy();
     expect(await screen.findByText(/wasteManagement\.tools\.meta\.jobStatusLabel:/)).toBeTruthy();
+  });
+
+  it('keeps the route and blocks waste forms while permissions cannot be loaded', () => {
+    Object.assign(uiAccessMock, { isResolved: false, hasError: true });
+
+    render(<WasteManagementPage />);
+
+    expect(screen.getByText('wasteManagement.page.accessUnavailable')).toBeTruthy();
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('does not load settings for the page header when the user cannot access settings', async () => {
@@ -2262,17 +2274,18 @@ describe('WasteManagementPage', () => {
     });
 
     expect(screen.getByText('wasteManagement.tours.messages.duplicateHint')).toBeTruthy();
-
-    fireEvent.change(screen.getByLabelText('wasteManagement.tours.fields.name'), {
-      target: { value: 'Bio Nord (Kopie)' },
+    await waitFor(() => {
+      expect(
+        (screen.getByLabelText('wasteManagement.tours.fields.name') as HTMLInputElement).value
+      ).toBe('Bio Nord (Kopie)');
     });
-    fireEvent.change(screen.getByLabelText('wasteManagement.tours.fields.recurrence'), {
-      target: { value: 'weekly' },
-    });
-    fireEvent.change(screen.getByLabelText('wasteManagement.tours.fields.firstDate'), {
-      target: { value: '2026-05-19' },
-    });
-    fireEvent.click(screen.getByLabelText('Restmüll'));
+    expect(
+      (screen.getByLabelText('wasteManagement.tours.fields.recurrence') as HTMLSelectElement).value
+    ).toBe('weekly');
+    expect(
+      (screen.getByLabelText('wasteManagement.tours.fields.firstDate') as HTMLInputElement).value
+    ).toBe('2026-05-19');
+    expect((screen.getByLabelText('Restmüll') as HTMLInputElement).checked).toBe(true);
     fireEvent.click(
       screen.getAllByRole('button', { name: 'wasteManagement.tours.actions.create' })[0]!
     );

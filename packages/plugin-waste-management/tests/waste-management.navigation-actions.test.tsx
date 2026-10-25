@@ -30,9 +30,7 @@ describe('Waste navigation actions', () => {
       />
     );
 
-    expect(
-      screen.getByRole('link', { name: 'masterData.fractions.actions.edit' })
-    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'masterData.fractions.actions.edit' })).toBeTruthy();
     expect(
       screen.getByRole('button', { name: 'masterData.fractions.actions.delete' })
     ).toBeTruthy();
@@ -61,6 +59,7 @@ describe('Waste navigation actions', () => {
         result={{
           checkedLocationCount: 1,
           issues: [{ kind: 'missing', locationId: 'location-1' }],
+          includeDrafts: false,
         }}
         locationsById={new Map([['location-1', location]])}
         search={{ tab: 'locations' } as never}

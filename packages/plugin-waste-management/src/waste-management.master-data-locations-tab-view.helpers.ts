@@ -7,6 +7,7 @@ import {
 } from './waste-management.master-data.forms.js';
 import { toWasteTourEditSearch } from './waste-management.cross-link.navigation.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+import { matchesLocationTourFilters } from './waste-management.master-data-locations-table.helpers.js';
 
 type WasteViewModel = ReturnType<typeof useWasteMasterDataViewModel>;
 type WasteNavigate = ReturnType<typeof useNavigate>;
@@ -17,6 +18,21 @@ const createLocationFormNavigation = (
   search: WasteManagementSearchParams,
   navigate: WasteNavigate
 ) => ({
+  resetFilters: () =>
+    void navigate({
+      to: '/plugins/waste-management',
+      search: {
+        ...search,
+        q: '',
+        status: 'all',
+        regionId: undefined,
+        cityId: undefined,
+        tourId: undefined,
+        locationYear: undefined,
+        locationTourStatus: undefined,
+        page: 1,
+      },
+    }),
   toList: () => {
     controller.setLocationDialogOpen(false);
     controller.resetLocationForm();
@@ -75,8 +91,49 @@ const createLocationFormNavigation = (
 
 const createLocationListNavigation = (
   search: WasteManagementSearchParams,
-  navigate: WasteNavigate
+  navigate: WasteNavigate,
+  availableTours: WasteViewModel['availableTours']
 ) => ({
+  setQuery: (q: string) =>
+    void navigate({
+      to: '/plugins/waste-management',
+      search: { ...search, q, page: 1 },
+      replace: true,
+    }),
+  setLocationYear: (locationYear: number | undefined) => {
+    const selectedTour = availableTours.find((tour) => tour.id === search.tourId);
+    const keepSelectedTour =
+      !search.tourId ||
+      (selectedTour !== undefined &&
+        matchesLocationTourFilters(selectedTour, locationYear, search.locationTourStatus));
+    void navigate({
+      to: '/plugins/waste-management',
+      search: {
+        ...search,
+        locationYear,
+        page: 1,
+        tourId: keepSelectedTour ? search.tourId : undefined,
+      },
+    });
+  },
+  setLocationTourStatus: (
+    locationTourStatus: WasteManagementSearchParams['locationTourStatus']
+  ) => {
+    const selectedTour = availableTours.find((tour) => tour.id === search.tourId);
+    const keepSelectedTour =
+      !search.tourId ||
+      (selectedTour !== undefined &&
+        matchesLocationTourFilters(selectedTour, search.locationYear, locationTourStatus));
+    void navigate({
+      to: '/plugins/waste-management',
+      search: {
+        ...search,
+        locationTourStatus,
+        page: 1,
+        tourId: keepSelectedTour ? search.tourId : undefined,
+      },
+    });
+  },
   setTourFilter: (tourId: string) =>
     void navigate({
       to: '/plugins/waste-management',
@@ -119,6 +176,6 @@ export const useWasteLocationsTabNavigation = (
   const navigate = useNavigate();
   return {
     ...createLocationFormNavigation(controller, search, navigate),
-    ...createLocationListNavigation(search, navigate),
+    ...createLocationListNavigation(search, navigate, controller.availableTours),
   };
 };

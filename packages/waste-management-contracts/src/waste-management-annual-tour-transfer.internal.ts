@@ -18,6 +18,7 @@ export type WasteAnnualTourMappingInput = Readonly<{
   targetYear: number;
   source: import('./waste-management-annual-tour-transfer.contract.js').WasteAnnualTourTransferSource;
   replacements: ReadonlyMap<string, string>;
+  firstTargetDate?: string;
 }>;
 
 export type WasteAnnualTourMappingBlocker = Readonly<{

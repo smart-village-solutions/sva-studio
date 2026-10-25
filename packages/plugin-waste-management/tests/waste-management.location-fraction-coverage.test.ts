@@ -45,7 +45,8 @@ const link = (id: string, locationId: string, tourId: string): WasteLocationTour
 const check = (
   locations: readonly WasteCollectionLocationRecord[],
   tours: readonly WasteTourRecord[],
-  links: readonly WasteLocationTourLinkRecord[]
+  links: readonly WasteLocationTourLinkRecord[],
+  includeDrafts = false
 ) =>
   checkLocationFractionCoverage({
     locations,
@@ -54,9 +55,62 @@ const check = (
     fractionId: 'paper',
     startDate: '2027-01-01',
     endDate: '2027-12-31',
+    includeDrafts,
   });
 
 describe('checkLocationFractionCoverage', () => {
+  it('does not mistake the first January pickup of a recurring tour for an uncovered period', () => {
+    expect(
+      check(
+        [location('regular')],
+        [{ ...tour('paper-2027', ['paper'], '2027-01-07', '2027-12-31'), recurrence: 'biweekly' }],
+        [link('link-regular', 'regular', 'paper-2027')]
+      )
+    ).toEqual([]);
+  });
+
+  it('still reports a real later start and a January one-off date as incomplete', () => {
+    expect(
+      check(
+        [location('later'), location('one-off')],
+        [
+          { ...tour('later-tour', ['paper'], '2027-03-07', '2027-12-31'), recurrence: 'biweekly' },
+          {
+            ...tour('one-off-tour', ['paper'], '2027-01-07', '2027-12-31'),
+            recurrence: 'on-demand',
+          },
+        ],
+        [link('later-link', 'later', 'later-tour'), link('one-off-link', 'one-off', 'one-off-tour')]
+      )
+    ).toEqual([
+      {
+        locationId: 'later',
+        kind: 'incomplete',
+        gaps: [{ startDate: '2027-01-01', endDate: '2027-03-06' }],
+      },
+      {
+        locationId: 'one-off',
+        kind: 'incomplete',
+        gaps: [{ startDate: '2027-01-01', endDate: '2027-01-06' }],
+      },
+    ]);
+  });
+
+  it('can check next-year draft planning without treating drafts as published', () => {
+    const plannedTour = {
+      ...tour('draft-2027', ['paper'], '2027-01-07', '2027-12-31', 'draft'),
+      recurrence: 'biweekly' as const,
+    };
+    const plannedLocation = [location('planned')];
+    const plannedLink = [link('link-planned', 'planned', plannedTour.id)];
+    expect(check(plannedLocation, [plannedTour], plannedLink)).toMatchObject([
+      { locationId: 'planned', kind: 'missing' },
+    ]);
+    expect(check(plannedLocation, [plannedTour], plannedLink, true)).toEqual([]);
+    expect(
+      check(plannedLocation, [{ ...plannedTour, status: 'archived' }], plannedLink, true)
+    ).toMatchObject([{ locationId: 'planned', kind: 'missing' }]);
+  });
   it('distinguishes a completely missing assignment from partial date coverage', () => {
     expect(
       check(

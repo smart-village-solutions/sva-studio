@@ -5,6 +5,9 @@ export const wasteManagementPluginTranslationsDEPage = {
       'Verwalten Sie Stammdaten, Touren, Ausweichtermine und technische Werkzeuge des Abfall-Management-Moduls.',
     webVersionLead: 'Die Daten werden u.a. hier dargestellt:',
     webVersionLinkLabel: 'Abfallkalender-Webversion',
+    accessLoading: 'Berechtigungen werden geprüft …',
+    accessUnavailable:
+      'Berechtigungen konnten nicht geladen werden. Versuchen Sie es über „Neu laden“ erneut.',
     syncStatus: {
       loadingTitle: 'Abgleichsstatus wird geladen',
       loadingText: 'Der Datenstand wird geprüft.',

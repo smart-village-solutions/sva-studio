@@ -12,7 +12,7 @@ export const useAuthSession = (): AuthContextValue => {
   const attemptSilentSessionRecovery = useSilentAuthRecovery(base);
   const handleUnauthorizedSession = useUnauthorizedAuthRecovery(base, attemptSilentSessionRecovery);
   const loadUser = useAuthLoad(base, handleUnauthorizedSession);
-  useAuthSessionEffects(base, loadUser);
+  useAuthSessionEffects(base, loadUser, attemptSilentSessionRecovery);
   const { refetch, loginWithDevAuth, refreshSession, logout } = useAuthSessionActions(
     base,
     loadUser

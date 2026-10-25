@@ -6,6 +6,7 @@ import {
   mapTourDateShiftToForm,
 } from './waste-management.scheduling.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+import { toWasteTourEditSearch } from './waste-management.cross-link.navigation.js';
 import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import {
   clearTourShiftCreateContext,
@@ -98,7 +99,19 @@ export const useWasteSchedulingSuccessRedirect = ({
     controller.resetTourShiftForm();
     controller.resetGlobalShiftForm();
     controller.setLastOutcome(null);
-    void navigateToSchedulingList(navigate, search);
+    if (
+      search.schedulingView === 'create' &&
+      search.schedulingEntryType === 'tour-shift' &&
+      search.schedulingTourId
+    ) {
+      void navigate({
+        to: '/plugins/waste-management',
+        search: toWasteTourEditSearch(clearSchedulingEntryRoute(search), search.schedulingTourId),
+        replace: true,
+      });
+    } else {
+      void navigateToSchedulingList(navigate, search);
+    }
   }, [
     controller.resetGlobalShiftForm,
     controller.resetTourShiftForm,

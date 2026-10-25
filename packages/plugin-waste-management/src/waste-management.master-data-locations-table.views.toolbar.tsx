@@ -1,6 +1,7 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { IconFilter, IconRoute, IconSortAZ, IconSortZA, IconTrash } from '@tabler/icons-react';
-import { Button, Checkbox, Select, cn } from '@sva/studio-ui-react';
+import { Button, Checkbox, Input, Select, cn } from '@sva/studio-ui-react';
+import { useEffect, useState } from 'react';
 import type { WasteMasterDataLocationsTableProps } from './waste-management.master-data-locations-table.types.js';
 import { WasteLocationsCreateMenu } from './waste-management.master-data-locations-table.views.menu.js';
 
@@ -106,19 +107,15 @@ const WasteLocationsSortControl = ({
 };
 
 const WasteLocationsFilters = ({
-  availableTours,
+  visibleTours,
   selectedTourId,
   allFilteredLocationsSelected,
   onTourFilterChange,
   onToggleSelectAll,
 }: Pick<
   WasteMasterDataLocationsTableProps,
-  | 'availableTours'
-  | 'selectedTourId'
-  | 'allFilteredLocationsSelected'
-  | 'onTourFilterChange'
-  | 'onToggleSelectAll'
->) => {
+  'selectedTourId' | 'allFilteredLocationsSelected' | 'onTourFilterChange' | 'onToggleSelectAll'
+> & { readonly visibleTours: WasteMasterDataLocationsTableProps['availableTours'] }) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
     <div
@@ -137,7 +134,7 @@ const WasteLocationsFilters = ({
             onChange={(event) => onTourFilterChange(event.target.value)}
           >
             <option value="">{pt('masterData.locationsWorkspace.filters.allTours')}</option>
-            {availableTours.map((tour) => (
+            {visibleTours.map((tour) => (
               <option key={tour.id} value={tour.id}>
                 {tour.name}
               </option>
@@ -158,6 +155,9 @@ const WasteLocationsFilters = ({
 
 type WasteLocationsToolbarProps = Pick<
   WasteMasterDataLocationsTableProps,
+  | 'search'
+  | 'onQueryChange'
+  | 'onResetFilters'
   | 'onOpenCreateRegion'
   | 'onOpenCreateCity'
   | 'onOpenCreateStreet'
@@ -165,6 +165,10 @@ type WasteLocationsToolbarProps = Pick<
   | 'onOpenCreateLocation'
   | 'selectedCollectionLocationsCount'
   | 'availableTours'
+  | 'locationYear'
+  | 'onLocationYearChange'
+  | 'locationTourStatus'
+  | 'onLocationTourStatusChange'
   | 'selectedTourId'
   | 'allFilteredLocationsSelected'
   | 'onOpenBulkAssignments'
@@ -175,14 +179,23 @@ type WasteLocationsToolbarProps = Pick<
   | 'onSortModeChange'
   | 'onSortDirectionChange'
 > & {
+  readonly visibleTours?: WasteMasterDataLocationsTableProps['availableTours'];
   readonly onRequestDeleteSelected: () => void;
   readonly filtersOpen: boolean;
   readonly onToggleFiltersOpen: () => void;
 };
 
 export const WasteMasterDataLocationsTableToolbar = ({
+  search,
+  onQueryChange,
+  onResetFilters,
   selectedCollectionLocationsCount,
   availableTours,
+  visibleTours,
+  locationYear,
+  onLocationYearChange,
+  locationTourStatus,
+  onLocationTourStatusChange,
   filtersOpen,
   selectedTourId,
   allFilteredLocationsSelected,
@@ -202,11 +215,55 @@ export const WasteMasterDataLocationsTableToolbar = ({
   onToggleFiltersOpen,
 }: WasteLocationsToolbarProps) => {
   const pt = usePluginTranslation('wasteManagement');
+  const [query, setQuery] = useState(search?.q ?? '');
+  useEffect(() => setQuery(search?.q ?? ''), [search?.q]);
+  const commitQuery = () => {
+    if (search && query !== search.q) onQueryChange?.(query);
+  };
+  const currentYear = new Date().getFullYear();
+  const years = availableTours.flatMap((tour) =>
+    [tour.firstDate, tour.endDate, ...(tour.customDates ?? []).map((item) => item.date)].flatMap(
+      (date) => (date ? [Number(date.slice(0, 4))] : [])
+    )
+  );
+  const firstYear = Math.max(
+    2000,
+    Math.min(currentYear - 1, locationYear ?? currentYear, ...years)
+  );
+  const lastYear = Math.min(2100, Math.max(currentYear + 2, locationYear ?? currentYear, ...years));
 
   return (
     <div className="flex w-full flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
       <div className="flex flex-1 flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
+          {search && onQueryChange ? (
+            <label className="flex min-w-56 flex-col gap-1 text-sm">
+              <span>{pt('masterData.locationsWorkspace.filters.locationSearch')}</span>
+              <Input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onBlur={commitQuery}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur();
+                }}
+                placeholder={pt('masterData.locationsWorkspace.filters.locationSearchPlaceholder')}
+              />
+            </label>
+          ) : null}
+          {onResetFilters &&
+          search &&
+          (search.q ||
+            search.regionId ||
+            search.cityId ||
+            search.tourId ||
+            search.status !== 'all' ||
+            search.locationYear ||
+            search.locationTourStatus) ? (
+            <Button type="button" variant="tertiary" onClick={onResetFilters}>
+              {pt('masterData.locationsWorkspace.filters.resetFilters')}
+            </Button>
+          ) : null}
           <WasteLocationsBulkActions
             selectedCollectionLocationsCount={selectedCollectionLocationsCount}
             onOpenBulkAssignments={onOpenBulkAssignments}
@@ -223,6 +280,54 @@ export const WasteMasterDataLocationsTableToolbar = ({
             <IconFilter aria-hidden="true" className="h-4 w-4" />
             {pt('masterData.locationsWorkspace.filters.filtersTitle')}
           </Button>
+          {onLocationYearChange ? (
+            <label className="flex items-center gap-2 text-sm">
+              <span>{pt('masterData.locationsWorkspace.filters.tourYear')}</span>
+              <Select
+                aria-label={pt('masterData.locationsWorkspace.filters.tourYear')}
+                value={locationYear ?? ''}
+                onChange={(event) =>
+                  onLocationYearChange(event.target.value ? Number(event.target.value) : undefined)
+                }
+              >
+                <option value="">{pt('masterData.locationsWorkspace.filters.allYears')}</option>
+                {Array.from(
+                  { length: lastYear - firstYear + 1 },
+                  (_, offset) => firstYear + offset
+                ).map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          ) : null}
+          {onLocationTourStatusChange ? (
+            <label className="flex items-center gap-2 text-sm">
+              <span>{pt('masterData.locationsWorkspace.filters.tourStatus')}</span>
+              <Select
+                aria-label={pt('masterData.locationsWorkspace.filters.tourStatus')}
+                value={locationTourStatus ?? ''}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  onLocationTourStatusChange(
+                    value === 'draft' || value === 'published' || value === 'archived'
+                      ? value
+                      : undefined
+                  );
+                }}
+              >
+                <option value="">{pt('masterData.locationsWorkspace.filters.allStatuses')}</option>
+                <option value="draft">{pt('masterData.locationsWorkspace.filters.draft')}</option>
+                <option value="published">
+                  {pt('masterData.locationsWorkspace.filters.published')}
+                </option>
+                <option value="archived">
+                  {pt('masterData.locationsWorkspace.filters.archived')}
+                </option>
+              </Select>
+            </label>
+          ) : null}
           <WasteLocationsSortControl
             sortMode={sortMode}
             sortDirection={sortDirection}
@@ -232,7 +337,7 @@ export const WasteMasterDataLocationsTableToolbar = ({
         </div>
         {filtersOpen ? (
           <WasteLocationsFilters
-            availableTours={availableTours}
+            visibleTours={visibleTours ?? availableTours}
             selectedTourId={selectedTourId}
             allFilteredLocationsSelected={allFilteredLocationsSelected}
             onTourFilterChange={onTourFilterChange}

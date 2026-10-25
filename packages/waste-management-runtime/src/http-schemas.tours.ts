@@ -89,6 +89,10 @@ const wasteAnnualTourReplacementDateSchema = z
   })
   .strict();
 
+const wasteAnnualTourFirstTargetDateSchema = z
+  .object({ sourceTourId: z.string().trim().min(1), firstDate: wasteTourDateSchema })
+  .strict();
+
 const previewWasteAnnualTourTransferSchema = z
   .object({
     sourceYear: z.number().int(),
@@ -99,6 +103,10 @@ const previewWasteAnnualTourTransferSchema = z
     replacementDates: z
       .array(wasteAnnualTourReplacementDateSchema)
       .max(wasteAnnualTourTransferLimits.relationships)
+      .optional(),
+    firstTargetDates: z
+      .array(wasteAnnualTourFirstTargetDateSchema)
+      .max(wasteAnnualTourTransferLimits.tours)
       .optional(),
   })
   .strict();
@@ -113,6 +121,10 @@ const createWasteAnnualTourTransferSchema = z
     replacementDates: z
       .array(wasteAnnualTourReplacementDateSchema)
       .max(wasteAnnualTourTransferLimits.relationships),
+    firstTargetDates: z
+      .array(wasteAnnualTourFirstTargetDateSchema)
+      .max(wasteAnnualTourTransferLimits.tours)
+      .optional(),
     acknowledgedConflictTourIds: z
       .array(z.string().trim().min(1))
       .max(wasteAnnualTourTransferLimits.tours),

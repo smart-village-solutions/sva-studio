@@ -4,6 +4,13 @@ import {
 } from './plugin.translations.shared.scheduling.js';
 
 export const wasteManagementPluginTranslationsDEToursDetails = {
+  workspace: {
+    title: 'Diese Tour bearbeiten',
+    description: 'Zuordnungen, Kalender und Tour-Einsätze für diese Tour direkt öffnen.',
+    assignments: 'Abholorte zuordnen',
+    calendar: 'Jahreskalender und Feiertagsverschiebungen',
+    scheduling: 'Tour-Einsätze und tourbezogene Ausweichtermine',
+  },
   annualTransfer: {
     open: 'Tourensatz ins Folgejahr übernehmen',
     title: 'Jahresplanung ins Folgejahr übernehmen',
@@ -29,6 +36,9 @@ export const wasteManagementPluginTranslationsDEToursDetails = {
       '{{transferable}} übernehmbar, {{alreadyEffective}} gelten bereits, {{blocked}} blockiert. Ausgewählt: {{selected}} Touren mit {{relationships}} Beziehungen; {{excluded}} Daten außerhalb des Quelljahres werden ausgeschlossen.',
     recurrence: 'Turnus: {{value}}',
     firstTargetDate: 'Erster Termin im Folgejahr: {{date}}',
+    overrideFirstTargetDate: 'Abweichender erster regulärer Termin für {{name}}',
+    overrideFirstTargetDateHint:
+      'Leer lassen, um den bisherigen Turnus fortzusetzen. Die Vorschau zeigt den berechneten Termin.',
     tourCounts:
       'Abfallarten: {{wasteFractions}}, konkrete Tourtermine: {{customDates}}, Abholorte: {{locations}}, ortsbezogene Termine: {{pickupDates}}, Einsätze: {{assignments}}, Verschiebungen: {{shifts}}, ausgeschlossen: {{excluded}}',
     period: 'Gültigkeitszeitraum: {{source}} → {{target}}',

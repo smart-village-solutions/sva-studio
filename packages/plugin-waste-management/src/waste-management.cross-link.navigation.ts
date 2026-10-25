@@ -24,6 +24,23 @@ export const toWasteTourEditSearch = (
   tourId,
 });
 
+export const toWasteTourSchedulingSearch = (
+  search: WasteManagementSearchParams,
+  tourId: string
+): WasteManagementSearchParams => ({
+  ...search,
+  tab: 'scheduling',
+  schedulingView: 'list',
+  schedulingEntryType: undefined,
+  schedulingEntryId: undefined,
+  schedulingTourId: undefined,
+  schedulingOriginalDate: undefined,
+  shiftContext: 'tour',
+  q: '',
+  page: 1,
+  tourId,
+});
+
 export const toWasteFractionEditSearch = (
   search: WasteManagementSearchParams,
   wasteFractionId: string

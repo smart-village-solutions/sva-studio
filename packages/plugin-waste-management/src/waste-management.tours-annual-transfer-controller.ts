@@ -35,6 +35,7 @@ const useAnnualTransferState = () => {
     []
   );
   const [replacementDates, setReplacementDates] = useState<Readonly<Record<string, string>>>({});
+  const [firstTargetDates, setFirstTargetDates] = useState<Readonly<Record<string, string>>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<WasteAnnualTourTransferResult | null>(null);
@@ -53,6 +54,8 @@ const useAnnualTransferState = () => {
     setAcknowledgedConflictTourIds,
     replacementDates,
     setReplacementDates,
+    firstTargetDates,
+    setFirstTargetDates,
     loading,
     setLoading,
     error,
@@ -132,6 +135,7 @@ const resetAnnualTransfer = (state: AnnualTransferState) => {
   state.setSelectedTourIds([]);
   state.setAcknowledgedConflictTourIds([]);
   state.setReplacementDates({});
+  state.setFirstTargetDates({});
   state.setLoading(false);
   state.setError(null);
   state.setResult(null);
@@ -140,10 +144,11 @@ const resetAnnualTransfer = (state: AnnualTransferState) => {
 const loadAnnualPreview = async (input: {
   state: AnnualTransferState;
   replacementInput: readonly { sourceResourceId: string; targetDate: string }[];
+  firstTargetInput: readonly { sourceTourId: string; firstDate: string }[];
   options: ControllerOptions;
   load?: LoadOptions;
 }) => {
-  const { state, replacementInput, options, load = {} } = input;
+  const { state, replacementInput, firstTargetInput, options, load = {} } = input;
   state.setLoading(true);
   if (!load.preserveError) state.setError(null);
   try {
@@ -151,6 +156,7 @@ const loadAnnualPreview = async (input: {
       sourceYear: state.sourceYear,
       selectedTourIds: state.preview ? state.selectedTourIds : undefined,
       replacementDates: replacementInput,
+      firstTargetDates: firstTargetInput,
     });
     applyAnnualPreview({ state, next, nextStep: load.nextStep ?? 'preview' });
   } catch {
@@ -163,10 +169,11 @@ const loadAnnualPreview = async (input: {
 const createAnnualTransfer = async (input: {
   state: AnnualTransferState;
   replacementInput: readonly { sourceResourceId: string; targetDate: string }[];
+  firstTargetInput: readonly { sourceTourId: string; firstDate: string }[];
   options: ControllerOptions;
   reload: (load?: LoadOptions) => Promise<void>;
 }) => {
-  const { state, replacementInput, options } = input;
+  const { state, replacementInput, firstTargetInput, options } = input;
   if (!state.preview) return;
   state.setLoading(true);
   state.setError(null);
@@ -174,6 +181,7 @@ const createAnnualTransfer = async (input: {
     sourceYear: state.sourceYear,
     selectedTourIds: state.selectedTourIds,
     replacementDates: replacementInput,
+    firstTargetDates: firstTargetInput,
     acknowledgedConflictTourIds: state.acknowledgedConflictTourIds,
     previewFingerprint: state.preview.previewFingerprint,
   };
@@ -210,6 +218,10 @@ const createAnnualTransfer = async (input: {
             )
           )
         );
+        const applicableTourIds = new Set(updatedPreview.tours.map((tour) => tour.sourceTourId));
+        state.setFirstTargetDates((current) =>
+          Object.fromEntries(Object.entries(current).filter(([id]) => applicableTourIds.has(id)))
+        );
         applyAnnualPreview({ state, next: updatedPreview, nextStep: 'preview' });
       } else {
         await input.reload({ preserveError: true });
@@ -234,10 +246,23 @@ export const useWasteAnnualTransferController = (options: ControllerOptions) => 
         .map(([sourceResourceId, targetDate]) => ({ sourceResourceId, targetDate })),
     [state.replacementDates]
   );
+  const firstTargetInput = useMemo(
+    () =>
+      Object.entries(state.firstTargetDates)
+        .filter(([, date]) => date.length > 0)
+        .map(([sourceTourId, firstDate]) => ({ sourceTourId, firstDate })),
+    [state.firstTargetDates]
+  );
   const loadPreview = (load?: LoadOptions) =>
-    loadAnnualPreview({ state, replacementInput, options, load });
+    loadAnnualPreview({ state, replacementInput, firstTargetInput, options, load });
   const createTransfer = () =>
-    createAnnualTransfer({ state, replacementInput, options, reload: loadPreview });
+    createAnnualTransfer({
+      state,
+      replacementInput,
+      firstTargetInput,
+      options,
+      reload: loadPreview,
+    });
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (state.step === 'source') void loadPreview();
@@ -251,7 +276,14 @@ export const useWasteAnnualTransferController = (options: ControllerOptions) => 
         tour.conflicts.length > 0 &&
         !state.acknowledgedConflictTourIds.includes(tour.sourceTourId)
     ) ?? false;
-  return { ...state, replacementInput, submit, loadPreview, unacknowledgedConflict } as const;
+  return {
+    ...state,
+    replacementInput,
+    firstTargetInput,
+    submit,
+    loadPreview,
+    unacknowledgedConflict,
+  } as const;
 };
 
 export type WasteAnnualTransferController = ReturnType<typeof useWasteAnnualTransferController>;

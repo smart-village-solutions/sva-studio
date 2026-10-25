@@ -100,6 +100,71 @@ describe('waste annual tour transfer', () => {
     });
   });
 
+  it('continues an early January biweekly tour from the start of the target year', async () => {
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([tour({ firstDate: '2026-01-08' })]),
+      target: source([]),
+    });
+
+    expect(preview.tours[0]).toMatchObject({
+      classification: 'transferable',
+      firstTargetDate: '2027-01-07',
+      targetPeriod: { firstDate: '2027-01-07', endDate: '2027-12-31' },
+    });
+  });
+
+  it('continues a fourweekly tour even when its first source date is late in January', async () => {
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([tour({ recurrence: 'fourweekly', firstDate: '2026-01-29' })]),
+      target: source([]),
+    });
+    expect(preview.tours[0].targetPeriod?.firstDate).toBe('2027-01-28');
+  });
+
+  it('uses an explicit first regular date to restart a tour in the target year', async () => {
+    const base = {
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([tour({ firstDate: '2026-01-08' })]),
+      target: source([]),
+    };
+    const continued = await buildWasteAnnualTourTransferPreview(base);
+    const restarted = await buildWasteAnnualTourTransferPreview({
+      ...base,
+      firstTargetDates: [{ sourceTourId: tour().id, firstDate: '2027-01-21' }],
+    });
+
+    expect(restarted.tours[0]).toMatchObject({
+      firstTargetDate: '2027-01-21',
+      targetPeriod: { firstDate: '2027-01-21', endDate: '2027-12-31' },
+    });
+    expect(restarted.previewFingerprint).not.toBe(continued.previewFingerprint);
+    await expect(
+      buildWasteAnnualTourTransferPreview({
+        ...base,
+        firstTargetDates: [{ sourceTourId: tour().id, firstDate: '2028-01-21' }],
+      })
+    ).rejects.toThrow(new WasteAnnualTourTransferError('first_target_date_invalid'));
+  });
+
+  it('keeps a deliberately later source-year start for a partial-year tour', async () => {
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([tour({ firstDate: '2026-03-05' })]),
+      target: source([]),
+    });
+    expect((preview.tours[0].targetPeriod?.firstDate ?? '') >= '2027-03-05').toBe(true);
+  });
+
   it('uses only published tours as annual transfer sources', async () => {
     const preview = await buildWasteAnnualTourTransferPreview({
       instanceId: 'tenant-a',
@@ -378,8 +443,8 @@ describe('waste annual tour transfer', () => {
     });
     expect(mapped?.tourDateShifts).toHaveLength(2);
     expect(mapped?.tourDateShifts[0]).toMatchObject({
-      originalDate: '2027-06-07',
-      actualDate: '2027-06-08',
+      originalDate: '2027-05-24',
+      actualDate: '2027-05-25',
       reasonType: 'holiday',
       reasonKey: 'holiday-a',
       followUpMode: 'single',
@@ -1214,7 +1279,7 @@ describe('waste annual tour transfer', () => {
       target: source([targetTour]),
     });
 
-    expect(preview.tours[0]?.mappedTour?.tourDateShifts[0]?.actualDate).toBe('2027-01-19');
+    expect(preview.tours[0]?.mappedTour?.tourDateShifts[0]?.actualDate).toBe('2027-01-05');
     expect(preview.tours[0]?.conflicts).toEqual([
       expect.objectContaining({ kind: 'possible-parallel-planning', targetTourId: targetTour.id }),
     ]);
@@ -1230,8 +1295,8 @@ describe('waste annual tour transfer', () => {
     const targetTour = tour({
       id: '9b9b9b9b-9b9b-4b9b-8b9b-9b9b9b9b9b9b',
       recurrence: 'weekly',
-      firstDate: '2027-01-11',
-      endDate: '2027-01-11',
+      firstDate: '2027-01-04',
+      endDate: '2027-01-04',
     });
     const preview = await buildWasteAnnualTourTransferPreview({
       instanceId: 'tenant-a',
@@ -1253,7 +1318,7 @@ describe('waste annual tour transfer', () => {
       target: source([targetTour]),
     });
 
-    expect(preview.tours[0]?.mappedTour?.tourDateShifts[0]?.actualDate).toBe('2027-01-19');
+    expect(preview.tours[0]?.mappedTour?.tourDateShifts[0]?.actualDate).toBe('2027-01-05');
     expect(preview.tours[0]?.conflicts).toEqual([]);
     expect(preview.summary.selected).toBe(1);
   });
@@ -1283,6 +1348,9 @@ describe('waste annual tour transfer', () => {
           },
         ],
       }),
+      replacementDates: [
+        { sourceResourceId: 'mapped-shift-to-target-origin:actual', targetDate: '2027-01-12' },
+      ],
       target: source([targetTour], {
         tourDateShifts: [
           {

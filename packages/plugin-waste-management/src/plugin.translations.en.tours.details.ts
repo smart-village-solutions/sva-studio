@@ -4,6 +4,13 @@ import {
 } from './plugin.translations.shared.scheduling.js';
 
 export const wasteManagementPluginTranslationsENToursDetails = {
+  workspace: {
+    title: 'Edit this tour',
+    description: 'Open assignments, calendar and tour visits for this tour directly.',
+    assignments: 'Assign collection locations',
+    calendar: 'Annual calendar and holiday shifts',
+    scheduling: 'Tour visits and tour-specific shifts',
+  },
   annualTransfer: {
     open: 'Transfer tour set to following year',
     title: 'Transfer annual schedule to the following year',
@@ -29,6 +36,9 @@ export const wasteManagementPluginTranslationsENToursDetails = {
       '{{transferable}} transferable, {{alreadyEffective}} already effective, {{blocked}} blocked. Selected: {{selected}} tours with {{relationships}} relationships; {{excluded}} out-of-year records are excluded.',
     recurrence: 'Cadence: {{value}}',
     firstTargetDate: 'First occurrence in the following year: {{date}}',
+    overrideFirstTargetDate: 'Different first regular occurrence for {{name}}',
+    overrideFirstTargetDateHint:
+      'Leave blank to continue the existing cadence. The preview shows the calculated date.',
     tourCounts:
       'Waste types: {{wasteFractions}}, concrete tour dates: {{customDates}}, pickup locations: {{locations}}, location dates: {{pickupDates}}, assignments: {{assignments}}, shifts: {{shifts}}, excluded: {{excluded}}',
     period: 'Validity period: {{source}} → {{target}}',

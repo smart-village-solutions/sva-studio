@@ -61,7 +61,7 @@ export const resolveBaseAuthConfig = (overrides: { clientSecret?: string } = {})
     loginStateCookieName: process.env.SVA_AUTH_LOGIN_STATE_COOKIE ?? 'sva_auth_state',
     silentSsoSuppressCookieName:
       process.env.SVA_AUTH_SILENT_SSO_SUPPRESS_COOKIE ?? 'sva_auth_silent_sso',
-    sessionTtlMs: readNumber('SVA_AUTH_SESSION_TTL_MS', 60 * 60 * 1000),
+    sessionTtlMs: readNumber('SVA_AUTH_SESSION_TTL_MS', 180 * 60 * 1000),
     sessionRedisTtlBufferMs: readNumber('SVA_AUTH_SESSION_REDIS_TTL_BUFFER_MS', 5 * 60 * 1000),
     freshReauthWindowMs: readPositiveNumber('SVA_AUTH_FRESH_REAUTH_WINDOW_MS', 10 * 60 * 1000),
     silentSsoSuppressAfterLogoutMs: readNumber(

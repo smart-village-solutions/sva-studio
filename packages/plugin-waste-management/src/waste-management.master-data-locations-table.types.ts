@@ -13,6 +13,8 @@ import type { WasteManagementSearchParams } from './search-params.js';
 
 export type WasteMasterDataLocationsTableProps = {
   readonly search?: WasteManagementSearchParams;
+  readonly onQueryChange?: (query: string) => void;
+  readonly onResetFilters?: () => void;
   readonly regions: readonly WasteRegionRecord[];
   readonly cities: readonly WasteCityRecord[];
   readonly streets: readonly WasteStreetRecord[];
@@ -23,6 +25,12 @@ export type WasteMasterDataLocationsTableProps = {
   readonly allFilteredLocationsSelected: boolean;
   readonly selectedCollectionLocationsCount: number;
   readonly availableTours: readonly WasteTourRecord[];
+  readonly locationYear?: number;
+  readonly onLocationYearChange?: (year: number | undefined) => void;
+  readonly locationTourStatus?: WasteManagementSearchParams['locationTourStatus'];
+  readonly onLocationTourStatusChange?: (
+    status: WasteManagementSearchParams['locationTourStatus']
+  ) => void;
   readonly page: number;
   readonly pageSize: number;
   readonly pageCount: number;
@@ -56,6 +64,8 @@ export type WasteMasterDataLocationsTableMaps = {
   readonly streetsById: ReadonlyMap<string, WasteStreetRecord>;
   readonly houseNumbersById: ReadonlyMap<string, WasteHouseNumberRecord>;
   readonly toursById: ReadonlyMap<string, WasteTourRecord>;
+  readonly locationYear?: number;
+  readonly locationTourStatus?: WasteManagementSearchParams['locationTourStatus'];
   readonly locationTourNamesByLocationId: ReadonlyMap<string, readonly string[]>;
   readonly locationToursByLocationId: ReadonlyMap<string, readonly WasteTourRecord[]>;
 };

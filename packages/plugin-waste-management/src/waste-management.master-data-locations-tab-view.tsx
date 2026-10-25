@@ -63,6 +63,8 @@ export const WasteMasterDataLocationsTabView = ({
   return (
     <WasteMasterDataLocationsWorkspace
       search={search}
+      onQueryChange={navigation.setQuery}
+      onResetFilters={navigation.resetFilters}
       fractions={controller.locationCoverageFractions}
       fractionsStatus={controller.locationCoverageFractionsStatus}
       toursStatus={controller.locationCoverageToursStatus}
@@ -77,6 +79,10 @@ export const WasteMasterDataLocationsTabView = ({
       allFilteredLocationsSelected={controller.allFilteredLocationsSelected}
       selectedCollectionLocationsCount={controller.selectedLocationIds.length}
       availableTours={controller.availableTours}
+      locationYear={search.locationYear}
+      onLocationYearChange={navigation.setLocationYear}
+      locationTourStatus={search.locationTourStatus}
+      onLocationTourStatusChange={navigation.setLocationTourStatus}
       page={search.page}
       pageSize={search.pageSize}
       pageCount={controller.collectionLocationPage?.pageCount ?? 0}

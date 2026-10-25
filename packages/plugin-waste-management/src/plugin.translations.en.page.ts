@@ -5,6 +5,8 @@ export const wasteManagementPluginTranslationsENPage = {
       'Manage master data, tours, schedule deviations and technical tools for waste management.',
     webVersionLead: 'The data is also published here:',
     webVersionLinkLabel: 'Waste calendar web version',
+    accessLoading: 'Checking permissions …',
+    accessUnavailable: 'Permissions could not be loaded. Please try again using “Reload”.',
     syncStatus: {
       loadingTitle: 'Loading synchronization status',
       loadingText: 'Checking the current data revision.',

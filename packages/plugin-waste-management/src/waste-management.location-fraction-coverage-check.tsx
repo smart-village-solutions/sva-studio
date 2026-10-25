@@ -69,15 +69,21 @@ const CoverageCheckHeader = () => {
 
 const useResetResult = (
   props: CoverageCheckProps,
-  criteria: readonly [fractionId: string, startDate: string, endDate: string],
+  criteria: readonly [
+    fractionId: string,
+    startDate: string,
+    endDate: string,
+    includeDrafts: boolean,
+  ],
   setResult: Dispatch<SetStateAction<CoverageResult | null>>
 ) => {
-  const [fractionId, startDate, endDate] = criteria;
+  const [fractionId, startDate, endDate, includeDrafts] = criteria;
   useEffect(() => {
     setResult(null);
   }, [
     endDate,
     fractionId,
+    includeDrafts,
     props.fractions,
     props.fractionsStatus,
     props.links,
@@ -92,8 +98,10 @@ const useResetResult = (
 export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const [fractionId, setFractionId] = useState('');
+  const [year, setYear] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [includeDrafts, setIncludeDrafts] = useState(true);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [result, setResult] = useState<CoverageResult | null>(null);
   const fractionsStatus = props.fractionsStatus ?? 'ready';
@@ -104,7 +112,17 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
     () => new Map(props.locations.map((location) => [location.id, location] as const)),
     [props.locations]
   );
-  useResetResult(props, [fractionId, startDate, endDate], setResult);
+  useResetResult(props, [fractionId, startDate, endDate, includeDrafts], setResult);
+  const changeYear = (value: string) => {
+    setYear(value);
+    if (/^(20\d{2}|2100)$/.test(value)) {
+      setStartDate(`${value}-01-01`);
+      setEndDate(`${value}-12-31`);
+    } else {
+      setStartDate('');
+      setEndDate('');
+    }
+  };
   const runCheck = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextError = getCoverageErrorKey(fractionId, startDate, endDate);
@@ -120,8 +138,10 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
               fractionId,
               startDate,
               endDate,
+              includeDrafts,
             }),
             checkedLocationCount: props.locations.filter((location) => location.active).length,
+            includeDrafts,
           }
     );
   };
@@ -139,11 +159,21 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
         fractions={props.fractions}
         disabled={coverageDataUnavailable}
         fractionId={fractionId}
+        year={year}
         startDate={startDate}
         endDate={endDate}
+        includeDrafts={includeDrafts}
         onFractionChange={setFractionId}
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
+        onYearChange={changeYear}
+        onStartDateChange={(value) => {
+          setYear('');
+          setStartDate(value);
+        }}
+        onEndDateChange={(value) => {
+          setYear('');
+          setEndDate(value);
+        }}
+        onIncludeDraftsChange={setIncludeDrafts}
         onSubmit={runCheck}
       />
       <CoverageFractionsAvailability
@@ -157,14 +187,24 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
         </p>
       ) : null}
       {result ? (
-        <CoverageResults
-          result={result}
-          search={props.search}
-          locationsById={locationsById}
-          onAssign={assignIssues}
-          onEdit={props.onOpenEditLocation}
-          getLocationLabel={props.getLocationLabel}
-        />
+        <>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {pt('masterData.locationsWorkspace.coverage.assignmentNotice')}
+          </p>
+          {result.includeDrafts ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              {pt('masterData.locationsWorkspace.coverage.planningNotice')}
+            </p>
+          ) : null}
+          <CoverageResults
+            result={result}
+            search={props.search}
+            locationsById={locationsById}
+            onAssign={assignIssues}
+            onEdit={props.onOpenEditLocation}
+            getLocationLabel={props.getLocationLabel}
+          />
+        </>
       ) : null}
     </section>
   );

@@ -51,12 +51,14 @@ const toDomainErrorResponse = (error: unknown, requestId: string | undefined): R
     }
     return createApiError(
       400,
-      error.code,
-      error.code === 'invalid_source_year'
-        ? 'Als Quelljahr sind nur das aktuelle und das vorherige Kalenderjahr zulässig.'
-        : error.replacement
-          ? `Das Ersatzdatum muss im Kalenderjahr ${error.replacement.expectedYear} liegen.`
-          : 'Das Ersatzdatum ist für die aktuelle Planung nicht gültig.',
+      error.code === 'first_target_date_invalid' ? 'invalid_request' : error.code,
+      error.code === 'first_target_date_invalid'
+        ? 'Der erste reguläre Termin muss zu einer Tour gehören und im Folgejahr liegen.'
+        : error.code === 'invalid_source_year'
+          ? 'Als Quelljahr sind nur das aktuelle und das vorherige Kalenderjahr zulässig.'
+          : error.replacement
+            ? `Das Ersatzdatum muss im Kalenderjahr ${error.replacement.expectedYear} liegen.`
+            : 'Das Ersatzdatum ist für die aktuelle Planung nicht gültig.',
       requestId
     );
   }
@@ -136,7 +138,6 @@ const executeConfirmedAnnualTourTransfer = async (input: {
   });
   let result: WasteAnnualTourTransferResult | undefined;
   let response: Response;
-  let leaseVerified = false;
   try {
     try {
       result = await requireDeps(
@@ -155,8 +156,7 @@ const executeConfirmedAnnualTourTransfer = async (input: {
           input.requestId
         );
     }
-    leaseVerified = await leaseHeartbeat.verify();
-    if (!leaseVerified) {
+    if (!(await leaseHeartbeat.verify())) {
       return createApiError(
         409,
         'idempotency_in_progress',
@@ -202,6 +202,7 @@ export const wasteManagementAnnualTourTransferHandlers = {
         sourceYear: parsed.data.sourceYear,
         selectedTourIds: parsed.data.selectedTourIds,
         replacementDates: parsed.data.replacementDates,
+        firstTargetDates: parsed.data.firstTargetDates,
       });
       return jsonItemResponse(200, preview, requestId);
     } catch (error) {

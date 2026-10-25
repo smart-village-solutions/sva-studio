@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { type WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
-import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
+import {
+  StudioErrorState,
+  StudioLoadingState,
+  StudioOverviewPageTemplate,
+} from '@sva/studio-ui-react';
 import {
   normalizeWasteManagementSearchParams,
   type WasteManagementMasterDataTabId,
@@ -245,15 +249,21 @@ export const WasteManagementPage = () => {
         />
         {statusMessage ? <StatusNotice message={statusMessage} /> : null}
       </div>
-      <WasteManagementPageTabs
-        pt={pt}
-        search={search}
-        rawSearch={rawSearch as Record<string, unknown>}
-        access={uiAccess}
-        visibleTabIds={uiAccess.visibleTabIds}
-        onTabChange={(value) => updateSearch(navigate, search, { tab: value })}
-        onAddressSearchChange={(patch) => updateSearch(navigate, search, patch)}
-      />
+      {uiAccess.hasError ? (
+        <StudioErrorState>{pt('page.accessUnavailable')}</StudioErrorState>
+      ) : !uiAccess.isResolved ? (
+        <StudioLoadingState>{pt('page.accessLoading')}</StudioLoadingState>
+      ) : (
+        <WasteManagementPageTabs
+          pt={pt}
+          search={search}
+          rawSearch={rawSearch as Record<string, unknown>}
+          access={uiAccess}
+          visibleTabIds={uiAccess.visibleTabIds}
+          onTabChange={(value) => updateSearch(navigate, search, { tab: value })}
+          onAddressSearchChange={(patch) => updateSearch(navigate, search, patch)}
+        />
+      )}
     </StudioOverviewPageTemplate>
   );
 };

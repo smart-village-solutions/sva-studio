@@ -151,4 +151,24 @@ describe('useWasteSchedulingViewModel', () => {
       pt: expect.any(Function),
     });
   });
+
+  it('limits explicit assignments to the tour in the route', () => {
+    useWasteSchedulingStateMock.mockReturnValue({
+      overview: {
+        holidayRules: [],
+        globalDateShifts: [],
+        tourDateShifts: [],
+        tourAssignments: [
+          { id: 'assignment-1', tourId: 'tour-1' },
+          { id: 'assignment-2', tourId: 'tour-2' },
+        ],
+      },
+      availableTours: [],
+      locationOverview: null,
+    });
+    const { result } = renderHook(() =>
+      useWasteSchedulingViewModel((key) => key, { ...search, tourId: 'tour-2' })
+    );
+    expect(result.current.tourAssignments).toEqual([{ id: 'assignment-2', tourId: 'tour-2' }]);
+  });
 });

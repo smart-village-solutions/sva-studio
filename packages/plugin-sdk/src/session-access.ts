@@ -1,16 +1,21 @@
 export type SessionAccessSnapshot = Readonly<{
   isResolved: boolean;
+  hasError: boolean;
   permissionActions: readonly string[];
   unscopedPermissionActions: readonly string[];
   assignedModules: readonly string[];
   roles: readonly string[];
 }>;
 
-type PublishedSessionAccessSnapshot = Omit<SessionAccessSnapshot, 'unscopedPermissionActions'> &
-  Readonly<{ unscopedPermissionActions?: readonly string[] }>;
+type PublishedSessionAccessSnapshot = Omit<
+  SessionAccessSnapshot,
+  'unscopedPermissionActions' | 'hasError'
+> &
+  Readonly<{ unscopedPermissionActions?: readonly string[]; hasError?: boolean }>;
 
 const emptySnapshot: SessionAccessSnapshot = {
   isResolved: false,
+  hasError: false,
   permissionActions: [],
   unscopedPermissionActions: [],
   assignedModules: [],
@@ -30,8 +35,10 @@ export const readSessionAccessSnapshot = (): SessionAccessSnapshot => currentSna
 
 export const publishSessionAccessSnapshot = (snapshot: PublishedSessionAccessSnapshot): void => {
   const unscopedPermissionActions = snapshot.unscopedPermissionActions ?? [];
+  const hasError = snapshot.hasError ?? false;
   if (
     currentSnapshot.isResolved === snapshot.isResolved &&
+    currentSnapshot.hasError === hasError &&
     arePermissionActionsEqual(currentSnapshot.permissionActions, snapshot.permissionActions) &&
     arePermissionActionsEqual(
       currentSnapshot.unscopedPermissionActions,
@@ -45,6 +52,7 @@ export const publishSessionAccessSnapshot = (snapshot: PublishedSessionAccessSna
 
   currentSnapshot = {
     isResolved: snapshot.isResolved,
+    hasError,
     permissionActions: [...snapshot.permissionActions],
     unscopedPermissionActions: [...unscopedPermissionActions],
     assignedModules: [...snapshot.assignedModules],

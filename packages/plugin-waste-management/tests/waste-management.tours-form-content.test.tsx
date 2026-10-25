@@ -17,6 +17,7 @@ vi.mock('@sva/waste-management-contracts', async (importOriginal) => ({
 
 vi.mock('@sva/studio-ui-react', () => ({
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  buttonVariants: () => 'button',
   StudioPageHeader: ({
     title,
     description,
@@ -32,6 +33,28 @@ vi.mock('@sva/studio-ui-react', () => ({
       {actions}
     </div>
   ),
+}));
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    children,
+    search,
+    to,
+    ...rest
+  }: React.PropsWithChildren<{
+    search?: unknown;
+    to: string;
+    target?: string;
+    rel?: string;
+    className?: string;
+  }>) => {
+    void search;
+    return (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    );
+  },
 }));
 
 vi.mock('../src/waste-management.tours-tour-fields.js', () => ({
@@ -152,6 +175,8 @@ describe('WasteToursFormContent', () => {
   });
 
   it('offers shift creation only while editing a recurring tour with scheduling access', () => {
+    const onOpenAssignments = vi.fn();
+    const onOpenCalendar = vi.fn();
     const props = {
       form: {
         id: 'tour-1',
@@ -197,10 +222,19 @@ describe('WasteToursFormContent', () => {
       onChange: vi.fn(),
       onCancel: vi.fn(),
       onSubmit: vi.fn(),
+      onOpenAssignments,
+      onOpenCalendar,
     };
 
     const { rerender } = render(<WasteToursFormContent {...props} mode="edit" />);
     expect(screen.getByRole('link', { name: 'tours.actions.createShift' })).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: 'tours.workspace.scheduling – tours.actions.opensInNewTab' })
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'tours.workspace.assignments' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tours.workspace.calendar' }));
+    expect(onOpenAssignments).toHaveBeenCalledOnce();
+    expect(onOpenCalendar).toHaveBeenCalledOnce();
 
     rerender(<WasteToursFormContent {...props} mode="create" />);
     expect(screen.queryByRole('link', { name: 'tours.actions.createShift' })).toBeNull();
@@ -216,5 +250,8 @@ describe('WasteToursFormContent', () => {
     expect(screen.getByText('tours.actions.createShift').getAttribute('aria-disabled')).toBe(
       'true'
     );
+    expect(
+      screen.getByRole('button', { name: 'tours.workspace.calendar' }).hasAttribute('disabled')
+    ).toBe(true);
   });
 });

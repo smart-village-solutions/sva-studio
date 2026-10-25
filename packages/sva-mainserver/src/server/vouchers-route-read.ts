@@ -63,6 +63,7 @@ export const reconcile = async (request: Request, ctx: AuthenticatedRequestConte
       operation: z.enum(['create', 'update']),
       siblingIdentities: z.record(z.string(), z.string()),
       previousMediaIds: z.array(z.string()).default([]),
+      expectedSnapshot: rawRecordSchema.nullable().default(null),
     })
     .parse(prepared.responseBody);
   if (
@@ -77,13 +78,9 @@ export const reconcile = async (request: Request, ctx: AuthenticatedRequestConte
   const poiAccess = await local(ctx, 'poi.read', binding.poiId, 'poi.point-of-interest');
   if (isResponse(poiAccess)) return poiAccess;
   const aggregate = await getSvaMainserverVoucherPoi({ ...actor, poiId: binding.poiId });
-  if (
-    aggregate.poi.payload == null ||
-    raw(aggregate.poi.payload).studioVoucherOperationId !== parsed.data.preparationId
-  )
-    return errorJson(409, 'voucher_outcome_unknown', 'voucher_outcome_unknown');
-  const expected = z.object({ expectedSnapshot: rawRecordSchema }).safeParse(prepared.responseBody);
-  if (!expected.success || !voucherWriteMatches(aggregate.poi, expected.data.expectedSnapshot))
+  // The complete expectation also contains the bound POI operation identity.
+  // Old preparations without an expectation remain unresolved.
+  if (!voucherWriteMatches(aggregate.poi, binding.expectedSnapshot))
     return errorJson(409, 'voucher_outcome_unknown', 'voucher_outcome_unknown');
   const matches = records(aggregate.poi.vouchers).filter(
     (item) => item.payload != null && raw(item.payload).id === binding.voucherIdentity

@@ -105,6 +105,11 @@ describe('studio-distribution-artifact', () => {
   it('includes vouchers in Studio and supports explicit custom voucher selection', () => {
     const studio = JSON.parse(runArtifactCommand('selection', '', 'studio').toString('utf8'));
     expect(studio.pluginIds).toContain('vouchers');
+    const appPackage = JSON.parse(
+      readFileSync(path.join(workspaceRoot, 'apps/sva-studio-react/package.json'), 'utf8')
+    );
+    expect(appPackage.dependencies['@sva/plugin-vouchers']).toBe('workspace:*');
+
     const custom = JSON.parse(
       runArtifactCommand('selection', '', 'custom', 'poi,vouchers').toString('utf8')
     );

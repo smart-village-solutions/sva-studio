@@ -150,7 +150,7 @@ const FaqSettingsTab = ({ form, pt, create = false }: FaqEditorTabProps & { crea
 
 const FaqCreateFields = ({ form, pt }: FaqEditorTabProps) => {
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <StudioDetailCard title={pt('create.contentTitle')}>
         <FaqQuestionField form={form} pt={pt} />
         <FaqContentTab form={form} pt={pt} />

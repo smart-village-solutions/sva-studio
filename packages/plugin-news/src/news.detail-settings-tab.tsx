@@ -8,22 +8,19 @@ import {
   StudioFormSummaryErrors,
   getStudioFormFieldProps,
 } from '@sva/studio-ui-react';
-import { useEffect } from 'react';
-
+import { useEffect, type ReactNode } from 'react';
 import { NewsDetailCard } from './news.detail-card.js';
 import { NewsDetailTargetingSection } from './news.detail-targeting-tab.js';
 import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
 import type { WasteTargetingAvailability } from './news.waste-payload.js';
-
 const missingDateValue = '--.--.-- --:--';
-
 type ScheduledPublicationFieldState = Readonly<{
   value: string;
   isInvalid: boolean;
   onChange: (nextValue: string) => string;
 }>;
-
 export type NewsDetailSettingsTabProps = Readonly<{
+  principal?: ReactNode;
   loadedItem: NewsContentItem | null;
   canSendPushNotification?: boolean;
   mode: 'create' | 'edit';
@@ -33,7 +30,6 @@ export type NewsDetailSettingsTabProps = Readonly<{
   wasteTargetingAvailability: WasteTargetingAvailability;
   onLoadWasteOverview: () => Promise<boolean>;
 }>;
-
 type NewsDetailSettingsFormControl = ReturnType<
   typeof useFormContext<NewsDetailFormValues>
 >['control'];
@@ -189,6 +185,7 @@ function NewsPublicationModeFieldset({
 }
 
 function NewsPublicationCard({
+  principal,
   control,
   loadedItem,
   mode,
@@ -197,6 +194,7 @@ function NewsPublicationCard({
   scheduledPublicationBindings,
   scheduledPublicationField,
 }: Readonly<{
+  principal?: ReactNode;
   control: NewsDetailSettingsFormControl;
   loadedItem: NewsContentItem | null;
   mode: 'create' | 'edit';
@@ -210,6 +208,7 @@ function NewsPublicationCard({
       title={pt('cards.settings.publication.title')}
       description={pt('cards.settings.publication.description')}
     >
+      {principal}
       <NewsPublicationModeFieldset control={control} pt={pt} />
 
       {publicationMode === 'scheduled' ? (
@@ -248,6 +247,7 @@ function NewsPublicationCard({
 }
 
 export function NewsDetailSettingsTab({
+  principal,
   loadedItem,
   canSendPushNotification = false,
   mode,
@@ -279,6 +279,7 @@ export function NewsDetailSettingsTab({
 
   const publicationCard = (
     <NewsPublicationCard
+      principal={principal}
       control={control}
       loadedItem={loadedItem}
       mode={mode}

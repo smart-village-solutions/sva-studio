@@ -109,8 +109,12 @@ const richTextLabels = (pt: Translate) => ({
 function ContentTab(props: TabInput) {
   const { pt, form } = props;
   return (
-    <div className="space-y-5">
-      <StudioDetailCard title={pt('fields.fullText')} description={pt('create.optional')}>
+    <div className="space-y-6">
+      <StudioDetailCard
+        title={pt(props.mode === 'create' ? 'tabs.content' : 'fields.fullText')}
+        description={props.mode === 'create' ? undefined : pt('create.optional')}
+      >
+        {props.mode === 'create' ? <BasisTab {...props} /> : null}
         <div className="space-y-1">
           <label
             id="project-full-text-label"
@@ -209,8 +213,7 @@ export function createProjectTabs(
         id: 'content',
         label: input.pt('tabs.content'),
         panel: (
-          <div className="space-y-5">
-            <BasisTab {...input} />
+          <div className="space-y-6">
             <ContentTab {...input} />
             <StudioDetailCard title={input.pt('create.settingsTitle')}>
               <ProjectLanguageField {...input} />

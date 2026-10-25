@@ -41,18 +41,26 @@ export function PoiFormStatus({ view }: Readonly<{ view: PoiDetailPageViewModel 
           </Link>
         </StudioFormSummary>
       ) : null}
-      <MainserverPrincipalControl
-        fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
-        id="poi-acting-principal"
-        label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-        description={pt('principal.description')}
-        value={view.actingPrincipalType}
-        options={resolveMainserverPrincipalOptions(view.principalControl, {
-          value: view.actingPrincipalType,
-          label: pt(`principal.${view.actingPrincipalType}`),
-        })}
-        onChange={view.setActingPrincipalType}
-      />
+      <div
+        className={
+          mode === 'create' && view.principalControl?.kind === 'selectable'
+            ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
+            : undefined
+        }
+      >
+        <MainserverPrincipalControl
+          fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
+          id="poi-acting-principal"
+          label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+          description={pt('principal.description')}
+          value={view.actingPrincipalType}
+          options={resolveMainserverPrincipalOptions(view.principalControl, {
+            value: view.actingPrincipalType,
+            label: pt(`principal.${view.actingPrincipalType}`),
+          })}
+          onChange={view.setActingPrincipalType}
+        />
+      </div>
       <MainserverDeviationSummary
         deviations={view.deviations}
         title={pt('messages.degradedDataWarning')}

@@ -199,7 +199,7 @@ export function StudioDetailPageTemplate({
       className={cn(
         'space-y-6',
         stickyActions &&
-          '[&_p.text-xs]:text-sm [&_summary]:cursor-pointer [&_summary]:rounded-lg [&_summary]:border [&_summary]:border-border [&_summary]:bg-card [&_summary]:px-4 [&_summary]:py-3 [&_summary]:text-sm [&_summary]:font-medium [&_details>summary]:mb-3 [&_[id]]:scroll-mt-24 [&_:is(input,select,textarea,[contenteditable=true])]:scroll-mb-48',
+          '[&_p.text-xs]:text-sm [&_summary]:cursor-pointer [&_details]:rounded-2xl [&_details]:border [&_details]:border-border/60 [&_details]:bg-card [&_details]:p-5 [&_summary]:text-sm [&_summary]:font-medium [&_details[open]>summary]:mb-4 [&_[id]]:scroll-mt-24 [&_:is(input,select,textarea,[contenteditable=true])]:scroll-mb-48',
         className
       )}
     >
@@ -209,7 +209,7 @@ export function StudioDetailPageTemplate({
         actions={stickyActions ? actions : headerActions}
         withTitleAccessory
       />
-      <div className="space-y-5">{children}</div>
+      <div className={stickyActions ? 'space-y-6' : 'space-y-5'}>{children}</div>
       {primaryAction ? (
         <StudioFormActionBar
           className={

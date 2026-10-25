@@ -89,22 +89,26 @@ type NewsDetailPanelsOptions = Readonly<{
   contentId?: string;
 }>;
 
-function createNewsSettingsPanel({
-  loadedItem,
-  canSendPushNotification,
-  mode,
-  pt,
-  wasteOverview,
-  wasteTargetingAvailability,
-  loadWasteTargetingOverview,
-  scheduledPublicationInput,
-  invalidScheduledPublicationInput,
-  methods,
-  setScheduledPublicationInput,
-  setInvalidScheduledPublicationInput,
-}: NewsDetailPanelsOptions) {
+function createNewsSettingsPanel(
+  {
+    loadedItem,
+    canSendPushNotification,
+    mode,
+    pt,
+    wasteOverview,
+    wasteTargetingAvailability,
+    loadWasteTargetingOverview,
+    scheduledPublicationInput,
+    invalidScheduledPublicationInput,
+    methods,
+    setScheduledPublicationInput,
+    setInvalidScheduledPublicationInput,
+  }: NewsDetailPanelsOptions,
+  principal?: React.ReactNode
+) {
   return (
     <NewsDetailSettingsTab
+      principal={principal}
       loadedItem={loadedItem}
       canSendPushNotification={canSendPushNotification}
       mode={mode}
@@ -175,14 +179,17 @@ export const createNewsDetailPanels = (options: NewsDetailPanelsOptions) => {
       pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary(),
     pt,
   };
-  const settingsPanel = createNewsSettingsPanel(options);
+  const settingsPanel = createNewsSettingsPanel(
+    options,
+    mode === 'create' ? <NewsDetailBasisTab {...basisProps} section="principal" /> : undefined
+  );
   if (mode === 'create') {
     return createNewsDetailTabDefinitions([
       {
         id: 'basis',
         label: pt('tabs.basis.label'),
         panel: (
-          <StudioSection>
+          <StudioSection className="space-y-6">
             <p>{pt('create.intro')}</p>
             {categoryOptionsError ? (
               <p role="status" className="text-sm text-destructive">
@@ -200,7 +207,6 @@ export const createNewsDetailPanels = (options: NewsDetailPanelsOptions) => {
               <NewsDetailBasisTab {...basisProps} section="categories" />
             </details>
             <NewsDetailContentTab {...contentProps} section="source" createMode />
-            <NewsDetailBasisTab {...basisProps} section="principal" />
             {settingsPanel}
           </StudioSection>
         ),

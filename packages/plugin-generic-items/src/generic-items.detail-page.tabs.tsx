@@ -181,9 +181,9 @@ function GenericItemsCreateFields(props: GenericItemsDetailTabsProps) {
     onLoadAssetSnapshot,
   };
   return (
-    <StudioSection title={pt('create.heading')}>
+    <StudioSection title={pt('create.heading')} className="space-y-6">
       <GenericItemsDetailBasisTab {...basis} createSection="identity" />
-      <section id="generic-create-content" tabIndex={-1}>
+      <section id="generic-create-content" tabIndex={-1} className="space-y-6">
         <GenericItemsContentText labels={labels} createMode />
         <GenericItemsContentLinksMedia {...media} section="media" />
         <GenericItemsDetailBasisTab {...basis} createSection="categories" />

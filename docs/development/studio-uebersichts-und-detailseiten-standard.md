@@ -452,6 +452,10 @@ Hilfetexte stehen unter dem Feld und erklären Format, Einschränkung oder fachl
 
 Formulare werden über fachliche Gruppen organisiert, nicht über technische Komponentenlisten.
 
+Bei Create-Onepagern liegen alle Formularfelder auf einer Card mit `bg-card`, auch Titel und Principal-Auswahl. Breadcrumbs, Seitenüberschrift und Seitenbeschreibung bleiben außerhalb. Cards erhalten 20 px Innenabstand (`p-5`), aufeinanderfolgende Formularbereiche 24 px Abstand (`space-y-6`). Aufklappbare Abschnitte behalten den Card-Hintergrund auch im geöffneten Zustand.
+
+Zusammenfassungen folgen einer redaktionellen Aufgabe und erhalten die Feldreihenfolge: Bei Nachrichten gehört die Principal-Auswahl zur Veröffentlichung, bei Veranstaltungen die Wiederholung zu den Terminen, bei Projekten Titel/Kurzbeschreibung/Volltext zum Inhalt, bei generischen Inhalten Publikationsdatum und Sichtbarkeit zur Veröffentlichung sowie bei Kacheln Sprache/Sortierung/Veröffentlichungszeitpunkt/Sichtbarkeit zu den Einstellungen. Medien, Kategorien, Kontakte, Preise und andere eigenständige optionale Aufgaben bleiben getrennt.
+
 - Fieldsets gruppieren eng zusammengehörige Felder.
 - Akkordeons sind für selten bearbeitete oder optionale Bereiche erlaubt, aber nicht für Pflichtinformationen, die vor dem Speichern geprüft werden müssen.
 - Verschachtelte Bereiche sind sparsam einzusetzen und brauchen klare Überschriften.

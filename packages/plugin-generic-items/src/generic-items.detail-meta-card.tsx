@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   Input,
   StudioField,
@@ -11,7 +12,9 @@ import type { GenericItemsDetailFormValues } from './generic-items.validation.js
 export const GenericItemsMetaCard = ({
   labels,
   createSection,
+  children,
 }: Readonly<{
+  children?: ReactNode;
   labels: Record<string, string>;
   createSection?: 'identity' | 'categories' | 'technical' | 'publication';
 }>) => {
@@ -78,6 +81,7 @@ export const GenericItemsMetaCard = ({
           <Input {...publishedAtField.controlProps} {...register('publishedAt')} />
         </StudioField>
       ) : null}
+      {children}
     </GenericItemsDetailCard>
   );
 };

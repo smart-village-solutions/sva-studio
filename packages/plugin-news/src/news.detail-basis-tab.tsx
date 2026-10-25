@@ -151,7 +151,7 @@ export function NewsDetailBasisTab(props: NewsDetailBasisTabProps) {
 
   if (section === 'title')
     return (
-      <div className="space-y-3">
+      <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-5">
         <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
         <StudioField {...titleField} label={pt('fields.title')} required>
           <Input {...titleField.controlProps} required {...register('title')} />

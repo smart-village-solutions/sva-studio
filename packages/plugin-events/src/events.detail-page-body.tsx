@@ -12,7 +12,6 @@ import { EventsDetailDeleteDialog } from './events.detail-delete.js';
 import { EventsDetailEditorTabs } from './events.detail-editor-tabs.js';
 import { EventsDetailMediaPicker } from './events.detail-media-picker.js';
 import type { EventsDetailPageViewProps } from './events.detail-page-view.js';
-
 const EventsDetailStatus = ({
   deletion,
   methods,
@@ -52,18 +51,22 @@ const EventsDetailStatus = ({
         </Link>
       </StudioFormSummary>
     ) : null}
-    <MainserverPrincipalControl
-      fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
-      id="events-acting-principal"
-      label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-      description={pt('principal.description')}
-      value={actingPrincipalType}
-      options={resolveMainserverPrincipalOptions(principalControl, {
-        value: actingPrincipalType,
-        label: pt(`principal.${actingPrincipalType}`),
-      })}
-      onChange={setActingPrincipalType}
-    />
+    <div className={mode === 'create'
+      ? 'has-[select]:rounded-2xl has-[select]:border has-[select]:border-border/60 has-[select]:bg-card has-[select]:p-5'
+      : undefined}>
+      <MainserverPrincipalControl
+        fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
+        id="events-acting-principal"
+        label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+        description={pt('principal.description')}
+        value={actingPrincipalType}
+        options={resolveMainserverPrincipalOptions(principalControl, {
+          value: actingPrincipalType,
+          label: pt(`principal.${actingPrincipalType}`),
+        })}
+        onChange={setActingPrincipalType}
+      />
+    </div>
     <MainserverDeviationSummary
       deviations={deviations}
       title={pt('messages.degradedDataWarning')}

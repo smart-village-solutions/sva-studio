@@ -276,6 +276,8 @@ describe('EventsListPage', () => {
     render(<EventsCreatePage />);
 
     await screen.findByLabelText('Titel');
+    const datesCard = document.getElementById('event-create-dates')!;
+    expect(datesCard.contains(document.getElementById('event-create-recurrence'))).toBe(true);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Konzertabend' } });
     document.querySelectorAll('details').forEach((element) => {

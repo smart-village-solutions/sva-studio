@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useFieldArray, useFormContext, useWatch, type UseFormSetValue } from 'react-hook-form';
 import { getHostMapGeocodingConfig } from '@sva/plugin-sdk';
 import { Button, Checkbox, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
@@ -113,6 +113,7 @@ function DateFields(props: DateFieldsProps) {
 }
 
 export type EventsDateSectionProps = Readonly<{
+  children?: ReactNode;
   createMode?: boolean;
   pt: Translator;
 }>;
@@ -151,6 +152,7 @@ export function EventsDateSection(props: EventsDateSectionProps) {
           <DateFields {...props} date={date} index={index} setValue={setValue} />
         </RepeaterItem>
       ))}
+      {props.children}
     </EventsDetailCard>
   );
 }

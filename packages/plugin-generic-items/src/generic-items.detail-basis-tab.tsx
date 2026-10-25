@@ -189,9 +189,11 @@ export const GenericItemsDetailBasisTab = ({
   return (
     <div className="space-y-4">
       {createSection === 'publication' ? (
-        <GenericItemsMetaCard labels={labels} createSection={createSection} />
+        <GenericItemsMetaCard labels={labels} createSection={createSection}>
+          <GenericItemsVisibleField labels={labels} />
+        </GenericItemsMetaCard>
       ) : null}
-      {createSection !== 'technical' ? (
+      {createSection !== 'technical' && createSection !== 'publication' ? (
         <GenericItemsIdentityCard
           createSection={createSection}
           availableCategories={availableCategories}

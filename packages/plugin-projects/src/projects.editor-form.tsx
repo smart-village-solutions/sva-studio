@@ -110,7 +110,7 @@ export function ProjectEditorForm(props: ViewInput) {
   const formId = `project-${mode}-form`;
   const summaryErrors = projectSummaryErrors(form, pt);
   return (
-    <form id={formId} className="space-y-5" onSubmit={(event) => void save(event)} noValidate>
+    <form id={formId} className="space-y-6" onSubmit={(event) => void save(event)} noValidate>
       {createdContentId ? (
         <p>
           <Link to="/admin/projects/$id" params={{ id: createdContentId }}>
@@ -154,18 +154,20 @@ export function ProjectEditorForm(props: ViewInput) {
         />
       )}
       {mode === 'create' ? (
-        <MainserverPrincipalControl
-          fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
-          id="projects-acting-principal"
-          label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-          description={pt('principal.description')}
-          value={actingPrincipalType}
-          options={resolveMainserverPrincipalOptions(principalControl, {
-            value: actingPrincipalType,
-            label: pt(`principal.${actingPrincipalType}`),
-          })}
-          onChange={setActingPrincipalType}
-        />
+        <div className="has-[select]:rounded-2xl has-[select]:border has-[select]:border-border/60 has-[select]:bg-card has-[select]:p-5">
+          <MainserverPrincipalControl
+            fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
+            id="projects-acting-principal"
+            label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+            description={pt('principal.description')}
+            value={actingPrincipalType}
+            options={resolveMainserverPrincipalOptions(principalControl, {
+              value: actingPrincipalType,
+              label: pt(`principal.${actingPrincipalType}`),
+            })}
+            onChange={setActingPrincipalType}
+          />
+        </div>
       ) : null}
     </form>
   );

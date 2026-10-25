@@ -175,7 +175,7 @@ export function PoiDetailTabs({ view }: Readonly<{ view: PoiDetailPageViewModel 
 
 function PoiVoucherLink({ contentId }: Readonly<{ contentId?: string }>) {
   const session = readSessionAccessSnapshot();
-  const t = usePluginTranslation('poi');
+  const pt = usePluginTranslation('poi');
   if (
     !contentId ||
     !session.assignedModules.includes('vouchers') ||
@@ -185,7 +185,7 @@ function PoiVoucherLink({ contentId }: Readonly<{ contentId?: string }>) {
   return (
     <Button asChild variant="secondary">
       <Link to="/admin/vouchers" search={{ poiId: contentId }}>
-        {t('messages.vouchersForLocation')}
+        {pt('messages.vouchersForLocation')}
       </Link>
     </Button>
   );

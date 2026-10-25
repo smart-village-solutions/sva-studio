@@ -23,6 +23,15 @@ export const wasteAnnualIntervalForTour = (tour: WasteTourRecord): number | null
   return null;
 };
 
+export const hasWasteAnnualEarlyYearCadenceAnchor = (
+  tour: WasteTourRecord,
+  sourceYear: number
+): boolean => {
+  if (!tour.firstDate || wasteAnnualIntervalForTour(tour) === null) return false;
+  const first = parseWasteAnnualIsoDate(tour.firstDate);
+  return first?.getUTCFullYear() === sourceYear && first.getUTCMonth() === 0;
+};
+
 const isWasteAnnualCadenceOccurrence = (input: {
   readonly date: string;
   readonly firstDate: string;

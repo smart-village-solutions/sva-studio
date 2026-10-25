@@ -64,6 +64,41 @@ const isMePermissionsResponse = (value: unknown): value is MePermissionsResponse
   );
 };
 
+const loadPermissionsWithRetry = async (
+  instanceId: string,
+  organizationId: string | null,
+  signal: AbortSignal
+): Promise<MePermissionsResponse | undefined> => {
+  const request = async () => {
+    const response = await fetchWithRequestTimeout(
+      buildPermissionsPath(instanceId, organizationId),
+      { signal },
+      { timeoutMs: 10_000 }
+    );
+    if (!response.ok) {
+      throw await readIamErrorResponse(response, { emitEffectiveAccessInvalidation: false });
+    }
+    return response;
+  };
+
+  let response: Response;
+  try {
+    response = await request();
+  } catch (cause) {
+    const status = asIamError(cause).status;
+    if (signal.aborted || (status !== 429 && status < 500)) throw cause;
+    await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 500));
+    if (signal.aborted) return;
+    response = await request();
+  }
+
+  const payload: unknown = await response.json();
+  if (!isMePermissionsResponse(payload) || payload.instanceId !== instanceId) {
+    throw new IamHttpError({ status: 502, code: 'invalid_response', message: 'invalid_response' });
+  }
+  return payload;
+};
+
 const collectPermissionActions = (snapshot: EffectiveAccessSnapshot): readonly string[] =>
   snapshot.status === 'ready' && snapshot.scope.kind === 'tenant' && 'permissions' in snapshot
     ? [...new Set(snapshot.permissions.map((permission) => permission.action))].sort(
@@ -184,43 +219,7 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
     const abortController = new AbortController();
     setSnapshot({ status: 'loading', scope, generation });
 
-    const loadPermissions = async () => {
-      const request = () =>
-        fetchWithRequestTimeout(
-          buildPermissionsPath(instanceId, organizationId),
-          { signal: abortController.signal },
-          { timeoutMs: 10_000 }
-        );
-      let response;
-      try {
-        response = await request();
-        if (!response.ok) {
-          throw await readIamErrorResponse(response, { emitEffectiveAccessInvalidation: false });
-        }
-      } catch (cause) {
-        const status = asIamError(cause).status;
-        if (abortController.signal.aborted || (status !== 429 && status < 500)) {
-          throw cause;
-        }
-        await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 500));
-        if (abortController.signal.aborted) return;
-        response = await request();
-        if (!response.ok) {
-          throw await readIamErrorResponse(response, { emitEffectiveAccessInvalidation: false });
-        }
-      }
-      const payload: unknown = await response.json();
-      if (!isMePermissionsResponse(payload) || payload.instanceId !== instanceId) {
-        throw new IamHttpError({
-          status: 502,
-          code: 'invalid_response',
-          message: 'invalid_response',
-        });
-      }
-      return payload;
-    };
-
-    void loadPermissions()
+    void loadPermissionsWithRetry(instanceId, organizationId, abortController.signal)
       .then((payload) => {
         if (!payload) return;
         if (generationRef.current !== generation) {

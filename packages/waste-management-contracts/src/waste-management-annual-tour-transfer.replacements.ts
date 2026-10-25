@@ -1,6 +1,7 @@
 import type { WasteTourRecord } from './waste-management/master-data-tours.js';
 import {
   WasteAnnualTourTransferError,
+  type WasteAnnualTourTransferCreateInput,
   type WasteAnnualTourTransferReplacementDate,
   type WasteAnnualTourTransferSource,
 } from './waste-management-annual-tour-transfer.contract.js';
@@ -10,8 +11,31 @@ import {
 } from './waste-management-annual-tour-transfer.dates.js';
 import { findWasteAnnualTourReplacementResourceIds } from './waste-management-annual-tour-transfer.mapping.js';
 import { wasteAnnualRelationshipsFor } from './waste-management-annual-tour-transfer.relationships.js';
+import { wasteAnnualIntervalForTour } from './waste-management-annual-tour-transfer.shift-cadence.js';
 
 type ReplacementResourceInput = Parameters<typeof findWasteAnnualTourReplacementResourceIds>[0];
+
+export const buildValidatedWasteAnnualFirstTargetDateMap = (input: {
+  readonly firstTargetDates: WasteAnnualTourTransferCreateInput['firstTargetDates'];
+  readonly relevantTours: readonly WasteTourRecord[];
+  readonly targetYear: number;
+}): ReadonlyMap<string, string> => {
+  const dates = new Map<string, string>();
+  const tours = new Map(input.relevantTours.map((tour) => [tour.id, tour]));
+  for (const item of input.firstTargetDates ?? []) {
+    const tour = tours.get(item.sourceTourId);
+    if (
+      dates.has(item.sourceTourId) ||
+      !tour ||
+      wasteAnnualIntervalForTour(tour) === null ||
+      !isWasteAnnualDateInYear(item.firstDate, input.targetYear)
+    ) {
+      throw new WasteAnnualTourTransferError('first_target_date_invalid');
+    }
+    dates.set(item.sourceTourId, item.firstDate);
+  }
+  return dates;
+};
 
 export const findWasteAnnualTourReplacementResources = (
   input: ReplacementResourceInput

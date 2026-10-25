@@ -95,8 +95,7 @@ const useResetResult = (
   ]);
 };
 
-export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) => {
-  const pt = usePluginTranslation('wasteManagement');
+const useCoverageCheckForm = (props: CoverageCheckProps) => {
   const [fractionId, setFractionId] = useState('');
   const [year, setYear] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -104,14 +103,6 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
   const [includeDrafts, setIncludeDrafts] = useState(true);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [result, setResult] = useState<CoverageResult | null>(null);
-  const fractionsStatus = props.fractionsStatus ?? 'ready';
-  const toursStatus = props.toursStatus ?? 'ready';
-  const coverageDataUnavailable =
-    fractionsStatus !== 'ready' || toursStatus !== 'ready' || props.fractions.length === 0;
-  const locationsById = useMemo(
-    () => new Map(props.locations.map((location) => [location.id, location] as const)),
-    [props.locations]
-  );
   useResetResult(props, [fractionId, startDate, endDate, includeDrafts], setResult);
   const changeYear = (value: string) => {
     setYear(value);
@@ -145,6 +136,39 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
           }
     );
   };
+  return {
+    fractionId,
+    setFractionId,
+    year,
+    setYear,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
+    includeDrafts,
+    setIncludeDrafts,
+    errorKey,
+    result,
+    changeYear,
+    runCheck,
+  };
+};
+
+export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const {
+    fractionId, setFractionId, year, setYear, startDate, setStartDate,
+    endDate, setEndDate, includeDrafts, setIncludeDrafts, errorKey, result,
+    changeYear, runCheck,
+  } = useCoverageCheckForm(props);
+  const fractionsStatus = props.fractionsStatus ?? 'ready';
+  const toursStatus = props.toursStatus ?? 'ready';
+  const coverageDataUnavailable =
+    fractionsStatus !== 'ready' || toursStatus !== 'ready' || props.fractions.length === 0;
+  const locationsById = useMemo(
+    () => new Map(props.locations.map((location) => [location.id, location] as const)),
+    [props.locations]
+  );
   const assignIssues = () => {
     props.onReplaceLocationSelection((result?.issues ?? []).map((issue) => issue.locationId));
     props.onOpenBulkAssignments();

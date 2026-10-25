@@ -1,4 +1,11 @@
 export const wasteManagementPluginTranslationsENToursList = {
+  workspace: {
+    title: 'Edit this tour',
+    description: 'Open assignments, calendar and tour visits for this tour directly.',
+    assignments: 'Assign collection locations',
+    calendar: 'Annual calendar and holiday shifts',
+    scheduling: 'Tour visits and tour-specific shifts',
+  },
   actions: {
     openCreate: 'New tour',
     openCalendar: 'Show annual calendar',

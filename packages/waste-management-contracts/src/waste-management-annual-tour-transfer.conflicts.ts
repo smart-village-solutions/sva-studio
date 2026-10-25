@@ -156,14 +156,8 @@ const parallelPlanningConflict = (
     mapped.tourDateShifts,
     new Set([targetYear])
   );
-  const indexedBaseDates = [
-    ...(tour.firstDate ? [tour.firstDate] : []),
-    ...(tour.customDates ?? []).map((item) => item.date),
-    ...indexed.locationTourPickupDates.map((item) => item.pickupDate),
-    ...indexed.tourAssignments.map((item) => item.pickupDate),
-  ];
   const indexedDates = effectiveDatesForYears(
-    indexedBaseDates,
+    indexed.baseDates,
     indexed.tourDateShifts,
     comparisonYears
   );

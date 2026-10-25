@@ -97,67 +97,14 @@ const TourFormTopActions = ({
   </div>
 );
 
-export const WasteToursFormContent = (props: WasteToursFormContentProps) => {
+const TourWorkspaceActions = (props: WasteToursFormContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const saveLabel = resolveSaveLabel(pt, props.mode, props.saving);
-  const showSchedulingAction = Boolean(
-    props.mode === 'edit' &&
-    props.canManageScheduling &&
-    props.search &&
-    props.persistedTour &&
-    isWasteTourValidityApplicable(props.persistedTour)
-  );
-  const schedulingAction =
-    showSchedulingAction && props.search && props.persistedTour ? (
-      <TourShiftSchedulingAction
-        form={props.form}
-        persistedTour={props.persistedTour}
-        search={props.search}
-        pt={pt}
-      />
-    ) : null;
-  const canOpenTourContext = props.mode === 'edit' && props.persistedTour && props.search;
-  const schedulingDirty = Boolean(
-    props.persistedTour && hasSchedulingChanges(props.form, props.persistedTour)
-  );
-
+  if (props.mode !== 'edit' || !props.persistedTour || !props.search) return null;
+  const schedulingDirty = hasSchedulingChanges(props.form, props.persistedTour);
+  const schedulingAction = props.canManageScheduling && isWasteTourValidityApplicable(props.persistedTour) ? (
+    <TourShiftSchedulingAction form={props.form} persistedTour={props.persistedTour} search={props.search} pt={pt} />
+  ) : null;
   return (
-    <div className="space-y-6">
-      <StudioPageHeader
-        title={
-          props.mode === 'create' ? pt('tours.dialog.createTitle') : pt('tours.dialog.editTitle')
-        }
-        description={
-          props.mode === 'create'
-            ? pt('tours.dialog.createDescription')
-            : pt('tours.dialog.editDescription')
-        }
-        actions={
-          <TourFormTopActions
-            label={saveLabel}
-            onCancel={props.onCancel}
-            pt={pt}
-            saving={props.saving}
-          />
-        }
-      />
-
-      <form
-        id="waste-tour-form"
-        className="space-y-6"
-        onSubmit={(event) => void props.onSubmit(event)}
-      >
-        <WasteToursTourFields
-          form={props.form}
-          fractions={props.fractions}
-          locations={props.locations}
-          customRecurrencePresets={props.customRecurrencePresets}
-          statusReadOnly={props.mode === 'create'}
-          pt={pt}
-          onChange={props.onChange}
-        />
-
-        {canOpenTourContext && props.persistedTour && props.search ? (
           <section
             className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-shell"
             aria-label={pt('tours.workspace.title')}
@@ -207,7 +154,49 @@ export const WasteToursFormContent = (props: WasteToursFormContentProps) => {
               </p>
             ) : null}
           </section>
-        ) : null}
+  );
+};
+
+export const WasteToursFormContent = (props: WasteToursFormContentProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const saveLabel = resolveSaveLabel(pt, props.mode, props.saving);
+  return (
+    <div className="space-y-6">
+      <StudioPageHeader
+        title={
+          props.mode === 'create' ? pt('tours.dialog.createTitle') : pt('tours.dialog.editTitle')
+        }
+        description={
+          props.mode === 'create'
+            ? pt('tours.dialog.createDescription')
+            : pt('tours.dialog.editDescription')
+        }
+        actions={
+          <TourFormTopActions
+            label={saveLabel}
+            onCancel={props.onCancel}
+            pt={pt}
+            saving={props.saving}
+          />
+        }
+      />
+
+      <form
+        id="waste-tour-form"
+        className="space-y-6"
+        onSubmit={(event) => void props.onSubmit(event)}
+      >
+        <WasteToursTourFields
+          form={props.form}
+          fractions={props.fractions}
+          locations={props.locations}
+          customRecurrencePresets={props.customRecurrencePresets}
+          statusReadOnly={props.mode === 'create'}
+          pt={pt}
+          onChange={props.onChange}
+        />
+
+        <TourWorkspaceActions {...props} />
 
         {props.showDuplicationHint ? (
           <div className="rounded-2xl border border-info/40 bg-info/5 px-4 py-3 text-sm text-foreground">

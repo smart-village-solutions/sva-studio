@@ -31,28 +31,28 @@ const shiftIsoDate = (date: string, days: number): string => {
   return shifted.toISOString().slice(0, 10);
 };
 
+const coverageStartDateForTour = (tour: WasteTourRecord, startDate: string): string => {
+  if (!tour.firstDate || tour.firstDate <= startDate) return startDate;
+  const recurring =
+    tour.recurrence === 'weekly' ||
+    tour.recurrence === 'biweekly' ||
+    tour.recurrence === 'fourweekly' ||
+    Boolean(tour.customRecurrenceIntervalDays && tour.customRecurrenceIntervalDays > 0);
+  const continuesFromJanuary =
+    recurring &&
+    tour.firstDate.slice(0, 7) === `${startDate.slice(0, 4)}-01` &&
+    startDate.endsWith('-01-01');
+  return continuesFromJanuary ? startDate : tour.firstDate;
+};
+
 const findCoverageGaps = (
   tours: readonly WasteTourRecord[],
   startDate: string,
   endDate: string
 ): readonly WasteLocationFractionCoverageGap[] => {
-  const isRecurringTour = (tour: WasteTourRecord): boolean =>
-    tour.recurrence === 'weekly' ||
-    tour.recurrence === 'biweekly' ||
-    tour.recurrence === 'fourweekly' ||
-    Boolean(tour.customRecurrenceIntervalDays && tour.customRecurrenceIntervalDays > 0);
   const intervals = tours
     .map((tour) => ({
-      startDate:
-        tour.firstDate &&
-        tour.firstDate > startDate &&
-        !(
-          isRecurringTour(tour) &&
-          tour.firstDate.slice(0, 7) === `${startDate.slice(0, 4)}-01` &&
-          startDate.endsWith('-01-01')
-        )
-          ? tour.firstDate
-          : startDate,
+      startDate: coverageStartDateForTour(tour, startDate),
       endDate: tour.endDate && tour.endDate < endDate ? tour.endDate : endDate,
     }))
     .filter((interval) => interval.startDate <= interval.endDate)

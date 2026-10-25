@@ -6,6 +6,59 @@ import type { FormEvent } from 'react';
 
 import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-state.js';
 
+const CoverageDateFields = ({
+  year, startDate, endDate, onYearChange, onStartDateChange, onEndDateChange,
+}: Readonly<{
+  year: string;
+  startDate: string;
+  endDate: string;
+  onYearChange: (value: string) => void;
+  onStartDateChange: (value: string) => void;
+  onEndDateChange: (value: string) => void;
+}>) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <>
+      <StudioField
+        id="waste-location-coverage-year"
+        label={pt('masterData.locationsWorkspace.coverage.year')}
+      >
+        <Input
+          id="waste-location-coverage-year"
+          type="number"
+          min={2000}
+          max={2100}
+          step={1}
+          value={year}
+          onChange={(event) => onYearChange(event.currentTarget.value)}
+        />
+      </StudioField>
+      <StudioField
+        id="waste-location-coverage-start"
+        label={pt('masterData.locationsWorkspace.coverage.startDate')}
+      >
+        <Input
+          id="waste-location-coverage-start"
+          type="date"
+          value={startDate}
+          onChange={(event) => onStartDateChange(event.target.value)}
+        />
+      </StudioField>
+      <StudioField
+        id="waste-location-coverage-end"
+        label={pt('masterData.locationsWorkspace.coverage.endDate')}
+      >
+        <Input
+          id="waste-location-coverage-end"
+          type="date"
+          value={endDate}
+          onChange={(event) => onEndDateChange(event.target.value)}
+        />
+      </StudioField>
+    </>
+  );
+};
+
 export const CoverageCheckForm = ({
   fractions,
   disabled,
@@ -60,42 +113,14 @@ export const CoverageCheckForm = ({
           ))}
         </Select>
       </StudioField>
-      <StudioField
-        id="waste-location-coverage-year"
-        label={pt('masterData.locationsWorkspace.coverage.year')}
-      >
-        <Input
-          id="waste-location-coverage-year"
-          type="number"
-          min={2000}
-          max={2100}
-          step={1}
-          value={year}
-          onChange={(event) => onYearChange(event.currentTarget.value)}
-        />
-      </StudioField>
-      <StudioField
-        id="waste-location-coverage-start"
-        label={pt('masterData.locationsWorkspace.coverage.startDate')}
-      >
-        <Input
-          id="waste-location-coverage-start"
-          type="date"
-          value={startDate}
-          onChange={(event) => onStartDateChange(event.target.value)}
-        />
-      </StudioField>
-      <StudioField
-        id="waste-location-coverage-end"
-        label={pt('masterData.locationsWorkspace.coverage.endDate')}
-      >
-        <Input
-          id="waste-location-coverage-end"
-          type="date"
-          value={endDate}
-          onChange={(event) => onEndDateChange(event.target.value)}
-        />
-      </StudioField>
+      <CoverageDateFields
+        year={year}
+        startDate={startDate}
+        endDate={endDate}
+        onYearChange={onYearChange}
+        onStartDateChange={onStartDateChange}
+        onEndDateChange={onEndDateChange}
+      />
       <Button type="submit" disabled={disabled}>
         <IconChecklist aria-hidden="true" className="h-4 w-4" />
         {pt('masterData.locationsWorkspace.coverage.check')}

@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, type FormEvent } from 'react';
 import type {
   WasteAnnualTourTransferPreview,
-  WasteAnnualTourTransferResult,
   WasteAnnualTourTransferTourPreview,
 } from '@sva/waste-management-contracts';
 
@@ -11,61 +10,16 @@ import {
   previewWasteAnnualTourTransfer,
 } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
+import { useAnnualTransferState, wasteAnnualCurrentYear, type AnnualTransferState } from './waste-management.tours-annual-transfer-state.js';
 
-export type AnnualTransferStep = 'source' | 'preview' | 'confirm' | 'result';
-export const wasteAnnualCurrentYear = () => new Date().getUTCFullYear();
+export { wasteAnnualCurrentYear } from './waste-management.tours-annual-transfer-state.js';
+export type { AnnualTransferStep } from './waste-management.tours-annual-transfer-state.js';
 type ControllerOptions = Readonly<{
   open: boolean;
   onCreated: () => Promise<void>;
   translate: (key: string) => string;
 }>;
 type LoadOptions = Readonly<{ preserveError?: boolean; nextStep?: 'preview' | 'confirm' }>;
-
-const useAnnualTransferState = () => {
-  const summaryRef = useRef<HTMLDivElement>(null);
-  const confirmationRequestRef = useRef<{
-    payloadIdentity: string;
-    idempotencyKey: string;
-  } | null>(null);
-  const [step, setStep] = useState<AnnualTransferStep>('source');
-  const [sourceYear, setSourceYear] = useState(wasteAnnualCurrentYear());
-  const [preview, setPreview] = useState<WasteAnnualTourTransferPreview | null>(null);
-  const [selectedTourIds, setSelectedTourIds] = useState<readonly string[]>([]);
-  const [acknowledgedConflictTourIds, setAcknowledgedConflictTourIds] = useState<readonly string[]>(
-    []
-  );
-  const [replacementDates, setReplacementDates] = useState<Readonly<Record<string, string>>>({});
-  const [firstTargetDates, setFirstTargetDates] = useState<Readonly<Record<string, string>>>({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<WasteAnnualTourTransferResult | null>(null);
-  return {
-    summaryRef,
-    confirmationRequestRef,
-    step,
-    setStep,
-    sourceYear,
-    setSourceYear,
-    preview,
-    setPreview,
-    selectedTourIds,
-    setSelectedTourIds,
-    acknowledgedConflictTourIds,
-    setAcknowledgedConflictTourIds,
-    replacementDates,
-    setReplacementDates,
-    firstTargetDates,
-    setFirstTargetDates,
-    loading,
-    setLoading,
-    error,
-    setError,
-    result,
-    setResult,
-  };
-};
-
-type AnnualTransferState = ReturnType<typeof useAnnualTransferState>;
 
 const conflictIdentity = (tour: WasteAnnualTourTransferTourPreview | undefined): string =>
   JSON.stringify(

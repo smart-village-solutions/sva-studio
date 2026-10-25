@@ -16,58 +16,12 @@ import type { TourDateShiftFormState } from './waste-management.scheduling.share
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
-export const WasteSchedulingTourFields = ({
-  form,
-  tours,
-  pt,
-  onChange,
-}: {
+const WasteSchedulingTourReasonFields = ({ form, pt, onChange }: {
   readonly form: TourDateShiftFormState;
-  readonly tours: readonly WasteTourRecord[];
   readonly pt: Translate;
   readonly onChange: (patch: Partial<TourDateShiftFormState>) => void;
 }) => (
-  <StudioFieldGroup>
-    <StudioField id="waste-tour-shift-tour" label={pt('scheduling.tour.fields.tourId')}>
-      <Select
-        id="waste-tour-shift-tour"
-        value={form.tourId}
-        onChange={(event) => onChange({ tourId: event.target.value })}
-      >
-        <option value="">{pt('scheduling.tour.fields.tourUnset')}</option>
-        {tours.map((tour) => (
-          <option key={tour.id} value={tour.id}>
-            {tour.name}
-          </option>
-        ))}
-      </Select>
-    </StudioField>
-    <StudioField
-      id="waste-tour-shift-original-date"
-      label={pt('scheduling.tour.fields.originalDate')}
-    >
-      <Input
-        id="waste-tour-shift-original-date"
-        type="date"
-        value={form.originalDate}
-        onChange={(event) => onChange({ originalDate: event.target.value })}
-      />
-    </StudioField>
-    <StudioField id="waste-tour-shift-actual-date" label={pt('scheduling.tour.fields.actualDate')}>
-      <Input
-        id="waste-tour-shift-actual-date"
-        type="date"
-        value={form.actualDate}
-        onChange={(event) => onChange({ actualDate: event.target.value })}
-      />
-    </StudioField>
-    <StudioField id="waste-tour-shift-description" label={pt('scheduling.tour.fields.description')}>
-      <Textarea
-        id="waste-tour-shift-description"
-        value={form.description}
-        onChange={(event) => onChange({ description: event.target.value })}
-      />
-    </StudioField>
+  <>
     <StudioField id="waste-tour-shift-reason-type" label={pt('scheduling.tour.fields.reasonType')}>
       <Select
         id="waste-tour-shift-reason-type"
@@ -126,5 +80,61 @@ export const WasteSchedulingTourFields = ({
         </span>
       </div>
     </StudioField>
+  </>
+);
+
+export const WasteSchedulingTourFields = ({
+  form,
+  tours,
+  pt,
+  onChange,
+}: {
+  readonly form: TourDateShiftFormState;
+  readonly tours: readonly WasteTourRecord[];
+  readonly pt: Translate;
+  readonly onChange: (patch: Partial<TourDateShiftFormState>) => void;
+}) => (
+  <StudioFieldGroup>
+    <StudioField id="waste-tour-shift-tour" label={pt('scheduling.tour.fields.tourId')}>
+      <Select
+        id="waste-tour-shift-tour"
+        value={form.tourId}
+        onChange={(event) => onChange({ tourId: event.target.value })}
+      >
+        <option value="">{pt('scheduling.tour.fields.tourUnset')}</option>
+        {tours.map((tour) => (
+          <option key={tour.id} value={tour.id}>
+            {tour.name}
+          </option>
+        ))}
+      </Select>
+    </StudioField>
+    <StudioField
+      id="waste-tour-shift-original-date"
+      label={pt('scheduling.tour.fields.originalDate')}
+    >
+      <Input
+        id="waste-tour-shift-original-date"
+        type="date"
+        value={form.originalDate}
+        onChange={(event) => onChange({ originalDate: event.target.value })}
+      />
+    </StudioField>
+    <StudioField id="waste-tour-shift-actual-date" label={pt('scheduling.tour.fields.actualDate')}>
+      <Input
+        id="waste-tour-shift-actual-date"
+        type="date"
+        value={form.actualDate}
+        onChange={(event) => onChange({ actualDate: event.target.value })}
+      />
+    </StudioField>
+    <StudioField id="waste-tour-shift-description" label={pt('scheduling.tour.fields.description')}>
+      <Textarea
+        id="waste-tour-shift-description"
+        value={form.description}
+        onChange={(event) => onChange({ description: event.target.value })}
+      />
+    </StudioField>
+    <WasteSchedulingTourReasonFields form={form} pt={pt} onChange={onChange} />
   </StudioFieldGroup>
 );

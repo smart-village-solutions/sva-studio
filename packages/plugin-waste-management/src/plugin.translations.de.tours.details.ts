@@ -4,13 +4,6 @@ import {
 } from './plugin.translations.shared.scheduling.js';
 
 export const wasteManagementPluginTranslationsDEToursDetails = {
-  workspace: {
-    title: 'Diese Tour bearbeiten',
-    description: 'Zuordnungen, Kalender und Tour-Einsätze für diese Tour direkt öffnen.',
-    assignments: 'Abholorte zuordnen',
-    calendar: 'Jahreskalender und Feiertagsverschiebungen',
-    scheduling: 'Tour-Einsätze und tourbezogene Ausweichtermine',
-  },
   annualTransfer: {
     open: 'Tourensatz ins Folgejahr übernehmen',
     title: 'Jahresplanung ins Folgejahr übernehmen',

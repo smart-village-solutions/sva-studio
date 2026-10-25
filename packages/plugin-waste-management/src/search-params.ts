@@ -1,16 +1,5 @@
-import type {
-  WasteCollectionLocationSortDirection,
-  WasteCollectionLocationSortMode,
-} from '@sva/waste-management-contracts';
-import {
-  normalizeAddressEntityType,
-  normalizeAddressSortField,
-  type WasteAddressSearchParams,
-} from './search-params.address.js';
-import {
-  normalizeWasteCollectionLocationSortDirection,
-  normalizeWasteCollectionLocationSortMode,
-} from './collection-location-search-params.js';
+import { normalizeAddressEntityType, normalizeAddressSortField, type WasteAddressSearchParams } from './search-params.address.js';
+import { normalizeCollectionLocationSearchParams, normalizeWasteCollectionLocationSortDirection, type WasteCollectionLocationSearchParams } from './collection-location-search-params.js';
 import { normalizePageSize, normalizePositiveInteger } from './pagination-search-params.js';
 import {
   normalizeTourStatus,
@@ -74,10 +63,6 @@ export type WasteManagementSearchParams = Readonly<{
   shiftContext: WasteManagementShiftContext;
   fractionsSortBy: WasteManagementFractionSortField;
   fractionsSortDirection: WasteManagementFractionSortDirection;
-  locationSortMode: WasteCollectionLocationSortMode;
-  locationSortDirection: WasteCollectionLocationSortDirection;
-  locationYear?: number;
-  locationTourStatus?: Exclude<WasteManagementTourStatusFilter, 'all'>;
   regionId?: string;
   cityId?: string;
   wasteFractionId?: string;
@@ -95,8 +80,7 @@ export type WasteManagementSearchParams = Readonly<{
   schedulingOriginalDate?: string;
   tourDateShiftId?: string;
   globalDateShiftId?: string;
-}> &
-  WasteAddressSearchParams;
+}> & WasteAddressSearchParams & WasteCollectionLocationSearchParams;
 const compactOptionalString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
     return undefined;
@@ -113,10 +97,6 @@ const normalizeOptionalIsoDate = (value: unknown): string | undefined => {
   return Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== normalized
     ? undefined
     : normalized;
-};
-const normalizeLocationYear = (value: unknown): number | undefined => {
-  const year = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
-  return Number.isInteger(year) && year >= 2000 && year <= 2100 ? year : undefined;
 };
 const normalizeTab = (value: unknown): WasteManagementTabId =>
   typeof value === 'string' && wasteManagementTabs.includes(value as WasteManagementTabId)
@@ -218,21 +198,14 @@ export const normalizeWasteManagementSearchParams = (
     tab === 'scheduling' && schedulingView === 'create' && schedulingEntryType === 'tour-shift';
   const normalizedSchedulingOriginalDate = normalizeOptionalIsoDate(search.schedulingOriginalDate);
   const schedulingTourId = compactOptionalString(search.schedulingTourId);
-  const locationYear = normalizeLocationYear(search.locationYear);
-  const locationTourStatus = normalizeTourStatus(search.locationTourStatus, undefined);
 
   return {
     tab,
     masterDataTab: normalizeMasterDataTabForTab(tab, normalizeMasterDataTab(search.masterDataTab)),
     addressEntityType: normalizeAddressEntityType(search.addressEntityType),
     addressParentId: compactOptionalString(search.addressParentId),
-    addressSortBy: normalizeAddressSortField(
-      search.addressSortBy,
-      normalizeAddressEntityType(search.addressEntityType)
-    ),
-    addressSortDirection: normalizeWasteCollectionLocationSortDirection(
-      search.addressSortDirection
-    ),
+    addressSortBy: normalizeAddressSortField(search.addressSortBy, normalizeAddressEntityType(search.addressEntityType)),
+    addressSortDirection: normalizeWasteCollectionLocationSortDirection(search.addressSortDirection),
     fractionsView: normalizeFractionsView(search.fractionsView),
     toursView: normalizeToursView(search.toursView),
     locationsView: normalizeLocationsView(search.locationsView),
@@ -247,12 +220,7 @@ export const normalizeWasteManagementSearchParams = (
     shiftContext: normalizeShiftContext(search.shiftContext),
     fractionsSortBy: normalizeFractionsSortBy(search.fractionsSortBy),
     fractionsSortDirection: normalizeFractionsSortDirection(search.fractionsSortDirection),
-    locationSortMode: normalizeWasteCollectionLocationSortMode(search.locationSortMode),
-    locationSortDirection: normalizeWasteCollectionLocationSortDirection(
-      search.locationSortDirection
-    ),
-    ...(locationYear ? { locationYear } : {}),
-    ...(locationTourStatus !== 'all' ? { locationTourStatus } : {}),
+    ...normalizeCollectionLocationSearchParams(search),
     regionId: compactOptionalString(search.regionId),
     cityId: compactOptionalString(search.cityId),
     wasteFractionId: compactOptionalString(search.wasteFractionId),

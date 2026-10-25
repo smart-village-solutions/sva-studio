@@ -32,6 +32,17 @@ const useLatestRef = <T>(value: T) => {
   return ref;
 };
 
+const navigateToToursList = (
+  navigate: ReturnType<typeof useNavigate>,
+  search: WasteManagementSearchParams
+): void => {
+  void navigate({
+    to: '/plugins/waste-management',
+    search: { ...search, toursView: 'list', tourId: undefined },
+    replace: true,
+  });
+};
+
 export const useWasteToursSuccessRedirect = ({
   controller,
   navigate,
@@ -100,16 +111,7 @@ export const useWasteToursEditRouteHydration = ({
     }
 
     if (!search.tourId) {
-      const latestSearch = latestSearchRef.current;
-      void navigate({
-        to: '/plugins/waste-management',
-        search: {
-          ...latestSearch,
-          toursView: 'list',
-          tourId: undefined,
-        },
-        replace: true,
-      });
+      navigateToToursList(navigate, latestSearchRef.current);
       return;
     }
 
@@ -120,16 +122,7 @@ export const useWasteToursEditRouteHydration = ({
     const routeTour = controller.overview?.tours.find((tour) => tour.id === search.tourId);
 
     if (!routeTour) {
-      const latestSearch = latestSearchRef.current;
-      void navigate({
-        to: '/plugins/waste-management',
-        search: {
-          ...latestSearch,
-          toursView: 'list',
-          tourId: undefined,
-        },
-        replace: true,
-      });
+      navigateToToursList(navigate, latestSearchRef.current);
       return;
     }
 

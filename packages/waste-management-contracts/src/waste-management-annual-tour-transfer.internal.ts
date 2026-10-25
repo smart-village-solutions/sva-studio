@@ -25,3 +25,19 @@ export type WasteAnnualTourMappingBlocker = Readonly<{
   blocker: 'invalid_planning_data' | 'replacement_date_required' | 'target_date_collision';
   replacementResourceIds: readonly string[];
 }>;
+
+export type WasteAnnualValidityMappingResult =
+  | Readonly<{ ok: true; validity: Readonly<{ firstDate?: string; endDate?: string }> }>
+  | Readonly<{
+      ok: false;
+      blocker: 'invalid_planning_data' | 'replacement_date_required';
+      replacementResourceIds: readonly string[];
+    }>;
+
+export type WasteAnnualValidityMappingInput = Readonly<{
+  tour: WasteTourRecord;
+  sourceYear: number;
+  targetYear: number;
+  replacements: ReadonlyMap<string, string>;
+  firstTargetDate?: string;
+}>;

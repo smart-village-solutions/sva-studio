@@ -138,6 +138,24 @@ type TourYearCalendarDialogProps = {
   readonly onOpenChange: (open: boolean) => void;
 };
 
+const calendarMonths = (
+  entries: ReturnType<typeof calculateTourOccurrenceEntriesForYear>
+) =>
+  Array.from({ length: 12 }, (_, monthIndex) => ({
+    monthIndex,
+    highlightedDays: new Map(
+      entries
+        .filter((entry) => Number(entry.date.slice(5, 7)) === monthIndex + 1)
+        .map(
+          (entry) =>
+            [
+              Number(entry.date.slice(8, 10)),
+              { shifted: entry.shifted, originalDate: entry.originalDate },
+            ] as const
+        )
+    ),
+  }));
+
 export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const locale = resolveEditorLocale();
@@ -162,20 +180,7 @@ export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
       ? calculateTourOccurrenceEntriesForYear(props.tour, year, props.scheduling)
       : [];
   const dates = occurrenceEntries.map((entry) => entry.date);
-  const months = Array.from({ length: 12 }, (_, monthIndex) => ({
-    monthIndex,
-    highlightedDays: new Map(
-      occurrenceEntries
-        .filter((entry) => Number(entry.date.slice(5, 7)) === monthIndex + 1)
-        .map(
-          (entry) =>
-            [
-              Number(entry.date.slice(8, 10)),
-              { shifted: entry.shifted, originalDate: entry.originalDate },
-            ] as const
-        )
-    ),
-  }));
+  const months = calendarMonths(occurrenceEntries);
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>

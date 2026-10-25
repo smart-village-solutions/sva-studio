@@ -42,7 +42,7 @@ export type WasteAnnualTourTransferReplacementDate = Readonly<{
   sourceResourceId: string;
   targetDate: string;
 }>;
-export type WasteAnnualTourTransferFirstTargetDate = Readonly<{
+type WasteAnnualTourTransferFirstTargetDate = Readonly<{
   sourceTourId: string;
   firstDate: string;
 }>;

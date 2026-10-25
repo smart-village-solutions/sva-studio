@@ -1,4 +1,11 @@
 export const wasteManagementPluginTranslationsDEToursList = {
+  workspace: {
+    title: 'Diese Tour bearbeiten',
+    description: 'Zuordnungen, Kalender und Tour-Einsätze für diese Tour direkt öffnen.',
+    assignments: 'Abholorte zuordnen',
+    calendar: 'Jahreskalender und Feiertagsverschiebungen',
+    scheduling: 'Tour-Einsätze und tourbezogene Ausweichtermine',
+  },
   actions: {
     openCreate: 'Neue Tour',
     openCalendar: 'Jahreskalender anzeigen',

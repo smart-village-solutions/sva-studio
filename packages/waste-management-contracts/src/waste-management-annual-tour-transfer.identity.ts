@@ -1,3 +1,52 @@
+import type { WasteTourRecord } from './waste-management/master-data-tours.js';
+import type {
+  WasteAnnualTourTransferCreateInput,
+  WasteAnnualTourTransferSource,
+} from './waste-management-annual-tour-transfer.contract.js';
+import type { WasteAnnualTourTransferInternalTourPreview } from './waste-management-annual-tour-transfer.internal.js';
+import { sortWasteAnnualItems } from './waste-management-annual-tour-transfer.sort.js';
+
+const sourceFingerprintState = (
+  tours: readonly WasteTourRecord[],
+  source: WasteAnnualTourTransferSource
+) => {
+  const ids = new Set(tours.map((tour) => tour.id));
+  const relevant = <T extends { readonly id: string; readonly tourId: string }>(items: readonly T[]) =>
+    sortWasteAnnualItems(items.filter((item) => ids.has(item.tourId)), (item) => item.id);
+  return {
+    tours: sortWasteAnnualItems(tours, (tour) => tour.id),
+    locationTourLinks: relevant(source.locationTourLinks),
+    locationTourPickupDates: relevant(source.locationTourPickupDates),
+    tourAssignments: relevant(source.tourAssignments),
+    tourDateShifts: relevant(source.tourDateShifts),
+  };
+};
+
+export const buildWasteAnnualTourTransferPreviewFingerprint = async (input: {
+  instanceId: string;
+  sourceYear: number;
+  targetYear: number;
+  selectedTourIds: ReadonlySet<string>;
+  replacementDates: WasteAnnualTourTransferCreateInput['replacementDates'];
+  firstTargetDates?: WasteAnnualTourTransferCreateInput['firstTargetDates'];
+  relevantTours: readonly WasteTourRecord[];
+  source: WasteAnnualTourTransferSource;
+  previews: readonly WasteAnnualTourTransferInternalTourPreview[];
+}): Promise<string> =>
+  buildWasteAnnualTourTransferFingerprint({
+    instanceId: input.instanceId,
+    sourceYear: input.sourceYear,
+    targetYear: input.targetYear,
+    selectedTourIds: [...input.selectedTourIds].sort((left, right) => left.localeCompare(right)),
+    replacementDates: sortWasteAnnualItems(input.replacementDates, (item) => item.sourceResourceId),
+    firstTargetDates: sortWasteAnnualItems(input.firstTargetDates ?? [], (item) => item.sourceTourId),
+    sourceState: sourceFingerprintState(input.relevantTours, input.source),
+    tours: input.previews.map((item) => ({
+      ...item,
+      conflicts: sortWasteAnnualItems(item.conflicts, (conflict) => `${conflict.kind}:${conflict.targetTourId}`),
+    })),
+  });
+
 export const stableWasteAnnualSerialize = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.map(stableWasteAnnualSerialize).join(',')}]`;
   if (value && typeof value === 'object') {

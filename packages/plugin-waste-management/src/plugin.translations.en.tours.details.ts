@@ -4,13 +4,6 @@ import {
 } from './plugin.translations.shared.scheduling.js';
 
 export const wasteManagementPluginTranslationsENToursDetails = {
-  workspace: {
-    title: 'Edit this tour',
-    description: 'Open assignments, calendar and tour visits for this tour directly.',
-    assignments: 'Assign collection locations',
-    calendar: 'Annual calendar and holiday shifts',
-    scheduling: 'Tour visits and tour-specific shifts',
-  },
   annualTransfer: {
     open: 'Transfer tour set to following year',
     title: 'Transfer annual schedule to the following year',

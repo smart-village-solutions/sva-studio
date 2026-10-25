@@ -32,6 +32,24 @@ type BulkDialogProps = {
   readonly onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 };
 
+const SelectedLocationsSummary = ({
+  locations,
+}: Readonly<{ locations: BulkDialogProps['selectedLocations'] }>) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <div className="space-y-2 rounded-md border border-border/60 p-3">
+      <p className="text-sm font-medium">
+        {pt('masterData.collectionLocations.bulk.selectedTitle')}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {locations.map((location) => (
+          <Badge key={location.id} variant="outline">{location.label}</Badge>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export const BulkLocationAssignmentsDialog = ({
   open,
   form,
@@ -84,18 +102,7 @@ export const BulkLocationAssignmentsDialog = ({
                 </Select>
               </StudioField>
             </StudioFieldGroup>
-            <div className="space-y-2 rounded-md border border-border/60 p-3">
-              <p className="text-sm font-medium">
-                {pt('masterData.collectionLocations.bulk.selectedTitle')}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {selectedLocations.map((location) => (
-                  <Badge key={location.id} variant="outline">
-                    {location.label}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+            <SelectedLocationsSummary locations={selectedLocations} />
           </div>
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>

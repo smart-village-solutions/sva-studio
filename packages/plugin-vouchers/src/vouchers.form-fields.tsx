@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Input, StudioField } from '@sva/studio-ui-react';
+import { Input, StudioDetailCard, StudioField } from '@sva/studio-ui-react';
 import type { VoucherDraft } from './vouchers.form-model.js';
 export type VoucherFormProps = Readonly<{
   draft: VoucherDraft;
@@ -24,13 +24,9 @@ export type VoucherFormProps = Readonly<{
 export function useVoucherFormFields({ draft, errors, change }: VoucherFormProps) {
   const t = usePluginTranslation('vouchers');
   const section = (id: string, children: ReactNode) => (
-    <section
-      id={`voucher-section-${id}`}
-      className="space-y-4 rounded-2xl border border-border/60 bg-card p-5"
-    >
-      <h2 className="text-lg font-semibold">{t(`sections.${id}`)}</h2>
-      {children}
-    </section>
+    <div id={`voucher-section-${id}`}>
+      <StudioDetailCard title={t(`sections.${id}`)}>{children}</StudioDetailCard>
+    </div>
   );
   const field = (key: string, child: ReactNode, required = false, description?: string) => (
     <StudioField

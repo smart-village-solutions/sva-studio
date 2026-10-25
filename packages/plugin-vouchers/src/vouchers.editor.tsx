@@ -1,5 +1,5 @@
-import { useParams } from '@tanstack/react-router';
-import { Button } from '@sva/studio-ui-react';
+import { Link, useParams } from '@tanstack/react-router';
+import { Button, StudioDetailPageTemplate } from '@sva/studio-ui-react';
 import { VoucherFormSections } from './vouchers.form.js';
 import { VoucherHistory } from './vouchers.history.js';
 import {
@@ -16,30 +16,20 @@ import {
 function VoucherEditorForm({
   state: s,
   actions,
+  disabled,
 }: Readonly<{
   state: VoucherEditorState;
   actions: VoucherEditorActions;
+  disabled: boolean;
 }>) {
   const availableLocations =
     s.record?.pointOfInterest &&
     !s.locations.some((location) => location.id === s.record?.pointOfInterest?.id)
       ? [s.record.pointOfInterest, ...s.locations]
       : s.locations;
-  const disabled =
-    s.busy ||
-    s.unknown ||
-    (s.record !== null && s.record.id !== s.id) ||
-    Boolean(s.preparation) ||
-    (s.id ? !s.access.canUpdate : !s.access.canCreate);
-  const saveLabel = s.busy
-    ? 'messages.saving'
-    : s.id
-      ? 'actions.update'
-      : s.draft.visible
-        ? 'actions.saveVisible'
-        : 'actions.saveHidden';
   return (
     <form
+      id="voucher-editor-form"
       onSubmit={(event) => {
         event.preventDefault();
         void actions.prepare();
@@ -60,18 +50,50 @@ function VoucherEditorForm({
           chooseDiscount={() => s.setDiscountChosen(true)}
           change={actions.change}
         />
-        <Button type="submit" disabled={Boolean(s.preparation) || (Boolean(s.id) && !s.hasChanges)}>
-          {s.t(saveLabel)}
-        </Button>
       </fieldset>
     </form>
   );
 }
+function voucherSaveLabel(state: VoucherEditorState): string {
+  return state.busy
+    ? 'messages.saving'
+    : state.id
+      ? 'actions.update'
+      : state.draft.visible
+        ? 'actions.saveVisible'
+        : 'actions.saveHidden';
+}
 export function VoucherEditor(props: VoucherEditorProps) {
   const state = useVoucherEditorState(props);
   const actions = useVoucherEditorActions(state);
+  const disabled =
+    state.busy ||
+    state.unknown ||
+    (state.record !== null && state.record.id !== state.id) ||
+    Boolean(state.preparation) ||
+    (state.id ? !state.access.canUpdate : !state.access.canCreate);
   return (
-    <main className="mx-auto max-w-5xl space-y-6 p-6">
+    <StudioDetailPageTemplate
+      stickyActions
+      title={state.t(state.id ? 'editor.edit' : 'editor.create')}
+      description={state.t('editor.intro')}
+      actions={
+        <Button asChild variant="secondary">
+          <Link to="/admin/vouchers">{state.t('actions.back')}</Link>
+        </Button>
+      }
+      primaryAction={
+        !state.loading ? (
+          <Button
+            type="submit"
+            form="voucher-editor-form"
+            disabled={disabled || (Boolean(state.id) && !state.hasChanges)}
+          >
+            {state.t(voucherSaveLabel(state))}
+          </Button>
+        ) : undefined
+      }
+    >
       <VoucherEditorHeader state={state} actions={actions} />
       {state.loading ? (
         <p role="status">{state.t('messages.loading')}</p>
@@ -79,11 +101,11 @@ export function VoucherEditor(props: VoucherEditorProps) {
         <>
           <VoucherEditorUsage state={state} actions={actions} />
           {state.record && <VoucherHistory id={state.record.id} />}
-          <VoucherEditorForm state={state} actions={actions} />
+          <VoucherEditorForm state={state} actions={actions} disabled={disabled} />
           <VoucherResetDialog state={state} actions={actions} />
         </>
       )}
-    </main>
+    </StudioDetailPageTemplate>
   );
 }
 export const VouchersCreatePage = (props: Omit<VoucherEditorProps, 'id'>) => (

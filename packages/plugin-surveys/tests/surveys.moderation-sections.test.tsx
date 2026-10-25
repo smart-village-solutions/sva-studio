@@ -14,7 +14,8 @@ vi.mock('@sva/plugin-sdk', () => ({
   formatDateTimeInEditorTimeZone: (value: string) => formatDateTimeInEditorTimeZoneMock(value),
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/studio-ui-react')>()),
   Button: ({
     children,
     onClick,

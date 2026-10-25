@@ -199,7 +199,7 @@ export function StudioDetailPageTemplate({
       className={cn(
         'space-y-6',
         stickyActions &&
-          '[&_p.text-xs]:text-sm [&_summary]:cursor-pointer [&_details]:rounded-2xl [&_details]:border [&_details]:border-border/60 [&_details]:bg-card [&_details]:p-5 [&_summary]:text-sm [&_summary]:font-medium [&_details[open]>summary]:mb-4 [&_[id]]:scroll-mt-24 [&_:is(input,select,textarea,[contenteditable=true])]:scroll-mb-48',
+          '[&_p.text-xs]:text-sm [&_summary]:cursor-pointer [&_details]:rounded-2xl [&_details]:border [&_details]:border-border/60 [&_details]:bg-card [&_details]:p-5 [&_:is(details,[data-slot=studio-detail-card])_:is(details,[data-slot=studio-detail-card])]:rounded-none [&_:is(details,[data-slot=studio-detail-card])_:is(details,[data-slot=studio-detail-card])]:border-0 [&_:is(details,[data-slot=studio-detail-card])_:is(details,[data-slot=studio-detail-card])]:bg-transparent [&_:is(details,[data-slot=studio-detail-card])_:is(details,[data-slot=studio-detail-card])]:p-0 [&_:is(details,[data-slot=studio-detail-card])_:is(details,[data-slot=studio-detail-card])]:shadow-none [&_summary]:text-sm [&_summary]:font-medium [&_details[open]>summary]:mb-4 [&_[id]]:scroll-mt-24 [&_:is(input,select,textarea,[contenteditable=true])]:scroll-mb-48',
         className
       )}
     >
@@ -214,7 +214,7 @@ export function StudioDetailPageTemplate({
         <StudioFormActionBar
           className={
             stickyActions
-              ? 'sticky bottom-0 z-20 rounded-xl border bg-background p-4 shadow-sm [&_p]:max-w-2xl [&>div]:w-full [&>div]:items-start [&>div]:gap-3 [&>div>p]:order-first sm:[&>div]:flex-row sm:[&>div]:items-center sm:[&>div>p]:mr-auto'
+              ? 'sticky bottom-0 z-20 rounded-xl border bg-card p-4 shadow-sm [&_p]:max-w-2xl [&>div]:w-full [&>div]:items-end [&>div]:gap-3 [&>div>p]:order-first [&>div>p]:self-start sm:[&>div]:flex-row sm:[&>div]:justify-end sm:[&>div>p]:self-center sm:[&>div]:items-center sm:[&>div>p]:mr-auto'
               : undefined
           }
         >

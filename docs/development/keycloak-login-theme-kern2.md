@@ -14,8 +14,11 @@ Das Theme orientiert sich an der bestehenden KERN-2-nahen Studio-Shell:
 
 Light ist der Fallback, wenn ein Browser keine Farbschema-Präferenz bereitstellt. Das Theme wird als einzelnes Login-Theme ausgeliefert; separate Realm-Themes für Light und Dark sind nicht erforderlich.
 
-Das Theme erweitert bewusst `keycloak.v2`, statt komplette Keycloak-Templates zu forken.
-Dadurch bleibt der Upgrade-Aufwand gegenüber einem vollständigen Login-Template-Override kleiner.
+Das Theme erweitert `keycloak.v2`. Nur `login.ftl` ist auf Basis von Keycloak 26.8.1
+(Apache-2.0) überschrieben: Organisationsanbieter stehen vor dem lokalen Formular,
+auch in der DOM- und Tastaturreihenfolge. Formular-, Anbieter- und Passkey-Makros
+bleiben geerbt. Bei Keycloak-Upgrades muss dieser kleine Override mit dem
+Upstream-Template abgeglichen werden.
 
 ## Ablage im Repository
 
@@ -29,6 +32,8 @@ Wesentliche Dateien:
 - `theme/sva-kern2/login/theme.properties`
 - `theme/sva-kern2/login/resources/css/kern2.css`
 - `theme/sva-kern2/login/footer.ftl`
+- `theme/sva-kern2/login/login.ftl`
+- `theme/sva-kern2/login/messages/messages_{de,en}.properties`
 
 ## Theme-Name in Keycloak
 
@@ -80,7 +85,12 @@ Für lokale oder operative Fehlersuche:
 
 Das Theme folgt folgenden Regeln:
 
-- keine vollständige Neustrukturierung des Keycloak-Login-Markups
+- Organisationsanmeldung oberhalb des lokalen Formulars, mit erklärendem Text und eigener Trennlinie
+- Anbietername und vorhandene Anbietericons aus der Realm-Konfiguration; keine eingebauten Tenant-Namen
+- deutsche und englische Texte über Keycloaks `msg(...)` und `messages_*.properties`
+- deutlich erkennbare Anbieterbuttons mit mindestens 48 px Höhe und eigenem Tastaturfokus
+- genau ein Fokusindikator am Feldcontainer; innere Felder und PatternFly-Pseudoelemente zeichnen keinen weiteren Rahmen
+- Fehlerzustände behalten den roten Feldrand; Autofill und Passwortmanager werden nicht deaktiviert
 - visuelle Anpassung primär über CSS
 - Fokus auf Login, Eingabefelder, Buttons, Alerts und Footer
 - explizite Farben für Autofill, Platzhalter, Fokusindikatoren und den Passwort-Schalter in beiden Modi

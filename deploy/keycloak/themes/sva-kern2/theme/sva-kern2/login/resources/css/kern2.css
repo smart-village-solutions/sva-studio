@@ -144,6 +144,22 @@ textarea.kcInputClass {
   -webkit-text-fill-color: var(--sva-kern2-input-text);
 }
 
+/* The wrapper owns the focus ring; PatternFly's inner control must not add one. */
+.pf-v5-c-form-control:focus-within > :is(input, select, textarea):focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Replace PatternFly's pseudo-element borders with the themed wrapper border. */
+.pf-v5-c-form-control::before,
+.pf-v5-c-form-control::after {
+  border: 0;
+}
+
+.pf-v5-c-form-control.pf-m-error {
+  border-color: var(--sva-kern2-danger);
+}
+
 .pf-v5-c-form-control > input::placeholder,
 .pf-v5-c-form-control > textarea::placeholder {
   color: var(--sva-kern2-input-placeholder);
@@ -292,6 +308,87 @@ a:hover,
 #kc-social-providers ul,
 #kc-form-options-wrapper {
   border-color: var(--sva-kern2-surface-border);
+}
+
+.sva-kern2-organization-login h2 {
+  margin: 0 0 0.5rem;
+  color: var(--sva-kern2-text);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.sva-kern2-organization-login p {
+  margin: 0 0 1rem;
+  color: var(--sva-kern2-text-muted);
+}
+
+/* The inherited provider macro starts with an "or" divider, now redundant. */
+.sva-kern2-organization-login > .kc-login-divider {
+  display: none;
+}
+
+.sva-kern2-organization-login #kc-social-providers ul {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  padding-block-end: 0 !important;
+}
+
+.sva-kern2-organization-login #kc-social-providers a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--sva-kern2-primary);
+  border-radius: 999px;
+  background: var(--sva-kern2-primary-soft);
+  color: var(--sva-kern2-primary);
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.sva-kern2-organization-login #kc-social-providers a::after {
+  border: 0;
+}
+
+.sva-kern2-organization-login #kc-social-providers a:hover {
+  background: var(--sva-kern2-primary);
+  color: var(--sva-kern2-surface);
+}
+
+.sva-kern2-organization-login #kc-social-providers a:focus-visible {
+  outline: 3px solid var(--sva-kern2-focus);
+  outline-offset: 2px;
+}
+
+.sva-kern2-organization-login #kc-social-providers a[aria-disabled='true'] {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.sva-kern2-login-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.75rem 0;
+  color: var(--sva-kern2-text-muted);
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.sva-kern2-login-divider::before,
+.sva-kern2-login-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--sva-kern2-surface-border);
 }
 
 .sva-kern2-footer {

@@ -381,6 +381,9 @@ importers:
       '@sva/plugin-surveys':
         specifier: workspace:*
         version: file:packages/plugin-surveys(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@sva/plugin-vouchers':
+        specifier: workspace:*
+        version: link:../../packages/plugin-vouchers
       '@sva/routing':
         specifier: workspace:*
         version: file:packages/routing(@opentelemetry/core@2.8.0(@opentelemetry/api@1.10.0))(@types/node@25.9.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3)

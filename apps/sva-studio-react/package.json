@@ -43,6 +43,7 @@
     "@sva/plugin-sdk": "workspace:*",
     "@sva/plugin-ssf": "workspace:*",
     "@sva/plugin-surveys": "workspace:*",
+    "@sva/plugin-vouchers": "workspace:*",
     "@sva/routing": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "@sva/studio-module-iam": "workspace:*",

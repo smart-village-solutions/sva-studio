@@ -300,24 +300,26 @@
     },
     "test:types": {
       "executor": "nx:run-commands",
-      "cache": true,
+      "parallelism": false,
+      "cache": false,
       "dependsOn": ["^build"],
       "inputs": ["default", "^production", "frontendTooling"],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "pnpm exec tsc --noEmit -p tsconfig.json"
+        "command": "pnpm exec tsx ../../scripts/ci/sync-injected-workspace-packages.ts . && pnpm exec tsc --noEmit -p tsconfig.json"
       }
     },
     "typecheck": {
       "executor": "nx:run-commands",
-      "cache": true,
+      "parallelism": false,
+      "cache": false,
       "dependsOn": ["^build"],
       "inputs": ["default", "^production", "frontendTooling"],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "pnpm exec tsc --noEmit -p tsconfig.json"
+        "command": "pnpm exec tsx ../../scripts/ci/sync-injected-workspace-packages.ts . && pnpm exec tsc --noEmit -p tsconfig.json"
       }
     },
     "lint": {

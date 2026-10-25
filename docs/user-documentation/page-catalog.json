@@ -530,6 +530,26 @@
       "titleKey": "surveys.navigation.title"
     },
     {
+      "id": "vouchers.content.create",
+      "path": "/admin/vouchers/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "vouchers"
+      },
+      "titleKey": "vouchers.navigation.title"
+    },
+    {
+      "id": "vouchers.content.detail",
+      "path": "/admin/vouchers/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "vouchers"
+      },
+      "titleKey": "vouchers.navigation.title"
+    },
+    {
       "id": "waste-management.overview",
       "path": "/plugins/waste-management",
       "pageType": "overview",

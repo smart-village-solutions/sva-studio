@@ -6,11 +6,12 @@ import type {
 } from '../../types.js';
 import { mergePoiUpdateWithCurrent } from './editor-field-matrices.js';
 import type { ServiceContext } from './service-context.js';
-import { withUpdatedPayload } from './shared.js';
+import { toSvaMainserverError, withUpdatedPayload } from './shared.js';
 
 export const createPoiService = ({
   loadValidatedInstanceConfig,
   poiOperations,
+  genericItemOperations,
   transferContentOwnershipWithConfig,
   staticContentOperations,
 }: ServiceContext) => {
@@ -35,6 +36,9 @@ export const createPoiService = ({
     input: SvaMainserverConnectionInput & {
       readonly poiId: string;
       readonly poi: SvaMainserverPoiInput;
+      readonly voucherResetFingerprint?: string;
+      readonly voucherResetIdentities?: Readonly<Record<string, string>>;
+      readonly voucherResetOperationId?: string;
     }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
@@ -59,6 +63,18 @@ export const createPoiService = ({
 
   const transferContentOwnership = async (input: SvaMainserverOwnershipTransferInput) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    if (input.content.type === 'poi')
+      await poiOperations.assertPoiWithoutVouchersWithConfig(
+        { ...input, poiId: input.content.id },
+        config
+      );
+    if (input.content.type === 'generic-item') {
+      const current = await genericItemOperations.getGenericItemWithConfig(
+        { ...input, genericItemId: input.content.id },
+        config
+      );
+      if (current.genericType === 'Voucher') throw toSvaMainserverError({code: 'invalid_response', message: 'voucher_ownership_unsupported', statusCode: 409});
+    }
     return transferContentOwnershipWithConfig(input, config);
   };
 

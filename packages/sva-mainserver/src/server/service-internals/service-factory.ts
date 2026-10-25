@@ -6,6 +6,7 @@ import { createNewsService } from './service-news.js';
 import { createEventService } from './service-events.js';
 import { createItemService } from './service-items.js';
 import { createPoiService } from './service-poi.js';
+import { createVoucherService } from './service-vouchers.js';
 import { createSurveyWasteService } from './service-surveys-waste.js';
 import type { SvaMainserverServiceOptions } from './service-context.js';
 export type { SvaMainserverServiceOptions } from './service-context.js';
@@ -71,6 +72,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   } = context;
 
   return {
+    ...createVoucherService(context),
     createOrUpdateStaticContent,
     createEvent,
     createGenericItem,

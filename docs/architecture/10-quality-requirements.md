@@ -544,3 +544,9 @@ Tag-Normalisierung, Patch-Semantik, serverseitige Suche und Cursor-Bindung werde
 - Redaktionelle Hilfen und Speicherwirkung sind in de/en vorhanden und über Tastatur sowie assistive Technik erreichbar. Generische Items benötigen keinen gesonderten Einsteigerflow.
 - Der Create-Verlassensschutz unterscheidet unveränderte Formulare, tatsächliche Eingaben und bloßes Öffnen des Medienpickers. Abbrechen erhält Eingaben; Verwerfen erreicht das Ziel. Bestätigte Saves warnen nicht erneut, spätere Eingaben während Save/Medien-Retry bleiben geschützt und bestätigte Anlagen werden nicht dupliziert.
 - Gezielte Plugin-Tests und repräsentative Browserflows belegen das technische Verhalten. Ein Durchlauf mit ungeschulten Personen wurde nicht durchgeführt. Nach ausdrücklicher Nutzerentscheidung wird die Praxistauglichkeit anhand des Kundenfeedbacks bewertet; der Vorabtest ist kein aktueller Abschlussblocker. Technische Tests werden nicht als menschlicher Verständlichkeitsnachweis dargestellt.
+
+
+
+## Datenintegrität bei Gutscheinen
+
+Ein Gutschein-Save muss sämtliche schreibbaren POI- und Geschwisterfelder erhalten oder vor dem Write ablehnen. Lokale Tests prüfen Schema, Roundtrip, UUID-Zuordnung, Kontext-/Rechteprüfung, Bestätigung, Sichtbarkeit, Nutzungsgrenzfälle und Response-Verlust mit Reload. Ein Provider-Write wird nicht automatisch wiederholt. Die isolierte Mainserver-/App-Abnahme bleibt ein eigener Nachweis; siehe [Gutscheinreferenz](../reference/vouchers.md).

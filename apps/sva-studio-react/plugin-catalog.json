@@ -30,6 +30,12 @@
     "sourceRef": "packages/plugin-generic-items"
   },
   {
+    "pluginId": "vouchers",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-vouchers"
+  },
+  {
     "pluginId": "faq",
     "sourceType": "workspace",
     "enabled": true,

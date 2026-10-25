@@ -1148,3 +1148,8 @@ Der vorhandene POST-Projektionsrefresh in der App autorisiert Content-Typ und Ac
 ## Minimale Medienorganisation und Scan-Gate
 
 Tags erweitern das vorhandene Asset-Metadatenfeld und die instanzbezogene Suche ohne eigene Taxonomie. Der gemeinsame Picker nutzt bei Suchtext/Tag die bestehende Host-API. `iam-media/clamav.ts` ergänzt den konkreten ClamAV-Protokollaufruf in der vorhandenen Medienverarbeitung; Quarantäne und geschützte Ausgaben liegen auf demselben S3-Dienst in einem separaten privaten Bucket. Maßgeblich ist [ADR-068](../adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md); die Scan-Aktivierung bleibt eine gesonderte Betriebsabnahme.
+
+
+## Baustein Gutscheine
+
+`@sva/plugin-vouchers` stellt Redaktion und Nutzungsanzeige über Plugin-SDK und Studio-UI bereit. Der vorhandene Mainserver-Adapter übernimmt vollständigen POI-Roundtrip, Autorisierung, Vorbereitung und Readback. Host-Historie, Idempotenzspeicher, Core-Referenzen und Medienservice werden wiederverwendet; es entsteht keine eigene Gutschein-Datenbank. Siehe [Gutscheinreferenz](../reference/vouchers.md).

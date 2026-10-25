@@ -716,3 +716,8 @@ Ein versehentlich übernommener allgemeiner Plugin-Glob oder Seiten-Import kann 
 - FreshClam- oder Scanner-Ausfall kann neue Medienfreigaben verhindern. Nach 24 Stunden ohne bestätigte Aktualität wird gewarnt, nach 72 Stunden gesperrt; vorhandene Medien bleiben nutzbar. Containerupdates und Fehlalarme bleiben Betriebsaufgaben.
 - Neue Bucket-Registrierungen sind im Scanbetrieb zunächst gesperrt. Ein späterer gescannter Import und eine automatische Bestandsprüfung gehören zu einem gesondert begründeten Bedarf.
 - Direkte öffentliche Ausgaben entstehen erst nach Scan und Inhaltsvalidierung, die S3-Schreibvorgänge und Datenbankfinalisierung sind jedoch keine verteilte Transaktion. Claim-isolierte Keys und bestehende Bereinigung begrenzen Fehlerfolgen; nie gebuchte Bytes werden nicht von der Quote abgezogen.
+
+
+## Gutscheine: destruktiver Provider-Vertrag
+
+Der Mainserver ersetzt bei Ortsupdates Gutscheine und Kontingente und entfernt Einlösungen. Der Nutzer akzeptiert diesen Reset derzeit nach Bestätigung. Öffentliche Filter für Kategorien und Ankündigungen sowie nicht atomare externe Konkurrenz erzwingen konservative Write-Grenzen. Idempotenzdaten sind auf 24 Stunden begrenzt; überschreibt eine spätere Mutation die Operationsmarkierung, kann ein älterer unklarer Save nicht sicher bestätigt werden. Eine Änderung des Providers ist separat als Mainserver #445 / SVA-1778 erfasst. Siehe [Gutscheinreferenz](../reference/vouchers.md).

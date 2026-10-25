@@ -16,6 +16,7 @@ import type {
   SvaMainserverSaveCategoryInput,
 } from '../types.js';
 import { createSvaMainserverService } from './service-internals/service-factory.js';
+import type { VoucherInput } from '../types-vouchers.js';
 export { createSvaMainserverService } from './service-internals/service-factory.js';
 export type { SvaMainserverServiceOptions } from './service-internals/service-factory.js';
 
@@ -25,6 +26,36 @@ const getDefaultService = () => {
   defaultService ??= createSvaMainserverService();
   return defaultService;
 };
+
+export const listSvaMainserverVouchers = (
+  input: SvaMainserverConnectionInput & {
+    page: number;
+    pageSize: number;
+    search?: string;
+    categoryId?: string;
+    poiId?: string;
+    visible?: boolean;
+  }
+) => getDefaultService().listVouchers(input);
+export const getSvaMainserverVoucher = (
+  input: SvaMainserverConnectionInput & { voucherId: string }
+) => getDefaultService().getVoucher(input);
+export const getSvaMainserverPoiVoucherState = (
+  input: SvaMainserverConnectionInput & { poiId: string }
+) => getDefaultService().getPoiVoucherState(input);
+export const getSvaMainserverVoucherPoi = (
+  input: SvaMainserverConnectionInput & { poiId: string }
+) => getDefaultService().getVoucherPoi(input);
+export const writeSvaMainserverVoucher = (
+  input: SvaMainserverConnectionInput & {
+    poiId: string;
+    voucherId?: string;
+    voucher: VoucherInput;
+    creationId: string;
+    expectedFingerprint: string;
+    siblingIdentities?: Readonly<Record<string, string>>;
+  }
+) => getDefaultService().writeVoucher(input);
 
 export const resetSvaMainserverServiceState = (): void => {
   defaultService = null;
@@ -172,6 +203,9 @@ export const updateSvaMainserverPoi = (
   input: SvaMainserverConnectionInput & {
     readonly poiId: string;
     readonly poi: SvaMainserverPoiInput;
+    readonly voucherResetFingerprint?: string;
+    readonly voucherResetIdentities?: Readonly<Record<string, string>>;
+    readonly voucherResetOperationId?: string;
   }
 ) => getDefaultService().updatePoi(input);
 

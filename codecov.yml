@@ -82,6 +82,7 @@ coverage:
         - packages/plugin-sdk/
         - packages/plugin-ssf/
         - packages/plugin-surveys/
+        - packages/plugin-vouchers/
         - packages/plugin-waste-management/
         - packages/waste-management-contracts/
         - packages/waste-management-runtime/

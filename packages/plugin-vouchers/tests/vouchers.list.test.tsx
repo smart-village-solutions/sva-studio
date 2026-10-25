@@ -2,7 +2,7 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { publishSessionAccessSnapshot } from '@sva/plugin-sdk';
-const state = vi.hoisted(() => ({ list: vi.fn(), query: { poiId: '1' } }));
+const state = vi.hoisted(() => ({ list: vi.fn(), locations: vi.fn(), query: { poiId: '1' } }));
 vi.mock('@tanstack/react-router', () => ({
   useSearch: () => state.query,
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
@@ -12,10 +12,7 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('../src/vouchers.api.js', () => ({
   listVouchers: state.list,
   listVoucherCategories: async () => ({ data: [{ id: 'category', name: 'Kultur' }] }),
-  listVoucherLocations: async () => ({
-    data: [{ id: '1', name: 'Ort' }],
-    pagination: { hasNextPage: false },
-  }),
+  listVoucherLocations: state.locations,
 }));
 import { VouchersListPage } from '../src/vouchers.list.js';
 beforeEach(() => {
@@ -27,6 +24,10 @@ beforeEach(() => {
     roles: [],
     permissionActions: ['vouchers.read', 'vouchers.create'],
     unscopedPermissionActions: ['vouchers.read', 'vouchers.create'],
+  });
+  state.locations.mockResolvedValue({
+    data: [{ id: '1', name: 'Ort' }],
+    pagination: { hasNextPage: false },
   });
   state.list.mockResolvedValue({
     data: [
@@ -82,6 +83,29 @@ describe('voucher overview', () => {
     await screen.findAllByText('Eintritt');
     fireEvent.click(screen.getByRole('button', { name: 'vouchers.actions.refresh' }));
     await waitFor(() => expect(state.list.mock.calls.length).toBeGreaterThanOrEqual(5));
+  });
+  it('includes locations from later pages in the filter, even after an empty authorized page', async () => {
+    state.locations
+      .mockResolvedValueOnce({ data: [], pagination: { hasNextPage: true } })
+      .mockResolvedValueOnce({
+        data: [{ id: '101', name: 'Weiterer Ort' }],
+        pagination: { hasNextPage: false },
+      });
+    render(<VouchersListPage />);
+    await screen.findByRole('option', { name: 'Weiterer Ort' });
+    expect(state.locations).toHaveBeenNthCalledWith(2, 2, 'user');
+    fireEvent.change(screen.getByLabelText('vouchers.fields.location'), {
+      target: { value: '101' },
+    });
+    await waitFor(() =>
+      expect(state.list).toHaveBeenLastCalledWith(
+        1,
+        '',
+        'user',
+        expect.objectContaining({ poiId: '101' })
+      )
+    );
+    expect(state.locations).toHaveBeenCalledTimes(2);
   });
   it('shows read failure and can retry without inventing zero usage', async () => {
     state.list.mockRejectedValueOnce(new Error('unavailable'));

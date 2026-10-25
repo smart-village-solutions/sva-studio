@@ -85,12 +85,18 @@ function useVoucherChoices(principal: 'organization' | 'user') {
   >([]);
   useEffect(() => {
     let current = true;
-    void listVoucherLocations(1, principal).then(
-      (value) => {
-        if (current) setLocations(value.data);
-      },
-      () => undefined
-    );
+    setLocations([]);
+    const loadLocations = async () => {
+      const choices: { id: string; name: string }[] = [];
+      for (let page = 1; current; page += 1) {
+        const value = await listVoucherLocations(page, principal);
+        if (!current) return;
+        choices.push(...value.data);
+        setLocations([...choices]);
+        if (!value.pagination.hasNextPage) return;
+      }
+    };
+    void loadLocations().catch(() => undefined);
     void listVoucherCategories().then(
       (value) => {
         if (current) setCategories(value.data);

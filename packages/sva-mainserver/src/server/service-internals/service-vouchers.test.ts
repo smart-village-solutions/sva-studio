@@ -263,3 +263,111 @@ describe('generic item mutation bypass protection', () => {
     ).toBe(true);
   });
 });
+
+describe('voucher provider reads and pagination', () => {
+  it('uses an upstream lookahead and offset without local filters', async () => {
+    const { service, execute } = setup();
+    execute.mockResolvedValue({
+      genericItems: [voucher('4', 'uuid-4'), voucher('5', 'uuid-5'), voucher('6', 'uuid-6')],
+    });
+    const result = await service.listVouchers({
+      ...connection,
+      page: 2,
+      pageSize: 2,
+      search: 'Eintritt',
+      categoryId: 'cat',
+    });
+    expect(result.data.map((item) => item.id)).toEqual(['4', '5']);
+    expect(result.pagination).toEqual({ page: 2, pageSize: 2, hasNextPage: true });
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: { limit: 3, skip: 2, search: 'Eintritt', categoryId: 'cat' },
+        allowRetry: true,
+      }),
+      undefined
+    );
+  });
+  it('continues through a full page with no location matches', async () => {
+    const { service, execute } = setup();
+    const unrelated = Array.from({ length: 100 }, (_, index) => ({
+      ...voucher(String(index), `uuid-${index}`),
+      pointOfInterest: null,
+    }));
+    execute
+      .mockResolvedValueOnce({ genericItems: unrelated })
+      .mockResolvedValueOnce({
+        genericItems: [voucher('200', 'uuid-200'), voucher('201', 'uuid-201')],
+      });
+    const result = await service.listVouchers({
+      ...connection,
+      page: 1,
+      pageSize: 1,
+      poiId: '1',
+      visible: false,
+    });
+    expect(result.data.map((item) => item.id)).toEqual(['200']);
+    expect(result.pagination.hasNextPage).toBe(true);
+    expect(execute.mock.calls.map(([call]) => call.variables.skip)).toEqual([0, 100]);
+  });
+  it('applies a visibility filter before local pagination and handles an empty result', async () => {
+    const { service, execute } = setup();
+    execute.mockResolvedValueOnce({
+      genericItems: [
+        { ...voucher('1', 'uuid-1'), visible: true },
+        voucher('2', 'uuid-2'),
+        voucher('3', 'uuid-3'),
+      ],
+    });
+    const result = await service.listVouchers({
+      ...connection,
+      page: 2,
+      pageSize: 1,
+      visible: false,
+    });
+    expect(result.data.map((item) => item.id)).toEqual(['3']);
+    expect(result.pagination.hasNextPage).toBe(false);
+    execute.mockResolvedValueOnce({ genericItems: [] });
+    expect((await service.listVouchers({ ...connection, page: 1, pageSize: 25 })).data).toEqual([]);
+  });
+  it('returns a content fingerprint and reports an absent provider record', async () => {
+    const { service, execute } = setup();
+    execute.mockResolvedValueOnce({ genericItem: voucher('2', 'uuid-2') });
+    expect(await service.getVoucher({ ...connection, voucherId: '2' })).toMatchObject({
+      id: '2',
+      contentFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    execute.mockResolvedValueOnce({ genericItem: null });
+    await expect(service.getVoucher({ ...connection, voucherId: '2' })).rejects.toMatchObject({
+      statusCode: 404,
+    });
+  });
+  it('rejects a provider whose POI update cannot preserve announcements', async () => {
+    const { service, poi } = setup();
+    poi.dataProvider.dataType = 'unsupported';
+    await expect(service.getVoucherPoi({ ...connection, poiId: '1' })).rejects.toThrow(
+      'voucher_poi_provider_unsupported'
+    );
+  });
+  it('rejects provider field loss without retry', async () => {
+    const { service, execute, poi, fingerprint } = setup();
+    const base = execute.getMockImplementation();
+    if (!base) throw new Error('Missing executor fixture');
+    execute.mockImplementation(async (call) => {
+      const result = await base(call);
+      if (call.operationName === 'SvaMainserverVoucherWrite') poi.name = 'Lost';
+      return result;
+    });
+    await expect(
+      service.writeVoucher({
+        ...connection,
+        poiId: '1',
+        voucher: input,
+        creationId: 'attempt',
+        expectedFingerprint: fingerprint(),
+      })
+    ).rejects.toThrow('voucher_reconciliation_required');
+    expect(
+      execute.mock.calls.filter(([call]) => call.operationName === 'SvaMainserverVoucherWrite')
+    ).toHaveLength(1);
+  });
+});

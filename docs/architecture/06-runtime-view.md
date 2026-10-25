@@ -1542,3 +1542,8 @@ Die Medienbibliothek startet mit `media.read` und `media.update` sowie CSRF-Schu
 4. Die Mediathek speichert eine neue Kopie unmittelbar. Sechs Content-Plugins übertragen ihre lokalen Kopien erst im vorhandenen Content-Save-Ablauf; Waste speichert die öffentliche Kopie sofort und übernimmt nur deren dauerhafte URL in die noch ungespeicherte Konfiguration.
 5. Der vorhandene Medienjob prüft Ausgabe, Grundlage und eingebettete Bildressourcen einschließlich aktiver Scanpflicht. Nur der aktuelle Claim darf alle Bestandteile freigeben und deren tatsächliche Bytes samt Zustandsdokument verbuchen. Private Ressourcen bleiben auch ohne Scan privat.
 6. Kopienanlage und Quellenlöschung sperren dieselbe Grundlage. Löschung markiert das Asset vor Storage-I/O; neue Referenzen/Kopien sind danach ausgeschlossen. Referenzen, offene Content-Save-Verwendungen und abhängige Kopien blockieren die Löschung. Wiederholung nach einem Storage-Fehler darf Kontingente nicht mehrfach korrigieren.
+
+
+## Gutschein speichern
+
+Vorbereitung liest Ort und sämtliche Gutscheine, prüft den gesamten Berechtigungsumfang und bindet Formular und Fingerprint an Principal und Credential-Kontext. Nach Bestätigung erfolgt ein weiterer Read und genau ein Provider-Write ohne Retry. Readback löst Identitäten auf neue IDs auf; Referenzen und Projektionen folgen. Bei unklarem Ausgang liest ein expliziter Abgleich anhand der vorab vergebenen Identitäten und Operationsmarkierung. Sichtbarkeit verwendet einen getrennten, kontingenterhaltenden Write. Siehe [Gutscheinreferenz](../reference/vouchers.md).

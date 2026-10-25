@@ -17,6 +17,7 @@ describe('server-safe Mainserver GenericItem registry', () => {
     expect(Object.fromEntries(studioMainserverGenericTypeRegistry)).toEqual({
       COCKPIT_CARD: 'cockpit-cards.cockpit-card',
       FAQ: 'faq.faq',
+      Voucher: 'vouchers.voucher',
       FeaturedProject: 'projects.project',
     });
   });

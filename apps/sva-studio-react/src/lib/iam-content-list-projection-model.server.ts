@@ -114,6 +114,7 @@ export type TargetedMutationContentType =
   | 'generic-items.generic-item'
   | 'faq.faq'
   | 'cockpit-cards.cockpit-card'
+  | 'vouchers.voucher'
   | 'projects.project'
   | 'surveys.survey';
 

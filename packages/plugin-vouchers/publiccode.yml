@@ -1,0 +1,35 @@
+publiccodeYmlVersion: '0'
+name: Gutscheine
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: development
+softwareType: addon
+description:
+  de:
+    shortDescription: Erstellt Gutscheine mit Einlöseort, Vorteil und Kontingent und zeigt registrierte Einlösungen.
+    longDescription: Verwaltet Gutscheine als eigenständige Inhalte mit einem zugeordneten Ort. Redaktion und Firmeninhaber können Überschrift, Einleitung, Beschreibung, Vorteil, Kontingent und Gültigkeit pflegen. Die Übersicht zeigt das verbleibende Kontingent und die registrierten Einlösungen im aktuellen Kalenderzeitraum. Inhaltsänderungen erfordern eine Bestätigung, weil der bestehende Mainserver die Einlösungen aller Gutscheine des Ortes zurücksetzt. Die separate Sichtbarkeitsaktion erhält die Einlösungen. Das optionale Modul verwendet die vorhandenen Rollen und Berechtigungen des SVA Studios.
+    features:
+      - Gutscheine erstellen und bearbeiten
+      - Registrierte Einlösungen und Kontingent ansehen
+  en:
+    localisedName: Vouchers
+    shortDescription: Creates vouchers with a redemption location, benefit and quota and displays registered redemptions.
+    longDescription: Manages vouchers as independent content associated with one location. Editors and business owners can maintain the title, introduction, description, benefit, quota and validity. The overview displays remaining quota and registered redemptions for the current calendar period. Content changes require confirmation because the existing Mainserver resets redemptions of all vouchers at the location. Separate visibility changes preserve redemptions. This optional module uses existing SVA Studio roles and permissions.
+    features:
+      - Create and edit vouchers
+      - Inspect registered redemptions and quota
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Philipp Wilimzig
+      affiliation: Smart Village Solutions SVS GmbH
+      email: operations@smart-village.app
+localisation:
+  localisationReady: true
+  availableLanguages:
+    - de
+    - en

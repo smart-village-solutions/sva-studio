@@ -94,6 +94,18 @@ const StudioMediaPickerOverlayBody = (
   } = props;
   return (
     <div className="max-h-[72vh] overflow-y-auto pr-1">
+      {mode !== 'upload' && feedbackMessage ? (
+        <p
+          role={feedbackTone === 'error' ? 'alert' : 'status'}
+          className={
+            feedbackTone === 'error'
+              ? 'mb-3 text-sm text-destructive'
+              : 'mb-3 text-sm text-muted-foreground'
+          }
+        >
+          {feedbackMessage}
+        </p>
+      ) : null}
       {mode === 'library' ? (
         <StudioMediaPickerLibraryPanel
           assets={assets}

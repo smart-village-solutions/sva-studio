@@ -37,6 +37,7 @@ vi.mock('../db.js', () => ({
 }));
 
 const {
+  rejectVoucherCoreMutation,
   createFailureResponse,
   createFailureResponseFromResponse,
   parseCreateRequest,
@@ -201,4 +202,10 @@ describe('content mutation helpers', () => {
     await expect(reserveCreateIdempotency(actor, 'idem-2', '{"a":3}')).resolves.toBeNull();
     expect(state.toPayloadHashMock).toHaveBeenCalled();
   });
+  it('reserves voucher authoring for the aggregate writer while retaining other Core content types', async () => {
+    expect(rejectVoucherCoreMutation('vouchers.voucher', 'request-1')?.status).toBe(409);
+    expect(rejectVoucherCoreMutation('news.article', 'request-1')).toBeNull();
+    expect(rejectVoucherCoreMutation('custom.record', 'request-1')).toBeNull();
+  });
+
 });

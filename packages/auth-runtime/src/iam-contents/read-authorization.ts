@@ -25,6 +25,8 @@ const buildReadActionForContentType = (contentType: string | undefined): Content
       return 'cockpit-cards.read';
     case 'projects.project':
       return 'projects.read';
+    case 'vouchers.voucher':
+      return 'vouchers.read';
     case 'surveys.survey':
       return 'surveys.read';
     default:

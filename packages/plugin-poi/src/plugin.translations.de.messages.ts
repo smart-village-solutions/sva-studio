@@ -1,4 +1,11 @@
 export const poiMessagesDe = {
+  voucherResetUnavailable: 'Der Ort konnte mit seinen Gutscheinen nicht sicher zum Speichern vorbereitet werden. Prüfen Sie Berechtigungen und Gutscheinbestand.',
+  voucherSaveUnknown: 'Der Ausgang des Speicherns ist unklar. Laden und prüfen Sie den Ort vor einem weiteren Speicherversuch.',
+  vouchersForLocation: 'Gutscheine dieses Ortes ansehen',
+  voucherResetConfirmation:
+    'Diese Ortsänderung setzt die Einlösungen ALLER folgenden Gutscheine zurück. Ihre Inhalte bleiben erhalten. Fortfahren?\n\n{{vouchers}}',
+  voucherResetCancelled:
+    'Speichern abgebrochen. Der Ort und seine Gutscheine wurden nicht geändert.',
   createdNavigationError:
     'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
   unsavedAfterCreate:

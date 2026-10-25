@@ -183,6 +183,10 @@ export const mainserverProjectionPageLoaders: Record<
       ...toProjectionPrincipalContext(target),
     }),
   'generic-items.generic-item': createGenericItemPageLoader({ overrideContentType: false }),
+  'vouchers.voucher': createGenericItemPageLoader({
+    overrideContentType: true,
+    continueAfterEmptyPage: true,
+  }),
   'faq.faq': createGenericItemPageLoader({ overrideContentType: true }),
   'cockpit-cards.cockpit-card': createGenericItemPageLoader({ overrideContentType: true }),
   'projects.project': createGenericItemPageLoader({

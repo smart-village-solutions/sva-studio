@@ -1,0 +1,38 @@
+{
+  "name": "@sva/plugin-vouchers",
+  "version": "0.0.1",
+  "type": "module",
+  "files": [
+    "dist",
+    "plugin.manifest.json",
+    "publiccode.yml"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./plugin.manifest.json": {
+      "default": "./plugin.manifest.json"
+    }
+  },
+  "dependencies": {
+    "@sva/plugin-sdk": "workspace:*",
+    "@sva/studio-ui-react": "workspace:*"
+  },
+  "peerDependencies": {
+    "@tanstack/react-router": "^1.170.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.2.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitest/coverage-v8": "^5.0.3",
+    "jsdom": "^29.1.0",
+    "vitest": "^5.0.3"
+  }
+}

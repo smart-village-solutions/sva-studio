@@ -106,7 +106,11 @@ const createGenericItemMutationLoader =
   (
     contentType: Extract<
       TargetedMutationContentType,
-      'generic-items.generic-item' | 'faq.faq' | 'cockpit-cards.cockpit-card' | 'projects.project'
+      | 'generic-items.generic-item'
+      | 'faq.faq'
+      | 'cockpit-cards.cockpit-card'
+      | 'vouchers.voucher'
+      | 'projects.project'
     >,
     overrideContentType: boolean
   ): MainserverMutationProjectionLoader =>
@@ -157,6 +161,7 @@ export const mainserverMutationProjectionLoaders: Record<
     'generic-items.generic-item',
     false
   ),
+  'vouchers.voucher': createGenericItemMutationLoader('vouchers.voucher', true),
   'faq.faq': createGenericItemMutationLoader('faq.faq', true),
   'cockpit-cards.cockpit-card': createGenericItemMutationLoader('cockpit-cards.cockpit-card', true),
   'projects.project': createGenericItemMutationLoader('projects.project', true),

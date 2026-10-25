@@ -102,6 +102,14 @@ describe('studio-distribution-artifact', () => {
     }
   );
 
+  it('includes vouchers in Studio and supports explicit custom voucher selection', () => {
+    const studio = JSON.parse(runArtifactCommand('selection', '', 'studio').toString('utf8'));
+    expect(studio.pluginIds).toContain('vouchers');
+    const custom = JSON.parse(
+      runArtifactCommand('selection', '', 'custom', 'poi,vouchers').toString('utf8')
+    );
+    expect(custom.pluginIds).toEqual(['poi', 'vouchers']);
+  });
   it('canonicalizes and fingerprints a custom plugin selection', () => {
     const output = runArtifactCommand('selection', '', 'custom', 'ssf,news,categories');
     const selection = JSON.parse(output.toString('utf8'));
@@ -201,7 +209,9 @@ describe('studio-distribution-artifact', () => {
         const serverChunk = source.includes('/.pnpm/');
         writeFileSync(
           path.join(reportRoot, serverChunk ? 'ssr.json' : 'client.json'),
-          JSON.stringify([{ fileName: serverChunk ? 'assets/router.js' : 'assets/index.js', modules: [source] }])
+          JSON.stringify([
+            { fileName: serverChunk ? 'assets/router.js' : 'assets/index.js', modules: [source] },
+          ])
         );
         expect(() => runArtifactCommand('write-chunk-provenance', outputRoot, 'ssf')).toThrow(
           `chunk_provenance_excluded_plugin:${packageName}`
@@ -408,6 +418,7 @@ describe('studio-distribution-artifact', () => {
         'poi',
         'projects',
         'surveys',
+        'vouchers',
         'waste-management',
       ],
       installedPlugins: [],
@@ -492,6 +503,7 @@ describe('studio-distribution-artifact', () => {
         'plugin-poi',
         'plugin-projects',
         'plugin-surveys',
+        'plugin-vouchers',
         'plugin-waste-management',
         'waste-management-contracts',
         'waste-management-runtime',

@@ -662,7 +662,23 @@ describe('News editor pages', () => {
   });
 
   it('creates a draft by default when no publication mode is selected', async () => {
-    render(<NewsCreatePage />);
+    render(
+      <NewsCreatePage
+        principalControl={{
+          kind: 'selectable',
+          value: 'user',
+          options: [
+            { value: 'user', label: 'Redaktion' },
+            { value: 'organization', label: 'Organisation' },
+          ],
+        }}
+      />
+    );
+    const publicationCard = screen
+      .getByRole('heading', { name: 'Veröffentlichung' })
+      .closest('section');
+    expect(publicationCard?.contains(document.getElementById('news-acting-principal'))).toBe(true);
+    expect(publicationCard?.contains(document.getElementById('publication-mode-draft'))).toBe(true);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     await openContentTab();

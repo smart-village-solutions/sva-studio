@@ -128,17 +128,25 @@ export const GenericItemsStatusView = ({
           </Link>
         </StudioFormSummary>
       ) : null}
-      <MainserverPrincipalControl
-        id="generic-items-acting-principal"
-        label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-        description={pt('principal.description')}
-        value={actingPrincipalType}
-        options={resolveMainserverPrincipalOptions(principalControl, {
-          value: actingPrincipalType,
-          label: pt(`principal.${actingPrincipalType}`),
-        })}
-        onChange={setActingPrincipalType}
-      />
+      <div
+        className={
+          mode === 'create'
+            ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
+            : undefined
+        }
+      >
+        <MainserverPrincipalControl
+          id="generic-items-acting-principal"
+          label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+          description={pt('principal.description')}
+          value={actingPrincipalType}
+          options={resolveMainserverPrincipalOptions(principalControl, {
+            value: actingPrincipalType,
+            label: pt(`principal.${actingPrincipalType}`),
+          })}
+          onChange={setActingPrincipalType}
+        />
+      </div>
       <StudioMediaReferenceRetryAction
         controller={mediaReferenceSync}
         label={pt('actions.retryMediaReferences')}

@@ -117,8 +117,10 @@ export function SurveyCreateFields({
   return (
     <StudioSection className="space-y-6">
       <p>{pt('create.intro')}</p>
-      <section id="survey-create-text" tabIndex={-1} className="space-y-4">
-        <SurveyIdentityCard pt={pt} titleOnly />
+      <section id="survey-create-text" tabIndex={-1} className="space-y-6">
+        <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-5">
+          <SurveyIdentityCard pt={pt} titleOnly />
+        </div>
         <details className="open:space-y-4">
           <summary>{pt('cards.content.descriptions.title')}</summary>
           <SurveyDescriptionCard pt={pt} />
@@ -132,7 +134,7 @@ export function SurveyCreateFields({
           <SurveyQuestionListEditor pt={pt} createMode />
         </SurveyDetailCard>
       </section>
-      <section id="survey-create-participation" tabIndex={-1} className="space-y-4">
+      <section id="survey-create-participation" tabIndex={-1} className="space-y-6">
         <details className="open:space-y-4">
           <summary>{pt('cards.basis.targetArea.title')}</summary>
           <SurveyTargetAreaCard pt={pt} availableTargetAreas={[]} />

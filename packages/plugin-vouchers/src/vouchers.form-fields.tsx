@@ -24,7 +24,10 @@ export type VoucherFormProps = Readonly<{
 export function useVoucherFormFields({ draft, errors, change }: VoucherFormProps) {
   const t = usePluginTranslation('vouchers');
   const section = (id: string, children: ReactNode) => (
-    <section id={`voucher-section-${id}`} className="space-y-4 border-b border-border pb-6">
+    <section
+      id={`voucher-section-${id}`}
+      className="space-y-4 rounded-2xl border border-border/60 bg-card p-5"
+    >
       <h2 className="text-lg font-semibold">{t(`sections.${id}`)}</h2>
       {children}
     </section>

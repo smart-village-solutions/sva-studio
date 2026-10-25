@@ -103,18 +103,26 @@ const FaqEditorPrimaryAction = ({
 
 function FaqPrincipal(props: FaqEditorViewProps) {
   return (
-    <MainserverPrincipalControl
-      fixedLabel={props.mode === 'create' ? props.pt('create.responsible') : undefined}
-      id="faq-acting-principal"
-      label={props.pt(props.mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-      description={props.pt('principal.description')}
-      value={props.actingPrincipalType}
-      options={resolveMainserverPrincipalOptions(props.principalControl, {
-        value: props.actingPrincipalType,
-        label: props.pt(`principal.${props.actingPrincipalType}`),
-      })}
-      onChange={props.setActingPrincipalType}
-    />
+    <div
+      className={
+        props.mode === 'create' && props.principalControl?.kind === 'selectable'
+          ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
+          : undefined
+      }
+    >
+      <MainserverPrincipalControl
+        fixedLabel={props.mode === 'create' ? props.pt('create.responsible') : undefined}
+        id="faq-acting-principal"
+        label={props.pt(props.mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+        description={props.pt('principal.description')}
+        value={props.actingPrincipalType}
+        options={resolveMainserverPrincipalOptions(props.principalControl, {
+          value: props.actingPrincipalType,
+          label: props.pt(`principal.${props.actingPrincipalType}`),
+        })}
+        onChange={props.setActingPrincipalType}
+      />
+    </div>
   );
 }
 
@@ -135,7 +143,7 @@ export const FaqEditorView = (props: FaqEditorViewProps) => (
     primaryAction={<FaqEditorPrimaryAction {...props} />}
   >
     <FormProvider {...props.form}>
-      <form id={props.formId} className="space-y-5" onSubmit={props.onSubmit} noValidate>
+      <form id={props.formId} className="space-y-6" onSubmit={props.onSubmit} noValidate>
         {props.createdContentId ? (
           <p>
             <Link to="/admin/faq/$id" params={{ id: props.createdContentId }}>

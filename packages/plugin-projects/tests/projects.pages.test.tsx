@@ -214,6 +214,10 @@ describe('projects pages', () => {
 
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByText('history.createHint')).toBeNull();
+    const contentCard = document.getElementById('project-title')!.closest('section');
+    expect(contentCard?.contains(document.getElementById('project-description'))).toBe(true);
+    expect(contentCard?.contains(document.getElementById('project-fullText'))).toBe(true);
+    expect(contentCard?.contains(document.getElementById('project-language'))).toBe(false);
     const ids = [...document.querySelectorAll('form input, form textarea, form select')].map(
       (field) => field.id
     );

@@ -116,18 +116,26 @@ function EditorPrimaryAction({ view }: { view: EditorViewProps }) {
 
 function EditorPrincipal(view: EditorViewProps) {
   return (
-    <MainserverPrincipalControl
-      fixedLabel={view.mode === 'create' ? view.pt('create.responsible') : undefined}
-      id="cockpit-card-acting-principal"
-      label={view.pt(view.mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-      description={view.pt('principal.description')}
-      value={view.actingPrincipalType}
-      options={resolveMainserverPrincipalOptions(view.principalControl, {
-        value: view.actingPrincipalType,
-        label: view.pt(`principal.${view.actingPrincipalType}`),
-      })}
-      onChange={view.setActingPrincipalType}
-    />
+    <div
+      className={
+        view.mode === 'create' && view.principalControl?.kind === 'selectable'
+          ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
+          : undefined
+      }
+    >
+      <MainserverPrincipalControl
+        fixedLabel={view.mode === 'create' ? view.pt('create.responsible') : undefined}
+        id="cockpit-card-acting-principal"
+        label={view.pt(view.mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+        description={view.pt('principal.description')}
+        value={view.actingPrincipalType}
+        options={resolveMainserverPrincipalOptions(view.principalControl, {
+          value: view.actingPrincipalType,
+          label: view.pt(`principal.${view.actingPrincipalType}`),
+        })}
+        onChange={view.setActingPrincipalType}
+      />
+    </div>
   );
 }
 
@@ -145,7 +153,7 @@ function EditorForm({ view }: { view: EditorViewProps }) {
     tab,
   } = view;
   return (
-    <form id={`cockpit-card-${mode}-form`} className="space-y-5" onSubmit={onSubmit} noValidate>
+    <form id={`cockpit-card-${mode}-form`} className="space-y-6" onSubmit={onSubmit} noValidate>
       {view.createdContentId ? (
         <p>
           <Link to="/admin/cockpit-cards/$id" params={{ id: view.createdContentId }}>

@@ -21,8 +21,8 @@ export const GenericItemsDetailCard = ({
     if (invalid && details.current) details.current.open = true;
   }, [invalid]);
   return collapsible ? (
-    <details ref={details}>
-      <summary>
+    <details ref={details} className="space-y-4 rounded-2xl border border-border/60 bg-card p-5">
+      <summary className="cursor-pointer text-sm font-medium">
         {title}
         {summary ? ` — ${summary}` : ''}
       </summary>

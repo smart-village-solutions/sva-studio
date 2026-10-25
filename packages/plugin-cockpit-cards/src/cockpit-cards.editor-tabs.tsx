@@ -91,8 +91,10 @@ export function cockpitCardEditorTabs({
         id: 'content',
         label: pt('tabs.content.label'),
         panel: (
-          <div className="space-y-5">
-            <HeadingField form={form} pt={pt} />
+          <div className="space-y-6">
+            <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-5">
+              <HeadingField form={form} pt={pt} />
+            </div>
             {
               contentTab({ mode, pt, form, media, canSelectMedia, canUploadMedia, saveFeedback })
                 .panel

@@ -94,18 +94,23 @@ export function EventsDetailCreate(props: ComponentProps<typeof EventsDetailEdit
           {pt('create.categoryUnavailable')}
         </p>
       ) : null}
-      <div id="event-create-title" tabIndex={-1}>
+      <div
+        id="event-create-title"
+        tabIndex={-1}
+        className="space-y-4 rounded-2xl border border-border/60 bg-card p-5"
+      >
         <EventsDetailBasisTab {...basisProps} section="title" />
       </div>
       <div id="event-create-dates" tabIndex={-1}>
-        <EventsDateSection pt={pt} createMode />
+        <EventsDateSection pt={pt} createMode>
+          <details>
+            <summary id="event-create-recurrence">
+              {pt('create.sections.recurrence')} · {pt('create.optional')}
+            </summary>
+            <EventsDetailBasisTab {...basisProps} section="recurrence" />
+          </details>
+        </EventsDateSection>
       </div>
-      <details>
-        <summary id="event-create-recurrence">
-          {pt('create.sections.recurrence')} · {pt('create.optional')}
-        </summary>
-        <EventsDetailBasisTab {...basisProps} section="recurrence" />
-      </details>
       <div id="event-create-addresses" tabIndex={-1}>
         <EventsAddressSection pt={pt} capabilities={capabilities} createMode />
       </div>
@@ -137,7 +142,6 @@ export function EventsDetailCreate(props: ComponentProps<typeof EventsDetailEdit
       <EventsCreateOptionalFields pt={pt} capabilities={capabilities} />
       <div id="event-create-publication" tabIndex={-1}>
         <EventsDetailSettingsTab pt={pt} section="publication" />
-
       </div>
     </div>
   );

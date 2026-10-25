@@ -218,7 +218,7 @@ export function CockpitCardCreateSettings(
     }>
 ) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <details>
         <summary>{props.pt('fields.link')}</summary>
         <LinkFields {...props} />
@@ -227,10 +227,12 @@ export function CockpitCardCreateSettings(
         <summary>{props.pt('fields.category')}</summary>
         <CategoryField {...props} />
       </details>
-      <LanguageField {...props} />
-      <WeightField {...props} />
-      <PublicationField {...props} />
-      <VisibilityField {...props} />
+      <StudioDetailCard title={props.pt('tabs.settings.title')}>
+        <LanguageField {...props} />
+        <WeightField {...props} />
+        <PublicationField {...props} />
+        <VisibilityField {...props} />
+      </StudioDetailCard>
     </div>
   );
 }

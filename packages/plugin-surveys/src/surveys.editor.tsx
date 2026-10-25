@@ -15,7 +15,6 @@ import {
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
-
 import {
   createDefaultSurveyDetailFormValues,
   type SurveyDetailFormValues,
@@ -29,9 +28,7 @@ import { useSurveyEditorController } from './surveys.editor-logic.js';
 import { type SurveyEditorMode, type SurveyEditorTabId } from './surveys.editor.shared.js';
 import { SurveyCreateFields, createSurveyEditorTabs } from './surveys.editor-tabs.js';
 import { useSurveyMutationAccess as useMutationAccess } from './surveys.lifecycle-access.js';
-
 const formId = 'survey-detail-form';
-
 const SurveyPrincipalControl = ({
   actingPrincipalType,
   loadedItem,
@@ -47,20 +44,27 @@ const SurveyPrincipalControl = ({
   principalControl?: MainserverPrincipalControlModel;
   pt: ReturnType<typeof usePluginTranslation>;
 }>) => (
-  <MainserverPrincipalControl
-    fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
-    id="survey-acting-principal"
-    label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-    description={pt('principal.description')}
-    value={actingPrincipalType}
-    options={resolveMainserverPrincipalOptions(principalControl, {
-      value: actingPrincipalType,
-      label: pt(`principal.${actingPrincipalType}`),
-    })}
-    onChange={onChange}
-  />
+  <div
+    className={
+      mode === 'create' && principalControl?.kind === 'selectable'
+        ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
+        : undefined
+    }
+  >
+    <MainserverPrincipalControl
+      fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
+      id="survey-acting-principal"
+      label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+      description={pt('principal.description')}
+      value={actingPrincipalType}
+      options={resolveMainserverPrincipalOptions(principalControl, {
+        value: actingPrincipalType,
+        label: pt(`principal.${actingPrincipalType}`),
+      })}
+      onChange={onChange}
+    />
+  </div>
 );
-
 const SurveyEditorForm = ({
   actingPrincipalType,
   activeTab,
@@ -135,12 +139,10 @@ const SurveyEditorForm = ({
     </FormProvider>
   );
 };
-
 const useSurveyActingPrincipal = (principalControl?: MainserverPrincipalControlModel) => {
   const [value, setValue] = React.useState<MainserverPrincipalType>(
     principalControl?.value ?? 'user'
   );
-
   React.useEffect(() => {
     if (principalControl) {
       setValue(principalControl.value);

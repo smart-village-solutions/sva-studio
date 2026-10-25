@@ -23,7 +23,11 @@ export function PoiDetailCreate({
           {pt('create.categoryUnavailable')}
         </p>
       ) : null}
-      <div id="poi-create-name" tabIndex={-1}>
+      <div
+        id="poi-create-name"
+        tabIndex={-1}
+        className="space-y-4 rounded-2xl border border-border/60 bg-card p-5"
+      >
         <PoiDetailBasisTab {...basisProps} section="name" />
       </div>
       {content}
@@ -36,7 +40,6 @@ export function PoiDetailCreate({
       </details>
       <div id="poi-create-active" tabIndex={-1}>
         <PoiDetailBasisTab {...basisProps} section="active" />
-
       </div>
     </div>
   );

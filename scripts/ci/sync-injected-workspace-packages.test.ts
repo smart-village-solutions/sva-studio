@@ -56,6 +56,8 @@ describe('sync-injected-workspace-packages', () => {
     const writers = [
       ['packages/auth-runtime/project.json', 'build'],
       ['packages/auth-runtime/project.json', 'test:types'],
+      ['packages/waste-management-runtime/project.json', 'build'],
+      ['packages/waste-management-runtime/project.json', 'test:types'],
       ['apps/public-waste-calendar-web/project.json', 'build'],
       ['apps/public-waste-calendar-web/project.json', 'test:unit'],
       ['packages/data/project.json', 'check:runtime'],

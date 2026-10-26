@@ -3,7 +3,7 @@ export const poiMessagesEn = {
   voucherSaveUnknown: 'The save outcome is unknown. Reload and inspect this location before another save attempt.',
   vouchersForLocation: 'View vouchers at this location',
   voucherResetConfirmation:
-    'This location change resets redemptions of ALL the following vouchers. Their content is preserved. Continue?\n\n{{vouchers}}',
+    'This location change also saves the following vouchers. Their content and existing redemptions are preserved. Continue?\n\n{{vouchers}}',
   voucherResetCancelled: 'Save cancelled. The location and its vouchers were not changed.',
   createdNavigationError: 'The content was created, but the editing view could not be opened.',
   unsavedAfterCreate: 'The content was created. Newer changes in this form have not been saved.',

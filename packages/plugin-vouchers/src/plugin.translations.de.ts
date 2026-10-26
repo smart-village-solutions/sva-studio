@@ -150,7 +150,7 @@ export const voucherTranslationsDe = {
     title: 'Einlösungen am Ort zurücksetzen und speichern?',
     description:
       'Alle bisherigen Einlösungen der unten genannten Gutscheine werden gelöscht. Bereits verwendete Gutscheine können erneut eingelöst werden. Dies lässt sich im Studio nicht rückgängig machen.',
-    hint: 'Beim Speichern werden auch die Einlösungen der bestehenden Gutscheine dieses Ortes zurückgesetzt.',
+    hint: 'Beim Speichern bleiben die bisherigen Einlösungen der Gutscheine dieses Ortes erhalten.',
   },
   usage: {
     title: 'Nutzung',
@@ -165,7 +165,7 @@ export const voucherTranslationsDe = {
     exhausted: 'Kontingent ausgeschöpft',
     fetched: 'Zuletzt erfolgreich abgerufen: {{date}}',
     notice:
-      'Gezählt werden gespeicherte Einlösungen, keine eindeutigen Personen. Noch nicht übertragene Offline-Einlösungen fehlen. Bestätigte Inhaltsänderungen setzen den Zähler zurück.',
+      'Gezählt werden gespeicherte Einlösungen, keine eindeutigen Personen. Noch nicht übertragene Offline-Einlösungen fehlen. Inhaltsänderungen erhalten die bisherigen Einlösungen.',
     person: 'Höchstens {{maximum}} pro Person im Zeitraum',
     period: {
       once: 'Gesamte Laufzeit des aktuellen Kontingents',

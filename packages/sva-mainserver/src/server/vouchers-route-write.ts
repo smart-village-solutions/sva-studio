@@ -83,7 +83,7 @@ async function preparedVoucherResult(
     poiId: aggregate.poiId,
     poiName: aggregate.poi.name,
     affected: aggregate.siblings.map((item) => ({ id: item.id, title: item.title })),
-    requiresReset: aggregate.siblings.length > 0,
+    requiresReset: false,
   };
   await completeIdempotency({
     ...scope,
@@ -151,7 +151,7 @@ async function persistVoucher(
         const response = {
           data,
           meta: {
-            reset: aggregate.siblings.length > 0,
+            reset: false,
             affectedPoiId: aggregate.poiId,
             operation: body.voucherId ? 'update' : 'create',
           },
@@ -222,8 +222,6 @@ export const mutate = async (
   }
   if (prepared.status !== 'replay')
     return errorJson(409, 'voucher_content_conflict', 'voucher_content_conflict');
-  if (aggregate.siblings.length && body.confirmed !== true)
-    return errorJson(409, 'voucher_confirmation_required', 'voucher_confirmation_required');
   const preparedIdentities = z
     .object({
       siblingIdentities: z.record(z.string(), z.string()),

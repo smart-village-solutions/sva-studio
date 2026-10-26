@@ -1,4 +1,11 @@
-import { buildClientSchema, parse, validate, type IntrospectionQuery } from 'graphql';
+import {
+  buildClientSchema,
+  coerceInputValue,
+  isInputObjectType,
+  parse,
+  validate,
+  type IntrospectionQuery,
+} from 'graphql';
 import { describe, expect, it } from 'vitest';
 import snapshot from '../generated/schema.snapshot.json';
 import {
@@ -20,6 +27,15 @@ describe('voucher aggregate snapshot', () => {
       expect(validate(schema, parse(document)).map((error) => error.message)).toEqual([]);
     }
   );
+  it('accepts the optional nested database ID in the corrected Mainserver input', () => {
+    const schema = buildClientSchema(snapshot.data as unknown as IntrospectionQuery);
+    const input = schema.getType('GenericItemInput');
+    if (!isInputObjectType(input)) throw new Error('Missing GenericItemInput');
+    expect(coerceInputValue({ id: '2', genericType: 'Voucher' }, input)).toEqual({
+      id: '2',
+      genericType: 'Voucher',
+    });
+  });
   it('rejects missing field groups instead of silently deleting them', () => {
     expect(() => voucherWriteSnapshot({ name: 'Ort' })).toThrow('voucher_snapshot_incomplete');
     expect(
@@ -37,14 +53,9 @@ describe('voucher aggregate snapshot', () => {
       voucherSnapshotHash({ payload: { a: 1, b: 2 }, a: 1 })
     );
   });
-  it('blocks providers with unobservable announcement deletion and filtered inactive categories', () => {
+  it('still blocks filtered inactive categories for regular providers', () => {
     expect(() =>
-      assertVoucherPoiWritable({ dataProvider: { id: '1', dataType: 'cms' } }, [])
-    ).toThrow('voucher_poi_provider_unsupported');
-    expect(() =>
-      assertVoucherPoiWritable({ dataProvider: { id: '1', dataType: 'business_account' } }, [
-        { active: false },
-      ])
+      assertVoucherPoiWritable({ dataProvider: { id: '1', dataType: 'cms' } }, [{ active: false }])
     ).toThrow('voucher_inactive_categories');
   });
   it('blocks foreign ownership and user-generated dependents before writing', () => {

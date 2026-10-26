@@ -30,6 +30,8 @@ Gezählt werden gespeicherte Einlösungen im aktuellen Kontingent und Zeitraum, 
 
 ## Datenintegrität und Vertragsgrenzen
 
+Der Snapshot wird beim gewöhnlichen Orts-Write und bei Gutschein-Geschwistern erneut projiziert. Dabei werden bereits ausgelassene nullable Unterobjekte nicht als neue Eingaben interpretiert. Vollständige Provider-Reads verlangen weiterhin sämtliche ausgewählten Felder; fehlende Felder oder ungültige Arrayeinträge bleiben Fehler.
+
 Nicht gesetzte Such- und Kategoriefilter werden im Mainserver-Aufruf ausgelassen. Explizite `null`-Filter würden dort trotzdem angewendet und könnten ausgeblendete oder kategorielose Gutscheine aus der Übersicht entfernen.
 
 Leere Bildmaße (`height` und `width`) werden beim verschachtelten Write ausgelassen: Der Mainserver-Input `AnyPrimitive` wandelt explizites `null` derzeit in einen Fehlertext um. Vorhandene Maßwerte bleiben unverändert und werden weiterhin strikt gegen den Readback geprüft; andere nullable Felder, insbesondere beim Rabattwechsel, behalten ihre Löschsemantik.

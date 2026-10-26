@@ -56,6 +56,18 @@ it('uses the same complete aggregate for a confirmed ordinary POI update and pre
     ...blank(voucherPoiWriteFields),
     id: '1',
     name: 'Ort',
+    contact: null,
+    operatingCompany: null,
+    location: null,
+    accessibilityInformation: null,
+    mediaContents: [
+      {
+        ...blank(voucherPoiWriteFields.mediaContents),
+        contentType: 'image',
+        captionText: 'Keep caption',
+        sourceUrl: null,
+      },
+    ],
     payload: { opaque: 'poi' },
     dataProvider: { id: 'provider', dataType: 'cms' },
     vouchers: [sibling],
@@ -94,6 +106,10 @@ it('uses the same complete aggregate for a confirmed ordinary POI update and pre
     ([call]) => call.operationName === 'SvaMainserverVoucherWrite'
   )?.[0];
   expect(write.allowRetry).toBe(false);
+  expect(JSON.parse(JSON.stringify(write.variables))).not.toHaveProperty('contact');
+  expect(JSON.parse(JSON.stringify(write.variables))).toMatchObject({
+    mediaContents: [{ contentType: 'image', captionText: 'Keep caption' }],
+  });
   expect(write.variables.vouchers).toEqual([
     voucherWriteSnapshot(sibling, voucherPoiWriteFields.vouchers),
   ]);

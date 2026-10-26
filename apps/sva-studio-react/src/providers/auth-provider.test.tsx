@@ -433,7 +433,8 @@ describe('AuthProvider', () => {
             instanceId: 'instance-1',
           },
         })
-      );
+      )
+      .mockRejectedValueOnce(new Error('session-check-unavailable'));
 
     vi.stubGlobal('fetch', fetchMock);
 
@@ -490,6 +491,12 @@ describe('AuthProvider', () => {
     expect(
       readAuthDiagnosticTrail().filter(({ event }) => event === 'auth_pre_expiry_recovery_started')
     ).toHaveLength(2);
+
+    currentTimeMs += 1_000;
+    await waitFor(() => expect(screen.getByTestId('authenticated').textContent).toBe('no'), {
+      timeout: 2_500,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
 
     setTimeoutSpy.mockRestore();
     dateNowSpy.mockRestore();

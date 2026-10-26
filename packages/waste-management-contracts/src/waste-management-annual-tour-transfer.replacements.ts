@@ -19,15 +19,17 @@ export const buildValidatedWasteAnnualFirstTargetDateMap = (input: {
   readonly firstTargetDates: WasteAnnualTourTransferCreateInput['firstTargetDates'];
   readonly relevantTours: readonly WasteTourRecord[];
   readonly targetYear: number;
+  readonly allowObsoleteFirstTargetDates?: boolean;
 }): ReadonlyMap<string, string> => {
   const dates = new Map<string, string>();
   const tours = new Map(input.relevantTours.map((tour) => [tour.id, tour]));
   for (const item of input.firstTargetDates ?? []) {
     const tour = tours.get(item.sourceTourId);
+    const obsolete = !tour || wasteAnnualIntervalForTour(tour) === null;
+    if (obsolete && input.allowObsoleteFirstTargetDates) continue;
     if (
       dates.has(item.sourceTourId) ||
-      !tour ||
-      wasteAnnualIntervalForTour(tour) === null ||
+      obsolete ||
       !isWasteAnnualDateInYear(item.firstDate, input.targetYear)
     ) {
       throw new WasteAnnualTourTransferError('first_target_date_invalid');

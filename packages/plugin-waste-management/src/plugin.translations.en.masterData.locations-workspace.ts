@@ -67,7 +67,7 @@ export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
       planningNotice:
         'Drafts count as planned assignments here. Tours must be published for public collection dates.',
       assignmentNotice:
-        'This check evaluates tour assignments, not the actual pickup sequence. Check the first pickup dates separately in the tour preview.',
+        'This check evaluates tour assignments by their start and end dates, not the actual pickup sequence. A first date in January leaves the preceding days marked for review; check cadence continuation in the tour preview.',
       endDate: 'End date',
       check: 'Check',
       required: 'Select a waste fraction, start date and end date.',

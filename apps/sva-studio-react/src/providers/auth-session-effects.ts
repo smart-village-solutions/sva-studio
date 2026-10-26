@@ -69,15 +69,27 @@ export const useAuthSessionEffects = (
     }
 
     const msUntilExpiry = sessionExpiresAt - Date.now();
-    if (msUntilExpiry <= 0) {
-      return;
-    }
-
     const attemptCount =
       preExpiryRecoveryAttemptsRef.current.expiresAt === sessionExpiresAt
         ? preExpiryRecoveryAttemptsRef.current.count
         : 0;
-    if (attemptCount >= 2) return;
+    const checkExpiredSession = () => {
+      if (!confirmedUserRef.current) return;
+      // The third state marks the final check so a stale expiry cannot schedule it again.
+      preExpiryRecoveryAttemptsRef.current = { expiresAt: sessionExpiresAt, count: 3 };
+      void loadUser(false);
+    };
+    if (msUntilExpiry <= 0) {
+      if (attemptCount < 3) checkExpiredSession();
+      return;
+    }
+    if (attemptCount >= 2) {
+      sessionExpiryTimeoutRef.current = globalThis.window.setTimeout(
+        checkExpiredSession,
+        msUntilExpiry
+      );
+      return () => clearSessionExpiryTimer();
+    }
     const delayMs =
       msUntilExpiry <= PRE_EXPIRY_REAUTH_LEAD_MS
         ? attemptCount > 0

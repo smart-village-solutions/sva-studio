@@ -156,14 +156,21 @@ const calendarMonths = (
     ),
   }));
 
+const initialCalendarYear = (tour: WasteTourRecord | null, currentYear: number): number => {
+  const startYear =
+    tour?.firstDate && /^\d{4}-/.test(tour.firstDate)
+      ? Number(tour.firstDate.slice(0, 4))
+      : currentYear;
+  return startYear <= currentYear && (!tour?.endDate || tour.endDate >= `${currentYear}-01-01`)
+    ? currentYear
+    : startYear;
+};
+
 export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const locale = resolveEditorLocale();
   const currentYear = new Date().getFullYear();
-  const startYear =
-    props.tour?.firstDate && /^\d{4}-/.test(props.tour.firstDate)
-      ? Number(props.tour.firstDate.slice(0, 4))
-      : currentYear;
+  const startYear = initialCalendarYear(props.tour, currentYear);
   const [year, setYear] = useState(startYear);
   const canCreateShift = Boolean(
     props.canManageScheduling && props.tour && isWasteTourValidityApplicable(props.tour)

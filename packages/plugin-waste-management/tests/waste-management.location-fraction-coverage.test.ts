@@ -59,14 +59,21 @@ const check = (
   });
 
 describe('checkLocationFractionCoverage', () => {
-  it('does not mistake the first January pickup of a recurring tour for an uncovered period', () => {
+  it('reports the period before a recurring tour starts in January for review', () => {
     expect(
       check(
         [location('regular')],
         [{ ...tour('paper-2027', ['paper'], '2027-01-07', '2027-12-31'), recurrence: 'biweekly' }],
         [link('link-regular', 'regular', 'paper-2027')]
       )
-    ).toEqual([]);
+    ).toEqual([{ locationId: 'regular', kind: 'incomplete', gaps: [{ startDate: '2027-01-01', endDate: '2027-01-06' }] }]);
+    expect(
+      check(
+        [location('late')],
+        [{ ...tour('late-tour', ['paper'], '2027-01-28', '2027-12-31'), recurrence: 'fourweekly' }],
+        [link('late-link', 'late', 'late-tour')]
+      )
+    ).toEqual([{ locationId: 'late', kind: 'incomplete', gaps: [{ startDate: '2027-01-01', endDate: '2027-01-27' }] }]);
   });
 
   it('still reports a real later start and a January one-off date as incomplete', () => {
@@ -106,7 +113,9 @@ describe('checkLocationFractionCoverage', () => {
     expect(check(plannedLocation, [plannedTour], plannedLink)).toMatchObject([
       { locationId: 'planned', kind: 'missing' },
     ]);
-    expect(check(plannedLocation, [plannedTour], plannedLink, true)).toEqual([]);
+    expect(check(plannedLocation, [plannedTour], plannedLink, true)).toMatchObject([
+      { locationId: 'planned', kind: 'incomplete' },
+    ]);
     expect(
       check(plannedLocation, [{ ...plannedTour, status: 'archived' }], plannedLink, true)
     ).toMatchObject([{ locationId: 'planned', kind: 'missing' }]);

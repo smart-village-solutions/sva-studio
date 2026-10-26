@@ -154,6 +154,29 @@ describe('waste annual tour transfer', () => {
     ).rejects.toThrow(new WasteAnnualTourTransferError('first_target_date_invalid'));
   });
 
+  it('returns a refreshed preview when a selected first target date becomes obsolete', async () => {
+    const input = {
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([tour({ firstDate: '2026-01-08' })]),
+      target: source([]),
+      firstTargetDates: [{ sourceTourId: tour().id, firstDate: '2027-01-21' }],
+    };
+    const confirmed = await buildWasteAnnualTourTransferPreview(input);
+    for (const changedSource of [source([]), source([tour({ recurrence: 'yearly' })])]) {
+      await expect(
+        buildWasteAnnualTourTransferPreview({ ...input, source: changedSource })
+      ).rejects.toThrow(new WasteAnnualTourTransferError('first_target_date_invalid'));
+      const refreshed = await buildWasteAnnualTourTransferPreview({
+        ...input,
+        source: changedSource,
+        allowObsoleteReplacementDates: true,
+      });
+      expect(refreshed.previewFingerprint).not.toBe(confirmed.previewFingerprint);
+    }
+  });
+
   it('keeps a deliberately later source-year start for a partial-year tour', async () => {
     const preview = await buildWasteAnnualTourTransferPreview({
       instanceId: 'tenant-a',

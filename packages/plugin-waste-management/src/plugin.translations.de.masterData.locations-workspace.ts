@@ -68,7 +68,7 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       planningNotice:
         'Entwürfe zählen hier als geplante Zuordnung. Für öffentliche Termine müssen die Touren veröffentlicht sein.',
       assignmentNotice:
-        'Diese Prüfung bewertet Tour-Zuordnungen, nicht die tatsächliche Terminfolge. Prüfen Sie die ersten Abholtermine gesondert in der Tourenvorschau.',
+        'Diese Prüfung bewertet Tour-Zuordnungen anhand ihres Start- und Enddatums, nicht die tatsächliche Terminfolge. Ein erster Termin im Januar lässt den Zeitraum davor als Prüflücke erscheinen; prüfen Sie die Fortsetzung des Turnus in der Tourenvorschau.',
       endDate: 'Enddatum',
       check: 'Prüfen',
       required: 'Wählen Sie eine Abfallfraktion sowie Start- und Enddatum aus.',

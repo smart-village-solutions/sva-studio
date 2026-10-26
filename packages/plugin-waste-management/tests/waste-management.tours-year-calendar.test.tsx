@@ -110,6 +110,24 @@ describe('TourYearCalendarDialog', () => {
     );
   });
 
+  it('opens an ongoing tour from an earlier year in the current year', () => {
+    calculateTourOccurrenceEntriesForYearMock.mockReturnValue([]);
+    render(
+      <TourYearCalendarDialog
+        open
+        tour={{ id: 'long-running', name: 'Restmüll', firstDate: '2019-01-01', recurrence: 'weekly' } as never}
+        scheduling={{ globalDateShifts: [], tourDateShifts: [] } as never}
+        onOpenChange={() => undefined}
+      />
+    );
+    expect(screen.getByText('tours.yearCalendar.meta.year:2026')).toBeTruthy();
+    expect(calculateTourOccurrenceEntriesForYearMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'long-running' }),
+      2026,
+      expect.anything()
+    );
+  });
+
   it('renders highlighted dates and lets the user navigate between years', () => {
     calculateTourOccurrenceEntriesForYearMock.mockImplementation((_tour, year: number) =>
       year === 2026

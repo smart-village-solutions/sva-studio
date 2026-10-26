@@ -176,6 +176,7 @@ export const buildWasteAnnualTourTransferPreview = async (input: {
     firstTargetDates: input.firstTargetDates,
     relevantTours,
     targetYear,
+    allowObsoleteFirstTargetDates: input.allowObsoleteReplacementDates,
   });
   const replacementDates = input.replacementDates ?? [];
   const replacements = buildValidatedWasteAnnualReplacementMap({

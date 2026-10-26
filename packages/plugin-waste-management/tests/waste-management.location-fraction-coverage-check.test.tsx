@@ -108,8 +108,11 @@ describe('WasteLocationFractionCoverageCheck', () => {
       screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' })
     );
     expect(
-      screen.getByText('masterData.locationsWorkspace.coverage.complete:{"value":1}')
+      screen.getByText(
+        'masterData.locationsWorkspace.coverage.summary:{"checked":1,"missing":0,"incomplete":1}'
+      )
     ).toBeTruthy();
+    expect(screen.getByText('masterData.locationsWorkspace.coverage.incomplete')).toBeTruthy();
     expect(screen.getByText('masterData.locationsWorkspace.coverage.planningNotice')).toBeTruthy();
     expect(
       screen.getByText('masterData.locationsWorkspace.coverage.assignmentNotice')

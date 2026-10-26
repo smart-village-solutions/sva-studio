@@ -40,6 +40,7 @@ export const resolveMainserverDetailUrl = (contentType: string, contentId: strin
     'news.article': 'news',
     'events.event-record': 'events',
     'poi.point-of-interest': 'poi',
+    'vouchers.voucher': 'vouchers',
     'generic-items.generic-item': 'generic-items',
     'faq.faq': 'faqs',
     'cockpit-cards.cockpit-card': 'cockpit-cards',

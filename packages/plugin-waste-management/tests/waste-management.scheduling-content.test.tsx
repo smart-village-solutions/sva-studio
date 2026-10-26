@@ -409,6 +409,7 @@ describe('WasteSchedulingContent', () => {
 
     render(
       <WasteSchedulingContent
+        search={{ tab: 'scheduling', tourId: 'tour-sm' } as never}
         message={null}
         schedulingEntries={[]}
         tours={[{ id: 'tour-sm', name: 'Tour Nord' } as never]}
@@ -435,9 +436,9 @@ describe('WasteSchedulingContent', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'scheduling.assignments.actions.openCreate' })
     );
-    fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.tour'), {
-      target: { value: 'tour-sm' },
-    });
+    expect(
+      (screen.getByLabelText('scheduling.assignments.fields.tour') as HTMLSelectElement).value
+    ).toBe('tour-sm');
     fireEvent.change(screen.getByLabelText('scheduling.assignments.fields.pickupDate'), {
       target: { value: '2026-07-03' },
     });

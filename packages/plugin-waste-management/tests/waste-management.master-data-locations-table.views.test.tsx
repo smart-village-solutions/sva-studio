@@ -32,12 +32,19 @@ afterEach(() => {
 describe('waste-management master-data location table views', () => {
   it('forwards filter controls and sorting actions', () => {
     const onTourFilterChange = vi.fn();
+    const onLocationYearChange = vi.fn();
+    const onLocationTourStatusChange = vi.fn();
     const onToggleSelectAll = vi.fn();
     const onSortModeChange = vi.fn();
     const onSortDirectionChange = vi.fn();
+    const onQueryChange = vi.fn();
+    const onResetFilters = vi.fn();
 
     render(
       <WasteMasterDataLocationsTableToolbar
+        search={{ q: '' } as never}
+        onQueryChange={onQueryChange}
+        onResetFilters={onResetFilters}
         selectedCollectionLocationsCount={1}
         availableTours={[
           {
@@ -50,6 +57,10 @@ describe('waste-management master-data location table views', () => {
           },
         ]}
         filtersOpen
+        locationYear={2027}
+        onLocationYearChange={onLocationYearChange}
+        locationTourStatus="draft"
+        onLocationTourStatusChange={onLocationTourStatusChange}
         selectedTourId=""
         allFilteredLocationsSelected={false}
         onOpenCreateRegion={vi.fn()}
@@ -73,6 +84,26 @@ describe('waste-management master-data location table views', () => {
       target: { value: 'tour-1' },
     });
     expect(onTourFilterChange).toHaveBeenCalledWith('tour-1');
+    const locationSearch = screen.getByLabelText(
+      'masterData.locationsWorkspace.filters.locationSearch'
+    );
+    fireEvent.change(locationSearch, {
+      target: { value: 'Perleberg' },
+    });
+    fireEvent.blur(locationSearch);
+    expect(onQueryChange).toHaveBeenCalledWith('Perleberg');
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.filters.tourYear'), {
+      target: { value: '2026' },
+    });
+    expect(onLocationYearChange).toHaveBeenCalledWith(2026);
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.filters.tourStatus'), {
+      target: { value: 'published' },
+    });
+    expect(onLocationTourStatusChange).toHaveBeenCalledWith('published');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.filters.resetFilters' })
+    );
+    expect(onResetFilters).toHaveBeenCalledOnce();
 
     fireEvent.click(
       screen.getByLabelText('masterData.collectionLocations.bulk.actions.selectAllFiltered')
@@ -273,5 +304,130 @@ describe('waste-management master-data location table views', () => {
     expect(screen.getByText('27b')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Projektionstour' }));
     expect(onOpenEditTour).toHaveBeenCalledWith('tour-1');
+  });
+
+  it('keeps a paginated location visible but hides tours outside the selected year', () => {
+    render(
+      <table>
+        <tbody>
+          <WasteMasterDataLocationsRow
+            location={
+              {
+                id: 'location-1',
+                cityId: 'city-1',
+                cityName: 'Musterort',
+                active: true,
+                tours: [
+                  { id: 'old', name: 'Tour 2026' },
+                  { id: 'next', name: 'Tour 2027' },
+                ],
+                createdAt: '',
+                updatedAt: '',
+              } as never
+            }
+            maps={{
+              regionsById: new Map(),
+              citiesById: new Map(),
+              streetsById: new Map(),
+              houseNumbersById: new Map(),
+              locationYear: 2027,
+              toursById: new Map([['next', { id: 'next', name: 'Tour 2027' } as never]]),
+              locationTourNamesByLocationId: new Map(),
+              locationToursByLocationId: new Map(),
+            }}
+            selectedLocationIds={[]}
+            onToggleLocation={vi.fn()}
+            onCopyLocation={vi.fn()}
+            onDeleteLocation={vi.fn(async () => undefined)}
+            onOpenEditLocation={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+    expect(screen.getByText('Musterort')).toBeTruthy();
+    expect(screen.getByText('Tour 2027')).toBeTruthy();
+    expect(screen.queryByText('Tour 2026')).toBeNull();
+  });
+
+  it('labels an empty year view without hiding its Abholort', () => {
+    render(
+      <table>
+        <tbody>
+          <WasteMasterDataLocationsRow
+            location={
+              {
+                id: 'location-2',
+                cityId: 'city-2',
+                cityName: 'Andersdorf',
+                tours: [{ id: 'old', name: 'Tour 2026' }],
+                active: true,
+                createdAt: '',
+                updatedAt: '',
+              } as never
+            }
+            maps={{
+              regionsById: new Map(),
+              citiesById: new Map(),
+              streetsById: new Map(),
+              houseNumbersById: new Map(),
+              toursById: new Map(),
+              locationYear: 2027,
+              locationTourNamesByLocationId: new Map(),
+              locationToursByLocationId: new Map(),
+            }}
+            selectedLocationIds={[]}
+            onToggleLocation={vi.fn()}
+            onCopyLocation={vi.fn()}
+            onDeleteLocation={vi.fn(async () => undefined)}
+            onOpenEditLocation={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+    expect(screen.getByText('Andersdorf')).toBeTruthy();
+    expect(screen.getByText('masterData.locationsWorkspace.table.noToursForFilters')).toBeTruthy();
+  });
+
+  it('filters the paginated tour projection by status while keeping the Abholort', () => {
+    render(
+      <table>
+        <tbody>
+          <WasteMasterDataLocationsRow
+            location={
+              {
+                id: 'location-3',
+                cityId: 'city-3',
+                cityName: 'Dorf',
+                active: true,
+                tours: [
+                  { id: 'draft', name: 'Entwurf' },
+                  { id: 'published', name: 'Veröffentlicht' },
+                ],
+                createdAt: '',
+                updatedAt: '',
+              } as never
+            }
+            maps={{
+              regionsById: new Map(),
+              citiesById: new Map(),
+              streetsById: new Map(),
+              houseNumbersById: new Map(),
+              locationTourStatus: 'draft',
+              toursById: new Map([['draft', { id: 'draft', name: 'Entwurf' } as never]]),
+              locationTourNamesByLocationId: new Map(),
+              locationToursByLocationId: new Map(),
+            }}
+            selectedLocationIds={[]}
+            onToggleLocation={vi.fn()}
+            onCopyLocation={vi.fn()}
+            onDeleteLocation={vi.fn(async () => undefined)}
+            onOpenEditLocation={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+    expect(screen.getByText('Dorf')).toBeTruthy();
+    expect(screen.getByText('Entwurf')).toBeTruthy();
+    expect(screen.queryByText('Veröffentlicht')).toBeNull();
   });
 });

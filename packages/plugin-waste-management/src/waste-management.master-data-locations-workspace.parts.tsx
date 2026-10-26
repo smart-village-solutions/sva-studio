@@ -4,6 +4,8 @@ import type { WasteMasterDataLocationsWorkspaceProps } from './waste-management.
 export const WasteMasterDataLocationsTableSection = ({
   regions,
   search,
+  onQueryChange,
+  onResetFilters,
   cities,
   streets,
   houseNumbers,
@@ -13,6 +15,10 @@ export const WasteMasterDataLocationsTableSection = ({
   allFilteredLocationsSelected,
   selectedCollectionLocationsCount,
   availableTours,
+  locationYear,
+  onLocationYearChange,
+  locationTourStatus,
+  onLocationTourStatusChange,
   page,
   pageSize,
   sortMode,
@@ -43,6 +49,8 @@ export const WasteMasterDataLocationsTableSection = ({
   WasteMasterDataLocationsWorkspaceProps,
   | 'regions'
   | 'search'
+  | 'onQueryChange'
+  | 'onResetFilters'
   | 'cities'
   | 'streets'
   | 'houseNumbers'
@@ -52,6 +60,10 @@ export const WasteMasterDataLocationsTableSection = ({
   | 'allFilteredLocationsSelected'
   | 'selectedCollectionLocationsCount'
   | 'availableTours'
+  | 'locationYear'
+  | 'onLocationYearChange'
+  | 'locationTourStatus'
+  | 'onLocationTourStatusChange'
   | 'selectedTourId'
   | 'onPageChange'
   | 'onPageSizeChange'
@@ -82,6 +94,8 @@ export const WasteMasterDataLocationsTableSection = ({
 }) => (
   <WasteMasterDataLocationsTable
     search={search}
+    onQueryChange={onQueryChange}
+    onResetFilters={onResetFilters}
     regions={regions}
     cities={cities}
     streets={streets}
@@ -92,6 +106,10 @@ export const WasteMasterDataLocationsTableSection = ({
     allFilteredLocationsSelected={allFilteredLocationsSelected}
     selectedCollectionLocationsCount={selectedCollectionLocationsCount}
     availableTours={availableTours}
+    locationYear={locationYear}
+    onLocationYearChange={onLocationYearChange}
+    locationTourStatus={locationTourStatus}
+    onLocationTourStatusChange={onLocationTourStatusChange}
     page={page}
     pageSize={pageSize}
     sortMode={sortMode}

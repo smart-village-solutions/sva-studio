@@ -5,6 +5,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useWasteToursViewModel } from './use-waste-tours-view-model.js';
 import { WasteToursDialogs } from './waste-management.tours-dialogs-panel.js';
 import {
+  useWasteToursDuplicateRouteHydration,
   useWasteToursEditRouteHydration,
   useWasteToursSuccessRedirect,
 } from './waste-management.tours-panel.effects.js';
@@ -26,6 +27,7 @@ export const WasteToursPanel = ({
 
   useWasteToursSuccessRedirect({ controller, navigate, search });
   useWasteToursEditRouteHydration({ controller, navigate, search });
+  useWasteToursDuplicateRouteHydration({ controller, search });
 
   if (controller.loading) {
     return <StudioLoadingState>{pt('tours.messages.loading')}</StudioLoadingState>;

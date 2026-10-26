@@ -14,6 +14,7 @@
 3. Im Tenant-Scope liest der `EffectiveAccessProvider` `/iam/me/permissions`; im Plattform-Scope verwendet er ausschließlich die validierte technische Session-Sicht.
 4. Scope-, Organisations-, Session- oder Invalidation-Wechsel erhöhen eine Generation, verwerfen alte Actions atomar und brechen den vorherigen Request ab. Verspätete Antworten einer alten Generation werden ignoriert.
 5. Routing, Sidebar, Host-Seiten und Plugin-Session-Snapshot konsumieren dieselbe Generation. `unresolved`, `loading` und `error` sind fail-closed.
+   Ein vorübergehender Fehler von `/iam/me/permissions` wird einmal erneut abgefragt. Bei bleibendem Fehler behält das Abfallmodul URL und Tab, zeigt jedoch keine geschützten Bedienelemente; die bestehende globale Aktion „Neu laden“ prüft die Rechte erneut.
 6. Eine UI-Freigabe ersetzt niemals die serverseitige Action-, Instanz-, Organisations- oder Ressourcenprüfung.
 
 ## Scopegebundene Plugin-Routenmaterialisierung
@@ -535,6 +536,8 @@ Fehlerpfad:
 
 - Browser-/IdP-Cookies verhindern Silent SSO -> Recovery endet ohne Schleife im ausgeloggten Zustand.
 - Ein expliziter Logout blockiert den automatischen Silent-Recovery-Pfad zeitlich begrenzt.
+
+Vor der von `/auth/me` gemeldeten Session-Gültigkeitsgrenze startet `AuthProvider` denselben stillen SSO-Pfad und liest danach `/auth/me` erneut. Bleibt die Gültigkeitsgrenze unverändert, ist vor Ablauf höchstens ein weiterer Versuch zulässig. Der `401`-Pfad bleibt davon unabhängig.
 
 ### Szenario 2d: IAM-Diagnosepfad von Tenant-Host bis UI
 

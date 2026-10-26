@@ -1,6 +1,46 @@
 import type { WasteAnnualTourTransferTourPreview } from '@sva/waste-management-contracts';
+import { Input } from '@sva/studio-ui-react';
+import type { WasteAnnualTransferController } from './waste-management.tours-annual-transfer-controller.js';
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
+
+export const AnnualTourFirstTargetDateInput = ({
+  tour,
+  controller,
+  translate,
+}: Readonly<{
+  tour: WasteAnnualTourTransferTourPreview;
+  controller: WasteAnnualTransferController;
+  translate: Translate;
+}>) => {
+  const recurring =
+    tour.recurrence === 'weekly' ||
+    tour.recurrence === 'biweekly' ||
+    tour.recurrence === 'fourweekly' ||
+    Boolean(tour.customRecurrenceIntervalDays);
+  if (!recurring || tour.classification === 'already-effective') return null;
+  const targetYear = controller.preview?.targetYear ?? controller.sourceYear + 1;
+  return (
+    <label className="grid gap-1 text-sm font-medium" htmlFor={`first-target-${tour.sourceTourId}`}>
+      {translate('tours.annualTransfer.overrideFirstTargetDate', { name: tour.name })}
+      <Input
+        id={`first-target-${tour.sourceTourId}`}
+        type="date"
+        min={`${targetYear}-01-01`}
+        max={`${targetYear}-12-31`}
+        value={controller.firstTargetDates[tour.sourceTourId] ?? ''}
+        disabled={controller.step === 'confirm' || controller.loading}
+        onChange={(event) => {
+          const firstDate = event.currentTarget.value;
+          controller.setFirstTargetDates((current) => ({ ...current, [tour.sourceTourId]: firstDate }));
+        }}
+      />
+      <span className="font-normal text-muted-foreground">
+        {translate('tours.annualTransfer.overrideFirstTargetDateHint')}
+      </span>
+    </label>
+  );
+};
 
 const classificationKey = (classification: WasteAnnualTourTransferTourPreview['classification']) =>
   classification === 'transferable'

@@ -201,6 +201,29 @@ describe('WasteSchedulingPanel', () => {
     });
   });
 
+  it('returns to the originating tour after creating its shift', () => {
+    render(
+      <WasteSchedulingPanel
+        search={
+          {
+            tab: 'scheduling',
+            schedulingView: 'create',
+            schedulingEntryType: 'tour-shift',
+            schedulingTourId: 'tour-42',
+            q: '',
+            page: 1,
+          } as never
+        }
+      />
+    );
+
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: expect.objectContaining({ tab: 'tours', toursView: 'edit', tourId: 'tour-42' }),
+      replace: true,
+    });
+  });
+
   it('does not hydrate after the user edits the default form while tours are loading', () => {
     controllerMock.lastOutcome = null;
     controllerMock.loading = true;

@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getAuthConfig, resolveAuthConfigFromSessionAuth, resolveBaseAuthConfig } from './config.js';
+import {
+  getAuthConfig,
+  resolveAuthConfigFromSessionAuth,
+  resolveBaseAuthConfig,
+} from './config.js';
 
 describe('auth runtime config', () => {
   afterEach(() => {
@@ -37,6 +41,13 @@ describe('auth runtime config', () => {
 
     vi.stubEnv('SVA_AUTH_FRESH_REAUTH_WINDOW_MS', '-1');
     expect(resolveBaseAuthConfig().freshReauthWindowMs).toBe(10 * 60 * 1000);
+  });
+
+  it('defaults the absolute Studio session lifetime to 180 minutes', () => {
+    vi.stubEnv('SVA_AUTH_CLIENT_SECRET', 'client-secret');
+    vi.stubEnv('SVA_AUTH_SESSION_TTL_MS', 'not-a-number');
+
+    expect(resolveBaseAuthConfig().sessionTtlMs).toBe(180 * 60 * 1000);
   });
 
   it('requires a client secret for base config', () => {

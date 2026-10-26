@@ -22,6 +22,7 @@ type WasteManagementSchedulingScopeCopy = Readonly<{
 type WasteManagementSchedulingCopy = Readonly<{
   global: WasteManagementSchedulingScopeCopy;
   tour: WasteManagementSchedulingScopeCopy;
+  tourContext?: Readonly<Record<string, string>>;
   assignments?: Readonly<Record<string, unknown>>;
   holidayRules?: Readonly<Record<string, unknown>>;
   actions: Readonly<Record<string, string>>;
@@ -74,6 +75,7 @@ type WasteManagementToursShiftDetailsCopy = Readonly<{
 
 type WasteManagementToursCopy = Readonly<{
   actions: CrudActionsCopy;
+  workspace?: Readonly<Record<string, string>>;
   fields: Readonly<Record<string, string>>;
   filters?: Readonly<{
     open: string;
@@ -179,6 +181,7 @@ export const createWasteManagementSchedulingTranslations = <
     scheduling: {
       global: createSchedulingScopeTranslations(copy.global),
       tour: createSchedulingScopeTranslations(copy.tour),
+      tourContext: copy.tourContext,
       assignments: copy.assignments,
       holidayRules: copy.holidayRules,
       actions: copy.actions,
@@ -202,6 +205,7 @@ export const createWasteManagementToursTranslations = <
       createOptionalSection(
         {
           actions: createCrudActions(copy.actions),
+          workspace: copy.workspace,
           fields: copy.fields,
           filters: copy.filters,
           status: copy.status,

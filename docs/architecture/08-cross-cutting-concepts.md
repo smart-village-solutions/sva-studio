@@ -150,7 +150,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Sessionen führen nur den minimalen Auth-Kern (`sub/id`, `instanceId`, Rollen); Profilattribute wie Name und E-Mail gehören nicht zum Pflichtumfang der Session
 - Tenant-Sessions beziehen `instanceId` aus Host, Registry und Realm-Scope. Ein optionaler Token-Claim `instanceId` darf diesen Scope bestätigen, aber nicht ersetzen.
 - Forced Reauth pro Benutzer erfolgt über `minimumSessionVersion` und `forcedReauthAt`; Keycloak-Logout ist optional zuschaltbar
-- Silent SSO ist nur ein einmaliger Recovery-Versuch nach `401` und wird nach explizitem Logout temporär unterdrückt
+- Silent SSO wird kurz vor der gemeldeten Session-Gültigkeitsgrenze höchstens zweimal versucht und bleibt nach `401` als einmaliger Recovery-Versuch erhalten. Nach explizitem Logout ist es temporär unterdrückt. Die absolute Studio-Sessiondauer beträgt standardmäßig 180 Minuten und ist über `SVA_AUTH_SESSION_TTL_MS` konfigurierbar; kürzere Tokenlaufzeiten können vorher einen Refresh erfordern.
 - Application-Level Column Encryption für IAM-PII-Felder (`email_ciphertext`, `display_name_ciphertext`)
 - Schlüsselverwaltung über `IAM_PII_ACTIVE_KEY_ID` + `IAM_PII_KEYRING_JSON` (außerhalb der DB)
 - Secret-Blöcke für externe Schnittstellen werden mit datensatzgebundener AAD verschlüsselt; Browser- und Plugin-Verträge sehen nur konfigurierte Marker, nie Klarwerte oder Ciphertexts.

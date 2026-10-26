@@ -10,6 +10,9 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
+  Alert: ({ children }: { children: React.ReactNode }) => <div role="alert">{children}</div>,
+  AlertTitle: ({ children }: { children: React.ReactNode }) => <strong>{children}</strong>,
+  AlertDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Button: ({
     children,
     loading,
@@ -58,6 +61,35 @@ vi.mock('@sva/studio-ui-react', () => ({
 describe('WasteMasterDataFractionCreateContent', () => {
   afterEach(() => {
     cleanup();
+  });
+
+  it('shows a rejected PDF short label save in the edit form', () => {
+    render(
+      <WasteMasterDataFractionCreateContent
+        mode="edit"
+        form={{
+          id: 'fraction-1',
+          name: 'Biotonne',
+          pdfShortLabel: 'BIO',
+          translations: {},
+          containerSize: '',
+          color: '#16A34A',
+          description: '',
+          active: true,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: { push: false, email: false, calendar: false },
+          },
+        }}
+        message={{ kind: 'error', text: 'PDF-Kürzel bereits vergeben' }}
+        saving={false}
+        onChange={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('alert').textContent).toContain('PDF-Kürzel bereits vergeben');
   });
 
   it('renders the fourth reminder block and wires reminder changes through the controlled form state', () => {

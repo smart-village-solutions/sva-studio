@@ -5,6 +5,7 @@ import {
   toWasteCollectionLocationEditSearch,
   toWasteFractionEditSearch,
   toWasteTourEditSearch,
+  toWasteTourSchedulingSearch,
 } from '../src/waste-management.cross-link.navigation.js';
 
 const search: WasteManagementSearchParams = {
@@ -63,6 +64,19 @@ describe('waste-management cross-link navigation', () => {
         locationsView: 'edit',
         collectionLocationId: 'location-2',
         tourId: undefined,
+      })
+    );
+  });
+
+  it('opens scheduling with a visible tour filter and clears stale search state', () => {
+    expect(toWasteTourSchedulingSearch(search, 'tour-2')).toEqual(
+      expect.objectContaining({
+        tab: 'scheduling',
+        schedulingView: 'list',
+        shiftContext: 'tour',
+        tourId: 'tour-2',
+        q: '',
+        page: 1,
       })
     );
   });

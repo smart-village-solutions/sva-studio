@@ -26,6 +26,7 @@ describe('plugin-sdk session access store', () => {
 
     expect(readSessionAccessSnapshot()).toEqual({
       isResolved: true,
+      hasError: false,
       permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
       unscopedPermissionActions: ['waste-management.read'],
       assignedModules: ['waste-management'],
@@ -34,6 +35,7 @@ describe('plugin-sdk session access store', () => {
     expect(notifications).toEqual([
       {
         isResolved: true,
+        hasError: false,
         permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
         unscopedPermissionActions: ['waste-management.read'],
         assignedModules: ['waste-management'],
@@ -71,5 +73,22 @@ describe('plugin-sdk session access store', () => {
 
     unsubscribe();
     resetSessionAccessSnapshot();
+  });
+
+  it('publishes a permission lookup failure without granting access', () => {
+    resetSessionAccessSnapshot();
+    publishSessionAccessSnapshot({
+      isResolved: false,
+      hasError: true,
+      permissionActions: [],
+      assignedModules: [],
+      roles: [],
+    });
+
+    expect(readSessionAccessSnapshot()).toMatchObject({
+      isResolved: false,
+      hasError: true,
+      permissionActions: [],
+    });
   });
 });

@@ -2,7 +2,10 @@ import { useEffect, useRef } from 'react';
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { useNavigate } from '@tanstack/react-router';
 
-import { mapTourWithPickupDatesToForm } from './waste-management.tours.shared.js';
+import {
+  mapTourToDuplicateForm,
+  mapTourWithPickupDatesToForm,
+} from './waste-management.tours.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import type { WasteManagementSchedulingOverview } from './waste-management.api.js';
 
@@ -19,7 +22,7 @@ type WasteViewModel = {
   readonly setSelectedTour: (tour: WasteTourRecord | null) => void;
 };
 
-const useLatestRef = <T,>(value: T) => {
+const useLatestRef = <T>(value: T) => {
   const ref = useRef(value);
 
   useEffect(() => {
@@ -27,6 +30,17 @@ const useLatestRef = <T,>(value: T) => {
   }, [value]);
 
   return ref;
+};
+
+const navigateToToursList = (
+  navigate: ReturnType<typeof useNavigate>,
+  search: WasteManagementSearchParams
+): void => {
+  void navigate({
+    to: '/plugins/waste-management',
+    search: { ...search, toursView: 'list', tourId: undefined },
+    replace: true,
+  });
 };
 
 export const useWasteToursSuccessRedirect = ({
@@ -97,16 +111,7 @@ export const useWasteToursEditRouteHydration = ({
     }
 
     if (!search.tourId) {
-      const latestSearch = latestSearchRef.current;
-      void navigate({
-        to: '/plugins/waste-management',
-        search: {
-          ...latestSearch,
-          toursView: 'list',
-          tourId: undefined,
-        },
-        replace: true,
-      });
+      navigateToToursList(navigate, latestSearchRef.current);
       return;
     }
 
@@ -117,16 +122,7 @@ export const useWasteToursEditRouteHydration = ({
     const routeTour = controller.overview?.tours.find((tour) => tour.id === search.tourId);
 
     if (!routeTour) {
-      const latestSearch = latestSearchRef.current;
-      void navigate({
-        to: '/plugins/waste-management',
-        search: {
-          ...latestSearch,
-          toursView: 'list',
-          tourId: undefined,
-        },
-        replace: true,
-      });
+      navigateToToursList(navigate, latestSearchRef.current);
       return;
     }
 
@@ -139,7 +135,10 @@ export const useWasteToursEditRouteHydration = ({
     }
 
     latestController.setTourForm(
-      mapTourWithPickupDatesToForm(routeTour, controller.schedulingOverview?.locationTourPickupDates ?? [])
+      mapTourWithPickupDatesToForm(
+        routeTour,
+        controller.schedulingOverview?.locationTourPickupDates ?? []
+      )
     );
     hydratedTourIdRef.current = routeTour.id;
     controller.setLastOutcome(null);
@@ -153,4 +152,40 @@ export const useWasteToursEditRouteHydration = ({
     search.tourId,
     search.toursView,
   ]);
+};
+
+export const useWasteToursDuplicateRouteHydration = ({
+  controller,
+  search,
+}: {
+  readonly controller: WasteViewModel;
+  readonly search: WasteManagementSearchParams;
+}) => {
+  const hydratedSourceIdRef = useRef<string | null>(null);
+  const latestControllerRef = useLatestRef({
+    setDialogMode: controller.setDialogMode,
+    setTourForm: controller.setTourForm,
+    setSelectedTour: controller.setSelectedTour,
+  });
+
+  useEffect(() => {
+    if (search.toursView !== 'create' || !search.duplicateFromTourId) {
+      hydratedSourceIdRef.current = null;
+      return;
+    }
+    if (!controller.overview || hydratedSourceIdRef.current === search.duplicateFromTourId) {
+      return;
+    }
+
+    const sourceTour = controller.overview.tours.find(
+      (tour) => tour.id === search.duplicateFromTourId
+    );
+    if (!sourceTour) return;
+
+    const latestController = latestControllerRef.current;
+    latestController.setDialogMode('create');
+    latestController.setSelectedTour(null);
+    latestController.setTourForm(mapTourToDuplicateForm(sourceTour));
+    hydratedSourceIdRef.current = sourceTour.id;
+  }, [controller.overview, latestControllerRef, search.duplicateFromTourId, search.toursView]);
 };

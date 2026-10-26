@@ -23,7 +23,10 @@ const resolveLocationRowProjection = (
       cityName: location.cityName,
       streetName: location.streetName,
       houseNumberName: location.houseNumber,
-      linkedTours: location.tours,
+      linkedTours:
+        maps.locationYear || maps.locationTourStatus
+          ? location.tours.filter((tour) => maps.toursById.has(tour.id))
+          : location.tours,
     };
   }
 
@@ -40,10 +43,14 @@ const resolveLocationRowProjection = (
 
 const WasteLocationsRowTours = ({
   linkedTours,
+  locationYear,
+  locationTourStatus,
   search,
   onOpenEditTour,
 }: {
   readonly linkedTours: readonly { id: string; name: string }[];
+  readonly locationYear?: number;
+  readonly locationTourStatus?: WasteMasterDataLocationsTableMaps['locationTourStatus'];
   readonly search?: WasteManagementSearchParams;
   readonly onOpenEditTour?: (tourId: string) => void;
 }) => {
@@ -88,7 +95,11 @@ const WasteLocationsRowTours = ({
         </div>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {pt('masterData.locationsWorkspace.table.noTours')}
+          {pt(
+            locationYear || locationTourStatus
+              ? 'masterData.locationsWorkspace.table.noToursForFilters'
+              : 'masterData.locationsWorkspace.table.noTours'
+          )}
         </span>
       )}
     </td>
@@ -220,6 +231,8 @@ export const WasteMasterDataLocationsRow = ({
       </td>
       <WasteLocationsRowTours
         linkedTours={linkedTours}
+        locationYear={maps.locationYear}
+        locationTourStatus={maps.locationTourStatus}
         search={search}
         onOpenEditTour={onOpenEditTour}
       />

@@ -2,7 +2,7 @@ import type { WasteAnnualTourTransferTourPreview } from '@sva/waste-management-c
 import { Button, Checkbox, Input } from '@sva/studio-ui-react';
 
 import type { WasteAnnualTransferController } from './waste-management.tours-annual-transfer-controller.js';
-import { AnnualTourDetails } from './waste-management.tours-annual-transfer-details.js';
+import { AnnualTourDetails, AnnualTourFirstTargetDateInput } from './waste-management.tours-annual-transfer-details.js';
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 
@@ -125,6 +125,7 @@ const AnnualTourCard = ({
         </div>
       </div>
       <AnnualTourReplacementInputs tour={tour} controller={controller} translate={translate} />
+      <AnnualTourFirstTargetDateInput tour={tour} controller={controller} translate={translate} />
       <AnnualTourConflictAcknowledgement
         tour={tour}
         controller={controller}
@@ -183,7 +184,9 @@ export const AnnualTransferFooter = ({
         controller.step === 'result' ? 'tours.annualTransfer.close' : 'tours.annualTransfer.cancel'
       )}
     </Button>
-    {controller.step === 'preview' && Object.keys(controller.replacementDates).length > 0 ? (
+    {controller.step === 'preview' &&
+    (Object.keys(controller.replacementDates).length > 0 ||
+      Object.keys(controller.firstTargetDates).length > 0) ? (
       <Button
         type="button"
         variant="secondary"

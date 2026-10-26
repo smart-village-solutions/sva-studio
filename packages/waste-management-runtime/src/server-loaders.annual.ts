@@ -20,6 +20,7 @@ export const createAnnual = (context: WasteLoaderContext) => {
     readonly sourceYear: number;
     readonly selectedTourIds?: readonly string[];
     readonly replacementDates?: WasteAnnualTourTransferCreateInput['replacementDates'];
+    readonly firstTargetDates?: WasteAnnualTourTransferCreateInput['firstTargetDates'];
   }): Promise<WasteAnnualTourTransferPreview> =>
     withWasteRepository(
       input.instanceId,
@@ -35,6 +36,7 @@ export const createAnnual = (context: WasteLoaderContext) => {
             target: snapshot,
             selectedTourIds: input.selectedTourIds,
             replacementDates: input.replacementDates,
+            firstTargetDates: input.firstTargetDates,
           })
         );
       }

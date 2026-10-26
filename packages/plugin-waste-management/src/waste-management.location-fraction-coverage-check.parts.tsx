@@ -11,6 +11,7 @@ import { toWasteCollectionLocationEditSearch } from './waste-management.cross-li
 export type CoverageResult = Readonly<{
   issues: readonly WasteLocationFractionCoverageIssue[];
   checkedLocationCount: number;
+  includeDrafts: boolean;
 }>;
 
 const formatDate = (date: string): string => {

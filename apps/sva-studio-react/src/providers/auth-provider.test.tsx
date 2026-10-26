@@ -191,6 +191,7 @@ describe('AuthProvider', () => {
     );
     expect(readSessionAccessSnapshot()).toEqual({
       isResolved: false,
+      hasError: false,
       permissionActions: [],
       unscopedPermissionActions: [],
       assignedModules: [],
@@ -285,7 +286,7 @@ describe('AuthProvider', () => {
     );
   });
 
-  it('refreshes the session shortly before cookie expiry', async () => {
+  it('renews the session silently shortly before cookie expiry', async () => {
     const now = new Date('2026-05-06T12:00:00.000Z');
     const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now.getTime());
     let scheduledCallback: (() => void) | null = null;
@@ -346,6 +347,17 @@ describe('AuthProvider', () => {
     });
 
     requireScheduledCallback(scheduledCallback)();
+
+    await waitFor(() => {
+      expect(document.querySelector('iframe[title="silent-auth-recovery"]')).not.toBeNull();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: window.location.origin,
+        data: { type: 'sva-auth:silent-sso', status: 'success' },
+      })
+    );
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -411,7 +423,18 @@ describe('AuthProvider', () => {
             instanceId: 'instance-1',
           },
         })
-      );
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          expiresAt: baseTime.getTime() + 120_000,
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        })
+      )
+      .mockRejectedValueOnce(new Error('session-check-unavailable'));
 
     vi.stubGlobal('fetch', fetchMock);
 
@@ -436,6 +459,13 @@ describe('AuthProvider', () => {
       await Promise.resolve();
     });
 
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: window.location.origin,
+        data: { type: 'sva-auth:silent-sso', status: 'failure' },
+      })
+    );
+
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
@@ -444,6 +474,29 @@ describe('AuthProvider', () => {
       expect(scheduledAuthTimeouts).toEqual([60_000, 59_000]);
       expect(scheduledCallbacks).toHaveLength(2);
     });
+
+    currentTimeMs += 59_000;
+    await act(async () => {
+      scheduledCallbacks[1]?.();
+      await Promise.resolve();
+    });
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: window.location.origin,
+        data: { type: 'sva-auth:silent-sso', status: 'failure' },
+      })
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    expect(scheduledAuthTimeouts).toEqual([60_000, 59_000]);
+    expect(
+      readAuthDiagnosticTrail().filter(({ event }) => event === 'auth_pre_expiry_recovery_started')
+    ).toHaveLength(2);
+
+    currentTimeMs += 1_000;
+    await waitFor(() => expect(screen.getByTestId('authenticated').textContent).toBe('no'), {
+      timeout: 2_500,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
 
     setTimeoutSpy.mockRestore();
     dateNowSpy.mockRestore();

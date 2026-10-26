@@ -29,6 +29,9 @@ export const wasteManagementPluginTranslationsENToursDetails = {
       '{{transferable}} transferable, {{alreadyEffective}} already effective, {{blocked}} blocked. Selected: {{selected}} tours with {{relationships}} relationships; {{excluded}} out-of-year records are excluded.',
     recurrence: 'Cadence: {{value}}',
     firstTargetDate: 'First occurrence in the following year: {{date}}',
+    overrideFirstTargetDate: 'Different first regular occurrence for {{name}}',
+    overrideFirstTargetDateHint:
+      'Leave blank to continue the existing cadence. The preview shows the calculated date.',
     tourCounts:
       'Waste types: {{wasteFractions}}, concrete tour dates: {{customDates}}, pickup locations: {{locations}}, location dates: {{pickupDates}}, assignments: {{assignments}}, shifts: {{shifts}}, excluded: {{excluded}}',
     period: 'Validity period: {{source}} → {{target}}',

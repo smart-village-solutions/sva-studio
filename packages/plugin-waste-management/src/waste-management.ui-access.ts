@@ -106,5 +106,6 @@ export const useWasteManagementUiAccess = (currentTab?: WasteManagementTabId) =>
       sessionAccess.isResolved ? undefined : currentTab
     ),
     isResolved: sessionAccess.isResolved,
+    hasError: sessionAccess.hasError,
   };
 };

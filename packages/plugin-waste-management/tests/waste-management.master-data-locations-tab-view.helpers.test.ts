@@ -55,6 +55,66 @@ describe('useWasteLocationsTabNavigation', () => {
     navigateMock.mockReset();
   });
 
+  it('clears collection-location filters without leaving the list', () => {
+    const search = { ...createSearch(), locationYear: 2027, locationTourStatus: 'draft' as const };
+    const { result } = renderHook(() => useWasteLocationsTabNavigation(createController(), search));
+    act(() => result.current.resetFilters());
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: expect.objectContaining({
+        tab: 'locations',
+        q: '',
+        status: 'all',
+        regionId: undefined,
+        cityId: undefined,
+        tourId: undefined,
+        locationYear: undefined,
+        locationTourStatus: undefined,
+        page: 1,
+      }),
+    });
+  });
+
+  it('keeps the year on edit and clears an incompatible selected tour when changing years', () => {
+    const controller = createController({
+      availableTours: [{ id: 'tour-1', firstDate: '2026-01-01', endDate: '2026-12-31' }] as never,
+    });
+    const search = { ...createSearch(), locationYear: 2026 };
+    const { result } = renderHook(() => useWasteLocationsTabNavigation(controller, search));
+    act(() => result.current.setLocationYear(2027));
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: { ...search, locationYear: 2027, page: 1, tourId: undefined },
+    });
+    const nextSearch = {
+      ...search,
+      locationYear: 2027,
+      locationTourStatus: 'draft' as const,
+      tourId: undefined,
+    };
+    const { result: updatedNavigation } = renderHook(() =>
+      useWasteLocationsTabNavigation(controller, nextSearch)
+    );
+    act(() => updatedNavigation.current.toList());
+    expect(navigateMock).toHaveBeenLastCalledWith({
+      to: '/plugins/waste-management',
+      search: { ...nextSearch, locationsView: 'list', collectionLocationId: undefined },
+    });
+  });
+
+  it('clears a selected published tour when filtering for drafts', () => {
+    const controller = createController({
+      availableTours: [{ id: 'tour-1', status: 'published', firstDate: '2027-01-07' }] as never,
+    });
+    const search = { ...createSearch(), locationYear: 2027 };
+    const { result } = renderHook(() => useWasteLocationsTabNavigation(controller, search));
+    act(() => result.current.setLocationTourStatus('draft'));
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: { ...search, locationTourStatus: 'draft', page: 1, tourId: undefined },
+    });
+  });
+
   it('resets dialog state and navigates back to the list', () => {
     const controller = createController();
     const search = createSearch();

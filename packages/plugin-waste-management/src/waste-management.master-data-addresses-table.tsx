@@ -1,6 +1,7 @@
 import type { WasteAddressEntityType, WasteCityRecord, WasteHouseNumberRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/waste-management-contracts';
 import { IconEdit, IconTrash } from '@tabler/icons-react';
 import { Button, Input, Select, StudioDataTable, StudioField, type StudioColumnDef } from '@sva/studio-ui-react';
+import { useEffect, useState } from 'react';
 
 import type { WasteManagementSearchParams } from './search-params.js';
 import type { Translate } from './waste-management.master-data.submission.types.js';
@@ -92,7 +93,13 @@ const AddressFilters = ({ pt, search, entityType, parentLabel, parentOptions, on
   parentLabel: 'region' | 'city' | 'street';
   parentOptions: readonly ParentOption[];
   onSearchChange: Props['onSearchChange'];
-}) => (
+}) => {
+  const [query, setQuery] = useState(search.q);
+  useEffect(() => setQuery(search.q), [search.q]);
+  const commitQuery = () => {
+    if (query !== search.q) onSearchChange({ q: query, page: 1 });
+  };
+  return (
   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
     <StudioField id="waste-address-entity-type" label={pt('masterData.locationsWorkspace.addresses.typeLabel')}>
       <Select id="waste-address-entity-type" value={entityType} onChange={(event) => onSearchChange({ addressEntityType: event.target.value as typeof entityType, addressParentId: undefined, q: '', page: 1 })}>
@@ -106,10 +113,11 @@ const AddressFilters = ({ pt, search, entityType, parentLabel, parentOptions, on
       </Select>
     </StudioField> : null}
     <StudioField id="waste-address-search" label={pt('masterData.locationsWorkspace.addresses.searchLabel')}>
-      <Input id="waste-address-search" type="search" value={search.q} onChange={(event) => onSearchChange({ q: event.target.value, page: 1 })} placeholder={pt('masterData.locationsWorkspace.addresses.searchPlaceholder')} />
+      <Input id="waste-address-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} onBlur={commitQuery} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }} placeholder={pt('masterData.locationsWorkspace.addresses.searchPlaceholder')} />
     </StudioField>
   </div>
-);
+  );
+};
 
 const AddressRowsTable = ({ pt, controller, type, canManage, allRows, pageItems, onSearchChange, onOpenDelete, sorting, onSortingChange }: {
   pt: Translate; controller: Controller; type: WasteAddressEntityType; canManage: boolean;

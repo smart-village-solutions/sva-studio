@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
+  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -180,6 +181,11 @@ export const TourAssignmentsDialog = ({
         <div className="border-b border-border/60 bg-background px-6 py-5">
           <DialogHeader className="space-y-2">
             <DialogTitle>{title}</DialogTitle>
+            {tour ? (
+              <Badge variant="secondary" className="w-fit text-sm font-semibold">
+                {tour.name}
+              </Badge>
+            ) : null}
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
         </div>

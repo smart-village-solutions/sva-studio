@@ -1,8 +1,9 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconFilter, IconRoute, IconSortAZ, IconSortZA, IconTrash } from '@tabler/icons-react';
+import { IconRoute, IconTrash } from '@tabler/icons-react';
 import { Button, Checkbox, Select, cn } from '@sva/studio-ui-react';
 import type { WasteMasterDataLocationsTableProps } from './waste-management.master-data-locations-table.types.js';
 import { WasteLocationsCreateMenu } from './waste-management.master-data-locations-table.views.menu.js';
+import { WasteLocationsFiltersToggle, WasteLocationsQueryControl, WasteLocationsResetControl, WasteLocationsSortControl, WasteLocationsStatusControl, WasteLocationsYearControl } from './waste-management.master-data-locations-table.views.toolbar.controls.js';
 
 const WasteLocationsBulkActions = ({
   selectedCollectionLocationsCount,
@@ -45,80 +46,16 @@ const WasteLocationsBulkActions = ({
   );
 };
 
-const WasteLocationsSortControl = ({
-  sortMode,
-  sortDirection,
-  onSortModeChange,
-  onSortDirectionChange,
-}: Pick<
-  WasteMasterDataLocationsTableProps,
-  'sortMode' | 'sortDirection' | 'onSortModeChange' | 'onSortDirectionChange'
->) => {
-  const pt = usePluginTranslation('wasteManagement');
-  return (
-    <div
-      role="group"
-      className="flex min-h-10 flex-wrap items-center gap-3 rounded-lg border border-border/70 px-3 py-2"
-      aria-label={pt('masterData.locationsWorkspace.sorting.label')}
-    >
-      <span className="text-sm text-muted-foreground">
-        {pt(
-          sortMode === 'addressWithRegion'
-            ? 'masterData.locationsWorkspace.sorting.criteriaWithRegion'
-            : 'masterData.locationsWorkspace.sorting.criteria'
-        )}
-      </span>
-      <label className="flex items-center gap-2 text-sm">
-        <Checkbox
-          checked={sortMode === 'addressWithRegion'}
-          onChange={(event) =>
-            onSortModeChange(event.currentTarget.checked ? 'addressWithRegion' : 'address')
-          }
-        />
-        <span>{pt('masterData.locationsWorkspace.sorting.includeRegion')}</span>
-      </label>
-      <Button
-        type="button"
-        size="sm"
-        variant="tertiary"
-        aria-label={pt('masterData.locationsWorkspace.sorting.directionLabel', {
-          direction: pt(
-            sortDirection === 'asc'
-              ? 'masterData.locationsWorkspace.sorting.ascending'
-              : 'masterData.locationsWorkspace.sorting.descending'
-          ),
-        })}
-        onClick={() => onSortDirectionChange(sortDirection === 'asc' ? 'desc' : 'asc')}
-      >
-        {sortDirection === 'asc' ? (
-          <IconSortAZ aria-hidden="true" className="h-4 w-4" />
-        ) : (
-          <IconSortZA aria-hidden="true" className="h-4 w-4" />
-        )}
-        {pt(
-          sortDirection === 'asc'
-            ? 'masterData.locationsWorkspace.sorting.ascending'
-            : 'masterData.locationsWorkspace.sorting.descending'
-        )}
-      </Button>
-    </div>
-  );
-};
-
 const WasteLocationsFilters = ({
-  availableTours,
+  visibleTours,
   selectedTourId,
   allFilteredLocationsSelected,
   onTourFilterChange,
   onToggleSelectAll,
 }: Pick<
   WasteMasterDataLocationsTableProps,
-  | 'availableTours'
-  | 'selectedTourId'
-  | 'allFilteredLocationsSelected'
-  | 'onTourFilterChange'
-  | 'onToggleSelectAll'
->) => {
+  'selectedTourId' | 'allFilteredLocationsSelected' | 'onTourFilterChange' | 'onToggleSelectAll'
+> & { readonly visibleTours: WasteMasterDataLocationsTableProps['availableTours'] }) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
     <div
@@ -137,7 +74,7 @@ const WasteLocationsFilters = ({
             onChange={(event) => onTourFilterChange(event.target.value)}
           >
             <option value="">{pt('masterData.locationsWorkspace.filters.allTours')}</option>
-            {availableTours.map((tour) => (
+            {visibleTours.map((tour) => (
               <option key={tour.id} value={tour.id}>
                 {tour.name}
               </option>
@@ -158,6 +95,9 @@ const WasteLocationsFilters = ({
 
 type WasteLocationsToolbarProps = Pick<
   WasteMasterDataLocationsTableProps,
+  | 'search'
+  | 'onQueryChange'
+  | 'onResetFilters'
   | 'onOpenCreateRegion'
   | 'onOpenCreateCity'
   | 'onOpenCreateStreet'
@@ -165,6 +105,10 @@ type WasteLocationsToolbarProps = Pick<
   | 'onOpenCreateLocation'
   | 'selectedCollectionLocationsCount'
   | 'availableTours'
+  | 'locationYear'
+  | 'onLocationYearChange'
+  | 'locationTourStatus'
+  | 'onLocationTourStatusChange'
   | 'selectedTourId'
   | 'allFilteredLocationsSelected'
   | 'onOpenBulkAssignments'
@@ -175,14 +119,23 @@ type WasteLocationsToolbarProps = Pick<
   | 'onSortModeChange'
   | 'onSortDirectionChange'
 > & {
+  readonly visibleTours?: WasteMasterDataLocationsTableProps['availableTours'];
   readonly onRequestDeleteSelected: () => void;
   readonly filtersOpen: boolean;
   readonly onToggleFiltersOpen: () => void;
 };
 
 export const WasteMasterDataLocationsTableToolbar = ({
+  search,
+  onQueryChange,
+  onResetFilters,
   selectedCollectionLocationsCount,
   availableTours,
+  visibleTours,
+  locationYear,
+  onLocationYearChange,
+  locationTourStatus,
+  onLocationTourStatusChange,
   filtersOpen,
   selectedTourId,
   allFilteredLocationsSelected,
@@ -201,28 +154,20 @@ export const WasteMasterDataLocationsTableToolbar = ({
   onRequestDeleteSelected,
   onToggleFiltersOpen,
 }: WasteLocationsToolbarProps) => {
-  const pt = usePluginTranslation('wasteManagement');
-
   return (
     <div className="flex w-full flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
       <div className="flex flex-1 flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
+          <WasteLocationsQueryControl search={search} onQueryChange={onQueryChange} />
+          <WasteLocationsResetControl search={search} onResetFilters={onResetFilters} />
           <WasteLocationsBulkActions
             selectedCollectionLocationsCount={selectedCollectionLocationsCount}
             onOpenBulkAssignments={onOpenBulkAssignments}
             onRequestDeleteSelected={onRequestDeleteSelected}
           />
-          <Button
-            type="button"
-            variant="secondary"
-            className="h-10 rounded-lg border-border/70 px-3"
-            aria-expanded={filtersOpen}
-            aria-controls="waste-locations-filters"
-            onClick={onToggleFiltersOpen}
-          >
-            <IconFilter aria-hidden="true" className="h-4 w-4" />
-            {pt('masterData.locationsWorkspace.filters.filtersTitle')}
-          </Button>
+          <WasteLocationsFiltersToggle filtersOpen={filtersOpen} onToggleFiltersOpen={onToggleFiltersOpen} />
+          <WasteLocationsYearControl availableTours={availableTours} locationYear={locationYear} onLocationYearChange={onLocationYearChange} />
+          <WasteLocationsStatusControl locationTourStatus={locationTourStatus} onLocationTourStatusChange={onLocationTourStatusChange} />
           <WasteLocationsSortControl
             sortMode={sortMode}
             sortDirection={sortDirection}
@@ -232,7 +177,7 @@ export const WasteMasterDataLocationsTableToolbar = ({
         </div>
         {filtersOpen ? (
           <WasteLocationsFilters
-            availableTours={availableTours}
+            visibleTours={visibleTours ?? availableTours}
             selectedTourId={selectedTourId}
             allFilteredLocationsSelected={allFilteredLocationsSelected}
             onTourFilterChange={onTourFilterChange}

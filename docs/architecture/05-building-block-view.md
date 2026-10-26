@@ -948,6 +948,7 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 
 - `@sva/plugin-waste-management` besitzt ausschließlich den zugänglichen Drei-Schritt-Assistenten, die Auswahl und die ausdrückliche Konfliktbestätigung. Das Zieljahr ist dort nur Anzeige und kein frei wählbarer Parameter.
 - `@sva/waste-management-contracts` besitzt die frameworkunabhängige Klassifikation, Datums- und Taktabbildung, stabile Zielidentitäten, Konflikterkennung, Fingerprint-Bildung sowie die zentralen Grenzen von 1.000 Touren und 100.000 Beziehungen.
+- Bei wiederkehrenden Touren setzt die Abbildung den bisherigen Takt standardmäßig fort. Ein ausdrücklich angegebener erster regulärer Termin im Zieljahr verschiebt die Phase dieser Tour; Vorschau und Bestätigung verwenden denselben Fingerprint und validieren das Datum erneut.
 - `@sva/auth-runtime` bindet Mandantenkontext, Berechtigungsentscheidung, CSRF und technische Idempotenz ein; der ausführbare Jahreswechsel-Handler liegt in `@sva/waste-management-runtime`. Die Waste-Repository-Operation lädt Quelle und Ziel erneut und schreibt den vollständigen inaktiven Tourensatz unter Advisory Lock in genau einer Transaktion.
 
 ### Ergänzung 2026-08: Kontextbezogene Anwenderdokumentation

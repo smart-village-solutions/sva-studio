@@ -22,6 +22,7 @@ type CoverageCheckInput = Readonly<{
   fractionId: string;
   startDate: string;
   endDate: string;
+  includeDrafts?: boolean;
 }>;
 
 const shiftIsoDate = (date: string, days: number): string => {
@@ -85,10 +86,15 @@ export const checkLocationFractionCoverage = ({
   fractionId,
   startDate,
   endDate,
+  includeDrafts = false,
 }: CoverageCheckInput): readonly WasteLocationFractionCoverageIssue[] => {
   const matchingTourById = new Map(
     tours
-      .filter((tour) => tour.status === 'published' && tour.wasteFractionIds.includes(fractionId))
+      .filter(
+        (tour) =>
+          (tour.status === 'published' || (includeDrafts && tour.status === 'draft')) &&
+          tour.wasteFractionIds.includes(fractionId)
+      )
       .map((tour) => [tour.id, tour] as const)
   );
   const toursByLocationId = new Map<string, WasteTourRecord[]>();

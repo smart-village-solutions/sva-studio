@@ -3,15 +3,43 @@ import { describe, expect, it } from 'vitest';
 import { normalizeWasteManagementSearchParams } from '../src/search-params.js';
 
 describe('waste-management search params', () => {
+  it('accepts only a valid Abholorte tour year', () => {
+    expect(
+      normalizeWasteManagementSearchParams({ tab: 'locations', locationYear: '2027' }).locationYear
+    ).toBe(2027);
+    expect(
+      normalizeWasteManagementSearchParams({ tab: 'locations', locationYear: '20x7' }).locationYear
+    ).toBeUndefined();
+    expect(
+      normalizeWasteManagementSearchParams({ tab: 'locations', locationYear: '2101' }).locationYear
+    ).toBeUndefined();
+  });
+  it('accepts only a valid Abholorte tour status', () => {
+    expect(
+      normalizeWasteManagementSearchParams({ locationTourStatus: 'draft' }).locationTourStatus
+    ).toBe('draft');
+    expect(
+      normalizeWasteManagementSearchParams({ locationTourStatus: 'published' }).locationTourStatus
+    ).toBe('published');
+    expect(
+      normalizeWasteManagementSearchParams({ locationTourStatus: 'archived' }).locationTourStatus
+    ).toBe('archived');
+    expect(
+      normalizeWasteManagementSearchParams({ locationTourStatus: 'all' }).locationTourStatus
+    ).toBeUndefined();
+    expect(
+      normalizeWasteManagementSearchParams({ locationTourStatus: 'bogus' }).locationTourStatus
+    ).toBeUndefined();
+  });
   it('normalizes invalid values to the canonical defaults', () => {
     expect(
       normalizeWasteManagementSearchParams({
         tab: 'bogus',
         addressEntityType: 'region',
-      addressParentId: undefined,
-      addressSortBy: 'name',
-      addressSortDirection: 'asc',
-      masterDataTab: 'bogus',
+        addressParentId: undefined,
+        addressSortBy: 'name',
+        addressSortDirection: 'asc',
+        masterDataTab: 'bogus',
         q: '  ',
         page: '0',
         pageSize: '999',
@@ -68,10 +96,10 @@ describe('waste-management search params', () => {
       normalizeWasteManagementSearchParams({
         tab: 'locations',
         addressEntityType: 'region',
-      addressParentId: undefined,
-      addressSortBy: 'name',
-      addressSortDirection: 'asc',
-      masterDataTab: 'locations',
+        addressParentId: undefined,
+        addressSortBy: 'name',
+        addressSortDirection: 'asc',
+        masterDataTab: 'locations',
         q: 'Bio',
         page: '3',
         pageSize: '50',
@@ -144,10 +172,10 @@ describe('waste-management search params', () => {
       normalizeWasteManagementSearchParams({
         tab: 'fractions',
         addressEntityType: 'region',
-      addressParentId: undefined,
-      addressSortBy: 'name',
-      addressSortDirection: 'asc',
-      masterDataTab: 'locations',
+        addressParentId: undefined,
+        addressSortBy: 'name',
+        addressSortDirection: 'asc',
+        masterDataTab: 'locations',
       })
     ).toEqual({
       tab: 'fractions',
@@ -345,10 +373,10 @@ describe('waste-management search params', () => {
       normalizeWasteManagementSearchParams({
         tab: 'fractions',
         addressEntityType: 'region',
-      addressParentId: undefined,
-      addressSortBy: 'name',
-      addressSortDirection: 'asc',
-      masterDataTab: 'fractions',
+        addressParentId: undefined,
+        addressSortBy: 'name',
+        addressSortDirection: 'asc',
+        masterDataTab: 'fractions',
         fractionsStatus: 'bogus',
       })
     ).toEqual({
@@ -395,10 +423,10 @@ describe('waste-management search params', () => {
       normalizeWasteManagementSearchParams({
         tab: 'fractions',
         addressEntityType: 'region',
-      addressParentId: undefined,
-      addressSortBy: 'name',
-      addressSortDirection: 'asc',
-      masterDataTab: 'fractions',
+        addressParentId: undefined,
+        addressSortBy: 'name',
+        addressSortDirection: 'asc',
+        masterDataTab: 'fractions',
         fractionsStatus: 'inactive',
       })
     ).toEqual(

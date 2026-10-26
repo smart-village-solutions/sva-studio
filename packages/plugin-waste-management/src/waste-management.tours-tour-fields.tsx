@@ -43,7 +43,6 @@ export const WasteToursTourFields = ({
   customRecurrencePresets,
   saving = false,
   statusReadOnly = false,
-  schedulingAction,
   pt,
   onChange,
 }: {
@@ -53,7 +52,6 @@ export const WasteToursTourFields = ({
   readonly customRecurrencePresets: readonly WasteCustomRecurrencePresetRecord[];
   readonly saving?: boolean;
   readonly statusReadOnly?: boolean;
-  readonly schedulingAction?: ReactNode;
   readonly pt: Translate;
   readonly onChange: (patch: Partial<TourFormState>) => void;
 }) => {
@@ -182,9 +180,6 @@ export const WasteToursTourFields = ({
             </StudioField>
           ) : null}
         </StudioFieldGroup>
-        {schedulingAction ? (
-          <div className="flex min-w-0 flex-wrap justify-end">{schedulingAction}</div>
-        ) : null}
       </TourSection>
 
       <TourSection

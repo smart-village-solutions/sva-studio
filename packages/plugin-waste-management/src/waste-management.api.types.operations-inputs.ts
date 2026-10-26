@@ -79,6 +79,7 @@ export type PreviewWasteAnnualTourTransferInput = Readonly<{
   sourceYear: number;
   selectedTourIds?: readonly string[];
   replacementDates?: WasteAnnualTourTransferCreateInput['replacementDates'];
+  firstTargetDates?: WasteAnnualTourTransferCreateInput['firstTargetDates'];
 }>;
 
 export type CreateWasteAnnualTourTransferInput = WasteAnnualTourTransferCreateInput;

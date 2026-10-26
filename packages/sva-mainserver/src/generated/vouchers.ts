@@ -138,6 +138,7 @@ export const voucherPoiWriteFields = {
     pointOfInterestAttributes: true,
   },
   vouchers: {
+    id: true,
     visible: true,
     author: true,
     keywords: true,

@@ -146,7 +146,7 @@ export const voucherTranslationsEn = {
     title: 'Reset redemptions at this location and save?',
     description:
       'All previous redemptions of the vouchers below will be deleted. Previously used vouchers may be redeemed again. This cannot be undone in Studio.',
-    hint: 'Saving also resets redemptions of the other vouchers at this location.',
+    hint: 'Saving preserves existing redemptions of the vouchers at this location.',
   },
   usage: {
     title: 'Usage',
@@ -161,7 +161,7 @@ export const voucherTranslationsEn = {
     exhausted: 'Redemption limit reached',
     fetched: 'Last successfully fetched: {{date}}',
     notice:
-      'Counts stored redemptions, not unique people. Offline redemptions not yet transferred are missing. Confirmed content changes reset the counter.',
+      'Counts stored redemptions, not unique people. Offline redemptions not yet transferred are missing. Content changes preserve existing redemptions.',
     person: 'At most {{maximum}} per person in the period',
     period: {
       once: 'Lifetime of the current quota',

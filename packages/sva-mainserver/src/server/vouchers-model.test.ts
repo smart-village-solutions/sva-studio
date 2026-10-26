@@ -14,9 +14,14 @@ const valid = {
   mediaContents: [],
 };
 describe('voucher write contract', () => {
-  it('accepts exactly one location and emits only the selected discount', () => {
+  it('accepts exactly one location and clears unselected discounts on the retained discount record', () => {
     const input = voucherInputSchema.parse(valid);
-    expect(toVoucherFields(input).discountType).toEqual({ discountPercentage: 20 });
+    expect(toVoucherFields(input).discountType).toEqual({
+      originalPrice: null,
+      discountedPrice: null,
+      discountPercentage: 20,
+      discountAmount: null,
+    });
     expect(voucherInputSchema.safeParse({ ...valid, pointOfInterestIds: ['1', '2'] }).success).toBe(
       false
     );
@@ -54,7 +59,13 @@ describe('voucher discount, date and media roundtrips', () => {
     },
   ])('emits exactly the chosen discount fields: $patch.discountMode', ({ patch, expected }) => {
     const input = voucherInputSchema.parse({ ...valid, ...patch });
-    expect(toVoucherFields(input).discountType).toEqual(expected);
+    expect(toVoucherFields(input).discountType).toEqual({
+      originalPrice: null,
+      discountedPrice: null,
+      discountPercentage: null,
+      discountAmount: null,
+      ...expected,
+    });
   });
   it.each([
     { dateStart: '2026-01-01', dateEnd: undefined },

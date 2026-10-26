@@ -76,12 +76,17 @@ export const toVoucherFields = (input: VoucherInput) => ({
     ...item,
     payload: { studioMediaAssetId: hostMediaAssetId ?? null } as Record<string, unknown>,
   })),
-  discountType:
-    input.discountMode === 'percentage'
+  discountType: {
+    originalPrice: null,
+    discountedPrice: null,
+    discountPercentage: null,
+    discountAmount: null,
+    ...(input.discountMode === 'percentage'
       ? { discountPercentage: input.discountValue }
       : input.discountMode === 'amount'
         ? { discountAmount: input.discountValue }
-        : { originalPrice: input.originalPrice, discountedPrice: input.discountValue },
+        : { originalPrice: input.originalPrice, discountedPrice: input.discountValue }),
+  },
   quota: {
     maxQuantity: input.maxQuantity,
     maxPerPerson: input.maxPerPerson ?? null,

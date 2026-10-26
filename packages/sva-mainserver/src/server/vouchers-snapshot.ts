@@ -57,9 +57,7 @@ export const assertVoucherPoiWritable = (
   if (poi.payload != null && !rawRecordSchema.safeParse(poi.payload).success)
     throw new Error('voucher_snapshot_incomplete');
   const provider = raw(poi.dataProvider);
-  // No public POI read proves absence of expired announcements. Only this
-  // existing provider exception preserves them in ResourceService.update_resource.
-  if (provider.dataType !== 'business_account') throw new Error('voucher_poi_provider_unsupported');
+  // The corrected Mainserver preserves announcements for every provider type.
   // POI inverse category membership is itself active-filtered. Fail closed if
   // any inactive category could hide a relationship; never drop it silently.
   if (categories.some((category) => category.active !== true))

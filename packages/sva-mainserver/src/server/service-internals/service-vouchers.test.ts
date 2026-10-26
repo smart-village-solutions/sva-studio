@@ -74,7 +74,7 @@ function setup() {
     location: null,
     operatingCompany: null,
     accessibilityInformation: null,
-    dataProvider: { id: 'provider', dataType: 'business_account' },
+    dataProvider: { id: 'provider', dataType: 'cms' },
     vouchers: [voucher('2', 'uuid-2'), voucher('3', 'uuid-3')],
   };
   const execute = vi.fn().mockImplementation(async ({ operationName, variables }) => {
@@ -90,7 +90,12 @@ function setup() {
           ...blank(voucherPoiWriteFields.vouchers.dates),
           ...date,
         })),
-        quota: { ...(item.quota as RawRecord), availableQuantity: 100 },
+        quota: {
+          ...(item.quota as RawRecord),
+          availableQuantity:
+            poi.vouchers.find((stored) => stored.id === item.id)?.quota.availableQuantity ??
+            (item.quota as RawRecord).maxQuantity,
+        },
         discountType: {
           originalPrice: null,
           discountedPrice: null,
@@ -100,9 +105,14 @@ function setup() {
         },
       }));
       const { vouchers: _writtenVouchers, ...fields } = variables;
-      Object.assign(poi, fields);
+      Object.assign(
+        poi,
+        Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined))
+      );
       return { createPointOfInterest: { id: '1' } };
     }
+    if (operationName === 'SvaMainserverVoucherDetail')
+      return { genericItem: poi.vouchers.find((item) => item.id === variables.id) };
     return { pointOfInterest: poi, categories: [] };
   });
   const service = createVoucherService({
@@ -114,7 +124,7 @@ function setup() {
   return { poi, execute, service, fingerprint };
 }
 describe('voucher aggregate write', () => {
-  it('preserves siblings and opaque POI data and resolves changed database IDs by UUID', async () => {
+  it('preserves database IDs, usage, siblings and opaque POI data for a regular CMS provider', async () => {
     const { poi, execute, service, fingerprint } = setup();
     const sibling = voucherWriteSnapshot(poi.vouchers[1], voucherPoiWriteFields.vouchers);
     const result = await service.writeVoucher({
@@ -125,7 +135,9 @@ describe('voucher aggregate write', () => {
       creationId: 'attempt',
       expectedFingerprint: fingerprint(),
     });
-    expect(result.id).toBe('20');
+    expect(result.id).toBe('2');
+    expect(poi.vouchers.map((item) => item.id)).toEqual(['2', '3']);
+    expect(result.quota?.availableQuantity).toBe(63);
     expect(result.payload).toEqual({ id: 'uuid-2', opaque: { nested: [1, 2] } });
     const write = execute.mock.calls.find(
       ([call]) => call.operationName === 'SvaMainserverVoucherWrite'
@@ -231,6 +243,75 @@ describe('voucher aggregate write', () => {
     expect(
       execute.mock.calls.filter(([call]) => call.operationName === 'SvaMainserverVoucherWrite')
     ).toHaveLength(1);
+  });
+  it('creates, reopens, edits and adds a second voucher without changing existing IDs', async () => {
+    const { poi, service, fingerprint } = setup();
+    poi.vouchers = [];
+    const first = await service.writeVoucher({
+      ...connection,
+      poiId: '1',
+      voucher: input,
+      creationId: 'first',
+      expectedFingerprint: fingerprint(),
+    });
+    const reopened = await service.getVoucher({ ...connection, voucherId: first.id });
+    expect(reopened.payload.id).toBe('first');
+    await service.writeVoucher({
+      ...connection,
+      poiId: '1',
+      voucher: { ...input, title: 'Second' },
+      creationId: 'second',
+      expectedFingerprint: fingerprint(),
+    });
+    const edited = await service.writeVoucher({
+      ...connection,
+      poiId: '1',
+      voucherId: first.id,
+      voucher: { ...input, title: 'Edited' },
+      creationId: 'edit',
+      expectedFingerprint: fingerprint(),
+    });
+    expect(edited.id).toBe(first.id);
+    expect(poi.vouchers.map((item) => item.payload.id)).toEqual(['first', 'second']);
+    expect(poi.vouchers.map((item) => item.title)).toEqual(['Edited', 'Second']);
+    expect(poi.vouchers.map((item) => item.quota.availableQuantity)).toEqual([100, 100]);
+  });
+  it('sends database IDs for legacy siblings without a payload UUID', async () => {
+    const { poi, execute, service, fingerprint } = setup();
+    Object.assign(poi.vouchers[0]!.payload, { id: undefined });
+    await service.writeVoucher({
+      ...connection,
+      poiId: '1',
+      voucher: input,
+      creationId: 'new',
+      siblingIdentities: { '2': 'legacy-2', '3': 'uuid-3' },
+      expectedFingerprint: fingerprint(),
+    });
+    const write = execute.mock.calls.find(
+      ([call]) => call.operationName === 'SvaMainserverVoucherWrite'
+    )![0];
+    expect(write.variables.vouchers[0]).toMatchObject({
+      id: '2',
+      payload: { id: 'legacy-2', opaque: { nested: [1, 2] } },
+    });
+    expect(poi.vouchers.map((item) => item.id)).toEqual(['2', '3', '22']);
+  });
+  it('clears the previous discount mode on the retained discount record', async () => {
+    const { service, fingerprint } = setup();
+    const result = await service.writeVoucher({
+      ...connection,
+      poiId: '1',
+      voucherId: '2',
+      creationId: 'mode-change',
+      voucher: { ...input, discountMode: 'amount', discountValue: 5 },
+      expectedFingerprint: fingerprint(),
+    });
+    expect(result.discountType).toEqual({
+      discountPercentage: null,
+      discountAmount: 5,
+      originalPrice: null,
+      discountedPrice: null,
+    });
   });
   it('rejects concurrent changes before any write', async () => {
     const { poi, execute, service, fingerprint } = setup();
@@ -387,12 +468,11 @@ describe('voucher provider reads and pagination', () => {
       statusCode: 404,
     });
   });
-  it('rejects a provider whose POI update cannot preserve announcements', async () => {
-    const { service, poi } = setup();
-    poi.dataProvider.dataType = 'unsupported';
-    await expect(service.getVoucherPoi({ ...connection, poiId: '1' })).rejects.toThrow(
-      'voucher_poi_provider_unsupported'
-    );
+  it('accepts a regular CMS provider after the announcement-preserving Mainserver fix', async () => {
+    const { service } = setup();
+    await expect(service.getVoucherPoi({ ...connection, poiId: '1' })).resolves.toMatchObject({
+      poi: { dataProvider: { dataType: 'cms' } },
+    });
   });
   it('rejects provider field loss without retry', async () => {
     const { service, execute, poi, fingerprint } = setup();

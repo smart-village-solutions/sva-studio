@@ -35,7 +35,7 @@ describe('POI voucher write guard', () => {
   });
 });
 
-it('uses the same complete aggregate for a confirmed ordinary POI update and resolves sibling IDs', async () => {
+it('uses the same complete aggregate for a confirmed ordinary POI update and preserves sibling IDs for a regular CMS provider', async () => {
   const blank = (shape: WriteShape): RawRecord =>
     Object.fromEntries(
       Object.entries(shape).map(([key, field]) => [key, typeof field === 'object' ? [] : null])
@@ -57,7 +57,7 @@ it('uses the same complete aggregate for a confirmed ordinary POI update and res
     id: '1',
     name: 'Ort',
     payload: { opaque: 'poi' },
-    dataProvider: { id: 'provider', dataType: 'business_account' },
+    dataProvider: { id: 'provider', dataType: 'cms' },
     vouchers: [sibling],
   };
   const fingerprint = voucherSnapshotHash({
@@ -69,7 +69,7 @@ it('uses the same complete aggregate for a confirmed ordinary POI update and res
       poi = {
         ...poi,
         ...variables,
-        vouchers: variables.vouchers.map((item: RawRecord) => ({ ...item, id: '20' })),
+        vouchers: variables.vouchers,
       };
       return { createPointOfInterest: { id: '1' } };
     }
@@ -88,7 +88,7 @@ it('uses the same complete aggregate for a confirmed ordinary POI update and res
   expect(result).toMatchObject({
     id: '1',
     name: 'Neu',
-    voucherIdChanges: [{ previousId: '2', id: '20' }],
+    voucherIdChanges: [{ previousId: '2', id: '2' }],
   });
   const write = execute.mock.calls.find(
     ([call]) => call.operationName === 'SvaMainserverVoucherWrite'

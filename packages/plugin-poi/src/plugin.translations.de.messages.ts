@@ -3,7 +3,7 @@ export const poiMessagesDe = {
   voucherSaveUnknown: 'Der Ausgang des Speicherns ist unklar. Laden und prüfen Sie den Ort vor einem weiteren Speicherversuch.',
   vouchersForLocation: 'Gutscheine dieses Ortes ansehen',
   voucherResetConfirmation:
-    'Diese Ortsänderung setzt die Einlösungen ALLER folgenden Gutscheine zurück. Ihre Inhalte bleiben erhalten. Fortfahren?\n\n{{vouchers}}',
+    'Diese Ortsänderung speichert auch die folgenden Gutscheine. Ihre Inhalte und bisherigen Einlösungen bleiben erhalten. Fortfahren?\n\n{{vouchers}}',
   voucherResetCancelled:
     'Speichern abgebrochen. Der Ort und seine Gutscheine wurden nicht geändert.',
   createdNavigationError:

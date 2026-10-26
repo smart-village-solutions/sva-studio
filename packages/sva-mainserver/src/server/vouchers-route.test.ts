@@ -115,11 +115,11 @@ describe('voucher request boundaries', () => {
       await dispatchSvaMainserverVouchersRequest(new Request('https://studio.test/other'))
     ).toBeNull();
   });
-  it('prepares the full reset scope without a provider mutation', async () => {
+  it('prepares the full preserved scope without a provider mutation', async () => {
     const response = await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher }));
     expect(response?.status).toBe(200);
     expect(await response?.json()).toMatchObject({
-      data: { requiresReset: true, affected: [{ id: '2', title: 'Alt' }] },
+      data: { requiresReset: false, affected: [{ id: '2', title: 'Alt' }] },
     });
     expect(state.write).not.toHaveBeenCalled();
   });
@@ -151,15 +151,7 @@ describe('voucher request boundaries', () => {
     ).toBe(409);
     expect(state.write).not.toHaveBeenCalled();
   });
-  it('rejects unconfirmed reset and in-progress retries', async () => {
-    state.reserve.mockResolvedValue({ status: 'replay', responseBody: {}, responseStatus: 200 });
-    expect(
-      (
-        await dispatchSvaMainserverVouchersRequest(
-          request('commit', { voucher, preparationId: id })
-        )
-      )?.status
-    ).toBe(409);
+  it('rejects in-progress retries', async () => {
     state.reserve
       .mockResolvedValueOnce({
         status: 'replay',
@@ -175,7 +167,7 @@ describe('voucher request boundaries', () => {
     ).toBe(409);
     expect(state.write).not.toHaveBeenCalled();
   });
-  it('performs one confirmed write with the pre-issued creation identity', async () => {
+  it('performs one prepared write without reset confirmation with the pre-issued creation identity', async () => {
     state.reserve
       .mockResolvedValueOnce({
         status: 'replay',
@@ -189,7 +181,6 @@ describe('voucher request boundaries', () => {
             voucher,
             preparationId: id,
             preparationFingerprint: fingerprint,
-            confirmed: true,
           })
         )
       )?.status

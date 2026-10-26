@@ -135,6 +135,16 @@ textarea.kcInputClass {
     background-color 120ms ease;
 }
 
+/* Match single-line controls to their wrapper instead of leaving a short control at the top. */
+.pf-v5-c-form-control:has(> :is(input, select)) {
+  min-height: 2.75rem;
+  align-items: center;
+}
+
+.pf-v5-c-form-control > :is(input, select) {
+  min-height: calc(2.75rem - 2px);
+}
+
 .pf-v5-c-form-control > input,
 .pf-v5-c-form-control > select,
 .pf-v5-c-form-control > textarea {

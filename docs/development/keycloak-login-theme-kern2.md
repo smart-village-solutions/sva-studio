@@ -88,6 +88,8 @@ Das Theme folgt folgenden Regeln:
 - Organisationsanmeldung oberhalb des lokalen Formulars, mit erklärendem Text und eigener Trennlinie
 - Anbietername und vorhandene Anbietericons aus der Realm-Konfiguration; keine eingebauten Tenant-Namen
 - deutsche und englische Texte über Keycloaks `msg(...)` und `messages_*.properties`
+- einzeilige Eingabefelder und Sprachwahl mit 44 px Höhe und vertikal zentrierten Controls
+- versionierte Stylesheet-Referenz; bei CSS-Änderungen Versionskennung in `theme.properties` erhöhen
 - deutlich erkennbare Anbieterbuttons mit mindestens 48 px Höhe und eigenem Tastaturfokus
 - genau ein Fokusindikator am Feldcontainer; innere Felder und PatternFly-Pseudoelemente zeichnen keinen weiteren Rahmen
 - Fehlerzustände behalten den roten Feldrand; Autofill und Passwortmanager werden nicht deaktiviert

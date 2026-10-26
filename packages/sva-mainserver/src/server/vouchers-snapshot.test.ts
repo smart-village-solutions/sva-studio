@@ -17,6 +17,7 @@ import {
 import {
   assertVoucherPoiWritable,
   voucherSnapshotHash,
+  voucherWriteMatches,
   voucherWriteSnapshot,
 } from './vouchers-snapshot.js';
 describe('voucher aggregate snapshot', () => {
@@ -52,6 +53,28 @@ describe('voucher aggregate snapshot', () => {
     expect(voucherSnapshotHash({ a: 1, payload: { b: 2, a: 1 } })).toBe(
       voucherSnapshotHash({ payload: { a: 1, b: 2 }, a: 1 })
     );
+  });
+  it('omits empty media dimensions without clearing other nullable fields', () => {
+    const shape = {
+      mediaContents: { contentType: true, height: true, width: true },
+      discountType: { discountPercentage: true, discountAmount: true },
+    } as const;
+    const value = {
+      mediaContents: [{ contentType: 'image', height: null, width: null }],
+      discountType: { discountPercentage: 20, discountAmount: null },
+    };
+    const write = voucherWriteSnapshot(value, shape);
+    expect(JSON.parse(JSON.stringify(write))).toEqual({
+      mediaContents: [{ contentType: 'image' }],
+      discountType: { discountPercentage: 20, discountAmount: null },
+    });
+    expect(voucherWriteMatches(value, write)).toBe(true);
+  });
+  it('preserves real image dimensions and rejects changed readback values', () => {
+    const value = { height: 0, width: 640 };
+    const write = voucherWriteSnapshot(value, { height: true, width: true });
+    expect(write).toEqual(value);
+    expect(voucherWriteMatches({ height: 0, width: 320 }, write)).toBe(false);
   });
   it('still blocks filtered inactive categories for regular providers', () => {
     expect(() =>

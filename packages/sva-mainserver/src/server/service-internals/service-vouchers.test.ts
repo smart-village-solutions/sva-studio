@@ -394,6 +394,25 @@ describe('generic item mutation bypass protection', () => {
 });
 
 describe('voucher provider reads and pagination', () => {
+  it.each([undefined, ''])(
+    'omits unset search and category filters from the hidden voucher query: %j',
+    async (empty) => {
+      const { service, execute } = setup();
+      execute.mockResolvedValue({ genericItems: [voucher('2', 'uuid-2')] });
+      const result = await service.listVouchers({
+        ...connection,
+        page: 1,
+        pageSize: 25,
+        poiId: '1',
+        visible: false,
+        search: empty,
+        categoryId: empty,
+      });
+      expect(result.data.map((item) => item.id)).toEqual(['2']);
+      const [request] = execute.mock.calls[0]!;
+      expect(JSON.parse(JSON.stringify(request.variables))).toEqual({ limit: 100, skip: 0 });
+    }
+  );
   it('uses an upstream lookahead and offset without local filters', async () => {
     const { service, execute } = setup();
     execute.mockResolvedValue({

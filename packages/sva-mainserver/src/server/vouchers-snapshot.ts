@@ -23,6 +23,8 @@ export const voucherWriteSnapshot = (
       .filter(([key]) => {
         if (complete && !Object.prototype.hasOwnProperty.call(source, key))
           throw new Error('voucher_snapshot_incomplete');
+        // Mainserver's AnyPrimitive input persists an error string for explicit null dimensions.
+        if (source[key] === null && (key === 'height' || key === 'width')) return false;
         return Object.prototype.hasOwnProperty.call(source, key);
       })
       .map(([key, field]) => {

@@ -65,8 +65,8 @@ const listVouchers = async (
     }>(context, input, voucherListDocument, 'SvaMainserverVoucherList', {
       limit,
       skip,
-      search: input.search || null,
-      categoryId: input.categoryId || null,
+      search: input.search || undefined,
+      categoryId: input.categoryId || undefined,
     });
     const page = z.array(voucherRecordSchema).parse(response.genericItems);
     items.push(

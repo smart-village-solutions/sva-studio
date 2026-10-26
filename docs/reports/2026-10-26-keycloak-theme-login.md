@@ -87,3 +87,29 @@ Die Sicherungen wurden bewusst aufbewahrt.
 
 Screenshots, lokales Vorher-Archiv und redigierte technische Evidenz liegen unter
 `.worktrees/keycloak-preview/`. Zugangsdaten wurden nicht in diesen Nachweis übernommen.
+
+## Nachkorrektur: Feldhöhe und vertikale Ausrichtung
+
+Commit `74f04b7a8`: Die bisherigen 48-px-Container enthielten nur 36 px hohe,
+oben ausgerichtete Eingaben und Selects. Einzeilige Container sind nun 44 px hoch,
+ihre inneren Controls 42 px; `align-items: center` zentriert auch die Utilities.
+Mehrzeilige Textfelder bleiben unverändert. Fokus- und Autofill-Regeln bleiben erhalten.
+
+Browserprüfung auf dem echten Login-Markup mit Kandidaten-CSS: Benutzername,
+Passwort und Sprachwahl bei 1280 und 390 px, jeweils Hell/Dunkel, mit exakt 0 px
+Abweichung zwischen Control- und Container-Mittelpunkt. Keine horizontale Überbreite.
+Die fünf gezielten Vitest-Tests bestehen weiterhin.
+
+Die Stylesheet-Referenz lautet nun `css/kern2.css?v=20261026-2`, damit Browser
+nach dieser Aktualisierung nicht den vorherigen CSS-Inhalt wiederverwenden.
+Nur CSS und Theme-Properties wurden ausgetauscht; vollständige Sicherung unter
+`.worktrees/keycloak-preview/live-theme-before-compact.tar` und im Volume unter
+`.sva-kern2-before-compact-20261026`. Unabhängiges Datei-Readback vor Cache-Neuladung
+bestanden; derselbe Keycloak-Image-Digest bleibt erhalten. Technische Evidenz:
+`.worktrees/keycloak-preview/compact-rollout-evidence.json`.
+
+Anschließende Live-Prüfung bestanden: Beide produktiven Loginseiten laden die
+versionierte CSS-Referenz. Benutzername und Passwort messen jeweils 44 px außen
+und 42 px innen bei 0 px Mittelpunktabweichung; die Sprachwahl in Guben ebenfalls.
+Osnabrück zeigt keine Sprachwahl. Der innere Fokusrahmen bleibt deaktiviert,
+der Container-Fokus sichtbar. Service-Update terminal `completed`, ForceUpdate 2.

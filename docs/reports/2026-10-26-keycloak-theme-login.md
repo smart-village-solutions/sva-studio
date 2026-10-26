@@ -6,7 +6,8 @@ Login-Verbesserungen umsetzen und auf dem zentralen Keycloak ausrollen.
 ## Ergebnis und Umfang
 
 Quellstand: Commit `f05501139`, Branch `fix/keycloak-login-usability`, isolierter
-Worktree `.worktrees/keycloak-login-usability`. Kein Push oder Merge ausgeführt.
+Worktree `.worktrees/keycloak-login-usability`. Die Produktivprüfung erfolgte vor
+der PR-Veröffentlichung; ein Merge wurde nicht ausgeführt.
 
 - Organisationsanbieter stehen im DOM und sichtbar vor dem lokalen Formular.
 - Überschrift, Erklärung und Trenntext sind auf Deutsch und Englisch übersetzt.

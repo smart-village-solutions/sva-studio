@@ -76,6 +76,21 @@ describe('voucher aggregate snapshot', () => {
     expect(write).toEqual(value);
     expect(voucherWriteMatches({ height: 0, width: 320 }, write)).toBe(false);
   });
+  it('reprojects nullable groups without accepting incomplete provider reads', () => {
+    const shape = {
+      contact: { email: true },
+      mediaContents: { sourceUrl: { url: true }, height: true, width: true },
+    } as const;
+    const first = voucherWriteSnapshot(
+      { contact: null, mediaContents: [{ sourceUrl: null, height: null, width: null }] },
+      shape
+    );
+    const second = voucherWriteSnapshot(first, shape, false);
+    expect(JSON.stringify(second)).toBe(JSON.stringify(first));
+    expect(() => voucherWriteSnapshot(first, shape)).toThrow();
+    expect(() => voucherWriteSnapshot({}, shape)).toThrow('voucher_snapshot_incomplete');
+    expect(() => voucherWriteSnapshot([undefined], shape, false)).toThrow();
+  });
   it('still blocks filtered inactive categories for regular providers', () => {
     expect(() =>
       assertVoucherPoiWritable({ dataProvider: { id: '1', dataType: 'cms' } }, [{ active: false }])

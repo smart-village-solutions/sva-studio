@@ -49,6 +49,17 @@ export const NewsDetailSaveStatus = ({
     {statusMessage ? (
       <StudioPersistentFormError
         message={statusMessage.text}
+        requestId={statusMessage.requestId}
+        requestIdLabel={statusMessage.requestId ? pt('messages.requestReference') : undefined}
+        copyRequestIdLabel={
+          statusMessage.requestId ? pt('messages.copyRequestReference') : undefined
+        }
+        requestIdCopiedLabel={
+          statusMessage.requestId ? pt('messages.requestReferenceCopied') : undefined
+        }
+        requestIdCopyFailedLabel={
+          statusMessage.requestId ? pt('messages.requestReferenceCopyFailed') : undefined
+        }
         retryLabel={
           statusMessage.source === 'save'
             ? pt('actions.retry')

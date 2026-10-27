@@ -173,6 +173,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
     ).resolves.toEqual({
       status: 'organization_mainserver_credentials_missing',
       organizationId: '11111111-1111-1111-8111-111111111111',
+      reasonCode: 'missing_credentials',
     });
   });
 
@@ -335,8 +336,9 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
         actingPrincipalType: 'organization',
       })
     ).resolves.toEqual({
-      status: 'partial_credentials',
-      missingAttributeNames: ['mainserverUserApplicationSecret'],
+      status: 'organization_mainserver_credentials_missing',
+      organizationId: '11111111-1111-1111-8111-111111111111',
+      reasonCode: 'partial_credentials',
     });
     expect(state.readSvaMainserverCredentialsWithStatus).not.toHaveBeenCalled();
   });
@@ -367,6 +369,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
     ).resolves.toEqual({
       status: 'organization_mainserver_credentials_missing',
       organizationId: '11111111-1111-1111-8111-111111111111',
+      reasonCode: 'verification_pending',
     });
   });
 

@@ -1150,7 +1150,10 @@ Der vorhandene POST-Projektionsrefresh in der App autorisiert Content-Typ und Ac
 
 Tags erweitern das vorhandene Asset-Metadatenfeld und die instanzbezogene Suche ohne eigene Taxonomie. Der gemeinsame Picker nutzt bei Suchtext/Tag die bestehende Host-API. `iam-media/clamav.ts` ergänzt den konkreten ClamAV-Protokollaufruf in der vorhandenen Medienverarbeitung; Quarantäne und geschützte Ausgaben liegen auf demselben S3-Dienst in einem separaten privaten Bucket. Maßgeblich ist [ADR-068](../adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md); die Scan-Aktivierung bleibt eine gesonderte Betriebsabnahme.
 
-
 ## Baustein Gutscheine
 
 `@sva/plugin-vouchers` stellt Redaktion und Nutzungsanzeige über Plugin-SDK und Studio-UI bereit. Der vorhandene Mainserver-Adapter übernimmt vollständigen POI-Roundtrip, Autorisierung, Vorbereitung und Readback. Host-Historie, Idempotenzspeicher, Core-Referenzen und Medienservice werden wiederverwendet; es entsteht keine eigene Gutschein-Datenbank. Siehe [Gutscheinreferenz](../reference/vouchers.md).
+
+## Fehlerkorrelation für Studio-APIs
+
+Der App-Dispatcher in `apps/sva-studio-react/src/server.ts` finalisiert Antworten geschützter Studio-APIs und Exceptions mit derselben `X-Request-Id` im Response-Header und im strukturierten Ergebnisereignis. `@sva/plugin-sdk` bewahrt die Referenz als nicht-enumerable Fehler-Metadaten; die News- und Event-Editoren reichen sie an die gemeinsame Save-Feedback-Komponente für eine lokalisierte, kopierbare Supportreferenz weiter. Der Monitoring-Handler und der Browsermelder sind app-eigene Adapter; sie schreiben ausschließlich whitelisted Fehlercodes und IDs in den bestehenden Server-Logger. Der externe SVA Mainserver und dessen API-Verträge sind davon unabhängig.

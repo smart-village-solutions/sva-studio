@@ -728,6 +728,19 @@ Fehlerpfad:
 - Fehlt eine gültige eingehende Request-ID, wird eine lokale ID erzeugt. Eine Trace-ID darf weiterhin fehlen.
 - Schlägt der Logger selbst fehl, schreibt die Routing-Schicht einen sanitisierten Minimal-Eintrag auf `stderr`.
 
+### Szenario 3c: Studio-API-Fehler bis zur Browserreferenz
+
+1. Der App-Dispatcher führt einen geschützten API-Request aus. Auch eine frühe Fehler-Response wird durch den finalen API-Pfad geführt; eine abgefangene Dispatch-Exception wird als generische JSON-500-Response abgebildet.
+2. Die finale Response erhält eine `X-Request-Id`. Bei einem Fehler schreibt der Server genau ein strukturiertes `studio.request.failed`-Ereignis mit derselben ID, sicherer Route-Vorlage, Status, Fehlercode und Prüfphase.
+3. Der Plugin-SDK-Client übernimmt den Response-Header als nicht-enumerable Fehler-Metadatum. News und Events zeigen die Referenz in ihrem Save-Fehlerzustand und bieten die lokalisierte Kopieraktion an.
+4. Für einen Browserfehler ohne bereits korrelierte API-Response kann der Client höchstens zehn flüchtige Meldungen senden. Der Monitoring-Handler bindet sie an die authentifizierte Session, validiert CSRF und Payload, begrenzt Rate und Duplikate und meldet Annahme oder Verwerfen.
+
+Fehlerpfad:
+
+- Ein bereits durch Request-ID korrelierter API-Fehler löst keine zweite Clientmeldung aus.
+- Offline-, Auth- oder Telemetriefehler bleiben vom Fachrequest unabhängig; es gibt keine persistente Browserqueue. Ein Annahme-ACK bestätigt keine Loki-Zustellung.
+- Es werden weder freie Fehlermeldungen noch Stack, Pfad oder Nutzdaten an den Browsermelde-Endpunkt gesendet.
+
 ### Szenario 3b: Prod-naher Studio-Deploy mit Drift-Gates
 
 1. GitHub Actions `Promote` bindet Zielumgebung, Image-Digest und `change_head` aneinander und ersetzt die deklarierte Git-Basis für Risikoprüfungen durch die OCI-Revision des tatsächlich live konfigurierten App-Images.
@@ -1543,7 +1556,6 @@ Bei aktiviertem Scan reserviert die Initialisierung einen privaten Quarantäne-K
 
 Die Medienbibliothek startet mit `media.read` und `media.update` sowie CSRF-Schutz einen instanzgebundenen Job `media.scan-existing` in der vorhandenen Queue `media-processing`. Ein Lauf liest maximal 25 Dateien mit höchstens 64 MiB je Datei aus dem konfigurierten Medienbestand und verwendet denselben ClamAV-Aufruf. Das vorhandene Job-Ergebnis hält den Bericht mit sauber, Fund oder nicht prüfbar; die Fortsetzung bleibt manuell. Der Worker hat ausschließlich lesende Storage-Abhängigkeiten und verändert weder Dateien noch Assets, Sichtbarkeit, Quoten oder Referenzen. Ein Fund bewirkt keine Sperre. Laufender Scan und Bericht bleiben in der Bibliothek unabhängig vom Ladezustand der Medienliste erhalten. Die Bereinigung abgebrochener provisorischer Uploads zieht nur atomar gebuchte Kontingente erfolgreich finalisierter Assets ab; ungebuchte Uploads verändern den vorhandenen Verbrauch nicht.
 
-
 ## Weiterbearbeitbare Medienkopien
 
 1. Der gemeinsame Picker oder die Mediendetailansicht liest die Kopie und ihre tatsächliche Grundlage über den autorisierten Editor-Lesepfad; normale Projektionen enthalten keine privaten Zustände oder Ressourcen-Keys.
@@ -1552,7 +1564,6 @@ Die Medienbibliothek startet mit `media.read` und `media.update` sowie CSRF-Schu
 4. Die Mediathek speichert eine neue Kopie unmittelbar. Sechs Content-Plugins übertragen ihre lokalen Kopien erst im vorhandenen Content-Save-Ablauf; Waste speichert die öffentliche Kopie sofort und übernimmt nur deren dauerhafte URL in die noch ungespeicherte Konfiguration.
 5. Der vorhandene Medienjob prüft Ausgabe, Grundlage und eingebettete Bildressourcen einschließlich aktiver Scanpflicht. Nur der aktuelle Claim darf alle Bestandteile freigeben und deren tatsächliche Bytes samt Zustandsdokument verbuchen. Private Ressourcen bleiben auch ohne Scan privat.
 6. Kopienanlage und Quellenlöschung sperren dieselbe Grundlage. Löschung markiert das Asset vor Storage-I/O; neue Referenzen/Kopien sind danach ausgeschlossen. Referenzen, offene Content-Save-Verwendungen und abhängige Kopien blockieren die Löschung. Wiederholung nach einem Storage-Fehler darf Kontingente nicht mehrfach korrigieren.
-
 
 ## Gutschein speichern
 

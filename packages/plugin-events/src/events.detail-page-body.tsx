@@ -5,6 +5,7 @@ import {
   MainserverPrincipalControl,
   resolveMainserverPrincipalOptions,
   StudioFormSummary,
+  StudioPersistentFormError,
   StudioMediaReferenceRetryAction,
   StudioPersistentActionResult,
 } from '@sva/studio-ui-react';
@@ -12,6 +13,43 @@ import { EventsDetailDeleteDialog } from './events.detail-delete.js';
 import { EventsDetailEditorTabs } from './events.detail-editor-tabs.js';
 import { EventsDetailMediaPicker } from './events.detail-media-picker.js';
 import type { EventsDetailPageViewProps } from './events.detail-page-view.js';
+
+const EventsDetailSaveStatus = ({
+  status,
+  pt,
+}: Pick<EventsDetailPageViewProps, 'status' | 'pt'>) => {
+  if (!status) return null;
+  if (status.kind !== 'error')
+    return <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary>;
+  return (
+    <StudioPersistentFormError
+      message={status.text}
+      requestId={status.requestId}
+      requestIdLabel={status.requestId ? pt('messages.requestReference') : undefined}
+      copyRequestIdLabel={status.requestId ? pt('messages.copyRequestReference') : undefined}
+      requestIdCopiedLabel={status.requestId ? pt('messages.requestReferenceCopied') : undefined}
+      requestIdCopyFailedLabel={status.requestId ? pt('messages.copyRequestReference') : undefined}
+    />
+  );
+};
+
+const EventsDeleteNavigationStatus = ({
+  deletion,
+  pt,
+}: Pick<EventsDetailPageViewProps, 'deletion' | 'pt'>) =>
+  deletion.navigationFailed ? (
+    <StudioPersistentActionResult
+      kind="success"
+      title={pt('messages.deleteSuccess')}
+      description={pt('messages.deleteNavigationError')}
+      actions={
+        <Button asChild size="sm" variant="secondary">
+          <Link to="/admin/content">{pt('actions.back')}</Link>
+        </Button>
+      }
+    />
+  ) : null;
+
 const EventsDetailStatus = ({
   deletion,
   methods,
@@ -27,19 +65,8 @@ const EventsDetailStatus = ({
   setStatus,
 }: EventsDetailPageViewProps) => (
   <>
-    {deletion.navigationFailed ? (
-      <StudioPersistentActionResult
-        kind="success"
-        title={pt('messages.deleteSuccess')}
-        description={pt('messages.deleteNavigationError')}
-        actions={
-          <Button asChild size="sm" variant="secondary">
-            <Link to="/admin/content">{pt('actions.back')}</Link>
-          </Button>
-        }
-      />
-    ) : null}
-    {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+    <EventsDeleteNavigationStatus deletion={deletion} pt={pt} />
+    <EventsDetailSaveStatus status={status} pt={pt} />
     {mode === 'create' && media.leaveGuard.createdContentId ? (
       <StudioFormSummary kind="success">
         {!media.mediaReferenceSync.hasPendingRetry &&
@@ -51,9 +78,13 @@ const EventsDetailStatus = ({
         </Link>
       </StudioFormSummary>
     ) : null}
-    <div className={mode === 'create'
-      ? 'has-[select]:rounded-2xl has-[select]:border has-[select]:border-border/60 has-[select]:bg-card has-[select]:p-5'
-      : undefined}>
+    <div
+      className={
+        mode === 'create'
+          ? 'has-[select]:rounded-2xl has-[select]:border has-[select]:border-border/60 has-[select]:bg-card has-[select]:p-5'
+          : undefined
+      }
+    >
       <MainserverPrincipalControl
         fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
         id="events-acting-principal"

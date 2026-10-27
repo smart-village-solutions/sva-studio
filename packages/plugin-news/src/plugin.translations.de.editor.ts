@@ -24,8 +24,7 @@ export const newsTranslationsDEEditor = {
       scheduled: 'Geplante Nachricht anlegen',
     },
     effect: {
-      draft:
-        'Als Entwurf gespeichert, noch nicht öffentlich.',
+      draft: 'Als Entwurf gespeichert, noch nicht öffentlich.',
       immediate: 'Die Nachricht wird sofort sichtbar veröffentlicht.',
       scheduled:
         'Die Nachricht wird mit dem gewählten Veröffentlichungszeitpunkt {{date}} gespeichert.',
@@ -145,6 +144,10 @@ export const newsTranslationsDEEditor = {
     pageLabel: 'Seite {{page}}',
   },
   messages: {
+    requestReference: 'Fehlerreferenz:',
+    copyRequestReference: 'Referenz kopieren',
+    requestReferenceCopied: 'Kopiert',
+    requestReferenceCopyFailed: 'Kopieren nicht möglich',
     detailNavigationError:
       'Die Nachricht wurde gespeichert, ihre Detailseite konnte aber nicht geöffnet werden.',
     mediaReferencePartialFailure:

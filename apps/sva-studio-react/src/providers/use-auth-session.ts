@@ -26,6 +26,19 @@ export const useAuthSession = (): AuthContextValue => {
     sessionRecoveryFailed,
     devAuthAvailable,
   } = base;
+  const telemetryIdentityRef = React.useRef<{ identity: string | null; token: string | null }>({
+    identity: null,
+    token: null,
+  });
+  React.useEffect(() => {
+    if (!hasResolvedSession || isRecoveringSession) return;
+    if (typeof window === 'undefined') return;
+    const identity = user?.instanceId ? `${user.instanceId}:${user.id}` : null;
+    if (telemetryIdentityRef.current.identity === identity) return;
+    const token = identity ? crypto.randomUUID() : null;
+    telemetryIdentityRef.current = { identity, token };
+    window.dispatchEvent(new CustomEvent('studio:session-telemetry-identity', { detail: token }));
+  }, [hasResolvedSession, isRecoveringSession, user?.id, user?.instanceId]);
   const value = React.useMemo<AuthContextValue>(
     () => ({
       user,

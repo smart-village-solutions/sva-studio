@@ -55,7 +55,14 @@ const openEventExtras = () => {
 vi.mock('../src/events.api.js', () => ({
   createEvent: vi.fn(),
   deleteEvent: vi.fn(),
-  EventsApiError: class EventsApiError extends Error { constructor(public readonly code: string, message = code) { super(message); } },
+  EventsApiError: class EventsApiError extends Error {
+    constructor(
+      public readonly code: string,
+      message = code
+    ) {
+      super(message);
+    }
+  },
   getEvent: vi.fn(),
   getEventDetail: vi.fn(),
   listEventCategories: vi.fn(async () => []),
@@ -517,14 +524,33 @@ describe('EventsDetailPage', () => {
     }
   );
 
-  it.each(['missing_credentials', 'organization_mainserver_credentials_missing'])('explains credential failures without backend details: %s', async (code) => {
-    vi.mocked(createEvent).mockRejectedValueOnce(new EventsApiError(code, 'API-Key or API-Secret missing'));
+  it.each(['missing_credentials', 'organization_mainserver_credentials_missing'])(
+    'explains credential failures without backend details: %s',
+    async (code) => {
+      vi.mocked(createEvent).mockRejectedValueOnce(
+        new EventsApiError(code, 'API-Key or API-Secret missing')
+      );
+      render(<EventsDetailPage mode="create" />);
+      fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'New content' } });
+      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+      await waitFor(() => expect(screen.getByText('events.create.saveUnavailable')).toBeTruthy());
+      expect(screen.queryByText(/API-Key/)).toBeNull();
+      expect(screen.getByDisplayValue('New content')).toBeTruthy();
+    }
+  );
+
+  it('shows a copyable request reference when a save fails', async () => {
+    const error = new EventsApiError('forbidden', 'Forbidden');
+    Object.defineProperty(error, 'requestId', { value: 'events-request-123' });
+    vi.mocked(createEvent).mockRejectedValueOnce(error);
     render(<EventsDetailPage mode="create" />);
-    fireEvent.change(await screen.findByLabelText('Titel'), {target: {value: 'New content'}});
-    fireEvent.click(screen.getAllByRole('button', {name: /Speichern|anlegen/})[0]!);
-    await waitFor(() => expect(screen.getByText('events.create.saveUnavailable')).toBeTruthy());
-    expect(screen.queryByText(/API-Key/)).toBeNull();
-    expect(screen.getByDisplayValue('New content')).toBeTruthy();
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'New content' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Nicht sichtbar anlegen' }));
+
+    expect(await screen.findByText('events-request-123')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'events.messages.copyRequestReference' })
+    ).toBeTruthy();
   });
 
   it('renders Create without tabs or history and keeps a single ordered form', async () => {

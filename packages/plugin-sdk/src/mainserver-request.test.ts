@@ -186,6 +186,29 @@ describe('mainserver-request', () => {
     ).rejects.toMatchObject({ code: 'preview_stale', details });
   });
 
+  it('preserves the safe Studio response request ID on custom errors', async () => {
+    class CustomMainserverError extends Error {
+      public constructor(public readonly code: string) {
+        super(code);
+      }
+    }
+
+    const error = await requestMainserverJson({
+      url: '/protected-resource',
+      fetch: vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: 'forbidden' }), {
+            status: 403,
+            headers: { 'X-Request-Id': 'studio-request-123' },
+          })
+      ) as typeof fetch,
+      errorFactory: (code) => new CustomMainserverError(code),
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({ code: 'forbidden', requestId: 'studio-request-123' });
+    expect(Object.keys(error as object)).not.toContain('requestId');
+  });
+
   it('maps timeouts during fetch and response parsing into stable mainserver timeout errors', async () => {
     vi.useFakeTimers();
     try {

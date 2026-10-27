@@ -1,3 +1,5 @@
+import { contentDEErrors } from './content.errors.resources.js';
+
 export const contentDEResources = {
   leaveGuard: {
     title: 'Ungespeicherte Eingaben verwerfen?',
@@ -159,10 +161,12 @@ export const contentDEResources = {
     user: 'Persönlich',
     organization: 'Organisation',
     contextLoading: 'Der Autorenkontext wird geladen. Schreibaktionen sind vorübergehend gesperrt.',
-    contextUnavailable: 'Autorenkontext unklar. Schreibaktionen bleiben gesperrt.',
+    contextUnavailable:
+      'Der Autorenkontext konnte nicht eindeutig bestimmt werden. Schreibaktionen bleiben gesperrt.',
     resourceLoading:
       'Der Ressourcenprincipal wird geladen. Schreibaktionen sind vorübergehend gesperrt.',
-    resourceUnavailable: 'Ressourcenprincipal unklar. Schreibaktionen bleiben gesperrt.',
+    resourceUnavailable:
+      'Der Ressourcenprincipal konnte nicht eindeutig bestimmt werden. Schreibaktionen bleiben gesperrt.',
     mainserverNotReady: 'Mainserver-Anbindung nicht bereit. Bitte Administration kontaktieren.',
   },
   ownership: {
@@ -375,25 +379,12 @@ export const contentDEResources = {
       reconciliationFailed: 'Abgleich fehlgeschlagen',
     },
   },
-  errors: {
-    forbidden: 'Unzureichende Berechtigungen für diese Inhaltsaktion.',
-    csrfValidationFailed:
-      'Sicherheitsprüfung fehlgeschlagen. Bitte neu laden und erneut versuchen.',
-    rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
-    notFound: 'Der angeforderte Inhalt wurde nicht gefunden.',
-    databaseUnavailable: 'Datenbankproblem: Inhaltsdaten konnten nicht verarbeitet werden.',
-    invalidRequest: 'Der Inhalt enthält ungültige oder unvollständige Daten.',
-    staleMainserverContext:
-      'Kontext geändert. Bitte neu laden und Eingaben vor dem Speichern prüfen.',
-    requestIdLabel: 'Fehlerreferenz:',
-    copyRequestId: 'Referenz kopieren',
-    requestIdCopied: 'Kopiert',
-    requestIdCopyFailed: 'Kopieren fehlgeschlagen',
-  },
+  errors: contentDEErrors,
   validation: {
     titleRequired: 'Die Überschrift ist ein Pflichtfeld.',
     payloadJsonInvalid: 'Die Zusatzdaten müssen gültiges JSON sein.',
     publishedAtRequired: 'Für veröffentlichte Inhalte ist ein Veröffentlichungsdatum erforderlich.',
-    publishedAtInvalid: 'Bitte gültiges Veröffentlichungsdatum in Europe/Berlin eingeben.',
+    publishedAtInvalid:
+      'Bitte geben Sie ein gültiges Veröffentlichungsdatum in der Fachzeitzone Europe/Berlin ein.',
   },
 } as const;

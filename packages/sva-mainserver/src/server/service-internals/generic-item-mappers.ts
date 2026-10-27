@@ -44,6 +44,7 @@ const genericItemSchema = z.object({
   publicationDate: z.string().nullish(),
   publishedAt: z.string().nullish(),
   genericType: z.string().min(1),
+  pointOfInterest: z.object({ id: z.string().nullish() }).nullish(),
   payload: z.unknown().nullish(),
   visible: z.boolean().nullish(),
   categories: z.array(categorySchema).nullish(),
@@ -96,6 +97,9 @@ const mapGenericItemScalarFields = (
 });
 
 const mapGenericItemRelationFields = (value: z.infer<typeof genericItemSchema>) => ({
+  ...(optionalString(value.pointOfInterest?.id)
+    ? { pointOfInterestId: optionalString(value.pointOfInterest?.id) }
+    : {}),
   categories: (value.categories ?? []).map(mapCategory).filter(defined),
   contacts: (value.contacts ?? []).map(mapContact).filter(defined),
   webUrls: (value.webUrls ?? []).map(mapWebUrl).filter(defined),

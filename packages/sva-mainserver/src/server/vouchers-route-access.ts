@@ -4,7 +4,7 @@ import {
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
 import { errorJson, isResponse } from './content-route-core.js';
-import { type MainserverMutationActor } from './mutation-principal.js';
+import { resolveMainserverResourceAccess, type MainserverMutationActor } from './mutation-principal.js';
 import { getSvaMainserverVoucherPoi, loadSvaMainserverDataProviderIdentity } from './service.js';
 import { authorizeVoucherMedia } from './poi-route-vouchers.js';
 import { voucherHasContentChanges, voucherInputSchema } from './vouchers-model.js';
@@ -54,14 +54,20 @@ export const authorizedAggregate = async (
 ) => {
   const poiId = body.voucher.pointOfInterestIds[0];
   if (!poiId) return errorJson(400, 'voucher_invalid_input', 'voucher_invalid_input');
-  const poiAccess = await local(ctx, 'poi.update', poiId, 'poi.point-of-interest');
-  if (isResponse(poiAccess)) return poiAccess;
   const current = await getSvaMainserverVoucherPoi({ ...actor, poiId });
   if (!allowedVoucherCategories(body.voucher.categories, current.categories ?? []))
     return errorJson(400, 'voucher_invalid_input', 'voucher_invalid_input');
   const identity = await loadSvaMainserverDataProviderIdentity(actor);
   if (raw(current.poi.dataProvider).id !== identity.dataProvider.id)
     return errorJson(403, 'voucher_ownership_conflict', 'voucher_ownership_conflict');
+  const poiAccess = await resolveMainserverResourceAccess({
+    actor,
+    actions: ['poi.update'],
+    contentType: 'poi.point-of-interest',
+    item: { id: poiId, dataProvider: identity.dataProvider },
+    forceExactScopeActions: ['poi.update'],
+  });
+  if (!poiAccess['poi.update']) return errorJson(403, 'forbidden', 'forbidden');
   const siblings = records(current.poi.vouchers);
   if (body.voucherId && !siblings.some((item) => item.id === body.voucherId))
     return errorJson(409, 'voucher_content_conflict', 'voucher_content_conflict');

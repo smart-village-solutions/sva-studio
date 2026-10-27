@@ -164,6 +164,9 @@ export const ContentListPage = ({
       ...(routeState.type === 'faq.faq' && routeState.languageCode
         ? { languageCode: routeState.languageCode }
         : {}),
+      ...(routeState.type === 'vouchers.voucher' && routeState.poiId
+        ? { poiId: routeState.poiId }
+        : {}),
       ...(routeState.status !== 'all' ? { status: routeState.status } : {}),
       visibleTypes,
       sortBy: resolveContentSortField(routeSortField),
@@ -175,6 +178,7 @@ export const ContentListPage = ({
       routeState.page,
       routeState.pageSize,
       routeState.languageCode,
+      routeState.poiId,
       routeState.status,
       routeState.type,
       visibleTypes,

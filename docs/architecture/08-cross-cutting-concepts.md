@@ -358,6 +358,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Sensitive-Keys-Redaction umfasst zusätzlich Cookie-, Session-, CSRF- und API-Key-Header/Felder
 - Pseudonyme technische IDs bleiben personenbezogen und werden nur geloggt, wenn sie fuer Betrieb, Audit oder Korrelation wirklich erforderlich sind
 - Auth-Audit und Betriebslogs unterscheiden `login`, `silent_reauth_success`, `silent_reauth_failed`, `forced_reauth` und `logout`
+- Lokale SSR-Routenguards für `*.localhost` verwenden ausschließlich im Development-Modus den vorhandenen Auth-Routendispatcher für Session-, Organisationskontext- und Berechtigungsabfragen. Dadurch benötigen lokale Tenant-Hosts keine Node-DNS-Auflösung; ursprüngliche Request-URL und Session-Cookie bleiben erhalten, sämtliche Handler-Prüfungen gelten unverändert. Andere Hosts und Production verwenden weiterhin die bestehenden HTTP-Abfragen.
 - Auth-Diagnostik für `/auth/me` verwendet denselben strukturierten Fehlervertrag wie übrige IAM-Endpunkte: `classification`, `status`, `recommendedAction`, `requestId` und allowlist-basierte `safeDetails`
 - Auth-Unterbrechungen klassifizieren zusätzlich nicht-sensitive `reason_code`-Werte wie `missing_session_cookie`, `invalid_session`, `session_expired`, `silent_recovery_timeout` oder `forced_reauth`
 - Eine neue Fresh-Reauth-Evidenz entsteht nur über einen serverseitig kontrollierten interaktiven Auth-Callback; Silent-SSO, Token-Refresh und reine Request-Marker erneuern dieses Sicherheitsfenster nicht

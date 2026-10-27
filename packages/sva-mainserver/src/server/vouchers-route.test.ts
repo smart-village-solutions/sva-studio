@@ -104,7 +104,7 @@ beforeEach(() => {
     },
     fingerprint,
   });
-  state.access.mockResolvedValue({ 'vouchers.read': true });
+  state.access.mockResolvedValue({ 'vouchers.read': true, 'poi.update': true });
   state.provider.mockResolvedValue({});
   state.reserve.mockResolvedValue({ status: 'reserved' });
   state.write.mockResolvedValue({ id: '3', dataProvider: { id: 'provider' } });
@@ -121,6 +121,32 @@ describe('voucher request boundaries', () => {
     expect(await response?.json()).toMatchObject({
       data: { requiresReset: false, affected: [{ id: '2', title: 'Alt' }] },
     });
+    expect(state.write).not.toHaveBeenCalled();
+  });
+  it('prepares a voucher with an own-scoped parent POI update grant', async () => {
+    state.local.mockImplementation(({ action }) =>
+      action === 'poi.update'
+        ? { ok: false, status: 403, error: 'forbidden', message: 'forbidden' }
+        : { ok: true, actor: { instanceId: 'tenant', keycloakSubject: 'subject' } }
+    );
+    state.access.mockResolvedValue({ 'poi.update': true });
+    const response = await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher }));
+    expect(response?.status).toBe(200);
+    expect(state.access).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actions: ['poi.update'],
+        contentType: 'poi.point-of-interest',
+        item: expect.objectContaining({ id: '1', dataProvider: { id: 'provider' } }),
+        forceExactScopeActions: ['poi.update'],
+      })
+    );
+    expect(state.write).not.toHaveBeenCalled();
+  });
+  it('rejects preparation when the provider-bound parent POI update grant is missing', async () => {
+    state.access.mockResolvedValue({ 'poi.update': false });
+    const response = await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher }));
+    expect(response?.status).toBe(403);
+    expect(state.reserve).not.toHaveBeenCalled();
     expect(state.write).not.toHaveBeenCalled();
   });
   it('rejects missing CSRF protection', async () => {
@@ -476,11 +502,12 @@ describe('authorized voucher reads', () => {
       ],
       pagination: { page: 2, hasNextPage: true },
     });
-    state.local.mockImplementation(({ resource }) =>
-      resource.contentId === '3'
+    state.local.mockImplementation(({ action }) =>
+      action === 'poi.update'
         ? { ok: false, status: 403, error: 'forbidden', message: 'forbidden' }
         : { ok: true, actor }
     );
+    state.access.mockImplementation(({ item }) => ({ 'poi.update': item.id === '1' }));
     const response = await get('/locations?page=2&pageSize=100');
     expect(await response?.json()).toEqual({
       data: [{ id: '1', name: 'Allowed', addresses: [] }],
@@ -488,6 +515,13 @@ describe('authorized voucher reads', () => {
     });
     expect(state.locations).toHaveBeenCalledWith(
       expect.objectContaining({ page: 2, pageSize: 100, includeInvisible: true })
+    );
+    expect(state.access).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actions: ['poi.update'],
+        contentType: 'poi.point-of-interest',
+        forceExactScopeActions: ['poi.update'],
+      })
     );
   });
 });

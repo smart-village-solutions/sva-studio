@@ -1,3 +1,4 @@
+import { readNormalizedRouteState, updateRouteState } from './-content-list-route-state';
 import type { RegisteredStudioContentType } from '@sva/plugin-sdk';
 import { studioContentTypes } from '../../lib/plugins';
 import { deleteMainserverItem } from './-content-list-row-actions';
@@ -117,6 +118,14 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
       requiredCreateAction: 'cockpit-cards.create',
       createPath: '/admin/cockpit-cards/new',
       detailPath: '/admin/cockpit-cards/$contentId',
+    },
+    {
+      contentType: 'vouchers.voucher',
+      displayName: 'Gutscheine',
+      requiredReadAction: 'vouchers.read',
+      requiredCreateAction: 'vouchers.create',
+      createPath: '/admin/vouchers/new',
+      detailPath: '/admin/vouchers/$id',
     },
     {
       contentType: 'projects.project',
@@ -1340,6 +1349,19 @@ describe('ContentListPage', () => {
       sortBy: 'updatedAt',
       sortDirection: 'desc',
     });
+  });
+
+  it('carries the POI voucher filter through query and pagination and removes it on type change', () => {
+    searchState = { type: 'vouchers.voucher', poiId: ' 33394 ', page: 2 };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+    render(<ContentListPage />);
+    expect(useContentsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'vouchers.voucher', poiId: '33394', page: 2 }),
+      { enabled: true }
+    );
+    expect(readNormalizedRouteState(searchState)).toMatchObject({ poiId: '33394' });
+    expect(updateRouteState(searchState, { page: 3 })).toMatchObject({ poiId: '33394', page: 3 });
+    expect(updateRouteState(searchState, { type: 'news.article' })).not.toHaveProperty('poiId');
   });
 
   it('bindet den FAQ-Sprachfilter an URL und Listenabfrage und entfernt ihn bei Typwechsel', () => {

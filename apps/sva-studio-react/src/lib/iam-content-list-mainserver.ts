@@ -62,6 +62,7 @@ type MainserverGenericItem = Readonly<{
   contentType: string;
   title?: string;
   genericType?: string;
+  pointOfInterestId?: string;
   author?: string;
   keywords?: string;
   payload?: unknown;
@@ -301,6 +302,7 @@ export const mapGenericItem = (
   ...mapDataProviderProjection(item.dataProvider),
   payload: toContentJsonValue({
     genericType: item.genericType,
+    ...(item.pointOfInterestId ? { pointOfInterestId: item.pointOfInterestId } : {}),
     keywords: item.keywords,
     payload: item.payload,
     categories: item.categories,

@@ -41,6 +41,14 @@ describe('iam content list api shared helpers', () => {
     });
   });
 
+  it('accepts a numeric POI filter only for vouchers', () => {
+    expect(readContentListQuery(new Request('https://studio.test/api/content?type=vouchers.voucher&poiId=%2033394%20')))
+      .toMatchObject({ type: 'vouchers.voucher', poiId: '33394' });
+    for (const suffix of ['type=news.article&poiId=33394', 'type=vouchers.voucher&poiId=invalid'])
+      expect(readContentListQuery(new Request(`https://studio.test/api/content?${suffix}`)))
+        .not.toHaveProperty('poiId');
+  });
+
   it('normalizes the FAQ language filter and ignores it for other content types', () => {
     expect(
       readContentListQuery(

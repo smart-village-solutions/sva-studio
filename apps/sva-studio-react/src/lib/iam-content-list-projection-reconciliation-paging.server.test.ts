@@ -462,6 +462,45 @@ describe('content projection reconciliation paging', () => {
     ]);
   });
 
+  it.each(['slim', 'legacy'])('persists the voucher POI ID from %s projection rows', async (mode) => {
+    process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = mode;
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'vouchers.read', resourceType: 'vouchers' }],
+    });
+    state.listSvaMainserverProjection.mockResolvedValue({
+      data: [
+        {
+          id: 'faq-slim-1',
+          contentType: 'vouchers.voucher',
+          title: 'Frage',
+          pointOfInterestId: '33394',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+      ],
+      skippedInvalidCount: 0,
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      data: [{
+        id: 'faq-slim-1', contentType: 'generic-items.generic-item', genericType: 'Voucher',
+        title: 'Gutschein', pointOfInterestId: '33394',
+        createdAt: '2026-06-20T10:00:00.000Z', updatedAt: '2026-06-21T10:00:00.000Z',
+      }],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    await refreshProjectedContents(ctx, { visibleTypes: ['vouchers.voucher'], force: true });
+
+    expect(fixture.projectionRows).toEqual([
+      expect.objectContaining({
+        source_entity_id: 'faq-slim-1',
+        payload_json: expect.objectContaining({ pointOfInterestId: '33394' }),
+      }),
+    ]);
+  });
+
   it('does not delete an existing projection when a slim upstream page skipped records', async () => {
     process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
     fixture.projectionRows = [

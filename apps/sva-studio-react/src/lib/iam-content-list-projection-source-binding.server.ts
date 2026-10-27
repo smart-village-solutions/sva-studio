@@ -239,7 +239,12 @@ const mapSlimProjectionRow = (
     readProjectionDataProviderField(item, 'name')
   ),
   credentialSource,
-  payload: item.languageCode ? { languageCode: item.languageCode } : {},
+  payload: {
+    ...(item.languageCode ? { languageCode: item.languageCode } : {}),
+    ...(target.contentType === 'vouchers.voucher' && item.pointOfInterestId
+      ? { pointOfInterestId: item.pointOfInterestId }
+      : {}),
+  },
   status: resolveSlimProjectionStatus(item),
   validationState: 'valid',
   historyRef: `mainserver:${target.contentType}:${item.id}`,

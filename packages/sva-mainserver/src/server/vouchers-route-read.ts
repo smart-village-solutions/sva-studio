@@ -139,8 +139,14 @@ export const locations = async (request: Request, ctx: AuthenticatedRequestConte
   const data = [];
   for (const item of page.data) {
     if (item.dataProvider?.id !== identity.dataProvider.id) continue;
-    const decision = await local(ctx, 'poi.update', item.id, 'poi.point-of-interest');
-    if (!isResponse(decision))
+    const access = await resolveMainserverResourceAccess({
+      actor,
+      actions: ['poi.update'],
+      contentType: 'poi.point-of-interest',
+      item,
+      forceExactScopeActions: ['poi.update'],
+    });
+    if (access['poi.update'])
       data.push({ id: item.id, name: item.name, addresses: item.addresses });
   }
   return json({ data, pagination: page.pagination });

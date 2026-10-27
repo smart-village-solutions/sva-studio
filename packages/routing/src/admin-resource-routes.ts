@@ -123,21 +123,13 @@ const createHistoryRouteDefinition = (
   historyBinding: BindingKey | undefined,
   resource: AdminResourceDefinition,
   detailPath: string
-): readonly UiRouteDefinition[] => {
-  if (!historyBinding) {
-    return [];
-  }
-
-  return [
-    {
+): readonly UiRouteDefinition[] => historyBinding ? [{
       binding: historyBinding,
       resource,
       guard: resolveAdminResourceGuard(resource, 'history'),
       path: toAdminHistoryRoutePath(detailPath),
       routeKind: 'history',
-    },
-  ];
-};
+  }] : [];
 
 const createListRouteDefinition = (
   resource: AdminResourceDefinition,
@@ -160,10 +152,17 @@ const createListRouteDefinition = (
           contentType === 'faq.faq' && typeof search.languageCode === 'string'
             ? search.languageCode.trim().toLowerCase()
             : '';
+        const poiId =
+          contentType === 'vouchers.voucher' &&
+          typeof search.poiId === 'string' &&
+          /^\d+$/.test(search.poiId.trim())
+            ? search.poiId.trim()
+            : '';
         return {
           ...normalized,
           ...(contentType === '' ? {} : { type: contentType }),
           ...(languageCode === '' ? {} : { languageCode }),
+          ...(poiId === '' ? {} : { poiId }),
         };
       }
     : undefined,

@@ -140,6 +140,10 @@ export const finalizeProtectedApiResponse = async (
   const routeTemplate = resolveProtectedApiRouteTemplate(request);
   if (!routeTemplate || response.status < 400) return response;
 
+  const errorDiagnostics =
+    new URL(request.url).pathname === '/api/v1/monitoring/client-errors'
+      ? null
+      : await readResponseErrorDiagnostics(response);
   const headers = new Headers(response.headers);
   if (requestId) headers.set('X-Request-Id', requestId);
   const finalizedResponse = new Response(response.body, {
@@ -147,11 +151,10 @@ export const finalizeProtectedApiResponse = async (
     statusText: response.statusText,
     headers,
   });
-  if (new URL(request.url).pathname === '/api/v1/monitoring/client-errors') {
+  if (errorDiagnostics === null) {
     return finalizedResponse;
   }
 
-  const errorDiagnostics = await readResponseErrorDiagnostics(response);
   const metadata = {
     event: 'studio.request.failed',
     operation: 'studio_request_failed',

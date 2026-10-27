@@ -144,16 +144,18 @@ vi.mock('@tanstack/react-router', () => ({
     children,
     to,
     params,
+    search,
   }: {
     children: React.ReactNode;
     to: string;
     params?: Record<string, string>;
+    search?: Record<string, string>;
   }) => (
     <a
       href={Object.entries(params ?? {}).reduce(
         (path, [key, value]) => path.replace(`$${key}`, value),
         to
-      )}
+      ) + (search ? `?${new URLSearchParams(search)}` : '')}
     >
       {children}
     </a>
@@ -193,6 +195,18 @@ const resolveMockMediaAsset = (assetId: string) => {
 };
 
 describe('PoiDetailPage', () => {
+  it('links to only the vouchers of the current location on the canonical content list', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true, assignedModules: ['poi', 'vouchers'], roles: [],
+      permissionActions: ['poi.read', 'vouchers.read'],
+      unscopedPermissionActions: ['poi.read', 'vouchers.read'],
+    });
+    vi.mocked(getPoi).mockResolvedValue({ id: '33394', name: 'Ort', payload: {} } as never);
+    render(<PoiDetailPage mode="edit" contentId="33394" />);
+    const link = await screen.findByRole('link', { name: 'poi.messages.vouchersForLocation' });
+    expect(link.getAttribute('href')).toBe('/admin/content?type=vouchers.voucher&poiId=33394');
+  });
+
   const switchSection = (value: string) => {
     const selector = screen.queryByLabelText('Bereich');
     if (selector) fireEvent.change(selector, { target: { value } });

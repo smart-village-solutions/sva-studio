@@ -2,6 +2,7 @@
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentType } from 'react';
+import { createMainserverReadHeaders } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MainserverPrincipalControl,
@@ -1224,6 +1225,38 @@ describe('appRouteBindings', () => {
       cleanup();
     }
   });
+
+  it.each(['user', 'organization'] as const)(
+    'loads legacy vouchers with the %s principal without generic-item access',
+    async (principal) => {
+      routeState.params = { id: '6829' };
+      routeState.getContent.mockResolvedValue({ data: { credentialSource: principal } });
+      routeState.requestMainserverJson.mockImplementation(async ({ url }: { url: string }) => {
+        if (url !== '/api/v1/mainserver/vouchers/6829') throw new Error('Forbidden');
+        return { data: { dataProvider: { id: 'provider-1' } } };
+      });
+      const { MainserverResourcePrincipalBoundary } = await import(
+        './mainserver-resource-principal-boundary'
+      );
+      render(
+        <MainserverResourcePrincipalBoundary contentType="vouchers.voucher">
+          {(control) => <div data-testid="voucher-principal">{control.value}</div>}
+        </MainserverResourcePrincipalBoundary>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('voucher-principal').textContent).toBe(principal);
+      });
+      expect(routeState.getContent).toHaveBeenCalledWith('6829', {
+        contentType: 'vouchers.voucher',
+      });
+      expect(routeState.requestMainserverJson).toHaveBeenCalledWith({
+        url: '/api/v1/mainserver/vouchers/6829',
+        init: { headers: createMainserverReadHeaders(principal) },
+      });
+      expect(screen.queryByText('Resource principal unavailable')).toBeNull();
+    }
+  );
 
   it('renders a regular loading status before showing an edit route', async () => {
     routeState.params = { id: 'content-1' };

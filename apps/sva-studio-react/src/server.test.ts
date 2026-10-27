@@ -1,3 +1,4 @@
+// @vitest-environment node
 // fallow-ignore-file code-duplication
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -288,6 +289,39 @@ describe('server transport', () => {
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
     expect(startFetch).not.toHaveBeenCalled();
     expect(response).toBe(pluginResponse);
+  });
+
+  it.each([
+    { path: '/auth/login', status: 401 },
+    { path: '/api/v1/iam/contents', status: 403 },
+    { path: '/api/v1/mainserver/news', status: 500 },
+    { path: '/api/v1/monitoring/client-errors', status: 400 },
+  ])('keeps the native error body readable for $path ($status)', async ({ path, status }) => {
+    const { finalizeProtectedApiResponse } = await import(
+      './lib/server-entry-error-finalization.server'
+    );
+    const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn() };
+    const getLogger = vi.fn().mockResolvedValue(logger);
+    const body = { error: { code: 'request_failed' } };
+    const response = await finalizeProtectedApiResponse(
+      new Request(`http://localhost:3000${path}`),
+      Response.json(body, { status }),
+      'req-stream',
+      getLogger
+    );
+
+    expect(response.status).toBe(status);
+    expect(response.headers.get('X-Request-Id')).toBe('req-stream');
+    expect(response.body?.locked).toBe(false);
+    await expect(response.json()).resolves.toEqual(body);
+    if (path === '/api/v1/monitoring/client-errors') {
+      expect(getLogger).not.toHaveBeenCalled();
+    } else {
+      expect(status >= 500 ? logger.error : logger.warn).toHaveBeenCalledWith(
+        'Studio API request failed',
+        expect.objectContaining({ error_code: 'request_failed', http_status: status })
+      );
+    }
   });
 
   it('adds the request ID and one safe operational event to early protected API failures', async () => {
@@ -838,7 +872,7 @@ describe('server transport', () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('SVA_SERVER_ENTRY_DEBUG', 'true');
 
-    const startFetch = vi.fn().mockResolvedValue(new Response('prod', { status: 204 }));
+    const startFetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     const logger = { error: vi.fn(), info: vi.fn() };
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
@@ -873,7 +907,7 @@ describe('server transport', () => {
       'Server entry response completed',
       expect.objectContaining({ diagnostics_enabled: false, status: 204 })
     );
-    await expect(response.text()).resolves.toBe('prod');
+    await expect(response.text()).resolves.toBe('');
   });
 
   it('establishes request context before mainserver and auth dispatch', async () => {

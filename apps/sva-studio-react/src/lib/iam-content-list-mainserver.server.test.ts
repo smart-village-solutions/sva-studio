@@ -337,3 +337,10 @@ describe('iam content list mainserver mapping', () => {
     });
   });
 });
+
+it('preserves the voucher POI ID in the legacy projection payload', () => {
+  expect(mapGenericItem({
+    id: '844', contentType: 'vouchers.voucher', genericType: 'Voucher',
+    pointOfInterestId: '33394', createdAt: '2026-10-27', updatedAt: '2026-10-27',
+  }, 'tenant', []).payload).toMatchObject({ pointOfInterestId: '33394' });
+});

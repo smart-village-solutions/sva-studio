@@ -395,6 +395,11 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 
 ### Fehlerbehandlung und Resilienz
 
+- Geschützte Studio-API-Antworten und abgefangene Dispatch-Exceptions werden abschließend mit einer identischen `X-Request-Id` korreliert. Der App-Dispatcher protokolliert genau ein operatives Fehlerergebnis mit stabiler Route-Vorlage, Phase, Status und Fehlercode; Audit-Ereignisse bleiben eigenständig.
+- Plugin-SDK-Fehler bewahren die Response-Request-ID als nicht-enumerable Metadaten. News-/Event-Savefehler zeigen eine lokalisierte und kopierbare Referenz, die ohne fachliche Fehlermeldung oder Payload auskommt.
+- `POST /api/v1/monitoring/client-errors` nimmt ausschließlich authentifizierte, CSRF-geprüfte und eng schema-validierte Browserbeobachtungen an. Der Client sendet nur eine zufällige Ereignis-ID und eine erlaubte Fehlerklasse; es gibt keine persistente Queue. Prozesslokales Rate-Limit und Deduplizierung gelten für die aktuell unterstützte Einzelreplica-Topologie.
+- Ein Telemetrie-ACK bestätigt nur die Annahme durch den Handler, nicht die spätere OTEL-/Loki-Zustellung. Bereits mit Request-ID korrelierte API-Fehler werden nicht nochmals als Browserfehler gemeldet.
+
 - OTEL-Init ist in Development fehlertolerant; in Production wird fehlende OTEL-Readiness fail-closed behandelt
 - Die Routing-Error-Boundary liefert auch bei unerwarteten Fehlern immer JSON statt HTML-Fallbackseiten
 - Redis-Reconnect mit Backoff und Max-Retry Logik
@@ -1243,7 +1248,6 @@ Der bei der Initialisierung gewählte Eingang bindet den Scan-Vertrag. Nur Uploa
 Tags bleiben validierte globale Asset-Metadaten mit bestehender Instanz-/IAM-Grenze. Sie erweitern keine Berechtigungen; Tagwerte werden nicht geloggt. ClamAV bleibt als GPLv2-Dienst über das dokumentierte Scan-Protokoll vom EUPL-Code getrennt, ohne `libclamav`-Linking. Das Scan-Gate akzeptiert ausschließlich vollständig geprüfte Bytes mit bestätigter Signaturaktualität. Ein Scanner-Ping ist kein Aktualitätsnachweis; Detailregeln stehen in [ADR-068](../adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md).
 
 Der Dateibericht des Bestandsscans wird ausschließlich über den medienberechtigten Endpunkt ausgeliefert. Generische Job-Antworten beim Lesen und Löschen verwenden dieselbe Ergebnisredaktion; Monitoring-Rechte erweitern keine Medienrechte. Die Signaturaltersmetrik prüft dieselbe Übereinstimmung zwischen Aktualitätsnachweis und geladener ClamAV-Revision wie der Scan und meldet Ausfall oder Abweichung als Sperrwert.
-
 
 ## Gutscheinidentität und Save-Bestätigung
 

@@ -128,6 +128,28 @@ describe('resolveMutationPrincipalContext', () => {
     });
   });
 
+  it('preserves the safe organization readiness reason without exposing credentials', async () => {
+    state.readEffective.mockResolvedValue({
+      status: 'organization_mainserver_credentials_missing',
+      organizationId: '22222222-2222-2222-8222-222222222222',
+      reasonCode: 'verification_pending',
+    });
+
+    await expect(
+      resolveMutationPrincipalContext({
+        instanceId: 'de-musterhausen',
+        actorAccountId: '11111111-1111-1111-8111-111111111111',
+        keycloakSubject: 'subject-1',
+        activeOrganizationId: '22222222-2222-2222-8222-222222222222',
+        actingPrincipalType: 'organization',
+      })
+    ).resolves.toEqual({
+      ok: false,
+      status: 'organization_mainserver_credentials_missing',
+      reasonCode: 'verification_pending',
+    });
+  });
+
   it('rejects resolver drift to another credential source', async () => {
     state.readEffective.mockResolvedValue({
       status: 'ok',

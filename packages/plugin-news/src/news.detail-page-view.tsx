@@ -42,6 +42,7 @@ type NewsDetailPageViewProps = Readonly<{
   deletePending: boolean;
   deleteLabel: string;
   methods: UseFormReturn<NewsDetailFormValues>;
+  libraryStatus?: ReturnType<typeof useNewsDetailMedia>['libraryStatus'];
   mediaAssets: readonly HostMediaAssetListItem[];
   canUploadMedia: boolean;
   mediaPickerFeedback: ReturnType<typeof resolveStudioMediaPickerFeedback>;

@@ -10,6 +10,7 @@ import { useNewsDetailMedia } from './news.detail-page-media.js';
 
 export const NewsDetailMediaPicker = ({
   mediaAssets,
+  libraryStatus,
   canUploadMedia,
   mediaPickerFeedback,
   isAssetSelectable,
@@ -18,6 +19,7 @@ export const NewsDetailMediaPicker = ({
   addManualMedia,
   canUpdateMedia,
 }: Readonly<{
+  libraryStatus?: ReturnType<typeof useNewsDetailMedia>['libraryStatus'];
   mediaAssets: readonly HostMediaAssetListItem[];
   canUploadMedia: boolean;
   mediaPickerFeedback: ReturnType<typeof resolveStudioMediaPickerFeedback>;
@@ -30,6 +32,7 @@ export const NewsDetailMediaPicker = ({
   const navigate = useNavigate();
   return (
     <StudioMediaPickerOverlay
+      libraryStatus={libraryStatus}
       assets={mediaAssets.map(toNewsMediaPickerSummary)}
       canUpload={canUploadMedia}
       feedbackMessage={mediaPickerFeedback.message}

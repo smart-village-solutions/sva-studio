@@ -62,6 +62,9 @@ export type GenericItemsDetailPageViewModel = Readonly<{
   canSelectMedia: boolean;
   canUploadMedia: boolean;
   canUpdateMedia: boolean;
+  libraryStatus?: ReturnType<
+    typeof import('./generic-items.detail-page.logic.js').useGenericItemsMediaAssets
+  >['libraryStatus'];
   mediaAssets: readonly HostMediaAssetListItem[];
   isAssetSelectable: ReturnType<typeof useGenericItemsPageMedia>['isAssetSelectable'];
   mediaPicker: ReturnType<typeof useGenericItemsPageMedia>['mediaPicker'];

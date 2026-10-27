@@ -53,6 +53,7 @@ Architekturprinzipien auf IST-Basis.
 - Datenbankmigrationen bleiben SQL-first und werden über einen repository-lokalen, versionsgepinn­ten `goose`-Pfad statt über ad-hoc SQL-Ausführung standardisiert
 - IAM-Server-Module folgen der Package-Zielarchitektur: Auth-Runtime, IAM-Core, IAM-Admin, IAM-Governance und Instance-Registry haben getrennte Ownership.
 - HTTP-spezifische Fehlerantworten werden nicht im Core modelliert, sondern serverseitig über gemeinsame Utilities in `@sva/server-runtime`
+- Geschützte Studio-API-Fehler erhalten an der abschließenden HTTP-Grenze eine stabile `X-Request-Id` und genau ein strukturiertes Ergebnisereignis; sichere Fehlerreferenzen laufen über SDK bis zur Editoranzeige. Browsermeldungen bleiben begrenzte, nicht autoritative Beobachtungen.
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
 - Versionierte Studio-Releases bleiben im bestehenden Build-/Promote-Pfad: `main` integriert über Dev, während ein Prod-basierter Hotfix einen exakt validierten alten Quell-SHA mit aktuellem Main-Controller baut und testet. Git-Tag und GitHub-Release sind menschliche Metadaten; Digest und Live-Readback sind die Deploy-Identität (ADR-066).
 - UI-Shell folgt semantischen Design-Tokens statt direkter Farbcodes und bleibt kompatibel zu Tailwind-/shadcn-Primitives

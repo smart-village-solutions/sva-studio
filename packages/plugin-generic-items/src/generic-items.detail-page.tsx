@@ -130,7 +130,7 @@ export function GenericItemsDetailPage({
   const canSelectMedia = mediaCapabilities.canSelect;
   const canUploadMedia = mediaCapabilities.canUpload;
   const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
-  const { mediaAssets, refreshMediaAssets } = useGenericItemsMediaAssets();
+  const { mediaAssets, refreshMediaAssets, libraryStatus } = useGenericItemsMediaAssets();
   const { categoryOptions, categoryOptionsError, categoryOptionsLoading } =
     useGenericItemsCategoryOptions(pt);
   const handleLoadedItem = useGenericItemsLoadedMedia({
@@ -224,6 +224,7 @@ export function GenericItemsDetailPage({
     canUploadMedia,
     canUpdateMedia,
     mediaAssets,
+    libraryStatus,
     isAssetSelectable,
     mediaPicker,
     addManualMedia,

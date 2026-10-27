@@ -33,7 +33,11 @@ type SetSync = React.Dispatch<React.SetStateAction<boolean>>;
 function useMediaAssets() {
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
+  const [libraryLoading, setLibraryLoading] = React.useState(false);
+  const [libraryError, setLibraryError] = React.useState(false);
   const refreshMediaAssets = React.useCallback(async () => {
+    setLibraryLoading(true);
+    setLibraryError(false);
     try {
       const assets = (
         await listHostMediaAssets({
@@ -45,11 +49,17 @@ function useMediaAssets() {
       setMediaAssets(assets);
       return assets;
     } catch {
-      mediaAssetsRef.current = [];
-      setMediaAssets([]);
-      return [];
+      setLibraryError(true);
+      return mediaAssetsRef.current;
+    } finally {
+      setLibraryLoading(false);
     }
   }, []);
+  const libraryStatus = {
+    loading: libraryLoading,
+    error: libraryError,
+    onRetry: refreshMediaAssets,
+  };
   React.useEffect(() => {
     void refreshMediaAssets();
   }, [refreshMediaAssets]);
@@ -79,7 +89,7 @@ function useMediaAssets() {
     },
     []
   );
-  return { mediaAssets, refreshMediaAssets, toDetail };
+  return { mediaAssets, refreshMediaAssets, toDetail, libraryStatus };
 }
 
 function acceptAsset(
@@ -135,7 +145,7 @@ export function useCockpitCardMedia(
 ) {
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
-  const { mediaAssets, refreshMediaAssets, toDetail } = useMediaAssets();
+  const { mediaAssets, refreshMediaAssets, toDetail, libraryStatus } = useMediaAssets();
   const mediaPicker = useStudioMediaPickerOverlay<StudioMediaPickerAssetDetail>({
     editableMetadataFields: cockpitCardMetadataFields,
     onAccept: (asset) => {
@@ -201,6 +211,7 @@ export function useCockpitCardMedia(
     },
     requiresReferenceSync,
     setRequiresReferenceSync,
+    libraryStatus,
     mediaAssets,
     mediaPicker,
     addManualMedia,

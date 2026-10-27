@@ -2,6 +2,9 @@ import { eventsDECreate, eventsDEValidation } from './plugin.translations.de.lab
 export const eventsDEEditor = {
   create: eventsDECreate,
   messages: {
+    requestReference: 'Fehlerreferenz:',
+    copyRequestReference: 'Referenz kopieren',
+    requestReferenceCopied: 'Kopiert',
     createdNavigationError:
       'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
     unsavedAfterCreate:

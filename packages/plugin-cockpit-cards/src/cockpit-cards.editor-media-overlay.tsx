@@ -24,6 +24,8 @@ export function CockpitCardMediaOverlay({
   const { mediaAssets, mediaPicker, mediaUsages, addManualMedia } = media;
   return (
     <StudioMediaPickerOverlay
+      libraryStatus={media.libraryStatus}
+      persistenceContext="content"
       canUpload={canUploadMedia}
       assets={mediaAssets.map((asset) => ({
         id: asset.id,

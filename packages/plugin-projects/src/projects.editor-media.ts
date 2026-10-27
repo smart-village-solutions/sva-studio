@@ -156,7 +156,11 @@ function useProjectMediaPicker(input: PickerInput) {
 export function useProjectEditorMedia(input: MediaInput) {
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const mediaAssetsRef = React.useRef(mediaAssets);
+  const [libraryLoading, setLibraryLoading] = React.useState(false);
+  const [libraryError, setLibraryError] = React.useState(false);
   const refreshMediaAssets = React.useCallback(async () => {
+    setLibraryLoading(true);
+    setLibraryError(false);
     try {
       const assets = (
         await listHostMediaAssets({
@@ -168,11 +172,17 @@ export function useProjectEditorMedia(input: MediaInput) {
       setMediaAssets(assets);
       return assets;
     } catch {
-      mediaAssetsRef.current = [];
-      setMediaAssets([]);
-      return [];
+      setLibraryError(true);
+      return mediaAssetsRef.current;
+    } finally {
+      setLibraryLoading(false);
     }
   }, []);
+  const libraryStatus = {
+    loading: libraryLoading,
+    error: libraryError,
+    onRetry: refreshMediaAssets,
+  };
   const mediaPicker = useProjectMediaPicker({ ...input, mediaAssetsRef, refreshMediaAssets });
   const addManualMedia = React.useCallback(() => {
     input.onMediaChanged();
@@ -207,5 +217,5 @@ export function useProjectEditorMedia(input: MediaInput) {
     );
     input.setMediaUsages(usages);
   };
-  return { mediaAssets, mediaPicker, addManualMedia, changeMediaUsages };
+  return { mediaAssets, mediaPicker, addManualMedia, changeMediaUsages, libraryStatus };
 }

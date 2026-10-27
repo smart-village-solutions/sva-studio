@@ -9,6 +9,7 @@ import { toPickerSummary, type useProjectEditorMedia } from './projects.editor-m
 
 type MediaPickerInput = Readonly<{
   pt: ReturnType<typeof usePluginTranslation>;
+  libraryStatus?: ReturnType<typeof useProjectEditorMedia>['libraryStatus'];
   mediaAssets: readonly HostMediaAssetListItem[];
   canUploadMedia: boolean;
   mediaPicker: ReturnType<typeof useProjectEditorMedia>['mediaPicker'];
@@ -21,6 +22,7 @@ type MediaPickerInput = Readonly<{
 export function ProjectMediaPicker({
   pt,
   mediaAssets,
+  libraryStatus,
   canUploadMedia,
   mediaPicker,
   canUpdateMedia,
@@ -30,6 +32,9 @@ export function ProjectMediaPicker({
 }: MediaPickerInput) {
   return (
     <StudioMediaPickerOverlay
+      libraryStatus={libraryStatus}
+      feedbackMessage={mediaPicker.errorCode ? pt('messages.mediaError') : null}
+      feedbackTone="error"
       assets={mediaAssets.map(toPickerSummary)}
       canUpload={canUploadMedia}
       open={mediaPicker.open}

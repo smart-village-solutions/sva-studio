@@ -34,7 +34,7 @@ export const useEventsMediaPicker = (
   setMediaUsages: Dispatch<SetStateAction<readonly ContentMediaUsage[]>>,
   setRequiresReferenceSync: Dispatch<SetStateAction<boolean>>
 ) => {
-  const { mediaAssets, mediaAssetsRef, refreshMediaAssets } = useEventsMediaAssets();
+  const { mediaAssets, mediaAssetsRef, refreshMediaAssets, libraryStatus } = useEventsMediaAssets();
   const isAssetSelectable = React.useCallback(
     (asset: StudioMediaPickerAssetDetail) => isEventsAssetSelectable(asset, mediaUsages, methods),
     [mediaUsages, methods]
@@ -61,6 +61,7 @@ export const useEventsMediaPicker = (
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
   );
   return {
+    libraryStatus,
     mediaAssets,
     refreshMediaAssets,
     isAssetSelectable,
@@ -73,7 +74,11 @@ export const useEventsMediaPicker = (
 export const useEventsMediaAssets = () => {
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
+  const [libraryLoading, setLibraryLoading] = React.useState(false);
+  const [libraryError, setLibraryError] = React.useState(false);
   const refreshMediaAssets = React.useCallback(async () => {
+    setLibraryLoading(true);
+    setLibraryError(false);
     try {
       const assets = await listHostMediaAssets({
         fetch: globalThis.fetch.bind(globalThis),
@@ -83,12 +88,18 @@ export const useEventsMediaAssets = () => {
       setMediaAssets(assets);
       return assets;
     } catch {
-      mediaAssetsRef.current = [];
-      setMediaAssets([]);
-      return [];
+      setLibraryError(true);
+      return mediaAssetsRef.current;
+    } finally {
+      setLibraryLoading(false);
     }
   }, []);
-  return { mediaAssets, mediaAssetsRef, refreshMediaAssets };
+  const libraryStatus = {
+    loading: libraryLoading,
+    error: libraryError,
+    onRetry: refreshMediaAssets,
+  };
+  return { mediaAssets, mediaAssetsRef, refreshMediaAssets, libraryStatus };
 };
 
 export function EventsDetailMediaPicker({
@@ -112,6 +123,7 @@ export function EventsDetailMediaPicker({
   } = media;
   return (
     <StudioMediaPickerOverlay
+      libraryStatus={media.libraryStatus}
       assets={mediaAssets.map(toEventsMediaPickerSummary)}
       canUpload={canUploadMedia}
       feedbackMessage={mediaPickerFeedback.message}

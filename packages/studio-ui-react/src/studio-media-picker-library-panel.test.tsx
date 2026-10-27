@@ -7,6 +7,57 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('media picker tag search', () => {
+  it('distinguishes initial loading and failure from an empty library and offers retry', () => {
+    const retry = vi.fn();
+    const props = {
+      assets: [],
+      searchValue: '',
+      onSearchValueChange: vi.fn(),
+      onSelectAsset: vi.fn(),
+      labels: {
+        searchLabel: 'Search',
+        loading: 'Loading',
+        loadError: 'Failed',
+        empty: 'Empty',
+        select: 'Select',
+      },
+    };
+    const { rerender } = render(
+      <StudioMediaPickerLibraryPanel
+        {...props}
+        libraryStatus={{ loading: true, error: false, onRetry: retry }}
+      />
+    );
+    expect(screen.getByRole('status').textContent).toBe('Loading');
+    expect(screen.queryByText('Empty')).toBeNull();
+    rerender(
+      <StudioMediaPickerLibraryPanel
+        {...props}
+        libraryStatus={{ loading: false, error: true, onRetry: retry }}
+      />
+    );
+    expect(screen.getByRole('alert').textContent).toBe('Failed');
+    expect(screen.queryByText('Empty')).toBeNull();
+    fireEvent.click(screen.getByRole('button'));
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it('filters local assets by title or filename when server search is unavailable', () => {
+    const props = {
+      assets: [{ id: 'one', title: 'Museum', fileName: 'entry.jpg' }],
+      searchValue: 'MuSe',
+      onSearchValueChange: vi.fn(),
+      onSelectAsset: vi.fn(),
+      labels: { searchLabel: 'Search', empty: 'Empty', select: 'Select' },
+    };
+    const { rerender } = render(<StudioMediaPickerLibraryPanel {...props} />);
+    expect(screen.getByRole('button', { name: 'Select' })).toBeTruthy();
+    rerender(<StudioMediaPickerLibraryPanel {...props} searchValue="ENTRY" />);
+    expect(screen.getByRole('button', { name: 'Select' })).toBeTruthy();
+    rerender(<StudioMediaPickerLibraryPanel {...props} searchValue="missing" />);
+    expect(screen.getByText('Empty')).toBeTruthy();
+  });
+
   it('queries the server for a tag rather than filtering only the initial page', async () => {
     const fetch = vi.fn(async () =>
       Response.json({

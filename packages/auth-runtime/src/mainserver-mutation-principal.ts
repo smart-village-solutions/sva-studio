@@ -24,6 +24,10 @@ export type ResolveMutationPrincipalContextResult =
   | Readonly<{
       ok: false;
       status: Exclude<EffectiveSvaMainserverCredentialsResult['status'], 'ok'>;
+      reasonCode?: Extract<
+        EffectiveSvaMainserverCredentialsResult,
+        { status: 'organization_mainserver_credentials_missing' }
+      >['reasonCode'];
     }>;
 
 export const resolveMutationPrincipalContext = async (input: {
@@ -40,7 +44,13 @@ export const resolveMutationPrincipalContext = async (input: {
     ...(input.actingPrincipalType ? { actingPrincipalType: input.actingPrincipalType } : {}),
   });
   if (resolved.status !== 'ok') {
-    return { ok: false, status: resolved.status };
+    return {
+      ok: false,
+      status: resolved.status,
+      ...(resolved.status === 'organization_mainserver_credentials_missing' && resolved.reasonCode
+        ? { reasonCode: resolved.reasonCode }
+        : {}),
+    };
   }
 
   if (input.actingPrincipalType && resolved.source !== input.actingPrincipalType) {

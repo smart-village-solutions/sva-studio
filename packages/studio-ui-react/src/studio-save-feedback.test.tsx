@@ -171,4 +171,29 @@ describe('Studio save feedback', () => {
       screen.getByRole<HTMLButtonElement>('button', { name: 'Erneut versuchen' }).disabled
     ).toBe(true);
   });
+
+  it('shows and copies a safe request reference', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    render(
+      <StudioPersistentFormError
+        message="Speichern fehlgeschlagen."
+        requestId="request-123"
+        requestIdLabel="Fehlerreferenz:"
+        copyRequestIdLabel="Referenz kopieren"
+        requestIdCopiedLabel="Kopiert"
+        requestIdCopyFailedLabel="Kopieren nicht möglich"
+      />
+    );
+
+    expect(screen.getByText('request-123')).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Referenz kopieren' }));
+    });
+    expect(writeText).toHaveBeenCalledWith('request-123');
+    expect(screen.getByRole('button', { name: 'Kopiert' })).toBeTruthy();
+  });
 });

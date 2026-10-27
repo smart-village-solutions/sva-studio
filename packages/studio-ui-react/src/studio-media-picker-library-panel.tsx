@@ -1,6 +1,7 @@
 import { Button } from './button.js';
 import { Input } from './input.js';
 import * as React from 'react';
+import { useContentMediaTranslation } from '@sva/plugin-sdk/content-media';
 import { listHostMediaAssets } from '@sva/plugin-sdk/content-media';
 import {
   normalizeStudioMediaPickerSearchValue,
@@ -17,6 +18,11 @@ const StudioMediaPreview = ({ alt, url }: Readonly<{ alt: string; url?: string |
   );
 
 export type StudioMediaPickerLibraryPanelProps = Readonly<{
+  libraryStatus?: Readonly<{
+    loading: boolean;
+    error: boolean;
+    onRetry: () => void | Promise<unknown>;
+  }>;
   assets: readonly StudioMediaPickerAssetSummary[];
   searchValue: string;
   onSearchValueChange: (value: string) => void;
@@ -123,8 +129,43 @@ const MediaLibraryAsset = ({
   );
 };
 
+const matchesLibrarySearch = (asset: StudioMediaPickerAssetSummary, query: string) =>
+  query.length === 0 ||
+  normalizeStudioMediaPickerSearchValue(asset.title).includes(query) ||
+  normalizeStudioMediaPickerSearchValue(asset.fileName).includes(query);
+
+const LibraryFeedback = ({
+  loading,
+  failed,
+  labels,
+  onRetry,
+}: {
+  loading: boolean;
+  failed: boolean;
+  labels: StudioMediaPickerLibraryPanelProps['labels'];
+  onRetry?: () => void | Promise<unknown>;
+}) => {
+  const t = useContentMediaTranslation();
+  return (
+    <>
+      {loading ? <p role="status">{labels.loading}</p> : null}
+      {failed ? (
+        <div className="space-y-2">
+          <p role="alert">{labels.loadError}</p>
+          {onRetry ? (
+            <Button type="button" onClick={() => void onRetry()}>
+              {t('editor.retry')}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </>
+  );
+};
+
 export const StudioMediaPickerLibraryPanel = ({
   assets,
+  libraryStatus,
   isAssetSelectable,
   isLoadingReviewAsset = false,
   labels,
@@ -134,19 +175,17 @@ export const StudioMediaPickerLibraryPanel = ({
 }: StudioMediaPickerLibraryPanelProps) => {
   const [tag, setTag] = React.useState('');
   const serverSearch = Boolean(labels.tagLabel && (searchValue.trim() || tag.trim()));
-  const { remoteAssets, loading, failed } = useLibrarySearch(searchValue, tag, serverSearch);
+  const {
+    remoteAssets,
+    loading: searchLoading,
+    failed: searchFailed,
+  } = useLibrarySearch(searchValue, tag, serverSearch);
+  const loading = serverSearch ? searchLoading : libraryStatus?.loading === true;
+  const failed = serverSearch ? searchFailed : libraryStatus?.error === true;
   const query = normalizeStudioMediaPickerSearchValue(searchValue);
   const filteredAssets = serverSearch
     ? (remoteAssets ?? [])
-    : assets.filter((asset) => {
-        if (query.length === 0) {
-          return true;
-        }
-        return (
-          normalizeStudioMediaPickerSearchValue(asset.title).includes(query) ||
-          normalizeStudioMediaPickerSearchValue(asset.fileName).includes(query)
-        );
-      });
+    : assets.filter((asset) => matchesLibrarySearch(asset, query));
 
   return (
     <div className="space-y-5">
@@ -173,8 +212,12 @@ export const StudioMediaPickerLibraryPanel = ({
           />
         </div>
       ) : null}
-      {loading ? <p role="status">{labels.loading}</p> : null}
-      {failed ? <p role="alert">{labels.loadError}</p> : null}
+      <LibraryFeedback
+        loading={loading}
+        failed={failed}
+        labels={labels}
+        onRetry={serverSearch ? undefined : libraryStatus?.onRetry}
+      />
       {filteredAssets.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredAssets.map((asset) => (

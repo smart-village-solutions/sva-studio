@@ -290,6 +290,100 @@ describe('server transport', () => {
     expect(response).toBe(pluginResponse);
   });
 
+  it('adds the request ID and one safe operational event to early protected API failures', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn() };
+    const pluginResponse = Response.json({ error: 'forbidden' }, { status: 403 });
+    createSdkLoggerMock.mockReturnValue(logger);
+    dispatchPluginServerHandlerMock.mockResolvedValue(pluginResponse);
+    createStartHandlerMock.mockReturnValue(vi.fn());
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/iam/contents/secret-content-id?token=must-not-log')
+    );
+
+    expect(response.headers.get('X-Request-Id')).toBe('req-default');
+    const failureEvents = logger.warn.mock.calls.filter(([, metadata]) =>
+      (metadata as { event?: unknown }).event === 'studio.request.failed'
+    );
+    expect(failureEvents).toHaveLength(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Studio API request failed',
+      expect.objectContaining({
+        event: 'studio.request.failed',
+        operation: 'studio_request_failed',
+        request_id: 'req-default',
+        http_status: 403,
+        error_code: 'forbidden',
+        route_template: '/api/v1/iam/contents/*',
+        method: 'GET',
+        phase: 'response',
+      })
+    );
+    expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('must-not-log');
+  });
+
+  it('returns the same request ID and one final event for protected dispatch exceptions', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn() };
+    createSdkLoggerMock.mockReturnValue(logger);
+    dispatchPluginServerHandlerMock.mockRejectedValue(new Error('private upstream detail'));
+    createStartHandlerMock.mockReturnValue(vi.fn());
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/mainserver/news?secret=not-logged')
+    );
+
+    expect(response.status).toBe(500);
+    expect(response.headers.get('X-Request-Id')).toBe('req-default');
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'internal_error' },
+      requestId: 'req-default',
+    });
+    expect(logger.error).toHaveBeenCalledTimes(1);
+    expect(logger.error).toHaveBeenCalledWith(
+      'Studio API request failed',
+      expect.objectContaining({
+        request_id: 'req-default',
+        http_status: 500,
+        error_code: 'internal_error',
+        phase: 'dispatch',
+      })
+    );
+    expect(JSON.stringify(logger.error.mock.calls)).not.toContain('private upstream detail');
+    expect(JSON.stringify(logger.error.mock.calls)).not.toContain('secret=not-logged');
+  });
+
+  it('logs only allowlisted credential reason codes from protected error responses', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn() };
+    createSdkLoggerMock.mockReturnValue(logger);
+    dispatchPluginServerHandlerMock.mockResolvedValue(
+      Response.json(
+        {
+          error: 'organization_mainserver_credentials_missing',
+          details: { reasonCode: 'partial_credentials', apiSecret: 'never-log-this' },
+        },
+        { status: 409 }
+      )
+    );
+    createStartHandlerMock.mockReturnValue(vi.fn());
+
+    const mod = await import('./server');
+    await mod.default.fetch(new Request('http://localhost:3000/api/v1/mainserver/events'));
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Studio API request failed',
+      expect.objectContaining({
+        error_code: 'organization_mainserver_credentials_missing',
+        reason_code: 'partial_credentials',
+      })
+    );
+    expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('never-log-this');
+  });
+
   it('dispatches declared Waste domain paths through the plugin snapshot', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     const pluginResponse = new Response('waste', { status: 200 });

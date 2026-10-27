@@ -69,6 +69,7 @@ export const contentDEResources = {
       '{{count}} ausgewählte Inhalte werden endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
     deletePending: 'Wird gelöscht ...',
     dismissFeedback: 'Schließen',
+    reloadCurrentContext: 'Aktuellen Kontext neu laden',
   },
   fields: {
     title: 'Überschrift',
@@ -164,6 +165,8 @@ export const contentDEResources = {
       'Der Ressourcenprincipal wird geladen. Schreibaktionen sind vorübergehend gesperrt.',
     resourceUnavailable:
       'Der Ressourcenprincipal konnte nicht eindeutig bestimmt werden. Schreibaktionen bleiben gesperrt.',
+    mainserverNotReady:
+      'Die lokale Mainserver-Anbindung dieses Principals ist nicht bereit. Speichern ist gesperrt. Bitte lassen Sie die Anbindung durch die Administration prüfen.',
   },
   ownership: {
     title: 'Inhaber',
@@ -384,6 +387,12 @@ export const contentDEResources = {
     databaseUnavailable:
       'Die Inhaltsdaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.',
     invalidRequest: 'Der Inhalt enthält ungültige oder unvollständige Daten.',
+    staleMainserverContext:
+      'Der Organisations- oder Principal-Kontext hat sich geändert. Laden Sie den aktuellen Kontext neu und prüfen Sie Ihre Eingaben, bevor Sie erneut speichern.',
+    requestIdLabel: 'Fehlerreferenz:',
+    copyRequestId: 'Referenz kopieren',
+    requestIdCopied: 'Kopiert',
+    requestIdCopyFailed: 'Kopieren fehlgeschlagen',
   },
   validation: {
     titleRequired: 'Die Überschrift ist ein Pflichtfeld.',

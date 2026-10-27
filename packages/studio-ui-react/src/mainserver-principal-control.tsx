@@ -1,4 +1,5 @@
 import type { ChangeEvent } from 'react';
+import type { IamMainserverReadiness } from '@sva/core';
 
 import { Input } from './input.js';
 import { Select } from './select.js';
@@ -19,6 +20,9 @@ export type MainserverPrincipalContextOption = Readonly<{
 type ContextSelection = Readonly<{
   contextOptions?: readonly MainserverPrincipalContextOption[];
   onContextChange?: (value: MainserverPrincipalContextOption['value']) => void;
+  readinessByPrincipal?: Readonly<Record<'organization' | 'user', IamMainserverReadiness>>;
+  readinessMessage?: string;
+  refreshContext?: () => Promise<void>;
 }>;
 
 export type MainserverPrincipalControlModel = (
@@ -34,6 +38,12 @@ export type MainserverPrincipalControlModel = (
     }>
 ) &
   ContextSelection;
+
+export const isMainserverPrincipalReady = (
+  control: MainserverPrincipalControlModel | undefined,
+  principal: MainserverPrincipalType
+): boolean =>
+  !control || control.readinessByPrincipal?.[principal] === 'ready';
 
 export const resolveMainserverPrincipalOptions = (
   control: MainserverPrincipalControlModel | undefined,
@@ -54,6 +64,8 @@ export type MainserverPrincipalControlProps = Readonly<{
   dataProvider?: Readonly<{ id?: string; name?: string }> | null;
   dataProviderLabel?: string;
   dataProviderUnavailableLabel?: string;
+  readinessByPrincipal?: ContextSelection['readinessByPrincipal'];
+  readinessMessage?: string;
 }> &
   ContextSelection;
 
@@ -75,6 +87,8 @@ export const MainserverPrincipalControl = ({
   dataProvider,
   dataProviderLabel,
   dataProviderUnavailableLabel,
+  readinessByPrincipal,
+  readinessMessage,
 }: MainserverPrincipalControlProps) => {
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const nextValue = event.target.value;
@@ -124,6 +138,11 @@ export const MainserverPrincipalControl = ({
             </dd>
           </div>
         </dl>
+      ) : null}
+      {readinessByPrincipal && readinessByPrincipal[value] !== 'ready' && readinessMessage ? (
+        <p role="status" className="text-sm text-destructive" aria-live="polite">
+          {readinessMessage}
+        </p>
       ) : null}
     </div>
   );

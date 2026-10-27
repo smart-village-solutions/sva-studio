@@ -141,10 +141,10 @@ export const ContentEditorPage = ({
   }, [isDirty, saveFeedback.markDirty]);
 
   React.useEffect(() => {
-    if (mode === 'edit' && detailApi.content) {
+    if (mode === 'edit' && detailApi.content && !isDirty) {
       reset(buildFormState(detailApi.content));
     }
-  }, [detailApi.content, mode, reset]);
+  }, [detailApi.content, isDirty, mode, reset]);
 
   const activeError = mode === 'create' ? createApi.mutationError : detailApi.mutationError;
   const isLoading = mode === 'create' ? false : detailApi.isLoading;
@@ -218,6 +218,9 @@ export const ContentEditorPage = ({
         });
       },
     });
+    if (success && mode === 'edit') {
+      reset(values);
+    }
     (success ? saveFeedback.markSaved : saveFeedback.markFailed)(operationId);
   };
   const submitForm = handleSubmit(saveValues, () => saveFeedback.reset());

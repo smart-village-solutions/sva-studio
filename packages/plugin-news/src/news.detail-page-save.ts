@@ -17,7 +17,7 @@ import {
   type ContentMediaUsage,
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
-import { createNews, saveNewsEditorItem, updateNews } from './news.api.js';
+import { createNews, NewsApiError, saveNewsEditorItem, updateNews } from './news.api.js';
 import { NEWS_CONTENT_TYPE } from './news.constants.js';
 import { mapNewsItemToDetailFormValues } from './news.detail-form.js';
 import {
@@ -253,6 +253,7 @@ export const useNewsDetailSave = ({
           source: 'save',
           text: resolveNewsErrorMessage(pt, error, 'messages.saveError'),
           requestId: readMainserverErrorRequestId(error),
+          ...(error instanceof NewsApiError ? { errorCode: error.code } : {}),
         });
         saveFeedback.markFailed(operationId);
       }

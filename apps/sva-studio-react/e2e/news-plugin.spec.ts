@@ -35,6 +35,72 @@ test.describe('news plugin', () => {
     await page.route('**/api/v1/iam/media**', routeNewsMediaRequests);
   });
 
+  test('keeps a create draft open but blocks saving while the selected principal is not ready', async ({
+    page,
+  }) => {
+    let createRequests = 0;
+    await page.route('**/auth/me', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(authenticatedUser),
+      })
+    );
+    await page.route('**/iam/me/permissions?**', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(permissionPayload),
+      })
+    );
+    await page.route('**/api/v1/iam/me/context', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            activeOrganizationId: null,
+            organizations: [],
+            personalMainserverReadiness: 'missing_credentials',
+          },
+        }),
+      })
+    );
+    await page.route('**/api/v1/mainserver/mutation-capabilities', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { enabledActions: ['news.create'] } }),
+      })
+    );
+    await page.route('**/api/v1/mainserver/news**', async (route) => {
+      if (route.request().method() !== 'GET') createRequests += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [], pagination: createPagination(0) }),
+      });
+    });
+    await page.route('**/api/v1/mainserver/categories*', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [] }),
+      })
+    );
+    await routeUnifiedContentOverview(page, []);
+
+    await gotoHomeAsAuthenticatedUser(page);
+    await navigateClientSide(page, '/admin/news/new');
+    await expectNewsEditorReady(page, 'create');
+    await page.locator('#news-title').fill('Entwurf bleibt erhalten');
+
+    await expect(page.getByRole('status')).toContainText(/Mainserver-Anbindung|Mainserver connection/);
+    await expect(page.locator('#news-title')).toHaveValue('Entwurf bleibt erhalten');
+    await expect(page.getByRole('button', { name: /news\.create\.actions|Veröffentlichen|Speichern/ }).first()).toBeDisabled();
+    expect(createRequests).toBe(0);
+  });
+
   test('supports draft creation, publication, and delete in the simplified news editor', async ({
     page,
   }) => {

@@ -107,6 +107,7 @@ export const newsTranslationsENEditor = {
     cancel: 'Cancel',
     create: 'Create news',
     update: 'Save changes',
+    reloadCurrentContext: 'Reload context and keep draft',
     save: 'Save',
     saving: 'Saving…',
     saved: 'Saved',
@@ -153,6 +154,8 @@ export const newsTranslationsENEditor = {
     loadError: 'Failed to load news.',
     missingContent: 'The requested news entry could not be loaded.',
     saveError: 'Failed to save news.',
+    staleMainserverContext:
+      'The organization or Mainserver context changed. Reload the current context and review your draft before saving again.',
     validationError: 'Please fix the highlighted fields.',
     validationSummary: 'Please review the following fields:',
     createSuccess: 'News entry created.',

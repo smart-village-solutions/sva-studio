@@ -40,6 +40,8 @@ const contentErrorMessage = (error: IamHttpError | null): string => {
       return t('content.errors.rateLimited');
     case 'not_found':
       return t('content.errors.notFound');
+    case 'stale_mainserver_context':
+      return t('content.errors.staleMainserverContext');
     case 'database_unavailable':
       return t('content.errors.databaseUnavailable');
     case 'invalid_request':
@@ -129,9 +131,22 @@ const ContentEditorFeedback = ({
     {activeError ? (
       <StudioPersistentFormError
         message={contentErrorMessage(activeError)}
-        retryLabel={t('account.actions.retry')}
+        retryLabel={
+          activeError.code === 'stale_mainserver_context'
+            ? t('content.actions.reloadCurrentContext')
+            : t('account.actions.retry')
+        }
         retryDisabled={saveFeedback.status === 'saving'}
-        onRetry={() => void submitForm()}
+        onRetry={() =>
+          activeError.code === 'stale_mainserver_context'
+            ? void detailApi.refetch()
+            : void submitForm()
+        }
+        requestId={activeError.requestId}
+        requestIdLabel={t('content.errors.requestIdLabel')}
+        copyRequestIdLabel={t('content.errors.copyRequestId')}
+        requestIdCopiedLabel={t('content.errors.requestIdCopied')}
+        requestIdCopyFailedLabel={t('content.errors.requestIdCopyFailed')}
       />
     ) : null}
 

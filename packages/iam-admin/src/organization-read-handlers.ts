@@ -8,6 +8,7 @@ import type {
   IamOrganizationDetail,
   IamOrganizationListItem,
   IamOrganizationType,
+  IamMainserverReadiness,
 } from '@sva/core';
 import type {
   OrganizationListSortDirection,
@@ -74,6 +75,10 @@ export type OrganizationReadHandlerDeps<TFeatureFlags = unknown> = {
     client: QueryClient,
     input: { readonly instanceId: string; readonly accountId: string }
   ) => Promise<readonly IamOrganizationContextOption[]>;
+  readonly loadPersonalMainserverReadiness?: (input: {
+    readonly instanceId: string;
+    readonly keycloakSubject: string;
+  }) => Promise<IamMainserverReadiness>;
   readonly loadOrganizationDetail: (
     client: QueryClient,
     input: { readonly instanceId: string; readonly organizationId: string }
@@ -210,7 +215,6 @@ export const createOrganizationReadHandlers = <TFeatureFlags>(
           ...sorting,
         })
       );
-
       return deps.jsonResponse(
         200,
         deps.asApiList(organizations.items, { page, pageSize, total: organizations.total }, actorResolution.actor.requestId)
@@ -278,6 +282,12 @@ export const createOrganizationReadHandlers = <TFeatureFlags>(
           accountId: actorAccountId,
         })
       );
+      const personalMainserverReadiness = deps.loadPersonalMainserverReadiness
+        ? await deps.loadPersonalMainserverReadiness({
+            instanceId: actorResolution.actor.instanceId,
+            keycloakSubject: ctx.user.id,
+          }).catch((): IamMainserverReadiness => 'unavailable')
+        : undefined;
       const session = await deps.getSession(ctx.sessionId);
       const organizationContextState = resolveOrganizationContextState({
         roleNames: ctx.user.roles,
@@ -298,6 +308,7 @@ export const createOrganizationReadHandlers = <TFeatureFlags>(
       const response: IamOrganizationContext = {
         activeOrganizationId,
         organizations,
+        ...(personalMainserverReadiness ? { personalMainserverReadiness } : {}),
       };
 
       return deps.jsonResponse(200, deps.asApiItem(response, actorResolution.actor.requestId));

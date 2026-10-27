@@ -59,6 +59,22 @@ export const useNewsDetailLoad = ({
 }: NewsDetailLoadOptions) => {
   const editLoadRequestIdRef = React.useRef(0);
   const loadedPrincipalTypeRef = React.useRef<MainserverPrincipalType | null>(null);
+  const [reloadRequest, setReloadRequest] = React.useState(0);
+  const reloadCurrentContext = React.useCallback(async () => {
+    const isEditing = mode === 'edit' && Boolean(contentId);
+    if (isEditing) {
+      setIsLoading(true);
+      setResourceAccess({});
+    }
+    try {
+      await principalControl?.refreshContext?.();
+      setStatusMessage(null);
+      if (isEditing) setReloadRequest((current) => current + 1);
+    } catch {
+      setStatusMessage({ source: 'load', text: pt('messages.loadError') });
+      if (isEditing) setIsLoading(false);
+    }
+  }, [contentId, mode, principalControl, pt, setIsLoading, setResourceAccess, setStatusMessage]);
   React.useEffect(() => {
     if (principalControl) {
       setActingPrincipalType(principalControl.value);
@@ -77,6 +93,7 @@ export const useNewsDetailLoad = ({
     }
 
     const requestId = ++editLoadRequestIdRef.current;
+    const preserveDraft = reloadRequest > 0;
     let active = true;
 
     const loadPrincipalType = principalControl?.value ?? 'user';
@@ -96,20 +113,22 @@ export const useNewsDetailLoad = ({
           return;
         }
         const nextValues = mapNewsItemToDetailFormValues(item);
-        reset(nextValues);
-        setMediaUsages(
-          mainserverContentMediaToUsages(
-            nextValues.contentMedia,
-            alignHostMediaReferencesByOrder({
-              itemCount: nextValues.contentMedia.length,
-              role: 'gallery_item',
-              references,
-            })
-          )
-        );
-        setRequiresReferenceSync(references.length > 0);
-        setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
-        setInvalidScheduledPublicationInput(false);
+        reset(nextValues, preserveDraft ? { keepDirtyValues: true } : undefined);
+        if (!preserveDraft) {
+          setMediaUsages(
+            mainserverContentMediaToUsages(
+              nextValues.contentMedia,
+              alignHostMediaReferencesByOrder({
+                itemCount: nextValues.contentMedia.length,
+                role: 'gallery_item',
+                references,
+              })
+            )
+          );
+          setRequiresReferenceSync(references.length > 0);
+          setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
+          setInvalidScheduledPublicationInput(false);
+        }
         setLoadedItem(item);
         setResourceAccess(detail.access);
         loadedPrincipalTypeRef.current = loadPrincipalType;
@@ -131,7 +150,7 @@ export const useNewsDetailLoad = ({
     return () => {
       active = false;
     };
-  }, [contentId, mode, pt, reset]);
+  }, [contentId, mode, pt, reloadRequest, reset]);
 
   React.useEffect(() => {
     if (
@@ -156,4 +175,5 @@ export const useNewsDetailLoad = ({
       active = false;
     };
   }, [actingPrincipalType, contentId, loadedItem, mode]);
+  return { reloadCurrentContext };
 };

@@ -1,4 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  publishSessionAccessSnapshot,
+  readSessionAccessSnapshot,
+  resetSessionAccessSnapshot,
+} from '@sva/plugin-sdk';
 
 type RouterWithAuthContext = {
   options: {
@@ -164,6 +169,7 @@ vi.mock('@tanstack/react-start/server', () => ({
 describe('router runtime helpers', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
+    resetSessionAccessSnapshot();
     cookieState = '';
     routerMocks.executionMode.current = 'client';
     routerMocks.createRouterSpy.mockClear();
@@ -198,6 +204,7 @@ describe('router runtime helpers', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+    resetSessionAccessSnapshot();
   });
 
   it('isolates platform and tenant route trees across server requests', async () => {
@@ -403,7 +410,7 @@ describe('router runtime helpers', () => {
     expect(await getUser()).toEqual({
       roles: ['editor', 'system_admin'],
       permissionActions: [],
-      permissionStatus: 'ok',
+      permissionStatus: 'degraded',
       assignedModules: ['media', 'news'],
     });
     expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(
@@ -473,6 +480,55 @@ describe('router runtime helpers', () => {
     );
   });
 
+  it('uses the current shared access snapshot for client route guards when identity and organization match', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      subjectId: 'user-1',
+      instanceId: 'instance-1',
+      organizationId: 'org-1',
+      permissionActions: ['news.read'],
+      assignedModules: ['news'],
+      roles: ['editor'],
+    });
+    expect(readSessionAccessSnapshot()).toMatchObject({
+      subjectId: 'user-1',
+      instanceId: 'instance-1',
+      organizationId: 'org-1',
+      isResolved: true,
+    });
+    const { getRouter } = await import('./router');
+    const getUser = readRouteGuardGetUser(await getRouter());
+    routerMocks.fetchWithRequestTimeoutSpy
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            user: { id: 'user-1', instanceId: 'instance-1', roles: ['editor'] },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { activeOrganizationId: 'org-1' } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      );
+
+    await expect(getUser()).resolves.toEqual({
+      id: 'user-1',
+      instanceId: 'instance-1',
+      roles: ['editor'],
+      permissionActions: ['news.read'],
+      permissionStatus: 'ok',
+      assignedModules: ['news'],
+    });
+    expect(routerMocks.fetchWithRequestTimeoutSpy.mock.calls.map(([input]) => input)).toEqual([
+      'http://localhost:3000/auth/me',
+      'http://localhost:3000/auth/me',
+      'http://localhost:3000/api/v1/iam/me/context',
+    ]);
+  });
+
   it('keeps authenticated client route guards degraded when scoped access loading throws', async () => {
     const { getRouter } = await import('./router');
     const getUser = readRouteGuardGetUser(await getRouter());
@@ -529,7 +585,7 @@ describe('router runtime helpers', () => {
     expect(await getUser()).toEqual({
       roles: ['editor'],
       permissionActions: [],
-      permissionStatus: 'ok',
+      permissionStatus: 'degraded',
       assignedModules: ['news'],
     });
     expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(

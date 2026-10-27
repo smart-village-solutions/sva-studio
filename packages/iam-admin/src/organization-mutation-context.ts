@@ -1,4 +1,5 @@
 import { hasSystemAdminRole } from '@sva/core';
+import type { IamMainserverReadiness } from '@sva/core';
 import { updateOrganizationContextSchema } from './organization-schemas.js';
 import type {
   OrganizationMutationAuthenticatedRequestContext,
@@ -58,7 +59,8 @@ const executePersonalContext = async <TFeatureFlags>(
   prepared: Exclude<Awaited<ReturnType<typeof prepareContext>>, Response>,
   organizations: Awaited<
     ReturnType<OrganizationMutationHandlerDeps<TFeatureFlags>['loadContextOptions']>
-  >
+  >,
+  personalMainserverReadiness: IamMainserverReadiness | undefined
 ): Promise<Response> => {
   const { actor } = prepared;
   if (!hasSystemAdminRole(ctx.user.roles)) {
@@ -90,7 +92,14 @@ const executePersonalContext = async <TFeatureFlags>(
 
   return deps.jsonResponse(
     200,
-    deps.asApiItem({ activeOrganizationId: undefined, organizations }, actor.requestId)
+    deps.asApiItem(
+      {
+        activeOrganizationId: undefined,
+        organizations,
+        ...(personalMainserverReadiness ? { personalMainserverReadiness } : {}),
+      },
+      actor.requestId
+    )
   );
 };
 
@@ -107,8 +116,14 @@ const executeContext = async <TFeatureFlags>(
         accountId: actor.actorAccountId,
       })
     );
+    const personalMainserverReadiness = deps.loadPersonalMainserverReadiness
+      ? await deps.loadPersonalMainserverReadiness({
+          instanceId: actor.instanceId,
+          keycloakSubject: ctx.user.id,
+        }).catch((): IamMainserverReadiness => 'unavailable')
+      : undefined;
     if (parsed.data.organizationId === null) {
-      return executePersonalContext(deps, ctx, prepared, organizations);
+      return executePersonalContext(deps, ctx, prepared, organizations, personalMainserverReadiness);
     }
     const target = organizations.find(
       (organization) => organization.organizationId === parsed.data.organizationId
@@ -155,6 +170,7 @@ const executeContext = async <TFeatureFlags>(
     const response = {
       activeOrganizationId: target.organizationId,
       organizations,
+      ...(personalMainserverReadiness ? { personalMainserverReadiness } : {}),
     };
 
     deps.logger.info('Organization context switched', {

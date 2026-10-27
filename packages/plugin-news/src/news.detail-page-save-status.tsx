@@ -21,6 +21,7 @@ export const NewsDetailSaveStatus = ({
   setStatusMessage,
   mediaReferenceSync,
   completeCreateSave,
+  reloadCurrentContext,
 }: Readonly<{
   deleteNavigationFailed: boolean;
   statusMessage: StatusMessage | null;
@@ -32,6 +33,7 @@ export const NewsDetailSaveStatus = ({
   setStatusMessage: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
   mediaReferenceSync: ReturnType<typeof useStudioMediaReferenceSync>;
   completeCreateSave: () => boolean;
+  reloadCurrentContext: () => Promise<void>;
 }>) => (
   <>
     {deleteNavigationFailed ? (
@@ -62,7 +64,11 @@ export const NewsDetailSaveStatus = ({
         }
         retryLabel={
           statusMessage.source === 'save'
-            ? pt('actions.retry')
+            ? pt(
+                statusMessage.errorCode === 'stale_mainserver_context'
+                  ? 'actions.reloadCurrentContext'
+                  : 'actions.retry'
+              )
             : statusMessage.source === 'reference'
               ? pt('actions.retryMediaReferences')
               : undefined
@@ -70,7 +76,9 @@ export const NewsDetailSaveStatus = ({
         retryDisabled={saveFeedback.status === 'saving'}
         onRetry={
           statusMessage.source === 'save'
-            ? () => void saveCurrentItem()
+            ? statusMessage.errorCode === 'stale_mainserver_context'
+              ? () => void reloadCurrentContext()
+              : () => void saveCurrentItem()
             : statusMessage.source === 'reference' && mediaReferenceSync.hasPendingRetry
               ? () => {
                   const operationId = saveFeedback.beginSaving();

@@ -1,3 +1,5 @@
+import { invalidateSessionAccessSnapshot } from '@sva/plugin-sdk';
+
 type Listener = () => void;
 
 let generation = 0;
@@ -14,6 +16,7 @@ export const subscribeToEffectiveAccessInvalidation = (listener: Listener): (() 
 
 export const requestEffectiveAccessInvalidation = (): void => {
   generation += 1;
+  invalidateSessionAccessSnapshot();
   for (const listener of listeners) {
     listener();
   }

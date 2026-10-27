@@ -8,6 +8,7 @@ import {
   StudioFormSummaryErrors,
   StudioMediaReferenceRetryAction,
   StudioSaveButton,
+  isMainserverPrincipalReady,
   resolveMainserverPrincipalOptions,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
@@ -103,7 +104,11 @@ function EditorPrimaryAction({ view }: { view: EditorViewProps }) {
         type="submit"
         form={`cockpit-card-${mode}-form`}
         status={saveFeedback.status}
-        disabled={deletePending}
+        disabled={
+          deletePending ||
+          (mode === 'create' &&
+            !isMainserverPrincipalReady(view.principalControl, view.actingPrincipalType))
+        }
         labels={{
           idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
           saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
@@ -134,6 +139,8 @@ function EditorPrincipal(view: EditorViewProps) {
           label: view.pt(`principal.${view.actingPrincipalType}`),
         })}
         onChange={view.setActingPrincipalType}
+        readinessByPrincipal={view.principalControl?.readinessByPrincipal}
+        readinessMessage={view.principalControl?.readinessMessage}
       />
     </div>
   );

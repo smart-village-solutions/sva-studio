@@ -59,6 +59,8 @@ export function PoiFormStatus({ view }: Readonly<{ view: PoiDetailPageViewModel 
             label: pt(`principal.${view.actingPrincipalType}`),
           })}
           onChange={view.setActingPrincipalType}
+          readinessByPrincipal={view.principalControl?.readinessByPrincipal}
+          readinessMessage={view.principalControl?.readinessMessage}
         />
       </div>
       <MainserverDeviationSummary

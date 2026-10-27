@@ -32,6 +32,8 @@ type NewsDetailPageViewProps = Readonly<{
   mode: 'create' | 'edit';
   pt: PluginTranslator;
   canSave: boolean;
+  principalReady: boolean;
+  reloadCurrentContext: () => Promise<void>;
   formId: string;
   mediaReferenceSync: ReturnType<typeof useStudioMediaReferenceSync>;
   saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
@@ -84,6 +86,7 @@ const newsCreateEffect = (values: NewsDetailFormValues, pt: PluginTranslator): s
 
 const createNewsDetailPageActions = ({
   canSave,
+  principalReady,
   formId,
   mediaReferenceSync,
   saveFeedback,
@@ -99,6 +102,7 @@ const createNewsDetailPageActions = ({
 }: Pick<
   NewsDetailPageViewProps,
   | 'canSave'
+  | 'principalReady'
   | 'formId'
   | 'mediaReferenceSync'
   | 'saveFeedback'
@@ -117,7 +121,7 @@ const createNewsDetailPageActions = ({
       <StudioSaveButton
         type="submit"
         form={formId}
-        disabled={mediaReferenceSync.hasPendingRetry}
+        disabled={mediaReferenceSync.hasPendingRetry || (mode === 'create' && !principalReady)}
         status={saveFeedback.status}
         labels={{
           idle:

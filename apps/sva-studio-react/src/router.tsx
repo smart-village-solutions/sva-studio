@@ -2,7 +2,7 @@ import { studioAdminResources } from './lib/plugins';
 import { createRouter, type RootRoute } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
 import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
-import { PLUGIN_ROUTE_SCOPE_HEADER_NAME } from '@sva/plugin-sdk';
+import { PLUGIN_ROUTE_SCOPE_HEADER_NAME, readSessionAccessSnapshot } from '@sva/plugin-sdk';
 import type { AppRouteFactory, RouteGuardUser } from '@sva/routing';
 import {
   createMockRouteGuardUser,
@@ -118,15 +118,19 @@ const readStringArray = (value: unknown): string[] =>
 export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
   const user = readRouteGuardPayloadUser(payload);
 
+  const id = typeof user?.id === 'string' ? user.id : undefined;
   const instanceId = typeof user?.instanceId === 'string' ? user.instanceId : undefined;
   const roles = readStringArray(user?.roles);
-  const permissionActions = readStringArray(user?.permissionActions);
   const assignedModules = readStringArray(user?.assignedModules);
 
-  const rawStatus = user?.permissionStatus;
-  const permissionStatus: 'ok' | 'degraded' = rawStatus === 'degraded' ? 'degraded' : 'ok';
-
-  return { instanceId, roles, permissionActions, permissionStatus, assignedModules };
+  return {
+    ...(id ? { id } : {}),
+    instanceId,
+    roles,
+    permissionActions: [],
+    permissionStatus: 'degraded',
+    assignedModules,
+  };
 };
 
 export const parseRouteGuardUser = (payload: unknown): RouteGuardUser | null => {
@@ -187,10 +191,11 @@ const loadScopedRouteGuardUser = async (
   user: RouteGuardUser,
   url: string,
   init?: RequestInit,
-  fetchRequest = fetchWithRequestTimeout
+  fetchRequest = fetchWithRequestTimeout,
+  useSharedAccessSnapshot = false
 ): Promise<RouteGuardUser> => {
   if (!user.instanceId) {
-    return { ...user, permissionActions: [] };
+    return { ...user, permissionActions: [], permissionStatus: 'degraded' };
   }
 
   try {
@@ -203,6 +208,23 @@ const loadScopedRouteGuardUser = async (
       return { ...user, permissionActions: [], permissionStatus: 'degraded' };
     }
     const activeOrganizationId = readActiveOrganizationId(await contextResponse.json());
+    if (useSharedAccessSnapshot) {
+      const sharedAccess = readSessionAccessSnapshot();
+      if (
+        sharedAccess.isResolved &&
+        !sharedAccess.hasError &&
+        sharedAccess.subjectId === user.id &&
+        sharedAccess.instanceId === user.instanceId &&
+        sharedAccess.organizationId === (activeOrganizationId ?? null)
+      ) {
+        return {
+          ...user,
+          permissionActions: sharedAccess.permissionActions,
+          assignedModules: sharedAccess.assignedModules,
+          permissionStatus: 'ok',
+        };
+      }
+    }
     const searchParams = new URLSearchParams({ instanceId: user.instanceId });
     if (activeOrganizationId) {
       searchParams.set('organizationId', activeOrganizationId);
@@ -217,7 +239,7 @@ const loadScopedRouteGuardUser = async (
     }
     const permissionActions = readEffectivePermissionActions(await permissionsResponse.json());
     return permissionActions
-      ? { ...user, permissionActions }
+      ? { ...user, permissionActions, permissionStatus: 'ok' }
       : { ...user, permissionActions: [], permissionStatus: 'degraded' };
   } catch {
     return { ...user, permissionActions: [], permissionStatus: 'degraded' };
@@ -279,9 +301,13 @@ const getRouteGuardUser = createIsomorphicFn()
       if (!result.ok) return null;
       const user = parseRouteGuardUser(result.payload);
       return user
-        ? await loadScopedRouteGuardUser(user, new URL('/auth/me', resolveBaseUrl()).toString(), {
-            credentials: 'include',
-          })
+        ? await loadScopedRouteGuardUser(
+            user,
+            new URL('/auth/me', resolveBaseUrl()).toString(),
+            { credentials: 'include' },
+            fetchWithRequestTimeout,
+            true
+          )
         : null;
     } catch {
       return null;

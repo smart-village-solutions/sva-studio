@@ -75,6 +75,7 @@ export function EventsDetailPage({
     categoryOptions,
     categoryOptionsLoading,
     categoryOptionsError,
+    reloadCurrentContext,
   } = useEventsDetailLoad({
     mode,
     contentId,
@@ -235,6 +236,7 @@ export function EventsDetailPage({
       loadedItem={loadedItem}
       mediaReferencesReady={mediaReferencesReady}
       setStatus={setStatus}
+      reloadCurrentContext={reloadCurrentContext}
     />
   );
 }

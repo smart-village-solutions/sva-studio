@@ -54,8 +54,28 @@ import { validateCsrf } from '../iam-account-management/csrf.js';
 import { ADMIN_ROLES } from '../iam-account-management/constants.js';
 import { resolveMutationActorWithAccount } from '../iam-account-management/mutation-request-context.shared.js';
 import { provisionOrganizationMainserver } from './organization-mainserver-provisioning.js';
+import { readSvaMainserverCredentialsWithStatus } from '../mainserver-credentials.js';
 
 const logger = createSdkLogger({ component: 'iam-organizations', level: 'info' });
+const loadPersonalMainserverReadiness = async ({
+  instanceId,
+  keycloakSubject,
+}: {
+  readonly instanceId: string;
+  readonly keycloakSubject: string;
+}) => {
+  const result = await readSvaMainserverCredentialsWithStatus(keycloakSubject, instanceId);
+  switch (result.status) {
+    case 'ok':
+      return 'ready' as const;
+    case 'missing_credentials':
+      return 'missing_credentials' as const;
+    case 'partial_credentials':
+      return 'partial_credentials' as const;
+    default:
+      return 'unavailable' as const;
+  }
+};
 
 const organizationReadHandlers = createOrganizationReadHandlers({
   asApiItem,
@@ -82,6 +102,7 @@ const organizationReadHandlers = createOrganizationReadHandlers({
           )
     ),
   loadContextOptions,
+  loadPersonalMainserverReadiness,
   loadOrganizationDetail,
   loadOrganizationList,
   readOrganizationListSort,
@@ -138,6 +159,7 @@ const organizationMutationHandlers = createOrganizationMutationHandlers({
           )
     ),
   loadContextOptions,
+  loadPersonalMainserverReadiness,
   loadOrganizationById,
   loadOrganizationDetail,
   logger,

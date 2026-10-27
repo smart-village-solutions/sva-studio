@@ -530,6 +530,49 @@ describe('ContentEditorPage', () => {
     expect(screen.queryByLabelText('Überschrift')).toBeNull();
   });
 
+  it('reloads stale editor context without resubmitting or replacing the unsaved draft', async () => {
+    let detailReads = 0;
+    let updateRequests = 0;
+    studioMswServer.use(
+      http.get('/api/v1/iam/contents/content-stale', () => {
+        detailReads += 1;
+        return HttpResponse.json({
+          data: createContentDetail({
+            id: 'content-stale',
+            title: detailReads === 1 ? 'Ausgangstitel' : 'Aktueller Serverstand',
+            payload: { hero: detailReads === 1 ? 'Alt' : 'Aktuell' },
+          }),
+        });
+      }),
+      http.get('/api/v1/iam/contents/content-stale/history', () => HttpResponse.json({ data: [] })),
+      http.patch('/api/v1/iam/contents/content-stale', () => {
+        updateRequests += 1;
+        return HttpResponse.json(
+          { error: { code: 'stale_mainserver_context', message: 'stale' } },
+          { status: 409, headers: { 'X-Request-Id': 'req-stale-editor' } }
+        );
+      })
+    );
+
+    render(<ContentEditorPage mode="edit" contentId="content-stale" />);
+    await waitFor(() => expect(screen.getByDisplayValue('Ausgangstitel')).toBeTruthy());
+    fireEvent.change(screen.getByLabelText('Überschrift'), {
+      target: { value: 'Mein ungespeicherter Entwurf' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
+
+    const reload = await screen.findByRole('button', { name: 'Aktuellen Kontext neu laden' });
+    expect(screen.getByText('Fehlerreferenz:')).toBeTruthy();
+    expect(screen.getByText('req-stale-editor')).toBeTruthy();
+    expect(updateRequests).toBe(1);
+
+    fireEvent.click(reload);
+    await waitFor(() => expect(detailReads).toBe(2));
+    expect(screen.getByDisplayValue('Mein ungespeicherter Entwurf')).toBeTruthy();
+    expect(screen.getByText('Aktueller Serverstand')).toBeTruthy();
+    expect(updateRequests).toBe(1);
+  });
+
   it('renders empty history and surfaces generic invalid request errors after an update failure', async () => {
     studioMswServer.use(
       http.get('/api/v1/iam/contents/content-2', () =>

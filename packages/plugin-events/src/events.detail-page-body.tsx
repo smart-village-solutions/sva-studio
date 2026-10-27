@@ -17,7 +17,8 @@ import type { EventsDetailPageViewProps } from './events.detail-page-view.js';
 const EventsDetailSaveStatus = ({
   status,
   pt,
-}: Pick<EventsDetailPageViewProps, 'status' | 'pt'>) => {
+  reloadCurrentContext,
+}: Pick<EventsDetailPageViewProps, 'status' | 'pt' | 'reloadCurrentContext'>) => {
   if (!status) return null;
   if (status.kind !== 'error')
     return <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary>;
@@ -29,6 +30,16 @@ const EventsDetailSaveStatus = ({
       copyRequestIdLabel={status.requestId ? pt('messages.copyRequestReference') : undefined}
       requestIdCopiedLabel={status.requestId ? pt('messages.requestReferenceCopied') : undefined}
       requestIdCopyFailedLabel={status.requestId ? pt('messages.copyRequestReference') : undefined}
+      retryLabel={
+        status.errorCode === 'stale_mainserver_context'
+          ? pt('actions.reloadCurrentContext')
+          : undefined
+      }
+      onRetry={
+        status.errorCode === 'stale_mainserver_context'
+          ? () => void reloadCurrentContext()
+          : undefined
+      }
     />
   );
 };
@@ -63,10 +74,11 @@ const EventsDetailStatus = ({
   deviationFieldLabels,
   media,
   setStatus,
+  reloadCurrentContext,
 }: EventsDetailPageViewProps) => (
   <>
     <EventsDeleteNavigationStatus deletion={deletion} pt={pt} />
-    <EventsDetailSaveStatus status={status} pt={pt} />
+    <EventsDetailSaveStatus status={status} pt={pt} reloadCurrentContext={reloadCurrentContext} />
     {mode === 'create' && media.leaveGuard.createdContentId ? (
       <StudioFormSummary kind="success">
         {!media.mediaReferenceSync.hasPendingRetry &&
@@ -96,6 +108,8 @@ const EventsDetailStatus = ({
           label: pt(`principal.${actingPrincipalType}`),
         })}
         onChange={setActingPrincipalType}
+        readinessByPrincipal={principalControl?.readinessByPrincipal}
+        readinessMessage={principalControl?.readinessMessage}
       />
     </div>
     <MainserverDeviationSummary

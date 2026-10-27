@@ -1157,3 +1157,7 @@ Tags erweitern das vorhandene Asset-Metadatenfeld und die instanzbezogene Suche 
 ## Fehlerkorrelation für Studio-APIs
 
 Der App-Dispatcher in `apps/sva-studio-react/src/server.ts` finalisiert Antworten geschützter Studio-APIs und Exceptions mit derselben `X-Request-Id` im Response-Header und im strukturierten Ergebnisereignis. `@sva/plugin-sdk` bewahrt die Referenz als nicht-enumerable Fehler-Metadaten; die News- und Event-Editoren reichen sie an die gemeinsame Save-Feedback-Komponente für eine lokalisierte, kopierbare Supportreferenz weiter. Der Monitoring-Handler und der Browsermelder sind app-eigene Adapter; sie schreiben ausschließlich whitelisted Fehlercodes und IDs in den bestehenden Server-Logger. Der externe SVA Mainserver und dessen API-Verträge sind davon unabhängig.
+
+## UI-Zugriff und Principal-Bereitschaft
+
+`EffectiveAccessProvider` veröffentlicht den einzigen aktuellen Browser-Snapshot für Route-Guards und Aktionen. `OrganizationContextProvider` bindet Antworten an Identität und Requestgeneration und enthält eine sichere Mainserver-Readiness-Projektion je Mitgliedsorganisation sowie für den persönlichen Principal. Die Projektion enthält nur einen Status, keine Credentials. Standard-Content-Editoren konsumieren diesen Status über die vorhandene Principal-Control; serverseitiges Mainserver-Enforcement bleibt unverändert.

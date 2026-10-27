@@ -120,31 +120,43 @@ const collectGloballyAllowedPermissionActions = (
 
 const usePublishSessionAccessSnapshot = (
   snapshot: EffectiveAccessSnapshot,
-  roles: readonly string[] | undefined
+  roles: readonly string[] | undefined,
+  subjectId: string | undefined,
+  instanceId: string | undefined,
+  organizationId: string | null,
+  snapshotIsCurrent: boolean
 ): void => {
   React.useEffect(() => {
-    const isResolved = snapshot.status === 'ready';
+    const isResolved = snapshotIsCurrent && snapshot.status === 'ready';
     publishSessionAccessSnapshot({
       isResolved,
-      hasError: snapshot.status === 'error',
-      permissionActions: collectPermissionActions(snapshot),
+      hasError: snapshotIsCurrent && snapshot.status === 'error',
+      ...(subjectId ? { subjectId } : {}),
+      ...(instanceId ? { instanceId } : {}),
+      organizationId,
+      permissionActions: snapshotIsCurrent ? collectPermissionActions(snapshot) : [],
       unscopedPermissionActions:
-        snapshot.status === 'ready' && snapshot.scope.kind === 'tenant' && 'permissions' in snapshot
+        snapshotIsCurrent &&
+        snapshot.status === 'ready' &&
+        snapshot.scope.kind === 'tenant' &&
+        'permissions' in snapshot
           ? collectGloballyAllowedPermissionActions(snapshot)
           : [],
       assignedModules:
-        snapshot.status === 'ready' && 'assignedModules' in snapshot
+        snapshotIsCurrent && snapshot.status === 'ready' && 'assignedModules' in snapshot
           ? snapshot.assignedModules
           : [],
-      roles: snapshot.status === 'ready' ? (roles ?? []) : [],
+      roles: snapshotIsCurrent && snapshot.status === 'ready' ? (roles ?? []) : [],
     });
-  }, [roles, snapshot]);
+  }, [instanceId, organizationId, roles, snapshot, snapshotIsCurrent, subjectId]);
 };
 
 export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React.ReactNode }>) => {
   const auth = useAuth();
   const organizationContext = useOrganizationContext();
   const generationRef = React.useRef(0);
+  const resolvedScopeKeyRef = React.useRef<string | null>(null);
+  const resolvedInvalidationGenerationRef = React.useRef<number | null>(null);
   const lastInvalidatedSnapshotGenerationRef = React.useRef<number | null>(null);
   const invalidationGeneration = React.useSyncExternalStore(
     subscribeToEffectiveAccessInvalidation,
@@ -159,10 +171,17 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
 
   const assignedModulesKey = (auth.user?.assignedModules ?? []).join('\u0000');
   const platformRolesKey = (auth.user?.roles ?? []).join('\u0000');
+  const currentScopeKey = [
+    auth.user?.id ?? '',
+    auth.user?.instanceId ?? '',
+    organizationContext.context?.activeOrganizationId ?? '',
+  ].join('\u0000');
 
   React.useEffect(() => {
     const generation = generationRef.current + 1;
     generationRef.current = generation;
+    resolvedScopeKeyRef.current = null;
+    resolvedInvalidationGenerationRef.current = null;
 
     if (!auth.hasResolvedSession) {
       setSnapshot({
@@ -183,6 +202,8 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
     }
 
     if (!auth.user.instanceId) {
+      resolvedScopeKeyRef.current = currentScopeKey;
+      resolvedInvalidationGenerationRef.current = invalidationGeneration;
       setSnapshot({
         status: 'ready',
         scope: { kind: 'platform', authGeneration: generation },
@@ -233,12 +254,16 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
           permissions: payload.permissions,
           ...(payload.snapshotVersion ? { snapshotVersion: payload.snapshotVersion } : {}),
         });
+        resolvedScopeKeyRef.current = currentScopeKey;
+        resolvedInvalidationGenerationRef.current = invalidationGeneration;
       })
       .catch((cause: unknown) => {
         if (abortController.signal.aborted || generationRef.current !== generation) {
           return;
         }
         const error = asIamError(cause);
+        resolvedScopeKeyRef.current = currentScopeKey;
+        resolvedInvalidationGenerationRef.current = invalidationGeneration;
         setSnapshot({ status: 'error', scope, generation, errorCode: error.code });
         logBrowserOperationFailure(effectiveAccessLogger, 'effective_access_load_failed', error, {
           operation: 'load_effective_access',
@@ -256,6 +281,7 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
     auth.user?.id,
     auth.user?.instanceId,
     invalidationGeneration,
+    currentScopeKey,
     organizationContext.context?.activeOrganizationId,
     organizationContext.error,
     organizationContext.isLoading,
@@ -287,7 +313,16 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
     };
   }, [invalidate]);
 
-  usePublishSessionAccessSnapshot(snapshot, auth.user?.roles);
+  usePublishSessionAccessSnapshot(
+    snapshot,
+    auth.user?.roles,
+    auth.user?.id,
+    auth.user?.instanceId,
+    organizationContext.context?.activeOrganizationId ?? null,
+    snapshot.generation === generationRef.current &&
+      resolvedScopeKeyRef.current === currentScopeKey &&
+      resolvedInvalidationGenerationRef.current === invalidationGeneration
+  );
 
   const value = React.useMemo<EffectiveAccessContextValue>(
     () => ({

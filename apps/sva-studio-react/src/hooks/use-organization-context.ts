@@ -14,6 +14,7 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
+import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
 
 export type OrganizationContextValue = {
   readonly context: IamOrganizationContext | null;
@@ -68,8 +69,12 @@ export const OrganizationContextProvider = ({
   const operationQueue = React.useRef<Promise<void>>(Promise.resolve());
   const requestSequence = React.useRef(0);
   const currentIdentity = React.useRef(identityKey);
+  const lastPublishedOrganization = React.useRef<{
+    readonly identityKey: string;
+    readonly organizationId: string | null;
+  } | null>(null);
 
-  const enqueue = React.useCallback(<T,>(work: () => Promise<T>): Promise<T> => {
+  const enqueue = React.useCallback(<T>(work: () => Promise<T>): Promise<T> => {
     const pending = operationQueue.current.then(work, work);
     operationQueue.current = pending.then(
       () => undefined,
@@ -80,10 +85,7 @@ export const OrganizationContextProvider = ({
 
   const publishIfCurrent = React.useCallback(
     (capturedIdentity: string, sequence: number, publish: () => void): boolean => {
-      if (
-        currentIdentity.current !== capturedIdentity ||
-        requestSequence.current !== sequence
-      ) {
+      if (currentIdentity.current !== capturedIdentity || requestSequence.current !== sequence) {
         return false;
       }
       publish();
@@ -111,6 +113,17 @@ export const OrganizationContextProvider = ({
     try {
       const response = await getMyOrganizationContext({ fresh: true });
       publishIfCurrent(identityKey, sequence, () => {
+        const previous = lastPublishedOrganization.current;
+        if (
+          previous?.identityKey === identityKey &&
+          previous.organizationId !== (response.data.activeOrganizationId ?? null)
+        ) {
+          requestEffectiveAccessInvalidation();
+        }
+        lastPublishedOrganization.current = {
+          identityKey,
+          organizationId: response.data.activeOrganizationId ?? null,
+        };
         setContextSnapshot({ identityKey, value: response.data });
         logBrowserOperationSuccess(
           organizationContextLogger,
@@ -161,20 +174,21 @@ export const OrganizationContextProvider = ({
       return enqueue(async () => {
         if (currentIdentity.current !== identityKey) return false;
         const sequence = ++requestSequence.current;
-        logBrowserOperationStart(
-          organizationContextLogger,
-          'organization_context_switch_started',
-          {
-            operation: 'update_my_organization_context',
-            organization_id: organizationId,
-          }
-        );
+        logBrowserOperationStart(organizationContextLogger, 'organization_context_switch_started', {
+          operation: 'update_my_organization_context',
+          organization_id: organizationId,
+        });
         setIsUpdating(true);
         setIsLoading(false);
         setErrorSnapshot(null);
         try {
           const response = await updateMyOrganizationContext(organizationId);
           return publishIfCurrent(identityKey, sequence, () => {
+            requestEffectiveAccessInvalidation();
+            lastPublishedOrganization.current = {
+              identityKey,
+              organizationId: response.data.activeOrganizationId ?? null,
+            };
             setContextSnapshot({ identityKey, value: response.data });
             logBrowserOperationSuccess(
               organizationContextLogger,
@@ -190,6 +204,11 @@ export const OrganizationContextProvider = ({
           const confirmedContext = await readBackAmbiguousOrganizationSwitch(cause);
           if (!publishIfCurrent(identityKey, sequence, () => {})) return false;
           if (confirmedContext) {
+            requestEffectiveAccessInvalidation();
+            lastPublishedOrganization.current = {
+              identityKey,
+              organizationId: confirmedContext.activeOrganizationId ?? null,
+            };
             setContextSnapshot({ identityKey, value: confirmedContext });
             if ((confirmedContext.activeOrganizationId ?? null) === organizationId) {
               logBrowserOperationSuccess(
@@ -214,8 +233,7 @@ export const OrganizationContextProvider = ({
     [enqueue, identityKey, publishIfCurrent]
   );
 
-  const context =
-    contextSnapshot?.identityKey === identityKey ? contextSnapshot.value : null;
+  const context = contextSnapshot?.identityKey === identityKey ? contextSnapshot.value : null;
   const error = errorSnapshot?.identityKey === identityKey ? errorSnapshot.value : null;
   const value = React.useMemo<OrganizationContextValue>(
     () => ({

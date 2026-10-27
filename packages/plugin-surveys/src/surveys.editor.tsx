@@ -11,6 +11,7 @@ import {
   StudioDetailTabs,
   StudioFormSummary,
   StudioLoadingState,
+  isMainserverPrincipalReady,
   resolveMainserverPrincipalOptions,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
@@ -62,6 +63,8 @@ const SurveyPrincipalControl = ({
         label: pt(`principal.${actingPrincipalType}`),
       })}
       onChange={onChange}
+      readinessByPrincipal={principalControl?.readinessByPrincipal}
+      readinessMessage={principalControl?.readinessMessage}
     />
   </div>
 );
@@ -226,7 +229,12 @@ export const SurveyEditorPage = ({
       actions={<SurveyEditorActions pt={pt} />}
       primaryAction={
         <SurveyEditorPrimaryAction
-          disabled={!access.canSave || (mode === 'create' && createdContentId !== null)}
+          disabled={
+            !access.canSave ||
+            (mode === 'create' &&
+              (createdContentId !== null ||
+                !isMainserverPrincipalReady(principalControl, actingPrincipalType)))
+          }
           mode={mode}
           formId={formId}
           pt={pt}

@@ -1,6 +1,11 @@
 import { GenericItemsMediaPickerView } from './generic-items.detail-page.view-media.js';
 import { Link } from '@tanstack/react-router';
-import { Button, StudioDetailPageTemplate, StudioSaveButton } from '@sva/studio-ui-react';
+import {
+  Button,
+  isMainserverPrincipalReady,
+  StudioDetailPageTemplate,
+  StudioSaveButton,
+} from '@sva/studio-ui-react';
 import {
   GenericItemsStatusView,
   GenericItemsDeleteDialogView,
@@ -81,7 +86,11 @@ export const GenericItemsDetailPageView = ({
               type={mode === 'create' ? 'submit' : 'button'}
               form={mode === 'create' ? 'generic-item-create-form' : undefined}
               status={saveFeedback.status}
-              disabled={mode === 'create' && view.createdContentId !== null}
+              disabled={
+                mode === 'create' &&
+                (view.createdContentId !== null ||
+                  !isMainserverPrincipalReady(view.principalControl, view.actingPrincipalType))
+              }
               onClick={mode === 'edit' ? () => void onSubmit() : undefined}
               labels={{
                 idle: mode === 'create' ? pt('actions.create') : pt('actions.update'),

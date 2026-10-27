@@ -1034,6 +1034,7 @@ describe('AuthProvider', () => {
       });
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
+      const accessGenerationBeforeResume = getEffectiveAccessInvalidationGeneration();
 
       visibilityState = 'visible';
       await act(async () => {
@@ -1044,6 +1045,7 @@ describe('AuthProvider', () => {
         expect(fetchMock).toHaveBeenCalledTimes(2);
       });
       expect(screen.getByTestId('user-roles').textContent).toBe('system_admin');
+      expect(getEffectiveAccessInvalidationGeneration()).toBe(accessGenerationBeforeResume + 2);
     } finally {
       if (originalVisibilityStateDescriptor) {
         Object.defineProperty(document, 'visibilityState', originalVisibilityStateDescriptor);

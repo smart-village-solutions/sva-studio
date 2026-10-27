@@ -140,6 +140,8 @@ export function ProjectEditorForm(props: ViewInput) {
             label: pt(`principal.${actingPrincipalType}`),
           })}
           onChange={setActingPrincipalType}
+          readinessByPrincipal={principalControl?.readinessByPrincipal}
+          readinessMessage={principalControl?.readinessMessage}
         />
       ) : null}
       {mode === 'create' ? (
@@ -167,6 +169,8 @@ export function ProjectEditorForm(props: ViewInput) {
               label: pt(`principal.${actingPrincipalType}`),
             })}
             onChange={setActingPrincipalType}
+            readinessByPrincipal={principalControl?.readinessByPrincipal}
+            readinessMessage={principalControl?.readinessMessage}
           />
         </div>
       ) : null}

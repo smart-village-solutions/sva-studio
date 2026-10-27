@@ -67,6 +67,7 @@ export const contentENResources = {
       '{{count}} selected content items will be permanently deleted. This action cannot be undone.',
     deletePending: 'Deleting ...',
     dismissFeedback: 'Dismiss',
+    reloadCurrentContext: 'Reload current context',
   },
   fields: {
     title: 'Title',
@@ -159,6 +160,8 @@ export const contentENResources = {
     resourceLoading: 'The resource principal is loading. Write actions are temporarily blocked.',
     resourceUnavailable:
       'The resource principal could not be determined unambiguously. Write actions remain blocked.',
+    mainserverNotReady:
+      'The local Mainserver connection for this principal is not ready. Saving is blocked. Ask your administrator to check the connection.',
   },
   ownership: {
     title: 'Owner',
@@ -365,6 +368,12 @@ export const contentENResources = {
     notFound: 'The requested content could not be found.',
     databaseUnavailable: 'The content data could not be processed due to a database problem.',
     invalidRequest: 'The content contains invalid or incomplete data.',
+    staleMainserverContext:
+      'The organization or principal context has changed. Reload the current context and review your inputs before saving again.',
+    requestIdLabel: 'Error reference:',
+    copyRequestId: 'Copy reference',
+    requestIdCopied: 'Copied',
+    requestIdCopyFailed: 'Copy failed',
   },
   validation: {
     titleRequired: 'Title is required.',

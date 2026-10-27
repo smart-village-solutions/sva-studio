@@ -99,8 +99,27 @@ const createMainserverContextBindingStore = () => {
   return {
     capture,
     has: (contentId: string): boolean => contextBindings.has(contentId),
+    invalidate: (contentId: string): void => {
+      contextBindings.delete(contentId);
+    },
     mutationHeaders,
   };
+};
+
+const invalidateBindingOnStaleContext = <TError extends Error>(
+  error: TError,
+  contentId: string,
+  invalidate: (contentId: string) => void
+): never => {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as Error & { readonly code?: unknown }).code === 'stale_mainserver_context'
+  ) {
+    invalidate(contentId);
+  }
+  throw error;
 };
 
 const createMainserverItemLoader = <TItem, TError extends Error>(input: {
@@ -159,13 +178,28 @@ const createEnsureMainserverContextBinding =
     }
   };
 
-const createMainserverCrudMutations = <TItem, TMutationInput, TListResponse extends {
-  readonly data: readonly TItem[];
-}, TListResult, TError extends Error>(input: {
-  readonly options: MainserverCrudClientOptions<TItem, TMutationInput, TListResponse, TListResult, TError>;
+const createMainserverCrudMutations = <
+  TItem,
+  TMutationInput,
+  TListResponse extends {
+    readonly data: readonly TItem[];
+  },
+  TListResult,
+  TError extends Error,
+>(input: {
+  readonly options: MainserverCrudClientOptions<
+    TItem,
+    TMutationInput,
+    TListResponse,
+    TListResult,
+    TError
+  >;
   readonly mapItem: (item: TItem) => TItem;
   readonly contextBindingStore: ReturnType<typeof createMainserverContextBindingStore>;
-  readonly ensureContextBinding: (contentId: string, actingPrincipalType: MainserverActingPrincipalType) => Promise<void>;
+  readonly ensureContextBinding: (
+    contentId: string,
+    actingPrincipalType: MainserverActingPrincipalType
+  ) => Promise<void>;
 }) => ({
   create: async (
     mutationInput: TMutationInput,
@@ -186,7 +220,9 @@ const createMainserverCrudMutations = <TItem, TMutationInput, TListResponse exte
           ),
           mutationOptions
         ),
-        body: JSON.stringify(input.options.createBody ? input.options.createBody(mutationInput) : mutationInput),
+        body: JSON.stringify(
+          input.options.createBody ? input.options.createBody(mutationInput) : mutationInput
+        ),
       },
     });
     return input.mapItem(response.data);
@@ -198,37 +234,58 @@ const createMainserverCrudMutations = <TItem, TMutationInput, TListResponse exte
     mutationOptions?: MainserverMutationOptions
   ): Promise<TItem> => {
     await input.ensureContextBinding(contentId, actingPrincipalType);
-    const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
-      url: `${input.options.basePath}/${encodeURIComponent(contentId)}`,
-      fetch: input.options.fetch,
-      errorFactory: input.options.errorFactory,
-      init: {
-        method: 'PATCH',
-        headers: addContentMediaSaveOperationHeader(
-          input.contextBindingStore.mutationHeaders(
-            contentId,
-            actingPrincipalType,
-            input.options.updateHeaders?.(),
-            mutationOptions?.operationId
+    try {
+      const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
+        url: `${input.options.basePath}/${encodeURIComponent(contentId)}`,
+        fetch: input.options.fetch,
+        errorFactory: input.options.errorFactory,
+        init: {
+          method: 'PATCH',
+          headers: addContentMediaSaveOperationHeader(
+            input.contextBindingStore.mutationHeaders(
+              contentId,
+              actingPrincipalType,
+              input.options.updateHeaders?.(),
+              mutationOptions?.operationId
+            ),
+            mutationOptions
           ),
-          mutationOptions
-        ),
-        body: JSON.stringify(input.options.updateBody ? input.options.updateBody(mutationInput) : mutationInput),
-      },
-    });
-    return input.mapItem(response.data);
+          body: JSON.stringify(
+            input.options.updateBody ? input.options.updateBody(mutationInput) : mutationInput
+          ),
+        },
+      });
+      return input.mapItem(response.data);
+    } catch (error) {
+      return invalidateBindingOnStaleContext(
+        error as TError,
+        contentId,
+        input.contextBindingStore.invalidate
+      );
+    }
   },
-  remove: async (contentId: string, actingPrincipalType: MainserverActingPrincipalType): Promise<void> => {
+  remove: async (
+    contentId: string,
+    actingPrincipalType: MainserverActingPrincipalType
+  ): Promise<void> => {
     await input.ensureContextBinding(contentId, actingPrincipalType);
-    await requestMainserverJson<ApiItemResponse<{ readonly id: string }>, TError>({
-      url: `${input.options.basePath}/${encodeURIComponent(contentId)}`,
-      fetch: input.options.fetch,
-      errorFactory: input.options.errorFactory,
-      init: {
-        method: 'DELETE',
-        headers: input.contextBindingStore.mutationHeaders(contentId, actingPrincipalType),
-      },
-    });
+    try {
+      await requestMainserverJson<ApiItemResponse<{ readonly id: string }>, TError>({
+        url: `${input.options.basePath}/${encodeURIComponent(contentId)}`,
+        fetch: input.options.fetch,
+        errorFactory: input.options.errorFactory,
+        init: {
+          method: 'DELETE',
+          headers: input.contextBindingStore.mutationHeaders(contentId, actingPrincipalType),
+        },
+      });
+    } catch (error) {
+      return invalidateBindingOnStaleContext(
+        error as TError,
+        contentId,
+        input.contextBindingStore.invalidate
+      );
+    }
   },
 });
 
@@ -267,7 +324,12 @@ export const createMainserverCrudClient = <
     },
     get: loadItem,
     getDetail: loadDetail,
-    ...createMainserverCrudMutations({ options, mapItem, contextBindingStore, ensureContextBinding }),
+    ...createMainserverCrudMutations({
+      options,
+      mapItem,
+      contextBindingStore,
+      ensureContextBinding,
+    }),
     ensureMutationContext: ensureContextBinding,
     mutationHeaders: contextBindingStore.mutationHeaders,
   };

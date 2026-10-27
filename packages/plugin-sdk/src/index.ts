@@ -246,6 +246,7 @@ export {
   mergePluginRouteDefinitions,
   mergePluginTranslations,
   pluginGuardrailViolationCodes,
+  invalidateSessionAccessSnapshot,
   publishSessionAccessSnapshot,
   readFieldError,
   readMainserverErrorRequestId,

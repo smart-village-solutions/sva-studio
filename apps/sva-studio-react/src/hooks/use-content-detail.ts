@@ -15,6 +15,7 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
+import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
 import {
   contentsLogger,
   SESSION_REFRESHED_EVENT,
@@ -109,6 +110,9 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
+        if (resolvedError.code === 'stale_mainserver_context') {
+          requestEffectiveAccessInvalidation();
+        }
         if (resolvedError.status === 401) {
           await refreshSession();
           contentsLogger.info(SESSION_REFRESHED_EVENT, {

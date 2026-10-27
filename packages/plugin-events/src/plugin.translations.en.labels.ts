@@ -127,6 +127,7 @@ export const eventsENLabels = {
     updatedAt: 'Updated',
   },
   actions: {
+    reloadCurrentContext: 'Reload context and keep draft',
     openSavedContent: 'Open saved content',
     retryMediaReferences: 'Retry media references',
     cancel: 'Cancel',

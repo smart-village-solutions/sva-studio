@@ -148,6 +148,8 @@ export const GenericItemsStatusView = ({
             label: pt(`principal.${actingPrincipalType}`),
           })}
           onChange={setActingPrincipalType}
+          readinessByPrincipal={principalControl?.readinessByPrincipal}
+          readinessMessage={principalControl?.readinessMessage}
         />
       </div>
       <StudioMediaReferenceRetryAction

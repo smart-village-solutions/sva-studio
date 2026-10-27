@@ -29,6 +29,24 @@ const OrganizationContext = React.createContext<OrganizationContextValue | null>
 const organizationContextLogger = createOperationLogger('organization-context-hook', 'debug');
 const useIsomorphicLayoutEffect =
   typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect;
+const readBackAmbiguousOrganizationSwitch = async (
+  cause: unknown
+): Promise<IamOrganizationContext | null> => {
+  if (cause instanceof IamHttpError && cause.status < 500) return null;
+  try {
+    return (await getMyOrganizationContext({ fresh: true })).data;
+  } catch {
+    return null;
+  }
+};
+const logOrganizationSwitchFailure = (error: IamHttpError, organizationId: string | null): void => {
+  logBrowserOperationFailure(
+    organizationContextLogger,
+    'organization_context_switch_failed',
+    error,
+    { operation: 'update_my_organization_context', organization_id: organizationId }
+  );
+};
 type OrganizationSnapshot = {
   readonly identityKey: string;
   readonly value: IamOrganizationContext;
@@ -167,14 +185,7 @@ export const OrganizationContextProvider = ({
           });
         } catch (cause) {
           const resolvedError = asIamError(cause);
-          let confirmedContext: IamOrganizationContext | null = null;
-          if (!(cause instanceof IamHttpError) || cause.status >= 500) {
-            try {
-              confirmedContext = (await getMyOrganizationContext({ fresh: true })).data;
-            } catch {
-              confirmedContext = null;
-            }
-          }
+          const confirmedContext = await readBackAmbiguousOrganizationSwitch(cause);
           if (!publishIfCurrent(identityKey, sequence, () => {})) return false;
           if (confirmedContext) {
             setContextSnapshot({ identityKey, value: confirmedContext });
@@ -191,15 +202,7 @@ export const OrganizationContextProvider = ({
             }
           }
           setErrorSnapshot({ identityKey, value: resolvedError });
-          logBrowserOperationFailure(
-            organizationContextLogger,
-            'organization_context_switch_failed',
-            resolvedError,
-            {
-              operation: 'update_my_organization_context',
-              organization_id: organizationId,
-            }
-          );
+          logOrganizationSwitchFailure(resolvedError, organizationId);
           return false;
         } finally {
           publishIfCurrent(identityKey, sequence, () => setIsUpdating(false));

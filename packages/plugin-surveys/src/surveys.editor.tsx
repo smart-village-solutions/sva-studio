@@ -11,6 +11,7 @@ import {
   StudioDetailTabs,
   StudioFormSummary,
   StudioLoadingState,
+  isMainserverPrincipalReady,
   resolveMainserverPrincipalOptions,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
@@ -31,14 +32,12 @@ import { useSurveyMutationAccess as useMutationAccess } from './surveys.lifecycl
 const formId = 'survey-detail-form';
 const SurveyPrincipalControl = ({
   actingPrincipalType,
-  loadedItem,
   mode,
   onChange,
   principalControl,
   pt,
 }: Readonly<{
   actingPrincipalType: MainserverPrincipalType;
-  loadedItem: ReturnType<typeof useSurveyEditorController>['loadedItem'];
   mode: SurveyEditorMode;
   onChange: (value: MainserverPrincipalType) => void;
   principalControl?: MainserverPrincipalControlModel;
@@ -62,6 +61,8 @@ const SurveyPrincipalControl = ({
         label: pt(`principal.${actingPrincipalType}`),
       })}
       onChange={onChange}
+      readinessByPrincipal={principalControl?.readinessByPrincipal}
+      readinessMessage={principalControl?.readinessMessage}
     />
   </div>
 );
@@ -70,7 +71,6 @@ const SurveyEditorForm = ({
   activeTab,
   canEdit,
   canSave,
-  loadedItem,
   methods,
   mode,
   onActiveTabChange,
@@ -85,7 +85,6 @@ const SurveyEditorForm = ({
   activeTab: SurveyEditorTabId;
   canEdit: boolean;
   canSave: boolean;
-  loadedItem: ReturnType<typeof useSurveyEditorController>['loadedItem'];
   methods: UseFormReturn<SurveyDetailFormValues>;
   mode: SurveyEditorMode;
   onActiveTabChange: (tab: SurveyEditorTabId) => void;
@@ -99,7 +98,6 @@ const SurveyEditorForm = ({
   const principal = (
     <SurveyPrincipalControl
       actingPrincipalType={actingPrincipalType}
-      loadedItem={loadedItem}
       mode={mode}
       onChange={onPrincipalChange}
       principalControl={principalControl}
@@ -144,9 +142,7 @@ const useSurveyActingPrincipal = (principalControl?: MainserverPrincipalControlM
     principalControl?.value ?? 'user'
   );
   React.useEffect(() => {
-    if (principalControl) {
-      setValue(principalControl.value);
-    }
+    if (principalControl) setValue(principalControl.value);
   }, [principalControl]);
 
   return [value, setValue] as const;
@@ -154,7 +150,6 @@ const useSurveyActingPrincipal = (principalControl?: MainserverPrincipalControlM
 
 const useSurveyForm = () =>
   useForm<SurveyDetailFormValues>({ defaultValues: createDefaultSurveyDetailFormValues() });
-
 const useSurveyTabs = (
   pt: ReturnType<typeof usePluginTranslation>,
   mode: SurveyEditorMode,
@@ -226,7 +221,12 @@ export const SurveyEditorPage = ({
       actions={<SurveyEditorActions pt={pt} />}
       primaryAction={
         <SurveyEditorPrimaryAction
-          disabled={!access.canSave || (mode === 'create' && createdContentId !== null)}
+          disabled={
+            !access.canSave ||
+            (mode === 'create' &&
+              (createdContentId !== null ||
+                !isMainserverPrincipalReady(principalControl, actingPrincipalType)))
+          }
           mode={mode}
           formId={formId}
           pt={pt}
@@ -243,7 +243,6 @@ export const SurveyEditorPage = ({
         activeTab={activeTab}
         canEdit={access.canEdit}
         canSave={access.canSave && !(mode === 'create' && createdContentId !== null)}
-        loadedItem={loadedItem}
         methods={methods}
         mode={mode}
         onActiveTabChange={setActiveTab}

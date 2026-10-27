@@ -33,6 +33,7 @@ export type EventsStatusMessage = Readonly<{
   kind: 'success' | 'error';
   text: string;
   requestId?: string;
+  errorCode?: string;
 }>;
 export const eventsErrorMessage = (
   pt: ReturnType<typeof usePluginTranslation>,
@@ -40,7 +41,9 @@ export const eventsErrorMessage = (
   fallbackKey: string
 ) =>
   error instanceof EventsApiError
-    ? ['missing_credentials', 'organization_mainserver_credentials_missing'].includes(error.code)
+    ? error.code === 'stale_mainserver_context'
+      ? pt('messages.staleMainserverContext')
+      : ['missing_credentials', 'organization_mainserver_credentials_missing'].includes(error.code)
       ? pt('create.saveUnavailable')
       : error.message
     : pt(fallbackKey);
@@ -202,6 +205,7 @@ const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormVa
       kind: 'error',
       text: eventsErrorMessage(context.pt, saveError, 'messages.saveError'),
       requestId: readMainserverErrorRequestId(saveError),
+      ...(saveError instanceof EventsApiError ? { errorCode: saveError.code } : {}),
     });
     context.saveFeedback.markFailed(operationId);
   }

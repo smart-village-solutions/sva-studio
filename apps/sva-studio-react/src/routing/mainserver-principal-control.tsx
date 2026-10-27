@@ -1,10 +1,15 @@
-import { resolveUserDisplayName, type IamOrganizationContextOption } from '@sva/core';
+import {
+  resolveUserDisplayName,
+  type IamMainserverReadiness,
+  type IamOrganizationContextOption,
+} from '@sva/core';
 import { Button, type MainserverPrincipalControlModel } from '@sva/studio-ui-react';
 import React from 'react';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { useOrganizationContext } from '../hooks/use-organization-context';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
+import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
 
 const EMPTY_ORGANIZATIONS: readonly IamOrganizationContextOption[] = [];
 
@@ -17,6 +22,7 @@ export const resolveMainserverPrincipalControl = (input: {
   readonly contextLoading?: boolean;
   readonly activeOrganizationId?: string;
   readonly organizations: readonly IamOrganizationContextOption[];
+  readonly personalMainserverReadiness?: IamMainserverReadiness;
   readonly userDisplayName?: string;
 }): MainserverPrincipalResolution => {
   if (input.contextLoading) {
@@ -34,6 +40,11 @@ export const resolveMainserverPrincipalControl = (input: {
     : undefined;
   const userDisplayName = input.userDisplayName?.trim() || t('content.principal.user');
   const organizationName = activeOrganization?.displayName.trim() ?? '';
+  const readinessByPrincipal = {
+    organization: activeOrganization?.mainserverReadiness ?? 'unavailable',
+    user: input.personalMainserverReadiness ?? 'unavailable',
+  } as const;
+  const readinessMessage = t('content.principal.mainserverNotReady');
   const policy = activeOrganization?.contentAuthorPolicy;
   const hasValidPolicy = policy === 'org_only' || policy === 'org_or_personal';
 
@@ -47,7 +58,13 @@ export const resolveMainserverPrincipalControl = (input: {
   if (policy === 'org_only' && organizationName.length > 0) {
     return {
       kind: 'ready',
-      control: { kind: 'fixed', value: 'organization', label: organizationName },
+      control: {
+        kind: 'fixed',
+        value: 'organization',
+        label: organizationName,
+        readinessByPrincipal,
+        readinessMessage,
+      },
     };
   }
 
@@ -61,13 +78,21 @@ export const resolveMainserverPrincipalControl = (input: {
           { value: 'organization', label: organizationName },
           { value: 'user', label: userDisplayName },
         ],
+        readinessByPrincipal,
+        readinessMessage,
       },
     };
   }
 
   return {
     kind: 'ready',
-    control: { kind: 'fixed', value: 'user', label: userDisplayName },
+    control: {
+      kind: 'fixed',
+      value: 'user',
+      label: userDisplayName,
+      readinessByPrincipal,
+      readinessMessage,
+    },
   };
 };
 
@@ -76,13 +101,26 @@ export const useMainserverPrincipalControl = () => {
   const organizationContext = useOrganizationContext();
   const organizations = organizationContext.context?.organizations ?? EMPTY_ORGANIZATIONS;
 
-  return resolveMainserverPrincipalControl({
+  const resolution = resolveMainserverPrincipalControl({
     contextAvailable: organizationContext.context !== null && organizationContext.error === null,
     contextLoading: organizationContext.isLoading || organizationContext.isUpdating,
     activeOrganizationId: organizationContext.context?.activeOrganizationId,
     organizations,
+    personalMainserverReadiness: organizationContext.context?.personalMainserverReadiness,
     userDisplayName: user ? resolveUserDisplayName(user) : undefined,
   });
+  return resolution.kind === 'ready'
+    ? {
+        ...resolution,
+        control: {
+          ...resolution.control,
+          refreshContext: async () => {
+            requestEffectiveAccessInvalidation();
+            await organizationContext.refetch();
+          },
+        },
+      }
+    : resolution;
 };
 
 export const MainserverPrincipalAlert = ({

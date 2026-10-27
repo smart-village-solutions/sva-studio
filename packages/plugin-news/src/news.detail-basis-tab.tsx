@@ -85,6 +85,8 @@ function NewsPrincipalCard({
       onChange={onActingPrincipalTypeChange}
       contextOptions={mode === 'create' ? principalControl?.contextOptions : undefined}
       onContextChange={mode === 'create' ? principalControl?.onContextChange : undefined}
+      readinessByPrincipal={principalControl?.readinessByPrincipal}
+      readinessMessage={principalControl?.readinessMessage}
     />
   );
   if (mode === 'create') return principal;

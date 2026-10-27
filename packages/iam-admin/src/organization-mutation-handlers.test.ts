@@ -1399,12 +1399,18 @@ describe('organization mutation handlers', () => {
       data: { organizationId: null },
       rawBody: '{"organizationId":null}',
     };
-    const handlers = createOrganizationMutationHandlers(buildDeps());
+    const handlers = createOrganizationMutationHandlers({
+      ...buildDeps(),
+      loadPersonalMainserverReadiness: vi.fn(async () => 'ready' as const),
+    });
     const response = await handlers.updateMyOrganizationContextInternal(
       new Request('http://localhost/api/v1/iam/me/context', { method: 'PUT' }),
       { ...ctx, user: { ...ctx.user, roles: ['system_admin'] } }
     );
     expect(response.status).toBe(200);
+    await expect(json(response)).resolves.toMatchObject({
+      data: { personalMainserverReadiness: 'ready' },
+    });
     expect(updateSession).toHaveBeenCalledWith('session-1', { activeOrganizationId: undefined });
     expect(notifyPermissionInvalidation).toHaveBeenCalled();
     expect(emitActivityLog).toHaveBeenCalledWith(

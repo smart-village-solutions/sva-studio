@@ -172,6 +172,38 @@ describe('EffectiveAccessProvider', () => {
     });
   });
 
+  it('does not publish the previous user access while identical roles are being reloaded', async () => {
+    fetchWithRequestTimeoutMock.mockResolvedValueOnce(response([{ action: 'news.create' }]));
+    const { result, rerender } = renderHook(() => useEffectiveAccess(), { wrapper });
+    await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
+    expect(readSessionAccessSnapshot()).toMatchObject({
+      subjectId: 'user-1',
+      permissionActions: ['news.create'],
+    });
+
+    let resolveNext: ((value: ReturnType<typeof response>) => void) | undefined;
+    fetchWithRequestTimeoutMock.mockReturnValueOnce(
+      new Promise<ReturnType<typeof response>>((resolve) => {
+        resolveNext = resolve;
+      })
+    );
+    authMockValue.user = { ...authMockValue.user!, id: 'user-2' };
+    rerender();
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('loading'));
+    expect(readSessionAccessSnapshot()).toMatchObject({
+      isResolved: false,
+      subjectId: 'user-2',
+      permissionActions: [],
+    });
+
+    await act(async () => {
+      resolveNext?.(response([{ action: 'news.create' }]));
+    });
+    await waitFor(() => expect(readSessionAccessSnapshot().isResolved).toBe(true));
+    expect(readSessionAccessSnapshot().subjectId).toBe('user-2');
+  });
+
   it('retries only effective access without refreshing or revoking the session', async () => {
     fetchWithRequestTimeoutMock
       .mockRejectedValueOnce({ status: 503, code: 'database_unavailable' })

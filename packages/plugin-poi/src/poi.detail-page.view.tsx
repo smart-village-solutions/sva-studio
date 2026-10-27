@@ -9,6 +9,7 @@ import {
   StudioDetailPageTemplate,
   StudioDestructiveActionDialog,
   StudioSaveButton,
+  isMainserverPrincipalReady,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
   useStudioSaveFeedback,
@@ -96,7 +97,11 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
                 type="submit"
                 form={formId}
                 status={saveFeedback.status}
-                disabled={mode === 'create' && media.leaveGuard.createdContentId !== null}
+                disabled={
+                  mode === 'create' &&
+                  (media.leaveGuard.createdContentId !== null ||
+                    !isMainserverPrincipalReady(view.principalControl, view.actingPrincipalType))
+                }
                 labels={{
                   idle: pt(
                     mode === 'create'

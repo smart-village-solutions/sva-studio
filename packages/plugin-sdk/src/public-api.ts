@@ -257,6 +257,7 @@ export {
 } from './plugin-translations.js';
 export type { SessionAccessSnapshot } from './session-access.js';
 export {
+  invalidateSessionAccessSnapshot,
   publishSessionAccessSnapshot,
   readSessionAccessSnapshot,
   resetSessionAccessSnapshot,

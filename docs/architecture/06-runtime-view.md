@@ -1570,3 +1570,9 @@ Die Medienbibliothek startet mit `media.read` und `media.update` sowie CSRF-Schu
 ## Gutschein speichern
 
 Vorbereitung liest Ort und sämtliche Gutscheine, prüft den gesamten Berechtigungsumfang und bindet Formular und Fingerprint an Principal und Credential-Kontext. Nach Vorbereitung erfolgt ein weiterer Read und genau ein Provider-Write ohne Retry. Bestehende Gutschein-IDs werden verschachtelt mitgesendet; der korrigierte Mainserver erhält Gutscheine, Kontingente und Einlösungen sowie Ankündigungen aller Anbietertypen. Readback prüft den Sollzustand einschließlich bestehender IDs; Referenzen und Projektionen folgen. Bei unklarem Ausgang liest ein expliziter Abgleich anhand der vorab vergebenen Identitäten und Operationsmarkierung. Sichtbarkeit verwendet einen getrennten, kontingenterhaltenden Write. Siehe [Gutscheinreferenz](../reference/vouchers.md).
+
+## UI-Revalidierung und Editor-Recovery
+
+Bei Fokus/Wiederaufnahme, erfolgreicher Session-Recovery und Identitäts-/Tenant-/Organisationswechsel invalidiert Studio die effektive Rechtegeneration und lädt den aktuellen Scope erneut. Client-Route-Guards verwenden danach denselben aufgelösten Snapshot wie Aktionen. Ein gewöhnlicher Ressourcen-`403` bleibt lokal; ein expliziter Snapshot-Stale-Code löst eine zusammengeführte Effective-Access-Invalidierung aus.
+
+Bei `stale_mainserver_context` verwirft das SDK das betroffene Context-Binding. Der Core-Content-, News- und Event-Editor sperrt die Detailansicht, liest Kontext und Detail nach ausdrücklicher Nutzeraktion neu, erhält ungespeicherte Eingaben und wiederholt die Schreiboperation nicht. Die erneute Mutation erfordert eine weitere ausdrückliche Nutzeraktion. Die lokale Principal-Readiness sperrt Create bei fehlenden oder nicht verifizierten Credentials, führt aber weder Probe noch Provisionierung aus.

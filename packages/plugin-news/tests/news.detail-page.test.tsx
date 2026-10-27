@@ -422,6 +422,25 @@ describe('NewsDetailPage', () => {
     expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
   });
 
+  it('hides create actions and blocks keyboard form submission without create permission', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: ['news.read'],
+      assignedModules: ['news'],
+      roles: [],
+    });
+    render(<NewsDetailPage mode="create" />);
+    const title = await screen.findByLabelText('Titel');
+    fireEvent.change(title, { target: { value: 'Ohne Berechtigung' } });
+    expect(screen.queryByRole('button', { name: 'Entwurf anlegen' })).toBeNull();
+    const form = title.closest('form');
+    if (!form) throw new Error('news_create_form_missing');
+
+    fireEvent.submit(form);
+
+    await waitFor(() => expect(vi.mocked(saveNewsEditorItem)).not.toHaveBeenCalled());
+  });
+
   it('blocks a visibility-changing save without the required lifecycle grant', async () => {
     vi.mocked(getNewsDetail).mockResolvedValueOnce({
       data: {

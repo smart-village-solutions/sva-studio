@@ -4,6 +4,7 @@ import {
   Button,
   StudioDetailPageTemplate,
   StudioSaveButton,
+  isMainserverPrincipalReady,
   type MainserverPrincipalControlModel,
   type StudioDetailTabDefinition,
 } from '@sva/studio-ui-react';
@@ -48,7 +49,11 @@ function ProjectPrimaryAction(props: ViewInput) {
         type="submit"
         form={formId}
         status={saveFeedback.status}
-        disabled={mediaReferenceSync.hasPendingRetry}
+        disabled={
+          mediaReferenceSync.hasPendingRetry ||
+          (mode === 'create' &&
+            !isMainserverPrincipalReady(props.principalControl, props.actingPrincipalType))
+        }
         labels={{
           idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
           saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),

@@ -6,6 +6,7 @@ import {
   useStudioMediaReferenceSync,
   useStudioSaveFeedback,
   useStudioEditorLeaveGuard,
+  isMainserverPrincipalReady,
   type ContentMediaUsage,
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
@@ -164,7 +165,7 @@ export const NewsDetailPage = ({
     void refreshMediaAssets();
   }, [refreshMediaAssets]);
 
-  useNewsDetailLoad({
+  const { reloadCurrentContext } = useNewsDetailLoad({
     mode,
     contentId,
     principalControl,
@@ -260,6 +261,8 @@ export const NewsDetailPage = ({
         mode,
         pt,
         canSave: canSave && !(mode === 'create' && retryCreatedContentId),
+        principalReady: isMainserverPrincipalReady(principalControl, actingPrincipalType),
+        reloadCurrentContext,
         formId,
         mediaReferenceSync,
         saveFeedback,

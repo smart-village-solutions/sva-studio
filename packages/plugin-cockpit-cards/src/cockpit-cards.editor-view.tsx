@@ -8,6 +8,7 @@ import {
   StudioFormSummaryErrors,
   StudioMediaReferenceRetryAction,
   StudioSaveButton,
+  isMainserverPrincipalReady,
   resolveMainserverPrincipalOptions,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
@@ -92,18 +93,19 @@ function EditorActions({ view }: { view: EditorViewProps }) {
 
 function EditorPrimaryAction({ view }: { view: EditorViewProps }) {
   const { canSave, pt, mode, deletePending, saveFeedback, mediaSavePhaseKey } = view;
+  const disabled =
+    deletePending ||
+    (mode === 'create' &&
+      !isMainserverPrincipalReady(view.principalControl, view.actingPrincipalType));
+  const effectKey = view.form.watch('visible') ? 'create.visibleEffect' : 'create.hiddenEffect';
   return canSave ? (
     <div className="flex flex-col items-end gap-1">
-      {mode === 'create' ? (
-        <p className="text-sm text-muted-foreground">
-          {pt(view.form.watch('visible') ? 'create.visibleEffect' : 'create.hiddenEffect')}
-        </p>
-      ) : null}
+      {mode === 'create' ? <p className="text-sm text-muted-foreground">{pt(effectKey)}</p> : null}
       <StudioSaveButton
         type="submit"
         form={`cockpit-card-${mode}-form`}
         status={saveFeedback.status}
-        disabled={deletePending}
+        disabled={disabled}
         labels={{
           idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
           saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
@@ -134,6 +136,8 @@ function EditorPrincipal(view: EditorViewProps) {
           label: view.pt(`principal.${view.actingPrincipalType}`),
         })}
         onChange={view.setActingPrincipalType}
+        readinessByPrincipal={view.principalControl?.readinessByPrincipal}
+        readinessMessage={view.principalControl?.readinessMessage}
       />
     </div>
   );

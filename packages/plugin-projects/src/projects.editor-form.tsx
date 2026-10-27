@@ -129,19 +129,7 @@ export function ProjectEditorForm(props: ViewInput) {
       {mode === 'create' ? (
         <p className="text-sm text-muted-foreground">{pt('create.intro')}</p>
       ) : null}
-      {mode === 'edit' ? (
-        <MainserverPrincipalControl
-          id="projects-acting-principal"
-          label={pt('principal.actAs')}
-          description={pt('principal.description')}
-          value={actingPrincipalType}
-          options={resolveMainserverPrincipalOptions(principalControl, {
-            value: actingPrincipalType,
-            label: pt(`principal.${actingPrincipalType}`),
-          })}
-          onChange={setActingPrincipalType}
-        />
-      ) : null}
+      {mode === 'edit' ? <ProjectPrincipalSelector {...props} /> : null}
       {mode === 'create' ? (
         tabs[0]?.panel
       ) : (
@@ -154,23 +142,40 @@ export function ProjectEditorForm(props: ViewInput) {
           keepMounted
         />
       )}
-      {mode === 'create' ? (
-        <div className="has-[select]:rounded-2xl has-[select]:border has-[select]:border-border/60 has-[select]:bg-card has-[select]:p-5">
-          <MainserverPrincipalControl
-            fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
-            id="projects-acting-principal"
-            label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-            description={pt('principal.description')}
-            value={actingPrincipalType}
-            options={resolveMainserverPrincipalOptions(principalControl, {
-              value: actingPrincipalType,
-              label: pt(`principal.${actingPrincipalType}`),
-            })}
-            onChange={setActingPrincipalType}
-          />
-        </div>
-      ) : null}
+      {mode === 'create' ? <ProjectPrincipalSelector {...props} /> : null}
     </form>
+  );
+}
+
+function ProjectPrincipalSelector({
+  mode,
+  pt,
+  principalControl,
+  actingPrincipalType,
+  setActingPrincipalType,
+}: ViewInput) {
+  const selector = (
+    <MainserverPrincipalControl
+      fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
+      id="projects-acting-principal"
+      label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+      description={pt('principal.description')}
+      value={actingPrincipalType}
+      options={resolveMainserverPrincipalOptions(principalControl, {
+        value: actingPrincipalType,
+        label: pt(`principal.${actingPrincipalType}`),
+      })}
+      onChange={setActingPrincipalType}
+      readinessByPrincipal={principalControl?.readinessByPrincipal}
+      readinessMessage={principalControl?.readinessMessage}
+    />
+  );
+  return mode === 'create' ? (
+    <div className="has-[select]:rounded-2xl has-[select]:border has-[select]:border-border/60 has-[select]:bg-card has-[select]:p-5">
+      {selector}
+    </div>
+  ) : (
+    selector
   );
 }
 

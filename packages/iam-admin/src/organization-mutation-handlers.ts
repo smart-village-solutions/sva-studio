@@ -1,4 +1,4 @@
-import type { ApiErrorCode } from '@sva/core';
+import type { ApiErrorCode, IamMainserverReadiness } from '@sva/core';
 import type { z } from 'zod';
 import type { OrganizationMainserverCredentialState } from './organization-mainserver-credentials.js';
 import { createOrganizationHandler } from './organization-mutation-create.js';
@@ -133,6 +133,10 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
       readonly isActive: boolean;
     }[]
   >;
+  readonly loadPersonalMainserverReadiness?: (input: {
+    readonly instanceId: string;
+    readonly keycloakSubject: string;
+  }) => Promise<IamMainserverReadiness>;
   readonly loadOrganizationById: (
     client: QueryClient,
     input: { readonly instanceId: string; readonly organizationId: string }

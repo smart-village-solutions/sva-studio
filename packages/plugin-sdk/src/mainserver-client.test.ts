@@ -258,6 +258,60 @@ describe('mainserver-client', () => {
     });
   });
 
+  it('discards a stale context binding and rereads detail before the next explicit mutation', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { id: 'news-1', title: 'Erste' } }), {
+          status: 200,
+          headers: { 'X-SVA-Context-Binding': 'v1.old-context' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'stale_mainserver_context' }), { status: 409 })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { id: 'news-1', title: 'Aktuell' } }), {
+          status: 200,
+          headers: { 'X-SVA-Context-Binding': 'v1.current-context' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { id: 'news-1', title: 'Neu' } }), { status: 200 })
+      );
+    const client = createMainserverCrudClient<
+      { id: string; title: string },
+      { title: string },
+      { readonly data: readonly { id: string; title: string }[] },
+      readonly { id: string; title: string }[]
+    >({
+      basePath: '/items',
+      fetch: fetchMock as typeof fetch,
+      errorFactory: (code, message) => new MainserverApiError(code, message),
+      mapListResponse: (response) => response.data,
+    });
+
+    await client.get('news-1');
+    await expect(
+      client.update('news-1', { title: 'Versuch 1' }, 'organization')
+    ).rejects.toMatchObject({
+      code: 'stale_mainserver_context',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    await expect(client.update('news-1', { title: 'Versuch 2' }, 'organization')).resolves.toEqual({
+      id: 'news-1',
+      title: 'Neu',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock.mock.calls[2]?.[1]?.method).toBeUndefined();
+    expect(readHeaders(fetchMock.mock.calls[3]?.[1]?.headers)).toMatchObject({
+      'x-sva-context-binding': 'v1.current-context',
+      'x-sva-acting-principal-type': 'organization',
+    });
+  });
+
   it('fails closed before a mutation when the detail response has no context binding', async () => {
     const fetchMock = vi.fn(
       async () =>

@@ -29,12 +29,12 @@ export const useAuthLoad = (
     commitLoadUserFailure,
   } = useAuthSessionCommit(base);
   const loadUser = React.useCallback(
-    async (silent: boolean) => {
+    async (silent: boolean): Promise<boolean> => {
       if (silent && inFlightSilentLoadRef.current) {
         return inFlightSilentLoadRef.current;
       }
 
-      const runLoadUser = async () => {
+      const runLoadUser = async (): Promise<boolean> => {
         const authFlowId = startAuthFlow();
         const firstAttempt = nextAuthAttempt();
         startLoadUserRequest(silent, authFlowId, firstAttempt);
@@ -66,12 +66,14 @@ export const useAuthLoad = (
 
           if (!result.ok) {
             commitUnauthenticatedSession(silent, authFlowId, result);
-            return;
+            return false;
           }
 
           commitAuthenticatedSession(silent, authFlowId, result);
+          return true;
         } catch (cause) {
           commitLoadUserFailure(silent, authFlowId, firstAttempt, cause);
+          return false;
         } finally {
           if (!silent && isMountedRef.current) {
             setIsLoading(false);
@@ -86,7 +88,7 @@ export const useAuthLoad = (
 
       inFlightSilentLoadRef.current = loadPromise;
       try {
-        await loadPromise;
+        return await loadPromise;
       } finally {
         if (inFlightSilentLoadRef.current === loadPromise) {
           inFlightSilentLoadRef.current = null;

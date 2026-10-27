@@ -5,6 +5,7 @@ import {
   Button,
   StudioDetailPageTemplate,
   StudioSaveButton,
+  isMainserverPrincipalReady,
   useStudioSaveFeedback,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
@@ -52,6 +53,7 @@ export type EventsDetailPageViewProps = Readonly<{
   loadedItem: EventContentItem | null;
   mediaReferencesReady: boolean;
   setStatus: Dispatch<SetStateAction<EventsStatusMessage | null>>;
+  reloadCurrentContext: () => Promise<void>;
 }>;
 
 const EventsDetailSaveAction = ({
@@ -62,6 +64,8 @@ const EventsDetailSaveAction = ({
   methods,
   mode,
   media,
+  principalControl,
+  actingPrincipalType,
 }: EventsDetailPageViewProps) => {
   const visible = useWatch({ control: methods.control, name: 'settings.visible' });
   return (
@@ -70,7 +74,11 @@ const EventsDetailSaveAction = ({
         type="submit"
         form={formId}
         status={saveFeedback.status}
-        disabled={mode === 'create' && media.leaveGuard.createdContentId !== null}
+        disabled={
+          mode === 'create' &&
+          (media.leaveGuard.createdContentId !== null ||
+            !isMainserverPrincipalReady(principalControl, actingPrincipalType))
+        }
         labels={{
           idle: pt(
             mode === 'create'

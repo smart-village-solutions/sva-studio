@@ -19,10 +19,11 @@ import {
   authLogger,
 } from './auth-provider-helpers';
 import type { AuthSessionBase } from './auth-session-base';
+import { requestEffectiveAccessInvalidation } from './effective-access-invalidation';
 
 export const useAuthSessionActions = (
   base: AuthSessionBase,
-  loadUser: (silent: boolean) => Promise<void>
+  loadUser: (silent: boolean) => Promise<boolean>
 ) => {
   const {
     devAuthAvailable,
@@ -118,6 +119,7 @@ export const useAuthSessionActions = (
       throw cause;
     } finally {
       if (isMountedRef.current) {
+        requestEffectiveAccessInvalidation();
         setUser(null);
         setSessionExpiresAt(null);
         setError(null);

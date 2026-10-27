@@ -90,6 +90,52 @@ describe('organization query helpers', () => {
     );
   });
 
+  it('projects only a safe local organization credential readiness state', () => {
+    const base = {
+      organization_id: 'org-1',
+      organization_key: 'alpha',
+      display_name: 'Alpha',
+      organization_type: 'municipality' as const,
+      content_author_policy: 'org_only' as const,
+      is_active: true,
+      is_default_context: false,
+    };
+    expect(
+      mapContextOption({
+        ...base,
+        mainserver_application_id: 'private-id',
+        mainserver_application_secret_ciphertext: 'ciphertext',
+        mainserver_provisioning_status: 'ready',
+      })
+    ).toEqual(expect.objectContaining({ mainserverReadiness: 'ready' }));
+    expect(
+      mapContextOption({
+        ...base,
+        mainserver_application_id: 'private-id',
+        mainserver_application_secret_ciphertext: null,
+        mainserver_provisioning_status: 'ready',
+      })
+    ).toEqual(expect.objectContaining({ mainserverReadiness: 'partial_credentials' }));
+    expect(
+      mapContextOption({
+        ...base,
+        mainserver_application_id: 'private-id',
+        mainserver_application_secret_ciphertext: 'ciphertext',
+        mainserver_provisioning_status: 'verification_required',
+      })
+    ).toEqual(expect.objectContaining({ mainserverReadiness: 'verification_pending' }));
+    const serialized = JSON.stringify(
+      mapContextOption({
+        ...base,
+        mainserver_application_id: 'private-id',
+        mainserver_application_secret_ciphertext: 'ciphertext',
+        mainserver_provisioning_status: 'ready',
+      })
+    );
+    expect(serialized).not.toContain('private-id');
+    expect(serialized).not.toContain('ciphertext');
+  });
+
   it('reads filters and escapes ilike patterns', () => {
     expect(readStatusFilter(new Request('http://localhost/api?status=inactive'))).toBe(false);
     expect(

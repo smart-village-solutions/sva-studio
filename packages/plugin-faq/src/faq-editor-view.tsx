@@ -5,6 +5,7 @@ import {
   StudioFormSummary,
   StudioFormSummaryErrors,
   StudioSaveButton,
+  isMainserverPrincipalReady,
   resolveMainserverPrincipalOptions,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
@@ -76,9 +77,19 @@ const FaqEditorPrimaryAction = ({
   pt,
   saveStatus,
   form,
+  principalControl,
+  actingPrincipalType,
 }: Pick<
   FaqEditorViewProps,
-  'canSave' | 'deletePending' | 'formId' | 'mode' | 'pt' | 'saveStatus' | 'form'
+  | 'canSave'
+  | 'deletePending'
+  | 'formId'
+  | 'mode'
+  | 'pt'
+  | 'saveStatus'
+  | 'form'
+  | 'principalControl'
+  | 'actingPrincipalType'
 >) =>
   canSave ? (
     <div className="flex flex-col items-end gap-1">
@@ -91,7 +102,7 @@ const FaqEditorPrimaryAction = ({
         type="submit"
         form={formId}
         status={saveStatus}
-        disabled={deletePending}
+        disabled={deletePending || (mode === 'create' && !isMainserverPrincipalReady(principalControl, actingPrincipalType))}
         labels={{
           idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
           saving: pt('actions.saving'),
@@ -121,6 +132,8 @@ function FaqPrincipal(props: FaqEditorViewProps) {
           label: props.pt(`principal.${props.actingPrincipalType}`),
         })}
         onChange={props.setActingPrincipalType}
+        readinessByPrincipal={props.principalControl?.readinessByPrincipal}
+        readinessMessage={props.principalControl?.readinessMessage}
       />
     </div>
   );

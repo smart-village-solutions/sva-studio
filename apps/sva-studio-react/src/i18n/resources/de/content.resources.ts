@@ -1,3 +1,5 @@
+import { contentDEErrors } from './content.errors.resources.js';
+
 export const contentDEResources = {
   leaveGuard: {
     title: 'Ungespeicherte Eingaben verwerfen?',
@@ -69,6 +71,7 @@ export const contentDEResources = {
       '{{count}} ausgewählte Inhalte werden endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
     deletePending: 'Wird gelöscht ...',
     dismissFeedback: 'Schließen',
+    reloadCurrentContext: 'Aktuellen Kontext neu laden',
   },
   fields: {
     title: 'Überschrift',
@@ -164,6 +167,7 @@ export const contentDEResources = {
       'Der Ressourcenprincipal wird geladen. Schreibaktionen sind vorübergehend gesperrt.',
     resourceUnavailable:
       'Der Ressourcenprincipal konnte nicht eindeutig bestimmt werden. Schreibaktionen bleiben gesperrt.',
+    mainserverNotReady: 'Mainserver-Anbindung nicht bereit. Bitte Administration kontaktieren.',
   },
   ownership: {
     title: 'Inhaber',
@@ -375,16 +379,7 @@ export const contentDEResources = {
       reconciliationFailed: 'Abgleich fehlgeschlagen',
     },
   },
-  errors: {
-    forbidden: 'Unzureichende Berechtigungen für diese Inhaltsaktion.',
-    csrfValidationFailed:
-      'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
-    rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
-    notFound: 'Der angeforderte Inhalt wurde nicht gefunden.',
-    databaseUnavailable:
-      'Die Inhaltsdaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.',
-    invalidRequest: 'Der Inhalt enthält ungültige oder unvollständige Daten.',
-  },
+  errors: contentDEErrors,
   validation: {
     titleRequired: 'Die Überschrift ist ein Pflichtfeld.',
     payloadJsonInvalid: 'Die Zusatzdaten müssen gültiges JSON sein.',

@@ -71,8 +71,8 @@ describe('createRuntimeRouteTree', () => {
     ).toEqual({
       instanceId: 'instance-1',
       roles: ['iam_admin', 'editor'],
-      permissionActions: ['news.read', 'events.read'],
-      permissionStatus: 'ok',
+      permissionActions: [],
+      permissionStatus: 'degraded',
       assignedModules: ['news', 'media'],
     });
 
@@ -80,7 +80,7 @@ describe('createRuntimeRouteTree', () => {
       instanceId: undefined,
       roles: [],
       permissionActions: [],
-      permissionStatus: 'ok',
+      permissionStatus: 'degraded',
       assignedModules: [],
     });
   });
@@ -123,10 +123,11 @@ describe('createRuntimeRouteTree', () => {
         },
       })
     ).toEqual({
+      id: 'user-1',
       instanceId: 'instance-1',
       roles: [],
       permissionActions: [],
-      permissionStatus: 'ok',
+      permissionStatus: 'degraded',
       assignedModules: [],
     });
   });

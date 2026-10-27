@@ -45,6 +45,9 @@ export type ContextOptionRow = {
   readonly content_author_policy: 'org_only' | 'org_or_personal';
   readonly is_active: boolean;
   readonly is_default_context: boolean;
+  readonly mainserver_application_id?: string | null;
+  readonly mainserver_application_secret_ciphertext?: string | null;
+  readonly mainserver_provisioning_status?: string | null;
 };
 
 const ORGANIZATION_TYPE_VALUES = [
@@ -119,6 +122,25 @@ export const mapContextOption = (row: ContextOptionRow): IamOrganizationContextO
   contentAuthorPolicy: row.content_author_policy,
   isActive: row.is_active,
   isDefaultContext: row.is_default_context,
+  ...(row.mainserver_application_id !== undefined
+    ? (() => {
+        const applicationId = row.mainserver_application_id?.trim() || null;
+        const applicationSecret = revealField(
+          row.mainserver_application_secret_ciphertext ?? null,
+          `iam.organization_mainserver_credentials.mainserver_application_secret:${row.organization_id}`
+        );
+        return {
+          mainserverReadiness:
+            applicationId && applicationSecret
+              ? row.mainserver_provisioning_status === 'ready'
+                ? 'ready'
+                : 'verification_pending'
+              : applicationId || applicationSecret
+                ? 'partial_credentials'
+                : 'missing_credentials',
+        };
+      })()
+    : {}),
 });
 
 export const readStatusFilter = (request: Request): boolean | undefined => {

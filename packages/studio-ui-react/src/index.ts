@@ -87,6 +87,7 @@ export {
 } from './mainserver-deviation-summary.js';
 export {
   MainserverPrincipalControl,
+  isMainserverPrincipalReady,
   resolveMainserverPrincipalOptions,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalControlProps,

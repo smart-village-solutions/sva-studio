@@ -45,6 +45,8 @@ Der jeweilige Detail-GET erhält den ausgewählten Mutationsprincipal über den 
 - `401` kann einen getrennten Identitäts-/Session-Refresh auslösen.
 - Ein erwartbarer Ressourcen-`403` ohne maschinenlesbares Stale-, Scope- oder Versionssignal löst keinen globalen Effective-Access-Refetch und keine Session-Aktion aus.
 - Die stabilen Fehlercodes `frontend_state_stale`, `instance_scope_mismatch`, `permission_revision_mismatch`, `permission_snapshot_stale` und `permission_snapshot_version_mismatch` lösen ausschließlich die globale Effective-Access-Invalidierung aus. Mehrere Signale für dieselbe Snapshot-Generation werden zusammengeführt.
+- `stale_mainserver_context` invalidiert nur das betroffene Context-Binding. Der Core-Content-, News- und Event-Editor verwirft die zugehörige Ressourcenfreigabe, liest Organisationskontext, Detail und Access nach einer ausdrücklichen Recovery-Aktion neu und erhält den lokalen Entwurf zur Prüfung. POST/PATCH/DELETE wird nicht automatisch wiederholt.
+- Die Principal-Projektion darf ausschließlich einen lokalen, geheimnisfreien Credential-/Provisioning-Status enthalten. Dieser Status ist ein Hinweis für die UI, keine Upstream-Probe und keine Ersatzautorisierung; der Schreibpfad prüft die tatsächlichen Voraussetzungen erneut.
 - Ein erfolgreiches lokales Rollen-, Gruppen-, Benutzer-, Organisations-, Modul- oder Rechtstext-Update invalidiert nur den Browser-Snapshot; die revisionsgebundene Server-Cache-Gültigkeit folgt unabhängig dem PostgreSQL-Revisionsvektor.
 - Cache-Reset, Browser-Refetch und Session-Widerruf sind drei getrennte Verträge. Dieser Change stellt keinen manuellen Permission-Cache-Reset bereit.
 

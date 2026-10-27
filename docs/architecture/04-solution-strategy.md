@@ -375,3 +375,9 @@ Die gemeinsame Inhaltsliste löst Lösch- und Schnellstatusfähigkeiten über di
 ## Bus-API-Key-Verwaltung
 
 Die bestehende zentrale Instanzverwaltung wird erweitert; es entstehen weder Tenant-Modul noch Plugin, Package oder zweite Key-Registry. Der Adapter im Auth-Runtime-Pfad kapselt ausschließlich Liste, Erstellung, Sperrung und Reaktivierung. Der vorhandene umfassende Bus-Admin-Token wird nur serverseitig verwendet.
+
+### Fortschreibung 2026-10: UI-Zugriff und sichere Wiederaufnahme
+
+Route-Guards und sichtbare Aktionen verwenden denselben aufgelösten, scopegebundenen Effective-Access-Snapshot. Identitäts- und Organisationswechsel invalidieren ihn synchron; Wiederaufnahme erzwingt eine neue Access-Generation auch bei unveränderten Rollennamen. Ressourcen-`403` bleiben lokal, während explizite Snapshot-Stale-Codes gezielt invalidieren. Der Core-Content-, News- und Event-Editor verwirft bei `stale_mainserver_context` das betroffene Binding, erhält den Entwurf und verlangt eine neue ausdrückliche Recovery- und Schreibaktion. Siehe ADR-050.
+
+Die bestehende Principal-Projektion kann eine lokale, geheimnisfreie Mainserver-Credential-/Provisioning-Bereitschaft anzeigen. Sie steuert die Create-Verfügbarkeit als UI-Hinweis; der Server prüft die tatsächlichen Voraussetzungen vor jedem Schreiben erneut. Mainserver selbst und sein Vertrag bleiben unverändert.

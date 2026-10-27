@@ -9,10 +9,11 @@ import {
 } from './auth-provider-helpers';
 import type { AuthSessionBase } from './auth-session-base';
 import type { useSilentAuthRecovery } from './auth-silent-recovery';
+import { requestEffectiveAccessInvalidation } from './effective-access-invalidation';
 
 export const useAuthSessionEffects = (
   base: AuthSessionBase,
-  loadUser: (silent: boolean) => Promise<void>,
+  loadUser: (silent: boolean) => Promise<boolean>,
   attemptSilentSessionRecovery: ReturnType<typeof useSilentAuthRecovery>
 ) => {
   const {
@@ -26,6 +27,11 @@ export const useAuthSessionEffects = (
     authAttemptRef,
     recordTrail,
   } = base;
+  const refreshSessionAndAccess = React.useCallback(async () => {
+    const refreshed = await loadUser(true);
+    if (refreshed) requestEffectiveAccessInvalidation();
+  }, [loadUser]);
+
   React.useEffect(() => {
     const currentDocument = globalThis.document;
     if (!currentDocument) {
@@ -37,14 +43,15 @@ export const useAuthSessionEffects = (
         return;
       }
 
-      void loadUser(true);
+      requestEffectiveAccessInvalidation();
+      void refreshSessionAndAccess();
     };
 
     currentDocument.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       currentDocument.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [loadUser]);
+  }, [refreshSessionAndAccess]);
 
   React.useEffect(() => {
     const currentWindow = globalThis.window;
@@ -53,13 +60,14 @@ export const useAuthSessionEffects = (
     }
 
     const intervalId = currentWindow.setInterval(() => {
-      void loadUser(true);
+      requestEffectiveAccessInvalidation();
+      void refreshSessionAndAccess();
     }, MODULE_ACCESS_REVALIDATION_INTERVAL_MS);
 
     return () => {
       currentWindow.clearInterval(intervalId);
     };
-  }, [loadUser, user?.moduleAccessPending]);
+  }, [refreshSessionAndAccess, user?.moduleAccessPending]);
 
   React.useEffect(() => {
     clearSessionExpiryTimer();
@@ -130,7 +138,10 @@ export const useAuthSessionEffects = (
         } catch {
           authLogger.warn('auth_pre_expiry_silent_recovery_failed');
         }
-        if (confirmedUserRef.current) await loadUser(true);
+        if (confirmedUserRef.current) {
+          requestEffectiveAccessInvalidation();
+          await refreshSessionAndAccess();
+        }
       })();
     }, delayMs);
 
@@ -151,6 +162,7 @@ export const useAuthSessionEffects = (
     clearSessionExpiryTimer,
     loadUser,
     recordTrail,
+    refreshSessionAndAccess,
     sessionExpiresAt,
     user,
   ]);

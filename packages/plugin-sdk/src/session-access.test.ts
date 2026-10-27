@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  invalidateSessionAccessSnapshot,
   publishSessionAccessSnapshot,
   readSessionAccessSnapshot,
   resetSessionAccessSnapshot,
@@ -18,6 +19,9 @@ describe('plugin-sdk session access store', () => {
 
     publishSessionAccessSnapshot({
       isResolved: true,
+      subjectId: 'account-1',
+      instanceId: 'tenant-1',
+      organizationId: 'org-1',
       permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
       unscopedPermissionActions: ['waste-management.read'],
       assignedModules: ['waste-management'],
@@ -27,6 +31,9 @@ describe('plugin-sdk session access store', () => {
     expect(readSessionAccessSnapshot()).toEqual({
       isResolved: true,
       hasError: false,
+      subjectId: 'account-1',
+      instanceId: 'tenant-1',
+      organizationId: 'org-1',
       permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
       unscopedPermissionActions: ['waste-management.read'],
       assignedModules: ['waste-management'],
@@ -36,6 +43,9 @@ describe('plugin-sdk session access store', () => {
       {
         isResolved: true,
         hasError: false,
+        subjectId: 'account-1',
+        instanceId: 'tenant-1',
+        organizationId: 'org-1',
         permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
         unscopedPermissionActions: ['waste-management.read'],
         assignedModules: ['waste-management'],
@@ -89,6 +99,31 @@ describe('plugin-sdk session access store', () => {
       isResolved: false,
       hasError: true,
       permissionActions: [],
+    });
+  });
+
+  it('invalidates a resolved identity snapshot before it is reloaded', () => {
+    resetSessionAccessSnapshot();
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      subjectId: 'account-1',
+      instanceId: 'tenant-1',
+      organizationId: 'org-1',
+      permissionActions: ['news.create'],
+      assignedModules: ['news'],
+      roles: ['system_admin'],
+    });
+
+    invalidateSessionAccessSnapshot();
+
+    expect(readSessionAccessSnapshot()).toMatchObject({
+      isResolved: false,
+      subjectId: 'account-1',
+      instanceId: 'tenant-1',
+      organizationId: 'org-1',
+      permissionActions: [],
+      assignedModules: [],
+      roles: [],
     });
   });
 });

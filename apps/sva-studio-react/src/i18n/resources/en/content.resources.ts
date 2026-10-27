@@ -1,3 +1,5 @@
+import { contentENErrors } from './content.errors.resources.js';
+
 export const contentENResources = {
   leaveGuard: {
     title: 'Discard unsaved changes?',
@@ -67,6 +69,7 @@ export const contentENResources = {
       '{{count}} selected content items will be permanently deleted. This action cannot be undone.',
     deletePending: 'Deleting ...',
     dismissFeedback: 'Dismiss',
+    reloadCurrentContext: 'Reload current context',
   },
   fields: {
     title: 'Title',
@@ -159,6 +162,8 @@ export const contentENResources = {
     resourceLoading: 'The resource principal is loading. Write actions are temporarily blocked.',
     resourceUnavailable:
       'The resource principal could not be determined unambiguously. Write actions remain blocked.',
+    mainserverNotReady:
+      'The local Mainserver connection for this principal is not ready. Saving is blocked. Ask your administrator to check the connection.',
   },
   ownership: {
     title: 'Owner',
@@ -358,14 +363,7 @@ export const contentENResources = {
       reconciliationFailed: 'Reconciliation failed',
     },
   },
-  errors: {
-    forbidden: 'You do not have sufficient permissions for this content action.',
-    csrfValidationFailed: 'Security validation failed. Please reload the page and try again.',
-    rateLimited: 'Too many requests in a short time. Please wait and try again.',
-    notFound: 'The requested content could not be found.',
-    databaseUnavailable: 'The content data could not be processed due to a database problem.',
-    invalidRequest: 'The content contains invalid or incomplete data.',
-  },
+  errors: contentENErrors,
   validation: {
     titleRequired: 'Title is required.',
     payloadJsonInvalid: 'The payload must be valid JSON.',

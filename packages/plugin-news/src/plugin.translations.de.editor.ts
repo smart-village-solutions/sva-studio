@@ -109,6 +109,7 @@ export const newsTranslationsDEEditor = {
     cancel: 'Abbrechen',
     create: 'Nachricht anlegen',
     update: 'Änderungen speichern',
+    reloadCurrentContext: 'Kontext neu laden und Entwurf behalten',
     save: 'Speichern',
     saving: 'Wird gespeichert…',
     saved: 'Gespeichert',
@@ -156,6 +157,8 @@ export const newsTranslationsDEEditor = {
     loadError: 'Nachrichten konnten nicht geladen werden.',
     missingContent: 'Die angeforderte Nachricht konnte nicht geladen werden.',
     saveError: 'Die Nachricht konnte nicht gespeichert werden.',
+    staleMainserverContext:
+      'Der Organisations- oder Mainserver-Kontext hat sich geändert. Laden Sie den aktuellen Kontext neu und prüfen Sie Ihren Entwurf, bevor Sie erneut speichern.',
     validationError: 'Bitte korrigieren Sie die markierten Felder.',
     validationSummary: 'Bitte prüfen Sie die folgenden Felder:',
     createSuccess: 'Die Nachricht wurde erstellt.',

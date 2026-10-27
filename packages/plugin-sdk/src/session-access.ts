@@ -1,6 +1,9 @@
 export type SessionAccessSnapshot = Readonly<{
   isResolved: boolean;
   hasError: boolean;
+  subjectId?: string;
+  instanceId?: string;
+  organizationId?: string | null;
   permissionActions: readonly string[];
   unscopedPermissionActions: readonly string[];
   assignedModules: readonly string[];
@@ -11,7 +14,13 @@ type PublishedSessionAccessSnapshot = Omit<
   SessionAccessSnapshot,
   'unscopedPermissionActions' | 'hasError'
 > &
-  Readonly<{ unscopedPermissionActions?: readonly string[]; hasError?: boolean }>;
+  Readonly<{
+    unscopedPermissionActions?: readonly string[];
+    hasError?: boolean;
+    subjectId?: string;
+    instanceId?: string;
+    organizationId?: string | null;
+  }>;
 
 const emptySnapshot: SessionAccessSnapshot = {
   isResolved: false,
@@ -39,6 +48,9 @@ export const publishSessionAccessSnapshot = (snapshot: PublishedSessionAccessSna
   if (
     currentSnapshot.isResolved === snapshot.isResolved &&
     currentSnapshot.hasError === hasError &&
+    currentSnapshot.subjectId === snapshot.subjectId &&
+    currentSnapshot.instanceId === snapshot.instanceId &&
+    currentSnapshot.organizationId === snapshot.organizationId &&
     arePermissionActionsEqual(currentSnapshot.permissionActions, snapshot.permissionActions) &&
     arePermissionActionsEqual(
       currentSnapshot.unscopedPermissionActions,
@@ -53,6 +65,9 @@ export const publishSessionAccessSnapshot = (snapshot: PublishedSessionAccessSna
   currentSnapshot = {
     isResolved: snapshot.isResolved,
     hasError,
+    ...(snapshot.subjectId ? { subjectId: snapshot.subjectId } : {}),
+    ...(snapshot.instanceId ? { instanceId: snapshot.instanceId } : {}),
+    ...(snapshot.organizationId !== undefined ? { organizationId: snapshot.organizationId } : {}),
     permissionActions: [...snapshot.permissionActions],
     unscopedPermissionActions: [...unscopedPermissionActions],
     assignedModules: [...snapshot.assignedModules],
@@ -69,6 +84,22 @@ export const subscribeSessionAccessSnapshot = (listener: () => void): (() => voi
   return () => {
     listeners.delete(listener);
   };
+};
+
+export const invalidateSessionAccessSnapshot = (): void => {
+  if (!currentSnapshot.isResolved && currentSnapshot.permissionActions.length === 0) return;
+  currentSnapshot = {
+    ...currentSnapshot,
+    isResolved: false,
+    hasError: false,
+    permissionActions: [],
+    unscopedPermissionActions: [],
+    assignedModules: [],
+    roles: [],
+  };
+  for (const listener of listeners) {
+    listener();
+  }
 };
 
 export const resetSessionAccessSnapshot = (): void => {

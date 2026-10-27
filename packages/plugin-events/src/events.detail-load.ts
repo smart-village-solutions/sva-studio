@@ -99,6 +99,7 @@ export const useEventsDetailLoad = (
     loadedItem: item.loadedItem,
     resourceAccess: item.resourceAccess,
     ...categories,
+    reloadCurrentContext: item.reloadCurrentContext,
   };
 };
 
@@ -158,9 +159,36 @@ export const useEventsDetailItem = (context: LoadItemContext) => {
   const [loadedItem, setLoadedItem] = React.useState<EventContentItem | null>(null);
   const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
   const loadedPrincipalTypeRef = React.useRef<MainserverPrincipalType | undefined>(undefined);
+  const [reloadRequest, setReloadRequest] = React.useState(0);
+  const reloadCurrentContext = React.useCallback(async () => {
+    const isEditing = context.mode === 'edit' && Boolean(context.contentId);
+    if (isEditing) {
+      setLoading(true);
+      setResourceAccess({});
+    }
+    try {
+      await context.principalControl?.refreshContext?.();
+      context.setStatus(null);
+      if (isEditing) setReloadRequest((current) => current + 1);
+    } catch (error) {
+      context.setStatus({
+        kind: 'error',
+        text: eventsErrorMessage(context.pt, error, 'messages.missingContent'),
+      });
+      if (isEditing) setLoading(false);
+    }
+  }, [
+    context.contentId,
+    context.mode,
+    context.principalControl,
+    context.pt,
+    context.setStatus,
+    setResourceAccess,
+  ]);
   const { reset } = context.methods;
   React.useEffect(() => {
     if (context.mode !== 'edit' || !context.contentId) return;
+    const preserveDraft = reloadRequest > 0;
     let active = true;
     const principal = context.principalControl?.value ?? 'user';
     void getEventDetail(context.contentId, principal)
@@ -171,12 +199,14 @@ export const useEventsDetailItem = (context: LoadItemContext) => {
         setResourceAccess(detail.access);
         loadedPrincipalTypeRef.current = principal;
         const nextValues = mapEventItemToDetailFormValues(item);
-        reset(nextValues);
-        context.setMediaUsages(mainserverContentMediaToUsages(nextValues.content.mediaContents));
-        context.setRequiresReferenceSync(false);
+        reset(nextValues, preserveDraft ? { keepDirtyValues: true } : undefined);
+        if (!preserveDraft) {
+          context.setMediaUsages(mainserverContentMediaToUsages(nextValues.content.mediaContents));
+          context.setRequiresReferenceSync(false);
+        }
         setLoadedItem(item);
         setLoading(false);
-        loadMediaReferences(context, nextValues, () => active);
+        if (!preserveDraft) loadMediaReferences(context, nextValues, () => active);
       })
       .catch((loadError) => {
         if (active) {
@@ -190,7 +220,7 @@ export const useEventsDetailItem = (context: LoadItemContext) => {
     return () => {
       active = false;
     };
-  }, [context.contentId, context.mode, reset]);
+  }, [context.contentId, context.mode, reloadRequest, reset]);
   return {
     loading,
     deviations,
@@ -198,5 +228,6 @@ export const useEventsDetailItem = (context: LoadItemContext) => {
     resourceAccess,
     setResourceAccess,
     loadedPrincipalTypeRef,
+    reloadCurrentContext,
   };
 };

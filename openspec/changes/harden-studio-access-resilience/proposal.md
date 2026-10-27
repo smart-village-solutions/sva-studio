@@ -55,4 +55,4 @@ Tests und betroffene Dokumentation gehören jeweils zum liefernden PR. PR 2 begi
 
 ## Review- und Freigabestand
 
-Status: **Proposal; Implementierung und fachliche Abnahme offen.** Die drei Abschnitte sind im [Design](./design.md), in den [Tasks](./tasks.md) und im [Assurance Case](./assurance.md) konkretisiert. Formale Validierung oder grüne allgemeine Checks ersetzen weder menschliche Proposal-Freigabe noch direkte Evidenz für den exakten Implementierungs-HEAD.
+Status: **Freigegeben; PR 1 gemerged, PR 2 in Umsetzung, fachliche Gesamtabnahme offen.** Die drei Abschnitte sind im [Design](./design.md), in den [Tasks](./tasks.md) und im [Assurance Case](./assurance.md) konkretisiert. Formale Validierung oder grüne allgemeine Checks ersetzen weder direkte Evidenz für den exakten Implementierungs-HEAD noch eine gesonderte Live-/Fachabnahme.

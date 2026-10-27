@@ -1,12 +1,9 @@
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
-import { isTokenErrorLike } from '../error-guards.js';
 import { buildLogContext } from '../log-context.js';
 import { deleteSession, getSession, updateSession } from '../redis-session.js';
-import { SessionNotFoundError, SessionStoreUnavailableError } from '../runtime-errors.js';
 import type { RuntimeScopeRef, Session, SessionUser } from '../types.js';
-import { refreshSession } from './session-refresh.js';
 import { buildSessionUser, TOKEN_REFRESH_SKEW_MS } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
@@ -78,7 +75,7 @@ const needsSessionUserHydration = (
   scope?: RuntimeScopeRef
 ): boolean => !user?.id || (scope?.kind === 'instance' && user.instanceId !== scope.instanceId);
 
-const logIncompleteSessionUser = (
+export const logIncompleteSessionUser = (
   user: SessionUser | null | undefined,
   source: 'session_read' | 'access_token_hydrate' | 'token_refresh',
   scope: RuntimeScopeRef | undefined = user?.instanceId
@@ -135,53 +132,7 @@ const hydrateSessionUserFromAccessToken = async (
   return hydratedUser;
 };
 
-const handleRefreshFailure = async (input: {
-  error: unknown;
-  sessionId: string;
-  refreshToken?: string;
-  expiresAt?: number;
-  freshReauthAt?: number;
-  scope?: Session['auth'];
-  fallbackUser: SessionUser | null;
-}): Promise<SessionResolutionResult> => {
-  if (input.error instanceof SessionStoreUnavailableError) {
-    throw input.error;
-  }
-
-  if (input.error instanceof SessionNotFoundError) {
-    logger.info('Session ended during token refresh', {
-      operation: 'refresh_token',
-      reason_code: 'session_ended_during_refresh',
-      ...buildLogContext(input.scope),
-    });
-    return { kind: 'invalid', reason: 'invalid_session' };
-  }
-
-  const now = Date.now();
-  const tokenError = isTokenErrorLike(input.error);
-  logger[tokenError ? 'warn' : 'error'](tokenError ? 'Token validation/refresh failed' : 'Token refresh failed', {
-    operation: 'refresh_token',
-    error_type: input.error instanceof Error ? input.error.constructor.name : typeof input.error,
-    ...(tokenError ? { has_refresh_token: Boolean(input.refreshToken) } : {}),
-    session_expired: input.expiresAt ? input.expiresAt < now : false,
-    reason_code: 'token_refresh_failed',
-    ...buildLogContext(input.scope),
-  });
-
-  if (input.expiresAt && input.expiresAt < now) {
-    await deleteSession(input.sessionId);
-    return { kind: 'invalid', reason: 'token_refresh_failed_after_expiry' };
-  }
-
-  return {
-    kind: 'authenticated',
-    user: input.fallbackUser,
-    expiresAt: input.expiresAt,
-    freshReauthAt: input.freshReauthAt,
-  };
-};
-
-const buildAuthenticatedSessionResult = (
+export const buildAuthenticatedSessionResult = (
   session: Session,
   user: SessionUser | null = session.user ?? null
 ): Extract<SessionResolutionResult, { kind: 'authenticated' }> => ({
@@ -251,66 +202,4 @@ export const resolveSessionWithoutRefreshToken = async (
     startedAt,
   });
   return result;
-};
-
-export const refreshAndResolveSession = async (
-  sessionId: string,
-  session: Session,
-  diagnostics: SessionResolutionTimingDiagnostics,
-  startedAt: number
-): Promise<SessionResolutionResult> => {
-  try {
-    logger.debug('Refreshing access token for session', {
-      operation: 'token_refresh',
-      has_refresh_token: true,
-      ...buildLogContext(session.auth),
-    });
-
-    const refreshStartedAt = performance.now();
-    await refreshSession(sessionId, session);
-    diagnostics.refreshMs = performance.now() - refreshStartedAt;
-    const refreshSessionReadStartedAt = performance.now();
-    const updatedSession = await getSession(sessionId, { decryptTokens: false });
-    diagnostics.refreshSessionReadMs += performance.now() - refreshSessionReadStartedAt;
-    logIncompleteSessionUser(updatedSession?.user ?? null, 'token_refresh', updatedSession?.auth);
-
-    logger.debug('Token refresh succeeded', {
-      operation: 'token_refresh',
-      has_refresh_token: true,
-      ...buildLogContext(updatedSession?.auth),
-    });
-
-    const result = updatedSession
-      ? buildAuthenticatedSessionResult(updatedSession)
-      : ({
-          kind: 'authenticated',
-          user: null,
-          expiresAt: undefined,
-          freshReauthAt: undefined,
-        } satisfies Extract<SessionResolutionResult, { kind: 'authenticated' }>);
-    logSessionResolutionTimingIfEnabled({
-      diagnostics,
-      reason: 'authenticated',
-      session: updatedSession ?? session,
-      startedAt,
-    });
-    return result;
-  } catch (error) {
-    const result = await handleRefreshFailure({
-      error,
-      sessionId,
-      refreshToken: session.refreshToken,
-      expiresAt: session.expiresAt,
-      freshReauthAt: session.freshReauthAt,
-      scope: session.auth,
-      fallbackUser: session.user ?? null,
-    });
-    logSessionResolutionTimingIfEnabled({
-      diagnostics,
-      reason: result.kind === 'invalid' ? result.reason : 'authenticated',
-      session,
-      startedAt,
-    });
-    return result;
-  }
 };

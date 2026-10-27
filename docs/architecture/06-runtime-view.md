@@ -978,6 +978,8 @@ Fehlerpfad:
 3. Beim Wechsel sendet die UI `PUT /api/v1/iam/me/context` mit der gewählten `organizationId`.
 4. Der Server validiert CSRF-Contract, Session, Instanzscope, Membership und Aktivstatus der Zielorganisation.
 5. Bei Erfolg wird der aktive Kontext serverseitig in der Session aktualisiert und ein Audit-/Betriebsereignis für `organization_context_switched` erzeugt.
+6. Redis übernimmt die Organisationsänderung nur, wenn Sessionwert und separater Widerrufsmarker seit dem Lesen unverändert und die Session noch gültig sind. Bei Konflikt wird der aktuelle Datensatz erneut gelesen und der Feld-Patch innerhalb eines festen Limits erneut angewendet.
+7. Browserwechsel laufen nacheinander. Reads und Writes einer vorherigen Benutzer-, Instanz- oder Requestgeneration dürfen den aktuellen Kontext nicht überschreiben. Bei unklarer Write-Antwort prüft ein frischer Read den gespeicherten Zustand; der Write wird nicht automatisch wiederholt.
 
 ### Ergänzung 2026-03: Produktionsnahe Release-Validierung
 

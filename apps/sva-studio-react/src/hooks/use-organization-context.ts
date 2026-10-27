@@ -27,56 +27,194 @@ export type OrganizationContextValue = {
 const OrganizationContext = React.createContext<OrganizationContextValue | null>(null);
 
 const organizationContextLogger = createOperationLogger('organization-context-hook', 'debug');
+const useIsomorphicLayoutEffect =
+  typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect;
+const readBackAmbiguousOrganizationSwitch = async (
+  cause: unknown
+): Promise<IamOrganizationContext | null> => {
+  if (cause instanceof IamHttpError && cause.status < 500) return null;
+  try {
+    return (await getMyOrganizationContext({ fresh: true })).data;
+  } catch {
+    return null;
+  }
+};
+const logOrganizationSwitchFailure = (error: IamHttpError, organizationId: string | null): void => {
+  logBrowserOperationFailure(
+    organizationContextLogger,
+    'organization_context_switch_failed',
+    error,
+    { operation: 'update_my_organization_context', organization_id: organizationId }
+  );
+};
+type OrganizationSnapshot = {
+  readonly identityKey: string;
+  readonly value: IamOrganizationContext;
+};
+
 export const OrganizationContextProvider = ({
   children,
 }: Readonly<{ children: React.ReactNode }>) => {
   const { isAuthenticated, user } = useAuth();
-  const [context, setContext] = React.useState<IamOrganizationContext | null>(null);
+  const identityKey =
+    isAuthenticated && user?.id && user.instanceId ? `${user.id}:${user.instanceId}` : null;
+  const [contextSnapshot, setContextSnapshot] = React.useState<OrganizationSnapshot | null>(null);
+  const [errorSnapshot, setErrorSnapshot] = React.useState<{
+    readonly identityKey: string;
+    readonly value: IamHttpError;
+  } | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
-  const [error, setError] = React.useState<IamHttpError | null>(null);
+  const operationQueue = React.useRef<Promise<void>>(Promise.resolve());
+  const requestSequence = React.useRef(0);
+  const currentIdentity = React.useRef(identityKey);
+
+  const enqueue = React.useCallback(<T,>(work: () => Promise<T>): Promise<T> => {
+    const pending = operationQueue.current.then(work, work);
+    operationQueue.current = pending.then(
+      () => undefined,
+      () => undefined
+    );
+    return pending;
+  }, []);
+
+  const publishIfCurrent = React.useCallback(
+    (capturedIdentity: string, sequence: number, publish: () => void): boolean => {
+      if (
+        currentIdentity.current !== capturedIdentity ||
+        requestSequence.current !== sequence
+      ) {
+        return false;
+      }
+      publish();
+      return true;
+    },
+    []
+  );
 
   const loadContext = React.useCallback(async () => {
-    if (!isAuthenticated || !user?.instanceId) {
-      setContext(null);
-      setError(null);
+    if (!identityKey) {
       setIsLoading(false);
+      setContextSnapshot(null);
+      setErrorSnapshot(null);
       return;
     }
 
+    if (currentIdentity.current !== identityKey) return;
+    const sequence = ++requestSequence.current;
     logBrowserOperationStart(organizationContextLogger, 'organization_context_load_started', {
       operation: 'get_my_organization_context',
     });
     setIsLoading(true);
-    setError(null);
+    setErrorSnapshot(null);
     try {
       const response = await getMyOrganizationContext();
-      setContext(response.data);
-      logBrowserOperationSuccess(organizationContextLogger, 'organization_context_load_succeeded', {
-        operation: 'get_my_organization_context',
-        organization_id: response.data.activeOrganizationId,
+      publishIfCurrent(identityKey, sequence, () => {
+        setContextSnapshot({ identityKey, value: response.data });
+        logBrowserOperationSuccess(
+          organizationContextLogger,
+          'organization_context_load_succeeded',
+          {
+            operation: 'get_my_organization_context',
+            organization_id: response.data.activeOrganizationId,
+          }
+        );
       });
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      setContext(null);
-      setError(resolvedError);
-      logBrowserOperationFailure(
-        organizationContextLogger,
-        'organization_context_load_failed',
-        resolvedError,
-        {
-          operation: 'get_my_organization_context',
-        }
-      );
+      publishIfCurrent(identityKey, sequence, () => {
+        setContextSnapshot(null);
+        setErrorSnapshot({ identityKey, value: resolvedError });
+        logBrowserOperationFailure(
+          organizationContextLogger,
+          'organization_context_load_failed',
+          resolvedError,
+          { operation: 'get_my_organization_context' }
+        );
+      });
     } finally {
-      setIsLoading(false);
+      publishIfCurrent(identityKey, sequence, () => setIsLoading(false));
     }
-  }, [isAuthenticated, user?.instanceId]);
+  }, [identityKey, publishIfCurrent]);
+
+  useIsomorphicLayoutEffect(() => {
+    currentIdentity.current = identityKey;
+    requestSequence.current += 1;
+    setIsUpdating(false);
+    setIsLoading(Boolean(identityKey));
+  }, [identityKey]);
 
   React.useEffect(() => {
     void loadContext();
   }, [loadContext]);
 
+  const switchOrganization = React.useCallback(
+    async (organizationId: string | null): Promise<boolean> => {
+      if (!identityKey) {
+        setContextSnapshot(null);
+        setErrorSnapshot(null);
+        setIsUpdating(false);
+        return false;
+      }
+
+      return enqueue(async () => {
+        if (currentIdentity.current !== identityKey) return false;
+        const sequence = ++requestSequence.current;
+        logBrowserOperationStart(
+          organizationContextLogger,
+          'organization_context_switch_started',
+          {
+            operation: 'update_my_organization_context',
+            organization_id: organizationId,
+          }
+        );
+        setIsUpdating(true);
+        setErrorSnapshot(null);
+        try {
+          const response = await updateMyOrganizationContext(organizationId);
+          return publishIfCurrent(identityKey, sequence, () => {
+            setContextSnapshot({ identityKey, value: response.data });
+            logBrowserOperationSuccess(
+              organizationContextLogger,
+              'organization_context_switch_succeeded',
+              {
+                operation: 'update_my_organization_context',
+                organization_id: response.data.activeOrganizationId,
+              }
+            );
+          });
+        } catch (cause) {
+          const resolvedError = asIamError(cause);
+          const confirmedContext = await readBackAmbiguousOrganizationSwitch(cause);
+          if (!publishIfCurrent(identityKey, sequence, () => {})) return false;
+          if (confirmedContext) {
+            setContextSnapshot({ identityKey, value: confirmedContext });
+            if ((confirmedContext.activeOrganizationId ?? null) === organizationId) {
+              logBrowserOperationSuccess(
+                organizationContextLogger,
+                'organization_context_switch_succeeded',
+                {
+                  operation: 'update_my_organization_context',
+                  organization_id: confirmedContext.activeOrganizationId,
+                }
+              );
+              return true;
+            }
+          }
+          setErrorSnapshot({ identityKey, value: resolvedError });
+          logOrganizationSwitchFailure(resolvedError, organizationId);
+          return false;
+        } finally {
+          publishIfCurrent(identityKey, sequence, () => setIsUpdating(false));
+        }
+      });
+    },
+    [enqueue, identityKey, publishIfCurrent]
+  );
+
+  const context =
+    contextSnapshot?.identityKey === identityKey ? contextSnapshot.value : null;
+  const error = errorSnapshot?.identityKey === identityKey ? errorSnapshot.value : null;
   const value = React.useMemo<OrganizationContextValue>(
     () => ({
       context,
@@ -84,51 +222,9 @@ export const OrganizationContextProvider = ({
       isUpdating,
       error,
       refetch: loadContext,
-      switchOrganization: async (organizationId) => {
-        if (!user?.instanceId) {
-          setContext(null);
-          setError(null);
-          setIsUpdating(false);
-          return false;
-        }
-
-        logBrowserOperationStart(organizationContextLogger, 'organization_context_switch_started', {
-          operation: 'update_my_organization_context',
-          organization_id: organizationId,
-        });
-        setIsUpdating(true);
-        setError(null);
-        try {
-          const response = await updateMyOrganizationContext(organizationId);
-          setContext(response.data);
-          logBrowserOperationSuccess(
-            organizationContextLogger,
-            'organization_context_switch_succeeded',
-            {
-              operation: 'update_my_organization_context',
-              organization_id: organizationId,
-            }
-          );
-          return true;
-        } catch (cause) {
-          const resolvedError = asIamError(cause);
-          setError(resolvedError);
-          logBrowserOperationFailure(
-            organizationContextLogger,
-            'organization_context_switch_failed',
-            resolvedError,
-            {
-              operation: 'update_my_organization_context',
-              organization_id: organizationId,
-            }
-          );
-          return false;
-        } finally {
-          setIsUpdating(false);
-        }
-      },
+      switchOrganization,
     }),
-    [context, error, isLoading, isUpdating, loadContext, user?.instanceId]
+    [context, error, isLoading, isUpdating, loadContext, switchOrganization]
   );
 
   return React.createElement(OrganizationContext.Provider, { value }, children);

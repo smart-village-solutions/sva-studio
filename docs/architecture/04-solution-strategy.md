@@ -35,6 +35,7 @@ Architekturprinzipien auf IST-Basis.
 - Die lokale technische Dokumentation folgt denselben Ownership-Grenzen wie das System: Architektur, Entwicklung, Betrieb, Referenz und Governance besitzen klar benannte Einstiege und Pflege-Trigger. Zeitgebundene Nachweise und externe Anwenderdokumentation bleiben getrennt.
 - IAM folgt einer klaren Verantwortungsgrenze: Keycloak für Identity, Postgres für IAM-Fachdaten, Redis nur als Laufzeit-Cache
 - Auth-Sessions folgen einer klaren Führungslogik: `expiresAt` ist fachlich maßgeblich; Cookie und Redis-TTL sind abgeleitete Technik
+- Refresh und Organisationswechsel erhalten die aktuelle Sessiongeneration: Redis-Änderungen sind vergleichsgeprüft und begrenzt, Refreshes derselben Session werden pro Prozess zusammengeführt, und Browserantworten aus älteren Identitäts-/Kontextgenerationen werden verworfen.
 - Redis-Permission-Snapshots sind der primäre Shared-Read-Path für effektive IAM-Berechtigungen; der lokale In-Memory-Cache dient nur als L1
 - PostgreSQL-Revisionsvektoren sind die autoritative Gültigkeitsgrenze für L1 und Redis. `NOTIFY` beschleunigt Eviction, entscheidet aber nicht über Korrektheit.
 - Die Browser-UI trennt Identität und Session (`AuthProvider`) vom scopegebundenen Berechtigungszustand (`EffectiveAccessProvider`). Nicht aufgelöste, ladende oder fehlerhafte Access-Snapshots geben keine UI-Aktion frei.

@@ -8,6 +8,14 @@ const getMyOrganizationContextMock = vi.fn();
 const updateMyOrganizationContextMock = vi.fn();
 const asIamErrorMock = vi.fn();
 
+const createDeferred = <T,>() => {
+  let resolve: (value: T) => void = () => undefined;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+};
+
 type AuthMockValue = {
   user: {
     id: string;
@@ -66,6 +74,7 @@ describe('useOrganizationContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMockValue.isAuthenticated = true;
+    authMockValue.user.id = 'admin-1';
     authMockValue.user.instanceId = 'instance-1';
   });
 
@@ -164,6 +173,110 @@ describe('useOrganizationContext', () => {
     });
     expect(updateMyOrganizationContextMock).toHaveBeenLastCalledWith(null);
     expect(result.current.context?.activeOrganizationId).toBeUndefined();
+  });
+
+  it('does not let a context read started before a confirmed switch replace the new organization', async () => {
+    const staleRead = createDeferred<{
+      data: { activeOrganizationId: string; organizations: [] };
+    }>();
+    getMyOrganizationContextMock
+      .mockResolvedValueOnce({ data: { activeOrganizationId: 'org-1', organizations: [] } })
+      .mockReturnValueOnce(staleRead.promise);
+    updateMyOrganizationContextMock.mockResolvedValue({
+      data: { activeOrganizationId: 'org-2', organizations: [] },
+    });
+
+    const { result } = renderHook(() => useOrganizationContext(), { wrapper });
+    await waitFor(() => expect(result.current.context?.activeOrganizationId).toBe('org-1'));
+
+    let staleRequest!: Promise<void>;
+    act(() => {
+      staleRequest = result.current.refetch();
+    });
+    await waitFor(() => expect(getMyOrganizationContextMock).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      await expect(result.current.switchOrganization('org-2')).resolves.toBe(true);
+    });
+    await act(async () => {
+      staleRead.resolve({ data: { activeOrganizationId: 'org-1', organizations: [] } });
+      await staleRequest;
+    });
+
+    expect(result.current.context?.activeOrganizationId).toBe('org-2');
+  });
+
+  it('serializes organization switches so their writes cannot overtake one another', async () => {
+    const firstWrite = createDeferred<{
+      data: { activeOrganizationId: string; organizations: [] };
+    }>();
+    getMyOrganizationContextMock.mockResolvedValue({
+      data: { activeOrganizationId: 'org-1', organizations: [] },
+    });
+    updateMyOrganizationContextMock
+      .mockReturnValueOnce(firstWrite.promise)
+      .mockResolvedValueOnce({ data: { activeOrganizationId: 'org-3', organizations: [] } });
+
+    const { result } = renderHook(() => useOrganizationContext(), { wrapper });
+    await waitFor(() => expect(result.current.context?.activeOrganizationId).toBe('org-1'));
+    const switchOrganization = result.current.switchOrganization;
+    let first!: Promise<boolean>;
+    let second!: Promise<boolean>;
+    act(() => {
+      first = switchOrganization('org-2');
+      second = switchOrganization('org-3');
+    });
+    await waitFor(() => expect(updateMyOrganizationContextMock).toHaveBeenCalledTimes(1));
+    expect(updateMyOrganizationContextMock).toHaveBeenCalledWith('org-2');
+
+    await act(async () => {
+      firstWrite.resolve({ data: { activeOrganizationId: 'org-2', organizations: [] } });
+      await expect(first).resolves.toBe(true);
+      await expect(second).resolves.toBe(true);
+    });
+
+    expect(updateMyOrganizationContextMock).toHaveBeenNthCalledWith(2, 'org-3');
+    expect(result.current.context?.activeOrganizationId).toBe('org-3');
+  });
+
+  it('reads back an ambiguous switch result once and never repeats the write', async () => {
+    getMyOrganizationContextMock
+      .mockResolvedValueOnce({ data: { activeOrganizationId: 'org-1', organizations: [] } })
+      .mockResolvedValueOnce({ data: { activeOrganizationId: 'org-2', organizations: [] } });
+    updateMyOrganizationContextMock.mockRejectedValueOnce(new Error('response lost'));
+
+    const { result } = renderHook(() => useOrganizationContext(), { wrapper });
+    await waitFor(() => expect(result.current.context?.activeOrganizationId).toBe('org-1'));
+
+    await act(async () => {
+      await expect(result.current.switchOrganization('org-2')).resolves.toBe(true);
+    });
+
+    expect(updateMyOrganizationContextMock).toHaveBeenCalledTimes(1);
+    expect(getMyOrganizationContextMock).toHaveBeenCalledTimes(2);
+    expect(result.current.context?.activeOrganizationId).toBe('org-2');
+  });
+
+  it('hides the prior user organization and discards its late read after an identity change', async () => {
+    const oldRead = createDeferred<{
+      data: { activeOrganizationId: string; organizations: [] };
+    }>();
+    getMyOrganizationContextMock
+      .mockReturnValueOnce(oldRead.promise)
+      .mockResolvedValueOnce({ data: { activeOrganizationId: 'org-new-user', organizations: [] } });
+
+    const { result, rerender } = renderHook(() => useOrganizationContext(), { wrapper });
+    await waitFor(() => expect(getMyOrganizationContextMock).toHaveBeenCalledTimes(1));
+    authMockValue.user.id = 'admin-2';
+    rerender();
+
+    await waitFor(() => expect(result.current.context?.activeOrganizationId).toBe('org-new-user'));
+    await act(async () => {
+      oldRead.resolve({ data: { activeOrganizationId: 'org-old-user', organizations: [] } });
+      await Promise.resolve();
+    });
+
+    expect(result.current.context?.activeOrganizationId).toBe('org-new-user');
   });
 
   it.each([

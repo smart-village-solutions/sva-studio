@@ -4,8 +4,9 @@ import { getAuthConfig, resolveAuthConfigForInstance, resolveAuthConfigFromSessi
 import type { Session, SessionUser } from '../types.js';
 
 import { client, getOidcConfig } from '../oidc.js';
-import { updateSession } from '../redis-session.js';
-import { buildSessionUser, resolveSessionExpiry } from './shared.js';
+import { getSession, updateSession } from '../redis-session.js';
+import { SessionNotFoundError } from '../runtime-errors.js';
+import { buildSessionUser, resolveSessionExpiry, TOKEN_REFRESH_SKEW_MS } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
@@ -41,32 +42,65 @@ const resolveRefreshAuthConfig = async (session: Session) => {
     : getAuthConfig();
 };
 
-export const refreshSession = async (
-  sessionId: string,
-  session: Session
-): Promise<SessionUser> => {
-  const authConfig = await resolveRefreshAuthConfig(session);
+const refreshInFlight = new Map<string, Promise<SessionUser>>();
+
+const refreshSessionOnce = async (sessionId: string): Promise<SessionUser> => {
+  const currentSession = await getSession(sessionId);
+  if (!currentSession) {
+    throw new SessionNotFoundError();
+  }
+  if (
+    currentSession.user &&
+    currentSession.expiresAt &&
+    currentSession.expiresAt > Date.now() + TOKEN_REFRESH_SKEW_MS
+  ) {
+    return currentSession.user;
+  }
+
+  const authConfig = await resolveRefreshAuthConfig(currentSession);
   const config = await getOidcConfig(authConfig);
-  const refreshed = await client.refreshTokenGrant(config, session.refreshToken ?? '');
+  const refreshed = await client.refreshTokenGrant(config, currentSession.refreshToken ?? '');
   const updatedUser = buildSessionUser({
     accessToken: refreshed.access_token,
     claims: (refreshed.claims() ?? {}) as Record<string, unknown>,
     clientId: authConfig.clientId,
-    scope: session.auth,
+    scope: currentSession.auth,
   });
 
   await updateSession(sessionId, {
     user: updatedUser,
     accessToken: refreshed.access_token,
-    refreshToken: refreshed.refresh_token ?? session.refreshToken,
+    refreshToken: refreshed.refresh_token ?? currentSession.refreshToken,
     idToken: refreshed.id_token,
     expiresAt: resolveSessionExpiry({
       expiresInSeconds: refreshed.expiresIn(),
-      issuedAt: session.issuedAt ?? session.createdAt,
+      issuedAt: currentSession.issuedAt ?? currentSession.createdAt,
       sessionTtlMs: authConfig.sessionTtlMs,
-      fallback: session.expiresAt,
+      fallback: currentSession.expiresAt,
     }),
+  }, {
+    expectedTokenSet: {
+      accessToken: currentSession.accessToken,
+      refreshToken: currentSession.refreshToken,
+      idToken: currentSession.idToken,
+    },
   });
 
   return updatedUser;
+};
+
+export const refreshSession = async (sessionId: string): Promise<SessionUser> => {
+  const inFlight = refreshInFlight.get(sessionId);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const refresh = refreshSessionOnce(sessionId);
+  const tracked = refresh.finally(() => {
+    if (refreshInFlight.get(sessionId) === tracked) {
+      refreshInFlight.delete(sessionId);
+    }
+  });
+  refreshInFlight.set(sessionId, tracked);
+  return tracked;
 };

@@ -166,20 +166,20 @@ describe('auth server session resolution', () => {
   });
 
   it('revalidates session data on every request and briefly caches absent control state', async () => {
-    state.getSession.mockResolvedValue(createSession({ expiresAt: 100_000 }));
+    state.getSession.mockResolvedValue(createSession({ expiresAt: 500_000 }));
 
     const { resolveSessionUser } = await import('./session.js');
 
     await expect(resolveSessionUser('session-1')).resolves.toEqual({
       kind: 'authenticated',
       user: completeUser,
-      expiresAt: 100_000,
+      expiresAt: 500_000,
       freshReauthAt: 4_500,
     });
     await expect(resolveSessionUser('session-1')).resolves.toEqual({
       kind: 'authenticated',
       user: completeUser,
-      expiresAt: 100_000,
+      expiresAt: 500_000,
       freshReauthAt: 4_500,
     });
 
@@ -332,6 +332,7 @@ describe('auth server session resolution', () => {
     state.getSession
       .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(expiringSession)
+      .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(
         createSession({
           user: completeUser,
@@ -345,7 +346,8 @@ describe('auth server session resolution', () => {
     await expect(getSessionUser('session-1')).resolves.toEqual(completeUser);
     expect(state.getSession).toHaveBeenNthCalledWith(1, 'session-1', { decryptTokens: false });
     expect(state.getSession).toHaveBeenNthCalledWith(2, 'session-1', { decryptTokens: true });
-    expect(state.getSession).toHaveBeenNthCalledWith(3, 'session-1', { decryptTokens: false });
+    expect(state.getSession).toHaveBeenNthCalledWith(3, 'session-1');
+    expect(state.getSession).toHaveBeenNthCalledWith(4, 'session-1', { decryptTokens: false });
     expect(state.refreshTokenGrant).toHaveBeenCalledTimes(1);
     expect(state.updateSession).toHaveBeenCalledWith(
       'session-1',
@@ -355,13 +357,114 @@ describe('auth server session resolution', () => {
         refreshToken: 'refreshed-refresh-token',
         idToken: 'refreshed-id-token',
         expiresAt: 9_000,
-      })
+      }),
+      {
+        expectedTokenSet: {
+          accessToken: 'access-token',
+          refreshToken: 'refresh-token',
+          idToken: undefined,
+        },
+      }
     );
+  });
+
+  it('joins refresh requests for the same session while the token grant is in flight', async () => {
+    const expiringSession = createSession({ expiresAt: 5_100, activeOrganizationId: 'org-1' });
+    state.getSession.mockResolvedValue(expiringSession);
+    let resolveGrant: (value: {
+      access_token: string;
+      refresh_token: string;
+      id_token: string;
+      expiresIn: () => number;
+      claims: () => Record<string, unknown>;
+    }) => void = () => undefined;
+    const grant = new Promise<{
+      access_token: string;
+      refresh_token: string;
+      id_token: string;
+      expiresIn: () => number;
+      claims: () => Record<string, unknown>;
+    }>((resolve) => {
+      resolveGrant = resolve;
+    });
+    state.refreshTokenGrant.mockReturnValue(grant);
+
+    const { resolveSessionUser } = await import('./session.js');
+    const first = resolveSessionUser('session-1');
+    const second = resolveSessionUser('session-1');
+    await vi.waitFor(() => expect(state.refreshTokenGrant).toHaveBeenCalledTimes(1));
+    resolveGrant({
+      access_token: 'refreshed-access-token',
+      refresh_token: 'refreshed-refresh-token',
+      id_token: 'refreshed-id-token',
+      expiresIn: () => 120,
+      claims: () => ({ sub: 'user-1', instance_id: 'tenant-a' }),
+    });
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      expect.objectContaining({ kind: 'authenticated', activeOrganizationId: 'org-1' }),
+      expect.objectContaining({ kind: 'authenticated', activeOrganizationId: 'org-1' }),
+    ]);
+    expect(state.refreshTokenGrant).toHaveBeenCalledTimes(1);
+    expect(state.updateSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves the active organization when refresh fails before session expiry', async () => {
+    const session = createSession({ expiresAt: 5_100, activeOrganizationId: 'org-1' });
+    state.getSession.mockResolvedValue(session);
+    state.refreshTokenGrant.mockRejectedValue(new Error('identity provider temporarily unavailable'));
+    state.isTokenErrorLike.mockReturnValue(false);
+
+    const { resolveSessionUser } = await import('./session.js');
+
+    await expect(resolveSessionUser('session-1')).resolves.toMatchObject({
+      kind: 'authenticated',
+      user: completeUser,
+      activeOrganizationId: 'org-1',
+      expiresAt: 5_100,
+    });
+    expect(state.updateSession).not.toHaveBeenCalled();
+  });
+
+  it('uses the latest organization after a refresh failure races an organization switch', async () => {
+    const beforeSwitch = createSession({ expiresAt: 5_100, activeOrganizationId: 'org-1' });
+    const afterSwitch = createSession({ expiresAt: 5_100, activeOrganizationId: 'org-2' });
+    let sessionRead = 0;
+    state.getSession.mockImplementation(async () => {
+      sessionRead += 1;
+      return sessionRead <= 3 ? beforeSwitch : afterSwitch;
+    });
+    state.refreshTokenGrant.mockRejectedValue(new Error('identity provider unavailable'));
+
+    const { resolveSessionUser } = await import('./session.js');
+
+    await expect(resolveSessionUser('session-1')).resolves.toMatchObject({
+      kind: 'authenticated',
+      activeOrganizationId: 'org-2',
+    });
+  });
+
+  it('does not use the refresh fallback after a session-control revocation arrives', async () => {
+    const session = createSession({ expiresAt: 5_100, activeOrganizationId: 'org-1' });
+    state.getSession.mockResolvedValue(session);
+    state.getSessionControlState
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ minimumSessionVersion: 3 });
+    state.refreshTokenGrant.mockRejectedValue(new Error('identity provider unavailable'));
+
+    const { resolveSessionUser } = await import('./session.js');
+
+    await expect(resolveSessionUser('session-1')).resolves.toEqual({
+      kind: 'invalid',
+      reason: 'forced_reauth',
+    });
+    expect(state.deleteSession).toHaveBeenCalledWith('session-1');
   });
 
   it('resolves tenant auth config with the instance secret before refreshing an instance session', async () => {
     const expiringSession = createSession({ expiresAt: 5_100 });
     state.getSession
+      .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(
@@ -398,6 +501,7 @@ describe('auth server session resolution', () => {
     state.getSession
       .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(expiringSession)
+      .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(
         createSession({
           user: completeUser,
@@ -424,6 +528,7 @@ describe('auth server session resolution', () => {
       expiresAt: 5_100,
     });
     state.getSession
+      .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(expiringSession)
       .mockResolvedValueOnce(

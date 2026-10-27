@@ -18,16 +18,16 @@ PR 1 baut auf dem gemergten Vorschlag #1990 und aktuellem `main` auf. Die Implem
 
 ## 2. PR 2 — Session- und Organisationskonsistenz
 
-- [ ] 2.1 Nach Merge von PR 1 von aktuellem `main` abschneiden, Scope und tatsächliche unterstützte Prozess-/Deploymenttopologie prüfen; vorhandene Store-/Claim-Primitiven vor neuer Eigenlogik untersuchen.
-- [ ] 2.2 Refresh-Fallback mit gesetzter Organisation fehlschlagend reproduzieren; vollständige Sessionprojektion erhalten, ohne Gültigkeit, Rollen oder Principal zu erweitern.
-- [ ] 2.3 Im bestehenden Redis-Store atomare vergleichsgeprüfte Feldänderungen einführen; Konfliktzahl begrenzen, nach Konflikt frisch lesen und nie gelöschte/abgelaufene/widerrufene Sessions wiederanlegen.
-- [ ] 2.4 Refreshes für dieselbe Session topologiegerecht koordinieren; stale Token-Commits verwerfen und nach Warten aktuellen autoritativen Zustand verwenden. Kein neuer allgemeiner Lock-Service.
-- [ ] 2.5 Organisationsreads/-wechsel im vorhandenen Browserprovider an Benutzer, Tenant und Sequenz binden; Wechsel serialisieren, überholte Antworten verwerfen und unklare Write-Ergebnisse zuerst nachlesen.
-- [ ] 2.6 Deterministische Unit-Interleavings und echte Redis-Integration für beide Commit-Reihenfolgen, Refresh/Refresh, Update/Logout, gesonderten Widerrufsmarker bei noch vorhandenem Session-Key, Ablauf und Verbindungsfehler ergänzen; Verschlüsselung, TTL und Widerruf erhalten.
-- [ ] 2.7 Deferred-Promise-Tests für alten GET nach bestätigtem PUT, zwei Wechsel, Logout/Userwechsel während Read und Fehler-Recovery ergänzen; keine stale UI-Publikation.
-- [ ] 2.8 Arc42 04/05/06/08, ADR-023/ADR-050 samt 09 und konkrete Session-/Organisationsdokumentation fortschreiben; keine DB-Schemaänderung ohne neuen Scopeentscheid.
+- [x] 2.1 Nach Merge von PR 1 von aktuellem `main` abschneiden, Scope und tatsächliche unterstützte Prozess-/Deploymenttopologie prüfen; vorhandene Store-/Claim-Primitiven vor neuer Eigenlogik untersuchen.
+- [x] 2.2 Refresh-Fallback mit gesetzter Organisation fehlschlagend reproduzieren; vollständige Sessionprojektion erhalten, ohne Gültigkeit, Rollen oder Principal zu erweitern.
+- [x] 2.3 Im bestehenden Redis-Store atomare vergleichsgeprüfte Feldänderungen einführen; Konfliktzahl begrenzen, nach Konflikt frisch lesen und nie gelöschte/abgelaufene/widerrufene Sessions wiederanlegen.
+- [x] 2.4 Refreshes für dieselbe Session topologiegerecht koordinieren; stale Token-Commits verwerfen und nach Warten aktuellen autoritativen Zustand verwenden. Kein neuer allgemeiner Lock-Service.
+- [x] 2.5 Organisationsreads/-wechsel im vorhandenen Browserprovider an Benutzer, Tenant und Sequenz binden; Wechsel serialisieren, überholte Antworten verwerfen und unklare Write-Ergebnisse zuerst nachlesen.
+- [x] 2.6 Deterministische Unit-Interleavings und echte Redis-Integration für beide Commit-Reihenfolgen, Refresh/Refresh, Update/Logout, gesonderten Widerrufsmarker bei noch vorhandenem Session-Key, Ablauf und Verbindungsfehler ergänzen; Verschlüsselung, TTL und Widerruf erhalten.
+- [x] 2.7 Deferred-Promise-Tests für alten GET nach bestätigtem PUT, zwei Wechsel, Logout/Userwechsel während Read und Fehler-Recovery ergänzen; keine stale UI-Publikation.
+- [x] 2.8 Arc42 04/05/06/08, ADR-023/ADR-050 samt 09 und konkrete Session-/Organisationsdokumentation fortschreiben; keine DB-Schemaänderung ohne neuen Scopeentscheid.
 - [ ] 2.9 Gezielte Auth-/IAM-Admin-/Providergates, erforderliche Security-/Redis-Integrationsgates und `pnpm check:server-runtime` ausführen; direkte Evidenz am finalen HEAD sammeln und GitHub-Gates terminal abwarten.
-- [ ] 2.10 Session-Kompatibilität, Widerruf und Rollback gemäß bestehendem Studio-Rolloutvertrag nachweisen; keine neue Mehrreplika- oder Keycloak-Konfiguration als versteckte Voraussetzung.
+- [x] 2.10 Session-Kompatibilität, Widerruf und Rollback gemäß bestehendem Studio-Rolloutvertrag nachweisen; keine neue Mehrreplika- oder Keycloak-Konfiguration als versteckte Voraussetzung. Das Session-JSON-/Tokenformat und die Ablaufgrenze bleiben unverändert; CAS respektiert den bestehenden Widerrufsmarker. Der bestehende Rolloutpfad ist maßgeblich, ein Live-Rollout ist nicht Teil dieses PRs.
 
 ## 3. PR 3 — UI-Freigaben, Readiness und Editor-Recovery
 

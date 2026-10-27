@@ -116,12 +116,13 @@ export const updateOrganizationMembership = async (
     payload
   );
 
-export const getMyOrganizationContext = async (): Promise<
-  ApiItemResponse<IamOrganizationContext>
-> =>
-  requestSingleFlight('iam:me-context', async () =>
-    requestJson<ApiItemResponse<IamOrganizationContext>>('/api/v1/iam/me/context')
-  );
+export const getMyOrganizationContext = async (
+  options: { readonly fresh?: boolean } = {}
+): Promise<ApiItemResponse<IamOrganizationContext>> => {
+  const request = () =>
+    requestJson<ApiItemResponse<IamOrganizationContext>>('/api/v1/iam/me/context');
+  return options.fresh ? request() : requestSingleFlight('iam:me-context', request);
+};
 
 export const updateMyOrganizationContext = async (
   organizationId: string | null

@@ -27,9 +27,8 @@ type StagingEvidence = {
   status?: string;
   workflowRunId?: string;
 };
-type WorkflowRun = { conclusion?: string; path?: string };
+type WorkflowRun = { id?: number; conclusion?: string; path?: string };
 type EvidenceKind = 'promote' | 'backup-drill';
-
 export class StagingParityNotFoundError extends Error {}
 
 export const classifyStagingParityError = (error: unknown): PromoteErrorCode =>
@@ -156,18 +155,22 @@ export const matchesSuccessfulStagingBackupEvidenceSet = (
   return evidence.every((entry) => matchesSuccessfulStagingBackupEvidence(entry, targetDigest));
 };
 
-// Larger repository-wide artifact responses can be truncated by GitHub.
-const artifactPageSize = 10;
-
-export function* listArtifacts(readPage: (page: number) => ArtifactPage): Generator<Artifact> {
+export function* listArtifacts(
+  kind: EvidenceKind,
+  readRuns: (page: number) => { workflow_runs?: WorkflowRun[] },
+  readArtifacts: (runId: number) => ArtifactPage
+): Generator<Artifact> {
   let artifactCount = 0;
-  for (let page = 1; page <= 100; page += 1) {
-    const payload = readPage(page);
-    const pageArtifacts = payload.artifacts ?? [];
-    yield* pageArtifacts;
-    artifactCount += pageArtifacts.length;
-    if (pageArtifacts.length < artifactPageSize || artifactCount >= (payload.total_count ?? artifactCount))
-      break;
+  for (let page = 1; page <= 10; page += 1) {
+    const runs = readRuns(page).workflow_runs ?? [];
+    for (const run of runs) {
+      if (!run.id || !isExpectedWorkflowRun(kind, run)) continue;
+      for (const artifact of readArtifacts(run.id).artifacts ?? []) {
+        if (artifact.workflow_run?.id === run.id) yield artifact;
+        if (++artifactCount >= 1_000) return;
+      }
+    }
+    if (runs.length < 10) break;
   }
 }
 
@@ -198,12 +201,6 @@ const required = (value: string | undefined, name: string) => {
   const trimmed = value?.trim();
   if (!trimmed) throw new Error(`${name} darf nicht leer sein.`);
   return trimmed;
-};
-
-const parseEvidenceKind = (value: string | undefined): EvidenceKind => {
-  const kind = value ?? 'promote';
-  if (kind === 'promote' || kind === 'backup-drill') return kind;
-  throw new Error('Der Evidenztyp muss promote oder backup-drill sein.');
 };
 
 const artifactPrefix = (kind: EvidenceKind): string =>
@@ -248,7 +245,9 @@ const archiveMatches = (
 };
 
 const main = () => {
-  const evidenceKind = parseEvidenceKind(process.argv[2]);
+  const evidenceKind = process.argv[2] ?? 'promote';
+  if (evidenceKind !== 'promote' && evidenceKind !== 'backup-drill')
+    throw new Error('Der Evidenztyp muss promote oder backup-drill sein.');
   const targetDigest = required(process.env.DEPLOY_IMAGE_DIGEST, 'DEPLOY_IMAGE_DIGEST');
   const targetImage = required(process.env.DEPLOY_IMAGE_REF, 'DEPLOY_IMAGE_REF');
   const forceStagingParity = process.env.FORCE_STAGING_PARITY === 'true';
@@ -265,14 +264,19 @@ const main = () => {
     controllerSha: process.env.EXPECTED_CONTROLLER_SHA,
   } : undefined;
   const repo = required(process.env.GITHUB_REPOSITORY, 'GITHUB_REPOSITORY');
-  const api = (path: string) =>
-    execFileSync('gh', ['api', path], {
+  const api = (path: string, phase: 'runs' | 'artifacts') => {
+    process.stdout.write(`Staging parity GitHub read: ${phase}\n`);
+    return execFileSync('gh', ['api', path], {
       encoding: 'utf8',
       env: { ...process.env, GH_TOKEN: required(process.env.GITHUB_TOKEN, 'GITHUB_TOKEN') },
     });
+  };
+  const workflow = evidenceKind === 'promote' ? 'promote.yml' : 'staging-backup-drill.yml';
   const candidates = listArtifacts(
+    evidenceKind,
     (page) =>
-      JSON.parse(api(`repos/${repo}/actions/artifacts?per_page=${artifactPageSize}&page=${page}`)) as ArtifactPage
+      JSON.parse(api(`repos/${repo}/actions/workflows/${workflow}/runs?status=success&per_page=10&page=${page}`, 'runs')) as { workflow_runs?: WorkflowRun[] },
+    (runId) => JSON.parse(api(`repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`, 'artifacts')) as ArtifactPage
   );
   const workdir = mkdtempSync(resolve(tmpdir(), 'sva-staging-parity-'));
   try {
@@ -281,11 +285,8 @@ const main = () => {
       const artifactId = artifact.id;
       const workflowRunId = artifact.workflow_run?.id;
       if (!artifactId || !workflowRunId) continue;
-      const workflowRun = JSON.parse(
-        api(`repos/${repo}/actions/runs/${workflowRunId}`)
-      ) as WorkflowRun;
-      if (!isExpectedWorkflowRun(evidenceKind, workflowRun)) continue;
       const zipPath = resolve(workdir, `${artifactId}.zip`);
+      process.stdout.write('Staging parity GitHub read: archive\n');
       writeFileSync(
         zipPath,
         execFileSync('gh', buildArtifactDownloadArgs(repo, artifactId), {

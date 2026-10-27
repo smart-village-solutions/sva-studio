@@ -373,11 +373,12 @@ describe('staging parity evidence', () => {
   });
 
   it('reads paginated artifact responses before filtering parity evidence', () => {
-    const firstPage = Array.from({ length: 10 }, (_, index) => ({ id: index + 1 }));
-    const artifacts = [...listArtifacts((page) =>
-      page === 1
-        ? { artifacts: firstPage, total_count: 11 }
-        : { artifacts: [{ id: 11, name: 'promote-staging-parity-11' }], total_count: 11 }
+    const run = (id: number) => ({ id, conclusion: 'success', path: '.github/workflows/promote.yml' });
+    const artifacts = [...listArtifacts('promote',
+      (page) => ({ workflow_runs: page === 1
+        ? Array.from({ length: 10 }, (_, index) => run(index + 1))
+        : [run(11)] }),
+      (runId) => ({ artifacts: [{ id: runId, name: `promote-staging-parity-${runId}`, workflow_run: { id: runId } }] })
     )];
 
     expect(artifacts).toHaveLength(11);
@@ -385,27 +386,55 @@ describe('staging parity evidence', () => {
   });
 
   it('limits artifact pagination to one thousand artifacts', () => {
-    const readPage = vi.fn(() => ({
-      artifacts: Array.from({ length: 10 }, () => ({})),
-      total_count: 2_000,
+    const readRuns = vi.fn((page: number) => ({
+      workflow_runs: Array.from({ length: 10 }, (_, index) => ({
+        id: (page - 1) * 10 + index + 1, conclusion: 'success', path: '.github/workflows/promote.yml',
+      })),
+    }));
+    const readArtifacts = vi.fn((id: number) => ({
+      artifacts: Array.from({ length: 10 }, () => ({ workflow_run: { id } })),
     }));
 
-    expect([...listArtifacts(readPage)]).toHaveLength(1_000);
-    expect(readPage).toHaveBeenCalledTimes(100);
+    expect([...listArtifacts('promote', readRuns, readArtifacts)]).toHaveLength(1_000);
+    expect(readRuns).toHaveBeenCalledTimes(10);
+    expect(readArtifacts).toHaveBeenCalledTimes(100);
   });
 
   it('does not request later pages after a matching artifact is found', () => {
-    const readPage = vi.fn(() => ({
-      artifacts: Array.from({ length: 10 }, (_, index) => ({ id: index + 1 })),
-      total_count: 2_000,
+    const readRuns = vi.fn(() => ({
+      workflow_runs: Array.from({ length: 10 }, (_, index) => ({
+        id: index + 1, conclusion: 'success', path: '.github/workflows/promote.yml',
+      })),
     }));
+    const readArtifacts = vi.fn((id: number) => ({ artifacts: [{ id, workflow_run: { id } }] }));
 
-    for (const artifact of listArtifacts(readPage)) {
+    for (const artifact of listArtifacts('promote', readRuns, readArtifacts)) {
       expect(artifact.id).toBe(1);
       break;
     }
 
-    expect(readPage).toHaveBeenCalledTimes(1);
+    expect(readRuns).toHaveBeenCalledTimes(1);
+    expect(readArtifacts).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects foreign workflows, failed runs and artifacts bound to another run', () => {
+    const readArtifacts = vi.fn(() => ({ artifacts: [{ id: 1, workflow_run: { id: 99 } }] }));
+    const artifacts = [...listArtifacts('promote', () => ({ workflow_runs: [
+      { id: 1, conclusion: 'success', path: '.github/workflows/other.yml' },
+      { id: 2, conclusion: 'failure', path: '.github/workflows/promote.yml' },
+      { id: 3, conclusion: 'success', path: '.github/workflows/promote.yml' },
+    ] }), readArtifacts)];
+
+    expect(artifacts).toEqual([]);
+    expect(readArtifacts).toHaveBeenCalledExactlyOnceWith(3);
+  });
+
+  it('accepts only the backup-drill workflow when searching backup evidence', () => {
+    const artifacts = [...listArtifacts('backup-drill', () => ({ workflow_runs: [
+      { id: 1, conclusion: 'success', path: '.github/workflows/staging-backup-drill.yml' },
+    ] }), (id) => ({ artifacts: [{ id, workflow_run: { id } }] }))];
+
+    expect(artifacts).toHaveLength(1);
   });
 
   it('selects exactly one JSON evidence file from an artifact archive', () => {

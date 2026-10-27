@@ -578,6 +578,20 @@ describe('NewsDetailPage', () => {
     expect(vi.mocked(saveNewsEditorItem)).toHaveBeenCalledTimes(1);
   });
 
+  it('shows a copyable request reference for a failed save', async () => {
+    vi.mocked(saveNewsEditorItem).mockRejectedValueOnce(
+      Object.assign(new Error('save_failed'), { requestId: 'news-request-123' })
+    );
+    render(<NewsDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Titel'), {
+      target: { value: 'Fehlerreferenz' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Entwurf anlegen' })[0]!);
+
+    expect(await screen.findByText('news-request-123')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'news.messages.copyRequestReference' })).toBeTruthy();
+  });
+
   it('does not acknowledge changes made while creating the news item', async () => {
     let check = () => false;
     let complete: ((saved: Awaited<ReturnType<typeof saveNewsEditorItem>>) => void) | undefined;

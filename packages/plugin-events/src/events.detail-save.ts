@@ -5,6 +5,7 @@ import { useNavigate } from '@tanstack/react-router';
 import {
   contentMediaSavePhaseMessageKey,
   omitDeviatedMainserverFields,
+  readMainserverErrorRequestId,
   saveContentWithHostMediaReferences,
   usePluginTranslation,
 } from '@sva/plugin-sdk';
@@ -28,7 +29,11 @@ import {
 import type { EventsDetailTabId } from './events.detail-tabs.js';
 import { validateEventsDetailSubmission } from './events.detail-save-validation.js';
 
-export type EventsStatusMessage = Readonly<{ kind: 'success' | 'error'; text: string }>;
+export type EventsStatusMessage = Readonly<{
+  kind: 'success' | 'error';
+  text: string;
+  requestId?: string;
+}>;
 export const eventsErrorMessage = (
   pt: ReturnType<typeof usePluginTranslation>,
   error: unknown,
@@ -196,6 +201,7 @@ const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormVa
     context.setStatus({
       kind: 'error',
       text: eventsErrorMessage(context.pt, saveError, 'messages.saveError'),
+      requestId: readMainserverErrorRequestId(saveError),
     });
     context.saveFeedback.markFailed(operationId);
   }

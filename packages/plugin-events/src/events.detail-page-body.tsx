@@ -5,6 +5,7 @@ import {
   MainserverPrincipalControl,
   resolveMainserverPrincipalOptions,
   StudioFormSummary,
+  StudioPersistentFormError,
   StudioMediaReferenceRetryAction,
   StudioPersistentActionResult,
 } from '@sva/studio-ui-react';
@@ -39,7 +40,24 @@ const EventsDetailStatus = ({
         }
       />
     ) : null}
-    {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+    {status ? (
+      status.kind === 'error' ? (
+        <StudioPersistentFormError
+          message={status.text}
+          requestId={status.requestId}
+          requestIdLabel={status.requestId ? pt('messages.requestReference') : undefined}
+          copyRequestIdLabel={status.requestId ? pt('messages.copyRequestReference') : undefined}
+          requestIdCopiedLabel={
+            status.requestId ? pt('messages.requestReferenceCopied') : undefined
+          }
+          requestIdCopyFailedLabel={
+            status.requestId ? pt('messages.requestReferenceCopyFailed') : undefined
+          }
+        />
+      ) : (
+        <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary>
+      )
+    ) : null}
     {mode === 'create' && media.leaveGuard.createdContentId ? (
       <StudioFormSummary kind="success">
         {!media.mediaReferenceSync.hasPendingRetry &&
@@ -51,9 +69,13 @@ const EventsDetailStatus = ({
         </Link>
       </StudioFormSummary>
     ) : null}
-    <div className={mode === 'create'
-      ? 'has-[select]:rounded-2xl has-[select]:border has-[select]:border-border/60 has-[select]:bg-card has-[select]:p-5'
-      : undefined}>
+    <div
+      className={
+        mode === 'create'
+          ? 'has-[select]:rounded-2xl has-[select]:border has-[select]:border-border/60 has-[select]:bg-card has-[select]:p-5'
+          : undefined
+      }
+    >
       <MainserverPrincipalControl
         fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
         id="events-acting-principal"

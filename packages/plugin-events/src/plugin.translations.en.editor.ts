@@ -36,6 +36,10 @@ export const eventsENEditor = {
     },
   },
   messages: {
+    requestReference: 'Error reference:',
+    copyRequestReference: 'Copy reference',
+    requestReferenceCopied: 'Copied',
+    requestReferenceCopyFailed: 'Copy failed',
     createdNavigationError: 'The content was created, but the editing view could not be opened.',
     unsavedAfterCreate: 'The content was created. Newer changes in this form have not been saved.',
     mediaReferencePartialFailure:

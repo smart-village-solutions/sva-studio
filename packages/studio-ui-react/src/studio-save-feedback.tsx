@@ -54,6 +54,11 @@ export type StudioPersistentFormErrorProps = Readonly<{
   retryLabel?: React.ReactNode;
   onRetry?: () => void;
   retryDisabled?: boolean;
+  requestId?: string;
+  requestIdLabel?: React.ReactNode;
+  copyRequestIdLabel?: React.ReactNode;
+  requestIdCopiedLabel?: React.ReactNode;
+  requestIdCopyFailedLabel?: React.ReactNode;
   className?: string;
 }>;
 
@@ -64,8 +69,26 @@ export function StudioPersistentFormError({
   retryLabel,
   onRetry,
   retryDisabled = false,
+  requestId,
+  requestIdLabel,
+  copyRequestIdLabel,
+  requestIdCopiedLabel,
+  requestIdCopyFailedLabel,
   className,
 }: StudioPersistentFormErrorProps) {
+  const [copyState, setCopyState] = React.useState<'idle' | 'copied' | 'failed'>('idle');
+  const copyRequestId = async () => {
+    if (!requestId || !navigator.clipboard?.writeText) {
+      setCopyState('failed');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(requestId);
+      setCopyState('copied');
+    } catch {
+      setCopyState('failed');
+    }
+  };
   return (
     <Alert className={cn('border-destructive/40 bg-destructive/10 text-destructive', className)}>
       {title ? <AlertTitle>{title}</AlertTitle> : null}
@@ -73,6 +96,21 @@ export function StudioPersistentFormError({
         <div className="space-y-3">
           <p>{message}</p>
           {details}
+          {requestId ? (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span>{requestIdLabel}</span>
+              <code className="select-all">{requestId}</code>
+              {copyRequestIdLabel ? (
+                <Button type="button" variant="secondary" onClick={() => void copyRequestId()}>
+                  {copyState === 'copied'
+                    ? requestIdCopiedLabel
+                    : copyState === 'failed'
+                      ? requestIdCopyFailedLabel
+                      : copyRequestIdLabel}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           {retryLabel && onRetry ? (
             <Button type="button" variant="secondary" disabled={retryDisabled} onClick={onRetry}>
               {retryLabel}

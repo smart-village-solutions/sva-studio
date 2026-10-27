@@ -1,18 +1,18 @@
 # Lieferplan: drei Studio-PRs
 
-Alle Implementierungs- und Abnahmenachweise sind offen. Der vorhandene Analyse-Testlauf (38 Tests in drei Auth-Runtime-Dateien am Basisstand) ist lediglich Baseline, kein Nachweis der neuen Invarianten. PR 1 startet als Proposal-Draft; die menschliche Freigabe erfolgt vor seinem ersten Codeblock. PR 2 und PR 3 werden erst nach Merge ihres Vorgängers von aktuellem `main` eröffnet.
+PR 1 baut auf dem gemergten Vorschlag #1990 und aktuellem `main` auf. Die Implementierung und lokalen Nachweise für 1.1–1.9 sind abgeschlossen; GitHub-Gates am PR-HEAD und die gesonderte Staging-/Loki-Abnahme bleiben offen. PR 2 und PR 3 werden erst nach Merge ihres Vorgängers von aktuellem `main` eröffnet.
 
 ## 1. PR 1 — Klassifikation, Fehlerreferenz und Diagnose
 
-- [ ] 1.1 Vollständigen Change einschließlich Scope, drei PR-Aufträgen und Assurance Case menschlich prüfen und zur Implementierung freigeben; Planungsevidenz nicht als Implementierungsfreigabe auslegen.
-- [ ] 1.2 Die Eintrittsmatrix aus `design.md` gegen aktuellen HEAD prüfen, Verbraucher und bestehende Tests zuordnen; externe Mainserver-Verträge unverändert festhalten.
-- [ ] 1.3 Alle bestehenden Principal-/Credential-Ergebnisse exhaustiv klassifizieren; `partial_credentials` reproduzieren und als Konfigurationsfehler statt 403 absichern; vorhandene, nicht freigegebene Organisations-Credentials sicher unterscheidbar machen.
-- [ ] 1.4 Vorhandene Request-/Response-Grenze für frühe Response-Returns und Exceptions erweitern: genau ein abschließendes Ergebnisereignis, sichere Route/Phase/Action und identische `X-Request-Id`; bisherige operative Duplikate im selben Lieferabschnitt entfernen, eigenständige Audits erhalten.
-- [ ] 1.5 Request-ID und sichere Diagnose additiv durch IAM-/Mainserver-Clients, Error-Factories und vorhandene Plugin-/Host-Fehleranzeigen transportieren; Fehlerreferenz zugänglich und kopierbar in `de`/`en` anbieten.
-- [ ] 1.6 Den begrenzten Browser-Meldepfad ausschließlich im bestehenden Monitoring ergänzen: Session, CSRF, Instanzbindung, striktes Schema, 2-KiB-Limit, Rate-Limit in einem eigenen Telemetrie-Bucket und atomare instanz-/accountgebundene Deduplizierung; fachliche Budgets bleiben unverändert, Clientbeobachtung bleibt unbestätigt. Budget/Dedupe in PR 1 für die unterstützte Topologie nachweisen.
-- [ ] 1.7 Offline-/Auth-Fehler der Telemetrie ohne Rekursion, fachliche Blockierung oder Datenpersistenz behandeln; Annahme-ACK und Loki-Zustellung getrennt ausweisen.
-- [ ] 1.8 Tabellengetriebene Klassifikations-, Early-Return-, Header/SDK/UI-Korrelations-, Duplikat-/PII- und Browser-Rate-Limit-Tests ergänzen; den kleinsten echten Unit-/Type-Gate unmittelbar je Block ausführen.
-- [ ] 1.9 Arc42 04/05/06/08 prüfen und betroffene Aussagen, vorhandene Logging-/Mainserver-Runbooks sowie Fehlerdokumentation fortschreiben; ADR-018 für verbindliche Header-/Browserdiagnostik und weitere betroffene ADRs samt Architekturindex fortschreiben.
+- [x] 1.1 Vollständigen Change einschließlich Scope, drei PR-Aufträgen und Assurance Case menschlich prüfen und zur Implementierung freigeben; Planungsevidenz nicht als Implementierungsfreigabe auslegen.
+- [x] 1.2 Die Eintrittsmatrix aus `design.md` gegen aktuellen HEAD prüfen, Verbraucher und bestehende Tests zuordnen; externe Mainserver-Verträge unverändert festhalten.
+- [x] 1.3 Alle bestehenden Principal-/Credential-Ergebnisse exhaustiv klassifizieren; `partial_credentials` reproduzieren und als Konfigurationsfehler statt 403 absichern; vorhandene, nicht freigegebene Organisations-Credentials sicher unterscheidbar machen.
+- [x] 1.4 Vorhandene Request-/Response-Grenze für frühe Response-Returns und Exceptions erweitern: genau ein abschließendes Ergebnisereignis, sichere Route/Phase/Action und identische `X-Request-Id`; bisherige operative Duplikate im selben Lieferabschnitt entfernen, eigenständige Audits erhalten.
+- [x] 1.5 Request-ID und sichere Diagnose additiv durch IAM-/Mainserver-Clients, Error-Factories und vorhandene Plugin-/Host-Fehleranzeigen transportieren; Fehlerreferenz zugänglich und kopierbar in `de`/`en` anbieten.
+- [x] 1.6 Den begrenzten Browser-Meldepfad ausschließlich im bestehenden Monitoring ergänzen: Session, CSRF, Instanzbindung, striktes Schema, 2-KiB-Limit, eigenes prozesslokales Telemetrie-Budget und atomare instanz-/accountgebundene Deduplizierung; fachliche Budgets bleiben unverändert, Clientbeobachtung bleibt unbestätigt. Budget/Dedupe in PR 1 für die unterstützte Topologie nachweisen.
+- [x] 1.7 Offline-/Auth-Fehler der Telemetrie ohne Rekursion, fachliche Blockierung oder Datenpersistenz behandeln; Annahme-ACK und Loki-Zustellung getrennt ausweisen.
+- [x] 1.8 Tabellengetriebene Klassifikations-, Early-Return-, Header/SDK/UI-Korrelations-, Duplikat-/PII- und Browser-Rate-Limit-Tests ergänzen; den kleinsten echten Unit-/Type-Gate unmittelbar je Block ausführen.
+- [x] 1.9 Arc42 04/05/06/08 prüfen und betroffene Aussagen, vorhandene Logging-/Mainserver-Runbooks sowie Fehlerdokumentation fortschreiben; ADR-018 für verbindliche Header-/Browserdiagnostik und weitere betroffene ADRs samt Architekturindex fortschreiben.
 - [ ] 1.10 Gezielte Projektgates, Server-Runtime, OpenSpec, Dokumentations- und Placement-Checks ausführen; exakten finalen HEAD einmal über die GitHub-Gates bis terminal verfolgen.
 - [ ] 1.11 Nach gesonderter Freigabe in Staging eine sichere frühe Ablehnung mit Referenz tatsächlich in Loki nachweisen; Exportausfall erkennbar und ohne behauptete Zustellgarantie prüfen. PR 1 erst mit seiner direkten Evidenz als implementiert abnehmen.
 

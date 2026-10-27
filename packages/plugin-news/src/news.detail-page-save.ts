@@ -3,6 +3,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import { useNavigate } from '@tanstack/react-router';
 import {
   contentMediaSavePhaseMessageKey,
+  readMainserverErrorRequestId,
   saveContentWithHostMediaReferences,
   toDatetimeLocalValue,
 } from '@sva/plugin-sdk';
@@ -251,6 +252,7 @@ export const useNewsDetailSave = ({
         setStatusMessage({
           source: 'save',
           text: resolveNewsErrorMessage(pt, error, 'messages.saveError'),
+          requestId: readMainserverErrorRequestId(error),
         });
         saveFeedback.markFailed(operationId);
       }

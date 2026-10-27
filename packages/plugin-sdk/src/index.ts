@@ -248,6 +248,7 @@ export {
   pluginGuardrailViolationCodes,
   publishSessionAccessSnapshot,
   readFieldError,
+  readMainserverErrorRequestId,
   readHostMediaAssetCopyright,
   readHostMediaAssetFileName,
   readHostMediaAssetTitle,

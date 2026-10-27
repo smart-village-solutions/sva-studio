@@ -24,8 +24,7 @@ export const newsTranslationsENEditor = {
       scheduled: 'Create scheduled news',
     },
     effect: {
-      draft:
-        'Saved as a draft, not yet public.',
+      draft: 'Saved as a draft, not yet public.',
       immediate: 'The news item is published immediately.',
       scheduled: 'The news item is saved with the selected publication time {{date}}.',
     },
@@ -143,6 +142,10 @@ export const newsTranslationsENEditor = {
     pageLabel: 'Page {{page}}',
   },
   messages: {
+    requestReference: 'Error reference:',
+    copyRequestReference: 'Copy reference',
+    requestReferenceCopied: 'Copied',
+    requestReferenceCopyFailed: 'Copy failed',
     detailNavigationError: 'The news was saved, but its detail page could not be opened.',
     mediaReferencePartialFailure:
       'The news entry was saved, but its media references were not. You can retry the references.',

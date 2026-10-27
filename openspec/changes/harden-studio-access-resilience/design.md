@@ -43,26 +43,26 @@ Für jeden zurückgegebenen Auth-, Autorisierungs-, Kontext-, Readiness- oder In
 
 ### Verbraucher und Abdeckung
 
-| Studio-Eintritt                                            | Verpflichtender Nachweis in PR 1                                                          |
-| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `/auth/me`, geschützte Auth-/Sessionhandler                | 401/5xx inklusive früher Middleware-Antwort korreliert.                                   |
-| `/iam/authorize`, `/iam/me/permissions`, `/api/v1/iam/...` | Ablehnung, Kontext-/Dependency-Fehler und Exception; bestehende Auditspur erhalten.       |
-| `/api/v1/mainserver/...`                                   | Principal-/Credential-Preflight, Ressourcenverbot, Upstream- und Folgeschrittfehler.      |
-| Host-Dispatcher für Plugin-Handler                         | Frühe Tenant-/Modul-/Ressourcenablehnung vor Plugin-Ausführung.                           |
-| Gemeinsame Studio-Clients und Plugin-SDK                   | Request-ID und Klassifikation gehen nicht durch Error-Factory/Übersetzung verloren.       |
-| Root-ErrorBoundary und Browser-HTTP-Grenze                 | Browser-only-Fehler werden von bereits serverseitig gemeldeten Ergebnissen unterschieden. |
+| Studio-Eintritt                                            | Verpflichtender Nachweis in PR 1                                                                          |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `/auth/me`, geschützte Auth-/Sessionhandler                | 401/5xx inklusive früher Middleware-Antwort korreliert.                                                   |
+| `/iam/authorize`, `/iam/me/permissions`, `/api/v1/iam/...` | Ablehnung, Kontext-/Dependency-Fehler und Exception; bestehende Auditspur erhalten.                       |
+| `/api/v1/mainserver/...`                                   | Principal-/Credential-Preflight, Ressourcenverbot, Upstream- und Folgeschrittfehler.                      |
+| Host-Dispatcher für Plugin-Handler                         | Frühe Tenant-/Modul-/Ressourcenablehnung vor Plugin-Ausführung.                                           |
+| Gemeinsame Studio-Clients und Plugin-SDK                   | Request-ID und Klassifikation gehen nicht durch Error-Factory/Übersetzung verloren.                       |
+| Globale Browser-Error-/Rejection-Handler                   | Nicht abgefangene Browserfehler werden von bereits serverseitig gemeldeten API-Ergebnissen unterschieden. |
 
 Diese Inventur liegt hier, nicht in einer neuen Registry oder einem neuen CI-Gate. Vor Umsetzung werden konkrete bestehende Tests je Zeile zugeordnet. Öffentliche Kalender, Webhooks, Scheduler und fremde Programme erhalten keinen pauschalen neuen Meldevertrag.
 
 ### Minimaler Browser-Meldepfad
 
-Die gezeigten Browserlogger besitzen keinen zentralen Export. Unmittelbare Verbraucher sind Root-ErrorBoundary und gemeinsame HTTP-Clients bei Renderfehler, lokalem Timeout oder nicht beim Server angekommenem Netzwerkfehler. Daher wird im bestehenden Studio-Monitoring genau ein Host-Handler für `POST /api/v1/monitoring/client-errors` ergänzt; ein weiteres Telemetriepaket oder ein neuer Dienst wäre für diese Lücke nicht erforderlich.
+Die globalen Browser-Error- und Unhandled-Rejection-Handler besitzen keinen zentralen Export. Der Meldepfad erfasst ausschließlich diese nicht abgefangenen Ereignisse; React-Error-Boundaries und abgefangene HTTP-Fehler werden nicht zusätzlich instrumentiert. Dafür wird im bestehenden Studio-Monitoring genau ein Host-Handler für `POST /api/v1/monitoring/client-errors` ergänzt; ein weiteres Telemetriepaket oder ein neuer Dienst wäre für diese Lücke nicht erforderlich.
 
 - Gültige Studio-Session, bestehende Same-Origin-/CSRF-Prüfung und serverseitige Instanzbindung; keine zusätzliche Admin-Permission für das Melden eigener Betriebsfehler.
-- Striktes Schema, höchstens 2 KiB Payload; erlaubte Felder: zufällige `clientEventId`, freigegebene Fehlerklasse, statische Route-ID, Zeitpunkt und optionale sicher validierte `relatedRequestId`. Kein Freitext, Stack, Formularzustand oder Browser-Fingerprint.
-- Ereignis `studio.client.failure_reported` mit `source=client`; Angaben bleiben unbestätigte Client-Beobachtungen und erzeugen keine autoritative Security-/Auditentscheidung. Die Empfangsanfrage besitzt eine eigene serverseitige Request-ID.
-- Vorhandenen Rate-Limit-Pfad mit einem eigenen Telemetrie-Scope/Bucket verwenden: höchstens 20 Annahmen je authentifiziertem Account und Minute, ohne fachliche Read-/Write-Budgets zu verbrauchen. Deduplizierung ist atomar an serverbestimmte Instanz, Account und `clientEventId` gebunden; dieselbe ID wird je Scope im Fünf-Minuten-Fenster höchstens einmal als operatives Ereignis angenommen. Grenzüberschreitung liefert 429 ohne rekursive Fehlermeldung des Telemetrieclients.
-- Annahmebudget und Deduplizierung werden bereits in PR 1 für die vorhandene unterstützte Prozess-/Deploymenttopologie nachgewiesen. Prozesslokale Zähler gelten nur bei belegtem Einzelprozessbetrieb als vollständiger Schutz; keine neue Skalierungstopologie oder allgemeine Koordinationsinfrastruktur.
+- Striktes Schema, höchstens 2 KiB Payload; erlaubte Felder sind ausschließlich eine zufällige `clientEventId` und eine freigegebene Fehlerklasse. Route, Zeit, Bezug und Identität werden nicht vom Browser übernommen. Kein Freitext, Stack, Formularzustand oder Browser-Fingerprint.
+- Ereignis `studio.client.error.reported` mit `source=client`; Angaben bleiben unbestätigte Client-Beobachtungen und erzeugen keine autoritative Security-/Auditentscheidung. Die Empfangsanfrage besitzt eine eigene serverseitige Request-ID. Der Logeintrag enthält nur die generierte Request-ID, zufällige Client-Event-ID und Fehlerklasse.
+- Eigenes prozesslokales Telemetrie-Budget: höchstens 20 authentifizierte Meldungsrequests je Account und Minute, ohne fachliche Read-/Write-Budgets zu verbrauchen; auch deduplizierte Requests verbrauchen dieses Budget. Deduplizierung ist atomar an serverbestimmte Instanz, Account und `clientEventId` gebunden; dieselbe ID wird je Scope im Fünf-Minuten-Fenster höchstens einmal als operatives Ereignis geloggt. Grenzüberschreitung liefert 429 ohne rekursive Fehlermeldung des Telemetrieclients.
+- Die vorhandenen Dev-, Staging- und Production-Compose-Profile deklarieren für den Studio-App-Service jeweils `replicas: 1`; im unterstützten Einzelprozessbetrieb sind die prozesslokalen Budget-/Dedupe-Maps vollständig. Das führt keine Mehrreplika-Garantie oder allgemeine Koordinationsinfrastruktur ein.
 - Im Browser höchstens zehn nicht sensitive Meldungen fünf Minuten im Speicher halten. Nach Offlinezustand oder Session-Recovery höchstens ein erneuter Versuch je Meldung; keine dauerhafte Queue, kein Polling, kein erzwungener Login durch Telemetrie. Bei Logout, User-/Tenantwechsel und Ablauf verwerfen.
 - Eine bereits korrelierte API-Ablehnung wird nicht als zweiter Browser-Betriebsfehler gesendet. Ein Annahme-ACK bedeutet nicht „in Loki zugestellt“; gescheiterte Telemetrie darf die Fachaktion nicht blockieren.
 

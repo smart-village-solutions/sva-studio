@@ -39,6 +39,11 @@ export type EffectiveSvaMainserverCredentialsResult =
   | {
       readonly status: 'organization_mainserver_credentials_missing';
       readonly organizationId?: string;
+      readonly reasonCode?:
+        | 'organization_not_found'
+        | 'missing_credentials'
+        | 'partial_credentials'
+        | 'verification_pending';
     }
   | {
       readonly status: 'missing_credentials';
@@ -102,10 +107,8 @@ const resolveOrganizationCredentialReadiness = (
 ):
   | { readonly status: 'ready'; readonly credentials: SvaMainserverCredentials }
   | { readonly status: 'missing' }
+  | { readonly status: 'verification_pending' }
   | { readonly status: 'partial'; readonly missingAttributeNames: readonly string[] } => {
-  if (row.provisioning_status !== 'ready' && !allowProvisioningCredentials) {
-    return { status: 'missing' };
-  }
   const apiKey = normalizeOptionalText(row.mainserver_application_id);
   const apiSecret = normalizeOptionalText(
     revealField(
@@ -121,6 +124,10 @@ const resolveOrganizationCredentialReadiness = (
         apiKey ? MAINSERVER_APPLICATION_SECRET_ATTRIBUTE : MAINSERVER_APPLICATION_ID_ATTRIBUTE,
       ],
     };
+  }
+
+  if (row.provisioning_status !== 'ready' && !allowProvisioningCredentials) {
+    return { status: 'verification_pending' };
   }
 
   return { status: 'ready', credentials: { apiKey, apiSecret } };
@@ -188,6 +195,7 @@ export const readEffectiveSvaMainserverCredentialsWithStatus = async (
     return {
       status: 'organization_mainserver_credentials_missing',
       organizationId: input.activeOrganizationId,
+      reasonCode: 'organization_not_found',
     };
   }
 
@@ -236,13 +244,21 @@ export const readEffectiveSvaMainserverCredentialsWithStatus = async (
         }
       : organizationReadiness.status === 'partial'
         ? {
-            status: 'partial_credentials',
-            missingAttributeNames: organizationReadiness.missingAttributeNames,
-          }
-        : {
             status: 'organization_mainserver_credentials_missing',
             organizationId: input.activeOrganizationId,
-          };
+            reasonCode: 'partial_credentials',
+          }
+        : organizationReadiness.status === 'verification_pending'
+          ? {
+              status: 'organization_mainserver_credentials_missing',
+              organizationId: input.activeOrganizationId,
+              reasonCode: 'verification_pending',
+            }
+          : {
+              status: 'organization_mainserver_credentials_missing',
+              organizationId: input.activeOrganizationId,
+              reasonCode: 'missing_credentials',
+            };
   }
 
   const userCredentials = await resolveUserCredentials(input);

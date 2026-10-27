@@ -694,6 +694,7 @@ Referenzen:
 - Organisationspfade bleiben strikt instanzzentriert; `instanceId` ist führend, `activeOrganizationId` ist daraus abgeleiteter Session-Fachkontext.
 - `GET/PUT /api/v1/iam/me/context` bilden den kanonischen Session-Contract; requestbasierte Org-Overrides sind im ersten Schnitt ausgeschlossen.
 - Organisationsmutationen und Kontextwechsel folgen denselben CSRF-, Audit- und Logger-Leitplanken wie übrige IAM-v1-Schreibpfade.
+- Browserseitige Kontext-Reads warten auf bereits laufende Organisationswechsel und lesen anschließend frisch; sie übernehmen keine vor dem Wechsel gestartete Singleflight-Antwort. Ein neuer Wechsel beendet die Ladephase älterer Reads, während Sequenz- und Identitätsprüfung weiterhin deren verspätete Ergebnisse verwerfen.
 - Der Org-Switcher nutzt i18n-Keys für Label, Status und Fehlerzustände und kündigt Wechsel über `aria-live="polite"` an.
 - Fehlercodes wie `invalid_organization_id`, `organization_inactive` und `csrf_validation_failed` bleiben stabil, damit UI, Audit und Betriebsanalyse konsistent korrelieren können.
 - Organisations-Read-Models liefern Parent-, Typ-, Policy- und Zählerdaten serverseitig aus einem lesefähigen Modell, um N+1-Abfragen in der UI zu vermeiden.

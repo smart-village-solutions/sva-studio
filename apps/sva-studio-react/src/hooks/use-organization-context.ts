@@ -100,6 +100,7 @@ export const OrganizationContextProvider = ({
       return;
     }
 
+    await operationQueue.current;
     if (currentIdentity.current !== identityKey) return;
     const sequence = ++requestSequence.current;
     logBrowserOperationStart(organizationContextLogger, 'organization_context_load_started', {
@@ -108,7 +109,7 @@ export const OrganizationContextProvider = ({
     setIsLoading(true);
     setErrorSnapshot(null);
     try {
-      const response = await getMyOrganizationContext();
+      const response = await getMyOrganizationContext({ fresh: true });
       publishIfCurrent(identityKey, sequence, () => {
         setContextSnapshot({ identityKey, value: response.data });
         logBrowserOperationSuccess(
@@ -169,6 +170,7 @@ export const OrganizationContextProvider = ({
           }
         );
         setIsUpdating(true);
+        setIsLoading(false);
         setErrorSnapshot(null);
         try {
           const response = await updateMyOrganizationContext(organizationId);

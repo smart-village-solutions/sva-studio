@@ -204,6 +204,46 @@ describe('useOrganizationContext', () => {
     });
 
     expect(result.current.context?.activeOrganizationId).toBe('org-2');
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isUpdating).toBe(false);
+  });
+
+  it('keeps the confirmed organization and settles loading when a read overlaps a switch', async () => {
+    const write = createDeferred<{
+      data: { activeOrganizationId: string; organizations: [] };
+    }>();
+    let serverOrganization = 'org-1';
+    getMyOrganizationContextMock.mockImplementation(async () => ({
+      data: { activeOrganizationId: serverOrganization, organizations: [] },
+    }));
+    updateMyOrganizationContextMock.mockReturnValueOnce(write.promise);
+
+    const { result } = renderHook(() => useOrganizationContext(), { wrapper });
+    await waitFor(() => expect(result.current.context?.activeOrganizationId).toBe('org-1'));
+
+    let switching!: Promise<boolean>;
+    act(() => {
+      switching = result.current.switchOrganization('org-2');
+    });
+    await waitFor(() => expect(updateMyOrganizationContextMock).toHaveBeenCalledTimes(1));
+    let reading!: Promise<void>;
+    act(() => {
+      reading = result.current.refetch();
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      serverOrganization = 'org-2';
+      write.resolve({ data: { activeOrganizationId: 'org-2', organizations: [] } });
+      await expect(switching).resolves.toBe(true);
+      await reading;
+    });
+
+    expect(result.current.context?.activeOrganizationId).toBe('org-2');
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isUpdating).toBe(false);
   });
 
   it('serializes organization switches so their writes cannot overtake one another', async () => {

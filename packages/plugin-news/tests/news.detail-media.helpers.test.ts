@@ -1,3 +1,8 @@
+import { renderHook } from '@testing-library/react';
+import { useForm } from 'react-hook-form';
+import { isNewsAssetSelectable } from '../src/news.detail-page-media-selection.js';
+import type { NewsDetailFormValues } from '../src/news.types.js';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -58,4 +63,36 @@ describe('news detail media helpers', () => {
     ).toBe('https://cdn.example.com/teaser.jpg');
     expect(mediaContentSourceKey(undefined)).toBe('');
   });
+});
+
+it('uses the delivery URL for selection without requiring a preview', () => {
+  const { result } = renderHook(() => useForm<NewsDetailFormValues>());
+  const asset = {
+    id: 'asset-delivery',
+    title: 'Image',
+    fileName: 'image.jpg',
+    mimeType: 'image/jpeg',
+    visibility: 'public',
+    previewUrl: null,
+    persistentUrl: 'https://example.org/delivery.jpg',
+    metadata: { title: 'Image', altText: '', description: '', copyright: '', license: '' },
+  };
+  expect(isNewsAssetSelectable(asset, [], result.current)).toBe(true);
+  result.current.setValue('contentMedia', [
+    {
+      captionText: '',
+      copyright: '',
+      contentType: 'image',
+      height: '',
+      width: '',
+      sourceUrl: { url: asset.persistentUrl, description: '' },
+    },
+  ]);
+  expect(
+    isNewsAssetSelectable(
+      { ...asset, previewUrl: 'https://example.org/preview.jpg' },
+      [],
+      result.current
+    )
+  ).toBe(false);
 });

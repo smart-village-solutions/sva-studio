@@ -1,3 +1,9 @@
+import { renderHook } from '@testing-library/react';
+import { useForm } from 'react-hook-form';
+import { isEventsAssetSelectable } from '../src/events.detail-media.helpers.js';
+import type { EventsDetailFormValues } from '../src/events.detail-form.js';
+import { createDefaultMediaContent } from '../src/events.detail-form.js';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -47,4 +53,29 @@ describe('events detail media helpers', () => {
     expect(mediaContentFromAsset({ ...publicAsset, visibility: 'private' })).toBeNull();
     expect(mediaContentFromAsset({ ...publicAsset, previewUrl: '   ' })).toBeNull();
   });
+});
+
+it('uses the delivery URL for selection without requiring a preview', () => {
+  const { result } = renderHook(() => useForm<EventsDetailFormValues>());
+  const asset = {
+    id: 'asset-delivery',
+    title: 'Image',
+    fileName: 'image.jpg',
+    mimeType: 'image/jpeg',
+    visibility: 'public',
+    previewUrl: null,
+    persistentUrl: 'https://example.org/delivery.jpg',
+    metadata: { title: 'Image', altText: '', description: '', copyright: '', license: '' },
+  };
+  expect(isEventsAssetSelectable(asset, [], result.current)).toBe(true);
+  result.current.setValue('content.mediaContents', [
+    { ...createDefaultMediaContent(), sourceUrl: { url: asset.persistentUrl, description: '' } },
+  ]);
+  expect(
+    isEventsAssetSelectable(
+      { ...asset, previewUrl: 'https://example.org/preview.jpg' },
+      [],
+      result.current
+    )
+  ).toBe(false);
 });

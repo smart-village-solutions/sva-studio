@@ -18,6 +18,7 @@ export const GenericItemsMediaPickerView = ({
   } = view;
   return (
     <StudioMediaPickerOverlay
+      libraryStatus={view.libraryStatus}
       assets={mediaAssets.map(toGenericItemsMediaPickerSummary)}
       canUpload={canUploadMedia}
       feedbackMessage={mediaPickerFeedback.message}

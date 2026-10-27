@@ -205,6 +205,28 @@ describe('projects pages', () => {
     };
   });
 
+  it('shows a library failure and retries instead of claiming the library is empty', async () => {
+    state.listAssets.mockRejectedValueOnce(new Error('offline'));
+    render(<ProjectsCreatePage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'media.add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.queryByText('media.empty')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /editor.retry/ }));
+    await waitFor(() => expect(state.listAssets).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(await screen.findByText('media.empty')).toBeTruthy();
+  });
+
+  it('shows unsupported upload errors in the media dialog', async () => {
+    render(<ProjectsCreatePage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'media.add' }));
+    fireEvent.change(screen.getByTestId('media-upload-input'), {
+      target: { files: [new File(['pdf'], 'document.pdf', { type: 'application/pdf' })] },
+    });
+    expect(await screen.findByText('messages.mediaError')).toBeTruthy();
+  });
+
   it('creates a normalized project through one page without create history', async () => {
     const guarded = renderGuarded(<ProjectsCreatePage />);
     expect(guarded.hasUnsavedChanges()).toBe(false);

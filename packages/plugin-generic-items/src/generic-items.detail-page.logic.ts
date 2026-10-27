@@ -42,19 +42,32 @@ const errorMessage = (
 export const useGenericItemsMediaAssets = () => {
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
 
+  const [libraryLoading, setLibraryLoading] = React.useState(false);
+  const [libraryError, setLibraryError] = React.useState(false);
+  const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
   const refreshMediaAssets = React.useCallback(async () => {
+    setLibraryLoading(true);
+    setLibraryError(false);
     try {
       const assets = await listHostMediaAssets({
         fetch: globalThis.fetch.bind(globalThis),
         visibility: 'public',
       });
+      mediaAssetsRef.current = assets;
       setMediaAssets(assets);
       return assets;
     } catch {
-      setMediaAssets([]);
-      return [];
+      setLibraryError(true);
+      return mediaAssetsRef.current;
+    } finally {
+      setLibraryLoading(false);
     }
   }, []);
+  const libraryStatus = {
+    loading: libraryLoading,
+    error: libraryError,
+    onRetry: refreshMediaAssets,
+  };
 
   const uploadMediaFile = React.useCallback(
     async (file: File): Promise<HostMediaAssetListItem> => {
@@ -78,7 +91,7 @@ export const useGenericItemsMediaAssets = () => {
     void refreshMediaAssets();
   }, [refreshMediaAssets]);
 
-  return { mediaAssets, refreshMediaAssets, uploadMediaFile };
+  return { mediaAssets, refreshMediaAssets, uploadMediaFile, libraryStatus };
 };
 
 export const useGenericItemsCategoryOptions = (pt: ReturnType<typeof usePluginTranslation>) => {

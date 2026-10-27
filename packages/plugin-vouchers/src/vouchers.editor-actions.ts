@@ -1,4 +1,8 @@
 import { useNavigate } from '@tanstack/react-router';
+import {
+  isPersistableContentMediaUrl,
+  isPersistableManualContentMediaUrl,
+} from '@sva/studio-ui-react';
 import { MainserverApiError } from '@sva/plugin-sdk';
 import {
   changeVoucherVisibility,
@@ -106,13 +110,25 @@ export const prepareVoucherEditor = async (
   state: VoucherEditorState,
   save: (prepared: VoucherPreparation) => Promise<void>
 ) => {
+  const invalidMediaIndex = state.draft.mediaContents.findIndex(
+    (media) =>
+      !(media.hostMediaAssetId
+        ? isPersistableContentMediaUrl(media.sourceUrl.url)
+        : isPersistableManualContentMediaUrl(media.sourceUrl.url))
+  );
   const invalid = [
+    ...(invalidMediaIndex >= 0 ? ['mediaContents'] : []),
     ...voucherDraftErrors(state.draft),
     ...(!state.discountChosen ? ['discountMode'] : []),
   ];
   state.setErrors(invalid);
   if (invalid.length) {
-    document.getElementById(`voucher-${invalid[0]}`)?.focus();
+    if (invalid[0] === 'mediaContents')
+      document
+        .querySelectorAll<HTMLInputElement>('#voucher-editor-form input[inputmode="url"]')
+        .item(invalidMediaIndex)
+        ?.focus();
+    else document.getElementById(`voucher-${invalid[0]}`)?.focus();
     return;
   }
   state.setBusy(true);

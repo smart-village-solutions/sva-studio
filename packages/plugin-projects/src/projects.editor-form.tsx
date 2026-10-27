@@ -35,6 +35,7 @@ export type ViewInput = Readonly<{
   canUploadMedia: boolean;
   canUpdateMedia: boolean;
   mediaSavePhaseKey: string | null;
+  libraryStatus?: ReturnType<typeof useProjectEditorMedia>['libraryStatus'];
   mediaAssets: readonly HostMediaAssetListItem[];
   mediaUsages: readonly ContentMediaUsage[];
   mediaPicker: ReturnType<typeof useProjectEditorMedia>['mediaPicker'];

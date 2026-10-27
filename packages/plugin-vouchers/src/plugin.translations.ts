@@ -1,7 +1,91 @@
 import type { PluginTranslations } from '@sva/plugin-sdk';
 import { voucherTranslationsDe } from './plugin.translations.de.js';
 import { voucherTranslationsEn } from './plugin.translations.en.js';
+const mediaMessages = {
+  de: {
+    mediaMoveUp: 'Nach oben verschieben',
+    mediaMoveDown: 'Nach unten verschieben',
+    mediaRefreshMetadata: 'Metadaten aus Mediathek aktualisieren',
+    mediaApplyMetadata: 'Ausgewählte Felder übernehmen',
+    mediaLinked: 'Mit Mediathek verknüpft',
+    mediaManual: 'Manuelle URL',
+    mediaReferenceSynced: 'Referenz synchronisiert',
+    mediaReferencePending: 'Referenz noch nicht gespeichert',
+    mediaReferenceMissing: 'Referenz fehlt',
+    mediaReferenceAdditional: 'Zusätzliche Referenz vorhanden',
+    mediaReferenceUnresolved: 'Referenz kann nicht aufgelöst werden',
+    mediaReferenceFailed: 'Referenzsynchronisation fehlgeschlagen',
+    mediaPreviewUnavailable: 'Keine Vorschau verfügbar',
+    mediaMoved: 'Bild an Position {{position}} von {{total}} verschoben.',
+    mediaRemoved: 'Bild entfernt.',
+    mediaUrlUpgradedToHttps: 'Die Bild-URL wurde auf HTTPS aktualisiert.',
+    mediaUrlInsecureHttp:
+      'Diese HTTP-Bild-URL wird unsicher übertragen und kann in HTTPS-Anwendungen blockiert werden.',
+    mediaUrlHttpsUnavailable:
+      'Für diese Bildadresse wurde keine funktionierende HTTPS-Version gefunden.',
+    mediaUrlInvalid: 'Die Bild-URL ist ungültig oder nicht dauerhaft speicherbar.',
+    mediaRefreshTitle: 'Metadaten aus Mediathek aktualisieren',
+    mediaRefreshDescription:
+      'Wählen Sie die Felder aus, die aus dem globalen Medienobjekt übernommen werden sollen.',
+    mediaAssetValue: 'Mediathek',
+    mediaContentValue: 'Inhalt',
+    mediaUploadInitializing: 'Upload wird vorbereitet.',
+    mediaUploadUploading: 'Medium wird hochgeladen.',
+    mediaUploadFinalizing: 'Upload wird abgeschlossen.',
+    mediaUploadSuccess: 'Medium wurde hochgeladen und zugeordnet.',
+    mediaUploadError: 'Das Medium konnte nicht hochgeladen werden.',
+    mediaUploadUnsupportedType: 'Nur JPG, PNG und WebP können hochgeladen werden.',
+    mediaUploadUnavailableUrl: 'Für dieses Medium ist keine öffentliche URL verfügbar.',
+    mediaPickerAssetLoadError: 'Das Medium konnte nicht geladen werden.',
+    mediaPickerMetadataSaveError: 'Die Metadaten konnten nicht gespeichert werden.',
+  },
+  en: {
+    mediaMoveUp: 'Move up',
+    mediaMoveDown: 'Move down',
+    mediaRefreshMetadata: 'Update metadata from media library',
+    mediaApplyMetadata: 'Apply selected fields',
+    mediaLinked: 'Linked to media library',
+    mediaManual: 'Manual URL',
+    mediaReferenceSynced: 'Reference synchronized',
+    mediaReferencePending: 'Reference not saved yet',
+    mediaReferenceMissing: 'Reference missing',
+    mediaReferenceAdditional: 'Additional reference exists',
+    mediaReferenceUnresolved: 'Reference cannot be resolved',
+    mediaReferenceFailed: 'Reference synchronization failed',
+    mediaPreviewUnavailable: 'Preview unavailable',
+    mediaMoved: 'Image moved to position {{position}} of {{total}}.',
+    mediaRemoved: 'Image removed.',
+    mediaUrlUpgradedToHttps: 'The image URL was updated to HTTPS.',
+    mediaUrlInsecureHttp:
+      'This HTTP image URL is transferred insecurely and may be blocked in HTTPS applications.',
+    mediaUrlHttpsUnavailable: 'No working HTTPS version was found for this image address.',
+    mediaUrlInvalid: 'The image URL is invalid or not suitable for permanent storage.',
+    mediaRefreshTitle: 'Update metadata from media library',
+    mediaRefreshDescription: 'Select the fields to copy from the global media asset.',
+    mediaAssetValue: 'Media library',
+    mediaContentValue: 'Content',
+    mediaUploadInitializing: 'Preparing upload.',
+    mediaUploadUploading: 'Uploading media.',
+    mediaUploadFinalizing: 'Finalizing upload.',
+    mediaUploadSuccess: 'Media was uploaded and assigned.',
+    mediaUploadError: 'The media upload failed.',
+    mediaUploadUnsupportedType: 'Only JPG, PNG, and WebP can be uploaded.',
+    mediaUploadUnavailableUrl: 'This media asset has no public URL.',
+    mediaPickerAssetLoadError: 'The media asset could not be loaded.',
+    mediaPickerMetadataSaveError: 'The metadata could not be saved.',
+  },
+} as const;
 export const pluginVouchersTranslations = {
-  de: { vouchers: voucherTranslationsDe },
-  en: { vouchers: voucherTranslationsEn },
+  de: {
+    vouchers: {
+      ...voucherTranslationsDe,
+      messages: { ...voucherTranslationsDe.messages, ...mediaMessages.de },
+    },
+  },
+  en: {
+    vouchers: {
+      ...voucherTranslationsEn,
+      messages: { ...voucherTranslationsEn.messages, ...mediaMessages.en },
+    },
+  },
 } as const satisfies PluginTranslations;

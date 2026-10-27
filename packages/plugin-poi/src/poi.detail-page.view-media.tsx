@@ -21,6 +21,7 @@ export function PoiDetailMediaOverlay({
     media;
   return (
     <StudioMediaPickerOverlay
+      libraryStatus={media.libraryStatus}
       assets={mediaAssets.map(toPoiMediaPickerSummary)}
       canUpload={canUploadMedia}
       feedbackMessage={mediaPickerFeedback.message}

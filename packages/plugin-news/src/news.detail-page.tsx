@@ -149,6 +149,7 @@ export const NewsDetailPage = ({
     addManualMedia,
     mediaPickerFeedback,
     refreshMediaAssets,
+    libraryStatus,
   } = useNewsDetailMedia({
     methods,
     mediaUsages,
@@ -270,6 +271,7 @@ export const NewsDetailPage = ({
         deleteLabel,
         methods,
         mediaAssets,
+        libraryStatus,
         canUploadMedia,
         mediaPickerFeedback,
         isAssetSelectable,

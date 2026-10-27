@@ -1,5 +1,9 @@
 import type { ApiErrorCode, ApiErrorResponse, IamContentListQuery } from '@sva/core';
-import { iamContentListSortDirections, iamContentListSortFields } from '@sva/core';
+import {
+  iamContentListSortDirections,
+  iamContentListSortFields,
+  isIamContentStatus,
+} from '@sva/core';
 
 export class InvalidContentListQueryError extends Error {
   constructor() {
@@ -81,7 +85,8 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
     typeValue === 'faq.faq'
       ? url.searchParams.get('languageCode')?.trim().toLowerCase() || undefined
       : undefined;
-  const poiId = typeValue === 'vouchers.voucher' ? url.searchParams.get('poiId')?.trim() : undefined;
+  const poiId =
+    typeValue === 'vouchers.voucher' ? url.searchParams.get('poiId')?.trim() : undefined;
   const statusValue = url.searchParams.get('status')?.trim();
   const sortByValue = url.searchParams.get('sortBy')?.trim();
   const sortDirectionValue = url.searchParams.get('sortDirection')?.trim();
@@ -110,13 +115,7 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
     ...(typeValue && typeValue !== 'all' ? { type: typeValue } : {}),
     ...(languageCode ? { languageCode } : {}),
     ...(poiId && /^\d+$/.test(poiId) ? { poiId } : {}),
-    ...(statusValue === 'draft' ||
-    statusValue === 'in_review' ||
-    statusValue === 'approved' ||
-    statusValue === 'published' ||
-    statusValue === 'archived'
-      ? { status: statusValue }
-      : {}),
+    ...(isIamContentStatus(statusValue) ? { status: statusValue } : {}),
     ...(visibleTypes.length > 0
       ? { visibleTypes }
       : hasEmptyVisibleTypeSentinel

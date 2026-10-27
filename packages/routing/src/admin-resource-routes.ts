@@ -123,21 +123,13 @@ const createHistoryRouteDefinition = (
   historyBinding: BindingKey | undefined,
   resource: AdminResourceDefinition,
   detailPath: string
-): readonly UiRouteDefinition[] => {
-  if (!historyBinding) {
-    return [];
-  }
-
-  return [
-    {
+): readonly UiRouteDefinition[] => historyBinding ? [{
       binding: historyBinding,
       resource,
       guard: resolveAdminResourceGuard(resource, 'history'),
       path: toAdminHistoryRoutePath(detailPath),
       routeKind: 'history',
-    },
-  ];
-};
+  }] : [];
 
 const createListRouteDefinition = (
   resource: AdminResourceDefinition,

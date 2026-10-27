@@ -95,9 +95,13 @@ test.describe('news plugin', () => {
     await expectNewsEditorReady(page, 'create');
     await page.locator('#news-title').fill('Entwurf bleibt erhalten');
 
-    await expect(page.getByRole('status')).toContainText(/Mainserver-Anbindung|Mainserver connection/);
+    await expect(
+      page.getByRole('status').filter({ hasText: /Mainserver-Anbindung|Mainserver connection/ })
+    ).toBeVisible();
     await expect(page.locator('#news-title')).toHaveValue('Entwurf bleibt erhalten');
-    await expect(page.getByRole('button', { name: /news\.create\.actions|Veröffentlichen|Speichern/ }).first()).toBeDisabled();
+    await expect(
+      page.getByRole('button', { name: /Entwurf anlegen|Jetzt veröffentlichen/ }).first()
+    ).toBeDisabled();
     expect(createRequests).toBe(0);
   });
 

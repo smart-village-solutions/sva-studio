@@ -373,25 +373,39 @@ describe('staging parity evidence', () => {
   });
 
   it('reads paginated artifact responses before filtering parity evidence', () => {
-    const firstPage = Array.from({ length: 100 }, (_, index) => ({ id: index + 1 }));
-    const artifacts = listArtifacts((page) =>
+    const firstPage = Array.from({ length: 10 }, (_, index) => ({ id: index + 1 }));
+    const artifacts = [...listArtifacts((page) =>
       page === 1
-        ? { artifacts: firstPage, total_count: 101 }
-        : { artifacts: [{ id: 101, name: 'promote-staging-parity-101' }], total_count: 101 }
-    );
+        ? { artifacts: firstPage, total_count: 11 }
+        : { artifacts: [{ id: 11, name: 'promote-staging-parity-11' }], total_count: 11 }
+    )];
 
-    expect(artifacts).toHaveLength(101);
-    expect(artifacts.at(-1)).toMatchObject({ name: 'promote-staging-parity-101' });
+    expect(artifacts).toHaveLength(11);
+    expect(artifacts.at(-1)).toMatchObject({ name: 'promote-staging-parity-11' });
   });
 
-  it('limits artifact pagination to ten pages', () => {
+  it('limits artifact pagination to one thousand artifacts', () => {
     const readPage = vi.fn(() => ({
-      artifacts: Array.from({ length: 100 }, () => ({})),
+      artifacts: Array.from({ length: 10 }, () => ({})),
       total_count: 2_000,
     }));
 
-    expect(listArtifacts(readPage)).toHaveLength(1_000);
-    expect(readPage).toHaveBeenCalledTimes(10);
+    expect([...listArtifacts(readPage)]).toHaveLength(1_000);
+    expect(readPage).toHaveBeenCalledTimes(100);
+  });
+
+  it('does not request later pages after a matching artifact is found', () => {
+    const readPage = vi.fn(() => ({
+      artifacts: Array.from({ length: 10 }, (_, index) => ({ id: index + 1 })),
+      total_count: 2_000,
+    }));
+
+    for (const artifact of listArtifacts(readPage)) {
+      expect(artifact.id).toBe(1);
+      break;
+    }
+
+    expect(readPage).toHaveBeenCalledTimes(1);
   });
 
   it('selects exactly one JSON evidence file from an artifact archive', () => {

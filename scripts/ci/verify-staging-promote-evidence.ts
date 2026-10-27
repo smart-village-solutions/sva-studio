@@ -156,17 +156,20 @@ export const matchesSuccessfulStagingBackupEvidenceSet = (
   return evidence.every((entry) => matchesSuccessfulStagingBackupEvidence(entry, targetDigest));
 };
 
-export const listArtifacts = (readPage: (page: number) => ArtifactPage): Artifact[] => {
-  const artifacts: Artifact[] = [];
-  for (let page = 1; page <= 10; page += 1) {
+// Larger repository-wide artifact responses can be truncated by GitHub.
+const artifactPageSize = 10;
+
+export function* listArtifacts(readPage: (page: number) => ArtifactPage): Generator<Artifact> {
+  let artifactCount = 0;
+  for (let page = 1; page <= 100; page += 1) {
     const payload = readPage(page);
     const pageArtifacts = payload.artifacts ?? [];
-    artifacts.push(...pageArtifacts);
-    if (pageArtifacts.length < 100 || artifacts.length >= (payload.total_count ?? artifacts.length))
+    yield* pageArtifacts;
+    artifactCount += pageArtifacts.length;
+    if (pageArtifacts.length < artifactPageSize || artifactCount >= (payload.total_count ?? artifactCount))
       break;
   }
-  return artifacts;
-};
+}
 
 export const buildArtifactDownloadArgs = (repo: string, artifactId: number) => [
   'api',
@@ -269,14 +272,12 @@ const main = () => {
     });
   const candidates = listArtifacts(
     (page) =>
-      JSON.parse(api(`repos/${repo}/actions/artifacts?per_page=100&page=${page}`)) as ArtifactPage
-  ).filter(
-    (artifact) =>
-      !artifact.expired && artifact.id && artifact.name?.startsWith(artifactPrefix(evidenceKind))
+      JSON.parse(api(`repos/${repo}/actions/artifacts?per_page=${artifactPageSize}&page=${page}`)) as ArtifactPage
   );
   const workdir = mkdtempSync(resolve(tmpdir(), 'sva-staging-parity-'));
   try {
     for (const artifact of candidates) {
+      if (artifact.expired || !artifact.name?.startsWith(artifactPrefix(evidenceKind))) continue;
       const artifactId = artifact.id;
       const workflowRunId = artifact.workflow_run?.id;
       if (!artifactId || !workflowRunId) continue;

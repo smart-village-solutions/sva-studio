@@ -5,7 +5,6 @@ export const eventsDEEditor = {
     requestReference: 'Fehlerreferenz:',
     copyRequestReference: 'Referenz kopieren',
     requestReferenceCopied: 'Kopiert',
-    requestReferenceCopyFailed: 'Kopieren nicht möglich',
     createdNavigationError:
       'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
     unsavedAfterCreate:

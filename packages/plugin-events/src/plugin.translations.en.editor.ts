@@ -39,7 +39,6 @@ export const eventsENEditor = {
     requestReference: 'Error reference:',
     copyRequestReference: 'Copy reference',
     requestReferenceCopied: 'Copied',
-    requestReferenceCopyFailed: 'Copy failed',
     createdNavigationError: 'The content was created, but the editing view could not be opened.',
     unsavedAfterCreate: 'The content was created. Newer changes in this form have not been saved.',
     mediaReferencePartialFailure:
@@ -76,8 +75,7 @@ export const eventsENEditor = {
     locationGeocodeTimeout: 'Resolving geo coordinates took too long. Please try again.',
     locationGeocodeForbidden: 'Missing permission to resolve geo coordinates.',
     locationGeocodeUnauthorized: 'The geocoding session has expired. Please reload the page.',
-    locationMapUnavailable:
-      'The map is currently unavailable. You can enter the address and add coordinates manually.',
+    locationMapUnavailable: 'The map is unavailable. Enter the address and coordinates manually.',
     locationMapError: 'The map view could not be loaded. Manual editing remains available.',
     imagePickerEmpty: 'No matching media found.',
     mediaPickerLoading: 'Loading media.',

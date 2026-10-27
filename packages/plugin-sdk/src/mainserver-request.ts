@@ -242,7 +242,7 @@ const assertMainserverResponseOk = async <TError extends Error>(
     signal
   );
   const error = resolveMainserverErrorFactory(errorFactory)(code, message, permissionDenial);
-  const requestId = response.headers.get('X-Request-Id');
+  const requestId = response.headers?.get?.('X-Request-Id');
   attachMainserverErrorMetadata({
     error,
     httpStatus: response.status,

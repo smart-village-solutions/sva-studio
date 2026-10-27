@@ -13,7 +13,7 @@ describe('client error telemetry reporter', () => {
 
   it('sends only a stable error category and ignores already-correlated failures', async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 202 }));
-    setClientErrorTelemetryIdentity({ userId: 'user-a', instanceId: 'tenant-a' });
+    setClientErrorTelemetryIdentity('identity-a');
     const uninstall = installClientErrorTelemetry(window, fetcher as typeof fetch);
     const correlatedError = Object.assign(new Error('private server response'), {
       requestId: 'api-request-1',
@@ -39,7 +39,7 @@ describe('client error telemetry reporter', () => {
   it('caps reports at ten per five minutes and retries a failed report at most once', async () => {
     vi.useFakeTimers();
     const fetcher = vi.fn().mockRejectedValue(new Error('offline'));
-    setClientErrorTelemetryIdentity({ userId: 'user-b', instanceId: 'tenant-a' });
+    setClientErrorTelemetryIdentity('identity-b');
     const uninstall = installClientErrorTelemetry(window, fetcher as typeof fetch);
     for (let index = 0; index < 11; index += 1) {
       window.dispatchEvent(new ErrorEvent('error', { error: new Error('offline') }));
@@ -58,13 +58,12 @@ describe('client error telemetry reporter', () => {
 
   it('drops pending reports when the authenticated user or tenant changes', async () => {
     const fetcher = vi.fn().mockRejectedValue(new Error('offline'));
-    setClientErrorTelemetryIdentity({ userId: 'old-user', instanceId: 'tenant-a' });
+    setClientErrorTelemetryIdentity('identity-old');
     const uninstall = installClientErrorTelemetry(window, fetcher as typeof fetch);
     window.dispatchEvent(new ErrorEvent('error', { error: new Error('private') }));
     await Promise.resolve();
-    setClientErrorTelemetryIdentity(
-      { userId: 'new-user', instanceId: 'tenant-b' },
-      fetcher as typeof fetch
+    window.dispatchEvent(
+      new CustomEvent('studio:session-telemetry-identity', { detail: 'identity-new' })
     );
     window.dispatchEvent(new Event('online'));
     await Promise.resolve();

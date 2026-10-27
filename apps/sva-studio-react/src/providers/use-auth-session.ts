@@ -6,7 +6,6 @@ import { useAuthLoad } from './auth-session-load';
 import { useAuthSessionEffects } from './auth-session-effects';
 import { useAuthSessionActions } from './auth-session-actions';
 import type { AuthContextValue } from './auth-provider-types';
-import { setClientErrorTelemetryIdentity } from '../lib/client-error-telemetry.client';
 
 export const useAuthSession = (): AuthContextValue => {
   const base = useAuthSessionBase();
@@ -27,11 +26,18 @@ export const useAuthSession = (): AuthContextValue => {
     sessionRecoveryFailed,
     devAuthAvailable,
   } = base;
+  const telemetryIdentityRef = React.useRef<{ identity: string | null; token: string | null }>({
+    identity: null,
+    token: null,
+  });
   React.useEffect(() => {
     if (!hasResolvedSession || isRecoveringSession) return;
-    setClientErrorTelemetryIdentity(
-      user?.instanceId ? { userId: user.id, instanceId: user.instanceId } : null
-    );
+    if (typeof window === 'undefined') return;
+    const identity = user?.instanceId ? `${user.instanceId}:${user.id}` : null;
+    if (telemetryIdentityRef.current.identity === identity) return;
+    const token = identity ? crypto.randomUUID() : null;
+    telemetryIdentityRef.current = { identity, token };
+    window.dispatchEvent(new CustomEvent('studio:session-telemetry-identity', { detail: token }));
   }, [hasResolvedSession, isRecoveringSession, user?.id, user?.instanceId]);
   const value = React.useMemo<AuthContextValue>(
     () => ({

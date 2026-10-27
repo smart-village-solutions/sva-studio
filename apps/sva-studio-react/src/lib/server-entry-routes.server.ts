@@ -100,3 +100,28 @@ export const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
     ),
   },
 ];
+
+const dispatchServerEntryRoute = async (
+  request: Request,
+  logServerEntryDebug: (message: string, meta: Record<string, unknown>) => Promise<void>,
+  route: RouteDispatchDescriptor
+): Promise<Response | null> => {
+  const dispatch = await route.getDispatcher();
+  const response = await dispatch(request);
+  if (!response) return null;
+  await logServerEntryDebug(`Server entry ${route.label} route dispatched`, {
+    status: response.status,
+  });
+  return response;
+};
+
+export const dispatchKnownServerEntryRoutes = async (
+  request: Request,
+  logServerEntryDebug: (message: string, meta: Record<string, unknown>) => Promise<void>
+): Promise<Response | null> => {
+  for (const route of serverEntryRouteDispatchers) {
+    const response = await dispatchServerEntryRoute(request, logServerEntryDebug, route);
+    if (response) return response;
+  }
+  return null;
+};

@@ -133,6 +133,18 @@ const resolveOrganizationCredentialReadiness = (
   return { status: 'ready', credentials: { apiKey, apiSecret } };
 };
 
+const organizationCredentialsUnavailable = (
+  organizationId: string,
+  reasonCode: 'missing_credentials' | 'partial_credentials' | 'verification_pending'
+): Extract<
+  EffectiveSvaMainserverCredentialsResult,
+  { readonly status: 'organization_mainserver_credentials_missing' }
+> => ({
+  status: 'organization_mainserver_credentials_missing',
+  organizationId,
+  reasonCode,
+});
+
 const resolveUserCredentials = async (
   input: Pick<EffectiveMainserverCredentialsInput, 'instanceId' | 'keycloakSubject'>
 ): Promise<
@@ -242,23 +254,14 @@ export const readEffectiveSvaMainserverCredentialsWithStatus = async (
           organizationId: input.activeOrganizationId,
           contentAuthorPolicy: organizationCredentialRow.content_author_policy,
         }
-      : organizationReadiness.status === 'partial'
-        ? {
-            status: 'organization_mainserver_credentials_missing',
-            organizationId: input.activeOrganizationId,
-            reasonCode: 'partial_credentials',
-          }
-        : organizationReadiness.status === 'verification_pending'
-          ? {
-              status: 'organization_mainserver_credentials_missing',
-              organizationId: input.activeOrganizationId,
-              reasonCode: 'verification_pending',
-            }
-          : {
-              status: 'organization_mainserver_credentials_missing',
-              organizationId: input.activeOrganizationId,
-              reasonCode: 'missing_credentials',
-            };
+      : organizationCredentialsUnavailable(
+          input.activeOrganizationId,
+          organizationReadiness.status === 'partial'
+            ? 'partial_credentials'
+            : organizationReadiness.status === 'verification_pending'
+              ? 'verification_pending'
+              : 'missing_credentials'
+        );
   }
 
   const userCredentials = await resolveUserCredentials(input);

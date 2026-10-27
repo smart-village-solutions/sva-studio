@@ -2,7 +2,6 @@ import { readMainserverErrorRequestId } from '@sva/plugin-sdk';
 
 const CLIENT_WINDOW_MS = 5 * 60_000;
 const CLIENT_EVENT_LIMIT = 10;
-type ClientTelemetryIdentity = Readonly<{ userId: string; instanceId: string }>;
 type PendingClientError = {
   readonly clientEventId: string;
   readonly errorCode: 'client_unhandled_error' | 'client_unhandled_rejection';
@@ -96,20 +95,26 @@ export const installClientErrorTelemetry = (
   target.addEventListener('online', retryWhenAvailable);
   target.addEventListener('pageshow', retryWhenAvailable);
   target.addEventListener('visibilitychange', retryWhenAvailable);
+  const onSessionIdentity = (event: Event) => {
+    const token = (event as CustomEvent<unknown>).detail;
+    setClientErrorTelemetryIdentity(typeof token === 'string' ? token : null, fetcher);
+  };
+  target.addEventListener('studio:session-telemetry-identity', onSessionIdentity);
   return () => {
     target.removeEventListener('error', onError);
     target.removeEventListener('unhandledrejection', onUnhandledRejection);
     target.removeEventListener('online', retryWhenAvailable);
     target.removeEventListener('pageshow', retryWhenAvailable);
     target.removeEventListener('visibilitychange', retryWhenAvailable);
+    target.removeEventListener('studio:session-telemetry-identity', onSessionIdentity);
   };
 };
 
 export const setClientErrorTelemetryIdentity = (
-  identity: ClientTelemetryIdentity | null,
+  identityKey: string | null,
   fetcher: typeof fetch = globalThis.fetch.bind(globalThis)
 ): void => {
-  currentIdentityKey = identity ? `${identity.instanceId}:${identity.userId}` : null;
+  currentIdentityKey = identityKey;
   for (let index = pendingReports.length - 1; index >= 0; index -= 1) {
     const report = pendingReports[index];
     if (report?.identityKey !== currentIdentityKey && report) dropPendingReport(report);

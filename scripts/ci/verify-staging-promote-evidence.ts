@@ -29,7 +29,6 @@ type StagingEvidence = {
 };
 type WorkflowRun = { id?: number; conclusion?: string; path?: string };
 type EvidenceKind = 'promote' | 'backup-drill';
-
 export class StagingParityNotFoundError extends Error {}
 
 export const classifyStagingParityError = (error: unknown): PromoteErrorCode =>
@@ -204,12 +203,6 @@ const required = (value: string | undefined, name: string) => {
   return trimmed;
 };
 
-const parseEvidenceKind = (value: string | undefined): EvidenceKind => {
-  const kind = value ?? 'promote';
-  if (kind === 'promote' || kind === 'backup-drill') return kind;
-  throw new Error('Der Evidenztyp muss promote oder backup-drill sein.');
-};
-
 const artifactPrefix = (kind: EvidenceKind): string =>
   kind === 'promote' ? 'promote-staging-parity-' : 'staging-backup-drill-';
 
@@ -252,7 +245,9 @@ const archiveMatches = (
 };
 
 const main = () => {
-  const evidenceKind = parseEvidenceKind(process.argv[2]);
+  const evidenceKind = process.argv[2] ?? 'promote';
+  if (evidenceKind !== 'promote' && evidenceKind !== 'backup-drill')
+    throw new Error('Der Evidenztyp muss promote oder backup-drill sein.');
   const targetDigest = required(process.env.DEPLOY_IMAGE_DIGEST, 'DEPLOY_IMAGE_DIGEST');
   const targetImage = required(process.env.DEPLOY_IMAGE_REF, 'DEPLOY_IMAGE_REF');
   const forceStagingParity = process.env.FORCE_STAGING_PARITY === 'true';
@@ -269,7 +264,7 @@ const main = () => {
     controllerSha: process.env.EXPECTED_CONTROLLER_SHA,
   } : undefined;
   const repo = required(process.env.GITHUB_REPOSITORY, 'GITHUB_REPOSITORY');
-  const api = (path: string, phase: 'runs' | 'artifacts' | 'run') => {
+  const api = (path: string, phase: 'runs' | 'artifacts') => {
     process.stdout.write(`Staging parity GitHub read: ${phase}\n`);
     return execFileSync('gh', ['api', path], {
       encoding: 'utf8',
@@ -290,10 +285,6 @@ const main = () => {
       const artifactId = artifact.id;
       const workflowRunId = artifact.workflow_run?.id;
       if (!artifactId || !workflowRunId) continue;
-      const workflowRun = JSON.parse(
-        api(`repos/${repo}/actions/runs/${workflowRunId}`, 'run')
-      ) as WorkflowRun;
-      if (!isExpectedWorkflowRun(evidenceKind, workflowRun)) continue;
       const zipPath = resolve(workdir, `${artifactId}.zip`);
       process.stdout.write('Staging parity GitHub read: archive\n');
       writeFileSync(

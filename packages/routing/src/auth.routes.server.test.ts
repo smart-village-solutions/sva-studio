@@ -92,6 +92,8 @@ const authServerMocks = vi.hoisted(() => {
     accountActionHandler: vi.fn(async () => response('accountActionHandler')),
     devLoginHandler: vi.fn(async () => response('devLoginHandler')),
     callbackHandler: vi.fn(async () => response('callbackHandler')),
+    appTranslationCatalogHandler: vi.fn(async () => response('appTranslationCatalogHandler')),
+    appTranslationServiceHandler: vi.fn(async () => response('appTranslationServiceHandler')),
     meHandler: vi.fn(async () => response('meHandler')),
     devLogoutHandler: vi.fn(async () => response('devLogoutHandler')),
     logoutHandler: vi.fn(async () => response('logoutHandler')),
@@ -452,6 +454,17 @@ describe('auth.routes.server', () => {
     for (const path of authRoutePaths) {
       expect(resolveAuthHandlers(path)).toBeDefined();
     }
+  });
+
+  it('dispatches the technical translation POST without using the session catalog handler', async () => {
+    const handlers = resolveAuthHandlers('/api/v1/app-translations/translate');
+    expect(handlers.GET).toBeUndefined();
+    const response = await handlers.POST!({
+      request: new Request('https://studio.example/api/v1/app-translations/translate', {
+        method: 'POST',
+      }),
+    });
+    expect(await response.json()).toEqual({ name: 'appTranslationServiceHandler' });
   });
 
   it('flags invalid handler registrations in coverage verification', () => {

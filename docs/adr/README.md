@@ -110,6 +110,8 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 068 | [ClamAV als Virenscanner für Medienuploads](./ADR-068-clamav-als-virenscanner-fuer-medienuploads.md)                                                                          | ✅     | 2026-10-20         | Media / Security / Betrieb        |
 | 069 | [Filerobot-Bildeditor mit begrenzter Accessibility-Abweichung](./ADR-069-filerobot-bildeditor-mit-begrenzter-accessibility-abweichung.md)                                     | ✅     | 2026-10-22         | Media / UI / Accessibility        |
 
+| 070 | [Technischen Übersetzungsdienst an bestehender Main-Server-Verbindung autorisieren](./ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md) | ✅ | 2026-10-27 | Integration / Auth / Übersetzung |
+
 ### Kanonischer Ablageort
 
 - Aktive ADRs liegen unter `docs/adr/`.

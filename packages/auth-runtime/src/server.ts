@@ -327,3 +327,4 @@ export {
 } from './app-translations-deepl.js';
 
 export { runCatalogTranslation } from './app-translations-jobs.js';
+export { appTranslationServiceHandler } from './app-translations-service.js';

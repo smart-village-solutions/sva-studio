@@ -97,10 +97,12 @@ export const saveSvaMainserverSettings = async (input: {
     category: 'api',
     baseUrl: graphqlBaseUrl,
     authMode: 'oauth2',
-    publicConfig: buildPublicConfig({
-      graphqlBaseUrl,
-      oauthTokenUrl,
-    }),
+    publicConfig: {
+      ...buildPublicConfig({ graphqlBaseUrl, oauthTokenUrl }),
+      ...(existing?.publicConfig.translationService === undefined
+        ? {}
+        : { translationService: existing.publicConfig.translationService }),
+    },
     secretConfigCiphertext: undefined,
     statusCheckKind: 'sva_mainserver',
     visibleStatus: resolveStoredVisibleStatus(input.enabled, existing?.visibleStatus),

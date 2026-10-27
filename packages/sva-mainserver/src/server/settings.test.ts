@@ -189,6 +189,35 @@ describe('settings', () => {
     );
   });
 
+  it('preserves trusted translation identity metadata when saving only URLs', async () => {
+    const translationService = {
+      issuer: 'https://identity.example',
+      clientId: 'client',
+      subject: 'service',
+      audience: 'studio',
+    };
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'connection',
+      publicConfig: { translationService },
+    });
+    const { saveSvaMainserverSettings } = await import('./settings');
+    await saveSvaMainserverSettings({
+      instanceId: 'de-town',
+      graphqlBaseUrl: 'https://mainserver.example/graphql',
+      oauthTokenUrl: 'https://mainserver.example/oauth/token',
+      enabled: true,
+    });
+    expect(state.saveExternalInterfaceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publicConfig: {
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          translationService,
+        },
+      })
+    );
+  });
+
   it('resets disabled visible status back to unknown when re-enabling an existing mainserver record', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
       id: 'sva-mainserver:de-musterhausen',

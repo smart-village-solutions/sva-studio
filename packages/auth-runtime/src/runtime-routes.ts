@@ -143,3 +143,4 @@ export {
 export { busApiKeyHandlers } from './iam-instance-registry/bus-api-keys.js';
 
 export { appTranslationCatalogHandler } from './app-translations.js';
+export { appTranslationServiceHandler } from './app-translations-service.js';

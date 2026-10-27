@@ -8,6 +8,9 @@ const routeHandler =
     handler(request);
 
 export const instanceAuthHandlerMap = {
+  '/api/v1/app-translations/translate': {
+    POST: routeHandler(authRuntimeRoutes.appTranslationServiceHandler),
+  },
   '/api/v1/iam/app-translations': {
     GET: routeHandler(authRuntimeRoutes.appTranslationCatalogHandler),
     POST: routeHandler(authRuntimeRoutes.appTranslationCatalogHandler),

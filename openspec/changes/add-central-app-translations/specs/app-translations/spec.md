@@ -2,7 +2,7 @@
 
 ### Requirement: Zentrale Studio-Quelle für feste und dynamische App-Übersetzungen
 
-Das System MUST feste App-Kataloge einschließlich Deutsch, gemeinsame Standards, kommunale Overrides und dynamische Übersetzungsergebnisse zentral im Studio-Backend/PostgreSQL führen. Der Main-Server MUST für feste Kataloge ausschließlich Auslieferungsreplik sein. Host-i18n und SSF-Konfigurationssprachen MUST getrennte Verantwortlichkeiten behalten. Die erste Produktauslieferung MUST feste und dynamische Strecken gemeinsam und sämtliche zulässigen Anzeigetexte unabhängig vom Inhaltstyp abdecken. Magdeburg MUST als erste Pilotkommune alle 19 benannten Zielsprachen erhalten; andere Kommunen MUST ihre Auswahl aus den stabilen Zielsprachen ihrer geprüften instanzgebundenen DeepL-Schnittstelle selbst bestimmen können. Das System MUST alle solchen Zielsprachen anbieten, ohne Begrenzung auf den Pilotumfang. Je Sprachstamm MUST genau eine Variante auswählbar sein; zusätzliche Varianten MUST nach Auswahl der Sprache in derselben Zeile angeboten und mit ihrer exakten Kennung gespeichert werden. Bestehendes englisches Katalogformat MUST kompatibel bleiben.
+Das System MUST feste App-Kataloge einschließlich Deutsch, gemeinsame Standards und kommunale Overrides zentral im Studio-Backend/PostgreSQL führen. Dynamische Ergebnisse MUST ausschließlich im Main-Server in MySQL liegen; Studio MUST den authentifizierten Übersetzungsdienst liefern und darf keinen dauerhaften zweiten dynamischen Inhaltsbestand führen. Der Main-Server MUST für feste Kataloge ausschließlich Auslieferungsreplik sein. Host-i18n und SSF-Konfigurationssprachen MUST getrennte Verantwortlichkeiten behalten. Die erste Produktauslieferung MUST feste und dynamische Strecken gemeinsam und sämtliche zulässigen Anzeigetexte unabhängig vom Inhaltstyp abdecken. Magdeburg MUST als erste Pilotkommune alle 19 benannten Zielsprachen erhalten; andere Kommunen MUST ihre Auswahl aus den stabilen Zielsprachen ihrer geprüften instanzgebundenen DeepL-Schnittstelle selbst bestimmen können. Das System MUST alle solchen Zielsprachen anbieten, ohne Begrenzung auf den Pilotumfang. Je Sprachstamm MUST genau eine Variante auswählbar sein; zusätzliche Varianten MUST nach Auswahl der Sprache in derselben Zeile angeboten und mit ihrer exakten Kennung gespeichert werden. Bestehendes englisches Katalogformat MUST kompatibel bleiben.
 
 #### Scenario: Kommunales Deutsch ohne doppelte manuelle Quelle
 
@@ -163,54 +163,46 @@ Das System MUST YAML als berechtigtes Austauschformat derselben Studio-Katalogve
 - **THEN** bleiben Textwerte und Platzhalter semantisch erhalten
 - **AND** werden unbekannte Schlüssel, unerlaubte Tags und überschrittene Parsergrenzen vor einer Änderung abgewiesen
 
-### Requirement: Mandantengebundener dynamischer Batch- und Statusvertrag
+### Requirement: Mandantengebundener dynamischer Lese- und Servicevertrag
 
-Das System MUST freigegebene Textbatches ausschließlich nach Service- oder Sessionautorisierung im kanonischen Studio-Instanz-/Organisationsbereich verarbeiten. Pro Eintrag MUST `ready`, `pending`, `processing` oder `failed` zurückgegeben werden; nur `ready` darf Ergebnistext enthalten. Statusabfragen MUST dieselbe Autorisierung anwenden und dürfen keine fremden Einträge offenlegen. Der Request MUST nicht synchron auf den Anbieter warten. Profil-ID und Profilversion MUST serverseitig freigegeben sein und vor Speicherung/Jobanlage gegen die Bindung geprüft werden; ein bloßer Darstellungskontext ersetzt keine Profilprüfung. Deutsch MUST die einzige betrachtete Ausgangssprache sein; eine andere Quelle MUST vor Speicherung/Jobanlage abgewiesen werden. Die Zielsprache MUST aktuell kommunal angeboten sein. Profile MUST technische Auswahl-/Schutzregeln darstellen und dürfen keinen zusätzlichen Quellenfreigabeprozess pro Mandant oder Quelle einführen. Für App-Aufrufe MUST Main-Server aktuelle Originalherkunft, passende wertfreie Vorlage und Lesbarkeit vor jedem Studio-Abruf verifizieren. Die App-seitige Statuskorrelation MUST die geschützte Main-Server-Abholnummer verwenden. Der für die Studio-Formularanzeige benötigte Originalbezug MUST vor Umsetzung konkretisiert werden; Quellenangaben dürfen nicht pauschal aus Studio ausgeschlossen werden. Sie MUST weder in den Cache-Key eingehen noch einen dauerhaften Originalreferenz-/Verwendungsbestand begründen. Jede App-seitige Treffer-/Statusausgabe MUST zusätzlich die aktuelle Leseberechtigung für den zugeordneten Originalbezug prüfen. Eine bekannte Entry-ID oder gültige Kommune MUST diese Prüfung nicht ersetzen; nach Unsichtbarschaltung oder Zugriffsentzug MUST die Ausgabe über diesen Bezug unterbleiben, ohne den gespeicherten Treffer zu löschen.
+Das System MUST berechtigte fremdsprachige App-Inhaltsabrufe mit aktueller Kommune, Originalherkunft/Lesbarkeit, erlaubten Profilen und aktiver Sprache prüfen. Main-Server MUST lokale passende MySQL-Treffer ohne Studio/DeepL ausgeben und bei Miss automatisch einen deduplizierten lokalen Hintergrundauftrag zum authentifizierten Studio-Dienst anstoßen. Ein separater REST-Batchsubmit durch die App MUST entfallen. Studio MUST Scope, Servicebindung, Sprache, freigegebene Profil-ID/-Version, Format und wertfreie deutsche Vorlage prüfen; Main-Server MUST Ergebnisse vor Übernahme und jeder Ausgabe aktuell prüfen. App-HTTP MUST nicht auf DeepL warten. Worker-/Antwort-/Retrydetails und Statuskorrelation MUST vor Umsetzung abgestimmt sein; temporäre Studio-Jobs MUST nicht als bereits beschlossener Vertrag vorausgesetzt werden.
 
-#### Scenario: Unabhängige Einzelzustände und fremde Status-ID
+Die bestehende Main-Server-Municipality↔Studio-Mandant-Verbindung MUST die fachliche Zuordnung bestimmen. Zusätzliche Kommunenzuordnung, Seed-Organisationsauswahl oder parallele Bindingregistry allein für Übersetzungen MUST entfallen. Studio MUST verifizierten Issuer, Client und konkretes Service-Subject gegen diese bestehende Verbindung prüfen; Clientname allein MUST bei gemischten Login-/Serviceclients nicht genügen. Geeignete vorhandene Audience-, Modul-, Organisations- und Sprachgrenzen MUST erhalten bleiben. Fehlende technische Identitätsmetadaten MUST am bestehenden Verbindungsnachweis konkretisiert werden, statt eine zweite fachliche Zuordnung einzuführen.
 
-- **GIVEN** ein Batch enthält einen vorhandenen Treffer und einen fehlenden erlaubten Text
-- **WHEN** Studio ihn verarbeitet
-- **THEN** erhält der erste Eintrag `ready` ohne Anbieteraufruf und der zweite einen persistenten ausstehenden Status
-- **AND** liefert ein späterer Statusabruf aus einer anderen Organisation keine Texte oder Existenzbestätigung dieses Eintrags
+#### Scenario: Berechtigter Treffer und fehlender Inhalt
 
-#### Scenario: Unbekanntes oder nicht erlaubtes Anzeigeprofil
+- **GIVEN** ein fremdsprachiger App-Abruf enthält einen passenden Treffer und einen fehlenden erlaubten Inhalt
+- **WHEN** Main-Server aktuelle Rechte, Quelle, Profile und Sprache prüft
+- **THEN** liefert er den Treffer ohne Studio-/DeepL-Aufruf und stößt nur für den Miss deduplizierte Hintergrundarbeit an
+- **AND** bleibt der fehlende Inhalt zunächst vollständig Deutsch in unveränderter Ressourcenstruktur
 
-- **GIVEN** ein sonst gültiger Client sendet ein unbekanntes oder für ihn nicht freigegebenes Profil
-- **WHEN** der Batch geprüft wird
-- **THEN** entsteht weder ein gespeicherter Übersetzungseintrag noch ein Anbieterjob
+#### Scenario: Zugriff oder Sprachfreigabe entzogen
 
-#### Scenario: Originalzugriff zwischen Erstbatch und Statusabruf entzogen
-
-- **GIVEN** ein sichtbarer Artikel erzeugt einen zulässigen Übersetzungsauftrag mit Entry-ID
-- **WHEN** er vor einem späteren Treffer-/Statusabruf unsichtbar wird oder der App-Aufrufer seine Leseberechtigung verliert
-- **THEN** liefert der Main-Server über diesen Originalbezug keinen Übersetzungstext aus
-- **AND** bleibt der Cache erhalten und ein Zugriff über einen anderen aktuell lesbaren Originalbezug desselben Texts weiterhin möglich
+- **GIVEN** ein vormals berechtigter App-Abruf hat einen Auftrag erzeugt
+- **WHEN** Quelle, passende Vorlage, Lesbarkeit oder aktive Sprache vor Aufruf, Ergebnisübernahme oder Ausgabe nicht mehr gültig ist
+- **THEN** entsteht keine unberechtigte Anbieterarbeit oder Textausgabe über diesen Bezug
+- **AND** berechtigen bekannte Entry-IDs, Sprache oder Kommune allein nicht zum Zugriff
 
 ### Requirement: Exakte generische Deduplizierung je verifiziertem Bereich
 
-Das System MUST den Cache-Key selbst aus der versionierten eindeutig serialisierten Folge von Quellsprache, Zielsprache, stabilem Kontext, Format und exaktem Ausgangstext berechnen. Der persistente Unique-Key MUST Instanz und Organisation zusätzlich abgrenzen. Geräte-, Seiten-, Batch-, Ressourcen-, App-Versions- und Anbieteridentität MUST nicht den fachlich gleichen Text vervielfachen. Textbytes MUST vor Hashbildung nicht beliebig normalisiert werden.
+Main-Server MUST Vorlagen nach verifizierter Kommune, exaktem Quelltext, Quell-/Zielsprache, stabilem Kontext und Format deduplizieren. Geräte-, Ressourcen-, Seiten-, App-Versions- und Anbieteridentität MUST fachlich gleiche Vorlagen nicht vervielfachen. Geänderte Texte MUST neue Schlüssel erhalten. Aliase/Fragmente, Listen und parallele Wiederabrufe MUST keine doppelten Aufträge erzeugen; Jobanlage je Feldresolver MUST entfallen. Laufende oder fehlgeschlagene Arbeit MUST begrenzte Recovery statt Neuanlage je Poll verwenden.
 
-#### Scenario: Konkurrenz, Textänderung und Anbieterwechsel
+#### Scenario: Konkurrenz und geänderter Text
 
-- **GIVEN** zwei Geräte fordern gleichzeitig denselben Text im selben Bereich an
-- **WHEN** Studio die Anfragen persistiert
-- **THEN** entsteht genau ein fachlicher Cacheeintrag und ein wirksamer Verarbeitungsauftrag
-- **AND** erzeugt geänderter Text einen anderen Eintrag, ohne den alten geteilten Treffer zu überschreiben
-- **AND** bleibt ein fertiges Ergebnis nach Anbieterwechsel wiederverwendbar
-- **AND** verwendet eine andere Kommune keinen Eintrag aus dem ersten Bereich
+- **WHEN** zwei Geräte dieselbe Vorlage über Listen, Aliase oder Fragmente parallel abrufen
+- **THEN** entsteht je Kommune/Kontext/Ziel nur ein wirksamer Auftrag
+- **AND** erzeugt geänderter Text einen neuen Schlüssel, ohne den alten geteilten Treffer zu überschreiben
+- **AND** teilt eine andere Kommune keinen Ergebnisbestand
 
-### Requirement: Wiederanlauf mit bestehender Studio-Jobinfrastruktur
+### Requirement: Begrenzter dynamischer Wiederanlauf ohne zweiten Studio-Inhaltsbestand
 
-Das System MUST die vorhandene zentrale PostgreSQL-/Graphile-Jobinfrastruktur verwenden und Miss-Anlage, Jobübergabe und Recovery gegen verlorene Aufträge absichern. Verarbeitung MUST atomar mit begrenzter Lease übernommen werden; ausschließlich deren aktuelle Generation darf Ergebnisse oder Fehler speichern. Anbieteraufrufe MUST außerhalb offener DB-Transaktionen stattfinden. Retry-, Zeit-, Zeichen-, Auftrags-, Rate- und Parallelitätslimits MUST vor Aktivierung technisch begrenzt sein. V1 MUST keine kommunale monetäre Budgetsperre oder zusätzliche Budgetfreigabeoberfläche einführen; ausreichendes Budget ist eine Produktannahme. Kostenbeobachtung und technische Anbieterfehlerbehandlung MUST bestehen bleiben.
+Dynamische Ergebnisse und lokale Hintergrundaufträge MUST beim Main-Server liegen. Die konkrete vorhandene Workeranbindung, Ergebnisantwort, Claim-/Generationsprüfung und begrenzten Retry-/Recoveryregeln MUST vor Umsetzung gemeinsam festgelegt werden. Studio MUST keinen dauerhaften zweiten dynamischen Inhaltsbestand führen. Provideraufrufe MUST außerhalb DB-Transaktionen erfolgen. Verlorene Anbieterantwort MUST als mögliches erneutes Kostenrisiko behandelt werden, nicht als Exactly-once. Die bestehende Studio-Graphile-Strecke fester Kataloge MUST davon unverändert bleiben.
 
-#### Scenario: Abbruch vor Enqueue und verspäteter Worker
+#### Scenario: Verlorene Antwort und verspäteter Abschluss
 
-- **GIVEN** ein Pending-Eintrag wurde angelegt und die Jobübergabe schlägt fehl oder ein Worker fällt aus
-- **WHEN** die Recovery fällige Einträge beziehungsweise abgelaufene Leases prüft
-- **THEN** wird derselbe Eintrag kontrolliert erneut beauftragt beziehungsweise übernommen
-- **AND** kann ein verspäteter alter Worker das neuere Ergebnis nicht überschreiben
-- **AND** führt ein ausgeschöpftes Retrybudget zu einem erklärbaren Fehler statt zu unendlichen Jobs
+- **WHEN** eine Antwort verloren geht oder ein Worker nach Übernahme durch eine neuere Generation verspätet abschließt
+- **THEN** verhindern aktuelle Quellen-/Scope-/Sprach- und Generationsprüfungen eine unzulässige Ergebnisübernahme
+- **AND** endet Recovery nach begrenzten Wiederholungen, ohne neuen Auftrag je App-Poll
 
 ### Requirement: Geschützte Textformate und beschränkte Originale
 
@@ -233,7 +225,7 @@ Das System MUST alle zulässigen App-Anzeigetexte/-vorlagen über explizite tech
 
 ### Requirement: Bestehende App-Ressourcenverträge und Originalveröffentlichung erhalten
 
-Das System MUST dynamische Textbatches bedienen, ohne sämtliche Ressourcen-GraphQL-Abfragen, Original-Caches oder Pagination neu zu gestalten. Originale MUST ohne fertige Übersetzung speicher-, importier- und veröffentlichbar bleiben. Eine spätere redaktionelle Sprachfassung MUST an die Originalversion und eine explizite Freigabe gebunden sein und darf nicht von Maschinenjobs überschrieben werden.
+Das System MUST dynamische Inhalte über die bestehenden Ressourcenqueries mit zentralem HTTP-Header `Accept-Language` liefern. Query-Sprachargumente, Sprachmaps, `*I18n`-Felder und neue Pflicht-Ressourcenfelder MUST entfallen. Vorhandene Stringfelder, IDs, technische Werte und Pagination MUST erhalten bleiben. Antwort- und Appcaches MUST Sprache und aktuellen Quellen-/Übersetzungsstand berücksichtigen; ein Header allein trennt keinen normalisierenden Cache. Originale MUST ohne fertige Übersetzung speicher-, importier- und veröffentlichbar bleiben. Eine spätere redaktionelle Sprachfassung MUST an die Originalversion und eine explizite Freigabe gebunden sein und darf nicht von Maschinenjobs überschrieben werden.
 
 #### Scenario: Übersetzung ist ausstehend und Original wird geändert
 
@@ -287,7 +279,7 @@ Overrides MUST je Kommune, Schlüssel und Sprache gelten. Ohne eigenen Override 
 
 ### Requirement: Dynamische Anzeige je Inhaltseintrag mit begrenztem Warten
 
-Die App MUST dynamische Übersetzungen beim Anzeigen anfordern und Treffer wiederverwenden. Alle sichtbaren Textfelder eines Inhaltseintrags MUST gemeinsam in der Zielsprache oder gemeinsam deutsch erscheinen; andere Einträge dürfen unabhängig fertig werden. Bei Miss MUST die Wartezeit je Eintrag auf fünf Sekunden ab Anzeige/Anforderung begrenzt sein. Fehler MUST sofort, Timeout spätestens nach fünf Sekunden zum deutschen Original führen, das für diese geöffnete Ansicht bestehen bleibt. Verspätete Ergebnisse MUST keinen bereits deutsch angezeigten Inhalt austauschen. Offline MUST sofort vollständige lokale Übersetzung oder Deutsch erscheinen. Ein dezenter zugänglicher Hinweis MUST je Ansicht in der gewählten Sprache deutsche Rückfälle erklären; Dialoge/Marker je Inhalt MUST entfallen. Sprachkennzeichnung und Screenreader-/Vorlesesprache MUST der tatsächlichen Textsprache folgen: deutsche Rückfallinhalte und erlaubte deutsche Ersatzwerte neuer fester Schlüssel als `de`, übrige Oberfläche und Hinweis in der gewählten Sprache. Vorhandene Ausgabe-/Accessibility-Mittel MUST genügen; eine neue Metadateninfrastruktur ist dafür nicht erforderlich.
+Die App MUST Inhalte über bestehende Ressourcenqueries mit zentralem `Accept-Language` lesen und passende Treffer wiederverwenden; Main-Server stößt berechtigte fremdsprachige Misses automatisch im Hintergrund an, kein separater Pflicht-REST-Submit. Alle sichtbaren Textfelder eines Inhaltseintrags MUST gemeinsam in der Zielsprache oder gemeinsam deutsch erscheinen; andere Einträge dürfen unabhängig fertig werden. Bei Miss MUST App-HTTP dieselbe Inhaltsstruktur zunächst Deutsch liefern, ohne auf DeepL zu warten. Innerhalb höchstens fünf Sekunden ab Anzeige/Anforderung darf die App erneut lesen. Bei Fehler/Fristablauf MUST Deutsch für diese geöffnete Ansicht bestehen bleiben. Konkrete Lade-/Rückfall-/Statuskorrelation ohne neue Pflicht-Inhaltsfelder MUST vor Umsetzung abgestimmt werden. Verspätete Ergebnisse MUST keinen bereits deutsch angezeigten Inhalt austauschen. Offline MUST sofort vollständige lokale Übersetzung oder Deutsch erscheinen. Ein dezenter zugänglicher Hinweis MUST je Ansicht in der gewählten Sprache deutsche Rückfälle erklären; Dialoge/Marker je Inhalt MUST entfallen. Sprachkennzeichnung und Screenreader-/Vorlesesprache MUST der tatsächlichen Textsprache folgen: deutsche Rückfallinhalte und erlaubte deutsche Ersatzwerte neuer fester Schlüssel als `de`, übrige Oberfläche und Hinweis in der gewählten Sprache. Vorhandene Ausgabe-/Accessibility-Mittel MUST genügen; eine neue Metadateninfrastruktur ist dafür nicht erforderlich.
 
 #### Scenario: Teilantwort und spätes Ergebnis
 
@@ -334,16 +326,16 @@ Nach erkanntem Konfigurationsabgleich MUST eine deaktivierte Sprache aus neuer A
 
 ### Requirement: Dynamischer Cache nach 90 Tagen ohne serverseitige Nutzung bereinigen
 
-Studio MUST pro fertiger dynamischer Übersetzung `last_used_at` bei erfolgreicher Fertigstellung nach eigener Serveruhr initialisieren und bei autorisierten App-Anfragen mit zurückgeliefertem Ready-Ergebnis aktualisieren. Das MUST Batch-Treffer und fertige Statusantworten umfassen, ausschließlich für die ausgegebene Sprachfassung. Abruf MUST als Nutzung gelten, ohne Lesen oder Empfang zu behaupten. Abgewiesene Anfragen, reine Pending-/Processing-Polls, Worker-, Formular-/Vorschau-/Wartungs-/Hintergrundzugriffe und lokale/Offline-App-Nutzung MUST die Frist nicht verlängern. Geräte-/Benutzerhistorie, Empfangsbestätigung und Nutzungs-Heartbeats MUST entfallen.
+Main-Server MUST pro fertiger dynamischer Übersetzung `last_used_at` bei erfolgreicher Fertigstellung nach eigener Serveruhr initialisieren und bei autorisierten App-Anfragen mit zurückgeliefertem Ready-Ergebnis aktualisieren. Das MUST fertige Ressourcenabrufe und gegebenenfalls fertige Statusantworten umfassen, ausschließlich für die ausgegebene Sprachfassung. Abruf MUST als Nutzung gelten, ohne Lesen oder Empfang zu behaupten. Abgewiesene Anfragen, reine Pending-/Processing-Polls, Worker-, Formular-/Vorschau-/Wartungs-/Hintergrundzugriffe und lokale/Offline-App-Nutzung MUST die Frist nicht verlängern. Geräte-/Benutzerhistorie, Empfangsbestätigung und Nutzungs-Heartbeats MUST entfallen.
 
-Ein täglicher zentraler Studio-Job MUST fertige Einträge nach mindestens 90 Tagen seit `last_used_at` bereinigen. Frist und Zustand MUST unmittelbar bei Löschung atomar erneut geprüft werden, sodass ein inzwischen autorisierter Abruf schützt. Aktive Jobs/Leases MUST ausgenommen bleiben. Verspätete Worker MUST ausschließlich bestehende Entry-ID mit gültiger Lease aktualisieren und dürfen gelöschte Ergebnisse nicht per Upsert wiederherstellen. Laufende/fehlgeschlagene Jobs MUST getrennte begrenzte Retry-/Recoveryregeln behalten. Jobausfall darf längere Ablage verursachen; eine sekundengenaue Löschzusage MUST entfallen.
+Eine tägliche Main-Server-Bereinigung MUST fertige Einträge nach mindestens 90 Tagen seit `last_used_at` bereinigen. Frist und Zustand MUST unmittelbar bei Löschung atomar erneut geprüft werden, sodass ein inzwischen autorisierter Abruf schützt. Aktive Jobs/Leases MUST ausgenommen bleiben. Verspätete Worker MUST ausschließlich bestehende Entry-ID mit gültiger Lease aktualisieren und dürfen gelöschte Ergebnisse nicht per Upsert wiederherstellen. Laufende/fehlgeschlagene Jobs MUST getrennte begrenzte Retry-/Recoveryregeln behalten. Jobausfall darf längere Ablage verursachen; eine sekundengenaue Löschzusage MUST entfallen.
 
 Diese Regel MUST für alle dynamischen Inhalte einschließlich Bus gelten. Änderung, Unsichtbarschaltung und Löschung von Originalen dürfen alte Treffer bis zur normalen Bereinigung erhalten; Verwendungsprüfung/-zählung, Originalregister, zusätzlicher Textgruppenindex, Bestands-/Änderungsprotokoll und Sync-Gates MUST entfallen. Spätere aktuell berechtigte Anfragen MUST bereinigte Texte neu übersetzen dürfen; lokale gültige Übersetzungen dürfen ohne zusätzliche Gerätelöschung bleiben. Seltene Abrufe können erneut Anbieteraufwand verursachen. Feste Katalogrevisionen, Standards/Overrides, Backups und Logs MUST von dieser allgemeinen Frist ausgenommen bleiben; besondere Aufbewahrungs-/Löschpflichten MUST getrennt behandelt werden.
 
 #### Scenario: Fertigstellung und autorisierte fertige Antworten
 
-- **WHEN** eine Übersetzung erfolgreich fertiggestellt und später per autorisierter App-Batch- oder Statusantwort abgerufen wird
-- **THEN** initialisiert beziehungsweise aktualisiert Studio `last_used_at` nach eigener Serveruhr
+- **WHEN** eine Übersetzung erfolgreich fertiggestellt und später per autorisiertem App-Ressourcenabruf oder fertiger Statusantwort abgerufen wird
+- **THEN** initialisiert beziehungsweise aktualisiert Main-Server `last_used_at` nach eigener Serveruhr
 - **AND** verlängert nur die zurückgelieferte Sprachfassung ihre Frist, unabhängig vom tatsächlichen Lesen in der App
 
 #### Scenario: Kein Nutzungs-Touch ohne fertige App-Ausgabe
@@ -369,8 +361,8 @@ Diese Regel MUST für alle dynamischen Inhalte einschließlich Bus gelten. Ände
 #### Scenario: Erneute Anzeige nach Bereinigung
 
 - **GIVEN** ein dynamischer Treffer wurde nach 90 Tagen ohne Serverabruf bereinigt
-- **WHEN** ein aktuell berechtigter Submit dieselbe Vorlage anfordert
-- **THEN** darf Studio einen neuen Eintrag und deduplizierten Auftrag anlegen
+- **WHEN** ein aktuell berechtigter fremdsprachiger App-Inhaltsabruf dieselbe Vorlage benötigt
+- **THEN** darf Main-Server einen neuen Eintrag und deduplizierten Hintergrundauftrag anlegen
 - **AND** erzeugt ein bloßer Statusabruf keinen Auftrag
 - **AND** bleiben lokale gültige Ergebnisse ohne zusätzliche Gerätelöschfunktion nutzbar
 
@@ -443,7 +435,7 @@ Das System MUST DeepL als benutzerkonfigurierte instanzgebundene Schnittstelle �
 
 Studio MUST als Hauptakteur der Übersetzungsverwaltung im jeweiligen Inhaltsformular den Status und fertige Sprachfassungen dynamischer Inhalte anzeigen. Diese Leseanzeige MUST von späterer manueller dynamischer Korrektur getrennt bleiben. Die konkrete Übermittlung und mögliche Speicherung des benötigten Originalbezugs MUST vor Implementierung abgestimmt werden; ein pauschaler Ausschluss von Originalbezug aus Studio MUST entfallen. Die Anzeige MUST aktuellen Organisations-/Pluginzugang und redaktionellen Inhaltszugriff serverseitig prüfen und darf alte Texte nicht als passende aktuelle Übersetzung ausgeben. Sie MUST keinen dauerhaften Originalreferenzbestand, Änderungs-/Verwendungsabgleich oder Übersetzungskopien in Originaldatensätzen einführen. Formular-/Vorschauabrufe MUST die 90-Tage-Frist nicht verlängern.
 
-Die Formularanzeige MUST rein lesend sein und darf keine fehlenden Übersetzungen anfordern, Jobs anlegen oder `last_used_at` verlängern. Ein gemeinsamer Reiter, konkrete Statusbeschriftungen, Laden erst beim tatsächlichen Öffnen und Hinweis bei ungespeicherten Textänderungen bleiben UI-Empfehlungen aus Design 6.1. Ein Knopf zum Anfordern fehlender Übersetzungen ist nicht entschieden; diese Leseanforderung MUST weder eine solche Aktion noch automatische Übersetzung beim Speichern oder dynamische Korrekturrechte voraussetzen.
+Die Formularanzeige MUST auch mit fremdsprachigem `Accept-Language` rein lesend sein und darf keine fehlenden Übersetzungen anfordern, Jobs anlegen oder `last_used_at` verlängern. Ein gemeinsamer Reiter, konkrete Statusbeschriftungen, Laden erst beim tatsächlichen Öffnen und Hinweis bei ungespeicherten Textänderungen bleiben UI-Empfehlungen aus Design 6.1. App- und redaktioneller Aufruf MUST anhand verifizierter Berechtigung und serverseitigem Kontext unterschieden werden, niemals durch einen frei wählbaren Header; die konkrete Bindung MUST vor Umsetzung festgelegt sein. Ein Knopf zum Anfordern fehlender Übersetzungen ist nicht entschieden; diese Leseanforderung MUST weder eine solche Aktion noch automatische Übersetzung beim Speichern oder dynamische Korrekturrechte voraussetzen.
 
 #### Scenario: Formular zeigt passende vorhandene Sprachfassungen
 

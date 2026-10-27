@@ -6,6 +6,80 @@ info:
 servers:
   - url: /
 paths:
+  /api/v1/app-translations/translate:
+    post:
+      operationId: translateTechnicalNews
+      summary: Vollständige Nachrichtentextgruppe technisch von Deutsch nach Englisch übersetzen
+      description: >-
+        Begrenzter synchroner Dienst für den Main-Server. Kein Sessionzugriff, keine
+        zusätzliche Übersetzungsrolle, kein dynamischer Studio-Ergebnisspeicher.
+        instanceId ist nur Lookup der bestehenden Verbindung. Verifiziert werden
+        Issuer, Audience, azp und exaktes technisches sub an der bestehenden
+        instanzgebundenen Main-Server-Schnittstellenverbindung. Keine automatische
+        Organisationsauswahl und kein Gleichsetzen mit ausgehenden Organisationsaccounts. Der Main-Server besitzt Jobs
+        und Retries. 50 Einträge, 90000 UTF-8-Quellbytes, 100000 Bytes Gesamtrequest, 150000 Bytes Gesamtantwort.
+        Übersetzte Einträge sind nicht leer oder ausschließlich Leerraum und umfassen jeweils höchstens 100000 UTF-8-Bytes.
+        HTML muss dem vorhandenen Studio-Rich-Text-Profil entsprechen und Tags/
+        Attribute unverändert erhalten. Bei Fehler keine Teilergebnisse.
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          schema: { type: string }
+          description: Bearer-Token der ausdrücklich zugelassenen bestehenden Serviceidentität
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [schemaVersion, instanceId, requestId, sourceDigest, profileId, sourceLocale, targetLocale, entries]
+              properties:
+                schemaVersion: { type: integer, enum: [1] }
+                instanceId: { type: string }
+                requestId: { type: string, format: uuid }
+                sourceDigest: { type: string, pattern: '^[a-f0-9]{64}$' }
+                profileId: { type: string, enum: [news-v1] }
+                sourceLocale: { type: string, enum: [de] }
+                targetLocale: { type: string, enum: [en] }
+                entries:
+                  type: array
+                  minItems: 1
+                  maxItems: 50
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [key, text, format]
+                    properties:
+                      key:
+                        type: string
+                        description: title, author, keywords oder contentBlocks.N.title/.intro/.body; eindeutige Schlüssel und genau ein nichtleerer title
+                      text: { type: string, maxLength: 92160 }
+                      format:
+                        type: string
+                        enum: [plain, html]
+                        description: html ausschließlich für body, übrige Felder plain
+      responses:
+        '200':
+          description: Gleiche Korrelation schemaVersion/requestId/sourceDigest/profileId/sourceLocale/targetLocale und vollständige entries in gleicher Reihenfolge mit gleichen key/format und englischem text; private no-store
+        '400':
+          description: invalid_translation_request; keine Übersetzung; kein retry
+        '401':
+          description: service_authentication_invalid; kein retry
+        '403':
+          description: translation_forbidden; fehlende/entzogene Verbindung, Scope, Modul oder Sprache; kein retry
+        '413':
+          description: invalid_translation_request; Gesamtrequest überschritten; kein retry
+        '415':
+          description: invalid_translation_request; JSON erforderlich; kein retry
+        '429':
+          description: rate_limited; retryable true, Main-Server begrenzt Wiederholung
+        '502':
+          description: translation_failed; ungültiges/zu großes Ergebnis, Anbieter-Auth/Quote, permanenter Anbieterfehler oder Setupfehler; retryable false
+        '503':
+          description: service_unavailable; retryable true, keine Texte; verlorene Antwort kann erneute Kosten verursachen
+
   /api/v1/iam/app-translations:
     description: >-
       Lokaler Studio-Katalogeditor mit gespeicherter Session und Organisationsscope.

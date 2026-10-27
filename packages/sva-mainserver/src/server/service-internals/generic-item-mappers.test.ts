@@ -23,6 +23,10 @@ const expectMappedError = (
 };
 
 describe('generic-item-mappers', () => {
+  it('preserves the read-only POI ID for voucher projections', () => {
+    expect(mapGenericItem({ id: '844', genericType: 'Voucher', pointOfInterest: { id: '33394' } }))
+      .toMatchObject({ pointOfInterestId: '33394' });
+  });
   it('maps sparse generic items with stable fallbacks', () => {
     expect(
       mapGenericItem({

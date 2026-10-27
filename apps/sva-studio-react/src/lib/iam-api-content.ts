@@ -37,6 +37,9 @@ export const listContents = async (query: IamContentListQuery): Promise<IamConte
   if (query.type === 'faq.faq' && query.languageCode) {
     params.set('languageCode', query.languageCode);
   }
+  if (query.type === 'vouchers.voucher' && query.poiId) {
+    params.set('poiId', query.poiId);
+  }
   if (query.status) {
     params.set('status', query.status);
   }

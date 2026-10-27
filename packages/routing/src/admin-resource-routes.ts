@@ -160,10 +160,17 @@ const createListRouteDefinition = (
           contentType === 'faq.faq' && typeof search.languageCode === 'string'
             ? search.languageCode.trim().toLowerCase()
             : '';
+        const poiId =
+          contentType === 'vouchers.voucher' &&
+          typeof search.poiId === 'string' &&
+          /^\d+$/.test(search.poiId.trim())
+            ? search.poiId.trim()
+            : '';
         return {
           ...normalized,
           ...(contentType === '' ? {} : { type: contentType }),
           ...(languageCode === '' ? {} : { languageCode }),
+          ...(poiId === '' ? {} : { poiId }),
         };
       }
     : undefined,

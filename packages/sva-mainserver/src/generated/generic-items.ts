@@ -124,6 +124,7 @@ export type SvaMainserverGenericItemFragment = {
   readonly publicationDate?: string | null;
   readonly publishedAt?: string | null;
   readonly genericType?: string | null;
+  readonly pointOfInterest?: Readonly<{ id?: string | null }> | null;
   readonly payload?: unknown;
   readonly visible?: boolean | null;
   readonly categories?: readonly SvaMainserverCategoryFragment[] | null;
@@ -302,6 +303,7 @@ const genericItemFields = `
   publicationDate
   publishedAt
   genericType
+  pointOfInterest { id }
   payload
   visible
   dataProvider { id name }

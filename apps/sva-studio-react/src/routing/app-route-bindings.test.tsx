@@ -2,6 +2,7 @@
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentType } from 'react';
+import { createMainserverReadHeaders } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MainserverPrincipalControl,
@@ -1249,7 +1250,6 @@ describe('appRouteBindings', () => {
       expect(routeState.getContent).toHaveBeenCalledWith('6829', {
         contentType: 'vouchers.voucher',
       });
-      const { createMainserverReadHeaders } = await import('@sva/plugin-sdk');
       expect(routeState.requestMainserverJson).toHaveBeenCalledWith({
         url: '/api/v1/mainserver/vouchers/6829',
         init: { headers: createMainserverReadHeaders(principal) },

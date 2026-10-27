@@ -79,7 +79,7 @@ export function VoucherEditor(props: VoucherEditorProps) {
       description={state.t('editor.intro')}
       actions={
         <Button asChild variant="secondary">
-          <Link to="/admin/vouchers">{state.t('actions.back')}</Link>
+          <Link to="/admin/content" search={{ type: 'vouchers.voucher' }}>{state.t('actions.back')}</Link>
         </Button>
       }
       primaryAction={

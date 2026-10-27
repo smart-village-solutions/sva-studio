@@ -210,6 +210,29 @@ describe('iam-api organization helpers', () => {
     );
   });
 
+  it('sends the voucher POI filter with the shared content-list request', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        createJsonResponse({ data: [], pagination: { page: 1, pageSize: 25, total: 0 } })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listContents({
+      page: 1,
+      pageSize: 25,
+      type: 'vouchers.voucher',
+      poiId: '33394',
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/contents?page=1&pageSize=25&sortBy=updatedAt&sortDirection=desc&type=vouchers.voucher&poiId=33394',
+      expect.objectContaining({ credentials: 'include' })
+    );
+  });
+
   it('lists and transfers typed content ownership targets', async () => {
     const fetchMock = vi
       .fn()

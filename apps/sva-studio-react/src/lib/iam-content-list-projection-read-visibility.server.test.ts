@@ -394,6 +394,71 @@ describe('content projection read visibility', () => {
     expect(payload.pagination).toEqual({ page: 2, pageSize: 1, total: 2 });
   });
 
+  it('filters the complete voucher projection by POI before total and pagination', async () => {
+    fixture.projectionRows = [
+      ['voucher-poi-older', 'Älterer Ortsgutschein', '33394', '2026-06-20T10:00:00.000Z'],
+      ['voucher-other-poi', 'Anderer Ort', '33395', '2026-06-22T10:00:00.000Z'],
+      ['voucher-poi-newer', 'Neuerer Ortsgutschein', '33394', '2026-06-21T10:00:00.000Z'],
+    ].map(([id, title, pointOfInterestId, updatedAt]) => ({
+      id: id!,
+      instance_id: 'de-musterhausen',
+      projection_scope_key: 'de-musterhausen::account-1::org-1::vouchers.voucher',
+      organization_id: 'org-1',
+      owner_subject_id: null,
+      owner_user_id: 'account-1',
+      owner_organization_id: 'org-1',
+      content_type: 'vouchers.voucher',
+      title: title!,
+      published_at: null,
+      publish_from: null,
+      publish_until: null,
+      created_at: '2026-06-19T10:00:00.000Z',
+      created_by: 'mainserver',
+      updated_at: updatedAt!,
+      updated_by: 'mainserver',
+      author_display_name: 'Redaktion',
+      payload_json: { pointOfInterestId },
+      status: 'published' as const,
+      validation_state: 'valid' as const,
+      history_ref: `history-${id}`,
+      current_revision_ref: null,
+      last_audit_event_ref: null,
+      source_system: 'mainserver' as const,
+      source_entity_type: 'GenericItem',
+      source_entity_id: id!,
+    }));
+    fixture.syncStates.set('vouchers.voucher', {
+      last_started_at: null,
+      last_succeeded_at: new Date().toISOString(),
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 3,
+    });
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'vouchers.read', resourceType: 'vouchers' }],
+    });
+
+    const response = await listProjectedContents(ctx, {
+      page: 2,
+      pageSize: 1,
+      type: 'vouchers.voucher',
+      poiId: '33394',
+      visibleTypes: ['vouchers.voucher'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+    const payload = (await response.json()) as {
+      data: Array<{ id: string }>;
+      pagination: { page: number; pageSize: number; total: number };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual([expect.objectContaining({ id: 'voucher-poi-older' })]);
+    expect(payload.pagination).toEqual({ page: 2, pageSize: 1, total: 2 });
+  });
+
   it('returns healthy snapshot rows while reporting unsynced mainserver types in metadata', async () => {
     fixture.projectionRows = [
       {

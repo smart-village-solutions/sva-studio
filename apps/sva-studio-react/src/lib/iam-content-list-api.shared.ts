@@ -81,6 +81,7 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
     typeValue === 'faq.faq'
       ? url.searchParams.get('languageCode')?.trim().toLowerCase() || undefined
       : undefined;
+  const poiId = typeValue === 'vouchers.voucher' ? url.searchParams.get('poiId')?.trim() : undefined;
   const statusValue = url.searchParams.get('status')?.trim();
   const sortByValue = url.searchParams.get('sortBy')?.trim();
   const sortDirectionValue = url.searchParams.get('sortDirection')?.trim();
@@ -108,6 +109,7 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
     ...(q ? { q } : {}),
     ...(typeValue && typeValue !== 'all' ? { type: typeValue } : {}),
     ...(languageCode ? { languageCode } : {}),
+    ...(poiId && /^\d+$/.test(poiId) ? { poiId } : {}),
     ...(statusValue === 'draft' ||
     statusValue === 'in_review' ||
     statusValue === 'approved' ||

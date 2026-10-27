@@ -260,14 +260,15 @@ const readEffectivePermissionActions = (payload: unknown): readonly string[] | n
 const loadScopedRouteGuardUser = async (
   user: RouteGuardUser,
   url: string,
-  init?: RequestInit
+  init?: RequestInit,
+  fetchRequest = fetchWithRequestTimeout
 ): Promise<RouteGuardUser> => {
   if (!user.instanceId) {
     return { ...user, permissionActions: [] };
   }
 
   try {
-    const contextResponse = await fetchWithRequestTimeout(
+    const contextResponse = await fetchRequest(
       new URL('/api/v1/iam/me/context', url).toString(),
       init,
       { timeoutMs: 5_000 }
@@ -280,7 +281,7 @@ const loadScopedRouteGuardUser = async (
     if (activeOrganizationId) {
       searchParams.set('organizationId', activeOrganizationId);
     }
-    const permissionsResponse = await fetchWithRequestTimeout(
+    const permissionsResponse = await fetchRequest(
       new URL(`/iam/me/permissions?${searchParams.toString()}`, url).toString(),
       init,
       { timeoutMs: 5_000 }
@@ -299,16 +300,17 @@ const loadScopedRouteGuardUser = async (
 
 const loadRouteGuardUserFromAuthMe = async (
   url: string,
-  init?: RequestInit
+  init?: RequestInit,
+  fetchRequest = fetchWithRequestTimeout
 ): Promise<RouteGuardUser | null> => {
-  const response = await fetchWithRequestTimeout(url, init, { timeoutMs: 5_000 });
+  const response = await fetchRequest(url, init, { timeoutMs: 5_000 });
 
   if (!response.ok) {
     return null;
   }
 
   const user = parseRouteGuardUser(await response.json());
-  return user ? loadScopedRouteGuardUser(user, url, init) : null;
+  return user ? loadScopedRouteGuardUser(user, url, init, fetchRequest) : null;
 };
 
 const getRouteGuardUser = createIsomorphicFn()
@@ -323,14 +325,17 @@ const getRouteGuardUser = createIsomorphicFn()
       }
       const authMeUrl = new URL('/auth/me', request.url).toString();
 
-      return await loadRouteGuardUserFromAuthMe(
-        authMeUrl,
-        cookie
-          ? {
-              headers: { cookie },
-            }
-          : undefined
-      );
+      const init = cookie ? { headers: { cookie } } : undefined;
+      if (import.meta.env.DEV && new URL(authMeUrl).hostname.endsWith('.localhost')) {
+        // Node löst lokale Tenant-Hosts nicht wie der Browser auf; dieselben Auth-Handler direkt prüfen.
+        const { dispatchAuthRouteRequest } = await import('@sva/routing/server');
+        return await loadRouteGuardUserFromAuthMe(authMeUrl, init, async (url, requestInit) => {
+          const response = await dispatchAuthRouteRequest(new Request(url, requestInit));
+          if (!response) throw new Error('Missing route-guard auth handler');
+          return response;
+        });
+      }
+      return await loadRouteGuardUserFromAuthMe(authMeUrl, init);
     } catch {
       return null;
     }

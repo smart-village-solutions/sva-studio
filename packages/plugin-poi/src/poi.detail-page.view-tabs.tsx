@@ -184,7 +184,7 @@ function PoiVoucherLink({ contentId }: Readonly<{ contentId?: string }>) {
     return null;
   return (
     <Button asChild variant="secondary">
-      <Link to="/admin/vouchers" search={{ poiId: contentId }}>
+      <Link to="/admin/content" search={{ type: 'vouchers.voucher', poiId: contentId }}>
         {pt('messages.vouchersForLocation')}
       </Link>
     </Button>

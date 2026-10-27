@@ -29,8 +29,8 @@ vi.mock('@sva/plugin-sdk', async (load) => ({
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => state.navigate,
   useParams: () => ({}),
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
+  Link: ({ children, to, search }: { children: React.ReactNode; to: string; search?: Record<string, string> }) => (
+    <a href={`${to}${search ? `?${new URLSearchParams(search)}` : ''}`}>{children}</a>
   ),
 }));
 vi.mock('../src/vouchers.api.js', () => ({
@@ -126,6 +126,11 @@ const edit = async () => {
   fireEvent.change(title, { target: { value: 'Neu' } });
 };
 describe('voucher editor', () => {
+  it('links back to the canonical voucher content list', async () => {
+    await edit();
+    expect(screen.getByRole('link', { name: labels.actions.back }).getAttribute('href'))
+      .toBe('/admin/content?type=vouchers.voucher');
+  });
   it('shows actual usage and waits for explicit sibling reset confirmation', async () => {
     await edit();
     expect(screen.getByText('37 von 100 eingelöst')).toBeDefined();

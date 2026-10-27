@@ -39,6 +39,49 @@ type NewsDetailLoadOptions = Readonly<{
   setActingPrincipalType: React.Dispatch<React.SetStateAction<MainserverPrincipalType>>;
 }>;
 
+const useActingPrincipalResourceAccess = (input: {
+  readonly mode: 'create' | 'edit';
+  readonly contentId?: string;
+  readonly loadedItem: NewsContentItem | null;
+  readonly actingPrincipalType: MainserverPrincipalType;
+  readonly loadedPrincipalTypeRef: React.MutableRefObject<MainserverPrincipalType | null>;
+  readonly setResourceAccess: React.Dispatch<
+    React.SetStateAction<Readonly<Record<string, boolean>>>
+  >;
+}): void => {
+  const {
+    mode,
+    contentId,
+    loadedItem,
+    actingPrincipalType,
+    loadedPrincipalTypeRef,
+    setResourceAccess,
+  } = input;
+  React.useEffect(() => {
+    if (
+      mode !== 'edit' ||
+      !contentId ||
+      !loadedItem ||
+      loadedPrincipalTypeRef.current === actingPrincipalType
+    ) {
+      return;
+    }
+    let active = true;
+    void getNewsDetail(contentId, actingPrincipalType)
+      .then((detail) => {
+        if (!active) return;
+        setResourceAccess(detail.access);
+        loadedPrincipalTypeRef.current = actingPrincipalType;
+      })
+      .catch(() => {
+        if (active) setResourceAccess({});
+      });
+    return () => {
+      active = false;
+    };
+  }, [actingPrincipalType, contentId, loadedItem, loadedPrincipalTypeRef, mode, setResourceAccess]);
+};
+
 export const useNewsDetailLoad = ({
   mode,
   contentId,
@@ -99,9 +142,7 @@ export const useNewsDetailLoad = ({
     const loadPrincipalType = principalControl?.value ?? 'user';
     void getNewsDetail(contentId, loadPrincipalType)
       .then(async (detail) => {
-        if (!active || requestId !== editLoadRequestIdRef.current) {
-          return;
-        }
+        if (!active || requestId !== editLoadRequestIdRef.current) return;
         const item = detail.data;
 
         const references = await listHostMediaReferencesByTarget({
@@ -109,9 +150,7 @@ export const useNewsDetailLoad = ({
           targetType: NEWS_CONTENT_TYPE,
           targetId: contentId,
         }).catch(() => []);
-        if (!active || requestId !== editLoadRequestIdRef.current) {
-          return;
-        }
+        if (!active || requestId !== editLoadRequestIdRef.current) return;
         const nextValues = mapNewsItemToDetailFormValues(item);
         reset(nextValues, preserveDraft ? { keepDirtyValues: true } : undefined);
         if (!preserveDraft) {
@@ -152,28 +191,13 @@ export const useNewsDetailLoad = ({
     };
   }, [contentId, mode, pt, reloadRequest, reset]);
 
-  React.useEffect(() => {
-    if (
-      mode !== 'edit' ||
-      !contentId ||
-      !loadedItem ||
-      loadedPrincipalTypeRef.current === actingPrincipalType
-    ) {
-      return;
-    }
-    let active = true;
-    void getNewsDetail(contentId, actingPrincipalType)
-      .then((detail) => {
-        if (!active) return;
-        setResourceAccess(detail.access);
-        loadedPrincipalTypeRef.current = actingPrincipalType;
-      })
-      .catch(() => {
-        if (active) setResourceAccess({});
-      });
-    return () => {
-      active = false;
-    };
-  }, [actingPrincipalType, contentId, loadedItem, mode]);
+  useActingPrincipalResourceAccess({
+    mode,
+    contentId,
+    loadedItem,
+    actingPrincipalType,
+    loadedPrincipalTypeRef,
+    setResourceAccess,
+  });
   return { reloadCurrentContext };
 };

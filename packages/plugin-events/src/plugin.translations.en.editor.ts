@@ -47,16 +47,14 @@ export const eventsENEditor = {
     loading: 'Loading events.',
     loadError: 'Events could not be loaded.',
     missingContent: 'The event could not be loaded.',
-    mediaReferenceLoadError:
-      'The media references could not be loaded. The event remains editable.',
+    mediaReferenceLoadError: 'Could not load media references. The event remains editable.',
     degradedDataWarning:
       'Some Mainserver fields could not be read safely. Unchanged values are not overwritten; corrections require confirmation.',
     degradedField: 'Affected section: {{field}}',
     degradedCorrectionConfirm:
       'The following previously unreadable sections were changed: {{fields}}. Do you want to overwrite these values intentionally?',
     saveError: 'Event could not be saved.',
-    staleMainserverContext:
-      'The organization or Mainserver context changed. Reload the current context and review your draft before saving again.',
+    staleMainserverContext: 'Context changed. Reload and review your draft before saving.',
     deleteError: 'Event could not be deleted.',
     createSuccess: 'Event was created.',
     updateSuccess: 'Event was updated.',

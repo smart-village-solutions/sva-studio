@@ -671,6 +671,7 @@ describe('News editor pages', () => {
             { value: 'user', label: 'Redaktion' },
             { value: 'organization', label: 'Organisation' },
           ],
+          readinessByPrincipal: { user: 'ready', organization: 'ready' },
         }}
       />
     );

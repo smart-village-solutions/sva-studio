@@ -52,6 +52,100 @@ type OrganizationSnapshot = {
   readonly identityKey: string;
   readonly value: IamOrganizationContext;
 };
+type PublishedOrganization = {
+  readonly identityKey: string;
+  readonly organizationId: string | null;
+};
+type OrganizationSwitchInput = {
+  readonly identityKey: string | null;
+  readonly currentIdentity: React.MutableRefObject<string | null>;
+  readonly requestSequence: React.MutableRefObject<number>;
+  readonly lastPublishedOrganization: React.MutableRefObject<PublishedOrganization | null>;
+  readonly enqueue: <T>(work: () => Promise<T>) => Promise<T>;
+  readonly publishIfCurrent: (
+    identityKey: string,
+    sequence: number,
+    publish: () => void
+  ) => boolean;
+  readonly setContextSnapshot: React.Dispatch<React.SetStateAction<OrganizationSnapshot | null>>;
+  readonly setErrorSnapshot: React.Dispatch<
+    React.SetStateAction<{ identityKey: string; value: IamHttpError } | null>
+  >;
+  readonly setIsUpdating: React.Dispatch<React.SetStateAction<boolean>>;
+  readonly setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
+const performOrganizationSwitch = async (
+  input: OrganizationSwitchInput,
+  organizationId: string | null
+): Promise<boolean> => {
+  const { identityKey } = input;
+  if (!identityKey) {
+    input.setContextSnapshot(null);
+    input.setErrorSnapshot(null);
+    input.setIsUpdating(false);
+    return false;
+  }
+
+  return input.enqueue(async () => {
+    if (input.currentIdentity.current !== identityKey) return false;
+    const sequence = ++input.requestSequence.current;
+    logBrowserOperationStart(organizationContextLogger, 'organization_context_switch_started', {
+      operation: 'update_my_organization_context',
+      organization_id: organizationId,
+    });
+    input.setIsUpdating(true);
+    input.setIsLoading(false);
+    input.setErrorSnapshot(null);
+    try {
+      const response = await updateMyOrganizationContext(organizationId);
+      return input.publishIfCurrent(identityKey, sequence, () => {
+        requestEffectiveAccessInvalidation();
+        input.lastPublishedOrganization.current = {
+          identityKey,
+          organizationId: response.data.activeOrganizationId ?? null,
+        };
+        input.setContextSnapshot({ identityKey, value: response.data });
+        logBrowserOperationSuccess(
+          organizationContextLogger,
+          'organization_context_switch_succeeded',
+          {
+            operation: 'update_my_organization_context',
+            organization_id: response.data.activeOrganizationId,
+          }
+        );
+      });
+    } catch (cause) {
+      const resolvedError = asIamError(cause);
+      const confirmedContext = await readBackAmbiguousOrganizationSwitch(cause);
+      if (!input.publishIfCurrent(identityKey, sequence, () => {})) return false;
+      if (confirmedContext) {
+        requestEffectiveAccessInvalidation();
+        input.lastPublishedOrganization.current = {
+          identityKey,
+          organizationId: confirmedContext.activeOrganizationId ?? null,
+        };
+        input.setContextSnapshot({ identityKey, value: confirmedContext });
+        if ((confirmedContext.activeOrganizationId ?? null) === organizationId) {
+          logBrowserOperationSuccess(
+            organizationContextLogger,
+            'organization_context_switch_succeeded',
+            {
+              operation: 'update_my_organization_context',
+              organization_id: confirmedContext.activeOrganizationId,
+            }
+          );
+          return true;
+        }
+      }
+      input.setErrorSnapshot({ identityKey, value: resolvedError });
+      logOrganizationSwitchFailure(resolvedError, organizationId);
+      return false;
+    } finally {
+      input.publishIfCurrent(identityKey, sequence, () => input.setIsUpdating(false));
+    }
+  });
+};
 
 export const OrganizationContextProvider = ({
   children,
@@ -163,73 +257,22 @@ export const OrganizationContextProvider = ({
   }, [loadContext]);
 
   const switchOrganization = React.useCallback(
-    async (organizationId: string | null): Promise<boolean> => {
-      if (!identityKey) {
-        setContextSnapshot(null);
-        setErrorSnapshot(null);
-        setIsUpdating(false);
-        return false;
-      }
-
-      return enqueue(async () => {
-        if (currentIdentity.current !== identityKey) return false;
-        const sequence = ++requestSequence.current;
-        logBrowserOperationStart(organizationContextLogger, 'organization_context_switch_started', {
-          operation: 'update_my_organization_context',
-          organization_id: organizationId,
-        });
-        setIsUpdating(true);
-        setIsLoading(false);
-        setErrorSnapshot(null);
-        try {
-          const response = await updateMyOrganizationContext(organizationId);
-          return publishIfCurrent(identityKey, sequence, () => {
-            requestEffectiveAccessInvalidation();
-            lastPublishedOrganization.current = {
-              identityKey,
-              organizationId: response.data.activeOrganizationId ?? null,
-            };
-            setContextSnapshot({ identityKey, value: response.data });
-            logBrowserOperationSuccess(
-              organizationContextLogger,
-              'organization_context_switch_succeeded',
-              {
-                operation: 'update_my_organization_context',
-                organization_id: response.data.activeOrganizationId,
-              }
-            );
-          });
-        } catch (cause) {
-          const resolvedError = asIamError(cause);
-          const confirmedContext = await readBackAmbiguousOrganizationSwitch(cause);
-          if (!publishIfCurrent(identityKey, sequence, () => {})) return false;
-          if (confirmedContext) {
-            requestEffectiveAccessInvalidation();
-            lastPublishedOrganization.current = {
-              identityKey,
-              organizationId: confirmedContext.activeOrganizationId ?? null,
-            };
-            setContextSnapshot({ identityKey, value: confirmedContext });
-            if ((confirmedContext.activeOrganizationId ?? null) === organizationId) {
-              logBrowserOperationSuccess(
-                organizationContextLogger,
-                'organization_context_switch_succeeded',
-                {
-                  operation: 'update_my_organization_context',
-                  organization_id: confirmedContext.activeOrganizationId,
-                }
-              );
-              return true;
-            }
-          }
-          setErrorSnapshot({ identityKey, value: resolvedError });
-          logOrganizationSwitchFailure(resolvedError, organizationId);
-          return false;
-        } finally {
-          publishIfCurrent(identityKey, sequence, () => setIsUpdating(false));
-        }
-      });
-    },
+    (organizationId: string | null): Promise<boolean> =>
+      performOrganizationSwitch(
+        {
+          identityKey,
+          currentIdentity,
+          requestSequence,
+          lastPublishedOrganization,
+          enqueue,
+          publishIfCurrent,
+          setContextSnapshot,
+          setErrorSnapshot,
+          setIsUpdating,
+          setIsLoading,
+        },
+        organizationId
+      ),
     [enqueue, identityKey, publishIfCurrent]
   );
 

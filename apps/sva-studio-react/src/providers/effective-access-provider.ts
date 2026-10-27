@@ -151,31 +151,30 @@ const usePublishSessionAccessSnapshot = (
   }, [instanceId, organizationId, roles, snapshot, snapshotIsCurrent, subjectId]);
 };
 
-export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React.ReactNode }>) => {
-  const auth = useAuth();
-  const organizationContext = useOrganizationContext();
-  const generationRef = React.useRef(0);
-  const resolvedScopeKeyRef = React.useRef<string | null>(null);
-  const resolvedInvalidationGenerationRef = React.useRef<number | null>(null);
-  const lastInvalidatedSnapshotGenerationRef = React.useRef<number | null>(null);
-  const invalidationGeneration = React.useSyncExternalStore(
-    subscribeToEffectiveAccessInvalidation,
-    getEffectiveAccessInvalidationGeneration,
-    getEffectiveAccessInvalidationGeneration
-  );
-  const [snapshot, setSnapshot] = React.useState<EffectiveAccessSnapshot>({
-    status: 'unresolved',
-    scope: { kind: 'platform', authGeneration: 0 },
-    generation: 0,
-  });
-
-  const assignedModulesKey = (auth.user?.assignedModules ?? []).join('\u0000');
-  const platformRolesKey = (auth.user?.roles ?? []).join('\u0000');
-  const currentScopeKey = [
-    auth.user?.id ?? '',
-    auth.user?.instanceId ?? '',
-    organizationContext.context?.activeOrganizationId ?? '',
-  ].join('\u0000');
+const useLoadEffectiveAccessSnapshot = (input: {
+  readonly auth: ReturnType<typeof useAuth>;
+  readonly organizationContext: ReturnType<typeof useOrganizationContext>;
+  readonly invalidationGeneration: number;
+  readonly currentScopeKey: string;
+  readonly assignedModulesKey: string;
+  readonly platformRolesKey: string;
+  readonly generationRef: React.MutableRefObject<number>;
+  readonly resolvedScopeKeyRef: React.MutableRefObject<string | null>;
+  readonly resolvedInvalidationGenerationRef: React.MutableRefObject<number | null>;
+  readonly setSnapshot: React.Dispatch<React.SetStateAction<EffectiveAccessSnapshot>>;
+}): void => {
+  const {
+    auth,
+    organizationContext,
+    invalidationGeneration,
+    currentScopeKey,
+    assignedModulesKey,
+    platformRolesKey,
+    generationRef,
+    resolvedScopeKeyRef,
+    resolvedInvalidationGenerationRef,
+    setSnapshot,
+  } = input;
 
   React.useEffect(() => {
     const generation = generationRef.current + 1;
@@ -242,10 +241,7 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
 
     void loadPermissionsWithRetry(instanceId, organizationId, abortController.signal)
       .then((payload) => {
-        if (!payload) return;
-        if (generationRef.current !== generation) {
-          return;
-        }
+        if (!payload || generationRef.current !== generation) return;
         setSnapshot({
           status: 'ready',
           scope,
@@ -258,9 +254,7 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
         resolvedInvalidationGenerationRef.current = invalidationGeneration;
       })
       .catch((cause: unknown) => {
-        if (abortController.signal.aborted || generationRef.current !== generation) {
-          return;
-        }
+        if (abortController.signal.aborted || generationRef.current !== generation) return;
         const error = asIamError(cause);
         resolvedScopeKeyRef.current = currentScopeKey;
         resolvedInvalidationGenerationRef.current = invalidationGeneration;
@@ -271,9 +265,7 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
         });
       });
 
-    return () => {
-      abortController.abort();
-    };
+    return () => abortController.abort();
   }, [
     assignedModulesKey,
     auth.hasResolvedSession,
@@ -287,12 +279,50 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
     organizationContext.isLoading,
     platformRolesKey,
   ]);
+};
+
+export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React.ReactNode }>) => {
+  const auth = useAuth();
+  const organizationContext = useOrganizationContext();
+  const generationRef = React.useRef(0);
+  const resolvedScopeKeyRef = React.useRef<string | null>(null);
+  const resolvedInvalidationGenerationRef = React.useRef<number | null>(null);
+  const lastInvalidatedSnapshotGenerationRef = React.useRef<number | null>(null);
+  const invalidationGeneration = React.useSyncExternalStore(
+    subscribeToEffectiveAccessInvalidation,
+    getEffectiveAccessInvalidationGeneration,
+    getEffectiveAccessInvalidationGeneration
+  );
+  const [snapshot, setSnapshot] = React.useState<EffectiveAccessSnapshot>({
+    status: 'unresolved',
+    scope: { kind: 'platform', authGeneration: 0 },
+    generation: 0,
+  });
+
+  const assignedModulesKey = (auth.user?.assignedModules ?? []).join('\u0000');
+  const platformRolesKey = (auth.user?.roles ?? []).join('\u0000');
+  const currentScopeKey = [
+    auth.user?.id ?? '',
+    auth.user?.instanceId ?? '',
+    organizationContext.context?.activeOrganizationId ?? '',
+  ].join('\u0000');
+
+  useLoadEffectiveAccessSnapshot({
+    auth,
+    organizationContext,
+    invalidationGeneration,
+    currentScopeKey,
+    assignedModulesKey,
+    platformRolesKey,
+    generationRef,
+    resolvedScopeKeyRef,
+    resolvedInvalidationGenerationRef,
+    setSnapshot,
+  });
 
   const invalidate = React.useCallback(() => {
     const snapshotGeneration = generationRef.current;
-    if (lastInvalidatedSnapshotGenerationRef.current === snapshotGeneration) {
-      return;
-    }
+    if (lastInvalidatedSnapshotGenerationRef.current === snapshotGeneration) return;
     lastInvalidatedSnapshotGenerationRef.current = snapshotGeneration;
     requestEffectiveAccessInvalidation();
   }, []);
@@ -308,9 +338,8 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
 
   React.useEffect(() => {
     globalThis.addEventListener(EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT, invalidate);
-    return () => {
+    return () =>
       globalThis.removeEventListener(EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT, invalidate);
-    };
   }, [invalidate]);
 
   usePublishSessionAccessSnapshot(

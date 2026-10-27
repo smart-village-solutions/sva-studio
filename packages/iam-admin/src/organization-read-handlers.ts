@@ -75,10 +75,7 @@ export type OrganizationReadHandlerDeps<TFeatureFlags = unknown> = {
     client: QueryClient,
     input: { readonly instanceId: string; readonly accountId: string }
   ) => Promise<readonly IamOrganizationContextOption[]>;
-  readonly loadPersonalMainserverReadiness?: (input: {
-    readonly instanceId: string;
-    readonly keycloakSubject: string;
-  }) => Promise<IamMainserverReadiness>;
+  readonly loadPersonalMainserverReadiness?: (input: { readonly instanceId: string; readonly keycloakSubject: string }) => Promise<IamMainserverReadiness>;
   readonly loadOrganizationDetail: (
     client: QueryClient,
     input: { readonly instanceId: string; readonly organizationId: string }
@@ -282,12 +279,7 @@ export const createOrganizationReadHandlers = <TFeatureFlags>(
           accountId: actorAccountId,
         })
       );
-      const personalMainserverReadiness = deps.loadPersonalMainserverReadiness
-        ? await deps.loadPersonalMainserverReadiness({
-            instanceId: actorResolution.actor.instanceId,
-            keycloakSubject: ctx.user.id,
-          }).catch((): IamMainserverReadiness => 'unavailable')
-        : undefined;
+      const personalMainserverReadiness = deps.loadPersonalMainserverReadiness ? await deps.loadPersonalMainserverReadiness({ instanceId: actorResolution.actor.instanceId, keycloakSubject: ctx.user.id }).catch((): IamMainserverReadiness => 'unavailable') : undefined;
       const session = await deps.getSession(ctx.sessionId);
       const organizationContextState = resolveOrganizationContextState({
         roleNames: ctx.user.roles,

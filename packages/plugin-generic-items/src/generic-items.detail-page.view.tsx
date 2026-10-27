@@ -19,6 +19,10 @@ const genericItemsListLink = {
   search: { type: 'generic-items.generic-item' },
 } as const;
 
+const isCreateSaveDisabled = (view: GenericItemsDetailPageViewModel): boolean =>
+  view.createdContentId !== null ||
+  !isMainserverPrincipalReady(view.principalControl, view.actingPrincipalType);
+
 const DetailPageActions = ({
   canDelete,
   disableActions,
@@ -86,11 +90,7 @@ export const GenericItemsDetailPageView = ({
               type={mode === 'create' ? 'submit' : 'button'}
               form={mode === 'create' ? 'generic-item-create-form' : undefined}
               status={saveFeedback.status}
-              disabled={
-                mode === 'create' &&
-                (view.createdContentId !== null ||
-                  !isMainserverPrincipalReady(view.principalControl, view.actingPrincipalType))
-              }
+              disabled={mode === 'create' && isCreateSaveDisabled(view)}
               onClick={mode === 'edit' ? () => void onSubmit() : undefined}
               labels={{
                 idle: mode === 'create' ? pt('actions.create') : pt('actions.update'),

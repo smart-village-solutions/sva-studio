@@ -159,14 +159,11 @@ export const contentDEResources = {
     user: 'Persönlich',
     organization: 'Organisation',
     contextLoading: 'Der Autorenkontext wird geladen. Schreibaktionen sind vorübergehend gesperrt.',
-    contextUnavailable:
-      'Der Autorenkontext konnte nicht eindeutig bestimmt werden. Schreibaktionen bleiben gesperrt.',
+    contextUnavailable: 'Autorenkontext unklar. Schreibaktionen bleiben gesperrt.',
     resourceLoading:
       'Der Ressourcenprincipal wird geladen. Schreibaktionen sind vorübergehend gesperrt.',
-    resourceUnavailable:
-      'Der Ressourcenprincipal konnte nicht eindeutig bestimmt werden. Schreibaktionen bleiben gesperrt.',
-    mainserverNotReady:
-      'Die lokale Mainserver-Anbindung dieses Principals ist nicht bereit. Speichern ist gesperrt. Bitte lassen Sie die Anbindung durch die Administration prüfen.',
+    resourceUnavailable: 'Ressourcenprincipal unklar. Schreibaktionen bleiben gesperrt.',
+    mainserverNotReady: 'Mainserver-Anbindung nicht bereit. Bitte Administration kontaktieren.',
   },
   ownership: {
     title: 'Inhaber',
@@ -381,14 +378,13 @@ export const contentDEResources = {
   errors: {
     forbidden: 'Unzureichende Berechtigungen für diese Inhaltsaktion.',
     csrfValidationFailed:
-      'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
+      'Sicherheitsprüfung fehlgeschlagen. Bitte neu laden und erneut versuchen.',
     rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
     notFound: 'Der angeforderte Inhalt wurde nicht gefunden.',
-    databaseUnavailable:
-      'Die Inhaltsdaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.',
+    databaseUnavailable: 'Datenbankproblem: Inhaltsdaten konnten nicht verarbeitet werden.',
     invalidRequest: 'Der Inhalt enthält ungültige oder unvollständige Daten.',
     staleMainserverContext:
-      'Der Organisations- oder Principal-Kontext hat sich geändert. Laden Sie den aktuellen Kontext neu und prüfen Sie Ihre Eingaben, bevor Sie erneut speichern.',
+      'Kontext geändert. Bitte neu laden und Eingaben vor dem Speichern prüfen.',
     requestIdLabel: 'Fehlerreferenz:',
     copyRequestId: 'Referenz kopieren',
     requestIdCopied: 'Kopiert',
@@ -398,7 +394,6 @@ export const contentDEResources = {
     titleRequired: 'Die Überschrift ist ein Pflichtfeld.',
     payloadJsonInvalid: 'Die Zusatzdaten müssen gültiges JSON sein.',
     publishedAtRequired: 'Für veröffentlichte Inhalte ist ein Veröffentlichungsdatum erforderlich.',
-    publishedAtInvalid:
-      'Bitte geben Sie ein gültiges Veröffentlichungsdatum in der Fachzeitzone Europe/Berlin ein.',
+    publishedAtInvalid: 'Bitte gültiges Veröffentlichungsdatum in Europe/Berlin eingeben.',
   },
 } as const;

@@ -131,27 +131,7 @@ export const GenericItemsStatusView = ({
           </Link>
         </StudioFormSummary>
       ) : null}
-      <div
-        className={
-          mode === 'create'
-            ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
-            : undefined
-        }
-      >
-        <MainserverPrincipalControl
-          id="generic-items-acting-principal"
-          label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-          description={pt('principal.description')}
-          value={actingPrincipalType}
-          options={resolveMainserverPrincipalOptions(principalControl, {
-            value: actingPrincipalType,
-            label: pt(`principal.${actingPrincipalType}`),
-          })}
-          onChange={setActingPrincipalType}
-          readinessByPrincipal={principalControl?.readinessByPrincipal}
-          readinessMessage={principalControl?.readinessMessage}
-        />
-      </div>
+      <GenericItemsPrincipalSelector view={view} />
       <StudioMediaReferenceRetryAction
         controller={mediaReferenceSync}
         label={pt('actions.retryMediaReferences')}
@@ -166,6 +146,32 @@ export const GenericItemsStatusView = ({
     </>
   );
 };
+
+const GenericItemsPrincipalSelector = ({
+  view,
+}: Readonly<{ view: GenericItemsDetailPageViewModel }>) => (
+  <div
+    className={
+      view.mode === 'create'
+        ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
+        : undefined
+    }
+  >
+    <MainserverPrincipalControl
+      id="generic-items-acting-principal"
+      label={view.pt(view.mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+      description={view.pt('principal.description')}
+      value={view.actingPrincipalType}
+      options={resolveMainserverPrincipalOptions(view.principalControl, {
+        value: view.actingPrincipalType,
+        label: view.pt(`principal.${view.actingPrincipalType}`),
+      })}
+      onChange={view.setActingPrincipalType}
+      readinessByPrincipal={view.principalControl?.readinessByPrincipal}
+      readinessMessage={view.principalControl?.readinessMessage}
+    />
+  </div>
+);
 
 export const GenericItemsDeleteDialogView = ({
   view,

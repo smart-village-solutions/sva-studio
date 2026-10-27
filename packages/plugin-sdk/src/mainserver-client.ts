@@ -2,12 +2,15 @@ import {
   createMainserverMutationHeaders,
   createMainserverReadHeaders,
   CONTENT_MEDIA_SAVE_OPERATION_ID_HEADER,
-  MAINSERVER_CONTEXT_BINDING_HEADER,
   MainserverApiError,
   requestMainserverJson,
   type MainserverErrorFactory,
   type MainserverActingPrincipalType,
 } from './mainserver-request.js';
+import {
+  createMainserverContextBindingStore,
+  invalidateBindingOnStaleContext,
+} from './mainserver-context-binding.js';
 import type { MainserverDataDeviation, MainserverDetailResult } from './mainserver-detail.js';
 
 export type MainserverListQuery = Readonly<{
@@ -72,56 +75,6 @@ type ApiItemResponse<T> = Readonly<{
 export const buildMainserverListUrl = (basePath: string, query: MainserverListQuery): string =>
   `${basePath}?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
 
-const createMainserverContextBindingStore = () => {
-  const contextBindings = new Map<string, string>();
-  const capture =
-    (contentId: string) => (meta: { readonly ok: boolean; readonly contextBinding?: string }) => {
-      if (!meta.ok) return;
-      if (meta.contextBinding) {
-        contextBindings.set(contentId, meta.contextBinding);
-      } else {
-        contextBindings.delete(contentId);
-      }
-    };
-  const mutationHeaders = (
-    contentId: string,
-    actingPrincipalType: MainserverActingPrincipalType,
-    headers?: HeadersInit,
-    operationId?: string
-  ): Headers => {
-    const result = createMainserverMutationHeaders(actingPrincipalType, headers, operationId);
-    const contextBinding = contextBindings.get(contentId);
-    if (contextBinding) {
-      result.set(MAINSERVER_CONTEXT_BINDING_HEADER, contextBinding);
-    }
-    return result;
-  };
-  return {
-    capture,
-    has: (contentId: string): boolean => contextBindings.has(contentId),
-    invalidate: (contentId: string): void => {
-      contextBindings.delete(contentId);
-    },
-    mutationHeaders,
-  };
-};
-
-const invalidateBindingOnStaleContext = <TError extends Error>(
-  error: TError,
-  contentId: string,
-  invalidate: (contentId: string) => void
-): never => {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as Error & { readonly code?: unknown }).code === 'stale_mainserver_context'
-  ) {
-    invalidate(contentId);
-  }
-  throw error;
-};
-
 const createMainserverItemLoader = <TItem, TError extends Error>(input: {
   readonly basePath: string;
   readonly fetch?: typeof fetch;
@@ -178,6 +131,57 @@ const createEnsureMainserverContextBinding =
     }
   };
 
+const createMainserverUpdateMutation =
+  <TItem, TMutationInput, TError extends Error>(input: {
+    readonly options: Pick<
+      MainserverCrudClientOptions<TItem, TMutationInput, never, never, TError>,
+      'basePath' | 'fetch' | 'errorFactory' | 'updateBody' | 'updateHeaders'
+    >;
+    readonly mapItem: (item: TItem) => TItem;
+    readonly contextBindingStore: ReturnType<typeof createMainserverContextBindingStore>;
+    readonly ensureContextBinding: (
+      id: string,
+      principal: MainserverActingPrincipalType
+    ) => Promise<void>;
+  }) =>
+  async (
+    contentId: string,
+    mutationInput: TMutationInput,
+    actingPrincipalType: MainserverActingPrincipalType,
+    mutationOptions?: MainserverMutationOptions
+  ): Promise<TItem> => {
+    await input.ensureContextBinding(contentId, actingPrincipalType);
+    try {
+      const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
+        url: `${input.options.basePath}/${encodeURIComponent(contentId)}`,
+        fetch: input.options.fetch,
+        errorFactory: input.options.errorFactory,
+        init: {
+          method: 'PATCH',
+          headers: addContentMediaSaveOperationHeader(
+            input.contextBindingStore.mutationHeaders(
+              contentId,
+              actingPrincipalType,
+              input.options.updateHeaders?.(),
+              mutationOptions?.operationId
+            ),
+            mutationOptions
+          ),
+          body: JSON.stringify(
+            input.options.updateBody ? input.options.updateBody(mutationInput) : mutationInput
+          ),
+        },
+      });
+      return input.mapItem(response.data);
+    } catch (error) {
+      return invalidateBindingOnStaleContext(
+        error as TError,
+        contentId,
+        input.contextBindingStore.invalidate
+      );
+    }
+  };
+
 const createMainserverCrudMutations = <
   TItem,
   TMutationInput,
@@ -227,43 +231,7 @@ const createMainserverCrudMutations = <
     });
     return input.mapItem(response.data);
   },
-  update: async (
-    contentId: string,
-    mutationInput: TMutationInput,
-    actingPrincipalType: MainserverActingPrincipalType,
-    mutationOptions?: MainserverMutationOptions
-  ): Promise<TItem> => {
-    await input.ensureContextBinding(contentId, actingPrincipalType);
-    try {
-      const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
-        url: `${input.options.basePath}/${encodeURIComponent(contentId)}`,
-        fetch: input.options.fetch,
-        errorFactory: input.options.errorFactory,
-        init: {
-          method: 'PATCH',
-          headers: addContentMediaSaveOperationHeader(
-            input.contextBindingStore.mutationHeaders(
-              contentId,
-              actingPrincipalType,
-              input.options.updateHeaders?.(),
-              mutationOptions?.operationId
-            ),
-            mutationOptions
-          ),
-          body: JSON.stringify(
-            input.options.updateBody ? input.options.updateBody(mutationInput) : mutationInput
-          ),
-        },
-      });
-      return input.mapItem(response.data);
-    } catch (error) {
-      return invalidateBindingOnStaleContext(
-        error as TError,
-        contentId,
-        input.contextBindingStore.invalidate
-      );
-    }
-  },
+  update: createMainserverUpdateMutation(input),
   remove: async (
     contentId: string,
     actingPrincipalType: MainserverActingPrincipalType

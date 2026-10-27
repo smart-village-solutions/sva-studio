@@ -3,8 +3,13 @@ import { createSdkLogger } from '@sva/server-runtime';
 import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
 import { isTokenErrorLike } from '../error-guards.js';
 import { buildLogContext } from '../log-context.js';
-import { deleteSession, getSession, updateSession } from '../redis-session.js';
-import { SessionNotFoundError, SessionStoreUnavailableError } from '../runtime-errors.js';
+import { deleteSession, getSession, getSessionControlState, updateSession } from '../redis-session.js';
+import {
+  SessionNotFoundError,
+  SessionStoreConflictError,
+  SessionStoreUnavailableError,
+  SessionTokenConflictError,
+} from '../runtime-errors.js';
 import type { RuntimeScopeRef, Session, SessionUser } from '../types.js';
 import { refreshSession } from './session-refresh.js';
 import { buildSessionUser, TOKEN_REFRESH_SKEW_MS } from './shared.js';
@@ -40,6 +45,25 @@ export type SessionResolutionResult =
       freshReauthAt?: number; activeOrganizationId?: string;
     }
   | { kind: 'invalid'; reason: SessionResolutionFailureReason };
+
+const getFreshInvalidationReason = async (
+  session: Session,
+  diagnostics: SessionResolutionTimingDiagnostics
+): Promise<SessionResolutionFailureReason | null> => {
+  const startedAt = performance.now();
+  const state = await getSessionControlState(session.userId);
+  diagnostics.controlStateMs += performance.now() - startedAt;
+  diagnostics.controlStateCacheStatus = state ? 'present' : 'miss_absent';
+  if (!state) return null;
+  const sessionVersion = session.sessionVersion ?? 1;
+  const issuedAt = session.issuedAt ?? session.createdAt;
+  return state.loginBlocked === true ||
+    (typeof state.minimumSessionVersion === 'number' &&
+      sessionVersion < state.minimumSessionVersion) ||
+    (typeof state.forcedReauthAt === 'number' && issuedAt < state.forcedReauthAt)
+    ? 'forced_reauth'
+    : null;
+};
 
 export const shouldRefreshSession = (expiresAt: number | undefined): boolean =>
   typeof expiresAt === 'number' && expiresAt <= Date.now() + TOKEN_REFRESH_SKEW_MS;
@@ -143,8 +167,12 @@ const handleRefreshFailure = async (input: {
   freshReauthAt?: number;
   scope?: Session['auth'];
   fallbackUser: SessionUser | null;
+  activeOrganizationId?: string;
 }): Promise<SessionResolutionResult> => {
-  if (input.error instanceof SessionStoreUnavailableError) {
+  if (
+    input.error instanceof SessionStoreUnavailableError ||
+    input.error instanceof SessionStoreConflictError
+  ) {
     throw input.error;
   }
 
@@ -178,6 +206,7 @@ const handleRefreshFailure = async (input: {
     user: input.fallbackUser,
     expiresAt: input.expiresAt,
     freshReauthAt: input.freshReauthAt,
+    ...(input.activeOrganizationId ? { activeOrganizationId: input.activeOrganizationId } : {}),
   };
 };
 
@@ -267,7 +296,7 @@ export const refreshAndResolveSession = async (
     });
 
     const refreshStartedAt = performance.now();
-    await refreshSession(sessionId, session);
+    await refreshSession(sessionId);
     diagnostics.refreshMs = performance.now() - refreshStartedAt;
     const refreshSessionReadStartedAt = performance.now();
     const updatedSession = await getSession(sessionId, { decryptTokens: false });
@@ -280,14 +309,11 @@ export const refreshAndResolveSession = async (
       ...buildLogContext(updatedSession?.auth),
     });
 
-    const result = updatedSession
-      ? buildAuthenticatedSessionResult(updatedSession)
-      : ({
-          kind: 'authenticated',
-          user: null,
-          expiresAt: undefined,
-          freshReauthAt: undefined,
-        } satisfies Extract<SessionResolutionResult, { kind: 'authenticated' }>);
+    if (!updatedSession) {
+      logSessionResolutionTimingIfEnabled({ diagnostics, reason: 'invalid_session', startedAt });
+      return { kind: 'invalid', reason: 'invalid_session' };
+    }
+    const result = buildAuthenticatedSessionResult(updatedSession);
     logSessionResolutionTimingIfEnabled({
       diagnostics,
       reason: 'authenticated',
@@ -296,19 +322,61 @@ export const refreshAndResolveSession = async (
     });
     return result;
   } catch (error) {
+    if (
+      error instanceof SessionStoreUnavailableError ||
+      error instanceof SessionStoreConflictError
+    ) {
+      throw error;
+    }
+
+    const currentSession = await getSession(sessionId, { decryptTokens: false });
+    if (!currentSession) {
+      const reason = session.expiresAt && session.expiresAt < Date.now()
+        ? 'token_refresh_failed_after_expiry'
+        : 'invalid_session';
+      logSessionResolutionTimingIfEnabled({ diagnostics, reason, session, startedAt });
+      return {
+        kind: 'invalid',
+        reason,
+      };
+    }
+
+    const invalidationReason = await getFreshInvalidationReason(currentSession, diagnostics);
+    if (invalidationReason) {
+      await deleteSession(sessionId);
+      logSessionResolutionTimingIfEnabled({
+        diagnostics,
+        reason: invalidationReason,
+        session: currentSession,
+        startedAt,
+      });
+      return { kind: 'invalid', reason: invalidationReason };
+    }
+
+    if (error instanceof SessionTokenConflictError) {
+      logSessionResolutionTimingIfEnabled({
+        diagnostics,
+        reason: 'authenticated',
+        session: currentSession,
+        startedAt,
+      });
+      return buildAuthenticatedSessionResult(currentSession);
+    }
+
     const result = await handleRefreshFailure({
       error,
       sessionId,
-      refreshToken: session.refreshToken,
-      expiresAt: session.expiresAt,
-      freshReauthAt: session.freshReauthAt,
-      scope: session.auth,
-      fallbackUser: session.user ?? null,
+      refreshToken: currentSession.refreshToken,
+      expiresAt: currentSession.expiresAt,
+      freshReauthAt: currentSession.freshReauthAt,
+      scope: currentSession.auth,
+      fallbackUser: currentSession.user ?? null,
+      activeOrganizationId: currentSession.activeOrganizationId,
     });
     logSessionResolutionTimingIfEnabled({
       diagnostics,
       reason: result.kind === 'invalid' ? result.reason : 'authenticated',
-      session,
+      session: currentSession,
       startedAt,
     });
     return result;

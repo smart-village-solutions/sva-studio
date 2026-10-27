@@ -68,6 +68,40 @@ const mocks = vi.hoisted(() => {
       return this.data.has(key) || this.sets.has(key) ? 1 : 0;
     }
 
+    async eval(script: string, numberOfKeys: number, ...args: string[]): Promise<number> {
+      const keys = args.slice(0, numberOfKeys);
+      const values = args.slice(numberOfKeys);
+      if (script.includes('update_session_compare_and_set')) {
+        const [sessionKey, controlKey, userSessionsKey] = keys;
+        const [expectedSession, expectedControl, replacement, ttl, sessionId] = values;
+        const current = this.data.get(sessionKey);
+        if (!current) return -1;
+        if (current !== expectedSession || (this.data.get(controlKey) ?? '') !== expectedControl) {
+          return 0;
+        }
+        const session = JSON.parse(current) as Session;
+        if (session.expiresAt && session.expiresAt < Date.now()) return -1;
+        this.data.set(sessionKey, replacement);
+        const resolvedTtl = Number(ttl);
+        this.expirations.set(sessionKey, resolvedTtl);
+        const sessions = this.sets.get(userSessionsKey) ?? new Set<string>();
+        sessions.add(sessionId);
+        this.sets.set(userSessionsKey, sessions);
+        this.expirations.set(userSessionsKey, resolvedTtl);
+        return 1;
+      }
+      if (script.includes('delete_session_if_unchanged')) {
+        const [sessionKey, userSessionsKey] = keys;
+        const [expectedSession, userId] = values;
+        if (this.data.get(sessionKey) !== expectedSession) return 0;
+        this.data.delete(sessionKey);
+        this.expirations.delete(sessionKey);
+        this.sets.get(userSessionsKey)?.delete(userId);
+        return 1;
+      }
+      throw new Error('Unexpected Redis script in test fake');
+    }
+
     async keys(pattern: string): Promise<string[]> {
       const prefix = pattern.endsWith('*') ? pattern.slice(0, -1) : pattern;
       return [...this.data.keys()].filter((key) => key.startsWith(prefix));
@@ -207,6 +241,123 @@ describe('redis-backed auth runtime session store', () => {
     expect(mocks.emitAuthAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: 'session_deleted', actorUserId: 'user-a' })
     );
+  });
+
+  it.each([1, 2])(
+    'preserves independent token and organization updates for concurrent commit order %i',
+    async (delayedAttempt) => {
+    await createSession(
+      'session-concurrent',
+      createTestSession({ id: 'session-concurrent', activeOrganizationId: 'org-1' })
+    );
+
+      const originalEval = mocks.redis.eval.bind(mocks.redis);
+      let attempt = 0;
+      let releaseDelayedAttempt: () => void = () => undefined;
+      let resolveEarlierCommit: () => void = () => undefined;
+      const delayedGate = new Promise<void>((resolve) => {
+        releaseDelayedAttempt = resolve;
+      });
+      const earlierCommit = new Promise<void>((resolve) => {
+        resolveEarlierCommit = resolve;
+      });
+      mocks.redis.eval = vi.fn(async (script: string, numberOfKeys: number, ...args: string[]) => {
+        attempt += 1;
+        const currentAttempt = attempt;
+        if (currentAttempt === delayedAttempt) await delayedGate;
+        const result = await originalEval(script, numberOfKeys, ...args);
+        if (currentAttempt !== delayedAttempt && result === 1) resolveEarlierCommit();
+        return result;
+      });
+
+      const tokenUpdate = updateSession('session-concurrent', { accessToken: 'new-access' });
+      const organizationUpdate = updateSession('session-concurrent', {
+        activeOrganizationId: 'org-2',
+      });
+      await earlierCommit;
+      releaseDelayedAttempt();
+      await Promise.all([tokenUpdate, organizationUpdate]);
+      mocks.redis.eval = originalEval;
+
+      await expect(getSession('session-concurrent')).resolves.toMatchObject({
+        accessToken: 'new-access',
+        activeOrganizationId: 'org-2',
+      });
+    }
+  );
+
+  it('does not commit after the separate session-control marker changes to revoke the session', async () => {
+    await createSession('session-revoked-during-update', createTestSession());
+    const originalEval = mocks.redis.eval.bind(mocks.redis);
+    let changeMarker = true;
+    mocks.redis.eval = vi.fn(async (script: string, numberOfKeys: number, ...args: string[]) => {
+      if (changeMarker && script.includes('update_session_compare_and_set')) {
+        changeMarker = false;
+        await setSessionControlState('user-a', { minimumSessionVersion: 2 }, null);
+      }
+      return originalEval(script, numberOfKeys, ...args);
+    });
+
+    await expect(
+      updateSession('session-revoked-during-update', { activeOrganizationId: 'org-2' })
+    ).rejects.toThrow('Session no longer exists or has expired');
+    mocks.redis.eval = originalEval;
+    await expect(
+      getSession('session-revoked-during-update').then((session) => session?.activeOrganizationId)
+    ).resolves.toBeUndefined();
+  });
+
+  it('rejects a stale token commit after another refresh replaced the token set', async () => {
+    await createSession(
+      'session-stale-token',
+      createTestSession({ id: 'session-stale-token', refreshToken: 'refresh-old' })
+    );
+    const { SessionTokenConflictError } = await import('./runtime-errors.js');
+
+    await updateSession('session-stale-token', {
+      refreshToken: 'refresh-new',
+      accessToken: 'access-new',
+    });
+    await expect(
+      updateSession(
+        'session-stale-token',
+        { refreshToken: 'refresh-stale', accessToken: 'access-stale' },
+        { expectedTokenSet: { refreshToken: 'refresh-old' } }
+      )
+    ).rejects.toBeInstanceOf(SessionTokenConflictError);
+    await expect(getSession('session-stale-token')).resolves.toMatchObject({
+      accessToken: 'access-new',
+      refreshToken: 'refresh-new',
+    });
+  });
+
+  it('stops after the bounded compare-and-set conflict retries', async () => {
+    await createSession(
+      'session-conflict-limit',
+      createTestSession({ id: 'session-conflict-limit', activeOrganizationId: 'org-1' })
+    );
+    const originalEval = mocks.redis.eval.bind(mocks.redis);
+    let compareAttempts = 0;
+    mocks.redis.eval = vi.fn(async (script: string, numberOfKeys: number, ...args: string[]) => {
+      if (script.includes('update_session_compare_and_set')) {
+        compareAttempts += 1;
+        return 0;
+      }
+      return originalEval(script, numberOfKeys, ...args);
+    });
+
+    try {
+      const { SessionStoreConflictError } = await import('./runtime-errors.js');
+      await expect(updateSession('session-conflict-limit', { activeOrganizationId: 'org-2' }))
+        .rejects.toBeInstanceOf(SessionStoreConflictError);
+    } finally {
+      mocks.redis.eval = originalEval;
+    }
+
+    expect(compareAttempts).toBe(5);
+    await expect(getSession('session-conflict-limit')).resolves.toMatchObject({
+      activeOrganizationId: 'org-1',
+    });
   });
 
   it('consumes login state once and tracks session control state', async () => {

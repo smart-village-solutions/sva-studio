@@ -360,6 +360,23 @@ describe('iam-api organization helpers', () => {
     await expect(secondRequest).resolves.toMatchObject({ data: { activeOrganizationId: 'org-1' } });
   });
 
+  it('can read organization context fresh without joining an older in-flight read', async () => {
+    const olderResponse = createDeferredResponse();
+    const fetchMock = vi
+      .fn()
+      .mockReturnValueOnce(olderResponse.responsePromise)
+      .mockResolvedValueOnce(createJsonResponse({ data: { activeOrganizationId: 'org-2' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const olderRequest = getMyOrganizationContext();
+    const freshRequest = getMyOrganizationContext({ fresh: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await expect(freshRequest).resolves.toMatchObject({ data: { activeOrganizationId: 'org-2' } });
+    olderResponse.resolve(createJsonResponse({ data: { activeOrganizationId: 'org-1' } }));
+    await expect(olderRequest).resolves.toMatchObject({ data: { activeOrganizationId: 'org-1' } });
+  });
+
   it('deduplicates overlapping reads of pending legal texts', async () => {
     const deferredResponse = createDeferredResponse();
     const fetchMock = vi.fn().mockReturnValueOnce(deferredResponse.responsePromise);

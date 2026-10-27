@@ -6,6 +6,24 @@ export class SessionNotFoundError extends Error {
   }
 }
 
+/** A concurrent refresh replaced the token set before this update could commit. */
+export class SessionTokenConflictError extends Error {
+  constructor() {
+    super('Session tokens changed before the update could be applied');
+    this.name = 'SessionTokenConflictError';
+  }
+}
+
+/** A bounded compare-and-set retry budget was exhausted. */
+export class SessionStoreConflictError extends Error {
+  readonly statusCode = 503;
+
+  constructor() {
+    super('Session changed too frequently to apply the update');
+    this.name = 'SessionStoreConflictError';
+  }
+}
+
 export class SessionStoreUnavailableError extends Error {
   readonly cause?: unknown;
   readonly statusCode = 503;

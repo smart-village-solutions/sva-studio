@@ -150,6 +150,8 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Sessionen führen nur den minimalen Auth-Kern (`sub/id`, `instanceId`, Rollen); Profilattribute wie Name und E-Mail gehören nicht zum Pflichtumfang der Session
 - Tenant-Sessions beziehen `instanceId` aus Host, Registry und Realm-Scope. Ein optionaler Token-Claim `instanceId` darf diesen Scope bestätigen, aber nicht ersetzen.
 - Forced Reauth pro Benutzer erfolgt über `minimumSessionVersion` und `forcedReauthAt`; Keycloak-Logout ist optional zuschaltbar
+- Session-Refresh liest vor dem OIDC-Grant den aktuellen Redis-Stand, bündelt parallele Refreshes pro Session im Prozess und committet Tokens nur gegen das erwartete Tokenpaket. Feldupdates verwenden einen begrenzten Redis-CAS gegen Session und Widerrufsmarker; Konflikte führen zu frischem Read und feldweisem Retry. Verbindungsfehler, Konfliktlimit, Ablauf und Widerruf bleiben geschlossen.
+- Refresh-Fallback liest Session und Widerrufsmarker frisch. Er erhält den aktuellen Organisationskontext nur solange Sessionablauf und Reauth-Regeln ihn zulassen; gelöschte oder widerrufene Sessions werden ungültig.
 - Silent SSO wird kurz vor der gemeldeten Session-Gültigkeitsgrenze höchstens zweimal versucht und bleibt nach `401` als einmaliger Recovery-Versuch erhalten. Nach explizitem Logout ist es temporär unterdrückt. Die absolute Studio-Sessiondauer beträgt standardmäßig 180 Minuten und ist über `SVA_AUTH_SESSION_TTL_MS` konfigurierbar; kürzere Tokenlaufzeiten können vorher einen Refresh erfordern.
 - Application-Level Column Encryption für IAM-PII-Felder (`email_ciphertext`, `display_name_ciphertext`)
 - Schlüsselverwaltung über `IAM_PII_ACTIVE_KEY_ID` + `IAM_PII_KEYRING_JSON` (außerhalb der DB)

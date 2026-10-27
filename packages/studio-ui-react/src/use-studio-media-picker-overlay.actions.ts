@@ -77,6 +77,7 @@ const useReviewAssetLoader = <TAssetDetail extends StudioMediaPickerAssetDetail>
         if (currentRequestId !== requestId.current) {
           return false;
         }
+        if (!state.reviewAsset?.localDraft) actions.setReviewAsset(null);
         actions.setErrorCode('asset_load_failed');
         actions.setMode('review');
         return false;

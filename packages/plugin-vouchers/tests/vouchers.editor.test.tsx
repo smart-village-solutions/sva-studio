@@ -3,11 +3,15 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MainserverApiError,
+  type HostMediaUploadCheckpoint,
+  type uploadHostMediaFile,
   publishSessionAccessSnapshot,
   registerPluginTranslationResolver,
 } from '@sva/plugin-sdk';
 import { pluginVouchersTranslations } from '../src/plugin.translations.js';
 const state = vi.hoisted(() => ({
+  upload: vi.fn(),
+  updateAsset: vi.fn(),
   assets: vi.fn(),
   asset: vi.fn(),
   delivery: vi.fn(),
@@ -21,6 +25,8 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock('@sva/plugin-sdk', async (load) => ({
   ...(await load<typeof import('@sva/plugin-sdk')>()),
+  uploadHostMediaFile: state.upload,
+  updateHostMediaAsset: state.updateAsset,
   listHostMediaAssets: state.assets,
   getHostMediaAsset: state.asset,
   getHostMediaDelivery: state.delivery,
@@ -294,15 +300,17 @@ describe('shared editorial controls', () => {
       deliveryUrl: 'https://example.org/museum.jpg',
     });
     render(<VoucherEditor id="2" />);
-    fireEvent.click(
-      await screen.findByRole('button', { name: labels.messages.mediaPickerLibraryAction })
-    );
+    fireEvent.click(await screen.findByRole('button', { name: labels.media.add }));
+    fireEvent.click(screen.getByRole('button', { name: labels.messages.mediaPickerLibraryAction }));
     await screen.findByText('Museum');
     const selection =
       screen.getByText('Museum').closest('article') ?? screen.getByText('Museum').parentElement;
     expect(selection).not.toBeNull();
     const buttons = selection?.querySelectorAll('button');
     fireEvent.click(buttons![buttons!.length - 1]);
+    fireEvent.change(await screen.findByLabelText(labels.messages.mediaPickerAltText), {
+      target: { value: 'Gutschein-Eingang' },
+    });
     fireEvent.click(
       await screen.findByRole('button', { name: labels.messages.mediaPickerUseMedia })
     );
@@ -313,13 +321,197 @@ describe('shared editorial controls', () => {
     );
     expect(
       (screen.getByLabelText(labels.messages.mediaPickerAltText) as HTMLInputElement).value
-    ).toBe('Eingang');
+    ).toBe('Gutschein-Eingang');
     fireEvent.change(screen.getByLabelText(labels.media.url), {
       target: { value: 'https://example.org/manual.jpg' },
     });
     fireEvent.click(screen.getByRole('button', { name: labels.actions.update }));
     await waitFor(() => expect(state.prepare).toHaveBeenCalledOnce());
     expect(state.prepare.mock.calls[0][0].mediaContents[0].hostMediaAssetId).toBeUndefined();
+  });
+  it('uploads an image on acceptance without saving the voucher and preserves usage metadata', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      assignedModules: ['vouchers'],
+      roles: [],
+      permissionActions: [
+        'vouchers.read',
+        'vouchers.update',
+        'media.read',
+        'media.reference.manage',
+        'media.create',
+        'media.update',
+      ],
+      unscopedPermissionActions: ['vouchers.read', 'vouchers.update'],
+    });
+    state.assets.mockResolvedValue([]);
+    const checkpoint = {
+      initialized: {
+        assetId: 'uploaded',
+        uploadSessionId: 'session',
+        uploadUrl: 'https://storage.test/output',
+        method: 'PUT',
+        headers: {},
+        expiresAt: '2026-12-01T00:00:00Z',
+        initializedAt: '2026-10-27T10:00:00Z',
+        status: 'pending',
+      },
+      outputTransferred: true,
+      sourceTransferred: false,
+    } satisfies HostMediaUploadCheckpoint;
+    state.upload
+      .mockImplementationOnce(async (input: Parameters<typeof uploadHostMediaFile>[0]) => {
+        input.onCheckpoint?.(checkpoint);
+        throw new Error('offline');
+      })
+      .mockResolvedValueOnce({ assetId: 'uploaded' });
+    state.asset.mockResolvedValue({
+      id: 'uploaded',
+      storageKey: 'media/new.jpg',
+      fileName: 'new.jpg',
+      mimeType: 'image/jpeg',
+      visibility: 'public',
+      metadata: { title: 'New', tags: [] },
+    });
+    state.delivery.mockResolvedValue({
+      isPublicUrl: true,
+      deliveryUrl: 'https://example.org/uploaded.jpg',
+    });
+    const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:voucher-upload');
+    const revokeUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    render(<VoucherEditor id="2" />);
+    fireEvent.click(await screen.findByRole('button', { name: labels.media.add }));
+    const file = new File(['image'], 'new.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByTestId('media-upload-input'), { target: { files: [file] } });
+    fireEvent.change(await screen.findByLabelText(labels.messages.mediaPickerAltText), {
+      target: { value: 'Gutscheinbild' },
+    });
+    expect(state.upload).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: labels.messages.mediaPickerUseMedia }));
+    await screen.findAllByText(labels.messages.mediaPickerMetadataSaveError);
+    expect(screen.getByLabelText(labels.messages.mediaPickerAltText)).toHaveProperty(
+      'value',
+      'Gutscheinbild'
+    );
+    fireEvent.click(screen.getByRole('button', { name: labels.messages.mediaPickerUseMedia }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByLabelText(labels.media.url)).toHaveProperty(
+      'value',
+      'https://example.org/uploaded.jpg'
+    );
+    expect(screen.getByLabelText(labels.messages.mediaPickerAltText)).toHaveProperty(
+      'value',
+      'Gutscheinbild'
+    );
+    expect(state.upload).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        file,
+        checkpoint,
+        metadata: expect.objectContaining({ altText: 'Gutscheinbild' }),
+      })
+    );
+    expect(state.prepare).not.toHaveBeenCalled();
+    expect(state.commit).not.toHaveBeenCalled();
+    expect(revokeUrl).toHaveBeenCalledWith('blob:voucher-upload');
+    createUrl.mockRestore();
+    revokeUrl.mockRestore();
+  });
+
+  it('preserves explicit manual HTTP images when preparing a voucher update', async () => {
+    await edit();
+    fireEvent.click(screen.getByRole('button', { name: labels.media.add }));
+    fireEvent.change(screen.getByLabelText(labels.media.url), {
+      target: { value: 'http://example.org/legacy.jpg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: labels.actions.update }));
+    await waitFor(() => expect(state.prepare).toHaveBeenCalledOnce());
+    expect(state.prepare.mock.calls[0][0].mediaContents[0].sourceUrl.url).toBe(
+      'http://example.org/legacy.jpg'
+    );
+  });
+
+  it('blocks an invalid manual media URL before preparing the voucher', async () => {
+    await edit();
+    fireEvent.click(screen.getByRole('button', { name: labels.media.add }));
+    const url = screen.getByLabelText(labels.media.url);
+    fireEvent.change(url, { target: { value: 'ftp://invalid.example/image.jpg' } });
+    fireEvent.click(screen.getByRole('button', { name: labels.actions.update }));
+    expect(state.prepare).not.toHaveBeenCalled();
+    expect(url.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(url);
+  });
+
+  it('adds a manual image from the picker instead of only closing it', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      assignedModules: ['vouchers'],
+      roles: [],
+      permissionActions: [
+        'vouchers.read',
+        'vouchers.update',
+        'media.read',
+        'media.reference.manage',
+      ],
+      unscopedPermissionActions: ['vouchers.read', 'vouchers.update'],
+    });
+    state.assets.mockResolvedValue([]);
+    render(<VoucherEditor id="2" />);
+    fireEvent.click(await screen.findByRole('button', { name: labels.media.add }));
+    fireEvent.click(screen.getByRole('button', { name: labels.messages.mediaPickerLibraryAction }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: labels.messages.mediaPickerLinkAction })
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByLabelText(labels.media.url)).toBeDefined();
+  });
+  it('reorders images with their metadata and host references intact', async () => {
+    state.get.mockResolvedValue({
+      data: {
+        ...record,
+        mediaContents: [
+          {
+            contentType: 'image',
+            hostMediaAssetId: 'asset-1',
+            sourceUrl: { url: 'https://example.org/one.jpg', description: 'Eins' },
+            captionText: 'Erstes',
+            copyright: 'A',
+          },
+          {
+            contentType: 'image',
+            hostMediaAssetId: 'asset-2',
+            sourceUrl: { url: 'https://example.org/two.jpg', description: 'Zwei' },
+            captionText: 'Zweites',
+            copyright: 'B',
+          },
+        ],
+      },
+      meta: { access: { 'vouchers.update': true } },
+    });
+    render(<VoucherEditor id="2" />);
+    fireEvent.click(
+      (await screen.findAllByRole('button', { name: labels.messages.mediaMoveDown }))[0]
+    );
+    const urls = screen.getAllByLabelText(labels.media.url) as HTMLInputElement[];
+    expect(urls.map((input) => input.value)).toEqual([
+      'https://example.org/two.jpg',
+      'https://example.org/one.jpg',
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: labels.actions.update }));
+    await waitFor(() => expect(state.prepare).toHaveBeenCalledOnce());
+    expect(state.prepare.mock.calls[0][0].mediaContents).toEqual([
+      expect.objectContaining({
+        hostMediaAssetId: 'asset-2',
+        captionText: 'Zweites',
+        copyright: 'B',
+        sourceUrl: { url: 'https://example.org/two.jpg', description: 'Zwei' },
+      }),
+      expect.objectContaining({
+        hostMediaAssetId: 'asset-1',
+        captionText: 'Erstes',
+        copyright: 'A',
+        sourceUrl: { url: 'https://example.org/one.jpg', description: 'Eins' },
+      }),
+    ]);
   });
   it('loads declared history only after expanding it and reports a failed read', async () => {
     state.history.mockRejectedValue(new Error('unavailable'));
@@ -403,9 +595,8 @@ describe('safe editorial failure states', () => {
     });
     state.assets.mockRejectedValue(new Error('unavailable'));
     render(<VoucherEditor id="2" />);
-    fireEvent.click(
-      await screen.findByRole('button', { name: labels.messages.mediaPickerLibraryAction })
-    );
+    fireEvent.click(await screen.findByRole('button', { name: labels.media.add }));
+    fireEvent.click(screen.getByRole('button', { name: labels.messages.mediaPickerLibraryAction }));
     await screen.findByText(labels.messages.mediaPickerLoadError);
     expect(state.prepare).not.toHaveBeenCalled();
   });

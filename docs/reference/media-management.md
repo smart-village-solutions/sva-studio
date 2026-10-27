@@ -62,6 +62,14 @@ Fehlverhalten im Frontend:
 
 Das Abbrechen provisorischer Uploads zieht nur zuvor gebuchte Bytes und Asset-Zahlen vom Kontingent ab. Ausstehende, fehlgeschlagene und blockierte Uploads waren nicht gebucht und vermindern deshalb auch beim wiederholten Bereinigen keinen vorhandenen Verbrauch.
 
+## Medienauswahl in Inhaltsplugins
+
+News, Events, POI, Generic Items, Projects, Cockpit Cards und Gutscheine verwenden denselben Medienblock und Auswahldialog für Bibliothek, Upload und manuelle Bildadressen. Verfügbare Aktionen richten sich nach Inhalts- und Medienrechten; die unterstützten Metadaten bleiben fachmodulspezifisch. Abfall-Branding verwendet den Dialog für ein einzelnes Einstellungsbild.
+
+Ladezustand, leerer Bestand und ein fehlgeschlagener Bibliotheksabruf werden getrennt angezeigt. Bei einem Fehler bleibt ein bereits geladener Bestand erhalten; der Abruf kann im Dialog wiederholt werden. Eine fehlgeschlagene Auswahl eines anderen Bibliotheksbildes darf das vorherige Bild nicht als neue Auswahl anbieten. Lokale Dateientwürfe bleiben bei fehlgeschlagenem Ersatz erhalten.
+
+Die Auswahlprüfung verwendet die dauerhafte Auslieferungsadresse; die Vorschau ist optional und dient ausschließlich der Darstellung. Der Gutschein-Upload wird bei der Übernahme in die Mediathek gespeichert, bevor der bestehende Gutschein-Vorbereitungs- und Bestätigungsablauf startet; siehe [Gutscheine](vouchers.md).
+
 ## Medienrollen
 
 Fachmodule referenzieren Medien nicht über rohe URLs, sondern über hostseitige Medienreferenzen mit Rollen.

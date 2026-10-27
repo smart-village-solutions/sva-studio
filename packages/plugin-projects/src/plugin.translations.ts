@@ -219,6 +219,7 @@ const en = {
     },
     messages: {
       ...de.projects.messages,
+      mediaError: 'Images could not be loaded or uploaded.',
       saveError: 'Project could not be saved.',
       saveErrorWithReason: 'Project could not be saved: {{reason}}',
       deleteTitle: 'Delete project?',

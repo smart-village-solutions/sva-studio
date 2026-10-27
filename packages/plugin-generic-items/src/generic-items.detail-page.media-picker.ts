@@ -26,7 +26,7 @@ import {
 } from './generic-items.detail-page.media-model.js';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
 
-const isGenericItemsAssetSelectable = (
+export const isGenericItemsAssetSelectable = (
   asset: GenericItemsMediaPickerAsset,
   mediaUsages: readonly ContentMediaUsage[],
   mediaContents: GenericItemsDetailFormValues['mediaContents']
@@ -40,7 +40,7 @@ const isGenericItemsAssetSelectable = (
     metadata: asset.metadata,
     visibility: asset.visibility,
     mimeType: asset.mimeType,
-    previewUrl: asset.previewUrl,
+    previewUrl: asset.persistentUrl ?? asset.previewUrl,
   });
   if (!nextMedia) return false;
   const existingSources = new Set(
@@ -77,7 +77,7 @@ const acceptGenericItemsAsset = (
     metadata: asset.metadata,
     visibility: asset.visibility,
     mimeType: asset.mimeType,
-    previewUrl: asset.previewUrl,
+    previewUrl: asset.persistentUrl ?? asset.previewUrl,
   });
   if (!nextMedia) {
     return;

@@ -124,7 +124,11 @@ export const usePoiDetailMedia = ({ instanceId, mode, methods, pt }: MediaInput)
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
   const [mediaReferencesReady, setMediaReferencesReady] = React.useState(mode === 'create');
   const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
+  const [libraryLoading, setLibraryLoading] = React.useState(false);
+  const [libraryError, setLibraryError] = React.useState(false);
   const refreshMediaAssets = React.useCallback(async () => {
+    setLibraryLoading(true);
+    setLibraryError(false);
     try {
       const assets = await listHostMediaAssets({
         fetch: globalThis.fetch.bind(globalThis),
@@ -135,11 +139,17 @@ export const usePoiDetailMedia = ({ instanceId, mode, methods, pt }: MediaInput)
       setMediaAssets(assets);
       return assets;
     } catch {
-      mediaAssetsRef.current = [];
-      setMediaAssets([]);
-      return [];
+      setLibraryError(true);
+      return mediaAssetsRef.current;
+    } finally {
+      setLibraryLoading(false);
     }
   }, [instanceId]);
+  const libraryStatus = {
+    loading: libraryLoading,
+    error: libraryError,
+    onRetry: refreshMediaAssets,
+  };
   const picker = usePoiMediaPicker({
     instanceId,
     methods,
@@ -153,6 +163,7 @@ export const usePoiDetailMedia = ({ instanceId, mode, methods, pt }: MediaInput)
   return {
     leaveGuard,
     mediaDirty,
+    libraryStatus,
     mediaAssets,
     mediaUsages,
     setMediaUsages,

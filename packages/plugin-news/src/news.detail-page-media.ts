@@ -26,6 +26,38 @@ import {
 } from './news.detail-page.helpers.js';
 import type { NewsDetailFormValues } from './news.types.js';
 
+function useNewsMediaLibrary(
+  setMediaAssets: React.Dispatch<React.SetStateAction<readonly HostMediaAssetListItem[]>>
+) {
+  const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
+  const [libraryLoading, setLibraryLoading] = React.useState(false);
+  const [libraryError, setLibraryError] = React.useState(false);
+  const refreshMediaAssets = React.useCallback(async () => {
+    setLibraryLoading(true);
+    setLibraryError(false);
+    try {
+      const assets = await listHostMediaAssets({
+        fetch: globalThis.fetch.bind(globalThis),
+        visibility: 'public',
+      });
+      mediaAssetsRef.current = assets;
+      setMediaAssets(assets);
+      return assets;
+    } catch {
+      setLibraryError(true);
+      return mediaAssetsRef.current;
+    } finally {
+      setLibraryLoading(false);
+    }
+  }, []);
+  const libraryStatus = {
+    loading: libraryLoading,
+    error: libraryError,
+    onRetry: refreshMediaAssets,
+  };
+  return { mediaAssetsRef, refreshMediaAssets, libraryStatus };
+}
+
 export const useNewsDetailMedia = ({
   methods,
   mediaUsages,
@@ -41,22 +73,7 @@ export const useNewsDetailMedia = ({
   setMediaAssets: React.Dispatch<React.SetStateAction<readonly HostMediaAssetListItem[]>>;
   pt: PluginTranslator;
 }>) => {
-  const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
-  const refreshMediaAssets = React.useCallback(async () => {
-    try {
-      const assets = await listHostMediaAssets({
-        fetch: globalThis.fetch.bind(globalThis),
-        visibility: 'public',
-      });
-      mediaAssetsRef.current = assets;
-      setMediaAssets(assets);
-      return assets;
-    } catch {
-      mediaAssetsRef.current = [];
-      setMediaAssets([]);
-      return [];
-    }
-  }, []);
+  const { mediaAssetsRef, refreshMediaAssets, libraryStatus } = useNewsMediaLibrary(setMediaAssets);
   const mediaPickerLabels = React.useMemo(() => createStudioMediaPickerLabels(pt), [pt]);
 
   const isAssetSelectable = React.useCallback(
@@ -136,6 +153,7 @@ export const useNewsDetailMedia = ({
   );
 
   return {
+    libraryStatus,
     mediaPicker,
     mediaPickerLabels,
     isAssetSelectable,

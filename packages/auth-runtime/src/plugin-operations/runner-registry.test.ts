@@ -371,6 +371,39 @@ describe('plugin operation runner registry', () => {
     });
   });
 
+  it.each(['internal-first', 'facade-first'] as const)(
+    'shares registrations between both entry points with %s import order',
+    async (order) => {
+      const first =
+        order === 'internal-first'
+          ? await import('./runner-internal.js')
+          : await import('./runner-registry.js');
+      const second =
+        order === 'internal-first'
+          ? await import('./runner-registry.js')
+          : await import('./runner-internal.js');
+      const handler = vi.fn(async () => undefined);
+      first.registerPluginOperationExecutionHandlers({
+        'waste.sync': {
+          handler,
+          queueName: 'custom',
+          executionLane: 'privileged',
+          supportsCancellation: true,
+        },
+      });
+      expect(second.getRegisteredPluginOperationExecutionRegistry().get('waste.sync')).toEqual(
+        expect.objectContaining({
+          queueName: 'custom',
+          executionLane: 'privileged',
+          supportsCancellation: true,
+        })
+      );
+      expect(second.getRegisteredStudioJobExecutionRegistry()).toBe(
+        first.getRegisteredStudioJobExecutionRegistry()
+      );
+    }
+  );
+
   it('creates a studio job task that delegates lifecycle orchestration through the repository wrapper', async () => {
     const registry = await import('./runner-registry.js');
     const run = vi.fn(async () => undefined);

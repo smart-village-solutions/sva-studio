@@ -3,6 +3,7 @@ import type { InstanceRegistryRepository, SqlExecutor } from '@sva/data-reposito
 
 import {
   createInstanceRegistryRuntime,
+  withInstanceRegistryRepository,
   type InstanceRegistryQueryClient,
 } from './runtime-wiring.js';
 
@@ -12,6 +13,22 @@ const createClient = (): InstanceRegistryQueryClient => ({
 });
 
 describe('runtime wiring', () => {
+  it('releases the unscoped client and propagates a repository work failure', async () => {
+    const client = createClient();
+    const failure = new Error('repository work failed');
+    const deps = {
+      resolvePool: () => ({ connect: async () => client }),
+      createRepository: () => ({}) as InstanceRegistryRepository,
+    };
+
+    await expect(
+      withInstanceRegistryRepository(deps, async () => {
+        throw failure;
+      })
+    ).rejects.toBe(failure);
+    expect(client.release).toHaveBeenCalledOnce();
+    expect(client.query).not.toHaveBeenCalled();
+  });
   it('creates repositories from connected SQL executors and always releases clients', async () => {
     const client = createClient();
     const repository = { marker: 'repository' } as unknown as InstanceRegistryRepository;
@@ -147,12 +164,15 @@ describe('runtime wiring', () => {
   it.each([
     ['after the instance insert', ['insert instance']],
     ['after IAM preparation', ['insert instance', 'prepare IAM']],
-    ['during provisioning artifact creation', ['insert instance', 'prepare IAM', 'create artifacts']],
+    [
+      'during provisioning artifact creation',
+      ['insert instance', 'prepare IAM', 'create artifacts'],
+    ],
   ])('rolls back the complete create lifecycle when it fails %s', async (_description, steps) => {
     const client = createClient();
     const runtime = createInstanceRegistryRuntime({
       resolvePool: () => ({ connect: async () => client }),
-      createRepository: () => ({} as InstanceRegistryRepository),
+      createRepository: () => ({}) as InstanceRegistryRepository,
       serviceDeps: { invalidateHost: vi.fn() },
     });
 

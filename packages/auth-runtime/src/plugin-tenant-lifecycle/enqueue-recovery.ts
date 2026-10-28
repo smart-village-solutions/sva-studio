@@ -4,7 +4,7 @@ import type { PluginTenantLifecycleRecord } from '@sva/data-repositories';
 import type { PluginTenantLifecycleRegistryEntry } from '@sva/plugin-sdk';
 
 import { withStudioJobLifecycleRepositories } from '../plugin-operations/repository.js';
-import { getRegisteredPluginOperationExecutionRegistry } from '../plugin-operations/runner.js';
+import { getRegisteredPluginOperationExecutionRegistry } from '../plugin-operations/runner-internal.js';
 
 export const lifecycleHeartbeatIntervalMs = 30_000;
 export const lifecycleLeaseStaleAfterMs = 120_000;

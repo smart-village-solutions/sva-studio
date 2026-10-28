@@ -84,7 +84,7 @@ vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => (
     ]),
 }));
 
-vi.mock('../iam-instance-registry/repository.js', () => ({
+vi.mock('../iam-instance-registry/repository-access.js', () => ({
   withRegistryRepository: async (work: (repository: unknown) => Promise<unknown>) =>
     work({
       getModuleActivationPolicy: state.getModuleActivationPolicy,
@@ -117,7 +117,7 @@ vi.mock('../plugin-operations/repository.js', () => ({
   withStudioJobLifecycleRepositories: state.withStudioJobLifecycleRepositories,
 }));
 
-vi.mock('../plugin-operations/runner.js', () => ({
+vi.mock('../plugin-operations/runner-internal.js', () => ({
   getRegisteredPluginOperationExecutionRegistry: () =>
     new Map([
       [

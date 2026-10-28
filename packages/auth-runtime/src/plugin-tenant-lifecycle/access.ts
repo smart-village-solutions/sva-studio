@@ -1,7 +1,7 @@
 import { evaluatePluginTenantAccess } from '@sva/plugin-sdk';
 
 import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
-import { withRegistryRepository } from '../iam-instance-registry/repository.js';
+import { withRegistryRepository } from '../iam-instance-registry/repository-access.js';
 import { readConfiguredPluginTenantReadiness } from './read-model.js';
 
 export type ConfiguredPluginTenantAccessDecision =

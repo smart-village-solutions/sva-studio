@@ -12,6 +12,7 @@ vergeben.
 | [035](./035-shadow-consolidated-ci-gates.md)                | Konsolidierte Gates im Shadow-Modus beweisen       |        P1 |       L | 034 genehmigt            | IN PROGRESS |
 | [036](./036-cut-over-and-delete-legacy-ci-orchestration.md) | Cutover durchführen und Alt-Orchestrierung löschen |        P1 |       M | 035 mit 20-Läufe-Parität | BLOCKED     |
 | [038](./038-enforce-mainserver-credential-readiness.md)     | Mainserver-Credential-Readiness erzwingen          |        P1 |       M | OpenSpec-Freigabe        | IN PROGRESS |
+| [042](./042-break-auth-runtime-import-cycles.md)            | Registry-, Lifecycle- und Runner-Zyklen auflösen   |        P2 |       M | keine fachliche Änderung | IN PROGRESS |
 
 Statuswerte: `TODO`, `IN PROGRESS`, `BLOCKED`. Terminale Statuswerte `DONE` und
 `REJECTED` werden zusammen mit der jeweiligen Plandatei archiviert.
@@ -35,6 +36,10 @@ Statuswerte: `TODO`, `IN PROGRESS`, `BLOCKED`. Terminale Statuswerte `DONE` und
   gemergt und Issue #1336 bleibt außerhalb dieses Plans. Production-
   Verifikation und Rollout-Abnahme folgen separat über
   `verify-mainserver-credential-readiness-rollout`.
+- Plan 042 ist ein eigenständiger, verhaltenserhaltender Refactoring-PR für den
+  Registry-/Lifecycle-/Runner-Knoten. Erst Handler-Registrierung von Ausführung
+  lösen, dann den gemeinsamen Registry-Datenzugriff abtrennen; keine Änderung
+  an den Zustandsautomaten oder offenen Betriebsabnahmen der Lifecycle-Arbeiten.
 
 ## Scope-Grenzen
 

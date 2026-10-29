@@ -19,6 +19,8 @@ paths:
         Organisationsauswahl und kein Gleichsetzen mit ausgehenden Organisationsaccounts. Der Main-Server besitzt Jobs
         und Retries. 50 Einträge, 90000 UTF-8-Quellbytes, 100000 Bytes Gesamtrequest, 150000 Bytes Gesamtantwort.
         Übersetzte Einträge sind nicht leer oder ausschließlich Leerraum und umfassen jeweils höchstens 100000 UTF-8-Bytes.
+        Übermittelte Quelltexte dürfen ebenfalls nicht leer oder ausschließlich Leerraum sein;
+        optionale Felder ohne Text werden vor dem Request ausgelassen. Andernfalls folgt 400 vor jedem Anbieteraufruf.
         HTML muss dem vorhandenen Studio-Rich-Text-Profil entsprechen und Tags/
         Attribute unverändert erhalten. Bei Fehler keine Teilergebnisse.
       parameters:
@@ -55,7 +57,7 @@ paths:
                       key:
                         type: string
                         description: title, author, keywords oder contentBlocks.N.title/.intro/.body; eindeutige Schlüssel und genau ein nichtleerer title
-                      text: { type: string, maxLength: 92160 }
+                      text: { type: string, minLength: 1, maxLength: 92160, pattern: '\S' }
                       format:
                         type: string
                         enum: [plain, html]

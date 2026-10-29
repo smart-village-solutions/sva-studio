@@ -33,7 +33,7 @@ const entrySchema = z
     key: z
       .string()
       .regex(/^(title|author|keywords|contentBlocks\.(0|[1-9][0-9]{0,5})\.(title|intro|body))$/),
-    text: z.string().max(92160),
+    text: z.string().max(92160).regex(/\S/u),
     format: z.enum(['plain', 'html']),
   })
   .strict();
@@ -56,7 +56,6 @@ const requestSchema = z
       value.entries.some(
         (entry) => entry.format !== (entry.key.endsWith('.body') ? 'html' : 'plain')
       ) ||
-      value.entries.find((entry) => entry.key === 'title')?.text.trim().length === 0 ||
       value.entries.reduce((size, entry) => size + new TextEncoder().encode(entry.text).length, 0) >
         90000
     )

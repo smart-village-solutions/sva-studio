@@ -90,6 +90,26 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 describe('technical news translation', () => {
+  it.each(['', ' \n\t'])(
+    'rejects empty optional entries before provider work (%j)',
+    async (text) => {
+      for (const key of [
+        'author',
+        'keywords',
+        'contentBlocks.0.title',
+        'contentBlocks.0.intro',
+        'contentBlocks.0.body',
+      ]) {
+        const input = payload();
+        input.entries = [
+          input.entries[0]!,
+          { key, text, format: key.endsWith('.body') ? 'html' : 'plain' },
+        ];
+        expect((await appTranslationServiceHandler(request(input))).status).toBe(400);
+        expect(state.translate).not.toHaveBeenCalled();
+      }
+    }
+  );
   it('returns the complete ordered group and correlation without role grants or persistence', async () => {
     const response = await appTranslationServiceHandler(request());
     expect(response.status).toBe(200);

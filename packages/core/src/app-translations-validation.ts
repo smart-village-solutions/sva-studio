@@ -133,6 +133,11 @@ export const validateCatalogLocales = (input: unknown): AppTranslationLocale[] =
   );
   return [...input].sort() as AppTranslationLocale[];
 };
+// The reviewed App v2 plural functions consume exactly singular and plural branches.
+const requiresPluralBranches = (manifest: CatalogManifest, key: string): boolean =>
+  manifest.contractId === 'sva-mobile-app-texts' &&
+  manifest.manifestVersion === '2' &&
+  ['participationProject.categoryCount', 'wasteCalendar.scheduledWasteReminderCount'].includes(key);
 export const validateCatalogValue = (
   manifest: CatalogManifest,
   key: string,
@@ -142,6 +147,8 @@ export const validateCatalogValue = (
     ? manifest.keys[key]
     : undefined;
   catalogAssert(definition);
+  if (requiresPluralBranches(manifest, key))
+    catalogAssert(Array.isArray(value) && value.length === 2);
   catalogAssert(
     definition.type === 'string'
       ? typeof value === 'string'

@@ -7,6 +7,7 @@ import {
   catalogDigest,
   prepareCatalogRelease,
   validateCatalogManifest,
+  validateCatalogValue,
   type CatalogDraft,
   type CatalogRelease,
   type CatalogTexts,
@@ -308,6 +309,36 @@ describe('mobile-app 5 texts.js format', () => {
     expect(englishFrequency(0, 'daily')).toBe('en: 1x pro Person en: pro Tag einlösbar');
     expect(get(result.texts, ['screenTitles', 'events'])).toBe('fr: Veranstaltungen');
     expect(result.setTextsLocale('unknown')).toBe('de');
+  });
+  it.each(['participationProject.categoryCount', 'wasteCalendar.scheduledWasteReminderCount'])(
+    'rejects incomplete or extra plural branches before persisting %s',
+    async (key) => {
+      for (const count of [1, 3]) {
+        const value = Array.from({ length: count }, () => '{{count}} entries');
+        // Import, manual edits, provider batches and seal use this same validation.
+        expect(() => validateCatalogValue(manifestV2, key, value)).toThrow('invalid_catalog');
+        const invalidManifest = structuredClone(manifestV2);
+        const invalidDefinition = invalidManifest.keys[key];
+        catalogAssert(invalidDefinition);
+        invalidDefinition.defaultValue = value;
+        expect(() => validateCatalogManifest(invalidManifest)).toThrow('invalid_catalog');
+        await expect(release({ [key]: value }, manifestV2)).rejects.toThrow('invalid_catalog');
+      }
+    }
+  );
+  it('preserves variable array lengths outside the reviewed v2 plural functions', () => {
+    const key = 'participationProject.categoryCount';
+    const definition = manifestV2.keys[key];
+    catalogAssert(definition);
+    for (const selected of [
+      { ...manifestV2, manifestVersion: '1' },
+      { ...manifestV2, contractId: 'other-catalog' },
+      { ...manifestV2, keys: { options: definition } },
+    ]) {
+      const selectedKey = Object.hasOwn(selected.keys, key) ? key : 'options';
+      for (const value of [['{{count}} entry'], ['{{count}} a', '{{count}} b', '{{count}} c']])
+        expect(validateCatalogValue(selected, selectedKey, value)).toEqual(value);
+    }
   });
   it('requires both translated plural branches and permits reordering placeholders', async () => {
     const snapshot = await release(

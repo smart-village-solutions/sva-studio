@@ -167,9 +167,18 @@ export const useCatalogSelection = ({ data, requestedSelection }: CatalogEditorP
   const section = useRef<HTMLElement>(null);
   const [selectedLocale, setLocale] = useState<AppTranslationLocale>('de');
   const locale = data.draft.supportedLocales.includes(selectedLocale) ? selectedLocale : 'de';
-  const [key, setKey] = useState(Object.keys(data.draft.manifest.keys)[0] ?? '');
+  const [selectedKey, setKey] = useState(Object.keys(data.draft.manifest.keys)[0] ?? '');
+  const key = Object.prototype.hasOwnProperty.call(data.draft.manifest.keys, selectedKey)
+    ? selectedKey
+    : (Object.keys(data.draft.manifest.keys)[0] ?? '');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+  useEffect(() => {
+    if (key === selectedKey) return;
+    setKey(key);
+    setQuery('');
+    setPage(1);
+  }, [key, selectedKey]);
   useEffect(() => {
     if (!requestedSelection) return;
     setLocale(requestedSelection.locale);

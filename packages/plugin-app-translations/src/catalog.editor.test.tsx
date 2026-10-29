@@ -61,6 +61,100 @@ describe('catalog editor', () => {
     ]);
     expect(await catalogSealIssues(catalog, true)).toEqual([]);
   });
+  it.each(['import', 'changeBase'])(
+    'recovers selection and editing when %s replaces keys on the same draft',
+    async (operation) => {
+      const catalog = structuredClone(data);
+      if (operation === 'changeBase')
+        catalog.draft.scope = { kind: 'municipal', instanceId: 'tenant', organizationId: 'org' };
+      const keys = (prefix: string) =>
+        Object.fromEntries(
+          Array.from({ length: 26 }, (_, index) => [
+            `${prefix}${index}`,
+            {
+              type: 'string' as const,
+              defaultValue: `${prefix} ${index}`,
+              placeholders: {},
+              allowEmpty: false,
+            },
+          ])
+        );
+      const texts = (prefix: string) =>
+        Object.fromEntries(
+          Array.from({ length: 26 }, (_, index) => [
+            `${prefix}${index}`,
+            {
+              value: `${prefix} ${index}`,
+              origin: 'manual' as const,
+              sourceDigest: '',
+              confirmedSourceDigest: null,
+            },
+          ])
+        );
+      catalog.draft.manifest.keys = keys('old');
+      catalog.values = { de: texts('old'), en: texts('old') };
+      catalog.draft.valuesByLocale = structuredClone(catalog.values);
+      const props = {
+        canWrite: true,
+        sourceOnly: false,
+        busy: false,
+        mutate: vi.fn().mockResolvedValue(true),
+        onDirtyChange: vi.fn(),
+        translate: vi.fn(),
+      };
+      const view = render(<CatalogEditor {...props} data={catalog} />);
+      fireEvent.change(screen.getByLabelText('appTranslations.ui.language'), {
+        target: { value: 'en' },
+      });
+      fireEvent.change(screen.getByLabelText('appTranslations.ui.search'), {
+        target: { value: 'old' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'appTranslations.ui.next' }));
+      fireEvent.click(screen.getByRole('button', { name: /^old25 / }));
+      await waitFor(() =>
+        expect(screen.getByLabelText('appTranslations.ui.value')).toHaveProperty('value', 'old 25')
+      );
+      fireEvent.click(screen.getByLabelText('appTranslations.ui.replaceManual'));
+      const updated = structuredClone(catalog);
+      updated.draft.manifestId = 'next-manifest';
+      updated.draft.manifest.manifestVersion = '2';
+      updated.draft.draftRevision = '2';
+      if (operation === 'changeBase') updated.draft.baseReleaseId = 'next-basis';
+      updated.draft.manifest.keys = keys('new');
+      updated.values = { de: texts('new'), en: texts('new') };
+      updated.draft.valuesByLocale = structuredClone(updated.values);
+      expect(updated.draft.id).toBe(catalog.draft.id);
+      view.rerender(<CatalogEditor {...props} data={updated} />);
+      await waitFor(() =>
+        expect(screen.getByLabelText('appTranslations.ui.value')).toHaveProperty('value', 'new 0')
+      );
+      expect(screen.getByLabelText('appTranslations.ui.language')).toHaveProperty('value', 'en');
+      expect(screen.getByLabelText('appTranslations.ui.search')).toHaveProperty('value', '');
+      expect(screen.getByRole('button', { name: /^new0 / }).getAttribute('aria-pressed')).toBe(
+        'true'
+      );
+      expect(screen.queryByRole('button', { name: /^new25 / })).toBeNull();
+      expect(screen.getByLabelText('appTranslations.ui.replaceManual')).toHaveProperty(
+        'checked',
+        false
+      );
+      expect(props.onDirtyChange).toHaveBeenLastCalledWith(false);
+      fireEvent.change(screen.getByLabelText('appTranslations.ui.value'), {
+        target: { value: 'Edited' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'appTranslations.ui.save' }));
+      await waitFor(() =>
+        expect(props.mutate).toHaveBeenCalledWith({
+          operation: 'edit',
+          contractId: 'ui',
+          expectedRevision: '2',
+          locale: 'en',
+          key: 'new0',
+          value: 'Edited',
+        })
+      );
+    }
+  );
   it('offers German translation only on a saved municipal German override', () => {
     const catalog = structuredClone(data);
     catalog.draft.scope = { kind: 'municipal', instanceId: 'tenant', organizationId: 'org' };

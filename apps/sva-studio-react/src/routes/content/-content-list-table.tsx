@@ -112,6 +112,15 @@ const ContentListFilters = ({
       selectedType={routeState.type}
       onTypeChange={(type) => navigateSearch({ type: normalizeTypeFilter(type), page: 1 })}
     />
+    {routeState.type === 'vouchers.voucher' && routeState.poiId ? (
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => navigateSearch({ poiId: undefined, page: 1 })}
+      >
+        {t('content.filters.clearVoucherLocation')}
+      </Button>
+    ) : null}
     {routeState.type === 'faq.faq' ? (
       <div className="flex flex-col gap-1">
         <Label htmlFor="content-faq-language-filter">

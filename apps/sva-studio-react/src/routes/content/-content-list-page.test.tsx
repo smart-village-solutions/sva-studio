@@ -1364,6 +1364,31 @@ describe('ContentListPage', () => {
     expect(updateRouteState(searchState, { type: 'news.article' })).not.toHaveProperty('poiId');
   });
 
+  it('clears only the voucher location filter and returns to the first page', () => {
+    searchState = {
+      type: 'vouchers.voucher', poiId: '33394', status: 'published', page: 3,
+      pageSize: 50, sortBy: 'title', sortDirection: 'asc',
+    };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+    render(<ContentListPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gutscheine aller Orte anzeigen' }));
+
+    const updater = navigateMock.mock.calls.at(-1)?.[0]?.search as
+      (current: Record<string, unknown>) => Record<string, unknown>;
+    expect(updater(searchState)).toEqual({
+      type: 'vouchers.voucher', status: 'published', page: 1, pageSize: 50,
+      sortBy: 'title', sortDirection: 'asc',
+    });
+  });
+
+  it('does not offer a location reset for an unfiltered voucher list', () => {
+    searchState = { type: 'vouchers.voucher' };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+    render(<ContentListPage />);
+    expect(screen.queryByRole('button', { name: 'Gutscheine aller Orte anzeigen' })).toBeNull();
+  });
+
   it('bindet den FAQ-Sprachfilter an URL und Listenabfrage und entfernt ihn bei Typwechsel', () => {
     searchState = {
       type: 'faq.faq',

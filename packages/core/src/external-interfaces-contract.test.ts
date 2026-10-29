@@ -15,6 +15,7 @@ import {
 describe('external-interfaces-contract', () => {
   it('exposes the supported provider and status contracts', () => {
     expect(externalInterfaceContract.typeKeys).toEqual([
+      'deepl',
       'sva_mainserver',
       's3',
       'supabase',

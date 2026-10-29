@@ -27,6 +27,7 @@ type StudioDistribution = (typeof distributions)[number];
 const excludedPackages: Readonly<Record<'studio' | 'ssf', readonly string[]>> = {
   studio: ['plugin-ssf'],
   ssf: [
+    'plugin-app-translations',
     'plugin-categories',
     'plugin-cockpit',
     'plugin-cockpit-cards',
@@ -46,6 +47,7 @@ const excludedPackages: Readonly<Record<'studio' | 'ssf', readonly string[]>> = 
 
 const includedPluginIds: Readonly<Record<'studio' | 'ssf', readonly string[]>> = {
   studio: [
+    'app-translations',
     'categories',
     'cockpit',
     'cockpit-cards',

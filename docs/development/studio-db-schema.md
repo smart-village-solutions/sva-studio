@@ -18,7 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
-- Finaler Soll-Snapshot zuletzt lokal ergänzt: `2026-10-21` (Katalogbasis 0107, Hostrechte 0108 und instanzgebundene DeepL-Schnittstelle 0109; nach Rebase am 23. Oktober 2026 umnummeriert; keine neue Live-Erhebung)
+- Finaler Soll-Snapshot zuletzt lokal regeneriert: `2026-10-29` (verbindlicher Main-Schema106-Ausgangsstand mit regulären Migrationen 0107–0110, einschließlich maschineller Standardebene; kanonisches `pg_dump --schema-only --no-owner --no-privileges`, keine neue Live-Erhebung)
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung

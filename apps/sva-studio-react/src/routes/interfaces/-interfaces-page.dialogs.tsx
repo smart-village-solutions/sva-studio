@@ -121,6 +121,16 @@ type InterfaceFormProps = Readonly<{
   onRetry?: () => void;
 }>;
 
+const deepLRequiresSave = (
+  draft: InstanceInterfaceDraft,
+  deepLEntry: InstanceInterfaceDeepL | undefined
+): boolean =>
+  draft.type === 'deepl' &&
+  (!deepLEntry ||
+    !!draft.config.apiKey ||
+    draft.config.plan !== deepLEntry.config.plan ||
+    draft.enabled !== deepLEntry.enabled);
+
 export const InterfaceForm = ({
   draft,
   hasStoredMapApiKey = false,
@@ -134,12 +144,7 @@ export const InterfaceForm = ({
   onSubmit,
   onRetry = onSubmit,
 }: InterfaceFormProps) => {
-  const deepLNeedsSave =
-    draft.type === 'deepl' &&
-    (!deepLEntry ||
-      !!draft.config.apiKey ||
-      draft.config.plan !== deepLEntry.config.plan ||
-      draft.enabled !== deepLEntry.enabled);
+  const deepLNeedsSave = deepLRequiresSave(draft, deepLEntry);
   const deepLVerified =
     deepLEntry?.status === 'connected' &&
     deepLEntry.config.verifiedCredentialRevision === deepLEntry.config.credentialRevision;

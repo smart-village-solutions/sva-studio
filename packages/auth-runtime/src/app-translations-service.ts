@@ -1,5 +1,9 @@
-/** Bounded technical translation; Main-Server owns persistence and retry. */
-import { deepLTargetCode, isValidInstanceId, readDeepLSettings } from '@sva/core';
+import {
+  deepLTargetCode,
+  isValidInstanceId,
+  readDeepLSettings,
+  type CatalogValue,
+} from '@sva/core';
 import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 import { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
 import { z } from 'zod';
@@ -16,7 +20,6 @@ import {
   verifyServiceJwt,
   isServiceIdentityProviderUnavailable,
 } from './service-token.js';
-
 const bindingSchema = z
   .object({
     issuer: z.url().refine((value) => new URL(value).protocol === 'https:'),
@@ -103,6 +106,88 @@ const readAccess = async (instanceId: string) => {
   return { binding: binding.data, connection, scope, provider, settings, targetCode };
 };
 
+type TranslationServiceInput = z.infer<typeof requestSchema>;
+type TranslationServiceAccess = NonNullable<Awaited<ReturnType<typeof readAccess>>>;
+
+const validTranslatedEntry = (
+  value: CatalogValue,
+  entry: TranslationServiceInput['entries'][number] | undefined
+): boolean => {
+  if (!entry || typeof value !== 'string') return false;
+  if (new TextEncoder().encode(value).length > 100000 || value.trim().length === 0) return false;
+  if (entry.format === 'plain') return !/[<>]/.test(value);
+  return (
+    sanitizeRichTextHtml(value) === value &&
+    JSON.stringify(value.match(/<[^>]*>/g) ?? []) ===
+      JSON.stringify(entry.text.match(/<[^>]*>/g) ?? [])
+  );
+};
+const assertTranslatedEntries = (
+  input: TranslationServiceInput,
+  translated: CatalogValue[]
+): void => {
+  if (
+    translated.length !== input.entries.length ||
+    translated.some((value, index) => !validTranslatedEntry(value, input.entries[index]))
+  )
+    throw new Error('deepl_invalid_response');
+};
+const accessUnchanged = (
+  current: TranslationServiceAccess | null,
+  access: TranslationServiceAccess
+): boolean =>
+  current !== null &&
+  JSON.stringify(current.binding) === JSON.stringify(access.binding) &&
+  current.scope.generation === access.scope.generation &&
+  current.connection.id === access.connection.id &&
+  JSON.stringify(current.connection.updatedAt) === JSON.stringify(access.connection.updatedAt) &&
+  current.provider.id === access.provider.id &&
+  JSON.stringify(current.provider.updatedAt) === JSON.stringify(access.provider.updatedAt) &&
+  current.settings.credentialRevision === access.settings.credentialRevision &&
+  current.targetCode === access.targetCode;
+const translationFailureIsTerminal = (error: unknown): boolean =>
+  (error instanceof Error &&
+    'cause' in error &&
+    z.object({ retry: z.object({ kind: z.literal('terminal') }) }).safeParse(error.cause)
+      .success) ||
+  [
+    'deepl_invalid_response',
+    'deepl_text_too_large',
+    'deepl_auth_failed',
+    'deepl_quota_exceeded',
+    'catalog_setup_required',
+  ].includes(error instanceof Error ? error.message : '');
+
+/** Bounded technical translation; Main-Server owns persistence and retry. */
+
+const authenticateTranslation = async (
+  input: TranslationServiceInput,
+  token: string,
+  correlation: Record<string, unknown>
+) => {
+  const connection = await loadDefaultExternalInterfaceRecord(input.instanceId, 'sva_mainserver');
+  const binding = bindingSchema.safeParse(connection?.publicConfig.translationService);
+  if (!connection?.enabled || !binding.success)
+    return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
+  let identity;
+  try {
+    identity = await verifyServiceJwt(token, binding.data);
+  } catch (error) {
+    const unavailable = isServiceIdentityProviderUnavailable(error);
+    return reply(unavailable ? 503 : 401, {
+      ...correlation,
+      error: unavailable ? 'service_unavailable' : 'service_authentication_invalid',
+      retryable: unavailable,
+    });
+  }
+  if (identity.azp !== binding.data.clientId || identity.sub !== binding.data.subject)
+    return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
+  const access = await readAccess(input.instanceId);
+  if (!access || JSON.stringify(access.binding) !== JSON.stringify(binding.data))
+    return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
+  return { access, identity };
+};
+
 export const appTranslationServiceHandler = async (request: Request): Promise<Response> => {
   if (request.method !== 'POST')
     return reply(405, { error: 'method_not_allowed', retryable: false });
@@ -126,29 +211,12 @@ export const appTranslationServiceHandler = async (request: Request): Promise<Re
     targetLocale: input.targetLocale,
   };
   try {
-    const connection = await loadDefaultExternalInterfaceRecord(input.instanceId, 'sva_mainserver');
-    const binding = bindingSchema.safeParse(connection?.publicConfig.translationService);
-    if (!connection?.enabled || !binding.success)
-      return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
-    let identity;
-    try {
-      identity = await verifyServiceJwt(token, binding.data);
-    } catch (error) {
-      const unavailable = isServiceIdentityProviderUnavailable(error);
-      return reply(unavailable ? 503 : 401, {
-        ...correlation,
-        error: unavailable ? 'service_unavailable' : 'service_authentication_invalid',
-        retryable: unavailable,
-      });
-    }
-    if (identity.azp !== binding.data.clientId || identity.sub !== binding.data.subject)
-      return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
-    const access = await readAccess(input.instanceId);
-    if (!access || JSON.stringify(access.binding) !== JSON.stringify(binding.data))
-      return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
+    const authenticated = await authenticateTranslation(input, token, correlation);
+    if (authenticated instanceof Response) return authenticated;
+    const { access, identity } = authenticated;
     const limited = consumeRateLimit({
       instanceId: input.instanceId,
-      actorKeycloakSubject: `translation-service:${binding.data.subject}`,
+      actorKeycloakSubject: `translation-service:${access.binding.subject}`,
       scope: 'bulk',
     });
     if (limited) return reply(429, { ...correlation, error: 'rate_limited', retryable: true });
@@ -168,37 +236,9 @@ export const appTranslationServiceHandler = async (request: Request): Promise<Re
         error: 'service_authentication_invalid',
         retryable: false,
       });
-    if (
-      translated.length !== input.entries.length ||
-      translated.some((value, index) => {
-        const entry = input.entries[index];
-        return (
-          !entry ||
-          typeof value !== 'string' ||
-          new TextEncoder().encode(value).length > 100000 ||
-          value.trim().length === 0 ||
-          (entry.format === 'html' &&
-            (sanitizeRichTextHtml(value) !== value ||
-              JSON.stringify(value.match(/<[^>]*>/g) ?? []) !==
-                JSON.stringify(entry.text.match(/<[^>]*>/g) ?? []))) ||
-          (entry.format === 'plain' && /[<>]/.test(value))
-        );
-      })
-    )
-      throw new Error('deepl_invalid_response');
+    assertTranslatedEntries(input, translated);
     const current = await readAccess(input.instanceId);
-    if (
-      !current ||
-      JSON.stringify(current.binding) !== JSON.stringify(access.binding) ||
-      current.scope.generation !== access.scope.generation ||
-      current.connection.id !== access.connection.id ||
-      JSON.stringify(current.connection.updatedAt) !==
-        JSON.stringify(access.connection.updatedAt) ||
-      current.provider.id !== access.provider.id ||
-      JSON.stringify(current.provider.updatedAt) !== JSON.stringify(access.provider.updatedAt) ||
-      current.settings.credentialRevision !== access.settings.credentialRevision ||
-      current.targetCode !== access.targetCode
-    )
+    if (!accessUnchanged(current, access))
       return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
     const result = {
       ...correlation,
@@ -208,19 +248,7 @@ export const appTranslationServiceHandler = async (request: Request): Promise<Re
       throw new Error('deepl_invalid_response');
     return reply(200, result);
   } catch (error) {
-    const code = error instanceof Error ? error.message : '';
-    const terminal =
-      (error instanceof Error &&
-        'cause' in error &&
-        z.object({ retry: z.object({ kind: z.literal('terminal') }) }).safeParse(error.cause)
-          .success) ||
-      [
-        'deepl_invalid_response',
-        'deepl_text_too_large',
-        'deepl_auth_failed',
-        'deepl_quota_exceeded',
-        'catalog_setup_required',
-      ].includes(code);
+    const terminal = translationFailureIsTerminal(error);
     return reply(terminal ? 502 : 503, {
       ...correlation,
       error: terminal ? 'translation_failed' : 'service_unavailable',

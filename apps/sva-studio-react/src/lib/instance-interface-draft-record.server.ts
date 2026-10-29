@@ -1,11 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import {
-  appTranslationLanguage,
-  isAppTranslationLocale,
-  deepLTargetCode,
-  readDeepLSettings,
-  type ExternalInterfaceRecord,
-} from '@sva/core';
+import { type ExternalInterfaceRecord } from '@sva/core';
 import {
   loadDefaultExternalInterfaceRecord,
   loadExternalInterfaceRecordById,
@@ -22,6 +16,7 @@ import {
 } from './instance-interface-record-helpers.server.js';
 import { buildMailTransportRecord } from './instance-interface-mail-record.server.js';
 import { buildMapGeocodingRecord } from './instance-interface-map-record.server.js';
+import { buildDeepLRecord } from './instance-interface-deepl-record.server.js';
 const logger = createSdkLogger({ component: 'instance-interfaces-server' });
 
 const buildS3Record = (input: {
@@ -163,6 +158,17 @@ const buildPostgresqlRecord = (input: {
   };
 };
 
+const hasSecretInput = (draft: Parameters<typeof buildRecordFromDraft>[0]['draft']): boolean =>
+  draft.type === 's3'
+    ? draft.config.secretAccessKey.length > 0
+    : draft.type === 'supabase'
+      ? draft.config.databaseUrl.length > 0 || draft.config.serviceRoleKey.length > 0
+      : draft.type === 'postgresql'
+        ? draft.config.databaseUrl.length > 0
+        : draft.type === 'mailTransport'
+          ? draft.config.password.length > 0
+          : draft.config.apiKey.length > 0;
+
 export const buildRecordFromDraft = async (input: {
   readonly instanceId: string;
   readonly draft: Extract<
@@ -176,17 +182,7 @@ export const buildRecordFromDraft = async (input: {
     workspace_id: input.instanceId,
     interface_type: input.draft.type,
     existing_interface_id: input.existingId,
-    has_secret_input:
-      input.draft.type === 's3'
-        ? input.draft.config.secretAccessKey.length > 0
-        : input.draft.type === 'supabase'
-          ? input.draft.config.databaseUrl.length > 0 ||
-            input.draft.config.serviceRoleKey.length > 0
-          : input.draft.type === 'postgresql'
-            ? input.draft.config.databaseUrl.length > 0
-            : input.draft.type === 'mailTransport'
-              ? input.draft.config.password.length > 0
-              : input.draft.config.apiKey.length > 0,
+    has_secret_input: hasSecretInput(input.draft),
   });
   const existing = input.existingId
     ? await loadExternalInterfaceRecordById(input.instanceId, input.existingId)
@@ -255,80 +251,8 @@ export const buildRecordFromDraft = async (input: {
     previousSecrets,
   } as const;
 
-  if (input.draft.type === 'deepl') {
-    const config = input.draft.config;
-    const previous = existing ? readDeepLSettings(existing.publicConfig) : undefined;
-    if (config.revision !== (previous?.revision ?? '0')) throw new Error('interface_conflict');
-    const apiKey = config.apiKey.trim() || previousSecrets.apiKey || '';
-    if (input.draft.enabled && !apiKey) throw new Error('deepl_secret_missing');
-    const changed =
-      !previous ||
-      (!existing?.enabled && input.draft.enabled) ||
-      config.plan !== previous.plan ||
-      (!!config.apiKey.trim() && config.apiKey.trim() !== previousSecrets.apiKey);
-    const selected = [...config.selectedLocales];
-    if (
-      selected.some((locale) => !previous?.selectedLocales.includes(locale)) &&
-      (existing?.lastCheckStatus !== 'succeeded' ||
-        previous?.verifiedCredentialRevision !== previous?.credentialRevision)
-    )
-      throw new Error('invalid_config');
-    if (
-      selected.some((locale) => !isAppTranslationLocale(locale)) ||
-      new Set(selected.map(appTranslationLanguage)).size !== selected.length ||
-      selected.some(
-        (locale) =>
-          appTranslationLanguage(locale) === 'de' ||
-          !(changed
-            ? previous?.selectedLocales.includes(locale)
-            : previous?.availableLanguages.some(
-                (language) =>
-                  language.code ===
-                  deepLTargetCode(locale, config.englishVariant, previous?.availableLanguages)
-              ))
-      )
-    )
-      throw new Error('invalid_config');
-    const ciphertext = buildSecretCiphertext({
-      interfaceId,
-      secretConfig: apiKey ? { apiKey } : {},
-    });
-    if (apiKey && !ciphertext) throw new Error('deepl_secret_unavailable');
-    return {
-      id: interfaceId,
-      instanceId: input.instanceId,
-      typeKey: 'deepl',
-      ownerKind: 'host',
-      ownerId: 'host',
-      displayName: input.draft.name.trim(),
-      alias: 'deepl',
-      enabled: input.draft.enabled,
-      isDefault: true,
-      category: 'api',
-      authMode: 'api_key',
-      baseUrl: config.plan === 'free' ? 'https://api-free.deepl.com' : 'https://api.deepl.com',
-      publicConfig: {
-        ...existing?.publicConfig,
-        revision: randomUUID(),
-        credentialRevision: changed ? randomUUID() : previous!.credentialRevision,
-        verifiedCredentialRevision: changed ? null : (previous?.verifiedCredentialRevision ?? null),
-        plan: config.plan,
-        englishVariant: config.englishVariant,
-        selectedLocales: selected,
-        availableLanguages: changed ? [] : (previous?.availableLanguages ?? []),
-      },
-      secretConfigCiphertext: ciphertext,
-      statusCheckKind: 'deepl',
-      visibleStatus: !input.draft.enabled
-        ? 'disabled'
-        : changed
-          ? 'unknown'
-          : (existing?.visibleStatus ?? 'unknown'),
-      lastCheckStatus: changed ? undefined : existing?.lastCheckStatus,
-      lastCheckedAt: changed ? undefined : existing?.lastCheckedAt,
-      lastCheckErrorCode: changed ? undefined : existing?.lastCheckErrorCode,
-    };
-  }
+  if (input.draft.type === 'deepl') return buildDeepLRecord({ ...sharedInput, draft: input.draft });
+
   return input.draft.type === 's3'
     ? buildS3Record({ ...sharedInput, draft: input.draft })
     : input.draft.type === 'supabase'

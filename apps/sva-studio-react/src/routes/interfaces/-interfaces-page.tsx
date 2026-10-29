@@ -2,21 +2,18 @@ import React from 'react';
 
 import {
   Button,
-  type StudioColumnDef,
   StudioDataTable,
   StudioDestructiveActionDialog,
   StudioPageTitle,
   StudioPersistentActionResult,
 } from '@sva/studio-ui-react';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
-import { Badge } from '../../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import {
   createStudioDataTableLabels,
   createStudioDataTableSortingLabels,
 } from '../../components/studio-data-table-labels';
 import { t } from '../../i18n';
-import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { instanceInterfaceTypeMeta, type InstanceInterface } from '../../lib/instance-interfaces';
 import {
   draftFromEntry,
@@ -24,74 +21,7 @@ import {
   useInterfacesPageController,
 } from './-interfaces-page.controller';
 import { InterfaceForm, TypePickerDialog } from './-interfaces-page.dialogs';
-
-type DisplayStatus = InstanceInterface['status'] | 'configured';
-
-const statusBadgeClass: Record<DisplayStatus, string> = {
-  connected: 'border-primary/40 bg-primary/15 text-primary',
-  configured: 'border-primary/40 bg-primary/10 text-primary',
-  error: 'border-destructive/40 bg-destructive/10 text-destructive',
-  disabled: 'border-muted-foreground/30 bg-muted text-muted-foreground',
-  unknown: 'border-secondary/40 bg-secondary/10 text-secondary',
-};
-
-const statusTranslationKey: Record<DisplayStatus, string> = {
-  connected: 'interfaces.status.connected',
-  configured: 'interfaces.status.configured',
-  error: 'interfaces.status.error',
-  disabled: 'interfaces.status.disabled',
-  unknown: 'interfaces.status.unknown',
-};
-
-const healthcheckMessageTranslationKeys: Readonly<Record<string, string>> = {
-  disabled: 'interfaces.status.healthcheck.disabled',
-  secret_missing: 'interfaces.status.healthcheck.secretMissing',
-  map_geocoding_provider_unsupported:
-    'interfaces.status.healthcheck.mapGeocodingProviderUnsupported',
-  map_geocoding_auth_failed: 'interfaces.status.healthcheck.mapGeocodingAuthFailed',
-  map_geocoding_rate_limited: 'interfaces.status.healthcheck.mapGeocodingRateLimited',
-  map_geocoding_unreachable: 'interfaces.status.healthcheck.mapGeocodingUnreachable',
-  map_geocoding_provider_error: 'interfaces.status.healthcheck.mapGeocodingProviderError',
-};
-
-const getStatusMessage = (entry: InstanceInterface): string | undefined => {
-  const translationKey =
-    entry.type === 'mapGeocoding' && entry.errorCode
-      ? healthcheckMessageTranslationKeys[entry.errorCode]
-      : undefined;
-  return translationKey ? t(translationKey) : entry.statusMessage;
-};
-
-const getDisplayStatus = (entry: InstanceInterface): DisplayStatus =>
-  entry.type === 'mapGeocoding' &&
-  entry.status === 'unknown' &&
-  entry.enabled &&
-  !entry.config.killSwitchEnabled &&
-  entry.apiKeyConfigured
-    ? 'configured'
-    : entry.status;
-
-const getInterfaceEndpoint = (entry: InstanceInterface): string => {
-  if (entry.type === 'deepl')
-    return entry.config.plan === 'free' ? 'api-free.deepl.com' : 'api.deepl.com';
-  if (entry.type === 'mainserver') return entry.config.graphqlBaseUrl || '-';
-  if (entry.type === 's3') {
-    const { endpoint, bucket } = entry.config;
-    return endpoint && bucket ? `${endpoint}/${bucket}` : endpoint || '-';
-  }
-  if (entry.type === 'supabase') {
-    return entry.config.projectUrl || '-';
-  }
-  if (entry.type === 'postgresql') {
-    return entry.config.schemaName || '-';
-  }
-  if (entry.type === 'mapGeocoding') {
-    return (
-      entry.config.suggestEndpoint || entry.config.geocodeEndpoint || entry.config.styleUrl || '-'
-    );
-  }
-  return entry.config.host || '-';
-};
+import { createInterfaceColumns } from './-interfaces-page.columns';
 
 const renderInterfaceRowActions = (
   row: InstanceInterface,
@@ -179,69 +109,7 @@ export const InterfacesPage = () => {
     }
   }, [deleteResultMessage]);
 
-  const columns = React.useMemo<readonly StudioColumnDef<InstanceInterface>[]>(
-    () => [
-      {
-        id: 'name',
-        header: t('interfaces.table.headerName'),
-        cell: (row) => row.name,
-        sortable: true,
-        sortLabel: t('interfaces.table.headerName'),
-        sortValue: (row) => row.name.toLowerCase(),
-      },
-      {
-        id: 'type',
-        header: t('interfaces.table.headerType'),
-        cell: (row) => t(instanceInterfaceTypeMeta[row.type].titleKey),
-        sortable: true,
-        sortLabel: t('interfaces.table.headerType'),
-        sortValue: (row) => row.type,
-      },
-      {
-        id: 'endpoint',
-        header: t('interfaces.table.headerEndpoint'),
-        cell: (row) => (
-          <span className="break-all font-mono text-xs text-muted-foreground">
-            {getInterfaceEndpoint(row)}
-          </span>
-        ),
-      },
-      {
-        id: 'status',
-        header: t('interfaces.table.headerStatus'),
-        cell: (row) => {
-          const displayStatus = getDisplayStatus(row);
-          const statusMessage = getStatusMessage(row);
-          return (
-            <div className="flex max-w-sm flex-col gap-1">
-              <Badge
-                className={`w-fit rounded-full ${statusBadgeClass[displayStatus]}`}
-                variant="outline"
-              >
-                {t(statusTranslationKey[displayStatus])}
-              </Badge>
-              {statusMessage ? (
-                <span className="text-xs leading-snug text-muted-foreground">{statusMessage}</span>
-              ) : null}
-            </div>
-          );
-        },
-        sortable: true,
-        sortLabel: t('interfaces.table.headerStatus'),
-        sortValue: (row) => getDisplayStatus(row),
-      },
-      {
-        id: 'lastChecked',
-        header: t('interfaces.table.headerLastChecked'),
-        cell: (row) =>
-          row.lastCheckedAt ? (formatEditorDateTime(row.lastCheckedAt) ?? row.lastCheckedAt) : '-',
-        sortable: true,
-        sortLabel: t('interfaces.table.headerLastChecked'),
-        sortValue: (row) => row.lastCheckedAt ?? '',
-      },
-    ],
-    []
-  );
+  const columns = React.useMemo(createInterfaceColumns, []);
 
   const hasLoadedInterfacesContext = instanceId.length > 0 || interfaces.length > 0;
   const showBlockingLoadError = errorMessage !== null && !isLoading && !hasLoadedInterfacesContext;

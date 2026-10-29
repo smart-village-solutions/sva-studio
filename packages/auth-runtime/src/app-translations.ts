@@ -1,149 +1,45 @@
 /** Session-authorized catalog operations and their local editor transport. */
-import {
-  APP_TRANSLATION_MAX_LOCALES,
-  deepLTargetCode,
-  readDeepLSettings,
-  isAppTranslationLocale,
-  AppTranslationError,
-  type CatalogScope,
-  type AppTranslationLocale,
-  type DeepLSetupStatus,
-  type ExternalInterfaceRecord,
-} from '@sva/core';
-import {
-  createAppTranslationRepository,
-  type AppTranslationRepository,
-} from '@sva/data-repositories/server';
-import { evaluateAuthorizeDecision } from '@sva/iam-core';
+import { AppTranslationError } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
-import { z } from 'zod';
 import { withAuthenticatedUser } from './middleware.js';
-import { getSession } from './redis-session.js';
 import { validateCsrf } from './shared/request-security.js';
-import { ensurePlatformAccess } from './iam-instance-registry/http.js';
-import { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
 import { withIamAppDb } from './db.js';
-import { readConfiguredPluginTenantAccess } from './plugin-tenant-lifecycle/access.js';
-import { getDeepLSetupStatus, readDeepLSetupStatus } from './app-translations-deepl.js';
-
-import {
-  catalogTranslationRequest,
-  startCatalogTranslation,
-  readCatalogTranslationJob,
-  catalogTranslationStatus,
-} from './app-translations-jobs.js';
-
+import { readDeepLSetupStatus } from './app-translations-deepl.js';
+import { operationSchema, actionFor, type Operation } from './app-translations-operations.js';
+import { authorizeCatalogOperation } from './app-translations-execution.js';
+import { runCatalogOperation } from './app-translations-execution.js';
 const logger = createSdkLogger({ component: 'app-translations' });
-const contractId = z.string().regex(/^[a-z][a-z0-9-]{0,63}$/);
-const expectedRevision = z.string().regex(/^(0|[1-9][0-9]{0,17})$/);
-const localeSchema = z.string().refine(isAppTranslationLocale);
-const locales = z.array(localeSchema).min(1).max(APP_TRANSLATION_MAX_LOCALES);
-const textFields = {
-  contractId,
-  expectedRevision,
-  locale: localeSchema,
-  key: z.string().min(1).max(128),
-};
-const operationSchema = z.discriminatedUnion('operation', [
-  z.object({ operation: z.literal('overview') }).strict(),
-  catalogTranslationRequest,
-  z.object({ operation: z.literal('translationStatus'), contractId }).strict(),
-  z.object({ operation: z.literal('configureLocales'), contractId, expectedRevision }).strict(),
-  z.object({ operation: z.literal('read'), contractId }).strict(),
-  z.object({ operation: z.literal('readRelease'), releaseId: z.uuid() }).strict(),
-  z
-    .object({
-      operation: z.literal('downloadTexts'),
-      releaseId: z.uuid(),
-      mode: z.enum(['source', 'translations']).optional(),
-    })
-    .strict(),
-  z
-    .object({ operation: z.literal('import'), manifest: z.unknown(), expectedRevision, locales })
-    .strict(),
-  z.object({ operation: z.literal('createMunicipal'), baseReleaseId: z.uuid(), locales }).strict(),
-  z
-    .object({
-      operation: z.literal('changeBase'),
-      contractId,
-      expectedRevision,
-      baseReleaseId: z.uuid(),
-      locales,
-    })
-    .strict(),
-  z
-    .object({
-      operation: z.literal('edit'),
-      ...textFields,
-      value: z.union([z.string().max(32768), z.array(z.string().max(32768)).min(1).max(100)]),
-    })
-    .strict(),
-  z.object({ operation: z.literal('reset'), ...textFields }).strict(),
-  z.object({ operation: z.literal('confirm'), ...textFields }).strict(),
-  z.object({ operation: z.literal('seal'), contractId, expectedRevision }).strict(),
-]);
-type Operation = z.infer<typeof operationSchema>;
-const actionFor = (op: Operation): string =>
-  op.operation === 'import'
-    ? 'app-translations.manifestImport'
-    : ['overview', 'read', 'readRelease', 'downloadTexts', 'translationStatus'].includes(
-          op.operation
-        )
-      ? 'app-translations.catalog.read'
-      : op.operation === 'seal'
-        ? 'app-translations.catalog.publish'
-        : 'app-translations.catalog.write';
-const dispatch = (
-  repo: AppTranslationRepository,
-  op: Operation,
-  sourceOnly = false,
-  allowedLocales: readonly AppTranslationLocale[] = ['de'],
-  targetCodes: Readonly<Record<string, string>> = {}
-) => {
-  switch (op.operation) {
-    case 'downloadTexts':
-    case 'translate':
-    case 'translationStatus':
-      throw new AppTranslationError('catalog_forbidden');
-    case 'configureLocales':
-      return repo.configureLocales(op.contractId, op.expectedRevision, allowedLocales);
-    case 'overview':
-      return repo.overview();
-    case 'read':
-      return repo.readEffective(op.contractId);
-    case 'readRelease':
-      return repo.loadRelease(op.releaseId);
-    case 'import':
-      return repo.importManifest(op.manifest, op.expectedRevision, op.locales);
-    case 'createMunicipal':
-      return repo.createMunicipalDraft(op.baseReleaseId, op.locales);
-    case 'changeBase':
-      return repo.changeBase(op.contractId, op.expectedRevision, op.baseReleaseId, op.locales);
-    case 'edit':
-      return repo.editText(
-        op.contractId,
-        op.expectedRevision,
-        op.locale,
-        op.key,
-        op.value,
-        targetCodes[op.locale]
-      );
-    case 'reset':
-      return repo.resetOverride(op.contractId, op.expectedRevision, op.locale, op.key);
-    case 'confirm':
-      return repo.confirmCorrection(
-        op.contractId,
-        op.expectedRevision,
-        op.locale,
-        op.key,
-        targetCodes[op.locale]
-      );
-    case 'seal':
-      return repo.seal(op.contractId, op.expectedRevision, sourceOnly, targetCodes);
-  }
-};
 const response = (status: number, value: unknown) =>
   Response.json(value, { status, headers: { 'Cache-Control': 'no-store' } });
+
+const forbiddenGermanOperation = (op: Operation): boolean =>
+  ['translate', 'translationStatus', 'configureLocales', 'confirm'].includes(op.operation) ||
+  ('locale' in op && op.locale !== 'de') ||
+  ('locales' in op && !!op.locales && (op.locales.length !== 1 || op.locales[0] !== 'de'));
+const forbiddenTranslationOperation = (op: Operation): boolean =>
+  ['createMunicipal', 'changeBase'].includes(op.operation) ||
+  ('locale' in op && op.locale === 'de');
+const validateCatalogRequest = (request: Request, op: Operation) => {
+  const headerMode = request.headers.get('x-sva-catalog-mode');
+  const mode = op.operation === 'downloadTexts' ? (op.mode ?? headerMode) : headerMode;
+  if (op.operation === 'downloadTexts' && op.mode && headerMode && op.mode !== headerMode)
+    return response(400, { error: 'invalid_catalog' });
+  if (mode !== null && !['source', 'translations'].includes(mode))
+    return response(400, { error: 'invalid_catalog' });
+  const sourceOnly = mode === 'source';
+  if (sourceOnly ? forbiddenGermanOperation(op) : forbiddenTranslationOperation(op))
+    return response(403, { error: 'catalog_forbidden' });
+  const action = sourceOnly
+    ? actionFor(op).replace('app-translations.', 'app-texts.')
+    : actionFor(op);
+  const isRead = ['overview', 'read', 'readRelease', 'downloadTexts', 'translationStatus'].includes(
+    op.operation
+  );
+  if (!isRead && request.method !== 'POST')
+    return response(405, { error: 'invalid_catalog_method' });
+  if (!isRead && validateCsrf(request)) return response(403, { error: 'catalog_forbidden' });
+  return { sourceOnly, action, isRead };
+};
 
 /** Scope comes only from the current stored session, never from operation payloads. */
 export const executeAppTranslationOperation = (request: Request, raw: unknown): Promise<Response> =>
@@ -151,275 +47,25 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
     const parsed = operationSchema.safeParse(raw);
     if (!parsed.success) return response(400, { error: 'invalid_catalog' });
     const op = parsed.data;
-    const headerMode = request.headers.get('x-sva-catalog-mode');
-    const mode = op.operation === 'downloadTexts' ? (op.mode ?? headerMode) : headerMode;
-    if (op.operation === 'downloadTexts' && op.mode && headerMode && op.mode !== headerMode)
-      return response(400, { error: 'invalid_catalog' });
-    if (mode !== null && !['source', 'translations'].includes(mode))
-      return response(400, { error: 'invalid_catalog' });
-    const sourceOnly = mode === 'source';
-    if (
-      sourceOnly &&
-      (op.operation === 'translate' ||
-        op.operation === 'translationStatus' ||
-        op.operation === 'configureLocales' ||
-        op.operation === 'confirm' ||
-        ('locale' in op && op.locale !== 'de') ||
-        ('locales' in op && op.locales && (op.locales.length !== 1 || op.locales[0] !== 'de')))
-    )
-      return response(403, { error: 'catalog_forbidden' });
-    if (
-      !sourceOnly &&
-      (op.operation === 'createMunicipal' ||
-        op.operation === 'changeBase' ||
-        ('locale' in op && op.locale === 'de'))
-    )
-      return response(403, { error: 'catalog_forbidden' });
-    const action = sourceOnly
-      ? actionFor(op).replace('app-translations.', 'app-texts.')
-      : actionFor(op);
-    const isRead = [
-      'overview',
-      'read',
-      'readRelease',
-      'downloadTexts',
-      'translationStatus',
-    ].includes(op.operation);
-    if (!isRead && request.method !== 'POST')
-      return response(405, { error: 'invalid_catalog_method' });
-    if (!isRead && validateCsrf(request)) return response(403, { error: 'catalog_forbidden' });
+    const validated = validateCatalogRequest(request, op);
+    if (validated instanceof Response) return validated;
+    const { sourceOnly, action, isRead } = validated;
     try {
-      const session = await getSession(ctx.sessionId, { decryptTokens: false });
-      if (!session || session.userId !== ctx.user.id)
-        return response(403, { error: 'catalog_forbidden' });
-      let scope: CatalogScope;
-      let canManageInterfaces = false;
-      if (session.auth?.kind === 'platform' && !ctx.user.instanceId) {
-        // The existing Root administrator policy grants these explicit catalog actions.
-        if (ensurePlatformAccess(request, { ...ctx, authKind: 'session' }))
-          return response(403, { error: 'catalog_forbidden' });
-        if (!sourceOnly) return response(403, { error: 'catalog_forbidden' });
-        scope = { kind: 'global' };
-      } else {
-        if (
-          op.operation === 'import' ||
-          session.auth?.kind !== 'instance' ||
-          session.auth.instanceId !== ctx.user.instanceId ||
-          !ctx.activeOrganizationId ||
-          session.activeOrganizationId !== ctx.activeOrganizationId
-        )
-          return response(403, { error: 'catalog_forbidden' });
-        scope = {
-          kind: 'municipal',
-          instanceId: session.auth.instanceId,
-          organizationId: ctx.activeOrganizationId,
-        };
-        const permissions = await resolveEffectivePermissions({
-          instanceId: scope.instanceId,
-          keycloakSubject: ctx.user.id,
-          organizationId: scope.organizationId,
-        });
-        if (!permissions.ok) return response(503, { error: 'catalog_unavailable' });
-        canManageInterfaces = evaluateAuthorizeDecision(
-          {
-            instanceId: scope.instanceId,
-            action: 'integration.manage',
-            resource: { type: 'integration', organizationId: scope.organizationId },
-            context: { organizationId: scope.organizationId },
-          },
-          permissions.permissions
-        ).allowed;
-        if (
-          !evaluateAuthorizeDecision(
-            {
-              instanceId: scope.instanceId,
-              action,
-              resource: {
-                type: sourceOnly ? 'app-texts' : 'app-translations',
-                organizationId: scope.organizationId,
-              },
-              context: { organizationId: scope.organizationId },
-            },
-            permissions.permissions
-          ).allowed
-        )
-          return response(403, { error: 'catalog_forbidden' });
-      }
-      const expectedScope = request.headers.get('x-sva-catalog-scope');
-      if (expectedScope !== null && expectedScope !== JSON.stringify(scope))
-        return response(409, { error: 'catalog_conflict' });
-      if (scope.kind === 'municipal' && !sourceOnly) {
-        const access = await readConfiguredPluginTenantAccess(scope.instanceId, 'app-translations');
-        if (!access.allowed) return response(403, { error: 'catalog_forbidden' });
-      }
-      const result = await withIamAppDb(async (client) => {
-        if (scope.kind === 'municipal') {
-          await client.query("SELECT set_config('app.instance_id', $1, true)", [scope.instanceId]);
-          const active = await client.query(
-            `SELECT o.id FROM iam.organizations o JOIN iam.instances i ON i.id = o.instance_id WHERE o.instance_id = $1 AND o.id = $2::uuid AND o.is_active AND i.status = 'active'`,
-            [scope.instanceId, scope.organizationId]
-          );
-          if (!active.rows[0]) throw new AppTranslationError('catalog_forbidden');
-        }
-        let setup: DeepLSetupStatus | undefined;
-        let targetCodes: Record<string, string> = {};
-        if (scope.kind === 'municipal' && !sourceOnly) {
-          if (!isRead) {
-            const module = await client.query(
-              `SELECT m.module_id FROM iam.instance_modules m JOIN iam.instance_plugin_lifecycle l ON l.instance_id=m.instance_id AND l.plugin_id=m.module_id WHERE m.instance_id=$1 AND m.module_id='app-translations' AND m.effective_active AND l.access_state='active' FOR SHARE OF m,l`,
-              [scope.instanceId]
-            );
-            if (!module.rows[0]) throw new AppTranslationError('catalog_forbidden');
-          }
-          // Hold the saved configuration through mutation, so rotation or language changes cannot race a seal.
-          const provider = await client.query<ExternalInterfaceRecord>(
-            `SELECT id,type_key AS "typeKey",owner_kind AS "ownerKind",enabled,public_config_json AS "publicConfig",secret_config_ciphertext AS "secretConfigCiphertext",last_check_status AS "lastCheckStatus" FROM iam.instance_external_interfaces WHERE instance_id=$1 AND type_key='deepl' AND owner_kind='host' AND is_default ${isRead ? '' : 'FOR SHARE'}`,
-            [scope.instanceId]
-          );
-          setup = getDeepLSetupStatus(provider.rows[0] ?? null);
-          const settings = provider.rows[0]
-            ? readDeepLSettings(provider.rows[0].publicConfig)
-            : undefined;
-          if (settings)
-            targetCodes = Object.fromEntries(
-              settings.selectedLocales.map((locale) => [
-                locale,
-                deepLTargetCode(locale, settings.englishVariant, settings.availableLanguages),
-              ])
-            );
-          if (!isRead && !setup.ready) throw new AppTranslationError('catalog_setup_required');
-        }
-        const repo = await createAppTranslationRepository(client, scope);
-        const allowedLocales: readonly AppTranslationLocale[] =
-          sourceOnly || !setup ? ['de'] : ['de', ...setup.selectedLocales];
-        if (!sourceOnly && 'locale' in op && !allowedLocales.includes(op.locale))
-          throw new AppTranslationError('catalog_forbidden');
-        if (
-          !sourceOnly &&
-          'locales' in op &&
-          op.locales &&
-          op.locales.some((locale) => !allowedLocales.includes(locale))
-        )
-          throw new AppTranslationError('catalog_forbidden');
-        if (!sourceOnly && op.operation === 'seal') {
-          const draft = await repo.loadDraft(op.contractId);
-          if (draft.supportedLocales.some((locale) => !allowedLocales.includes(locale)))
-            throw new AppTranslationError('catalog_conflict');
-        }
-        if (op.operation === 'translate' || op.operation === 'translationStatus') {
-          if (scope.kind !== 'municipal' || sourceOnly)
-            throw new AppTranslationError('catalog_forbidden');
-          return op.operation === 'translate'
-            ? startCatalogTranslation(client, scope, ctx.user.id, op)
-            : catalogTranslationStatus(
-                await readCatalogTranslationJob(client, scope, op.contractId)
-              );
-        }
-        if (op.operation === 'downloadTexts') {
-          if (scope.kind !== 'municipal') throw new AppTranslationError('catalog_forbidden');
-          return { download: await repo.exportTexts(op.releaseId) };
-        }
-        const value = await dispatch(repo, op, sourceOnly, allowedLocales, targetCodes);
-        if (sourceOnly) {
-          const onlyGerman = (locales: readonly string[]) =>
-            locales.length === 1 && locales[0] === 'de';
-          if ('draft' in value)
-            return {
-              ...value,
-              draft: {
-                ...value.draft,
-                supportedLocales: ['de'],
-                valuesByLocale: { de: value.draft.valuesByLocale.de ?? {} },
-                machineStandardValuesByLocale: {},
-              },
-              values: { de: value.values.de ?? {} },
-              baseCatalogs: { de: value.baseCatalogs.de },
-            };
-          if ('valuesByLocale' in value)
-            return {
-              ...value,
-              supportedLocales: ['de'],
-              valuesByLocale: { de: value.valuesByLocale.de ?? {} },
-              machineStandardValuesByLocale: {},
-            };
-          if ('bases' in value)
-            return {
-              ...value,
-              catalogs: value.catalogs.map((row) => ({ ...row, supportedLocales: ['de'] })),
-              bases: value.bases.filter((row) => onlyGerman(row.supportedLocales)),
-            };
-          if (op.operation !== 'readRelease' && !onlyGerman(value.supportedLocales))
-            throw new AppTranslationError('catalog_forbidden');
-        }
-        if (
-          !sourceOnly &&
-          op.operation !== 'readRelease' &&
-          'state' in value &&
-          value.supportedLocales.some((locale) => !allowedLocales.includes(locale))
-        )
-          throw new AppTranslationError('catalog_forbidden');
-        if (!sourceOnly && 'valuesByLocale' in value)
-          return {
-            ...value,
-            machineStandardValuesByLocale: Object.fromEntries(
-              Object.entries(value.machineStandardValuesByLocale ?? {}).filter(([locale]) =>
-                allowedLocales.includes(locale)
-              )
-            ),
-            supportedLocales: value.supportedLocales.filter((locale) =>
-              allowedLocales.includes(locale)
-            ),
-            valuesByLocale: Object.fromEntries(
-              Object.entries(value.valuesByLocale).filter(([locale]) =>
-                allowedLocales.includes(locale as AppTranslationLocale)
-              )
-            ),
-          };
-        if (!sourceOnly && 'bases' in value)
-          return {
-            ...value,
-            allowedLocales: [...allowedLocales],
-            setup,
-            canManageInterfaces,
-          };
-        if (!sourceOnly && 'draft' in value) {
-          const selected = value.draft.supportedLocales.filter((locale) =>
-            allowedLocales.includes(locale)
-          );
-          return {
-            ...value,
-            allowedLocales,
-            targetCodes,
-            setup,
-            canManageInterfaces,
-            draft: {
-              ...value.draft,
-              supportedLocales: selected,
-              machineStandardValuesByLocale: Object.fromEntries(
-                Object.entries(value.draft.machineStandardValuesByLocale ?? {}).filter(([locale]) =>
-                  selected.includes(locale)
-                )
-              ),
-              valuesByLocale: Object.fromEntries(
-                Object.entries(value.draft.valuesByLocale).filter(([locale]) =>
-                  selected.includes(locale as (typeof selected)[number])
-                )
-              ),
-            },
-            values: Object.fromEntries(
-              Object.entries(value.values).filter(([locale]) =>
-                selected.includes(locale as (typeof selected)[number])
-              )
-            ),
-            baseCatalogs: Object.fromEntries(
-              Object.entries(value.baseCatalogs).filter(([locale]) =>
-                selected.includes(locale as (typeof selected)[number])
-              )
-            ),
-          };
-        }
-        return value;
-      });
+      const { scope, canManageInterfaces } = await authorizeCatalogOperation(
+        request,
+        ctx,
+        op,
+        sourceOnly,
+        action
+      );
+      const result = await runCatalogOperation(
+        scope,
+        sourceOnly,
+        isRead,
+        op,
+        ctx.user.id,
+        canManageInterfaces
+      );
       if (result && 'download' in result)
         return new Response(result.download, {
           headers: {

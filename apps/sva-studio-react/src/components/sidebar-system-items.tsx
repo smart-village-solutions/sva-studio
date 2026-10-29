@@ -16,24 +16,18 @@ import { t } from '../i18n';
 import type { SidebarAccess } from './sidebar-access';
 import type { SidebarItem, SidebarLeafItem } from './sidebar-model';
 
-export const buildSidebarSystemItems = (
-  access: SidebarAccess,
-  pluginSystemItems: readonly SidebarItem[]
-): SidebarItem[] => {
+const buildUserChildren = (access: SidebarAccess): SidebarLeafItem[] => {
   const {
+    canAccessAdminGroups,
+    canAccessAdminInstances,
+    canAccessAdminLegalTexts,
+    canAccessAdminOrganizations,
+    canAccessAdminPrivacy,
+    canAccessAdminRoles,
     canAccessAdminUsers,
     canAccessTenantInvitationTemplate,
-    canAccessAdminOrganizations,
-    canAccessAdminInstances,
-    canAccessAdminRoles,
-    canAccessAdminGroups,
-    canAccessAdminLegalTexts,
-    canAccessAdminPrivacy,
-    canAccessInterfaces,
-    canAccessModules,
-    canAccessSystemTools,
   } = access;
-  const userChildren: SidebarLeafItem[] = [
+  return [
     ...(canAccessAdminUsers
       ? [
           {
@@ -123,6 +117,15 @@ export const buildSidebarSystemItems = (
         ]
       : []),
   ];
+};
+
+export const buildSidebarSystemItems = (
+  access: SidebarAccess,
+  pluginSystemItems: readonly SidebarItem[]
+): SidebarItem[] => {
+  const { canAccessAdminInstances, canAccessInterfaces, canAccessModules, canAccessSystemTools } =
+    access;
+  const userChildren = buildUserChildren(access);
 
   const systemItems: SidebarItem[] = [
     ...(userChildren.length > 0

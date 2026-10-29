@@ -7,24 +7,7 @@ import {
 import { Checkbox, Input, Select } from '@sva/studio-ui-react';
 import { getActiveLocale, t } from '../../i18n';
 import type { InstanceInterfaceDraft, InstanceInterfaceDeepL } from '../../lib/instance-interfaces';
-export const DeepLFields = ({
-  draft,
-  entry,
-  checking,
-  onChange,
-}: {
-  draft: Extract<InstanceInterfaceDraft, { type: 'deepl' }>;
-  entry?: InstanceInterfaceDeepL;
-  checking: boolean;
-  onChange: (draft: InstanceInterfaceDraft) => void;
-}) => {
-  const config = draft.config;
-  const patch = (value: Partial<typeof config>) =>
-    onChange({ ...draft, config: { ...config, ...value } });
-  const available = entry?.config.availableLanguages ?? [];
-  const verified =
-    entry?.status === 'connected' &&
-    entry.config.verifiedCredentialRevision === entry.config.credentialRevision;
+const languageTargets = (available: readonly DeepLLanguage[]) => {
   const names = new Intl.DisplayNames([getActiveLocale()], { type: 'language' });
   const groups = new Map<string, DeepLLanguage[]>();
   const languageName = (code: string) => {
@@ -43,6 +26,28 @@ export const DeepLFields = ({
   const targets = [...groups].sort(([left], [right]) =>
     languageName(left).localeCompare(languageName(right), getActiveLocale())
   );
+  return { groups, languageName, targets };
+};
+
+export const DeepLFields = ({
+  draft,
+  entry,
+  checking,
+  onChange,
+}: {
+  draft: Extract<InstanceInterfaceDraft, { type: 'deepl' }>;
+  entry?: InstanceInterfaceDeepL;
+  checking: boolean;
+  onChange: (draft: InstanceInterfaceDraft) => void;
+}) => {
+  const config = draft.config;
+  const patch = (value: Partial<typeof config>) =>
+    onChange({ ...draft, config: { ...config, ...value } });
+  const available = entry?.config.availableLanguages ?? [];
+  const verified =
+    entry?.status === 'connected' &&
+    entry.config.verifiedCredentialRevision === entry.config.credentialRevision;
+  const { groups, languageName, targets } = languageTargets(available);
   const choose = (base: string, code?: string) => {
     const selectedLocales = config.selectedLocales.filter(
       (locale) => appTranslationLanguage(locale) !== base

@@ -21,10 +21,4 @@ export type {
   CatalogValue,
 } from '@sva/core';
 
-export {
-  deepLTargetCode,
-  readDeepLSettings,
-  type DeepLLanguage,
-  type DeepLSettings,
-  type DeepLSetupStatus,
-} from '@sva/core';
+export * from './app-translations-provider.js';

@@ -5,33 +5,18 @@ import { isPluginOperationCancellationError } from './job-cancellation.js';
 import { createExecutionErrorPayload, createMissingHandlerPayload } from './job-error-mapper.js';
 import { createJobEventWriter } from './job-event-writer.js';
 import { createJobExecutionContext } from './job-execution-context.js';
-import { createJobProgressReporter } from './job-progress-reporter.js';
+import {
+  createJobProgressReporter,
+  readPersistedExecutionProgress,
+} from './job-progress-reporter.js';
 import { createJobStateWriter } from './job-state-writer.js';
 import type { PluginOperationLogger } from './types.js';
 
 type RepositoryPort = {
   readonly getJobById: (instanceId: string, jobId: string) => Promise<StudioJobRecord | null>;
-  readonly updateJobState: (
-    input: Parameters<typeof createJobStateWriter>[0]['updateJobState'] extends (
-      input: infer TInput
-    ) => Promise<unknown>
-      ? TInput
-      : never
-  ) => Promise<unknown>;
-  readonly updateJobProgress: (
-    input: Parameters<typeof createJobProgressReporter>[0]['updateJobProgress'] extends (
-      input: infer TInput
-    ) => Promise<unknown>
-      ? TInput
-      : never
-  ) => Promise<unknown>;
-  readonly appendJobEvent: (
-    input: Parameters<typeof createJobEventWriter>[0]['appendJobEvent'] extends (
-      input: infer TInput
-    ) => Promise<unknown>
-      ? TInput
-      : never
-  ) => Promise<unknown>;
+  readonly updateJobState: Parameters<typeof createJobStateWriter>[0]['updateJobState'];
+  readonly updateJobProgress: Parameters<typeof createJobProgressReporter>[0]['updateJobProgress'];
+  readonly appendJobEvent: Parameters<typeof createJobEventWriter>[0]['appendJobEvent'];
   readonly persistTerminalState?: Parameters<
     typeof createJobStateWriter
   >[0]['persistTerminalState'];
@@ -242,7 +227,10 @@ const runPersistedJob = async (
       await deps.onExecutionTerminal?.({ job, error: errorPayload, reason: 'missing_handler' });
       return;
     }
-    const result = await handler({ job, ...handlerContext });
+    const result = await handler({
+      job: { ...job, status: 'running', attempts, workerId },
+      ...handlerContext,
+    });
     assertLeaseOwned();
     await deps.onExecutionSucceeded?.({ job, result });
     try {
@@ -253,6 +241,13 @@ const runPersistedJob = async (
       throw error;
     }
   } catch (error) {
+    const progress = await readPersistedExecutionProgress(
+      repository,
+      job,
+      attempts,
+      workerId,
+      getLatestProgress
+    );
     if (isPluginOperationCancellationError(error)) {
       const errorPayload: StudioJobError = {
         code: 'plugin_operation_cancelled',
@@ -265,7 +260,7 @@ const runPersistedJob = async (
         startedAt,
         workerId,
         message: error.message,
-        progress: getLatestProgress(),
+        progress,
         cancelRequestedAt: error.cancelRequestedAt,
       });
       await deps.onExecutionTerminal?.({ job, error: errorPayload, reason: 'cancelled' });
@@ -280,7 +275,7 @@ const runPersistedJob = async (
       maxAttempts,
       startedAt,
       workerId,
-      progress: getLatestProgress(),
+      progress,
     });
     if (!failure.finalFailure) throw error;
     await deps.onExecutionTerminal?.({ job, error: failure.errorPayload, reason: 'failed' });

@@ -1,0 +1,49 @@
+{
+  "contractId": "studio-catalog-demo-v1",
+  "manifestVersion": "1",
+  "appCompatibility": {
+    "minVersion": "1.0.0"
+  },
+  "keys": {
+    "title": {
+      "type": "string",
+      "defaultValue": "Willkommen",
+      "placeholders": {},
+      "allowEmpty": false
+    },
+    "greeting": {
+      "type": "string",
+      "defaultValue": "Hallo {{name}}",
+      "placeholders": {
+        "name": "string"
+      },
+      "allowEmpty": false
+    },
+    "count": {
+      "type": "string",
+      "defaultValue": "{{count}} Einträge",
+      "placeholders": {
+        "count": "number"
+      },
+      "allowEmpty": false
+    },
+    "labels": {
+      "type": "stringArray",
+      "defaultValue": ["Öffnen", "Schließen"],
+      "placeholders": {},
+      "allowEmpty": false
+    },
+    "optional": {
+      "type": "string",
+      "defaultValue": "",
+      "placeholders": {},
+      "allowEmpty": true
+    },
+    "unicode": {
+      "type": "string",
+      "defaultValue": "Grüße 👋",
+      "placeholders": {},
+      "allowEmpty": false
+    }
+  }
+}

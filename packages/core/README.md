@@ -121,3 +121,11 @@ Verfügbare Targets aus [project.json](./project.json):
 - [IAM-Service-Architektur](../../docs/architecture/iam-service-architektur.md)
 - [ADR-010: Verschlüsselung IAM Core Data Layer](../../docs/adr/ADR-010-verschluesselung-iam-core-data-layer.md)
 - [ADR-012: Permission-Kompositionsmodell RBAC v1](../../docs/adr/ADR-012-permission-kompositionsmodell-rbac-v1.md)
+
+## Manueller mehrsprachiger App-Export (2G)
+
+`exportCatalogTextsJs()` erzeugt ausschließlich aus vollständig geprüften, versiegelten kommunalen Textständen eine deterministische UTF-8-Datei (höchstens 8 MiB). `textsByLocale` enthält alle gespeicherten Sprachen, `texts` startet deutsch und `setTextsLocale(locale)` wechselt das gesamte Objekt; unbekannte Sprachcodes ergeben Deutsch. Textfunktionen bleiben aufrufbar und verwenden sprachlokale Verweise. Die zwei App-Titel lesen weiterhin `../../app.json`.
+
+Die Formatdefinition ist an das exakte Manifest `sva-mobile-app-texts` Version 1 gebunden. Die unabhängige Referenz in `__tests__/fixtures/mobile-texts/texts.reference.js` stammt aus `smart-village-app/mobile-app`, Commit `ca0eb0375`, SHA-256 `f213f1b08a758c555931734391b0733be2ba380aeded557e1a2618972511e114`; die unveränderte GPL-3.0-Lizenz liegt daneben als `LICENSE.md`. Alle 1460 Einträge, 22 Funktionssignaturen, Defaults und beide App-Namen werden dagegen getestet. Der Manifestdigest ist `3239ba0e6210114ef53b8cffb98830233c4f9f318052ddce92bc4b34971421d8`. Andere Manifeste werden abgewiesen, auch synthetische Array-Erweiterungen; die aktuelle App-Referenz enthält keine StringArrays.
+
+Die Modultests verwenden TypeScript/CommonJS. Sie ersetzen keinen Expo-/Metro-Buildnachweis: App-Bootstrap, React-Aktualisierung, bereits berechnete Titel/Optionen und die tatsächliche App-Integration bleiben ausdrücklich offen.

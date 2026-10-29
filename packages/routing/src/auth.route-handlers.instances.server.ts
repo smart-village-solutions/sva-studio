@@ -8,6 +8,13 @@ const routeHandler =
     handler(request);
 
 export const instanceAuthHandlerMap = {
+  '/api/v1/app-translations/translate': {
+    POST: routeHandler(authRuntimeRoutes.appTranslationServiceHandler),
+  },
+  '/api/v1/iam/app-translations': {
+    GET: routeHandler(authRuntimeRoutes.appTranslationCatalogHandler),
+    POST: routeHandler(authRuntimeRoutes.appTranslationCatalogHandler),
+  },
   '/api/v1/iam/instances/$instanceId/bus-api-keys': {
     GET: routeHandler(authRuntimeRoutes.busApiKeyHandlers.list),
     POST: routeHandler(authRuntimeRoutes.busApiKeyHandlers.create),

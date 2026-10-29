@@ -20,6 +20,8 @@ vi.mock('@sva/auth-runtime/server', () => ({
   registerPluginOperationExecutionHandlers: registerPluginOperationExecutionHandlersMock,
   registerStudioJobExecutionHandlers: registerStudioJobExecutionHandlersMock,
   listActiveInstanceIdsForWorker: listActiveInstanceIdsForWorkerMock,
+  readAppTranslationsLocalReadiness: vi.fn(),
+  runCatalogTranslation: vi.fn(),
   resolveInstanceKeycloakProjectionTenant: vi.fn(),
 }));
 
@@ -196,6 +198,64 @@ describe('plugin operation runtime registration', () => {
       vi.useRealTimers();
     }
   }, 30000);
+
+  it('connects multilingual lifecycle and catalog jobs to the host runtime', async () => {
+    const jobTypeId = 'app-translations.lifecycle';
+    const jobType = {
+      jobTypeId,
+      ownerPluginId: 'app-translations',
+      queue: 'plugin-operations',
+      startPolicy: 'dedicated',
+    };
+    const catalogJobType = {
+      ...jobType,
+      jobTypeId: 'app-translations.catalog-translate',
+      queue: 'app-translations',
+    };
+    vi.doMock('./plugin-catalog.server.js', () => ({
+      studioServerPluginCatalogReport: {
+        snapshot: {
+          pluginSources: [
+            createJobPluginSource({
+              pluginId: 'app-translations',
+              sourceRef: 'packages/plugin-app-translations',
+              jobsEntry: './dist/server.js',
+              runtimeRequirement: 'app-translations.local',
+            }),
+          ],
+          registry: {
+            jobTypes: [jobType, catalogJobType],
+            pluginJobTypeRegistry: new Map([
+              [jobTypeId, jobType],
+              [catalogJobType.jobTypeId, catalogJobType],
+            ]),
+          },
+        },
+      },
+    }));
+    const auth = await import('@sva/auth-runtime/server');
+    vi.mocked(auth.readAppTranslationsLocalReadiness).mockResolvedValue({
+      schemaReady: true,
+      providerConfigured: false,
+    });
+    const mod = await import('./plugin-operation-runtime.server');
+    const handlers = await mod.registerStudioPluginOperationHandlers();
+    const ctx = {
+      job: { instanceId: 'tenant-local' },
+      tenantLifecycle: { operation: 'readiness' },
+      throwIfCancellationRequested: vi.fn(),
+    } as unknown as import('@sva/plugin-sdk').PluginJobHandlerContext;
+    const result = await handlers[jobTypeId]!.handler(ctx);
+    expect(auth.readAppTranslationsLocalReadiness).toHaveBeenCalledWith('tenant-local');
+    expect(result?.resultPayload).toEqual({ plugin: { localOnly: true } });
+    expect(result?.tenantLifecycle?.checks).toContainEqual({
+      checkId: 'app-translations.provider',
+      status: 'degraded',
+    });
+    expect(handlers[jobTypeId]?.executionLane).toBe('default');
+    await handlers[catalogJobType.jobTypeId]!.handler(ctx);
+    expect(auth.runCatalogTranslation).toHaveBeenCalledWith(ctx);
+  });
 
   it('registers only regular Studio plugin operation handlers after coverage validation', async () => {
     const mod = await import('./plugin-operation-runtime.server');

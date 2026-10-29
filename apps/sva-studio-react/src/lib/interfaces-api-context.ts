@@ -49,6 +49,7 @@ export type InterfacesOperation =
   | 'save_interfaces_settings'
   | 'upsert_interface'
   | 'delete_interface'
+  | 'check_deepl_interface'
   | 'test_mail_interface';
 
 export const loadInterfacesRequestDependencies = async (
@@ -127,7 +128,9 @@ export const runWithAuthenticatedInterfacesUser = async <T>(input: {
   const payload: ErrorPayload | null =
     isRecord(raw) && isRecord(raw.error) && typeof raw.error.code === 'string'
       ? { error: raw.error.code }
-      : isErrorPayload(raw) ? raw : null;
+      : isErrorPayload(raw)
+        ? raw
+        : null;
   throw Object.assign(createClientError(payload, input.fallbackMessage), {
     code: payload?.error,
     statusCode: response.status,

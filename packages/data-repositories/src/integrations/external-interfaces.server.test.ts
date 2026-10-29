@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ExternalInterfaceRecord } from '@sva/core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   logger: {
@@ -383,5 +384,207 @@ describe('external interfaces server', () => {
     expect(release).toHaveBeenCalledTimes(6);
 
     process.env.IAM_DATABASE_URL = previousUrl;
+  });
+});
+
+describe('DeepL credential transaction guards', () => {
+  const record: ExternalInterfaceRecord = {
+    id: 'deepl-interface',
+    instanceId: 'tenant-a',
+    typeKey: 'deepl',
+    ownerKind: 'host',
+    ownerId: 'host',
+    displayName: 'DeepL',
+    alias: 'deepl',
+    enabled: true,
+    isDefault: true,
+    category: 'api',
+    baseUrl: 'https://api-free.deepl.com',
+    authMode: 'api_key',
+    publicConfig: { revision: '8', credentialRevision: '3' },
+    secretConfigCiphertext: 'encrypted',
+    statusCheckKind: 'deepl',
+    visibleStatus: 'unknown',
+  };
+  const empty = { rows: [], rowCount: 0 };
+  const activeModule = { rows: [{ module_id: 'app-translations' }], rowCount: 1 };
+  const database = () => {
+    const query = vi
+      .fn<
+        (
+          text: string,
+          values?: readonly unknown[]
+        ) => Promise<{ rows: unknown[]; rowCount: number }>
+      >()
+      .mockResolvedValueOnce(empty)
+      .mockResolvedValueOnce(empty);
+    const release = vi.fn();
+    mocks.poolFactory.mockReturnValue({ connect: vi.fn(async () => ({ query, release })) });
+    return { query, release };
+  };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    vi.stubEnv('IAM_DATABASE_URL', 'postgres://db.example/deepl');
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('rejects non-host or non-DeepL records without opening a connection', async () => {
+    const { saveDeepLInterfaceRecord } = await import('./external-interfaces.server.js');
+    await expect(saveDeepLInterfaceRecord({ ...record, typeKey: 's3' }, '7')).rejects.toThrow(
+      'invalid_config'
+    );
+    await expect(saveDeepLInterfaceRecord({ ...record, ownerKind: 'plugin' }, '7')).rejects.toThrow(
+      'invalid_config'
+    );
+    expect(mocks.poolFactory).not.toHaveBeenCalled();
+  });
+
+  it.each(['record', 'check'])(
+    'rolls back %s writes while the module is unavailable',
+    async (operation) => {
+      const { query, release } = database();
+      query.mockResolvedValueOnce(empty).mockResolvedValueOnce(empty);
+      const { saveDeepLInterfaceRecord, saveDeepLInterfaceCheck } =
+        await import('./external-interfaces.server.js');
+      await expect(
+        operation === 'record'
+          ? saveDeepLInterfaceRecord(record, '7')
+          : saveDeepLInterfaceCheck({
+              instanceId: 'tenant-a',
+              interfaceId: record.id,
+              expectedRevision: '7',
+              checkedAt: '2026-10-29T12:00:00Z',
+            })
+      ).rejects.toThrow('deepl_module_unavailable');
+      expect(query.mock.calls).toEqual([
+        ['BEGIN'],
+        ['SELECT set_config($1, $2, true);', ['app.instance_id', 'tenant-a']],
+        [expect.stringContaining('FOR SHARE OF m,l'), ['tenant-a']],
+        ['ROLLBACK'],
+      ]);
+      expect(release).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('locks the saved configuration and rejects a stale credential revision without upsert', async () => {
+    const { query, release } = database();
+    query
+      .mockResolvedValueOnce(activeModule)
+      .mockResolvedValueOnce({ rows: [{ revision: '8' }], rowCount: 1 })
+      .mockResolvedValueOnce(empty);
+    const { saveDeepLInterfaceRecord } = await import('./external-interfaces.server.js');
+    await expect(saveDeepLInterfaceRecord(record, '7')).rejects.toThrow('interface_conflict');
+    expect(query.mock.calls[3]).toEqual([
+      expect.stringContaining('FOR UPDATE'),
+      ['tenant-a', record.id],
+    ]);
+    expect(query.mock.calls.at(-1)).toEqual(['ROLLBACK']);
+    expect(query).toHaveBeenCalledTimes(5);
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it.each([false, true])(
+    'persists the exact configuration after a matching revision, initially absent=%s',
+    async (initial) => {
+      const { query, release } = database();
+      query
+        .mockResolvedValueOnce(activeModule)
+        .mockResolvedValueOnce(initial ? empty : { rows: [{ revision: '7' }], rowCount: 1 })
+        .mockResolvedValueOnce(empty)
+        .mockResolvedValueOnce(empty);
+      const { saveDeepLInterfaceRecord } = await import('./external-interfaces.server.js');
+      await saveDeepLInterfaceRecord(record, initial ? '0' : '7');
+      const write = query.mock.calls[4] ?? [];
+      expect(write[0]).toContain('INSERT INTO iam.instance_external_interfaces');
+      expect(write[1]).toEqual([
+        'tenant-a',
+        record.id,
+        'deepl',
+        'host',
+        'host',
+        'DeepL',
+        'deepl',
+        true,
+        true,
+        'api',
+        record.baseUrl,
+        'api_key',
+        JSON.stringify(record.publicConfig),
+        'encrypted',
+        'deepl',
+        'unknown',
+        null,
+        null,
+        null,
+        null,
+      ]);
+      expect(query.mock.calls.at(-1)).toEqual(['COMMIT']);
+      expect(release).toHaveBeenCalledOnce();
+    }
+  );
+
+  it.each([undefined, 'provider_unavailable'])(
+    'accepts check results only for the exact enabled revision, error=%s',
+    async (errorCode) => {
+      const { query, release } = database();
+      query
+        .mockResolvedValueOnce(activeModule)
+        .mockResolvedValueOnce({ rows: [{ id: record.id }], rowCount: 1 })
+        .mockResolvedValueOnce(empty);
+      const { saveDeepLInterfaceCheck } = await import('./external-interfaces.server.js');
+      const languages = errorCode
+        ? undefined
+        : [{ code: 'EN', name: 'English', tagHandling: true }];
+      await saveDeepLInterfaceCheck({
+        instanceId: 'tenant-a',
+        interfaceId: record.id,
+        expectedRevision: '7',
+        checkedAt: '2026-10-29T12:00:00Z',
+        languages,
+        errorCode,
+      });
+      const update = query.mock.calls[3] ?? [];
+      expect(update[0]).toContain("AND enabled AND public_config_json->>'revision'=$3");
+      expect(update[0]).toContain(
+        "'verifiedCredentialRevision',public_config_json->>'credentialRevision'"
+      );
+      expect(update[1]).toEqual([
+        'tenant-a',
+        record.id,
+        '7',
+        '2026-10-29T12:00:00Z',
+        languages ? JSON.stringify(languages) : null,
+        errorCode ? 'error' : 'ok',
+        errorCode ? 'failed' : 'succeeded',
+        errorCode ?? null,
+      ]);
+      expect(query.mock.calls.at(-1)).toEqual(['COMMIT']);
+      expect(release).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('discards a provider result when the interface changed while the call was in flight', async () => {
+    const { query, release } = database();
+    query
+      .mockResolvedValueOnce(activeModule)
+      .mockResolvedValueOnce(empty)
+      .mockResolvedValueOnce(empty);
+    const { saveDeepLInterfaceCheck } = await import('./external-interfaces.server.js');
+    await expect(
+      saveDeepLInterfaceCheck({
+        instanceId: 'tenant-a',
+        interfaceId: record.id,
+        expectedRevision: '7',
+        checkedAt: '2026-10-29T12:00:00Z',
+      })
+    ).rejects.toThrow('interface_conflict');
+    expect(((query.mock.calls[3] ?? [])[1] ?? []).slice(0, 3)).toEqual([
+      'tenant-a',
+      record.id,
+      '7',
+    ]);
+    expect(query.mock.calls.at(-1)).toEqual(['ROLLBACK']);
+    expect(release).toHaveBeenCalledOnce();
   });
 });

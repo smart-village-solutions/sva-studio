@@ -39,6 +39,7 @@ export const isSvaMainserverInstanceConfig = (
 };
 
 const isInstanceInterfaceType = (value: unknown): value is InstanceInterfaceType =>
+  value === 'deepl' ||
   value === 'mainserver' ||
   value === 's3' ||
   value === 'supabase' ||

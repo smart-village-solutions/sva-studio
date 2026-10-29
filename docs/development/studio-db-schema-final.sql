@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict M4FCOWSk22Cit75bXmgV4b5AJWFT85WtvUgagN1B1Q6YTlRCcuVCOA5FmUaRFhq
+\restrict 3pWKeBts2juSsTVxCfb1ZaipPRfNWIlurQbMl2KaUhDVk2pwRwFBOuHIFlMTyFx
 
--- Dumped from database version 16.14
--- Dumped by pg_dump version 16.14
+-- Dumped from database version 16.15
+-- Dumped by pg_dump version 16.15
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -235,6 +235,19 @@ BEGIN
     RETURN OLD;
   END IF;
   RAISE EXCEPTION 'iam.platform_activity_logs is immutable';
+END;
+$$;
+
+
+--
+-- Name: reject_app_translation_revision_change(); Type: FUNCTION; Schema: iam; Owner: -
+--
+
+CREATE FUNCTION iam.reject_app_translation_revision_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RAISE EXCEPTION 'app_translation_revision_immutable' USING ERRCODE = '23514';
 END;
 $$;
 
@@ -592,6 +605,85 @@ CREATE TABLE iam.activity_logs_archive (
     instance_id text NOT NULL,
     CONSTRAINT activity_logs_archive_result_chk CHECK ((result = ANY (ARRAY['success'::text, 'failure'::text])))
 );
+
+
+--
+-- Name: app_translation_catalog_drafts; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.app_translation_catalog_drafts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    scope text NOT NULL,
+    instance_id text,
+    organization_id uuid,
+    contract_id text NOT NULL,
+    manifest_id uuid NOT NULL,
+    draft_revision bigint DEFAULT 1 NOT NULL,
+    supported_locales jsonb NOT NULL,
+    values_by_locale jsonb DEFAULT '{}'::jsonb NOT NULL,
+    base_release_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    machine_standard_values_by_locale jsonb DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT app_translation_catalog_draf_machine_standard_values_by_l_check CHECK ((jsonb_typeof(machine_standard_values_by_locale) = 'object'::text)),
+    CONSTRAINT app_translation_catalog_drafts_check CHECK ((((scope = 'global'::text) AND (instance_id IS NULL) AND (organization_id IS NULL) AND (base_release_id IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id IS NOT NULL) AND (organization_id IS NOT NULL) AND (base_release_id IS NOT NULL)))),
+    CONSTRAINT app_translation_catalog_drafts_draft_revision_check CHECK ((draft_revision > 0)),
+    CONSTRAINT app_translation_catalog_drafts_scope_check CHECK ((scope = ANY (ARRAY['global'::text, 'municipal'::text]))),
+    CONSTRAINT app_translation_catalog_drafts_supported_locales_check CHECK (((jsonb_typeof(supported_locales) = 'array'::text) AND (supported_locales ? 'de'::text))),
+    CONSTRAINT app_translation_catalog_drafts_values_by_locale_check CHECK ((jsonb_typeof(values_by_locale) = 'object'::text))
+);
+
+ALTER TABLE ONLY iam.app_translation_catalog_drafts FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: app_translation_catalog_releases; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.app_translation_catalog_releases (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    scope text NOT NULL,
+    instance_id text,
+    organization_id uuid,
+    contract_id text NOT NULL,
+    manifest_id uuid NOT NULL,
+    catalog_set_revision bigint NOT NULL,
+    draft_revision bigint NOT NULL,
+    base_release_id uuid,
+    supported_locales jsonb NOT NULL,
+    payload jsonb NOT NULL,
+    checksum text NOT NULL,
+    state text DEFAULT 'sealed'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT app_translation_catalog_releases_catalog_set_revision_check CHECK ((catalog_set_revision > 0)),
+    CONSTRAINT app_translation_catalog_releases_check CHECK ((((scope = 'global'::text) AND (instance_id IS NULL) AND (organization_id IS NULL) AND (base_release_id IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id IS NOT NULL) AND (organization_id IS NOT NULL) AND (base_release_id IS NOT NULL)))),
+    CONSTRAINT app_translation_catalog_releases_checksum_check CHECK ((checksum ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT app_translation_catalog_releases_draft_revision_check CHECK ((draft_revision > 0)),
+    CONSTRAINT app_translation_catalog_releases_payload_check CHECK ((jsonb_typeof(payload) = 'object'::text)),
+    CONSTRAINT app_translation_catalog_releases_scope_check CHECK ((scope = ANY (ARRAY['global'::text, 'municipal'::text]))),
+    CONSTRAINT app_translation_catalog_releases_state_check CHECK ((state = 'sealed'::text)),
+    CONSTRAINT app_translation_catalog_releases_supported_locales_check CHECK (((jsonb_typeof(supported_locales) = 'array'::text) AND (supported_locales ? 'de'::text)))
+);
+
+ALTER TABLE ONLY iam.app_translation_catalog_releases FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: app_translation_manifests; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.app_translation_manifests (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    contract_id text NOT NULL,
+    manifest_version text NOT NULL,
+    manifest jsonb NOT NULL,
+    digest text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT app_translation_manifests_digest_check CHECK ((digest ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT app_translation_manifests_manifest_check CHECK ((jsonb_typeof(manifest) = 'object'::text))
+);
+
+ALTER TABLE ONLY iam.app_translation_manifests FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1407,26 +1499,6 @@ CREATE TABLE iam.instances (
 
 
 --
--- Name: server_account_invitation_templates; Type: TABLE; Schema: iam; Owner: -
---
-
-CREATE TABLE iam.server_account_invitation_templates (
-    template_key text NOT NULL,
-    revision integer DEFAULT 0 NOT NULL,
-    template jsonb,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_by text,
-    default_purpose text,
-    CONSTRAINT server_account_invitation_templates_default_purpose_chk CHECK (((default_purpose IS NULL) OR (default_purpose = ANY (ARRAY['studio'::text, 'ssf'::text])))),
-    CONSTRAINT server_account_invitation_templates_key_chk CHECK ((template_key = 'account_invitation'::text)),
-    CONSTRAINT server_account_invitation_templates_revision_chk CHECK ((revision >= 0)),
-    CONSTRAINT server_account_invitation_templates_template_chk CHECK (((template IS NULL) OR ((jsonb_typeof(template) = 'object'::text) AND (jsonb_typeof((template -> 'revision'::text)) = 'number'::text) AND (((template ->> 'revision'::text))::integer = revision) AND (jsonb_typeof((template -> 'subject'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'body'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'passwordSetupLinkLabel'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'tenantHomepageLinkLabel'::text)) = 'string'::text))))
-);
-
-ALTER TABLE ONLY iam.server_account_invitation_templates FORCE ROW LEVEL SECURITY;
-
-
---
 -- Name: legal_holds; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -1952,6 +2024,26 @@ CREATE TABLE iam.roles (
 
 
 --
+-- Name: server_account_invitation_templates; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.server_account_invitation_templates (
+    template_key text NOT NULL,
+    revision integer DEFAULT 0 NOT NULL,
+    template jsonb,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by text,
+    default_purpose text,
+    CONSTRAINT server_account_invitation_templates_default_purpose_chk CHECK (((default_purpose IS NULL) OR (default_purpose = ANY (ARRAY['studio'::text, 'ssf'::text])))),
+    CONSTRAINT server_account_invitation_templates_key_chk CHECK ((template_key = 'account_invitation'::text)),
+    CONSTRAINT server_account_invitation_templates_revision_chk CHECK ((revision >= 0)),
+    CONSTRAINT server_account_invitation_templates_template_chk CHECK (((template IS NULL) OR ((jsonb_typeof(template) = 'object'::text) AND (jsonb_typeof((template -> 'revision'::text)) = 'number'::text) AND (((template ->> 'revision'::text))::integer = revision) AND (jsonb_typeof((template -> 'subject'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'body'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'passwordSetupLinkLabel'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'tenantHomepageLinkLabel'::text)) = 'string'::text))))
+);
+
+ALTER TABLE ONLY iam.server_account_invitation_templates FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: studio_job_events; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -2172,6 +2264,46 @@ ALTER TABLE ONLY iam.activity_logs_archive
 
 ALTER TABLE ONLY iam.activity_logs
     ADD CONSTRAINT activity_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: app_translation_catalog_drafts app_translation_catalog_drafts_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.app_translation_catalog_drafts
+    ADD CONSTRAINT app_translation_catalog_drafts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: app_translation_catalog_releases app_translation_catalog_releases_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.app_translation_catalog_releases
+    ADD CONSTRAINT app_translation_catalog_releases_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: app_translation_manifests app_translation_manifests_contract_id_manifest_version_key; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.app_translation_manifests
+    ADD CONSTRAINT app_translation_manifests_contract_id_manifest_version_key UNIQUE (contract_id, manifest_version);
+
+
+--
+-- Name: app_translation_manifests app_translation_manifests_id_contract_id_key; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.app_translation_manifests
+    ADD CONSTRAINT app_translation_manifests_id_contract_id_key UNIQUE (id, contract_id);
+
+
+--
+-- Name: app_translation_manifests app_translation_manifests_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.app_translation_manifests
+    ADD CONSTRAINT app_translation_manifests_pkey PRIMARY KEY (id);
 
 
 --
@@ -2463,19 +2595,19 @@ ALTER TABLE ONLY iam.instance_plugin_lifecycle
 
 
 --
--- Name: instance_provisioning_runs instance_provisioning_create_payload_fingerprint_chk; Type: CHECK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE iam.instance_provisioning_runs
-    ADD CONSTRAINT instance_provisioning_create_payload_fingerprint_chk CHECK (((operation <> 'create'::text) OR (payload_fingerprint IS NOT NULL))) NOT VALID;
-
-
---
 -- Name: instance_provisioning_runs instance_provisioning_completion_chk; Type: CHECK CONSTRAINT; Schema: iam; Owner: -
 --
 
 ALTER TABLE iam.instance_provisioning_runs
     ADD CONSTRAINT instance_provisioning_completion_chk CHECK ((((status = ANY (ARRAY['active'::text, 'failed'::text, 'suspended'::text, 'archived'::text])) OR ((status = 'validated'::text) AND (step_key = 'completed'::text))) = (completed_at IS NOT NULL))) NOT VALID;
+
+
+--
+-- Name: instance_provisioning_runs instance_provisioning_create_payload_fingerprint_chk; Type: CHECK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.instance_provisioning_runs
+    ADD CONSTRAINT instance_provisioning_create_payload_fingerprint_chk CHECK (((operation <> 'create'::text) OR (payload_fingerprint IS NOT NULL))) NOT VALID;
 
 
 --
@@ -2516,14 +2648,6 @@ ALTER TABLE ONLY iam.instances
 
 ALTER TABLE ONLY iam.instances
     ADD CONSTRAINT instances_pkey PRIMARY KEY (id);
-
-
---
--- Name: server_account_invitation_templates server_account_invitation_templates_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.server_account_invitation_templates
-    ADD CONSTRAINT server_account_invitation_templates_pkey PRIMARY KEY (template_key);
 
 
 --
@@ -2615,18 +2739,19 @@ ALTER TABLE ONLY iam.mainserver_mutation_journal
 
 
 --
--- Name: media_assets media_assets_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.media_assets
-    ADD CONSTRAINT media_assets_pkey PRIMARY KEY (id);
-
---
 -- Name: media_assets media_assets_instance_id_id_key; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
 ALTER TABLE ONLY iam.media_assets
     ADD CONSTRAINT media_assets_instance_id_id_key UNIQUE (instance_id, id);
+
+
+--
+-- Name: media_assets media_assets_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.media_assets
+    ADD CONSTRAINT media_assets_pkey PRIMARY KEY (id);
 
 
 --
@@ -2774,6 +2899,14 @@ ALTER TABLE ONLY iam.roles
 
 
 --
+-- Name: server_account_invitation_templates server_account_invitation_templates_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.server_account_invitation_templates
+    ADD CONSTRAINT server_account_invitation_templates_pkey PRIMARY KEY (template_key);
+
+
+--
 -- Name: studio_job_events studio_job_events_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -2851,6 +2984,34 @@ ALTER TABLE ONLY public.waste_email_reminder_subscriptions
 
 ALTER TABLE ONLY public.waste_email_reminder_subscriptions
     ADD CONSTRAINT waste_email_reminder_subscriptions_unsubscribe_token_hash_uniqu UNIQUE (unsubscribe_token_hash);
+
+
+--
+-- Name: app_translation_drafts_global_key; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX app_translation_drafts_global_key ON iam.app_translation_catalog_drafts USING btree (contract_id) WHERE (scope = 'global'::text);
+
+
+--
+-- Name: app_translation_drafts_municipal_key; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX app_translation_drafts_municipal_key ON iam.app_translation_catalog_drafts USING btree (instance_id, organization_id, contract_id) WHERE (scope = 'municipal'::text);
+
+
+--
+-- Name: app_translation_releases_global_key; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX app_translation_releases_global_key ON iam.app_translation_catalog_releases USING btree (contract_id, catalog_set_revision) WHERE (scope = 'global'::text);
+
+
+--
+-- Name: app_translation_releases_municipal_key; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX app_translation_releases_municipal_key ON iam.app_translation_catalog_releases USING btree (instance_id, organization_id, contract_id, catalog_set_revision) WHERE (scope = 'municipal'::text);
 
 
 --
@@ -3155,6 +3316,13 @@ CREATE INDEX idx_instance_confirmation_challenges_pending_expiry ON iam.instance
 
 
 --
+-- Name: idx_instance_deepl_interface; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_instance_deepl_interface ON iam.instance_external_interfaces USING btree (instance_id) WHERE (type_key = 'deepl'::text);
+
+
+--
 -- Name: idx_instance_external_interfaces_default_per_type; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -3204,17 +3372,17 @@ CREATE INDEX idx_instance_keycloak_provisioning_runs_instance_created ON iam.ins
 
 
 --
--- Name: idx_instance_keycloak_provisioning_steps_run_created; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX idx_instance_keycloak_provisioning_steps_run_created ON iam.instance_keycloak_provisioning_steps USING btree (run_id, created_at);
-
-
---
 -- Name: idx_instance_keycloak_provisioning_steps_queued_unique; Type: INDEX; Schema: iam; Owner: -
 --
 
 CREATE UNIQUE INDEX idx_instance_keycloak_provisioning_steps_queued_unique ON iam.instance_keycloak_provisioning_steps USING btree (run_id) WHERE (step_key = 'queued'::text);
+
+
+--
+-- Name: idx_instance_keycloak_provisioning_steps_run_created; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_instance_keycloak_provisioning_steps_run_created ON iam.instance_keycloak_provisioning_steps USING btree (run_id, created_at);
 
 
 --
@@ -3302,16 +3470,17 @@ CREATE INDEX idx_media_assets_active_storage_key_binary ON iam.media_assets USIN
 
 
 --
--- Name: idx_media_assets_instance_storage_key; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE UNIQUE INDEX idx_media_assets_instance_storage_key ON iam.media_assets USING btree (instance_id, storage_key);
-
---
 -- Name: idx_media_assets_editing_source; Type: INDEX; Schema: iam; Owner: -
 --
 
 CREATE INDEX idx_media_assets_editing_source ON iam.media_assets USING btree (instance_id, editing_source_asset_id) WHERE (editing_source_asset_id IS NOT NULL);
+
+
+--
+-- Name: idx_media_assets_instance_storage_key; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_media_assets_instance_storage_key ON iam.media_assets USING btree (instance_id, storage_key);
 
 
 --
@@ -3728,6 +3897,20 @@ CREATE INDEX idx_waste_email_reminder_subscriptions_status_expires_at ON public.
 
 
 --
+-- Name: app_translation_manifests app_translation_manifests_immutable; Type: TRIGGER; Schema: iam; Owner: -
+--
+
+CREATE TRIGGER app_translation_manifests_immutable BEFORE DELETE OR UPDATE ON iam.app_translation_manifests FOR EACH ROW EXECUTE FUNCTION iam.reject_app_translation_revision_change();
+
+
+--
+-- Name: app_translation_catalog_releases app_translation_releases_immutable; Type: TRIGGER; Schema: iam; Owner: -
+--
+
+CREATE TRIGGER app_translation_releases_immutable BEFORE DELETE OR UPDATE ON iam.app_translation_catalog_releases FOR EACH ROW EXECUTE FUNCTION iam.reject_app_translation_revision_change();
+
+
+--
 -- Name: geo_hierarchy geo_hierarchy_depth_check; Type: TRIGGER; Schema: iam; Owner: -
 --
 
@@ -3873,6 +4056,54 @@ ALTER TABLE ONLY iam.activity_logs_archive
 
 ALTER TABLE ONLY iam.activity_logs
     ADD CONSTRAINT activity_logs_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: app_translation_catalog_drafts app_translation_catalog_drafts_base_release_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.app_translation_catalog_drafts
+    ADD CONSTRAINT app_translation_catalog_drafts_base_release_id_fkey FOREIGN KEY (base_release_id) REFERENCES iam.app_translation_catalog_releases(id);
+
+
+--
+-- Name: app_translation_catalog_drafts app_translation_catalog_drafts_instance_id_organization_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.app_translation_catalog_drafts
+    ADD CONSTRAINT app_translation_catalog_drafts_instance_id_organization_id_fkey FOREIGN KEY (instance_id, organization_id) REFERENCES iam.organizations(instance_id, id);
+
+
+--
+-- Name: app_translation_catalog_drafts app_translation_catalog_drafts_manifest_id_contract_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.app_translation_catalog_drafts
+    ADD CONSTRAINT app_translation_catalog_drafts_manifest_id_contract_id_fkey FOREIGN KEY (manifest_id, contract_id) REFERENCES iam.app_translation_manifests(id, contract_id);
+
+
+--
+-- Name: app_translation_catalog_releases app_translation_catalog_releas_instance_id_organization_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.app_translation_catalog_releases
+    ADD CONSTRAINT app_translation_catalog_releas_instance_id_organization_id_fkey FOREIGN KEY (instance_id, organization_id) REFERENCES iam.organizations(instance_id, id);
+
+
+--
+-- Name: app_translation_catalog_releases app_translation_catalog_releases_base_release_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.app_translation_catalog_releases
+    ADD CONSTRAINT app_translation_catalog_releases_base_release_id_fkey FOREIGN KEY (base_release_id) REFERENCES iam.app_translation_catalog_releases(id);
+
+
+--
+-- Name: app_translation_catalog_releases app_translation_catalog_releases_manifest_id_contract_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.app_translation_catalog_releases
+    ADD CONSTRAINT app_translation_catalog_releases_manifest_id_contract_id_fkey FOREIGN KEY (manifest_id, contract_id) REFERENCES iam.app_translation_manifests(id, contract_id);
 
 
 --
@@ -4476,6 +4707,14 @@ ALTER TABLE ONLY iam.mainserver_mutation_journal
 
 
 --
+-- Name: media_assets media_assets_editing_source_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.media_assets
+    ADD CONSTRAINT media_assets_editing_source_fkey FOREIGN KEY (instance_id, editing_source_asset_id) REFERENCES iam.media_assets(instance_id, id) ON DELETE RESTRICT;
+
+
+--
 -- Name: media_assets media_assets_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -4489,13 +4728,6 @@ ALTER TABLE ONLY iam.media_assets
 
 ALTER TABLE ONLY iam.media_assets
     ADD CONSTRAINT media_assets_provisional_operation_id_fkey FOREIGN KEY (provisional_operation_id) REFERENCES iam.media_content_save_operations(id) ON DELETE RESTRICT;
-
---
--- Name: media_assets media_assets_editing_source_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.media_assets
-    ADD CONSTRAINT media_assets_editing_source_fkey FOREIGN KEY (instance_id, editing_source_asset_id) REFERENCES iam.media_assets(instance_id, id) ON DELETE RESTRICT;
 
 
 --
@@ -4817,6 +5049,59 @@ CREATE POLICY activity_logs_isolation_policy ON iam.activity_logs USING ((instan
 
 
 --
+-- Name: app_translation_catalog_drafts; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.app_translation_catalog_drafts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: app_translation_catalog_releases; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.app_translation_catalog_releases ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: app_translation_catalog_drafts app_translation_draft_scope; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_draft_scope ON iam.app_translation_catalog_drafts TO iam_app USING ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text))))) WITH CHECK ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text)))));
+
+
+--
+-- Name: app_translation_manifests app_translation_manifest_import; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_manifest_import ON iam.app_translation_manifests FOR INSERT TO iam_app WITH CHECK (((NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)));
+
+
+--
+-- Name: app_translation_manifests app_translation_manifest_read; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_manifest_read ON iam.app_translation_manifests FOR SELECT TO iam_app USING ((((NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((iam.current_instance_id() IS NOT NULL) AND (NULLIF(current_setting('app.organization_id'::text, true), ''::text) IS NOT NULL))));
+
+
+--
+-- Name: app_translation_manifests; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.app_translation_manifests ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: app_translation_catalog_releases app_translation_release_insert; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_release_insert ON iam.app_translation_catalog_releases FOR INSERT TO iam_app WITH CHECK ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text)))));
+
+
+--
+-- Name: app_translation_catalog_releases app_translation_release_read; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_release_read ON iam.app_translation_catalog_releases FOR SELECT TO iam_app USING ((((scope = 'global'::text) AND (((NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((iam.current_instance_id() IS NOT NULL) AND (NULLIF(current_setting('app.organization_id'::text, true), ''::text) IS NOT NULL)))) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text)))));
+
+
+--
 -- Name: data_subject_export_jobs data_subject_export_jobs_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
@@ -5000,19 +5285,6 @@ CREATE POLICY instances_isolation_policy ON iam.instances USING ((id = iam.curre
 
 
 --
--- Name: server_account_invitation_templates; Type: ROW SECURITY; Schema: iam; Owner: -
---
-
-ALTER TABLE iam.server_account_invitation_templates ENABLE ROW LEVEL SECURITY;
-
---
--- Name: server_account_invitation_templates server_account_invitation_templates_platform_scope; Type: POLICY; Schema: iam; Owner: -
---
-
-CREATE POLICY server_account_invitation_templates_platform_scope ON iam.server_account_invitation_templates USING (true) WITH CHECK ((iam.current_instance_id() IS NULL));
-
-
---
 -- Name: legal_holds legal_holds_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
@@ -5173,6 +5445,19 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 
 
 --
+-- Name: server_account_invitation_templates; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.server_account_invitation_templates ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: server_account_invitation_templates server_account_invitation_templates_platform_scope; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY server_account_invitation_templates_platform_scope ON iam.server_account_invitation_templates USING (true) WITH CHECK ((iam.current_instance_id() IS NULL));
+
+
+--
 -- Name: studio_jobs studio_jobs_observability_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
@@ -5183,10 +5468,4 @@ CREATE POLICY studio_jobs_observability_policy ON iam.studio_jobs FOR SELECT TO 
 -- PostgreSQL database dump complete
 --
 
--- Externe Waste-Tenant-Schemata sind bewusst nicht Bestandteil dieses zentralen Snapshots.
--- Die Störungsoptionen in public.waste_settings werden über die versionierte Tenant-Migration
--- 20260901_01_add_waste_disruption_settings gepflegt; siehe studio-db-schema.md, Abschnitt 9.
--- E-Mail-Erinnerungskonfiguration und Signierschlüssel in public.waste_settings werden
--- über 20261018_01_add_waste_email_reminder_settings im externen Tenant-Schema ergänzt.
-
-\unrestrict M4FCOWSk22Cit75bXmgV4b5AJWFT85WtvUgagN1B1Q6YTlRCcuVCOA5FmUaRFhq
+\unrestrict 3pWKeBts2juSsTVxCfb1ZaipPRfNWIlurQbMl2KaUhDVk2pwRwFBOuHIFlMTyFx

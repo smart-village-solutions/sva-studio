@@ -102,9 +102,12 @@ describe('studio-distribution-artifact', () => {
     }
   );
 
-  it('includes vouchers in Studio and supports explicit custom voucher selection', () => {
+  it('includes app texts and vouchers in Studio and supports explicit custom voucher selection', () => {
     const studio = JSON.parse(runArtifactCommand('selection', '', 'studio').toString('utf8'));
     expect(studio.pluginIds).toContain('vouchers');
+    expect(studio.pluginIds).toContain('app-translations');
+    const ssf = JSON.parse(runArtifactCommand('selection', '', 'ssf').toString('utf8'));
+    expect(ssf.pluginIds).not.toContain('app-translations');
     const appPackage = JSON.parse(
       readFileSync(path.join(workspaceRoot, 'apps/sva-studio-react/package.json'), 'utf8')
     );
@@ -413,6 +416,7 @@ describe('studio-distribution-artifact', () => {
       schemaVersion: 1,
       distribution: 'studio',
       includedPluginIds: [
+        'app-translations',
         'categories',
         'cockpit',
         'cockpit-cards',
@@ -498,6 +502,7 @@ describe('studio-distribution-artifact', () => {
       includedPluginIds: ['ssf'],
       installedPlugins: [],
       excludedWorkspacePackages: [
+        'plugin-app-translations',
         'plugin-categories',
         'plugin-cockpit',
         'plugin-cockpit-cards',

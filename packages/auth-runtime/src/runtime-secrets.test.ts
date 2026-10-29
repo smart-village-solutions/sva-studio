@@ -1,4 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+const readSecretFile = vi.hoisted(() =>
+  vi.fn<(...args: unknown[]) => string>(() => {
+    throw new Error('not_available');
+  })
+);
+vi.mock('node:fs', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('node:fs')>()),
+  readFileSync: readSecretFile,
+}));
 
 import {
   getAppDbPassword,
@@ -22,6 +31,9 @@ import {
 describe('auth runtime secrets', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
+    readSecretFile.mockReset().mockImplementation(() => {
+      throw new Error('not_available');
+    });
   });
 
   it('reads trimmed env secrets and provisioner fallback values', () => {

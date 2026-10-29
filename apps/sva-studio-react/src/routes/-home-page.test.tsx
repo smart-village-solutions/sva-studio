@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const useAuthMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
   Link: ({ children, to }: { readonly children: ReactNode; readonly to: string }) => (
     <a href={to}>{children}</a>
   ),

@@ -28,6 +28,11 @@ const mapVisibleStatusToHealth = (
   }
 };
 
+const storedHealthDetails = (entry: PersistedStoredEntry) => ({
+  ...(entry.lastCheckErrorMessage ? { statusMessage: entry.lastCheckErrorMessage } : {}),
+  ...(entry.lastCheckErrorCode ? { errorCode: entry.lastCheckErrorCode } : {}),
+});
+
 export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthResult => {
   const persistedEntry = entry as PersistedStoredEntry;
   const checkedAt = persistedEntry.lastCheckedAt ?? nowIso();
@@ -36,12 +41,7 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
     return {
       status: 'disabled',
       checkedAt,
-      ...(persistedEntry.lastCheckErrorMessage
-        ? { statusMessage: persistedEntry.lastCheckErrorMessage }
-        : {}),
-      ...(persistedEntry.lastCheckErrorCode
-        ? { errorCode: persistedEntry.lastCheckErrorCode }
-        : {}),
+      ...storedHealthDetails(persistedEntry),
     };
   }
 
@@ -49,14 +49,11 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
     return {
       status: mapVisibleStatusToHealth(persistedEntry.visibleStatus),
       checkedAt,
-      ...(persistedEntry.lastCheckErrorMessage
-        ? { statusMessage: persistedEntry.lastCheckErrorMessage }
-        : {}),
-      ...(persistedEntry.lastCheckErrorCode
-        ? { errorCode: persistedEntry.lastCheckErrorCode }
-        : {}),
+      ...storedHealthDetails(persistedEntry),
     };
   }
+
+  if (entry.type === 'deepl') return { status: 'unknown', checkedAt };
 
   if (entry.type === 's3') {
     if (!entry.config.endpoint || !entry.config.bucket || !entry.config.accessKeyId) {

@@ -1,7 +1,48 @@
 export const interfacesDEResources = {
+  deepl: {
+    refreshFailed:
+      'Prüfung beendet, aber der aktuelle Schnittstellenstand konnte nicht geladen werden. Bitte erneut versuchen.',
+    plan: 'DeepL-API-Tarif',
+    pro: 'DeepL API Pro',
+    free: 'DeepL API Free',
+    apiKey: 'API-Key',
+    keyStored:
+      'Ein API-Key ist hinterlegt. Leer lassen, um ihn beizubehalten; ein neuer Key muss erneut geprüft werden.',
+    keyRequired:
+      'Hinterlege den eigenen DeepL-API-Key dieser Instanz. Der Key wird verschlüsselt gespeichert.',
+    check: 'Verbindung prüfen',
+    checking: 'DeepL wird geprüft …',
+    checkFailed: 'DeepL konnte nicht geprüft werden. Bitte erneut versuchen.',
+    saveFirst:
+      'Speichere die Konfiguration vor der Prüfung. Beim Öffnen oder Speichern werden keine Texte an DeepL gesendet.',
+    variant: 'Variante für {{language}}',
+    recheck: 'Verbindung erneut prüfen',
+    verified: 'Verbindung geprüft',
+    languages: 'Angebotene Sprachen dieser Instanz',
+    languagesHelp:
+      'Deutsch bleibt als Ausgangssprache verfügbar. Wähle nach erfolgreicher Prüfung die gewünschten Zielsprachen aus. Es entstehen hier noch keine Übersetzungsaufträge.',
+    checkFirst: 'Speichere zuerst den API-Key und lade die von DeepL unterstützten Sprachen.',
+    targetUnavailable: 'Noch nicht durch den aktuellen Zugang bestätigt',
+
+    errors: {
+      deepl_auth_failed: 'DeepL hat den API-Key abgelehnt. Bitte Tarif und Key prüfen.',
+      deepl_rate_limited: 'DeepL begrenzt gerade die Anfragen. Bitte später erneut prüfen.',
+      deepl_unavailable: 'DeepL ist gerade nicht erreichbar. Vorhandene Texte bleiben erhalten.',
+      deepl_invalid_response: 'Die Sprachliste von DeepL konnte nicht sicher verarbeitet werden.',
+      deepl_module_unavailable:
+        'Der Zugang zum Modul Mehrsprachigkeit ist noch nicht verfügbar. Prüfe den Modulstatus und reaktiviere das Modul bei ausgesetztem Zugang.',
+      deepl_requires_multilingual_module:
+        'Aktiviere zuerst das Modul Mehrsprachigkeit für diese Instanz.',
+      deepl_secret_missing: 'Für diesen Zugang fehlt ein lesbarer API-Key.',
+      deepl_secret_unavailable: 'Der API-Key konnte nicht sicher gespeichert werden.',
+      deepl_disabled: 'Aktiviere die DeepL-Schnittstelle vor der Prüfung.',
+      interface_conflict:
+        'Die Konfiguration wurde inzwischen geändert. Bitte neu laden und erneut prüfen.',
+    },
+  },
   page: {
     title: 'Schnittstellen',
-    subtitle: 'SVA-Mainserver-Endpunkte verwalten und Verbindungsstatus prüfen',
+    subtitle: 'Zugänge externer Dienste für diese Instanz verwalten und prüfen',
   },
   status: {
     cardTitle: 'Verbindungsstatus',
@@ -112,6 +153,10 @@ export const interfacesDEResources = {
     countLabel: '{{count}} Schnittstelle(n)',
   },
   types: {
+    deepl: {
+      label: 'DeepL',
+      description: 'Übersetzungszugang und verfügbare Sprachen dieser Instanz verwalten.',
+    },
     mainserver: {
       label: 'SVA Mainserver',
       description:

@@ -1,4 +1,42 @@
 export const interfacesENResources = {
+  deepl: {
+    refreshFailed:
+      'The check finished, but the latest interface settings could not be loaded. Please retry.',
+    plan: 'DeepL API plan',
+    pro: 'DeepL API Pro',
+    free: 'DeepL API Free',
+    apiKey: 'API key',
+    keyStored:
+      'An API key is stored. Leave this field empty to keep it. A new key requires verification.',
+    keyRequired: 'Enter this instance’s own DeepL API key. The key is stored encrypted.',
+    check: 'Check connection',
+    checking: 'Checking DeepL …',
+    checkFailed: 'DeepL could not be checked. Please try again.',
+    saveFirst: 'Save the configuration before checking. Opening or saving sends no texts to DeepL.',
+    variant: 'Variant for {{language}}',
+    recheck: 'Check connection again',
+    verified: 'Connection verified',
+    languages: 'Languages offered by this instance',
+    languagesHelp:
+      'German remains available as the source language. Select target languages after verification. This does not create translation jobs.',
+    checkFirst: 'Save the API key first, then load the languages supported by DeepL.',
+    targetUnavailable: 'Not confirmed by the current account',
+
+    errors: {
+      deepl_auth_failed: 'DeepL rejected the API key. Check the plan and key.',
+      deepl_rate_limited: 'DeepL is limiting requests. Please check again later.',
+      deepl_unavailable: 'DeepL is unavailable. Existing texts are retained.',
+      deepl_invalid_response: 'The DeepL language list could not be processed safely.',
+      deepl_module_unavailable:
+        'Access to the multilingual module is not available yet. Check its status and reactivate the module if access is suspended.',
+      deepl_requires_multilingual_module:
+        'Activate the multilingual module for this instance first.',
+      deepl_secret_missing: 'This account needs a readable API key.',
+      deepl_secret_unavailable: 'The API key could not be stored securely.',
+      deepl_disabled: 'Enable the DeepL interface before checking.',
+      interface_conflict: 'The configuration has changed. Reload and check again.',
+    },
+  },
   page: {
     title: 'Interfaces',
     subtitle: 'Manage SVA Mainserver endpoints and check connection status',
@@ -36,6 +74,10 @@ export const interfacesENResources = {
     countLabel: '{{count}} interfaces',
   },
   types: {
+    deepl: {
+      label: 'DeepL',
+      description: 'Manage the translation account and available languages for this instance.',
+    },
     mainserver: {
       label: 'SVA Mainserver',
       description: 'Manage GraphQL and OAuth endpoints for the mainserver integration.',

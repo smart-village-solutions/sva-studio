@@ -9,6 +9,10 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: /^@sva\/core\/rich-text-html$/,
+        replacement: resolve(currentDir, '../core/src/rich-text-html.ts'),
+      },
+      {
         find: '@sva/core/security',
         replacement: resolve(currentDir, '../core/src/security/index.ts'),
       },

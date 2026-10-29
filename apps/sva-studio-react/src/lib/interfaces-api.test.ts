@@ -8,6 +8,8 @@ const state = vi.hoisted(() => ({
   loadInstanceById: vi.fn(),
   loadExternalInterfaceRecordById: vi.fn(),
   sendMailTransportTest: vi.fn(),
+  checkDeepLLanguages: vi.fn(),
+  readConfiguredPluginTenantAccess: vi.fn(),
   upsertStoredInterface: vi.fn(),
   getStoredInterface: vi.fn(),
   deleteStoredInterface: vi.fn(),
@@ -54,6 +56,8 @@ vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
   validateCsrf: state.validateCsrf,
+  checkDeepLLanguages: state.checkDeepLLanguages,
+  readConfiguredPluginTenantAccess: state.readConfiguredPluginTenantAccess,
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -147,6 +151,52 @@ describe('interfaces app adapter', () => {
     });
   });
 
+  it('offers DeepL only to assigned instances and protects the explicit language query', async () => {
+    const { resolveAvailableInterfaceTypes } = await import('./interfaces-api-list');
+    state.loadInstanceById.mockResolvedValue({ assignedModules: [] });
+    expect(await resolveAvailableInterfaceTypes('de-musterhausen')).not.toContain('deepl');
+    state.loadInstanceById.mockResolvedValue({ assignedModules: ['app-translations'] });
+    expect(await resolveAvailableInterfaceTypes('de-musterhausen')).toContain('deepl');
+    const { checkDeepLInterfaceForRequest } = await import('./interfaces-api');
+    setAuthenticatedUserContext();
+    state.readConfiguredPluginTenantAccess.mockResolvedValue({ allowed: true });
+    state.checkDeepLLanguages.mockResolvedValue({ ok: true });
+    await expect(checkDeepLInterfaceForRequest({ id: 'deepl:de-musterhausen' })).resolves.toEqual({
+      ok: true,
+    });
+    expect(state.checkDeepLLanguages).toHaveBeenCalledWith(
+      'de-musterhausen',
+      'deepl:de-musterhausen'
+    );
+    state.checkDeepLLanguages.mockClear();
+    state.readConfiguredPluginTenantAccess.mockResolvedValue({
+      allowed: false,
+      reason: 'suspended',
+    });
+    await expect(checkDeepLInterfaceForRequest({ id: 'deepl-a' })).rejects.toThrow(
+      'deepl_module_unavailable'
+    );
+    expect(state.checkDeepLLanguages).not.toHaveBeenCalled();
+    state.readConfiguredPluginTenantAccess.mockResolvedValue({
+      allowed: false,
+      reason: 'inactive',
+    });
+    await expect(checkDeepLInterfaceForRequest({ id: 'deepl-a' })).rejects.toThrow(
+      'deepl_requires_multilingual_module'
+    );
+    state.readConfiguredPluginTenantAccess.mockResolvedValue({ allowed: true });
+    await expect(
+      checkDeepLInterfaceForRequest({ id: 'deepl-a', instanceId: 'foreign' })
+    ).rejects.toThrow();
+    state.validateCsrf.mockReturnValue(new Response(null, { status: 403 }));
+    await expect(checkDeepLInterfaceForRequest({ id: 'deepl-a' })).rejects.toThrow(
+      'csrf_validation_failed'
+    );
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeInstancePermissionForUser.mockResolvedValue({ ok: false, error: 'forbidden' });
+    await expect(checkDeepLInterfaceForRequest({ id: 'deepl-a' })).rejects.toThrow();
+    expect(state.checkDeepLLanguages).not.toHaveBeenCalled();
+  });
   it('keeps server-only modules out of eager module evaluation', async () => {
     await import('./interfaces-api');
 
@@ -567,9 +617,21 @@ describe('interfaces app adapter', () => {
     const { upsertInstanceInterfaceForRequest } = await import('./interfaces-api');
     await expect(
       upsertInstanceInterfaceForRequest(
-        { draft: { type: 's3', name: 'Uploads', enabled: true, config: {
-          endpoint: '', region: '', bucket: '', accessKeyId: '', secretAccessKey: '', forcePathStyle: false,
-        } } },
+        {
+          draft: {
+            type: 's3',
+            name: 'Uploads',
+            enabled: true,
+            config: {
+              endpoint: '',
+              region: '',
+              bucket: '',
+              accessKeyId: '',
+              secretAccessKey: '',
+              forcePathStyle: false,
+            },
+          },
+        },
         request
       )
     ).rejects.toMatchObject({ message: 'csrf_validation_failed', statusCode: 403 });
@@ -581,11 +643,15 @@ describe('interfaces app adapter', () => {
     setAuthenticatedUserContext({ ...defaultUser, email: 'actor@example.test' });
     const record = { id: 'mail-1', typeKey: 'mail_transport', ownerKind: 'host' };
     state.loadExternalInterfaceRecordById.mockResolvedValue(record);
-    state.sendMailTransportTest.mockResolvedValue({ status: 'sent', recipient: 'actor@example.test' });
+    state.sendMailTransportTest.mockResolvedValue({
+      status: 'sent',
+      recipient: 'actor@example.test',
+    });
     const { testMailInterfaceForRequest } = await import('./interfaces-api');
 
-    await expect(testMailInterfaceForRequest({ instanceId: 'de-musterhausen', id: 'mail-1' }, state.request))
-      .resolves.toEqual({ status: 'sent', recipient: 'actor@example.test' });
+    await expect(
+      testMailInterfaceForRequest({ instanceId: 'de-musterhausen', id: 'mail-1' }, state.request)
+    ).resolves.toEqual({ status: 'sent', recipient: 'actor@example.test' });
     expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'integration.manage' })
     );
@@ -599,14 +665,25 @@ describe('interfaces app adapter', () => {
   it('rejects cross-tenant and non-mail interface test requests before sending', async () => {
     setAuthenticatedUserContext({ ...defaultUser, email: 'actor@example.test' });
     const { testMailInterfaceForRequest } = await import('./interfaces-api');
-    await expect(testMailInterfaceForRequest({ instanceId: 'other-tenant', id: 'mail-1' }, state.request))
-      .rejects.toMatchObject({ message: 'forbidden' });
-    state.loadExternalInterfaceRecordById.mockResolvedValue({ id: 's3-1', typeKey: 's3', ownerKind: 'host' });
-    await expect(testMailInterfaceForRequest({ id: 's3-1' }, state.request))
-      .rejects.toMatchObject({ message: 'interface_not_found' });
-    state.loadExternalInterfaceRecordById.mockResolvedValue({ id: 'managed-mail', typeKey: 'mail_transport', ownerKind: 'plugin' });
-    await expect(testMailInterfaceForRequest({ id: 'managed-mail' }, state.request))
-      .rejects.toMatchObject({ message: 'interface_not_found' });
+    await expect(
+      testMailInterfaceForRequest({ instanceId: 'other-tenant', id: 'mail-1' }, state.request)
+    ).rejects.toMatchObject({ message: 'forbidden' });
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 's3-1',
+      typeKey: 's3',
+      ownerKind: 'host',
+    });
+    await expect(testMailInterfaceForRequest({ id: 's3-1' }, state.request)).rejects.toMatchObject({
+      message: 'interface_not_found',
+    });
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'managed-mail',
+      typeKey: 'mail_transport',
+      ownerKind: 'plugin',
+    });
+    await expect(
+      testMailInterfaceForRequest({ id: 'managed-mail' }, state.request)
+    ).rejects.toMatchObject({ message: 'interface_not_found' });
     expect(state.sendMailTransportTest).not.toHaveBeenCalled();
   });
 
@@ -614,8 +691,9 @@ describe('interfaces app adapter', () => {
     setAuthenticatedUserContext({ ...defaultUser, email: 'actor@example.test' });
     state.validateCsrf.mockReturnValueOnce(new Response(null, { status: 403 }));
     const { testMailInterfaceForRequest } = await import('./interfaces-api');
-    await expect(testMailInterfaceForRequest({ id: 'mail-1' }, state.request))
-      .rejects.toMatchObject({ message: 'csrf_validation_failed', statusCode: 403 });
+    await expect(
+      testMailInterfaceForRequest({ id: 'mail-1' }, state.request)
+    ).rejects.toMatchObject({ message: 'csrf_validation_failed', statusCode: 403 });
     expect(state.loadExternalInterfaceRecordById).not.toHaveBeenCalled();
   });
 
@@ -629,9 +707,21 @@ describe('interfaces app adapter', () => {
 
     const { upsertInstanceInterfaceForRequest } = await import('./interfaces-api');
     await upsertInstanceInterfaceForRequest(
-      { draft: { type: 's3', name: 'Uploads', enabled: true, config: {
-        endpoint: '', region: '', bucket: '', accessKeyId: '', secretAccessKey: '', forcePathStyle: false,
-      } } },
+      {
+        draft: {
+          type: 's3',
+          name: 'Uploads',
+          enabled: true,
+          config: {
+            endpoint: '',
+            region: '',
+            bucket: '',
+            accessKeyId: '',
+            secretAccessKey: '',
+            forcePathStyle: false,
+          },
+        },
+      },
       request
     );
 
@@ -1089,27 +1179,53 @@ describe('interfaces app adapter', () => {
     const { upsertInstanceInterfaceForRequest } = await import('./interfaces-api');
     await expect(
       upsertInstanceInterfaceForRequest(
-        { draft: { type: 's3', name: 'Uploads', enabled: true, config: {
-          endpoint: '', region: '', bucket: '', accessKeyId: '', secretAccessKey: '', forcePathStyle: false,
-        } } },
+        {
+          draft: {
+            type: 's3',
+            name: 'Uploads',
+            enabled: true,
+            config: {
+              endpoint: '',
+              region: '',
+              bucket: '',
+              accessKeyId: '',
+              secretAccessKey: '',
+              forcePathStyle: false,
+            },
+          },
+        },
         request
       )
     ).rejects.toMatchObject({ message: 'database_unavailable', statusCode: 500 });
   });
   const mainserverConfig = {
-    instanceId: 'de-musterhausen', providerKey: 'sva_mainserver', enabled: true,
+    instanceId: 'de-musterhausen',
+    providerKey: 'sva_mainserver',
+    enabled: true,
     graphqlBaseUrl: 'https://mainserver.example/graphql',
     oauthTokenUrl: 'https://identity.example/realms/tenant/protocol/openid-connect/token',
   };
-  const mainserverRequest = (method = 'GET', body?: unknown, headers: Record<string, string> = {}) =>
+  const mainserverRequest = (
+    method = 'GET',
+    body?: unknown,
+    headers: Record<string, string> = {}
+  ) =>
     new Request('https://tenant.example/api/v1/interfaces/mainserver', {
-      method, headers: { authorization: 'Bearer checked-by-middleware', 'content-type': 'application/json', ...headers },
+      method,
+      headers: {
+        authorization: 'Bearer checked-by-middleware',
+        'content-type': 'application/json',
+        ...headers,
+      },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
 
   it('reads Mainserver settings through exact personal auth and integration.manage', async () => {
     setAuthenticatedUserContext();
-    state.loadSvaMainserverSettings.mockResolvedValue({ ...mainserverConfig, secret: 'must-not-leak' });
+    state.loadSvaMainserverSettings.mockResolvedValue({
+      ...mainserverConfig,
+      secret: 'must-not-leak',
+    });
     const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
     const request = mainserverRequest();
     const response = await dispatchInterfacesApiRequest(request);
@@ -1118,49 +1234,81 @@ describe('interfaces app adapter', () => {
     expect(state.withAuthenticatedUser).toHaveBeenCalledWith(request, expect.any(Function), {
       personalBearerRoute: { method: 'GET', path: '/api/v1/interfaces/mainserver' },
     });
-    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(expect.objectContaining({ action: 'integration.manage' }));
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'integration.manage' })
+    );
     expect(state.loadSvaMainserverSettings).toHaveBeenCalledWith('de-musterhausen');
   });
 
   it('returns null for an unconfigured Mainserver', async () => {
-    setAuthenticatedUserContext(); state.loadSvaMainserverSettings.mockResolvedValue(null);
+    setAuthenticatedUserContext();
+    state.loadSvaMainserverSettings.mockResolvedValue(null);
     const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
-    expect(await (await dispatchInterfacesApiRequest(mainserverRequest()))?.json()).toEqual({ data: null });
+    expect(await (await dispatchInterfacesApiRequest(mainserverRequest()))?.json()).toEqual({
+      data: null,
+    });
   });
 
   it('saves Mainserver settings using the existing tenant-bound operation', async () => {
-    setAuthenticatedUserContext(); state.saveSvaMainserverSettings.mockResolvedValue(mainserverConfig);
+    setAuthenticatedUserContext();
+    state.saveSvaMainserverSettings.mockResolvedValue(mainserverConfig);
     const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
-    const input = { graphqlBaseUrl: mainserverConfig.graphqlBaseUrl, oauthTokenUrl: mainserverConfig.oauthTokenUrl, enabled: mainserverConfig.enabled };
+    const input = {
+      graphqlBaseUrl: mainserverConfig.graphqlBaseUrl,
+      oauthTokenUrl: mainserverConfig.oauthTokenUrl,
+      enabled: mainserverConfig.enabled,
+    };
     const request = mainserverRequest('POST', input);
     const response = await dispatchInterfacesApiRequest(request);
     expect(response?.status).toBe(200);
     expect(await response?.json()).toEqual({ data: mainserverConfig });
-    expect(state.saveSvaMainserverSettings).toHaveBeenCalledWith({ ...input, instanceId: 'de-musterhausen' });
+    expect(state.saveSvaMainserverSettings).toHaveBeenCalledWith({
+      ...input,
+      instanceId: 'de-musterhausen',
+    });
     expect(state.withAuthenticatedUser).toHaveBeenCalledWith(request, expect.any(Function), {
       personalBearerRoute: { method: 'POST', path: '/api/v1/interfaces/mainserver' },
     });
     expect(state.validateCsrf).not.toHaveBeenCalled();
   });
 
-  it.each(['instanceId', 'clientSecret', 'providerKey'])('rejects Mainserver body field %s', async (field) => {
-    setAuthenticatedUserContext();
-    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
-    const response = await dispatchInterfacesApiRequest(mainserverRequest('POST', {
-      graphqlBaseUrl: mainserverConfig.graphqlBaseUrl, oauthTokenUrl: mainserverConfig.oauthTokenUrl,
-      enabled: true, [field]: 'other-value',
-    }));
-    expect(response?.status).toBe(400);
-    expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
-  });
+  it.each(['instanceId', 'clientSecret', 'providerKey'])(
+    'rejects Mainserver body field %s',
+    async (field) => {
+      setAuthenticatedUserContext();
+      const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+      const response = await dispatchInterfacesApiRequest(
+        mainserverRequest('POST', {
+          graphqlBaseUrl: mainserverConfig.graphqlBaseUrl,
+          oauthTokenUrl: mainserverConfig.oauthTokenUrl,
+          enabled: true,
+          [field]: 'other-value',
+        })
+      );
+      expect(response?.status).toBe(400);
+      expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
+    }
+  );
 
   it.each(['GET', 'POST'])('blocks Mainserver %s without integration.manage', async (method) => {
     setAuthenticatedUserContext();
-    state.authorizeInstancePermissionForUser.mockResolvedValue({ ok: false, status: 403, error: 'permission_missing' });
+    state.authorizeInstancePermissionForUser.mockResolvedValue({
+      ok: false,
+      status: 403,
+      error: 'permission_missing',
+    });
     const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
-    const body = method === 'POST' ? { graphqlBaseUrl: mainserverConfig.graphqlBaseUrl, oauthTokenUrl: mainserverConfig.oauthTokenUrl, enabled: true } : undefined;
+    const body =
+      method === 'POST'
+        ? {
+            graphqlBaseUrl: mainserverConfig.graphqlBaseUrl,
+            oauthTokenUrl: mainserverConfig.oauthTokenUrl,
+            enabled: true,
+          }
+        : undefined;
     expect((await dispatchInterfacesApiRequest(mainserverRequest(method, body)))?.status).toBe(403);
-    expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled(); expect(state.loadSvaMainserverSettings).not.toHaveBeenCalled();
+    expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
+    expect(state.loadSvaMainserverSettings).not.toHaveBeenCalled();
   });
 
   it('rejects a Mainserver caller without tenant context', async () => {
@@ -1171,11 +1319,17 @@ describe('interfaces app adapter', () => {
   });
 
   it('preserves browser CSRF validation for Mainserver saves', async () => {
-    setAuthenticatedUserContext(); state.validateCsrf.mockReturnValue(new Response(null, { status: 403 }));
+    setAuthenticatedUserContext();
+    state.validateCsrf.mockReturnValue(new Response(null, { status: 403 }));
     const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
-    const request = new Request('https://tenant.example/api/v1/interfaces/mainserver', { method: 'POST', body: JSON.stringify({
-      graphqlBaseUrl: mainserverConfig.graphqlBaseUrl, oauthTokenUrl: mainserverConfig.oauthTokenUrl, enabled: true,
-    }) });
+    const request = new Request('https://tenant.example/api/v1/interfaces/mainserver', {
+      method: 'POST',
+      body: JSON.stringify({
+        graphqlBaseUrl: mainserverConfig.graphqlBaseUrl,
+        oauthTokenUrl: mainserverConfig.oauthTokenUrl,
+        enabled: true,
+      }),
+    });
     expect((await dispatchInterfacesApiRequest(request))?.status).toBe(403);
     expect(state.validateCsrf).toHaveBeenCalledWith(request, undefined, {
       allowServerFnHeader: true,
@@ -1185,23 +1339,33 @@ describe('interfaces app adapter', () => {
 
   it.each([
     { status: 401, code: 'unauthorized', error: 'unauthorized' },
-    { status: 401, code: 'unauthorized', error: { code: 'unauthorized', message: 'private diagnostic' } },
+    {
+      status: 401,
+      code: 'unauthorized',
+      error: { code: 'unauthorized', message: 'private diagnostic' },
+    },
     { status: 403, code: 'forbidden', error: { code: 'forbidden', message: 'private diagnostic' } },
-  ])('preserves $code auth failures without invoking Mainserver operations', async ({ status, code, error }) => {
-    state.withAuthenticatedUser.mockResolvedValue(Response.json({ error }, { status }));
-    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
-    const response = await dispatchInterfacesApiRequest(mainserverRequest());
-    expect(response?.status).toBe(status);
-    expect(await response?.json()).toEqual({ error: { code } });
-    expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
-    expect(state.loadSvaMainserverSettings).not.toHaveBeenCalled();
-  });
+  ])(
+    'preserves $code auth failures without invoking Mainserver operations',
+    async ({ status, code, error }) => {
+      state.withAuthenticatedUser.mockResolvedValue(Response.json({ error }, { status }));
+      const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+      const response = await dispatchInterfacesApiRequest(mainserverRequest());
+      expect(response?.status).toBe(status);
+      expect(await response?.json()).toEqual({ error: { code } });
+      expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
+      expect(state.loadSvaMainserverSettings).not.toHaveBeenCalled();
+    }
+  );
 
-  it.each(['DELETE', 'PATCH', 'PUT'])('reserves the Mainserver endpoint against %s', async (method) => {
-    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
-    const response = await dispatchInterfacesApiRequest(mainserverRequest(method));
-    expect(response?.status).toBe(405); expect(response?.headers.get('allow')).toBe('GET, POST');
-    expect(state.deleteStoredInterface).not.toHaveBeenCalled();
-  });
-
+  it.each(['DELETE', 'PATCH', 'PUT'])(
+    'reserves the Mainserver endpoint against %s',
+    async (method) => {
+      const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+      const response = await dispatchInterfacesApiRequest(mainserverRequest(method));
+      expect(response?.status).toBe(405);
+      expect(response?.headers.get('allow')).toBe('GET, POST');
+      expect(state.deleteStoredInterface).not.toHaveBeenCalled();
+    }
+  );
 });

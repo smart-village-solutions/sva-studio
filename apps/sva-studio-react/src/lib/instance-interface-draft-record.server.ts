@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { ExternalInterfaceRecord } from '@sva/core';
+import { type ExternalInterfaceRecord } from '@sva/core';
 import {
   loadDefaultExternalInterfaceRecord,
   loadExternalInterfaceRecordById,
@@ -16,6 +16,7 @@ import {
 } from './instance-interface-record-helpers.server.js';
 import { buildMailTransportRecord } from './instance-interface-mail-record.server.js';
 import { buildMapGeocodingRecord } from './instance-interface-map-record.server.js';
+import { buildDeepLRecord } from './instance-interface-deepl-record.server.js';
 const logger = createSdkLogger({ component: 'instance-interfaces-server' });
 
 const buildS3Record = (input: {
@@ -157,11 +158,22 @@ const buildPostgresqlRecord = (input: {
   };
 };
 
+const hasSecretInput = (draft: Parameters<typeof buildRecordFromDraft>[0]['draft']): boolean =>
+  draft.type === 's3'
+    ? draft.config.secretAccessKey.length > 0
+    : draft.type === 'supabase'
+      ? draft.config.databaseUrl.length > 0 || draft.config.serviceRoleKey.length > 0
+      : draft.type === 'postgresql'
+        ? draft.config.databaseUrl.length > 0
+        : draft.type === 'mailTransport'
+          ? draft.config.password.length > 0
+          : draft.config.apiKey.length > 0;
+
 export const buildRecordFromDraft = async (input: {
   readonly instanceId: string;
   readonly draft: Extract<
     InstanceInterfaceDraft,
-    { type: 's3' | 'supabase' | 'postgresql' | 'mailTransport' | 'mapGeocoding' }
+    { type: 's3' | 'supabase' | 'postgresql' | 'mailTransport' | 'mapGeocoding' | 'deepl' }
   >;
   readonly existingId?: string;
 }): Promise<ExternalInterfaceRecord> => {
@@ -170,17 +182,7 @@ export const buildRecordFromDraft = async (input: {
     workspace_id: input.instanceId,
     interface_type: input.draft.type,
     existing_interface_id: input.existingId,
-    has_secret_input:
-      input.draft.type === 's3'
-        ? input.draft.config.secretAccessKey.length > 0
-        : input.draft.type === 'supabase'
-          ? input.draft.config.databaseUrl.length > 0 ||
-            input.draft.config.serviceRoleKey.length > 0
-          : input.draft.type === 'postgresql'
-            ? input.draft.config.databaseUrl.length > 0
-            : input.draft.type === 'mailTransport'
-              ? input.draft.config.password.length > 0
-              : input.draft.config.apiKey.length > 0,
+    has_secret_input: hasSecretInput(input.draft),
   });
   const existing = input.existingId
     ? await loadExternalInterfaceRecordById(input.instanceId, input.existingId)
@@ -219,7 +221,8 @@ export const buildRecordFromDraft = async (input: {
       interface_id: interfaceId,
       error_message: error instanceof Error ? error.message : String(error),
     });
-    throw error;
+    if (input.draft.type === 'deepl' && input.draft.config.apiKey.trim()) previousSecrets = {};
+    else throw error;
   }
 
   if (existing && existing.typeKey !== mapStoredTypeToKey(input.draft.type)) {
@@ -247,6 +250,8 @@ export const buildRecordFromDraft = async (input: {
     hasDefaultRecord: Boolean(defaultRecord),
     previousSecrets,
   } as const;
+
+  if (input.draft.type === 'deepl') return buildDeepLRecord({ ...sharedInput, draft: input.draft });
 
   return input.draft.type === 's3'
     ? buildS3Record({ ...sharedInput, draft: input.draft })

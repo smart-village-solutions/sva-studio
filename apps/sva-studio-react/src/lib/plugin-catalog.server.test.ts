@@ -14,6 +14,17 @@ import { studioServerPluginCatalogReport } from './plugin-catalog.server.js';
 
 describe('server plugin catalog', () => {
   it('loads the active descriptors without evaluating browser pages', () => {
+    const registry = studioServerPluginCatalogReport.snapshot.registry;
+    expect(registry.pluginRegistry.has('app-translations')).toBe(true);
+    expect(registry.pluginTenantLifecycleRegistry.has('app-translations')).toBe(true);
+    expect(registry.pluginRegistry.get('app-translations')?.routes[0]?.path).toBe(
+      '/plugins/app-translations'
+    );
+    expect(
+      registry.pluginTenantLifecycleRegistry
+        .get('app-translations')
+        ?.operations.map(({ operation }) => operation)
+    ).toContain('readiness');
     expect(
       studioServerPluginCatalogReport.snapshot.registry.contentTypes.every(
         (definition) => definition.mutations === undefined

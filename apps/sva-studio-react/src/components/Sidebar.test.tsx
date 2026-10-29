@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import React from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IamContentAccessSummary } from '@sva/core';
+import { appTranslationsPlugin } from '@sva/plugin-app-translations';
 import { pluginNews } from '@sva/plugin-news';
 import type { PluginNavigationItem } from '@sva/plugin-sdk';
 
@@ -82,6 +83,7 @@ const serializeSearch = (search: Readonly<Record<string, unknown>>): string => {
 
 beforeAll(() => {
   mergeI18nResources(pluginNews.translations ?? {});
+  mergeI18nResources(appTranslationsPlugin.translations ?? {});
   mergeI18nResources({
     de: { ssf: { navigation: { tenant: 'SSF-Konfiguration' } } },
     en: { ssf: { navigation: { tenant: 'SSF configuration' } } },
@@ -699,6 +701,65 @@ describe('Sidebar', () => {
     );
     expect(screen.queryByRole('link', { name: 'Einladungsvorlage' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
+  });
+
+  it('groups shared app texts under App and expands the active root path', () => {
+    renderSidebar({
+      user: createSidebarUser({ roles: ['instance_registry_admin'] }),
+      route: '/admin/app-translations',
+    });
+    const group = screen.getByRole('button', { name: 'App' });
+    expect(group.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('link', { name: 'Gemeinsame App-Texte' }).getAttribute('href')).toBe(
+      '/admin/app-translations'
+    );
+    expect(screen.queryByRole('link', { name: 'Sprachen' })).toBeNull();
+    fireEvent.click(group);
+    expect(screen.queryByRole('link', { name: 'Gemeinsame App-Texte' })).toBeNull();
+  });
+
+  it('offers German app texts with host rights even without an assigned multilingual module', () => {
+    renderSidebar({
+      user: createSidebarUser({
+        instanceId: 'demo',
+        roles: ['editor'],
+        permissionActions: ['app-texts.catalog.read'],
+        assignedModules: [],
+      }),
+      route: '/app-texts',
+    });
+    expect(screen.getByRole('link', { name: 'App-Texte' }).getAttribute('href')).toBe('/app-texts');
+    expect(screen.queryByRole('link', { name: 'Gemeinsame App-Texte' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Sprachen' })).toBeNull();
+  });
+
+  it('nests multilingual navigation under App and keeps German texts in the same group', () => {
+    studioPluginNavigationMock.items = [...(appTranslationsPlugin.navigation ?? [])];
+    renderSidebar({
+      user: createSidebarUser({
+        instanceId: 'demo',
+        roles: ['system_admin'],
+        assignedModules: ['app-translations'],
+        permissionActions: ['app-texts.catalog.read', 'app-translations.catalog.read'],
+      }),
+      route: '/plugins/app-translations',
+    });
+    const group = screen.getByRole('button', { name: 'App' });
+    expect(group.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getAllByRole('button', { name: 'App' })).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Mehrsprachigkeit' }).getAttribute('href')).toBe(
+      '/plugins/app-translations'
+    );
+    expect(screen.getByRole('link', { name: 'App-Texte' }).getAttribute('href')).toBe('/app-texts');
+    fireEvent.click(group);
+    expect(screen.queryByRole('link', { name: 'Mehrsprachigkeit' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'App-Texte' })).toBeNull();
+  });
+
+  it('does not expose the central app group in a municipal session', () => {
+    renderSidebar({ user: createSidebarUser({ instanceId: 'demo', roles: ['system_admin'] }) });
+    expect(screen.queryByRole('button', { name: 'App' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Gemeinsame App-Texte' })).toBeNull();
   });
 
   it('zeigt die Einladungsvorlage nur mit Tenant-Kontext und eigener Permission', () => {

@@ -4,6 +4,7 @@ import {
   loadDefaultExternalInterfaceRecord,
   loadExternalInterfaceRecordById,
   saveExternalInterfaceRecord,
+  saveDeepLInterfaceRecord,
 } from '@sva/data-repositories/server';
 import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceInterfaceDraft } from './instance-interfaces';
@@ -62,7 +63,8 @@ export const upsertStoredInterface = async (
   });
 
   try {
-    await saveExternalInterfaceRecord(record);
+    if (draft.type === 'deepl') await saveDeepLInterfaceRecord(record, draft.config.revision);
+    else await saveExternalInterfaceRecord(record);
   } catch (error) {
     logger.error('Failed to persist external interface record', {
       operation: 'upsert_stored_interface',

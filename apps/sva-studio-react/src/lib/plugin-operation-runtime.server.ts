@@ -9,6 +9,8 @@ import {
   readPluginOperationInput,
   storePluginOperationArtifact,
   listActiveInstanceIdsForWorker,
+  readAppTranslationsLocalReadiness,
+  runCatalogTranslation,
 } from '@sva/auth-runtime/server';
 import {
   loadDefaultExternalInterfaceRecord,
@@ -58,7 +60,10 @@ type StudioPluginJobSource = {
 const compareAlphabetically = (left: string, right: string): number =>
   left.localeCompare(right, 'de');
 
-const hostOwnedRuntimeOwners = new Map([['waste-management.operations', 'waste-management']]);
+const hostOwnedRuntimeOwners = new Map([
+  ['waste-management.operations', 'waste-management'],
+  ['app-translations.local', 'app-translations'],
+]);
 
 const emailReminderPollIntervalMs = 60 * 1000;
 const emailReminderMaterializationIntervalMs = 60 * 60 * 1000;
@@ -182,6 +187,10 @@ const resolvePluginJobModule = (input: {
 };
 
 const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
+  'app-translations.local': () => ({
+    readLocalReadiness: readAppTranslationsLocalReadiness,
+    translateCatalog: runCatalogTranslation,
+  }),
   'waste-management.operations': () =>
     createWasteManagementOperationRuntime({
       dispatchMail: createNodemailerMailDispatcher({}),

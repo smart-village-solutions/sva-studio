@@ -1566,6 +1566,14 @@ Die Medienbibliothek startet mit `media.read` und `media.update` sowie CSRF-Schu
 4. Die Mediathek speichert eine neue Kopie unmittelbar. Sechs Content-Plugins übertragen ihre lokalen Kopien erst im vorhandenen Content-Save-Ablauf; Waste speichert die öffentliche Kopie sofort und übernimmt nur deren dauerhafte URL in die noch ungespeicherte Konfiguration.
 5. Der vorhandene Medienjob prüft Ausgabe, Grundlage und eingebettete Bildressourcen einschließlich aktiver Scanpflicht. Nur der aktuelle Claim darf alle Bestandteile freigeben und deren tatsächliche Bytes samt Zustandsdokument verbuchen. Private Ressourcen bleiben auch ohne Scan privat.
 6. Kopienanlage und Quellenlöschung sperren dieselbe Grundlage. Löschung markiert das Asset vor Storage-I/O; neue Referenzen/Kopien sind danach ausgeschlossen. Referenzen, offene Content-Save-Verwendungen und abhängige Kopien blockieren die Löschung. Wiederholung nach einem Storage-Fehler darf Kontingente nicht mehrfach korrigieren.
+## Feste App-Texte ausdrücklich maschinell vorbereiten (2F)
+
+1. Ein berechtigter Nutzer startet im vorhandenen Katalogeditor „Fehlende Übersetzungen erstellen“. Der Server bindet CSRF und gespeicherten Session-/Organisationsscope, prüft `app-translations.catalog.write`, Modul und eigenen geprüften Zugang. Eine einzelne manuelle Ersetzung verlangt bestätigte Quell-/Overridedigests. Zu große Einzelwerte werden vor Enqueue abgewiesen.
+2. Unter Draftsperre werden ein aktiver Auftrag dedupliziert und andernfalls Studiojob plus Graphile-Enqueue gemeinsam gespeichert. Graphile erhält nur Instanz- und Job-ID; die instanzbezogene Queue verhindert parallele Katalog-Anbieteranfragen.
+3. Der vorhandene Jobrunner übergibt den aktuellen Claim. Der Hostworker prüft Actorrechte/Mitgliedschaft, Scope, Basis/Manifest, Lifecycle, Zugang/Zielcodes und Checkpointrevision. Der normale Lauf liest den gepinnten deutschen Standard; kommunale Quellen werden nur gezielt verwendet. Manuelle Werte werden übersprungen.
+4. DeepL arbeitet außerhalb der DB-Transaktion mit begrenzten Requests und geschützten Platzhaltern. Danach prüft der Worker alle Bindungen erneut. Nur ein vollständiger gültiger Batch wird gemeinsam mit Revision und Checkpoint geschrieben. Entzug, Rotation, Cancel oder konkurrierender Edit verwirft späte Antworten.
+5. Recovery beginnt am letzten gespeicherten Checkpoint. Fehler vor Commit können neue Anbieterkosten beim Retry bedeuten. Das vorhandene Retrybudget endet nach drei Versuchen; terminale Konfigurations-/Tokenfehler starten keine Schleife.
+6. Der Editor liest nur solange aktiv begrenzt den gespeicherten Status. Er aktualisiert Katalogdaten nicht über ungespeicherte Eingaben hinweg. Suche, Auswahl und Scrollposition bleiben bestehen. „Textstand sichern“ prüft anschließend getrennt den vollständigen lokalen Satz; keine automatische Veröffentlichung oder Appauslieferung.
 
 ## Gutschein speichern
 

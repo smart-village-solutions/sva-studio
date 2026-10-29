@@ -33,22 +33,30 @@ import {
   projectStoredEntry,
   resolveAvailableInterfaceTypes,
 } from './interfaces-api-list';
-import type { InstanceInterface, InstanceInterfaceDraft } from './instance-interfaces';
+import {
+  deepLInterfaceDraftSchema,
+  type InstanceInterface,
+  type InstanceInterfaceDraft,
+} from './instance-interfaces';
 import type { MailTestResult } from './instance-interface-mail-test.server';
 
 type InterfacesOverviewModel = SvaMainserverInterfacesOverview;
 
-const requireWasteManagementModuleForSupabase = async (
+const requireModuleForInterface = async (
   draft: InstanceInterfaceDraft,
   instanceId: string
 ): Promise<void> => {
-  if (draft.type !== 'supabase') {
+  if (draft.type !== 'supabase' && draft.type !== 'deepl') {
     return;
   }
 
   const availableTypes = await resolveAvailableInterfaceTypes(instanceId);
-  if (!availableTypes.includes('supabase')) {
-    throw new Error('supabase_requires_waste_management_module');
+  if (!availableTypes.includes(draft.type)) {
+    throw new Error(
+      draft.type === 'deepl'
+        ? 'deepl_requires_multilingual_module'
+        : 'supabase_requires_waste_management_module'
+    );
   }
 };
 
@@ -86,6 +94,8 @@ export const upsertInstanceInterfaceForRequest = async (
   data: UpsertInstanceInterfaceInput,
   request?: Request
 ): Promise<InstanceInterface> => {
+  if (data.draft.type === 'deepl' && !deepLInterfaceDraftSchema.safeParse(data.draft).success)
+    throw new Error('invalid_config');
   if (data.draft.type === 'mainserver') {
     throw new Error('mainserver_interfaces_use_dedicated_endpoint');
   }
@@ -128,7 +138,7 @@ export const upsertInstanceInterfaceForRequest = async (
         request_host: new URL(dependencies.request.url).host,
         has_iam_database_url: Boolean(process.env.IAM_DATABASE_URL),
       });
-      await requireWasteManagementModuleForSupabase(data.draft, instanceId);
+      await requireModuleForInterface(data.draft, instanceId);
       let stored;
       try {
         stored = await upsertStoredInterface(instanceId, data.draft, data.existingId);
@@ -192,10 +202,13 @@ export const testMailInterfaceForRequest = async (
   request?: Request
 ): Promise<MailTestResult> => {
   if (
-    !data || typeof data.id !== 'string' || !data.id.trim() ||
+    !data ||
+    typeof data.id !== 'string' ||
+    !data.id.trim() ||
     (data.instanceId !== undefined && typeof data.instanceId !== 'string') ||
     (data.locale !== undefined && data.locale !== 'de' && data.locale !== 'en')
-  ) throw new Error('invalid_config');
+  )
+    throw new Error('invalid_config');
   const dependencies = await loadInterfacesRequestDependencies(request);
   return runWithAuthenticatedInterfacesUser({
     request: dependencies.request,
@@ -310,7 +323,11 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
       if (response.ok && isSvaMainserverInstanceConfig(payload)) {
         return payload;
       }
-      if (response.status === 403 && isErrorPayload(payload) && payload.error === 'csrf_validation_failed') {
+      if (
+        response.status === 403 &&
+        isErrorPayload(payload) &&
+        payload.error === 'csrf_validation_failed'
+      ) {
         throw Object.assign(new Error('csrf_validation_failed'), { statusCode: 403 });
       }
 
@@ -347,3 +364,5 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
       });
     }
   });
+
+export { checkDeepLInterfaceForRequest, checkDeepLInterfaceServerFn } from './interfaces-api-deepl';

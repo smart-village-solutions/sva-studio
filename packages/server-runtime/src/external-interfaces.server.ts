@@ -40,6 +40,8 @@ const buildSecretConfigMarkers = (
   }
 
   switch (typeKey) {
+    case 'deepl':
+      return { apiKey: true };
     case 's3':
       return { secretAccessKey: true };
     case 'supabase':

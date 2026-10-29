@@ -4,6 +4,23 @@ import './plugins';
 import { resolveBreadcrumbItems } from './breadcrumbs';
 
 describe('resolveBreadcrumbItems', () => {
+  it('shows the app hierarchy without a link to a nonexistent group page', () => {
+    expect(resolveBreadcrumbItems('/admin/app-translations')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { label: 'App' },
+      { label: 'Gemeinsame App-Texte' },
+    ]);
+    expect(resolveBreadcrumbItems('/app-texts')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { label: 'App' },
+      { label: 'App-Texte' },
+    ]);
+    expect(resolveBreadcrumbItems('/plugins/app-translations')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { label: 'App' },
+      { label: 'Mehrsprachigkeit' },
+    ]);
+  });
   it('uses the Waste page title for the Waste breadcrumb', () => {
     expect(resolveBreadcrumbItems('/plugins/waste-management')).toEqual([
       { href: '/', label: 'Übersicht' },

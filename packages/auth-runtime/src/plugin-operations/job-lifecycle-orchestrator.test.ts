@@ -22,6 +22,70 @@ const job: StudioJobRecord = {
 };
 
 describe('job lifecycle orchestrator', () => {
+  it('does not regress a newer claim into the old attempt retry state', async () => {
+    const updateJobState = vi.fn();
+    const orchestrator = createJobLifecycleOrchestrator({
+      logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      loadRepository: async () => ({
+        getJobById: vi
+          .fn()
+          .mockResolvedValueOnce(job)
+          .mockResolvedValue({ ...job, status: 'running', attempts: 2, workerId: 'new-worker' }),
+        updateJobState,
+        updateJobProgress: vi.fn(),
+        appendJobEvent: vi.fn(),
+      }),
+      resolveHandler: () => async () => {
+        throw new Error('transient_failure');
+      },
+      createWorkerId: () => 'old-worker',
+    });
+    await expect(
+      orchestrator.run({ instanceId: job.instanceId, jobId: job.id, attempts: 1, maxAttempts: 3 })
+    ).rejects.toThrow('studio_job_lease_lost');
+    expect(updateJobState).toHaveBeenCalledTimes(1);
+    expect(updateJobState).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'running', attempts: 1 })
+    );
+  });
+  it('passes the current claim and retains an atomically committed checkpoint after a crash', async () => {
+    const progress = {
+      completedSteps: 50,
+      totalSteps: 1460,
+      details: { cursor: 50, draftRevision: '2' },
+    };
+    const handler = vi.fn(async (context) => {
+      expect(context.job).toMatchObject({ status: 'running', attempts: 2, workerId: 'worker-a' });
+      throw new Error('crash_after_batch_commit');
+    });
+    const updateJobState = vi.fn(async () => job);
+    const orchestrator = createJobLifecycleOrchestrator({
+      logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      loadRepository: async () => ({
+        getJobById: vi
+          .fn()
+          .mockResolvedValueOnce(job)
+          .mockResolvedValue({
+            ...job,
+            status: 'running',
+            attempts: 2,
+            workerId: 'worker-a',
+            progress,
+          }),
+        updateJobState,
+        updateJobProgress: vi.fn(),
+        appendJobEvent: vi.fn(),
+      }),
+      resolveHandler: () => handler,
+      createWorkerId: () => 'worker-a',
+    });
+    await expect(
+      orchestrator.run({ instanceId: job.instanceId, jobId: job.id, attempts: 2, maxAttempts: 3 })
+    ).rejects.toThrow('crash_after_batch_commit');
+    expect(updateJobState).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'retrying', progress })
+    );
+  });
   it('renews the owner-tuple lease every 30 seconds while the handler is running', async () => {
     vi.useFakeTimers();
     let finishHandler: (() => void) | undefined;

@@ -1,3 +1,4 @@
+import { DeepLFields } from './-interfaces-page.deepl-fields';
 import { t } from '../../i18n';
 import {
   Button,
@@ -7,6 +8,7 @@ import {
 } from '@sva/studio-ui-react';
 import {
   instanceInterfaceTypeMeta,
+  type InstanceInterfaceDeepL,
   type InstanceInterfaceDraft,
   type InstanceInterfaceType,
 } from '../../lib/instance-interfaces';
@@ -108,91 +110,155 @@ export const TypePickerDialog = ({
 type InterfaceFormProps = Readonly<{
   draft: InstanceInterfaceDraft;
   hasStoredMapApiKey?: boolean;
+  deepLEntry?: InstanceInterfaceDeepL;
+  deepLChecking?: boolean;
+  onCheckDeepL?: () => void;
   saveStatus: StudioSaveStatus;
   saveErrorMessage: string | null;
   onChange: (next: InstanceInterfaceDraft) => void;
   onCancel: () => void;
   onSubmit: () => void;
+  onRetry?: () => void;
 }>;
+
+const deepLRequiresSave = (
+  draft: InstanceInterfaceDraft,
+  deepLEntry: InstanceInterfaceDeepL | undefined
+): boolean =>
+  draft.type === 'deepl' &&
+  (!deepLEntry ||
+    !!draft.config.apiKey ||
+    draft.config.plan !== deepLEntry.config.plan ||
+    draft.enabled !== deepLEntry.enabled);
 
 export const InterfaceForm = ({
   draft,
   hasStoredMapApiKey = false,
+  deepLEntry,
+  deepLChecking = false,
+  onCheckDeepL,
   saveStatus,
   saveErrorMessage,
   onChange,
   onCancel,
   onSubmit,
-}: InterfaceFormProps) => (
-  <form
-    className="grid gap-4"
-    onSubmit={(event) => {
-      event.preventDefault();
-      onSubmit();
-    }}
-  >
-    <div className="grid gap-2">
-      <Label htmlFor="interface-name">{t('interfaces.edit.commonName')}</Label>
-      <Input
-        id="interface-name"
-        value={draft.name}
-        onChange={(event) => onChange({ ...draft, name: event.currentTarget.value })}
-      />
-    </div>
+  onRetry = onSubmit,
+}: InterfaceFormProps) => {
+  const deepLNeedsSave = deepLRequiresSave(draft, deepLEntry);
+  const deepLVerified =
+    deepLEntry?.status === 'connected' &&
+    deepLEntry.config.verifiedCredentialRevision === deepLEntry.config.credentialRevision;
+  return (
+    <form
+      className="grid gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!deepLChecking) onSubmit();
+      }}
+    >
+      <div className="grid gap-2">
+        <Label htmlFor="interface-name">{t('interfaces.edit.commonName')}</Label>
+        <Input
+          id="interface-name"
+          value={draft.name}
+          onChange={(event) => onChange({ ...draft, name: event.currentTarget.value })}
+        />
+      </div>
 
-    {draft.type === 'mainserver' ? (
-      <MainserverFields draft={draft} onChange={onChange} />
-    ) : draft.type === 's3' ? (
-      <S3Fields draft={draft} onChange={onChange} />
-    ) : draft.type === 'mapGeocoding' ? (
-      <MapGeocodingFields draft={draft} hasStoredApiKey={hasStoredMapApiKey} onChange={onChange} />
-    ) : draft.type === 'mailTransport' ? (
-      <MailTransportFields draft={draft} onChange={onChange} />
-    ) : draft.type === 'postgresql' ? (
-      <PostgresqlFields draft={draft} onChange={onChange} />
-    ) : (
-      <SupabaseFields draft={draft} onChange={onChange} />
-    )}
+      {draft.type === 'deepl' ? (
+        <DeepLFields
+          draft={draft}
+          entry={deepLEntry}
+          checking={deepLChecking}
+          onChange={onChange}
+        />
+      ) : draft.type === 'mainserver' ? (
+        <MainserverFields draft={draft} onChange={onChange} />
+      ) : draft.type === 's3' ? (
+        <S3Fields draft={draft} onChange={onChange} />
+      ) : draft.type === 'mapGeocoding' ? (
+        <MapGeocodingFields
+          draft={draft}
+          hasStoredApiKey={hasStoredMapApiKey}
+          onChange={onChange}
+        />
+      ) : draft.type === 'mailTransport' ? (
+        <MailTransportFields draft={draft} onChange={onChange} />
+      ) : draft.type === 'postgresql' ? (
+        <PostgresqlFields draft={draft} onChange={onChange} />
+      ) : (
+        <SupabaseFields draft={draft} onChange={onChange} />
+      )}
 
-    <div className="flex items-center gap-3">
-      <Switch
-        id="interface-enabled"
-        checked={draft.enabled}
-        aria-label={t('interfaces.edit.commonEnabled')}
-        onCheckedChange={(enabled) => onChange({ ...draft, enabled })}
-      />
-      <span className="text-sm text-muted-foreground">
-        {draft.enabled ? t('account.status.active') : t('account.status.inactive')}
-      </span>
-    </div>
+      <div className="flex items-center gap-3">
+        <Switch
+          id="interface-enabled"
+          checked={draft.enabled}
+          aria-label={t('interfaces.edit.commonEnabled')}
+          onCheckedChange={(enabled) => onChange({ ...draft, enabled })}
+        />
+        <span className="text-sm text-muted-foreground">
+          {draft.enabled ? t('account.status.active') : t('account.status.inactive')}
+        </span>
+      </div>
 
-    {saveErrorMessage ? (
-      <StudioPersistentFormError
-        message={saveErrorMessage}
-        retryLabel={t('interfaces.actions.retry')}
-        retryDisabled={saveStatus === 'saving'}
-        onRetry={onSubmit}
-      />
-    ) : null}
+      {saveErrorMessage ? (
+        <StudioPersistentFormError
+          message={saveErrorMessage}
+          retryLabel={t('interfaces.actions.retry')}
+          retryDisabled={saveStatus === 'saving' || deepLChecking}
+          onRetry={onRetry}
+        />
+      ) : null}
 
-    <div className="flex flex-wrap gap-3">
-      <StudioSaveButton
-        type="submit"
-        status={saveStatus}
-        labels={{
-          idle: t('interfaces.actions.save'),
-          saving: t('interfaces.actions.saving'),
-          saved: t('interfaces.actions.saved'),
-        }}
-      />
-      <Button
-        type="button"
-        variant="secondary"
-        disabled={saveStatus === 'saving'}
-        onClick={onCancel}
-      >
-        {t('interfaces.edit.cancel')}
-      </Button>
-    </div>
-  </form>
-);
+      {draft.type === 'deepl' && deepLNeedsSave && (
+        <p className="text-sm text-muted-foreground">{t('interfaces.deepl.saveFirst')}</p>
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        {draft.type === 'deepl' && (
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={
+                deepLNeedsSave || deepLChecking || saveStatus === 'saving' || !deepLEntry?.enabled
+              }
+              onClick={onCheckDeepL}
+            >
+              {t(
+                deepLChecking
+                  ? 'interfaces.deepl.checking'
+                  : deepLVerified
+                    ? 'interfaces.deepl.recheck'
+                    : 'interfaces.deepl.check'
+              )}
+            </Button>
+            {deepLVerified && !deepLNeedsSave && (
+              <span role="status" className="text-sm text-muted-foreground">
+                {t('interfaces.deepl.verified')}
+              </span>
+            )}
+          </>
+        )}
+        <StudioSaveButton
+          type="submit"
+          status={saveStatus}
+          disabled={deepLChecking}
+          labels={{
+            idle: t('interfaces.actions.save'),
+            saving: t('interfaces.actions.saving'),
+            saved: t('interfaces.actions.saved'),
+          }}
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={saveStatus === 'saving' || deepLChecking}
+          onClick={onCancel}
+        >
+          {t('interfaces.edit.cancel')}
+        </Button>
+      </div>
+    </form>
+  );
+};

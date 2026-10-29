@@ -1,3 +1,4 @@
+import { CatalogsPage } from '@sva/plugin-app-translations';
 import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings } from '@sva/routing';
 import { normalizeOrganizationDetailTab } from '@sva/routing/route-search';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
@@ -194,6 +195,8 @@ export const coreAppRouteBindings = {
   adminInstanceCreate: InstanceCreatePage,
   adminInstanceDetail: InstanceDetailRoutePage,
   adminTemplates: TemplatesPage,
+  appTexts: () => <CatalogsPage />,
+  adminAppTranslations: () => <CatalogsPage platform />,
   adminRoles: RolesRoutePage,
   adminRoleCreate: RoleCreatePage,
   adminRoleDetail: RoleDetailRoutePage,

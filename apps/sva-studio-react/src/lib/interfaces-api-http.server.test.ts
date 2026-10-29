@@ -187,6 +187,64 @@ describe('personal interface HTTP routes', () => {
     expect(unsupported?.status).toBe(405);
   });
 
+  it('updates a migrated DeepL interface without changing its id and redacts its API key', async () => {
+    const id = 'deepl:de-musterhausen';
+    const draft = {
+      type: 'deepl',
+      name: 'DeepL',
+      enabled: true,
+      config: {
+        plan: 'pro',
+        englishVariant: 'en-GB',
+        selectedLocales: ['en'],
+        revision: 'saved-revision',
+        apiKey: 'synthetic-secret',
+      },
+    };
+    state.upsert.mockResolvedValue({ id, ...draft });
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+    const request = new Request('https://tenant-a.example/api/v1/interfaces', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ draft, existingId: id }),
+    });
+    const response = await dispatchInterfacesApiRequest(request);
+    expect(response?.status).toBe(200);
+    expect(state.upsert).toHaveBeenCalledWith({ draft, existingId: id }, request);
+    expect(await response?.json()).toMatchObject({ data: { id, config: { apiKey: '' } } });
+  });
+
+  it.each(['deepl:de-musterhausen', 'deepl%3Ade-musterhausen'])(
+    'deletes migrated DeepL id from path %s',
+    async (segment) => {
+      state.remove.mockResolvedValue({ deleted: true });
+      const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+      const request = new Request(`https://tenant-a.example/api/v1/interfaces/${segment}`, {
+        method: 'DELETE',
+      });
+      const response = await dispatchInterfacesApiRequest(request);
+      expect(response?.status).toBe(200);
+      expect(state.remove).toHaveBeenCalledWith({ id: 'deepl:de-musterhausen' }, request);
+    }
+  );
+
+  it.each([
+    'deepl%ZZtenant',
+    'deepl%3',
+    'deepl%2Ftenant',
+    'deepl/tenant',
+    'deepl%20tenant',
+    'deepl%253Atenant',
+    'x'.repeat(129),
+  ])('rejects malformed interface path %s before deletion', async (segment) => {
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+    const response = await dispatchInterfacesApiRequest(
+      new Request(`https://tenant-a.example/api/v1/interfaces/${segment}`, { method: 'DELETE' })
+    );
+    expect(response).toBeNull();
+    expect(state.remove).not.toHaveBeenCalled();
+  });
+
   it('keeps raw exception details out of HTTP errors and logs', async () => {
     state.upsert.mockRejectedValue(new Error('postgres://db-user:private-value@db.example/wm'));
     const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');

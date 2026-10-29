@@ -1,3 +1,4 @@
+import { deepLInterfaceDraftSchema } from './instance-interfaces';
 import { mailTransportContract } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { dispatchRootMainserverInterfacesRequest } from '@sva/sva-mainserver/server';
@@ -91,29 +92,35 @@ const mapGeocodingDraft = base
   })
   .strict();
 
+const interfaceIdPattern = /^[A-Za-z0-9:_-]{1,128}$/u;
+
 const upsertInput = z
   .object({
     draft: z.discriminatedUnion('type', [
+      deepLInterfaceDraftSchema,
       s3Draft,
       supabaseDraft,
       postgresqlDraft,
       mailTransportDraft,
       mapGeocodingDraft,
     ]),
-    existingId: z
-      .string()
-      .trim()
-      .regex(/^[A-Za-z0-9_-]{1,128}$/u)
-      .optional(),
+    existingId: z.string().trim().regex(interfaceIdPattern).optional(),
   })
   .strict();
 
 const readInterfaceId = (pathname: string): string | null => {
-  const match = /^\/api\/v1\/interfaces\/([A-Za-z0-9_-]{1,128})$/u.exec(pathname);
-  return match?.[1] ?? null;
+  const match = /^\/api\/v1\/interfaces\/([^/]{1,384})$/u.exec(pathname);
+  if (!match?.[1]) return null;
+  try {
+    const id = decodeURIComponent(match[1]);
+    return interfaceIdPattern.test(id) ? id : null;
+  } catch {
+    return null;
+  }
 };
 
 const secretFieldsByType: Readonly<Record<string, readonly string[]>> = {
+  deepl: ['apiKey'],
   s3: ['secretAccessKey'],
   supabase: ['databaseUrl', 'serviceRoleKey'],
   postgresql: ['databaseUrl'],
@@ -121,11 +128,15 @@ const secretFieldsByType: Readonly<Record<string, readonly string[]>> = {
   mapGeocoding: ['apiKey'],
 };
 
-const withoutSecrets = <T extends {
-  readonly type?: string;
-  readonly config?: unknown;
-  readonly statusMessage?: unknown;
-}>(entry: T) => {
+const withoutSecrets = <
+  T extends {
+    readonly type?: string;
+    readonly config?: unknown;
+    readonly statusMessage?: unknown;
+  },
+>(
+  entry: T
+) => {
   const { statusMessage: _statusMessage, ...safeEntry } = entry;
   const fields = entry.type ? secretFieldsByType[entry.type] : undefined;
   if (!fields || !entry.config || typeof entry.config !== 'object' || Array.isArray(entry.config)) {
@@ -210,8 +221,10 @@ const handleDelete = async (request: Request, id: string): Promise<Response> => 
 
 export const dispatchInterfacesApiRequest = async (request: Request): Promise<Response | null> => {
   const { pathname } = new URL(request.url);
-  if (pathname === '/api/v1/iam/instances/mainserver-interfaces' ||
-      /^\/api\/v1\/iam\/instances\/[^/]+\/mainserver-interface$/u.test(pathname)) {
+  if (
+    pathname === '/api/v1/iam/instances/mainserver-interfaces' ||
+    /^\/api\/v1\/iam\/instances\/[^/]+\/mainserver-interface$/u.test(pathname)
+  ) {
     return dispatchRootMainserverInterfacesRequest(request);
   }
   if (pathname === '/api/v1/interfaces/mainserver') {

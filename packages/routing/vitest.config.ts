@@ -11,6 +11,7 @@ export default defineConfig({
   },
   resolve: {
     alias: [
+      { find: /^@sva\/core\/rich-text-html$/, replacement: resolve(__dirname, '../core/src/rich-text-html.ts') },
       { find: '@sva/core/security', replacement: resolve(__dirname, '../core/src/security/index.ts') },
       { find: '@sva/core', replacement: resolve(__dirname, '../core/src/index.ts') },
       { find: /^@sva\/waste-management-runtime\/repositories$/, replacement: resolve(__dirname, '../waste-management-runtime/src/repositories.ts') },

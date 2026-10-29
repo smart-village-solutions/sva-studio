@@ -34,6 +34,14 @@
       }
     },
     {
+      "id": "admin.app-translations",
+      "path": "/admin/app-translations",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
       "id": "admin.groups.create",
       "path": "/admin/groups/new",
       "pageType": "create",
@@ -218,6 +226,15 @@
       }
     },
     {
+      "id": "app-translations.catalogs",
+      "path": "/plugins/app-translations",
+      "pageType": "overview",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "app-translations"
+      }
+    },
+    {
       "id": "app.overview",
       "path": "/app",
       "pageType": "overview",
@@ -395,6 +412,14 @@
       "id": "media.usage",
       "path": "/admin/media/$mediaId/usage",
       "pageType": "usage",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "mobile-app.texts",
+      "path": "/app-texts",
+      "pageType": "overview",
       "owner": {
         "kind": "host"
       }

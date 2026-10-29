@@ -77,3 +77,26 @@ export const createJobProgressReporter = (
     },
   };
 };
+
+/** Domain batches may commit a checkpoint before reporting progress in memory. */
+export const readPersistedExecutionProgress = async (
+  repository: {
+    readonly getJobById: (instanceId: string, jobId: string) => Promise<StudioJobRecord | null>;
+  },
+  job: Pick<StudioJobRecord, 'instanceId' | 'id'>,
+  attempts: number,
+  workerId: string,
+  getLatestProgress: () => StudioJobRecord['progress']
+): Promise<StudioJobRecord['progress']> => {
+  const persisted = await repository.getJobById(job.instanceId, job.id);
+  if (
+    persisted?.status === 'running' &&
+    (persisted.attempts !== attempts || persisted.workerId !== workerId)
+  )
+    throw Object.assign(new Error(`studio_job_lease_lost:${job.id}`), {
+      cause: { code: 'studio_job_lease_lost' },
+    });
+  return persisted?.attempts === attempts && persisted.workerId === workerId
+    ? persisted.progress
+    : getLatestProgress();
+};

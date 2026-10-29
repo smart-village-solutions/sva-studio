@@ -1,0 +1,44 @@
+{
+  "name": "@sva/plugin-app-translations",
+  "version": "0.0.1",
+  "license": "EUPL-1.2",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist",
+    "plugin.manifest.json",
+    "publiccode.yml"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./descriptor": {
+      "types": "./dist/descriptor.d.ts",
+      "default": "./dist/descriptor.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    },
+    "./plugin.manifest.json": {
+      "default": "./plugin.manifest.json"
+    }
+  },
+  "dependencies": {
+    "@sva/plugin-sdk": "workspace:*",
+    "@sva/studio-ui-react": "workspace:*"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
+    "tooling-testing": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.3.0"
+  }
+}

@@ -32,13 +32,20 @@ type LifecycleIntentRow = {
   lifecycle_exists: boolean;
   active_job_id: string | null;
   persisted: boolean;
+  suspend_completed: boolean;
 };
 
 const persistPluginTenantLifecycleReconcileIntentSql = `
 WITH module_state AS MATERIALIZED (
   SELECT modules.effective_active,
     lifecycle.active_job_id,
-    lifecycle.plugin_id IS NOT NULL AS lifecycle_exists
+    lifecycle.plugin_id IS NOT NULL AS lifecycle_exists,
+    COALESCE(lifecycle.access_state = 'suspended'
+      AND lifecycle.desired_operation = 'suspend'
+      AND lifecycle.completed_generation = lifecycle.desired_generation
+      AND lifecycle.active_job_id IS NULL AND lifecycle.claimed_generation IS NULL
+      AND lifecycle.readiness_status IN ('ready', 'degraded')
+      AND lifecycle.retry_kind IS NULL AND lifecycle.error_code IS NULL, false) AS suspend_completed
   FROM iam.instance_modules AS modules
   LEFT JOIN iam.instance_plugin_lifecycle AS lifecycle
     ON lifecycle.instance_id = modules.instance_id AND lifecycle.plugin_id = modules.module_id
@@ -54,13 +61,13 @@ WITH module_state AS MATERIALIZED (
     1, 'pending', $3, now(), NULL, NULL, NULL, now()
   FROM module_state
   WHERE module_state.effective_active
-    OR ($5::boolean AND module_state.lifecycle_exists)
+    OR ($5::boolean AND module_state.lifecycle_exists AND NOT module_state.suspend_completed)
   ON CONFLICT (instance_id, plugin_id) DO UPDATE
   SET desired_operation = CASE WHEN EXCLUDED.desired_operation = 'suspend' THEN 'suspend'
       WHEN iam.instance_plugin_lifecycle.access_state = 'suspended' THEN 'reactivate'
       ELSE 'reconcile' END,
     access_state = CASE WHEN EXCLUDED.desired_operation = 'suspend' THEN 'suspended'
-      ELSE 'active' END,
+      ELSE iam.instance_plugin_lifecycle.access_state END,
     desired_generation = iam.instance_plugin_lifecycle.desired_generation + 1,
     readiness_status = 'pending', readiness_revision = NULL,
     contract_revision = EXCLUDED.contract_revision,
@@ -82,7 +89,7 @@ WITH module_state AS MATERIALIZED (
   FROM intent
 )
 SELECT module_state.effective_active, module_state.lifecycle_exists,
-  module_state.active_job_id, EXISTS (SELECT 1 FROM intent) AS persisted,
+  module_state.active_job_id, module_state.suspend_completed, EXISTS (SELECT 1 FROM intent) AS persisted,
   (SELECT count(*) FROM enqueued) AS enqueued_count
 FROM module_state;
 `;
@@ -114,7 +121,8 @@ const createPersistPluginTenantLifecycleReconcileIntents =
         !row.effective_active &&
         row.lifecycle_exists &&
         lifecycle.operations?.some(({ operation }) => operation === 'suspend') === true &&
-        !row.persisted
+        !row.persisted &&
+        !row.suspend_completed
       ) {
         throw new Error(`plugin_tenant_lifecycle_suspend_conflict:${lifecycle.pluginId}`);
       }

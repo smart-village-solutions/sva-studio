@@ -345,6 +345,9 @@ importers:
       '@sva/monitoring-client':
         specifier: workspace:*
         version: file:packages/monitoring-client(@opentelemetry/core@2.8.0(@opentelemetry/api@1.10.0))
+      '@sva/plugin-app-translations':
+        specifier: workspace:*
+        version: link:../../packages/plugin-app-translations
       '@sva/plugin-categories':
         specifier: workspace:*
         version: link:../../packages/plugin-categories
@@ -890,6 +893,28 @@ importers:
       vitest:
         specifier: ^5.0.3
         version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@5.0.3)(happy-dom@21.0.4)(jsdom@29.1.1)(msw@2.15.0(@types/node@25.9.1)(typescript@7.0.2))(vite@8.3.5(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+
+  packages/plugin-app-translations:
+    dependencies:
+      '@sva/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
+      '@sva/studio-ui-react':
+        specifier: workspace:*
+        version: file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
+    devDependencies:
+      '@testing-library/react':
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      react:
+        specifier: ^19.3.0
+        version: 19.3.0
+      tooling-testing:
+        specifier: workspace:*
+        version: file:tooling/testing(@types/node@25.9.1)(typescript@7.0.2)
 
   packages/plugin-assistant:
     dependencies:

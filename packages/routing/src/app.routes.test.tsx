@@ -18,6 +18,7 @@ const guardSpies = vi.hoisted(() => ({
   adminOrganizations: vi.fn(async () => undefined),
   adminOrganizationCreate: vi.fn(async () => undefined),
   adminOrganizationDetail: vi.fn(async () => undefined),
+  appTexts: vi.fn(async () => undefined),
   adminInstances: vi.fn(async () => undefined),
   adminTemplates: vi.fn(async () => undefined),
   adminRoles: vi.fn(async () => undefined),

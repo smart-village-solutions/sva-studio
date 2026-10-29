@@ -180,6 +180,9 @@ const resolveSidebarSystemAccess = ({
     canAccessExperimentalFeatures,
     canAccessSystemTools,
     canAccessModules,
+    canAccessAppTexts: isAuthenticated && Boolean(user?.instanceId) && hasPermissionAction(
+      'app-texts.catalog.read', contentAccessApi.permissionActions, contentAccessApi.isLoading
+    ),
   };
 };
 

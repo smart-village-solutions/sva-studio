@@ -1,0 +1,76 @@
+publiccodeYmlVersion: '0'
+name: Mehrsprachigkeit
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: development
+softwareType: addon
+description:
+  de:
+    shortDescription: Feste App-Texte lokal bearbeiten, kommunale Overrides verwalten und
+      unveränderliche Prüfstände erstellen.
+    longDescription: Dieses Modul registriert die lokale Katalogbasis für Mehrsprachigkeit
+      in der vorhandenen Studio-Modulverwaltung. Mandanten können das optionale Modul
+      zugeordnet bekommen. Der Host prüft Modulzugang und Berechtigungen zusätzlich zum
+      Organisationskontext. Die lokale Bereitschaft umfasst das Katalogschema und einen
+      redigierten Status des instanzeigenen DeepL-Zugangs. Ein fehlender Zugang wird als
+      eingeschränkte lokale Bereitschaft sichtbar. Ein vorhandener Schlüssel ist noch
+      kein Nachweis eines erfolgreichen Anbieteraufrufs. Der instanzeigene Zugang bleibt
+      serverseitig. Ein gemeinsamer Editor verwaltet globale Standards und kommunale sprachbezogene
+      Overrides mit JSON-Manifestimport, Korrekturbestätigung und lokalen Prüfständen.
+      DeepL-Übersetzungen können nach erfolgreicher Zugangsprüfung ausdrücklich gestartet werden;
+      manuelle Korrekturen bleiben bei der Ergänzung fehlender Übersetzungen erhalten.
+      Gesicherte Textstände lassen sich als mehrsprachige texts.js-Datei herunterladen.
+      Der authentifizierte Übersetzungsdienst für Nachrichten benötigt zusätzlich eine
+      explizite Bindung der bestehenden Main-Server-Verbindung. Eine automatische
+      Auslieferung der App-Texte fehlt weiterhin. Eine Abschaltung oder
+      Wiederaktivierung externer Sprachkataloge kann der lokale Abschnitt deshalb noch
+      nicht bestätigen. Vor dem produktiven Einsatz sind diese weiteren Lieferabschnitte
+      und ihre Integrationsnachweise erforderlich. Entwürfe und vorhandene Katalogstände
+      bleiben bei Modulwechseln erhalten. Die bereitgestellten Actions verwenden den
+      vorhandenen Hostvertrag statt einer eigenen Berechtigungsverwaltung.
+    features:
+      - Lokale Modulbereitschaft und konfigurierten DeepL-Zugang prüfen
+      - Organisationsgebundene Katalogredaktion mit getrennten Berechtigungen
+      - Vollständige lokale Prüfstände erstellen und ansehen
+  en:
+    localisedName: Multilingual content
+    shortDescription: Edit fixed app texts locally, manage municipal overrides and create
+      immutable catalog snapshots.
+    longDescription: This addon registers the local multilingual catalog basis with the
+      existing Studio module management. Its tenant activation is optional. The host
+      checks module access and permissions in addition to the active organization.
+      Local readiness covers the catalog schema and a redacted marker for the instance-specific
+      DeepL credential. A missing credential is reported as degraded local readiness.
+      A configured credential does not prove provider connectivity or language support.
+      Credentials stay on the server. A shared editor manages global standards and municipal per-language overrides
+      with JSON manifest import, correction confirmation and local snapshots. DeepL translation
+      can be explicitly started after verifying the connection; filling missing translations
+      preserves manual corrections. Sealed snapshots can be downloaded as a multilingual
+      texts.js file. The authenticated news translation service additionally requires an
+      explicit binding on the existing Main Server connection. Automatic app-text delivery
+      remains unavailable. This delivery cannot confirm remote
+      suspension or reactivation. Those operations require later delivery sections and
+      integration evidence before productive use. Existing drafts and catalog sets are
+      preserved when module activation changes. Actions use the existing host permission
+      contract instead of a separate authorization system. Metadata describes the local
+      implementation scope so administrators can distinguish it from finished app
+      multilingual support. No account or remote configuration is changed by registration.
+    features:
+      - Check local readiness and instance-specific DeepL credential configuration
+      - Edit organization-bound catalogs with separate permissions
+      - Create and inspect complete local catalog snapshots
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Philipp Wilimzig
+      affiliation: Smart Village Solutions SVS GmbH
+      email: operations@smart-village.app
+localisation:
+  localisationReady: true
+  availableLanguages:
+    - de
+    - en

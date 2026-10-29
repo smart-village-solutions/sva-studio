@@ -3,6 +3,7 @@ import type { SvaMainserverInterfacesOverview } from '@sva/sva-mainserver/server
 import { readErrorMessage } from './error-message-utils';
 import type {
   InstanceInterface,
+  InstanceInterfaceDeepL,
   InstanceInterfaceMapGeocoding,
   InstanceInterfaceMailTransport,
   InstanceInterfacePostgresql,
@@ -32,11 +33,11 @@ export const resolveAvailableInterfaceTypes = async (
   const { loadInstanceById } = await import('@sva/data-repositories/server');
   const instance = await loadInstanceById(instanceId);
   const assignedModules = Array.isArray(instance?.assignedModules) ? instance.assignedModules : [];
-  if (!assignedModules.includes(WASTE_MANAGEMENT_MODULE_ID)) {
-    return DEFAULT_AVAILABLE_INTERFACE_TYPES;
-  }
-
-  return [...DEFAULT_AVAILABLE_INTERFACE_TYPES, 'supabase'];
+  return [
+    ...DEFAULT_AVAILABLE_INTERFACE_TYPES,
+    ...(assignedModules.includes(WASTE_MANAGEMENT_MODULE_ID) ? ['supabase' as const] : []),
+    ...(assignedModules.includes('app-translations') ? ['deepl' as const] : []),
+  ];
 };
 
 type ListInstanceInterfacesResponse = Readonly<{
@@ -48,6 +49,7 @@ type ListInstanceInterfacesResponse = Readonly<{
 export const projectStoredEntry = async (
   instanceId: string,
   entry:
+    | Omit<InstanceInterfaceDeepL, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfaceS3, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfaceSupabase, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfacePostgresql, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
@@ -154,7 +156,12 @@ export const listInstanceInterfaces = async (
       return {
         instanceId: authorizedInstanceId,
         availableTypes,
-        entries: [...(mainserverEntry ? [mainserverEntry] : []), ...projected],
+        entries: [
+          ...(mainserverEntry ? [mainserverEntry] : []),
+          ...projected.filter(
+            (entry) => entry.type !== 'deepl' || availableTypes.includes('deepl')
+          ),
+        ],
       };
     },
   });

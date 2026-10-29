@@ -215,6 +215,12 @@ export const sharedVitestConfig = defineConfig({
       '@sva/plugin-waste-management': fileURLToPath(
         new URL('../../packages/plugin-waste-management/src/index.ts', import.meta.url)
       ),
+      '@sva/plugin-sdk/app-translations': fileURLToPath(
+        new URL('../../packages/plugin-sdk/src/app-translations.ts', import.meta.url)
+      ),
+      '@sva/plugin-app-translations': fileURLToPath(
+        new URL('../../packages/plugin-app-translations/src/index.ts', import.meta.url)
+      ),
       '@sva/plugin-sdk/route-documentation': fileURLToPath(
         new URL('../../packages/plugin-sdk/src/route-documentation.ts', import.meta.url)
       ),

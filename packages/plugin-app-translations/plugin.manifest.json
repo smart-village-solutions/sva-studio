@@ -1,0 +1,20 @@
+{
+  "pluginId": "app-translations",
+  "manifestVersion": 1,
+  "extensionTier": "feature",
+  "tenantActivationPolicy": "optional",
+  "version": "0.0.1",
+  "sdkVersion": "0.0.1",
+  "hostCompatibility": {
+    "studioVersionRange": "^0.0.1",
+    "requiredCapabilities": ["routing", "navigation", "iam", "jobs"]
+  },
+  "entryPoints": {
+    "descriptor": "./dist/descriptor.js",
+    "browser": "./dist/index.js",
+    "jobs": "./dist/server.js"
+  },
+  "runtimeRequirements": {
+    "jobs": "app-translations.local"
+  }
+}

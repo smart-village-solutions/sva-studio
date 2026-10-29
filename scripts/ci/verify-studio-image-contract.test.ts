@@ -8,6 +8,7 @@ const validatorPath = fileURLToPath(new URL('./verify-studio-image-contract.mjs'
 const revision = 'a'.repeat(40);
 const digest = `sha256:${'b'.repeat(64)}`;
 const regularPlugins = [
+  'app-translations',
   'categories',
   'cockpit',
   'cockpit-cards',
@@ -30,6 +31,7 @@ const excludedWorkspacePackages = {
   ],
 };
 const workspacePluginIds = [
+  'app-translations',
   'categories',
   'news',
   'events',
@@ -151,6 +153,24 @@ const verify = (input: ReturnType<typeof validInput>) =>
   });
 
 describe('verify-studio-image-contract', () => {
+  it.each(['studio', 'custom'] as const)(
+    'verifies app translation chunks and requires their package in %s',
+    (distribution) => {
+      const input = validInput(distribution, ['app-translations']);
+      for (const chunk of input.chunkProvenance.chunks)
+        chunk.pluginPackages.push('plugin-app-translations');
+      expect(JSON.parse(verify(input)).includedPluginIds).toContain('app-translations');
+      input.packages = input.packages.filter((name) => name !== 'plugin-app-translations');
+      expect(() => verify(input)).toThrow('plugin_package_inventory_mismatch:app-translations');
+    }
+  );
+
+  it('rejects app translation code in the SSF image', () => {
+    const input = validInput('ssf');
+    input.chunkProvenance.chunks[0]!.pluginPackages.push('plugin-app-translations');
+    expect(() => verify(input)).toThrow('chunk_provenance_excluded_plugin:plugin-app-translations');
+  });
+
   it.each(['studio', 'custom'] as const)(
     'verifies voucher chunks and requires the voucher package in %s',
     (distribution) => {

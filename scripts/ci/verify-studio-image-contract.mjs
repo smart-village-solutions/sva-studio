@@ -8,6 +8,7 @@ const repositories = {
   ssf: 'ghcr.io/smart-village-solutions/sva-studio-ssf',
 };
 const regularPlugins = [
+  'app-translations',
   'categories',
   'cockpit',
   'cockpit-cards',
@@ -23,6 +24,7 @@ const regularPlugins = [
 ];
 const pluginIds = { studio: regularPlugins, ssf: ['ssf'] };
 const workspacePluginIds = [
+  'app-translations',
   'categories',
   'news',
   'events',

@@ -141,11 +141,15 @@ export const useCatalogPageModel = (platform: boolean, sourceOnly: boolean) => {
 export type CatalogPageModel = ReturnType<typeof useCatalogPageModel>;
 
 export const draftDetails = (model: CatalogPageModel) => {
-  const { overview, contractId, data, dirty, busy, canPublish, jobActive } = model;
+  const { overview, contractId, data, dirty, busy, canPublish, jobActive, sourceOnly } = model;
   const releases =
     overview?.releases.filter((release) => !contractId || release.contractId === contractId) ?? [];
+  const locales = sourceOnly ? ['de'] : (data?.draft.supportedLocales ?? []);
   const savedDraftRelease = releases.find(
-    (release) => release.draftRevision === data?.draft.draftRevision
+    (release) =>
+      release.draftRevision === data?.draft.draftRevision &&
+      release.supportedLocales.length === locales.length &&
+      locales.every((locale) => release.supportedLocales.includes(locale))
   );
   const draftStatus = dirty
     ? 'draftUnsaved'

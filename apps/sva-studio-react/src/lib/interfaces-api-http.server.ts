@@ -92,6 +92,8 @@ const mapGeocodingDraft = base
   })
   .strict();
 
+const interfaceIdPattern = /^[A-Za-z0-9:_-]{1,128}$/u;
+
 const upsertInput = z
   .object({
     draft: z.discriminatedUnion('type', [
@@ -102,17 +104,19 @@ const upsertInput = z
       mailTransportDraft,
       mapGeocodingDraft,
     ]),
-    existingId: z
-      .string()
-      .trim()
-      .regex(/^[A-Za-z0-9_-]{1,128}$/u)
-      .optional(),
+    existingId: z.string().trim().regex(interfaceIdPattern).optional(),
   })
   .strict();
 
 const readInterfaceId = (pathname: string): string | null => {
-  const match = /^\/api\/v1\/interfaces\/([A-Za-z0-9_-]{1,128})$/u.exec(pathname);
-  return match?.[1] ?? null;
+  const match = /^\/api\/v1\/interfaces\/([^/]{1,384})$/u.exec(pathname);
+  if (!match?.[1]) return null;
+  try {
+    const id = decodeURIComponent(match[1]);
+    return interfaceIdPattern.test(id) ? id : null;
+  } catch {
+    return null;
+  }
 };
 
 const secretFieldsByType: Readonly<Record<string, readonly string[]>> = {

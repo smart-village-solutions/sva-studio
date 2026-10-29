@@ -273,7 +273,7 @@ describe('catalog overview', () => {
             contractId: 'ui',
             draftRevision: editor.draft.draftRevision,
             catalogSetRevision: '2',
-            supportedLocales: ['de'],
+            supportedLocales: [...editor.draft.supportedLocales],
           };
           releases.unshift(release);
           return { ...release, state: 'sealed', catalogs: {} };
@@ -344,6 +344,92 @@ describe('catalog overview', () => {
         'disabled',
         false
       );
+    }
+  );
+  it.each([true, false])(
+    'keeps sealing available when the same revision was saved with different languages (sourceOnly=%s)',
+    async (sourceOnly) => {
+      publishSessionAccessSnapshot({
+        isResolved: true,
+        permissionActions: ['app-texts.catalog.publish', 'app-translations.catalog.publish'],
+        roles: [],
+        assignedModules: ['app-translations'],
+      });
+      const scope = { kind: 'municipal' as const, instanceId: 'tenant', organizationId: 'org' };
+      const supportedLocales = sourceOnly ? ['de'] : ['de', 'en'];
+      const text = {
+        value: 'Close',
+        origin: 'default' as const,
+        sourceDigest: '',
+        confirmedSourceDigest: null,
+      };
+      const editor: CatalogEditorData = {
+        draft: {
+          id: 'draft',
+          scope,
+          manifestId: 'manifest',
+          draftRevision: '5',
+          baseReleaseId: null,
+          supportedLocales,
+          valuesByLocale: {},
+          manifest: {
+            contractId: 'ui',
+            manifestVersion: '1',
+            appCompatibility: { minVersion: '1.0.0' },
+            keys: {
+              close: { type: 'string', defaultValue: 'Close', placeholders: {}, allowEmpty: false },
+            },
+          },
+        },
+        values: { de: { close: text }, en: { close: text } },
+        baseCatalogs: {},
+      };
+      const releases = [
+        {
+          id: 'different-languages',
+          contractId: 'ui',
+          catalogSetRevision: '1',
+          draftRevision: '5',
+          supportedLocales: sourceOnly ? ['de', 'en'] : ['de'],
+        },
+      ];
+      vi.mocked(requestCatalog).mockImplementation(async (operation) => {
+        if (operation.operation === 'overview')
+          return {
+            scope,
+            catalogs: [{ contractId: 'ui' }],
+            releases,
+            bases: [],
+            setup: { ready: true, reason: 'ready' },
+          };
+        if (operation.operation === 'read') return editor;
+        if (operation.operation === 'translationStatus') return null;
+        if (operation.operation === 'seal') {
+          const release = {
+            id: 'matching-languages',
+            contractId: 'ui',
+            catalogSetRevision: '2',
+            draftRevision: '5',
+            supportedLocales,
+          };
+          releases.unshift(release);
+          return { ...release, state: 'sealed', catalogs: {} };
+        }
+        throw new Error(`Unexpected operation: ${operation.operation}`);
+      });
+      render(<CatalogsPage sourceOnly={sourceOnly} />);
+      await screen.findByText('appTranslations.ui.draftUnsealed');
+      const button = screen.getByRole('button', { name: 'appTranslations.ui.seal' });
+      expect(button).toHaveProperty('disabled', false);
+      fireEvent.click(button);
+      await screen.findByText('appTranslations.ui.draftSealed');
+      expect(screen.getByRole('button', { name: 'appTranslations.ui.seal' })).toHaveProperty(
+        'disabled',
+        true
+      );
+      expect(
+        requestCatalog.mock.calls.filter(([operation]) => operation.operation === 'seal')
+      ).toHaveLength(1);
     }
   );
   it.each([true, false])(

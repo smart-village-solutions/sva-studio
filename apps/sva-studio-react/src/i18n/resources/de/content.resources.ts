@@ -14,6 +14,7 @@ export const contentDEResources = {
       'Verwalten Sie generische Inhalte mit Kernmetadaten, JSON-Zusatzdaten und auditierbarer Historie.',
   },
   filters: {
+    clearVoucherLocation: 'Gutscheine aller Orte anzeigen',
     typeLabel: 'Typ',
     typeAll: 'Alle Typen',
     quickTypeLabel: 'Schnellfilter nach Typ',

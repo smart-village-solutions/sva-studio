@@ -12,6 +12,7 @@ export const contentENResources = {
     subtitle: 'Manage generic content with core metadata, JSON payloads, and auditable history.',
   },
   filters: {
+    clearVoucherLocation: 'Show vouchers from all locations',
     typeLabel: 'Type',
     typeAll: 'All types',
     quickTypeLabel: 'Quick filter by type',

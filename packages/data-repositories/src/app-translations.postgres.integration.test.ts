@@ -100,7 +100,7 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
   it('exports immutable multilingual App snapshots with RLS and no writes', async () => {
     const appManifest: CatalogManifest = JSON.parse(
       await readFile(
-        new URL('../../core/tests/fixtures/mobile-texts/manifest.json', import.meta.url),
+        new URL('../../core/__tests__/fixtures/mobile-texts/manifest.json', import.meta.url),
         'utf8'
       )
     );

@@ -14,7 +14,7 @@ import {
   catalogAssert,
 } from './app-translations.js';
 import { exportCatalogTextsJs } from './app-translations-texts-export.js';
-const fixture = new URL('../tests/fixtures/mobile-texts/', import.meta.url);
+const fixture = new URL('../__tests__/fixtures/mobile-texts/', import.meta.url);
 const manifest = validateCatalogManifest(
   JSON.parse(readFileSync(new URL('manifest.json', fixture), 'utf8'))
 );

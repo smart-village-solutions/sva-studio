@@ -62,6 +62,21 @@ beforeEach(() => {
   deps.reveal.mockReturnValue(JSON.stringify({ apiKey: 'private-key' }));
 });
 describe('instance DeepL setup', () => {
+  it.each(['$$', '$&', '$`', "$'"])(
+    'preserves literal replacement syntax %s in protected HTML attributes',
+    async (suffix) => {
+      const source = `<a href="https://example.org/${suffix}">Hallo {{name}}</a>`;
+      const fetch = vi.fn(async (_url: unknown, init: RequestInit | undefined) => {
+        const body = JSON.parse(String(init?.body)) as { text: string[] };
+        return Response.json({
+          translations: body.text.map((text) => ({ text: text.replace('Hallo', 'Hello') })),
+        });
+      });
+      expect(
+        await translateDeepLValues(record(), 'en-GB', [source], new AbortController().signal, fetch)
+      ).toEqual([source.replace('Hallo', 'Hello')]);
+    }
+  );
   it('batches 1460 keys in three targets, preserves arrays, repeated tokens and markup', async () => {
     const provider = record();
     provider.publicConfig = {

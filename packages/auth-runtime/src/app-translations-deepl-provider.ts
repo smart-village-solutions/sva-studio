@@ -134,7 +134,7 @@ const restoreTranslation = (translated: string, tokens: string[], prefix: string
   for (const [tokenIndex, token] of tokens.entries()) {
     const sentinel = `${prefix}${tokenIndex + 1}Z`;
     if (text.split(sentinel).length !== 2) fail('deepl_invalid_response');
-    text = text.replace(sentinel, token);
+    text = text.replace(sentinel, () => token);
   }
   if (text.includes(prefix) || /\{\{|\}\}/.test(text.replace(/\{\{[A-Za-z][A-Za-z0-9_]*\}\}/g, '')))
     fail('deepl_invalid_response');

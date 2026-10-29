@@ -1,8 +1,8 @@
 {
   "meta": {
-    "version": "1.0.7",
-    "updatedAt": "2026-08-26",
-    "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; commissioned-Status am 2026-05-06 fachlich auf idea zurückgesetzt; am 2026-05-25 manuell gegen den Repository-Stand abgeglichen, um schlanke Abnahmenachweise sowie IAM-bezogene Akzeptanzkriterien und ToDos erweitert; Health weiterhin aus der Kostenschätzung als on_track abgeleitet; am 2026-05-25 um ein feld featureSummary je Arbeitspaket fuer Mehrwerte, Funktionen und Features erweitert; am 2026-05-25 die featureSummary-Texte fuer M1 gegen die Konzeption unter concepts/konzeption-cms-v2 fachlich nachgeschaerft; am 2026-08-26 die belegten M2-Kernmodule als abnahmebereit eingestuft sowie WP-047 fachlich von Abfalltouren abgegrenzt und als geplant eingeordnet"
+    "version": "1.0.8",
+    "updatedAt": "2026-10-29",
+    "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; commissioned-Status am 2026-05-06 fachlich auf idea zurückgesetzt; am 2026-05-25 manuell gegen den Repository-Stand abgeglichen, um schlanke Abnahmenachweise sowie IAM-bezogene Akzeptanzkriterien und ToDos erweitert; Health weiterhin aus der Kostenschätzung als on_track abgeleitet; am 2026-05-25 um ein feld featureSummary je Arbeitspaket fuer Mehrwerte, Funktionen und Features erweitert; am 2026-05-25 die featureSummary-Texte fuer M1 gegen die Konzeption unter concepts/konzeption-cms-v2 fachlich nachgeschaerft; am 2026-08-26 die belegten M2-Kernmodule als abnahmebereit eingestuft sowie WP-047 fachlich von Abfalltouren abgegrenzt und als geplant eingeordnet; am 2026-10-29 gezielter Repository-Abgleich von 19 Arbeitspaketen gegen HEAD 738392926: Funktionsbeschreibungen, Quellen und offene Prüfpunkte aktualisiert; testing kennzeichnet implementierte, noch zu prüfende Funktionen, keine neu erklärte Abnahme. Teilumfänge bleiben implementation. Übrige Status, Health, Prioritäten und Aufwände unverändert aus dem bisherigen Planungsstand; kein vollständiger Live-, Termin- oder Budgetabgleich."
   },
   "statusModel": {
     "idea": 0,
@@ -54,9 +54,11 @@
           ],
           "todos": [
             "Zielumgebungsnachweis für Realm-, Client- und Login-Flow vollständig festhalten.",
-            "Abnahmestand gegen aktuelle Runtime-Konfiguration erneut gegenprüfen."
+            "Abnahmestand gegen aktuelle Runtime-Konfiguration erneut gegenprüfen.",
+            "Login, Organisationswechsel und Wiederherstellung mit realen Rollen in der Zielumgebung prüfen."
           ],
-          "featureSummary": "Dieses Arbeitspaket schafft die sichere und mandantenfaehige Eintrittsschicht des Studios. Nutzer melden sich ueber tenant-spezifische Login-Konfigurationen an, waehrend Mandantenkontext, Session und Redirects pro Instanz sauber getrennt bleiben. Damit bekommt das Studio eine belastbare Authentifizierungs- und Sicherheitsbasis, auf der weitere Rechte-, Rollen- und Verwaltungsfunktionen mandantensicher aufbauen koennen. Fail-closed-Pruefungen sorgen zusaetzlich dafuer, dass fehlender oder widerspruechlicher Tenant-Scope nicht in eine unsichere Sitzung uebergeht."
+          "featureSummary": "Mandantenfähige Keycloak-Anmeldung mit Sitzungsverwaltung, konsistentem Organisationskontext, verständlichen Zugriffsdiagnosen und Wiederherstellung gestörter Zugänge.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: PR #1983, #1990, #1992, #1993 und #1997. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme."
         },
         {
           "id": "WP-002",
@@ -220,7 +222,8 @@
           "status": "acceptance",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket schafft die verlaessliche Arbeitsoberflaeche, in der Redakteure und Administratoren sich sicher und schnell bewegen koennen. Hauptnavigation, Breadcrumbs und konsistente Seitenstrukturen machen Module und Verwaltungsfunktionen auffindbar, waehrend responsive und barrierearme Patterns die Nutzung auch auf kleineren Geraeten erleichtern. Gleichzeitig bildet die Basis-UI die Integrationsflaeche fuer weitere Pakete, weil Menues, Seiten, Widgets und Aktionsflaechen einheitlich eingebunden werden koennen. Damit wird aus einzelnen Funktionen ein zusammenhaengendes CMS-Erlebnis."
+          "featureSummary": "Gemeinsame Studio-Navigation mit Übersicht, Anwendergemeinschaft, integrierter Hilfe und verständlicheren Berechtigungstexten; neue Inhaltsformulare führen auf einer Seite durch die Eingaben und schützen ungespeicherte Änderungen.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: PR #1841–#1844, #1959, #1967 und #1969. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme."
         },
         {
           "id": "WP-012",
@@ -357,10 +360,14 @@
           "area": "1. Rechte & Rollen",
           "priority": "requested",
           "effortPt": 2,
-          "status": "idea",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Onboarding/Offboarding im Bereich 1. Rechte & Rollen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Teilfunktionen des Onboardings sind umgesetzt: geführte Mandanteneinrichtung, anpassbare Einladungen und Hinweise für neue Nutzer ohne zugewiesene Rolle. Ein vollständiger fachlicher Onboarding-/Offboarding-Prozess ist damit noch nicht nachgewiesen.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: PR #1802 und #1982; Git-Historie zur geführten Tenant-Aktivierung. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Gesamten Onboarding-/Offboarding-Umfang fachlich abgrenzen und die noch fehlenden Abläufe bestimmen."
+          ]
         },
         {
           "id": "WP-024",
@@ -448,7 +455,11 @@
           "status": "acceptance",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Medienverwaltung im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Medienbibliothek mit Tags und Suche, gemeinsamer Bildauswahl, zentraler Metadatenpflege und asynchroner Upload-Verarbeitung. ClamAV-Prüfung und begrenzte Bestandsprüfungen sind implementiert; Aktivierung und Abnahme sind umgebungsabhängig.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: docs/reference/media-management.md; PR #1937, #1955, #1956 und #1991. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Upload, Verarbeitung, Scanpflicht und Medienrechte im Zielbetrieb prüfen."
+          ]
         },
         {
           "id": "WP-034",
@@ -533,10 +544,14 @@
           "area": "4. Schnittstellen",
           "priority": "valuable",
           "effortPt": 2,
-          "status": "implementation",
+          "status": "testing",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Bildoptimierung im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Integrierte Bildbearbeitung mit Zuschnitt, Drehen, Spiegeln, Filtern, Text und Wasserzeichen. Vorschauen für Vorschau-, Teaser- und Titelbilder sowie ein Bildfokus unterstützen die Ausgabe; bearbeitete Kopien erhalten das Original.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: docs/reference/media-management.md; PR #1956. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Bildbearbeitung, Kopien, Metadaten und Formatvorschauen in der Zielumgebung prüfen; dokumentierte Accessibility-Einschränkungen der Spezialwerkzeuge berücksichtigen."
+          ]
         },
         {
           "id": "WP-042",
@@ -635,7 +650,11 @@
           "status": "acceptance",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Abfallkalender im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Abfallkalender mit zentralen Adress-Stammdaten, Auswirkungsvorschau und Datenübertragung beim Zusammenführen oder Löschen, Tourstatus und Jahresübernahme. Der öffentliche Kalender unterstützt Website-Einbettung ohne iframe sowie bestätigte E-Mail-Erinnerungen.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: docs/reference/waste-management-tour-gueltigkeit.md; PR #1832, #1856, #1901 und #1981. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Jahresübernahme und Terminfolge anhand fachlicher Referenzdaten abnehmen; Erinnerungsversand und öffentliche Einbettung in der Zielumgebung prüfen."
+          ]
         },
         {
           "id": "WP-051",
@@ -643,10 +662,14 @@
           "area": "6. Allgemein",
           "priority": "must",
           "effortPt": 1,
-          "status": "prototype",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Dokumentation der Funktionalitäten und Entwicklungen des Moduls im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Referenz- und Anwenderdokumentation für die CMS-Kernmodule ist vorhanden, einschließlich Medienverwaltung, Gutscheinen und Abfallkalender. Eine vollständige fachliche Abnahme der Dokumentation aller M2-Arbeitspakete ist nicht nachgewiesen.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: docs/reference/README.md; docs/user-documentation/page-catalog.json. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Abdeckung und Aktualität der Dokumentation gegen den vollständigen M2-Umfang prüfen."
+          ]
         },
         {
           "id": "WP-052",
@@ -720,7 +743,11 @@
           "status": "testing",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Mandantenverwaltung im Bereich 1. Rechte & Rollen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Mandantenverwaltung mit geführter Einrichtung bis zur Aktivierung, Bereitschaftsprüfungen, Provisionierungsdiagnosen, Übernahme bestehender Administratoren und anpassbaren Einladungen. Rollen-, Modul- und Schnittstellenprüfungen bleiben an den Mandanten gebunden.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: PR #1802, #1817 und #1851; docs/operations/plugin-tenant-lifecycle-operations.md. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Vollständige Einrichtung und Fehlerwiederaufnahme mit realen Zielsystemen fachlich abnehmen."
+          ]
         },
         {
           "id": "WP-057",
@@ -739,10 +766,14 @@
           "area": "3. Datenverwaltung",
           "priority": "requested",
           "effortPt": 0.5,
-          "status": "idea",
+          "status": "testing",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für E-Mail-Konfiguration und -Verwaltung im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "E-Mail-Transport kann als Schnittstelle konfiguriert und mit einer Test-E-Mail an die angemeldete Person geprüft werden. SMTP-Probleme werden verständlich angezeigt; der Abfall-Erinnerungsversand verwendet die gespeicherte Anbindung.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: PR #1898 und #1929. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Konfiguration, Testversand und Fehlerfälle mit der freigegebenen Mail-Anbindung abnehmen."
+          ]
         },
         {
           "id": "WP-059",
@@ -1047,7 +1078,8 @@
           "status": "optimization",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Schnittstellenmanager im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Schnittstellenverwaltung mit mandantengebundener Konfiguration, Prüfungen und zentraler Verwaltung der Mainserver-Anbindungen aktiver Mandanten im Studio-Root. Persönliche API-/MCP-Zugänge unterstützen die Administration vorhandener Schnittstellentypen.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: PR #1831, #1851 und #1862. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme."
         },
         {
           "id": "WP-086",
@@ -1305,10 +1337,14 @@
           "area": "2. Datentypen",
           "priority": "replacement_required",
           "effortPt": 1.5,
-          "status": "idea",
+          "status": "testing",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Gutscheine im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Gutschein-Datentyp mit Ortsbezug, Rabattmodi, Gültigkeit, Kontingenten und Sichtbarkeit. Der aktualisierte Mainserver-Vertrag erhält bestehende Gutscheinidentitäten, Kontingente und Einlösungen beim Speichern.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: docs/reference/vouchers.md; PR #1972, #1988 und #1989. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Korrigierten Mainserver-Vertrag und Erhalt von Gutschein-, Orts- und Einlösungsdaten per Readback in der Zielumgebung prüfen."
+          ]
         },
         {
           "id": "WP-109",
@@ -1470,10 +1506,14 @@
           "area": "5. Module",
           "priority": "replacement_required",
           "effortPt": 1.5,
-          "status": "idea",
+          "status": "testing",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Gutscheine im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Eigenständiges Gutscheinmodul mit Liste, Editor, Medienauswahl und Nutzungsübersicht für registrierte Einlösungen und verbleibende Kontingente. Inhaltsänderungen und Sichtbarkeit werden getrennt verarbeitet; die Studio-Historie erfasst keine Einlösungen.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: docs/reference/vouchers.md; PR #1972, #1988 und #1989. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Anlegen, Wiederöffnen, Bearbeiten und Ergänzen eines zweiten Gutscheins am finalen Zielstand prüfen; App- und Einlösungsabnahme gesondert durchführen."
+          ]
         },
         {
           "id": "WP-124",
@@ -1679,7 +1719,8 @@
           "status": "optimization",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Einführung eines flexiblen Modul-Frameworks und eines SDKs im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Modul-Framework und SDK mit manifestbasierten Einstiegspunkten, auswählbaren Plugin-Sätzen, Erweiterungspunkten für Ansichten sowie mandantengebundenem Aktivierungs- und Lifecycle-Pfad. Build und Provisionierung verwenden dieselbe validierte Plugin-Auswahl.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: PR #1778, #1801 und #1835. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme."
         },
         {
           "id": "WP-141",
@@ -1690,7 +1731,8 @@
           "status": "optimization",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für App-Instanzen-Verwaltung im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Instanzverwaltung mit Provisionierungsstatus, Bereitschaftsdiagnose, Modulzuweisung, zentraler Mainserver-Konfiguration und Verwaltung von Bus-API-Keys. Technische Betriebsbereitschaft und fachliche Aktivierung bleiben getrennt.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: PR #1851 und #1860; docs/operations/plugin-tenant-lifecycle-operations.md. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme."
         },
         {
           "id": "WP-142",
@@ -1764,7 +1806,8 @@
           "status": "optimization",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Runbooks für Deployments und Entwicklung im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Dokumentierte Betriebsabläufe für Build, Dev, Staging und Production mit identischem Image-Digest sowie getrennten Diagnose- und Recovery-Verfahren. Regelmäßige Studio-Rollouts folgen dem zentralen Rollout-Prozess.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: docs/guides/studio-rollout-process.md. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme."
         },
         {
           "id": "WP-148",
@@ -1816,10 +1859,14 @@
           "area": "6. Allgemein",
           "priority": "unfunded_nice_to_have",
           "effortPt": 2.5,
-          "status": "planned",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Hilfe-Bereich / Wiki mit Suche im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Integrierte Anwenderdokumentation ist über Hilfe erreichbar und mit den Studio-Seiten verknüpft. Der Teilumfang Wiki mit Suche ist durch diesen Abgleich nicht vollständig nachgewiesen.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: PR #1841 und #1844; docs/user-documentation/README.md. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Suchfunktion und vollständigen Wiki-Umfang gegen die fachlichen Anforderungen prüfen; vorhandenen Hilfe-Einstieg in der Zielumgebung abnehmen."
+          ]
         },
         {
           "id": "WP-153",
@@ -1830,7 +1877,11 @@
           "status": "optimization",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Darstellung der Release-Notes & Changelog im Studio im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Releasebezogene Änderungsnotizen und zugehörige Artefakterzeugung sind vorhanden. Die frühere PR-Changelog-Liste wurde aus dem Dashboard entfernt; ihre frühere Darstellung ist keine aktuelle Dashboard-Funktion.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: Git-Historie: feat(studio): remove PR changelog from dashboard; docs/governance/studio-changelog-workflow.md. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Gewünschte Darstellung von Release-Notes im Studio fachlich bestätigen und am aktuellen Zielstand prüfen."
+          ]
         },
         {
           "id": "WP-154",
@@ -1849,10 +1900,14 @@
           "area": "6. Allgemein",
           "priority": "unfunded_nice_to_have",
           "effortPt": 1,
-          "status": "planned",
+          "status": "testing",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Kontextbezogene Hilfetexte im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Kontextbezogene Hilfe zeigt passende Anwenderdokumentation zu Studio-Seiten. Dokumentationslinks und Darstellung wurden korrigiert; ein Bearbeitungslink führt zur zugehörigen Datei im GitHub-Editor.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: PR #1844 und #1958; docs/user-documentation/page-catalog.json. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Zuordnung, Links und Lesbarkeit der kontextbezogenen Hilfen für die wichtigsten Redaktionswege abnehmen."
+          ]
         },
         {
           "id": "WP-156",
@@ -1945,10 +2000,14 @@
           "area": "4. Schnittstellen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 5,
-          "status": "idea",
+          "status": "testing",
           "health": "on_track",
           "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für MCP im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+          "featureSummary": "Studio-MCP stellt mandantengebundene Instanzdiagnose und Verwaltungsfunktionen bereit. Persönliche Anmeldungen unterstützen IAM- und Schnittstellenverwaltung; Refresh-Sitzungen können lokal in der macOS-Keychain gespeichert werden. Eine allgemeine KI-Assistenz ist damit nicht zugesagt.",
+          "notes": "Repository-Abgleich vom 29.10.2026 (HEAD 738392926). Quellen: docs/operations/studio-instance-mcp-betrieb.md; PR #1784, #1800, #1829 und #1831. Implementierungsstand; kein neuer Nachweis für Produktiv-Rollout oder fachliche Abnahme.",
+          "todos": [
+            "Persönliche Anmeldung, Mandantentrennung und benötigte MCP-Funktionen gegen die freigegebene Zielinstanz abnehmen."
+          ]
         },
         {
           "id": "WP-164",

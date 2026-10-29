@@ -364,6 +364,23 @@ it('reports an unavailable identity provider without attempting translation', as
   expect(state.translate).not.toHaveBeenCalled();
 });
 
+it.each([false, true])('compares database timestamp values (changed: %s)', async (changed) => {
+  const timestamp = '2026-10-27T12:00:00.000Z';
+  connection.updatedAt = timestamp;
+  provider.updatedAt = timestamp;
+  state.load.mockImplementation(async (_instance, type) => {
+    const record = type === 'sva_mainserver' ? connection : provider;
+    return { ...record, updatedAt: new Date(record.updatedAt as string) };
+  });
+  state.translate.mockImplementation(async () => {
+    if (changed) provider.updatedAt = '2026-10-27T12:00:00.001Z';
+    return ['News', '<p>Hello</p>'];
+  });
+  const response = await appTranslationServiceHandler(request());
+  expect(response.status).toBe(changed ? 403 : 200);
+  if (changed) expect(await response.json()).not.toHaveProperty('entries');
+});
+
 it.each(['language', 'credential', 'generation', 'binding'])(
   'discards an in-flight result after a change to %s',
   async (change) => {

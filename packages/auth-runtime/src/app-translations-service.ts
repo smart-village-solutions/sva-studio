@@ -192,9 +192,10 @@ export const appTranslationServiceHandler = async (request: Request): Promise<Re
       JSON.stringify(current.binding) !== JSON.stringify(access.binding) ||
       current.scope.generation !== access.scope.generation ||
       current.connection.id !== access.connection.id ||
-      current.connection.updatedAt !== access.connection.updatedAt ||
+      JSON.stringify(current.connection.updatedAt) !==
+        JSON.stringify(access.connection.updatedAt) ||
       current.provider.id !== access.provider.id ||
-      current.provider.updatedAt !== access.provider.updatedAt ||
+      JSON.stringify(current.provider.updatedAt) !== JSON.stringify(access.provider.updatedAt) ||
       current.settings.credentialRevision !== access.settings.credentialRevision ||
       current.targetCode !== access.targetCode
     )

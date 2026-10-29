@@ -13,12 +13,17 @@ description:
       in der vorhandenen Studio-Modulverwaltung. Mandanten können das optionale Modul
       zugeordnet bekommen. Der Host prüft Modulzugang und Berechtigungen zusätzlich zum
       Organisationskontext. Die lokale Bereitschaft umfasst das Katalogschema und einen
-      redigierten Status des zentralen DeepL-Zugangs. Ein fehlender Zugang wird als
+      redigierten Status des instanzeigenen DeepL-Zugangs. Ein fehlender Zugang wird als
       eingeschränkte lokale Bereitschaft sichtbar. Ein vorhandener Schlüssel ist noch
-      kein Nachweis eines erfolgreichen Anbieteraufrufs. Der gemeinsame Zugang bleibt
+      kein Nachweis eines erfolgreichen Anbieteraufrufs. Der instanzeigene Zugang bleibt
       serverseitig. Ein gemeinsamer Editor verwaltet globale Standards und kommunale sprachbezogene
       Overrides mit JSON-Manifestimport, Korrekturbestätigung und lokalen Prüfständen.
-      Automatische Übersetzung und Veröffentlichung an den Main-Server fehlen weiterhin. Eine Abschaltung oder
+      DeepL-Übersetzungen können nach erfolgreicher Zugangsprüfung ausdrücklich gestartet werden;
+      manuelle Korrekturen bleiben bei der Ergänzung fehlender Übersetzungen erhalten.
+      Gesicherte Textstände lassen sich als mehrsprachige texts.js-Datei herunterladen.
+      Der authentifizierte Übersetzungsdienst für Nachrichten benötigt zusätzlich eine
+      explizite Bindung der bestehenden Main-Server-Verbindung. Eine automatische
+      Auslieferung der App-Texte fehlt weiterhin. Eine Abschaltung oder
       Wiederaktivierung externer Sprachkataloge kann der lokale Abschnitt deshalb noch
       nicht bestätigen. Vor dem produktiven Einsatz sind diese weiteren Lieferabschnitte
       und ihre Integrationsnachweise erforderlich. Entwürfe und vorhandene Katalogstände
@@ -35,12 +40,16 @@ description:
     longDescription: This addon registers the local multilingual catalog basis with the
       existing Studio module management. Its tenant activation is optional. The host
       checks module access and permissions in addition to the active organization.
-      Local readiness covers the catalog schema and a redacted marker for the shared
+      Local readiness covers the catalog schema and a redacted marker for the instance-specific
       DeepL credential. A missing credential is reported as degraded local readiness.
       A configured credential does not prove provider connectivity or language support.
       Credentials stay on the server. A shared editor manages global standards and municipal per-language overrides
-      with JSON manifest import, correction confirmation and local snapshots. This delivery
-      does not provide automatic translation or publication to the main server. It cannot confirm remote
+      with JSON manifest import, correction confirmation and local snapshots. DeepL translation
+      can be explicitly started after verifying the connection; filling missing translations
+      preserves manual corrections. Sealed snapshots can be downloaded as a multilingual
+      texts.js file. The authenticated news translation service additionally requires an
+      explicit binding on the existing Main Server connection. Automatic app-text delivery
+      remains unavailable. This delivery cannot confirm remote
       suspension or reactivation. Those operations require later delivery sections and
       integration evidence before productive use. Existing drafts and catalog sets are
       preserved when module activation changes. Actions use the existing host permission
@@ -48,7 +57,7 @@ description:
       implementation scope so administrators can distinguish it from finished app
       multilingual support. No account or remote configuration is changed by registration.
     features:
-      - Check local readiness and shared DeepL credential configuration
+      - Check local readiness and instance-specific DeepL credential configuration
       - Edit organization-bound catalogs with separate permissions
       - Create and inspect complete local catalog snapshots
 legal:

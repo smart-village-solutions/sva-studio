@@ -21,6 +21,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   registerStudioJobExecutionHandlers: registerStudioJobExecutionHandlersMock,
   listActiveInstanceIdsForWorker: listActiveInstanceIdsForWorkerMock,
   readAppTranslationsLocalReadiness: vi.fn(),
+  runCatalogTranslation: vi.fn(),
   resolveInstanceKeycloakProjectionTenant: vi.fn(),
 }));
 
@@ -198,13 +199,18 @@ describe('plugin operation runtime registration', () => {
     }
   }, 30000);
 
-  it('connects the multilingual lifecycle to redacted host readiness without a remote capability', async () => {
+  it('connects multilingual lifecycle and catalog jobs to the host runtime', async () => {
     const jobTypeId = 'app-translations.lifecycle';
     const jobType = {
       jobTypeId,
       ownerPluginId: 'app-translations',
       queue: 'plugin-operations',
       startPolicy: 'dedicated',
+    };
+    const catalogJobType = {
+      ...jobType,
+      jobTypeId: 'app-translations.catalog-translate',
+      queue: 'app-translations',
     };
     vi.doMock('./plugin-catalog.server.js', () => ({
       studioServerPluginCatalogReport: {
@@ -217,7 +223,13 @@ describe('plugin operation runtime registration', () => {
               runtimeRequirement: 'app-translations.local',
             }),
           ],
-          registry: { jobTypes: [jobType], pluginJobTypeRegistry: new Map([[jobTypeId, jobType]]) },
+          registry: {
+            jobTypes: [jobType, catalogJobType],
+            pluginJobTypeRegistry: new Map([
+              [jobTypeId, jobType],
+              [catalogJobType.jobTypeId, catalogJobType],
+            ]),
+          },
         },
       },
     }));
@@ -241,6 +253,8 @@ describe('plugin operation runtime registration', () => {
       status: 'degraded',
     });
     expect(handlers[jobTypeId]?.executionLane).toBe('default');
+    await handlers[catalogJobType.jobTypeId]!.handler(ctx);
+    expect(auth.runCatalogTranslation).toHaveBeenCalledWith(ctx);
   });
 
   it('registers only regular Studio plugin operation handlers after coverage validation', async () => {

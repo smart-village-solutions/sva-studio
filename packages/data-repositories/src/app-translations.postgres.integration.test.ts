@@ -403,7 +403,8 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
     for (const scope of [a, b, c])
       await transaction(scope, async (_repo, client) => {
         const rows = await client.query(
-          'SELECT organization_id::text FROM iam.app_translation_catalog_drafts'
+          'SELECT organization_id::text FROM iam.app_translation_catalog_drafts WHERE contract_id = $1',
+          [contractId]
         );
         expect(rows.rows).toEqual([
           { organization_id: scope.kind === 'municipal' ? scope.organizationId : null },

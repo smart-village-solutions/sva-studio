@@ -238,7 +238,12 @@ describe('plugin operation runner task list', () => {
         abortSignal,
         throwIfCancellationRequested,
       }) => {
-        expect(job).toEqual(baseJob);
+        expect(job).toEqual({
+          ...baseJob,
+          status: 'running',
+          attempts: 1,
+          workerId: 'graphile-worker:tenant-a:job-1',
+        });
         expect(job.instanceId).toBe('tenant-a');
         expect(requestId).toBe('req-1');
         expect(actorAccountId).toBe('user-1');
@@ -290,7 +295,12 @@ describe('plugin operation runner task list', () => {
           progressReporter: true,
           secretAccess: false,
         },
-        job: baseJob,
+        job: {
+          ...baseJob,
+          status: 'running',
+          attempts: 1,
+          workerId: 'graphile-worker:tenant-a:job-1',
+        },
         progressReporter: expect.objectContaining({
           reportProgress: expect.any(Function),
         }),

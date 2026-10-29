@@ -2,6 +2,7 @@ const translationEntries = <Key extends string>(entries: ReadonlyArray<readonly 
   entries;
 
 export const genericItemsDetailLabelEntries = translationEntries([
+  ['optional', 'create.optional'],
   ['identityTitle', 'cards.basis.identity.title'],
   ['identityDescription', 'cards.basis.identity.description'],
   ['metaTitle', 'cards.basis.meta.title'],

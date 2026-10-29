@@ -14,6 +14,7 @@
 3. Im Tenant-Scope liest der `EffectiveAccessProvider` `/iam/me/permissions`; im Plattform-Scope verwendet er ausschließlich die validierte technische Session-Sicht.
 4. Scope-, Organisations-, Session- oder Invalidation-Wechsel erhöhen eine Generation, verwerfen alte Actions atomar und brechen den vorherigen Request ab. Verspätete Antworten einer alten Generation werden ignoriert.
 5. Routing, Sidebar, Host-Seiten und Plugin-Session-Snapshot konsumieren dieselbe Generation. `unresolved`, `loading` und `error` sind fail-closed.
+   Ein vorübergehender Fehler von `/iam/me/permissions` wird einmal erneut abgefragt. Bei bleibendem Fehler behält das Abfallmodul URL und Tab, zeigt jedoch keine geschützten Bedienelemente; die bestehende globale Aktion „Neu laden“ prüft die Rechte erneut.
 6. Eine UI-Freigabe ersetzt niemals die serverseitige Action-, Instanz-, Organisations- oder Ressourcenprüfung.
 
 ## Scopegebundene Plugin-Routenmaterialisierung
@@ -246,6 +247,13 @@ Fehlerpfad:
 - Fehlt der authentifizierte Kontokontext oder gehört die angefragte `caseId` nicht zum eigenen Konto, antwortet der Host fail-closed mit `404 not_found`.
 - Die Detailansicht darf historische Vorgänge nicht implizit aus einer limitierten Overview-Liste rekonstruieren; der Laufzeitpfad bleibt immer ein expliziter Detail-Read.
 - Regeln und Datenschutzaktivitäten bleiben UI-seitig getrennt, teilen sich aber denselben Account-Self-Service-Einstieg im Header-Menü.
+
+### Erste Anmeldung ohne lokale Rollen
+
+1. Die erfolgreiche Anmeldung legt das lokale IAM-Konto über die bestehenden Auth-Audit-/JIT-Pfade an. Dabei werden keine lokalen Rollen automatisch vergeben. Die Kontoanlage wird bereits einmalig als `account_created` beziehungsweise `user.jit_provisioned` in `iam.activity_logs` festgehalten.
+2. Die Studio-Shell zeigt „Anmeldung erfolgreich“, wenn die Sitzung erfolgreich aufgelöst wurde und sowohl lokale Rollen als auch bestätigte effektive Berechtigungen fehlen. Die Anzeige erklärt die Erfassung beim ersten Login und verweist auf die zuständige Administration. Unaufgelöste, ladende oder fehlerhafte Berechtigungsstände sowie laufende Sitzungswiederherstellungen werden nicht als ausstehende Rechtezuweisung dargestellt. Nach bestätigter Rollenzuweisung entfällt der Hinweis.
+3. Der bestehende Datenschutzbereich unter `/admin/iam?tab=dsr` projiziert die Kontoanlage zusätzlich als `account_registration`. Dafür sind die lokale Rolle `system_admin` und die bestehende Berechtigung `iam.dsr.read` erforderlich; ein Request-Parameter kann diese Freigabe nicht erteilen. Die Abfrage bleibt instanzgebunden und wählt pro Konto dasselbe früheste Ereignis für Liste und Detail. Weitere Anmeldungen und Seitenaufrufe erzeugen keine zusätzlichen Einträge.
+4. Das Ereignis dokumentiert „Erste Anmeldung – Rechtezuweisung ausstehend“ zum damaligen Zeitpunkt. Der Status „Ereignis erfasst“ beschreibt die erfolgreiche Protokollierung, nicht eine Freigabe des Kontos. Spätere Rechteänderungen verändern die Historie nicht; es gelten die bestehenden Audit-Aufbewahrungsregeln. In der Detailansicht führt ein Link bei vorhandener Berechtigung `iam.user.read` zum Benutzerkonto für die manuelle Rollenvergabe.
 
 ### Account-Self-Service: Passwort- und E-Mail-Wechsel über Keycloak-AIA
 
@@ -529,6 +537,8 @@ Fehlerpfad:
 - Browser-/IdP-Cookies verhindern Silent SSO -> Recovery endet ohne Schleife im ausgeloggten Zustand.
 - Ein expliziter Logout blockiert den automatischen Silent-Recovery-Pfad zeitlich begrenzt.
 
+Vor der von `/auth/me` gemeldeten Session-Gültigkeitsgrenze startet `AuthProvider` denselben stillen SSO-Pfad und liest danach `/auth/me` erneut. Bleibt die Gültigkeitsgrenze unverändert, ist vor Ablauf höchstens ein weiterer Versuch zulässig. Der `401`-Pfad bleibt davon unabhängig.
+
 ### Szenario 2d: IAM-Diagnosepfad von Tenant-Host bis UI
 
 1. Ein Request trifft auf Tenant-Host oder Root-Host ein.
@@ -717,6 +727,19 @@ Fehlerpfad:
 
 - Fehlt eine gültige eingehende Request-ID, wird eine lokale ID erzeugt. Eine Trace-ID darf weiterhin fehlen.
 - Schlägt der Logger selbst fehl, schreibt die Routing-Schicht einen sanitisierten Minimal-Eintrag auf `stderr`.
+
+### Szenario 3c: Studio-API-Fehler bis zur Browserreferenz
+
+1. Der App-Dispatcher führt einen geschützten API-Request aus. Auch eine frühe Fehler-Response wird durch den finalen API-Pfad geführt; eine abgefangene Dispatch-Exception wird als generische JSON-500-Response abgebildet.
+2. Die finale Response erhält eine `X-Request-Id`. Bei einem Fehler schreibt der Server genau ein strukturiertes `studio.request.failed`-Ereignis mit derselben ID, sicherer Route-Vorlage, Status, Fehlercode und Prüfphase.
+3. Der Plugin-SDK-Client übernimmt den Response-Header als nicht-enumerable Fehler-Metadatum. News und Events zeigen die Referenz in ihrem Save-Fehlerzustand und bieten die lokalisierte Kopieraktion an.
+4. Für einen Browserfehler ohne bereits korrelierte API-Response kann der Client höchstens zehn flüchtige Meldungen senden. Der Monitoring-Handler bindet sie an die authentifizierte Session, validiert CSRF und Payload, begrenzt Rate und Duplikate und meldet Annahme oder Verwerfen.
+
+Fehlerpfad:
+
+- Ein bereits durch Request-ID korrelierter API-Fehler löst keine zweite Clientmeldung aus.
+- Offline-, Auth- oder Telemetriefehler bleiben vom Fachrequest unabhängig; es gibt keine persistente Browserqueue. Ein Annahme-ACK bestätigt keine Loki-Zustellung.
+- Es werden weder freie Fehlermeldungen noch Stack, Pfad oder Nutzdaten an den Browsermelde-Endpunkt gesendet.
 
 ### Szenario 3b: Prod-naher Studio-Deploy mit Drift-Gates
 
@@ -955,6 +978,8 @@ Fehlerpfad:
 3. Beim Wechsel sendet die UI `PUT /api/v1/iam/me/context` mit der gewählten `organizationId`.
 4. Der Server validiert CSRF-Contract, Session, Instanzscope, Membership und Aktivstatus der Zielorganisation.
 5. Bei Erfolg wird der aktive Kontext serverseitig in der Session aktualisiert und ein Audit-/Betriebsereignis für `organization_context_switched` erzeugt.
+6. Redis übernimmt die Organisationsänderung nur, wenn Sessionwert und separater Widerrufsmarker seit dem Lesen unverändert und die Session noch gültig sind. Bei Konflikt wird der aktuelle Datensatz erneut gelesen und der Feld-Patch innerhalb eines festen Limits erneut angewendet.
+7. Browserwechsel laufen nacheinander. Reads und Writes einer vorherigen Benutzer-, Instanz- oder Requestgeneration dürfen den aktuellen Kontext nicht überschreiben. Bei unklarer Write-Antwort prüft ein frischer Read den gespeicherten Zustand; der Write wird nicht automatisch wiederholt.
 
 ### Ergänzung 2026-03: Produktionsnahe Release-Validierung
 
@@ -1533,7 +1558,6 @@ Bei aktiviertem Scan reserviert die Initialisierung einen privaten Quarantäne-K
 
 Die Medienbibliothek startet mit `media.read` und `media.update` sowie CSRF-Schutz einen instanzgebundenen Job `media.scan-existing` in der vorhandenen Queue `media-processing`. Ein Lauf liest maximal 25 Dateien mit höchstens 64 MiB je Datei aus dem konfigurierten Medienbestand und verwendet denselben ClamAV-Aufruf. Das vorhandene Job-Ergebnis hält den Bericht mit sauber, Fund oder nicht prüfbar; die Fortsetzung bleibt manuell. Der Worker hat ausschließlich lesende Storage-Abhängigkeiten und verändert weder Dateien noch Assets, Sichtbarkeit, Quoten oder Referenzen. Ein Fund bewirkt keine Sperre. Laufender Scan und Bericht bleiben in der Bibliothek unabhängig vom Ladezustand der Medienliste erhalten. Die Bereinigung abgebrochener provisorischer Uploads zieht nur atomar gebuchte Kontingente erfolgreich finalisierter Assets ab; ungebuchte Uploads verändern den vorhandenen Verbrauch nicht.
 
-
 ## Weiterbearbeitbare Medienkopien
 
 1. Der gemeinsame Picker oder die Mediendetailansicht liest die Kopie und ihre tatsächliche Grundlage über den autorisierten Editor-Lesepfad; normale Projektionen enthalten keine privaten Zustände oder Ressourcen-Keys.
@@ -1550,3 +1574,13 @@ Die Medienbibliothek startet mit `media.read` und `media.update` sowie CSRF-Schu
 4. DeepL arbeitet außerhalb der DB-Transaktion mit begrenzten Requests und geschützten Platzhaltern. Danach prüft der Worker alle Bindungen erneut. Nur ein vollständiger gültiger Batch wird gemeinsam mit Revision und Checkpoint geschrieben. Entzug, Rotation, Cancel oder konkurrierender Edit verwirft späte Antworten.
 5. Recovery beginnt am letzten gespeicherten Checkpoint. Fehler vor Commit können neue Anbieterkosten beim Retry bedeuten. Das vorhandene Retrybudget endet nach drei Versuchen; terminale Konfigurations-/Tokenfehler starten keine Schleife.
 6. Der Editor liest nur solange aktiv begrenzt den gespeicherten Status. Er aktualisiert Katalogdaten nicht über ungespeicherte Eingaben hinweg. Suche, Auswahl und Scrollposition bleiben bestehen. „Textstand sichern“ prüft anschließend getrennt den vollständigen lokalen Satz; keine automatische Veröffentlichung oder Appauslieferung.
+
+## Gutschein speichern
+
+Vorbereitung liest Ort und sämtliche Gutscheine, prüft den gesamten Berechtigungsumfang und bindet Formular und Fingerprint an Principal und Credential-Kontext. Nach Vorbereitung erfolgt ein weiterer Read und genau ein Provider-Write ohne Retry. Bestehende Gutschein-IDs werden verschachtelt mitgesendet; der korrigierte Mainserver erhält Gutscheine, Kontingente und Einlösungen sowie Ankündigungen aller Anbietertypen. Readback prüft den Sollzustand einschließlich bestehender IDs; Referenzen und Projektionen folgen. Bei unklarem Ausgang liest ein expliziter Abgleich anhand der vorab vergebenen Identitäten und Operationsmarkierung. Sichtbarkeit verwendet einen getrennten, kontingenterhaltenden Write. Siehe [Gutscheinreferenz](../reference/vouchers.md).
+
+## UI-Revalidierung und Editor-Recovery
+
+Bei Fokus/Wiederaufnahme, erfolgreicher Session-Recovery und Identitäts-/Tenant-/Organisationswechsel invalidiert Studio die effektive Rechtegeneration und lädt den aktuellen Scope erneut. Client-Route-Guards verwenden danach denselben aufgelösten Snapshot wie Aktionen. Ein gewöhnlicher Ressourcen-`403` bleibt lokal; ein expliziter Snapshot-Stale-Code löst eine zusammengeführte Effective-Access-Invalidierung aus.
+
+Bei `stale_mainserver_context` verwirft das SDK das betroffene Context-Binding. Der Core-Content-, News- und Event-Editor sperrt die Detailansicht, liest Kontext und Detail nach ausdrücklicher Nutzeraktion neu, erhält ungespeicherte Eingaben und wiederholt die Schreiboperation nicht. Die erneute Mutation erfordert eine weitere ausdrückliche Nutzeraktion. Die lokale Principal-Readiness sperrt Create bei fehlenden oder nicht verifizierten Credentials, führt aber weder Probe noch Provisionierung aus.

@@ -409,6 +409,20 @@ Zuordnung:
 - Abschnitt 08 (Querschnitt): ADR-023
 - Abschnitt 09 (Entscheidungen): ADR-023
 
+### Fortschreibung 2026-10: Session- und Organisationskonsistenz
+
+- ADR-023 präzisiert den bestehenden Session-Lifecycle:
+  - Refreshes derselben Session werden pro Studio-Prozess zusammengeführt.
+  - Redis-Feldupdates prüfen Sessionwert, Gültigkeit und Widerrufsmarker atomar; begrenzte Konfliktretries lesen den aktuellen Zustand erneut.
+  - Ein überholtes Tokenpaket kann einen neueren Refresh nicht überschreiben.
+- ADR-050 präzisiert den Provider-Lifecycle:
+  - Organisationszustand ist an Benutzer, Instanz und Requestgeneration gebunden.
+  - Überholte Antworten werden verworfen; unklare Wechselergebnisse werden per frischem Read geklärt.
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/09: ADR-023 und ADR-050
+
 ### Fortschreibung 2026-03: IAM-Angebotsbausteine 3 bis 5
 
 - `ADR-022-iam-groups-geo-hierarchie-permission-caching.md`

@@ -1,12 +1,5 @@
-import type {
-  WasteCollectionLocationSortDirection,
-  WasteCollectionLocationSortMode,
-} from '@sva/waste-management-contracts';
 import { normalizeAddressEntityType, normalizeAddressSortField, type WasteAddressSearchParams } from './search-params.address.js';
-import {
-  normalizeWasteCollectionLocationSortDirection,
-  normalizeWasteCollectionLocationSortMode,
-} from './collection-location-search-params.js';
+import { normalizeCollectionLocationSearchParams, normalizeWasteCollectionLocationSortDirection, type WasteCollectionLocationSearchParams } from './collection-location-search-params.js';
 import { normalizePageSize, normalizePositiveInteger } from './pagination-search-params.js';
 import {
   normalizeTourStatus,
@@ -70,8 +63,6 @@ export type WasteManagementSearchParams = Readonly<{
   shiftContext: WasteManagementShiftContext;
   fractionsSortBy: WasteManagementFractionSortField;
   fractionsSortDirection: WasteManagementFractionSortDirection;
-  locationSortMode: WasteCollectionLocationSortMode;
-  locationSortDirection: WasteCollectionLocationSortDirection;
   regionId?: string;
   cityId?: string;
   wasteFractionId?: string;
@@ -89,7 +80,7 @@ export type WasteManagementSearchParams = Readonly<{
   schedulingOriginalDate?: string;
   tourDateShiftId?: string;
   globalDateShiftId?: string;
-}> & WasteAddressSearchParams;
+}> & WasteAddressSearchParams & WasteCollectionLocationSearchParams;
 const compactOptionalString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
     return undefined;
@@ -229,10 +220,7 @@ export const normalizeWasteManagementSearchParams = (
     shiftContext: normalizeShiftContext(search.shiftContext),
     fractionsSortBy: normalizeFractionsSortBy(search.fractionsSortBy),
     fractionsSortDirection: normalizeFractionsSortDirection(search.fractionsSortDirection),
-    locationSortMode: normalizeWasteCollectionLocationSortMode(search.locationSortMode),
-    locationSortDirection: normalizeWasteCollectionLocationSortDirection(
-      search.locationSortDirection
-    ),
+    ...normalizeCollectionLocationSearchParams(search),
     regionId: compactOptionalString(search.regionId),
     cityId: compactOptionalString(search.cityId),
     wasteFractionId: compactOptionalString(search.wasteFractionId),

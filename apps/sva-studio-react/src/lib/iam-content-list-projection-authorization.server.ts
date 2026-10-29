@@ -7,9 +7,8 @@ import {
 import {
   type AuthenticatedRequestContext,
   readMainserverScopeResolverMode,
-  resolveActorAccountId,
+  resolveActorAccountIdWithProvision,
   resolveEffectivePermissions,
-  withInstanceScopedDb,
 } from '@sva/auth-runtime/server';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
@@ -267,12 +266,11 @@ export const resolveProjectionActorAccountId = async (input: {
 
   let actorAccountId: string | undefined;
   try {
-    actorAccountId = await withInstanceScopedDb(input.instanceId, async (client) =>
-      resolveActorAccountId(client, {
-        instanceId: input.instanceId,
-        keycloakSubject: input.ctx.user.id,
-      })
-    );
+    actorAccountId = await resolveActorAccountIdWithProvision({
+      instanceId: input.instanceId,
+      keycloakSubject: input.ctx.user.id,
+      mayProvisionMissingActorMembership: false,
+    });
   } catch (error) {
     return createListErrorResponse(
       503,

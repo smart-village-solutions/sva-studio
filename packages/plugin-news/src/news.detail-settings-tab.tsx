@@ -8,22 +8,19 @@ import {
   StudioFormSummaryErrors,
   getStudioFormFieldProps,
 } from '@sva/studio-ui-react';
-import { useEffect } from 'react';
-
+import { useEffect, type ReactNode } from 'react';
 import { NewsDetailCard } from './news.detail-card.js';
 import { NewsDetailTargetingSection } from './news.detail-targeting-tab.js';
 import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
 import type { WasteTargetingAvailability } from './news.waste-payload.js';
-
 const missingDateValue = '--.--.-- --:--';
-
 type ScheduledPublicationFieldState = Readonly<{
   value: string;
   isInvalid: boolean;
   onChange: (nextValue: string) => string;
 }>;
-
 export type NewsDetailSettingsTabProps = Readonly<{
+  principal?: ReactNode;
   loadedItem: NewsContentItem | null;
   canSendPushNotification?: boolean;
   mode: 'create' | 'edit';
@@ -33,7 +30,6 @@ export type NewsDetailSettingsTabProps = Readonly<{
   wasteTargetingAvailability: WasteTargetingAvailability;
   onLoadWasteOverview: () => Promise<boolean>;
 }>;
-
 type NewsDetailSettingsFormControl = ReturnType<
   typeof useFormContext<NewsDetailFormValues>
 >['control'];
@@ -60,13 +56,8 @@ const createManualFieldError = (message: string): FieldError => ({
   message,
 });
 
-const formatMetadataDate = (value?: string) => {
-  if (!value) {
-    return missingDateValue;
-  }
-
-  return formatDateTimeInEditorTimeZone(value) ?? value;
-};
+const formatMetadataDate = (value?: string) =>
+  value ? (formatDateTimeInEditorTimeZone(value) ?? value) : missingDateValue;
 
 function NewsPushNotificationCard({
   control,
@@ -87,6 +78,7 @@ function NewsPushNotificationCard({
   wasteTargetingAvailability: WasteTargetingAvailability;
   onLoadWasteOverview: () => Promise<boolean>;
 }>) {
+  const pushEnabled = useWatch({ control, name: 'pushNotificationEnabled' });
   return (
     <NewsDetailCard
       title={pt('cards.settings.push.title')}
@@ -124,11 +116,14 @@ function NewsPushNotificationCard({
             </span>
             <span id="news-push-notification-hint" className="block text-muted-foreground">
               {pt('cards.settings.push.toggleHint')}
+              {publicationMode !== 'immediate' ? ` ${pt('create.pushResetHint')}` : ''}
             </span>
           </span>
         </label>
       ) : null}
-      {canSendPushNotification && wasteTargetingAvailability !== 'forbidden' ? (
+      {canSendPushNotification &&
+      (pushEnabled || Boolean(loadedItem)) &&
+      wasteTargetingAvailability !== 'forbidden' ? (
         <NewsDetailTargetingSection
           overview={wasteOverview}
           pt={pt}
@@ -190,6 +185,7 @@ function NewsPublicationModeFieldset({
 }
 
 function NewsPublicationCard({
+  principal,
   control,
   loadedItem,
   mode,
@@ -198,6 +194,7 @@ function NewsPublicationCard({
   scheduledPublicationBindings,
   scheduledPublicationField,
 }: Readonly<{
+  principal?: ReactNode;
   control: NewsDetailSettingsFormControl;
   loadedItem: NewsContentItem | null;
   mode: 'create' | 'edit';
@@ -211,6 +208,7 @@ function NewsPublicationCard({
       title={pt('cards.settings.publication.title')}
       description={pt('cards.settings.publication.description')}
     >
+      {principal}
       <NewsPublicationModeFieldset control={control} pt={pt} />
 
       {publicationMode === 'scheduled' ? (
@@ -249,6 +247,7 @@ function NewsPublicationCard({
 }
 
 export function NewsDetailSettingsTab({
+  principal,
   loadedItem,
   canSendPushNotification = false,
   mode,
@@ -271,19 +270,35 @@ export function NewsDetailSettingsTab({
     }
   }, [publicationMode, setValue]);
 
-  const scheduledPublicationError = scheduledPublicationField.isInvalid
-    ? createManualFieldError(pt('validation.scheduledPublicationAt'))
-    : translateFieldError(errors.scheduledPublicationAt, pt);
   const scheduledPublicationBindings = getStudioFormFieldProps({
     id: 'news-scheduled-publication-at',
-    error: scheduledPublicationError,
+    error: scheduledPublicationField.isInvalid
+      ? createManualFieldError(pt('validation.scheduledPublicationAt'))
+      : translateFieldError(errors.scheduledPublicationAt, pt),
   });
-  const summaryErrors = collectSummaryErrors([scheduledPublicationBindings]);
 
+  const publicationCard = (
+    <NewsPublicationCard
+      principal={principal}
+      control={control}
+      loadedItem={loadedItem}
+      mode={mode}
+      pt={pt}
+      publicationMode={publicationMode}
+      scheduledPublicationBindings={scheduledPublicationBindings}
+      scheduledPublicationField={scheduledPublicationField}
+    />
+  );
   return (
     <div className="space-y-6">
-      <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
-      {canSendPushNotification || loadedItem?.pushNotificationsSentAt ? (
+      <StudioFormSummaryErrors
+        errors={collectSummaryErrors([scheduledPublicationBindings])}
+        title={pt('messages.validationSummary')}
+      />
+      {mode === 'create' ? publicationCard : null}
+
+      {(mode === 'edit' || publicationMode === 'immediate') &&
+      (canSendPushNotification || loadedItem?.pushNotificationsSentAt) ? (
         <NewsPushNotificationCard
           control={control}
           loadedItem={loadedItem}
@@ -295,15 +310,10 @@ export function NewsDetailSettingsTab({
           onLoadWasteOverview={onLoadWasteOverview}
         />
       ) : null}
-      <NewsPublicationCard
-        control={control}
-        loadedItem={loadedItem}
-        mode={mode}
-        pt={pt}
-        publicationMode={publicationMode}
-        scheduledPublicationBindings={scheduledPublicationBindings}
-        scheduledPublicationField={scheduledPublicationField}
-      />
+      {mode === 'create' && publicationMode !== 'immediate' ? (
+        <p className="text-sm text-muted-foreground">{pt('create.noPushHint')}</p>
+      ) : null}
+      {mode === 'edit' ? publicationCard : null}
     </div>
   );
 }

@@ -12,7 +12,6 @@ import {
   StudioFormSummary,
   StudioFormSummaryErrors,
   StudioPersistentActionResult,
-  StudioMediaPickerOverlay,
   StudioMediaReferenceRetryAction,
   resolveMainserverPrincipalOptions,
   type ContentMediaUsage,
@@ -24,10 +23,7 @@ import {
 import type { UseFormReturn } from 'react-hook-form';
 import type { GenericItemCategoryOption } from './generic-items.api-types.js';
 import type { GenericItemsDetailTabs } from './generic-items.detail-page.tabs.js';
-import {
-  toGenericItemsMediaPickerSummary,
-  type createSummaryErrors,
-} from './generic-items.detail-page.media-model.js';
+import { type createSummaryErrors } from './generic-items.detail-page.media-model.js';
 import type { useGenericItemsPageMedia } from './generic-items.detail-page.media-picker.js';
 import type { StatusMessage } from './generic-items.detail-page.logic.js';
 import type { GenericItemsDetailTabId } from './generic-items.detail-tabs.js';
@@ -59,10 +55,16 @@ export type GenericItemsDetailPageViewModel = Readonly<{
   setMediaUsages: React.Dispatch<React.SetStateAction<readonly ContentMediaUsage[]>>;
   setRequiresReferenceSync: React.Dispatch<React.SetStateAction<boolean>>;
   mediaReferenceSync: ReturnType<typeof useStudioMediaReferenceSync>;
+  acknowledgeReferenceRetry: () => void;
+  createdContentId: string | null;
+  hasUnsavedAfterCreate: boolean;
   accessCapabilities: ReturnType<typeof resolveStandardContentAccessCapabilities>;
   canSelectMedia: boolean;
   canUploadMedia: boolean;
   canUpdateMedia: boolean;
+  libraryStatus?: ReturnType<
+    typeof import('./generic-items.detail-page.logic.js').useGenericItemsMediaAssets
+  >['libraryStatus'];
   mediaAssets: readonly HostMediaAssetListItem[];
   isAssetSelectable: ReturnType<typeof useGenericItemsPageMedia>['isAssetSelectable'];
   mediaPicker: ReturnType<typeof useGenericItemsPageMedia>['mediaPicker'];
@@ -83,74 +85,6 @@ export type GenericItemsDetailPageViewModel = Readonly<{
   >;
 }>;
 
-export const GenericItemsMediaPickerView = ({
-  view,
-}: Readonly<{ view: GenericItemsDetailPageViewModel }>) => {
-  const {
-    mediaAssets,
-    canUploadMedia,
-    mediaPickerFeedback,
-    isAssetSelectable,
-    mediaPicker,
-    mediaPickerLabels,
-    addManualMedia,
-    canUpdateMedia,
-    navigate,
-  } = view;
-  return (
-    <StudioMediaPickerOverlay
-      assets={mediaAssets.map(toGenericItemsMediaPickerSummary)}
-      canUpload={canUploadMedia}
-      feedbackMessage={mediaPickerFeedback.message}
-      feedbackTone={mediaPickerFeedback.tone}
-      isAssetSelectable={(asset) =>
-        isAssetSelectable({
-          ...asset,
-          metadata: {
-            title: asset.title,
-            altText: '',
-            description: '',
-            copyright: '',
-            license: '',
-          },
-        })
-      }
-      isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
-      isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
-      canConfirmSelection={mediaPicker.canConfirmSelection}
-      labels={mediaPickerLabels}
-      metadataDraft={mediaPicker.metadataDraft}
-      mode={mediaPicker.mode}
-      onAddManual={addManualMedia}
-      onBackFromReview={mediaPicker.goBackFromReview}
-      onChangeMode={(pickerMode) =>
-        pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
-      }
-      onClose={mediaPicker.close}
-      onConfirmSelection={() => void mediaPicker.confirmSelection()}
-      onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
-      isMetadataEditable
-      visibleMetadataFields={['altText', 'description', 'copyright']}
-      persistenceContext="content"
-      canEditCentralMetadata={canUpdateMedia}
-      onSaveCentralMetadata={mediaPicker.saveCentralMetadata}
-      onApplyImageEdit={canUploadMedia ? mediaPicker.applyImageEdit : undefined}
-      onImageFocusChange={mediaPicker.updateImageFocus}
-      onOpenMediaManagement={(assetId) =>
-        void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })
-      }
-      onSearchValueChange={mediaPicker.setSearchValue}
-      onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
-      onUploadFile={(file) => void mediaPicker.uploadFile(file)}
-      open={mediaPicker.open}
-      reviewAsset={mediaPicker.reviewAsset}
-      reviewSource={mediaPicker.reviewSource}
-      searchValue={mediaPicker.searchValue}
-      uploadPhase={mediaPicker.uploadPhase}
-    />
-  );
-};
-
 export const GenericItemsStatusView = ({
   view,
 }: Readonly<{ view: GenericItemsDetailPageViewModel }>) => {
@@ -164,6 +98,7 @@ export const GenericItemsStatusView = ({
     principalControl,
     setActingPrincipalType,
     mediaReferenceSync,
+    acknowledgeReferenceRetry,
     setStatus,
   } = view;
   return (
@@ -186,23 +121,24 @@ export const GenericItemsStatusView = ({
           {status.text}
         </StudioFormSummary>
       ) : null}
-      <MainserverPrincipalControl
-        id="generic-items-acting-principal"
-        label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-        description={pt('principal.description')}
-        value={actingPrincipalType}
-        options={resolveMainserverPrincipalOptions(principalControl, {
-          value: actingPrincipalType,
-          label: pt(`principal.${actingPrincipalType}`),
-        })}
-        onChange={setActingPrincipalType}
-      />
+      {mode === 'create' && view.createdContentId ? (
+        <StudioFormSummary kind="success">
+          {view.hasUnsavedAfterCreate ? (
+            <span className="block">{pt('messages.unsavedAfterCreate')}</span>
+          ) : null}
+          <Link to="/admin/generic-items/$id" params={{ id: view.createdContentId }}>
+            {pt('actions.openSavedContent')}
+          </Link>
+        </StudioFormSummary>
+      ) : null}
+      <GenericItemsPrincipalSelector view={view} />
       <StudioMediaReferenceRetryAction
         controller={mediaReferenceSync}
         label={pt('actions.retryMediaReferences')}
-        onSuccess={() =>
-          setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') })
-        }
+        onSuccess={() => {
+          acknowledgeReferenceRetry();
+          setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
+        }}
         onFailure={() =>
           setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
         }
@@ -210,6 +146,32 @@ export const GenericItemsStatusView = ({
     </>
   );
 };
+
+const GenericItemsPrincipalSelector = ({
+  view,
+}: Readonly<{ view: GenericItemsDetailPageViewModel }>) => (
+  <div
+    className={
+      view.mode === 'create'
+        ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
+        : undefined
+    }
+  >
+    <MainserverPrincipalControl
+      id="generic-items-acting-principal"
+      label={view.pt(view.mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+      description={view.pt('principal.description')}
+      value={view.actingPrincipalType}
+      options={resolveMainserverPrincipalOptions(view.principalControl, {
+        value: view.actingPrincipalType,
+        label: view.pt(`principal.${view.actingPrincipalType}`),
+      })}
+      onChange={view.setActingPrincipalType}
+      readinessByPrincipal={view.principalControl?.readinessByPrincipal}
+      readinessMessage={view.principalControl?.readinessMessage}
+    />
+  </div>
+);
 
 export const GenericItemsDeleteDialogView = ({
   view,

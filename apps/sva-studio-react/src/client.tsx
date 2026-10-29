@@ -3,6 +3,9 @@ import { hydrateRoot } from 'react-dom/client';
 import { StartClient } from '@tanstack/react-start/client';
 import { createBrowserBeacon } from '@fallow-cli/beacon/browser';
 import { readDocumentFallowBrowserBeaconKey } from './lib/studio-runtime-config';
+import { installClientErrorTelemetry } from './lib/client-error-telemetry.client';
+
+installClientErrorTelemetry();
 
 const apiKey = readDocumentFallowBrowserBeaconKey();
 if (apiKey.startsWith('fallow_pub_k1_')) {

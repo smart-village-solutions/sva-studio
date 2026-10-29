@@ -6,7 +6,10 @@ import type { StudioMediaImageEdit } from './media-image-editor-state.js';
 import type { MediaEditorialMetadataPatch, MediaFocusPoint } from '@sva/media';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './dialog.js';
 import { MediaIntakePanel } from './media-intake-panel.js';
-import { StudioMediaPickerLibraryPanel } from './studio-media-picker-library-panel.js';
+import {
+  StudioMediaPickerLibraryPanel,
+  type StudioMediaPickerLibraryPanelProps,
+} from './studio-media-picker-library-panel.js';
 import { StudioMediaPickerModeActions } from './studio-media-picker-mode-actions.js';
 import { StudioMediaPickerReviewPanel } from './studio-media-picker-review-panel.js';
 import type {
@@ -34,6 +37,7 @@ export { useStudioMediaPickerOverlay } from './use-studio-media-picker-overlay.j
 export { createLocalStudioMediaPickerAsset } from './studio-media-picker-local-asset.js';
 
 type StudioMediaPickerOverlayProps = Readonly<{
+  libraryStatus?: StudioMediaPickerLibraryPanelProps['libraryStatus'];
   onWorkspaceDirtyChange?: (dirty: boolean) => void;
   open: boolean;
   mode: StudioMediaPickerMode;
@@ -94,9 +98,22 @@ const StudioMediaPickerOverlayBody = (
   } = props;
   return (
     <div className="max-h-[72vh] overflow-y-auto pr-1">
+      {mode !== 'upload' && feedbackMessage ? (
+        <p
+          role={feedbackTone === 'error' ? 'alert' : 'status'}
+          className={
+            feedbackTone === 'error'
+              ? 'mb-3 text-sm text-destructive'
+              : 'mb-3 text-sm text-muted-foreground'
+          }
+        >
+          {feedbackMessage}
+        </p>
+      ) : null}
       {mode === 'library' ? (
         <StudioMediaPickerLibraryPanel
           assets={assets}
+          libraryStatus={props.libraryStatus}
           isLoadingReviewAsset={isLoadingReviewAsset}
           isAssetSelectable={isAssetSelectable}
           labels={labels.library}

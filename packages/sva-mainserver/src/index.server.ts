@@ -20,3 +20,5 @@ export {
   type SvaMainserverWasteSyncItem,
   type SvaMainserverWasteSyncSnapshot,
 } from './server/service-internals/waste-operations.js';
+
+export { dispatchSvaMainserverVouchersRequest } from './server/vouchers-route.js';

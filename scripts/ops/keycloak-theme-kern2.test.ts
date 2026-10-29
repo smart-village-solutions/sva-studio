@@ -115,4 +115,28 @@ describe('sva-kern2 keycloak login theme', () => {
     expect(cssSource).toMatch(/-webkit-text-fill-color:\s*var\(--sva-kern2-input-text\)/u);
     expect(cssSource).toMatch(/button\[data-password-toggle\]/u);
   });
+
+  it('provides both languages for every additional login message', () => {
+    const loginRoot = resolve(dirname(keycloakThemeCssPath), '../..');
+    const template = readFileSync(resolve(loginRoot, 'login.ftl'), 'utf8');
+    const keys = [...template.matchAll(/msg\("(sva[^"\n]+)"\)/gu)].map((match) => match[1]);
+
+    expect(keys).toHaveLength(3);
+    for (const locale of ['de', 'en']) {
+      const messages = readFileSync(
+        resolve(loginRoot, `messages/messages_${locale}.properties`),
+        'utf8'
+      );
+      for (const key of [...keys, 'signInWithProvider']) {
+        expect(
+          messages
+            .split('\n')
+            .some((line) => line.startsWith(`${key}=`) && line.length > key.length + 1),
+          `${locale}: ${key}`
+        ).toBe(true);
+      }
+      expect(messages).toContain('signInWithProvider=');
+      expect(messages).toContain('{0}');
+    }
+  });
 });

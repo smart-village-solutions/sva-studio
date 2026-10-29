@@ -63,6 +63,18 @@ pnpm 11 behandelt Buildskripte von Dependencies standardmäßig als unreviewed. 
 
 Neue Buildskripte dürfen nur nach expliziter Review in `allowBuilds` aufgenommen werden.
 
+## Reproduzierbare Lockfile-Updates
+
+Bei `injectWorkspacePackages: true` enthält das Lockfile neben den direkten Workspace-Abhängigkeiten auch eigene Auflösungen für injizierte Paketkopien. Eine pnpm-Neuberechnung kann deshalb `link:`-/`file:`-Verweise, Peer-Kontexte und zusätzliche transitive Paketversionen ändern, obwohl die direkten Dependency-Versionen gleich bleiben. Ein erfolgreicher Frozen-Install allein weist diese Normalisierung nicht nach, weil er die Auflösung überspringt.
+
+Wenn ein gezieltes Dependency-Update solche bestehenden Unterschiede mitführt:
+
+1. Im sauberen Worktree mit den festgelegten Node- und pnpm-Versionen den paketbezogenen Update-Pfad zunächst auf der **aktuell gesperrten Version** ausführen: `pnpm update <paket>@<aktuell-gesperrte-version> --lockfile-only --no-save -r`. Die Schutzregeln bleiben aktiv.
+2. Die erzeugten Workspace-Auflösungen und zusätzlichen transitiven Versionen vollständig prüfen. Deklarierte Ranges und direkte Registry-Dependency-Versionen müssen bei einer reinen Normalisierung unverändert bleiben; neue transitive Auflösungen sind ausdrücklich im PR auszuweisen.
+3. Den identischen Befehl erneut ausführen. Der geprüfte Ausgangsstand muss ohne weiteren Lockfile-Diff reproduzierbar sein. Ein gewöhnlicher `pnpm install --lockfile-only` ersetzt diesen Nachweis nicht.
+4. Den Stand mit frischem `pnpm install --frozen-lockfile` sowie den bestehenden Typ-, Test-, Build- und Runtime-Gates absichern.
+5. Das ursprünglich beabsichtigte Dependency-Update separat gegen diesen Stand prüfen. Sein Diff soll auf das Paket und dessen tatsächlich betroffenen Abhängigkeitsgraphen begrenzt sein. Workspace-Verweise nicht nachträglich von Hand zurückdrehen.
+
 ## Operativer Hinweis
 
 Wenn ein frischer Install an `minimumReleaseAge`, `trustPolicy` oder `allowBuilds` scheitert, ist das zunächst ein gewollter Sicherheitsstopp und kein bloßes Tooling-Problem. Erst Resolver-Ursache, Version und Vertrauenssignal klären; erst danach gezielt nachsteuern.

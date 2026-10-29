@@ -1,5 +1,3 @@
-import { SessionNotFoundError } from './runtime-errors.js';
-
 import { emitAuthAuditEvent } from './audit-events.js';
 import { getRedisClient } from './redis.js';
 import {
@@ -18,6 +16,10 @@ import {
 } from './redis-session-support.js';
 import { getWorkspaceIdForScope } from './scope.js';
 import type { Session } from './types.js';
+import { deleteSessionIfUnchanged } from './redis-session-update.js';
+
+export { updateSession } from './redis-session-update.js';
+export type { SessionTokenSet, UpdateSessionOptions } from './redis-session-update.js';
 
 export type GetSessionOptions = {
   readonly decryptTokens?: boolean;
@@ -151,7 +153,7 @@ export async function getSession(
         expired: true,
         expires_at: session.expiresAt,
       });
-      await deleteSession(sessionId);
+      await deleteSessionIfUnchanged(sessionId, data, session.userId);
       return undefined;
     }
 
@@ -161,40 +163,6 @@ export async function getSession(
       has_user: !!session.user,
     });
     return session;
-  });
-}
-
-/**
- * Update an existing session in Redis (preserves TTL, encrypts tokens).
- */
-export async function updateSession(sessionId: string, updates: Partial<Session>): Promise<void> {
-  await trackSessionOperation('update_session', async () => {
-    const currentSession = await getSession(sessionId);
-    if (!currentSession) {
-      throw new SessionNotFoundError();
-    }
-
-    const updatedSession: Session = { ...currentSession, ...updates };
-    const encryptedSession = encryptSessionTokens(updatedSession);
-    const resolvedTtl = resolveSessionRedisTtlSeconds(updatedSession);
-    const finalTtl = await runWithRequiredRedisSessionStore({
-      operation: 'update_session',
-      runAgainstRedis: async () => {
-        const redis = getRedisClient();
-        const key = sessionPrefix() + sessionId;
-        await redis.set(key, JSON.stringify(encryptedSession), 'EX', resolvedTtl);
-        const userSessionKey = userSessionIndexPrefix() + updatedSession.userId;
-        await redis.sadd(userSessionKey, sessionId);
-        await redis.expire(userSessionKey, resolvedTtl);
-        return resolvedTtl;
-      },
-    });
-
-    logger.debug('Session updated', {
-      operation: 'update_session',
-      ttl_seconds: finalTtl,
-      fields_updated: Object.keys(updates).length,
-    });
   });
 }
 

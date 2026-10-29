@@ -15,6 +15,8 @@ import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-st
 
 export type WasteMasterDataLocationsWorkspaceProps = {
   readonly search?: WasteManagementSearchParams;
+  readonly onQueryChange?: (query: string) => void;
+  readonly onResetFilters?: () => void;
   readonly fractions?: readonly WasteFractionRecord[];
   readonly fractionsStatus?: WasteLocationCoverageDataStatus;
   readonly toursStatus?: WasteLocationCoverageDataStatus;
@@ -29,6 +31,12 @@ export type WasteMasterDataLocationsWorkspaceProps = {
   readonly allFilteredLocationsSelected: boolean;
   readonly selectedCollectionLocationsCount: number;
   readonly availableTours: readonly WasteTourRecord[];
+  readonly locationYear?: number;
+  readonly onLocationYearChange?: (year: number | undefined) => void;
+  readonly locationTourStatus?: WasteManagementSearchParams['locationTourStatus'];
+  readonly onLocationTourStatusChange?: (
+    status: WasteManagementSearchParams['locationTourStatus']
+  ) => void;
   readonly page: number;
   readonly pageSize: number;
   readonly pageCount: number;

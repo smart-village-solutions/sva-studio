@@ -2,9 +2,10 @@ import { studioAdminResources } from './lib/plugins';
 import { createRouter, type RootRoute } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
 import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
-import { PLUGIN_ROUTE_SCOPE_HEADER_NAME } from '@sva/plugin-sdk';
+import { PLUGIN_ROUTE_SCOPE_HEADER_NAME, readSessionAccessSnapshot } from '@sva/plugin-sdk';
 import type { AppRouteFactory, RouteGuardUser } from '@sva/routing';
 import {
+  createMockRouteGuardUser,
   hasActiveDevAuthSession,
   hasActiveDevAuthSessionCookie,
   isDevAuthAvailable,
@@ -83,82 +84,7 @@ export const isMockAuthEnabled = async () => {
   );
 };
 
-export const createMockRouteGuardUser = (): RouteGuardUser => ({
-  instanceId: 'de-musterhausen',
-  assignedModules: [
-    'categories',
-    'cockpit-cards',
-    'events',
-    'media',
-    'news',
-    'poi',
-    'waste-management',
-  ],
-  roles: ['system_admin'],
-  permissionActions: [
-    'iam.user.read',
-    'iam.user.write',
-    'iam.invitationTemplate.manage',
-    'iam.role.read',
-    'iam.role.write',
-    'iam.org.read',
-    'iam.org.write',
-    'iam.legalText.read',
-    'iam.legalText.write',
-    'iam.governance.read',
-    'iam.governance.write',
-    'iam.governance.export',
-    'iam.dsr.read',
-    'iam.dsr.write',
-    'iam.dsr.export',
-    'iam.deletionRules.read',
-    'iam.deletionRules.write',
-    'iam.monitoring.read',
-    'iam.monitoring.write',
-    'experimental.read',
-    'app.read',
-    'cockpit.read',
-    'content.read',
-    'content.create',
-    'content.updateMetadata',
-    'content.updatePayload',
-    'content.changeStatus',
-    'content.publish',
-    'content.archive',
-    'content.restore',
-    'content.readHistory',
-    'content.manageRevisions',
-    'content.delete',
-    'media.read',
-    'media.create',
-    'media.update',
-    'media.reference.manage',
-    'media.delete',
-    'media.deliver.protected',
-    'categories.read',
-    'categories.create',
-    'categories.update',
-    'categories.delete',
-    'cockpit-cards.read',
-    'cockpit-cards.create',
-    'cockpit-cards.update',
-    'cockpit-cards.delete',
-    'news.read',
-    'events.read',
-    'poi.read',
-    'waste-management.read',
-    'waste-management.master-data.manage',
-    'waste-management.tours.manage',
-    'waste-management.scheduling.manage',
-    'waste-management.import.execute',
-    'waste-management.export.execute',
-    'waste-management.seed.execute',
-    'waste-management.reset.execute',
-    'waste-management.settings.manage',
-    'integration.manage',
-    'feature.toggle',
-  ],
-});
+export { createMockRouteGuardUser } from './lib/dev-auth';
 
 type RouteGuardUserPayload = {
   user?: {
@@ -192,15 +118,19 @@ const readStringArray = (value: unknown): string[] =>
 export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
   const user = readRouteGuardPayloadUser(payload);
 
+  const id = typeof user?.id === 'string' ? user.id : undefined;
   const instanceId = typeof user?.instanceId === 'string' ? user.instanceId : undefined;
   const roles = readStringArray(user?.roles);
-  const permissionActions = readStringArray(user?.permissionActions);
   const assignedModules = readStringArray(user?.assignedModules);
 
-  const rawStatus = user?.permissionStatus;
-  const permissionStatus: 'ok' | 'degraded' = rawStatus === 'degraded' ? 'degraded' : 'ok';
-
-  return { instanceId, roles, permissionActions, permissionStatus, assignedModules };
+  return {
+    ...(id ? { id } : {}),
+    instanceId,
+    roles,
+    permissionActions: [],
+    permissionStatus: 'degraded',
+    assignedModules,
+  };
 };
 
 export const parseRouteGuardUser = (payload: unknown): RouteGuardUser | null => {
@@ -260,14 +190,16 @@ const readEffectivePermissionActions = (payload: unknown): readonly string[] | n
 const loadScopedRouteGuardUser = async (
   user: RouteGuardUser,
   url: string,
-  init?: RequestInit
+  init?: RequestInit,
+  fetchRequest = fetchWithRequestTimeout,
+  useSharedAccessSnapshot = false
 ): Promise<RouteGuardUser> => {
   if (!user.instanceId) {
-    return { ...user, permissionActions: [] };
+    return { ...user, permissionActions: [], permissionStatus: 'degraded' };
   }
 
   try {
-    const contextResponse = await fetchWithRequestTimeout(
+    const contextResponse = await fetchRequest(
       new URL('/api/v1/iam/me/context', url).toString(),
       init,
       { timeoutMs: 5_000 }
@@ -276,11 +208,28 @@ const loadScopedRouteGuardUser = async (
       return { ...user, permissionActions: [], permissionStatus: 'degraded' };
     }
     const activeOrganizationId = readActiveOrganizationId(await contextResponse.json());
+    if (useSharedAccessSnapshot) {
+      const sharedAccess = readSessionAccessSnapshot();
+      if (
+        sharedAccess.isResolved &&
+        !sharedAccess.hasError &&
+        sharedAccess.subjectId === user.id &&
+        sharedAccess.instanceId === user.instanceId &&
+        sharedAccess.organizationId === (activeOrganizationId ?? null)
+      ) {
+        return {
+          ...user,
+          permissionActions: sharedAccess.permissionActions,
+          assignedModules: sharedAccess.assignedModules,
+          permissionStatus: 'ok',
+        };
+      }
+    }
     const searchParams = new URLSearchParams({ instanceId: user.instanceId });
     if (activeOrganizationId) {
       searchParams.set('organizationId', activeOrganizationId);
     }
-    const permissionsResponse = await fetchWithRequestTimeout(
+    const permissionsResponse = await fetchRequest(
       new URL(`/iam/me/permissions?${searchParams.toString()}`, url).toString(),
       init,
       { timeoutMs: 5_000 }
@@ -290,7 +239,7 @@ const loadScopedRouteGuardUser = async (
     }
     const permissionActions = readEffectivePermissionActions(await permissionsResponse.json());
     return permissionActions
-      ? { ...user, permissionActions }
+      ? { ...user, permissionActions, permissionStatus: 'ok' }
       : { ...user, permissionActions: [], permissionStatus: 'degraded' };
   } catch {
     return { ...user, permissionActions: [], permissionStatus: 'degraded' };
@@ -299,16 +248,17 @@ const loadScopedRouteGuardUser = async (
 
 const loadRouteGuardUserFromAuthMe = async (
   url: string,
-  init?: RequestInit
+  init?: RequestInit,
+  fetchRequest = fetchWithRequestTimeout
 ): Promise<RouteGuardUser | null> => {
-  const response = await fetchWithRequestTimeout(url, init, { timeoutMs: 5_000 });
+  const response = await fetchRequest(url, init, { timeoutMs: 5_000 });
 
   if (!response.ok) {
     return null;
   }
 
   const user = parseRouteGuardUser(await response.json());
-  return user ? loadScopedRouteGuardUser(user, url, init) : null;
+  return user ? loadScopedRouteGuardUser(user, url, init, fetchRequest) : null;
 };
 
 const getRouteGuardUser = createIsomorphicFn()
@@ -323,14 +273,17 @@ const getRouteGuardUser = createIsomorphicFn()
       }
       const authMeUrl = new URL('/auth/me', request.url).toString();
 
-      return await loadRouteGuardUserFromAuthMe(
-        authMeUrl,
-        cookie
-          ? {
-              headers: { cookie },
-            }
-          : undefined
-      );
+      const init = cookie ? { headers: { cookie } } : undefined;
+      if (import.meta.env.DEV && new URL(authMeUrl).hostname.endsWith('.localhost')) {
+        // Node löst lokale Tenant-Hosts nicht wie der Browser auf; dieselben Auth-Handler direkt prüfen.
+        const { dispatchAuthRouteRequest } = await import('@sva/routing/server');
+        return await loadRouteGuardUserFromAuthMe(authMeUrl, init, async (url, requestInit) => {
+          const response = await dispatchAuthRouteRequest(new Request(url, requestInit));
+          if (!response) throw new Error('Missing route-guard auth handler');
+          return response;
+        });
+      }
+      return await loadRouteGuardUserFromAuthMe(authMeUrl, init);
     } catch {
       return null;
     }
@@ -348,9 +301,13 @@ const getRouteGuardUser = createIsomorphicFn()
       if (!result.ok) return null;
       const user = parseRouteGuardUser(result.payload);
       return user
-        ? await loadScopedRouteGuardUser(user, new URL('/auth/me', resolveBaseUrl()).toString(), {
-            credentials: 'include',
-          })
+        ? await loadScopedRouteGuardUser(
+            user,
+            new URL('/auth/me', resolveBaseUrl()).toString(),
+            { credentials: 'include' },
+            fetchWithRequestTimeout,
+            true
+          )
         : null;
     } catch {
       return null;

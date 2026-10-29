@@ -1,8 +1,5 @@
 import {
-  wasteAnnualTourTransferLimits,
-  WasteAnnualTourTransferError,
   type WasteAnnualTourTransferCreateInput,
-  type WasteAnnualTourTransferPreview,
   type WasteAnnualTourTransferResult,
 } from '@sva/waste-management-contracts';
 
@@ -16,6 +13,7 @@ import {
 import { validateCsrf } from './host-controls.js';
 import { authorizeWasteManagementAction } from './auth.js';
 import { completeAnnualTourTransfer } from './annual-tour-transfer-execution.js';
+import { toAnnualTourTransferDomainErrorResponse } from './annual-tour-transfer-errors.js';
 import {
   reserveAnnualTourTransfer,
   startAnnualTourTransferLeaseHeartbeat,
@@ -37,77 +35,6 @@ const authorizeAnnualTourTransfer = async (
   );
   if (toursError) return toursError;
   return authorizeWasteManagementAction(ctx, 'waste-management.scheduling.manage', deps, requestId);
-};
-
-const toDomainErrorResponse = (error: unknown, requestId: string | undefined): Response | null => {
-  if (error instanceof WasteAnnualTourTransferError) {
-    if (error.code === 'batch_limit_exceeded') {
-      return createApiError(
-        413,
-        error.code,
-        `Der Jahreswechsel überschreitet die Grenze von ${wasteAnnualTourTransferLimits.tours.toLocaleString('de-DE')} Touren oder ${wasteAnnualTourTransferLimits.relationships.toLocaleString('de-DE')} kopierrelevanten Beziehungen.`,
-        requestId
-      );
-    }
-    return createApiError(
-      400,
-      error.code,
-      error.code === 'invalid_source_year'
-        ? 'Als Quelljahr sind nur das aktuelle und das vorherige Kalenderjahr zulässig.'
-        : error.replacement
-          ? `Das Ersatzdatum muss im Kalenderjahr ${error.replacement.expectedYear} liegen.`
-          : 'Das Ersatzdatum ist für die aktuelle Planung nicht gültig.',
-      requestId
-    );
-  }
-  if (!(error instanceof Error)) return null;
-  if (error.message.startsWith('preview_stale:')) {
-    let updatedPreview: WasteAnnualTourTransferPreview | undefined;
-    try {
-      updatedPreview = JSON.parse(error.message.slice('preview_stale:'.length));
-    } catch {
-      updatedPreview = undefined;
-    }
-    return createApiError(
-      409,
-      'preview_stale',
-      'Die Tourplanung hat sich geändert. Bitte prüfen und bestätigen Sie die aktualisierte Vorschau.',
-      requestId,
-      updatedPreview ? { updatedPreview } : undefined
-    );
-  }
-  if (error.message.startsWith('target_identity_conflict:')) {
-    let updatedPreview: WasteAnnualTourTransferPreview | undefined;
-    try {
-      updatedPreview = JSON.parse(error.message.slice('target_identity_conflict:'.length));
-    } catch {
-      updatedPreview = undefined;
-    }
-    return createApiError(
-      409,
-      'target_identity_conflict',
-      'Ein vorhandenes Folgejahr-Ergebnis weicht von der bestätigten Planung ab.',
-      requestId,
-      updatedPreview ? { updatedPreview } : undefined
-    );
-  }
-  if (error.message === 'unacknowledged_target_conflict') {
-    return createApiError(
-      409,
-      'target_conflict_unacknowledged',
-      'Eine mögliche parallele Planung muss vor der Übernahme ausdrücklich bestätigt werden.',
-      requestId
-    );
-  }
-  if (error.message === 'invalid_transfer_selection') {
-    return createApiError(
-      400,
-      'invalid_request',
-      'Die Auswahl enthält eine nicht übernehmbare Tour.',
-      requestId
-    );
-  }
-  return null;
 };
 
 const jsonItemResponse = (status: number, data: unknown, requestId?: string): Response =>
@@ -136,7 +63,6 @@ const executeConfirmedAnnualTourTransfer = async (input: {
   });
   let result: WasteAnnualTourTransferResult | undefined;
   let response: Response;
-  let leaseVerified = false;
   try {
     try {
       result = await requireDeps(
@@ -147,7 +73,7 @@ const executeConfirmedAnnualTourTransfer = async (input: {
     } catch (error) {
       if (error instanceof Error && error.message.startsWith('missing_dependency:')) throw error;
       response =
-        toDomainErrorResponse(error, input.requestId) ??
+        toAnnualTourTransferDomainErrorResponse(error, input.requestId) ??
         createApiError(
           503,
           'database_unavailable',
@@ -155,8 +81,7 @@ const executeConfirmedAnnualTourTransfer = async (input: {
           input.requestId
         );
     }
-    leaseVerified = await leaseHeartbeat.verify();
-    if (!leaseVerified) {
+    if (!(await leaseHeartbeat.verify())) {
       return createApiError(
         409,
         'idempotency_in_progress',
@@ -202,10 +127,11 @@ export const wasteManagementAnnualTourTransferHandlers = {
         sourceYear: parsed.data.sourceYear,
         selectedTourIds: parsed.data.selectedTourIds,
         replacementDates: parsed.data.replacementDates,
+        firstTargetDates: parsed.data.firstTargetDates,
       });
       return jsonItemResponse(200, preview, requestId);
     } catch (error) {
-      const domainResponse = toDomainErrorResponse(error, requestId);
+      const domainResponse = toAnnualTourTransferDomainErrorResponse(error, requestId);
       if (domainResponse) return domainResponse;
       if (error instanceof Error && error.message.startsWith('missing_dependency:')) throw error;
       return createApiError(

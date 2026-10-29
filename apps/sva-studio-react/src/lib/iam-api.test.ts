@@ -210,6 +210,29 @@ describe('iam-api organization helpers', () => {
     );
   });
 
+  it('sends the voucher POI filter with the shared content-list request', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        createJsonResponse({ data: [], pagination: { page: 1, pageSize: 25, total: 0 } })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listContents({
+      page: 1,
+      pageSize: 25,
+      type: 'vouchers.voucher',
+      poiId: '33394',
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/contents?page=1&pageSize=25&sortBy=updatedAt&sortDirection=desc&type=vouchers.voucher&poiId=33394',
+      expect.objectContaining({ credentials: 'include' })
+    );
+  });
+
   it('lists and transfers typed content ownership targets', async () => {
     const fetchMock = vi
       .fn()
@@ -358,6 +381,23 @@ describe('iam-api organization helpers', () => {
 
     await expect(firstRequest).resolves.toMatchObject({ data: { activeOrganizationId: 'org-1' } });
     await expect(secondRequest).resolves.toMatchObject({ data: { activeOrganizationId: 'org-1' } });
+  });
+
+  it('can read organization context fresh without joining an older in-flight read', async () => {
+    const olderResponse = createDeferredResponse();
+    const fetchMock = vi
+      .fn()
+      .mockReturnValueOnce(olderResponse.responsePromise)
+      .mockResolvedValueOnce(createJsonResponse({ data: { activeOrganizationId: 'org-2' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const olderRequest = getMyOrganizationContext();
+    const freshRequest = getMyOrganizationContext({ fresh: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await expect(freshRequest).resolves.toMatchObject({ data: { activeOrganizationId: 'org-2' } });
+    olderResponse.resolve(createJsonResponse({ data: { activeOrganizationId: 'org-1' } }));
+    await expect(olderRequest).resolves.toMatchObject({ data: { activeOrganizationId: 'org-1' } });
   });
 
   it('deduplicates overlapping reads of pending legal texts', async () => {

@@ -147,6 +147,22 @@ const breadcrumbRoutes: ReadonlyArray<
     ],
   },
   {
+    pattern: /^\/admin\/vouchers\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('vouchers.editor.create') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/vouchers\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('vouchers.editor.edit') },
+    ],
+  },
+  {
     pattern: /^\/admin\/faq\/new$/,
     build: () => [
       overviewBreadcrumb(),

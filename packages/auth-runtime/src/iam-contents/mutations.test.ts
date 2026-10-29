@@ -52,6 +52,7 @@ vi.mock('./mutation-authorization.js', () => ({
 }));
 
 vi.mock('./mutation-helpers.js', () => ({
+  rejectVoucherCoreMutation: (contentType: string) => contentType === 'vouchers.voucher' ? new Response(null, {status: 409}) : null,
   createFailureResponse: (...args: unknown[]) => state.createFailureResponseMock(...args),
   createFailureResponseFromResponse: (...args: unknown[]) =>
     state.createFailureResponseFromResponseMock(...args),
@@ -614,4 +615,24 @@ describe('content mutations', () => {
     state.transferContentOwnershipMock.mockRejectedValueOnce(new Error('database down'));
     expect((await transferContentOwnershipResponse(request(), actor)).status).toBe(503);
   });
+  it('keeps voucher creation and content/status changes out of generic Core mutations', async () => {
+    state.parseCreateRequestMock.mockResolvedValue({ parsedData: { contentType: 'vouchers.voucher' } });
+    expect((await createContentResponse(new Request('https://studio.test/api/v1/iam/contents', { method: 'POST' }), actor)).status).toBe(409);
+    expect(state.createContentMock).not.toHaveBeenCalled();
+    state.loadContentByIdMock.mockResolvedValue({ id: 'voucher-core', contentType: 'vouchers.voucher' });
+    state.parseRequestBodyMock.mockResolvedValue({ ok: true, data: { status: 'archived' } });
+    expect((await updateContentResponse(new Request('https://studio.test/api/v1/iam/contents/voucher-core', { method: 'PATCH' }), actor)).status).toBe(409);
+    expect(state.updateContentMock).not.toHaveBeenCalled();
+  });
+  it('prevents generic Core deletion and ownership transfer of vouchers', async () => {
+    state.authorizeContentActionMock.mockResolvedValue(undefined);
+    state.loadContentRowByIdMock.mockResolvedValue({ id: 'voucher-core' });
+    state.mapContentListItemMock.mockReturnValue({ id: 'voucher-core', contentType: 'vouchers.voucher' });
+    expect((await deleteContentResponse(new Request('https://studio.test/api/v1/iam/contents/voucher-core', { method: 'DELETE' }), actor)).status).toBe(409);
+    expect(state.deleteContentMock).not.toHaveBeenCalled();
+    state.loadContentByIdMock.mockResolvedValue({ id: 'voucher-core', contentType: 'vouchers.voucher' });
+    expect((await transferContentOwnershipResponse(new Request('https://studio.test/api/v1/iam/contents/voucher-core/ownership', { method: 'POST' }), actor)).status).toBe(409);
+    expect(state.transferContentOwnershipMock).not.toHaveBeenCalled();
+  });
+
 });

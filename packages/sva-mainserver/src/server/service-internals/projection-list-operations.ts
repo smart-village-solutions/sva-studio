@@ -81,6 +81,12 @@ const mapItem = (
   const publication = stringValue(source.publishedAt) ?? stringValue(source.publicationDate);
   const provider = mapProvider(source.dataProvider);
   const languageCode = readFaqLanguageCode(source, contentType);
+  const pointOfInterestId =
+    contentType === 'vouchers.voucher' &&
+    source.pointOfInterest &&
+    typeof source.pointOfInterest === 'object'
+      ? stringValue((source.pointOfInterest as RawItem).id)
+      : undefined;
   return {
     id,
     contentType,
@@ -93,6 +99,7 @@ const mapItem = (
     ...(typeof source.active === 'boolean' ? { active: source.active } : {}),
     ...(stringValue(source.status) ? { status: stringValue(source.status) } : {}),
     ...(languageCode ? { languageCode } : {}),
+    ...(pointOfInterestId ? { pointOfInterestId } : {}),
     ...(provider ? { dataProvider: provider } : {}),
   };
 };
@@ -140,6 +147,15 @@ const definitions: Record<SvaMainserverProjectionContentType, ProjectionDefiniti
     operationName: 'SvaMainserverGenericItemProjectionList',
     responseField: 'genericItems',
     contentType: 'generic-items.generic-item',
+    titleField: 'title',
+    order: 'updatedAt_DESC',
+    paginated: true,
+  },
+  'vouchers.voucher': {
+    document: svaMainserverGenericItemProjectionListDocument,
+    operationName: 'SvaMainserverGenericItemProjectionList',
+    responseField: 'genericItems',
+    contentType: 'vouchers.voucher',
     titleField: 'title',
     order: 'updatedAt_DESC',
     paginated: true,

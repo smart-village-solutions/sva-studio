@@ -1,3 +1,4 @@
+import { useGenericItemsCreateMediaGuard } from './generic-items.detail-page.create-guard.js';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -73,10 +74,6 @@ export function GenericItemsDetailPage({
       saveFeedback.markDirty();
     }
   }, [methods.formState.isDirty, saveFeedback.markDirty]);
-  const summaryErrors = React.useMemo(
-    () => createSummaryErrors(methods.formState.errors),
-    [methods.formState.errors]
-  );
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<
     import('./generic-items.api-types.js').GenericItemContentItem | null
@@ -89,9 +86,20 @@ export function GenericItemsDetailPage({
     if (principalControl) setActingPrincipalType(principalControl.value);
   }, [principalControl]);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
-  const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
+  const [mediaUsages, setMediaUsagesState] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
-  const mediaReferenceSync = useStudioMediaReferenceSync({ mediaUsages, setMediaUsages });
+  const mediaReferenceSync = useStudioMediaReferenceSync({
+    mediaUsages,
+    setMediaUsages: setMediaUsagesState,
+  });
+  const { mediaDirty, createdContentId, setMediaUsages, leaveGuard } =
+    useGenericItemsCreateMediaGuard(
+      methods,
+      mode,
+      mediaUsages,
+      setMediaUsagesState,
+      mediaReferenceSync.hasPendingRetry
+    );
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
@@ -122,7 +130,7 @@ export function GenericItemsDetailPage({
   const canSelectMedia = mediaCapabilities.canSelect;
   const canUploadMedia = mediaCapabilities.canUpload;
   const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
-  const { mediaAssets, refreshMediaAssets } = useGenericItemsMediaAssets();
+  const { mediaAssets, refreshMediaAssets, libraryStatus } = useGenericItemsMediaAssets();
   const { categoryOptions, categoryOptionsError, categoryOptionsLoading } =
     useGenericItemsCategoryOptions(pt);
   const handleLoadedItem = useGenericItemsLoadedMedia({
@@ -180,6 +188,7 @@ export function GenericItemsDetailPage({
     mediaUsages,
     requiresReferenceSync,
     mediaReferenceSync,
+    leaveGuard,
     saveFeedback,
     setStatus,
     setMediaSavePhaseKey,
@@ -194,7 +203,7 @@ export function GenericItemsDetailPage({
     methods,
     labels,
     mediaPickerLabels,
-    summaryErrors,
+    summaryErrors: createSummaryErrors(methods.formState.errors),
     status,
     setStatus,
     actingPrincipalType,
@@ -206,11 +215,16 @@ export function GenericItemsDetailPage({
     setMediaUsages,
     setRequiresReferenceSync,
     mediaReferenceSync,
+    acknowledgeReferenceRetry: leaveGuard.acknowledgeReferenceRetry,
+    createdContentId,
+    hasUnsavedAfterCreate:
+      (methods.formState.isDirty || mediaDirty) && !mediaReferenceSync.hasPendingRetry,
     accessCapabilities,
     canSelectMedia,
     canUploadMedia,
     canUpdateMedia,
     mediaAssets,
+    libraryStatus,
     isAssetSelectable,
     mediaPicker,
     addManualMedia,

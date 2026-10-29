@@ -234,4 +234,50 @@ describe('Mainserver editor context binding', () => {
       error: 'stale_mainserver_context',
     });
   });
+
+  it('classifies partial user credentials as a configuration error instead of a permission denial', async () => {
+    state.resolveMutationPrincipalContext.mockResolvedValue({
+      ok: false,
+      status: 'partial_credentials',
+    });
+
+    const result = await resolveMainserverMutationActor({
+      request: new Request('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'X-SVA-Acting-Principal-Type': 'user' },
+      }),
+      ctx,
+      authorizedActor,
+    });
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(400);
+    await expect((result as Response).json()).resolves.toMatchObject({
+      error: 'partial_credentials',
+    });
+  });
+
+  it('preserves a safe organization readiness reason on the compatible 409 response', async () => {
+    state.resolveMutationPrincipalContext.mockResolvedValue({
+      ok: false,
+      status: 'organization_mainserver_credentials_missing',
+      reasonCode: 'verification_pending',
+    });
+
+    const result = await resolveMainserverMutationActor({
+      request: new Request('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'X-SVA-Acting-Principal-Type': 'organization' },
+      }),
+      ctx,
+      authorizedActor,
+    });
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(409);
+    await expect((result as Response).json()).resolves.toMatchObject({
+      error: 'organization_mainserver_credentials_missing',
+      details: { reasonCode: 'verification_pending' },
+    });
+  });
 });

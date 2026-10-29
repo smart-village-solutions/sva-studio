@@ -30,7 +30,7 @@ Modulen der jeweiligen Bausteine.
    - Runtime-Health-Bausteine: `RuntimeHealthIndicator` und `useRuntimeHealth` für die globale Anzeige des Plattformzustands
    - Skeleton-Bausteine für Kopfzeile, Seitenleiste und Contentbereich
    - Theme-Bausteine: `ThemeProvider`, semantische CSS-Token und `Sheet`-Primitive für mobile Shell-Navigation
-   - Auth- und Diagnose-Bausteine: `AuthProvider` für Identität, `/auth/me`, Silent-Recovery und Session-Lifecycle; ein anwendungsweiter Organisationskontext und `EffectiveAccessProvider` für Plattform-/Tenant-Scope, `/iam/me/permissions`, Modulzuweisung und fail-closed UI-Entscheidungen; `iam-http-client.ts` für Browser-Timeouts, `requestId`-Aufnahme und Safe-Detail-Parsing; `iam-api.ts` als bestehender Verbraucher-Importpfad mit ressourcenbezogenen `iam-api-*`-Modulen für Anfragen und Payload-Typen
+   - Auth- und Diagnose-Bausteine: `AuthProvider` für Identität, `/auth/me`, Silent-Recovery und Session-Lifecycle; ein anwendungsweiter Organisationskontext und `EffectiveAccessProvider` für Plattform-/Tenant-Scope, `/iam/me/permissions`, Modulzuweisung und fail-closed UI-Entscheidungen. Der Organisationsprovider schützt Veröffentlichungen mit Identitäts-/Requestgenerationen, serialisiert Wechsel und liest unklare Write-Ergebnisse frisch nach. `@sva/auth-runtime` koordiniert Refreshes derselben Session pro Prozess und schreibt Session-Feldänderungen im vorhandenen Redis-Store vergleichsgeprüft; `iam-http-client.ts` übernimmt Browser-Timeouts, `requestId` und Safe-Detail-Parsing; `iam-api.ts` bleibt der bestehende Verbraucher-Importpfad.
    - Account-Self-Service-Bausteine: `/account/privacy` als Aktivitätscockpit für Datenschutz- und Transparenzvorgänge, `/account/privacy/$caseId` als Deep-Link-Detailansicht und `/account/rules` als getrennte Oberfläche für tenantweite Löschregeln und persönliche Inhaltsregeln
 
 - Host-Standard-Bausteine für Admin-Ressourcen: `appAdminResources` als kanonische Capability-Deklaration, route-addressable Listensteuerung in den Admin-/Content-Seiten und dünne Label-/Routing-Bindings für `@sva/studio-ui-react` statt app-eigener Tabellen-Owner-Schicht
@@ -57,6 +57,7 @@ Modulen der jeweiligen Bausteine.
    - der Startup-Guard in `auth.routes.server.ts` prüft ausschließlich das Auth-Route-Mapping gegen `authRoutePaths`; er ist keine allgemeine Plugin- oder Router-Vollständigkeitsprüfung
 4. Auth Runtime (`packages/auth-runtime`)
    - OIDC-Flows, Session-Store, Cookies, Auth-Middleware, Runtime-Health und Auth-/HTTP-Handler
+   - Instanzgebundene Akteur-Lookups der App verwenden die vorhandene Runtime-Komposition `resolveActorAccountIdWithProvision`; reine Lesezugriffe setzen `mayProvisionMissingActorMembership: false` und lösen keine JIT-Provisionierung aus.
    - die Governance-HTTP-Handler liegen getrennt nach Workflow, Fallliste, Compliance-/Consent-Export und Self-Service unter `iam-governance/`; `core.ts` bleibt der bestehende Route-Importvertrag, und gemeinsame DB-/Berechtigungshelfer bleiben auf diesen Handlerbereich begrenzt
    - der bestehende Plugin-Runtime-Snapshot trägt einen optionalen Account-Create-Beitrag; die gemeinsame Benutzeranlage ruft ihn auf oder erzeugt nur Core-Attribute und importiert keine SSF-Runtime
    - Runtime-Adapter für fachliche IAM-, Governance-, Content- und Registry-Routen
@@ -64,6 +65,7 @@ Modulen der jeweiligen Bausteine.
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
    - Im IAM-Account-Management hält `schema-guard.ts` die Readiness-Auswertung und bisherigen Importpfade; `schema-guard-checks.ts` besitzt die kritischen Prüfdefinitionen und `schema-guard-sql.ts` deren SQL-Abfrage. `diagnostics.ts` hält die OTEL-Annotationen und den bisherigen Importpfad, `diagnostics-classification.ts` die Fehlerklassifikation. Readiness-, Fehler- und Telemetrieverträge bleiben unverändert.
    - hostgeführter Plugin-Tenant-Lifecycle mit generationsgebundenem Ledger, Readiness-Read-Modell und zentraler Access-Entscheidung; `/auth/me` entfernt nicht freigegebene lifecycle-verwaltete Module aus `assignedModules`, normale Plugin-Jobs prüfen dieselbe Entscheidung vor Idempotenzreservierung und Queueing
+   - Registry-Datenzugriffe und die Plugin-Handler-Registry sind unabhängig von ihrer jeweiligen Runtime-Ausführungsverdrahtung nutzbar; Registry-Service und Lifecycle verwenden denselben Pool, Worker und Lifecycle dieselbe Handler-Registry
    - Der Tenant-Lifecycle-Orchestrator hält atomaren und gestuften Start getrennt; sein internes Planmodul prüft für beide Pfade denselben Vertrag, Aktivierungszustand, Retry-Übergang und registrierten Handler vor einer Persistenzmutation.
 5. Plugin SDK, Studio Module IAM und Server Runtime (`packages/plugin-sdk`, `packages/studio-module-iam`, `packages/server-runtime`)
    - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge sowie hostpublizierter, read-only Session-Access-Snapshot für Plugin-UI
@@ -71,6 +73,7 @@ Modulen der jeweiligen Bausteine.
    - definiert den frameworkfreien Readiness- und Access-Entscheid für tenantbezogene Plugin-Lifecycles; Datenbanktopologie und Fachprüfungen bleiben plugin-owned
    - erweitert um deklarative `externalInterfaceTypes`, damit Plugins zusätzliche Schnittstellentyp-Metadaten beisteuern können, ohne eigene Persistenz- oder Secret-Pfade einzuführen
    - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities
+   - Die laufzeitgebundene Feldverschlüsselung (`getEncryptionConfig`, `protectField`, `revealField`) liegt in `@sva/server-runtime`; `iam-admin` und `auth-runtime` erhalten ihre bisherigen Exportpfade als Re-Exports derselben Implementierung und desselben Konfigurationscaches. Schlüsselauflösung, AAD und Produktions-Fallback bleiben unverändert.
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext, OTEL-Bootstrap und zentraler Resolver für External-Interface-Secrets und Statusprüfungen
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
    - Zielbild Plugin-Plattform v2: zusätzlich serialisierbarer Manifest-Vertrag, hostgeführter Katalog, Loader zur Snapshot-Materialisierung und host-owned Runtime-Boundaries für pluginseitige Server-, Job- und Integrationsbeiträge
@@ -946,6 +949,7 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 
 - `@sva/plugin-waste-management` besitzt ausschließlich den zugänglichen Drei-Schritt-Assistenten, die Auswahl und die ausdrückliche Konfliktbestätigung. Das Zieljahr ist dort nur Anzeige und kein frei wählbarer Parameter.
 - `@sva/waste-management-contracts` besitzt die frameworkunabhängige Klassifikation, Datums- und Taktabbildung, stabile Zielidentitäten, Konflikterkennung, Fingerprint-Bildung sowie die zentralen Grenzen von 1.000 Touren und 100.000 Beziehungen.
+- Bei wiederkehrenden Touren setzt die Abbildung den bisherigen Takt standardmäßig fort. Ein ausdrücklich angegebener erster regulärer Termin im Zieljahr verschiebt die Phase dieser Tour; Vorschau und Bestätigung verwenden denselben Fingerprint und validieren das Datum erneut.
 - `@sva/auth-runtime` bindet Mandantenkontext, Berechtigungsentscheidung, CSRF und technische Idempotenz ein; der ausführbare Jahreswechsel-Handler liegt in `@sva/waste-management-runtime`. Die Waste-Repository-Operation lädt Quelle und Ziel erneut und schreibt den vollständigen inaktiven Tourensatz unter Advisory Lock in genau einer Transaktion.
 
 ### Ergänzung 2026-08: Kontextbezogene Anwenderdokumentation
@@ -970,6 +974,12 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
 - `@sva/plugin-sdk` besitzt List-Search-Normalisierung, Map-/Geocoding-Client und den schmalen öffentlichen Subpath `content-media`.
 - `@sva/studio-ui-react` besitzt den Map-Lifecycle, Media-Picker-Konfiguration sowie den Media-Reference-Sync-Controller und seine Retry-Aktion.
 - Plugins besitzen weiterhin Payload, Mutation, Navigation, Übersetzung und bundlelokales Laden der MapLibre-Runtime.
+
+### Redaktionelle Create-Komposition
+
+- Die acht Content-Plugins komponieren ihre vorhandenen Feldabschnitte für die Neuanlage als Onepager und für gespeicherte Inhalte weiterhin in den bestehenden Tabs. Feldfolge, Hilfetexte und die Erklärung der fachlichen Speicherwirkung bleiben pluginlokal.
+- `@sva/studio-ui-react` bleibt der öffentliche Kapselungspunkt für Seitenrahmen, Felder, Medien, Aktionen und Fehlerdarstellung. Native Abschnittselemente ergänzen die Komposition ohne neue Registry, Formular-Engine oder Plugin-API.
+- Formular-/Submit-Owner, Autorisierung, Mutations- und Medienreferenzverträge bleiben unverändert. Eine wertfreie React-Anbindung (`StudioEditorLeaveGuardProvider`/`useStudioEditorLeaveGuard`) verbindet die acht Create-Editoren mit einem Host-Rahmen am bestehenden Plugin-Editorpfad. Router-Blocker, nativer Reload-/Schließschutz und der vorhandene Bestätigungsdialog bleiben im Host; Plugins importieren keine App-Module. Keine SDK-/Manifest-Erweiterung oder globale Guard-Registry.
 
 ### Zielbild 2026-09: SSF-Control-Plane-Bausteine
 
@@ -1184,3 +1194,15 @@ Die versionierte Formatdefinition erhält in Format 1 die bisherigen 22 Textfunk
 ### Begrenzter technischer Nachrichten-Übersetzungsdienst
 
 `auth-runtime/src/app-translations-service.ts` ergänzt den getrennten technischen POST-Handler für `news-v1` (de→en), ohne Session-Katalogrechte oder persistente dynamische Inhalte. Er nutzt JWT-Verifikation, die ausdrücklich erwarteten Identitätsmetadaten an der bestehenden Main-Server-Schnittstelle, die bestehende instanzgebundene Schnittstellenverbindung und den DeepL-Adapter. Der Main-Server behält Jobs, Retry und dynamische Ergebnisse. Aktueller Modul-/Sprach-/Konfigurationsstand wird vor Anbieterarbeit und Antwort geprüft. Die reale Eignung/Audience des vorhandenen Dienstausweises ist keine durch diese Implementierung belegte Betriebsfreigabe. Details und Grenzen: [ADR-070](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md).
+
+## Baustein Gutscheine
+
+`@sva/plugin-vouchers` stellt Redaktion und Nutzungsanzeige über Plugin-SDK und Studio-UI bereit. Der vorhandene Mainserver-Adapter übernimmt vollständigen POI-Roundtrip, Autorisierung, Vorbereitung und Readback. Host-Historie, Idempotenzspeicher, Core-Referenzen und Medienservice werden wiederverwendet; es entsteht keine eigene Gutschein-Datenbank. Siehe [Gutscheinreferenz](../reference/vouchers.md).
+
+## Fehlerkorrelation für Studio-APIs
+
+Der App-Dispatcher in `apps/sva-studio-react/src/server.ts` finalisiert Antworten geschützter Studio-APIs und Exceptions mit derselben `X-Request-Id` im Response-Header und im strukturierten Ergebnisereignis. `@sva/plugin-sdk` bewahrt die Referenz als nicht-enumerable Fehler-Metadaten; die News- und Event-Editoren reichen sie an die gemeinsame Save-Feedback-Komponente für eine lokalisierte, kopierbare Supportreferenz weiter. Der Monitoring-Handler und der Browsermelder sind app-eigene Adapter; sie schreiben ausschließlich whitelisted Fehlercodes und IDs in den bestehenden Server-Logger. Der externe SVA Mainserver und dessen API-Verträge sind davon unabhängig.
+
+## UI-Zugriff und Principal-Bereitschaft
+
+`EffectiveAccessProvider` veröffentlicht den einzigen aktuellen Browser-Snapshot für Route-Guards und Aktionen. `OrganizationContextProvider` bindet Antworten an Identität und Requestgeneration und enthält eine sichere Mainserver-Readiness-Projektion je Mitgliedsorganisation sowie für den persönlichen Principal. Die Projektion enthält nur einen Status, keine Credentials. Standard-Content-Editoren konsumieren diesen Status über die vorhandene Principal-Control; serverseitiges Mainserver-Enforcement bleibt unverändert.

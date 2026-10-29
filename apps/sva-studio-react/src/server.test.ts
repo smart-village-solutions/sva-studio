@@ -1,3 +1,4 @@
+// @vitest-environment node
 // fallow-ignore-file code-duplication
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -288,6 +289,133 @@ describe('server transport', () => {
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
     expect(startFetch).not.toHaveBeenCalled();
     expect(response).toBe(pluginResponse);
+  });
+
+  it.each([
+    { path: '/auth/login', status: 401 },
+    { path: '/api/v1/iam/contents', status: 403 },
+    { path: '/api/v1/mainserver/news', status: 500 },
+    { path: '/api/v1/monitoring/client-errors', status: 400 },
+  ])('keeps the native error body readable for $path ($status)', async ({ path, status }) => {
+    const { finalizeProtectedApiResponse } = await import(
+      './lib/server-entry-error-finalization.server'
+    );
+    const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn() };
+    const getLogger = vi.fn().mockResolvedValue(logger);
+    const body = { error: { code: 'request_failed' } };
+    const response = await finalizeProtectedApiResponse(
+      new Request(`http://localhost:3000${path}`),
+      Response.json(body, { status }),
+      'req-stream',
+      getLogger
+    );
+
+    expect(response.status).toBe(status);
+    expect(response.headers.get('X-Request-Id')).toBe('req-stream');
+    expect(response.body?.locked).toBe(false);
+    await expect(response.json()).resolves.toEqual(body);
+    if (path === '/api/v1/monitoring/client-errors') {
+      expect(getLogger).not.toHaveBeenCalled();
+    } else {
+      expect(status >= 500 ? logger.error : logger.warn).toHaveBeenCalledWith(
+        'Studio API request failed',
+        expect.objectContaining({ error_code: 'request_failed', http_status: status })
+      );
+    }
+  });
+
+  it('adds the request ID and one safe operational event to early protected API failures', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn() };
+    const pluginResponse = Response.json({ error: 'forbidden' }, { status: 403 });
+    createSdkLoggerMock.mockReturnValue(logger);
+    dispatchPluginServerHandlerMock.mockResolvedValue(pluginResponse);
+    createStartHandlerMock.mockReturnValue(vi.fn());
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/iam/contents/secret-content-id?token=must-not-log')
+    );
+
+    expect(response.headers.get('X-Request-Id')).toBe('req-default');
+    const failureEvents = logger.warn.mock.calls.filter(([, metadata]) =>
+      (metadata as { event?: unknown }).event === 'studio.request.failed'
+    );
+    expect(failureEvents).toHaveLength(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Studio API request failed',
+      expect.objectContaining({
+        event: 'studio.request.failed',
+        operation: 'studio_request_failed',
+        request_id: 'req-default',
+        http_status: 403,
+        error_code: 'forbidden',
+        route_template: '/api/v1/iam/contents/*',
+        method: 'GET',
+        phase: 'response',
+      })
+    );
+    expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('must-not-log');
+  });
+
+  it('returns the same request ID and one final event for protected dispatch exceptions', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn() };
+    createSdkLoggerMock.mockReturnValue(logger);
+    dispatchPluginServerHandlerMock.mockRejectedValue(new Error('private upstream detail'));
+    createStartHandlerMock.mockReturnValue(vi.fn());
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/mainserver/news?secret=not-logged')
+    );
+
+    expect(response.status).toBe(500);
+    expect(response.headers.get('X-Request-Id')).toBe('req-default');
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'internal_error' },
+      requestId: 'req-default',
+    });
+    expect(logger.error).toHaveBeenCalledTimes(1);
+    expect(logger.error).toHaveBeenCalledWith(
+      'Studio API request failed',
+      expect.objectContaining({
+        request_id: 'req-default',
+        http_status: 500,
+        error_code: 'internal_error',
+        phase: 'dispatch',
+      })
+    );
+    expect(JSON.stringify(logger.error.mock.calls)).not.toContain('private upstream detail');
+    expect(JSON.stringify(logger.error.mock.calls)).not.toContain('secret=not-logged');
+  });
+
+  it('logs only allowlisted credential reason codes from protected error responses', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn() };
+    createSdkLoggerMock.mockReturnValue(logger);
+    dispatchPluginServerHandlerMock.mockResolvedValue(
+      Response.json(
+        {
+          error: 'organization_mainserver_credentials_missing',
+          details: { reasonCode: 'partial_credentials', apiSecret: 'never-log-this' },
+        },
+        { status: 409 }
+      )
+    );
+    createStartHandlerMock.mockReturnValue(vi.fn());
+
+    const mod = await import('./server');
+    await mod.default.fetch(new Request('http://localhost:3000/api/v1/mainserver/events'));
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Studio API request failed',
+      expect.objectContaining({
+        error_code: 'organization_mainserver_credentials_missing',
+        reason_code: 'partial_credentials',
+      })
+    );
+    expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('never-log-this');
   });
 
   it('dispatches declared Waste domain paths through the plugin snapshot', async () => {
@@ -744,7 +872,7 @@ describe('server transport', () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('SVA_SERVER_ENTRY_DEBUG', 'true');
 
-    const startFetch = vi.fn().mockResolvedValue(new Response('prod', { status: 204 }));
+    const startFetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     const logger = { error: vi.fn(), info: vi.fn() };
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
@@ -779,7 +907,7 @@ describe('server transport', () => {
       'Server entry response completed',
       expect.objectContaining({ diagnostics_enabled: false, status: 204 })
     );
-    await expect(response.text()).resolves.toBe('prod');
+    await expect(response.text()).resolves.toBe('');
   });
 
   it('establishes request context before mainserver and auth dispatch', async () => {

@@ -499,6 +499,45 @@ describe('internal catalog session facade', () => {
     ).toBe(400);
     expect(state.db).not.toHaveBeenCalled();
   });
+  it.each(['source', 'translations'])(
+    'binds the tenant before checking organization RLS in %s mode',
+    async (mode) => {
+      const namespace = mode === 'source' ? 'app-texts' : 'app-translations';
+      state.permissions.mockResolvedValue({
+        ok: true,
+        permissions: [
+          {
+            action: `${namespace}.catalog.read`,
+            resourceType: namespace,
+            organizationId: state.ctx.activeOrganizationId,
+          },
+        ],
+      });
+      const queries: string[] = [];
+      state.db.mockImplementation(async (work) => {
+        let tenant: unknown;
+        return work({
+          query: async (sql: string, values: unknown[]) => {
+            queries.push(sql);
+            if (sql.includes("set_config('app.instance_id'")) tenant = values[0];
+            return {
+              rows:
+                sql.includes('FROM iam.organizations') && tenant === 'tenant'
+                  ? [{ id: 'org' }]
+                  : [],
+            };
+          },
+        });
+      });
+      const result = await executeAppTranslationOperation(
+        new Request(request, { headers: { 'X-SVA-Catalog-Mode': mode } }),
+        { operation: 'read', contractId: 'ui' }
+      );
+      expect(result.status).toBe(200);
+      expect(queries[0]).toContain("set_config('app.instance_id'");
+      expect(queries[1]).toContain('FROM iam.organizations');
+    }
+  );
   it('uses only the active stored organization and rejects session mismatch', async () => {
     state.allowed = true;
     expect(

@@ -1,5 +1,9 @@
 ## 0. Planung und Freigabe
 
+Aktueller lokaler Zwischenabschluss vom 29. Oktober 2026: Der Nutzer hat den Commit des geprüften lokalen Stands freigegeben. Kein Push und keine Änderungen an Staging oder der Sandbox im Rahmen dieses Auftrags. Die bereits begonnene Zusammenführung von `origin/main` bei `2b57616620ee01e862eb9959c6d51e251c157d0a` wird lokal abgeschlossen. Der Reviewbefund zur RLS-Reihenfolge wurde im bestehenden Katalogpfad behoben: Der Transaktionskontext wird vor der Organisationsabfrage gesetzt; Regressionstests decken sowohl den deutschen Editor als auch den Übersetzungsmodus ab. Frühere Freigabe- und Testangaben unten sind historische Nachweise und ersetzen keine spätere Rollout-Abnahme.
+
+Gezielte lokale Nachprüfung dieses Zwischenstands: 36 Katalogtests und 35 Dienstvertragstests grün; der optionale SQL-Diensttest wurde diesmal nicht ausgeführt. ESLint der beiden korrigierten Katalogdateien, Dateiablage und Whitespace-Prüfung sind grün. Kein neuer Live-, Anbieter- oder Migrationsnachweis wird daraus abgeleitet.
+
 - [x] 0.1 Git-Zustand prüfen; bestehender Branch `feature/central-app-translations` von `main` bei `4fd685eb4`, sieben uncommittete Planungsdateien. Keine anderen Änderungen verwerfen.
 - [x] 0.2 Bestehende Specs/Changes, Static-Content-Schreibweg, Serviceauth-Vorbild, PostgreSQL-Schema und zentrale Jobinfrastruktur in der ursprünglichen Planung untersuchen.
 - [x] 0.3 Studio-/Main-Server-/App-Grenzen, Lieferabschnitte und Invarianten dokumentieren; bestätigtes Interview vom 18./19. Oktober in die bestehenden Planungsdateien übernehmen.

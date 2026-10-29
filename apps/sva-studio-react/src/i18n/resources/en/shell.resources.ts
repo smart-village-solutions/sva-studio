@@ -45,6 +45,7 @@ export const shellENResources = {
     loadingStatus: 'Content is loading.',
   },
   contextualHelp: {
+    editOnGitHub: 'Edit on GitHub',
     open: 'Open help',
     close: 'Close help',
     title: 'Help for this page',
@@ -55,6 +56,11 @@ export const shellENResources = {
     retry: 'Try again',
     empty: 'No help text is available for this page yet.',
     openWebsite: 'Open full documentation',
+  },
+  roleAssignmentPending: {
+    title: 'Sign-in successful',
+    message:
+      'Your first sign-in registered your account in Studio. You have not been assigned any roles or permissions yet. Your administrator can now assign them. Please contact your administrator.',
   },
   permissionsDegraded: {
     message: 'Permissions could not be fully loaded. Some areas may be temporarily unavailable.',

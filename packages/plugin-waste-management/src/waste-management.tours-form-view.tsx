@@ -32,6 +32,19 @@ export const WasteToursFormView = ({
       duplicateFromTourName={duplicateSourceTour?.name}
       saving={controller.saving}
       persistedTour={controller.selectedTour ?? undefined}
+      assignmentContextLoading={controller.assignmentContextLoading}
+      onOpenAssignments={() => {
+        const tour = controller.selectedTour;
+        if (!tour) return;
+        const linkId = controller.masterDataOverview?.locationTourLinks.find(
+          (link) => link.tourId === tour.id
+        )?.id;
+        if (linkId) controller.openEditAssignmentsDialog(tour, linkId);
+        else controller.openCreateAssignmentsDialog(tour);
+      }}
+      onOpenCalendar={() => {
+        if (controller.selectedTour) void controller.openCalendar(controller.selectedTour);
+      }}
       search={search}
       canManageScheduling={canManageScheduling}
       onChange={(patch) => controller.setTourForm((current) => ({ ...current, ...patch }))}

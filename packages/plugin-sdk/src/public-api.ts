@@ -50,6 +50,7 @@ export {
   readHostMediaAssetFileName, readHostMediaAssetTitle, resolveEditorLocale, toDatetimeLocalValue, toHostMediaFieldOptions,
 } from './content-ui-utils.js';
 export { readFieldError } from './form-errors.js';
+export { readMainserverErrorRequestId } from './mainserver-error-metadata.js';
 export type {
   MapGeocodingAddressInput,
   MapGeocodingCoordinates,
@@ -256,6 +257,7 @@ export {
 } from './plugin-translations.js';
 export type { SessionAccessSnapshot } from './session-access.js';
 export {
+  invalidateSessionAccessSnapshot,
   publishSessionAccessSnapshot,
   readSessionAccessSnapshot,
   resetSessionAccessSnapshot,

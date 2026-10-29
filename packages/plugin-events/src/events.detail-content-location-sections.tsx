@@ -24,7 +24,11 @@ import { hasEventOrganizerContent } from './events.detail-form-structured-serial
 import { EventsGeoAddressFields } from './events.geo-address-fields.js';
 
 const dirty = { shouldDirty: true } as const;
-type LocationSectionProps = Readonly<{ capabilities: EventsMapCapabilities; pt: Translator }>;
+type LocationSectionProps = Readonly<{
+  createMode?: boolean;
+  capabilities: EventsMapCapabilities;
+  pt: Translator;
+}>;
 type SetValue = UseFormSetValue<EventsDetailFormValues>;
 
 type AddressItemProps = LocationSectionProps &
@@ -47,6 +51,7 @@ function AddressItem(props: AddressItemProps) {
       onRemove={onRemove}
     >
       <EventsGeoAddressFields
+        createMode={props.createMode}
         pt={pt}
         addition={optionalText(address.addition)}
         additionId={indexedId('event-address-name', index)}
@@ -81,7 +86,7 @@ function AddressItem(props: AddressItemProps) {
   );
 }
 
-export function EventsAddressSection({ capabilities, pt }: LocationSectionProps) {
+export function EventsAddressSection({ capabilities, pt, createMode }: LocationSectionProps) {
   const {
     control,
     formState: { errors },
@@ -110,6 +115,7 @@ export function EventsAddressSection({ capabilities, pt }: LocationSectionProps)
         <AddressItem
           key={repeatedItemKey(addressesArray.fields[index]?.id, `fallback-address-${index}`)}
           address={address}
+          createMode={createMode}
           capabilities={capabilities}
           index={index}
           invalidLatitude={Boolean(addressErrors[index]?.geoLocation?.latitude)}

@@ -1,4 +1,12 @@
 export const poiMessagesEn = {
+  voucherResetUnavailable: 'This location and its vouchers could not be safely prepared for saving. Check permissions and existing vouchers.',
+  voucherSaveUnknown: 'The save outcome is unknown. Reload and inspect this location before another save attempt.',
+  vouchersForLocation: 'View vouchers at this location',
+  voucherResetConfirmation:
+    'This location change also saves the following vouchers. Their content and existing redemptions are preserved. Continue?\n\n{{vouchers}}',
+  voucherResetCancelled: 'Save cancelled. The location and its vouchers were not changed.',
+  createdNavigationError: 'The content was created, but the editing view could not be opened.',
+  unsavedAfterCreate: 'The content was created. Newer changes in this form have not been saved.',
   loading: 'Loading POI.',
   loadError: 'POI could not be loaded.',
   missingContent: 'The POI could not be loaded.',
@@ -22,7 +30,8 @@ export const poiMessagesEn = {
   locationGeocodeTimeout: 'Resolving geo coordinates took too long. Please try again.',
   locationGeocodeForbidden: 'Missing permission to resolve geo coordinates.',
   locationGeocodeUnauthorized: 'The geocoding session has expired. Please reload the page.',
-  locationMapUnavailable: 'The map view is currently disabled for this instance.',
+  locationMapUnavailable:
+    'The map is currently unavailable. You can enter the address and add coordinates manually.',
   locationMapError: 'The map view could not be loaded. Manual editing remains available.',
   mediaUploadInitializing: 'Preparing upload.',
   mediaUploadUploading: 'Uploading media.',
@@ -90,3 +99,18 @@ export const poiMessagesEn = {
   categoryOptionsLoading: 'Loading categories.',
   categoryOptionsLoadError: 'Failed to load categories.',
 } as const;
+
+export const poiHistoryEn = {
+  loading: 'Loading history.',
+  error: 'History could not be loaded.',
+  createHint: 'Save the POI before history becomes available.',
+  tableLabel: 'POI history',
+  sourceNotice: 'This history only contains changes made through Studio.',
+  emptySummary: 'No further change details.',
+  columns: { time: 'Time', action: 'Action', actor: 'Changed by', summary: 'Summary' },
+  actions: { created: 'Created', updated: 'Updated', statusChanged: 'Status changed' },
+  empty: {
+    title: 'No history available yet.',
+    description: 'No Studio changes have been recorded for this POI yet.',
+  },
+};

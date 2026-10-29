@@ -106,19 +106,55 @@ Bestandsfaelle werden nicht stillschweigend akzeptiert. Wenn ein bestehendes Plu
 
 Review- oder Prozessmetadaten wie Owner, Folgechange oder Abbauplanung gehoeren bei Bedarf in PR-, Ticket- oder Architekturkontext, nicht in den aktuellen JSON-Vertrag.
 
+Der CLI-Report nennt für jeden Befund die konkrete Regel. `workspace-import`
+zeigt zusätzlich die Importart und die aufgelöste Kante; `workspace-dependency`
+bezeichnet eine Package-Abhängigkeit. `forbidden-path-signal` und
+`review-required-path-signal` sind dagegen Dateinamenheuristiken und keine
+nachgewiesenen Importkanten. Ein prüfpflichtiges Runtime-Signal ist weder eine
+Freigabe noch für sich genommen ein verbotener Host-Import. Solche Signale
+bleiben sichtbar; die Import-Allowlist wird dafür nicht mit Scheineinträgen
+befüllt. Warn-only-Modus und Strict-Auswertung ändern sich dadurch nicht.
+
+### Bewertung der bestehenden Server-Einstiegspunkte
+
+Stand 2026-10-23: Der Check meldet für SSF und Waste Management jeweils
+`review-required-path-signal` für `src/server.ts`; bei beiden ist `kind`
+folgerichtig nicht gesetzt. Die Bewertung erfolgt am Manifest und am
+hostseitigen Verbraucher, nicht allein am Dateinamen:
+
+- SSF deklariert `entryPoints.jobs: ./dist/server.js`. Die Factory
+  `createPluginJobExecutionHandlers` erhält den Authorization-Projection-Runtime
+  vom Host (`plugin-operation-runtime.ssf.server.ts` beziehungsweise dem
+  manifestgesteuerten Job-Loader). SDK-Jobcontext, Tenant-Lifecycle und
+  Abbruchprüfung begrenzen den Aufruf. Der HTTP-Einstieg liegt separat unter
+  `src/server/index.ts` und wird ebenfalls vom Host geladen.
+- Waste Management deklariert `server` und `jobs` im Manifest. Der
+  `plugin-server-runtime.server.ts` lädt die Handlerfactory und injiziert die
+  vorhandenen `WastePluginServerCapabilities`; das Plugin löst weder Session
+  noch Execution-Scope eigenständig auf. Die konkrete Kante nach
+  `@sva/waste-management-runtime/server` ist im bestehenden Guard auf die
+  zugehörigen Serveradapter begrenzt; ein Import aus Browserdateien oder in
+  Host-Interna wie `@sva/auth-runtime` bleibt verboten.
+
+Beides sind vorhandene Advanced-Path-Beiträge in host-owned Execution-Contexts,
+keine Standard-Content-Plugins und keine allein durch den Namen belegten
+Architekturverletzungen. Die beiden Review-Signale bleiben erhalten. Es wird
+keine neue Fähigkeit freigegeben und keine Importausnahme ergänzt; Änderungen
+an diesen Runtime-Verträgen bleiben architekturprüfpflichtig.
+
 ### Aktueller Waste-Management-Zuschnitt
 
 Der aktuelle Waste-Management-Schnitt ist bewusst zweigeteilt:
 
-- `@sva/plugin-waste-management` ist das browserseitige Plugin-Package
+- `@sva/plugin-waste-management` enthält den Plugin-Descriptor, Browser-UI und die manifestdeklarierten Server-/Jobadapter
 - `@sva/waste-management-runtime` ist das host-owned Runtime-Package fuer Waste-spezifische Job-Ausfuehrung
 
 Konkret bedeutet das:
 
 - `@sva/plugin-waste-management` enthaelt `PluginDefinition`, Browser-UI, Search-Params, deklarative `jobTypes` und `importProfiles`
-- das Plugin-Manifest exportiert nur noch `entryPoints.browser`
+- das Plugin-Manifest trennt `entryPoints.descriptor`, `browser`, `server` und `jobs`
 - `@sva/waste-management-runtime/server` enthaelt den host-owned Runtime-Adapter fuer `createPluginJobExecutionHandlers`
-- der Host verdrahtet diese Runtime-Seite bewusst selbst und behandelt sie nicht als pluginoeffentlichen Direktimport
+- der Host verdrahtet diese Runtime-Seite bewusst selbst; nur die bestehenden Serveradapter dürfen den eng begrenzten `@sva/waste-management-runtime/server`-Vertrag nutzen
 
 Guard-Status auf aktuellem Stand:
 

@@ -77,8 +77,8 @@ IdP-Abmeldung.
 
 ### 4. Silent SSO bleibt ein kontrollierter Recovery-Mechanismus
 
-Silent SSO wird nicht als permanenter Hintergrund-Login eingeführt, sondern nur
-als einmaliger Recovery-Versuch nach `401`.
+Silent SSO wird nicht als permanenter Hintergrund-Login eingeführt. Es wird
+nach `401` kontrolliert zur Wiederherstellung der Session genutzt.
 
 Der Flow:
 
@@ -89,6 +89,21 @@ Der Flow:
 
 Damit bleibt das Sicherheitsmodell aus ADR-009 bestehen: Der Browser erhält
 weiterhin keine Access- oder Refresh-Tokens.
+
+### 5. Refresh und Session-Feldänderungen erhalten den neuesten autoritativen Zustand
+
+Refreshes derselben Session werden innerhalb eines Studio-Prozesses zusammengeführt.
+Der Redis-Store schreibt Feldänderungen per begrenztem Compare-and-Set gegen den
+zuletzt gelesenen Sessionwert und den separaten Widerrufsmarker. Nach einem
+Konflikt wird frisch gelesen und nur der angeforderte Feld-Patch erneut
+angewendet. Ein fehlender, abgelaufener oder widerrufener Sessioneintrag wird
+nicht wieder angelegt. Tokenpakete eines überholten Refreshes dürfen neuere
+Tokens nicht ersetzen.
+
+Scheitert ein Refresh, liest Studio die Session und den Widerrufsstatus erneut.
+Ein Fallback übernimmt nur die weiterhin gültige Sessionprojektion einschließlich
+des zuletzt gespeicherten Organisationskontexts; er verlängert weder die
+absolute Sessiondauer noch erweitert er Rollen oder Principal.
 
 ## Begründung
 
@@ -135,8 +150,22 @@ Transport- oder Speichermechanismen.
 
 **Warum verworfen:**
 
-Für das BFF-Modell ist ein einmaliger, kontrollierter Recovery-Versuch nach
-`401` ausreichend und sicherer.
+Für das BFF-Modell genügen anlassbezogene, begrenzte Recovery-Versuche.
+
+## Fortschreibung vom 2026-10-25
+
+Der Studio-Standard für die absolute Sessiondauer beträgt 180 Minuten
+(`SVA_AUTH_SESSION_TTL_MS` kann ihn weiterhin überschreiben). Kurz vor Ablauf
+versucht der Browser einmal stilles SSO über den bestehenden BFF-Loginpfad und
+prüft anschließend `/auth/me`. Scheitert der Versuch, ist vor Ablauf höchstens
+ein weiterer Versuch zulässig. Der bisherige Recovery-Versuch nach `401`
+bleibt erhalten. Expliziter Logout unterdrückt stilles SSO weiterhin.
+
+Ein vorübergehender Fehler beim Laden von `/iam/me/permissions` wird einmal
+erneut versucht. Bleibt der Fehler bestehen, werden keine Berechtigungen
+freigegeben. Im Abfallmodul bleiben URL und ausgewählter Tab erhalten; anstelle
+geschützter Bedienelemente erscheint ein Fehlerzustand. Die vorhandene globale
+Aktion „Neu laden“ startet eine erneute Berechtigungsprüfung.
 
 ### Alternative C: Forced Reauth nur über Keycloak-Logout
 
@@ -168,6 +197,8 @@ Security-Pfad inklusive IdP-Logout.
 - mehr Komplexität im Session-Store und in den Handlern
 - zusätzliche Browser-Fallbacks für fehlgeschlagenes Silent SSO notwendig
 - mehr Doku- und Testpflege für Security-kritische Session-Pfade
+- Redis-Feldänderungen und Refreshes benötigen zusätzliche atomare Prüfungen
+  und Integrationsnachweise.
 
 ## Verwandte ADRs
 

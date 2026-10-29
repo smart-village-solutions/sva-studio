@@ -24,7 +24,7 @@ export const isNewsAssetSelectable = (
     metadata: asset.metadata,
     visibility: asset.visibility,
     mimeType: asset.mimeType,
-    previewUrl: asset.previewUrl,
+    previewUrl: asset.persistentUrl ?? asset.previewUrl,
   });
   if (!nextMedia) {
     return false;
@@ -55,7 +55,7 @@ export const acceptNewsMediaAsset = (
     metadata: asset.metadata,
     visibility: asset.visibility,
     mimeType: asset.mimeType,
-    previewUrl: asset.previewUrl,
+    previewUrl: asset.persistentUrl ?? asset.previewUrl,
   });
   if (!nextMedia) {
     return;

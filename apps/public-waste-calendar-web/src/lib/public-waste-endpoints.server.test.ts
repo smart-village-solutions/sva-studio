@@ -328,7 +328,7 @@ describe('public waste endpoints', () => {
         pickups: [
           expect.objectContaining({
             date: '2026-05-19',
-            fractions: [expect.objectContaining({ id: 'bio' })],
+            fractions: [expect.objectContaining({ id: 'bio', shortLabel: 'BIO' })],
           }),
         ],
       })

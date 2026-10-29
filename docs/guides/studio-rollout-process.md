@@ -209,6 +209,8 @@ Ein regulärer Production-Rollout ist nur erfolgreich, wenn der GitHub-Workflow 
 
 Ein kontrollierter Datenbankrestore besitzt strengere Nachbedingungen als ein regulärer Rollout: Der Backup-Agent muss die statischen ACLs des Runtime-Principals rekonstruiert und datenbanknah validiert haben. Nach dem Neustart muss der Restore-Workflow zusätzlich mit dem geschützten Restore-Smoke-Zugang einen nicht degradierten `/auth/me`-Zustand und HTTP 200 für `/iam/me/permissions` nachweisen. Fehlt einer dieser Nachweise, bleibt der Restore rot und die Anwendung wird wieder stillgelegt.
 
+Die Production-Paritätsprüfung liest die Artefakte ausschließlich aus erfolgreichen Läufen des festen `Promote`-Workflows; der Backup-Drill verwendet entsprechend `Staging Backup Drill`. Die Suche endet am ersten vollständig verifizierten Nachweis und ist auf 100 Läufe, je Lauf die ersten 100 Artefakte sowie insgesamt 1.000 betrachtete Artefakte begrenzt. Die globale Repository-Artefaktliste wird nicht verwendet. Fehler beim API-Zugriff oder bei der Verifikation blockieren weiterhin vor jeder Mutation; die statischen Phasenmarker enthalten keine Antwortdaten.
+
 ## Backup- und Rollback-Grenzen
 
 - Das Promote-Backup ist ein PostgreSQL-Custom-Dump, kein Snapshot des gesamten Systems.

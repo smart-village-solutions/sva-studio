@@ -15,6 +15,8 @@ export default [
         'error',
         {
           enforceBuildableLibDependency: true,
+          // Pure metadata secondary entry: no runtime route factories or server imports.
+          checkDynamicDependenciesExceptions: ['@sva/routing/documentation'],
           allow: [
             '../../../scripts/ci/check-file-placement.ts',
             '../../../scripts/ci/check-plugin-ui-boundary.ts',

@@ -1,19 +1,60 @@
 export const eventsENEditor = {
+  create: {
+    saveUnavailable:
+      'Saving is currently unavailable. Please ask your administrator to check your connection to content management.',
+    responsible: 'Responsible:',
+    coordinates: 'Enter coordinates manually',
+    categoryUnavailable:
+      'Categories cannot be loaded right now. Please contact your administrator.',
+    dateExtras: 'Additional time details',
+    titleHelp: 'What is the event called? A title is required.',
+    createVisible: 'Save as visible',
+    createHidden: 'Save hidden',
+    intro:
+      'Create an event. Start with its title, date and location; add further details as needed.',
+    optional: 'optional',
+    filled: 'Details entered',
+    empty: 'No details yet',
+    visibleEffect:
+      'The event will be saved with visibility enabled. Event dates do not schedule publication.',
+    hiddenEffect: 'The event will be saved and remain hidden from the public.',
+    editHint: 'After creation, open the saved event in the familiar editor with tabs.',
+    sections: {
+      title: 'Title',
+      dates: 'Dates',
+      recurrence: 'Recurrence',
+      addresses: 'Location / addresses',
+      description: 'Description',
+      media: 'Media',
+      categories: 'Categories',
+      organizer: 'Add organizer',
+      contacts: 'Add contacts',
+      links: 'Add links',
+      prices: 'Add admission prices',
+      technical: 'Technical details',
+      publication: 'Visibility',
+    },
+  },
   messages: {
+    requestReference: 'Error reference:',
+    copyRequestReference: 'Copy reference',
+    requestReferenceCopied: 'Copied',
+    createdNavigationError: 'The content was created, but the editing view could not be opened.',
+    unsavedAfterCreate: 'The content was created. Newer changes in this form have not been saved.',
     mediaReferencePartialFailure:
       'The content was saved, but its media references were not. You can retry the references.',
     mediaReferenceRetrySuccess: 'The media references were saved.',
     loading: 'Loading events.',
     loadError: 'Events could not be loaded.',
     missingContent: 'The event could not be loaded.',
-    mediaReferenceLoadError:
-      'The media references could not be loaded. The event remains editable.',
+    mediaReferenceLoadError: 'Could not load media references. The event remains editable.',
     degradedDataWarning:
       'Some Mainserver fields could not be read safely. Unchanged values are not overwritten; corrections require confirmation.',
     degradedField: 'Affected section: {{field}}',
     degradedCorrectionConfirm:
       'The following previously unreadable sections were changed: {{fields}}. Do you want to overwrite these values intentionally?',
     saveError: 'Event could not be saved.',
+    staleMainserverContext: 'Context changed. Reload and review your draft before saving.',
     deleteError: 'Event could not be deleted.',
     createSuccess: 'Event was created.',
     updateSuccess: 'Event was updated.',
@@ -34,11 +75,11 @@ export const eventsENEditor = {
     locationGeocodeTimeout: 'Resolving geo coordinates took too long. Please try again.',
     locationGeocodeForbidden: 'Missing permission to resolve geo coordinates.',
     locationGeocodeUnauthorized: 'The geocoding session has expired. Please reload the page.',
-    locationMapUnavailable: 'The map view is currently disabled for this instance.',
+    locationMapUnavailable: 'The map is unavailable. Enter the address and coordinates manually.',
     locationMapError: 'The map view could not be loaded. Manual editing remains available.',
     imagePickerEmpty: 'No matching media found.',
-  mediaPickerLoading: 'Loading media.',
-  mediaPickerLoadError: 'Media could not be loaded.',
+    mediaPickerLoading: 'Loading media.',
+    mediaPickerLoadError: 'Media could not be loaded.',
     mediaUploadInitializing: 'Preparing upload.',
     mediaUploadUploading: 'Uploading media.',
     mediaUploadFinalizing: 'Finalizing media.',
@@ -106,7 +147,7 @@ export const eventsENEditor = {
   cards: {
     basis: {
       identity: { title: 'Title & category', description: 'Title and editorial base category.' },
-      recurrence: { title: 'Series logic', description: 'Recurrence and publication rhythm.' },
+      recurrence: { title: 'Recurrence', description: 'Recurrence and publication rhythm.' },
       relations: { title: 'Relations', description: 'Links to other Studio content.' },
       meta: { title: 'Metadata', description: 'Temporal information for the record.' },
     },

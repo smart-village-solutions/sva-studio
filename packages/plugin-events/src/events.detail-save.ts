@@ -1,9 +1,11 @@
+import type { useEventsDetailMedia } from './events.detail-media.js';
 import type { Dispatch, SetStateAction } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { useNavigate } from '@tanstack/react-router';
 import {
   contentMediaSavePhaseMessageKey,
   omitDeviatedMainserverFields,
+  readMainserverErrorRequestId,
   saveContentWithHostMediaReferences,
   usePluginTranslation,
 } from '@sva/plugin-sdk';
@@ -27,16 +29,29 @@ import {
 import type { EventsDetailTabId } from './events.detail-tabs.js';
 import { validateEventsDetailSubmission } from './events.detail-save-validation.js';
 
-export type EventsStatusMessage = Readonly<{ kind: 'success' | 'error'; text: string }>;
+export type EventsStatusMessage = Readonly<{
+  kind: 'success' | 'error';
+  text: string;
+  requestId?: string;
+  errorCode?: string;
+}>;
 export const eventsErrorMessage = (
   pt: ReturnType<typeof usePluginTranslation>,
   error: unknown,
   fallbackKey: string
-) => (error instanceof EventsApiError ? error.message : pt(fallbackKey));
+) =>
+  error instanceof EventsApiError
+    ? error.code === 'stale_mainserver_context'
+      ? pt('messages.staleMainserverContext')
+      : ['missing_credentials', 'organization_mainserver_credentials_missing'].includes(error.code)
+      ? pt('create.saveUnavailable')
+      : error.message
+    : pt(fallbackKey);
 
 type SaveContext = Readonly<{
   methods: UseFormReturn<EventsDetailFormValues>;
   canSave: boolean;
+  leaveGuard: ReturnType<typeof useEventsDetailMedia>['leaveGuard'];
   mediaUsages: readonly ContentMediaUsage[];
   setStatus: Dispatch<SetStateAction<EventsStatusMessage | null>>;
   pt: ReturnType<typeof usePluginTranslation>;
@@ -137,6 +152,7 @@ const persistWithMedia = async (
     : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
 
 const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormValues) => {
+  const leaveRevision = context.leaveGuard.captureRevision();
   const operationId = context.saveFeedback.beginSaving();
   context.setMediaSavePhaseKey(null);
   try {
@@ -158,8 +174,10 @@ const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormVa
       context,
       createSaveContent(context, values, correctedFields)
     );
+    if (context.mode === 'create') context.leaveGuard.rememberCreated(result.saved.id);
     const handledResult = context.mediaReferenceSync.consumeSaveResult(result);
     if (handledResult.referenceFailed) {
+      context.leaveGuard.rememberPartialSave(leaveRevision);
       context.setStatus({
         kind: 'error',
         text: context.pt('messages.mediaReferencePartialFailure'),
@@ -170,6 +188,7 @@ const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormVa
     context.setStatus(null);
     context.saveFeedback.markSaved(operationId);
     if (context.mode === 'create') {
+      context.leaveGuard.acknowledgeSaved(leaveRevision);
       await context.navigate({
         to: '/admin/events/$id',
         params: { id: handledResult.saved.id },
@@ -178,9 +197,15 @@ const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormVa
       });
     }
   } catch (saveError) {
+    if (context.mode === 'create' && context.leaveGuard.hasCreated()) {
+      context.setStatus({ kind: 'success', text: context.pt('messages.createdNavigationError') });
+      return;
+    }
     context.setStatus({
       kind: 'error',
       text: eventsErrorMessage(context.pt, saveError, 'messages.saveError'),
+      requestId: readMainserverErrorRequestId(saveError),
+      ...(saveError instanceof EventsApiError ? { errorCode: saveError.code } : {}),
     });
     context.saveFeedback.markFailed(operationId);
   }
@@ -189,7 +214,8 @@ const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormVa
 export const createEventsDetailSubmit = (context: SaveContext) =>
   context.methods.handleSubmit(
     async (values, event) => {
-      if (!context.canSave) return;
+      if (!context.canSave || (context.mode === 'create' && context.leaveGuard.hasCreated()))
+        return;
       const form = event?.target;
       if (form instanceof HTMLFormElement && !form.reportValidity()) return;
       context.setStatus(null);

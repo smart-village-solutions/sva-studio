@@ -1,6 +1,7 @@
 import type { WasteTourRecord } from './waste-management/master-data-tours.js';
 import {
   assertWasteAnnualTourTransferLimits,
+  type WasteAnnualTourTransferCreateInput,
   type WasteAnnualTourTransferPreview,
   type WasteAnnualTourTransferReplacementDate,
   type WasteAnnualTourTransferSource,
@@ -12,7 +13,7 @@ import {
 import { createWasteAnnualTourConflictIndex } from './waste-management-annual-tour-transfer.conflict-index.js';
 import { effectiveWasteAnnualShiftedDates } from './waste-management-annual-tour-transfer.conflict-dates.js';
 import { deriveWasteAnnualTourTransferTargetYear } from './waste-management-annual-tour-transfer.dates.js';
-import { buildWasteAnnualTourTransferFingerprint } from './waste-management-annual-tour-transfer.identity.js';
+import { buildWasteAnnualTourTransferPreviewFingerprint } from './waste-management-annual-tour-transfer.identity.js';
 import {
   countWasteAnnualMappedRelationships,
   wasteAnnualConcreteDateExamples,
@@ -26,6 +27,7 @@ import {
   wasteAnnualTourRelationshipCounts,
 } from './waste-management-annual-tour-transfer.relevance.js';
 import {
+  buildValidatedWasteAnnualFirstTargetDateMap,
   buildValidatedWasteAnnualReplacementMap,
   wasteAnnualReplacementTargetYearsFor,
 } from './waste-management-annual-tour-transfer.replacements.js';
@@ -42,6 +44,7 @@ type PreviewTourInput = Readonly<{
   target: WasteAnnualTourTransferSource;
   conflictIndex: ReturnType<typeof createWasteAnnualTourConflictIndex>;
   replacements: ReadonlyMap<string, string>;
+  firstTargetDates: ReadonlyMap<string, string>;
 }>;
 
 const previewReplacementResources = (
@@ -81,7 +84,10 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
       conflicts: [],
     };
   }
-  const mappedResult = await mapWasteAnnualTour(input);
+  const mappedResult = await mapWasteAnnualTour({
+    ...input,
+    firstTargetDate: input.firstTargetDates.get(input.tour.id),
+  });
   if ('blocker' in mappedResult) {
     const replacements = previewReplacementResources(input, mappedResult.replacementResourceIds);
     return {
@@ -132,27 +138,6 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
   };
 };
 
-const sourceFingerprintState = (
-  tours: readonly WasteTourRecord[],
-  source: WasteAnnualTourTransferSource
-) => {
-  const ids = new Set(tours.map((tour) => tour.id));
-  const relevant = <T extends { readonly id: string; readonly tourId: string }>(
-    items: readonly T[]
-  ) =>
-    sortWasteAnnualItems(
-      items.filter((item) => ids.has(item.tourId)),
-      (item) => item.id
-    );
-  return {
-    tours: sortWasteAnnualItems(tours, (tour) => tour.id),
-    locationTourLinks: relevant(source.locationTourLinks),
-    locationTourPickupDates: relevant(source.locationTourPickupDates),
-    tourAssignments: relevant(source.tourAssignments),
-    tourDateShifts: relevant(source.tourDateShifts),
-  };
-};
-
 const relevantToursFor = (
   input: Readonly<{ sourceYear: number; source: WasteAnnualTourTransferSource }>,
   resolve: (tour: WasteTourRecord) => WasteAnnualTourTransferSource
@@ -180,12 +165,19 @@ export const buildWasteAnnualTourTransferPreview = async (input: {
   target: WasteAnnualTourTransferSource;
   selectedTourIds?: readonly string[];
   replacementDates?: readonly WasteAnnualTourTransferReplacementDate[];
+  firstTargetDates?: WasteAnnualTourTransferCreateInput['firstTargetDates'];
   allowObsoleteReplacementDates?: boolean;
 }): Promise<AnnualTransferInternal.WasteAnnualTourTransferInternalPreview> => {
   const targetYear = deriveWasteAnnualTourTransferTargetYear(input.sourceYear, input.currentYear);
   const sourceForTour = createWasteAnnualSourceResolver(input.source);
   const relevantTours = relevantToursFor(input, sourceForTour);
   assertWasteAnnualTourTransferLimits({ tours: relevantTours.length, relationships: 0 });
+  const firstTargetDates = buildValidatedWasteAnnualFirstTargetDateMap({
+    firstTargetDates: input.firstTargetDates,
+    relevantTours,
+    targetYear,
+    allowObsoleteFirstTargetDates: input.allowObsoleteReplacementDates,
+  });
   const replacementDates = input.replacementDates ?? [];
   const replacements = buildValidatedWasteAnnualReplacementMap({
     ...input,
@@ -205,6 +197,7 @@ export const buildWasteAnnualTourTransferPreview = async (input: {
         targetYear,
         conflictIndex,
         replacements,
+        firstTargetDates,
       })
     )
   );
@@ -217,28 +210,18 @@ export const buildWasteAnnualTourTransferPreview = async (input: {
     0
   );
   assertWasteAnnualTourTransferLimits({ tours: relevantTours.length, relationships });
-  const fingerprintInput = {
-    instanceId: input.instanceId,
-    sourceYear: input.sourceYear,
+  const previewFingerprint = await buildWasteAnnualTourTransferPreviewFingerprint({
+    ...input,
     targetYear,
-    selectedTourIds: [...selected].sort((left, right) => left.localeCompare(right)),
-    replacementDates: sortWasteAnnualItems(
-      input.replacementDates ?? [],
-      (item) => item.sourceResourceId
-    ),
-    sourceState: sourceFingerprintState(relevantTours, input.source),
-    tours: previews.map((item) => ({
-      ...item,
-      conflicts: sortWasteAnnualItems(
-        item.conflicts,
-        (conflict) => `${conflict.kind}:${conflict.targetTourId}`
-      ),
-    })),
-  };
+    selectedTourIds: selected,
+    replacementDates,
+    relevantTours,
+    previews,
+  });
   return {
     sourceYear: input.sourceYear,
     targetYear,
-    previewFingerprint: await buildWasteAnnualTourTransferFingerprint(fingerprintInput),
+    previewFingerprint,
     tours: previews,
     summary: {
       transferable: previews.filter((item) => item.classification === 'transferable').length,

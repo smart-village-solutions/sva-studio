@@ -1,4 +1,36 @@
 export const newsTranslationsENEditor = {
+  create: {
+    saveUnavailable:
+      'Saving is currently unavailable. Please ask your administrator to check your connection to content management.',
+    responsible: 'Responsible:',
+    introOptional: 'Add introduction',
+    categoryUnavailable:
+      'Categories cannot be loaded right now. Please contact your administrator.',
+    noPushHint: 'Drafts and scheduled publications do not send push notifications.',
+    savedWithNewChanges:
+      'The news item was created. Further changes have not been saved. When opening the saved item, you can discard those changes or stay here.',
+    heading: 'News content',
+    intro:
+      'Create a news item. Start with the title and text; media, categories and source are optional.',
+    introHelp: 'Optional short introduction to the news item.',
+    sourceOptional: 'Add source (optional)',
+    sourcePresent: 'Source entered',
+    sourceEmpty: 'No source entered',
+    pushResetHint:
+      'Draft or scheduled publication clears the push selection. Enable it again for immediate publication if you want to send a notification.',
+    actions: {
+      draft: 'Create draft',
+      immediate: 'Publish now',
+      scheduled: 'Create scheduled news',
+    },
+    effect: {
+      draft: 'Saved as a draft, not yet public.',
+      immediate: 'The news item is published immediately.',
+      scheduled: 'The news item is saved with the selected publication time {{date}}.',
+    },
+    noPush: 'No push notification will be sent.',
+    push: 'A push notification is also requested for the following target area: {{target}}.',
+  },
   values: {
     yes: 'Yes',
     no: 'No',
@@ -75,6 +107,7 @@ export const newsTranslationsENEditor = {
     cancel: 'Cancel',
     create: 'Create news',
     update: 'Save changes',
+    reloadCurrentContext: 'Reload context and keep draft',
     save: 'Save',
     saving: 'Saving…',
     saved: 'Saved',
@@ -110,6 +143,10 @@ export const newsTranslationsENEditor = {
     pageLabel: 'Page {{page}}',
   },
   messages: {
+    requestReference: 'Error reference:',
+    copyRequestReference: 'Copy reference',
+    requestReferenceCopied: 'Copied',
+    requestReferenceCopyFailed: 'Copy failed',
     detailNavigationError: 'The news was saved, but its detail page could not be opened.',
     mediaReferencePartialFailure:
       'The news entry was saved, but its media references were not. You can retry the references.',
@@ -117,6 +154,8 @@ export const newsTranslationsENEditor = {
     loadError: 'Failed to load news.',
     missingContent: 'The requested news entry could not be loaded.',
     saveError: 'Failed to save news.',
+    staleMainserverContext:
+      'The organization or Mainserver context changed. Reload the current context and review your draft before saving again.',
     validationError: 'Please fix the highlighted fields.',
     validationSummary: 'Please review the following fields:',
     createSuccess: 'News entry created.',

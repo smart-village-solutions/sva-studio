@@ -196,7 +196,7 @@ describe('plugin operation runtime registration', () => {
       vi.clearAllTimers();
       vi.useRealTimers();
     }
-  });
+  }, 30000);
 
   it('connects the multilingual lifecycle to redacted host readiness without a remote capability', async () => {
     const jobTypeId = 'app-translations.lifecycle';

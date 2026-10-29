@@ -3,6 +3,7 @@ import { FormProvider, type UseFormReturn } from 'react-hook-form';
 import { Link } from '@tanstack/react-router';
 import {
   type HostMediaAssetListItem,
+  formatDateTimeInEditorTimeZone,
   resolveStandardContentAccessCapabilities,
 } from '@sva/plugin-sdk';
 import {
@@ -31,6 +32,8 @@ type NewsDetailPageViewProps = Readonly<{
   mode: 'create' | 'edit';
   pt: PluginTranslator;
   canSave: boolean;
+  principalReady: boolean;
+  reloadCurrentContext: () => Promise<void>;
   formId: string;
   mediaReferenceSync: ReturnType<typeof useStudioMediaReferenceSync>;
   saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
@@ -41,6 +44,7 @@ type NewsDetailPageViewProps = Readonly<{
   deletePending: boolean;
   deleteLabel: string;
   methods: UseFormReturn<NewsDetailFormValues>;
+  libraryStatus?: ReturnType<typeof useNewsDetailMedia>['libraryStatus'];
   mediaAssets: readonly HostMediaAssetListItem[];
   canUploadMedia: boolean;
   mediaPickerFeedback: ReturnType<typeof resolveStudioMediaPickerFeedback>;
@@ -54,8 +58,8 @@ type NewsDetailPageViewProps = Readonly<{
   statusMessage: StatusMessage | null;
   retryCreatedContentId: string | null;
   navigateToCreatedDetail: (id: string) => Promise<void>;
+  completeCreateSave: () => boolean;
   setStatusMessage: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
-  setRetryCreatedContentId: React.Dispatch<React.SetStateAction<string | null>>;
   tabs: ReturnType<typeof createNewsDetailTabDefinitions>;
   activeTab: NewsDetailTabId;
   handleTabChange: (tab: NewsDetailTabId) => void;
@@ -66,8 +70,23 @@ type NewsDetailPageViewProps = Readonly<{
   onDelete: () => Promise<void>;
 }>;
 
+const newsCreateEffect = (values: NewsDetailFormValues, pt: PluginTranslator): string => {
+  const publication = pt(`create.effect.${values.publicationMode}`, {
+    date:
+      formatDateTimeInEditorTimeZone(values.scheduledPublicationAt) ??
+      values.scheduledPublicationAt,
+  });
+  if (values.publicationMode !== 'immediate' || !values.pushNotificationEnabled)
+    return `${publication} ${pt('create.noPush')}`;
+  const target = values.wasteLocationKeys.length
+    ? values.wasteLocationKeys.map((key) => `${key.street}, ${key.zip} ${key.city}`).join('; ')
+    : pt('targeting.mode.global');
+  return `${publication} ${pt('create.push', { target })}`;
+};
+
 const createNewsDetailPageActions = ({
   canSave,
+  principalReady,
   formId,
   mediaReferenceSync,
   saveFeedback,
@@ -79,9 +98,11 @@ const createNewsDetailPageActions = ({
   setDeleteDialogOpen,
   deletePending,
   deleteLabel,
+  methods,
 }: Pick<
   NewsDetailPageViewProps,
   | 'canSave'
+  | 'principalReady'
   | 'formId'
   | 'mediaReferenceSync'
   | 'saveFeedback'
@@ -93,20 +114,27 @@ const createNewsDetailPageActions = ({
   | 'setDeleteDialogOpen'
   | 'deletePending'
   | 'deleteLabel'
+  | 'methods'
 >) => ({
   primaryAction: canSave ? (
     <div className="flex flex-col items-end gap-1">
       <StudioSaveButton
         type="submit"
         form={formId}
-        disabled={mediaReferenceSync.hasPendingRetry}
+        disabled={mediaReferenceSync.hasPendingRetry || (mode === 'create' && !principalReady)}
         status={saveFeedback.status}
         labels={{
-          idle: pt('actions.save'),
+          idle:
+            mode === 'create'
+              ? pt(`create.actions.${methods.watch('publicationMode')}`)
+              : pt('actions.save'),
           saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
           saved: pt('actions.saved'),
         }}
       />
+      {mode === 'create' ? (
+        <p className="text-sm text-muted-foreground">{newsCreateEffect(methods.watch(), pt)}</p>
+      ) : null}
     </div>
   ) : undefined,
   actions: (
@@ -131,78 +159,31 @@ const createNewsDetailPageActions = ({
   ),
 });
 
-export const NewsDetailPageView = ({
-  mode,
-  pt,
-  canSave,
-  formId,
-  mediaReferenceSync,
-  saveFeedback,
-  mediaSavePhaseKey,
-  accessCapabilities,
-  setDeleteErrorMessage,
-  setDeleteDialogOpen,
-  deletePending,
-  deleteLabel,
-  methods,
-  mediaAssets,
-  canUploadMedia,
-  mediaPickerFeedback,
-  isAssetSelectable,
-  mediaPicker,
-  mediaPickerLabels,
-  addManualMedia,
-  canUpdateMedia,
-  saveCurrentItem,
-  deleteNavigationFailed,
-  statusMessage,
-  retryCreatedContentId,
-  navigateToCreatedDetail,
-  setStatusMessage,
-  setRetryCreatedContentId,
-  tabs,
-  activeTab,
-  handleTabChange,
-  warmTab,
-  visitedTabs,
-  deleteDialogOpen,
-  deleteErrorMessage,
-  onDelete,
-}: NewsDetailPageViewProps) => {
+export const NewsDetailPageView = (props: NewsDetailPageViewProps) => {
+  const {
+    mode,
+    pt,
+    formId,
+    methods,
+    saveCurrentItem,
+    tabs,
+    deleteDialogOpen,
+    deleteLabel,
+    deletePending,
+    deleteErrorMessage,
+    onDelete,
+    setDeleteErrorMessage,
+    setDeleteDialogOpen,
+  } = props;
   return (
     <StudioDetailPageTemplate
+      stickyActions={mode === 'create'}
       title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
-      description={
-        mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')
-      }
-      {...createNewsDetailPageActions({
-        canSave,
-        formId,
-        mediaReferenceSync,
-        saveFeedback,
-        mediaSavePhaseKey,
-        pt,
-        mode,
-        accessCapabilities,
-        setDeleteErrorMessage,
-        setDeleteDialogOpen,
-        deletePending,
-        deleteLabel,
-      })}
+      description={mode === 'edit' ? pt('editor.editDescription') : undefined}
+      {...createNewsDetailPageActions(props)}
     >
       <FormProvider {...methods}>
-        <NewsDetailMediaPicker
-          {...{
-            mediaAssets,
-            canUploadMedia,
-            mediaPickerFeedback,
-            isAssetSelectable,
-            mediaPicker,
-            mediaPickerLabels,
-            addManualMedia,
-            canUpdateMedia,
-          }}
-        />
+        <NewsDetailMediaPicker {...props} />
         <form
           id={formId}
           onSubmit={(event) => {
@@ -210,21 +191,8 @@ export const NewsDetailPageView = ({
             void saveCurrentItem();
           }}
         >
-          <NewsDetailSaveStatus
-            {...{
-              deleteNavigationFailed,
-              statusMessage,
-              pt,
-              saveFeedback,
-              saveCurrentItem,
-              retryCreatedContentId,
-              navigateToCreatedDetail,
-              setStatusMessage,
-              setRetryCreatedContentId,
-              mediaReferenceSync,
-            }}
-          />
-          <NewsDetailTabs {...{ tabs, activeTab, handleTabChange, warmTab, visitedTabs, pt }} />
+          <NewsDetailSaveStatus {...props} />
+          {mode === 'create' ? tabs[0]?.panel : <NewsDetailTabs {...props} />}
         </form>
       </FormProvider>
       <StudioDestructiveActionDialog

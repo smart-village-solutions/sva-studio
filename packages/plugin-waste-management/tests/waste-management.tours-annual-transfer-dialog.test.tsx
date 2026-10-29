@@ -168,12 +168,14 @@ describe('WasteToursAnnualTransferDialog', () => {
       sourceYear: 2026,
       selectedTourIds: ['tour-1'],
       replacementDates: [],
+      firstTargetDates: [],
     });
     expect(api.create).toHaveBeenCalledWith(
       {
         sourceYear: 2026,
         selectedTourIds: ['tour-1'],
         replacementDates: [],
+        firstTargetDates: [],
         acknowledgedConflictTourIds: [],
         previewFingerprint: preview.previewFingerprint,
       },
@@ -182,6 +184,51 @@ describe('WasteToursAnnualTransferDialog', () => {
     expect(onCreated).toHaveBeenCalledTimes(1);
     expect((await screen.findByRole('status')).textContent).toContain(
       'tours.annualTransfer.result:1|0|2027'
+    );
+  });
+
+  it('previews and confirms a changed first regular date for one tour', async () => {
+    const changed = {
+      ...preview,
+      previewFingerprint: `sha256:${'b'.repeat(64)}`,
+      tours: [
+        {
+          ...preview.tours[0],
+          firstTargetDate: '2027-01-21',
+          targetPeriod: { firstDate: '2027-01-21', endDate: '2027-12-31' },
+        },
+      ],
+    };
+    api.preview.mockResolvedValueOnce(preview).mockResolvedValue(changed);
+    render(
+      <WasteToursAnnualTransferDialog
+        open
+        onOpenChange={vi.fn()}
+        onCreated={vi.fn(async () => undefined)}
+        onShowResult={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
+    await screen.findByText('Bio Nord');
+    fireEvent.change(screen.getByLabelText(/tours\.annualTransfer\.overrideFirstTargetDate/), {
+      target: { value: '2027-01-21' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.review' }));
+    await screen.findByText(/tours\.annualTransfer\.firstTargetDate.*2027-01-21/);
+    expect(api.preview).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        firstTargetDates: [{ sourceTourId: 'tour-1', firstDate: '2027-01-21' }],
+      })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.confirm' }));
+    await waitFor(() => expect(api.create).toHaveBeenCalledTimes(1));
+    expect(api.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        firstTargetDates: [{ sourceTourId: 'tour-1', firstDate: '2027-01-21' }],
+        previewFingerprint: changed.previewFingerprint,
+      }),
+      expect.any(String)
     );
   });
 

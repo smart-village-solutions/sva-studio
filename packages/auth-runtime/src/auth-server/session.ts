@@ -8,13 +8,13 @@ import {
 import {
   createSessionResolutionTimingDiagnostics,
   logSessionResolutionTimingIfEnabled,
-  refreshAndResolveSession,
   resolveCurrentSessionUser,
   resolveSessionWithoutRefreshToken,
   shouldRefreshSession,
   type SessionResolutionResult,
   type SessionResolutionTimingDiagnostics,
 } from './session-resolution.js';
+import { refreshAndResolveSession } from './session-refresh-resolution.js';
 
 export type {
   SessionResolutionFailureReason,

@@ -1,9 +1,28 @@
 import React from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { ContentOwnershipPanelSlot, type StudioDetailTabDefinition } from '@sva/studio-ui-react';
+import {
+  ContentOwnershipPanelSlot,
+  StudioSection,
+  type StudioDetailTabDefinition,
+} from '@sva/studio-ui-react';
 
-import { SurveyDetailBasisTab, type SurveyTargetAreaOption } from './surveys.detail-basis-tab.js';
-import { SurveyDetailContentTab } from './surveys.detail-content-tab.js';
+import {
+  SurveyIdentityCard,
+  SurveyScheduleCard,
+  SurveyTargetAreaCard,
+  SurveyStatusField,
+  SurveyDetailBasisTab,
+  type SurveyTargetAreaOption,
+} from './surveys.detail-basis-tab.js';
+import {
+  SurveyDescriptionCard,
+  SurveyParticipationCard,
+  SurveyDetailContentTab,
+} from './surveys.detail-content-tab.js';
+import { SurveyDetailCard } from './surveys.detail-card.js';
+import { SurveyQuestionListEditor } from './surveys.question-list-editor.js';
+import { useFormContext, useWatch } from 'react-hook-form';
+import type { SurveyDetailFormValues } from './surveys.detail-form.js';
 import { SurveyDetailHistoryTab } from './surveys.detail-history-tab.js';
 import { SurveyDetailModerationTab } from './surveys.detail-moderation-tab.js';
 import { SurveyDetailResultsTab } from './surveys.detail-results-tab.js';
@@ -89,3 +108,58 @@ export const createSurveyEditorTabs = (
     },
   ];
 };
+
+export function SurveyCreateFields({
+  pt,
+}: Readonly<{ pt: ReturnType<typeof usePluginTranslation> }>) {
+  const { control } = useFormContext<SurveyDetailFormValues>();
+  const basis = useWatch({ control, name: 'basis' });
+  return (
+    <StudioSection className="space-y-6">
+      <p>{pt('create.intro')}</p>
+      <section id="survey-create-text" tabIndex={-1} className="space-y-6">
+        <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-5">
+          <SurveyIdentityCard pt={pt} titleOnly />
+        </div>
+        <details className="open:space-y-4">
+          <summary>{pt('cards.content.descriptions.title')}</summary>
+          <SurveyDescriptionCard pt={pt} />
+        </details>
+      </section>
+      <section id="survey-create-questions" tabIndex={-1}>
+        <SurveyDetailCard
+          title={pt('cards.content.questions.title')}
+          description={pt('create.help.questions')}
+        >
+          <SurveyQuestionListEditor pt={pt} createMode />
+        </SurveyDetailCard>
+      </section>
+      <section id="survey-create-participation" tabIndex={-1} className="space-y-6">
+        <details className="open:space-y-4">
+          <summary>{pt('cards.basis.targetArea.title')}</summary>
+          <SurveyTargetAreaCard pt={pt} availableTargetAreas={[]} />
+        </details>
+        <details className="open:space-y-4">
+          <summary>{pt('cards.basis.schedule.title')}</summary>
+          <SurveyScheduleCard pt={pt} />
+        </details>
+        <SurveyParticipationCard pt={pt} section="anonymity" createMode />
+        <details className="open:space-y-4">
+          <summary>{pt('create.results')}</summary>
+          <SurveyParticipationCard pt={pt} section="results" createMode />
+        </details>
+      </section>
+      <section id="survey-create-status" tabIndex={-1} className="space-y-3">
+        <SurveyDetailCard title={pt('fields.status')} description={pt('create.help.status')}>
+          <SurveyStatusField pt={pt} />
+        </SurveyDetailCard>
+        <p className="text-sm text-muted-foreground">
+          {pt('create.effect.schedule', {
+            start: basis.startAt || pt('create.noLimit'),
+            end: basis.endAt || pt('create.noLimit'),
+          })}
+        </p>
+      </section>
+    </StudioSection>
+  );
+}

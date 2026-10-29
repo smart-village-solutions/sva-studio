@@ -164,7 +164,12 @@ const paramsMock = vi.fn(() => ({ id: 'poi-1' }));
 
 describe('PoiListPage', () => {
   const switchSection = (value: string) => {
-    fireEvent.change(screen.getByLabelText('Bereich'), { target: { value } });
+    const selector = screen.queryByLabelText('Bereich');
+    if (selector) fireEvent.change(selector, { target: { value } });
+    else
+      document.querySelectorAll('details').forEach((element) => {
+        if (!element.open) fireEvent.click(element.querySelector('summary')!);
+      });
   };
   const getEditableNameInput = () =>
     screen
@@ -208,6 +213,8 @@ describe('PoiListPage', () => {
         'poi.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
         'poi.empty.title': 'Noch keine Orte vorhanden',
         'poi.actions.create': 'Ort anlegen',
+        'poi.create.createActive': 'Aktiv anlegen',
+        'poi.create.createInactive': 'Inaktiv anlegen',
         'poi.actions.save': 'Speichern',
         'poi.actions.update': 'Änderungen speichern',
         'poi.actions.back': 'Zurück zur Liste',
@@ -400,7 +407,7 @@ describe('PoiListPage', () => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(createPoi).toHaveBeenCalledWith(
@@ -455,7 +462,7 @@ describe('PoiListPage', () => {
     fireEvent.change(nameInput as HTMLInputElement, {
       target: { value: 'Aktualisierte Stadtbibliothek' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(updatePoi).toHaveBeenCalledWith(
@@ -513,7 +520,7 @@ describe('PoiListPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+      expect(screen.getAllByRole('button', { name: /Speichern|anlegen/ })).toHaveLength(2);
     });
     const nameInput = screen.getByDisplayValue('Stadtbibliothek');
     fireEvent.change(nameInput, { target: { value: 'Ungespeicherter Ort' } });
@@ -535,7 +542,7 @@ describe('PoiListPage', () => {
       />
     );
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+      expect(screen.queryByRole('button', { name: /Speichern|anlegen/ })).toBeNull();
     });
     expect(screen.getByDisplayValue('Ungespeicherter Ort')).toBeTruthy();
     expect(getPoiDetail).toHaveBeenNthCalledWith(2, 'poi-1', 'organization');
@@ -546,7 +553,7 @@ describe('PoiListPage', () => {
     await waitFor(() => {
       expect(getPoiDetail).toHaveBeenNthCalledWith(3, 'poi-1', 'user');
     });
-    expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Speichern|anlegen/ })).toBeNull();
   });
 
   it('clears a previous success status before a validation-blocked submit', async () => {
@@ -556,7 +563,7 @@ describe('PoiListPage', () => {
       expect(screen.getByDisplayValue('Stadtbibliothek')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'poi.actions.saved' })).toHaveLength(2);
@@ -569,7 +576,7 @@ describe('PoiListPage', () => {
     fireEvent.change(document.getElementById('poi-link-url-0') as HTMLInputElement, {
       target: { value: 'http://invalid.example' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'poi.actions.saved' })).toBeNull();

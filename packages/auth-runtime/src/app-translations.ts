@@ -254,6 +254,7 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
       }
       const result = await withIamAppDb(async (client) => {
         if (scope.kind === 'municipal') {
+          await client.query("SELECT set_config('app.instance_id', $1, true)", [scope.instanceId]);
           const active = await client.query(
             `SELECT o.id FROM iam.organizations o JOIN iam.instances i ON i.id = o.instance_id WHERE o.instance_id = $1 AND o.id = $2::uuid AND o.is_active AND i.status = 'active'`,
             [scope.instanceId, scope.organizationId]
@@ -263,7 +264,6 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
         let setup: DeepLSetupStatus | undefined;
         let targetCodes: Record<string, string> = {};
         if (scope.kind === 'municipal' && !sourceOnly) {
-          await client.query("SELECT set_config('app.instance_id', $1, true)", [scope.instanceId]);
           if (!isRead) {
             const module = await client.query(
               `SELECT m.module_id FROM iam.instance_modules m JOIN iam.instance_plugin_lifecycle l ON l.instance_id=m.instance_id AND l.plugin_id=m.module_id WHERE m.instance_id=$1 AND m.module_id='app-translations' AND m.effective_active AND l.access_state='active' FOR SHARE OF m,l`,

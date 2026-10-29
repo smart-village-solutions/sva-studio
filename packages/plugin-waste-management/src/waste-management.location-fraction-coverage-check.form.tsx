@@ -1,56 +1,37 @@
 import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Input, Select, StudioField } from '@sva/studio-ui-react';
+import { Button, Checkbox, Input, Select, StudioField } from '@sva/studio-ui-react';
 import { IconChecklist } from '@tabler/icons-react';
 import type { FormEvent } from 'react';
 
 import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-state.js';
 
-export const CoverageCheckForm = ({
-  fractions,
-  disabled,
-  fractionId,
-  startDate,
-  endDate,
-  onFractionChange,
-  onStartDateChange,
-  onEndDateChange,
-  onSubmit,
+const CoverageDateFields = ({
+  year, startDate, endDate, onYearChange, onStartDateChange, onEndDateChange,
 }: Readonly<{
-  fractions: readonly WasteFractionRecord[];
-  disabled?: boolean;
-  fractionId: string;
+  year: string;
   startDate: string;
   endDate: string;
-  onFractionChange: (value: string) => void;
+  onYearChange: (value: string) => void;
   onStartDateChange: (value: string) => void;
   onEndDateChange: (value: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }>) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <form
-      className="mt-4 grid gap-3 lg:grid-cols-[minmax(220px,1fr)_180px_180px_auto] lg:items-end"
-      onSubmit={onSubmit}
-      noValidate
-    >
+    <>
       <StudioField
-        id="waste-location-coverage-fraction"
-        label={pt('masterData.locationsWorkspace.coverage.fraction')}
+        id="waste-location-coverage-year"
+        label={pt('masterData.locationsWorkspace.coverage.year')}
       >
-        <Select
-          id="waste-location-coverage-fraction"
-          value={fractionId}
-          disabled={disabled}
-          onChange={(event) => onFractionChange(event.target.value)}
-        >
-          <option value="">{pt('masterData.locationsWorkspace.coverage.fractionUnset')}</option>
-          {fractions.map((fraction) => (
-            <option key={fraction.id} value={fraction.id}>
-              {fraction.name}
-            </option>
-          ))}
-        </Select>
+        <Input
+          id="waste-location-coverage-year"
+          type="number"
+          min={2000}
+          max={2100}
+          step={1}
+          value={year}
+          onChange={(event) => onYearChange(event.currentTarget.value)}
+        />
       </StudioField>
       <StudioField
         id="waste-location-coverage-start"
@@ -74,10 +55,87 @@ export const CoverageCheckForm = ({
           onChange={(event) => onEndDateChange(event.target.value)}
         />
       </StudioField>
+    </>
+  );
+};
+
+export const CoverageCheckForm = ({
+  fractions,
+  disabled,
+  fractionId,
+  year,
+  startDate,
+  endDate,
+  includeDrafts,
+  onFractionChange,
+  onYearChange,
+  onStartDateChange,
+  onEndDateChange,
+  onIncludeDraftsChange,
+  onSubmit,
+}: Readonly<{
+  fractions: readonly WasteFractionRecord[];
+  disabled?: boolean;
+  fractionId: string;
+  year: string;
+  startDate: string;
+  endDate: string;
+  includeDrafts: boolean;
+  onFractionChange: (value: string) => void;
+  onYearChange: (value: string) => void;
+  onStartDateChange: (value: string) => void;
+  onEndDateChange: (value: string) => void;
+  onIncludeDraftsChange: (value: boolean) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}>) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <form
+      className="mt-4 grid gap-3 lg:grid-cols-[minmax(220px,1fr)_120px_180px_180px_auto] lg:items-end"
+      onSubmit={onSubmit}
+      noValidate
+    >
+      <StudioField
+        id="waste-location-coverage-fraction"
+        label={pt('masterData.locationsWorkspace.coverage.fraction')}
+      >
+        <Select
+          id="waste-location-coverage-fraction"
+          value={fractionId}
+          disabled={disabled}
+          onChange={(event) => onFractionChange(event.target.value)}
+        >
+          <option value="">{pt('masterData.locationsWorkspace.coverage.fractionUnset')}</option>
+          {fractions.map((fraction) => (
+            <option key={fraction.id} value={fraction.id}>
+              {fraction.name}
+            </option>
+          ))}
+        </Select>
+      </StudioField>
+      <CoverageDateFields
+        year={year}
+        startDate={startDate}
+        endDate={endDate}
+        onYearChange={onYearChange}
+        onStartDateChange={onStartDateChange}
+        onEndDateChange={onEndDateChange}
+      />
       <Button type="submit" disabled={disabled}>
         <IconChecklist aria-hidden="true" className="h-4 w-4" />
         {pt('masterData.locationsWorkspace.coverage.check')}
       </Button>
+      <label
+        className="flex items-center gap-2 text-sm lg:col-span-full"
+        htmlFor="waste-location-coverage-include-drafts"
+      >
+        <Checkbox
+          id="waste-location-coverage-include-drafts"
+          checked={includeDrafts}
+          onChange={(event) => onIncludeDraftsChange(event.currentTarget.checked)}
+        />
+        {pt('masterData.locationsWorkspace.coverage.includeDrafts')}
+      </label>
     </form>
   );
 };

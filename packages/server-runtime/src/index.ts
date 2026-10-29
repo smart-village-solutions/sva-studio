@@ -102,3 +102,5 @@ export { initializeOtelSdk } from './server/bootstrap.server.js';
 export const createSdkLogger = (
   ...args: Parameters<typeof createSdkLoggerInternal>
 ): ServerRuntimeLogger => createSdkLoggerInternal(...args) as ServerRuntimeLogger;
+
+export { getEncryptionConfig, protectField, revealField } from './server/field-encryption.server.js';

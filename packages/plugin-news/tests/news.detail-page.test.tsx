@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import React from 'react';
 import { fileURLToPath } from 'node:url';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getHostMediaAsset,
@@ -15,7 +15,14 @@ import {
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
 
-import { deleteNews, getNewsDetail, listNewsCategories } from '../src/news.api.js';
+import { StudioEditorLeaveGuardProvider } from '@sva/studio-ui-react';
+import {
+  deleteNews,
+  getNewsDetail,
+  listNewsCategories,
+  saveNewsEditorItem,
+} from '../src/news.api.js';
+import { pluginNewsTranslations } from '../src/plugin.translations.js';
 import { NewsDetailPage } from '../src/news.detail-page.js';
 
 vi.mock('@sva/studio-ui-react', async () => {
@@ -121,6 +128,9 @@ describe('NewsDetailPage', () => {
     navigateMock.mockReset();
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
+        'news.create.actions.draft': 'Entwurf anlegen',
+        'news.create.actions.immediate': 'Jetzt veröffentlichen',
+        'news.create.actions.scheduled': 'Geplante Nachricht anlegen',
         'news.messages.loading': 'News werden geladen.',
         'news.messages.validationSummary': 'Bitte prüfen Sie die folgenden Felder:',
         'news.messages.categoryOptionsLoadError': 'Die Kategorien konnten nicht geladen werden.',
@@ -249,7 +259,17 @@ describe('NewsDetailPage', () => {
         'news.values.mediaContentTypes.attachment': 'Anhang',
         'news.values.mediaContentTypes.unspecified': 'Nicht angegeben',
       };
-      return labels[key] ?? key;
+      const resource = key
+        .split('.')
+        .reduce<unknown>(
+          (value, part) =>
+            value && typeof value === 'object' ? Reflect.get(value, part) : undefined,
+          pluginNewsTranslations.de
+        );
+      return (
+        labels[key] ??
+        (key.startsWith('news.create.') && typeof resource === 'string' ? resource : key)
+      );
     });
     vi.mocked(listNewsCategories).mockResolvedValue([]);
     vi.mocked(getHostMediaAsset).mockReset();
@@ -263,12 +283,52 @@ describe('NewsDetailPage', () => {
     resetSessionAccessSnapshot();
   });
 
-  it('renders the same save action in the page header and after the editor', async () => {
+  it('renders one reachable save action after the editor', async () => {
     render(<NewsDetailPage mode="create" />);
 
+    const action = await screen.findByRole('button', { name: 'Entwurf anlegen' });
+    expect(screen.getAllByRole('button', { name: 'Entwurf anlegen' })).toHaveLength(1);
+    expect(action.closest('header')).toBeNull();
+    expect(action.closest('.sticky')).not.toBeNull();
+  });
+
+  it('keeps the save action and publication effects in sync and resets push', async () => {
+    render(<NewsDetailPage mode="create" />);
+    expect(await screen.findByRole('button', { name: 'Entwurf anlegen' })).toBeTruthy();
+    expect(screen.getAllByText(/Als Entwurf gespeichert, noch nicht öffentlich/)).toHaveLength(1);
+    expect(screen.queryByRole('checkbox', { name: 'Push-Benachrichtigung senden' })).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
+    expect(screen.getAllByRole('button', { name: 'Jetzt veröffentlichen' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Push-Benachrichtigung senden' }));
+    expect(screen.getAllByText(/Push-Benachrichtigung für folgendes Zielgebiet/)).toHaveLength(1);
+    fireEvent.click(screen.getByRole('radio', { name: /Zeitgesteuert/ }));
+    expect(screen.queryByRole('checkbox', { name: 'Push-Benachrichtigung senden' })).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Geplante Nachricht anlegen' })).toHaveLength(1);
+    expect(
+      screen.getByText(/Bei Entwurf oder geplanter Veröffentlichung wird kein Push versendet/)
+    ).toBeTruthy();
+    expect(screen.getAllByText(/keine Push-Benachrichtigung versendet/)).toHaveLength(1);
+    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+      expect(
+        (screen.getByRole('checkbox', { name: 'Push-Benachrichtigung senden' }) as HTMLInputElement)
+          .checked
+      ).toBe(false);
     });
+  });
+
+  it('opens an invalid source before error focus and retains it on collapse', async () => {
+    render(<NewsDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Quelle testen' } });
+    const source = screen.getByLabelText('Quell-URL');
+    const details = source.closest('details')!;
+    details.open = true;
+    fireEvent.change(source, { target: { value: 'http://insecure.test' } });
+    details.open = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Entwurf anlegen' }));
+    await waitFor(() => expect(details.open).toBe(true));
+    expect((source as HTMLInputElement).value).toBe('http://insecure.test');
+    await waitFor(() => expect(document.activeElement).toBe(source));
   });
 
   it('renders save for a scoped update when the detail read grants resource access', async () => {
@@ -362,6 +422,25 @@ describe('NewsDetailPage', () => {
     expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
   });
 
+  it('hides create actions and blocks keyboard form submission without create permission', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: ['news.read'],
+      assignedModules: ['news'],
+      roles: [],
+    });
+    render(<NewsDetailPage mode="create" />);
+    const title = await screen.findByLabelText('Titel');
+    fireEvent.change(title, { target: { value: 'Ohne Berechtigung' } });
+    expect(screen.queryByRole('button', { name: 'Entwurf anlegen' })).toBeNull();
+    const form = title.closest('form');
+    if (!form) throw new Error('news_create_form_missing');
+
+    fireEvent.submit(form);
+
+    await waitFor(() => expect(vi.mocked(saveNewsEditorItem)).not.toHaveBeenCalled());
+  });
+
   it('blocks a visibility-changing save without the required lifecycle grant', async () => {
     vi.mocked(getNewsDetail).mockResolvedValueOnce({
       data: {
@@ -446,12 +525,22 @@ describe('NewsDetailPage', () => {
   });
 
   it('keeps a selected upload local until the news item is saved', async () => {
-    render(<NewsDetailPage mode="create" />);
+    let check = () => false;
+    render(
+      <StudioEditorLeaveGuardProvider
+        register={(next) => {
+          check = next;
+          return () => undefined;
+        }}
+      >
+        <NewsDetailPage mode="create" />
+      </StudioEditorLeaveGuardProvider>
+    );
 
-    fireEvent.change(await screen.findByLabelText('Bereich auswählen'), {
-      target: { value: 'content' },
-    });
+    await screen.findByLabelText('Inhalt');
+    expect(check()).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    expect(check()).toBe(false);
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: {
         files: [new File(['image'], 'uploaded.jpg', { type: 'image/jpeg' })],
@@ -463,9 +552,109 @@ describe('NewsDetailPage', () => {
       expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/)
     );
     expect((screen.getByLabelText('Medien-URL') as HTMLInputElement).value).toBe('');
+    expect(check()).toBe(true);
     expect(vi.mocked(uploadHostMediaFile)).not.toHaveBeenCalled();
     expect(vi.mocked(getHostMediaAsset)).not.toHaveBeenCalled();
     expect(screen.queryByText('Bild-URL konnte nicht ermittelt werden.')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Bild entfernen' }));
+    await waitFor(() => expect(check()).toBe(false));
+  });
+
+  it('acknowledges a complete create before navigation and protects later edits', async () => {
+    let check = () => false;
+    vi.mocked(saveNewsEditorItem).mockResolvedValueOnce({
+      id: 'guard-created',
+      title: 'Gespeichert',
+      contentType: 'news.article',
+      payload: {},
+      status: 'published',
+      author: 'Editor',
+      createdAt: '2026-10-23T10:00:00Z',
+      updatedAt: '2026-10-23T10:00:00Z',
+    });
+    navigateMock.mockImplementationOnce(async () => {
+      expect(check()).toBe(false);
+      throw new Error('navigation_failed');
+    });
+    render(
+      <StudioEditorLeaveGuardProvider
+        register={(next) => {
+          check = next;
+          return () => undefined;
+        }}
+      >
+        <NewsDetailPage mode="create" />
+      </StudioEditorLeaveGuardProvider>
+    );
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Gespeichert' } });
+    expect(check()).toBe(true);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Entwurf anlegen' })[0]);
+    await waitFor(() => expect(navigateMock).toHaveBeenCalled());
+    await waitFor(() => expect(check()).toBe(false));
+    expect(screen.queryByRole('button', { name: 'Entwurf anlegen' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Weitere Änderung' } });
+    await waitFor(() => expect(check()).toBe(true));
+    expect(vi.mocked(saveNewsEditorItem)).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a copyable request reference for a failed save', async () => {
+    vi.mocked(saveNewsEditorItem).mockRejectedValueOnce(
+      Object.assign(new Error('save_failed'), { requestId: 'news-request-123' })
+    );
+    render(<NewsDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Titel'), {
+      target: { value: 'Fehlerreferenz' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Entwurf anlegen' })[0]!);
+
+    expect(await screen.findByText('news-request-123')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'news.messages.copyRequestReference' })).toBeTruthy();
+  });
+
+  it('does not acknowledge changes made while creating the news item', async () => {
+    let check = () => false;
+    let complete: ((saved: Awaited<ReturnType<typeof saveNewsEditorItem>>) => void) | undefined;
+    vi.mocked(saveNewsEditorItem).mockReturnValueOnce(
+      new Promise((resolve) => {
+        complete = resolve;
+      })
+    );
+    navigateMock.mockImplementationOnce(async () => {
+      expect(check()).toBe(true);
+    });
+    render(
+      <StudioEditorLeaveGuardProvider
+        register={(next) => {
+          check = next;
+          return () => undefined;
+        }}
+      >
+        <NewsDetailPage mode="create" />
+      </StudioEditorLeaveGuardProvider>
+    );
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Abgesendet' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Entwurf anlegen' })[0]);
+    await waitFor(() => expect(vi.mocked(saveNewsEditorItem)).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByLabelText('Titel'), {
+      target: { value: 'Noch nicht gespeichert' },
+    });
+    await act(async () => {
+      complete?.({
+        id: 'guard-created',
+        title: 'Abgesendet',
+        contentType: 'news.article',
+        payload: {},
+        status: 'published',
+        author: 'Editor',
+        createdAt: '2026-10-23T10:00:00Z',
+        updatedAt: '2026-10-23T10:00:00Z',
+      });
+    });
+    await waitFor(() => expect(navigateMock).toHaveBeenCalled());
+    expect(check()).toBe(true);
+    expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe(
+      'Noch nicht gespeichert'
+    );
   });
 
   it('reviews and accepts a persistent asset from the media library', async () => {
@@ -494,7 +683,10 @@ describe('NewsDetailPage', () => {
       },
     } as never);
     render(<NewsDetailPage mode="create" />);
-    fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'content' } });
+    if (screen.queryByLabelText('Bereich auswählen'))
+      fireEvent.change(screen.getByLabelText('Bereich auswählen'), {
+        target: { value: 'content' },
+      });
     fireEvent.click(await screen.findByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Medium aus der Bibliothek hinzufügen' }));
     fireEvent.click(await screen.findByRole('button', { name: 'news.actions.selectImage' }));
@@ -527,9 +719,9 @@ describe('NewsDetailPage', () => {
       />
     );
 
-    const principalInput = await screen.findByLabelText('Erstellen als');
-    expect((principalInput as HTMLInputElement).value).toBe('Stadt Musterhausen');
-    expect(principalInput.getAttribute('readonly')).not.toBeNull();
+    expect(await screen.findByText('Stadt Musterhausen')).toBeTruthy();
+    expect(screen.getByText('Verantwortlich:')).toBeTruthy();
+    expect(screen.queryByLabelText('Erstellen als')).toBeNull();
     expect(screen.queryByLabelText('Autor')).toBeNull();
   });
 
@@ -579,18 +771,16 @@ describe('NewsDetailPage', () => {
   it('defaults to a fixed personal principal when no principal policy is provided', async () => {
     render(<NewsDetailPage mode="create" />);
 
-    const principalInput = await screen.findByLabelText('Erstellen als');
-    expect((principalInput as HTMLInputElement).value).toBe('Persönlich');
-    expect(principalInput.getAttribute('readonly')).not.toBeNull();
+    expect(await screen.findByText('Persönlich')).toBeTruthy();
+    expect(screen.getByText('Verantwortlich:')).toBeTruthy();
+    expect(screen.queryByLabelText('Erstellen als')).toBeNull();
     expect(screen.queryByLabelText('Autor')).toBeNull();
   });
 
   it('applies a later principal policy update', async () => {
     const { rerender } = render(<NewsDetailPage mode="create" />);
 
-    expect(((await screen.findByLabelText('Erstellen als')) as HTMLInputElement).value).toBe(
-      'Persönlich'
-    );
+    expect(await screen.findByText('Persönlich')).toBeTruthy();
 
     rerender(
       <NewsDetailPage
@@ -599,29 +789,26 @@ describe('NewsDetailPage', () => {
       />
     );
 
-    await waitFor(() => {
-      expect((screen.getByLabelText('Erstellen als') as HTMLInputElement).value).toBe(
-        'Stadt Musterhausen'
-      );
-    });
+    expect(await screen.findByText('Stadt Musterhausen')).toBeTruthy();
+    expect(screen.queryByText('Persönlich')).toBeNull();
+    expect(screen.queryByLabelText('Erstellen als')).toBeNull();
   });
 
-  it('renders four editorial tabs and no separate Freigabe tab', async () => {
+  it('shows one create form with ordered fields and no tabs or duplicate headline', async () => {
     render(<NewsDetailPage mode="create" />);
-
-    await screen.findByRole('tab', { name: 'Basis' });
-
-    expect(screen.getByRole('tab', { name: 'Basis' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Inhalte' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Einstellungen' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Historie' })).toBeTruthy();
-    expect(screen.queryByRole('tab', { name: 'Freigabe' })).toBeNull();
+    const title = await screen.findByLabelText('Titel');
+    const intro = screen.getByLabelText('Einleitung');
+    const body = screen.getByLabelText('Inhalt');
+    expect(title.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(body.compareDocumentPosition(intro) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByLabelText('Headline')).toBeNull();
+    expect(document.querySelectorAll('form')).toHaveLength(1);
+    expect(screen.getByLabelText('Quell-URL').closest('details')?.open).toBe(false);
   });
 
   it('shows the scheduled date field only for the scheduled publication mode', async () => {
     render(<NewsDetailPage mode="create" />);
-
-    fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'settings' } });
 
     await screen.findByRole('radio', { name: /Zeitgesteuert/ });
     expect(screen.queryByLabelText('Zeitpunkt der Veröffentlichung')).toBeNull();

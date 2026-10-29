@@ -44,7 +44,7 @@ export const cockpitCardFormSchema = z.object({
   sortWeight: z.number().int().finite(),
   category: z.string().trim().min(1),
   images: z.array(imageSchema),
-  link: z.string().trim().url().startsWith('https://').optional().or(z.literal('')),
+  link: z.string().trim().url().startsWith('https://').optional().or(z.literal('')).default(''),
   linkText: z.string().trim(),
   openInNewTab: z.boolean(),
   visible: z.boolean(),

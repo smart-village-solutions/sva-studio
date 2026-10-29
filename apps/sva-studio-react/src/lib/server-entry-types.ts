@@ -11,8 +11,8 @@ export type RequestContextSdk = {
   createSdkLogger(options: {
     readonly component: string;
     readonly level: 'info';
-    readonly enableConsole: boolean;
-    readonly enableOtel: boolean;
+    readonly enableConsole?: boolean;
+    readonly enableOtel?: boolean;
   }): PluginWorkerBootstrapLogger;
   getWorkspaceContext(): WorkspaceContext;
   runWithoutWorkspaceContext<T>(callback: () => T): T;

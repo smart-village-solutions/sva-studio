@@ -157,7 +157,7 @@ const parallelPlanningConflict = (
     new Set([targetYear])
   );
   const indexedDates = effectiveDatesForYears(
-    indexed.effectiveDates,
+    indexed.baseDates,
     indexed.tourDateShifts,
     comparisonYears
   );

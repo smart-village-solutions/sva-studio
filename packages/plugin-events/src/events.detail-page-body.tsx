@@ -5,6 +5,7 @@ import {
   MainserverPrincipalControl,
   resolveMainserverPrincipalOptions,
   StudioFormSummary,
+  StudioPersistentFormError,
   StudioMediaReferenceRetryAction,
   StudioPersistentActionResult,
 } from '@sva/studio-ui-react';
@@ -13,8 +14,56 @@ import { EventsDetailEditorTabs } from './events.detail-editor-tabs.js';
 import { EventsDetailMediaPicker } from './events.detail-media-picker.js';
 import type { EventsDetailPageViewProps } from './events.detail-page-view.js';
 
+const EventsDetailSaveStatus = ({
+  status,
+  pt,
+  reloadCurrentContext,
+}: Pick<EventsDetailPageViewProps, 'status' | 'pt' | 'reloadCurrentContext'>) => {
+  if (!status) return null;
+  if (status.kind !== 'error')
+    return <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary>;
+  return (
+    <StudioPersistentFormError
+      message={status.text}
+      requestId={status.requestId}
+      requestIdLabel={status.requestId ? pt('messages.requestReference') : undefined}
+      copyRequestIdLabel={status.requestId ? pt('messages.copyRequestReference') : undefined}
+      requestIdCopiedLabel={status.requestId ? pt('messages.requestReferenceCopied') : undefined}
+      requestIdCopyFailedLabel={status.requestId ? pt('messages.copyRequestReference') : undefined}
+      retryLabel={
+        status.errorCode === 'stale_mainserver_context'
+          ? pt('actions.reloadCurrentContext')
+          : undefined
+      }
+      onRetry={
+        status.errorCode === 'stale_mainserver_context'
+          ? () => void reloadCurrentContext()
+          : undefined
+      }
+    />
+  );
+};
+
+const EventsDeleteNavigationStatus = ({
+  deletion,
+  pt,
+}: Pick<EventsDetailPageViewProps, 'deletion' | 'pt'>) =>
+  deletion.navigationFailed ? (
+    <StudioPersistentActionResult
+      kind="success"
+      title={pt('messages.deleteSuccess')}
+      description={pt('messages.deleteNavigationError')}
+      actions={
+        <Button asChild size="sm" variant="secondary">
+          <Link to="/admin/content">{pt('actions.back')}</Link>
+        </Button>
+      }
+    />
+  ) : null;
+
 const EventsDetailStatus = ({
   deletion,
+  methods,
   status,
   pt,
   actingPrincipalType,
@@ -25,32 +74,44 @@ const EventsDetailStatus = ({
   deviationFieldLabels,
   media,
   setStatus,
+  reloadCurrentContext,
 }: EventsDetailPageViewProps) => (
   <>
-    {deletion.navigationFailed ? (
-      <StudioPersistentActionResult
-        kind="success"
-        title={pt('messages.deleteSuccess')}
-        description={pt('messages.deleteNavigationError')}
-        actions={
-          <Button asChild size="sm" variant="secondary">
-            <Link to="/admin/content">{pt('actions.back')}</Link>
-          </Button>
-        }
-      />
+    <EventsDeleteNavigationStatus deletion={deletion} pt={pt} />
+    <EventsDetailSaveStatus status={status} pt={pt} reloadCurrentContext={reloadCurrentContext} />
+    {mode === 'create' && media.leaveGuard.createdContentId ? (
+      <StudioFormSummary kind="success">
+        {!media.mediaReferenceSync.hasPendingRetry &&
+        (methods.formState.isDirty || media.mediaDirty) ? (
+          <span className="block">{pt('messages.unsavedAfterCreate')}</span>
+        ) : null}
+        <Link to="/admin/events/$id" params={{ id: media.leaveGuard.createdContentId }}>
+          {pt('actions.openSavedContent')}
+        </Link>
+      </StudioFormSummary>
     ) : null}
-    {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
-    <MainserverPrincipalControl
-      id="events-acting-principal"
-      label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-      description={pt('principal.description')}
-      value={actingPrincipalType}
-      options={resolveMainserverPrincipalOptions(principalControl, {
-        value: actingPrincipalType,
-        label: pt(`principal.${actingPrincipalType}`),
-      })}
-      onChange={setActingPrincipalType}
-    />
+    <div
+      className={
+        mode === 'create'
+          ? 'has-[select]:rounded-2xl has-[select]:border has-[select]:border-border/60 has-[select]:bg-card has-[select]:p-5'
+          : undefined
+      }
+    >
+      <MainserverPrincipalControl
+        fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
+        id="events-acting-principal"
+        label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+        description={pt('principal.description')}
+        value={actingPrincipalType}
+        options={resolveMainserverPrincipalOptions(principalControl, {
+          value: actingPrincipalType,
+          label: pt(`principal.${actingPrincipalType}`),
+        })}
+        onChange={setActingPrincipalType}
+        readinessByPrincipal={principalControl?.readinessByPrincipal}
+        readinessMessage={principalControl?.readinessMessage}
+      />
+    </div>
     <MainserverDeviationSummary
       deviations={deviations}
       title={pt('messages.degradedDataWarning')}
@@ -63,9 +124,10 @@ const EventsDetailStatus = ({
     <StudioMediaReferenceRetryAction
       controller={media.mediaReferenceSync}
       label={pt('actions.retryMediaReferences')}
-      onSuccess={() =>
-        setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') })
-      }
+      onSuccess={() => {
+        media.leaveGuard.acknowledgeReferenceRetry();
+        setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
+      }}
       onFailure={() =>
         setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
       }
@@ -73,17 +135,11 @@ const EventsDetailStatus = ({
   </>
 );
 
-export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
+function EventsEditorFields(props: EventsDetailPageViewProps) {
   const {
-    methods,
     pt,
-    deletion,
     media,
     canUploadMedia,
-    canUpdateMedia,
-    navigate,
-    formId,
-    submit,
     mode,
     contentId,
     tabs,
@@ -100,6 +156,41 @@ export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
     saveFeedback,
   } = props;
   return (
+    <EventsDetailEditorTabs
+      pt={pt}
+      mode={mode}
+      contentId={contentId}
+      tabs={tabs}
+      activeTab={activeTab}
+      handleTabChange={handleTabChange}
+      warmTab={warmTab}
+      visitedTabs={visitedTabs}
+      categoryOptions={categoryOptions}
+      categoryOptionsError={categoryOptionsError}
+      categoryOptionsLoading={categoryOptionsLoading}
+      loadedItem={loadedItem}
+      mediaUsages={media.mediaUsages}
+      addManualMedia={media.addManualMedia}
+      onChangeMediaUsages={(usages) => {
+        media.setMediaUsages(usages);
+        media.setRequiresReferenceSync(
+          (current) => current || usages.some((usage) => Boolean(usage.assetId))
+        );
+      }}
+      canSelectMedia={canSelectMedia}
+      canUploadMedia={canUploadMedia}
+      mediaEditingDisabled={!mediaReferencesReady || saveFeedback.status === 'saving'}
+      onOpenMediaPicker={(pickerMode) =>
+        pickerMode === 'upload' ? media.mediaPicker.openUpload() : media.mediaPicker.openLibrary()
+      }
+    />
+  );
+}
+
+export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
+  const { methods, pt, deletion, media, canUploadMedia, canUpdateMedia, navigate, formId, submit } =
+    props;
+  return (
     <>
       <EventsDetailDeleteDialog
         deletion={deletion}
@@ -112,38 +203,18 @@ export function EventsDetailPageBody(props: EventsDetailPageViewProps) {
         canUpdateMedia={canUpdateMedia}
         navigate={navigate}
       />
-      <form id={formId} noValidate onSubmit={(event) => void submit(event)} className="space-y-5">
+      <form
+        onInvalidCapture={(event) =>
+          event.target instanceof HTMLElement &&
+          event.target.closest('details')?.setAttribute('open', '')
+        }
+        id={formId}
+        noValidate
+        onSubmit={(event) => void submit(event)}
+        className="space-y-5"
+      >
         <EventsDetailStatus {...props} />
-        <EventsDetailEditorTabs
-          pt={pt}
-          mode={mode}
-          contentId={contentId}
-          tabs={tabs}
-          activeTab={activeTab}
-          handleTabChange={handleTabChange}
-          warmTab={warmTab}
-          visitedTabs={visitedTabs}
-          categoryOptions={categoryOptions}
-          categoryOptionsError={categoryOptionsError}
-          categoryOptionsLoading={categoryOptionsLoading}
-          loadedItem={loadedItem}
-          mediaUsages={media.mediaUsages}
-          addManualMedia={media.addManualMedia}
-          onChangeMediaUsages={(usages) => {
-            media.setMediaUsages(usages);
-            media.setRequiresReferenceSync(
-              (current) => current || usages.some((usage) => Boolean(usage.assetId))
-            );
-          }}
-          canSelectMedia={canSelectMedia}
-          canUploadMedia={canUploadMedia}
-          mediaEditingDisabled={!mediaReferencesReady || saveFeedback.status === 'saving'}
-          onOpenMediaPicker={(pickerMode) =>
-            pickerMode === 'upload'
-              ? media.mediaPicker.openUpload()
-              : media.mediaPicker.openLibrary()
-          }
-        />
+        <EventsEditorFields {...props} />
       </form>
     </>
   );

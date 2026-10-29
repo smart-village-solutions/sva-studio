@@ -19,6 +19,7 @@ import { PoiLocationMap } from './poi.location-map.js';
 import { resolvePoiMapGeocodingMessageKey } from './poi.map-geocoding-messages.js';
 
 type PoiDetailLocationSectionProps = Readonly<{
+  createMode?: boolean;
   pt: (key: string) => string;
   geocodingEnabled: boolean;
   reverseGeocodingEnabled: boolean;
@@ -44,6 +45,7 @@ type PoiDetailLocationSectionProps = Readonly<{
 }>;
 
 export function PoiDetailLocationSection({
+  createMode,
   pt,
   geocodingEnabled,
   reverseGeocodingEnabled,
@@ -227,22 +229,25 @@ export function PoiDetailLocationSection({
         </Alert>
       ) : null}
 
-      <StudioFieldGroup columns={2}>
-        <StudioField id="poi-latitude" label={pt('fields.latitude')}>
-          <Input
-            id="poi-latitude"
-            value={latitude}
-            onChange={(event) => onLatitudeChange(event.target.value)}
-          />
-        </StudioField>
-        <StudioField id="poi-longitude" label={pt('fields.longitude')}>
-          <Input
-            id="poi-longitude"
-            value={longitude}
-            onChange={(event) => onLongitudeChange(event.target.value)}
-          />
-        </StudioField>
-      </StudioFieldGroup>
+      <details open={createMode ? undefined : true}>
+        <summary hidden={!createMode}>{pt('create.coordinates')}</summary>
+        <StudioFieldGroup columns={2}>
+          <StudioField id="poi-latitude" label={pt('fields.latitude')}>
+            <Input
+              id="poi-latitude"
+              value={latitude}
+              onChange={(event) => onLatitudeChange(event.target.value)}
+            />
+          </StudioField>
+          <StudioField id="poi-longitude" label={pt('fields.longitude')}>
+            <Input
+              id="poi-longitude"
+              value={longitude}
+              onChange={(event) => onLongitudeChange(event.target.value)}
+            />
+          </StudioField>
+        </StudioFieldGroup>
+      </details>
     </PoiDetailSectionCard>
   );
 }

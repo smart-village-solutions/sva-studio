@@ -8,6 +8,10 @@ import {
 } from './news-plugin.fixtures';
 import { establishServerReadableAuthSession } from './studio-shell.helpers';
 
+if (process.env.PLAYWRIGHT_RUNTIME_PROFILE === 'local-builder') {
+  test.use({ storageState: { cookies: [], origins: [] } });
+}
+
 const cockpitCardsUser = {
   user: {
     id: 'kc-editor-1',
@@ -152,22 +156,33 @@ test('persists Kachel text and media across create, update and reload before del
 
   await gotoHomeAsAuthenticatedUser(page);
   await navigateClientSide(page, '/admin/cockpit-cards/new');
+  await expect(page.getByRole('tablist')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Kachel anlegen' })).toBeVisible();
   const accessibility = await new AxeBuilder({ page }).include('#main-content').analyze();
   expect(
     accessibility.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))
   ).toEqual([]);
   await page.locator('#cockpit-card-heading').fill('Bürgerbüro');
+  await page
+    .locator('summary')
+    .filter({ hasText: /^Kategorie$/ })
+    .click();
   await page.locator('#cockpit-card-category').selectOption('Service');
-  await page.getByRole('tab', { name: 'Inhalt' }).click();
   await page.locator('#cockpit-card-text').fill('Herbstangebote der Volkshochschule');
+  await page
+    .locator('summary')
+    .filter({ hasText: /^Bilder$/ })
+    .click();
   await page.getByRole('button', { name: 'Medium hinzufügen' }).click();
   await page.getByRole('button', { name: 'Medium hinzufügen' }).click();
   await page.getByLabel('Bild-URL').nth(0).fill('https://example.test/buergerbuero-aussen.jpg');
   await page.getByLabel('Alternativtext').nth(0).fill('Eingang des Bürgerbüros');
   await page.getByLabel('Bild-URL').nth(1).fill('https://example.test/buergerbuero-innen.jpg');
   await page.getByLabel('Alternativtext').nth(1).fill('Wartebereich des Bürgerbüros');
-  await page.getByRole('tab', { name: 'Einstellungen' }).click();
+  await page
+    .locator('summary')
+    .filter({ hasText: /^Link$/ })
+    .click();
   await page.locator('#cockpit-card-link').fill('https://example.test/buergerbuero');
   await page.locator('#cockpit-card-link-text').fill('Zum Bürgerbüro');
   await page.locator('#cockpit-card-open-new-tab').check();
@@ -232,9 +247,7 @@ test('persists Kachel text and media across create, update and reload before del
   await expect(page.getByText('Kachel konnte nicht geladen werden.')).toHaveCount(0);
   await expect(page.locator('#cockpit-card-heading')).toHaveValue('Bürgerbüro aktualisiert');
   await page.getByRole('tab', { name: 'Inhalt' }).click();
-  await expect(page.locator('#cockpit-card-text')).toHaveValue(
-    'Angebote der Kreisvolkshochschule'
-  );
+  await expect(page.locator('#cockpit-card-text')).toHaveValue('Angebote der Kreisvolkshochschule');
   await expect(page.getByLabel('Bild-URL').nth(0)).toHaveValue(
     'https://example.test/buergerbuero-aussen.jpg'
   );

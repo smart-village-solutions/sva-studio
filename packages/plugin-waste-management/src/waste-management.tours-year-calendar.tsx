@@ -138,30 +138,13 @@ type TourYearCalendarDialogProps = {
   readonly onOpenChange: (open: boolean) => void;
 };
 
-export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
-  const pt = usePluginTranslation('wasteManagement');
-  const locale = resolveEditorLocale();
-  const currentYear = new Date().getFullYear();
-  const [year, setYear] = useState(currentYear);
-  const canCreateShift = Boolean(
-    props.canManageScheduling && props.tour && isWasteTourValidityApplicable(props.tour)
-  );
-
-  useEffect(() => {
-    if (props.open) {
-      setYear(currentYear);
-    }
-  }, [props.open, currentYear]);
-
-  const occurrenceEntries =
-    props.tour && props.scheduling
-      ? calculateTourOccurrenceEntriesForYear(props.tour, year, props.scheduling)
-      : [];
-  const dates = occurrenceEntries.map((entry) => entry.date);
-  const months = Array.from({ length: 12 }, (_, monthIndex) => ({
+const calendarMonths = (
+  entries: ReturnType<typeof calculateTourOccurrenceEntriesForYear>
+) =>
+  Array.from({ length: 12 }, (_, monthIndex) => ({
     monthIndex,
     highlightedDays: new Map(
-      occurrenceEntries
+      entries
         .filter((entry) => Number(entry.date.slice(5, 7)) === monthIndex + 1)
         .map(
           (entry) =>
@@ -172,6 +155,39 @@ export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
         )
     ),
   }));
+
+const initialCalendarYear = (tour: WasteTourRecord | null, currentYear: number): number => {
+  const startYear =
+    tour?.firstDate && /^\d{4}-/.test(tour.firstDate)
+      ? Number(tour.firstDate.slice(0, 4))
+      : currentYear;
+  return startYear <= currentYear && (!tour?.endDate || tour.endDate >= `${currentYear}-01-01`)
+    ? currentYear
+    : startYear;
+};
+
+export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const locale = resolveEditorLocale();
+  const currentYear = new Date().getFullYear();
+  const startYear = initialCalendarYear(props.tour, currentYear);
+  const [year, setYear] = useState(startYear);
+  const canCreateShift = Boolean(
+    props.canManageScheduling && props.tour && isWasteTourValidityApplicable(props.tour)
+  );
+
+  useEffect(() => {
+    if (props.open) {
+      setYear(startYear);
+    }
+  }, [props.open, startYear]);
+
+  const occurrenceEntries =
+    props.tour && props.scheduling
+      ? calculateTourOccurrenceEntriesForYear(props.tour, year, props.scheduling)
+      : [];
+  const dates = occurrenceEntries.map((entry) => entry.date);
+  const months = calendarMonths(occurrenceEntries);
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>

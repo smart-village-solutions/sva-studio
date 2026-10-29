@@ -734,6 +734,7 @@ describe('content core authorization', () => {
     ['faq.faq', 'faq.read'],
     ['cockpit-cards.cockpit-card', 'cockpit-cards.read'],
     ['projects.project', 'projects.read'],
+    ['vouchers.voucher', 'vouchers.read'],
     ['surveys.survey', 'surveys.read'],
   ] as const)(
     'authorizes external %s detail reads with %s',

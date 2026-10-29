@@ -33,14 +33,21 @@ export const readMainserverMutationFollowUpContext = (
   request: Request
 ): MainserverMutationFollowUpContext | undefined => mutationFollowUpContexts.get(request);
 
-const principalResolutionError = (status: string): Response => {
+const principalResolutionError = (status: string, reasonCode?: string): Response => {
   switch (status) {
     case 'acting_principal_not_allowed':
       return errorJson(403, status, 'Der ausgewählte Mutationsprincipal ist nicht zulässig.');
     case 'organization_mainserver_credentials_missing':
-      return errorJson(409, status, 'Für die aktive Organisation fehlen Mainserver-Credentials.');
+      return errorJson(
+        409,
+        status,
+        'Die Mainserver-Anbindung der aktiven Organisation ist nicht bereit.',
+        { reasonCode: reasonCode ?? 'missing_credentials' }
+      );
     case 'missing_credentials':
       return errorJson(400, status, 'Für den Benutzer fehlen Mainserver-Credentials.');
+    case 'partial_credentials':
+      return errorJson(400, status, 'Die Mainserver-Credentials des Benutzers sind unvollständig.');
     case 'database_unavailable':
     case 'identity_provider_unavailable':
       return errorJson(
@@ -227,7 +234,7 @@ const resolveMainserverActor = async (input: {
     activeOrganizationId: input.authorizedActor.activeOrganizationId,
     actingPrincipalType: input.actingPrincipalType,
   });
-  if (!resolved.ok) return principalResolutionError(resolved.status);
+  if (!resolved.ok) return principalResolutionError(resolved.status, resolved.reasonCode);
 
   const actor: MainserverMutationActor = {
     instanceId: resolved.context.instanceId,

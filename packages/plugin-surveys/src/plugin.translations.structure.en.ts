@@ -3,6 +3,7 @@ export const pluginSurveysStructureEnTranslations = {
     title: 'Surveys',
   },
   actions: {
+    openSavedContent: 'Open saved content',
     create: 'Create survey',
     edit: 'View survey',
     update: 'Save survey',

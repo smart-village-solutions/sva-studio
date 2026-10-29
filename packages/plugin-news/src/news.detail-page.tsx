@@ -5,6 +5,8 @@ import {
   StudioLoadingState,
   useStudioMediaReferenceSync,
   useStudioSaveFeedback,
+  useStudioEditorLeaveGuard,
+  isMainserverPrincipalReady,
   type ContentMediaUsage,
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
@@ -87,6 +89,45 @@ export const NewsDetailPage = ({
   );
 
   const { formState, reset } = methods;
+  const [editorMediaDirty, setEditorMediaDirty] = React.useState(false);
+  const leaveGuard = useStudioEditorLeaveGuard({
+    enabled: mode === 'create',
+    hasUnsavedChanges:
+      formState.isDirty ||
+      (editorMediaDirty && (retryCreatedContentId !== null || mediaUsages.length > 0)) ||
+      mediaReferenceSync.hasPendingRetry,
+  });
+  const submittedRevision = React.useRef<number | null>(null);
+  React.useEffect(() => {
+    const subscription = methods.watch((_values, { name }) => {
+      if (name) leaveGuard.markChanged();
+    });
+    return () => subscription.unsubscribe();
+  }, [methods, leaveGuard.markChanged]);
+  const setEditorMediaUsages = React.useCallback<
+    React.Dispatch<React.SetStateAction<readonly ContentMediaUsage[]>>
+  >(
+    (update) => {
+      leaveGuard.markChanged();
+      setEditorMediaDirty(true);
+      setMediaUsages(update);
+    },
+    [leaveGuard.markChanged]
+  );
+  const captureCreateSave = React.useCallback(() => {
+    submittedRevision.current = leaveGuard.captureRevision();
+  }, [leaveGuard.captureRevision]);
+  const completeCreateSave = React.useCallback(() => {
+    if (mode !== 'create') return true;
+    if (
+      submittedRevision.current === null ||
+      !leaveGuard.acknowledgeSaved(submittedRevision.current)
+    )
+      return false;
+    reset(methods.getValues());
+    setEditorMediaDirty(false);
+    return true;
+  }, [mode, leaveGuard.acknowledgeSaved, reset, methods]);
 
   React.useEffect(() => {
     if (formState.isDirty) {
@@ -109,10 +150,11 @@ export const NewsDetailPage = ({
     addManualMedia,
     mediaPickerFeedback,
     refreshMediaAssets,
+    libraryStatus,
   } = useNewsDetailMedia({
     methods,
     mediaUsages,
-    setMediaUsages,
+    setMediaUsages: setEditorMediaUsages,
     setRequiresReferenceSync,
     setMediaAssets,
     pt,
@@ -123,7 +165,7 @@ export const NewsDetailPage = ({
     void refreshMediaAssets();
   }, [refreshMediaAssets]);
 
-  useNewsDetailLoad({
+  const { reloadCurrentContext } = useNewsDetailLoad({
     mode,
     contentId,
     principalControl,
@@ -161,6 +203,9 @@ export const NewsDetailPage = ({
     setLoadedItem,
     setScheduledPublicationInput,
     setInvalidScheduledPublicationInput,
+    captureCreateSave,
+    completeCreateSave,
+    retryCreatedContentId,
   });
 
   const {
@@ -192,7 +237,7 @@ export const NewsDetailPage = ({
     loadedItem,
     mediaUsages,
     addManualMedia,
-    setMediaUsages,
+    setMediaUsages: setEditorMediaUsages,
     setRequiresReferenceSync,
     canSelectMedia,
     canUploadMedia,
@@ -215,7 +260,9 @@ export const NewsDetailPage = ({
       {...{
         mode,
         pt,
-        canSave,
+        canSave: canSave && !(mode === 'create' && retryCreatedContentId),
+        principalReady: isMainserverPrincipalReady(principalControl, actingPrincipalType),
+        reloadCurrentContext,
         formId,
         mediaReferenceSync,
         saveFeedback,
@@ -227,6 +274,7 @@ export const NewsDetailPage = ({
         deleteLabel,
         methods,
         mediaAssets,
+        libraryStatus,
         canUploadMedia,
         mediaPickerFeedback,
         isAssetSelectable,
@@ -239,8 +287,8 @@ export const NewsDetailPage = ({
         statusMessage,
         retryCreatedContentId,
         navigateToCreatedDetail,
+        completeCreateSave,
         setStatusMessage,
-        setRetryCreatedContentId,
         tabs,
         activeTab,
         handleTabChange,

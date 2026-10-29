@@ -3,13 +3,19 @@ import { type StudioDetailTabDefinition, type useStudioSaveFeedback } from '@sva
 import type { UseFormReturn } from 'react-hook-form';
 
 import { ContentFields } from './cockpit-cards.content-fields.js';
-import { BasisFields, SettingsFields } from './cockpit-cards.editor-fields.js';
+import {
+  BasisFields,
+  SettingsFields,
+  HeadingField,
+  CockpitCardCreateSettings,
+} from './cockpit-cards.editor-fields.js';
 import type { useCockpitCardMedia } from './cockpit-cards.editor-media.js';
 import type { Tab } from './cockpit-cards.editor-view.js';
 import { CockpitCardsHistory } from './cockpit-cards.history.js';
 import type { CockpitCardFormValues } from './cockpit-cards.types.js';
 
 function contentTab({
+  mode,
   pt,
   form,
   media,
@@ -17,6 +23,7 @@ function contentTab({
   canUploadMedia,
   saveFeedback,
 }: Readonly<{
+  mode: 'create' | 'edit';
   pt: ReturnType<typeof usePluginTranslation>;
   form: UseFormReturn<CockpitCardFormValues>;
   media: ReturnType<typeof useCockpitCardMedia>;
@@ -24,7 +31,7 @@ function contentTab({
   canUploadMedia: boolean;
   saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
 }>): StudioDetailTabDefinition<Tab> {
-  const { mediaUsages, setMediaUsages, mediaPicker, addManualMedia, loadAssetSnapshot } = media;
+  const { mediaUsages, changeMediaUsages, mediaPicker, addManualMedia, loadAssetSnapshot } = media;
   return {
     id: 'content',
     label: pt('tabs.content.label'),
@@ -33,10 +40,11 @@ function contentTab({
     icon: 'content',
     panel: (
       <ContentFields
+        createMode={mode === 'create'}
         form={form}
         pt={pt}
         mediaUsages={mediaUsages}
-        onMediaUsagesChange={setMediaUsages}
+        onMediaUsagesChange={changeMediaUsages}
         canSelectMedia={canSelectMedia}
         canUploadMedia={canUploadMedia}
         mediaEditingDisabled={saveFeedback.status === 'saving'}
@@ -50,6 +58,20 @@ function contentTab({
   };
 }
 
+type CockpitCardEditorTabsInput = Readonly<{
+  pt: ReturnType<typeof usePluginTranslation>;
+  form: UseFormReturn<CockpitCardFormValues>;
+  mode: 'create' | 'edit';
+  contentId?: string;
+  link: string;
+  options: readonly { id: string; name: string }[];
+  categoriesState: 'loading' | 'error' | 'ready';
+  media: ReturnType<typeof useCockpitCardMedia>;
+  canSelectMedia: boolean;
+  canUploadMedia: boolean;
+  saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
+}>;
+
 export function cockpitCardEditorTabs({
   pt,
   form,
@@ -62,19 +84,33 @@ export function cockpitCardEditorTabs({
   canSelectMedia,
   canUploadMedia,
   saveFeedback,
-}: Readonly<{
-  pt: ReturnType<typeof usePluginTranslation>;
-  form: UseFormReturn<CockpitCardFormValues>;
-  mode: 'create' | 'edit';
-  contentId?: string;
-  link: string;
-  options: readonly { id: string; name: string }[];
-  categoriesState: 'loading' | 'error' | 'ready';
-  media: ReturnType<typeof useCockpitCardMedia>;
-  canSelectMedia: boolean;
-  canUploadMedia: boolean;
-  saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
-}>): readonly StudioDetailTabDefinition<Tab>[] {
+}: CockpitCardEditorTabsInput): readonly StudioDetailTabDefinition<Tab>[] {
+  if (mode === 'create') {
+    return [
+      {
+        id: 'content',
+        label: pt('tabs.content.label'),
+        panel: (
+          <div className="space-y-6">
+            <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-5">
+              <HeadingField form={form} pt={pt} />
+            </div>
+            {
+              contentTab({ mode, pt, form, media, canSelectMedia, canUploadMedia, saveFeedback })
+                .panel
+            }
+            <CockpitCardCreateSettings
+              form={form}
+              pt={pt}
+              link={link}
+              options={options}
+              categoriesState={categoriesState}
+            />
+          </div>
+        ),
+      },
+    ];
+  }
   return [
     {
       id: 'basis',
@@ -92,7 +128,7 @@ export function cockpitCardEditorTabs({
         />
       ),
     },
-    contentTab({ pt, form, media, canSelectMedia, canUploadMedia, saveFeedback }),
+    contentTab({ mode, pt, form, media, canSelectMedia, canUploadMedia, saveFeedback }),
     {
       id: 'settings',
       label: pt('tabs.settings.label'),

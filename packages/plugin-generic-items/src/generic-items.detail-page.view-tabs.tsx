@@ -25,6 +25,7 @@ export const GenericItemsEditorTabsView = ({
   } = view;
   return (
     <GenericItemsDetailTabs
+      mode={view.mode}
       activeTab={activeTab}
       categoryOptions={categoryOptions}
       categoryOptionsError={categoryOptionsError}

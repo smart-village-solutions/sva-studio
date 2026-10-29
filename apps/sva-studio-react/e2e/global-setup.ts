@@ -15,11 +15,12 @@ const waitForAppRoute = async (): Promise<void> => {
   for (let attempt = 1; attempt <= 120; attempt += 1) {
     try {
       const response = await fetch(readyURL, {
-        method: 'HEAD',
+        method: 'GET',
         redirect: 'manual',
         signal: AbortSignal.timeout(2_000),
       });
-      if (response.status === 405) {
+      if (response.status >= 200 && response.status < 400) {
+        await response.body?.cancel();
         return;
       }
       lastError = new Error(`status ${response.status}`);

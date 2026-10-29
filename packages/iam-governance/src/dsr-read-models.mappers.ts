@@ -2,6 +2,7 @@ import type { IamDsrCaseListItem } from '@sva/core';
 
 import { readString } from './input-readers.js';
 import {
+  mapAccountRegistrationRow,
   mapExportJobRow,
   mapLegalHoldRow,
   mapProfileCorrectionRow,
@@ -35,6 +36,7 @@ export const buildAdminDsrItems = (rows: AdminDsrSourceRows): IamDsrCaseListItem
   ...rows.legalHolds.map(mapLegalHoldRow),
   ...rows.profileCorrections.map(mapProfileCorrectionRow),
   ...rows.recipientNotifications.map(mapRecipientNotificationRow),
+  ...rows.accountRegistrations.map(mapAccountRegistrationRow),
 ];
 
 export const filterAdminDsrItems = (

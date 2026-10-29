@@ -17,6 +17,7 @@ export function EventsDetailBasisTab({
   loadedItem,
   mode,
   pt,
+  section,
 }: Readonly<{
   availableCategories: readonly EventCategoryOption[];
   categoryOptionsError?: string | null;
@@ -24,6 +25,7 @@ export function EventsDetailBasisTab({
   loadedItem: EventContentItem | null;
   mode: 'create' | 'edit';
   pt: (key: string) => string;
+  section?: 'title' | 'categories' | 'recurrence';
 }>) {
   const { control, setValue } = useFormContext<EventsDetailFormValues>();
   const title = useWatch({ control, name: 'title' }) ?? '';
@@ -76,132 +78,149 @@ export function EventsDetailBasisTab({
     },
   ];
 
+  if (section === 'title')
+    return (
+      <StudioField id="event-title" label={pt('fields.title')} required>
+        <Input
+          id="event-title"
+          required
+          value={title}
+          onChange={(event) => setValue('title', event.target.value, { shouldDirty: true })}
+        />
+      </StudioField>
+    );
   return (
     <div className="space-y-6">
-      <EventsDetailCard
-        title={pt('cards.basis.identity.title')}
-        description={pt('cards.basis.identity.description')}
-      >
-        <StudioField id="event-title" label={pt('fields.title')} required>
-          <Input
-            id="event-title"
-            required
-            value={title}
-            onChange={(event) => setValue('title', event.target.value, { shouldDirty: true })}
-          />
-        </StudioField>
-        <StudioField
-          id="event-categories"
-          label={pt('fields.categories')}
-          description={pt('fields.categoriesHelp')}
+      {!section || section === 'categories' ? (
+        <EventsDetailCard
+          title={pt(section === 'categories' ? 'fields.categories' : 'cards.basis.identity.title')}
+          description={pt('cards.basis.identity.description')}
         >
-          <Controller
-            name="basis.categories"
-            control={control}
-            render={({ field }) => (
-              <EventsCategoryMultiselect
-                availableCategories={availableCategories}
-                emptyText={pt('fields.categoriesEmpty')}
-                errorMessage={categoryOptionsError ?? undefined}
-                loading={categoryOptionsLoading}
-                helpText={pt('fields.categoriesHelp')}
-                inputId="event-category"
-                inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
-                loadingText={pt('messages.categoryOptionsLoading')}
-                searchLabel={pt('fields.categoriesSearch')}
-                unavailableText={pt('fields.categoryUnavailable')}
-                removeLabel={(name) => pt('actions.removeCategory').replace('{{name}}', name)}
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </StudioField>
-      </EventsDetailCard>
-
-      <EventsDetailCard
-        title={pt('cards.basis.recurrence.title')}
-        description={pt('cards.basis.recurrence.description')}
-      >
-        <StudioField id="event-repeat" label={pt('fields.repeat')}>
-          <Checkbox
-            id="event-repeat"
-            checked={repeat}
-            onChange={(event) => {
-              const nextRepeat = event.target.checked;
-              setValue('basis.repeat', nextRepeat, { shouldDirty: true });
-              if (!nextRepeat) {
-                setValue('basis.recurringType', '', { shouldDirty: true });
-                setValue('basis.recurringInterval', '', { shouldDirty: true });
-                setValue('basis.recurringWeekdays', [], { shouldDirty: true });
-              }
-            }}
-          />
-        </StudioField>
-        {repeat ? (
-          <>
-            <StudioField id="event-recurring-type" label={pt('fields.recurringType')}>
-              <Select
-                id="event-recurring-type"
-                value={recurringType}
-                onChange={(event) => {
-                  const nextRecurringType = event.target.value;
-                  setValue('basis.recurringType', nextRecurringType, { shouldDirty: true });
-                  if (nextRecurringType !== '1') {
-                    setValue('basis.recurringWeekdays', [], { shouldDirty: true });
-                  }
-                }}
-              >
-                {recurringTypeOptions.map((option) => (
-                  <option key={option.value || 'empty'} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </StudioField>
-            <StudioField id="event-recurring-interval" label={pt('fields.recurringInterval')}>
+          {!section ? (
+            <StudioField id="event-title" label={pt('fields.title')} required>
               <Input
-                id="event-recurring-interval"
-                type="number"
-                min="1"
-                step="1"
-                inputMode="numeric"
-                value={recurringInterval}
-                onChange={(event) =>
-                  setValue('basis.recurringInterval', event.target.value, { shouldDirty: true })
-                }
+                id="event-title"
+                required
+                value={title}
+                onChange={(event) => setValue('title', event.target.value, { shouldDirty: true })}
               />
             </StudioField>
-            {recurringType === '1' ? (
-              <StudioField id="event-recurring-weekdays" label={pt('fields.recurringWeekdays')}>
-                <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
-                  {recurringWeekdayOptions.map((option) => (
-                    <Button
-                      key={option.value}
-                      type="button"
-                      variant={recurringWeekdays.includes(option.value) ? 'primary' : 'secondary'}
-                      size="sm"
-                      aria-pressed={recurringWeekdays.includes(option.value)}
-                      aria-label={option.label}
-                      className="min-w-10 rounded-full px-3"
-                      onClick={() => {
-                        const nextWeekdays = recurringWeekdays.includes(option.value)
-                          ? recurringWeekdays.filter((entry) => entry !== option.value)
-                          : [...recurringWeekdays, option.value];
-                        setValue('basis.recurringWeekdays', nextWeekdays, { shouldDirty: true });
-                      }}
-                    >
-                      {option.shortLabel}
-                    </Button>
-                  ))}
-                </div>
-              </StudioField>
-            ) : null}
-          </>
-        ) : null}
-      </EventsDetailCard>
+          ) : null}
+          <StudioField
+            id="event-categories"
+            label={pt('fields.categories')}
+            description={pt('fields.categoriesHelp')}
+          >
+            <Controller
+              name="basis.categories"
+              control={control}
+              render={({ field }) => (
+                <EventsCategoryMultiselect
+                  availableCategories={availableCategories}
+                  emptyText={pt('fields.categoriesEmpty')}
+                  errorMessage={categoryOptionsError ? pt('create.categoryUnavailable') : undefined}
+                  loading={categoryOptionsLoading}
+                  helpText=""
+                  inputId="event-category"
+                  inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
+                  loadingText={pt('messages.categoryOptionsLoading')}
+                  searchLabel={pt('fields.categoriesSearch')}
+                  unavailableText={pt('fields.categoryUnavailable')}
+                  removeLabel={(name) => pt('actions.removeCategory').replace('{{name}}', name)}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </StudioField>
+        </EventsDetailCard>
+      ) : null}
 
-      {mode === 'edit' ? (
+      {!section || section === 'recurrence' ? (
+        <EventsDetailCard
+          title={pt('cards.basis.recurrence.title')}
+          description={pt('cards.basis.recurrence.description')}
+        >
+          <StudioField id="event-repeat" label={pt('fields.repeat')}>
+            <Checkbox
+              id="event-repeat"
+              checked={repeat}
+              onChange={(event) => {
+                const nextRepeat = event.target.checked;
+                setValue('basis.repeat', nextRepeat, { shouldDirty: true });
+                if (!nextRepeat) {
+                  setValue('basis.recurringType', '', { shouldDirty: true });
+                  setValue('basis.recurringInterval', '', { shouldDirty: true });
+                  setValue('basis.recurringWeekdays', [], { shouldDirty: true });
+                }
+              }}
+            />
+          </StudioField>
+          {repeat ? (
+            <>
+              <StudioField id="event-recurring-type" label={pt('fields.recurringType')}>
+                <Select
+                  id="event-recurring-type"
+                  value={recurringType}
+                  onChange={(event) => {
+                    const nextRecurringType = event.target.value;
+                    setValue('basis.recurringType', nextRecurringType, { shouldDirty: true });
+                    if (nextRecurringType !== '1') {
+                      setValue('basis.recurringWeekdays', [], { shouldDirty: true });
+                    }
+                  }}
+                >
+                  {recurringTypeOptions.map((option) => (
+                    <option key={option.value || 'empty'} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </StudioField>
+              <StudioField id="event-recurring-interval" label={pt('fields.recurringInterval')}>
+                <Input
+                  id="event-recurring-interval"
+                  type="number"
+                  min="1"
+                  step="1"
+                  inputMode="numeric"
+                  value={recurringInterval}
+                  onChange={(event) =>
+                    setValue('basis.recurringInterval', event.target.value, { shouldDirty: true })
+                  }
+                />
+              </StudioField>
+              {recurringType === '1' ? (
+                <StudioField id="event-recurring-weekdays" label={pt('fields.recurringWeekdays')}>
+                  <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
+                    {recurringWeekdayOptions.map((option) => (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant={recurringWeekdays.includes(option.value) ? 'primary' : 'secondary'}
+                        size="sm"
+                        aria-pressed={recurringWeekdays.includes(option.value)}
+                        aria-label={option.label}
+                        className="min-w-10 rounded-full px-3"
+                        onClick={() => {
+                          const nextWeekdays = recurringWeekdays.includes(option.value)
+                            ? recurringWeekdays.filter((entry) => entry !== option.value)
+                            : [...recurringWeekdays, option.value];
+                          setValue('basis.recurringWeekdays', nextWeekdays, { shouldDirty: true });
+                        }}
+                      >
+                        {option.shortLabel}
+                      </Button>
+                    ))}
+                  </div>
+                </StudioField>
+              ) : null}
+            </>
+          ) : null}
+        </EventsDetailCard>
+      ) : null}
+
+      {mode === 'edit' && !section ? (
         <EventsDetailCard
           title={pt('cards.basis.meta.title')}
           description={pt('cards.basis.meta.description')}

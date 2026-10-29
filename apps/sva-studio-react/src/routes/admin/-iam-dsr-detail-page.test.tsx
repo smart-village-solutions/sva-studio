@@ -1,3 +1,4 @@
+import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -12,6 +13,10 @@ const isIamCockpitEnabledMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => useNavigateMock,
+  Link: ({ params, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { params: { userId: string }; to: string }) => {
+    const { to: _to, ...anchorProps } = props;
+    return <a {...anchorProps} href={`/admin/users/${params.userId}`}>{children}</a>;
+  },
 }));
 
 vi.mock('../../providers/auth-provider', () => ({
@@ -98,6 +103,26 @@ describe('IamDsrDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Zur Datenschutz-Übersicht' }));
     expect(useNavigateMock).toHaveBeenCalledWith({ to: '/admin/iam', search: { tab: 'dsr' } });
+  });
+
+  it.each([true, false])('shows registration history and respects user-read permission (%s)', async (canReadUsers) => {
+    useAuthMock.mockReturnValue({
+      user: { ...user, permissionActions: canReadUsers ? ['iam.dsr.read', 'iam.user.read'] : ['iam.dsr.read'] },
+      isLoading: false,
+      error: null,
+    });
+    getAdminDsrCaseMock.mockResolvedValue({ data: {
+      id: 'registration-1', type: 'account_registration', canonicalStatus: 'completed', rawStatus: 'success',
+      title: 'account_registration', summary: 'Neues Konto', targetAccountId: 'account-new', targetDisplayName: 'Neues Konto',
+      createdAt: '2026-10-25T10:00:00.000Z', completedAt: '2026-10-25T10:00:00.000Z', metadata: {},
+    } });
+    render(<IamDsrDetailPage caseId="registration-1" />);
+    await screen.findByText(/Zu diesem Zeitpunkt waren noch keine lokalen Rollen zugewiesen/);
+    expect(screen.getAllByText('Erste Anmeldung – Rechtezuweisung ausstehend').length).toBeGreaterThan(0);
+    const link = screen.queryByRole('link', { name: 'Benutzerkonto öffnen' });
+    if (canReadUsers) expect(link?.getAttribute('href')).toBe('/admin/users/account-new');
+    else expect(link).toBeNull();
+    expect(screen.queryByText('account_registration')).toBeNull();
   });
 
   it('renders not-found and forbidden states without loading detail data', async () => {

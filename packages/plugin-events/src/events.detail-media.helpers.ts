@@ -113,7 +113,7 @@ export const isEventsAssetSelectable = (
     metadata: asset.metadata,
     visibility: asset.visibility,
     mimeType: asset.mimeType,
-    previewUrl: asset.previewUrl,
+    previewUrl: asset.persistentUrl ?? asset.previewUrl,
   });
   if (!nextMedia) return false;
   const existingUrls = new Set(
@@ -203,7 +203,7 @@ export const acceptEventsMediaAsset = (
     metadata: asset.metadata,
     visibility: asset.visibility,
     mimeType: asset.mimeType,
-    previewUrl: asset.previewUrl,
+    previewUrl: asset.persistentUrl ?? asset.previewUrl,
   });
   if (!nextMedia) return;
   appendSelectedMediaToForm(asset, nextMedia, persistentUrl, methods);

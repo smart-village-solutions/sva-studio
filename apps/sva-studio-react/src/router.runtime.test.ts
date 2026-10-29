@@ -1,4 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  publishSessionAccessSnapshot,
+  readSessionAccessSnapshot,
+  resetSessionAccessSnapshot,
+} from '@sva/plugin-sdk';
 
 type RouterWithAuthContext = {
   options: {
@@ -25,6 +30,7 @@ const routerMocks = vi.hoisted(() => {
     current: 'client' as 'client' | 'server',
   };
   const fetchWithRequestTimeoutSpy = vi.fn();
+  const dispatchAuthRouteRequestSpy = vi.fn();
   const getRequestSpy = vi.fn(() => new Request('https://studio.example.org/admin/users'));
   const rootRoute = {
     options: {},
@@ -35,11 +41,13 @@ const routerMocks = vi.hoisted(() => {
   }));
   const routeFactorySpy = vi.fn(() => ({ id: 'materialized-route' }));
   const getClientRouteFactoriesSpy = vi.fn(() => [routeFactorySpy]);
-  const getServerRouteFactoriesSpy = vi.fn((_options: Record<string, unknown>) => [routeFactorySpy]);
+  const getServerRouteFactoriesSpy = vi.fn((_options: Record<string, unknown>) => [
+    routeFactorySpy,
+  ]);
   const parseRuntimeProfile = vi.fn((value: unknown) => (typeof value === 'string' ? value : null));
   const isMockAuthRuntimeProfile = vi.fn((value: unknown) => value === 'mock-profile');
-  const resolveAuthConfigForRequest = vi.fn(async (): Promise<{ kind: 'platform' | 'instance' }> =>
-    ({ kind: 'platform' })
+  const resolveAuthConfigForRequest = vi.fn(
+    async (): Promise<{ kind: 'platform' | 'instance' }> => ({ kind: 'platform' })
   );
   const warnSpy = vi.fn();
   const createSdkLoggerSpy = vi.fn(() => ({ warn: warnSpy }));
@@ -49,6 +57,7 @@ const routerMocks = vi.hoisted(() => {
     createRootRouteSpy,
     executionMode,
     fetchWithRequestTimeoutSpy,
+    dispatchAuthRouteRequestSpy,
     getClientRouteFactoriesSpy,
     getRequestSpy,
     getServerRouteFactoriesSpy,
@@ -102,6 +111,7 @@ vi.mock('@sva/routing', () => ({
 }));
 
 vi.mock('@sva/routing/server', () => ({
+  dispatchAuthRouteRequest: routerMocks.dispatchAuthRouteRequestSpy,
   getServerRouteFactories: routerMocks.getServerRouteFactoriesSpy,
 }));
 
@@ -159,11 +169,13 @@ vi.mock('@tanstack/react-start/server', () => ({
 describe('router runtime helpers', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
+    resetSessionAccessSnapshot();
     cookieState = '';
     routerMocks.executionMode.current = 'client';
     routerMocks.createRouterSpy.mockClear();
     routerMocks.createRootRouteSpy.mockClear();
     routerMocks.fetchWithRequestTimeoutSpy.mockReset();
+    routerMocks.dispatchAuthRouteRequestSpy.mockReset();
     routerMocks.getClientRouteFactoriesSpy.mockClear();
     routerMocks.getRequestSpy.mockClear();
     routerMocks.getRequestSpy.mockReturnValue(
@@ -191,6 +203,8 @@ describe('router runtime helpers', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    resetSessionAccessSnapshot();
   });
 
   it('isolates platform and tenant route trees across server requests', async () => {
@@ -200,9 +214,11 @@ describe('router runtime helpers', () => {
     routerMocks.resolveAuthConfigForRequest.mockResolvedValueOnce({ kind: 'instance' });
     await getRouter();
 
-    expect(routerMocks.getServerRouteFactoriesSpy.mock.calls.map(([options]) =>
-      (options as { pluginScope: string }).pluginScope
-    )).toEqual(['platform', 'tenant']);
+    expect(
+      routerMocks.getServerRouteFactoriesSpy.mock.calls.map(
+        ([options]) => (options as { pluginScope: string }).pluginScope
+      )
+    ).toEqual(['platform', 'tenant']);
     const [platformRoot, tenantRoot] = routerMocks.createRootRouteSpy.mock.results.map(
       (result) => result.value
     );
@@ -394,7 +410,7 @@ describe('router runtime helpers', () => {
     expect(await getUser()).toEqual({
       roles: ['editor', 'system_admin'],
       permissionActions: [],
-      permissionStatus: 'ok',
+      permissionStatus: 'degraded',
       assignedModules: ['media', 'news'],
     });
     expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(
@@ -464,6 +480,55 @@ describe('router runtime helpers', () => {
     );
   });
 
+  it('uses the current shared access snapshot for client route guards when identity and organization match', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      subjectId: 'user-1',
+      instanceId: 'instance-1',
+      organizationId: 'org-1',
+      permissionActions: ['news.read'],
+      assignedModules: ['news'],
+      roles: ['editor'],
+    });
+    expect(readSessionAccessSnapshot()).toMatchObject({
+      subjectId: 'user-1',
+      instanceId: 'instance-1',
+      organizationId: 'org-1',
+      isResolved: true,
+    });
+    const { getRouter } = await import('./router');
+    const getUser = readRouteGuardGetUser(await getRouter());
+    routerMocks.fetchWithRequestTimeoutSpy
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            user: { id: 'user-1', instanceId: 'instance-1', roles: ['editor'] },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { activeOrganizationId: 'org-1' } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      );
+
+    await expect(getUser()).resolves.toEqual({
+      id: 'user-1',
+      instanceId: 'instance-1',
+      roles: ['editor'],
+      permissionActions: ['news.read'],
+      permissionStatus: 'ok',
+      assignedModules: ['news'],
+    });
+    expect(routerMocks.fetchWithRequestTimeoutSpy.mock.calls.map(([input]) => input)).toEqual([
+      'http://localhost:3000/auth/me',
+      'http://localhost:3000/auth/me',
+      'http://localhost:3000/api/v1/iam/me/context',
+    ]);
+  });
+
   it('keeps authenticated client route guards degraded when scoped access loading throws', async () => {
     const { getRouter } = await import('./router');
     const getUser = readRouteGuardGetUser(await getRouter());
@@ -520,7 +585,7 @@ describe('router runtime helpers', () => {
     expect(await getUser()).toEqual({
       roles: ['editor'],
       permissionActions: [],
-      permissionStatus: 'ok',
+      permissionStatus: 'degraded',
       assignedModules: ['news'],
     });
     expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(
@@ -588,6 +653,97 @@ describe('router runtime helpers', () => {
     routerMocks.fetchWithRequestTimeoutSpy.mockRejectedValueOnce(new Error('auth failed'));
     expect(await getUser()).toBeNull();
   });
+
+  it.each([
+    { dev: true, host: 'de-studio-sandbox.studio.localhost:3000', target: 'dispatch' },
+    {
+      dev: false,
+      host: 'de-studio-sandbox.studio.localhost:3000',
+      target: 'de-studio-sandbox.studio.localhost:3000',
+    },
+    { dev: true, host: 'tenant.example.org', target: 'tenant.example.org' },
+    { dev: true, host: 'tenant.localhost.example.org', target: 'tenant.localhost.example.org' },
+  ])(
+    'preserves tenant session context for SSR on $host (development=$dev)',
+    async ({ dev, host, target }) => {
+      vi.stubEnv('DEV', dev);
+      // Happy DOM entfernt Cookie-Header aus Request; der serverseitige Request behält sie.
+      const BrowserRequest = Request;
+      vi.stubGlobal(
+        'Request',
+        class extends BrowserRequest {
+          constructor(input: RequestInfo | URL, init?: RequestInit) {
+            super(input, init);
+            Object.defineProperty(this, 'headers', { value: new Headers(init?.headers) });
+          }
+        }
+      );
+
+      routerMocks.executionMode.current = 'server';
+      routerMocks.getRequestSpy.mockReturnValue({
+        url: `http://${host}/admin/vouchers/850`,
+        headers: new Headers({ cookie: 'session=test-session' }),
+      } as Request);
+      const { getRouter } = await import('./router');
+      const getUser = readRouteGuardGetUser(await getRouter());
+      const responseForUrl = async (url: string) => {
+        if (url.endsWith('/auth/me'))
+          return new Response(
+            JSON.stringify({
+              user: {
+                instanceId: 'de-studio-sandbox',
+                roles: ['voucher_editor_local'],
+              },
+            })
+          );
+        if (url.endsWith('/api/v1/iam/me/context'))
+          return new Response(JSON.stringify({ data: {} }));
+        return new Response(JSON.stringify({ permissions: [{ action: 'vouchers.read' }] }));
+      };
+      routerMocks.fetchWithRequestTimeoutSpy.mockImplementation(responseForUrl);
+      routerMocks.dispatchAuthRouteRequestSpy.mockImplementation((request: Request) =>
+        responseForUrl(request.url)
+      );
+
+      await expect(getUser()).resolves.toMatchObject({
+        permissionActions: ['vouchers.read'],
+        permissionStatus: 'ok',
+      });
+      const paths = [
+        '/auth/me',
+        '/api/v1/iam/me/context',
+        '/iam/me/permissions?instanceId=de-studio-sandbox',
+      ];
+      if (target === 'dispatch') {
+        expect(routerMocks.fetchWithRequestTimeoutSpy).not.toHaveBeenCalled();
+        expect(routerMocks.dispatchAuthRouteRequestSpy).toHaveBeenCalledTimes(3);
+        for (const [index, path] of paths.entries()) {
+          const request = routerMocks.dispatchAuthRouteRequestSpy.mock.calls[index]?.[0] as Request;
+          expect(request.url).toBe(`http://${host}${path}`);
+          expect(request.headers.get('cookie')).toBe('session=test-session');
+        }
+        routerMocks.dispatchAuthRouteRequestSpy.mockResolvedValueOnce(
+          new Response(null, { status: 401 })
+        );
+        await expect(getUser()).resolves.toBeNull();
+        routerMocks.dispatchAuthRouteRequestSpy.mockResolvedValueOnce(null);
+        await expect(getUser()).resolves.toBeNull();
+        routerMocks.dispatchAuthRouteRequestSpy.mockRejectedValueOnce(
+          new Error('auth unavailable')
+        );
+        await expect(getUser()).resolves.toBeNull();
+      } else {
+        expect(routerMocks.dispatchAuthRouteRequestSpy).not.toHaveBeenCalled();
+        for (const path of paths) {
+          expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(
+            `http://${target}${path}`,
+            { headers: { cookie: 'session=test-session' } },
+            { timeoutMs: 5_000 }
+          );
+        }
+      }
+    }
+  );
 
   it('builds the runtime router from server route factories when executed on the server', async () => {
     const { getRouter } = await import('./router');

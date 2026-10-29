@@ -1,4 +1,9 @@
 export const wasteManagementPluginTranslationsDESchedulingSections = {
+  tourContext: {
+    active: 'Tour: {{name}}',
+    back: 'Zur Tour',
+    clear: 'Alle Touren anzeigen',
+  },
   assignments: {
     title: 'Tour-Einsätze',
     description:

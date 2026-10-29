@@ -17,11 +17,11 @@
     "@sva/waste-management-contracts": "workspace:*",
     "@sva/waste-management-runtime": "workspace:*",
     "@tabler/icons-react": "^3.46.0",
-    "dompurify": "^3.4.16",
+    "dompurify": "^3.4.17",
     "pg": "^8.22.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
@@ -33,9 +33,9 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.0.5",
     "@vitest/coverage-v8": "^5.0.3",
-    "happy-dom": "^20.14.5",
+    "happy-dom": "^21.0.4",
     "typescript": "^6.0.3",
-    "vite": "^8.3.2",
+    "vite": "^8.3.3",
     "vitest": "^5.0.3"
   }
 }

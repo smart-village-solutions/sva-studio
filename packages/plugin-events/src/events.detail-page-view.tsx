@@ -1,10 +1,11 @@
-import { FormProvider, type UseFormReturn } from 'react-hook-form';
+import { FormProvider, useWatch, type UseFormReturn } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { resolveStandardContentAccessCapabilities, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
   StudioDetailPageTemplate,
   StudioSaveButton,
+  isMainserverPrincipalReady,
   useStudioSaveFeedback,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
@@ -52,6 +53,7 @@ export type EventsDetailPageViewProps = Readonly<{
   loadedItem: EventContentItem | null;
   mediaReferencesReady: boolean;
   setStatus: Dispatch<SetStateAction<EventsStatusMessage | null>>;
+  reloadCurrentContext: () => Promise<void>;
 }>;
 
 const EventsDetailSaveAction = ({
@@ -59,20 +61,40 @@ const EventsDetailSaveAction = ({
   saveFeedback,
   mediaSavePhaseKey,
   pt,
-}: EventsDetailPageViewProps) => (
-  <div className="flex flex-col items-end gap-1">
-    <StudioSaveButton
-      type="submit"
-      form={formId}
-      status={saveFeedback.status}
-      labels={{
-        idle: pt('actions.save'),
-        saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
-        saved: pt('actions.saved'),
-      }}
-    />
-  </div>
-);
+  methods,
+  mode,
+  media,
+  principalControl,
+  actingPrincipalType,
+}: EventsDetailPageViewProps) => {
+  const visible = useWatch({ control: methods.control, name: 'settings.visible' });
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <StudioSaveButton
+        type="submit"
+        form={formId}
+        status={saveFeedback.status}
+        disabled={
+          mode === 'create' &&
+          (media.leaveGuard.createdContentId !== null ||
+            !isMainserverPrincipalReady(principalControl, actingPrincipalType))
+        }
+        labels={{
+          idle: pt(
+            mode === 'create'
+              ? visible
+                ? 'create.createVisible'
+                : 'create.createHidden'
+              : 'actions.save'
+          ),
+          saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
+          saved: pt('actions.saved'),
+        }}
+      />
+      {mode === 'create' ? <p className="text-sm text-muted-foreground">{pt(visible ? 'create.visibleEffect' : 'create.hiddenEffect')}</p> : null}
+    </div>
+  );
+};
 
 const EventsDetailNavigationActions = ({
   mode,
@@ -104,9 +126,10 @@ export function EventsDetailPageView(props: EventsDetailPageViewProps) {
   return (
     <FormProvider {...methods}>
       <StudioDetailPageTemplate
+        stickyActions={mode === 'create'}
         title={mode === 'create' ? pt('detail.createTitle') : pt('detail.editTitle')}
         description={
-          mode === 'create' ? pt('detail.createDescription') : pt('detail.editDescription')
+          mode === 'edit' ? pt('detail.editDescription') : undefined
         }
         primaryAction={canSave ? <EventsDetailSaveAction {...props} /> : undefined}
         actions={<EventsDetailNavigationActions {...props} />}

@@ -115,7 +115,8 @@ describe('root route document', () => {
       select({
         status: 'pending',
         isLoading: true,
-        location: { pathname: '/admin/users' },
+        location: { pathname: '/admin/users', href: '/admin/users' },
+        resolvedLocation: { pathname: '/admin/content', href: '/admin/content' },
       })
     );
   };
@@ -401,6 +402,30 @@ describe('root route document', () => {
       expect(document.title).toBe('content.page.title | Kassel DIALOG EN');
       expect(document.activeElement).toBe(localeSwitch);
     });
+  });
+
+  it.each([
+    { status: 'pending', isLoading: true },
+    { status: 'idle', isLoading: true },
+  ])('preserves editor content during a same-location reload ($status)', async (pendingState) => {
+    useRouterStateMock.mockImplementation(({ select }) =>
+      select({
+        ...pendingState,
+        location: { pathname: '/admin/faq/new', href: '/admin/faq/new' },
+        resolvedLocation: { pathname: '/admin/faq/new', href: '/admin/faq/new' },
+      })
+    );
+    const RootDocument = await importRootDocument();
+    render(
+      <RootDocument>
+        <input defaultValue="Unsaved question" />
+      </RootDocument>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('app-shell').getAttribute('data-is-loading')).toBe('false');
+    });
+    expect(screen.getByDisplayValue('Unsaved question')).toBeTruthy();
   });
 
   it('keeps the shell mounted and forwards route-level pending state to the content area', async () => {

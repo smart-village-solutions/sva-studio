@@ -1,5 +1,6 @@
 export const genericItemsTranslationsDeActions = {
   actions: {
+    openSavedContent: 'Gespeicherten Inhalt öffnen',
     create: 'Generischen Inhalt anlegen',
     update: 'Änderungen speichern',
     save: 'Speichern',

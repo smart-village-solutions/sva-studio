@@ -32,7 +32,7 @@ export const eventsENLabels = {
   principal: {
     createAs: 'Create as',
     actAs: 'Act as',
-    description: 'Determines the credentials for this Mainserver action.',
+    description: 'Choose who you are acting on behalf of.',
     organization: 'Active organization',
     user: 'Personal account',
     dataProvider: 'Original DataProvider',
@@ -127,6 +127,8 @@ export const eventsENLabels = {
     updatedAt: 'Updated',
   },
   actions: {
+    reloadCurrentContext: 'Reload context and keep draft',
+    openSavedContent: 'Open saved content',
     retryMediaReferences: 'Retry media references',
     cancel: 'Cancel',
     create: 'Create',

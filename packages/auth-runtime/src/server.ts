@@ -136,6 +136,7 @@ export { resolveInstanceKeycloakProjectionTenant } from './ssf-authorization-pro
 export { ensureFeature, getFeatureFlags } from './iam-account-management/feature-flags.js';
 export { withInstanceScopedDb } from './iam-account-management/shared.js';
 export { resolveActorAccountId } from './iam-account-management/shared.js';
+export { resolveActorAccountIdWithProvision } from './iam-account-management/shared-actor-resolution-helpers.js';
 export { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
 export {
   readTenantPermissionProjectionSubjects,

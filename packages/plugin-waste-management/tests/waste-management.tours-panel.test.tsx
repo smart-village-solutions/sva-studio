@@ -162,6 +162,55 @@ describe('WasteToursPanel', () => {
     );
   });
 
+  it('hydrates a duplicated tour after opening its create route directly', () => {
+    controllerMock.lastOutcome = null;
+    controllerMock.overview = {
+      tours: [
+        {
+          id: 'tour-99',
+          name: 'Bio Nord',
+          wasteFractionIds: ['fraction-bio'],
+          recurrence: 'custom',
+          customDates: [{ date: '2027-01-05' }],
+          status: 'published',
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        },
+      ],
+    };
+
+    render(
+      <WasteToursPanel
+        search={{
+          tab: 'tours',
+          masterDataTab: 'fractions',
+          fractionsView: 'list',
+          toursView: 'create',
+          locationsView: 'list',
+          schedulingView: 'list',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
+          duplicateFromTourId: 'tour-99',
+        }}
+      />
+    );
+
+    expect(controllerMock.setTourForm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Bio Nord (Kopie)',
+        wasteFractionIds: ['fraction-bio'],
+        recurrence: 'custom',
+        customDates: [{ date: '2027-01-05' }],
+        status: 'draft',
+      })
+    );
+  });
+
   it('navigates back to the list when an edit route is missing the tour id', () => {
     controllerMock.lastOutcome = null;
     controllerMock.overview = {

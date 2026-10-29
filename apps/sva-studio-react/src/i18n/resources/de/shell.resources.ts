@@ -46,6 +46,7 @@ export const shellDEResources = {
     loadingStatus: 'Inhalt wird geladen.',
   },
   contextualHelp: {
+    editOnGitHub: 'Auf GitHub bearbeiten',
     open: 'Hilfe öffnen',
     close: 'Hilfe schließen',
     title: 'Hilfe zu dieser Seite',
@@ -57,6 +58,11 @@ export const shellDEResources = {
     retry: 'Erneut versuchen',
     empty: 'Für diese Seite ist noch kein Hilfetext hinterlegt.',
     openWebsite: 'Vollständige Dokumentation öffnen',
+  },
+  roleAssignmentPending: {
+    title: 'Anmeldung erfolgreich',
+    message:
+      'Ihr Konto wurde durch Ihre erste Anmeldung im Studio erfasst. Ihnen wurden noch keine Rollen und Berechtigungen zugewiesen. Diese kann die zuständige Administration jetzt vergeben. Bitte wenden Sie sich dafür an Ihre Ansprechperson.',
   },
   permissionsDegraded: {
     message:

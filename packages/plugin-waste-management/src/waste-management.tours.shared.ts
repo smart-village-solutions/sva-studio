@@ -65,6 +65,13 @@ export const mapTourToForm = (tour: WasteTourRecord): TourFormState => ({
   status: tour.status,
 });
 
+export const mapTourToDuplicateForm = (tour: WasteTourRecord): TourFormState => ({
+  ...mapTourToForm(tour),
+  id: createId(),
+  name: `${tour.name} (Kopie)`,
+  status: 'draft',
+});
+
 export const mapTourWithPickupDatesToForm = (
   tour: WasteTourRecord,
   pickupDates: readonly WasteLocationTourPickupDateRecord[]

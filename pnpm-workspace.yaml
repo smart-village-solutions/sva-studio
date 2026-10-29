@@ -13,6 +13,14 @@ trustPolicyExclude:
   # Remove this exact-version exception once the transitive graph no longer requires semver 6.x.
   - semver@6.3.1
 blockExoticSubdeps: true
+packageExtensions:
+  # Beide Scaleflex-Pakete importieren Babel-Helper ohne eigene Runtime-Abhängigkeit.
+  "@scaleflex/icons@3.0.0-beta.10":
+    dependencies:
+      "@babel/runtime": "7.29.7"
+  "@scaleflex/ui@3.0.0-beta.10":
+    dependencies:
+      "@babel/runtime": "7.29.7"
 allowBuilds:
   bufferutil: true
   esbuild: true
@@ -34,10 +42,13 @@ overrides:
   esbuild: "0.28.1"
   h3: "2.0.1-rc.20"
   minimatch: "10.2.3"
-  axios: "1.16.0"
+  # Nx pinnt diese transitiven Pakete exakt; die Overrides halten sie auf gepatchten Versionen.
+  "nx>brace-expansion": "5.0.12"
+  "nx>smol-toml": "1.9.0"
+  axios: "1.20.0"
   form-data: "4.0.6"
-  follow-redirects: "1.16.0"
-  launch-editor: "2.14.1"
+  follow-redirects: "1.16.1"
+  launch-editor: "2.14.2"
   postcss: "8.5.23"
   protobufjs: "7.6.3"
   rollup: "4.59.0"
@@ -49,11 +60,13 @@ overrides:
   slow-redact: "0.3.1"
   tmp: "0.2.7"
   uuid: "11.1.1"
-  js-yaml: "4.2.0"
+  js-yaml: "4.3.2"
   "@opentelemetry/core": "2.8.0"
-  "@actions/github>undici": "6.27.0"
-  "@actions/http-client>undici": "6.27.0"
-  "jsdom>undici": "7.29.0"
+  "@actions/github>undici": "6.29.1"
+  "@actions/http-client>undici": "6.29.1"
+  "jsdom>undici": "7.30.1"
+  "ajv>fast-uri": "3.1.9"
+  "express>body-parser": "2.4.0"
 
 packages:
   - apps/*

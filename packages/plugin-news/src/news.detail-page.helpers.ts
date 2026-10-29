@@ -17,6 +17,8 @@ import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js'
 export type StatusMessage = Readonly<{
   source: 'load' | 'save' | 'delete' | 'reference' | 'navigation';
   text: string;
+  requestId?: string;
+  errorCode?: string;
 }>;
 
 export type PluginTranslator = (
@@ -43,6 +45,7 @@ const errorMessageTranslationKeys: Record<string, string> = {
   missing_instance: 'messages.errors.missingInstance',
   network_error: 'messages.errors.networkError',
   not_found: 'messages.missingContent',
+  stale_mainserver_context: 'messages.staleMainserverContext',
 };
 
 const detailFriendlyErrorCodes = new Set([
@@ -76,6 +79,11 @@ export const resolveNewsErrorMessage = (
   fallbackKey: string
 ) => {
   if (error instanceof NewsApiError) {
+    if (
+      error.code === 'missing_credentials' ||
+      error.code === 'organization_mainserver_credentials_missing'
+    )
+      return pt('create.saveUnavailable');
     const key = errorMessageTranslationKeys[error.code];
     if (key) {
       const genericMessage = pt(key);

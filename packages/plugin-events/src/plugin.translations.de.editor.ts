@@ -1,5 +1,14 @@
+import { eventsDECreate, eventsDEValidation } from './plugin.translations.de.labels.js';
 export const eventsDEEditor = {
+  create: eventsDECreate,
   messages: {
+    requestReference: 'Fehlerreferenz:',
+    copyRequestReference: 'Referenz kopieren',
+    requestReferenceCopied: 'Kopiert',
+    createdNavigationError:
+      'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
+    unsavedAfterCreate:
+      'Der Inhalt wurde angelegt. Neuere Eingaben in diesem Formular sind noch nicht gespeichert.',
     mediaReferencePartialFailure:
       'Der Inhalt wurde gespeichert, die Medienreferenzen jedoch nicht. Sie können die Referenzen erneut speichern.',
     mediaReferenceRetrySuccess: 'Die Medienreferenzen wurden gespeichert.',
@@ -14,6 +23,8 @@ export const eventsDEEditor = {
     degradedCorrectionConfirm:
       'Die folgenden zuvor nicht sicher lesbaren Bereiche wurden geändert: {{fields}}. Sollen diese Werte bewusst überschrieben werden?',
     saveError: 'Die Veranstaltung konnte nicht gespeichert werden.',
+    staleMainserverContext:
+      'Der Organisations- oder Mainserver-Kontext hat sich geändert. Laden Sie den aktuellen Kontext neu und prüfen Sie Ihren Entwurf, bevor Sie erneut speichern.',
     deleteError: 'Die Veranstaltung konnte nicht gelöscht werden.',
     createSuccess: 'Die Veranstaltung wurde erstellt.',
     updateSuccess: 'Die Veranstaltung wurde aktualisiert.',
@@ -38,12 +49,13 @@ export const eventsDEEditor = {
       'Für die Ermittlung von Geo-Koordinaten fehlen die erforderlichen Berechtigungen.',
     locationGeocodeUnauthorized:
       'Die Sitzung für die Ermittlung von Geo-Koordinaten ist abgelaufen. Bitte laden Sie die Seite neu.',
-    locationMapUnavailable: 'Die Kartenansicht ist für diese Instanz derzeit deaktiviert.',
+    locationMapUnavailable:
+      'Die Karte ist derzeit nicht verfügbar. Sie können die Adresse eingeben und Koordinaten manuell ergänzen.',
     locationMapError:
       'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
     imagePickerEmpty: 'Keine passenden Medien gefunden.',
-  mediaPickerLoading: 'Medien werden geladen.',
-  mediaPickerLoadError: 'Medien konnten nicht geladen werden.',
+    mediaPickerLoading: 'Medien werden geladen.',
+    mediaPickerLoadError: 'Medien konnten nicht geladen werden.',
     mediaUploadInitializing: 'Upload wird vorbereitet.',
     mediaUploadUploading: 'Medium wird hochgeladen.',
     mediaUploadFinalizing: 'Medium wird eingepflegt.',
@@ -122,8 +134,8 @@ export const eventsDEEditor = {
         description: 'Überschrift und redaktionelle Grundkategorie der Veranstaltung.',
       },
       recurrence: {
-        title: 'Serien-Logik',
-        description: 'Wiederholung und Ausspielungsrhythmus der Veranstaltung.',
+        title: 'Wiederholung',
+        description: 'Wiederholung und Rhythmus der Veranstaltung.',
       },
       relations: { title: 'Verknüpfungen', description: 'Verknüpfung zu anderen Studio-Inhalten.' },
       meta: { title: 'Metadaten', description: 'Zeitliche Einordnung des Eintrags.' },
@@ -233,16 +245,7 @@ export const eventsDEEditor = {
     assetValue: 'Mediathek',
     contentValue: 'Inhalt',
   },
-  validation: {
-    title: 'Die Überschrift ist erforderlich.',
-    dates: 'Datumswerte müssen gültig sein.',
-    urls: 'URLs müssen mit https:// beginnen.',
-    categories: 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
-    priceInformations: 'Preisangaben müssen valide Zahlen enthalten.',
-    geoLocation: 'Koordinaten müssen gültige Breiten- und Längengrade sein.',
-    organizerName:
-      'Geben Sie einen Namen für den Veranstalter ein oder entfernen Sie die übrigen Veranstalterangaben.',
-  },
+  validation: eventsDEValidation,
   values: {
     mediaContentTypes: {
       unspecified: 'Nicht gesetzt',

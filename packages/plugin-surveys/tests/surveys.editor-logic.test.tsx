@@ -1,3 +1,5 @@
+import React from 'react';
+import { StudioEditorLeaveGuardProvider } from '@sva/studio-ui-react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -31,6 +33,90 @@ describe('useSurveyEditorController', () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
+
+  it.each([false, true, 'default'] as const)(
+    'leave guard retains survey changes during save and prevents duplicate create (%s)',
+    async (editDuringSave) => {
+      const expectsUnsaved = Boolean(editDuringSave);
+      let check = () => false;
+      const register = (next: () => boolean) => {
+        check = next;
+        return () => {
+          check = () => false;
+        };
+      };
+      let finishSave!: (value: unknown) => void;
+      createSurveyMock.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishSave = resolve;
+          })
+      );
+      const navigate = vi.fn(async () => {
+        expect(check()).toBe(expectsUnsaved);
+        if (editDuringSave) throw new Error('navigation failed');
+      });
+      const { result } = renderHook(
+        () => {
+          const methods = useForm<SurveyDetailFormValues>({
+            defaultValues: createEmptyFormValues(),
+          });
+          const controller = useSurveyEditorController({
+            mode: 'create',
+            methods,
+            pt,
+            navigateToCreatedDetail: navigate,
+            actingPrincipalType: 'user',
+          });
+          return { methods, controller };
+        },
+        {
+          wrapper: ({ children }) =>
+            React.createElement(StudioEditorLeaveGuardProvider, { register, children }),
+        }
+      );
+      expect(check()).toBe(false);
+      act(() => result.current.methods.setValue('title', 'Before save', { shouldDirty: true }));
+      expect(check()).toBe(true);
+      let pending!: Promise<void>;
+      act(() => {
+        pending = result.current.controller.submit();
+      });
+      await waitFor(() => expect(createSurveyMock).toHaveBeenCalledTimes(1));
+      if (editDuringSave)
+        act(() =>
+          result.current.methods.setValue(
+            'title',
+            editDuringSave === 'default' ? '' : 'Newer title',
+            { shouldDirty: true }
+          )
+        );
+      await act(async () => {
+        finishSave({
+          id: 'survey-created',
+          title: { de: 'Before save' },
+          status: 'DRAFT',
+          targetAreaIds: [],
+          questions: [],
+        });
+        await pending;
+      });
+      expect(check()).toBe(expectsUnsaved);
+      expect(result.current.methods.getValues('title')).toBe(
+        editDuringSave === 'default' ? '' : editDuringSave ? 'Newer title' : 'Before save'
+      );
+      expect(result.current.controller.createdContentId).toBe('survey-created');
+      if (editDuringSave)
+        expect(result.current.controller.status).toEqual({
+          kind: 'success',
+          text: 'messages.createdNavigationError',
+        });
+      await act(async () => {
+        await result.current.controller.submit();
+      });
+      expect(createSurveyMock).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it('blocks edit submits without a content id before calling updateSurvey', async () => {
     const navigateToContentList = vi.fn(async () => undefined);

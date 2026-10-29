@@ -1,10 +1,8 @@
-import type { z } from 'zod';
-
 import { parseRequestBody } from '../iam-account-management/api-helpers.js';
 
 export const parseRegistryRequestBody = async <T>(
   request: Request,
-  schema: z.ZodType<T>
+  schema: Parameters<typeof parseRequestBody<T>>[1]
 ): Promise<{ ok: true; data: T } | { ok: false; message: string }> => {
   const result = await parseRequestBody(request, schema);
   if (!result.ok) {

@@ -1,7 +1,10 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { MainserverPrincipalControl } from './mainserver-principal-control.js';
+import {
+  isMainserverPrincipalReady,
+  MainserverPrincipalControl,
+} from './mainserver-principal-control.js';
 
 const labels = {
   dataProviderLabel: 'Datenanbieter',
@@ -11,6 +14,48 @@ const labels = {
 afterEach(cleanup);
 
 describe('MainserverPrincipalControl', () => {
+  it('blocks only the principal whose local readiness is not ready', () => {
+    const control = {
+      kind: 'selectable' as const,
+      value: 'organization' as const,
+      options: [
+        { value: 'organization' as const, label: 'Stadt' },
+        { value: 'user' as const, label: 'Persönlich' },
+      ],
+      readinessByPrincipal: { organization: 'verification_pending' as const, user: 'ready' as const },
+    };
+    expect(isMainserverPrincipalReady(control, 'organization')).toBe(false);
+    expect(isMainserverPrincipalReady(control, 'user')).toBe(true);
+  });
+
+  it('shows a fixed create identity as text while preserving a real choice', () => {
+    const { rerender } = render(
+      <MainserverPrincipalControl
+        id="principal"
+        label="Erstellen als"
+        fixedLabel="Verantwortlich:"
+        value="user"
+        options={[{ value: 'user', label: 'Redakteurin' }]}
+        onChange={vi.fn()}
+      />
+    );
+    expect(screen.getByText('Verantwortlich:')).toBeTruthy();
+    expect(screen.getByText('Redakteurin')).toBeTruthy();
+    expect(screen.queryByRole('textbox')).toBeNull();
+    rerender(
+      <MainserverPrincipalControl
+        id="principal"
+        label="Erstellen als"
+        fixedLabel="Verantwortlich:"
+        value="user"
+        options={[{ value: 'user', label: 'Redakteurin' }]}
+        contextOptions={[{ value: 'organization:one', label: 'Stadt' }]}
+        onChange={vi.fn()}
+      />
+    );
+    expect(screen.getByRole('combobox', { name: 'Erstellen als' })).toBeTruthy();
+  });
+
   it('offers only typed principals and reports a deliberate change', () => {
     const onChange = vi.fn();
     render(
@@ -29,6 +74,21 @@ describe('MainserverPrincipalControl', () => {
 
     fireEvent.change(screen.getByLabelText('Erstellen als'), { target: { value: 'user' } });
     expect(onChange).toHaveBeenCalledWith('user');
+  });
+
+  it('explains a blocked principal readiness state accessibly', () => {
+    render(
+      <MainserverPrincipalControl
+        id="principal"
+        label="Erstellen als"
+        value="organization"
+        options={[{ value: 'organization', label: 'Stadt Musterhausen' }]}
+        onChange={vi.fn()}
+        readinessByPrincipal={{ organization: 'verification_pending', user: 'ready' }}
+        readinessMessage="Die lokale Anbindung ist nicht bereit."
+      />
+    );
+    expect(screen.getByRole('status').textContent).toContain('Die lokale Anbindung ist nicht bereit.');
   });
 
   it('renders a fixed principal and the provider as read-only values', () => {

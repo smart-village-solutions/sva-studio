@@ -11,6 +11,7 @@ import {
 import { buildLoginHref } from './protected-route-redirects.js';
 
 export type RouteGuardUser = {
+  readonly id?: string;
   readonly instanceId?: string;
   readonly roles: readonly string[];
   readonly keycloakRoles?: readonly string[];

@@ -15,6 +15,7 @@ type MainserverProjectionContentType =
   | 'generic-items.generic-item'
   | 'faq.faq'
   | 'cockpit-cards.cockpit-card'
+  | 'vouchers.voucher'
   | 'projects.project'
   | 'surveys.survey';
 
@@ -34,10 +35,13 @@ const mainserverCollectionSegments = new Set([
   'cockpit-cards',
   'projects',
   'surveys',
+  'vouchers',
 ]);
 
 const shouldRefreshProjectionForRequest = (request: Request, response: Response): boolean =>
   response.ok &&
+  !new URL(request.url).pathname.endsWith('/vouchers/prepare') &&
+  request.headers.get('x-sva-voucher-reset-mode') !== 'prepare' &&
   request.method !== 'GET' &&
   request.method !== 'HEAD' &&
   request.method !== 'OPTIONS';
@@ -45,17 +49,21 @@ const shouldRefreshProjectionForRequest = (request: Request, response: Response)
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 const parseMutationOperation = (request: Request): MainserverProjectionMutationOperation | null =>
-  new URL(request.url).pathname.includes('/mainserver/content-ownership/') &&
-  new URL(request.url).pathname.endsWith('/transfer') &&
-  request.method === 'POST'
-    ? 'update'
-    : request.method === 'POST'
-    ? 'create'
-    : request.method === 'PUT' || request.method === 'PATCH'
+  new URL(request.url).pathname.endsWith('/vouchers/reconcile')
+    ? null
+    : new URL(request.url).pathname.endsWith('/visibility')
       ? 'update'
-      : request.method === 'DELETE'
-        ? 'delete'
-        : null;
+      : new URL(request.url).pathname.includes('/mainserver/content-ownership/') &&
+          new URL(request.url).pathname.endsWith('/transfer') &&
+          request.method === 'POST'
+        ? 'update'
+        : request.method === 'POST'
+          ? 'create'
+          : request.method === 'PUT' || request.method === 'PATCH'
+            ? 'update'
+            : request.method === 'DELETE'
+              ? 'delete'
+              : null;
 
 const parseEntityIdFromRequestPath = (request: Request): string | undefined => {
   const segments = new URL(request.url).pathname.split('/').filter((segment) => segment.length > 0);
@@ -74,6 +82,11 @@ const parseEntityIdFromRequestPath = (request: Request): string | undefined => {
   }
 
   const entityIdSegment = segments[mainserverIndex + 2];
+  if (
+    collectionSegment === 'vouchers' &&
+    ['prepare', 'commit', 'reconcile'].includes(entityIdSegment ?? '')
+  )
+    return undefined;
   return entityIdSegment && entityIdSegment.length > 0 ? entityIdSegment : undefined;
 };
 
@@ -110,7 +123,17 @@ export const refreshProjectionAfterMainserverMutation = async (
     return;
   }
 
-  const operation = parseMutationOperation(request);
+  const body = (await response
+    .clone()
+    .json()
+    .catch(() => null)) as {
+    meta?: { operation?: string; affectedPoiId?: string };
+    data?: { voucherIdChanges?: readonly unknown[] };
+  } | null;
+  const operation =
+    body?.meta?.operation === 'update' || body?.meta?.operation === 'create'
+      ? body.meta.operation
+      : parseMutationOperation(request);
   const entityIdFromPath = parseEntityIdFromRequestPath(request);
   const entityIdFromResponse = await parseEntityIdFromResponse(response);
   const providerEntityId = response.headers.get('x-sva-mainserver-entity-id')?.trim();
@@ -188,6 +211,12 @@ export const refreshProjectionAfterMainserverMutation = async (
       ...(operation ? { operation } : {}),
       ...(entityId ? { entityId } : {}),
     });
+    await refreshVoucherAggregateProjection(
+      body,
+      followUpContext,
+      contentType,
+      journal?.authorizationMode ?? 'credential_visible_compatibility'
+    );
   } catch (error) {
     logger.warn('Mainserver mutation projection refresh failed after a successful provider write', {
       instanceId: followUpContext.instanceId,
@@ -199,3 +228,39 @@ export const refreshProjectionAfterMainserverMutation = async (
     });
   }
 };
+
+async function refreshVoucherAggregateProjection(
+  body: {
+    meta?: { affectedPoiId?: string };
+    data?: { voucherIdChanges?: readonly unknown[] };
+  } | null,
+  followUpContext: NonNullable<ReturnType<typeof readMainserverMutationFollowUpContext>>,
+  contentType: MainserverProjectionContentType,
+  authorizationMode: Parameters<
+    typeof refreshProjectedContentsForMainserverMutation
+  >[0]['authorizationMode']
+): Promise<void> {
+  if (body?.data?.voucherIdChanges?.length) {
+    await refreshProjectedContentsForMainserverMutation({
+      ...followUpContext,
+      contentType: 'vouchers.voucher',
+      actorDisplayName: followUpContext.actorDisplayName,
+      authorizationMode: authorizationMode,
+      ...(followUpContext.activeOrganizationId
+        ? { organizationId: followUpContext.activeOrganizationId }
+        : {}),
+    });
+  }
+  if (contentType === 'vouchers.voucher' && body?.meta?.affectedPoiId) {
+    await refreshProjectedContentsForMainserverMutation({
+      ...followUpContext,
+      contentType: 'poi.point-of-interest',
+      operation: 'update',
+      entityId: body.meta.affectedPoiId,
+      authorizationMode: authorizationMode,
+      ...(followUpContext.activeOrganizationId
+        ? { organizationId: followUpContext.activeOrganizationId }
+        : {}),
+    });
+  }
+}

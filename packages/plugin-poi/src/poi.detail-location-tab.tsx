@@ -3,7 +3,10 @@ import * as React from 'react';
 import { usePoiDetailLocationController } from './poi.detail-location-controller.js';
 import { PoiDetailLocationSection } from './poi.detail-location-section.js';
 
-export function PoiDetailLocationTab({ pt }: Readonly<{ pt: (key: string) => string }>) {
+export function PoiDetailLocationTab({
+  pt,
+  createMode,
+}: Readonly<{ pt: (key: string) => string; createMode?: boolean }>) {
   const {
     applySearchResult,
     applyReverseGeocodeResult,
@@ -24,12 +27,13 @@ export function PoiDetailLocationTab({ pt }: Readonly<{ pt: (key: string) => str
       setCoordinateValue('latitude', coordinates.latitude);
       setCoordinateValue('longitude', coordinates.longitude);
     },
-    [setCoordinateValue],
+    [setCoordinateValue]
   );
 
   return (
     <div className="space-y-6">
       <PoiDetailLocationSection
+        createMode={createMode}
         pt={pt}
         geocodingEnabled={isGeocodingEnabled}
         reverseGeocodingEnabled={isReverseGeocodingEnabled}
@@ -43,10 +47,14 @@ export function PoiDetailLocationTab({ pt }: Readonly<{ pt: (key: string) => str
         longitude={currentAddress.geoLocation?.longitude ?? ''}
         mapError={mapError}
         onMapError={setMapError}
-        onStreetChange={(value) => setValue('content.addresses.0.street', value, { shouldDirty: true })}
+        onStreetChange={(value) =>
+          setValue('content.addresses.0.street', value, { shouldDirty: true })
+        }
         onZipChange={(value) => setValue('content.addresses.0.zip', value, { shouldDirty: true })}
         onCityChange={(value) => setValue('content.addresses.0.city', value, { shouldDirty: true })}
-        onLocationNameChange={(value) => setValue('content.location.name', value, { shouldDirty: true })}
+        onLocationNameChange={(value) =>
+          setValue('content.location.name', value, { shouldDirty: true })
+        }
         onLatitudeChange={(value) => setCoordinateValue('latitude', value)}
         onLongitudeChange={(value) => setCoordinateValue('longitude', value)}
         onCoordinatesChange={handleMapCoordinatesChange}

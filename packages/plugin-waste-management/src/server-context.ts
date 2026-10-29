@@ -9,7 +9,9 @@ export type WastePluginServerCapabilities = Omit<WasteServerContextHost, 'startP
 
 export const createWastePluginServerDependencies = (
   capabilities: WastePluginServerCapabilities
-) => {
+): ReturnType<typeof wasteManagementHttpRuntime.createWasteServerContext> & {
+  loaders: ReturnType<typeof wasteManagementHttpRuntime.createWasteServerLoaders>;
+} => {
   if (!capabilities) throw new Error('waste_plugin_server_capabilities_required');
   const startPluginOperationJobFromFacade = wasteManagementHttpRuntime.createWasteJobStarter(capabilities);
   const context = wasteManagementHttpRuntime.createWasteServerContext({

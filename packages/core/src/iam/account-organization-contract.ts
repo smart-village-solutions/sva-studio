@@ -95,9 +95,18 @@ export type IamOrganizationContextOption = {
   readonly contentAuthorPolicy: IamContentAuthorPolicy;
   readonly isActive: boolean;
   readonly isDefaultContext: boolean;
+  readonly mainserverReadiness?: IamMainserverReadiness;
 };
+
+export type IamMainserverReadiness =
+  | 'ready'
+  | 'missing_credentials'
+  | 'partial_credentials'
+  | 'verification_pending'
+  | 'unavailable';
 
 export type IamOrganizationContext = {
   readonly activeOrganizationId?: IamUuid;
   readonly organizations: readonly IamOrganizationContextOption[];
+  readonly personalMainserverReadiness?: IamMainserverReadiness;
 };

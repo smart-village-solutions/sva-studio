@@ -7,6 +7,10 @@ import {
   navigateClientSide,
 } from './news-plugin.fixtures';
 
+if (process.env.PLAYWRIGHT_RUNTIME_PROFILE === 'local-builder') {
+  test.use({ storageState: { cookies: [], origins: [] } });
+}
+
 const faqUser = {
   user: {
     id: 'kc-editor-1',
@@ -29,7 +33,8 @@ const faqPermissions = {
   evaluatedAt: '2026-08-23T12:00:00.000Z',
 };
 
-test('opens, creates, updates and deletes an FAQ across its editor tabs', async ({ page }) => {
+test('creates an FAQ on one page and retains edit tabs for update and delete', async ({ page }) => {
+  test.setTimeout(60_000);
   await mockSharedShellRequests(page);
   let faq: Record<string, unknown> | undefined;
   let createdBody: Record<string, unknown> | undefined;
@@ -220,10 +225,59 @@ test('opens, creates, updates and deletes an FAQ across its editor tabs', async 
   expect(
     accessibility.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))
   ).toEqual([]);
+  await expect(page.getByRole('tablist')).toHaveCount(0);
+  const createAction = page.getByRole('button', { name: 'FAQ anlegen', exact: true });
+  await expect(createAction).toHaveCount(1);
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    for (const position of [0, 400]) {
+      await page.evaluate((top) => window.scrollTo(0, top), position);
+      await expect(createAction).toBeInViewport();
+    }
+  }
+  await page.screenshot({ path: 'test-results/faq-create-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+
+
+  // An unchanged create form can be left without confirmation.
+  await page.getByRole('link', { name: 'Zurück', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await navigateClientSide(page, '/admin/faq/new');
+  await page.locator('#faq-question').fill('Ungespeicherte Frage');
+
+  // Internal navigation can be cancelled without losing input, or explicitly confirmed.
+  await page.getByRole('link', { name: 'Zurück', exact: true }).click();
+  const leaveDialog = page.getByRole('alertdialog', { name: 'Ungespeicherte Eingaben verwerfen?' });
+  await expect(leaveDialog).toBeVisible();
+  await leaveDialog.getByRole('button', { name: 'Weiterbearbeiten' }).click();
+  await expect(page).toHaveURL(/\/admin\/faq\/new$/);
+  await expect(page.locator('#faq-question')).toHaveValue('Ungespeicherte Frage');
+  await page.getByRole('link', { name: 'Zurück', exact: true }).click();
+  await leaveDialog.getByRole('button', { name: 'Verwerfen und verlassen' }).click();
+  await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
+  await navigateClientSide(page, '/admin/faq/new');
+
+  // Browser Back reaches the same host guard rather than silently discarding the form.
+  await page.locator('#faq-question').fill('Frage nach Browser-Zurück');
+  await page.evaluate(() => window.history.back());
+  await expect(leaveDialog).toBeVisible();
+  await leaveDialog.getByRole('button', { name: 'Weiterbearbeiten' }).click();
+  await expect(page).toHaveURL(/\/admin\/faq\/new$/);
+  await expect(page.locator('#faq-question')).toHaveValue('Frage nach Browser-Zurück');
+
+  // Chromium's native reload warning preserves the current document when dismissed.
+  const nativeDialogPromise = page.waitForEvent('dialog');
+  const reloadResult = page.reload({ timeout: 5_000 }).then(() => null, (error: unknown) => error);
+  const nativeDialog = await nativeDialogPromise;
+  expect(nativeDialog.type()).toBe('beforeunload');
+  await nativeDialog.dismiss();
+  const reloadError = await reloadResult;
+  expect(reloadError).toBeInstanceOf(Error);
+  await expect(page.locator('#faq-question')).toHaveValue('Frage nach Browser-Zurück');
   await page.locator('#faq-question').fill('Wie erreiche ich das Bürgerbüro?');
-  await page.getByRole('tab', { name: 'Inhalt' }).click();
   await page.locator('#faq-answer').fill('Mit Bus und Bahn.');
-  await page.getByRole('tab', { name: 'Einstellungen' }).click();
   await page.locator('#faq-sort-weight').fill('7');
   await page.getByRole('button', { name: 'FAQ anlegen' }).last().click();
 
@@ -237,6 +291,7 @@ test('opens, creates, updates and deletes an FAQ across its editor tabs', async 
   });
 
   await expect(page).toHaveURL(/\/admin\/faq\/faq-1$/);
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
   await page.getByRole('tab', { name: 'Inhalt' }).click();
   await page.locator('#faq-answer').fill('Mit Bus, Bahn und Fahrrad.');
   await page.getByRole('tab', { name: 'Historie' }).click();
@@ -254,4 +309,75 @@ test('opens, creates, updates and deletes an FAQ across its editor tabs', async 
   await page.getByRole('alertdialog').getByRole('button', { name: 'FAQ löschen' }).click();
   await expect.poll(() => deleted).toBe(true);
   await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
+});
+
+
+test('editorial create pages keep their core fields and save action usable on narrow screens', async ({ page }) => {
+  test.setTimeout(120_000);
+  const modules = ['news', 'events', 'poi', 'surveys', 'faq', 'cockpit-cards', 'projects', 'generic-items', 'vouchers'];
+  const permissionActions = modules.flatMap((module) => ['read', 'create', 'update', 'delete'].map((action) => `${module}.${action}`));
+  await page.route('**/api/v1/**', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({data: [], pagination: {page: 1, pageSize: 25, total: 0, hasNextPage: false}})}));
+  await mockSharedShellRequests(page);
+  await page.route('**/auth/me', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({user: {...faqUser.user, assignedModules: modules, permissionActions}})}));
+  await page.route('**/iam/me/permissions?**', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({...faqPermissions, permissions: permissionActions.map((action) => ({action, resourceType: action.split('.')[0]}))})}));
+  await page.route('**/api/v1/mainserver/mutation-capabilities', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({data: {enabledActions: permissionActions}})}));
+  await gotoHomeAsAuthenticatedUser(page);
+  const pages = [
+    ['news', '#news-title'], ['events', '#event-title'], ['poi', '#poi-name'],
+    ['surveys', '#survey-title'], ['faq', '#faq-question'],
+    ['cockpit-cards', '#cockpit-card-heading'], ['projects', '#project-title'],
+    ['generic-items', '#generic-item-title'], ['vouchers', '#voucher-title'],
+  ] as const;
+  for (const [type, field] of pages) {
+    await navigateClientSide(page, `/admin/${type}/new`);
+    await expect(page.locator(field)).toBeVisible();
+    await expect(page.getByRole('tablist')).toHaveCount(0);
+    const save = page.locator('button[type="submit"][form]');
+    await expect(save).toHaveCount(1);
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({width, height: 800});
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect(save).toBeInViewport();
+      const actionBar = page.locator('.sticky').filter({has: save});
+      const rightInset = await actionBar.evaluate((bar) => {
+        const button = bar.querySelector('button[type="submit"]');
+        if (!button) throw new Error('Missing submit action');
+        return bar.getBoundingClientRect().right - button.getBoundingClientRect().right;
+      });
+      expect(rightInset).toBeGreaterThanOrEqual(0);
+      expect(rightInset).toBeLessThanOrEqual(24);
+      const card = page.locator('[data-slot="studio-detail-card"]:visible').first();
+      await expect(card).toBeVisible();
+      expect(await actionBar.evaluate((element) => getComputedStyle(element).backgroundColor))
+        .toBe(await card.evaluate((element) => getComputedStyle(element).backgroundColor));
+      const nestedSurfaces = page.locator(':is(details, [data-slot="studio-detail-card"]) :is(details, [data-slot="studio-detail-card"])');
+      for (const surface of await nestedSurfaces.all()) {
+        expect(await surface.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return {border: style.borderTopWidth, padding: style.paddingTop, background: style.backgroundColor};
+        })).toEqual({border: '0px', padding: '0px', background: 'rgba(0, 0, 0, 0)'});
+      }
+      await page.screenshot({path: test.info().outputPath(`create-${type}-${width}.png`), fullPage: true});
+      if (type === 'surveys') {
+        const summaries = await page.locator('#survey-create-text > details > summary, #survey-create-participation > details > summary').all();
+        for (const summary of summaries) await summary.click();
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({path: test.info().outputPath(`create-surveys-${width}-expanded.png`), fullPage: true});
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        for (const summary of summaries) await summary.click();
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      if (type === 'faq' && width === 390) {
+        const publication = page.locator('#faq-publication-date');
+        await publication.focus();
+        await expect.poll(async () => {
+          const fieldBox = await publication.boundingBox();
+          const barBox = await page.locator('.sticky').filter({has: save}).boundingBox();
+          if (!fieldBox || !barBox) throw new Error('Missing focused field or action bar');
+          return fieldBox.y + fieldBox.height - barBox.y;
+        }).toBeLessThanOrEqual(0);
+      }
+
+    }
+  }
 });

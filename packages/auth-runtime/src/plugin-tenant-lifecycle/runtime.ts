@@ -5,12 +5,12 @@ import type { PluginTenantLifecycleRegistryEntry } from '@sva/plugin-sdk';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
-import { withRegistryRepository } from '../iam-instance-registry/repository.js';
+import { withRegistryRepository } from '../iam-instance-registry/repository-access.js';
 import {
   withPluginTenantLifecycleRepository,
   withStudioJobLifecycleRepositories,
 } from '../plugin-operations/repository.js';
-import { getRegisteredPluginOperationExecutionRegistry } from '../plugin-operations/runner.js';
+import { getRegisteredPluginOperationExecutionRegistry } from '../plugin-operations/runner-internal.js';
 import { resolveAutomaticProvisioningSchedule } from './automatic-schedule.js';
 import { pluginTenantLifecycleJobInputKey } from './job-correlation.js';
 import { reconcileClaimedLifecycleJob } from './enqueue-recovery.js';

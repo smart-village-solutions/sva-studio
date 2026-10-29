@@ -136,6 +136,7 @@ export function StudioListPageTemplate({
 }
 
 export type StudioDetailPageTemplateProps = Readonly<{
+  stickyActions?: boolean;
   title: React.ReactNode;
   description?: React.ReactNode;
   actions?: React.ReactNode;
@@ -169,6 +170,7 @@ export function StudioFormActionBar({
 }
 
 export function StudioDetailPageTemplate({
+  stickyActions = false,
   title,
   description,
   actions,
@@ -185,15 +187,40 @@ export function StudioDetailPageTemplate({
     ) : undefined;
 
   return (
-    <section className={cn('space-y-6', className)}>
+    <section
+      onInvalidCapture={(event) => {
+        if (!stickyActions) return;
+        let details = (event.target as HTMLElement).closest('details');
+        while (details) {
+          details.open = true;
+          details = details.parentElement?.closest('details') ?? null;
+        }
+      }}
+      className={cn(
+        'space-y-6',
+        stickyActions &&
+          '[&_p.text-xs]:text-sm [&_summary]:cursor-pointer [&_details]:rounded-2xl [&_details]:border [&_details]:border-border/60 [&_details]:bg-card [&_details]:p-5 [&_:is(details,[data-slot=studio-detail-card])_:is(details,[data-slot=studio-detail-card])]:rounded-none [&_:is(details,[data-slot=studio-detail-card])_:is(details,[data-slot=studio-detail-card])]:border-0 [&_:is(details,[data-slot=studio-detail-card])_:is(details,[data-slot=studio-detail-card])]:bg-transparent [&_:is(details,[data-slot=studio-detail-card])_:is(details,[data-slot=studio-detail-card])]:p-0 [&_:is(details,[data-slot=studio-detail-card])_:is(details,[data-slot=studio-detail-card])]:shadow-none [&_summary]:text-sm [&_summary]:font-medium [&_details[open]>summary]:mb-4 [&_[id]]:scroll-mt-24 [&_:is(input,select,textarea,[contenteditable=true])]:scroll-mb-48',
+        className
+      )}
+    >
       <StudioPageHeader
         title={title}
         description={description}
-        actions={headerActions}
+        actions={stickyActions ? actions : headerActions}
         withTitleAccessory
       />
-      <div className="space-y-5">{children}</div>
-      {primaryAction ? <StudioFormActionBar>{primaryAction}</StudioFormActionBar> : null}
+      <div className={stickyActions ? 'space-y-6' : 'space-y-5'}>{children}</div>
+      {primaryAction ? (
+        <StudioFormActionBar
+          className={
+            stickyActions
+              ? 'sticky bottom-0 z-20 rounded-xl border bg-card p-4 shadow-sm [&_p]:max-w-2xl [&>div]:w-full [&>div]:items-end [&>div]:gap-3 [&>div>p]:order-first [&>div>p]:self-start sm:[&>div]:flex-row sm:[&>div]:justify-end sm:[&>div>p]:self-center sm:[&>div]:items-center sm:[&>div>p]:mr-auto'
+              : undefined
+          }
+        >
+          {primaryAction}
+        </StudioFormActionBar>
+      ) : null}
     </section>
   );
 }

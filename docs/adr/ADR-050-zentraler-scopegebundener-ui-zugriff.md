@@ -19,6 +19,7 @@ Identität, effektive Tenant-Rechte, Organisationskontext und Modulzuweisung wur
 7. Plugin-Actions, Routen, Navigation und Admin-Ressourcen deklarieren `UiAccessRequirement`. Der Host löst den Snapshot auf und veröffentlicht eine read-only Projektion über `@sva/plugin-sdk`.
 8. Identitäts-/Session-Refresh, Access-Refetch und Session-Widerruf bleiben getrennte Operationen. Ein erwartbarer Ressourcen-`403` löst ohne stabiles Stale-Signal keinen globalen Refetch aus.
 9. Scope-beschränkte Read-Permissions dürfen den Einstieg in eine ausdrücklich als Sammlung deklarierte, serverseitig gefilterte Listenfläche freigeben. Daraus folgt keine Capability für einen konkreten Datensatz oder eine Mutation.
+10. Der Organisationskontext-Provider bindet Reads und Writes an Benutzer, Instanz und lokale Sequenz. Organisationswechsel werden serialisiert; überholte Reads veröffentlichen keinen Zustand. Bei unklarem Write-Ergebnis liest der Provider den autoritativen Kontext frisch nach, ohne den Write zu wiederholen.
 
 ## Konsequenzen
 
@@ -42,6 +43,7 @@ Identität, effektive Tenant-Rechte, Organisationskontext und Modulzuweisung wur
 - Keine Tenant-Aktion ohne vollständig qualifizierte Action-ID; Modul-Gates sind additiv.
 - Keine Datensatzmutation aus globaler Action ohne erforderliche Ressourcen-Capability.
 - Keine alte Permission-Anzeige während Scope- oder Organisationswechsel.
+- Keine Veröffentlichung eines Organisationskontexts aus einer älteren Identitäts- oder Request-Generation.
 - UI-Entscheidungen ergänzen Server-Enforcement, ersetzen es nie.
 
 ## Verwandte ADRs
@@ -51,3 +53,11 @@ Identität, effektive Tenant-Rechte, Organisationskontext und Modulzuweisung wur
 - `ADR-026-redis-als-primary-permission-cache.md`
 - `ADR-034-plugin-sdk-vertrag-v1.md`
 - `ADR-037-plugin-spezifische-iam-rechte.md`
+
+## Fortschreibung 2026-10: Generationen, Ressourcenfehler und Readiness
+
+Die bestehenden Provider bleiben die Zustandsowner. Effektive Rechte sind an Subject, Instanz, Organisation und Invalidierungsgeneration gebunden. Route-Guards verwenden den aktuellen `EffectiveAccessProvider`-Snapshot; flache Rechte aus `/auth/me` bleiben ausgeschlossen. Fokus/Wiederaufnahme und erfolgreiche Session-Recovery invalidieren synchron, auch wenn Rollennamen unverändert sind.
+
+Ein erwartbarer Ressourcen-`403` bleibt lokal. Nur stabile Snapshot-Stale-Codes invalidieren global. `stale_mainserver_context` invalidiert das einzelne SDK-Binding. Der Core-Content-, News- und Event-Editor verwirft die betroffene Ressourcenfreigabe, liest Kontext und Detail nach einer ausdrücklichen Recovery-Aktion neu, erhält den Entwurf und wiederholt keinen Write automatisch.
+
+Die vorhandene Organisationskontext-Projektion stellt Principal-Readiness ohne Credentialwerte bereit. Der Host blendet fehlende Berechtigungen aus und sperrt Create bei nicht bereiter Mainserver-Anbindung mit lokalisierter Erklärung. Dieser UI-Status ist informativ; die serverseitige Schreibprüfung bleibt maßgeblich. Externe Mainserver-Verträge ändern sich nicht.

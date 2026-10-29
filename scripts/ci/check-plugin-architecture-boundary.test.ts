@@ -480,6 +480,62 @@ export const pluginValue = runtimeValue;
     expect(warnings).toEqual([]);
   });
 
+  it('distinguishes import violations from review-required runtime path signals in CLI output', () => {
+    const warnings: string[] = [];
+    const violations: readonly PluginArchitectureViolation[] = [
+      {
+        packageName: '@sva/plugin-example',
+        relativePath: 'packages/plugin-example/src/server.ts',
+        rule: 'review-required-path-signal',
+        subject: 'server.ts',
+        message: 'Review-pflichtiger Runtime-Beitrag',
+      },
+      {
+        packageName: '@sva/plugin-example',
+        relativePath: 'packages/plugin-example/src/server/index.ts',
+        rule: 'workspace-import',
+        subject: '@sva/core',
+        resolvedTarget: '@sva/core/internal',
+        importSpecifier: '@sva/core/internal',
+        kind: 'runtime',
+        message: 'Verbotener Host-Import',
+      },
+      {
+        packageName: '@sva/plugin-example',
+        relativePath: 'packages/plugin-example/package.json',
+        rule: 'workspace-dependency',
+        subject: '@sva/core',
+        message: 'Verbotene Host-Abhängigkeit',
+      },
+      {
+        packageName: '@sva/plugin-example',
+        relativePath: 'packages/plugin-example/src/mainserver-news.ts',
+        rule: 'forbidden-path-signal',
+        subject: 'mainserver-',
+        message: 'Host-owned Dateistruktur',
+      },
+    ];
+
+    expect(
+      reportPluginArchitectureBoundaryGuardResult(
+        {
+          mode: 'warn',
+          violations,
+          unallowlistedViolations: violations,
+          exitCode: 0,
+        },
+        { warn: (message) => warnings.push(message) }
+      )
+    ).toBe(true);
+    expect(warnings).toEqual([
+      'Plugin-Boundary-Guard meldet Architektur-Befunde zur Prüfung.',
+      '- [review-required-path-signal] packages/plugin-example/src/server.ts: server.ts – Review-pflichtiger Runtime-Beitrag',
+      '- [workspace-import:runtime] packages/plugin-example/src/server/index.ts -> @sva/core/internal – Verbotener Host-Import',
+      '- [workspace-dependency] packages/plugin-example/package.json: @sva/core – Verbotene Host-Abhängigkeit',
+      '- [forbidden-path-signal] packages/plugin-example/src/mainserver-news.ts: mainserver- – Host-owned Dateistruktur',
+    ]);
+  });
+
   it('detects forbidden workspace dependencies, imports and path signals', async () => {
     const workspaceRoot = createTempWorkspace();
     createPluginPackage(workspaceRoot, 'plugin-drift', {
@@ -554,6 +610,23 @@ export const pluginDrift = authorize;
     });
 
     await expect(collectPluginArchitectureViolations(workspaceRoot)).resolves.toEqual([]);
+  });
+
+  it('still rejects internal host imports in canonical server entry points', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createPluginPackage(workspaceRoot, 'plugin-server-import', {
+      packageName: '@sva/plugin-server-import',
+      sourceFiles: {
+        'src/server/index.ts':
+          "import { internal } from '@sva/core'; export const handler = internal;\n",
+      },
+    });
+
+    const result = await runPluginArchitectureBoundaryGuard(workspaceRoot, [], { mode: 'strict' });
+    expect(result.exitCode).toBe(1);
+    expect(result.unallowlistedViolations).toEqual([
+      expect.objectContaining({ rule: 'workspace-import', subject: '@sva/core', kind: 'runtime' }),
+    ]);
   });
 
   it('parses the markdown baseline and filters documented brownfield violations', () => {

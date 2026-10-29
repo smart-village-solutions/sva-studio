@@ -781,6 +781,7 @@ paths:
               - legal_hold
               - profile_correction
               - recipient_notification
+              - account_registration
         - name: status
           in: query
           schema:
@@ -2936,13 +2937,18 @@ components:
       enum: [queued, in_progress, completed, blocked, failed]
     DsrCase:
       type: object
+      description: >-
+        account_registration projiziert die erstmalige lokale Kontoanlage aus bestehenden
+        Auth-Audit-Ereignissen. Dieser historische Eintrag wird nur für system_admin mit
+        iam.dsr.read geliefert, bleibt auf die eigene Instanz begrenzt und sagt nichts über
+        aktuell zugewiesene Rollen aus. canonicalStatus=completed bedeutet hier Ereignis erfasst.
       required: [id, type, canonicalStatus, rawStatus, title, summary, createdAt, metadata]
       properties:
         id:
           type: string
         type:
           type: string
-          enum: [request, export_job, legal_hold, profile_correction, recipient_notification]
+          enum: [request, export_job, legal_hold, profile_correction, recipient_notification, account_registration]
         canonicalStatus:
           $ref: '#/components/schemas/DsrCanonicalStatus'
         rawStatus:

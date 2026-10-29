@@ -172,12 +172,48 @@ describe('EffectiveAccessProvider', () => {
     });
   });
 
+  it('does not publish the previous user access while identical roles are being reloaded', async () => {
+    fetchWithRequestTimeoutMock.mockResolvedValueOnce(response([{ action: 'news.create' }]));
+    const { result, rerender } = renderHook(() => useEffectiveAccess(), { wrapper });
+    await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
+    expect(readSessionAccessSnapshot()).toMatchObject({
+      subjectId: 'user-1',
+      permissionActions: ['news.create'],
+    });
+
+    let resolveNext: ((value: ReturnType<typeof response>) => void) | undefined;
+    fetchWithRequestTimeoutMock.mockReturnValueOnce(
+      new Promise<ReturnType<typeof response>>((resolve) => {
+        resolveNext = resolve;
+      })
+    );
+    authMockValue.user = { ...authMockValue.user!, id: 'user-2' };
+    rerender();
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('loading'));
+    expect(readSessionAccessSnapshot()).toMatchObject({
+      isResolved: false,
+      subjectId: 'user-2',
+      permissionActions: [],
+    });
+
+    await act(async () => {
+      resolveNext?.(response([{ action: 'news.create' }]));
+    });
+    await waitFor(() => expect(readSessionAccessSnapshot().isResolved).toBe(true));
+    expect(readSessionAccessSnapshot().subjectId).toBe('user-2');
+  });
+
   it('retries only effective access without refreshing or revoking the session', async () => {
-    fetchWithRequestTimeoutMock.mockRejectedValueOnce({ code: 'database_unavailable' });
+    fetchWithRequestTimeoutMock
+      .mockRejectedValueOnce({ status: 503, code: 'database_unavailable' })
+      .mockRejectedValueOnce({ status: 503, code: 'database_unavailable' });
     const { result } = renderHook(() => useEffectiveAccess(), { wrapper });
 
     await waitFor(() => expect(result.current.snapshot.status).toBe('error'));
     expect(result.current.permissionActions).toEqual([]);
+    expect(readSessionAccessSnapshot().isResolved).toBe(false);
+    expect(readSessionAccessSnapshot().hasError).toBe(true);
 
     act(() => result.current.retry());
     await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
@@ -186,6 +222,18 @@ describe('EffectiveAccessProvider', () => {
     expect(fetchWithRequestTimeoutMock.mock.calls).toSatisfy((calls: unknown[][]) =>
       calls.every(([path]) => typeof path === 'string' && path.startsWith('/iam/me/permissions?'))
     );
+  });
+
+  it('recovers a transient permission lookup failure with one automatic retry', async () => {
+    fetchWithRequestTimeoutMock.mockRejectedValueOnce({
+      status: 503,
+      code: 'database_unavailable',
+    });
+    const { result } = renderHook(() => useEffectiveAccess(), { wrapper });
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
+    expect(fetchWithRequestTimeoutMock).toHaveBeenCalledTimes(2);
+    expect(result.current.permissionActions).toEqual(['news.read']);
   });
 
   it('preserves IAM error codes from permission snapshot responses', async () => {
@@ -227,11 +275,7 @@ describe('EffectiveAccessProvider', () => {
 
   it('sorts and deduplicates permission actions', async () => {
     fetchWithRequestTimeoutMock.mockResolvedValueOnce(
-      response([
-        { action: 'news.update' },
-        { action: 'news.read' },
-        { action: 'news.update' },
-      ])
+      response([{ action: 'news.update' }, { action: 'news.read' }, { action: 'news.update' }])
     );
     const { result } = renderHook(() => useEffectiveAccess(), { wrapper });
 

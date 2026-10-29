@@ -8,6 +8,7 @@ const workspacePluginCatalogConfig = [
   { pluginId: 'events', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-events' },
   { pluginId: 'poi', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-poi' },
   { pluginId: 'generic-items', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-generic-items' },
+  { pluginId: 'vouchers', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-vouchers' },
   { pluginId: 'faq', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-faq' },
   { pluginId: 'cockpit', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-cockpit' },
   { pluginId: 'cockpit-cards', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-cockpit-cards' },

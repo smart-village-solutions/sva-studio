@@ -39,7 +39,7 @@ vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => (
     ]),
 }));
 
-vi.mock('../iam-instance-registry/repository.js', () => ({
+vi.mock('../iam-instance-registry/repository-access.js', () => ({
   withRegistryRepository: async (work: (repository: unknown) => Promise<unknown>) =>
     work({ listModuleActivations: state.listModuleActivations }),
 }));

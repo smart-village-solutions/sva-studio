@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react';
 import type { FieldError } from 'react-hook-form';
 
 import type { StudioFieldControlProps } from './studio-form-fields.js';
@@ -67,14 +68,21 @@ export type StudioFormSummaryErrorsProps = Readonly<{
   onSelectError?: (error: StudioFormFieldError) => void;
 }>;
 
-const focusFieldById = (fieldId: string) => {
+const revealFieldById = (fieldId: string) => {
   const target = document.getElementById(fieldId);
   if (!(target instanceof HTMLElement)) {
     return;
   }
 
-  target.focus();
+  let details = target.closest('details');
+  while (details) {
+    details.open = true;
+    details = details.parentElement?.closest('details') ?? null;
+  }
+  return target;
 };
+
+const focusFieldById = (fieldId: string) => revealFieldById(fieldId)?.focus();
 
 export function StudioFormSummaryErrors({
   errors,
@@ -82,6 +90,9 @@ export function StudioFormSummaryErrors({
   className,
   onSelectError,
 }: StudioFormSummaryErrorsProps) {
+  useLayoutEffect(() => {
+    errors.forEach((error) => revealFieldById(error.field));
+  }, [errors]);
   if (errors.length === 0) {
     return null;
   }

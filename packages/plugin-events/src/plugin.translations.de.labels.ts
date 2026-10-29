@@ -32,7 +32,7 @@ export const eventsDELabels = {
   principal: {
     createAs: 'Erstellen als',
     actAs: 'Handeln als',
-    description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+    description: 'Wählen Sie, in wessen Namen Sie arbeiten.',
     organization: 'Aktive Organisation',
     user: 'Persönlicher Account',
     dataProvider: 'Ursprünglicher DataProvider',
@@ -127,6 +127,8 @@ export const eventsDELabels = {
     updatedAt: 'Aktualisiert',
   },
   actions: {
+    reloadCurrentContext: 'Kontext neu laden und Entwurf behalten',
+    openSavedContent: 'Gespeicherten Inhalt öffnen',
     retryMediaReferences: 'Referenzen erneut speichern',
     cancel: 'Abbrechen',
     create: 'Anlegen',
@@ -160,3 +162,52 @@ export const eventsDELabels = {
     removeCategory: 'Kategorie {{name}} entfernen',
   },
 } as const;
+
+export const eventsDECreate = {
+  saveUnavailable:
+    'Speichern ist derzeit nicht möglich. Bitte lassen Sie Ihre Verbindung zur Inhaltsverwaltung durch die Administration prüfen.',
+  responsible: 'Verantwortlich:',
+  coordinates: 'Position manuell angeben',
+  categoryUnavailable:
+    'Kategorien können derzeit nicht geladen werden. Bitte wenden Sie sich an Ihre Administration.',
+  dateExtras: 'Weitere Zeitangaben',
+  titleHelp: 'Wie heißt die Veranstaltung? Der Titel ist erforderlich.',
+  createVisible: 'Sichtbar speichern',
+  createHidden: 'Verborgen speichern',
+  intro:
+    'Erstellen Sie eine Veranstaltung. Beginnen Sie mit Titel, Termin und Ort; weitere Angaben können Sie ergänzen.',
+  optional: 'optional',
+  filled: 'Angaben vorhanden',
+  empty: 'Noch keine Angaben',
+  visibleEffect:
+    'Die Veranstaltung wird mit aktivierter Sichtbarkeit gespeichert. Die Termine beschreiben die Veranstaltung und steuern keine zeitgesteuerte Veröffentlichung.',
+  hiddenEffect: 'Die Veranstaltung wird gespeichert und bleibt öffentlich verborgen.',
+  editHint:
+    'Nach dem Anlegen öffnen Sie die gespeicherte Veranstaltung im gewohnten Editor mit Tabs.',
+  sections: {
+    title: 'Titel',
+    dates: 'Termine',
+    recurrence: 'Wiederholung',
+    addresses: 'Ort / Adressen',
+    description: 'Beschreibung',
+    media: 'Medien',
+    categories: 'Kategorien',
+    organizer: 'Veranstalter ergänzen',
+    contacts: 'Kontakte ergänzen',
+    links: 'Links ergänzen',
+    prices: 'Eintrittspreise ergänzen',
+    technical: 'Technische Angaben',
+    publication: 'Sichtbarkeit',
+  },
+};
+
+export const eventsDEValidation = {
+  title: 'Die Überschrift ist erforderlich.',
+  dates: 'Datumswerte müssen gültig sein.',
+  urls: 'URLs müssen mit https:// beginnen.',
+  categories: 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
+  priceInformations: 'Preisangaben müssen valide Zahlen enthalten.',
+  geoLocation: 'Koordinaten müssen gültige Breiten- und Längengrade sein.',
+  organizerName:
+    'Geben Sie einen Namen für den Veranstalter ein oder entfernen Sie die übrigen Veranstalterangaben.',
+};

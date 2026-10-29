@@ -195,6 +195,22 @@ const runScopedRegistryService = async <T>(
   return { reconcileResult, result: await work(service) };
 };
 
+export const withInstanceRegistryRepository = async <T>(
+  deps: Pick<InstanceRegistryRuntimeDeps, 'resolvePool' | 'createRepository'>,
+  work: (repository: InstanceRegistryRepository) => Promise<T>
+): Promise<T> => {
+  const pool = deps.resolvePool();
+  if (!pool) {
+    throw new Error('IAM database not configured');
+  }
+  const client = await pool.connect();
+  try {
+    return await work(deps.createRepository(createExecutor(client)));
+  } finally {
+    client.release();
+  }
+};
+
 export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps) => {
   const withScopedClient = async <T>(
     instanceId: string,
@@ -202,18 +218,7 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
   ): Promise<T> => withInstanceTransaction(deps, instanceId, beginScopedTransaction, work);
   const withRegistryRepository = async <T>(
     work: (repository: InstanceRegistryRepository) => Promise<T>
-  ): Promise<T> => {
-    const pool = deps.resolvePool();
-    if (!pool) {
-      throw new Error('IAM database not configured');
-    }
-    const client = await pool.connect();
-    try {
-      return await work(deps.createRepository(createExecutor(client)));
-    } finally {
-      client.release();
-    }
-  };
+  ): Promise<T> => withInstanceRegistryRepository(deps, work);
   const withScopedRegistryRepository = async <T>(
     instanceId: string,
     work: (repository: InstanceRegistryRepository) => Promise<T>

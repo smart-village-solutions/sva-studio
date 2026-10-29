@@ -862,6 +862,8 @@ describe('createSvaMainserverService', () => {
         };
         if (!body.operationName)
           return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
+        if (body.operationName === 'SvaMainserverPoiVoucherGuard')
+          return createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } });
         if (body.operationName.endsWith('Detail'))
           return createJsonResponse(200, { data: { [detailField]: staleDetail } });
         const variables = body.variables ?? {};
@@ -2227,7 +2229,13 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } })
+      )
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } })
+      )
       .mockResolvedValueOnce(
         createJsonResponse(200, { data: { destroyRecord: { id: 2, statusCode: 200 } } })
       );
@@ -2362,7 +2370,13 @@ describe('createSvaMainserverService', () => {
           variables?: Record<string, unknown>;
         }
     );
-    expect(requestBodies.map((body) => body.operationName)).toEqual([
+    expect(
+      requestBodies.filter((body) => body.operationName === 'SvaMainserverPoiVoucherGuard')
+    ).toHaveLength(2);
+    const businessBodies = requestBodies.filter(
+      (body) => body.operationName !== 'SvaMainserverPoiVoucherGuard'
+    );
+    expect(businessBodies.map((body) => body.operationName)).toEqual([
       'SvaMainserverEventList',
       'SvaMainserverEventDetail',
       'SvaMainserverCreateEvent',
@@ -2376,22 +2390,22 @@ describe('createSvaMainserverService', () => {
       'SvaMainserverCreatePoi',
       'SvaMainserverDestroyRecord',
     ]);
-    expect(requestBodies[2]?.variables).not.toHaveProperty('forceCreate');
-    expect(requestBodies[2]?.variables).not.toHaveProperty('payload');
-    expect(requestBodies[8]?.variables).not.toHaveProperty('forceCreate');
-    expect(requestBodies[8]?.variables?.payload).toEqual({ source: 'mainserver' });
-    expect(requestBodies[4]?.variables).toMatchObject({
+    expect(businessBodies[2]?.variables).not.toHaveProperty('forceCreate');
+    expect(businessBodies[2]?.variables).not.toHaveProperty('payload');
+    expect(businessBodies[8]?.variables).not.toHaveProperty('forceCreate');
+    expect(businessBodies[8]?.variables?.payload).toEqual({ source: 'mainserver' });
+    expect(businessBodies[4]?.variables).toMatchObject({
       id: 'event-1',
       forceCreate: true,
       repeat: true,
     });
-    expect(requestBodies[5]?.variables).toEqual({ id: 'event-1', recordType: 'EventRecord' });
-    expect(requestBodies[10]?.variables).toMatchObject({
+    expect(businessBodies[5]?.variables).toEqual({ id: 'event-1', recordType: 'EventRecord' });
+    expect(businessBodies[10]?.variables).toMatchObject({
       id: 'poi-1',
       forceCreate: true,
       active: false,
     });
-    expect(requestBodies[11]?.variables).toEqual({ id: 'poi-1', recordType: 'PointOfInterest' });
+    expect(businessBodies[11]?.variables).toEqual({ id: 'poi-1', recordType: 'PointOfInterest' });
   });
 
   it('routes default event and POI helpers through the default service', async () => {
@@ -2428,7 +2442,13 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } })
+      )
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } })
+      )
       .mockResolvedValueOnce(
         createJsonResponse(200, { data: { destroyRecord: { id: 2, statusCode: 200 } } })
       );
@@ -2523,6 +2543,7 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItem } }))
       .mockResolvedValueOnce(
         createJsonResponse(200, { data: { destroyRecord: { id: 3, statusCode: 200 } } })
       );
@@ -2614,6 +2635,7 @@ describe('createSvaMainserverService', () => {
       'SvaMainserverCreateGenericItem',
       'SvaMainserverGenericItemDetail',
       'SvaMainserverCreateGenericItem',
+      'SvaMainserverGenericItemDetail',
       'SvaMainserverDestroyRecord',
     ]);
     expect(requestBodies[2]?.variables).not.toHaveProperty('forceCreate');
@@ -2633,7 +2655,7 @@ describe('createSvaMainserverService', () => {
     expect(genericItemMutation).not.toContain('\n  teaser\n');
     expect(genericItemMutation).not.toContain('$visible: Boolean');
     expect(genericItemMutation).not.toContain('visible: $visible');
-    expect(requestBodies[5]?.variables).toEqual({ id: 'generic-1', recordType: 'GenericItem' });
+    expect(requestBodies[6]?.variables).toEqual({ id: 'generic-1', recordType: 'GenericItem' });
   });
 
   it('routes default generic item helpers through the default service', async () => {
@@ -2660,6 +2682,7 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItem } }))
       .mockResolvedValueOnce(
         createJsonResponse(200, { data: { destroyRecord: { id: 4, statusCode: 200 } } })
       );
@@ -2714,6 +2737,9 @@ describe('createSvaMainserverService', () => {
         })
       )
       .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } })
+      )
+      .mockResolvedValueOnce(
         createJsonResponse(200, {
           data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } },
         })
@@ -2732,7 +2758,7 @@ describe('createSvaMainserverService', () => {
       })
     ).resolves.toMatchObject({ id: 'poi-1' });
 
-    const requestBody = JSON.parse(fetchImpl.mock.calls[2]?.[1]?.body as string) as {
+    const requestBody = JSON.parse(fetchImpl.mock.calls[3]?.[1]?.body as string) as {
       variables?: Record<string, unknown>;
     };
     expect(requestBody.variables).toMatchObject({
@@ -2759,6 +2785,9 @@ describe('createSvaMainserverService', () => {
         })
       )
       .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } })
+      )
+      .mockResolvedValueOnce(
         createJsonResponse(200, {
           data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } },
         })
@@ -2778,7 +2807,7 @@ describe('createSvaMainserverService', () => {
       })
     ).resolves.toMatchObject({ id: 'poi-1' });
 
-    const requestBody = JSON.parse(fetchImpl.mock.calls[2]?.[1]?.body as string) as {
+    const requestBody = JSON.parse(fetchImpl.mock.calls[3]?.[1]?.body as string) as {
       variables?: Record<string, unknown>;
     };
     expect(requestBody.variables).toMatchObject({

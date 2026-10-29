@@ -4,6 +4,15 @@ import type {
   WasteMasterDataLocationsTableMaps,
   WasteMasterDataLocationsTableProps,
 } from './waste-management.master-data-locations-table.types.js';
+import { matchesWasteTourValidityPeriod } from './waste-management.tours.validity-filter.js';
+
+export const matchesLocationTourFilters = (
+  tour: WasteTourRecord,
+  locationYear?: number,
+  locationTourStatus?: WasteMasterDataLocationsTableProps['locationTourStatus']
+): boolean =>
+  (!locationYear || matchesWasteTourValidityPeriod(tour, 'current', locationYear)) &&
+  (!locationTourStatus || tour.status === locationTourStatus);
 
 export const createLocationsTableMaps = ({
   regions,
@@ -12,11 +21,24 @@ export const createLocationsTableMaps = ({
   houseNumbers,
   availableTours,
   locationTourLinks,
+  locationYear,
+  locationTourStatus,
 }: Pick<
   WasteMasterDataLocationsTableProps,
-  'regions' | 'cities' | 'streets' | 'houseNumbers' | 'availableTours' | 'locationTourLinks'
+  | 'regions'
+  | 'cities'
+  | 'streets'
+  | 'houseNumbers'
+  | 'availableTours'
+  | 'locationTourLinks'
+  | 'locationYear'
+  | 'locationTourStatus'
 >): WasteMasterDataLocationsTableMaps => {
-  const toursById = new Map(availableTours.map((tour) => [tour.id, tour] as const));
+  const toursById = new Map(
+    availableTours
+      .filter((tour) => matchesLocationTourFilters(tour, locationYear, locationTourStatus))
+      .map((tour) => [tour.id, tour] as const)
+  );
   const locationTourNamesByLocationId = new Map<string, string[]>();
   const locationToursByLocationId = new Map<string, WasteTourRecord[]>();
 
@@ -59,6 +81,8 @@ export const createLocationsTableMaps = ({
       houseNumbers.map((houseNumber) => [houseNumber.id, houseNumber] as const)
     ),
     toursById,
+    locationYear,
+    locationTourStatus,
     locationTourNamesByLocationId,
     locationToursByLocationId,
   };

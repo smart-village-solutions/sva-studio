@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
   hasContentLifecycleAccess,
   readSessionAccessSnapshot,
@@ -39,12 +40,15 @@ const defaults: CockpitCardFormValues = {
   linkText: '',
   openInNewTab: false,
   visible: true,
+  publicationDate: '',
 };
 
 export function useCockpitCardForm() {
   const form = useForm<CockpitCardFormValues>({
     defaultValues: defaults,
-    resolver: zodResolver(cockpitCardFormSchema),
+    resolver: zodResolver<CockpitCardFormValues, unknown, CockpitCardFormValues>(
+      z.preprocess((values: CockpitCardFormValues) => values, cockpitCardFormSchema)
+    ),
   });
   const link = form.watch('link');
   React.useEffect(() => {

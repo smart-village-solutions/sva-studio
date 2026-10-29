@@ -115,7 +115,10 @@ describe('annual tour transfer handlers', () => {
     const emitAuditEvent = vi.fn(async () => undefined);
     const response =
       await wasteManagementAnnualTourTransferHandlers.previewWasteAnnualTourTransferInternal(
-        request('/api/v1/waste-management/tours/annual-transfer/preview', { sourceYear: 2026 }),
+        request('/api/v1/waste-management/tours/annual-transfer/preview', {
+          sourceYear: 2026,
+          firstTargetDates: [{ sourceTourId: 'source-1', firstDate: '2027-01-21' }],
+        }),
         actor,
         {
           getRequestId: () => 'req-1',
@@ -131,6 +134,7 @@ describe('annual tour transfer handlers', () => {
       sourceYear: 2026,
       selectedTourIds: undefined,
       replacementDates: undefined,
+      firstTargetDates: [{ sourceTourId: 'source-1', firstDate: '2027-01-21' }],
     });
     expect(emitAuditEvent).not.toHaveBeenCalled();
   });
@@ -144,8 +148,11 @@ describe('annual tour transfer handlers', () => {
           targetYear: 2030,
         }),
         actor,
-        { resolvePermissions: permissions,
-          ...idempotencyDeps, previewWasteAnnualTourTransfer: load }
+        {
+          resolvePermissions: permissions,
+          ...idempotencyDeps,
+          previewWasteAnnualTourTransfer: load,
+        }
       );
     expect(response.status).toBe(400);
     expect(load).not.toHaveBeenCalled();
@@ -238,6 +245,7 @@ describe('annual tour transfer handlers', () => {
             sourceYear: 2026,
             selectedTourIds: ['source-1'],
             replacementDates: [],
+            firstTargetDates: [{ sourceTourId: 'source-1', firstDate: '2027-01-21' }],
             acknowledgedConflictTourIds: [],
             previewFingerprint: `sha256:${'a'.repeat(64)}`,
           },
@@ -256,6 +264,13 @@ describe('annual tour transfer handlers', () => {
         }
       );
     expect(response.status).toBe(201);
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          firstTargetDates: [{ sourceTourId: 'source-1', firstDate: '2027-01-21' }],
+        }),
+      })
+    );
     expect(idempotency.reserve).toHaveBeenCalledWith(
       expect.objectContaining({ inProgressLeaseMs: 5 * 60 * 1_000 })
     );

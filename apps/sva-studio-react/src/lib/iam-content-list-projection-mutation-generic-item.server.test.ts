@@ -473,7 +473,7 @@ describe('GenericItem content projection mutations', () => {
       ((await firstList.json()) as { data: Array<{ id: string }> }).data.map((row) => row.id)
     ).toEqual(['generic-type-change-1']);
 
-    state.resolveActorAccountId.mockResolvedValue('account-2');
+    state.resolveActorAccountIdWithProvision.mockResolvedValue('account-2');
     state.listSvaMainserverGenericItems.mockRejectedValueOnce(new Error('temporary failure'));
     const failedRefresh = await refreshProjectedContents(ctx, {
       visibleTypes: ['cockpit-cards.cockpit-card'],

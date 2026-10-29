@@ -18,6 +18,7 @@ const regularPlugins = [
   'poi',
   'projects',
   'surveys',
+  'vouchers',
   'waste-management',
 ];
 const excludedWorkspacePackages = {
@@ -34,6 +35,7 @@ const workspacePluginIds = [
   'events',
   'poi',
   'generic-items',
+  'vouchers',
   'faq',
   'cockpit',
   'cockpit-cards',
@@ -149,6 +151,24 @@ const verify = (input: ReturnType<typeof validInput>) =>
   });
 
 describe('verify-studio-image-contract', () => {
+  it.each(['studio', 'custom'] as const)(
+    'verifies voucher chunks and requires the voucher package in %s',
+    (distribution) => {
+      const input = validInput(distribution, ['poi', 'vouchers']);
+      for (const chunk of input.chunkProvenance.chunks)
+        chunk.pluginPackages.push('plugin-vouchers');
+      expect(JSON.parse(verify(input)).includedPluginIds).toContain('vouchers');
+      input.packages = input.packages.filter((name) => name !== 'plugin-vouchers');
+      expect(() => verify(input)).toThrow('plugin_package_inventory_mismatch:vouchers');
+    }
+  );
+
+  it('rejects voucher code in the SSF image', () => {
+    const input = validInput('ssf');
+    input.chunkProvenance.chunks[0]!.pluginPackages.push('plugin-vouchers');
+    expect(() => verify(input)).toThrow('chunk_provenance_excluded_plugin:plugin-vouchers');
+  });
+
   it('accepts an attested installed package and rejects an undeclared package in the chunks', () => {
     const input = validInput('studio');
     input.runtimeManifest.installedPlugins.push({

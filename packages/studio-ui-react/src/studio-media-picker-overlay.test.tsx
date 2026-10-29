@@ -30,6 +30,31 @@ const createAsset = (
 });
 
 describe('useStudioMediaPickerOverlay', () => {
+  it('clears the previous selection when loading another asset fails', async () => {
+    const first = createAsset();
+    const loadAsset = vi
+      .fn()
+      .mockResolvedValueOnce(first)
+      .mockRejectedValueOnce(new Error('unavailable'));
+    const onAccept = vi.fn();
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        loadAsset,
+        onAccept,
+        saveAssetMetadata: vi.fn(),
+        isSupportedUploadFile: () => true,
+      })
+    );
+    act(() => result.current.openLibrary());
+    await act(async () => result.current.selectAsset(first));
+    act(() => result.current.goBackFromReview());
+    await act(async () => result.current.selectAsset({ ...first, id: 'missing' }));
+    expect(result.current.reviewAsset).toBeNull();
+    expect(result.current.canConfirmSelection).toBe(false);
+    await act(async () => result.current.confirmSelection());
+    expect(onAccept).not.toHaveBeenCalled();
+  });
+
   it('limits review metadata fields while retaining the read-only state', () => {
     const asset = createAsset();
     render(

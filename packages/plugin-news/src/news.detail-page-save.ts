@@ -3,6 +3,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import { useNavigate } from '@tanstack/react-router';
 import {
   contentMediaSavePhaseMessageKey,
+  readMainserverErrorRequestId,
   saveContentWithHostMediaReferences,
   toDatetimeLocalValue,
 } from '@sva/plugin-sdk';
@@ -16,7 +17,7 @@ import {
   type ContentMediaUsage,
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
-import { createNews, saveNewsEditorItem, updateNews } from './news.api.js';
+import { createNews, NewsApiError, saveNewsEditorItem, updateNews } from './news.api.js';
 import { NEWS_CONTENT_TYPE } from './news.constants.js';
 import { mapNewsItemToDetailFormValues } from './news.detail-form.js';
 import {
@@ -112,6 +113,9 @@ type NewsDetailSaveOptions = Readonly<{
   setLoadedItem: React.Dispatch<React.SetStateAction<NewsContentItem | null>>;
   setScheduledPublicationInput: React.Dispatch<React.SetStateAction<string>>;
   setInvalidScheduledPublicationInput: React.Dispatch<React.SetStateAction<boolean>>;
+  captureCreateSave: () => void;
+  completeCreateSave: () => boolean;
+  retryCreatedContentId: string | null;
 }>;
 
 const didDeclineGlobalPush = (
@@ -128,6 +132,21 @@ const didDeclineGlobalPush = (
   typeof globalThis.window.confirm === 'function' &&
   globalThis.window.confirm(pt(resolveGlobalPushConfirmationKey(wasteTargetingAvailability))) ===
     false;
+
+function useCreatedNewsNavigation() {
+  const navigate = useNavigate();
+  const navigateToCreatedDetail = React.useCallback(
+    (createdContentId: string) =>
+      navigate({
+        to: '/admin/news/$id',
+        params: { id: createdContentId },
+        state: (previous) => addNewsCreatedSaveFeedback(previous, createdContentId),
+      }),
+    [navigate]
+  );
+
+  return navigateToCreatedDetail;
+}
 
 export const useNewsDetailSave = ({
   methods,
@@ -149,22 +168,18 @@ export const useNewsDetailSave = ({
   setLoadedItem,
   setScheduledPublicationInput,
   setInvalidScheduledPublicationInput,
+  captureCreateSave,
+  completeCreateSave,
+  retryCreatedContentId,
 }: NewsDetailSaveOptions) => {
-  const navigate = useNavigate();
   const { reset } = methods;
-  const navigateToCreatedDetail = React.useCallback(
-    (createdContentId: string) =>
-      navigate({
-        to: '/admin/news/$id',
-        params: { id: createdContentId },
-        state: (previous) => addNewsCreatedSaveFeedback(previous, createdContentId),
-      }),
-    [navigate]
-  );
+  const confirmedCreateId = React.useRef<string | null>(null);
+  const navigateToCreatedDetail = useCreatedNewsNavigation();
 
   const saveCurrentItem = methods.handleSubmit(
     async (values) => {
-      if (!canSave) return;
+      if (!canSave || (mode === 'create' && (retryCreatedContentId || confirmedCreateId.current)))
+        return;
       if (didDeclineGlobalPush(values, loadedItem, pt, wasteTargetingAvailability)) return;
       if (mediaReferenceSync.hasPendingRetry) {
         setStatusMessage({
@@ -179,6 +194,7 @@ export const useNewsDetailSave = ({
         return;
       }
 
+      captureCreateSave();
       const operationId = saveFeedback.beginSaving();
       setMediaSavePhaseKey(null);
       try {
@@ -194,6 +210,7 @@ export const useNewsDetailSave = ({
           mediaReferenceSync,
         });
         const saved = handledResult.saved;
+        if (mode === 'create') confirmedCreateId.current = saved.id;
         if (handledResult.referenceFailed) {
           setRetryCreatedContentId(mode === 'create' ? saved.id : null);
           setStatusMessage({
@@ -205,6 +222,10 @@ export const useNewsDetailSave = ({
         }
 
         if (mode === 'create') {
+          setRetryCreatedContentId(saved.id);
+          if (!completeCreateSave()) {
+            setStatusMessage({ source: 'navigation', text: pt('create.savedWithNewChanges') });
+          }
           saveFeedback.markSaved(operationId);
           try {
             await navigateToCreatedDetail(saved.id);
@@ -231,6 +252,8 @@ export const useNewsDetailSave = ({
         setStatusMessage({
           source: 'save',
           text: resolveNewsErrorMessage(pt, error, 'messages.saveError'),
+          requestId: readMainserverErrorRequestId(error),
+          ...(error instanceof NewsApiError ? { errorCode: error.code } : {}),
         });
         saveFeedback.markFailed(operationId);
       }

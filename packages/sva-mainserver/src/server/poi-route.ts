@@ -18,6 +18,8 @@ import {
   POI_CONTENT_TYPE,
   type RouteMatch,
 } from './poi-route-access.js';
+import { z } from 'zod';
+import { preparePoiVoucherUpdate, reconcileVoucherReferences } from './poi-route-vouchers.js';
 import { createPoiContent, parsePoiInput } from './poi-route-input.js';
 import {
   authorizeMainserverExistingContent,
@@ -88,6 +90,10 @@ const handleItemUpdate = async (
       }
 
       const existing = await getSvaMainserverPoiDetail({ ...actor, poiId: route.itemId });
+      if (request.headers.get('x-sva-voucher-reset-mode') === 'prepare') {
+        const preparation = await preparePoiVoucherUpdate({ request, ctx, actor, poiId: route.itemId, poi: parsed });
+        return isResponse(preparation) ? preparation : errorJson(409, 'voucher_confirmation_required', 'voucher_confirmation_required');
+      }
       const providerAuthorization = await authorizeMainserverExistingContent({
         actor,
         action: 'poi.update',
@@ -101,9 +107,28 @@ const handleItemUpdate = async (
           : [],
       });
       if (isResponse(providerAuthorization)) return providerAuthorization;
+      const voucherReset = await preparePoiVoucherUpdate({
+        request,
+        ctx,
+        actor,
+        poiId: route.itemId,
+        poi: parsed,
+      });
+      if (isResponse(voucherReset)) return voucherReset;
       const result = {
-        data: await updateSvaMainserverPoi({ ...actor, poiId: route.itemId, poi: parsed }),
+        data: await updateSvaMainserverPoi({
+          ...actor,
+          poiId: route.itemId,
+          poi: parsed,
+          ...voucherReset,
+        }),
       };
+      if ('voucherIdChanges' in result.data) {
+        const changes = z
+          .array(z.object({ previousId: z.string(), id: z.string() }))
+          .parse(result.data.voucherIdChanges);
+        await reconcileVoucherReferences(actor.instanceId, changes);
+      }
       await finalizeMainserverMutation({
         actor,
         providerOutcome: 'succeeded',
@@ -222,6 +247,7 @@ const dispatchAuthenticated = async (
       'Methode wird für diesen Mainserver-Inhalt nicht unterstützt.'
     );
   } catch (error) {
+    if (error instanceof Error && /^voucher_[a-z_]+$/.test(error.message)) return errorJson(409, error.message, error.message);
     const logFailure = isUnexpectedMainserverError(error) ? logger.error : logger.warn;
     logFailure('Mainserver content route failed', {
       operation: 'mainserver_content_request',

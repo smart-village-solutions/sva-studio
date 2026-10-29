@@ -174,7 +174,15 @@ const stubConfirm = (result: boolean) => {
 };
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  Link: ({
+    children,
+    to,
+    params,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    params?: { id: string };
+  }) => <a href={params ? to.replace('$id', params.id) : to}>{children}</a>,
   useNavigate: () => navigateMock,
   useParams: () => paramsMock(),
   useLocation: () => ({ state: locationStateMock() }),
@@ -212,6 +220,11 @@ const actResolve = async <T,>(
 };
 
 const openContentTab = async () => {
+  await screen.findByLabelText('Titel');
+  if (!screen.queryByLabelText('Bereich auswählen')) {
+    await screen.findByLabelText('Inhalt');
+    return;
+  }
   await waitFor(() => {
     expect(screen.getByLabelText('Bereich auswählen')).toBeTruthy();
   });
@@ -230,6 +243,11 @@ const openReleaseTab = async () => {
 };
 
 const openSettingsTab = async () => {
+  await screen.findByLabelText('Titel');
+  if (!screen.queryByLabelText('Bereich auswählen')) {
+    await screen.findByRole('radio', { name: /Zeitgesteuert/ });
+    return;
+  }
   await waitFor(() => {
     expect(screen.getByLabelText('Bereich auswählen')).toBeTruthy();
   });
@@ -263,7 +281,7 @@ const waitForCategoryControls = async () => {
 const clickPrimaryAction = (label: string) => {
   const targetLabel =
     label === 'News anlegen' || label === 'Änderungen speichern'
-      ? /^(Speichern|Gespeichert)$/
+      ? /^(Speichern|Gespeichert|Entwurf anlegen|Jetzt veröffentlichen|Geplante Nachricht anlegen)$/
       : label;
   const actions = screen.getAllByRole('button', { name: targetLabel });
   fireEvent.click(actions.at(-1)!);
@@ -379,6 +397,9 @@ describe('News editor pages', () => {
         'news.list.description': 'Verwalten Sie News-Einträge über das Plugin.',
         'news.actions.create': 'News anlegen',
         'news.actions.update': 'Änderungen speichern',
+        'news.create.actions.draft': 'Entwurf anlegen',
+        'news.create.actions.immediate': 'Jetzt veröffentlichen',
+        'news.create.actions.scheduled': 'Geplante Nachricht anlegen',
         'news.actions.save': 'Speichern',
         'news.actions.saving': 'Wird gespeichert…',
         'news.actions.saved': 'Gespeichert',
@@ -571,6 +592,16 @@ describe('News editor pages', () => {
     vi.mocked(fetchIamContentHistory).mockResolvedValue([]);
   });
 
+  it.each(['missing_credentials', 'organization_mainserver_credentials_missing'])('explains credential failures without backend details: %s', async (code) => {
+    vi.mocked(createNews).mockRejectedValueOnce(new NewsApiError(code, 'API-Key or API-Secret missing'));
+    render(<NewsCreatePage />);
+    fireEvent.change(screen.getByLabelText('Titel'), {target: {value: 'New content'}});
+    clickPrimaryAction('News anlegen');
+    await waitFor(() => expect(screen.getByText('news.create.saveUnavailable')).toBeTruthy());
+    expect(screen.queryByText(/API-Key/)).toBeNull();
+    expect(screen.getByDisplayValue('New content')).toBeTruthy();
+  });
+
   it('allows creating news without content body', async () => {
     render(<NewsCreatePage />);
 
@@ -601,9 +632,8 @@ describe('News editor pages', () => {
     );
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Erstellen als') as HTMLInputElement).value).toBe(
-        'Stadt Musterhausen'
-      );
+      expect(screen.getByText('Stadt Musterhausen')).toBeTruthy();
+      expect(screen.queryByRole('textbox', { name: 'Erstellen als' })).toBeNull();
     });
     expect(screen.queryByLabelText('Autor')).toBeNull();
   });
@@ -632,7 +662,24 @@ describe('News editor pages', () => {
   });
 
   it('creates a draft by default when no publication mode is selected', async () => {
-    render(<NewsCreatePage />);
+    render(
+      <NewsCreatePage
+        principalControl={{
+          kind: 'selectable',
+          value: 'user',
+          options: [
+            { value: 'user', label: 'Redaktion' },
+            { value: 'organization', label: 'Organisation' },
+          ],
+          readinessByPrincipal: { user: 'ready', organization: 'ready' },
+        }}
+      />
+    );
+    const publicationCard = screen
+      .getByRole('heading', { name: 'Veröffentlichung' })
+      .closest('section');
+    expect(publicationCard?.contains(document.getElementById('news-acting-principal'))).toBe(true);
+    expect(publicationCard?.contains(document.getElementById('publication-mode-draft'))).toBe(true);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     await openContentTab();
@@ -719,7 +766,7 @@ describe('News editor pages', () => {
     });
   });
 
-  it('retries only detail navigation when a created news route cannot be opened', async () => {
+  it('offers a normal detail link without a save retry when a created news route cannot be opened', async () => {
     navigateMock
       .mockRejectedValueOnce(new Error('navigation failed'))
       .mockResolvedValueOnce(undefined);
@@ -731,11 +778,11 @@ describe('News editor pages', () => {
     await screen.findByText(
       'Die Nachricht wurde gespeichert, ihre Detailseite konnte aber nicht geöffnet werden.'
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Erzeugte Nachricht öffnen' }));
-
-    await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledTimes(2);
-    });
+    const link = screen.getByRole('link', { name: 'Erzeugte Nachricht öffnen' });
+    expect(link.getAttribute('href')).toBe('/admin/news/news-created');
+    expect(screen.queryByRole('button', { name: 'Erzeugte Nachricht öffnen' })).toBeNull();
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: 'Entwurf anlegen' })).toBeNull();
     expect(createNews).toHaveBeenCalledTimes(1);
   });
 
@@ -785,15 +832,19 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Volle News' } });
     expect(screen.queryByLabelText('Autor')).toBeNull();
     expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
-    fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'basis' } });
+    if (screen.queryByLabelText('Bereich auswählen'))
+      fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'basis' } });
     await waitForCategoryControls();
     fireEvent.click(screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' }));
     fireEvent.click(screen.getByLabelText('Allgemein'));
     expect(screen.getByRole('button', { name: 'Kategorie Allgemein entfernen' })).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Rathaus'));
     expect(screen.getByRole('button', { name: 'Kategorie Rathaus entfernen' })).toBeTruthy();
-    await openReleaseTab();
+    await openSettingsTab();
+    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
+    await openReleaseTab();
+    expect(screen.queryByRole('checkbox', { name: /Push-Benachrichtigung senden/ })).toBeNull();
     fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
       target: { value: '2026-04-14T09:30' },
     });
@@ -900,13 +951,13 @@ describe('News editor pages', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Globale News' } });
     await openSettingsTab();
+    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
     expect(loadNewsWasteMasterData).not.toHaveBeenCalled();
     fireEvent.click(
       screen.getByRole('button', { name: /targeting\.actions\.edit|Auswahl bearbeiten/ })
     );
     await waitFor(() => expect(loadNewsWasteMasterData).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
-    fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
     clickPrimaryAction('News anlegen');
 
     await waitFor(() =>
@@ -1531,7 +1582,8 @@ describe('News editor pages', () => {
       );
     });
 
-    fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'basis' } });
+    if (screen.queryByLabelText('Bereich auswählen'))
+      fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'basis' } });
     clickPrimaryAction('Änderungen speichern');
 
     await waitFor(() => {

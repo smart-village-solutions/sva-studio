@@ -6,23 +6,24 @@ import { runConfiguredPluginTenantProvisioningSchedule } from '../iam-instance-r
 import { createJobLifecycleOrchestrator } from './job-lifecycle-orchestrator.js';
 import { loadStudioJobExecutionRepository } from './runner-repository.js';
 import { guardPluginTenantExecution } from './runner-tenant-guard.js';
-import type { PluginOperationExecutionHandler, PluginOperationExecutionResult } from './types.js';
+import type { PluginOperationExecutionResult } from './types.js';
 import type {
-  PluginOperationExecutionRegistration,
   PluginOperationExecutionRegistry,
-  StudioJobExecutionRegistration,
   StudioJobExecutionRegistry,
   StudioJobRunnerPayload,
 } from './runner-internal.js';
-import { isConfiguredLifecycleJob } from './runner-lifecycle.js';
 
 export {
+  registerStudioJobExecutionHandlers,
+  registerPluginOperationExecutionHandlers,
+  getRegisteredStudioJobExecutionRegistry,
+  getRegisteredPluginOperationExecutionRegistry,
   pluginTenantLifecycleRetryTaskIdentifier,
   privilegedStudioJobTaskIdentifier,
   studioJobTaskIdentifier,
 } from './runner-internal.js';
 import {
-  adaptPluginOperationExecutionHandler,
+  normalizePluginRegistration,
   pluginTenantLifecycleRetryTaskIdentifier,
   studioJobTaskIdentifier,
   toRegistryKey,
@@ -32,85 +33,6 @@ import {
 const logger = createSdkLogger({ component: 'studio-jobs-runner', level: 'info' });
 
 export const pluginOperationTaskIdentifier = studioJobTaskIdentifier;
-
-let registeredStudioJobHandlers = new Map<string, StudioJobExecutionRegistration>();
-
-const normalizePluginRegistration = (
-  jobTypeId: string,
-  value: PluginOperationExecutionHandler | PluginOperationExecutionRegistration
-): StudioJobExecutionRegistration => ({
-  source: 'plugin',
-  jobTypeId,
-  handler: adaptPluginOperationExecutionHandler(
-    typeof value === 'function' ? value : value.handler,
-    isConfiguredLifecycleJob
-  ),
-  queueName: typeof value === 'function' ? 'plugin-operations' : value.queueName,
-  executionLane: typeof value === 'function' ? 'default' : value.executionLane,
-  supportsCancellation: typeof value === 'function' ? false : value.supportsCancellation,
-  startPolicy: typeof value === 'function' ? 'standard' : value.startPolicy,
-  artifactPermissionId: typeof value === 'function' ? undefined : value.artifactPermissionId,
-});
-
-const replaceRegistrationsBySource = (
-  nextSource: StudioJobExecutionRegistration['source'],
-  nextRegistrations: readonly StudioJobExecutionRegistration[]
-): void => {
-  const preservedEntries = [...registeredStudioJobHandlers.values()].filter(
-    (entry) => entry.source !== nextSource
-  );
-  registeredStudioJobHandlers = new Map(
-    [...preservedEntries, ...nextRegistrations].map((entry) => [
-      toRegistryKey(entry.source, entry.jobTypeId),
-      entry,
-    ])
-  );
-};
-
-export const registerStudioJobExecutionHandlers = (
-  handlers: readonly StudioJobExecutionRegistration[]
-): void => {
-  replaceRegistrationsBySource(
-    'host',
-    handlers.filter((entry) => entry.source === 'host')
-  );
-};
-
-export const registerPluginOperationExecutionHandlers = (
-  handlers: Readonly<
-    Record<string, PluginOperationExecutionHandler | PluginOperationExecutionRegistration>
-  >
-): void => {
-  replaceRegistrationsBySource(
-    'plugin',
-    Object.entries(handlers).map(([jobTypeId, value]) =>
-      normalizePluginRegistration(jobTypeId, value)
-    )
-  );
-};
-
-export const getRegisteredStudioJobExecutionRegistry = (): StudioJobExecutionRegistry =>
-  registeredStudioJobHandlers;
-
-export const getRegisteredPluginOperationExecutionRegistry = (): PluginOperationExecutionRegistry =>
-  new Map(
-    [...registeredStudioJobHandlers.values()]
-      .filter(
-        (entry): entry is StudioJobExecutionRegistration & { source: 'plugin' } =>
-          entry.source === 'plugin'
-      )
-      .map((entry) => [
-        entry.jobTypeId,
-        {
-          handler: entry.handler as PluginOperationExecutionHandler,
-          queueName: entry.queueName,
-          executionLane: entry.executionLane,
-          supportsCancellation: entry.supportsCancellation,
-          startPolicy: entry.startPolicy,
-          artifactPermissionId: entry.artifactPermissionId,
-        },
-      ])
-  );
 
 export const createStudioJobTaskList = (
   getHandlers: () => StudioJobExecutionRegistry,

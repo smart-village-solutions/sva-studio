@@ -1,9 +1,11 @@
+import { Link } from '@tanstack/react-router';
 import {
   MainserverPrincipalControl,
   StudioDetailPageTemplate,
   StudioFormSummary,
   StudioFormSummaryErrors,
   StudioSaveButton,
+  isMainserverPrincipalReady,
   resolveMainserverPrincipalOptions,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
@@ -47,6 +49,7 @@ type FaqEditorViewProps = Readonly<{
   canSave: boolean;
   actingPrincipalType: MainserverPrincipalType;
   contentId?: string;
+  createdContentId: string | null;
   deleteDialogOpen: boolean;
   deleteErrorMessage: string | null;
   deletePending: boolean;
@@ -73,17 +76,33 @@ const FaqEditorPrimaryAction = ({
   mode,
   pt,
   saveStatus,
+  form,
+  principalControl,
+  actingPrincipalType,
 }: Pick<
   FaqEditorViewProps,
-  'canSave' | 'deletePending' | 'formId' | 'mode' | 'pt' | 'saveStatus'
+  | 'canSave'
+  | 'deletePending'
+  | 'formId'
+  | 'mode'
+  | 'pt'
+  | 'saveStatus'
+  | 'form'
+  | 'principalControl'
+  | 'actingPrincipalType'
 >) =>
   canSave ? (
     <div className="flex flex-col items-end gap-1">
+      {mode === 'create' ? (
+        <p className="text-sm text-muted-foreground">
+          {pt(form.watch('visible') ? 'create.visibleEffect' : 'create.hiddenEffect')}
+        </p>
+      ) : null}
       <StudioSaveButton
         type="submit"
         form={formId}
         status={saveStatus}
-        disabled={deletePending}
+        disabled={deletePending || (mode === 'create' && !isMainserverPrincipalReady(principalControl, actingPrincipalType))}
         labels={{
           idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
           saving: pt('actions.saving'),
@@ -93,12 +112,38 @@ const FaqEditorPrimaryAction = ({
     </div>
   ) : undefined;
 
+function FaqPrincipal(props: FaqEditorViewProps) {
+  return (
+    <div
+      className={
+        props.mode === 'create' && props.principalControl?.kind === 'selectable'
+          ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
+          : undefined
+      }
+    >
+      <MainserverPrincipalControl
+        fixedLabel={props.mode === 'create' ? props.pt('create.responsible') : undefined}
+        id="faq-acting-principal"
+        label={props.pt(props.mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+        description={props.pt('principal.description')}
+        value={props.actingPrincipalType}
+        options={resolveMainserverPrincipalOptions(props.principalControl, {
+          value: props.actingPrincipalType,
+          label: props.pt(`principal.${props.actingPrincipalType}`),
+        })}
+        onChange={props.setActingPrincipalType}
+        readinessByPrincipal={props.principalControl?.readinessByPrincipal}
+        readinessMessage={props.principalControl?.readinessMessage}
+      />
+    </div>
+  );
+}
+
 export const FaqEditorView = (props: FaqEditorViewProps) => (
   <StudioDetailPageTemplate
+    stickyActions={props.mode === 'create'}
     title={props.pt(props.mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}
-    description={props.pt(
-      props.mode === 'create' ? 'editor.createDescription' : 'editor.editDescription'
-    )}
+    description={props.mode === 'edit' ? props.pt('editor.editDescription') : undefined}
     actions={
       <FaqEditorActions
         canDelete={props.canDelete}
@@ -111,7 +156,14 @@ export const FaqEditorView = (props: FaqEditorViewProps) => (
     primaryAction={<FaqEditorPrimaryAction {...props} />}
   >
     <FormProvider {...props.form}>
-      <form id={props.formId} className="space-y-5" onSubmit={props.onSubmit} noValidate>
+      <form id={props.formId} className="space-y-6" onSubmit={props.onSubmit} noValidate>
+        {props.createdContentId ? (
+          <p>
+            <Link to="/admin/faq/$id" params={{ id: props.createdContentId }}>
+              {props.pt('create.openSaved')}
+            </Link>
+          </p>
+        ) : null}
         {props.saveErrorMessage ? (
           <StudioFormSummary kind="error">{props.saveErrorMessage}</StudioFormSummary>
         ) : null}
@@ -120,17 +172,10 @@ export const FaqEditorView = (props: FaqEditorViewProps) => (
           title={props.pt('validation.summaryTitle')}
           onSelectError={({ field }) => props.setActiveTab(fieldTabs[field] ?? 'basis')}
         />
-        <MainserverPrincipalControl
-          id="faq-acting-principal"
-          label={props.pt(props.mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-          description={props.pt('principal.description')}
-          value={props.actingPrincipalType}
-          options={resolveMainserverPrincipalOptions(props.principalControl, {
-            value: props.actingPrincipalType,
-            label: props.pt(`principal.${props.actingPrincipalType}`),
-          })}
-          onChange={props.setActingPrincipalType}
-        />
+        {props.mode === 'edit' ? <FaqPrincipal {...props} /> : null}
+        {props.mode === 'create' ? (
+          <p className="text-sm text-muted-foreground">{props.pt('create.intro')}</p>
+        ) : null}
         <FaqEditorTabs
           activeTab={props.activeTab}
           contentId={props.contentId}
@@ -139,6 +184,7 @@ export const FaqEditorView = (props: FaqEditorViewProps) => (
           onTabChange={props.setActiveTab}
           pt={props.pt}
         />
+        {props.mode === 'create' ? <FaqPrincipal {...props} /> : null}
       </form>
     </FormProvider>
     {props.canDelete ? (

@@ -16,6 +16,7 @@ export type DsrFilters = {
   readonly type?: IamDsrCaseListItem['type'];
   readonly status?: IamDsrCanonicalStatus;
   readonly relatedAccountId?: string;
+  readonly includeAccountRegistrations?: boolean;
   readonly sortBy?: 'createdAt' | 'completedAt';
   readonly sortDirection?: 'asc' | 'desc';
 };
@@ -141,10 +142,22 @@ export type DsrSelfServiceRows = {
   legalAcceptances: readonly LegalAcceptanceRow[];
 };
 
+export type AccountRegistrationRow = {
+  id: string;
+  account_id: string;
+  event_type: 'user.jit_provisioned' | 'account_created';
+  created_at: string;
+  display_name_ciphertext: string | null;
+  first_name_ciphertext: string | null;
+  last_name_ciphertext: string | null;
+  keycloak_subject: string;
+};
+
 export type AdminDsrSourceRows = {
   requests: readonly RequestRow[];
   exportJobs: readonly ExportJobRow[];
   legalHolds: readonly LegalHoldRow[];
   profileCorrections: readonly ProfileCorrectionRow[];
   recipientNotifications: readonly RecipientNotificationRow[];
+  accountRegistrations: readonly AccountRegistrationRow[];
 };

@@ -125,6 +125,8 @@ describe('EventsListPage', () => {
         'events.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
         'events.empty.title': 'Noch keine Events vorhanden',
         'events.actions.create': 'Event anlegen',
+        'events.create.createVisible': 'Sichtbar anlegen',
+        'events.create.createHidden': 'Nicht sichtbar anlegen',
         'events.actions.save': 'Speichern',
         'events.actions.update': 'Änderungen speichern',
         'events.actions.back': 'Zurück zur Liste',
@@ -274,9 +276,13 @@ describe('EventsListPage', () => {
     render(<EventsCreatePage />);
 
     await screen.findByLabelText('Titel');
+    const datesCard = document.getElementById('event-create-dates')!;
+    expect(datesCard.contains(document.getElementById('event-create-recurrence'))).toBe(true);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Konzertabend' } });
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+    document.querySelectorAll('details').forEach((element) => {
+      if (!element.open) fireEvent.click(element.querySelector('summary')!);
+    });
 
     fireEvent.change(await screen.findByLabelText('Beschreibung'), {
       target: { value: 'Live im Stadtpark' },
@@ -293,7 +299,7 @@ describe('EventsListPage', () => {
     fireEvent.change(await screen.findByLabelText('Medien-URL'), {
       target: { value: 'https://example.com/event.jpg' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(createEvent).toHaveBeenCalledWith(
@@ -331,12 +337,14 @@ describe('EventsListPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Konzertabend' } });
-    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    document.querySelectorAll('details').forEach((element) => {
+      if (!element.open) fireEvent.click(element.querySelector('summary')!);
+    });
     await waitFor(() => {
       expect(screen.getByLabelText('Startdatum')).toBeTruthy();
     });
     fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-02-31' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBe('true');
@@ -344,7 +352,7 @@ describe('EventsListPage', () => {
     expect(createEvent).not.toHaveBeenCalled();
     expect((screen.getByLabelText('Startdatum') as HTMLInputElement).value).toBe('2026-02-31');
     fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '28.02.2026' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
     await waitFor(() => {
       expect(createEvent).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Konzertabend', dates: [{ dateStart: '2026-02-28' }] }),
@@ -384,7 +392,7 @@ describe('EventsListPage', () => {
       expect(screen.getByDisplayValue('Header')).toBeTruthy();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Medium entfernen' }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
       expect(updateEvent).toHaveBeenCalledWith(
@@ -436,7 +444,7 @@ describe('EventsListPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+      expect(screen.getAllByRole('button', { name: /Speichern|anlegen/ })).toHaveLength(2);
     });
     const titleInput = screen.getByDisplayValue('Bestehendes Event');
     fireEvent.change(titleInput, { target: { value: 'Ungespeichertes Event' } });
@@ -458,7 +466,7 @@ describe('EventsListPage', () => {
       />
     );
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+      expect(screen.queryByRole('button', { name: /Speichern|anlegen/ })).toBeNull();
     });
     expect(screen.getByDisplayValue('Ungespeichertes Event')).toBeTruthy();
     expect(getEventDetail).toHaveBeenNthCalledWith(2, 'event-1', 'organization');
@@ -469,6 +477,6 @@ describe('EventsListPage', () => {
     await waitFor(() => {
       expect(getEventDetail).toHaveBeenNthCalledWith(3, 'event-1', 'user');
     });
-    expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Speichern|anlegen/ })).toBeNull();
   });
 });

@@ -8,6 +8,7 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
+      '@sva/core/security': resolve(currentDir, '../core/src/security/index.ts'),
       '@sva/core': resolve(currentDir, '../core/src/index.ts'),
       '@sva/monitoring-client/logging': resolve(currentDir, '../monitoring-client/src/logging.ts'),
       '@sva/server-runtime': resolve(currentDir, '../server-runtime/src/index.ts'),

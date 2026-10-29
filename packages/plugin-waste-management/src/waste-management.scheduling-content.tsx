@@ -18,12 +18,13 @@ import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js
 import type { WasteManagementSearchParams } from './search-params.js';
 
 const createAssignmentForm = (
-  entry?: WasteTourAssignmentRecord
+  entry?: WasteTourAssignmentRecord,
+  tourId = ''
 ): WasteTourExplicitAssignmentFormState => {
   if (!entry) {
     return {
       id: crypto.randomUUID(),
-      tourId: '',
+      tourId,
       pickupDate: '',
       locationIds: [],
       note: '',
@@ -150,7 +151,7 @@ export const WasteSchedulingContent = ({
         search={search}
         onCreate={() => {
           setDialogMode('create');
-          setForm(createAssignmentForm());
+          setForm(createAssignmentForm(undefined, search?.tourId));
           setDialogOpen(true);
         }}
         onEdit={(entry) => {

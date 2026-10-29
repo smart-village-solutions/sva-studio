@@ -193,7 +193,7 @@ export const routePoi = async (route: Route, pois: PoiRecord[]) => {
       headers: item ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined,
       body: JSON.stringify(
         item
-          ? { data: { ...item, dataProvider: { id: 'provider-user', name: 'Editor One' } } }
+          ? { data: { ...item, visible: item.active !== false, dataProvider: { id: 'provider-user', name: 'Editor One' } } }
           : { error: 'not_found' }
       ),
     });

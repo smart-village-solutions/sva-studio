@@ -34,8 +34,8 @@ export const useAuthSessionBase = () => {
   const authFlowIdRef = React.useRef<string>(createAuthFlowId());
   const authAttemptRef = React.useRef(0);
   const sessionExpiryTimeoutRef = React.useRef<number | null>(null);
-  const lastPreExpiryRecoveryAttemptRef = React.useRef<number | null>(null);
-  const inFlightSilentLoadRef = React.useRef<Promise<void> | null>(null);
+  const preExpiryRecoveryAttemptsRef = React.useRef({ expiresAt: 0, count: 0 });
+  const inFlightSilentLoadRef = React.useRef<Promise<boolean> | null>(null);
 
   React.useEffect(() => {
     isMountedRef.current = true;
@@ -168,7 +168,7 @@ export const useAuthSessionBase = () => {
     authFlowIdRef,
     authAttemptRef,
     sessionExpiryTimeoutRef,
-    lastPreExpiryRecoveryAttemptRef,
+    preExpiryRecoveryAttemptsRef,
     inFlightSilentLoadRef,
     clearSessionExpiryTimer,
     logAuthDebug,

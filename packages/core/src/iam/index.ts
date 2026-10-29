@@ -68,6 +68,7 @@ export type {
   IamOrganizationChildItem,
   IamOrganizationContext,
   IamOrganizationContextOption,
+  IamMainserverReadiness,
   IamOrganizationDetail,
   IamOrganizationMainserverProvisioningState,
   IamOrganizationMainserverProvisioningStatus,

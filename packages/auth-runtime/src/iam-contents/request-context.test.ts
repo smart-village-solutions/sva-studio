@@ -194,6 +194,7 @@ describe('content request authorization context', () => {
     ['faq.read', 'faq'],
     ['cockpit-cards.read', 'cockpit-cards'],
     ['projects.read', 'projects'],
+    ['vouchers.read', 'vouchers'],
     ['surveys.read', 'surveys'],
   ] as const)(
     'uses resource type %s for plugin-scoped read actions',

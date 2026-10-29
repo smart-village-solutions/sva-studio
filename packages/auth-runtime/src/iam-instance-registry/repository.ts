@@ -1,4 +1,3 @@
-import { createPoolResolver } from '../db.js';
 import { createInstanceRegistryRepository } from '@sva/data-repositories';
 import { invalidateInstanceRegistryHost } from '@sva/data-repositories/server';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
@@ -24,7 +23,10 @@ import {
   readKeycloakStateViaProvisioner,
 } from './provisioning-auth-state.js';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
-import { getIamDatabaseUrl } from '../runtime-secrets.js';
+import {
+  resolveInstanceRegistryPool as resolvePool,
+  withRegistryRepository,
+} from './repository-access.js';
 import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
 import { resolveConfiguredProvisioningAuthIssuerUrl } from '../kassel-provisioning-auth.js';
 import { probeTenantIamAccess, reconcileTenantIamRoles } from './tenant-provisioning-iam.js';
@@ -37,10 +39,10 @@ const pluginTenantLifecycleLogger = createSdkLogger({
   component: 'plugin-tenant-lifecycle-scheduler',
   level: 'info',
 });
-const resolvePool = createPoolResolver(getIamDatabaseUrl);
-export const closeInstanceRegistryRepositoryPoolForShutdown = async (): Promise<void> => {
-  await resolvePool()?.end();
-};
+export {
+  closeInstanceRegistryRepositoryPoolForShutdown,
+  withRegistryRepository,
+} from './repository-access.js';
 const readPersistablePluginTenantLifecycleRegistry = () =>
   new Map(
     [...readInstanceRegistryPluginTenantLifecycleRegistry()].flatMap(([pluginId, lifecycle]) =>
@@ -189,7 +191,6 @@ const registryRuntime = createInstanceRegistryRuntime({
 });
 
 export const {
-  withRegistryRepository,
   withScopedRegistryRepository,
   withRegistryService,
   withRegistryCreateService,

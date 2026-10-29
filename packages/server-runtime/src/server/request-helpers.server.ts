@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 
 import type { ApiErrorCode, ApiErrorResponse, ApiItemResponse, ApiListResponse } from '@sva/core';
 import { deriveIamRuntimeDiagnostics, readNumber, readString } from '@sva/core';
-import { z } from 'zod';
 
 const mergeVaryHeaderValue = (currentValue: string | null, nextToken: string): string => {
   const tokens = (currentValue ?? '')
@@ -71,7 +70,18 @@ export const asApiList = <T>(
   ...(requestId ? { requestId } : {}),
 });
 
-export const parseRequestBody = async <T>(request: Request, schema: z.ZodType<T>) => {
+// Use only the validation result consumed here, not Zod's version-specific parse context.
+export const parseRequestBody = async <T>(
+  request: Request,
+  schema: {
+    safeParse(data: unknown):
+      | { success: true; data: T }
+      | {
+          success: false;
+          error: { issues: readonly { path: readonly PropertyKey[]; message: string }[] };
+        };
+  }
+) => {
   const raw = await request.text();
   let parsedJson: unknown;
   try {

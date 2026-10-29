@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { type WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
-import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
+import {
+  StudioErrorState,
+  StudioLoadingState,
+  StudioOverviewPageTemplate,
+} from '@sva/studio-ui-react';
 import {
   normalizeWasteManagementSearchParams,
-  type WasteManagementMasterDataTabId,
   type WasteManagementSearchParams,
-  type WasteManagementTabId,
 } from './search-params.js';
 import {
   getWasteManagementSettings,
@@ -17,17 +19,9 @@ import {
 import { WasteManagementMainserverSyncStatus } from './waste-management-sync-status.js';
 import { WasteManagementPageDescription } from './waste-management.page.description.js';
 import { useWasteManagementUiAccess } from './waste-management.ui-access.js';
+import { toMasterDataTab, useWasteManagementVisibleTabRedirect } from './waste-management.page.navigation.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { WasteManagementPageTabs } from './waste-management.page.layout.js';
-const toMasterDataTab = (tab: WasteManagementTabId): WasteManagementMasterDataTabId | undefined => {
-  if (tab === 'fractions' || tab === 'locations') {
-    return tab;
-  }
-
-  if (tab === 'masterData') return 'locations';
-
-  return undefined;
-};
 const updateSearch = (
   navigate: ReturnType<typeof useNavigate>,
   currentSearch: WasteManagementSearchParams,
@@ -45,34 +39,6 @@ const updateSearch = (
     to: '/plugins/waste-management',
     search: nextSearch,
   });
-};
-
-const useWasteManagementVisibleTabRedirect = (
-  navigate: ReturnType<typeof useNavigate>,
-  search: WasteManagementSearchParams,
-  uiAccess: ReturnType<typeof useWasteManagementUiAccess>
-) => {
-  useEffect(() => {
-    if (!uiAccess.isResolved || uiAccess.visibleTabIds.includes(search.tab)) {
-      return;
-    }
-
-    const fallbackTab = uiAccess.visibleTabIds[0];
-    if (!fallbackTab) {
-      return;
-    }
-
-    void navigate({
-      to: '/plugins/waste-management',
-      search: {
-        ...search,
-        tab: fallbackTab,
-        masterDataTab: toMasterDataTab(fallbackTab) ?? search.masterDataTab,
-        page: 1,
-      },
-      replace: true,
-    });
-  }, [navigate, search, uiAccess.isResolved, uiAccess.visibleTabIds]);
 };
 
 const useWasteManagementCalendarWebUrl = (
@@ -245,15 +211,21 @@ export const WasteManagementPage = () => {
         />
         {statusMessage ? <StatusNotice message={statusMessage} /> : null}
       </div>
-      <WasteManagementPageTabs
-        pt={pt}
-        search={search}
-        rawSearch={rawSearch as Record<string, unknown>}
-        access={uiAccess}
-        visibleTabIds={uiAccess.visibleTabIds}
-        onTabChange={(value) => updateSearch(navigate, search, { tab: value })}
-        onAddressSearchChange={(patch) => updateSearch(navigate, search, patch)}
-      />
+      {uiAccess.hasError ? (
+        <StudioErrorState>{pt('page.accessUnavailable')}</StudioErrorState>
+      ) : !uiAccess.isResolved ? (
+        <StudioLoadingState>{pt('page.accessLoading')}</StudioLoadingState>
+      ) : (
+        <WasteManagementPageTabs
+          pt={pt}
+          search={search}
+          rawSearch={rawSearch as Record<string, unknown>}
+          access={uiAccess}
+          visibleTabIds={uiAccess.visibleTabIds}
+          onTabChange={(value) => updateSearch(navigate, search, { tab: value })}
+          onAddressSearchChange={(patch) => updateSearch(navigate, search, patch)}
+        />
+      )}
     </StudioOverviewPageTemplate>
   );
 };

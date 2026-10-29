@@ -4,9 +4,9 @@ import { StudioPageTitle } from '@sva/studio-ui-react';
 
 import { ContextualHelpBoundary } from './ContextualHelpBoundary';
 
-const renderContextualHelp = async () => {
+const renderContextualHelp = async (pageId = 'home.overview') => {
   render(
-    <ContextualHelpBoundary pageId="home.overview">
+    <ContextualHelpBoundary pageId={pageId}>
       <StudioPageTitle withAccessory>Start</StudioPageTitle>
     </ContextualHelpBoundary>
   );
@@ -49,6 +49,12 @@ describe('ContextualHelp', () => {
     expect(screen.getByRole('link', { name: 'Mehr' }).getAttribute('href')).toBe(
       'https://docs.example.test/guide'
     );
+    const editLink = screen.getByRole('link', { name: 'Auf GitHub bearbeiten' });
+    expect(editLink.getAttribute('href')).toBe(
+      'https://github.com/smart-village-solutions/sva-studio-user-documentation/edit/main/docs/pages/home.overview.md'
+    );
+    expect(editLink.getAttribute('target')).toBe('_blank');
+    expect(editLink.getAttribute('rel')).toBe('noopener noreferrer');
     expect(request).toHaveBeenCalledWith(
       '/api/studio/documentation/home.overview',
       expect.objectContaining({ credentials: 'same-origin' })
@@ -72,6 +78,7 @@ describe('ContextualHelp', () => {
     await renderContextualHelp();
     fireEvent.click(screen.getByRole('button', { name: 'Hilfe öffnen' }));
     expect(await screen.findByText('Hilfe ist vorübergehend nicht verfügbar')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Auf GitHub bearbeiten' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
     await waitFor(() => expect(screen.getByText('Wieder da')).toBeTruthy());
     expect(request).toHaveBeenCalledTimes(2);
@@ -94,6 +101,7 @@ describe('ContextualHelp', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Hilfe öffnen' }));
 
     expect(await screen.findByText('Hilfe ist vorübergehend nicht verfügbar')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Auf GitHub bearbeiten' })).toBeNull();
     expect(screen.queryByText('Falsche Seite')).toBeNull();
   });
 
@@ -142,12 +150,12 @@ describe('ContextualHelp', () => {
     expect(screen.queryByRole('img', { name: 'Außerhalb' })).toBeNull();
   });
 
-  it('shows an explicit empty state for blank markdown', async () => {
+  it('links an empty nested page to its own GitHub source', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn<typeof fetch>().mockResolvedValue(
         Response.json({
-          id: 'home.overview',
+          id: 'admin.users.detail',
           markdown: '   ',
           documentationBaseUrl: 'https://docs.example.test/',
           websiteUrl: 'https://docs.example.test/pages/home.overview/',
@@ -155,11 +163,14 @@ describe('ContextualHelp', () => {
       )
     );
 
-    await renderContextualHelp();
+    await renderContextualHelp('admin.users.detail');
     fireEvent.click(screen.getByRole('button', { name: 'Hilfe öffnen' }));
 
     expect(
       await screen.findByText('Für diese Seite ist noch kein Hilfetext hinterlegt.')
     ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Auf GitHub bearbeiten' }).getAttribute('href')).toBe(
+      'https://github.com/smart-village-solutions/sva-studio-user-documentation/edit/main/docs/pages/admin.users.detail.md'
+    );
   });
 });

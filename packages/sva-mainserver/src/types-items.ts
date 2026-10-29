@@ -177,6 +177,7 @@ export type SvaMainserverGenericItem = {
   readonly contentType: 'generic-items.generic-item';
   readonly status: 'published';
   readonly genericType: string;
+  readonly pointOfInterestId?: string;
   readonly description?: string;
   readonly visible: boolean;
   readonly author?: string;

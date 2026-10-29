@@ -1,3 +1,5 @@
+import { getHostMediaAsset, getHostMediaDelivery } from '@sva/plugin-sdk';
+import { resolveProjectPersistentDeliveryUrl } from './projects.content-media-adapter.js';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   ContentMediaUsageBlock,
@@ -43,7 +45,7 @@ export function ProjectImages({
   };
 
   return (
-    <StudioDetailCard title={pt('fields.images')}>
+    <StudioDetailCard title={pt('fields.images')} description={pt('create.optional')}>
       <ContentMediaUsageBlock
         disabled={mediaEditingDisabled}
         usages={usages}
@@ -107,3 +109,20 @@ const projectImagesLabels = (pt: Translate) => {
     },
   };
 };
+
+export async function loadProjectAssetSnapshot(usage: ContentMediaUsage) {
+  if (!usage.assetId) throw new Error('asset_unavailable');
+  const [asset, delivery] = await Promise.all([
+    getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }),
+    getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }),
+  ]);
+  const persistentUrl = resolveProjectPersistentDeliveryUrl(delivery);
+  if (!persistentUrl) throw new Error('asset_unavailable');
+  return {
+    persistentUrl,
+    altText: asset.metadata.altText ?? '',
+    caption: asset.metadata.description ?? '',
+    credit: asset.metadata.copyright ?? '',
+    license: asset.metadata.license ?? '',
+  };
+}

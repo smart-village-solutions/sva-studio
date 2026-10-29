@@ -155,6 +155,8 @@ Für startbare Plugin-Jobtypen gilt zusätzlich ein verbindlicher Runtime-Integr
 Innerhalb von `@sva/auth-runtime` ist der Ablauf inzwischen weiter getrennt:
 
 - `runner.ts` bleibt Graphile-Adapter und Queue-Einstieg
+- `runner-internal.ts` verwaltet die gemeinsame Handler-Registry; Lifecycle und Recovery lesen Registrierungen direkt, ohne die Task- oder Worker-Ausführung zu laden
+- `iam-instance-registry/repository-access.ts` stellt den gemeinsamen Registry-Pool für Datenzugriffe bereit; die bestehende Registry-Runtime verdrahtet darauf aufbauend Service und Lifecycle
 - `job-lifecycle-orchestrator.ts` kapselt Host-Lifecycle, Handler-Aufruf und Retry-/Terminal-Entscheidungen
 - Event-, State-, Progress- und Read-Modell-Normalisierung bleiben in eigenen Host-Bausteinen
 - verzögerte Tenant-Lifecycle-Retries werden pro Instanz und Plugin mit eigenem Job-Key als persistenter Task `plugin_tenant_lifecycle_retry` eingeplant; der migrationsverwaltete Enqueue-Wrapper erlaubt diesen Task neben den beiden Studio-Job-Lanes ausdrücklich

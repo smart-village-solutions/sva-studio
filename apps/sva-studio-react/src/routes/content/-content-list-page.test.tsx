@@ -1,3 +1,4 @@
+import { readNormalizedRouteState, updateRouteState } from './-content-list-route-state';
 import type { RegisteredStudioContentType } from '@sva/plugin-sdk';
 import { studioContentTypes } from '../../lib/plugins';
 import { deleteMainserverItem } from './-content-list-row-actions';
@@ -117,6 +118,14 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
       requiredCreateAction: 'cockpit-cards.create',
       createPath: '/admin/cockpit-cards/new',
       detailPath: '/admin/cockpit-cards/$contentId',
+    },
+    {
+      contentType: 'vouchers.voucher',
+      displayName: 'Gutscheine',
+      requiredReadAction: 'vouchers.read',
+      requiredCreateAction: 'vouchers.create',
+      createPath: '/admin/vouchers/new',
+      detailPath: '/admin/vouchers/$id',
     },
     {
       contentType: 'projects.project',
@@ -1340,6 +1349,44 @@ describe('ContentListPage', () => {
       sortBy: 'updatedAt',
       sortDirection: 'desc',
     });
+  });
+
+  it('carries the POI voucher filter through query and pagination and removes it on type change', () => {
+    searchState = { type: 'vouchers.voucher', poiId: ' 33394 ', page: 2 };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+    render(<ContentListPage />);
+    expect(useContentsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'vouchers.voucher', poiId: '33394', page: 2 }),
+      { enabled: true }
+    );
+    expect(readNormalizedRouteState(searchState)).toMatchObject({ poiId: '33394' });
+    expect(updateRouteState(searchState, { page: 3 })).toMatchObject({ poiId: '33394', page: 3 });
+    expect(updateRouteState(searchState, { type: 'news.article' })).not.toHaveProperty('poiId');
+  });
+
+  it('clears only the voucher location filter and returns to the first page', () => {
+    searchState = {
+      type: 'vouchers.voucher', poiId: '33394', status: 'published', page: 3,
+      pageSize: 50, sortBy: 'title', sortDirection: 'asc',
+    };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+    render(<ContentListPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gutscheine aller Orte anzeigen' }));
+
+    const updater = navigateMock.mock.calls.at(-1)?.[0]?.search as
+      (current: Record<string, unknown>) => Record<string, unknown>;
+    expect(updater(searchState)).toEqual({
+      type: 'vouchers.voucher', status: 'published', page: 1, pageSize: 50,
+      sortBy: 'title', sortDirection: 'asc',
+    });
+  });
+
+  it('does not offer a location reset for an unfiltered voucher list', () => {
+    searchState = { type: 'vouchers.voucher' };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+    render(<ContentListPage />);
+    expect(screen.queryByRole('button', { name: 'Gutscheine aller Orte anzeigen' })).toBeNull();
   });
 
   it('bindet den FAQ-Sprachfilter an URL und Listenabfrage und entfernt ihn bei Typwechsel', () => {

@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 import {
   expectContentOverviewReady,
@@ -22,6 +22,10 @@ import {
   routePoi,
   routeUnifiedContentOverview,
 } from './events-poi-plugin.routes';
+
+if (process.env.PLAYWRIGHT_RUNTIME_PROFILE === 'local-builder') {
+  test.use({ storageState: { cookies: [], origins: [] } });
+}
 
 test.describe('events and POI plugins', () => {
   test.describe.configure({ timeout: 90_000 });
@@ -54,17 +58,21 @@ test.describe('events and POI plugins', () => {
       /Ort anlegen|POI anlegen|poi\.detail\.createTitle|poi\.editor\.createTitle/
     );
     await page.locator('#poi-name').fill('Rathaus');
+    await page.locator('#poi-create-categories').click();
     await selectExistingCategory(page, 'poi-category', 'Verwaltung');
-    await page.getByRole('tab', { name: /Inhalt|poi\.detailTabs\.content\.title/ }).click();
+    await expect(page.getByRole('tablist')).toHaveCount(0);
     await page.locator('#poi-description').fill('Zentraler Servicepunkt');
     await page.locator('#poi-street').fill('Marktplatz 1');
     await page.locator('#poi-city').fill('Musterhausen');
+    await page.locator('#poi-create-contact').click();
     await page.locator('#poi-email').fill('rathaus@example.com');
+    await page.locator('#poi-create-links').click();
     await page.locator('#poi-link-url-0').fill('https://example.com/poi');
+    await page.locator('#poi-create-openingHours').click();
     await page.locator('#poi-opening-weekday-0').selectOption('MO');
     await page.locator('#poi-opening-time-from-0').fill('09:00');
     await page
-      .getByRole('button', { name: /Speichern|poi\.actions\.save/ })
+      .getByRole('button', { name: 'Verborgen speichern' })
       .last()
       .click();
     await page.getByRole('tab', { name: /Basis|poi\.detailTabs\.basis\.title/ }).click();
@@ -82,6 +90,7 @@ test.describe('events and POI plugins', () => {
   });
 
   test('supports event CRUD including delete', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     const events: EventRecord[] = [];
     const pois: PoiRecord[] = [
       {
@@ -112,19 +121,33 @@ test.describe('events and POI plugins', () => {
     await navigateClientSide(page, '/admin/events/new');
     await expectEventOrPoiEditorReady(page, '/admin/events/new');
     await page.locator('#event-title').fill('Stadtfest');
+    await page.locator('#event-create-categories').click();
     await selectExistingCategory(page, 'event-category', 'Kultur');
-    await page.getByRole('tab', { name: /Inhalt|events\.detailTabs\.content\.title/ }).click();
+    await expect(page.getByRole('tablist')).toHaveCount(0);
     await page.locator('#event-description').fill('Sommerfest in der Innenstadt');
     await page.locator('#event-date-start').fill('2026-04-14');
     await page.locator('#event-street').fill('Marktplatz');
     await page.locator('#event-city').fill('Musterhausen');
+    await page.locator('#event-create-contacts').click();
     await page.locator('#event-contact-email').fill('events@example.com');
-    await page.locator('#event-url').fill('https://example.com/event');
+    await page.locator('#event-create-links').focus();
+    await page.keyboard.press('Enter');
+    await page.locator('#event-url').fill('invalid-url');
+    await page.locator('#event-create-links').click();
     await page
-      .getByRole('button', { name: /Speichern|events\.actions\.save/ })
+      .getByRole('button', { name: 'Verborgen speichern' })
       .last()
       .click();
-    await page.getByRole('tab', { name: /Basis|events\.detailTabs\.basis\.title/ }).click();
+    await expect(page.locator('#event-url')).toBeVisible();
+    await expect(page.locator('#event-url')).toBeFocused();
+    await expect(page.locator('#event-title')).toHaveValue('Stadtfest');
+    expect(events).toHaveLength(0);
+    await page.locator('#event-url').fill('https://example.com/event');
+    await page
+      .getByRole('button', { name: 'Verborgen speichern' })
+      .last()
+      .click();
+    await expect(page.getByRole('combobox', { name: 'Bereich auswählen' })).toBeVisible();
     await page.locator('#event-title').fill('Stadtfest aktualisiert');
     await page
       .getByRole('button', { name: /Speichern|events\.actions\.save/ })

@@ -98,6 +98,7 @@ describe('resolveBreadcrumbItems', () => {
 
   it.each([
     ['generic-items', 'Generischen Inhalt anlegen', 'Generischen Inhalt bearbeiten'],
+    ['vouchers', 'Gutschein erstellen', 'Gutschein bearbeiten'],
     ['faq', 'FAQ anlegen', 'FAQ bearbeiten'],
     ['cockpit-cards', 'Kachel anlegen', 'Kachel bearbeiten'],
     ['surveys', 'Umfrage anlegen', 'Umfrage bearbeiten'],

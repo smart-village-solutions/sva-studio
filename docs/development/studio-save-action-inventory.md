@@ -18,7 +18,7 @@ Diese Inventur ist die verbindliche Abgrenzung für den Change `standardize-save
 | Generischer Content-Editor | Datensatz anlegen und bearbeiten                                                                  | Create wechselt auf die Detailseite; Update zeigt den gespeicherten Zustand im Button                                       |
 | Content-Plugins            | Cockpit Cards, Events, FAQ, Generic Items, News, POI, Projects und Surveys anlegen und bearbeiten | Gemeinsame Save-Primitives; Create wechselt auf die vorhandene Detailseite                                                  |
 | Waste-Einstellungen        | Plugin-Einstellungen, PDF-Ausgabe und E-Mail-Erinnerungen                                         | Gemeinsamer Save-Button und persistenter technischer Fehler                                                                 |
-| Waste-Stammdaten           | Orte, Straßen, Hausnummern, Regionen, Fraktionen und Sammelstellen anlegen und bearbeiten         | Gemeinsamer Pending-Zustand; geschlossene Dialoge zeigen den neuen oder geänderten Datensatz unmittelbar in der Elternliste |
+| Waste-Stammdaten           | Orte, Straßen, Hausnummern, Regionen, Fraktionen und Sammelstellen anlegen und bearbeiten         | Gemeinsamer Pending-Zustand; Fehler der Fraktionsbearbeitung bleiben im Formular sichtbar, gespeicherte Werte erscheinen nach Neuladen in der Liste |
 | Waste-Planung              | Touren, Zuordnungen und globale beziehungsweise lokale Planungen anlegen und bearbeiten           | Gemeinsamer Pending-Zustand; geschlossene Dialoge zeigen das Ergebnis unmittelbar im Planungsbereich                        |
 
 ## Begründete Ausnahmen

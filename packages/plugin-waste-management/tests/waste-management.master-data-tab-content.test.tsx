@@ -18,11 +18,19 @@ vi.mock('../src/waste-management.master-data-fractions-content.js', () => ({
       <div>
         <button
           type="button"
-          onClick={() => (props.onFractionsSortChange as (sortBy: string, sortDirection: string) => void)('color', 'desc')}
+          onClick={() =>
+            (props.onFractionsSortChange as (sortBy: string, sortDirection: string) => void)(
+              'color',
+              'desc'
+            )
+          }
         >
           sort-color-desc
         </button>
-        <button type="button" onClick={() => (props.onFractionsStatusChange as (status: string) => void)('inactive')}>
+        <button
+          type="button"
+          onClick={() => (props.onFractionsStatusChange as (status: string) => void)('inactive')}
+        >
           filter-inactive
         </button>
       </div>
@@ -221,33 +229,30 @@ describe('WasteMasterDataTabContent', () => {
       resetLocationForm: vi.fn(),
     } as never;
 
-    render(
-      <WasteMasterDataTabContent
-        controller={controller}
-        search={{
-          tab: 'fractions',
-          masterDataTab: 'fractions',
-          fractionsView: 'edit',
-          toursView: 'list',
-          locationsView: 'list',
-          schedulingView: 'list',
-          q: '',
-          page: 1,
-          pageSize: 25,
-          fractionsStatus: 'all',
-          status: 'all',
-          shiftContext: 'all',
-          fractionsSortBy: 'name',
-          fractionsSortDirection: 'asc',
-          regionId: undefined,
-          cityId: undefined,
-          wasteFractionId: 'fraction-99',
-          tourId: undefined,
-          tourDateShiftId: undefined,
-          globalDateShiftId: undefined,
-        }}
-        tab="fractions"
-      />
+    const search = {
+      tab: 'fractions',
+      masterDataTab: 'fractions',
+      fractionsView: 'edit',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      fractionsStatus: 'all',
+      status: 'all',
+      shiftContext: 'all',
+      fractionsSortBy: 'name',
+      fractionsSortDirection: 'asc',
+      regionId: undefined,
+      cityId: undefined,
+      wasteFractionId: 'fraction-99',
+      tourId: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
+    } as const;
+    const { rerender } = render(
+      <WasteMasterDataTabContent controller={controller} search={search} tab="fractions" />
     );
 
     expect(controller.setDialogMode).toHaveBeenCalledWith('edit');
@@ -259,6 +264,12 @@ describe('WasteMasterDataTabContent', () => {
         containerSize: '240L',
       })
     );
+    expect(controller.setMessage).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <WasteMasterDataTabContent controller={controller} search={{ ...search }} tab="fractions" />
+    );
+    expect(controller.setMessage).toHaveBeenCalledTimes(1);
   });
 
   it('redirects stale fraction edit routes back to the list', () => {

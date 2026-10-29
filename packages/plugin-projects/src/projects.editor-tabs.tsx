@@ -1,16 +1,11 @@
-import {
-  fetchIamContentHistory,
-  formatDateTimeInEditorTimeZone,
-  getHostMediaAsset,
-  getHostMediaDelivery,
-  usePluginTranslation,
-} from '@sva/plugin-sdk';
+import { loadProjectAssetSnapshot } from './projects.images.js';
+import { ProjectHistoryTab } from './projects.history.js';
+import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   ContentOwnershipPanelSlot,
   Input,
   RichTextHtmlEditor,
   Select,
-  StudioContentHistory,
   StudioDetailCard,
   StudioField,
   Textarea,
@@ -19,7 +14,6 @@ import {
 } from '@sva/studio-ui-react';
 import { Controller, type UseFormReturn } from 'react-hook-form';
 import type { ProjectContentItem } from './projects.api-types.js';
-import { resolveProjectPersistentDeliveryUrl } from './projects.content-media-adapter.js';
 import { ProjectImages } from './projects.images.js';
 import type { ProjectFormValues } from './projects.validation.js';
 
@@ -40,27 +34,44 @@ type TabInput = Readonly<{
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
 }>;
 
+function ProjectLanguageField({ pt, form }: Pick<TabInput, 'pt' | 'form'>) {
+  return (
+    <StudioField
+      id="project-language"
+      label={pt('fields.language')}
+      description={pt('create.languageHelp')}
+    >
+      <Input
+        id="project-language"
+        aria-describedby="project-language-description"
+        aria-invalid={Boolean(form.formState.errors.language)}
+        {...form.register('language')}
+      />
+    </StudioField>
+  );
+}
+
 function BasisTab({ pt, form, mode }: TabInput) {
   return (
     <div className="space-y-4">
       {mode === 'edit' ? <ContentOwnershipPanelSlot /> : null}
-      <StudioField id="project-language" label={pt('fields.language')}>
-        <Input
-          id="project-language"
-          aria-invalid={Boolean(form.formState.errors.language)}
-          {...form.register('language')}
-        />
-      </StudioField>
-      <StudioField id="project-title" label={pt('fields.title')}>
+      {mode === 'edit' ? <ProjectLanguageField pt={pt} form={form} /> : null}
+      <StudioField id="project-title" label={pt('fields.title')} required>
         <Input
           id="project-title"
+          aria-required="true"
           aria-invalid={Boolean(form.formState.errors.title)}
           {...form.register('title')}
         />
       </StudioField>
-      <StudioField id="project-description" label={pt('fields.description')}>
+      <StudioField
+        id="project-description"
+        label={pt('fields.description')}
+        description={pt('create.optional')}
+      >
         <Textarea
           id="project-description"
+          aria-describedby="project-description-description"
           className="min-h-28"
           aria-invalid={Boolean(form.formState.errors.description)}
           {...form.register('description')}
@@ -95,28 +106,15 @@ const richTextLabels = (pt: Translate) => ({
   linkPrompt: pt('richText.linkInput'),
 });
 
-async function loadAssetSnapshot(usage: ContentMediaUsage) {
-  if (!usage.assetId) throw new Error('asset_unavailable');
-  const [asset, delivery] = await Promise.all([
-    getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }),
-    getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }),
-  ]);
-  const persistentUrl = resolveProjectPersistentDeliveryUrl(delivery);
-  if (!persistentUrl) throw new Error('asset_unavailable');
-  return {
-    persistentUrl,
-    altText: asset.metadata.altText ?? '',
-    caption: asset.metadata.description ?? '',
-    credit: asset.metadata.copyright ?? '',
-    license: asset.metadata.license ?? '',
-  };
-}
-
 function ContentTab(props: TabInput) {
   const { pt, form } = props;
   return (
-    <div className="space-y-5">
-      <StudioDetailCard title={pt('fields.fullText')}>
+    <div className="space-y-6">
+      <StudioDetailCard
+        title={pt(props.mode === 'create' ? 'tabs.content' : 'fields.fullText')}
+        description={props.mode === 'create' ? undefined : pt('create.optional')}
+      >
+        {props.mode === 'create' ? <BasisTab {...props} /> : null}
         <div className="space-y-1">
           <label
             id="project-full-text-label"
@@ -142,18 +140,21 @@ function ContentTab(props: TabInput) {
           />
         </div>
       </StudioDetailCard>
-      <ProjectImages
-        form={form}
-        pt={pt}
-        usages={props.mediaUsages}
-        onChange={props.onMediaChange}
-        canSelectMedia={props.canSelectMedia}
-        canUploadMedia={props.canUploadMedia}
-        mediaEditingDisabled={props.mediaEditingDisabled}
-        onAddManualMedia={props.onAddManualMedia}
-        onOpenMediaPicker={props.onOpenMediaPicker}
-        onLoadAssetSnapshot={loadAssetSnapshot}
-      />
+      <details open={props.mode === 'create' ? undefined : true}>
+        <summary hidden={!(props.mode === 'create')}>{pt('fields.images')}</summary>
+        <ProjectImages
+          form={form}
+          pt={pt}
+          usages={props.mediaUsages}
+          onChange={props.onMediaChange}
+          canSelectMedia={props.canSelectMedia}
+          canUploadMedia={props.canUploadMedia}
+          mediaEditingDisabled={props.mediaEditingDisabled}
+          onAddManualMedia={props.onAddManualMedia}
+          onOpenMediaPicker={props.onOpenMediaPicker}
+          onLoadAssetSnapshot={loadProjectAssetSnapshot}
+        />
+      </details>
     </div>
   );
 }
@@ -161,9 +162,14 @@ function ContentTab(props: TabInput) {
 function SettingsTab({ pt, form, item }: TabInput) {
   return (
     <div className="space-y-4">
-      <StudioField id="project-status" label={pt('fields.status')}>
+      <StudioField
+        id="project-status"
+        label={pt('fields.status')}
+        description={pt('create.statusHelp')}
+      >
         <Select
           id="project-status"
+          aria-describedby="project-status-description"
           aria-invalid={Boolean(form.formState.errors.status)}
           {...form.register('status')}
         >
@@ -198,41 +204,26 @@ function SettingsTab({ pt, form, item }: TabInput) {
   );
 }
 
-function HistoryTab({ pt, contentId }: TabInput) {
-  return (
-    <StudioContentHistory
-      contentId={contentId}
-      loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'projects.project' })}
-      labels={{
-        loading: pt('history.loading'),
-        error: pt('history.error'),
-        empty: pt('history.empty'),
-        createHint: pt('history.createHint'),
-        tableLabel: pt('history.tableLabel'),
-        time: pt('history.columns.time'),
-        action: pt('history.columns.action'),
-        actor: pt('history.columns.actor'),
-        summary: pt('history.columns.summary'),
-        sourceNotice: pt('history.sourceNotice'),
-        emptySummary: pt('history.emptySummary'),
-      }}
-      formatAction={(action) =>
-        pt(
-          action === 'created'
-            ? 'history.actions.created'
-            : action === 'status_changed'
-              ? 'history.actions.statusChanged'
-              : 'history.actions.updated'
-        )
-      }
-      formatDate={(value) => formatDateTimeInEditorTimeZone(value) ?? value}
-    />
-  );
-}
-
 export function createProjectTabs(
   input: TabInput
 ): readonly StudioDetailTabDefinition<ProjectTab>[] {
+  if (input.mode === 'create') {
+    return [
+      {
+        id: 'content',
+        label: input.pt('tabs.content'),
+        panel: (
+          <div className="space-y-6">
+            <ContentTab {...input} />
+            <StudioDetailCard title={input.pt('create.settingsTitle')}>
+              <ProjectLanguageField {...input} />
+              <SettingsTab {...input} />
+            </StudioDetailCard>
+          </div>
+        ),
+      },
+    ];
+  }
   return [
     { id: 'basis', label: input.pt('tabs.basis'), icon: 'basis', panel: <BasisTab {...input} /> },
     {
@@ -251,7 +242,7 @@ export function createProjectTabs(
       id: 'history',
       label: input.pt('tabs.history'),
       icon: 'history',
-      panel: <HistoryTab {...input} />,
+      panel: <ProjectHistoryTab {...input} />,
     },
   ];
 }

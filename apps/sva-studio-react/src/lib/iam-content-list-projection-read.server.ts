@@ -109,6 +109,10 @@ export const loadProjectionPage = async (
           `LOWER(BTRIM(projection.payload_json ->> 'languageCode')) = $${params.length}`
         );
       }
+      if (query.type === 'vouchers.voucher' && query.poiId) {
+        params.push(query.poiId);
+        conditions.push(`projection.payload_json ->> 'pointOfInterestId' = $${params.length}`);
+      }
       if (query.q && query.q.trim().length > 0) {
         params.push(`%${query.q.trim().toLowerCase()}%`);
         const searchParam = `$${params.length}`;

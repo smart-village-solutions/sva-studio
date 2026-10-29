@@ -42,7 +42,9 @@ function RegisterOnlyForm() {
     error: errors.title,
   });
 
-  const summaryErrors: readonly StudioFormFieldError[] = titleField.summaryError ? [titleField.summaryError] : [];
+  const summaryErrors: readonly StudioFormFieldError[] = titleField.summaryError
+    ? [titleField.summaryError]
+    : [];
 
   return (
     <form onSubmit={handleSubmit(() => undefined)} noValidate>
@@ -55,7 +57,9 @@ function RegisterOnlyForm() {
   );
 }
 
-function ControlledSelectForm({ onSubmit }: Readonly<{ onSubmit: (values: ControlledValues) => void }>) {
+function ControlledSelectForm({
+  onSubmit,
+}: Readonly<{ onSubmit: (values: ControlledValues) => void }>) {
   const {
     control,
     handleSubmit,
@@ -71,7 +75,9 @@ function ControlledSelectForm({ onSubmit }: Readonly<{ onSubmit: (values: Contro
     error: errors.category,
   });
 
-  const summaryErrors: readonly StudioFormFieldError[] = categoryField.summaryError ? [categoryField.summaryError] : [];
+  const summaryErrors: readonly StudioFormFieldError[] = categoryField.summaryError
+    ? [categoryField.summaryError]
+    : [];
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -115,7 +121,9 @@ describe('studio-ui-react RHF bridge', () => {
 
     expect(screen.getByText('Titel fehlt')).toBeTruthy();
     expect(screen.getByLabelText('Titel').getAttribute('aria-invalid')).toBe('true');
-    expect(screen.getByLabelText('Titel').getAttribute('aria-describedby')).toBe('title-description title-error');
+    expect(screen.getByLabelText('Titel').getAttribute('aria-describedby')).toBe(
+      'title-description title-error'
+    );
   });
 
   it('renders summary errors with focusable anchor behavior', () => {
@@ -213,4 +221,25 @@ describe('studio-ui-react RHF bridge', () => {
     fireEvent.click(link);
     expect(document.activeElement).not.toBeNull();
   });
+});
+
+it('reveals nested optional sections before focusing a summary error', () => {
+  render(
+    <>
+      <details data-testid="outer">
+        <summary>More</summary>
+        <details data-testid="inner">
+          <summary>Coordinates</summary>
+          <input id="hidden-coordinate" />
+        </details>
+      </details>
+      <StudioFormSummaryErrors
+        errors={[{ field: 'hidden-coordinate', message: 'Correct coordinate' }]}
+      />
+    </>
+  );
+  fireEvent.click(screen.getByText('Correct coordinate'));
+  expect(screen.getByTestId('outer').hasAttribute('open')).toBe(true);
+  expect(screen.getByTestId('inner').hasAttribute('open')).toBe(true);
+  expect(document.activeElement?.id).toBe('hidden-coordinate');
 });

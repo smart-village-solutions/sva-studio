@@ -155,3 +155,8 @@ export const fulfillContentRoute = async (route: Route, newsItems: NewsRecord[])
     });
   }
 };
+
+export const openNewsCreateMedia = async (page: Page) => {
+  const disclosure = page.locator('details:not([open])').filter({has: page.locator('#news-content-media')});
+  if (await disclosure.count()) await disclosure.locator(':scope > summary').click();
+};

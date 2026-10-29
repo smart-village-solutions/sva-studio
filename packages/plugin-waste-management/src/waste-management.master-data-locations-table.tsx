@@ -42,8 +42,16 @@ const WasteMasterDataLocationsTableContent = ({
       >
         <WastePanelTableTopBar>
           <WasteMasterDataLocationsTableToolbar
+            search={props.search}
+            onQueryChange={props.onQueryChange}
+            onResetFilters={props.onResetFilters}
             selectedCollectionLocationsCount={props.selectedCollectionLocationsCount}
             availableTours={props.availableTours}
+            visibleTours={Array.from(maps.toursById.values())}
+            locationYear={props.locationYear}
+            onLocationYearChange={props.onLocationYearChange}
+            locationTourStatus={props.locationTourStatus}
+            onLocationTourStatusChange={props.onLocationTourStatusChange}
             filtersOpen={filtersOpen}
             selectedTourId={props.selectedTourId}
             allFilteredLocationsSelected={props.allFilteredLocationsSelected}

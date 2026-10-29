@@ -35,6 +35,7 @@ Architekturprinzipien auf IST-Basis.
 - Die lokale technische Dokumentation folgt denselben Ownership-Grenzen wie das System: Architektur, Entwicklung, Betrieb, Referenz und Governance besitzen klar benannte Einstiege und Pflege-Trigger. Zeitgebundene Nachweise und externe Anwenderdokumentation bleiben getrennt.
 - IAM folgt einer klaren Verantwortungsgrenze: Keycloak für Identity, Postgres für IAM-Fachdaten, Redis nur als Laufzeit-Cache
 - Auth-Sessions folgen einer klaren Führungslogik: `expiresAt` ist fachlich maßgeblich; Cookie und Redis-TTL sind abgeleitete Technik
+- Refresh und Organisationswechsel erhalten die aktuelle Sessiongeneration: Redis-Änderungen sind vergleichsgeprüft und begrenzt, Refreshes derselben Session werden pro Prozess zusammengeführt, und Browserantworten aus älteren Identitäts-/Kontextgenerationen werden verworfen.
 - Redis-Permission-Snapshots sind der primäre Shared-Read-Path für effektive IAM-Berechtigungen; der lokale In-Memory-Cache dient nur als L1
 - PostgreSQL-Revisionsvektoren sind die autoritative Gültigkeitsgrenze für L1 und Redis. `NOTIFY` beschleunigt Eviction, entscheidet aber nicht über Korrektheit.
 - Die Browser-UI trennt Identität und Session (`AuthProvider`) vom scopegebundenen Berechtigungszustand (`EffectiveAccessProvider`). Nicht aufgelöste, ladende oder fehlerhafte Access-Snapshots geben keine UI-Aktion frei.
@@ -53,6 +54,7 @@ Architekturprinzipien auf IST-Basis.
 - Datenbankmigrationen bleiben SQL-first und werden über einen repository-lokalen, versionsgepinn­ten `goose`-Pfad statt über ad-hoc SQL-Ausführung standardisiert
 - IAM-Server-Module folgen der Package-Zielarchitektur: Auth-Runtime, IAM-Core, IAM-Admin, IAM-Governance und Instance-Registry haben getrennte Ownership.
 - HTTP-spezifische Fehlerantworten werden nicht im Core modelliert, sondern serverseitig über gemeinsame Utilities in `@sva/server-runtime`
+- Geschützte Studio-API-Fehler erhalten an der abschließenden HTTP-Grenze eine stabile `X-Request-Id` und genau ein strukturiertes Ergebnisereignis; sichere Fehlerreferenzen laufen über SDK bis zur Editoranzeige. Browsermeldungen bleiben begrenzte, nicht autoritative Beobachtungen.
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
 - Versionierte Studio-Releases bleiben im bestehenden Build-/Promote-Pfad: `main` integriert über Dev, während ein Prod-basierter Hotfix einen exakt validierten alten Quell-SHA mit aktuellem Main-Controller baut und testet. Git-Tag und GitHub-Release sind menschliche Metadaten; Digest und Live-Readback sind die Deploy-Identität (ADR-066).
 - UI-Shell folgt semantischen Design-Tokens statt direkter Farbcodes und bleibt kompatibel zu Tailwind-/shadcn-Primitives
@@ -373,3 +375,9 @@ Die gemeinsame Inhaltsliste löst Lösch- und Schnellstatusfähigkeiten über di
 ## Bus-API-Key-Verwaltung
 
 Die bestehende zentrale Instanzverwaltung wird erweitert; es entstehen weder Tenant-Modul noch Plugin, Package oder zweite Key-Registry. Der Adapter im Auth-Runtime-Pfad kapselt ausschließlich Liste, Erstellung, Sperrung und Reaktivierung. Der vorhandene umfassende Bus-Admin-Token wird nur serverseitig verwendet.
+
+### Fortschreibung 2026-10: UI-Zugriff und sichere Wiederaufnahme
+
+Route-Guards und sichtbare Aktionen verwenden denselben aufgelösten, scopegebundenen Effective-Access-Snapshot. Identitäts- und Organisationswechsel invalidieren ihn synchron; Wiederaufnahme erzwingt eine neue Access-Generation auch bei unveränderten Rollennamen. Ressourcen-`403` bleiben lokal, während explizite Snapshot-Stale-Codes gezielt invalidieren. Der Core-Content-, News- und Event-Editor verwirft bei `stale_mainserver_context` das betroffene Binding, erhält den Entwurf und verlangt eine neue ausdrückliche Recovery- und Schreibaktion. Siehe ADR-050.
+
+Die bestehende Principal-Projektion kann eine lokale, geheimnisfreie Mainserver-Credential-/Provisioning-Bereitschaft anzeigen. Sie steuert die Create-Verfügbarkeit als UI-Hinweis; der Server prüft die tatsächlichen Voraussetzungen vor jedem Schreiben erneut. Mainserver selbst und sein Vertrag bleiben unverändert.

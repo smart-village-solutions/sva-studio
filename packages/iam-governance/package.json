@@ -85,8 +85,8 @@
     "@sva/iam-core": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "postcss": "^8.5.23",
-    "sanitize-html": "^2.17.7",
-    "zod": "^4.3.6"
+    "sanitize-html": "^2.18.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/sanitize-html": "^2.16.1",

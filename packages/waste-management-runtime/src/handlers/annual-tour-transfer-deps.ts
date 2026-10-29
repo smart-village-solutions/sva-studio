@@ -10,6 +10,7 @@ export type WasteAnnualTourTransferHandlerDeps = {
     readonly sourceYear: number;
     readonly selectedTourIds?: readonly string[];
     readonly replacementDates?: WasteAnnualTourTransferCreateInput['replacementDates'];
+    readonly firstTargetDates?: WasteAnnualTourTransferCreateInput['firstTargetDates'];
   }) => Promise<WasteAnnualTourTransferPreview>;
   readonly createWasteAnnualTourTransfer?: (input: {
     readonly instanceId: string;

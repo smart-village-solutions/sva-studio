@@ -75,6 +75,7 @@ export function EventsDetailPage({
     categoryOptions,
     categoryOptionsLoading,
     categoryOptionsError,
+    reloadCurrentContext,
   } = useEventsDetailLoad({
     mode,
     contentId,
@@ -156,6 +157,11 @@ export function EventsDetailPage({
     if (!pendingFocusId) return;
     const element = globalThis.document?.getElementById(pendingFocusId);
     if (!element) return;
+    let details = element.closest('details');
+    while (details) {
+      details.open = true;
+      details = details.parentElement?.closest('details') ?? null;
+    }
     element.focus();
     setPendingFocusId(null);
   }, [activeTab, pendingFocusId]);
@@ -185,6 +191,7 @@ export function EventsDetailPage({
     contentId,
     requiresReferenceSync,
     mediaReferenceSync,
+    leaveGuard: media.leaveGuard,
     navigate,
   });
 
@@ -229,6 +236,7 @@ export function EventsDetailPage({
       loadedItem={loadedItem}
       mediaReferencesReady={mediaReferencesReady}
       setStatus={setStatus}
+      reloadCurrentContext={reloadCurrentContext}
     />
   );
 }

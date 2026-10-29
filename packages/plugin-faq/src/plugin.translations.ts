@@ -1,8 +1,10 @@
+import { faqCreateTranslations } from './plugin.translations.create.js';
 import type { PluginTranslations } from '@sva/plugin-sdk';
 
 export const pluginFaqTranslations = {
   de: {
     faq: {
+      create: faqCreateTranslations.de,
       navigation: { title: 'FAQ' },
       actions: {
         back: 'Zurück',
@@ -29,7 +31,7 @@ export const pluginFaqTranslations = {
       principal: {
         createAs: 'Erstellen als',
         actAs: 'Handeln als',
-        description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+        description: 'Wählen Sie, in wessen Namen Sie arbeiten.',
         organization: 'Aktive Organisation',
         user: 'Persönlicher Account',
         dataProvider: 'Ursprünglicher DataProvider',
@@ -121,6 +123,7 @@ export const pluginFaqTranslations = {
   },
   en: {
     faq: {
+      create: faqCreateTranslations.en,
       navigation: { title: 'FAQ' },
       actions: {
         back: 'Back',
@@ -147,7 +150,7 @@ export const pluginFaqTranslations = {
       principal: {
         createAs: 'Create as',
         actAs: 'Act as',
-        description: 'Determines the credentials for this Mainserver action.',
+        description: 'Choose who you are acting on behalf of.',
         organization: 'Active organization',
         user: 'Personal account',
         dataProvider: 'Original DataProvider',

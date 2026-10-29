@@ -44,6 +44,7 @@
     "@sva/plugin-sdk": "workspace:*",
     "@sva/plugin-ssf": "workspace:*",
     "@sva/plugin-surveys": "workspace:*",
+    "@sva/plugin-vouchers": "workspace:*",
     "@sva/routing": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "@sva/studio-module-iam": "workspace:*",
@@ -71,7 +72,7 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.5.0",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
@@ -93,7 +94,7 @@
     "oxc-coverage-instrument": "^0.13.0",
     "tooling-testing": "workspace:*",
     "typescript": "^6.0.3",
-    "vite": "^8.3.2",
+    "vite": "^8.3.3",
     "vitest": "^5.0.3",
     "yaml": "^2.9.0"
   }

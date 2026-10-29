@@ -30,7 +30,7 @@
     "exceljs": "^4.4.0",
     "fflate": "^0.8.2",
     "pg": "^8.22.0",
-    "zod": "^4.3.6"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@sva/iam-core": "workspace:*",

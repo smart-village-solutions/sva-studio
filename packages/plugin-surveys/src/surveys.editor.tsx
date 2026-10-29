@@ -11,57 +11,66 @@ import {
   StudioDetailTabs,
   StudioFormSummary,
   StudioLoadingState,
+  isMainserverPrincipalReady,
   resolveMainserverPrincipalOptions,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
-
 import {
   createDefaultSurveyDetailFormValues,
   type SurveyDetailFormValues,
 } from './surveys.detail-form.js';
-import { SurveyEditorActions, SurveyEditorPrimaryAction } from './surveys.editor.actions.js';
+import {
+  SurveyCreatedResult,
+  SurveyEditorActions,
+  SurveyEditorPrimaryAction,
+} from './surveys.editor.actions.js';
 import { useSurveyEditorController } from './surveys.editor-logic.js';
 import { type SurveyEditorMode, type SurveyEditorTabId } from './surveys.editor.shared.js';
-import { createSurveyEditorTabs } from './surveys.editor-tabs.js';
+import { SurveyCreateFields, createSurveyEditorTabs } from './surveys.editor-tabs.js';
 import { useSurveyMutationAccess as useMutationAccess } from './surveys.lifecycle-access.js';
-
 const formId = 'survey-detail-form';
-
 const SurveyPrincipalControl = ({
   actingPrincipalType,
-  loadedItem,
   mode,
   onChange,
   principalControl,
   pt,
 }: Readonly<{
   actingPrincipalType: MainserverPrincipalType;
-  loadedItem: ReturnType<typeof useSurveyEditorController>['loadedItem'];
   mode: SurveyEditorMode;
   onChange: (value: MainserverPrincipalType) => void;
   principalControl?: MainserverPrincipalControlModel;
   pt: ReturnType<typeof usePluginTranslation>;
 }>) => (
-  <MainserverPrincipalControl
-    id="survey-acting-principal"
-    label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-    description={pt('principal.description')}
-    value={actingPrincipalType}
-    options={resolveMainserverPrincipalOptions(principalControl, {
-      value: actingPrincipalType,
-      label: pt(`principal.${actingPrincipalType}`),
-    })}
-    onChange={onChange}
-  />
+  <div
+    className={
+      mode === 'create' && principalControl?.kind === 'selectable'
+        ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
+        : undefined
+    }
+  >
+    <MainserverPrincipalControl
+      fixedLabel={mode === 'create' ? pt('create.responsible') : undefined}
+      id="survey-acting-principal"
+      label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+      description={pt('principal.description')}
+      value={actingPrincipalType}
+      options={resolveMainserverPrincipalOptions(principalControl, {
+        value: actingPrincipalType,
+        label: pt(`principal.${actingPrincipalType}`),
+      })}
+      onChange={onChange}
+      readinessByPrincipal={principalControl?.readinessByPrincipal}
+      readinessMessage={principalControl?.readinessMessage}
+    />
+  </div>
 );
-
 const SurveyEditorForm = ({
   actingPrincipalType,
   activeTab,
   canEdit,
   canSave,
-  loadedItem,
   methods,
   mode,
   onActiveTabChange,
@@ -76,7 +85,6 @@ const SurveyEditorForm = ({
   activeTab: SurveyEditorTabId;
   canEdit: boolean;
   canSave: boolean;
-  loadedItem: ReturnType<typeof useSurveyEditorController>['loadedItem'];
   methods: UseFormReturn<SurveyDetailFormValues>;
   mode: SurveyEditorMode;
   onActiveTabChange: (tab: SurveyEditorTabId) => void;
@@ -86,50 +94,55 @@ const SurveyEditorForm = ({
   status: ReturnType<typeof useSurveyEditorController>['status'];
   submit: ReturnType<typeof useSurveyEditorController>['submit'];
   tabs: ReturnType<typeof createSurveyEditorTabs>;
-}>) => (
-  <FormProvider {...methods}>
-    <form
-      id={formId}
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (canSave) void submit();
-      }}
-      className="space-y-5"
-    >
-      {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
-      {!canSave ? (
-        <StudioFormSummary kind="error">{pt('messages.updateUnavailable')}</StudioFormSummary>
-      ) : null}
-      <SurveyPrincipalControl
-        actingPrincipalType={actingPrincipalType}
-        loadedItem={loadedItem}
-        mode={mode}
-        onChange={onPrincipalChange}
-        principalControl={principalControl}
-        pt={pt}
-      />
-      <fieldset className="min-w-0 space-y-5 border-0 p-0" disabled={!canEdit}>
-        <StudioDetailTabs
-          ariaLabel={pt('tabs.ariaLabel')}
-          tabs={tabs}
-          value={activeTab}
-          onValueChange={onActiveTabChange}
-          keepMounted
-        />
-      </fieldset>
-    </form>
-  </FormProvider>
-);
-
+}>) => {
+  const principal = (
+    <SurveyPrincipalControl
+      actingPrincipalType={actingPrincipalType}
+      mode={mode}
+      onChange={onPrincipalChange}
+      principalControl={principalControl}
+      pt={pt}
+    />
+  );
+  return (
+    <FormProvider {...methods}>
+      <form
+        id={formId}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (canSave) void submit();
+        }}
+        className="space-y-5"
+      >
+        {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+        {!canSave ? (
+          <StudioFormSummary kind="error">{pt('messages.updateUnavailable')}</StudioFormSummary>
+        ) : null}
+        {mode === 'edit' ? principal : null}
+        <fieldset className="min-w-0 space-y-5 border-0 p-0" disabled={!canEdit}>
+          {mode === 'create' ? (
+            <SurveyCreateFields pt={pt} />
+          ) : (
+            <StudioDetailTabs
+              ariaLabel={pt('tabs.ariaLabel')}
+              tabs={tabs}
+              value={activeTab}
+              onValueChange={onActiveTabChange}
+              keepMounted
+            />
+          )}
+        </fieldset>
+        {mode === 'create' ? principal : null}
+      </form>
+    </FormProvider>
+  );
+};
 const useSurveyActingPrincipal = (principalControl?: MainserverPrincipalControlModel) => {
   const [value, setValue] = React.useState<MainserverPrincipalType>(
     principalControl?.value ?? 'user'
   );
-
   React.useEffect(() => {
-    if (principalControl) {
-      setValue(principalControl.value);
-    }
+    if (principalControl) setValue(principalControl.value);
   }, [principalControl]);
 
   return [value, setValue] as const;
@@ -137,7 +150,6 @@ const useSurveyActingPrincipal = (principalControl?: MainserverPrincipalControlM
 
 const useSurveyForm = () =>
   useForm<SurveyDetailFormValues>({ defaultValues: createDefaultSurveyDetailFormValues() });
-
 const useSurveyTabs = (
   pt: ReturnType<typeof usePluginTranslation>,
   mode: SurveyEditorMode,
@@ -148,6 +160,24 @@ const useSurveyTabs = (
     () => createSurveyEditorTabs(pt, mode, loadedItem, contentId),
     [contentId, loadedItem, mode, pt]
   );
+
+function createSurveyNavigation(navigate: ReturnType<typeof useNavigate>, contentId?: string) {
+  return {
+    onInitialSavedConsumed: () =>
+      navigate({
+        to: '/admin/surveys/$id',
+        params: { id: contentId ?? '' },
+        replace: true,
+        state: (previous) => removeStudioSaveFeedback(previous),
+      }),
+    navigateToCreatedDetail: (id: string) =>
+      navigate({
+        to: '/admin/surveys/$id',
+        params: { id },
+        state: (previous) => addStudioCreatedSaveFeedback(previous, 'surveys', id),
+      }),
+  };
+}
 
 export const SurveyEditorPage = ({
   mode,
@@ -166,7 +196,7 @@ export const SurveyEditorPage = ({
   const [activeTab, setActiveTab] = React.useState<SurveyEditorTabId>('basis');
   const [actingPrincipalType, setActingPrincipalType] = useSurveyActingPrincipal(principalControl);
   const methods = useSurveyForm();
-  const { isLoading, loadedItem, resourceAccess, saveStatus, status, submit } =
+  const { createdContentId, isLoading, loadedItem, resourceAccess, saveStatus, status, submit } =
     useSurveyEditorController({
       mode,
       contentId,
@@ -174,19 +204,7 @@ export const SurveyEditorPage = ({
       pt,
       actingPrincipalType,
       initiallySaved: hasStudioCreatedSaveFeedback(location.state, 'surveys', contentId),
-      onInitialSavedConsumed: () =>
-        navigate({
-          to: '/admin/surveys/$id',
-          params: { id: contentId ?? '' },
-          replace: true,
-          state: (previous) => removeStudioSaveFeedback(previous),
-        }),
-      navigateToCreatedDetail: (id) =>
-        navigate({
-          to: '/admin/surveys/$id',
-          params: { id },
-          state: (previous) => addStudioCreatedSaveFeedback(previous, 'surveys', id),
-        }),
+      ...createSurveyNavigation(navigate, contentId),
     });
   const tabs = useSurveyTabs(pt, mode, loadedItem, contentId);
   const access = useMutationAccess(mode, canUpdate, loadedItem?.status, resourceAccess, methods);
@@ -197,25 +215,34 @@ export const SurveyEditorPage = ({
 
   return (
     <StudioDetailPageTemplate
+      stickyActions={mode === 'create'}
       title={pt(mode === 'create' ? 'pages.createTitle' : 'pages.editTitle')}
-      description={pt(mode === 'create' ? 'pages.createDescription' : 'pages.editDescription')}
+      description={mode === 'edit' ? pt('pages.editDescription') : undefined}
       actions={<SurveyEditorActions pt={pt} />}
       primaryAction={
         <SurveyEditorPrimaryAction
-          disabled={!access.canSave}
+          disabled={
+            !access.canSave ||
+            (mode === 'create' &&
+              (createdContentId !== null ||
+                !isMainserverPrincipalReady(principalControl, actingPrincipalType)))
+          }
           mode={mode}
           formId={formId}
           pt={pt}
           saveStatus={saveStatus}
+          createStatus={methods.watch('basis.status')}
         />
       }
     >
+      {mode === 'create' && createdContentId ? (
+        <SurveyCreatedResult createdContentId={createdContentId} methods={methods} pt={pt} />
+      ) : null}
       <SurveyEditorForm
         actingPrincipalType={actingPrincipalType}
         activeTab={activeTab}
         canEdit={access.canEdit}
-        canSave={access.canSave}
-        loadedItem={loadedItem}
+        canSave={access.canSave && !(mode === 'create' && createdContentId !== null)}
         methods={methods}
         mode={mode}
         onActiveTabChange={setActiveTab}

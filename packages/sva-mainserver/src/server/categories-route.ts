@@ -35,7 +35,12 @@ type CategoriesActor = {
   readonly activeOrganizationId?: string;
 };
 type CategoryIdempotency = Readonly<{ actorAccountId: string; endpoint: string; key: string }>;
-const categoryContentDataTypes = ['news_item', 'event_record', 'point_of_interest'] as const;
+const categoryContentDataTypes = [
+  'news_item',
+  'event_record',
+  'point_of_interest',
+  'generic_item_voucher',
+] as const;
 type CategoryContentDataType = (typeof categoryContentDataTypes)[number];
 
 const categoryCreateEndpoint = (actor: CategoriesActor): string =>
@@ -59,8 +64,7 @@ const readCategoryContentDataType = (
 const toCategoryResponseItem = ({
   dataTypes: _dataTypes,
   ...category
-}: SvaMainserverCategoriesListItem): Omit<SvaMainserverCategoriesListItem, 'dataTypes'> =>
-  category;
+}: SvaMainserverCategoriesListItem): Omit<SvaMainserverCategoriesListItem, 'dataTypes'> => category;
 
 const authorize = async (
   ctx: AuthenticatedRequestContext,
@@ -94,8 +98,7 @@ const readCategories = async (
     const categories = await listSvaMainserverCategories(actor);
     const filteredCategories = dataType
       ? categories.filter(
-          (category) =>
-            category.dataTypes.length === 0 || category.dataTypes.includes(dataType)
+          (category) => category.dataTypes.length === 0 || category.dataTypes.includes(dataType)
         )
       : categories;
     return json({ data: filteredCategories.map(toCategoryResponseItem) });

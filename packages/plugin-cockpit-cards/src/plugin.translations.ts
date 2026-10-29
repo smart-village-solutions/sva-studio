@@ -1,3 +1,4 @@
+import { cockpitCardsCreateTranslations } from './plugin.translations.create.js';
 import type { PluginTranslations } from '@sva/plugin-sdk';
 import { cockpitCardsHistoryTranslations } from './cockpit-cards.history-translations.js';
 import { cockpitCardsMediaTranslations } from './cockpit-cards.media-translations.js';
@@ -5,6 +6,7 @@ import { cockpitCardsDeleteDialogTranslations } from './cockpit-cards.delete-tra
 export const pluginCockpitCardsTranslations = {
   de: {
     'cockpit-cards': {
+      create: cockpitCardsCreateTranslations.de,
       navigation: { title: 'Kacheln' },
       actions: {
         back: 'Zurück',
@@ -40,7 +42,7 @@ export const pluginCockpitCardsTranslations = {
       principal: {
         createAs: 'Erstellen als',
         actAs: 'Handeln als',
-        description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+        description: 'Wählen Sie, in wessen Namen Sie arbeiten.',
         organization: 'Aktive Organisation',
         user: 'Persönlicher Account',
         dataProvider: 'Ursprünglicher DataProvider',
@@ -132,6 +134,7 @@ export const pluginCockpitCardsTranslations = {
   },
   en: {
     'cockpit-cards': {
+      create: cockpitCardsCreateTranslations.en,
       navigation: { title: 'Cockpit Cards' },
       actions: {
         back: 'Back',
@@ -167,7 +170,7 @@ export const pluginCockpitCardsTranslations = {
       principal: {
         createAs: 'Create as',
         actAs: 'Act as',
-        description: 'Determines the credentials for this Mainserver action.',
+        description: 'Choose who you are acting on behalf of.',
         organization: 'Active organization',
         user: 'Personal account',
         dataProvider: 'Original DataProvider',

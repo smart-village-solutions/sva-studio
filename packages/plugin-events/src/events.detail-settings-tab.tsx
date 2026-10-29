@@ -6,8 +6,10 @@ import { EventsDetailCard } from './events.detail-card.js';
 
 export function EventsDetailSettingsTab({
   pt,
+  section,
 }: Readonly<{
   pt: (key: string) => string;
+  section?: 'publication' | 'technical';
 }>) {
   const { control, setValue } = useFormContext<EventsDetailFormValues>();
   const visible = useWatch({ control, name: 'settings.visible' }) ?? true;
@@ -15,35 +17,39 @@ export function EventsDetailSettingsTab({
 
   return (
     <div className="space-y-6">
-      <EventsDetailCard
-        title={pt('cards.settings.publication.title')}
-        description={pt('cards.settings.publication.description')}
-      >
-        <StudioField id="event-visible" label={pt('fields.visible')}>
-          <Checkbox
-            id="event-visible"
-            checked={visible}
-            onChange={(event) =>
-              setValue('settings.visible', event.target.checked, { shouldDirty: true })
-            }
-          />
-        </StudioField>
-      </EventsDetailCard>
+      {section !== 'technical' ? (
+        <EventsDetailCard
+          title={pt('cards.settings.publication.title')}
+          description={pt('cards.settings.publication.description')}
+        >
+          <StudioField id="event-visible" label={pt('fields.visible')}>
+            <Checkbox
+              id="event-visible"
+              checked={visible}
+              onChange={(event) =>
+                setValue('settings.visible', event.target.checked, { shouldDirty: true })
+              }
+            />
+          </StudioField>
+        </EventsDetailCard>
+      ) : null}
 
-      <EventsDetailCard
-        title={pt('cards.settings.technical.title')}
-        description={pt('cards.settings.technical.description')}
-      >
-        <StudioField id="event-external-id" label={pt('fields.externalId')}>
-          <Input
-            id="event-external-id"
-            value={externalId}
-            onChange={(event) =>
-              setValue('settings.externalId', event.target.value, { shouldDirty: true })
-            }
-          />
-        </StudioField>
-      </EventsDetailCard>
+      {section !== 'publication' ? (
+        <EventsDetailCard
+          title={pt('cards.settings.technical.title')}
+          description={pt('cards.settings.technical.description')}
+        >
+          <StudioField id="event-external-id" label={pt('fields.externalId')}>
+            <Input
+              id="event-external-id"
+              value={externalId}
+              onChange={(event) =>
+                setValue('settings.externalId', event.target.value, { shouldDirty: true })
+              }
+            />
+          </StudioField>
+        </EventsDetailCard>
+      ) : null}
     </div>
   );
 }

@@ -18,9 +18,14 @@ import {
   createPagination,
   fulfillContentRoute,
   openNewsDetailTab,
+  openNewsCreateMedia,
   routeNewsMediaRequests,
   routeUnifiedContentOverview,
 } from './news-plugin.routes';
+
+if (process.env.PLAYWRIGHT_RUNTIME_PROFILE === 'local-builder') {
+  test.use({ storageState: { cookies: [], origins: [] } });
+}
 
 test.describe('news plugin', () => {
   test.describe.configure({ timeout: 90_000 });
@@ -28,6 +33,156 @@ test.describe('news plugin', () => {
   test.beforeEach(async ({ page }) => {
     await mockSharedShellRequests(page);
     await page.route('**/api/v1/iam/media**', routeNewsMediaRequests);
+  });
+
+  test('keeps a create draft open but blocks saving while the selected principal is not ready', async ({
+    page,
+  }) => {
+    let createRequests = 0;
+    await page.route('**/auth/me', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(authenticatedUser),
+      })
+    );
+    await page.route('**/iam/me/permissions?**', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(permissionPayload),
+      })
+    );
+    await page.route('**/api/v1/iam/me/context', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            activeOrganizationId: null,
+            organizations: [],
+            personalMainserverReadiness: 'missing_credentials',
+          },
+        }),
+      })
+    );
+    await page.route('**/api/v1/mainserver/mutation-capabilities', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { enabledActions: ['news.create'] } }),
+      })
+    );
+    await page.route('**/api/v1/mainserver/news**', async (route) => {
+      if (route.request().method() !== 'GET') createRequests += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [], pagination: createPagination(0) }),
+      });
+    });
+    await page.route('**/api/v1/mainserver/categories*', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [] }),
+      })
+    );
+    await routeUnifiedContentOverview(page, []);
+
+    await gotoHomeAsAuthenticatedUser(page);
+    await navigateClientSide(page, '/admin/news/new');
+    await expectNewsEditorReady(page, 'create');
+    await page.locator('#news-title').fill('Entwurf bleibt erhalten');
+
+    await expect(
+      page.getByRole('status').filter({ hasText: /Mainserver-Anbindung|Mainserver connection/ })
+    ).toBeVisible();
+    await expect(page.locator('#news-title')).toHaveValue('Entwurf bleibt erhalten');
+    await expect(
+      page.getByRole('button', { name: /Entwurf anlegen|Jetzt veröffentlichen/ }).first()
+    ).toBeDisabled();
+    expect(createRequests).toBe(0);
+  });
+
+  test('keeps an edit draft after stale context and never repeats the failed write automatically', async ({
+    page,
+  }) => {
+    const staleNews: NewsRecord = {
+      id: 'news-stale',
+      title: 'Ausgangstitel',
+      contentType: 'news.article',
+      status: 'published',
+      author: 'Editor One',
+      createdAt: '2026-10-27T10:00:00.000Z',
+      updatedAt: '2026-10-27T10:00:00.000Z',
+      publishedAt: '2026-10-27T10:00:00.000Z',
+      payload: { body: 'Bestehender Inhalt' },
+      contentBlocks: [{ body: 'Bestehender Inhalt' }],
+      dataProvider: { id: 'provider-source', name: 'Redaktion Musterhausen' },
+    };
+    let detailReads = 0;
+    let writes = 0;
+    await page.route('**/auth/me', async (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) })
+    );
+    await page.route('**/iam/me/permissions?**', async (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(permissionPayload) })
+    );
+    await page.route('**/api/v1/mainserver/mutation-capabilities', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { enabledActions: ['news.update'] } }),
+      })
+    );
+    await page.route('**/api/v1/mainserver/categories*', async (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) })
+    );
+    await page.route('**/api/v1/mainserver/news/news-stale', async (route) => {
+      if (route.request().method() === 'GET') {
+        detailReads += 1;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          headers: { 'X-SVA-Context-Binding': 'v1.loaded-context' },
+          body: JSON.stringify({
+            data: staleNews,
+            meta: {
+              access: {
+                'news.update': true,
+                'news.delete': false,
+                'content.publish': true,
+                'content.changeStatus': true,
+              },
+            },
+          }),
+        });
+        return;
+      }
+      writes += 1;
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        headers: { 'X-Request-Id': 'news-stale-ref' },
+        body: JSON.stringify({ error: 'stale_mainserver_context', message: 'stale context' }),
+      });
+    });
+    await routeUnifiedContentOverview(page, [staleNews]);
+
+    await gotoHomeAsAuthenticatedUser(page);
+    await navigateClientSide(page, '/admin/news/news-stale');
+    await expectNewsEditorReady(page, 'edit');
+    await page.locator('#news-title').fill('Entwurf nach Kontextwechsel');
+    await page.getByRole('button', { name: /Speichern|news\.actions\.save/ }).last().click();
+
+    await expect(page.getByText('news-stale-ref')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Kontext neu laden|Reload context/ })).toBeVisible();
+    expect(writes).toBe(1);
+    await page.getByRole('button', { name: /Kontext neu laden|Reload context/ }).click();
+    await expect.poll(() => detailReads).toBeGreaterThan(1);
+    await expect(page.locator('#news-title')).toHaveValue('Entwurf nach Kontextwechsel');
+    expect(writes).toBe(1);
   });
 
   test('supports draft creation, publication, and delete in the simplified news editor', async ({
@@ -189,10 +344,10 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/news/new');
     await expectPluginPageHeading(page, /Nachricht anlegen|news\.editor\.createTitle/);
     await page.getByLabel(/Überschrift|news\.fields\.title/).fill('Erste News');
-    await expect(
-      page.getByRole('textbox', { name: /Erstellen als|news\.principal\.createAs/ })
-    ).toHaveValue('Editor One');
+    await expect(page.locator('dl').filter({ hasText: 'Verantwortlich:' })).toContainText('Editor One');
+    await expect(page.getByRole('textbox', { name: /Erstellen als/ })).toHaveCount(0);
     const categoryTrigger = page.locator('#news-category');
+    await page.locator('details').filter({has: categoryTrigger}).locator(':scope > summary').click();
     await expect(categoryTrigger).toBeEnabled();
     await categoryTrigger.click();
     const categorySearch = page.getByRole('textbox', {
@@ -203,8 +358,11 @@ test.describe('news plugin', () => {
     await categorySearch.fill('Kultur');
     await page.getByRole('checkbox', { name: 'Kultur' }).check();
     await expect(categoryTrigger).toContainText('Allgemein, Kultur');
-    await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
-    await page.locator('#news-content-intro').fill('Kurztext');
+    await expect(page.getByRole('tab', { name: /Inhalte|news\.tabs\.content/ })).toHaveCount(0);
+    const introduction = page.locator('#news-content-intro');
+    await expect(introduction).toBeHidden();
+    await page.locator('details').filter({has: introduction}).locator(':scope > summary').click();
+    await introduction.fill('Kurztext');
     const bodyEditorContainer = page.locator('[data-rich-text-editor-id="news-content-body"]');
     const bodyEditor = page.locator('#news-content-body');
     await bodyEditor.fill('Inhalt');
@@ -235,8 +393,14 @@ test.describe('news plugin', () => {
     await bodyHtmlSource.fill('<h2>Inhalt <em>aktualisiert</em></h2>');
     await bodyEditorContainer.getByRole('button', { name: 'HTML' }).click();
     await expect(bodyEditor.locator('h2')).toContainText('Inhalt aktualisiert');
+    await page
+      .locator('details')
+      .filter({ has: page.locator('#news-source-url') })
+      .locator('summary')
+      .click();
     await page.locator('#news-source-url').fill('https://example.com/news/source');
     await page.locator('#news-source-description').fill('Quellseite');
+    await openNewsCreateMedia(page);
     await page
       .getByRole('button', { name: /Medium hinzufügen|news\.messages\.mediaPickerTitle/ })
       .click();
@@ -244,13 +408,14 @@ test.describe('news plugin', () => {
       .getByLabel(/Medien-URL|news\.fields\.mediaUrl/)
       .fill('https://example.com/news/image.jpg');
     await page.getByLabel(/Bildunterschrift|news\.fields\.mediaCaption/).fill('Titelbild');
-    await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
+    await expect(page.getByRole('tab', { name: /Einstellungen|news\.tabs\.settings/ })).toHaveCount(
+      0
+    );
     await page.getByRole('radio', { name: /Entwurf|news\.publicationModes\.draft/ }).click();
     const pushCheckbox = page.getByRole('checkbox', {
       name: /Push-Benachrichtigung senden|news\.fields\.pushNotification/,
     });
-    await expect(pushCheckbox).toBeVisible();
-    await expect(pushCheckbox).toBeDisabled();
+    await expect(pushCheckbox).toHaveCount(0);
     await page
       .getByRole('radio', { name: /Sofort veröffentlichen|news\.publicationModes\.immediate/ })
       .click();
@@ -260,7 +425,9 @@ test.describe('news plugin', () => {
       await dialog.accept();
     });
     await page
-      .getByRole('button', { name: /Speichern|news\.actions\.save/ })
+      .getByRole('button', {
+        name: /Jetzt veröffentlichen|Sofort veröffentlichen|news\.create\.actions\.immediate/,
+      })
       .last()
       .click();
     await expect.poll(() => newsItems.length).toBe(1);
@@ -495,7 +662,8 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/news/new');
     await expectPluginPageHeading(page, /Nachricht anlegen|news\.editor\.createTitle/);
     await page.getByLabel(/Überschrift|news\.fields\.title/).fill('News mit Bild');
-    await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
+    await expect(page.getByRole('tab', { name: /Inhalte|news\.tabs\.content/ })).toHaveCount(0);
+    await openNewsCreateMedia(page);
     await page
       .getByRole('button', { name: /Medium hinzufügen|news\.messages\.mediaPickerTitle/ })
       .click();
@@ -503,6 +671,7 @@ test.describe('news plugin', () => {
     await expect(page.locator('[data-testid="media-upload-input"]')).toHaveCount(0);
     expect(mediaMutations).toEqual([]);
 
+    await openNewsCreateMedia(page);
     await page
       .getByRole('button', { name: /Medium hinzufügen|news\.messages\.mediaPickerTitle/ })
       .click();
@@ -519,6 +688,7 @@ test.describe('news plugin', () => {
     await expect(page.locator('img[src^="blob:"]')).toHaveCount(0);
     expect(mediaMutations).toEqual([]);
 
+    await openNewsCreateMedia(page);
     await page
       .getByRole('button', { name: /Medium hinzufügen|news\.messages\.mediaPickerTitle/ })
       .click();
@@ -528,7 +698,10 @@ test.describe('news plugin', () => {
       buffer: Buffer.from('image'),
     });
     await page.getByRole('button', { name: /Medium übernehmen|mediaPicker\.confirm/ }).click();
-    await navigateClientSide(page, '/');
+    const leaveDraft = navigateClientSide(page, '/');
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('button', { name: 'Verwerfen und verlassen' }).click();
+    await leaveDraft;
     await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
     await navigateClientSide(page, '/admin/news/new');
     await expectPluginPageHeading(page, /Nachricht anlegen|news\.editor\.createTitle/);
@@ -536,7 +709,8 @@ test.describe('news plugin', () => {
     expect(mediaMutations).toEqual([]);
 
     await page.getByLabel(/Überschrift|news\.fields\.title/).fill('News mit Bild');
-    await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
+    await expect(page.getByRole('tab', { name: /Inhalte|news\.tabs\.content/ })).toHaveCount(0);
+    await openNewsCreateMedia(page);
     await page
       .getByRole('button', { name: /Medium hinzufügen|news\.messages\.mediaPickerTitle/ })
       .click();
@@ -548,7 +722,7 @@ test.describe('news plugin', () => {
     await page.getByRole('button', { name: /Medium übernehmen|mediaPicker\.confirm/ }).click();
 
     await page
-      .getByRole('button', { name: /Speichern|news\.actions\.save/ })
+      .getByRole('button', { name: /Entwurf anlegen|news\.create\.actions\.draft/ })
       .last()
       .click();
     await expect

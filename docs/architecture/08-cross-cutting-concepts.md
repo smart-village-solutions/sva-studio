@@ -150,7 +150,9 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Sessionen führen nur den minimalen Auth-Kern (`sub/id`, `instanceId`, Rollen); Profilattribute wie Name und E-Mail gehören nicht zum Pflichtumfang der Session
 - Tenant-Sessions beziehen `instanceId` aus Host, Registry und Realm-Scope. Ein optionaler Token-Claim `instanceId` darf diesen Scope bestätigen, aber nicht ersetzen.
 - Forced Reauth pro Benutzer erfolgt über `minimumSessionVersion` und `forcedReauthAt`; Keycloak-Logout ist optional zuschaltbar
-- Silent SSO ist nur ein einmaliger Recovery-Versuch nach `401` und wird nach explizitem Logout temporär unterdrückt
+- Session-Refresh liest vor dem OIDC-Grant den aktuellen Redis-Stand, bündelt parallele Refreshes pro Session im Prozess und committet Tokens nur gegen das erwartete Tokenpaket. Feldupdates verwenden einen begrenzten Redis-CAS gegen Session und Widerrufsmarker; Konflikte führen zu frischem Read und feldweisem Retry. Verbindungsfehler, Konfliktlimit, Ablauf und Widerruf bleiben geschlossen.
+- Refresh-Fallback liest Session und Widerrufsmarker frisch. Er erhält den aktuellen Organisationskontext nur solange Sessionablauf und Reauth-Regeln ihn zulassen; gelöschte oder widerrufene Sessions werden ungültig.
+- Silent SSO wird kurz vor der gemeldeten Session-Gültigkeitsgrenze höchstens zweimal versucht und bleibt nach `401` als einmaliger Recovery-Versuch erhalten. Nach explizitem Logout ist es temporär unterdrückt. Die absolute Studio-Sessiondauer beträgt standardmäßig 180 Minuten und ist über `SVA_AUTH_SESSION_TTL_MS` konfigurierbar; kürzere Tokenlaufzeiten können vorher einen Refresh erfordern.
 - Application-Level Column Encryption für IAM-PII-Felder (`email_ciphertext`, `display_name_ciphertext`)
 - Schlüsselverwaltung über `IAM_PII_ACTIVE_KEY_ID` + `IAM_PII_KEYRING_JSON` (außerhalb der DB)
 - Secret-Blöcke für externe Schnittstellen werden mit datensatzgebundener AAD verschlüsselt; Browser- und Plugin-Verträge sehen nur konfigurierte Marker, nie Klarwerte oder Ciphertexts.
@@ -356,6 +358,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Sensitive-Keys-Redaction umfasst zusätzlich Cookie-, Session-, CSRF- und API-Key-Header/Felder
 - Pseudonyme technische IDs bleiben personenbezogen und werden nur geloggt, wenn sie fuer Betrieb, Audit oder Korrelation wirklich erforderlich sind
 - Auth-Audit und Betriebslogs unterscheiden `login`, `silent_reauth_success`, `silent_reauth_failed`, `forced_reauth` und `logout`
+- Lokale SSR-Routenguards für `*.localhost` verwenden ausschließlich im Development-Modus den vorhandenen Auth-Routendispatcher für Session-, Organisationskontext- und Berechtigungsabfragen. Dadurch benötigen lokale Tenant-Hosts keine Node-DNS-Auflösung; ursprüngliche Request-URL und Session-Cookie bleiben erhalten, sämtliche Handler-Prüfungen gelten unverändert. Andere Hosts und Production verwenden weiterhin die bestehenden HTTP-Abfragen.
 - Auth-Diagnostik für `/auth/me` verwendet denselben strukturierten Fehlervertrag wie übrige IAM-Endpunkte: `classification`, `status`, `recommendedAction`, `requestId` und allowlist-basierte `safeDetails`
 - Auth-Unterbrechungen klassifizieren zusätzlich nicht-sensitive `reason_code`-Werte wie `missing_session_cookie`, `invalid_session`, `session_expired`, `silent_recovery_timeout` oder `forced_reauth`
 - Eine neue Fresh-Reauth-Evidenz entsteht nur über einen serverseitig kontrollierten interaktiven Auth-Callback; Silent-SSO, Token-Refresh und reine Request-Marker erneuern dieses Sicherheitsfenster nicht
@@ -393,6 +396,11 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Health-Check-Routen sind explizit vom `routing.handler.method_not_allowed`-Logging ausgenommen.
 
 ### Fehlerbehandlung und Resilienz
+
+- Geschützte Studio-API-Antworten und abgefangene Dispatch-Exceptions werden abschließend mit einer identischen `X-Request-Id` korreliert. Der App-Dispatcher protokolliert genau ein operatives Fehlerergebnis mit stabiler Route-Vorlage, Phase, Status und Fehlercode; Audit-Ereignisse bleiben eigenständig.
+- Plugin-SDK-Fehler bewahren die Response-Request-ID als nicht-enumerable Metadaten. News-/Event-Savefehler zeigen eine lokalisierte und kopierbare Referenz, die ohne fachliche Fehlermeldung oder Payload auskommt.
+- `POST /api/v1/monitoring/client-errors` nimmt ausschließlich authentifizierte, CSRF-geprüfte und eng schema-validierte Browserbeobachtungen an. Der Client sendet nur eine zufällige Ereignis-ID und eine erlaubte Fehlerklasse; es gibt keine persistente Queue. Prozesslokales Rate-Limit und Deduplizierung gelten für die aktuell unterstützte Einzelreplica-Topologie.
+- Ein Telemetrie-ACK bestätigt nur die Annahme durch den Handler, nicht die spätere OTEL-/Loki-Zustellung. Bereits mit Request-ID korrelierte API-Fehler werden nicht nochmals als Browserfehler gemeldet.
 
 - OTEL-Init ist in Development fehlertolerant; in Production wird fehlende OTEL-Readiness fail-closed behandelt
 - Die Routing-Error-Boundary liefert auch bei unerwarteten Fehlern immer JSON statt HTML-Fallbackseiten
@@ -533,6 +541,15 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Spezialcontrols wie Rich-Text, Upload, Medienauswahl, Farbe, Icon und Geo-Auswahl werden erst bei nachgewiesenem pluginübergreifendem Bedarf in die gemeinsame UI-Basis aufgenommen; vorher bleiben sie bewusst fachnah und schmal.
 - Enforcement erfolgt über Nx-`depConstraints`, ESLint-Importverbote und den CI-Check `pnpm check:plugin-ui-boundary`.
 - Das IAM-Acceptance-Gate ist bewusst ein separates Nx-Target ohne PR-CI-Zwang, weil es reale Laufzeitabhängigkeiten gegen eine dedizierte Testumgebung prüft
+
+### Redaktionelle Neuanlage und Fehlerdarstellung
+
+- Die sieben redaktionellen Create-Seiten gewichten Titel und Kernaufgabe vor optionalen Ergänzungen. Der bestehende UI-Seitenrahmen hält ihre Speicheraktion beim Scrollen erreichbar; Edit und generische Inhalte behalten ihre Darstellung. Eine feste verantwortliche Identität erscheint kompakt, mehrere Identitäten bleiben auswählbar.
+- Neue Orte und Veranstaltungen starten verborgen. Die fachlichen Plugins leiten Speicherwirkung, bedingte Push- und Umfrage-Ergebnisoptionen aus ihren vorhandenen Verträgen ab; es entstehen keine neuen Statuswerte. Ausblenden von Ergänzungen löscht keine Eingaben.
+
+- Create-Onepager verwenden dieselben Feld- und Speicherverträge wie die tabbasierte Bearbeitung. Geschlossene Zusatzbereiche erhalten Eingaben; betroffene Bereiche werden vor dem Fehlerfokus geöffnet. Abschnittssprünge bleiben lokal und führen zu sichtbaren Überschriften beziehungsweise Klapptriggern.
+- Hilfen, Fehler und zustandsabhängige Speicherhinweise kommen aus den de/en-Ressourcen des zuständigen Plugins. Neue Texte erklären ausschließlich belegte Wirkungen; Datum, Sichtbarkeit und Fachstatus werden nicht pauschal mit Veröffentlichung gleichgesetzt.
+- Bestehende Fehler-, Retry- und Teilerfolgszustände bleiben erhalten; die Layoutmigration begründet keine allgemeine Fehlerbehandlungs- oder Recovery-Sanierung. Die acht Create-Editoren verwenden die gemeinsame wertfreie UI-Anbindung für den Host-Verlassensschutz: Pfadwechsel erfordern bei Änderungen eine Bestätigung, lokale Abschnittssprünge und das Öffnen des Medienpickers bleiben unbehelligt. Reload/Schließen nutzt den nativen Browserdialog. Eine erneute Router-Ladephase derselben URL, etwa nach abgebrochenem Browser-Zurück, entfernt den bestehenden Editor nicht zugunsten des Shell-Ladeskeletts. Der Guard bleibt während eines laufenden Saves aktiv; nur die bestätigte erfasste Revision darf den lokalen Dirty-Ausgangspunkt zurücksetzen. Spätere Eingaben bleiben auch beim Medien-Retry geschützt. Bestätigte Inhalts-IDs verhindern doppelte Anlage, auch wenn die Weiterleitung scheitert. Eine Wiederherstellungsgarantie für ungespeicherte Eingaben entsteht nicht.
 
 ### TypeScript-, Bundler- und Node-ESM-Vertrag
 
@@ -677,6 +694,7 @@ Referenzen:
 - Organisationspfade bleiben strikt instanzzentriert; `instanceId` ist führend, `activeOrganizationId` ist daraus abgeleiteter Session-Fachkontext.
 - `GET/PUT /api/v1/iam/me/context` bilden den kanonischen Session-Contract; requestbasierte Org-Overrides sind im ersten Schnitt ausgeschlossen.
 - Organisationsmutationen und Kontextwechsel folgen denselben CSRF-, Audit- und Logger-Leitplanken wie übrige IAM-v1-Schreibpfade.
+- Browserseitige Kontext-Reads warten auf bereits laufende Organisationswechsel und lesen anschließend frisch; sie übernehmen keine vor dem Wechsel gestartete Singleflight-Antwort. Ein neuer Wechsel beendet die Ladephase älterer Reads, während Sequenz- und Identitätsprüfung weiterhin deren verspätete Ergebnisse verwerfen.
 - Der Org-Switcher nutzt i18n-Keys für Label, Status und Fehlerzustände und kündigt Wechsel über `aria-live="polite"` an.
 - Fehlercodes wie `invalid_organization_id`, `organization_inactive` und `csrf_validation_failed` bleiben stabil, damit UI, Audit und Betriebsanalyse konsistent korrelieren können.
 - Organisations-Read-Models liefern Parent-, Typ-, Policy- und Zählerdaten serverseitig aus einem lesefähigen Modell, um N+1-Abfragen in der UI zu vermeiden.
@@ -1275,3 +1293,15 @@ Vor Anfrage und Commit werden Claim/Attempt/Worker, Heartbeat, Abbruch, aktive M
 ### Technischer Main-Server-Übersetzungsaufruf
 
 Der begrenzte Nachrichtendienst verwendet die gemeinsame JWT-Kryptoprüfung und prüft `azp`/konkretes `sub` gegen vertrauenswürdige Metadaten der bestehenden Main-Server-Verbindung. Eine menschliche Anmeldung, Clientname oder Request-Mandant genügt nicht; zusätzliche Übersetzungsrollen und eine parallele Bindingregistry entfallen. Der Adapter greift nur auf instanzgebundene Konfiguration zu und wählt keine Organisation aus. Die ausgehende Organisationsidentität wird nicht als eingehender Serviceaccount vorausgesetzt. Prüfung von Modul, Sprache und Konfiguration vor Anbieterarbeit und Antwort, begrenzte Requests/Deadline und die bestehende Bulk-Ratenbegrenzung schützen den direkten Dienst. Keine dynamischen Texte in Studio persistieren oder loggen. Vertragsdetails und noch offene Live-Evidenz stehen in [ADR-070](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md).
+
+## Gutscheinidentität und Save-Bestätigung
+
+Bestehende Gutschein-Datenbank-IDs werden im verschachtelten Input erhalten; `payload.id` bleibt die ergänzende fachliche Identität für Rückzuordnung und Recovery. Die Vorbereitung ist an aktuellen Gesamtbestand, Formular und Principal-Kontext gebunden. Mit dem korrigierten Mainserver entfällt der Reset von Kontingenten und Einlösungen; die pauschale Anbietertyp-Sperre ist nicht mehr erforderlich. CSRF, Idempotenz und Operationsjournal bleiben im vorhandenen Host-Vertrag. Der vorbereitete vollständige Sollzustand bleibt serverseitig im bestehenden Idempotenzdatensatz. Recovery prüft ihn vor Referenzänderungen und Erfolgsbestätigung gegen den gelesenen Gesamtbestand; ausschließlich die beim Write neu erzeugten technischen Payload-Felder `studioUpdatedAt` und `studioUpdateId` sind ausgenommen. Eine eindeutige Ablehnung vor dem Write lässt den Editor korrigierbar, ein unklarer Schreibausgang bleibt gesperrt. Medienreferenzen und Core-Historie werden nach eindeutiger Rückzuordnung erhalten. Siehe [Gutscheinreferenz](../reference/vouchers.md).
+
+## Scopegebundene UI-Revalidierung und lokale Mainserver-Readiness
+
+Identität, Organisation und Effective Access werden als getrennte, aber generationstreue Zustände geführt. Ein alter Snapshot kann bei einem Benutzer- oder Organisationswechsel keine Aktion freigeben. Beim Wiederaufnehmen invalidiert Studio den Snapshot vor der Revalidierung; `/auth/me.permissionActions` ist keine Rechtequelle. Ein Ressourcen-`403` verursacht keinen globalen Login- oder Permission-Refresh. Explizite Snapshot-Stale-Codes invalidieren nur den zentralen Browser-Snapshot.
+
+Die lokale Principal-Projektion enthält für persönliche und organisatorische Credentials ausschließlich `ready`, `missing_credentials`, `partial_credentials`, `verification_pending` oder `unavailable`. Sie enthält weder Secret noch Fingerprint und ruft den Mainserver nicht auf. Nicht bereite Principals können keinen Create-Schreibvorgang starten; Serverprüfung bleibt führend.
+
+Bei `stale_mainserver_context` löscht das Plugin-SDK sein betroffenes Binding und wiederholt keinen Write. Der Core-Content-, News- und Event-Editor invalidiert die zugehörigen Freigaben, lädt Kontext und Detail nach ausdrücklicher Recovery-Aktion erneut und bewahrt den Formularentwurf. Der Nutzer startet einen weiteren Write ausdrücklich.

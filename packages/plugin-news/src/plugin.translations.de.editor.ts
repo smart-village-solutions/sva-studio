@@ -1,4 +1,37 @@
 export const newsTranslationsDEEditor = {
+  create: {
+    saveUnavailable:
+      'Speichern ist derzeit nicht möglich. Bitte lassen Sie Ihre Verbindung zur Inhaltsverwaltung durch die Administration prüfen.',
+    responsible: 'Verantwortlich:',
+    introOptional: 'Einleitung ergänzen',
+    categoryUnavailable:
+      'Kategorien können derzeit nicht geladen werden. Bitte wenden Sie sich an Ihre Administration.',
+    noPushHint: 'Bei Entwurf oder geplanter Veröffentlichung wird kein Push versendet.',
+    savedWithNewChanges:
+      'Die Nachricht wurde angelegt. Weitere Änderungen sind noch nicht gespeichert. Beim Öffnen der gespeicherten Nachricht können Sie diese verwerfen oder hier weiter bearbeiten.',
+    heading: 'Nachricht erfassen',
+    intro:
+      'Erstellen Sie eine Nachricht. Beginnen Sie mit Titel und Text; Medien, Kategorien und Quelle sind optional.',
+    introHelp: 'Optionaler kurzer Einstieg in die Nachricht.',
+    sourceOptional: 'Quelle ergänzen (optional)',
+    sourcePresent: 'Quelle eingetragen',
+    sourceEmpty: 'Keine Quelle eingetragen',
+    pushResetHint:
+      'Bei Entwurf oder geplanter Veröffentlichung wird die Push-Auswahl zurückgesetzt. Für einen Versand müssen Sie sie bei sofortiger Veröffentlichung erneut aktivieren.',
+    actions: {
+      draft: 'Entwurf anlegen',
+      immediate: 'Jetzt veröffentlichen',
+      scheduled: 'Geplante Nachricht anlegen',
+    },
+    effect: {
+      draft: 'Als Entwurf gespeichert, noch nicht öffentlich.',
+      immediate: 'Die Nachricht wird sofort sichtbar veröffentlicht.',
+      scheduled:
+        'Die Nachricht wird mit dem gewählten Veröffentlichungszeitpunkt {{date}} gespeichert.',
+    },
+    noPush: 'Es wird keine Push-Benachrichtigung versendet.',
+    push: 'Zusätzlich wird eine Push-Benachrichtigung für folgendes Zielgebiet angefordert: {{target}}.',
+  },
   values: {
     yes: 'Ja',
     no: 'Nein',
@@ -76,6 +109,7 @@ export const newsTranslationsDEEditor = {
     cancel: 'Abbrechen',
     create: 'Nachricht anlegen',
     update: 'Änderungen speichern',
+    reloadCurrentContext: 'Kontext neu laden und Entwurf behalten',
     save: 'Speichern',
     saving: 'Wird gespeichert…',
     saved: 'Gespeichert',
@@ -111,6 +145,10 @@ export const newsTranslationsDEEditor = {
     pageLabel: 'Seite {{page}}',
   },
   messages: {
+    requestReference: 'Fehlerreferenz:',
+    copyRequestReference: 'Referenz kopieren',
+    requestReferenceCopied: 'Kopiert',
+    requestReferenceCopyFailed: 'Kopieren nicht möglich',
     detailNavigationError:
       'Die Nachricht wurde gespeichert, ihre Detailseite konnte aber nicht geöffnet werden.',
     mediaReferencePartialFailure:
@@ -119,6 +157,8 @@ export const newsTranslationsDEEditor = {
     loadError: 'Nachrichten konnten nicht geladen werden.',
     missingContent: 'Die angeforderte Nachricht konnte nicht geladen werden.',
     saveError: 'Die Nachricht konnte nicht gespeichert werden.',
+    staleMainserverContext:
+      'Der Organisations- oder Mainserver-Kontext hat sich geändert. Laden Sie den aktuellen Kontext neu und prüfen Sie Ihren Entwurf, bevor Sie erneut speichern.',
     validationError: 'Bitte korrigieren Sie die markierten Felder.',
     validationSummary: 'Bitte prüfen Sie die folgenden Felder:',
     createSuccess: 'Die Nachricht wurde erstellt.',

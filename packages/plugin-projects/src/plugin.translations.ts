@@ -1,9 +1,11 @@
+import { projectCreateTranslations } from './plugin.translations.create.js';
 import type { PluginTranslations } from '@sva/plugin-sdk';
 
 import { projectRichTextTranslations } from './plugin.translations.rich-text.js';
 
 const de = {
   projects: {
+    create: projectCreateTranslations.de,
     navigation: { title: 'Projekte' },
     actions: {
       create: 'Projekt anlegen',
@@ -32,13 +34,13 @@ const de = {
     editor: {
       createTitle: 'Projekt anlegen',
       editTitle: 'Projekt bearbeiten',
-      createDescription: 'Ein neues Featured Project erstellen.',
+      createDescription: 'Erstellen Sie ein neues Projekt.',
       editDescription: 'Inhalte, Bilder und Veröffentlichungsstatus bearbeiten.',
     },
     principal: {
       createAs: 'Erstellen als',
       actAs: 'Handeln als',
-      description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+      description: 'Wählen Sie, in wessen Namen Sie arbeiten.',
       organization: 'Aktive Organisation',
       user: 'Persönlicher Account',
       dataProvider: 'Ursprünglicher DataProvider',
@@ -173,6 +175,7 @@ const de = {
 const en = {
   projects: {
     ...de.projects,
+    create: projectCreateTranslations.en,
     navigation: { title: 'Projects' },
     actions: {
       ...de.projects.actions,
@@ -183,7 +186,7 @@ const en = {
     principal: {
       createAs: 'Create as',
       actAs: 'Act as',
-      description: 'Determines the credentials for this Mainserver action.',
+      description: 'Choose who you are acting on behalf of.',
       organization: 'Active organization',
       user: 'Personal account',
       dataProvider: 'Original DataProvider',
@@ -216,6 +219,7 @@ const en = {
     },
     messages: {
       ...de.projects.messages,
+      mediaError: 'Images could not be loaded or uploaded.',
       saveError: 'Project could not be saved.',
       saveErrorWithReason: 'Project could not be saved: {{reason}}',
       deleteTitle: 'Delete project?',

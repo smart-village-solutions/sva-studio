@@ -1,7 +1,12 @@
 import { metrics } from '@opentelemetry/api';
 import { createSdkLogger } from '@sva/server-runtime';
 
-import { SessionStoreUnavailableError } from './runtime-errors.js';
+import {
+  SessionNotFoundError,
+  SessionStoreConflictError,
+  SessionStoreUnavailableError,
+  SessionTokenConflictError,
+} from './runtime-errors.js';
 
 export const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 const meter = metrics.getMeter('sva.auth.sessions');
@@ -44,6 +49,14 @@ export const runWithRequiredRedisSessionStore = async <T>(input: {
   try {
     return await input.runAgainstRedis();
   } catch (error) {
+    if (
+      error instanceof SessionNotFoundError ||
+      error instanceof SessionStoreConflictError ||
+      error instanceof SessionTokenConflictError ||
+      error instanceof SessionStoreUnavailableError
+    ) {
+      throw error;
+    }
     logger.error('Redis session store unavailable', {
       operation: input.operation,
       error: error instanceof Error ? error.message : String(error),

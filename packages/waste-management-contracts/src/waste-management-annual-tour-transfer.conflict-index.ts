@@ -9,6 +9,7 @@ export type IndexedWasteAnnualTargetTour = Readonly<{
   locationTourPickupDates: WasteAnnualTourTransferSource['locationTourPickupDates'];
   tourAssignments: WasteAnnualTourTransferSource['tourAssignments'];
   tourDateShifts: WasteAnnualTourTransferSource['tourDateShifts'];
+  baseDates: readonly string[];
   effectiveDates: readonly string[];
   signature: string;
 }>;
@@ -62,17 +63,21 @@ export const createWasteAnnualTourConflictIndex = (
     const locationTourPickupDates = pickupDates.get(tour.id) ?? [];
     const tourAssignments = assignments.get(tour.id) ?? [];
     const locations = locationTourLinks.map((item) => item.locationId);
+    const baseDates = [
+      ...(tour.firstDate ? [tour.firstDate] : []),
+      ...(tour.customDates ?? []).map((item) => item.date),
+      ...locationTourPickupDates.map((item) => item.pickupDate),
+      ...tourAssignments.map((item) => item.pickupDate),
+    ];
     const indexed = {
       tour,
       locationTourLinks,
       locationTourPickupDates,
       tourAssignments,
       tourDateShifts: shifts.get(tour.id) ?? [],
+      baseDates,
       effectiveDates: [
-        ...(tour.firstDate ? [tour.firstDate] : []),
-        ...(tour.customDates ?? []).map((item) => item.date),
-        ...locationTourPickupDates.map((item) => item.pickupDate),
-        ...tourAssignments.map((item) => item.pickupDate),
+        ...baseDates,
         ...(shifts.get(tour.id) ?? [])
           .filter((item) => item.hasYear)
           .map((item) => item.actualDate),

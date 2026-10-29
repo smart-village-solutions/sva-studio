@@ -1,4 +1,15 @@
 export const poiMessagesDe = {
+  voucherResetUnavailable: 'Der Ort konnte mit seinen Gutscheinen nicht sicher zum Speichern vorbereitet werden. Prüfen Sie Berechtigungen und Gutscheinbestand.',
+  voucherSaveUnknown: 'Der Ausgang des Speicherns ist unklar. Laden und prüfen Sie den Ort vor einem weiteren Speicherversuch.',
+  vouchersForLocation: 'Gutscheine dieses Ortes ansehen',
+  voucherResetConfirmation:
+    'Diese Ortsänderung speichert auch die folgenden Gutscheine. Ihre Inhalte und bisherigen Einlösungen bleiben erhalten. Fortfahren?\n\n{{vouchers}}',
+  voucherResetCancelled:
+    'Speichern abgebrochen. Der Ort und seine Gutscheine wurden nicht geändert.',
+  createdNavigationError:
+    'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
+  unsavedAfterCreate:
+    'Der Inhalt wurde angelegt. Neuere Eingaben in diesem Formular sind noch nicht gespeichert.',
   loading: 'Orte werden geladen.',
   loadError: 'Orte konnten nicht geladen werden.',
   missingContent: 'Der Ort konnte nicht geladen werden.',
@@ -29,7 +40,8 @@ export const poiMessagesDe = {
     'Für die Ermittlung von Geo-Koordinaten fehlen die erforderlichen Berechtigungen.',
   locationGeocodeUnauthorized:
     'Die Sitzung für die Ermittlung von Geo-Koordinaten ist abgelaufen. Bitte laden Sie die Seite neu.',
-  locationMapUnavailable: 'Die Kartenansicht ist für diese Instanz derzeit deaktiviert.',
+  locationMapUnavailable:
+    'Die Karte ist derzeit nicht verfügbar. Sie können die Adresse eingeben und Koordinaten manuell ergänzen.',
   locationMapError:
     'Die Kartenansicht konnte nicht geladen werden. Die Felder bleiben manuell bearbeitbar.',
   mediaUploadInitializing: 'Upload wird vorbereitet.',
@@ -103,3 +115,24 @@ export const poiMessagesDe = {
   categoryOptionsLoading: 'Kategorien werden geladen.',
   categoryOptionsLoadError: 'Die Kategorien konnten nicht geladen werden.',
 } as const;
+
+export const poiHistoryDe = {
+  loading: 'Historie wird geladen.',
+  error: 'Historie konnte nicht geladen werden.',
+  createHint: 'Speichern Sie den Ort, bevor die Historie verfügbar ist.',
+  tableLabel: 'Historie des Ortes',
+  sourceNotice:
+    'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
+  emptySummary: 'Keine weiteren Änderungsdetails.',
+  columns: {
+    time: 'Zeitpunkt',
+    action: 'Aktion',
+    actor: 'Bearbeitet von',
+    summary: 'Zusammenfassung',
+  },
+  actions: { created: 'Erstellt', updated: 'Aktualisiert', statusChanged: 'Status geändert' },
+  empty: {
+    title: 'Noch keine Historie verfügbar.',
+    description: 'Für diesen Ort wurden noch keine Studio-Änderungen erfasst.',
+  },
+};

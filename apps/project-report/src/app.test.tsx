@@ -174,19 +174,19 @@ describe('project report app', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Arbeitspakete' }));
 
     expect(
-      screen.queryByText(/Dieses Arbeitspaket schafft die sichere und mandantenfaehige Eintrittsschicht des Studios\./)
+      screen.queryByText(/Mandantenfähige Keycloak-Anmeldung mit Sitzungsverwaltung, konsistentem Organisationskontext/)
     ).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Details für WP-001 anzeigen' }));
 
     expect(
-      screen.getByText(/Dieses Arbeitspaket schafft die sichere und mandantenfaehige Eintrittsschicht des Studios\./)
+      screen.getByText(/Mandantenfähige Keycloak-Anmeldung mit Sitzungsverwaltung, konsistentem Organisationskontext/)
     ).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Weniger Details für WP-001' }));
 
     expect(
-      screen.queryByText(/Dieses Arbeitspaket schafft die sichere und mandantenfaehige Eintrittsschicht des Studios\./)
+      screen.queryByText(/Mandantenfähige Keycloak-Anmeldung mit Sitzungsverwaltung, konsistentem Organisationskontext/)
     ).toBeNull();
   });
 });

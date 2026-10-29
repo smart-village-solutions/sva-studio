@@ -23,6 +23,15 @@ export const wasteAnnualIntervalForTour = (tour: WasteTourRecord): number | null
   return null;
 };
 
+export const hasWasteAnnualEarlyYearCadenceAnchor = (
+  tour: WasteTourRecord,
+  sourceYear: number
+): boolean => {
+  if (!tour.firstDate || wasteAnnualIntervalForTour(tour) === null) return false;
+  const first = parseWasteAnnualIsoDate(tour.firstDate);
+  return first?.getUTCFullYear() === sourceYear && first.getUTCMonth() === 0;
+};
+
 const isWasteAnnualCadenceOccurrence = (input: {
   readonly date: string;
   readonly firstDate: string;
@@ -90,7 +99,8 @@ const mapWasteAnnualRelativeDate = (input: {
   if (!sourceOrigin || !sourceDate || !targetOrigin) return null;
   const elapsedDays = (sourceDate.getTime() - sourceOrigin.getTime()) / 86_400_000;
   if (!Number.isInteger(elapsedDays)) return null;
-  return formatWasteAnnualIsoDate(addUtcDays(targetOrigin, elapsedDays));
+  const mappedDate = formatWasteAnnualIsoDate(addUtcDays(targetOrigin, elapsedDays));
+  return mappedDate >= `${input.targetYear}-01-01` ? mappedDate : null;
 };
 
 type Shift = WasteAnnualTourTransferSource['tourDateShifts'][number];

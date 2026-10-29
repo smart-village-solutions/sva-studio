@@ -162,6 +162,31 @@ describe('projection list operations', () => {
     ]);
   });
 
+  it('carries the voucher POI ID through the slim projection contract', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      genericItems: [
+        {
+          id: 'faq-1',
+          title: 'Frage',
+          genericType: 'Voucher',
+          pointOfInterest: { id: '33394' },
+        },
+      ],
+    });
+    const operations = createProjectionListOperations(execute);
+
+    const result = await operations.listProjectionWithConfig(
+      'vouchers.voucher',
+      input,
+      config,
+      { ...genericTypeOwnership, Voucher: 'vouchers.voucher' }
+    );
+
+    expect(result.data).toEqual([
+      expect.objectContaining({ id: 'faq-1', pointOfInterestId: '33394' }),
+    ]);
+  });
+
   it('continues scanning when an upstream page contains only claimed GenericItems', async () => {
     const execute = vi.fn().mockImplementation(({ variables }) =>
       variables.skip === 0

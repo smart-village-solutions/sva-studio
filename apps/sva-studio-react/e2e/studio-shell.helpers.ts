@@ -137,7 +137,13 @@ export const registerSharedIamRoutes = async (
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: { activeOrganizationId: null, organizations: [] } }),
+      body: JSON.stringify({
+        data: {
+          activeOrganizationId: null,
+          organizations: [],
+          personalMainserverReadiness: 'ready',
+        },
+      }),
     });
   });
   await page.route('**/api/v1/iam/contents/*', async (route) => {

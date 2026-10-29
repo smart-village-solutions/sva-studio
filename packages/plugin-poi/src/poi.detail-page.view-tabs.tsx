@@ -1,4 +1,6 @@
+import { PoiDetailCreate } from './poi.detail-create.js';
 import {
+  Button,
   Select,
   StudioDetailTabIcon,
   Tabs,
@@ -7,7 +9,8 @@ import {
   TabsTrigger,
 } from '@sva/studio-ui-react';
 import React from 'react';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { Link } from '@tanstack/react-router';
+import { readSessionAccessSnapshot, usePluginTranslation } from '@sva/plugin-sdk';
 import type { PoiDetailTabDefinition, PoiDetailTabId } from './poi.detail-tabs.js';
 import type { PoiDetailPageViewModel } from './poi.detail-page.view.js';
 import { createPoiTabPanels } from './poi.detail-page.view-panels.js';
@@ -133,6 +136,7 @@ export function PoiDetailTabs({ view }: Readonly<{ view: PoiDetailPageViewModel 
     media,
     pt,
   });
+  if (mode === 'create') return <PoiDetailCreate view={view} content={tabPanels.content} />;
   return (
     <Tabs
       value={activeTab}
@@ -146,6 +150,7 @@ export function PoiDetailTabs({ view }: Readonly<{ view: PoiDetailPageViewModel 
         handleTabChange={handleTabChange}
         warmTab={warmTab}
       />
+      <PoiVoucherLink contentId={contentId} />
       {tabs.map((tab) => {
         const shouldKeepMounted = visitedTabs.includes(tab.id) && tab.id !== activeTab;
 
@@ -165,5 +170,23 @@ export function PoiDetailTabs({ view }: Readonly<{ view: PoiDetailPageViewModel 
         );
       })}
     </Tabs>
+  );
+}
+
+function PoiVoucherLink({ contentId }: Readonly<{ contentId?: string }>) {
+  const session = readSessionAccessSnapshot();
+  const pt = usePluginTranslation('poi');
+  if (
+    !contentId ||
+    !session.assignedModules.includes('vouchers') ||
+    !session.permissionActions.includes('vouchers.read')
+  )
+    return null;
+  return (
+    <Button asChild variant="secondary">
+      <Link to="/admin/content" search={{ type: 'vouchers.voucher', poiId: contentId }}>
+        {pt('messages.vouchersForLocation')}
+      </Link>
+    </Button>
   );
 }

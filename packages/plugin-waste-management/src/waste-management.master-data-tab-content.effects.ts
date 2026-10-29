@@ -18,7 +18,8 @@ export const useWasteMasterDataFractionSuccessRedirect = ({
 }) => {
   const fractionViewSuccess =
     search.fractionsView !== 'list' &&
-    (controller.lastOutcome === 'fraction-create-success' || controller.lastOutcome === 'fraction-update-success');
+    (controller.lastOutcome === 'fraction-create-success' ||
+      controller.lastOutcome === 'fraction-update-success');
 
   useEffect(() => {
     if (!fractionViewSuccess) {
@@ -37,7 +38,14 @@ export const useWasteMasterDataFractionSuccessRedirect = ({
       },
       replace: true,
     });
-  }, [controller.resetFractionForm, controller.setDialogOpen, controller.setLastOutcome, fractionViewSuccess, navigate, search]);
+  }, [
+    controller.resetFractionForm,
+    controller.setDialogOpen,
+    controller.setLastOutcome,
+    fractionViewSuccess,
+    navigate,
+    search,
+  ]);
 };
 
 export const useWasteMasterDataFractionEditRouteHydration = ({
@@ -74,7 +82,9 @@ export const useWasteMasterDataFractionEditRouteHydration = ({
       return;
     }
 
-    const routeFraction = controller.overview.fractions.find((fraction) => fraction.id === search.wasteFractionId);
+    const routeFraction = controller.overview.fractions.find(
+      (fraction) => fraction.id === search.wasteFractionId
+    );
     if (!routeFraction) {
       void navigate({
         to: '/plugins/waste-management',
@@ -88,14 +98,13 @@ export const useWasteMasterDataFractionEditRouteHydration = ({
       return;
     }
 
-    controller.setDialogMode('edit');
-    controller.setMessage(null);
-    controller.setLastOutcome(null);
-
     if (hydratedFractionIdRef.current === routeFraction.id) {
       return;
     }
 
+    controller.setDialogMode('edit');
+    controller.setMessage(null);
+    controller.setLastOutcome(null);
     controller.setFractionForm(wasteMasterDataFormMappers.fractionToForm(routeFraction));
     hydratedFractionIdRef.current = routeFraction.id;
   }, [
@@ -120,7 +129,8 @@ export const useWasteMasterDataLocationSuccessRedirect = ({
 }) => {
   const locationViewSuccess =
     search.locationsView !== 'list' &&
-    (controller.lastOutcome === 'location-create-success' || controller.lastOutcome === 'location-update-success');
+    (controller.lastOutcome === 'location-create-success' ||
+      controller.lastOutcome === 'location-update-success');
 
   useEffect(() => {
     if (!locationViewSuccess) {
@@ -185,7 +195,7 @@ export const useWasteMasterDataLocationEditRouteHydration = ({
     }
 
     const routeLocation = controller.overview.collectionLocations.find(
-      (location) => location.id === search.collectionLocationId,
+      (location) => location.id === search.collectionLocationId
     );
 
     if (!routeLocation) {

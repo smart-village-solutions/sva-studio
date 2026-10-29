@@ -94,6 +94,9 @@ export const sharedVitestConfig = defineConfig({
       '@sva/mail-runtime': fileURLToPath(
         new URL('../../packages/mail-runtime/src/index.ts', import.meta.url)
       ),
+      '@sva/plugin-ssf/descriptor': fileURLToPath(
+        new URL('../../packages/plugin-ssf/src/descriptor.ts', import.meta.url)
+      ),
       '@sva/plugin-ssf/runtime': fileURLToPath(
         new URL('../../packages/plugin-ssf/src/runtime.ts', import.meta.url)
       ),
@@ -187,6 +190,9 @@ export const sharedVitestConfig = defineConfig({
       ),
       '@sva/plugin-poi': fileURLToPath(
         new URL('../../packages/plugin-poi/src/index.ts', import.meta.url)
+      ),
+      '@sva/plugin-projects': fileURLToPath(
+        new URL('../../packages/plugin-projects/src/index.ts', import.meta.url)
       ),
       '@sva/plugin-surveys/api': fileURLToPath(
         new URL('../../packages/plugin-surveys/src/surveys.api.ts', import.meta.url)

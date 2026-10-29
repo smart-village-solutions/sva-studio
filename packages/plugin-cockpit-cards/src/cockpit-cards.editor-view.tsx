@@ -8,6 +8,7 @@ import {
   StudioFormSummaryErrors,
   StudioMediaReferenceRetryAction,
   StudioSaveButton,
+  isMainserverPrincipalReady,
   resolveMainserverPrincipalOptions,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
@@ -26,7 +27,9 @@ import type { CockpitCardFormValues } from './cockpit-cards.types.js';
 export type Tab = 'basis' | 'content' | 'settings' | 'history';
 export type EditorViewProps = Readonly<{
   mode: 'create' | 'edit';
+  onCreateSaved: () => void;
   contentId?: string;
+  createdContentId: string | null;
   principalControl?: MainserverPrincipalControlModel;
   pt: ReturnType<typeof usePluginTranslation>;
   form: UseFormReturn<CockpitCardFormValues>;
@@ -90,13 +93,19 @@ function EditorActions({ view }: { view: EditorViewProps }) {
 
 function EditorPrimaryAction({ view }: { view: EditorViewProps }) {
   const { canSave, pt, mode, deletePending, saveFeedback, mediaSavePhaseKey } = view;
+  const disabled =
+    deletePending ||
+    (mode === 'create' &&
+      !isMainserverPrincipalReady(view.principalControl, view.actingPrincipalType));
+  const effectKey = view.form.watch('visible') ? 'create.visibleEffect' : 'create.hiddenEffect';
   return canSave ? (
     <div className="flex flex-col items-end gap-1">
+      {mode === 'create' ? <p className="text-sm text-muted-foreground">{pt(effectKey)}</p> : null}
       <StudioSaveButton
         type="submit"
         form={`cockpit-card-${mode}-form`}
         status={saveFeedback.status}
-        disabled={deletePending}
+        disabled={disabled}
         labels={{
           idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
           saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
@@ -105,6 +114,33 @@ function EditorPrimaryAction({ view }: { view: EditorViewProps }) {
       />
     </div>
   ) : null;
+}
+
+function EditorPrincipal(view: EditorViewProps) {
+  return (
+    <div
+      className={
+        view.mode === 'create' && view.principalControl?.kind === 'selectable'
+          ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
+          : undefined
+      }
+    >
+      <MainserverPrincipalControl
+        fixedLabel={view.mode === 'create' ? view.pt('create.responsible') : undefined}
+        id="cockpit-card-acting-principal"
+        label={view.pt(view.mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+        description={view.pt('principal.description')}
+        value={view.actingPrincipalType}
+        options={resolveMainserverPrincipalOptions(view.principalControl, {
+          value: view.actingPrincipalType,
+          label: view.pt(`principal.${view.actingPrincipalType}`),
+        })}
+        onChange={view.setActingPrincipalType}
+        readinessByPrincipal={view.principalControl?.readinessByPrincipal}
+        readinessMessage={view.principalControl?.readinessMessage}
+      />
+    </div>
+  );
 }
 
 function EditorForm({ view }: { view: EditorViewProps }) {
@@ -117,14 +153,18 @@ function EditorForm({ view }: { view: EditorViewProps }) {
     mediaReferenceSync,
     summaryErrors,
     setTab,
-    actingPrincipalType,
-    setActingPrincipalType,
-    principalControl,
     tabs,
     tab,
   } = view;
   return (
-    <form id={`cockpit-card-${mode}-form`} className="space-y-5" onSubmit={onSubmit} noValidate>
+    <form id={`cockpit-card-${mode}-form`} className="space-y-6" onSubmit={onSubmit} noValidate>
+      {view.createdContentId ? (
+        <p>
+          <Link to="/admin/cockpit-cards/$id" params={{ id: view.createdContentId }}>
+            {pt('create.openSaved')}
+          </Link>
+        </p>
+      ) : null}
       {mutationError ? (
         <p role="alert" className="text-sm text-destructive">
           {mutationError}
@@ -133,7 +173,10 @@ function EditorForm({ view }: { view: EditorViewProps }) {
       <StudioMediaReferenceRetryAction
         controller={mediaReferenceSync}
         label={pt('actions.retryMediaReferences')}
-        onSuccess={() => setMutationError(null)}
+        onSuccess={() => {
+          view.onCreateSaved();
+          setMutationError(null);
+        }}
         onFailure={() => setMutationError(pt('messages.mediaReferencePartialFailure'))}
       />
       <StudioFormSummaryErrors
@@ -145,25 +188,23 @@ function EditorForm({ view }: { view: EditorViewProps }) {
           else setTab('basis');
         }}
       />
-      <MainserverPrincipalControl
-        id="cockpit-card-acting-principal"
-        label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-        description={pt('principal.description')}
-        value={actingPrincipalType}
-        options={resolveMainserverPrincipalOptions(principalControl, {
-          value: actingPrincipalType,
-          label: pt(`principal.${actingPrincipalType}`),
-        })}
-        onChange={setActingPrincipalType}
-      />
-      <StudioDetailTabs
-        ariaLabel={pt('tabs.ariaLabel')}
-        mobileSelectLabel={pt('tabs.mobileLabel')}
-        tabs={tabs}
-        value={tab}
-        onValueChange={setTab}
-        keepMounted
-      />
+      {mode === 'create' ? (
+        <p className="text-sm text-muted-foreground">{pt('create.intro')}</p>
+      ) : null}
+      {mode === 'edit' ? <EditorPrincipal {...view} /> : null}
+      {mode === 'create' ? (
+        tabs[0]?.panel
+      ) : (
+        <StudioDetailTabs
+          ariaLabel={pt('tabs.ariaLabel')}
+          mobileSelectLabel={pt('tabs.mobileLabel')}
+          tabs={tabs}
+          value={tab}
+          onValueChange={setTab}
+          keepMounted
+        />
+      )}
+      {mode === 'create' ? <EditorPrincipal {...view} /> : null}
     </form>
   );
 }
@@ -185,8 +226,9 @@ export function CockpitCardEditorView(view: EditorViewProps) {
   } = view;
   return (
     <StudioDetailPageTemplate
+      stickyActions={mode === 'create'}
       title={pt(mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}
-      description={pt(mode === 'create' ? 'editor.createDescription' : 'editor.editDescription')}
+      description={mode === 'edit' ? pt('editor.editDescription') : undefined}
       actions={<EditorActions view={view} />}
       primaryAction={<EditorPrimaryAction view={view} />}
     >

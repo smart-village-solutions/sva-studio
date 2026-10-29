@@ -39,100 +39,24 @@ type NewsDetailLoadOptions = Readonly<{
   setActingPrincipalType: React.Dispatch<React.SetStateAction<MainserverPrincipalType>>;
 }>;
 
-export const useNewsDetailLoad = ({
-  mode,
-  contentId,
-  principalControl,
-  pt,
-  reset,
-  setIsLoading,
-  setStatusMessage,
-  setMediaUsages,
-  setRequiresReferenceSync,
-  setScheduledPublicationInput,
-  setInvalidScheduledPublicationInput,
-  setLoadedItem,
-  setResourceAccess,
-  loadedItem,
-  actingPrincipalType,
-  setActingPrincipalType,
-}: NewsDetailLoadOptions) => {
-  const editLoadRequestIdRef = React.useRef(0);
-  const loadedPrincipalTypeRef = React.useRef<MainserverPrincipalType | null>(null);
-  React.useEffect(() => {
-    if (principalControl) {
-      setActingPrincipalType(principalControl.value);
-    }
-  }, [principalControl]);
-
-  React.useEffect(() => {
-    if (mode !== 'edit') {
-      return;
-    }
-
-    if (!contentId) {
-      setIsLoading(false);
-      setStatusMessage({ source: 'load', text: pt('messages.missingContent') });
-      return;
-    }
-
-    const requestId = ++editLoadRequestIdRef.current;
-    let active = true;
-
-    const loadPrincipalType = principalControl?.value ?? 'user';
-    void getNewsDetail(contentId, loadPrincipalType)
-      .then(async (detail) => {
-        if (!active || requestId !== editLoadRequestIdRef.current) {
-          return;
-        }
-        const item = detail.data;
-
-        const references = await listHostMediaReferencesByTarget({
-          fetch: globalThis.fetch.bind(globalThis),
-          targetType: NEWS_CONTENT_TYPE,
-          targetId: contentId,
-        }).catch(() => []);
-        if (!active || requestId !== editLoadRequestIdRef.current) {
-          return;
-        }
-        const nextValues = mapNewsItemToDetailFormValues(item);
-        reset(nextValues);
-        setMediaUsages(
-          mainserverContentMediaToUsages(
-            nextValues.contentMedia,
-            alignHostMediaReferencesByOrder({
-              itemCount: nextValues.contentMedia.length,
-              role: 'gallery_item',
-              references,
-            })
-          )
-        );
-        setRequiresReferenceSync(references.length > 0);
-        setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
-        setInvalidScheduledPublicationInput(false);
-        setLoadedItem(item);
-        setResourceAccess(detail.access);
-        loadedPrincipalTypeRef.current = loadPrincipalType;
-      })
-      .catch((error: unknown) => {
-        if (active && requestId === editLoadRequestIdRef.current) {
-          setStatusMessage({
-            source: 'load',
-            text: resolveNewsErrorMessage(pt, error, 'messages.loadError'),
-          });
-        }
-      })
-      .finally(() => {
-        if (active && requestId === editLoadRequestIdRef.current) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [contentId, mode, pt, reset]);
-
+const useActingPrincipalResourceAccess = (input: {
+  readonly mode: 'create' | 'edit';
+  readonly contentId?: string;
+  readonly loadedItem: NewsContentItem | null;
+  readonly actingPrincipalType: MainserverPrincipalType;
+  readonly loadedPrincipalTypeRef: React.MutableRefObject<MainserverPrincipalType | null>;
+  readonly setResourceAccess: React.Dispatch<
+    React.SetStateAction<Readonly<Record<string, boolean>>>
+  >;
+}): void => {
+  const {
+    mode,
+    contentId,
+    loadedItem,
+    actingPrincipalType,
+    loadedPrincipalTypeRef,
+    setResourceAccess,
+  } = input;
   React.useEffect(() => {
     if (
       mode !== 'edit' ||
@@ -155,5 +79,125 @@ export const useNewsDetailLoad = ({
     return () => {
       active = false;
     };
-  }, [actingPrincipalType, contentId, loadedItem, mode]);
+  }, [actingPrincipalType, contentId, loadedItem, loadedPrincipalTypeRef, mode, setResourceAccess]);
+};
+
+export const useNewsDetailLoad = ({
+  mode,
+  contentId,
+  principalControl,
+  pt,
+  reset,
+  setIsLoading,
+  setStatusMessage,
+  setMediaUsages,
+  setRequiresReferenceSync,
+  setScheduledPublicationInput,
+  setInvalidScheduledPublicationInput,
+  setLoadedItem,
+  setResourceAccess,
+  loadedItem,
+  actingPrincipalType,
+  setActingPrincipalType,
+}: NewsDetailLoadOptions) => {
+  const editLoadRequestIdRef = React.useRef(0);
+  const loadedPrincipalTypeRef = React.useRef<MainserverPrincipalType | null>(null);
+  const [reloadRequest, setReloadRequest] = React.useState(0);
+  const reloadCurrentContext = React.useCallback(async () => {
+    const isEditing = mode === 'edit' && Boolean(contentId);
+    if (isEditing) {
+      setIsLoading(true);
+      setResourceAccess({});
+    }
+    try {
+      await principalControl?.refreshContext?.();
+      setStatusMessage(null);
+      if (isEditing) setReloadRequest((current) => current + 1);
+    } catch {
+      setStatusMessage({ source: 'load', text: pt('messages.loadError') });
+      if (isEditing) setIsLoading(false);
+    }
+  }, [contentId, mode, principalControl, pt, setIsLoading, setResourceAccess, setStatusMessage]);
+  React.useEffect(() => {
+    if (principalControl) {
+      setActingPrincipalType(principalControl.value);
+    }
+  }, [principalControl]);
+
+  React.useEffect(() => {
+    if (mode !== 'edit') {
+      return;
+    }
+
+    if (!contentId) {
+      setIsLoading(false);
+      setStatusMessage({ source: 'load', text: pt('messages.missingContent') });
+      return;
+    }
+
+    const requestId = ++editLoadRequestIdRef.current;
+    const preserveDraft = reloadRequest > 0;
+    let active = true;
+
+    const loadPrincipalType = principalControl?.value ?? 'user';
+    void getNewsDetail(contentId, loadPrincipalType)
+      .then(async (detail) => {
+        if (!active || requestId !== editLoadRequestIdRef.current) return;
+        const item = detail.data;
+
+        const references = await listHostMediaReferencesByTarget({
+          fetch: globalThis.fetch.bind(globalThis),
+          targetType: NEWS_CONTENT_TYPE,
+          targetId: contentId,
+        }).catch(() => []);
+        if (!active || requestId !== editLoadRequestIdRef.current) return;
+        const nextValues = mapNewsItemToDetailFormValues(item);
+        reset(nextValues, preserveDraft ? { keepDirtyValues: true } : undefined);
+        if (!preserveDraft) {
+          setMediaUsages(
+            mainserverContentMediaToUsages(
+              nextValues.contentMedia,
+              alignHostMediaReferencesByOrder({
+                itemCount: nextValues.contentMedia.length,
+                role: 'gallery_item',
+                references,
+              })
+            )
+          );
+          setRequiresReferenceSync(references.length > 0);
+          setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
+          setInvalidScheduledPublicationInput(false);
+        }
+        setLoadedItem(item);
+        setResourceAccess(detail.access);
+        loadedPrincipalTypeRef.current = loadPrincipalType;
+      })
+      .catch((error: unknown) => {
+        if (active && requestId === editLoadRequestIdRef.current) {
+          setStatusMessage({
+            source: 'load',
+            text: resolveNewsErrorMessage(pt, error, 'messages.loadError'),
+          });
+        }
+      })
+      .finally(() => {
+        if (active && requestId === editLoadRequestIdRef.current) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [contentId, mode, pt, reloadRequest, reset]);
+
+  useActingPrincipalResourceAccess({
+    mode,
+    contentId,
+    loadedItem,
+    actingPrincipalType,
+    loadedPrincipalTypeRef,
+    setResourceAccess,
+  });
+  return { reloadCurrentContext };
 };

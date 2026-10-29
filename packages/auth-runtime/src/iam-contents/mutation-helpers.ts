@@ -184,3 +184,9 @@ export const logCreateFailure = (actor: ResolvedContentActor['actor'], error: un
     error: error instanceof Error ? error.message : String(error),
   });
 };
+
+// Voucher authoring belongs to the aggregate adapter, including archive and ownership.
+export const rejectVoucherCoreMutation = (contentType: string, requestId?: string): Response | null =>
+  contentType === 'vouchers.voucher'
+    ? createApiError(409, 'conflict', 'voucher_dedicated_editor_required', requestId)
+    : null;

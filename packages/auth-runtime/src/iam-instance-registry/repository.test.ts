@@ -33,6 +33,10 @@ const runRoleCatalogReconciliationMock = vi.fn(async () => ({
 }));
 const readRoleCatalogFingerprintMock = vi.fn(async () => 'c'.repeat(64));
 const ensureConfiguredPluginTenantProvisioningMock = vi.fn(async () => undefined);
+const readProvisioningModuleReadinessMock = vi.fn(async () => ({
+  status: 'ready',
+  evidence: { modules: [] },
+}));
 const studioModuleIamRegistryMock = new Map([
   [
     'news',
@@ -166,7 +170,51 @@ vi.mock('../plugin-tenant-lifecycle/runtime.js', () => ({
   ensureConfiguredPluginTenantProvisioning: ensureConfiguredPluginTenantProvisioningMock,
 }));
 
+vi.mock('../plugin-tenant-lifecycle/read-model.js', () => ({
+  readProvisioningModuleReadiness: readProvisioningModuleReadinessMock,
+}));
+
 describe('iam instance registry repository wiring', () => {
+  it('wires the shared pool and delegates readiness and awaited activation follow-up', async () => {
+    const access = await import('./repository-access.js');
+    await import('./repository.js');
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls[0]?.[0];
+    expect(runtimeConfig?.resolvePool).toBe(access.resolveInstanceRegistryPool);
+
+    const input = { instanceId: 'tenant-a', lifecycles: [] };
+    await expect(
+      runtimeConfig?.serviceDeps.readProvisioningModuleReadiness(input)
+    ).resolves.toEqual({
+      status: 'ready',
+      evidence: { modules: [] },
+    });
+    expect(readProvisioningModuleReadinessMock).toHaveBeenCalledWith(input);
+
+    ensureConfiguredPluginTenantProvisioningMock.mockResolvedValueOnce(undefined);
+    await expect(
+      runtimeConfig?.afterModuleActivationPolicyReconcile({
+        instanceId: 'tenant-a',
+        changedModuleIds: [],
+      })
+    ).resolves.toBeUndefined();
+    expect(ensureConfiguredPluginTenantProvisioningMock).toHaveBeenCalledWith('tenant-a');
+
+    const readinessError = new Error('readiness unavailable');
+    readProvisioningModuleReadinessMock.mockRejectedValueOnce(readinessError);
+    await expect(runtimeConfig?.serviceDeps.readProvisioningModuleReadiness(input)).rejects.toBe(
+      readinessError
+    );
+
+    const followUpError = new Error('follow-up unavailable');
+    ensureConfiguredPluginTenantProvisioningMock.mockRejectedValueOnce(followUpError);
+    await expect(
+      runtimeConfig?.afterModuleActivationPolicyReconcile({
+        instanceId: 'tenant-a',
+        changedModuleIds: [],
+      })
+    ).rejects.toBe(followUpError);
+  });
+
   it('propagates automatic provisioning failures from the awaited scheduling path', async () => {
     const { runConfiguredPluginTenantProvisioningSchedule } = await import('./repository.js');
     ensureConfiguredPluginTenantProvisioningMock.mockRejectedValueOnce(

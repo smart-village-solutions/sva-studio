@@ -1,5 +1,13 @@
+import { StudioEditorLeaveGuardProvider } from '@sva/studio-ui-react';
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render as testingRender,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { publishSessionAccessSnapshot, registerPluginTranslationResolver } from '@sva/plugin-sdk';
 
@@ -12,6 +20,19 @@ import {
 import { GenericItemsDetailPage } from '../src/generic-items.detail-page.js';
 
 const navigateMock = vi.fn();
+let hasUnsavedChanges = () => false;
+const registerLeaveCheck = (check: () => boolean) => {
+  hasUnsavedChanges = check;
+  return () => {
+    hasUnsavedChanges = () => false;
+  };
+};
+const render = (element: React.ReactElement) =>
+  testingRender(
+    <StudioEditorLeaveGuardProvider register={registerLeaveCheck}>
+      {element}
+    </StudioEditorLeaveGuardProvider>
+  );
 const detailAccessState = vi.hoisted(() => ({
   access: {} as Readonly<Record<string, boolean>>,
 }));
@@ -103,6 +124,7 @@ vi.mock('@sva/plugin-sdk', async () => {
 
 describe('GenericItemsDetailPage', () => {
   beforeEach(() => {
+    hasUnsavedChanges = () => false;
     vi.clearAllMocks();
     detailAccessState.access = {};
     publishSessionAccessSnapshot({
@@ -349,14 +371,79 @@ describe('GenericItemsDetailPage', () => {
     vi.unstubAllGlobals();
   });
 
+  it('leave guard returns to clean after adding and removing the initial medium', async () => {
+    render(<GenericItemsDetailPage mode="create" />);
+    await screen.findByLabelText('Titel');
+    expect(hasUnsavedChanges()).toBe(false);
+    fireEvent.click(document.getElementById('content-media-add')!);
+    await waitFor(() => expect(hasUnsavedChanges()).toBe(true));
+    fireEvent.click(
+      document.querySelector<HTMLButtonElement>('button[id^="content-media-"][id$="-remove"]')!
+    );
+    await waitFor(() => expect(hasUnsavedChanges()).toBe(false));
+  });
+
+  it('leave guard keeps failed creates protected', async () => {
+    vi.mocked(createGenericItem).mockRejectedValueOnce(new Error('network timeout'));
+    render(<GenericItemsDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Unsaved draft' } });
+    fireEvent.change(screen.getByLabelText('Generic-Type'), { target: { value: 'custom' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
+    await waitFor(() => expect(createGenericItem).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText('Fehler')).toBeTruthy());
+    expect(hasUnsavedChanges()).toBe(true);
+    expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe('Unsaved draft');
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('leave guard preserves changes made during create and prevents a second create', async () => {
+    let finishSave!: (value: unknown) => void;
+    vi.mocked(createGenericItem).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishSave = resolve as typeof finishSave;
+        })
+    );
+    navigateMock.mockImplementation(async () => {
+      expect(hasUnsavedChanges()).toBe(true);
+      throw new Error('navigation failed');
+    });
+    render(<GenericItemsDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Before save' } });
+    fireEvent.change(screen.getByLabelText('Generic-Type'), { target: { value: 'custom' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
+    await waitFor(() => expect(createGenericItem).toHaveBeenCalledTimes(1));
+    expect(hasUnsavedChanges()).toBe(true);
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'After save started' } });
+    finishSave({ id: 'generic-created', title: 'Before save', name: 'Before save' });
+    await waitFor(() => expect(navigateMock).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByText('genericItems.messages.createdNavigationError')).toBeTruthy()
+    );
+    expect(hasUnsavedChanges()).toBe(true);
+    expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe('After save started');
+    expect(
+      screen.getByRole('link', { name: 'genericItems.actions.openSavedContent' })
+    ).toBeTruthy();
+    await act(async () => { fireEvent.submit(document.querySelector('form')!); });
+    await waitFor(() => expect(createGenericItem).toHaveBeenCalledTimes(1));
+  });
+
   it('creates a generic item', async () => {
+    navigateMock.mockImplementation(async () => {
+      expect(hasUnsavedChanges()).toBe(false);
+    });
     render(<GenericItemsDetailPage mode="create" />);
 
-    const tablist = screen.getByRole('tablist', { name: 'Detailbereiche' });
-    const basisTab = screen.getByRole('tab', { name: 'Basis' });
-    expect(tablist.className).toContain('ml-[10px]');
-    expect(basisTab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
-    expect(screen.getByRole('tabpanel', { name: 'Basis' }).className).toContain('mt-0');
+    expect(hasUnsavedChanges()).toBe(false);
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(document.querySelectorAll('form')).toHaveLength(1);
+    const typeInput = screen.getByLabelText('Generic-Type');
+    const titleInput = screen.getByLabelText('Titel');
+    expect(
+      typeInput.compareDocumentPosition(titleInput) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(screen.getByLabelText('Payload').closest('details')?.open).toBe(false);
 
     expect(screen.getByRole('link', { name: 'Zurück' }).getAttribute('href')).toBe(
       '/admin/content?type=generic-items.generic-item'
@@ -364,7 +451,8 @@ describe('GenericItemsDetailPage', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Freier Eintrag' } });
     fireEvent.change(screen.getByLabelText('Generic-Type'), { target: { value: 'faq' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Generic Item anlegen' })[1]!);
+    expect(hasUnsavedChanges()).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
 
     await waitFor(() => {
       expect(createGenericItem).toHaveBeenCalledWith(
@@ -384,6 +472,22 @@ describe('GenericItemsDetailPage', () => {
     });
   });
 
+  it('opens technical details before focusing invalid JSON and keeps entered values', async () => {
+    render(<GenericItemsDetailPage mode="create" />);
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Technik' } });
+    fireEvent.change(screen.getByLabelText('Generic-Type'), { target: { value: 'custom' } });
+    const payload = screen.getByLabelText('Payload');
+    const details = payload.closest('details')!;
+    details.open = true;
+    fireEvent.change(payload, { target: { value: '{invalid' } });
+    details.open = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
+    await waitFor(() => expect(details.open).toBe(true));
+    expect((payload as HTMLTextAreaElement).value).toBe('{invalid');
+    expect(createGenericItem).not.toHaveBeenCalled();
+    await waitFor(() => expect(document.activeElement).toBe(payload));
+  });
+
   it('selects categories directly in the generic item create flow', async () => {
     render(<GenericItemsDetailPage mode="create" />);
 
@@ -398,7 +502,7 @@ describe('GenericItemsDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Kategorie Rathaus entfernen' })).toBeTruthy();
     });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Generic Item anlegen' })[1]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
 
     await waitFor(() => {
       expect(createGenericItem).toHaveBeenCalledWith(

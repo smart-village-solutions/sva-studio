@@ -236,11 +236,17 @@ SELECT
   organization.organization_type,
   organization.content_author_policy,
   organization.is_active,
-  membership.is_default_context
+  membership.is_default_context,
+  credentials.mainserver_application_id,
+  credentials.mainserver_application_secret_ciphertext,
+  credentials.provisioning_status AS mainserver_provisioning_status
 FROM iam.account_organizations membership
 JOIN iam.organizations organization
   ON organization.instance_id = membership.instance_id
  AND organization.id = membership.organization_id
+LEFT JOIN iam.organization_mainserver_credentials credentials
+  ON credentials.instance_id = organization.instance_id
+ AND credentials.organization_id = organization.id
 WHERE membership.instance_id = $1
   AND membership.account_id = $2::uuid
 ORDER BY membership.is_default_context DESC, organization.depth ASC, organization.display_name ASC;

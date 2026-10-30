@@ -155,7 +155,7 @@ describe('waste management operations runtime', () => {
     expect(statements).toContain('waste_tour_status_active_conflict');
     expect(statements).toContain('idx_waste_tours_status');
     expect(statements).toContain(
-      'AFTER UPDATE OF "waste_fraction_ids", "recurrence", "custom_recurrence_id", "first_date", "end_date", "custom_dates", "status", "active"'
+      'AFTER UPDATE OF "recurrence", "custom_recurrence_id", "first_date", "end_date", "custom_dates", "status", "active"'
     );
     expect(statements).toContain("reminder_count TEXT NOT NULL DEFAULT 'none'");
     expect(statements).toContain(
@@ -1289,6 +1289,7 @@ const requiredTableRows = [
   { table_name: 'waste_tour_assignment_locations' },
   { table_name: 'waste_tour_assignments' },
   { table_name: 'waste_tours' },
+  { table_name: 'waste_tour_fractions' },
 ];
 
 const createImportWorkbookBytes = async (): Promise<Uint8Array> => {

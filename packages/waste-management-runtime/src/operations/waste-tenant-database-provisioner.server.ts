@@ -120,6 +120,10 @@ const migrateAndGrant = async (pool: ProvisioningPool, names: WasteTenantDatabas
       `ALTER DEFAULT PRIVILEGES FOR ROLE ${quoteIdentifier(names.ownerRole)} IN SCHEMA public
        GRANT SELECT ON TABLES TO ${quoteIdentifier(names.publicAppRole)};`
     );
+    await client.query(`REVOKE ALL ON TABLE public.waste_tour_fractions FROM PUBLIC, ${quoteIdentifier(names.appRole)}, ${quoteIdentifier(names.publicAppRole)};`);
+    await client.query(`GRANT SELECT ON TABLE public.waste_tour_fractions TO ${quoteIdentifier(names.appRole)}, ${quoteIdentifier(names.publicAppRole)};`);
+    await client.query(`GRANT EXECUTE ON FUNCTION public.replace_waste_tour_fractions(uuid, text[]) TO ${quoteIdentifier(names.appRole)};`);
+    await client.query(`GRANT EXECUTE ON FUNCTION public.upsert_waste_tour(uuid,text,text,text[],text,uuid,date,date,jsonb,text) TO ${quoteIdentifier(names.appRole)};`);
     return inspectWasteSchema(client, 'public');
   } finally {
     client.release();
@@ -299,7 +303,7 @@ export const createProvisionTenantDatabaseOperation = (
     } finally {
       await migrationPool.end();
     }
-    if (schemaInspection.missingTables.length > 0) {
+    if (schemaInspection.missingTables.length > 0 || !schemaInspection.integrityReady) {
       throw new Error('waste_database_schema_incomplete');
     }
     await verifyRuntimeRoles(createPool, appUrl, publicAppUrl);

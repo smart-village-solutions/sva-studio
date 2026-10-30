@@ -33,6 +33,7 @@ export const requiredWasteTables = [
   'waste_fractions',
   'waste_custom_recurrence_presets',
   'waste_tours',
+  'waste_tour_fractions',
   'waste_location_tour_links',
   'waste_location_tour_pickup_dates',
   'waste_tour_assignments',

@@ -37,7 +37,7 @@ describe('writeWasteAnnualMappedTours', () => {
     );
 
     expect(query).toHaveBeenCalledTimes(1);
-    expect(query.mock.calls[0]?.[0]).toContain('INSERT INTO waste_tours');
+    expect(query.mock.calls[0]?.[0]).toContain('SELECT upsert_waste_tour');
     expect(JSON.parse(query.mock.calls[0]?.[1]?.[0] as string)).toHaveLength(1_000);
     expect(repository.upsertWasteTour).not.toHaveBeenCalled();
   });

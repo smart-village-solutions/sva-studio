@@ -8,3 +8,5 @@ export type WasteTenantMigration = Readonly<{
 }>;
 
 export const wasteTenantMigrations: readonly WasteTenantMigration[];
+
+export const wasteTenantContractMigrations: readonly WasteTenantMigration[];

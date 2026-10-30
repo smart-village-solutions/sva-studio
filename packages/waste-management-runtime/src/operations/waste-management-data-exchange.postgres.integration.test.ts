@@ -13,6 +13,7 @@ import {
   importCanonicalWasteManagementPackage,
 } from './waste-management-operations.data-exchange-import.server.js';
 import { applySchemaStatements } from './waste-management-operations.schema.js';
+import { createExportDataOperation } from './waste-management-operations.export.server.js';
 import type { WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 
 const databaseUrl = process.env.WASTE_DATA_EXCHANGE_TEST_DATABASE_URL;
@@ -108,11 +109,84 @@ describe('Waste data exchange against PostgreSQL', () => {
   }, 60_000);
 
   beforeEach(async () => {
-    await pool.query('TRUNCATE TABLE waste_fractions CASCADE;');
+    await pool.query('TRUNCATE TABLE waste_tours, waste_fractions CASCADE;');
   });
 
   afterAll(async () => {
     await pool.end();
+  });
+
+  it('roundtrips a tour through the actual JSON export and relational import without losing fraction order', async () => {
+    await pool.query(
+      `INSERT INTO waste_fractions(id, name, pdf_short_label)
+      VALUES ($1, 'Bio', 'BIO'), ($2, 'Rest', 'RES')`,
+      [emptyDatabaseFractionId, prefilledDatabaseFractionId]
+    );
+    const tourId = '20000000-0000-4000-8000-000000000102';
+    const body = jsonBody({
+      profileId: 'waste-management.touren',
+      records: [
+        {
+          entityType: 'tour',
+          id: tourId,
+          name: 'Roundtrip',
+          status: 'draft',
+          recurrence: 'weekly',
+          firstDate: '2026-01-05',
+          endDate: '2026-12-31',
+          wasteFractionIds: [prefilledDatabaseFractionId, emptyDatabaseFractionId],
+        },
+      ],
+    });
+    await importCanonicalWasteManagementJson({
+      deps: createDeps(body),
+      instanceId,
+      profileId: 'waste-management.touren',
+      blobRef: 'integration:tour',
+      dryRun: false,
+    });
+    let exported: Uint8Array = new Uint8Array();
+    await createExportDataOperation({
+      ...createDeps(body),
+      storeJobArtifact: async (input) => {
+        exported = input.body;
+        return {
+          artifactId: tourId,
+          contentType: input.contentType,
+          fileName: input.fileName,
+          sizeBytes: input.body.byteLength,
+          sha256: createHash('sha256').update(input.body).digest('hex'),
+          expiresAt: '2026-10-31T00:00:00.000Z',
+        };
+      },
+    })(instanceId, {
+      operation: 'export-data',
+      profileIds: ['waste-management.touren'],
+      targetFormat: 'application/json',
+    });
+    expect(JSON.parse(new TextDecoder().decode(exported)).records[0].wasteFractionIds).toEqual([
+      prefilledDatabaseFractionId,
+      emptyDatabaseFractionId,
+    ]);
+    await pool.query('DELETE FROM waste_tours WHERE id = $1', [tourId]);
+    await importCanonicalWasteManagementJson({
+      deps: createDeps(exported),
+      instanceId,
+      profileId: 'waste-management.touren',
+      blobRef: 'integration:tour-roundtrip',
+      dryRun: false,
+    });
+    expect(
+      (
+        await pool.query(
+          'SELECT fraction_id FROM waste_tour_fractions WHERE tour_id = $1 ORDER BY position',
+          [tourId]
+        )
+      ).rows
+    ).toEqual([
+      { fraction_id: prefilledDatabaseFractionId },
+      { fraction_id: emptyDatabaseFractionId },
+    ]);
   });
 
   it('imports canonical data into an empty Waste database', async () => {

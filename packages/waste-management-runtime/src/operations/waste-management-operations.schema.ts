@@ -1,3 +1,4 @@
+import { buildWasteTourFractionsExpandStatements, buildWasteTourFractionsVerification } from './waste-tour-fractions.schema.js';
 import { quoteIdentifier, requiredWasteTables } from './waste-management-operations.shared.js';
 import { buildWasteMainserverRevisionSchemaStatements } from './waste-management-mainserver-sync.revision-schema.js';
 import type { SqlClient } from './waste-management-operations.types.js';
@@ -15,8 +16,13 @@ ORDER BY table_name ASC;
   );
 
   const presentTables = tableQuery.rows.map((row) => row.table_name);
+  const fractionContract = presentTables.includes('waste_tour_fractions')
+    ? await client.query<{ satisfied: boolean }>(buildWasteTourFractionsVerification(schemaName))
+    : null;
+  const integrityReady = fractionContract?.rows[0]?.satisfied === true;
   return {
     schemaName,
+    integrityReady,
     presentTables,
     missingTables: requiredWasteTables.filter((tableName) => !presentTables.includes(tableName)),
   };
@@ -304,7 +310,7 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `CREATE INDEX IF NOT EXISTS idx_waste_tours_status ON ${schema}.waste_tours(status);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_tours_recurrence ON ${schema}.waste_tours(recurrence);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_tours_custom_recurrence_id ON ${schema}.waste_tours(custom_recurrence_id);`,
-    `CREATE INDEX IF NOT EXISTS idx_waste_tours_waste_fraction_ids ON ${schema}.waste_tours USING GIN(waste_fraction_ids);`,
+    `DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = '${schemaName}' AND table_name = 'waste_tours' AND column_name = 'waste_fraction_ids') THEN CREATE INDEX IF NOT EXISTS idx_waste_tours_waste_fraction_ids ON ${schema}.waste_tours USING GIN(waste_fraction_ids); END IF; END $$;`,
     `CREATE INDEX IF NOT EXISTS idx_waste_location_tour_links_location_id ON ${schema}.waste_location_tour_links(location_id);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_location_tour_links_tour_id ON ${schema}.waste_location_tour_links(tour_id);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_location_tour_pickup_dates_location_id ON ${schema}.waste_location_tour_pickup_dates(location_id);`,
@@ -319,6 +325,7 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `CREATE INDEX IF NOT EXISTS idx_waste_global_date_shifts_tour_ids ON ${schema}.waste_global_date_shifts USING GIN(tour_ids);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_holiday_rules_state_year ON ${schema}.waste_holiday_rules(state_code, year);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_holiday_rules_holiday_date ON ${schema}.waste_holiday_rules(holiday_date);`,
+    ...buildWasteTourFractionsExpandStatements(schemaName),
     ...buildWasteMainserverRevisionSchemaStatements(schemaName),
   ];
 };

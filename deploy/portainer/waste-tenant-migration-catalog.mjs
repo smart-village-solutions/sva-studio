@@ -227,6 +227,7 @@ export const wasteTenantMigrations = Object.freeze([
           WHERE namespace_row.nspname = 'public'
             AND NOT trigger_row.tgisinternal
             AND trigger_row.tgname LIKE 'sva_mainserver_revision_%'
+            AND table_row.relname <> 'waste_tour_fractions'
         )
         SELECT
           (SELECT satisfied FROM state_contract)
@@ -415,5 +416,182 @@ export const wasteTenantMigrations = Object.freeze([
           AND column_name = ANY($1::text[]);`,
       values: Object.freeze([['email_reminder_config', 'email_reminder_signing_secret']]),
     }),
+  }),
+  Object.freeze({
+    id: '20261030_01_expand_waste_tour_fractions',
+    statements: Object.freeze([
+      `CREATE TABLE IF NOT EXISTS "public".waste_tour_fractions (
+      tour_id UUID NOT NULL REFERENCES "public".waste_tours(id) ON DELETE CASCADE,
+      fraction_id UUID NOT NULL REFERENCES "public".waste_fractions(id) ON DELETE RESTRICT,
+      position INTEGER NOT NULL CHECK (position >= 0),
+      PRIMARY KEY (tour_id, fraction_id), UNIQUE (tour_id, position));`,
+      `CREATE INDEX IF NOT EXISTS idx_waste_tour_fractions_fraction ON "public".waste_tour_fractions(fraction_id);`,
+      `DO $expand$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+      AND table_name = 'waste_tours' AND column_name = 'waste_fraction_ids') THEN
+    LOCK TABLE "public".waste_tours, "public".waste_fractions IN SHARE ROW EXCLUSIVE MODE;
+    IF EXISTS (SELECT 1 FROM "public".waste_tours t, unnest(t.waste_fraction_ids) AS f(value)
+      WHERE value IS NULL OR btrim(value) = '') THEN
+      RAISE EXCEPTION 'waste_migration_tour_fractions_invalid_id';
+    END IF;
+    IF EXISTS (SELECT 1 FROM "public".waste_tours t, unnest(t.waste_fraction_ids) AS f(value)
+      GROUP BY t.id, value::uuid HAVING count(*) > 1) THEN
+      RAISE EXCEPTION 'waste_migration_tour_fractions_duplicate';
+    END IF;
+    INSERT INTO "public".waste_tour_fractions(tour_id, fraction_id, position)
+      SELECT t.id, value::uuid, (n - 1)::integer FROM "public".waste_tours t,
+        unnest(t.waste_fraction_ids) WITH ORDINALITY AS f(value, n)
+      ON CONFLICT (tour_id, fraction_id) DO NOTHING;
+    IF EXISTS (
+    SELECT 1 FROM "public".waste_tours t
+    WHERE ARRAY(SELECT value::uuid FROM unnest(t.waste_fraction_ids) WITH ORDINALITY AS f(value, n) ORDER BY n)
+      IS DISTINCT FROM ARRAY(SELECT fraction_id FROM "public".waste_tour_fractions tf
+        WHERE tf.tour_id = t.id ORDER BY position)
+  ) THEN RAISE EXCEPTION 'waste_migration_tour_fractions_mismatch'; END IF;
+    CREATE OR REPLACE FUNCTION "public".sync_waste_tour_fractions()
+    RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $bridge$
+    BEGIN
+      DELETE FROM "public".waste_tour_fractions WHERE tour_id = NEW.id;
+      INSERT INTO "public".waste_tour_fractions(tour_id, fraction_id, position)
+        SELECT NEW.id, value::uuid, (n - 1)::integer
+        FROM unnest(NEW.waste_fraction_ids) WITH ORDINALITY AS f(value, n);
+      RETURN NEW;
+    END; $bridge$;
+    REVOKE ALL ON FUNCTION "public".sync_waste_tour_fractions() FROM PUBLIC;
+    DROP TRIGGER IF EXISTS waste_tours_sync_fractions ON "public".waste_tours;
+    CREATE TRIGGER waste_tours_sync_fractions AFTER INSERT OR UPDATE OF waste_fraction_ids
+      ON "public".waste_tours FOR EACH ROW EXECUTE FUNCTION "public".sync_waste_tour_fractions();
+    CREATE OR REPLACE FUNCTION "public".replace_waste_tour_fractions(p_tour_id uuid, p_fraction_ids text[])
+    RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $writer$
+    BEGIN
+      IF p_fraction_ids IS NULL THEN RAISE EXCEPTION 'waste_tour_fractions_required'; END IF;
+      UPDATE "public".waste_tours SET waste_fraction_ids = p_fraction_ids WHERE id = p_tour_id;
+      IF NOT FOUND THEN RAISE foreign_key_violation USING MESSAGE = 'waste_tour_missing'; END IF;
+    END; $writer$;
+    REVOKE ALL ON FUNCTION "public".replace_waste_tour_fractions(uuid, text[]) FROM PUBLIC;
+  END IF;
+END; $expand$;`,
+      `CREATE OR REPLACE FUNCTION "public".upsert_waste_tour(
+      p_id uuid, p_name text, p_description text, p_fraction_ids text[], p_recurrence text,
+      p_custom_recurrence_id uuid, p_first_date date, p_end_date date, p_custom_dates jsonb, p_status text)
+    RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $upsert$
+    BEGIN
+      INSERT INTO "public".waste_tours(id, name, description, recurrence, custom_recurrence_id,
+        first_date, end_date, custom_dates, status, active)
+      VALUES (p_id, p_name, p_description, p_recurrence, p_custom_recurrence_id,
+        p_first_date, p_end_date, p_custom_dates, p_status, p_status = 'published')
+      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
+        recurrence = EXCLUDED.recurrence, custom_recurrence_id = EXCLUDED.custom_recurrence_id,
+        first_date = EXCLUDED.first_date, end_date = EXCLUDED.end_date, custom_dates = EXCLUDED.custom_dates,
+        status = EXCLUDED.status, active = EXCLUDED.active, updated_at = now();
+      PERFORM "public".replace_waste_tour_fractions(p_id, p_fraction_ids);
+    END; $upsert$;
+    REVOKE ALL ON FUNCTION "public".upsert_waste_tour(uuid,text,text,text[],text,uuid,date,date,jsonb,text) FROM PUBLIC;`,
+      `DROP TRIGGER IF EXISTS sva_mainserver_revision_tours_update ON public.waste_tours;`,
+      `CREATE TRIGGER sva_mainserver_revision_tours_update AFTER UPDATE OF recurrence, custom_recurrence_id, first_date, end_date, custom_dates, status, active ON public.waste_tours FOR EACH STATEMENT EXECUTE FUNCTION public.sva_bump_waste_mainserver_source_revision();`,
+      `DROP TRIGGER IF EXISTS sva_mainserver_revision_tour_fractions_change ON public.waste_tour_fractions;`,
+      `CREATE TRIGGER sva_mainserver_revision_tour_fractions_change AFTER INSERT OR DELETE ON public.waste_tour_fractions FOR EACH STATEMENT EXECUTE FUNCTION public.sva_bump_waste_mainserver_source_revision();`,
+      `DROP TRIGGER IF EXISTS sva_mainserver_revision_tour_fractions_update ON public.waste_tour_fractions;`,
+      `CREATE TRIGGER sva_mainserver_revision_tour_fractions_update AFTER UPDATE OF tour_id, fraction_id, position ON public.waste_tour_fractions FOR EACH STATEMENT EXECUTE FUNCTION public.sva_bump_waste_mainserver_source_revision();`
+    ]),
+    verification: Object.freeze({ sql: `
+SELECT
+  (SELECT count(*) = 2 FROM pg_constraint
+    WHERE conrelid = '"public".waste_tour_fractions'::regclass
+      AND contype = 'f' AND convalidated
+      AND ((confrelid = '"public".waste_tours'::regclass AND confdeltype = 'c'
+        AND pg_get_constraintdef(oid) LIKE 'FOREIGN KEY (tour_id)%')
+        OR (confrelid = '"public".waste_fractions'::regclass AND confdeltype = 'r'
+        AND pg_get_constraintdef(oid) LIKE 'FOREIGN KEY (fraction_id)%')))
+  AND (SELECT count(*) = 2 FROM pg_constraint
+    WHERE conrelid = '"public".waste_tour_fractions'::regclass AND convalidated
+      AND ((contype = 'p' AND pg_get_constraintdef(oid) = 'PRIMARY KEY (tour_id, fraction_id)')
+        OR (contype = 'u' AND pg_get_constraintdef(oid) = 'UNIQUE (tour_id, "position")')))
+  AND EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid = '"public".waste_tour_fractions'::regclass AND contype = 'c'
+      AND convalidated AND pg_get_constraintdef(oid) = 'CHECK (("position" >= 0))')
+  AND (SELECT count(*) = 3 AND bool_and(is_nullable = 'NO')
+    FROM information_schema.columns WHERE table_schema = 'public'
+      AND table_name = 'waste_tour_fractions'
+      AND ((column_name IN ('tour_id', 'fraction_id') AND data_type = 'uuid')
+        OR (column_name = 'position' AND data_type = 'integer')))
+  AND to_regprocedure('"public".replace_waste_tour_fractions(uuid,text[])') IS NOT NULL
+  AND to_regprocedure('"public".upsert_waste_tour(uuid,text,text,text[],text,uuid,date,date,jsonb,text)') IS NOT NULL
+  AND (NOT EXISTS (SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'waste_tours'
+        AND column_name = 'waste_fraction_ids')
+    OR EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = '"public".waste_tours'::regclass
+      AND tgname = 'waste_tours_sync_fractions' AND tgenabled = 'O' AND NOT tgisinternal))
+  AND (SELECT count(*) = 2 FROM pg_trigger
+    WHERE tgrelid = '"public".waste_tour_fractions'::regclass AND tgenabled = 'O'
+      AND NOT tgisinternal AND tgname IN (
+        'sva_mainserver_revision_tour_fractions_change', 'sva_mainserver_revision_tour_fractions_update'))
+  AS satisfied;`, values: Object.freeze([]) }),
+  }),
+]);
+
+// Explicitly selected by the existing runner only after all legacy writers have retired.
+export const wasteTenantContractMigrations = Object.freeze([
+  Object.freeze({
+    id: '20261030_02_contract_waste_tour_fractions',
+    statements: Object.freeze([
+      `LOCK TABLE "public".waste_tours, "public".waste_fractions, "public".waste_tour_fractions IN SHARE ROW EXCLUSIVE MODE;`,
+      `DO $contract$ BEGIN IF EXISTS (
+    SELECT 1 FROM "public".waste_tours t
+    WHERE ARRAY(SELECT value::uuid FROM unnest(t.waste_fraction_ids) WITH ORDINALITY AS f(value, n) ORDER BY n)
+      IS DISTINCT FROM ARRAY(SELECT fraction_id FROM "public".waste_tour_fractions tf
+        WHERE tf.tour_id = t.id ORDER BY position)
+  ) THEN RAISE EXCEPTION 'waste_migration_tour_fractions_mismatch'; END IF; END; $contract$;`,
+      `CREATE OR REPLACE FUNCTION "public".replace_waste_tour_fractions(p_tour_id uuid, p_fraction_ids text[])
+    RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $writer$
+    BEGIN
+      IF p_fraction_ids IS NULL THEN RAISE EXCEPTION 'waste_tour_fractions_required'; END IF;
+      PERFORM 1 FROM "public".waste_tours WHERE id = p_tour_id FOR UPDATE;
+      IF NOT FOUND THEN RAISE foreign_key_violation USING MESSAGE = 'waste_tour_missing'; END IF;
+      DELETE FROM "public".waste_tour_fractions WHERE tour_id = p_tour_id;
+      INSERT INTO "public".waste_tour_fractions(tour_id, fraction_id, position)
+        SELECT p_tour_id, value::uuid, (n - 1)::integer
+        FROM unnest(p_fraction_ids) WITH ORDINALITY AS f(value, n);
+    END; $writer$;`,
+      `DROP TRIGGER waste_tours_sync_fractions ON "public".waste_tours;`,
+      `DROP FUNCTION "public".sync_waste_tour_fractions();`,
+      `DROP INDEX IF EXISTS "public".idx_waste_tours_waste_fraction_ids;`,
+      `ALTER TABLE "public".waste_tours DROP COLUMN waste_fraction_ids;`
+    ]),
+    verification: Object.freeze({ sql: `
+SELECT
+  (SELECT count(*) = 2 FROM pg_constraint
+    WHERE conrelid = '"public".waste_tour_fractions'::regclass
+      AND contype = 'f' AND convalidated
+      AND ((confrelid = '"public".waste_tours'::regclass AND confdeltype = 'c'
+        AND pg_get_constraintdef(oid) LIKE 'FOREIGN KEY (tour_id)%')
+        OR (confrelid = '"public".waste_fractions'::regclass AND confdeltype = 'r'
+        AND pg_get_constraintdef(oid) LIKE 'FOREIGN KEY (fraction_id)%')))
+  AND (SELECT count(*) = 2 FROM pg_constraint
+    WHERE conrelid = '"public".waste_tour_fractions'::regclass AND convalidated
+      AND ((contype = 'p' AND pg_get_constraintdef(oid) = 'PRIMARY KEY (tour_id, fraction_id)')
+        OR (contype = 'u' AND pg_get_constraintdef(oid) = 'UNIQUE (tour_id, "position")')))
+  AND EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid = '"public".waste_tour_fractions'::regclass AND contype = 'c'
+      AND convalidated AND pg_get_constraintdef(oid) = 'CHECK (("position" >= 0))')
+  AND (SELECT count(*) = 3 AND bool_and(is_nullable = 'NO')
+    FROM information_schema.columns WHERE table_schema = 'public'
+      AND table_name = 'waste_tour_fractions'
+      AND ((column_name IN ('tour_id', 'fraction_id') AND data_type = 'uuid')
+        OR (column_name = 'position' AND data_type = 'integer')))
+  AND to_regprocedure('"public".replace_waste_tour_fractions(uuid,text[])') IS NOT NULL
+  AND to_regprocedure('"public".upsert_waste_tour(uuid,text,text,text[],text,uuid,date,date,jsonb,text)') IS NOT NULL
+  AND (NOT EXISTS (SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'waste_tours'
+        AND column_name = 'waste_fraction_ids')
+    OR EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = '"public".waste_tours'::regclass
+      AND tgname = 'waste_tours_sync_fractions' AND tgenabled = 'O' AND NOT tgisinternal))
+  AND (SELECT count(*) = 2 FROM pg_trigger
+    WHERE tgrelid = '"public".waste_tour_fractions'::regclass AND tgenabled = 'O'
+      AND NOT tgisinternal AND tgname IN (
+        'sva_mainserver_revision_tour_fractions_change', 'sva_mainserver_revision_tour_fractions_update'))
+  AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'waste_tours' AND column_name = 'waste_fraction_ids')
+  AS satisfied;`, values: Object.freeze([]) }),
   }),
 ]);

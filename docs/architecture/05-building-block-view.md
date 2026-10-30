@@ -1206,3 +1206,7 @@ Der App-Dispatcher in `apps/sva-studio-react/src/server.ts` finalisiert Antworte
 ## UI-Zugriff und Principal-Bereitschaft
 
 `EffectiveAccessProvider` veröffentlicht den einzigen aktuellen Browser-Snapshot für Route-Guards und Aktionen. `OrganizationContextProvider` bindet Antworten an Identität und Requestgeneration und enthält eine sichere Mainserver-Readiness-Projektion je Mitgliedsorganisation sowie für den persönlichen Principal. Die Projektion enthält nur einen Status, keine Credentials. Standard-Content-Editoren konsumieren diesen Status über die vorhandene Principal-Control; serverseitiges Mainserver-Enforcement bleibt unverändert.
+
+### Relationale Waste-Tour-Fraktionen
+
+`@sva/waste-management-runtime` besitzt die Tabelle `waste_tour_fractions` und den atomaren DB-Upsert `upsert_waste_tour(...)`. Kalender und Erinnerungen lesen dieselbe relationale Zuordnung; der äußere Vertrag `wasteFractionIds` bleibt unverändert. Während der begrenzten Expand/Contract-Migration bindet ein DB-Trigger alte Array-Schreiber an die Beziehungstabelle an. Details zu Fremdschlüsseln, Reihenfolge und Entfernung der Brücke stehen in der [Schemaübersicht](../development/studio-db-schema.md). Es entstehen keine zusätzlichen Packages oder Services.

@@ -204,6 +204,15 @@ Lokale Nachweise: 34 Handlerfälle einschließlich echter Bearer-/JSON-/UTF-8-/S
 
 Reihenfolge nach Nutzerentscheidung: Staging und Sandbox bleiben bis zum abgeschlossenen Gutschein-Rollout samt Abnahme unverändert. Danach den tatsächlich veröffentlichten Main-/Staging-Stand erneut abgleichen und ST-3.4 bis ST-3.7 separat fortsetzen. In diesem lokalen Vorbereitungsauftrag keine Remote-Aufrufe, Anbieteraufrufe, Commits oder Pushes; kein Live-End-to-End-Nachweis und keine vollständige Suite behaupten.
 
+### ST-3.9 Fehlende Einrichtung beim erneuten Aktivieren nachholen
+
+- [x] Bestehenden Lifecycle-Anschluss um authentifizierten Setup-Aufruf auf derselben Mainserver-Route ergänzen; ausschließlich vorhandener aktiver technischer Organisationszugang, feste Instanz-/Hostbindung und bestehende CAS-Prüfung.
+- [x] Mainserver schützt den Setup-Aufruf durch OAuth, Verwaltungsrolle und exakte Host-Kommune. Fehlendes Studio-Ziel ergänzen, vorhandenen vertraulichen Keycloak-Client gezielt um Serviceaccount-Fähigkeit/Audience ergänzen, Introspektion vor Persistenz; fremde Konfiguration nicht überschreiben.
+- [x] Lokale Negativ-/Wiederholungs-/Datenintegritätstests und unabhängiges Security-Review. Studio-Scope und Credential-Auswahl zusätzlich gegen den Schema-Snapshot unter tatsächlicher `iam_app`-RLS geprüft. Details siehe Design 6.4.1 und ADR-070.
+- [ ] Mainserver vor Studio bis Staging veröffentlichen und anschließend Aus-/Einschalten sowie echten Englisch-Aufruf ausschließlich in der Sandbox nachweisen. Vorhandene geeignete technische Mainserver- und Keycloak-Verwaltungscredentials live prüfen. Kein lokaler Test ersetzt diesen Nachweis.
+
+Lokaler Nachweis ST-3.9 vom 30. Oktober: 29 Bindungsfälle einschließlich echter PostgreSQL-16-Snapshotprüfung unter `iam_app`, 14 bestehende Plugin-Lifecycle-Fälle und 35 Mainserver-RSpec-Fälle grün. Auth-Runtime-Typecheck und Server-Runtime-Gate erfolgreich; gezielter Studio-Lint ohne Fehler (bestehende Test-Non-null-Warnungen), Dateiablage, strikte OpenSpec-Validierung und Komplexitäts-Gate ohne neue Findings. Mainserver-RuboCop konnte wegen der vorhandenen inkompatiblen Regel `Style/KeywordArguments` in `app/.rubocop.yml` nicht laufen; diese fremde Konfiguration wurde nicht geändert. Das unabhängige Security-Review fand keine blockierenden Befunde; seine drei zusätzlichen Negativnachweise (vorhandene Bindung, fehlender Zugang, veralteter Auftrag nach Tokenabruf) wurden ergänzt. Keine neue Datei, Dependency, Schemaänderung oder Queue; vorhandene Pfade und Dokumentation erweitert. Kein Commit, Push oder Rollout in diesem Folgeabschnitt und kein Live-/DeepL-Nachweis.
+
 ## 5. Dynamischer MySQL-Bestand und Hintergrundausführung — Main-Server federführend
 
 Die frühere dauerhafte Studio-PostgreSQL-/Graphile-Ergebnisstrecke ist durch den Main-Server-Plan 002 ersetzt; feste Studio-Katalogjobs bleiben unverändert. Konkrete Implementierung separat freigeben.

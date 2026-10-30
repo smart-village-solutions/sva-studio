@@ -189,7 +189,7 @@ describe('settings', () => {
     );
   });
 
-  it('preserves trusted translation identity metadata when saving only URLs', async () => {
+  it('preserves trusted translation identity metadata for unchanged enabled URLs', async () => {
     const translationService = {
       issuer: 'https://identity.example',
       clientId: 'client',
@@ -198,7 +198,7 @@ describe('settings', () => {
     };
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
       id: 'connection',
-      publicConfig: { translationService },
+      publicConfig: { translationService, graphqlBaseUrl: 'https://mainserver.example/graphql', oauthTokenUrl: 'https://mainserver.example/oauth/token' },
     });
     const { saveSvaMainserverSettings } = await import('./settings');
     await saveSvaMainserverSettings({
@@ -216,6 +216,19 @@ describe('settings', () => {
         },
       })
     );
+  });
+
+  it.each(['graphql', 'oauth', 'disabled'])('revokes the old binding when the assignment changes: %s', async (change) => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'connection', publicConfig: { translationService: { subject: 'old' }, graphqlBaseUrl: 'https://mainserver.example/graphql', oauthTokenUrl: 'https://mainserver.example/oauth/token' },
+    });
+    const { saveSvaMainserverSettings } = await import('./settings');
+    await saveSvaMainserverSettings({ instanceId: 'de-town',
+      graphqlBaseUrl: change === 'graphql' ? 'https://other.example/graphql' : 'https://mainserver.example/graphql',
+      oauthTokenUrl: change === 'oauth' ? 'https://other.example/oauth/token' : 'https://mainserver.example/oauth/token',
+      enabled: change !== 'disabled',
+    });
+    expect(state.saveExternalInterfaceRecord.mock.calls[0]?.[0]?.publicConfig).not.toHaveProperty('translationService');
   });
 
   it('resets disabled visible status back to unknown when re-enabling an existing mainserver record', async () => {

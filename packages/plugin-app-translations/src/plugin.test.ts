@@ -29,6 +29,7 @@ describe('local multilingual module', () => {
       .fn()
       .mockResolvedValue({ resultPayload: { summary: { processedItems: 1 } } });
     const handler = createPluginJobExecutionHandlers({
+      reconcileServiceBinding: vi.fn().mockResolvedValue(false),
       readLocalReadiness: vi.fn(),
       translateCatalog,
     })[APP_TRANSLATIONS_CATALOG_JOB]!;
@@ -70,22 +71,37 @@ describe('local multilingual module', () => {
   it.each([true, false])(
     'returns local readiness and redacted credential status (%s)',
     async (providerConfigured) => {
-      const readLocalReadiness = vi.fn(async () => ({ schemaReady: true, providerConfigured }));
-      const handler = createPluginJobExecutionHandlers({ readLocalReadiness })[
-        APP_TRANSLATIONS_LIFECYCLE_JOB
-      ]!;
+      const readLocalReadiness = vi.fn(async () => ({
+        schemaReady: true,
+        providerConfigured,
+        serviceConfigured: false,
+      }));
+      const handler = createPluginJobExecutionHandlers({
+        reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+        readLocalReadiness,
+      })[APP_TRANSLATIONS_LIFECYCLE_JOB]!;
       const result = await handler(context('readiness'));
       expect(readLocalReadiness).toHaveBeenCalledWith('tenant-a');
       expect(result?.tenantLifecycle?.checks).toEqual([
         { checkId: 'app-translations.schema', status: 'ready' },
         { checkId: 'app-translations.provider', status: providerConfigured ? 'ready' : 'degraded' },
+        {
+          checkId: 'app-translations.service',
+          status: 'degraded',
+          messageKey: 'appTranslations.readiness.serviceMissing',
+        },
       ]);
       expect(result?.resultPayload).toEqual({ plugin: { localOnly: true } });
     }
   );
   it('does not grant local access for missing schema evidence', async () => {
     const result = await createPluginJobExecutionHandlers({
-      readLocalReadiness: async () => ({ schemaReady: false, providerConfigured: true }),
+      reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+      readLocalReadiness: async () => ({
+        schemaReady: false,
+        providerConfigured: true,
+        serviceConfigured: false,
+      }),
     })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(context('provision'));
     const definition = createBuildTimeRegistry({
       plugins: [appTranslationsPlugin],
@@ -116,33 +132,74 @@ describe('local multilingual module', () => {
       const readLocalReadiness = vi.fn(async () => ({
         schemaReady: true,
         providerConfigured: false,
+        serviceConfigured: false,
       }));
-      const result = await createPluginJobExecutionHandlers({ readLocalReadiness })[
-        APP_TRANSLATIONS_LIFECYCLE_JOB
-      ]!(context(operation));
+      const result = await createPluginJobExecutionHandlers({
+        reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+        readLocalReadiness,
+      })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(context(operation));
       expect(readLocalReadiness).toHaveBeenCalledWith('tenant-a');
       expect(result?.resultPayload).toEqual({ plugin: { localOnly: true } });
       expect(result?.tenantLifecycle?.checks).toEqual([
         { checkId: 'app-translations.schema', status: 'ready' },
         { checkId: 'app-translations.provider', status: 'degraded' },
+        {
+          checkId: 'app-translations.service',
+          status: 'degraded',
+          messageKey: 'appTranslations.readiness.serviceMissing',
+        },
       ]);
     }
   );
   it('keeps missing schema blocking during reactivation', async () => {
     const result = await createPluginJobExecutionHandlers({
-      readLocalReadiness: async () => ({ schemaReady: false, providerConfigured: false }),
+      reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+      readLocalReadiness: async () => ({
+        schemaReady: false,
+        providerConfigured: false,
+        serviceConfigured: false,
+      }),
     })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(context('reactivate'));
     expect(result?.tenantLifecycle?.checks).toContainEqual({
       checkId: 'app-translations.schema',
       status: 'blocked',
     });
   });
+  it.each(['provision', 'reconcile', 'reactivate', 'readiness', 'suspend'])(
+    'reconciles the Mainserver only for mutating active lifecycle operations: %s',
+    async (operation) => {
+      const reconcileServiceBinding = vi.fn().mockResolvedValue(true);
+      const readLocalReadiness = vi
+        .fn()
+        .mockResolvedValue({
+          schemaReady: true,
+          providerConfigured: true,
+          serviceConfigured: false,
+        });
+      const result = await createPluginJobExecutionHandlers({
+        reconcileServiceBinding,
+        readLocalReadiness,
+      })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(context(operation));
+      const activeMutation = ['provision', 'reconcile', 'reactivate'].includes(operation);
+      expect(reconcileServiceBinding).toHaveBeenCalledTimes(activeMutation ? 1 : 0);
+      expect(result?.tenantLifecycle?.checks).toContainEqual(
+        activeMutation
+          ? { checkId: 'app-translations.service', status: 'ready' }
+          : {
+              checkId: 'app-translations.service',
+              status: 'degraded',
+              messageKey: 'appTranslations.readiness.serviceMissing',
+            }
+      );
+    }
+  );
   it('rejects unsupported lifecycle operations', async () => {
     const readLocalReadiness = vi.fn();
     await expect(
-      createPluginJobExecutionHandlers({ readLocalReadiness })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(
-        context('unknown')
-      )
+      createPluginJobExecutionHandlers({
+        reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+        readLocalReadiness,
+      })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(context('unknown'))
     ).rejects.toMatchObject({
       cause: { code: 'app-translations.invalid-lifecycle-context' },
     });

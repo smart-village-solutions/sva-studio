@@ -103,6 +103,41 @@ export const saveExternalInterfaceRecord = async (
   });
 };
 
+/** An asynchronous identity response must not overwrite a newer assignment or reactivation. */
+export const saveMainserverTranslationServiceBinding = async (input: {
+  connection: ExternalInterfaceRecord;
+  binding: Readonly<{ issuer: string; audience: string; clientId: string; subject: string }>;
+  generation: string;
+  assignmentRevision: string;
+  jobId: string;
+  operation: string;
+  hostname: string;
+}): Promise<boolean> => {
+  const { connection } = input;
+  if (connection.typeKey !== 'sva_mainserver' || connection.ownerKind !== 'host') return false;
+  return withDefaultDatabase(connection.instanceId, undefined, async (client) => {
+    const scope = await client.query(
+      `SELECT m.module_id FROM iam.instances i
+       JOIN iam.instance_modules m ON m.instance_id=i.id AND m.module_id='app-translations'
+       JOIN iam.instance_plugin_lifecycle l ON l.instance_id=m.instance_id AND l.plugin_id=m.module_id
+       WHERE i.id=$1 AND i.status='active' AND i.primary_hostname=$2
+         AND m.effective_active AND l.desired_generation=$3::bigint
+         AND l.active_job_id=$4::uuid AND l.claimed_generation=l.desired_generation AND l.desired_operation=$5
+         AND (l.access_state='active' OR ($5='reactivate' AND l.access_state='suspended'))
+       FOR SHARE OF i,m,l`, [connection.instanceId, input.hostname, input.generation, input.jobId, input.operation]);
+    if (!scope.rows[0]) return false;
+    const result = await client.query(
+      `UPDATE iam.instance_external_interfaces
+       SET public_config_json=jsonb_set(public_config_json,'{translationService}',$4::jsonb), updated_at=now()
+       WHERE instance_id=$1 AND id=$2 AND type_key='sva_mainserver' AND owner_kind='host'
+         AND enabled AND is_default AND public_config_json=$3::jsonb AND base_url IS NOT DISTINCT FROM $5
+         AND xmin::text=$6
+       RETURNING id`,
+      [connection.instanceId, connection.id, JSON.stringify(connection.publicConfig), JSON.stringify(input.binding), connection.baseUrl ?? null, input.assignmentRevision]);
+    return result.rowCount === 1;
+  });
+};
+
 export const deleteExternalInterfaceRecord = async (
   instanceId: string,
   id: string,

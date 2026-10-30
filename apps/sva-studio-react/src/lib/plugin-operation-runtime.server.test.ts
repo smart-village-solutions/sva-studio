@@ -21,6 +21,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   registerStudioJobExecutionHandlers: registerStudioJobExecutionHandlersMock,
   listActiveInstanceIdsForWorker: listActiveInstanceIdsForWorkerMock,
   readAppTranslationsLocalReadiness: vi.fn(),
+  reconcileAppTranslationServiceBinding: vi.fn(),
   runCatalogTranslation: vi.fn(),
   resolveInstanceKeycloakProjectionTenant: vi.fn(),
 }));
@@ -237,6 +238,7 @@ describe('plugin operation runtime registration', () => {
     vi.mocked(auth.readAppTranslationsLocalReadiness).mockResolvedValue({
       schemaReady: true,
       providerConfigured: false,
+      serviceConfigured: false,
     });
     const mod = await import('./plugin-operation-runtime.server');
     const handlers = await mod.registerStudioPluginOperationHandlers();
@@ -252,6 +254,10 @@ describe('plugin operation runtime registration', () => {
       checkId: 'app-translations.provider',
       status: 'degraded',
     });
+    vi.mocked(auth.reconcileAppTranslationServiceBinding).mockResolvedValue(true);
+    const provision = { ...ctx, tenantLifecycle: { operation: 'provision', generation: 1 } } as import('@sva/plugin-sdk').PluginJobHandlerContext;
+    await handlers[jobTypeId]!.handler(provision);
+    expect(auth.reconcileAppTranslationServiceBinding).toHaveBeenCalledWith(provision);
     expect(handlers[jobTypeId]?.executionLane).toBe('default');
     await handlers[catalogJobType.jobTypeId]!.handler(ctx);
     expect(auth.runCatalogTranslation).toHaveBeenCalledWith(ctx);

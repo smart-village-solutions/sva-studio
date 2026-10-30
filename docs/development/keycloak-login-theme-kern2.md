@@ -34,6 +34,53 @@ Wesentliche Dateien:
 - `theme/sva-kern2/login/footer.ftl`
 - `theme/sva-kern2/login/login.ftl`
 - `theme/sva-kern2/login/messages/messages_{de,en}.properties`
+- `theme/sva-kern2/email/theme.properties`
+- `theme/sva-kern2/email/messages/messages_de.properties`
+
+## E-Mail-Bestätigung
+
+Der E-Mail-Teil erbt von `base`. Die deutschen `emailVerification*`-Texte
+bestätigen neutral die Adresse, sowohl bei Registrierung als auch bei einer
+Adressänderung. `{2}` wird durch den Realm-Anzeigenamen ersetzt. Der Main-Server
+verwendet dafür in seiner bestehenden Bestätigungsmethode `send-verify-email`;
+die bearbeitbaren Einladungstexte unter `executeActions*` bleiben getrennt.
+Die Bestätigungstexte verwenden `{0}` für den Link und `{3}` für die formatierte
+Gültigkeitsdauer; bei den Einladungstexten ist Letztere dagegen `{4}`.
+
+Vor einer Freigabe den E-Mail-Teil des Themes auf dem Zielserver und die
+effektiven deutschen Texte prüfen. Eine Realm-Zuweisung allein bestätigt nicht,
+dass das Theme dort verfügbar ist. Der sichtbare Absendername steht realmweit
+unter `Realm Settings -> Email -> From display name`; für kommunale Realms ist
+der Kommunenname vorgesehen. Die bestehende Versandadresse bleibt erhalten.
+
+### Bearbeitung im Studio
+
+Auf dem Root-Host ist unter `/admin/templates` die allgemeine Bestätigungsvorlage
+bearbeitbar. Sie gilt für alle Instanzen ohne Override. An der Instanz steht neben der Account-Einladung
+„E-Mail-Adresse bestätigen“ bereit. Plattformadministratoren lesen hier die
+wirksamen deutschen Theme-/Realm-Texte und bearbeiten Betreff und Nachricht.
+Der Bestätigungslink `{{verificationLink}}` muss genau einmal vorkommen;
+`{{tenantName}}` und `{{linkExpiresIn}}` sind optional. Im Betreff sind keine
+Platzhalter erlaubt. HTML und freie URLs werden abgewiesen.
+
+Speichern und Reset persistieren zuerst die Quelle
+in `iam.instance_mail_templates` beziehungsweise im allgemeinen Vorlagenbestand; anschließend werden die drei `emailVerification*`-
+Schlüssel übertragen und zurückgelesen. „Allgemeine Vorlage verwenden“ entfernt nur den Instanz-Override. Änderungen des
+allgemeinen Standards gleichen nur erbende Instanzen ab; eigene Overrides bleiben
+erhalten. Ein Reset des allgemeinen Standards verwendet wieder den neutralen
+eingebauten Text. Die Einladung verwendet denselben
+Speicher-/Abgleichpfad mit `executeActions*`. Ein Fehler verliert den gespeicherten
+Studio-Stand nicht. Öffnen zeigt den Vergleich mit den wirksamen deutschen
+Theme-/Realm-Werten, einschließlich externer Änderungen.
+
+„Keycloak-Stand übernehmen“ und „Studio-Stand übertragen“ sind ausdrücklich
+bestätigte Aktionen mit Quellrevision und erneut geprüften Vergleichssnapshots.
+Fremde HTML-Layouts bleiben als Quelltext sichtbar; eine Übernahme ist nur möglich,
+wenn der Texteditor die vollständige Fassung verlustfrei wieder erzeugen kann.
+Die Snapshot-Prüfung ist keine atomare Keycloak-CAS-Garantie. Beim Versand wird nur
+verglichen und bei Abweichungen blockiert, niemals das Theme oder Texte geändert.
+SMTP und die bereits gepflegten Absendernamen bleiben unverändert. Die API steht
+in [iam-v1.yaml](../api/iam-v1.yaml).
 
 ## Theme-Name in Keycloak
 

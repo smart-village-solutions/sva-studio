@@ -71,7 +71,7 @@ export const validateAccountInvitationTemplateMutation = (
   if (expectedRevision === undefined) {
     throw new Error('account_invitation_template_revision_required');
   }
-  if ((existing.accountInvitationTemplate?.revision ?? 0) !== expectedRevision) {
+  if ((existing.accountInvitationTemplateRevision ?? existing.accountInvitationTemplate?.revision ?? 0) !== expectedRevision) {
     throw new Error('account_invitation_template_revision_conflict');
   }
   if (input.accountInvitationTemplate) {

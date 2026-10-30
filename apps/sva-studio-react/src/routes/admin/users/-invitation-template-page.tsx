@@ -1,3 +1,4 @@
+import { MailTemplateSyncPanel } from '../instances/-mail-template-sync-panel';
 import * as React from 'react';
 import type { TenantAccountInvitationTemplateView } from '@sva/core';
 import { StudioLoadingState } from '@sva/studio-ui-react';
@@ -16,6 +17,7 @@ import {
 
 export const InvitationTemplatePage = () => {
   const [view, setView] = React.useState<TenantAccountInvitationTemplateView | null>(null);
+  const [syncFailed,setSyncFailed]=React.useState(false);
   const [loadFailed, setLoadFailed] = React.useState(false);
 
   React.useEffect(() => {
@@ -82,13 +84,24 @@ export const InvitationTemplatePage = () => {
           {t('admin.instances.invitation.loadFailed')}
         </p>
       ) : view ? (
+        <>
         <AccountInvitationTemplateEditorCard
           effectiveTemplate={view.effectiveTemplate}
           source={view.source}
           preview={{ tenantName: view.tenantName, tenantHomepageUrl: view.tenantHomepageUrl }}
           mode="instance"
+          onOpen={()=>{void getTenantAccountInvitationTemplate().then(response=>setView(response.data)).catch(()=>setSyncFailed(true));}}
+          synchronization={<>{syncFailed ? <p role="status">{t('admin.instances.mailSync.conflict')}</p> : null}{view.synchronization ? <MailTemplateSyncPanel view={view.synchronization} onReconcile={async operation => {
+          if(!view.synchronization)return;
+          try {
+            const response=await updateTenantAccountInvitationTemplate({operation,expectedRevision:view.revision,expectedStudioTexts:view.synchronization.studioTexts,expectedKeycloakTexts:view.synchronization.keycloakTexts??undefined});
+            setView(response.data);setSyncFailed(false);
+          } catch {setSyncFailed(true);}
+        }}/> : null}</>}
           onSave={save}
         />
+
+        </>
       ) : (
         <StudioLoadingState>{t('admin.instances.invitation.loading')}</StudioLoadingState>
       )}

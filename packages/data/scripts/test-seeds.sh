@@ -326,4 +326,10 @@ INSTANCE_PROVISIONING_INTEGRATION_DB="${TEST_DB_NAME}" \
     --testFiles=src/iam-baseline-persistence.integration.test.ts \
     --skip-nx-cache
 
+echo "Verify mail template migration compatibility, CAS and tenant isolation..."
+INSTANCE_PROVISIONING_INTEGRATION_DB="${TEST_DB_NAME}" \
+  pnpm nx run data-repositories:test:integration \
+    --testFiles=src/instance-registry/repository-mail-templates.postgres.integration.test.ts \
+    --skip-nx-cache
+
 echo "Seed idempotency integration test passed."

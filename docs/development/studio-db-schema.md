@@ -18,7 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
-- Finaler Soll-Snapshot zuletzt lokal regeneriert: `2026-10-29` (verbindlicher Main-Schema106-Ausgangsstand mit regulären Migrationen 0107–0110, einschließlich maschineller Standardebene; kanonisches `pg_dump --schema-only --no-owner --no-privileges`, keine neue Live-Erhebung)
+- Finaler Soll-Snapshot zuletzt lokal regeneriert: `2026-10-30` (verbindlicher Main-Schema106-Ausgangsstand mit regulären Migrationen 0107–0110, einschließlich maschineller Standardebene und Migration 0111 für Mailvorlagen; kanonisches `pg_dump --schema-only --no-owner --no-privileges`, keine neue Live-Erhebung)
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung
@@ -152,11 +152,21 @@ Konvergenznachweis der SSF-IAM-Projektion:
 Die generische Instanz-Registry speichert in `iam.instances.time_zone` die
 Tenant-Zeitzone. Bestehende und zunächst nicht individuell konfigurierte
 Instanzen verwenden `Europe/Berlin`; Runtime-Verbraucher validieren den Wert
-zusätzlich als IANA-Zeitzone. Die optionale JSONB-Spalte
-`iam.instances.account_invitation_template` hält ausschließlich die typisierte,
-revisionsgebundene Individualvorlage. Speichern und Reset bleiben DB-only; die
-wirksamen Realmwerte werden erst unmittelbar vor einem Einladungsversand
-bedarfsgesteuert sichergestellt. `iam.instances.tenant_admin_adopt_existing`
+zusätzlich als IANA-Zeitzone. Die Tabelle
+`iam.instance_mail_templates` hält seit Migration `0111` die aktuelle Studio-Vorlage
+für Einladung und E-Mail-Bestätigung je Instanz. Die bisherige JSONB-Spalte
+`iam.instances.account_invitation_template` bleibt nach datenbewahrender Übernahme
+befristeter Kompatibilitätseingang. Ein Invoker-Trigger übernimmt alte Writes atomar;
+`iam.save_instance_invitation_template(...)` sperrt für neue Writes zuerst die Instanz,
+prüft die gemeinsame Revision und nutzt denselben Eingang. So bleibt die alte App
+nach Up und bei einem App-Rollback ohne Down lauffähig. Metadatenwrites bleiben
+triggerfrei. Erst nach dem nachgewiesenen Ende alter App- und Rollback-Versionen
+werden Brücke und Spalte in einem separat freigegebenen Contract-Schritt entfernt. Eine fortlaufende Revision schützt auch Reset-Vorgänge; der aktuelle
+Synchronisierungsstatus und der letzte bestätigte Realm-Textsatz sind getrennt
+von der gespeicherten Quelle. Dies ist keine Versionshistorie. Ein fehlgeschlagener
+Keycloak-Write lässt die vorher bestätigte Projektion und die neue Studio-Quelle
+bestehen. Bestandseinträge starten als `unreviewed` und benötigen einen bewussten
+Abgleich. RLS begrenzt Tenant-Zugriffe auf die eigene Instanz. `iam.instances.tenant_admin_adopt_existing`
 speichert ein explizites Opt-in zur Übernahme eines unmarkierten Tenant-Admins
 nach exaktem Username- und E-Mail-Abgleich. Der Standard ist `false`; andere
 Studio- oder fremde Ownership-Marker sperren die Übernahme. Migration `0105`
@@ -169,24 +179,33 @@ Realm-Zugehörigkeit prüfen, jeder betroffenen Instanz einen eindeutigen Realm
 zuordnen und die Migration erneut starten; eine automatische Umbenennung oder
 Löschung wäre fachlich nicht sicher.
 
-`iam.server_account_invitation_templates` hält ausschließlich den
-plattformweiten Account-Einladungs-Override. Die optionale Spalte
-`default_purpose` wählt für neue Accounts `studio` oder `ssf`; `NULL` bedeutet
-den bisherigen Studio-Standard. `iam.accounts.invitation_purpose` speichert
-den Zweck je Account für den erneuten Versand unabhängig von späteren
-Standardänderungen. Der Check-Constraint begrenzt den
-Schlüssel auf `account_invitation` und bindet die JSON-Revision an die separate,
-auch nach einem Reset fortlaufende Revision. Erzwungene RLS stellt die globale
-Vorlage auch in tenant-bezogenen Lesevorgängen für die Vererbung bereit;
-Schreibzugriffe bleiben auf den Plattformkontext ohne gesetzte
-`iam.current_instance_id()` begrenzt.
+`iam.server_account_invitation_templates` hält unter seinem historischen Namen
+beide allgemeinen Vorlagen: `account_invitation` und seit Migration `0111`
+`email_verification`. Die Migration erhält den vorhandenen Einladungsdatensatz
+und seine Revision unverändert; die neue Bestätigungszeile beginnt mit `template = NULL`
+und Revision 0, also dem neutralen eingebauten Standard. Allgemeine und
+Instanzvorlagen werden nicht ineinander kopiert: Ein nicht leerer Instanz-Override
+hat Vorrang, `NULL` erbt die aktuelle allgemeine Vorlage. Deren `NULL` verwendet
+den eingebauten Standard. Reset erhöht die jeweilige Revision weiter.
+Die Shape-Constraints unterscheiden Einladung mit Linkbeschriftungen und
+Bestätigung mit Betreff/Nachricht. Nur bei der Einladung bleibt die JSON-Revision
+an die separate Revision gebunden.
+
+Die optionale Spalte `default_purpose` wählt für neue Accounts `studio` oder `ssf`;
+`NULL` bedeutet den bisherigen Studio-Standard. `iam.accounts.invitation_purpose`
+speichert den Zweck je Account für den erneuten Versand unabhängig von späteren
+Standardänderungen. Erzwungene RLS erlaubt das Lesen allgemeiner Vorlagen im
+Tenant-Kontext für die Vererbung; globale Schreibzugriffe bleiben auf den
+Plattformkontext ohne gesetzte `iam.current_instance_id()` begrenzt. Ein globaler
+Save committet vor dem Abgleich und aktualisiert nur aktuell erbende Instanzen;
+die Override-Prüfung erfolgt unter deren bestehender Transaktionssperre.
 Migration `0100` gibt der vorhandenen, nicht erbenden Standalone-App-Rolle
 `sva_app` die für Lesen und Aktualisieren dieser Tabelle erforderlichen Rechte.
 Der strukturelle Soll-Snapshot ändert sich nicht, da er ohne ACLs erzeugt wird.
 Migration `0102` ergänzt die Tenant-Permission `iam.invitationTemplate.manage`
 für bestehende Instanzen und weist sie deren `system_admin`-Rolle zu.
-Die Instanzvorlage bleibt in `iam.instances.account_invitation_template`;
-es wird keine neue Vorlagentabelle angelegt.
+Die Instanzvorlage wurde durch Migration `0111` in den gemeinsamen Bestand
+`iam.instance_mail_templates` überführt; die serverweite Vererbung gilt für beide Mailanlässe.
 
 Migration `0095` erzwingt pro Keycloak-Provisioning-Lauf höchstens einen
 `queued`-Schritt. Vor dem Indexaufbau behält sie bei historischen Duplikaten

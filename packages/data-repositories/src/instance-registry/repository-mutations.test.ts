@@ -468,6 +468,7 @@ describe('instance registry mutation result and error contracts', () => {
       tenantHomepageLinkLabel: 'Zur Startseite',
     } as const;
     const { executor, statements } = createQueuedExecutor([
+      [{instance_id:'tenant-a',template_kind:'invitation',revision:3,template,sync_status:'pending',confirmed_realm:null,confirmed_texts:null}],
       [{ ...instanceRow, account_invitation_template: template }],
     ]);
 
@@ -480,7 +481,7 @@ describe('instance registry mutation result and error contracts', () => {
       })
     ).resolves.toMatchObject({ accountInvitationTemplate: template });
 
-    expect(statements[0]?.text).toContain("account_invitation_template ->> 'revision'");
+    expect(statements[0]?.text).toContain('iam.save_instance_invitation_template($1,$2,$3::jsonb,$4)');
     expect(statements[0]?.values).toStrictEqual([
       'tenant-a',
       2,

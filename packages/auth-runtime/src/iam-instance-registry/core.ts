@@ -1,3 +1,4 @@
+import { synchronizeMailTemplate, synchronizeInheritedMailTemplates } from './mail-template-sync.js';
 import {
   asApiItem,
   asApiList,
@@ -146,13 +147,27 @@ export const updateInstanceInternal = async (
   request: Request,
   ctx: RegistryRequestContext
 ): Promise<Response> => {
-  return instanceHttpHandlers.updateInstance(request, ctx);
+  const response = await instanceHttpHandlers.updateInstance(request, ctx);
+  if (response.ok) {
+    const id = new URL(request.url).pathname.split('/')[5];
+    if (id) for (const kind of ['invitation', 'verification'] as const) {
+      try { await synchronizeMailTemplate(decodeURIComponent(id), kind, ctx.user.id); }
+      catch { logger.warn('Saved instance mail template remains pending', { operation: 'mail_template_sync', kind }); }
+    }
+  }
+  return response;
 };
 
 export const updateServerAccountInvitationTemplateInternal = async (
   request: Request,
   ctx: RegistryRequestContext
-): Promise<Response> => instanceHttpHandlers.updateServerAccountInvitationTemplate(request, ctx);
+): Promise<Response> => {
+  const response = await instanceHttpHandlers.updateServerAccountInvitationTemplate(request, ctx);
+  if (!response.ok) return response;
+  const unsynchronized = await synchronizeInheritedMailTemplates('invitation',ctx.user.id);
+  const body = await response.json();
+  return Response.json({ ...body, data: { ...body.data, unsynchronizedInstances: unsynchronized } }, { status: response.status, headers: response.headers });
+};
 
 export const activateInstanceInternal = async (
   request: Request,

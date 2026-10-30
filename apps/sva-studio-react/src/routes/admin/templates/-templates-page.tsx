@@ -1,3 +1,4 @@
+import { EmailVerificationTemplateCard } from '../instances/-email-verification-template-card';
 /** Server-wide text template administration for the Studio installation. */
 import * as React from 'react';
 import type { AccountInvitationPurpose, ServerAccountInvitationTemplateView } from '@sva/core';
@@ -111,6 +112,7 @@ export const TemplatesPage = () => {
           {t('admin.instances.invitation.pageDescription')}
         </p>
       </header>
+      {template?.unsynchronizedInstances?.length ? <p role="status">{t('admin.instances.mailSync.savedPending')} {template.unsynchronizedInstances.join(', ')}</p> : null}
       {loadFailed ? (
         <p role="status" className="text-sm text-destructive">
           {t('admin.instances.invitation.loadFailed')}
@@ -159,6 +161,7 @@ export const TemplatesPage = () => {
       ) : (
         <StudioLoadingState>{t('admin.instances.invitation.loading')}</StudioLoadingState>
       )}
+      <EmailVerificationTemplateCard mode="server"/>
     </div>
   );
 };

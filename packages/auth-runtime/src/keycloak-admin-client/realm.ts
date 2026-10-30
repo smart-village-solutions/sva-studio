@@ -179,6 +179,15 @@ export class KeycloakRealmOperations extends KeycloakTransport {
     });
   }
 
+  async getEffectiveRealmEmailMessages(locale: string): Promise<Readonly<Record<string, string>>> {
+    const messages = await this.executeWithResilience<readonly { key: string; value: string }[]>({
+      method: 'GET',
+      path: `/resources/${encodePathSegment(this.realm)}/email/${encodePathSegment(locale)}`,
+      operation: 'get_effective_realm_email_messages',
+    });
+    return Object.fromEntries(messages.map(({ key, value }) => [key, value]));
+  }
+
   async updateRealmLocalizationTexts(
     locale: string,
     texts: Readonly<Record<string, string>>

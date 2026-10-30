@@ -7,9 +7,12 @@ const state = vi.hoisted(() => {
     createInstance: vi.fn(async () => new Response('create')),
     retryTenantProvisioning: vi.fn(async () => new Response('retry')),
     updateInstance: vi.fn(async () => new Response('update')),
+    updateServerAccountInvitationTemplate: vi.fn(async()=>Response.json({data:{revision:1}})),
   };
 
   return {
+    synchronizeInheritedMailTemplates:vi.fn<()=>Promise<readonly string[]>>(async()=>[]),
+    synchronizeMailTemplate: vi.fn(async()=>({status:'synced'})),
     asApiItem: vi.fn(),
     asApiList: vi.fn(),
     createApiError: vi.fn(),
@@ -61,6 +64,7 @@ const state = vi.hoisted(() => {
   };
 });
 
+vi.mock('./mail-template-sync.js',()=>({synchronizeMailTemplate:state.synchronizeMailTemplate,synchronizeInheritedMailTemplates:state.synchronizeInheritedMailTemplates}));
 vi.mock('../iam-account-management/api-helpers.js', () => ({
   asApiItem: state.asApiItem,
   asApiList: state.asApiList,
@@ -193,6 +197,28 @@ describe('iam-instance-registry core handlers', () => {
     expect(state.handlers.createInstance).toHaveBeenCalledWith(request, ctx);
     expect(state.handlers.retryTenantProvisioning).toHaveBeenCalledWith(request, ctx);
     expect(state.handlers.updateInstance).toHaveBeenCalledWith(request, ctx);
+  });
+
+  it('synchronizes both kinds only after a successful saved instance response',async()=>{
+    const subject=await import('./core.js');
+    const request=new Request('https://studio.example/api/v1/iam/instances/hvl');
+    const ctx={user:{id:'admin'}} as never;
+    state.synchronizeMailTemplate.mockRejectedValueOnce(new Error('provider unavailable'));
+    const response=await subject.updateInstanceInternal(request,ctx);
+    expect(response.status).toBe(200);
+    expect(state.synchronizeMailTemplate).toHaveBeenCalledWith('hvl','invitation','admin');
+    expect(state.synchronizeMailTemplate).toHaveBeenCalledWith('hvl','verification','admin');
+    state.synchronizeMailTemplate.mockClear();state.handlers.updateInstance.mockResolvedValueOnce(new Response(null,{status:409}));
+    await subject.updateInstanceInternal(request,ctx);expect(state.synchronizeMailTemplate).not.toHaveBeenCalled();
+  });
+
+  it('synchronizes inherited global invitations and reports failures without losing the save',async()=>{
+    const subject=await import('./core.js');
+    state.synchronizeInheritedMailTemplates.mockResolvedValueOnce(['a']);
+    const response=await subject.updateServerAccountInvitationTemplateInternal(new Request('https://studio.example/api/v1/iam/templates/account-invitation'),{user:{id:'admin'}} as never);
+    expect(response.status).toBe(200);
+    expect((await response.json()).data).toMatchObject({revision:1,unsynchronizedInstances:['a']});
+    expect(state.synchronizeInheritedMailTemplates).toHaveBeenCalledWith('invitation','admin');
   });
 
   it('persists safe evidence when the post-create wake-up fails', async () => {

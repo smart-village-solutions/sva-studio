@@ -1,3 +1,4 @@
+import { createMailTemplateRepository } from './repository-mail-templates.js';
 import type { SqlExecutor } from '../iam/repositories/types.js';
 
 import { createConfirmationChallengeRepository } from './repository-confirmation-challenges.js';
@@ -39,6 +40,7 @@ export const createInstanceRegistryRepository = (
 ): InstanceRegistryRepository => {
   const permissionCacheRevisions = createPermissionCacheRevisionRepository(executor);
   return {
+    ...createMailTemplateRepository(executor),
     ...createConfirmationChallengeRepository(executor),
     ...createReadRepository(executor),
     ...createModuleIamRepository(executor),

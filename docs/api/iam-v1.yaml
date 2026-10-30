@@ -1838,7 +1838,8 @@ paths:
       summary: Einladungsvorlage des Mandanten lesen
       responses: { default: { description: 'Antwort des Endpunkts.' } }
     patch:
-      summary: Einladungsvorlage des Mandanten ändern
+      summary: Einladungsvorlage des Mandanten speichern oder abgleichen
+      description: Dieselben save-, transfer- und adopt-Operationen im Session-Tenant mit iam.invitationTemplate.manage. Bestehende Requests ohne operation bleiben save-Requests. Antworten enthalten synchronization mit Studio-/Keycloak-Vergleich.
       responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/organizations/{organizationId}/provision-mainserver:
     parameters: [{ name: organizationId, in: path, required: true, schema: { type: string } }]
@@ -1849,6 +1850,90 @@ paths:
     get:
       summary: Verfügbare Keycloak-Rollen lesen
       responses: { default: { description: 'Antwort des Endpunkts.' } }
+  /api/v1/iam/instances/{instanceId}/keycloak/mail-templates/{templateKind}:
+    parameters:
+      - { name: instanceId, in: path, required: true, schema: { type: string } }
+      - { name: templateKind, in: path, required: true, schema: { type: string, enum: [invitation, verification] } }
+    get:
+      summary: Studio-Vorlage mit den wirksamen deutschen Keycloak-Texten vergleichen
+      description: Root-Plattformadministration beziehungsweise instance.update. Gibt gespeicherte Quelle mit Revision, aufgelöste Vorlage, source (instance, server oder sva_default), studioTexts, keycloakTexts, status, realm, Kommunenkontext und canAdopt zurück. Bei Keycloak-Ausfall bleibt der Studio-Stand lesbar; keycloakTexts ist null und status failed. Keine externen Schreibzugriffe.
+      responses:
+        '200': { description: Gespeicherte Vorlage und aktueller Vergleich im API-Item-Format. }
+        default: { description: Zugriff verweigert, Instanz fehlt oder Datenbank nicht verfügbar. }
+    patch:
+      summary: Studio-Vorlage speichern und synchronisieren oder Abweichungen auflösen
+      description: Session-CSRF und frische Reauthentisierung erforderlich. save persistiert die validierte Quelle vor der Synchronisierung; eine fehlgeschlagene Übertragung bleibt als nicht synchronisiert sichtbar. transfer und adopt vergleichen Revision sowie beide Textsnapshots erneut. Nur die drei zum Anlass gehörigen deutschen Schlüssel werden übertragen und zurückgelesen. SMTP und Themes bleiben unverändert; keine Mail wird versendet. Die Snapshot-Prüfung ersetzt keine atomare Keycloak-CAS-Garantie.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [operation, expectedRevision]
+              properties:
+                operation: { type: string, enum: [save, transfer, adopt] }
+                expectedRevision: { type: integer, minimum: 0 }
+                template:
+                  type: object
+                  nullable: true
+                  description: Bei save erforderlich. null entfernt den Instanz-Override und verwendet wieder die aktuelle allgemeine Vorlage (beziehungsweise deren eingebauten Fallback). Einladung enthält zusätzlich revision und beide Linkbeschriftungen.
+                  required: [subject, body]
+                  properties:
+                    subject: { type: string, maxLength: 200 }
+                    body: { type: string, maxLength: 5000 }
+                    revision: { type: integer, minimum: 0 }
+                    passwordSetupLinkLabel: { type: string, maxLength: 120 }
+                    tenantHomepageLinkLabel: { type: string, maxLength: 120 }
+                expectedStudioTexts:
+                  type: object
+                  additionalProperties: { type: string }
+                  description: Für transfer und adopt erforderlich.
+                expectedKeycloakTexts:
+                  type: object
+                  additionalProperties: { type: string }
+                  description: Für transfer und adopt erforderlich.
+      responses:
+        '200': { description: Studio-Stand gespeichert oder abgeglichen; status zeigt den tatsächlichen Synchronisierungsstand. }
+        '400': { description: Ungültiger Text, fehlender Snapshot oder nicht verlustfrei übernehmbare Keycloak-Fassung. }
+        '403': { description: Plattformzugriff, CSRF oder frische Reauthentisierung fehlen. }
+        '409': { description: Studio-Revision oder Vergleichssnapshots veraltet. }
+        '503': { description: Datenbank oder Abgleich nicht verfügbar; kein bestätigter Transfer. }
+  /api/v1/iam/templates/email-verification:
+    get:
+      summary: Allgemeine deutsche Bestätigungsvorlage lesen
+      description: Root-Plattformadministration beziehungsweise instance.update. Antwort enthält revision, die wirksame template mit subject/body und source (server oder sva_default). Instanz-Overrides bleiben getrennt.
+      responses:
+        '200': { description: Allgemeine Vorlage im API-Item-Format. }
+        default: { description: Kein Zugriff oder allgemeine Vorlage nicht verfügbar. }
+    patch:
+      summary: Allgemeine Bestätigungsvorlage speichern und erbende Instanzen abgleichen
+      description: Erfordert Root-Plattformzugriff beziehungsweise instance.update, Session-CSRF und Fresh-Reauth. Quelle wird zuerst mit CAS gespeichert; anschließend werden nur Instanzen ohne Override unter ihrer Instanzsperre abgeglichen. Antwort enthält unsynchronizedInstances für fehlgeschlagene oder nicht bestätigte Abgleiche (bei fehlender Instanzliste ein Stern). Extern abweichende Texte werden nicht automatisch überschrieben. Kein Mailversand; Einladungsdaten und Overrides bleiben unverändert.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedRevision, template]
+              properties:
+                expectedRevision: { type: integer, minimum: 0 }
+                template:
+                  type: object
+                  nullable: true
+                  additionalProperties: false
+                  required: [subject, body]
+                  description: null setzt die allgemeine Vorlage auf den neutralen eingebauten Standard zurück; Instanz-Overrides werden dabei nicht entfernt.
+                  properties:
+                    subject: { type: string, maxLength: 200 }
+                    body: { type: string, maxLength: 5000 }
+      responses:
+        '200': { description: Allgemeine Vorlage gespeichert; unsynchronizedInstances nennt offene Instanzen. }
+        '400': { description: Vorlage oder Eingaben ungültig. }
+        '403': { description: Zugriff, CSRF oder Fresh-Reauth fehlen. }
+        '409': { description: Allgemeine Vorlagenrevision wurde zwischenzeitlich geändert. }
+        '503': { description: Allgemeine Vorlage konnte nicht gelesen oder gespeichert werden. }
   /api/v1/iam/templates/account-invitation:
     get:
       summary: Zentrale Kontoeinladungsvorlage lesen

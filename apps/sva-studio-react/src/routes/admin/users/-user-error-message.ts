@@ -19,6 +19,7 @@ const staticErrorCodeMap: Record<string, () => string> = {
   tenant_admin_client_not_configured: () => t('admin.users.errors.tenantAdminClientNotConfigured'),
   tenant_admin_client_secret_missing: () => t('admin.users.errors.tenantAdminClientSecretMissing'),
   keycloak_unavailable: () => t('admin.users.errors.keycloakUnavailable'),
+  invitation_template_not_synchronized: () => t('admin.instances.mailSync.blocked'),
   database_unavailable: () => t('admin.users.errors.databaseUnavailable'),
   mainserver_configuration_incomplete: () => t('admin.users.errors.mainserverConfigurationIncomplete'),
   mainserver_credentials_missing: () => t('admin.users.errors.mainserverCredentialsMissing'),

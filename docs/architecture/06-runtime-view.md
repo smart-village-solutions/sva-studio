@@ -1489,15 +1489,14 @@ Ein angegebener Fremd-Instanzparameter wird abgewiesen.
 1. Ein Plattformadministrator speichert unter `/admin/templates` die
    Servervorlage oder an der Instanz eine abweichende Vorlage zusammen mit der
    zuletzt gelesenen Revision. Ein Reset entfernt nur den jeweiligen Override.
-2. Der Server validiert Platzhalter und Freitext und persistiert ausschließlich
-   den Studio-Sollzustand. Dabei erfolgt kein Keycloak-Aufruf.
-3. Für einen konkreten Versand löst die Auth-Runtime genau eine wirksame
-   Vorlage in der Reihenfolge Instanzvorlage, Servervorlage, SVA-Standard auf
-   und kompiliert Tenantname sowie die aus `primaryHostname` abgeleitete
-   HTTPS-Startseite in drei Keycloak-Nachrichten.
-4. Unmittelbar vor Create-Einladung und Resend liest der Tenant-Admin-Client
-   E-Mail-Theme und Realmtexte. Bei Abweichung setzt er `emailTheme = sva-kern2`
-   und schreibt ausschließlich die drei verwalteten deutschen Werte.
+2. Der Server validiert Platzhalter und Freitext und committet zuerst den
+   Studio-Sollzustand; danach läuft der gemeinsame Keycloak-Abgleich.
+3. Die Auth-Runtime löst Instanzvorlage, Servervorlage oder SVA-Standard auf und
+   kompiliert Kommunennamen sowie die HTTPS-Startseite aus `primaryHostname` in
+   drei deutsche Keycloak-Texte. Globale Änderungen erreichen erbende Instanzen.
+4. Unmittelbar vor Create-Einladung und Resend erfolgt ausschließlich der aktuelle
+   lesende Vergleich. Abweichung oder ein nicht bestätigter Abgleich blockieren
+   den Versand; weder Theme noch Texte werden dabei überschrieben.
 5. Die Auth-Runtime wählt aus dem am Account gespeicherten
    Einladungszweck das Client-/Redirect-Paar. Für `studio` bleibt der
    Instanz-Callback erhalten. Für `ssf` muss der `ssf-frontend`-Client im
@@ -1515,9 +1514,9 @@ Fehlerpfad:
   die konkrete E-Mail. Ein bereits angelegter Account bleibt bestehen.
 - Fehlende oder ungültige SSF-Client-Konfiguration stoppt den Versand vor
   `execute-actions-email` und liefert einen sichtbaren Einladungsfehler.
-- Es gibt keinen globalen Projektionsstatus, keinen Fan-out beim Speichern und
-  keinen separaten Retry-Workflow; der nächste Versand stellt erneut
-  idempotent sicher.
+- Fehler beim Abgleich bleiben je Vorlage sichtbar; eine globale Speicherung
+  meldet nicht synchronisierte Instanzen. Die Behebung erfolgt ausdrücklich in
+  der Vorlagenverwaltung. Ein erneuter Versand ist kein Reparaturpfad.
 
 ## SSF-Sprachkatalog in der Inhaltsverwaltung
 
@@ -1597,3 +1596,29 @@ Bei `stale_mainserver_context` verwirft das SDK das betroffene Context-Binding. 
 ## Atomare Änderung einer Waste-Tour mit Fraktionen
 
 Der vorhandene Repository-Upsert ruft `upsert_waste_tour(...)` auf. Die DB-Funktion schreibt und sperrt zuerst die Tour; nach Abschluss ihrer Trigger ersetzt sie über `replace_waste_tour_fractions(...)` die geordneten Fraktionszuordnungen. Ein Fehler rollt beide Schritte einschließlich der Mainserver-Quellrevision zurück. Parallele Änderungen derselben Tour werden über die Tourzeile serialisiert; Bulk-Jahresübernahmen schreiben nach Tour-ID sortiert. Fremdschlüssel verhindern auch bei konkurrierendem Löschen einer Fraktion verwaiste Referenzen. Während Expand führt der alte Array-Write denselben Zuordnungsersatz per Trigger aus. Nach Contract bleiben die Signaturen der neuen Verbraucher unverändert.
+
+### Studio-Mailvorlagen speichern und mit Keycloak abgleichen
+
+1. Die autorisierte API speichert Quelle und erhöhte Revision in einer eigenen
+   Transaktion. Auch ein Reset erhöht die Revision.
+2. Danach liest der instanzgebundene Abgleich unter dem vorhandenen Advisory-Lock
+   aktuellen Studio-Kontext und effektive Keycloak-Texte. Nur identische Texte
+   oder ein unveränderter zuletzt bestätigter Zielstand erlauben den automatischen
+   Abgleich. Ohne sichere Ausgangsbasis erfolgt keine Überschreibung.
+3. Ein Transfer schreibt genau drei deutsche Schlüssel und bestätigt durch
+   Rücklesen. Fehler behalten die Studio-Quelle; der Status bleibt nicht synchronisiert.
+4. GET vergleicht beide Stände ohne Schreibzugriff. Übernehmen und Übertragen
+   prüfen Quellrevision sowie beide Snapshots erneut. Eine nicht verlustfrei
+   importierbare HTML-Fassung bleibt sichtbar und wird nicht stillschweigend reduziert.
+5. Instanzänderungen aktualisieren beide Projektionen; Änderungen einer allgemeinen Vorlage
+   aktualisieren ausschließlich die beim Erwerb der Instanzsperre noch erbenden
+   Instanzen des jeweiligen Anlasses. Reset eines Overrides verwendet die aktuelle
+   allgemeine Vorlage. Ein allgemeiner Reset verwendet den eingebauten Standard. Es gibt keinen Abgleich beim Versand.
+6. Create-Einladung und Resend prüfen den aktuellen Abgleich lesend. Bei Abweichung,
+   Ausfall oder nicht bestätigtem Fehler blockiert der Versand mit Behebungslink.
+   Ein bislang ungeprüfter Bestand, der beim aktuellen Lesen exakt dem Studio-Soll
+   entspricht, kann ohne externes Schreiben weiter verwendet werden.
+
+Der Main-Server verwendet für bestehende Registrierung und Adressänderung
+`send-verify-email`; Einladung, Passwort-Reset und Absender bleiben in ihren
+bisherigen Abläufen. Live-Mail-/Linktests sind ein getrennt freizugebender Rolloutschritt.

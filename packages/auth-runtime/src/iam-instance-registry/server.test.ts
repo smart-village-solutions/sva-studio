@@ -32,6 +32,13 @@ vi.mock('@sva/server-runtime', () => ({
   withRequestContext: state.withRequestContext,
 }));
 
+vi.mock('./email-verification-template.js', () => ({
+  serverEmailVerificationTemplateInternal: vi.fn(async()=>new Response(null,{status:200})),
+  emailVerificationTemplateInternal: vi.fn(
+    async () => new Response('verification', { status: 200 })
+  ),
+}));
+
 vi.mock('../middleware.js', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
 }));
@@ -154,6 +161,19 @@ describe('iam-instance-registry/server', () => {
     state.resolvePluginTenantLifecycleServiceAction.mockResolvedValue(
       'instance.pluginLifecycle.reconcile'
     );
+  });
+
+  it.each([['GET','emailVerificationTemplate'],['PATCH','emailVerificationTemplate'],['GET','serverEmailVerificationTemplate'],['PATCH','serverEmailVerificationTemplate']] as const)('binds %s %s to instance.update', async (method,handler) => {
+    const request = new Request(
+      'https://studio.example.org/api/v1/iam/instances/bb-havelland/keycloak/email-verification-template',
+      { method, headers: { authorization: 'Bearer signed-token' } }
+    );
+    expect((await instanceRegistryHandlers[handler](request)).status).toBe(200);
+    expect(state.authenticateRegistryServiceToken).toHaveBeenCalledWith(
+      'signed-token',
+      'instance.update'
+    );
+    expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
   });
 
   it('gives Bearer authentication precedence and binds the route action statically', async () => {
@@ -442,9 +462,9 @@ describe('iam-instance-registry/server', () => {
       )
     );
 
-    expect(responses).toHaveLength(30);
+    expect(responses).toHaveLength(32);
     expect(responses.every((response) => response.status === 200)).toBe(true);
-    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(30);
+    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(32);
     expect(state.prepareInstanceConfirmationInternal).toHaveBeenCalledOnce();
   });
 });

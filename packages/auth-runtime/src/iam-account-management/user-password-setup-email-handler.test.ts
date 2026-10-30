@@ -2,6 +2,7 @@ import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  readMailTemplate: vi.fn(),
   getWorkspaceContext: vi.fn(() => ({ requestId: 'req-1' })),
   resolveUserMutationActor: vi.fn(),
   requireUserId: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
   };
 });
 
+vi.mock('../iam-instance-registry/mail-template-sync.js',()=>({readMailTemplate:state.readMailTemplate}));
 vi.mock('../db.js', () => ({
   jsonResponse: (status: number, payload: unknown) =>
     new Response(JSON.stringify(payload), {
@@ -102,6 +104,7 @@ vi.mock('./user-detail-query.js', () => ({
 describe('sendPasswordSetupEmailInternal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.readMailTemplate.mockResolvedValue({status:'synced'});
     state.resolveInvitationDestination.mockResolvedValue({
       clientId: 'sva-studio',
       redirectUri: 'https://tenant.example.test/auth/callback',
@@ -243,6 +246,7 @@ describe('sendPasswordSetupEmailInternal', () => {
   });
 
   it('blocks resend when the custom invitation projection has drifted', async () => {
+    state.readMailTemplate.mockResolvedValue({status:'drift'});
     state.resolveAuthConfigForInstance.mockResolvedValue({
       clientId: 'sva-studio',
       redirectUri: 'https://tenant.example.test/auth/callback',
@@ -282,7 +286,8 @@ describe('sendPasswordSetupEmailInternal', () => {
       }
     );
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe('invitation_template_not_synchronized');
     expect(executeActionsEmail).not.toHaveBeenCalled();
   });
 

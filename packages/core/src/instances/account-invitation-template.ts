@@ -24,6 +24,7 @@ export type ServerAccountInvitationTemplateState = Readonly<{
 }>;
 
 export type ServerAccountInvitationTemplateView = Readonly<{
+  unsynchronizedInstances?: readonly string[];
   revision: number;
   effectiveTemplate: AccountInvitationTemplate;
   source: Extract<AccountInvitationTemplateSource, 'server' | 'sva_default'>;

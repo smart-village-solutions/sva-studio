@@ -142,7 +142,9 @@ export const emitPasswordSetupEmailFailureAudit = async (input: {
 };
 
 export const buildPasswordSetupEmailFailureResponse = (error: unknown, requestId?: string) =>
-  error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError
+  error instanceof KeycloakAdminRequestError && error.code === 'account_invitation_template_drift'
+    ? jsonResponse(409, { error: { code: 'invitation_template_not_synchronized', message: error.message }, ...(requestId ? { requestId } : {}) })
+    : error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError
     ? buildKeycloakUnavailableResponse(requestId)
     : error instanceof Error &&
         (error.message === 'ssf_invitation_destination_unavailable' ||

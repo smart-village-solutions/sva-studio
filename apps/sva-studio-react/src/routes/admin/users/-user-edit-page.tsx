@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import {
   Button,
   getStudioFormFieldProps,
@@ -177,13 +178,14 @@ export const UserEditPage = ({
           {mutationError ? (
             <StudioPersistentFormError
               message={userErrorMessage(mutationError, 'mutation')}
-              details={<IamRuntimeDiagnosticDetails error={mutationError} />}
+              details={<><IamRuntimeDiagnosticDetails error={mutationError}/>{mutationError.code === 'invitation_template_not_synchronized' ? <Link to="/admin/users/invitation-template">{t('admin.instances.mailSync.remedy')}</Link>:null}</>}
             />
           ) : null}
           {invitationStatus === 'failed' ? (
             <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
               <AlertDescription>
-                {invitationErrorMessage ?? t('admin.users.edit.invitationWarning')}
+                <span>{invitationErrorMessage ?? t('admin.users.edit.invitationWarning')}</span>
+                <Link to="/admin/users/invitation-template" className="ml-2 underline">{t('admin.instances.mailSync.remedy')}</Link>
               </AlertDescription>
             </Alert>
           ) : null}

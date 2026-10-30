@@ -51,6 +51,65 @@ export const instancesAdminDEResources = {
   help: helpInstancesAdminDEResources,
   history: historyInstancesAdminDEResources,
   instanceModules: instanceModulesInstancesAdminDEResources,
+  mailSync: {
+    remedy: 'Einladungsvorlage und Keycloak-Abgleich öffnen',
+    "title": "Vorlagenabgleich mit Keycloak",
+    "blocked": "Einladungsversand ist gesperrt, bis die Einladungsvorlage abgeglichen ist.",
+    "compare": "Studio und Keycloak vergleichen",
+    "studio": "Gespeicherter Studio-Stand",
+    "keycloak": "Aktueller Keycloak-Stand",
+    "unavailable": "Keycloak ist derzeit nicht erreichbar.",
+    "unsupported": "Die Keycloak-Fassung lässt sich nicht verlustfrei in den Texteditor übernehmen. Bitte die HTML-Fassung prüfen und den gewünschten Studio-Stand ausdrücklich übertragen.",
+    "adopt": "Keycloak-Stand übernehmen",
+    "transfer": "Studio-Stand übertragen",
+    "adoptConfirm": "Den gespeicherten Studio-Stand durch den angezeigten Keycloak-Stand ersetzen?",
+    "transferConfirm": "Die angezeigten Keycloak-Texte durch den Studio-Stand ersetzen?",
+    "open": "Keycloak-Abgleich öffnen / aktualisieren",
+    "loadFailed": "Der Abgleich konnte nicht geladen werden. Bitte erneut versuchen.",
+    "conflict": "Der Stand hat sich geändert oder konnte nicht bestätigt werden. Bitte den Abgleich neu öffnen. Ihr Entwurf bleibt erhalten.",
+    "savedPending": "Im Studio gespeichert, aber nicht synchronisiert. Bitte den Keycloak-Abgleich prüfen.",
+    "status": {
+        "unreviewed": "Noch nicht abgeglichen",
+        "pending": "Nicht synchronisiert",
+        "synced": "Synchronisiert und durch Rücklesen bestätigt",
+        "failed": "Synchronisierung nicht bestätigt",
+        "drift": "Externe Abweichung erkannt"
+    }
+},
+  emailVerification: {
+    serverTitle: 'Allgemeine E-Mail-Bestätigung',
+    serverDescription: 'Dieser Standard gilt für Instanzen ohne eigenen Override. Speichern synchronisiert nur erbende Instanzen; eigene Vorlagen bleiben erhalten. Es wird keine E-Mail versendet.',
+    serverSaved: 'Allgemeine Vorlage gespeichert. Erbende Instanzen wurden abgeglichen.',
+    resetServerConfirm: 'Die allgemeine Bestätigungsvorlage auf den neutralen eingebauten Standard zurücksetzen?',
+    resetInstance: 'Allgemeine Vorlage verwenden',
+
+    reauthRequired:
+      'Bitte erneut anmelden und die Vorlage danach neu öffnen. Ihr Entwurf bleibt bis dahin erhalten.',
+    currentTexts: 'Zwischenzeitlich gespeicherte Texte',
+    title: 'E-Mail-Adresse bestätigen',
+    open: 'Bestätigungsvorlage anpassen',
+    description:
+      'Diese deutschen Texte gelten für Registrierung und Adressänderung. Die Vorlage wird im Studio gespeichert und mit dem Keycloak-Realm abgeglichen. Es wird keine E-Mail versendet.',
+    realm: 'Ziel-Realm: {{realm}}',
+    tokens:
+      'Im Nachrichtentext: {{tenantName}}, {{verificationLink}}, {{linkExpiresIn}}. Der Bestätigungslink muss genau einmal vorkommen. Keine Platzhalter im Betreff, kein HTML und keine freien URLs.',
+    previewLink: '[E-Mail-Adresse bestätigen]',
+    htmlWarning:
+      'Die vorhandene HTML-Fassung weicht von der automatisch erzeugten Darstellung ab. Beim Speichern wird sie aus dem Nachrichtentext neu erzeugt.',
+    existingHtml: 'Vorhandene HTML-Fassung ansehen',
+    replaceHtml: 'Vorhandene HTML-Fassung bewusst ersetzen',
+    loadFailed:
+      'Die wirksamen Bestätigungstexte konnten nicht geladen werden. Bitte schließen und erneut öffnen.',
+    invalid:
+      'Bitte prüfen Sie die Vorlage: genau ein Bestätigungslink, keine unbekannten Platzhalter, kein HTML und keine freien URLs.',
+    saved: 'Die Vorlage wurde in Keycloak gespeichert und zurückgelesen.',
+    conflict:
+      'Die Texte wurden zwischenzeitlich geändert. Ihr Entwurf bleibt erhalten. Die aktuellen Texte werden zum Vergleich angezeigt. Prüfen Sie diese vor dem erneuten Speichern.',
+    saveFailed:
+      'Speichern wurde nicht bestätigt. Die Änderung kann bereits in Keycloak angekommen sein. Ihr Entwurf bleibt erhalten; bitte schließen, neu öffnen und den aktuellen Stand prüfen.',
+    reset: 'Neutralen Standard übernehmen',
+    resetConfirm: 'Den Instanz-Override entfernen und wieder die aktuelle allgemeine Bestätigungsvorlage verwenden?',
+  },
   invitation: invitationInstancesAdminDEResources,
   keycloakPanel: keycloakPanelInstancesAdminDEResources,
   keycloakStatus: keycloakStatusInstancesAdminDEResources,

@@ -15,6 +15,7 @@ vi.mock('../instance-permission-authorization.js', () => ({
 vi.mock('./mutation-request-context.shared.js', () => ({
   resolveMutationActorWithAccount: mocks.resolveActor,
 }));
+vi.mock('../iam-instance-registry/mail-template-sync.js',()=>({readMailTemplate:vi.fn(async()=>undefined),synchronizeMailTemplate:vi.fn(),mutateMailTemplate:vi.fn(),MailTemplateConflict:class extends Error{}}));
 vi.mock('../iam-instance-registry/repository.js', () => ({
   withScopedRegistryRepository: mocks.scopedRepository,
   withRegistryRepository: mocks.registryRepository,

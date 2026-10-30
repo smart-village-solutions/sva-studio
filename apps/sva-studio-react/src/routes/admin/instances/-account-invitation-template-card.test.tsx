@@ -35,7 +35,9 @@ describe('AccountInvitationTemplateCard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Vorlage speichern' }));
     await vi.waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect((await screen.findByRole('status')).textContent).toContain('gespeichert');
+    expect((await screen.findByText('Im Studio gespeichert. Den Synchronisierungsstand zeigt der Keycloak-Abgleich.')).textContent).toContain(
+      'gespeichert'
+    );
   });
 
   it('resets through the same revision-bound save path', async () => {
@@ -63,6 +65,6 @@ describe('AccountInvitationTemplateCard', () => {
     fireEvent.click(save);
     await vi.waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     finish(true);
-    await screen.findByRole('status');
+    await screen.findByText('Im Studio gespeichert. Den Synchronisierungsstand zeigt der Keycloak-Abgleich.');
   });
 });

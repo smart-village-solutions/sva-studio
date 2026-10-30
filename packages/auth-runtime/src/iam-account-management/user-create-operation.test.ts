@@ -2,6 +2,7 @@ import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  readMailTemplate: vi.fn(),
   persistCreatedUser: vi.fn(),
   prepareCreatedUserAssignments: vi.fn(),
   ensureManagedRealmRolesExist: vi.fn(),
@@ -30,6 +31,7 @@ const state = vi.hoisted(() => ({
   readAccountCreateContribution: vi.fn(),
 }));
 
+vi.mock('../iam-instance-registry/mail-template-sync.js',()=>({readMailTemplate:state.readMailTemplate}));
 vi.mock('./user-create-persistence.js', () => ({
   persistCreatedUser: state.persistCreatedUser,
   prepareCreatedUserAssignments: state.prepareCreatedUserAssignments,
@@ -76,6 +78,7 @@ vi.mock('./mainserver-user-provisioning.js', () => ({
 
 describe('executeCreateUser', () => {
   beforeEach(() => {
+    state.readMailTemplate.mockResolvedValue({status:'synced'});
     vi.clearAllMocks();
     state.persistCreatedUser.mockResolvedValue({
       responseData: {
@@ -783,6 +786,7 @@ describe('executeCreateUser', () => {
   });
 
   it('keeps user creation successful and blocks a drifted custom invitation', async () => {
+    state.readMailTemplate.mockResolvedValue({status:'drift'});
     state.resolveAuthConfigForInstance.mockResolvedValue({
       clientId: 'sva-studio',
       redirectUri: 'https://tenant.example.test/auth/callback',
@@ -824,12 +828,12 @@ describe('executeCreateUser', () => {
     expect(result.user.id).toBe('account-1');
     expect(result.invitation).toMatchObject({
       status: 'failed',
-      error: { code: 'keycloak_unavailable', retryable: true },
+      error: { code: 'invitation_template_not_synchronized', retryable: false },
     });
     expect(executeActionsEmail).not.toHaveBeenCalled();
   });
 
-  it('aligns changed realm values before sending a requested create invitation', async () => {
+  it('sends a confirmed invitation without rewriting realm texts or theme', async () => {
     state.resolveAuthConfigForInstance.mockResolvedValue({
       clientId: 'sva-studio',
       redirectUri: 'https://tenant.example.test/auth/callback',
@@ -879,15 +883,8 @@ describe('executeCreateUser', () => {
       },
     });
 
-    expect(identityProvider.provider.updateRealmEmailTheme).toHaveBeenCalledWith('sva-kern2');
-    expect(updateRealmLocalizationTexts).toHaveBeenCalledWith(
-      'de',
-      expect.objectContaining({
-        executeActionsSubject: expect.any(String),
-        executeActionsBody: expect.any(String),
-        executeActionsBodyHtml: expect.any(String),
-      })
-    );
+    expect(identityProvider.provider.updateRealmEmailTheme).not.toHaveBeenCalled();
+    expect(updateRealmLocalizationTexts).not.toHaveBeenCalled();
     expect(executeActionsEmail).toHaveBeenCalledTimes(1);
     expect(result.invitation.status).toBe('sent');
   });

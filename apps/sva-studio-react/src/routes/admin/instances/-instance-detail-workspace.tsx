@@ -53,6 +53,7 @@ type InstanceDetailWorkspaceProps = {
   tenantSecretUserInputRequired: boolean;
   setDetailFormValues: React.Dispatch<React.SetStateAction<DetailFormValues | null>>;
   onUpdateSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onMailTemplateReconciled?: () => Promise<void>;
   onSaveAccountInvitationTemplate: (
     template: Omit<NonNullable<SelectedInstance['accountInvitationTemplate']>, 'revision'> | null
   ) => Promise<AccountInvitationTemplateSaveResult>;
@@ -128,6 +129,7 @@ export const InstanceDetailWorkspace = ({
   setDetailFormValues,
   onUpdateSubmit,
   onSaveAccountInvitationTemplate,
+  onMailTemplateReconciled,
   saveStatus,
   markDirty,
   activationConfirmation,
@@ -260,6 +262,7 @@ export const InstanceDetailWorkspace = ({
             }}
             onUpdateSubmit={onUpdateSubmit}
             onSaveAccountInvitationTemplate={onSaveAccountInvitationTemplate}
+            onMailTemplateReconciled={onMailTemplateReconciled}
             saveStatus={saveStatus}
           />
           {selectedInstance.status === 'active' ? (

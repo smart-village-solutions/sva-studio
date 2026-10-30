@@ -38,6 +38,7 @@ export const toListItem = (
   tenantAdminClient: item.tenantAdminClient,
   tenantAdminBootstrap: item.tenantAdminBootstrap,
   themeKey: item.themeKey,
+  accountInvitationTemplateRevision: item.accountInvitationTemplateRevision,
   accountInvitationTemplate: item.accountInvitationTemplate,
   featureFlags: item.featureFlags,
   assignedModules: item.assignedModules,

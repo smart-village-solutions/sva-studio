@@ -38,6 +38,10 @@ export const instanceAuthHandlerMap = {
   '/api/v1/iam/instances/audit': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstanceAuditRun),
   },
+  '/api/v1/iam/templates/email-verification': {
+    GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.serverEmailVerificationTemplate),
+    PATCH: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.serverEmailVerificationTemplate),
+  },
   '/api/v1/iam/templates/account-invitation': {
     GET: routeHandler(
       authRuntimeRoutes.instanceRegistryHandlers.getServerAccountInvitationTemplate
@@ -59,6 +63,10 @@ export const instanceAuthHandlerMap = {
   },
   '/api/v1/iam/instances/$instanceId/audit': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getSingleInstanceAuditRun),
+  },
+  '/api/v1/iam/instances/$instanceId/keycloak/mail-templates/$templateKind': {
+    GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.emailVerificationTemplate),
+    PATCH: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.emailVerificationTemplate),
   },
   '/api/v1/iam/instances/$instanceId/keycloak/status': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstanceKeycloakStatus),

@@ -150,6 +150,8 @@ const authServerMocks = vi.hoisted(() => {
       activate: vi.fn(async () => response('busActivate')),
     },
     instanceRegistryHandlers: {
+      serverEmailVerificationTemplate: vi.fn(async()=>response('serverVerificationTemplate')),
+      emailVerificationTemplate: vi.fn(async () => response('verificationTemplate')),
       listInstances: vi.fn(async () => response('listInstancesHandler')),
       getInstanceAuditRun: vi.fn(async () => response('getInstanceAuditRunHandler')),
       getServerAccountInvitationTemplate: vi.fn(async () =>
@@ -448,6 +450,27 @@ vi.mock('@sva/auth-runtime/runtime-health', () => ({
 describe('auth.routes.server', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it.each(['invitation','verification'])('routes %s operations through the same guarded registry handler', async (kind) => {
+    const handlers = resolveAuthHandlers(
+      '/api/v1/iam/instances/$instanceId/keycloak/mail-templates/$templateKind'
+    );
+    const request = new Request(
+      `https://studio.example/api/v1/iam/instances/bb-havelland/keycloak/mail-templates/${kind}`
+    );
+    await handlers?.GET?.({ request });
+    await handlers?.PATCH?.({ request: new Request(request.url, { method: 'PATCH' }) });
+    expect(
+      authServerMocks.instanceRegistryHandlers.emailVerificationTemplate
+    ).toHaveBeenCalledTimes(2);
+  });
+
+  it('routes general confirmation reads and writes through the guarded registry handler',async()=>{
+    const handlers=resolveAuthHandlers('/api/v1/iam/templates/email-verification');
+    const url='https://studio.example/api/v1/iam/templates/email-verification';
+    await handlers.GET?.({request:new Request(url)});await handlers.PATCH?.({request:new Request(url,{method:'PATCH'})});
+    expect(authServerMocks.instanceRegistryHandlers.serverEmailVerificationTemplate).toHaveBeenCalledTimes(2);
   });
 
   it('resolves handlers for all declared auth paths', () => {

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 3pWKeBts2juSsTVxCfb1ZaipPRfNWIlurQbMl2KaUhDVk2pwRwFBOuHIFlMTyFx
+\restrict 9Od8uZSboj5mrvRAIzTSPvZ9Lx5CAlP55AmPc41pg1ugOA2oE67PPaSrcKbqrFZ
 
 -- Dumped from database version 16.15
 -- Dumped by pg_dump version 16.15
@@ -37,6 +37,33 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 --
 
 COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
+
+--
+-- Name: bridge_instance_invitation_template(); Type: FUNCTION; Schema: iam; Owner: -
+--
+
+CREATE FUNCTION iam.bridge_instance_invitation_template() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE next_revision integer;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    next_revision := COALESCE((NEW.account_invitation_template->>'revision')::integer, 0);
+  ELSE
+    SELECT COALESCE((SELECT revision FROM iam.instance_mail_templates
+      WHERE instance_id=NEW.id AND template_kind='invitation'), 0)+1 INTO next_revision;
+    IF NEW.account_invitation_template IS NOT NULL THEN
+      NEW.account_invitation_template := jsonb_set(NEW.account_invitation_template, '{revision}', to_jsonb(next_revision));
+    END IF;
+  END IF;
+  INSERT INTO iam.instance_mail_templates(instance_id,template_kind,revision,template,sync_status,updated_by)
+  VALUES (NEW.id,'invitation',next_revision,NEW.account_invitation_template,
+    CASE WHEN TG_OP='INSERT' THEN 'unreviewed' ELSE 'pending' END,NEW.updated_by)
+  ON CONFLICT(instance_id,template_kind) DO UPDATE SET revision=EXCLUDED.revision,
+    template=EXCLUDED.template,sync_status='pending',updated_by=EXCLUDED.updated_by,updated_at=now();
+  RETURN NEW;
+END $$;
 
 
 --
@@ -252,6 +279,57 @@ END;
 $$;
 
 
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: instance_mail_templates; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.instance_mail_templates (
+    instance_id text NOT NULL,
+    template_kind text NOT NULL,
+    revision integer DEFAULT 0 NOT NULL,
+    template jsonb,
+    sync_status text DEFAULT 'unreviewed'::text NOT NULL,
+    confirmed_realm text,
+    confirmed_texts jsonb,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by text,
+    CONSTRAINT instance_mail_templates_check CHECK (((template IS NULL) OR ((jsonb_typeof(template) = 'object'::text) AND (template ?& ARRAY['subject'::text, 'body'::text]) AND (jsonb_typeof((template -> 'subject'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'body'::text)) = 'string'::text) AND ((template_kind = 'verification'::text) OR ((template ?& ARRAY['revision'::text, 'passwordSetupLinkLabel'::text, 'tenantHomepageLinkLabel'::text]) AND (jsonb_typeof((template -> 'revision'::text)) = 'number'::text) AND (((template ->> 'revision'::text))::integer = revision) AND (revision > 0) AND (jsonb_typeof((template -> 'passwordSetupLinkLabel'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'tenantHomepageLinkLabel'::text)) = 'string'::text)))))),
+    CONSTRAINT instance_mail_templates_confirmed_texts_check CHECK (((confirmed_texts IS NULL) OR (jsonb_typeof(confirmed_texts) = 'object'::text))),
+    CONSTRAINT instance_mail_templates_revision_check CHECK ((revision >= 0)),
+    CONSTRAINT instance_mail_templates_sync_status_check CHECK ((sync_status = ANY (ARRAY['unreviewed'::text, 'pending'::text, 'synced'::text, 'failed'::text, 'drift'::text]))),
+    CONSTRAINT instance_mail_templates_template_kind_check CHECK ((template_kind = ANY (ARRAY['invitation'::text, 'verification'::text])))
+);
+
+ALTER TABLE ONLY iam.instance_mail_templates FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: save_instance_invitation_template(text, integer, jsonb, text); Type: FUNCTION; Schema: iam; Owner: -
+--
+
+CREATE FUNCTION iam.save_instance_invitation_template(p_instance text, p_expected integer, p_template jsonb, p_actor text) RETURNS SETOF iam.instance_mail_templates
+    LANGUAGE plpgsql
+    AS $$
+DECLARE current_revision integer;
+BEGIN
+  PERFORM 1 FROM iam.instances WHERE id=p_instance FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'mail_template_revision_conflict'; END IF;
+  SELECT revision INTO current_revision FROM iam.instance_mail_templates
+    WHERE instance_id=p_instance AND template_kind='invitation';
+  IF COALESCE(current_revision,0) <> p_expected THEN
+    RAISE EXCEPTION 'mail_template_revision_conflict';
+  END IF;
+  UPDATE iam.instances SET account_invitation_template=p_template,updated_by=p_actor,updated_at=now()
+    WHERE id=p_instance;
+  RETURN QUERY SELECT * FROM iam.instance_mail_templates
+    WHERE instance_id=p_instance AND template_kind='invitation';
+END $$;
+
+
 --
 -- Name: sync_content_list_projection_from_contents(); Type: FUNCTION; Schema: iam; Owner: -
 --
@@ -435,10 +513,6 @@ BEGIN
 END;
 $$;
 
-
-SET default_tablespace = '';
-
-SET default_table_access_method = heap;
 
 --
 -- Name: account_deletion_content_preferences; Type: TABLE; Schema: iam; Owner: -
@@ -2035,9 +2109,9 @@ CREATE TABLE iam.server_account_invitation_templates (
     updated_by text,
     default_purpose text,
     CONSTRAINT server_account_invitation_templates_default_purpose_chk CHECK (((default_purpose IS NULL) OR (default_purpose = ANY (ARRAY['studio'::text, 'ssf'::text])))),
-    CONSTRAINT server_account_invitation_templates_key_chk CHECK ((template_key = 'account_invitation'::text)),
+    CONSTRAINT server_account_invitation_templates_key_chk CHECK ((template_key = ANY (ARRAY['account_invitation'::text, 'email_verification'::text]))),
     CONSTRAINT server_account_invitation_templates_revision_chk CHECK ((revision >= 0)),
-    CONSTRAINT server_account_invitation_templates_template_chk CHECK (((template IS NULL) OR ((jsonb_typeof(template) = 'object'::text) AND (jsonb_typeof((template -> 'revision'::text)) = 'number'::text) AND (((template ->> 'revision'::text))::integer = revision) AND (jsonb_typeof((template -> 'subject'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'body'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'passwordSetupLinkLabel'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'tenantHomepageLinkLabel'::text)) = 'string'::text))))
+    CONSTRAINT server_account_invitation_templates_template_chk CHECK (((template IS NULL) OR ((jsonb_typeof(template) = 'object'::text) AND (template ?& ARRAY['subject'::text, 'body'::text]) AND (jsonb_typeof((template -> 'subject'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'body'::text)) = 'string'::text) AND ((template_key = 'email_verification'::text) OR ((template ?& ARRAY['revision'::text, 'passwordSetupLinkLabel'::text, 'tenantHomepageLinkLabel'::text]) AND (jsonb_typeof((template -> 'revision'::text)) = 'number'::text) AND (((template ->> 'revision'::text))::integer = revision) AND (jsonb_typeof((template -> 'passwordSetupLinkLabel'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'tenantHomepageLinkLabel'::text)) = 'string'::text))))))
 );
 
 ALTER TABLE ONLY iam.server_account_invitation_templates FORCE ROW LEVEL SECURITY;
@@ -2568,6 +2642,14 @@ ALTER TABLE ONLY iam.instance_keycloak_provisioning_runs
 
 ALTER TABLE ONLY iam.instance_keycloak_provisioning_steps
     ADD CONSTRAINT instance_keycloak_provisioning_steps_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: instance_mail_templates instance_mail_templates_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_mail_templates
+    ADD CONSTRAINT instance_mail_templates_pkey PRIMARY KEY (instance_id, template_kind);
 
 
 --
@@ -3918,6 +4000,20 @@ CREATE TRIGGER geo_hierarchy_depth_check BEFORE INSERT ON iam.geo_hierarchy FOR 
 
 
 --
+-- Name: instances instance_invitation_template_insert; Type: TRIGGER; Schema: iam; Owner: -
+--
+
+CREATE TRIGGER instance_invitation_template_insert AFTER INSERT ON iam.instances FOR EACH ROW EXECUTE FUNCTION iam.bridge_instance_invitation_template();
+
+
+--
+-- Name: instances instance_invitation_template_update; Type: TRIGGER; Schema: iam; Owner: -
+--
+
+CREATE TRIGGER instance_invitation_template_update BEFORE UPDATE OF account_invitation_template ON iam.instances FOR EACH ROW EXECUTE FUNCTION iam.bridge_instance_invitation_template();
+
+
+--
 -- Name: contents sync_content_list_projection_from_contents_trg; Type: TRIGGER; Schema: iam; Owner: -
 --
 
@@ -4488,6 +4584,14 @@ ALTER TABLE ONLY iam.instance_keycloak_provisioning_runs
 
 ALTER TABLE ONLY iam.instance_keycloak_provisioning_steps
     ADD CONSTRAINT instance_keycloak_provisioning_steps_run_id_fkey FOREIGN KEY (run_id) REFERENCES iam.instance_keycloak_provisioning_runs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: instance_mail_templates instance_mail_templates_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_mail_templates
+    ADD CONSTRAINT instance_mail_templates_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
 --
@@ -5225,6 +5329,19 @@ CREATE POLICY instance_integrations_isolation_policy ON iam.instance_integration
 
 
 --
+-- Name: instance_mail_templates; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.instance_mail_templates ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: instance_mail_templates instance_mail_templates_scope; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY instance_mail_templates_scope ON iam.instance_mail_templates USING (((iam.current_instance_id() IS NULL) OR (instance_id = iam.current_instance_id()))) WITH CHECK (((iam.current_instance_id() IS NULL) OR (instance_id = iam.current_instance_id())));
+
+
+--
 -- Name: instance_memberships instance_memberships_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
@@ -5468,4 +5585,4 @@ CREATE POLICY studio_jobs_observability_policy ON iam.studio_jobs FOR SELECT TO 
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 3pWKeBts2juSsTVxCfb1ZaipPRfNWIlurQbMl2KaUhDVk2pwRwFBOuHIFlMTyFx
+\unrestrict 9Od8uZSboj5mrvRAIzTSPvZ9Lx5CAlP55AmPc41pg1ugOA2oE67PPaSrcKbqrFZ

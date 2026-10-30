@@ -3,7 +3,7 @@ import { lookup } from 'node:dns/promises';
 import { isIP, type LookupFunction } from 'node:net';
 
 import ipaddr from 'ipaddr.js';
-import { Agent } from 'undici';
+import { Agent, fetch as undiciFetch } from 'undici';
 
 const rejectedTarget = () => new Error('public_https_target_rejected');
 const unbracket = (hostname: string) => hostname.replace(/^\[|\]$/g, '');
@@ -63,5 +63,6 @@ export const fetchPublicHttps = async (
   const options: RequestInit & { dispatcher: Agent } = {
     ...init, redirect: init.redirect ?? 'error', dispatcher,
   };
-  return fetch(url, options);
+  // Keep fetch and dispatcher on the same Undici version; Node's bundled version may differ.
+  return undiciFetch(url, options as Parameters<typeof undiciFetch>[1]) as unknown as Promise<Response>;
 };

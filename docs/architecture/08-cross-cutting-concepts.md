@@ -19,10 +19,10 @@ gleichzeitig beeinflussen.
 
 ### Interne Rücksprungziele und öffentliche HTTPS-Abrufe
 
-- Browser-Rücksprungziele werden mit dem URL-Parser normalisiert und vor der Rückgabe erneut auf Origin, führendes `//` und Auth-Pfade geprüft. Backslashes und Steuerzeichen sind unzulässig; Query und Fragment interner Ziele bleiben erhalten.
-- PDF-Branding und Instanz-Erreichbarkeitsproben verwenden `fetchPublicHttps` aus `@sva/server-runtime`. Der Socket erhält ausschließlich die im selben DNS-Lookup geprüften öffentlichen IP-Adressen. Private, lokale, gemischte und leere DNS-Antworten werden abgewiesen; IP-Literale werden vor dem Abruf geprüft.
+- Browser- und serverseitige Auth-Rücksprungziele werden mit dem URL-Parser normalisiert und vor der Rückgabe erneut auf Origin, führendes `//` und Auth-Pfade geprüft. Backslashes und Steuerzeichen sind unzulässig; Query und Fragment interner Ziele bleiben erhalten. Bestehende Host-/Port-Vertrauensregeln für absolute Auth-Ziele bleiben erhalten; normalisierte Pfade mit führendem `//` werden auch dort abgewiesen.
+- PDF-Branding und Instanz-Erreichbarkeitsproben verwenden `fetchPublicHttps` aus `@sva/server-runtime`. Fetch und Dispatcher stammen aus derselben Undici-Version, unabhängig von der in Node eingebauten Version. Der Socket erhält ausschließlich die im selben DNS-Lookup geprüften öffentlichen IP-Adressen. Private, lokale, gemischte und leere DNS-Antworten werden abgewiesen; IP-Literale werden vor dem Abruf geprüft.
 - Automatisches Folgen von Redirects ist ausgeschlossen. Zeitlimits und Antwortgrößen bleiben beim Verbraucher. Nur der bisherige explizite Same-Origin-Localhost-Fall des PDF-Abrufs darf außerhalb von Production den öffentlichen HTTPS-Pfad umgehen.
-- Regressionstests sichern URL-Normalisierung, Sondernetze einschließlich IPv4-mapped IPv6 und die tatsächliche Node-Fetch-Verbindung mit einer blockierten DNS-Antwort ab.
+- Regressionstests sichern URL-Normalisierung, Sondernetze einschließlich IPv4-mapped IPv6 und die tatsächliche Undici-Verbindung mit einer blockierten DNS-Antwort ab.
 
 ### Accessibility und interaktive Aktionen
 

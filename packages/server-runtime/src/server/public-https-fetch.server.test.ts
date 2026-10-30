@@ -2,17 +2,16 @@
 import type { LookupFunction } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ lookup: vi.fn(), connect: undefined as unknown }));
+const state = vi.hoisted(() => ({ lookup: vi.fn(), fetch: vi.fn(), connect: undefined as unknown }));
 vi.mock('node:dns/promises', () => ({ lookup: state.lookup }));
 vi.mock('undici', () => ({
+  fetch: state.fetch,
   Agent: class {
     constructor(options: { connect: unknown }) { state.connect = options.connect; }
   },
 }));
 
 import { fetchPublicHttps } from './public-https-fetch.server.js';
-
-const nativeFetch = globalThis.fetch;
 
 const resolveConnection = async (all = false) => {
   const { lookup } = state.connect as { lookup: LookupFunction };
@@ -27,6 +26,8 @@ const resolveConnection = async (all = false) => {
 describe('fetchPublicHttps', () => {
   afterEach(() => vi.unstubAllGlobals());
   beforeEach(() => {
+    state.fetch.mockReset();
+    state.fetch.mockImplementation((url: URL, init: RequestInit) => fetch(url, init));
     state.lookup.mockReset();
     state.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
     vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 204 })));
@@ -80,17 +81,19 @@ describe('fetchPublicHttps', () => {
     await expect(resolveConnection()).rejects.toThrow('ENOTFOUND');
   });
 
-  it('blocks the actual Node fetch connection when DNS changes to a private address', async () => {
-    await fetchPublicHttps('https://cdn.example');
-    const { Agent } = await vi.importActual<typeof import('undici')>('undici');
+  it('blocks the actual Undici connection when DNS changes to a private address', async () => {
+    const { Agent, fetch: transportFetch } = await vi.importActual<typeof import('undici')>('undici');
     const agent = new Agent({ connect: state.connect as { lookup: LookupFunction } });
     state.lookup.mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
     try {
-      const options = { dispatcher: agent, signal: AbortSignal.timeout(1000) };
-      await expect(nativeFetch('https://cdn.example', options)).rejects.toMatchObject({
+      state.fetch.mockImplementationOnce((url: URL, init: Parameters<typeof transportFetch>[1]) =>
+        transportFetch(url, { ...init, dispatcher: agent })
+      );
+      await expect(fetchPublicHttps('https://cdn.example', { signal: AbortSignal.timeout(1000) })).rejects.toMatchObject({
         cause: expect.objectContaining({ message: 'public_https_target_rejected' }),
       });
       expect(state.lookup).toHaveBeenCalled();
+      expect(state.fetch).toHaveBeenCalledTimes(1);
     } finally {
       await agent.close();
     }

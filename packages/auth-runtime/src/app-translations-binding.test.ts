@@ -260,6 +260,45 @@ it.skipIf(!testDatabaseUrl)(
           actingPrincipalType: 'organization',
         })
       );
+      const secondOrganizationId = '11111111-1111-4111-8111-111111111114';
+      const secondAccountId = '11111111-1111-4111-8111-111111111115';
+      await client.query(
+        `INSERT INTO iam.organizations(id,instance_id,organization_key,display_name) VALUES ($1,'de-town','management','Management')`,
+        [secondOrganizationId]
+      );
+      await client.query(
+        `INSERT INTO iam.accounts(id,instance_id,keycloak_subject,is_technical_account,status) VALUES ($1,'de-town','management',true,'active')`,
+        [secondAccountId]
+      );
+      await client.query(
+        `INSERT INTO iam.organization_mainserver_credentials(instance_id,organization_id,technical_account_id,provisioning_status,mainserver_application_id,mainserver_application_secret_ciphertext) VALUES ('de-town',$1,$2,'ready','management-client','test-ciphertext')`,
+        [secondOrganizationId, secondAccountId]
+      );
+      state.credentials.mockClear();
+      fetcher
+        .mockResolvedValueOnce(new Response('', { status: 503 }))
+        .mockResolvedValueOnce(Response.json({ access_token: 'restricted-token' }))
+        .mockResolvedValueOnce(new Response('', { status: 403 }))
+        .mockResolvedValueOnce(Response.json({ access_token: 'management-token' }))
+        .mockResolvedValueOnce(Response.json(metadata()));
+      expect(await reconcileAppTranslationServiceBinding(job)).toBe(true);
+      expect(state.credentials.mock.calls.map(([input]) => input.activeOrganizationId)).toEqual([
+        organizationId,
+        secondOrganizationId,
+      ]);
+      // A later candidate must be rechecked after the first upstream denial.
+      state.credentials.mockClear();
+      fetcher
+        .mockResolvedValueOnce(new Response('', { status: 503 }))
+        .mockResolvedValueOnce(Response.json({ access_token: 'restricted-token' }))
+        .mockImplementationOnce(async () => {
+          await client.query('UPDATE iam.accounts SET is_blocked=true WHERE id=$1', [
+            secondAccountId,
+          ]);
+          return new Response('', { status: 403 });
+        });
+      expect(await reconcileAppTranslationServiceBinding(job)).toBe(false);
+      expect(state.credentials).toHaveBeenCalledOnce();
       state.credentials.mockClear();
       await client.query(`UPDATE iam.accounts SET is_blocked=true WHERE id=$1`, [accountId]);
       fetcher.mockResolvedValueOnce(new Response('', { status: 503 }));
@@ -298,9 +337,11 @@ it('reads binding readiness without network requests or configuration writes', a
 });
 
 const prepareSetup = () => {
-  state.query.mockImplementation(async (sql: string) => ({
+  state.query.mockImplementation(async (sql: string, values?: unknown[]) => ({
     rows: sql.includes('organization_mainserver_credentials')
-      ? [{ organization_id: 'technical-org' }]
+      ? (values?.[1] as string[]).includes('technical-org')
+        ? []
+        : [{ organization_id: 'technical-org' }]
       : [
           {
             primary_hostname: 'de-town.studio.example',
@@ -319,6 +360,143 @@ const prepareSetup = () => {
     .mockResolvedValueOnce(Response.json({ access_token: 'setup-token', token_type: 'Bearer' }))
     .mockResolvedValueOnce(Response.json(metadata()));
 };
+
+const prepareMultipleSetupCredentials = (responses: Response[]) => {
+  prepareSetup();
+  state.query.mockImplementation(async (sql: string, values?: unknown[]) => ({
+    rows: sql.includes('organization_mainserver_credentials')
+      ? [{ organization_id: 'restricted-org' }, { organization_id: 'management-org' }]
+          .filter(({ organization_id }) => !(values?.[1] as string[]).includes(organization_id))
+          .slice(0, 1)
+      : [
+          {
+            primary_hostname: 'de-town.studio.example',
+            generation: '1',
+            assignment_revision: '123',
+          },
+        ],
+  }));
+  state.credentials.mockImplementation(async (input) => ({
+    status: 'ok',
+    source: 'organization',
+    credentials: { apiKey: input.activeOrganizationId, apiSecret: 'technical-secret' },
+  }));
+  fetcher.mockReset().mockResolvedValueOnce(new Response('', { status: 503 }));
+  for (const response of responses) fetcher.mockResolvedValueOnce(response);
+};
+
+it.each(['provision', 'reconcile', 'reactivate'])(
+  'uses the next existing technical organization after a forbidden setup during %s',
+  async (operation) => {
+    const denied = new Response('forbidden', { status: 403 });
+    const cancel = vi.spyOn(denied.body!, 'cancel');
+    prepareMultipleSetupCredentials([
+      Response.json({ access_token: 'restricted-token' }),
+      denied,
+      Response.json({ access_token: 'management-token' }),
+      Response.json(metadata()),
+    ]);
+    const job = context();
+    Object.assign(job.tenantLifecycle!, { operation });
+    expect(await reconcileAppTranslationServiceBinding(job)).toBe(true);
+    expect(state.credentials.mock.calls.map(([input]) => input.activeOrganizationId)).toEqual([
+      'restricted-org',
+      'management-org',
+    ]);
+    expect(fetcher.mock.calls[1][1].body.get('client_id')).toBe('restricted-org');
+    expect(fetcher.mock.calls[3][1].body.get('client_id')).toBe('management-org');
+    expect(fetcher.mock.calls[4][1].headers.Authorization).toBe('Bearer management-token');
+    expect(
+      fetcher.mock.calls
+        .slice(1)
+        .every(([, init]) => init.signal === fetcher.mock.calls[1][1].signal)
+    ).toBe(true);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(state.save).toHaveBeenCalledOnce();
+  }
+);
+
+it.each([400, 401, 409, 422, 429, 500, 503])(
+  'does not try another identity after a setup response with status %s',
+  async (status) => {
+    prepareMultipleSetupCredentials([
+      Response.json({ access_token: 'first-token' }),
+      new Response('', { status }),
+    ]);
+    expect(await reconcileAppTranslationServiceBinding(context())).toBe(false);
+    expect(state.credentials).toHaveBeenCalledOnce();
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(state.save).not.toHaveBeenCalled();
+  }
+);
+
+it('does not save or fall back to personal credentials when all technical identities are forbidden', async () => {
+  prepareMultipleSetupCredentials([
+    Response.json({ access_token: 'first-token' }),
+    new Response('', { status: 403 }),
+    Response.json({ access_token: 'second-token' }),
+    new Response('', { status: 403 }),
+  ]);
+  expect(await reconcileAppTranslationServiceBinding(context())).toBe(false);
+  expect(state.credentials).toHaveBeenCalledTimes(2);
+  expect(
+    state.credentials.mock.calls.every(
+      ([input]) => input.actingPrincipalType === 'organization' && input.keycloakSubject === ''
+    )
+  ).toBe(true);
+  expect(fetcher).toHaveBeenCalledTimes(5);
+  expect(state.save).not.toHaveBeenCalled();
+});
+
+it('does not attempt a second setup after the lifecycle scope changes', async () => {
+  prepareMultipleSetupCredentials([
+    Response.json({ access_token: 'first-token' }),
+    new Response('', { status: 403 }),
+    Response.json({ access_token: 'second-token' }),
+  ]);
+  state.query.mockImplementation(async (sql: string, values?: unknown[]) => ({
+    rows: sql.includes('organization_mainserver_credentials')
+      ? [{ organization_id: 'restricted-org' }, { organization_id: 'management-org' }]
+          .filter(({ organization_id }) => !(values?.[1] as string[]).includes(organization_id))
+          .slice(0, 1)
+      : fetcher.mock.calls.length > 3
+        ? []
+        : [
+            {
+              primary_hostname: 'de-town.studio.example',
+              generation: '1',
+              assignment_revision: '123',
+            },
+          ],
+  }));
+  expect(await reconcileAppTranslationServiceBinding(context())).toBe(false);
+  expect(fetcher).toHaveBeenCalledTimes(4);
+  expect(state.save).not.toHaveBeenCalled();
+});
+
+it('does not use a technical account blocked after the first permission denial', async () => {
+  prepareMultipleSetupCredentials([
+    Response.json({ access_token: 'first-token' }),
+    new Response('', { status: 403 }),
+  ]);
+  state.query.mockImplementation(async (sql: string) => ({
+    rows: sql.includes('organization_mainserver_credentials')
+      ? fetcher.mock.calls.length >= 3
+        ? []
+        : [{ organization_id: 'restricted-org' }]
+      : [
+          {
+            primary_hostname: 'de-town.studio.example',
+            generation: '1',
+            assignment_revision: '123',
+          },
+        ],
+  }));
+  expect(await reconcileAppTranslationServiceBinding(context())).toBe(false);
+  expect(state.credentials).toHaveBeenCalledOnce();
+  expect(fetcher).toHaveBeenCalledTimes(3);
+  expect(state.save).not.toHaveBeenCalled();
+});
 
 it.each(['provision', 'reconcile', 'reactivate'])(
   'repairs missing Mainserver setup during %s using only ready organization credentials',

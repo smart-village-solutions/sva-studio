@@ -2,9 +2,7 @@ import {
   adoptMailTemplate,
   compileMailTemplate,
   DEFAULT_EMAIL_VERIFICATION_TEMPLATE,
-  mailTemplateKeys,
   sameMailTemplateTexts,
-  resolveEffectiveAccountInvitationTemplate,
   type ServerEmailVerificationTemplateView,
   type EmailVerificationTemplate,
   type MailTemplateKind,
@@ -13,92 +11,15 @@ import {
 } from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
-import { resolveIdentityProviderForInstance } from '../iam-account-management/shared-runtime.js';
+import { inspectMailTemplate } from './mail-template-inspection.js';
 import { withRegistryRepository, withScopedRegistryRepository } from './repository.js';
 
 const logger = createSdkLogger({ component: 'mail-template-sync' });
 export class MailTemplateConflict extends Error {}
-const inspect = async (
-  instanceId: string,
-  kind: MailTemplateKind,
-  repository: InstanceRegistryRepository
-) => {
-  const instance = await repository.getInstanceById(instanceId);
-  if (!instance) throw new Error('not_found');
-  const stored = await repository.getInstanceMailTemplate(instanceId, kind);
-  let template: MailTemplateSource;
-  let source: MailTemplateView['source'];
-  if (stored.template) {
-    template = stored.template;
-    source = 'instance';
-  } else if (kind === 'verification') {
-    const server = await withRegistryRepository((repo) =>
-      repo.getServerEmailVerificationTemplate()
-    );
-    template = server.template ?? DEFAULT_EMAIL_VERIFICATION_TEMPLATE;
-    source = server.template ? 'server' : 'sva_default';
-  } else {
-    const server = await withRegistryRepository((repo) =>
-      repo.getServerAccountInvitationTemplate()
-    );
-    ({ template, source } = resolveEffectiveAccountInvitationTemplate({
-      serverTemplate: server.template,
-    }));
-  }
-  const context = {
-    tenantName: instance.displayName,
-    tenantHomepageUrl: `https://${instance.primaryHostname}/`,
-  };
-  const studioTexts = compileMailTemplate(kind, template, context);
-  let keycloakTexts: Readonly<Record<string, string>> | null = null;
-  let provider:
-    | NonNullable<Awaited<ReturnType<typeof resolveIdentityProviderForInstance>>>['provider']
-    | undefined;
-  try {
-    const resolved = await resolveIdentityProviderForInstance(instanceId);
-    if (resolved?.source === 'instance' && resolved.realm === instance.authRealm) {
-      provider = resolved.provider;
-      const messages = await provider.getEffectiveRealmEmailMessages?.('de');
-      if (messages && mailTemplateKeys(kind).every((key) => typeof messages[key] === 'string'))
-        keycloakTexts = Object.fromEntries(
-          mailTemplateKeys(kind).map((key) => [key, messages[key] as string])
-        );
-    }
-  } catch {
-    /* Studio source remains available when Keycloak is unavailable. */
-  }
-  const equal = sameMailTemplateTexts(kind, studioTexts, keycloakTexts);
-  const confirmed =
-    stored.confirmedRealm === instance.authRealm &&
-    sameMailTemplateTexts(kind, stored.confirmedTexts, keycloakTexts);
-  const status = !keycloakTexts
-    ? 'failed'
-    : equal && ((stored.syncStatus === 'synced' && confirmed) || stored.syncStatus === 'unreviewed')
-      ? 'synced'
-      : stored.syncStatus === 'failed'
-        ? 'failed'
-        : !stored.confirmedTexts
-          ? 'unreviewed'
-          : !confirmed
-            ? 'drift'
-            : 'pending';
-  const view: MailTemplateView = {
-    stored,
-    source,
-    template,
-    studioTexts,
-    keycloakTexts,
-    status,
-    realm: instance.authRealm,
-    ...context,
-    canAdopt: !!keycloakTexts && !!adoptMailTemplate(kind, keycloakTexts, template, context),
-  };
-  return { view, provider };
-};
 export const readMailTemplate = (instanceId: string, kind: MailTemplateKind) =>
   withScopedRegistryRepository(
     instanceId,
-    async (repository) => (await inspect(instanceId, kind, repository)).view
+    async (repository) => (await inspectMailTemplate(instanceId, kind, repository)).view
   );
 
 export type MailTemplateMutation = {
@@ -108,6 +29,82 @@ export type MailTemplateMutation = {
   expectedStudioTexts?: Readonly<Record<string, string>>;
   expectedKeycloakTexts?: Readonly<Record<string, string>>;
 };
+const adoptInspectedTemplate = async (
+  instanceId: string,
+  kind: MailTemplateKind,
+  repository: InstanceRegistryRepository,
+  view: MailTemplateView,
+  actorId?: string
+): Promise<MailTemplateView> => {
+  if (!view.keycloakTexts) throw new Error('mail_template_adoption_unsupported');
+  const candidate =
+    view.keycloakTexts && adoptMailTemplate(kind, view.keycloakTexts, view.template, view);
+  if (!candidate) throw new Error('mail_template_adoption_unsupported');
+  const stored = await repository.saveInstanceMailTemplate({
+    instanceId,
+    kind,
+    expectedRevision: view.stored.revision,
+    template: candidate,
+    actorId,
+  });
+  const recorded = await repository.recordMailTemplateSync({
+    instanceId,
+    kind,
+    expectedRevision: stored.revision,
+    status: 'synced',
+    realm: view.realm,
+    texts: view.keycloakTexts,
+  });
+  if (!recorded) throw new MailTemplateConflict();
+  await repository.appendAuditEvent({
+    instanceId,
+    actorId,
+    eventType: 'instance_reconfigured',
+    requestId: getWorkspaceContext().requestId,
+    details: { area: 'mail_template', kind, result: 'adopted' },
+  });
+  return {
+    ...view,
+    stored: {
+      ...stored,
+      syncStatus: 'synced',
+      confirmedRealm: view.realm,
+      confirmedTexts: view.keycloakTexts,
+    },
+    source: 'instance',
+    template: candidate,
+    studioTexts: view.keycloakTexts,
+    status: 'synced',
+  };
+};
+
+const recordInspectedTemplate = async (
+  instanceId: string,
+  kind: MailTemplateKind,
+  repository: InstanceRegistryRepository,
+  view: MailTemplateView,
+  status: MailTemplateView['status'],
+  texts?: Readonly<Record<string, string>>
+): Promise<MailTemplateView> => {
+  const recorded = await repository.recordMailTemplateSync({
+    instanceId,
+    kind,
+    expectedRevision: view.stored.revision,
+    status,
+    ...(texts ? { realm: view.realm, texts } : {}),
+  });
+  if (!recorded) throw new MailTemplateConflict();
+  return {
+    ...view,
+    status,
+    stored: {
+      ...view.stored,
+      syncStatus: status,
+      ...(texts ? { confirmedRealm: view.realm, confirmedTexts: texts } : {}),
+    },
+  };
+};
+
 const syncLocked = async (
   instanceId: string,
   kind: MailTemplateKind,
@@ -115,7 +112,7 @@ const syncLocked = async (
   actorId?: string,
   expected?: MailTemplateMutation
 ): Promise<MailTemplateView> => {
-  const { view, provider } = await inspect(instanceId, kind, repository);
+  const { view, provider } = await inspectMailTemplate(instanceId, kind, repository);
   if (
     expected &&
     (view.stored.revision !== expected.expectedRevision ||
@@ -123,70 +120,10 @@ const syncLocked = async (
       !sameMailTemplateTexts(kind, view.keycloakTexts, expected.expectedKeycloakTexts ?? null))
   )
     throw new MailTemplateConflict();
-  if (expected?.operation === 'adopt') {
-    if (!view.keycloakTexts) throw new Error('mail_template_adoption_unsupported');
-    const candidate =
-      view.keycloakTexts && adoptMailTemplate(kind, view.keycloakTexts, view.template, view);
-    if (!candidate) throw new Error('mail_template_adoption_unsupported');
-    const stored = await repository.saveInstanceMailTemplate({
-      instanceId,
-      kind,
-      expectedRevision: view.stored.revision,
-      template: candidate,
-      actorId,
-    });
-    const recorded = await repository.recordMailTemplateSync({
-      instanceId,
-      kind,
-      expectedRevision: stored.revision,
-      status: 'synced',
-      realm: view.realm,
-      texts: view.keycloakTexts,
-    });
-    if (!recorded) throw new MailTemplateConflict();
-    await repository.appendAuditEvent({
-      instanceId,
-      actorId,
-      eventType: 'instance_reconfigured',
-      requestId: getWorkspaceContext().requestId,
-      details: { area: 'mail_template', kind, result: 'adopted' },
-    });
-    return {
-      ...view,
-      stored: {
-        ...stored,
-        syncStatus: 'synced',
-        confirmedRealm: view.realm,
-        confirmedTexts: view.keycloakTexts,
-      },
-      source: 'instance',
-      template: candidate,
-      studioTexts: view.keycloakTexts,
-      status: 'synced',
-    };
-  }
-  const record = async (
-    status: MailTemplateView['status'],
-    texts?: Readonly<Record<string, string>>
-  ) => {
-    const recorded = await repository.recordMailTemplateSync({
-      instanceId,
-      kind,
-      expectedRevision: view.stored.revision,
-      status,
-      ...(texts ? { realm: view.realm, texts } : {}),
-    });
-    if (!recorded) throw new MailTemplateConflict();
-    return {
-      ...view,
-      status,
-      stored: {
-        ...view.stored,
-        syncStatus: status,
-        ...(texts ? { confirmedRealm: view.realm, confirmedTexts: texts } : {}),
-      },
-    };
-  };
+  if (expected?.operation === 'adopt')
+    return adoptInspectedTemplate(instanceId, kind, repository, view, actorId);
+  const record = (status: MailTemplateView['status'], texts?: Readonly<Record<string, string>>) =>
+    recordInspectedTemplate(instanceId, kind, repository, view, status, texts);
   if (
     !view.keycloakTexts ||
     !provider?.updateRealmLocalizationTexts ||

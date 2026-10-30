@@ -73,6 +73,17 @@ const templateSchema = () =>
       }
     });
 
+const templateFields = [
+  ['subject', 'subject', 200],
+  ['body', 'body', 5000],
+  ['passwordSetupLinkLabel', 'passwordLinkLabel', 120],
+  ['tenantHomepageLinkLabel', 'homepageLinkLabel', 120],
+] as const;
+
+const notifyEditorOpened = (open: boolean, onOpen?: () => void) => {
+  if (open) onOpen?.();
+};
+
 export const AccountInvitationTemplateEditorCard = ({
   effectiveTemplate,
   source,
@@ -137,12 +148,6 @@ export const AccountInvitationTemplateEditorCard = ({
       setSaving(false);
     }
   };
-  const templateFields = [
-    ['subject', 'subject', 200],
-    ['body', 'body', 5000],
-    ['passwordSetupLinkLabel', 'passwordLinkLabel', 120],
-    ['tenantHomepageLinkLabel', 'homepageLinkLabel', 120],
-  ] as const;
 
   const descriptionKey =
     mode === 'server'
@@ -170,7 +175,13 @@ export const AccountInvitationTemplateEditorCard = ({
             })}
           </p>
         </div>
-        <Dialog open={open} onOpenChange={next=>{setOpen(next);if(next)onOpen?.();}}>
+        <Dialog
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            notifyEditorOpened(next, onOpen);
+          }}
+        >
           <DialogTrigger asChild>
             <Button type="button" variant="secondary">
               {t('admin.instances.invitation.open')}
@@ -273,7 +284,14 @@ export const AccountInvitationTemplateCard = ({
       tenantName: instance.displayName,
       tenantHomepageUrl: `https://${instance.primaryHostname}/`,
     }}
-    synchronization={<InstanceMailTemplateSync instanceId={instance.instanceId} kind="invitation" revision={instance.accountInvitationTemplateRevision} onReconciled={onReconciled}/> }
+    synchronization={
+      <InstanceMailTemplateSync
+        instanceId={instance.instanceId}
+        kind="invitation"
+        revision={instance.accountInvitationTemplateRevision}
+        onReconciled={onReconciled}
+      />
+    }
     mode="instance"
     disabled={disabled}
     onSave={onSave}

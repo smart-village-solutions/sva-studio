@@ -43,13 +43,29 @@ const requireTemplateAccess = (request: Request, ctx: RegistryRequestContext): R
         : null) ?? requireFreshReauth(request, ctx))
     : null;
 };
+const parseInstanceMutation = async (request: Request, kind: 'invitation' | 'verification') => {
+  const parsed =
+    request.method === 'PATCH' ? schema.safeParse(await request.json().catch(() => null)) : null;
+  if (parsed && !parsed.success) return failure(400, 'invalid_request');
+  if (!parsed?.success || parsed.data.operation !== 'save')
+    return parsed?.success ? parsed.data : null;
+  if (parsed.data.template === undefined) return failure(400, 'invalid_request');
+  if (
+    parsed?.success &&
+    parsed.data.operation === 'save' &&
+    parsed.data.template &&
+    !(kind === 'invitation' ? invitation : verification).safeParse(parsed.data.template).success
+  )
+    return failure(400, 'invalid_request');
+  return parsed?.success ? parsed.data : null;
+};
+
 export const emailVerificationTemplateInternal = async (
   request: Request,
   ctx: RegistryRequestContext
 ): Promise<Response> => {
   const denied = requireTemplateAccess(request, ctx);
   if (denied) return denied;
-  const writing = request.method === 'PATCH';
   let id: string;
   try {
     id = decodeURIComponent(new URL(request.url).pathname.split('/')[5] ?? '');
@@ -59,25 +75,16 @@ export const emailVerificationTemplateInternal = async (
   const kind = new URL(request.url).pathname.split('/')[8];
   if (!isValidInstanceId(id) || (kind !== 'invitation' && kind !== 'verification'))
     return failure(400, 'invalid_request');
-  const parsed = writing ? schema.safeParse(await request.json().catch(() => null)) : null;
-  if (parsed && !parsed.success) return failure(400, 'invalid_request');
-  if (parsed?.success && parsed.data.operation === 'save' && parsed.data.template === undefined)
-    return failure(400, 'invalid_request');
-  if (
-    parsed?.success &&
-    parsed.data.operation === 'save' &&
-    parsed.data.template &&
-    !(kind === 'invitation' ? invitation : verification).safeParse(parsed.data.template).success
-  )
-    return failure(400, 'invalid_request');
+  const parsed = await parseInstanceMutation(request, kind);
+  if (parsed instanceof Response) return parsed;
   try {
-    const data = parsed?.success
+    const data = parsed
       ? await mutateMailTemplate(
           id,
           kind,
           {
-            ...parsed.data,
-            template: parsed.data.template as MailTemplateSource | null | undefined,
+            ...parsed,
+            template: parsed.template as MailTemplateSource | null | undefined,
           },
           ctx.user.id
         )

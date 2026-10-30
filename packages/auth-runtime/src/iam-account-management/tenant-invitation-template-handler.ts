@@ -1,4 +1,9 @@
-import { readMailTemplate, mutateMailTemplate, synchronizeMailTemplate, MailTemplateConflict } from '../iam-instance-registry/mail-template-sync.js';
+import {
+  readMailTemplate,
+  mutateMailTemplate,
+  synchronizeMailTemplate,
+  MailTemplateConflict,
+} from '../iam-instance-registry/mail-template-sync.js';
 import {
   AccountInvitationTemplateValidationError,
   resolveEffectiveAccountInvitationTemplate,
@@ -28,9 +33,9 @@ const mutationSchema = z
   .object({
     expectedRevision: z.number().int().nonnegative(),
     template: updateInstanceSchema.shape.accountInvitationTemplate.unwrap().optional(),
-    operation: z.enum(['save','transfer','adopt']).optional(),
-    expectedStudioTexts: z.record(z.string(),z.string()).optional(),
-    expectedKeycloakTexts: z.record(z.string(),z.string()).optional(),
+    operation: z.enum(['save', 'transfer', 'adopt']).optional(),
+    expectedStudioTexts: z.record(z.string(), z.string()).optional(),
+    expectedKeycloakTexts: z.record(z.string(), z.string()).optional(),
   })
   .strict();
 
@@ -54,7 +59,10 @@ const readView = async (
     serverTemplate: serverTemplate.template,
   });
   return {
-    revision: instance.accountInvitationTemplateRevision ?? instance.accountInvitationTemplate?.revision ?? 0,
+    revision:
+      instance.accountInvitationTemplateRevision ??
+      instance.accountInvitationTemplate?.revision ??
+      0,
     synchronization: await readMailTemplate(instanceId, 'invitation'),
     effectiveTemplate: effective.template,
     source: effective.source,
@@ -92,6 +100,9 @@ export const getTenantInvitationTemplateInternal = async (
     : createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', requestId);
 };
 
+const invitationSource = (data: z.infer<typeof mutationSchema>) =>
+  data.template ? { ...data.template, revision: data.expectedRevision + 1 } : null;
+
 export const updateTenantInvitationTemplateInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
@@ -120,25 +131,33 @@ export const updateTenantInvitationTemplateInternal = async (
   }
   try {
     if (parsed.data.operation && parsed.data.operation !== 'save') {
-      await mutateMailTemplate(actor.instanceId, 'invitation', { ...parsed.data, operation: parsed.data.operation }, actor.actorAccountId);
+      await mutateMailTemplate(
+        actor.instanceId,
+        'invitation',
+        { ...parsed.data, operation: parsed.data.operation },
+        actor.actorAccountId
+      );
       return jsonResponse(200, asApiItem(await readView(actor.instanceId), requestId));
     }
-    if (parsed.data.template === undefined) return createApiError(400,'invalid_request','Vorlage fehlt.',requestId);
+    if (parsed.data.template === undefined)
+      return createApiError(400, 'invalid_request', 'Vorlage fehlt.', requestId);
     if (parsed.data.template) validateAccountInvitationTemplate(parsed.data.template);
     const updated = await withScopedRegistryRepository(actor.instanceId, (repository) =>
       repository.updateAccountInvitationTemplate({
         instanceId: actor.instanceId,
         expectedRevision: parsed.data.expectedRevision,
-        template: parsed.data.template
-          ? { ...parsed.data.template, revision: parsed.data.expectedRevision + 1 }
-          : null,
+        template: invitationSource(parsed.data),
         actorId: actor.actorAccountId,
       })
     );
     if (!updated) {
       return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', requestId);
     }
-    try { await synchronizeMailTemplate(actor.instanceId,'invitation',actor.actorAccountId); } catch { /* Source committed; GET reports pending. */ }
+    try {
+      await synchronizeMailTemplate(actor.instanceId, 'invitation', actor.actorAccountId);
+    } catch {
+      /* Source committed; GET reports pending. */
+    }
     const view = await readView(actor.instanceId);
     return view
       ? jsonResponse(200, asApiItem(view, requestId))
@@ -148,8 +167,8 @@ export const updateTenantInvitationTemplateInternal = async (
       return createApiError(400, 'invalid_account_invitation_template', error.message, requestId);
     }
     if (
-      error instanceof MailTemplateConflict || error instanceof Error &&
-      error.message === 'account_invitation_template_revision_conflict'
+      error instanceof MailTemplateConflict ||
+      (error instanceof Error && error.message === 'account_invitation_template_revision_conflict')
     ) {
       return createApiError(
         409,

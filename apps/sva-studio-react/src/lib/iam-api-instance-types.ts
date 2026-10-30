@@ -1,3 +1,4 @@
+import type { MailTemplateSource } from '@sva/core';
 import type { IamInstanceListItem } from '@sva/core';
 
 export type InstancesQuery = {
@@ -67,8 +68,8 @@ export type UpdateServerAccountInvitationTemplatePayload = {
 
 export type UpdateTenantAccountInvitationTemplatePayload = {
   readonly operation?: 'save' | 'adopt' | 'transfer';
-  readonly expectedStudioTexts?: Readonly<Record<string,string>>;
-  readonly expectedKeycloakTexts?: Readonly<Record<string,string>>;
+  readonly expectedStudioTexts?: Readonly<Record<string, string>>;
+  readonly expectedKeycloakTexts?: Readonly<Record<string, string>>;
   readonly expectedRevision: number;
   readonly template?: UpdateInstancePayload['accountInvitationTemplate'];
 };
@@ -87,4 +88,12 @@ export type ExecuteInstanceKeycloakProvisioningPayload = {
     'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
   readonly planFingerprint: string;
   readonly tenantAdminTemporaryPassword?: string;
+};
+
+export type MailTemplateMutationPayload = {
+  operation: 'save' | 'transfer' | 'adopt';
+  expectedRevision: number;
+  template?: MailTemplateSource | null;
+  expectedStudioTexts?: Readonly<Record<string, string>>;
+  expectedKeycloakTexts?: Readonly<Record<string, string>>;
 };

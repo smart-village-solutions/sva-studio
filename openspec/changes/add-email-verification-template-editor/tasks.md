@@ -72,3 +72,10 @@ die eingebauten Texte dienen nur noch als Fallback unterhalb des allgemeinen Sta
 - Der bestehende Seed-Integrationstest führt die PostgreSQL-Datei jetzt regulär über das ungecachte Nx-Integrationstarget aus; kein zusätzliches Opt-in im CI erforderlich
 - Alle Migrationen bis 0111 in einem leeren PostgreSQL-16-Testcontainer angewendet und kanonischen Schema-Snapshot regeneriert
 - Staging-Auslieferung, echte Vererbungsprüfung und Havelland bleiben bis zum jeweiligen erfolgreichen Nachweis offen
+
+## Vereinfachung nach Release-Gate
+
+- Elf neue Complexity-Befunde ohne Änderung der Grenzwerte oder Baseline behoben: lesende Bestandsprüfung vom Abgleich getrennt, bestehende Repository-Factory in private Operationen aufgeteilt und Editorzustand von Darstellung getrennt
+- Bestehende Verträge gezielt nachgewiesen: 51 Repository-, 17 Handler-, 16 Sync-, 11 Bestätigungseditor- und 3 Einladungseditor-Fälle grün; App-Typecheck und gezieltes ESLint grün
+- Der rote CI-Test wartet gezielt auf die Speicher-Erfolgsmeldung, weil Sync- und Speicherstatus unabhängig angezeigt werden
+- Backend- und UI-Folgereview ohne belegte Blocker; vollständige GitHub-Gates für den neuen Commit bleiben Voraussetzung für den Staging-Release

@@ -11,7 +11,6 @@ import {
 } from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import { resolveIdentityProviderForInstance } from '../iam-account-management/shared-runtime.js';
-import { withRegistryRepository } from './repository.js';
 
 const synchronizationStatus = (
   stored: MailTemplateView['stored'],
@@ -46,15 +45,11 @@ export const inspectMailTemplate = async (
     template = stored.template;
     source = 'instance';
   } else if (kind === 'verification') {
-    const server = await withRegistryRepository((repo) =>
-      repo.getServerEmailVerificationTemplate()
-    );
+    const server = await repository.getServerEmailVerificationTemplate();
     template = server.template ?? DEFAULT_EMAIL_VERIFICATION_TEMPLATE;
     source = server.template ? 'server' : 'sva_default';
   } else {
-    const server = await withRegistryRepository((repo) =>
-      repo.getServerAccountInvitationTemplate()
-    );
+    const server = await repository.getServerAccountInvitationTemplate();
     ({ template, source } = resolveEffectiveAccountInvitationTemplate({
       serverTemplate: server.template,
     }));

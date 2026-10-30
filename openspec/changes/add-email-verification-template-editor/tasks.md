@@ -79,3 +79,5 @@ die eingebauten Texte dienen nur noch als Fallback unterhalb des allgemeinen Sta
 - Bestehende Verträge gezielt nachgewiesen: 51 Repository-, 17 Handler-, 16 Sync-, 11 Bestätigungseditor- und 3 Einladungseditor-Fälle grün; App-Typecheck und gezieltes ESLint grün
 - Der rote CI-Test wartet gezielt auf die Speicher-Erfolgsmeldung, weil Sync- und Speicherstatus unabhängig angezeigt werden
 - Backend- und UI-Folgereview ohne belegte Blocker; vollständige GitHub-Gates für den neuen Commit bleiben Voraussetzung für den Staging-Release
+
+- Nach automatischem Review werden allgemeine Standards über das bereits gesperrte Scoped-Repository gelesen; kein zweiter Checkout aus demselben Pool. Zwei gezielte Fälle verbieten verschachtelte Checkouts bei fünf parallelen geerbten Leseaufrufen für beide Vorlagenarten; insgesamt 18 Sync-Fälle grün

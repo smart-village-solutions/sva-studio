@@ -16,6 +16,8 @@ const s = vi.hoisted(() => ({
   audit: vi.fn(),
   resolve: vi.fn(),
   commits: 0,
+  scoped: 0,
+  rejectNestedCheckout: false,
   server: vi.fn(),
   saveServer: vi.fn(),
   list: vi.fn(),
@@ -31,23 +33,32 @@ vi.mock('./repository.js', () => ({
         | 'listInstances'
       >
     ) => Promise<unknown>
-  ) =>
-    work({
+  ) => {
+    if (s.rejectNestedCheckout && s.scoped > 0) throw new Error('nested_registry_checkout');
+    return work({
       getServerAccountInvitationTemplate: async () => ({}),
       getServerEmailVerificationTemplate: s.server,
       saveServerEmailVerificationTemplate: s.saveServer,
       listInstances: s.list,
-    }),
-  withScopedRegistryRepository: async (_id: string, work: (repo: object) => Promise<unknown>) => {
-    const v = await work({
-      getInstanceById: async () => instance,
-      getInstanceMailTemplate: s.get,
-      saveInstanceMailTemplate: s.save,
-      recordMailTemplateSync: s.record,
-      appendAuditEvent: s.audit,
     });
-    s.commits++;
-    return v;
+  },
+  withScopedRegistryRepository: async (_id: string, work: (repo: object) => Promise<unknown>) => {
+    s.scoped++;
+    try {
+      const v = await work({
+        getInstanceById: async () => instance,
+        getServerAccountInvitationTemplate: async () => ({}),
+        getServerEmailVerificationTemplate: s.server,
+        getInstanceMailTemplate: s.get,
+        saveInstanceMailTemplate: s.save,
+        recordMailTemplateSync: s.record,
+        appendAuditEvent: s.audit,
+      });
+      s.commits++;
+      return v;
+    } finally {
+      s.scoped--;
+    }
   },
 }));
 vi.mock('../iam-account-management/shared-runtime.js', () => ({
@@ -67,6 +78,8 @@ let instance = { authRealm: 'hvl', displayName: 'Havelland', primaryHostname: 'h
 beforeEach(() => {
   vi.resetAllMocks();
   s.commits = 0;
+  s.scoped = 0;
+  s.rejectNestedCheckout = false;
   s.server.mockResolvedValue({ revision: 0, template: null });
   s.list.mockResolvedValue([{ instanceId: 'hvl' }]);
   instance = { authRealm: 'hvl', displayName: 'Havelland', primaryHostname: 'hvl.example' };
@@ -320,3 +333,28 @@ it('removes a synchronized instance override and transfers the current general t
   expect(stored.template).toBeNull();
   expect(s.write).toHaveBeenCalledExactlyOnceWith('de', compileEmailVerificationTemplate(general));
 });
+
+it.each(['invitation', 'verification'] as const)(
+  'reads inherited %s templates without a nested registry pool checkout',
+  async (kind) => {
+    s.rejectNestedCheckout = true;
+    stored.kind = kind;
+    s.read.mockResolvedValue(
+      compileMailTemplate(
+        kind,
+        kind === 'verification'
+          ? DEFAULT_EMAIL_VERIFICATION_TEMPLATE
+          : DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+        {
+          tenantName: instance.displayName,
+          tenantHomepageUrl: `https://${instance.primaryHostname}/`,
+        }
+      )
+    );
+    const views = await Promise.all(Array.from({ length: 5 }, () => readMailTemplate('hvl', kind)));
+    expect(views).toHaveLength(5);
+    for (const view of views)
+      expect(view).toMatchObject({ source: 'sva_default', status: 'synced' });
+    expect(s.scoped).toBe(0);
+  }
+);

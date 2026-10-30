@@ -8,6 +8,7 @@ import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 import { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
 import { z } from 'zod';
 import { withIamAppDb } from './db.js';
+import { translationServiceBindingSchema as bindingSchema } from './app-translations-binding.js';
 import { readBoundedCatalogBody } from './app-translations.js';
 import {
   getDeepLSetupStatus,
@@ -20,14 +21,6 @@ import {
   verifyServiceJwt,
   isServiceIdentityProviderUnavailable,
 } from './service-token.js';
-const bindingSchema = z
-  .object({
-    issuer: z.url().refine((value) => new URL(value).protocol === 'https:'),
-    audience: z.string().min(1).max(256),
-    clientId: z.string().min(1).max(256),
-    subject: z.string().min(1).max(256),
-  })
-  .strict();
 const entrySchema = z
   .object({
     key: z

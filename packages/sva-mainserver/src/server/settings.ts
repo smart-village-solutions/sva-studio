@@ -99,7 +99,9 @@ export const saveSvaMainserverSettings = async (input: {
     authMode: 'oauth2',
     publicConfig: {
       ...buildPublicConfig({ graphqlBaseUrl, oauthTokenUrl }),
-      ...(existing?.publicConfig.translationService === undefined
+      ...(existing?.publicConfig.translationService === undefined || !input.enabled ||
+        existing.publicConfig.graphqlBaseUrl !== graphqlBaseUrl ||
+        existing.publicConfig.oauthTokenUrl !== oauthTokenUrl
         ? {}
         : { translationService: existing.publicConfig.translationService }),
     },

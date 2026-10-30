@@ -10,6 +10,7 @@ import {
   storePluginOperationArtifact,
   listActiveInstanceIdsForWorker,
   readAppTranslationsLocalReadiness,
+  reconcileAppTranslationServiceBinding,
   runCatalogTranslation,
 } from '@sva/auth-runtime/server';
 import {
@@ -189,6 +190,7 @@ const resolvePluginJobModule = (input: {
 const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
   'app-translations.local': () => ({
     readLocalReadiness: readAppTranslationsLocalReadiness,
+    reconcileServiceBinding: reconcileAppTranslationServiceBinding,
     translateCatalog: runCatalogTranslation,
   }),
   'waste-management.operations': () =>

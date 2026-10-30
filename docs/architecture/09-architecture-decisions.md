@@ -741,3 +741,7 @@ behalten ihre Anforderungen. Die Ausnahme ist keine Implementierungs- oder Rollo
 Zuordnung:
 
 - Abschnitt 05/08/09/10/11: ADR-069; die konkrete Runtime wird bei Umsetzung fortgeschrieben.
+
+## Mainserver-Übersetzungsfreigabe
+
+[ADR-070: Technischen Übersetzungsdienst an bestehender Mainserver-Verbindung autorisieren](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md) beschreibt auch die automatische Einrichtung bei Modulaktivierung über bestätigte öffentliche Identitätsmetadaten. Laufzeit und Schutzgrenzen stehen in Abschnitt [06](./06-runtime-view.md) und [08](./08-cross-cutting-concepts.md). Die lokale Ergänzung vom 30. Oktober ist kein Rolloutnachweis.

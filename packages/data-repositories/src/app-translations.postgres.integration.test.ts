@@ -18,6 +18,8 @@ import {
   saveDeepLInterfaceRecord,
   saveDeepLInterfaceCheck,
   loadExternalInterfaceRecordById,
+  saveExternalInterfaceRecord,
+  saveMainserverTranslationServiceBinding,
 } from './integrations/external-interfaces.server.js';
 const url = process.env.APP_TRANSLATIONS_TEST_DATABASE_URL;
 const pool = url ? new Pool({ connectionString: url, max: 4 }) : null;
@@ -152,6 +154,57 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
     await expect(transaction(a, (repo) => repo.exportTexts(randomUUID()))).rejects.toThrow(
       'catalog_not_found'
     );
+  });
+  it('binds Mainserver identity atomically without crossing tenants or replacing changed configuration', async () => {
+    if (!process.env.IAM_DATABASE_URL || new URL(process.env.IAM_DATABASE_URL).pathname !== new URL(url!).pathname)
+      throw new Error('disposable_interface_database_required');
+    await pool!.query(`INSERT INTO iam.external_interface_types(type_key,owner_kind,owner_id,display_name,category,public_schema_json,secret_schema_json,status_check_kind)
+      VALUES ('sva_mainserver','host','host','Mainserver','api','{}','{}','sva_mainserver') ON CONFLICT DO NOTHING`);
+    await pool!.query("INSERT INTO iam.instance_modules(instance_id,module_id,effective_active) VALUES ($1,'app-translations',true) ON CONFLICT DO NOTHING", [tenantB]);
+    await pool!.query("INSERT INTO iam.instance_plugin_lifecycle(instance_id,plugin_id,readiness_status,completed_generation) VALUES ($1,'app-translations','ready',1) ON CONFLICT DO NOTHING", [tenantB]);
+    const jobId = randomUUID();
+    await pool!.query(`INSERT INTO iam.studio_jobs(id,instance_id,plugin_id,job_type_id,queue_name,status,input_payload,idempotency_key,scheduled_at)
+      VALUES ($1::uuid,$2,'app-translations','app-translations.lifecycle','plugin-operations','running','{}',$1::text,now())`, [jobId, tenantB]);
+    await pool!.query("UPDATE iam.instance_plugin_lifecycle SET active_job_id=$2,claimed_generation=1,desired_operation='provision' WHERE instance_id=$1 AND plugin_id='app-translations'", [tenantB, jobId]);
+    const connection: ExternalInterfaceRecord = {
+      id: `main-${suffix}`, instanceId: tenantB, typeKey: 'sva_mainserver', ownerKind: 'host', ownerId: 'host',
+      displayName: 'Mainserver', alias: 'default', enabled: true, isDefault: true, category: 'api',
+      baseUrl: 'https://main.example/graphql', statusCheckKind: 'sva_mainserver', visibleStatus: 'unknown',
+      publicConfig: { graphqlBaseUrl: 'https://main.example/graphql', oauthTokenUrl: 'https://main.example/oauth/token', retained: 'keep' },
+      secretConfigCiphertext: 'synthetic-main-secret',
+    };
+    await saveExternalInterfaceRecord(connection);
+    const version = await pool!.query('SELECT xmin::text AS revision FROM iam.instance_external_interfaces WHERE instance_id=$1 AND id=$2', [tenantB, connection.id]);
+    const input = { connection, jobId, operation: 'provision', assignmentRevision: version.rows[0].revision as string, hostname: `${tenantB}.test`, generation: '1',
+      binding: { issuer: 'https://identity.example/realms/main', audience: 'sva-studio-app-translations', clientId: 'main', subject: 'main-subject' } };
+    expect(await saveMainserverTranslationServiceBinding(input)).toBe(true);
+    const saved = await loadExternalInterfaceRecordById(tenantB, connection.id);
+    expect(saved?.publicConfig).toEqual({ ...connection.publicConfig, translationService: input.binding });
+    expect(saved?.secretConfigCiphertext).toBe('synthetic-main-secret');
+    expect(await loadExternalInterfaceRecordById(tenantA, connection.id)).toBeNull();
+    await transaction(a, async (_repo, client) => {
+      const role = await client.query("SELECT current_user AS role");
+      expect(role.rows[0].role).toBe('iam_app');
+      const foreign = await client.query('SELECT id FROM iam.instance_external_interfaces WHERE id=$1', [connection.id]);
+      expect(foreign.rows).toEqual([]);
+    });
+    expect(await saveMainserverTranslationServiceBinding({ ...input, connection: { ...connection, instanceId: tenantA } })).toBe(false);
+    expect(await saveMainserverTranslationServiceBinding(input)).toBe(false);
+    const savedVersion = await pool!.query('SELECT xmin::text AS revision FROM iam.instance_external_interfaces WHERE instance_id=$1 AND id=$2', [tenantB, connection.id]);
+    const current = { ...input, connection: saved!, assignmentRevision: savedVersion.rows[0].revision as string };
+    expect(await saveMainserverTranslationServiceBinding({ ...current, generation: '2' })).toBe(false);
+    expect(await saveMainserverTranslationServiceBinding({ ...current, hostname: 'wrong.test' })).toBe(false);
+    await pool!.query("UPDATE iam.instance_external_interfaces SET public_config_json=public_config_json || '{\"graphqlBaseUrl\":\"https://other.example/graphql\"}'::jsonb WHERE instance_id=$1 AND id=$2", [tenantB, connection.id]);
+    expect(await saveMainserverTranslationServiceBinding(current)).toBe(false);
+    await pool!.query("UPDATE iam.instance_plugin_lifecycle SET access_state='suspended' WHERE instance_id=$1 AND plugin_id='app-translations'", [tenantB]);
+    const changed = await loadExternalInterfaceRecordById(tenantB, connection.id);
+    const changedVersion = await pool!.query('SELECT xmin::text AS revision FROM iam.instance_external_interfaces WHERE instance_id=$1 AND id=$2', [tenantB, connection.id]);
+    const suspended = { ...input, connection: changed!, assignmentRevision: changedVersion.rows[0].revision as string };
+    expect(await saveMainserverTranslationServiceBinding(suspended)).toBe(false);
+    await pool!.query("UPDATE iam.instance_plugin_lifecycle SET desired_operation='reactivate',desired_generation=2,claimed_generation=2 WHERE instance_id=$1 AND plugin_id='app-translations'", [tenantB]);
+    expect(await saveMainserverTranslationServiceBinding({ ...suspended, operation: 'reactivate', generation: '2', jobId: randomUUID() })).toBe(false);
+    expect(await saveMainserverTranslationServiceBinding({ ...suspended, operation: 'reactivate', generation: '2' })).toBe(true);
+    expect((await loadExternalInterfaceRecordById(tenantB, connection.id))?.secretConfigCiphertext).toBe('synthetic-main-secret');
   });
   it('isolates DeepL config with RLS and serializes config, checks and module revocation', async () => {
     if (

@@ -33,6 +33,7 @@ const state = vi.hoisted(() => ({
   createRepo: vi.fn(),
   pluginAccess: vi.fn(),
 }));
+vi.mock('./app-translations-binding.js', () => ({ readAppTranslationServiceBinding: async () => false }));
 vi.mock('./middleware.js', () => ({
   withAuthenticatedUser: (_request: Request, work: (ctx: unknown) => unknown) => work(state.ctx),
 }));
@@ -688,6 +689,7 @@ describe('internal catalog session facade', () => {
     expect(await readAppTranslationsLocalReadiness('tenant-a')).toEqual({
       schemaReady: true,
       providerConfigured: true,
+      serviceConfigured: false,
     });
     expect(query.mock.calls[0]).toEqual([
       "SELECT set_config('app.instance_id', $1, true)",
@@ -695,7 +697,7 @@ describe('internal catalog session facade', () => {
     ]);
     state.providerReady = false;
     const status = await readAppTranslationsLocalReadiness('tenant-b');
-    expect(status).toEqual({ schemaReady: true, providerConfigured: false });
+    expect(status).toEqual({ schemaReady: true, providerConfigured: false, serviceConfigured: false });
     expect(JSON.stringify(status)).not.toContain('private');
     query.mockResolvedValue({ rows: [{ ready: false }] });
     expect((await readAppTranslationsLocalReadiness('tenant-b')).schemaReady).toBe(false);

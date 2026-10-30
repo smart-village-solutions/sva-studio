@@ -182,6 +182,8 @@ export const englishTranslations = {
       local: 'Check local catalog basis — app integration is not available yet',
       schema: 'Local catalog basis',
       provider: 'Central DeepL credential configured',
+      service: 'Mainserver authorized for translations',
+      serviceMissing: 'Mainserver authorization is missing. Check the Mainserver assignment and Studio destination, then reconcile the module.',
       invalidContext: 'Invalid module lifecycle request',
     },
   },

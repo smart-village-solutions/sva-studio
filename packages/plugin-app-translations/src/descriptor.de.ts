@@ -190,6 +190,8 @@ export const germanTranslations = {
       local: 'Lokale Katalogbasis prüfen — App-Integration noch nicht verfügbar',
       schema: 'Lokale Katalogbasis',
       provider: 'Zentraler DeepL-Zugang konfiguriert',
+      service: 'Mainserver für Übersetzungen freigegeben',
+      serviceMissing: 'Mainserver-Freigabe fehlt. Mainserver-Zuordnung und Studio-Ziel prüfen, anschließend Modul abgleichen.',
       invalidContext: 'Ungültiger Modulauftrag',
     },
   },

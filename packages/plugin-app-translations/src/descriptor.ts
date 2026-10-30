@@ -108,6 +108,12 @@ export const appTranslationsPlugin: PluginDescriptor = {
         titleKey: 'appTranslations.readiness.provider',
         required: false,
       },
+      {
+        checkId: 'app-translations.service',
+        titleKey: 'appTranslations.readiness.service',
+        required: false,
+        repairOperation: 'reconcile',
+      },
     ],
   },
   contentHistory: { mode: 'none', reasonCode: 'infrastructure_only' },

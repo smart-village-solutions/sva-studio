@@ -4,6 +4,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 import { withAuthenticatedUser } from './middleware.js';
 import { validateCsrf } from './shared/request-security.js';
 import { withIamAppDb } from './db.js';
+import { readAppTranslationServiceBinding } from './app-translations-binding.js';
 import { readDeepLSetupStatus } from './app-translations-deepl.js';
 import { operationSchema, actionFor, type Operation } from './app-translations-operations.js';
 import { authorizeCatalogOperation } from './app-translations-execution.js';
@@ -105,6 +106,7 @@ export const readAppTranslationsLocalReadiness = async (
 ): Promise<{
   readonly schemaReady: boolean;
   readonly providerConfigured: boolean;
+  readonly serviceConfigured: boolean;
 }> => {
   const schemaReady = await withIamAppDb(async (client) => {
     await client.query("SELECT set_config('app.instance_id', $1, true)", [instanceId]);
@@ -120,7 +122,8 @@ export const readAppTranslationsLocalReadiness = async (
     );
     return result.rows[0]?.ready === true;
   });
-  return { schemaReady, providerConfigured: (await readDeepLSetupStatus(instanceId)).ready };
+  return { schemaReady, providerConfigured: (await readDeepLSetupStatus(instanceId)).ready,
+    serviceConfigured: await readAppTranslationServiceBinding(instanceId) };
 };
 
 /** UI transport only; the session facade owns every operation's authorization. */

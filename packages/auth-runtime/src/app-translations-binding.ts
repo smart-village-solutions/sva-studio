@@ -7,6 +7,7 @@ import { z } from 'zod';
 import type { StudioJobExecutionHandlerContext } from './plugin-operations/types.js';
 import { withIamAppDb } from './db.js';
 import { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
+import { readEffectiveSvaMainserverCredentialsWithStatus } from './mainserver-effective-credentials.js';
 
 const httpsUrl = z.url().refine((value) => {
   const url = new URL(value);
@@ -31,7 +32,10 @@ const identitySchema = z
   })
   .strict();
 
-const readActiveScope = (connection: ExternalInterfaceRecord, context: StudioJobExecutionHandlerContext) =>
+const readActiveScope = (
+  connection: ExternalInterfaceRecord,
+  context: StudioJobExecutionHandlerContext
+) =>
   withIamAppDb(async (client) => {
     await client.query("SELECT set_config('app.instance_id', $1, true)", [connection.instanceId]);
     const result = await client.query<{
@@ -68,13 +72,11 @@ export const readAppTranslationServiceBinding = async (instanceId: string): Prom
   );
 };
 
-const readIdentity = async (url: string) => {
-  const response = await fetch(url, {
-    redirect: 'error',
-    signal: AbortSignal.timeout(12000),
-    headers: { Accept: 'application/json' },
-  });
-  if (!response.ok || !response.body) throw new Error('mainserver_identity_unavailable');
+const readBoundedJson = async (response: Response): Promise<unknown> => {
+  if (!response.ok || !response.body) {
+    await response.body?.cancel();
+    throw new Error('mainserver_identity_unavailable');
+  }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -95,7 +97,80 @@ const readIdentity = async (url: string) => {
     body.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return identitySchema.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)));
+  return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body));
+};
+
+const requestServiceSetup = async (
+  connection: ExternalInterfaceRecord,
+  context: StudioJobExecutionHandlerContext,
+  url: string,
+  studioUrl: string
+): Promise<Response> => {
+  const organizationId = await withIamAppDb(async (client) => {
+    await client.query("SELECT set_config('app.instance_id', $1, true)", [connection.instanceId]);
+    const result = await client.query<{ organization_id: string }>(
+      `SELECT c.organization_id FROM iam.organization_mainserver_credentials c
+       JOIN iam.organizations o ON o.instance_id=c.instance_id AND o.id=c.organization_id
+       JOIN iam.accounts a ON a.instance_id=c.instance_id AND a.id=c.technical_account_id
+       WHERE c.instance_id=$1 AND c.provisioning_status='ready' AND o.is_active
+         AND nullif(trim(c.mainserver_application_id),'') IS NOT NULL
+         AND nullif(trim(c.mainserver_application_secret_ciphertext),'') IS NOT NULL
+         AND a.is_technical_account AND a.status='active' AND NOT a.is_blocked
+         AND a.soft_deleted_at IS NULL AND a.permanently_deleted_at IS NULL AND a.deactivated_at IS NULL
+       ORDER BY o.id LIMIT 1`,
+      [connection.instanceId]
+    );
+    return result.rows[0]?.organization_id;
+  });
+  if (!organizationId || typeof connection.publicConfig.oauthTokenUrl !== 'string')
+    throw new Error('mainserver_setup_credentials_missing');
+  const credentials = await readEffectiveSvaMainserverCredentialsWithStatus({
+    instanceId: connection.instanceId,
+    keycloakSubject: '',
+    activeOrganizationId: organizationId,
+    actingPrincipalType: 'organization',
+  });
+  const tokenUrl = await normalizePublicUpstreamUrl(connection.publicConfig.oauthTokenUrl);
+  if (!tokenUrl || credentials.status !== 'ok' || credentials.source !== 'organization')
+    throw new Error('mainserver_setup_credentials_missing');
+  const signal = context.abortSignal
+    ? AbortSignal.any([context.abortSignal, AbortSignal.timeout(35000)])
+    : AbortSignal.timeout(35000);
+  const tokenResponse = await fetch(tokenUrl, {
+    method: 'POST',
+    redirect: 'error',
+    signal,
+    headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: credentials.credentials.apiKey,
+      client_secret: credentials.credentials.apiSecret,
+    }),
+  });
+  const token = z
+    .object({
+      access_token: z
+        .string()
+        .min(1)
+        .max(4096)
+        .regex(/^[A-Za-z0-9._~+/-]+=*$/),
+    })
+    .parse(await readBoundedJson(tokenResponse));
+  // A queued activation may have been superseded while requesting the token.
+  const currentScope = await readActiveScope(connection, context);
+  if (!currentScope || currentScope.primary_hostname !== new URL(studioUrl).host)
+    throw new Error('mainserver_setup_scope_changed');
+  return fetch(url, {
+    method: 'POST',
+    redirect: 'error',
+    signal,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token.access_token}`,
+    },
+    body: JSON.stringify({ instanceId: connection.instanceId, studioUrl }),
+  });
 };
 
 /** Only the root-managed upstream is trusted; incoming requests never enroll identities. */
@@ -123,7 +198,24 @@ export const reconcileAppTranslationServiceBinding = async (
       ).toString()
     );
     if (!url) return false;
-    const identity = await readIdentity(url);
+    let response = await fetch(url, {
+      redirect: 'error',
+      signal: AbortSignal.timeout(12000),
+      headers: { Accept: 'application/json' },
+    });
+    if (
+      [404, 503].includes(response.status) &&
+      connection.publicConfig.translationService === undefined
+    ) {
+      await response.body?.cancel();
+      response = await requestServiceSetup(
+        connection,
+        context,
+        url,
+        `https://${scope.primary_hostname}/api/v1/app-translations/translate`
+      );
+    }
+    const identity = identitySchema.parse(await readBoundedJson(response));
     const destinations = [`https://${scope.primary_hostname}/api/v1/app-translations/translate`];
     const publicBase = httpsUrl.safeParse(process.env.SVA_PUBLIC_BASE_URL);
     if (publicBase.success)

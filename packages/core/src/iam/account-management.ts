@@ -5,6 +5,7 @@ import type {
 } from '../instances/account-invitation-template.js';
 
 export type TenantAccountInvitationTemplateView = Readonly<{
+  synchronization?: import('../instances/mail-template-sync.js').MailTemplateView;
   revision: number;
   effectiveTemplate: AccountInvitationTemplate;
   source: AccountInvitationTemplateSource;

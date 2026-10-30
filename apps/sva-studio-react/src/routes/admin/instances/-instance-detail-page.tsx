@@ -306,7 +306,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
           ...buildInstanceSettingsPayload(createDetailForm(selectedInstance)),
           accountInvitationTemplate: template,
           accountInvitationTemplateRevision:
-            selectedInstance.accountInvitationTemplate?.revision ?? 0,
+            selectedInstance.accountInvitationTemplateRevision ?? selectedInstance.accountInvitationTemplate?.revision ?? 0,
         },
         (error) => {
           failure.conflict = error.code === 'conflict';
@@ -379,6 +379,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
           setDetailFormValues={setDetailFormValues}
           onUpdateSubmit={onUpdateSubmit}
           onSaveAccountInvitationTemplate={onSaveAccountInvitationTemplate}
+          onMailTemplateReconciled={async()=>{if(selectedInstance) await loadInstance(selectedInstance.instanceId);}}
           saveStatus={saveFeedback.status}
           markDirty={saveFeedback.markDirty}
           activationConfirmation={activationConfirmation}

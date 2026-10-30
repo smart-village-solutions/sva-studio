@@ -132,25 +132,7 @@ export const sendPasswordSetupInvitation = async (input: {
     purpose: input.invitationPurpose ?? 'studio',
     authConfig,
   });
-  await ensureAccountInvitationRealmValues({
-    instanceId: input.actor.instanceId,
-    template: authConfig.accountInvitationTemplate,
-    tenantName: authConfig.tenantDisplayName,
-    tenantHomepageUrl: authConfig.tenantHomepageUrl,
-    readRealmEmailTheme: input.identityProvider.provider.getRealmEmailTheme?.bind(
-      input.identityProvider.provider
-    ),
-    readRealmLocalizationTexts: input.identityProvider.provider.getRealmLocalizationTexts?.bind(
-      input.identityProvider.provider
-    ),
-    updateRealmEmailTheme: input.identityProvider.provider.updateRealmEmailTheme?.bind(
-      input.identityProvider.provider
-    ),
-    updateRealmLocalizationTexts:
-      input.identityProvider.provider.updateRealmLocalizationTexts?.bind(
-        input.identityProvider.provider
-      ),
-  });
+  await ensureAccountInvitationRealmValues({ instanceId: input.actor.instanceId });
   await waitForKeycloakUserReadiness(input);
   await executeActionsEmailWithRetry({
     destination,
@@ -174,9 +156,9 @@ export const buildInvitationFailure = (error: unknown): InvitationResult => {
           (error.code === 'account_invitation_template_drift' ||
             error.code === 'account_invitation_template_unavailable')
         ? {
-            code: 'keycloak_unavailable',
-            message: 'Die Account-Einladung ist noch nicht mit dem Keycloak-Realm abgeglichen.',
-            retryable: true,
+            code: 'invitation_template_not_synchronized',
+            message: 'Versand blockiert: Die Einladungsvorlage ist nicht synchronisiert. Unter Benutzerverwaltung > Einladungsvorlage den Keycloak-Abgleich öffnen und beheben.',
+            retryable: false,
           }
         : error instanceof KeycloakAdminRequestError && error.code === 'user_not_ready'
           ? {

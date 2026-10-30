@@ -157,13 +157,6 @@ const sendPasswordSetupEmail = async (input: {
   actor: PasswordSetupEmailActor;
   executeActionsEmail: ExecuteActionsEmail;
   user: PasswordSetupTargetUser;
-  readRealmEmailTheme?: () => Promise<string | undefined>;
-  readRealmLocalizationTexts?: (locale: string) => Promise<Readonly<Record<string, string>>>;
-  updateRealmEmailTheme?: (emailTheme: string) => Promise<void>;
-  updateRealmLocalizationTexts?: (
-    locale: string,
-    values: Readonly<Record<string, string>>
-  ) => Promise<void>;
 }) => {
   const authConfig = await resolveAuthConfigForInstance(input.actor.instanceId);
   const destination = await resolveInvitationDestination({
@@ -171,16 +164,7 @@ const sendPasswordSetupEmail = async (input: {
     purpose: input.user.invitationPurpose ?? 'studio',
     authConfig,
   });
-  await ensureAccountInvitationRealmValues({
-    instanceId: input.actor.instanceId,
-    template: authConfig.accountInvitationTemplate,
-    tenantName: authConfig.tenantDisplayName,
-    tenantHomepageUrl: authConfig.tenantHomepageUrl,
-    readRealmEmailTheme: input.readRealmEmailTheme,
-    readRealmLocalizationTexts: input.readRealmLocalizationTexts,
-    updateRealmEmailTheme: input.updateRealmEmailTheme,
-    updateRealmLocalizationTexts: input.updateRealmLocalizationTexts,
-  });
+  await ensureAccountInvitationRealmValues({ instanceId: input.actor.instanceId });
   await trackKeycloakCall('send_password_setup_email', () =>
     input.executeActionsEmail(input.user.keycloakSubject, {
       actions: ['UPDATE_PASSWORD'],
@@ -212,13 +196,6 @@ export const processPasswordSetupEmailSend = async (input: {
   ctx: AuthenticatedRequestContext;
   endpoint: string;
   executeActionsEmail: ExecuteActionsEmail | undefined;
-  readRealmEmailTheme?: () => Promise<string | undefined>;
-  readRealmLocalizationTexts?: (locale: string) => Promise<Readonly<Record<string, string>>>;
-  updateRealmEmailTheme?: (emailTheme: string) => Promise<void>;
-  updateRealmLocalizationTexts?: (
-    locale: string,
-    values: Readonly<Record<string, string>>
-  ) => Promise<void>;
   idempotencyKey: string;
   userId: string;
 }): Promise<Response> => {
@@ -257,10 +234,6 @@ export const processPasswordSetupEmailSend = async (input: {
       actor: input.actor,
       executeActionsEmail,
       user: resolvedTargetUser.user,
-      readRealmEmailTheme: input.readRealmEmailTheme,
-      readRealmLocalizationTexts: input.readRealmLocalizationTexts,
-      updateRealmEmailTheme: input.updateRealmEmailTheme,
-      updateRealmLocalizationTexts: input.updateRealmLocalizationTexts,
     });
     await emitPasswordSetupEmailSuccessAudit({
       actor: input.actor,

@@ -121,6 +121,7 @@ export type IamUserDetail = IamUserListItem & {
 
 export type IamUserInvitationStatus = 'not_requested' | 'sent' | 'failed';
 export type IamUserInvitationErrorCode =
+  | 'invitation_template_not_synchronized'
   | 'keycloak_user_not_ready'
   | 'keycloak_unavailable'
   | 'execute_actions_email_not_supported'

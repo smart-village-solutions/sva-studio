@@ -213,6 +213,21 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it('reads the effective email theme messages for the configured realm', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ key: 'emailVerificationSubject', value: 'Bestätigen' }])
+      );
+    const client = await createClient(fetchImpl);
+    await expect(client.getEffectiveRealmEmailMessages('de')).resolves.toEqual({
+      emailVerificationSubject: 'Bestätigen',
+    });
+    expect(fetchImpl.mock.calls[1]?.[0]).toBe('https://keycloak.example/resources/demo/email/de');
+    expect(fetchImpl.mock.calls[1]?.[1]).toEqual(expect.objectContaining({ method: 'GET' }));
+  });
+
   it('reads and mutates only the requested realm localization entries', async () => {
     const fetchImpl = vi
       .fn()

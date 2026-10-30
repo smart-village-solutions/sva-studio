@@ -1,3 +1,4 @@
+import { InstanceMailTemplateSync } from './-mail-template-sync-panel';
 /** Shared editor card for server-wide and instance-specific account invitations. */
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
@@ -79,7 +80,11 @@ export const AccountInvitationTemplateEditorCard = ({
   mode,
   disabled = false,
   onSave,
+  synchronization,
+  onOpen,
 }: {
+  readonly onOpen?: () => void;
+  readonly synchronization?: React.ReactNode;
   readonly effectiveTemplate: AccountInvitationTemplate;
   readonly source: AccountInvitationTemplateSource;
   readonly preview: PreviewContext;
@@ -165,7 +170,7 @@ export const AccountInvitationTemplateEditorCard = ({
             })}
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={next=>{setOpen(next);if(next)onOpen?.();}}>
           <DialogTrigger asChild>
             <Button type="button" variant="secondary">
               {t('admin.instances.invitation.open')}
@@ -177,6 +182,7 @@ export const AccountInvitationTemplateEditorCard = ({
               <DialogDescription>{t(descriptionKey)}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {open ? synchronization : null}
               <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
                 {t('admin.instances.invitation.tokens')}
               </p>
@@ -251,7 +257,9 @@ export const AccountInvitationTemplateCard = ({
   instance,
   onSave,
   disabled,
+  onReconciled,
 }: {
+  readonly onReconciled?: () => Promise<void>;
   readonly disabled?: boolean;
   readonly instance: IamInstanceDetail;
   readonly onSave: (
@@ -265,6 +273,7 @@ export const AccountInvitationTemplateCard = ({
       tenantName: instance.displayName,
       tenantHomepageUrl: `https://${instance.primaryHostname}/`,
     }}
+    synchronization={<InstanceMailTemplateSync instanceId={instance.instanceId} kind="invitation" revision={instance.accountInvitationTemplateRevision} onReconciled={onReconciled}/> }
     mode="instance"
     disabled={disabled}
     onSave={onSave}

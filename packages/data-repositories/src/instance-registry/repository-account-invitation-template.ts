@@ -1,3 +1,4 @@
+import { createMailTemplateRepository } from './repository-mail-templates.js';
 import { ACCOUNT_INVITATION_TEMPLATE_KEY } from '@sva/core';
 import type {
   AccountInvitationPurpose,
@@ -17,40 +18,10 @@ export const updateAccountInvitationTemplate = async (
   executor: SqlExecutor,
   input: Parameters<InstanceRegistryRepository['updateAccountInvitationTemplate']>[0]
 ) => {
-  const rows = await queryRows<InstanceListRow>(
-    executor,
-    statement(
-      `
-UPDATE iam.instances
-SET
-  account_invitation_template = $3::jsonb,
-  updated_by = $4,
-  updated_at = NOW()
-WHERE id = $1
-  AND COALESCE((account_invitation_template ->> 'revision')::integer, 0) = $2
-RETURNING
-${buildInstanceSelectColumns()};
-`,
-      [
-        input.instanceId,
-        input.expectedRevision,
-        input.template ? JSON.stringify(input.template) : null,
-        resolveInstanceMutationActorId(input.actorId),
-      ]
-    )
-  );
-  if (rows[0]) return mapInstance(rows[0]);
-
-  const existing = await queryRows<{ instance_exists: boolean }>(
-    executor,
-    statement(`SELECT EXISTS (SELECT 1 FROM iam.instances WHERE id = $1) AS instance_exists;`, [
-      input.instanceId,
-    ])
-  );
-  if (existing[0]?.instance_exists) {
-    throw new Error('account_invitation_template_revision_conflict');
-  }
-  return null;
+  try { await createMailTemplateRepository(executor).saveInstanceMailTemplate({ ...input, kind: 'invitation' }); }
+  catch (error) { if (error instanceof Error && error.message === 'mail_template_revision_conflict') throw Object.assign(new Error('account_invitation_template_revision_conflict'), {cause:error}); throw error; }
+  const rows = await queryRows<InstanceListRow>(executor, statement(`SELECT ${buildInstanceSelectColumns()} FROM iam.instances WHERE id=$1;`, [input.instanceId]));
+  return rows[0] ? mapInstance(rows[0]) : null;
 };
 
 type ServerAccountInvitationTemplateRow = {

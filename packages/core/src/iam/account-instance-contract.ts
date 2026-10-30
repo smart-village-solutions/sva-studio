@@ -87,6 +87,7 @@ export type IamInstanceListItem = {
     readonly adoptExisting?: boolean;
   };
   readonly themeKey?: string;
+  readonly accountInvitationTemplateRevision?: number;
   readonly accountInvitationTemplate?: import('../instances/account-invitation-template.js').AccountInvitationTemplate;
   readonly assignedModules: readonly string[];
   readonly featureFlags: Readonly<Record<string, boolean>>;

@@ -66,8 +66,11 @@ export type UpdateServerAccountInvitationTemplatePayload = {
 };
 
 export type UpdateTenantAccountInvitationTemplatePayload = {
+  readonly operation?: 'save' | 'adopt' | 'transfer';
+  readonly expectedStudioTexts?: Readonly<Record<string,string>>;
+  readonly expectedKeycloakTexts?: Readonly<Record<string,string>>;
   readonly expectedRevision: number;
-  readonly template: UpdateInstancePayload['accountInvitationTemplate'];
+  readonly template?: UpdateInstancePayload['accountInvitationTemplate'];
 };
 
 export type ReconcileInstanceKeycloakPayload = {

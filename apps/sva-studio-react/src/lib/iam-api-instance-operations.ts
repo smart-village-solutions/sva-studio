@@ -1,6 +1,13 @@
+import type {
+  MailTemplateKind,
+  EmailVerificationTemplate,
+  ServerEmailVerificationTemplateView,
+  MailTemplateView,
+  MailTemplateSource,
+} from '@sva/core';
 import type { ApiItemResponse, IamInstanceDetail, IamInstanceListItem } from '@sva/core';
 
-import { postJson, requestJson } from './iam-http-client';
+import { patchJson, postJson, requestJson } from './iam-http-client';
 
 import type {
   ExecuteInstanceKeycloakProvisioningPayload,
@@ -155,3 +162,23 @@ export const archiveInstance = async (
     { status: 'archived' },
     true
   );
+
+export const getInstanceMailTemplate = (instanceId: string, kind: MailTemplateKind) =>
+  requestJson<ApiItemResponse<MailTemplateView>>(
+    `/api/v1/iam/instances/${encodeURIComponent(instanceId)}/keycloak/mail-templates/${kind}`
+  );
+export type MailTemplateMutationPayload = {
+  operation: 'save' | 'transfer' | 'adopt';
+  expectedRevision: number;
+  template?: MailTemplateSource | null;
+  expectedStudioTexts?: Readonly<Record<string,string>>;
+  expectedKeycloakTexts?: Readonly<Record<string,string>>;
+};
+export const updateInstanceMailTemplate = (instanceId: string, kind: MailTemplateKind, payload: MailTemplateMutationPayload) =>
+  patchJson<ApiItemResponse<MailTemplateView>, MailTemplateMutationPayload>(
+    `/api/v1/iam/instances/${encodeURIComponent(instanceId)}/keycloak/mail-templates/${kind}`, payload
+  );
+
+export const getServerEmailVerificationTemplate = () => requestJson<ApiItemResponse<ServerEmailVerificationTemplateView>>('/api/v1/iam/templates/email-verification');
+export const updateServerEmailVerificationTemplate = (payload:{expectedRevision:number;template:EmailVerificationTemplate|null}) =>
+  patchJson<ApiItemResponse<ServerEmailVerificationTemplateView>,typeof payload>('/api/v1/iam/templates/email-verification',payload);

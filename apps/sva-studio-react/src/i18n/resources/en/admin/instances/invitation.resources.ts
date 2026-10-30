@@ -25,7 +25,7 @@ export const invitationInstancesAdminENResources = {
   resetInstanceConfirm: 'Remove the instance template and use the server template from now on?',
   resetServer: 'Use SVA default',
   resetServerConfirm: 'Remove the server template and use the SVA default from now on?',
-  saved: 'The template was saved.',
+  saved: 'Saved in Studio. The Keycloak comparison shows the synchronization status.',
   saveConflict:
     'The template changed in the meantime. The current version was loaded; review it and save again.',
   saveFailed: 'The template could not be saved.',

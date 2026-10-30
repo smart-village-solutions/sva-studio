@@ -1,76 +1,13 @@
-import { compileAccountInvitationTemplate } from '@sva/core';
-import type { AccountInvitationTemplate } from '@sva/core';
-
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
+import { readMailTemplate } from '../iam-instance-registry/mail-template-sync.js';
 
-const KEYS = ['executeActionsSubject', 'executeActionsBody', 'executeActionsBodyHtml'] as const;
-
-export const ensureAccountInvitationRealmValues = async (input: {
-  readonly instanceId: string;
-  readonly template?: AccountInvitationTemplate;
-  readonly tenantName?: string;
-  readonly tenantHomepageUrl?: string;
-  readonly readRealmEmailTheme?: () => Promise<string | undefined>;
-  readonly readRealmLocalizationTexts?: (
-    locale: string
-  ) => Promise<Readonly<Record<string, string>>>;
-  readonly updateRealmEmailTheme?: (emailTheme: string) => Promise<void>;
-  readonly updateRealmLocalizationTexts?: (
-    locale: string,
-    values: Readonly<Record<string, string>>
-  ) => Promise<void>;
-}): Promise<void> => {
-  const template = input.template;
-  if (!template) return;
-  if (
-    !input.readRealmEmailTheme ||
-    !input.readRealmLocalizationTexts ||
-    !input.tenantName ||
-    !input.tenantHomepageUrl
-  ) {
-    throw new KeycloakAdminRequestError({
-      message: 'Account invitation template projection is unavailable',
-      statusCode: 503,
-      code: 'account_invitation_template_unavailable',
-      retryable: true,
-    });
-  }
-
-  const expected = compileAccountInvitationTemplate({
-    template,
-    tenantName: input.tenantName,
-    tenantHomepageUrl: input.tenantHomepageUrl,
+export const ensureAccountInvitationRealmValues = async (input: { readonly instanceId: string }): Promise<void> => {
+  try {
+    const view = await readMailTemplate(input.instanceId, 'invitation');
+    if (view.status === 'synced') return;
+  } catch { /* A failed comparison must never authorize a send. */ }
+  throw new KeycloakAdminRequestError({
+    message: 'Versand blockiert: Die Einladungsvorlage ist nicht synchronisiert. Unter Benutzerverwaltung > Einladungsvorlage den Keycloak-Abgleich öffnen und beheben.',
+    statusCode: 409, code: 'account_invitation_template_drift', retryable: false,
   });
-  let [emailTheme, actual] = await Promise.all([
-    input.readRealmEmailTheme(),
-    input.readRealmLocalizationTexts('de'),
-  ]);
-  const differs = () =>
-    emailTheme !== 'sva-kern2' || KEYS.some((key) => actual[key] !== expected[key]);
-  if (!differs()) return;
-  if (!input.updateRealmEmailTheme || !input.updateRealmLocalizationTexts) {
-    throw new KeycloakAdminRequestError({
-      message: 'Account invitation template projection is unavailable',
-      statusCode: 503,
-      code: 'account_invitation_template_unavailable',
-      retryable: true,
-    });
-  }
-
-  if (emailTheme !== 'sva-kern2') {
-    await input.updateRealmEmailTheme('sva-kern2');
-  }
-  await input.updateRealmLocalizationTexts('de', expected);
-  [emailTheme, actual] = await Promise.all([
-    input.readRealmEmailTheme(),
-    input.readRealmLocalizationTexts('de'),
-  ]);
-  if (differs()) {
-    throw new KeycloakAdminRequestError({
-      message: 'Account invitation template projection could not be confirmed',
-      statusCode: 503,
-      code: 'account_invitation_template_drift',
-      retryable: true,
-    });
-  }
 };

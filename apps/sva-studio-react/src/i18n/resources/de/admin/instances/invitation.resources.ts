@@ -25,7 +25,7 @@ export const invitationInstancesAdminDEResources = {
   resetInstanceConfirm: 'Die Instanzvorlage entfernen und künftig die Servervorlage verwenden?',
   resetServer: 'SVA-Standard verwenden',
   resetServerConfirm: 'Die Servervorlage entfernen und künftig den SVA-Standard verwenden?',
-  saved: 'Die Vorlage wurde gespeichert.',
+  saved: 'Im Studio gespeichert. Den Synchronisierungsstand zeigt der Keycloak-Abgleich.',
   saveConflict:
     'Die Vorlage wurde zwischenzeitlich geändert. Der aktuelle Stand wurde geladen; bitte prüfen Sie ihn und speichern Sie erneut.',
   saveFailed: 'Die Vorlage konnte nicht gespeichert werden.',

@@ -1,3 +1,4 @@
+import { EmailVerificationTemplateCard } from './-email-verification-template-card';
 import type { FieldPath } from 'react-hook-form';
 import {
   StudioField,
@@ -35,6 +36,7 @@ export const InstanceDetailConfigurationSection = ({
   onUpdateSubmit,
   saveStatus = 'idle',
   onSaveAccountInvitationTemplate,
+  onMailTemplateReconciled,
   form,
   saving,
 }: ConfigurationSectionProps) => {
@@ -124,7 +126,13 @@ export const InstanceDetailConfigurationSection = ({
           <AccountInvitationTemplateCard
             instance={selectedInstance}
             disabled={saving}
+            onReconciled={onMailTemplateReconciled}
             onSave={onSaveAccountInvitationTemplate ?? (async () => false)}
+          />
+          <EmailVerificationTemplateCard
+            key={selectedInstance.instanceId}
+            instanceId={selectedInstance.instanceId}
+            disabled={saving}
           />
           <details className="space-y-3 rounded-md border border-border p-3">
             <summary className="cursor-pointer font-medium">

@@ -1,3 +1,4 @@
+import { emailVerificationTemplateInternal, serverEmailVerificationTemplateInternal } from './email-verification-template.js';
 import {
   createSdkLogger,
   toJsonErrorResponse,
@@ -161,6 +162,11 @@ export const withRootMainserverRegistryAccess = (
   });
 
 export const instanceRegistryHandlers = {
+  serverEmailVerificationTemplate: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request,'instance.update',serverEmailVerificationTemplateInternal),
+  emailVerificationTemplate: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, 'instance.update', emailVerificationTemplateInternal),
+
   prepareInstanceConfirmation: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(
       request,

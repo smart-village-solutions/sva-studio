@@ -1108,7 +1108,7 @@ Details offen.
 - `@sva/instance-registry` hält revisionsgebundene Sollzustände für die
   Studio-Installation und optional für einzelne Instanzen. Die wirksame
   Vorlage wird ohne Kopie als Instanzvorlage, Servervorlage oder eingebauter
-  SVA-Standard aufgelöst. Speichern und Reset bleiben reine Datenbankoperationen.
+  SVA-Standard aufgelöst. Speichern und Reset persistieren zuerst die Quelle und stoßen danach den Keycloak-Abgleich an.
 - Die React-App bietet die Servervorlage unter `/admin/templates` im Menü
   `System -> Templates` und die optionale Abweichung weiterhin an der
   Instanz an. Beide Ansichten verwenden denselben Editor und zeigen die
@@ -1119,10 +1119,10 @@ Details offen.
 - Auf dem Tenant-Host zeigt `Benutzer -> Einladungsvorlage` denselben Editor
   mit einer auf die Session-Instanz begrenzten API. `@sva/auth-runtime` prüft
   `iam.invitationTemplate.manage`; die Registry-Persistenz bleibt gemeinsam.
-- `@sva/auth-runtime` stellt unmittelbar vor Create-Einladung und Resend über
-  den vorhandenen Tenant-Admin-Client das E-Mail-Theme und genau drei deutsche
-  Realmwerte idempotent sicher. Erst ein exakter Readback erlaubt den Versand;
-  es gibt dafür keinen globalen Projektionsstatus und keinen Hintergrundlauf.
+- `@sva/auth-runtime` vergleicht unmittelbar vor Create-Einladung und Resend
+  die effektiven deutschen Realmwerte nur lesend. Abweichungen blockieren den
+  Versand mit Verweis auf den Vorlagenabgleich. Theme und Texte werden beim
+  Versand nicht mehr überschrieben.
 - Dieselbe Auth-Runtime wählt anhand dieses Zwecks den Studio-Client mit
   Instanz-Callback oder den bereitgestellten `ssf-frontend`-Client mit der
   installationsseitigen HTTPS-URI `/login`. Ein fehlender SSF-Client stoppt
@@ -1210,3 +1210,18 @@ Der App-Dispatcher in `apps/sva-studio-react/src/server.ts` finalisiert Antworte
 ### Relationale Waste-Tour-Fraktionen
 
 `@sva/waste-management-runtime` besitzt die Tabelle `waste_tour_fractions` und den atomaren DB-Upsert `upsert_waste_tour(...)`. Kalender und Erinnerungen lesen dieselbe relationale Zuordnung; der äußere Vertrag `wasteFractionIds` bleibt unverändert. Während der begrenzten Expand/Contract-Migration bindet ein DB-Trigger alte Array-Schreiber an die Beziehungstabelle an. Details zu Fremdschlüsseln, Reihenfolge und Entfernung der Brücke stehen in der [Schemaübersicht](../development/studio-db-schema.md). Es entstehen keine zusätzlichen Packages oder Services.
+
+### Gemeinsame Studio-Mailvorlagen
+
+`iam.instance_mail_templates` speichert Einladung und E-Mail-Bestätigung mit
+monotoner Quellrevision, Synchronisierungsstatus und zuletzt bestätigtem
+Realm-/Textsnapshot. Migration `0111` übernimmt die bisherigen Instanzvorlagen
+und entfernt deren alte JSONB-Spalte. Allgemeine Vorlagen für beide Anlässe liegen im vorhandenen serverweiten Bestand
+`iam.server_account_invitation_templates` unter getrennten Schlüsseln. Die bestehende
+Einladungsvorgabe bleibt erhalten. Je Anlass gilt Instanz-Override vor allgemeiner
+Vorlage vor eingebautem Standard; Override entfernen stellt die Vererbung wieder her.
+Die Templates-Seite bearbeitet beide allgemeinen Standards. `@sva/core` kompiliert sichere deutsche
+Betreff-, Plaintext- und HTML-Texte; `@sva/auth-runtime` besitzt den gemeinsamen
+Abgleich über den Registry-gebundenen Tenant-Admin-Client. Die bestehenden
+Editoren nutzen dieselbe Vergleichsanzeige. Keycloak rendert und versendet weiter
+selbst; es entstehen weder Mailworker noch zusätzliche Versandabläufe.

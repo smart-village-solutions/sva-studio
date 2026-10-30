@@ -26,7 +26,7 @@ const routerState = vi.hoisted(() => ({
 }));
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children }: { children: ReactNode }) => <>{children}</>,
+  Link: ({ children, to }: { children: ReactNode; to:string }) => <a href={to}>{children}</a>,
   useLocation: () => ({ state: routerState.locationState }),
   useNavigate: () => navigateMock,
 }));
@@ -301,6 +301,7 @@ describe('UserEditPage', () => {
     });
 
     render(<UserEditPage userId="user-1" invitationStatus="failed" />);
+    expect(screen.getByRole('link',{name:'Einladungsvorlage und Keycloak-Abgleich öffnen'}).getAttribute('href')).toBe('/admin/users/invitation-template');
 
     expect(
       screen.getByText(
@@ -1555,6 +1556,7 @@ describe('UserEditPage', () => {
   });
 
   it.each([
+    ['invitation_template_not_synchronized', 'Einladungsversand ist gesperrt, bis die Einladungsvorlage abgeglichen ist.'],
     ['invalid_request', 'Die Nutzeraktion konnte nicht abgeschlossen werden.'],
     ['forbidden', 'Unzureichende Berechtigungen für diese Nutzeraktion.'],
     [

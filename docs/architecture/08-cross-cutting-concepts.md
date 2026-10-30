@@ -1190,13 +1190,12 @@ Tokens, Secrets oder E-Mail-Adressen.
 - Die wirksame Vorlage wird deterministisch als Instanzvorlage,
   Servervorlage oder SVA-Standard aufgelöst; Vererbungswerte werden nicht in
   Instanzdatensätze kopiert.
-- Speichern und Reset mutieren nur den revisionsgebundenen Datenbankzustand.
-  Vor jedem Versand werden E-Mail-Theme und genau drei verwaltete Realmtexte
-  bedarfsgesteuert sichergestellt und fail-closed zurückgelesen. Fremde
-  Lokalisierungswerte bleiben unberührt.
-- Ein fehlgeschlagener Abgleich erzeugt keinen globalen Teilstatus: Nur die
-  konkrete Einladung scheitert, und der nächste Versandversuch wiederholt die
-  idempotente Sicherstellung.
+- Speichern und Reset committen zunächst den revisionsgebundenen Studio-Stand.
+  Der anschließende Abgleich schreibt genau drei verwaltete deutsche Realmtexte
+  und bestätigt sie durch Readback. Fremde Texte und Theme-Auswahl bleiben unberührt.
+- Ein fehlgeschlagener Abgleich behält die Studio-Quelle und einen nicht
+  synchronisierten Status. Vor jedem Versand wird nur lesend verglichen; eine
+  Abweichung blockiert den Versand mit Verweis auf die Vorlagenverwaltung.
 - Die systemweite Zielvorgabe ist vom Vorlagentext getrennt; `NULL` und
   Bestandskonten ohne gespeicherten Zweck bedeuten `studio`. Ein berechtigter
   Ersteller kann für ein neues Konto `studio` oder `ssf` auswählen. Rollen,
@@ -1312,3 +1311,26 @@ Bei `stale_mainserver_context` löscht das Plugin-SDK sein betroffenes Binding u
 ### Integrität und Rechte für Waste-Tour-Fraktionen
 
 UUID-Fremdschlüssel sichern Tour- und Fraktionsbezug innerhalb derselben Tenant-Datenbank. Verwendete Fraktionen sind löschgeschützt; Tourlöschung entfernt ausschließlich deren Zuordnungen. Runtime-Rollen erhalten nur SELECT auf `waste_tour_fractions`; der öffentliche Principal besitzt keine Ausführungsrechte auf den Schreibfunktionen. Während Expand schreibt ein nicht öffentlich ausführbarer Definer-Trigger die Relation, nach Contract die explizit freigegebene Definer-Funktion mit festem `pg_catalog`-Search-Path und vollständig qualifizierten Tabellen. Schema-Verifikation prüft neben Tabellenexistenz auch Typen, Fremdschlüssel, Eindeutigkeit und Revisions-Trigger. Die bestehenden Audit- und Autorisierungsgrenzen bleiben unverändert.
+
+### Sicherheitsgrenzen der Studio-Mailvorlagen
+
+Root-Mutationen benötigen Plattformzugriff beziehungsweise `instance.update`,
+Session-CSRF und Fresh-Reauth. Der bestehende Tenant-Editor bleibt auf die
+Session-Instanz und `iam.invitationTemplate.manage` begrenzt. Instanz-ID und
+Realm-/Credential-Zuordnung kommen ausschließlich aus der autorisierten Registry;
+ein globaler Keycloak-Credential-Fallback ist ausgeschlossen. RLS schützt die
+Quellen zusätzlich. Audit und Logs enthalten nur Metadaten, keine Vorlagentexte,
+Empfänger, Secrets oder Action-Tokens.
+
+Allgemeine Vorlagen werden per CAS im bestehenden serverweiten Vorlagenbestand
+gespeichert; ihre RLS erlaubt Tenant-Lesen und ausschließlich globale Änderungen
+aus dem Plattformkontext. Für beide Anlässe haben Instanz-Overrides Vorrang. Ein
+globaler Abgleich prüft dies erneut innerhalb der Instanzsperre, bevor er Keycloak
+liest oder schreibt. Quelle und Synchronisierungsmetadaten sind getrennt: Netzwerkfehler dürfen eine
+Bearbeitung nicht zurückrollen. Monotone Revisionen schützen auch Reset und
+anschließende Bearbeitung gegen veraltete Schreibzugriffe. Explizite Konfliktlösung
+prüft beide aktuellen Textsnapshots und den kompilierten Kommunenkontext unter dem
+Instanz-Lock. Keycloak bietet dafür keine atomare externe CAS: Eine direkte
+Admin-Änderung zwischen letzter Prüfung und Write kann nicht vollständig verhindert
+werden. Readback und der erneute Vergleich beim Versand erkennen abweichende
+Ergebnisse; während des Rollout-Abgleichs sind parallele direkte Realm-Edits auszusetzen.

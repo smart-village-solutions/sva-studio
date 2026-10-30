@@ -28,7 +28,7 @@ export type {
   ModuleActivationRollbackState,
 } from './repository-contract-instance.js';
 
-export type InstanceRegistryRepository = InstanceRegistryInstanceRepository & {
+export type InstanceRegistryRepository = InstanceRegistryInstanceRepository & Readonly<ReturnType<typeof import('./repository-mail-templates.js').createMailTemplateRepository>> & {
   readonly createInstance: (input: {
     instanceId: string;
     displayName: string;

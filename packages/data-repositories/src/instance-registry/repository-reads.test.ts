@@ -15,6 +15,7 @@ describe('instance registry repository reads', () => {
     ).resolves.toEqual([
       {
         instanceId: 'tenant-a',
+        accountInvitationTemplateRevision: 0,
         displayName: 'Tenant A',
         status: 'active',
         parentDomain: 'example.test',

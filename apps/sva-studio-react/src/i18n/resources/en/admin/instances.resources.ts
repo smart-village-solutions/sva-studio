@@ -51,6 +51,63 @@ export const instancesAdminENResources = {
   help: helpInstancesAdminENResources,
   history: historyInstancesAdminENResources,
   instanceModules: instanceModulesInstancesAdminENResources,
+  mailSync: {
+    remedy: 'Open invitation template and Keycloak comparison',
+    "title": "Keycloak template synchronization",
+    "blocked": "Invitation delivery is blocked until the invitation template is synchronized.",
+    "compare": "Compare Studio and Keycloak",
+    "studio": "Saved Studio version",
+    "keycloak": "Current Keycloak version",
+    "unavailable": "Keycloak is currently unavailable.",
+    "unsupported": "The Keycloak version cannot be imported without losing formatting. Review its HTML and explicitly transfer the desired Studio version.",
+    "adopt": "Adopt Keycloak version",
+    "transfer": "Transfer Studio version",
+    "adoptConfirm": "Replace the saved Studio version with the displayed Keycloak version?",
+    "transferConfirm": "Replace the displayed Keycloak messages with the Studio version?",
+    "open": "Open / refresh Keycloak comparison",
+    "loadFailed": "Could not load the comparison. Please try again.",
+    "conflict": "The version has changed or could not be confirmed. Reopen the comparison. Your draft is retained.",
+    "savedPending": "Saved in Studio, but not synchronized. Please check the Keycloak comparison.",
+    "status": {
+        "unreviewed": "Not yet reconciled",
+        "pending": "Not synchronized",
+        "synced": "Synchronized and confirmed by readback",
+        "failed": "Synchronization not confirmed",
+        "drift": "External changes detected"
+    }
+},
+  emailVerification: {
+    serverTitle: 'General email verification template',
+    serverDescription: 'This standard applies to instances without an override. Saving synchronizes inheriting instances only; custom templates are retained. No email is sent.',
+    serverSaved: 'General template saved. Inheriting instances have been compared and synchronized.',
+    resetServerConfirm: 'Reset the general verification template to the neutral built-in standard?',
+    resetInstance: 'Use general template',
+
+    reauthRequired: 'Sign in again, then reopen the template. Your draft is retained until then.',
+    currentTexts: 'Messages saved in the meantime',
+    title: 'Verify email address',
+    open: 'Edit verification template',
+    description:
+      'These German texts apply to registration and email address changes. Saving takes immediate effect in this municipality’s Keycloak realm. No email is sent.',
+    realm: 'Target realm: {{realm}}',
+    tokens:
+      'Body placeholders: {{tenantName}}, {{verificationLink}}, {{linkExpiresIn}}. Include exactly one verification link. No subject placeholders, HTML or free URLs.',
+    previewLink: '[Verify email address]',
+    htmlWarning:
+      'The existing HTML differs from the generated layout. Saving regenerates it from the message body.',
+    existingHtml: 'View existing HTML',
+    replaceHtml: 'Explicitly replace existing HTML',
+    loadFailed: 'Could not load the effective verification messages. Close and reopen to retry.',
+    invalid:
+      'Check the template: exactly one verification link, no unknown placeholders, HTML or free URLs.',
+    saved: 'The template was saved in Keycloak and read back successfully.',
+    conflict:
+      'The messages changed in the meantime. Your draft is preserved. The current messages are shown for comparison. Review them before saving again.',
+    saveFailed:
+      'Saving was not confirmed. Keycloak may already have received the change. Your draft is preserved; close, reopen and check the current messages.',
+    reset: 'Apply neutral default',
+    resetConfirm: 'Remove this instance override and use the current general verification template?',
+  },
   invitation: invitationInstancesAdminENResources,
   keycloakPanel: keycloakPanelInstancesAdminENResources,
   keycloakStatus: keycloakStatusInstancesAdminENResources,

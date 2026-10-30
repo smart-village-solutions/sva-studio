@@ -253,3 +253,6 @@ export {
   exportCatalogTextsJs,
   CATALOG_TEXTS_EXPORT_MAX_BYTES,
 } from './app-translations-texts-export.js';
+
+export * from './instances/email-verification-template.js';
+export * from './instances/mail-template-sync.js';

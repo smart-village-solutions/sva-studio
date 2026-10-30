@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { wasteTenantMigrations } from './waste-tenant-migration-catalog.mjs';
+import { wasteTenantContractMigrations, wasteTenantMigrations } from './waste-tenant-migration-catalog.mjs';
 
 export { wasteTenantMigrations } from './waste-tenant-migration-catalog.mjs';
 
@@ -10,6 +10,15 @@ const identifierPattern = /^[a-z][a-z0-9_]{0,62}$/u;
 const migrationIdPattern = /^\d{8}_\d{2}_[a-z0-9_]+$/u;
 const migrationLedgerTable = 'public.sva_waste_schema_migrations';
 const mainserverSourceStateTable = 'public.waste_mainserver_source_state';
+
+export const selectWasteTenantMigrations = (contractConfirmation = 'false') => {
+  if (!['true', 'false'].includes(contractConfirmation)) {
+    throw new Error('waste_migration_contract_confirmation_invalid');
+  }
+  return contractConfirmation === 'true'
+    ? [...wasteTenantMigrations, ...wasteTenantContractMigrations]
+    : wasteTenantMigrations;
+};
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -118,6 +127,17 @@ export const migrateWasteTenantDatabase = async ({
       `GRANT SELECT ON TABLE ${mainserverSourceStateTable} TO ${quoteIdentifier(appRole)};`
     );
 
+    await client.query(
+      `REVOKE ALL ON TABLE public.waste_tour_fractions FROM PUBLIC, ${quoteIdentifier(appRole)}, ${quoteIdentifier(publicAppRole)};`
+    );
+    await client.query(
+      `GRANT SELECT ON TABLE public.waste_tour_fractions TO ${quoteIdentifier(appRole)}, ${quoteIdentifier(publicAppRole)};`
+    );
+    await client.query('REVOKE ALL ON FUNCTION public.replace_waste_tour_fractions(uuid, text[]) FROM PUBLIC;');
+    await client.query(
+      `GRANT EXECUTE ON FUNCTION public.replace_waste_tour_fractions(uuid, text[]) TO ${quoteIdentifier(appRole)};`
+    );
+    await client.query(`GRANT EXECUTE ON FUNCTION public.upsert_waste_tour(uuid,text,text,text[],text,uuid,date,date,jsonb,text) TO ${quoteIdentifier(appRole)};`);
     await client.query('COMMIT;');
     transactionStarted = false;
     return { appliedMigrationCount };
@@ -201,6 +221,9 @@ export const runWasteTenantMigrations = async () => {
     import('@sva/waste-management-runtime/repositories'),
   ]);
   const { Client } = pg;
+  const migrations = selectWasteTenantMigrations(
+    process.env.WASTE_TOUR_FRACTIONS_CONTRACT_CONFIRMED?.trim() || 'false'
+  );
   const passwordFile = required('WASTE_DATABASE_PROVISIONER_PASSWORD_FILE');
   const provisionerPassword = (await readFile(passwordFile, 'utf8')).trim();
   if (!provisionerPassword) throw new Error('waste_migration_provisioner_password_empty');
@@ -224,6 +247,7 @@ export const runWasteTenantMigrations = async () => {
   try {
     return await migrateWasteTenantDatabases({
       adminClient,
+      migrations,
       connectTenant: async (database) => {
         const client = new Client({
           database,

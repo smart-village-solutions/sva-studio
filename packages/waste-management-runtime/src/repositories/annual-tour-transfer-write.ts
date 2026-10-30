@@ -1,5 +1,5 @@
 import type { WasteAnnualTourTransferMappedTour } from '@sva/waste-management-contracts';
-import type { WasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
+import type { WasteMasterDataRepository } from './master-data.contract.js';
 
 type AnnualTourTransferClient = Readonly<{
   query: (text: string, values?: readonly unknown[]) => Promise<unknown>;
@@ -24,53 +24,31 @@ const writeTours = async (
 ): Promise<void> =>
   executeJsonBatches(
     client,
-    mappedTours.map(({ targetTour }) => ({
-      id: targetTour.id,
-      name: targetTour.name,
-      description: targetTour.description ?? null,
-      waste_fraction_ids: targetTour.wasteFractionIds,
-      recurrence: targetTour.recurrence ?? null,
-      custom_recurrence_id: targetTour.customRecurrenceId ?? null,
-      first_date: targetTour.firstDate ?? null,
-      end_date: targetTour.endDate ?? null,
-      custom_dates: targetTour.customDates ?? null,
-      status: targetTour.status,
-      active: targetTour.status === 'published',
-    })),
+    [...mappedTours]
+      .sort((left, right) => left.targetTour.id.localeCompare(right.targetTour.id))
+      .map(({ targetTour }) => ({
+        id: targetTour.id,
+        name: targetTour.name,
+        description: targetTour.description ?? null,
+        waste_fraction_ids: targetTour.wasteFractionIds,
+        recurrence: targetTour.recurrence ?? null,
+        custom_recurrence_id: targetTour.customRecurrenceId ?? null,
+        first_date: targetTour.firstDate ?? null,
+        end_date: targetTour.endDate ?? null,
+        custom_dates: targetTour.customDates ?? null,
+        status: targetTour.status,
+        active: targetTour.status === 'published',
+      })),
     `
-INSERT INTO waste_tours (
-  id, name, description, waste_fraction_ids, recurrence, custom_recurrence_id,
-  first_date, end_date, custom_dates, status, active
-)
-SELECT
-  item.id::uuid, item.name, item.description, item.waste_fraction_ids, item.recurrence,
-  item.custom_recurrence_id::uuid, item.first_date::date, item.end_date::date,
-  item.custom_dates, item.status, item.active
+SELECT upsert_waste_tour(item.id::uuid, item.name, item.description, item.waste_fraction_ids,
+  item.recurrence, item.custom_recurrence_id::uuid, item.first_date::date, item.end_date::date,
+  item.custom_dates, item.status)
 FROM jsonb_to_recordset($1::jsonb) AS item(
-  id text,
-  name text,
-  description text,
-  waste_fraction_ids text[],
-  recurrence text,
-  custom_recurrence_id text,
-  first_date text,
-  end_date text,
-  custom_dates jsonb,
-  status text,
-  active boolean
+  id text, name text, description text, waste_fraction_ids text[], recurrence text,
+  custom_recurrence_id text, first_date text, end_date text, custom_dates jsonb,
+  status text, active boolean
 )
-ON CONFLICT (id) DO UPDATE
-SET name = EXCLUDED.name,
-    description = EXCLUDED.description,
-    waste_fraction_ids = EXCLUDED.waste_fraction_ids,
-    recurrence = EXCLUDED.recurrence,
-    custom_recurrence_id = EXCLUDED.custom_recurrence_id,
-    first_date = EXCLUDED.first_date,
-    end_date = EXCLUDED.end_date,
-    custom_dates = EXCLUDED.custom_dates,
-    status = EXCLUDED.status,
-    active = EXCLUDED.active,
-    updated_at = NOW();`
+ORDER BY item.id;`
   );
 
 const writeLinks = async (

@@ -11,6 +11,8 @@ import { applySchemaStatements } from './waste-management-operations.schema.js';
 import { createSqlExecutor } from './waste-management-operations.shared.js';
 
 const sourceTourId = '71000000-0000-4000-8000-000000000001';
+const bioId = '72000000-0000-4000-8000-000000000001';
+const restId = '72000000-0000-4000-8000-000000000002';
 const staleSourceTourId = '71000000-0000-4000-8000-000000000002';
 const databaseUrl = process.env.WASTE_DATE_SHIFT_TEST_DATABASE_URL;
 
@@ -51,10 +53,11 @@ const previewTour = async (tourId: string) => {
 describe('Waste annual tour transfer against PostgreSQL', () => {
   beforeAll(async () => {
     for (const statement of applySchemaStatements('public')) await pool.query(statement);
+    await pool.query("INSERT INTO waste_fractions(id, name, pdf_short_label) VALUES ($1, 'Bio', 'BIO'), ($2, 'Rest', 'RES') ON CONFLICT (id) DO NOTHING", [bioId, restId]);
     await repository.upsertWasteTour({
       id: sourceTourId,
       name: 'Jahrestour Integration',
-      wasteFractionIds: ['bio'],
+      wasteFractionIds: [bioId],
       recurrence: 'weekly',
       firstDate: '2026-01-05',
       endDate: '2026-12-31',
@@ -63,7 +66,7 @@ describe('Waste annual tour transfer against PostgreSQL', () => {
     await repository.upsertWasteTour({
       id: staleSourceTourId,
       name: 'Jahrestour Rollback',
-      wasteFractionIds: ['rest'],
+      wasteFractionIds: [restId],
       recurrence: 'biweekly',
       firstDate: '2026-01-12',
       endDate: '2026-12-31',

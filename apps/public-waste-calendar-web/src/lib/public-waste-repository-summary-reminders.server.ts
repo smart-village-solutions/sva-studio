@@ -113,7 +113,8 @@ export const loadReminderOptions = async (
             f.reminder_config
           FROM selected_tours selected_tour
           INNER JOIN ${schemaName}.waste_tours t ON t.id = selected_tour.tour_id
-          INNER JOIN ${schemaName}.waste_fractions f ON f.id::text = ANY(t.waste_fraction_ids)
+          INNER JOIN ${schemaName}.waste_tour_fractions tf ON tf.tour_id = t.id
+          INNER JOIN ${schemaName}.waste_fractions f ON f.id = tf.fraction_id
           WHERE t.status = 'published'
             AND f.active = true
           ORDER BY f.name ASC;

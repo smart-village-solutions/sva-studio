@@ -16,9 +16,10 @@ const createFixtureStatements = [
   `CREATE TABLE ${schemaName}.waste_streets (id UUID PRIMARY KEY, name TEXT NOT NULL);`,
   `CREATE TABLE ${schemaName}.waste_house_numbers (id UUID PRIMARY KEY, number TEXT NOT NULL);`,
   `CREATE TABLE ${schemaName}.waste_collection_locations (id UUID PRIMARY KEY, region_id UUID, city_id UUID, street_id UUID, house_number_id UUID, active BOOLEAN NOT NULL DEFAULT TRUE);`,
-  `CREATE TABLE ${schemaName}.waste_fractions (id UUID PRIMARY KEY, name TEXT NOT NULL, description TEXT, pdf_short_label TEXT, color TEXT);`,
+  `CREATE TABLE ${schemaName}.waste_fractions (id UUID PRIMARY KEY, name TEXT NOT NULL, description TEXT, pdf_short_label TEXT, color TEXT, active BOOLEAN NOT NULL DEFAULT TRUE, reminder_config JSONB);`,
   `CREATE TABLE ${schemaName}.waste_custom_recurrence_presets (id UUID PRIMARY KEY, interval_days INTEGER NOT NULL);`,
   `CREATE TABLE ${schemaName}.waste_tours (id UUID PRIMARY KEY, name TEXT NOT NULL, description TEXT, status TEXT NOT NULL CHECK (status IN ('published', 'draft', 'archived')), waste_fraction_ids TEXT[] NOT NULL, recurrence TEXT, custom_recurrence_id UUID, first_date DATE, end_date DATE, custom_dates JSONB);`,
+  `CREATE TABLE ${schemaName}.waste_tour_fractions (tour_id UUID NOT NULL REFERENCES ${schemaName}.waste_tours(id) ON DELETE CASCADE, fraction_id UUID NOT NULL REFERENCES ${schemaName}.waste_fractions(id) ON DELETE RESTRICT, position INTEGER NOT NULL, PRIMARY KEY(tour_id, fraction_id));`,
   `CREATE TABLE ${schemaName}.waste_location_tour_links (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), location_id UUID NOT NULL, tour_id UUID NOT NULL);`,
   `CREATE TABLE ${schemaName}.waste_tour_date_shifts (id UUID PRIMARY KEY, tour_id UUID, original_date DATE, actual_date DATE, has_year BOOLEAN, description TEXT);`,
   `CREATE TABLE ${schemaName}.waste_global_date_shifts (id UUID PRIMARY KEY, original_date DATE, actual_date DATE, description TEXT, tour_ids TEXT[]);`,
@@ -74,6 +75,8 @@ describe.skipIf(!databaseUrl)('Public Waste tour status against PostgreSQL', () 
          ($3, 'Archiviert', 'archived', ARRAY[$4::text], 'weekly', '2026-05-20', '2026-05-20');`,
       [ids.publishedTour, ids.draftTour, ids.archivedTour, ids.fraction]
     );
+    await client.query(`INSERT INTO ${schemaName}.waste_tour_fractions(tour_id, fraction_id, position)
+      SELECT id, $1::uuid, 0 FROM ${schemaName}.waste_tours`, [ids.fraction]);
     await client.query(
       `INSERT INTO ${schemaName}.waste_location_tour_links (location_id, tour_id)
        VALUES ($1, $2), ($1, $3), ($1, $4);`,
@@ -117,6 +120,15 @@ describe.skipIf(!databaseUrl)('Public Waste tour status against PostgreSQL', () 
     });
     expect(entries.map(({ tourName }) => tourName)).toEqual(['Veröffentlicht']);
     expect(entries[0]).toMatchObject({ date: '2026-05-20', fractionLabel: 'Restmüll' });
+
+    await client.query(`UPDATE ${schemaName}.waste_fractions SET reminder_config = $2 WHERE id = $1`, [
+      ids.fraction,
+      JSON.stringify({ reminderCount: 'once', channels: { push: false, email: true, calendar: false },
+        email: { slots: [{ id: 'email:first', maxLeadDays: 2, defaultLeadDays: 1 }] } }),
+    ]);
+    await expect(repository.loadReminderOptions({
+      selection: { regionId: ids.region, cityId: ids.city, streetId: ids.street }, channel: 'email',
+    })).resolves.toMatchObject([{ id: ids.fraction, slots: [{ id: 'email:first' }] }]);
 
     await client.query(
       `UPDATE ${schemaName}.waste_tours SET status = 'archived' WHERE id = $1;`,

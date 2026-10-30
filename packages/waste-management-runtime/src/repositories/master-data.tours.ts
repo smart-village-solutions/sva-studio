@@ -67,7 +67,7 @@ const buildTourListStatement = (filter: WasteTourListFilter = {}): SqlStatement 
 
   if (filter.wasteFractionId?.trim()) {
     values.push(filter.wasteFractionId);
-    conditions.push(`$${values.length} = ANY(t.waste_fraction_ids)`);
+    conditions.push(`EXISTS (SELECT 1 FROM waste_tour_fractions tf WHERE tf.tour_id = t.id AND tf.fraction_id = $${values.length}::uuid)`);
   }
 
   if (filter.search?.trim()) {
@@ -81,7 +81,7 @@ SELECT
   t.id::text,
   t.name,
   t.description,
-  t.waste_fraction_ids,
+  ARRAY(SELECT tf.fraction_id::text FROM waste_tour_fractions tf WHERE tf.tour_id = t.id ORDER BY tf.position) AS waste_fraction_ids,
   t.recurrence,
   t.custom_recurrence_id::text,
   crp.name AS custom_recurrence_name,
@@ -112,7 +112,7 @@ SELECT
   t.id::text,
   t.name,
   t.description,
-  t.waste_fraction_ids,
+  ARRAY(SELECT tf.fraction_id::text FROM waste_tour_fractions tf WHERE tf.tour_id = t.id ORDER BY tf.position) AS waste_fraction_ids,
   t.recurrence,
   t.custom_recurrence_id::text,
   crp.name AS custom_recurrence_name,
@@ -140,44 +140,8 @@ const buildTourUpsertStatement = (
   input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>
 ): SqlStatement => ({
   text: `
-INSERT INTO waste_tours (
-  id,
-  name,
-  description,
-  waste_fraction_ids,
-  recurrence,
-  custom_recurrence_id,
-  first_date,
-  end_date,
-  custom_dates,
-  status,
-  active
-)
-VALUES (
-  $1::uuid,
-  $2,
-  $3,
-  $4::text[],
-  $5,
-  $6::uuid,
-  $7::date,
-  $8::date,
-  $9::jsonb,
-  $10,
-  $10 = 'published'
-)
-ON CONFLICT (id) DO UPDATE
-SET name = EXCLUDED.name,
-    description = EXCLUDED.description,
-    waste_fraction_ids = EXCLUDED.waste_fraction_ids,
-    recurrence = EXCLUDED.recurrence,
-    custom_recurrence_id = EXCLUDED.custom_recurrence_id,
-    first_date = EXCLUDED.first_date,
-    end_date = EXCLUDED.end_date,
-    custom_dates = EXCLUDED.custom_dates,
-    status = EXCLUDED.status,
-    active = EXCLUDED.active,
-    updated_at = NOW();
+SELECT upsert_waste_tour($1::uuid, $2::text, $3::text, $4::text[], $5::text,
+  $6::uuid, $7::date, $8::date, $9::jsonb, $10::text);
 `,
   values: [
     input.id,

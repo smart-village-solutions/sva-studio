@@ -255,6 +255,23 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
     expect(await readRevision()).toBeGreaterThan(2n);
   });
 
+  it('tracks fraction replacements and rolls back the relationship and its source revision together', async () => {
+    const fraction = '81000000-0000-4000-8000-000000000001';
+    await client.query(`INSERT INTO waste_fractions(id, name, pdf_short_label) VALUES ($1, 'Bio', 'BIO') ON CONFLICT (id) DO NOTHING`, [fraction]);
+    await client.query(`INSERT INTO waste_tours(id, name, status, waste_fraction_ids) VALUES ($1, 'Tour', 'published', $2)`, [ids.tour, [fraction]]);
+    const beforeReplacement = await readRevision();
+    await client.query(`SELECT replace_waste_tour_fractions($1, '{}'::text[])`, [ids.tour]);
+    const afterReplacement = await readRevision();
+    expect(afterReplacement).toBeGreaterThan(beforeReplacement);
+    await client.query('BEGIN');
+    try {
+      await client.query(`SELECT replace_waste_tour_fractions($1, $2)`, [ids.tour, [fraction]]);
+      expect(await readRevision()).toBeGreaterThan(afterReplacement);
+    } finally { await client.query('ROLLBACK'); }
+    expect(await readRevision()).toBe(afterReplacement);
+    expect((await client.query('SELECT * FROM waste_tour_fractions WHERE tour_id = $1', [ids.tour])).rows).toEqual([]);
+  });
+
   it('keeps revisions monotone across bulk writes and cascading deletes', async () => {
     await client.query(`INSERT INTO waste_regions (id, name) VALUES ($1, 'Region');`, [ids.region]);
     await client.query(`INSERT INTO waste_cities (id, name, region_id) VALUES ($1, 'Ort', $2);`, [

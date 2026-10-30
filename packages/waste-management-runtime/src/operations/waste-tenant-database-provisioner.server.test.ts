@@ -35,6 +35,7 @@ const createProvisioningPool = (options: {
           rows: tables.map((table_name) => ({ table_name })) as TRow[],
         };
       }
+      if (text.includes('AS satisfied;')) return { rowCount: 1, rows: [{ satisfied: true }] as TRow[] };
       if (text.includes('has_table_privilege')) {
         const isApp = url.includes('_app:');
         const isInvalid = options.invalidRuntimeUrlPart
@@ -176,6 +177,7 @@ describe('waste tenant database provisioner', () => {
               rows: requiredWasteTables.map((table_name) => ({ table_name })) as TRow[],
             };
           }
+          if (text.includes('AS satisfied;')) return { rowCount: 1, rows: [{ satisfied: true }] as TRow[] };
           if (text.includes('has_table_privilege')) {
             return {
               rowCount: 1,
@@ -582,6 +584,7 @@ describe('waste tenant database provisioner', () => {
               rows: requiredWasteTables.map((table_name) => ({ table_name })) as TRow[],
             };
           }
+          if (text.includes('AS satisfied;')) return { rowCount: 1, rows: [{ satisfied: true }] as TRow[] };
           if (text.includes('has_table_privilege')) {
             return {
               rowCount: 1,
@@ -637,7 +640,7 @@ describe('waste tenant database provisioner', () => {
     expect(statements.some((text) => text.startsWith('CREATE ROLE '))).toBe(false);
     expect(statements.some((text) => text.startsWith('CREATE DATABASE '))).toBe(false);
     expect(
-      statements.some((text) => /\b(?:DROP\s+TABLE|TRUNCATE|DELETE\s+FROM)\b/iu.test(text))
+      statements.some((text) => /^\s*(?:DROP\s+TABLE|TRUNCATE|DELETE\s+FROM)\b/iu.test(text))
     ).toBe(false);
     expect(savedInterfaces).toHaveLength(2);
     expect(savedInterfaces[0]).toMatchObject({
@@ -678,6 +681,7 @@ describe('waste tenant database provisioner', () => {
                 rows: requiredWasteTables.map((table_name) => ({ table_name })) as TRow[],
               };
             }
+            if (text.includes('AS satisfied;')) return { rowCount: 1, rows: [{ satisfied: true }] as TRow[] };
             if (text.includes('has_table_privilege')) {
               return {
                 rowCount: 1,

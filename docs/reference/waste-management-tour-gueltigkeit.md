@@ -68,3 +68,7 @@ Benutzer mit der Berechtigung `waste-management.scheduling.manage` können einen
 Die Aktion öffnet die vorhandene Erfassungsansicht in einem neuen Browser-Tab. Der Ausgangstab behält dadurch Filter, Kalender, Dialoge und ungespeicherte Formularinhalte. Ein kompakter Kontextblock ersetzt dort die allgemeine Typauswahl. Tour und – beim Einstieg aus dem Jahreskalender – ursprüngliches Datum sind vorausgewählt; beide Werte bleiben in den regulären Feldern sichtbar, das Zieldatum bleibt eine bewusste Eingabe. Weicht die Terminlogik im Tourformular vom gespeicherten Stand ab, ist die Aktion deaktiviert und erklärt sichtbar, dass die Änderung zuerst gespeichert werden muss.
 
 Eine jahresbezogene Ausnahme ersetzt für denselben Ursprung ausschließlich im konkreten Jahr eine vorhandene jährliche Grundregel. Vor dem Speichern weist das Formular auf diese Übersteuerung hin. Regeln derselben Spezifität sind pro Tour und Ursprung eindeutig; bei einem Konflikt bleibt der vorhandene Eintrag unverändert und die Fehlermeldung bleibt ohne Weiterleitung direkt im Formular sichtbar.
+
+## Verwendete Abfallarten löschen
+
+Eine Abfallart kann nicht gelöscht werden, solange sie einer Tour zugeordnet ist. Das gilt auch für Entwürfe und archivierte Touren. Zuerst die Abfallart in den betroffenen Touren ersetzen oder die betreffenden Touren löschen; danach kann eine nicht mehr verwendete Abfallart entfernt werden. Das Löschen einer Tour löscht ihre Zuordnungen, aber keine Abfallarten.

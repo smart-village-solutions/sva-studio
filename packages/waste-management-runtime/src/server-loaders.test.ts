@@ -827,7 +827,7 @@ describe('waste-management server loaders', () => {
     const tourInsertCall = poolFactoryInstances
       .at(-1)
       ?.query.mock.calls.find(([statement]) =>
-        String(statement).includes('INSERT INTO waste_tours')
+        String(statement).includes('SELECT upsert_waste_tour')
       );
     const [persistedTourRow] = JSON.parse(String(tourInsertCall?.[1]?.[0])) as Array<{
       id: string;

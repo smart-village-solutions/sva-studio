@@ -20,7 +20,6 @@ const wasteMainserverRevisionTriggerSpecs = [
   {
     tableName: 'waste_tours',
     updateColumns: [
-      'waste_fraction_ids',
       'recurrence',
       'custom_recurrence_id',
       'first_date',
@@ -30,6 +29,7 @@ const wasteMainserverRevisionTriggerSpecs = [
       'active',
     ],
   },
+  { tableName: 'waste_tour_fractions', updateColumns: ['tour_id', 'fraction_id', 'position'] },
   { tableName: 'waste_location_tour_links', updateColumns: ['location_id', 'tour_id'] },
   {
     tableName: 'waste_location_tour_pickup_dates',

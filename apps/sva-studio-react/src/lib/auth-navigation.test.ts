@@ -1,8 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createAccountActionHref, createLoginHref, createSessionExpiredHref, resolveCurrentReturnTo } from './auth-navigation';
+import { createAccountActionHref, createLoginHref, createSessionExpiredHref, resolveCurrentReturnTo, sanitizeReturnTo } from './auth-navigation';
 
 describe('auth-navigation', () => {
+  it.each(['/\\evil.example/path', '/\t/evil.example/path', '/\n/evil.example/path', '/a/../auth/logout', '/a/..//evil.example/path', '/.//evil.example/path', '/%2e//evil.example/path'])(
+    'rejects parser-normalized unsafe return target %j',
+    (value) => {
+      expect(sanitizeReturnTo(value)).toBe('/');
+    }
+  );
+
+  it('preserves internal paths, encoded values, query strings and fragments', () => {
+    expect(sanitizeReturnTo('/admin/users?q=%2F%5C#details')).toBe('/admin/users?q=%2F%5C#details');
+  });
+
   it('resolves default returnTo on server runtime', () => {
     const windowSpy = vi.spyOn(globalThis, 'window', 'get');
     windowSpy.mockReturnValue(undefined as unknown as Window & typeof globalThis);

@@ -60,6 +60,29 @@ describe('auth return-to handling', () => {
     expect(mocks.loadInstanceByHostname).not.toHaveBeenCalled();
   });
 
+  it.each([
+    '/\\evil.example/path', '/\t/evil.example/path', '/\n/evil.example/path',
+    '/a/../auth/logout', '/auth#details', '/a/..//evil.example/path',
+    '/.//evil.example/path', '/%2e//evil.example/path',
+  ])('rejects browser-normalized unsafe relative target %j', async (target) => {
+    await expect(sanitizeAuthReturnTo(request(), target, { defaultPath: '/home' })).resolves.toBe('/home');
+  });
+
+  it('normalizes internal paths while preserving query and fragment', async () => {
+    await expect(sanitizeAuthReturnTo(request(), '/a/../dashboard?q=%2F%5C#details')).resolves.toBe(
+      '/dashboard?q=%2F%5C#details'
+    );
+  });
+
+  it.each([
+    'https://auth.example.test//evil.example/path',
+    'https://auth.example.test/a/..//evil.example/path',
+  ])('rejects trusted absolute targets that become protocol-relative when formatted: %s', async (target) => {
+    mocks.getInstanceConfig.mockReturnValue({ parentDomain: 'example.test', canonicalAuthHost: 'auth.example.test' });
+    mocks.isCanonicalAuthHost.mockReturnValue(true);
+    await expect(sanitizeAuthReturnTo(request(), target, { defaultPath: '/home' })).resolves.toBe('/home');
+  });
+
   it('keeps safe relative return targets and falls back for unsafe auth paths', async () => {
     await expect(sanitizeAuthReturnTo(request(), '/dashboard')).resolves.toBe('/dashboard');
     await expect(sanitizeAuthReturnTo(request(), '/auth', { defaultPath: '/home' })).resolves.toBe(

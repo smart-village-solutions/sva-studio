@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
+// Keep existing response fixtures at the HTTP boundary used by the production helper.
+vi.mock('undici', async () => {
+  const actual = await vi.importActual<typeof import('undici')>('undici');
+  return { ...actual, fetch: (url: URL, init: RequestInit) => fetch(url, init) };
+});
+
 import { buildKeycloakChecks, resolveKeycloakStatus } from './service-audit-keycloak.js';
 import { probeInstanceUrlReachability } from './service-audit-registry.js';
 import { aggregateStatuses } from './service-audit-shared.js';

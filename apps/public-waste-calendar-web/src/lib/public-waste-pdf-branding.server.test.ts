@@ -1,25 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const lookupMock = vi.hoisted(() => vi.fn());
-
-vi.mock('node:dns/promises', () => ({
-  __esModule: true,
-  lookup: lookupMock,
-  default: {
-    lookup: lookupMock,
-  },
-}));
+const publicFetchMock = vi.hoisted(() => vi.fn());
+vi.mock('@sva/server-runtime', () => ({ fetchPublicHttps: publicFetchMock }));
 
 import { loadPublicWastePdfBrandingImage } from './public-waste-pdf-branding.server.js';
 
 describe('public waste pdf branding image loader', () => {
   beforeEach(() => {
-    lookupMock.mockReset();
-    lookupMock.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+    publicFetchMock.mockReset();
+    publicFetchMock.mockImplementation((url: URL, init: RequestInit) => fetch(url, init));
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it('renders a remote svg into raw rgb image data', async () => {
@@ -45,6 +39,10 @@ describe('public waste pdf branding image loader', () => {
       height: expect.any(Number),
     });
     expect(result?.rgbData.length).toBe((result?.width ?? 0) * (result?.height ?? 0) * 3);
+    expect(publicFetchMock).toHaveBeenCalledWith(
+      new URL('https://cdn.example/logo.svg'),
+      expect.objectContaining({ redirect: 'error', signal: expect.any(AbortSignal) })
+    );
   });
 
   it('returns undefined when the asset cannot be loaded', async () => {
@@ -65,7 +63,7 @@ describe('public waste pdf branding image loader', () => {
   it('rejects branding hosts that resolve to private network addresses', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    lookupMock.mockResolvedValue([{ address: '10.0.0.42', family: 4 }]);
+    publicFetchMock.mockRejectedValue(new Error('public_https_target_rejected'));
 
     await expect(loadPublicWastePdfBrandingImage({ assetUrl: 'https://assets.internal.example/logo.svg' })).resolves.toBeUndefined();
 
@@ -111,12 +109,14 @@ describe('public waste pdf branding image loader', () => {
       width: expect.any(Number),
       height: expect.any(Number),
     });
+    expect(publicFetchMock).not.toHaveBeenCalled();
   });
 
   it('rejects same-origin relative branding assets for localhost requests in production mode', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     vi.stubEnv('NODE_ENV', 'production');
+    publicFetchMock.mockRejectedValue(new Error('public_https_target_rejected'));
 
     await expect(
       loadPublicWastePdfBrandingImage({
@@ -131,7 +131,7 @@ describe('public waste pdf branding image loader', () => {
   it('rejects same-origin relative branding assets for non-local origins that resolve privately', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    lookupMock.mockResolvedValue([{ address: '10.0.0.42', family: 4 }]);
+    publicFetchMock.mockRejectedValue(new Error('public_https_target_rejected'));
 
     await expect(
       loadPublicWastePdfBrandingImage({

@@ -16,7 +16,7 @@ const isTrustedAbsoluteReturnTo = async (target: URL): Promise<boolean> => {
     return false;
   }
 
-  if (target.pathname === '/auth' || target.pathname.startsWith('/auth/')) {
+  if (target.pathname.startsWith('//') || target.pathname === '/auth' || target.pathname.startsWith('/auth/')) {
     return false;
   }
 
@@ -61,11 +61,24 @@ export const sanitizeAuthReturnTo = async (
     return defaultPath;
   }
 
+  const hasUnsafeCharacter = Array.from(value).some(
+    (character) => character === '\\' || character.charCodeAt(0) < 0x20 || character.charCodeAt(0) === 0x7f
+  );
+  if (hasUnsafeCharacter) {
+    return defaultPath;
+  }
+
   if (value.startsWith('/')) {
-    if (value.startsWith('//') || value === '/auth' || value.startsWith('/auth?') || value.startsWith('/auth/')) {
+    // Normalize before checking: browsers collapse dot segments and interpret leading // as a host.
+    const base = 'https://studio.invalid';
+    const target = new URL(value, base);
+    if (
+      target.origin !== base || target.pathname.startsWith('//') ||
+      target.pathname === '/auth' || target.pathname.startsWith('/auth/')
+    ) {
       return defaultPath;
     }
-    return value;
+    return `${target.pathname}${target.search}${target.hash}`;
   }
 
   try {

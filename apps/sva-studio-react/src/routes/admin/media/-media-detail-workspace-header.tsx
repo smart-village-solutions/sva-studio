@@ -145,6 +145,7 @@ const PublicDeliveryQrDialog = ({
           <div className="mx-auto w-full max-w-[20rem] rounded-3xl border border-border/70 bg-white p-4 shadow-shell">
             <div
               aria-label={t('media.detail.qrPreviewLabel')}
+              // fallow-ignore-next-line security-sink -- qrcode erzeugt das SVG lokal; die Delivery-URL wird nur als QR-Nutzlast kodiert.
               dangerouslySetInnerHTML={{ __html: qrSvgMarkup }}
               role="img"
             />

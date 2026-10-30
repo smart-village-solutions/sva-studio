@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
+// Keep existing response fixtures at the HTTP boundary used by the production helper.
+vi.mock('undici', async () => {
+  const actual = await vi.importActual<typeof import('undici')>('undici');
+  return { ...actual, fetch: (url: URL, init: RequestInit) => fetch(url, init) };
+});
+
 const serviceLogger = vi.hoisted(() => ({
   debug: vi.fn(),
   info: vi.fn(),

@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+// Keep existing response fixtures at the HTTP boundary used by the production helper.
+vi.mock('undici', async () => {
+  const actual = await vi.importActual<typeof import('undici')>('undici');
+  return { ...actual, fetch: (url: URL, init: RequestInit) => fetch(url, init) };
+});
+
 import {
   createLocalIamCheck,
   createRegistryChecks,
@@ -40,6 +46,27 @@ describe('service-audit-registry', () => {
         actual: 'TypeError',
       })
     );
+  });
+
+  it.each(['127.0.0.1', '[::1]', '100.64.0.1', 'user@demo.example.org', 'demo.example.org/path', 'demo.example.org?next=internal'])(
+    'rejects non-public or malformed probe host %s before fetch',
+    async (hostname) => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+      await expect(probeInstanceUrlReachability(hostname)).resolves.toMatchObject({ status: 'fail' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it('does not follow probe redirects and releases their body', async () => {
+    const body = new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array([1])); } });
+    const response = new Response(body, { status: 302, headers: { location: 'https://127.0.0.1' } });
+    const fetchMock = vi.fn().mockResolvedValue(response);
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(probeInstanceUrlReachability('demo.example.org')).resolves.toMatchObject({ status: 'pass' });
+    expect(fetchMock).toHaveBeenCalledWith(new URL('https://demo.example.org'), expect.objectContaining({ redirect: 'manual' }));
+    expect(body.locked).toBe(false);
+    await expect(response.arrayBuffer()).rejects.toThrow();
   });
 
   it('fails empty registry fields and missing secrets', () => {

@@ -17,6 +17,13 @@ gleichzeitig beeinflussen.
 
 ## Aktueller Stand
 
+### Interne Rücksprungziele und öffentliche HTTPS-Abrufe
+
+- Browser-Rücksprungziele werden mit dem URL-Parser normalisiert und vor der Rückgabe erneut auf Origin, führendes `//` und Auth-Pfade geprüft. Backslashes und Steuerzeichen sind unzulässig; Query und Fragment interner Ziele bleiben erhalten.
+- PDF-Branding und Instanz-Erreichbarkeitsproben verwenden `fetchPublicHttps` aus `@sva/server-runtime`. Der Socket erhält ausschließlich die im selben DNS-Lookup geprüften öffentlichen IP-Adressen. Private, lokale, gemischte und leere DNS-Antworten werden abgewiesen; IP-Literale werden vor dem Abruf geprüft.
+- Automatisches Folgen von Redirects ist ausgeschlossen. Zeitlimits und Antwortgrößen bleiben beim Verbraucher. Nur der bisherige explizite Same-Origin-Localhost-Fall des PDF-Abrufs darf außerhalb von Production den öffentlichen HTTPS-Pfad umgehen.
+- Regressionstests sichern URL-Normalisierung, Sondernetze einschließlich IPv4-mapped IPv6 und die tatsächliche Node-Fetch-Verbindung mit einer blockierten DNS-Antwort ab.
+
 ### Accessibility und interaktive Aktionen
 
 Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerobot-bildeditor-mit-begrenzter-accessibility-abweichung.md) ausdrücklich die bekannten Accessibility-Lücken der spezialisierten Filerobot-Werkzeug-/Canvas-Oberfläche. Die Ausnahme betrifft weder Studio-eigene Dialograhmen, Metadaten, Status und Abschlussaktionen noch den gewöhnlichen Medienauswahlpfad. Die Einschränkung wird im bestehenden Accessibility Statement und am Editoreinstieg benannt. Der Editor wird browserseitig verzögert geladen und verwendet Studio-Übersetzungen, lokale Schriftwahl und semantische Theme-Farben; Cloud- und KI-Funktionen sind deaktiviert.

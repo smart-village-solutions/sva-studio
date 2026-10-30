@@ -8,15 +8,21 @@ export const sanitizeReturnTo = (value: string | null | undefined): string => {
     return DEFAULT_POST_LOGIN_PATH;
   }
 
-  if (!value.startsWith('/') || value.startsWith('//')) {
+  const hasUnsafeCharacter = Array.from(value).some(
+    (character) => character === '\\' || character.charCodeAt(0) < 0x20 || character.charCodeAt(0) === 0x7f
+  );
+  if (!value.startsWith('/') || value.startsWith('//') || hasUnsafeCharacter) {
     return DEFAULT_POST_LOGIN_PATH;
   }
 
-  if (value.startsWith('/auth/')) {
+  // Validate the browser-normalized target, including dot segments and encoded path segments.
+  const base = 'https://studio.invalid';
+  const target = new URL(value, base);
+  if (target.origin !== base || target.pathname.startsWith('//') || target.pathname.startsWith('/auth/')) {
     return DEFAULT_POST_LOGIN_PATH;
   }
 
-  return value;
+  return `${target.pathname}${target.search}${target.hash}`;
 };
 
 export const resolveCurrentReturnTo = (): string => {

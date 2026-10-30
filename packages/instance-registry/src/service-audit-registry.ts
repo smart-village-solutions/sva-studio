@@ -1,4 +1,5 @@
 import type { InstanceAuditCheck } from '@sva/core';
+import { fetchPublicHttps } from '@sva/server-runtime';
 
 import { CHECK_IDS, createCheck, createSkipCheck } from './service-audit-shared.js';
 
@@ -52,12 +53,17 @@ export const probeInstanceUrlReachability = async (primaryHostname: string): Pro
   const url = `https://${primaryHostname}`;
 
   try {
-    const response = await fetch(url, {
+    const parsed = new URL(url);
+    if (parsed.host !== primaryHostname.toLowerCase() || parsed.pathname !== '/' || parsed.search || parsed.hash) {
+      throw new Error('public_https_target_rejected');
+    }
+    const response = await fetchPublicHttps(parsed, {
       method: 'GET',
       redirect: 'manual',
       signal: controller.signal,
     });
     const reachable = response.status < 500;
+    await response.body?.cancel();
     return createCheck({
       checkId: CHECK_IDS.instanceUrlReachable,
       title: 'Instanz-URL erreichbar',

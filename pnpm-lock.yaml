@@ -1607,6 +1607,12 @@ importers:
       '@sva/monitoring-client':
         specifier: workspace:*
         version: file:packages/monitoring-client(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      ipaddr.js:
+        specifier: 1.9.1
+        version: 1.9.1
+      undici:
+        specifier: 8.12.3
+        version: 8.12.3
       winston:
         specifier: ^3.19.0
         version: 3.19.0
@@ -15753,6 +15759,8 @@ snapshots:
       '@opentelemetry/sdk-node': 0.222.0(@opentelemetry/api@1.10.0)
       '@sva/core': file:packages/core
       '@sva/monitoring-client': file:packages/monitoring-client(@opentelemetry/core@2.8.0(@opentelemetry/api@1.10.0))
+      ipaddr.js: 1.9.1
+      undici: 8.12.3
       winston: 3.19.0
       winston-transport: 4.9.0
       zod: 4.6.7
@@ -15766,6 +15774,8 @@ snapshots:
       '@opentelemetry/sdk-node': 0.222.0(@opentelemetry/api@1.10.0)
       '@sva/core': file:packages/core
       '@sva/monitoring-client': file:packages/monitoring-client(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      ipaddr.js: 1.9.1
+      undici: 8.12.3
       winston: 3.19.0
       winston-transport: 4.9.0
       zod: 4.6.7

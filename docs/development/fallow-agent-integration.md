@@ -126,6 +126,20 @@ systemctl --user list-timers sva-fallow-loop.timer
 
 Der Controller beginnt nur während der ersten zwei Stunden neue Bündel und reserviert so bis zu sechs Stunden für Bearbeitung und GitHub-Gates. Der Dienst hat mit zwölf Stunden einen zusätzlichen harten Abbruchpuffer; bei SIGTERM gibt der Controller die lokale Sperre frei. Der Timer wird erst aktiviert, wenn GitHub-Authentifizierung, ein echter Draft-PR und dessen finale Checks auf dem Z640 nachgewiesen wurden. `systemctl --user stop sva-fallow-loop.timer` stoppt künftige Starts; `journalctl --user -u sva-fallow-loop.service` zeigt Laufmeldungen. Jeder Draft-PR benötigt weiterhin eine manuelle fachliche Prüfung.
 
+## Bestätigte Security-False-Positives
+
+Nach Prüfung von Eingabe, Sink und Schutzmaßnahme dürfen einzelne Fundstellen mit
+`// fallow-ignore-next-line security-sink -- konkrete Begründung` ausgeblendet werden.
+Der Marker gilt für alle Security-Sinks der folgenden Zeile; ganze Dateien oder
+Kategorien werden dafür nicht deaktiviert. Bei TSX steht er direkt vor der betroffenen
+Prop. Nach Änderungen an der Datenherkunft muss die Begründung erneut geprüft werden.
+
+Ein frischer JSON-Scan vor und nach dem Kommentar muss belegen, dass ausschließlich
+die geprüften Kandidaten entfallen. Im aktuellen Bestand betrifft dies das feste
+Theme-Bootstrap-Skript, das lokal erzeugte QR-SVG und die beiden Diagnosepfade aus
+Betriebssystem-Temp-Verzeichnis beziehungsweise `mkdtemp()` und festen Dateinamen.
+
+
 ## Quellen
 
 - Fallow-Dokumentation: <https://docs.fallow.tools/>

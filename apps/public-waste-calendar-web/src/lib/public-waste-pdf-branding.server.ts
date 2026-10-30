@@ -1,5 +1,4 @@
-import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { fetchPublicHttps } from '@sva/server-runtime';
 
 import sharp from 'sharp';
 import type { WasteCalendarPdfBrandingImage } from '@sva/waste-management-contracts';
@@ -8,46 +7,6 @@ const BRANDING_TARGET_WIDTH = 326;
 const BRANDING_TARGET_HEIGHT = 124;
 const BRANDING_FETCH_TIMEOUT_MS = 5_000;
 const MAX_BRANDING_ASSET_BYTES = 2 * 1024 * 1024;
-
-const isPrivateIpv4Address = (address: string): boolean => {
-  const octets = address.split('.').map((part) => Number.parseInt(part, 10));
-  if (octets.length !== 4 || octets.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
-    return true;
-  }
-
-  const [first, second] = octets;
-  return (
-    first === 10 ||
-    first === 127 ||
-    (first === 169 && second === 254) ||
-    (first === 172 && second >= 16 && second <= 31) ||
-    (first === 192 && second === 168)
-  );
-};
-
-const isPrivateIpv6Address = (address: string): boolean => {
-  const normalized = address.toLowerCase();
-  return (
-    normalized === '::1' ||
-    normalized.startsWith('fc') ||
-    normalized.startsWith('fd') ||
-    normalized.startsWith('fe8') ||
-    normalized.startsWith('fe9') ||
-    normalized.startsWith('fea') ||
-    normalized.startsWith('feb')
-  );
-};
-
-const isPrivateIpAddress = (address: string): boolean => {
-  const normalized = address.trim().toLowerCase();
-  if (normalized.startsWith('::ffff:')) {
-    return isPrivateIpv4Address(normalized.slice('::ffff:'.length));
-  }
-
-  return isIP(normalized) === 4
-    ? isPrivateIpv4Address(normalized)
-    : isPrivateIpv6Address(normalized);
-};
 
 const isExplicitDevOriginHost = (hostname: string): boolean => {
   const normalized = hostname.trim().toLowerCase();
@@ -77,47 +36,6 @@ const parseBrandingUrls = (input: { readonly assetUrl: string; readonly requestU
 
 const allowsBrandingProtocol = (assetUrl: URL, sameOriginDevRequest: boolean): boolean =>
   sameOriginDevRequest || assetUrl.protocol === 'https:';
-
-const allowsBrandingHostname = (assetUrl: URL, sameOriginDevRequest: boolean): boolean => {
-  const hostname = assetUrl.hostname.trim().toLowerCase();
-  return sameOriginDevRequest || (hostname !== 'localhost' && !hostname.endsWith('.localhost'));
-};
-
-const resolvePublicBrandingHostname = async (assetUrl: URL): Promise<boolean> => {
-  const hostname = assetUrl.hostname.trim().toLowerCase();
-
-  if (isIP(hostname) !== 0) {
-    return !isPrivateIpAddress(hostname);
-  }
-
-  const resolvedAddresses = await lookup(hostname, { all: true, verbatim: true }).catch(() => []);
-  return (
-    resolvedAddresses.length > 0 &&
-    resolvedAddresses.every((entry) => !isPrivateIpAddress(entry.address))
-  );
-};
-
-const resolveSafeBrandingAssetUrl = async (input: {
-  readonly assetUrl: string;
-  readonly requestUrl?: string;
-}): Promise<URL | null> => {
-  const { assetUrl, sameOriginDevRequest } = parseBrandingUrls(input);
-
-  if (!allowsBrandingProtocol(assetUrl, sameOriginDevRequest)) {
-    return null;
-  }
-  if (!allowsBrandingHostname(assetUrl, sameOriginDevRequest)) {
-    return null;
-  }
-  if (sameOriginDevRequest) {
-    return assetUrl;
-  }
-  if (!(await resolvePublicBrandingHostname(assetUrl))) {
-    return null;
-  }
-
-  return assetUrl;
-};
 
 const readBrandingAssetBuffer = async (response: Response): Promise<Buffer | null> => {
   const contentLength = Number.parseInt(response.headers.get('content-length') ?? '', 10);
@@ -155,12 +73,16 @@ export const loadPublicWastePdfBrandingImage = async (input: {
   readonly assetUrl: string;
   readonly requestUrl?: string;
 }): Promise<WasteCalendarPdfBrandingImage | undefined> => {
-  const safeAssetUrl = await resolveSafeBrandingAssetUrl(input).catch(() => null);
-  if (!safeAssetUrl) {
+  const parsed = (() => {
+    try { return parseBrandingUrls(input); } catch { return null; }
+  })();
+  if (!parsed || !allowsBrandingProtocol(parsed.assetUrl, parsed.sameOriginDevRequest)) {
     return undefined;
   }
 
-  const response = await fetch(safeAssetUrl, {
+  // Only the existing explicit localhost development case may bypass public HTTPS validation.
+  const fetchAsset = parsed.sameOriginDevRequest ? fetch : fetchPublicHttps;
+  const response = await fetchAsset(parsed.assetUrl, {
     redirect: 'error',
     signal: AbortSignal.timeout(BRANDING_FETCH_TIMEOUT_MS),
   }).catch(() => null);

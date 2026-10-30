@@ -9,6 +9,7 @@ import type { AnyRouter } from '@tanstack/react-router';
 
 import { createRouterDiagnosticsSnapshot } from './router-diagnostics';
 
+// fallow-ignore-next-line security-sink -- Betriebssystem-Temp-Verzeichnis und fester Diagnosepräfix enthalten keine Request-Eingaben.
 const ROUTER_DIAGNOSTICS_DIR_PREFIX = path.join(tmpdir(), 'sva-router-diagnostics-');
 type RouterDiagnosticsLogger = {
   error: (message: string, meta: Record<string, unknown>) => void;
@@ -40,6 +41,7 @@ const getLogger = async (): Promise<RouterDiagnosticsLogger> => {
 
 const getDiagnosticsFile = async (): Promise<string> => {
   diagnosticsFilePromise ??= mkdtemp(ROUTER_DIAGNOSTICS_DIR_PREFIX).then((directoryPath) =>
+    // fallow-ignore-next-line security-sink -- mkdtemp erzeugt das Verzeichnis; snapshot.json ist ein fester Dateiname ohne Request-Eingaben.
     path.join(directoryPath, 'snapshot.json')
   );
 

@@ -217,6 +217,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
       <head>
         <HeadContent />
         <script
+          // fallow-ignore-next-line security-sink -- Das Theme-Skript besteht aus festen Anwendungsliteralen ohne eingebettete Nutzereingaben.
           dangerouslySetInnerHTML={{ __html: themeBootstrapScript }}
           data-theme-bootstrap="true"
         />

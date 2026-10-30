@@ -104,3 +104,5 @@ export const createSdkLogger = (
 ): ServerRuntimeLogger => createSdkLoggerInternal(...args) as ServerRuntimeLogger;
 
 export { getEncryptionConfig, protectField, revealField } from './server/field-encryption.server.js';
+
+export { fetchPublicHttps } from './server/public-https-fetch.server.js';

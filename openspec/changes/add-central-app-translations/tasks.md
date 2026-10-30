@@ -213,6 +213,8 @@ Reihenfolge nach Nutzerentscheidung: Staging und Sandbox bleiben bis zum abgesch
 
 Lokaler Nachweis ST-3.9 vom 30. Oktober: 29 Bindungsfälle einschließlich echter PostgreSQL-16-Snapshotprüfung unter `iam_app`, 14 bestehende Plugin-Lifecycle-Fälle und 35 Mainserver-RSpec-Fälle grün. Auth-Runtime-Typecheck und Server-Runtime-Gate erfolgreich; gezielter Studio-Lint ohne Fehler (bestehende Test-Non-null-Warnungen), Dateiablage, strikte OpenSpec-Validierung und Komplexitäts-Gate ohne neue Findings. Mainserver-RuboCop konnte wegen der vorhandenen inkompatiblen Regel `Style/KeywordArguments` in `app/.rubocop.yml` nicht laufen; diese fremde Konfiguration wurde nicht geändert. Das unabhängige Security-Review fand keine blockierenden Befunde; seine drei zusätzlichen Negativnachweise (vorhandene Bindung, fehlender Zugang, veralteter Auftrag nach Tokenabruf) wurden ergänzt. Keine neue Datei, Dependency, Schemaänderung oder Queue; vorhandene Pfade und Dokumentation erweitert. Kein Commit, Push oder Rollout in diesem Folgeabschnitt und kein Live-/DeepL-Nachweis.
 
+PR-Reviewkorrektur #2007: Ein während des OAuth-Abrufs geänderter Instanzhostname wird vor dem entfernten Setup erneut mit dem ausgewählten Ziel verglichen. Die bestehende abschließende CAS-Prüfung allein käme für diesen externen Write zu spät. Der konkrete Fehler wurde zunächst rot reproduziert und nach der lokalen Korrektur gezielt grün geprüft; kein neuer Vertrag oder Ausführungspfad.
+
 ## 5. Dynamischer MySQL-Bestand und Hintergrundausführung — Main-Server federführend
 
 Die frühere dauerhafte Studio-PostgreSQL-/Graphile-Ergebnisstrecke ist durch den Main-Server-Plan 002 ersetzt; feste Studio-Katalogjobs bleiben unverändert. Konkrete Implementierung separat freigeben.

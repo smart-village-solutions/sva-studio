@@ -157,7 +157,8 @@ const requestServiceSetup = async (
     })
     .parse(await readBoundedJson(tokenResponse));
   // A queued activation may have been superseded while requesting the token.
-  if (!(await readActiveScope(connection, context)))
+  const currentScope = await readActiveScope(connection, context);
+  if (!currentScope || currentScope.primary_hostname !== new URL(studioUrl).host)
     throw new Error('mainserver_setup_scope_changed');
   return fetch(url, {
     method: 'POST',

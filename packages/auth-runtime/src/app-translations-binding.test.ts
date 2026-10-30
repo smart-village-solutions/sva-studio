@@ -355,6 +355,25 @@ it('preserves an existing binding without attempting setup when discovery fails'
   expect(fetcher).toHaveBeenCalledOnce();
 });
 
+it('does not set up the old destination when the instance hostname changes during OAuth', async () => {
+  prepareSetup();
+  state.query.mockImplementation(async (sql: string) => ({
+    rows: sql.includes('organization_mainserver_credentials')
+      ? [{ organization_id: 'technical-org' }]
+      : [
+          {
+            primary_hostname:
+              fetcher.mock.calls.length > 1 ? 'new.studio.example' : 'de-town.studio.example',
+            generation: '1',
+            assignment_revision: '123',
+          },
+        ],
+  }));
+  expect(await reconcileAppTranslationServiceBinding(context())).toBe(false);
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(state.save).not.toHaveBeenCalled();
+});
+
 it.each([
   'no-organization',
   'missing-credentials',

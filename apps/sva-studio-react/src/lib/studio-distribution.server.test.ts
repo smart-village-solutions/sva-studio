@@ -1,5 +1,7 @@
-import { loadConfigFromFile } from 'vite';
+import { build, loadConfigFromFile } from 'vite';
 import { join } from 'node:path';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -16,6 +18,32 @@ const catalog = [
 
 describe('studio distribution', () => {
   afterEach(() => vi.unstubAllEnvs());
+
+  it('bundles SSF provisioning when the injected package has no compiled artifacts', async () => {
+    vi.stubEnv('SVA_STUDIO_DISTRIBUTION', 'ssf');
+    const loaded = await loadConfigFromFile(
+      { command: 'build', mode: 'production' }, join(process.cwd(), 'vite.config.ts')
+    );
+    const root = mkdtempSync(join(tmpdir(), 'ssf-provisioning-build-'));
+    try {
+      const injected = join(root, 'node_modules/@sva/plugin-ssf');
+      mkdirSync(injected, { recursive: true });
+      writeFileSync(join(injected, 'package.json'), JSON.stringify({
+        name: '@sva/plugin-ssf', type: 'module', exports: { './provisioning': './dist/provisioning.js' },
+      }));
+      const entry = join(root, 'entry.ts');
+      writeFileSync(entry, "export { SSF_LOGIN_CLIENT_ID as clientId } from '@sva/plugin-ssf/provisioning';");
+      const output = await build({
+        configFile: false, root, logLevel: 'silent', resolve: loaded?.config.resolve,
+        build: { ssr: entry, write: false, minify: false },
+      });
+      if (!('output' in output)) throw new Error('ssf_test_build_output_missing');
+      const chunk = output.output.find((item) => item.type === 'chunk');
+      expect(chunk?.code).toContain('ssf-frontend');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 
   it('loads the authorization dispatcher and host from the same runtime package', async () => {
     const loaded = await loadConfigFromFile(

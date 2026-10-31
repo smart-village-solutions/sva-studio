@@ -3,6 +3,8 @@ import type { Pool } from 'pg';
 import { ZodError } from 'zod';
 
 import { ssfSupportedLanguagesCatalogSchema, ssfSystemContentV2InputSchema, ssfTenantContentV2InputSchema } from '../content-v2-admin-contracts.js';
+import type { SsfLegalTexts } from '../content-v2-contracts.js';
+import { effectiveSsfRuntimeFieldsV2 } from '../content-v2-overrides.js';
 import {
   readSsfSystemContentV2, readSsfTenantContentV2,
   replaceSsfSystemContentV2, writeSsfTenantContentV2,
@@ -38,6 +40,18 @@ const readCatalog = async (read: SsfAdminV2Dependencies['readSupportedLanguages'
 const localeIsAllowed = (locale: string, previous: string | undefined, catalog: Awaited<ReturnType<typeof readCatalog>>) =>
   locale === previous || Boolean(catalog?.languages[locale]);
 
+const legalLocalesAreAllowed = (
+  next: SsfLegalTexts | undefined, previous: SsfLegalTexts | undefined,
+  catalog: Awaited<ReturnType<typeof readCatalog>>
+): boolean => {
+  if (!next) return true;
+  const saved = new Set(previous?.localizations.map((entry) => entry.locale) ?? []);
+  if (!catalog) return next.sourceLocale === previous?.sourceLocale &&
+    next.localizations.length === saved.size && next.localizations.every((entry) => saved.has(entry.locale));
+  return next.localizations.every(({ locale }) => saved.has(locale) ||
+    Boolean(catalog.languages[locale] ?? catalog.languages[locale.split('-')[0] ?? '']));
+};
+
 const systemLocalesAreAllowed = (
   input: { installation: SsfSystemContentV2['installation']; runtimeTemplate: SsfSystemContentV2['runtimeTemplate'] },
   previous: SsfSystemContentV2,
@@ -52,6 +66,7 @@ const systemLocalesAreAllowed = (
     if (previousGuests.length !== requestedGuests.length || previousGuests.some((locale, index) => locale !== requestedGuests[index])) return false;
   }
   if (!input.runtimeTemplate) return true;
+  if (!legalLocalesAreAllowed(input.runtimeTemplate.legalTexts, previousRuntime?.legalTexts, catalog)) return false;
   if (!localeIsAllowed(input.runtimeTemplate.staff.locale, previousRuntime?.staff.locale, catalog)) return false;
   const previousGuestLocales = new Set(previousRuntime?.guestLanguages.map(({ locale }) => locale) ?? []);
   return input.runtimeTemplate.guestLanguages.every(({ locale }) =>
@@ -73,6 +88,16 @@ const tenantGuestChangesAreAllowed = (
     const value = entry as Record<string, unknown>;
     return typeof value['locale'] === 'string' && templateLocales.has(value['locale']) && value['enabled'] === undefined;
   });
+};
+
+const tenantLegalChangesAreAllowed = (
+  input: Record<string, unknown>, previous: SsfTenantContentV2,
+  catalog: Awaited<ReturnType<typeof readCatalog>>
+): boolean => {
+  if (input['legalTexts'] === undefined || !previous.runtimeTemplate) return true;
+  const next = effectiveSsfRuntimeFieldsV2(previous.runtimeTemplate, input);
+  const saved = effectiveSsfRuntimeFieldsV2(previous.runtimeTemplate, previous.overrides);
+  return legalLocalesAreAllowed(next.legalTexts, saved.legalTexts, catalog);
 };
 
 const tenantStaffLocale = (value: Record<string, unknown> | null | undefined): string | undefined => {
@@ -166,6 +191,9 @@ const writeTenant = (dependencies: SsfAdminV2Dependencies): PluginServerExecutio
       dependencies.readTenantV2(context.actor.instanceId), readCatalog(dependencies.readSupportedLanguages),
     ]);
     const requestedLocale = tenantStaffLocale(parsed.data);
+    if (!tenantLegalChangesAreAllowed(parsed.data, previous, catalog)) {
+      return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
+    }
     if (!tenantGuestChangesAreAllowed(parsed.data, previous, catalog)) {
       return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
     }

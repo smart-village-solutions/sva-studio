@@ -42,6 +42,47 @@ const catalog = {
 };
 
 describe('SSF V2 admin supported-language catalog', () => {
+  const legal = (locale = 'de-DE') => ({ sourceLocale: locale, version: 'test-draft', localizations: [{
+    locale, mode2Consent: null, mode3Consent: null, guestRecordingRelease: null, staffRecordingRelease: null, recordingStatus: null,
+  }] });
+
+  it('rejects newly introduced unsupported legal languages at the administration boundary', async () => {
+    const previous = systemContent();
+    const handlers = createSsfAdminV2Handlers({ readSystemV2: async () => previous,
+      writeSystemV2: async () => { throw new Error('must not persist unsupported legal content'); }, readSupportedLanguages: async () => catalog });
+    const response = await handlers['ssf.system-content-v2.write']?.(writeContext('platform', {
+      ...previous, runtimeTemplate: { ...previous.runtimeTemplate, legalTexts: legal('fr') },
+    }));
+    expect(response?.status).toBe(422);
+  });
+
+  it('preserves saved legal language editing but rejects language additions without the catalog', async () => {
+    const previous = systemContent();
+    previous.runtimeTemplate!.legalTexts = legal();
+    const handlers = createSsfAdminV2Handlers({ readSystemV2: async () => previous,
+      writeSystemV2: async (input) => { previous.runtimeTemplate = input.runtimeTemplate; } });
+    const input = structuredClone(previous);
+    input.runtimeTemplate!.legalTexts!.version = 'edited-draft';
+    const edited = await handlers['ssf.system-content-v2.write']?.(writeContext('platform', input));
+    expect(edited?.status).toBe(200);
+    await expect(edited?.json()).resolves.toMatchObject({ runtimeTemplate: { legalTexts: { version: 'edited-draft' } } });
+    input.runtimeTemplate!.legalTexts!.localizations.push({ ...legal('fr').localizations[0]! });
+    const invalid = await handlers['ssf.system-content-v2.write']?.(writeContext('platform', input));
+    expect(invalid?.status).toBe(422);
+  });
+
+  it('accepts a catalog-backed regional source on the bound tenant and reads it back', async () => {
+    const state = { runtimeTemplate: systemContent().runtimeTemplate, overrides: {} as Record<string, unknown> };
+    const handlers = createSsfAdminV2Handlers({ readTenantV2: async () => state,
+      writeTenantV2: async (instanceId, input) => {
+        if (instanceId !== 'tenant-a') throw new Error('wrong tenant');
+        state.overrides = input;
+      }, readSupportedLanguages: async () => catalog });
+    const response = await handlers['ssf.tenant-content-v2.write']?.(writeContext('tenant', { legalTexts: legal() }));
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toMatchObject({ overrides: { legalTexts: { sourceLocale: 'de-DE' } } });
+  });
+
   it('adds a valid catalog to the existing system content response', async () => {
     const handlers = createSsfAdminV2Handlers({ readSystemV2: async () => ({ installation: null, runtimeTemplate: null }),
       readSupportedLanguages: async () => catalog });

@@ -81,9 +81,48 @@ const guestLanguage = z
   })
   .strict();
 
+const legalChoice = z.object({
+  headline: text,
+  bodyHtml: html,
+  acceptLabel: text,
+  declineLabel: text,
+}).strict();
+
+const ssfLegalLocalizationSchema = z.object({
+  locale,
+  mode2Consent: legalChoice.nullable(),
+  mode3Consent: legalChoice.nullable(),
+  guestRecordingRelease: legalChoice.nullable(),
+  staffRecordingRelease: legalChoice.nullable(),
+  recordingStatus: z.object({
+    waiting: text,
+    running: text,
+    stopped: text,
+    renewedReleaseRequired: text,
+  }).strict().nullable(),
+}).strict();
+
+export const ssfLegalTextsSchema = z.object({
+  sourceLocale: locale,
+  version: text,
+  localizations: z.array(ssfLegalLocalizationSchema).min(1).max(30),
+}).strict().superRefine((value, context) => {
+  const locales = value.localizations.map((entry) => entry.locale);
+  if (new Set(locales).size !== locales.length) {
+    context.addIssue({ code: 'custom', path: ['localizations'], message: 'duplicate_locale' });
+  }
+  if (!locales.includes(value.sourceLocale)) {
+    context.addIssue({ code: 'custom', path: ['sourceLocale'], message: 'legal_source_locale_missing' });
+  }
+});
+
+export type SsfLegalLocalization = z.infer<typeof ssfLegalLocalizationSchema>;
+export type SsfLegalTexts = z.infer<typeof ssfLegalTextsSchema>;
+
 const runtimeContentFieldsObjectSchema = z
   .object({
     branding,
+    legalTexts: ssfLegalTextsSchema.optional(),
     conversationContentStorage: z
       .object({
         mode: z.enum(['ask', 'disabled']),

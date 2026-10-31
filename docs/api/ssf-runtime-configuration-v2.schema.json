@@ -36,6 +36,32 @@
         "timeZone": { "type": "string", "minLength": 1, "maxLength": 100, "description": "IANA time zone, e.g. Europe/Berlin." }
       }
     },
+    "legalTexts": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Editorial content only; saving does not grant consent, authorize recording, or change storage policy. Locale identities must be unique and sourceLocale must name an existing localization; Studio validates these cross-field constraints. Missing translations remain null.",
+      "required": [
+        "sourceLocale",
+        "version",
+        "localizations"
+      ],
+      "properties": {
+        "sourceLocale": {
+          "$ref": "#/$defs/locale"
+        },
+        "version": {
+          "$ref": "#/$defs/text"
+        },
+        "localizations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 30,
+          "items": {
+            "$ref": "#/$defs/legalLocalization"
+          }
+        }
+      }
+    },
     "branding": {
       "type": "object",
       "description": "Effective tenant media, used once the tenant is known. null means no medium for that purpose.",
@@ -124,6 +150,118 @@
     }
   },
   "$defs": {
+    "legalChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "headline",
+        "bodyHtml",
+        "acceptLabel",
+        "declineLabel"
+      ],
+      "properties": {
+        "headline": {
+          "$ref": "#/$defs/text"
+        },
+        "bodyHtml": {
+          "$ref": "#/$defs/html"
+        },
+        "acceptLabel": {
+          "$ref": "#/$defs/text"
+        },
+        "declineLabel": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "legalLocalization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "locale",
+        "mode2Consent",
+        "mode3Consent",
+        "guestRecordingRelease",
+        "staffRecordingRelease",
+        "recordingStatus"
+      ],
+      "properties": {
+        "locale": {
+          "$ref": "#/$defs/locale"
+        },
+        "mode2Consent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/legalChoice"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mode3Consent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/legalChoice"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "guestRecordingRelease": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/legalChoice"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "staffRecordingRelease": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/legalChoice"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recordingStatus": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "waiting",
+                "running",
+                "stopped",
+                "renewedReleaseRequired"
+              ],
+              "properties": {
+                "waiting": {
+                  "$ref": "#/$defs/text"
+                },
+                "running": {
+                  "$ref": "#/$defs/text"
+                },
+                "stopped": {
+                  "$ref": "#/$defs/text"
+                },
+                "renewedReleaseRequired": {
+                  "$ref": "#/$defs/text"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
     "text": { "type": "string", "minLength": 1, "maxLength": 500, "description": "Non-empty plain text." },
     "html": {
       "type": "string",

@@ -1225,3 +1225,7 @@ Betreff-, Plaintext- und HTML-Texte; `@sva/auth-runtime` besitzt den gemeinsamen
 Abgleich über den Registry-gebundenen Tenant-Admin-Client. Die bestehenden
 Editoren nutzen dieselbe Vergleichsanzeige. Keycloak rendert und versendet weiter
 selbst; es entstehen weder Mailworker noch zusätzliche Versandabläufe.
+
+## SSF localized legal content
+
+The existing `@sva/plugin-ssf` v2 runtime-content editor and JSON repository own optional localized consent, release, and recording-status texts. System templates and tenant overrides reuse the current administration routes, transaction boundaries, sanitizer, and canonical content revision. Legal source languages are independent of offered guest languages. No new table, service, or recording-control component is introduced. See the [content-editor documentation](../development/ssf-v2-inhaltsverwaltung-ui.md#separate-consent-and-recording-release-texts).

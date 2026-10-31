@@ -1341,3 +1341,7 @@ Instanz-Lock. Keycloak bietet dafür keine atomare externe CAS: Eine direkte
 Admin-Änderung zwischen letzter Prüfung und Write kann nicht vollständig verhindert
 werden. Readback und der erneute Vergleich beim Versand erkennen abweichende
 Ergebnisse; während des Rollout-Abgleichs sind parallele direkte Realm-Edits auszusetzen.
+
+## SSF legal text and recording authority
+
+`legalTexts` is optional editorial content in the v2 runtime configuration. Separate groups preserve the distinction between consent for processing and release of a recording section, including distinct guest and staff wording. Editing these texts cannot change storage mode, retention, or recording authorization. Missing translations remain explicit; draft identifiers and unresolved contacts are preserved. Existing tenant permissions and HTML sanitization apply. SSF must implement the actual interaction and evidence separately; a text revision is not a consent record. Before downgrading to an older strict content schema, restore the previous JSON without the new block.

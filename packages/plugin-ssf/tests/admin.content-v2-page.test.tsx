@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({
@@ -264,5 +264,84 @@ describe('SSF V2 content administration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
     await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({}));
+  });
+
+  const legalSource = () => ({
+    sourceLocale: 'de-DE', version: '2026-09-23-draft', localizations: [{
+      locale: 'de-DE',
+      mode2Consent: { headline: 'Mode two', bodyHtml: '<p>Record sections. [Kontakt/Widerrufsmöglichkeit]</p>', acceptLabel: 'Agree two', declineLabel: 'Decline two' },
+      mode3Consent: { headline: 'Quality', bodyHtml: '<p>Quality only</p>', acceptLabel: 'Agree quality', declineLabel: 'Decline quality' },
+      guestRecordingRelease: null, staffRecordingRelease: null, recordingStatus: null,
+    }],
+  });
+
+  it('edits one legal group independently without changing storage policy', async () => {
+    const installation = fields('ssf-installation-content-v2.example.json');
+    const runtimeTemplate = { ...fields('ssf-runtime-configuration-v2.example.json'), legalTexts: legalSource() };
+    api.readSystem.mockResolvedValue({ installation, runtimeTemplate, supportedLanguages });
+    api.writeSystem.mockImplementation(async (input) => ({ installation, runtimeTemplate: input.runtimeTemplate, supportedLanguages }));
+    const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
+    render(<SsfSystemContentV2Page />);
+    const group = await screen.findByRole('group', { name: 'v2.legalTexts.mode2Consent' });
+    fireEvent.change(within(group).getByLabelText('v2.legalTexts.bodyHtml'), { target: { value: '<p>Edited mode two</p>' } });
+    expect(screen.getByText('v2.legalTexts.sourceNotice')).toBeTruthy();
+    expect(screen.getByDisplayValue('2026-09-23-draft')).toBeTruthy();
+    expect(within(screen.getByRole('group', { name: 'v2.legalTexts.mode3Consent' })).getByDisplayValue('<p>Quality only</p>')).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.save' })[1]!);
+    await waitFor(() => expect(api.writeSystem).toHaveBeenCalled());
+    const saved = api.writeSystem.mock.calls[0]![0].runtimeTemplate;
+    expect(saved.legalTexts.localizations[0].mode2Consent.bodyHtml).toBe('<p>Edited mode two</p>');
+    expect(saved.legalTexts.localizations[0].mode3Consent).toEqual(runtimeTemplate.legalTexts.localizations[0]!.mode3Consent);
+    expect(saved.conversationContentStorage).toEqual(runtimeTemplate['conversationContentStorage']);
+  });
+
+  it('adds the staff language as a legal source independently of guest languages', async () => {
+    const installation = fields('ssf-installation-content-v2.example.json');
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    delete runtimeTemplate['legalTexts'];
+    api.readSystem.mockResolvedValue({ installation, runtimeTemplate, supportedLanguages });
+    const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
+    render(<SsfSystemContentV2Page />);
+    fireEvent.click(await screen.findByRole('button', { name: 'v2.legalTexts.add' }));
+    expect((screen.getByLabelText('v2.legalTexts.sourceLocale') as HTMLSelectElement).value).toBe('de-DE');
+    expect(screen.getByRole('group', { name: 'v2.legalTexts.mode2Consent' })).toBeTruthy();
+  });
+
+  it('adds a translation with explicit missing groups without changing offered guest languages', async () => {
+    const installation = fields('ssf-installation-content-v2.example.json');
+    const runtimeTemplate = { ...fields('ssf-runtime-configuration-v2.example.json'), legalTexts: legalSource() };
+    api.readSystem.mockResolvedValue({ installation, runtimeTemplate, supportedLanguages });
+    api.writeSystem.mockImplementation(async (input) => ({ installation, runtimeTemplate: input.runtimeTemplate, supportedLanguages }));
+    const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
+    render(<SsfSystemContentV2Page />);
+    fireEvent.change(await screen.findByLabelText('v2.legalTexts.newLanguage'), { target: { value: 'en' } });
+    fireEvent.click(screen.getByRole('button', { name: 'v2.legalTexts.addLanguage' }));
+    const save = screen.getAllByRole('button', { name: 'actions.save' }).at(1);
+    if (!save) throw new Error('ssf_test_save_missing');
+    fireEvent.click(save);
+    await waitFor(() => expect(api.writeSystem).toHaveBeenCalled());
+    const saved = api.writeSystem.mock.calls.at(0)?.[0]?.runtimeTemplate;
+    expect(saved.legalTexts.localizations[1]).toEqual({ locale: 'en', mode2Consent: null, mode3Consent: null,
+      guestRecordingRelease: null, staffRecordingRelease: null, recordingStatus: null });
+    expect(saved.guestLanguages).toEqual(runtimeTemplate['guestLanguages']);
+  });
+
+  it('resets a tenant legal field and respects read-only permissions', async () => {
+    const runtimeTemplate = { ...fields('ssf-runtime-configuration-v2.example.json'), legalTexts: legalSource() };
+    const view = { runtimeTemplate, overrides: { legalTexts: { localizations: [{ locale: 'de-DE', mode2Consent: { bodyHtml: '<p>Tenant body</p>' } }] } }, supportedLanguages };
+    api.readTenant.mockResolvedValue(view);
+    api.writeTenant.mockResolvedValue({ ...view, overrides: {} });
+    const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
+    const rendered = render(<SsfTenantContentV2Page canManage />);
+    const group = await screen.findByRole('group', { name: 'v2.legalTexts.mode2Consent' });
+    fireEvent.click(within(group).getByRole('button', { name: 'fields.inherit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({}));
+    rendered.unmount();
+    render(<SsfTenantContentV2Page canManage={false} />);
+    const readOnly = await screen.findByRole('group', { name: 'v2.legalTexts.mode2Consent' });
+    expect((within(readOnly).getByLabelText('v2.legalTexts.headline') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText('v2.legalTexts.version') as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByRole('button', { name: 'actions.save' })).toBeNull();
   });
 });

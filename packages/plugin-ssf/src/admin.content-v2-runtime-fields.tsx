@@ -9,6 +9,7 @@ import {
   SsfV2Field as Field, type SsfV2EditorProps, updateSsfV2Field,
 } from './admin.content-v2-field-control.js';
 import { blankFeedback, BrandingFields, FeedbackFields } from './admin.content-v2-fields.js';
+import { SsfLegalTextsEditor } from './admin.content-v2-legal-fields.js';
 import type { SsfRuntimeContentV2Fields } from './content-v2-contracts.js';
 import type { SsfSupportedLanguagesCatalog } from './content-v2-admin-contracts.js';
 
@@ -232,6 +233,7 @@ export const SsfRuntimeV2Editor = (props: Props) => {
     <BrandingFields {...props} />
     <StaffFields {...props} />
     <StorageFields {...props} />
+    <SsfLegalTextsEditor {...props} />
     <FeedbackFields {...props} path={['staff', 'feedback']} />
     <GuestLanguages {...props} />
   </div>;

@@ -34,7 +34,7 @@ const mergeArray = (base: unknown[], overrides: unknown[]): unknown[] => {
 const mergeObject = (base: Record<string, unknown>, overrides: Record<string, unknown>) => {
     for (const key of Object.keys(overrides)) {
       if (!Object.prototype.hasOwnProperty.call(base, key) && key !== 'enabled' &&
-          !optionalFields.has(key) && key !== 'icon') {
+          !optionalFields.has(key) && key !== 'icon' && key !== 'legalTexts') {
         throw new Error('ssf_v2_override_field_unknown');
       }
     }

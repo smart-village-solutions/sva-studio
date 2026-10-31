@@ -279,5 +279,19 @@
         "button": "Отправить отзыв"
       }
     }
-  ]
+  ],
+  "legalTexts": {
+    "sourceLocale": "de-DE",
+    "version": "example-draft",
+    "localizations": [
+      {
+        "locale": "de-DE",
+        "mode2Consent": null,
+        "mode3Consent": null,
+        "guestRecordingRelease": null,
+        "staffRecordingRelease": null,
+        "recordingStatus": null
+      }
+    ]
+  }
 }

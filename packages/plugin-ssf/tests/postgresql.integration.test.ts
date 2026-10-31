@@ -275,6 +275,38 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     expect(await readSsfSystemContentV2(rootPool)).toEqual(before);
   });
 
+  it('persists legal wording through scoped repositories without leaking a tenant override', async () => {
+    const system = await readSsfSystemContentV2(rootPool);
+    const before = await readSsfTenantContentV2(rootPool, 'tenant-a');
+    const other = await readSsfTenantContentV2(tenantPool, 'tenant-b');
+    if (!system.runtimeTemplate) throw new Error('ssf_test_template_missing');
+    const template = { ...system.runtimeTemplate, legalTexts: {
+      sourceLocale: 'de-DE', version: 'integration-draft', localizations: [{
+        locale: 'de-DE', mode2Consent: {
+          headline: 'Recording consent', bodyHtml: '<p>Template wording</p>', acceptLabel: 'Agree', declineLabel: 'Decline',
+        }, mode3Consent: null, guestRecordingRelease: null, staffRecordingRelease: null, recordingStatus: null,
+      }],
+    } };
+    try {
+      await replaceSsfSystemContentV2(rootPool, { installation: null, runtimeTemplate: template });
+      await writeSsfTenantContentV2(rootPool, 'tenant-a', { legalTexts: { localizations: [{
+        locale: 'de-DE', mode2Consent: { bodyHtml: '<p onclick="bad()">Tenant wording</p><script>bad()</script>' },
+      }] } });
+      const saved = await readSsfTenantContentV2(tenantPool, 'tenant-a');
+      const effective = resolveSsfRuntimeContentV2({ tenant: { id: 'tenant-a', displayName: 'A', timeZone: 'Europe/Berlin' },
+        template: saved.runtimeTemplate, overrides: saved.overrides });
+      expect(effective.legalTexts?.localizations[0]?.mode2Consent?.bodyHtml).toBe('<p>Tenant wording</p>');
+      const untouched = await readSsfTenantContentV2(tenantPool, 'tenant-b');
+      expect(untouched.overrides).toEqual(other.overrides);
+      const otherEffective = resolveSsfRuntimeContentV2({ tenant: { id: 'tenant-b', displayName: 'B', timeZone: 'Europe/Berlin' },
+        template: untouched.runtimeTemplate, overrides: untouched.overrides });
+      expect(otherEffective.legalTexts?.localizations[0]?.mode2Consent?.bodyHtml).toBe('<p>Template wording</p>');
+    } finally {
+      await writeSsfTenantContentV2(rootPool, 'tenant-a', before.overrides ?? {});
+      await replaceSsfSystemContentV2(rootPool, { installation: null, runtimeTemplate: system.runtimeTemplate });
+    }
+  });
+
   it('rejects a cross-tenant write and invalid oversized HTML', async () => {
     const tenantClient = await tenantPool.connect();
     try {

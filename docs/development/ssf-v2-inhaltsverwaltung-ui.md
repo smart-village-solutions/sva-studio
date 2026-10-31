@@ -39,7 +39,19 @@ Server und UI prüfen Pflichtfelder, Feldlängen, HTTPS-URLs, die Grenzen der Au
 
 Alle Eingabefelder erhalten sichtbare Beschriftungen; Reiter und Fragebereiche sind per Tastatur bedienbar. Fokus und Statusmeldungen folgen den bestehenden Studio-Formularmustern. HTML wird serverseitig erneut bereinigt; Berechtigungen und Mandantenbindung werden serverseitig geprüft.
 
-## Nachweis vor Freigabe
+## Separate consent and recording-release texts
+
+The existing runtime editor manages optional `legalTexts` content: mode 2 consent, mode 3 consent, guest recording release, staff recording release, and recording status messages. Choice groups contain a heading, full rich-text body, and affirmative/negative labels. A group not supplied in a language remains `null`; German wording is not silently represented as a translation.
+
+Source language and source version identify the original document. Legal languages are independent of guest languages, so German remains editable when it is the staff language. Add translations through the supported-language catalogue. Existing saved wording remains editable when the catalogue is unavailable. The system template defines available legal languages; tenant administrators override fields and reset them to the current template with the existing controls. Without a system legal template, a tenant can configure its own legal content.
+
+The checkbox indicates only whether a text group is provided. It does not grant consent or authorize recording. Disabling storage retains legal content. Draft identifiers and unresolved placeholders such as `[Kontakt/Widerrufsmöglichkeit]` remain visible until finalized. Saving text is not legal approval.
+
+The optional fields use the existing v2 response, HTML sanitizer, tenant scope, response-size limit, and content revision. Configurations without legal content remain valid. SSF conversation screens, recording control, and consent evidence require separate consumer implementation before the new groups can be used. The legacy `storageQuestionHtml` is not replaced automatically.
+
+For a tenant-specific import, read and preserve the previous overrides, then merge `legalTexts` into them before writing through the existing tenant-content API. That API replaces the override document; sending only the new block would discard unrelated overrides. Verify saved content by reading it back. Before reverting to an image whose strict schema predates `legalTexts`, restore the pre-import JSON content first.
+
+## Existing content acceptance checks
 
 - Systemwerte erscheinen in der Installationsantwort oder als Vorlage in der Runtime-Antwort am passenden V2-Endpunkt.
 - Ein einzelner Tenant-Override verändert nur sein Feld; Rücksetzen stellt die aktuelle Systemvorlage wieder her.

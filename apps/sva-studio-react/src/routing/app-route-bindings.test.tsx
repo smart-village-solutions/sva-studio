@@ -48,6 +48,11 @@ const routeState = vi.hoisted(() => ({
   faqLabel: 'FAQ',
 }));
 
+vi.mock('@sva/plugin-app-translations', () => ({
+  CatalogsPage: ({ platform }: { platform?: boolean }) =>
+    <div data-testid="translation-catalog-scope">{platform ? 'platform' : 'instance'}</div>,
+}));
+
 vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   requestMainserverJson: routeState.requestMainserverJson,
@@ -105,6 +110,8 @@ vi.mock('@sva/routing', () => ({
 }));
 
 vi.mock('@sva/routing/route-search', () => ({
+  normalizeIamTab: routeState.normalizeIamTab,
+  normalizeRoleDetailTab: routeState.normalizeRoleDetailTab,
   normalizeOrganizationDetailTab: routeState.normalizeOrganizationDetailTab,
 }));
 
@@ -758,7 +765,7 @@ describe('appRouteBindings', () => {
     cleanup();
   });
 
-  it('keeps the six legacy host URLs inert in the SSF profile', async () => {
+  it('keeps excluded content and translation routes inert in the SSF profile', async () => {
     const { appRouteBindings: ssfBindings } = await import('./app-route-bindings.ssf');
     const { default: NotFound } = await import('../components/NotFound');
     const urlsAndBindings = [
@@ -768,12 +775,22 @@ describe('appRouteBindings', () => {
       ['/content', ssfBindings.content],
       ['/content/new', ssfBindings.contentCreate],
       ['/content/$contentId', ssfBindings.contentDetail],
+      ['appTexts', ssfBindings.appTexts],
+      ['adminAppTranslations', ssfBindings.adminAppTranslations],
     ] as const;
     for (const [url, binding] of urlsAndBindings) {
       expect(binding, url).toBe(NotFound);
     }
     expect(routeState.getContent).not.toHaveBeenCalled();
     expect(routeState.requestMainserverJson).not.toHaveBeenCalled();
+  });
+
+  it('renders instance and platform translation catalogs in the regular Studio profile', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const view = render(<appRouteBindings.appTexts />);
+    expect(screen.getByTestId('translation-catalog-scope').textContent).toBe('instance');
+    view.rerender(<appRouteBindings.adminAppTranslations />);
+    expect(screen.getByTestId('translation-catalog-scope').textContent).toBe('platform');
   });
 
   it('wraps plugin editor contributions with host principal context in the SSF profile', async () => {

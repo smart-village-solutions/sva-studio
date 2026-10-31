@@ -346,6 +346,9 @@ const config = defineConfig({
       '@sva/data-repositories': resolveAppPath('../../packages/data-repositories/src/index.ts'),
       '@sva/mail-runtime': resolveAppPath('../../packages/mail-runtime/src/index.ts'),
       '@sva/plugin-ssf/runtime': resolveAppPath('../../packages/plugin-ssf/src/runtime.ts'),
+      '@sva/plugin-ssf/provisioning': resolveAppPath(
+        '../../packages/plugin-ssf/src/provisioning.ts'
+      ),
       '@sva/iam-admin/encryption': resolveAppPath('../../packages/iam-admin/src/encryption.ts'),
       '@sva/studio-module-iam/ssf': resolveAppPath(
         '../../packages/studio-module-iam/src/ssf-module-iam-contract.ts'

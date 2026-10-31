@@ -1,4 +1,5 @@
-import { type AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
+import type { AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
+import { CatalogsPage } from '@sva/plugin-app-translations';
 import type { PluginDefinition, PluginViewBinding } from '@sva/plugin-sdk';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
@@ -42,6 +43,8 @@ const ContentDetailRoutePage = () => {
 
 const hostAppRouteBindings: StudioAppRouteBindings = {
   ...coreAppRouteBindings,
+  appTexts: () => <CatalogsPage />,
+  adminAppTranslations: () => <CatalogsPage platform />,
   content: ContentListRoutePage,
   contentCreate: ContentTypePickerPage,
   contentDetail: ContentDetailRoutePage,

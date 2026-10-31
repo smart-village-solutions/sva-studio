@@ -88,7 +88,7 @@ const legalChoice = z.object({
   declineLabel: text,
 }).strict();
 
-export const ssfLegalLocalizationSchema = z.object({
+const ssfLegalLocalizationSchema = z.object({
   locale,
   mode2Consent: legalChoice.nullable(),
   mode3Consent: legalChoice.nullable(),

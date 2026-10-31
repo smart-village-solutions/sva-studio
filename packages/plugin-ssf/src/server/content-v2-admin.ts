@@ -90,6 +90,16 @@ const tenantGuestChangesAreAllowed = (
   });
 };
 
+const tenantLegalChangesAreAllowed = (
+  input: Record<string, unknown>, previous: SsfTenantContentV2,
+  catalog: Awaited<ReturnType<typeof readCatalog>>
+): boolean => {
+  if (input['legalTexts'] === undefined || !previous.runtimeTemplate) return true;
+  const next = effectiveSsfRuntimeFieldsV2(previous.runtimeTemplate, input);
+  const saved = effectiveSsfRuntimeFieldsV2(previous.runtimeTemplate, previous.overrides);
+  return legalLocalesAreAllowed(next.legalTexts, saved.legalTexts, catalog);
+};
+
 const tenantStaffLocale = (value: Record<string, unknown> | null | undefined): string | undefined => {
   const staff = value?.staff;
   if (typeof staff !== 'object' || staff === null || Array.isArray(staff)) return undefined;
@@ -181,12 +191,8 @@ const writeTenant = (dependencies: SsfAdminV2Dependencies): PluginServerExecutio
       dependencies.readTenantV2(context.actor.instanceId), readCatalog(dependencies.readSupportedLanguages),
     ]);
     const requestedLocale = tenantStaffLocale(parsed.data);
-    if (parsed.data['legalTexts'] !== undefined && previous.runtimeTemplate) {
-      const next = effectiveSsfRuntimeFieldsV2(previous.runtimeTemplate, parsed.data);
-      const saved = effectiveSsfRuntimeFieldsV2(previous.runtimeTemplate, previous.overrides);
-      if (!legalLocalesAreAllowed(next.legalTexts, saved.legalTexts, catalog)) {
-        return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
-      }
+    if (!tenantLegalChangesAreAllowed(parsed.data, previous, catalog)) {
+      return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
     }
     if (!tenantGuestChangesAreAllowed(parsed.data, previous, catalog)) {
       return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);

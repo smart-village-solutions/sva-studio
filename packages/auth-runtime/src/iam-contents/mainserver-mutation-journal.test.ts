@@ -193,6 +193,30 @@ describe('Mainserver mutation journal', () => {
     });
   });
 
+  it('binds recovery reads to the exact account, organization and principal', async () => {
+    state.query.mockResolvedValueOnce({ rows: [] });
+    await expect(
+      loadMainserverMutationJournal({
+        instanceId: 'de-musterhausen',
+        operationExternalId: 'operation-1',
+        readScope: {
+          actorAccountId: 'account-1',
+          activeOrganizationId: null,
+          actingPrincipalType: 'user',
+        },
+      })
+    ).resolves.toBeUndefined();
+    const [sql, values] = state.query.mock.calls[0]!;
+    expect(sql).toContain('actor_account_id = $3::uuid');
+    expect(sql).toContain('active_organization_id IS NOT DISTINCT FROM $4::uuid');
+    expect(sql).toContain('acting_principal_type = $5');
+    expect(sql).toContain(
+      "acting_principal_id = CASE WHEN $5 = 'user' THEN $3::uuid ELSE $4::uuid END"
+    );
+    expect(values).toEqual(['de-musterhausen', 'operation-1', 'account-1', null, 'user']);
+    expect(sql).not.toMatch(/INSERT|UPDATE|DELETE/);
+  });
+
   it('annotates the reserved operation with target provider and redacted transfer metadata', async () => {
     state.query.mockResolvedValueOnce({ rows: [] });
     const metadata = {

@@ -2,7 +2,7 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { WasteManagementFormSwitch } from '../src/waste-management.form-switch.js';
+import { StudioSwitch } from '@sva/studio-ui-react';
 import { WasteSchedulingCreateFormView } from '../src/waste-management.scheduling-create-form-view.js';
 import { WasteSettingsForm } from '../src/waste-management.settings-form.js';
 import { TourAssignmentsDialog } from '../src/waste-management.tours-assignments-dialog.js';
@@ -32,6 +32,7 @@ vi.mock('@sva/waste-management-contracts', async (importOriginal) => {
 });
 
 vi.mock('@sva/studio-ui-react', async () => ({
+  ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),
   StudioDestructiveActionDialog: ({
     open,
     title,
@@ -597,18 +598,18 @@ describe('waste-management low coverage views', () => {
     const onChange = vi.fn();
 
     const { rerender } = render(
-      <WasteManagementFormSwitch checked={false} ariaLabel="switch-label" onChange={onChange} />
+      <StudioSwitch checked={false} aria-label="switch-label" onCheckedChange={onChange} />
     );
 
     fireEvent.click(screen.getByRole('switch', { name: 'switch-label' }));
     expect(onChange).toHaveBeenCalledWith(true);
 
     rerender(
-      <WasteManagementFormSwitch
+      <StudioSwitch
         checked
         disabled
-        ariaLabel="switch-label-disabled"
-        onChange={onChange}
+        aria-label="switch-label-disabled"
+        onCheckedChange={onChange}
       />
     );
 

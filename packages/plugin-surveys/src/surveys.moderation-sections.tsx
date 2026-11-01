@@ -1,7 +1,15 @@
 import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@sva/studio-ui-react';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@sva/studio-ui-react';
 
-import { SurveyDetailCard } from './surveys.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import {
   createExcerpt,
   statusLabelKey,
@@ -25,9 +33,9 @@ export function SurveyModerationPlaceholder({
   pt: ModerationTranslate;
 }>) {
   return (
-    <SurveyDetailCard title={pt('cards.moderation.title')} description={description}>
+    <StudioDetailCard title={pt('cards.moderation.title')} description={description}>
       <p className="text-sm text-muted-foreground">{message}</p>
-    </SurveyDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -47,7 +55,7 @@ export function SurveyModerationGroupCard({
   }));
 
   return (
-    <SurveyDetailCard title={groupTitle} description={pt('cards.moderation.description')}>
+    <StudioDetailCard title={groupTitle} description={pt('cards.moderation.description')}>
       {responses.length === 0 ? (
         <p className="text-sm text-muted-foreground">{pt('messages.moderationEmptyQuestion')}</p>
       ) : (
@@ -55,14 +63,20 @@ export function SurveyModerationGroupCard({
           <table className="min-w-full border-collapse text-sm" aria-label={groupTitle}>
             <thead>
               <tr className="border-b border-border text-left">
-                <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextExcerpt')}</th>
-                <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextCreatedAt')}</th>
-                <th className="px-3 py-2 font-medium text-foreground">{pt('fields.freeTextStatus')}</th>
+                <th className="px-3 py-2 font-medium text-foreground">
+                  {pt('fields.freeTextExcerpt')}
+                </th>
+                <th className="px-3 py-2 font-medium text-foreground">
+                  {pt('fields.freeTextCreatedAt')}
+                </th>
+                <th className="px-3 py-2 font-medium text-foreground">
+                  {pt('fields.freeTextStatus')}
+                </th>
               </tr>
             </thead>
             <tbody>
               {responses.map((response) => (
-                <tr key={response.id} className="border-b border-border/60 last:border-b-0">
+                <tr key={response.id} className="border-b border-border-subtle last:border-b-0">
                   <td className="px-3 py-3 align-top">
                     <Button
                       type="button"
@@ -74,7 +88,9 @@ export function SurveyModerationGroupCard({
                       {response.excerpt}
                     </Button>
                   </td>
-                  <td className="px-3 py-3 align-top text-muted-foreground">{formatModerationDate(response.createdAt)}</td>
+                  <td className="px-3 py-3 align-top text-muted-foreground">
+                    {formatModerationDate(response.createdAt)}
+                  </td>
                   <td className="px-3 py-3 align-top">
                     <span className="text-muted-foreground">
                       {pt(statusLabelKey[response.status])}
@@ -86,7 +102,7 @@ export function SurveyModerationGroupCard({
           </table>
         </div>
       )}
-    </SurveyDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -100,7 +116,10 @@ export function SurveyModerationResponseDialog({
   onClose: () => void;
 }>) {
   return (
-    <Dialog open={selectedResponse !== null} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : undefined)}>
+    <Dialog
+      open={selectedResponse !== null}
+      onOpenChange={(nextOpen) => (!nextOpen ? onClose() : undefined)}
+    >
       {selectedResponse ? (
         <DialogContent>
           <DialogHeader>
@@ -110,11 +129,17 @@ export function SurveyModerationResponseDialog({
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
             <div className="space-y-1">
               <dt className="font-medium text-foreground">{pt('fields.freeTextOverlayStatus')}</dt>
-              <dd className="text-muted-foreground">{pt(statusLabelKey[selectedResponse.status])}</dd>
+              <dd className="text-muted-foreground">
+                {pt(statusLabelKey[selectedResponse.status])}
+              </dd>
             </div>
             <div className="space-y-1">
-              <dt className="font-medium text-foreground">{pt('fields.freeTextOverlayCreatedAt')}</dt>
-              <dd className="text-muted-foreground">{formatModerationDate(selectedResponse.createdAt)}</dd>
+              <dt className="font-medium text-foreground">
+                {pt('fields.freeTextOverlayCreatedAt')}
+              </dt>
+              <dd className="text-muted-foreground">
+                {formatModerationDate(selectedResponse.createdAt)}
+              </dd>
             </div>
           </dl>
           <DialogFooter>

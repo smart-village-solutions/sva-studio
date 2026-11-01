@@ -26,7 +26,7 @@ const stateVariantByValue = {
 const stateClassNameByValue = {
   blocked: '',
   new: '',
-  ready: 'border-emerald-600/40 bg-emerald-500/10 text-emerald-700',
+  ready: 'border-status-success-foreground bg-status-success text-status-success-foreground',
   unused: '',
 } as const;
 
@@ -141,14 +141,12 @@ export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAsse
   const folderPath =
     !isRegisteredMediaAsset(asset) && asset.folderPath.length > 0 ? asset.folderPath : null;
   const cardContent = (
-    <Card className="flex h-full flex-col overflow-hidden border-border/70 bg-card/95 shadow-shell transition-colors hover:border-primary/30">
+    <Card className="flex h-full flex-col overflow-hidden border-border-subtle bg-card transition-colors hover:border-primary/30">
       <div
         className={cn(
-          'flex min-h-28 items-center justify-center border-b border-border/60 text-center',
+          'flex min-h-28 items-center justify-center border-b border-border-subtle text-center',
           previewUrl ? 'overflow-hidden bg-muted' : 'px-4 py-4',
-          isVisualPreview(previewMimeType) && !previewUrl
-            ? 'bg-[radial-gradient(circle_at_top_left,_rgba(14,116,144,0.18),_transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.94),rgba(226,232,240,0.82))]'
-            : 'bg-[linear-gradient(135deg,rgba(15,23,42,0.06),rgba(148,163,184,0.16))]'
+          isVisualPreview(previewMimeType) && !previewUrl ? 'bg-surface-inset' : 'bg-surface-inset'
         )}
       >
         {isVisualPreview(previewMimeType) ? (
@@ -214,7 +212,7 @@ export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAsse
   if (!isRegisteredMediaAsset(asset)) {
     return (
       <a
-        className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         href={`/admin/media/${encodeBucketMediaId(asset.storageKey)}?storageKey=${encodeURIComponent(asset.storageKey)}&fileName=${encodeURIComponent(asset.fileName)}&folderPath=${encodeURIComponent(asset.folderPath)}&relativePath=${encodeURIComponent(asset.relativePath)}&byteSize=${asset.byteSize}&updatedAt=${encodeURIComponent(asset.updatedAt ?? '')}&lastModified=${encodeURIComponent(asset.lastModified ?? '')}&previewUrl=${encodeURIComponent(asset.previewUrl ?? '')}`}
       >
         {cardContent}
@@ -224,7 +222,7 @@ export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAsse
 
   return (
     <Link
-      className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       params={{ mediaId: asset.id }}
       to="/admin/media/$mediaId"
     >

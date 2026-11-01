@@ -349,6 +349,12 @@ describe('content media persistence', () => {
       name: 'ContentMediaSaveError',
       status: 'outcome_unknown',
       operationId: 'operation-1',
+      resolutions: [
+        expect.objectContaining({
+          assetId: 'asset-1',
+          persistentUrl: 'https://media.test/asset-1.jpg',
+        }),
+      ],
     });
     expect(urls.some((url) => url.endsWith('/outcome-unknown'))).toBe(true);
     expect(urls.some((url) => url.endsWith('/abandon'))).toBe(false);
@@ -407,7 +413,10 @@ describe('content media persistence', () => {
       saveContentWithHostMediaReferences({
         fetch,
         saveContent: async () => {
-          throw Object.assign(new Error('validation rejected'), { httpStatus: 422 });
+          throw Object.assign(new Error('validation rejected'), {
+            httpStatus: 422,
+            mutationOutcome: 'not_applied',
+          });
         },
         getTargetId: () => 'unused',
         targetType: 'news',

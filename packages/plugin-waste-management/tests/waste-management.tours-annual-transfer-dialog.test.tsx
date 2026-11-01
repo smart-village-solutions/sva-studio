@@ -28,7 +28,8 @@ vi.mock('@sva/plugin-sdk', async () => {
   };
 });
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async () => ({
+  ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
   Checkbox: (props: React.ComponentProps<'input'>) => <input type="checkbox" {...props} />,
   Dialog: ({ open, children }: { readonly open: boolean; readonly children: React.ReactNode }) =>

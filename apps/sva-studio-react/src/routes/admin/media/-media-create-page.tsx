@@ -72,7 +72,7 @@ const mediaTypeForMimeType = (mimeType: string): InitializeMediaUploadPayload['m
   mimeType.startsWith('image/') ? 'image' : undefined;
 
 const MediaCreatePlanningCard = ({ item }: Readonly<{ item: MediaCreatePlanningItem }>) => (
-  <div className="rounded-2xl border border-white/80 bg-white/70 p-4 shadow-[0_18px_40px_-32px_rgba(15,23,42,0.55)]">
+  <div className="rounded-lg border border-border-subtle bg-card p-4">
     <div className="space-y-1">
       <p className="text-sm font-semibold text-foreground">
         {t(`media.create.planning.items.${item}.title`)}
@@ -85,30 +85,32 @@ const MediaCreatePlanningCard = ({ item }: Readonly<{ item: MediaCreatePlanningI
 );
 
 const MediaCreateResultCard = ({ result }: Readonly<{ result: InitializeMediaUploadResponse }>) => (
-  <Card className="border-emerald-500/25 bg-[linear-gradient(180deg,rgba(240,253,244,0.92),rgba(220,252,231,0.82))] shadow-shell">
+  <Card className="border-status-success-foreground bg-status-success text-status-success-foreground">
     <CardHeader className="space-y-2">
       <CardTitle>{t('media.create.nextStepsTitle')}</CardTitle>
       <CardDescription>{t('media.create.nextStepsDescription')}</CardDescription>
     </CardHeader>
     <CardContent className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)]">
-      <div className="space-y-3 text-sm text-foreground">
+      <div className="space-y-3 text-sm text-status-success-foreground">
         <p className="font-medium">{t('media.create.result.assetId', { value: result.assetId })}</p>
         <p>{t('media.create.result.uploadSessionId', { value: result.uploadSessionId })}</p>
         <p>{t('media.create.result.method', { value: result.method })}</p>
         <p>{t('media.create.result.expiresAt', { value: result.expiresAt })}</p>
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-status-success-foreground">
             {t('media.meta.uploadUrl')}
           </p>
-          <code className="block break-all rounded-xl border border-emerald-700/10 bg-white/70 px-3 py-2 text-xs text-foreground">
+          <code className="block break-all rounded-lg border border-border-subtle bg-card px-3 py-2 text-xs text-foreground">
             {result.uploadUrl}
           </code>
         </div>
       </div>
 
-      <div className="space-y-3 rounded-2xl border border-white/75 bg-white/80 p-4">
-        <p className="text-sm font-semibold text-foreground">{t('media.create.followUpTitle')}</p>
-        <ol className="space-y-2 text-sm text-muted-foreground">
+      <div className="space-y-3 rounded-lg border border-border-subtle bg-card p-4">
+        <p className="text-sm font-semibold text-status-success-foreground">
+          {t('media.create.followUpTitle')}
+        </p>
+        <ol className="space-y-2 text-sm text-status-success-foreground">
           <li>{t('media.create.followUpSteps.transfer')}</li>
           <li>{t('media.create.followUpSteps.describe')}</li>
           <li>{t('media.create.followUpSteps.review')}</li>
@@ -179,9 +181,9 @@ export const MediaCreatePage = () => {
       </header>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.95fr)]">
-        <Card className="border-border/70 bg-card/95 shadow-shell">
+        <Card className="border-border-subtle bg-card">
           <CardHeader className="space-y-3">
-            <Badge className="w-fit border-0 bg-cyan-500/15 text-cyan-700" variant="secondary">
+            <Badge className="w-fit border-border-subtle bg-surface-inset text-foreground" variant="secondary">
               {t('media.create.intakeBadge')}
             </Badge>
             <div className="space-y-2">
@@ -248,7 +250,7 @@ export const MediaCreatePage = () => {
                 </Select>
               </div>
 
-              <div className="flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 border-t border-border-subtle pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="max-w-xl text-sm text-muted-foreground">
                   {t('media.create.submitHint')}
                 </p>
@@ -264,7 +266,7 @@ export const MediaCreatePage = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-border/70 bg-[linear-gradient(180deg,rgba(247,250,252,0.94),rgba(226,232,240,0.74))] shadow-shell">
+        <Card className="border-border-subtle bg-card">
           <CardHeader className="space-y-2">
             <CardTitle>{t('media.create.planningTitle')}</CardTitle>
             <CardDescription>{t('media.create.planningDescription')}</CardDescription>

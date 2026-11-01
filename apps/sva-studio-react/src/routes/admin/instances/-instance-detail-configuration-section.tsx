@@ -1,6 +1,7 @@
 import { EmailVerificationTemplateCard } from './-email-verification-template-card';
 import type { FieldPath } from 'react-hook-form';
 import {
+  Radio,
   StudioField,
   StudioFormSummaryErrors,
   StudioSaveButton,
@@ -142,8 +143,7 @@ export const InstanceDetailConfigurationSection = ({
               <legend className="text-sm">{t('admin.instances.flow.realmModeTitle')}</legend>
               {(['new', 'existing'] as const).map((mode) => (
                 <label key={mode} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
+                  <Radio
                     name="detail-realm-mode"
                     checked={detailFormValues.realmMode === mode}
                     onChange={() =>

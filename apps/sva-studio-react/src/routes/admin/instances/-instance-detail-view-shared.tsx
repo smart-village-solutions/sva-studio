@@ -75,11 +75,11 @@ export const TenantIamStatusBadge = ({
 }) => {
   const tone =
     status === 'ready'
-      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200'
+      ? 'bg-status-success text-status-success-foreground'
       : status === 'blocked'
-        ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-200'
+        ? 'bg-status-error text-status-error-foreground'
         : status === 'degraded'
-          ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200'
+          ? 'bg-status-warning text-status-warning-foreground'
           : 'bg-muted text-muted-foreground';
 
   return (

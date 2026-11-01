@@ -498,10 +498,12 @@ describe('WasteToursContent', () => {
       .closest('section.bg-card');
     expect(filterButtonCard).toBeTruthy();
     expect(filterButtonCard).toBe(toursTableCard);
-    expect(screen.getByRole('columnheader', { name: 'tours.table.name none' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'tours.table.status none' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'tours.table.recurrence none' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'tours.table.locations none' })).toBeTruthy();
+    expect(
+      screen.getByRole('columnheader', { name: 'tours.table.name' }).getAttribute('aria-sort')
+    ).toBe('none');
+    expect(screen.getByRole('columnheader', { name: 'tours.table.status' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.recurrence' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.locations' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.actions' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Restmüll Nord' })).toBeTruthy();
     expect(screen.queryByText('Wöchentliche Abholung')).toBeNull();

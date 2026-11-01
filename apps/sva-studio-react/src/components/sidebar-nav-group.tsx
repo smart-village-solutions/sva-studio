@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconChevronDown, IconChevronRight } from '@tabler/icons-react';
+import { ChevronDown as IconChevronDown, ChevronRight as IconChevronRight } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import {
   resolveContentNavigationActiveId,
@@ -213,7 +213,7 @@ export const SidebarNavItem = ({
               onOpenFlyout(item.id);
             }}
           >
-            <IconComponent className="h-5 w-5 shrink-0" />
+            <IconComponent aria-hidden="true" strokeWidth={1} className="h-5 w-5 shrink-0" />
           </button>
 
           {isExpanded ? (
@@ -271,13 +271,17 @@ export const SidebarNavItem = ({
               });
             }}
           >
-            <IconComponent className="h-5 w-5 shrink-0" />
+            <IconComponent aria-hidden="true" strokeWidth={1} className="h-5 w-5 shrink-0" />
             <span className="truncate">{item.label}</span>
             <span className="ml-auto inline-flex h-5 w-5 items-center justify-center text-muted-foreground">
               {isExpanded ? (
-                <IconChevronDown className="h-4 w-4" />
+                <IconChevronDown aria-hidden="true" strokeWidth={1} className="h-4 w-4" />
               ) : (
-                <IconChevronRight className="h-4 w-4 animate-collapse-icon" />
+                <IconChevronRight
+                  aria-hidden="true"
+                  strokeWidth={1}
+                  className="h-4 w-4 animate-collapse-icon"
+                />
               )}
             </span>
           </CollapsibleTrigger>

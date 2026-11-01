@@ -1,17 +1,17 @@
 import {
-  IconActivityHeartbeat,
-  IconBuildingCommunity,
-  IconFileText,
-  IconHierarchy3,
-  IconPackages,
-  IconDeviceMobile,
-  IconPlugConnected,
-  IconShieldCheck,
-  IconShieldLock,
-  IconTemplate,
-  IconUserSquareRounded,
-  IconUsersGroup,
-} from '@tabler/icons-react';
+  Activity as IconActivityHeartbeat,
+  Building2 as IconBuildingCommunity,
+  FileText as IconFileText,
+  Network as IconHierarchy3,
+  Package as IconPackages,
+  Smartphone as IconDeviceMobile,
+  Plug as IconPlugConnected,
+  ShieldCheck as IconShieldCheck,
+  Shield as IconShieldLock,
+  PanelsTopLeft as IconTemplate,
+  ContactRound as IconUserSquareRounded,
+  Users as IconUsersGroup,
+} from 'lucide-react';
 import { t } from '../i18n';
 import type { SidebarAccess } from './sidebar-access';
 import type { SidebarItem, SidebarLeafItem } from './sidebar-model';

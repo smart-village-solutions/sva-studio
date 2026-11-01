@@ -10,6 +10,9 @@ import type { IamHttpError } from '../lib/iam-api';
 import type { AuthDiagnosticMeta, AuthMeResponse, SessionUser } from './auth-provider-types';
 
 export const AUTH_ME_ENDPOINT = '/auth/me';
+export const AUTH_RECOVERY_NAVIGATION_EVENT = 'studio:auth-recovery-navigation';
+const editorRetainsRecovery = (currentWindow: Window): boolean =>
+  !currentWindow.dispatchEvent(new Event(AUTH_RECOVERY_NAVIGATION_EVENT, { cancelable: true }));
 export const AUTH_LOGOUT_ENDPOINT = '/auth/logout';
 export const LOGOUT_INTENT_HEADER = 'x-sva-logout-intent';
 export const LOGOUT_INTENT_VALUE = 'user';
@@ -57,6 +60,7 @@ export const redirectToSessionExpiredNotice = (meta: AuthDiagnosticMeta): void =
     return;
   }
 
+  if (editorRetainsRecovery(currentWindow)) return;
   recordAuthDiagnosticEvent({
     authFlowId: meta.authFlowId,
     attempt: meta.attempt,
@@ -80,6 +84,7 @@ export const redirectToLogin = (meta: AuthDiagnosticMeta): void => {
     return;
   }
 
+  if (editorRetainsRecovery(currentWindow)) return;
   recordAuthDiagnosticEvent({
     authFlowId: meta.authFlowId,
     attempt: meta.attempt,

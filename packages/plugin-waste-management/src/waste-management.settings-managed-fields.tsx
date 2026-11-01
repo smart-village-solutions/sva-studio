@@ -4,7 +4,7 @@ import {
 } from '@sva/waste-management-contracts';
 import { Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
-import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
+import { StudioSwitch } from '@sva/studio-ui-react';
 import type { SettingsFormState } from './waste-management.settings.shared.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
@@ -44,10 +44,10 @@ export const WasteSettingsTechnicalConfigFields = ({
         />
       </StudioField>
       <div className="flex items-center gap-3">
-        <WasteManagementFormSwitch
+        <StudioSwitch
           checked={form.enabled}
-          ariaLabel={pt('settings.fields.enabled')}
-          onChange={(enabled) => updateField('enabled', enabled)}
+          aria-label={pt('settings.fields.enabled')}
+          onCheckedChange={(enabled) => updateField('enabled', enabled)}
         />
         <span className="text-sm text-muted-foreground">
           {form.enabled ? pt('common.active') : pt('common.inactive')}

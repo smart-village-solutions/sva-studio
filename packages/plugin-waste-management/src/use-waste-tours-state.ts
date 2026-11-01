@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type {
   WasteCustomRecurrencePresetRecord,
@@ -18,6 +18,7 @@ import {
 import type { LocationTourLinkFormState, TourFormState } from './waste-management.tours.types.js';
 
 export const useWasteToursState = () => {
+  const schedulingRequestRef = useRef(0);
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<WasteManagementToursOverview | null>(null);
   const [availableFractions, setAvailableFractions] = useState<readonly WasteFractionRecord[]>([]);
@@ -27,6 +28,9 @@ export const useWasteToursState = () => {
   const [masterDataOverview, setMasterDataOverview] =
     useState<WasteManagementMasterDataOverview | null>(null);
   const [assignmentContextLoading, setAssignmentContextLoading] = useState(true);
+  const [schedulingLoadState, setSchedulingLoadState] = useState<'loading' | 'ready' | 'error'>(
+    'loading'
+  );
   const [schedulingOverview, setSchedulingOverview] =
     useState<WasteManagementSchedulingOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +56,8 @@ export const useWasteToursState = () => {
     masterDataOverview,
     assignmentContextLoading,
     schedulingOverview,
+    schedulingRequestRef,
+    schedulingLoadState,
     error,
     dialogOpen,
     dialogMode,
@@ -71,6 +77,7 @@ export const useWasteToursState = () => {
     setMasterDataOverview,
     setAssignmentContextLoading,
     setSchedulingOverview,
+    setSchedulingLoadState,
     setError,
     setDialogOpen,
     setDialogMode,

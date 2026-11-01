@@ -10,7 +10,7 @@ import {
   type EventOrganizerFormValue,
   type EventsDetailFormValues,
 } from './events.detail-form.js';
-import { EventsDetailCard } from './events.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import {
   ContentInput,
   indexedId,
@@ -97,7 +97,7 @@ export function EventsAddressSection({ capabilities, pt, createMode }: LocationS
   const renderedAddresses = addresses.length > 0 ? addresses : [createDefaultAddress()];
   const addressErrors = errors.content?.addresses ?? [];
   return (
-    <EventsDetailCard
+    <StudioDetailCard
       title={pt('cards.content.addresses.title')}
       description={pt('cards.content.addresses.description')}
       actions={
@@ -125,7 +125,7 @@ export function EventsAddressSection({ capabilities, pt, createMode }: LocationS
           onRemove={addresses.length > 1 ? () => addressesArray.remove(index) : undefined}
         />
       ))}
-    </EventsDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -206,7 +206,7 @@ export function EventsOrganizerSection({ capabilities, pt }: LocationSectionProp
   }, [clearErrors, organizerNameMissing]);
 
   return (
-    <EventsDetailCard
+    <StudioDetailCard
       title={pt('cards.content.organizer.title')}
       description={pt('cards.content.organizer.description')}
     >
@@ -248,6 +248,6 @@ export function EventsOrganizerSection({ capabilities, pt }: LocationSectionProp
         onStreetChange={(value) => setValue(`${path}.street`, value, dirty)}
         onZipChange={(value) => setValue(`${path}.zip`, value, dirty)}
       />
-    </EventsDetailCard>
+    </StudioDetailCard>
   );
 }

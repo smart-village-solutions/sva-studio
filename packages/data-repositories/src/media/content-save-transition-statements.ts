@@ -9,13 +9,13 @@ export const markContentSaveOperationContentSavedStatement = (input: {
   text: `
 UPDATE iam.media_content_save_operations
 SET target_id = $4,
-    status = 'content_saved',
+    status = CASE WHEN status = 'committed' THEN status ELSE 'content_saved' END,
     error_code = NULL,
     updated_at = NOW()
 WHERE id = $1::uuid
   AND instance_id = $2
   AND actor_subject = $3
-  AND (status IN ('preparing', 'uploading', 'saving_content', 'content_saved') OR (status = 'committed' AND target_id = $4))
+  AND (status IN ('preparing', 'uploading', 'saving_content', 'outcome_unknown', 'reconciliation_required', 'content_saved') OR (status = 'committed' AND target_id = $4))
   AND (target_id IS NULL OR target_id = $4)
 RETURNING id;
 `,

@@ -63,7 +63,7 @@ const getWeekStartIso = (value: string): string | undefined => {
   return parsed.toISOString().slice(0, 10);
 };
 
-const isDateAffectedByHolidayRule = (
+export const isDateAffectedByHolidayRule = (
   date: string,
   rule: Readonly<{
     readonly triggerDate: string;

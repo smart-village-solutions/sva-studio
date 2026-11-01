@@ -1,6 +1,7 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
+  Select,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -29,16 +30,15 @@ const AnnualTransferSourceStep = ({
   <div className="space-y-3">
     <label className="grid gap-1 text-sm font-medium" htmlFor="waste-annual-transfer-source-year">
       {translate('tours.annualTransfer.sourceYear')}
-      <select
+      <Select
         id="waste-annual-transfer-source-year"
-        className="h-10 rounded-md border border-input bg-background px-3"
         value={controller.sourceYear}
         disabled={controller.loading}
         onChange={(event) => controller.setSourceYear(Number(event.currentTarget.value))}
       >
         <option value={wasteAnnualCurrentYear()}>{wasteAnnualCurrentYear()}</option>
         <option value={wasteAnnualCurrentYear() - 1}>{wasteAnnualCurrentYear() - 1}</option>
-      </select>
+      </Select>
     </label>
     <p className="text-sm text-muted-foreground">
       {translate('tours.annualTransfer.targetYear', { year: controller.sourceYear + 1 })}

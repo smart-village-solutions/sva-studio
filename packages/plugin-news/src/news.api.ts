@@ -1,6 +1,7 @@
 import {
   createMainserverCrudClient,
   createMainserverJsonRequestHeaders,
+  createMainserverReadHeaders,
   requestMainserverJson,
   type MainserverActingPrincipalType,
   type MainserverMutationOptions,
@@ -233,3 +234,33 @@ export const buildNewsSettingsMutation = (values: NewsDetailFormValues): Partial
     'charactersToBeShown',
     'newsType',
   ]);
+
+export const getNewsSaveOperation = async (
+  operationId: string,
+  principal: MainserverActingPrincipalType
+): Promise<
+  Readonly<{ outcome: 'pending' | 'succeeded' | 'not_applied' | 'unknown'; contentId?: string }>
+> => {
+  const response = await requestMainserverJson<
+    {
+      data: {
+        operationId: string;
+        outcome: 'pending' | 'succeeded' | 'not_applied' | 'unknown';
+        contentId?: string;
+      };
+    },
+    NewsApiError
+  >({
+    url: `/api/v1/mainserver/news/operations/${encodeURIComponent(operationId)}`,
+    errorFactory: (code, message) => new NewsApiError(code, message),
+    init: { headers: createMainserverReadHeaders(principal), cache: 'no-store' },
+  });
+  if (
+    response.data?.operationId !== operationId ||
+    !['pending', 'succeeded', 'not_applied', 'unknown'].includes(response.data?.outcome) ||
+    (response.data.outcome === 'succeeded' && !response.data.contentId)
+  ) {
+    throw new NewsApiError('invalid_operation_response');
+  }
+  return response.data;
+};

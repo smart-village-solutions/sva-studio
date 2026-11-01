@@ -4,7 +4,7 @@ import React from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { Button, Input, Select, StudioField } from '@sva/studio-ui-react';
 
-import { SurveyDetailCard } from './surveys.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import type { SurveyDetailFormValues } from './surveys.detail-form.js';
 import type { SurveyContentTranslate } from './surveys.question-editor.shared.js';
 import type { SurveyContentItem } from './surveys.types.js';
@@ -35,7 +35,7 @@ export function SurveyIdentityCard({
       </StudioField>
     );
   return (
-    <SurveyDetailCard
+    <StudioDetailCard
       title={pt('cards.basis.identity.title')}
       description={pt('cards.basis.identity.description')}
     >
@@ -50,7 +50,7 @@ export function SurveyIdentityCard({
         </StudioField>
         {!titleOnly ? <SurveyStatusField pt={pt} /> : null}
       </div>
-    </SurveyDetailCard>
+    </StudioDetailCard>
   );
 }
 export function SurveyStatusField({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
@@ -82,7 +82,7 @@ export function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate
   const { register } = useFormContext<SurveyDetailFormValues>();
 
   return (
-    <SurveyDetailCard
+    <StudioDetailCard
       title={pt('cards.basis.schedule.title')}
       description={pt('cards.basis.schedule.description')}
     >
@@ -95,7 +95,7 @@ export function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate
         </StudioField>
         <p className="text-sm text-muted-foreground">{pt('messages.unlimitedScheduleHint')}</p>
       </div>
-    </SurveyDetailCard>
+    </StudioDetailCard>
   );
 }
 export function SurveyTargetAreaCard({
@@ -134,7 +134,7 @@ export function SurveyTargetAreaCard({
     );
 
   return (
-    <SurveyDetailCard
+    <StudioDetailCard
       title={pt('cards.basis.targetArea.title')}
       description={pt('cards.basis.targetArea.description')}
     >
@@ -156,7 +156,7 @@ export function SurveyTargetAreaCard({
           <p className="text-sm text-muted-foreground">{pt('messages.targetAreasEmpty')}</p>
         )}
       </div>
-    </SurveyDetailCard>
+    </StudioDetailCard>
   );
 }
 function SurveyTargetAreaInput({

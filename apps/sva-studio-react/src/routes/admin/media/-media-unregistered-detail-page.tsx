@@ -78,9 +78,9 @@ export const MediaUnregisteredDetailPage = ({ asset }: MediaUnregisteredDetailPa
         </Alert>
       ) : null}
 
-      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-shell">
+      <Card className="overflow-hidden border-border-subtle bg-card">
         <CardContent className="grid gap-6 p-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,1fr)]">
-          <div className="overflow-hidden rounded-3xl border border-border/60 bg-muted">
+          <div className="overflow-hidden rounded-lg border border-border-subtle bg-muted">
             {asset.previewUrl ? (
               <img
                 alt={asset.fileName}
@@ -121,7 +121,7 @@ export const MediaUnregisteredDetailPage = ({ asset }: MediaUnregisteredDetailPa
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,1fr)]">
-        <Card className="border-border/70 bg-card/95 shadow-shell">
+        <Card className="border-border-subtle bg-card">
           <CardHeader>
             <CardTitle>{t('media.unregistered.metadataTitle')}</CardTitle>
             <CardDescription>{t('media.unregistered.metadataDescription')}</CardDescription>
@@ -142,7 +142,7 @@ export const MediaUnregisteredDetailPage = ({ asset }: MediaUnregisteredDetailPa
           </CardContent>
         </Card>
 
-        <Card className="border-border/70 bg-card/95 shadow-shell">
+        <Card className="border-border-subtle bg-card">
           <CardHeader>
             <CardTitle>{t('media.meta.title')}</CardTitle>
             <CardDescription>{t('media.unregistered.technicalDescription')}</CardDescription>

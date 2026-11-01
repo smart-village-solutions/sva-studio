@@ -9,15 +9,21 @@ export function PoiDetailLinksTab({ pt }: Readonly<{ pt: (key: string) => string
   const { fields, append, remove } = useFieldArray({ control, name: 'content.webUrls' });
 
   return (
-    <PoiDetailSectionCard title={pt('cards.links.entries.title')} description={pt('cards.links.entries.description')}>
+    <PoiDetailSectionCard
+      title={pt('cards.links.entries.title')}
+      description={pt('cards.links.entries.description')}
+    >
       {fields.map((field, index) => (
-        <div key={field.id} className="rounded-xl border border-border/60 p-4">
+        <div key={field.id} className="rounded-lg border border-border-subtle p-4">
           <StudioFieldGroup columns={2}>
             <StudioField id={`poi-link-url-${index}`} label={pt('fields.url')}>
               <Input id={`poi-link-url-${index}`} {...register(`content.webUrls.${index}.url`)} />
             </StudioField>
             <StudioField id={`poi-link-description-${index}`} label={pt('fields.urlDescription')}>
-              <Input id={`poi-link-description-${index}`} {...register(`content.webUrls.${index}.description`)} />
+              <Input
+                id={`poi-link-description-${index}`}
+                {...register(`content.webUrls.${index}.description`)}
+              />
             </StudioField>
           </StudioFieldGroup>
           {fields.length > 1 ? (
@@ -29,7 +35,11 @@ export function PoiDetailLinksTab({ pt }: Readonly<{ pt: (key: string) => string
           ) : null}
         </div>
       ))}
-      <Button type="button" variant="secondary" onClick={() => append({ url: '', description: '' })}>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => append({ url: '', description: '' })}
+      >
         {pt('actions.add')}
       </Button>
     </PoiDetailSectionCard>

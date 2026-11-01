@@ -229,7 +229,7 @@ export const WasteToolsValidationStep = ({
   return (
     <div className="space-y-5">
       {previewRequired ? <WasteToolsImportRuleBox /> : null}
-      <div className="rounded-xl border border-border/70 bg-muted/10 p-4">
+      <div className="rounded-lg border border-border/70 bg-surface-inset p-4">
         <p className="text-sm font-medium text-foreground">{profile.displayName}</p>
         <p className="mt-1 text-sm text-muted-foreground">{profile.description}</p>
       </div>

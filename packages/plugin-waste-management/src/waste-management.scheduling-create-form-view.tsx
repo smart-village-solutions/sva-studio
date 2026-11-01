@@ -119,7 +119,7 @@ const WasteSchedulingCreateContextFields = ({
     ) : (
       <div
         role={context.kind === 'valid' && contextualTourName ? 'note' : 'status'}
-        className="min-w-0 space-y-1 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm"
+        className="min-w-0 space-y-1 rounded-lg border border-border bg-surface-inset px-4 py-3 text-sm"
       >
         <p className="font-semibold">{pt('scheduling.create.contextTitle')}</p>
         {context.kind === 'valid' && contextualTourName ? (
@@ -135,7 +135,7 @@ const WasteSchedulingCreateContextFields = ({
       </div>
     )}
     {hasAnnualBaseRule(controller) ? (
-      <p role="note" className="rounded-xl border border-info/40 bg-info/5 px-4 py-3 text-sm">
+      <p role="note" className="rounded-lg border border-info/40 bg-info/5 px-4 py-3 text-sm">
         {pt('scheduling.create.annualOverrideHint', {
           year: controller.tourShiftForm.originalDate.slice(0, 4),
         })}

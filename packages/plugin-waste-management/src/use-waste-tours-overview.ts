@@ -16,6 +16,7 @@ type Translate = (key: string, variables?: Readonly<Record<string, string | numb
 export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => {
   const ptRef = useRef(pt);
   const isMountedRef = useRef(false);
+  const loadGenerationRef = useRef(0);
   ptRef.current = pt;
   const {
     setAssignmentContextLoading,
@@ -26,16 +27,25 @@ export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => 
     setMasterDataOverview,
     setOverview,
     setSchedulingOverview,
+    setSchedulingLoadState,
+    schedulingRequestRef,
   } = state;
 
   const loadOverview = useCallback(
     async (propagateError = false) => {
+      const generation = ++loadGenerationRef.current;
+      const schedulingRequest = ++schedulingRequestRef.current;
+      const isCurrentSchedulingRequest = () =>
+        isCurrent() && schedulingRequestRef.current === schedulingRequest;
+      const isCurrent = () => isMountedRef.current && generation === loadGenerationRef.current;
+      setSchedulingOverview(null);
+      setSchedulingLoadState('loading');
       try {
         const [toursResponse, fractionsResponse] = await Promise.all([
           getWasteManagementToursOverview(),
           getWasteManagementMasterDataOverview({ scope: 'fractions' }),
         ]);
-        if (!isMountedRef.current) return;
+        if (!isCurrent()) return;
         setOverview(toursResponse);
         setCustomRecurrencePresets(toursResponse.customRecurrencePresets ?? []);
         setAvailableFractions(fractionsResponse.fractions);
@@ -44,33 +54,35 @@ export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => 
         setError(null);
 
         void loadWasteToursAssignmentOverview({
-          isMounted: () => isMountedRef.current,
+          isMounted: isCurrent,
           setAssignmentContextLoading,
           setMasterDataOverview,
         });
 
         void loadWasteToursSchedulingOverview({
-          isMounted: () => isMountedRef.current,
+          isMounted: isCurrentSchedulingRequest,
           setSchedulingOverview,
+          setSchedulingLoadState,
         });
       } catch (loadError) {
-        if (!isMountedRef.current) {
+        if (!isCurrent()) {
           if (propagateError) throw loadError;
           return;
         }
+        if (isCurrentSchedulingRequest()) setSchedulingLoadState('error');
         if (propagateError) throw loadError;
         const code = resolveApiErrorCode(loadError);
         setMasterDataOverview(null);
         setCustomRecurrencePresets([]);
         setAssignmentContextLoading(false);
-        setSchedulingOverview(null);
+        if (isCurrentSchedulingRequest()) setSchedulingOverview(null);
         setError(
           code === 'forbidden'
             ? ptRef.current('tours.messages.loadForbidden')
             : ptRef.current('tours.messages.loadError')
         );
       } finally {
-        if (isMountedRef.current) setLoading(false);
+        if (isCurrent()) setLoading(false);
       }
     },
     [
@@ -82,14 +94,19 @@ export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => 
       setMasterDataOverview,
       setOverview,
       setSchedulingOverview,
+      setSchedulingLoadState,
+      schedulingRequestRef,
     ]
   );
 
   useEffect(() => {
     isMountedRef.current = true;
     void loadOverview();
-    return () => void (isMountedRef.current = false);
-  }, [loadOverview]);
+    return () => {
+      isMountedRef.current = false;
+      schedulingRequestRef.current += 1;
+    };
+  }, [loadOverview, schedulingRequestRef]);
 
   return loadOverview;
 };

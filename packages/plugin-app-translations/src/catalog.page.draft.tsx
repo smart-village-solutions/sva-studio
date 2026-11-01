@@ -10,7 +10,7 @@ export const CatalogDraftStatus = ({ model }: { model: CatalogPageViewModel }) =
       className={`space-y-3 rounded-lg border p-4 ${
         draftStatus === 'draftSealed'
           ? 'border-border bg-card'
-          : 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200'
+          : 'border-status-warning-foreground/40 bg-status-warning text-status-warning-foreground'
       }`}
       aria-labelledby="catalog-draft-heading"
     >

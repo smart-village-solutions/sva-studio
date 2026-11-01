@@ -2,7 +2,10 @@ import type { WasteAnnualTourTransferTourPreview } from '@sva/waste-management-c
 import { Button, Checkbox, Input } from '@sva/studio-ui-react';
 
 import type { WasteAnnualTransferController } from './waste-management.tours-annual-transfer-controller.js';
-import { AnnualTourDetails, AnnualTourFirstTargetDateInput } from './waste-management.tours-annual-transfer-details.js';
+import {
+  AnnualTourDetails,
+  AnnualTourFirstTargetDateInput,
+} from './waste-management.tours-annual-transfer-details.js';
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 
@@ -144,7 +147,7 @@ export const AnnualTransferPreview = ({
 }>) =>
   controller.preview ? (
     <div ref={controller.summaryRef} tabIndex={-1} className="space-y-5" aria-live="polite">
-      <p className="rounded-lg border bg-muted/30 p-3 text-sm font-medium">
+      <p className="rounded-lg border bg-surface-inset p-3 text-sm font-medium">
         {translate('tours.annualTransfer.summaryDetailed', {
           transferable: controller.preview.summary.transferable,
           alreadyEffective: controller.preview.summary.alreadyEffective,

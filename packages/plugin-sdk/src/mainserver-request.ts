@@ -246,6 +246,7 @@ const assertMainserverResponseOk = async <TError extends Error>(
   attachMainserverErrorMetadata({
     error,
     httpStatus: response.status,
+    mutationOutcome: response.headers?.get?.('X-SVA-Mutation-Outcome'),
     ...(requestId ? { requestId } : {}),
     details,
     permissionDenial,

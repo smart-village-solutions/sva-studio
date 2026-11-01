@@ -16,6 +16,8 @@ export const NewsDetailSaveStatus = ({
   pt,
   saveFeedback,
   saveCurrentItem,
+  checkSaveOutcome,
+  checkingSave,
   retryCreatedContentId,
   navigateToCreatedDetail,
   setStatusMessage,
@@ -28,6 +30,8 @@ export const NewsDetailSaveStatus = ({
   pt: PluginTranslator;
   saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
   saveCurrentItem: () => Promise<void>;
+  checkSaveOutcome: () => Promise<void>;
+  checkingSave: boolean;
   retryCreatedContentId: string | null;
   navigateToCreatedDetail: (id: string) => Promise<void>;
   setStatusMessage: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
@@ -48,7 +52,9 @@ export const NewsDetailSaveStatus = ({
         }
       />
     ) : null}
-    {statusMessage ? (
+    {statusMessage?.source === 'recovered' ? (
+      <StudioPersistentActionResult kind="success" title={statusMessage.text} />
+    ) : statusMessage ? (
       <StudioPersistentFormError
         message={statusMessage.text}
         requestId={statusMessage.requestId}
@@ -63,54 +69,59 @@ export const NewsDetailSaveStatus = ({
           statusMessage.requestId ? pt('messages.requestReferenceCopyFailed') : undefined
         }
         retryLabel={
-          statusMessage.source === 'save'
-            ? pt(
-                statusMessage.errorCode === 'stale_mainserver_context'
-                  ? 'actions.reloadCurrentContext'
-                  : 'actions.retry'
-              )
-            : statusMessage.source === 'reference'
-              ? pt('actions.retryMediaReferences')
-              : undefined
+          statusMessage.source === 'unknown'
+            ? pt('actions.checkSaveOutcome')
+            : statusMessage.source === 'save'
+              ? pt(
+                  statusMessage.errorCode === 'stale_mainserver_context'
+                    ? 'actions.reloadCurrentContext'
+                    : 'actions.retry'
+                )
+              : statusMessage.source === 'reference'
+                ? pt('actions.retryMediaReferences')
+                : undefined
         }
-        retryDisabled={saveFeedback.status === 'saving'}
+        retryDisabled={checkingSave || saveFeedback.status === 'saving'}
         onRetry={
-          statusMessage.source === 'save'
-            ? statusMessage.errorCode === 'stale_mainserver_context'
-              ? () => void reloadCurrentContext()
-              : () => void saveCurrentItem()
-            : statusMessage.source === 'reference' && mediaReferenceSync.hasPendingRetry
-              ? () => {
-                  const operationId = saveFeedback.beginSaving();
-                  void mediaReferenceSync.retryReferenceSync().then(
-                    () => {
-                      const clean = completeCreateSave();
-                      setStatusMessage(
-                        clean
-                          ? null
-                          : { source: 'navigation', text: pt('create.savedWithNewChanges') }
-                      );
-                      saveFeedback.markSaved(operationId);
-                      if (clean && retryCreatedContentId) {
-                        void navigateToCreatedDetail(retryCreatedContentId).catch(() => {
-                          setStatusMessage({
-                            source: 'navigation',
-                            text: pt('messages.detailNavigationError'),
+          statusMessage.source === 'unknown'
+            ? () => void checkSaveOutcome()
+            : statusMessage.source === 'save'
+              ? statusMessage.errorCode === 'stale_mainserver_context'
+                ? () => void reloadCurrentContext()
+                : () => void saveCurrentItem()
+              : statusMessage.source === 'reference' && mediaReferenceSync.hasPendingRetry
+                ? () => {
+                    const operationId = saveFeedback.beginSaving();
+                    void mediaReferenceSync.retryReferenceSync().then(
+                      () => {
+                        const clean = completeCreateSave();
+                        setStatusMessage(
+                          clean
+                            ? null
+                            : { source: 'navigation', text: pt('create.savedWithNewChanges') }
+                        );
+                        if (clean) saveFeedback.markSaved(operationId);
+                        else saveFeedback.reset();
+                        if (clean && retryCreatedContentId) {
+                          void navigateToCreatedDetail(retryCreatedContentId).catch(() => {
+                            setStatusMessage({
+                              source: 'navigation',
+                              text: pt('messages.detailNavigationError'),
+                            });
+                            saveFeedback.markFailed(operationId);
                           });
-                          saveFeedback.markFailed(operationId);
+                        }
+                      },
+                      () => {
+                        setStatusMessage({
+                          source: 'reference',
+                          text: pt('messages.mediaReferencePartialFailure'),
                         });
+                        saveFeedback.markFailed(operationId);
                       }
-                    },
-                    () => {
-                      setStatusMessage({
-                        source: 'reference',
-                        text: pt('messages.mediaReferencePartialFailure'),
-                      });
-                      saveFeedback.markFailed(operationId);
-                    }
-                  );
-                }
-              : undefined
+                    );
+                  }
+                : undefined
         }
       />
     ) : null}

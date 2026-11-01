@@ -15,7 +15,7 @@ import { NewsApiError } from './news.api.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
 
 export type StatusMessage = Readonly<{
-  source: 'load' | 'save' | 'delete' | 'reference' | 'navigation';
+  source: 'recovered' | 'unknown' | 'load' | 'save' | 'delete' | 'reference' | 'navigation';
   text: string;
   requestId?: string;
   errorCode?: string;

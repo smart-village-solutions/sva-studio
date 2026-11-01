@@ -1,3 +1,4 @@
+import { captureStudioDesignState } from './studio-shell.helpers';
 import { expect, test } from '@playwright/test';
 import type { BrowserContext, Page } from '@playwright/test';
 import { mockWasteFacade, type WasteTourState } from './waste-management-plugin.helpers';
@@ -63,11 +64,113 @@ const openWastePlugin = async (page: Page) => {
 };
 
 test.describe('waste management plugin', () => {
+  test.describe.configure({ timeout: 120_000 });
+  test('keeps partial annual-calendar dates visible and explains missing recurring data', async ({
+    page,
+  }) => {
+    await mockSharedShellRequests(page, {
+      instanceId: 'de-musterhausen',
+      permissionActions: ['waste-management.read', 'waste-management.tours.manage'],
+    });
+    const tour = {
+      id: 'partial-tour',
+      name: 'Unvollständige Tour',
+      recurrence: 'weekly' as const,
+      wasteFractionIds: [],
+      status: 'published' as const,
+      customDates: [{ date: '2026-03-02' }],
+      createdAt: '2026-01-01T10:00:00.000Z',
+      updatedAt: '2026-01-01T10:00:00.000Z',
+    };
+    await mockWasteFacade(page, {
+      instanceId: 'de-musterhausen',
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_calendar',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [tour],
+    });
+    await page.goto('/health/live');
+    await establishServerReadableAuthSession(page.context(), page);
+    await openWastePlugin(page);
+    await page.getByRole('tab', { name: 'Touren' }).click();
+    await page.getByRole('button', { name: 'Jahreskalender anzeigen' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(
+      dialog.getByText('Die Terminübersicht ist möglicherweise unvollständig.')
+    ).toBeVisible();
+    await expect(dialog.getByText('Für die regelmäßige Tour fehlt das Startdatum.')).toBeVisible();
+    await expect(dialog.getByText('2026-03-02', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Keine berechneten Termine in diesem Monat.')).toHaveCount(0);
+    await captureStudioDesignState(page, 'waste-calendar-partial', '[role=dialog]');
+    await page.getByRole('button', { name: 'Folgejahr', exact: true }).click();
+    await expect(dialog.getByText('Termine können derzeit nicht berechnet werden.')).toBeVisible();
+    await expect(dialog.getByText('2026-03-02', { exact: true })).toHaveCount(0);
+  });
+
+  test('distinguishes annual-calendar loading from a failed scheduling request', async ({
+    page,
+  }) => {
+    await mockSharedShellRequests(page, {
+      instanceId: 'de-musterhausen',
+      permissionActions: ['waste-management.read'],
+    });
+    await mockWasteFacade(page, {
+      instanceId: 'de-musterhausen',
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_calendar',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [
+        {
+          id: 'empty-tour',
+          name: 'Einzeltermine',
+          wasteFractionIds: [],
+          recurrence: 'custom',
+          status: 'published',
+          createdAt: '2026-01-01T10:00:00.000Z',
+          updatedAt: '2026-01-01T10:00:00.000Z',
+        },
+      ],
+    });
+    let release: (() => void) | undefined;
+    const responseReady = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route('**/api/v1/waste-management/scheduling**', async (route) => {
+      await responseReady;
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'unavailable' }),
+      });
+    });
+    await page.goto('/health/live');
+    await establishServerReadableAuthSession(page.context(), page);
+    await openWastePlugin(page);
+    await page.getByRole('tab', { name: 'Touren' }).click();
+    await page.getByRole('button', { name: 'Jahreskalender anzeigen' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('Termine werden geladen …')).toBeVisible();
+    release?.();
+    await expect(dialog.getByText('Die Planungsdaten konnten nicht geladen werden.')).toBeVisible();
+    await expect(dialog.getByText('Termine werden geladen …')).toHaveCount(0);
+    await expect(dialog.getByText('Keine berechneten Termine in diesem Monat.')).toHaveCount(0);
+  });
+
   test('opens contextual tour-shift creation in a new tab without losing the tour workflow', async ({
     context,
     page,
   }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(180_000);
     await mockSharedShellRequests(context, {
       instanceId: 'de-tour-shift-context',
       permissionActions: [
@@ -103,6 +206,7 @@ test.describe('waste management plugin', () => {
     await openWastePlugin(page);
     await page.getByRole('tab', { name: 'Touren' }).click();
     await page.getByRole('button', { name: 'Jahreskalender anzeigen' }).click();
+    await captureStudioDesignState(page, 'waste-year-calendar', '[role=dialog]');
 
     const createShiftLink = page
       .getByRole('link', {
@@ -242,6 +346,7 @@ test.describe('waste management plugin', () => {
     await expect(page.getByRole('textbox', { name: 'Schema' })).toHaveValue('waste_ops');
     await expect(page.locator('input[placeholder="https://example.supabase.co"]')).toHaveCount(0);
 
+    await captureStudioDesignState(page, 'waste-settings');
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
 
     await expect(page.getByRole('button', { name: 'Gespeichert' })).toBeVisible();
@@ -287,11 +392,7 @@ test.describe('waste management plugin', () => {
       },
     ]);
     await page.getByRole('button', { name: /Tourzuordnungen nach Fraktionen/ }).click();
-    const toolsPanel = page
-      .getByText('Datei hochladen')
-      .locator('xpath=ancestor::div[contains(@class,"rounded-2xl")]')
-      .first();
-    await toolsPanel.locator('input[type="file"]').setInputFiles({
+    await page.locator('input[type="file"]:visible').setInputFiles({
       name: 'tenant-a.csv',
       mimeType: 'text/csv',
       buffer: Buffer.from(
@@ -392,6 +493,8 @@ test.describe('waste management plugin', () => {
   test('supports custom recurrence preset creation, tour selection, editing and fallback deletion', async ({
     page,
   }) => {
+    test.setTimeout(180_000);
+    await page.clock.setFixedTime(new Date('2026-06-01T12:00:00Z'));
     await mockSharedShellRequests(page, {
       instanceId: 'de-recurring',
       permissionActions: [
@@ -422,6 +525,42 @@ test.describe('waste management plugin', () => {
           active: true,
           createdAt: '2026-05-10T11:00:00.000Z',
           updatedAt: '2026-05-10T11:00:00.000Z',
+        },
+      ],
+      regions: [
+        {
+          id: 'region-custom',
+          name: 'Musterregion',
+          createdAt: '2026-05-10T11:00:00Z',
+          updatedAt: '2026-05-10T11:00:00Z',
+        },
+      ],
+      cities: [
+        {
+          id: 'city-custom',
+          regionId: 'region-custom',
+          name: 'Musterhausen',
+          createdAt: '2026-05-10T11:00:00Z',
+          updatedAt: '2026-05-10T11:00:00Z',
+        },
+      ],
+      streets: [
+        {
+          id: 'street-custom',
+          cityId: 'city-custom',
+          name: 'Markt',
+          createdAt: '2026-05-10T11:00:00Z',
+          updatedAt: '2026-05-10T11:00:00Z',
+        },
+      ],
+      collectionLocations: [
+        {
+          id: 'location-custom',
+          cityId: 'city-custom',
+          streetId: 'street-custom',
+          active: true,
+          createdAt: '2026-05-10T11:00:00Z',
+          updatedAt: '2026-05-10T11:00:00Z',
         },
       ],
       tours: [],
@@ -459,11 +598,62 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Neue Tour' }).click();
     await page.locator('#waste-tour-name').fill('Ferienroute');
     await page.getByLabel('Restmüll').click();
+    await page.locator('#waste-tour-recurrence').selectOption('custom');
+    await page.getByRole('button', { name: 'Tage im Kalender auswählen' }).click();
+    const selectedDay = page.getByRole('button', { name: 'Dienstag, 2. Juni 2026', exact: true });
+    await selectedDay.focus();
+    await selectedDay.press('Space');
+    await expect(selectedDay.locator('..')).toHaveAttribute('aria-selected', 'true');
+    await selectedDay.press('ArrowRight');
+    await expect(
+      page.getByRole('button', { name: 'Mittwoch, 3. Juni 2026', exact: true })
+    ).toBeFocused();
+    await captureStudioDesignState(page, 'waste-custom-date-picker', '[role=dialog]');
+    await page.getByRole('button', { name: 'Auswahl übernehmen', exact: true }).click();
+    await page.getByRole('button', { name: 'Termin bearbeiten', exact: true }).click();
+    await page.getByRole('button', { name: 'Abholort zuweisen', exact: true }).click();
+    const locationTrigger = page.getByRole('button', { name: 'Abholort', exact: true });
+    await locationTrigger.press('Enter');
+    await page.getByRole('combobox', { name: 'Abholort suchen', exact: true }).fill('Markt');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(locationTrigger).toBeFocused();
+    await expect(locationTrigger).toContainText('Markt');
+    await locationTrigger.press('Enter');
+    await page.getByRole('combobox', { name: 'Abholort suchen', exact: true }).press('Tab');
+    const clearLocation = page.getByRole('button', {
+      name: 'Abholortauswahl aufheben',
+      exact: true,
+    });
+    await expect(clearLocation).toBeFocused();
+    await clearLocation.press('Tab');
+    await expect(page.getByRole('textbox', { name: 'Hinweis', exact: true })).toBeFocused();
+    await expect(page.getByRole('combobox', { name: 'Abholort suchen', exact: true })).toHaveCount(
+      0
+    );
+    await locationTrigger.press('Enter');
+    await captureStudioDesignState(page, 'waste-location-search', 'main, [role=dialog]');
+    await expect(
+      page.getByRole('combobox', { name: 'Abholort suchen', exact: true })
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(locationTrigger).toBeFocused();
+    await expect(page.locator('#waste-tour-form')).toBeVisible();
+    // Discard this temporary custom-date draft before exercising the preset mutation.
+    await page
+      .locator('#waste-tour-form')
+      .getByRole('button', { name: 'Abbrechen', exact: true })
+      .click();
+    await expect.poll(() => harness.requests.createdTours.length).toBe(0);
+    await page.getByRole('button', { name: 'Neue Tour' }).click();
+    await page.locator('#waste-tour-name').fill('Ferienroute');
+    await page.getByLabel('Restmüll').click();
     await page
       .locator('#waste-tour-recurrence')
       .selectOption({ label: 'Ferien 10 Tage (alle 10 Tage)' });
     await page.locator('#waste-tour-first-date').fill('2026-06-01');
     await page.locator('#waste-tour-end-date').fill('2026-08-31');
+
     await page.locator('#waste-tour-form').getByRole('button', { name: 'Tour speichern' }).click();
 
     await expect.poll(() => harness.requests.createdTours.length).toBe(1);
@@ -579,6 +769,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('tab', { name: 'Touren' }).click();
     await page.getByRole('checkbox', { name: 'Tour Restmüll Nord auswählen' }).check();
     await page.getByRole('checkbox', { name: 'Tour Biomüll Süd auswählen' }).check();
+    await captureStudioDesignState(page, 'waste-tours-selected');
     await page.getByRole('button', { name: 'Gültigkeitszeitraum ändern' }).click();
     await page.getByLabel('Gültig ab').selectOption('set');
     await page.getByLabel('Neuer Gültigkeitsbeginn').fill('2026-03-01');

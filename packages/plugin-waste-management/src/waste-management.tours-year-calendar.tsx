@@ -9,10 +9,10 @@ import {
 } from '@sva/studio-ui-react';
 import { resolveEditorLocale, usePluginTranslation } from '@sva/plugin-sdk';
 import { isWasteTourValidityApplicable } from '@sva/waste-management-contracts';
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useId, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { WasteManagementSchedulingOverview } from './waste-management.api.js';
-import { calculateTourOccurrenceEntriesForYear } from './waste-management.tours.presentation.js';
+import { calculateTourCalendarForYear } from './waste-management.tours.presentation.js';
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import type { WasteManagementSearchParams } from './search-params.js';
 import {
@@ -24,6 +24,7 @@ const TourYearCalendarMonth = ({
   monthIndex,
   year,
   highlightedDays,
+  emptyMessage,
   tourId,
   search,
   canCreateShift,
@@ -34,6 +35,7 @@ const TourYearCalendarMonth = ({
   readonly monthIndex: number;
   readonly year: number;
   readonly highlightedDays: ReadonlyMap<number, CalendarOccurrence>;
+  readonly emptyMessage: string | undefined;
   readonly tourId: string | undefined;
   readonly search: WasteManagementSearchParams | undefined;
   readonly canCreateShift: boolean;
@@ -54,33 +56,61 @@ const TourYearCalendarMonth = ({
   );
 
   return (
-    <section className="space-y-3 rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm">
+    <section className="space-y-3 rounded-lg border border-border-subtle bg-surface-inset p-4">
       <h3 className="text-sm font-semibold capitalize tracking-wide">{monthLabel}</h3>
-      <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-        {weekdayLabels.map((day) => (
-          <div key={`${monthIndex}-${day}`}>{day}</div>
-        ))}
+      <div className="hidden sm:block" data-year-calendar-layout="grid">
+        <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+          {weekdayLabels.map((day) => (
+            <div key={`${monthIndex}-${day}`}>{day}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1 text-center text-sm">
+          {Array.from({ length: startWeekday }).map((_, index) => (
+            <div key={`empty-${monthIndex}-${index}`} />
+          ))}
+          {Array.from({ length: daysInMonth }, (_, index) => index + 1).map((day) => (
+            <TourYearCalendarDay
+              key={`${monthIndex}-${day}`}
+              day={day}
+              monthIndex={monthIndex}
+              year={year}
+              occurrence={highlightedDays.get(day)}
+              tourId={tourId}
+              search={search}
+              canCreateShift={canCreateShift}
+              tourName={tourName}
+              locale={locale}
+              pt={pt}
+            />
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center text-sm">
-        {Array.from({ length: startWeekday }).map((_, index) => (
-          <div key={`empty-${monthIndex}-${index}`} />
-        ))}
-        {Array.from({ length: daysInMonth }, (_, index) => index + 1).map((day) => (
-          <TourYearCalendarDay
-            key={`${monthIndex}-${day}`}
-            day={day}
-            monthIndex={monthIndex}
-            year={year}
-            occurrence={highlightedDays.get(day)}
-            tourId={tourId}
-            search={search}
-            canCreateShift={canCreateShift}
-            tourName={tourName}
-            locale={locale}
-            pt={pt}
-          />
-        ))}
-      </div>
+      <ul className="space-y-2 sm:hidden" data-year-calendar-layout="list">
+        {highlightedDays.size
+          ? Array.from(highlightedDays.entries())
+              .sort(([left], [right]) => left - right)
+              .map(([day, occurrence]) => (
+                <li key={day}>
+                  <TourYearCalendarDay
+                    day={day}
+                    monthIndex={monthIndex}
+                    year={year}
+                    occurrence={occurrence}
+                    tourId={tourId}
+                    search={search}
+                    canCreateShift={canCreateShift}
+                    tourName={tourName}
+                    locale={locale}
+                    pt={pt}
+                    layout="list"
+                  />
+                </li>
+              ))
+          : null}
+      </ul>
+      {!highlightedDays.size && emptyMessage ? (
+        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+      ) : null}
     </section>
   );
 };
@@ -111,9 +141,10 @@ const TourYearCalendarControls = ({
 
 const TourYearCalendarDateList = ({
   dates,
+  complete,
   pt,
-}: Readonly<{ dates: readonly string[]; pt: TourYearCalendarTranslate }>) => (
-  <div className="space-y-2 rounded-2xl border border-border/70 bg-card/50 p-4">
+}: Readonly<{ dates: readonly string[]; complete: boolean; pt: TourYearCalendarTranslate }>) => (
+  <div className="space-y-2 rounded-lg border border-border-subtle bg-card/50 p-4">
     <p className="text-sm font-medium">{pt('tours.yearCalendar.meta.dateListTitle')}</p>
     <div className="flex flex-wrap gap-2">
       {dates.length ? (
@@ -122,9 +153,9 @@ const TourYearCalendarDateList = ({
             {date}
           </Badge>
         ))
-      ) : (
+      ) : complete ? (
         <p className="text-sm text-muted-foreground">{pt('tours.yearCalendar.meta.noDates')}</p>
-      )}
+      ) : null}
     </div>
   </div>
 );
@@ -133,14 +164,13 @@ type TourYearCalendarDialogProps = {
   readonly open: boolean;
   readonly tour: WasteTourRecord | null;
   readonly scheduling: WasteManagementSchedulingOverview | null;
+  readonly schedulingLoadState?: 'loading' | 'ready' | 'error';
   readonly search?: WasteManagementSearchParams;
   readonly canManageScheduling?: boolean;
   readonly onOpenChange: (open: boolean) => void;
 };
 
-const calendarMonths = (
-  entries: ReturnType<typeof calculateTourOccurrenceEntriesForYear>
-) =>
+const calendarMonths = (entries: ReturnType<typeof calculateTourCalendarForYear>['entries']) =>
   Array.from({ length: 12 }, (_, monthIndex) => ({
     monthIndex,
     highlightedDays: new Map(
@@ -182,10 +212,22 @@ export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
     }
   }, [props.open, startYear]);
 
-  const occurrenceEntries =
-    props.tour && props.scheduling
-      ? calculateTourOccurrenceEntriesForYear(props.tour, year, props.scheduling)
-      : [];
+  const statusId = useId();
+  const loading = props.schedulingLoadState === 'loading';
+  const calendar =
+    props.tour && props.scheduling && !loading && props.schedulingLoadState !== 'error'
+      ? calculateTourCalendarForYear(props.tour, year, props.scheduling)
+      : null;
+  const occurrenceEntries = calendar?.entries ?? [];
+  const complete = Boolean(calendar && calendar.issues.length === 0);
+  const statusKey = loading
+    ? 'loading'
+    : complete
+      ? null
+      : occurrenceEntries.length
+        ? 'partial'
+        : 'unavailable';
+  const reasons = props.schedulingLoadState === 'error' ? ['loadError'] : (calendar?.issues ?? []);
   const dates = occurrenceEntries.map((entry) => entry.date);
   const months = calendarMonths(occurrenceEntries);
 
@@ -193,7 +235,7 @@ export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="max-h-[90vh] w-[min(96vw,1500px)] max-w-none overflow-hidden p-0">
         <div className="flex max-h-[90vh] flex-col">
-          <div className="border-b border-border/60 bg-background px-6 py-5">
+          <div className="border-b border-border-subtle bg-background px-6 py-5">
             <DialogHeader className="space-y-2">
               <DialogTitle>{pt('tours.yearCalendar.title')}</DialogTitle>
               <DialogDescription>
@@ -207,13 +249,41 @@ export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
           <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
             <TourYearCalendarControls year={year} setYear={setYear} pt={pt} />
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
+            <div
+              id={statusId}
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className="space-y-1 text-sm"
+            >
+              {statusKey ? (
+                <p className="font-medium">{pt(`tours.yearCalendar.meta.${statusKey}`)}</p>
+              ) : null}
+              {!loading
+                ? reasons.map((reason) => (
+                    <p key={reason} className="text-muted-foreground">
+                      {pt(`tours.yearCalendar.meta.${reason}`)}
+                    </p>
+                  ))
+                : null}
+            </div>
+            <div
+              aria-describedby={statusId}
+              className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3"
+            >
               {months.map((month) => (
                 <TourYearCalendarMonth
                   key={month.monthIndex}
                   monthIndex={month.monthIndex}
                   year={year}
                   highlightedDays={month.highlightedDays}
+                  emptyMessage={
+                    complete
+                      ? pt(
+                          `tours.yearCalendar.meta.${calendar?.outsideValidityMonths[month.monthIndex] ? 'outsideValidity' : 'noDatesInMonth'}`
+                        )
+                      : undefined
+                  }
                   tourId={props.tour?.id}
                   search={props.search}
                   canCreateShift={canCreateShift}
@@ -224,7 +294,7 @@ export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
               ))}
             </div>
 
-            <TourYearCalendarDateList dates={dates} pt={pt} />
+            <TourYearCalendarDateList dates={dates} complete={complete} pt={pt} />
           </div>
         </div>
       </DialogContent>

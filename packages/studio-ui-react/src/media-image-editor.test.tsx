@@ -73,6 +73,32 @@ describe('StudioMediaImageEditor integration', () => {
     });
   });
 
+  it('retains an uncommitted image design while an editor dialog Activity is suspended', async () => {
+    const designState = {
+      annotations: { text: { text: 'Still editing' } },
+      annotationIds: ['text'],
+    };
+    library.exportImage.mockReturnValue({ imageData: {}, designState });
+    const view = render(
+      <React.Activity mode="visible">
+        <StudioMediaImageEditor asset={asset} onApply={vi.fn()} onCancel={vi.fn()} />
+      </React.Activity>
+    );
+    await waitFor(() => expect(library.props).toBeDefined());
+    view.rerender(
+      <React.Activity mode="hidden">
+        <StudioMediaImageEditor asset={asset} onApply={vi.fn()} onCancel={vi.fn()} />
+      </React.Activity>
+    );
+    expect(library.exportImage).toHaveBeenCalled();
+    view.rerender(
+      <React.Activity mode="visible">
+        <StudioMediaImageEditor asset={asset} onApply={vi.fn()} onCancel={vi.fn()} />
+      </React.Activity>
+    );
+    await waitFor(() => expect(library.props?.loadableDesignState).toEqual(designState));
+  });
+
   it('exports a portable editable copy against the root and strips signed runtime sources', async () => {
     const canvas = document.createElement('canvas');
     vi.spyOn(canvas, 'toBlob').mockImplementation((callback) =>
@@ -114,6 +140,44 @@ describe('StudioMediaImageEditor integration', () => {
       (screen.getByRole('button', { name: 'media.editor.cancelEditing' }) as HTMLButtonElement)
         .disabled
     ).toBe(false);
+  });
+
+  it('re-enables an image workspace after suspension interrupts a pending export', async () => {
+    const canvas = document.createElement('canvas');
+    let finish: BlobCallback | undefined;
+    vi.spyOn(canvas, 'toBlob').mockImplementation((callback) => {
+      finish = callback;
+    });
+    library.exportImage.mockReturnValue({
+      imageData: { imageCanvas: canvas },
+      designState: { annotations: {} },
+    });
+    const apply = vi.fn();
+    const view = render(
+      <React.Activity mode="visible">
+        <StudioMediaImageEditor asset={asset} onApply={apply} onCancel={vi.fn()} />
+      </React.Activity>
+    );
+    await waitFor(() => expect(library.props).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'media.editor.previewEditedImage' }));
+    view.rerender(
+      <React.Activity mode="hidden">
+        <StudioMediaImageEditor asset={asset} onApply={apply} onCancel={vi.fn()} />
+      </React.Activity>
+    );
+    view.rerender(
+      <React.Activity mode="visible">
+        <StudioMediaImageEditor asset={asset} onApply={apply} onCancel={vi.fn()} />
+      </React.Activity>
+    );
+    await waitFor(() =>
+      expect(
+        (screen.getByRole('button', { name: 'media.editor.cancelEditing' }) as HTMLButtonElement)
+          .disabled
+      ).toBe(false)
+    );
+    await act(async () => finish?.(new Blob(['png'], { type: 'image/png' })));
+    expect(apply).not.toHaveBeenCalled();
   });
 
   it('does not accept an asynchronous export after the workspace is closed', async () => {

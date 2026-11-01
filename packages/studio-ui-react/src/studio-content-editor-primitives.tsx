@@ -21,7 +21,10 @@ export function StudioDetailCard({
   return (
     <section
       data-slot="studio-detail-card"
-      className={cn('space-y-4 rounded-2xl border border-border/60 bg-card p-5', className)}
+      className={cn(
+        'space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6',
+        className
+      )}
     >
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">

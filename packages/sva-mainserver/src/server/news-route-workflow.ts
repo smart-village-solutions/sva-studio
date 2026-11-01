@@ -67,6 +67,7 @@ export const createNewsItemMutationHandler = <TInput>(input: {
   readonly requestId?: string;
   readonly parse: (request: Request) => Promise<TInput | Response>;
   readonly execute: (actor: NewsMutationActor, parsed: TInput) => Promise<Response>;
+  readonly providerWriteStarted?: () => boolean;
 }) => {
   const operation =
     input.route.kind === 'itemVisibility'
@@ -116,6 +117,14 @@ export const createNewsItemMutationHandler = <TInput>(input: {
     respond: (response) => response,
   });
 
-  return (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>
-    workflow(request, ctx);
+  return async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
+    const response = await workflow(request, ctx);
+    if (!response.ok && input.providerWriteStarted) {
+      response.headers.set(
+        'X-SVA-Mutation-Outcome',
+        input.providerWriteStarted() ? 'unknown' : 'not_applied'
+      );
+    }
+    return response;
+  };
 };

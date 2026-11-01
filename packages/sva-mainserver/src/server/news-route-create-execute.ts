@@ -65,6 +65,9 @@ type CreateExecutionInput = {
   idempotencyKey: string;
   parsed: ParsedNewsInput;
   logSuccess: (operation: string, newsId?: string) => void;
+  onProviderWrite: () => void;
+  providerWriteStarted?: boolean;
+  createdContentId?: string;
 };
 
 const persistNewsCreate = async (input: CreateExecutionInput): Promise<Response> => {
@@ -75,10 +78,13 @@ const persistNewsCreate = async (input: CreateExecutionInput): Promise<Response>
     contentType: NEWS_CONTENT_TYPE,
   });
   if (isResponse(principalAuthorization)) return principalAuthorization;
+  input.providerWriteStarted = true;
+  input.onProviderWrite();
   const data = await createSvaMainserverNews({
     ...actor,
     news: withoutEditorialAuthor(parsed.news),
   });
+  input.createdContentId = data.id;
   if (parsed.visible === false) {
     await changeSvaMainserverNewsVisibility({ ...actor, newsId: data.id, visible: false });
   }
@@ -138,7 +144,13 @@ const respondToNewsCreateFailure = async (
   error: unknown
 ): Promise<Response> => {
   const { request, context, actor, actorInfo, idempotencyKey, parsed } = input;
-  await finalizeMainserverMutationFailure({ actor, error });
+  await finalizeMainserverMutationFailure({
+    actor,
+    error,
+    providerOutcome: input.providerWriteStarted ? 'unknown' : 'failed',
+    contentId: input.createdContentId,
+    completedSteps: input.providerWriteStarted ? [] : ['provider_write_not_started'],
+  });
   const response = toMainserverErrorResponse(error, 'Mainserver-News-Anfrage ist fehlgeschlagen.');
   const workspaceContext = getWorkspaceContext();
   logger.warn('Mainserver News create failed', {

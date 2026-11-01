@@ -17,7 +17,9 @@ export const WasteSchedulingHolidayFormView = ({
 }) => {
   const navigate = useNavigate();
   const pt = usePluginTranslation('wasteManagement');
-  const rule = controller.overview?.holidayRules.find((candidate) => candidate.id === search.schedulingEntryId);
+  const rule = controller.overview?.holidayRules.find(
+    (candidate) => candidate.id === search.schedulingEntryId
+  );
 
   if (!rule) {
     return null;
@@ -44,18 +46,25 @@ export const WasteSchedulingHolidayFormView = ({
         description={pt('scheduling.holidayRules.editDescription', { value: rule.holidayName })}
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={handleCancel} disabled={controller.saving}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleCancel}
+              disabled={controller.saving}
+            >
               {pt('scheduling.holidayRules.cancelAction')}
             </Button>
           </div>
         }
       />
 
-      <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
+      <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
         <div className="space-y-1">
           <p className="text-sm font-medium">{rule.holidayName}</p>
           <p className="text-sm text-muted-foreground">
-            {pt('scheduling.holidayRules.meta', { value: `${rule.holidayDate} · ${rule.stateCode} · ${String(rule.year)}` })}
+            {pt('scheduling.holidayRules.meta', {
+              value: `${rule.holidayDate} · ${rule.stateCode} · ${String(rule.year)}`,
+            })}
           </p>
         </div>
         <WasteHolidayRuleForm

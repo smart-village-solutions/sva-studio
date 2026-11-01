@@ -13,10 +13,7 @@ vi.mock('@sva/plugin-sdk', () => ({
     values ? `${key}:${Object.values(values).join('|')}` : key,
 }));
 
-vi.mock('@tabler/icons-react', () => ({
-  IconEdit: (props: React.ComponentProps<'svg'>) => <svg {...props} />,
-  IconTrash: (props: React.ComponentProps<'svg'>) => <svg {...props} />,
-}));
+
 
 vi.mock('@sva/studio-ui-react', () => ({
   StudioDestructiveActionDialog: ({

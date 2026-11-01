@@ -1,4 +1,9 @@
-import { IconCalendarTime, IconFilter, IconToggleRight, IconTrash } from '@tabler/icons-react';
+import {
+  CalendarClock as IconCalendarTime,
+  Filter as IconFilter,
+  ToggleRight as IconToggleRight,
+  Trash2 as IconTrash,
+} from 'lucide-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, cn } from '@sva/studio-ui-react';
 
@@ -36,7 +41,7 @@ const WasteToursSelectionActions = ({
       <Button
         type="button"
         variant="tertiary"
-        className="h-10 rounded-lg px-3"
+        className="h-11 rounded-md px-3"
         disabled={filteredCount === 0}
         aria-pressed={allFilteredSelected}
         data-partially-selected={someFilteredSelected && !allFilteredSelected ? '' : undefined}
@@ -67,7 +72,7 @@ const WasteToursSelectionActions = ({
           <Button
             type="button"
             variant="tertiary"
-            className="h-10 rounded-lg px-3"
+            className="h-11 rounded-md px-3"
             onClick={onClearSelection}
           >
             {pt('tours.selection.clear')}
@@ -91,21 +96,21 @@ const WasteToursBulkActions = ({
       <Button
         type="button"
         variant="secondary"
-        className="h-10 rounded-lg px-3"
+        className="h-11 rounded-md px-3"
         disabled={selectedCount === 0}
         onClick={onOpenBulkStatus}
       >
-        <IconToggleRight aria-hidden="true" className="h-4 w-4" />
+        <IconToggleRight strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
         {pt('tours.bulkStatusDialog.open')}
       </Button>
       <Button
         type="button"
         variant="secondary"
-        className="h-10 rounded-lg px-3"
+        className="h-11 rounded-md px-3"
         disabled={selectedCount === 0 || validitySelectionExceedsLimit}
         onClick={onOpenBulkValidity}
       >
-        <IconCalendarTime aria-hidden="true" className="h-4 w-4" />
+        <IconCalendarTime strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
         {pt('tours.bulkValidityDialog.title')}
       </Button>
       {validitySelectionExceedsLimit ? (
@@ -117,13 +122,13 @@ const WasteToursBulkActions = ({
         type="button"
         variant="tertiary"
         className={cn(
-          'h-10 rounded-lg border border-destructive/15 px-3 text-destructive hover:bg-destructive/5',
+          'h-11 rounded-md border border-destructive/15 px-3 text-destructive hover:bg-destructive/5',
           selectedCount === 0 && 'text-destructive/50'
         )}
         disabled={selectedCount === 0}
         onClick={onOpenBulkDelete}
       >
-        <IconTrash aria-hidden="true" className="h-4 w-4" />
+        <IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
         {pt('tours.table.deleteSelected')}
       </Button>
     </>
@@ -143,7 +148,7 @@ const WasteToursFilterActions = ({
         <Button
           type="button"
           variant="tertiary"
-          className="h-10 rounded-lg px-3"
+          className="h-11 rounded-md px-3"
           onClick={onResetFilters}
         >
           {pt('tours.filters.reset')}
@@ -152,11 +157,11 @@ const WasteToursFilterActions = ({
       <Button
         type="button"
         variant="secondary"
-        className="h-10 rounded-lg border-border/70 px-3"
+        className="h-11 rounded-md border-border/70 px-3"
         aria-expanded={filterDialogOpen}
         onClick={onOpenFilterDialog}
       >
-        <IconFilter aria-hidden="true" className="h-4 w-4" />
+        <IconFilter strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
         {pt('tours.filters.open')}
       </Button>
     </>

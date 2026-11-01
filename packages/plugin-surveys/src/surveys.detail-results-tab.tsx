@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioDetailCard } from '@sva/studio-ui-react';
 
 type SurveyResultVisibilityExportFormat = 'csv' | 'json' | 'excel' | 'xml';
 type SurveyResultExportKind = 'withoutFreeText' | 'withFreeText';
@@ -37,14 +37,20 @@ export type SurveyResultsTabData = Readonly<{
 
 type ResultsTranslate = (key: string) => string;
 
-const exportFormats: readonly SurveyResultVisibilityExportFormat[] = ['csv', 'json', 'excel', 'xml'];
+const exportFormats: readonly SurveyResultVisibilityExportFormat[] = [
+  'csv',
+  'json',
+  'excel',
+  'xml',
+];
 
 const freeTextStatusLabelKey: Record<SurveyFreeTextStatus, string> = {
   INTERNAL: 'fields.freeTextStatusOptions.internal',
   PUBLIC: 'fields.freeTextStatusOptions.public',
 };
 
-const formatPercentage = (value?: number): string => (typeof value === 'number' ? `${value.toFixed(1)} %` : '--');
+const formatPercentage = (value?: number): string =>
+  typeof value === 'number' ? `${value.toFixed(1)} %` : '--';
 
 const progressWidth = (value?: number): string => `${Math.max(0, Math.min(100, value ?? 0))}%`;
 
@@ -63,20 +69,22 @@ function SurveyResultsSummaryCard({
   ];
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <div className="space-y-2">
-        <h3 className="text-base font-semibold text-foreground">{pt('cards.results.summary.title')}</h3>
-        <p className="text-sm leading-relaxed text-muted-foreground">{pt('cards.results.summary.description')}</p>
-      </div>
+    <StudioDetailCard
+      title={pt('cards.results.summary.title')}
+      description={pt('cards.results.summary.description')}
+    >
       <dl className="mt-5 grid gap-4 border-t border-border pt-5 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
-          <div key={metric.label} className="rounded-lg border border-border/60 bg-muted/10 p-4">
+          <div
+            key={metric.label}
+            className="rounded-lg border border-border-subtle bg-surface-inset p-4"
+          >
             <dt className="text-sm text-muted-foreground">{metric.label}</dt>
             <dd className="mt-2 text-2xl font-semibold text-foreground">{metric.value}</dd>
           </div>
         ))}
       </dl>
-    </section>
+    </StudioDetailCard>
   );
 }
 
@@ -88,17 +96,21 @@ function SurveyQuestionResultsList({
   pt: ResultsTranslate;
 }>) {
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <div className="space-y-2">
-        <h3 className="text-base font-semibold text-foreground">{pt('cards.results.questions.title')}</h3>
-        <p className="text-sm leading-relaxed text-muted-foreground">{pt('cards.results.questions.description')}</p>
-      </div>
+    <StudioDetailCard
+      title={pt('cards.results.questions.title')}
+      description={pt('cards.results.questions.description')}
+    >
       <div className="mt-5 space-y-5 border-t border-border pt-5">
         {questions.map((question) => (
-          <article key={question.questionId} className="space-y-4 rounded-lg border border-border/60 bg-background p-4">
+          <article
+            key={question.questionId}
+            className="space-y-4 rounded-lg border border-border-subtle bg-background p-4"
+          >
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-foreground">{question.questionTitle}</h4>
-              <p className="text-sm text-muted-foreground">{question.totalResponses} {pt('fields.summaryResponseCount')}</p>
+              <p className="text-sm text-muted-foreground">
+                {question.totalResponses} {pt('fields.summaryResponseCount')}
+              </p>
             </div>
 
             {question.optionResults.length > 0 ? (
@@ -108,11 +120,15 @@ function SurveyQuestionResultsList({
                     <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                       <span className="font-medium text-foreground">{option.title}</span>
                       <span className="text-muted-foreground">
-                        {option.votes} {pt('fields.optionVotes')} | {formatPercentage(option.percentage)}
+                        {option.votes} {pt('fields.optionVotes')} |{' '}
+                        {formatPercentage(option.percentage)}
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-muted">
-                      <div className="h-2 rounded-full bg-primary" style={{ width: progressWidth(option.percentage) }} />
+                      <div
+                        className="h-2 rounded-full bg-primary"
+                        style={{ width: progressWidth(option.percentage) }}
+                      />
                     </div>
                   </div>
                 ))}
@@ -121,14 +137,17 @@ function SurveyQuestionResultsList({
               <p className="text-sm text-muted-foreground">{pt('messages.resultsQuestionEmpty')}</p>
             )}
 
-            <details className="rounded-lg border border-border/60 bg-muted/10 p-4">
+            <details className="rounded-lg border border-border-subtle bg-surface-inset p-4">
               <summary className="cursor-pointer list-none text-sm font-medium text-foreground">
                 {pt('fields.freeTextSection')}
               </summary>
               <div className="mt-4 space-y-3">
                 {question.freeTextResponses.length > 0 ? (
                   question.freeTextResponses.map((response) => (
-                    <div key={response.id} className="space-y-2 rounded-md border border-border/60 bg-background p-3">
+                    <div
+                      key={response.id}
+                      className="space-y-2 rounded-md border border-border-subtle bg-background p-3"
+                    >
                       <p className="text-sm text-foreground">{response.text}</p>
                       <dl className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-2">
                         <div className="space-y-1">
@@ -143,14 +162,16 @@ function SurveyQuestionResultsList({
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground">{pt('messages.resultsFreeTextEmpty')}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {pt('messages.resultsFreeTextEmpty')}
+                  </p>
                 )}
               </div>
             </details>
           </article>
         ))}
       </div>
-    </section>
+    </StudioDetailCard>
   );
 }
 
@@ -159,30 +180,36 @@ function SurveyResultsExportCard({
   onExport,
 }: Readonly<{
   pt: ResultsTranslate;
-  onExport?: (input: { kind: SurveyResultExportKind; format: SurveyResultVisibilityExportFormat }) => void;
+  onExport?: (input: {
+    kind: SurveyResultExportKind;
+    format: SurveyResultVisibilityExportFormat;
+  }) => void;
 }>) {
-  const sections: readonly { kind: SurveyResultExportKind; title: string; description: string }[] = [
-    {
-      kind: 'withoutFreeText',
-      title: pt('labels.exportWithoutFreeText'),
-      description: pt('messages.resultsExportWithoutFreeText'),
-    },
-    {
-      kind: 'withFreeText',
-      title: pt('labels.exportWithFreeText'),
-      description: pt('messages.resultsExportWithFreeText'),
-    },
-  ];
+  const sections: readonly { kind: SurveyResultExportKind; title: string; description: string }[] =
+    [
+      {
+        kind: 'withoutFreeText',
+        title: pt('labels.exportWithoutFreeText'),
+        description: pt('messages.resultsExportWithoutFreeText'),
+      },
+      {
+        kind: 'withFreeText',
+        title: pt('labels.exportWithFreeText'),
+        description: pt('messages.resultsExportWithFreeText'),
+      },
+    ];
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <div className="space-y-2">
-        <h3 className="text-base font-semibold text-foreground">{pt('cards.results.export.title')}</h3>
-        <p className="text-sm leading-relaxed text-muted-foreground">{pt('cards.results.export.description')}</p>
-      </div>
+    <StudioDetailCard
+      title={pt('cards.results.export.title')}
+      description={pt('cards.results.export.description')}
+    >
       <div className="mt-5 space-y-4 border-t border-border pt-5">
         {sections.map((section) => (
-          <div key={section.kind} className="rounded-lg border border-border/60 bg-muted/10 p-4">
+          <div
+            key={section.kind}
+            className="rounded-lg border border-border-subtle bg-surface-inset p-4"
+          >
             <h4 className="text-sm font-semibold text-foreground">{section.title}</h4>
             <p className="mt-1 text-sm text-muted-foreground">{section.description}</p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -200,7 +227,7 @@ function SurveyResultsExportCard({
           </div>
         ))}
       </div>
-    </section>
+    </StudioDetailCard>
   );
 }
 
@@ -213,20 +240,22 @@ export function SurveyDetailResultsTab({
   mode: 'create' | 'edit';
   resultData: SurveyResultsTabData | null;
   pt: ResultsTranslate;
-  onExport?: (input: { kind: SurveyResultExportKind; format: SurveyResultVisibilityExportFormat }) => void;
+  onExport?: (input: {
+    kind: SurveyResultExportKind;
+    format: SurveyResultVisibilityExportFormat;
+  }) => void;
 }>) {
   if (mode === 'create' || !resultData) {
     return (
       <div className="space-y-5">
-        <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="space-y-2">
-            <h3 className="text-base font-semibold text-foreground">{pt('cards.results.summary.title')}</h3>
-            <p className="text-sm leading-relaxed text-muted-foreground">{pt('cards.results.summary.description')}</p>
-          </div>
+        <StudioDetailCard
+          title={pt('cards.results.summary.title')}
+          description={pt('cards.results.summary.description')}
+        >
           <div className="mt-5 border-t border-border pt-5">
             <p className="text-sm text-muted-foreground">{pt('messages.createPendingHint')}</p>
           </div>
-        </section>
+        </StudioDetailCard>
       </div>
     );
   }

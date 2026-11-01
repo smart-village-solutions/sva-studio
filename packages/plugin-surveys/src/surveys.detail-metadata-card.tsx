@@ -1,5 +1,5 @@
 import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
-import { SurveyDetailCard } from './surveys.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import type { SurveyContentItem } from './surveys.types.js';
 import type { SurveyContentTranslate } from './surveys.question-editor.shared.js';
 
@@ -19,14 +19,14 @@ export function SurveyMetadataCard({
   pt: SurveyContentTranslate;
 }>) {
   return (
-    <SurveyDetailCard
+    <StudioDetailCard
       title={pt('cards.basis.metadata.title')}
       description={pt('cards.basis.metadata.description')}
     >
       {mode === 'create' ? (
         <p className="text-sm text-muted-foreground">{pt('messages.metadataCreateHint')}</p>
       ) : (
-        <dl className="grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm md:grid-cols-2">
+        <dl className="grid gap-4 rounded-lg border border-border-subtle bg-surface-inset p-4 text-sm md:grid-cols-2">
           <div className="space-y-1">
             <dt className="font-medium text-foreground">{pt('fields.createdAt')}</dt>
             <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.createdAt)}</dd>
@@ -45,6 +45,6 @@ export function SurveyMetadataCard({
           </div>
         </dl>
       )}
-    </SurveyDetailCard>
+    </StudioDetailCard>
   );
 }

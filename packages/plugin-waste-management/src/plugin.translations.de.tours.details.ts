@@ -108,6 +108,8 @@ export const wasteManagementPluginTranslationsDEToursDetails = {
     empty: 'Es sind noch keine individuellen Termine ausgewählt.',
     commentHint: 'Optionaler Kommentar für diesen Einzeltermin',
     actions: {
+      close: 'Schließen',
+      clearLocation: 'Abholortauswahl aufheben',
       openPicker: 'Tage im Kalender auswählen',
       apply: 'Auswahl übernehmen',
       removeDate: 'Tag entfernen',
@@ -217,9 +219,21 @@ export const wasteManagementPluginTranslationsDEToursDetails = {
     descriptionFallback: 'Zeigt die geplanten Termine inklusive bekannter Verschiebungen.',
     actions: { open: 'Jahreskalender', previousYear: 'Vorjahr', nextYear: 'Folgejahr' },
     meta: {
+      loading: 'Termine werden geladen …',
+      outsideValidity: 'Außerhalb des Gültigkeitszeitraums.',
+      unavailable: 'Termine können derzeit nicht berechnet werden.',
+      partial: 'Die Terminübersicht ist möglicherweise unvollständig.',
+      missingStartDate: 'Für die regelmäßige Tour fehlt das Startdatum.',
+      unresolvedRecurrence: 'Der hinterlegte Abholrhythmus kann derzeit nicht ausgewertet werden.',
+      invalidDates:
+        'Die Terminangaben enthalten ungültige Datumswerte oder einen ungültigen Zeitraum.',
+      incompleteHolidayRule:
+        'Für betroffene Termine ist die Feiertagsregelung noch nicht vollständig festgelegt.',
+      loadError: 'Die Planungsdaten konnten nicht geladen werden.',
+      noDatesInMonth: 'Keine berechneten Termine in diesem Monat.',
       year: 'Jahr {{value}}',
       dateListTitle: 'Geplante Termine',
-      noDates: 'Für dieses Jahr konnten keine Termine berechnet werden.',
+      noDates: 'Keine berechneten Termine in diesem Jahr.',
       shiftedReplacementFor: 'Ersatztermin für {{value}}',
     },
   }),

@@ -20,7 +20,12 @@ vi.mock('@sva/waste-management-contracts', async (importOriginal) => ({
 }));
 
 vi.mock('../src/waste-management.tours.presentation.js', () => ({
-  calculateTourOccurrenceEntriesForYear: calculateTourOccurrenceEntriesForYearMock,
+  calculateTourCalendarForYear: (...args: unknown[]) => {
+    const result = calculateTourOccurrenceEntriesForYearMock(...args);
+    return Array.isArray(result)
+      ? { entries: result, issues: [], outsideValidityMonths: Array(12).fill(false) }
+      : result;
+  },
 }));
 
 vi.mock('../src/waste-management.tour-shift-create-link.js', () => ({
@@ -115,7 +120,14 @@ describe('TourYearCalendarDialog', () => {
     render(
       <TourYearCalendarDialog
         open
-        tour={{ id: 'long-running', name: 'Restmüll', firstDate: '2019-01-01', recurrence: 'weekly' } as never}
+        tour={
+          {
+            id: 'long-running',
+            name: 'Restmüll',
+            firstDate: '2019-01-01',
+            recurrence: 'weekly',
+          } as never
+        }
         scheduling={{ globalDateShifts: [], tourDateShifts: [] } as never}
         onOpenChange={() => undefined}
       />
@@ -168,7 +180,7 @@ describe('TourYearCalendarDialog', () => {
     expect(container.querySelector('[data-shifted="true"]')?.textContent).toContain('2');
     const shiftedDay = container.querySelector('[data-shifted="true"]');
     expect(shiftedDay?.getAttribute('style')).toBeNull();
-    expect(shiftedDay?.className).toContain('border-info/60');
+    expect(shiftedDay?.className).toContain('border-input');
     expect(shiftedDay?.getAttribute('tabindex')).toBe('0');
     expect(shiftedDay?.getAttribute('aria-describedby')).toBe(
       shiftedDay?.querySelector('.sr-only')?.id
@@ -182,7 +194,13 @@ describe('TourYearCalendarDialog', () => {
     const shiftLinks = screen.getAllByRole('link', {
       name: /tours\.actions\.shiftDateAccessible/,
     });
-    expect(shiftLinks).toHaveLength(1);
+    expect(shiftLinks).toHaveLength(2);
+    expect(container.querySelectorAll('[id]').length).toBe(
+      new Set(Array.from(container.querySelectorAll('[id]'), (element) => element.id)).size
+    );
+    expect(container.querySelector('[data-year-calendar-layout="list"]')?.textContent).toContain(
+      '15.01.2026'
+    );
     expect(shiftLinks[0]?.getAttribute('href')).toBe(
       '/plugins/waste-management?originalDate=2026-01-15'
     );
@@ -206,7 +224,7 @@ describe('TourYearCalendarDialog', () => {
     );
 
     expect(screen.getByText('tours.yearCalendar.descriptionFallback')).toBeTruthy();
-    expect(screen.getByText('tours.yearCalendar.meta.noDates')).toBeTruthy();
+    expect(screen.getByText('tours.yearCalendar.meta.unavailable')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.yearCalendar.actions.nextYear' }));
     expect(screen.getByText('tours.yearCalendar.meta.year:2027')).toBeTruthy();
@@ -269,5 +287,81 @@ describe('TourYearCalendarDialog', () => {
     expect(
       container.querySelector('[data-shifted="true"]')?.querySelector('.sr-only')?.textContent
     ).toBe('tours.yearCalendar.meta.shiftedReplacementFor:01/03/2026');
+  });
+});
+
+describe('annual calendar status with real calculation inputs', () => {
+  afterEach(() => cleanup());
+  const tour = {
+    id: 'status-tour',
+    name: 'Status',
+    recurrence: 'weekly',
+    firstDate: '2026-01-01',
+    endDate: '2026-12-31',
+  };
+  const scheduling = { tourDateShifts: [], globalDateShifts: [], holidayRules: [] };
+  const props = { open: true, scheduling: scheduling as never, onOpenChange: () => undefined };
+
+  it('distinguishes loading, failed loading and a successfully calculated empty month', async () => {
+    const { calculateTourCalendarForYear } = await vi.importActual<
+      typeof import('../src/waste-management.tours.presentation.js')
+    >('../src/waste-management.tours.presentation.js');
+    calculateTourOccurrenceEntriesForYearMock.mockImplementation(calculateTourCalendarForYear);
+    const { rerender, container } = render(
+      <TourYearCalendarDialog
+        {...props}
+        tour={tour as never}
+        scheduling={null}
+        schedulingLoadState="loading"
+      />
+    );
+    expect(screen.getByRole('status').textContent).toContain('tours.yearCalendar.meta.loading');
+    expect(screen.queryByText('tours.yearCalendar.meta.noDates')).toBeNull();
+    rerender(
+      <TourYearCalendarDialog
+        {...props}
+        tour={tour as never}
+        scheduling={null}
+        schedulingLoadState="error"
+      />
+    );
+    expect(screen.getByRole('status').textContent).toContain('tours.yearCalendar.meta.loadError');
+    expect(screen.queryByText('tours.yearCalendar.meta.loading')).toBeNull();
+    rerender(
+      <TourYearCalendarDialog
+        {...props}
+        tour={{ ...tour, recurrence: 'custom', firstDate: undefined } as never}
+        schedulingLoadState="ready"
+      />
+    );
+    expect(screen.getAllByText('tours.yearCalendar.meta.noDatesInMonth')).toHaveLength(12);
+    expect(screen.getByText('tours.yearCalendar.meta.noDates')).toBeTruthy();
+    expect(container.querySelectorAll('[role="status"]')).toHaveLength(1);
+  });
+
+  it('keeps partial dates in both layouts and updates status together with the year and tour', async () => {
+    const { calculateTourCalendarForYear } = await vi.importActual<
+      typeof import('../src/waste-management.tours.presentation.js')
+    >('../src/waste-management.tours.presentation.js');
+    calculateTourOccurrenceEntriesForYearMock.mockImplementation(calculateTourCalendarForYear);
+    const partialTour = { ...tour, firstDate: undefined, customDates: [{ date: '2026-03-02' }] };
+    const { container, rerender } = render(
+      <TourYearCalendarDialog {...props} tour={partialTour as never} />
+    );
+    expect(screen.getByRole('status').textContent).toContain('tours.yearCalendar.meta.partial');
+    expect(screen.getByText('tours.yearCalendar.meta.missingStartDate')).toBeTruthy();
+    expect(screen.getByText('2026-03-02')).toBeTruthy();
+    expect(container.querySelectorAll('[data-shifted="false"]')).toHaveLength(2);
+    expect(screen.queryByText('tours.yearCalendar.meta.noDatesInMonth')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'tours.yearCalendar.actions.nextYear' }));
+    expect(screen.queryByText('2026-03-02')).toBeNull();
+    expect(screen.getByRole('status').textContent).toContain('tours.yearCalendar.meta.unavailable');
+    rerender(
+      <TourYearCalendarDialog
+        {...props}
+        tour={{ ...tour, id: 'other', recurrence: 'custom' } as never}
+      />
+    );
+    expect(screen.queryByText('tours.yearCalendar.meta.missingStartDate')).toBeNull();
   });
 });

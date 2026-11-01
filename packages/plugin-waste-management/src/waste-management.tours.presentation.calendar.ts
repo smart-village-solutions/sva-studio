@@ -1,10 +1,21 @@
-import { resolveEffectiveWasteTourDateShiftsForYear } from '@sva/waste-management-contracts';
+import {
+  isValidWasteIsoDateOnly,
+  isWasteTourValidityApplicable,
+  resolveEffectiveWasteTourDateShiftsForYear,
+} from '@sva/waste-management-contracts';
 
 import type { WasteManagementSchedulingOverview, WasteTourRecord } from './waste-management.api.js';
 import {
   applyHolidayRule,
   resolveHolidayRulesForYear,
+  normalizeDateOnly,
+  isDateAffectedByHolidayRule,
 } from './waste-management.tours.presentation.holidays.js';
+
+export type TourCalendarIssue =
+  'missingStartDate' | 'invalidDates' | 'unresolvedRecurrence' | 'incompleteHolidayRule';
+
+type CalendarIssues = Set<TourCalendarIssue>;
 
 const addRecurringDates = (
   results: Set<string>,
@@ -31,7 +42,11 @@ const resolveAdvanceStrategy = (
   recurrence: WasteTourRecord['recurrence'],
   customRecurrenceIntervalDays?: number
 ) => {
-  if (typeof customRecurrenceIntervalDays === 'number' && customRecurrenceIntervalDays > 0) {
+  if (
+    typeof customRecurrenceIntervalDays === 'number' &&
+    Number.isInteger(customRecurrenceIntervalDays) &&
+    customRecurrenceIntervalDays > 0
+  ) {
     return (current: Date) =>
       current.setUTCDate(current.getUTCDate() + customRecurrenceIntervalDays);
   }
@@ -50,25 +65,78 @@ const resolveAdvanceStrategy = (
   return null;
 };
 
-const collectScheduledTourDates = (results: Set<string>, tour: WasteTourRecord, year: number) => {
-  if (!tour.firstDate) {
-    return;
-  }
-  const start = parseDateOnlyUtc(tour.firstDate);
-  const end = parseDateOnlyUtc(tour.endDate ?? `${year}-12-31`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return;
-  }
+const collectScheduledTourDates = (
+  results: Set<string>,
+  tour: WasteTourRecord,
+  year: number,
+  issues?: CalendarIssues
+) => {
   const advance = resolveAdvanceStrategy(tour.recurrence, tour.customRecurrenceIntervalDays);
-  if (advance) {
-    addRecurringDates(results, year, start, end, advance);
+  if (
+    (tour.customRecurrenceId &&
+      (!Number.isInteger(tour.customRecurrenceIntervalDays) ||
+        (tour.customRecurrenceIntervalDays ?? 0) <= 0)) ||
+    (!advance &&
+      (Boolean(tour.customRecurrenceId) ||
+        (tour.recurrence != null && !['custom', 'on-demand'].includes(tour.recurrence))))
+  ) {
+    issues?.add('unresolvedRecurrence');
+  }
+  if (!advance) return;
+  if (!tour.firstDate) {
+    issues?.add('missingStartDate');
+    return;
+  }
+  if (
+    !isValidWasteIsoDateOnly(tour.firstDate) ||
+    (tour.endDate && (!isValidWasteIsoDateOnly(tour.endDate) || tour.endDate < tour.firstDate))
+  ) {
+    issues?.add('invalidDates');
+    return;
+  }
+  addRecurringDates(
+    results,
+    year,
+    parseDateOnlyUtc(tour.firstDate),
+    parseDateOnlyUtc(tour.endDate ?? `${year}-12-31`),
+    advance
+  );
+};
+
+const collectCustomTourDates = (
+  results: Set<string>,
+  tour: WasteTourRecord,
+  year: number,
+  issues?: CalendarIssues
+) => {
+  for (const customDate of tour.customDates ?? []) {
+    if (!isValidWasteIsoDateOnly(customDate.date)) {
+      issues?.add('invalidDates');
+    } else if (customDate.date.startsWith(`${year}-`)) {
+      results.add(customDate.date);
+    }
   }
 };
 
-const collectCustomTourDates = (results: Set<string>, tour: WasteTourRecord, year: number) => {
-  for (const customDate of tour.customDates ?? []) {
-    if (customDate.date.startsWith(`${year}-`)) {
-      results.add(customDate.date);
+// Only warn when an actually calculated date proves that incomplete configuration matters.
+const recordIncompleteHolidayRules = (
+  date: string,
+  scheduling: WasteManagementSchedulingOverview,
+  issues?: CalendarIssues
+) => {
+  if (!issues) return;
+  for (const rule of scheduling.holidayRules ?? []) {
+    if (rule.scope && rule.strategy) continue;
+    const triggerDate = normalizeDateOnly(rule.holidayDate);
+    if (!isValidWasteIsoDateOnly(triggerDate)) continue;
+    const coverage = rule.scope === 'full-week' ? 'rest_of_week' : 'single_pickup';
+    const directions = rule.strategy ? [rule.strategy] : (['advance', 'postpone'] as const);
+    if (
+      directions.some((direction) =>
+        isDateAffectedByHolidayRule(date, { triggerDate, coverage, direction })
+      )
+    ) {
+      issues.add('incompleteHolidayRule');
     }
   }
 };
@@ -93,7 +161,8 @@ const addInboundTourShifts = (
   tour: WasteTourRecord,
   year: number,
   scheduling: WasteManagementSchedulingOverview,
-  holidayRules: ReturnType<typeof resolveHolidayRulesForYear>
+  holidayRules: ReturnType<typeof resolveHolidayRulesForYear>,
+  issues?: CalendarIssues
 ) => {
   const priorYearDates = new Set<string>();
   collectScheduledTourDates(priorYearDates, tour, year - 1);
@@ -106,11 +175,14 @@ const addInboundTourShifts = (
   );
   for (const shift of shifts) {
     const holidayNames: string[] = [];
+    recordIncompleteHolidayRules(shift.actualDate, scheduling, issues);
     const date = holidayRules.reduce((currentDate, rule) => {
+      recordIncompleteHolidayRules(currentDate, scheduling, issues);
       const nextDate = applyHolidayRule(currentDate, rule);
       if (nextDate !== currentDate) holidayNames.push(rule.holidayName);
       return nextDate;
     }, shift.actualDate);
+    recordIncompleteHolidayRules(date, scheduling, issues);
     if (!date.startsWith(`${year}-`)) continue;
     const previous = target.get(date);
     const combinedHolidayNames = [...new Set([...(previous?.holidayNames ?? []), ...holidayNames])];
@@ -126,11 +198,12 @@ const addInboundTourShifts = (
 export const calculateTourOccurrenceEntriesForYearInternal = (
   tour: WasteTourRecord,
   year: number,
-  scheduling: WasteManagementSchedulingOverview
+  scheduling: WasteManagementSchedulingOverview,
+  issues?: CalendarIssues
 ): readonly TourOccurrenceEntryInternal[] => {
   const results = new Set<string>();
-  collectScheduledTourDates(results, tour, year);
-  collectCustomTourDates(results, tour, year);
+  collectScheduledTourDates(results, tour, year, issues);
+  collectCustomTourDates(results, tour, year, issues);
 
   const tourShiftMap = buildShiftMap(
     resolveEffectiveWasteTourDateShiftsForYear(
@@ -147,15 +220,20 @@ export const calculateTourOccurrenceEntriesForYearInternal = (
 
   const shiftedResults = new Map<string, ShiftedTourOccurrence>();
   for (const date of results) {
-    const manuallyShifted = tourShiftMap.get(date) ?? globalShiftMap.get(date) ?? date;
+    const shiftTarget = tourShiftMap.get(date) ?? globalShiftMap.get(date) ?? date;
+    const manuallyShifted = isValidWasteIsoDateOnly(shiftTarget) ? shiftTarget : date;
+    if (manuallyShifted !== shiftTarget) issues?.add('invalidDates');
+    recordIncompleteHolidayRules(manuallyShifted, scheduling, issues);
     const holidayNames: string[] = [];
     const holidayShifted = holidayRules.reduce((currentDate, rule) => {
+      recordIncompleteHolidayRules(currentDate, scheduling, issues);
       const nextDate = applyHolidayRule(currentDate, rule);
       if (nextDate !== currentDate) {
         holidayNames.push(rule.holidayName);
       }
       return nextDate;
     }, manuallyShifted);
+    recordIncompleteHolidayRules(holidayShifted, scheduling, issues);
     const shifted = holidayShifted !== date;
     const previous = shiftedResults.get(holidayShifted);
     const combinedHolidayNames = Array.from(
@@ -169,7 +247,7 @@ export const calculateTourOccurrenceEntriesForYearInternal = (
     });
   }
 
-  addInboundTourShifts(shiftedResults, tour, year, scheduling, holidayRules);
+  addInboundTourShifts(shiftedResults, tour, year, scheduling, holidayRules, issues);
 
   return Array.from(shiftedResults.entries())
     .filter(([date]) => date.startsWith(`${year}-`))
@@ -206,3 +284,27 @@ export const calculateTourOccurrenceEntriesForYear = (
       originalDate,
     })
   );
+
+export const calculateTourCalendarForYear = (
+  tour: WasteTourRecord,
+  year: number,
+  scheduling: WasteManagementSchedulingOverview
+) => {
+  const issues = new Set<TourCalendarIssue>();
+  const entries = calculateTourOccurrenceEntriesForYearInternal(tour, year, scheduling, issues).map(
+    ({ date, shifted, originalDate }) => ({ date, shifted, originalDate })
+  );
+  const outsideValidityMonths = Array.from({ length: 12 }, (_, monthIndex) => {
+    const firstDay = `${year}-${String(monthIndex + 1).padStart(2, '0')}-01`;
+    const lastDay = formatUtcDate(new Date(Date.UTC(year, monthIndex + 1, 0)));
+    return (
+      isWasteTourValidityApplicable(tour) &&
+      issues.size === 0 &&
+      !entries.some((entry) => entry.date.slice(0, 7) === firstDay.slice(0, 7)) &&
+      Boolean(
+        (tour.firstDate && tour.firstDate > lastDay) || (tour.endDate && tour.endDate < firstDay)
+      )
+    );
+  });
+  return { entries, issues: [...issues], outsideValidityMonths };
+};

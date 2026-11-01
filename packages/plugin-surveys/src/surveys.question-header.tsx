@@ -18,11 +18,14 @@ export function SurveyQuestionHeader({
   updateQuestions: (nextQuestions: readonly SurveyQuestionFormValues[]) => void;
   requestDeleteQuestion: (questionIndex: number) => void;
 }>) {
-  const moveQuestion = (targetIndex: number) => updateQuestions(reorderEntries(questions, questionIndex, targetIndex));
+  const moveQuestion = (targetIndex: number) =>
+    updateQuestions(reorderEntries(questions, questionIndex, targetIndex));
 
   return (
-    <div className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-center sm:justify-between">
-      <h4 className="text-sm font-semibold text-foreground">{pt('labels.questionSection', { index: questionIndex + 1 })}</h4>
+    <div className="flex flex-col gap-3 border-b border-border-subtle pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <h4 className="text-sm font-semibold text-foreground">
+        {pt('labels.questionSection', { index: questionIndex + 1 })}
+      </h4>
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"

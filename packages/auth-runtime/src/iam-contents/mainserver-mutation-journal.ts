@@ -270,14 +270,37 @@ WHERE instance_id = $1 AND operation_external_id = $2;
 export const loadMainserverMutationJournal = async (input: {
   readonly instanceId: string;
   readonly operationExternalId: string;
+  readonly readScope?: Readonly<{
+    actorAccountId: string;
+    activeOrganizationId: string | null;
+    actingPrincipalType: 'organization' | 'user';
+  }>;
 }): Promise<MainserverMutationJournalEntry | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
     const result = await client.query<JournalRow>(
       `SELECT ${columns}
        FROM iam.mainserver_mutation_journal
        WHERE instance_id = $1 AND operation_external_id = $2
+       ${
+         input.readScope
+           ? `AND actor_account_id = $3::uuid
+         AND active_organization_id IS NOT DISTINCT FROM $4::uuid
+         AND acting_principal_type = $5
+         AND acting_principal_id = CASE WHEN $5 = 'user' THEN $3::uuid ELSE $4::uuid END`
+           : ''
+       }
        LIMIT 1;`,
-      [input.instanceId, input.operationExternalId]
+      [
+        input.instanceId,
+        input.operationExternalId,
+        ...(input.readScope
+          ? [
+              input.readScope.actorAccountId,
+              input.readScope.activeOrganizationId,
+              input.readScope.actingPrincipalType,
+            ]
+          : []),
+      ]
     );
     return result.rows[0] ? mapEntry(result.rows[0]) : undefined;
   });

@@ -19,7 +19,8 @@ vi.mock('../src/waste-management.page.support.js', () => ({
     message ? <div>{message.text}</div> : null,
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async () => ({
+  ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),
   Button: ({ loading, ...props }: React.ComponentProps<'button'> & { loading?: boolean }) => {
     void loading;
     return <button {...props} />;
@@ -46,7 +47,11 @@ vi.mock('@sva/studio-ui-react', () => ({
   Select: React.forwardRef<HTMLSelectElement, React.ComponentProps<'select'>>((props, ref) => (
     <select ref={ref} {...props} />
   )),
-  StudioFormSummaryErrors: ({ errors }: { readonly errors: readonly { field: string; message: string }[] }) =>
+  StudioFormSummaryErrors: ({
+    errors,
+  }: {
+    readonly errors: readonly { field: string; message: string }[];
+  }) =>
     errors.length > 0 ? (
       <div role="alert">
         {errors.map((error) => (
@@ -56,7 +61,13 @@ vi.mock('@sva/studio-ui-react', () => ({
         ))}
       </div>
     ) : null,
-  StudioField: ({ children, label }: { readonly children: React.ReactNode; readonly label: string }) => (
+  StudioField: ({
+    children,
+    label,
+  }: {
+    readonly children: React.ReactNode;
+    readonly label: string;
+  }) => (
     <label>
       <span>{label}</span>
       {children}
@@ -168,7 +179,9 @@ describe('waste-management.master-data-entity-dialogs components', () => {
 
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('alert').textContent).toContain('masterData.regions.fields.name');
-    expect(screen.getByLabelText('masterData.regions.fields.name').getAttribute('aria-invalid')).toBe('true');
+    expect(
+      screen.getByLabelText('masterData.regions.fields.name').getAttribute('aria-invalid')
+    ).toBe('true');
     expect(onBeforeSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -280,7 +293,9 @@ describe('waste-management.master-data-entity-dialogs components', () => {
     );
 
     expect(screen.getByText('masterData.streets.dialog.editTitle')).toBeTruthy();
-    expect((screen.getByLabelText('masterData.streets.fields.cityId') as HTMLSelectElement).value).toBe('city-1');
+    expect(
+      (screen.getByLabelText('masterData.streets.fields.cityId') as HTMLSelectElement).value
+    ).toBe('city-1');
 
     rerender(
       <HouseNumberDialog
@@ -299,9 +314,9 @@ describe('waste-management.master-data-entity-dialogs components', () => {
     );
 
     expect(screen.getByText('masterData.houseNumbers.dialog.editTitle')).toBeTruthy();
-    expect((screen.getByLabelText('masterData.houseNumbers.fields.streetId') as HTMLSelectElement).value).toBe(
-      'street-1'
-    );
+    expect(
+      (screen.getByLabelText('masterData.houseNumbers.fields.streetId') as HTMLSelectElement).value
+    ).toBe('street-1');
 
     fireEvent.change(screen.getByLabelText('masterData.houseNumbers.fields.streetId'), {
       target: { value: 'street-1' },
@@ -342,7 +357,9 @@ describe('waste-management.master-data-entity-dialogs components', () => {
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.create' }));
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('alert').textContent).toContain('masterData.fractions.fields.name');
-    expect(screen.getByRole('alert').textContent).toContain('masterData.fractions.fields.pdfShortLabel');
+    expect(screen.getByRole('alert').textContent).toContain(
+      'masterData.fractions.fields.pdfShortLabel'
+    );
 
     rerender(
       <CityDialog
@@ -399,7 +416,9 @@ describe('waste-management.master-data-entity-dialogs components', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'masterData.houseNumbers.actions.create' }));
     expect(await screen.findByRole('alert')).toBeTruthy();
-    expect(screen.getByRole('alert').textContent).toContain('masterData.houseNumbers.fields.number');
+    expect(screen.getByRole('alert').textContent).toContain(
+      'masterData.houseNumbers.fields.number'
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 

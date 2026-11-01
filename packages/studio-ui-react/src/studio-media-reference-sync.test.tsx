@@ -1,4 +1,12 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import * as React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ContentMediaReferenceSyncResult } from '@sva/plugin-sdk/content-media';
@@ -75,6 +83,52 @@ describe('useStudioMediaReferenceSync', () => {
     expect(contentMutation).not.toHaveBeenCalled();
     expect(screen.getByText('synced')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Referenzen erneut speichern' })).toBeNull();
+  });
+
+  it('preserves later media edits when an old save or reference retry completes', async () => {
+    const retry = vi.fn(async () => undefined);
+    const { result } = renderHook(() => {
+      const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([usage()]);
+      return {
+        mediaUsages,
+        setMediaUsages,
+        sync: useStudioMediaReferenceSync({ mediaUsages, setMediaUsages }),
+      };
+    });
+    const submitted = result.current.sync;
+    act(() =>
+      result.current.setMediaUsages((current) => [
+        { ...current[0]!, caption: 'Changed during save' },
+        { ...usage(), uiId: 'usage-2', assetId: 'asset-2' },
+      ])
+    );
+    act(() =>
+      submitted.consumeSaveResult({
+        status: 'reference_failed',
+        saved: { id: 'news-1' },
+        retryReferenceSync: retry,
+      })
+    );
+    expect(result.current.mediaUsages).toEqual([
+      expect.objectContaining({ caption: 'Changed during save', referenceStatus: 'failed' }),
+      expect.objectContaining({ uiId: 'usage-2', referenceStatus: 'pending' }),
+    ]);
+    act(() =>
+      result.current.setMediaUsages((current) => [
+        {
+          ...current[0]!,
+          assetId: 'replacement',
+          persistentUrl: 'https://cdn.example.test/new.jpg',
+          referenceStatus: 'pending',
+        },
+        ...current.slice(1),
+      ])
+    );
+    await act(() => result.current.sync.retryReferenceSync());
+    expect(result.current.mediaUsages[0]?.referenceStatus).toBe('pending');
+    expect(result.current.mediaUsages[0]?.assetId).toBe('replacement');
+    expect(result.current.mediaUsages[1]?.referenceStatus).toBe('pending');
+    expect(retry).toHaveBeenCalledOnce();
   });
 
   it('keeps a failed retry visible and leaves usages failed', async () => {

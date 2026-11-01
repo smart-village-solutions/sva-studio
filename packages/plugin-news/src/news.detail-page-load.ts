@@ -118,9 +118,18 @@ export const useNewsDetailLoad = ({
       if (isEditing) setIsLoading(false);
     }
   }, [contentId, mode, principalControl, pt, setIsLoading, setResourceAccess, setStatusMessage]);
+  const previousPolicyValue = React.useRef(principalControl?.value);
   React.useEffect(() => {
     if (principalControl) {
-      setActingPrincipalType(principalControl.value);
+      const policyValueChanged = previousPolicyValue.current !== principalControl.value;
+      previousPolicyValue.current = principalControl.value;
+      setActingPrincipalType((current) =>
+        !policyValueChanged &&
+        principalControl.kind === 'selectable' &&
+        principalControl.options.some((option) => option.value === current)
+          ? current
+          : principalControl.value
+      );
     }
   }, [principalControl]);
 

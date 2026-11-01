@@ -73,7 +73,7 @@ export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProp
         className="space-y-6"
         onSubmit={(event) => void props.onSubmit(event)}
       >
-        <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
+        <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
           {props.beforeFields}
           {props.variant === 'global' ? (
             <WasteSchedulingGlobalFields
@@ -92,7 +92,7 @@ export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProp
           )}
         </section>
 
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background px-5 py-4 shadow-shell">
           <WastePendingSaveButton type="submit" saving={props.saving} label={saveLabel} />
           <Button
             type="button"

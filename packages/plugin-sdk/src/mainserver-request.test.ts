@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { readMainserverMutationFailureOutcome } from './mainserver-error-metadata.js';
 
 import {
   createMainserverJsonRequestHeaders,
@@ -10,6 +11,35 @@ import {
 describe('mainserver-request', () => {
   const readHeaders = (headers: HeadersInit | undefined): Record<string, string> =>
     Object.fromEntries(new Headers(headers).entries());
+
+  it.each([
+    ['not_applied', 'not_applied'],
+    ['unknown', 'unknown'],
+    [null, 'unknown'],
+  ])('requires explicit server evidence for a safe retry (%s)', async (header, expected) => {
+    const fetch = vi.fn(async () =>
+      Response.json(
+        { error: 'forbidden' },
+        {
+          status: 403,
+          headers: header ? { 'X-SVA-Mutation-Outcome': header } : {},
+        }
+      )
+    );
+    const error = await requestMainserverJson({
+      url: '/news',
+      fetch,
+      init: { method: 'POST' },
+    }).catch((failure: unknown) => failure);
+    expect(readMainserverMutationFailureOutcome(error)).toBe(expected);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+  it('never infers an unapplied write from network loss or a timeout', () => {
+    expect(readMainserverMutationFailureOutcome(new TypeError('fetch failed'))).toBe('unknown');
+    expect(
+      readMainserverMutationFailureOutcome(Object.assign(new Error('timeout'), { httpStatus: 504 }))
+    ).toBe('unknown');
+  });
 
   it('builds canonical json request headers', () => {
     expect(

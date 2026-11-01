@@ -41,6 +41,23 @@ export const MainserverResourcePrincipalBoundary = ({
   const [resolvedOwner, setResolvedOwner] = React.useState<MainserverResolvedOwner | null>(null);
   const [transferAuthorized, setTransferAuthorized] = React.useState(false);
   React.useEffect(() => setResolvedOwner(null), [contentId, contentType]);
+  const lastReady = React.useRef<{
+    key: string;
+    resolution: Extract<
+      ReturnType<typeof useMainserverResourcePrincipalControl>,
+      { kind: 'ready' }
+    >;
+  } | null>(null);
+  const resourceKey = `${contentType}:${contentId}`;
+  React.useLayoutEffect(() => {
+    if (resolution.kind === 'ready') lastReady.current = { key: resourceKey, resolution };
+  }, [resolution, resourceKey]);
+  const ready =
+    resolution.kind === 'ready'
+      ? resolution
+      : lastReady.current?.key === resourceKey
+        ? lastReady.current.resolution
+        : null;
   const transferSupported = contentId !== undefined && contentType !== 'surveys.survey';
   const transferCapabilityConfirmed = mutationCapabilities.enabledActions.includes(
     'content.transferOwnership'
@@ -105,16 +122,15 @@ export const MainserverResourcePrincipalBoundary = ({
       active = false;
     };
   }, [contentId, actingPrincipalType, baseUrl, resolution.kind, user?.id]);
-  if (resolution.kind === 'loading') {
-    return <StudioLoadingState>{t('content.principal.resourceLoading')}</StudioLoadingState>;
-  }
-  if (resolution.kind === 'error') {
-    return (
+  const unavailable =
+    resolution.kind === 'loading' ? (
+      <StudioLoadingState>{t('content.principal.resourceLoading')}</StudioLoadingState>
+    ) : resolution.kind === 'error' ? (
       <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
         <AlertDescription>{t('content.principal.resourceUnavailable')}</AlertDescription>
       </Alert>
-    );
-  }
+    ) : null;
+  if (!ready) return unavailable;
 
   const panel = (
     <ContentOwnershipPanel
@@ -125,10 +141,10 @@ export const MainserverResourcePrincipalBoundary = ({
               principalResolution: resolvedOwner.principalResolution,
               displayName: resolvedOwner.displayName,
             }
-          : resolution.owner
+          : ready.owner
       }
       supported={transferSupported && transferCapabilityConfirmed}
-      canTransfer={transferAuthorized}
+      canTransfer={resolution.kind === 'ready' && Boolean(user) && transferAuthorized}
       labels={ownershipPanelLabels()}
       loadTargets={loadOwnershipTargets}
       resolveTransferError={resolveOwnershipTransferError}
@@ -166,8 +182,13 @@ export const MainserverResourcePrincipalBoundary = ({
     />
   );
   return (
-    <ContentOwnershipSlotsProvider value={{ panel }}>
-      {children(resolution.control)}
-    </ContentOwnershipSlotsProvider>
+    <>
+      {unavailable}
+      <ContentOwnershipSlotsProvider value={{ panel }}>
+        <fieldset disabled={resolution.kind !== 'ready' || !user} className="min-w-0 border-0 p-0">
+          {children(ready.control)}
+        </fieldset>
+      </ContentOwnershipSlotsProvider>
+    </>
   );
 };

@@ -116,7 +116,7 @@ export const WasteToursContentBody = ({
     ref={focusFallbackRef}
     tabIndex={-1}
     aria-label={focusFallbackLabel}
-    className="overflow-hidden rounded-none border-y border-border bg-card shadow-shell"
+    className="overflow-hidden rounded-none border border-border-subtle bg-card"
   >
     <WastePanelTableTopBar>
       <WasteToursToolbar

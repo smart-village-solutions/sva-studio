@@ -19,10 +19,12 @@ import {
 import { useNewsDetailMedia } from './news.detail-page-media.js';
 import { useNewsDetailOptions } from './news.detail-page-options.js';
 import { useNewsDetailLoad } from './news.detail-page-load.js';
+import type { PendingNewsSave } from './news.detail-page-recovery.js';
 import { useNewsDetailSave } from './news.detail-page-save.js';
 import { useNewsDetailDelete } from './news.detail-page-delete.js';
 import { createNewsDetailPanels } from './news.detail-page-panels.js';
-import { useNewsDirtyTabs, useNewsDetailTabsState } from './news.detail-page-tabs.js';
+import { deriveDirtyNewsDetailTabs } from './news.detail-form-dirty.js';
+import type { NewsDetailTabId } from './news.types.js';
 import { NewsDetailPageView } from './news.detail-page-view.js';
 import { useNewsDetailAccess } from './news.detail-page-access.js';
 import { pluginNewsActionIds } from './plugin.js';
@@ -61,6 +63,7 @@ export const NewsDetailPage = ({
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
   const mediaReferenceSync = useStudioMediaReferenceSync({ mediaUsages, setMediaUsages });
   const [retryCreatedContentId, setRetryCreatedContentId] = React.useState<string | null>(null);
+  const [pendingSave, setPendingSave] = React.useState<PendingNewsSave | null>(null);
   const methods = useForm<NewsDetailFormValues>({
     defaultValues: createDefaultNewsDetailFormValues(),
     resolver: newsDetailFormResolver,
@@ -91,8 +94,10 @@ export const NewsDetailPage = ({
   const { formState, reset } = methods;
   const [editorMediaDirty, setEditorMediaDirty] = React.useState(false);
   const leaveGuard = useStudioEditorLeaveGuard({
-    enabled: mode === 'create',
+    enabled: true,
     hasUnsavedChanges:
+      pendingSave !== null ||
+      formState.isSubmitting ||
       formState.isDirty ||
       (editorMediaDirty && (retryCreatedContentId !== null || mediaUsages.length > 0)) ||
       mediaReferenceSync.hasPendingRetry,
@@ -118,7 +123,6 @@ export const NewsDetailPage = ({
     submittedRevision.current = leaveGuard.captureRevision();
   }, [leaveGuard.captureRevision]);
   const completeCreateSave = React.useCallback(() => {
-    if (mode !== 'create') return true;
     if (
       submittedRevision.current === null ||
       !leaveGuard.acknowledgeSaved(submittedRevision.current)
@@ -127,7 +131,7 @@ export const NewsDetailPage = ({
     reset(methods.getValues());
     setEditorMediaDirty(false);
     return true;
-  }, [mode, leaveGuard.acknowledgeSaved, reset, methods]);
+  }, [leaveGuard.acknowledgeSaved, reset, methods]);
 
   React.useEffect(() => {
     if (formState.isDirty) {
@@ -159,7 +163,11 @@ export const NewsDetailPage = ({
     setMediaAssets,
     pt,
   });
-  const dirtyTabs = useNewsDirtyTabs(formState);
+  const dirtyTabs = deriveDirtyNewsDetailTabs(
+    formState.isDirty
+      ? (formState.dirtyFields as Parameters<typeof deriveDirtyNewsDetailTabs>[0])
+      : {}
+  );
 
   React.useEffect(() => {
     void refreshMediaAssets();
@@ -183,7 +191,13 @@ export const NewsDetailPage = ({
     actingPrincipalType,
     setActingPrincipalType,
   });
-  const { navigateToCreatedDetail, saveCurrentItem } = useNewsDetailSave({
+  const {
+    navigateToCreatedDetail,
+    saveCurrentItem,
+    checkSaveOutcome,
+    checkingSave,
+    hasUnknownSave,
+  } = useNewsDetailSave({
     methods,
     canSave,
     mediaReferenceSync,
@@ -206,6 +220,8 @@ export const NewsDetailPage = ({
     captureCreateSave,
     completeCreateSave,
     retryCreatedContentId,
+    pendingSave,
+    setPendingSave,
   });
 
   const {
@@ -218,7 +234,7 @@ export const NewsDetailPage = ({
     setDeleteErrorMessage,
   } = useNewsDetailDelete({ contentId, actingPrincipalType, pt });
 
-  const { activeTab, handleTabChange, warmTab, visitedTabs } = useNewsDetailTabsState();
+  const [activeTab, handleTabChange] = React.useState<NewsDetailTabId>('basis');
 
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
@@ -260,7 +276,7 @@ export const NewsDetailPage = ({
       {...{
         mode,
         pt,
-        canSave: canSave && !(mode === 'create' && retryCreatedContentId),
+        canSave: canSave && !hasUnknownSave && !(mode === 'create' && retryCreatedContentId),
         principalReady: isMainserverPrincipalReady(principalControl, actingPrincipalType),
         reloadCurrentContext,
         formId,
@@ -283,8 +299,13 @@ export const NewsDetailPage = ({
         addManualMedia,
         canUpdateMedia,
         saveCurrentItem,
+        checkSaveOutcome,
+        checkingSave,
         deleteNavigationFailed,
-        statusMessage,
+        statusMessage:
+          hasUnknownSave && statusMessage?.source !== 'unknown'
+            ? { source: 'unknown', text: pt('messages.saveOutcomeUnknown') }
+            : statusMessage,
         retryCreatedContentId,
         navigateToCreatedDetail,
         completeCreateSave,
@@ -292,8 +313,6 @@ export const NewsDetailPage = ({
         tabs,
         activeTab,
         handleTabChange,
-        warmTab,
-        visitedTabs,
         deleteDialogOpen,
         deleteErrorMessage,
         onDelete,

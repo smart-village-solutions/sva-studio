@@ -40,7 +40,10 @@ const PostalCodeActiveStatus = ({ processed, total }: { processed: number; total
   const pt = usePluginTranslation('wasteManagement');
   const percentage = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
   return (
-    <section role="status" className="space-y-3 rounded-xl border border-border/70 bg-muted/10 p-4">
+    <section
+      role="status"
+      className="space-y-3 rounded-lg border border-border/70 bg-surface-inset p-4"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold">{pt('tools.postalCodes.progressTitle')}</h3>
@@ -81,7 +84,7 @@ const PostalCodeFailedStatus = ({
   return (
     <section
       role="alert"
-      className="space-y-1 rounded-xl border border-destructive/40 bg-destructive/5 p-4"
+      className="space-y-1 rounded-lg border border-status-error-foreground/40 bg-status-error text-status-error-foreground p-4"
     >
       <h3 className="text-sm font-semibold">{pt('tools.postalCodes.errorTitle')}</h3>
       <p className="text-sm text-muted-foreground">
@@ -105,7 +108,10 @@ const PostalCodeFailedStatus = ({
 const PostalCodeResultStatus = ({ result }: { result: Readonly<Record<string, unknown>> }) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <section role="status" className="space-y-1 rounded-xl border border-border/70 bg-muted/10 p-4">
+    <section
+      role="status"
+      className="space-y-1 rounded-lg border border-border/70 bg-surface-inset p-4"
+    >
       <h3 className="text-sm font-semibold">{pt('tools.postalCodes.resultTitle')}</h3>
       <p className="text-sm text-muted-foreground">
         {pt('tools.postalCodes.resultSummary', {
@@ -117,7 +123,7 @@ const PostalCodeResultStatus = ({ result }: { result: Readonly<Record<string, un
         })}
       </p>
       {readBoolean(result, 'budgetExhausted') ? (
-        <p className="text-sm font-medium text-amber-700" role="alert">
+        <p className="text-sm font-medium text-status-warning-foreground" role="alert">
           {pt('tools.postalCodes.budgetSummary', {
             requests: readNumber(result, 'providerRequestCount'),
             budget: readNumber(result, 'requestBudget'),

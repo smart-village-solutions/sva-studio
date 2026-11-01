@@ -42,6 +42,7 @@ export const formatTourDateRange = (tour: WasteTourRecord) => {
 export {
   calculateTourOccurrencesForYear,
   calculateTourOccurrenceEntriesForYear,
+  calculateTourCalendarForYear,
 } from './waste-management.tours.presentation.calendar.js';
 export { resolveTourShiftDetails } from './waste-management.tours.presentation.shift-details.js';
 export type { TourShiftDetail } from './waste-management.tours.presentation.shift-details.js';

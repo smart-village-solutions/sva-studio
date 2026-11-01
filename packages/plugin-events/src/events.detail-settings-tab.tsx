@@ -2,7 +2,7 @@ import { useFormContext, useWatch } from 'react-hook-form';
 import { Checkbox, Input, StudioField } from '@sva/studio-ui-react';
 
 import type { EventsDetailFormValues } from './events.detail-form.js';
-import { EventsDetailCard } from './events.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 
 export function EventsDetailSettingsTab({
   pt,
@@ -18,7 +18,7 @@ export function EventsDetailSettingsTab({
   return (
     <div className="space-y-6">
       {section !== 'technical' ? (
-        <EventsDetailCard
+        <StudioDetailCard
           title={pt('cards.settings.publication.title')}
           description={pt('cards.settings.publication.description')}
         >
@@ -31,11 +31,11 @@ export function EventsDetailSettingsTab({
               }
             />
           </StudioField>
-        </EventsDetailCard>
+        </StudioDetailCard>
       ) : null}
 
       {section !== 'publication' ? (
-        <EventsDetailCard
+        <StudioDetailCard
           title={pt('cards.settings.technical.title')}
           description={pt('cards.settings.technical.description')}
         >
@@ -48,7 +48,7 @@ export function EventsDetailSettingsTab({
               }
             />
           </StudioField>
-        </EventsDetailCard>
+        </StudioDetailCard>
       ) : null}
     </div>
   );

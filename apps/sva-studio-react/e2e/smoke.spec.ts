@@ -385,3 +385,52 @@ test('router keeps the shell active during client-side navigation', async ({ pag
   await expectAppShellReady(page);
   expect(pageErrors).toEqual([]);
 });
+
+for (const label of [/^(?:Login|Anmelden)$/, 'Als Dev-User anmelden']) {
+  test(`local dev login works through the real browser session: ${label}`, async ({ page }) => {
+    test.skip(
+      process.env.PLAYWRIGHT_RUNTIME_PROFILE !== 'local-builder',
+      'Requires the local dev-auth runtime.'
+    );
+    await page.context().clearCookies();
+    await page.addInitScript(() => window.localStorage.setItem('sva_auth_had_session', '1'));
+    await page.goto('/');
+    const main = page.getByRole('main');
+    const login = main
+      .getByRole('button', { name: label, exact: true })
+      .or(main.getByRole('link', { name: label, exact: true }));
+    await expect(login).toBeVisible();
+    await login.click();
+    await expect(
+      page.getByRole('banner').getByRole('button', { name: /dev:local-admin/ })
+    ).toBeVisible();
+    await expect(
+      main.getByRole('button', { name: 'Als Dev-User anmelden', exact: true })
+    ).toHaveCount(0);
+    expect((await page.context().cookies()).some((cookie) => cookie.name === 'sva_dev_auth')).toBe(
+      true
+    );
+    expect((await page.request.get('/auth/me')).status()).toBe(200);
+    await page.reload();
+    await expect(
+      main.getByRole('button', { name: 'Als Dev-User anmelden', exact: true })
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole('banner').getByRole('button', { name: /dev:local-admin/ })
+    ).toBeVisible();
+    const reloaded = await page
+      .waitForEvent('framenavigated', {
+        predicate: (frame) => frame === page.mainFrame(),
+        timeout: 2_000,
+      })
+      .then(
+        () => true,
+        (error: unknown) => {
+          if (error instanceof Error && error.name === 'TimeoutError') return false;
+          throw error;
+        }
+      );
+    expect(reloaded).toBe(false);
+    await page.screenshot({ path: test.info().outputPath('local-dev-session-stable.png') });
+  });
+}

@@ -1,5 +1,9 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconArrowsSort, IconSortAZ, IconSortZA } from '@tabler/icons-react';
+import {
+  ArrowUpDown as IconArrowsSort,
+  ArrowDownAZ as IconSortAZ,
+  ArrowDownZA as IconSortZA,
+} from 'lucide-react';
 import { Button, Checkbox } from '@sva/studio-ui-react';
 
 export type WasteToursSortField = 'name' | 'recurrence' | 'dateRange' | 'locations' | 'status';
@@ -7,12 +11,12 @@ export type WasteToursSortDirection = 'asc' | 'desc';
 
 const SortIcon = ({ direction }: { readonly direction: false | WasteToursSortDirection }) => {
   if (direction === 'asc') {
-    return <IconSortAZ className="h-4 w-4" aria-hidden="true" />;
+    return <IconSortAZ strokeWidth={1} className="h-4 w-4" aria-hidden="true" />;
   }
   if (direction === 'desc') {
-    return <IconSortZA className="h-4 w-4" aria-hidden="true" />;
+    return <IconSortZA strokeWidth={1} className="h-4 w-4" aria-hidden="true" />;
   }
-  return <IconArrowsSort className="h-4 w-4" aria-hidden="true" />;
+  return <IconArrowsSort strokeWidth={1} className="h-4 w-4" aria-hidden="true" />;
 };
 
 const SortLabel = ({
@@ -36,7 +40,6 @@ const SortLabel = ({
     <span className={active ? 'text-foreground' : 'text-muted-foreground'}>
       <SortIcon direction={active ? direction : false} />
     </span>
-    <span className="sr-only">{active ? direction : 'none'}</span>
   </Button>
 );
 
@@ -58,7 +61,7 @@ export const WasteToursTableHeader = ({
   const pt = usePluginTranslation('wasteManagement');
 
   return (
-    <thead className="bg-muted/20 text-left text-[13px] text-foreground">
+    <thead className="bg-surface-inset text-left text-[13px] text-foreground">
       <tr className="border-b border-border/70">
         <th scope="col" className="w-11 px-3 py-3">
           <Checkbox
@@ -68,7 +71,13 @@ export const WasteToursTableHeader = ({
             onChange={(event) => onToggleSelectAllVisible(event.currentTarget.checked)}
           />
         </th>
-        <th scope="col" className="w-[150px] px-3 py-3 font-semibold">
+        <th
+          scope="col"
+          className="w-[150px] px-3 py-3 font-semibold"
+          aria-sort={
+            sortField === 'name' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'
+          }
+        >
           <SortLabel
             label={pt('tours.table.name')}
             active={sortField === 'name'}
@@ -76,8 +85,20 @@ export const WasteToursTableHeader = ({
             onClick={() => onSortChange('name')}
           />
         </th>
-        <th scope="col" className="w-[176px] px-3 py-3">{pt('tours.table.fractions')}</th>
-        <th scope="col" className="w-[132px] px-3 py-3 font-semibold">
+        <th scope="col" className="w-[176px] px-3 py-3">
+          {pt('tours.table.fractions')}
+        </th>
+        <th
+          scope="col"
+          className="w-[132px] px-3 py-3 font-semibold"
+          aria-sort={
+            sortField === 'recurrence'
+              ? sortDirection === 'asc'
+                ? 'ascending'
+                : 'descending'
+              : 'none'
+          }
+        >
           <SortLabel
             label={pt('tours.table.recurrence')}
             active={sortField === 'recurrence'}
@@ -85,7 +106,17 @@ export const WasteToursTableHeader = ({
             onClick={() => onSortChange('recurrence')}
           />
         </th>
-        <th scope="col" className="w-[156px] px-3 py-3 font-semibold">
+        <th
+          scope="col"
+          className="w-[156px] px-3 py-3 font-semibold"
+          aria-sort={
+            sortField === 'dateRange'
+              ? sortDirection === 'asc'
+                ? 'ascending'
+                : 'descending'
+              : 'none'
+          }
+        >
           <SortLabel
             label={pt('tours.table.dateRange')}
             active={sortField === 'dateRange'}
@@ -93,8 +124,20 @@ export const WasteToursTableHeader = ({
             onClick={() => onSortChange('dateRange')}
           />
         </th>
-        <th scope="col" className="w-[168px] px-3 py-3">{pt('tours.table.shifts')}</th>
-        <th scope="col" className="w-[94px] px-3 py-3 font-semibold">
+        <th scope="col" className="w-[168px] px-3 py-3">
+          {pt('tours.table.shifts')}
+        </th>
+        <th
+          scope="col"
+          className="w-[94px] px-3 py-3 font-semibold"
+          aria-sort={
+            sortField === 'locations'
+              ? sortDirection === 'asc'
+                ? 'ascending'
+                : 'descending'
+              : 'none'
+          }
+        >
           <SortLabel
             label={pt('tours.table.locations')}
             active={sortField === 'locations'}
@@ -102,7 +145,13 @@ export const WasteToursTableHeader = ({
             onClick={() => onSortChange('locations')}
           />
         </th>
-        <th scope="col" className="w-[92px] px-3 py-3 font-semibold">
+        <th
+          scope="col"
+          className="w-[92px] px-3 py-3 font-semibold"
+          aria-sort={
+            sortField === 'status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'
+          }
+        >
           <SortLabel
             label={pt('tours.table.status')}
             active={sortField === 'status'}
@@ -110,7 +159,9 @@ export const WasteToursTableHeader = ({
             onClick={() => onSortChange('status')}
           />
         </th>
-        <th scope="col" className="w-[150px] px-3 py-3 text-right">{pt('tours.table.actions')}</th>
+        <th scope="col" className="w-[150px] px-3 py-3 text-right">
+          {pt('tours.table.actions')}
+        </th>
       </tr>
     </thead>
   );

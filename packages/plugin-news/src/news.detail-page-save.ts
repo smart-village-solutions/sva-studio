@@ -1,8 +1,10 @@
+import { ContentMediaSaveError } from '@sva/plugin-sdk/content-media';
 import * as React from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { useNavigate } from '@tanstack/react-router';
 import {
   contentMediaSavePhaseMessageKey,
+  readMainserverMutationFailureOutcome,
   readMainserverErrorRequestId,
   saveContentWithHostMediaReferences,
   toDatetimeLocalValue,
@@ -18,6 +20,7 @@ import {
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
 import { createNews, NewsApiError, saveNewsEditorItem, updateNews } from './news.api.js';
+import { recoverNewsSave, type PendingNewsSave } from './news.detail-page-recovery.js';
 import { NEWS_CONTENT_TYPE } from './news.constants.js';
 import { mapNewsItemToDetailFormValues } from './news.detail-form.js';
 import {
@@ -35,6 +38,8 @@ import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
 
 const persistNewsDetailContent = async ({
   values,
+  mutationId,
+  onContentSaveStarted,
   contentId,
   mediaUsages,
   loadedItem,
@@ -45,6 +50,8 @@ const persistNewsDetailContent = async ({
   mediaReferenceSync,
 }: Readonly<{
   values: NewsDetailFormValues;
+  mutationId: string;
+  onContentSaveStarted: () => void;
   contentId?: string;
   mediaUsages: readonly ContentMediaUsage[];
   loadedItem: NewsContentItem | null;
@@ -57,8 +64,9 @@ const persistNewsDetailContent = async ({
   const saveContent = (
     draftResolutions: Parameters<typeof resolveContentMediaUsageDrafts>[1] = [],
     mediaSaveContext?: Readonly<{ operationId: string }>
-  ) =>
-    saveNewsEditorItem(
+  ) => {
+    onContentSaveStarted();
+    return saveNewsEditorItem(
       {
         contentId,
         values: {
@@ -70,12 +78,17 @@ const persistNewsDetailContent = async ({
         existingItem: loadedItem ?? null,
         actingPrincipalType,
         canWriteWasteTargets: hasWasteTargetingAccess,
-        mutationOptions: mediaSaveContext
-          ? { contentMediaSaveOperationId: mediaSaveContext.operationId }
-          : undefined,
+        mutationOptions: {
+          operationId: mutationId,
+          idempotencyKey: mutationId,
+          ...(mediaSaveContext
+            ? { contentMediaSaveOperationId: mediaSaveContext.operationId }
+            : {}),
+        },
       },
       { createNews, updateNews }
     );
+  };
   const result = requiresReferenceSync
     ? await saveContentWithHostMediaReferences({
         fetch: globalThis.fetch.bind(globalThis),
@@ -116,6 +129,8 @@ type NewsDetailSaveOptions = Readonly<{
   captureCreateSave: () => void;
   completeCreateSave: () => boolean;
   retryCreatedContentId: string | null;
+  pendingSave: PendingNewsSave | null;
+  setPendingSave: React.Dispatch<React.SetStateAction<PendingNewsSave | null>>;
 }>;
 
 const didDeclineGlobalPush = (
@@ -171,13 +186,63 @@ export const useNewsDetailSave = ({
   captureCreateSave,
   completeCreateSave,
   retryCreatedContentId,
+  pendingSave,
+  setPendingSave,
 }: NewsDetailSaveOptions) => {
   const { reset } = methods;
   const confirmedCreateId = React.useRef<string | null>(null);
   const navigateToCreatedDetail = useCreatedNewsNavigation();
+  const pendingSaveRef = React.useRef<PendingNewsSave | null>(null);
+  const inFlight = React.useRef(false);
+  const [checkingSave, setCheckingSave] = React.useState(false);
+  const checkSaveOutcome = async () => {
+    const pending = pendingSaveRef.current;
+    if (!pending || inFlight.current || checkingSave) return;
+    inFlight.current = true;
+    setCheckingSave(true);
+    try {
+      const recovery = await recoverNewsSave(pending);
+      if (recovery.outcome === 'not_applied') {
+        pendingSaveRef.current = null;
+        setPendingSave(null);
+        setStatusMessage({ source: 'save', text: pt('messages.saveNotApplied') });
+      } else if (recovery.outcome === 'succeeded') {
+        const handled = pending.consumeMediaResult(recovery.result);
+        if (mode === 'create') {
+          confirmedCreateId.current = handled.saved.id;
+          setRetryCreatedContentId(handled.saved.id);
+        }
+        setLoadedItem(handled.saved);
+        // Recovery acknowledges the old operation and never resets the current draft.
+        pendingSaveRef.current = null;
+        setPendingSave(null);
+        setStatusMessage({
+          source: handled.referenceFailed ? 'reference' : 'recovered',
+          text: pt(
+            handled.referenceFailed
+              ? 'messages.mediaReferencePartialFailure'
+              : 'messages.saveRecovered'
+          ),
+        });
+        saveFeedback.reset();
+      } else {
+        setStatusMessage({ source: 'unknown', text: pt('messages.saveOutcomeUnknown') });
+      }
+    } catch (error) {
+      setStatusMessage({
+        source: 'unknown',
+        text: pt('messages.saveOutcomeCheckFailed'),
+        requestId: readMainserverErrorRequestId(error),
+      });
+    } finally {
+      inFlight.current = false;
+      setCheckingSave(false);
+    }
+  };
 
   const saveCurrentItem = methods.handleSubmit(
     async (values) => {
+      if (inFlight.current || pendingSaveRef.current) return;
       if (!canSave || (mode === 'create' && (retryCreatedContentId || confirmedCreateId.current)))
         return;
       if (didDeclineGlobalPush(values, loadedItem, pt, wasteTargetingAvailability)) return;
@@ -194,12 +259,19 @@ export const useNewsDetailSave = ({
         return;
       }
 
+      inFlight.current = true;
+      const mutationId = crypto.randomUUID();
+      let contentSaveStarted = false;
       captureCreateSave();
       const operationId = saveFeedback.beginSaving();
       setMediaSavePhaseKey(null);
       try {
         const handledResult = await persistNewsDetailContent({
           values,
+          mutationId,
+          onContentSaveStarted: () => {
+            contentSaveStarted = true;
+          },
           contentId,
           mediaUsages,
           loadedItem,
@@ -210,6 +282,7 @@ export const useNewsDetailSave = ({
           mediaReferenceSync,
         });
         const saved = handledResult.saved;
+        setLoadedItem(saved);
         if (mode === 'create') confirmedCreateId.current = saved.id;
         if (handledResult.referenceFailed) {
           setRetryCreatedContentId(mode === 'create' ? saved.id : null);
@@ -225,6 +298,8 @@ export const useNewsDetailSave = ({
           setRetryCreatedContentId(saved.id);
           if (!completeCreateSave()) {
             setStatusMessage({ source: 'navigation', text: pt('create.savedWithNewChanges') });
+            saveFeedback.reset();
+            return;
           }
           saveFeedback.markSaved(operationId);
           try {
@@ -240,6 +315,12 @@ export const useNewsDetailSave = ({
           return;
         }
 
+        if (!completeCreateSave()) {
+          setLoadedItem(saved);
+          setStatusMessage({ source: 'recovered', text: pt('messages.saveRecovered') });
+          saveFeedback.reset();
+          return;
+        }
         const nextValues = mapNewsItemToDetailFormValues(saved);
         reset(nextValues);
         setRetryCreatedContentId(null);
@@ -249,6 +330,30 @@ export const useNewsDetailSave = ({
         setStatusMessage(null);
         saveFeedback.markSaved(operationId);
       } catch (error) {
+        const mediaError = error instanceof ContentMediaSaveError ? error : undefined;
+        if (
+          contentSaveStarted &&
+          (mediaError?.status === 'outcome_unknown' ||
+            readMainserverMutationFailureOutcome(error) === 'unknown')
+        ) {
+          const pending: PendingNewsSave = {
+            operationId: mutationId,
+            principal: actingPrincipalType,
+            mediaUsages,
+            requiresReferenceSync,
+            consumeMediaResult: mediaReferenceSync.consumeSaveResult,
+            ...(mediaError ? { mediaError } : {}),
+          };
+          pendingSaveRef.current = pending;
+          setPendingSave(pending);
+          setStatusMessage({
+            source: 'unknown',
+            text: pt('messages.saveOutcomeUnknown'),
+            requestId: readMainserverErrorRequestId(error),
+          });
+          saveFeedback.markFailed(operationId);
+          return;
+        }
         setStatusMessage({
           source: 'save',
           text: resolveNewsErrorMessage(pt, error, 'messages.saveError'),
@@ -256,13 +361,23 @@ export const useNewsDetailSave = ({
           ...(error instanceof NewsApiError ? { errorCode: error.code } : {}),
         });
         saveFeedback.markFailed(operationId);
+      } finally {
+        inFlight.current = false;
       }
     },
     () => {
-      setStatusMessage(null);
-      saveFeedback.reset();
+      if (!pendingSaveRef.current) {
+        setStatusMessage(null);
+        saveFeedback.reset();
+      }
     }
   );
 
-  return { navigateToCreatedDetail, saveCurrentItem };
+  return {
+    navigateToCreatedDetail,
+    saveCurrentItem,
+    checkSaveOutcome,
+    checkingSave,
+    hasUnknownSave: pendingSave !== null,
+  };
 };

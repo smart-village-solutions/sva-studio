@@ -13,21 +13,8 @@ vi.mock('../src/waste-management.page.support.js', () => ({
     message ? <div>{message.text}</div> : null,
 }));
 
-vi.mock('../src/waste-management.form-switch.js', () => ({
-  WasteManagementFormSwitch: ({
-    checked,
-    onChange,
-  }: {
-    readonly checked: boolean;
-    readonly onChange: (checked: boolean) => void;
-  }) => (
-    <button type="button" onClick={() => onChange(!checked)}>
-      {checked ? 'active' : 'inactive'}
-    </button>
-  ),
-}));
-
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async () => ({
+  ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),
   Badge: ({ children }: { readonly children: React.ReactNode }) => <span>{children}</span>,
   Button: ({ loading, ...props }: React.ComponentProps<'button'> & { loading?: boolean }) => {
     void loading;

@@ -1,6 +1,6 @@
 import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconFilter } from '@tabler/icons-react';
+import { Filter as IconFilter } from 'lucide-react';
 import {
   Button,
   Dialog,
@@ -171,7 +171,7 @@ export const WasteFractionsFilterAction = ({
           <Button
             type="button"
             variant="tertiary"
-            className="h-10 rounded-lg px-3"
+            className="h-11 rounded-md px-3"
             onClick={onResetFractionsStatus}
           >
             {pt('masterData.fractions.filters.reset')}
@@ -180,10 +180,10 @@ export const WasteFractionsFilterAction = ({
         <Button
           type="button"
           variant="secondary"
-          className="h-10 rounded-lg border-border/70 px-3"
+          className="h-11 rounded-md border-border/70 px-3"
           onClick={onOpenFilterDialog}
         >
-          <IconFilter aria-hidden="true" className="h-4 w-4" />
+          <IconFilter strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
           {pt('masterData.fractions.filters.open')}
         </Button>
       </div>

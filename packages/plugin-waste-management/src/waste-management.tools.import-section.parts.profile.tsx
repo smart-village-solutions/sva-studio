@@ -1,5 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Badge, Button } from '@sva/studio-ui-react';
+import { badgeVariants, Button } from '@sva/studio-ui-react';
 import {
   locationTourPickupDateProfileId,
   WasteToolsWizardFooter,
@@ -32,29 +32,32 @@ const WasteToolsImportProfileChooser = ({
         const isPrimary = profile.profileId === locationTourPickupDateProfileId;
         const isSelected = profile.profileId === selectedProfileId;
         return (
-          <button
+          <Button
+            variant="secondary"
             key={profile.profileId}
             type="button"
             aria-pressed={isSelected}
-            className={`w-full rounded-2xl border p-4 text-left transition ${
+            className={`h-auto w-full flex-col items-stretch whitespace-normal rounded-lg border p-4 text-left transition ${
               isSelected
                 ? 'border-primary bg-primary/10'
                 : isPrimary
-                  ? 'border-border/70 bg-muted/10 hover:border-primary/50'
-                  : 'border-border/60 bg-background hover:border-border'
+                  ? 'border-border/70 bg-surface-inset hover:border-primary/50'
+                  : 'border-border-subtle bg-background hover:border-border'
             }`}
             onClick={() => onSelect(profile.profileId)}
           >
-            <div className="flex flex-wrap items-center gap-2">
-              <h4 className={`text-sm font-semibold ${isPrimary ? 'text-base' : ''}`}>
+            <span className="flex flex-wrap items-center gap-2">
+              <span className={`text-sm font-semibold ${isPrimary ? 'text-base' : ''}`}>
                 {profile.displayName}
-              </h4>
+              </span>
               {isPrimary ? (
-                <Badge variant="secondary">{pt('tools.imports.wizard.preferredBadge')}</Badge>
+                <span className={badgeVariants({ variant: 'secondary' })}>
+                  {pt('tools.imports.wizard.preferredBadge')}
+                </span>
               ) : null}
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">{profile.description}</p>
-          </button>
+            </span>
+            <span className="mt-2 block text-sm text-muted-foreground">{profile.description}</span>
+          </Button>
         );
       })}
     </div>

@@ -140,7 +140,7 @@ export const WasteToursTable = (props: WasteToursTableProps) => {
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="min-w-full border-collapse">
           <caption className="sr-only">{pt('tours.table.caption')}</caption>
           <WasteToursTableHeader

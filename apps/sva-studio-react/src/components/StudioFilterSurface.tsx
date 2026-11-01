@@ -10,7 +10,7 @@ export const StudioFilterSurface = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <Card
     ref={ref}
-    className={cn('border-border/70 bg-card/85 p-4 shadow-shell', className)}
+    className={cn('border-border-subtle bg-card p-4 shadow-none', className)}
     {...props}
   />
 ));

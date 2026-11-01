@@ -25,7 +25,14 @@ type LoadedEditor = Awaited<ReturnType<typeof loadMediaImageEditorSource>> &
 
 const useMediaImageEditor = (
   asset: StudioMediaPickerAssetDetail,
-  root: React.RefObject<HTMLDivElement | null>
+  root: React.RefObject<HTMLDivElement | null>,
+  suspendedDesign: React.RefObject<
+    | Readonly<{
+        asset: StudioMediaPickerAssetDetail;
+        state: FilerobotImageEditorConfig['loadableDesignState'];
+      }>
+    | undefined
+  >
 ) => {
   const t = useContentMediaTranslation();
   const [loaded, setLoaded] = React.useState<LoadedEditor>();
@@ -33,7 +40,8 @@ const useMediaImageEditor = (
   const [attempt, setAttempt] = React.useState(0);
   React.useEffect(() => {
     // Vite removes the browser-only library from the production SSR dependency graph.
-    if ((import.meta as ImportMeta & { readonly env?: { readonly SSR?: boolean } }).env?.SSR) return;
+    if ((import.meta as ImportMeta & { readonly env?: { readonly SSR?: boolean } }).env?.SSR)
+      return;
     const controller = new AbortController();
     let source: Awaited<ReturnType<typeof loadMediaImageEditorSource>> | undefined;
     setLoaded(undefined);
@@ -54,7 +62,10 @@ const useMediaImageEditor = (
             ...source,
             signal: controller.signal,
             Editor: library.default,
-            state: state as FilerobotImageEditorConfig['loadableDesignState'],
+            state:
+              suspendedDesign.current?.asset === asset
+                ? suspendedDesign.current.state
+                : (state as FilerobotImageEditorConfig['loadableDesignState']),
             config: createMediaImageEditorConfig(root.current, t),
           });
       } catch {
@@ -66,7 +77,7 @@ const useMediaImageEditor = (
       controller.abort();
       source?.release();
     };
-  }, [asset, attempt, root, t]);
+  }, [asset, attempt, root, suspendedDesign, t]);
   return { loaded, failed, retry: () => setAttempt((current) => current + 1) };
 };
 
@@ -86,9 +97,35 @@ export const StudioMediaImageEditor = ({
   const root = React.useRef<HTMLDivElement>(null);
   const heading = React.useRef<HTMLHeadingElement>(null);
   const exportImage = React.useRef<getCurrentImgDataFunction | undefined>(undefined);
-  const { loaded, failed, retry } = useMediaImageEditor(asset, root);
+  const suspendedDesign = React.useRef<
+    Readonly<{
+      asset: StudioMediaPickerAssetDetail;
+      state: FilerobotImageEditorConfig['loadableDesignState'];
+    }>
+  >(undefined);
+  React.useLayoutEffect(
+    () => () => {
+      // Capture before Activity cleans up the child editor and releases its source.
+      if (!exportImage.current) return;
+      try {
+        suspendedDesign.current = {
+          asset,
+          state: exportImage.current({ name: 'draft', extension: 'png' }, 1, false).designState,
+        };
+      } catch {
+        // An editor which has not loaded a source has no editable state to capture.
+      }
+    },
+    [asset]
+  );
+  const { loaded, failed, retry } = useMediaImageEditor(asset, root, suspendedDesign);
   const [saving, setSaving] = React.useState(false);
   const [exportFailed, setExportFailed] = React.useState(false);
+  React.useEffect(() => {
+    // A suspended source aborts its pending export; a fresh source starts usable.
+    setSaving(false);
+    setExportFailed(false);
+  }, [loaded?.signal]);
   React.useEffect(() => heading.current?.focus(), []);
   const apply = async () => {
     if (!loaded || !exportImage.current) return;

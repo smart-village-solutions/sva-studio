@@ -3,12 +3,16 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import { formatUpdatedAt } from './waste-management.page.support.js';
 
-export const WasteToolsArtifactDownloads = ({ job }: { readonly job: StudioJobResponse['data'] }) => {
+export const WasteToolsArtifactDownloads = ({
+  job,
+}: {
+  readonly job: StudioJobResponse['data'];
+}) => {
   const pt = usePluginTranslation('wasteManagement');
   const artifacts = job.resultPayload?.artifacts ?? [];
   if (job.status !== 'succeeded' || artifacts.length === 0) return null;
   return (
-    <section className="space-y-2 rounded-xl border border-border/70 bg-background/80 p-4">
+    <section className="space-y-2 rounded-lg border border-border-subtle bg-card p-4">
       <h3 className="text-sm font-semibold">{pt('tools.meta.downloadsTitle')}</h3>
       <div className="flex flex-wrap gap-2">
         {artifacts.map((artifact) => (

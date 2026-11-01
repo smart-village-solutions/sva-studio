@@ -6,7 +6,10 @@ import {
   StudioFormSummary,
   StudioLoadingState,
   StudioOverviewPageTemplate,
-  Tabs, TabsContent, TabsList, TabsTrigger,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from '@sva/studio-ui-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -49,9 +52,9 @@ export const SsfSystemConfigurationPage = () => {
   if (state === 'error' || !draft)
     return (
       <StudioErrorState>
-        <button type="button" onClick={() => void load()}>
+        <Button type="button" onClick={() => void load()}>
           {pt('status.loadError')}
-        </button>
+        </Button>
       </StudioErrorState>
     );
   return (
@@ -60,37 +63,39 @@ export const SsfSystemConfigurationPage = () => {
       description={pt('page.systemDescription')}
     >
       <Tabs defaultValue="v2">
-      <TabsList aria-label={pt('page.systemTitle')}>
-        <TabsTrigger value="v2">{pt('v2.content')}</TabsTrigger>
-        <TabsTrigger value="v1">{pt('v2.legacy')}</TabsTrigger>
-      </TabsList>
-      <TabsContent value="v2"><SsfSystemContentV2Page /></TabsContent>
-      <TabsContent value="v1" className="space-y-5">
-      {state === 'saved' ? (
-        <StudioFormSummary kind="success">{pt('status.saved')}</StudioFormSummary>
-      ) : null}
-      {saveFailed ? (
-        <StudioFormSummary kind="error">{pt('status.saveError')}</StudioFormSummary>
-      ) : null}
-      <ConfigurationFields
-        value={draft}
-        onChange={(next) => setDraft(next as SsfSystemConfigurationInput)}
-        disabled={state === 'saving'}
-      />
-      <StudioFormActionBar>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={state === 'saving'}
-          onClick={() => setDraft(saved)}
-        >
-          {pt('actions.discard')}
-        </Button>
-        <Button type="button" disabled={state === 'saving'} onClick={() => void save(draft)}>
-          {pt(state === 'saving' ? 'actions.saving' : 'actions.save')}
-        </Button>
-      </StudioFormActionBar>
-      </TabsContent>
+        <TabsList aria-label={pt('page.systemTitle')}>
+          <TabsTrigger value="v2">{pt('v2.content')}</TabsTrigger>
+          <TabsTrigger value="v1">{pt('v2.legacy')}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="v2">
+          <SsfSystemContentV2Page />
+        </TabsContent>
+        <TabsContent value="v1" className="space-y-5">
+          {state === 'saved' ? (
+            <StudioFormSummary kind="success">{pt('status.saved')}</StudioFormSummary>
+          ) : null}
+          {saveFailed ? (
+            <StudioFormSummary kind="error">{pt('status.saveError')}</StudioFormSummary>
+          ) : null}
+          <ConfigurationFields
+            value={draft}
+            onChange={(next) => setDraft(next as SsfSystemConfigurationInput)}
+            disabled={state === 'saving'}
+          />
+          <StudioFormActionBar>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={state === 'saving'}
+              onClick={() => setDraft(saved)}
+            >
+              {pt('actions.discard')}
+            </Button>
+            <Button type="button" disabled={state === 'saving'} onClick={() => void save(draft)}>
+              {pt(state === 'saving' ? 'actions.saving' : 'actions.save')}
+            </Button>
+          </StudioFormActionBar>
+        </TabsContent>
       </Tabs>
     </StudioOverviewPageTemplate>
   );

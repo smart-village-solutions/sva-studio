@@ -1,3 +1,4 @@
+import { Radio } from '@sva/studio-ui-react';
 import React from 'react';
 import { getStudioFormFieldProps, StudioPersistentFormError } from '@sva/studio-ui-react';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
@@ -148,8 +149,7 @@ export const CreateAuthStep = ({
     </div>
     <div className="grid gap-2 md:grid-cols-2">
       <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
-        <input
-          type="radio"
+        <Radio
           name="instance-realm-mode"
           checked={formValues.realmMode === 'new'}
           onChange={() =>
@@ -170,8 +170,7 @@ export const CreateAuthStep = ({
         <span>{t('admin.instances.flow.realmModeNew')}</span>
       </label>
       <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
-        <input
-          type="radio"
+        <Radio
           name="instance-realm-mode"
           checked={formValues.realmMode === 'existing'}
           onChange={() =>

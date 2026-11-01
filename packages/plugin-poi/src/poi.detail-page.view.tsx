@@ -52,7 +52,6 @@ export type PoiDetailPageViewModel = Readonly<{
   canUploadMedia: boolean;
   canUpdateMedia: boolean;
   activeTab: PoiDetailTabId;
-  visitedTabs: readonly PoiDetailTabId[];
   categoryOptions: readonly PoiCategoryOption[];
   categoryOptionsLoading: boolean;
   categoryOptionsError: string | null;
@@ -61,7 +60,6 @@ export type PoiDetailPageViewModel = Readonly<{
   deviationFieldLabels: Readonly<Record<string, string>>;
   tabs: readonly PoiDetailTabDefinition[];
   handleTabChange: (tab: PoiDetailTabId) => void;
-  warmTab: (tab: PoiDetailTabId) => void;
   submit: ReturnType<typeof usePoiDetailSave>;
   remove: () => Promise<void>;
 }>;
@@ -87,9 +85,7 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
       <StudioDetailPageTemplate
         stickyActions={mode === 'create'}
         title={mode === 'create' ? pt('detail.createTitle') : pt('detail.editTitle')}
-        description={
-          mode === 'edit' ? pt('detail.editDescription') : undefined
-        }
+        description={mode === 'edit' ? pt('detail.editDescription') : undefined}
         primaryAction={
           canSave ? (
             <div className="flex flex-col items-end gap-1">
@@ -114,7 +110,11 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
                   saved: pt('actions.saved'),
                 }}
               />
-              {mode === 'create' ? <p className="text-sm text-muted-foreground">{pt(active ? 'create.activeEffect' : 'create.inactiveEffect')}</p> : null}
+              {mode === 'create' ? (
+                <p className="text-sm text-muted-foreground">
+                  {pt(active ? 'create.activeEffect' : 'create.inactiveEffect')}
+                </p>
+              ) : null}
             </div>
           ) : undefined
         }

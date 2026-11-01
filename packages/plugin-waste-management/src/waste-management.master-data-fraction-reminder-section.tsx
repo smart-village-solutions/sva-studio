@@ -1,5 +1,5 @@
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import type { FractionFormState } from './waste-management.master-data.forms.js';
-import { FractionSection } from './waste-management.master-data-fraction-create.parts.js';
 import {
   FractionReminderChannels,
   FractionReminderCountField,
@@ -20,7 +20,7 @@ export const FractionReminderSection = ({
   const remindersEnabled = form.reminderConfig.reminderCount !== 'none';
 
   return (
-    <FractionSection
+    <StudioDetailCard
       title={pt('masterData.fractions.createView.sections.reminders')}
       description={pt('masterData.fractions.createView.sections.remindersHint')}
     >
@@ -43,6 +43,6 @@ export const FractionReminderSection = ({
           />
         ))}
       </div>
-    </FractionSection>
+    </StudioDetailCard>
   );
 };

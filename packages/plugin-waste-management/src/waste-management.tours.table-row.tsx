@@ -132,7 +132,7 @@ export const WasteToursTableRow = (props: WasteToursTableRowProps) => {
   const firstAssignmentId = assignmentItems[0]?.id;
 
   return (
-    <tr className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20 last:border-b-0">
+    <tr className="animate-row-hover border-b border-border-subtle align-top text-[14px] text-foreground hover:bg-surface-inset last:border-b-0">
       <WasteToursRowSelectionCell
         tour={tour}
         selected={props.selected}

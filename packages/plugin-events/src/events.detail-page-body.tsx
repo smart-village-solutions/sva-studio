@@ -93,7 +93,7 @@ const EventsDetailStatus = ({
     <div
       className={
         mode === 'create'
-          ? 'has-[select]:rounded-2xl has-[select]:border has-[select]:border-border/60 has-[select]:bg-card has-[select]:p-5'
+          ? 'has-[select]:rounded-lg has-[select]:border has-[select]:border-border-subtle has-[select]:bg-card has-[select]:p-4 sm:has-[select]:p-6'
           : undefined
       }
     >
@@ -145,8 +145,6 @@ function EventsEditorFields(props: EventsDetailPageViewProps) {
     tabs,
     activeTab,
     handleTabChange,
-    warmTab,
-    visitedTabs,
     categoryOptions,
     categoryOptionsError,
     categoryOptionsLoading,
@@ -163,8 +161,6 @@ function EventsEditorFields(props: EventsDetailPageViewProps) {
       tabs={tabs}
       activeTab={activeTab}
       handleTabChange={handleTabChange}
-      warmTab={warmTab}
-      visitedTabs={visitedTabs}
       categoryOptions={categoryOptions}
       categoryOptionsError={categoryOptionsError}
       categoryOptionsLoading={categoryOptionsLoading}

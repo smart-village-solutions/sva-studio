@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   calculateTourOccurrenceEntriesForYear,
+  calculateTourCalendarForYear,
   calculateTourOccurrencesForYear,
   formatTourDateRange,
   formatTourRecurrence,
@@ -442,5 +443,100 @@ describe('waste-management.tours.presentation', () => {
 
     expect(calculateTourOccurrencesForYear(tour, 2026, scheduling)).toEqual(['2026-05-04']);
     expect(calculateTourOccurrencesForYear(tour, 2027, scheduling)).toEqual(['2027-05-02']);
+  });
+});
+
+describe('annual calendar calculation evidence', () => {
+  const scheduling = { tourDateShifts: [], globalDateShifts: [], holidayRules: [] };
+  const calculate = (
+    tour: Record<string, unknown>,
+    data: Record<string, unknown> = scheduling,
+    year = 2026
+  ) =>
+    calculateTourCalendarForYear(
+      { id: 'tour-1', recurrence: 'custom', ...tour } as never,
+      year,
+      data as never
+    );
+
+  it('distinguishes missing recurring data from valid empty individual and on-demand tours', () => {
+    expect(calculate({ recurrence: 'weekly' }).issues).toEqual(['missingStartDate']);
+    expect(calculate({ recurrence: 'custom' }).issues).toEqual([]);
+    expect(
+      calculate({ recurrence: undefined, customDates: [{ date: '2026-03-01' }] }).issues
+    ).toEqual([]);
+    expect(calculate({ recurrence: 'on-demand' }).issues).toEqual([]);
+    expect(calculate({ customRecurrenceId: 'missing-preset' }).issues).toContain(
+      'unresolvedRecurrence'
+    );
+    expect(
+      calculate({ customRecurrenceIntervalDays: 10, firstDate: '2026-12-31' }).entries
+    ).toHaveLength(1);
+  });
+
+  it('keeps valid partial entries and rejects invalid Gregorian dates without normalizing them', () => {
+    const result = calculate({
+      recurrence: 'weekly',
+      firstDate: '2026-02-31',
+      customDates: [{ date: '2026-06-03' }, { date: '2026-13-01' }],
+    });
+    expect(result.issues).toEqual(['invalidDates']);
+    expect(result.entries.map((entry) => entry.date)).toEqual(['2026-06-03']);
+    expect(
+      calculate({ recurrence: 'weekly', firstDate: '2026-07-01', endDate: '2026-06-01' }).issues
+    ).toContain('invalidDates');
+  });
+
+  it('does not flag draft, empty, irrelevant or fully configured holiday rules as incomplete', () => {
+    const tour = { customDates: [{ date: '2026-01-05' }] };
+    for (const holidayRules of [
+      [],
+      [{ holidayDate: '2026-01-06', configurationStatus: 'draft' }],
+      [{ holidayDate: '2027-01-05' }],
+      [
+        {
+          holidayDate: '2026-01-05',
+          scope: 'holiday-only',
+          strategy: 'postpone',
+          configurationStatus: 'draft',
+        },
+      ],
+    ]) {
+      expect(calculate(tour, { ...scheduling, holidayRules }).issues).toEqual([]);
+    }
+    const result = calculate(tour, {
+      ...scheduling,
+      holidayRules: [{ holidayDate: '2026-01-05' }],
+    });
+    expect(result.issues).toEqual(['incompleteHolidayRule']);
+    expect(result.entries.map((entry) => entry.date)).toEqual(['2026-01-05']);
+    expect(
+      calculate(tour, {
+        ...scheduling,
+        holidayRules: [{ holidayDate: '2026-01-06', scope: 'full-week' }],
+      }).issues
+    ).toContain('incompleteHolidayRule');
+  });
+
+  it('uses actual shifted entries before marking months outside validity', () => {
+    const tour = {
+      recurrence: 'weekly',
+      firstDate: '2026-12-31',
+      endDate: '2026-12-31',
+      customDates: [{ date: '2027-03-02' }],
+    };
+    const result = calculate(
+      tour,
+      {
+        ...scheduling,
+        tourDateShifts: [
+          { tourId: 'tour-1', originalDate: '2026-12-31', actualDate: '2027-01-02' },
+        ],
+      },
+      2027
+    );
+    expect(result.entries.map((entry) => entry.date)).toEqual(['2027-01-02', '2027-03-02']);
+    expect(result.outsideValidityMonths.slice(0, 4)).toEqual([false, true, false, true]);
+    expect(calculate({ customDates: [] }).outsideValidityMonths).toEqual(Array(12).fill(false));
   });
 });

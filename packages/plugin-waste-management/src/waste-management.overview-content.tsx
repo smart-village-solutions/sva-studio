@@ -31,32 +31,62 @@ const TechnicalHistoryTable = ({
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="overflow-hidden rounded-none border-y border-border bg-card shadow-shell">
+    <div className="overflow-hidden rounded-none border border-border-subtle bg-card">
       <WastePanelTableTopBar />
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse" aria-label={pt('overview.technical.table.ariaLabel')}>
+        <table
+          className="min-w-full border-collapse"
+          aria-label={pt('overview.technical.table.ariaLabel')}
+        >
           <caption className="sr-only">{pt('overview.technical.table.caption')}</caption>
-          <thead className="bg-muted/20 text-left text-[13px] text-foreground">
+          <thead className="bg-surface-inset text-left text-[13px] text-foreground">
             <tr className="border-b border-border/70">
-              <th scope="col" className="px-3 py-3">{pt('overview.technical.table.eventType')}</th>
-              <th scope="col" className="px-3 py-3">{pt('overview.technical.table.outcome')}</th>
-              <th scope="col" className="px-3 py-3">{pt('overview.technical.table.occurredAt')}</th>
-              <th scope="col" className="px-3 py-3">{pt('overview.technical.table.jobId')}</th>
-              <th scope="col" className="px-3 py-3">{pt('overview.technical.table.jobTypeId')}</th>
-              <th scope="col" className="px-3 py-3">{pt('overview.technical.table.reasonCode')}</th>
-              <th scope="col" className="px-3 py-3">{pt('overview.technical.table.requestId')}</th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.technical.table.eventType')}
+              </th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.technical.table.outcome')}
+              </th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.technical.table.occurredAt')}
+              </th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.technical.table.jobId')}
+              </th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.technical.table.jobTypeId')}
+              </th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.technical.table.reasonCode')}
+              </th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.technical.table.requestId')}
+              </th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id} className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20 last:border-b-0">
+              <tr
+                key={item.id}
+                className="animate-row-hover border-b border-border-subtle align-top text-[14px] text-foreground hover:bg-surface-inset last:border-b-0"
+              >
                 <td className="px-3 py-3 text-sm">{item.eventType}</td>
                 <td className="px-3 py-3">{renderOutcomeBadge(pt, item.outcome)}</td>
-                <td className="px-3 py-3 text-sm">{pt('overview.meta.occurredAt', { value: formatUpdatedAt(item.occurredAt) })}</td>
-                <td className="px-3 py-3 text-sm">{item.jobId ? pt('overview.meta.jobId', { value: item.jobId }) : ''}</td>
-                <td className="px-3 py-3 text-sm">{item.jobTypeId ? pt('overview.meta.jobTypeId', { value: item.jobTypeId }) : ''}</td>
-                <td className="px-3 py-3 text-sm">{item.errorCode ? pt('overview.meta.reasonCode', { value: item.errorCode }) : ''}</td>
-                <td className="px-3 py-3 text-sm">{item.requestId ? pt('overview.meta.requestId', { value: item.requestId }) : ''}</td>
+                <td className="px-3 py-3 text-sm">
+                  {pt('overview.meta.occurredAt', { value: formatUpdatedAt(item.occurredAt) })}
+                </td>
+                <td className="px-3 py-3 text-sm">
+                  {item.jobId ? pt('overview.meta.jobId', { value: item.jobId }) : ''}
+                </td>
+                <td className="px-3 py-3 text-sm">
+                  {item.jobTypeId ? pt('overview.meta.jobTypeId', { value: item.jobTypeId }) : ''}
+                </td>
+                <td className="px-3 py-3 text-sm">
+                  {item.errorCode ? pt('overview.meta.reasonCode', { value: item.errorCode }) : ''}
+                </td>
+                <td className="px-3 py-3 text-sm">
+                  {item.requestId ? pt('overview.meta.requestId', { value: item.requestId }) : ''}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -94,35 +124,65 @@ const AuditHistoryTable = ({
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="overflow-hidden rounded-none border-y border-border bg-card shadow-shell">
+    <div className="overflow-hidden rounded-none border border-border-subtle bg-card">
       <WastePanelTableTopBar />
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse" aria-label={pt('overview.audit.table.ariaLabel')}>
+        <table
+          className="min-w-full border-collapse"
+          aria-label={pt('overview.audit.table.ariaLabel')}
+        >
           <caption className="sr-only">{pt('overview.audit.table.caption')}</caption>
-          <thead className="bg-muted/20 text-left text-[13px] text-foreground">
+          <thead className="bg-surface-inset text-left text-[13px] text-foreground">
             <tr className="border-b border-border/70">
-              <th scope="col" className="px-3 py-3">{pt('overview.audit.table.actionId')}</th>
-              <th scope="col" className="px-3 py-3">{pt('overview.audit.table.outcome')}</th>
-              <th scope="col" className="px-3 py-3">{pt('overview.audit.table.occurredAt')}</th>
-              <th scope="col" className="px-3 py-3">{pt('overview.audit.table.resource')}</th>
-              <th scope="col" className="px-3 py-3">{pt('overview.audit.table.reasonCode')}</th>
-              <th scope="col" className="px-3 py-3">{pt('overview.audit.table.requestId')}</th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.audit.table.actionId')}
+              </th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.audit.table.outcome')}
+              </th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.audit.table.occurredAt')}
+              </th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.audit.table.resource')}
+              </th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.audit.table.reasonCode')}
+              </th>
+              <th scope="col" className="px-3 py-3">
+                {pt('overview.audit.table.requestId')}
+              </th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id} className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20 last:border-b-0">
+              <tr
+                key={item.id}
+                className="animate-row-hover border-b border-border-subtle align-top text-[14px] text-foreground hover:bg-surface-inset last:border-b-0"
+              >
                 <td className="px-3 py-3 text-sm">{item.actionId}</td>
                 <td className="px-3 py-3">{renderOutcomeBadge(pt, item.outcome)}</td>
-                <td className="px-3 py-3 text-sm">{pt('overview.meta.occurredAt', { value: formatUpdatedAt(item.occurredAt) })}</td>
+                <td className="px-3 py-3 text-sm">
+                  {pt('overview.meta.occurredAt', { value: formatUpdatedAt(item.occurredAt) })}
+                </td>
                 <td className="px-3 py-3 text-sm">
                   <div className="space-y-1">
-                    {item.resourceType ? <p>{pt('overview.meta.resourceType', { value: item.resourceType })}</p> : null}
-                    {item.resourceId ? <p>{pt('overview.meta.resourceId', { value: item.resourceId })}</p> : null}
+                    {item.resourceType ? (
+                      <p>{pt('overview.meta.resourceType', { value: item.resourceType })}</p>
+                    ) : null}
+                    {item.resourceId ? (
+                      <p>{pt('overview.meta.resourceId', { value: item.resourceId })}</p>
+                    ) : null}
                   </div>
                 </td>
-                <td className="px-3 py-3 text-sm">{item.reasonCode ? pt('overview.meta.reasonCode', { value: item.reasonCode }) : ''}</td>
-                <td className="px-3 py-3 text-sm">{item.requestId ? pt('overview.meta.requestId', { value: item.requestId }) : ''}</td>
+                <td className="px-3 py-3 text-sm">
+                  {item.reasonCode
+                    ? pt('overview.meta.reasonCode', { value: item.reasonCode })
+                    : ''}
+                </td>
+                <td className="px-3 py-3 text-sm">
+                  {item.requestId ? pt('overview.meta.requestId', { value: item.requestId }) : ''}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -188,10 +248,7 @@ export const WasteOverviewContent = ({
   return (
     <div className="space-y-4">
       <div className="space-y-3">
-        <OverviewSection
-          title={pt('overview.sections.technical')}
-          items={technicalItems}
-        >
+        <OverviewSection title={pt('overview.sections.technical')} items={technicalItems}>
           <TechnicalHistoryTable
             items={technicalItems}
             total={overview?.technical.total ?? technicalItems.length}
@@ -201,10 +258,7 @@ export const WasteOverviewContent = ({
             onPageSizeChange={onPageSizeChange}
           />
         </OverviewSection>
-        <OverviewSection
-          title={pt('overview.sections.audit')}
-          items={auditItems}
-        >
+        <OverviewSection title={pt('overview.sections.audit')} items={auditItems}>
           <AuditHistoryTable
             items={auditItems}
             total={overview?.audit.total ?? auditItems.length}

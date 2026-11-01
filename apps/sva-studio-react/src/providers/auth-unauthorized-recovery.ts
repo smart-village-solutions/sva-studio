@@ -16,6 +16,7 @@ export const useUnauthorizedAuthRecovery = (
   attemptSilentSessionRecovery: ReturnType<typeof useSilentAuthRecovery>
 ) => {
   const {
+    devAuthAvailable,
     logAuthDebug,
     recordTrail,
     isMountedRef,
@@ -52,6 +53,15 @@ export const useUnauthorizedAuthRecovery = (
         setSessionExpiresAt(null);
         setHasResolvedSession(true);
         setIsLoading(false);
+      }
+
+      // A local dev login needs an explicit click; OIDC recovery would reload this same page.
+      if (devAuthAvailable && responseMeta.reasonCode === 'missing_session_cookie') {
+        if (isMountedRef.current) {
+          setIsRecoveringSession(false);
+          setSessionRecoveryFailed(false);
+        }
+        return input.result;
       }
 
       if (isMountedRef.current) {
@@ -132,7 +142,14 @@ export const useUnauthorizedAuthRecovery = (
 
       return recoveryResult;
     },
-    [attemptSilentSessionRecovery, fetchAuthMe, logAuthDebug, nextAuthAttempt, recordTrail]
+    [
+      attemptSilentSessionRecovery,
+      devAuthAvailable,
+      fetchAuthMe,
+      logAuthDebug,
+      nextAuthAttempt,
+      recordTrail,
+    ]
   );
 
   return handleUnauthorizedSession;

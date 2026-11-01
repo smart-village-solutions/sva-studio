@@ -142,7 +142,7 @@ const PublicDeliveryQrDialog = ({
         {qrGenerationError ? (
           <p className="text-sm text-destructive">{t('media.detail.qrDialogError')}</p>
         ) : qrSvgMarkup ? (
-          <div className="mx-auto w-full max-w-[20rem] rounded-3xl border border-border/70 bg-white p-4 shadow-shell">
+          <div className="mx-auto w-full max-w-[20rem] rounded-lg border border-border-subtle bg-white p-4 shadow-shell">
             <div
               aria-label={t('media.detail.qrPreviewLabel')}
               // fallow-ignore-next-line security-sink -- qrcode erzeugt das SVG lokal; die Delivery-URL wird nur als QR-Nutzlast kodiert.
@@ -190,7 +190,7 @@ const PublicDeliveryLinkTools = ({
   onCopy: () => void;
   onOpenQrDialog: () => void;
 }>) => (
-  <div className="space-y-3 rounded-2xl border border-border/60 bg-muted/30 p-4">
+  <div className="space-y-3 rounded-lg border border-border-subtle bg-surface-inset p-4">
     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
       {t('media.detail.publicUrlLabel')}
     </p>
@@ -315,9 +315,9 @@ export const MediaDetailWorkspaceHeader = ({
   const showPublicDeliveryTools = asset.visibility === 'public' && Boolean(delivery?.deliveryUrl);
 
   return (
-    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-shell">
+    <Card className="overflow-hidden border-border-subtle bg-card">
       <CardContent className="grid gap-6 p-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,1fr)]">
-        <div className="overflow-hidden rounded-3xl border border-border/60 bg-muted">
+        <div className="overflow-hidden rounded-lg border border-border-subtle bg-muted">
           {delivery?.deliveryUrl && isVisualPreview(asset.mimeType) ? (
             <img
               alt={previewAltText(asset)}
@@ -325,7 +325,7 @@ export const MediaDetailWorkspaceHeader = ({
               src={delivery.deliveryUrl}
             />
           ) : (
-            <div className="flex min-h-80 items-center bg-[radial-gradient(circle_at_top_left,_rgba(14,116,144,0.2),_transparent_50%),linear-gradient(145deg,rgba(255,255,255,0.96),rgba(226,232,240,0.78))] p-6">
+            <div className="flex min-h-80 items-center bg-surface-inset p-6">
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                   {t('media.detail.previewEyebrow')}
@@ -338,7 +338,7 @@ export const MediaDetailWorkspaceHeader = ({
                     {t('media.detail.previewBody')}
                   </p>
                 </div>
-                <div className="inline-flex rounded-full border border-foreground/10 bg-white/75 px-3 py-1 text-xs font-medium text-foreground">
+                <div className="inline-flex rounded-full border border-border-subtle bg-card px-3 py-1 text-xs font-medium text-foreground">
                   {asset.mimeType}
                 </div>
               </div>
@@ -363,11 +363,11 @@ export const MediaDetailWorkspaceHeader = ({
               <Badge variant="outline">
                 {t(`media.processingStatus.${asset.processingStatus}`)}
               </Badge>
-              <Badge className="border-0 bg-cyan-500/15 text-cyan-700" variant="secondary">
+              <Badge className="border-border-subtle bg-surface-inset text-foreground" variant="secondary">
                 {usageCountLabel(usageCount)}
               </Badge>
               {delivery ? (
-                <Badge className="border-0 bg-emerald-500/15 text-emerald-700" variant="secondary">
+                <Badge className="border-border-subtle bg-surface-inset text-foreground" variant="secondary">
                   {t('media.delivery.title')}
                 </Badge>
               ) : null}

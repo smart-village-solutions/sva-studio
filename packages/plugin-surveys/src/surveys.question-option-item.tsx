@@ -50,7 +50,7 @@ export function SurveyQuestionOptionItem({
   };
 
   return (
-    <div className="space-y-2 rounded-lg border border-border/60 bg-background p-3">
+    <div className="space-y-2 rounded-lg border border-border-subtle bg-background p-3">
       <div className="flex items-end gap-2">
         <SurveyOptionTitleField
           pt={pt}

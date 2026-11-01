@@ -144,14 +144,9 @@ export function EventsDetailPage({
   const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
   const [activeTab, setActiveTab] = React.useState<EventsDetailTabId>('basis');
   const [pendingFocusId, setPendingFocusId] = React.useState<string | null>(null);
-  const [visitedTabs, setVisitedTabs] = React.useState<readonly EventsDetailTabId[]>(['basis']);
   const deviationFieldLabels = createEventsDeviationFieldLabels(pt);
 
   const tabs = createEventsDetailTabDefinitions(pt);
-
-  const warmTab = React.useCallback((tabId: EventsDetailTabId) => {
-    setVisitedTabs((current) => (current.includes(tabId) ? current : [...current, tabId]));
-  }, []);
 
   React.useEffect(() => {
     if (!pendingFocusId) return;
@@ -166,13 +161,7 @@ export function EventsDetailPage({
     setPendingFocusId(null);
   }, [activeTab, pendingFocusId]);
 
-  const handleTabChange = React.useCallback(
-    (tabId: EventsDetailTabId) => {
-      warmTab(tabId);
-      setActiveTab(tabId);
-    },
-    [warmTab]
-  );
+  const handleTabChange = setActiveTab;
 
   const submit = createEventsDetailSubmit({
     methods,
@@ -228,8 +217,6 @@ export function EventsDetailPage({
       tabs={tabs}
       activeTab={activeTab}
       handleTabChange={handleTabChange}
-      warmTab={warmTab}
-      visitedTabs={visitedTabs}
       categoryOptions={categoryOptions}
       categoryOptionsError={categoryOptionsError}
       categoryOptionsLoading={categoryOptionsLoading}

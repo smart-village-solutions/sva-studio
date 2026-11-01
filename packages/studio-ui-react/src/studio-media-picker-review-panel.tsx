@@ -162,10 +162,12 @@ export const StudioMediaPickerReviewPanel = (props: StudioMediaPickerReviewPanel
   const reviewHeadingRef = React.useRef<HTMLHeadingElement>(null);
   const editorButtonRef = React.useRef<HTMLButtonElement>(null);
   const centralButtonRef = React.useRef<HTMLButtonElement>(null);
+  const previousAssetId = React.useRef(reviewAsset?.id);
   React.useEffect(() => {
-    setShowCentral(false);
+    if (previousAssetId.current !== reviewAsset?.id) setShowCentral(false);
+    previousAssetId.current = reviewAsset?.id;
   }, [reviewAsset?.id]);
-  if (showEditor && reviewAsset && onApplyImageEdit)
+  if (showEditor && reviewAsset)
     return (
       <StudioMediaImageEditor
         asset={reviewAsset}
@@ -176,6 +178,7 @@ export const StudioMediaPickerReviewPanel = (props: StudioMediaPickerReviewPanel
           requestAnimationFrame(() => editorButtonRef.current?.focus());
         }}
         onApply={async (result) => {
+          if (!onApplyImageEdit) throw new Error('media_image_apply_unavailable');
           await onApplyImageEdit(result);
           props.onWorkspaceDirtyChange?.(false);
           setShowEditor(false);

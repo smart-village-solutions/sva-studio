@@ -51,7 +51,7 @@ const LocaleRichTextField = ({
   const isTenant = 'enabled' in locale;
   const id = `ssf-${locale.locale}-${field}`;
   return (
-    <div className="space-y-2 rounded-lg border border-border/70 bg-card p-4">
+    <div className="space-y-2 rounded-lg border border-border-subtle bg-card p-4">
       <div className="flex items-center justify-between gap-3">
         <label id={`${id}-label`} className="text-sm font-medium">
           {pt(labelKey)}

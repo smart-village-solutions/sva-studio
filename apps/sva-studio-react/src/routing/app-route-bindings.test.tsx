@@ -49,8 +49,9 @@ const routeState = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/plugin-app-translations', () => ({
-  CatalogsPage: ({ platform }: { platform?: boolean }) =>
-    <div data-testid="translation-catalog-scope">{platform ? 'platform' : 'instance'}</div>,
+  CatalogsPage: ({ platform }: { platform?: boolean }) => (
+    <div data-testid="translation-catalog-scope">{platform ? 'platform' : 'instance'}</div>
+  ),
 }));
 
 vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
@@ -1252,9 +1253,8 @@ describe('appRouteBindings', () => {
         if (url !== '/api/v1/mainserver/vouchers/6829') throw new Error('Forbidden');
         return { data: { dataProvider: { id: 'provider-1' } } };
       });
-      const { MainserverResourcePrincipalBoundary } = await import(
-        './mainserver-resource-principal-boundary'
-      );
+      const { MainserverResourcePrincipalBoundary } =
+        await import('./mainserver-resource-principal-boundary');
       render(
         <MainserverResourcePrincipalBoundary contentType="vouchers.voucher">
           {(control) => <div data-testid="voucher-principal">{control.value}</div>}
@@ -1274,6 +1274,33 @@ describe('appRouteBindings', () => {
       expect(screen.queryByText('Resource principal unavailable')).toBeNull();
     }
   );
+
+  it('retains the mounted detail editor but disables it while its principal context is rechecked', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
+    const { MainserverResourcePrincipalBoundary } =
+      await import('./mainserver-resource-principal-boundary');
+    const editor = (control: MainserverPrincipalControlModel) => (
+      <input aria-label="Retained draft" defaultValue={control.value} />
+    );
+    const view = render(
+      <MainserverResourcePrincipalBoundary contentType="news.article">
+        {editor}
+      </MainserverResourcePrincipalBoundary>
+    );
+    const input = await screen.findByLabelText('Retained draft');
+    fireEvent.change(input, { target: { value: 'Unsaved edit' } });
+    routeState.organizationContextIsLoading = true;
+    routeState.getContent.mockReturnValueOnce(new Promise(() => undefined));
+    view.rerender(
+      <MainserverResourcePrincipalBoundary contentType="news.article">
+        {editor}
+      </MainserverResourcePrincipalBoundary>
+    );
+    await waitFor(() => expect(input.closest('fieldset')?.disabled).toBe(true));
+    expect(screen.getByLabelText('Retained draft')).toBe(input);
+    expect((input as HTMLInputElement).value).toBe('Unsaved edit');
+  });
 
   it('renders a regular loading status before showing an edit route', async () => {
     routeState.params = { id: 'content-1' };
@@ -1307,6 +1334,7 @@ describe('appRouteBindings', () => {
   });
 
   it('enables the ownership panel only after server-side transfer authorization', async () => {
+    routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
     routeState.params = { id: 'content-1' };
     routeState.enabledMainserverMutationActions = ['content.transferOwnership'];
     routeState.requestMainserverJson
@@ -1342,6 +1370,7 @@ describe('appRouteBindings', () => {
   });
 
   it('keeps server transfer authorization independent from delayed capability loading', async () => {
+    routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
     routeState.params = { id: 'content-1' };
     routeState.requestMainserverJson
       .mockResolvedValueOnce({

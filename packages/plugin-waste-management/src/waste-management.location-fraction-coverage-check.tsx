@@ -5,7 +5,7 @@ import type {
   WasteTourRecord,
 } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconChecklist } from '@tabler/icons-react';
+import { ListChecks as IconChecklist } from 'lucide-react';
 import {
   useEffect,
   useMemo,
@@ -57,7 +57,7 @@ const CoverageCheckHeader = () => {
         id="waste-location-coverage-title"
         className="flex items-center gap-2 font-semibold text-foreground"
       >
-        <IconChecklist aria-hidden="true" className="h-5 w-5" />
+        <IconChecklist strokeWidth={1} aria-hidden="true" className="h-5 w-5" />
         {pt('masterData.locationsWorkspace.coverage.title')}
       </h3>
       <p className="text-sm text-muted-foreground">
@@ -157,9 +157,20 @@ const useCoverageCheckForm = (props: CoverageCheckProps) => {
 export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const {
-    fractionId, setFractionId, year, setYear, startDate, setStartDate,
-    endDate, setEndDate, includeDrafts, setIncludeDrafts, errorKey, result,
-    changeYear, runCheck,
+    fractionId,
+    setFractionId,
+    year,
+    setYear,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
+    includeDrafts,
+    setIncludeDrafts,
+    errorKey,
+    result,
+    changeYear,
+    runCheck,
   } = useCoverageCheckForm(props);
   const fractionsStatus = props.fractionsStatus ?? 'ready';
   const toursStatus = props.toursStatus ?? 'ready';
@@ -175,7 +186,7 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
   };
   return (
     <section
-      className="border-b border-border/70 bg-muted/10 px-4 py-4"
+      className="border-b border-border/70 bg-surface-inset px-4 py-4"
       aria-labelledby="waste-location-coverage-title"
     >
       <CoverageCheckHeader />

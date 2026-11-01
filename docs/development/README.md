@@ -40,6 +40,8 @@ Neue implementierungsnahe Dokumentation wird hier abgelegt. Betriebsanleitungen 
 
 ## Studio-UI und Interaktionsverträge
 
+- [Briefing zur Vervollständigung des Figma-Designsystems](./designsystem-figma-briefing.md)
+- [Entwicklungsbriefing: Statushinweise im Abfallkalender (L19)](./abfallkalender-status-entwicklungsbriefing.md)
 - [SSF-V2-Inhaltsverwaltung: UI-Entwurf](./ssf-v2-inhaltsverwaltung-ui.md)
 - [Action Feedback](./action-feedback.md)
 - [Builder.io lokal bearbeiten](./builder-io-local-editing.md)

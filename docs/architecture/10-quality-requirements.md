@@ -550,3 +550,14 @@ Tag-Normalisierung, Patch-Semantik, serverseitige Suche und Cursor-Bindung werde
 ## Datenintegrität bei Gutscheinen
 
 Ein Gutschein-Save muss sämtliche schreibbaren POI- und Geschwisterfelder erhalten oder vor dem Write ablehnen. Lokale Tests prüfen Schema, Roundtrip, UUID-Zuordnung, Kontext-/Rechteprüfung, Bestätigung, Sichtbarkeit, Nutzungsgrenzfälle und Response-Verlust mit Reload. Ein Provider-Write wird nicht automatisch wiederholt. Die isolierte Mainserver-/App-Abnahme bleibt ein eigener Nachweis; siehe [Gutscheinreferenz](../reference/vouchers.md).
+
+## Funktionserhalt bei UI-Migrationen
+
+Visuelle Änderungen erhalten Felder, Aktionen, Rechte, URL-Zustände und
+Speicherwirkungen. Gemeinsame Tabs sichern Eingaben, Dirty-Markierungen und
+bereits besuchte Bereiche; optionale Vorladung verändert nicht selbst den
+aktiven Bereich. Bestehende Fokusaktivierung bleibt erhalten. Kontrast-,
+Komponenten- und Browserprüfungen ergänzen visuelle Referenzen mit synthetischen
+Daten. Ein Screenshot oder grüner Axe-Lauf allein belegt weder vollständige
+Barrierefreiheit noch fachliche Abnahme. Fehlende Designabdeckung wird explizit
+dokumentiert und darf keine Funktion still entfernen.

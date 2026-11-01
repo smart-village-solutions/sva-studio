@@ -39,7 +39,7 @@ const WasteTourAssignmentLocationsField = ({
         return (
           <label
             key={option.id}
-            className="flex cursor-pointer items-start gap-2 rounded-sm px-2 py-1.5 hover:bg-muted/40"
+            className="flex cursor-pointer items-start gap-2 rounded-sm px-2 py-1.5 hover:bg-surface-inset"
           >
             <Checkbox
               checked={checked}

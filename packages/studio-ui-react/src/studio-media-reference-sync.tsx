@@ -35,19 +35,50 @@ export const useStudioMediaReferenceSync = ({
 
   const consumeSaveResult = React.useCallback(
     <TSaved,>(result: ContentMediaReferenceSyncResult<TSaved>) => {
-      const resolvedUsages = result.resolutions?.length
-        ? resolveContentMediaUsageDrafts(mediaUsages, result.resolutions)
-        : mediaUsages;
-      if (result.resolutions?.length) revokeContentMediaUsageObjectUrls(mediaUsages);
-
+      const savedUsages = new Map(mediaUsages.map((usage) => [usage.uiId, usage]));
+      const resolutionIds = new Set(result.resolutions?.map((resolution) => resolution.draftId));
+      const updateSavedUsages = (
+        current: readonly ContentMediaUsage[],
+        status: 'failed' | 'synced'
+      ) =>
+        current.map((usage) => {
+          const submitted = savedUsages.get(usage.uiId);
+          if (!submitted) return usage;
+          const resolution = result.resolutions?.find(
+            (entry) => entry.draftId === submitted.localDraft?.id
+          );
+          // Media added or replaced after submission belongs to the next save.
+          if (usage.localDraft && usage.localDraft.id !== submitted.localDraft?.id) return usage;
+          if (usage.localDraft && !resolution) return usage;
+          if (
+            !usage.localDraft &&
+            (usage.assetId !== (resolution?.assetId ?? submitted.assetId) ||
+              usage.persistentUrl !== (resolution?.persistentUrl ?? submitted.persistentUrl))
+          )
+            return usage;
+          const resolved = usage.localDraft
+            ? resolveContentMediaUsageDrafts([usage], result.resolutions ?? [])[0]!
+            : usage;
+          return usage.role === submitted.role && usage.sortOrder === submitted.sortOrder
+            ? setReferenceStatus([resolved], status)[0]!
+            : { ...resolved, referenceStatus: 'pending' as const };
+        });
+      if (result.resolutions?.length) {
+        revokeContentMediaUsageObjectUrls(
+          mediaUsages.filter((usage) => usage.localDraft && resolutionIds.has(usage.localDraft.id))
+        );
+      }
       if (result.status === 'reference_failed') {
-        setRetryOperation(() => result.retryReferenceSync);
-        setMediaUsages(setReferenceStatus(resolvedUsages, 'failed'));
+        setRetryOperation(() => async () => {
+          await result.retryReferenceSync();
+          setMediaUsages((current) => updateSavedUsages(current, 'synced'));
+        });
+        setMediaUsages((current) => updateSavedUsages(current, 'failed'));
         return { saved: result.saved, referenceFailed: true } as const;
       }
 
       setRetryOperation(null);
-      setMediaUsages(setReferenceStatus(resolvedUsages, 'synced'));
+      setMediaUsages((current) => updateSavedUsages(current, 'synced'));
       return { saved: result.saved, referenceFailed: false } as const;
     },
     [mediaUsages, setMediaUsages]
@@ -59,11 +90,10 @@ export const useStudioMediaReferenceSync = ({
     try {
       await retryOperation();
       setRetryOperation(null);
-      setMediaUsages((current) => setReferenceStatus(current, 'synced'));
     } finally {
       setRetrying(false);
     }
-  }, [retryOperation, retrying, setMediaUsages]);
+  }, [retryOperation, retrying]);
 
   return {
     hasPendingRetry: retryOperation !== null,

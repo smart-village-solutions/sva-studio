@@ -84,7 +84,7 @@ const AddressRow = ({
 }>) => {
   const { setValue } = useFormContext<GenericItemsDetailFormValues>();
   return (
-    <div className="space-y-4 rounded-xl border border-border/60 p-4">
+    <div className="space-y-4 rounded-lg border border-border-subtle p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium text-foreground">{labels.addressItem}</p>
         {canRemove ? (

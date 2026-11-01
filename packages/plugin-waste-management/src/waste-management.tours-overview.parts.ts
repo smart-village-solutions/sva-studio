@@ -32,18 +32,22 @@ export const loadWasteToursAssignmentOverview = async ({
 export const loadWasteToursSchedulingOverview = async ({
   isMounted,
   setSchedulingOverview,
+  setSchedulingLoadState,
 }: {
   readonly isMounted: () => boolean;
   readonly setSchedulingOverview: WasteToursState['setSchedulingOverview'];
+  readonly setSchedulingLoadState: WasteToursState['setSchedulingLoadState'];
 }) => {
   try {
     const schedulingResponse = await getWasteManagementSchedulingOverview();
     if (isMounted()) {
       setSchedulingOverview(schedulingResponse);
+      setSchedulingLoadState('ready');
     }
   } catch {
     if (isMounted()) {
       setSchedulingOverview(null);
+      setSchedulingLoadState('error');
     }
   }
 };

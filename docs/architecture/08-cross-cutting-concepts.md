@@ -598,7 +598,9 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Theme-Varianten sind instanzfähig vorbereitet: `instanceId` kann eine Theme-Auswahl beeinflussen, ohne die Shell-Komponenten selbst zu verzweigen
 - `@kern-ux/native` dient in Phase 1 nur als gebündelte Font-Quelle (`Fira Sans`), nicht als globaler CSS-Reset oder konkurrierende Komponentenlaufzeit
 - Mobile Navigation nutzt ein zugängliches Drawer-/`Sheet`-Muster statt projektspezifischer Spezialinteraktionen
-- Komplexe Alt-Muster wie kollabierte Flyout-Submenüs oder pixelgenaue Active-Indikatoren bleiben bewusst außerhalb des Initial-Scope
+- Das überarbeitete Designsystem wird im bestehenden RGB-Tokenpfad und `@sva/studio-ui-react` umgesetzt; News nutzt gemeinsame Detail-Tabs mit optionaler Intent-Vorladung, ohne fachliche Speicherverträge zu verlagern
+- Ohne gespeicherte Präferenz gelten Drawer unter 1024 px, Rail ab 1024 px und Sidebar ab 1280 px. Bestehende Collapse-Werte bleiben erhalten; automatische Breitenwechsel persistieren keine Präferenz
+- Kollabierte Untermenüs bleiben als vorhandene zugängliche Flyouts erhalten. Header-Kontext und Kontomenü verwenden eindeutige Control-IDs; Seitenköpfe richten sich nach tatsächlicher Inhaltsbreite
 
 ### Review-Governance
 
@@ -1314,6 +1316,30 @@ Identität, Organisation und Effective Access werden als getrennte, aber generat
 Die lokale Principal-Projektion enthält für persönliche und organisatorische Credentials ausschließlich `ready`, `missing_credentials`, `partial_credentials`, `verification_pending` oder `unavailable`. Sie enthält weder Secret noch Fingerprint und ruft den Mainserver nicht auf. Nicht bereite Principals können keinen Create-Schreibvorgang starten; Serverprüfung bleibt führend.
 
 Bei `stale_mainserver_context` löscht das Plugin-SDK sein betroffenes Binding und wiederholt keinen Write. Der Core-Content-, News- und Event-Editor invalidiert die zugehörigen Freigaben, lädt Kontext und Detail nach ausdrücklicher Recovery-Aktion erneut und bewahrt den Formularentwurf. Der Nutzer startet einen weiteren Write ausdrücklich.
+
+### News-Speicherergebnis und geschützter offener Entwurf
+
+News hält pro Save eine stabile Operationskennung; Create verwendet diese auch
+für den vorhandenen Idempotenzvertrag. Nach Transportverlust, unbekanntem
+Providerergebnis oder partieller Mutation ist ein neuer Inhaltswrite gesperrt.
+Die rein lesende News-Operationsroute filtert das bestehende Journal nach
+Session-Instanz, Account, aktiver Organisation und konkretem Principal und prüft
+aktuelle Aktionsrechte. Ein fehlender Eintrag oder HTTP-4xx beweist keine
+Nichtausführung. Nur ausdrücklich vor dem Providerwrite abgelehnte Versuche
+sind sicher erneut speicherbar. Ein bestätigtes Ergebnis erlaubt ausschließlich
+den vorhandenen Medienreferenzabschluss; sein Retry wiederholt keinen Contentwrite.
+Keine neue Persistenz oder globale Exactly-once-Garantie entsteht.
+
+Die bestehende Host-Leave-Boundary schützt Erstellen und Detailbearbeitung.
+Bei Sessionverlust behält sie einen ungespeicherten Editor im Dokument, sperrt
+und verbirgt dessen Controls und unterbindet die automatische Auth-Navigation. React `Activity` erhält dabei auch lokalen Dialogzustand und pausiert die Portal-/Fokuseffekte; ein verstecktes Fieldset allein würde Dialogportale nicht sperren.
+Die Authentifizierung und ihre Rechte werden weiterhin verworfen. Anmeldung
+in neuem Tab und ausdrücklich geprüfte identische Identität/Instanz/Organisation
+(einschließlich abschließend publiziertem Kontext) ermöglichen die Wiederaufnahme.
+Ressourcen-Principal-Reloads behalten bereits gemountete Formulare deaktiviert.
+Neue Eingaben während Save/Ergebnisprüfung werden nicht als gespeichert quittiert
+oder zurückgesetzt. Entwürfe bleiben ausschließlich im geöffneten Dokument;
+Neuladen/Schließen besitzt keine zusätzliche lokale Draft-Persistenz.
 
 ### Integrität und Rechte für Waste-Tour-Fraktionen
 

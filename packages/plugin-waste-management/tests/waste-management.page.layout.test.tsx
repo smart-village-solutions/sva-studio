@@ -1,62 +1,16 @@
 import React from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementPageTabs } from '../src/waste-management.page.layout.js';
 
-const { tabsContentSpy } = vi.hoisted(() => ({
-  tabsContentSpy: vi.fn(
-    ({
-      value,
-      forceMount,
-      className,
-      children,
-    }: {
-      readonly value: string;
-      readonly forceMount?: boolean;
-      readonly className?: string;
-      readonly children: React.ReactNode;
-    }) => (
-      <div data-value={value} data-force-mount={forceMount ? 'true' : 'false'} className={className}>
-        {children}
-      </div>
-    )
-  ),
-}));
-
-vi.mock('@sva/studio-ui-react', () => ({
-  Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
-  StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  Tabs: ({
-    children,
-    className,
-  }: {
-    readonly children: React.ReactNode;
-    readonly className?: string;
-  }) => <div className={className}>{children}</div>,
-  TabsList: ({
-    children,
-    className,
-  }: {
-    readonly children: React.ReactNode;
-    readonly className?: string;
-  }) => <div className={className}>{children}</div>,
-  TabsTrigger: ({
-    children,
-    className,
-  }: {
-    readonly children: React.ReactNode;
-    readonly className?: string;
-  }) => (
-    <button type="button" className={className}>
-      {children}
-    </button>
-  ),
-  TabsContent: tabsContentSpy,
-}));
-
 vi.mock('../src/waste-management.master-data-panel.js', () => ({
-  WasteMasterDataPanel: ({ tab }: { readonly tab: string }) => <div>{`master-data:${tab}`}</div>,
+  WasteMasterDataPanel: ({ tab }: { readonly tab: string }) => (
+    <div>
+      {`master-data:${tab}`}
+      <input aria-label={`draft:${tab}`} />
+    </div>
+  ),
 }));
 
 vi.mock('../src/waste-management.master-data-addresses-panel.js', () => ({
@@ -97,7 +51,7 @@ describe('WasteManagementPageTabs', () => {
     cleanup();
   });
 
-  it('keeps all tab panels mounted so switching tabs does not remount panel state', () => {
+  it('keeps visited panels and their input mounted across route-driven tab changes', () => {
     const search = {
       masterDataTab: 'locations' as const,
       q: '',
@@ -123,11 +77,10 @@ describe('WasteManagementPageTabs', () => {
       />
     );
 
-    expect(tabsContentSpy).toHaveBeenCalledTimes(8);
-    expect(tabsContentSpy.mock.calls[0]?.[0]?.forceMount).toBeUndefined();
-    expect(tabsContentSpy.mock.calls[1]?.[0]?.forceMount).toBeUndefined();
-
-    tabsContentSpy.mockClear();
+    fireEvent.change(screen.getByRole('textbox', { name: 'draft:fractions' }), {
+      target: { value: 'Offener Entwurf' },
+    });
+    expect(screen.queryByText('tours', { exact: true })).toBeNull();
 
     rerender(
       <WasteManagementPageTabs
@@ -141,11 +94,13 @@ describe('WasteManagementPageTabs', () => {
       />
     );
 
-    expect(tabsContentSpy).toHaveBeenCalledTimes(16);
-    expect(tabsContentSpy.mock.calls[0]?.[0]?.forceMount).toBe(true);
-    expect(tabsContentSpy.mock.calls[1]?.[0]?.forceMount).toBeUndefined();
-    expect(tabsContentSpy.mock.calls[8]?.[0]?.forceMount).toBe(true);
-    expect(tabsContentSpy.mock.calls[9]?.[0]?.forceMount).toBeUndefined();
+    expect((screen.getByLabelText('draft:fractions') as HTMLInputElement).value).toBe(
+      'Offener Entwurf'
+    );
+    expect(screen.getByText('tours', { exact: true })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'tabs.tours.title' }).getAttribute('data-state')).toBe(
+      'active'
+    );
   });
 
   it('renders tab-specific info content inside each panel and no global badges', () => {
@@ -175,9 +130,12 @@ describe('WasteManagementPageTabs', () => {
     expect(screen.queryByText('meta.page')).toBeNull();
     expect(screen.queryByText('meta.pageSize')).toBeNull();
 
-    expect(document.querySelector('button.mb-\\[-1px\\].border-b-\\[3px\\].border-primary.text-primary')).toBeTruthy();
-    expect(document.querySelector('button.border-transparent.text-muted-foreground')).toBeTruthy();
-    expect(document.querySelector('.ml-\\[10px\\].gap-10')).toBeTruthy();
+    expect(
+      screen.getByRole('tab', { name: 'tabs.fractions.title' }).getAttribute('data-state')
+    ).toBe('active');
+    expect(screen.getByRole('tab', { name: 'tabs.tours.title' }).getAttribute('data-state')).toBe(
+      'inactive'
+    );
   });
 
   it('renders the canonical master-data panel for the active top-level tab', () => {
@@ -228,7 +186,7 @@ describe('WasteManagementPageTabs', () => {
     );
 
     expect(document.querySelector('.space-y-0')).toBeTruthy();
-    expect(tabsContentSpy.mock.calls[0]?.[0]?.className).toContain('mt-0');
+    expect(screen.getByRole('tabpanel').className).toContain('mt-0');
   });
 
   it('wraps each tab panel in a darker content surface', () => {
@@ -254,10 +212,10 @@ describe('WasteManagementPageTabs', () => {
     );
 
     const [tabDescription] = screen.getAllByText('tabs.fractions.body');
-    const tabPanelSurface = tabDescription.closest('section')?.parentElement;
-    expect(tabPanelSurface?.className).toContain('bg-[rgb(var(--waste-panel-surface))]');
+    const tabPanelSurface = tabDescription.closest('[role=tabpanel]')?.firstElementChild;
+    expect(tabPanelSurface?.className).toContain('bg-surface-inset');
     expect(tabPanelSurface?.className).toContain('border');
-    expect(tabPanelSurface?.className).toContain('rounded-2xl');
+    expect(tabPanelSurface?.className).toContain('rounded-lg');
   });
 
   it('wires the overview panel into the tools tab content', () => {
@@ -313,8 +271,6 @@ describe('WasteManagementPageTabs', () => {
   });
 
   it('omits settings and tools tabs when the current UI access does not allow them', () => {
-    tabsContentSpy.mockClear();
-
     render(
       <WasteManagementPageTabs
         pt={(key) => key}
@@ -332,6 +288,7 @@ describe('WasteManagementPageTabs', () => {
           tourId: undefined,
         }}
         visibleTabIds={['fractions', 'tours', 'locations', 'scheduling', 'output']}
+        onAddressSearchChange={() => undefined}
         onTabChange={() => undefined}
       />
     );
@@ -339,6 +296,6 @@ describe('WasteManagementPageTabs', () => {
     expect(screen.queryAllByText('tabs.tools.title')).toHaveLength(0);
     expect(screen.queryAllByText('tabs.settings.title')).toHaveLength(0);
     expect(screen.getAllByText('tabs.output.title').length).toBeGreaterThan(0);
-    expect(tabsContentSpy).toHaveBeenCalledTimes(5);
+    expect(screen.getAllByRole('tab')).toHaveLength(5);
   });
 });

@@ -220,11 +220,10 @@ describe('SSF V2 content administration', () => {
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
 
-    await screen.findByLabelText('English (en)');
+    const toggle = await screen.findByText('English (en)', { selector: 'label > span' });
     const explanation = document.getElementById('ssf-v2-guestLanguages-0-guest-explanationHtml');
     if (!explanation) throw new Error('ssf_v2_guest_explanation_missing');
     fireEvent.change(explanation, { target: { value: '<p>Custom guest text</p>' } });
-    const toggle = screen.getByLabelText('English (en)');
     fireEvent.click(toggle);
     fireEvent.click(toggle);
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
@@ -254,13 +253,13 @@ describe('SSF V2 content administration', () => {
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
 
-    fireEvent.click(await screen.findByLabelText('English (en)'));
+    fireEvent.click(await screen.findByText('English (en)', { selector: 'label > span' }));
     const explanation = document.getElementById('ssf-v2-guestLanguages-0-guest-explanationHtml');
     if (!explanation) throw new Error('ssf_v2_guest_explanation_missing');
     fireEvent.change(explanation, { target: { value: '<p>Unsaved text</p>' } });
-    fireEvent.click(screen.getByLabelText('English (en)'));
+    fireEvent.click(screen.getByText('English (en)', { selector: 'label > span' }));
     fireEvent.click(screen.getByRole('button', { name: 'actions.discard' }));
-    fireEvent.click(screen.getByLabelText('English (en)'));
+    fireEvent.click(screen.getByText('English (en)', { selector: 'label > span' }));
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
     await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({}));
@@ -314,7 +313,8 @@ describe('SSF V2 content administration', () => {
     api.writeSystem.mockImplementation(async (input) => ({ installation, runtimeTemplate: input.runtimeTemplate, supportedLanguages }));
     const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
     render(<SsfSystemContentV2Page />);
-    fireEvent.change(await screen.findByLabelText('v2.legalTexts.newLanguage'), { target: { value: 'en' } });
+    const languageLabel = await screen.findByText('v2.legalTexts.newLanguage', { selector: 'label' });
+    fireEvent.change(within(languageLabel).getByRole('combobox', { name: 'v2.legalTexts.newLanguage' }), { target: { value: 'en' } });
     fireEvent.click(screen.getByRole('button', { name: 'v2.legalTexts.addLanguage' }));
     const save = screen.getAllByRole('button', { name: 'actions.save' }).at(1);
     if (!save) throw new Error('ssf_test_save_missing');

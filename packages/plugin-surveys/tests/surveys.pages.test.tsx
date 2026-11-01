@@ -253,7 +253,7 @@ describe('survey editor pages', () => {
     expect(scoped.getByRole('tab', { name: 'Inhalt' }).getAttribute('data-state')).toBe('active');
     expect(scoped.getByRole('heading', { name: 'Inhalt' })).toBeTruthy();
     expect(activePanel?.firstElementChild?.className).toContain(
-      'bg-[rgb(var(--waste-panel-surface))]'
+      'bg-surface-inset'
     );
   });
 

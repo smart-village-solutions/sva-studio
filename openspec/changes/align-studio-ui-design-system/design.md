@@ -1006,3 +1006,46 @@ Diese Nachweise sind keine Merge-Freigabe. GitHub-Gates am endgültigen PR-HEAD,
 vollständige manuelle Accessibility-/Sprachprüfung und fachliche Produktabnahme
 bleiben vor einer Freigabe gesondert zu beurteilen. Insbesondere ersetzen lokale
 Dev-Auth-/Fixture-Browserfälle keinen echten OIDC- oder PostgreSQL-Roundtrip.
+
+
+### Review-Korrekturen für PR #2034 (1. November 2026)
+
+Der gemeinsame Medien-Save-Vertrag kennzeichnet nachweislich vorgelagerte
+Host-Ablehnungen auch für die übrigen Content-Editoren. Request-Validierung,
+CSRF, veralteter Kontext und die geprüften lokalen Autorisierungsstellen
+liefern `not_applied`; Providerfehler und beliebige 4xx bleiben unbekannt.
+Gezielte Server- und SDK-Gegenproben prüfen Bereinigung beziehungsweise Erhalt
+der Uploads und den ausbleibenden Provider-Aufruf.
+
+Der Kalender-Browsertest fixiert sein Bezugsjahr. Der A11y-Test der Hilfe
+prüft die gemeinsame Radix-Layer-Reihenfolge: Escape schließt zunächst den
+autofokussierten Tooltip und anschließend den Dialog mit Fokusrückgabe.
+Die Survey-Assertion verwendet den tatsächlichen semantischen Panel-Token.
+Die drei SSF-Coverage-Timeouts wurden auf globale Label-Suchen über den großen
+Test-DOM zurückgeführt. Sichtbare Labelinteraktion und auf das Label begrenzte
+Rollenabfragen erhalten vollständige Fixtures und dieselben Speicher-/Discard-
+Assertions. Alle drei Fälle bestehen unter Coverage mit unverändertem
+Fünfsekundenlimit (542/332/581 ms im gezielten Lauf).
+
+Die vollständige Complexity-Prüfung über 3.544 Dateien ist lokal grün, ohne
+neue Befunde oder Änderungen an Policies und Baselines. Bestehende Funktionen
+wurden in ihren zuständigen Dateien beziehungsweise vorhandenen Nachbarpfaden
+aufgeteilt. Eine zusätzliche interne Popup-Datei ersetzt den entsprechenden
+Code im bisherigen Suchauswahlmodul; die öffentliche API bleibt unverändert.
+Die 201 bereits erfassten Befunde werden dadurch nicht als behoben behauptet.
+
+Gezielte Nachweise umfassen News-Detail und -Pages (25/42), SDK-Client und
+-Request (17/16), gemeinsame Suche und Medienbausteine (33), POI (148),
+Waste-Kalender/-Adressen/-Felder/-Lader sowie Survey-Ergebnisse, Sidebar (53),
+Leave-Boundary (11), Principal-Einbindung (6), SSF-Konfiguration (7) und die
+Server-/SDK-Medienablehnungen. Wiederholungen und überlappende Läufe werden
+nicht zu einer Gesamtzahl addiert. Die App-Typprüfung mit 31 Build-Abhängigkeiten,
+die betroffenen Package-Typprüfungen und der Server-Runtime-Guard mit 40 Tasks
+sind grün. Dokumentations-, Dateiplatzierungs- und OpenSpec-Prüfung sind grün.
+Der lokale Kalender-Browserfall und die Hilfe auf Startseite, Admin-Detail und
+Pluginroute sind grün. Die Hilfe prüft Tooltip-/Dialog-Escape und Fokusrückgabe;
+die vorhandene serverlesbare Dev-Session wird vor der ersten App-Navigation
+aufgebaut. Synthetische Auth-/Fachdaten und fehlende echte IAM-/Fachdatenbanken
+begrenzen diese Aussage auf den geprüften UI-Pfad.
+Dies bleibt lokaler technischer Nachweis; vollständige fachliche, manuelle
+Accessibility- und produktive Integrationsabnahme sind weiterhin getrennt.

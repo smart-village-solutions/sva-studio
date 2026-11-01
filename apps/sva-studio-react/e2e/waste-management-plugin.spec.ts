@@ -68,6 +68,7 @@ test.describe('waste management plugin', () => {
   test('keeps partial annual-calendar dates visible and explains missing recurring data', async ({
     page,
   }) => {
+    await page.clock.setFixedTime(new Date('2026-06-01T12:00:00Z'));
     await mockSharedShellRequests(page, {
       instanceId: 'de-musterhausen',
       permissionActions: ['waste-management.read', 'waste-management.tours.manage'],

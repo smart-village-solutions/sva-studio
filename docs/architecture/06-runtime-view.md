@@ -1565,6 +1565,7 @@ Die Medienbibliothek startet mit `media.read` und `media.update` sowie CSRF-Schu
 4. Die Mediathek speichert eine neue Kopie unmittelbar. Sechs Content-Plugins übertragen ihre lokalen Kopien erst im vorhandenen Content-Save-Ablauf; Waste speichert die öffentliche Kopie sofort und übernimmt nur deren dauerhafte URL in die noch ungespeicherte Konfiguration.
 5. Der vorhandene Medienjob prüft Ausgabe, Grundlage und eingebettete Bildressourcen einschließlich aktiver Scanpflicht. Nur der aktuelle Claim darf alle Bestandteile freigeben und deren tatsächliche Bytes samt Zustandsdokument verbuchen. Private Ressourcen bleiben auch ohne Scan privat.
 6. Kopienanlage und Quellenlöschung sperren dieselbe Grundlage. Löschung markiert das Asset vor Storage-I/O; neue Referenzen/Kopien sind danach ausgeschlossen. Referenzen, offene Content-Save-Verwendungen und abhängige Kopien blockieren die Löschung. Wiederholung nach einem Storage-Fehler darf Kontingente nicht mehrfach korrigieren.
+
 ## Feste App-Texte ausdrücklich maschinell vorbereiten (2F)
 
 1. Ein berechtigter Nutzer startet im vorhandenen Katalogeditor „Fehlende Übersetzungen erstellen“. Der Server bindet CSRF und gespeicherten Session-/Organisationsscope, prüft `app-translations.catalog.write`, Modul und eigenen geprüften Zugang. Eine einzelne manuelle Ersetzung verlangt bestätigte Quell-/Overridedigests. Zu große Einzelwerte werden vor Enqueue abgewiesen.
@@ -1622,3 +1623,7 @@ Der vorhandene Repository-Upsert ruft `upsert_waste_tour(...)` auf. Die DB-Funkt
 Der Main-Server verwendet für bestehende Registrierung und Adressänderung
 `send-verify-email`; Einladung, Passwort-Reset und Absender bleiben in ihren
 bisherigen Abläufen. Live-Mail-/Linktests sind ein getrennt freizugebender Rolloutschritt.
+
+## Baustellenplugin
+
+Ein Baustellen-Update durchläuft Principal-/Objektprüfung, frischen Vollsnapshot, Fingerprint-Prüfung, Host-Lock, einmalige Mainserver-Mutation und unabhängigen Readback. Bei Antwortverlust prüft Recovery ausschließlich denselben gespeicherten Vorgang und führt lokale Folgeschritte nach. Siehe [Baustellenreferenz](../reference/construction-sites.md).

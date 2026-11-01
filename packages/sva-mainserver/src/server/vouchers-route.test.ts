@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   write: vi.fn(),
   detail: vi.fn(),
   visibility: vi.fn(),
+  remove: vi.fn(),
   provider: vi.fn(),
   finalize: vi.fn(),
   access: vi.fn(),
@@ -50,6 +51,7 @@ vi.mock('./service.js', () => ({
   writeSvaMainserverVoucher: state.write,
   getSvaMainserverVoucher: state.detail,
   changeSvaMainserverGenericItemVisibility: state.visibility,
+  deleteSvaMainserverVoucher: state.remove,
   listSvaMainserverVouchers: state.list,
   listSvaMainserverPoi: state.locations,
   loadSvaMainserverDataProviderIdentity: () => ({ dataProvider: { id: 'provider' } }),
@@ -608,7 +610,7 @@ describe('voucher pre-write rejection contracts', () => {
     expect(
       (
         await dispatchSvaMainserverVouchersRequest(
-          new Request('https://studio.test/api/v1/mainserver/vouchers/2', { method: 'DELETE' })
+          new Request('https://studio.test/api/v1/mainserver/vouchers/2', { method: 'PUT' })
         )
       )?.status
     ).toBe(405);
@@ -621,6 +623,100 @@ describe('voucher pre-write rejection contracts', () => {
       (await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher })))?.status
     ).toBe(409);
     expect(state.write).not.toHaveBeenCalled();
+  });
+});
+
+describe('voucher deletion', () => {
+  const deleteRequest = (voucherId = '2') =>
+    new Request(`https://studio.test/api/v1/mainserver/vouchers/${voucherId}`, {
+      method: 'DELETE',
+    });
+
+  beforeEach(() => {
+    state.detail.mockResolvedValue({
+      id: '2',
+      dataProvider: { id: 'provider' },
+      pointOfInterest: null,
+      quota: null,
+    });
+    state.remove.mockResolvedValue({ id: '2' });
+  });
+
+  it('deletes with voucher permission and provider authorization even without a POI or quota', async () => {
+    const response = await dispatchSvaMainserverVouchersRequest(deleteRequest());
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toEqual({ data: { id: '2' } });
+    expect(state.local).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'vouchers.delete',
+        resource: { contentType: 'vouchers.voucher', contentId: '2' },
+      })
+    );
+    expect(state.provider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'vouchers.delete',
+        contentType: 'vouchers.voucher',
+        contentId: '2',
+        item: { id: '2', dataProvider: { id: 'provider' } },
+      })
+    );
+    expect(state.remove).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        voucherId: '2',
+        instanceId: 'tenant',
+        actingPrincipalType: 'organization',
+      })
+    );
+    expect(state.finalize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerOutcome: 'succeeded',
+        contentId: '2',
+        completedSteps: ['provider_write', 'tombstone'],
+      })
+    );
+    expect(state.aggregate).not.toHaveBeenCalled();
+    expect(state.write).not.toHaveBeenCalled();
+  });
+
+  it('rejects missing CSRF before reading or deleting a voucher', async () => {
+    state.csrf.mockReturnValue({ code: 'invalid' });
+    expect((await dispatchSvaMainserverVouchersRequest(deleteRequest()))?.status).toBe(403);
+    expect(state.detail).not.toHaveBeenCalled();
+    expect(state.remove).not.toHaveBeenCalled();
+  });
+
+  it('requires vouchers.delete rather than generic content deletion rights', async () => {
+    state.local.mockResolvedValue({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'forbidden',
+    });
+    expect((await dispatchSvaMainserverVouchersRequest(deleteRequest()))?.status).toBe(403);
+    expect(state.detail).not.toHaveBeenCalled();
+    expect(state.remove).not.toHaveBeenCalled();
+  });
+
+  it('rejects a provider denial before deletion', async () => {
+    state.provider.mockResolvedValue(new Response(null, { status: 403 }));
+    expect((await dispatchSvaMainserverVouchersRequest(deleteRequest()))?.status).toBe(403);
+    expect(state.remove).not.toHaveBeenCalled();
+    expect(state.finalize).not.toHaveBeenCalled();
+  });
+
+  it('does not retry failed deletion or finalize it as successful', async () => {
+    state.remove.mockRejectedValueOnce(new Error('upstream_unavailable'));
+    expect((await dispatchSvaMainserverVouchersRequest(deleteRequest()))?.status).toBe(502);
+    expect(state.remove).toHaveBeenCalledOnce();
+    expect(state.finalize).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed voucher IDs without consulting the provider', async () => {
+    expect((await dispatchSvaMainserverVouchersRequest(deleteRequest('invalid')))?.status).toBe(
+      405
+    );
+    expect(state.detail).not.toHaveBeenCalled();
+    expect(state.remove).not.toHaveBeenCalled();
   });
 });
 

@@ -189,6 +189,10 @@ export const mainserverProjectionPageLoaders: Record<
   }),
   'faq.faq': createGenericItemPageLoader({ overrideContentType: true }),
   'cockpit-cards.cockpit-card': createGenericItemPageLoader({ overrideContentType: true }),
+  'construction-sites.construction-site': createGenericItemPageLoader({
+    overrideContentType: true,
+    continueAfterEmptyPage: true,
+  }),
   'projects.project': createGenericItemPageLoader({
     overrideContentType: true,
     continueAfterEmptyPage: true,

@@ -178,6 +178,15 @@ const definitions: Record<SvaMainserverProjectionContentType, ProjectionDefiniti
     order: 'updatedAt_DESC',
     paginated: true,
   },
+  'construction-sites.construction-site': {
+    document: svaMainserverGenericItemProjectionListDocument,
+    operationName: 'SvaMainserverGenericItemProjectionList',
+    responseField: 'genericItems',
+    contentType: 'construction-sites.construction-site',
+    titleField: 'title',
+    order: 'updatedAt_DESC',
+    paginated: true,
+  },
   'projects.project': {
     document: svaMainserverGenericItemProjectionListDocument,
     operationName: 'SvaMainserverGenericItemProjectionList',

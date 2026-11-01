@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   listSvaMainserverCategoryManagement: vi.fn(),
   saveSvaMainserverCategory: vi.fn(),
   deleteSvaMainserverCategory: vi.fn(),
+  resolveMainserverResourceActor: vi.fn(),
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
@@ -20,6 +21,9 @@ vi.mock('@sva/auth-runtime/server', () => ({
   reserveIdempotency: state.reserveIdempotency,
   completeIdempotency: state.completeIdempotency,
   validateCsrf: state.validateCsrf,
+}));
+vi.mock('./mutation-principal.js', () => ({
+  resolveMainserverResourceActor: state.resolveMainserverResourceActor,
 }));
 
 vi.mock('./service.js', async (importOriginal) => {
@@ -57,15 +61,20 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
   });
 
   const allow = (action: string) => {
-    state.authorizeContentPrimitiveForUser.mockResolvedValue({
-      ok: true,
-      actor: {
-        instanceId: 'de-musterhausen',
-        keycloakSubject: 'subject-1',
-        organizationId: '22222222-2222-2222-8222-222222222222',
-      },
-      permissions: [action],
-    });
+    state.authorizeContentPrimitiveForUser.mockImplementation(
+      ({ action: requested }: { action: string }) =>
+        requested === action
+          ? {
+              ok: true,
+              actor: {
+                instanceId: 'de-musterhausen',
+                keycloakSubject: 'subject-1',
+                organizationId: '22222222-2222-2222-8222-222222222222',
+              },
+              permissions: [action],
+            }
+          : { ok: false, status: 403, error: 'forbidden', message: 'forbidden' }
+    );
   };
 
   it('ignores unrelated routes without touching auth', async () => {
@@ -188,6 +197,115 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       ],
     });
   });
+
+  it('allows construction editors to read only compatible choices without category-management rights', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('construction-sites.read');
+    state.listSvaMainserverCategories.mockResolvedValue([
+      { id: 'universal', name: 'Allgemein', dataTypes: [] },
+      { id: 'construction', name: 'Verkehr', dataTypes: ['generic_item_construction_site'] },
+      { id: 'news', name: 'Presse', dataTypes: ['news_item'] },
+    ]);
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_construction_site'
+      )
+    );
+    expect(response?.status).toBe(200);
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'construction-sites.read',
+        resource: { contentType: 'construction-sites.construction-site' },
+      })
+    );
+    await expect(response?.json()).resolves.toEqual({
+      data: [
+        { id: 'universal', name: 'Allgemein' },
+        { id: 'construction', name: 'Verkehr' },
+      ],
+    });
+  });
+
+  it('denies the construction lookup without construction read or create permission', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.read');
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_construction_site'
+      )
+    );
+    expect(response?.status).toBe(403);
+    expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+  });
+
+  it.each(['construction-sites.read', 'construction-sites.create'])(
+    'loads construction choices with the selected principal and only %s',
+    async (action) => {
+      state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+      allow(action);
+      state.listSvaMainserverCategories.mockResolvedValue([]);
+      for (const principal of ['organization', 'user']) {
+        const scopedActor = {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'subject-1',
+          actingPrincipalType: principal,
+        };
+        state.resolveMainserverResourceActor.mockResolvedValue(scopedActor);
+        const request = new Request(
+          'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_construction_site',
+          {
+            headers: { 'X-SVA-Acting-Principal-Type': principal },
+          }
+        );
+        expect((await dispatchSvaMainserverCategoriesRequest(request))?.status).toBe(200);
+        expect(state.resolveMainserverResourceActor).toHaveBeenCalledWith(
+          expect.objectContaining({ request, ctx })
+        );
+        expect(state.listSvaMainserverCategories).toHaveBeenLastCalledWith(scopedActor);
+      }
+      state.resolveMainserverResourceActor.mockResolvedValue(undefined);
+      const denied = new Request(
+        'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_construction_site',
+        {
+          headers: { 'X-SVA-Acting-Principal-Type': 'user' },
+        }
+      );
+      expect((await dispatchSvaMainserverCategoriesRequest(denied))?.status).toBe(403);
+      expect(state.listSvaMainserverCategories).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it.each(
+    (
+      [
+        ['GET', '/categories'],
+        ['GET', '/categories?dataType=event_record'],
+        ['GET', '/categories?view=management&dataType=generic_item_construction_site'],
+        ['GET', '/categories/cat-1?dataType=generic_item_construction_site'],
+        ['GET', '/categories?dataType=generic_item_construction_site&dataType=news_item'],
+        ['POST', '/categories?dataType=generic_item_construction_site'],
+        ['DELETE', '/categories/cat-1?dataType=generic_item_construction_site'],
+      ] as const
+    ).flatMap(([method, path]) =>
+      ['construction-sites.read', 'construction-sites.create'].map(
+        (action) => [method, path, action] as const
+      )
+    )
+  )(
+    'does not grant category administration through %s %s with %s',
+    async (method, path, action) => {
+      state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+      allow(action);
+      const response = await dispatchSvaMainserverCategoriesRequest(
+        new Request(`https://studio.test/api/v1/mainserver${path}`, { method })
+      );
+      expect(response?.status).toBe(403);
+      expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+      expect(state.listSvaMainserverCategoryManagement).not.toHaveBeenCalled();
+      expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
+      expect(state.deleteSvaMainserverCategory).not.toHaveBeenCalled();
+    }
+  );
 
   it.each([
     'https://studio.test/api/v1/mainserver/categories?dataType=unknown',

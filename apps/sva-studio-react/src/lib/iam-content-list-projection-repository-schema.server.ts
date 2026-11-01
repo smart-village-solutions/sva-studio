@@ -221,6 +221,7 @@ export const toMainserverContentType = (value: string): MainserverContentType | 
     value === 'faq.faq' ||
     value === 'cockpit-cards.cockpit-card' ||
     value === 'vouchers.voucher' ||
+    value === 'construction-sites.construction-site' ||
     value === 'projects.project' ||
     value === 'surveys.survey'
   ) {

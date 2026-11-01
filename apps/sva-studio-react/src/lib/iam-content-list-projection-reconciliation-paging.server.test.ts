@@ -330,6 +330,7 @@ describe('content projection reconciliation paging', () => {
         genericTypeOwnership: {
           FAQ: 'faq.faq',
           COCKPIT_CARD: 'cockpit-cards.cockpit-card',
+          ConstructionSite: 'construction-sites.construction-site',
           FeaturedProject: 'projects.project',
           Voucher: 'vouchers.voucher',
         },

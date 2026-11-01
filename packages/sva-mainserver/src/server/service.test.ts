@@ -70,6 +70,11 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
 });
 
 import {
+  getSvaMainserverConstructionSite,
+  listSvaMainserverConstructionSiteCandidates,
+  prepareSvaMainserverConstructionSite,
+  writeSvaMainserverConstructionSite,
+  recoverSvaMainserverConstructionSite,
   changeSvaMainserverEventVisibility,
   changeSvaMainserverGenericItemVisibility,
   changeSvaMainserverNewsVisibility,
@@ -116,6 +121,8 @@ import {
 } from './service';
 import { SvaMainserverError } from './errors';
 import { withUpdatedPayload } from './service-internals/shared.js';
+import { constructionSiteWriteFields } from '../generated/construction-sites.js';
+import type { RawRecord, WriteShape } from './vouchers-snapshot.js';
 
 const baseConfig = {
   instanceId: 'de-musterhausen',
@@ -1077,6 +1084,136 @@ describe('createSvaMainserverService', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
     expect(readCredentials).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps construction pagination, organization credentials and opaque media metadata through update and recovery', async () => {
+    const blank = (shape: WriteShape) =>
+      Object.fromEntries(
+        Object.entries(shape).map(([key, value]) => [key, typeof value === 'object' ? [] : null])
+      );
+    const mediaId = '40000000-0000-4000-8000-000000000001';
+    let stored: RawRecord = {
+      ...blank(constructionSiteWriteFields),
+      id: '42',
+      title: 'Brücke',
+      genericType: 'ConstructionSite',
+      visible: false,
+      updatedAt: '2026-11-01T12:00:00Z',
+      dataProvider: { id: 'provider-1' },
+      ancestry: null,
+      memberId: null,
+      pointOfInterest: null,
+      quota: null,
+      discountType: null,
+      genericItems: [],
+      genericItemMessages: [],
+      pushNotifications: [],
+      payload: { opaque: 'preserve', restrictions: [{ description: 'Alt', opaque: 'preserve' }] },
+      dates: [
+        {
+          ...blank(constructionSiteWriteFields.dates),
+          dateStart: '2026-11-01',
+          dateEnd: '2026-11-10',
+        },
+      ],
+      mediaContents: [
+        {
+          ...blank(constructionSiteWriteFields.mediaContents),
+          contentType: 'image',
+          captionText: 'Alt',
+          copyright: 'Redaktion',
+          sourceUrl: { url: 'https://cdn.test/image.png', description: 'Bild' },
+          payload: { studioMediaAssetId: mediaId, opaque: 'preserve' },
+        },
+      ],
+    };
+    state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'organization',
+      credentials: { apiKey: 'key-1', apiSecret: 'secret-1' },
+    });
+    let writes = 0;
+    const fetchImpl = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.body instanceof URLSearchParams)
+        return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
+      const body = JSON.parse(init?.body as string) as {
+        operationName: string;
+        variables: RawRecord;
+      };
+      if (body.operationName === 'SvaMainserverConstructionSiteList') {
+        const skip = body.variables.skip;
+        if (skip !== 0 && skip !== 100) throw new Error('unexpected_construction_page');
+        return createJsonResponse(200, {
+          data: {
+            genericItems: Array.from({ length: skip === 0 ? 100 : 1 }, (_, index) => ({
+              ...stored,
+              id: String(skip + index + 1),
+            })),
+          },
+        });
+      }
+      if (body.operationName === 'SvaMainserverConstructionSiteWrite') {
+        writes++;
+        stored = { ...stored, ...body.variables };
+        return createJsonResponse(200, { data: { createGenericItem: { id: stored.id } } });
+      }
+      if (body.operationName !== 'SvaMainserverConstructionSiteDetail')
+        throw new Error('unexpected_construction_operation');
+      return createJsonResponse(200, { data: { genericItem: stored } });
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+    const connection = {
+      instanceId: baseConfig.instanceId,
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: 'org-1',
+      actingPrincipalType: 'organization' as const,
+    };
+    const listed = await listSvaMainserverConstructionSiteCandidates(connection);
+    expect(listed).toHaveLength(101);
+    expect(listed.at(-1)?.id).toBe('101');
+    const current = await getSvaMainserverConstructionSite({ ...connection, siteId: '42' });
+    expect(current.data.writeBlockedReason).toBeUndefined();
+    const prepared = prepareSvaMainserverConstructionSite(
+      {
+        ...current.data.input,
+        title: 'Brücke neu',
+        mediaContents: current.data.input.mediaContents.map((media) => ({
+          ...media,
+          captionText: 'Neu',
+        })),
+        restrictions: current.data.input.restrictions.map((restriction) => ({
+          ...restriction,
+          description: 'Neu',
+        })),
+      },
+      'operation-organization',
+      current.item
+    );
+    expect(prepared.previousMediaIds).toEqual([mediaId]);
+    const saved = await writeSvaMainserverConstructionSite({ ...connection, prepared });
+    expect(saved.input.mediaContents[0]?.captionText).toBe('Neu');
+    expect(stored.payload).toMatchObject({
+      opaque: 'preserve',
+      restrictions: [{ description: 'Neu', opaque: 'preserve' }],
+    });
+    expect(stored.mediaContents).toEqual([
+      expect.objectContaining({
+        payload: { studioMediaAssetId: mediaId, opaque: 'preserve' },
+      }),
+    ]);
+    await expect(
+      recoverSvaMainserverConstructionSite({ ...connection, prepared })
+    ).resolves.toMatchObject({ id: '42', title: 'Brücke neu' });
+    expect(writes).toBe(1);
+    expect(state.readEffectiveSvaMainserverCredentialsWithStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        activeOrganizationId: 'org-1',
+        actingPrincipalType: 'organization',
+      })
+    );
   });
 
   it('routes default news helpers through the default service', async () => {

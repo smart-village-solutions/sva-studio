@@ -291,6 +291,17 @@ vi.mock('../lib/plugins', async () => {
     adminResources: [],
     viewBindings: [{ bindingKey: 'categories', component: categories.CategoriesPage }],
   } as never);
+  studioPlugins.push({
+    id: 'construction-sites',
+    displayName: 'Construction sites',
+    routes: [],
+    adminResources: [],
+    viewBindings: [{
+      bindingKey: 'constructionSitesList',
+      component: ({ principalControl }: { principalControl?: MainserverPrincipalControlModel }) =>
+        <div data-testid="construction-list-principal">{principalControl?.value}</div>,
+    }],
+  } as never);
   const adminResources = studioPlugins.flatMap((plugin) => plugin.adminResources ?? []);
   return {
     studioPlugins,
@@ -1606,6 +1617,22 @@ describe('appRouteBindings', () => {
     });
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByTestId('news-edit-page')).toBeNull();
+  });
+
+  it('passes the host principal to the construction overview and waits for a ready context', async () => {
+    routeState.search = { type: 'construction-sites.construction-site' };
+    routeState.organizationContext = {
+      activeOrganizationId: 'org-1',
+      organizations: [{ organizationId: 'org-1', organizationKey: 'org-1', displayName: 'Town',
+        organizationType: 'municipality', contentAuthorPolicy: 'org_only', isActive: true, isDefaultContext: true }],
+    };
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const page = render(<appRouteBindings.content />);
+    expect(screen.getByTestId('construction-list-principal').textContent).toBe('organization');
+    routeState.organizationContextIsLoading = true;
+    page.rerender(<appRouteBindings.content />);
+    expect(screen.queryByTestId('construction-list-principal')).toBeNull();
+    expect(screen.getByText('Author context loading')).toBeTruthy();
   });
 
   it('offers organization or personal principal choice when contentAuthorPolicy is org_or_personal', async () => {

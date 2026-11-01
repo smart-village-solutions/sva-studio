@@ -271,6 +271,26 @@
       "titleKey": "cockpit-cards.navigation.title"
     },
     {
+      "id": "construction-sites.content.create",
+      "path": "/admin/construction-sites/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "construction-sites"
+      },
+      "titleKey": "construction-sites.navigation.title"
+    },
+    {
+      "id": "construction-sites.content.detail",
+      "path": "/admin/construction-sites/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "construction-sites"
+      },
+      "titleKey": "construction-sites.navigation.title"
+    },
+    {
       "id": "content.create",
       "path": "/admin/content/new",
       "pageType": "create",

@@ -122,7 +122,10 @@ export const createGenericItemOperations = (executeGraphqlWithConfig: GraphqlExe
   },
 
   destroyGenericItemWithConfig: async (
-    input: SvaMainserverConnectionInput & { readonly genericItemId: string },
+    input: SvaMainserverConnectionInput & {
+      readonly genericItemId: string;
+      readonly allowRetry?: boolean;
+    },
     config: SvaMainserverInstanceConfig
   ): Promise<{ readonly id: string }> => {
     const response = await executeGraphqlWithConfig<SvaMainserverDestroyRecordMutation>(
@@ -130,6 +133,7 @@ export const createGenericItemOperations = (executeGraphqlWithConfig: GraphqlExe
         ...input,
         document: svaMainserverDestroyRecordDocument,
         operationName: 'SvaMainserverDestroyRecord',
+        allowRetry: input.allowRetry,
         variables: { id: input.genericItemId, recordType: 'GenericItem' },
       },
       config

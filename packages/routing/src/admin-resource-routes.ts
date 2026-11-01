@@ -15,7 +15,7 @@ import {
   toAdminRoutePath,
 } from './admin-resource-route-paths.js';
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
-import { normalizeAdminResourceListSearch } from './admin-resource-search-params.js';
+import { normalizeContentAdminResourceListSearch } from './admin-resource-search-params.js';
 import type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
 import { createAdminResourceRouteDocumentation } from './admin-resource-route-documentation.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
@@ -142,29 +142,7 @@ const createListRouteDefinition = (
   path: basePath,
   routeKind: 'list',
   validateSearch: resource.capabilities?.list
-    ? (search: Record<string, unknown>) => {
-        const normalized = normalizeAdminResourceListSearch(resource, search);
-        const contentType =
-          resource.resourceId === 'content' && typeof search.type === 'string'
-            ? search.type.trim()
-            : '';
-        const languageCode =
-          contentType === 'faq.faq' && typeof search.languageCode === 'string'
-            ? search.languageCode.trim().toLowerCase()
-            : '';
-        const poiId =
-          contentType === 'vouchers.voucher' &&
-          typeof search.poiId === 'string' &&
-          /^\d+$/.test(search.poiId.trim())
-            ? search.poiId.trim()
-            : '';
-        return {
-          ...normalized,
-          ...(contentType === '' ? {} : { type: contentType }),
-          ...(languageCode === '' ? {} : { languageCode }),
-          ...(poiId === '' ? {} : { poiId }),
-        };
-      }
+    ? (search: Record<string, unknown>) => normalizeContentAdminResourceListSearch(resource, search)
     : undefined,
 });
 

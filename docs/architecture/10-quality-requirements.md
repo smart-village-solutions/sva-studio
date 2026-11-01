@@ -536,7 +536,6 @@ Referenzen:
 
 Tag-Normalisierung, Patch-Semantik, serverseitige Suche und Cursor-Bindung werden gezielt getestet; PostgreSQL belegt die instanzisolierte Filterabfrage. Der lokale Integrationstest mit echtem ClamAV und einer isolierten S3-Testinstanz prüft anonyme Zugriffssperre, EICAR-Ablehnung, Signaturablauf und die Veröffentlichung derselben geprüften Bytes trotz Überschreiben des Eingangs. Die 24-/72-Stunden-Regel wird mit kontrollierter Zeit geprüft. Diese lokale Evidenz ersetzt nicht die Storage-/Monitoring-Abnahme im Zielbetrieb.
 
-
 ### Akzeptanz der redaktionellen Create-Onepager
 
 - Alle acht zuständigen Create-Ansichten zeigen die bisherigen zulässigen Eingaben ohne Editor-Tabwechsel. Die gespeicherten Edit-Ansichten behalten ihre Funktionen und bestehenden Save-Inputs.
@@ -544,8 +543,6 @@ Tag-Normalisierung, Patch-Semantik, serverseitige Suche und Cursor-Bindung werde
 - Redaktionelle Hilfen und Speicherwirkung sind in de/en vorhanden und über Tastatur sowie assistive Technik erreichbar. Generische Items benötigen keinen gesonderten Einsteigerflow.
 - Der Create-Verlassensschutz unterscheidet unveränderte Formulare, tatsächliche Eingaben und bloßes Öffnen des Medienpickers. Abbrechen erhält Eingaben; Verwerfen erreicht das Ziel. Bestätigte Saves warnen nicht erneut, spätere Eingaben während Save/Medien-Retry bleiben geschützt und bestätigte Anlagen werden nicht dupliziert.
 - Gezielte Plugin-Tests und repräsentative Browserflows belegen das technische Verhalten. Ein Durchlauf mit ungeschulten Personen wurde nicht durchgeführt. Nach ausdrücklicher Nutzerentscheidung wird die Praxistauglichkeit anhand des Kundenfeedbacks bewertet; der Vorabtest ist kein aktueller Abschlussblocker. Technische Tests werden nicht als menschlicher Verständlichkeitsnachweis dargestellt.
-
-
 
 ## Datenintegrität bei Gutscheinen
 
@@ -561,3 +558,7 @@ Komponenten- und Browserprüfungen ergänzen visuelle Referenzen mit synthetisch
 Daten. Ein Screenshot oder grüner Axe-Lauf allein belegt weder vollständige
 Barrierefreiheit noch fachliche Abnahme. Fehlende Designabdeckung wird explizit
 dokumentiert und darf keine Funktion still entfernen.
+
+## Baustellenplugin
+
+Baustellen müssen nach einer verlorenen Antwort oder einem lokalen Teilfehler ohne erneuten Provider-Write wieder aufgenommen werden. Lokale Schema-, Roundtrip-, Rechte- und Formulartests belegen diesen Vertrag. Das verbleibende Konkurrenzfenster zu externen Mainserver-Schreibern und die separate Ziel-App-Abnahme werden ausdrücklich ausgewiesen. Siehe [Baustellenreferenz](../reference/construction-sites.md).

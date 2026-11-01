@@ -381,3 +381,7 @@ Die bestehende zentrale Instanzverwaltung wird erweitert; es entstehen weder Ten
 Route-Guards und sichtbare Aktionen verwenden denselben aufgelösten, scopegebundenen Effective-Access-Snapshot. Identitäts- und Organisationswechsel invalidieren ihn synchron; Wiederaufnahme erzwingt eine neue Access-Generation auch bei unveränderten Rollennamen. Ressourcen-`403` bleiben lokal, während explizite Snapshot-Stale-Codes gezielt invalidieren. Der Core-Content-, News- und Event-Editor verwirft bei `stale_mainserver_context` das betroffene Binding, erhält den Entwurf und verlangt eine neue ausdrückliche Recovery- und Schreibaktion. Siehe ADR-050.
 
 Die bestehende Principal-Projektion kann eine lokale, geheimnisfreie Mainserver-Credential-/Provisioning-Bereitschaft anzeigen. Sie steuert die Create-Verfügbarkeit als UI-Hinweis; der Server prüft die tatsächlichen Voraussetzungen vor jedem Schreiben erneut. Mainserver selbst und sein Vertrag bleiben unverändert.
+
+## Baustellenplugin
+
+Das optionale Baustellenplugin erweitert den vorhandenen GenericItem- und Principal-Pfad für den exakten Typ `ConstructionSite`; es führt weder einen zweiten Datenspeicher noch einen neuen Plattformdienst ein. Siehe [Baustellenreferenz](../reference/construction-sites.md).

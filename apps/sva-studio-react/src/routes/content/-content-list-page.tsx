@@ -253,6 +253,7 @@ export const ContentListPage = ({
     destructiveResult,
     setDestructiveResult,
     pendingRowDeletion,
+    rowDeleteDescription,
     setPendingRowDeletion,
     rowDeletePending,
     rowDeleteError,
@@ -359,9 +360,7 @@ export const ContentListPage = ({
       <StudioDestructiveActionDialog
         open={pendingRowDeletion !== null}
         title={t('content.actions.deleteConfirmTitle')}
-        description={t('content.actions.deleteConfirmDescription', {
-          title: pendingRowDeletion?.title ?? '',
-        })}
+        description={rowDeleteDescription}
         confirmLabel={t('content.actions.delete')}
         pendingLabel={t('content.actions.deletePending')}
         cancelLabel={t('content.actions.cancel')}

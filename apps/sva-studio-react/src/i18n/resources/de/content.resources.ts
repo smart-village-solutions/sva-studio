@@ -73,6 +73,8 @@ export const contentDEResources = {
     deleteConfirmTitle: 'Inhalt endgültig löschen?',
     deleteConfirmDescription:
       'Der Inhalt „{{title}}“ wird endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
+    deleteVoucherConfirmDescription:
+      'Der Gutschein „{{title}}“ wird endgültig gelöscht. Dabei können Restdaten und verwaiste Verknüpfungen, etwa zu Kontingenten oder Einlösungen, zurückbleiben. Diese Aktion kann nicht rückgängig gemacht werden.',
     deleteBulkConfirmTitle: 'Ausgewählte Inhalte endgültig löschen?',
     deleteBulkConfirmDescription:
       '{{count}} ausgewählte Inhalte werden endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',

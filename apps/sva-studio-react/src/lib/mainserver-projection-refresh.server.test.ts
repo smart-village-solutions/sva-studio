@@ -237,31 +237,39 @@ describe('mainserver projection refresh', () => {
     );
   });
 
-  it('derives delete refresh identity from the request path', async () => {
-    await refreshProjectionAfterMainserverMutation(
-      new Request('https://studio.test/api/v1/mainserver/events/event-9', { method: 'DELETE' }),
-      new Response(JSON.stringify({ data: { id: 'event-9' } }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
-      'events.event-record'
-    );
+  it.each([
+    ['events', 'events.event-record', 'event-9'],
+    ['vouchers', 'vouchers.voucher', '2'],
+  ] as const)(
+    'derives delete refresh identity from the %s request path',
+    async (collection, contentType, entityId) => {
+      await refreshProjectionAfterMainserverMutation(
+        new Request(`https://studio.test/api/v1/mainserver/${collection}/${entityId}`, {
+          method: 'DELETE',
+        }),
+        new Response(JSON.stringify({ data: { id: entityId } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+        contentType
+      );
 
-    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith({
-      instanceId: 'de-musterhausen',
-      keycloakSubject: 'kc-user-1',
-      actorAccountId: 'account-1',
-      actorDisplayName: 'Redaktion',
-      mutationRef: 'operation-1',
-      contentType: 'events.event-record',
-      organizationId: 'org-1',
-      actingPrincipalType: 'organization',
-      credentialFingerprint: 'a'.repeat(64),
-      authorizationMode: 'exact',
-      operation: 'delete',
-      entityId: 'event-9',
-    });
-  });
+      expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+        actorAccountId: 'account-1',
+        actorDisplayName: 'Redaktion',
+        mutationRef: 'operation-1',
+        contentType,
+        organizationId: 'org-1',
+        actingPrincipalType: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+        authorizationMode: 'exact',
+        operation: 'delete',
+        entityId,
+      });
+    }
+  );
 
   it('derives the entity id from nested mutation paths like visibility updates', async () => {
     await refreshProjectionAfterMainserverMutation(

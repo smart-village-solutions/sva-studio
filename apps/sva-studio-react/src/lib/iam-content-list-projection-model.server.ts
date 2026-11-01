@@ -115,6 +115,7 @@ export type TargetedMutationContentType =
   | 'faq.faq'
   | 'cockpit-cards.cockpit-card'
   | 'vouchers.voucher'
+  | 'construction-sites.construction-site'
   | 'projects.project'
   | 'surveys.survey';
 

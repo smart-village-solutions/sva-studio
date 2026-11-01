@@ -73,6 +73,8 @@ export const contentENResources = {
     deleteConfirmTitle: 'Delete content permanently?',
     deleteConfirmDescription:
       'The content item “{{title}}” will be permanently deleted. This action cannot be undone.',
+    deleteVoucherConfirmDescription:
+      'The voucher “{{title}}” will be permanently deleted. Residual data and orphaned links, for example to quotas or redemptions, may remain. This action cannot be undone.',
     deleteBulkConfirmTitle: 'Delete selected content permanently?',
     deleteBulkConfirmDescription:
       '{{count}} selected content items will be permanently deleted. This action cannot be undone.',

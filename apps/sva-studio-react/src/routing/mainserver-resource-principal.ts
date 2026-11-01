@@ -45,6 +45,7 @@ export const resolveMainserverDetailUrl = (contentType: string, contentId: strin
     'faq.faq': 'faqs',
     'cockpit-cards.cockpit-card': 'cockpit-cards',
     'projects.project': 'projects',
+    'construction-sites.construction-site': 'construction-sites',
     'surveys.survey': 'surveys',
   };
   const collection = collections[contentType] ?? 'generic-items';

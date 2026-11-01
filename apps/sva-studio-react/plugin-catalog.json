@@ -60,6 +60,12 @@
     "sourceRef": "packages/plugin-cockpit-cards"
   },
   {
+    "pluginId": "construction-sites",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-construction-sites"
+  },
+  {
     "pluginId": "projects",
     "sourceType": "workspace",
     "enabled": true,

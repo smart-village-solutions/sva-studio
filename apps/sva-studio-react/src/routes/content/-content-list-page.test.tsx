@@ -1978,6 +1978,58 @@ describe('ContentListPage', () => {
     },
   };
 
+  it.each([true, false])(
+    'deletes vouchers only with voucher permission and a non-blocking warning: %s',
+    async (allowed) => {
+      const remove = vi.fn(async () => undefined);
+      const voucherIndex = registryDefinitions.findIndex(
+        (definition) => definition.contentType === 'vouchers.voucher'
+      );
+      registryDefinitions[voucherIndex] = {
+        ...registryDefinitions[voucherIndex]!,
+        mutations: { delete: { requiredAction: 'vouchers.delete', execute: remove } },
+      };
+      const access = useContentAccessMock();
+      useContentAccessMock.mockReturnValue({
+        ...access,
+        permissionActions: [
+          ...access.permissionActions,
+          'content.delete',
+          'vouchers.read',
+          ...(allowed ? ['vouchers.delete'] : []),
+        ],
+      });
+      const refetchWithOutcome = vi.fn(async () => true);
+      useContentsMock.mockReturnValue(
+        createContentsApiResult({
+          contents: [{ ...mutationRow, contentType: 'vouchers.voucher' }],
+          refetchWithOutcome,
+        })
+      );
+      render(<ContentListPage />);
+      const button = screen.getAllByRole('button', { name: 'Löschen' })[0]! as HTMLButtonElement;
+      expect(button.disabled).toBe(!allowed);
+      if (!allowed) {
+        expect(remove).not.toHaveBeenCalled();
+        return;
+      }
+      fireEvent.click(button);
+      const dialog = screen.getByRole('alertdialog');
+      expect(within(dialog).getByText(/Restdaten.*verwaiste Verknüpfungen/)).toBeTruthy();
+      expect(remove).not.toHaveBeenCalled();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
+      expect(remove).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+      fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+      const reopenedDialog = await screen.findByRole('alertdialog');
+      fireEvent.click(
+        within(reopenedDialog).getByRole('button', { name: 'Löschen' })
+      );
+      await waitFor(() => expect(remove).toHaveBeenCalledExactlyOnceWith('item-1', 'user'));
+      await waitFor(() => expect(refetchWithOutcome).toHaveBeenCalledOnce());
+    }
+  );
+
   it('uses the shared list, dialog, delete and refresh path for an additional contribution', async () => {
     const remove = vi.fn(async () => undefined);
     const status = vi.fn(async () => undefined);

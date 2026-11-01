@@ -1245,3 +1245,7 @@ Locale-Auflösung wird wiederverwendet; zusätzliche globale Form-State- oder
 Provider-Schichten entstehen nicht. Waste behält Terminberechnung,
 Berechtigungsentscheidungen, Entwürfe und Verschiebungslinks; mobile Listen
 und Kalendergitter lesen dieselben berechneten Terminobjekte.
+
+## Baustellenplugin
+
+`@sva/plugin-construction-sites` liefert Fachschema, Liste und Editor. Browser und Studio-Mainserver-Adapter validieren an ihren jeweiligen Eingangsgrenzen; gemeinsame Vertragsfixtures prüfen die Kompatibilität. Der Server benötigt kein optionales Fachplugin zur Laufzeit. Der Host registriert Zuständigkeit, Routing, Rechte und die bestehende Inhaltsprojektion. Siehe [Baustellenreferenz](../reference/construction-sites.md).

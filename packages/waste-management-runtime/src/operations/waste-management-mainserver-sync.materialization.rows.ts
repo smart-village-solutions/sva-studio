@@ -36,24 +36,30 @@ type StudioRowMaterializationInput = Readonly<{
   streets: readonly WasteStreetRecord[];
 }>;
 
-const buildPickupNoteHtml = (
-  ...values: readonly (string | null | undefined)[]
+const buildPickupNote = (
+  descriptions: readonly (string | null | undefined)[],
+  notes: readonly (string | null | undefined)[]
 ): string | undefined => {
   const semanticContents = new Set<string>();
-  const fragments = values.flatMap((value) => {
+  const semanticStopContents = new Set<string>();
+  const fragments = [...descriptions, ...notes].flatMap((value, index) => {
     if (!value?.trim()) return [];
 
     const sanitizedHtml = sanitizeRichTextHtml(value).trim();
     const semanticContent = convertRichTextHtmlToPlainText(sanitizedHtml)
       .replace(/\s+/gu, ' ')
       .trim();
-    if (!semanticContent || semanticContents.has(semanticContent)) return [];
+    if (!semanticContent) return [];
+    if (index >= descriptions.length) semanticStopContents.add(semanticContent);
+    if (semanticContents.has(semanticContent)) return [];
 
     semanticContents.add(semanticContent);
     return [sanitizedHtml];
   });
 
   if (fragments.length === 0) return undefined;
+  // Existing app clients render the combined stop note as plain React Native text.
+  if (semanticStopContents.size > 1) return [...semanticContents].join('\n');
   if (fragments.length === 1) return fragments[0];
 
   return fragments.map((fragment) => `<div>${fragment}</div>`).join('');
@@ -165,7 +171,7 @@ export const buildStudioRowsFromMaterialization = (
     groupedRows.set(row.key, group);
   });
   return [...groupedRows.values()].map(({ row, descriptions, notes }) => {
-    const note = buildPickupNoteHtml(...[...descriptions].sort(), ...[...notes].sort());
+    const note = buildPickupNote([...descriptions].sort(), [...notes].sort());
     return {
       ...row,
       note,

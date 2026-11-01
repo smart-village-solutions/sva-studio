@@ -1224,68 +1224,60 @@ logger.error('Auth failed', {
 
 ---
 
-## 12. Design System Architecture
+## 12. Design-System-Architektur
 
-### Color System (HSL-based)
+### Zentrale Tokens und Komponenten
 
-All colors must be defined as CSS variables in HSL format:
+Die Studio-UI verwendet semantische CSS-Variablen als RGB-Kanäle in
+`apps/sva-studio-react/src/styles.css`. Tailwind bindet diese über
+`rgb(var(--token))` ein. Neue Komponenten verwenden semantische Klassen statt
+direkter Farbwerte; es gibt keine zusätzliche HSL- oder Figma-CSS-Laufzeit.
 
 ```css
 :root {
-  --primary: 221 83% 53%; /* Main brand color */
-  --background: 0 0% 100%; /* Page background */
-  --foreground: 222 47% 11%; /* Main text color */
-  /* ... more semantic tokens */
+  --primary: 0 90 158;
+  --background: 233 238 245;
+  --foreground: 27 39 56;
 }
 
-.dark {
-  --primary: 210 40% 98%; /* Inverted for dark mode */
-  --background: 222.2 84% 4.9%; /* Dark background */
-  --foreground: 210 40% 98%; /* Light text */
-  /* ... more dark mode tokens */
+html.dark {
+  --primary: 117 192 245;
+  --background: 17 24 32;
+  --foreground: 243 246 250;
 }
 ```
 
-### Using Colors in Components
-
 ```tsx
-// ✅ Use semantic tokens - automatically supports dark mode
 className = 'bg-primary text-primary-foreground';
 className = 'border-border hover:bg-accent';
 className = 'bg-background text-foreground';
-
-// ❌ Never use direct colors - breaks dark mode
-className = 'bg-blue-600 text-white';
-className = 'border-gray-300 hover:bg-gray-100';
 ```
 
-### Dark Mode Support (Required)
+Gemeinsame React-UI und technische React-Lifecycles gehören in
+`@sva/studio-ui-react`, frameworkfreie gemeinsame Verträge in `@sva/plugin-sdk`.
+Fachfelder, Mapper, Validierungen und Berechtigungsentscheidungen bleiben im
+zuständigen Plugin. Vorhandene native oder gemeinsame Controls wiederverwenden;
+ersetzte lokale Basisimplementierungen im selben Lieferabschnitt entfernen.
 
-**All new components MUST support dark mode:**
+### Themes, Modi und Kontraste
 
-1. **Use Semantic Tokens**: Never hardcode colors
-2. **Test Both Modes**: Verify readability in light and dark
-3. **Check Contrast**: Ensure WCAG AA compliance in both modes
-4. **Theme Aware**: Use `useTheme()` hook for conditional logic if needed
+- `sva-default` und `sva-forest` bleiben stabile Theme-IDs; Light/Dark ist ein
+  separater Modus. Die grüne Identität bleibt bis zur bestätigten neuen
+  Forest-Palette erhalten.
+- Alle neuen Komponenten unterstützen beide Modi über denselben Token-Satz.
+- Aktive Texte erreichen mindestens 4,5:1, erforderliche Control-Konturen und
+  Fokusindikatoren mindestens 3:1. Die bestehenden Action-Tests prüfen auch
+  deaktivierte Buttontexte mit mindestens 4,5:1 als strengeren Studio-Vertrag.
+- Figma-Entwürfe ersetzen keinen Produktnachweis. Abweichende Kontrastwerte,
+  fehlende Zustände und offene Fachverträge werden als Designlücken erfasst;
+  bestehende Funktionen werden dafür nicht entfernt.
 
-```tsx
-import { useTheme } from '@/contexts/ThemeContext';
+### Zuständige Dateien
 
-function MyComponent() {
-  const { resolvedTheme } = useTheme();
-
-  // Most components don't need this - semantic tokens handle it
-  // Only use for special cases (charts, custom graphics, etc.)
-  const isDark = resolvedTheme === 'dark';
-}
-```
-
-**Theme System Files:**
-
-- `src/contexts/ThemeContext.tsx` - Theme management
-- `src/components/ui/theme-toggle.tsx` - Theme selector
-- `src/index.css` - Light and dark color definitions
-- `tailwind.config.ts` - Theme configuration
+- `apps/sva-studio-react/src/providers/theme-provider.tsx`: Theme-/Moduszustand
+- `apps/sva-studio-react/src/lib/theme.ts`: IDs, Persistenz und Bootstrap
+- `apps/sva-studio-react/src/styles.css`: Tokens und Tailwind-Bindung
+- `packages/studio-ui-react/src/`: gemeinsame Controls und Studio-Komposition
 
 ---
 

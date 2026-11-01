@@ -70,3 +70,39 @@ Bei `stale_mainserver_context` MUST das Studio den Fehler ausdrücklich darstell
 - **WHEN** eine Mutation bereits bestätigt ist oder ihr Ergebnis wegen eines Transport-/Folgefehlers unklar bleibt
 - **THEN** verwendet Studio den vorhandenen Journal-/Read-back-Vertrag zur Einordnung
 - **AND** erzeugt Kontext-Recovery kein zweites Create oder irreführendes „nicht gespeichert“
+
+### Requirement: Private News-Operationsabfrage und sichere explizite Wiederaufnahme
+
+Studio SHALL ein unbekanntes News-Speicherergebnis anhand des vorhandenen
+Mutationsjournals prüfen können, ohne die ursprüngliche Inhaltsmutation erneut
+auszuführen. Die Abfrage MUST an aktuelle Session-Instanz, Account, aktive
+Organisation und konkreten Principal gebunden sein und aktuelle Rechte prüfen.
+
+#### Scenario: Verlorene Antwort einer bestätigten Erstellung
+
+- **WHEN** die Erstellung im Journal als erfolgreich bestätigt ist, aber der Browser die Antwort nicht erhält
+- **THEN** prüft der Editor dieselbe Operationskennung über einen geschützten GET
+- **AND** wird kein zweiter Content-POST oder PATCH ausgelöst
+- **AND** bleiben spätere Formular- und Medienänderungen erhalten
+- **AND** führt ein Medienreferenz-Retry ausschließlich den vorhandenen Referenzabschluss aus
+
+#### Scenario: Unbewiesener Ausgang oder fehlende Operation
+
+- **WHEN** ein Ergebnis aus Transportfehler, historischem Fehlerjournal, Idempotenzkonflikt oder fehlendem Eintrag nicht beweisbar ist
+- **THEN** bleibt es unbekannt und ein neuer Save ist gesperrt
+- **AND** wird weder Erfolg noch eine sichere Nichtausführung behauptet
+
+#### Scenario: Sicher nicht begonnener Write
+
+- **WHEN** SDK-Context-Preflight oder die News-Fassade einen Fehler vor Beginn des Providerwrites eindeutig bestätigt
+- **THEN** darf der Nutzer nach Korrektur ausdrücklich einen neuen Save starten
+- **AND** gilt ein HTTP-4xx allein nicht als dieser Nachweis
+
+#### Scenario: Offener Entwurf bei Wiederanmeldung
+
+- **WHEN** eine Session-Recovery einen offenen News-Create- oder Detaileditor mit ungespeicherten Eingaben betrifft
+- **THEN** bleibt der Editor gemountet, gesperrt und im selben Dokument erhalten
+- **AND** kann der Nutzer über den bestehenden Anmeldeweg einen neuen Tab öffnen
+- **AND** erfordert die Wiederaufnahme ausdrücklich dieselbe Identität, Instanz und aktive Organisation einschließlich des abschließend geladenen Kontexts
+- **AND** werden Freigaben erneut geladen und kein Inhalt automatisch gespeichert
+- **AND** bleibt ein noch zulässiger ausdrücklich gewählter Principal erhalten

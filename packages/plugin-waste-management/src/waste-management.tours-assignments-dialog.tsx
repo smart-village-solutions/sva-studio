@@ -178,7 +178,7 @@ export const TourAssignmentsDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] w-[min(96vw,1280px)] max-w-none flex-col overflow-hidden p-0">
-        <div className="border-b border-border/60 bg-background px-6 py-5">
+        <div className="border-b border-border-subtle bg-background px-6 py-5">
           <DialogHeader className="space-y-2">
             <DialogTitle>{title}</DialogTitle>
             {tour ? (
@@ -194,7 +194,7 @@ export const TourAssignmentsDialog = ({
           className="flex min-h-0 flex-1 flex-col"
           onSubmit={(event) => onSubmit(event, selectedLocationIds)}
         >
-          <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5 rounded-2xl border border-border/70 bg-card/60">
+          <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5 rounded-lg border border-border-subtle bg-card/60">
             <StatusNotice message={message} />
 
             <TourAssignmentsDialogFilters
@@ -240,7 +240,7 @@ export const TourAssignmentsDialog = ({
             />
           </div>
 
-          <DialogFooter className="border-t border-border/60 px-6 py-4">
+          <DialogFooter className="border-t border-border-subtle px-6 py-4">
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               {pt('tours.assignments.actions.cancel')}
             </Button>

@@ -5,7 +5,7 @@ import { Button, Checkbox, Input, Select, StudioField } from '@sva/studio-ui-rea
 import { EventsCategoryMultiselect } from './events.category-multiselect.js';
 import type { EventsDetailFormValues } from './events.detail-form.js';
 import type { EventCategoryOption, EventContentItem } from './events.types.js';
-import { EventsDetailCard } from './events.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 
 const formatMetaDate = (value?: string) =>
   value ? (formatDateTimeInEditorTimeZone(value) ?? value) : '--.--.-- --:--';
@@ -92,7 +92,7 @@ export function EventsDetailBasisTab({
   return (
     <div className="space-y-6">
       {!section || section === 'categories' ? (
-        <EventsDetailCard
+        <StudioDetailCard
           title={pt(section === 'categories' ? 'fields.categories' : 'cards.basis.identity.title')}
           description={pt('cards.basis.identity.description')}
         >
@@ -133,11 +133,11 @@ export function EventsDetailBasisTab({
               )}
             />
           </StudioField>
-        </EventsDetailCard>
+        </StudioDetailCard>
       ) : null}
 
       {!section || section === 'recurrence' ? (
-        <EventsDetailCard
+        <StudioDetailCard
           title={pt('cards.basis.recurrence.title')}
           description={pt('cards.basis.recurrence.description')}
         >
@@ -201,7 +201,7 @@ export function EventsDetailBasisTab({
                         size="sm"
                         aria-pressed={recurringWeekdays.includes(option.value)}
                         aria-label={option.label}
-                        className="min-w-10 rounded-full px-3"
+                        className="min-w-11 rounded-full px-3"
                         onClick={() => {
                           const nextWeekdays = recurringWeekdays.includes(option.value)
                             ? recurringWeekdays.filter((entry) => entry !== option.value)
@@ -217,15 +217,15 @@ export function EventsDetailBasisTab({
               ) : null}
             </>
           ) : null}
-        </EventsDetailCard>
+        </StudioDetailCard>
       ) : null}
 
       {mode === 'edit' && !section ? (
-        <EventsDetailCard
+        <StudioDetailCard
           title={pt('cards.basis.meta.title')}
           description={pt('cards.basis.meta.description')}
         >
-          <dl className="grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm md:grid-cols-2">
+          <dl className="grid gap-4 rounded-lg border border-border-subtle bg-surface-inset p-4 text-sm md:grid-cols-2">
             <div className="space-y-1">
               <dt className="font-medium text-foreground">{pt('fields.createdAt')}</dt>
               <dd className="text-muted-foreground">{formatMetaDate(loadedItem?.createdAt)}</dd>
@@ -235,7 +235,7 @@ export function EventsDetailBasisTab({
               <dd className="text-muted-foreground">{formatMetaDate(loadedItem?.updatedAt)}</dd>
             </div>
           </dl>
-        </EventsDetailCard>
+        </StudioDetailCard>
       ) : null}
     </div>
   );

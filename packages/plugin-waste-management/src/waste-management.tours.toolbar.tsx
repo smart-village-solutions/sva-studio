@@ -163,12 +163,12 @@ export const WasteToursToolbar = (props: WasteToursToolbarProps) => {
             type="button"
             variant="secondary"
             onClick={onOpenAnnualTransfer}
-            className="rounded-lg"
+            className="rounded-md"
           >
             {pt('tours.annualTransfer.open')}
           </Button>
         ) : null}
-        <Button type="button" onClick={onOpenCreateDialog} className="rounded-lg">
+        <Button type="button" onClick={onOpenCreateDialog} className="rounded-md">
           {pt('tours.actions.openCreate')}
         </Button>
       </div>

@@ -25,7 +25,7 @@ import {
   getCollectionLocationDialogText,
 } from './waste-management.master-data-location-dialogs.helpers.js';
 import { useResetOnFormContextChange } from './waste-management.master-data-entity-dialogs.shared.js';
-import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
+import { StudioSwitch } from '@sva/studio-ui-react';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import type { CollectionLocationFormState } from './waste-management.master-data.forms.js';
 import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
@@ -211,10 +211,10 @@ export const CollectionLocationDialog = ({
               </Select>
             </StudioField>
             <div className="flex items-center gap-3">
-              <WasteManagementFormSwitch
+              <StudioSwitch
                 checked={formValues.active}
-                ariaLabel={pt('masterData.collectionLocations.fields.active')}
-                onChange={(active) => handleFormChange({ active })}
+                aria-label={pt('masterData.collectionLocations.fields.active')}
+                onCheckedChange={(active) => handleFormChange({ active })}
               />
               <span className="text-sm text-muted-foreground">{activeLabel}</span>
             </div>

@@ -21,7 +21,7 @@ const SectionCard = ({
   description,
   children,
 }: Readonly<{ title: string; description?: string; children: React.ReactNode }>) => (
-  <section className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+  <section className="rounded-lg border border-border/70 bg-card p-5 shadow-sm">
     <div className="space-y-1">
       <h3 className="text-base font-semibold text-card-foreground">{title}</h3>
       {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
@@ -88,15 +88,15 @@ export function PoiDetailBasisTab({
   if (section === 'name')
     return (
       <div className="space-y-3">
-      <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationError')} />
-      <StudioField {...nameField} label={pt('fields.name')} required>
-        <Input
-          {...nameField.controlProps}
-          required
-          value={name}
-          onChange={(event) => setValue('name', event.target.value, { shouldDirty: true })}
-        />
-      </StudioField>
+        <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationError')} />
+        <StudioField {...nameField} label={pt('fields.name')} required>
+          <Input
+            {...nameField.controlProps}
+            required
+            value={name}
+            onChange={(event) => setValue('name', event.target.value, { shouldDirty: true })}
+          />
+        </StudioField>
       </div>
     );
   return (
@@ -163,7 +163,7 @@ export function PoiDetailBasisTab({
           title={pt('cards.basis.meta.title')}
           description={pt('cards.basis.meta.description')}
         >
-          <dl className="grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm md:grid-cols-2">
+          <dl className="grid gap-4 rounded-lg border border-border-subtle bg-surface-inset p-4 text-sm md:grid-cols-2">
             <div className="space-y-1">
               <dt className="font-medium text-foreground">{pt('fields.createdAt')}</dt>
               <dd className="text-muted-foreground">{formatMetaDate(loadedItem?.createdAt)}</dd>

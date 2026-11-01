@@ -7,7 +7,7 @@ import {
   createDefaultUrl,
   type EventsDetailFormValues,
 } from './events.detail-form.js';
-import { EventsDetailCard } from './events.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import {
   ContentInput,
   indexedId,
@@ -24,7 +24,7 @@ export function EventsContactSection({ pt }: SectionProps) {
   const contacts = useWatch({ control, name: 'content.contacts' }) ?? [];
   const rendered = contacts.length > 0 ? contacts : [createDefaultContact()];
   return (
-    <EventsDetailCard
+    <StudioDetailCard
       title={pt('cards.content.contacts.title')}
       description={pt('cards.content.contacts.description')}
       actions={
@@ -75,7 +75,7 @@ export function EventsContactSection({ pt }: SectionProps) {
           </StudioFieldGroup>
         </RepeaterItem>
       ))}
-    </EventsDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -85,7 +85,7 @@ export function EventsLinkSection({ pt }: SectionProps) {
   const urls = useWatch({ control, name: 'content.urls' }) ?? [];
   const rendered = urls.length > 0 ? urls : [createDefaultUrl()];
   return (
-    <EventsDetailCard
+    <StudioDetailCard
       title={pt('cards.content.links.title')}
       description={pt('cards.content.links.description')}
       actions={
@@ -122,7 +122,7 @@ export function EventsLinkSection({ pt }: SectionProps) {
           </StudioFieldGroup>
         </RepeaterItem>
       ))}
-    </EventsDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -132,7 +132,7 @@ export function EventsPriceSection({ pt }: SectionProps) {
   const prices = useWatch({ control, name: 'content.priceInformations' }) ?? [];
   const rendered = prices.length > 0 ? prices : [createDefaultPriceInformation()];
   return (
-    <EventsDetailCard
+    <StudioDetailCard
       title={pt('cards.content.prices.title')}
       description={pt('cards.content.prices.description')}
       actions={
@@ -186,6 +186,6 @@ export function EventsPriceSection({ pt }: SectionProps) {
           />
         </RepeaterItem>
       ))}
-    </EventsDetailCard>
+    </StudioDetailCard>
   );
 }

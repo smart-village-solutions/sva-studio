@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconTrash } from '@tabler/icons-react';
+import { Trash2 as IconTrash } from 'lucide-react';
 import { Button, Textarea } from '@sva/studio-ui-react';
 import type { TourDateLocationAssignmentFormState } from './waste-management.tours.types.js';
 import type { TourCustomDatePendingDelete } from './waste-management.tours-custom-date-delete-dialogs.js';
@@ -11,10 +11,6 @@ type TourCustomDateAssignmentCardProps = Readonly<{
   readonly disabled: boolean;
   readonly locations: readonly { id: string; label: string }[];
   readonly locationLabels: ReadonlyMap<string, string>;
-  readonly activeLocationPickerId: string | null;
-  readonly setActiveLocationPickerId: Dispatch<SetStateAction<string | null>>;
-  readonly locationSearchValues: Readonly<Record<string, string>>;
-  readonly setLocationSearchValues: Dispatch<SetStateAction<Record<string, string>>>;
   readonly duplicateAssignmentId: string | null;
   readonly updateAssignment: (
     id: string,
@@ -28,27 +24,19 @@ export const TourCustomDateAssignmentCard = ({
   disabled,
   locations,
   locationLabels,
-  activeLocationPickerId,
-  setActiveLocationPickerId,
-  locationSearchValues,
-  setLocationSearchValues,
   duplicateAssignmentId,
   updateAssignment,
   setPendingDelete,
 }: TourCustomDateAssignmentCardProps) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <div className="rounded-2xl border border-border/70 bg-card p-4">
+    <div className="rounded-lg border border-border-subtle bg-card p-4">
       <div className="grid gap-3 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)_auto] lg:items-start">
         <TourCustomDateLocationPicker
           assignment={assignment}
           disabled={disabled}
           locations={locations}
           locationLabels={locationLabels}
-          activeLocationPickerId={activeLocationPickerId}
-          setActiveLocationPickerId={setActiveLocationPickerId}
-          locationSearchValues={locationSearchValues}
-          setLocationSearchValues={setLocationSearchValues}
           duplicateAssignmentId={duplicateAssignmentId}
           updateAssignment={updateAssignment}
         />
@@ -85,7 +73,7 @@ export const TourCustomDateAssignmentCard = ({
               })
             }
           >
-            <IconTrash aria-hidden="true" className="mr-2 h-4 w-4" />
+            <IconTrash strokeWidth={1} aria-hidden="true" className="mr-2 h-4 w-4" />
             {pt('tours.customDates.actions.removeAssignment')}
           </Button>
         </div>
@@ -101,10 +89,6 @@ type AssignmentPanelProps = Readonly<{
   addAssignment: (date: string) => void;
   locations: readonly { id: string; label: string }[];
   locationLabels: ReadonlyMap<string, string>;
-  activeLocationPickerId: string | null;
-  setActiveLocationPickerId: Dispatch<SetStateAction<string | null>>;
-  locationSearchValues: Readonly<Record<string, string>>;
-  setLocationSearchValues: Dispatch<SetStateAction<Record<string, string>>>;
   duplicateAssignmentId: string | null;
   updateAssignment: (id: string, patch: Partial<TourDateLocationAssignmentFormState>) => void;
   setPendingDelete: Dispatch<SetStateAction<TourCustomDatePendingDelete | null>>;
@@ -117,19 +101,15 @@ export const TourCustomDateAssignmentPanel = ({
   addAssignment,
   locations,
   locationLabels,
-  activeLocationPickerId,
-  setActiveLocationPickerId,
-  locationSearchValues,
-  setLocationSearchValues,
   duplicateAssignmentId,
   updateAssignment,
   setPendingDelete,
 }: AssignmentPanelProps) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <tr className="border-t border-border/60 bg-muted/10 align-top">
+    <tr className="border-t border-border-subtle bg-surface-inset align-top">
       <td colSpan={4} className="px-4 py-4">
-        <div className="space-y-3 rounded-2xl border border-border/60 bg-background/90 p-4 shadow-sm">
+        <div className="space-y-3 rounded-lg border border-border-subtle bg-background/90 p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">
@@ -149,7 +129,7 @@ export const TourCustomDateAssignmentPanel = ({
             </Button>
           </div>
           {assignments.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+            <p className="rounded-lg border border-dashed border-border/70 bg-surface-inset px-4 py-3 text-sm text-muted-foreground">
               {pt('tours.customDates.assignmentSection.empty')}
             </p>
           ) : (
@@ -161,10 +141,6 @@ export const TourCustomDateAssignmentPanel = ({
                   disabled={disabled}
                   locations={locations}
                   locationLabels={locationLabels}
-                  activeLocationPickerId={activeLocationPickerId}
-                  setActiveLocationPickerId={setActiveLocationPickerId}
-                  locationSearchValues={locationSearchValues}
-                  setLocationSearchValues={setLocationSearchValues}
                   duplicateAssignmentId={duplicateAssignmentId}
                   updateAssignment={updateAssignment}
                   setPendingDelete={setPendingDelete}

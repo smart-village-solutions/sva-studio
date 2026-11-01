@@ -1,9 +1,17 @@
+import type { FieldError } from 'react-hook-form';
+import {
+  requiresGlobalPushConfirmation,
+  resolveGlobalPushConfirmationKey,
+  type WasteTargetingAvailability,
+} from './news.waste-payload.js';
+import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
 import {
   fromDatetimeLocalValue,
   getHostMediaAssetFileName,
   readHostMediaAssetFileName as readAssetFileName,
   readHostMediaAssetTitle as readAssetTitle,
   translatePluginKey,
+  readMainserverErrorRequestId,
   type HostMediaAssetDetail,
   type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
@@ -15,7 +23,7 @@ import { NewsApiError } from './news.api.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
 
 export type StatusMessage = Readonly<{
-  source: 'load' | 'save' | 'delete' | 'reference' | 'navigation';
+  source: 'recovered' | 'unknown' | 'load' | 'save' | 'delete' | 'reference' | 'navigation';
   text: string;
   requestId?: string;
   errorCode?: string;
@@ -156,5 +164,41 @@ export const toNewsMediaPickerDetail = (
     },
     instanceId: asset.instanceId,
     hasEditingDocument: asset.hasEditingDocument,
+  };
+};
+
+export const didDeclineGlobalPush = (
+  values: NewsDetailFormValues,
+  loadedItem: NewsContentItem | null,
+  pt: PluginTranslator,
+  wasteTargetingAvailability: WasteTargetingAvailability
+): boolean =>
+  requiresGlobalPushConfirmation({
+    pushNotificationEnabled: values.pushNotificationEnabled,
+    targetCount: values.wasteLocationKeys.length,
+    pushNotificationsSentAt: loadedItem?.pushNotificationsSentAt,
+  }) &&
+  typeof globalThis.window.confirm === 'function' &&
+  globalThis.window.confirm(pt(resolveGlobalPushConfirmationKey(wasteTargetingAvailability))) ===
+    false;
+
+export const newsSaveErrorStatus = (pt: PluginTranslator, error: unknown): StatusMessage => ({
+  source: 'save',
+  text: resolveNewsErrorMessage(pt, error, 'messages.saveError'),
+  requestId: readMainserverErrorRequestId(error),
+  ...(error instanceof NewsApiError ? { errorCode: error.code } : {}),
+});
+
+export const translateNewsFieldError = (
+  error: FieldError | undefined,
+  pt: PluginTranslator
+): FieldError | undefined => {
+  if (!error || typeof error.message !== 'string') {
+    return error;
+  }
+
+  return {
+    ...error,
+    message: pt(`validation.${error.message}`),
   };
 };

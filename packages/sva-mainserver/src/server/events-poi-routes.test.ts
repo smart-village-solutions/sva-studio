@@ -1132,6 +1132,32 @@ describe('mainserver content route contracts', () => {
     );
   });
 
+  it.each([
+    ['events', dispatchSvaMainserverEventsRequest],
+    ['poi', dispatchSvaMainserverPoiRequest],
+  ] as const)(
+    'marks local authorization rejections for %s as not applied',
+    async (path, dispatch) => {
+      state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+      state.authorizeContentPrimitiveForUser.mockResolvedValue({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Forbidden',
+      });
+      const response = await dispatch(
+        createRequest(`https://studio.test/api/v1/mainserver/${path}`, {
+          method: 'POST',
+          body: JSON.stringify({ title: 'Rejected', name: 'Rejected' }),
+        })
+      );
+      expect(response?.status).toBe(403);
+      expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBe('not_applied');
+      expect(state.createSvaMainserverEvent).not.toHaveBeenCalled();
+      expect(state.createSvaMainserverPoi).not.toHaveBeenCalled();
+    }
+  );
+
   it('rejects mutation requests when CSRF validation fails', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(new Response('CSRF', { status: 403 }));
@@ -1144,6 +1170,7 @@ describe('mainserver content route contracts', () => {
     );
 
     expect(response?.status).toBe(403);
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBe('not_applied');
     await expect(response?.json()).resolves.toMatchObject({ error: 'csrf_validation_failed' });
     expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
   });

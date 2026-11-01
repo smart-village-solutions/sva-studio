@@ -35,7 +35,7 @@ export const WasteToolsAdvancedSection = ({
   }
 
   return (
-    <section className="space-y-3 rounded-xl border border-border/70 bg-muted/10 p-4">
+    <section className="space-y-3 rounded-lg border border-border/70 bg-surface-inset p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">{pt('tools.meta.advancedTitle')}</h3>

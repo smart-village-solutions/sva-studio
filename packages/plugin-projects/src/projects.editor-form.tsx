@@ -171,7 +171,7 @@ function ProjectPrincipalSelector({
     />
   );
   return mode === 'create' ? (
-    <div className="has-[select]:rounded-2xl has-[select]:border has-[select]:border-border/60 has-[select]:bg-card has-[select]:p-5">
+    <div className="has-[select]:rounded-lg has-[select]:border has-[select]:border-border-subtle has-[select]:bg-card has-[select]:p-4 sm:has-[select]:p-6">
       {selector}
     </div>
   ) : (

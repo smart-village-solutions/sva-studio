@@ -26,7 +26,7 @@ Modulen der jeweiligen Bausteine.
    - profilgebundene Auth-Composition: Das Standard-Studio bindet keinen SSF-Beitrag; das SSF-Profil bindet Account-Create-Beitrag und OIDC-Anforderungen vor Veröffentlichung des Runtime-Snapshots und verlangt dafür ein installiertes SSF-Plugin
    - offizieller Server-Entry unter `apps/sva-studio-react/src/server.ts`; der finale Release-Vertrag wird am gebauten `.output/server/**`-Artefakt, nicht an `.nitro/vite/services/ssr/**`, beurteilt
    - der App-Build enthält neben `build` einen expliziten Final-Artifact-Check `verify:runtime-artifact`, der den finalen Node-Output mit Health-Probes und Artefakt-Assertions verifiziert
-   - Shell-Bausteine: `Header`, `Sidebar`, `AppShell` (Layout-Komposition)
+   - Shell-Bausteine: `Header`, `Sidebar`, `AppShell` (Layout-Komposition); gemeinsame Formular-Controls und Detail-Tabs werden aus `@sva/studio-ui-react` konsumiert. News besitzt fachliche Panels und Felder, keine eigene Tab-Basis oder Card-Weiterleitung.
    - Runtime-Health-Bausteine: `RuntimeHealthIndicator` und `useRuntimeHealth` für die globale Anzeige des Plattformzustands
    - Skeleton-Bausteine für Kopfzeile, Seitenleiste und Contentbereich
    - Theme-Bausteine: `ThemeProvider`, semantische CSS-Token und `Sheet`-Primitive für mobile Shell-Navigation
@@ -1229,6 +1229,22 @@ selbst; es entstehen weder Mailworker noch zusätzliche Versandabläufe.
 ## SSF localized legal content
 
 The existing `@sva/plugin-ssf` v2 runtime-content editor and JSON repository own optional localized consent, release, and recording-status texts. System templates and tenant overrides reuse the current administration routes, transaction boundaries, sanitizer, and canonical content revision. Legal source languages are independent of offered guest languages. No new table, service, or recording-control component is introduced. See the [content-editor documentation](../development/ssf-v2-inhaltsverwaltung-ui.md#separate-consent-and-recording-release-texts).
+
+Die Designmigration der übrigen Plugins erweitert diese Zuständigkeit um den
+zentralen `StudioSwitch` sowie tatsächlich benötigte Tab-Icons. Events, POI und
+Waste delegieren Tabnavigation und Panel-Lifecycle an `studio-ui-react`;
+fachliche Panelaktionen, Formulare, URL-Zustand und Ressourcenrechte bleiben im
+Plugin. Katalog/SSF und Kategorien konsumieren dieselben vorhandenen Controls;
+eine zusätzliche SDK-Fachmodell- oder Provider-Schicht entsteht dadurch nicht.
+
+Die fortgesetzte Elementmigration verschiebt auch die vorhandene Host-Card-
+Basis und die einfache Host-Suchauswahl in `studio-ui-react`. App-Importpfade
+bleiben dünne Reexports; der Host-Switch konsumiert `StudioSwitch`. Native
+Radio-Eingaben und DayPicker-Kalender werden gemeinsam komponiert. Die SDK-
+Locale-Auflösung wird wiederverwendet; zusätzliche globale Form-State- oder
+Provider-Schichten entstehen nicht. Waste behält Terminberechnung,
+Berechtigungsentscheidungen, Entwürfe und Verschiebungslinks; mobile Listen
+und Kalendergitter lesen dieselben berechneten Terminobjekte.
 
 ## Baustellenplugin
 

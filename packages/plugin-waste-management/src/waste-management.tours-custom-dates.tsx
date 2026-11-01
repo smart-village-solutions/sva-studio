@@ -1,6 +1,6 @@
 import type { WasteCustomTourDate } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconCalendarPlus } from '@tabler/icons-react';
+import { CalendarPlus as IconCalendarPlus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button } from '@sva/studio-ui-react';
 
@@ -53,8 +53,6 @@ export const WasteToursCustomDatesField = ({
   const [pendingDelete, setPendingDelete] = useState<TourCustomDatePendingDelete | null>(null);
   const [duplicateAssignmentId, setDuplicateAssignmentId] = useState<string | null>(null);
   const [activeAssignmentDate, setActiveAssignmentDate] = useState<string | null>(null);
-  const [activeLocationPickerId, setActiveLocationPickerId] = useState<string | null>(null);
-  const [locationSearchValues, setLocationSearchValues] = useState<Record<string, string>>({});
   const [year, setYear] = useState(initialYear);
 
   useEffect(() => {
@@ -174,7 +172,6 @@ export const WasteToursCustomDatesField = ({
 
   const removeAssignment = (assignmentId: string) => {
     setDuplicateAssignmentId((current) => (current === assignmentId ? null : current));
-    setActiveLocationPickerId((current) => (current === assignmentId ? null : current));
     onAssignmentsChange(dateLocationAssignments.filter((entry) => entry.id !== assignmentId));
   };
 
@@ -195,7 +192,7 @@ export const WasteToursCustomDatesField = ({
             disabled={disabled}
             onClick={() => setDialogOpen(true)}
           >
-            <IconCalendarPlus aria-hidden="true" className="mr-2 h-4 w-4" />
+            <IconCalendarPlus strokeWidth={1} aria-hidden="true" className="mr-2 h-4 w-4" />
             {pt('tours.customDates.actions.openPicker')}
           </Button>
           {sortedDates.length > 0 ? (
@@ -207,7 +204,7 @@ export const WasteToursCustomDatesField = ({
       </div>
 
       {sortedDates.length === 0 ? (
-        <p className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+        <p className="rounded-lg border border-border-subtle bg-surface-inset px-4 py-3 text-sm text-muted-foreground">
           {pt('tours.customDates.empty')}
         </p>
       ) : (
@@ -222,10 +219,6 @@ export const WasteToursCustomDatesField = ({
           addAssignment={addAssignment}
           locations={locations}
           locationLabels={locationLabels}
-          activeLocationPickerId={activeLocationPickerId}
-          setActiveLocationPickerId={setActiveLocationPickerId}
-          locationSearchValues={locationSearchValues}
-          setLocationSearchValues={setLocationSearchValues}
           duplicateAssignmentId={duplicateAssignmentId}
           updateAssignment={updateAssignment}
         />

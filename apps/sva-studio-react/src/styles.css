@@ -54,6 +54,14 @@
   --color-action-disabled-foreground: rgb(var(--action-disabled-foreground));
   --color-action-disabled-border: rgb(var(--action-disabled-border));
   --color-action-focus: rgb(var(--action-focus));
+  --color-surface-inset: rgb(var(--surface-inset));
+  --color-border-subtle: rgb(var(--border-subtle));
+  --color-status-success: rgb(var(--status-success));
+  --color-status-success-foreground: rgb(var(--status-success-foreground));
+  --color-status-warning: rgb(var(--status-warning));
+  --color-status-warning-foreground: rgb(var(--status-warning-foreground));
+  --color-status-error: rgb(var(--status-error));
+  --color-status-error-foreground: rgb(var(--status-error-foreground));
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
@@ -74,7 +82,7 @@
 
 @layer base {
   :root {
-    --background: 246 248 251;
+    --background: 233 238 245;
     --foreground: 27 39 56;
     --card: 255 255 255;
     --card-foreground: 27 39 56;
@@ -82,32 +90,32 @@
     --popover-foreground: 27 39 56;
     --primary: 0 90 158;
     --primary-foreground: 255 255 255;
-    --secondary: 233 240 249;
+    --secondary: 243 246 250;
     --secondary-foreground: 27 39 56;
-    --muted: 239 243 248;
+    --muted: 243 246 250;
     --muted-foreground: 82 95 114;
-    --accent: 233 240 249;
+    --accent: 213 233 250;
     --accent-foreground: 27 39 56;
-    --destructive: 176 0 32;
+    --destructive: 168 16 50;
     --destructive-foreground: 255 255 255;
-    --border: 210 220 232;
-    --input: 210 220 232;
+    --border: 184 199 217;
+    --input: 125 141 160;
     --ring: 0 90 158;
-    --sidebar: 249 251 253;
+    --sidebar: 255 255 255;
     --sidebar-foreground: 44 58 77;
     --sidebar-primary: 0 90 158;
     --sidebar-primary-foreground: 255 255 255;
-    --sidebar-accent: 233 240 249;
-    --sidebar-accent-foreground: 27 39 56;
-    --sidebar-border: 210 220 232;
+    --sidebar-accent: 213 233 250;
+    --sidebar-accent-foreground: 0 90 158;
+    --sidebar-border: 223 231 241;
     --sidebar-ring: 0 90 158;
     --action-primary: 0 90 158;
     --action-primary-foreground: 255 255 255;
-    --action-primary-hover: 0 79 140;
-    --action-primary-active: 0 66 115;
-    --action-secondary: 233 240 249;
+    --action-primary-hover: 0 75 133;
+    --action-primary-active: 0 63 112;
+    --action-secondary: 243 246 250;
     --action-secondary-foreground: 27 39 56;
-    --action-secondary-border: 125 141 160;
+    --action-secondary-border: 82 95 114;
     --action-secondary-hover: 220 232 245;
     --action-secondary-active: 207 223 240;
     --action-tertiary-foreground: 27 39 56;
@@ -115,17 +123,25 @@
     --action-tertiary-hover-foreground: 27 39 56;
     --action-tertiary-active: 220 232 245;
     --action-tertiary-active-foreground: 27 39 56;
-    --action-destructive: 247 229 232;
-    --action-destructive-foreground: 143 0 26;
-    --action-destructive-border: 176 0 32;
-    --action-destructive-hover: 241 210 216;
-    --action-destructive-active: 234 186 196;
-    --action-disabled: 225 230 237;
-    --action-disabled-foreground: 93 104 118;
-    --action-disabled-border: 149 160 173;
+    --action-destructive: 252 226 231;
+    --action-destructive-foreground: 168 16 50;
+    --action-destructive-border: 168 16 50;
+    --action-destructive-hover: 247 213 222;
+    --action-destructive-active: 243 202 214;
+    --action-disabled: 223 231 241;
+    --action-disabled-foreground: 82 95 114;
+    --action-disabled-border: 125 141 160;
     --action-focus: 0 90 158;
-    --waste-panel-surface: 240 244 249;
+    --waste-panel-surface: 243 246 250;
     --waste-panel-overlay: 255 255 255;
+    --surface-inset: 243 246 250;
+    --border-subtle: 223 231 241;
+    --status-success: 208 250 229;
+    --status-success-foreground: 0 107 79;
+    --status-warning: 255 241 214;
+    --status-warning-foreground: 138 75 0;
+    --status-error: 252 226 231;
+    --status-error-foreground: 168 16 50;
     --font-weight-normal: 400;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
@@ -150,6 +166,7 @@
     --sidebar-primary: 18 122 96;
     --sidebar-ring: 18 122 96;
     --sidebar-accent: 226 236 225;
+    --sidebar-accent-foreground: 15 107 84;
     --action-primary: 18 122 96;
     --action-primary-hover: 15 107 84;
     --action-primary-active: 12 89 70;
@@ -158,58 +175,66 @@
 
   html.dark,
   html[data-theme-mode='dark'] {
-    --background: 18 19 20;
-    --foreground: 191 191 191;
-    --card: 25 26 27;
-    --card-foreground: 191 191 191;
-    --popover: 32 33 34;
-    --popover-foreground: 191 191 191;
-    --primary: 41 122 160;
-    --primary-foreground: 255 255 255;
-    --secondary: 44 45 46;
-    --secondary-foreground: 191 191 191;
-    --muted: 36 37 38;
-    --muted-foreground: 140 140 140;
-    --accent: 39 103 130;
-    --accent-foreground: 237 237 237;
-    --destructive: 244 135 113;
-    --destructive-foreground: 18 19 20;
-    --border: 36 37 38;
-    --input: 42 43 44;
-    --ring: 57 148 188;
-    --sidebar: 25 26 27;
-    --sidebar-foreground: 140 140 140;
-    --sidebar-primary: 41 122 160;
-    --sidebar-primary-foreground: 255 255 255;
-    --sidebar-accent: 36 37 38;
-    --sidebar-accent-foreground: 191 191 191;
-    --sidebar-border: 36 37 38;
-    --sidebar-ring: 57 148 188;
-    --action-primary: 41 122 160;
-    --action-primary-foreground: 255 255 255;
-    --action-primary-hover: 38 116 148;
-    --action-primary-active: 35 107 137;
-    --action-secondary: 44 45 46;
-    --action-secondary-foreground: 191 191 191;
-    --action-secondary-border: 111 115 119;
-    --action-secondary-hover: 54 56 58;
-    --action-secondary-active: 64 66 68;
-    --action-tertiary-foreground: 191 191 191;
-    --action-tertiary-hover: 39 103 130;
-    --action-tertiary-hover-foreground: 237 237 237;
-    --action-tertiary-active: 35 107 137;
-    --action-tertiary-active-foreground: 237 237 237;
-    --action-destructive: 62 41 39;
-    --action-destructive-foreground: 244 161 143;
-    --action-destructive-border: 244 135 113;
-    --action-destructive-hover: 74 48 45;
-    --action-destructive-active: 87 55 49;
-    --action-disabled: 42 43 44;
-    --action-disabled-foreground: 155 155 155;
-    --action-disabled-border: 102 104 106;
-    --action-focus: 101 181 218;
-    --waste-panel-surface: 25 26 27;
-    --waste-panel-overlay: 25 26 27;
+    --background: 17 24 32;
+    --foreground: 243 246 250;
+    --card: 27 39 56;
+    --card-foreground: 243 246 250;
+    --popover: 27 39 56;
+    --popover-foreground: 243 246 250;
+    --primary: 117 192 245;
+    --primary-foreground: 17 24 32;
+    --secondary: 44 58 77;
+    --secondary-foreground: 243 246 250;
+    --muted: 44 58 77;
+    --muted-foreground: 184 199 217;
+    --accent: 23 63 96;
+    --accent-foreground: 243 246 250;
+    --destructive: 255 165 185;
+    --destructive-foreground: 17 24 32;
+    --border: 82 95 114;
+    --input: 125 141 160;
+    --ring: 117 192 245;
+    --sidebar: 27 39 56;
+    --sidebar-foreground: 184 199 217;
+    --sidebar-primary: 117 192 245;
+    --sidebar-primary-foreground: 17 24 32;
+    --sidebar-accent: 23 63 96;
+    --sidebar-accent-foreground: 117 192 245;
+    --sidebar-border: 64 83 106;
+    --sidebar-ring: 117 192 245;
+    --action-primary: 117 192 245;
+    --action-primary-foreground: 17 24 32;
+    --action-primary-hover: 148 208 250;
+    --action-primary-active: 185 227 255;
+    --action-secondary: 44 58 77;
+    --action-secondary-foreground: 243 246 250;
+    --action-secondary-border: 125 141 160;
+    --action-secondary-hover: 64 83 106;
+    --action-secondary-active: 82 95 114;
+    --action-tertiary-foreground: 243 246 250;
+    --action-tertiary-hover: 23 63 96;
+    --action-tertiary-hover-foreground: 243 246 250;
+    --action-tertiary-active: 44 58 77;
+    --action-tertiary-active-foreground: 243 246 250;
+    --action-destructive: 74 32 45;
+    --action-destructive-foreground: 255 165 185;
+    --action-destructive-border: 255 165 185;
+    --action-destructive-hover: 87 37 54;
+    --action-destructive-active: 100 42 62;
+    --action-disabled: 44 58 77;
+    --action-disabled-foreground: 184 199 217;
+    --action-disabled-border: 125 141 160;
+    --action-focus: 117 192 245;
+    --waste-panel-surface: 44 58 77;
+    --waste-panel-overlay: 27 39 56;
+    --surface-inset: 44 58 77;
+    --border-subtle: 64 83 106;
+    --status-success: 18 61 51;
+    --status-success-foreground: 121 221 183;
+    --status-warning: 74 50 22;
+    --status-warning-foreground: 255 209 138;
+    --status-error: 74 32 45;
+    --status-error-foreground: 255 165 185;
     --elevation-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.22);
   }
 
@@ -221,6 +246,7 @@
     --sidebar-primary: 30 215 166;
     --sidebar-ring: 30 215 166;
     --sidebar-accent: 24 59 51;
+    --sidebar-accent-foreground: 30 215 166;
     --action-primary: 30 215 166;
     --action-primary-foreground: 18 19 20;
     --action-primary-hover: 54 223 178;
@@ -334,18 +360,6 @@
       }
     }
 
-    /* 8. Label-Float: Label schwebt nach oben */
-    @keyframes label-float {
-      from {
-        transform: translateY(0);
-        opacity: 0.7;
-      }
-      to {
-        transform: translateY(-4px);
-        opacity: 1;
-      }
-    }
-
     /* 4. Collapse-Icon-Rotate: Icon rotiert smoothly */
     @keyframes collapse-icon-rotate {
       from {
@@ -412,10 +426,6 @@
       animation: toast-slide-in 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    .animate-label-float {
-      animation: label-float 150ms ease-out forwards;
-    }
-
     .animate-row-hover {
       @apply transition-colors duration-150 ease-out;
     }
@@ -436,10 +446,6 @@
       animation: breadcrumb-slide 200ms ease-out forwards;
     }
 
-    .field-group:has(input:focus-visible, textarea:focus-visible, [role='combobox']:focus-visible)
-      .animate-label-float {
-      animation: label-float 150ms ease-out forwards;
-    }
   }
 
   /* Fallback für prefers-reduced-motion: nur transition, kein animation */

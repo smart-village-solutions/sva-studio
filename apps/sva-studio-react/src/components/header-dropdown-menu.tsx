@@ -57,6 +57,7 @@ export const HeaderDropdownMenu = ({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setOpen(false);
+        wrapperRef.current?.querySelector<HTMLElement>(`[aria-controls="${menuId}"]`)?.focus();
       }
     };
 
@@ -67,7 +68,7 @@ export const HeaderDropdownMenu = ({
       globalThis.removeEventListener('mousedown', handlePointerDown);
       globalThis.removeEventListener('keydown', handleKeyDown);
     };
-  }, [open]);
+  }, [menuId, open]);
 
   return (
     <div ref={wrapperRef} className={cn('relative', className)}>
@@ -79,7 +80,7 @@ export const HeaderDropdownMenu = ({
           aria-label={menuLabel}
           aria-orientation={resolvedPopupRole === 'menu' ? 'vertical' : undefined}
           className={cn(
-            'absolute top-full z-50 mt-2 min-w-56 overflow-hidden rounded-lg border border-border bg-popover p-1.5 shadow-md',
+            'absolute top-full z-50 mt-2 max-h-[calc(100dvh-5rem)] min-w-56 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-border bg-popover p-1.5 shadow-md',
             align === 'right' ? 'right-0' : 'left-0',
             menuClassName
           )}

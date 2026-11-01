@@ -387,6 +387,16 @@ Formularbereiche verwenden ein konsistentes Raster:
 - Hilfetexte erklären fachliche Einschränkungen, nicht offensichtliche Bedienung.
 - Auf Mobile wird das Raster einspaltig.
 
+Abstände zwischen Feldern gehören an den tatsächlichen Layout-Container,
+bevorzugt `StudioFieldGroup` mit 16 px (`gap-4`). Ein semantisches `fieldset`
+bleibt für Disabled und Gruppierung erhalten; das Raster liegt darin oder am
+`fieldset` selbst. Schreibschutz wird nativ über `fieldset disabled` vermittelt;
+`aria-readonly` ist am `form` nicht zulässig. `space-y-*` am äußeren Formular erreicht keine Felder, die
+unter einem zusätzlichen `fieldset` mit `display: contents` verschachtelt sind.
+Labels behalten ihre Layoutposition; dauerhafte Translate-Animationen an
+normalen Feldbeschriftungen sind ungeeignet. Die Browserprüfung der
+Organisationsstammdaten misst deshalb die tatsächlichen Feldabstände auf schmalen und breiten Ansichten.
+
 ### Eingabe- und Bearbeitungselemente
 
 Detailseiten verwenden ein konsistentes Inventar an Eingabe- und Bearbeitungselementen. Die konkrete Auswahl richtet sich nach Datentyp, Eingaberisiko und Bearbeitungshäufigkeit; Controls dürfen nicht nur aus optischen Gründen gegeneinander ausgetauscht werden.
@@ -452,7 +462,7 @@ Hilfetexte stehen unter dem Feld und erklären Format, Einschränkung oder fachl
 
 Formulare werden über fachliche Gruppen organisiert, nicht über technische Komponentenlisten.
 
-Bei Create-Onepagern liegen alle Formularfelder auf einer Card mit `bg-card`, auch Titel und Principal-Auswahl. Breadcrumbs, Seitenüberschrift und Seitenbeschreibung bleiben außerhalb. Cards erhalten 20 px Innenabstand (`p-5`), aufeinanderfolgende Formularbereiche 24 px Abstand (`space-y-6`). Aufklappbare Abschnitte behalten den Card-Hintergrund auch im geöffneten Zustand. Die fixierte Aktionsleiste verwendet ebenfalls `bg-card`. Innerhalb eines Fachabschnitts bilden eingebettete Detail-Cards und Aufklappbereiche keine zweite sichtbare Card-Ebene. Inhaltsplugins verwenden hierfür die öffentliche `StudioDetailCard`; die bestehende Create-Seitenvorlage besitzt die Darstellung eingebetteter Abschnitte. Auch Gutscheine und generische Inhalte verwenden die gemeinsame Seitenvorlage mit genau einer fixierten Speichern-Aktion.
+Bei Create-Onepagern liegen alle Formularfelder auf einer Card mit `bg-card`, auch Titel und Principal-Auswahl. Breadcrumbs, Seitenüberschrift und Seitenbeschreibung bleiben außerhalb. Cards erhalten 16 px Innenabstand auf schmalen und 24 px auf breiten Ansichten (`p-4 sm:p-6`), aufeinanderfolgende Formularbereiche 24 px Abstand (`space-y-6`). Aufklappbare Abschnitte behalten den Card-Hintergrund auch im geöffneten Zustand. Die fixierte Aktionsleiste verwendet ebenfalls `bg-card`. Innerhalb eines Fachabschnitts bilden eingebettete Detail-Cards und Aufklappbereiche keine zweite sichtbare Card-Ebene. Inhaltsplugins verwenden hierfür die öffentliche `StudioDetailCard`; die bestehende Create-Seitenvorlage besitzt die Darstellung eingebetteter Abschnitte. Auch Gutscheine und generische Inhalte verwenden die gemeinsame Seitenvorlage mit genau einer fixierten Speichern-Aktion.
 
 Zusammenfassungen folgen einer redaktionellen Aufgabe und erhalten die Feldreihenfolge: Bei Nachrichten gehört die Principal-Auswahl zur Veröffentlichung, bei Veranstaltungen die Wiederholung zu den Terminen, bei Projekten Titel/Kurzbeschreibung/Volltext zum Inhalt, bei generischen Inhalten Publikationsdatum und Sichtbarkeit zur Veröffentlichung sowie bei Kacheln Sprache/Sortierung/Veröffentlichungszeitpunkt/Sichtbarkeit zu den Einstellungen. Medien, Kategorien, Kontakte, Preise und andere eigenständige optionale Aufgaben bleiben getrennt.
 
@@ -488,7 +498,7 @@ Fehlerzustände zeigen, soweit verfügbar, sichere Diagnoseinformationen wie `re
 
 ## Gemeinsame Komponenten
 
-Für die spätere Umsetzung werden folgende Shared-Komponenten vorgesehen:
+Die gemeinsamen React-Bausteine liegen in `@sva/studio-ui-react`:
 
 - `StudioPageHeader` für Titel, Beschreibung, Status, Metadaten und Aktionen
 - `StudioOverviewPageTemplate` für Übersichtsseiten mit Toolbar- und Inhalts-Slots
@@ -498,7 +508,22 @@ Für die spätere Umsetzung werden folgende Shared-Komponenten vorgesehen:
 - `StudioSection` für benannte Detailbereiche
 - `StudioEditSurface` für getönte formularbasierte Arbeitsflächen
 - `StudioStateBlock` für Loading, Empty, Error und Forbidden States
-- `StudioActionMenu` für sekundäre und destruktive Aktionen
+- `StudioActionMenu` für bestehende Gruppen sekundärer und destruktiver Aktionen
+- `Card` mit Header, Titel, Beschreibung, Inhalt und Footer; keine lokale zweite Card-Basis
+- `Radio` mit nativer Gruppen- und Formularsemantik, `StudioSwitch` für kontrollierte Schalter
+- `SearchableSelect` für einfache Suchauswahl mit getrenntem aktivem und ausgewähltem Eintrag; `clearLabel` erhält das explizite Leeren optionaler Werte auch ohne Suchtreffer
+- `Calendar` als gemeinsame DayPicker-Komposition für Datumsgitter, Fokus und Tastatur; fachliche Tourentermine und Ursprungsdaten bleiben im Plugin
+
+`StudioActionMenu` bleibt im bisherigen öffentlichen Vertrag eine Button-Gruppe.
+Ein einzelner Befehl wird direkt als Button gezeigt. Ein echtes Popup-Menü
+benötigt einen expliziten Triggernamen und darf bestehende freie Aktions-Slots
+nicht stillschweigend ersetzen; der Figma-/Code-Abgleich ist noch offen.
+
+Basis-Eingaben und Selects besitzen mindestens 44 px Höhe. Die Radio-Bedienfläche
+ist 44 × 44 px bei kleinerem sichtbarem Indikator; Namen, Werte und Gruppen gehören
+weiter zum nativen Input. Zugehörige Labels enthalten gültigen Text-/Span-Inhalt,
+Hilfe und Fehler bleiben über IDs referenziert. Fachliche Fehlerregeln und ein
+zuständiger Formular-State bleiben beim Verbraucher.
 
 Die Komponenten dürfen keine fachliche Datenbeschaffung enthalten. Sie nehmen gerenderte Inhalte, Statusinformationen und Aktionen über Props oder Slots entgegen.
 Studio-Komponenten sind Wrapper auf Design-System- und shadcn/ui-Basis. Sie dürfen Styling, Layout, Accessibility-Verhalten und Zustandsdarstellung vereinheitlichen, aber keine parallelen Basis-Controls mit eigener visueller Sprache einführen.
@@ -607,3 +632,35 @@ Beispiel für eine fokussierte Bearbeitungsseite mit komplexeren Feldern:
 - Soll `StudioListPageTemplate` in `StudioOverviewPageTemplate` aufgehen oder als spezialisierte Tabellenvariante bestehen bleiben?
 - Welche Kennzahlen sind auf Übersichtsseiten standardmäßig erlaubt, ohne zusätzliche Backend-Last zu erzeugen?
 - Wie stark sollen Plugin-Seiten an denselben Detailseitenstandard gebunden werden?
+
+## Sichere Wiederaufnahme im News-Piloten
+
+Offene News-Create- und Detaileditoren nutzen den bestehenden Host-Leave-Guard.
+Ein unklarer Save blockiert weitere Inhaltswrites, bis die ursprüngliche
+Operation ausdrücklich geprüft wurde. Ein späteres Ergebnis quittiert keine
+neueren Eingaben; Referenz-Retry wiederholt ausschließlich Medienreferenzen.
+Bei Sessionverlust bleibt der Editor im selben Dokument, während die Anmeldung
+in einem neuen Tab erfolgen kann. Wiederaufnahme prüft Konto, Instanz,
+Organisation und aktuelle Freigaben; es folgt kein automatischer Save.
+
+Dialogportale unter derselben Providergrenze übernehmen `suspended`. Gemeinsame
+Dialoge pausieren ihre Fokus-/Modal-Effekte über React `Activity`, bewahren aber
+lokalen Zustand. Die normale Formularquelle bleibt aktiv. Diese technische
+Basis ersetzt die gesonderte fachliche Prüfung weiterer Plugins nicht. Ein
+voller Browserneustart erhält keinen Entwurf, da dieser Abschnitt keine lokale
+Draft-Persistenz einführt.
+
+### Gemeinsame Plugin-Darstellung nach der Designmigration
+
+Events, POI und Waste verwenden wie die übrigen Inhaltseditoren
+`StudioDetailTabs`. Technische Vorladung und Panelerhalt gehören in diesen
+Baustein; Fachzustand und URL bleiben im Plugin. `title: null` ist für einen
+Panelkopf mit eigenem fachlichem Aktions-Context vorgesehen, ohne eine zweite
+Überschrift oder eine zusätzliche Panel-Fläche zu erzeugen.
+
+Tatsächliche An/Aus-Einstellungen verwenden `StudioSwitch` mit stabilem
+zugänglichem Namen, `checked` und `onCheckedChange`. Datensatzauswahl bleibt
+Checkbox. Der Switch schreibt nicht selbst; Validierung, Pending-Sperren,
+Speicherzeitpunkt und Fehlerrückmeldung bleiben Aufgabe des vorhandenen Owners.
+Cards/Sections/Repeater verwenden semantische Flächen und Konturen; dynamische
+Fraktionsfarben oder Fortschrittsbreiten sind weiter Inhaltswerte.

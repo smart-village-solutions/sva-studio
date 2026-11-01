@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   recordMainserverDataProviderObservation: vi.fn(),
   beginMainserverMutationJournal: vi.fn(),
   finalizeMainserverMutationJournal: vi.fn(),
+  loadMainserverMutationJournal: vi.fn(),
   validateCsrf: vi.fn(),
   listSvaMainserverNews: vi.fn(),
   getSvaMainserverNews: vi.fn(),
@@ -53,6 +54,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   recordMainserverDataProviderObservation: state.recordMainserverDataProviderObservation,
   beginMainserverMutationJournal: state.beginMainserverMutationJournal,
   finalizeMainserverMutationJournal: state.finalizeMainserverMutationJournal,
+  loadMainserverMutationJournal: state.loadMainserverMutationJournal,
   validateCsrf: state.validateCsrf,
 }));
 
@@ -191,6 +193,100 @@ describe('dispatchSvaMainserverNewsRequest', () => {
 
   afterEach(() => {
     vi.resetAllMocks();
+  });
+
+  describe('read-only save recovery', () => {
+    const operationId = 'operation-recovery-1';
+    const requestStatus = () =>
+      dispatchSvaMainserverNewsRequest(
+        createRequest(`https://studio.test/api/v1/mainserver/news/operations/${operationId}`, {
+          headers: { 'X-SVA-Acting-Principal-Type': 'organization' },
+        })
+      );
+    beforeEach(() => {
+      state.withAuthenticatedUser.mockImplementation(async (_request, handler) => handler(ctx));
+      state.authorizeContentPrimitiveForUser.mockResolvedValue({
+        ok: true,
+        actor: {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'subject-1',
+        },
+      });
+      state.loadMainserverMutationJournal.mockResolvedValue({
+        operationExternalId: operationId,
+        actionId: 'news.create',
+        contentType: 'news.article',
+        contentId: 'news-1',
+        providerOutcome: 'succeeded',
+        reconciliationStatus: 'complete',
+        completedSteps: ['authorized', 'provider_write'],
+      });
+    });
+    it('returns only the confirmed result under current permission and exact read scope', async () => {
+      const response = await requestStatus();
+      expect(await response?.json()).toEqual({
+        data: { operationId, outcome: 'succeeded', contentId: 'news-1' },
+      });
+      expect(response?.headers.get('cache-control')).toContain('no-store');
+      expect(state.loadMainserverMutationJournal).toHaveBeenCalledWith({
+        instanceId: 'de-musterhausen',
+        operationExternalId: operationId,
+        readScope: {
+          actorAccountId: '00000000-0000-4000-8000-000000000001',
+          activeOrganizationId: ctx.activeOrganizationId,
+          actingPrincipalType: 'organization',
+        },
+      });
+      expect(state.beginMainserverMutationJournal).not.toHaveBeenCalled();
+      expect(state.reserveIdempotency).not.toHaveBeenCalled();
+      expect(state.createSvaMainserverNews).not.toHaveBeenCalled();
+      expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
+      expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
+    });
+    it('does not treat an old failed entry as proof of an unapplied write', async () => {
+      state.loadMainserverMutationJournal.mockResolvedValue({
+        actionId: 'news.update',
+        contentType: 'news.article',
+        contentId: 'news-1',
+        providerOutcome: 'failed',
+        completedSteps: ['authorized'],
+      });
+      expect(await (await requestStatus())?.json()).toEqual({
+        data: { operationId, outcome: 'unknown' },
+      });
+    });
+    it('hides missing or differently scoped operations', async () => {
+      state.loadMainserverMutationJournal.mockResolvedValue(undefined);
+      expect((await requestStatus())?.status).toBe(404);
+    });
+    it('rejects revoked permission before disclosing a private operation', async () => {
+      state.authorizeContentPrimitiveForUser.mockResolvedValue({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Denied',
+      });
+      expect((await requestStatus())?.status).toBe(403);
+      expect(state.loadMainserverMutationJournal).toHaveBeenCalledOnce();
+    });
+    it('checks only the original action and allows editors with scoped resource grants', async () => {
+      const response = await requestStatus();
+      expect(response?.status).toBe(200);
+      expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledOnce();
+      expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'news.create',
+          resource: { contentType: 'news.article', contentId: 'news-1' },
+        })
+      );
+    });
+    it('requires an explicit principal even in compatibility mode', async () => {
+      const response = await dispatchSvaMainserverNewsRequest(
+        createRequest(`https://studio.test/api/v1/mainserver/news/operations/${operationId}`)
+      );
+      expect(response?.status).toBe(400);
+      expect(state.loadMainserverMutationJournal).not.toHaveBeenCalled();
+    });
   });
 
   it('ignores unrelated routes', async () => {
@@ -416,6 +512,48 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       page: 1,
       pageSize: 25,
     });
+  });
+
+  it('confirms an authentication rejection before dispatch without a provider write', async () => {
+    state.withAuthenticatedUser.mockResolvedValueOnce(
+      Response.json({ error: 'unauthorized' }, { status: 401 })
+    );
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', { method: 'POST' })
+    );
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBe('not_applied');
+    expect(state.createSvaMainserverNews).not.toHaveBeenCalled();
+    expect(state.beginMainserverMutationJournal).not.toHaveBeenCalled();
+  });
+
+  it('keeps an applied content update unknown when a subsequent visibility write returns 4xx', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.validateCsrf.mockReturnValue(null);
+    state.updateSvaMainserverNews.mockResolvedValueOnce({ id: 'news-1', title: 'Changed' });
+    state.changeSvaMainserverNewsVisibility.mockRejectedValueOnce(
+      new SvaMainserverError({
+        code: 'graphql_error',
+        message: 'Denied after content write',
+        statusCode: 403,
+      })
+    );
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ ...updateNewsInput, visible: false }),
+      })
+    );
+    expect(response?.status).toBe(403);
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBe('unknown');
+    expect(state.updateSvaMainserverNews).toHaveBeenCalledOnce();
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({ providerOutcome: 'unknown' })
+    );
   });
 
   it('creates news and applies draft visibility in the same route flow', async () => {
@@ -1612,6 +1750,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       })
     );
     expect(conflict?.status).toBe(409);
+    expect(conflict?.headers.get('X-SVA-Mutation-Outcome')).toBe('unknown');
     await expect(conflict?.json()).resolves.toEqual({
       error: 'idempotency_key_reuse',
       message: 'Idempotency-Key wurde bereits verwendet.',
@@ -1648,7 +1787,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       actionId: 'news.create',
       contentType: 'news.article',
       authorizationMode: 'exact',
-      providerOutcome: 'failed',
+      providerOutcome: 'unknown',
       reconciliationStatus: 'reconciliation_required',
       attemptCount: 1,
       completedSteps: ['authorized'],
@@ -1663,6 +1802,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     );
 
     expect(response?.status).toBe(502);
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBe('unknown');
     await expect(response?.json()).resolves.toEqual({
       error: 'graphql_error',
       message: 'GraphQL fehlgeschlagen.',
@@ -1693,7 +1833,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
           mainserverMutation: expect.objectContaining({
             authorizationMode: 'exact',
             operationExternalId: expect.any(String),
-            providerOutcome: 'failed',
+            providerOutcome: 'unknown',
             reconciliationStatus: 'reconciliation_required',
           }),
         }),

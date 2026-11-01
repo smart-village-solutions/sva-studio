@@ -250,6 +250,7 @@ export {
   publishSessionAccessSnapshot,
   readFieldError,
   readMainserverErrorRequestId,
+  readMainserverMutationFailureOutcome,
   readHostMediaAssetCopyright,
   readHostMediaAssetFileName,
   readHostMediaAssetTitle,

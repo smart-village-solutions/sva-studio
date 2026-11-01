@@ -91,16 +91,16 @@ const WasteToolsActiveImportProgress = ({ job }: { readonly job: StudioJobRespon
   const rowProgress = resolveImportProgressRows(job);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-50/90 via-background to-orange-50/70 p-4 shadow-sm shadow-amber-500/10">
+    <section className="overflow-hidden rounded-lg border border-border-subtle bg-surface-inset p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700/80">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-status-warning-foreground">
             {pt('tools.progress.title')}
           </p>
           <p className="text-sm font-semibold text-foreground">{pt(progressMessageKey)}</p>
           <p className="text-sm text-muted-foreground">{pt(progressPhaseKey)}</p>
         </div>
-        <div className="rounded-full border border-amber-500/20 bg-background/80 px-3 py-1 text-sm font-semibold text-foreground">
+        <div className="rounded-full border border-border-subtle bg-card px-3 py-1 text-sm font-semibold text-foreground">
           {pt('tools.progress.percentage', { value: progressPercentage })}
         </div>
       </div>
@@ -111,10 +111,10 @@ const WasteToolsActiveImportProgress = ({ job }: { readonly job: StudioJobRespon
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={progressPercentage}
-          className="h-3 overflow-hidden rounded-full bg-amber-100/80"
+          className="h-3 overflow-hidden rounded-full bg-muted"
         >
           <div
-            className={`h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 transition-[width] duration-500 ${
+            className={`h-full rounded-full bg-primary transition-[width] duration-500 ${
               job.status === 'running' ? 'animate-pulse' : ''
             }`}
             style={{ width: `${progressPercentage}%` }}
@@ -224,7 +224,7 @@ export const WasteToolsHistory = ({
       ) : null}
       <WasteToolsPostalCodeStatus job={displayedLastJob} />
       {displayedLastJob ? <WasteToolsArtifactDownloads job={displayedLastJob} /> : null}
-      <div className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-4">
+      <div className="space-y-3 rounded-lg border border-border-subtle bg-card p-4">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">{pt('tools.meta.historyTitle')}</h3>
           <p className="text-sm text-muted-foreground">{pt('tools.meta.historyDescription')}</p>

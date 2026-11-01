@@ -1,7 +1,9 @@
+import { translateNewsFieldError } from './news.detail-page.helpers.js';
 import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { type NewsWasteMasterDataOverview } from './news.waste-targeting.js';
 import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 import {
+  Radio,
   Checkbox,
   Input,
   StudioField,
@@ -9,7 +11,7 @@ import {
   getStudioFormFieldProps,
 } from '@sva/studio-ui-react';
 import { useEffect, type ReactNode } from 'react';
-import { NewsDetailCard } from './news.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import { NewsDetailTargetingSection } from './news.detail-targeting-tab.js';
 import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
 import type { WasteTargetingAvailability } from './news.waste-payload.js';
@@ -36,20 +38,6 @@ type NewsDetailSettingsFormControl = ReturnType<
 
 const collectSummaryErrors = (fields: readonly ReturnType<typeof getStudioFormFieldProps>[]) =>
   fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
-
-const translateFieldError = (
-  error: FieldError | undefined,
-  pt: NewsDetailSettingsTabProps['pt']
-): FieldError | undefined => {
-  if (!error || typeof error.message !== 'string') {
-    return error;
-  }
-
-  return {
-    ...error,
-    message: pt(`validation.${error.message}`),
-  };
-};
 
 const createManualFieldError = (message: string): FieldError => ({
   type: 'manual',
@@ -80,7 +68,7 @@ function NewsPushNotificationCard({
 }>) {
   const pushEnabled = useWatch({ control, name: 'pushNotificationEnabled' });
   return (
-    <NewsDetailCard
+    <StudioDetailCard
       title={pt('cards.settings.push.title')}
       description={pt('cards.settings.push.description')}
     >
@@ -94,7 +82,7 @@ function NewsPushNotificationCard({
       ) : canSendPushNotification ? (
         <label
           htmlFor="news-push-notification-enabled"
-          className="flex items-start gap-3 rounded-xl border border-border/60 p-4 text-sm"
+          className="flex items-start gap-3 rounded-lg border border-border-subtle p-4 text-sm"
         >
           <Controller
             control={control}
@@ -132,7 +120,7 @@ function NewsPushNotificationCard({
           onLoadOverview={onLoadWasteOverview}
         />
       ) : null}
-    </NewsDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -157,25 +145,32 @@ function NewsPublicationModeFieldset({
             <label
               key={option}
               htmlFor={`publication-mode-${option}`}
-              className="flex gap-3 rounded-xl border border-border/60 p-4 text-sm"
+              className="flex gap-3 rounded-lg border border-border-subtle p-4 text-sm"
             >
-              <input
+              <Radio
                 id={`publication-mode-${option}`}
-                type="radio"
+
                 name={field.name}
                 value={option}
+                aria-labelledby={`publication-mode-${option}-label`}
                 aria-describedby={`publication-mode-${option}-description`}
                 checked={field.value === option}
                 onChange={(event) => field.onChange(event.target.value)}
               />
-              <div className="space-y-1">
-                <span className="block font-medium text-foreground">
+              <span className="block space-y-1">
+                <span
+                  id={`publication-mode-${option}-label`}
+                  className="block font-medium text-foreground"
+                >
                   {pt(`publicationModes.${option}.label`)}
                 </span>
-                <p id={`publication-mode-${option}-description`} className="text-muted-foreground">
+                <span
+                  id={`publication-mode-${option}-description`}
+                  className="block text-muted-foreground"
+                >
                   {pt(`publicationModes.${option}.description`)}
-                </p>
-              </div>
+                </span>
+              </span>
             </label>
           ))}
         </fieldset>
@@ -204,7 +199,7 @@ function NewsPublicationCard({
   scheduledPublicationField: ScheduledPublicationFieldState;
 }>) {
   return (
-    <NewsDetailCard
+    <StudioDetailCard
       title={pt('cards.settings.publication.title')}
       description={pt('cards.settings.publication.description')}
     >
@@ -237,12 +232,12 @@ function NewsPublicationCard({
       ) : null}
 
       {mode === 'edit' ? (
-        <dl className="space-y-1 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm">
+        <dl className="space-y-1 rounded-lg border border-border-subtle bg-muted p-4 text-sm">
           <dt className="font-medium text-foreground">{pt('fields.publishedAt')}</dt>
           <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.publishedAt)}</dd>
         </dl>
       ) : null}
-    </NewsDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -274,7 +269,7 @@ export function NewsDetailSettingsTab({
     id: 'news-scheduled-publication-at',
     error: scheduledPublicationField.isInvalid
       ? createManualFieldError(pt('validation.scheduledPublicationAt'))
-      : translateFieldError(errors.scheduledPublicationAt, pt),
+      : translateNewsFieldError(errors.scheduledPublicationAt, pt),
   });
 
   const publicationCard = (

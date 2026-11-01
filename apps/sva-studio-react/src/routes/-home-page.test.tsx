@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -20,6 +20,7 @@ vi.mock('../hooks/use-content-access', () => ({
 }));
 
 import { HomePage } from './-home-page';
+import { t } from '../i18n';
 import { StudioBrandingProvider } from '../providers/studio-branding-provider';
 
 describe('HomePage', () => {
@@ -89,5 +90,32 @@ describe('HomePage', () => {
     expect(screen.getByText('Studio Workspace')).toBeTruthy();
     expect(screen.queryByText('Letzte Änderungen')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('starts local dev login directly from the primary sign-in action', () => {
+    const loginWithDevAuth = vi.fn();
+    useAuthMock.mockReturnValue({
+      isAuthenticated: false,
+      isLoading: false,
+      isDevAuthAvailable: true,
+      loginWithDevAuth,
+    });
+    render(<HomePage />);
+    fireEvent.click(screen.getByRole('button', { name: t('shell.header.login') }));
+    expect(loginWithDevAuth).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('link', { name: t('shell.header.login') })).toBeNull();
+  });
+
+  it('keeps the standard login link when local dev auth is disabled', () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: false,
+      isLoading: false,
+      isDevAuthAvailable: false,
+      loginWithDevAuth: vi.fn(),
+    });
+    render(<HomePage />);
+    expect(
+      screen.getByRole('link', { name: t('shell.header.login') }).getAttribute('href')
+    ).toContain('/auth/login');
+    expect(screen.queryByRole('button', { name: t('shell.header.login') })).toBeNull();
   });
 });

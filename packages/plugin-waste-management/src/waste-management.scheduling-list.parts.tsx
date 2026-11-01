@@ -1,4 +1,4 @@
-import { IconEdit } from '@tabler/icons-react';
+import { Pencil as IconEdit } from 'lucide-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
 
@@ -20,7 +20,7 @@ export const WasteSchedulingListActionCell = ({
         tooltip={ariaLabel}
         onClick={onClick}
       >
-        <IconEdit aria-hidden="true" className="h-4 w-4" />
+        <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
       </Button>
     </div>
   </td>

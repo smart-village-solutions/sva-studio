@@ -12,7 +12,7 @@ import {
   mainserverContentMediaToUsages,
   type ContentMediaUsage,
 } from '@sva/studio-ui-react';
-import { NewsDetailCard } from './news.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import {
   collectSummaryErrors,
   type ContentFieldBindings,
@@ -104,7 +104,7 @@ function NewsContentTextSection({
     </div>
   );
   return (
-    <NewsDetailCard
+    <StudioDetailCard
       title={pt('cards.content.text.title')}
       description={createMode ? undefined : pt('cards.content.text.description')}
     >
@@ -144,7 +144,7 @@ function NewsContentTextSection({
           {introduction}
         </details>
       ) : null}
-    </NewsDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -199,12 +199,12 @@ function NewsContentSourceSection({
       {fields}
     </details>
   ) : (
-    <NewsDetailCard
+    <StudioDetailCard
       title={pt('cards.content.source.title')}
       description={pt('cards.content.source.description')}
     >
       {fields}
-    </NewsDetailCard>
+    </StudioDetailCard>
   );
 }
 

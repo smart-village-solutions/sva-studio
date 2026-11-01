@@ -90,14 +90,26 @@ describe('styles foundation tokens', () => {
     expect(stylesSource).toContain('--primary: 0 90 158;');
     expect(stylesSource).toContain('--ring: 0 90 158;');
     expect(stylesSource).toContain('--sidebar-primary: 0 90 158;');
-    expect(stylesSource).toContain('--sidebar-accent: 233 240 249;');
-    expect(stylesSource).toContain('--waste-panel-surface: 240 244 249;');
+    expect(stylesSource).toContain('--sidebar-accent: 213 233 250;');
+    expect(stylesSource).toContain('--waste-panel-surface: 243 246 250;');
   });
 
   it('keeps the forest theme as an explicit green variant over the default blue base', () => {
     expect(stylesSource).toContain("html[data-theme='sva-forest'] {");
     expect(stylesSource).toContain('--primary: 18 122 96;');
     expect(stylesSource).toContain('--sidebar-primary: 18 122 96;');
+    expect(themeTokens['forest-light']['sidebar-accent-foreground']).toEqual(
+      forestTokens['action-primary-hover']
+    );
+    expect(themeTokens['forest-dark']['sidebar-accent-foreground']).toEqual(
+      forestDarkTokens.primary
+    );
+    for (const tokens of [themeTokens['forest-light'], themeTokens['forest-dark']]) {
+      expect(contrastRatio(tokens['accent-foreground'], tokens.accent)).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrastRatio(tokens['sidebar-accent-foreground'], tokens['sidebar-accent'])
+      ).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   it.each(Object.entries(themeTokens))(
@@ -122,6 +134,21 @@ describe('styles foundation tokens', () => {
         expect(
           contrastRatio(requireToken(tokens, foreground), requireToken(tokens, background)),
           `${foreground} on ${background}`
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  );
+
+  it.each(Object.entries(themeTokens))(
+    'keeps semantic status text at WCAG AA contrast in %s',
+    (_theme, tokens) => {
+      for (const status of ['success', 'warning', 'error']) {
+        expect(
+          contrastRatio(
+            requireToken(tokens, `status-${status}-foreground`),
+            requireToken(tokens, `status-${status}`)
+          ),
+          status
         ).toBeGreaterThanOrEqual(4.5);
       }
     }

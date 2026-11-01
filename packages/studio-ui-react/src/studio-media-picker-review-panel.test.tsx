@@ -3,6 +3,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StudioMediaPickerReviewPanel } from './studio-media-picker-review-panel.js';
 
+vi.mock('@sva/plugin-sdk/content-media', async (original) => ({
+  ...(await original<typeof import('@sva/plugin-sdk/content-media')>()),
+  getHostMediaEditing: vi.fn(async () => {
+    throw new Error('source unavailable');
+  }),
+}));
+
 const asset = {
   id: 'asset-1',
   title: 'Titel',
@@ -40,6 +47,25 @@ const labels = {
 afterEach(cleanup);
 
 describe('StudioMediaPickerReviewPanel', () => {
+  it('retains the open image workspace while upload capability is being revalidated', async () => {
+    const props = {
+      reviewSource: 'library' as const,
+      reviewAsset: asset,
+      metadataDraft: asset.metadata,
+      labels,
+      initialEditorOpen: true,
+      onMetadataChange: vi.fn(),
+      onBackFromReview: vi.fn(),
+      onClose: vi.fn(),
+      onConfirmSelection: vi.fn(),
+    };
+    const view = render(<StudioMediaPickerReviewPanel {...props} onApplyImageEdit={vi.fn()} />);
+    const heading = screen.getByRole('heading', { name: 'media.editor.imageTitle' });
+    view.rerender(<StudioMediaPickerReviewPanel {...props} onApplyImageEdit={undefined} />);
+    expect(screen.getByRole('heading', { name: 'media.editor.imageTitle' })).toBe(heading);
+    await screen.findByRole('alert');
+  });
+
   it('keeps metadata read-only while still allowing explicit selection', () => {
     const confirm = vi.fn();
     const change = vi.fn();

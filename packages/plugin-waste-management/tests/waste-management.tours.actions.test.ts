@@ -39,6 +39,8 @@ describe('createWasteToursActions', () => {
       setLinkForm: vi.fn(),
       setAssignmentsDialogOpen: vi.fn(),
       setSchedulingOverview: vi.fn(),
+      setSchedulingLoadState: vi.fn(),
+      schedulingRequestRef: { current: 0 },
       setCalendarOpen: vi.fn(),
     };
     const actions = createWasteToursActions(state as never);
@@ -93,6 +95,8 @@ describe('createWasteToursActions', () => {
       setLinkForm: vi.fn(),
       setAssignmentsDialogOpen: vi.fn(),
       setSchedulingOverview: vi.fn(),
+      setSchedulingLoadState: vi.fn(),
+      schedulingRequestRef: { current: 0 },
       setCalendarOpen: vi.fn(),
     };
     const actions = createWasteToursActions(state as never);
@@ -111,5 +115,32 @@ describe('createWasteToursActions', () => {
     expect(state.setSelectedTour).toHaveBeenCalledWith(tour);
     expect(state.setSchedulingOverview).toHaveBeenCalledWith(null);
     expect(state.setCalendarOpen).toHaveBeenCalledWith(true);
+  });
+  it('opens immediately, reports loading, and ignores the previous tour response', async () => {
+    let finish: ((value: unknown) => void) | undefined;
+    apiMocks.getWasteManagementSchedulingOverview.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const state = {
+      schedulingRequestRef: { current: 0 },
+      setSelectedTour: vi.fn(),
+      setSchedulingOverview: vi.fn(),
+      setSchedulingLoadState: vi.fn(),
+      setCalendarOpen: vi.fn(),
+    };
+    const actions = createWasteToursActions(state as never);
+    const previous = actions.openCalendar({ id: 'old' } as never);
+    expect(state.setCalendarOpen).toHaveBeenCalledWith(true);
+    expect(state.setSchedulingLoadState).toHaveBeenLastCalledWith('loading');
+    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValueOnce({ tourDateShifts: [] });
+    await actions.openCalendar({ id: 'new' } as never);
+    expect(state.setSchedulingLoadState).toHaveBeenLastCalledWith('ready');
+    finish?.({ stale: true });
+    await previous;
+    expect(state.setSelectedTour).toHaveBeenLastCalledWith({ id: 'new' });
+    expect(state.setSchedulingOverview).toHaveBeenLastCalledWith({ tourDateShifts: [] });
   });
 });

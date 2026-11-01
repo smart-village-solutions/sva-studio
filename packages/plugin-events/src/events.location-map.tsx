@@ -55,7 +55,7 @@ export function EventsLocationMap({
   return (
     <div
       ref={containerRef}
-      className="min-h-[320px] w-full overflow-hidden rounded-xl border border-border/70"
+      className="min-h-[320px] w-full overflow-hidden rounded-lg border border-border/70"
     />
   );
 }

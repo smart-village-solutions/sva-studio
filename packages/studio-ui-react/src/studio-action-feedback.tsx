@@ -133,17 +133,15 @@ export function StudioPersistentActionResult({
       className={cn(
         'rounded-xl border p-4 text-sm',
         isError
-          ? 'border-destructive/40 bg-destructive/5 text-destructive'
-          : 'border-primary/30 bg-primary/5 text-foreground',
+          ? 'border-status-error-foreground bg-status-error text-status-error-foreground'
+          : 'border-status-success-foreground bg-status-success text-status-success-foreground',
         className
       )}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h2 className="font-semibold">{title}</h2>
-          {description ? (
-            <p className={isError ? undefined : 'text-muted-foreground'}>{description}</p>
-          ) : null}
+          {description ? <p>{description}</p> : null}
         </div>
         {actions || (dismissLabel && onDismiss) ? (
           <div className="flex shrink-0 flex-wrap gap-2">

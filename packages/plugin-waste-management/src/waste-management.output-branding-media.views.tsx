@@ -18,10 +18,10 @@ export const BrandingPreview = ({
   translate: WasteOutputTranslate;
   value: string;
 }>) => (
-  <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/10 p-4 sm:flex-row sm:items-center">
+  <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface-inset p-4 sm:flex-row sm:items-center">
     <img
       alt={translate('output.pdf.mediaPicker.previewAlt')}
-      className="max-h-24 max-w-64 rounded-lg border border-border/60 bg-background object-contain p-2"
+      className="max-h-24 max-w-64 rounded-lg border border-border-subtle bg-background object-contain p-2"
       src={value}
     />
     <Button type="button" variant="secondary" onClick={onRemove}>
@@ -39,7 +39,7 @@ const MediaLibraryLoadError = ({
 }>) =>
   controller.mediaLibraryError ? (
     <div
-      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-foreground"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-status-error-foreground/40 bg-status-error text-status-error-foreground p-3 text-sm text-foreground"
       role="alert"
     >
       <span>{translate('output.pdf.mediaPicker.libraryLoadFailed')}</span>

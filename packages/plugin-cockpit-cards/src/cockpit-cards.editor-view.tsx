@@ -121,7 +121,7 @@ function EditorPrincipal(view: EditorViewProps) {
     <div
       className={
         view.mode === 'create' && view.principalControl?.kind === 'selectable'
-          ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
+          ? 'space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6'
           : undefined
       }
     >

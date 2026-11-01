@@ -1,9 +1,15 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconRoute, IconTrash } from '@tabler/icons-react';
+import { Route as IconRoute, Trash2 as IconTrash, Plus } from 'lucide-react';
 import { Button, Checkbox, Select, cn } from '@sva/studio-ui-react';
 import type { WasteMasterDataLocationsTableProps } from './waste-management.master-data-locations-table.types.js';
-import { WasteLocationsCreateMenu } from './waste-management.master-data-locations-table.views.menu.js';
-import { WasteLocationsFiltersToggle, WasteLocationsQueryControl, WasteLocationsResetControl, WasteLocationsSortControl, WasteLocationsStatusControl, WasteLocationsYearControl } from './waste-management.master-data-locations-table.views.toolbar.controls.js';
+import {
+  WasteLocationsFiltersToggle,
+  WasteLocationsQueryControl,
+  WasteLocationsResetControl,
+  WasteLocationsSortControl,
+  WasteLocationsStatusControl,
+  WasteLocationsYearControl,
+} from './waste-management.master-data-locations-table.views.toolbar.controls.js';
 
 const WasteLocationsBulkActions = ({
   selectedCollectionLocationsCount,
@@ -20,11 +26,11 @@ const WasteLocationsBulkActions = ({
       <Button
         type="button"
         variant="secondary"
-        className="h-10 rounded-lg border-border/70 px-3"
+        className="h-11 rounded-md border-border/70 px-3"
         disabled={selectedCollectionLocationsCount === 0}
         onClick={onOpenBulkAssignments}
       >
-        <IconRoute aria-hidden="true" className="h-4 w-4" />
+        <IconRoute strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
         {pt('masterData.collectionLocations.bulk.actions.openAssign', {
           value: selectedCollectionLocationsCount,
         })}
@@ -33,13 +39,13 @@ const WasteLocationsBulkActions = ({
         type="button"
         variant="tertiary"
         className={cn(
-          'h-10 rounded-lg border border-destructive/15 px-3 text-destructive hover:bg-destructive/5',
+          'h-11 rounded-md border border-destructive/15 px-3 text-destructive hover:bg-destructive/5',
           selectedCollectionLocationsCount === 0 && 'text-destructive/50'
         )}
         disabled={selectedCollectionLocationsCount === 0}
         onClick={onRequestDeleteSelected}
       >
-        <IconTrash aria-hidden="true" className="h-4 w-4" />
+        <IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
         {pt('masterData.collectionLocations.bulk.actions.deleteSelected')}
       </Button>
     </>
@@ -60,7 +66,7 @@ const WasteLocationsFilters = ({
   return (
     <div
       id="waste-locations-filters"
-      className="rounded-lg border border-border/60 bg-muted/[0.08] px-3 py-3"
+      className="rounded-lg border border-border-subtle bg-muted/[0.08] px-3 py-3"
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <label className="flex min-w-56 flex-1 flex-col gap-2 text-sm">
@@ -139,10 +145,6 @@ export const WasteMasterDataLocationsTableToolbar = ({
   filtersOpen,
   selectedTourId,
   allFilteredLocationsSelected,
-  onOpenCreateRegion,
-  onOpenCreateCity,
-  onOpenCreateStreet,
-  onOpenCreateHouseNumber,
   onOpenCreateLocation,
   onOpenBulkAssignments,
   onTourFilterChange,
@@ -154,6 +156,7 @@ export const WasteMasterDataLocationsTableToolbar = ({
   onRequestDeleteSelected,
   onToggleFiltersOpen,
 }: WasteLocationsToolbarProps) => {
+  const pt = usePluginTranslation('wasteManagement');
   return (
     <div className="flex w-full flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
       <div className="flex flex-1 flex-col gap-3">
@@ -165,9 +168,19 @@ export const WasteMasterDataLocationsTableToolbar = ({
             onOpenBulkAssignments={onOpenBulkAssignments}
             onRequestDeleteSelected={onRequestDeleteSelected}
           />
-          <WasteLocationsFiltersToggle filtersOpen={filtersOpen} onToggleFiltersOpen={onToggleFiltersOpen} />
-          <WasteLocationsYearControl availableTours={availableTours} locationYear={locationYear} onLocationYearChange={onLocationYearChange} />
-          <WasteLocationsStatusControl locationTourStatus={locationTourStatus} onLocationTourStatusChange={onLocationTourStatusChange} />
+          <WasteLocationsFiltersToggle
+            filtersOpen={filtersOpen}
+            onToggleFiltersOpen={onToggleFiltersOpen}
+          />
+          <WasteLocationsYearControl
+            availableTours={availableTours}
+            locationYear={locationYear}
+            onLocationYearChange={onLocationYearChange}
+          />
+          <WasteLocationsStatusControl
+            locationTourStatus={locationTourStatus}
+            onLocationTourStatusChange={onLocationTourStatusChange}
+          />
           <WasteLocationsSortControl
             sortMode={sortMode}
             sortDirection={sortDirection}
@@ -186,13 +199,10 @@ export const WasteMasterDataLocationsTableToolbar = ({
         ) : null}
       </div>
       <div className="flex justify-end">
-        <WasteLocationsCreateMenu
-          onOpenCreateRegion={onOpenCreateRegion}
-          onOpenCreateCity={onOpenCreateCity}
-          onOpenCreateStreet={onOpenCreateStreet}
-          onOpenCreateHouseNumber={onOpenCreateHouseNumber}
-          onOpenCreateLocation={onOpenCreateLocation}
-        />
+        <Button type="button" onClick={onOpenCreateLocation}>
+          <Plus aria-hidden="true" strokeWidth={1} className="h-4 w-4" />
+          {pt('masterData.locationsWorkspace.actions.createLocation')}
+        </Button>
       </div>
     </div>
   );

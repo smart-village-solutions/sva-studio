@@ -1,4 +1,4 @@
-import { Checkbox } from '@sva/studio-ui-react';
+import { Checkbox, Select } from '@sva/studio-ui-react';
 import { t } from '../../../i18n';
 
 export const UserCreateAccountOptions = ({
@@ -34,9 +34,8 @@ export const UserCreateAccountOptions = ({
       <label htmlFor="create-user-invitation-purpose" className="block text-sm font-medium">
         {t('admin.users.createDialog.invitationPurpose')}
       </label>
-      <select
+      <Select
         id="create-user-invitation-purpose"
-        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         value={invitationPurpose}
         onChange={(event) =>
           onInvitationPurposeChange(event.target.value as 'default' | 'studio' | 'ssf')
@@ -45,7 +44,7 @@ export const UserCreateAccountOptions = ({
         <option value="default">{t('admin.users.createDialog.invitationPurposeDefault')}</option>
         <option value="studio">{t('admin.users.createDialog.invitationPurposeStudio')}</option>
         <option value="ssf">{t('admin.users.createDialog.invitationPurposeSsf')}</option>
-      </select>
+      </Select>
       <p className="text-xs text-muted-foreground">
         {t('admin.users.createDialog.invitationPurposeHint')}
       </p>

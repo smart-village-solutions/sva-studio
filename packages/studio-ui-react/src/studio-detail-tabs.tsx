@@ -54,6 +54,8 @@ export type StudioDetailTabsProps<TTabId extends string = string> = Readonly<{
   ) => boolean | string | void;
   blockedTabChangeMessage?: string;
   keepMounted?: boolean;
+  /** Prepare enabled panels on pointer/focus intent without changing tab activation. */
+  preloadOnIntent?: boolean;
   status?: React.ReactNode;
   statusAriaLive?: 'polite' | 'assertive' | 'off';
   className?: string;
@@ -74,7 +76,7 @@ function getTabDescription<TTabId extends string>(tab: StudioDetailTab<TTabId>) 
 }
 
 function getTabTitle<TTabId extends string>(tab: StudioDetailTab<TTabId>) {
-  if (tab.title) {
+  if (tab.title !== undefined) {
     return tab.title;
   }
 
@@ -124,6 +126,7 @@ export function StudioDetailTabs<TTabId extends string = string>({
   onBeforeTabChange,
   blockedTabChangeMessage,
   keepMounted = false,
+  preloadOnIntent = false,
   status,
   statusAriaLive = 'polite',
   className,
@@ -142,21 +145,30 @@ export function StudioDetailTabs<TTabId extends string = string>({
     () => new Set(currentValue ? [currentValue] : [])
   );
 
-  React.useEffect(() => {
-    if (!currentValue) {
-      return;
-    }
-
+  const markVisited = React.useCallback((tabId: TTabId) => {
     setVisitedTabs((previousTabs) => {
-      if (previousTabs.has(currentValue)) {
+      if (previousTabs.has(tabId)) {
         return previousTabs;
       }
 
       const nextTabs = new Set(previousTabs);
-      nextTabs.add(currentValue);
+      nextTabs.add(tabId);
       return nextTabs;
     });
-  }, [currentValue]);
+  }, []);
+
+  React.useEffect(() => {
+    if (currentValue) markVisited(currentValue);
+  }, [currentValue, markVisited]);
+
+  const handleTabIntent = React.useCallback(
+    (tabId: TTabId) => {
+      if (preloadOnIntent && visibleTabs.some((tab) => tab.id === tabId && !tab.disabled)) {
+        markVisited(tabId);
+      }
+    },
+    [markVisited, preloadOnIntent, visibleTabs]
+  );
 
   const handleValueChange = React.useCallback(
     (nextValue: string) => {
@@ -209,6 +221,7 @@ export function StudioDetailTabs<TTabId extends string = string>({
         visibleTabs={visibleTabs}
         renderTabLabel={renderTabLabel}
         onChange={handleValueChange}
+        onIntent={handleTabIntent}
       />
       <StudioDetailTabsStatus
         status={status}

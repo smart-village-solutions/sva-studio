@@ -34,7 +34,13 @@ export function StudioPageTitle({
 
   return (
     <div className="inline-flex max-w-full min-w-0 items-center gap-1">
-      <h1 className={cn('text-3xl font-semibold text-foreground', className)} {...props} />
+      <h1
+        className={cn(
+          'min-w-0 break-words text-3xl font-semibold leading-9 text-foreground',
+          className
+        )}
+        {...props}
+      />
       {withAccessory && accessory ? <div className="shrink-0">{accessory}</div> : null}
     </div>
   );
@@ -58,18 +64,20 @@ export function StudioPageHeader({
   className,
 }: StudioPageHeaderProps) {
   return (
-    <header
-      className={cn('flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between', className)}
-    >
-      <div className="space-y-2">
-        <StudioPageTitle id={titleId} withAccessory={withTitleAccessory}>
-          {title}
-        </StudioPageTitle>
-        {description ? (
-          <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>
+    <header className={cn('@container', className)}>
+      <div className="flex min-w-0 flex-col gap-4 @min-[880px]:flex-row @min-[880px]:items-start @min-[880px]:justify-between">
+        <div className="min-w-0 space-y-2">
+          <StudioPageTitle id={titleId} withAccessory={withTitleAccessory}>
+            {title}
+          </StudioPageTitle>
+          {description ? (
+            <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+        {actions ? (
+          <div className="flex max-w-full flex-wrap items-start gap-2">{actions}</div>
         ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-start gap-2">{actions}</div> : null}
     </header>
   );
 }

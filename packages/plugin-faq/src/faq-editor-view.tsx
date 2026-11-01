@@ -102,7 +102,10 @@ const FaqEditorPrimaryAction = ({
         type="submit"
         form={formId}
         status={saveStatus}
-        disabled={deletePending || (mode === 'create' && !isMainserverPrincipalReady(principalControl, actingPrincipalType))}
+        disabled={
+          deletePending ||
+          (mode === 'create' && !isMainserverPrincipalReady(principalControl, actingPrincipalType))
+        }
         labels={{
           idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
           saving: pt('actions.saving'),
@@ -117,7 +120,7 @@ function FaqPrincipal(props: FaqEditorViewProps) {
     <div
       className={
         props.mode === 'create' && props.principalControl?.kind === 'selectable'
-          ? 'space-y-4 rounded-2xl border border-border/60 bg-card p-5'
+          ? 'space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6'
           : undefined
       }
     >

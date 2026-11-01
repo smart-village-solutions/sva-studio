@@ -4,20 +4,20 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const renderGuarded = (element: React.ReactElement) => {
-  let check = () => false;
+  const checks = new Set<() => boolean>();
   const view = render(
     <StudioEditorLeaveGuardProvider
       register={(next) => {
-        check = next;
+        checks.add(next);
         return () => {
-          check = () => false;
+          checks.delete(next);
         };
       }}
     >
       {element}
     </StudioEditorLeaveGuardProvider>
   );
-  return { ...view, hasUnsavedChanges: () => check() };
+  return { ...view, hasUnsavedChanges: () => [...checks].some((check) => check()) };
 };
 
 const state = vi.hoisted(() => ({

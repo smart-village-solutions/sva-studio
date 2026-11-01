@@ -4,7 +4,7 @@ import {
   StudioField,
   type ContentMediaUsage,
 } from '@sva/studio-ui-react';
-import { NewsDetailCard } from './news.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import {
   createNewsMediaUsageLabels,
   type ContentFieldBindings,
@@ -37,7 +37,7 @@ export function NewsContentMediaSection({
   onOpenMediaPicker,
 }: NewsContentMediaSectionProps) {
   return (
-    <NewsDetailCard
+    <StudioDetailCard
       title={pt('cards.content.media.title')}
       description={pt('cards.content.media.description')}
     >
@@ -77,6 +77,6 @@ export function NewsContentMediaSection({
           labels={createNewsMediaUsageLabels(pt)}
         />
       </div>
-    </NewsDetailCard>
+    </StudioDetailCard>
   );
 }

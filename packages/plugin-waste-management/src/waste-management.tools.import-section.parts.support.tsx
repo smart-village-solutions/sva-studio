@@ -73,7 +73,7 @@ export const WasteToolsImportRuleBox = () => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (
-    <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+    <div className="rounded-lg border border-border/70 bg-surface-inset p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {pt('tools.imports.wizard.rulesTitle')}
       </p>

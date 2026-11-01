@@ -1,3 +1,4 @@
+import { readMainserverMutationFailureOutcome } from './mainserver-error-metadata.js';
 import type { FetchLike } from './http-client.js';
 import {
   getHostMediaDelivery,
@@ -45,7 +46,8 @@ export class ContentMediaSaveError extends Error {
   public constructor(
     public readonly status: 'cleanup_pending' | 'outcome_unknown',
     public readonly operationId: string,
-    cause?: unknown
+    cause?: unknown,
+    public readonly resolutions: readonly ContentMediaDraftResolution[] = []
   ) {
     super(`content_media_save_${status}`);
     this.name = 'ContentMediaSaveError';
@@ -175,13 +177,14 @@ const handleLocalMediaSaveFailure = async <TSaved>(
     readonly operationId: string;
     readonly contentSaveStarted: boolean;
     readonly error: unknown;
+    readonly resolutions: readonly ContentMediaDraftResolution[];
   }
 ): Promise<never> => {
   const httpStatus =
     typeof context.error === 'object' && context.error !== null && 'httpStatus' in context.error
       ? Number((context.error as { readonly httpStatus?: unknown }).httpStatus)
       : Number.NaN;
-  const safelyRejected = Number.isFinite(httpStatus) && httpStatus >= 400 && httpStatus < 500;
+  const safelyRejected = readMainserverMutationFailureOutcome(context.error) === 'not_applied';
   if (!context.contentSaveStarted || safelyRejected) {
     input.onPhaseChange?.('cleanup');
     const abandoned = await abandonHostMediaContentSaveOperation({
@@ -207,7 +210,12 @@ const handleLocalMediaSaveFailure = async <TSaved>(
     instanceId: input.instanceId,
     errorCode: 'content_save_outcome_unknown',
   }).catch(() => undefined);
-  throw new ContentMediaSaveError('outcome_unknown', context.operationId, context.error);
+  throw new ContentMediaSaveError(
+    'outcome_unknown',
+    context.operationId,
+    context.error,
+    context.resolutions
+  );
 };
 
 const saveWithLocalDrafts = async <TSaved>(
@@ -221,7 +229,7 @@ const saveWithLocalDrafts = async <TSaved>(
   });
   let contentSaveStarted = false;
   let saved: TSaved;
-  let resolutions: readonly ContentMediaDraftResolution[];
+  let resolutions: readonly ContentMediaDraftResolution[] = [];
   try {
     resolutions = await prepareLocalMediaDrafts(input, operation.id);
     await markHostMediaContentSaveOperationSavingContent({
@@ -236,6 +244,7 @@ const saveWithLocalDrafts = async <TSaved>(
     return handleLocalMediaSaveFailure(input, {
       operationId: operation.id,
       contentSaveStarted,
+      resolutions,
       error,
     });
   }

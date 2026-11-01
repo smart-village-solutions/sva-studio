@@ -49,17 +49,14 @@ export const wasteManagementPluginTranslationsDEToursDetails = {
     blockedReasons: {
       invalidPlanningData:
         'Die Planungsdaten sind unvollständig oder ungültig und müssen zuerst an der Quelltour korrigiert werden.',
-      replacementDateRequired:
-        'Mindestens ein Kalenderdatum benötigt ein ausdrückliches Ersatzdatum im Folgejahr.',
+      replacementDateRequired: 'Mindestens ein Kalenderdatum benötigt ein ausdrückliches Ersatzdatum im Folgejahr.',
       targetDateCollision:
         'Mehrere Quelldaten würden auf dasselbe Zieldatum fallen. Legen Sie eindeutige Ersatzdaten fest.',
       targetIdentityConflict:
         'Ein bereits vorhandenes Ziel derselben Quelltour weicht fachlich ab und wird nicht überschrieben.',
-      unknown:
-        'Die Tour kann nicht sicher übernommen werden. Prüfen Sie die Planungsdaten der Quelltour.',
+      unknown: 'Die Tour kann nicht sicher übernommen werden. Prüfen Sie die Planungsdaten der Quelltour.',
     },
-    replacementValidityStart:
-      'Ersatzdatum für den Gültigkeitsbeginn von {{name}} im Zieljahr {{year}}',
+    replacementValidityStart: 'Ersatzdatum für den Gültigkeitsbeginn von {{name}} im Zieljahr {{year}}',
     replacementValidityEnd: 'Ersatzdatum für das Gültigkeitsende von {{name}} im Zieljahr {{year}}',
     noTours: 'Für dieses Quelljahr wurden keine relevanten Touren gefunden.',
     previewError: 'Die Vorschau konnte nicht erstellt werden.',
@@ -108,6 +105,8 @@ export const wasteManagementPluginTranslationsDEToursDetails = {
     empty: 'Es sind noch keine individuellen Termine ausgewählt.',
     commentHint: 'Optionaler Kommentar für diesen Einzeltermin',
     actions: {
+      close: 'Schließen',
+      clearLocation: 'Abholortauswahl aufheben',
       openPicker: 'Tage im Kalender auswählen',
       apply: 'Auswahl übernehmen',
       removeDate: 'Tag entfernen',
@@ -131,14 +130,12 @@ export const wasteManagementPluginTranslationsDEToursDetails = {
     },
     assignmentSection: {
       title: 'Abholorte für diesen Termin',
-      description:
-        'Ordnen Sie diesem Einzeltermin einen oder mehrere vorhandene Abholorte samt Hinweis zu.',
+      description: 'Ordnen Sie diesem Einzeltermin einen oder mehrere vorhandene Abholorte samt Hinweis zu.',
       empty: 'Für diesen Termin sind noch keine Abholorte hinterlegt.',
       summaryEmpty: 'Noch keine Abholorte',
       summaryCount: '{{value}} Abholorte hinterlegt',
       summaryHintEmpty: 'Öffnen Sie den Termin, um die passenden Stationen zu pflegen.',
-      summaryHintReady:
-        'Öffnen Sie den Termin, um vorhandene Zuordnungen zu prüfen oder zu ändern.',
+      summaryHintReady: 'Öffnen Sie den Termin, um vorhandene Zuordnungen zu prüfen oder zu ändern.',
     },
     messages: {
       duplicateLocation: 'Dieser Abholort ist für den ausgewählten Termin bereits vorhanden.',
@@ -182,8 +179,7 @@ export const wasteManagementPluginTranslationsDEToursDetails = {
     dialog: {
       createTitle: 'Tour-Zuordnung anlegen',
       editTitle: 'Tour-Zuordnung bearbeiten',
-      description:
-        'Pflegen Sie die Abholorte für {{value}}. Für alle Zuordnungen gilt der Zeitraum der Tour.',
+      description: 'Pflegen Sie die Abholorte für {{value}}. Für alle Zuordnungen gilt der Zeitraum der Tour.',
       descriptionFallback: 'Pflegen Sie die Abholorte der Tour.',
     },
     meta: {},
@@ -217,9 +213,19 @@ export const wasteManagementPluginTranslationsDEToursDetails = {
     descriptionFallback: 'Zeigt die geplanten Termine inklusive bekannter Verschiebungen.',
     actions: { open: 'Jahreskalender', previousYear: 'Vorjahr', nextYear: 'Folgejahr' },
     meta: {
+      loading: 'Termine werden geladen …',
+      outsideValidity: 'Außerhalb des Gültigkeitszeitraums.',
+      unavailable: 'Termine können derzeit nicht berechnet werden.',
+      partial: 'Die Terminübersicht ist möglicherweise unvollständig.',
+      missingStartDate: 'Für die regelmäßige Tour fehlt das Startdatum.',
+      unresolvedRecurrence: 'Der hinterlegte Abholrhythmus kann derzeit nicht ausgewertet werden.',
+      invalidDates: 'Die Terminangaben enthalten ungültige Datumswerte oder einen ungültigen Zeitraum.',
+      incompleteHolidayRule: 'Für betroffene Termine ist die Feiertagsregelung noch nicht vollständig festgelegt.',
+      loadError: 'Die Planungsdaten konnten nicht geladen werden.',
+      noDatesInMonth: 'Keine berechneten Termine in diesem Monat.',
       year: 'Jahr {{value}}',
       dateListTitle: 'Geplante Termine',
-      noDates: 'Für dieses Jahr konnten keine Termine berechnet werden.',
+      noDates: 'Keine berechneten Termine in diesem Jahr.',
       shiftedReplacementFor: 'Ersatztermin für {{value}}',
     },
   }),
@@ -239,8 +245,7 @@ export const wasteManagementPluginTranslationsDEToursDetails = {
       'Alle Abholort-Zuordnungen, Einzeltermine und tourbezogenen Datumsverschiebungen werden nach dem Speichern übernommen. Für die Zuordnungen gilt der Zeitraum der neuen Tour.',
     assignmentIncomplete:
       'Bitte hinterlegen Sie für jede Termin-Ort-Zuordnung sowohl einen Abholort als auch einen Hinweis.',
-    saveSchedulingBeforeShift:
-      'Speichern Sie zuerst die geänderte Terminlogik, bevor Sie einen Ausweichtermin anlegen.',
+    saveSchedulingBeforeShift: 'Speichern Sie zuerst die geänderte Terminlogik, bevor Sie einen Ausweichtermin anlegen.',
     deleteSuccess: 'Die Abfall-Tour wurde gelöscht.',
     deletePartialSuccess: '{{count}} von {{total}} Abfall-Touren wurden gelöscht.',
     saveError: 'Die Abfall-Tour konnte nicht gespeichert werden.',

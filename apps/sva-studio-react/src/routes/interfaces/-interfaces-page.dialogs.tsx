@@ -1,6 +1,7 @@
 import { DeepLFields } from './-interfaces-page.deepl-fields';
 import { t } from '../../i18n';
 import {
+  Radio,
   Button,
   StudioPersistentFormError,
   StudioSaveButton,
@@ -72,24 +73,23 @@ export const TypePickerDialog = ({
                     : 'border-border hover:border-primary/40'
                 }`}
               >
-                <input
+                <Radio
                   id={inputId}
-                  type="radio"
+
                   name="interface-type"
-                  className="mt-1"
                   aria-labelledby={titleId}
                   aria-describedby={descriptionId}
                   checked={selectedType === type}
                   onChange={() => onSelectType(type)}
                 />
-                <div>
+                <span className="block">
                   <span id={titleId} className="font-medium text-foreground">
                     {t(meta.titleKey)}
                   </span>
-                  <p id={descriptionId} className="text-xs text-muted-foreground">
+                  <span id={descriptionId} className="block text-xs text-muted-foreground">
                     {t(meta.descriptionKey)}
-                  </p>
-                </div>
+                  </span>
+                </span>
               </label>
             );
           })}

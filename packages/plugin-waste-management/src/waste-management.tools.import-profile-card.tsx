@@ -43,7 +43,7 @@ export const WasteToolsImportProfileCard = ({
   const requiresPreview = profile.profileId === 'waste-management.ortsbezogene-tourtermine';
 
   return (
-    <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+    <div className="rounded-lg border border-border/70 bg-surface-inset p-4">
       <p className="text-sm text-muted-foreground">{profile.description}</p>
       {requiresPreview ? (
         <div className="mt-3 space-y-1 text-xs text-muted-foreground">
@@ -114,7 +114,7 @@ export const WasteToolsImportProfileCard = ({
         </Button>
       </div>
       {requiresPreview && previewResult ? (
-        <div className="mt-4 rounded-lg border border-border/60 bg-background/80 p-3 text-sm">
+        <div className="mt-4 rounded-lg border border-border-subtle bg-card p-3 text-sm">
           <p className="font-medium">{pt('tools.imports.previewTitle')}</p>
           <p className="mt-1 text-muted-foreground">
             {pt('tools.imports.previewSummary', {

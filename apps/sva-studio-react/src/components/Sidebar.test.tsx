@@ -1,7 +1,7 @@
 /**
  * Unit-Tests für Sidebar-Rendering, Abschnittsstruktur und Collapse-Verhalten.
  */
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IamContentAccessSummary } from '@sva/core';
@@ -25,6 +25,8 @@ const useContentAccessMock = vi.fn();
 const decideAccessMock = vi.fn();
 const useRouterStateMock = vi.fn();
 const localStorageState = new Map<string, string>();
+let wideViewport = true;
+const viewportListeners = new Set<() => void>();
 type RouterLocationMock = Readonly<{
   pathname: string;
   search: Readonly<Record<string, unknown>>;
@@ -280,6 +282,19 @@ beforeEach(() => {
   decideAccessMock.mockReset();
   decideAccessMock.mockReturnValue({ status: 'allowed', reason: 'allowed_by_permission' });
   localStorageState.clear();
+  wideViewport = true;
+  viewportListeners.clear();
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: () => ({
+      get matches() {
+        return wideViewport;
+      },
+      addEventListener: (_event: string, listener: () => void) => viewportListeners.add(listener),
+      removeEventListener: (_event: string, listener: () => void) =>
+        viewportListeners.delete(listener),
+    }),
+  });
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
     value: {
@@ -871,6 +886,42 @@ describe('Sidebar', () => {
       LICENSE_URL
     );
   });
+
+  it('follows the responsive default without persisting automatic viewport changes', () => {
+    wideViewport = false;
+    const view = renderSidebar();
+    expect(screen.getByRole('button', { name: 'Seitenleiste ausklappen' })).toBeTruthy();
+    expect(localStorageState.has('sva-studio-sidebar-collapsed')).toBe(false);
+    act(() => {
+      wideViewport = true;
+      viewportListeners.forEach((listener) => listener());
+    });
+    expect(screen.getByRole('button', { name: 'Seitenleiste einklappen' })).toBeTruthy();
+    expect(localStorageState.has('sva-studio-sidebar-collapsed')).toBe(false);
+    view.unmount();
+    expect(viewportListeners.size).toBe(0);
+  });
+
+  it.each(['0', '1'])(
+    'preserves legacy collapse preference %s across viewport changes',
+    (preference) => {
+      localStorageState.set('sva-studio-sidebar-collapsed', preference);
+      wideViewport = false;
+      renderSidebar();
+      const action = preference === '1' ? 'Seitenleiste ausklappen' : 'Seitenleiste einklappen';
+      expect(screen.getByRole('button', { name: action })).toBeTruthy();
+      act(() => {
+        wideViewport = true;
+        viewportListeners.forEach((listener) => listener());
+      });
+      expect(screen.getByRole('button', { name: action })).toBeTruthy();
+      expect(localStorageState.get('sva-studio-sidebar-collapsed')).toBe(preference);
+      fireEvent.click(screen.getByRole('button', { name: action }));
+      expect(localStorageState.get('sva-studio-sidebar-collapsed')).toBe(
+        preference === '1' ? '0' : '1'
+      );
+    }
+  );
 
   it('zeigt Unterpunkte als Flyout, wenn die Desktop-Sidebar eingeklappt ist', () => {
     window.localStorage.setItem('sva-studio-sidebar-collapsed', '1');

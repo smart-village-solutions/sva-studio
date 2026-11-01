@@ -10,7 +10,7 @@ export const NotificationsHeaderPreview = ({ label }: { readonly label: string }
     tooltip={label}
     aria-label={label}
     disabled
-    className="h-10 w-10 rounded-full border border-transparent bg-transparent px-0 text-muted-foreground shadow-none"
+    className="h-11 w-11 rounded-full border border-transparent bg-transparent px-0 text-muted-foreground shadow-none"
   >
     <Bell className="h-4 w-4" />
   </Button>

@@ -6,6 +6,7 @@ import {
   toContentMediaAssetSnapshot,
   useStudioSaveFeedback,
   StudioSection,
+  type StudioDetailTabDefinition,
   type ContentMediaUsage,
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
@@ -16,13 +17,13 @@ import { NewsDetailSettingsTab } from './news.detail-settings-tab.js';
 import { deriveDirtyNewsDetailTabs } from './news.detail-form.js';
 import { parseDatetimeLocalInput, type PluginTranslator } from './news.detail-page.helpers.js';
 import { useNewsDetailMedia } from './news.detail-page-media.js';
-import { createNewsDetailTabDefinitions } from './news.detail-tabs.js';
 import type { NewsWasteMasterDataOverview } from './news.waste-targeting.js';
 import type { WasteTargetingAvailability } from './news.waste-payload.js';
 import type {
   NewsCategoryOption,
   NewsContentItem,
   NewsDetailFormValues,
+  NewsDetailTabId,
   NewsPrincipalControl,
 } from './news.types.js';
 
@@ -133,7 +134,45 @@ function createNewsSettingsPanel(
   );
 }
 
-export const createNewsDetailPanels = (options: NewsDetailPanelsOptions) => {
+const createNewsCreatePanels = (
+  { pt, categoryOptionsError }: NewsDetailPanelsOptions,
+  basisProps: React.ComponentProps<typeof NewsDetailBasisTab>,
+  contentProps: React.ComponentProps<typeof NewsDetailContentTab>,
+  settingsPanel: React.ReactNode
+): readonly StudioDetailTabDefinition<NewsDetailTabId>[] => {
+  return [
+    {
+      id: 'basis',
+      label: pt('tabs.basis.label'),
+      panel: (
+        <StudioSection className="space-y-6">
+          <p>{pt('create.intro')}</p>
+          {categoryOptionsError ? (
+            <p role="status" className="text-sm text-destructive">
+              {pt('create.categoryUnavailable')}
+            </p>
+          ) : null}
+          <NewsDetailBasisTab {...basisProps} section="title" />
+          <NewsDetailContentTab {...contentProps} section="text" createMode />
+          <details>
+            <summary>{pt('cards.content.media.title')}</summary>
+            <NewsDetailContentTab {...contentProps} section="media" createMode />
+          </details>
+          <details>
+            <summary>{pt('fields.categories')}</summary>
+            <NewsDetailBasisTab {...basisProps} section="categories" />
+          </details>
+          <NewsDetailContentTab {...contentProps} section="source" createMode />
+          {settingsPanel}
+        </StudioSection>
+      ),
+    },
+  ];
+};
+
+export const createNewsDetailPanels = (
+  options: NewsDetailPanelsOptions
+): readonly StudioDetailTabDefinition<NewsDetailTabId>[] => {
   const {
     pt,
     dirtyTabs,
@@ -183,41 +222,14 @@ export const createNewsDetailPanels = (options: NewsDetailPanelsOptions) => {
     options,
     mode === 'create' ? <NewsDetailBasisTab {...basisProps} section="principal" /> : undefined
   );
-  if (mode === 'create') {
-    return createNewsDetailTabDefinitions([
-      {
-        id: 'basis',
-        label: pt('tabs.basis.label'),
-        panel: (
-          <StudioSection className="space-y-6">
-            <p>{pt('create.intro')}</p>
-            {categoryOptionsError ? (
-              <p role="status" className="text-sm text-destructive">
-                {pt('create.categoryUnavailable')}
-              </p>
-            ) : null}
-            <NewsDetailBasisTab {...basisProps} section="title" />
-            <NewsDetailContentTab {...contentProps} section="text" createMode />
-            <details>
-              <summary>{pt('cards.content.media.title')}</summary>
-              <NewsDetailContentTab {...contentProps} section="media" createMode />
-            </details>
-            <details>
-              <summary>{pt('fields.categories')}</summary>
-              <NewsDetailBasisTab {...basisProps} section="categories" />
-            </details>
-            <NewsDetailContentTab {...contentProps} section="source" createMode />
-            {settingsPanel}
-          </StudioSection>
-        ),
-      },
-    ]);
-  }
-  return createNewsDetailTabDefinitions([
+  if (mode === 'create')
+    return createNewsCreatePanels(options, basisProps, contentProps, settingsPanel);
+  return [
     {
       id: 'basis',
       label: pt('tabs.basis.label'),
       title: pt('tabs.basis.title'),
+      icon: 'basis',
       description: pt('tabs.basis.description'),
       hasChanges: dirtyTabs.basis,
       changeLabel: pt('tabs.changeLabel'),
@@ -227,6 +239,7 @@ export const createNewsDetailPanels = (options: NewsDetailPanelsOptions) => {
       id: 'content',
       label: pt('tabs.content.label'),
       title: pt('tabs.content.title'),
+      icon: 'content',
       description: pt('tabs.content.description'),
       hasChanges: dirtyTabs.content,
       changeLabel: pt('tabs.changeLabel'),
@@ -236,6 +249,7 @@ export const createNewsDetailPanels = (options: NewsDetailPanelsOptions) => {
       id: 'settings',
       label: pt('tabs.settings.label'),
       title: pt('tabs.settings.title'),
+      icon: 'settings',
       description: pt('tabs.settings.description'),
       hasChanges: dirtyTabs.settings,
       changeLabel: pt('tabs.changeLabel'),
@@ -245,8 +259,9 @@ export const createNewsDetailPanels = (options: NewsDetailPanelsOptions) => {
       id: 'history',
       label: pt('tabs.history.label'),
       title: pt('tabs.history.title'),
+      icon: 'history',
       description: pt('tabs.history.description'),
       panel: <NewsDetailHistoryTab contentId={contentId} pt={pt} />,
     },
-  ]);
+  ];
 };

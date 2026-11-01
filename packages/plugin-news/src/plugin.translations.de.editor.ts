@@ -106,6 +106,7 @@ export const newsTranslationsDEEditor = {
     applyLink: 'Link setzen',
   },
   actions: {
+    checkSaveOutcome: 'Speicherergebnis prüfen',
     cancel: 'Abbrechen',
     create: 'Nachricht anlegen',
     update: 'Änderungen speichern',
@@ -145,6 +146,15 @@ export const newsTranslationsDEEditor = {
     pageLabel: 'Seite {{page}}',
   },
   messages: {
+    saveOutcomeUnknown:
+      'Das Speicherergebnis ist noch unbekannt. Prüfen Sie die ursprüngliche Operation, bevor Sie erneut speichern. Ihre Eingaben bleiben in diesem geöffneten Editor erhalten.',
+    saveOutcomeCheckFailed:
+      'Das Speicherergebnis konnte nicht geprüft werden. Prüfen Sie Sitzung und Organisationskontext und versuchen Sie die Statusprüfung erneut. Es wurde kein erneutes Speichern ausgelöst.',
+    saveNotApplied:
+      'Die ursprüngliche Operation hat nichts gespeichert. Sie können Ihre aktuellen Eingaben erneut speichern.',
+    saveRecovered:
+      'Die ursprüngliche Operation wurde gespeichert. Ihre aktuellen Eingaben bleiben erhalten. Prüfen Sie diese vor dem nächsten Speichern.',
+
     requestReference: 'Fehlerreferenz:',
     copyRequestReference: 'Referenz kopieren',
     requestReferenceCopied: 'Kopiert',

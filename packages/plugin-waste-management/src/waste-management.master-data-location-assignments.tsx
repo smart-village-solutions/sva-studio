@@ -117,7 +117,7 @@ export const LocationAssignmentsSection = ({
   };
 
   return (
-    <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
+    <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <p className="text-sm font-semibold text-foreground">
@@ -150,13 +150,13 @@ export const LocationAssignmentsSection = ({
           {pt('masterData.collectionLocations.assignmentEditor.empty')}
         </p>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/70">
+        <div className="overflow-hidden rounded-lg border border-border-subtle bg-background/70">
           <div className="overflow-x-auto">
             <table
               className="min-w-full border-collapse"
               aria-label={pt('masterData.collectionLocations.assignmentEditor.title')}
             >
-              <thead className="bg-muted/20 text-left text-[13px] text-foreground">
+              <thead className="bg-surface-inset text-left text-[13px] text-foreground">
                 <tr className="border-b border-border/70">
                   <th scope="col" className="w-11 px-3 py-3">
                     <Checkbox

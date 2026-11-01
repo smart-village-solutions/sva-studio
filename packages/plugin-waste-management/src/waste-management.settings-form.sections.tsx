@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 
 import { WasteSettingsTechnicalConfigFields } from './waste-management.settings-managed-fields.js';
 import type { SettingsFormState } from './waste-management.settings.shared.js';
-import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
+import { StudioSwitch } from '@sva/studio-ui-react';
 
 type WasteSettingsSectionProps = {
   readonly title: string;
@@ -19,7 +19,7 @@ const WasteSettingsSection = ({
   description,
   children,
 }: Readonly<WasteSettingsSectionProps>) => (
-  <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
+  <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
     <div className="space-y-1">
       <h3 className="text-sm font-semibold">{title}</h3>
       <p className="text-sm text-muted-foreground">{description}</p>
@@ -150,12 +150,12 @@ const WasteDisruptionOption = ({
   description: string;
   onChange: (checked: boolean) => void;
 }>) => (
-  <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-background/70 p-3">
-    <WasteManagementFormSwitch
+  <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-background/70 p-3">
+    <StudioSwitch
       checked={checked}
       disabled={disabled}
-      ariaLabel={label}
-      onChange={onChange}
+      aria-label={label}
+      onCheckedChange={onChange}
     />
     <div className="space-y-1">
       <p className="text-sm font-medium">{label}</p>

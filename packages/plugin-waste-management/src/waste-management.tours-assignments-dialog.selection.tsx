@@ -73,7 +73,7 @@ export const TourAssignmentsDialogSelection = ({
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/70 p-4">
+    <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-background/70 p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <TourAssignmentSelectionCounts
           selectedCount={selectedLocationIds.length}
@@ -93,7 +93,7 @@ export const TourAssignmentsDialogSelection = ({
         </div>
       </div>
 
-      <div className="max-h-[420px] overflow-y-auto rounded-xl border border-border/60">
+      <div className="max-h-[420px] overflow-y-auto rounded-lg border border-border-subtle">
         {loading ? (
           <div className="p-4 text-sm text-muted-foreground">
             {pt('tours.table.loadingAssignments')}

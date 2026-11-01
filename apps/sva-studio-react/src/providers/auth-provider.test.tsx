@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readSessionAccessSnapshot, resetSessionAccessSnapshot } from '@sva/plugin-sdk';
 
 import { clearAuthDiagnosticTrail, readAuthDiagnosticTrail } from '../lib/auth-diagnostics';
+import { redirectToLogin, redirectToSessionExpiredNotice } from './auth-provider-helpers';
 import { AuthProvider, useAuth } from './auth-provider';
 import { getEffectiveAccessInvalidationGeneration } from './effective-access-invalidation';
 
@@ -813,55 +814,68 @@ describe('AuthProvider', () => {
     });
   });
 
-  it('redirects known sessions with missing session cookie directly to login', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      createJsonResponse(401, {
-        error: {
-          code: 'unauthorized',
-          message: 'missing session',
-          classification: 'session_store_or_session_hydration',
-          status: 'recovery_laeuft',
-          recommendedAction: 'erneut_anmelden',
-          safeDetails: {
-            reason_code: 'missing_session_cookie',
+  it.each([false, true])(
+    'handles a missing session cookie for known sessions with dev auth %s',
+    async (devAuth) => {
+      vi.stubEnv('VITE_SVA_DEV_AUTH', String(devAuth));
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        createJsonResponse(401, {
+          error: {
+            code: 'unauthorized',
+            message: 'missing session',
+            classification: 'session_store_or_session_hydration',
+            status: 'recovery_laeuft',
+            recommendedAction: 'erneut_anmelden',
+            safeDetails: {
+              reason_code: 'missing_session_cookie',
+            },
           },
+          requestId: 'req-auth-401',
+        })
+      );
+      const assignMock = vi.fn();
+      const originalLocation = window.location;
+
+      window.localStorage.setItem('sva_auth_had_session', '1');
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: {
+          ...originalLocation,
+          origin: originalLocation.origin,
+          pathname: '/',
+          search: '',
+          assign: assignMock,
         },
-        requestId: 'req-auth-401',
-      })
-    );
-    const assignMock = vi.fn();
-    const originalLocation = window.location;
+      });
+      vi.stubGlobal('fetch', fetchMock);
 
-    window.localStorage.setItem('sva_auth_had_session', '1');
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: {
-        ...originalLocation,
-        origin: originalLocation.origin,
-        pathname: '/',
-        search: '',
-        assign: assignMock,
-      },
-    });
-    vi.stubGlobal('fetch', fetchMock);
+      render(
+        <AuthProvider>
+          <AuthProbe />
+        </AuthProvider>
+      );
 
-    render(
-      <AuthProvider>
-        <AuthProbe />
-      </AuthProvider>
-    );
+      await waitFor(() => {
+        expect(screen.getByTestId('session-recovery-failed').textContent).toBe(
+          devAuth ? 'no' : 'yes'
+        );
+        expect(screen.getByTestId('status').textContent).toBe('ready');
+        expect(screen.getByTestId('authenticated').textContent).toBe('no');
+      });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('session-recovery-failed').textContent).toBe('yes');
-    });
+      if (devAuth) {
+        expect(assignMock).not.toHaveBeenCalled();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+      } else {
+        expect(assignMock).toHaveBeenCalledWith('/auth/login?returnTo=%2F');
+      }
 
-    expect(assignMock).toHaveBeenCalledWith('/auth/login?returnTo=%2F');
-
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: originalLocation,
-    });
-  });
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: originalLocation,
+      });
+    }
+  );
 
   it('ignores cross-origin silent-sso messages and accepts same-origin success', async () => {
     const fetchMock = vi
@@ -1581,6 +1595,33 @@ describe('AuthProvider', () => {
       })
     );
   });
+
+  it.each([redirectToLogin, redirectToSessionExpiredNotice])(
+    'lets an unsaved editor retain its document during auth recovery',
+    (redirect) => {
+      const originalLocation = window.location;
+      const assign = vi.fn();
+      const retain = vi.fn((event: Event) => event.preventDefault());
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: {
+          ...originalLocation,
+          pathname: '/admin/news/new',
+          search: '',
+          assign,
+        },
+      });
+      window.addEventListener('studio:auth-recovery-navigation', retain);
+      try {
+        redirect({ authFlowId: 'test-draft', attempt: 1 });
+        expect(retain).toHaveBeenCalledOnce();
+        expect(assign).not.toHaveBeenCalled();
+      } finally {
+        window.removeEventListener('studio:auth-recovery-navigation', retain);
+        Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
+      }
+    }
+  );
 
   it('stores a diagnostic trail with a shared authFlowId for failed recovery redirects', async () => {
     const fetchMock = vi.fn().mockResolvedValue(

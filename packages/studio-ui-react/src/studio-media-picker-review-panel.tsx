@@ -148,6 +148,16 @@ const ReviewPanelMetadata = (
   );
 };
 
+const useCentralMetadataView = (reviewAsset: StudioMediaPickerAssetDetail | null) => {
+  const [showCentral, setShowCentral] = React.useState(false);
+  const previousAssetId = React.useRef(reviewAsset?.id);
+  React.useEffect(() => {
+    if (previousAssetId.current !== reviewAsset?.id) setShowCentral(false);
+    previousAssetId.current = reviewAsset?.id;
+  }, [reviewAsset?.id]);
+  return { showCentral, setShowCentral };
+};
+
 export const StudioMediaPickerReviewPanel = (props: StudioMediaPickerReviewPanelProps) => {
   const {
     reviewAsset,
@@ -158,14 +168,11 @@ export const StudioMediaPickerReviewPanel = (props: StudioMediaPickerReviewPanel
     isSavingReviewAsset = false,
   } = props;
   const [showEditor, setShowEditor] = React.useState(props.initialEditorOpen ?? false);
-  const [showCentral, setShowCentral] = React.useState(false);
+  const { showCentral, setShowCentral } = useCentralMetadataView(reviewAsset);
   const reviewHeadingRef = React.useRef<HTMLHeadingElement>(null);
   const editorButtonRef = React.useRef<HTMLButtonElement>(null);
   const centralButtonRef = React.useRef<HTMLButtonElement>(null);
-  React.useEffect(() => {
-    setShowCentral(false);
-  }, [reviewAsset?.id]);
-  if (showEditor && reviewAsset && onApplyImageEdit)
+  if (showEditor && reviewAsset)
     return (
       <StudioMediaImageEditor
         asset={reviewAsset}
@@ -176,6 +183,7 @@ export const StudioMediaPickerReviewPanel = (props: StudioMediaPickerReviewPanel
           requestAnimationFrame(() => editorButtonRef.current?.focus());
         }}
         onApply={async (result) => {
+          if (!onApplyImageEdit) throw new Error('media_image_apply_unavailable');
           await onApplyImageEdit(result);
           props.onWorkspaceDirtyChange?.(false);
           setShowEditor(false);

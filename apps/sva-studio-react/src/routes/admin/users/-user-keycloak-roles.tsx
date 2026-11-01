@@ -1,6 +1,6 @@
 import type { IamKeycloakRealmRoleAssignment } from '@sva/core';
 import { Button, Checkbox } from '@sva/studio-ui-react';
-import { IconKey } from '@tabler/icons-react';
+import { KeyRound as IconKey } from 'lucide-react';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -186,7 +186,7 @@ export const UserKeycloakRolesDialog = ({
         aria-label={t('admin.users.keycloakRoles.openForUser', { name: userName })}
         title={t('admin.users.keycloakRoles.open')}
       >
-        <IconKey aria-hidden="true" className="h-4 w-4" />
+        <IconKey strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
       </Button>
     </DialogTrigger>
     <DialogContent>

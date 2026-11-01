@@ -1,5 +1,9 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconFilter, IconSortAZ, IconSortZA } from '@tabler/icons-react';
+import {
+  Filter as IconFilter,
+  ArrowDownAZ as IconSortAZ,
+  ArrowDownZA as IconSortZA,
+} from 'lucide-react';
 import { Button, Checkbox, Input, Select } from '@sva/studio-ui-react';
 import { useEffect, useState } from 'react';
 import type { WasteMasterDataLocationsTableProps } from './waste-management.master-data-locations-table.types.js';
@@ -50,9 +54,9 @@ export const WasteLocationsSortControl = ({
         onClick={() => onSortDirectionChange(sortDirection === 'asc' ? 'desc' : 'asc')}
       >
         {sortDirection === 'asc' ? (
-          <IconSortAZ aria-hidden="true" className="h-4 w-4" />
+          <IconSortAZ strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
         ) : (
-          <IconSortZA aria-hidden="true" className="h-4 w-4" />
+          <IconSortZA strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
         )}
         {pt(
           sortDirection === 'asc'
@@ -64,10 +68,10 @@ export const WasteLocationsSortControl = ({
   );
 };
 
-export const WasteLocationsQueryControl = ({ search, onQueryChange }: Pick<
-  WasteMasterDataLocationsTableProps,
-  'search' | 'onQueryChange'
->) => {
+export const WasteLocationsQueryControl = ({
+  search,
+  onQueryChange,
+}: Pick<WasteMasterDataLocationsTableProps, 'search' | 'onQueryChange'>) => {
   const pt = usePluginTranslation('wasteManagement');
   const [query, setQuery] = useState(search?.q ?? '');
   useEffect(() => setQuery(search?.q ?? ''), [search?.q]);
@@ -92,15 +96,20 @@ export const WasteLocationsQueryControl = ({ search, onQueryChange }: Pick<
   );
 };
 
-export const WasteLocationsResetControl = ({ search, onResetFilters }: Pick<
-  WasteMasterDataLocationsTableProps,
-  'search' | 'onResetFilters'
->) => {
+export const WasteLocationsResetControl = ({
+  search,
+  onResetFilters,
+}: Pick<WasteMasterDataLocationsTableProps, 'search' | 'onResetFilters'>) => {
   const pt = usePluginTranslation('wasteManagement');
   if (!search || !onResetFilters) return null;
   const active =
-    search.q || search.regionId || search.cityId || search.tourId ||
-    search.status !== 'all' || search.locationYear || search.locationTourStatus;
+    search.q ||
+    search.regionId ||
+    search.cityId ||
+    search.tourId ||
+    search.status !== 'all' ||
+    search.locationYear ||
+    search.locationTourStatus;
   return active ? (
     <Button type="button" variant="tertiary" onClick={onResetFilters}>
       {pt('masterData.locationsWorkspace.filters.resetFilters')}
@@ -124,7 +133,10 @@ export const WasteLocationsYearControl = ({
       (date) => (date ? [Number(date.slice(0, 4))] : [])
     )
   );
-  const firstYear = Math.max(2000, Math.min(currentYear - 1, locationYear ?? currentYear, ...years));
+  const firstYear = Math.max(
+    2000,
+    Math.min(currentYear - 1, locationYear ?? currentYear, ...years)
+  );
   const lastYear = Math.min(2100, Math.max(currentYear + 2, locationYear ?? currentYear, ...years));
   return (
     <label className="flex items-center gap-2 text-sm">
@@ -138,7 +150,11 @@ export const WasteLocationsYearControl = ({
       >
         <option value="">{pt('masterData.locationsWorkspace.filters.allYears')}</option>
         {Array.from({ length: lastYear - firstYear + 1 }, (_, offset) => firstYear + offset).map(
-          (year) => <option key={year} value={year}>{year}</option>
+          (year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          )
         )}
       </Select>
     </label>
@@ -163,9 +179,7 @@ export const WasteLocationsStatusControl = ({
         onChange={(event) => {
           const value = event.target.value;
           onLocationTourStatusChange(
-            value === 'draft' || value === 'published' || value === 'archived'
-              ? value
-              : undefined
+            value === 'draft' || value === 'published' || value === 'archived' ? value : undefined
           );
         }}
       >
@@ -187,12 +201,12 @@ export const WasteLocationsFiltersToggle = ({
     <Button
       type="button"
       variant="secondary"
-      className="h-10 rounded-lg border-border/70 px-3"
+      className="h-11 rounded-md border-border/70 px-3"
       aria-expanded={filtersOpen}
       aria-controls="waste-locations-filters"
       onClick={onToggleFiltersOpen}
     >
-      <IconFilter aria-hidden="true" className="h-4 w-4" />
+      <IconFilter strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
       {pt('masterData.locationsWorkspace.filters.filtersTitle')}
     </Button>
   );

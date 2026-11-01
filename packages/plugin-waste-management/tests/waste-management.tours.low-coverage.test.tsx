@@ -28,7 +28,8 @@ vi.mock('@sva/plugin-sdk', () => ({
     variables ? `${key}:${JSON.stringify(variables)}` : key,
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async () => ({
+  ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),
   Badge: ({ children }: { readonly children: React.ReactNode }) => <span>{children}</span>,
   Button: ({ loading, ...props }: React.ComponentProps<'button'> & { loading?: boolean }) => {
     void loading;
@@ -166,25 +167,6 @@ vi.mock('../src/waste-management.tours-custom-dates.js', () => ({
   },
 }));
 
-vi.mock('../src/waste-management.form-switch.js', () => ({
-  WasteManagementFormSwitch: (props: {
-    readonly checked: boolean;
-    readonly ariaLabel: string;
-    readonly onChange: (checked: boolean) => void;
-  }) => {
-    formSwitchSpy(props);
-    return (
-      <button
-        type="button"
-        aria-label={props.ariaLabel}
-        onClick={() => props.onChange(!props.checked)}
-      >
-        {String(props.checked)}
-      </button>
-    );
-  },
-}));
-
 const createController = () =>
   ({
     dialogOpen: true,
@@ -222,6 +204,7 @@ const createController = () =>
     onSubmitAssignments: vi.fn(),
     calendarOpen: true,
     schedulingOverview: { locationTourPickupDates: [] },
+    schedulingLoadState: 'loading',
     setCalendarOpen: vi.fn(),
     resetTourForm: vi.fn(),
     setMessage: vi.fn(),
@@ -261,7 +244,9 @@ describe('waste-management tours low coverage views', () => {
         tourId: '',
       })
     );
-    expect(dialogSpy.calendar).toHaveBeenCalledWith(expect.objectContaining({ open: true }));
+    expect(dialogSpy.calendar).toHaveBeenCalledWith(
+      expect.objectContaining({ open: true, schedulingLoadState: 'loading' })
+    );
   });
 
   it('bridges dialog patch handlers back into the controller state updaters', () => {
@@ -783,6 +768,11 @@ describe('waste-management tours low coverage views', () => {
     expect(onSortChange).toHaveBeenCalledWith('dateRange');
     expect(onSortChange).toHaveBeenCalledWith('locations');
     expect(onSortChange).toHaveBeenCalledWith('status');
-    expect(screen.getByText('desc')).toBeTruthy();
+    expect(
+      screen.getByRole('columnheader', { name: 'tours.table.status' }).getAttribute('aria-sort')
+    ).toBe('descending');
+    expect(
+      screen.getByRole('columnheader', { name: 'tours.table.name' }).getAttribute('aria-sort')
+    ).toBe('none');
   });
 });

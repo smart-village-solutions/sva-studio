@@ -1,4 +1,5 @@
-import type { WasteTourRecord } from './waste-management.api.js';
+import { calculateTourOccurrenceEntriesForYearInternal } from './waste-management.tours.presentation.calendar.js';
+import type { WasteManagementSchedulingOverview, WasteTourRecord } from './waste-management.api.js';
 
 export const formatTourRecurrence = (
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string,
@@ -40,8 +41,31 @@ export const formatTourDateRange = (tour: WasteTourRecord) => {
 };
 
 export {
-  calculateTourOccurrencesForYear,
-  calculateTourOccurrenceEntriesForYear,
+  calculateTourCalendarForYear,
 } from './waste-management.tours.presentation.calendar.js';
 export { resolveTourShiftDetails } from './waste-management.tours.presentation.shift-details.js';
 export type { TourShiftDetail } from './waste-management.tours.presentation.shift-details.js';
+
+export const calculateTourOccurrencesForYear = (
+  tour: WasteTourRecord,
+  year: number,
+  scheduling: WasteManagementSchedulingOverview
+): readonly string[] =>
+  calculateTourOccurrenceEntriesForYearInternal(tour, year, scheduling).map((entry) => entry.date);
+
+export const calculateTourOccurrenceEntriesForYear = (
+  tour: WasteTourRecord,
+  year: number,
+  scheduling: WasteManagementSchedulingOverview
+): readonly Readonly<{
+  readonly date: string;
+  readonly shifted: boolean;
+  readonly originalDate: string | null;
+}>[] =>
+  calculateTourOccurrenceEntriesForYearInternal(tour, year, scheduling).map(
+    ({ date, shifted, originalDate }) => ({
+      date,
+      shifted,
+      originalDate,
+    })
+  );

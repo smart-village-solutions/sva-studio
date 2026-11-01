@@ -8,7 +8,7 @@ import {
 import { Input, MainserverPrincipalControl, StudioField } from '@sva/studio-ui-react';
 
 import { NewsCategoryMultiselect } from './news.category-multiselect.js';
-import { NewsDetailCard } from './news.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import type {
   NewsPrincipalControl,
   NewsCategoryOption,
@@ -91,7 +91,7 @@ function NewsPrincipalCard({
   );
   if (mode === 'create') return principal;
   return (
-    <NewsDetailCard
+    <StudioDetailCard
       title={pt(section === 'principal' ? 'fields.createAs' : 'cards.basis.authorMeta.title')}
       description={pt(
         section === 'principal'
@@ -102,7 +102,7 @@ function NewsPrincipalCard({
       {principal}
 
       {mode === 'edit' ? (
-        <dl className="grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm md:grid-cols-3">
+        <dl className="grid gap-4 rounded-lg border border-border-subtle bg-muted p-4 text-sm md:grid-cols-3">
           <div className="space-y-1">
             <dt className="font-medium text-foreground">{pt('fields.createdAt')}</dt>
             <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.createdAt)}</dd>
@@ -117,7 +117,7 @@ function NewsPrincipalCard({
           </div>
         </dl>
       ) : null}
-    </NewsDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -153,7 +153,7 @@ export function NewsDetailBasisTab(props: NewsDetailBasisTabProps) {
 
   if (section === 'title')
     return (
-      <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-5">
+      <div className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
         <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
         <StudioField {...titleField} label={pt('fields.title')} required>
           <Input {...titleField.controlProps} required {...register('title')} />
@@ -166,7 +166,7 @@ export function NewsDetailBasisTab(props: NewsDetailBasisTabProps) {
       <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
 
       {section !== 'principal' ? (
-        <NewsDetailCard
+        <StudioDetailCard
           title={pt(
             section === 'categories' ? 'fields.categories' : 'cards.basis.titleCategories.title'
           )}
@@ -209,7 +209,7 @@ export function NewsDetailBasisTab(props: NewsDetailBasisTabProps) {
               )}
             />
           </StudioField>
-        </NewsDetailCard>
+        </StudioDetailCard>
       ) : null}
 
       {!section || section === 'principal' ? <NewsPrincipalCard {...props} /> : null}

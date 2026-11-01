@@ -1,7 +1,10 @@
-import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { resolveEditorLocale, usePluginTranslation } from '@sva/plugin-sdk';
+import { ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight } from 'lucide-react';
 import {
   Badge,
+  Calendar,
+  buttonVariants,
+  cn,
   Button,
   Dialog,
   DialogContent,
@@ -11,11 +14,6 @@ import {
   DialogTitle,
 } from '@sva/studio-ui-react';
 
-const weekdayLabels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
-
-const formatMonthLabel = (year: number, monthIndex: number) =>
-  new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(new Date(year, monthIndex, 1));
-
 const toDateOnly = (year: number, monthIndex: number, day: number) =>
   `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
@@ -23,61 +21,6 @@ export const resolveInitialYear = (customDate: string, firstDate: string, endDat
   const fallbackCandidate = customDate || firstDate || endDate;
   const candidateYear = fallbackCandidate ? Number(fallbackCandidate.slice(0, 4)) : Number.NaN;
   return Number.isFinite(candidateYear) ? candidateYear : new Date().getFullYear();
-};
-
-const TourCustomDateMonth = ({
-  monthIndex,
-  year,
-  selectedDates,
-  onToggleDate,
-}: {
-  readonly monthIndex: number;
-  readonly year: number;
-  readonly selectedDates: ReadonlySet<string>;
-  readonly onToggleDate: (date: string) => void;
-}) => {
-  const first = new Date(year, monthIndex, 1);
-  const startWeekday = (first.getDay() + 6) % 7;
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-
-  return (
-    <section className="space-y-3 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-shell">
-      <h3 className="text-base font-semibold capitalize text-foreground">
-        {formatMonthLabel(year, monthIndex)}
-      </h3>
-      <div className="grid grid-cols-7 gap-1 text-center text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-        {weekdayLabels.map((day) => (
-          <div key={`${monthIndex}-${day}`}>{day}</div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-1">
-        {Array.from({ length: startWeekday }).map((_, index) => (
-          <div key={`empty-${monthIndex}-${index}`} className="aspect-square" />
-        ))}
-        {Array.from({ length: daysInMonth }, (_, index) => index + 1).map((day) => {
-          const date = toDateOnly(year, monthIndex, day);
-          const selected = selectedDates.has(date);
-
-          return (
-            <button
-              key={date}
-              type="button"
-              className={[
-                'aspect-square rounded-xl border text-sm font-medium transition-colors',
-                selected
-                  ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                  : 'border-border/50 bg-background text-foreground hover:border-primary/50 hover:bg-accent/70',
-              ].join(' ')}
-              aria-pressed={selected}
-              onClick={() => onToggleDate(date)}
-            >
-              {day}
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
 };
 
 type TourCustomDatesSelectionDialogProps = Readonly<{
@@ -90,6 +33,61 @@ type TourCustomDatesSelectionDialogProps = Readonly<{
   readonly onToggleDate: (date: string) => void;
 }>;
 
+const TourCustomDateCalendar = ({ year, selectedDates, disabled, onToggleDate }:
+  Pick<TourCustomDatesSelectionDialogProps, 'year' | 'selectedDates' | 'disabled' | 'onToggleDate'>
+) => {
+  const locale = resolveEditorLocale();
+  const fullDate = new Intl.DateTimeFormat(locale, { dateStyle: 'full' });
+  const monthLabel = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' });
+  const weekdayLabel = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+  const fullWeekdayLabel = new Intl.DateTimeFormat(locale, { weekday: 'long' });
+  const selected = Array.from(selectedDates, (value) => {
+    const [selectedYear, month, day] = value.split('-').map(Number);
+    return new Date(selectedYear!, month! - 1, day!);
+  });
+  return (
+            <Calendar
+              mode="multiple"
+              selected={selected}
+              month={new Date(year, 0, 1)}
+              numberOfMonths={12}
+              hideNavigation
+              disableNavigation
+              showOutsideDays={false}
+              weekStartsOn={1}
+              startMonth={new Date(year, 0, 1)}
+              endMonth={new Date(year, 11, 1)}
+              disabled={disabled}
+              className="w-full bg-transparent p-0"
+              classNames={{
+                months: 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3',
+                month:
+                  'min-w-0 space-y-2 rounded-lg border border-border-subtle bg-card p-1 sm:p-3',
+                month_caption: 'flex min-h-11 items-center px-2',
+                month_grid: 'w-full table-fixed border-collapse',
+                weekday: 'h-8 text-center text-xs font-normal text-muted-foreground',
+                day: 'h-11 p-0 text-center',
+                day_button: cn(
+                  buttonVariants({ variant: 'tertiary' }),
+                  'h-11 min-h-11 w-full min-w-9 p-0 font-medium'
+                ),
+              }}
+              formatters={{
+                formatCaption: (date) => monthLabel.format(date),
+                formatWeekdayName: (date) => weekdayLabel.format(date),
+              }}
+              labels={{
+                labelGrid: (date) => monthLabel.format(date),
+                labelDayButton: (date) => fullDate.format(date),
+                labelWeekday: (date) => fullWeekdayLabel.format(date),
+              }}
+              onDayClick={(date) =>
+                onToggleDate(toDateOnly(date.getFullYear(), date.getMonth(), date.getDate()))
+              }
+            />
+  );
+};
+
 export const TourCustomDatesSelectionDialog = ({
   open,
   year,
@@ -100,7 +98,6 @@ export const TourCustomDatesSelectionDialog = ({
   onToggleDate,
 }: TourCustomDatesSelectionDialogProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const months = Array.from({ length: 12 }, (_, monthIndex) => monthIndex);
   const selectedCount = Array.from(selectedDates).filter(
     (date) => Number(date.slice(0, 4)) === year
   ).length;
@@ -108,19 +105,19 @@ export const TourCustomDatesSelectionDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-7xl overflow-hidden p-0">
-        <div className="flex h-full max-h-[92vh] flex-col bg-[linear-gradient(180deg,rgba(222,216,193,0.42),rgba(247,246,239,0.96))]">
+        <div className="flex h-full max-h-[92vh] flex-col bg-surface-inset">
           <DialogHeader className="border-b border-border/50 px-6 py-5">
             <DialogTitle>{pt('tours.customDates.dialog.title')}</DialogTitle>
             <DialogDescription>{pt('tours.customDates.dialog.description')}</DialogDescription>
           </DialogHeader>
-          <div className="flex items-center justify-between gap-4 px-6 py-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-5 sm:px-6">
             <Button
               type="button"
               variant="secondary"
               disabled={disabled}
               onClick={() => onYearChange(year - 1)}
             >
-              <IconChevronLeft aria-hidden="true" className="mr-2 h-4 w-4" />
+              <IconChevronLeft strokeWidth={1} aria-hidden="true" className="mr-2 h-4 w-4" />
               {year - 1}
             </Button>
             <div className="flex flex-col items-center gap-2">
@@ -136,25 +133,16 @@ export const TourCustomDatesSelectionDialog = ({
               onClick={() => onYearChange(year + 1)}
             >
               {year + 1}
-              <IconChevronRight aria-hidden="true" className="ml-2 h-4 w-4" />
+              <IconChevronRight strokeWidth={1} aria-hidden="true" className="ml-2 h-4 w-4" />
             </Button>
           </div>
-          <div className="overflow-y-auto px-6 pb-4">
-            <div className="grid gap-4 pb-2 md:grid-cols-2 xl:grid-cols-4">
-              {months.map((monthIndex) => (
-                <TourCustomDateMonth
-                  key={monthIndex}
-                  monthIndex={monthIndex}
-                  year={year}
-                  selectedDates={selectedDates}
-                  onToggleDate={disabled ? () => undefined : onToggleDate}
-                />
-              ))}
-            </div>
+          <div className="overflow-y-auto px-3 pb-4 sm:px-6">
+            <TourCustomDateCalendar year={year} selectedDates={selectedDates}
+              disabled={disabled} onToggleDate={onToggleDate} />
           </div>
           <DialogFooter className="border-t border-border/50 px-6 py-4">
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-              {pt('tours.actions.cancel')}
+              {pt('tours.customDates.actions.close')}
             </Button>
             <Button type="button" disabled={disabled} onClick={() => onOpenChange(false)}>
               {pt('tours.customDates.actions.apply')}

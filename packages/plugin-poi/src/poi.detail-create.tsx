@@ -26,7 +26,7 @@ export function PoiDetailCreate({
       <div
         id="poi-create-name"
         tabIndex={-1}
-        className="space-y-4 rounded-2xl border border-border/60 bg-card p-5"
+        className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6"
       >
         <PoiDetailBasisTab {...basisProps} section="name" />
       </div>

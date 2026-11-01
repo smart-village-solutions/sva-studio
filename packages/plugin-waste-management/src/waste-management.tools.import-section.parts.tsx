@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { StudioEditSurface } from '@sva/studio-ui-react';
+import { Button, StudioEditSurface } from '@sva/studio-ui-react';
 import type { WasteToolsWizardStepId } from './waste-management.tools.import-wizard-state.js';
 
 export const WasteToolsWizardStepList = ({
@@ -30,17 +30,18 @@ export const WasteToolsWizardStepList = ({
         const isDone = index < activeIndex;
         const isReachable = index <= reachableIndex;
         return (
-          <button
+          <Button
+            variant="tertiary"
             key={step}
             type="button"
             disabled={!isReachable}
             aria-current={isActive ? 'step' : undefined}
-            className={`flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition ${
+            className={`h-auto w-full items-start justify-start gap-3 whitespace-normal rounded-lg border px-3 py-3 text-left transition ${
               isActive
                 ? 'border-primary bg-primary/10 text-foreground'
                 : isDone
                   ? 'border-border/70 bg-background text-foreground'
-                  : 'border-border/60 bg-muted/20 text-muted-foreground'
+                  : 'border-border-subtle bg-surface-inset text-muted-foreground'
             } disabled:cursor-not-allowed disabled:opacity-70`}
             onClick={() => onStepChange(step)}
           >
@@ -63,7 +64,7 @@ export const WasteToolsWizardStepList = ({
                 {pt(`tools.imports.wizard.steps.${step}.description`)}
               </span>
             </span>
-          </button>
+          </Button>
         );
       })}
     </nav>
@@ -85,7 +86,7 @@ export const WasteToolsWizardLayout = ({
   readonly description: string;
   readonly children: ReactNode;
 }) => (
-  <StudioEditSurface className="rounded-2xl border-border/70 bg-background/80">
+  <StudioEditSurface className="rounded-lg border-border/70 bg-card">
     <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
       <WasteToolsWizardStepList
         activeStep={activeStep}

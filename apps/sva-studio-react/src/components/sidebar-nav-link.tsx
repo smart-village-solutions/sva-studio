@@ -16,12 +16,12 @@ export const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
 
 export const getLinkClasses = (isActive: boolean, isCollapsed: boolean, isChild = false) =>
   [
-    'flex items-center rounded-lg border text-sidebar-foreground transition',
+    'flex items-center min-h-11 rounded-lg border text-sidebar-foreground transition',
     isChild
-      ? 'gap-2.5 px-3 py-2 text-xs font-medium'
+      ? 'gap-2.5 px-3 py-2 text-sm font-medium'
       : `gap-3 ${isCollapsed ? 'justify-center px-0 py-3' : 'px-3 py-2.5 text-sm font-medium'}`,
     isActive
-      ? 'border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-shell'
+      ? 'border-transparent bg-sidebar-accent text-sidebar-accent-foreground'
       : 'border-transparent bg-sidebar hover:border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
   ].join(' ');
 
@@ -44,8 +44,12 @@ export const SidebarLeafLink = ({
   const showLabel = isCollapsed === false;
   const content = (
     <>
-      <IconComponent className={isChild ? 'h-4 w-4 shrink-0' : 'h-5 w-5 shrink-0'} />
-      {showLabel ? <span className="truncate">{item.label}</span> : null}
+      <IconComponent
+        aria-hidden="true"
+        strokeWidth={1}
+        className={isChild ? 'h-4 w-4 shrink-0' : 'h-5 w-5 shrink-0'}
+      />
+      {showLabel ? <span className="min-w-0 break-words">{item.label}</span> : null}
     </>
   );
 

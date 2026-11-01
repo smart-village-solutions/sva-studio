@@ -46,6 +46,7 @@ export const OrganizationContextSwitcher = ({
   const errorMessage = organizationContextErrorMessage(organizationContext.error);
   const statusId = React.useId();
   const errorId = React.useId();
+  const controlId = React.useId();
   const describedBy =
     [statusId, errorMessage ? errorId : null].filter(Boolean).join(' ') || undefined;
   const isMenuVariant = variant === 'menu';
@@ -54,7 +55,7 @@ export const OrganizationContextSwitcher = ({
   const shouldRenderMenuMemberships =
     isMenuVariant && organizationContextState.hasVisibleMemberships;
 
-  if (organizationContext.isLoading || (!shouldRenderSelector && !shouldRenderMenuMemberships)) {
+  if (organizationContext.isLoading || !organizationContextState.hasVisibleMemberships) {
     return null;
   }
 
@@ -68,23 +69,25 @@ export const OrganizationContextSwitcher = ({
       <div
         className={cn(
           'field-group',
-          isMenuVariant ? 'flex w-full flex-col gap-2' : 'flex items-center gap-2'
+          isMenuVariant
+            ? 'flex w-full flex-col gap-2'
+            : 'flex min-h-11 w-full min-w-0 items-center gap-2'
         )}
       >
         {shouldRenderSelector ? (
           <>
             <Label
-              htmlFor="organization-context-switcher"
+              htmlFor={controlId}
               className={cn(
                 isMenuVariant
                   ? 'text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground'
-                  : undefined
+                  : 'sr-only'
               )}
             >
               {t('shell.header.organizationContext')}
             </Label>
             <Select
-              id="organization-context-switcher"
+              id={controlId}
               aria-label={t('shell.header.organizationContext')}
               aria-describedby={describedBy}
               value={organizationContextState.activeOrganizationId ?? ''}
@@ -96,7 +99,7 @@ export const OrganizationContextSwitcher = ({
                 'text-sm',
                 isMenuVariant
                   ? 'h-10 w-full rounded-lg border-border bg-background px-3 py-2 shadow-none'
-                  : 'h-8 w-auto min-w-40 max-w-full px-2 py-1'
+                  : 'h-11 w-full min-w-0 max-w-full border-transparent bg-transparent pl-0 pr-8 font-medium lg:w-auto'
               )}
               disabled={organizationContext.isUpdating}
             >
@@ -110,6 +113,10 @@ export const OrganizationContextSwitcher = ({
               ))}
             </Select>
           </>
+        ) : !isMenuVariant && activeOrganization ? (
+          <span className="min-w-0 break-words text-sm font-medium text-foreground">
+            {activeOrganization.displayName}
+          </span>
         ) : null}
       </div>
       {shouldRenderMenuMemberships ? (

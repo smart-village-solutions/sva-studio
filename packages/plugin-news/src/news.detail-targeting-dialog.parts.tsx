@@ -139,7 +139,7 @@ export function TargetingTable({
   onToggleAll: (checked: boolean) => void;
 }>) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-border/60">
+    <div className="overflow-x-auto rounded-lg border border-border-subtle">
       <table className="min-w-full border-collapse" aria-label={pt('targeting.table.label')}>
         <thead>
           <tr className="border-b">

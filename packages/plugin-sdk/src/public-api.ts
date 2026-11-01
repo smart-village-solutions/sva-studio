@@ -50,7 +50,10 @@ export {
   readHostMediaAssetFileName, readHostMediaAssetTitle, resolveEditorLocale, toDatetimeLocalValue, toHostMediaFieldOptions,
 } from './content-ui-utils.js';
 export { readFieldError } from './form-errors.js';
-export { readMainserverErrorRequestId } from './mainserver-error-metadata.js';
+export {
+  readMainserverErrorRequestId,
+  readMainserverMutationFailureOutcome,
+} from './mainserver-error-metadata.js';
 export type {
   MapGeocodingAddressInput,
   MapGeocodingCoordinates,

@@ -13,6 +13,13 @@ const technicalStatusBadgeVariantByTone: Record<StudioTechnicalStatusTone, Badge
     error: 'destructive',
   };
 
+const technicalStatusClasses: Record<StudioTechnicalStatusTone, string> = {
+  neutral: '',
+  success: 'border-status-success-foreground bg-status-success text-status-success-foreground',
+  warning: 'border-status-warning-foreground bg-status-warning text-status-warning-foreground',
+  error: 'border-status-error-foreground bg-status-error text-status-error-foreground',
+};
+
 export type StudioTechnicalStatusMetaItem = Readonly<{
   id: string;
   label: React.ReactNode;
@@ -46,7 +53,12 @@ const StudioStatusCardBody = ({
           {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
         </div>
       ) : null}
-      <Badge variant={technicalStatusBadgeVariantByTone[statusTone]}>{statusLabel}</Badge>
+      <Badge
+        variant={technicalStatusBadgeVariantByTone[statusTone]}
+        className={technicalStatusClasses[statusTone]}
+      >
+        {statusLabel}
+      </Badge>
     </div>
     {metadata?.length ? (
       <div className="flex flex-wrap gap-2">

@@ -247,6 +247,103 @@ describe('waste-management-mainserver-sync.server', () => {
     setDefaultWasteClientState(emptyWasteClientState());
   });
 
+  it('sends inherited city pickups through the existing writer and does not recreate them on the next sync', async () => {
+    const timestamps = { createdAt: '', updatedAt: '' };
+    setDefaultWasteClientState({
+      ...emptyWasteClientState(),
+      tours: [
+        {
+          id: 'tour-1',
+          name: 'Schadstoffmobil',
+          wasteFractionIds: ['fraction-1'],
+          recurrence: 'custom',
+          customDates: [{ date: '2026-06-10' }],
+          description: '09–11 Uhr, Rathaus',
+          status: 'published',
+          ...timestamps,
+        },
+      ],
+      fractions: [
+        {
+          id: 'fraction-1',
+          name: 'Schadstoffmobil',
+          pdfShortLabel: 'SM',
+          color: '#111',
+          active: true,
+          reminderCount: 'none',
+          reminderChannelPushEnabled: false,
+          reminderChannelEmailEnabled: false,
+          reminderChannelCalendarEnabled: false,
+          ...timestamps,
+        },
+      ],
+      links: [
+        { id: 'city-link', locationId: 'city-wide', tourId: 'tour-1', ...timestamps },
+        { id: 'direct-link', locationId: 'street-location', tourId: 'tour-1', ...timestamps },
+      ],
+      locations: [
+        { id: 'city-wide', cityId: 'city-1', active: true, ...timestamps },
+        {
+          id: 'street-location',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          active: true,
+          ...timestamps,
+        },
+        {
+          id: 'second-street',
+          cityId: 'city-1',
+          streetId: 'street-2',
+          active: true,
+          ...timestamps,
+        },
+      ],
+      cities: [{ id: 'city-1', name: 'Musterhausen', postalCode: '12345', ...timestamps }],
+      streets: [
+        { id: 'street-1', cityId: 'city-1', name: 'Hauptstraße', ...timestamps },
+        { id: 'street-2', cityId: 'city-1', name: 'Bahnhofstraße', ...timestamps },
+      ],
+    });
+    const input = {
+      instanceId: 'instance-1',
+      runtimeDeps: { now: () => new Date('2026-01-15T00:00:00.000Z') },
+      syncInput: { operation: 'sync-mainserver' as const },
+    };
+    const first = await runWasteManagementMainserverSyncForInstance(input);
+    expect(first.createItems).toEqual([
+      expect.objectContaining({
+        street: 'Hauptstraße',
+        city: 'Musterhausen',
+        zip: '12345',
+        pickupDate: '2026-06-10',
+        wasteType: 'SM',
+        note: '09–11 Uhr, Rathaus',
+      }),
+      expect.objectContaining({
+        street: 'Bahnhofstraße',
+        city: 'Musterhausen',
+        zip: '12345',
+        pickupDate: '2026-06-10',
+        wasteType: 'SM',
+        note: '09–11 Uhr, Rathaus',
+      }),
+    ]);
+    expect(createSvaMainserverWastePickupTimesMock).toHaveBeenCalledOnce();
+    expect(createSvaMainserverWastePickupTimesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ items: first.createItems })
+    );
+
+    listSvaMainserverWasteSyncSnapshotMock.mockResolvedValue({
+      pickupTimes: [...first.createItems],
+    });
+    createSvaMainserverWastePickupTimesMock.mockClear();
+    const second = await runWasteManagementMainserverSyncForInstance(input);
+    expect(second.createCount).toBe(0);
+    expect(second.deleteCount).toBe(0);
+    expect(createSvaMainserverWastePickupTimesMock).not.toHaveBeenCalled();
+    expect(deleteSvaMainserverWastePickupTimesMock).not.toHaveBeenCalled();
+  });
+
   it('loads source revision and materialization data in one repeatable-read snapshot', async () => {
     const context = createWasteClientContext(emptyWasteClientState());
     withWasteClientMock.mockImplementationOnce(

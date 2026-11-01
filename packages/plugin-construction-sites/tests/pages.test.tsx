@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { publishSessionAccessSnapshot } from '@sva/plugin-sdk';
 import { pluginConstructionSitesTranslations } from '../src/plugin.translations.js';
@@ -112,6 +112,30 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe('construction site editorial UI', () => {
+  it('locks the initial create form before asynchronous request hashing starts', async () => {
+    let finishHash: ((value: ArrayBuffer) => void) | undefined;
+    const digest = vi.spyOn(crypto.subtle, 'digest').mockImplementationOnce(
+      () =>
+        new Promise<ArrayBuffer>((resolve) => {
+          finishHash = resolve;
+        })
+    );
+    try {
+      render(<ConstructionSitesCreatePage />);
+      const title = screen.getByLabelText(/^Titel/);
+      fireEvent.change(title, { target: { value: 'Brückenbau' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Baustelle anlegen' }));
+      await waitFor(() => expect(finishHash).toBeDefined());
+      expect(title.matches(':disabled')).toBe(true);
+      expect(state.save).not.toHaveBeenCalled();
+      await act(async () => finishHash?.(new ArrayBuffer(32)));
+      await screen.findByRole('link', { name: 'Gespeicherte Baustelle öffnen' });
+      expect(state.save).toHaveBeenCalledTimes(1);
+      expect(state.save.mock.calls[0]?.[1].site.title).toBe('Brückenbau');
+    } finally {
+      digest.mockRestore();
+    }
+  });
   it('switches the overview and its category lookup between permitted author principals', async () => {
     render(
       <ConstructionSitesListPage

@@ -159,6 +159,7 @@ describe('construction site editor operations', () => {
       await act(async () => result.current.save());
       expect(api.save).not.toHaveBeenCalled();
       expect(result.current.failure).toBe('messages.saveError');
+      expect(result.current.busy).toBe(false);
     } finally {
       storage.mockRestore();
     }

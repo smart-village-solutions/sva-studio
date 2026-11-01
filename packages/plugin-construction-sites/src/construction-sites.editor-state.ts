@@ -203,8 +203,6 @@ export function useConstructionSiteEditor(
     setDraft,
     setMessage,
     saving,
-    busy,
-    pending,
     draft,
     record,
     key,
@@ -222,7 +220,7 @@ export function useConstructionSiteEditor(
     setMessage(undefined);
   };
   const save = async () => {
-    if (saving.current || busy || pending || (id && !record)) return;
+    if (saving.current || data.busy || data.pending || (id && !record)) return;
     const parsed = constructionSiteInputSchema.safeParse(draft);
     if (!parsed.success) {
       setErrors(parsed.error.issues.map((issue) => issue.path.join('.')));
@@ -230,6 +228,7 @@ export function useConstructionSiteEditor(
     }
     setErrors([]);
     saving.current = true;
+    data.setBusy(true);
     const revision = guard.captureRevision();
     try {
       const body = {
@@ -248,12 +247,13 @@ export function useConstructionSiteEditor(
       setFailure('messages.saveError');
     } finally {
       saving.current = false;
+      data.setBusy(false);
     }
   };
   return {
     ...data,
     change,
     save,
-    recover: () => (pending ? commit(pending, true) : Promise.resolve()),
+    recover: () => (data.pending ? commit(data.pending, true) : Promise.resolve()),
   };
 }

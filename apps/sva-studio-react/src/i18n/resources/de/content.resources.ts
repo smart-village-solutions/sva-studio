@@ -8,7 +8,6 @@ export const contentDEResources = {
       'Die Wiederaufnahme ist noch nicht möglich. Melden Sie sich mit demselben Konto und derselben Organisation an und prüfen Sie erneut.',
     signInNewTab: 'In neuem Tab anmelden',
     resumeEditor: 'Sitzung und Kontext prüfen',
-
     title: 'Ungespeicherte Eingaben verwerfen?',
     description:
       'Es gibt offene Eingaben oder einen noch nicht bestätigten Speichervorgang. Beim Verlassen gehen offene Eingaben in dieser Ansicht verloren. Bereits gestartete Speichervorgänge werden dadurch nicht zurückgenommen.',

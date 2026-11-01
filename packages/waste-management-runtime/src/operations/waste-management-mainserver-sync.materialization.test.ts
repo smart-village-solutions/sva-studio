@@ -198,6 +198,37 @@ describe('waste-management-mainserver-sync.materialization', () => {
       }
     });
 
+    it.each([
+      null,
+      undefined,
+      '',
+      '  ',
+      '<script>alert(1)</script>',
+      '<strong>09–11 Uhr, Rathaus</strong>',
+    ])(
+      'preserves the original format of a single stop note alongside empty or equivalent note %s',
+      (duplicateNote) => {
+        const input = buildInput();
+        const rows = buildStudioRowsFromMaterialization({
+          ...input,
+          pickupDates: [
+            { ...input.pickupDates[0]!, note: '<p>09–11 Uhr, Rathaus</p>' },
+            { ...input.pickupDates[1]!, note: duplicateNote },
+          ],
+        });
+        const [singleNoteRow] = buildStudioRowsFromMaterialization({
+          ...input,
+          pickupDates: [{ ...input.pickupDates[0]!, note: '<p>09–11 Uhr, Rathaus</p>' }],
+        });
+
+        expect(rows).toHaveLength(3);
+        expect(singleNoteRow!.note).toBe(
+          '<div><p>Schadstoffmobil</p></div><div><p>09–11 Uhr, Rathaus</p></div>'
+        );
+        for (const row of rows) expect(row.note).toBe(singleNoteRow!.note);
+      }
+    );
+
     it.each(['Alle Straßen', '  alle straßen  '])(
       'inherits imported all-streets source %s and preserves its existing catch-all address',
       (allStreetsName) => {

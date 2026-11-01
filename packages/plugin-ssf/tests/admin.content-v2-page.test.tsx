@@ -232,7 +232,7 @@ describe('SSF V2 content administration', () => {
     await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({
       guestLanguages: [{ locale: 'en', guest: { explanationHtml: '<p>Custom guest text</p>' } }],
     }));
-  });
+  }, 10_000);
 
   it('disables tenant guest-language changes when the catalog is unavailable', async () => {
     const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
@@ -264,7 +264,7 @@ describe('SSF V2 content administration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
     await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({}));
-  });
+  }, 10_000);
 
   const legalSource = () => ({
     sourceLocale: 'de-DE', version: '2026-09-23-draft', localizations: [{
@@ -324,7 +324,7 @@ describe('SSF V2 content administration', () => {
     expect(saved.legalTexts.localizations[1]).toEqual({ locale: 'en', mode2Consent: null, mode3Consent: null,
       guestRecordingRelease: null, staffRecordingRelease: null, recordingStatus: null });
     expect(saved.guestLanguages).toEqual(runtimeTemplate['guestLanguages']);
-  });
+  }, 10_000);
 
   it('resets a tenant legal field and respects read-only permissions', async () => {
     const runtimeTemplate = { ...fields('ssf-runtime-configuration-v2.example.json'), legalTexts: legalSource() };

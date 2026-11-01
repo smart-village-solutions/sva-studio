@@ -144,6 +144,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 
 ### Security und Privacy
 
+- Der Keycloak-Adapter ergänzt bei Benutzerattribut-Updates ohne explizite E-Mail die frisch aus demselben Benutzerprofil gelesene E-Mail unverändert. Fehlt sie oder scheitert der Profilabruf, erfolgt kein Write. Damit erfüllen auch Mainserver-Credential-Updates die E-Mail-Pflicht des Benutzerprofils, ohne sie abzuschwächen.
 - OIDC Authorization Code Flow mit PKCE
 - Persönliche MCP-Bearer-Tokens werden nur für ausdrücklich aktivierte Verwaltungsrouten und Methoden angenommen. Im ersten Schritt sind dies `GET` und `POST /api/v1/iam/users`; `azp`, Issuer und Studio-Audience werden getrennt geprüft und aus Host sowie Realm aufgelöst. Ein ungültiger oder nicht zugelassener Bearer-Token fällt nie auf ein Cookie zurück.
 - Der lokale MCP wählt persönliche Plattform- und Tenant-Kontexte explizit aus; PKCE-State, Nonce und Verifier sind loginversuchsgebunden. Access-/Refresh-Tokens bleiben standardmäßig pro Kontext im Prozessspeicher. Ein ausdrücklich aktivierter macOS-Keychain-Modus speichert nur Refresh-Token mit Kontext- und Subject-Bindung; Restore erfordert OIDC-Refresh und Userinfo-Readback. Logout löscht und widerruft, Shutdown erhält ausschließlich im Keychain-Modus die gespeicherte Sitzung. Der HTTP-Client nutzt ausschließlich den konfigurierten HTTPS-Studio-Ursprung, folgt keinen Redirects und fällt nie auf das Service-Credential zurück.

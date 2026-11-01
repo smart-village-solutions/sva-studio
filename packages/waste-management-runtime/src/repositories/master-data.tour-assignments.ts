@@ -114,11 +114,13 @@ WITH saved_assignment AS (
 ), removed_locations AS (
   DELETE FROM waste_tour_assignment_locations
   WHERE assignment_id = (SELECT id FROM saved_assignment)
+    AND collection_location_id <> ALL($5::uuid[])
 )
 INSERT INTO waste_tour_assignment_locations (assignment_id, collection_location_id)
 SELECT saved_assignment.id, location_id
 FROM saved_assignment
-CROSS JOIN UNNEST($5::uuid[]) AS location_id;
+CROSS JOIN UNNEST($5::uuid[]) AS location_id
+ON CONFLICT (assignment_id, collection_location_id) DO NOTHING;
 `,
   values: [
     input.id,

@@ -1049,3 +1049,15 @@ aufgebaut. Synthetische Auth-/Fachdaten und fehlende echte IAM-/Fachdatenbanken
 begrenzen diese Aussage auf den geprüften UI-Pfad.
 Dies bleibt lokaler technischer Nachweis; vollständige fachliche, manuelle
 Accessibility- und produktive Integrationsabnahme sind weiterhin getrennt.
+
+Der anschließende CI-Coverage-Lauf bestand sämtliche Tests, meldete jedoch
+Regressionsgrenzen für News und gemeinsame UI-Branches. Zusätzliche Tests in
+den bestehenden Dateien prüfen unklare beziehungsweise nachweislich nicht
+angewendete News-Saves, die zugehörige Medienbereinigung und den Draft-Erhalt
+beim Kontextneuladen. Die UI-Gegenproben prüfen abgeschlossene lokale Uploads,
+gezielte Preview-Freigabe sowie den Erhalt späterer Ersatz- und
+Sortierungsänderungen. Produktcode, Coverage-Grenzen und Baselines bleiben
+für diese Korrektur unverändert.
+Die Package-Coverage besteht für News mit 233 Tests und für die gemeinsamen
+UI-Komponenten mit 322 Tests. News erreicht 94,34 % Lines und 93,83 % Statements;
+die UI-Branches erreichen mit 85,99 % wieder die unveränderte Baseline.

@@ -22,6 +22,7 @@ import {
   getNewsDetail,
   getNewsSaveOperation,
   listNewsCategories,
+  NewsApiError,
   saveNewsEditorItem,
 } from '../src/news.api.js';
 import { pluginNewsTranslations } from '../src/plugin.translations.js';
@@ -104,6 +105,8 @@ vi.mock('../src/news.api.js', async () => {
 describe('NewsDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(saveNewsEditorItem).mockReset();
+    vi.mocked(getNewsSaveOperation).mockReset();
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
     publishSessionAccessSnapshot({
       isResolved: true,
@@ -732,6 +735,132 @@ describe('NewsDetailPage', () => {
       if (originalFetchDescriptor)
         Object.defineProperty(globalThis, 'fetch', originalFetchDescriptor);
     }
+  });
+
+  it('keeps an uncertain save locked after a failed check and unlocks only a confirmed unapplied attempt', async () => {
+    vi.mocked(saveNewsEditorItem).mockRejectedValueOnce(new TypeError('lost reply'));
+    vi.mocked(getNewsSaveOperation)
+      .mockRejectedValueOnce(
+        Object.assign(new Error('status unavailable'), { requestId: 'check-123' })
+      )
+      .mockResolvedValueOnce({ outcome: 'not_applied' });
+    render(<NewsDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Submitted' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entwurf anlegen' }));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: pluginNewsTranslations.de.news.actions.checkSaveOutcome,
+      })
+    );
+    await screen.findByText(pluginNewsTranslations.de.news.messages.saveOutcomeCheckFailed);
+    expect(screen.getByText('check-123')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Entwurf anlegen' })).toBeNull();
+    const form = screen.getByLabelText('Titel').closest('form');
+    if (!form) throw new Error('Expected news editor form');
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+    expect(saveNewsEditorItem).toHaveBeenCalledOnce();
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Retained draft' } });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: pluginNewsTranslations.de.news.actions.checkSaveOutcome,
+      })
+    );
+    await screen.findByText(pluginNewsTranslations.de.news.messages.saveNotApplied);
+    expect(screen.getByRole('button', { name: 'Entwurf anlegen' })).toBeTruthy();
+    expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe('Retained draft');
+    expect(saveNewsEditorItem).toHaveBeenCalledOnce();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['cleanup_pending', 'outcome_unknown'] as const)(
+    'abandons only the original media operation after %s is safely recoverable',
+    async (status) => {
+      vi.mocked(saveNewsEditorItem).mockRejectedValueOnce(
+        new ContentMediaSaveError(status, 'media-rejected-1', new TypeError('lost reply'))
+      );
+      vi.mocked(getNewsSaveOperation).mockReset().mockResolvedValue({ outcome: 'not_applied' });
+      const originalFetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'fetch');
+      const fetch = vi.fn(async () => Response.json({ data: {} }));
+      vi.stubGlobal('fetch', fetch);
+      try {
+        render(<NewsDetailPage mode="create" />);
+        fireEvent.change(await screen.findByLabelText('Titel'), {
+          target: { value: 'With local media' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Entwurf anlegen' }));
+        fireEvent.click(
+          await screen.findByRole('button', {
+            name: pluginNewsTranslations.de.news.actions.checkSaveOutcome,
+          })
+        );
+        await screen.findByText(pluginNewsTranslations.de.news.messages.saveNotApplied);
+        expect(fetch).toHaveBeenCalledOnce();
+        expect(fetch).toHaveBeenCalledWith(
+          '/api/v1/iam/media/content-save-operations/media-rejected-1/abandon',
+          expect.objectContaining({ method: 'POST' })
+        );
+        expect(getNewsSaveOperation).toHaveBeenCalledTimes(status === 'cleanup_pending' ? 0 : 1);
+        expect(saveNewsEditorItem).toHaveBeenCalledOnce();
+        expect(screen.getByRole('button', { name: 'Entwurf anlegen' })).toBeTruthy();
+        expect(navigateMock).not.toHaveBeenCalled();
+      } finally {
+        if (originalFetchDescriptor)
+          Object.defineProperty(globalThis, 'fetch', originalFetchDescriptor);
+      }
+    }
+  );
+
+  it('reloads a rejected stale context while retaining the current dirty editor draft', async () => {
+    const item = {
+      id: 'stale-news-1',
+      title: 'Server title',
+      contentType: 'news.article',
+      payload: {},
+      status: 'draft' as const,
+      author: 'Editor',
+      createdAt: '',
+      updatedAt: '',
+    };
+    vi.mocked(getNewsDetail).mockResolvedValue({
+      data: item,
+      access: { 'news.update': true, 'content.changeStatus': true },
+      deviations: [],
+    });
+    vi.mocked(saveNewsEditorItem).mockRejectedValueOnce(
+      Object.assign(new NewsApiError('stale_mainserver_context'), {
+        mutationOutcome: 'not_applied',
+      })
+    );
+    const refreshContext = vi.fn(async () => undefined);
+    render(
+      <NewsDetailPage
+        mode="edit"
+        contentId={item.id}
+        principalControl={{
+          kind: 'fixed',
+          value: 'user',
+          label: 'Editor',
+          refreshContext,
+        }}
+      />
+    );
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Unsaved draft' } });
+    const [save] = screen.getAllByRole('button', { name: 'Speichern' });
+    if (!save) throw new Error('Expected news save action');
+    fireEvent.click(save);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'news.actions.reloadCurrentContext' })
+    );
+    await waitFor(() => expect(getNewsDetail).toHaveBeenCalledTimes(2));
+    expect(refreshContext).toHaveBeenCalledOnce();
+    expect(((await screen.findByLabelText('Titel')) as HTMLInputElement).value).toBe(
+      'Unsaved draft'
+    );
+    expect(saveNewsEditorItem).toHaveBeenCalledOnce();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('permits an explicit new save after a confirmed pre-write rejection', async () => {

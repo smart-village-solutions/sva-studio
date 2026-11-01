@@ -1351,4 +1351,4 @@ Ergebnisse; während des Rollout-Abgleichs sind parallele direkte Realm-Edits au
 
 ## Baustellenplugin
 
-Für Baustellen bleiben unbekannte Payload- und Relationsmetadaten erhalten; nicht wiederherstellbare Daten blockieren den Write. Ausdrücklich akzeptiert ist allein der Entfall nicht mehr gelesener deaktivierter Kategoriezuordnungen. Sichtbarkeit verwendet Host-Lifecycle-Rechte; Dateiverknüpfungen verwenden die vorhandene Medienverwaltung. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+Für Baustellen bleiben unbekannte Payload- und Relationsmetadaten erhalten; nicht wiederherstellbare Daten blockieren den Write. Ausdrücklich akzeptiert ist allein der Entfall nicht mehr gelesener deaktivierter Kategoriezuordnungen. Sichtbarkeit verwendet Host-Lifecycle-Rechte; Dateiverknüpfungen verwenden die vorhandene Medienverwaltung. Der ausschließlich auf Baustellen gefilterte Kategorie-Lookup wird mit `construction-sites.read` autorisiert; ungefilterte Abfragen und Kategorienverwaltung behalten ihre eigenen Rechte. Siehe [Baustellenreferenz](../reference/construction-sites.md).

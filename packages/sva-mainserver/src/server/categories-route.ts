@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverCategoriesListItem } from '../types.js';
+import { CONSTRUCTION_SITES_TYPE } from './construction-sites-contract.js';
 import { parseCategorySaveInput } from './categories-route-input.js';
 import {
   matchCategoryRoute,
@@ -69,9 +70,15 @@ const toCategoryResponseItem = ({
 
 const authorize = async (
   ctx: AuthenticatedRequestContext,
-  action: CategoryAction
+  action: CategoryAction | 'construction-sites.read'
 ): Promise<CategoriesActor | Response> => {
-  const result = await authorizeContentPrimitiveForUser({ ctx, action });
+  const result = await authorizeContentPrimitiveForUser({
+    ctx,
+    action,
+    ...(action === 'construction-sites.read'
+      ? { resource: { contentType: CONSTRUCTION_SITES_TYPE } }
+      : {}),
+  });
   if (!result.ok)
     return errorJson(result.status, result.error, result.message, result.permissionDenial);
   return {
@@ -178,13 +185,19 @@ const dispatchAuthenticated = async (
   ctx: AuthenticatedRequestContext,
   matched: CategoryRoute
 ): Promise<Response> => {
-  const action = resolveCategoryAction(request, matched);
-  if (!action)
+  const requestedAction = resolveCategoryAction(request, matched);
+  if (!requestedAction)
     return errorJson(
       405,
       'method_not_allowed',
       'Methode wird für Mainserver-Kategorien nicht unterstützt.'
     );
+  const constructionLookup =
+    requestedAction === 'categories.read' &&
+    matched.kind === 'collection' &&
+    !new URL(request.url).searchParams.has('view') &&
+    readCategoryContentDataType(request) === 'generic_item_construction_site';
+  const action = constructionLookup ? 'construction-sites.read' : requestedAction;
   try {
     if (request.method !== 'GET') {
       const csrfFailure = validateCsrf(request, getWorkspaceContext().requestId);

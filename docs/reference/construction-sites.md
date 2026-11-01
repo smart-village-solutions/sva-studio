@@ -16,7 +16,7 @@ Neue Baustellen sind zunächst unsichtbar. Zeitraumstatus und Sichtbarkeit sind 
 
 ## Rechte und Aktivierung
 
-Das Modul muss der Instanz zugewiesen sein. Es trägt ausschließlich `construction-sites.read`, `construction-sites.create` und `construction-sites.update` bei. Es gibt keine Löschaktion. Der bestehende Host prüft Account, Organisation, Principal, DataProvider und Objektzugriff. Das Plugin verwendet keine Berechtigungen eines anderen Fachplugins. Das ausgewählte „Erstellen als“ beziehungsweise „Handeln als“ bestimmt die verwendete Identität.
+Das Modul muss der Instanz zugewiesen sein. Es trägt ausschließlich `construction-sites.read`, `construction-sites.create` und `construction-sites.update` bei. Es gibt keine Löschaktion. Der bestehende Host prüft Account, Organisation, Principal, DataProvider und Objektzugriff. Das Plugin verwendet keine Berechtigungen eines anderen Fachplugins. Die auf Baustellen beschränkte Kategorieauswahl verwendet `construction-sites.read`; die Kategorienverwaltung behält ihre separaten `categories.*`-Rechte. Das ausgewählte „Erstellen als“ beziehungsweise „Handeln als“ bestimmt die verwendete Identität.
 
 Die gemeinsame Inhaltsübersicht ordnet `ConstructionSite` diesem Plugin zu; andere GenericItem-Typen bleiben beim bestehenden zuständigen Plugin. Die technische GenericItem-Ansicht bleibt unabhängig davon bestehen.
 

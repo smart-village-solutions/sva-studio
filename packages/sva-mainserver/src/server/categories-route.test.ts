@@ -57,15 +57,20 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
   });
 
   const allow = (action: string) => {
-    state.authorizeContentPrimitiveForUser.mockResolvedValue({
-      ok: true,
-      actor: {
-        instanceId: 'de-musterhausen',
-        keycloakSubject: 'subject-1',
-        organizationId: '22222222-2222-2222-8222-222222222222',
-      },
-      permissions: [action],
-    });
+    state.authorizeContentPrimitiveForUser.mockImplementation(
+      ({ action: requested }: { action: string }) =>
+        requested === action
+          ? {
+              ok: true,
+              actor: {
+                instanceId: 'de-musterhausen',
+                keycloakSubject: 'subject-1',
+                organizationId: '22222222-2222-2222-8222-222222222222',
+              },
+              permissions: [action],
+            }
+          : { ok: false, status: 403, error: 'forbidden', message: 'forbidden' }
+    );
   };
 
   it('ignores unrelated routes without touching auth', async () => {
@@ -189,9 +194,9 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     });
   });
 
-  it('accepts the construction site category filter and excludes unrelated types', async () => {
+  it('allows construction editors to read only compatible choices without category-management rights', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
-    allow('categories.read');
+    allow('construction-sites.read');
     state.listSvaMainserverCategories.mockResolvedValue([
       { id: 'universal', name: 'Allgemein', dataTypes: [] },
       { id: 'construction', name: 'Verkehr', dataTypes: ['generic_item_construction_site'] },
@@ -203,6 +208,12 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       )
     );
     expect(response?.status).toBe(200);
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'construction-sites.read',
+        resource: { contentType: 'construction-sites.construction-site' },
+      })
+    );
     await expect(response?.json()).resolves.toEqual({
       data: [
         { id: 'universal', name: 'Allgemein' },
@@ -210,6 +221,42 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       ],
     });
   });
+
+  it('denies the construction lookup without the construction read permission', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.read');
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_construction_site'
+      )
+    );
+    expect(response?.status).toBe(403);
+    expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['GET', '/categories'],
+    ['GET', '/categories?dataType=event_record'],
+    ['GET', '/categories?view=management&dataType=generic_item_construction_site'],
+    ['GET', '/categories/cat-1?dataType=generic_item_construction_site'],
+    ['GET', '/categories?dataType=generic_item_construction_site&dataType=news_item'],
+    ['POST', '/categories?dataType=generic_item_construction_site'],
+    ['DELETE', '/categories/cat-1?dataType=generic_item_construction_site'],
+  ])(
+    'does not grant category administration to a construction reader: %s %s',
+    async (method, path) => {
+      state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+      allow('construction-sites.read');
+      const response = await dispatchSvaMainserverCategoriesRequest(
+        new Request(`https://studio.test/api/v1/mainserver${path}`, { method })
+      );
+      expect(response?.status).toBe(403);
+      expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+      expect(state.listSvaMainserverCategoryManagement).not.toHaveBeenCalled();
+      expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
+      expect(state.deleteSvaMainserverCategory).not.toHaveBeenCalled();
+    }
+  );
 
   it.each([
     'https://studio.test/api/v1/mainserver/categories?dataType=unknown',

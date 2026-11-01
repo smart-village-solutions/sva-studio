@@ -104,9 +104,9 @@
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",
-    "@vitest/coverage-v8": "^5.0.3",
+    "@vitest/coverage-v8": "^5.0.5",
     "pg": "^8.22.0",
     "undici": "8.12.3",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.5"
   }
 }

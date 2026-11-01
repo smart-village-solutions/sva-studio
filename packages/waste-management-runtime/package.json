@@ -35,7 +35,7 @@
   "devDependencies": {
     "@sva/iam-core": "workspace:*",
     "@types/pg": "^8.20.0",
-    "@vitest/coverage-v8": "^5.0.3",
-    "vitest": "^5.0.3"
+    "@vitest/coverage-v8": "^5.0.5",
+    "vitest": "^5.0.5"
   }
 }

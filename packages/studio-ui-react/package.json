@@ -22,7 +22,7 @@
     "@sva/core": "workspace:*",
     "@sva/media": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
-    "@tanstack/react-table": "^9.2.4",
+    "@tanstack/react-table": "^9.3.1",
     "@tiptap/extension-link": "3.31.3",
     "@tiptap/react": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",

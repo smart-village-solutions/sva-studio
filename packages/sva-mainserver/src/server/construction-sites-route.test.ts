@@ -1,7 +1,7 @@
 import {
   constructionSiteInputSchema as browserSchema,
   createConstructionSiteDefaults as browserDefaults,
-} from '../../../plugin-construction-sites/src/contract.js';
+} from '@sva/plugin-construction-sites';
 import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -247,6 +247,46 @@ describe('construction-sites HTTP contract', () => {
       pagination: { total: 26, page: 2 },
       data: [expect.objectContaining({ id: expect.any(String) })],
     });
+  });
+  it('returns detail access metadata and never exposes an unreadable construction record', async () => {
+    const response = await dispatch(new Request(`${base}/42`));
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toMatchObject({
+      data: { id: '42' },
+      meta: { access: { 'construction-sites.read': true, 'construction-sites.update': true } },
+    });
+    state.resourceAccess.mockReturnValueOnce({
+      'construction-sites.read': false,
+      'construction-sites.update': true,
+    });
+    const denied = await dispatch(new Request(`${base}/42`));
+    expect(denied?.status).toBe(403);
+    expect(await denied?.json()).not.toHaveProperty('data');
+    expect(state.write).not.toHaveBeenCalled();
+  });
+  it.each([
+    ['search=brücke&category=Verkehr&dateStart=2026-11-03&dateEnd=2026-11-04', 1],
+    ['search=Andere', 0],
+    ['category=Andere', 0],
+    ['dateStart=2026-11-11', 0],
+    ['dateEnd=2026-10-31', 0],
+  ] as const)('applies construction filters before pagination: %s', async (query, total) => {
+    state.list.mockResolvedValue([
+      {
+        ...record(),
+        input: {
+          ...input(),
+          categories: [{ name: 'Verkehr' }],
+          dates: [{ dateStart: '2026-11-01', dateEnd: '2026-11-10' }],
+        },
+      },
+    ]);
+    const response = await dispatch(new Request(`${base}?${query}`));
+    expect(response?.status).toBe(200);
+    const body = await response?.json();
+    expect(body).toMatchObject({ pagination: { total, page: 1 } });
+    expect(body.data).toHaveLength(total);
+    expect(state.write).not.toHaveBeenCalled();
   });
   it('checks host media read/reference rights and readiness before writing and rechecks them during recovery', async () => {
     const site = {

@@ -8,7 +8,7 @@ Die Übersicht unter `/admin/content?type=construction-sites.construction-site` 
 
 Beim Anlegen stehen die Eingaben auf einer Seite. Beim Bearbeiten sind sie in „Basis“, „Inhalt“ und „Historie“ gegliedert. Titel sowie Beginn und Ende des ersten Zeitraums sind erforderlich. Ein ausdrücklich gewähltes Ende bleibt bei Änderungen am Beginn erhalten. Fehlende Bestandsdaten werden nicht durch heutige Daten ersetzt.
 
-Richtung, Grund, Einschränkungen, Beschreibung, Standort, Kategorien und Dateien sind optional. Koordinaten werden paarweise angegeben; `0` ist ein gültiger Wert. Die Karte nutzt die konfigurierte Studio-Schnittstelle und bleibt optional. Ohne Kartenverbindung ist die Eingabe der Koordinaten möglich. Die vorhandene Mediathek bietet Bild-Uploads; andere unterstützte Dateiarten können aus der Mediathek oder über eine dauerhafte URL zugeordnet werden.
+Richtung, Grund, Einschränkungen, Beschreibung, Standort, Kategorien und Dateien sind optional. Koordinaten werden paarweise angegeben; `0` ist ein gültiger Wert. Die Karte nutzt die konfigurierte Studio-Schnittstelle und bleibt optional. Ohne Kartenverbindung ist die Eingabe der Koordinaten möglich. Die vorhandene Mediathek bietet Bild-Uploads; andere unterstützte Dateiarten können aus der Mediathek oder über eine dauerhafte URL zugeordnet werden. Vorläufige Uploads dürfen noch nicht als dauerhafte Dateien zugeordnet werden; diese Prüfung gilt auch bei der Wiederaufnahme eines Speichervorgangs.
 
 Die geprüfte App verwendet jeweils den ersten Zeitraum, Standort, Textblock, die erste Kategorie und Datei sowie alle Einschränkungen. Weitere vorhandene Einträge bleiben zugänglich. Die Dateireihenfolge lässt sich ändern. Die tatsächliche Darstellung weiterer Dateiarten hängt von der Ziel-App ab.
 

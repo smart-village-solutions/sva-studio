@@ -270,12 +270,24 @@ describe('construction-sites HTTP contract', () => {
     state.deny.clear();
     state.asset.mockResolvedValueOnce({ visibility: 'private' });
     expect((await dispatch(request({ site })))?.status).toBe(409);
+    const provisional = {
+      visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      lifecycleStatus: 'provisional',
+    };
+    state.asset.mockResolvedValueOnce(provisional);
+    expect((await dispatch(request({ site })))?.status).toBe(409);
+    expect(state.write).not.toHaveBeenCalled();
     state.write.mockResolvedValue({ ...record(), input: site });
     state.recover.mockResolvedValue({ ...record(), input: site });
     expect((await dispatch(request({ site })))?.status).toBe(201);
     expect(state.replaceReferences).toHaveBeenCalledTimes(1);
-    state.deny.add('media.read');
     const hash = createHash('sha256').update(JSON.stringify({ site })).digest('hex');
+    state.asset.mockResolvedValueOnce(provisional);
+    expect((await dispatch(request({ recover: true, inputHash: hash })))?.status).toBe(409);
+    expect(state.replaceReferences).toHaveBeenCalledTimes(1);
+    state.deny.add('media.read');
     expect((await dispatch(request({ recover: true, inputHash: hash })))?.status).toBe(403);
     expect(state.write).toHaveBeenCalledTimes(1);
   });

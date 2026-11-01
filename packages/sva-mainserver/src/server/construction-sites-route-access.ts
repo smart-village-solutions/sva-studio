@@ -68,6 +68,7 @@ export async function authorizeConstructionSiteMedia(
       asset.visibility !== 'public' ||
       asset.uploadStatus !== 'processed' ||
       asset.processingStatus !== 'ready' ||
+      asset.lifecycleStatus === 'provisional' ||
       asset.deletionPending
     )
       return errorJson(

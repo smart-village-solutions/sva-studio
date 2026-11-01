@@ -52,3 +52,7 @@ Status: Fachlicher Zuschnitt und anschließend Umsetzung am 01.11.2026 freigegeb
 - Früh im Verlauf vollständiges `check:server-runtime` erfolgreich; abschließend `sva-mainserver:check:runtime` einschließlich Build, Plugin-Build, App- und Routing-Typprüfung sowie Skript-Typecheck erfolgreich. Lint für Plugin und Mainserver, i18n, App-/Plugin-Grenzen, Complexity-Gate ohne neue Findings, Dokumentation, Dateiplatzierung, OpenSpec Strict und Diff-Prüfung erfolgreich. Es wurden keine bestehenden Gates oder Baselines abgeschwächt.
 
 Die lokale Implementierung ist keine produktive Bereitstellung. Kein PR, Push, Merge, Rollout oder externer Schreibtest ist erfolgt. 4.4 bleibt bis zum gesonderten Auftrag mit freigegebenem Zielkontext offen; die Kategorienentscheidung ersetzt keine Live-/App-Abnahme.
+
+## Review vor dem Staging-Rollout
+
+Der zusätzliche Review gegen den mit `origin/main` integrierten Stand bestätigte einen fehlenden Ausschluss vorläufiger Medien. Der vorhandene Serverguard wurde ohne Änderung des Medienvertrags ergänzt. Der Regressionstest reproduzierte zunächst HTTP 201 statt 409 für ein öffentliches, verarbeitetes, aber vorläufiges Asset; anschließend bestanden alle elf Baustellen-Routentests einschließlich Erstwrite und Wiederaufnahme. Weitere bestätigte Merge-Blocker wurden im gebündelten Fachreview nicht gefunden. Live-Schreib-/App-Abnahme gemäß 4.4 bleibt separat offen.

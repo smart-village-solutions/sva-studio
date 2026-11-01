@@ -188,6 +188,51 @@ describe('ConstructionSite GraphQL roundtrip', () => {
     );
     expect(execute.mock.calls.some(([call]) => call.operationName.endsWith('Write'))).toBe(false);
   });
+  it.each(['missing', 'ambiguous', 'invalid-id'] as const)(
+    'keeps create recovery unresolved for a %s operation match without sending another write',
+    async (outcome) => {
+      const { service, execute, stored } = setup();
+      const prepared = service.prepareConstructionSite(
+        {
+          title: 'Neue Baustelle',
+          visible: false,
+          direction: '',
+          cause: '',
+          restrictions: [],
+          contentBlocks: [],
+          locations: [],
+          categories: [],
+          mediaContents: [],
+          dates: [{ dateStart: '2026-11-01', dateEnd: '2026-11-10' }],
+        },
+        'operation-new'
+      );
+      const match = { ...stored(), categories: [] };
+      const matches =
+        outcome === 'missing'
+          ? []
+          : outcome === 'ambiguous'
+            ? [match, { ...match, id: '43' }]
+            : [{ ...match, id: 42 }];
+      execute.mockClear();
+      execute.mockResolvedValueOnce({ genericItems: matches });
+
+      await expect(
+        service.recoverConstructionSite({ ...connection, prepared })
+      ).rejects.toMatchObject({
+        message: 'construction_site_outcome_unknown',
+      });
+      expect(execute).toHaveBeenCalledTimes(1);
+      expect(execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operationName: 'SvaMainserverConstructionSiteOperation',
+          variables: { externalId: 'studio-construction-site:operation-new' },
+        }),
+        undefined
+      );
+      expect(execute.mock.calls.some(([call]) => call.operationName.endsWith('Write'))).toBe(false);
+    }
+  );
   it.each(['locations', 'categories'] as const)(
     'reports the known provider identity when %s are missing after write and never retries',
     async (field) => {

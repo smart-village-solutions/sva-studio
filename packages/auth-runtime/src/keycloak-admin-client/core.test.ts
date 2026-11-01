@@ -279,6 +279,81 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it('includes the existing email when updating Mainserver credential attributes', async () => {
+    const attributes = { mainserverUserApplicationId: ['application-id'] };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { id: 'kc-user-1', email: 'Existing@example.com' }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+
+    await expect(client.updateUser('kc-user-1', { attributes })).resolves.toBeUndefined();
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      'https://keycloak.example/admin/realms/demo/users/kc-user-1',
+      expect.objectContaining({ method: 'GET' })
+    );
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      3,
+      'https://keycloak.example/admin/realms/demo/users/kc-user-1',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ email: 'Existing@example.com', attributes }),
+      })
+    );
+  });
+
+  it.each([undefined, '', '   '])(
+    'rejects attribute updates without an existing email (%s)',
+    async (email) => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+        .mockResolvedValueOnce(createJsonResponse(200, { id: 'kc-user-1', email }));
+      const client = await createClient(fetchImpl);
+
+      await expect(client.updateUser('kc-user-1', { attributes: {} })).rejects.toMatchObject({
+        statusCode: 400,
+        retryable: false,
+        fieldErrors: [{ field: 'email', code: 'error-user-attribute-required' }],
+      });
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+      expect(fetchImpl.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
+    }
+  );
+
+  it('does not write credential attributes when the email cannot be loaded', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(503, { error: 'temporarily_unavailable' }));
+    const client = await createClient(fetchImpl, { maxRetries: 0 });
+
+    await expect(client.updateUser('kc-user-1', { attributes: {} })).rejects.toMatchObject({
+      statusCode: 503,
+    });
+    expect(fetchImpl.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
+  });
+
+  it('uses an explicitly supplied email without loading the previous profile', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+    const input = { email: 'new@example.com', attributes: { custom: ['value'] } };
+
+    await expect(client.updateUser('kc-user-1', input)).resolves.toBeUndefined();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      'https://keycloak.example/admin/realms/demo/users/kc-user-1',
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify(input) })
+    );
+  });
+
   it('preserves every structured Keycloak field error for profile update failures', async () => {
     const fetchImpl = vi
       .fn()

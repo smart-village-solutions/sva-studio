@@ -122,8 +122,7 @@ export const buildStudioRowsFromMaterialization = (
 
       return tour.wasteFractionIds.flatMap((fractionId) => {
         const fraction = fractionById.get(fractionId);
-        if (!fraction) return [];
-        if (!fraction.name?.trim()) return [];
+        if (!fraction?.name?.trim()) return [];
         const wasteType = fraction.pdfShortLabel?.trim().toUpperCase();
         if (!wasteType) throw new Error(`missing_waste_type_short_label:${fractionId}`);
 

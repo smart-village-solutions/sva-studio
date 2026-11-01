@@ -188,3 +188,8 @@ sind nicht Teil dieses Abschnitts.
 
 Der [L19-Umsetzungsnachweis](../../../docs/development/abfallkalender-status-entwicklungsbriefing.md)
 führt Umfang, Prüfergebnisse und Grenzen dieses lokalen Zwischenstands auf.
+
+- [x] 9.7 Nutzerauftrag zur PR-Erstellung ausführen: integrierte Migration
+      als [Entwurfs-PR #2034](https://github.com/smart-village-solutions/sva-studio/pull/2034)
+      nach `main` veröffentlichen, lokale Artefakte ausschließen und
+      Changelog-Eintrag ergänzen. CI- und Merge-Freigabe bleiben eigenständig.

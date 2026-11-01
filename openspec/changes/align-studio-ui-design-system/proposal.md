@@ -139,3 +139,6 @@ Die vollständige manuelle Sprach-/Accessibility-Matrix und fachliche
 Produktabnahme bleiben offen. Lokale Prüfergebnisse sind im Design und im
 L19-Entwicklungsbriefing dokumentiert; GitHub-Gates werden erst dem späteren
 PR-HEAD zugeordnet. Der Entwurfsstatus ist keine Merge-Freigabe.
+
+**Entwurfs-PR:** [#2034](https://github.com/smart-village-solutions/sva-studio/pull/2034)
+nach `main`; CI und offene manuelle Abnahmen sind dort getrennt ausgewiesen.

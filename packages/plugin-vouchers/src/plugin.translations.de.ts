@@ -31,6 +31,7 @@ export const voucherTranslationsDe = {
     read: 'Gutscheine lesen',
     create: 'Gutscheine erstellen',
     update: 'Gutscheine bearbeiten',
+    delete: 'Gutscheine löschen',
     publish: 'Gutscheine anzeigen und ausblenden',
   },
   editor: {

@@ -272,6 +272,12 @@ export const useContentListDeletion = ({
     destructiveResult,
     setDestructiveResult,
     pendingRowDeletion,
+    rowDeleteDescription: t(
+      pendingRowDeletion?.contentType === 'vouchers.voucher'
+        ? 'content.actions.deleteVoucherConfirmDescription'
+        : 'content.actions.deleteConfirmDescription',
+      { title: pendingRowDeletion?.title ?? '' }
+    ),
     setPendingRowDeletion,
     rowDeletePending,
     rowDeleteError,

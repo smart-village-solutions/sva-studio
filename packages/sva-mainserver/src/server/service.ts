@@ -40,6 +40,9 @@ export const listSvaMainserverVouchers = (
 export const getSvaMainserverVoucher = (
   input: SvaMainserverConnectionInput & { voucherId: string }
 ) => getDefaultService().getVoucher(input);
+export const deleteSvaMainserverVoucher = (
+  input: SvaMainserverConnectionInput & { voucherId: string }
+) => getDefaultService().deleteVoucher(input);
 export const getSvaMainserverPoiVoucherState = (
   input: SvaMainserverConnectionInput & { poiId: string }
 ) => getDefaultService().getPoiVoucherState(input);

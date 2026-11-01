@@ -29,6 +29,15 @@ export type VoucherList = Readonly<{
   fetchedAt: string;
 }>;
 const base = '/api/v1/mainserver/vouchers';
+export const deleteVoucher = async (
+  id: string,
+  principal: MainserverActingPrincipalType
+): Promise<void> => {
+  await requestMainserverJson<{ data: { id: string } }>({
+    url: `${base}/${encodeURIComponent(id)}`,
+    init: { method: 'DELETE', headers: createMainserverMutationHeaders(principal) },
+  });
+};
 export const listVouchers = (
   page: number,
   search: string,

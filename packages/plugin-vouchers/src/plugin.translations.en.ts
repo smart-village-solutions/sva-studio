@@ -31,6 +31,7 @@ export const voucherTranslationsEn = {
     read: 'Read vouchers',
     create: 'Create vouchers',
     update: 'Edit vouchers',
+    delete: 'Delete vouchers',
     publish: 'Show and hide vouchers',
   },
   editor: {

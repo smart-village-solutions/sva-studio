@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({
   list: vi.fn(),
   categories: vi.fn(),
   history: vi.fn(),
+  realMedia: false,
 }));
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -55,12 +56,17 @@ vi.mock('../src/construction-sites.api.js', async (original) => ({
   getConstructionSite: (...args: unknown[]) => state.get(...args),
   saveConstructionSite: (...args: unknown[]) => state.save(...args),
   listConstructionSites: (...args: unknown[]) => state.list(...args),
-  listConstructionSiteCategories: () => state.categories(),
+  listConstructionSiteCategories: (...args: unknown[]) => state.categories(...args),
 }));
 vi.mock('../src/construction-sites.map.js', () => ({ ConstructionSiteMap: () => null }));
-vi.mock('../src/construction-sites.form-media.js', () => ({
-  ConstructionSiteMediaFields: () => null,
-}));
+vi.mock('../src/construction-sites.form-media.js', async (original) => {
+  const actual = await original<typeof import('../src/construction-sites.form-media.js')>();
+  return {
+    ConstructionSiteMediaFields: (
+      props: React.ComponentProps<typeof actual.ConstructionSiteMediaFields>
+    ) => (state.realMedia ? <actual.ConstructionSiteMediaFields {...props} /> : null),
+  };
+});
 const record = {
   id: '42',
   genericType: 'ConstructionSite' as const,
@@ -79,6 +85,7 @@ beforeEach(() => {
   sessionStorage.clear();
   state.search = {};
   state.id = '42';
+  state.realMedia = false;
   publishSessionAccessSnapshot({
     isResolved: true,
     subjectId: 'actor',
@@ -105,6 +112,55 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe('construction site editorial UI', () => {
+  it('switches the overview and its category lookup between permitted author principals', async () => {
+    render(
+      <ConstructionSitesListPage
+        principalControl={{
+          kind: 'selectable',
+          value: 'organization',
+          options: [
+            { value: 'organization', label: 'Organisation' },
+            { value: 'user', label: 'Persönlich' },
+          ],
+        }}
+      />
+    );
+    await waitFor(() =>
+      expect(state.list).toHaveBeenLastCalledWith(expect.anything(), 'organization')
+    );
+    fireEvent.change(screen.getByLabelText('Handeln als'), { target: { value: 'user' } });
+    await waitFor(() => expect(state.list).toHaveBeenLastCalledWith(expect.anything(), 'user'));
+    expect(state.categories).toHaveBeenLastCalledWith('user');
+  });
+  it('opens the media details and focuses the actual invalid URL field from the error summary', async () => {
+    state.realMedia = true;
+    state.get.mockResolvedValue({
+      data: {
+        ...record,
+        input: {
+          ...record.input,
+          mediaContents: [
+            {
+              contentType: 'image',
+              sourceUrl: { url: 'invalid', description: '' },
+              captionText: '',
+              copyright: '',
+            },
+          ],
+        },
+      },
+      access: { 'construction-sites.update': true },
+    });
+    const { container } = render(<ConstructionSitesEditPage />);
+    await screen.findByDisplayValue('Brückenbau');
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.click(await screen.findByRole('link', { name: 'Bitte prüfen Sie diese Angabe.' }));
+    const url = screen.getByDisplayValue('invalid');
+    await waitFor(() => expect(document.activeElement).toBe(url));
+    expect((container.querySelector('#cs-mediaContents') as HTMLDetailsElement).open).toBe(true);
+    expect(url.getAttribute('aria-invalid')).toBe('true');
+    expect(state.save).not.toHaveBeenCalled();
+  });
   it('creates through the onepager and exposes the saved identity without submitting again', async () => {
     render(<ConstructionSitesCreatePage />);
     fireEvent.change(screen.getByLabelText(/^Titel/), { target: { value: 'Brückenbau' } });

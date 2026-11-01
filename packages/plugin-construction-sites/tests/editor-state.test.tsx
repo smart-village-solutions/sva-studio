@@ -34,6 +34,23 @@ const record = {
   contentFingerprint: 'a'.repeat(64),
 };
 describe('construction site editor operations', () => {
+  it('reloads category choices for the selected principal without retaining stale choices', async () => {
+    api.categories.mockResolvedValue([{ id: 'org', name: 'Organisation' }]);
+    const { result } = renderHook(() =>
+      useConstructionSiteEditor(undefined, 'principal', 'organization')
+    );
+    await waitFor(() => expect(result.current.categories).toHaveLength(1));
+    expect(api.categories).toHaveBeenLastCalledWith('organization');
+    api.categories.mockRejectedValueOnce(new Error('unavailable'));
+    act(() => result.current.setPrincipal('user'));
+    await waitFor(() => expect(result.current.categoryError).toBe(true));
+    expect(result.current.categories).toEqual([]);
+    expect(api.categories).toHaveBeenLastCalledWith('user');
+    api.categories.mockResolvedValue([{ id: 'org', name: 'Organisation' }]);
+    act(() => result.current.setPrincipal('organization'));
+    await waitFor(() => expect(result.current.categories).toHaveLength(1));
+    expect(result.current.categoryError).toBe(false);
+  });
   it('keeps the chosen end date when changing the beginning and validates before sending', async () => {
     const { result } = renderHook(() => useConstructionSiteEditor(undefined, 'test:actor'));
     await act(async () => result.current.save());
@@ -148,6 +165,7 @@ describe('construction site editor operations', () => {
   });
   it.each([
     'forbidden',
+    'construction_site_prewrite_failed',
     'construction_site_media_unavailable',
     'construction_site_not_found',
     'construction_site_incomplete',
@@ -178,6 +196,7 @@ describe('construction site editor operations', () => {
   });
 
   it.each([
+    'construction_site_prewrite_failed',
     'construction_site_media_unavailable',
     'construction_site_not_found',
     'construction_site_incomplete',

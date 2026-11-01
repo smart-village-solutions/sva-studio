@@ -40,9 +40,12 @@ export const listConstructionSites = (
     init: { headers: createMainserverReadHeaders(principal) },
     url: `/api/v1/mainserver/construction-sites?${new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]))}`,
   });
-export const listConstructionSiteCategories = async () =>
+export const listConstructionSiteCategories = async (
+  principal: MainserverActingPrincipalType = 'user'
+) =>
   (
     await requestMainserverJson<{ data: readonly { id: string; name: string }[] }>({
+      init: { headers: createMainserverReadHeaders(principal) },
       url: '/api/v1/mainserver/categories?dataType=generic_item_construction_site',
     })
   ).data;
@@ -84,6 +87,7 @@ export async function constructionSiteRequestHash(body: ConstructionSiteWrite) {
 export function constructionSiteRejection(error: unknown): string | undefined {
   if (!(error instanceof MainserverApiError)) return undefined;
   return [
+    'construction_site_prewrite_failed',
     'construction_site_content_conflict',
     'construction_site_invalid_input',
     'construction_site_media_unavailable',

@@ -9,9 +9,6 @@ import {
 } from '@sva/plugin-sdk';
 import {
   Button,
-  Input,
-  Select,
-  StudioField,
   StudioOverviewPageTemplate,
   StudioDataTable,
   StudioPagination,
@@ -23,54 +20,8 @@ import {
 import { constructionSiteTemporalState, type ConstructionSiteList } from './contract.js';
 import { listConstructionSites, listConstructionSiteCategories } from './construction-sites.api.js';
 import { useConstructionSiteAccess } from './construction-sites.access.js';
+import { ListFilters, listFilters } from './construction-sites.list-filters.js';
 
-function ListFilters({
-  filters,
-  categories,
-  filter,
-}: Readonly<{
-  filters: Record<string, string>;
-  categories: readonly { id: string; name: string }[];
-  filter: (key: string, value: string) => void;
-}>) {
-  const pt = usePluginTranslation('construction-sites');
-  return (
-    <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <StudioField id="cs-search" label={pt('fields.search')}>
-        <Input
-          id="cs-search"
-          type="search"
-          value={filters.search}
-          onChange={(event) => filter('search', event.currentTarget.value)}
-        />
-      </StudioField>
-      <StudioField id="cs-category" label={pt('fields.categories')}>
-        <Select
-          id="cs-category"
-          value={filters.category}
-          onChange={(event) => filter('category', event.currentTarget.value)}
-        >
-          <option value="">{pt('fields.allCategories')}</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.name}>
-              {category.name}
-            </option>
-          ))}
-        </Select>
-      </StudioField>
-      {(['dateStart', 'dateEnd'] as const).map((key) => (
-        <StudioField key={key} id={`cs-filter-${key}`} label={pt(`fields.${key}`)}>
-          <Input
-            id={`cs-filter-${key}`}
-            type="date"
-            value={filters[key]}
-            onChange={(event) => filter(key, event.currentTarget.value)}
-          />
-        </StudioField>
-      ))}
-    </div>
-  );
-}
 function ListTable({ result, today }: Readonly<{ result: ConstructionSiteList; today: string }>) {
   const pt = usePluginTranslation('construction-sites');
   return (
@@ -152,23 +103,16 @@ function useListData(query: string, scope: string, principal: MainserverActingPr
   }, [query, scope, principal]);
   useEffect(() => {
     let active = true;
-    void listConstructionSiteCategories().then(
+    setCategories([]);
+    void listConstructionSiteCategories(principal).then(
       (items) => active && setCategories(items),
       () => undefined
     );
     return () => {
       active = false;
     };
-  }, [scope]);
+  }, [scope, principal]);
   return { result, state, categories };
-}
-function listFilters(search: Record<string, unknown>) {
-  return Object.fromEntries(
-    ['search', 'category', 'dateStart', 'dateEnd'].map((key) => [
-      key,
-      typeof search[key] === 'string' ? (search[key] as string) : '',
-    ])
-  );
 }
 export function ConstructionSitesListPage({
   principalControl,
@@ -178,28 +122,21 @@ export function ConstructionSitesListPage({
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as Record<string, unknown>;
   const { page, pageSize } = normalizeListSearch(search);
-  const filters = listFilters(search);
+  const { filters, filter } = listFilters(search, navigate, pageSize);
   const query = JSON.stringify({ ...filters, page, pageSize });
   const scope = JSON.stringify([
     access.session.instanceId,
     access.session.subjectId,
     access.session.organizationId,
   ]);
-  const principal = principalControl?.value ?? 'user';
+  const [selectedPrincipal, setPrincipal] = useState<MainserverActingPrincipalType>(
+    principalControl?.value ?? 'user'
+  );
+  const principal =
+    principalControl?.kind === 'selectable'
+      ? selectedPrincipal
+      : (principalControl?.value ?? 'user');
   const { result, state, categories } = useListData(query, scope, principal);
-  const filter = (key: string, value: string) =>
-    void navigate({
-      to: '/admin/content',
-      search: (current: Record<string, unknown>) => ({
-        ...current,
-        type: 'construction-sites.construction-site',
-        q: key === 'search' ? value || undefined : current.search,
-        ...(key === 'search' ? {} : { [key]: value || undefined }),
-        page: 1,
-        pageSize,
-      }),
-      replace: true,
-    });
   const today = toDatetimeLocalValue(new Date().toISOString()).slice(0, 10);
   return (
     <StudioOverviewPageTemplate
@@ -213,7 +150,14 @@ export function ConstructionSitesListPage({
         ) : undefined
       }
     >
-      <ListFilters filters={filters} categories={categories} filter={filter} />
+      <ListFilters
+        filters={filters}
+        categories={categories}
+        filter={filter}
+        principalControl={principalControl}
+        principal={principal}
+        onPrincipalChange={setPrincipal}
+      />
       {state === 'loading' ? (
         <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>
       ) : state === 'error' ? (

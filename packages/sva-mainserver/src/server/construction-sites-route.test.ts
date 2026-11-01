@@ -23,6 +23,7 @@ const state = vi.hoisted(() => ({
   finalize: vi.fn(),
   categories: vi.fn(),
   resourceAccess: vi.fn(),
+  authorizeExisting: vi.fn(),
   replaceReferences: vi.fn(),
   asset: vi.fn(),
 }));
@@ -94,7 +95,7 @@ vi.mock('./mutation-principal.js', () => ({
   resolveMainserverResourceActor: () => actor(),
   resolveMainserverResourceAccess: (input: unknown) => state.resourceAccess(input),
   authorizeMainserverCreateForPrincipal: async () => ({}),
-  authorizeMainserverExistingContent: async () => ({}),
+  authorizeMainserverExistingContent: (input: unknown) => state.authorizeExisting(input),
   finalizeMainserverMutation: (input: unknown) => state.finalize(input),
   recordCreatedMainserverDataProvider: async () => ({ outcome: 'observed' }),
   resolveMainserverVisibilityAction: () => undefined,
@@ -158,6 +159,9 @@ beforeEach(() => {
   state.resourceAccess.mockImplementation(({ actions }) =>
     Object.fromEntries(actions.map((action: string) => [action, !state.deny.has(action)]))
   );
+  state.authorizeExisting.mockImplementation(({ action }: { action: string }) =>
+    state.deny.has(action) ? new Response(null, { status: 403 }) : {}
+  );
 });
 describe('construction-sites HTTP contract', () => {
   it('does not claim unrelated routes and rejects DELETE', async () => {
@@ -197,6 +201,18 @@ describe('construction-sites HTTP contract', () => {
     expect(response?.status).toBe(200);
     expect(state.write).toHaveBeenCalledTimes(1);
   });
+  it('identifies a failed preparation as safe to retry before reserving or writing', async () => {
+    state.prepare.mockImplementationOnce(() => {
+      throw new Error('upstream unavailable');
+    });
+    const response = await dispatch(request({ site: input() }));
+    expect(response?.status).toBe(502);
+    expect(await response?.json()).toMatchObject({ error: 'construction_site_prewrite_failed' });
+    expect(state.entries.size).toBe(0);
+    expect(state.write).not.toHaveBeenCalled();
+    expect((await dispatch(request({ site: input() })))?.status).toBe(201);
+    expect(state.write).toHaveBeenCalledTimes(1);
+  });
   it('retains a durable expectation and recovers a lost response without repeating the write', async () => {
     const body = { site: input() };
     state.write.mockRejectedValueOnce(new Error('response_lost'));
@@ -210,6 +226,28 @@ describe('construction-sites HTTP contract', () => {
     expect(response?.status).toBe(201);
     expect(state.write).toHaveBeenCalledTimes(1);
     expect(state.recover).toHaveBeenCalledTimes(1);
+  });
+  it('recovers a create-only operation with object authorization and no second provider write', async () => {
+    state.deny.add('construction-sites.read');
+    const body = { site: input() };
+    state.write.mockRejectedValueOnce(new Error('response_lost'));
+    expect((await dispatch(request(body)))?.status).toBe(409);
+    const recovery = {
+      recover: true,
+      inputHash: createHash('sha256').update(JSON.stringify(body)).digest('hex'),
+    };
+    expect((await dispatch(request(recovery)))?.status).toBe(201);
+    expect(state.authorizeExisting).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'construction-sites.create',
+        contentType: 'construction-sites.construction-site',
+        contentId: '42',
+        item: expect.objectContaining({ dataProvider: { id: 'provider-1' } }),
+      })
+    );
+    state.authorizeExisting.mockReturnValue(new Response(null, { status: 403 }));
+    expect((await dispatch(request(recovery)))?.status).toBe(403);
+    expect(state.write).toHaveBeenCalledTimes(1);
   });
   it('binds recovery to the original identity context', async () => {
     const body = { site: input() };

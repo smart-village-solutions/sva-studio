@@ -55,53 +55,69 @@ export async function mutateConstructionSite(
   ctx: AuthenticatedRequestContext,
   id?: string
 ) {
-  if (validateCsrf(request))
-    return errorJson(403, 'csrf_validation_failed', 'csrf_validation_failed');
-  const authorized = await constructionSiteLocalAccess(
-    ctx,
-    id ? 'construction-sites.update' : 'construction-sites.create',
-    id
-  );
-  if (isResponse(authorized)) return authorized;
-  const actor = await resolveMainserverMutationActor({ request, ctx, authorizedActor: authorized });
-  if (isResponse(actor)) return actor;
-  const text = await request.text();
-  let body: unknown;
   try {
-    body = JSON.parse(text);
-  } catch {
-    return errorJson(400, 'construction_site_invalid_input', 'construction_site_invalid_input');
+    if (validateCsrf(request))
+      return errorJson(403, 'csrf_validation_failed', 'csrf_validation_failed');
+    const authorized = await constructionSiteLocalAccess(
+      ctx,
+      id ? 'construction-sites.update' : 'construction-sites.create',
+      id
+    );
+    if (isResponse(authorized)) return authorized;
+    const actor = await resolveMainserverMutationActor({
+      request,
+      ctx,
+      authorizedActor: authorized,
+    });
+    if (isResponse(actor)) return actor;
+    const text = await request.text();
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      return errorJson(400, 'construction_site_invalid_input', 'construction_site_invalid_input');
+    }
+    const scope = {
+      instanceId: actor.instanceId,
+      actorAccountId: actor.actorAccountId,
+      idempotencyKey: actor.operationExternalId,
+    };
+    const reconciliation = recoverSchema.safeParse(body);
+    if (reconciliation.success)
+      return recover(
+        ctx,
+        actor,
+        scope,
+        operationHash(actor, reconciliation.data.inputHash, id),
+        id
+      );
+    const parsed = writeSchema.safeParse(body);
+    if (!parsed.success)
+      return errorJson(400, 'construction_site_invalid_input', 'construction_site_invalid_input');
+    const prepared = await prepareWrite(ctx, actor, parsed.data, id);
+    if (isResponse(prepared)) return prepared;
+    const media = await authorizeConstructionSiteMedia(
+      ctx,
+      parsed.data.site,
+      prepared.previousMediaIds,
+      id
+    );
+    if (isResponse(media)) return media;
+    const providerAuthorization = await authorizeWrite(actor, prepared);
+    if (isResponse(providerAuthorization)) return providerAuthorization;
+    // Return without awaiting: failures after this boundary must remain uncertain.
+    return executeWrite(
+      ctx,
+      actor,
+      scope,
+      operationHash(actor, createHash('sha256').update(text).digest('hex'), id),
+      prepared,
+      id
+    );
+  } catch (error) {
+    if (error instanceof Error && /^construction_site_[a-z_]+$/.test(error.message)) throw error;
+    return errorJson(502, 'construction_site_prewrite_failed', 'construction_site_prewrite_failed');
   }
-  const scope = {
-    instanceId: actor.instanceId,
-    actorAccountId: actor.actorAccountId,
-    idempotencyKey: actor.operationExternalId,
-  };
-  const reconciliation = recoverSchema.safeParse(body);
-  if (reconciliation.success)
-    return recover(ctx, actor, scope, operationHash(actor, reconciliation.data.inputHash, id), id);
-  const parsed = writeSchema.safeParse(body);
-  if (!parsed.success)
-    return errorJson(400, 'construction_site_invalid_input', 'construction_site_invalid_input');
-  const prepared = await prepareWrite(ctx, actor, parsed.data, id);
-  if (isResponse(prepared)) return prepared;
-  const media = await authorizeConstructionSiteMedia(
-    ctx,
-    parsed.data.site,
-    prepared.previousMediaIds,
-    id
-  );
-  if (isResponse(media)) return media;
-  const providerAuthorization = await authorizeWrite(actor, prepared);
-  if (isResponse(providerAuthorization)) return providerAuthorization;
-  return executeWrite(
-    ctx,
-    actor,
-    scope,
-    operationHash(actor, createHash('sha256').update(text).digest('hex'), id),
-    prepared,
-    id
-  );
 }
 
 async function executeWrite(

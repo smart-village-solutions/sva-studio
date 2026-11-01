@@ -48,7 +48,7 @@ function useEditorData(
     enabled: true,
     hasUnsavedChanges: dirty || Boolean(pending),
   });
-  const data = {
+  return {
     id,
     principal,
     setPrincipal,
@@ -57,7 +57,6 @@ function useEditorData(
     setRecord,
     draft,
     setDraft,
-    baseline,
     setBaseline,
     resourceAccess,
     setResourceAccess,
@@ -82,7 +81,6 @@ function useEditorData(
     dirty,
     guard,
   };
-  return data;
 }
 function useEditorLoads({
   id,
@@ -100,14 +98,16 @@ function useEditorLoads({
 }: ReturnType<typeof useEditorData>) {
   useEffect(() => {
     let active = true;
-    void listConstructionSiteCategories().then(
+    setCategories([]);
+    setCategoryError(false);
+    void listConstructionSiteCategories(principal).then(
       (items) => active && setCategories(items),
       () => active && setCategoryError(true)
     );
     return () => {
       active = false;
     };
-  }, []);
+  }, [principal, key]);
   useEffect(() => {
     setPending(readConstructionSitePending(key));
     if (!id) return;

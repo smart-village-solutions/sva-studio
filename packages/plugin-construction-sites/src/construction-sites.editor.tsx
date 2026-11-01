@@ -135,6 +135,19 @@ function EditorPrincipal({
     </fieldset>
   );
 }
+function focusMediaUrl(field: string) {
+  const mediaUrl = /^cs-mediaContents-(\d+)-sourceUrl-url$/.exec(field);
+  if (mediaUrl)
+    globalThis.setTimeout(() => {
+      const input = document.querySelectorAll<HTMLInputElement>(
+        '#cs-mediaContents input[id^="content-media-"][id$="-url"]'
+      )[Number(mediaUrl[1])];
+      if (!input) return;
+      const details = input.closest('details');
+      if (details) details.open = true;
+      input.focus();
+    }, 0);
+}
 function EditorPanels({
   s,
   disabled,
@@ -182,9 +195,10 @@ function EditorPanels({
   return (
     <>
       <StudioFormSummaryErrors
-        onSelectError={({ field }) =>
-          setTab(/^cs-(title|dates|visible)/.test(field) ? 'basis' : 'content')
-        }
+        onSelectError={({ field }) => {
+          setTab(/^cs-(title|dates|visible)/.test(field) ? 'basis' : 'content');
+          focusMediaUrl(field);
+        }}
         title={pt('validation.summary')}
         errors={[...new Set(s.errors.map(constructionSiteFieldId))].map((field) => ({
           field,

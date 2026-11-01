@@ -54,6 +54,9 @@ describe('construction site HTTP client', () => {
     await listConstructionSites({ search: 'Straße & Brücke', page: 2 });
     await listConstructionSiteCategories();
     expect(
+      new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get('X-SVA-Acting-Principal-Type')
+    ).toBe('user');
+    expect(
       new URL(fetchMock.mock.calls[0]?.[0] as string, 'https://test.local').searchParams.get(
         'search'
       )
@@ -65,6 +68,10 @@ describe('construction site HTTP client', () => {
     await listConstructionSites({ page: 1 }, 'organization');
     expect(
       new Headers(fetchMock.mock.calls[2]?.[1]?.headers).get('X-SVA-Acting-Principal-Type')
+    ).toBe('organization');
+    await listConstructionSiteCategories('organization');
+    expect(
+      new Headers(fetchMock.mock.calls[3]?.[1]?.headers).get('X-SVA-Acting-Principal-Type')
     ).toBe('organization');
   });
   it('keeps invalid persisted markers inert and hashes the exact request body', async () => {

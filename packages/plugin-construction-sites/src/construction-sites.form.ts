@@ -7,5 +7,9 @@ export type ConstructionSiteFormProps = Readonly<{
   canPublish: boolean;
   disabled: boolean;
 }>;
-export const constructionSiteFieldId = (path: string) =>
-  path.startsWith('mediaContents') ? 'cs-mediaContents-summary' : `cs-${path.replace(/\./g, '-')}`;
+export const constructionSiteFieldId = (path: string) => {
+  if (!path.startsWith('mediaContents')) return `cs-${path.replace(/\./g, '-')}`;
+  const url = /^mediaContents\.(\d+)\.sourceUrl\.url$/.exec(path);
+  if (url) return `cs-mediaContents-${url[1]}-sourceUrl-url`;
+  return 'cs-mediaContents-summary';
+};

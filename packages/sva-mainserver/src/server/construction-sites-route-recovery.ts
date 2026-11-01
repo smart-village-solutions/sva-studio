@@ -148,10 +148,10 @@ export async function recover(
   const authorization = await authorizeWrite(actor, prepared);
   if (isResponse(authorization)) return authorization;
   const data = await recoverSvaMainserverConstructionSite({ ...actor, prepared });
-  // Recovery rechecks resource access after resolving a newly created provider ID.
+  // Recheck the original operation at the resolved object and its provider.
   const readAccess = await authorizeMainserverExistingContent({
     actor,
-    action: 'construction-sites.read',
+    action: prepared.id ? 'construction-sites.update' : 'construction-sites.create',
     contentType: CONSTRUCTION_SITES_TYPE,
     contentId: data.id,
     item: data,

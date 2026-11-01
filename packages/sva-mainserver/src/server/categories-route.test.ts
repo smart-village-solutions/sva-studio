@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   listSvaMainserverCategoryManagement: vi.fn(),
   saveSvaMainserverCategory: vi.fn(),
   deleteSvaMainserverCategory: vi.fn(),
+  resolveMainserverResourceActor: vi.fn(),
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
@@ -20,6 +21,9 @@ vi.mock('@sva/auth-runtime/server', () => ({
   reserveIdempotency: state.reserveIdempotency,
   completeIdempotency: state.completeIdempotency,
   validateCsrf: state.validateCsrf,
+}));
+vi.mock('./mutation-principal.js', () => ({
+  resolveMainserverResourceActor: state.resolveMainserverResourceActor,
 }));
 
 vi.mock('./service.js', async (importOriginal) => {
@@ -222,7 +226,7 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     });
   });
 
-  it('denies the construction lookup without the construction read permission', async () => {
+  it('denies the construction lookup without construction read or create permission', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     allow('categories.read');
     const response = await dispatchSvaMainserverCategoriesRequest(
@@ -234,19 +238,64 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['GET', '/categories'],
-    ['GET', '/categories?dataType=event_record'],
-    ['GET', '/categories?view=management&dataType=generic_item_construction_site'],
-    ['GET', '/categories/cat-1?dataType=generic_item_construction_site'],
-    ['GET', '/categories?dataType=generic_item_construction_site&dataType=news_item'],
-    ['POST', '/categories?dataType=generic_item_construction_site'],
-    ['DELETE', '/categories/cat-1?dataType=generic_item_construction_site'],
-  ])(
-    'does not grant category administration to a construction reader: %s %s',
-    async (method, path) => {
+  it.each(['construction-sites.read', 'construction-sites.create'])(
+    'loads construction choices with the selected principal and only %s',
+    async (action) => {
       state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
-      allow('construction-sites.read');
+      allow(action);
+      state.listSvaMainserverCategories.mockResolvedValue([]);
+      for (const principal of ['organization', 'user']) {
+        const scopedActor = {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'subject-1',
+          actingPrincipalType: principal,
+        };
+        state.resolveMainserverResourceActor.mockResolvedValue(scopedActor);
+        const request = new Request(
+          'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_construction_site',
+          {
+            headers: { 'X-SVA-Acting-Principal-Type': principal },
+          }
+        );
+        expect((await dispatchSvaMainserverCategoriesRequest(request))?.status).toBe(200);
+        expect(state.resolveMainserverResourceActor).toHaveBeenCalledWith(
+          expect.objectContaining({ request, ctx })
+        );
+        expect(state.listSvaMainserverCategories).toHaveBeenLastCalledWith(scopedActor);
+      }
+      state.resolveMainserverResourceActor.mockResolvedValue(undefined);
+      const denied = new Request(
+        'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_construction_site',
+        {
+          headers: { 'X-SVA-Acting-Principal-Type': 'user' },
+        }
+      );
+      expect((await dispatchSvaMainserverCategoriesRequest(denied))?.status).toBe(403);
+      expect(state.listSvaMainserverCategories).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it.each(
+    (
+      [
+        ['GET', '/categories'],
+        ['GET', '/categories?dataType=event_record'],
+        ['GET', '/categories?view=management&dataType=generic_item_construction_site'],
+        ['GET', '/categories/cat-1?dataType=generic_item_construction_site'],
+        ['GET', '/categories?dataType=generic_item_construction_site&dataType=news_item'],
+        ['POST', '/categories?dataType=generic_item_construction_site'],
+        ['DELETE', '/categories/cat-1?dataType=generic_item_construction_site'],
+      ] as const
+    ).flatMap(([method, path]) =>
+      ['construction-sites.read', 'construction-sites.create'].map(
+        (action) => [method, path, action] as const
+      )
+    )
+  )(
+    'does not grant category administration through %s %s with %s',
+    async (method, path, action) => {
+      state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+      allow(action);
       const response = await dispatchSvaMainserverCategoriesRequest(
         new Request(`https://studio.test/api/v1/mainserver${path}`, { method })
       );

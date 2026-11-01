@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
@@ -7,21 +8,20 @@ import { describe, expect, it } from 'vitest';
 const validatorPath = fileURLToPath(new URL('./verify-studio-image-contract.mjs', import.meta.url));
 const revision = 'a'.repeat(40);
 const digest = `sha256:${'b'.repeat(64)}`;
-const regularPlugins = [
-  'app-translations',
-  'categories',
-  'cockpit',
-  'cockpit-cards',
-  'events',
-  'faq',
-  'generic-items',
-  'news',
-  'poi',
-  'projects',
-  'surveys',
-  'vouchers',
-  'waste-management',
-];
+const regularPlugins = JSON.parse(
+  execFileSync(
+    process.execPath,
+    [
+      '--import',
+      'tsx',
+      fileURLToPath(new URL('./studio-distribution-artifact.ts', import.meta.url)),
+      'selection',
+      'ignored',
+      'studio',
+    ],
+    { encoding: 'utf8', env: { ...process.env, SVA_STUDIO_PLUGIN_IDS: '' } }
+  )
+).pluginIds as string[];
 const excludedWorkspacePackages = {
   studio: ['plugin-ssf'],
   ssf: [
@@ -30,22 +30,16 @@ const excludedWorkspacePackages = {
     'waste-management-runtime',
   ],
 };
-const workspacePluginIds = [
-  'app-translations',
-  'categories',
-  'news',
-  'events',
-  'poi',
-  'generic-items',
-  'vouchers',
-  'faq',
-  'cockpit',
-  'cockpit-cards',
-  'projects',
-  'surveys',
-  'ssf',
-  'waste-management',
-];
+const workspacePluginIds = (
+  JSON.parse(
+    readFileSync(
+      new URL('../../apps/sva-studio-react/plugin-catalog.json', import.meta.url),
+      'utf8'
+    )
+  ) as { pluginId: string; sourceType: string; enabled: boolean }[]
+)
+  .filter((entry) => entry.sourceType === 'workspace' && entry.enabled)
+  .map((entry) => entry.pluginId);
 
 const validInput = (
   distribution: 'studio' | 'ssf' | 'custom',
@@ -153,6 +147,30 @@ const verify = (input: ReturnType<typeof validInput>) =>
   });
 
 describe('verify-studio-image-contract', () => {
+  it.each(['studio', 'custom'] as const)(
+    'verifies construction-site chunks and requires their package in %s',
+    (distribution) => {
+      const input = validInput(distribution, ['construction-sites']);
+      for (const chunk of input.chunkProvenance.chunks)
+        chunk.pluginPackages.push('plugin-construction-sites');
+      expect(JSON.parse(verify(input)).includedPluginIds).toContain('construction-sites');
+      input.packages = input.packages.filter((name) => name !== 'plugin-construction-sites');
+      expect(() => verify(input)).toThrow('plugin_package_inventory_mismatch:construction-sites');
+    }
+  );
+  it('rejects construction-site code in the SSF image', () => {
+    const input = validInput('ssf');
+    for (const chunk of input.chunkProvenance.chunks)
+      chunk.pluginPackages.push('plugin-construction-sites');
+    expect(() => verify(input)).toThrow(
+      'chunk_provenance_excluded_plugin:plugin-construction-sites'
+    );
+  });
+  it('rejects a construction-site package outside the selected custom set', () => {
+    const input = validInput('custom', ['news']);
+    input.packages.push('plugin-construction-sites');
+    expect(() => verify(input)).toThrow('plugin_package_inventory_mismatch:construction-sites');
+  });
   it.each(['studio', 'custom'] as const)(
     'verifies app translation chunks and requires their package in %s',
     (distribution) => {

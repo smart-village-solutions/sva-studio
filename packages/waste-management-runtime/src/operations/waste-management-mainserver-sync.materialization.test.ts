@@ -172,6 +172,58 @@ describe('waste-management-mainserver-sync.materialization', () => {
       expect(new Set(rows.map((row) => row.key)).size).toBe(6);
     });
 
+    it.each(['Alle Straßen', '  alle straßen  '])(
+      'inherits imported all-streets source %s and preserves its existing catch-all address',
+      (allStreetsName) => {
+        const input = buildInput();
+        const importedInput = {
+          ...input,
+          streets: [
+            ...input.streets,
+            {
+              id: 'all-streets',
+              cityId: 'city-1',
+              name: allStreetsName,
+              createdAt: '',
+              updatedAt: '',
+            },
+          ],
+          houseNumbers: [
+            ...(input.houseNumbers ?? []),
+            {
+              id: 'all-houses',
+              streetId: 'all-streets',
+              number: 'Alle Hausnummern',
+              createdAt: '',
+              updatedAt: '',
+            },
+          ],
+          locations: input.locations.map((location) =>
+            location.id === 'city-wide'
+              ? { ...location, streetId: 'all-streets', houseNumberId: 'all-houses' }
+              : location
+          ),
+        };
+        const rows = buildStudioRowsFromMaterialization(importedInput);
+        expect(rows).toHaveLength(8);
+        for (const street of [
+          allStreetsName.trim(),
+          'Hauptstraße',
+          'Hauptstraße 5',
+          'Bahnhofstraße',
+        ]) {
+          expect(rows.filter((row) => row.street === street)).toHaveLength(2);
+        }
+        expect(new Set(rows.map((row) => row.key)).size).toBe(8);
+        const onlyCatchAllRows = buildStudioRowsFromMaterialization({
+          ...importedInput,
+          locations: importedInput.locations.filter((location) => location.id === 'city-wide'),
+        });
+        expect(onlyCatchAllRows).toHaveLength(2);
+        expect(onlyCatchAllRows.every((row) => row.street === allStreetsName.trim())).toBe(true);
+      }
+    );
+
     it('respects regional restrictions and falls back to the city region for targets without one', () => {
       const input = buildInput();
       const rows = buildStudioRowsFromMaterialization({

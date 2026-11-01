@@ -7,7 +7,10 @@ import type {
   WasteTourRecord,
 } from '@sva/waste-management-contracts';
 import { convertRichTextHtmlToPlainText } from '@sva/core';
-import { buildWasteStreetKey } from '@sva/waste-management-contracts';
+import {
+  buildWasteStreetKey,
+  wasteLocationTourPickupDateImportDefaults,
+} from '@sva/waste-management-contracts';
 import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 
 import type { MaterializedLocationTourPickupDateRecord } from './waste-management-mainserver-sync.materialization.js';
@@ -87,12 +90,20 @@ export const buildStudioRowsFromMaterialization = (
     const zip = cityRecord?.postalCode?.trim();
     if (!city) return [];
 
-    const targetLocations = location.streetId
-      ? [location]
-      : (streetLocationsByCity.get(location.cityId) ?? []).filter(
+    const isCityWide =
+      !location.streetId ||
+      streetById
+        .get(location.streetId)
+        ?.name.trim()
+        .localeCompare(wasteLocationTourPickupDateImportDefaults.allStreetsName, 'de', {
+          sensitivity: 'base',
+        }) === 0;
+    const targetLocations = isCityWide
+      ? (streetLocationsByCity.get(location.cityId) ?? []).filter(
           (target) =>
             !location.regionId || (target.regionId ?? cityRecord?.regionId) === location.regionId
-        );
+        )
+      : [location];
     const note = buildPickupNoteHtml(tour.description, pickupDate.note);
 
     return targetLocations.flatMap((target) => {

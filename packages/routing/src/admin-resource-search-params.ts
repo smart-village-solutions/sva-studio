@@ -141,3 +141,35 @@ export const normalizeAdminResourceListSearch = (
     pageSize: normalizePageSize(capabilities.pagination, search),
   };
 };
+
+export const normalizeContentAdminResourceListSearch = (
+  resource: AdminResourceDefinition,
+  search: Record<string, unknown>
+) => {
+  const normalized = normalizeAdminResourceListSearch(resource, search);
+  const contentType =
+    resource.resourceId === 'content' && typeof search.type === 'string' ? search.type.trim() : '';
+  const languageCode =
+    contentType === 'faq.faq' && typeof search.languageCode === 'string'
+      ? search.languageCode.trim().toLowerCase()
+      : '';
+  const poiId =
+    contentType === 'vouchers.voucher' &&
+    typeof search.poiId === 'string' &&
+    /^\d+$/.test(search.poiId.trim())
+      ? search.poiId.trim()
+      : '';
+  return {
+    ...normalized,
+    ...(contentType === '' ? {} : { type: contentType }),
+    ...(languageCode === '' ? {} : { languageCode }),
+    ...(poiId === '' ? {} : { poiId }),
+    ...(contentType === 'construction-sites.construction-site'
+      ? Object.fromEntries(
+          ['category', 'dateStart', 'dateEnd'].flatMap((key) =>
+            typeof search[key] === 'string' && search[key].trim() ? [[key, search[key].trim()]] : []
+          )
+        )
+      : {}),
+  };
+};

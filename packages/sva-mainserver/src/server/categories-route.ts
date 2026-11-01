@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverCategoriesListItem } from '../types.js';
+import { CONSTRUCTION_SITES_TYPE } from './construction-sites-contract.js';
 import { parseCategorySaveInput } from './categories-route-input.js';
 import {
   matchCategoryRoute,
@@ -19,6 +20,8 @@ import {
   type CategoryRoute,
 } from './categories-route-match.js';
 import { errorJson, json } from './content-route-core.js';
+import { MAINSERVER_ACTING_PRINCIPAL_HEADER } from './content-route-context.js';
+import { resolveMainserverResourceActor } from './mutation-principal.js';
 import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
@@ -40,6 +43,7 @@ const categoryContentDataTypes = [
   'event_record',
   'point_of_interest',
   'generic_item_voucher',
+  'generic_item_construction_site',
 ] as const;
 type CategoryContentDataType = (typeof categoryContentDataTypes)[number];
 
@@ -68,16 +72,35 @@ const toCategoryResponseItem = ({
 
 const authorize = async (
   ctx: AuthenticatedRequestContext,
-  action: CategoryAction
+  action: CategoryAction | 'construction-sites.read' | 'construction-sites.create',
+  request: Request
 ): Promise<CategoriesActor | Response> => {
-  const result = await authorizeContentPrimitiveForUser({ ctx, action });
-  if (!result.ok)
+  const result = await authorizeContentPrimitiveForUser({
+    ctx,
+    action,
+    ...(action.startsWith('construction-sites.')
+      ? { resource: { contentType: CONSTRUCTION_SITES_TYPE } }
+      : {}),
+  });
+  if (!result.ok) {
+    if (action === 'construction-sites.read' && result.status === 403)
+      return authorize(ctx, 'construction-sites.create', request);
     return errorJson(result.status, result.error, result.message, result.permissionDenial);
-  return {
+  }
+  const actor = {
     instanceId: result.actor.instanceId,
     keycloakSubject: result.actor.keycloakSubject,
     activeOrganizationId: result.actor.organizationId ?? ctx.activeOrganizationId,
   };
+  if (
+    action.startsWith('construction-sites.') &&
+    request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER)
+  )
+    return (
+      (await resolveMainserverResourceActor({ request, ctx, authorizedActor: actor })) ??
+      errorJson(403, 'forbidden', 'forbidden')
+    );
+  return actor;
 };
 
 const readCategories = async (
@@ -177,19 +200,25 @@ const dispatchAuthenticated = async (
   ctx: AuthenticatedRequestContext,
   matched: CategoryRoute
 ): Promise<Response> => {
-  const action = resolveCategoryAction(request, matched);
-  if (!action)
+  const requestedAction = resolveCategoryAction(request, matched);
+  if (!requestedAction)
     return errorJson(
       405,
       'method_not_allowed',
       'Methode wird für Mainserver-Kategorien nicht unterstützt.'
     );
+  const constructionLookup =
+    requestedAction === 'categories.read' &&
+    matched.kind === 'collection' &&
+    !new URL(request.url).searchParams.has('view') &&
+    readCategoryContentDataType(request) === 'generic_item_construction_site';
+  const action = constructionLookup ? 'construction-sites.read' : requestedAction;
   try {
     if (request.method !== 'GET') {
       const csrfFailure = validateCsrf(request, getWorkspaceContext().requestId);
       if (csrfFailure) return csrfFailure;
     }
-    const actor = await authorize(ctx, action);
+    const actor = await authorize(ctx, action, request);
     if (actor instanceof Response) return actor;
     if (request.method === 'GET') return await readCategories(request, matched, actor);
     if (request.method === 'DELETE' && matched.kind === 'item')

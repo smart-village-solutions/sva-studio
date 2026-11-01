@@ -35,6 +35,7 @@
     "@sva/plugin-categories": "workspace:*",
     "@sva/plugin-cockpit": "workspace:*",
     "@sva/plugin-cockpit-cards": "workspace:*",
+    "@sva/plugin-construction-sites": "workspace:*",
     "@sva/plugin-events": "workspace:*",
     "@sva/plugin-faq": "workspace:*",
     "@sva/plugin-generic-items": "workspace:*",

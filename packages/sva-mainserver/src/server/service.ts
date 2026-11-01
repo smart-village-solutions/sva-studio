@@ -27,6 +27,23 @@ const getDefaultService = () => {
   return defaultService;
 };
 
+type DefaultService = ReturnType<typeof createSvaMainserverService>;
+export const getSvaMainserverConstructionSite = (
+  ...args: Parameters<DefaultService['getConstructionSite']>
+) => getDefaultService().getConstructionSite(...args);
+export const listSvaMainserverConstructionSiteCandidates = (
+  ...args: Parameters<DefaultService['listConstructionSiteCandidates']>
+) => getDefaultService().listConstructionSiteCandidates(...args);
+export const prepareSvaMainserverConstructionSite = (
+  ...args: Parameters<DefaultService['prepareConstructionSite']>
+) => getDefaultService().prepareConstructionSite(...args);
+export const writeSvaMainserverConstructionSite = (
+  ...args: Parameters<DefaultService['writeConstructionSite']>
+) => getDefaultService().writeConstructionSite(...args);
+export const recoverSvaMainserverConstructionSite = (
+  ...args: Parameters<DefaultService['recoverConstructionSite']>
+) => getDefaultService().recoverConstructionSite(...args);
+
 export const listSvaMainserverVouchers = (
   input: SvaMainserverConnectionInput & {
     page: number;

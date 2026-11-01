@@ -1150,6 +1150,7 @@ Der vorhandene POST-Projektionsrefresh in der App autorisiert Content-Typ und Ac
 ## Minimale Medienorganisation und Scan-Gate
 
 Tags erweitern das vorhandene Asset-Metadatenfeld und die instanzbezogene Suche ohne eigene Taxonomie. Der gemeinsame Picker nutzt bei Suchtext/Tag die bestehende Host-API. `iam-media/clamav.ts` ergänzt den konkreten ClamAV-Protokollaufruf in der vorhandenen Medienverarbeitung; Quarantäne und geschützte Ausgaben liegen auf demselben S3-Dienst in einem separaten privaten Bucket. Maßgeblich ist [ADR-068](../adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md); die Scan-Aktivierung bleibt eine gesonderte Betriebsabnahme.
+
 ### Interne App-Katalogbasis (Abschnitt A)
 
 `packages/core/src/app-translations.ts` enthält den frameworkunabhängigen Manifest-/Wert-/Platzhaltervertrag, deterministische JSON-Kanonisierung, Prüfsummen und die Zusammenstellung vollständiger Sprachsätze. `packages/data-repositories/src/app-translations.ts` implementiert Import, Draftbearbeitung, sprachbezogene Overrides/Reset, Korrekturbestätigung, gepinnte globale Basen und lokale Versiegelung innerhalb der vorhandenen PostgreSQL-Transaktion. Drei Fachbestände aus Migration 0107 genügen; keine zweite Queue oder Tabelle pro Sprache.
@@ -1190,7 +1191,6 @@ Der vorhandene Session-Katalogpfad bietet mit `downloadTexts` eine lesende Datei
 
 Die versionierte Formatdefinition erhält in Format 1 die bisherigen 22 Textfunktionen; Format 2 für App 5.0.0 enthält 29 Funktionen einschließlich expliziter Pluralzweige sowie sprachlokale Verweise und Runtime-App-Namen. `textsByLocale`, `texts` und `setTextsLocale()` erlauben eine zentrale Sprachwahl bei unveränderter Zugriffssyntax. Die Datei speichert keinen React-Zustand. Der inzwischen autorisierte App-Bootstrap setzt die gespeicherte Locale vor dem Laden der App-Module. Die Sprachwahl kündigt den Neustart einschließlich möglicher ungespeicherter Eingaben an und lädt nach Bestätigung neu; dadurch werden auch Modulkonstanten aktualisiert, ohne Abonnements in allen Verbrauchern einzuführen. Beim Import einer neuen Ausgangsbasis bleiben bestehende Sprachen und gespeicherte Werte erhalten. Ausgemusterte Schlüssel werden im Entwurf behalten, aber nur aktive Manifestpfade aufgelöst und exportiert. Gesicherte Stände bleiben unverändert.
 
-
 ### Begrenzter technischer Nachrichten-Übersetzungsdienst
 
 `auth-runtime/src/app-translations-service.ts` ergänzt den getrennten technischen POST-Handler für `news-v1` (de→en), ohne Session-Katalogrechte oder persistente dynamische Inhalte. Er nutzt JWT-Verifikation, die ausdrücklich erwarteten Identitätsmetadaten an der bestehenden Main-Server-Schnittstelle, die bestehende instanzgebundene Schnittstellenverbindung und den DeepL-Adapter. Der Main-Server behält Jobs, Retry und dynamische Ergebnisse. Aktueller Modul-/Sprach-/Konfigurationsstand wird vor Anbieterarbeit und Antwort geprüft. Die reale Eignung/Audience des vorhandenen Dienstausweises ist keine durch diese Implementierung belegte Betriebsfreigabe. Details und Grenzen: [ADR-070](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md).
@@ -1229,3 +1229,7 @@ selbst; es entstehen weder Mailworker noch zusätzliche Versandabläufe.
 ## SSF localized legal content
 
 The existing `@sva/plugin-ssf` v2 runtime-content editor and JSON repository own optional localized consent, release, and recording-status texts. System templates and tenant overrides reuse the current administration routes, transaction boundaries, sanitizer, and canonical content revision. Legal source languages are independent of offered guest languages. No new table, service, or recording-control component is introduced. See the [content-editor documentation](../development/ssf-v2-inhaltsverwaltung-ui.md#separate-consent-and-recording-release-texts).
+
+## Baustellenplugin
+
+`@sva/plugin-construction-sites` liefert Fachschema, Liste und Editor. Browser und Studio-Mainserver-Adapter validieren an ihren jeweiligen Eingangsgrenzen; gemeinsame Vertragsfixtures prüfen die Kompatibilität. Der Server benötigt kein optionales Fachplugin zur Laufzeit. Der Host registriert Zuständigkeit, Routing, Rechte und die bestehende Inhaltsprojektion. Siehe [Baustellenreferenz](../reference/construction-sites.md).

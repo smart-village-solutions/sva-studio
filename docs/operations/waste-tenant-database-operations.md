@@ -63,6 +63,10 @@ Der Provisionierer prüft nach jedem Reconcile Schemaobjekte sowie Rechte der St
 
 Der Speicherpfad für explizite Einsätze behält weiterhin ausgewählte Abholorte bei, entfernt nur abgewählte Verknüpfungen und ergänzt fehlende Verknüpfungen atomar. Damit lässt sich beispielsweise eine Ortszuordnung ohne Straßen-ID zu einem Schadstoffmobil-Einsatz ergänzen, während die bisherige Straßenverknüpfung, Datum und Haltestellenhinweis erhalten bleiben. Ein PostgreSQL-Regressionstest im bestehenden Abholort-Integrationstest prüft das Ergänzen, wiederholte Speichern und Ersetzen überlappender Auswahlen.
 
+Beim Transfer erhält jede aktive Zieladresse die ortsweit zugeordneten Einsätze. Der Mainserver-Bulk-Endpunkt speichert pro Datum, Abfallart und Adresse nur einen Termin und aktualisiert Hinweise bestehender Termine nicht. Studio bündelt deshalb alle Haltestellen desselben Tages in einem Tagestermin mit sämtlichen bereinigten Hinweisen; wiederholte Beschreibungen werden entfernt und die Reihenfolge bleibt stabil. Die einzelnen Einsätze in Studio und im öffentlichen Webkalender bleiben erhalten.
+
+Geänderte Mainserver-Termine werden anhand des berechneten Diffs zuerst gelöscht und anschließend aus dem Studio-Sollzustand neu angelegt. Scheitert die Neuanlage, kann bis zum erfolgreichen Wiederholen eine vorübergehende Lücke bestehen; der Studio-Quellbestand bleibt erhalten. Nach einem Fehler erst den Job- und Mainserver-Zustand prüfen und den vorhandenen Sync erneut ausführen, statt dieselben Schreibaufrufe blind zu wiederholen. Ein erfolgreicher Job allein ersetzt keinen unabhängigen Abgleich der zurückgelieferten Termine und sämtlicher Haltestellenhinweise.
+
 ## Backup-Fehler
 
 Ein Waste-Backup ist nur erfolgreich, wenn das Registry-Inventar vollständig verarbeitet wurde. Das Ergebnisobjekt enthält `inventoryCount` und pro Tenant Status, Objektpfad, Größe und SHA-256.

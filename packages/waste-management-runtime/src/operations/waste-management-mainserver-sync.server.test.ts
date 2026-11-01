@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type StudioJobProgress } from '@sva/core';
-import { deriveWasteMainserverSyncStatus } from '@sva/waste-management-contracts';
+import {
+  deriveWasteMainserverSyncStatus,
+  type WasteMainserverSyncItem,
+} from '@sva/waste-management-contracts';
 
 type WasteSyncClientState = {
   readonly tours: readonly {
@@ -507,6 +510,104 @@ describe('waste-management-mainserver-sync.server', () => {
     expect(result.createBatchCount).toBe(1);
     expect(result.deleteByIdCount).toBe(0);
     expect(result.deleteByValueCount).toBe(0);
+  });
+
+  it.each([false, true])(
+    'replaces same-day notes and converges after a transient create failure=%s',
+    async (failFirstCreate) => {
+      const original: WasteMainserverSyncItem = {
+        id: 'existing-stop',
+        pickupDate: '2026-08-18',
+        wasteType: 'SM',
+        street: 'Hauptstraße',
+        zip: '16928',
+        city: 'Pritzwalk',
+        note: '09–11 Uhr, Rathaus',
+      };
+      const target = {
+        ...original,
+        id: undefined,
+        note: '<div>09–11 Uhr, Rathaus</div><div>14–16 Uhr, Bahnhof</div>',
+      };
+      const asRow = (item: WasteMainserverSyncItem) => ({ ...item, key: buildWasteSyncKey(item) });
+      let remote = [original];
+      let shouldFailCreate = failFirstCreate;
+      const createItems = vi.fn(async (items: readonly WasteMainserverSyncItem[]) => {
+        if (shouldFailCreate) {
+          shouldFailCreate = false;
+          throw new Error('temporary_remote_failure');
+        }
+        for (const item of items) {
+          // The bulk API ignores note when finding an existing pickup and only saves new records.
+          if (
+            !remote.some(
+              (existing) =>
+                existing.pickupDate === item.pickupDate &&
+                existing.wasteType === item.wasteType &&
+                existing.street === item.street &&
+                existing.zip === item.zip &&
+                existing.city === item.city
+            )
+          )
+            remote.push({ ...item, id: 'replacement' });
+        }
+      });
+      const deleteItems = vi.fn(async (items: readonly WasteMainserverSyncItem[]) => {
+        remote = remote.filter((item) => !items.some((deleted) => deleted.id === item.id));
+      });
+      const run = () =>
+        runWasteManagementMainserverSync({
+          studioRows: [asRow(target)],
+          mainserverRows: remote.map(asRow),
+          dryRun: false,
+          createItems,
+          deleteItems,
+        });
+      if (failFirstCreate) {
+        await expect(run()).rejects.toThrow('temporary_remote_failure');
+        expect(remote).toEqual([]);
+      }
+      await run();
+      expect(remote).toEqual([{ ...target, id: 'replacement' }]);
+      createItems.mockClear();
+      deleteItems.mockClear();
+      expect(await run()).toMatchObject({ createCount: 0, deleteCount: 0 });
+      expect(createItems).not.toHaveBeenCalled();
+      expect(deleteItems).not.toHaveBeenCalled();
+    }
+  );
+
+  it('does not create replacements when deleting their stale records fails', async () => {
+    const createItems = vi.fn(async () => undefined);
+    await expect(
+      runWasteManagementMainserverSync({
+        studioRows: [
+          {
+            key: 'new',
+            pickupDate: '2026-08-18',
+            wasteType: 'SM',
+            street: 'Hauptstraße',
+            note: 'All stops',
+          },
+        ],
+        mainserverRows: [
+          {
+            key: 'old',
+            id: 'existing',
+            pickupDate: '2026-08-18',
+            wasteType: 'SM',
+            street: 'Hauptstraße',
+            note: 'First stop',
+          },
+        ],
+        dryRun: false,
+        createItems,
+        deleteItems: async () => {
+          throw new Error('delete_failed');
+        },
+      })
+    ).rejects.toThrow('delete_failed');
+    expect(createItems).not.toHaveBeenCalled();
   });
 
   it('reports batch and delete-strategy counts in the sync result', async () => {
@@ -1246,10 +1347,10 @@ describe('waste-management-mainserver-sync.server', () => {
             totalBatchCount: 2,
             currentBatchIndex: 1,
             currentBatchSize: 2,
-            processedItemCount: 2,
+            processedItemCount: 3,
             createCount: 2,
-            deleteCount: 0,
-            lastSuccessfulBatchAt: '2026-01-15T00:00:00.200Z',
+            deleteCount: 1,
+            lastSuccessfulBatchAt: '2026-01-15T00:00:00.400Z',
           }),
         }),
         expect.objectContaining({
@@ -1261,9 +1362,9 @@ describe('waste-management-mainserver-sync.server', () => {
             totalBatchCount: 2,
             currentBatchIndex: 2,
             currentBatchSize: 1,
-            processedItemCount: 3,
+            processedItemCount: 4,
             createCount: 3,
-            deleteCount: 0,
+            deleteCount: 1,
           }),
         }),
         expect.objectContaining({
@@ -1275,8 +1376,8 @@ describe('waste-management-mainserver-sync.server', () => {
             totalBatchCount: 1,
             currentBatchIndex: 1,
             currentBatchSize: 1,
-            processedItemCount: 4,
-            createCount: 3,
+            processedItemCount: 1,
+            createCount: 0,
             deleteCount: 1,
           }),
         }),
@@ -1296,7 +1397,7 @@ describe('waste-management-mainserver-sync.server', () => {
     });
   });
 
-  it('keeps global totals for empty follow-up phases and aligns create batch counts with the effective batch size', async () => {
+  it('keeps global totals for empty phases and aligns create batch counts with the effective batch size', async () => {
     const progressEvents: StudioJobProgress[] = [];
 
     const result = await runWasteManagementMainserverSync({
@@ -1314,7 +1415,7 @@ describe('waste-management-mainserver-sync.server', () => {
       deleteItems: async () => undefined,
       onBatchProgress: async (details) => {
         progressEvents.push({
-          completedSteps: details.operationMode === 'create' ? 4 : 5,
+          completedSteps: details.operationMode === 'create' ? 5 : 4,
           totalSteps: 6,
           currentStepKey: details.operationMode === 'create' ? 'create-batches' : 'delete-batches',
           currentStepLabel:
@@ -1332,7 +1433,7 @@ describe('waste-management-mainserver-sync.server', () => {
           details: expect.objectContaining({
             totalItemCount: 3,
             totalBatchCount: 0,
-            processedItemCount: 3,
+            processedItemCount: 0,
           }),
         }),
       ])

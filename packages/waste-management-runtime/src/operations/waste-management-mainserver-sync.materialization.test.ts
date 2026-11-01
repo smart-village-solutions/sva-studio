@@ -138,22 +138,17 @@ describe('waste-management-mainserver-sync.materialization', () => {
     it('transfers every city assignment to active street and house-number addresses with all stop notes', () => {
       const input = buildInput();
       const rows = buildStudioRowsFromMaterialization(input);
-      expect(rows).toHaveLength(6);
+      expect(rows).toHaveLength(3);
       for (const street of ['Hauptstraße', 'Hauptstraße 5', 'Bahnhofstraße']) {
-        expect(rows.filter((row) => row.street === street)).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({
-              pickupDate: '2026-06-10',
-              wasteType: 'SM',
-              city: 'Musterhausen',
-              zip: '12345',
-              note: '<div><p>Schadstoffmobil</p></div><div>09–11 Uhr, Rathaus</div>',
-            }),
-            expect.objectContaining({
-              note: '<div><p>Schadstoffmobil</p></div><div>14–16 Uhr, Bahnhof</div>',
-            }),
-          ])
-        );
+        expect(rows.filter((row) => row.street === street)).toEqual([
+          expect.objectContaining({
+            pickupDate: '2026-06-10',
+            wasteType: 'SM',
+            city: 'Musterhausen',
+            zip: '12345',
+            note: '<div><p>Schadstoffmobil</p></div><div>09–11 Uhr, Rathaus</div><div>14–16 Uhr, Bahnhof</div>',
+          }),
+        ]);
       }
       expect(input.pickupDates.every((pickup) => pickup.locationId === 'city-wide')).toBe(true);
     });
@@ -168,8 +163,19 @@ describe('waste-management-mainserver-sync.materialization', () => {
         ],
         locations: [...input.locations, { ...input.locations[1]!, id: 'duplicate-street' }],
       });
-      expect(rows).toHaveLength(6);
-      expect(new Set(rows.map((row) => row.key)).size).toBe(6);
+      expect(rows).toHaveLength(3);
+      expect(new Set(rows.map((row) => row.key)).size).toBe(3);
+      expect(rows).toEqual(buildStudioRowsFromMaterialization(input));
+    });
+
+    it('keeps merged stop notes stable when assignment order changes', () => {
+      const input = buildInput();
+      const forward = buildStudioRowsFromMaterialization(input);
+      const reversed = buildStudioRowsFromMaterialization({
+        ...input,
+        pickupDates: [...input.pickupDates].reverse(),
+      });
+      expect(reversed).toEqual(forward);
     });
 
     it.each(['Alle Straßen', '  alle straßen  '])(
@@ -205,21 +211,21 @@ describe('waste-management-mainserver-sync.materialization', () => {
           ),
         };
         const rows = buildStudioRowsFromMaterialization(importedInput);
-        expect(rows).toHaveLength(8);
+        expect(rows).toHaveLength(4);
         for (const street of [
           allStreetsName.trim(),
           'Hauptstraße',
           'Hauptstraße 5',
           'Bahnhofstraße',
         ]) {
-          expect(rows.filter((row) => row.street === street)).toHaveLength(2);
+          expect(rows.filter((row) => row.street === street)).toHaveLength(1);
         }
-        expect(new Set(rows.map((row) => row.key)).size).toBe(8);
+        expect(new Set(rows.map((row) => row.key)).size).toBe(4);
         const onlyCatchAllRows = buildStudioRowsFromMaterialization({
           ...importedInput,
           locations: importedInput.locations.filter((location) => location.id === 'city-wide'),
         });
-        expect(onlyCatchAllRows).toHaveLength(2);
+        expect(onlyCatchAllRows).toHaveLength(1);
         expect(onlyCatchAllRows.every((row) => row.street === allStreetsName.trim())).toBe(true);
       }
     );
@@ -234,12 +240,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
           ...(location.id === 'second-street' ? { regionId: 'region-2' } : {}),
         })),
       });
-      expect(rows.map((row) => row.street)).toEqual([
-        'Hauptstraße',
-        'Hauptstraße 5',
-        'Hauptstraße',
-        'Hauptstraße 5',
-      ]);
+      expect(rows.map((row) => row.street)).toEqual(['Hauptstraße', 'Hauptstraße 5']);
     });
 
     it('keeps a directly assigned street appointment local to that address', () => {

@@ -37,11 +37,10 @@ type StudioRowMaterializationInput = Readonly<{
 }>;
 
 const buildPickupNoteHtml = (
-  tourDescription: string | null | undefined,
-  pickupNote: string | null | undefined
+  ...values: readonly (string | null | undefined)[]
 ): string | undefined => {
   const semanticContents = new Set<string>();
-  const fragments = [tourDescription, pickupNote].flatMap((value) => {
+  const fragments = values.flatMap((value) => {
     if (!value?.trim()) return [];
 
     const sanitizedHtml = sanitizeRichTextHtml(value).trim();
@@ -104,7 +103,6 @@ export const buildStudioRowsFromMaterialization = (
             !location.regionId || (target.regionId ?? cityRecord?.regionId) === location.regionId
         )
       : [location];
-    const note = buildPickupNoteHtml(tour.description, pickupDate.note);
 
     return targetLocations.flatMap((target) => {
       const streetName = target.streetId
@@ -133,19 +131,45 @@ export const buildStudioRowsFromMaterialization = (
             street,
             ...(zip ? { zip } : {}),
             city,
-            ...(note ? { note } : {}),
+            tourDescription: tour.description,
+            pickupNote: pickupDate.note,
             key: buildWasteSyncKey({
               pickupDate: pickupDate.pickupDate,
               wasteType,
               street,
               zip,
               city,
-              note,
             }),
           },
         ];
       });
     });
   });
-  return [...new Map(rows.map((row) => [row.key, row] as const)).values()];
+  // The Mainserver bulk API identifies pickups by date and location type, without the note.
+  const groupedRows = new Map<
+    string,
+    {
+      row: StudioMaterializedWasteRow;
+      descriptions: Set<string>;
+      notes: Set<string>;
+    }
+  >();
+  for (const { tourDescription, pickupNote, ...row } of rows) {
+    const group = groupedRows.get(row.key) ?? {
+      row,
+      descriptions: new Set<string>(),
+      notes: new Set<string>(),
+    };
+    if (tourDescription?.trim()) group.descriptions.add(tourDescription);
+    if (pickupNote?.trim()) group.notes.add(pickupNote);
+    groupedRows.set(row.key, group);
+  }
+  return [...groupedRows.values()].map(({ row, descriptions, notes }) => {
+    const note = buildPickupNoteHtml(...[...descriptions].sort(), ...[...notes].sort());
+    return {
+      ...row,
+      ...(note ? { note } : {}),
+      key: buildWasteSyncKey({ ...row, note }),
+    };
+  });
 };

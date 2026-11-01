@@ -555,13 +555,36 @@ describe('admin resource routes', () => {
       type: 'faq.faq',
       languageCode: 'de-de',
     });
-    expect(listRoute?.validateSearch?.({ type: 'vouchers.voucher', poiId: ' 33394 ' }))
-      .toMatchObject({ type: 'vouchers.voucher', poiId: '33394' });
+    expect(
+      listRoute?.validateSearch?.({ type: 'vouchers.voucher', poiId: ' 33394 ' })
+    ).toMatchObject({ type: 'vouchers.voucher', poiId: '33394' });
     for (const poiId of ['other', [], 33394])
-      expect(listRoute?.validateSearch?.({ type: 'vouchers.voucher', poiId }))
-        .not.toHaveProperty('poiId');
-    expect(listRoute?.validateSearch?.({ type: 'news.article', poiId: '33394' }))
-      .not.toHaveProperty('poiId');
+      expect(listRoute?.validateSearch?.({ type: 'vouchers.voucher', poiId })).not.toHaveProperty(
+        'poiId'
+      );
+    expect(
+      listRoute?.validateSearch?.({ type: 'news.article', poiId: '33394' })
+    ).not.toHaveProperty('poiId');
+    expect(
+      listRoute?.validateSearch?.({
+        type: 'construction-sites.construction-site',
+        category: ' Verkehr ',
+        dateStart: '2026-11-01',
+        dateEnd: '2026-12-31',
+      })
+    ).toMatchObject({
+      type: 'construction-sites.construction-site',
+      category: 'Verkehr',
+      dateStart: '2026-11-01',
+      dateEnd: '2026-12-31',
+    });
+    expect(
+      listRoute?.validateSearch?.({
+        type: 'news.article',
+        category: 'Verkehr',
+        dateStart: '2026-11-01',
+      })
+    ).not.toHaveProperty('category');
     expect(listRoute?.validateSearch?.({ type: [], page: '1' })).not.toHaveProperty('type');
     expect(
       listRoute?.validateSearch?.({ type: 'news.article', languageCode: 'de', page: '1' })

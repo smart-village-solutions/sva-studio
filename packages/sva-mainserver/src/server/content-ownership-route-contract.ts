@@ -14,11 +14,14 @@ import {
 
 export type SupportedOwnershipContentType = Exclude<
   SvaMainserverProjectionContentType,
-  'surveys.survey' | 'vouchers.voucher'
+  'surveys.survey' | 'vouchers.voucher' | 'construction-sites.construction-site'
 >;
 
 export type ContentOwnershipRouteMatch = Readonly<{
-  contentType: Exclude<SvaMainserverProjectionContentType, 'vouchers.voucher'>;
+  contentType: Exclude<
+    SvaMainserverProjectionContentType,
+    'vouchers.voucher' | 'construction-sites.construction-site'
+  >;
   contentId: string;
   operation: 'authorization' | 'targets' | 'transfer';
 }>;

@@ -22,3 +22,5 @@ export {
 } from './server/service-internals/waste-operations.js';
 
 export { dispatchSvaMainserverVouchersRequest } from './server/vouchers-route.js';
+
+export { dispatchSvaMainserverConstructionSitesRequest } from './server/construction-sites-route.js';

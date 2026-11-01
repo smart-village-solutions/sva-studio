@@ -105,6 +105,7 @@ describe('studio-distribution-artifact', () => {
   it('includes app texts and vouchers in Studio and supports explicit custom voucher selection', () => {
     const studio = JSON.parse(runArtifactCommand('selection', '', 'studio').toString('utf8'));
     expect(studio.pluginIds).toContain('vouchers');
+    expect(studio.pluginIds).toContain('construction-sites');
     expect(studio.pluginIds).toContain('app-translations');
     const ssf = JSON.parse(runArtifactCommand('selection', '', 'ssf').toString('utf8'));
     expect(ssf.pluginIds).not.toContain('app-translations');
@@ -420,6 +421,7 @@ describe('studio-distribution-artifact', () => {
         'categories',
         'cockpit',
         'cockpit-cards',
+        'construction-sites',
         'events',
         'faq',
         'generic-items',
@@ -506,6 +508,7 @@ describe('studio-distribution-artifact', () => {
         'plugin-categories',
         'plugin-cockpit',
         'plugin-cockpit-cards',
+        'plugin-construction-sites',
         'plugin-events',
         'plugin-faq',
         'plugin-generic-items',

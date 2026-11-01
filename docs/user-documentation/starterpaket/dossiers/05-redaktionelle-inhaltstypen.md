@@ -263,3 +263,12 @@ sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür ge�
 - **Evidenz:** `packages/plugin-surveys/src/surveys.editor.tsx`,
   `packages/plugin-surveys/src/surveys.editor-tabs.tsx`,
   `packages/plugin-surveys/src/surveys.detail-results-tab.tsx`.
+
+## `construction-sites.content.create` und `construction-sites.content.detail` – Baustellen
+
+- **Route / Typ / Owner:** `/admin/construction-sites/new` und `/admin/construction-sites/$id`, Plugin `construction-sites`.
+- **Nutzerziel:** Eine Baustelle anlegen oder ihre Angaben und ihren Zeitraum ändern.
+- **Produktfakten:** Titel sowie Beginn und Ende sind erforderlich. Beschreibung, Richtung, Grund, Einschränkungen, Standort, Kategorien und Dateien sind optional. Ein geändertes Beginndatum überschreibt das gewählte Ende nicht. Anlegen erfolgt auf einer Seite; Bearbeiten bietet Basis, Inhalt und echte Studio-Historie. Es gibt keine Löschfunktion.
+- **Kontextabhängig:** Instanzzuweisung, Rechte und DataProvider bestimmen den Zugriff. Die Karte benötigt eine konfigurierte Schnittstelle. Zeitraumstatus plant keine Veröffentlichung. Deaktivierte Kategoriezuordnungen dürfen beim Speichern entfallen; andere zusätzliche Bestandsdaten werden erhalten oder blockieren den Save. Ein unklarer Save wird über denselben Vorgang geprüft, nicht erneut angelegt.
+- **Leitfragen / Stichwörter:** Wann beginnt und endet die Baustelle? Wo liegt sie? Was wird eingeschränkt? Baustelle, Zeitraum, Standort, Sichtbarkeit, Speicherergebnis prüfen.
+- **Evidenz:** [Baustellenreferenz](../../../reference/construction-sites.md), `packages/plugin-construction-sites/src/`, `packages/sva-mainserver/src/server/construction-sites-route.ts`.

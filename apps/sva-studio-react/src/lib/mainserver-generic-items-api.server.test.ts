@@ -2,12 +2,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   dispatchSvaMainserverGenericItemsRequest: vi.fn(),
+  dispatchSvaMainserverConstructionSitesRequest: vi.fn().mockResolvedValue(null),
   dispatchSvaMainserverVouchersRequest: vi.fn().mockResolvedValue(null),
   refreshProjectionAfterMainserverMutation: vi.fn(),
 }));
 
 vi.mock('@sva/sva-mainserver/server', () => ({
   dispatchSvaMainserverGenericItemsRequest: state.dispatchSvaMainserverGenericItemsRequest,
+  dispatchSvaMainserverConstructionSitesRequest:
+    state.dispatchSvaMainserverConstructionSitesRequest,
   dispatchSvaMainserverVouchersRequest: state.dispatchSvaMainserverVouchersRequest,
 }));
 
@@ -57,6 +60,20 @@ describe('mainserver generic items app adapter', () => {
       response,
       'projects.project'
     );
+  });
+  it('dispatches construction sites and refreshes their canonical projection', async () => {
+    const response = new Response(JSON.stringify({ data: { id: '42' } }), { status: 201 });
+    const request = new Request('https://studio.test/api/v1/mainserver/construction-sites', {
+      method: 'POST',
+    });
+    state.dispatchSvaMainserverConstructionSitesRequest.mockResolvedValueOnce(response);
+    await expect(dispatchMainserverGenericItemsRequest(request)).resolves.toBe(response);
+    expect(state.refreshProjectionAfterMainserverMutation).toHaveBeenCalledWith(
+      request,
+      response,
+      'construction-sites.construction-site'
+    );
+    expect(state.dispatchSvaMainserverGenericItemsRequest).not.toHaveBeenCalled();
   });
   it('dispatches the optional voucher plugin through the existing adapter', async () => {
     const response = new Response(JSON.stringify({ data: { id: '1' } }), { status: 200 });

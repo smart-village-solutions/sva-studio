@@ -34,6 +34,7 @@ describe('iam content list visibility', () => {
     ['faq.faq', 'faq.read', 'faq'],
     ['cockpit-cards.cockpit-card', 'cockpit-cards.read', 'cockpit-cards'],
     ['projects.project', 'projects.read', 'projects'],
+    ['construction-sites.construction-site', 'construction-sites.read', 'construction-sites'],
     ['surveys.survey', 'surveys.read', 'surveys'],
   ] as const)(
     'uses the namespace read permission for Mainserver type %s',

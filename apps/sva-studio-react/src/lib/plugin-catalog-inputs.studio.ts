@@ -12,6 +12,7 @@ const workspacePluginCatalogConfig = [
   { pluginId: 'faq', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-faq' },
   { pluginId: 'cockpit', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-cockpit' },
   { pluginId: 'cockpit-cards', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-cockpit-cards' },
+  { pluginId: 'construction-sites', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-construction-sites' },
   { pluginId: 'projects', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-projects' },
   { pluginId: 'surveys', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-surveys' },
   { pluginId: 'waste-management', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-waste-management' },

@@ -1258,6 +1258,7 @@ Der bei der Initialisierung gewählte Eingang bindet den Scan-Vertrag. Nur Uploa
 Tags bleiben validierte globale Asset-Metadaten mit bestehender Instanz-/IAM-Grenze. Sie erweitern keine Berechtigungen; Tagwerte werden nicht geloggt. ClamAV bleibt als GPLv2-Dienst über das dokumentierte Scan-Protokoll vom EUPL-Code getrennt, ohne `libclamav`-Linking. Das Scan-Gate akzeptiert ausschließlich vollständig geprüfte Bytes mit bestätigter Signaturaktualität. Ein Scanner-Ping ist kein Aktualitätsnachweis; Detailregeln stehen in [ADR-068](../adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md).
 
 Der Dateibericht des Bestandsscans wird ausschließlich über den medienberechtigten Endpunkt ausgeliefert. Generische Job-Antworten beim Lesen und Löschen verwenden dieselbe Ergebnisredaktion; Monitoring-Rechte erweitern keine Medienrechte. Die Signaturaltersmetrik prüft dieselbe Übereinstimmung zwischen Aktualitätsnachweis und geladener ClamAV-Revision wie der Scan und meldet Ausfall oder Abweichung als Sperrwert.
+
 ### Lokale App-Kataloge: Scope, Korrekturen und Unveränderlichkeit
 
 Feste Katalogtexte werden als globale oder kommunale Drafts gepflegt. Overrides gelten pro Sprache/Schlüssel; abweichendes kommunales Deutsch erzeugt keine anderen Overrides. Manuelle fremdsprachige Werte speichern ihren deutschen Quelldigest und dessen Bestätigung. Bei geändertem tatsächlichem Quelltext bleibt die Korrektur erhalten, neue Versiegelung verlangt aber ausdrückliche Bestätigung. Manifestimport übernimmt fehlende deutsche Defaults einmalig und überschreibt keine redaktionellen Werte.
@@ -1296,13 +1297,11 @@ Der bestehende Katalogentwurf erhält durch Migration 0110 nur die JSONB-Standar
 
 Vor Anfrage und Commit werden Claim/Attempt/Worker, Heartbeat, Abbruch, aktive Mitgliedschaft und Konfiguration erneut geprüft. DeepL-I/O liegt außerhalb der Schreibtransaktion. Werte, Revision und Jobcheckpoint committen gemeinsam; die bestehende Jobsteuerung bewahrt auch direkt gespeicherte Checkpoints nach Fehlern. Nach externem Edit kein Rebase. Maximal 50 Einheiten/100 KiB je Anfrage, 30 Sekunden, 4 MiB Antwort und drei Jobversuche. Platzhalter und literale Tags werden reversibel geschützt und positionsbezogen validiert; Arrays werden erst vollständig geschrieben. Vor Commit kann eine Wiederholung erneut Anbieterkosten verursachen; nach Commit werden fertige Batches nicht erneut angefordert.
 
-
 ### Technischer Main-Server-Übersetzungsaufruf
 
 Der begrenzte Nachrichtendienst verwendet die gemeinsame JWT-Kryptoprüfung und prüft `azp`/konkretes `sub` gegen vertrauenswürdige Metadaten der bestehenden Main-Server-Verbindung. Eine menschliche Anmeldung, Clientname oder Request-Mandant genügt nicht; zusätzliche Übersetzungsrollen und eine parallele Bindingregistry entfallen. Der Adapter greift nur auf instanzgebundene Konfiguration zu und wählt keine Organisation aus. Die ausgehende Organisationsidentität wird nicht als eingehender Serviceaccount vorausgesetzt. Prüfung von Modul, Sprache und Konfiguration vor Anbieterarbeit und Antwort, begrenzte Requests/Deadline und die bestehende Bulk-Ratenbegrenzung schützen den direkten Dienst. Keine dynamischen Texte in Studio persistieren oder loggen. Vertragsdetails und noch offene Live-Evidenz stehen in [ADR-070](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md).
 
 Die Moduloperationen `provision`, `reconcile` und `reactivate` richten diese Bindung automatisch über die öffentliche, Keycloak-bestätigte Identitätsauskunft des administrativ zugeordneten Mainservers ein. Readiness bleibt lesend. Die Auskunft enthält ausschließlich technischen Principal und Studio-Ziel, keine Token oder Secrets. Studio prüft Public-HTTPS-Ziele, feste Audience und Instanz sowie die technische Route auf dem Instanzhost oder der zentralen `SVA_PUBLIC_BASE_URL`. Eine abweichende bestehende Bindung wird nicht überschrieben. Instanz-/Modulsperren, konkreter Lifecycle-Auftrag und `xmin`-Vergleich verhindern die Übernahme nach Widerruf oder Zuordnungswechsel. Reaktivierung darf nur innerhalb ihres beanspruchten Auftrags vorbereiten; der Dienst bleibt bis `active` gesperrt. Ein Zuordnungswechsel beziehungsweise die Deaktivierung entfernt die alte Freigabe. Kein neues Datenbankschema oder öffentlicher Pluginvertrag; die bestehende hostinjizierte Laufzeit übernimmt den Anschluss. Siehe [ADR-070](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md).
-
 
 ## Gutscheinidentität und Save-Bestätigung
 
@@ -1348,3 +1347,7 @@ Ergebnisse; während des Rollout-Abgleichs sind parallele direkte Realm-Edits au
 ## SSF legal text and recording authority
 
 `legalTexts` is optional editorial content in the v2 runtime configuration. Separate groups preserve the distinction between consent for processing and release of a recording section, including distinct guest and staff wording. Editing these texts cannot change storage mode, retention, or recording authorization. Missing translations remain explicit; draft identifiers and unresolved contacts are preserved. Existing tenant permissions and HTML sanitization apply. SSF must implement the actual interaction and evidence separately; a text revision is not a consent record. Before downgrading to an older strict content schema, restore the previous JSON without the new block.
+
+## Baustellenplugin
+
+Für Baustellen bleiben unbekannte Payload- und Relationsmetadaten erhalten; nicht wiederherstellbare Daten blockieren den Write. Ausdrücklich akzeptiert ist allein der Entfall nicht mehr gelesener deaktivierter Kategoriezuordnungen. Sichtbarkeit verwendet Host-Lifecycle-Rechte; Dateiverknüpfungen verwenden die vorhandene Medienverwaltung. Siehe [Baustellenreferenz](../reference/construction-sites.md).

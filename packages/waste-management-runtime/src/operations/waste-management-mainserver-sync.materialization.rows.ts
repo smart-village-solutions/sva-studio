@@ -7,7 +7,10 @@ import type {
   WasteTourRecord,
 } from '@sva/waste-management-contracts';
 import { convertRichTextHtmlToPlainText } from '@sva/core';
-import { buildWasteStreetKey } from '@sva/waste-management-contracts';
+import {
+  buildWasteStreetKey,
+  wasteLocationTourPickupDateImportDefaults,
+} from '@sva/waste-management-contracts';
 import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 
 import type { MaterializedLocationTourPickupDateRecord } from './waste-management-mainserver-sync.materialization.js';
@@ -68,8 +71,16 @@ export const buildStudioRowsFromMaterialization = (
   const houseNumberById = new Map(
     (input.houseNumbers ?? []).map((houseNumber) => [houseNumber.id, houseNumber] as const)
   );
+  const streetLocationsByCity = new Map<string, WasteCollectionLocationRecord[]>();
+  for (const location of input.locations) {
+    if (!location.active || !location.streetId) continue;
+    if (streetById.get(location.streetId)?.cityId !== location.cityId) continue;
+    const locations = streetLocationsByCity.get(location.cityId) ?? [];
+    locations.push(location);
+    streetLocationsByCity.set(location.cityId, locations);
+  }
 
-  return input.pickupDates.flatMap((pickupDate) => {
+  const rows = input.pickupDates.flatMap((pickupDate) => {
     const tour = tourById.get(pickupDate.tourId);
     const location = locationById.get(pickupDate.locationId);
     if (tour?.status !== 'published' || !location?.active) return [];
@@ -77,45 +88,64 @@ export const buildStudioRowsFromMaterialization = (
     const cityRecord = cityById.get(location.cityId);
     const city = cityRecord?.name?.trim();
     const zip = cityRecord?.postalCode?.trim();
-    const streetName = location.streetId
-      ? streetById.get(location.streetId)?.name?.trim()
-      : undefined;
-    const houseNumberRecord = location.houseNumberId
-      ? houseNumberById.get(location.houseNumberId)
-      : undefined;
-    const houseNumber =
-      houseNumberRecord && houseNumberRecord.streetId === location.streetId
-        ? houseNumberRecord.number
+    if (!city) return [];
+
+    const isCityWide =
+      !location.streetId ||
+      streetById
+        .get(location.streetId)
+        ?.name.trim()
+        .localeCompare(wasteLocationTourPickupDateImportDefaults.allStreetsName, 'de', {
+          sensitivity: 'base',
+        }) === 0;
+    const targetLocations = isCityWide
+      ? (streetLocationsByCity.get(location.cityId) ?? []).filter(
+          (target) =>
+            !location.regionId || (target.regionId ?? cityRecord?.regionId) === location.regionId
+        )
+      : [location];
+    const note = buildPickupNoteHtml(tour.description, pickupDate.note);
+
+    return targetLocations.flatMap((target) => {
+      const streetName = target.streetId
+        ? streetById.get(target.streetId)?.name?.trim()
         : undefined;
-    const street = streetName ? buildWasteStreetKey(streetName, houseNumber) : undefined;
-    if (!city || !street) return [];
+      const houseNumberRecord = target.houseNumberId
+        ? houseNumberById.get(target.houseNumberId)
+        : undefined;
+      const houseNumber =
+        houseNumberRecord && houseNumberRecord.streetId === target.streetId
+          ? houseNumberRecord.number
+          : undefined;
+      const street = streetName ? buildWasteStreetKey(streetName, houseNumber) : undefined;
+      if (!street) return [];
 
-    return tour.wasteFractionIds.flatMap((fractionId) => {
-      const fraction = fractionById.get(fractionId);
-      if (!fraction) return [];
-      if (!fraction.name?.trim()) return [];
-      const wasteType = fraction.pdfShortLabel?.trim().toUpperCase();
-      if (!wasteType) throw new Error(`missing_waste_type_short_label:${fractionId}`);
-      const note = buildPickupNoteHtml(tour.description, pickupDate.note);
+      return tour.wasteFractionIds.flatMap((fractionId) => {
+        const fraction = fractionById.get(fractionId);
+        if (!fraction?.name?.trim()) return [];
+        const wasteType = fraction.pdfShortLabel?.trim().toUpperCase();
+        if (!wasteType) throw new Error(`missing_waste_type_short_label:${fractionId}`);
 
-      return [
-        {
-          pickupDate: pickupDate.pickupDate,
-          wasteType,
-          street,
-          ...(zip ? { zip } : {}),
-          city,
-          ...(note ? { note } : {}),
-          key: buildWasteSyncKey({
+        return [
+          {
             pickupDate: pickupDate.pickupDate,
             wasteType,
             street,
-            zip,
+            ...(zip ? { zip } : {}),
             city,
-            note,
-          }),
-        },
-      ];
+            ...(note ? { note } : {}),
+            key: buildWasteSyncKey({
+              pickupDate: pickupDate.pickupDate,
+              wasteType,
+              street,
+              zip,
+              city,
+              note,
+            }),
+          },
+        ];
+      });
     });
   });
+  return [...new Map(rows.map((row) => [row.key, row] as const)).values()];
 };

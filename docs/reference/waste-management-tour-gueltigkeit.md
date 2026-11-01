@@ -53,6 +53,16 @@ Aktuelle JSON- und Tabellenexporte schreiben den Status als `draft`, `published`
 Beim Import wird ein fehlender Status als `draft` behandelt; ältere Daten mit `active = true`
 werden als `published`, mit `active = false` als `draft` übernommen.
 
+## Ortstermine an die App übertragen
+
+Ein Termin für einen aktiven Abholort mit `Alle Straßen` gilt beim Mainserver-Abgleich für alle vorhandenen aktiven Straßen- und Hausnummernadressen desselben Orts. Das gilt sowohl für berechnete Tourtermine als auch für explizite Einsätze, etwa des Schadstoffmobils. Der Termin bleibt im Studio einmal auf Ortsebene gepflegt; erst die Transferaufbereitung erzeugt die konkreten Straßentermine für die bestehende App-Schnittstelle.
+
+Die Transferaufbereitung erkennt sowohl Abholorte ohne Straßen-ID als auch die unterstützte Importdarstellung mit einer eigenen Straße namens `Alle Straßen`. Bei importierten Abholorten bleibt auch die bisherige Sammeladresse als Transferziel erhalten, damit Orte ohne konkrete Straßen ihren Kalender behalten. Die öffentliche Web-/PDF-Abfrage benötigt für die Vererbung weiterhin einen Abholort ohne Straßen-ID; eine importierte Sammelstraße allein ersetzt diese Ortszuordnung dort nicht.
+
+Datum, Abfallart, Tourhinweis und individueller Hinweis mit Standzeit und Haltestelle werden übernommen. Identische direkte und geerbte Termine werden anhand des bestehenden Übertragungsschlüssels einschließlich Hinweis nur einmal übertragen. Unterschiedliche Haltestellenhinweise am selben Tag bleiben getrennte Termine. Regionale Einschränkungen werden berücksichtigt; bei einer Zieladresse ohne eigene Region gilt die Region ihres Orts. Inaktive Abholorte, Adressen anderer Orte und Straßen ohne aktiven Abholort erhalten keine geerbten Termine.
+
+Eine Zuordnung zu einer konkreten Straße wird weiterhin nur für diese Adresse übertragen. Soll ein Schadstoffmobil-Termin bei allen Straßen erscheinen, muss sein Geltungsbereich auf Ortsebene liegen; die tatsächliche Haltestelle gehört in den Termin- oder Tourhinweis. Webkalender und PDF verwenden weiterhin ihre bestehende hierarchische Kalenderabfrage. Nach Auslieferung der Transferänderung muss der Mainserver-Abgleich erneut ausgeführt werden; eine App-Änderung ist dafür nicht erforderlich.
+
 ## Verschiebungen nachvollziehen
 
 Die Bearbeitungsseite einer gespeicherten Tour bündelt die Abholortzuordnung, den Jahreskalender und einen Link zu den auf diese Tour gefilterten Einsätzen und tourbezogenen Ausweichterminen. Die Terminliste öffnet sich in einem neuen Tab, damit ungespeicherte Formularangaben erhalten bleiben. Der Jahreskalender zeigt den gespeicherten Planungsstand; bei ungespeicherten Änderungen an der Terminlogik muss die Tour zuerst gespeichert werden.

@@ -455,9 +455,9 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     expect(state.changeSvaMainserverGenericItemVisibility).toHaveBeenCalledWith(
       expect.objectContaining({ genericItemId: 'card-1', visible: false })
     );
-    expect(state.changeSvaMainserverGenericItemVisibility.mock.invocationCallOrder[0]).toBeGreaterThan(
-      state.updateSvaMainserverGenericItem.mock.invocationCallOrder[0]!
-    );
+    expect(
+      state.changeSvaMainserverGenericItemVisibility.mock.invocationCallOrder[0]
+    ).toBeGreaterThan(state.updateSvaMainserverGenericItem.mock.invocationCallOrder[0]!);
     expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toMatchObject({ data: { visible: false } });
   });
@@ -1046,11 +1046,31 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     );
 
     expect(response?.status).toBe(403);
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBe('not_applied');
     await expect(response?.json()).resolves.toEqual({
       error: 'csrf_validation_failed',
       message: 'Sicherheitsprüfung fehlgeschlagen.',
     });
     expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
+    expect(state.createSvaMainserverGenericItem).not.toHaveBeenCalled();
+  });
+
+  it('marks local authorization rejections before creating generic content as not applied', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Forbidden',
+    });
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/generic-items', {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Rejected', genericType: 'faq' }),
+      })
+    );
+    expect(response?.status).toBe(403);
+    expect(response?.headers.get('X-SVA-Mutation-Outcome')).toBe('not_applied');
     expect(state.createSvaMainserverGenericItem).not.toHaveBeenCalled();
   });
 

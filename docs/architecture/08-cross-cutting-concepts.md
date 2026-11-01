@@ -1329,6 +1329,10 @@ Nichtausführung. Nur ausdrücklich vor dem Providerwrite abgelehnte Versuche
 sind sicher erneut speicherbar. Ein bestätigtes Ergebnis erlaubt ausschließlich
 den vorhandenen Medienreferenzabschluss; sein Retry wiederholt keinen Contentwrite.
 Keine neue Persistenz oder globale Exactly-once-Garantie entsteht.
+Der gemeinsame Medien-Save-Pfad erhält `not_applied` auch für nachweislich
+vorgelagerte lokale Eingabe-, CSRF-, Kontext- und Autorisierungsablehnungen der
+übrigen Content-Plugins. Allgemeine Provider-/4xx-Fehler tragen diesen Nachweis
+nicht; ihre Uploads bleiben vor destruktiver Bereinigung geschützt.
 
 Die bestehende Host-Leave-Boundary schützt Erstellen und Detailbearbeitung.
 Bei Sessionverlust behält sie einen ungespeicherten Editor im Dokument, sperrt

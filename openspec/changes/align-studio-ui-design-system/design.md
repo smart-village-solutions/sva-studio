@@ -547,7 +547,12 @@ prüft unabhängig die Ressourcenrechte. Ein fehlender Eintrag ist kein Beweis
 für eine unterbliebene Mutation.
 
 `X-SVA-Mutation-Outcome: not_applied` bestätigt ausschließlich einen Fehler vor
-Beginn des News-Providerwrites. Nach begonnenem Write, bei Idempotenzkonflikt,
+Beginn des News-Providerwrites. Derselbe bestehende Header kennzeichnet auch
+lokale Eingabe-, CSRF- und Kontextprüfungen sowie vorgelagerte lokale
+Autorisierungsablehnungen der übrigen gemeinsamen Medien-Save-Verbraucher
+(Events, POI, Generic Items/Kacheln und Projects). Die Kennzeichnung erfolgt
+an der geprüften Host-Ablehnung; beliebige 4xx- oder Providerfehler sind kein
+Bereinigungsnachweis. Nach begonnenem Write, bei Idempotenzkonflikt,
 Transportverlust oder fehlender Evidenz bleibt das Ergebnis unbekannt. Die SDK
 kennzeichnet auch einen gescheiterten Context-Binding-GET vor dem PATCH als
 nicht begonnen. Ein neuer Save nach bestätigter Ablehnung erhält eine neue

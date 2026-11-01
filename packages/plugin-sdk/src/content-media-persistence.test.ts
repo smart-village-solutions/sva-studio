@@ -1,6 +1,8 @@
 import { createMediaEditingDocument } from '@sva/media';
 import { describe, expect, it, vi } from 'vitest';
 
+import { requestMainserverJson } from './mainserver-request.js';
+
 import {
   alignHostMediaReferencesByOrder,
   ContentMediaSaveError,
@@ -93,6 +95,74 @@ describe('content media persistence', () => {
       ).toBe(false);
       expect(input.drafts).toEqual(originalDrafts);
       expect(input.references).toEqual([{ assetId: 'library-existing', role: 'header_image' }]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    'events.event-record',
+    'poi.point-of-interest',
+    'generic-items.generic-item',
+    'cockpit-cards.cockpit-card',
+    'projects.project',
+  ])(
+    'cleans rejected local media for %s only with an explicit host guarantee',
+    async (targetType) => {
+      vi.useFakeTimers();
+      try {
+        const { input, fetch } = processingSave(false);
+        const saving = saveContentWithHostMediaReferences({
+          ...input,
+          targetType,
+          saveContent: () =>
+            requestMainserverJson({
+              url: '/content',
+              init: { method: 'POST' },
+              fetch: async () =>
+                Response.json(
+                  { error: 'csrf_validation_failed' },
+                  {
+                    status: 403,
+                    headers: { 'X-SVA-Mutation-Outcome': 'not_applied' },
+                  }
+                ),
+            }),
+        });
+        const rejected = expect(saving).rejects.toMatchObject({ code: 'csrf_validation_failed' });
+        await vi.advanceTimersByTimeAsync(1000);
+        await rejected;
+        expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/abandon'))).toBe(true);
+        expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/outcome-unknown'))).toBe(
+          false
+        );
+        expect(input.drafts).toHaveLength(1);
+        expect(input.references).toEqual([{ assetId: 'library-existing', role: 'header_image' }]);
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
+
+  it('retains uploaded media when a 403 response has no explicit outcome', async () => {
+    vi.useFakeTimers();
+    try {
+      const { input, fetch } = processingSave(false);
+      const saving = saveContentWithHostMediaReferences({
+        ...input,
+        targetType: 'events.event-record',
+        saveContent: () =>
+          requestMainserverJson({
+            url: '/content',
+            init: { method: 'POST' },
+            fetch: async () => Response.json({ error: 'forbidden' }, { status: 403 }),
+          }),
+      });
+      const rejected = expect(saving).rejects.toMatchObject({ status: 'outcome_unknown' });
+      await vi.advanceTimersByTimeAsync(1000);
+      await rejected;
+      expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/abandon'))).toBe(false);
+      expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/outcome-unknown'))).toBe(true);
     } finally {
       vi.useRealTimers();
     }

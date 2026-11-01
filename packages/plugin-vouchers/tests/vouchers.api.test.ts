@@ -8,6 +8,7 @@ import {
   listVoucherCategories,
   listVoucherLocations,
   changeVoucherVisibility,
+  deleteVoucher,
   type VoucherPreparation,
 } from '../src/vouchers.api.js';
 import { emptyVoucherDraft, parseVoucherDraft } from '../src/vouchers.form-model.js';
@@ -22,6 +23,17 @@ const preparation: VoucherPreparation = {
   requiresReset: false,
 };
 afterEach(() => vi.unstubAllGlobals());
+it('deletes only the selected voucher with the selected principal and CSRF headers', async () => {
+  const fetchMock = vi.fn(async () => Response.json({ data: { id: '2' } }));
+  vi.stubGlobal('fetch', fetchMock);
+  await deleteVoucher('2', 'organization');
+  expect(fetchMock).toHaveBeenCalledOnce();
+  const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toBe('/api/v1/mainserver/vouchers/2');
+  expect(init.method).toBe('DELETE');
+  expect(new Headers(init.headers).get('X-SVA-Acting-Principal-Type')).toBe('organization');
+  expect(new Headers(init.headers).get('X-Requested-With')).toBe('XMLHttpRequest');
+});
 describe('voucher operation identity', () => {
   it('uses the same pre-issued operation identity for commit and readback recovery', async () => {
     const fetchMock = vi.fn(async () =>

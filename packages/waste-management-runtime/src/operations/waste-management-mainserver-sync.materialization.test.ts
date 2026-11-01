@@ -146,7 +146,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
             wasteType: 'SM',
             city: 'Musterhausen',
             zip: '12345',
-            note: '<div><p>Schadstoffmobil</p></div><div>09–11 Uhr, Rathaus</div><div>14–16 Uhr, Bahnhof</div>',
+            note: 'Schadstoffmobil\n09–11 Uhr, Rathaus\n14–16 Uhr, Bahnhof',
           }),
         ]);
       }
@@ -176,6 +176,26 @@ describe('waste-management-mainserver-sync.materialization', () => {
         pickupDates: [...input.pickupDates].reverse(),
       });
       expect(reversed).toEqual(forward);
+    });
+
+    it('renders merged rich-text stops as decoded plain text and deduplicates equivalent notes', () => {
+      const input = buildInput();
+      const morning = input.pickupDates[0]!;
+      const afternoon = input.pickupDates[1]!;
+      const rows = buildStudioRowsFromMaterialization({
+        ...input,
+        pickupDates: [
+          { ...morning, note: '<p>09–11 Uhr, Rathaus &amp; Markt</p><script>alert(1)</script>' },
+          { ...morning, id: 'duplicate', note: '<strong>09–11 Uhr, Rathaus &amp; Markt</strong>' },
+          { ...afternoon, note: '<p>14–16 Uhr, <strong>Bahnhof</strong></p>' },
+        ],
+      });
+
+      expect(rows).toHaveLength(3);
+      for (const row of rows) {
+        expect(row.note).toBe('Schadstoffmobil\n09–11 Uhr, Rathaus & Markt\n14–16 Uhr, Bahnhof');
+        expect(row.note).not.toMatch(/<[^>]*>|&amp;|alert/u);
+      }
     });
 
     it.each(['Alle Straßen', '  alle straßen  '])(

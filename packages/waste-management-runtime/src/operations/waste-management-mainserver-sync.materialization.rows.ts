@@ -36,8 +36,9 @@ type StudioRowMaterializationInput = Readonly<{
   streets: readonly WasteStreetRecord[];
 }>;
 
-const buildPickupNoteHtml = (
-  ...values: readonly (string | null | undefined)[]
+const buildPickupNote = (
+  values: readonly (string | null | undefined)[],
+  hasMultipleStopNotes: boolean
 ): string | undefined => {
   const semanticContents = new Set<string>();
   const fragments = values.flatMap((value) => {
@@ -54,6 +55,8 @@ const buildPickupNoteHtml = (
   });
 
   if (fragments.length === 0) return undefined;
+  // Existing app clients render the combined stop note as plain React Native text.
+  if (hasMultipleStopNotes) return [...semanticContents].join('\n');
   if (fragments.length === 1) return fragments[0];
 
   return fragments.map((fragment) => `<div>${fragment}</div>`).join('');
@@ -165,7 +168,7 @@ export const buildStudioRowsFromMaterialization = (
     groupedRows.set(row.key, group);
   });
   return [...groupedRows.values()].map(({ row, descriptions, notes }) => {
-    const note = buildPickupNoteHtml(...[...descriptions].sort(), ...[...notes].sort());
+    const note = buildPickupNote([...descriptions].sort().concat([...notes].sort()), notes.size > 1);
     return {
       ...row,
       note,

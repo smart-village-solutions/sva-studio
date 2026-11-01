@@ -17,14 +17,12 @@ afterEach(() => {
 describe('construction site HTTP client', () => {
   it('sends create/update with exact operation and context binding headers', async () => {
     const site = { ...createConstructionSiteDefaults('2026-11-01'), title: 'Road' };
-    const fetchMock = vi
-      .fn()
-      .mockImplementation(
-        async () =>
-          new Response(JSON.stringify({ data: { id: '42', input: site } }), {
-            headers: { 'Content-Type': 'application/json', 'X-SVA-Context-Binding': 'bound' },
-          })
-      );
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ data: { id: '42', input: site } }), {
+          headers: { 'Content-Type': 'application/json', 'X-SVA-Context-Binding': 'bound' },
+        })
+    );
     vi.stubGlobal('fetch', fetchMock);
     await getConstructionSite('42', 'user');
     await saveConstructionSite(
@@ -46,14 +44,12 @@ describe('construction site HTTP client', () => {
     expect((fetchMock.mock.calls[2]?.[1] as RequestInit).method).toBe('POST');
   });
   it('encodes filters and requests categories compatible with construction sites', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockImplementation(
-        async () =>
-          new Response(JSON.stringify({ data: [] }), {
-            headers: { 'Content-Type': 'application/json' },
-          })
-      );
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ data: [] }), {
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
     vi.stubGlobal('fetch', fetchMock);
     await listConstructionSites({ search: 'Straße & Brücke', page: 2 });
     await listConstructionSiteCategories();
@@ -63,6 +59,13 @@ describe('construction site HTTP client', () => {
       )
     ).toBe('Straße & Brücke');
     expect(fetchMock.mock.calls[1]?.[0]).toContain('dataType=generic_item_construction_site');
+    expect(
+      new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('X-SVA-Acting-Principal-Type')
+    ).toBe('user');
+    await listConstructionSites({ page: 1 }, 'organization');
+    expect(
+      new Headers(fetchMock.mock.calls[2]?.[1]?.headers).get('X-SVA-Acting-Principal-Type')
+    ).toBe('organization');
   });
   it('keeps invalid persisted markers inert and hashes the exact request body', async () => {
     for (const value of ['{', 'null', '1', '{}', '{"operationId":1,"inputHash":"x"}']) {

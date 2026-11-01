@@ -1,5 +1,6 @@
 import {
   createMainserverCrudClient,
+  createMainserverReadHeaders,
   MainserverApiError,
   requestMainserverJson,
   type MainserverActingPrincipalType,
@@ -31,8 +32,12 @@ export const saveConstructionSite = (
   id
     ? client.update(id, body, principal, { operationId })
     : client.create(body, principal, { operationId });
-export const listConstructionSites = (query: Record<string, string | number>) =>
+export const listConstructionSites = (
+  query: Record<string, string | number>,
+  principal: MainserverActingPrincipalType = 'user'
+) =>
   requestMainserverJson<ConstructionSiteList>({
+    init: { headers: createMainserverReadHeaders(principal) },
     url: `/api/v1/mainserver/construction-sites?${new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]))}`,
   });
 export const listConstructionSiteCategories = async () =>
@@ -81,6 +86,10 @@ export function constructionSiteRejection(error: unknown): string | undefined {
   return [
     'construction_site_content_conflict',
     'construction_site_invalid_input',
+    'construction_site_media_unavailable',
+    'construction_site_not_found',
+    'construction_site_incomplete',
+    'construction_site_dependents_unsupported',
     'forbidden',
     'csrf_validation_failed',
     'stale_mainserver_context',

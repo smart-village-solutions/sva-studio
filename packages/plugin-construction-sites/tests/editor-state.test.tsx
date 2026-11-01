@@ -146,21 +146,51 @@ describe('construction site editor operations', () => {
       storage.mockRestore();
     }
   });
-  it('keeps an unknown create blocked when recovery is denied after permissions change',async()=>{
-    api.save.mockRejectedValueOnce(new TypeError('network')).mockRejectedValueOnce(new MainserverApiError('forbidden'));
-    const {result}=renderHook(()=>useConstructionSiteEditor(undefined,'denied-recovery'));
-    act(()=>result.current.change('title','Road'));
-    await act(async()=>result.current.save());const operation=result.current.pending;
-    await act(async()=>result.current.recover());expect(result.current.pending).toEqual(operation);
-    await act(async()=>result.current.save());expect(api.save).toHaveBeenCalledTimes(2);
+  it.each([
+    'forbidden',
+    'construction_site_media_unavailable',
+    'construction_site_not_found',
+    'construction_site_incomplete',
+    'construction_site_dependents_unsupported',
+  ])('keeps an unknown create blocked when recovery is rejected: %s', async (code) => {
+    api.save
+      .mockRejectedValueOnce(new TypeError('network'))
+      .mockRejectedValueOnce(new MainserverApiError(code));
+    const { result } = renderHook(() => useConstructionSiteEditor(undefined, 'denied-recovery'));
+    act(() => result.current.change('title', 'Road'));
+    await act(async () => result.current.save());
+    const operation = result.current.pending;
+    await act(async () => result.current.recover());
+    expect(result.current.pending).toEqual(operation);
+    await act(async () => result.current.save());
+    expect(api.save).toHaveBeenCalledTimes(2);
     expect(sessionStorage.length).toBe(1);
   });
 
- it('keeps the draft when a fresh save is rejected for missing permission',async()=>{
-   api.save.mockRejectedValueOnce(new MainserverApiError('forbidden'));
-   const {result}=renderHook(()=>useConstructionSiteEditor(undefined,'forbidden'));
-   act(()=>result.current.change('title','Road'));
-   await act(async()=>result.current.save());expect(result.current.pending).toBeUndefined();expect(result.current.failure).toBe('errors.forbidden');expect(result.current.draft.title).toBe('Road');
- });
+  it('keeps the draft when a fresh save is rejected for missing permission', async () => {
+    api.save.mockRejectedValueOnce(new MainserverApiError('forbidden'));
+    const { result } = renderHook(() => useConstructionSiteEditor(undefined, 'forbidden'));
+    act(() => result.current.change('title', 'Road'));
+    await act(async () => result.current.save());
+    expect(result.current.pending).toBeUndefined();
+    expect(result.current.failure).toBe('errors.forbidden');
+    expect(result.current.draft.title).toBe('Road');
+  });
 
+  it.each([
+    'construction_site_media_unavailable',
+    'construction_site_not_found',
+    'construction_site_incomplete',
+    'construction_site_dependents_unsupported',
+  ])('keeps a definite pre-write rejection editable: %s', async (code) => {
+    api.save.mockRejectedValueOnce(new MainserverApiError(code)).mockResolvedValue(record);
+    const { result } = renderHook(() => useConstructionSiteEditor(undefined, code));
+    act(() => result.current.change('title', 'Road'));
+    await act(async () => result.current.save());
+    expect(result.current.pending).toBeUndefined();
+    expect(sessionStorage.length).toBe(0);
+    expect(result.current.draft.title).toBe('Road');
+    await act(async () => result.current.save());
+    expect(api.save).toHaveBeenCalledTimes(2);
+  });
 });

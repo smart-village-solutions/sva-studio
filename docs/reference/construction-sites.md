@@ -4,7 +4,7 @@ Das optionale Plugin `construction-sites` erstellt und bearbeitet bestehende Mai
 
 ## Redaktionelle Bedienung
 
-Die Übersicht unter `/admin/content?type=construction-sites.construction-site` zeigt Titel, ersten Standort, Beginn, Ende, Zeitraumstatus und letzte Änderung. Titelsuche, Kategorie und sich überschneidender Zeitraum werden vor der Seiteneinteilung auf alle lesbaren Baustellen angewendet. Ein leerer Filtertreffer ist kein Ladefehler.
+Die Übersicht unter `/admin/content?type=construction-sites.construction-site` zeigt Titel, ersten Standort, Beginn, Ende, Zeitraumstatus und letzte Änderung. Titelsuche, Kategorie und sich überschneidender Zeitraum werden vor der Seiteneinteilung auf alle lesbaren Baustellen angewendet. Ein leerer Filtertreffer ist kein Ladefehler. Die Übersicht verwendet die vom Studio vorgegebene Identität und wartet auf einen verfügbaren Organisationskontext.
 
 Beim Anlegen stehen die Eingaben auf einer Seite. Beim Bearbeiten sind sie in „Basis“, „Inhalt“ und „Historie“ gegliedert. Titel sowie Beginn und Ende des ersten Zeitraums sind erforderlich. Ein ausdrücklich gewähltes Ende bleibt bei Änderungen am Beginn erhalten. Fehlende Bestandsdaten werden nicht durch heutige Daten ersetzt.
 
@@ -28,7 +28,7 @@ Vor einem Update liest der Adapter sämtliche verfügbaren schreibbaren Felder u
 
 Der Mainserver ersetzt Relationen beim Speichern. Der Adapter sendet deshalb einen aus dem autoritativen Snapshot aufgebauten vollständigen Write und prüft das Ergebnis unabhängig nach. Der Host-Lock serialisiert Studio-Updates derselben GenericItem-ID. Da Mainserver keine atomare Revisionsvorbedingung anbietet, bleibt ein Konkurrenzfenster zu Schreibzugriffen anderer Systeme bestehen; eine konfliktfreie Zusammenführung wird nicht zugesichert.
 
-Jeder Save erhält eine stabile Operations-ID. Die bestehende Idempotenzablage hält die erwartete Änderung an Identität, Organisation und Credential-Kontext gebunden fest. Im Browser werden nur Operations-ID, Request-Hash und gegebenenfalls Bestands-ID gespeichert. Bei unklarem Ergebnis wird derselbe Vorgang mit „Speicherergebnis prüfen“ gelesen und nachverarbeitet; ein Provider-Write wird dabei nicht wiederholt. Eine neue Anlage wird über ihre operationsgebundene `externalId` gefunden. Ein bereits gespeicherter Inhalt mit unvollständiger lokaler Nachverarbeitung wird separat gemeldet und bleibt gegen erneutes Speichern gesperrt.
+Eindeutige Ablehnungen vor der Speicherung lassen die Eingaben zur Korrektur frei. Bei einem bereits unklaren Ergebnis bleibt die Wiederaufnahme auch nach einer Ablehnung gegen erneutes Schreiben gesperrt. Jeder Save erhält eine stabile Operations-ID. Die bestehende Idempotenzablage hält die erwartete Änderung an Identität, Organisation und Credential-Kontext gebunden fest. Im Browser werden nur Operations-ID, Request-Hash und gegebenenfalls Bestands-ID gespeichert. Bei unklarem Ergebnis wird derselbe Vorgang mit „Speicherergebnis prüfen“ gelesen und nachverarbeitet; ein Provider-Write wird dabei nicht wiederholt. Eine neue Anlage wird über ihre operationsgebundene `externalId` gefunden. Ein bereits gespeicherter Inhalt mit unvollständiger lokaler Nachverarbeitung wird separat gemeldet und bleibt gegen erneutes Speichern gesperrt.
 
 Die Listenabfrage verwendet den bestehenden begrenzten Upstream-Scan. Erreicht sie dessen Grenze, meldet sie einen Fehler statt unvollständige Ergebnisse als vollständige Liste auszugeben.
 

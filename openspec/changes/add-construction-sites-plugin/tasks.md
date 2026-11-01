@@ -56,3 +56,18 @@ Die lokale Implementierung ist keine produktive Bereitstellung. Kein PR, Push, M
 ## Review vor dem Staging-Rollout
 
 Der zusätzliche Review gegen den mit `origin/main` integrierten Stand bestätigte einen fehlenden Ausschluss vorläufiger Medien. Der vorhandene Serverguard wurde ohne Änderung des Medienvertrags ergänzt. Der Regressionstest reproduzierte zunächst HTTP 201 statt 409 für ein öffentliches, verarbeitetes, aber vorläufiges Asset; anschließend bestanden alle elf Baustellen-Routentests einschließlich Erstwrite und Wiederaufnahme. Weitere bestätigte Merge-Blocker wurden im gebündelten Fachreview nicht gefunden. Live-Schreib-/App-Abnahme gemäß 4.4 bleibt separat offen.
+
+## GitHub-Review und gezielte CI-Korrekturen in PR #2032
+
+Der Listenabruf erhält den bestehenden SDK-Read-Header mit der vom Host vorgegebenen Identität; bei nicht verfügbarem Organisationskontext lädt der Host die Fachliste noch nicht. Der relative Typimport im Browsertest wurde durch den öffentlichen Package-Import ersetzt. Der bestehende Projektions-Test erwartet nun ebenfalls die neue exakte GenericItem-Zuständigkeit.
+
+Die zusammenhängende Prüfung des Speicherzustandsraums unterscheidet:
+
+| Zustand | Browserverhalten | Bestehender Serververtrag |
+| --- | --- | --- |
+| Frischer Save mit bestätigter Ablehnung `media_unavailable`, `not_found`, `incomplete`, `dependents_unsupported` (jeweils `construction_site_`) | Pending-Marker entfernen, Entwurf zur Korrektur erhalten | Entsteht vor dem Provider-Write; kein neues Recovery-Protokoll |
+| Antwortverlust oder Fehler nach Beginn des Provider-Writes | Pending-Marker behalten, kein zweiter Write | `construction_site_outcome_unknown`; Readback und Nachverarbeitung derselben Operation |
+| Bekannter Provider-Erfolg mit lokalem Teilfehler | Pending-Marker behalten | Teilfehlerantwort mit bekannter ID |
+| Ablehnung bei Recovery, auch mit einem der obigen Codes | Pending-Marker behalten | Fehlende Expected-Zeile beweist keinen terminalen Ausgang eines noch laufenden Originalrequests |
+
+Die neuen Header-, Principal- und Ablehnungsregressionen wurden zuerst rot reproduziert. Danach bestanden 31 gezielte Plugin-Tests, 35 Host-Routentests und 18 Projektions-Pagingtests. Lint für App und Plugin sowie Plugin-Build sind grün. Auch der lokale Create-/Edit-/Listen-Browserflow mit Prüfung des tatsächlich gesendeten Principal-Headers bestand. Die begrenzte unabhängige Nachprüfung der GitHub-Findings meldete keine verbleibenden Blocker. Vollständige lokale `affected`-/PR-Läufe wurden nicht wiederholt; die GitHub-Gates bleiben für den finalen HEAD maßgeblich.

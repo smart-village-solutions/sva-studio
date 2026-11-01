@@ -148,12 +148,17 @@ describe('construction site editorial UI', () => {
   });
   it('lists the primary location, dates and temporal state, preserving filters during pagination', async () => {
     state.search = { category: 'Verkehr', page: 2 };
-    render(<ConstructionSitesListPage />);
+    render(
+      <ConstructionSitesListPage
+        principalControl={{ kind: 'fixed', value: 'organization', label: 'Town' }}
+      />
+    );
     await screen.findAllByText('Brückenbau');
     expect(screen.getAllByText('Brücke').length).toBeGreaterThan(0);
     expect(screen.getAllByText('2026-11-01').length).toBeGreaterThan(0);
     expect(state.list).toHaveBeenCalledWith(
-      expect.objectContaining({ category: 'Verkehr', page: 2 })
+      expect.objectContaining({ category: 'Verkehr', page: 2 }),
+      'organization'
     );
     fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
     const navigation = state.navigate.mock.calls[0]?.[0];
@@ -283,13 +288,27 @@ describe('construction site editorial UI', () => {
     await waitFor(() => expect(document.activeElement?.id).toBe('cs-title'));
     expect(state.save).not.toHaveBeenCalled();
   });
-  it('offers explicit visibility only with the host publication permission',async()=>{
-    publishSessionAccessSnapshot({isResolved:true,subjectId:'actor',instanceId:'tenant',assignedModules:['construction-sites'],roles:[],permissionActions:['construction-sites.read','construction-sites.create','content.publish']});
-    render(<ConstructionSitesCreatePage/>);fireEvent.change(screen.getByLabelText(/^Titel/),{target:{value:'Visible road'}});
-    const visible=screen.getByLabelText('Sichtbar');expect(visible.matches(':disabled')).toBe(false);fireEvent.click(visible);
+  it('offers explicit visibility only with the host publication permission', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      subjectId: 'actor',
+      instanceId: 'tenant',
+      assignedModules: ['construction-sites'],
+      roles: [],
+      permissionActions: [
+        'construction-sites.read',
+        'construction-sites.create',
+        'content.publish',
+      ],
+    });
+    render(<ConstructionSitesCreatePage />);
+    fireEvent.change(screen.getByLabelText(/^Titel/), { target: { value: 'Visible road' } });
+    const visible = screen.getByLabelText('Sichtbar');
+    expect(visible.matches(':disabled')).toBe(false);
+    fireEvent.click(visible);
     expect(screen.getByText(/Die Baustelle wird sichtbar gespeichert/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button',{name:'Baustelle anlegen'}));await waitFor(()=>expect(state.save).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Baustelle anlegen' }));
+    await waitFor(() => expect(state.save).toHaveBeenCalledTimes(1));
     expect(state.save.mock.calls[0]?.[1].site.visible).toBe(true);
   });
-
 });

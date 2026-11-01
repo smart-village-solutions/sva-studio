@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearch, useNavigate } from '@tanstack/react-router';
 import {
   normalizeListSearch,
+  type MainserverActingPrincipalType,
   usePluginTranslation,
   toDatetimeLocalValue,
   formatDateTimeInEditorTimeZone,
@@ -17,6 +18,7 @@ import {
   StudioLoadingState,
   StudioErrorState,
   StudioEmptyState,
+  type MainserverPrincipalControlModel,
 } from '@sva/studio-ui-react';
 import { constructionSiteTemporalState, type ConstructionSiteList } from './contract.js';
 import { listConstructionSites, listConstructionSiteCategories } from './construction-sites.api.js';
@@ -125,14 +127,17 @@ function ListTable({ result, today }: Readonly<{ result: ConstructionSiteList; t
     />
   );
 }
-function useListData(query: string, scope: string) {
+function useListData(query: string, scope: string, principal: MainserverActingPrincipalType) {
   const [result, setResult] = useState<ConstructionSiteList>();
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [categories, setCategories] = useState<readonly { id: string; name: string }[]>([]);
   useEffect(() => {
     let active = true;
     setState('loading');
-    void listConstructionSites(JSON.parse(query) as Record<string, string | number>).then(
+    void listConstructionSites(
+      JSON.parse(query) as Record<string, string | number>,
+      principal
+    ).then(
       (data) => {
         if (active) {
           setResult(data);
@@ -144,7 +149,7 @@ function useListData(query: string, scope: string) {
     return () => {
       active = false;
     };
-  }, [query, scope]);
+  }, [query, scope, principal]);
   useEffect(() => {
     let active = true;
     void listConstructionSiteCategories().then(
@@ -165,7 +170,9 @@ function listFilters(search: Record<string, unknown>) {
     ])
   );
 }
-export function ConstructionSitesListPage() {
+export function ConstructionSitesListPage({
+  principalControl,
+}: Readonly<{ principalControl?: MainserverPrincipalControlModel }>) {
   const pt = usePluginTranslation('construction-sites');
   const access = useConstructionSiteAccess();
   const navigate = useNavigate();
@@ -178,7 +185,8 @@ export function ConstructionSitesListPage() {
     access.session.subjectId,
     access.session.organizationId,
   ]);
-  const { result, state, categories } = useListData(query, scope);
+  const principal = principalControl?.value ?? 'user';
+  const { result, state, categories } = useListData(query, scope, principal);
   const filter = (key: string, value: string) =>
     void navigate({
       to: '/admin/content',

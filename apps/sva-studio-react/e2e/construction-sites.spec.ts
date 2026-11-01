@@ -4,7 +4,7 @@ import {
   mockSharedShellRequests,
   navigateClientSide,
 } from './news-plugin.fixtures';
-import { type ConstructionSiteRecord } from '../../../packages/plugin-construction-sites/src/contract';
+import type { ConstructionSiteRecord } from '@sva/plugin-construction-sites';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 test('creates a construction site and edits its dates without creating another record', async ({
@@ -50,6 +50,7 @@ test('creates a construction site and edits its dates without creating another r
   let updates = 0;
   await page.route('**/api/v1/mainserver/construction-sites**', async (route) => {
     const method = route.request().method();
+    expect(route.request().headers()['x-sva-acting-principal-type']).toBe('user');
     if (method === 'POST' || method === 'PATCH') {
       const body = route.request().postDataJSON() as {
         site: ConstructionSiteRecord['input'];

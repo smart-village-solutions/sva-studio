@@ -40,6 +40,7 @@ const categoryContentDataTypes = [
   'event_record',
   'point_of_interest',
   'generic_item_voucher',
+  'generic_item_construction_site',
 ] as const;
 type CategoryContentDataType = (typeof categoryContentDataTypes)[number];
 

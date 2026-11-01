@@ -17,7 +17,7 @@ const blank = (shape: WriteShape) =>
   Object.fromEntries(
     Object.entries(shape).map(([key, value]) => [key, typeof value === 'object' ? [] : null])
   );
-function setup() {
+function setup(defaultCategory?: string) {
   let stored: RawRecord = {
     ...blank(constructionSiteWriteFields),
     id: '42',
@@ -66,7 +66,7 @@ function setup() {
       { name: 'Alt', active: false },
     ],
   };
-  let tamper = false;
+  let tamper: 'locations' | 'categories' | undefined;
   const schema = buildClientSchema(schemaSnapshot.data as unknown as IntrospectionQuery);
   const execute = vi.fn(
     async (call: {
@@ -96,12 +96,15 @@ function setup() {
           ...stored,
           ...emptyRelations,
           ...call.variables,
-          categories: (call.variables.categories as RawRecord[]).map((item) => ({
-            ...item,
-            active: true,
-          })),
+          categories: [
+            ...(call.variables.categories as RawRecord[]).map((item) => ({
+              ...item,
+              active: true,
+            })),
+            ...(defaultCategory ? [{ name: defaultCategory, active: true }] : []),
+          ],
         };
-        if (tamper) stored.locations = [];
+        if (tamper) stored[tamper] = [];
         return { createGenericItem: { id: stored.id } };
       }
       const read = {
@@ -125,8 +128,8 @@ function setup() {
     service,
     execute,
     stored: () => stored,
-    tamper: () => {
-      tamper = true;
+    tamper: (field: 'locations' | 'categories' = 'locations') => {
+      tamper = field;
     },
   };
 }
@@ -155,6 +158,22 @@ describe('ConstructionSite GraphQL roundtrip', () => {
     expect(writes).toHaveLength(1);
     expect(writes[0]![0].allowRetry).toBe(false);
   });
+  it('accepts provider defaults while removing a deselected ordinary category', async () => {
+    const { service, stored, execute } = setup('Providerstandard');
+    const current = await service.getConstructionSite({ ...connection, siteId: '42' });
+    const prepared = service.prepareConstructionSite(
+      { ...current.data.input, categories: [] },
+      'operation-default',
+      current.item
+    );
+    const data = await service.writeConstructionSite({ ...connection, prepared });
+    expect(data.input.categories).toEqual([{ name: 'Providerstandard' }]);
+    expect(stored().categories).toEqual([{ name: 'Providerstandard', active: true }]);
+    expect(
+      execute.mock.calls.find(([call]) => call.operationName.endsWith('Write'))?.[0].variables
+        .categories
+    ).toEqual([]);
+  });
   it('detects an external change immediately before write without sending a mutation', async () => {
     const { service, stored, execute } = setup();
     const current = await service.getConstructionSite({ ...connection, siteId: '42' });
@@ -169,21 +188,26 @@ describe('ConstructionSite GraphQL roundtrip', () => {
     );
     expect(execute.mock.calls.some(([call]) => call.operationName.endsWith('Write'))).toBe(false);
   });
-  it('reports the known provider identity on readback mismatch and never retries the write', async () => {
-    const { service, tamper, execute } = setup();
-    const current = await service.getConstructionSite({ ...connection, siteId: '42' });
-    const prepared = service.prepareConstructionSite(
-      current.data.input,
-      'operation-1',
-      current.item
-    );
-    tamper();
-    await expect(service.writeConstructionSite({ ...connection, prepared })).rejects.toMatchObject({
-      message: 'construction_site_readback_mismatch',
-      providerId: '42',
-    });
-    expect(
-      execute.mock.calls.filter(([call]) => call.operationName.endsWith('Write'))
-    ).toHaveLength(1);
-  });
+  it.each(['locations', 'categories'] as const)(
+    'reports the known provider identity when %s are missing after write and never retries',
+    async (field) => {
+      const { service, tamper, execute } = setup();
+      const current = await service.getConstructionSite({ ...connection, siteId: '42' });
+      const prepared = service.prepareConstructionSite(
+        current.data.input,
+        'operation-1',
+        current.item
+      );
+      tamper(field);
+      await expect(
+        service.writeConstructionSite({ ...connection, prepared })
+      ).rejects.toMatchObject({
+        message: 'construction_site_readback_mismatch',
+        providerId: '42',
+      });
+      expect(
+        execute.mock.calls.filter(([call]) => call.operationName.endsWith('Write'))
+      ).toHaveLength(1);
+    }
+  );
 });

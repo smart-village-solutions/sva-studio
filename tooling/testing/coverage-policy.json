@@ -163,6 +163,12 @@
       "functions": 95,
       "branches": 78
     },
+    "plugin-construction-sites": {
+      "lines": 85,
+      "statements": 85,
+      "functions": 85,
+      "branches": 85
+    },
     "plugin-vouchers": {
       "lines": 85,
       "statements": 85,

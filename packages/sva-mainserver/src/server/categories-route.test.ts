@@ -189,6 +189,28 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     });
   });
 
+  it('accepts the construction site category filter and excludes unrelated types', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.read');
+    state.listSvaMainserverCategories.mockResolvedValue([
+      { id: 'universal', name: 'Allgemein', dataTypes: [] },
+      { id: 'construction', name: 'Verkehr', dataTypes: ['generic_item_construction_site'] },
+      { id: 'news', name: 'Presse', dataTypes: ['news_item'] },
+    ]);
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_construction_site'
+      )
+    );
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toEqual({
+      data: [
+        { id: 'universal', name: 'Allgemein' },
+        { id: 'construction', name: 'Verkehr' },
+      ],
+    });
+  });
+
   it.each([
     'https://studio.test/api/v1/mainserver/categories?dataType=unknown',
     'https://studio.test/api/v1/mainserver/categories?dataType=',

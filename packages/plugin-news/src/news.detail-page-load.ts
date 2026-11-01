@@ -82,6 +82,26 @@ const useActingPrincipalResourceAccess = (input: {
   }, [actingPrincipalType, contentId, loadedItem, loadedPrincipalTypeRef, mode, setResourceAccess]);
 };
 
+const useNewsPrincipalSelection = (
+  principalControl: NewsPrincipalControl | undefined,
+  setActingPrincipalType: NewsDetailLoadOptions['setActingPrincipalType']
+) => {
+  const previousPolicyValue = React.useRef(principalControl?.value);
+  React.useEffect(() => {
+    if (principalControl) {
+      const policyValueChanged = previousPolicyValue.current !== principalControl.value;
+      previousPolicyValue.current = principalControl.value;
+      setActingPrincipalType((current) =>
+        !policyValueChanged &&
+        principalControl.kind === 'selectable' &&
+        principalControl.options.some((option) => option.value === current)
+          ? current
+          : principalControl.value
+      );
+    }
+  }, [principalControl]);
+};
+
 export const useNewsDetailLoad = ({
   mode,
   contentId,
@@ -118,20 +138,7 @@ export const useNewsDetailLoad = ({
       if (isEditing) setIsLoading(false);
     }
   }, [contentId, mode, principalControl, pt, setIsLoading, setResourceAccess, setStatusMessage]);
-  const previousPolicyValue = React.useRef(principalControl?.value);
-  React.useEffect(() => {
-    if (principalControl) {
-      const policyValueChanged = previousPolicyValue.current !== principalControl.value;
-      previousPolicyValue.current = principalControl.value;
-      setActingPrincipalType((current) =>
-        !policyValueChanged &&
-        principalControl.kind === 'selectable' &&
-        principalControl.options.some((option) => option.value === current)
-          ? current
-          : principalControl.value
-      );
-    }
-  }, [principalControl]);
+  useNewsPrincipalSelection(principalControl, setActingPrincipalType);
 
   React.useEffect(() => {
     if (mode !== 'edit') {

@@ -61,10 +61,7 @@ const FractionDialogTextFields = ({
         })}
       />
     </StudioField>
-    <StudioField
-      id="waste-fraction-name-de"
-      label={pt('masterData.fractions.fields.translationDe')}
-    >
+    <StudioField id="waste-fraction-name-de" label={pt('masterData.fractions.fields.translationDe')}>
       <Input
         id="waste-fraction-name-de"
         {...register('translations.de' as const, {
@@ -85,34 +82,16 @@ const FractionDialogTextFields = ({
         })}
       />
     </StudioField>
-    <StudioField id="waste-fraction-color" label={pt('masterData.fractions.fields.color')}>
-      <Input
-        id="waste-fraction-color"
-        {...register('color', { onChange: (event) => onChange({ color: event.target.value }) })}
-      />
-    </StudioField>
-    <StudioField
-      id="waste-fraction-container-size"
-      label={pt('masterData.fractions.fields.containerSize')}
-    >
-      <Input
-        id="waste-fraction-container-size"
-        {...register('containerSize', {
-          onChange: (event) => onChange({ containerSize: event.target.value }),
-        })}
-      />
-    </StudioField>
-    <StudioField
-      id="waste-fraction-description"
-      label={pt('masterData.fractions.fields.description')}
-    >
-      <Input
-        id="waste-fraction-description"
-        {...register('description', {
-          onChange: (event) => onChange({ description: event.target.value }),
-        })}
-      />
-    </StudioField>
+    {(['color', 'containerSize', 'description'] as const).map((field) => {
+      const id = `waste-fraction-${field === 'containerSize' ? 'container-size' : field}`;
+      return (
+        <StudioField key={field} id={id} label={pt(`masterData.fractions.fields.${field}`)}>
+          <Input id={id} {...register(field, {
+            onChange: (event) => onChange({ [field]: event.target.value }),
+          })} />
+        </StudioField>
+      );
+    })}
   </StudioFieldGroup>
 );
 

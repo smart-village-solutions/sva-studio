@@ -12,6 +12,34 @@ import { fetchAuthMeSingleFlight } from '../lib/auth-me-singleflight';
 import { createLoginHref } from '../lib/auth-navigation';
 import { fetchWithRequestTimeout, getMyOrganizationContext } from '../lib/iam-api';
 
+type EditorContext = {
+  userId: string;
+  instanceId?: string;
+  organizationId?: string;
+};
+
+const isSameEditorUser = (user: ReturnType<typeof useAuth>['user'], original: EditorContext) =>
+  Boolean(user && user.id === original.userId && user.instanceId === original.instanceId);
+
+const isRecoveryContextLoading = (
+  auth: ReturnType<typeof useAuth>,
+  organization: ReturnType<typeof useOrganizationContext>
+) =>
+  auth.isLoading || auth.isRecoveringSession || organization.isLoading || organization.isUpdating;
+
+const isOriginalEditorContextConfirmed = (
+  original: EditorContext | null,
+  auth: ReturnType<typeof useAuth>,
+  organization: ReturnType<typeof useOrganizationContext>
+) =>
+  Boolean(
+    original &&
+    isSameEditorUser(auth.user, original) &&
+    organization.context &&
+    !organization.error &&
+    organization.context.activeOrganizationId === original.organizationId
+  );
+
 export function ContentEditorLeaveBoundary({ children }: Readonly<{ children: React.ReactNode }>) {
   const auth = useAuth();
   const organization = useOrganizationContext();
@@ -20,11 +48,7 @@ export function ContentEditorLeaveBoundary({ children }: Readonly<{ children: Re
   >('idle');
   const recoveryRequired = recoveryState !== 'idle';
   const checkingRecovery = recoveryState === 'checking' || recoveryState === 'confirming';
-  const originalContext = React.useRef<{
-    userId: string;
-    instanceId?: string;
-    organizationId?: string;
-  } | null>(null);
+  const originalContext = React.useRef<EditorContext | null>(null);
   const checkers = React.useRef(new Set<() => boolean>());
   const register = React.useCallback((check: () => boolean) => {
     checkers.current.add(check);
@@ -38,13 +62,7 @@ export function ContentEditorLeaveBoundary({ children }: Readonly<{ children: Re
   );
   React.useLayoutEffect(() => {
     const original = originalContext.current;
-    if (
-      original &&
-      hasUnsavedChanges() &&
-      (!auth.user ||
-        auth.user.id !== original.userId ||
-        auth.user.instanceId !== original.instanceId)
-    ) {
+    if (original && hasUnsavedChanges() && !isSameEditorUser(auth.user, original)) {
       if (!recoveryRequired) setRecoveryState('required');
       return;
     }
@@ -66,22 +84,9 @@ export function ContentEditorLeaveBoundary({ children }: Readonly<{ children: Re
     return () => window.removeEventListener(AUTH_RECOVERY_NAVIGATION_EVENT, retainEditor);
   }, [hasUnsavedChanges]);
   React.useLayoutEffect(() => {
-    if (
-      recoveryState !== 'confirming' ||
-      auth.isLoading ||
-      auth.isRecoveringSession ||
-      organization.isLoading ||
-      organization.isUpdating
-    )
-      return;
+    if (recoveryState !== 'confirming' || isRecoveryContextLoading(auth, organization)) return;
     const original = originalContext.current;
-    const confirmed =
-      original &&
-      auth.user?.id === original.userId &&
-      auth.user?.instanceId === original.instanceId &&
-      organization.context &&
-      !organization.error &&
-      organization.context.activeOrganizationId === original.organizationId;
+    const confirmed = isOriginalEditorContextConfirmed(original, auth, organization);
     setRecoveryState(confirmed ? 'idle' : 'failed');
   }, [
     recoveryState,
@@ -110,7 +115,7 @@ export function ContentEditorLeaveBoundary({ children }: Readonly<{ children: Re
         )
       );
       const user = result.ok ? parseAuthUser(result.payload) : null;
-      if (!user || user.id !== original.userId || user.instanceId !== original.instanceId) {
+      if (!isSameEditorUser(user, original)) {
         setRecoveryState('failed');
         return;
       }

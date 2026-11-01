@@ -64,21 +64,39 @@ export type PoiDetailPageViewModel = Readonly<{
   remove: () => Promise<void>;
 }>;
 
-export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
+function PoiDetailActions({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
   const {
     mode,
     pt,
-    methods,
-    canSave,
-    formId,
-    saveFeedback,
-    mediaSavePhaseKey,
     accessCapabilities,
     deletePending,
     setDeleteErrorMessage,
     setDeleteDialogOpen,
-    media,
   } = view;
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button asChild variant="secondary">
+        <Link to="/admin/content">{pt('actions.back')}</Link>
+      </Button>
+      {mode === 'edit' && accessCapabilities.canDelete ? (
+        <Button
+          type="button"
+          variant="destructive"
+          disabled={deletePending}
+          onClick={() => {
+            setDeleteErrorMessage(null);
+            setDeleteDialogOpen(true);
+          }}
+        >
+          {pt('actions.delete')}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
+  const { mode, pt, methods, canSave, formId, saveFeedback, mediaSavePhaseKey, media } = view;
   const active = useWatch({ control: methods.control, name: 'basis.active' });
   return (
     <FormProvider {...methods}>
@@ -118,26 +136,7 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
             </div>
           ) : undefined
         }
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="secondary">
-              <Link to="/admin/content">{pt('actions.back')}</Link>
-            </Button>
-            {mode === 'edit' && accessCapabilities.canDelete ? (
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={deletePending}
-                onClick={() => {
-                  setDeleteErrorMessage(null);
-                  setDeleteDialogOpen(true);
-                }}
-              >
-                {pt('actions.delete')}
-              </Button>
-            ) : null}
-          </div>
-        }
+        actions={<PoiDetailActions view={view} />}
       >
         <PoiDetailMediaOverlay {...view} />
         <PoiDetailForm view={view} />

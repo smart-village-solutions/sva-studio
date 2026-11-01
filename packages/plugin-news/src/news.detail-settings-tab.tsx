@@ -1,3 +1,4 @@
+import { translateNewsFieldError } from './news.detail-page.helpers.js';
 import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { type NewsWasteMasterDataOverview } from './news.waste-targeting.js';
 import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
@@ -37,20 +38,6 @@ type NewsDetailSettingsFormControl = ReturnType<
 
 const collectSummaryErrors = (fields: readonly ReturnType<typeof getStudioFormFieldProps>[]) =>
   fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
-
-const translateFieldError = (
-  error: FieldError | undefined,
-  pt: NewsDetailSettingsTabProps['pt']
-): FieldError | undefined => {
-  if (!error || typeof error.message !== 'string') {
-    return error;
-  }
-
-  return {
-    ...error,
-    message: pt(`validation.${error.message}`),
-  };
-};
 
 const createManualFieldError = (message: string): FieldError => ({
   type: 'manual',
@@ -282,7 +269,7 @@ export function NewsDetailSettingsTab({
     id: 'news-scheduled-publication-at',
     error: scheduledPublicationField.isInvalid
       ? createManualFieldError(pt('validation.scheduledPublicationAt'))
-      : translateFieldError(errors.scheduledPublicationAt, pt),
+      : translateNewsFieldError(errors.scheduledPublicationAt, pt),
   });
 
   const publicationCard = (

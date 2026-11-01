@@ -12,6 +12,22 @@ const renderOutcomeBadge = (pt: ReturnType<typeof usePluginTranslation>, outcome
   <span className="text-sm">{pt(`overview.outcome.${outcome}`)}</span>
 );
 
+const HistoryTableHeader = ({ section, columns, pt }: Readonly<{
+  section: 'technical' | 'audit';
+  columns: readonly string[];
+  pt: ReturnType<typeof usePluginTranslation>;
+}>) => (
+  <thead className="bg-surface-inset text-left text-[13px] text-foreground">
+    <tr className="border-b border-border/70">
+      {columns.map((column) => (
+        <th key={column} scope="col" className="px-3 py-3">
+          {pt(`overview.${section}.table.${column}`)}
+        </th>
+      ))}
+    </tr>
+  </thead>
+);
+
 const TechnicalHistoryTable = ({
   items,
   total,
@@ -39,31 +55,8 @@ const TechnicalHistoryTable = ({
           aria-label={pt('overview.technical.table.ariaLabel')}
         >
           <caption className="sr-only">{pt('overview.technical.table.caption')}</caption>
-          <thead className="bg-surface-inset text-left text-[13px] text-foreground">
-            <tr className="border-b border-border/70">
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.technical.table.eventType')}
-              </th>
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.technical.table.outcome')}
-              </th>
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.technical.table.occurredAt')}
-              </th>
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.technical.table.jobId')}
-              </th>
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.technical.table.jobTypeId')}
-              </th>
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.technical.table.reasonCode')}
-              </th>
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.technical.table.requestId')}
-              </th>
-            </tr>
-          </thead>
+          <HistoryTableHeader section="technical" pt={pt}
+            columns={['eventType', 'outcome', 'occurredAt', 'jobId', 'jobTypeId', 'reasonCode', 'requestId']} />
           <tbody>
             {items.map((item) => (
               <tr
@@ -132,28 +125,8 @@ const AuditHistoryTable = ({
           aria-label={pt('overview.audit.table.ariaLabel')}
         >
           <caption className="sr-only">{pt('overview.audit.table.caption')}</caption>
-          <thead className="bg-surface-inset text-left text-[13px] text-foreground">
-            <tr className="border-b border-border/70">
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.audit.table.actionId')}
-              </th>
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.audit.table.outcome')}
-              </th>
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.audit.table.occurredAt')}
-              </th>
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.audit.table.resource')}
-              </th>
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.audit.table.reasonCode')}
-              </th>
-              <th scope="col" className="px-3 py-3">
-                {pt('overview.audit.table.requestId')}
-              </th>
-            </tr>
-          </thead>
+          <HistoryTableHeader section="audit" pt={pt}
+            columns={['actionId', 'outcome', 'occurredAt', 'resource', 'reasonCode', 'requestId']} />
           <tbody>
             {items.map((item) => (
               <tr

@@ -25,6 +25,10 @@ import {
   type MainserverResolvedOwner,
 } from './mainserver-resource-principal';
 
+const confirmedOwnerName = (
+  provider: Readonly<{ id?: string; name?: string }> | null | undefined
+) => provider?.name?.trim() || provider?.id?.trim();
+
 export const MainserverResourcePrincipalBoundary = ({
   children,
   contentType,
@@ -167,8 +171,7 @@ export const MainserverResourcePrincipalBoundary = ({
             url: resolveMainserverDetailUrl(contentType, contentId),
             init: { headers: createMainserverReadHeaders(actingPrincipalType) },
           });
-          const confirmedName =
-            detail.data.dataProvider?.name?.trim() || detail.data.dataProvider?.id?.trim();
+          const confirmedName = confirmedOwnerName(detail.data.dataProvider);
           if (!confirmedName) throw new Error('content_transfer_owner_missing');
           setResolvedOwner({
             principal: target.principal,

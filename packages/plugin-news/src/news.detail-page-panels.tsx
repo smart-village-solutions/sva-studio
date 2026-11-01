@@ -134,6 +134,42 @@ function createNewsSettingsPanel(
   );
 }
 
+const createNewsCreatePanels = (
+  { pt, categoryOptionsError }: NewsDetailPanelsOptions,
+  basisProps: React.ComponentProps<typeof NewsDetailBasisTab>,
+  contentProps: React.ComponentProps<typeof NewsDetailContentTab>,
+  settingsPanel: React.ReactNode
+): readonly StudioDetailTabDefinition<NewsDetailTabId>[] => {
+  return [
+    {
+      id: 'basis',
+      label: pt('tabs.basis.label'),
+      panel: (
+        <StudioSection className="space-y-6">
+          <p>{pt('create.intro')}</p>
+          {categoryOptionsError ? (
+            <p role="status" className="text-sm text-destructive">
+              {pt('create.categoryUnavailable')}
+            </p>
+          ) : null}
+          <NewsDetailBasisTab {...basisProps} section="title" />
+          <NewsDetailContentTab {...contentProps} section="text" createMode />
+          <details>
+            <summary>{pt('cards.content.media.title')}</summary>
+            <NewsDetailContentTab {...contentProps} section="media" createMode />
+          </details>
+          <details>
+            <summary>{pt('fields.categories')}</summary>
+            <NewsDetailBasisTab {...basisProps} section="categories" />
+          </details>
+          <NewsDetailContentTab {...contentProps} section="source" createMode />
+          {settingsPanel}
+        </StudioSection>
+      ),
+    },
+  ];
+};
+
 export const createNewsDetailPanels = (
   options: NewsDetailPanelsOptions
 ): readonly StudioDetailTabDefinition<NewsDetailTabId>[] => {
@@ -186,36 +222,8 @@ export const createNewsDetailPanels = (
     options,
     mode === 'create' ? <NewsDetailBasisTab {...basisProps} section="principal" /> : undefined
   );
-  if (mode === 'create') {
-    return [
-      {
-        id: 'basis',
-        label: pt('tabs.basis.label'),
-        panel: (
-          <StudioSection className="space-y-6">
-            <p>{pt('create.intro')}</p>
-            {categoryOptionsError ? (
-              <p role="status" className="text-sm text-destructive">
-                {pt('create.categoryUnavailable')}
-              </p>
-            ) : null}
-            <NewsDetailBasisTab {...basisProps} section="title" />
-            <NewsDetailContentTab {...contentProps} section="text" createMode />
-            <details>
-              <summary>{pt('cards.content.media.title')}</summary>
-              <NewsDetailContentTab {...contentProps} section="media" createMode />
-            </details>
-            <details>
-              <summary>{pt('fields.categories')}</summary>
-              <NewsDetailBasisTab {...basisProps} section="categories" />
-            </details>
-            <NewsDetailContentTab {...contentProps} section="source" createMode />
-            {settingsPanel}
-          </StudioSection>
-        ),
-      },
-    ];
-  }
+  if (mode === 'create')
+    return createNewsCreatePanels(options, basisProps, contentProps, settingsPanel);
   return [
     {
       id: 'basis',

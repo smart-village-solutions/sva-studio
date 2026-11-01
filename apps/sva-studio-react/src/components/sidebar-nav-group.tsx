@@ -138,6 +138,14 @@ export const SidebarNavItem = ({
   const persistedOpen = groupOpenState[item.id];
   const isExpanded = isCollapsed ? flyoutGroupId === item.id : (persistedOpen ?? isActive);
   const IconComponent = item.icon;
+  const logInteraction = (event: string) =>
+    logSidebarDebug(event, {
+      item_id: item.id,
+      item_label: item.label,
+      is_collapsed: isCollapsed,
+      is_active: isActive,
+      is_expanded: isExpanded,
+    });
   const handleBlurCapture = (event: React.FocusEvent<HTMLLIElement>) => {
     logSidebarDebug('sidebar_group_blur_capture', {
       item_id: item.id,
@@ -175,41 +183,17 @@ export const SidebarNavItem = ({
             aria-label={item.label}
             title={item.label}
             onPointerDown={() => {
-              logSidebarDebug('sidebar_group_pointer_down', {
-                item_id: item.id,
-                item_label: item.label,
-                is_collapsed: true,
-                is_active: isActive,
-                is_expanded: isExpanded,
-              });
+              logInteraction('sidebar_group_pointer_down');
             }}
             onMouseDown={() => {
-              logSidebarDebug('sidebar_group_mouse_down', {
-                item_id: item.id,
-                item_label: item.label,
-                is_collapsed: true,
-                is_active: isActive,
-                is_expanded: isExpanded,
-              });
+              logInteraction('sidebar_group_mouse_down');
             }}
             onClick={() => {
-              logSidebarDebug('sidebar_group_click', {
-                item_id: item.id,
-                item_label: item.label,
-                is_collapsed: true,
-                is_active: isActive,
-                is_expanded: isExpanded,
-              });
+              logInteraction('sidebar_group_click');
               onToggleCollapsedGroup(item.id);
             }}
             onFocus={() => {
-              logSidebarDebug('sidebar_group_focus', {
-                item_id: item.id,
-                item_label: item.label,
-                is_collapsed: true,
-                is_active: isActive,
-                is_expanded: isExpanded,
-              });
+              logInteraction('sidebar_group_focus');
               onOpenFlyout(item.id);
             }}
           >
@@ -235,40 +219,16 @@ export const SidebarNavItem = ({
             className={`w-full ${getLinkClasses(isActive || isExpanded, false)}`}
             aria-controls={`sidebar-group-${item.id}`}
             onPointerDown={() => {
-              logSidebarDebug('sidebar_group_pointer_down', {
-                item_id: item.id,
-                item_label: item.label,
-                is_collapsed: false,
-                is_active: isActive,
-                is_expanded: isExpanded,
-              });
+              logInteraction('sidebar_group_pointer_down');
             }}
             onMouseDown={() => {
-              logSidebarDebug('sidebar_group_mouse_down', {
-                item_id: item.id,
-                item_label: item.label,
-                is_collapsed: false,
-                is_active: isActive,
-                is_expanded: isExpanded,
-              });
+              logInteraction('sidebar_group_mouse_down');
             }}
             onFocus={() => {
-              logSidebarDebug('sidebar_group_focus', {
-                item_id: item.id,
-                item_label: item.label,
-                is_collapsed: false,
-                is_active: isActive,
-                is_expanded: isExpanded,
-              });
+              logInteraction('sidebar_group_focus');
             }}
             onClick={() => {
-              logSidebarDebug('sidebar_group_click', {
-                item_id: item.id,
-                item_label: item.label,
-                is_collapsed: false,
-                is_active: isActive,
-                is_expanded: isExpanded,
-              });
+              logInteraction('sidebar_group_click');
             }}
           >
             <IconComponent aria-hidden="true" strokeWidth={1} className="h-5 w-5 shrink-0" />

@@ -15,24 +15,20 @@ import {
   contentMediaUsagesToMainserver,
   resolveContentMediaUsageDrafts,
   useStudioMediaReferenceSync,
-  useStudioSaveFeedback,
   type ContentMediaUsage,
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
-import { createNews, NewsApiError, saveNewsEditorItem, updateNews } from './news.api.js';
-import { recoverNewsSave, type PendingNewsSave } from './news.detail-page-recovery.js';
+import { createNews, saveNewsEditorItem, updateNews } from './news.api.js';
+import {
+  useNewsSaveRecovery,
+  type PendingNewsSave,
+  type NewsSaveRefs,
+  type NewsSaveRecoveryOptions,
+} from './news.detail-page-recovery.js';
 import { NEWS_CONTENT_TYPE } from './news.constants.js';
 import { mapNewsItemToDetailFormValues } from './news.detail-form.js';
-import {
-  resolveNewsErrorMessage,
-  type PluginTranslator,
-  type StatusMessage,
-} from './news.detail-page.helpers.js';
-import {
-  requiresGlobalPushConfirmation,
-  resolveGlobalPushConfirmationKey,
-  type WasteTargetingAvailability,
-} from './news.waste-payload.js';
+import { didDeclineGlobalPush, newsSaveErrorStatus } from './news.detail-page.helpers.js';
+import type { WasteTargetingAvailability } from './news.waste-payload.js';
 import { addNewsCreatedSaveFeedback } from './news.save-feedback.js';
 import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
 
@@ -106,47 +102,26 @@ const persistNewsDetailContent = async ({
   return mediaReferenceSync.consumeSaveResult(result);
 };
 
-type NewsDetailSaveOptions = Readonly<{
-  methods: UseFormReturn<NewsDetailFormValues>;
-  canSave: boolean;
-  mediaReferenceSync: ReturnType<typeof useStudioMediaReferenceSync>;
-  mode: 'create' | 'edit';
-  contentId?: string;
-  saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
-  pt: PluginTranslator;
-  mediaUsages: readonly ContentMediaUsage[];
-  requiresReferenceSync: boolean;
-  loadedItem: NewsContentItem | null;
-  actingPrincipalType: MainserverPrincipalType;
-  hasWasteTargetingAccess: boolean;
-  wasteTargetingAvailability: WasteTargetingAvailability;
-  setStatusMessage: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
-  setMediaSavePhaseKey: React.Dispatch<React.SetStateAction<string | null>>;
-  setRetryCreatedContentId: React.Dispatch<React.SetStateAction<string | null>>;
-  setLoadedItem: React.Dispatch<React.SetStateAction<NewsContentItem | null>>;
-  setScheduledPublicationInput: React.Dispatch<React.SetStateAction<string>>;
-  setInvalidScheduledPublicationInput: React.Dispatch<React.SetStateAction<boolean>>;
-  captureCreateSave: () => void;
-  completeCreateSave: () => boolean;
-  retryCreatedContentId: string | null;
-  pendingSave: PendingNewsSave | null;
-  setPendingSave: React.Dispatch<React.SetStateAction<PendingNewsSave | null>>;
-}>;
-
-const didDeclineGlobalPush = (
-  values: NewsDetailFormValues,
-  loadedItem: NewsContentItem | null,
-  pt: PluginTranslator,
-  wasteTargetingAvailability: WasteTargetingAvailability
-): boolean =>
-  requiresGlobalPushConfirmation({
-    pushNotificationEnabled: values.pushNotificationEnabled,
-    targetCount: values.wasteLocationKeys.length,
-    pushNotificationsSentAt: loadedItem?.pushNotificationsSentAt,
-  }) &&
-  typeof globalThis.window.confirm === 'function' &&
-  globalThis.window.confirm(pt(resolveGlobalPushConfirmationKey(wasteTargetingAvailability))) ===
-    false;
+type NewsDetailSaveOptions = NewsSaveRecoveryOptions &
+  Readonly<{
+    methods: UseFormReturn<NewsDetailFormValues>;
+    canSave: boolean;
+    mediaReferenceSync: ReturnType<typeof useStudioMediaReferenceSync>;
+    contentId?: string;
+    mediaUsages: readonly ContentMediaUsage[];
+    requiresReferenceSync: boolean;
+    loadedItem: NewsContentItem | null;
+    actingPrincipalType: MainserverPrincipalType;
+    hasWasteTargetingAccess: boolean;
+    wasteTargetingAvailability: WasteTargetingAvailability;
+    setMediaSavePhaseKey: React.Dispatch<React.SetStateAction<string | null>>;
+    setScheduledPublicationInput: React.Dispatch<React.SetStateAction<string>>;
+    setInvalidScheduledPublicationInput: React.Dispatch<React.SetStateAction<boolean>>;
+    captureCreateSave: () => void;
+    completeCreateSave: () => boolean;
+    retryCreatedContentId: string | null;
+    pendingSave: PendingNewsSave | null;
+  }>;
 
 function useCreatedNewsNavigation() {
   const navigate = useNavigate();
@@ -163,108 +138,113 @@ function useCreatedNewsNavigation() {
   return navigateToCreatedDetail;
 }
 
-export const useNewsDetailSave = ({
-  methods,
-  canSave,
-  mediaReferenceSync,
-  mode,
-  contentId,
-  saveFeedback,
-  pt,
-  mediaUsages,
-  requiresReferenceSync,
-  loadedItem,
-  actingPrincipalType,
-  hasWasteTargetingAccess,
-  wasteTargetingAvailability,
-  setStatusMessage,
-  setMediaSavePhaseKey,
-  setRetryCreatedContentId,
-  setLoadedItem,
-  setScheduledPublicationInput,
-  setInvalidScheduledPublicationInput,
-  captureCreateSave,
-  completeCreateSave,
-  retryCreatedContentId,
-  pendingSave,
-  setPendingSave,
-}: NewsDetailSaveOptions) => {
-  const { reset } = methods;
+const completeNewsDetailSave = async (
+  options: NewsDetailSaveOptions,
+  result: Awaited<ReturnType<typeof persistNewsDetailContent>>,
+  operationId: number,
+  confirmedCreateId: NewsSaveRefs['confirmedCreateId'],
+  navigateToCreatedDetail: ReturnType<typeof useCreatedNewsNavigation>
+) => {
+  const saved = result.saved;
+  options.setLoadedItem(saved);
+  if (options.mode === 'create') confirmedCreateId.current = saved.id;
+  if (result.referenceFailed) {
+    options.setRetryCreatedContentId(options.mode === 'create' ? saved.id : null);
+    options.setStatusMessage({
+      source: 'reference',
+      text: options.pt('messages.mediaReferencePartialFailure'),
+    });
+    options.saveFeedback.markFailed(operationId);
+    return;
+  }
+
+  if (options.mode === 'create') {
+    options.setRetryCreatedContentId(saved.id);
+    if (!options.completeCreateSave()) {
+      options.setStatusMessage({
+        source: 'navigation',
+        text: options.pt('create.savedWithNewChanges'),
+      });
+      options.saveFeedback.reset();
+      return;
+    }
+    options.saveFeedback.markSaved(operationId);
+    try {
+      await navigateToCreatedDetail(saved.id);
+    } catch {
+      options.setRetryCreatedContentId(saved.id);
+      options.setStatusMessage({
+        source: 'navigation',
+        text: options.pt('messages.detailNavigationError'),
+      });
+      options.saveFeedback.markFailed(operationId);
+    }
+    return;
+  }
+
+  if (!options.completeCreateSave()) {
+    options.setLoadedItem(saved);
+    options.setStatusMessage({ source: 'recovered', text: options.pt('messages.saveRecovered') });
+    options.saveFeedback.reset();
+    return;
+  }
+  const nextValues = mapNewsItemToDetailFormValues(saved);
+  options.methods.reset(nextValues);
+  options.setRetryCreatedContentId(null);
+  options.setLoadedItem(saved);
+  options.setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
+  options.setInvalidScheduledPublicationInput(false);
+  options.setStatusMessage(null);
+  options.saveFeedback.markSaved(operationId);
+};
+
+export const useNewsDetailSave = (options: NewsDetailSaveOptions) => {
   const confirmedCreateId = React.useRef<string | null>(null);
   const navigateToCreatedDetail = useCreatedNewsNavigation();
   const pendingSaveRef = React.useRef<PendingNewsSave | null>(null);
   const inFlight = React.useRef(false);
-  const [checkingSave, setCheckingSave] = React.useState(false);
-  const checkSaveOutcome = async () => {
-    const pending = pendingSaveRef.current;
-    if (!pending || inFlight.current || checkingSave) return;
-    inFlight.current = true;
-    setCheckingSave(true);
-    try {
-      const recovery = await recoverNewsSave(pending);
-      if (recovery.outcome === 'not_applied') {
-        pendingSaveRef.current = null;
-        setPendingSave(null);
-        setStatusMessage({ source: 'save', text: pt('messages.saveNotApplied') });
-      } else if (recovery.outcome === 'succeeded') {
-        const handled = pending.consumeMediaResult(recovery.result);
-        if (mode === 'create') {
-          confirmedCreateId.current = handled.saved.id;
-          setRetryCreatedContentId(handled.saved.id);
-        }
-        setLoadedItem(handled.saved);
-        // Recovery acknowledges the old operation and never resets the current draft.
-        pendingSaveRef.current = null;
-        setPendingSave(null);
-        setStatusMessage({
-          source: handled.referenceFailed ? 'reference' : 'recovered',
-          text: pt(
-            handled.referenceFailed
-              ? 'messages.mediaReferencePartialFailure'
-              : 'messages.saveRecovered'
-          ),
-        });
-        saveFeedback.reset();
-      } else {
-        setStatusMessage({ source: 'unknown', text: pt('messages.saveOutcomeUnknown') });
-      }
-    } catch (error) {
-      setStatusMessage({
-        source: 'unknown',
-        text: pt('messages.saveOutcomeCheckFailed'),
-        requestId: readMainserverErrorRequestId(error),
-      });
-    } finally {
-      inFlight.current = false;
-      setCheckingSave(false);
-    }
-  };
+  const { checkSaveOutcome, checkingSave } = useNewsSaveRecovery(options, {
+    pendingSaveRef,
+    confirmedCreateId,
+    inFlight,
+  });
 
-  const saveCurrentItem = methods.handleSubmit(
+  const saveCurrentItem = options.methods.handleSubmit(
     async (values) => {
       if (inFlight.current || pendingSaveRef.current) return;
-      if (!canSave || (mode === 'create' && (retryCreatedContentId || confirmedCreateId.current)))
+      if (
+        !options.canSave ||
+        (options.mode === 'create' && (options.retryCreatedContentId || confirmedCreateId.current))
+      )
         return;
-      if (didDeclineGlobalPush(values, loadedItem, pt, wasteTargetingAvailability)) return;
-      if (mediaReferenceSync.hasPendingRetry) {
-        setStatusMessage({
+      if (
+        didDeclineGlobalPush(
+          values,
+          options.loadedItem,
+          options.pt,
+          options.wasteTargetingAvailability
+        )
+      )
+        return;
+      if (options.mediaReferenceSync.hasPendingRetry) {
+        options.setStatusMessage({
           source: 'reference',
-          text: pt('messages.mediaReferencePartialFailure'),
+          text: options.pt('messages.mediaReferencePartialFailure'),
         });
         return;
       }
 
-      if (mode === 'edit' && !contentId) {
-        setStatusMessage({ source: 'load', text: pt('messages.missingContent') });
+      if (options.mode === 'edit' && !options.contentId) {
+        options.setStatusMessage({ source: 'load', text: options.pt('messages.missingContent') });
         return;
       }
 
       inFlight.current = true;
       const mutationId = crypto.randomUUID();
       let contentSaveStarted = false;
-      captureCreateSave();
-      const operationId = saveFeedback.beginSaving();
-      setMediaSavePhaseKey(null);
+      options.captureCreateSave();
+      const operationId = options.saveFeedback.beginSaving();
+      options.setMediaSavePhaseKey(null);
       try {
         const handledResult = await persistNewsDetailContent({
           values,
@@ -272,63 +252,22 @@ export const useNewsDetailSave = ({
           onContentSaveStarted: () => {
             contentSaveStarted = true;
           },
-          contentId,
-          mediaUsages,
-          loadedItem,
-          actingPrincipalType,
-          hasWasteTargetingAccess,
-          requiresReferenceSync,
-          setMediaSavePhaseKey,
-          mediaReferenceSync,
+          contentId: options.contentId,
+          mediaUsages: options.mediaUsages,
+          loadedItem: options.loadedItem,
+          actingPrincipalType: options.actingPrincipalType,
+          hasWasteTargetingAccess: options.hasWasteTargetingAccess,
+          requiresReferenceSync: options.requiresReferenceSync,
+          setMediaSavePhaseKey: options.setMediaSavePhaseKey,
+          mediaReferenceSync: options.mediaReferenceSync,
         });
-        const saved = handledResult.saved;
-        setLoadedItem(saved);
-        if (mode === 'create') confirmedCreateId.current = saved.id;
-        if (handledResult.referenceFailed) {
-          setRetryCreatedContentId(mode === 'create' ? saved.id : null);
-          setStatusMessage({
-            source: 'reference',
-            text: pt('messages.mediaReferencePartialFailure'),
-          });
-          saveFeedback.markFailed(operationId);
-          return;
-        }
-
-        if (mode === 'create') {
-          setRetryCreatedContentId(saved.id);
-          if (!completeCreateSave()) {
-            setStatusMessage({ source: 'navigation', text: pt('create.savedWithNewChanges') });
-            saveFeedback.reset();
-            return;
-          }
-          saveFeedback.markSaved(operationId);
-          try {
-            await navigateToCreatedDetail(saved.id);
-          } catch {
-            setRetryCreatedContentId(saved.id);
-            setStatusMessage({
-              source: 'navigation',
-              text: pt('messages.detailNavigationError'),
-            });
-            saveFeedback.markFailed(operationId);
-          }
-          return;
-        }
-
-        if (!completeCreateSave()) {
-          setLoadedItem(saved);
-          setStatusMessage({ source: 'recovered', text: pt('messages.saveRecovered') });
-          saveFeedback.reset();
-          return;
-        }
-        const nextValues = mapNewsItemToDetailFormValues(saved);
-        reset(nextValues);
-        setRetryCreatedContentId(null);
-        setLoadedItem(saved);
-        setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
-        setInvalidScheduledPublicationInput(false);
-        setStatusMessage(null);
-        saveFeedback.markSaved(operationId);
+        await completeNewsDetailSave(
+          options,
+          handledResult,
+          operationId,
+          confirmedCreateId,
+          navigateToCreatedDetail
+        );
       } catch (error) {
         const mediaError = error instanceof ContentMediaSaveError ? error : undefined;
         if (
@@ -338,37 +277,32 @@ export const useNewsDetailSave = ({
         ) {
           const pending: PendingNewsSave = {
             operationId: mutationId,
-            principal: actingPrincipalType,
-            mediaUsages,
-            requiresReferenceSync,
-            consumeMediaResult: mediaReferenceSync.consumeSaveResult,
+            principal: options.actingPrincipalType,
+            mediaUsages: options.mediaUsages,
+            requiresReferenceSync: options.requiresReferenceSync,
+            consumeMediaResult: options.mediaReferenceSync.consumeSaveResult,
             ...(mediaError ? { mediaError } : {}),
           };
           pendingSaveRef.current = pending;
-          setPendingSave(pending);
-          setStatusMessage({
+          options.setPendingSave(pending);
+          options.setStatusMessage({
             source: 'unknown',
-            text: pt('messages.saveOutcomeUnknown'),
+            text: options.pt('messages.saveOutcomeUnknown'),
             requestId: readMainserverErrorRequestId(error),
           });
-          saveFeedback.markFailed(operationId);
+          options.saveFeedback.markFailed(operationId);
           return;
         }
-        setStatusMessage({
-          source: 'save',
-          text: resolveNewsErrorMessage(pt, error, 'messages.saveError'),
-          requestId: readMainserverErrorRequestId(error),
-          ...(error instanceof NewsApiError ? { errorCode: error.code } : {}),
-        });
-        saveFeedback.markFailed(operationId);
+        options.setStatusMessage(newsSaveErrorStatus(options.pt, error));
+        options.saveFeedback.markFailed(operationId);
       } finally {
         inFlight.current = false;
       }
     },
     () => {
       if (!pendingSaveRef.current) {
-        setStatusMessage(null);
-        saveFeedback.reset();
+        options.setStatusMessage(null);
+        options.saveFeedback.reset();
       }
     }
   );
@@ -378,6 +312,6 @@ export const useNewsDetailSave = ({
     saveCurrentItem,
     checkSaveOutcome,
     checkingSave,
-    hasUnknownSave: pendingSave !== null,
+    hasUnknownSave: options.pendingSave !== null,
   };
 };

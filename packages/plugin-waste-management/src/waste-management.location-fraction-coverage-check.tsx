@@ -156,22 +156,7 @@ const useCoverageCheckForm = (props: CoverageCheckProps) => {
 
 export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const {
-    fractionId,
-    setFractionId,
-    year,
-    setYear,
-    startDate,
-    setStartDate,
-    endDate,
-    setEndDate,
-    includeDrafts,
-    setIncludeDrafts,
-    errorKey,
-    result,
-    changeYear,
-    runCheck,
-  } = useCoverageCheckForm(props);
+  const form = useCoverageCheckForm(props);
   const fractionsStatus = props.fractionsStatus ?? 'ready';
   const toursStatus = props.toursStatus ?? 'ready';
   const coverageDataUnavailable =
@@ -181,7 +166,7 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
     [props.locations]
   );
   const assignIssues = () => {
-    props.onReplaceLocationSelection((result?.issues ?? []).map((issue) => issue.locationId));
+    props.onReplaceLocationSelection((form.result?.issues ?? []).map((issue) => issue.locationId));
     props.onOpenBulkAssignments();
   };
   return (
@@ -193,46 +178,46 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
       <CoverageCheckForm
         fractions={props.fractions}
         disabled={coverageDataUnavailable}
-        fractionId={fractionId}
-        year={year}
-        startDate={startDate}
-        endDate={endDate}
-        includeDrafts={includeDrafts}
-        onFractionChange={setFractionId}
-        onYearChange={changeYear}
+        fractionId={form.fractionId}
+        year={form.year}
+        startDate={form.startDate}
+        endDate={form.endDate}
+        includeDrafts={form.includeDrafts}
+        onFractionChange={form.setFractionId}
+        onYearChange={form.changeYear}
         onStartDateChange={(value) => {
-          setYear('');
-          setStartDate(value);
+          form.setYear('');
+          form.setStartDate(value);
         }}
         onEndDateChange={(value) => {
-          setYear('');
-          setEndDate(value);
+          form.setYear('');
+          form.setEndDate(value);
         }}
-        onIncludeDraftsChange={setIncludeDrafts}
-        onSubmit={runCheck}
+        onIncludeDraftsChange={form.setIncludeDrafts}
+        onSubmit={form.runCheck}
       />
       <CoverageFractionsAvailability
         status={fractionsStatus}
         hasFractions={props.fractions.length > 0}
       />
       <CoverageToursAvailability status={toursStatus} />
-      {errorKey ? (
+      {form.errorKey ? (
         <p className="mt-3 text-sm text-destructive" role="alert">
-          {pt(errorKey)}
+          {pt(form.errorKey)}
         </p>
       ) : null}
-      {result ? (
+      {form.result ? (
         <>
           <p className="mt-3 text-sm text-muted-foreground">
             {pt('masterData.locationsWorkspace.coverage.assignmentNotice')}
           </p>
-          {result.includeDrafts ? (
+          {form.result.includeDrafts ? (
             <p className="mt-3 text-sm text-muted-foreground">
               {pt('masterData.locationsWorkspace.coverage.planningNotice')}
             </p>
           ) : null}
           <CoverageResults
-            result={result}
+            result={form.result}
             search={props.search}
             locationsById={locationsById}
             onAssign={assignIssues}

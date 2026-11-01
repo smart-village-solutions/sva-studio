@@ -45,8 +45,7 @@ export const wasteManagementPluginTranslationsENToursDetails = {
       date: 'shared date',
       'stable-target-id': 'existing target for the same source tour',
     },
-    alreadyEffectiveReason:
-      'This tour already applies in the following year and will not be duplicated.',
+    alreadyEffectiveReason: 'This tour already applies in the following year and will not be duplicated.',
     blockedReasons: {
       invalidPlanningData:
         'The planning data is incomplete or invalid and must first be corrected on the source tour.',
@@ -54,14 +53,11 @@ export const wasteManagementPluginTranslationsENToursDetails = {
         'At least one calendar date needs an explicit replacement date in the following year.',
       targetDateCollision:
         'Multiple source dates would map to the same target date. Choose distinct replacement dates.',
-      targetIdentityConflict:
-        'An existing target for the same source tour differs and will not be overwritten.',
+      targetIdentityConflict: 'An existing target for the same source tour differs and will not be overwritten.',
       unknown: 'The tour cannot be transferred safely. Review the source tour planning data.',
     },
-    replacementValidityStart:
-      'Replacement date for the validity start of {{name}} in target year {{year}}',
-    replacementValidityEnd:
-      'Replacement date for the validity end of {{name}} in target year {{year}}',
+    replacementValidityStart: 'Replacement date for the validity start of {{name}} in target year {{year}}',
+    replacementValidityEnd: 'Replacement date for the validity end of {{name}} in target year {{year}}',
     noTours: 'No relevant tours were found for this source year.',
     previewError: 'The preview could not be created.',
     createError: 'The tour set could not be created.',
@@ -134,8 +130,7 @@ export const wasteManagementPluginTranslationsENToursDetails = {
     },
     assignmentSection: {
       title: 'Collection locations for this date',
-      description:
-        'Assign one or more existing collection locations with a note to this single date.',
+      description: 'Assign one or more existing collection locations with a note to this single date.',
       empty: 'No collection locations have been added for this date yet.',
       summaryEmpty: 'No collection locations yet',
       summaryCount: '{{value}} collection locations assigned',
@@ -147,8 +142,7 @@ export const wasteManagementPluginTranslationsENToursDetails = {
     },
     dialog: {
       title: 'Select single dates',
-      description:
-        'Click individual days in the annual calendar to add or remove custom dates for this tour.',
+      description: 'Click individual days in the annual calendar to add or remove custom dates for this tour.',
       removeTitle: 'Remove single date',
       removeDescription:
         'The date {{value}} and all of its collection-location assignments will be removed from the draft.',
@@ -251,8 +245,7 @@ export const wasteManagementPluginTranslationsENToursDetails = {
       'All collection-location assignments, individual pickup dates, and tour-specific date shifts are copied after saving. Assignments use the validity period of the new tour.',
     assignmentIncomplete:
       'Please provide both a collection location and a note for every date-location assignment.',
-    saveSchedulingBeforeShift:
-      'Save the changed scheduling logic before creating a replacement date.',
+    saveSchedulingBeforeShift: 'Save the changed scheduling logic before creating a replacement date.',
     deleteSuccess: 'The waste tour was deleted.',
     deletePartialSuccess: '{{count}} of {{total}} waste tours were deleted.',
     saveError: 'The waste tour could not be saved.',

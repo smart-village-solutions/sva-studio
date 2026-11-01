@@ -13,7 +13,6 @@ import {
   invalidateBindingOnStaleContext,
 } from './mainserver-context-binding.js';
 import type { MainserverDataDeviation, MainserverDetailResult } from './mainserver-detail.js';
-
 export type MainserverListQuery = Readonly<{
   page: number;
   pageSize: number;
@@ -23,7 +22,6 @@ export type MainserverMutationOptions = Readonly<{
   idempotencyKey?: string;
   contentMediaSaveOperationId?: string;
 }>;
-
 const addContentMediaSaveOperationHeader = (
   headers: Headers,
   mutationOptions?: MainserverMutationOptions

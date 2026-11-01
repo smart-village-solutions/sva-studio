@@ -4,7 +4,6 @@ import { Button, StudioDetailCard } from '@sva/studio-ui-react';
 type SurveyResultVisibilityExportFormat = 'csv' | 'json' | 'excel' | 'xml';
 type SurveyResultExportKind = 'withoutFreeText' | 'withFreeText';
 type SurveyFreeTextStatus = 'INTERNAL' | 'PUBLIC';
-
 export type SurveyResultsFreeTextResponse = Readonly<{
   id: string;
   text: string;
@@ -36,14 +35,7 @@ export type SurveyResultsTabData = Readonly<{
 }>;
 
 type ResultsTranslate = (key: string) => string;
-
-const exportFormats: readonly SurveyResultVisibilityExportFormat[] = [
-  'csv',
-  'json',
-  'excel',
-  'xml',
-];
-
+const exportFormats: readonly SurveyResultVisibilityExportFormat[] = ['csv', 'json', 'excel', 'xml'];
 const freeTextStatusLabelKey: Record<SurveyFreeTextStatus, string> = {
   INTERNAL: 'fields.freeTextStatusOptions.internal',
   PUBLIC: 'fields.freeTextStatusOptions.public',
@@ -85,6 +77,45 @@ function SurveyResultsSummaryCard({
         ))}
       </dl>
     </StudioDetailCard>
+  );
+}
+
+function SurveyQuestionFreeTexts({ question, pt }: Readonly<{
+  question: SurveyResultsQuestionResult;
+  pt: ResultsTranslate;
+}>) {
+  return (
+            <details className="rounded-lg border border-border-subtle bg-surface-inset p-4">
+              <summary className="cursor-pointer list-none text-sm font-medium text-foreground">
+                {pt('fields.freeTextSection')}
+              </summary>
+              <div className="mt-4 space-y-3">
+                {question.freeTextResponses.length > 0 ? (
+                  question.freeTextResponses.map((response) => (
+                    <div
+                      key={response.id}
+                      className="space-y-2 rounded-md border border-border-subtle bg-background p-3"
+                    >
+                      <p className="text-sm text-foreground">{response.text}</p>
+                      <dl className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <dt>{pt('fields.freeTextStatus')}</dt>
+                          <dd>{pt(freeTextStatusLabelKey[response.status])}</dd>
+                        </div>
+                        <div className="space-y-1">
+                          <dt>{pt('fields.freeTextCreatedAt')}</dt>
+                          <dd>{response.createdAt}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {pt('messages.resultsFreeTextEmpty')}
+                  </p>
+                )}
+              </div>
+            </details>
   );
 }
 
@@ -137,37 +168,7 @@ function SurveyQuestionResultsList({
               <p className="text-sm text-muted-foreground">{pt('messages.resultsQuestionEmpty')}</p>
             )}
 
-            <details className="rounded-lg border border-border-subtle bg-surface-inset p-4">
-              <summary className="cursor-pointer list-none text-sm font-medium text-foreground">
-                {pt('fields.freeTextSection')}
-              </summary>
-              <div className="mt-4 space-y-3">
-                {question.freeTextResponses.length > 0 ? (
-                  question.freeTextResponses.map((response) => (
-                    <div
-                      key={response.id}
-                      className="space-y-2 rounded-md border border-border-subtle bg-background p-3"
-                    >
-                      <p className="text-sm text-foreground">{response.text}</p>
-                      <dl className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-2">
-                        <div className="space-y-1">
-                          <dt>{pt('fields.freeTextStatus')}</dt>
-                          <dd>{pt(freeTextStatusLabelKey[response.status])}</dd>
-                        </div>
-                        <div className="space-y-1">
-                          <dt>{pt('fields.freeTextCreatedAt')}</dt>
-                          <dd>{response.createdAt}</dd>
-                        </div>
-                      </dl>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {pt('messages.resultsFreeTextEmpty')}
-                  </p>
-                )}
-              </div>
-            </details>
+            <SurveyQuestionFreeTexts question={question} pt={pt} />
           </article>
         ))}
       </div>
@@ -185,19 +186,7 @@ function SurveyResultsExportCard({
     format: SurveyResultVisibilityExportFormat;
   }) => void;
 }>) {
-  const sections: readonly { kind: SurveyResultExportKind; title: string; description: string }[] =
-    [
-      {
-        kind: 'withoutFreeText',
-        title: pt('labels.exportWithoutFreeText'),
-        description: pt('messages.resultsExportWithoutFreeText'),
-      },
-      {
-        kind: 'withFreeText',
-        title: pt('labels.exportWithFreeText'),
-        description: pt('messages.resultsExportWithFreeText'),
-      },
-    ];
+  const sections = ['withoutFreeText', 'withFreeText'] as const;
 
   return (
     <StudioDetailCard
@@ -205,20 +194,20 @@ function SurveyResultsExportCard({
       description={pt('cards.results.export.description')}
     >
       <div className="mt-5 space-y-4 border-t border-border pt-5">
-        {sections.map((section) => (
+        {sections.map((kind) => (
           <div
-            key={section.kind}
+            key={kind}
             className="rounded-lg border border-border-subtle bg-surface-inset p-4"
           >
-            <h4 className="text-sm font-semibold text-foreground">{section.title}</h4>
-            <p className="mt-1 text-sm text-muted-foreground">{section.description}</p>
+            <h4 className="text-sm font-semibold text-foreground">{pt(kind === 'withFreeText' ? 'labels.exportWithFreeText' : 'labels.exportWithoutFreeText')}</h4>
+            <p className="mt-1 text-sm text-muted-foreground">{pt(kind === 'withFreeText' ? 'messages.resultsExportWithFreeText' : 'messages.resultsExportWithoutFreeText')}</p>
             <div className="mt-4 flex flex-wrap gap-2">
               {exportFormats.map((format) => (
                 <Button
-                  key={`${section.kind}-${format}`}
+                  key={`${kind}-${format}`}
                   type="button"
                   variant="secondary"
-                  onClick={() => onExport?.({ kind: section.kind, format })}
+                  onClick={() => onExport?.({ kind, format })}
                 >
                   {pt(`labels.exportFormats.${format}`)}
                 </Button>

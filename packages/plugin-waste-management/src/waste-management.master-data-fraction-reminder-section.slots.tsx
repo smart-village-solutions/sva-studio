@@ -107,6 +107,20 @@ const FractionReminderLeadDayField = ({
   );
 };
 
+const updateReminderSlot = (
+  form: FractionFormState,
+  channel: WasteFractionReminderChannel,
+  index: number,
+  patch: Readonly<{ maxLeadDays?: number; defaultLeadDays?: number }>,
+  slots: NonNullable<WasteFractionReminderConfig[WasteFractionReminderChannel]>['slots']
+): Partial<FractionFormState> => ({
+  reminderConfig: normalizeFractionReminderConfig(form.id, {
+    ...form.reminderConfig,
+    [channel]: { slots: slots.map((slot, slotIndex) =>
+      slotIndex === index ? { ...slot, ...patch } : slot) },
+  }, { preserveReminderCountWithoutChannels: true }),
+});
+
 export const FractionReminderChannelSlots = ({
   channel,
   form,
@@ -144,21 +158,7 @@ export const FractionReminderChannelSlots = ({
               label={pt(fieldKeys.max)}
               description={pt('masterData.fractions.createView.fieldHints.reminderSlotMaxLeadDays')}
               value={slot.maxLeadDays}
-              onChange={(maxLeadDays) => {
-                const nextSlots = channelConfig.slots.map((currentSlot, slotIndex) =>
-                  slotIndex === index ? { ...currentSlot, maxLeadDays } : currentSlot
-                );
-                onChange({
-                  reminderConfig: normalizeFractionReminderConfig(
-                    form.id,
-                    {
-                      ...form.reminderConfig,
-                      [channel]: { slots: nextSlots },
-                    },
-                    { preserveReminderCountWithoutChannels: true }
-                  ),
-                });
-              }}
+              onChange={(maxLeadDays) => onChange(updateReminderSlot(form, channel, index, { maxLeadDays }, channelConfig.slots))}
             />
             <FractionReminderLeadDayField
               id={`waste-fraction-${channel}-slot-${index + 1}-default-lead-days`}
@@ -167,21 +167,7 @@ export const FractionReminderChannelSlots = ({
                 'masterData.fractions.createView.fieldHints.reminderSlotDefaultLeadDays'
               )}
               value={slot.defaultLeadDays}
-              onChange={(defaultLeadDays) => {
-                const nextSlots = channelConfig.slots.map((currentSlot, slotIndex) =>
-                  slotIndex === index ? { ...currentSlot, defaultLeadDays } : currentSlot
-                );
-                onChange({
-                  reminderConfig: normalizeFractionReminderConfig(
-                    form.id,
-                    {
-                      ...form.reminderConfig,
-                      [channel]: { slots: nextSlots },
-                    },
-                    { preserveReminderCountWithoutChannels: true }
-                  ),
-                });
-              }}
+              onChange={(defaultLeadDays) => onChange(updateReminderSlot(form, channel, index, { defaultLeadDays }, channelConfig.slots))}
             />
           </StudioFieldGroup>
         );

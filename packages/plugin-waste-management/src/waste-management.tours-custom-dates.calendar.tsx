@@ -33,16 +33,9 @@ type TourCustomDatesSelectionDialogProps = Readonly<{
   readonly onToggleDate: (date: string) => void;
 }>;
 
-export const TourCustomDatesSelectionDialog = ({
-  open,
-  year,
-  selectedDates,
-  disabled = false,
-  onOpenChange,
-  onYearChange,
-  onToggleDate,
-}: TourCustomDatesSelectionDialogProps) => {
-  const pt = usePluginTranslation('wasteManagement');
+const TourCustomDateCalendar = ({ year, selectedDates, disabled, onToggleDate }:
+  Pick<TourCustomDatesSelectionDialogProps, 'year' | 'selectedDates' | 'disabled' | 'onToggleDate'>
+) => {
   const locale = resolveEditorLocale();
   const fullDate = new Intl.DateTimeFormat(locale, { dateStyle: 'full' });
   const monthLabel = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' });
@@ -52,45 +45,7 @@ export const TourCustomDatesSelectionDialog = ({
     const [selectedYear, month, day] = value.split('-').map(Number);
     return new Date(selectedYear!, month! - 1, day!);
   });
-  const selectedCount = Array.from(selectedDates).filter(
-    (date) => Number(date.slice(0, 4)) === year
-  ).length;
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-7xl overflow-hidden p-0">
-        <div className="flex h-full max-h-[92vh] flex-col bg-surface-inset">
-          <DialogHeader className="border-b border-border/50 px-6 py-5">
-            <DialogTitle>{pt('tours.customDates.dialog.title')}</DialogTitle>
-            <DialogDescription>{pt('tours.customDates.dialog.description')}</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-5 sm:px-6">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={disabled}
-              onClick={() => onYearChange(year - 1)}
-            >
-              <IconChevronLeft strokeWidth={1} aria-hidden="true" className="mr-2 h-4 w-4" />
-              {year - 1}
-            </Button>
-            <div className="flex flex-col items-center gap-2">
-              <span className="text-4xl font-semibold tracking-tight text-foreground">{year}</span>
-              <Badge variant="outline">
-                {pt('tours.customDates.meta.selectedCount', { value: selectedCount })}
-              </Badge>
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={disabled}
-              onClick={() => onYearChange(year + 1)}
-            >
-              {year + 1}
-              <IconChevronRight strokeWidth={1} aria-hidden="true" className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-          <div className="overflow-y-auto px-3 pb-4 sm:px-6">
             <Calendar
               mode="multiple"
               selected={selected}
@@ -130,6 +85,60 @@ export const TourCustomDatesSelectionDialog = ({
                 onToggleDate(toDateOnly(date.getFullYear(), date.getMonth(), date.getDate()))
               }
             />
+  );
+};
+
+export const TourCustomDatesSelectionDialog = ({
+  open,
+  year,
+  selectedDates,
+  disabled = false,
+  onOpenChange,
+  onYearChange,
+  onToggleDate,
+}: TourCustomDatesSelectionDialogProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const selectedCount = Array.from(selectedDates).filter(
+    (date) => Number(date.slice(0, 4)) === year
+  ).length;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92vh] max-w-7xl overflow-hidden p-0">
+        <div className="flex h-full max-h-[92vh] flex-col bg-surface-inset">
+          <DialogHeader className="border-b border-border/50 px-6 py-5">
+            <DialogTitle>{pt('tours.customDates.dialog.title')}</DialogTitle>
+            <DialogDescription>{pt('tours.customDates.dialog.description')}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-5 sm:px-6">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={disabled}
+              onClick={() => onYearChange(year - 1)}
+            >
+              <IconChevronLeft strokeWidth={1} aria-hidden="true" className="mr-2 h-4 w-4" />
+              {year - 1}
+            </Button>
+            <div className="flex flex-col items-center gap-2">
+              <span className="text-4xl font-semibold tracking-tight text-foreground">{year}</span>
+              <Badge variant="outline">
+                {pt('tours.customDates.meta.selectedCount', { value: selectedCount })}
+              </Badge>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={disabled}
+              onClick={() => onYearChange(year + 1)}
+            >
+              {year + 1}
+              <IconChevronRight strokeWidth={1} aria-hidden="true" className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+          <div className="overflow-y-auto px-3 pb-4 sm:px-6">
+            <TourCustomDateCalendar year={year} selectedDates={selectedDates}
+              disabled={disabled} onToggleDate={onToggleDate} />
           </div>
           <DialogFooter className="border-t border-border/50 px-6 py-4">
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>

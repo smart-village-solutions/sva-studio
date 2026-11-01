@@ -131,3 +131,55 @@ export const missingAddressParentType = (
   if (type === 'houseNumber' && streetCount === 0) return 'street';
   return null;
 };
+
+type Controller = ReturnType<typeof useWasteMasterDataViewModel>;
+type ParentOption = Readonly<{ id: string; label: string }>;
+
+export const parentOptionsFor = (
+  controller: Controller,
+  entityType: WasteAddressEntityType
+): readonly ParentOption[] => {
+  const regions = controller.overview?.regions ?? [];
+  const cities = controller.overview?.cities ?? [];
+  const streets = controller.overview?.streets ?? [];
+  const regionById = new Map(regions.map((region) => [region.id, region.name]));
+  const cityById = new Map(cities.map((city) => [city.id, city]));
+  const cityLabel = (cityId: string): string => {
+    const city = cityById.get(cityId);
+    return city
+      ? [city.postalCode, city.name, city.regionId ? regionById.get(city.regionId) : undefined]
+          .filter(Boolean)
+          .join(' · ')
+      : '';
+  };
+  if (entityType === 'city') return regions.map(({ id, name }) => ({ id, label: name }));
+  if (entityType === 'street')
+    return cities.map((city) => ({
+      id: city.id,
+      label: cityLabel(city.id),
+    }));
+  return entityType === 'houseNumber'
+    ? streets.map((street) => ({
+        id: street.id,
+        label: [street.name, cityLabel(street.cityId)].filter(Boolean).join(' · '),
+      }))
+    : [];
+};
+
+export const openAddressDialog = (controller: Controller, target: WasteAddressEntityType | AddressRow): void => {
+  if (typeof target === 'string') {
+    ({
+      region: () => controller.openCreateRegionDialog(),
+      city: () => controller.openCreateCityDialog(),
+      street: () => controller.openCreateStreetDialog(),
+      houseNumber: () => controller.openCreateHouseNumberDialog(),
+    })[target]();
+    return;
+  }
+  ({
+    region: () => controller.openEditRegionDialog(target.record as WasteRegionRecord),
+    city: () => controller.openEditCityDialog(target.record as WasteCityRecord),
+    street: () => controller.openEditStreetDialog(target.record as WasteStreetRecord),
+    houseNumber: () => controller.openEditHouseNumberDialog(target.record as WasteHouseNumberRecord),
+  })[target.type]();
+};

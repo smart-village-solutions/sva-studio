@@ -25,6 +25,43 @@ const resolveCalendarDayClassName = (active: boolean, shifted: boolean): string 
     : 'border-primary bg-primary font-semibold text-primary-foreground';
 };
 
+type CalendarDayProps = {
+  readonly layout?: 'grid' | 'list';
+  readonly day: number;
+  readonly monthIndex: number;
+  readonly year: number;
+  readonly occurrence?: CalendarOccurrence;
+  readonly tourId?: string;
+  readonly search?: WasteManagementSearchParams;
+  readonly canCreateShift: boolean;
+  readonly tourName?: string;
+  readonly locale: string;
+  readonly pt: ReturnType<typeof usePluginTranslation>;
+};
+
+const CalendarShiftLink = ({ occurrence, canCreateShift, search, tourId, originalDate,
+  tourName, locale, pt }: Pick<CalendarDayProps,
+  'occurrence' | 'canCreateShift' | 'search' | 'tourId' | 'tourName' | 'locale' | 'pt'
+> & Readonly<{ originalDate: string }>) => {
+  if (!occurrence || occurrence.shifted || !canCreateShift || !search || !tourId) return null;
+  return (
+        <WasteTourShiftCreateLink
+          search={search}
+          tourId={tourId}
+          originalDate={originalDate}
+          label={pt('tours.actions.shiftDateAccessible', {
+            date: formatCalendarDate(originalDate, locale),
+            name: tourName ?? '',
+          })}
+          unstyled
+          showExternalIcon={false}
+          className="absolute inset-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <span className="sr-only">{pt('tours.actions.shiftDate')}</span>
+        </WasteTourShiftCreateLink>
+  );
+};
+
 export const TourYearCalendarDay = ({
   day,
   monthIndex,
@@ -37,19 +74,7 @@ export const TourYearCalendarDay = ({
   locale,
   pt,
   layout = 'grid',
-}: {
-  readonly layout?: 'grid' | 'list';
-  readonly day: number;
-  readonly monthIndex: number;
-  readonly year: number;
-  readonly occurrence?: CalendarOccurrence;
-  readonly tourId?: string;
-  readonly search?: WasteManagementSearchParams;
-  readonly canCreateShift: boolean;
-  readonly tourName?: string;
-  readonly locale: string;
-  readonly pt: ReturnType<typeof usePluginTranslation>;
-}) => {
+}: CalendarDayProps) => {
   const descriptionId = useId();
   const shifted = occurrence?.shifted ?? false;
   const active = occurrence !== undefined;
@@ -71,22 +96,8 @@ export const TourYearCalendarDay = ({
       className={`group relative flex min-h-11 items-center ${layout === 'list' ? 'flex-col justify-center gap-1 px-3 py-2' : 'min-w-11 justify-center p-1'} rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${resolveCalendarDayClassName(active, shifted)}`}
     >
       {layout === 'list' ? formatCalendarDate(originalDate, locale) : day}
-      {active && !shifted && canCreateShift && search && tourId ? (
-        <WasteTourShiftCreateLink
-          search={search}
-          tourId={tourId}
-          originalDate={originalDate}
-          label={pt('tours.actions.shiftDateAccessible', {
-            date: formatCalendarDate(originalDate, locale),
-            name: tourName ?? '',
-          })}
-          unstyled
-          showExternalIcon={false}
-          className="absolute inset-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          <span className="sr-only">{pt('tours.actions.shiftDate')}</span>
-        </WasteTourShiftCreateLink>
-      ) : null}
+      <CalendarShiftLink occurrence={occurrence} canCreateShift={canCreateShift} search={search}
+        tourId={tourId} originalDate={originalDate} tourName={tourName} locale={locale} pt={pt} />
       {shiftedLabel ? (
         <>
           <span
@@ -106,5 +117,79 @@ export const TourYearCalendarDay = ({
         </>
       ) : null}
     </div>
+  );
+};
+
+export const TourYearCalendarMonth = ({
+  monthIndex,
+  year,
+  highlightedDays,
+  emptyMessage,
+  tourId,
+  search,
+  canCreateShift,
+  tourName,
+  locale,
+  pt,
+}: Omit<CalendarDayProps, 'day' | 'occurrence' | 'layout'> & Readonly<{
+  highlightedDays: ReadonlyMap<number, CalendarOccurrence>;
+  emptyMessage: string | undefined;
+}>) => {
+  const dayProps = { monthIndex, year, tourId, search, canCreateShift, tourName, locale, pt };
+  const first = new Date(Date.UTC(year, monthIndex, 1));
+  const startWeekday = (first.getUTCDay() + 6) % 7;
+  const daysInMonth = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  const monthLabel = new Intl.DateTimeFormat(locale, { month: 'long', timeZone: 'UTC' }).format(
+    first
+  );
+  const weekdayLabels = Array.from({ length: 7 }, (_, index) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(
+      new Date(Date.UTC(2026, 0, 5 + index))
+    )
+  );
+
+  return (
+    <section className="space-y-3 rounded-lg border border-border-subtle bg-surface-inset p-4">
+      <h3 className="text-sm font-semibold capitalize tracking-wide">{monthLabel}</h3>
+      <div className="hidden sm:block" data-year-calendar-layout="grid">
+        <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+          {weekdayLabels.map((day) => (
+            <div key={`${monthIndex}-${day}`}>{day}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1 text-center text-sm">
+          {Array.from({ length: startWeekday }).map((_, index) => (
+            <div key={`empty-${monthIndex}-${index}`} />
+          ))}
+          {Array.from({ length: daysInMonth }, (_, index) => index + 1).map((day) => (
+            <TourYearCalendarDay
+              key={`${monthIndex}-${day}`}
+              day={day}
+              {...dayProps}
+              occurrence={highlightedDays.get(day)}
+            />
+          ))}
+        </div>
+      </div>
+      <ul className="space-y-2 sm:hidden" data-year-calendar-layout="list">
+        {highlightedDays.size
+          ? Array.from(highlightedDays.entries())
+              .sort(([left], [right]) => left - right)
+              .map(([day, occurrence]) => (
+                <li key={day}>
+                  <TourYearCalendarDay
+                    day={day}
+                    {...dayProps}
+                    occurrence={occurrence}
+                    layout="list"
+                  />
+                </li>
+              ))
+          : null}
+      </ul>
+      {!highlightedDays.size && emptyMessage ? (
+        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+      ) : null}
+    </section>
   );
 };

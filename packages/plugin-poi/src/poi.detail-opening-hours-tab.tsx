@@ -21,6 +21,25 @@ type PoiDetailOpeningHoursRowProps = Readonly<{
   pt: (key: string) => string;
 }>;
 
+function PoiOpeningWeekday({ index, pt }: Pick<PoiDetailOpeningHoursRowProps, 'index' | 'pt'>) {
+  const { register } = useFormContext<PoiDetailFormValues>();
+  return (
+    <StudioField id={`poi-opening-weekday-${index}`} label={pt('fields.weekday')}>
+      <Select
+        id={`poi-opening-weekday-${index}`}
+        {...register(`content.openingHours.${index}.weekday`)}
+      >
+        <option value="">{pt('values.notAvailable')}</option>
+        {POI_OPENING_HOUR_WEEKDAYS.map((weekday) => (
+          <option key={weekday} value={weekday}>
+            {pt(`values.weekdays.${weekday}`)}
+          </option>
+        ))}
+      </Select>
+    </StudioField>
+  );
+}
+
 function PoiDetailOpeningHoursRow({
   index,
   isRemovable,
@@ -82,19 +101,7 @@ function PoiDetailOpeningHoursRow({
               {...register(`content.openingHours.${index}.description`)}
             />
           </StudioField>
-          <StudioField id={`poi-opening-weekday-${index}`} label={pt('fields.weekday')}>
-            <Select
-              id={`poi-opening-weekday-${index}`}
-              {...register(`content.openingHours.${index}.weekday`)}
-            >
-              <option value="">{pt('values.notAvailable')}</option>
-              {POI_OPENING_HOUR_WEEKDAYS.map((weekday) => (
-                <option key={weekday} value={weekday}>
-                  {pt(`values.weekdays.${weekday}`)}
-                </option>
-              ))}
-            </Select>
-          </StudioField>
+          <PoiOpeningWeekday index={index} pt={pt} />
         </StudioFieldGroup>
         <div className="flex items-center">
           <StudioField id={`poi-opening-open-${index}`} label={pt('fields.open')}>

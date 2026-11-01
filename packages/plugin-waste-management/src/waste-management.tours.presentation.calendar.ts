@@ -6,10 +6,8 @@ import {
 
 import type { WasteManagementSchedulingOverview, WasteTourRecord } from './waste-management.api.js';
 import {
-  applyHolidayRule,
+  applyTourHolidayRules,
   resolveHolidayRulesForYear,
-  normalizeDateOnly,
-  isDateAffectedByHolidayRule,
 } from './waste-management.tours.presentation.holidays.js';
 
 export type TourCalendarIssue =
@@ -65,6 +63,19 @@ const resolveAdvanceStrategy = (
   return null;
 };
 
+const hasUnresolvedRecurrence = (
+  tour: WasteTourRecord,
+  advance: ReturnType<typeof resolveAdvanceStrategy>
+): boolean =>
+  Boolean(
+    (tour.customRecurrenceId &&
+      (!Number.isInteger(tour.customRecurrenceIntervalDays) ||
+        (tour.customRecurrenceIntervalDays ?? 0) <= 0)) ||
+    (!advance &&
+      (Boolean(tour.customRecurrenceId) ||
+        (tour.recurrence != null && !['custom', 'on-demand'].includes(tour.recurrence))))
+  );
+
 const collectScheduledTourDates = (
   results: Set<string>,
   tour: WasteTourRecord,
@@ -72,14 +83,7 @@ const collectScheduledTourDates = (
   issues?: CalendarIssues
 ) => {
   const advance = resolveAdvanceStrategy(tour.recurrence, tour.customRecurrenceIntervalDays);
-  if (
-    (tour.customRecurrenceId &&
-      (!Number.isInteger(tour.customRecurrenceIntervalDays) ||
-        (tour.customRecurrenceIntervalDays ?? 0) <= 0)) ||
-    (!advance &&
-      (Boolean(tour.customRecurrenceId) ||
-        (tour.recurrence != null && !['custom', 'on-demand'].includes(tour.recurrence))))
-  ) {
+  if (hasUnresolvedRecurrence(tour, advance)) {
     issues?.add('unresolvedRecurrence');
   }
   if (!advance) return;
@@ -118,29 +122,6 @@ const collectCustomTourDates = (
   }
 };
 
-// Only warn when an actually calculated date proves that incomplete configuration matters.
-const recordIncompleteHolidayRules = (
-  date: string,
-  scheduling: WasteManagementSchedulingOverview,
-  issues?: CalendarIssues
-) => {
-  if (!issues) return;
-  for (const rule of scheduling.holidayRules ?? []) {
-    if (rule.scope && rule.strategy) continue;
-    const triggerDate = normalizeDateOnly(rule.holidayDate);
-    if (!isValidWasteIsoDateOnly(triggerDate)) continue;
-    const coverage = rule.scope === 'full-week' ? 'rest_of_week' : 'single_pickup';
-    const directions = rule.strategy ? [rule.strategy] : (['advance', 'postpone'] as const);
-    if (
-      directions.some((direction) =>
-        isDateAffectedByHolidayRule(date, { triggerDate, coverage, direction })
-      )
-    ) {
-      issues.add('incompleteHolidayRule');
-    }
-  }
-};
-
 const buildShiftMap = (
   shifts: readonly { readonly originalDate: string; readonly actualDate: string }[]
 ): Map<string, string> =>
@@ -174,15 +155,9 @@ const addInboundTourShifts = (
     (shift) => priorYearDates.has(shift.originalDate) && shift.actualDate.startsWith(`${year}-`)
   );
   for (const shift of shifts) {
-    const holidayNames: string[] = [];
-    recordIncompleteHolidayRules(shift.actualDate, scheduling, issues);
-    const date = holidayRules.reduce((currentDate, rule) => {
-      recordIncompleteHolidayRules(currentDate, scheduling, issues);
-      const nextDate = applyHolidayRule(currentDate, rule);
-      if (nextDate !== currentDate) holidayNames.push(rule.holidayName);
-      return nextDate;
-    }, shift.actualDate);
-    recordIncompleteHolidayRules(date, scheduling, issues);
+    const { date, holidayNames } = applyTourHolidayRules(
+      shift.actualDate, scheduling, holidayRules, issues
+    );
     if (!date.startsWith(`${year}-`)) continue;
     const previous = target.get(date);
     const combinedHolidayNames = [...new Set([...(previous?.holidayNames ?? []), ...holidayNames])];
@@ -223,17 +198,9 @@ export const calculateTourOccurrenceEntriesForYearInternal = (
     const shiftTarget = tourShiftMap.get(date) ?? globalShiftMap.get(date) ?? date;
     const manuallyShifted = isValidWasteIsoDateOnly(shiftTarget) ? shiftTarget : date;
     if (manuallyShifted !== shiftTarget) issues?.add('invalidDates');
-    recordIncompleteHolidayRules(manuallyShifted, scheduling, issues);
-    const holidayNames: string[] = [];
-    const holidayShifted = holidayRules.reduce((currentDate, rule) => {
-      recordIncompleteHolidayRules(currentDate, scheduling, issues);
-      const nextDate = applyHolidayRule(currentDate, rule);
-      if (nextDate !== currentDate) {
-        holidayNames.push(rule.holidayName);
-      }
-      return nextDate;
-    }, manuallyShifted);
-    recordIncompleteHolidayRules(holidayShifted, scheduling, issues);
+    const { date: holidayShifted, holidayNames } = applyTourHolidayRules(
+      manuallyShifted, scheduling, holidayRules, issues
+    );
     const shifted = holidayShifted !== date;
     const previous = shiftedResults.get(holidayShifted);
     const combinedHolidayNames = Array.from(
@@ -260,30 +227,6 @@ export const calculateTourOccurrenceEntriesForYearInternal = (
       holidayNames: entry.holidayNames,
     }));
 };
-
-export const calculateTourOccurrencesForYear = (
-  tour: WasteTourRecord,
-  year: number,
-  scheduling: WasteManagementSchedulingOverview
-): readonly string[] =>
-  calculateTourOccurrenceEntriesForYearInternal(tour, year, scheduling).map((entry) => entry.date);
-
-export const calculateTourOccurrenceEntriesForYear = (
-  tour: WasteTourRecord,
-  year: number,
-  scheduling: WasteManagementSchedulingOverview
-): readonly Readonly<{
-  readonly date: string;
-  readonly shifted: boolean;
-  readonly originalDate: string | null;
-}>[] =>
-  calculateTourOccurrenceEntriesForYearInternal(tour, year, scheduling).map(
-    ({ date, shifted, originalDate }) => ({
-      date,
-      shifted,
-      originalDate,
-    })
-  );
 
 export const calculateTourCalendarForYear = (
   tour: WasteTourRecord,

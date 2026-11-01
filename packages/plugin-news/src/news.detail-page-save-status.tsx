@@ -10,21 +10,7 @@ import {
 import { addNewsCreatedSaveFeedback } from './news.save-feedback.js';
 import type { PluginTranslator, StatusMessage } from './news.detail-page.helpers.js';
 
-export const NewsDetailSaveStatus = ({
-  deleteNavigationFailed,
-  statusMessage,
-  pt,
-  saveFeedback,
-  saveCurrentItem,
-  checkSaveOutcome,
-  checkingSave,
-  retryCreatedContentId,
-  navigateToCreatedDetail,
-  setStatusMessage,
-  mediaReferenceSync,
-  completeCreateSave,
-  reloadCurrentContext,
-}: Readonly<{
+type NewsDetailSaveStatusProps = Readonly<{
   deleteNavigationFailed: boolean;
   statusMessage: StatusMessage | null;
   pt: PluginTranslator;
@@ -38,103 +24,114 @@ export const NewsDetailSaveStatus = ({
   mediaReferenceSync: ReturnType<typeof useStudioMediaReferenceSync>;
   completeCreateSave: () => boolean;
   reloadCurrentContext: () => Promise<void>;
-}>) => (
-  <>
-    {deleteNavigationFailed ? (
-      <StudioPersistentActionResult
-        kind="success"
-        title={pt('messages.deleteSuccess')}
-        description={pt('messages.deleteNavigationError')}
-        actions={
-          <Button asChild size="sm" variant="secondary">
-            <Link to="/admin/content">{pt('actions.back')}</Link>
-          </Button>
+}>;
+
+const newsSaveRetryLabel = (status: StatusMessage, pt: PluginTranslator) => {
+  if (status.source === 'unknown') return pt('actions.checkSaveOutcome');
+  if (status.source === 'save')
+    return pt(
+      status.errorCode === 'stale_mainserver_context'
+        ? 'actions.reloadCurrentContext'
+        : 'actions.retry'
+    );
+  return status.source === 'reference' ? pt('actions.retryMediaReferences') : undefined;
+};
+
+const newsSaveRetryAction = (options: NewsDetailSaveStatusProps) => {
+  const status = options.statusMessage;
+  if (status?.source === 'unknown') return () => void options.checkSaveOutcome();
+  if (status?.source === 'save')
+    return status.errorCode === 'stale_mainserver_context'
+      ? () => void options.reloadCurrentContext()
+      : () => void options.saveCurrentItem();
+  if (status?.source !== 'reference' || !options.mediaReferenceSync.hasPendingRetry)
+    return undefined;
+  return () => {
+    const operationId = options.saveFeedback.beginSaving();
+    void options.mediaReferenceSync.retryReferenceSync().then(
+      () => {
+        const clean = options.completeCreateSave();
+        options.setStatusMessage(
+          clean ? null : { source: 'navigation', text: options.pt('create.savedWithNewChanges') }
+        );
+        if (clean) options.saveFeedback.markSaved(operationId);
+        else options.saveFeedback.reset();
+        if (clean && options.retryCreatedContentId) {
+          void options.navigateToCreatedDetail(options.retryCreatedContentId).catch(() => {
+            options.setStatusMessage({
+              source: 'navigation',
+              text: options.pt('messages.detailNavigationError'),
+            });
+            options.saveFeedback.markFailed(operationId);
+          });
         }
-      />
-    ) : null}
-    {statusMessage?.source === 'recovered' ? (
-      <StudioPersistentActionResult kind="success" title={statusMessage.text} />
-    ) : statusMessage ? (
-      <StudioPersistentFormError
-        message={statusMessage.text}
-        requestId={statusMessage.requestId}
-        requestIdLabel={statusMessage.requestId ? pt('messages.requestReference') : undefined}
-        copyRequestIdLabel={
-          statusMessage.requestId ? pt('messages.copyRequestReference') : undefined
-        }
-        requestIdCopiedLabel={
-          statusMessage.requestId ? pt('messages.requestReferenceCopied') : undefined
-        }
-        requestIdCopyFailedLabel={
-          statusMessage.requestId ? pt('messages.requestReferenceCopyFailed') : undefined
-        }
-        retryLabel={
-          statusMessage.source === 'unknown'
-            ? pt('actions.checkSaveOutcome')
-            : statusMessage.source === 'save'
-              ? pt(
-                  statusMessage.errorCode === 'stale_mainserver_context'
-                    ? 'actions.reloadCurrentContext'
-                    : 'actions.retry'
-                )
-              : statusMessage.source === 'reference'
-                ? pt('actions.retryMediaReferences')
-                : undefined
-        }
-        retryDisabled={checkingSave || saveFeedback.status === 'saving'}
-        onRetry={
-          statusMessage.source === 'unknown'
-            ? () => void checkSaveOutcome()
-            : statusMessage.source === 'save'
-              ? statusMessage.errorCode === 'stale_mainserver_context'
-                ? () => void reloadCurrentContext()
-                : () => void saveCurrentItem()
-              : statusMessage.source === 'reference' && mediaReferenceSync.hasPendingRetry
-                ? () => {
-                    const operationId = saveFeedback.beginSaving();
-                    void mediaReferenceSync.retryReferenceSync().then(
-                      () => {
-                        const clean = completeCreateSave();
-                        setStatusMessage(
-                          clean
-                            ? null
-                            : { source: 'navigation', text: pt('create.savedWithNewChanges') }
-                        );
-                        if (clean) saveFeedback.markSaved(operationId);
-                        else saveFeedback.reset();
-                        if (clean && retryCreatedContentId) {
-                          void navigateToCreatedDetail(retryCreatedContentId).catch(() => {
-                            setStatusMessage({
-                              source: 'navigation',
-                              text: pt('messages.detailNavigationError'),
-                            });
-                            saveFeedback.markFailed(operationId);
-                          });
-                        }
-                      },
-                      () => {
-                        setStatusMessage({
-                          source: 'reference',
-                          text: pt('messages.mediaReferencePartialFailure'),
-                        });
-                        saveFeedback.markFailed(operationId);
-                      }
-                    );
-                  }
-                : undefined
-        }
-      />
-    ) : null}
-    {retryCreatedContentId ? (
-      <p>
-        <Link
-          to="/admin/news/$id"
-          params={{ id: retryCreatedContentId }}
-          state={(previous) => addNewsCreatedSaveFeedback(previous, retryCreatedContentId)}
-        >
-          {pt('actions.openCreatedDetail')}
-        </Link>
-      </p>
-    ) : null}
-  </>
-);
+      },
+      () => {
+        options.setStatusMessage({
+          source: 'reference',
+          text: options.pt('messages.mediaReferencePartialFailure'),
+        });
+        options.saveFeedback.markFailed(operationId);
+      }
+    );
+  };
+};
+
+export const NewsDetailSaveStatus = (props: NewsDetailSaveStatusProps) => {
+  const {
+    deleteNavigationFailed,
+    statusMessage,
+    pt,
+    saveFeedback,
+    checkingSave,
+    retryCreatedContentId,
+  } = props;
+  return (
+    <>
+      {deleteNavigationFailed ? (
+        <StudioPersistentActionResult
+          kind="success"
+          title={pt('messages.deleteSuccess')}
+          description={pt('messages.deleteNavigationError')}
+          actions={
+            <Button asChild size="sm" variant="secondary">
+              <Link to="/admin/content">{pt('actions.back')}</Link>
+            </Button>
+          }
+        />
+      ) : null}
+      {statusMessage?.source === 'recovered' ? (
+        <StudioPersistentActionResult kind="success" title={statusMessage.text} />
+      ) : statusMessage ? (
+        <StudioPersistentFormError
+          message={statusMessage.text}
+          requestId={statusMessage.requestId}
+          requestIdLabel={statusMessage.requestId ? pt('messages.requestReference') : undefined}
+          copyRequestIdLabel={
+            statusMessage.requestId ? pt('messages.copyRequestReference') : undefined
+          }
+          requestIdCopiedLabel={
+            statusMessage.requestId ? pt('messages.requestReferenceCopied') : undefined
+          }
+          requestIdCopyFailedLabel={
+            statusMessage.requestId ? pt('messages.requestReferenceCopyFailed') : undefined
+          }
+          retryLabel={newsSaveRetryLabel(statusMessage, pt)}
+          retryDisabled={checkingSave || saveFeedback.status === 'saving'}
+          onRetry={newsSaveRetryAction(props)}
+        />
+      ) : null}
+      {retryCreatedContentId ? (
+        <p>
+          <Link
+            to="/admin/news/$id"
+            params={{ id: retryCreatedContentId }}
+            state={(previous) => addNewsCreatedSaveFeedback(previous, retryCreatedContentId)}
+          >
+            {pt('actions.openCreatedDetail')}
+          </Link>
+        </p>
+      ) : null}
+    </>
+  );
+};

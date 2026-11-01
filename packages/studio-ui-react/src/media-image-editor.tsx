@@ -81,21 +81,7 @@ const useMediaImageEditor = (
   return { loaded, failed, retry: () => setAttempt((current) => current + 1) };
 };
 
-type MediaImageEditorProps = Readonly<{
-  asset: StudioMediaPickerAssetDetail;
-  onDirtyChange?: (dirty: boolean) => void;
-  onApply: (result: StudioMediaImageEdit) => void | Promise<void>;
-  onCancel: () => void;
-}>;
-export const StudioMediaImageEditor = ({
-  asset,
-  onApply,
-  onCancel,
-  onDirtyChange,
-}: MediaImageEditorProps) => {
-  const t = useContentMediaTranslation();
-  const root = React.useRef<HTMLDivElement>(null);
-  const heading = React.useRef<HTMLHeadingElement>(null);
+const useSuspendedImageDesign = (asset: StudioMediaPickerAssetDetail) => {
   const exportImage = React.useRef<getCurrentImgDataFunction | undefined>(undefined);
   const suspendedDesign = React.useRef<
     Readonly<{
@@ -118,6 +104,45 @@ export const StudioMediaImageEditor = ({
     },
     [asset]
   );
+  return { exportImage, suspendedDesign };
+};
+
+type MediaImageEditorProps = Readonly<{
+  asset: StudioMediaPickerAssetDetail;
+  onDirtyChange?: (dirty: boolean) => void;
+  onApply: (result: StudioMediaImageEdit) => void | Promise<void>;
+  onCancel: () => void;
+}>;
+const MediaImageEditorHeading = ({
+  heading,
+}: Readonly<{ heading: React.RefObject<HTMLHeadingElement | null> }>) => {
+  const t = useContentMediaTranslation();
+  return (
+    <div className="space-y-2">
+      <h3
+        ref={heading}
+        tabIndex={-1}
+        className="rounded-sm text-lg font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {t('editor.imageTitle')}
+      </h3>
+      <p className="text-sm text-muted-foreground">{t('editor.originalPreserved')}</p>
+      <p className="text-sm text-muted-foreground">{t('editor.originalRetainedHint')}</p>
+      <p className="text-sm text-muted-foreground">{t('editor.accessibilityHint')}</p>
+    </div>
+  );
+};
+
+export const StudioMediaImageEditor = ({
+  asset,
+  onApply,
+  onCancel,
+  onDirtyChange,
+}: MediaImageEditorProps) => {
+  const t = useContentMediaTranslation();
+  const root = React.useRef<HTMLDivElement>(null);
+  const heading = React.useRef<HTMLHeadingElement>(null);
+  const { exportImage, suspendedDesign } = useSuspendedImageDesign(asset);
   const { loaded, failed, retry } = useMediaImageEditor(asset, root, suspendedDesign);
   const [saving, setSaving] = React.useState(false);
   const [exportFailed, setExportFailed] = React.useState(false);
@@ -142,18 +167,7 @@ export const StudioMediaImageEditor = ({
   };
   return (
     <div ref={root} className="space-y-4">
-      <div className="space-y-2">
-        <h3
-          ref={heading}
-          tabIndex={-1}
-          className="rounded-sm text-lg font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {t('editor.imageTitle')}
-        </h3>
-        <p className="text-sm text-muted-foreground">{t('editor.originalPreserved')}</p>
-        <p className="text-sm text-muted-foreground">{t('editor.originalRetainedHint')}</p>
-        <p className="text-sm text-muted-foreground">{t('editor.accessibilityHint')}</p>
-      </div>
+      <MediaImageEditorHeading heading={heading} />
       {failed || exportFailed ? (
         <p role="alert" className="text-sm text-destructive">
           {t('editor.imageError')}

@@ -43,6 +43,21 @@ const SortLabel = ({
   </Button>
 );
 
+const TourSortColumn = ({ field, width, sortField, sortDirection, onSortChange, pt }: Readonly<{
+  field: WasteToursSortField;
+  width: string;
+  sortField: WasteToursSortField | null;
+  sortDirection: WasteToursSortDirection;
+  onSortChange: (field: WasteToursSortField) => void;
+  pt: ReturnType<typeof usePluginTranslation>;
+}>) => (
+  <th scope="col" className={`${width} px-3 py-3 font-semibold`}
+    aria-sort={sortField === field ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+    <SortLabel label={pt(`tours.table.${field}`)} active={sortField === field}
+      direction={sortDirection} onClick={() => onSortChange(field)} />
+  </th>
+);
+
 export const WasteToursTableHeader = ({
   allVisibleSelected,
   someVisibleSelected,
@@ -71,94 +86,22 @@ export const WasteToursTableHeader = ({
             onChange={(event) => onToggleSelectAllVisible(event.currentTarget.checked)}
           />
         </th>
-        <th
-          scope="col"
-          className="w-[150px] px-3 py-3 font-semibold"
-          aria-sort={
-            sortField === 'name' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'
-          }
-        >
-          <SortLabel
-            label={pt('tours.table.name')}
-            active={sortField === 'name'}
-            direction={sortDirection}
-            onClick={() => onSortChange('name')}
-          />
-        </th>
+        <TourSortColumn field="name" width="w-[150px]" pt={pt}
+          sortField={sortField} sortDirection={sortDirection} onSortChange={onSortChange} />
         <th scope="col" className="w-[176px] px-3 py-3">
           {pt('tours.table.fractions')}
         </th>
-        <th
-          scope="col"
-          className="w-[132px] px-3 py-3 font-semibold"
-          aria-sort={
-            sortField === 'recurrence'
-              ? sortDirection === 'asc'
-                ? 'ascending'
-                : 'descending'
-              : 'none'
-          }
-        >
-          <SortLabel
-            label={pt('tours.table.recurrence')}
-            active={sortField === 'recurrence'}
-            direction={sortDirection}
-            onClick={() => onSortChange('recurrence')}
-          />
-        </th>
-        <th
-          scope="col"
-          className="w-[156px] px-3 py-3 font-semibold"
-          aria-sort={
-            sortField === 'dateRange'
-              ? sortDirection === 'asc'
-                ? 'ascending'
-                : 'descending'
-              : 'none'
-          }
-        >
-          <SortLabel
-            label={pt('tours.table.dateRange')}
-            active={sortField === 'dateRange'}
-            direction={sortDirection}
-            onClick={() => onSortChange('dateRange')}
-          />
-        </th>
+        <TourSortColumn field="recurrence" width="w-[132px]" pt={pt}
+          sortField={sortField} sortDirection={sortDirection} onSortChange={onSortChange} />
+        <TourSortColumn field="dateRange" width="w-[156px]" pt={pt}
+          sortField={sortField} sortDirection={sortDirection} onSortChange={onSortChange} />
         <th scope="col" className="w-[168px] px-3 py-3">
           {pt('tours.table.shifts')}
         </th>
-        <th
-          scope="col"
-          className="w-[94px] px-3 py-3 font-semibold"
-          aria-sort={
-            sortField === 'locations'
-              ? sortDirection === 'asc'
-                ? 'ascending'
-                : 'descending'
-              : 'none'
-          }
-        >
-          <SortLabel
-            label={pt('tours.table.locations')}
-            active={sortField === 'locations'}
-            direction={sortDirection}
-            onClick={() => onSortChange('locations')}
-          />
-        </th>
-        <th
-          scope="col"
-          className="w-[92px] px-3 py-3 font-semibold"
-          aria-sort={
-            sortField === 'status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'
-          }
-        >
-          <SortLabel
-            label={pt('tours.table.status')}
-            active={sortField === 'status'}
-            direction={sortDirection}
-            onClick={() => onSortChange('status')}
-          />
-        </th>
+        <TourSortColumn field="locations" width="w-[94px]" pt={pt}
+          sortField={sortField} sortDirection={sortDirection} onSortChange={onSortChange} />
+        <TourSortColumn field="status" width="w-[92px]" pt={pt}
+          sortField={sortField} sortDirection={sortDirection} onSortChange={onSortChange} />
         <th scope="col" className="w-[150px] px-3 py-3 text-right">
           {pt('tours.table.actions')}
         </th>

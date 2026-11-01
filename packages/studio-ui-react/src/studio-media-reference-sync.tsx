@@ -14,6 +14,40 @@ const setReferenceStatus = (
 ): readonly ContentMediaUsage[] =>
   usages.map((usage) => (usage.assetId ? { ...usage, referenceStatus } : usage));
 
+type MediaDraftResolutions = ContentMediaReferenceSyncResult<unknown>['resolutions'];
+
+const isSubmittedMediaUsage = (
+  usage: ContentMediaUsage,
+  submitted: ContentMediaUsage,
+  resolution: NonNullable<MediaDraftResolutions>[number] | undefined
+): boolean => {
+  // Media added or replaced after submission belongs to the next save.
+  if (usage.localDraft) {
+    return usage.localDraft.id === submitted.localDraft?.id && Boolean(resolution);
+  }
+  return (
+    usage.assetId === (resolution?.assetId ?? submitted.assetId) &&
+    usage.persistentUrl === (resolution?.persistentUrl ?? submitted.persistentUrl)
+  );
+};
+
+const updateSavedUsage = (
+  usage: ContentMediaUsage,
+  submitted: ContentMediaUsage | undefined,
+  resolutions: MediaDraftResolutions,
+  status: 'failed' | 'synced'
+): ContentMediaUsage => {
+  if (!submitted) return usage;
+  const resolution = resolutions?.find((entry) => entry.draftId === submitted.localDraft?.id);
+  if (!isSubmittedMediaUsage(usage, submitted, resolution)) return usage;
+  const resolved = usage.localDraft
+    ? resolveContentMediaUsageDrafts([usage], resolutions ?? [])[0]!
+    : usage;
+  return usage.role === submitted.role && usage.sortOrder === submitted.sortOrder
+    ? setReferenceStatus([resolved], status)[0]!
+    : { ...resolved, referenceStatus: 'pending' as const };
+};
+
 export type StudioMediaReferenceSyncController = Readonly<{
   hasPendingRetry: boolean;
   retrying: boolean;
@@ -41,28 +75,9 @@ export const useStudioMediaReferenceSync = ({
         current: readonly ContentMediaUsage[],
         status: 'failed' | 'synced'
       ) =>
-        current.map((usage) => {
-          const submitted = savedUsages.get(usage.uiId);
-          if (!submitted) return usage;
-          const resolution = result.resolutions?.find(
-            (entry) => entry.draftId === submitted.localDraft?.id
-          );
-          // Media added or replaced after submission belongs to the next save.
-          if (usage.localDraft && usage.localDraft.id !== submitted.localDraft?.id) return usage;
-          if (usage.localDraft && !resolution) return usage;
-          if (
-            !usage.localDraft &&
-            (usage.assetId !== (resolution?.assetId ?? submitted.assetId) ||
-              usage.persistentUrl !== (resolution?.persistentUrl ?? submitted.persistentUrl))
-          )
-            return usage;
-          const resolved = usage.localDraft
-            ? resolveContentMediaUsageDrafts([usage], result.resolutions ?? [])[0]!
-            : usage;
-          return usage.role === submitted.role && usage.sortOrder === submitted.sortOrder
-            ? setReferenceStatus([resolved], status)[0]!
-            : { ...resolved, referenceStatus: 'pending' as const };
-        });
+        current.map((usage) =>
+          updateSavedUsage(usage, savedUsages.get(usage.uiId), result.resolutions, status)
+        );
       if (result.resolutions?.length) {
         revokeContentMediaUsageObjectUrls(
           mediaUsages.filter((usage) => usage.localDraft && resolutionIds.has(usage.localDraft.id))

@@ -18,8 +18,7 @@ import { ConfigurationFields } from './admin.configuration-fields.js';
 import { SsfSystemContentV2Page } from './admin.content-v2-page.js';
 import type { SsfSystemConfigurationInput } from './admin-contracts.js';
 
-export const SsfSystemConfigurationPage = () => {
-  const pt = usePluginTranslation('ssf');
+const useSystemConfiguration = () => {
   const [saved, setSaved] = useState<SsfSystemConfigurationInput | null>(null);
   const [draft, setDraft] = useState<SsfSystemConfigurationInput | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error' | 'saving' | 'saved'>('loading');
@@ -48,6 +47,12 @@ export const SsfSystemConfigurationPage = () => {
       setState('ready');
     }
   };
+  return { saved, draft, setDraft, state, saveFailed, load, save };
+};
+
+export const SsfSystemConfigurationPage = () => {
+  const pt = usePluginTranslation('ssf');
+  const { saved, draft, setDraft, state, saveFailed, load, save } = useSystemConfiguration();
   if (state === 'loading') return <StudioLoadingState>{pt('status.loading')}</StudioLoadingState>;
   if (state === 'error' || !draft)
     return (

@@ -1,3 +1,6 @@
+import { isValidWasteIsoDateOnly } from '@sva/waste-management-contracts';
+import type { TourCalendarIssue } from './waste-management.tours.presentation.calendar.js';
+
 import type { WasteManagementSchedulingOverview } from './waste-management.api.js';
 
 const editorDateOnlyFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -134,3 +137,44 @@ export const resolveHolidayRulesForYear = (
         readonly coverage: HolidayRuleCoverage;
       } => rule.direction !== null
     );
+
+// Only warn when an actually calculated date proves that incomplete configuration matters.
+const recordIncompleteHolidayRules = (
+  date: string,
+  scheduling: WasteManagementSchedulingOverview,
+  issues?: Set<TourCalendarIssue>
+) => {
+  if (!issues) return;
+  for (const rule of scheduling.holidayRules ?? []) {
+    if (rule.scope && rule.strategy) continue;
+    const triggerDate = normalizeDateOnly(rule.holidayDate);
+    if (!isValidWasteIsoDateOnly(triggerDate)) continue;
+    const coverage = rule.scope === 'full-week' ? 'rest_of_week' : 'single_pickup';
+    const directions = rule.strategy ? [rule.strategy] : (['advance', 'postpone'] as const);
+    if (
+      directions.some((direction) =>
+        isDateAffectedByHolidayRule(date, { triggerDate, coverage, direction })
+      )
+    ) {
+      issues.add('incompleteHolidayRule');
+    }
+  }
+};
+
+export const applyTourHolidayRules = (
+  initialDate: string,
+  scheduling: WasteManagementSchedulingOverview,
+  rules: ReturnType<typeof resolveHolidayRulesForYear>,
+  issues?: Set<TourCalendarIssue>
+) => {
+  const holidayNames: string[] = [];
+  recordIncompleteHolidayRules(initialDate, scheduling, issues);
+  const date = rules.reduce((currentDate, rule) => {
+    recordIncompleteHolidayRules(currentDate, scheduling, issues);
+    const nextDate = applyHolidayRule(currentDate, rule);
+    if (nextDate !== currentDate) holidayNames.push(rule.holidayName);
+    return nextDate;
+  }, initialDate);
+  recordIncompleteHolidayRules(date, scheduling, issues);
+  return { date, holidayNames };
+};

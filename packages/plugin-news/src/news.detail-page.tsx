@@ -90,7 +90,6 @@ export const NewsDetailPage = ({
   const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
     principalControl?.value ?? 'user'
   );
-
   const { formState, reset } = methods;
   const [editorMediaDirty, setEditorMediaDirty] = React.useState(false);
   const leaveGuard = useStudioEditorLeaveGuard({
@@ -146,7 +145,6 @@ export const NewsDetailPage = ({
       onInitialSavedConsumed?.();
     }
   }, [initiallySaved, isLoading, onInitialSavedConsumed, saveFeedback]);
-
   const {
     mediaPicker,
     mediaPickerLabels,
@@ -172,7 +170,6 @@ export const NewsDetailPage = ({
   React.useEffect(() => {
     void refreshMediaAssets();
   }, [refreshMediaAssets]);
-
   const { reloadCurrentContext } = useNewsDetailLoad({
     mode,
     contentId,

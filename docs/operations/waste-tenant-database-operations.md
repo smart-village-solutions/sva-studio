@@ -59,6 +59,10 @@ Der Provisionierer prüft nach jedem Reconcile Schemaobjekte sowie Rechte der St
 - Fehlende Grants: Retry/Reconcile rekonstruiert den Sollzustand.
 - Fremder Owner, erhöhte Runtime-Rechte oder abweichende Datenbankidentität: Sicherheitsincident; Runtime bleibt gesperrt.
 
+## Abholorte bestehender Einsätze ändern
+
+Der Speicherpfad für explizite Einsätze behält weiterhin ausgewählte Abholorte bei, entfernt nur abgewählte Verknüpfungen und ergänzt fehlende Verknüpfungen atomar. Damit lässt sich beispielsweise eine Ortszuordnung ohne Straßen-ID zu einem Schadstoffmobil-Einsatz ergänzen, während die bisherige Straßenverknüpfung, Datum und Haltestellenhinweis erhalten bleiben. Ein PostgreSQL-Regressionstest im bestehenden Abholort-Integrationstest prüft das Ergänzen, wiederholte Speichern und Ersetzen überlappender Auswahlen.
+
 ## Backup-Fehler
 
 Ein Waste-Backup ist nur erfolgreich, wenn das Registry-Inventar vollständig verarbeitet wurde. Das Ergebnisobjekt enthält `inventoryCount` und pro Tenant Status, Objektpfad, Größe und SHA-256.

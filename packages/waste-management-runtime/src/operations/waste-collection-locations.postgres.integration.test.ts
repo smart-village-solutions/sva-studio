@@ -209,6 +209,37 @@ describe('Waste collection-location projection against PostgreSQL', () => {
     expect(emptyPage).toMatchObject({ items: [], total: 12, pageCount: 2 });
   });
 
+  it('extends, repeats and replaces pickup assignments while retaining shared locations', async () => {
+    await client.query('BEGIN;');
+    try {
+      const assignment = {
+        id: '70000000-0000-4000-8000-000000000001',
+        tourId: ids.tour,
+        pickupDate: '2026-09-17',
+        note: '16:30 – 17:30: Haltestelle',
+        locationIds: [locationId(1)],
+      };
+      await repository.upsertWasteTourAssignment(assignment);
+      const before = await repository.getWasteTourAssignmentById(assignment.id);
+      const extended = { ...assignment, locationIds: [locationId(1), locationId(3)] };
+      await repository.upsertWasteTourAssignment(extended);
+      await repository.upsertWasteTourAssignment(extended);
+      await expect(repository.getWasteTourAssignmentById(assignment.id)).resolves.toMatchObject({
+        ...extended,
+        createdAt: before?.createdAt,
+      });
+
+      const replaced = { ...assignment, locationIds: [locationId(2), locationId(3)] };
+      await repository.upsertWasteTourAssignment(replaced);
+      await expect(repository.getWasteTourAssignmentById(assignment.id)).resolves.toMatchObject({
+        ...replaced,
+        createdAt: before?.createdAt,
+      });
+    } finally {
+      await client.query('ROLLBACK;');
+    }
+  });
+
   it('uses the same German case-insensitive umlaut order in both directions', async () => {
     await client.query('BEGIN;');
     try {

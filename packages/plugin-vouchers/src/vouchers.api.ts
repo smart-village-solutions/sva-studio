@@ -1,6 +1,8 @@
 import {
+  createMainserverCrudClient,
   createMainserverMutationHeaders,
   createMainserverReadHeaders,
+  MainserverApiError,
   requestMainserverJson,
   type MainserverActingPrincipalType,
 } from '@sva/plugin-sdk';
@@ -33,10 +35,12 @@ export const deleteVoucher = async (
   id: string,
   principal: MainserverActingPrincipalType
 ): Promise<void> => {
-  await requestMainserverJson<{ data: { id: string } }>({
-    url: `${base}/${encodeURIComponent(id)}`,
-    init: { method: 'DELETE', headers: createMainserverMutationHeaders(principal) },
+  const client = createMainserverCrudClient<VoucherRecord, never, VoucherList, VoucherList>({
+    basePath: base,
+    errorFactory: (code, message) => new MainserverApiError(code, message),
+    mapListResponse: (response) => response,
   });
+  await client.remove(id, principal);
 };
 export const listVouchers = (
   page: number,

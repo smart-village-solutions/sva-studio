@@ -23,16 +23,67 @@ const preparation: VoucherPreparation = {
   requiresReset: false,
 };
 afterEach(() => vi.unstubAllGlobals());
-it('deletes only the selected voucher with the selected principal and CSRF headers', async () => {
-  const fetchMock = vi.fn(async () => Response.json({ data: { id: '2' } }));
+it('binds deletion to a fresh voucher read with the same principal before sending one DELETE', async () => {
+  const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+    if (init.method !== 'DELETE') {
+      return Response.json(
+        { data: { id: '2' } },
+        { headers: { 'X-SVA-Context-Binding': 'v1.current-context' } }
+      );
+    }
+    return new Headers(init.headers).get('X-SVA-Context-Binding') === 'v1.current-context'
+      ? Response.json({ data: { id: '2' } })
+      : Response.json({ error: 'stale_mainserver_context' }, { status: 409 });
+  });
   vi.stubGlobal('fetch', fetchMock);
   await deleteVoucher('2', 'organization');
-  expect(fetchMock).toHaveBeenCalledOnce();
-  const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  const [readUrl, readInit] = fetchMock.mock.calls[0];
+  expect(readUrl).toBe('/api/v1/mainserver/vouchers/2');
+  expect(readInit.method ?? 'GET').toBe('GET');
+  expect(new Headers(readInit.headers).get('X-SVA-Acting-Principal-Type')).toBe('organization');
+  const [url, init] = fetchMock.mock.calls[1];
   expect(url).toBe('/api/v1/mainserver/vouchers/2');
   expect(init.method).toBe('DELETE');
   expect(new Headers(init.headers).get('X-SVA-Acting-Principal-Type')).toBe('organization');
   expect(new Headers(init.headers).get('X-Requested-With')).toBe('XMLHttpRequest');
+  expect(new Headers(init.headers).get('X-SVA-Context-Binding')).toBe('v1.current-context');
+});
+it('does not delete when the fresh read provides no context binding', async () => {
+  const fetchMock = vi.fn(async () => Response.json({ data: { id: '2' } }));
+  vi.stubGlobal('fetch', fetchMock);
+  await expect(deleteVoucher('2', 'user')).rejects.toMatchObject({
+    code: 'mainserver_context_binding_missing',
+  });
+  expect(fetchMock).toHaveBeenCalledOnce();
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/v1/mainserver/vouchers/2',
+    expect.objectContaining({ headers: expect.any(Headers) })
+  );
+  expect((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].method).toBeUndefined();
+});
+it('does not delete when the fresh voucher read is denied', async () => {
+  const fetchMock = vi.fn(async () => Response.json({ error: 'forbidden' }, { status: 403 }));
+  vi.stubGlobal('fetch', fetchMock);
+  await expect(deleteVoucher('2', 'user')).rejects.toMatchObject({ code: 'forbidden' });
+  expect(fetchMock).toHaveBeenCalledOnce();
+  expect((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].method).toBeUndefined();
+});
+it('does not retry a rejected deletion', async () => {
+  const fetchMock = vi.fn(async (_url: string, init: RequestInit) =>
+    init.method === 'DELETE'
+      ? Response.json({ error: 'stale_mainserver_context' }, { status: 409 })
+      : Response.json(
+          { data: { id: '2' } },
+          { headers: { 'X-SVA-Context-Binding': 'v1.current-context' } }
+        )
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  await expect(deleteVoucher('2', 'user')).rejects.toMatchObject({
+    code: 'stale_mainserver_context',
+  });
+  expect(fetchMock.mock.calls.filter(([, init]) => init.method === 'DELETE')).toHaveLength(1);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
 });
 describe('voucher operation identity', () => {
   it('uses the same pre-issued operation identity for commit and readback recovery', async () => {

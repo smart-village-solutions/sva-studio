@@ -150,25 +150,25 @@ export const buildStudioRowsFromMaterialization = (
     string,
     {
       row: StudioMaterializedWasteRow;
-      descriptions: Set<string>;
-      notes: Set<string>;
+      descriptions: Set<string | null | undefined>;
+      notes: Set<string | null | undefined>;
     }
   >();
-  for (const { tourDescription, pickupNote, ...row } of rows) {
+  rows.forEach(({ tourDescription, pickupNote, ...row }) => {
     const group = groupedRows.get(row.key) ?? {
       row,
-      descriptions: new Set<string>(),
-      notes: new Set<string>(),
+      descriptions: new Set<string | null | undefined>(),
+      notes: new Set<string | null | undefined>(),
     };
-    if (tourDescription?.trim()) group.descriptions.add(tourDescription);
-    if (pickupNote?.trim()) group.notes.add(pickupNote);
+    group.descriptions.add(tourDescription);
+    group.notes.add(pickupNote);
     groupedRows.set(row.key, group);
-  }
+  });
   return [...groupedRows.values()].map(({ row, descriptions, notes }) => {
     const note = buildPickupNoteHtml(...[...descriptions].sort(), ...[...notes].sort());
     return {
       ...row,
-      ...(note ? { note } : {}),
+      note,
       key: buildWasteSyncKey({ ...row, note }),
     };
   });

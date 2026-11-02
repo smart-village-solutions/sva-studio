@@ -1,4 +1,4 @@
-import { Pencil as IconEdit, Trash2 as IconTrash, Users as IconUsersGroup } from 'lucide-react';
+import { IconEdit, IconTrash, IconUsersGroup } from '@tabler/icons-react';
 import {
   Button,
   type StudioColumnDef,
@@ -312,7 +312,7 @@ export const OrganizationsPage = () => {
                   aria-label={t('admin.organizations.actions.edit')}
                   title={t('admin.organizations.actions.edit')}
                 >
-                  <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+                  <IconEdit aria-hidden="true" className="h-4 w-4" />
                 </Link>
               </Button>
               <Button asChild type="button" size="icon" variant="secondary">
@@ -323,7 +323,7 @@ export const OrganizationsPage = () => {
                   aria-label={t('admin.organizations.actions.memberships')}
                   title={t('admin.organizations.actions.memberships')}
                 >
-                  <IconUsersGroup strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+                  <IconUsersGroup aria-hidden="true" className="h-4 w-4" />
                 </Link>
               </Button>
               {canDeleteOrganizations ? (
@@ -335,7 +335,7 @@ export const OrganizationsPage = () => {
                   aria-label={t('admin.organizations.actions.delete')}
                   title={t('admin.organizations.actions.delete')}
                 >
-                  <IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+                  <IconTrash aria-hidden="true" className="h-4 w-4" />
                 </Button>
               ) : null}
             </>

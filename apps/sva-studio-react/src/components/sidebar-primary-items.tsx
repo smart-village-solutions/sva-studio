@@ -1,16 +1,16 @@
 import {
-  AppWindow as IconAppWindow,
-  FileText as IconArticle,
-  Tags as IconCategory,
-  Smartphone as IconDeviceMobile,
-  FileText as IconFileText,
-  Gauge as IconGauge,
-  Languages as IconLanguage,
-  LayoutDashboard as IconLayoutDashboard,
-  Images as IconPhoto,
-  Plug as IconPlugConnected,
-  Plus as IconPlus,
-} from 'lucide-react';
+  IconAppWindow,
+  IconFileText as IconArticle,
+  IconTags as IconCategory,
+  IconDeviceMobile,
+  IconFileText,
+  IconGauge,
+  IconLanguage,
+  IconLayoutDashboard,
+  IconPhoto,
+  IconPlugConnected,
+  IconPlus,
+} from '@tabler/icons-react';
 import { t } from '../i18n';
 import {
   resolveContentRoutePrefix,

@@ -1,7 +1,7 @@
 import type { WasteTourAssignmentRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
-import { Pencil as IconEdit, Trash2 as IconTrash } from 'lucide-react';
+import { IconEdit, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -35,7 +35,7 @@ const AssignmentActions = ({
       tooltip={pt('scheduling.assignments.actions.edit')}
       onClick={() => onEdit(entry)}
     >
-      <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+      <IconEdit aria-hidden="true" className="h-4 w-4" />
     </Button>
     <Button
       type="button"
@@ -46,7 +46,7 @@ const AssignmentActions = ({
       tooltip={pt('scheduling.assignments.actions.delete')}
       onClick={() => onDeleteRequest(entry)}
     >
-      <IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+      <IconTrash aria-hidden="true" className="h-4 w-4" />
     </Button>
   </div>
 );

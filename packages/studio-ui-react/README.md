@@ -36,7 +36,7 @@ Die Bibliothek ist als ESM-Paket veröffentlicht (`type: module`) und exportiert
 Für die Integration relevant:
 
 - Laufzeitvoraussetzungen: `react` und `react-dom` als Peer Dependencies in Version `^19.2.0`
-- Externe UI-Grundlagen: Radix-Dialoge/-Tabs, `@tanstack/react-table`, `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`
+- Externe UI-Grundlagen: Radix-Dialoge/-Tabs, `@tanstack/react-table`, `class-variance-authority`, `clsx`, `tailwind-merge`, `@tabler/icons-react` (Standardkontur 2)
 - Styling-Annahme: Die Komponenten verwenden Utility-Klassen wie `border-border`, `bg-card`, `text-muted-foreground` und erwarten damit passende Design-Token bzw. eine kompatible Tailwind/CSS-Konfiguration im konsumierenden Projekt
 
 Die Komponenten sind bewusst zustandsarm gehalten. Fachlogik, Datenladen, Übersetzungen und Routing bleiben in den konsumierenden Apps oder Feature-Paketen.

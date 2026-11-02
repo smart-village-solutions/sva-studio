@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { IconChevronDown, IconX as X } from '@tabler/icons-react';
 import type * as React from 'react';
 
 import { Badge } from './badge.js';
@@ -38,7 +38,7 @@ export function SearchableMultiSelectTrigger({
       id={id}
       type="button"
       variant="secondary"
-      className="h-10 w-full justify-between px-3 text-sm font-normal"
+      className="h-10 w-full justify-between bg-surface-inset px-3 text-sm font-normal"
       aria-controls={open ? `${id}-options` : undefined}
       aria-expanded={open}
       aria-haspopup="dialog"
@@ -48,9 +48,10 @@ export function SearchableMultiSelectTrigger({
       <span className={cn('truncate', labels.length === 0 ? 'text-muted-foreground' : undefined)}>
         {labels.length > 0 ? labels.join(', ') : placeholder}
       </span>
-      <span aria-hidden="true" className="text-xs text-muted-foreground">
-        {open ? '▲' : '▼'}
-      </span>
+      <IconChevronDown
+        aria-hidden="true"
+        className={cn('h-4 w-4 shrink-0 text-muted-foreground', open && 'rotate-180')}
+      />
     </Button>
   );
 }

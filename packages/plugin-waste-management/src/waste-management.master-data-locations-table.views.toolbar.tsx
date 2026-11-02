@@ -1,5 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Route as IconRoute, Trash2 as IconTrash, Plus } from 'lucide-react';
+import { IconRoute, IconTrash, IconPlus as Plus } from '@tabler/icons-react';
 import { Button, Checkbox, Select, cn } from '@sva/studio-ui-react';
 import type { WasteMasterDataLocationsTableProps } from './waste-management.master-data-locations-table.types.js';
 import {
@@ -30,7 +30,7 @@ const WasteLocationsBulkActions = ({
         disabled={selectedCollectionLocationsCount === 0}
         onClick={onOpenBulkAssignments}
       >
-        <IconRoute strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+        <IconRoute aria-hidden="true" className="h-4 w-4" />
         {pt('masterData.collectionLocations.bulk.actions.openAssign', {
           value: selectedCollectionLocationsCount,
         })}
@@ -45,7 +45,7 @@ const WasteLocationsBulkActions = ({
         disabled={selectedCollectionLocationsCount === 0}
         onClick={onRequestDeleteSelected}
       >
-        <IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+        <IconTrash aria-hidden="true" className="h-4 w-4" />
         {pt('masterData.collectionLocations.bulk.actions.deleteSelected')}
       </Button>
     </>
@@ -200,7 +200,7 @@ export const WasteMasterDataLocationsTableToolbar = ({
       </div>
       <div className="flex justify-end">
         <Button type="button" onClick={onOpenCreateLocation}>
-          <Plus aria-hidden="true" strokeWidth={1} className="h-4 w-4" />
+          <Plus aria-hidden="true" className="h-4 w-4" />
           {pt('masterData.locationsWorkspace.actions.createLocation')}
         </Button>
       </div>

@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Trash2 as IconTrash } from 'lucide-react';
+import { IconTrash } from '@tabler/icons-react';
 import { Button, Textarea } from '@sva/studio-ui-react';
 import type { TourDateLocationAssignmentFormState } from './waste-management.tours.types.js';
 import type { TourCustomDatePendingDelete } from './waste-management.tours-custom-date-delete-dialogs.js';
@@ -73,7 +73,7 @@ export const TourCustomDateAssignmentCard = ({
               })
             }
           >
-            <IconTrash strokeWidth={1} aria-hidden="true" className="mr-2 h-4 w-4" />
+            <IconTrash aria-hidden="true" className="mr-2 h-4 w-4" />
             {pt('tours.customDates.actions.removeAssignment')}
           </Button>
         </div>

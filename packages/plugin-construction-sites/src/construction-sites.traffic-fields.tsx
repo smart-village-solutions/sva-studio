@@ -21,10 +21,14 @@ export function TrafficFields({ draft, change, errors }: ConstructionSiteFormPro
         </StudioField>
       ))}
       {draft.restrictions.map((restriction, index) => (
-        <div className="flex items-end gap-2" key={restriction.sourceIndex ?? `new-${index}`}>
+        <div
+          className="flex flex-col gap-2 sm:flex-row sm:items-end"
+          key={restriction.sourceIndex ?? `new-${index}`}
+        >
           <StudioField
             id={constructionSiteFieldId(`restrictions.${index}.description`)}
             label={pt('fields.restrictions')}
+            className="min-w-0 flex-1"
           >
             <Input
               id={constructionSiteFieldId(`restrictions.${index}.description`)}

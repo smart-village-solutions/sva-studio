@@ -2,9 +2,11 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
   Input,
+  SearchableMultiSelect,
   Select,
   StudioDetailCard,
   StudioField,
+  StudioSwitch,
   RichTextHtmlEditor,
 } from '@sva/studio-ui-react';
 import { TrafficFields, LocationFields } from './construction-sites.traffic-fields.js';
@@ -26,20 +28,22 @@ export function ConstructionSiteBasisFields({
   const pt = usePluginTranslation('construction-sites');
   return (
     <div className="space-y-6">
-      <StudioField
-        id="cs-title"
-        label={pt('fields.title')}
-        required
-        error={errors.includes('title') ? pt('validation.invalid') : undefined}
-      >
-        <Input
+      <StudioDetailCard title={pt('tabs.basis')}>
+        <StudioField
           id="cs-title"
-          value={draft.title}
-          onChange={(event) => change('title', event.currentTarget.value)}
+          label={pt('fields.title')}
           required
-          aria-invalid={errors.includes('title')}
-        />
-      </StudioField>
+          error={errors.includes('title') ? pt('validation.invalid') : undefined}
+        >
+          <Input
+            id="cs-title"
+            value={draft.title}
+            onChange={(event) => change('title', event.currentTarget.value)}
+            required
+            aria-invalid={errors.includes('title')}
+          />
+        </StudioField>
+      </StudioDetailCard>
       <StudioDetailCard title={pt('fields.dates')} description={pt('editor.primary')}>
         {draft.dates.map((date, index) => (
           <div key={date.sourceIndex ?? `new-${index}`} className="grid gap-4 sm:grid-cols-2">
@@ -73,20 +77,23 @@ export function ConstructionSiteBasisFields({
           </div>
         ))}
       </StudioDetailCard>
-      <StudioField
-        id="cs-visible"
-        label={pt('fields.visible')}
-        description={pt(draft.visible ? 'editor.visibleEffect' : 'editor.hiddenEffect')}
-      >
-        <input
-          id="cs-visible"
-          type="checkbox"
-          checked={draft.visible}
-          disabled={!canPublish}
-          onChange={(event) => change('visible', event.currentTarget.checked)}
-          className="size-4 accent-primary"
-        />
-      </StudioField>
+      <StudioDetailCard title={pt('fields.visible')}>
+        <div className="flex items-center gap-3">
+          <StudioSwitch
+            id="cs-visible"
+            aria-describedby="cs-visible-description"
+            checked={draft.visible}
+            disabled={!canPublish}
+            onCheckedChange={(checked) => change('visible', checked)}
+          />
+          <label htmlFor="cs-visible" className="text-sm text-foreground">
+            {pt('fields.visible')}
+          </label>
+        </div>
+        <p id="cs-visible-description" className="text-sm text-muted-foreground">
+          {pt(draft.visible ? 'editor.visibleEffect' : 'editor.hiddenEffect')}
+        </p>
+      </StudioDetailCard>
     </div>
   );
 }
@@ -151,44 +158,44 @@ function DescriptionFields({ draft, change, errors, disabled }: ConstructionSite
   );
 }
 
-function CategoryFields({ draft, change, categories }: ConstructionSiteFormProps) {
+function CategoryFields({
+  draft,
+  change,
+  categories,
+  categoriesLoading,
+  categoryError,
+  disabled,
+}: ConstructionSiteFormProps) {
   const pt = usePluginTranslation('construction-sites');
-  const names = [
-    ...new Set([
-      ...categories.map((category) => category.name),
-      ...draft.categories.map((category) => category.name),
-    ]),
-  ];
   return (
     <details>
       <summary>
         {pt('fields.categories')} ({draft.categories.length})
       </summary>
       <p className="my-3 text-sm text-muted-foreground">{pt('editor.inactiveCategories')}</p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {names.map((name, index) => (
-          <label
-            key={name}
-            htmlFor={`cs-category-${index}`}
-            className="flex items-center gap-2 text-sm"
-          >
-            <input
-              id={`cs-category-${index}`}
-              type="checkbox"
-              checked={draft.categories.some((item) => item.name === name)}
-              onChange={(event) =>
-                change(
-                  'categories',
-                  event.currentTarget.checked
-                    ? [...draft.categories, { name }]
-                    : draft.categories.filter((item) => item.name !== name)
-                )
-              }
-            />
-            {name}
-          </label>
-        ))}
-      </div>
+      <StudioField id="cs-categories" label={pt('fields.categories')}>
+        <SearchableMultiSelect
+          id="cs-categories"
+          disabled={disabled}
+          options={categories.map(({ name }) => ({ value: name, label: name }))}
+          value={draft.categories.map(({ name }) => name)}
+          onValueChange={(names) =>
+            change(
+              'categories',
+              names.map((name) => ({ name }))
+            )
+          }
+          loading={categoriesLoading ?? false}
+          errorMessage={categoryError ? pt('fields.categoryLoadError') : undefined}
+          loadingText={pt('messages.categoriesLoading')}
+          emptyText={pt('fields.categoriesEmpty')}
+          helpText=""
+          placeholder={pt('fields.categoriesPlaceholder')}
+          searchLabel={pt('fields.categoriesSearch')}
+          unavailableText={pt('fields.categoryUnavailable')}
+          removeLabel={(name) => pt('actions.removeCategory', { name })}
+        />
+      </StudioField>
     </details>
   );
 }

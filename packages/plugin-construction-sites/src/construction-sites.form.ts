@@ -4,6 +4,8 @@ export type ConstructionSiteFormProps = Readonly<{
   change: <K extends keyof ConstructionSiteInput>(key: K, value: ConstructionSiteInput[K]) => void;
   errors: readonly string[];
   categories: readonly { id: string; name: string }[];
+  categoriesLoading?: boolean;
+  categoryError?: boolean;
   canPublish: boolean;
   disabled: boolean;
 }>;

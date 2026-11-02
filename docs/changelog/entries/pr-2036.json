@@ -1,0 +1,4 @@
+{
+  "prNumber": 2036,
+  "body": "Einheitliche E-Mail-Vorlagenverwaltung\n\n- Account-Einladung und E-Mail-Bestätigung verwenden einheitliche Bearbeitungsdialoge und Speicherrückmeldungen. Alte Rückmeldungen verschwinden beim erneuten Öffnen, ungespeicherte Eingaben bleiben erhalten.\n- Die allgemeine Bestätigungsvorlage lässt sich mit der bestehenden gültigen Sitzung speichern. Noch offene Keycloak-Abgleiche bleiben ausdrücklich sichtbar."
+}

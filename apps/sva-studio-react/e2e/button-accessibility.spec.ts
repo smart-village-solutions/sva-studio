@@ -1,6 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { buttonVariants } from '@sva/studio-ui-react';
+import { Pencil } from 'lucide-react';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 type ThemeCase = Readonly<{
   id: 'default-light' | 'default-dark' | 'forest-light' | 'forest-dark';
@@ -22,6 +25,8 @@ const variantClasses = {
   destructive: buttonVariants({ variant: 'destructive' }),
   icon: buttonVariants({ variant: 'tertiary', size: 'icon' }),
 } as const;
+
+const editIcon = renderToStaticMarkup(createElement(Pencil, { 'aria-hidden': true }));
 
 const parseRgb = (value: string): readonly [number, number, number] => {
   const channels = value
@@ -110,7 +115,7 @@ const renderButtonHarness = async (page: Page, themeCase: ThemeCase) => {
                       <button type="button" data-variant="destructive" class="${variantClasses.destructive}">Destructive</button>
                       <button type="button" data-variant="disabled" class="${variantClasses.primary}" disabled>Disabled</button>
                       <button type="button" data-variant="icon" class="${variantClasses.icon}" aria-label="Bearbeiten">
-                        <span aria-hidden="true">✎</span>
+                        ${editIcon}
                       </button>
                     </div>
                   </section>

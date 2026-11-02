@@ -33,7 +33,7 @@ import { Textarea } from '../../../components/ui/textarea';
 import { t } from '../../../i18n';
 
 export type AccountInvitationTemplateDraft = Omit<AccountInvitationTemplate, 'revision'>;
-export type AccountInvitationTemplateSaveResult = boolean | 'conflict';
+export type AccountInvitationTemplateSaveResult = boolean | 'conflict' | 'synced' | 'pending';
 
 type PreviewContext = Readonly<{ tenantName: string; tenantHomepageUrl: string }>;
 
@@ -79,6 +79,14 @@ const templateFields = [
   ['passwordSetupLinkLabel', 'passwordLinkLabel', 120],
   ['tenantHomepageLinkLabel', 'homepageLinkLabel', 120],
 ] as const;
+
+const saveMessageKeys = {
+  true: 'admin.instances.invitation.saved',
+  false: 'admin.instances.invitation.saveFailed',
+  conflict: 'admin.instances.invitation.saveConflict',
+  synced: 'admin.instances.mailSync.serverSaved',
+  pending: 'admin.instances.mailSync.savedPending',
+} as const;
 
 const notifyEditorOpened = (open: boolean, onOpen?: () => void) => {
   if (open) onOpen?.();
@@ -131,16 +139,9 @@ export const AccountInvitationTemplateEditorCard = ({
     setMessage(null);
     try {
       const result = await onSave(template ? toDraft(template) : null);
-      if (result === true) form.reset(toDraft(template ?? effectiveTemplate));
-      setMessage(
-        t(
-          result === true
-            ? 'admin.instances.invitation.saved'
-            : result === 'conflict'
-              ? 'admin.instances.invitation.saveConflict'
-              : 'admin.instances.invitation.saveFailed'
-        )
-      );
+      if ([true, 'synced', 'pending'].includes(result))
+        form.reset(toDraft(template ?? effectiveTemplate));
+      setMessage(t(saveMessageKeys[`${result}`]));
     } catch {
       setMessage(t('admin.instances.invitation.saveFailed'));
     } finally {
@@ -178,6 +179,7 @@ export const AccountInvitationTemplateEditorCard = ({
         <Dialog
           open={open}
           onOpenChange={(next) => {
+            if (next) setMessage(null);
             setOpen(next);
             notifyEditorOpened(next, onOpen);
           }}

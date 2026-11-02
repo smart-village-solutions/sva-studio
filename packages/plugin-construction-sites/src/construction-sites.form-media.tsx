@@ -145,6 +145,7 @@ export function ConstructionSiteMediaFields({
   return (
     <>
       <ContentMediaUsageBlock
+        showHeader={false}
         disabled={disabled}
         errors={Object.fromEntries(
           usages

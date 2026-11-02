@@ -8,6 +8,8 @@ import {
   StudioFormSummaryErrors,
   StudioLoadingState,
   StudioSaveButton,
+  StudioPersistentFormError,
+  StudioFormSummary,
   MainserverPrincipalControl,
   resolveMainserverPrincipalOptions,
   isMainserverPrincipalReady,
@@ -79,21 +81,21 @@ function EditorFeedback({ s, created }: Readonly<{ s: Props['state']; created: b
   const pt = usePluginTranslation('construction-sites');
   return (
     <>
-      {s.failure ? (
-        <p role="alert" className="text-destructive">
-          {pt(s.failure)}
-        </p>
+      {s.failure ? <StudioPersistentFormError message={pt(s.failure)} /> : null}
+      {s.message === 'messages.saved' ? (
+        <StudioFormSummary kind="success">{pt(s.message)}</StudioFormSummary>
+      ) : s.message ? (
+        <p role="status">{pt(s.message)}</p>
       ) : null}
-      {s.message ? <p role="status">{pt(s.message)}</p> : null}
       {s.record?.writeBlockedReason ? <p role="alert">{pt('messages.blocked')}</p> : null}
       {s.categoryError ? <p role="status">{pt('messages.categoryError')}</p> : null}
       {s.pending ? (
-        <div className="space-y-2">
-          <p role="alert">{pt('messages.unknown')}</p>
-          <Button type="button" disabled={s.busy} onClick={() => void s.recover()}>
-            {pt('actions.recover')}
-          </Button>
-        </div>
+        <StudioPersistentFormError
+          message={pt('messages.unknown')}
+          retryLabel={pt('actions.recover')}
+          retryDisabled={s.busy}
+          onRetry={() => void s.recover()}
+        />
       ) : null}
       {created && s.record && !s.pending ? (
         <Button asChild>
@@ -119,6 +121,7 @@ function EditorPrincipal({
   return (
     <fieldset disabled={s.busy || s.dirty || Boolean(s.pending) || created}>
       <MainserverPrincipalControl
+        fixedLabel={!id ? pt('principal.responsible') : undefined}
         id="cs-principal"
         label={pt(id ? 'principal.actAs' : 'principal.createAs')}
         value={s.principal}
@@ -170,6 +173,8 @@ function EditorPanels({
     change: s.change,
     errors: s.errors,
     categories: s.categories,
+    categoriesLoading: s.categoriesLoading,
+    categoryError: s.categoryError,
     disabled,
     canPublish,
   };
@@ -184,11 +189,12 @@ function EditorPanels({
     </fieldset>
   );
   const tabs = [
-    { id: 'basis' as const, label: pt('tabs.basis'), panel: basis },
-    { id: 'content' as const, label: pt('tabs.content'), panel: content },
+    { id: 'basis' as const, label: pt('tabs.basis'), icon: 'basis' as const, panel: basis },
+    { id: 'content' as const, label: pt('tabs.content'), icon: 'content' as const, panel: content },
     {
       id: 'history' as const,
       label: pt('tabs.history'),
+      icon: 'history' as const,
       panel: history,
     },
   ];

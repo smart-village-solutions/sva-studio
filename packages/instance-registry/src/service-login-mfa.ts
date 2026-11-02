@@ -1,3 +1,10 @@
+import { loadInstanceWithSecret } from './service-keycloak-secrets.js';
+import {
+  buildProvisioningInput,
+  readQueuedPluginOidcClientRequirements,
+} from './service-keycloak-execution-payload.js';
+import { appendFinalStatusSnapshot } from './service-keycloak-execution-finalize.js';
+import { loadRealmBaselineApplicability } from './service-keycloak-snapshot-reader.js';
 import type { InstanceKeycloakProvisioningRun, TenantLoginMfaPolicyView } from '@sva/core';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 import { buildPayloadFingerprint } from './payload-fingerprint.js';
@@ -110,6 +117,19 @@ export const processLoginMfaRun = async (
       clientIds: queued.clientIds as string[],
     });
     if (!state.aligned || state.mode !== mode) throw new Error('login_mfa_readback_mismatch');
+    // A policy revision invalidates prior full snapshots. Read all provider state
+    // independently instead of carrying stale non-MFA checks into this revision.
+    if (!deps.readKeycloakStateViaProvisioner) throw new Error('login_mfa_provisioner_unavailable');
+    const loaded = await loadInstanceWithSecret(deps, run.instanceId);
+    if (!loaded) throw new Error('login_mfa_request_superseded');
+    const pluginOidcClients = readQueuedPluginOidcClientRequirements(queued, loaded.instance);
+    const fullState = await deps.readKeycloakStateViaProvisioner({
+      ...buildProvisioningInput(loaded),
+      pluginOidcClients,
+    });
+    if (!fullState.loginMfa?.aligned || fullState.loginMfa.mode !== mode)
+      throw new Error('login_mfa_readback_mismatch');
+
     if (
       !(await deps.repository.verifyLoginMfaPolicy({
         instanceId: run.instanceId,
@@ -119,6 +139,13 @@ export const processLoginMfaRun = async (
       }))
     )
       throw new Error('login_mfa_request_superseded');
+    await appendFinalStatusSnapshot(
+      deps,
+      { loaded, runId: run.id, intent: run.intent, requestId: run.requestId, pluginOidcClients },
+      loaded.instance,
+      fullState,
+      await loadRealmBaselineApplicability(deps, loaded.instance)
+    );
     await appendRunStep(deps, {
       runId: run.id,
       stepKey: 'login_mfa',

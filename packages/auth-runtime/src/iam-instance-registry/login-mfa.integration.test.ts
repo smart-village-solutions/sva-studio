@@ -36,6 +36,21 @@ it.skipIf(!process.env.IAM_DIRECTORY_TEST_DATABASE_URL)(
       const deps: InstanceRegistryServiceDeps = {
         repository,
         readPluginOidcClientRequirements: () => [],
+        revealSecret: () => undefined,
+        readKeycloakStateViaProvisioner: async (input) => ({
+          realm: { realm: input.authRealm },
+          expectedClient: { redirectUris: [], postLogoutRedirectUris: [], webOrigins: [] },
+          clientRepresentation: null,
+          tenantAdminClientRepresentation: null,
+          tenantAdminRepresentation: null,
+          tenantAdminStatus: { tenantAdminExists: false, tenantAdminHasSystemAdmin: false },
+          pluginOidcClients: [],
+          protocolMappers: [],
+          keycloakClientSecret: null,
+          tenantAdminClientSecret: null,
+          systemAdminRole: null,
+          loginMfa: { aligned: true, mode: input.loginMfaMode ?? 'optional' },
+        }),
         reconcileLoginMfa: async ({ mode }) => {
           if (failProvider) throw new Error('fixture_provider_failure');
           return { aligned: true, mode };
@@ -85,6 +100,35 @@ it.skipIf(!process.env.IAM_DIRECTORY_TEST_DATABASE_URL)(
         appliedMode: 'optional',
         status: 'failed',
       });
+      // A standard successful realm run adopts the failed tenant run's exact
+      // desired revision, making its own existing run the current evidence.
+      const { run: standard } = await repository.createKeycloakProvisioningRun({
+        instanceId: 'mfa-db-a',
+        mutation: 'reconcileKeycloak',
+        idempotencyKey: 'full-recovery',
+        payloadFingerprint: 'fixture',
+        mode: 'existing',
+        intent: 'provision',
+        overallStatus: 'running',
+        driftSummary: 'Fixture full provider read-back',
+      });
+      expect(
+        await repository.verifyLoginMfaPolicy({
+          instanceId: 'mfa-db-a',
+          revision: failed.revision,
+          mode: 'required',
+          runId: failed.runId,
+          evidenceRunId: standard.id,
+        })
+      ).toBe(true);
+      await repository.updateKeycloakProvisioningRun({
+        runId: standard.id,
+        overallStatus: 'succeeded',
+      });
+      expect(await repository.getInstanceById('mfa-db-a')).toMatchObject({
+        loginMfaRunId: standard.id,
+        loginMfaPolicy: { desiredMode: 'required', appliedMode: 'required', status: 'applied' },
+      });
       failProvider = false;
       const old = await service.updateLoginMfaPolicy({
         instanceId: 'mfa-db-a',
@@ -104,6 +148,7 @@ it.skipIf(!process.env.IAM_DIRECTORY_TEST_DATABASE_URL)(
           revision: old.revision,
           mode: 'required',
           runId: old.runId,
+          evidenceRunId: standard.id,
         })
       ).toBe(false);
       await processClaimedKeycloakProvisioningRun(

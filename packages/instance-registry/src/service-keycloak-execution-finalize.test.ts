@@ -51,6 +51,58 @@ describe('service-keycloak-execution-finalize', () => {
     state.toOverallPreflightStatus.mockReset().mockReturnValue('ready');
   });
 
+  it.each([true, false])(
+    'adopts standard-run MFA evidence only when the expected revision/run fence succeeds (%s)',
+    async (fenced) => {
+      const { completeRun } = await import('./service-keycloak-execution-finalize.js');
+      const repository = {
+        verifyLoginMfaPolicy: vi.fn(async () => fenced),
+        listProvisioningRuns: vi.fn(async () => []),
+        listKeycloakProvisioningRuns: vi.fn(async () => []),
+        updateKeycloakProvisioningRun: vi.fn(),
+      };
+      state.buildProvisioningInput.mockReturnValue({
+        instanceId: 'instance-1',
+        loginMfaMode: 'required',
+        loginMfaRevision: 2,
+      });
+      state.buildFinalRunSteps.mockReturnValue([]);
+      state.areAllRequirementsSatisfied.mockReturnValue(true);
+      state.buildKeycloakStatus.mockReturnValue({ realmExists: true });
+      const operation = completeRun(
+        {
+          repository,
+          readKeycloakStateViaProvisioner: async () => ({
+            realm: {},
+            loginMfa: { aligned: true, mode: 'required' },
+          }),
+        } as never,
+        {
+          loaded: {
+            instance: {
+              instanceId: 'instance-1',
+              status: 'active',
+              realmMode: 'existing',
+              loginMfaRunId: 'failed-tenant-run',
+            },
+          } as never,
+          runId: 'standard-run',
+          intent: 'provision',
+        }
+      );
+      if (fenced) await expect(operation).resolves.toBe('succeeded');
+      else await expect(operation).rejects.toThrow('login_mfa_request_superseded');
+      expect(repository.verifyLoginMfaPolicy).toHaveBeenCalledWith({
+        instanceId: 'instance-1',
+        revision: 2,
+        mode: 'required',
+        runId: 'failed-tenant-run',
+        evidenceRunId: 'standard-run',
+      });
+      if (!fenced) expect(repository.updateKeycloakProvisioningRun).not.toHaveBeenCalled();
+    }
+  );
+
   it('throws when the final Keycloak state reader is missing', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
 

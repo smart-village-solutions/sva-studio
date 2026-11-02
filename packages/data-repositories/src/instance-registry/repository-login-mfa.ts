@@ -31,10 +31,17 @@ export const createLoginMfaRepository = (executor: SqlExecutor) => ({
     revision: number;
     mode: LoginMfaMode;
     runId?: string;
+    evidenceRunId?: string;
   }) => {
     const result = await executor.execute({
-      text: `UPDATE iam.instances SET login_mfa_applied_mode = $3, login_mfa_applied_revision = $2 WHERE id = $1 AND login_mfa_revision = $2 AND login_mfa_desired_mode = $3 AND (login_mfa_run_id = $4 OR ($4 IS NULL AND login_mfa_run_id IS NULL))`,
-      values: [input.instanceId, input.revision, input.mode, input.runId ?? null],
+      text: `UPDATE iam.instances SET login_mfa_applied_mode = $3, login_mfa_applied_revision = $2, login_mfa_run_id = COALESCE($5::uuid, login_mfa_run_id) WHERE id = $1 AND login_mfa_revision = $2 AND login_mfa_desired_mode = $3 AND (login_mfa_run_id = $4 OR ($4 IS NULL AND login_mfa_run_id IS NULL)) AND ($5::uuid IS NULL OR EXISTS (SELECT 1 FROM iam.instance_keycloak_provisioning_runs evidence WHERE evidence.id = $5::uuid AND evidence.instance_id = $1))`,
+      values: [
+        input.instanceId,
+        input.revision,
+        input.mode,
+        input.runId ?? null,
+        input.evidenceRunId ?? null,
+      ],
     });
     return result.rowCount === 1;
   },

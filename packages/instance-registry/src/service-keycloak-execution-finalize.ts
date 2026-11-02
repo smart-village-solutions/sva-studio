@@ -76,7 +76,7 @@ const buildStatusFromState = (
         (provisioningInput.pluginOidcClients?.length ?? 0) === 0
       );
 
-const appendFinalStatusSnapshot = async (
+export const appendFinalStatusSnapshot = async (
   deps: InstanceRegistryServiceDeps,
   input: CompleteRunInput,
   snapshotInstance: InstanceRegistryRecord,
@@ -197,6 +197,19 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
 
   assertParentProvisioningRunActive(provisioningRuns, input);
 
+  // Standard reconciliation replaces failed tenant evidence only for the exact
+  // revision and run observed under the existing instance provisioning lock.
+  if (finalRunStatus === 'succeeded' && state.loginMfa?.aligned) {
+    const verified = await deps.repository.verifyLoginMfaPolicy({
+      instanceId: provisioningInput.instanceId,
+      revision: provisioningInput.loginMfaRevision ?? 0,
+      mode: state.loginMfa.mode,
+      runId: input.loaded.instance.loginMfaRunId,
+      evidenceRunId: input.runId,
+    });
+    if (!verified) throw new Error('login_mfa_request_superseded');
+  }
+
   let snapshotInstance = input.loaded.instance;
 
   if (finalRunStatus === 'succeeded' && input.loaded.instance.status !== 'active') {
@@ -251,17 +264,6 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
       instanceId: input.loaded.instance.instanceId,
       childKeycloakRunId: input.runId,
       succeeded: finalRunStatus === 'succeeded',
-    });
-  }
-
-  if (
-    state.loginMfa?.aligned &&
-    state.loginMfa.mode === (provisioningInput.loginMfaMode ?? 'optional')
-  ) {
-    await deps.repository.verifyLoginMfaPolicy({
-      instanceId: provisioningInput.instanceId,
-      revision: provisioningInput.loginMfaRevision ?? 0,
-      mode: state.loginMfa.mode,
     });
   }
 

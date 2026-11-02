@@ -37,7 +37,7 @@ export const permissionDenialDEResources = {
     iamMonitoringWrite: 'Prüf- und Wartungsaktionen starten',
     iamAccountsDelete: 'Benutzerkonten endgültig löschen',
     iamAuthenticationPolicyManage: 'Anmelderichtlinie verwalten',
-    iamInvitationTemplateManage: 'Vorlage für Benutzer-Einladungen bearbeiten',
+    iamInvitationTemplateManage: 'E-Mail-Vorlagen bearbeiten',
     experimentalRead: 'Experimentelle Funktionen verwenden',
     appTextsRead: 'Deutsche App-Texte lesen',
     appTextsWrite: 'Deutsche App-Texte bearbeiten',

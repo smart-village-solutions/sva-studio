@@ -199,7 +199,7 @@ export const shellDEResources = {
     languages: 'Sprachen',
     mobileApp: 'App',
     loginMfa: 'Anmelderichtlinie',
-    invitationTemplate: 'Einladungsvorlage',
+    invitationTemplate: 'E-Mail-Vorlagen',
     roles: 'Rollen',
     groups: 'Gruppen',
     legalTexts: 'Rechtstexte',

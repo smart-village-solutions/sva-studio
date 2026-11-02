@@ -246,6 +246,14 @@ export const breadcrumbRoutes: ReadonlyArray<
     build: () => [overviewBreadcrumb(), { label: t('shell.breadcrumbs.wasteCalendar') }],
   },
   {
+    pattern: /^\/admin\/users\/invitation-template$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/users', label: t('shell.sidebar.userManagement') },
+      { label: t('admin.instances.invitation.tenantPageTitle') },
+    ],
+  },
+  {
     pattern: /^\/admin\/users\/[^/]+$/,
     build: () => [
       overviewBreadcrumb(),

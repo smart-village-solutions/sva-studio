@@ -107,6 +107,8 @@ export {
   updateTenantLoginMfaHandler,
   getTenantInvitationTemplateHandler,
   updateTenantInvitationTemplateHandler,
+  getTenantEmailVerificationTemplateHandler,
+  updateTenantEmailVerificationTemplateHandler,
   syncUsersFromKeycloakHandler,
   updateMyProfileHandler,
   updateRoleHandler,

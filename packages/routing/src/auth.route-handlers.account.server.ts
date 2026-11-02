@@ -68,6 +68,10 @@ export const accountAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.getTenantInvitationTemplateHandler),
     PATCH: routeHandler(authRuntimeRoutes.updateTenantInvitationTemplateHandler),
   },
+  '/api/v1/iam/users/me/email-verification-template': {
+    GET: routeHandler(authRuntimeRoutes.getTenantEmailVerificationTemplateHandler),
+    PATCH: routeHandler(authRuntimeRoutes.updateTenantEmailVerificationTemplateHandler),
+  },
   '/api/v1/iam/organizations': {
     GET: routeHandler(authRuntimeRoutes.listOrganizationsHandler),
     POST: routeHandler(authRuntimeRoutes.createOrganizationHandler),

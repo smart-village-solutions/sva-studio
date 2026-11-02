@@ -1883,6 +1883,15 @@ paths:
       summary: Einladungsvorlage des Mandanten speichern oder abgleichen
       description: Dieselben save-, transfer- und adopt-Operationen im Session-Tenant mit iam.invitationTemplate.manage. Bestehende Requests ohne operation bleiben save-Requests. Antworten enthalten synchronization mit Studio-/Keycloak-Vergleich.
       responses: { default: { description: 'Antwort des Endpunkts.' } }
+  /api/v1/iam/users/me/email-verification-template:
+    get:
+      summary: Bestätigungsvorlage des Session-Mandanten lesen
+      description: Erfordert iam.invitationTemplate.manage. Liefert MailTemplateView mit geerbter oder eigener Vorlage und aktuellem Studio-/Keycloak-Vergleich. Eine Instanz-ID darf nicht übergeben werden.
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
+    patch:
+      summary: Bestätigungsvorlage des Session-Mandanten speichern oder abgleichen
+      description: Erfordert Sitzung, iam.invitationTemplate.manage, Actor-Account und CSRF. Unterstützt save mit subject/body oder null zum Entfernen des Overrides sowie transfer/adopt mit den gelesenen Studio-/Keycloak-Texten. expectedRevision schützt vor gleichzeitigen Änderungen. Die Quelle bleibt bei Synchronisierungsfehlern gespeichert; MailTemplateView meldet den tatsächlichen Abgleichsstand. Kein E-Mail-Versand.
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/organizations/{organizationId}/provision-mainserver:
     parameters: [{ name: organizationId, in: path, required: true, schema: { type: string } }]
     post:

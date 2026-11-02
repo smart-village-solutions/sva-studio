@@ -194,7 +194,7 @@ export const shellENResources = {
     languages: 'Languages',
     mobileApp: 'App',
     loginMfa: 'Authentication policy',
-    invitationTemplate: 'Invitation template',
+    invitationTemplate: 'Email templates',
     roles: 'Roles',
     groups: 'Groups',
     legalTexts: 'Legal texts',

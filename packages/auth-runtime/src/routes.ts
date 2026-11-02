@@ -26,6 +26,7 @@ export const authRoutePaths = [
   '/api/v1/iam/users/me/profile',
   '/api/v1/iam/users/me/authentication-policy',
   '/api/v1/iam/users/me/invitation-template',
+  '/api/v1/iam/users/me/email-verification-template',
   '/api/v1/iam/organizations',
   '/api/v1/iam/organizations/$organizationId',
   '/api/v1/iam/organizations/$organizationId/provision-mainserver',

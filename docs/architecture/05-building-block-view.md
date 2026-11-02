@@ -1116,7 +1116,7 @@ Details offen.
 - Die systemweite Zielvorgabe für neue Einladungen liegt getrennt vom Mailtext
   im bestehenden Serverdatensatz. Der bei der Nutzeranlage ausgewählte Zweck
   `studio` oder `ssf` liegt am Account und bleibt beim Resend erhalten.
-- Auf dem Tenant-Host zeigt `Benutzer -> Einladungsvorlage` denselben Editor
+- Auf dem Tenant-Host zeigt `Benutzer -> E-Mail-Vorlagen` beide bestehenden Editoren für Account-Einladung und E-Mail-Bestätigung
   mit einer auf die Session-Instanz begrenzten API. `@sva/auth-runtime` prüft
   `iam.invitationTemplate.manage`; die Registry-Persistenz bleibt gemeinsam.
 - `@sva/auth-runtime` vergleicht unmittelbar vor Create-Einladung und Resend

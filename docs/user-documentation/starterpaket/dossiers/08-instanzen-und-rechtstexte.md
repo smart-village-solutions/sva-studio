@@ -82,6 +82,25 @@ vor einem erneuten Versuch den neu geladenen Key-Status prüfen.
 Eine erfolgreiche Bus-Änderung mit Auditwarnung nicht wiederholen; die angezeigte Request-ID
 ermöglicht die Klärung. Fehlende Bus-Konfiguration betrifft nur diesen Bereich.
 
+## `admin.users.invitation-template` – E-Mail-Vorlagen der Instanz verwalten
+
+- **Route / Typ / Owner:** `/admin/users/invitation-template`, Detail, Host.
+- **Nutzerziel:** Unter `Benutzer -> E-Mail-Vorlagen` die Account-Einladung und die
+  E-Mail-Bestätigung für die eigene Instanz bearbeiten.
+- **Produktfakten:** Beide Vorlagen zeigen die verwendete Quelle und öffnen ihren
+  vorhandenen Editor. Ein eigener Text hat Vorrang vor der allgemeinen Vorlage.
+  „Servervorlage verwenden“ bei Einladungen beziehungsweise „Allgemeine Vorlage verwenden“
+  bei Bestätigungen entfernt den Instanz-Override und stellt die Vererbung wieder her.
+  Speichern erhält den Studio-Stand und gleicht ihn mit Keycloak ab. Fehler oder externe
+  Änderungen bleiben sichtbar; „Keycloak-Stand übernehmen“ und „Studio-Stand übertragen“
+  verlangen einen expliziten Abgleich. Es wird dabei keine E-Mail versendet.
+- **Berechtigung:** `iam.invitationTemplate.manage` gilt für beide E-Mail-Vorlagen der
+  eigenen Instanz; eine andere Instanz lässt sich über diese Seite nicht auswählen.
+- **Leitfragen / Stichwörter:** Welcher Bestätigungstext gilt? Wie entferne ich einen
+  eigenen Text? E-Mail-Vorlagen, Account-Einladung, E-Mail-Bestätigung, Vererbung, Keycloak-Abgleich.
+- **Evidenz:** `routes/admin/users/-invitation-template-page.tsx`,
+  `routes/admin/instances/-email-verification-template-card.tsx`.
+
 ## `admin.templates` – Systemweite Templates verwalten
 
 - **Route / Typ / Owner:** `/admin/templates`, Detail, Host.

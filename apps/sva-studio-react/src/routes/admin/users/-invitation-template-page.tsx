@@ -1,4 +1,5 @@
 import { MailTemplateSyncPanel } from '../instances/-mail-template-sync-panel';
+import { EmailVerificationTemplateCard } from '../instances/-email-verification-template-card';
 import * as React from 'react';
 import type { TenantAccountInvitationTemplateView } from '@sva/core';
 import { StudioLoadingState } from '@sva/studio-ui-react';
@@ -105,6 +106,7 @@ export const InvitationTemplatePage = () => {
       ) : (
         <StudioLoadingState>{t('admin.instances.invitation.loading')}</StudioLoadingState>
       )}
+      <EmailVerificationTemplateCard mode="tenant" />
     </div>
   );
 };

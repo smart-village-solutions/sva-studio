@@ -80,8 +80,7 @@ export const createReadKeycloakState =
   async (input: KeycloakProvisioningInput): Promise<KeycloakReadState> => {
     const pluginOidcClientRequirements = readPluginOidcClientRequirements(input);
     const client = createClient(input.authRealm);
-    const readSecret =
-      readClientSecret ?? ((clientId: string) => client.getOidcClientSecretValue(clientId));
+    const readSecret = readClientSecret ?? ((id: string) => client.getOidcClientSecretValue(id));
     const expectedClient = buildExpectedClientConfig(input.primaryHostname);
     const expectedTenantAdminClient = input.tenantAdminClient
       ? buildExpectedTenantAdminClientConfig(input.primaryHostname)
@@ -96,11 +95,6 @@ export const createReadKeycloakState =
     const tenantAdminClientRepresentation = input.tenantAdminClient?.clientId
       ? await client.getOidcClientByClientId(input.tenantAdminClient.clientId)
       : null;
-    const tenantAdminServiceAccess = await readTenantAdminServiceAccess(
-      client,
-      input,
-      tenantAdminClientRepresentation
-    );
     const pluginOidcClients = await Promise.all(
       pluginOidcClientRequirements.map(async (requirement) => {
         const clientRepresentation = await client.getOidcClientByClientId(requirement.clientId);
@@ -154,7 +148,11 @@ export const createReadKeycloakState =
       realm,
       clientRepresentation,
       tenantAdminClientRepresentation,
-      tenantAdminServiceAccess,
+      tenantAdminServiceAccess: await readTenantAdminServiceAccess(
+        client,
+        input,
+        tenantAdminClientRepresentation
+      ),
       pluginOidcClients,
       protocolMappers,
       tenantAdminStatus: tenantAdmin.status,

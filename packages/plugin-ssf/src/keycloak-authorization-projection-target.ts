@@ -70,6 +70,7 @@ const reconcileProjection = async (
       nextAttributes[SSF_TOKEN_CLAIMS.instanceId] = [desired.instanceId];
       nextAttributes[SSF_TOKEN_CLAIMS.roles] = desiredSubject.roles;
       nextAttributes[SSF_TOKEN_CLAIMS.permissions] = desiredSubject.permissions;
+      nextAttributes[SSF_TOKEN_CLAIMS.languages] = desiredSubject.languages ?? [];
       nextAttributes[SSF_TOKEN_CLAIMS.authorizationRevision] = [authorizationRevision];
     }
     if (!areAttributesEqual(currentAttributes, nextAttributes)) {
@@ -97,6 +98,7 @@ const readProjectedSubjects = async (
         subject,
         roles: [...(attributes[SSF_TOKEN_CLAIMS.roles] ?? [])],
         permissions: [...(attributes[SSF_TOKEN_CLAIMS.permissions] ?? [])],
+        languages: [...(attributes[SSF_TOKEN_CLAIMS.languages] ?? [])],
         authorizationRevision: readSingleAttribute(
           attributes,
           SSF_TOKEN_CLAIMS.authorizationRevision
@@ -114,10 +116,11 @@ const readBackProjection = async (
     ssfAuthorizationProjectionSchema.parse({
       contractVersion: SSF_AUTHORIZATION_PROJECTION_VERSION,
       instanceId,
-      subjects: subjects.map(({ subject, roles, permissions }) => ({
+      subjects: subjects.map(({ subject, roles, permissions, languages }) => ({
         subject,
         roles,
         permissions,
+        ...(languages.length ? { languages } : {}),
       })),
     })
   );

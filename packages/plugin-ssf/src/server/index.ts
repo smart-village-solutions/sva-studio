@@ -4,6 +4,7 @@ import type {
 } from '@sva/plugin-sdk';
 
 import {
+  SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID,
   SSF_RUNTIME_SERVER_HANDLER_ID,
   SSF_RUNTIME_V2_SERVER_HANDLER_ID,
 } from '../constants.js';
@@ -34,9 +35,14 @@ import { createDefaultSsfAdminV2Dependencies, createSsfAdminV2Handlers, type Ssf
 import { createSsfRuntimeV2ServerHandler, defaultSsfRuntimeV2Handler, type SsfRuntimeV2Handler, readResolvedSsfInstallationContentV2 } from './content-v2.js';
 import { jsonResponse, readCorrelationId, unavailableResponse } from './responses.js';
 
+import { createSsfRecordingDirectoryHandler } from './recording-directory.js';
+import type { SsfPluginServerCapabilities } from '../recording-directory.js';
+export type { SsfPluginServerCapabilities } from '../recording-directory.js';
+
 export { readResolvedSsfInstallationContentV2 };
 
 export interface SsfPluginServerHandlerDependencies {
+  readonly capabilities?: SsfPluginServerCapabilities;
   readonly runtimeHandler: SsfRuntimeConfigurationHandler;
   readonly runtimeV2Handler?: SsfRuntimeV2Handler;
 }
@@ -80,6 +86,7 @@ export const createSsfPluginServerHandlers = (
   };
 
   return {
+    [SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID]: createSsfRecordingDirectoryHandler(dependencies.capabilities),
     [SSF_RUNTIME_SERVER_HANDLER_ID]: handler,
     [SSF_RUNTIME_V2_SERVER_HANDLER_ID]: createSsfRuntimeV2ServerHandler(dependencies.runtimeV2Handler),
   };
@@ -188,8 +195,9 @@ export const createSsfAdminServerHandlers = (
   },
 });
 
-export const createPluginServerHandlers: PluginServerHandlerModuleFactory = () => {
+export const createPluginServerHandlers = (capabilities?: SsfPluginServerCapabilities): ReturnType<PluginServerHandlerModuleFactory> => {
   const runtimeHandlers = createSsfPluginServerHandlers({
+    capabilities,
     runtimeHandler: (input) => getDefaultRuntimeHandler()(input),
     runtimeV2Handler: defaultSsfRuntimeV2Handler,
   });

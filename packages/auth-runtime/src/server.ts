@@ -140,8 +140,10 @@ export { resolveActorAccountIdWithProvision } from './iam-account-management/sha
 export { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
 export {
   readTenantPermissionProjectionSubjects,
+  readTenantPermissionDirectorySubjects,
   hasActiveTenantPermissionProjectionSubject,
   type TenantPermissionProjectionSubject,
+  type PermissionDirectorySubject,
 } from './iam-authorization/tenant-permission-projection.js';
 export { withMediaRepository, withMediaService } from './iam-media/index.js';
 export { completeMediaUploadHandler } from './iam-media/core.js';

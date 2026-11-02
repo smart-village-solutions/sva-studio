@@ -43,6 +43,7 @@ export type UpdateIdentityProvider = {
 };
 
 export type UpdateUserPayloadShape = {
+  readonly competenceLanguages?: readonly string[];
   readonly displayName?: string;
   readonly email?: string;
   readonly firstName?: string;

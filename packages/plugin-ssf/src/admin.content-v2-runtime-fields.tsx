@@ -89,7 +89,7 @@ const RecordingFields = (props: Props) => {
     <Field {...editor} path={['recording', 'verificationRequired']} labelKey="v2.recording.verificationRequired" kind="checkbox" />
     <Field {...editor} path={['recording', 'timestampAuthorityUrl']} labelKey="v2.recording.timestampAuthorityUrl" kind="url" />
     <Field {...editor} path={['recording', 'auditRetentionHours']} labelKey="v2.recording.auditRetentionHours" kind="number" />
-    {(settings.texts ?? []).map((entry, index) => <div key={index} className="space-y-2">
+    {(settings.texts ?? []).map((_entry, index) => <div key={index} className="space-y-2">
       <Field {...editor} path={['recording', 'texts', index, 'locale']} labelKey="v2.locale" />
       <Field {...editor} path={['recording', 'texts', index, 'consentHtml']} labelKey="v2.recording.consentHtml" kind="html" />
       <Field {...editor} path={['recording', 'texts', index, 'resumePromptHtml']} labelKey="v2.recording.resumePromptHtml" kind="html" />

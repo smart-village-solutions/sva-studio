@@ -634,6 +634,8 @@ CREATE TABLE iam.accounts (
     deletion_marked_at timestamp with time zone,
     is_technical_account boolean DEFAULT false NOT NULL,
     invitation_purpose text DEFAULT 'studio'::text NOT NULL,
+    competence_languages text[] DEFAULT '{}'::text[] NOT NULL,
+    CONSTRAINT accounts_competence_languages_count_chk CHECK ((cardinality(competence_languages) <= 40)),
     CONSTRAINT accounts_deletion_lifecycle_state_chk CHECK ((deletion_lifecycle_state = ANY (ARRAY['active'::text, 'deactivated'::text, 'pseudonymized'::text, 'deleted'::text]))),
     CONSTRAINT accounts_invitation_purpose_chk CHECK ((invitation_purpose = ANY (ARRAY['studio'::text, 'ssf'::text]))),
     CONSTRAINT accounts_notes_length_chk CHECK ((char_length(notes) <= 2000)),

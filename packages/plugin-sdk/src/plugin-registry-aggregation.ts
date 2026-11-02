@@ -115,6 +115,7 @@ export const mergePluginModuleIamContracts = (
         ownerPluginId: normalizedPluginNamespace,
         permissionIds: normalizedContract.permissionIds,
         systemRoles: normalizedContract.systemRoles,
+        ...(normalizedContract.systemAdminPermissionExclusions ? { systemAdminPermissionExclusions: normalizedContract.systemAdminPermissionExclusions } : {}),
         requiredTenantModuleIds: [...new Set(plugin.requiredTenantModuleIds ?? [])].sort(
           (left, right) => left.localeCompare(right)
         ),

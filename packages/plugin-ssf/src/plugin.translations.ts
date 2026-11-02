@@ -112,6 +112,11 @@ const de = {
       linkPrompt: 'Link-Adresse',
     },
     permissions: {
+      recording_request: 'Aufnahme anfordern',
+      recording_review: 'Aufnahmen prüfen',
+      recording_review_sworn: 'Aufnahmen vereidigt prüfen',
+      recording_supervise: 'Aufnahmen beaufsichtigen',
+      recording_recovery_custodian: 'Aufnahmewiederherstellung verwalten',
       systemRead: 'SSF-Systemstandards lesen',
       systemManage: 'SSF-Systemstandards verwalten',
       tenantRead: 'SSF-Konfiguration lesen',
@@ -232,6 +237,11 @@ const en = {
       linkPrompt: 'Link address',
     },
     permissions: {
+      recording_request: 'Request recording',
+      recording_review: 'Review recordings',
+      recording_review_sworn: 'Review recordings as a sworn reviewer',
+      recording_supervise: 'Supervise recordings',
+      recording_recovery_custodian: 'Act as recording recovery custodian',
       systemRead: 'Read SSF system defaults',
       systemManage: 'Manage SSF system defaults',
       tenantRead: 'Read SSF configuration',

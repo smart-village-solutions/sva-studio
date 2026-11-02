@@ -80,6 +80,14 @@ const templateFields = [
   ['tenantHomepageLinkLabel', 'homepageLinkLabel', 120],
 ] as const;
 
+const saveMessageKeys = {
+  true: 'admin.instances.invitation.saved',
+  false: 'admin.instances.invitation.saveFailed',
+  conflict: 'admin.instances.invitation.saveConflict',
+  synced: 'admin.instances.mailSync.serverSaved',
+  pending: 'admin.instances.mailSync.savedPending',
+} as const;
+
 const notifyEditorOpened = (open: boolean, onOpen?: () => void) => {
   if (open) onOpen?.();
 };
@@ -131,21 +139,9 @@ export const AccountInvitationTemplateEditorCard = ({
     setMessage(null);
     try {
       const result = await onSave(template ? toDraft(template) : null);
-      if (result === true || result === 'synced' || result === 'pending')
+      if ([true, 'synced', 'pending'].includes(result))
         form.reset(toDraft(template ?? effectiveTemplate));
-      setMessage(
-        t(
-          result === 'synced'
-            ? 'admin.instances.mailSync.serverSaved'
-            : result === 'pending'
-              ? 'admin.instances.mailSync.savedPending'
-              : result === true
-                ? 'admin.instances.invitation.saved'
-                : result === 'conflict'
-                  ? 'admin.instances.invitation.saveConflict'
-                  : 'admin.instances.invitation.saveFailed'
-        )
-      );
+      setMessage(t(saveMessageKeys[`${result}`]));
     } catch {
       setMessage(t('admin.instances.invitation.saveFailed'));
     } finally {

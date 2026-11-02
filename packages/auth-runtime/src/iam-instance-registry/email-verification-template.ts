@@ -34,13 +34,17 @@ const schema = z
 const json = (status: number, data: unknown) =>
   Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 const failure = (status: number, code: string) => json(status, { error: { code, message: code } });
-const requireTemplateAccess = (request: Request, ctx: RegistryRequestContext): Response | null => {
+const requireTemplateAccess = (
+  request: Request,
+  ctx: RegistryRequestContext,
+  freshReauth = true
+): Response | null => {
   const denied = ensurePlatformAccess(request, ctx);
   if (denied) return denied;
   return request.method === 'PATCH'
-    ? (!isRegistryServiceContext(ctx)
+    ? ((!isRegistryServiceContext(ctx)
         ? validateCsrf(request, getWorkspaceContext().requestId)
-        : null)
+        : null) ?? (freshReauth ? requireFreshReauth(request, ctx) : null))
     : null;
 };
 const parseInstanceMutation = async (request: Request, kind: 'invitation' | 'verification') => {
@@ -64,8 +68,7 @@ export const emailVerificationTemplateInternal = async (
   request: Request,
   ctx: RegistryRequestContext
 ): Promise<Response> => {
-  const denied = requireTemplateAccess(request, ctx) ??
-    (request.method === 'PATCH' ? requireFreshReauth(request, ctx) : null);
+  const denied = requireTemplateAccess(request, ctx);
   if (denied) return denied;
   let id: string;
   try {
@@ -114,7 +117,7 @@ export const serverEmailVerificationTemplateInternal = async (
   request: Request,
   ctx: RegistryRequestContext
 ): Promise<Response> => {
-  const denied = requireTemplateAccess(request, ctx);
+  const denied = requireTemplateAccess(request, ctx, false);
   if (denied) return denied;
   const parsed =
     request.method === 'PATCH'

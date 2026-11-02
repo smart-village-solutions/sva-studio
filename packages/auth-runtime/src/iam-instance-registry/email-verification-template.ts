@@ -38,9 +38,9 @@ const requireTemplateAccess = (request: Request, ctx: RegistryRequestContext): R
   const denied = ensurePlatformAccess(request, ctx);
   if (denied) return denied;
   return request.method === 'PATCH'
-    ? ((!isRegistryServiceContext(ctx)
+    ? (!isRegistryServiceContext(ctx)
         ? validateCsrf(request, getWorkspaceContext().requestId)
-        : null) ?? requireFreshReauth(request, ctx))
+        : null)
     : null;
 };
 const parseInstanceMutation = async (request: Request, kind: 'invitation' | 'verification') => {
@@ -64,7 +64,8 @@ export const emailVerificationTemplateInternal = async (
   request: Request,
   ctx: RegistryRequestContext
 ): Promise<Response> => {
-  const denied = requireTemplateAccess(request, ctx);
+  const denied = requireTemplateAccess(request, ctx) ??
+    (request.method === 'PATCH' ? requireFreshReauth(request, ctx) : null);
   if (denied) return denied;
   let id: string;
   try {

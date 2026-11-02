@@ -33,7 +33,7 @@ import { Textarea } from '../../../components/ui/textarea';
 import { t } from '../../../i18n';
 
 export type AccountInvitationTemplateDraft = Omit<AccountInvitationTemplate, 'revision'>;
-export type AccountInvitationTemplateSaveResult = boolean | 'conflict';
+export type AccountInvitationTemplateSaveResult = boolean | 'conflict' | 'synced' | 'pending';
 
 type PreviewContext = Readonly<{ tenantName: string; tenantHomepageUrl: string }>;
 
@@ -131,14 +131,19 @@ export const AccountInvitationTemplateEditorCard = ({
     setMessage(null);
     try {
       const result = await onSave(template ? toDraft(template) : null);
-      if (result === true) form.reset(toDraft(template ?? effectiveTemplate));
+      if (result === true || result === 'synced' || result === 'pending')
+        form.reset(toDraft(template ?? effectiveTemplate));
       setMessage(
         t(
-          result === true
-            ? 'admin.instances.invitation.saved'
-            : result === 'conflict'
-              ? 'admin.instances.invitation.saveConflict'
-              : 'admin.instances.invitation.saveFailed'
+          result === 'synced'
+            ? 'admin.instances.mailSync.serverSaved'
+            : result === 'pending'
+              ? 'admin.instances.mailSync.savedPending'
+              : result === true
+                ? 'admin.instances.invitation.saved'
+                : result === 'conflict'
+                  ? 'admin.instances.invitation.saveConflict'
+                  : 'admin.instances.invitation.saveFailed'
         )
       );
     } catch {
@@ -178,6 +183,7 @@ export const AccountInvitationTemplateEditorCard = ({
         <Dialog
           open={open}
           onOpenChange={(next) => {
+            if (next) setMessage(null);
             setOpen(next);
             notifyEditorOpened(next, onOpen);
           }}

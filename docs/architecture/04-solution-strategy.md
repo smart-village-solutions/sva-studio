@@ -385,3 +385,13 @@ Die bestehende Principal-Projektion kann eine lokale, geheimnisfreie Mainserver-
 ## Baustellenplugin
 
 Das optionale Baustellenplugin erweitert den vorhandenen GenericItem- und Principal-Pfad für den exakten Typ `ConstructionSite`; es führt weder einen zweiten Datenspeicher noch einen neuen Plattformdienst ein. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+
+## SSF recording administration
+
+Recording settings extend the existing SSF installation template and sparse tenant
+overrides. Retention resolves tenant override, installation default, then 720
+hours, bounded to 1..8760. Tenant enablement remains explicit. Core/IAM owns
+competence languages and realm authentication policy; the plugin owns recording
+policy and editorial wording. A narrow host reader supplies live eligible users.
+Existing SDK metadata, lifecycle jobs and Keycloak provisioning are reused.
+See [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).

@@ -745,3 +745,12 @@ Zuordnung:
 ## Mainserver-Übersetzungsfreigabe
 
 [ADR-070: Technischen Übersetzungsdienst an bestehender Mainserver-Verbindung autorisieren](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md) beschreibt auch die automatische Einrichtung bei Modulaktivierung über bestätigte öffentliche Identitätsmetadaten. Laufzeit und Schutzgrenzen stehen in Abschnitt [06](./06-runtime-view.md) und [08](./08-cross-cutting-concepts.md). Die lokale Ergänzung vom 30. Oktober ist kein Rolloutnachweis.
+
+## SSF recording and tenant authentication ownership
+
+[ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md) assigns
+recording policy/content to the SSF plugin and account competence/authentication
+policy to Core/IAM. It records explicit recording grants, preserved administrator
+exclusions, the live host-reader boundary and durable reconciliation. Runtime
+and validation are described in sections 05, 06 and 08; implementation does not
+itself establish production promotion or tenant recording readiness.

@@ -1249,3 +1249,23 @@ und Kalendergitter lesen dieselben berechneten Terminobjekte.
 ## Baustellenplugin
 
 `@sva/plugin-construction-sites` liefert Fachschema, Liste und Editor. Browser und Studio-Mainserver-Adapter validieren an ihren jeweiligen Eingangsgrenzen; gemeinsame Vertragsfixtures prüfen die Kompatibilität. Der Server benötigt kein optionales Fachplugin zur Laufzeit. Der Host registriert Zuständigkeit, Routing, Rechte und die bestehende Inhaltsprojektion. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+
+## SSF recording configuration and identity boundary
+
+- `plugin-ssf/content-v2-recording` validates sparse administrative drafts and
+  resolves complete effective recording policy before runtime revision hashing.
+  It runs outside the generic content merge so `recording.enabled` is retained.
+- The mounted SSF editor manages policy, inheritance and localized consent/resume
+  text. Root policy conflicts list affected tenants without discarding the draft.
+- Core/IAM persists managed account competence and supplies live, decrypted
+  display labels and effective tenant-wide grants through the existing host
+  server-factory composition. SSF receives a reader capability, not IAM database
+  access. The exported `plugin-ssf/server` entry binds the directory handler;
+  the separate lifecycle module retains its job handlers.
+- SDK module metadata and both host bootstrap paths retain administrator grant
+  exclusions. Configuration administration is not a recording grant.
+- Core/IAM and its existing realm provisioning workflow own authentication policy
+  application; SSF continues to enforce its own sensitive-action step-up.
+
+The ownership decision and release boundary are recorded in
+[ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).

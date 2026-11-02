@@ -73,6 +73,22 @@ export const runConfiguredPluginTenantProvisioningSchedule = async (
   await ensureConfiguredPluginTenantProvisioning(instanceId);
 };
 
+/** A committed mutation must run reconcile even when current readiness is already green. */
+export const runConfiguredPluginTenantReconcile = async (instanceId: string, pluginId: string): Promise<void> => {
+  const definition = readInstanceRegistryPluginTenantLifecycleRegistry().get(pluginId);
+  if (!definition?.operations.some(({ operation }) => operation === 'reconcile')) return;
+  const eligible = await withRegistryRepository(async repository => {
+    const instance = await repository.getInstanceById(instanceId);
+    const activation = await repository.getModuleActivationPolicy(instanceId, pluginId);
+    return instance?.status === 'active' && activation?.effectiveActive === true;
+  });
+  if (!eligible) return;
+  const { startConfiguredPluginTenantLifecycle } = await import('../plugin-tenant-lifecycle/runtime.js');
+  // A running lifecycle raises request-conflict; let the durable worker retry,
+  // preserving edits committed after the running job read its desired subjects.
+  await startConfiguredPluginTenantLifecycle({ instanceId, pluginId, operation: 'reconcile', scheduledAt: new Date().toISOString() });
+};
+
 export const scheduleConfiguredPluginTenantProvisioning = (instanceId: string): void => {
   void runConfiguredPluginTenantProvisioningSchedule(instanceId).catch((error) => {
     pluginTenantLifecycleLogger.error('plugin_tenant_lifecycle_schedule_failed', {

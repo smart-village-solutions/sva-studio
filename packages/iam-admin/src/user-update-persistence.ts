@@ -203,7 +203,7 @@ const invalidateUpdatedUserPermissions = async (
   await deps.notifyPermissionInvalidation(input.client, {
     instanceId: input.instanceId,
     keycloakSubject: input.keycloakSubject,
-    trigger: 'user_updated',
+    trigger: input.payload.competenceLanguages !== undefined ? 'user_competence_languages_changed' : 'user_updated',
   });
 };
 

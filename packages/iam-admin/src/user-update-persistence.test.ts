@@ -369,3 +369,9 @@ it('preserves omission and clears explicit managed competence languages', () => 
   expect(buildUpdatedUserParams('user', 'tenant', 'kc', { competenceLanguages: [] }).at(-1)).toEqual([]);
   expect(buildUpdatedUserParams('user', 'tenant', 'kc', { competenceLanguages: ['de', 'en'] }).at(-1)).toEqual(['de', 'en']);
 });
+
+it.each([{ competenceLanguages: ['de'] }, { competenceLanguages: [] }])('signals managed competence edits/clears for transactional reconciliation (%j)', async ({ competenceLanguages }) => {
+  const { deps, persistence } = createPersistenceTestContext();
+  await persistence.persistUpdatedUserDetail({ instanceId: 'tenant-a', actorAccountId: 'admin', userId: 'user-1', keycloakSubject: 'reviewer', payload: { competenceLanguages } });
+  expect(deps.notifyPermissionInvalidation).toHaveBeenCalledWith(expect.anything(), { instanceId: 'tenant-a', keycloakSubject: 'reviewer', trigger: 'user_competence_languages_changed' });
+});

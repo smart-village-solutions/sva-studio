@@ -81,15 +81,16 @@ export class KeycloakUserWriteOperations extends KeycloakUserReadOperations {
   async updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void> {
     await this.assertWriteAvailability();
     const path = `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}`;
+    let existingUser: KeycloakAdminUser | undefined;
     let email = input.email;
-    if (input.attributes !== undefined && email === undefined) {
+    if (input.attributes !== undefined) {
       // Attribute updates also validate required root profile fields in Keycloak.
-      const existingUser = await this.executeWithResilience<KeycloakAdminUser>({
+      existingUser = await this.executeWithResilience<KeycloakAdminUser>({
         method: 'GET',
         path,
         operation: 'get_user_for_update',
       });
-      email = existingUser.email;
+      email = input.email ?? existingUser.email;
       if (!email?.trim()) {
         throw new KeycloakAdminRequestError({
           message: 'Keycloak attribute update requires an existing email',
@@ -101,11 +102,11 @@ export class KeycloakUserWriteOperations extends KeycloakUserReadOperations {
       }
     }
     const payload = {
-      username: input.username,
+      username: input.username ?? existingUser?.username,
       email,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      enabled: input.enabled,
+      firstName: input.firstName ?? existingUser?.firstName,
+      lastName: input.lastName ?? existingUser?.lastName,
+      enabled: input.enabled ?? existingUser?.enabled,
       attributes: normalizeAttributes(input.attributes),
     };
 

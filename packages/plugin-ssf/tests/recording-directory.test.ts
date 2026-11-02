@@ -40,3 +40,15 @@ it('refuses malformed and oversized sources instead of returning partial directo
     )
   ).toThrow();
 });
+
+it('bounds long display labels without dropping eligible subjects or splitting Unicode code points', () => {
+  const fullName = `${'A'.repeat(120)} ${'B'.repeat(120)}`;
+  const directory = createSsfRecordingDirectory('tenant-a', [
+    { ...subject, displayName: fullName },
+    { ...subject, keycloakSubject: 'synthetic-unicode', displayName: '😀'.repeat(220) },
+  ]);
+  expect(directory.users).toHaveLength(2);
+  expect(directory.users[0]?.displayName).toBe(fullName.slice(0, 200));
+  expect(Array.from(directory.users[1]?.displayName ?? '')).toHaveLength(200);
+  expect(directory.users[1]?.displayName).toBe('😀'.repeat(200));
+});

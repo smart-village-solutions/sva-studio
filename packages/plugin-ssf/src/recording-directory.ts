@@ -22,7 +22,11 @@ const sortedUnique = (values: readonly string[]): string[] =>
 const userSchema = z
   .object({
     sub: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:@-]{0,254}$/u),
-    displayName: z.string().trim().min(1).max(200),
+    displayName: z
+      .string()
+      .trim()
+      .min(1)
+      .refine((value) => Array.from(value).length <= 200),
     permissions: z.array(z.enum(SSF_RECORDING_PERMISSION_IDS)).min(1),
     languages: z
       .array(
@@ -49,7 +53,7 @@ export const createSsfRecordingDirectory = (
       return [
         userSchema.parse({
           sub: subject.keycloakSubject,
-          displayName: subject.displayName,
+          displayName: Array.from(subject.displayName.trim()).slice(0, 200).join(''),
           permissions,
           languages: sortedUnique(
             subject.languages.map((tag) => Intl.getCanonicalLocales(tag).join())

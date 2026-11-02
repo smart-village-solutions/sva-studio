@@ -12,7 +12,7 @@ import {
 } from '@sva/studio-ui-react';
 import { useCallback, useEffect, useState } from 'react';
 
-import { readSsfSystemContentV2, writeSsfSystemContentV2 } from './admin-api.js';
+import { readSsfSystemContentV2, writeSsfSystemContentV2, SsfRecordingPolicyConflictError } from './admin-api.js';
 import {
   blankSsfInstallationV2,
   blankSsfRuntimeTemplateV2,
@@ -96,6 +96,7 @@ type SectionProps = {
   setRuntimeTemplate: (value: SsfRuntimeContentV2Fields) => void;
   status: Status;
   errors: Record<string, string>;
+  affectedTenants: readonly string[];
   supportedLanguages: SsfSystemContentV2View['supportedLanguages'] | null;
   onSave: (section: Section) => void;
   onDiscard: (section: Section) => void;
@@ -110,6 +111,7 @@ const SystemContentSection = ({
   setRuntimeTemplate,
   status,
   errors,
+  affectedTenants,
   supportedLanguages,
   onSave,
   onDiscard,
@@ -133,6 +135,12 @@ const SystemContentSection = ({
       ) : null}
       {status === 'error' ? (
         <StudioFormSummary kind="error">{pt('status.saveError')}</StudioFormSummary>
+      ) : null}
+      {status === 'error' && section === 'runtimeTemplate' && affectedTenants.length > 0 ? (
+        <StudioFormSummary kind="error">
+          <p>{pt('v2.recording.affectedTenants')}</p>
+          <ul>{affectedTenants.map((tenant) => <li key={tenant}>{tenant}</li>)}</ul>
+        </StudioFormSummary>
       ) : null}
       {section === 'installation' ? (
         <SsfInstallationV2Editor
@@ -175,6 +183,7 @@ export const SsfSystemContentV2Page = () => {
   const [runtimeTemplate, setRuntimeTemplate] = useState<SsfRuntimeContentV2Fields | null>(null);
   const [status, setStatus] = useState<Status>('loading');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [affectedTenants, setAffectedTenants] = useState<readonly string[]>([]);
   const load = useCallback(async () => {
     try {
       const next = await readSsfSystemContentV2();
@@ -191,6 +200,7 @@ export const SsfSystemContentV2Page = () => {
   const save = async (section: 'installation' | 'runtimeTemplate') => {
     if (!installation || !runtimeTemplate) return;
     setStatus('saving');
+    setAffectedTenants([]);
     try {
       const result = await commitSection(section, installation, runtimeTemplate);
       if (result.kind === 'invalid') {
@@ -203,7 +213,8 @@ export const SsfSystemContentV2Page = () => {
       setInstallation(result.next.installation ?? installation);
       setRuntimeTemplate(result.next.runtimeTemplate ?? runtimeTemplate);
       setStatus('saved');
-    } catch {
+    } catch (error) {
+      if (error instanceof SsfRecordingPolicyConflictError) setAffectedTenants(error.affectedTenants);
       setStatus('error');
     }
   };
@@ -211,6 +222,7 @@ export const SsfSystemContentV2Page = () => {
     if (!saved) return;
     discardSection(section, saved, setInstallation, setRuntimeTemplate);
     setErrors({});
+    setAffectedTenants([]);
     setStatus('ready');
   };
   if (status === 'loading') return <StudioLoadingState>{pt('status.loading')}</StudioLoadingState>;
@@ -241,6 +253,7 @@ export const SsfSystemContentV2Page = () => {
           supportedLanguages={saved.supportedLanguages ?? null}
           status={status}
           errors={errors}
+          affectedTenants={affectedTenants}
           onSave={(target) => void save(target)}
           onDiscard={discard}
         />

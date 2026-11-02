@@ -8,6 +8,7 @@ import {
   writeSsfSystemContentV2,
   writeSsfSystemConfiguration,
   writeSsfTenantConfiguration,
+  writeSsfTenantContentV2,
 } from '../src/admin-api.js';
 import type {
   SsfSystemConfigurationInput,
@@ -79,6 +80,22 @@ describe('SSF administration API', () => {
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));
     await expect(readSsfSystemConfiguration()).rejects.toThrow();
+  });
+
+  it('preserves validated policy conflicts only for root content writes', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response(JSON.stringify({
+      error: 'invalid_configuration', affectedTenants: ['synthetic-alpha', 'synthetic-beta'],
+    }), { status: 422 })));
+    await expect(writeSsfSystemContentV2({ installation: null, runtimeTemplate: null })).rejects.toMatchObject({
+      affectedTenants: ['synthetic-alpha', 'synthetic-beta'],
+    });
+    await expect(writeSsfTenantContentV2({})).rejects.not.toHaveProperty('affectedTenants');
+  });
+  it('keeps malformed policy-conflict responses on the generic error path', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: 'invalid_configuration', affectedTenants: ['synthetic-alpha', 123],
+    }), { status: 422 })));
+    await expect(writeSsfSystemContentV2({ installation: null, runtimeTemplate: null })).rejects.toThrow('ssf_configuration_http_422');
   });
 
   it('reads the validated SSF language catalog with both V2 admin views', async () => {

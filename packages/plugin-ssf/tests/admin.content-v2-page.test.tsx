@@ -15,8 +15,12 @@ const supportedLanguages = {
   admin_default: 'de', popular: ['en', 'ar'],
 };
 
-vi.mock('@sva/plugin-sdk', () => ({ usePluginTranslation: () => (key: string) => key }));
-vi.mock('../src/admin-api.js', () => ({
+vi.mock('@sva/plugin-sdk', () => ({
+  usePluginTranslation: () => (key: string) => key,
+  createMainserverJsonRequestHeaders: () => ({ 'content-type': 'application/json' }),
+}));
+vi.mock('../src/admin-api.js', async () => ({
+  ...await vi.importActual<typeof import('../src/admin-api.js')>('../src/admin-api.js'),
   readSsfSystemContentV2: api.readSystem,
   writeSsfSystemContentV2: api.writeSystem,
   readSsfTenantContentV2: api.readTenant,
@@ -55,7 +59,7 @@ const fields = (name: string) => {
 };
 
 describe('SSF V2 content administration', () => {
-  afterEach(cleanup);
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
   beforeEach(() => {
     api.readSystem.mockReset(); api.writeSystem.mockReset();
     api.readTenant.mockReset(); api.writeTenant.mockReset();
@@ -108,6 +112,33 @@ describe('SSF V2 content administration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
     expect((await screen.findAllByText('v2.invalid')).length).toBeGreaterThan(0);
     expect(api.writeTenant).not.toHaveBeenCalled();
+  });
+
+  it('shows affected tenants from a rejected root policy write and retains the unsaved draft', async () => {
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    runtimeTemplate['recording'] = { retentionHours: 720 };
+    api.readSystem.mockResolvedValue({ installation: null, runtimeTemplate, supportedLanguages });
+    const actualApi = await vi.importActual<typeof import('../src/admin-api.js')>('../src/admin-api.js');
+    api.writeSystem.mockImplementation(actualApi.writeSsfSystemContentV2);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: 'invalid_configuration', affectedTenants: ['synthetic-alpha', 'synthetic-beta'],
+    }), { status: 422, headers: { 'content-type': 'application/json' } })));
+    const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
+    render(<SsfSystemContentV2Page />);
+    const retention = await screen.findByLabelText('v2.recording.retentionHours');
+    fireEvent.change(retention, { target: { value: '1440' } });
+    const save = screen.getAllByRole('button', { name: 'actions.save' })[1];
+    if (!save) throw new Error('missing_template_save');
+    fireEvent.click(save);
+    expect(await screen.findByText('v2.recording.affectedTenants')).toBeTruthy();
+    expect(screen.getByText('synthetic-alpha')).toBeTruthy();
+    expect(screen.getByText('synthetic-beta')).toBeTruthy();
+    expect((retention as HTMLInputElement).value).toBe('1440');
+    const discard = screen.getAllByRole('button', { name: 'actions.discard' })[1];
+    if (!discard) throw new Error('missing_template_discard');
+    fireEvent.click(discard);
+    expect((retention as HTMLInputElement).value).toBe('720');
+    expect(screen.queryByText('synthetic-alpha')).toBeNull();
   });
 
   it('saves installation content independently of the tenant template', async () => {

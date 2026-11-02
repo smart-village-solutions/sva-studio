@@ -27,6 +27,7 @@ const de = {
     },
     v2: {
       recording: {
+        affectedTenants: 'Die Aufnahmerichtlinie wurde nicht gespeichert. Passen Sie zuerst die Aufbewahrung der Prüfprotokolle für die folgenden Mandanten an die neue Aufnahmefrist an und versuchen Sie es erneut.',
         installationDefault: 'Installationsstandard', title: 'Aufnahmerichtlinie', notice: 'Aufnahmen benötigen eine ausdrückliche Aktivierung für den Mandanten und eine vollständige gültige Richtlinie. Verfasste Rechtstexte und Aufbewahrungsfristen vor der Nutzung prüfen.',
         enabled: 'Aufnahmen für diesen Mandanten aktivieren', retentionHours: 'Aufbewahrung der Aufnahmen in Stunden', effectiveRetention: 'Wirksame Aufbewahrung der Aufnahmen in Stunden',
         resetRetention: 'Aufbewahrung auf den Installationsstandard zurücksetzen', legalBasis: 'Rechtsgrundlage', signature: 'Unterschrift', idCheck: 'Identitätsprüfung',
@@ -146,6 +147,7 @@ const en = {
     },
     v2: {
       recording: {
+        affectedTenants: 'The recording policy was not saved. First increase audit retention for the following tenants to cover the new recording retention, then retry.',
         installationDefault: 'Installation default', title: 'Recording policy', notice: 'Recording requires an explicit tenant enable action and a complete valid policy. Review authored legal wording and retention before use.',
         enabled: 'Enable recording for this tenant', retentionHours: 'Recording retention in hours', effectiveRetention: 'Effective recording retention in hours',
         resetRetention: 'Reset recording retention to installation default', legalBasis: 'Legal basis', signature: 'Signature', idCheck: 'Identity check',

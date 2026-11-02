@@ -42,14 +42,22 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@sva/plugin-sdk', async (original) => ({
   ...(await original<object>()),
   fetchIamContentHistory: (...args: unknown[]) => state.history(...args),
-  usePluginTranslation: () => (key: string) =>
-    key
-      .split('.')
-      .reduce<unknown>(
-        (value, part) =>
-          value && typeof value === 'object' ? (value as Record<string, unknown>)[part] : undefined,
-        pluginConstructionSitesTranslations.de['construction-sites']
-      ) ?? key,
+  usePluginTranslation:
+    () =>
+    (key: string, variables: Record<string, string | number> = {}) => {
+      const value = key
+        .split('.')
+        .reduce<unknown>(
+          (value, part) =>
+            value && typeof value === 'object'
+              ? (value as Record<string, unknown>)[part]
+              : undefined,
+          pluginConstructionSitesTranslations.de['construction-sites']
+        );
+      return typeof value === 'string'
+        ? value.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(variables[name] ?? ''))
+        : key;
+    },
 }));
 vi.mock('../src/construction-sites.api.js', async (original) => ({
   ...(await original<object>()),
@@ -261,9 +269,16 @@ describe('construction site editorial UI', () => {
     fireEvent.change(container.querySelector('textarea#cs-contentBlocks-0-body-html')!, {
       target: { value: '<p>Umleitung</p>' },
     });
-    await screen.findByLabelText('Verkehr');
     fireEvent.click(container.querySelector('details summary')!);
+    await waitFor(() =>
+      expect(screen.getByLabelText('Kategorien').matches(':disabled')).toBe(false)
+    );
+    fireEvent.click(screen.getByLabelText('Kategorien'));
+    await screen.findByLabelText('Verkehr');
     fireEvent.click(screen.getByLabelText('Verkehr'));
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Kategorien suchen' }), {
+      key: 'Escape',
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Baustelle anlegen' }));
     await waitFor(() => expect(state.save).toHaveBeenCalledTimes(1));
     expect(state.save.mock.calls[0]?.[1].site).toMatchObject({
@@ -383,12 +398,97 @@ describe('construction site editorial UI', () => {
     });
     render(<ConstructionSitesCreatePage />);
     fireEvent.change(screen.getByLabelText(/^Titel/), { target: { value: 'Visible road' } });
-    const visible = screen.getByLabelText('Sichtbar');
+    const visible = screen.getByRole('switch', { name: 'Sichtbar' });
     expect(visible.matches(':disabled')).toBe(false);
+    expect(visible.getAttribute('aria-checked')).toBe('false');
     fireEvent.click(visible);
+    expect(screen.getByRole('switch', { name: 'Sichtbar' }).getAttribute('aria-checked')).toBe(
+      'true'
+    );
     expect(screen.getByText(/Die Baustelle wird sichtbar gespeichert/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Baustelle anlegen' }));
     await waitFor(() => expect(state.save).toHaveBeenCalledTimes(1));
     expect(state.save.mock.calls[0]?.[1].site.visible).toBe(true);
+  });
+  it('keeps selected categories while searching, closing and removing an unavailable category', async () => {
+    state.get.mockResolvedValue({
+      data: { ...record, input: { ...record.input, categories: [{ name: 'Bestand' }] } },
+      access: { 'construction-sites.update': true },
+    });
+    const { container } = render(<ConstructionSitesEditPage />);
+    await screen.findByDisplayValue('Brückenbau');
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    fireEvent.click(container.querySelector('details summary')!);
+    const trigger = screen.getByLabelText('Kategorien');
+    await waitFor(() => expect(trigger.matches(':disabled')).toBe(false));
+    expect(screen.getByText(/Nicht verfügbar/)).toBeTruthy();
+    fireEvent.click(trigger);
+    const search = screen.getByRole('textbox', { name: 'Kategorien suchen' });
+    fireEvent.change(search, { target: { value: 'unbekannt' } });
+    expect(screen.getByText('Keine passenden Kategorien gefunden.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Kategorie Bestand entfernen' })).toBeTruthy();
+    fireEvent.keyDown(search, { key: 'Escape' });
+    expect(document.activeElement).toBe(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie Bestand entfernen' }));
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Verkehr' }));
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Kategorien suchen' }), {
+      key: 'Escape',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    await waitFor(() => expect(state.save).toHaveBeenCalledTimes(1));
+    expect(state.save.mock.calls[0]?.[1].site.categories).toEqual([{ name: 'Verkehr' }]);
+  });
+  it('shows loading and failed category lookups without clearing existing selections', async () => {
+    let reject!: (reason: Error) => void;
+    state.categories.mockImplementationOnce(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail;
+        })
+    );
+    state.get.mockResolvedValue({
+      data: { ...record, input: { ...record.input, categories: [{ name: 'Verkehr' }] } },
+      access: { 'construction-sites.update': true },
+    });
+    const { container } = render(<ConstructionSitesEditPage />);
+    await screen.findByDisplayValue('Brückenbau');
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    fireEvent.click(container.querySelector('details summary')!);
+    const trigger = screen.getByLabelText('Kategorien');
+    expect(trigger.matches(':disabled')).toBe(true);
+    expect(screen.getByText('Kategorien werden geladen…')).toBeTruthy();
+    expect(screen.queryByText('Nicht verfügbar')).toBeNull();
+    await act(async () => reject(new Error('offline')));
+    expect(trigger.matches(':disabled')).toBe(true);
+    expect(screen.getByText('Die Kategorieauswahl ist derzeit nicht verfügbar.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Kategorie Verkehr entfernen' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    await waitFor(() => expect(state.save).toHaveBeenCalledTimes(1));
+    expect(state.save.mock.calls[0]?.[1].site.categories).toEqual([{ name: 'Verkehr' }]);
+  });
+  it('disables category changes and visibility for a read-only record', async () => {
+    state.get.mockResolvedValue({
+      data: {
+        ...record,
+        writeBlockedReason: 'construction_site_incomplete',
+        input: {
+          ...record.input,
+          categories: [{ name: 'Verkehr' }],
+        },
+      },
+      access: {},
+    });
+    const { container } = render(<ConstructionSitesEditPage />);
+    await screen.findByDisplayValue('Brückenbau');
+    expect(screen.getByRole('switch', { name: 'Sichtbar' }).matches(':disabled')).toBe(true);
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    fireEvent.click(container.querySelector('details summary')!);
+    expect(screen.getByLabelText('Kategorien').matches(':disabled')).toBe(true);
+    expect(
+      screen.getByRole('button', { name: 'Kategorie Verkehr entfernen' }).matches(':disabled')
+    ).toBe(true);
+    expect(state.save).not.toHaveBeenCalled();
   });
 });

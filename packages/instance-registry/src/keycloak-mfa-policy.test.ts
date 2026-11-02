@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createReadKeycloakState } from './provisioning-auth-state.js';
 import { appendFinalStatusSnapshot } from './service-keycloak-execution-finalize.js';
 import { createGetKeycloakStatusHandler } from './service-keycloak-readers.js';
 import { processClaimedKeycloakProvisioningRun } from './service-keycloak-execution-worker.js';
@@ -331,3 +332,67 @@ it('does not enqueue an incomplete client snapshot when the required registry de
   ).rejects.toThrow('plugin_oidc_client_requirements_dependency_missing');
   expect(createRun).not.toHaveBeenCalled();
 });
+
+it.each(['optional', 'required'] as const)(
+  'reads the %s policy for Studio and browser plugins while excluding service clients',
+  async (mode) => {
+    const pluginOidcClients = [
+      {
+        contractVersion: '1.0',
+        pluginId: 'service',
+        clientId: 'service',
+        audience: 'service',
+        enabled: false,
+      },
+      {
+        contractVersion: '2.0',
+        pluginId: 'ssf',
+        clientId: 'ssf-frontend',
+        audience: 'ssf-frontend',
+        enabled: false,
+        redirectUris: ['https://ssf.example.test/login'],
+        webOrigins: ['https://ssf.example.test'],
+      },
+    ] as const;
+    const readLoginMfaPolicy = vi.fn(async () => ({ mode, aligned: false }));
+    const getOidcClientByClientId = vi.fn(async (clientId: string) => ({ id: clientId, clientId }));
+    const listClientProtocolMappers = vi.fn(async (clientId: string) => [
+      { name: `${clientId}-mapper` },
+    ]);
+    const client = {
+      getRealm: vi.fn(async () => ({ realm: 'realm-a' })),
+      getOidcClientByClientId,
+      listClientProtocolMappers,
+      getRoleByName: vi.fn(async () => null),
+      hasAdminOnlyUserProfileAttributes: vi.fn(async () => true),
+      readLoginMfaPolicy,
+    };
+    const factory = vi.fn(() => client);
+    const state = await createReadKeycloakState(factory as never)({
+      instanceId: 'tenant-a',
+      authRealm: 'realm-a',
+      authClientId: 'studio',
+      realmMode: 'existing',
+      primaryHostname: 'tenant-a.example.test',
+      authClientSecretConfigured: false,
+      loginMfaMode: mode,
+      pluginOidcClients,
+    });
+    expect(factory).toHaveBeenCalledWith('realm-a');
+    expect(readLoginMfaPolicy).toHaveBeenCalledExactlyOnceWith({
+      mode,
+      clientIds: ['studio', 'ssf-frontend'],
+    });
+    // The independent read must retain drift even when all client representations exist.
+    expect(state.loginMfa).toEqual({ mode, aligned: false });
+    expect(state.pluginOidcClients).toEqual(
+      pluginOidcClients.map((requirement) => ({
+        requirement,
+        clientRepresentation: { id: requirement.clientId, clientId: requirement.clientId },
+        protocolMappers: [{ name: `${requirement.clientId}-mapper` }],
+      }))
+    );
+    expect(getOidcClientByClientId).toHaveBeenCalledTimes(3);
+    expect(listClientProtocolMappers).toHaveBeenCalledTimes(3);
+  }
+);

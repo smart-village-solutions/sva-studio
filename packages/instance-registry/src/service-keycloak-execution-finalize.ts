@@ -103,6 +103,8 @@ const appendFinalStatusSnapshot = async (
     checks,
   };
   const plan = buildPlan({
+    loginMfaMode: finalProvisioningInput.loginMfaMode,
+    loginMfaRevision: finalProvisioningInput.loginMfaRevision,
     instanceId: finalProvisioningInput.instanceId,
     realmMode: finalProvisioningInput.realmMode,
     authClientSecret: finalProvisioningInput.authClientSecret,
@@ -169,6 +171,18 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
     tenantAdminServiceAccess: readCompletionServiceAccess(provisioningInput, state),
   });
 
+  completionSteps.push({
+    stepKey: 'login_mfa',
+    title: 'Verify tenant login MFA',
+    summary: 'Provider flow, enrollment and ACR verification.',
+    ok:
+      state.loginMfa?.aligned === true &&
+      state.loginMfa.mode === (provisioningInput.loginMfaMode ?? 'optional'),
+    details: {
+      desiredMode: provisioningInput.loginMfaMode,
+      aligned: state.loginMfa?.aligned ?? false,
+    },
+  });
   const completionSatisfied = completionSteps.every((step) => step.ok);
   const finalRunStatus =
     completionSatisfied &&
@@ -237,6 +251,17 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
       instanceId: input.loaded.instance.instanceId,
       childKeycloakRunId: input.runId,
       succeeded: finalRunStatus === 'succeeded',
+    });
+  }
+
+  if (
+    state.loginMfa?.aligned &&
+    state.loginMfa.mode === (provisioningInput.loginMfaMode ?? 'optional')
+  ) {
+    await deps.repository.verifyLoginMfaPolicy({
+      instanceId: provisioningInput.instanceId,
+      revision: provisioningInput.loginMfaRevision ?? 0,
+      mode: state.loginMfa.mode,
     });
   }
 

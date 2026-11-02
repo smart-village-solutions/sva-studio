@@ -1,4 +1,8 @@
 import type {
+  AccountInvitationPurpose,
+  AccountInvitationTemplate,
+  LoginMfaMode,
+  TenantLoginMfaPolicyView,
   InstanceAuditRun,
   InstanceRealmMode,
   InstanceStatus,
@@ -82,6 +86,8 @@ export type ProvisioningPluginTenantLifecycleContract = Readonly<{
   }>[];
 }>;
 type KeycloakProvisioningContext = {
+  loginMfaMode?: LoginMfaMode;
+  loginMfaRevision?: number;
   instanceId: string;
   primaryHostname: string;
   realmMode: InstanceRealmMode;
@@ -100,6 +106,13 @@ type KeycloakProvisioningContext = {
 };
 type KeycloakPlanContext = KeycloakProvisioningContext & { realmBaselineApplicable?: boolean };
 export type InstanceRegistryService = {
+  updateLoginMfaPolicy(input: {
+    instanceId: string;
+    expectedRevision: number;
+    mode: LoginMfaMode;
+    actorId: string;
+    requestId?: string;
+  }): Promise<TenantLoginMfaPolicyView>;
   prepareConfirmationChallenge(
     input: PrepareInstanceConfirmationChallengeInput
   ): Promise<InstanceConfirmationChallenge>;
@@ -120,8 +133,8 @@ export type InstanceRegistryService = {
   getServerAccountInvitationTemplate(): Promise<ServerAccountInvitationTemplateView>;
   updateServerAccountInvitationTemplate(input: {
     expectedRevision: number;
-    template?: Omit<import('@sva/core').AccountInvitationTemplate, 'revision'> | null;
-    defaultPurpose?: import('@sva/core').AccountInvitationPurpose;
+    template?: Omit<AccountInvitationTemplate, 'revision'> | null;
+    defaultPurpose?: AccountInvitationPurpose;
     actorId?: string;
     requestId?: string;
   }): Promise<ServerAccountInvitationTemplateView>;
@@ -247,7 +260,13 @@ export type InstanceRegistryServiceDeps = {
   readonly readKeycloakClientSecretsViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<Pick<KeycloakReadState, 'keycloakClientSecret' | 'tenantAdminClientSecret'>>;
+  readonly reconcileLoginMfa?: (input: {
+    authRealm: string;
+    mode: LoginMfaMode;
+    clientIds: readonly string[];
+  }) => Promise<{ aligned: boolean; mode: LoginMfaMode }>;
   readonly provisionInstanceAuth?: (input: {
+    loginMfaMode?: LoginMfaMode;
     instanceId: string;
     primaryHostname: string;
     realmMode: InstanceRealmMode;

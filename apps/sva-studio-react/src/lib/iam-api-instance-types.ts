@@ -1,3 +1,4 @@
+import type { LoginMfaMode } from '@sva/core';
 import type { MailTemplateSource } from '@sva/core';
 import type { IamInstanceListItem } from '@sva/core';
 
@@ -96,4 +97,9 @@ export type MailTemplateMutationPayload = {
   template?: MailTemplateSource | null;
   expectedStudioTexts?: Readonly<Record<string, string>>;
   expectedKeycloakTexts?: Readonly<Record<string, string>>;
+};
+
+export type UpdateTenantLoginMfaPayload = {
+  mode: LoginMfaMode;
+  expectedRevision: number;
 };

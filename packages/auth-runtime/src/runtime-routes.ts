@@ -103,6 +103,8 @@ export {
   reconcileHandler,
   reprovisionMainserverUserHandler,
   sendPasswordSetupEmailHandler,
+  getTenantLoginMfaHandler,
+  updateTenantLoginMfaHandler,
   getTenantInvitationTemplateHandler,
   updateTenantInvitationTemplateHandler,
   syncUsersFromKeycloakHandler,

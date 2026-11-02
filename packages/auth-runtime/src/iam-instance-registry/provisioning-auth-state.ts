@@ -1,3 +1,4 @@
+import type { LoginMfaMode } from '@sva/core';
 import {
   createKeycloakProvisioningAdapters,
   createKeycloakProvisioningClientFactory,
@@ -102,3 +103,15 @@ export const provisionInstanceAuthArtifactsViaProvisioner = (
 ) => provisionerAdapters.provisionInstanceAuthArtifacts(withProvisionerPluginOidcClients(input));
 export const deleteProvisionedRealmViaProvisioner = (authRealm: string) =>
   provisionerAdapters.deleteKeycloakRealm(authRealm);
+
+export const reconcileLoginMfaViaProvisioner = async (input: {
+  authRealm: string;
+  mode: LoginMfaMode;
+  clientIds: readonly string[];
+}) => {
+  const client = new KeycloakAdminClient(
+    getKeycloakProvisionerClientConfigFromEnv(input.authRealm)
+  );
+  await client.ensureLoginMfaPolicy(input);
+  return client.readLoginMfaPolicy(input);
+};

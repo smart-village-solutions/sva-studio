@@ -19,10 +19,13 @@ docker exec "$container" pg_isready -U postgres >/dev/null
 port=$(docker port "$container" 5432/tcp | awk -F: 'NR==1 { print $NF }')
 url="postgresql://postgres:identity-test@127.0.0.1:${port}/postgres"
 packages/data/scripts/goosew.sh -dir packages/data/migrations postgres "$url" up
+# Prove the newly owned migration is reversible before exercising the fully migrated schema.
+packages/data/scripts/goosew.sh -dir packages/data/migrations postgres "$url" down
+packages/data/scripts/goosew.sh -dir packages/data/migrations postgres "$url" up
 docker exec "$container" pg_dump --schema-only --no-owner --no-privileges -U postgres -d postgres > "$work_dir/schema.sql"
 DIRECTORY_SCHEMA_ACTUAL_FILE="$work_dir/schema.sql" pnpm exec tsx -e "import {readFileSync} from 'node:fs'; import {createSchemaSnapshotVerificationReport} from './scripts/ci/check-db-schema-snapshot.ts'; const report=createSchemaSnapshotVerificationReport(readFileSync(process.env.DIRECTORY_SCHEMA_ACTUAL_FILE,'utf8'),readFileSync('docs/development/studio-db-schema-final.sql','utf8')); console.log(report); if(report.status!=='ok') process.exit(1);"
 packages/data/scripts/goosew.sh -table ssf_goose_db_version -dir packages/plugin-ssf/migrations postgres "$url" up
 POSTGRES_DB=postgres POSTGRES_USER=postgres POSTGRES_PASSWORD=identity-test POSTGRES_HOST=127.0.0.1 POSTGRES_PORT="$port" node deploy/portainer/migrate-graphile-worker.mjs
 docker exec "$container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA graphile_worker TO iam_app; GRANT EXECUTE ON FUNCTION graphile_worker.sva_enqueue_job(text,json,text,integer,text,timestamptz) TO iam_app;"
 cd "$package_dir"
-IAM_DATABASE_URL="$url" IAM_DIRECTORY_TEST_DATABASE_URL="$url" IAM_PII_ACTIVE_KEY_ID=identity-test IAM_PII_KEYRING_JSON='{"identity-test":"MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="}' pnpm exec vitest run src/iam-authorization/permission-directory.integration.test.ts src/iam-account-management/competence-save.integration.test.ts --config vitest.config.ts
+IAM_DATABASE_URL="$url" IAM_DIRECTORY_TEST_DATABASE_URL="$url" IAM_PII_ACTIVE_KEY_ID=identity-test IAM_PII_KEYRING_JSON='{"identity-test":"MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="}' pnpm exec vitest run src/iam-authorization/permission-directory.integration.test.ts src/iam-account-management/competence-save.integration.test.ts src/iam-instance-registry/login-mfa.integration.test.ts --config vitest.config.ts

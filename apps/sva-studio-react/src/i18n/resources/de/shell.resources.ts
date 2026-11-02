@@ -198,6 +198,7 @@ export const shellDEResources = {
     templates: 'Templates',
     languages: 'Sprachen',
     mobileApp: 'App',
+    loginMfa: 'Anmelderichtlinie',
     invitationTemplate: 'Einladungsvorlage',
     roles: 'Rollen',
     groups: 'Gruppen',

@@ -25,6 +25,7 @@ const buildUserChildren = (access: SidebarAccess): SidebarLeafItem[] => {
     canAccessAdminPrivacy,
     canAccessAdminRoles,
     canAccessAdminUsers,
+    canAccessTenantLoginMfa,
     canAccessTenantInvitationTemplate,
   } = access;
   return [
@@ -36,6 +37,17 @@ const buildUserChildren = (access: SidebarAccess): SidebarLeafItem[] => {
             to: '/admin/users',
             label: t('shell.sidebar.accounts'),
             icon: IconUserSquareRounded,
+          },
+        ]
+      : []),
+    ...(canAccessTenantLoginMfa
+      ? [
+          {
+            kind: 'link' as const,
+            id: 'login-mfa',
+            to: '/admin/users/authentication-policy',
+            label: t('shell.sidebar.loginMfa'),
+            icon: IconShieldLock,
           },
         ]
       : []),

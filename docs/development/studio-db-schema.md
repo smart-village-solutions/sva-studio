@@ -606,3 +606,14 @@ Der zentrale Snapshot `studio-db-schema-final.sql` wurde auf Betroffenheit gepr√
 ## Managed competence languages (migration 0112)
 
 `iam.accounts.competence_languages` is a non-null text array, defaulting to an empty list. The managed account editor validates up to 40 canonical language tags. Omitted PATCH values preserve existing data; an explicit empty list clears it. This field is independent of interface language and is unavailable to self-profile writes. It grants no permission or sworn status. Migration 0112 does not enable recording or grant recording permissions.
+
+### Tenant login MFA policy (migration 0113)
+
+`iam.instances` owns `login_mfa_desired_mode` (optional by default), nullable
+`login_mfa_applied_mode`, monotonic `login_mfa_revision`, nullable verified
+`login_mfa_applied_revision`, and `login_mfa_run_id` referencing the existing
+Keycloak provisioning run. No existing realm is marked verified by migration.
+The latest run supplies pending/failure diagnostics; failed reconciliation retains
+the last verified mode. Completion compares desired revision, mode and run ID,
+preventing superseded workers from certifying a newer request. Tenant writes,
+run creation and the existing instance audit event share the scoped transaction.

@@ -1,3 +1,4 @@
+import { reconcileLoginMfaViaProvisioner } from './provisioning-auth-state.js';
 import { createInstanceRegistryRepository } from '@sva/data-repositories';
 import { invalidateInstanceRegistryHost } from '@sva/data-repositories/server';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
@@ -178,6 +179,7 @@ const registryRuntime = createInstanceRegistryRuntime({
   afterModuleActivationPolicyReconcile: ({ instanceId }) =>
     runConfiguredPluginTenantProvisioningSchedule(instanceId),
   provisioningWorkerServiceDeps: {
+    reconcileLoginMfa: reconcileLoginMfaViaProvisioner,
     invalidateHost: invalidateInstanceRegistryHost,
     resolveProvisioningAuthIssuerUrl: resolveConfiguredProvisioningAuthIssuerUrl,
     reservedOidcClientIds: readReservedPluginOidcClientIds,

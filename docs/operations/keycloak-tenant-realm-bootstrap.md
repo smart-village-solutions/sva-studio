@@ -376,3 +376,89 @@ Ein Realm gilt erst dann als betriebsbereit, wenn zusätzlich folgende Nachweise
 - [Swarm-Deployment-Runbook](./swarm-deployment-runbook.md)
 - [Keycloak Service-Account Setup für IAM-User- und Rollen-Management](./keycloak-service-account-setup-iam.md)
 - [IAM-Acceptance-Runbook für die Paketabnahme](./iam-acceptance-runbook.md)
+
+## Tenant ordinary-login MFA
+
+Tenant administrators use **Authentication policy** under user administration
+(`/admin/users/authentication-policy`). The server requires the generic tenant
+permission `iam.authenticationPolicy.manage`; the tenant `system_admin` baseline
+includes it. Root provisioning authority alone does not authorize this tenant
+mutation. The API derives the instance from the authenticated session and rejects
+caller-supplied instance identifiers.
+
+The `optional` default permits password-only login without an enrolled factor.
+Users may enroll OTP through the existing Keycloak account security process;
+subsequent ordinary logins challenge an enrolled factor. `required` enforces OTP
+or OTP enrollment for existing and new users. Returning to optional preserves
+credentials. MFA policy belongs to the instance's uniquely assigned realm, not
+to tenant-local organisation records.
+
+Saving commits desired mode, revision, audit event and a queued existing Keycloak
+provisioning run in one scoped transaction. The UI displays the last verified
+applied mode separately. Pending and failed changes must not be interpreted as
+successful enforcement. Retry by saving again after addressing the run diagnostic;
+optimistic revision checks prevent overwriting concurrent edits. The worker uses
+the existing per-instance lock, run claim/recovery, and a revision/run fence before
+recording verification. There is no second scheduler or tenant-held provider secret.
+
+The provisioner manages `studio-login-mfa-v1-optional` and
+`studio-login-mfa-v1-required`, the realm browser binding, enabled non-default
+`CONFIGURE_TOTP`, `acr.loa.map` entries `pwd: 1` / `mfa: 2`, and ACR token mappers
+on Studio and registered browser-capable plugin clients. Client default ACR is
+`pwd` for optional and `mfa` for required. Cookie/password identity authentication
+is followed by the policy's OTP phase; a cookie cannot bypass required OTP.
+The password LoA remains valid for 36,000 seconds for ordinary SSO. The MFA LoA
+uses zero maximum age, and the request's `max_age=0` requires
+fresh authentication for sensitive step-up. The step-up OTP challenge skips only
+an OTP already supplied in that same authentication. A required Allow access marker
+after the conditional challenge lets Keycloak complete the LoA callback when OTP
+was already supplied; it cannot bypass an active required challenge. Optional ordinary-login tokens
+may conservatively report `pwd` even after an enrolled OTP challenge; sensitive
+actions explicitly request `acr_values=mfa&max_age=0` and verify the **access token**.
+
+Existing administrator-managed realm/browser-client bindings produce
+`LOGIN_MFA_BINDING_CONFLICT`; they are not overwritten. Review and explicitly
+return the relevant binding to the default `browser`/inherited binding before
+retrying if Studio should manage it. Unrelated realm attributes, other clients,
+and enrolled credentials remain intact. Required policy applies to subsequent
+browser authentication; existing access tokens retain their existing lifetime.
+SSF continues rejecting missing `acr=mfa`, missing/stale `auth_time`, and the
+existing clock-skew violations for sensitive actions.
+
+The existing provisioner service identity needs target-realm authentication-flow,
+required-action and realm-setting management (`manage-realm` plus read visibility),
+and its existing client/mapper write capability. Verify the actual provisioner
+credential against these operations; `create-realm` alone is insufficient. Do not
+add grants to the tenant IAM service account for MFA. Provider denial or read-back
+mismatch leaves a failed run and retains the last verified applied mode.
+
+For factor replacement, use Keycloak's account security page while a valid factor
+is available. For a lost factor, an authorized Keycloak administrator must follow
+the existing identity-verification/recovery process, reset the affected OTP
+credential and require `CONFIGURE_TOTP`; required mode still forces re-enrollment.
+Revoke compromised sessions as part of that established recovery process. Never
+relax SSF's `acr` or freshness checks to work around recovery.
+
+The flow configuration was checked against Keycloak 26.7.2. Re-run the disposable
+real-browser MFA integration matrix after provider upgrades, including optional
+password SSO, voluntary enrollment, required enrollment, both browser clients,
+existing-cookie fresh step-up access-token claims, policy reversal, and retries.
+Keycloak's [step-up authentication documentation](https://www.keycloak.org/docs/26.7.0/server_admin/index.html)
+and [26.7.2 LoA authenticator implementation](https://github.com/keycloak/keycloak/blob/26.7.2/services/src/main/java/org/keycloak/authentication/authenticators/conditional/ConditionalLoaAuthenticator.java)
+describe the conditional-flow callbacks and zero-age behavior used here.
+
+Run the owning browser test only against disposable loopback Keycloak 26.7.2:
+
+```sh
+RUN_KEYCLOAK_MFA_INTEGRATION=1 \
+KEYCLOAK_MFA_TEST_BASE_URL=http://127.0.0.1:<disposable-port> \
+pnpm nx run auth-runtime:test:unit \
+  --testFiles=src/keycloak-admin-client/login-mfa.keycloak.integration.test.ts
+```
+
+Supply disposable bootstrap administrator credentials through
+`KEYCLOAK_MFA_TEST_ADMIN_USERNAME` / `KEYCLOAK_MFA_TEST_ADMIN_PASSWORD` if they
+differ from the synthetic fixture defaults in the test. Install Playwright
+Chromium, or set `KEYCLOAK_MFA_TEST_BROWSER_EXECUTABLE`. The test rejects
+non-loopback targets and creates/removes its own prefixed realms and provisioner
+client. It must never target production. No runtime dependency is added by this test.

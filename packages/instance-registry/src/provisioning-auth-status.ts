@@ -42,6 +42,7 @@ export const buildMissingRealmStatus = (
 export const buildKeycloakStatus = (
   input: Pick<
     KeycloakProvisioningInput,
+    | 'loginMfaMode'
     | 'authClientSecretConfigured'
     | 'authClientSecret'
     | 'instanceId'
@@ -118,6 +119,9 @@ export const buildKeycloakStatus = (
     tenantAdminClientSecretReadable: Boolean(input.tenantAdminClientSecret),
     tenantAdminClientSecretAligned,
     runtimeSecretSource: input.authClientSecret ? 'tenant' : 'global',
+    loginMfaAligned:
+      input.state.loginMfa?.aligned === true &&
+      input.state.loginMfa.mode === (input.loginMfaMode ?? 'optional'),
     realmBaselineAligned: input.state.realmBaselineAligned,
     userProfileBaselineAligned: input.state.userProfileBaselineAligned,
     instanceIdMapperAligned: isOwnedInstanceIdMapperAligned(input.state, loginClientOwned),

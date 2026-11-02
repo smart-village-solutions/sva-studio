@@ -1565,8 +1565,16 @@ CREATE TABLE iam.instances (
     time_zone text DEFAULT 'Europe/Berlin'::text NOT NULL,
     account_invitation_template jsonb,
     tenant_admin_adopt_existing boolean DEFAULT false NOT NULL,
+    login_mfa_desired_mode text DEFAULT 'optional'::text NOT NULL,
+    login_mfa_applied_mode text,
+    login_mfa_revision integer DEFAULT 0 NOT NULL,
+    login_mfa_applied_revision integer,
+    login_mfa_run_id uuid,
     CONSTRAINT instances_account_invitation_template_chk CHECK (((account_invitation_template IS NULL) OR ((jsonb_typeof(account_invitation_template) = 'object'::text) AND (jsonb_typeof((account_invitation_template -> 'revision'::text)) = 'number'::text) AND (((account_invitation_template ->> 'revision'::text))::integer > 0) AND (jsonb_typeof((account_invitation_template -> 'subject'::text)) = 'string'::text) AND (jsonb_typeof((account_invitation_template -> 'body'::text)) = 'string'::text) AND (jsonb_typeof((account_invitation_template -> 'passwordSetupLinkLabel'::text)) = 'string'::text) AND (jsonb_typeof((account_invitation_template -> 'tenantHomepageLinkLabel'::text)) = 'string'::text)))),
     CONSTRAINT instances_audit_retention_days_positive_chk CHECK ((audit_retention_days > 0)),
+    CONSTRAINT instances_login_mfa_applied_mode_chk CHECK ((login_mfa_applied_mode = ANY (ARRAY['optional'::text, 'required'::text]))),
+    CONSTRAINT instances_login_mfa_desired_mode_chk CHECK ((login_mfa_desired_mode = ANY (ARRAY['optional'::text, 'required'::text]))),
+    CONSTRAINT instances_login_mfa_revision_chk CHECK (((login_mfa_revision >= 0) AND ((login_mfa_applied_revision IS NULL) OR ((login_mfa_applied_revision >= 0) AND (login_mfa_applied_revision <= login_mfa_revision))))),
     CONSTRAINT instances_realm_mode_chk CHECK ((realm_mode = ANY (ARRAY['new'::text, 'existing'::text]))),
     CONSTRAINT instances_retention_days_positive_chk CHECK ((retention_days > 0)),
     CONSTRAINT instances_status_chk CHECK ((status = ANY (ARRAY['requested'::text, 'validated'::text, 'provisioning'::text, 'active'::text, 'failed'::text, 'suspended'::text, 'archived'::text]))),
@@ -4682,6 +4690,14 @@ ALTER TABLE ONLY iam.instance_waste_provisioning
 
 ALTER TABLE ONLY iam.instance_waste_provisioning
     ADD CONSTRAINT instance_waste_provisioning_job_fk FOREIGN KEY (active_job_id, instance_id) REFERENCES iam.studio_jobs(id, instance_id) ON DELETE SET NULL;
+
+
+--
+-- Name: instances instances_login_mfa_run_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instances
+    ADD CONSTRAINT instances_login_mfa_run_id_fkey FOREIGN KEY (login_mfa_run_id) REFERENCES iam.instance_keycloak_provisioning_runs(id);
 
 
 --

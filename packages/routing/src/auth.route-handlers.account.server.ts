@@ -60,6 +60,10 @@ export const accountAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.getMyProfileHandler),
     PATCH: routeHandler(authRuntimeRoutes.updateMyProfileHandler),
   },
+  '/api/v1/iam/users/me/authentication-policy': {
+    GET: routeHandler(authRuntimeRoutes.getTenantLoginMfaHandler),
+    PATCH: routeHandler(authRuntimeRoutes.updateTenantLoginMfaHandler),
+  },
   '/api/v1/iam/users/me/invitation-template': {
     GET: routeHandler(authRuntimeRoutes.getTenantInvitationTemplateHandler),
     PATCH: routeHandler(authRuntimeRoutes.updateTenantInvitationTemplateHandler),

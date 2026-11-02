@@ -9,6 +9,25 @@ const logger = createSdkLogger({ component: 'keycloak-provisioning-failures', le
 const classifyError = (error: unknown): { reasonCode: string; safeSummary: string } => {
   if (error instanceof Error) {
     const message = error.message || '';
+    if (message.startsWith('login_mfa_')) {
+      const reason = message.split(':')[0];
+      const summaries: Record<string, string> = {
+        login_mfa_binding_conflict:
+          'An administrator-managed authentication binding conflicts with the tenant MFA policy. No custom binding was replaced.',
+        login_mfa_request_superseded:
+          'A newer tenant authentication policy superseded this request.',
+        login_mfa_readback_mismatch:
+          'Keycloak authentication policy verification failed. The last verified policy is retained.',
+        login_mfa_provisioner_unavailable:
+          'The provisioner authentication policy operations are unavailable.',
+      };
+      return {
+        reasonCode: summaries[reason] ? reason.toUpperCase() : 'LOGIN_MFA_RECONCILIATION_FAILED',
+        safeSummary:
+          summaries[reason] ??
+          'Tenant MFA reconciliation failed. Inspect provisioner permissions and retry.',
+      };
+    }
 
     if (message.includes('plugin_oidc_client_reconciliation_failed_compensated_by_realm_cleanup')) {
       return {

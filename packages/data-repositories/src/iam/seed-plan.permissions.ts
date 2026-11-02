@@ -8,6 +8,7 @@ import {
 import type { PermissionKey } from './types.js';
 
 const permissionIds = {
+  'iam.authenticationPolicy.manage': '40111111-1111-1111-1111-111111111180',
   'iam.user.read': '40111111-1111-1111-1111-111111111111',
   'iam.user.write': '40111111-1111-1111-1111-111111111112',
   'iam.invitationTemplate.manage': '40111111-1111-1111-1111-111111111172',

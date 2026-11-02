@@ -18,6 +18,19 @@ const invitationRevision = (row: InstanceListRow) =>
   row.account_invitation_template_revision ?? row.account_invitation_template?.revision ?? 0;
 
 export const mapInstance = (row: InstanceListRow): InstanceRegistryRecord => ({
+  loginMfaPolicy: {
+    desiredMode: row.login_mfa_desired_mode ?? 'optional',
+    appliedMode: row.login_mfa_applied_mode ?? null,
+    status:
+      row.login_mfa_run_status === 'failed'
+        ? 'failed'
+        : row.login_mfa_applied_mode &&
+            row.login_mfa_applied_revision === (row.login_mfa_revision ?? 0)
+          ? 'applied'
+          : 'pending',
+  },
+  loginMfaRevision: row.login_mfa_revision ?? 0,
+  loginMfaRunId: row.login_mfa_run_id ?? undefined,
   instanceId: row.instance_id,
   displayName: row.display_name,
   timeZone: row.time_zone,

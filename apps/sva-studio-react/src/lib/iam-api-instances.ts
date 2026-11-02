@@ -1,3 +1,4 @@
+import type { TenantLoginMfaPolicyView } from '@sva/core';
 import type {
   ApiItemResponse,
   ApiListResponse,
@@ -207,3 +208,15 @@ export const updateTenantAccountInvitationTemplate = async (
     ApiItemResponse<TenantAccountInvitationTemplateView>,
     UpdateTenantAccountInvitationTemplatePayload
   >('/api/v1/iam/users/me/invitation-template', payload);
+
+export const getTenantLoginMfa = () =>
+  requestJson<ApiItemResponse<TenantLoginMfaPolicyView>>(
+    '/api/v1/iam/users/me/authentication-policy'
+  );
+export const updateTenantLoginMfa = (
+  payload: import('./iam-api-instance-types').UpdateTenantLoginMfaPayload
+) =>
+  patchJson<ApiItemResponse<TenantLoginMfaPolicyView>, typeof payload>(
+    '/api/v1/iam/users/me/authentication-policy',
+    payload
+  );

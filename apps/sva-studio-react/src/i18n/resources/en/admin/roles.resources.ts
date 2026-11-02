@@ -98,6 +98,7 @@ export const rolesAdminENResources = {
     standardDelete: 'Delete {{subject}}.',
     iamUserRead: 'View user accounts and their details.',
     iamUserWrite: 'Change user account details.',
+    iamAuthenticationPolicyManage: 'Manage tenant authentication policy',
     iamInvitationTemplateManage: 'Edit the template used to invite users.',
     iamRoleRead: 'View roles and their assignments.',
     iamRoleWrite: 'Change roles and their assignments.',

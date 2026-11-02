@@ -93,6 +93,7 @@ describe('service-keycloak-execution-finalize', () => {
       updatedAt: '2026-09-11T10:00:02.000Z',
     };
     const repository = {
+      verifyLoginMfaPolicy: vi.fn(async () => true),
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceRealmMode: vi.fn().mockResolvedValue(realmUpdated),
       setInstanceStatus: vi.fn().mockResolvedValue(statusUpdated),
@@ -119,7 +120,7 @@ describe('service-keycloak-execution-finalize', () => {
     state.areAllRequirementsSatisfied.mockReturnValue(true);
     state.buildKeycloakStatus.mockReturnValue(status);
     state.appendRunStep.mockResolvedValue(undefined);
-    const finalState = { realm: { realm: 'demo' } };
+    const finalState = { loginMfa: { aligned: true, mode: 'optional' }, realm: { realm: 'demo' } };
     const pluginOidcClients = [
       {
         contractVersion: '1.0' as const,
@@ -279,6 +280,7 @@ describe('service-keycloak-execution-finalize', () => {
         },
       ]) {
         const repository = {
+          verifyLoginMfaPolicy: vi.fn(async () => true),
           listProvisioningRuns: vi.fn(async () => []),
           listKeycloakProvisioningRuns: vi.fn(async () => []),
           updateKeycloakProvisioningRun: vi.fn(),
@@ -288,6 +290,7 @@ describe('service-keycloak-execution-finalize', () => {
           {
             repository,
             readKeycloakStateViaProvisioner: vi.fn(async () => ({
+              loginMfa: { aligned: true, mode: 'optional' },
               realm: { realm: 'demo' },
               tenantAdminServiceAccess: access,
             })),
@@ -327,6 +330,7 @@ describe('service-keycloak-execution-finalize', () => {
       tenantAdminHasSystemAdmin: false,
     };
     const repository = {
+      verifyLoginMfaPolicy: vi.fn(async () => true),
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
       listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceStatus: vi.fn(),
@@ -349,7 +353,12 @@ describe('service-keycloak-execution-finalize', () => {
       completeRun(
         {
           repository: repository as never,
-          readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
+          readKeycloakStateViaProvisioner: vi
+            .fn()
+            .mockResolvedValue({
+              loginMfa: { aligned: true, mode: 'optional' },
+              realm: { realm: 'demo' },
+            }),
         } as never,
         {
           loaded: {
@@ -399,6 +408,7 @@ describe('service-keycloak-execution-finalize', () => {
       authClientId: 'studio-client',
     } as const;
     const repository = {
+      verifyLoginMfaPolicy: vi.fn(async () => true),
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
       listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([
         {
@@ -437,7 +447,12 @@ describe('service-keycloak-execution-finalize', () => {
       completeRun(
         {
           repository: repository as never,
-          readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
+          readKeycloakStateViaProvisioner: vi
+            .fn()
+            .mockResolvedValue({
+              loginMfa: { aligned: true, mode: 'optional' },
+              realm: { realm: 'demo' },
+            }),
         } as never,
         {
           loaded: {
@@ -460,6 +475,7 @@ describe('service-keycloak-execution-finalize', () => {
   it('marks failed runs without changing already active instances', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const repository = {
+      verifyLoginMfaPolicy: vi.fn(async () => true),
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
       listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceStatus: vi.fn().mockResolvedValue(undefined),
@@ -518,6 +534,7 @@ describe('service-keycloak-execution-finalize', () => {
   it('does not complete provisioning while an aggregated Keycloak requirement drifts', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const repository = {
+      verifyLoginMfaPolicy: vi.fn(async () => true),
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceRealmMode: vi.fn(),
       setInstanceStatus: vi.fn(),
@@ -535,7 +552,12 @@ describe('service-keycloak-execution-finalize', () => {
       completeRun(
         {
           repository: repository as never,
-          readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
+          readKeycloakStateViaProvisioner: vi
+            .fn()
+            .mockResolvedValue({
+              loginMfa: { aligned: true, mode: 'optional' },
+              realm: { realm: 'demo' },
+            }),
         } as never,
         {
           loaded: {
@@ -557,6 +579,7 @@ describe('service-keycloak-execution-finalize', () => {
   it('does not let a late child completion revive a failed parent run', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const repository = {
+      verifyLoginMfaPolicy: vi.fn(async () => true),
       listProvisioningRuns: vi.fn().mockResolvedValue([
         {
           childKeycloakRunId: 'run-late-child',
@@ -578,7 +601,12 @@ describe('service-keycloak-execution-finalize', () => {
       completeRun(
         {
           repository: repository as never,
-          readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
+          readKeycloakStateViaProvisioner: vi
+            .fn()
+            .mockResolvedValue({
+              loginMfa: { aligned: true, mode: 'optional' },
+              realm: { realm: 'demo' },
+            }),
         } as never,
         {
           loaded: {
@@ -608,6 +636,7 @@ describe('service-keycloak-execution-finalize', () => {
       tenantAdminExists: true,
     };
     const repository = {
+      verifyLoginMfaPolicy: vi.fn(async () => true),
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceRealmMode: vi.fn().mockResolvedValue(undefined),
       setInstanceStatus: vi.fn().mockResolvedValue(undefined),
@@ -648,7 +677,12 @@ describe('service-keycloak-execution-finalize', () => {
     const result = await completeRun(
       {
         repository: repository as never,
-        readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
+        readKeycloakStateViaProvisioner: vi
+          .fn()
+          .mockResolvedValue({
+            loginMfa: { aligned: true, mode: 'optional' },
+            realm: { realm: 'demo' },
+          }),
       } as never,
       {
         loaded: {

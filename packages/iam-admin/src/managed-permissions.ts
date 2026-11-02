@@ -64,6 +64,7 @@ const managedPermissionDescriptions = {
   'app.read': 'App-Link in der Sidebar anzeigen',
   'cockpit.read': 'Cockpit-Link in der Sidebar anzeigen',
   'iam.accounts.delete': 'Tenant-Accounts löschen',
+  'iam.authenticationPolicy.manage': 'Manage tenant authentication policy',
   'iam.invitationTemplate.manage': 'Account-Einladungsvorlage verwalten',
   'instance.registry.manage': INSTANCE_REGISTRY_PERMISSION_DESCRIPTION,
   'waste-management.read': 'Lesezugriff auf das Waste-Management-Modul',
@@ -95,6 +96,12 @@ const managedPermissionMetadata = [
     moduleId: 'iam',
     description: managedPermissionDescriptions['iam.accounts.delete'],
     runtimeScope: resolveManagedPermissionRuntimeScope('iam.accounts.delete'),
+  },
+  {
+    permissionKey: 'iam.authenticationPolicy.manage',
+    moduleId: 'iam',
+    description: managedPermissionDescriptions['iam.authenticationPolicy.manage'],
+    runtimeScope: 'instance',
   },
   {
     permissionKey: 'iam.invitationTemplate.manage',

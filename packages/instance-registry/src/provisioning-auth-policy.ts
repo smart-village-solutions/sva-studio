@@ -1,3 +1,4 @@
+import type { LoginMfaPolicyState } from '@sva/core';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
 import {
   KEYCLOAK_REALM_BASELINE,
@@ -67,6 +68,8 @@ export type KeycloakSnapshotSecretVersions = Readonly<{
 
 export const buildKeycloakSnapshotInputFingerprint = (
   instance: {
+    readonly loginMfaPolicy?: LoginMfaPolicyState;
+    readonly loginMfaRevision?: number;
     readonly instanceId: string;
     readonly primaryHostname: string;
     readonly realmMode: KeycloakProvisioningInput['realmMode'];
@@ -81,6 +84,8 @@ export const buildKeycloakSnapshotInputFingerprint = (
   pluginOidcClients: KeycloakProvisioningInput['pluginOidcClients'] = []
 ): string =>
   buildPayloadFingerprint({
+    loginMfaMode: instance.loginMfaPolicy?.desiredMode ?? 'optional',
+    loginMfaRevision: instance.loginMfaRevision ?? 0,
     instanceId: instance.instanceId,
     primaryHostname: instance.primaryHostname,
     realmMode: instance.realmMode,

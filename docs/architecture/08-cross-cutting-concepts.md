@@ -1386,3 +1386,25 @@ Ergebnisse; während des Rollout-Abgleichs sind parallele direkte Realm-Edits au
 ## Baustellenplugin
 
 Für Baustellen bleiben unbekannte Payload- und Relationsmetadaten erhalten; nicht wiederherstellbare Daten blockieren den Write. Ausdrücklich akzeptiert ist allein der Entfall nicht mehr gelesener deaktivierter Kategoriezuordnungen. Sichtbarkeit verwendet Host-Lifecycle-Rechte; Dateiverknüpfungen verwenden die vorhandene Medienverwaltung. Der ausschließlich auf Baustellen gefilterte Kategorie-Lookup wird mit `construction-sites.read` oder `construction-sites.create` autorisiert und verwendet bei expliziter Auswahl den bestehenden Principal-Resolver; ungefilterte Abfragen und Kategorienverwaltung behalten ihre eigenen Rechte. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+
+## Recording policy, competence and authentication assurance
+
+Recording retention is a bounded duration, not unlimited storage or an archive
+migration command. The 720-hour fallback applies only to recording policy;
+tenant enablement, legal text and decryption grants are separate decisions.
+Studio preserves disabled/null legacy fields only for versioned compatibility.
+
+Managed `competenceLanguages` is distinct from self-service UI locale and cannot
+grant review or sworn status. Directory eligibility uses authoritative active
+account state and effective tenant-wide permissions, including role/group
+validity and restrictions. Labels are Unicode-bounded to the SSF contract;
+identity and grant data remain strict. Backend source errors fail closed rather
+than returning a stale or truncated list of eligible identities.
+
+Authentication policy is generic Core/IAM data. Optional ordinary-login MFA and
+fresh sensitive-action MFA are different requirements. UI state distinguishes
+desired policy from independently verified application in Keycloak; stale jobs
+cannot attest a newer request. Neither editorial wording nor an administrative
+role alone is evidence that recording or a second factor is active.
+
+See [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).

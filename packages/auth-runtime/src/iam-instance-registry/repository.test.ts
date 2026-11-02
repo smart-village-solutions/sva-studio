@@ -138,6 +138,7 @@ vi.mock('./provisioning-auth.js', () => ({
 }));
 
 vi.mock('./provisioning-auth-state.js', () => ({
+  reconcileLoginMfaViaProvisioner: vi.fn(),
   listKeycloakRealmsViaProvisioner: vi.fn(),
   readKeycloakRealmCreateCapabilityViaProvisioner: vi.fn(),
   readKeycloakStateViaProvisioner: vi.fn(),

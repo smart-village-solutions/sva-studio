@@ -15,6 +15,7 @@ import {
   SSF_TENANT_CONTENT_V2_ADMIN_PATH,
 } from './content-v2-admin-contracts.js';
 import {
+  SSF_RECORDING_PERMISSION_IDS,
   SSF_RUNTIME_ENDPOINT_PATH,
   SSF_RUNTIME_V2_ENDPOINT_PATH,
   SSF_RUNTIME_V2_SERVER_HANDLER_ID,
@@ -24,6 +25,9 @@ import {
   SSF_RUNTIME_SERVICE_ID,
 } from './constants.js';
 import { ssfPluginTranslations } from './plugin.translations.js';
+
+export const SSF_RECORDING_DIRECTORY_ENDPOINT_PATH = '/internal/plugins/ssf/v2/recording-directory' as const;
+export const SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID = 'ssf.recording-directory-v2' as const;
 
 const platformAccess = {
   kind: 'platform',
@@ -64,6 +68,7 @@ const actions = definePluginActions('ssf', [
 ]);
 
 const permissions = definePluginPermissions('ssf', [
+  ...SSF_RECORDING_PERMISSION_IDS.map(id => ({ id, titleKey: `ssf.permissions.${id.replace('ssf.recording.', 'recording_').replace(/\./gu, '_')}` })),
   { id: SSF_ADMIN_ACTIONS.tenantRead, titleKey: 'ssf.permissions.tenantRead' },
   { id: SSF_ADMIN_ACTIONS.tenantManage, titleKey: 'ssf.permissions.tenantManage' },
 ]);
@@ -72,7 +77,8 @@ const tenantPermissionIds = permissions.map(({ id }) => id);
 const moduleIam = definePluginModuleIamContract('ssf', {
   moduleId: 'ssf',
   permissionIds: tenantPermissionIds,
-  systemRoles: [{ roleName: 'system_admin', permissionIds: tenantPermissionIds }],
+  systemAdminPermissionExclusions: SSF_RECORDING_PERMISSION_IDS,
+  systemRoles: [{ roleName: 'system_admin', permissionIds: [SSF_ADMIN_ACTIONS.tenantRead, SSF_ADMIN_ACTIONS.tenantManage] }],
 });
 
 export const SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID = 'ssf.reconcile-authorization' as const;
@@ -160,6 +166,14 @@ export const ssfPlugin = {
     },
   ],
   serverHandlers: [
+    {
+      id: SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID,
+      path: SSF_RECORDING_DIRECTORY_ENDPOINT_PATH,
+      method: 'GET',
+      actionId: SSF_RUNTIME_SERVICE_ACTION,
+      accessRequirement: { kind: 'service', serviceId: SSF_RUNTIME_SERVICE_ID,
+        tenantBinding: { kind: 'header', headerName: SSF_RUNTIME_TENANT_HEADER } },
+    },
     {
       id: SSF_RUNTIME_SERVER_HANDLER_ID,
       path: SSF_RUNTIME_ENDPOINT_PATH,

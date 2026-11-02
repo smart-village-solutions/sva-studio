@@ -1154,6 +1154,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BulkDeactivateResponse'
+  /api/v1/iam/users/me/authentication-policy:
+    get:
+      summary: Read the current tenant login MFA policy
+      description: Requires iam.authenticationPolicy.manage in the authenticated tenant. Explicit instance IDs are rejected.
+      responses:
+        '200':
+          description: Desired policy and last independently verified applied policy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantLoginMfaPolicyResponse'
+        '403':
+          description: Missing tenant context or tenant permission.
+    patch:
+      summary: Queue a tenant login MFA policy change
+      description: Requires iam.authenticationPolicy.manage in the authenticated tenant. Returns pending until the existing provisioning worker verifies provider state. Explicit instance IDs are rejected.
+      parameters:
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTenantLoginMfaPolicyRequest'
+      responses:
+        '202':
+          description: Saved and queued; provider application is not yet verified.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantLoginMfaPolicyResponse'
+        '400':
+          description: Invalid or unknown request fields.
+        '403':
+          description: Missing tenant permission or invalid mutation context.
+        '409':
+          description: Revision changed; reload before retrying.
   /api/v1/iam/users/me/profile:
     get:
       summary: Eigenes Profil abrufen
@@ -2169,6 +2211,48 @@ components:
         maximum: 100
         default: 20
   schemas:
+    UpdateTenantLoginMfaPolicyRequest:
+      type: object
+      additionalProperties: false
+      required: [mode, expectedRevision]
+      properties:
+        mode:
+          type: string
+          enum: [optional, required]
+        expectedRevision:
+          type: integer
+          minimum: 0
+    TenantLoginMfaPolicyResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [policy, revision]
+          properties:
+            revision:
+              type: integer
+              minimum: 0
+            runId:
+              type: string
+              format: uuid
+            policy:
+              type: object
+              required: [desiredMode, appliedMode, status]
+              properties:
+                desiredMode:
+                  type: string
+                  enum: [optional, required]
+                appliedMode:
+                  type: string
+                  nullable: true
+                  enum: [optional, required, null]
+                  description: Null until provider state has been independently verified.
+                status:
+                  type: string
+                  enum: [pending, applied, failed]
     ApiErrorResponse:
       type: object
       required: [error]

@@ -305,6 +305,20 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it.each([
+    [{ attributes: { ssf_languages: ['de'] } }, { username: 'synthetic-user', email: 'synthetic@example.test', firstName: 'Synthetic', lastName: 'Tester', enabled: false }],
+    [{ attributes: { ssf_languages: [] }, email: 'changed@example.test', firstName: '', lastName: 'Updated', enabled: true }, { username: 'synthetic-user', email: 'changed@example.test', firstName: '', lastName: 'Updated', enabled: true }],
+  ])('preserves omitted root profile fields while honoring explicit attribute-update values', async (input, expected) => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { id: 'kc-user-1', username: 'synthetic-user', email: 'synthetic@example.test', firstName: 'Synthetic', lastName: 'Tester', enabled: false }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+    await client.updateUser('kc-user-1', input);
+    const put = fetchImpl.mock.calls.find(([, init]) => init?.method === 'PUT');
+    expect(JSON.parse(String(put?.[1]?.body))).toEqual({ ...expected, attributes: input.attributes });
+  });
+
   it.each([undefined, '', '   '])(
     'rejects attribute updates without an existing email (%s)',
     async (email) => {
@@ -337,18 +351,19 @@ describe('Keycloak admin client', () => {
     expect(fetchImpl.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
   });
 
-  it('uses an explicitly supplied email without loading the previous profile', async () => {
+  it('uses an explicitly supplied email while preserving omitted profile fields', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { id: 'kc-user-1', email: 'previous@example.test' }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
     const client = await createClient(fetchImpl);
     const input = { email: 'new@example.com', attributes: { custom: ['value'] } };
 
     await expect(client.updateUser('kc-user-1', input)).resolves.toBeUndefined();
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(fetchImpl).toHaveBeenNthCalledWith(
-      2,
+      3,
       'https://keycloak.example/admin/realms/demo/users/kc-user-1',
       expect.objectContaining({ method: 'PUT', body: JSON.stringify(input) })
     );

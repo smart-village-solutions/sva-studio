@@ -1,3 +1,4 @@
+import { resolveSsfRecordingPolicy } from './content-v2-recording.js';
 import { ssfRuntimeContentV2FieldsSchema, type SsfRuntimeContentV2Fields } from './content-v2-contracts.js';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -82,10 +83,21 @@ const diffArray = (base: unknown[], current: unknown[]): unknown => {
     return changes.length === 0 ? undefined : changes;
 };
 
+const diffRecording = (base: unknown, current: Record<string, unknown>): unknown => {
+  const result: Record<string, unknown> = Object.fromEntries(Object.entries(current).filter(([key, value]) =>
+    key !== 'retentionHours' && key !== 'enabled' &&
+    JSON.stringify(value) !== JSON.stringify(isRecord(base) ? base[key] : undefined)));
+  // Enablement is tenant-only, even when it happens to equal the installation value.
+  if (typeof current['enabled'] === 'boolean') result['enabled'] = current['enabled'];
+  if (current['retentionHours'] != null) result['retentionHours'] = current['retentionHours'];
+  return Object.keys(result).length ? result : undefined;
+};
+
 const diffObject = (base: Record<string, unknown>, current: Record<string, unknown>): unknown => {
     const changes = Object.fromEntries(
       [...new Set([...Object.keys(base), ...Object.keys(current)])].flatMap((key) => {
-        const difference = diffSsfContentV2(base[key], current[key]);
+        const difference = key === 'recording' && isRecord(current[key])
+          ? diffRecording(base[key], current[key]) : diffSsfContentV2(base[key], current[key]);
         return difference === undefined ? [] : [[key, difference]];
       })
     );
@@ -100,18 +112,19 @@ export const diffSsfContentV2 = (base: unknown, current: unknown): unknown => {
 };
 
 export const effectiveSsfRuntimeFieldsV2 = (template: unknown, overrides: unknown): SsfRuntimeContentV2Fields => {
-  const merged = mergeSsfContentV2(template, overrides ?? undefined);
+  const withoutRecording = (value: unknown): unknown => isRecord(value)
+    ? Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'recording')) : value;
+  const recording = resolveSsfRecordingPolicy(isRecord(template) ? template['recording'] : undefined,
+    isRecord(overrides) ? overrides['recording'] : undefined);
+  const merged = mergeSsfContentV2(withoutRecording(template), withoutRecording(overrides) ?? undefined);
   if (!isRecord(merged)) throw new Error('ssf_v2_runtime_content_invalid');
-  if (isRecord(merged['conversationContentStorage']) && merged['conversationContentStorage']['mode'] === 'disabled') {
-    const storage = merged['conversationContentStorage'];
-    const languages = merged['guestLanguages'];
-    return ssfRuntimeContentV2FieldsSchema.parse({
-      ...merged,
-      conversationContentStorage: { ...storage, retentionHours: null },
-      guestLanguages: Array.isArray(languages) ? languages.map((entry) => isRecord(entry) && isRecord(entry['guest'])
-        ? { ...entry, guest: { ...entry['guest'], storageQuestionHtml: null } }
-        : entry) : languages,
-    });
-  }
-  return ssfRuntimeContentV2FieldsSchema.parse(merged);
+  const languages = merged['guestLanguages'];
+  return ssfRuntimeContentV2FieldsSchema.parse({
+    ...merged,
+    ...(recording ? { recording } : {}),
+    conversationContentStorage: { mode: 'disabled', retentionHours: null },
+    guestLanguages: Array.isArray(languages) ? languages.map((entry) => isRecord(entry) && isRecord(entry['guest'])
+      ? { ...entry, guest: { ...entry['guest'], storageQuestionHtml: null } }
+      : entry) : languages,
+  });
 };

@@ -86,6 +86,7 @@ export type UserDetailRow = {
   position: string | null;
   department: string | null;
   preferred_language: string | null;
+  competence_languages?: readonly string[];
   timezone: string | null;
   avatar_url: string | null;
   notes: string | null;

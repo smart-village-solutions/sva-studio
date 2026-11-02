@@ -193,6 +193,7 @@ export const shellENResources = {
     templates: 'Templates',
     languages: 'Languages',
     mobileApp: 'App',
+    loginMfa: 'Authentication policy',
     invitationTemplate: 'Invitation template',
     roles: 'Roles',
     groups: 'Groups',

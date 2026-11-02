@@ -19,7 +19,7 @@ export const permissionDefinitionAllowedKeys = new Set([
 ] as const);
 
 export const auditEventDefinitionAllowedKeys = new Set(['eventType', 'titleKey'] as const);
-const moduleIamContractAllowedKeys = new Set(['moduleId', 'permissionIds', 'systemRoles'] as const);
+const moduleIamContractAllowedKeys = new Set(['moduleId', 'permissionIds', 'systemRoles', 'systemAdminPermissionExclusions'] as const);
 const moduleIamSystemRoleAllowedKeys = new Set(['roleName', 'permissionIds'] as const);
 
 export const normalizePluginPermissionDefinition = (
@@ -56,6 +56,7 @@ const normalizePluginModuleIamContract = (
     normalizePluginIdentifier(permissionId)
   ),
   systemRoles: contract.systemRoles.map(normalizePluginModuleIamSystemRoleDefinition),
+  ...(contract.systemAdminPermissionExclusions ? { systemAdminPermissionExclusions: contract.systemAdminPermissionExclusions.map(normalizePluginIdentifier) } : {}),
 });
 
 export const definePluginPermissions = <
@@ -184,6 +185,12 @@ export const definePluginModuleIamContract = <const TContract extends PluginModu
       throw new Error(
         `plugin_module_iam_permission_namespace_mismatch:${normalizedNamespace}:${parsed.namespace}:${permissionId}`
       );
+    }
+  }
+
+  for (const permissionId of normalizedContract.systemAdminPermissionExclusions ?? []) {
+    if (!normalizedContract.permissionIds.includes(permissionId)) {
+      throw new Error(`unknown_plugin_module_iam_permission_exclusion:${normalizedNamespace}:${permissionId}`);
     }
   }
 

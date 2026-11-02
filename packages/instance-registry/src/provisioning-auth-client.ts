@@ -1,3 +1,4 @@
+import type { LoginMfaMode } from '@sva/core';
 import type {
   KeycloakClientRepresentation,
   KeycloakReadState,
@@ -46,6 +47,14 @@ export type KeycloakProvisioningClient = {
     accessTokenLifespan?: 900;
     ownership?: Readonly<{ instanceId: string; artifactKey: string }>;
   }): Promise<void>;
+  ensureLoginMfaPolicy(input: {
+    mode: LoginMfaMode;
+    clientIds: readonly string[];
+  }): Promise<void>;
+  readLoginMfaPolicy(input: {
+    mode: LoginMfaMode;
+    clientIds: readonly string[];
+  }): Promise<{ aligned: boolean; mode: LoginMfaMode }>;
   ensurePersonalMcpAccess(audienceClientId: string): Promise<void>;
   ensureTenantAdminServiceAccess(clientId: string): Promise<void>;
   getTenantAdminServiceAccess(

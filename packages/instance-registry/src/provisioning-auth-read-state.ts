@@ -157,6 +157,15 @@ export const createReadKeycloakState =
       keycloakClientSecret,
       tenantAdminClientSecret,
       systemAdminRole,
+      loginMfa: await client.readLoginMfaPolicy({
+        mode: input.loginMfaMode ?? 'optional',
+        clientIds: [
+          input.authClientId,
+          ...pluginOidcClientRequirements
+            .filter((requirement) => requirement.contractVersion === '2.0')
+            .map((requirement) => requirement.clientId),
+        ],
+      }),
       realmBaselineAligned,
       userProfileBaselineAligned,
     };

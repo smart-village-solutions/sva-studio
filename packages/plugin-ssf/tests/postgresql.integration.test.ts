@@ -242,6 +242,44 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       template: a.runtimeTemplate, overrides: a.overrides }).staff.dashboard.headline).toBe('Tenant A');
   });
 
+  it('persists recording overrides, reset inheritance and invalid-write rollback across tenants', async () => {
+    const system = await readSsfSystemContentV2(rootPool);
+    const previousA = await readSsfTenantContentV2(rootPool, 'tenant-a');
+    const previousB = await readSsfTenantContentV2(rootPool, 'tenant-b');
+    if (!system.runtimeTemplate) throw new Error('missing_test_template');
+    const template = { ...system.runtimeTemplate, recording: { legalBasis: 'consent' as const,
+      signature: 'optional' as const, idCheck: 'off' as const, verificationRequired: true,
+      recoveryMode: 'standard' as const, timestampAuthorityUrl: 'https://tsa.example.org/tsr',
+      auditRetentionHours: 8760, retentionHours: 720 } };
+    const effective = async (id: string) => {
+      const saved = await readSsfTenantContentV2(tenantPool, id);
+      return resolveSsfRuntimeContentV2({ tenant: { id, displayName: id, timeZone: 'Europe/Berlin' },
+        template: saved.runtimeTemplate, overrides: saved.overrides });
+    };
+    try {
+      await replaceSsfSystemContentV2(rootPool, { installation: null, runtimeTemplate: template });
+      await writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { enabled: true, retentionHours: 241 } });
+      await writeSsfTenantContentV2(tenantPool, 'tenant-b', { recording: { enabled: false, retentionHours: 1440 } });
+      expect((await effective('tenant-a')).recording).toMatchObject({ enabled: true, retentionHours: 241 });
+      expect((await effective('tenant-b')).recording).toMatchObject({ enabled: false, retentionHours: 1440 });
+      await expect(writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { retentionHours: 8761 } })).rejects.toThrow();
+      expect((await effective('tenant-a')).recording?.retentionHours).toBe(241);
+      await writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { enabled: true } });
+      expect((await effective('tenant-a')).recording?.retentionHours).toBe(720);
+      await writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { enabled: true, auditRetentionHours: 800 } });
+      await expect(replaceSsfSystemContentV2(rootPool, { installation: null,
+        runtimeTemplate: { ...template, recording: { ...template.recording, retentionHours: 1440 } },
+      })).rejects.toMatchObject({ affectedTenants: ['tenant-a'] });
+      expect((await readSsfSystemContentV2(rootPool)).runtimeTemplate?.recording?.retentionHours).toBe(720);
+      await expect(writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { enabled: true, retentionHours: 9000 } })).rejects.toThrow();
+      expect((await effective('tenant-b')).recording?.retentionHours).toBe(1440);
+    } finally {
+      await writeSsfTenantContentV2(rootPool, 'tenant-a', previousA.overrides ?? {});
+      await writeSsfTenantContentV2(rootPool, 'tenant-b', previousB.overrides ?? {});
+      await replaceSsfSystemContentV2(rootPool, { installation: null, runtimeTemplate: system.runtimeTemplate });
+    }
+  });
+
   it('rejects a runtime template larger than the response limit before writing it', async () => {
     const before = await readSsfSystemContentV2(rootPool);
     const runtime = JSON.parse(readFileSync(new URL(
@@ -263,8 +301,10 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       guestLanguages: locales.map((locale) => ({
         ...language,
         locale,
-        guest: { ...language.guest, explanationHtml: longHtml, storageQuestionHtml: longHtml },
-        feedback: { ...language.feedback, noticeHtml: longHtml },
+        guest: { ...language.guest, explanationHtml: longHtml, storageQuestionHtml: null },
+        feedback: { ...language.feedback, noticeHtml: longHtml, questions: Array.from({ length: 20 }, (_, index) => ({
+          id: `question${index}`, type: 'longText' as const, question: 'Q'.repeat(500), placeholder: 'P'.repeat(500),
+        })) },
       })),
     };
 

@@ -16,6 +16,7 @@ const UPDATED_USER_ACTIVITY_FIELD_NAMES = {
   department: 'department',
   avatarUrl: 'avatar_url',
   preferredLanguage: 'preferred_language',
+  competenceLanguages: 'competence_languages',
   timezone: 'timezone',
   status: 'status',
   notes: 'notes',

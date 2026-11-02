@@ -5,6 +5,7 @@ export const rolePermissionDescriptionsDE = {
   standardDelete: '{{subject}} löschen.',
   iamUserRead: 'Benutzerkonten und ihre Angaben ansehen.',
   iamUserWrite: 'Angaben zu Benutzerkonten ändern.',
+  iamAuthenticationPolicyManage: 'Anmelderichtlinie verwalten',
   iamInvitationTemplateManage: 'Die Vorlage für Einladungen zu Benutzerkonten bearbeiten.',
   iamRoleRead: 'Rollen und ihre Zuweisungen ansehen.',
   iamRoleWrite: 'Rollen und ihre Zuweisungen ändern.',

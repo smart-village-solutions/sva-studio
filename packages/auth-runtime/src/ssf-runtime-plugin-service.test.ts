@@ -59,6 +59,15 @@ const readBody = async (response: Response) =>
   };
 
 describe('SSF runtime plugin service host gates', () => {
+  it('uses the V2 envelope for recording-directory denials', async () => {
+    const { createSsfRuntimeErrorResponse } = await import('./ssf-runtime-plugin-service-observability.js');
+    const response = createSsfRuntimeErrorResponse(new Request('https://studio.test/internal/plugins/ssf/v2/recording-directory'), 401, 'service_authentication_invalid', false);
+    expect((await readBody(response)).contractVersion).toBe('2.0');
+  });
+  it('uses the directory unavailable code on a host authority failure', async () => {
+    const response = createSsfRuntimeErrorResponse(new Request('https://studio.test/internal/plugins/ssf/v2/recording-directory'), 503, 'runtime_configuration_unavailable', true);
+    expect((await readBody(response)).error.code).toBe('recording_directory_unavailable');
+  });
   it('uses the requested contract version in V2 error responses', async () => {
     const response = createSsfRuntimeErrorResponse(
       new Request('https://studio.test/internal/plugins/ssf/v2/runtime-configuration'),
@@ -97,6 +106,36 @@ describe('SSF runtime plugin service host gates', () => {
       readAuthorizationRevision,
       emitSecurityAudit,
     });
+
+  it.each([
+    ['missing token', 401, 'service_authentication_invalid'],
+    ['wrong audience', 401, 'service_authentication_invalid'],
+    ['missing permission', 403, 'service_action_forbidden'],
+    ['suspended tenant', 409, 'tenant_suspended'],
+    ['inactive plugin', 409, 'ssf_plugin_inactive'],
+  ] as const)('enforces recording directory host authorization: %s', async (scenario, status, code) => {
+    const directoryDescriptor = { ...descriptor(), id: 'ssf.recording-directory-v2', path: '/internal/plugins/ssf/v2/recording-directory' };
+    const directoryRequest = new Request(`https://studio.test${directoryDescriptor.path}`, request());
+    if (scenario === 'missing token') directoryRequest.headers.delete('Authorization');
+    if (scenario === 'wrong audience') authenticateToken.mockResolvedValue({ kind: 'rejected', status: 401, code: 'service_authentication_invalid', reason: 'invalid_service_token' });
+    if (scenario === 'missing permission') authenticateToken.mockResolvedValue({ kind: 'rejected', status: 403, code: 'service_action_forbidden', reason: 'missing_action_scope' });
+    if (scenario === 'suspended tenant') readInstance.mockResolvedValue(instance('suspended'));
+    if (scenario === 'inactive plugin') readPluginAccess.mockResolvedValue({ allowed: false, reason: 'inactive' });
+    const access = createAccess();
+    const authentication = await access.authenticateService?.({ request: directoryRequest, descriptor: directoryDescriptor, serviceId: 'ssf-runtime' });
+    const result = authentication?.kind === 'rejected' ? authentication : await access.bindServiceTenant?.({ request: directoryRequest, descriptor: directoryDescriptor, serviceId: 'ssf-runtime', serviceSubject: 'service-subject', tenantHeaderName: 'X-Studio-Tenant-Id' });
+    expect(result?.kind).toBe('rejected');
+    if (result?.kind !== 'rejected') throw new Error('expected rejection');
+    expect(result.response.status).toBe(status);
+    expect(await readBody(result.response)).toMatchObject({ contractVersion: '2.0', error: { code } });
+  });
+
+  it('rejects mismatched recording directory tenant context before authoritative IAM access', async () => {
+    const directoryDescriptor = { ...descriptor(), id: 'ssf.recording-directory-v2', path: '/internal/plugins/ssf/v2/recording-directory' };
+    const result = await createAccess().bindServiceTenant?.({ request: new Request(`https://studio.test${directoryDescriptor.path}?tenantId=tenant-b`, request()), descriptor: directoryDescriptor, serviceId: 'ssf-runtime', serviceSubject: 'service-subject', tenantHeaderName: 'X-Studio-Tenant-Id' });
+    expect(result?.kind).toBe('rejected');
+    expect(readInstance).not.toHaveBeenCalled();
+  });
 
   it.each([
     [false, revision, 'Europe/Berlin', 'ssf_database_not_ready'],

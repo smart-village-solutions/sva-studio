@@ -20,6 +20,7 @@ export type AppRouteBindings = {
   readonly adminUsers: RouteComponent;
   readonly adminUserCreate: RouteComponent;
   readonly adminUserDetail: RouteComponent;
+  readonly adminUserLoginMfa: RouteComponent;
   readonly adminUserInvitationTemplate: RouteComponent;
   readonly adminOrganizations: RouteComponent;
   readonly adminOrganizationCreate: RouteComponent;

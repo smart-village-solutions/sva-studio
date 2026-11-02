@@ -98,6 +98,8 @@ const createClient = (
   })),
   getOidcClientSecretValue: vi.fn(async () => 'secret'),
   ensureOidcClient: vi.fn(async () => undefined),
+  ensureLoginMfaPolicy: vi.fn(async () => undefined),
+  readLoginMfaPolicy: vi.fn(async () => ({ aligned: true, mode: 'optional' as const })),
   ensurePersonalMcpAccess: vi.fn(async () => undefined),
   ensureTenantAdminServiceAccess: vi.fn(async () => undefined),
   getTenantAdminServiceAccess: vi.fn(async () => ({
@@ -396,6 +398,10 @@ describe('provisioning-auth-state', () => {
       expect.objectContaining({ clientId: 'tenant-admin' })
     );
     expect(client.ensureTenantAdminServiceAccess).toHaveBeenCalledWith('tenant-admin');
+    expect(client.ensureLoginMfaPolicy).toHaveBeenCalledWith({
+      mode: 'optional',
+      clientIds: ['sva-studio'],
+    });
     expect(client.ensurePersonalMcpAccess).toHaveBeenCalledExactlyOnceWith('sva-studio');
     expect(client.ensureAdminOnlyUserProfileAttributes).toHaveBeenCalledWith([
       { name: 'instanceId', multivalued: false },

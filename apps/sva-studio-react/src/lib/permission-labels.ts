@@ -11,6 +11,7 @@ const HOST_PERMISSION_TITLE_KEYS = {
   'iam.user.read': 'permissionDenial.titles.iamUserRead',
   'iam.user.write': 'permissionDenial.titles.iamUserWrite',
   'iam.invitationTemplate.manage': 'permissionDenial.titles.iamInvitationTemplateManage',
+  'iam.authenticationPolicy.manage': 'permissionDenial.titles.iamAuthenticationPolicyManage',
   'iam.role.read': 'permissionDenial.titles.iamRoleRead',
   'iam.role.write': 'permissionDenial.titles.iamRoleWrite',
   'iam.org.read': 'permissionDenial.titles.iamOrgRead',

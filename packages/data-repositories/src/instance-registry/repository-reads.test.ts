@@ -15,6 +15,8 @@ describe('instance registry repository reads', () => {
     ).resolves.toEqual([
       {
         instanceId: 'tenant-a',
+        loginMfaPolicy: { desiredMode: 'optional', appliedMode: null, status: 'pending' },
+        loginMfaRevision: 0,
         accountInvitationTemplateRevision: 0,
         displayName: 'Tenant A',
         status: 'active',

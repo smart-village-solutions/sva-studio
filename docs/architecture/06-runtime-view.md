@@ -1627,3 +1627,27 @@ bisherigen Abläufen. Live-Mail-/Linktests sind ein getrennt freizugebender Roll
 ## Baustellenplugin
 
 Ein Baustellen-Update durchläuft Principal-/Objektprüfung, frischen Vollsnapshot, Fingerprint-Prüfung, Host-Lock, einmalige Mainserver-Mutation und unabhängigen Readback. Bei Antwortverlust prüft Recovery ausschließlich denselben gespeicherten Vorgang und führt lokale Folgeschritte nach. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+
+## SSF recording policy and reviewer updates
+
+1. An authorized administrator edits the installation template or a tenant's
+   recording overrides. Studio validates the effective policy transactionally;
+   an installation change that invalidates tenant audit retention is rejected
+   with an actionable affected-tenant list.
+2. SSF reads the tenant runtime policy using the existing technical identity and
+   canonical host tenant binding. Studio returns effective retention and a
+   revision. Missing or invalid recording policy does not enable recording.
+3. For a directory request the host authenticates and authorizes the service,
+   resolves its tenant, and supplies a live IAM reader. The plugin formats only
+   eligible recording holders and returns a deterministic directory revision.
+4. Managed competence changes persist and enqueue the existing durable lifecycle
+   retry task in the same account transaction. An active reconcile conflict is
+   retried after the previous job finishes, so later language changes converge.
+5. The existing projection updates Keycloak attributes without erasing omitted
+   profile fields. Newly issued SSF access tokens contain current projected
+   permission and language claims; the directory itself remains uncached.
+
+Ordinary-login MFA policy uses the existing realm job and independent read-back;
+its desired state must not be represented as an already applied state. Existing
+SSF step-up uses `acr_values=mfa` and `max_age=0`. See
+[ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).

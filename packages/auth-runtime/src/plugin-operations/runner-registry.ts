@@ -2,7 +2,10 @@ import * as graphileWorker from 'graphile-worker';
 
 import { createSdkLogger } from '@sva/server-runtime';
 
-import { runConfiguredPluginTenantProvisioningSchedule } from '../iam-instance-registry/repository.js';
+import {
+  runConfiguredPluginTenantProvisioningSchedule,
+  runConfiguredPluginTenantReconcile,
+} from '../iam-instance-registry/repository.js';
 import { createJobLifecycleOrchestrator } from './job-lifecycle-orchestrator.js';
 import { loadStudioJobExecutionRepository } from './runner-repository.js';
 import { guardPluginTenantExecution } from './runner-tenant-guard.js';
@@ -64,7 +67,17 @@ export const createStudioJobTaskList = (
     if (typeof instanceId !== 'string' || instanceId.length === 0) {
       throw new Error('plugin_tenant_lifecycle_retry_payload_invalid');
     }
-    await runConfiguredPluginTenantProvisioningSchedule(instanceId);
+    const { pluginId, operation } = payload as {
+      readonly pluginId?: unknown;
+      readonly operation?: unknown;
+    };
+    if (operation === 'reconcile') {
+      if (typeof pluginId !== 'string' || !pluginId)
+        throw new Error('plugin_tenant_lifecycle_retry_payload_invalid');
+      await runConfiguredPluginTenantReconcile(instanceId, pluginId);
+    } else {
+      await runConfiguredPluginTenantProvisioningSchedule(instanceId);
+    }
   },
 });
 

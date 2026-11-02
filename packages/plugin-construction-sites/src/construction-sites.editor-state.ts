@@ -36,7 +36,7 @@ function useEditorData(
   const [failure, setFailure] = useState<string>();
   const [message, setMessage] = useState<string>();
   const [errors, setErrors] = useState<readonly string[]>([]);
-  const [categories, setCategories] = useState<readonly { id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<readonly { id: string; name: string }[]>();
   const [categoryError, setCategoryError] = useState(false);
   const [pending, setPending] = useState<ConstructionSitePending | undefined>(() =>
     readConstructionSitePending(key)
@@ -70,10 +70,11 @@ function useEditorData(
     setMessage,
     errors,
     setErrors,
-    categories,
+    categories: categories ?? [],
     setCategories,
     categoryError,
     setCategoryError,
+    categoriesLoading: categories === undefined && !categoryError,
     pending,
     setPending,
     saving,
@@ -98,7 +99,7 @@ function useEditorLoads({
 }: ReturnType<typeof useEditorData>) {
   useEffect(() => {
     let active = true;
-    setCategories([]);
+    setCategories(undefined);
     setCategoryError(false);
     void listConstructionSiteCategories(principal).then(
       (items) => active && setCategories(items),
@@ -144,7 +145,7 @@ function useEditorCommit({
   setDraft,
   setBaseline,
 }: ReturnType<typeof useEditorData>) {
-  const commit = async (
+  return async (
     operation: ConstructionSitePending,
     recover: boolean,
     revision = guard.captureRevision()
@@ -189,7 +190,6 @@ function useEditorCommit({
       setBusy(false);
     }
   };
-  return commit;
 }
 export function useConstructionSiteEditor(
   id: string | undefined,

@@ -15,16 +15,16 @@
 
 ## 3. MFA and cleanup
 
-- [ ] 3.1 Implement optional/required ordinary-login MFA through Core/IAM realm provisioning and reconciliation.
-- [ ] 3.2 Verify voluntary MFA, required enrollment and sensitive-action step-up against a real Keycloak realm.
+- [x] 3.1 Implement optional/required ordinary-login MFA through Core/IAM realm provisioning and reconciliation.
+- [x] 3.2 Verify voluntary MFA, required enrollment and sensitive-action step-up against a real Keycloak realm.
 - [x] 3.3 Remove legacy storage editing and obsolete 180-day guest promises; preserve necessary disabled compatibility fields.
-- [ ] 3.4 Extend Core/IAM's tenant-authorized settings DTO, persistence, UI and audit with MFA desired/applied state; use existing realm jobs and verify read-back, retry and custom-flow conflicts.
+- [x] 3.4 Extend Core/IAM's tenant-authorized settings DTO, persistence, UI and audit with MFA desired/applied state; use existing realm jobs and verify read-back, retry and custom-flow conflicts.
 
 ## 4. Integration and release
 
-- [ ] 4.1 Run Studio unit, type, database and runtime checks and the focused SSF consumer suites.
+- [x] 4.1 Run Studio unit, type, database and runtime checks and the focused SSF consumer suites.
 - [ ] 4.2 Complete two-tenant staging acceptance, retention inheritance and permission-revocation evidence.
 - [ ] 4.3 Follow existing release procedures and enable recording only after operational prerequisites are confirmed.
-- [ ] 4.4 Update Studio arc42 sections 04, 05, 06 and 08 and the IAM ADR reference in section 09; update schema reference files for any Core/IAM migration.
+- [x] 4.4 Update Studio arc42 sections 04, 05, 06 and 08 and the IAM ADR reference in section 09; update schema reference files for any Core/IAM migration.
 
 Execution detail and acceptance matrices: [implementation plan](https://github.com/smart-village-solutions/smart-speech-flow/blob/291f613f/docs/superpowers/plans/2026-11-02-studio-recording-settings.md).

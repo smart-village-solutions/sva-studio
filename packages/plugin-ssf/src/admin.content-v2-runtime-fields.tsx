@@ -55,53 +55,51 @@ const StaffFields = (props: Props) => {
   </StudioSection>;
 };
 
-const StorageFields = (props: Props) => {
+const RecordingFields = (props: Props) => {
   const pt = usePluginTranslation('ssf');
-  const inherited = props.inherited;
-  const changeMode = (mode: 'ask' | 'disabled') => props.onChange({
-    ...props.value,
-    conversationContentStorage: {
-      mode,
-      retentionHours: mode === 'disabled' ? null :
-        (props.value.conversationContentStorage.retentionHours ?? inherited?.conversationContentStorage.retentionHours ?? null),
-    },
-    guestLanguages: props.value.guestLanguages.map((language) => ({
-      ...language,
-      guest: { ...language.guest, storageQuestionHtml:
-        mode === 'disabled' ? null : (language.guest.storageQuestionHtml ??
-          inherited?.guestLanguages.find((entry) => entry.locale === language.locale)?.guest.storageQuestionHtml ?? '') },
-    })),
-  });
-  const restore = () => {
-    if (!inherited) return;
-    props.onChange({
-      ...props.value,
-      conversationContentStorage: inherited.conversationContentStorage,
-      guestLanguages: props.value.guestLanguages.map((language) => ({ ...language,
-        guest: { ...language.guest, storageQuestionHtml:
-          inherited.guestLanguages.find((entry) => entry.locale === language.locale)?.guest.storageQuestionHtml ?? null },
-      })),
-    });
-  };
-  return <StudioSection title={pt('v2.storage')}>
-    <StudioField id="ssf-v2-storage-mode" label={pt('fields.storageMode')}>
-      <Select id="ssf-v2-storage-mode" disabled={props.disabled}
-        value={props.value.conversationContentStorage.mode}
-        onChange={(event) => changeMode(event.currentTarget.value as 'ask' | 'disabled')}>
-        <option value="ask">{pt('fields.ask')}</option>
-        <option value="disabled">{pt('fields.disabled')}</option>
-      </Select>
+  const settings = props.value.recording ?? {};
+  const value = { ...props.value, recording: settings };
+  const editor = { ...props, value };
+  const set = (key: string, next: unknown) => props.onChange({ ...props.value, recording: { ...settings, [key]: next } });
+  const choices = {
+    legalBasis: ['consent', 'statutory'], signature: ['off', 'optional', 'required'],
+    idCheck: ['off', 'optional', 'required'], recoveryMode: ['standard', 'enhanced'],
+  } as const;
+  const effectiveHours = settings.retentionHours ?? props.inherited?.recording?.retentionHours ?? 720;
+  return <StudioSection title={pt('v2.recording.title')}>
+    <p>{pt('v2.recording.notice')}</p>
+    {props.inherited ? <Field {...editor} path={['recording', 'enabled']} labelKey="v2.recording.enabled" kind="checkbox" /> : null}
+    <StudioField id="ssf-v2-recording-retention" label={pt('v2.recording.retentionHours')}
+      error={props.errors?.['recording.retentionHours']}>
+      <Input id="ssf-v2-recording-retention" type="number" min={1} max={8760} step={1}
+        disabled={props.disabled} value={settings.retentionHours ?? ''}
+        onChange={(event) => set('retentionHours', event.currentTarget.value === '' ? null : Number(event.currentTarget.value))} />
     </StudioField>
-    {inherited ? <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <span>{pt(props.value.conversationContentStorage.mode === inherited.conversationContentStorage.mode
-        ? 'v2.inherited' : 'v2.overridden')}</span>
-      <Button type="button" variant="tertiary" disabled={props.disabled} onClick={restore}>
-        {pt('fields.inherit')}
-      </Button>
-    </div> : null}
-    {props.value.conversationContentStorage.mode === 'ask'
-      ? <Field {...props} path={['conversationContentStorage', 'retentionHours']} labelKey="v2.retentionHours" kind="number" />
-      : null}
+    <p role="status">{pt('v2.recording.effectiveRetention')}: {effectiveHours}</p>
+    <p>{pt(props.inherited ? settings.retentionHours == null ? 'v2.inherited' : 'v2.overridden' : 'v2.recording.installationDefault')}</p>
+    {props.inherited ? <Button type="button" variant="tertiary" disabled={props.disabled}
+      onClick={() => set('retentionHours', null)}>{pt('v2.recording.resetRetention')}</Button> : null}
+    {Object.entries(choices).map(([key, options]) => <StudioField key={key} id={`ssf-v2-recording-${key}`} label={pt(`v2.recording.${key}`)}>
+      <Select id={`ssf-v2-recording-${key}`} disabled={props.disabled} value={settings[key as keyof typeof choices] ?? ''}
+        onChange={(event) => set(key, event.currentTarget.value || undefined)}>
+        <option value="">{pt('v2.notConfigured')}</option>
+        {options.map((option) => <option key={option} value={option}>{pt(`v2.recording.options.${option}`)}</option>)}
+      </Select>
+    </StudioField>)}
+    <Field {...editor} path={['recording', 'verificationRequired']} labelKey="v2.recording.verificationRequired" kind="checkbox" />
+    <Field {...editor} path={['recording', 'timestampAuthorityUrl']} labelKey="v2.recording.timestampAuthorityUrl" kind="url" />
+    <Field {...editor} path={['recording', 'auditRetentionHours']} labelKey="v2.recording.auditRetentionHours" kind="number" />
+    {(settings.texts ?? []).map((entry, index) => <div key={index} className="space-y-2">
+      <Field {...editor} path={['recording', 'texts', index, 'locale']} labelKey="v2.locale" />
+      <Field {...editor} path={['recording', 'texts', index, 'consentHtml']} labelKey="v2.recording.consentHtml" kind="html" />
+      <Field {...editor} path={['recording', 'texts', index, 'resumePromptHtml']} labelKey="v2.recording.resumePromptHtml" kind="html" />
+      <Button type="button" variant="tertiary" disabled={props.disabled}
+        onClick={() => set('texts', settings.texts?.filter((_, current) => current !== index))}>{pt('v2.recording.removeText')}</Button>
+    </div>)}
+    <Button type="button" variant="secondary" disabled={props.disabled || (settings.texts?.length ?? 0) >= 40}
+      onClick={() => set('texts', [...(settings.texts ?? []), { locale: '', consentHtml: '', resumePromptHtml: '' }])}>
+      {pt('v2.recording.addText')}
+    </Button>
   </StudioSection>;
 };
 
@@ -119,8 +117,7 @@ const AddLanguage = (props: Props) => {
     if (!language) return;
     props.onChange({ ...props.value, guestLanguages: [...props.value.guestLanguages, {
       locale, nativeName: language.native, staffName: language.name, icon: null,
-      guest: { explanationHtml: '', storageQuestionHtml:
-        props.value.conversationContentStorage.mode === 'ask' ? '' : null },
+      guest: { explanationHtml: '', storageQuestionHtml: null },
       feedback: blankFeedback(),
     }] });
     setLocale('');
@@ -198,9 +195,6 @@ const LanguageTab = ({ props, language, index }: { props: Props; language: Langu
       </Button>
     </div> : null}
     <Field {...props} path={['guestLanguages', index, 'guest', 'explanationHtml']} labelKey="v2.guestExplanation" kind="html" />
-    {props.value.conversationContentStorage.mode === 'ask'
-      ? <Field {...props} path={['guestLanguages', index, 'guest', 'storageQuestionHtml']} labelKey="v2.storageQuestion" kind="html" />
-      : null}
     <FeedbackFields {...props} path={['guestLanguages', index, 'feedback']} />
   </TabsContent>;
 };
@@ -232,7 +226,7 @@ export const SsfRuntimeV2Editor = (props: Props) => {
     </p> : null}
     <BrandingFields {...props} />
     <StaffFields {...props} />
-    <StorageFields {...props} />
+    <RecordingFields {...props} />
     <SsfLegalTextsEditor {...props} />
     <FeedbackFields {...props} path={['staff', 'feedback']} />
     <GuestLanguages {...props} />

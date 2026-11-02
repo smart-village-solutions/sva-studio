@@ -26,6 +26,15 @@ const de = {
       systemStorageMode: 'Systemstandard für Gesprächsspeicherung',
     },
     v2: {
+      recording: {
+        installationDefault: 'Installationsstandard', title: 'Aufnahmerichtlinie', notice: 'Aufnahmen benötigen eine ausdrückliche Aktivierung für den Mandanten und eine vollständige gültige Richtlinie. Verfasste Rechtstexte und Aufbewahrungsfristen vor der Nutzung prüfen.',
+        enabled: 'Aufnahmen für diesen Mandanten aktivieren', retentionHours: 'Aufbewahrung der Aufnahmen in Stunden', effectiveRetention: 'Wirksame Aufbewahrung der Aufnahmen in Stunden',
+        resetRetention: 'Aufbewahrung auf den Installationsstandard zurücksetzen', legalBasis: 'Rechtsgrundlage', signature: 'Unterschrift', idCheck: 'Identitätsprüfung',
+        verificationRequired: 'Verifikation erforderlich', recoveryMode: 'Wiederherstellungsmodus', timestampAuthorityUrl: 'HTTPS-URL des Zeitstempeldienstes',
+        auditRetentionHours: 'Aufbewahrung der Prüfprotokolle in Stunden', consentHtml: 'Einwilligungstext zur Aufnahme', resumePromptHtml: 'Text zur Wiederaufnahme',
+        addText: 'Aufnahmetexte hinzufügen', removeText: 'Aufnahmetexte entfernen',
+        options: { consent: 'Einwilligung', statutory: 'Gesetzlich', off: 'Aus', optional: 'Optional', required: 'Erforderlich', standard: 'Standard', enhanced: 'Erweitert' },
+      },
       legalTexts: {
         title: 'Einwilligungen und Aufnahmefreigaben', add: 'Rechtstexte einrichten',
         sourceLocale: 'Sprache der Originalfassung', version: 'Version der Originalfassung',
@@ -136,6 +145,15 @@ const en = {
       systemStorageMode: 'System default for conversation storage',
     },
     v2: {
+      recording: {
+        installationDefault: 'Installation default', title: 'Recording policy', notice: 'Recording requires an explicit tenant enable action and a complete valid policy. Review authored legal wording and retention before use.',
+        enabled: 'Enable recording for this tenant', retentionHours: 'Recording retention in hours', effectiveRetention: 'Effective recording retention in hours',
+        resetRetention: 'Reset recording retention to installation default', legalBasis: 'Legal basis', signature: 'Signature', idCheck: 'Identity check',
+        verificationRequired: 'Verification required', recoveryMode: 'Recovery mode', timestampAuthorityUrl: 'HTTPS timestamp authority URL',
+        auditRetentionHours: 'Audit retention in hours', consentHtml: 'Recording consent wording', resumePromptHtml: 'Recording resume wording',
+        addText: 'Add recording wording', removeText: 'Remove recording wording',
+        options: { consent: 'Consent', statutory: 'Statutory', off: 'Off', optional: 'Optional', required: 'Required', standard: 'Standard', enhanced: 'Enhanced' },
+      },
       legalTexts: {
         title: 'Consents and recording releases', add: 'Configure legal texts',
         sourceLocale: 'Source language', version: 'Source version',

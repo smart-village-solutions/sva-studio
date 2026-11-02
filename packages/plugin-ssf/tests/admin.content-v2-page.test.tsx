@@ -61,6 +61,55 @@ describe('SSF V2 content administration', () => {
     api.readTenant.mockReset(); api.writeTenant.mockReset();
   });
 
+  it('administers recording defaults without the legacy storage controls', async () => {
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    api.readSystem.mockResolvedValue({ installation: null, runtimeTemplate, supportedLanguages });
+    const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
+    render(<SsfSystemContentV2Page />);
+    expect(await screen.findByLabelText('v2.recording.retentionHours')).toBeTruthy();
+    expect(screen.queryByLabelText('fields.storageMode')).toBeNull();
+    expect(screen.queryByLabelText('v2.recording.enabled')).toBeNull();
+  });
+
+  it('resets an explicit hourly tenant override and preserves explicit tenant enablement', async () => {
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    runtimeTemplate['recording'] = { enabled: true, legalBasis: 'consent', signature: 'off', idCheck: 'optional',
+      retentionHours: 721, verificationRequired: true, recoveryMode: 'standard',
+      timestampAuthorityUrl: 'https://tsa.example.org/tsr', auditRetentionHours: 8760 };
+    api.readTenant.mockResolvedValue({ runtimeTemplate, overrides: { recording: { enabled: true, retentionHours: 241 } }, supportedLanguages });
+    api.writeTenant.mockImplementation(async (overrides) => ({ runtimeTemplate, overrides, supportedLanguages }));
+    const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
+    render(<SsfTenantContentV2Page canManage />);
+    expect((await screen.findByLabelText('v2.recording.retentionHours') as HTMLInputElement).value).toBe('241');
+    fireEvent.click(screen.getByRole('button', { name: 'v2.recording.resetRetention' }));
+    expect(screen.getByText('v2.recording.effectiveRetention: 721')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({ recording: { enabled: true } }));
+  });
+  it('rejects an out-of-range installation duration instead of truncating it', async () => {
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    api.readSystem.mockResolvedValue({ installation: null, runtimeTemplate, supportedLanguages });
+    const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
+    render(<SsfSystemContentV2Page />);
+    fireEvent.change(await screen.findByLabelText('v2.recording.retentionHours'), { target: { value: '8761' } });
+    const saves = screen.getAllByRole('button', { name: 'actions.save' });
+    const templateSave = saves[1];
+    if (!templateSave) throw new Error('missing_template_save');
+    fireEvent.click(templateSave);
+    expect((await screen.findAllByText('v2.invalid')).length).toBeGreaterThan(0);
+    expect(api.writeSystem).not.toHaveBeenCalled();
+  });
+  it('prevents enabling an incomplete tenant policy before saving', async () => {
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    api.readTenant.mockResolvedValue({ runtimeTemplate, overrides: {}, supportedLanguages });
+    const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
+    render(<SsfTenantContentV2Page canManage />);
+    fireEvent.click(await screen.findByLabelText('v2.recording.enabled'));
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    expect((await screen.findAllByText('v2.invalid')).length).toBeGreaterThan(0);
+    expect(api.writeTenant).not.toHaveBeenCalled();
+  });
+
   it('saves installation content independently of the tenant template', async () => {
     const installation = fields('ssf-installation-content-v2.example.json');
     const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
@@ -167,23 +216,6 @@ describe('SSF V2 content administration', () => {
       staff: { dashboard: { headline: 'Tenant heading' } },
     }));
     expect(staff.feedback.questions).toHaveLength(6);
-  });
-
-  it('restores inherited storage settings when a tenant re-enables storage', async () => {
-    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
-    api.readTenant.mockResolvedValue({
-      runtimeTemplate,
-      overrides: { conversationContentStorage: { mode: 'disabled' } },
-      supportedLanguages,
-    });
-    api.writeTenant.mockImplementation(async (overrides) => ({ runtimeTemplate, overrides }));
-    const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
-    render(<SsfTenantContentV2Page canManage />);
-
-    const mode = await screen.findByLabelText('fields.storageMode');
-    fireEvent.change(mode, { target: { value: 'ask' } });
-    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
-    await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({}));
   });
 
   it('removes a guest icon override when the inherited icon is absent', async () => {

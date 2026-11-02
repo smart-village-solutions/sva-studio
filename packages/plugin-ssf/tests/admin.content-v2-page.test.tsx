@@ -75,6 +75,75 @@ describe('SSF V2 content administration', () => {
     expect(screen.queryByLabelText('v2.recording.enabled')).toBeNull();
   });
 
+  it.each([undefined, { retentionHours: 720 }])('completes a fresh tenant policy with verification left unchecked (%j)', async (recording) => {
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    if (recording) runtimeTemplate['recording'] = recording;
+    const guestLanguages = runtimeTemplate['guestLanguages'];
+    if (Array.isArray(guestLanguages)) runtimeTemplate['guestLanguages'] = guestLanguages.slice(0, 1);
+    api.readTenant.mockResolvedValue({ runtimeTemplate, overrides: {}, supportedLanguages });
+    const { resolveSsfRuntimeContentV2 } = await import('../src/content-v2.js');
+    const policies: unknown[] = [];
+    api.writeTenant.mockImplementation(async (overrides) => {
+      policies.push(resolveSsfRuntimeContentV2({ tenant: { id: 'synthetic', displayName: 'Synthetic tenant', timeZone: 'Europe/Berlin' },
+        template: runtimeTemplate, overrides }).recording);
+      return { runtimeTemplate, overrides, supportedLanguages };
+    });
+    const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
+    render(<SsfTenantContentV2Page canManage />);
+    const verification = await screen.findByLabelText('v2.recording.verificationRequired') as HTMLInputElement;
+    expect(verification.checked).toBe(false);
+    for (const [key, value] of [['legalBasis', 'consent'], ['signature', 'off'], ['idCheck', 'optional'], ['recoveryMode', 'standard'],
+      ['timestampAuthorityUrl', 'https://tsa.example.org/tsr'], ['auditRetentionHours', '8760']]) {
+      fireEvent.change(screen.getByLabelText(`v2.recording.${key}`), { target: { value } });
+    }
+    fireEvent.click(screen.getByLabelText('v2.recording.enabled'));
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    await waitFor(() => expect(policies).toEqual([expect.objectContaining({ enabled: true, verificationRequired: false, retentionHours: 720 })]));
+    expect(verification.checked).toBe(false);
+    expect(api.writeTenant).toHaveBeenCalledWith(expect.objectContaining({ recording: expect.objectContaining({ verificationRequired: false }) }));
+  }, 15000);
+
+  it('saves an untouched unchecked installation verification choice as false', async () => {
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    runtimeTemplate['recording'] = { retentionHours: 720 };
+    api.readSystem.mockResolvedValue({ installation: null, runtimeTemplate, supportedLanguages });
+    api.writeSystem.mockResolvedValue({ installation: null, runtimeTemplate, supportedLanguages });
+    const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
+    render(<SsfSystemContentV2Page />);
+    expect((await screen.findByLabelText('v2.recording.verificationRequired') as HTMLInputElement).checked).toBe(false);
+    const save = screen.getAllByRole('button', { name: 'actions.save' })[1];
+    if (!save) throw new Error('missing_template_save');
+    fireEvent.click(save);
+    await waitFor(() => expect(api.writeSystem).toHaveBeenCalledWith({ installation: null,
+      runtimeTemplate: expect.objectContaining({ recording: { retentionHours: 720, verificationRequired: false } }),
+    }));
+  });
+
+  it.each([undefined, false])('keeps tenant enablement independent of a true installation value (%j)', async (enabled) => {
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    runtimeTemplate['recording'] = { enabled: true, legalBasis: 'consent', signature: 'off', idCheck: 'optional',
+      retentionHours: 720, verificationRequired: true, recoveryMode: 'standard',
+      timestampAuthorityUrl: 'https://tsa.example.org/tsr', auditRetentionHours: 8760 };
+    api.readTenant.mockResolvedValue({ runtimeTemplate, overrides: enabled === undefined ? {} : { recording: { enabled } }, supportedLanguages });
+    api.writeTenant.mockImplementation(async (overrides) => ({ runtimeTemplate, overrides, supportedLanguages }));
+    const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
+    render(<SsfTenantContentV2Page canManage />);
+    const checkbox = await screen.findByLabelText('v2.recording.enabled') as HTMLInputElement;
+    expect(checkbox.checked).toBe(false);
+    const control = checkbox.closest('div.space-y-2') ?? checkbox.parentElement;
+    if (!control) throw new Error('missing_enablement_control');
+    expect(within(control).queryByRole('button', { name: 'fields.inherit' })).toBeNull();
+    expect(within(control).queryByText('v2.inherited')).toBeNull();
+    expect(within(control).queryByText('v2.overridden')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    await waitFor(() => expect(api.writeTenant).toHaveBeenLastCalledWith({ recording: { enabled: false } }));
+    const currentCheckbox = screen.getByLabelText('v2.recording.enabled') as HTMLInputElement;
+    fireEvent.click(currentCheckbox);
+    expect(currentCheckbox.checked).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    await waitFor(() => expect(api.writeTenant).toHaveBeenLastCalledWith({ recording: { enabled: true } }));
+  });
+
   it('resets an explicit hourly tenant override and preserves explicit tenant enablement', async () => {
     const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
     runtimeTemplate['recording'] = { enabled: true, legalBasis: 'consent', signature: 'off', idCheck: 'optional',

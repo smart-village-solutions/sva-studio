@@ -68,7 +68,11 @@ const RecordingFields = (props: Props) => {
   const effectiveHours = settings.retentionHours ?? props.inherited?.recording?.retentionHours ?? 720;
   return <StudioSection title={pt('v2.recording.title')}>
     <p>{pt('v2.recording.notice')}</p>
-    {props.inherited ? <Field {...editor} path={['recording', 'enabled']} labelKey="v2.recording.enabled" kind="checkbox" /> : null}
+    {props.inherited ? <StudioField id="ssf-v2-recording-enabled" label={pt('v2.recording.enabled')}
+      error={props.errors?.['recording.enabled']}>
+      <Checkbox id="ssf-v2-recording-enabled" checked={settings.enabled === true} disabled={props.disabled}
+        onChange={(event) => set('enabled', event.currentTarget.checked)} />
+    </StudioField> : null}
     <StudioField id="ssf-v2-recording-retention" label={pt('v2.recording.retentionHours')}
       error={props.errors?.['recording.retentionHours']}>
       <Input id="ssf-v2-recording-retention" type="number" min={1} max={8760} step={1}

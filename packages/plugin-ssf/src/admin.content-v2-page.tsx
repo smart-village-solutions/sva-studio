@@ -75,14 +75,18 @@ const commitSection = async (
   | { kind: 'invalid'; issues: readonly { path: PropertyKey[] }[] }
   | { kind: 'saved'; next: SsfSystemContentV2View }
 > => {
+  const runtimeDraft = runtimeTemplate.recording ? {
+    ...runtimeTemplate, recording: { ...runtimeTemplate.recording,
+      verificationRequired: runtimeTemplate.recording.verificationRequired ?? false },
+  } : runtimeTemplate;
   const parsed =
     section === 'installation'
       ? ssfInstallationContentV2FieldsSchema.safeParse(installation)
-      : ssfRuntimeContentV2FieldsSchema.safeParse(runtimeTemplate);
+      : ssfRuntimeContentV2FieldsSchema.safeParse(runtimeDraft);
   if (!parsed.success) return { kind: 'invalid', issues: parsed.error.issues };
   const next = await writeSsfSystemContentV2({
     installation: section === 'installation' ? installation : null,
-    runtimeTemplate: section === 'runtimeTemplate' ? runtimeTemplate : null,
+    runtimeTemplate: section === 'runtimeTemplate' ? runtimeDraft : null,
   });
   return { kind: 'saved', next };
 };

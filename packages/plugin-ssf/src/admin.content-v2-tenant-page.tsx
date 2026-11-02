@@ -119,14 +119,18 @@ export const SsfTenantContentV2Page = ({ canManage }: { canManage: boolean }) =>
       setStatus('invalid');
       return;
     }
-    const parsed = ssfRuntimeContentV2FieldsSchema.safeParse(draft);
+    const candidate = draft.recording ? {
+      ...draft, recording: { ...draft.recording, verificationRequired:
+        draft.recording.verificationRequired ?? saved.runtimeTemplate.recording?.verificationRequired ?? false },
+    } : draft;
+    const parsed = ssfRuntimeContentV2FieldsSchema.safeParse(candidate);
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error.issues, pt('v2.invalid')));
       setStatus('invalid');
       return;
     }
     try {
-      resolveSsfRecordingPolicy(saved.runtimeTemplate.recording, draft.recording);
+      resolveSsfRecordingPolicy(saved.runtimeTemplate.recording, candidate.recording);
     } catch (error) {
       const issues = error instanceof Error && 'issues' in error
         ? (error as { issues: { path: PropertyKey[] }[] }).issues : [];
@@ -137,7 +141,7 @@ export const SsfTenantContentV2Page = ({ canManage }: { canManage: boolean }) =>
     setErrors({});
     setStatus('saving');
     try {
-      const overrides = diffSsfContentV2(saved.runtimeTemplate, draft);
+      const overrides = diffSsfContentV2(saved.runtimeTemplate, candidate);
       const next = await writeSsfTenantContentV2((overrides ?? {}) as Record<string, unknown>);
       setSaved(next);
       setDraft(draftFromView(next));

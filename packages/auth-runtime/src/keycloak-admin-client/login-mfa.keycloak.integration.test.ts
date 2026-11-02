@@ -282,6 +282,22 @@ describe.skipIf(!enabled)('tenant MFA real Keycloak/browser acceptance', () => {
     await enroll(newStaff);
     expect((await claims(newStaff, realm, verifier, 'studio-client')).acr).toBe('mfa');
 
+    // Simulate the existing administrator recovery operation after identity verification.
+    const staff = (await api<User[]>('GET', `${realm}/users?username=new-staff`))[0];
+    if (!staff) throw new Error('Disposable staff user not found');
+    const staffCredentials = await api<{ id: string; type: string }[]>(
+      'GET', `${realm}/users/${staff.id}/credentials`,
+    );
+    const lostFactor = staffCredentials.find((credential) => credential.type === 'otp');
+    if (!lostFactor) throw new Error('Disposable recovery factor not found');
+    await api('DELETE', `${realm}/users/${staff.id}/credentials/${lostFactor.id}`);
+    await api('PUT', `${realm}/users/${staff.id}`, { requiredActions: ['CONFIGURE_TOTP'] });
+    const recoveredStaff = await session('new-staff');
+    verifier = await authorize(recoveredStaff, realm, { client_id: 'studio-client' });
+    await enterPassword(recoveredStaff);
+    await enroll(recoveredStaff);
+    expect((await claims(recoveredStaff, realm, verifier, 'studio-client')).acr).toBe('mfa');
+
     const other = await session('ordinary');
     verifier = await authorize(other, realmB);
     await enterPassword(other);

@@ -256,5 +256,3 @@ export {
 
 export * from './instances/email-verification-template.js';
 export * from './instances/mail-template-sync.js';
-
-export { normalizeCompetenceLanguages } from './iam/competence-languages.js';

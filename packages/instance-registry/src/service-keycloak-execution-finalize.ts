@@ -1,3 +1,4 @@
+import { isLoginMfaAligned } from './provisioning-auth-status.js';
 import {
   areAllInstanceKeycloakRequirementsSatisfied,
   isInstanceTenantAdminRequired,
@@ -147,6 +148,57 @@ const readCompletionServiceAccess = (
 ): KeycloakReadState['tenantAdminServiceAccess'] =>
   input.tenantAdminClient?.clientId ? (state.tenantAdminServiceAccess ?? null) : undefined;
 
+const verifyCompletedLoginMfaPolicy = async (
+  deps: InstanceRegistryServiceDeps,
+  input: CompleteRunInput,
+  provisioningInput: KeycloakProvisioningInput,
+  state: KeycloakReadState,
+  finalRunStatus: 'succeeded' | 'failed'
+) => {
+  // Standard reconciliation replaces failed tenant evidence only for the exact
+  // revision and run observed under the existing instance provisioning lock.
+  if (finalRunStatus === 'succeeded' && state.loginMfa?.aligned) {
+    const verified = await deps.repository.verifyLoginMfaPolicy({
+      instanceId: provisioningInput.instanceId,
+      revision: provisioningInput.loginMfaRevision ?? 0,
+      mode: state.loginMfa.mode,
+      runId: input.loaded.instance.loginMfaRunId,
+      evidenceRunId: input.runId,
+    });
+    if (!verified) throw new Error('login_mfa_request_superseded');
+  }
+};
+
+const buildCompletionSteps = (
+  input: CompleteRunInput,
+  provisioningInput: KeycloakProvisioningInput,
+  state: KeycloakReadState,
+  status: KeycloakTenantStatus,
+  requireTenantAdmin: boolean,
+  realmBaselineApplicable: boolean
+) => {
+  const completionSteps = buildFinalRunSteps({
+    status,
+    intent: input.intent,
+    usedTemporaryPassword: Boolean(input.tenantAdminTemporaryPassword),
+    requireTenantAdmin,
+    requireRealmBaseline: realmBaselineApplicable,
+    tenantAdminServiceAccess: readCompletionServiceAccess(provisioningInput, state),
+  });
+
+  completionSteps.push({
+    stepKey: 'login_mfa',
+    title: 'Verify tenant login MFA',
+    summary: 'Provider flow, enrollment and ACR verification.',
+    ok: isLoginMfaAligned(state, provisioningInput.loginMfaMode),
+    details: {
+      desiredMode: provisioningInput.loginMfaMode,
+      aligned: state.loginMfa?.aligned ?? false,
+    },
+  });
+  return completionSteps;
+};
+
 export const completeRun = async (deps: InstanceRegistryServiceDeps, input: CompleteRunInput) => {
   const readKeycloakState = deps.readKeycloakStateViaProvisioner;
   if (!readKeycloakState) {
@@ -162,27 +214,14 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
   const provisioningRuns = await deps.repository.listProvisioningRuns(provisioningInput.instanceId);
   const realmBaselineApplicable = await loadRealmBaselineApplicability(deps, input.loaded.instance);
 
-  const completionSteps = buildFinalRunSteps({
+  const completionSteps = buildCompletionSteps(
+    input,
+    provisioningInput,
+    state,
     status,
-    intent: input.intent,
-    usedTemporaryPassword: Boolean(input.tenantAdminTemporaryPassword),
     requireTenantAdmin,
-    requireRealmBaseline: realmBaselineApplicable,
-    tenantAdminServiceAccess: readCompletionServiceAccess(provisioningInput, state),
-  });
-
-  completionSteps.push({
-    stepKey: 'login_mfa',
-    title: 'Verify tenant login MFA',
-    summary: 'Provider flow, enrollment and ACR verification.',
-    ok:
-      state.loginMfa?.aligned === true &&
-      state.loginMfa.mode === (provisioningInput.loginMfaMode ?? 'optional'),
-    details: {
-      desiredMode: provisioningInput.loginMfaMode,
-      aligned: state.loginMfa?.aligned ?? false,
-    },
-  });
+    realmBaselineApplicable
+  );
   const completionSatisfied = completionSteps.every((step) => step.ok);
   const finalRunStatus =
     completionSatisfied &&
@@ -197,18 +236,7 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
 
   assertParentProvisioningRunActive(provisioningRuns, input);
 
-  // Standard reconciliation replaces failed tenant evidence only for the exact
-  // revision and run observed under the existing instance provisioning lock.
-  if (finalRunStatus === 'succeeded' && state.loginMfa?.aligned) {
-    const verified = await deps.repository.verifyLoginMfaPolicy({
-      instanceId: provisioningInput.instanceId,
-      revision: provisioningInput.loginMfaRevision ?? 0,
-      mode: state.loginMfa.mode,
-      runId: input.loaded.instance.loginMfaRunId,
-      evidenceRunId: input.runId,
-    });
-    if (!verified) throw new Error('login_mfa_request_superseded');
-  }
+  await verifyCompletedLoginMfaPolicy(deps, input, provisioningInput, state, finalRunStatus);
 
   let snapshotInstance = input.loaded.instance;
 

@@ -1,133 +1,19 @@
 import { KeycloakPersonalMcpAccessOperations } from './personal-mcp-access.js';
 import { encodePathSegment as enc } from './helpers.js';
 
-type Mode = 'optional' | 'required';
-type Policy = { mode: Mode; clientIds: readonly string[] };
-type Flow = { id: string; alias: string; description?: string; topLevel?: boolean };
-type Entry = {
-  id: string;
-  displayName: string;
-  providerId?: string;
-  flowId?: string;
-  authenticationFlow?: boolean;
-  authenticationConfig?: string;
-  requirement: string;
-  priority: number;
-  level: number;
-};
-type Config = { id: string; alias: string; config: Record<string, string> };
-type Realm = { realm: string; browserFlow?: string; attributes?: Record<string, string> };
-type Client = {
-  id: string;
-  authenticationFlowBindingOverrides?: Record<string, string>;
-  attributes?: Record<string, string>;
-};
-type Spec = {
-  parent: string;
-  name: string;
-  provider?: string;
-  requirement: string;
-  priority: number;
-  config?: Record<string, string>;
-};
-const owner = 'Studio managed tenant login MFA v1';
-const rootFor = (mode: Mode) => `studio-login-mfa-v1-${mode}`;
-const loa = (level: number) => ({
-  'loa-condition-level': String(level),
-  'loa-max-age': level === 1 ? '36000' : '0',
-});
-const specsFor = (mode: Mode): Spec[] => {
-  const root = rootFor(mode);
-  const identity = `${root}-identity`,
-    login = `${root}-login`,
-    ordinary = `${root}-ordinary`,
-    stepup = `${root}-stepup`,
-    challenge = `${root}-challenge`;
-  return [
-    { parent: root, name: identity, requirement: 'CONDITIONAL', priority: 0 },
-    {
-      parent: identity,
-      name: 'Condition - Level of Authentication',
-      provider: 'conditional-level-of-authentication',
-      requirement: 'REQUIRED',
-      priority: 0,
-      config: loa(1),
-    },
-    { parent: identity, name: login, requirement: 'REQUIRED', priority: 10 },
-    {
-      parent: login,
-      name: 'Cookie',
-      provider: 'auth-cookie',
-      requirement: 'ALTERNATIVE',
-      priority: 0,
-    },
-    {
-      parent: login,
-      name: 'Username Password Form',
-      provider: 'auth-username-password-form',
-      requirement: 'ALTERNATIVE',
-      priority: 10,
-    },
-    {
-      parent: root,
-      name: ordinary,
-      requirement: mode === 'required' ? 'REQUIRED' : 'CONDITIONAL',
-      priority: 10,
-    },
-    ...(mode === 'optional'
-      ? [
-          {
-            parent: ordinary,
-            name: 'Condition - user configured',
-            provider: 'conditional-user-configured',
-            requirement: 'REQUIRED',
-            priority: 0,
-          },
-        ]
-      : []),
-    {
-      parent: ordinary,
-      name: 'OTP Form',
-      provider: 'auth-otp-form',
-      requirement: 'REQUIRED',
-      priority: 10,
-    },
-    { parent: root, name: stepup, requirement: 'CONDITIONAL', priority: 20 },
-    {
-      parent: stepup,
-      name: 'Condition - Level of Authentication',
-      provider: 'conditional-level-of-authentication',
-      requirement: 'REQUIRED',
-      priority: 0,
-      config: loa(2),
-    },
-    { parent: stepup, name: challenge, requirement: 'CONDITIONAL', priority: 10 },
-    // Keycloak considers a flow with only a disabled conditional child unsuccessful.
-    // This completion marker runs after the required challenge, or after current-request OTP.
-    {
-      parent: stepup,
-      name: 'Allow access',
-      provider: 'allow-access-authenticator',
-      requirement: 'REQUIRED',
-      priority: 20,
-    },
-    {
-      parent: challenge,
-      name: 'Condition - credential',
-      provider: 'conditional-credential',
-      requirement: 'REQUIRED',
-      priority: 0,
-      config: { credentials: 'otp', included: 'false' },
-    },
-    {
-      parent: challenge,
-      name: 'OTP Form',
-      provider: 'auth-otp-form',
-      requirement: 'REQUIRED',
-      priority: 10,
-    },
-  ];
-};
+import {
+  owner,
+  rootFor,
+  specsFor,
+  type Mode,
+  type Policy,
+  type Flow,
+  type Entry,
+  type Config,
+  type Realm,
+  type Client,
+  type Spec,
+} from './login-mfa-policy.js';
 
 /** Provisioner-only operations. Tenant IAM never invokes provider flow writes. */
 export class KeycloakLoginMfaOperations extends KeycloakPersonalMcpAccessOperations {
@@ -191,51 +77,7 @@ export class KeycloakLoginMfaOperations extends KeycloakPersonalMcpAccessOperati
         topLevel: true,
         builtIn: false,
       });
-    const specs = specsFor(input.mode);
-    for (const spec of specs) {
-      let entries = (await this.mfaEntries(spec.parent)).filter((entry) => entry.level === 0);
-      if (!entries.some((entry) => entry.displayName === spec.name)) {
-        await this.mfaRequest(
-          'POST',
-          `/authentication/flows/${enc(spec.parent)}/executions/${spec.provider ? 'execution' : 'flow'}`,
-          spec.provider
-            ? { provider: spec.provider }
-            : { alias: spec.name, type: 'basic-flow', provider: 'registration-page-form' }
-        );
-        entries = (await this.mfaEntries(spec.parent)).filter((entry) => entry.level === 0);
-      }
-      const matches = entries.filter((entry) => entry.displayName === spec.name);
-      if (
-        matches.length !== 1 ||
-        (spec.provider ? matches[0].providerId !== spec.provider : !matches[0].authenticationFlow)
-      )
-        throw new Error('login_mfa_execution_conflict');
-      const entry = matches[0];
-      if (entry.requirement !== spec.requirement || entry.priority !== spec.priority)
-        await this.mfaRequest('PUT', `/authentication/flows/${enc(spec.parent)}/executions`, {
-          id: entry.id,
-          requirement: spec.requirement,
-          priority: spec.priority,
-        });
-      if (spec.config) {
-        const previous = await this.mfaConfig(entry);
-        if (
-          !previous ||
-          Object.entries(spec.config).some(([key, value]) => previous.config[key] !== value)
-        )
-          await this.mfaRequest(
-            previous ? 'PUT' : 'POST',
-            previous
-              ? `/authentication/config/${enc(previous.id)}`
-              : `/authentication/executions/${enc(entry.id)}/config`,
-            {
-              ...(previous ? { id: previous.id } : {}),
-              alias: `${spec.parent}-${spec.provider}`,
-              config: spec.config,
-            }
-          );
-      }
-    }
+    for (const spec of specsFor(input.mode)) await this.ensureMfaExecution(spec);
     const actions = await this.mfaRequest<
       { alias: string; enabled: boolean; defaultAction: boolean }[]
     >('GET', '/authentication/required-actions');
@@ -286,6 +128,51 @@ export class KeycloakLoginMfaOperations extends KeycloakPersonalMcpAccessOperati
       throw new Error('login_mfa_readback_mismatch');
   }
 
+  private async ensureMfaExecution(spec: Spec): Promise<void> {
+    let entries = (await this.mfaEntries(spec.parent)).filter((entry) => entry.level === 0);
+    if (!entries.some((entry) => entry.displayName === spec.name)) {
+      await this.mfaRequest(
+        'POST',
+        `/authentication/flows/${enc(spec.parent)}/executions/${spec.provider ? 'execution' : 'flow'}`,
+        spec.provider
+          ? { provider: spec.provider }
+          : { alias: spec.name, type: 'basic-flow', provider: 'registration-page-form' }
+      );
+      entries = (await this.mfaEntries(spec.parent)).filter((entry) => entry.level === 0);
+    }
+    const matches = entries.filter((entry) => entry.displayName === spec.name);
+    if (
+      matches.length !== 1 ||
+      (spec.provider ? matches[0].providerId !== spec.provider : !matches[0].authenticationFlow)
+    )
+      throw new Error('login_mfa_execution_conflict');
+    const entry = matches[0];
+    if (entry.requirement !== spec.requirement || entry.priority !== spec.priority)
+      await this.mfaRequest('PUT', `/authentication/flows/${enc(spec.parent)}/executions`, {
+        id: entry.id,
+        requirement: spec.requirement,
+        priority: spec.priority,
+      });
+    if (spec.config) {
+      const previous = await this.mfaConfig(entry);
+      if (
+        !previous ||
+        Object.entries(spec.config).some(([key, value]) => previous.config[key] !== value)
+      )
+        await this.mfaRequest(
+          previous ? 'PUT' : 'POST',
+          previous
+            ? `/authentication/config/${enc(previous.id)}`
+            : `/authentication/executions/${enc(entry.id)}/config`,
+          {
+            ...(previous ? { id: previous.id } : {}),
+            alias: `${spec.parent}-${spec.provider}`,
+            config: spec.config,
+          }
+        );
+    }
+  }
+
   private async ensureProtocolMapperForLoginMfa(clientId: string): Promise<void> {
     const path = `/clients/${enc(clientId)}/protocol-mappers/models`;
     const mappers = await this.mfaRequest<
@@ -314,6 +201,58 @@ export class KeycloakLoginMfaOperations extends KeycloakPersonalMcpAccessOperati
       });
   }
 
+  private async isMfaExecutionTreeAligned(mode: Mode): Promise<boolean> {
+    const specs = specsFor(mode);
+    for (const parent of new Set(specs.map((spec) => spec.parent))) {
+      const entries = (await this.mfaEntries(parent)).filter((entry) => entry.level === 0);
+      const expected = specs.filter((spec) => spec.parent === parent);
+      if (entries.length !== expected.length) return false;
+      for (const spec of expected) {
+        const entry = entries.find((item) => item.displayName === spec.name);
+        if (
+          !entry ||
+          entry.requirement !== spec.requirement ||
+          entry.priority !== spec.priority ||
+          (spec.provider ? entry.providerId !== spec.provider : !entry.authenticationFlow)
+        )
+          return false;
+        if (spec.config) {
+          const config = await this.mfaConfig(entry);
+          if (
+            !config ||
+            Object.entries(spec.config).some(([key, value]) => config.config[key] !== value)
+          )
+            return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  private async isMfaClientAligned(client: Client, mode: Mode, flowId: string): Promise<boolean> {
+    if (client.attributes?.['default.acr.values'] !== (mode === 'required' ? 'mfa' : 'pwd'))
+      return false;
+    if (
+      client.authenticationFlowBindingOverrides?.browser &&
+      client.authenticationFlowBindingOverrides.browser !== flowId
+    )
+      return false;
+    const mappers = await this.mfaRequest<
+      { name: string; protocolMapper: string; config: Record<string, string> }[]
+    >('GET', `/clients/${enc(client.id)}/protocol-mappers/models`);
+    if (
+      !mappers.some(
+        (mapper) =>
+          mapper.name === 'studio-login-mfa-acr' &&
+          mapper.protocolMapper === 'oidc-acr-mapper' &&
+          mapper.config['access.token.claim'] === 'true' &&
+          mapper.config['id.token.claim'] === 'true'
+      )
+    )
+      return false;
+    return true;
+  }
+
   async readLoginMfaPolicy(input: Policy): Promise<{ aligned: boolean; mode: Mode }> {
     const { realm, flows, clients } = await this.inspectMfaBindings(input, true);
     const root = rootFor(input.mode),
@@ -323,30 +262,7 @@ export class KeycloakLoginMfaOperations extends KeycloakPersonalMcpAccessOperati
       return unaligned;
     const mapping = JSON.parse(realm.attributes?.['acr.loa.map'] ?? '{}') as Record<string, number>;
     if (mapping.pwd !== 1 || mapping.mfa !== 2) return unaligned;
-    const specs = specsFor(input.mode);
-    for (const parent of new Set(specs.map((spec) => spec.parent))) {
-      const entries = (await this.mfaEntries(parent)).filter((entry) => entry.level === 0);
-      const expected = specs.filter((spec) => spec.parent === parent);
-      if (entries.length !== expected.length) return unaligned;
-      for (const spec of expected) {
-        const entry = entries.find((item) => item.displayName === spec.name);
-        if (
-          !entry ||
-          entry.requirement !== spec.requirement ||
-          entry.priority !== spec.priority ||
-          (spec.provider ? entry.providerId !== spec.provider : !entry.authenticationFlow)
-        )
-          return unaligned;
-        if (spec.config) {
-          const config = await this.mfaConfig(entry);
-          if (
-            !config ||
-            Object.entries(spec.config).some(([key, value]) => config.config[key] !== value)
-          )
-            return unaligned;
-        }
-      }
-    }
+    if (!(await this.isMfaExecutionTreeAligned(input.mode))) return unaligned;
     const actions = await this.mfaRequest<
       { alias: string; enabled: boolean; defaultAction: boolean }[]
     >('GET', '/authentication/required-actions');
@@ -357,26 +273,7 @@ export class KeycloakLoginMfaOperations extends KeycloakPersonalMcpAccessOperati
     )
       return unaligned;
     for (const client of clients) {
-      if (client.attributes?.['default.acr.values'] !== (input.mode === 'required' ? 'mfa' : 'pwd'))
-        return unaligned;
-      if (
-        client.authenticationFlowBindingOverrides?.browser &&
-        client.authenticationFlowBindingOverrides.browser !== flow.id
-      )
-        return unaligned;
-      const mappers = await this.mfaRequest<
-        { name: string; protocolMapper: string; config: Record<string, string> }[]
-      >('GET', `/clients/${enc(client.id)}/protocol-mappers/models`);
-      if (
-        !mappers.some(
-          (mapper) =>
-            mapper.name === 'studio-login-mfa-acr' &&
-            mapper.protocolMapper === 'oidc-acr-mapper' &&
-            mapper.config['access.token.claim'] === 'true' &&
-            mapper.config['id.token.claim'] === 'true'
-        )
-      )
-        return unaligned;
+      if (!(await this.isMfaClientAligned(client, input.mode, flow.id))) return unaligned;
     }
     return { aligned: true, mode: input.mode };
   }

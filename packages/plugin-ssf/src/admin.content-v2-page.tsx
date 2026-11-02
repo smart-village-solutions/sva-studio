@@ -1,3 +1,4 @@
+import { SsfV2FormSummary } from './admin.content-v2-field-control.js';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
@@ -14,6 +15,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { readSsfSystemContentV2, writeSsfSystemContentV2, SsfRecordingPolicyConflictError } from './admin-api.js';
 import {
+  editableSystemContent,
   blankSsfInstallationV2,
   blankSsfRuntimeTemplateV2,
   SsfInstallationV2Editor,
@@ -35,28 +37,6 @@ const fieldErrors = (
   Object.fromEntries(issues.map((issue) => [issue.path.join('.'), message]));
 
 type Section = 'installation' | 'runtimeTemplate';
-const editableSystemContent = (saved: SsfSystemContentV2View) => {
-  const defaultLocale = saved.supportedLanguages?.admin_default;
-  const installation = saved.installation ?? blankSsfInstallationV2();
-  const runtimeTemplate = saved.runtimeTemplate ?? blankSsfRuntimeTemplateV2();
-  return {
-    installation:
-      saved.installation || !defaultLocale
-        ? installation
-        : {
-            ...installation,
-            localization: { ...installation.localization, locale: defaultLocale },
-          },
-    runtimeTemplate:
-      saved.runtimeTemplate || !defaultLocale
-        ? runtimeTemplate
-        : {
-            ...runtimeTemplate,
-            staff: { ...runtimeTemplate.staff, locale: defaultLocale },
-          },
-  };
-};
-
 const discardSection = (
   section: Section,
   saved: SsfSystemContentV2View,
@@ -131,15 +111,7 @@ const SystemContentSection = ({
       {saved[section] === null ? (
         <p className="text-sm text-muted-foreground">{pt('v2.notConfigured')}</p>
       ) : null}
-      {status === 'saved' ? (
-        <StudioFormSummary kind="success">{pt('status.saved')}</StudioFormSummary>
-      ) : null}
-      {status === 'invalid' ? (
-        <StudioFormSummary kind="error">{pt('v2.invalid')}</StudioFormSummary>
-      ) : null}
-      {status === 'error' ? (
-        <StudioFormSummary kind="error">{pt('status.saveError')}</StudioFormSummary>
-      ) : null}
+      <SsfV2FormSummary status={status} />
       {status === 'error' && section === 'runtimeTemplate' && affectedTenants.length > 0 ? (
         <StudioFormSummary kind="error">
           <p>{pt('v2.recording.affectedTenants')}</p>
@@ -180,7 +152,7 @@ const SystemContentSection = ({
   );
 };
 
-export const SsfSystemContentV2Page = () => {
+const useSystemContent = () => {
   const pt = usePluginTranslation('ssf');
   const [saved, setSaved] = useState<SsfSystemContentV2View | null>(null);
   const [installation, setInstallation] = useState<SsfInstallationContentV2Fields | null>(null);
@@ -229,6 +201,14 @@ export const SsfSystemContentV2Page = () => {
     setAffectedTenants([]);
     setStatus('ready');
   };
+  return { saved, installation, runtimeTemplate, status, errors, affectedTenants,
+    setInstallation, setRuntimeTemplate, load, save, discard };
+};
+
+export const SsfSystemContentV2Page = () => {
+  const pt = usePluginTranslation('ssf');
+  const { saved, installation, runtimeTemplate, status, errors, affectedTenants,
+    setInstallation, setRuntimeTemplate, load, save, discard } = useSystemContent();
   if (status === 'loading') return <StudioLoadingState>{pt('status.loading')}</StudioLoadingState>;
   if (!saved || !installation || !runtimeTemplate) {
     return (

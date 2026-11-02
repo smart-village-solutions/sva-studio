@@ -18,24 +18,6 @@ import type {
 
 import { patchJson, postJson, putJson, requestJson } from './iam-http-client';
 
-export type RootMainserverInterface = {
-  readonly instanceId: string;
-  readonly status: 'missing' | 'disabled' | 'configured' | 'error';
-  readonly errorCode?: string;
-  readonly config: {
-    readonly graphqlBaseUrl: string;
-    readonly oauthTokenUrl: string;
-    readonly enabled: boolean;
-  } | null;
-};
-
-export type RootMainserverInterfaceListEntry = Pick<
-  RootMainserverInterface,
-  'instanceId' | 'status' | 'errorCode'
-> & {
-  readonly displayName: string;
-};
-
 export const listRootMainserverInterfaces = () =>
   requestJson<{ data: { entries: RootMainserverInterfaceListEntry[] } }>(
     '/api/v1/iam/instances/mainserver-interfaces'
@@ -56,6 +38,8 @@ export const saveRootMainserverInterface = (
   );
 
 import type {
+  RootMainserverInterface,
+  RootMainserverInterfaceListEntry,
   CreateInstancePayload,
   InstancesQuery,
   UpdateInstancePayload,

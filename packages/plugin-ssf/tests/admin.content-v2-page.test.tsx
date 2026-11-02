@@ -121,6 +121,9 @@ describe('SSF V2 content administration', () => {
 
   it.each([undefined, false])('keeps tenant enablement independent of a true installation value (%j)', async (enabled) => {
     const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    // One valid guest language is sufficient for the recording enablement roundtrip.
+    const guestLanguages = runtimeTemplate['guestLanguages'];
+    if (Array.isArray(guestLanguages)) runtimeTemplate['guestLanguages'] = guestLanguages.slice(0, 1);
     runtimeTemplate['recording'] = { enabled: true, legalBasis: 'consent', signature: 'off', idCheck: 'optional',
       retentionHours: 720, verificationRequired: true, recoveryMode: 'standard',
       timestampAuthorityUrl: 'https://tsa.example.org/tsr', auditRetentionHours: 8760 };
@@ -135,12 +138,19 @@ describe('SSF V2 content administration', () => {
     expect(within(control).queryByRole('button', { name: 'fields.inherit' })).toBeNull();
     expect(within(control).queryByText('v2.inherited')).toBeNull();
     expect(within(control).queryByText('v2.overridden')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    const save = () => {
+      // Resolve the named button inside its action bar instead of computing
+      // accessible names for every button in the complete runtime editor twice.
+      const actionBar = screen.getByText('actions.save', { selector: 'button' }).parentElement;
+      if (!actionBar) throw new Error('missing_form_actions');
+      fireEvent.click(within(actionBar).getByRole('button', { name: 'actions.save' }));
+    };
+    save();
     await waitFor(() => expect(api.writeTenant).toHaveBeenLastCalledWith({ recording: { enabled: false } }));
     const currentCheckbox = screen.getByLabelText('v2.recording.enabled') as HTMLInputElement;
     fireEvent.click(currentCheckbox);
     expect(currentCheckbox.checked).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    save();
     await waitFor(() => expect(api.writeTenant).toHaveBeenLastCalledWith({ recording: { enabled: true } }));
   });
 

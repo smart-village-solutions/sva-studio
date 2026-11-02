@@ -85,25 +85,7 @@ export type ProvisioningPluginTenantLifecycleContract = Readonly<{
     repairOperation?: 'provision' | 'reconcile' | 'suspend' | 'reactivate';
   }>[];
 }>;
-type KeycloakProvisioningContext = {
-  loginMfaMode?: LoginMfaMode;
-  loginMfaRevision?: number;
-  instanceId: string;
-  primaryHostname: string;
-  realmMode: InstanceRealmMode;
-  authRealm: string;
-  authClientId: string;
-  authIssuerUrl?: string;
-  authClientSecretConfigured: boolean;
-  authClientSecret?: string;
-  tenantAdminClient?: {
-    clientId: string;
-    secretConfigured?: boolean;
-  };
-  tenantAdminClientSecret?: string;
-  tenantAdminBootstrap?: TenantAdminBootstrap;
-  pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
-};
+type KeycloakProvisioningContext = Omit<KeycloakProvisioningInput, 'allowLegacyRealmRoleMigration'>;
 type KeycloakPlanContext = KeycloakProvisioningContext & { realmBaselineApplicable?: boolean };
 export type InstanceRegistryService = {
   updateLoginMfaPolicy(input: {

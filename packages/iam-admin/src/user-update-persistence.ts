@@ -74,22 +74,7 @@ export const buildUpdatedUserParams = (
   userId: string,
   instanceId: string,
   keycloakSubject: string,
-  payload: {
-    readonly email?: string;
-    readonly displayName?: string;
-    readonly firstName?: string;
-    readonly lastName?: string;
-    readonly phone?: string;
-    readonly position?: string;
-    readonly department?: string;
-    readonly avatarUrl?: string;
-    readonly preferredLanguage?: string;
-    readonly competenceLanguages?: readonly string[];
-    readonly timezone?: string;
-    readonly status?: 'active' | 'inactive' | 'pending';
-    readonly notes?: string;
-    readonly isTechnicalAccount?: boolean;
-  }
+  payload: UpdateUserPersistencePayload
 ): readonly (string | boolean | readonly string[] | null)[] => [
   userId,
   instanceId,

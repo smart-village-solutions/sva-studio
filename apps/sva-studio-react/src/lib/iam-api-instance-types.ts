@@ -103,3 +103,21 @@ export type UpdateTenantLoginMfaPayload = {
   mode: LoginMfaMode;
   expectedRevision: number;
 };
+
+export type RootMainserverInterface = {
+  readonly instanceId: string;
+  readonly status: 'missing' | 'disabled' | 'configured' | 'error';
+  readonly errorCode?: string;
+  readonly config: {
+    readonly graphqlBaseUrl: string;
+    readonly oauthTokenUrl: string;
+    readonly enabled: boolean;
+  } | null;
+};
+
+export type RootMainserverInterfaceListEntry = Pick<
+  RootMainserverInterface,
+  'instanceId' | 'status' | 'errorCode'
+> & {
+  readonly displayName: string;
+};

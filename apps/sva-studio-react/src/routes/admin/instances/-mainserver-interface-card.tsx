@@ -1,3 +1,4 @@
+import type { RootMainserverInterface } from '../../../lib/iam-api-instance-types';
 import React from 'react';
 import { Button, Checkbox } from '@sva/studio-ui-react';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -8,7 +9,6 @@ import { Label } from '../../../components/ui/label';
 import {
   getRootMainserverInterface,
   saveRootMainserverInterface,
-  type RootMainserverInterface,
 } from '../../../lib/iam-api-instances';
 import { t } from '../../../i18n';
 

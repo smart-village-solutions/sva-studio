@@ -16,8 +16,6 @@ import {
 } from './content-v2-admin-contracts.js';
 import {
   SSF_RECORDING_PERMISSION_IDS,
-  SSF_RECORDING_DIRECTORY_ENDPOINT_PATH,
-  SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID,
   SSF_RUNTIME_ENDPOINT_PATH,
   SSF_RUNTIME_V2_ENDPOINT_PATH,
   SSF_RUNTIME_V2_SERVER_HANDLER_ID,
@@ -27,6 +25,9 @@ import {
   SSF_RUNTIME_SERVICE_ID,
 } from './constants.js';
 import { ssfPluginTranslations } from './plugin.translations.js';
+
+export const SSF_RECORDING_DIRECTORY_ENDPOINT_PATH = '/internal/plugins/ssf/v2/recording-directory' as const;
+export const SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID = 'ssf.recording-directory-v2' as const;
 
 const platformAccess = {
   kind: 'platform',

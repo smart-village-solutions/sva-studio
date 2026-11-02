@@ -6,28 +6,58 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 const logger = createSdkLogger({ component: 'keycloak-provisioning-failures', level: 'error' });
 
+const classifyLoginMfaError = (message: string): { reasonCode: string; safeSummary: string } => {
+  const reason = message.split(':')[0];
+  const summaries: Record<string, string> = {
+    login_mfa_binding_conflict:
+      'An administrator-managed authentication binding conflicts with the tenant MFA policy. No custom binding was replaced.',
+    login_mfa_request_superseded: 'A newer tenant authentication policy superseded this request.',
+    login_mfa_readback_mismatch:
+      'Keycloak authentication policy verification failed. The last verified policy is retained.',
+    login_mfa_provisioner_unavailable:
+      'The provisioner authentication policy operations are unavailable.',
+  };
+  return {
+    reasonCode: summaries[reason] ? reason.toUpperCase() : 'LOGIN_MFA_RECONCILIATION_FAILED',
+    safeSummary:
+      summaries[reason] ??
+      'Tenant MFA reconciliation failed. Inspect provisioner permissions and retry.',
+  };
+};
+
+const classifyDependencyError = (message: string): { reasonCode: string; safeSummary: string } => {
+  if (message.includes('Keycloak') || message.includes('keycloak')) {
+    return {
+      reasonCode: 'KEYCLOAK_EXECUTION_FAILED',
+      safeSummary: 'Provisioning bei externer Abhängigkeit (Keycloak) fehlgeschlagen.',
+    };
+  }
+  if (
+    message.includes('Postgres') ||
+    message.includes('postgres') ||
+    message.includes('database')
+  ) {
+    return {
+      reasonCode: 'DATABASE_EXECUTION_FAILED',
+      safeSummary: 'Provisioning bei Datenbankzugriff fehlgeschlagen.',
+    };
+  }
+  if (message.includes('timeout') || message.includes('Timeout')) {
+    return {
+      reasonCode: 'TIMEOUT_EXECUTION_FAILED',
+      safeSummary: 'Provisioning aufgrund von Timeout abgebrochen.',
+    };
+  }
+  return {
+    reasonCode: 'UNKNOWN_EXECUTION_FAILED',
+    safeSummary: 'Provisioning mit unbekanntem Fehler fehlgeschlagen.',
+  };
+};
+
 const classifyError = (error: unknown): { reasonCode: string; safeSummary: string } => {
   if (error instanceof Error) {
     const message = error.message || '';
-    if (message.startsWith('login_mfa_')) {
-      const reason = message.split(':')[0];
-      const summaries: Record<string, string> = {
-        login_mfa_binding_conflict:
-          'An administrator-managed authentication binding conflicts with the tenant MFA policy. No custom binding was replaced.',
-        login_mfa_request_superseded:
-          'A newer tenant authentication policy superseded this request.',
-        login_mfa_readback_mismatch:
-          'Keycloak authentication policy verification failed. The last verified policy is retained.',
-        login_mfa_provisioner_unavailable:
-          'The provisioner authentication policy operations are unavailable.',
-      };
-      return {
-        reasonCode: summaries[reason] ? reason.toUpperCase() : 'LOGIN_MFA_RECONCILIATION_FAILED',
-        safeSummary:
-          summaries[reason] ??
-          'Tenant MFA reconciliation failed. Inspect provisioner permissions and retry.',
-      };
-    }
+    if (message.startsWith('login_mfa_')) return classifyLoginMfaError(message);
 
     if (message.includes('plugin_oidc_client_reconciliation_failed_compensated_by_realm_cleanup')) {
       return {
@@ -84,34 +114,10 @@ const classifyError = (error: unknown): { reasonCode: string; safeSummary: strin
           'Der bestätigte Provisioning-Plan stimmt nicht mehr mit dem aktuellen Zustand überein. Prüfen und bestätigen Sie den Plan erneut.',
       };
     }
-    if (message.includes('Keycloak') || message.includes('keycloak')) {
-      return {
-        reasonCode: 'KEYCLOAK_EXECUTION_FAILED',
-        safeSummary: 'Provisioning bei externer Abhängigkeit (Keycloak) fehlgeschlagen.',
-      };
-    }
-    if (
-      message.includes('Postgres') ||
-      message.includes('postgres') ||
-      message.includes('database')
-    ) {
-      return {
-        reasonCode: 'DATABASE_EXECUTION_FAILED',
-        safeSummary: 'Provisioning bei Datenbankzugriff fehlgeschlagen.',
-      };
-    }
-    if (message.includes('timeout') || message.includes('Timeout')) {
-      return {
-        reasonCode: 'TIMEOUT_EXECUTION_FAILED',
-        safeSummary: 'Provisioning aufgrund von Timeout abgebrochen.',
-      };
-    }
+    return classifyDependencyError(message);
   }
 
-  return {
-    reasonCode: 'UNKNOWN_EXECUTION_FAILED',
-    safeSummary: 'Provisioning mit unbekanntem Fehler fehlgeschlagen.',
-  };
+  return classifyDependencyError('');
 };
 
 export const failRun = async (

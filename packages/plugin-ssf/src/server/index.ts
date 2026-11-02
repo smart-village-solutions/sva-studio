@@ -1,10 +1,10 @@
+import { SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID } from '../descriptor.js';
 import type {
   PluginServerExecutionHandler,
   PluginServerHandlerModuleFactory,
 } from '@sva/plugin-sdk';
 
 import {
-  SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID,
   SSF_RUNTIME_SERVER_HANDLER_ID,
   SSF_RUNTIME_V2_SERVER_HANDLER_ID,
 } from '../constants.js';

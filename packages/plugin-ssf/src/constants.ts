@@ -30,8 +30,6 @@ export const SSF_RUNTIME_ERROR_CODES = [
 
 export type SsfRuntimeErrorCode = (typeof SSF_RUNTIME_ERROR_CODES)[number];
 
-export const SSF_RECORDING_DIRECTORY_ENDPOINT_PATH = '/internal/plugins/ssf/v2/recording-directory' as const;
-export const SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID = 'ssf.recording-directory-v2' as const;
 export const SSF_RECORDING_PERMISSION_IDS = [
   'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
   'ssf.recording.supervise', 'ssf.recording.recovery.custodian',

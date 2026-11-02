@@ -87,29 +87,37 @@ export const createUpdateLoginMfaPolicy =
     } satisfies TenantLoginMfaPolicyView;
   };
 
+const readCurrentLoginMfaRequest = async (
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceKeycloakProvisioningRun
+) => {
+  const queued = run.steps.find((step) => step.stepKey === 'queued')?.details;
+  const instance = await deps.repository.getInstanceById(run.instanceId);
+  const mode = queued?.loginMfaMode;
+  const revision = queued?.loginMfaRevision;
+  if (
+    !instance ||
+    instance.loginMfaRunId !== run.id ||
+    instance.loginMfaRevision !== revision ||
+    instance.loginMfaPolicy?.desiredMode !== mode
+  )
+    throw new Error('login_mfa_request_superseded');
+  if (
+    (mode !== 'optional' && mode !== 'required') ||
+    typeof revision !== 'number' ||
+    !Array.isArray(queued?.clientIds) ||
+    !queued.clientIds.every((id) => typeof id === 'string')
+  )
+    throw new Error('login_mfa_queue_invalid');
+  return { queued, instance, mode, revision } as const;
+};
+
 export const processLoginMfaRun = async (
   deps: InstanceRegistryServiceDeps,
   run: InstanceKeycloakProvisioningRun
 ) => {
   try {
-    const queued = run.steps.find((step) => step.stepKey === 'queued')?.details;
-    const instance = await deps.repository.getInstanceById(run.instanceId);
-    const mode = queued?.loginMfaMode;
-    const revision = queued?.loginMfaRevision;
-    if (
-      !instance ||
-      instance.loginMfaRunId !== run.id ||
-      instance.loginMfaRevision !== revision ||
-      instance.loginMfaPolicy?.desiredMode !== mode
-    )
-      throw new Error('login_mfa_request_superseded');
-    if (
-      (mode !== 'optional' && mode !== 'required') ||
-      typeof revision !== 'number' ||
-      !Array.isArray(queued?.clientIds) ||
-      !queued.clientIds.every((id) => typeof id === 'string')
-    )
-      throw new Error('login_mfa_queue_invalid');
+    const { queued, instance, mode, revision } = await readCurrentLoginMfaRequest(deps, run);
     if (!deps.reconcileLoginMfa) throw new Error('login_mfa_provisioner_unavailable');
     const state = await deps.reconcileLoginMfa({
       authRealm: instance.authRealm,

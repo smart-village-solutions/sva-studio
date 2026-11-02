@@ -55,6 +55,19 @@ const StaffFields = (props: Props) => {
   </StudioSection>;
 };
 
+const RecordingRetentionStatus = (props: Props) => {
+  const pt = usePluginTranslation('ssf');
+  const settings = props.value.recording ?? {};
+  const set = (key: string, next: unknown) => props.onChange({ ...props.value, recording: { ...settings, [key]: next } });
+  const effectiveHours = settings.retentionHours ?? props.inherited?.recording?.retentionHours ?? 720;
+  return <>
+    <p role="status">{pt('v2.recording.effectiveRetention')}: {effectiveHours}</p>
+    <p>{pt(props.inherited ? settings.retentionHours == null ? 'v2.inherited' : 'v2.overridden' : 'v2.recording.installationDefault')}</p>
+    {props.inherited ? <Button type="button" variant="tertiary" disabled={props.disabled}
+      onClick={() => set('retentionHours', null)}>{pt('v2.recording.resetRetention')}</Button> : null}
+  </>;
+};
+
 const RecordingFields = (props: Props) => {
   const pt = usePluginTranslation('ssf');
   const settings = props.value.recording ?? {};
@@ -65,7 +78,6 @@ const RecordingFields = (props: Props) => {
     legalBasis: ['consent', 'statutory'], signature: ['off', 'optional', 'required'],
     idCheck: ['off', 'optional', 'required'], recoveryMode: ['standard', 'enhanced'],
   } as const;
-  const effectiveHours = settings.retentionHours ?? props.inherited?.recording?.retentionHours ?? 720;
   return <StudioSection title={pt('v2.recording.title')}>
     <p>{pt('v2.recording.notice')}</p>
     {props.inherited ? <StudioField id="ssf-v2-recording-enabled" label={pt('v2.recording.enabled')}
@@ -79,10 +91,7 @@ const RecordingFields = (props: Props) => {
         disabled={props.disabled} value={settings.retentionHours ?? ''}
         onChange={(event) => set('retentionHours', event.currentTarget.value === '' ? null : Number(event.currentTarget.value))} />
     </StudioField>
-    <p role="status">{pt('v2.recording.effectiveRetention')}: {effectiveHours}</p>
-    <p>{pt(props.inherited ? settings.retentionHours == null ? 'v2.inherited' : 'v2.overridden' : 'v2.recording.installationDefault')}</p>
-    {props.inherited ? <Button type="button" variant="tertiary" disabled={props.disabled}
-      onClick={() => set('retentionHours', null)}>{pt('v2.recording.resetRetention')}</Button> : null}
+    <RecordingRetentionStatus {...props} />
     {Object.entries(choices).map(([key, options]) => <StudioField key={key} id={`ssf-v2-recording-${key}`} label={pt(`v2.recording.${key}`)}>
       <Select id={`ssf-v2-recording-${key}`} disabled={props.disabled} value={settings[key as keyof typeof choices] ?? ''}
         onChange={(event) => set(key, event.currentTarget.value || undefined)}>

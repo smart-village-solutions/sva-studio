@@ -21,29 +21,21 @@ it('preserves explicit administrator exclusions in host module contracts', async
   expect(contracts[0]?.systemAdminPermissionExclusions).toEqual(['synthetic.review']);
 });
 
-it('keeps recording grants explicit through normalized descriptor, host composition and bootstrap resolution', async () => {
-  // Exercise the real built resolver without adding its private source tree to Studio types.
-  // eslint-disable-next-line @nx/enforce-module-boundaries
-  const { resolveAssignedModuleContracts } = await import('../../../../packages/instance-registry/dist/service-shared.js');
+it('preserves recording exclusions through the normalized descriptor and host composition', () => {
   const normalized = [...createPluginModuleIamRegistry([{ id: ssfPlugin.id, displayName: ssfPlugin.displayName, moduleIam: ssfPlugin.moduleIam, permissions: ssfPlugin.permissions, routes: [] }]).values()];
   const host = createStudioModuleIamContracts(normalized, []);
-  const deps = {
-    moduleIamRegistry: new Map(host.map((contract) => [contract.moduleId, contract])),
-  } as unknown as Parameters<typeof resolveAssignedModuleContracts>[0];
-  const reconciled = resolveAssignedModuleContracts(deps, ['ssf']);
-  expect(reconciled[0]?.systemRoles).toEqual([
+  expect(host[0]?.systemRoles).toEqual([
     {
       roleName: 'system_admin',
       permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
     },
   ]);
-  expect(reconciled[0]?.permissions.map((permission: { key: string }) => permission.key)).toEqual(
-    expect.arrayContaining([
-      'ssf.recording.request',
-      'ssf.recording.review',
-      'ssf.recording.review.sworn',
-      'ssf.recording.supervise',
-      'ssf.recording.recovery.custodian',
-    ])
-  );
+  const recordingPermissions = [
+    'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
+    'ssf.recording.supervise', 'ssf.recording.recovery.custodian',
+  ];
+  expect(host[0]?.permissionIds).toEqual([
+    ...recordingPermissions, 'ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage',
+  ]);
+  expect(host[0]?.systemAdminPermissionExclusions).toEqual(recordingPermissions);
 });

@@ -119,9 +119,7 @@ export const buildKeycloakStatus = (
     tenantAdminClientSecretReadable: Boolean(input.tenantAdminClientSecret),
     tenantAdminClientSecretAligned,
     runtimeSecretSource: input.authClientSecret ? 'tenant' : 'global',
-    loginMfaAligned:
-      input.state.loginMfa?.aligned === true &&
-      input.state.loginMfa.mode === (input.loginMfaMode ?? 'optional'),
+    loginMfaAligned: isLoginMfaAligned(input.state, input.loginMfaMode),
     realmBaselineAligned: input.state.realmBaselineAligned,
     userProfileBaselineAligned: input.state.userProfileBaselineAligned,
     instanceIdMapperAligned: isOwnedInstanceIdMapperAligned(input.state, loginClientOwned),
@@ -143,3 +141,6 @@ const isOwnedInstanceIdMapperAligned = (
   state: KeycloakReadState,
   loginClientOwned: boolean
 ): boolean => loginClientOwned && (state.protocolMappers ?? []).some(isInstanceIdMapperAligned);
+
+export const isLoginMfaAligned = (state: KeycloakReadState, mode: KeycloakProvisioningInput['loginMfaMode']): boolean =>
+  state.loginMfa?.aligned === true && state.loginMfa.mode === (mode ?? 'optional');

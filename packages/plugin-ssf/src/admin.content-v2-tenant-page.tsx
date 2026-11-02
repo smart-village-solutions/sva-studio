@@ -1,9 +1,9 @@
+import { SsfV2FormSummary } from './admin.content-v2-field-control.js';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
   StudioErrorState,
   StudioFormActionBar,
-  StudioFormSummary,
   StudioLoadingState,
   StudioSection,
 } from '@sva/studio-ui-react';
@@ -37,6 +37,25 @@ const draftFromView = (view: SsfTenantContentV2View): SsfRuntimeContentV2Fields 
   return fields;
 };
 
+const validateTenantDraft = (draft: SsfRuntimeContentV2Fields, template: SsfRuntimeContentV2Fields):
+  | { valid: true; candidate: SsfRuntimeContentV2Fields }
+  | { valid: false; issues: { path: PropertyKey[] }[] } => {
+  const candidate = draft.recording ? {
+    ...draft, recording: { ...draft.recording, verificationRequired:
+      draft.recording.verificationRequired ?? template.recording?.verificationRequired ?? false },
+  } : draft;
+  const parsed = ssfRuntimeContentV2FieldsSchema.safeParse(candidate);
+  if (!parsed.success) return { valid: false, issues: parsed.error.issues };
+  try {
+    resolveSsfRecordingPolicy(template.recording, candidate.recording);
+    return { valid: true, candidate };
+  } catch (error) {
+    const issues = error instanceof Error && 'issues' in error
+      ? (error as { issues: { path: PropertyKey[] }[] }).issues : [];
+    return { valid: false, issues: issues.map((issue) => ({ path: ['recording', ...issue.path] })) };
+  }
+};
+
 const TenantEditor = ({
   saved,
   draft,
@@ -59,15 +78,7 @@ const TenantEditor = ({
   const pt = usePluginTranslation('ssf');
   return (
     <div className="space-y-5">
-      {status === 'saved' ? (
-        <StudioFormSummary kind="success">{pt('status.saved')}</StudioFormSummary>
-      ) : null}
-      {status === 'invalid' ? (
-        <StudioFormSummary kind="error">{pt('v2.invalid')}</StudioFormSummary>
-      ) : null}
-      {status === 'error' ? (
-        <StudioFormSummary kind="error">{pt('status.saveError')}</StudioFormSummary>
-      ) : null}
+      <SsfV2FormSummary status={status} />
       <SsfRuntimeV2Editor
         value={draft}
         inherited={saved.runtimeTemplate}
@@ -119,25 +130,13 @@ export const SsfTenantContentV2Page = ({ canManage }: { canManage: boolean }) =>
       setStatus('invalid');
       return;
     }
-    const candidate = draft.recording ? {
-      ...draft, recording: { ...draft.recording, verificationRequired:
-        draft.recording.verificationRequired ?? saved.runtimeTemplate.recording?.verificationRequired ?? false },
-    } : draft;
-    const parsed = ssfRuntimeContentV2FieldsSchema.safeParse(candidate);
-    if (!parsed.success) {
-      setErrors(fieldErrors(parsed.error.issues, pt('v2.invalid')));
+    const validation = validateTenantDraft(draft, saved.runtimeTemplate);
+    if (!validation.valid) {
+      setErrors(fieldErrors(validation.issues, pt('v2.invalid')));
       setStatus('invalid');
       return;
     }
-    try {
-      resolveSsfRecordingPolicy(saved.runtimeTemplate.recording, candidate.recording);
-    } catch (error) {
-      const issues = error instanceof Error && 'issues' in error
-        ? (error as { issues: { path: PropertyKey[] }[] }).issues : [];
-      setErrors(fieldErrors(issues.map((issue) => ({ path: ['recording', ...issue.path] })), pt('v2.invalid')));
-      setStatus('invalid');
-      return;
-    }
+    const { candidate } = validation;
     setErrors({});
     setStatus('saving');
     try {

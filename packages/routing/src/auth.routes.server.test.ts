@@ -128,6 +128,8 @@ const authServerMocks = vi.hoisted(() => {
     syncUsersFromKeycloakHandler: vi.fn(async () => response('syncUsersFromKeycloakHandler')),
     getMyProfileHandler: vi.fn(async () => response('getMyProfileHandler')),
     updateMyProfileHandler: vi.fn(async () => response('updateMyProfileHandler')),
+    getTenantLoginMfaHandler: vi.fn(async () => response('getTenantLoginMfaHandler')),
+    updateTenantLoginMfaHandler: vi.fn(async () => response('updateTenantLoginMfaHandler')),
     getTenantInvitationTemplateHandler: vi.fn(async () =>
       response('getTenantInvitationTemplateHandler')
     ),
@@ -471,6 +473,18 @@ describe('auth.routes.server', () => {
     const url='https://studio.example/api/v1/iam/templates/email-verification';
     await handlers.GET?.({request:new Request(url)});await handlers.PATCH?.({request:new Request(url,{method:'PATCH'})});
     expect(authServerMocks.instanceRegistryHandlers.serverEmailVerificationTemplate).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ['GET', 'getTenantLoginMfaHandler'],
+    ['PATCH', 'updateTenantLoginMfaHandler'],
+  ] as const)('dispatches tenant MFA %s to its authenticated handler', async (method, handler) => {
+    const response = await dispatchAuthRouteRequest(
+      new Request('http://localhost/api/v1/iam/users/me/authentication-policy', { method })
+    );
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toEqual({ name: handler });
+    expect(authServerMocks[handler]).toHaveBeenCalledTimes(1);
   });
 
   it('resolves handlers for all declared auth paths', () => {

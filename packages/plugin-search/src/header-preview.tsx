@@ -13,7 +13,7 @@ export const SearchHeaderPreview = ({ label }: { readonly label: string }) => (
       readOnly
       disabled
       aria-label={label}
-      className="h-11 rounded-full border-border bg-[rgb(var(--waste-panel-surface))] pl-11 pr-11 text-sm text-muted-foreground disabled:bg-[rgb(var(--waste-panel-surface))] disabled:text-muted-foreground disabled:opacity-100"
+      className="h-11 rounded-full border-border bg-surface-inset pl-11 pr-11 text-sm text-muted-foreground disabled:bg-surface-inset disabled:text-muted-foreground disabled:opacity-100"
     />
     <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-muted-foreground">
       <SendHorizontal className="h-4 w-4" />

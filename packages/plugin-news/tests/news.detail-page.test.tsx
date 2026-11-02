@@ -15,11 +15,14 @@ import {
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
 
+import { ContentMediaSaveError } from '@sva/plugin-sdk/content-media';
 import { StudioEditorLeaveGuardProvider } from '@sva/studio-ui-react';
 import {
   deleteNews,
   getNewsDetail,
+  getNewsSaveOperation,
   listNewsCategories,
+  NewsApiError,
   saveNewsEditorItem,
 } from '../src/news.api.js';
 import { pluginNewsTranslations } from '../src/plugin.translations.js';
@@ -93,6 +96,7 @@ vi.mock('../src/news.api.js', async () => {
     createNews: vi.fn(),
     deleteNews: vi.fn(),
     getNewsDetail: vi.fn(),
+    getNewsSaveOperation: vi.fn(),
     saveNewsEditorItem: vi.fn(),
     updateNewsPartial: vi.fn(),
   };
@@ -101,6 +105,8 @@ vi.mock('../src/news.api.js', async () => {
 describe('NewsDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(saveNewsEditorItem).mockReset();
+    vi.mocked(getNewsSaveOperation).mockReset();
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
     publishSessionAccessSnapshot({
       isResolved: true,
@@ -125,7 +131,7 @@ describe('NewsDetailPage', () => {
       assignedModules: ['news'],
       roles: [],
     });
-    navigateMock.mockReset();
+    navigateMock.mockReset().mockResolvedValue(undefined);
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
         'news.create.actions.draft': 'Entwurf anlegen',
@@ -268,9 +274,15 @@ describe('NewsDetailPage', () => {
         );
       return (
         labels[key] ??
-        (key.startsWith('news.create.') && typeof resource === 'string' ? resource : key)
+        ((key.startsWith('news.create.') ||
+          key === 'news.actions.checkSaveOutcome' ||
+          key.startsWith('news.messages.save')) &&
+        typeof resource === 'string'
+          ? resource
+          : key)
       );
     });
+    vi.mocked(getNewsDetail).mockReset();
     vi.mocked(listNewsCategories).mockResolvedValue([]);
     vi.mocked(getHostMediaAsset).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([]);
@@ -525,12 +537,15 @@ describe('NewsDetailPage', () => {
   });
 
   it('keeps a selected upload local until the news item is saved', async () => {
-    let check = () => false;
+    const checkers = new Set<() => boolean>();
+    const check = () => Array.from(checkers).some((checker) => checker());
     render(
       <StudioEditorLeaveGuardProvider
         register={(next) => {
-          check = next;
-          return () => undefined;
+          checkers.add(next);
+          return () => {
+            checkers.delete(next);
+          };
         }}
       >
         <NewsDetailPage mode="create" />
@@ -540,7 +555,7 @@ describe('NewsDetailPage', () => {
     await screen.findByLabelText('Inhalt');
     expect(check()).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
-    expect(check()).toBe(false);
+    expect(check()).toBe(true);
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: {
         files: [new File(['image'], 'uploaded.jpg', { type: 'image/jpeg' })],
@@ -597,6 +612,269 @@ describe('NewsDetailPage', () => {
     expect(vi.mocked(saveNewsEditorItem)).toHaveBeenCalledTimes(1);
   });
 
+  it('checks a lost create result without a second content mutation and preserves the latest draft', async () => {
+    vi.mocked(saveNewsEditorItem).mockRejectedValueOnce(new TypeError('lost reply'));
+    vi.mocked(getNewsSaveOperation)
+      .mockResolvedValueOnce({ outcome: 'unknown' })
+      .mockResolvedValueOnce({ outcome: 'succeeded', contentId: 'recovered-1' });
+    vi.mocked(getNewsDetail).mockResolvedValueOnce({
+      data: {
+        id: 'recovered-1',
+        title: 'Submitted',
+        contentType: 'news.article',
+        payload: {},
+        status: 'draft',
+        author: 'Editor',
+        createdAt: '',
+        updatedAt: '',
+      },
+      access: {},
+      deviations: [],
+    });
+    render(<NewsDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Submitted' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entwurf anlegen' }));
+    const check = await screen.findByRole('button', {
+      name: pluginNewsTranslations.de.news.actions.checkSaveOutcome,
+    });
+    fireEvent.change(screen.getByLabelText('Titel'), {
+      target: { value: 'Changed after submission' },
+    });
+    fireEvent.submit(screen.getByLabelText('Titel').closest('form')!);
+    fireEvent.click(check);
+    await waitFor(() => expect(getNewsSaveOperation).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('button', { name: 'Entwurf anlegen' })).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', { name: pluginNewsTranslations.de.news.actions.checkSaveOutcome })
+    );
+    await screen.findByText(pluginNewsTranslations.de.news.messages.saveRecovered);
+    expect(saveNewsEditorItem).toHaveBeenCalledTimes(1);
+    const submitted = vi.mocked(saveNewsEditorItem).mock.calls[0]?.[0];
+    expect(submitted?.mutationOptions?.operationId).toBeTruthy();
+    expect(submitted?.mutationOptions?.idempotencyKey).toBe(
+      submitted?.mutationOptions?.operationId
+    );
+    expect(getNewsSaveOperation).toHaveBeenLastCalledWith(
+      submitted?.mutationOptions?.operationId,
+      'user'
+    );
+    expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe(
+      'Changed after submission'
+    );
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('retries only recovered media references without repeating the content mutation', async () => {
+    vi.mocked(saveNewsEditorItem).mockRejectedValueOnce(
+      new ContentMediaSaveError(
+        'outcome_unknown',
+        'media-operation-1',
+        new TypeError('lost reply'),
+        []
+      )
+    );
+    vi.mocked(getNewsSaveOperation).mockResolvedValueOnce({
+      outcome: 'succeeded',
+      contentId: 'media-recovered-1',
+    });
+    vi.mocked(getNewsDetail).mockResolvedValue({
+      data: {
+        id: 'media-recovered-1',
+        title: 'Submitted',
+        contentType: 'news.article',
+        payload: {},
+        status: 'draft',
+        author: 'Editor',
+        createdAt: '',
+        updatedAt: '',
+      },
+      access: { 'news.update': true, 'content.changeStatus': true },
+      deviations: [],
+    });
+    const originalFetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'fetch');
+    let commits = 0;
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL) => {
+        calls.push(String(url));
+        if (String(url).endsWith('/commit') && ++commits === 1)
+          return Response.json({ error: 'unavailable' }, { status: 503 });
+        return Response.json({ data: {} });
+      })
+    );
+    try {
+      render(<NewsDetailPage mode="edit" contentId="media-recovered-1" />);
+      fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Submitted' } });
+      fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[0]!);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: pluginNewsTranslations.de.news.actions.checkSaveOutcome,
+        })
+      );
+      const retry = await screen.findByRole('button', {
+        name: 'news.actions.retryMediaReferences',
+      });
+      fireEvent.change(screen.getByLabelText('Titel'), {
+        target: { value: 'New input before reference retry' },
+      });
+      fireEvent.click(retry);
+      await waitFor(() => expect(commits).toBe(2));
+      expect(saveNewsEditorItem).toHaveBeenCalledOnce();
+      expect(screen.queryByRole('button', { name: 'news.actions.saved' })).toBeNull();
+      expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe(
+        'New input before reference retry'
+      );
+      expect(calls).toEqual([
+        '/api/v1/iam/media/content-save-operations/media-operation-1/content-saved',
+        '/api/v1/iam/media/content-save-operations/media-operation-1/commit',
+        '/api/v1/iam/media/content-save-operations/media-operation-1/content-saved',
+        '/api/v1/iam/media/content-save-operations/media-operation-1/commit',
+      ]);
+    } finally {
+      if (originalFetchDescriptor)
+        Object.defineProperty(globalThis, 'fetch', originalFetchDescriptor);
+    }
+  });
+
+  it('keeps an uncertain save locked after a failed check and unlocks only a confirmed unapplied attempt', async () => {
+    vi.mocked(saveNewsEditorItem).mockRejectedValueOnce(new TypeError('lost reply'));
+    vi.mocked(getNewsSaveOperation)
+      .mockRejectedValueOnce(
+        Object.assign(new Error('status unavailable'), { requestId: 'check-123' })
+      )
+      .mockResolvedValueOnce({ outcome: 'not_applied' });
+    render(<NewsDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Submitted' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entwurf anlegen' }));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: pluginNewsTranslations.de.news.actions.checkSaveOutcome,
+      })
+    );
+    await screen.findByText(pluginNewsTranslations.de.news.messages.saveOutcomeCheckFailed);
+    expect(screen.getByText('check-123')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Entwurf anlegen' })).toBeNull();
+    const form = screen.getByLabelText('Titel').closest('form');
+    if (!form) throw new Error('Expected news editor form');
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+    expect(saveNewsEditorItem).toHaveBeenCalledOnce();
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Retained draft' } });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: pluginNewsTranslations.de.news.actions.checkSaveOutcome,
+      })
+    );
+    await screen.findByText(pluginNewsTranslations.de.news.messages.saveNotApplied);
+    expect(screen.getByRole('button', { name: 'Entwurf anlegen' })).toBeTruthy();
+    expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe('Retained draft');
+    expect(saveNewsEditorItem).toHaveBeenCalledOnce();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['cleanup_pending', 'outcome_unknown'] as const)(
+    'abandons only the original media operation after %s is safely recoverable',
+    async (status) => {
+      vi.mocked(saveNewsEditorItem).mockRejectedValueOnce(
+        new ContentMediaSaveError(status, 'media-rejected-1', new TypeError('lost reply'))
+      );
+      vi.mocked(getNewsSaveOperation).mockReset().mockResolvedValue({ outcome: 'not_applied' });
+      const originalFetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'fetch');
+      const fetch = vi.fn(async () => Response.json({ data: {} }));
+      vi.stubGlobal('fetch', fetch);
+      try {
+        render(<NewsDetailPage mode="create" />);
+        fireEvent.change(await screen.findByLabelText('Titel'), {
+          target: { value: 'With local media' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Entwurf anlegen' }));
+        fireEvent.click(
+          await screen.findByRole('button', {
+            name: pluginNewsTranslations.de.news.actions.checkSaveOutcome,
+          })
+        );
+        await screen.findByText(pluginNewsTranslations.de.news.messages.saveNotApplied);
+        expect(fetch).toHaveBeenCalledOnce();
+        expect(fetch).toHaveBeenCalledWith(
+          '/api/v1/iam/media/content-save-operations/media-rejected-1/abandon',
+          expect.objectContaining({ method: 'POST' })
+        );
+        expect(getNewsSaveOperation).toHaveBeenCalledTimes(status === 'cleanup_pending' ? 0 : 1);
+        expect(saveNewsEditorItem).toHaveBeenCalledOnce();
+        expect(screen.getByRole('button', { name: 'Entwurf anlegen' })).toBeTruthy();
+        expect(navigateMock).not.toHaveBeenCalled();
+      } finally {
+        if (originalFetchDescriptor)
+          Object.defineProperty(globalThis, 'fetch', originalFetchDescriptor);
+      }
+    }
+  );
+
+  it('reloads a rejected stale context while retaining the current dirty editor draft', async () => {
+    const item = {
+      id: 'stale-news-1',
+      title: 'Server title',
+      contentType: 'news.article',
+      payload: {},
+      status: 'draft' as const,
+      author: 'Editor',
+      createdAt: '',
+      updatedAt: '',
+    };
+    vi.mocked(getNewsDetail).mockResolvedValue({
+      data: item,
+      access: { 'news.update': true, 'content.changeStatus': true },
+      deviations: [],
+    });
+    vi.mocked(saveNewsEditorItem).mockRejectedValueOnce(
+      Object.assign(new NewsApiError('stale_mainserver_context'), {
+        mutationOutcome: 'not_applied',
+      })
+    );
+    const refreshContext = vi.fn(async () => undefined);
+    render(
+      <NewsDetailPage
+        mode="edit"
+        contentId={item.id}
+        principalControl={{
+          kind: 'fixed',
+          value: 'user',
+          label: 'Editor',
+          refreshContext,
+        }}
+      />
+    );
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Unsaved draft' } });
+    const [save] = screen.getAllByRole('button', { name: 'Speichern' });
+    if (!save) throw new Error('Expected news save action');
+    fireEvent.click(save);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'news.actions.reloadCurrentContext' })
+    );
+    await waitFor(() => expect(getNewsDetail).toHaveBeenCalledTimes(2));
+    expect(refreshContext).toHaveBeenCalledOnce();
+    expect(((await screen.findByLabelText('Titel')) as HTMLInputElement).value).toBe(
+      'Unsaved draft'
+    );
+    expect(saveNewsEditorItem).toHaveBeenCalledOnce();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('permits an explicit new save after a confirmed pre-write rejection', async () => {
+    vi.mocked(saveNewsEditorItem).mockRejectedValueOnce(
+      Object.assign(new Error('rejected'), { mutationOutcome: 'not_applied' })
+    );
+    render(<NewsDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Rejected' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entwurf anlegen' }));
+    await screen.findByText(pluginNewsTranslations.de.news.messages.saveError);
+    expect(screen.getByRole('button', { name: 'Entwurf anlegen' })).toBeTruthy();
+    expect(getNewsSaveOperation).not.toHaveBeenCalled();
+  });
+
   it('shows a copyable request reference for a failed save', async () => {
     vi.mocked(saveNewsEditorItem).mockRejectedValueOnce(
       Object.assign(new Error('save_failed'), { requestId: 'news-request-123' })
@@ -650,7 +928,10 @@ describe('NewsDetailPage', () => {
         updatedAt: '2026-10-23T10:00:00Z',
       });
     });
-    await waitFor(() => expect(navigateMock).toHaveBeenCalled());
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(pluginNewsTranslations.de.news.create.savedWithNewChanges)
+    ).toBeTruthy();
     expect(check()).toBe(true);
     expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe(
       'Noch nicht gespeichert'
@@ -747,6 +1028,30 @@ describe('NewsDetailPage', () => {
     ).toEqual(['Stadt Musterhausen', 'Max Mustermann']);
   });
 
+  it('retains an explicit personal principal when an equivalent policy is refreshed', async () => {
+    const policy = {
+      kind: 'selectable' as const,
+      value: 'organization' as const,
+      options: [
+        { value: 'organization' as const, label: 'Organization' },
+        { value: 'user' as const, label: 'Personal' },
+      ],
+    };
+    const view = render(<NewsDetailPage mode="create" principalControl={policy} />);
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Erstellen als' }), {
+      target: { value: 'user' },
+    });
+    view.rerender(
+      <NewsDetailPage
+        mode="create"
+        principalControl={{ ...policy, options: [...policy.options] }}
+      />
+    );
+    expect(
+      (screen.getByRole('combobox', { name: 'Erstellen als' }) as HTMLSelectElement).value
+    ).toBe('user');
+  });
+
   it('offers a member organization in the existing create-as field', async () => {
     const onContextChange = vi.fn();
     render(
@@ -824,16 +1129,19 @@ describe('NewsDetailPage', () => {
     });
   });
 
-  it('renders publication mode radio labels through explicit labels and descriptions', () => {
-    const source = fs.readFileSync(newsDetailSettingsSourcePath, 'utf8');
-
-    expect(source).toContain('aria-describedby={`publication-mode-${option}-description`}');
-    expect(source).toContain('htmlFor={`publication-mode-${option}`}');
-    expect(source).toContain('{pt(`publicationModes.${option}.label`)}');
-    expect(source).toContain(
-      '<p id={`publication-mode-${option}-description`} className="text-muted-foreground">'
-    );
-    expect(source).toContain('<label');
+  it('renders publication mode radio labels through explicit labels and descriptions', async () => {
+    render(<NewsDetailPage mode="create" />);
+    await screen.findByLabelText('Inhalt');
+    const radios = screen.getAllByRole('radio') as HTMLInputElement[];
+    expect(radios).toHaveLength(3);
+    for (const radio of radios) {
+      expect(new Set(Array.from(radio.labels ?? [])).size).toBe(1);
+      const label = document.getElementById(radio.getAttribute('aria-labelledby') ?? '');
+      const description = document.getElementById(radio.getAttribute('aria-describedby') ?? '');
+      expect(label?.textContent?.trim()).toBeTruthy();
+      expect(description?.textContent?.trim()).toBeTruthy();
+      expect(radio.labels?.[0]?.querySelector('div, p')).toBeNull();
+    }
   });
 
   it('renders the push notification checkbox through an explicit label binding', () => {

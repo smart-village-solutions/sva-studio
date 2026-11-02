@@ -1,7 +1,7 @@
 import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
-import { IconEdit, IconTrash } from '@tabler/icons-react';
+import { Pencil as IconEdit, Trash2 as IconTrash } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { toWasteFractionEditSearch } from './waste-management.cross-link.navigation.js';
@@ -36,10 +36,10 @@ export const FractionRowActions = ({
             to="/plugins/waste-management"
             search={toWasteFractionEditSearch(search, fraction.id)}
           >
-            <IconEdit aria-hidden="true" className="h-4 w-4" />
+            <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
           </Link>
         ) : (
-          <IconEdit aria-hidden="true" className="h-4 w-4" />
+          <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
         )}
       </Button>
       <Button
@@ -51,7 +51,7 @@ export const FractionRowActions = ({
         tooltip={deleteLabel}
         onClick={() => onRequestDeleteFraction(fraction)}
       >
-        <IconTrash aria-hidden="true" className="h-4 w-4 text-destructive" />
+        <IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4 text-destructive" />
       </Button>
     </>
   );

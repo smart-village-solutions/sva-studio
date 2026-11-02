@@ -17,6 +17,8 @@ import {
   Badge,
   Button,
   Checkbox,
+  StudioSwitch,
+  Radio,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -74,6 +76,32 @@ const sortingLabels = {
 
 const disabledSorting = { mode: 'disabled' } as const;
 const clientSorting = { mode: 'client', labels: sortingLabels } as const;
+
+describe('StudioSwitch', () => {
+  afterEach(cleanup);
+  it('exposes its state, respects disabled and does not submit the enclosing form', () => {
+    const change = vi.fn();
+    const submit = vi.fn((event: { preventDefault: () => void }) => event.preventDefault());
+    const { rerender } = render(
+      <form onSubmit={submit}>
+        <StudioSwitch aria-label="Aktiv" checked={false} onCheckedChange={change} />
+      </form>
+    );
+    const control = screen.getByRole('switch', { name: 'Aktiv' });
+    expect(control.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(control);
+    expect(change).toHaveBeenCalledWith(true);
+    expect(submit).not.toHaveBeenCalled();
+    rerender(
+      <form onSubmit={submit}>
+        <StudioSwitch aria-label="Aktiv" checked onCheckedChange={change} disabled />
+      </form>
+    );
+    expect(control.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(control);
+    expect(change).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('studio-ui-react primitives', () => {
   afterEach(() => {
@@ -1658,5 +1686,40 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getAllByRole('alert')).toHaveLength(2);
     expect(screen.getByRole('heading', { name: 'Titel' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Löschen' })).toBeTruthy();
+  });
+});
+
+describe('Radio', () => {
+  afterEach(cleanup);
+  it('retains native exclusive selection, labels, disabled and form behavior', () => {
+    const submit = vi.fn((event: { preventDefault: () => void }) => event.preventDefault());
+    render(
+      <form onSubmit={submit}>
+        <fieldset>
+          <legend>Veröffentlichung</legend>
+          <label>
+            <Radio name="mode" value="draft" defaultChecked />
+            Entwurf
+          </label>
+          <label>
+            <Radio name="mode" value="published" />
+            Veröffentlichen
+          </label>
+          <label>
+            <Radio name="mode" value="scheduled" disabled />
+            Planen
+          </label>
+        </fieldset>
+      </form>
+    );
+    fireEvent.click(screen.getByRole('radio', { name: 'Veröffentlichen' }));
+    expect((screen.getByRole('radio', { name: 'Entwurf' }) as HTMLInputElement).checked).toBe(
+      false
+    );
+    expect(
+      (screen.getByRole('radio', { name: 'Veröffentlichen' }) as HTMLInputElement).checked
+    ).toBe(true);
+    expect((screen.getByRole('radio', { name: 'Planen' }) as HTMLInputElement).disabled).toBe(true);
+    expect(submit).not.toHaveBeenCalled();
   });
 });

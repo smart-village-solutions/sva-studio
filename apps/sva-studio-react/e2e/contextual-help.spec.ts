@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import {
+  establishServerReadableAuthSession,
   expectAppShellReady,
   gotoHomeAsAuthenticatedUser,
   navigateClientSide,
@@ -55,6 +56,8 @@ test.beforeEach(async ({ page }) => {
       }),
     });
   });
+  await page.goto('/health/live');
+  await establishServerReadableAuthSession(page.context(), page);
 });
 
 const expectContextualHelp = async (page: import('@playwright/test').Page, id: string) => {
@@ -69,7 +72,18 @@ const expectContextualHelp = async (page: import('@playwright/test').Page, id: s
   await expect(page.getByRole('dialog', { name: 'Hilfe zu dieser Seite' })).toContainText(
     `Hilfe ${id}`
   );
-  await page.getByRole('button', { name: 'Hilfe schließen' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Hilfe zu dieser Seite' });
+  const closeButton = page.getByRole('button', { name: 'Hilfe schließen' });
+  await expect(closeButton).toBeFocused();
+  await expect(page.getByRole('tooltip')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(openButton).toBeFocused();
+  await openButton.click();
+  await closeButton.click();
   await expect(openButton).toBeFocused();
 };
 

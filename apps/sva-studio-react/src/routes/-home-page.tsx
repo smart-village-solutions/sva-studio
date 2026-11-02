@@ -87,10 +87,25 @@ const clearConsumedHomeAuthSearch = (): void => {
   window.history.replaceState(window.history.state, '', nextHref);
 };
 
-const AnonymousHeroActions = ({ loginHref }: { readonly loginHref: string }) => (
+const AnonymousHeroActions = ({
+  loginHref,
+  loginWithDevAuth,
+}: {
+  readonly loginHref: string;
+  readonly loginWithDevAuth?: () => Promise<void> | void;
+}) => (
   <div className="flex w-full max-w-xl flex-col items-center gap-3 sm:flex-row sm:justify-center">
-    <Button asChild className="h-12 min-w-48 rounded-full px-8 text-base">
-      <a href={loginHref}>{t('shell.header.login')}</a>
+    <Button
+      asChild={!loginWithDevAuth}
+      type={loginWithDevAuth ? 'button' : undefined}
+      onClick={loginWithDevAuth ? () => void loginWithDevAuth() : undefined}
+      className="h-12 min-w-48 rounded-full px-8 text-base"
+    >
+      {loginWithDevAuth ? (
+        t('shell.header.login')
+      ) : (
+        <a href={loginHref}>{t('shell.header.login')}</a>
+      )}
     </Button>
   </div>
 );
@@ -272,7 +287,10 @@ export const HomePage = () => {
               )}
             </div>
             {!isAuthenticated && !isLoading ? (
-              <AnonymousHeroActions loginHref={heroLoginHref} />
+              <AnonymousHeroActions
+                loginHref={heroLoginHref}
+                loginWithDevAuth={isDevAuthAvailable ? loginWithDevAuth : undefined}
+              />
             ) : null}
             {isAnonymousHome && !isLoading && isDevAuthAvailable ? (
               <DevAuthPrompt

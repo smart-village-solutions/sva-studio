@@ -1,6 +1,7 @@
 import {
   Button,
   Dialog,
+  useStudioEditorLeaveGuard,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -40,6 +41,7 @@ export function NewsDetailTargetingDialog({
   onBeforeOpen,
 }: NewsDetailTargetingDialogProps) {
   const editor = useNewsTargetingEditor(overview, options, selected);
+  useStudioEditorLeaveGuard({ enabled: editor.open, hasUnsavedChanges: editor.open });
   const cityContextLabel = (cityId: string) => {
     const city = editor.citiesById.get(cityId);
     return [city?.postalCode, city?.name].filter(Boolean).join(' ');

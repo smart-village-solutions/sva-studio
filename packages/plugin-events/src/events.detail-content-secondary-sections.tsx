@@ -8,7 +8,7 @@ import {
 } from '@sva/studio-ui-react';
 
 import type { EventsDetailFormValues } from './events.detail-form.js';
-import { EventsDetailCard } from './events.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import type { EventsContentTranslator as Translator } from './events.detail-content-section-fields.js';
 
 const dirty = { shouldDirty: true } as const;
@@ -17,7 +17,7 @@ export function EventsDescriptionSection({ pt }: Readonly<{ pt: Translator }>) {
   const { control, setValue } = useFormContext<EventsDetailFormValues>();
   const description = useWatch({ control, name: 'content.description' }) ?? '';
   return (
-    <EventsDetailCard
+    <StudioDetailCard
       title={pt('cards.content.descriptions.title')}
       description={pt('cards.content.descriptions.description')}
     >
@@ -59,7 +59,7 @@ export function EventsDescriptionSection({ pt }: Readonly<{ pt: Translator }>) {
           }}
         />
       </div>
-    </EventsDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -127,7 +127,7 @@ export function EventsMediaSection(props: EventsMediaSectionProps) {
   const usages = props.mediaUsages ?? mainserverContentMediaToUsages(mediaContents);
   const onChange = props.onChangeMediaUsages ?? (() => undefined);
   return (
-    <EventsDetailCard
+    <StudioDetailCard
       title={props.pt('cards.content.media.title')}
       description={props.pt('cards.content.media.description')}
     >
@@ -157,6 +157,6 @@ export function EventsMediaSection(props: EventsMediaSectionProps) {
           labels={createEventsMediaLabels(props.pt)}
         />
       </fieldset>
-    </EventsDetailCard>
+    </StudioDetailCard>
   );
 }

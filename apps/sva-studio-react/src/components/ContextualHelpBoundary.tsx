@@ -1,4 +1,4 @@
-import { IconHelpCircle } from '@tabler/icons-react';
+import { CircleHelp as IconHelpCircle } from 'lucide-react';
 import { Button, StudioPageTitleAccessoryProvider } from '@sva/studio-ui-react';
 import React from 'react';
 
@@ -37,7 +37,7 @@ export const ContextualHelpBoundary = ({
       aria-label={t('shell.contextualHelp.open')}
       onClick={() => setOpen(true)}
     >
-      <IconHelpCircle aria-hidden="true" className="size-5" />
+      <IconHelpCircle strokeWidth={1} aria-hidden="true" className="size-5" />
     </Button>
   ) : null;
 

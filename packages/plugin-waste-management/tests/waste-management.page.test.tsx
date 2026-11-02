@@ -838,7 +838,7 @@ describe('WasteManagementPage', () => {
     for (const tabLabel of expectedTabs) {
       const tab = screen.getByRole('tab', { name: tabLabel });
       expect(tab.querySelector('svg')).toBeTruthy();
-      expect(tab.querySelector('[data-icon-library="tabler"]')).toBeTruthy();
+      expect(tab.querySelector('svg')?.getAttribute('stroke-width')).toBe('1');
     }
     expect(screen.getAllByText('wasteManagement.tools.meta.advancedTitle').length).toBeGreaterThan(
       0

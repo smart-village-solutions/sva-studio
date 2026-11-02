@@ -110,7 +110,10 @@ export const UserManagementPanel = ({
         </Label>
       </div>
       {user.isTechnicalAccount && !formValues.isTechnicalAccount ? (
-        <Alert className="border-amber-500/40 bg-amber-500/10 md:col-span-2" role="status">
+        <Alert
+          className="border-status-warning-foreground bg-status-warning text-status-warning-foreground md:col-span-2"
+          role="status"
+        >
           <AlertDescription>{t('admin.users.edit.removeTechnicalAccountWarning')}</AlertDescription>
         </Alert>
       ) : null}

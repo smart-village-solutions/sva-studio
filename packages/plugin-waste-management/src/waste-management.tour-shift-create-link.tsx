@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { IconExternalLink } from '@tabler/icons-react';
+import { ExternalLink as IconExternalLink } from 'lucide-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { buttonVariants, cn, type ButtonProps } from '@sva/studio-ui-react';
 import type { ReactNode } from 'react';
@@ -41,7 +41,9 @@ export const WasteTourShiftCreateLink = ({
   const content = (
     <>
       {children ?? <span>{label}</span>}
-      {showExternalIcon ? <IconExternalLink aria-hidden="true" className="h-4 w-4" /> : null}
+      {showExternalIcon ? (
+        <IconExternalLink strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+      ) : null}
       {disabledDescription ? <span className="sr-only"> {disabledDescription}</span> : null}
     </>
   );

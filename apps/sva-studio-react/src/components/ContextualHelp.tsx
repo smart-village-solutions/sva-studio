@@ -1,4 +1,4 @@
-import { IconExternalLink, IconX } from '@tabler/icons-react';
+import { ExternalLink as IconExternalLink, X as IconX } from 'lucide-react';
 import {
   Alert,
   AlertDescription,
@@ -177,7 +177,7 @@ export const ContextualHelp = ({
             className="absolute right-4 top-4"
             aria-label={t('shell.contextualHelp.close')}
           >
-            <IconX aria-hidden="true" className="size-5" />
+            <IconX strokeWidth={1} aria-hidden="true" className="size-5" />
           </Button>
         </DialogClose>
         <div className="min-h-48 overflow-y-auto px-6 py-5" aria-live="polite">
@@ -204,7 +204,7 @@ export const ContextualHelp = ({
             <Button asChild variant="secondary">
               <a href={state.payload.websiteUrl} target="_blank" rel="noopener noreferrer">
                 {t('shell.contextualHelp.openWebsite')}
-                <IconExternalLink aria-hidden="true" className="size-4" />
+                <IconExternalLink strokeWidth={1} aria-hidden="true" className="size-4" />
               </a>
             </Button>
             <Button asChild variant="secondary">
@@ -214,7 +214,7 @@ export const ContextualHelp = ({
                 rel="noopener noreferrer"
               >
                 {t('shell.contextualHelp.editOnGitHub')}
-                <IconExternalLink aria-hidden="true" className="size-4" />
+                <IconExternalLink strokeWidth={1} aria-hidden="true" className="size-4" />
               </a>
             </Button>
           </div>

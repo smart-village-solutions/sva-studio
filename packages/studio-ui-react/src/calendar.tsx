@@ -1,13 +1,27 @@
-import { DayPicker, type DayPickerProps } from 'react-day-picker';
+import { DayPicker, type DayPickerProps, type ChevronProps } from 'react-day-picker';
+
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 
 import { buttonVariants } from './button.js';
 import { cn } from './utils.js';
 
+function CalendarChevron({ orientation, className }: ChevronProps) {
+  const Icon =
+    orientation === 'left'
+      ? ChevronLeft
+      : orientation === 'right'
+        ? ChevronRight
+        : orientation === 'up'
+          ? ChevronUp
+          : ChevronDown;
+  return <Icon aria-hidden="true" strokeWidth={1} className={className} />;
+}
+
 // shadcn Calendar composition; DayPicker owns the date grid and keyboard behavior.
-export function Calendar({ className, classNames, ...props }: DayPickerProps) {
+export function Calendar({ className, classNames, components, ...props }: DayPickerProps) {
   const dayButton = cn(
     buttonVariants({ variant: 'tertiary' }),
-    'h-10 w-10 min-h-10 min-w-10 p-0 font-normal'
+    'h-11 w-9 min-h-11 min-w-9 p-0 font-medium sm:w-11 sm:min-w-11'
   );
   return (
     <DayPicker
@@ -21,10 +35,10 @@ export function Calendar({ className, classNames, ...props }: DayPickerProps) {
         caption_label: 'text-sm font-medium',
         button_previous: cn(dayButton, 'absolute left-0 top-0'),
         button_next: cn(dayButton, 'absolute right-0 top-0'),
-        chevron: 'h-4 w-4 fill-current',
+        chevron: 'h-5 w-5',
         month_grid: 'border-collapse',
-        weekday: 'h-8 w-10 text-center text-xs font-normal text-muted-foreground',
-        day: 'h-10 w-10 p-0 text-center',
+        weekday: 'h-8 w-9 sm:w-11 text-center text-xs font-normal text-muted-foreground',
+        day: 'h-11 w-9 sm:w-11 p-0 text-center',
         day_button: dayButton,
         selected:
           '[&>button]:border-action-primary [&>button]:bg-action-primary [&>button]:text-action-primary-foreground',
@@ -35,6 +49,7 @@ export function Calendar({ className, classNames, ...props }: DayPickerProps) {
         hidden: 'invisible',
         ...classNames,
       }}
+      components={{ Chevron: CalendarChevron, ...components }}
       {...props}
     />
   );

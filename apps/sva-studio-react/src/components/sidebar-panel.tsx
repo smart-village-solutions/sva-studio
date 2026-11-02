@@ -1,4 +1,4 @@
-import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight } from 'lucide-react';
 import { Button } from '@sva/studio-ui-react';
 import { t } from '../i18n';
 import { useStudioBranding } from '../providers/studio-branding-provider';
@@ -67,9 +67,9 @@ export const SidebarPanel = ({
               onClick={onToggleCollapsed}
             >
               {isCollapsed ? (
-                <IconChevronRight className="h-4 w-4" />
+                <IconChevronRight aria-hidden="true" strokeWidth={1} className="h-4 w-4" />
               ) : (
-                <IconChevronLeft className="h-4 w-4" />
+                <IconChevronLeft aria-hidden="true" strokeWidth={1} className="h-4 w-4" />
               )}
             </Button>
           ) : null}
@@ -82,7 +82,7 @@ export const SidebarPanel = ({
               aria-label={t('shell.header.closeNavigation')}
               onClick={onCloseMobileNavigation}
             >
-              <IconChevronRight className="h-5 w-5 rotate-180" />
+              <IconChevronRight aria-hidden="true" strokeWidth={1} className="h-5 w-5 rotate-180" />
             </Button>
           ) : null}
         </div>

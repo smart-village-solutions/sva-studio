@@ -80,9 +80,11 @@ const PluginContentView = ({
   if (viewKind === 'list') return makePage();
   if (viewKind === 'detail') {
     return (
-      <MainserverResourcePrincipalBoundary contentType={contentType}>
-        {(principalControl) => makePage(principalControl)}
-      </MainserverResourcePrincipalBoundary>
+      <ContentEditorLeaveBoundary>
+        <MainserverResourcePrincipalBoundary contentType={contentType}>
+          {(principalControl) => makePage(principalControl)}
+        </MainserverResourcePrincipalBoundary>
+      </ContentEditorLeaveBoundary>
     );
   }
 

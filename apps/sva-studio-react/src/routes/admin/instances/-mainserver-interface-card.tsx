@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '@sva/studio-ui-react';
+import { Button, Checkbox } from '@sva/studio-ui-react';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Card } from '../../../components/ui/card';
@@ -139,9 +139,8 @@ export const MainserverInterfaceCard = ({ instanceId }: { instanceId: string }) 
             />
           </div>
           <div className="flex items-center gap-2">
-            <input
+            <Checkbox
               id="mainserver-enabled"
-              type="checkbox"
               disabled={saving}
               checked={enabled}
               onChange={(event) => setEnabled(event.target.checked)}

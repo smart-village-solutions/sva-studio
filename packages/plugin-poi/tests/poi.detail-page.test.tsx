@@ -34,11 +34,12 @@ import {
 import { PoiDetailPage } from '../src/poi.detail-page.js';
 
 const navigateMock = vi.fn();
-let hasUnsavedChanges = () => false;
+const leaveChecks = new Set<() => boolean>();
+const hasUnsavedChanges = () => [...leaveChecks].some((check) => check());
 const registerLeaveCheck = (check: () => boolean) => {
-  hasUnsavedChanges = check;
+  leaveChecks.add(check);
   return () => {
-    hasUnsavedChanges = () => false;
+    leaveChecks.delete(check);
   };
 };
 const render = (element: React.ReactElement) =>
@@ -55,7 +56,14 @@ vi.mock('../src/poi.api.js', () => ({
   getPoiDetail: vi.fn(),
   listPoiCategories: vi.fn(async () => []),
   listPoi: vi.fn(),
-  PoiApiError: class PoiApiError extends Error { constructor(public readonly code: string, message = code) { super(message); } },
+  PoiApiError: class PoiApiError extends Error {
+    constructor(
+      public readonly code: string,
+      message = code
+    ) {
+      super(message);
+    }
+  },
   updatePoi: vi.fn(),
 }));
 
@@ -152,10 +160,12 @@ vi.mock('@tanstack/react-router', () => ({
     search?: Record<string, string>;
   }) => (
     <a
-      href={Object.entries(params ?? {}).reduce(
-        (path, [key, value]) => path.replace(`$${key}`, value),
-        to
-      ) + (search ? `?${new URLSearchParams(search)}` : '')}
+      href={
+        Object.entries(params ?? {}).reduce(
+          (path, [key, value]) => path.replace(`$${key}`, value),
+          to
+        ) + (search ? `?${new URLSearchParams(search)}` : '')
+      }
     >
       {children}
     </a>
@@ -197,7 +207,9 @@ const resolveMockMediaAsset = (assetId: string) => {
 describe('PoiDetailPage', () => {
   it('links to only the vouchers of the current location on the canonical content list', async () => {
     publishSessionAccessSnapshot({
-      isResolved: true, assignedModules: ['poi', 'vouchers'], roles: [],
+      isResolved: true,
+      assignedModules: ['poi', 'vouchers'],
+      roles: [],
       permissionActions: ['poi.read', 'vouchers.read'],
       unscopedPermissionActions: ['poi.read', 'vouchers.read'],
     });
@@ -217,7 +229,7 @@ describe('PoiDetailPage', () => {
   };
 
   beforeEach(() => {
-    hasUnsavedChanges = () => false;
+    leaveChecks.clear();
     publishSessionAccessSnapshot({
       isResolved: true,
       permissionActions: [
@@ -660,15 +672,20 @@ describe('PoiDetailPage', () => {
     });
   }, 30_000);
 
-  it.each(['missing_credentials', 'organization_mainserver_credentials_missing'])('explains credential failures without backend details: %s', async (code) => {
-    vi.mocked(createPoi).mockRejectedValueOnce(new PoiApiError(code, 'API-Key or API-Secret missing'));
-    render(<PoiDetailPage mode="create" />);
-    fireEvent.change(await screen.findByLabelText('Name'), {target: {value: 'New content'}});
-    fireEvent.click(screen.getAllByRole('button', {name: /Speichern|anlegen/})[0]!);
-    await waitFor(() => expect(screen.getByText('poi.create.saveUnavailable')).toBeTruthy());
-    expect(screen.queryByText(/API-Key/)).toBeNull();
-    expect(screen.getByDisplayValue('New content')).toBeTruthy();
-  });
+  it.each(['missing_credentials', 'organization_mainserver_credentials_missing'])(
+    'explains credential failures without backend details: %s',
+    async (code) => {
+      vi.mocked(createPoi).mockRejectedValueOnce(
+        new PoiApiError(code, 'API-Key or API-Secret missing')
+      );
+      render(<PoiDetailPage mode="create" />);
+      fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'New content' } });
+      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+      await waitFor(() => expect(screen.getByText('poi.create.saveUnavailable')).toBeTruthy());
+      expect(screen.queryByText(/API-Key/)).toBeNull();
+      expect(screen.getByDisplayValue('New content')).toBeTruthy();
+    }
+  );
 
   it('renders Create without tabs or history and keeps a single ordered form', async () => {
     render(<PoiDetailPage mode="create" />);

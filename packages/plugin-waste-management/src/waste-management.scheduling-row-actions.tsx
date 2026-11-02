@@ -5,7 +5,7 @@ import type {
 } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
-import { IconEdit, IconTrash } from '@tabler/icons-react';
+import { Pencil as IconEdit, Trash2 as IconTrash } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 
 import type { WasteManagementSearchParams } from './search-params.js';
@@ -88,10 +88,10 @@ export const WasteSchedulingRowActions = ({
             to="/plugins/waste-management"
             search={toEditSchedulingEntrySearch(search, schedulingEntryType, row.id)}
           >
-            <IconEdit aria-hidden="true" className="h-4 w-4" />
+            <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
           </Link>
         ) : (
-          <IconEdit aria-hidden="true" className="h-4 w-4" />
+          <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
         )}
       </Button>
       {row.canDelete ? (
@@ -104,7 +104,7 @@ export const WasteSchedulingRowActions = ({
           tooltip={deleteLabel}
           onClick={() => onRequestDeleteRows([row])}
         >
-          <IconTrash aria-hidden="true" className="h-4 w-4" />
+          <IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
         </Button>
       ) : null}
     </div>

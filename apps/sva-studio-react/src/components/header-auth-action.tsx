@@ -172,14 +172,14 @@ const HeaderAuthenticatedAccountMenu = ({
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={menuId}
-          className="flex items-center gap-3 rounded-full px-1 py-1 text-left hover:bg-accent/60"
+          className="flex min-h-11 items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={toggle}
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
             {initials}
           </span>
           <span className="hidden min-w-0 sm:block">
-            <span className="block truncate text-sm font-medium text-foreground">
+            <span className="block max-w-48 truncate text-sm font-medium text-foreground">
               {displayName}
             </span>
           </span>

@@ -2,6 +2,8 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { WasteToursFractionSelection } from '../src/waste-management.tours.fractions.js';
+
 import { WasteMasterDataFractionsContent } from '../src/waste-management.master-data-fractions-content.js';
 
 const { clearSelectionMock, dataTableMock } = vi.hoisted(() => ({
@@ -14,7 +16,8 @@ vi.mock('@sva/plugin-sdk', () => ({
     values ? `${key}:${Object.values(values).join('|')}` : key,
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async () => ({
+  ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),
   StudioDestructiveActionDialog: ({
     open,
     title,
@@ -371,7 +374,7 @@ describe('WasteMasterDataFractionsContent', () => {
 
     fireEvent.click(
       screen.getByRole('switch', {
-        name: 'masterData.fractions.actions.deactivateStatus:Biotonne',
+        name: 'masterData.fractions.actions.toggleStatus:Biotonne',
       })
     );
     expect(screen.getByText('masterData.fractions.statusDialog.deactivateTitle')).toBeTruthy();
@@ -481,7 +484,7 @@ describe('WasteMasterDataFractionsContent', () => {
 
     fireEvent.click(
       screen.getByRole('switch', {
-        name: 'masterData.fractions.actions.activateStatus:Papier',
+        name: 'masterData.fractions.actions.toggleStatus:Papier',
       })
     );
     expect(screen.getByText('masterData.fractions.statusDialog.activateTitle')).toBeTruthy();
@@ -532,4 +535,30 @@ describe('WasteMasterDataFractionsContent', () => {
       'missing-1',
     ]);
   });
+});
+
+it('keeps fraction selection names separate from labelled color samples', () => {
+  const onChange = vi.fn();
+  render(
+    <WasteToursFractionSelection
+      fractions={[
+        {
+          id: 'fraction-bio',
+          name: 'Biotonne',
+          color: '#16A34A',
+          active: true,
+          createdAt: '2026-06-01T12:00:00Z',
+          updatedAt: '2026-06-01T12:00:00Z',
+        },
+      ]}
+      selectedFractionIds={[]}
+      pt={(key, values) => (values ? `${key}:${values.value}` : key)}
+      onChange={onChange}
+    />
+  );
+  expect(
+    screen.getByRole('img', { name: 'masterData.fractions.table.colorSwatch:#16A34A' })
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Biotonne', exact: true }));
+  expect(onChange).toHaveBeenCalledWith(['fraction-bio']);
 });

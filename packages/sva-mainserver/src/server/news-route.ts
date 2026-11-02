@@ -5,6 +5,7 @@ import { withMainserverContextBinding } from './content-route-context.js';
 import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import {
   handleCollectionRead,
+  handleOperationRead,
   handleItemRead,
   NEWS_CONTENT_TYPE,
   type RouteMatch,
@@ -20,6 +21,12 @@ const matchRoute = (request: Request): RouteMatch | null => {
   const pathname = new URL(request.url).pathname;
   if (pathname === NEWS_COLLECTION_PATH) {
     return { kind: 'collection' };
+  }
+  const operationMatch = /^operations\/([A-Za-z0-9][A-Za-z0-9._:-]{7,127})$/.exec(
+    pathname.slice(NEWS_ITEM_PATH_PREFIX.length)
+  );
+  if (pathname.startsWith(NEWS_ITEM_PATH_PREFIX) && operationMatch) {
+    return { kind: 'operation', operationId: operationMatch[1]! };
   }
   if (pathname.endsWith('/visibility') && pathname.startsWith(NEWS_ITEM_PATH_PREFIX)) {
     const newsId = decodeURIComponent(
@@ -59,6 +66,10 @@ const dispatchAuthenticated = async (
   };
 
   try {
+    if (route.kind === 'operation' && request.method === 'GET') {
+      return await handleOperationRead(request, route, ctx);
+    }
+
     if (route.kind === 'collection' && request.method === 'GET') {
       return await handleCollectionRead(request, ctx, logSuccess);
     }
@@ -123,5 +134,13 @@ export const dispatchSvaMainserverNewsRequest = async (
     return null;
   }
 
-  return withAuthenticatedUser(request, (ctx) => dispatchAuthenticated(request, route, ctx));
+  let dispatched = false;
+  const response = await withAuthenticatedUser(request, (ctx) => {
+    dispatched = true;
+    return dispatchAuthenticated(request, route, ctx);
+  });
+  if (!dispatched && !response.ok && (request.method === 'POST' || request.method === 'PATCH')) {
+    response.headers.set('X-SVA-Mutation-Outcome', 'not_applied');
+  }
+  return response;
 };

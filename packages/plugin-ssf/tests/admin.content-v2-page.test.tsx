@@ -220,11 +220,10 @@ describe('SSF V2 content administration', () => {
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
 
-    await screen.findByLabelText('English (en)');
+    const toggle = await screen.findByText('English (en)', { selector: 'label > span' });
     const explanation = document.getElementById('ssf-v2-guestLanguages-0-guest-explanationHtml');
     if (!explanation) throw new Error('ssf_v2_guest_explanation_missing');
     fireEvent.change(explanation, { target: { value: '<p>Custom guest text</p>' } });
-    const toggle = screen.getByLabelText('English (en)');
     fireEvent.click(toggle);
     fireEvent.click(toggle);
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
@@ -232,7 +231,7 @@ describe('SSF V2 content administration', () => {
     await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({
       guestLanguages: [{ locale: 'en', guest: { explanationHtml: '<p>Custom guest text</p>' } }],
     }));
-  }, 10_000);
+  });
 
   it('disables tenant guest-language changes when the catalog is unavailable', async () => {
     const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
@@ -254,17 +253,17 @@ describe('SSF V2 content administration', () => {
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
 
-    fireEvent.click(await screen.findByLabelText('English (en)'));
+    fireEvent.click(await screen.findByText('English (en)', { selector: 'label > span' }));
     const explanation = document.getElementById('ssf-v2-guestLanguages-0-guest-explanationHtml');
     if (!explanation) throw new Error('ssf_v2_guest_explanation_missing');
     fireEvent.change(explanation, { target: { value: '<p>Unsaved text</p>' } });
-    fireEvent.click(screen.getByLabelText('English (en)'));
+    fireEvent.click(screen.getByText('English (en)', { selector: 'label > span' }));
     fireEvent.click(screen.getByRole('button', { name: 'actions.discard' }));
-    fireEvent.click(screen.getByLabelText('English (en)'));
+    fireEvent.click(screen.getByText('English (en)', { selector: 'label > span' }));
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
     await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({}));
-  }, 10_000);
+  });
 
   const legalSource = () => ({
     sourceLocale: 'de-DE', version: '2026-09-23-draft', localizations: [{
@@ -314,7 +313,8 @@ describe('SSF V2 content administration', () => {
     api.writeSystem.mockImplementation(async (input) => ({ installation, runtimeTemplate: input.runtimeTemplate, supportedLanguages }));
     const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
     render(<SsfSystemContentV2Page />);
-    fireEvent.change(await screen.findByLabelText('v2.legalTexts.newLanguage'), { target: { value: 'en' } });
+    const languageLabel = await screen.findByText('v2.legalTexts.newLanguage', { selector: 'label' });
+    fireEvent.change(within(languageLabel).getByRole('combobox', { name: 'v2.legalTexts.newLanguage' }), { target: { value: 'en' } });
     fireEvent.click(screen.getByRole('button', { name: 'v2.legalTexts.addLanguage' }));
     const save = screen.getAllByRole('button', { name: 'actions.save' }).at(1);
     if (!save) throw new Error('ssf_test_save_missing');
@@ -324,7 +324,7 @@ describe('SSF V2 content administration', () => {
     expect(saved.legalTexts.localizations[1]).toEqual({ locale: 'en', mode2Consent: null, mode3Consent: null,
       guestRecordingRelease: null, staffRecordingRelease: null, recordingStatus: null });
     expect(saved.guestLanguages).toEqual(runtimeTemplate['guestLanguages']);
-  }, 10_000);
+  });
 
   it('resets a tenant legal field and respects read-only permissions', async () => {
     const runtimeTemplate = { ...fields('ssf-runtime-configuration-v2.example.json'), legalTexts: legalSource() };

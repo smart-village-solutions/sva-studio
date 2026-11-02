@@ -1,13 +1,12 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SearchableSelect } from './searchable-select';
+import { Dialog, DialogContent, DialogTitle } from './dialog';
+
+afterEach(cleanup);
 
 describe('SearchableSelect', () => {
-  afterEach(() => {
-    cleanup();
-  });
-
   it('can use an external visible label while retaining its accessible name', () => {
     render(
       <div>
@@ -308,9 +307,103 @@ describe('SearchableSelect', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Organisation' }));
-    const searchInput = screen.getByPlaceholderText('Suchen');
-    fireEvent.blur(searchInput, { relatedTarget: screen.getByRole('button', { name: 'Weiter' }) });
+    act(() => screen.getByRole('button', { name: 'Weiter' }).focus());
 
     expect(screen.queryByPlaceholderText('Suchen')).toBeNull();
   });
+});
+
+it('keeps an explicit clear action available when the search has no matches', () => {
+  const onValueChange = vi.fn();
+  render(
+    <SearchableSelect
+      id="optional"
+      label="Abholort"
+      value="a"
+      placeholder="Wählen"
+      searchPlaceholder="Suchen"
+      emptyText="Keine Treffer"
+      clearLabel="Auswahl aufheben"
+      options={[{ value: 'a', label: 'Markt' }]}
+      onValueChange={onValueChange}
+    />
+  );
+  const trigger = screen.getByRole('button', { name: 'Abholort' });
+  fireEvent.click(trigger);
+  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'unbekannt' } });
+  expect(screen.getByText('Keine Treffer')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Auswahl aufheben' }));
+  expect(onValueChange).toHaveBeenCalledWith('');
+  expect(document.activeElement).toBe(trigger);
+});
+
+it('closes an open search when its owner disables the control', () => {
+  const onValueChange = vi.fn();
+  const props = {
+    id: 'disabling',
+    label: 'Organisation',
+    value: 'a',
+    placeholder: 'Wählen',
+    searchPlaceholder: 'Suchen',
+    emptyText: 'Leer',
+    options: [{ value: 'a', label: 'Stadt' }],
+    onValueChange,
+  };
+  const { rerender } = render(<SearchableSelect {...props} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Organisation' }));
+  expect(screen.getByRole('combobox')).toBeTruthy();
+  rerender(<SearchableSelect {...props} disabled />);
+  expect(screen.queryByRole('combobox')).toBeNull();
+  expect((screen.getByRole('button', { name: 'Organisation' }) as HTMLButtonElement).disabled).toBe(
+    true
+  );
+  expect(onValueChange).not.toHaveBeenCalled();
+});
+
+it('closes only the search on Escape inside a parent dialog and restores its trigger', () => {
+  render(
+    <Dialog open>
+      <DialogContent aria-describedby={undefined}>
+        <DialogTitle>Zuordnung</DialogTitle>
+        <SearchableSelect
+          id="dialog-location"
+          label="Abholort"
+          value=""
+          placeholder="Wählen"
+          searchPlaceholder="Suchen"
+          emptyText="Leer"
+          options={[{ value: 'a', label: 'Markt' }]}
+          onValueChange={vi.fn()}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+  const trigger = screen.getByRole('button', { name: 'Abholort' });
+  fireEvent.click(trigger);
+  const search = screen.getByRole('combobox', { name: 'Suchen' });
+  fireEvent.keyDown(search, { key: 'Escape' });
+  expect(screen.queryByRole('combobox', { name: 'Suchen' })).toBeNull();
+  expect(screen.getByRole('dialog', { name: 'Zuordnung' })).toBeTruthy();
+  expect(document.activeElement).toBe(trigger);
+  cleanup();
+});
+
+it('leaves a search without a clear action on Tab instead of looping inside the popover', () => {
+  render(
+    <SearchableSelect
+      id="tab-location"
+      label="Abholort"
+      value=""
+      placeholder="Wählen"
+      searchPlaceholder="Suchen"
+      emptyText="Leer"
+      options={[{ value: 'a', label: 'Markt' }]}
+      onValueChange={vi.fn()}
+    />
+  );
+  const trigger = screen.getByRole('button', { name: 'Abholort' });
+  fireEvent.click(trigger);
+  fireEvent.keyDown(screen.getByRole('combobox', { name: 'Suchen' }), { key: 'Tab' });
+  expect(screen.queryByRole('combobox', { name: 'Suchen' })).toBeNull();
+  expect(document.activeElement).toBe(trigger);
 });

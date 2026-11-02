@@ -30,7 +30,7 @@ const formatMediaRole = (role: string): string =>
     : role;
 
 export const MediaDetailUsageSection = ({ usage }: MediaDetailUsageSectionProps) => (
-  <Card className="border-border/70 bg-card/95 shadow-shell">
+  <Card className="border-border-subtle bg-card">
     <CardHeader>
       <CardTitle>{t('media.usage.title')}</CardTitle>
       <CardDescription>{t('media.detail.usageDescription')}</CardDescription>
@@ -53,7 +53,7 @@ export const MediaDetailUsageSection = ({ usage }: MediaDetailUsageSectionProps)
         </p>
       ) : null}
       {usage.editingDependencies?.total ? (
-        <div className="space-y-2 rounded-xl border border-border/60 p-4">
+        <div className="space-y-2 rounded-lg border border-border-subtle p-4">
           <p className="font-medium">
             {t('media.usage.editingDependencies', { count: usage.editingDependencies.total })}
           </p>
@@ -86,7 +86,7 @@ export const MediaDetailUsageSection = ({ usage }: MediaDetailUsageSectionProps)
           {usage.references.map((reference) => (
             <div
               key={reference.id}
-              className="rounded-2xl border border-border/60 bg-background/70 p-4"
+              className="rounded-lg border border-border-subtle bg-surface-inset p-4"
             >
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-1">

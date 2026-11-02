@@ -16,6 +16,7 @@ import { useLocale } from '../providers/locale-provider';
 import { useTheme } from '../providers/theme-provider';
 import { HeaderAuthAction } from './header-auth-action';
 import { HeaderDropdownMenu, type HeaderDropdownItem } from './header-dropdown-menu';
+import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
 
 type HeaderProps = Readonly<{
   isLoading?: boolean;
@@ -104,7 +105,7 @@ export default function Header({
   ];
   return (
     <header className="sticky top-0 z-40 bg-background">
-      <div className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-sm text-foreground sm:px-6">
+      <div className="grid min-h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 border-b border-border-subtle px-4 py-2 text-sm text-foreground sm:px-6">
         <div className="flex min-w-0 items-center">
           {onOpenMobileNavigation ? (
             <Button
@@ -121,12 +122,16 @@ export default function Header({
               size="icon"
               variant="secondary"
             >
-              <Menu className="h-5 w-5" />
+              <Menu aria-hidden="true" strokeWidth={1} className="h-5 w-5" />
             </Button>
           ) : null}
         </div>
-        <div className="flex min-w-0 flex-1 items-center gap-3" />
-        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+        {showOrganizationContext ? (
+          <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+            <OrganizationContextSwitcher allowPersonal={isSystemAdmin} />
+          </div>
+        ) : null}
+        <div className="col-start-3 row-start-1 flex items-center justify-end gap-2 sm:gap-3">
           <HeaderDropdownMenu
             align="right"
             menuLabel={t('shell.header.languageSwitcher')}
@@ -144,7 +149,7 @@ export default function Header({
                 className={iconButtonClassName}
                 onClick={toggle}
               >
-                <Languages className="h-4 w-4" />
+                <Languages aria-hidden="true" strokeWidth={1} className="h-4 w-4" />
               </Button>
             )}
           />
@@ -165,7 +170,11 @@ export default function Header({
             variant="tertiary"
             className={iconButtonClassName}
           >
-            {resolvedMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {resolvedMode === 'dark' ? (
+              <Sun aria-hidden="true" strokeWidth={1} className="h-4 w-4" />
+            ) : (
+              <Moon aria-hidden="true" strokeWidth={1} className="h-4 w-4" />
+            )}
           </Button>
           <HeaderAuthAction
             isHydrated={isHydrated}

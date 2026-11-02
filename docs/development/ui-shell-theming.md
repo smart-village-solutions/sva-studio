@@ -36,6 +36,53 @@ Der aktive Text erreicht in Default, Hover und Active mindestens 4,5:1 gegen sei
 
 Foundation-Tests prüfen die vollständige Tokenmatrix numerisch. Der Playwright-Test `e2e/button-accessibility.spec.ts` ergänzt Axe, berechnete Browserfarben, Zielgrößen und visuelle Referenzen für alle vier Theme-/Modus-Kombinationen.
 
+## Figma-Designsystem: lokaler Implementierungsstand November 2026
+
+Die neue Foundation übernimmt die semantischen Light-/Dark-Rollen aus dem
+überarbeiteten Designsystem. RGB-Kanäle und öffentliche Theme-IDs bleiben
+stabil. `surface-inset`, `border-subtle` und explizite Statusfarben ergänzen
+gezielt die vorhandenen Tokens. Forest behält seine grüne Aktionspalette.
+
+Die Gestaltung ist freigegeben und wird bereits vor Bibliotheksveröffentlichung verwendet. Forest wird erst später wieder aktiv gestaltet; bestehende Theme-IDs bleiben erhalten.
+
+Die dokumentierten Figma-Werte für Secondary-Konturen und deaktivierte Texte
+unterschreiten teilweise die bestehenden Studio-Kontrastprüfungen. Deshalb
+nutzt der Code dort stärkere semantische Rollen; die Abweichung ist im
+[UI-Migrationsdesign](../../openspec/changes/align-studio-ui-design-system/design.md)
+als Designlücke dokumentiert. Deaktivierte Texte sind normativ teilweise
+von Kontrastanforderungen ausgenommen; die strengere bestehende Studio-Prüfung
+bleibt im aktuellen technischen Stand erhalten. Für den endgültigen
+Figma-/Code-Abgleich gilt die Nutzerentscheidung: Barrierefreiheit zuerst,
+dekorative Flächen und Linien dezent. Eine dekorative Buttonkontur benötigt
+nicht pauschal 3:1, wenn Text/Signal das Control ausreichend kennzeichnet;
+ein erforderlicher Fokusindikator bleibt kontrastreich. Siehe
+[W3C: Nicht-Text-Kontrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)
+und [W3C: Mindestkontrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
+Die bisherigen strengeren Codechecks werden nicht stillschweigend abgeschwächt;
+die abgestimmten endgültigen Rollen werden vor der visuellen Abnahme übernommen.
+
+Die Shell verwendet ohne gespeicherte Präferenz unter 1024 px einen Drawer,
+ab 1024 px eine 80-px-Rail und ab 1280 px eine 288-px-Sidebar. Gültige bestehende
+Collapse-Werte `0`/`1` bleiben Präferenzen; automatische Viewportwechsel schreiben
+keine Auswahl. Die Arbeitsorganisation erscheint zusätzlich in der Kopfzeile,
+auf schmalen Ansichten in einer eigenen Zeile. Kontokontext und Mitgliedschaften
+bleiben im Kontomenü erreichbar; mehrfach gerenderte Auswahlfelder besitzen
+getrennte IDs. Eigene Sidebar-Motive nutzen Lucide, dynamische Plugin-Icons
+bleiben dem zuständigen Beitrag zugeordnet.
+
+`StudioPageHeader` richtet seine Aktionen anhand der Inhaltsbreite aus.
+Gemeinsame Detail-Tabs besitzen lokale horizontale Scrollregionen und eine
+sichtbare mobile Bereichsauswahl. News verwendet den bestehenden Shared-Pfad
+mit `keepMounted` und optionaler Intent-Vorladung. Card- und Tab-Panel-Flächen
+verwenden Radius 8 und 16/24 px Innenabstand. Die einzige gespeicherte
+Formularquelle, Mediencontroller und Mutationsverträge bleiben erhalten.
+
+`e2e/news-plugin.spec.ts` ergänzt synthetische Referenzen für Contentübersicht,
+News-Create und News-Edit in beiden Themes/Modi sowie responsive Grenzen.
+Screenshots, funktionale Tests, Browser-Barrierefreiheit und fachliche Abnahme
+sind getrennte Nachweise. Dieser Stand beschreibt lokale Implementierung,
+keine Bereitstellung oder pauschale WCAG-Abnahme aller Plugins.
+
 ## KERN-2 Phase 1
 
 - Phase 1 ist eine visuelle Annäherung der Studio-Shell an KERN 2 im Light-Theme, keine technische Migration auf eine zweite UI-Laufzeit.
@@ -49,7 +96,7 @@ Foundation-Tests prüfen die vollständige Tokenmatrix numerisch. Der Playwright
 - `@kern-ux/native` wird in Phase 1 nicht als globaler CSS-Reset oder als konkurrierende Komponentenbibliothek eingebunden.
 - Root-Dokument, `AppShell`, `Header` und `Sidebar` konsumieren ausschließlich semantische Tokens. Neue Shell-Flächen sollen keine direkten KERN-Farbcodes oder projektspezifischen Utility-Farben einführen.
 
-### Aktueller Stand 2026-06-02
+### Historischer Ausgangsstand 2026-06-02
 
 - Das Default-Light-Theme (`sva-default`) nutzt jetzt eine KERN-nahe blau-graue Foundation mit semantischen Tokens für `background`, `foreground`, `primary`, `ring`, `sidebar`, `muted`, `border` und `waste-panel-*`.
 - Die restriktivere Shell-Geometrie ist umgesetzt: `--radius` 6px, `--radius-card` 8px und `--radius-modal` 12px bilden die Basis für Shell-Flächen, Dialoge und Karten.

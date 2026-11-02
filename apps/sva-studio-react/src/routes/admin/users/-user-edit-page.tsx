@@ -149,11 +149,10 @@ export const UserEditPage = ({
       <form
         id="user-edit-form"
         className="space-y-4"
-        aria-readonly={!canUpdateUser}
         onSubmit={canUpdateUser ? onSave : (event) => event.preventDefault()}
         noValidate
       >
-        <fieldset className="contents" disabled={!canUpdateUser}>
+        <fieldset className="grid min-w-0 gap-4" disabled={!canUpdateUser}>
           <StudioFormSummaryErrors
             errors={summaryErrors}
             title={t('account.messages.validationSummary')}

@@ -16,7 +16,7 @@ describe('OrganizationContextSwitcher', () => {
     useOrganizationContextMock.mockReset();
   });
 
-  it('renders nothing when only one active organization is available', () => {
+  it('shows a single active organization without offering an unnecessary selector', () => {
     useOrganizationContextMock.mockReturnValue({
       context: {
         activeOrganizationId: 'org-1',
@@ -41,6 +41,38 @@ describe('OrganizationContextSwitcher', () => {
     render(<OrganizationContextSwitcher />);
 
     expect(screen.queryByLabelText('Aktive Organisation')).toBeNull();
+    expect(screen.getByText('Alpha')).toBeTruthy();
+  });
+
+  it('associates labels independently when header and account menu are mounted together', () => {
+    useOrganizationContextMock.mockReturnValue({
+      context: {
+        activeOrganizationId: 'org-0',
+        organizations: ['Alpha', 'Beta'].map((displayName, index) => ({
+          organizationId: `org-${index}`,
+          organizationKey: displayName,
+          displayName,
+          organizationType: 'county',
+          isActive: true,
+          isDefaultContext: index === 0,
+        })),
+      },
+      isLoading: false,
+      isUpdating: false,
+      error: null,
+      refetch: vi.fn(),
+      switchOrganization: vi.fn(),
+    });
+    render(
+      <>
+        <OrganizationContextSwitcher />
+        <OrganizationContextSwitcher variant="menu" />
+      </>
+    );
+    const controls = screen.getAllByRole('combobox', { name: 'Aktive Organisation' });
+    expect(controls).toHaveLength(2);
+    expect(new Set(controls.map((control) => control.id)).size).toBe(2);
+    for (const control of controls) expect((control as HTMLSelectElement).labels).toHaveLength(1);
   });
 
   it('switches the active organization when a different option is selected', () => {

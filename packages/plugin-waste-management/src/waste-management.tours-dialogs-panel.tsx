@@ -63,6 +63,7 @@ export const WasteToursDialogs = ({
       open={controller.calendarOpen}
       tour={controller.selectedTour}
       scheduling={controller.schedulingOverview}
+      schedulingLoadState={controller.schedulingLoadState}
       search={search}
       canManageScheduling={canManageScheduling}
       onOpenChange={controller.setCalendarOpen}

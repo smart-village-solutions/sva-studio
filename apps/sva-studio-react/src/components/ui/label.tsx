@@ -6,7 +6,7 @@ const Label = React.forwardRef<HTMLLabelElement, React.ComponentProps<'label'>>(
   // eslint-disable-next-line jsx-a11y/label-has-associated-control
   <label
     ref={ref}
-    className={cn('animate-label-float text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70', className)}
+    className={cn('text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70', className)}
     {...props}
   />
 ));

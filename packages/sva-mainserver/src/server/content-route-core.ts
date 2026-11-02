@@ -17,7 +17,19 @@ export const errorJson = (
   error: string,
   message: string,
   details?: unknown
-): Response => json({ error, message, ...(details === undefined ? {} : { details }) }, status);
+): Response => {
+  const response = json({ error, message, ...(details === undefined ? {} : { details }) }, status);
+  // These host-only validations run before any provider mutation. Generic 4xx
+  // and provider errors can follow a partial write and must remain ambiguous.
+  if (
+    (status === 400 && error === 'invalid_request') ||
+    (status === 403 && error === 'csrf_validation_failed') ||
+    (status === 409 && error === 'stale_mainserver_context')
+  ) {
+    response.headers.set('X-SVA-Mutation-Outcome', 'not_applied');
+  }
+  return response;
+};
 
 const decodePathSegment = (value: string): string | null => {
   try {

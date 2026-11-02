@@ -30,7 +30,7 @@ export const WasteToolsHistoryEntry = ({
         : 'secondary';
 
   return (
-    <div className="rounded-xl border border-border/60 bg-muted/10 p-3">
+    <div className="rounded-lg border border-border-subtle bg-surface-inset p-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -64,7 +64,7 @@ export const WasteToolsHistoryEntry = ({
       {isOpen ? (
         <div
           id={detailsId}
-          className="mt-3 space-y-1 border-t border-border/60 pt-3 text-sm text-muted-foreground"
+          className="mt-3 space-y-1 border-t border-border-subtle pt-3 text-sm text-muted-foreground"
         >
           {jobId ? <p>{pt('overview.meta.jobId', { value: jobId })}</p> : null}
           {item.jobTypeId ? (

@@ -1,5 +1,10 @@
 /** Sidebar der App-Shell mit Bereichsnavigation, Untermenüs und Desktop-Collapse. */
-import { IconCertificate, IconHeadset, IconHelpCircle, IconUsersGroup } from '@tabler/icons-react';
+import {
+  FileBadge as IconCertificate,
+  Headset as IconHeadset,
+  LifeBuoy as IconHelpCircle,
+  Users as IconUsersGroup,
+} from 'lucide-react';
 import React from 'react';
 import { Sheet, SheetContent } from './ui/sheet';
 import { t } from '../i18n';
@@ -31,23 +36,28 @@ export default function Sidebar({
   const access = useSidebarAccess();
   const { user, canAccessExperimentalFeatures } = access;
   const tenantName = user?.instanceDisplayName?.trim() || user?.instanceId?.trim() || undefined;
-  const [isCollapsed, setIsCollapsed] = React.useState(false);
-  const [hasLoadedCollapsePreference, setHasLoadedCollapsePreference] = React.useState(false);
+  const [collapsePreference, setCollapsePreference] = React.useState<boolean | null>(null);
+  const [compactDesktop, setCompactDesktop] = React.useState(false);
+  const isCollapsed = collapsePreference ?? compactDesktop;
 
   React.useEffect(() => {
     if (globalThis.window === undefined) {
       return;
     }
-    setIsCollapsed(globalThis.window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === '1');
-    setHasLoadedCollapsePreference(true);
+    const preference = globalThis.window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+    setCollapsePreference(preference === '1' ? true : preference === '0' ? false : null);
+    const media = globalThis.window.matchMedia('(min-width: 1280px)');
+    const updateViewport = () => setCompactDesktop(!media.matches);
+    updateViewport();
+    media.addEventListener('change', updateViewport);
+    return () => media.removeEventListener('change', updateViewport);
   }, []);
 
-  React.useEffect(() => {
-    if (globalThis.window === undefined || hasLoadedCollapsePreference === false) {
-      return;
-    }
-    globalThis.window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, isCollapsed ? '1' : '0');
-  }, [hasLoadedCollapsePreference, isCollapsed]);
+  const toggleCollapsed = () => {
+    const next = !isCollapsed;
+    setCollapsePreference(next);
+    globalThis.window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, next ? '1' : '0');
+  };
 
   const sections = useSidebarSections(access);
 
@@ -93,8 +103,8 @@ export default function Sidebar({
     <>
       <aside
         aria-label={t('shell.sidebar.ariaLabel')}
-        className={`relative z-[90] hidden overflow-visible border-r border-sidebar-border bg-sidebar shadow-shell transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen ${
-          isCollapsed ? 'lg:w-20' : 'lg:w-72'
+        className={`relative z-[90] hidden shrink-0 overflow-visible border-r border-sidebar-border bg-sidebar transition-[width] duration-200 motion-reduce:transition-none lg:sticky lg:top-0 lg:block lg:h-screen ${
+          collapsePreference === null ? 'lg:w-20 xl:w-72' : isCollapsed ? 'lg:w-20' : 'lg:w-72'
         }`}
       >
         <SidebarPanel
@@ -104,7 +114,7 @@ export default function Sidebar({
           isCollapsed={isCollapsed}
           tenantName={tenantName}
           allowCollapse
-          onToggleCollapsed={() => setIsCollapsed((current) => !current)}
+          onToggleCollapsed={toggleCollapsed}
         />
       </aside>
       <Sheet open={isMobileOpen} onOpenChange={onMobileOpenChange ?? (() => undefined)}>

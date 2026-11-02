@@ -40,7 +40,6 @@ const useVerificationDraft = (props: VerificationCardProps) => {
   const [loading, setLoading] = React.useState(false);
   const draftState = React.useRef({ key: server ? 'server' : props.instanceId, dirty: false });
   React.useEffect(() => {
-    if (!open) return;
     const key = server ? 'server' : props.instanceId;
     if (draftState.current.key !== key) draftState.current = { key, dirty: false };
     let active = true;
@@ -131,7 +130,7 @@ const saveMessage = (data: VerificationView, server: boolean) => {
   if (!synchronized) return t('admin.instances.mailSync.savedPending');
   return t(
     server
-      ? 'admin.instances.emailVerification.serverSaved'
+      ? 'admin.instances.mailSync.serverSaved'
       : 'admin.instances.emailVerification.saved'
   );
 };

@@ -1354,8 +1354,12 @@ UUID-Fremdschlüssel sichern Tour- und Fraktionsbezug innerhalb derselben Tenant
 
 ### Sicherheitsgrenzen der Studio-Mailvorlagen
 
-Root-Mutationen benötigen Plattformzugriff beziehungsweise `instance.update`,
-Session-CSRF und Fresh-Reauth. Der bestehende Tenant-Editor bleibt auf die
+Root-Mutationen benötigen Plattformzugriff beziehungsweise `instance.update`
+und Session-CSRF. Für das Speichern und Zurücksetzen der allgemeinen Einladungs-
+und Bestätigungsvorlage genügt die bestehende gültige Sitzung; diese redaktionellen
+Änderungen benötigen keine zusätzliche Fresh-Reauth. Instanzgebundene
+Mailvorlagen-Mutationen einschließlich Übertragen und Übernehmen behalten
+Fresh-Reauth. Der bestehende Tenant-Editor bleibt auf die
 Session-Instanz und `iam.invitationTemplate.manage` begrenzt. Instanz-ID und
 Realm-/Credential-Zuordnung kommen ausschließlich aus der autorisierten Registry;
 ein globaler Keycloak-Credential-Fallback ist ausgeschlossen. RLS schützt die

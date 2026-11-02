@@ -46,7 +46,6 @@ export const SidebarLeafLink = ({
     <>
       <IconComponent
         aria-hidden="true"
-        strokeWidth={1}
         className={isChild ? 'h-4 w-4 shrink-0' : 'h-5 w-5 shrink-0'}
       />
       {showLabel ? <span className="min-w-0 break-words">{item.label}</span> : null}

@@ -1,7 +1,7 @@
 import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Checkbox, Input, Select, StudioField } from '@sva/studio-ui-react';
-import { ListChecks as IconChecklist } from 'lucide-react';
+import { IconChecklist } from '@tabler/icons-react';
 import type { FormEvent } from 'react';
 
 import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-state.js';
@@ -127,7 +127,7 @@ export const CoverageCheckForm = ({
         onEndDateChange={onEndDateChange}
       />
       <Button type="submit" disabled={disabled}>
-        <IconChecklist strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+        <IconChecklist aria-hidden="true" className="h-4 w-4" />
         {pt('masterData.locationsWorkspace.coverage.check')}
       </Button>
       <label

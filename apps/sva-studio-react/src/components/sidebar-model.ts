@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react';
+import type { TablerIcon } from '@tabler/icons-react';
 
 export type SidebarLeafItem = {
   readonly kind: 'link';
@@ -6,7 +6,7 @@ export type SidebarLeafItem = {
   readonly to?: string;
   readonly href?: string;
   readonly label: string;
-  readonly icon: LucideIcon;
+  readonly icon: TablerIcon;
   readonly exact?: boolean;
   readonly section?: 'dataManagement' | 'applications' | 'system';
   readonly moduleId?: string | null;
@@ -20,7 +20,7 @@ export type SidebarGroupItem = {
   readonly kind: 'group';
   readonly id: string;
   readonly label: string;
-  readonly icon: LucideIcon;
+  readonly icon: TablerIcon;
   readonly children: readonly SidebarLeafItem[];
   readonly activeChildStrategy?: 'contentType';
   readonly knownContentTypes?: readonly string[];

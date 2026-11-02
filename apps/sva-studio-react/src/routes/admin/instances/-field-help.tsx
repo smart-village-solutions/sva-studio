@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { CircleHelp } from 'lucide-react';
+import { IconHelpCircle as CircleHelp } from '@tabler/icons-react';
 
 import { cn } from '@/lib/utils';
 import { t } from '../../../i18n';

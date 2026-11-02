@@ -1,4 +1,4 @@
-import { Search, SendHorizontal } from 'lucide-react';
+import { IconSearch as Search, IconSend as SendHorizontal } from '@tabler/icons-react';
 import { Input } from '@sva/studio-ui-react';
 
 /** Existing Studio header presentation, retained for the future Search plugin. */

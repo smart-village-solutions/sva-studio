@@ -1,8 +1,8 @@
 import {
-  CalendarDays as IconCalendarMonth,
-  Copy as IconCopy,
-  Trash2 as IconTrash,
-} from 'lucide-react';
+  IconCalendarMonth,
+  IconCopy,
+  IconTrash,
+} from '@tabler/icons-react';
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
@@ -163,19 +163,19 @@ export const WasteToursRowActionsCell = ({
       <div className="flex justify-end gap-1.5">
         <StudioTableActionButton
           label={pt('tours.actions.openCalendar')}
-          icon={<IconCalendarMonth strokeWidth={1} aria-hidden="true" className="h-4 w-4" />}
+          icon={<IconCalendarMonth aria-hidden="true" className="h-4 w-4" />}
           onClick={() => onOpenCalendar(tour)}
         />
         {canDuplicateTour ? (
           <StudioTableActionButton
             label={pt('tours.actions.duplicate')}
-            icon={<IconCopy strokeWidth={1} aria-hidden="true" className="h-4 w-4" />}
+            icon={<IconCopy aria-hidden="true" className="h-4 w-4" />}
             onClick={() => onOpenDuplicateDialog(tour)}
           />
         ) : null}
         <StudioTableActionButton
           label={pt('tours.actions.delete')}
-          icon={<IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4" />}
+          icon={<IconTrash aria-hidden="true" className="h-4 w-4" />}
           tone="destructive"
           onClick={() => onRequestDeleteTour(tour)}
         />

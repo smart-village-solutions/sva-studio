@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { ChevronDown } from 'lucide-react';
+import { IconChevronDown as ChevronDown } from '@tabler/icons-react';
 import { cn } from './utils.js';
 import { Button } from './button.js';
 import { Input } from './input.js';
@@ -72,7 +72,6 @@ export const SearchableSelectTrigger = ({
         <span className="truncate">{selectedLabel ?? placeholder}</span>
         <ChevronDown
           aria-hidden="true"
-          strokeWidth={1}
           className={cn('h-4 w-4 shrink-0', open && 'rotate-180')}
         />
       </Button>

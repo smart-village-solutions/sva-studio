@@ -1,4 +1,4 @@
-import { MessageCircle, SendHorizontal } from 'lucide-react';
+import { IconMessageCircle as MessageCircle, IconSend as SendHorizontal } from '@tabler/icons-react';
 import { Input } from '@sva/studio-ui-react';
 
 /** Existing Studio header presentation, retained for the future Assistant plugin. */

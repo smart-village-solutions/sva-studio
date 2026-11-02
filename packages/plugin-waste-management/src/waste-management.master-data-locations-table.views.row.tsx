@@ -3,7 +3,7 @@ import type {
   WasteCollectionLocationRecord,
 } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Copy as IconCopy, Pencil as IconEdit, Trash2 as IconTrash } from 'lucide-react';
+import { IconCopy, IconEdit, IconTrash } from '@tabler/icons-react';
 import { Button, Checkbox } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import type { WasteMasterDataLocationsTableMaps } from './waste-management.master-data-locations-table.types.js';
@@ -140,10 +140,10 @@ const WasteLocationsRowActions = ({
               to="/plugins/waste-management"
               search={toWasteCollectionLocationEditSearch(search, location.id)}
             >
-              <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+              <IconEdit aria-hidden="true" className="h-4 w-4" />
             </Link>
           ) : (
-            <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+            <IconEdit aria-hidden="true" className="h-4 w-4" />
           )}
         </Button>
         <Button
@@ -155,7 +155,7 @@ const WasteLocationsRowActions = ({
           tooltip={copyLabel}
           onClick={() => onCopyLocation(location)}
         >
-          <IconCopy strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+          <IconCopy aria-hidden="true" className="h-4 w-4" />
         </Button>
         <Button
           type="button"
@@ -168,7 +168,7 @@ const WasteLocationsRowActions = ({
             void onDeleteLocation(location);
           }}
         >
-          <IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4 text-destructive" />
+          <IconTrash aria-hidden="true" className="h-4 w-4 text-destructive" />
         </Button>
       </div>
     </td>

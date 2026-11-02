@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { buttonVariants } from '@sva/studio-ui-react';
-import { Pencil } from 'lucide-react';
+import { IconEdit } from '@tabler/icons-react';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
@@ -26,7 +26,7 @@ const variantClasses = {
   icon: buttonVariants({ variant: 'tertiary', size: 'icon' }),
 } as const;
 
-const editIcon = renderToStaticMarkup(createElement(Pencil, { 'aria-hidden': true }));
+const editIcon = renderToStaticMarkup(createElement(IconEdit, { 'aria-hidden': true }));
 
 const parseRgb = (value: string): readonly [number, number, number] => {
   const channels = value

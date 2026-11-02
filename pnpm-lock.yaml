@@ -438,9 +438,6 @@ importers:
       fflate:
         specifier: ^0.8.2
         version: 0.8.3
-      lucide-react:
-        specifier: ^1.28.0
-        version: 1.28.0(react@19.3.0)
       nitro:
         specifier: 3.0.260429-beta
         version: 3.0.260429-beta(chokidar@5.0.0)(dotenv@17.4.2)(ioredis@5.11.1)(jiti@2.7.0)(lru-cache@11.5.0)(rollup@4.59.0)(vite@8.3.3(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
@@ -924,15 +921,15 @@ importers:
 
   packages/plugin-assistant:
     dependencies:
+      '@tabler/icons-react':
+        specifier: ^3.46.0
+        version: 3.46.0(react@19.3.0)
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
         version: file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
-      lucide-react:
-        specifier: ^1.28.0
-        version: 1.28.0(react@19.3.0)
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -1262,15 +1259,15 @@ importers:
 
   packages/plugin-notifications:
     dependencies:
+      '@tabler/icons-react':
+        specifier: ^3.46.0
+        version: 3.46.0(react@19.3.0)
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
         version: file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
-      lucide-react:
-        specifier: ^1.28.0
-        version: 1.28.0(react@19.3.0)
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -1395,15 +1392,15 @@ importers:
 
   packages/plugin-search:
     dependencies:
+      '@tabler/icons-react':
+        specifier: ^3.46.0
+        version: 3.46.0(react@19.3.0)
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
       '@sva/studio-ui-react':
         specifier: workspace:*
         version: file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
-      lucide-react:
-        specifier: ^1.28.0
-        version: 1.28.0(react@19.3.0)
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -1475,6 +1472,9 @@ importers:
 
   packages/plugin-surveys:
     dependencies:
+      '@tabler/icons-react':
+        specifier: ^3.46.0
+        version: 3.46.0(react@19.3.0)
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -1555,6 +1555,9 @@ importers:
 
   packages/plugin-waste-management:
     dependencies:
+      '@tabler/icons-react':
+        specifier: ^3.46.0
+        version: 3.46.0(react@19.3.0)
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -1573,9 +1576,6 @@ importers:
       exceljs:
         specifier: ^4.4.0
         version: 4.4.0
-      lucide-react:
-        specifier: ^1.28.0
-        version: 1.28.0(react@19.3.0)
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -1719,6 +1719,9 @@ importers:
 
   packages/studio-ui-react:
     dependencies:
+      '@tabler/icons-react':
+        specifier: ^3.46.0
+        version: 3.46.0(react@19.3.0)
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.23
         version: 1.1.23(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -1770,9 +1773,6 @@ importers:
       dompurify:
         specifier: ^3.4.17
         version: 3.4.17
-      lucide-react:
-        specifier: ^1.28.0
-        version: 1.28.0(react@19.3.0)
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -8765,11 +8765,6 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
-  lucide-react@1.28.0:
-    resolution: {integrity: sha512-fARAFJULsGuDDydjp6+6blekG/sBIM29TerzLjc9bQUKAcEfrSc4ZQKb25KRz4OMKd87cZTb5dgq0w/T6KufVg==}
-    peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
     hasBin: true
@@ -15620,7 +15615,7 @@ snapshots:
       clsx: 2.1.1
       date-fns: 4.4.0
       dompurify: 3.4.17
-      lucide-react: 1.28.0(react@19.3.0)
+      '@tabler/icons-react': 3.46.0(react@19.3.0)
       react: 19.3.0
       react-day-picker: 10.0.1(@types/react@19.3.0)(react@19.3.0)
       react-dom: 19.3.0(react@19.3.0)
@@ -18586,10 +18581,6 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
-
-  lucide-react@1.28.0(react@19.3.0):
-    dependencies:
-      react: 19.3.0
 
   lz-string@1.5.0: {}
 

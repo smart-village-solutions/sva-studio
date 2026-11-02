@@ -1,5 +1,5 @@
 import type { IamContentOwnershipTarget } from '@sva/core';
-import { ChevronsUpDown } from 'lucide-react';
+import { IconSelector as ChevronsUpDown } from '@tabler/icons-react';
 import * as React from 'react';
 
 import { Button } from './button.js';

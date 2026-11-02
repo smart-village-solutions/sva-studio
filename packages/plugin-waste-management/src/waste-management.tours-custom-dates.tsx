@@ -1,6 +1,6 @@
 import type { WasteCustomTourDate } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { CalendarPlus as IconCalendarPlus } from 'lucide-react';
+import { IconCalendarPlus } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button } from '@sva/studio-ui-react';
 
@@ -192,7 +192,7 @@ export const WasteToursCustomDatesField = ({
             disabled={disabled}
             onClick={() => setDialogOpen(true)}
           >
-            <IconCalendarPlus strokeWidth={1} aria-hidden="true" className="mr-2 h-4 w-4" />
+            <IconCalendarPlus aria-hidden="true" className="mr-2 h-4 w-4" />
             {pt('tours.customDates.actions.openPicker')}
           </Button>
           {sortedDates.length > 0 ? (

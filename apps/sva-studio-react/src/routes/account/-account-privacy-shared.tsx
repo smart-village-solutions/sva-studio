@@ -60,7 +60,7 @@ const mapPrivacyTypeKey = (type: IamSelfServiceActivityType) => {
 
 export const DsrCaseRow = ({ item }: Readonly<{ item: IamDsrCaseListItem }>) => (
   <Card className="bg-background shadow-none">
-    <CardContent className="p-4">
+    <CardContent className="pt-4 sm:pt-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>

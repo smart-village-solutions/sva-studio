@@ -84,15 +84,22 @@ export const readKeycloakStateViaTenantAdmin = async (input: KeycloakProvisionin
     throw new KeycloakAdminUnavailableError('Tenant admin client credentials are not configured');
   }
 
+  const client = new KeycloakAdminClient(
+    getKeycloakTenantAdminClientConfigFromEnv({ realm: input.authRealm, clientId, clientSecret })
+  );
   return createReadKeycloakState(
-    () =>
-      new KeycloakAdminClient(
-        getKeycloakTenantAdminClientConfigFromEnv({
-          realm: input.authRealm,
-          clientId,
-          clientSecret,
-        })
-      )
+    () => client,
+    async (requestedClientId) => {
+      const secret =
+        requestedClientId === input.authClientId
+          ? input.authClientSecret
+          : requestedClientId === clientId
+            ? clientSecret
+            : undefined;
+      return secret && (await client.verifyOidcClientSecret(requestedClientId, secret))
+        ? secret
+        : null;
+    }
   )(withInstalledPluginOidcClients(input));
 };
 export const provisionInstanceAuthArtifacts = (

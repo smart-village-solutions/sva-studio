@@ -73,10 +73,15 @@ const readTenantAdminServiceAccess = async (
 };
 
 export const createReadKeycloakState =
-  (createClient: KeycloakProvisioningClientFactory) =>
+  (
+    createClient: KeycloakProvisioningClientFactory,
+    readClientSecret?: (clientId: string) => Promise<string | null>
+  ) =>
   async (input: KeycloakProvisioningInput): Promise<KeycloakReadState> => {
     const pluginOidcClientRequirements = readPluginOidcClientRequirements(input);
     const client = createClient(input.authRealm);
+    const readSecret =
+      readClientSecret ?? ((clientId: string) => client.getOidcClientSecretValue(clientId));
     const expectedClient = buildExpectedClientConfig(input.primaryHostname);
     const expectedTenantAdminClient = input.tenantAdminClient
       ? buildExpectedTenantAdminClientConfig(input.primaryHostname)
@@ -124,7 +129,7 @@ export const createReadKeycloakState =
     const keycloakClientSecret =
       clientRepresentation &&
       readStudioOwnedClient(clientRepresentation, input.instanceId, 'login_client') === 'owned'
-        ? await client.getOidcClientSecretValue(input.authClientId)
+        ? await readSecret(input.authClientId)
         : null;
     const tenantAdminClientSecret =
       input.tenantAdminClient?.clientId &&
@@ -134,7 +139,7 @@ export const createReadKeycloakState =
         input.instanceId,
         'tenant_admin_client'
       ) === 'owned'
-        ? await client.getOidcClientSecretValue(input.tenantAdminClient.clientId)
+        ? await readSecret(input.tenantAdminClient.clientId)
         : null;
     const systemAdminRole = await client.getRoleByName(SYSTEM_ADMIN_ROLE);
     const realmBaselineAligned = isKeycloakRealmBaselineAligned(realm);

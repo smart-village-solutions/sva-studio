@@ -90,3 +90,88 @@ describe('tenant login MFA management authorization', () => {
     expect(mocks.service).not.toHaveBeenCalled();
   });
 });
+
+it.each([
+  [{}, { policy: { desiredMode: 'optional', appliedMode: null, status: 'pending' }, revision: 0 }],
+  [
+    { loginMfaPolicy: policy, loginMfaRevision: 7, loginMfaRunId: 'verified-run' },
+    { policy, revision: 7, runId: 'verified-run' },
+  ],
+])(
+  'reads only the authenticated tenant and preserves verified/default evidence',
+  async (instance, expected) => {
+    const getInstanceById = vi.fn(async () => instance);
+    mocks.read.mockImplementation(async (_id, work) => work({ getInstanceById }));
+    const response = await getTenantLoginMfaInternal(request(), ctx);
+    expect(response.status).toBe(200);
+    expect((await response.json()).data).toEqual(expected);
+    expect(mocks.authorize).toHaveBeenCalledWith({
+      ctx,
+      action: 'iam.authenticationPolicy.manage',
+      instanceId: 'tenant-a',
+    });
+    expect(mocks.read).toHaveBeenCalledWith('tenant-a', expect.any(Function));
+    expect(getInstanceById).toHaveBeenCalledWith('tenant-a');
+  }
+);
+it('returns not found for a tenant deleted after authorization', async () => {
+  mocks.read.mockImplementation(async (_id, work) => work({ getInstanceById: async () => null }));
+  expect((await getTenantLoginMfaInternal(request(), ctx)).status).toBe(404);
+});
+it.each([getTenantLoginMfaInternal, updateTenantLoginMfaInternal])(
+  'rejects absent tenant context before storage access',
+  async (handler) => {
+    expect(
+      (
+        await handler(request(), {
+          user: { id: 'user', roles: ['instance_registry_admin'] },
+        } as never)
+      ).status
+    ).toBe(403);
+    expect(mocks.authorize).not.toHaveBeenCalled();
+    expect(mocks.actor).not.toHaveBeenCalled();
+    expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.service).not.toHaveBeenCalled();
+  }
+);
+it('rejects PATCH query overrides before actor resolution', async () => {
+  const response = await updateTenantLoginMfaInternal(
+    request({ mode: 'required', expectedRevision: 1 }, '?instanceId=tenant-b'),
+    ctx
+  );
+  expect(response.status).toBe(400);
+  expect(mocks.actor).not.toHaveBeenCalled();
+});
+it('preserves mutation-gate denial without invoking the service', async () => {
+  const denial = new Response('csrf_denied', { status: 403 });
+  mocks.actor.mockResolvedValueOnce({ response: denial });
+  expect(
+    await updateTenantLoginMfaInternal(request({ mode: 'required', expectedRevision: 1 }), ctx)
+  ).toBe(denial);
+  expect(mocks.service).not.toHaveBeenCalled();
+});
+it.each([
+  { mode: 'off', expectedRevision: 1 },
+  { mode: 'required', expectedRevision: -1 },
+  { mode: 'required', expectedRevision: 0.5 },
+  { mode: 'optional' },
+])('rejects an invalid update %j before enqueueing', async (body) => {
+  expect((await updateTenantLoginMfaInternal(request(body), ctx)).status).toBe(400);
+  expect(mocks.service).not.toHaveBeenCalled();
+});
+it('reports revision conflict without pretending to enqueue a new request', async () => {
+  mocks.service.mockRejectedValueOnce(new Error('login_mfa_revision_conflict'));
+  const response = await updateTenantLoginMfaInternal(
+    request({ mode: 'required', expectedRevision: 1 }),
+    ctx
+  );
+  expect(response.status).toBe(409);
+  expect(await response.json()).toMatchObject({ error: { code: 'conflict' } });
+});
+it('propagates operational failures instead of misreporting them as revision conflicts', async () => {
+  const error = new Error('database_unavailable');
+  mocks.service.mockRejectedValueOnce(error);
+  await expect(
+    updateTenantLoginMfaInternal(request({ mode: 'required', expectedRevision: 1 }), ctx)
+  ).rejects.toBe(error);
+});

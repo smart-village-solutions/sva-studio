@@ -171,3 +171,163 @@ describe('tenant MFA existing provisioning worker', () => {
     expect(repository.verifyLoginMfaPolicy).not.toHaveBeenCalled();
   });
 });
+
+it.each([
+  'missing instance',
+  'different linked run',
+  'different desired mode',
+  'invalid client list',
+  'invalid client ID',
+] as const)('rejects %s before calling the provider', async (problem) => {
+  const { deps, repository, instance, reconcileLoginMfa } = setup();
+  const queuedRun = {
+    ...run,
+    steps: run.steps.map((step) => ({ ...step, details: { ...step.details } })),
+  };
+  if (problem === 'missing instance')
+    repository.getInstanceById.mockResolvedValueOnce(null as never);
+  if (problem === 'different linked run') instance.loginMfaRunId = 'newer-run';
+  if (problem === 'different desired mode') instance.loginMfaPolicy.desiredMode = 'optional';
+  if (problem === 'invalid client list') queuedRun.steps[0].details.clientIds = 'studio';
+  if (problem === 'invalid client ID') queuedRun.steps[0].details.clientIds = ['studio', 7];
+  await processClaimedKeycloakProvisioningRun(deps, queuedRun);
+  expect(reconcileLoginMfa).not.toHaveBeenCalled();
+  expect(repository.verifyLoginMfaPolicy).not.toHaveBeenCalled();
+  expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalledWith(
+    expect.objectContaining({ overallStatus: 'failed' })
+  );
+});
+it.each([
+  'reconcile missing',
+  'full read missing',
+  'unaligned reconcile',
+  'wrong reconciled mode',
+  'unaligned full state',
+  'wrong full mode',
+  'removed before full read',
+  'failed CAS',
+] as const)('does not publish verification or a status snapshot after %s', async (problem) => {
+  const { deps, repository, instance, providerState, reconcileLoginMfa } = setup();
+  if (problem === 'reconcile missing')
+    delete (deps as { reconcileLoginMfa?: unknown }).reconcileLoginMfa;
+  if (problem === 'full read missing')
+    delete (deps as { readKeycloakStateViaProvisioner?: unknown }).readKeycloakStateViaProvisioner;
+  if (problem === 'unaligned reconcile')
+    reconcileLoginMfa.mockResolvedValueOnce({ aligned: false, mode: 'required' });
+  if (problem === 'wrong reconciled mode')
+    reconcileLoginMfa.mockResolvedValueOnce({ aligned: true, mode: 'optional' } as never);
+  if (problem === 'unaligned full state') providerState.loginMfa.aligned = false;
+  if (problem === 'wrong full mode') providerState.loginMfa.mode = 'optional';
+  if (problem === 'removed before full read')
+    repository.getInstanceById.mockResolvedValueOnce(instance).mockResolvedValueOnce(null as never);
+  if (problem === 'failed CAS') repository.verifyLoginMfaPolicy.mockResolvedValueOnce(false);
+  await processClaimedKeycloakProvisioningRun(deps, run);
+  expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalledWith(
+    expect.objectContaining({ overallStatus: 'failed' })
+  );
+  expect(repository.appendKeycloakProvisioningStep).not.toHaveBeenCalledWith(
+    expect.objectContaining({ stepKey: 'status_snapshot' })
+  );
+  expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+    expect.objectContaining({
+      details: expect.objectContaining({ status: 'failed', runId: 'run-1' }),
+    })
+  );
+  expect(repository.appendAuditEvent).not.toHaveBeenCalledWith(
+    expect.objectContaining({ details: expect.objectContaining({ status: 'applied' }) })
+  );
+  if (problem !== 'failed CAS') expect(repository.verifyLoginMfaPolicy).not.toHaveBeenCalled();
+});
+
+import { createUpdateLoginMfaPolicy, processLoginMfaRun } from './service-login-mfa.js';
+
+it('fails a malformed queued request with no snapshot without invoking provider operations', async () => {
+  const { deps, repository, reconcileLoginMfa } = setup();
+  await processLoginMfaRun(deps, { ...run, steps: [] });
+  expect(reconcileLoginMfa).not.toHaveBeenCalled();
+  expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalledWith(
+    expect.objectContaining({ overallStatus: 'failed' })
+  );
+});
+
+it.each(['optional', 'required'] as const)(
+  'queues an audited %s revision with only supported browser clients',
+  async (mode) => {
+    const { deps, repository, instance, reconcileLoginMfa } = setup();
+    instance.loginMfaPolicy.desiredMode = mode;
+    const createRun = vi.fn(async () => ({ run }));
+    const bindRun = vi.fn();
+    const updatePolicy = vi.fn(async () => instance);
+    Object.assign(repository, {
+      updateLoginMfaPolicy: updatePolicy,
+      createKeycloakProvisioningRun: createRun,
+      bindLoginMfaRun: bindRun,
+    });
+    Object.assign(deps, {
+      readPluginOidcClientRequirements: () => [
+        { contractVersion: '1.0', clientId: 'service-only', pluginId: 'old' },
+        { contractVersion: '2.0', clientId: 'ssf', pluginId: 'ssf' },
+      ],
+    });
+    const input = {
+      instanceId: 'tenant-a',
+      mode,
+      expectedRevision: 1,
+      actorId: 'actor',
+      requestId: 'request',
+    };
+    const result = await createUpdateLoginMfaPolicy(deps)(input);
+    expect(updatePolicy).toHaveBeenCalledWith(input);
+    expect(createRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        idempotencyKey: 'login-mfa:2',
+        overallStatus: 'planned',
+      })
+    );
+    expect(repository.appendKeycloakProvisioningStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stepKey: 'queued',
+        details: expect.objectContaining({
+          clientIds: ['studio', 'ssf'],
+          loginMfaMode: mode,
+          loginMfaRevision: 2,
+        }),
+      })
+    );
+    expect(bindRun).toHaveBeenCalledWith({ instanceId: 'tenant-a', revision: 2, runId: 'run-1' });
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: expect.objectContaining({
+          desiredMode: mode,
+          appliedMode: 'optional',
+          status: 'pending',
+        }),
+      })
+    );
+    expect(result).toEqual({
+      policy: { desiredMode: mode, appliedMode: 'optional', status: 'pending' },
+      revision: 2,
+      runId: 'run-1',
+    });
+    expect(reconcileLoginMfa).not.toHaveBeenCalled();
+  }
+);
+
+it('does not enqueue an incomplete client snapshot when the required registry dependency is absent', async () => {
+  const { deps, repository, instance } = setup();
+  const createRun = vi.fn();
+  Object.assign(repository, {
+    updateLoginMfaPolicy: vi.fn(async () => instance),
+    createKeycloakProvisioningRun: createRun,
+  });
+  await expect(
+    createUpdateLoginMfaPolicy(deps)({
+      instanceId: 'tenant-a',
+      mode: 'required',
+      expectedRevision: 1,
+      actorId: 'actor',
+    })
+  ).rejects.toThrow('plugin_oidc_client_requirements_dependency_missing');
+  expect(createRun).not.toHaveBeenCalled();
+});

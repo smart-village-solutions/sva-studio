@@ -14,6 +14,8 @@ vi.mock('../../../lib/iam-api-instance-operations', () => ({
   getServerEmailVerificationTemplate: api.getServer,
   updateServerEmailVerificationTemplate: api.saveServer,
   updateInstanceMailTemplate: api.save,
+  getTenantEmailVerificationTemplate: vi.fn(),
+  updateTenantEmailVerificationTemplate: vi.fn(),
 }));
 import { EmailVerificationTemplateCard } from './-email-verification-template-card';
 const view = {

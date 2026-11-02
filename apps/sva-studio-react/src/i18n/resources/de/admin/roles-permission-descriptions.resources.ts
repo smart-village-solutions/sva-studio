@@ -6,7 +6,7 @@ export const rolePermissionDescriptionsDE = {
   iamUserRead: 'Benutzerkonten und ihre Angaben ansehen.',
   iamUserWrite: 'Angaben zu Benutzerkonten ändern.',
   iamAuthenticationPolicyManage: 'Anmelderichtlinie verwalten',
-  iamInvitationTemplateManage: 'Die Vorlage für Einladungen zu Benutzerkonten bearbeiten.',
+  iamInvitationTemplateManage: 'Die Vorlagen für Account-Einladungen und E-Mail-Bestätigungen der eigenen Instanz bearbeiten.',
   iamRoleRead: 'Rollen und ihre Zuweisungen ansehen.',
   iamRoleWrite: 'Rollen und ihre Zuweisungen ändern.',
   iamOrgRead: 'Organisationen und ihre Angaben ansehen.',

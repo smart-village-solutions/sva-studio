@@ -99,7 +99,7 @@ export const rolesAdminENResources = {
     iamUserRead: 'View user accounts and their details.',
     iamUserWrite: 'Change user account details.',
     iamAuthenticationPolicyManage: 'Manage tenant authentication policy',
-    iamInvitationTemplateManage: 'Edit the template used to invite users.',
+    iamInvitationTemplateManage: 'Edit account invitation and email verification templates for your instance.',
     iamRoleRead: 'View roles and their assignments.',
     iamRoleWrite: 'Change roles and their assignments.',
     iamOrgRead: 'View organizations and their details.',

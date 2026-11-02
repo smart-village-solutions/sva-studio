@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetRequestSingleFlight } from './request-singleflight';
+import {
+  getTenantEmailVerificationTemplate,
+  updateTenantEmailVerificationTemplate,
+} from './iam-api-tenant-mail-templates';
 
 const browserLoggerMock = vi.hoisted(() => ({
   debug: vi.fn(),
@@ -136,6 +140,30 @@ describe('iam-api organization helpers', () => {
     browserLoggerMock.info.mockReset();
     browserLoggerMock.warn.mockReset();
     browserLoggerMock.error.mockReset();
+  });
+
+  it('reads and resets verification templates through the session tenant endpoint', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(async () => createJsonResponse({ data: { source: 'server' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    await getTenantEmailVerificationTemplate();
+    const payload = { operation: 'save' as const, expectedRevision: 3, template: null };
+    await updateTenantEmailVerificationTemplate(payload);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/iam/users/me/email-verification-template',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/iam/users/me/email-verification-template',
+      expect.objectContaining({
+        method: 'PATCH',
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      })
+    );
   });
 
   it('uses a fresh idempotency key for an explicit tenant provisioning retry', async () => {
@@ -1311,13 +1339,27 @@ describe('iam-api user sync helper', () => {
 
   it('starts a bounded inventory job with CSRF headers and reads its report', async () => {
     const fetchMock = vi.mocked(fetch);
-    fetchMock.mockImplementation(async () => new Response(JSON.stringify({ data: { id: 'scan-1', status: 'queued' } }), { status: 202, headers: { 'Content-Type': 'application/json' } }));
+    fetchMock.mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ data: { id: 'scan-1', status: 'queued' } }), {
+          status: 202,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
     await startMediaInventoryScan({ limit: 3, cursor: 'next' });
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/iam/media/inventory-scans', expect.objectContaining({
-      method: 'POST', headers: expect.objectContaining({ 'X-Requested-With': 'XMLHttpRequest' }), body: JSON.stringify({ limit: 3, cursor: 'next' }),
-    }));
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/v1/iam/media/inventory-scans',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'X-Requested-With': 'XMLHttpRequest' }),
+        body: JSON.stringify({ limit: 3, cursor: 'next' }),
+      })
+    );
     await getMediaInventoryScan('scan-1');
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/iam/media/inventory-scans/scan-1', expect.anything());
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/v1/iam/media/inventory-scans/scan-1',
+      expect.anything()
+    );
   });
 
   it('posts to the keycloak sync endpoint with CSRF headers', async () => {

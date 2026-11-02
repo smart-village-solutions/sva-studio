@@ -74,6 +74,20 @@ export const getTenantInvitationTemplateHandler = async (request: Request): Prom
 export const updateTenantInvitationTemplateHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, updateTenantInvitationTemplateInternal);
 
+export const getTenantEmailVerificationTemplateHandler = async (
+  request: Request
+): Promise<Response> =>
+  withAuthenticatedIamHandler(request, (req, ctx) =>
+    getTenantInvitationTemplateInternal(req, ctx, 'verification')
+  );
+
+export const updateTenantEmailVerificationTemplateHandler = async (
+  request: Request
+): Promise<Response> =>
+  withAuthenticatedIamHandler(request, (req, ctx) =>
+    updateTenantInvitationTemplateInternal(req, ctx, 'verification')
+  );
+
 export const reprovisionMainserverUserHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, reprovisionMainserverUserInternal);
 

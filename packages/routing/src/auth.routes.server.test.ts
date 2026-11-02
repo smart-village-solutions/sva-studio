@@ -130,6 +130,12 @@ const authServerMocks = vi.hoisted(() => {
     updateMyProfileHandler: vi.fn(async () => response('updateMyProfileHandler')),
     getTenantLoginMfaHandler: vi.fn(async () => response('getTenantLoginMfaHandler')),
     updateTenantLoginMfaHandler: vi.fn(async () => response('updateTenantLoginMfaHandler')),
+    getTenantEmailVerificationTemplateHandler: vi.fn(async () =>
+      response('getTenantEmailVerificationTemplateHandler')
+    ),
+    updateTenantEmailVerificationTemplateHandler: vi.fn(async () =>
+      response('updateTenantEmailVerificationTemplateHandler')
+    ),
     getTenantInvitationTemplateHandler: vi.fn(async () =>
       response('getTenantInvitationTemplateHandler')
     ),
@@ -152,7 +158,7 @@ const authServerMocks = vi.hoisted(() => {
       activate: vi.fn(async () => response('busActivate')),
     },
     instanceRegistryHandlers: {
-      serverEmailVerificationTemplate: vi.fn(async()=>response('serverVerificationTemplate')),
+      serverEmailVerificationTemplate: vi.fn(async () => response('serverVerificationTemplate')),
       emailVerificationTemplate: vi.fn(async () => response('verificationTemplate')),
       listInstances: vi.fn(async () => response('listInstancesHandler')),
       getInstanceAuditRun: vi.fn(async () => response('getInstanceAuditRunHandler')),
@@ -454,25 +460,31 @@ describe('auth.routes.server', () => {
     vi.clearAllMocks();
   });
 
-  it.each(['invitation','verification'])('routes %s operations through the same guarded registry handler', async (kind) => {
-    const handlers = resolveAuthHandlers(
-      '/api/v1/iam/instances/$instanceId/keycloak/mail-templates/$templateKind'
-    );
-    const request = new Request(
-      `https://studio.example/api/v1/iam/instances/bb-havelland/keycloak/mail-templates/${kind}`
-    );
-    await handlers?.GET?.({ request });
-    await handlers?.PATCH?.({ request: new Request(request.url, { method: 'PATCH' }) });
-    expect(
-      authServerMocks.instanceRegistryHandlers.emailVerificationTemplate
-    ).toHaveBeenCalledTimes(2);
-  });
+  it.each(['invitation', 'verification'])(
+    'routes %s operations through the same guarded registry handler',
+    async (kind) => {
+      const handlers = resolveAuthHandlers(
+        '/api/v1/iam/instances/$instanceId/keycloak/mail-templates/$templateKind'
+      );
+      const request = new Request(
+        `https://studio.example/api/v1/iam/instances/bb-havelland/keycloak/mail-templates/${kind}`
+      );
+      await handlers?.GET?.({ request });
+      await handlers?.PATCH?.({ request: new Request(request.url, { method: 'PATCH' }) });
+      expect(
+        authServerMocks.instanceRegistryHandlers.emailVerificationTemplate
+      ).toHaveBeenCalledTimes(2);
+    }
+  );
 
-  it('routes general confirmation reads and writes through the guarded registry handler',async()=>{
-    const handlers=resolveAuthHandlers('/api/v1/iam/templates/email-verification');
-    const url='https://studio.example/api/v1/iam/templates/email-verification';
-    await handlers.GET?.({request:new Request(url)});await handlers.PATCH?.({request:new Request(url,{method:'PATCH'})});
-    expect(authServerMocks.instanceRegistryHandlers.serverEmailVerificationTemplate).toHaveBeenCalledTimes(2);
+  it('routes general confirmation reads and writes through the guarded registry handler', async () => {
+    const handlers = resolveAuthHandlers('/api/v1/iam/templates/email-verification');
+    const url = 'https://studio.example/api/v1/iam/templates/email-verification';
+    await handlers.GET?.({ request: new Request(url) });
+    await handlers.PATCH?.({ request: new Request(url, { method: 'PATCH' }) });
+    expect(
+      authServerMocks.instanceRegistryHandlers.serverEmailVerificationTemplate
+    ).toHaveBeenCalledTimes(2);
   });
 
   it.each([
@@ -481,6 +493,18 @@ describe('auth.routes.server', () => {
   ] as const)('dispatches tenant MFA %s to its authenticated handler', async (method, handler) => {
     const response = await dispatchAuthRouteRequest(
       new Request('http://localhost/api/v1/iam/users/me/authentication-policy', { method })
+    );
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toEqual({ name: handler });
+    expect(authServerMocks[handler]).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['GET', 'getTenantEmailVerificationTemplateHandler'],
+    ['PATCH', 'updateTenantEmailVerificationTemplateHandler'],
+  ] as const)('dispatches tenant verification %s to its authenticated handler', async (method, handler) => {
+    const response = await dispatchAuthRouteRequest(
+      new Request('http://localhost/api/v1/iam/users/me/email-verification-template', { method })
     );
     expect(response?.status).toBe(200);
     expect(await response?.json()).toEqual({ name: handler });

@@ -65,7 +65,7 @@ const managedPermissionDescriptions = {
   'cockpit.read': 'Cockpit-Link in der Sidebar anzeigen',
   'iam.accounts.delete': 'Tenant-Accounts löschen',
   'iam.authenticationPolicy.manage': 'Manage tenant authentication policy',
-  'iam.invitationTemplate.manage': 'Account-Einladungsvorlage verwalten',
+  'iam.invitationTemplate.manage': 'E-Mail-Vorlagen verwalten',
   'instance.registry.manage': INSTANCE_REGISTRY_PERMISSION_DESCRIPTION,
   'waste-management.read': 'Lesezugriff auf das Waste-Management-Modul',
   'waste-management.master-data.manage': 'Stammdaten im Waste-Management verwalten',

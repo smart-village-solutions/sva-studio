@@ -37,7 +37,7 @@ export const permissionDenialENResources = {
     iamMonitoringWrite: 'Start checks and maintenance actions',
     iamAccountsDelete: 'Permanently delete user accounts',
     iamAuthenticationPolicyManage: 'Manage tenant authentication policy',
-    iamInvitationTemplateManage: 'Edit the user invitation template',
+    iamInvitationTemplateManage: 'Edit email templates',
     experimentalRead: 'Use experimental features',
     appTextsRead: 'Read German app texts',
     appTextsWrite: 'Edit German app texts',

@@ -1480,8 +1480,10 @@ Nachweis gesperrt.
 
 ### Szenario 23: Vererbte Account-Einladung je Studio-Installation und Instanz
 
-Ein Tenant-Benutzer mit `iam.invitationTemplate.manage` kann den Override der
-eigenen Instanz unter `/admin/users/invitation-template` bearbeiten. Die API
+Ein Tenant-Benutzer mit `iam.invitationTemplate.manage` kann die Overrides für Account-Einladung und E-Mail-Bestätigung der
+eigenen Instanz unter `Benutzer -> E-Mail-Vorlagen` (`/admin/users/invitation-template`) bearbeiten.
+Die Bestätigung nutzt `GET/PATCH /api/v1/iam/users/me/email-verification-template` und
+den bestehenden Mailvorlagen-Abgleich für Speichern, Reset, Übernehmen und Übertragen. Die API
 bezieht die Instanz ausschließlich aus der Session, prüft den Actor und nutzt
 einen scoped Registry-Zugriff mit derselben Validierung und Revisionierung.
 Ein angegebener Fremd-Instanzparameter wird abgewiesen.

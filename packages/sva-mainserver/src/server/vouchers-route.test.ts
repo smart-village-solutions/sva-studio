@@ -492,7 +492,7 @@ describe('authorized voucher reads', () => {
     state.access.mockResolvedValue({ 'vouchers.read': false });
     expect((await get('/2'))?.status).toBe(403);
   });
-  it('returns only owned editable locations without changing upstream pagination', async () => {
+  it('returns only owned readable and editable locations without changing upstream pagination', async () => {
     expect((await get('/locations'))?.status).toBe(403);
     state.readActor.mockReturnValue(actor);
     state.locations.mockResolvedValue({
@@ -501,16 +501,21 @@ describe('authorized voucher reads', () => {
         { id: '2', name: 'Foreign', dataProvider: { id: 'other' } },
         { id: '3', name: 'Denied', dataProvider: { id: 'provider' } },
         { id: '4', name: 'No provider', dataProvider: null },
+        { id: '5', name: 'Unreadable', dataProvider: { id: 'provider' } },
       ],
       pagination: { page: 2, hasNextPage: true },
     });
-    state.local.mockImplementation(({ action }) =>
-      action === 'poi.update'
+    state.local.mockImplementation(({ action, credentialVisibleCompatibility }) =>
+      action === 'poi.update' || (action === 'poi.read' && !credentialVisibleCompatibility)
         ? { ok: false, status: 403, error: 'forbidden', message: 'forbidden' }
         : { ok: true, actor }
     );
-    state.access.mockImplementation(({ item }) => ({ 'poi.update': item.id === '1' }));
+    state.access.mockImplementation(({ item }) => ({
+      'poi.read': item.id !== '5',
+      'poi.update': item.id === '1' || item.id === '5',
+    }));
     const response = await get('/locations?page=2&pageSize=100');
+    expect(response?.status).toBe(200);
     expect(await response?.json()).toEqual({
       data: [{ id: '1', name: 'Allowed', addresses: [] }],
       pagination: { page: 2, hasNextPage: true },
@@ -520,9 +525,9 @@ describe('authorized voucher reads', () => {
     );
     expect(state.access).toHaveBeenCalledWith(
       expect.objectContaining({
-        actions: ['poi.update'],
+        actions: ['poi.read', 'poi.update'],
         contentType: 'poi.point-of-interest',
-        forceExactScopeActions: ['poi.update'],
+        forceExactScopeActions: ['poi.read', 'poi.update'],
       })
     );
   });

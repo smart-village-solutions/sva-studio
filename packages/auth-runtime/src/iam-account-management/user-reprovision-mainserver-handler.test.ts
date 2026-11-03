@@ -178,6 +178,7 @@ describe('reprovisionMainserverUserInternal', () => {
     const targetContext = await state.resolveUserMutationTargetContext.mock.results[0]?.value;
     expect(targetContext.identityProvider.provider.updateUser).toHaveBeenCalledWith('kc-user-1', {
       attributes: {
+        instanceId: ['instance-1'],
         locale: ['de'],
         mainserverUserApplicationId: ['mainserver-app-1'],
         mainserverUserApplicationSecret: ['mainserver-secret-1'],

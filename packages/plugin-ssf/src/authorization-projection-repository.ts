@@ -28,6 +28,10 @@ export type SsfAuthorizationProjectionState = Readonly<{
   lastErrorCode: string | null;
 }>;
 
+const unchangedDesiredProjectionSql = `
+  ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
+  AND ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision`;
+
 export const stageSsfAuthorizationProjection = async (
   pool: ProjectionQueryClient,
   projection: SsfAuthorizationProjection
@@ -40,53 +44,37 @@ export const stageSsfAuthorizationProjection = async (
      ) VALUES ($1, $2, $3::jsonb)
      ON CONFLICT (instance_id) DO UPDATE SET
        generation = CASE
-         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
-          AND ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
-           THEN ssf.authorization_projections.generation
+         WHEN ${unchangedDesiredProjectionSql} THEN ssf.authorization_projections.generation
          ELSE ssf.authorization_projections.generation + 1
        END,
        status = CASE
-         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
-          AND ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
-           THEN ssf.authorization_projections.status
+         WHEN ${unchangedDesiredProjectionSql} THEN ssf.authorization_projections.status
          ELSE 'pending'
        END,
        desired_revision = EXCLUDED.desired_revision,
        desired_projection = EXCLUDED.desired_projection,
        confirmed_revision = CASE
-         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
-          AND ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
-           THEN ssf.authorization_projections.confirmed_revision
+         WHEN ${unchangedDesiredProjectionSql} THEN ssf.authorization_projections.confirmed_revision
          ELSE NULL
        END,
        confirmed_projection = CASE
-         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
-          AND ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
-           THEN ssf.authorization_projections.confirmed_projection
+         WHEN ${unchangedDesiredProjectionSql} THEN ssf.authorization_projections.confirmed_projection
          ELSE NULL
        END,
        sessions_revoked_revision = CASE
-         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
-          AND ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
-           THEN ssf.authorization_projections.sessions_revoked_revision
+         WHEN ${unchangedDesiredProjectionSql} THEN ssf.authorization_projections.sessions_revoked_revision
          ELSE NULL
        END,
        last_error_code = CASE
-         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
-          AND ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
-           THEN ssf.authorization_projections.last_error_code
+         WHEN ${unchangedDesiredProjectionSql} THEN ssf.authorization_projections.last_error_code
          ELSE NULL
        END,
        confirmed_at = CASE
-         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
-          AND ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
-           THEN ssf.authorization_projections.confirmed_at
+         WHEN ${unchangedDesiredProjectionSql} THEN ssf.authorization_projections.confirmed_at
          ELSE NULL
        END,
        sessions_revoked_at = CASE
-         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
-          AND ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
-           THEN ssf.authorization_projections.sessions_revoked_at
+         WHEN ${unchangedDesiredProjectionSql} THEN ssf.authorization_projections.sessions_revoked_at
          ELSE NULL
        END,
        updated_at = now()

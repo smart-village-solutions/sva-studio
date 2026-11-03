@@ -37,7 +37,9 @@ export const local = async (
     ctx,
     action,
     resource: { contentType, ...(contentId ? { contentId } : {}) },
-    credentialVisibleCompatibility: false,
+    // Location options enforce ownership and exact read/update scope on every returned POI.
+    credentialVisibleCompatibility:
+      action === 'poi.read' && !contentId && contentType === 'poi.point-of-interest',
   });
   return decision.ok
     ? {

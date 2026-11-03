@@ -8,6 +8,7 @@ export const voucherTranslationsEn = {
     empty: 'No vouchers found.',
   },
   actions: {
+    removeCategory: 'Remove category {{name}}',
     create: 'Create voucher',
     edit: 'Edit',
     update: 'Save changes',
@@ -64,6 +65,10 @@ export const voucherTranslationsEn = {
     dateEnd: 'Redeemable until (optional)',
     visible: 'Show in the app',
     categories: 'Category',
+    categoriesSearch: 'Search categories',
+    categoriesSearchPlaceholder: 'Search or select a category',
+    categoriesEmpty: 'No matching categories found.',
+    categoryUnavailable: 'no longer available',
     media: 'Images',
     principal: 'Act as',
     actions: 'Actions',
@@ -89,6 +94,7 @@ export const voucherTranslationsEn = {
     visible: 'Visible',
   },
   help: {
+    categories: 'If needed, select one or more existing categories.',
     quotaSummary: '{{maximum}} redemptions in total · {{period}}.',
     personAboveTotal:
       'The per-person maximum exceeds the total quota and does not add a further limit.',

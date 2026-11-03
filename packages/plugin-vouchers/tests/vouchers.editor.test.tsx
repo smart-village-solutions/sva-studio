@@ -45,7 +45,9 @@ vi.mock('../src/vouchers.api.js', () => ({
   commitVoucher: state.commit,
   reconcileVoucher: state.reconcile,
   changeVoucherVisibility: state.visibility,
-  listVoucherCategories: async () => ({ data: [{ id: 'cat', name: 'Kultur' }] }),
+  listVoucherCategories: async () => ({
+    data: [{ id: 'cat', name: 'Kultur' }, { id: 'cat-2', name: 'Freizeit' }],
+  }),
   listVoucherLocations: async () => ({
     data: [{ id: '1', name: 'Ort' }],
     pagination: { hasNextPage: false },
@@ -132,6 +134,32 @@ const edit = async () => {
   fireEvent.change(title, { target: { value: 'Neu' } });
 };
 describe('voucher editor', () => {
+  it('opens, searches and changes multiple categories while retaining existing assignments', async () => {
+    state.get.mockResolvedValue({
+      data: { ...record, categories: [{ name: 'Bestandskategorie' }] },
+      meta: { access: { 'vouchers.read': true, 'vouchers.update': true } },
+      fetchedAt: '2026-10-24T12:00:00Z',
+    });
+    await edit();
+    const trigger = screen.getByLabelText(labels.fields.categories);
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    const search = screen.getByRole('textbox', { name: 'Kategorien suchen' });
+    fireEvent.change(search, { target: { value: 'kult' } });
+    expect(screen.queryByRole('checkbox', { name: 'Freizeit' })).toBeNull();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Kultur' }));
+    fireEvent.change(search, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Freizeit' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Kultur' }));
+    fireEvent.keyDown(search, { key: 'Escape' });
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: labels.actions.update }));
+    await waitFor(() => expect(state.prepare).toHaveBeenCalledOnce());
+    expect(state.prepare.mock.calls[0][0]).toMatchObject({
+      categories: [{ name: 'Bestandskategorie' }, { name: 'Freizeit' }],
+    });
+  });
   it('links back to the canonical voucher content list', async () => {
     await edit();
     expect(screen.getByRole('link', { name: labels.actions.back }).getAttribute('href'))
@@ -710,9 +738,8 @@ it('keeps rich text and category selection in the same content save and removes 
     target: { value: '<p>Mit Anmeldung</p>' },
   });
   fireEvent.blur(document.getElementById('voucher-body-html')!);
-  const category = screen.getByLabelText(labels.fields.categories) as HTMLSelectElement;
-  category.options[0].selected = true;
-  fireEvent.change(category);
+  fireEvent.click(screen.getByLabelText(labels.fields.categories));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Kultur' }));
   fireEvent.click(screen.getByRole('button', { name: labels.media.add }));
   fireEvent.click(screen.getByRole('button', { name: labels.media.remove }));
   fireEvent.click(screen.getByRole('button', { name: labels.actions.update }));

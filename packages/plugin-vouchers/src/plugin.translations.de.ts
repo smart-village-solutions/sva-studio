@@ -8,6 +8,7 @@ export const voucherTranslationsDe = {
     empty: 'Keine Gutscheine gefunden.',
   },
   actions: {
+    removeCategory: 'Kategorie {{name}} entfernen',
     create: 'Gutschein erstellen',
     edit: 'Bearbeiten',
     update: 'Änderungen speichern',
@@ -65,6 +66,10 @@ export const voucherTranslationsDe = {
     dateEnd: 'Einlösbar bis (optional)',
     visible: 'In der App anzeigen',
     categories: 'Kategorie',
+    categoriesSearch: 'Kategorien suchen',
+    categoriesSearchPlaceholder: 'Kategorie suchen oder auswählen',
+    categoriesEmpty: 'Keine passenden Kategorien gefunden.',
+    categoryUnavailable: 'nicht mehr verfügbar',
     media: 'Bilder',
     principal: 'Handeln als',
     actions: 'Aktionen',
@@ -90,6 +95,7 @@ export const voucherTranslationsDe = {
     visible: 'Sichtbar',
   },
   help: {
+    categories: 'Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.',
     quotaSummary: 'Insgesamt {{maximum}} Einlösungen · {{period}}.',
     personAboveTotal:
       'Das Personenmaximum liegt über dem Gesamtkontingent und begrenzt die Nutzung nicht zusätzlich.',

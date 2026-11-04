@@ -48,6 +48,16 @@ describe('poi api', () => {
     expect(headers.has('X-SVA-Voucher-Reset-Mode')).toBe(false);
   });
 
+  it('retains the saved POI id when visibility fails after creation', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({
+      error: 'poi_visibility_failed', message: 'poi_visibility_failed',
+      details: { contentId: 'poi-created' }, partialSuccess: true,
+    }, { status: 502 })));
+    await expect(createPoi({ name: 'Ort', visible: false }, 'user')).rejects.toMatchObject({
+      code: 'poi_visibility_failed', details: { contentId: 'poi-created' },
+    });
+  });
+
   it('creates POI via POST', async () => {
     const fetchMock = vi.fn(async () => Response.json({ data: { id: 'poi-1', name: 'Rathaus' } }));
     vi.stubGlobal('fetch', fetchMock);

@@ -49,21 +49,14 @@ const render = (element: React.ReactElement) =>
     </StudioEditorLeaveGuardProvider>
   );
 
-vi.mock('../src/poi.api.js', () => ({
+vi.mock('../src/poi.api.js', async () => ({
+  ...await vi.importActual<typeof import('../src/poi.api.js')>('../src/poi.api.js'),
   createPoi: vi.fn(),
   deletePoi: vi.fn(),
   getPoi: vi.fn(),
   getPoiDetail: vi.fn(),
   listPoiCategories: vi.fn(async () => []),
   listPoi: vi.fn(),
-  PoiApiError: class PoiApiError extends Error {
-    constructor(
-      public readonly code: string,
-      message = code
-    ) {
-      super(message);
-    }
-  },
   updatePoi: vi.fn(),
 }));
 
@@ -436,6 +429,24 @@ describe('PoiDetailPage', () => {
     expect(hasUnsavedChanges()).toBe(true);
     expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Unsaved draft');
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('keeps the created POI after visibility failure, wrapped by media: %s', async (wrapped) => {
+    const error = Object.assign(new PoiApiError('poi_visibility_failed'), {
+      details: { contentId: 'poi-created' },
+    });
+    vi.mocked(createPoi).mockRejectedValueOnce(wrapped
+      ? Object.assign(new Error('content_media_save_outcome_unknown'), { cause: error }) : error);
+    render(<PoiDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Saved place' } });
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+    await screen.findByText('poi.messages.visibilityPartialFailure');
+    expect(screen.getByRole('link', { name: 'poi.actions.openSavedContent' }).getAttribute('href')).toBe('/admin/poi/poi-created');
+    expect(navigateMock).not.toHaveBeenCalled();
+    const calls = vi.mocked(createPoi).mock.calls.length;
+    await act(async () => { fireEvent.submit(document.querySelector('form')!); });
+    expect(createPoi).toHaveBeenCalledTimes(calls);
+    expect(hasUnsavedChanges()).toBe(true);
   });
 
   it('leave guard preserves changes made during create and prevents a second create', async () => {

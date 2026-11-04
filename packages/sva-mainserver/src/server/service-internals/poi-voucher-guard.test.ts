@@ -7,6 +7,8 @@ import {
   type WriteShape,
 } from '../vouchers-snapshot.js';
 import { mapPoiItemDetail } from './poi-mappers.js';
+import { createPoiService } from './service-poi.js';
+import type { ServiceContext } from './service-context.js';
 import { createPoiOperations } from './poi-operations.js';
 import type { GraphqlExecutor } from './shared.js';
 import type { SvaMainserverInstanceConfig } from '../../types.js';
@@ -20,8 +22,8 @@ describe('POI visibility', () => {
   );
   it('changes visibility without rewriting the POI or its vouchers', async () => {
     const execute = vi.fn().mockResolvedValue({ changeVisibility: { statusCode: 200 } });
-    await createPoiOperations(execute as GraphqlExecutor).changePoiVisibilityWithConfig(
-      { ...input, visible: false }, config
+    await createPoiService({ executeGraphqlWithConfig: execute, loadValidatedInstanceConfig: async () => config } as unknown as ServiceContext).changePoiVisibility(
+      { ...input, visible: false }
     );
     expect(execute).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
       variables: { id: '1', recordType: 'PointOfInterest', visible: false },
@@ -30,8 +32,8 @@ describe('POI visibility', () => {
   });
   it.each([{}, { changeVisibility: { statusCode: 403 } }])('rejects a failed visibility result', async (response) => {
     const execute = vi.fn().mockResolvedValue(response);
-    await expect(createPoiOperations(execute as GraphqlExecutor).changePoiVisibilityWithConfig(
-      { ...input, visible: true }, config
+    await expect(createPoiService({ executeGraphqlWithConfig: execute, loadValidatedInstanceConfig: async () => config } as unknown as ServiceContext).changePoiVisibility(
+      { ...input, visible: true }
     )).rejects.toMatchObject({ code: 'invalid_response' });
   });
 });

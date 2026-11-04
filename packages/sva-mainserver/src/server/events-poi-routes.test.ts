@@ -934,7 +934,7 @@ describe('mainserver content route contracts', () => {
       method: 'PATCH', body: JSON.stringify({ name: 'Ort', visible: false }),
     }));
     expect(response?.status).toBe(502);
-    await expect(response?.json()).resolves.toMatchObject({ partialSuccess: true });
+    await expect(response?.json()).resolves.toMatchObject({ partialSuccess: true, error: 'poi_visibility_failed', details: { contentId: 'poi-1' } });
   });
 
   it('updates POI with parsed optional fields, payload, contact, URLs and addresses', async () => {

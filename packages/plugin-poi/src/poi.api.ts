@@ -14,6 +14,7 @@ import type {
 } from './poi.types.js';
 
 export class PoiApiError extends Error {
+  declare readonly details?: unknown;
   public constructor(
     public readonly code: string,
     message = code
@@ -24,6 +25,15 @@ export class PoiApiError extends Error {
     this.name = 'PoiApiError';
   }
 }
+
+export const readPoiVisibilityFailureContentId = (error: unknown): string | undefined => {
+  const providerError = error instanceof Error && 'cause' in error ? error.cause : error;
+  if (!(providerError instanceof PoiApiError) || providerError.code !== 'poi_visibility_failed') return;
+  const details = providerError.details;
+  if (typeof details === 'object' && details !== null && 'contentId' in details &&
+    typeof details.contentId === 'string' && details.contentId.trim()) return details.contentId;
+  return undefined;
+};
 
 const poiClient = createMainserverCrudClient<
   PoiContentItem,

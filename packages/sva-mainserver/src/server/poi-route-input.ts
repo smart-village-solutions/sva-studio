@@ -189,8 +189,9 @@ export const applyPoiVisibilityAfterWrite = async (
       lastErrorCode: error instanceof SvaMainserverError ? error.code : 'visibility_failed',
     });
     return json({
-      error: 'invalid_response',
-      message: 'Der Ort wurde gespeichert, aber die Sichtbarkeit konnte nicht aktualisiert werden.',
+      error: 'poi_visibility_failed',
+      message: 'poi_visibility_failed',
+      details: { contentId: data.id },
       partialSuccess: true,
       data,
     }, error instanceof SvaMainserverError ? error.statusCode : 502);

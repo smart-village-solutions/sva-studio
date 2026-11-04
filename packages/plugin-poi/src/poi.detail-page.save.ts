@@ -17,7 +17,7 @@ import {
   useStudioMediaReferenceSync,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
-import { createPoi, updatePoi, PoiApiError } from './poi.api.js';
+import { createPoi, updatePoi, PoiApiError, readPoiVisibilityFailureContentId } from './poi.api.js';
 import {
   mapPoiDetailFormValuesToInput,
   parsePoiPayloadText,
@@ -43,7 +43,7 @@ const deviationFormPaths: Readonly<
 > = {
   name: 'name',
   categories: 'basis.categories',
-  active: 'basis.active',
+  visible: 'basis.active',
   description: 'content.description',
   mobileDescription: 'content.mobileDescription',
   addresses: 'content.addresses',
@@ -236,14 +236,18 @@ export const usePoiDetailSave = (input: SaveInput) => {
         });
       }
     } catch (saveError) {
+      const savedContentId = readPoiVisibilityFailureContentId(saveError);
+      if (savedContentId) {
+        input.leaveGuard.rememberCreated(savedContentId);
+        setStatus({ kind: 'error', text: pt('messages.visibilityPartialFailure') });
+        saveFeedback.markFailed(operationId);
+        return;
+      }
       if (mode === 'create' && input.leaveGuard.hasCreated()) {
         setStatus({ kind: 'success', text: pt('messages.createdNavigationError') });
         return;
       }
-      setStatus({
-        kind: 'error',
-        text: poiSaveErrorMessage(saveError, pt),
-      });
+      setStatus({ kind: 'error', text: poiSaveErrorMessage(saveError, pt) });
       saveFeedback.markFailed(operationId);
     }
   });

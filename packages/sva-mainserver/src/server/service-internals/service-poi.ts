@@ -4,12 +4,17 @@ import type {
   SvaMainserverPoiInput,
   SvaMainserverStaticContentInput,
 } from '../../types.js';
+import {
+  svaMainserverChangeNewsVisibilityDocument,
+  type SvaMainserverChangeNewsVisibilityMutation,
+} from '../../generated/news-visibility.js';
 import { mergePoiUpdateWithCurrent } from './editor-field-matrices.js';
 import type { ServiceContext } from './service-context.js';
 import { toSvaMainserverError, withUpdatedPayload } from './shared.js';
 
 export const createPoiService = ({
   loadValidatedInstanceConfig,
+  executeGraphqlWithConfig,
   poiOperations,
   genericItemOperations,
   transferContentOwnershipWithConfig,
@@ -56,6 +61,28 @@ export const createPoiService = ({
     );
   };
 
+  const changePoiVisibility = async (
+    input: SvaMainserverConnectionInput & { readonly poiId: string; readonly visible: boolean }
+  ) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    const response = await executeGraphqlWithConfig<SvaMainserverChangeNewsVisibilityMutation>(
+      {
+        ...input,
+        document: svaMainserverChangeNewsVisibilityDocument,
+        operationName: 'SvaMainserverChangeNewsVisibility',
+        variables: { id: input.poiId, recordType: 'PointOfInterest', visible: input.visible },
+      },
+      config
+    );
+    if (!response.changeVisibility || (response.changeVisibility.statusCode ?? 200) >= 400) {
+      throw toSvaMainserverError({
+        code: 'invalid_response',
+        message: 'SVA-Mainserver konnte die Sichtbarkeit des Orts nicht aktualisieren.',
+        statusCode: 502,
+      });
+    }
+  };
+
   const deletePoi = async (input: SvaMainserverConnectionInput & { readonly poiId: string }) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return poiOperations.destroyPoiWithConfig(input, config);
@@ -93,6 +120,7 @@ export const createPoiService = ({
     createPoi,
     updatePoi,
     deletePoi,
+    changePoiVisibility,
     transferContentOwnership,
     createOrUpdateStaticContent,
   };

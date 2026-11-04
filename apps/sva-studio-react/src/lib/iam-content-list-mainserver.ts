@@ -45,6 +45,7 @@ type MainserverPoiItem = Readonly<{
   description?: string;
   mobileDescription?: string;
   active?: boolean;
+  visible?: boolean;
   categoryName?: string;
   payload?: unknown;
   addresses?: unknown;
@@ -278,7 +279,7 @@ export const mapPoiItem = (
     webUrls: item.webUrls,
     tags: item.tags,
   }),
-  status: item.active === false ? 'draft' : 'published',
+  status: item.visible === false ? 'draft' : 'published',
   validationState: 'valid',
   historyRef: `mainserver:poi:${item.id}`,
   access: createMainserverItemAccess(item.contentType, permissions),

@@ -28,7 +28,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     name: 'Name',
     description: 'Beschreibung',
     mobileDescription: 'Kurzbeschreibung',
-    active: 'Aktiv',
+    active: 'Sichtbar',
     categoryName: 'Kategorie',
     categories: 'Kategorien',
     categoriesHelp: 'Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.',

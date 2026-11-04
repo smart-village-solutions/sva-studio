@@ -1,57 +1,41 @@
-import { useState } from 'react';
-import { Button, Input, Select, StudioField } from '@sva/studio-ui-react';
+import { SearchableSelect, Select } from '@sva/studio-ui-react';
 import { useVoucherFormFields, type VoucherFormProps } from './vouchers.form-fields.js';
 import type { VoucherDraft } from './vouchers.form-model.js';
 export function VoucherLocationFields(props: VoucherFormProps) {
   const { t, section, field } = useVoucherFormFields(props);
-  const [locationSearch, setLocationSearch] = useState('');
-  const matchingLocations = props.locations.filter(
-    (item) =>
-      item.id === props.draft.pointOfInterestIds[0] ||
-      item.name.toLocaleLowerCase().includes(locationSearch.toLocaleLowerCase())
-  );
+  const options = [...props.locations]
+    .sort((left, right) =>
+      left.name.localeCompare(right.name, undefined, { sensitivity: 'base', numeric: true })
+    )
+    .map((item) => ({ value: item.id, label: item.name }));
   return section(
     'location',
     <>
-      {!props.edit && (
-        <StudioField id="voucher-location-search" label={t('fields.search')}>
-          <Input
-            id="voucher-location-search"
-            type="search"
-            value={locationSearch}
-            onChange={(event) => setLocationSearch(event.target.value)}
-          />
-        </StudioField>
-      )}
       {field(
         'location',
-        <Select
+        <SearchableSelect
           id="voucher-location"
-          required
+          label={t('fields.location')}
+          showLabel={false}
           disabled={props.edit}
           value={props.draft.pointOfInterestIds[0] ?? ''}
-          aria-invalid={props.errors.includes('location')}
-          onChange={(event) =>
-            props.change('pointOfInterestIds', event.target.value ? [event.target.value] : [])
-          }
-        >
-          <option value="">{t('values.choose')}</option>
-          {matchingLocations.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </Select>,
+          ariaInvalid={props.errors.includes('location')}
+          placeholder={t('values.choose')}
+          searchPlaceholder={t('fields.locationSearch')}
+          emptyText={t(
+            props.locationsLoading ? 'messages.loadingLocations' : 'fields.locationsEmpty'
+          )}
+          options={options}
+          onValueChange={(value) => props.change('pointOfInterestIds', value ? [value] : [])}
+        />,
         true,
         t('help.location')
       )}
-      {!props.locations.length && <p role="status">{t('help.noLocations')}</p>}
-      {props.hasMoreLocations && (
-        <Button type="button" variant="secondary" onClick={props.loadMoreLocations}>
-          {t('actions.next')}
-        </Button>
-      )}
-      <p className="text-sm text-muted-foreground">{t('confirmation.hint')}</p>
+      {props.locationsLoading ? (
+        <p role="status">{t('messages.loadingLocations')}</p>
+      ) : !props.locations.length ? (
+        <p role="status">{t('help.noLocations')}</p>
+      ) : null}
     </>
   );
 }

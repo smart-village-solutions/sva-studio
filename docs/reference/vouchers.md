@@ -8,6 +8,8 @@ Die kanonische Übersicht bietet Suche sowie Typ- und Statusfilter. Aus dem Orts
 
 Kategorien werden wie bei News und Events in einer aufklappbaren, scrollbaren Mehrfachauswahl mit Suchfeld ausgewählt. Ein Klick auf den Namen, die freie Zeilenfläche oder die Checkbox schaltet die Zuordnung um; die Liste bleibt für weitere Auswahlen geöffnet. Ausgewählte Kategorien erscheinen als einzeln entfernbare Einträge. Bestehende Zuordnungen bleiben auch erhalten, wenn sie nicht im geladenen Katalog stehen.
 
+Die Ortsauswahl enthält ein Suchfeld und zeigt berechtigte Orte alphabetisch sortiert an. Weitere Ergebnisse werden automatisch nachgeladen, auch nach einer Seite ohne berechtigte Treffer. Der Hinweis zum Erhalt bestehender Einlösungen steht nur beim Bearbeiten im Speicherbereich.
+
 Aktuell ist genau ein bestehender Ort zulässig. Ein bestehender Gutschein kann seinen Ort nicht wechseln. Die Domäne führt Ortszuordnungen bereits als Liste; mehrere Zuordnungen werden bis zur Unterstützung durch den Mainserver serverseitig abgelehnt. Das Kontingent gehört zum Gutschein. Eine spätere Mehrfachzuordnung soll dasselbe Kontingent verwenden.
 
 Neue Gutscheine sind zunächst ausgeblendet. Prozentnachlass, fester Nachlass und reduzierter Preis sind alternative Rabattmodi; bei einem reduzierten Preis muss der ursprüngliche Preis angegeben werden. Der reduzierte Preis darf null sein, aber nicht über dem ursprünglichen Preis liegen. Gesamtkontingent und optionales Personenmaximum gelten im gewählten Kalenderzeitraum; „einmalig“ gilt für die Laufzeit des aktuellen Kontingents. Fehlende Gültigkeitsgrenzen bedeuten keine zusätzliche Datumsgrenze.

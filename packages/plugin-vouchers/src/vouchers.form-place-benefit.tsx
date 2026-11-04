@@ -23,7 +23,7 @@ export function VoucherLocationFields(props: VoucherFormProps) {
           placeholder={t('values.choose')}
           searchPlaceholder={t('fields.locationSearch')}
           emptyText={t(
-            props.locationsLoading ? 'messages.loadingLocations' : 'fields.locationsEmpty'
+            props.locationsLoading ? 'messages.loading' : 'fields.locationsEmpty'
           )}
           options={options}
           onValueChange={(value) => props.change('pointOfInterestIds', value ? [value] : [])}
@@ -32,7 +32,7 @@ export function VoucherLocationFields(props: VoucherFormProps) {
         t('help.location')
       )}
       {props.locationsLoading ? (
-        <p role="status">{t('messages.loadingLocations')}</p>
+        <p role="status">{t('messages.loading')}</p>
       ) : !props.locations.length ? (
         <p role="status">{t('help.noLocations')}</p>
       ) : null}

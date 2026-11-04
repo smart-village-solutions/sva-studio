@@ -118,7 +118,6 @@ export const voucherTranslationsEn = {
   },
   messages: {
     loading: 'Loading…',
-    loadingLocations: 'More locations are loading automatically…',
     savedNavigation: 'The voucher was saved. Open it using the edit link.',
     saving: 'Saving…',
     saved: 'Saved.',

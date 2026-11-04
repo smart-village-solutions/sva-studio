@@ -120,7 +120,6 @@ export const voucherTranslationsDe = {
   },
   messages: {
     loading: 'Wird geladen…',
-    loadingLocations: 'Weitere Orte werden automatisch geladen…',
     saving: 'Wird gespeichert…',
     saved: 'Gespeichert.',
     savedReset: 'Gespeichert. Die Einlösungen am Ort wurden zurückgesetzt.',

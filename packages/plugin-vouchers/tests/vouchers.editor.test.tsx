@@ -844,7 +844,7 @@ it('reports a failed later location page without losing the draft or loaded choi
   fireEvent.change(title, { target: { value: 'Mein Gutschein' } });
   await screen.findByText(labels.messages.error);
   expect((title as HTMLInputElement).value).toBe('Mein Gutschein');
-  expect(screen.queryByText(labels.messages.loadingLocations)).toBeNull();
+  expect(screen.queryByText(labels.messages.loading)).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: labels.fields.location }));
   expect(screen.getByRole('option', { name: 'Ort' })).toBeDefined();
 });

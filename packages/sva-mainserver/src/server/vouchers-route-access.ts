@@ -59,14 +59,14 @@ export const authorizedAggregate = async (
   const current = await getSvaMainserverVoucherPoi({ ...actor, poiId });
   if (!allowedVoucherCategories(body.voucher.categories, current.categories ?? []))
     return errorJson(400, 'voucher_invalid_input', 'voucher_invalid_input');
-  const dataProviderId = raw(current.poi.dataProvider).id;
-  if (typeof dataProviderId !== 'string' || !dataProviderId.trim())
+  const dataProvider = z.object({ id: z.string().trim().min(1) }).safeParse(current.poi.dataProvider);
+  if (!dataProvider.success)
     return errorJson(403, 'voucher_ownership_conflict', 'voucher_ownership_conflict');
   const poiAccess = await resolveMainserverResourceAccess({
     actor,
     actions: ['poi.read', 'poi.update'],
     contentType: 'poi.point-of-interest',
-    item: { id: poiId, dataProvider: { id: dataProviderId } },
+    item: { id: poiId, dataProvider: dataProvider.data },
     forceExactScopeActions: ['poi.read', 'poi.update'],
   });
   if (!poiAccess['poi.read'] || !poiAccess['poi.update'])

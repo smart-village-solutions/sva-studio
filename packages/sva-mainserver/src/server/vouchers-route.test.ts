@@ -150,6 +150,15 @@ describe('voucher request boundaries', () => {
     expect(state.reserve).not.toHaveBeenCalled();
     expect(state.write).not.toHaveBeenCalled();
   });
+  it.each([null, {}, { id: '' }, { id: ' ' }, { id: 123 }])('rejects an invalid POI data provider %j before preparing a write', async (dataProvider) => {
+    const aggregate = await state.aggregate();
+    state.aggregate.mockResolvedValue({ ...aggregate, poi: { ...aggregate.poi, dataProvider } });
+    const response = await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher }));
+    expect(response?.status).toBe(403);
+    expect(state.access).not.toHaveBeenCalled();
+    expect(state.reserve).not.toHaveBeenCalled();
+    expect(state.write).not.toHaveBeenCalled();
+  });
   it.each(['prepare', 'commit'])('allows an authorized admin to %s a voucher for another owner', async (operation) => {
     const aggregate = await state.aggregate();
     state.aggregate.mockResolvedValue({

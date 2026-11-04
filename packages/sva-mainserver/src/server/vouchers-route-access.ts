@@ -5,7 +5,7 @@ import {
 } from '@sva/auth-runtime/server';
 import { errorJson, isResponse } from './content-route-core.js';
 import { resolveMainserverResourceAccess, type MainserverMutationActor } from './mutation-principal.js';
-import { getSvaMainserverVoucherPoi, loadSvaMainserverDataProviderIdentity } from './service.js';
+import { getSvaMainserverVoucherPoi } from './service.js';
 import { authorizeVoucherMedia } from './poi-route-vouchers.js';
 import { voucherHasContentChanges, voucherInputSchema } from './vouchers-model.js';
 import { raw, records, voucherContentFingerprint } from './vouchers-snapshot.js';
@@ -37,7 +37,7 @@ export const local = async (
     ctx,
     action,
     resource: { contentType, ...(contentId ? { contentId } : {}) },
-    // Location options enforce ownership and exact read/update scope on every returned POI.
+    // Location options enforce exact read/update scope on every returned POI.
     credentialVisibleCompatibility:
       action === 'poi.read' && !contentId && contentType === 'poi.point-of-interest',
   });
@@ -59,17 +59,18 @@ export const authorizedAggregate = async (
   const current = await getSvaMainserverVoucherPoi({ ...actor, poiId });
   if (!allowedVoucherCategories(body.voucher.categories, current.categories ?? []))
     return errorJson(400, 'voucher_invalid_input', 'voucher_invalid_input');
-  const identity = await loadSvaMainserverDataProviderIdentity(actor);
-  if (raw(current.poi.dataProvider).id !== identity.dataProvider.id)
+  const dataProviderId = raw(current.poi.dataProvider).id;
+  if (typeof dataProviderId !== 'string' || !dataProviderId.trim())
     return errorJson(403, 'voucher_ownership_conflict', 'voucher_ownership_conflict');
   const poiAccess = await resolveMainserverResourceAccess({
     actor,
-    actions: ['poi.update'],
+    actions: ['poi.read', 'poi.update'],
     contentType: 'poi.point-of-interest',
-    item: { id: poiId, dataProvider: identity.dataProvider },
-    forceExactScopeActions: ['poi.update'],
+    item: { id: poiId, dataProvider: { id: dataProviderId } },
+    forceExactScopeActions: ['poi.read', 'poi.update'],
   });
-  if (!poiAccess['poi.update']) return errorJson(403, 'forbidden', 'forbidden');
+  if (!poiAccess['poi.read'] || !poiAccess['poi.update'])
+    return errorJson(403, 'forbidden', 'forbidden');
   const siblings = records(current.poi.vouchers);
   if (body.voucherId && !siblings.some((item) => item.id === body.voucherId))
     return errorJson(409, 'voucher_content_conflict', 'voucher_content_conflict');

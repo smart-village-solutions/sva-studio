@@ -15,8 +15,7 @@ export type VoucherFormProps = Readonly<{
     id: string;
     name: string;
   }[];
-  hasMoreLocations: boolean;
-  loadMoreLocations: () => void;
+  locationsLoading: boolean;
   discountChosen: boolean;
   chooseDiscount: () => void;
   change: <K extends keyof VoucherDraft>(key: K, value: VoucherDraft[K]) => void;

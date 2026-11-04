@@ -55,6 +55,8 @@ export const voucherTranslationsDe = {
     teaser: 'Einleitung (optional)',
     body: 'Beschreibung (optional)',
     location: 'Ort',
+    locationSearch: 'Ort suchen',
+    locationsEmpty: 'Keine passenden Orte gefunden.',
     search: 'Suchen',
     discountMode: 'Rabattart',
     discountValue: 'Rabatt / neuer Preis',
@@ -151,7 +153,7 @@ export const voucherTranslationsDe = {
     title: 'Einlösungen am Ort zurücksetzen und speichern?',
     description:
       'Alle bisherigen Einlösungen der unten genannten Gutscheine werden gelöscht. Bereits verwendete Gutscheine können erneut eingelöst werden. Dies lässt sich im Studio nicht rückgängig machen.',
-    hint: 'Beim Speichern bleiben die bisherigen Einlösungen der Gutscheine dieses Ortes erhalten.',
+    hint: 'Änderungen an diesem Gutschein setzen bereits erfasste Einlösungen nicht zurück. Das gilt auch für andere Gutscheine am selben Ort.',
   },
   usage: {
     title: 'Nutzung',

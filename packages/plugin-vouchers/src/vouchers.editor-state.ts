@@ -77,8 +77,7 @@ function useVoucherStatus(principalControl?: MainserverPrincipalControlModel) {
       name: string;
     }[]
   >([]);
-  const [locationPage, setLocationPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
+  const [locationsLoading, setLocationsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -91,10 +90,8 @@ function useVoucherStatus(principalControl?: MainserverPrincipalControlModel) {
     setLocations,
     categories,
     setCategories,
-    locationPage,
-    setLocationPage,
-    hasMore,
-    setHasMore,
+    locationsLoading,
+    setLocationsLoading,
     loading,
     setLoading,
     busy,
@@ -178,19 +175,27 @@ function useVoucherRecordLoad(state: VoucherEditorState): void {
 function useVoucherLocationLoad(state: VoucherEditorState): void {
   useEffect(() => {
     let active = true;
-    void listVoucherLocations(state.locationPage, state.principal)
-      .then((value) => {
+    state.setLocations([]);
+    state.setLocationsLoading(true);
+    const loadLocations = async () => {
+      const choices: { id: string; name: string }[] = [];
+      for (let page = 1; active; page += 1) {
+        const value = await listVoucherLocations(page, state.principal);
         if (!active) return;
-        state.setLocations((previous) =>
-          state.locationPage === 1 ? value.data : [...previous, ...value.data]
-        );
-        state.setHasMore(value.pagination.hasNextPage);
-      })
+        choices.push(...value.data);
+        state.setLocations([...choices]);
+        if (!value.pagination.hasNextPage) return;
+      }
+    };
+    void loadLocations()
       .catch(() => {
         if (active) state.setFailure(state.t('messages.error'));
+      })
+      .finally(() => {
+        if (active) state.setLocationsLoading(false);
       });
     return () => {
       active = false;
     };
-  }, [state.locationPage, state.principal, state.t]);
+  }, [state.principal, state.t]);
 }

@@ -44,8 +44,7 @@ function VoucherEditorForm({
           errors={s.errors}
           locations={availableLocations}
           categories={s.categories}
-          hasMoreLocations={s.hasMore}
-          loadMoreLocations={() => s.setLocationPage((page) => page + 1)}
+          locationsLoading={s.locationsLoading}
           discountChosen={s.discountChosen}
           chooseDiscount={() => s.setDiscountChosen(true)}
           change={actions.change}

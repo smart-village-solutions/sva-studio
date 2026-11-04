@@ -54,6 +54,8 @@ export const voucherTranslationsEn = {
     teaser: 'Introduction (optional)',
     body: 'Description (optional)',
     location: 'Location',
+    locationSearch: 'Search locations',
+    locationsEmpty: 'No matching locations found.',
     search: 'Search',
     discountMode: 'Discount type',
     discountValue: 'Discount / new price',
@@ -147,7 +149,7 @@ export const voucherTranslationsEn = {
     title: 'Reset redemptions at this location and save?',
     description:
       'All previous redemptions of the vouchers below will be deleted. Previously used vouchers may be redeemed again. This cannot be undone in Studio.',
-    hint: 'Saving preserves existing redemptions of the vouchers at this location.',
+    hint: 'Editing this voucher does not reset recorded redemptions, including those of other vouchers at the same location.',
   },
   usage: {
     title: 'Usage',

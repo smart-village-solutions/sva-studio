@@ -35,10 +35,7 @@ export function VoucherEditorHeader({ state: s, actions }: Props) {
           label={s.t('fields.principal')}
           value={s.principal}
           options={options}
-          onChange={(value) => {
-            s.setLocationPage(1);
-            s.setPrincipal(value);
-          }}
+          onChange={s.setPrincipal}
           contextOptions={s.principalControl?.contextOptions}
           onContextChange={s.principalControl?.onContextChange}
         />

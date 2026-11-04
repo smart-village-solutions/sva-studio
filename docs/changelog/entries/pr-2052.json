@@ -1,0 +1,4 @@
+{
+  "prNumber": 2052,
+  "body": "Der Status von Orten und die Checkbox „Sichtbar“ steuern jetzt die tatsächliche Sichtbarkeit in der App. Statuswechsel in der Inhaltsliste ändern ausschließlich die Sichtbarkeit; Ortsangaben und zugehörige Gutscheine werden dabei nicht neu gespeichert."
+}

@@ -8,10 +8,10 @@ export const poiCreateTranslations = {
       'Kategorien können derzeit nicht geladen werden. Bitte wenden Sie sich an Ihre Administration.',
     nameHelp: 'Wie heißt der Ort? Der Name ist erforderlich.',
     categoriesHelp: 'Ordnen Sie den Ort den passenden vorhandenen Kategorien zu.',
-    activeHelp: 'Legt fest, ob der Ort als aktiv gespeichert wird.',
+    activeHelp: 'Legt fest, ob der Ort öffentlich sichtbar ist.',
     mobileDescriptionHelp:
       'Optionaler kurzer Text zum Ort.',
-    createActive: 'Aktiv speichern',
+    createActive: 'Sichtbar speichern',
     createInactive: 'Verborgen speichern',
     intro:
       'Erstellen Sie einen Ort. Beginnen Sie mit Name und Standort; Bilder und weitere Angaben können Sie ergänzen.',
@@ -19,7 +19,7 @@ export const poiCreateTranslations = {
     filled: 'Angaben vorhanden',
     empty: 'Noch keine Angaben',
     activeEffect:
-      'Der Ort wird als aktiv gespeichert. Öffnungszeiten steuern keine zeitgesteuerte Veröffentlichung.',
+      'Der Ort wird öffentlich sichtbar gespeichert. Öffnungszeiten steuern keine zeitgesteuerte Veröffentlichung.',
     inactiveEffect: 'Der Ort wird gespeichert und bleibt öffentlich verborgen.',
     editHint: 'Nach dem Anlegen öffnen Sie den gespeicherten Ort im gewohnten Editor mit Tabs.',
     sections: {
@@ -34,7 +34,7 @@ export const poiCreateTranslations = {
       prices: 'Preise ergänzen',
       operator: 'Betreiber ergänzen',
       technical: 'Technische Angaben',
-      active: 'Aktiv',
+      active: 'Sichtbar',
     },
   },
   en: {
@@ -46,17 +46,17 @@ export const poiCreateTranslations = {
       'Categories cannot be loaded right now. Please contact your administrator.',
     nameHelp: 'What is the place called? A name is required.',
     categoriesHelp: 'Assign the place to suitable existing categories.',
-    activeHelp: 'Determines whether the place is saved as active.',
+    activeHelp: 'Determines whether the place is publicly visible.',
     mobileDescriptionHelp:
       'Optional short description of the place.',
-    createActive: 'Save as active',
+    createActive: 'Save as visible',
     createInactive: 'Save hidden',
     intro:
       'Create a place. Start with its name and location; add images and further details as needed.',
     optional: 'optional',
     filled: 'Details entered',
     empty: 'No details yet',
-    activeEffect: 'The place will be saved as active. Opening hours do not schedule publication.',
+    activeEffect: 'The place will be saved as publicly visible. Opening hours do not schedule publication.',
     inactiveEffect: 'The place will be saved and remain hidden from the public.',
     editHint: 'After creation, open the saved place in the familiar editor with tabs.',
     sections: {
@@ -71,7 +71,7 @@ export const poiCreateTranslations = {
       prices: 'Add prices',
       operator: 'Add operator',
       technical: 'Technical details',
-      active: 'Active',
+      active: 'Visible',
     },
   },
 };

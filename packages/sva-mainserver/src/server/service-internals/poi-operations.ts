@@ -32,6 +32,10 @@ import {
 } from '../vouchers-snapshot.js';
 import { mapOptionalPoiItem, mapPoiItem, mapPoiItemDetail } from './poi-mappers.js';
 import {
+  svaMainserverChangeNewsVisibilityDocument,
+  type SvaMainserverChangeNewsVisibilityMutation,
+} from '../../generated/news-visibility.js';
+import {
   toSvaMainserverError,
   type GraphqlExecutor,
   type SvaMainserverListInput,
@@ -108,6 +112,27 @@ const assertPoiWithoutVouchers = async (
 };
 
 export const createPoiOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
+  changePoiVisibilityWithConfig: async (
+    input: SvaMainserverConnectionInput & { readonly poiId: string; readonly visible: boolean },
+    config: SvaMainserverInstanceConfig
+  ): Promise<void> => {
+    const response = await executeGraphqlWithConfig<SvaMainserverChangeNewsVisibilityMutation>(
+      {
+        ...input,
+        document: svaMainserverChangeNewsVisibilityDocument,
+        operationName: 'SvaMainserverChangeNewsVisibility',
+        variables: { id: input.poiId, recordType: 'PointOfInterest', visible: input.visible },
+      },
+      config
+    );
+    if (!response.changeVisibility || (response.changeVisibility.statusCode ?? 200) >= 400) {
+      throw toSvaMainserverError({
+        code: 'invalid_response',
+        message: 'SVA-Mainserver konnte die Sichtbarkeit des Orts nicht aktualisieren.',
+        statusCode: 502,
+      });
+    }
+  },
   assertPoiWithoutVouchersWithConfig: (
     input: SvaMainserverConnectionInput & { poiId: string },
     config: SvaMainserverInstanceConfig

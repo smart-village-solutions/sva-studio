@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createPoi, updatePoi, listPoi, listPoiCategories, PoiApiError } from '../src/poi.api.js';
+import { createPoi, updatePoi, setPoiVisibility, listPoi, listPoiCategories, PoiApiError } from '../src/poi.api.js';
 
 const defaultListQuery = {
   page: 1,
@@ -29,6 +29,23 @@ describe('poi api', () => {
       '/api/v1/mainserver/poi?page=2&pageSize=50',
       expect.objectContaining({ credentials: 'include' })
     );
+  });
+
+  it('sends only visible for a status change without voucher preflight', async () => {
+    const fetchMock = vi.fn(async (_url: unknown, init?: RequestInit) =>
+      init?.method === 'PATCH'
+        ? Response.json({ data: { id: 'visibility-poi' } })
+        : Response.json({ data: { id: 'visibility-poi' } }, { headers: { 'X-SVA-Context-Binding': 'v1.context' } })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await setPoiVisibility('visibility-poi', false, 'user');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/mainserver/poi/visibility-poi', expect.objectContaining({
+      method: 'PATCH', body: JSON.stringify({ visible: false }),
+    }));
+    const headers = new Headers(fetchMock.mock.calls[1]?.[1]?.headers);
+    expect(headers.get('X-SVA-Acting-Principal-Type')).toBe('user');
+    expect(headers.has('X-SVA-Voucher-Reset-Mode')).toBe(false);
   });
 
   it('creates POI via POST', async () => {

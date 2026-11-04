@@ -6,11 +6,35 @@ import {
   type RawRecord,
   type WriteShape,
 } from '../vouchers-snapshot.js';
+import { mapPoiItemDetail } from './poi-mappers.js';
 import { createPoiOperations } from './poi-operations.js';
 import type { GraphqlExecutor } from './shared.js';
 import type { SvaMainserverInstanceConfig } from '../../types.js';
 const config = {} as SvaMainserverInstanceConfig;
 const input = { instanceId: 'tenant', keycloakSubject: 'subject', poiId: '1' };
+describe('POI visibility', () => {
+  it.each([[true, false, 'published'], [false, true, 'draft']] as const)(
+    'maps status from visibility %s independently of active %s', (visible, active, status) => {
+      expect(mapPoiItemDetail({ id: '1', name: 'Ort', visible, active } as never).data.status).toBe(status);
+    }
+  );
+  it('changes visibility without rewriting the POI or its vouchers', async () => {
+    const execute = vi.fn().mockResolvedValue({ changeVisibility: { statusCode: 200 } });
+    await createPoiOperations(execute as GraphqlExecutor).changePoiVisibilityWithConfig(
+      { ...input, visible: false }, config
+    );
+    expect(execute).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      variables: { id: '1', recordType: 'PointOfInterest', visible: false },
+      document: expect.stringContaining('changeVisibility'),
+    }), config);
+  });
+  it.each([{}, { changeVisibility: { statusCode: 403 } }])('rejects a failed visibility result', async (response) => {
+    const execute = vi.fn().mockResolvedValue(response);
+    await expect(createPoiOperations(execute as GraphqlExecutor).changePoiVisibilityWithConfig(
+      { ...input, visible: true }, config
+    )).rejects.toMatchObject({ code: 'invalid_response' });
+  });
+});
 describe('POI voucher write guard', () => {
   it.each(['update', 'delete'])(
     'blocks %s before destructive mutation even without the plugin',

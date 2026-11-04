@@ -1,9 +1,10 @@
 import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 
-import type { SvaMainserverPoiInput } from '../types.js';
+import type { SvaMainserverPoiInput, SvaMainserverPoiItem } from '../types.js';
 import {
   errorJson,
   isResponse,
+  json,
   parseJsonObjectBody,
   readBoolean,
   readString,
@@ -22,7 +23,8 @@ import {
   parseTags,
   parseWebUrls,
 } from './content-route-parsers.js';
-import { createSvaMainserverPoi, getSvaMainserverPoiDetail } from './service.js';
+import { changeSvaMainserverPoiVisibility, createSvaMainserverPoi, getSvaMainserverPoiDetail } from './service.js';
+import { SvaMainserverError } from './errors.js';
 import {
   authorizeMainserverCreateForPrincipal,
   finalizeMainserverMutation,
@@ -42,6 +44,7 @@ const poiTextFields = (body: Record<string, unknown>) => {
     ...(typeof body.externalId === 'string' ? { externalId: body.externalId.trim() } : {}),
     ...(typeof body.keywords === 'string' ? { keywords: body.keywords.trim() } : {}),
     ...(readBoolean(body.active) !== undefined ? { active: readBoolean(body.active) } : {}),
+    ...(readBoolean(body.visible) !== undefined ? { visible: readBoolean(body.visible) } : {}),
     ...(readString(body.categoryName) ? { categoryName: readString(body.categoryName) } : {}),
     ...(body.payload !== undefined ? { payload: body.payload } : {}),
   };
@@ -93,6 +96,9 @@ export const parsePoiInput = async (
     return body;
   }
 
+  if (body.visible !== undefined && typeof body.visible !== 'boolean') {
+    return errorJson(400, 'invalid_request', 'Sichtbarkeit muss als Boolean gesendet werden.');
+  }
   const name = readString(body.name);
   if (!name) {
     return errorJson(400, 'invalid_request', 'Der POI-Name ist erforderlich.');
@@ -163,6 +169,34 @@ export const parsePoiInput = async (
   });
 };
 
+export const applyPoiVisibilityAfterWrite = async (
+  actor: MainserverMutationActor,
+  data: SvaMainserverPoiItem,
+  visible: boolean | undefined
+): Promise<SvaMainserverPoiItem | Response> => {
+  if (visible === undefined || visible === data.visible) return data;
+  try {
+    await changeSvaMainserverPoiVisibility({ ...actor, poiId: data.id, visible });
+    return { ...data, visible, status: visible ? 'published' : 'draft' };
+  } catch (error) {
+    await finalizeMainserverMutation({
+      actor,
+      providerOutcome: 'succeeded',
+      reconciliationStatus: 'reconciliation_required',
+      completedSteps: ['provider_write'],
+      contentId: data.id,
+      observedDataProviderId: data.dataProvider?.id,
+      lastErrorCode: error instanceof SvaMainserverError ? error.code : 'visibility_failed',
+    });
+    return json({
+      error: 'invalid_response',
+      message: 'Der Ort wurde gespeichert, aber die Sichtbarkeit konnte nicht aktualisiert werden.',
+      partialSuccess: true,
+      data,
+    }, error instanceof SvaMainserverError ? error.statusCode : 502);
+  }
+};
+
 export const createPoiContent = async (request: Request, actor: MainserverMutationActor) => {
   const parsed = await parsePoiInput(request);
   if (isResponse(parsed)) {
@@ -182,6 +216,8 @@ export const createPoiContent = async (request: Request, actor: MainserverMutati
     reread: async () => (await getSvaMainserverPoiDetail({ ...actor, poiId: data.id })).data,
     contentType: POI_CONTENT_TYPE,
   });
+  const saved = await applyPoiVisibilityAfterWrite(actor, data, parsed.visible);
+  if (isResponse(saved)) return saved;
   await finalizeMainserverMutation({
     actor,
     providerOutcome: 'succeeded',
@@ -194,7 +230,7 @@ export const createPoiContent = async (request: Request, actor: MainserverMutati
     observedDataProviderId: data.dataProvider?.id ?? bindingResult.observedDataProviderId,
   });
   return {
-    data,
+    data: saved,
     ...(bindingResult.outcome === 'conflict' || bindingResult.outcome === 'reconciliation_required'
       ? { meta: { reconciliationStatus: 'reconciliation_required' as const } }
       : {}),

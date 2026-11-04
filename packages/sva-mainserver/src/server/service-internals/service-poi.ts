@@ -56,6 +56,13 @@ export const createPoiService = ({
     );
   };
 
+  const changePoiVisibility = async (
+    input: SvaMainserverConnectionInput & { readonly poiId: string; readonly visible: boolean }
+  ) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    await poiOperations.changePoiVisibilityWithConfig(input, config);
+  };
+
   const deletePoi = async (input: SvaMainserverConnectionInput & { readonly poiId: string }) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return poiOperations.destroyPoiWithConfig(input, config);
@@ -93,6 +100,7 @@ export const createPoiService = ({
     createPoi,
     updatePoi,
     deletePoi,
+    changePoiVisibility,
     transferContentOwnership,
     createOrUpdateStaticContent,
   };

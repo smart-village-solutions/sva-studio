@@ -43,7 +43,7 @@ const deviationFormPaths: Readonly<
 > = {
   name: 'name',
   categories: 'basis.categories',
-  active: 'basis.active',
+  visible: 'basis.active',
   description: 'content.description',
   mobileDescription: 'content.mobileDescription',
   addresses: 'content.addresses',

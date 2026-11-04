@@ -138,3 +138,20 @@ export const listPoiCategories = async (): Promise<readonly PoiCategoryOption[]>
 
   return response.data;
 };
+
+export const setPoiVisibility = async (
+  contentId: string,
+  visible: boolean,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<void> => {
+  await poiClient.ensureMutationContext(contentId, actingPrincipalType);
+  await requestMainserverJson<{ readonly data: PoiContentItem }, PoiApiError>({
+    url: `/api/v1/mainserver/poi/${encodeURIComponent(contentId)}`,
+    errorFactory: (code, message) => new PoiApiError(code, message),
+    init: {
+      method: 'PATCH',
+      body: JSON.stringify({ visible }),
+      headers: poiClient.mutationHeaders(contentId, actingPrincipalType),
+    },
+  });
+};

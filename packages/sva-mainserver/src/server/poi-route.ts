@@ -1,11 +1,12 @@
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
-import { errorJson, isResponse, json, matchRequestRoute } from './content-route-core.js';
+import { errorJson, isResponse, json, matchRequestRoute, parseJsonObjectBody } from './content-route-core.js';
 import { withMainserverContextBinding } from './content-route-context.js';
 import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import {
   deleteSvaMainserverPoi,
+  changeSvaMainserverPoiVisibility,
   getSvaMainserverPoiDetail,
   updateSvaMainserverPoi,
 } from './service.js';
@@ -20,7 +21,7 @@ import {
 } from './poi-route-access.js';
 import { z } from 'zod';
 import { preparePoiVoucherUpdate, reconcileVoucherReferences } from './poi-route-vouchers.js';
-import { createPoiContent, parsePoiInput } from './poi-route-input.js';
+import { applyPoiVisibilityAfterWrite, createPoiContent, parsePoiInput } from './poi-route-input.js';
 import {
   authorizeMainserverExistingContent,
   finalizeMainserverMutation,
@@ -84,13 +85,19 @@ const handleItemUpdate = async (
     actor,
     contentId: route.itemId,
     operation: async () => {
-      const parsed = await parsePoiInput(request);
+      const body = await parseJsonObjectBody(request.clone(), 'POI-Daten müssen als Objekt gesendet werden.');
+      if (isResponse(body)) return body;
+      const visibilityOnly = Object.keys(body).length === 1 && 'visible' in body;
+      if (visibilityOnly && typeof body.visible !== 'boolean') {
+        return errorJson(400, 'invalid_request', 'Sichtbarkeit muss als Boolean gesendet werden.');
+      }
+      const parsed = visibilityOnly ? { visible: body.visible as boolean } : await parsePoiInput(request);
       if (isResponse(parsed)) {
         return parsed;
       }
 
       const existing = await getSvaMainserverPoiDetail({ ...actor, poiId: route.itemId });
-      if (request.headers.get('x-sva-voucher-reset-mode') === 'prepare') {
+      if ('name' in parsed && request.headers.get('x-sva-voucher-reset-mode') === 'prepare') {
         const preparation = await preparePoiVoucherUpdate({ request, ctx, actor, poiId: route.itemId, poi: parsed });
         return isResponse(preparation) ? preparation : errorJson(409, 'voucher_confirmation_required', 'voucher_confirmation_required');
       }
@@ -102,11 +109,24 @@ const handleItemUpdate = async (
         item: existing?.data,
         additionalActions: existing?.data
           ? toMainserverAdditionalActions(
-              resolveMainserverVisibilityAction(existing.data.visible, parsed.active)
+              resolveMainserverVisibilityAction(existing.data.visible, parsed.visible)
             )
           : [],
       });
       if (isResponse(providerAuthorization)) return providerAuthorization;
+      if (!('name' in parsed)) {
+        await changeSvaMainserverPoiVisibility({ ...actor, poiId: route.itemId, visible: parsed.visible });
+        await finalizeMainserverMutation({
+          actor,
+          providerOutcome: 'succeeded',
+          reconciliationStatus: 'complete',
+          completedSteps: ['provider_write'],
+          contentId: route.itemId,
+          observedDataProviderId: existing.data.dataProvider?.id,
+        });
+        logSuccess('mainserver_poi_visibility_update', route.itemId);
+        return json({ data: { ...existing.data, visible: parsed.visible, status: parsed.visible ? 'published' : 'draft' } });
+      }
       const voucherReset = await preparePoiVoucherUpdate({
         request,
         ctx,
@@ -129,6 +149,8 @@ const handleItemUpdate = async (
           .parse(result.data.voucherIdChanges);
         await reconcileVoucherReferences(actor.instanceId, changes);
       }
+      const saved = await applyPoiVisibilityAfterWrite(actor, result.data, parsed.visible);
+      if (isResponse(saved)) return saved;
       await finalizeMainserverMutation({
         actor,
         providerOutcome: 'succeeded',
@@ -139,7 +161,7 @@ const handleItemUpdate = async (
       });
 
       logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
-      return json(result);
+      return json({ data: saved });
     },
   });
 };

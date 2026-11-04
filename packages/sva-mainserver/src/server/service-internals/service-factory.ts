@@ -50,6 +50,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     createPoi,
     updatePoi,
     deletePoi,
+    changePoiVisibility,
     transferContentOwnership,
     createOrUpdateStaticContent,
   } = createPoiService(context);
@@ -84,6 +85,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     changeNewsVisibility,
     changeEventVisibility,
     changeGenericItemVisibility,
+    changePoiVisibility,
     deleteEvent,
     deleteGenericItem,
     deleteNews,

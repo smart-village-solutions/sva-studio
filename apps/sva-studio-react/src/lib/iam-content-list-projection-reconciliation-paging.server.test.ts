@@ -341,6 +341,24 @@ describe('content projection reconciliation paging', () => {
     ]);
   });
 
+  it.each([[true, false, 'published'], [false, true, 'draft']] as const)(
+    'projects POI visibility %s independently of active %s', async (visible, active, status) => {
+      process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
+      state.listSvaMainserverProjection.mockResolvedValue({
+        data: [{
+          id: 'poi-slim-1', contentType: 'poi.point-of-interest', title: 'Ort', visible, active,
+          createdAt: '2026-06-20T10:00:00.000Z', updatedAt: '2026-06-21T10:00:00.000Z',
+        }],
+        skippedInvalidCount: 0,
+        pagination: { page: 1, pageSize: 100, hasNextPage: false },
+      });
+      await refreshProjectedContents(ctx, { visibleTypes: ['poi.point-of-interest'], force: true });
+      expect(fixture.projectionRows).toEqual([
+        expect.objectContaining({ source_entity_id: 'poi-slim-1', status }),
+      ]);
+    }
+  );
+
   it('blocks slim projection before the upstream call when credentials are not ready', async () => {
     process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({

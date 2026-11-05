@@ -17,8 +17,8 @@ vi.mock('@sva/data-repositories/server', () => ({
 vi.mock('./db.js', () => ({
   withIamAppDb: (work: (client: unknown) => unknown) => work({ query: state.query }),
 }));
-vi.mock('./app-translations-deepl-provider.js', () => ({
-  getDeepLSetupStatus: state.providerStatus,
+vi.mock('./app-translations-deepl.js', () => ({
+  readDeepLSetupStatus: state.providerStatus,
 }));
 vi.mock('./upstream-url-validation.js', () => ({ normalizePublicUpstreamUrl: state.url }));
 import { Client } from 'pg';
@@ -635,7 +635,7 @@ it.each([
       );
     const job = context();
     Object.assign(job.tenantLifecycle!, { operation });
-    await expect(synchronizeAppTranslationNews(job)).resolves.toBeUndefined();
+    await expect(synchronizeAppTranslationNews(job)).resolves.toBe(true);
 
     expect(fetcher.mock.calls[1][0]).toBe(
       'https://town.main.example/api/v1/app_translations/service_identity'
@@ -649,3 +649,19 @@ it.each([
     });
   }
 );
+
+it.each(['reconcile', 'suspend'])('handles an older Mainserver during %s', async (operation) => {
+  connection.publicConfig.translationService = binding;
+  state.providerStatus.mockResolvedValue({ ready: false, selectedLocales: [] });
+  prepareMultipleSetupCredentials([]);
+  fetcher
+    .mockReset()
+    .mockResolvedValueOnce(Response.json({ access_token: 'technical-token' }))
+    .mockResolvedValueOnce(new Response('', { status: 400 }));
+  const job = context();
+  Object.assign(job.tenantLifecycle!, { operation });
+  const result = synchronizeAppTranslationNews(job);
+  if (operation === 'suspend')
+    await expect(result).rejects.toThrow('mainserver_identity_unavailable');
+  else await expect(result).resolves.toBe(false);
+});

@@ -378,7 +378,7 @@ Kritische Nachweise: frische Einrichtung und unveränderte Wiederholung; Modul a
 In Staging und Production steuert Studio die Nachrichtenfreigabe für jede
 zugeordnete Instanz. Ein aktives Modul, eine bestätigte Mainserver-Bindung und
 ein geprüfter DeepL-Zugang mit Englisch ergeben zusammen die Freigabe für das
-bestehende Nachrichtenprofil. Modul-, Schnittstellen- und Sprachänderungen
+bestehende Nachrichtenprofil. Moduländerungen, DeepL-Konfiguration und Sprachauswahl
 stoßen denselben Abgleich an. Englisch bleibt der Umfang dieses Lieferabschnitts
 für dynamische Nachrichten.
 

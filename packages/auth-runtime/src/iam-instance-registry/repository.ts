@@ -57,19 +57,14 @@ export const persistAppTranslationNewsReconcile = async (instanceId: string): Pr
   const pluginId = 'app-translations';
   const lifecycle = readPersistablePluginTenantLifecycleRegistry().get(pluginId);
   if (!lifecycle) return;
-  await withRegistryRepository(async (repository) => {
-    const recorded = await repository.persistPluginTenantLifecycleReconcileIntents({
+  await withRegistryRepository((repository) =>
+    repository.persistPluginTenantLifecycleReconcileIntents({
       instanceId,
       lifecycles: [lifecycle],
       forcePluginIds: [pluginId],
-    });
-    if (
-      !recorded.length &&
-      (await repository.getModuleActivationPolicy(instanceId, pluginId))?.effectiveActive
-    ) {
-      throw new Error('app_translations_reconcile_waiting_for_current_lifecycle');
-    }
-  });
+      reconcileActiveOnly: true,
+    })
+  );
 };
 
 const readReservedPluginOidcClientIds = (): readonly string[] =>

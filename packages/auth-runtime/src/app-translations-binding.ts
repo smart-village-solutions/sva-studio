@@ -8,10 +8,8 @@ import type { StudioJobExecutionHandlerContext } from './plugin-operations/types
 import { withIamAppDb } from './db.js';
 import { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
 import { readEffectiveSvaMainserverCredentialsWithStatus } from './mainserver-effective-credentials.js';
-import { getDeepLSetupStatus } from './app-translations-deepl-provider.js';
-
+import { readDeepLSetupStatus } from './app-translations-deepl.js';
 const translationPath = '/api/v1/app-translations/translate';
-
 const httpsUrl = z.url().refine((value) => {
   const url = new URL(value);
   return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash;
@@ -34,7 +32,6 @@ const identitySchema = z
     }),
   })
   .strict();
-
 const resolveIdentityUrl = (graphqlBaseUrl: string) =>
   normalizePublicUpstreamUrl(
     new URL('/api/v1/app_translations/service_identity', graphqlBaseUrl).toString()
@@ -203,7 +200,6 @@ const requestServiceSetup = async (
     attempted.push(organizationId);
   }
 };
-
 const newsSetupSchema = identitySchema.extend({
   newsEnabled: z.boolean(),
   generation: z.number().int().positive(),
@@ -211,7 +207,7 @@ const newsSetupSchema = identitySchema.extend({
 
 export const synchronizeAppTranslationNews = async (
   context: StudioJobExecutionHandlerContext
-): Promise<void> => {
+): Promise<boolean> => {
   const { instanceId } = context.job;
   const lifecycle = context.tenantLifecycle;
   if (!instanceId || !lifecycle) throw new Error('app_translations_invalid_lifecycle_context');
@@ -219,17 +215,17 @@ export const synchronizeAppTranslationNews = async (
   const binding = translationServiceBindingSchema.safeParse(
     connection?.publicConfig.translationService
   );
-  if (!connection?.enabled || !binding.success) return;
+  if (!connection?.enabled || !binding.success) return false;
   const scope = await readActiveScope(connection, context);
   if (!scope) throw new Error('mainserver_setup_scope_changed');
 
-  const publicBase = httpsUrl.parse(process.env.SVA_PUBLIC_BASE_URL);
-  const studioUrl = new URL(translationPath, publicBase).toString();
+  const studioUrl = new URL(
+    translationPath,
+    httpsUrl.parse(process.env.SVA_PUBLIC_BASE_URL)
+  ).toString();
   const url = await resolveIdentityUrl(String(connection.publicConfig.graphqlBaseUrl));
   if (!url) throw new Error('mainserver_identity_unavailable');
-  const provider = getDeepLSetupStatus(
-    await loadDefaultExternalInterfaceRecord(instanceId, 'deepl')
-  );
+  const provider = await readDeepLSetupStatus(instanceId);
   const newsEnabled =
     lifecycle.operation !== 'suspend' && provider.ready && provider.selectedLocales.includes('en');
   const generation = lifecycle.generation;
@@ -241,6 +237,10 @@ export const synchronizeAppTranslationNews = async (
     { newsEnabled, generation, serviceSubject: binding.data.subject },
     scope.primary_hostname
   );
+  if (lifecycle.operation !== 'suspend' && [400, 404, 422].includes(response.status)) {
+    await response.body?.cancel();
+    return false;
+  }
   const result = newsSetupSchema.parse(await readBoundedJson(response));
   if (
     result.instanceId !== instanceId ||
@@ -250,6 +250,7 @@ export const synchronizeAppTranslationNews = async (
     JSON.stringify(result.binding) !== JSON.stringify(binding.data)
   )
     throw new Error('mainserver_translation_policy_not_confirmed');
+  return true;
 };
 
 /** Only the root-managed upstream is trusted; incoming requests never enroll identities. */

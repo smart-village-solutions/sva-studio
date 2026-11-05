@@ -174,7 +174,9 @@ describe('local multilingual module', () => {
     'reconciles the Mainserver only for mutating active lifecycle operations: %s',
     async (operation) => {
       const reconcileServiceBinding = vi.fn().mockResolvedValue(true);
-      const synchronizeNews = vi.fn();
+      const synchronizeNews = vi
+        .fn()
+        .mockResolvedValue(['provision', 'reconcile', 'reactivate'].includes(operation));
       const readLocalReadiness = vi.fn().mockResolvedValue({
         schemaReady: true,
         providerConfigured: true,
@@ -201,12 +203,53 @@ describe('local multilingual module', () => {
       );
     }
   );
+  it('keeps the local catalog usable when news synchronization is disabled', async () => {
+    const handler = createPluginJobExecutionHandlers({
+      reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+      readLocalReadiness: vi
+        .fn()
+        .mockResolvedValue({
+          schemaReady: true,
+          providerConfigured: false,
+          serviceConfigured: true,
+        }),
+    })[APP_TRANSLATIONS_LIFECYCLE_JOB]!;
+    const result = await handler(context('reconcile'));
+    expect(result?.tenantLifecycle?.checks).toContainEqual({
+      checkId: 'app-translations.schema',
+      status: 'ready',
+    });
+  });
+
+  it('retries a failed discovery of an existing binding without writing remote policy', async () => {
+    const synchronizeNews = vi.fn();
+    const handler = createPluginJobExecutionHandlers({
+      reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+      synchronizeNews,
+      readLocalReadiness: vi.fn().mockResolvedValue({
+        schemaReady: true,
+        providerConfigured: false,
+        serviceConfigured: true,
+      }),
+    })[APP_TRANSLATIONS_LIFECYCLE_JOB]!;
+    await expect(handler(context('reconcile'))).rejects.toMatchObject({
+      cause: { retry: { kind: 'retryable' } },
+    });
+    expect(synchronizeNews).not.toHaveBeenCalled();
+  });
+
   it.each(['reconcile', 'suspend'])('retries an unconfirmed %s', async (operation) => {
     await expect(
       createPluginJobExecutionHandlers({
         reconcileServiceBinding: vi.fn().mockResolvedValue(true),
         synchronizeNews: vi.fn().mockRejectedValue(new Error('unreachable')),
-        readLocalReadiness: vi.fn(),
+        readLocalReadiness: vi
+          .fn()
+          .mockResolvedValue({
+            schemaReady: true,
+            providerConfigured: false,
+            serviceConfigured: true,
+          }),
       })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(context(operation))
     ).rejects.toMatchObject({
       cause: {

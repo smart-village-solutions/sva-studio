@@ -23,6 +23,7 @@ const state = vi.hoisted(() => ({
   getLifecycle: vi.fn(),
   getJobById: vi.fn(),
   registrationQueueName: 'plugin-operations',
+  lifecyclePluginId: 'speech',
   readinessChecks: [] as Array<{
     checkId: string;
     titleKey: string;
@@ -62,9 +63,9 @@ vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => (
   readInstanceRegistryPluginTenantLifecycleRegistry: () =>
     new Map([
       [
-        'speech',
+        state.lifecyclePluginId,
         {
-          pluginId: 'speech',
+          pluginId: state.lifecyclePluginId,
           contractRevision: '1.0.0:1',
           contractVersion: 1,
           operations: state.operations,
@@ -211,6 +212,7 @@ const job = {
 describe('configured plugin tenant lifecycle runtime', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.lifecyclePluginId = 'speech';
     state.requestLifecycle.mockResolvedValue(lifecycleRecord);
     state.claimLifecycle.mockResolvedValue({
       ...lifecycleRecord,
@@ -680,10 +682,11 @@ describe('configured plugin tenant lifecycle runtime', () => {
   });
 
   it('schedules the persisted suspension after the module is revoked', async () => {
+    state.lifecyclePluginId = 'app-translations';
     state.operations = [{ operation: 'suspend', jobTypeId: 'speech.suspendTenant' }];
     state.listModuleActivations.mockResolvedValueOnce([
       {
-        moduleId: 'speech',
+        moduleId: 'app-translations',
         activationPolicy: 'automatic',
         effectiveActive: false,
         stateRevision: 2,
@@ -709,6 +712,7 @@ describe('configured plugin tenant lifecycle runtime', () => {
     expect(state.requestLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
         operation: 'suspend',
+        expectedGeneration: 2,
       })
     );
   });

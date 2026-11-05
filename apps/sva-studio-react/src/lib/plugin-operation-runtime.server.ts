@@ -192,7 +192,9 @@ const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
   'app-translations.local': () => ({
     readLocalReadiness: readAppTranslationsLocalReadiness,
     reconcileServiceBinding: reconcileAppTranslationServiceBinding,
-    synchronizeNews: synchronizeAppTranslationNews,
+    ...(['staging', 'production'].includes(process.env.SVA_DEPLOYMENT_ENVIRONMENT ?? '')
+      ? { synchronizeNews: synchronizeAppTranslationNews }
+      : {}),
     translateCatalog: runCatalogTranslation,
   }),
   'waste-management.operations': () =>

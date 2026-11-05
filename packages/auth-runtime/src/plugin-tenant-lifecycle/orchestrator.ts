@@ -104,6 +104,7 @@ export type StartPluginTenantLifecycleInput = {
   readonly instanceId: string;
   readonly pluginId: string;
   readonly operation: PluginTenantLifecycleOperation;
+  readonly expectedGeneration?: number;
   readonly actorAccountId?: string;
   readonly requestId?: string;
   readonly scheduledAt: string;
@@ -235,6 +236,9 @@ export const createPluginTenantLifecycleOrchestrator = (
       instanceId: input.instanceId,
       pluginId: input.pluginId,
       operation: input.operation,
+      ...(input.expectedGeneration === undefined
+        ? {}
+        : { expectedGeneration: input.expectedGeneration }),
       ...(lifecycle.contractRevision ? { contractRevision: lifecycle.contractRevision } : {}),
     });
     const generation = requestedLifecycle.desiredGeneration;

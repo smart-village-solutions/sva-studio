@@ -43,6 +43,9 @@ const persistAtomicLifecycleStart: PersistPluginTenantLifecycleStart = async ({
         instanceId: request.instanceId,
         pluginId: request.pluginId,
         operation: request.operation,
+        ...(request.expectedGeneration === undefined
+          ? {}
+          : { expectedGeneration: request.expectedGeneration }),
         ...(contractRevision ? { contractRevision } : {}),
       });
       const jobId = randomUUID();
@@ -182,6 +185,9 @@ const scheduleAutomaticLifecycleDefinition = async (input: {
       instanceId: input.instanceId,
       pluginId,
       operation: schedule.operation,
+      ...(schedule.operation === 'suspend' && lifecycle
+        ? { expectedGeneration: lifecycle.desiredGeneration }
+        : {}),
       scheduledAt: schedule.scheduledAt,
     });
     return true;
@@ -218,9 +224,7 @@ export const ensureConfiguredPluginTenantProvisioning = async (
   );
   let pendingDefinitions = [...lifecycleRegistry.values()].flatMap((definition) => {
     const activation = activationsByModule.get(definition.pluginId);
-    const managesSuspension = definition.operations.some(
-      ({ operation }) => operation === 'suspend'
-    );
+    const managesSuspension = definition.pluginId === 'app-translations';
     return activation && (activation.effectiveActive || managesSuspension)
       ? [{ definition, activation }]
       : [];

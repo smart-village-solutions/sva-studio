@@ -26,7 +26,7 @@ const entrySchema = z
     key: z
       .string()
       .regex(
-        /^(title|author|keywords|settings\.onlySummaryLinkText|contentBlocks\.(0|[1-9][0-9]{0,5})\.(title|intro|body))$/
+        /^(title|author|keywords|settings\.onlySummaryLinkText|contentBlocks\.(0|[1-9][0-9]{0,5})\.(title|intro|body|mediaContents\.(0|[1-9][0-9]{0,5})\.captionText))$/
       ),
     text: z.string().max(92160).regex(/\S/u),
     format: z.enum(['plain', 'html']),

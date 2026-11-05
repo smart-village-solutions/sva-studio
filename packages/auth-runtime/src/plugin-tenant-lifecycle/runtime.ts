@@ -143,6 +143,12 @@ const scheduleAutomaticLifecycleDefinition = async (input: {
     input.instanceId,
     (resolvedRepository) => resolvedRepository.getLifecycle(input.instanceId, pluginId)
   );
+  if (
+    !input.activation.effectiveActive &&
+    (lifecycle?.desiredOperation !== 'suspend' ||
+      lifecycle.desiredGeneration <= lifecycle.completedGeneration)
+  )
+    return true;
   if (lifecycle?.activeJobId) {
     try {
       await reconcileClaimedLifecycleJob({
@@ -207,14 +213,17 @@ export const ensureConfiguredPluginTenantProvisioning = async (
   const activations = await withRegistryRepository((repository) =>
     repository.listModuleActivations(instanceId)
   );
-  const effectiveActivations = new Map(
-    activations
-      .filter(({ effectiveActive }) => effectiveActive)
-      .map((activation) => [activation.moduleId, activation])
+  const activationsByModule = new Map(
+    activations.map((activation) => [activation.moduleId, activation])
   );
   let pendingDefinitions = [...lifecycleRegistry.values()].flatMap((definition) => {
-    const activation = effectiveActivations.get(definition.pluginId);
-    return activation ? [{ definition, activation }] : [];
+    const activation = activationsByModule.get(definition.pluginId);
+    const managesSuspension = definition.operations.some(
+      ({ operation }) => operation === 'suspend'
+    );
+    return activation && (activation.effectiveActive || managesSuspension)
+      ? [{ definition, activation }]
+      : [];
   });
   for (
     let attempt = 0;

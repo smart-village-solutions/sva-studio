@@ -679,6 +679,40 @@ describe('configured plugin tenant lifecycle runtime', () => {
     );
   });
 
+  it('schedules the persisted suspension after the module is revoked', async () => {
+    state.operations = [{ operation: 'suspend', jobTypeId: 'speech.suspendTenant' }];
+    state.listModuleActivations.mockResolvedValueOnce([
+      {
+        moduleId: 'speech',
+        activationPolicy: 'automatic',
+        effectiveActive: false,
+        stateRevision: 2,
+      },
+    ]);
+    state.getModuleActivationPolicy.mockResolvedValueOnce({
+      activationPolicy: 'automatic',
+      effectiveActive: false,
+      stateRevision: 2,
+    });
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      accessState: 'suspended',
+      desiredOperation: 'suspend',
+      desiredGeneration: 2,
+      completedGeneration: 1,
+      readinessStatus: 'pending',
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.requestLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: 'suspend',
+      })
+    );
+  });
+
   it('retries a failed suspend operation while the lifecycle remains suspended', async () => {
     state.operations = [{ operation: 'suspend', jobTypeId: 'speech.suspendTenant' }];
     state.getLifecycle.mockResolvedValue({

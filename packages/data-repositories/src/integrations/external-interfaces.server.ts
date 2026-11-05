@@ -5,7 +5,8 @@ import type {
 } from '@sva/core';
 
 import { createExternalInterfaceRepository } from './external-interfaces.js';
-import { createExecutor, withIamDb } from './external-interfaces.db.js';
+import { createExecutor, withIamDb, type QueryClient } from './external-interfaces.db.js';
+import { externalInterfaceStatements } from './external-interfaces.statements.js';
 
 const resolveDatabaseUrl = (getDatabaseUrl?: () => string | undefined) =>
   getDatabaseUrl ?? (() => process.env.IAM_DATABASE_URL);
@@ -138,6 +139,18 @@ export const saveMainserverTranslationServiceBinding = async (input: {
   });
 };
 
+// Commit provider changes and their reconciliation request together.
+const enqueueDeepLReconcile = (client: QueryClient, instanceId: string) =>
+  client.query(
+    `SELECT graphile_worker.sva_enqueue_job(
+      'plugin_tenant_lifecycle_retry',
+      json_build_object('instanceId', $1::text, 'pluginId', 'app-translations', 'reconcileAppTranslations', true),
+      'plugin-tenant-lifecycle', 20,
+      'plugin-tenant-lifecycle-reconcile-app-translations:' || $1::text, now()
+    )`,
+    [instanceId]
+  );
+
 export const deleteExternalInterfaceRecord = async (
   instanceId: string,
   id: string,
@@ -145,9 +158,12 @@ export const deleteExternalInterfaceRecord = async (
     readonly getDatabaseUrl?: () => string | undefined;
   } = {}
 ): Promise<boolean> =>
-  withDefaultDatabase(instanceId, options.getDatabaseUrl, async (client) =>
-    createExternalInterfaceRepository(createExecutor(client)).deleteById(instanceId, id)
-  );
+  withDefaultDatabase(instanceId, options.getDatabaseUrl, async (client) => {
+    const statement = externalInterfaceStatements.deleteById(instanceId, id);
+    const result = await client.query<{ type_key: string }>(statement.text, statement.values);
+    if (result.rows[0]?.type_key === 'deepl') await enqueueDeepLReconcile(client, instanceId);
+    return result.rowCount > 0;
+  });
 
 export const saveExternalInterfaceConnectionCheck = async (
   check: ExternalInterfaceConnectionCheckRecord,
@@ -179,6 +195,7 @@ export const saveDeepLInterfaceRecord = async (
     if ((current.rows[0]?.revision ?? '0') !== expectedRevision)
       throw new Error('interface_conflict');
     await createExternalInterfaceRepository(createExecutor(client)).upsert(record);
+    await enqueueDeepLReconcile(client, record.instanceId);
   });
 };
 
@@ -211,4 +228,5 @@ export const saveDeepLInterfaceCheck = async (input: {
       ]
     );
     if (result.rowCount !== 1) throw new Error('interface_conflict');
+    await enqueueDeepLReconcile(client, input.instanceId);
   });

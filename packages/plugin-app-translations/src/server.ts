@@ -5,9 +5,8 @@ import { APP_TRANSLATIONS_LIFECYCLE_JOB, APP_TRANSLATIONS_CATALOG_JOB } from './
 export type AppTranslationsLocalRuntime = {
   readonly translateCatalog?: PluginJobExecutionHandler;
   readonly reconcileServiceBinding: (context: PluginJobHandlerContext) => Promise<boolean>;
-  readonly readLocalReadiness: (
-    instanceId: string
-  ) => Promise<{
+  readonly synchronizeNews: (context: PluginJobHandlerContext) => Promise<void>;
+  readonly readLocalReadiness: (instanceId: string) => Promise<{
     readonly schemaReady: boolean;
     readonly providerConfigured: boolean;
     readonly serviceConfigured: boolean;
@@ -43,6 +42,19 @@ export const createPluginJobExecutionHandlers = (
       ? await runtime.reconcileServiceBinding(context)
       : undefined;
     await context.throwIfCancellationRequested();
+    if (reconciled || operation === 'suspend') {
+      try {
+        await runtime.synchronizeNews(context);
+      } catch {
+        throw Object.assign(new Error('mainserver_translation_policy_not_confirmed'), {
+          cause: {
+            code: 'app-translations.mainserver-policy-not-confirmed',
+            messageKey: 'appTranslations.readiness.serviceMissing',
+            retry: { kind: 'retryable' },
+          },
+        });
+      }
+    }
     const status = await runtime.readLocalReadiness(context.job.instanceId);
     const serviceConfigured = reconciled ?? status.serviceConfigured;
     await context.throwIfCancellationRequested();

@@ -8,6 +8,9 @@ import type { StudioJobExecutionHandlerContext } from './plugin-operations/types
 import { withIamAppDb } from './db.js';
 import { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
 import { readEffectiveSvaMainserverCredentialsWithStatus } from './mainserver-effective-credentials.js';
+import { getDeepLSetupStatus } from './app-translations-deepl-provider.js';
+
+const translationPath = '/api/v1/app-translations/translate';
 
 const httpsUrl = z.url().refine((value) => {
   const url = new URL(value);
@@ -32,6 +35,11 @@ const identitySchema = z
   })
   .strict();
 
+const resolveIdentityUrl = (graphqlBaseUrl: string) =>
+  normalizePublicUpstreamUrl(
+    new URL('/api/v1/app_translations/service_identity', graphqlBaseUrl).toString()
+  );
+
 const readActiveScope = (
   connection: ExternalInterfaceRecord,
   context: StudioJobExecutionHandlerContext
@@ -48,8 +56,9 @@ const readActiveScope = (
      JOIN iam.instance_modules m ON m.instance_id=i.id AND m.module_id='app-translations'
      JOIN iam.instance_plugin_lifecycle l ON l.instance_id=m.instance_id AND l.plugin_id=m.module_id
      JOIN iam.instance_external_interfaces e ON e.instance_id=i.id AND e.id=$2
-     WHERE i.id=$1 AND i.status='active' AND m.effective_active
-       AND (l.access_state='active' OR ($6='reactivate' AND l.access_state='suspended'))
+     WHERE i.id=$1 AND i.status='active'
+       AND (($6='suspend' AND l.access_state='suspended')
+         OR ($6<>'suspend' AND m.effective_active AND (l.access_state='active' OR ($6='reactivate' AND l.access_state='suspended'))))
        AND l.desired_generation=$4::bigint AND l.active_job_id=$5::uuid AND l.claimed_generation=l.desired_generation AND l.desired_operation=$6
        AND e.enabled AND e.is_default AND e.public_config_json=$3::jsonb`,
       [
@@ -123,7 +132,13 @@ const requestServiceSetup = async (
   connection: ExternalInterfaceRecord,
   context: StudioJobExecutionHandlerContext,
   url: string,
-  studioUrl: string
+  studioUrl: string,
+  newsPolicy?: {
+    readonly newsEnabled: boolean;
+    readonly generation: number;
+    readonly serviceSubject: string;
+  },
+  expectedHostname = new URL(studioUrl).host
 ): Promise<Response> => {
   if (typeof connection.publicConfig.oauthTokenUrl !== 'string')
     throw new Error('mainserver_setup_credentials_missing');
@@ -167,7 +182,7 @@ const requestServiceSetup = async (
       .parse(await readBoundedJson(tokenResponse));
     // A queued activation may have been superseded while requesting the token.
     const currentScope = await readActiveScope(connection, context);
-    if (!currentScope || currentScope.primary_hostname !== new URL(studioUrl).host)
+    if (!currentScope || currentScope.primary_hostname !== expectedHostname)
       throw new Error('mainserver_setup_scope_changed');
     if ((await readSetupOrganization(connection, attempted)) !== organizationId)
       throw new Error('mainserver_setup_scope_changed');
@@ -180,13 +195,61 @@ const requestServiceSetup = async (
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token.access_token}`,
       },
-      body: JSON.stringify({ instanceId: connection.instanceId, studioUrl }),
+      body: JSON.stringify({ instanceId: connection.instanceId, studioUrl, ...newsPolicy }),
     });
     // Only a definitive permission denial permits trying another existing identity.
     if (response.status !== 403) return response;
     await response.body?.cancel();
     attempted.push(organizationId);
   }
+};
+
+const newsSetupSchema = identitySchema.extend({
+  newsEnabled: z.boolean(),
+  generation: z.number().int().positive(),
+});
+
+export const synchronizeAppTranslationNews = async (
+  context: StudioJobExecutionHandlerContext
+): Promise<void> => {
+  const { instanceId } = context.job;
+  const lifecycle = context.tenantLifecycle;
+  if (!instanceId || !lifecycle) throw new Error('app_translations_invalid_lifecycle_context');
+  const connection = await loadDefaultExternalInterfaceRecord(instanceId, 'sva_mainserver');
+  const binding = translationServiceBindingSchema.safeParse(
+    connection?.publicConfig.translationService
+  );
+  if (!connection?.enabled || !binding.success) return;
+  const scope = await readActiveScope(connection, context);
+  if (!scope) throw new Error('mainserver_setup_scope_changed');
+
+  const publicBase = httpsUrl.parse(process.env.SVA_PUBLIC_BASE_URL);
+  const studioUrl = new URL(translationPath, publicBase).toString();
+  const url = await resolveIdentityUrl(String(connection.publicConfig.graphqlBaseUrl));
+  if (!url) throw new Error('mainserver_identity_unavailable');
+  const provider = getDeepLSetupStatus(
+    await loadDefaultExternalInterfaceRecord(instanceId, 'deepl')
+  );
+  const newsEnabled =
+    lifecycle.operation !== 'suspend' && provider.ready && provider.selectedLocales.includes('en');
+  const generation = lifecycle.generation;
+  const response = await requestServiceSetup(
+    connection,
+    context,
+    url,
+    studioUrl,
+    { newsEnabled, generation, serviceSubject: binding.data.subject },
+    scope.primary_hostname
+  );
+  const result = newsSetupSchema.parse(await readBoundedJson(response));
+  if (
+    result.instanceId !== instanceId ||
+    result.studioUrl !== studioUrl ||
+    result.generation !== generation ||
+    result.newsEnabled !== newsEnabled ||
+    JSON.stringify(result.binding) !== JSON.stringify(binding.data)
+  )
+    throw new Error('mainserver_translation_policy_not_confirmed');
 };
 
 /** Only the root-managed upstream is trusted; incoming requests never enroll identities. */
@@ -207,12 +270,7 @@ export const reconcileAppTranslationServiceBinding = async (
       return false;
     const scope = await readActiveScope(connection, context);
     if (!scope) return false;
-    const url = await normalizePublicUpstreamUrl(
-      new URL(
-        '/api/v1/app_translations/service_identity',
-        connection.publicConfig.graphqlBaseUrl
-      ).toString()
-    );
+    const url = await resolveIdentityUrl(connection.publicConfig.graphqlBaseUrl);
     if (!url) return false;
     let response = await fetch(url, {
       redirect: 'error',
@@ -228,14 +286,13 @@ export const reconcileAppTranslationServiceBinding = async (
         connection,
         context,
         url,
-        `https://${scope.primary_hostname}/api/v1/app-translations/translate`
+        `https://${scope.primary_hostname}${translationPath}`
       );
     }
     const identity = identitySchema.parse(await readBoundedJson(response));
-    const destinations = [`https://${scope.primary_hostname}/api/v1/app-translations/translate`];
+    const destinations = [`https://${scope.primary_hostname}${translationPath}`];
     const publicBase = httpsUrl.safeParse(process.env.SVA_PUBLIC_BASE_URL);
-    if (publicBase.success)
-      destinations.push(new URL('/api/v1/app-translations/translate', publicBase.data).toString());
+    if (publicBase.success) destinations.push(new URL(translationPath, publicBase.data).toString());
     if (identity.instanceId !== instanceId || !destinations.includes(identity.studioUrl))
       return false;
     if (!(await normalizePublicUpstreamUrl(identity.binding.issuer))) return false;

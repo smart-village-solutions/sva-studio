@@ -3,6 +3,7 @@ import * as graphileWorker from 'graphile-worker';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import {
+  persistAppTranslationNewsReconcile,
   runConfiguredPluginTenantProvisioningSchedule,
   runConfiguredPluginTenantReconcile,
 } from '../iam-instance-registry/repository.js';
@@ -66,6 +67,12 @@ export const createStudioJobTaskList = (
     const instanceId = (payload as { readonly instanceId?: unknown }).instanceId;
     if (typeof instanceId !== 'string' || instanceId.length === 0) {
       throw new Error('plugin_tenant_lifecycle_retry_payload_invalid');
+    }
+    if (
+      (payload as { readonly reconcileAppTranslations?: unknown }).reconcileAppTranslations === true
+    ) {
+      await persistAppTranslationNewsReconcile(instanceId);
+      return;
     }
     const { pluginId, operation } = payload as {
       readonly pluginId?: unknown;

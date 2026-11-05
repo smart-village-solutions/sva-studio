@@ -56,12 +56,12 @@ paths:
                     properties:
                       key:
                         type: string
-                        description: title, author, keywords oder contentBlocks.N.title/.intro/.body; eindeutige Schlüssel und genau ein nichtleerer title
+                        description: title, author, keywords, settings.onlySummaryLinkText oder contentBlocks.N.title/.intro/.body; eindeutige Schlüssel und genau ein nichtleerer title
                       text: { type: string, minLength: 1, maxLength: 92160, pattern: '\S' }
                       format:
                         type: string
                         enum: [plain, html]
-                        description: html ausschließlich für body, übrige Felder plain
+                        description: body als html, intro als plain oder html, übrige Felder als plain
       responses:
         '200':
           description: Gleiche Korrelation schemaVersion/requestId/sourceDigest/profileId/sourceLocale/targetLocale und vollständige entries in gleicher Reihenfolge mit gleichen key/format und englischem text; private no-store

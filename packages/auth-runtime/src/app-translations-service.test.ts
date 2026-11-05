@@ -96,6 +96,7 @@ describe('technical news translation', () => {
       for (const key of [
         'author',
         'keywords',
+        'settings.onlySummaryLinkText',
         'contentBlocks.0.title',
         'contentBlocks.0.intro',
         'contentBlocks.0.body',
@@ -130,6 +131,26 @@ describe('technical news translation', () => {
       payload().entries.map((entry) => entry.text),
       expect.any(AbortSignal)
     );
+  });
+  it('translates a formatted intro and a plain article button in the same group', async () => {
+    const input = payload();
+    input.entries.push(
+      { key: 'contentBlocks.0.intro', text: '<p><strong>Einleitung</strong></p>', format: 'html' },
+      { key: 'settings.onlySummaryLinkText', text: 'Zum vollständigen Artikel', format: 'plain' }
+    );
+    state.translate.mockResolvedValue([
+      'News',
+      '<p>Hello</p>',
+      '<p><strong>Intro</strong></p>',
+      'Read the full article',
+    ]);
+
+    const result = await appTranslationServiceHandler(request(input));
+    expect(result.status).toBe(200);
+    expect((await result.json()).entries.slice(-2)).toEqual([
+      { key: 'contentBlocks.0.intro', text: '<p><strong>Intro</strong></p>', format: 'html' },
+      { key: 'settings.onlySummaryLinkText', text: 'Read the full article', format: 'plain' },
+    ]);
   });
   it.each([
     { azp: binding.clientId, sub: 'human' },
@@ -183,6 +204,20 @@ describe('technical news translation', () => {
         entries: [
           { key: 'title', text: 'Hi', format: 'plain' },
           { key: 'contentBlocks.0.body', text: '<script>bad()</script>', format: 'html' },
+        ],
+      },
+      {
+        ...payload(),
+        entries: [
+          ...payload().entries,
+          { key: 'contentBlocks.0.intro', text: '<p onclick="bad()">Intro</p>', format: 'html' },
+        ],
+      },
+      {
+        ...payload(),
+        entries: [
+          ...payload().entries,
+          { key: 'settings.onlySummaryLinkText', text: '<p>Read more</p>', format: 'html' },
         ],
       },
     ];

@@ -30,6 +30,7 @@ describe('local multilingual module', () => {
       .mockResolvedValue({ resultPayload: { summary: { processedItems: 1 } } });
     const handler = createPluginJobExecutionHandlers({
       reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+      synchronizeNews: vi.fn(),
       readLocalReadiness: vi.fn(),
       translateCatalog,
     })[APP_TRANSLATIONS_CATALOG_JOB]!;
@@ -78,6 +79,7 @@ describe('local multilingual module', () => {
       }));
       const handler = createPluginJobExecutionHandlers({
         reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+        synchronizeNews: vi.fn(),
         readLocalReadiness,
       })[APP_TRANSLATIONS_LIFECYCLE_JOB]!;
       const result = await handler(context('readiness'));
@@ -97,6 +99,7 @@ describe('local multilingual module', () => {
   it('does not grant local access for missing schema evidence', async () => {
     const result = await createPluginJobExecutionHandlers({
       reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+      synchronizeNews: vi.fn(),
       readLocalReadiness: async () => ({
         schemaReady: false,
         providerConfigured: true,
@@ -136,6 +139,7 @@ describe('local multilingual module', () => {
       }));
       const result = await createPluginJobExecutionHandlers({
         reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+        synchronizeNews: vi.fn(),
         readLocalReadiness,
       })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(context(operation));
       expect(readLocalReadiness).toHaveBeenCalledWith('tenant-a');
@@ -154,6 +158,7 @@ describe('local multilingual module', () => {
   it('keeps missing schema blocking during reactivation', async () => {
     const result = await createPluginJobExecutionHandlers({
       reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+      synchronizeNews: vi.fn(),
       readLocalReadiness: async () => ({
         schemaReady: false,
         providerConfigured: false,
@@ -169,19 +174,24 @@ describe('local multilingual module', () => {
     'reconciles the Mainserver only for mutating active lifecycle operations: %s',
     async (operation) => {
       const reconcileServiceBinding = vi.fn().mockResolvedValue(true);
-      const readLocalReadiness = vi
+      const synchronizeNews = vi
         .fn()
-        .mockResolvedValue({
-          schemaReady: true,
-          providerConfigured: true,
-          serviceConfigured: false,
-        });
+        .mockResolvedValue(['provision', 'reconcile', 'reactivate'].includes(operation));
+      const readLocalReadiness = vi.fn().mockResolvedValue({
+        schemaReady: true,
+        providerConfigured: true,
+        serviceConfigured: false,
+      });
       const result = await createPluginJobExecutionHandlers({
         reconcileServiceBinding,
+        synchronizeNews,
         readLocalReadiness,
       })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(context(operation));
       const activeMutation = ['provision', 'reconcile', 'reactivate'].includes(operation);
       expect(reconcileServiceBinding).toHaveBeenCalledTimes(activeMutation ? 1 : 0);
+      expect(synchronizeNews).toHaveBeenCalledTimes(
+        activeMutation || operation === 'suspend' ? 1 : 0
+      );
       expect(result?.tenantLifecycle?.checks).toContainEqual(
         activeMutation
           ? { checkId: 'app-translations.service', status: 'ready' }
@@ -193,11 +203,67 @@ describe('local multilingual module', () => {
       );
     }
   );
+  it('keeps the local catalog usable when news synchronization is disabled', async () => {
+    const handler = createPluginJobExecutionHandlers({
+      reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+      readLocalReadiness: vi
+        .fn()
+        .mockResolvedValue({
+          schemaReady: true,
+          providerConfigured: false,
+          serviceConfigured: true,
+        }),
+    })[APP_TRANSLATIONS_LIFECYCLE_JOB]!;
+    const result = await handler(context('reconcile'));
+    expect(result?.tenantLifecycle?.checks).toContainEqual({
+      checkId: 'app-translations.schema',
+      status: 'ready',
+    });
+  });
+
+  it('retries a failed discovery of an existing binding without writing remote policy', async () => {
+    const synchronizeNews = vi.fn();
+    const handler = createPluginJobExecutionHandlers({
+      reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+      synchronizeNews,
+      readLocalReadiness: vi.fn().mockResolvedValue({
+        schemaReady: true,
+        providerConfigured: false,
+        serviceConfigured: true,
+      }),
+    })[APP_TRANSLATIONS_LIFECYCLE_JOB]!;
+    await expect(handler(context('reconcile'))).rejects.toMatchObject({
+      cause: { retry: { kind: 'retryable' } },
+    });
+    expect(synchronizeNews).not.toHaveBeenCalled();
+  });
+
+  it.each(['reconcile', 'suspend'])('retries an unconfirmed %s', async (operation) => {
+    await expect(
+      createPluginJobExecutionHandlers({
+        reconcileServiceBinding: vi.fn().mockResolvedValue(true),
+        synchronizeNews: vi.fn().mockRejectedValue(new Error('unreachable')),
+        readLocalReadiness: vi
+          .fn()
+          .mockResolvedValue({
+            schemaReady: true,
+            providerConfigured: false,
+            serviceConfigured: true,
+          }),
+      })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(context(operation))
+    ).rejects.toMatchObject({
+      cause: {
+        code: 'app-translations.mainserver-policy-not-confirmed',
+        retry: { kind: 'retryable' },
+      },
+    });
+  });
   it('rejects unsupported lifecycle operations', async () => {
     const readLocalReadiness = vi.fn();
     await expect(
       createPluginJobExecutionHandlers({
         reconcileServiceBinding: vi.fn().mockResolvedValue(false),
+        synchronizeNews: vi.fn(),
         readLocalReadiness,
       })[APP_TRANSLATIONS_LIFECYCLE_JOB]!(context('unknown'))
     ).rejects.toMatchObject({

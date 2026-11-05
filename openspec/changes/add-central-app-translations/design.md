@@ -373,6 +373,49 @@ Der Mainserver verwendet ausschließlich seinen bereits konfigurierten vertrauli
 
 Kritische Nachweise: frische Einrichtung und unveränderte Wiederholung; Modul aus/an und veralteter Lifecycle-Auftrag; fehlender technischer Zugang; gewöhnlicher Benutzer oder fremde Kommune; HTTPS-/Pfad-/Bodygrenzen; Ziel- und Mapperkonflikte; unveränderte fremde Einstellungen und Secrets; Keycloak-Ausfall und Wiederholung nach Teilfehler. Ein erfolgreicher lokaler Test ersetzt den noch offenen Live-Nachweis der Sandbox nicht.
 
+### 6.5 Nachrichtenübersetzung über das Modul freigeben
+
+In Staging und Production steuert Studio die Nachrichtenfreigabe für jede
+zugeordnete Instanz. Ein aktives Modul, eine bestätigte Mainserver-Bindung und
+ein geprüfter DeepL-Zugang mit Englisch ergeben zusammen die Freigabe für das
+bestehende Nachrichtenprofil. Moduländerungen, DeepL-Konfiguration und Sprachauswahl
+stoßen denselben Abgleich an. Englisch bleibt der Umfang dieses Lieferabschnitts
+für dynamische Nachrichten.
+
+Je Umgebung vertraut der Mainserver dem bereits vorhandenen zentralen
+Übersetzungsendpunkt der zugehörigen Studio-Installation. Die exakt konfigurierte
+HTTPS-Adresse ist das Ziel vor Tokenabruf und Versand. Die bestehende, bestätigte
+Bindung identifiziert die Instanz im Request. Studio prüft dort weiterhin Issuer,
+Audience, Client, Subject, Instanz, Modul und Sprache. Ein Kunde mit eigener
+Studio-Domain oder abweichender Mainserver-Kennung nutzt denselben Weg.
+Die Staging-Zentralroute antwortet ohne Token mit dem erwarteten Dienstfehler 401.
+
+Der vorhandene, authentifizierte Einrichtungsaufruf überträgt bei Aktivierung,
+Abgleich, Reaktivierung und Entzug zusätzlich den gewünschten Zustand mit der
+Studio-Auftragsgeneration. Studio verwendet den bestehenden technischen Zugang
+der zugeordneten Instanz. Mainserver prüft die Host-Kommune und ihre bestätigte
+Studio-Identität, bevor er die Freigabe in den bestehenden kommunalen
+Übersetzungseinstellungen speichert. Unter derselben Zeilensperre wird eine
+ältere Generation abgewiesen. Die Wiederholung derselben Generation mit
+identischem Zustand bestätigt den bestehenden Wert. Derselben Generation
+zugeordnete widersprüchliche Zustände werden als Konflikt gemeldet.
+
+Studio sperrt neue Provider-Aufrufe beim Entzug unmittelbar über den bestehenden
+Modulguard. Der Mainserver beendet mit bestätigtem Entzug das Einreihen von Jobs
+und die Auslieferung fertiger Treffer. Bis der Mainserver den Entzug bestätigt,
+können bei einem Verbindungsfehler bereits gespeicherte Ergebnisse sichtbar
+bleiben. Der bestehende Lifecycle meldet den ausstehenden Abgleich und übernimmt
+Retry und Reparatur. Laufende Jobs prüfen vor Übernahme des Ergebnisses erneut
+ihre Freigabe und Quellversion. Eine erneute Freigabe kann zulässige Treffer
+weiterverwenden.
+
+Die Einführung erfolgt Mainserver vor Studio. Alte Identitätsabfragen und
+Einrichtungsaufrufe bleiben während des Übergangs kompatibel. Einmalig werden
+bereits aktive Module über den vorhandenen Lifecycle abgeglichen. Die bisherige
+Pilotfreigabe wird dabei in die vom Modul gesteuerte Freigabe überführt. Vor der
+Produktivfreigabe sind der Ablauf für zwei Staging-Instanzen und der Rückfall bei
+Entzug mit vorhandenem Cache nachzuweisen.
+
 ## 7. Generischer Cache und Worker
 
 ```text

@@ -5,14 +5,36 @@ import { APP_TRANSLATIONS_LIFECYCLE_JOB, APP_TRANSLATIONS_CATALOG_JOB } from './
 export type AppTranslationsLocalRuntime = {
   readonly translateCatalog?: PluginJobExecutionHandler;
   readonly reconcileServiceBinding: (context: PluginJobHandlerContext) => Promise<boolean>;
-  readonly readLocalReadiness: (
-    instanceId: string
-  ) => Promise<{
+  readonly synchronizeNews?: (context: PluginJobHandlerContext) => Promise<boolean>;
+  readonly readLocalReadiness: (instanceId: string) => Promise<{
     readonly schemaReady: boolean;
     readonly providerConfigured: boolean;
     readonly serviceConfigured: boolean;
   }>;
 };
+const confirmNewsPolicy = async (
+  synchronize: AppTranslationsLocalRuntime['synchronizeNews'],
+  context: PluginJobHandlerContext,
+  reconciled: boolean | undefined,
+  hasBinding: boolean
+): Promise<boolean> => {
+  if (!synchronize) return reconciled ?? hasBinding;
+  try {
+    if (reconciled === false && hasBinding) throw new Error('mainserver_identity_unavailable');
+    if (reconciled || context.tenantLifecycle?.operation === 'suspend')
+      return await synchronize(context);
+    return reconciled ?? hasBinding;
+  } catch {
+    throw Object.assign(new Error('mainserver_translation_policy_not_confirmed'), {
+      cause: {
+        code: 'app-translations.mainserver-policy-not-confirmed',
+        messageKey: 'appTranslations.readiness.serviceMissing',
+        retry: { kind: 'retryable' },
+      },
+    });
+  }
+};
+
 export const createPluginJobExecutionHandlers = (
   runtime: AppTranslationsLocalRuntime
 ): Readonly<Record<string, PluginJobExecutionHandler>> => ({
@@ -44,7 +66,12 @@ export const createPluginJobExecutionHandlers = (
       : undefined;
     await context.throwIfCancellationRequested();
     const status = await runtime.readLocalReadiness(context.job.instanceId);
-    const serviceConfigured = reconciled ?? status.serviceConfigured;
+    const serviceConfigured = await confirmNewsPolicy(
+      runtime.synchronizeNews,
+      context,
+      reconciled,
+      status.serviceConfigured
+    );
     await context.throwIfCancellationRequested();
     return {
       resultPayload: { plugin: { localOnly: true } },

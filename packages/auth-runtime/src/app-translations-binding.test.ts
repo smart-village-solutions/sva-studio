@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   query: vi.fn(),
   url: vi.fn(),
   credentials: vi.fn(),
+  providerStatus: vi.fn(),
 }));
 vi.mock('./mainserver-effective-credentials.js', () => ({
   readEffectiveSvaMainserverCredentialsWithStatus: state.credentials,
@@ -16,12 +17,16 @@ vi.mock('@sva/data-repositories/server', () => ({
 vi.mock('./db.js', () => ({
   withIamAppDb: (work: (client: unknown) => unknown) => work({ query: state.query }),
 }));
+vi.mock('./app-translations-deepl.js', () => ({
+  readDeepLSetupStatus: state.providerStatus,
+}));
 vi.mock('./upstream-url-validation.js', () => ({ normalizePublicUpstreamUrl: state.url }));
 import { Client } from 'pg';
 import type { StudioJobExecutionHandlerContext } from './plugin-operations/types.js';
 import {
   reconcileAppTranslationServiceBinding,
   readAppTranslationServiceBinding,
+  synchronizeAppTranslationNews,
 } from './app-translations-binding.js';
 const context = () =>
   ({
@@ -606,5 +611,60 @@ it.each([
   expect(state.save).not.toHaveBeenCalled();
   expect(fetcher).toHaveBeenCalledTimes(
     change === 'failed-setup' ? 3 : ['stale-job', 'invalid-token'].includes(change) ? 2 : 1
+  );
+});
+
+it.each([
+  ['provision', true, ['en'], true],
+  ['reconcile', true, ['fr'], false],
+  ['reconcile', false, ['en'], false],
+  ['suspend', true, ['en'], false],
+] as const)(
+  'synchronizes %s with the central gateway and verified language selection',
+  async (operation, ready, selectedLocales, newsEnabled) => {
+    const studioUrl = 'https://studio.example/api/v1/app-translations/translate';
+    connection.publicConfig.translationService = binding;
+    state.load.mockImplementation(async (_, type) => (type === 'deepl' ? null : connection));
+    state.providerStatus.mockReturnValue({ ready, selectedLocales });
+    prepareMultipleSetupCredentials([]);
+    fetcher
+      .mockReset()
+      .mockResolvedValueOnce(Response.json({ access_token: 'technical-token' }))
+      .mockResolvedValueOnce(
+        Response.json({ ...metadata(), studioUrl, generation: 1, newsEnabled })
+      );
+    const job = context();
+    Object.assign(job.tenantLifecycle!, { operation });
+    await expect(synchronizeAppTranslationNews(job)).resolves.toBe(true);
+
+    expect(fetcher.mock.calls[1][0]).toBe(
+      'https://town.main.example/api/v1/app_translations/service_identity'
+    );
+    expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({
+      instanceId: 'de-town',
+      studioUrl,
+      generation: 1,
+      serviceSubject: binding.subject,
+      newsEnabled,
+    });
+  }
+);
+
+it.each([
+  ['reconcile', 400],
+  ['reconcile', 422],
+  ['suspend', 400],
+] as const)('handles rejected policy during %s (%s)', async (operation, status) => {
+  connection.publicConfig.translationService = binding;
+  state.providerStatus.mockResolvedValue({ ready: false, selectedLocales: [] });
+  prepareMultipleSetupCredentials([]);
+  fetcher
+    .mockReset()
+    .mockResolvedValueOnce(Response.json({ access_token: 'technical-token' }))
+    .mockResolvedValueOnce(new Response('', { status }));
+  const job = context();
+  Object.assign(job.tenantLifecycle!, { operation });
+  await expect(synchronizeAppTranslationNews(job)).rejects.toThrow(
+    'mainserver_identity_unavailable'
   );
 });

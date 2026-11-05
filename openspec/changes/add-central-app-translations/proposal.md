@@ -99,6 +99,11 @@ Vorher geprüfte Überschneidungen: `add-ssf-supported-language-catalog`, `add-s
 
 ## Impact und Nachweise
 
+Die instanzbezogene Aktivierung der Nachrichtenübersetzung für Staging und
+Production ist als Folgeabschnitt ST-3.10 in [Design 6.5](./design.md#65-nachrichtenübersetzung-über-das-modul-freigeben)
+abgegrenzt. Die Modulverwaltung in Studio ist der Bedienweg für die Freigabe.
+Die vorhandene Mainserver-Verbindung bestimmt weiterhin die Zuordnung.
+
 Neue Trust Boundaries und Main-Server-MySQL-Ergebnisse sind Implementierungsfolgen, keine ausgeführten Änderungen. Kein zweiter dynamischer PostgreSQL-Bestand in Studio; `last_used_at` und tägliche Bereinigung gehören zum Main-Server. Feste Katalogrevisionen, Standards/Overrides, Backups und Logs bleiben davon getrennt. Schema-Dokumente erst mit separat freigegebenen Migrationen aktualisieren; Serviceauth vor Umsetzung technisch abnehmen.
 
 Bei Umsetzung betroffene arc42-Abschnitte: [03 Kontext](../../../docs/architecture/03-context-and-scope.md), [04 Strategie](../../../docs/architecture/04-solution-strategy.md), [05 Bausteine](../../../docs/architecture/05-building-block-view.md), [06 Laufzeit](../../../docs/architecture/06-runtime-view.md), [07 Verteilung](../../../docs/architecture/07-deployment-view.md), [08 Querschnitt](../../../docs/architecture/08-cross-cutting-concepts.md), [09 Entscheidungen](../../../docs/architecture/09-architecture-decisions.md), [10 Qualität](../../../docs/architecture/10-quality-requirements.md), [11 Risiken](../../../docs/architecture/11-risks-and-technical-debt.md), [12 Glossar](../../../docs/architecture/12-glossary.md).

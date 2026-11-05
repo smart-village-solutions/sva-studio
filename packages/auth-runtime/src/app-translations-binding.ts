@@ -237,10 +237,6 @@ export const synchronizeAppTranslationNews = async (
     { newsEnabled, generation, serviceSubject: binding.data.subject },
     scope.primary_hostname
   );
-  if (lifecycle.operation !== 'suspend' && response.status === 400) {
-    await response.body?.cancel();
-    return false;
-  }
   const result = newsSetupSchema.parse(await readBoundedJson(response));
   if (
     result.instanceId !== instanceId ||

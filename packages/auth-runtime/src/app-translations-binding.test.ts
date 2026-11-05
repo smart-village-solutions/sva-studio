@@ -651,10 +651,10 @@ it.each([
 );
 
 it.each([
-  ['reconcile', 400, false],
-  ['reconcile', 422, true],
-  ['suspend', 400, true],
-] as const)('handles rejected policy during %s (%s)', async (operation, status, shouldRetry) => {
+  ['reconcile', 400],
+  ['reconcile', 422],
+  ['suspend', 400],
+] as const)('handles rejected policy during %s (%s)', async (operation, status) => {
   connection.publicConfig.translationService = binding;
   state.providerStatus.mockResolvedValue({ ready: false, selectedLocales: [] });
   prepareMultipleSetupCredentials([]);
@@ -664,7 +664,7 @@ it.each([
     .mockResolvedValueOnce(new Response('', { status }));
   const job = context();
   Object.assign(job.tenantLifecycle!, { operation });
-  const result = synchronizeAppTranslationNews(job);
-  if (shouldRetry) await expect(result).rejects.toThrow('mainserver_identity_unavailable');
-  else await expect(result).resolves.toBe(false);
+  await expect(synchronizeAppTranslationNews(job)).rejects.toThrow(
+    'mainserver_identity_unavailable'
+  );
 });

@@ -237,7 +237,7 @@ export const synchronizeAppTranslationNews = async (
     { newsEnabled, generation, serviceSubject: binding.data.subject },
     scope.primary_hostname
   );
-  if (lifecycle.operation !== 'suspend' && [400, 404, 422].includes(response.status)) {
+  if (lifecycle.operation !== 'suspend' && response.status === 400) {
     await response.body?.cancel();
     return false;
   }

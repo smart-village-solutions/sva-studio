@@ -25,7 +25,9 @@ const entrySchema = z
   .object({
     key: z
       .string()
-      .regex(/^(title|author|keywords|contentBlocks\.(0|[1-9][0-9]{0,5})\.(title|intro|body))$/),
+      .regex(
+        /^(title|author|keywords|settings\.onlySummaryLinkText|contentBlocks\.(0|[1-9][0-9]{0,5})\.(title|intro|body))$/
+      ),
     text: z.string().max(92160).regex(/\S/u),
     format: z.enum(['plain', 'html']),
   })
@@ -47,7 +49,9 @@ const requestSchema = z
       new Set(value.entries.map((entry) => entry.key)).size !== value.entries.length ||
       value.entries.filter((entry) => entry.key === 'title').length !== 1 ||
       value.entries.some(
-        (entry) => entry.format !== (entry.key.endsWith('.body') ? 'html' : 'plain')
+        (entry) =>
+          !entry.key.endsWith('.intro') &&
+          entry.format !== (entry.key.endsWith('.body') ? 'html' : 'plain')
       ) ||
       value.entries.reduce((size, entry) => size + new TextEncoder().encode(entry.text).length, 0) >
         90000

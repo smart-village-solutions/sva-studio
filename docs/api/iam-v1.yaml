@@ -56,7 +56,7 @@ paths:
                     properties:
                       key:
                         type: string
-                        description: title, author, keywords, settings.onlySummaryLinkText oder contentBlocks.N.title/.intro/.body; eindeutige Schlüssel und genau ein nichtleerer title
+                        description: title, author, keywords, settings.onlySummaryLinkText, contentBlocks.N.title/.intro/.body oder contentBlocks.N.mediaContents.M.captionText; eindeutige Schlüssel und genau ein nichtleerer title
                       text: { type: string, minLength: 1, maxLength: 92160, pattern: '\S' }
                       format:
                         type: string

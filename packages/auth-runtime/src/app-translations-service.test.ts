@@ -220,6 +220,24 @@ describe('technical news translation', () => {
           { key: 'settings.onlySummaryLinkText', text: '<p>Read more</p>', format: 'html' },
         ],
       },
+      {
+        ...payload(),
+        entries: [
+          ...payload().entries,
+          {
+            key: 'contentBlocks.0.mediaContents.1.captionText',
+            text: '<p>Bild</p>',
+            format: 'html',
+          },
+        ],
+      },
+      {
+        ...payload(),
+        entries: [
+          ...payload().entries,
+          { key: 'contentBlocks.0.mediaContents.1.copyright', text: 'Redaktion', format: 'plain' },
+        ],
+      },
     ];
     for (const input of cases)
       expect(
@@ -238,7 +256,8 @@ it('accepts a title-only news group and all agreed plain metadata fields', async
     { key: 'author', text: 'Redaktion', format: 'plain' },
     { key: 'keywords', text: 'Stadt', format: 'plain' },
     { key: 'contentBlocks.0.title', text: 'Titel', format: 'plain' },
-    { key: 'contentBlocks.0.intro', text: 'Einleitung', format: 'plain' }
+    { key: 'contentBlocks.0.intro', text: 'Einleitung', format: 'plain' },
+    { key: 'contentBlocks.0.mediaContents.1.captionText', text: 'Die Bibliothek', format: 'plain' }
   );
   state.translate.mockResolvedValue(input.entries.map(() => 'English'));
   expect((await appTranslationServiceHandler(request(input))).status).toBe(200);

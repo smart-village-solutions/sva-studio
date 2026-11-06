@@ -15,6 +15,10 @@ import { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
 import { readEffectiveSvaMainserverCredentialsWithStatus } from './mainserver-effective-credentials.js';
 import { readDeepLSetupStatus } from './app-translations-deepl.js';
 import { readBoundedJson } from './app-translations-binding-response.js';
+import {
+  appTranslationLanguageNames,
+  languageNamesMatch,
+} from './app-translations-language-names.js';
 const translationPath = '/api/v1/app-translations/translate';
 const httpsUrl = z.url().refine((value) => {
   const url = new URL(value);
@@ -111,6 +115,7 @@ const requestServiceSetup = async (
   newsPolicy?: {
     readonly newsEnabled: boolean;
     readonly locales: readonly string[];
+    readonly languageNames: Readonly<Record<string, string>>;
     readonly generation: number;
     readonly serviceSubject: string;
   },
@@ -185,6 +190,7 @@ const newsSetupSchema = identitySchema.extend({
     .array(z.string().refine(isAppTranslationLocale))
     .max(APP_TRANSLATION_MAX_LOCALES)
     .optional(),
+  languageNames: z.record(z.string(), z.string()).optional(),
   generation: z.number().int().positive(),
 });
 
@@ -212,13 +218,14 @@ export const synchronizeAppTranslationNews = async (
   const locales =
     lifecycle.operation !== 'suspend' && provider.ready ? [...provider.selectedLocales].sort() : [];
   const newsEnabled = locales.length > 0;
+  const languageNames = appTranslationLanguageNames(locales);
   const generation = lifecycle.generation;
   const response = await requestServiceSetup(
     connection,
     context,
     url,
     studioUrl,
-    { newsEnabled, locales, generation, serviceSubject: binding.data.subject },
+    { newsEnabled, locales, languageNames, generation, serviceSubject: binding.data.subject },
     scope.primary_hostname
   );
   const result = newsSetupSchema.parse(await readBoundedJson(response, 20000));
@@ -228,6 +235,7 @@ export const synchronizeAppTranslationNews = async (
     result.generation !== generation ||
     result.newsEnabled !== newsEnabled ||
     JSON.stringify(result.locales ?? (newsEnabled ? ['en'] : [])) !== JSON.stringify(locales) ||
+    !languageNamesMatch(languageNames, result.languageNames) ||
     JSON.stringify(result.binding) !== JSON.stringify(binding.data)
   )
     throw new Error('mainserver_translation_policy_not_confirmed');

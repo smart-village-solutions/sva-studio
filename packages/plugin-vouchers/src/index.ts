@@ -1,6 +1,6 @@
 export { pluginVouchersActionDefinitions, pluginVouchersPermissionDefinitions } from './plugin.js';
 import { pluginVouchers as descriptor } from './plugin.js';
-import { deleteVoucher } from './vouchers.api.js';
+import { changeVoucherVisibility, deleteVoucher } from './vouchers.api.js';
 import type { PluginDefinition } from '@sva/plugin-sdk';
 export const pluginVouchers: PluginDefinition = {
   ...descriptor,
@@ -8,6 +8,13 @@ export const pluginVouchers: PluginDefinition = {
     ...definition,
     mutations: {
       delete: { requiredAction: 'vouchers.delete', execute: deleteVoucher },
+      status: {
+        requiredAction: 'vouchers.publish',
+        supportedStatuses: ['draft', 'published'],
+        execute: async (id, status, principal) => {
+          await changeVoucherVisibility(id, status === 'published', principal);
+        },
+      },
     },
   })),
 };

@@ -433,6 +433,7 @@ describe('DeepL credential transaction guards', () => {
     const { query } = database();
     query
       .mockResolvedValueOnce({ rows: [{ type_key: 'deepl' }], rowCount: 1 })
+      .mockResolvedValueOnce(empty)
       .mockRejectedValueOnce(new Error('queue unavailable'))
       .mockResolvedValueOnce(empty);
     const { deleteExternalInterfaceRecord } = await import('./external-interfaces.server.js');
@@ -441,7 +442,8 @@ describe('DeepL credential transaction guards', () => {
       'queue unavailable'
     );
 
-    expect(query.mock.calls[3]).toEqual([
+    expect(query.mock.calls[3]).toEqual(['SET LOCAL ROLE iam_app;']);
+    expect(query.mock.calls[4]).toEqual([
       expect.stringContaining('graphile_worker.sva_enqueue_job'),
       ['tenant-a'],
     ]);
@@ -538,6 +540,7 @@ describe('DeepL credential transaction guards', () => {
         null,
         null,
       ]);
+      expect(query.mock.calls.at(-3)).toEqual(['SET LOCAL ROLE iam_app;']);
       expect(query.mock.calls.at(-2)).toEqual([
         expect.stringContaining('graphile_worker.sva_enqueue_job'),
         ['tenant-a'],
@@ -582,6 +585,7 @@ describe('DeepL credential transaction guards', () => {
         errorCode ? 'failed' : 'succeeded',
         errorCode ?? null,
       ]);
+      expect(query.mock.calls.at(-3)).toEqual(['SET LOCAL ROLE iam_app;']);
       expect(query.mock.calls.at(-2)).toEqual([
         expect.stringContaining('graphile_worker.sva_enqueue_job'),
         ['tenant-a'],

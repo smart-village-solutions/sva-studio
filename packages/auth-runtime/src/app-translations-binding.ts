@@ -97,13 +97,7 @@ const readBoundedJson = async (response: Response): Promise<unknown> => {
   } finally {
     await reader.cancel();
   }
-  const body = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body));
+  return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks, size)));
 };
 
 const readSetupOrganization = (connection: ExternalInterfaceRecord, attempted: readonly string[]) =>
@@ -248,7 +242,12 @@ export const synchronizeAppTranslationNews = async (
     throw new Error('mainserver_translation_policy_not_confirmed');
   return true;
 };
-
+const reportBindingResult =
+  (reportFailure?: (reasonCode: string) => void) =>
+  (reasonCode: string, accepted = false): boolean => {
+    if (!accepted) reportFailure?.(reasonCode);
+    return accepted;
+  };
 /** Only the root-managed upstream is trusted; incoming requests never enroll identities. */
 export const reconcileAppTranslationServiceBinding = async (
   context: StudioJobExecutionHandlerContext,
@@ -262,22 +261,15 @@ export const reconcileAppTranslationServiceBinding = async (
     !['provision', 'reconcile', 'reactivate'].includes(lifecycle.operation)
   )
     return false;
-  const reject = (reasonCode: string): false => {
-    reportFailure?.(reasonCode);
-    return false;
-  };
-  let failureStage = 'connection_lookup_failed';
+  const reportResult = reportBindingResult(reportFailure);
   try {
     const connection = await loadDefaultExternalInterfaceRecord(instanceId, 'sva_mainserver');
     if (!connection?.enabled || typeof connection.publicConfig.graphqlBaseUrl !== 'string')
-      return reject('mainserver_connection_unavailable');
-    failureStage = 'scope_lookup_failed';
+      return false;
     const scope = await readActiveScope(connection, context);
-    if (!scope) return reject('scope_changed');
-    failureStage = 'identity_url_invalid';
+    if (!scope) return reportResult('scope_changed');
     const url = await resolveIdentityUrl(connection.publicConfig.graphqlBaseUrl);
-    if (!url) return reject('identity_url_invalid');
-    failureStage = 'identity_request_failed';
+    if (!url) return reportResult('identity_url_invalid');
     let response = await fetch(url, {
       redirect: 'error',
       signal: AbortSignal.timeout(12000),
@@ -288,7 +280,6 @@ export const reconcileAppTranslationServiceBinding = async (
       connection.publicConfig.translationService === undefined
     ) {
       await response.body?.cancel();
-      failureStage = 'identity_setup_failed';
       response = await requestServiceSetup(
         connection,
         context,
@@ -296,33 +287,33 @@ export const reconcileAppTranslationServiceBinding = async (
         `https://${scope.primary_hostname}${translationPath}`
       );
     }
-    failureStage = response.ok ? 'identity_response_invalid' : `identity_http_${response.status}`;
     const identity = identitySchema.parse(await readBoundedJson(response));
     const destinations = [`https://${scope.primary_hostname}${translationPath}`];
     const publicBase = httpsUrl.safeParse(process.env.SVA_PUBLIC_BASE_URL);
     if (publicBase.success) destinations.push(new URL(translationPath, publicBase.data).toString());
-    if (identity.instanceId !== instanceId) return reject('identity_instance_mismatch');
-    if (!destinations.includes(identity.studioUrl)) return reject('identity_destination_mismatch');
-    failureStage = 'identity_issuer_invalid';
-    if (!(await normalizePublicUpstreamUrl(identity.binding.issuer))) return reject(failureStage);
+    if (identity.instanceId !== instanceId || !destinations.includes(identity.studioUrl))
+      return reportResult('identity_destination_mismatch');
+    if (!(await normalizePublicUpstreamUrl(identity.binding.issuer)))
+      return reportResult('issuer_invalid');
     const existing = connection.publicConfig.translationService;
     if (existing !== undefined) {
       const parsed = translationServiceBindingSchema.safeParse(existing);
       if (!parsed.success || JSON.stringify(parsed.data) !== JSON.stringify(identity.binding))
-        return reject('binding_mismatch');
+        return reportResult('binding_mismatch');
     }
-    failureStage = 'binding_save_failed';
-    const saved = await saveMainserverTranslationServiceBinding({
-      connection,
-      binding: identity.binding,
-      generation: scope.generation,
-      jobId: context.job.id,
-      operation: lifecycle.operation,
-      assignmentRevision: scope.assignment_revision,
-      hostname: scope.primary_hostname,
-    });
-    return saved || reject('binding_save_conflict');
+    return reportResult(
+      'binding_save_conflict',
+      await saveMainserverTranslationServiceBinding({
+        connection,
+        binding: identity.binding,
+        generation: scope.generation,
+        jobId: context.job.id,
+        operation: lifecycle.operation,
+        assignmentRevision: scope.assignment_revision,
+        hostname: scope.primary_hostname,
+      })
+    );
   } catch {
-    return reject(failureStage);
+    return reportResult('identity_reconcile_failed');
   }
 };

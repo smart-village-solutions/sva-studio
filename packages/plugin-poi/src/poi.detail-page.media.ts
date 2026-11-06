@@ -64,9 +64,9 @@ function usePoiCreateMediaGuard(
     React.Dispatch<React.SetStateAction<readonly ContentMediaUsage[]>>
   >(
     (update) => {
+      setMediaDirty(true);
       if (mode === 'create') {
         rootLeaveGuard.markChanged();
-        setMediaDirty(true);
         if (typeof update !== 'function') {
           methods.setValue(
             'content.mediaContents',
@@ -167,6 +167,7 @@ export const usePoiDetailMedia = ({ instanceId, mode, methods, pt }: MediaInput)
     mediaAssets,
     mediaUsages,
     setMediaUsages,
+    setLoadedMediaUsages: setMediaUsagesState,
     mediaReferenceSync,
     requiresReferenceSync,
     setRequiresReferenceSync,

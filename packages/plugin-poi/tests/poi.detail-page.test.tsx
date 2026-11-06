@@ -28,6 +28,7 @@ import {
   getPoi,
   getPoiDetail,
   listPoiCategories,
+  setPoiVisibility,
   updatePoi,
 } from '../src/poi.api.js';
 
@@ -57,6 +58,7 @@ vi.mock('../src/poi.api.js', async () => ({
   getPoiDetail: vi.fn(),
   listPoiCategories: vi.fn(async () => []),
   listPoi: vi.fn(),
+  setPoiVisibility: vi.fn(),
   updatePoi: vi.fn(),
 }));
 
@@ -251,6 +253,7 @@ describe('PoiDetailPage', () => {
     vi.mocked(listPoiCategories).mockReset();
     vi.mocked(listPoiCategories).mockResolvedValue([] as never);
     vi.mocked(updatePoi).mockReset();
+    vi.mocked(setPoiVisibility).mockReset();
     vi.mocked(listHostMediaAssets).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
@@ -1021,6 +1024,35 @@ describe('PoiDetailPage', () => {
       expect(screen.getByDisplayValue('Kurz mobil')).toBeTruthy();
     });
   });
+
+  it.each([false, true])(
+    'uses a visibility-only write when no other POI fields changed (content edited: %s)',
+    async (contentEdited) => {
+      vi.mocked(getPoiDetail).mockResolvedValue({
+        data: { id: 'poi-1', name: 'Rathaus', visible: false, payload: {} },
+        access: { 'poi.update': true, 'content.publish': true },
+        deviations: [],
+      } as never);
+      vi.mocked(updatePoi).mockResolvedValue({ id: 'poi-1', name: 'Rathaus' } as never);
+      render(<PoiDetailPage mode="edit" contentId="poi-1" instanceId="de-musterhausen" />);
+
+      fireEvent.click(await screen.findByLabelText('Aktiv'));
+      if (contentEdited) {
+        fireEvent.change(screen.getByDisplayValue('Rathaus'), { target: { value: 'Neuer Name' } });
+      }
+      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+
+      if (contentEdited) {
+        await waitFor(() => expect(updatePoi).toHaveBeenCalledWith(
+          'poi-1', expect.objectContaining({ name: 'Neuer Name', visible: true }), 'user'
+        ));
+        expect(setPoiVisibility).not.toHaveBeenCalled();
+      } else {
+        await waitFor(() => expect(setPoiVisibility).toHaveBeenCalledExactlyOnceWith('poi-1', true, 'user'));
+        expect(updatePoi).not.toHaveBeenCalled();
+      }
+    }
+  );
 
   it('reflects loaded opening hours as checked checkboxes', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({

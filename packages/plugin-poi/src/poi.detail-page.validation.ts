@@ -1,3 +1,4 @@
+import type { usePluginTranslation } from '@sva/plugin-sdk';
 import type { UseFormReturn } from 'react-hook-form';
 import { isPersistableManualContentMediaUrl, type ContentMediaUsage } from '@sva/studio-ui-react';
 import {
@@ -130,4 +131,60 @@ export const validatePoiSubmission = ({
     validationErrors
   );
   return { valid: false as const };
+};
+
+const deviationFormPaths: Readonly<
+  Record<string, Parameters<UseFormReturn<PoiDetailFormValues>['getFieldState']>[0]>
+> = {
+  name: 'name',
+  categories: 'basis.categories',
+  visible: 'basis.active',
+  description: 'content.description',
+  mobileDescription: 'content.mobileDescription',
+  addresses: 'content.addresses',
+  location: 'content.location',
+  contact: 'content.contact',
+  openingHours: 'content.openingHours',
+  webUrls: 'content.webUrls',
+  operatingCompany: 'content.operator',
+  priceInformations: 'content.prices',
+  mediaContents: 'content.mediaContents',
+  certificates: 'content.certificates',
+  accessibilityInformation: 'content.accessibilityInformation',
+  tags: 'content.tagsText',
+  payload: 'content.payloadText',
+  externalId: 'settings.externalId',
+  keywords: 'settings.keywords',
+};
+
+export const confirmDegradedCorrection = ({
+  methods,
+  deviations,
+  deviationFieldLabels,
+  pt,
+}: Readonly<{
+  methods: UseFormReturn<PoiDetailFormValues>;
+  deviations: readonly { fieldGroup: string }[];
+  deviationFieldLabels: Readonly<Record<string, string>>;
+  pt: ReturnType<typeof usePluginTranslation>;
+}>) => {
+  const correctedDegradedFields = deviations
+    .map(({ fieldGroup }) => fieldGroup)
+    .filter((fieldGroup) => {
+      const fieldPath = deviationFormPaths[fieldGroup];
+      return fieldPath ? methods.getFieldState(fieldPath).isDirty : false;
+    });
+  if (
+    correctedDegradedFields.length > 0 &&
+    !globalThis.confirm(
+      pt('messages.degradedCorrectionConfirm', {
+        fields: correctedDegradedFields
+          .map((field) => deviationFieldLabels[field] ?? field)
+          .join(', '),
+      })
+    )
+  ) {
+    return null;
+  }
+  return correctedDegradedFields;
 };

@@ -132,6 +132,23 @@ describe('technical news translation', () => {
       expect.any(AbortSignal)
     );
   });
+  it('accepts one plain settings label and rejects arbitrary paths before provider work', async () => {
+    const input = {
+      ...payload(),
+      profileId: 'global-settings-v1',
+      entries: [{ key: 'label', format: 'plain', text: 'Unsere Termine' }],
+    };
+    state.translate.mockResolvedValue(['Our events']);
+    const result = await appTranslationServiceHandler(request(input));
+    expect(result.status).toBe(200);
+    expect((await result.json()).entries).toEqual([
+      { key: 'label', format: 'plain', text: 'Our events' },
+    ]);
+    input.entries[0].key = 'settings.url';
+    expect((await appTranslationServiceHandler(request(input))).status).toBe(400);
+    expect(state.translate).toHaveBeenCalledTimes(1);
+  });
+
   it('translates a formatted intro and a plain article button in the same group', async () => {
     const input = payload();
     input.entries.push(

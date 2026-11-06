@@ -618,13 +618,14 @@ it.each([
 });
 
 it.each([
-  ['provision', true, ['en'], true],
-  ['reconcile', true, ['fr'], false],
-  ['reconcile', false, ['en'], false],
-  ['suspend', true, ['en'], false],
+  ['provision', true, ['en'], ['en']],
+  ['reconcile', true, ['pt-PT', 'es', 'fr'], ['es', 'fr', 'pt-PT']],
+  ['reconcile', false, ['en'], []],
+  ['suspend', true, ['en'], []],
 ] as const)(
   'synchronizes %s with the central gateway and verified language selection',
-  async (operation, ready, selectedLocales, newsEnabled) => {
+  async (operation, ready, selectedLocales, locales) => {
+    const newsEnabled = locales.length > 0;
     const studioUrl = 'https://studio.example/api/v1/app-translations/translate';
     connection.publicConfig.translationService = binding;
     state.load.mockImplementation(async (_, type) => (type === 'deepl' ? null : connection));
@@ -634,7 +635,7 @@ it.each([
       .mockReset()
       .mockResolvedValueOnce(Response.json({ access_token: 'technical-token' }))
       .mockResolvedValueOnce(
-        Response.json({ ...metadata(), studioUrl, generation: 1, newsEnabled })
+        Response.json({ ...metadata(), studioUrl, generation: 1, newsEnabled, locales })
       );
     const job = context();
     Object.assign(job.tenantLifecycle!, { operation });
@@ -649,6 +650,7 @@ it.each([
       generation: 1,
       serviceSubject: binding.subject,
       newsEnabled,
+      locales,
     });
   }
 );

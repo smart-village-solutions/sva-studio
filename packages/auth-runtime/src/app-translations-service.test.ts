@@ -132,6 +132,35 @@ describe('technical news translation', () => {
       expect.any(AbortSignal)
     );
   });
+  it.each(['fr', 'pt-PT', 'es'])(
+    'translates both profiles for selected locale %s',
+    async (targetLocale) => {
+      Object.assign(provider.publicConfig, {
+        selectedLocales: [targetLocale],
+        availableLanguages: [{ code: targetLocale, name: targetLocale, tagHandling: true }],
+      });
+      const news = await appTranslationServiceHandler(request({ ...payload(), targetLocale }));
+      expect(news.status).toBe(200);
+      expect(await news.json()).toMatchObject({ targetLocale });
+
+      state.translate.mockResolvedValue(['Localized label']);
+      const home = await appTranslationServiceHandler(
+        request({
+          ...payload(),
+          targetLocale,
+          profileId: 'global-settings-v1',
+          entries: [{ key: 'label', format: 'plain', text: 'Unsere Termine' }],
+        })
+      );
+      expect(home.status).toBe(200);
+      expect(await home.json()).toMatchObject({ targetLocale });
+      expect(state.translate.mock.calls.map(([, target]) => target)).toEqual([
+        targetLocale,
+        targetLocale,
+      ]);
+    }
+  );
+
   it('accepts one plain settings label and rejects arbitrary paths before provider work', async () => {
     const input = {
       ...payload(),

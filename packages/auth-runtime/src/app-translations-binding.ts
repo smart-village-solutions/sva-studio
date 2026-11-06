@@ -1,4 +1,9 @@
-import { isValidInstanceId, type ExternalInterfaceRecord } from '@sva/core';
+import {
+  APP_TRANSLATION_MAX_LOCALES,
+  isAppTranslationLocale,
+  isValidInstanceId,
+  type ExternalInterfaceRecord,
+} from '@sva/core';
 import {
   loadDefaultExternalInterfaceRecord,
   saveMainserverTranslationServiceBinding,
@@ -9,6 +14,7 @@ import { withIamAppDb } from './db.js';
 import { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
 import { readEffectiveSvaMainserverCredentialsWithStatus } from './mainserver-effective-credentials.js';
 import { readDeepLSetupStatus } from './app-translations-deepl.js';
+import { readBoundedJson } from './app-translations-binding-response.js';
 const translationPath = '/api/v1/app-translations/translate';
 const httpsUrl = z.url().refine((value) => {
   const url = new URL(value);
@@ -78,28 +84,6 @@ export const readAppTranslationServiceBinding = async (instanceId: string): Prom
   );
 };
 
-const readBoundedJson = async (response: Response): Promise<unknown> => {
-  if (!response.ok || !response.body) {
-    await response.body?.cancel();
-    throw new Error('mainserver_identity_unavailable');
-  }
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > 8192) throw new Error('mainserver_identity_invalid');
-      chunks.push(value);
-    }
-  } finally {
-    await reader.cancel();
-  }
-  return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks, size)));
-};
-
 const readSetupOrganization = (connection: ExternalInterfaceRecord, attempted: readonly string[]) =>
   withIamAppDb(async (client) => {
     await client.query("SELECT set_config('app.instance_id', $1, true)", [connection.instanceId]);
@@ -126,6 +110,7 @@ const requestServiceSetup = async (
   studioUrl: string,
   newsPolicy?: {
     readonly newsEnabled: boolean;
+    readonly locales: readonly string[];
     readonly generation: number;
     readonly serviceSubject: string;
   },
@@ -196,6 +181,10 @@ const requestServiceSetup = async (
 };
 const newsSetupSchema = identitySchema.extend({
   newsEnabled: z.boolean(),
+  locales: z
+    .array(z.string().refine(isAppTranslationLocale))
+    .max(APP_TRANSLATION_MAX_LOCALES)
+    .optional(),
   generation: z.number().int().positive(),
 });
 
@@ -220,23 +209,25 @@ export const synchronizeAppTranslationNews = async (
   const url = await resolveIdentityUrl(String(connection.publicConfig.graphqlBaseUrl));
   if (!url) throw new Error('mainserver_identity_unavailable');
   const provider = await readDeepLSetupStatus(instanceId);
-  const newsEnabled =
-    lifecycle.operation !== 'suspend' && provider.ready && provider.selectedLocales.includes('en');
+  const locales =
+    lifecycle.operation !== 'suspend' && provider.ready ? [...provider.selectedLocales].sort() : [];
+  const newsEnabled = locales.length > 0;
   const generation = lifecycle.generation;
   const response = await requestServiceSetup(
     connection,
     context,
     url,
     studioUrl,
-    { newsEnabled, generation, serviceSubject: binding.data.subject },
+    { newsEnabled, locales, generation, serviceSubject: binding.data.subject },
     scope.primary_hostname
   );
-  const result = newsSetupSchema.parse(await readBoundedJson(response));
+  const result = newsSetupSchema.parse(await readBoundedJson(response, 20000));
   if (
     result.instanceId !== instanceId ||
     result.studioUrl !== studioUrl ||
     result.generation !== generation ||
     result.newsEnabled !== newsEnabled ||
+    JSON.stringify(result.locales ?? (newsEnabled ? ['en'] : [])) !== JSON.stringify(locales) ||
     JSON.stringify(result.binding) !== JSON.stringify(binding.data)
   )
     throw new Error('mainserver_translation_policy_not_confirmed');

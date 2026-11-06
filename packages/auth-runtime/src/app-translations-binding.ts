@@ -15,6 +15,10 @@ import { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
 import { readEffectiveSvaMainserverCredentialsWithStatus } from './mainserver-effective-credentials.js';
 import { readDeepLSetupStatus } from './app-translations-deepl.js';
 import { readBoundedJson } from './app-translations-binding-response.js';
+import {
+  appTranslationLanguageNames,
+  languageNamesMatch,
+} from './app-translations-language-names.js';
 const translationPath = '/api/v1/app-translations/translate';
 const httpsUrl = z.url().refine((value) => {
   const url = new URL(value);
@@ -214,16 +218,7 @@ export const synchronizeAppTranslationNews = async (
   const locales =
     lifecycle.operation !== 'suspend' && provider.ready ? [...provider.selectedLocales].sort() : [];
   const newsEnabled = locales.length > 0;
-  const languageNames = Object.fromEntries(
-    ['de', ...locales].map((locale) => {
-      const name = new Intl.DisplayNames([locale], {
-        type: 'language',
-        languageDisplay: 'standard',
-        fallback: 'none',
-      }).of(locale);
-      return [locale, name?.replace(/^./u, (letter) => letter.toLocaleUpperCase(locale)) ?? locale];
-    })
-  );
+  const languageNames = appTranslationLanguageNames(locales);
   const generation = lifecycle.generation;
   const response = await requestServiceSetup(
     connection,
@@ -240,9 +235,7 @@ export const synchronizeAppTranslationNews = async (
     result.generation !== generation ||
     result.newsEnabled !== newsEnabled ||
     JSON.stringify(result.locales ?? (newsEnabled ? ['en'] : [])) !== JSON.stringify(locales) ||
-    Object.entries(languageNames).some(
-      ([locale, name]) => result.languageNames?.[locale] !== name
-    ) ||
+    !languageNamesMatch(languageNames, result.languageNames) ||
     JSON.stringify(result.binding) !== JSON.stringify(binding.data)
   )
     throw new Error('mainserver_translation_policy_not_confirmed');

@@ -140,8 +140,9 @@ export const saveMainserverTranslationServiceBinding = async (input: {
 };
 
 // Commit provider changes and their reconciliation request together.
-const enqueueDeepLReconcile = (client: QueryClient, instanceId: string) =>
-  client.query(
+const enqueueDeepLReconcile = async (client: QueryClient, instanceId: string) => {
+  await client.query('SET LOCAL ROLE iam_app;');
+  await client.query(
     `SELECT graphile_worker.sva_enqueue_job(
       'plugin_tenant_lifecycle_retry',
       json_build_object('instanceId', $1::text, 'pluginId', 'app-translations', 'reconcileAppTranslations', true),
@@ -150,6 +151,7 @@ const enqueueDeepLReconcile = (client: QueryClient, instanceId: string) =>
     )`,
     [instanceId]
   );
+};
 
 export const deleteExternalInterfaceRecord = async (
   instanceId: string,

@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { createContentTypeRegistry } from '@sva/plugin-sdk';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { pluginVouchers } from '../src/plugin.js';
 import { pluginVouchersTranslations } from '../src/plugin.translations.js';
 import { pluginViewBindings, pluginVouchers as browserPlugin } from '../src/index.js';
@@ -7,6 +8,33 @@ const leaves = (value: unknown, prefix = ''): string[] =>
     ? Object.entries(value).flatMap(([key, child]) => leaves(child, `${prefix}.${key}`))
     : [prefix];
 describe('voucher plugin registration', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([['draft', false], ['published', true]] as const)(
+    'sets the list status to %s through the voucher visibility endpoint',
+    async (status, visible) => {
+      const registry = createContentTypeRegistry(browserPlugin.contentTypes ?? []);
+      const mutation = registry.get('vouchers.voucher')?.mutations?.status;
+      expect(mutation).toMatchObject({
+        requiredAction: 'vouchers.publish',
+        supportedStatuses: ['draft', 'published'],
+      });
+      const fetchMock = vi.fn(async (_url: string, _init: RequestInit) =>
+        Response.json({ data: { id: '2', visible } })
+      );
+      vi.stubGlobal('fetch', fetchMock);
+
+      await mutation?.execute('2', status, 'organization');
+
+      expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+        '/api/v1/mainserver/vouchers/2/visibility',
+        expect.objectContaining({ method: 'POST', body: JSON.stringify({ visible }) })
+      );
+      expect(new Headers(fetchMock.mock.calls[0]?.[1].headers).get('X-SVA-Acting-Principal-Type'))
+        .toBe('organization');
+    }
+  );
+
   it('uses host routes and history and grants namespaced deletion to system admins', () => {
     expect(pluginVouchers.contentTypes).toEqual([
       expect.objectContaining({

@@ -18,6 +18,8 @@ Bilder können über eine öffentliche HTTP(S)-Adresse oder aus der vorhandenen 
 
 ## Inhaltsänderung und Sichtbarkeit
 
+In der Inhaltsübersicht können Benutzer mit Schreibzugriff auf die Zeile und der Action `vouchers.publish` zwischen „Entwurf“ und „Veröffentlicht“ wechseln. Die Liste verwendet denselben Sichtbarkeitsendpunkt wie der Editor. Dabei bleiben Einlösungen erhalten.
+
 Der Mainserver speichert Gutscheine weiterhin verschachtelt über `createPointOfInterest`. Voraussetzung ist der korrigierte Mainserver-Vertrag (Quellcommit `4fbcc7218464f6b8fe8315083a6ff1e427b14971`): Bestehende Gutschein- und Kontingentdatensätze sowie Einlösungen bleiben erhalten. Studio sendet bestehende Gutscheine mit ihrer Datenbank-ID; vorhandene UUIDs und Metadaten bleiben bestehen. Fehlende Gutscheine oder eine leere Gutscheinliste löschen keinen Bestand. Ankündigungen, einschließlich vergangener und undatierter Einträge, bleiben für alle Anbietertypen erhalten.
 
 Vorbereitung und Commit bleiben an das konkrete Formular, den frisch gelesenen Gesamtbestand, Konto, Organisation und Credential-Kontext gebunden. Änderungen am Formular oder ein abweichender Bestand erfordern eine neue Vorbereitung. Die Gutscheinbearbeitung benötigt keine Reset-Bestätigung mehr (`requiresReset` und `meta.reset` sind `false`). Normale Ortsänderungen verwenden weiterhin die bestehende gebundene Vorbereitung und Bestätigung für mitgespeicherte Gutscheine, ohne Einlösungen zurückzusetzen.

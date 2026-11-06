@@ -9,9 +9,10 @@ const tenantIamLoggerMock = vi.hoisted(() => ({
   isLevelEnabled: vi.fn(() => true),
 }));
 
+const withScopedRegistryRepositoryMock = vi.fn();
 const createInstanceRegistryRuntimeMock = vi.fn(() => ({
   withRegistryRepository: vi.fn(),
-  withScopedRegistryRepository: vi.fn(),
+  withScopedRegistryRepository: withScopedRegistryRepositoryMock,
   withRegistryService: vi.fn(),
   withScopedRegistryService: vi.fn(),
   withRegistryProvisioningWorkerService: vi.fn(),
@@ -225,6 +226,54 @@ describe('iam instance registry repository wiring', () => {
     await expect(runConfiguredPluginTenantProvisioningSchedule('tenant-a')).rejects.toThrow(
       'registry unavailable'
     );
+  });
+
+  it('persists DeepL reconciliation through the tenant-scoped transaction', async () => {
+    const {
+      configureInstanceRegistryPluginRuntimeSnapshot,
+      resetInstanceRegistryPluginActivationPoliciesForTests,
+    } = await import('./plugin-activation-policy-snapshot.js');
+    const { persistAppTranslationNewsReconcile } = await import('./repository.js');
+    const persist = vi.fn(async () => ['app-translations']);
+    configureInstanceRegistryPluginRuntimeSnapshot({
+      activationPolicies: {
+        revision: 'catalog-1',
+        modules: [
+          {
+            moduleId: 'app-translations',
+            activationPolicy: 'optional',
+            manifestVersion: 1,
+            policyRevision: 'app-translations-1',
+          },
+        ],
+      },
+      moduleIamContracts: [],
+      pluginOidcClientRequirements: [],
+      tenantLifecycles: [
+        {
+          pluginId: 'app-translations',
+          contractVersion: 1,
+          operations: [{ operation: 'reconcile', jobTypeId: 'app-translations.lifecycle' }],
+          readinessChecks: [],
+        },
+      ],
+    });
+    withScopedRegistryRepositoryMock.mockImplementationOnce(
+      (_instanceId, work) => work({ persistPluginTenantLifecycleReconcileIntents: persist })
+    );
+
+    try {
+      await persistAppTranslationNewsReconcile('demo');
+      expect(withScopedRegistryRepositoryMock).toHaveBeenCalledWith('demo', expect.any(Function));
+      expect(persist).toHaveBeenCalledWith({
+        instanceId: 'demo',
+        lifecycles: [expect.objectContaining({ pluginId: 'app-translations' })],
+        forcePluginIds: ['app-translations'],
+        reconcileActiveOnly: true,
+      });
+    } finally {
+      resetInstanceRegistryPluginActivationPoliciesForTests();
+    }
   });
 
   it('injects the configured snapshot registry into runtime and provisioning services', async () => {

@@ -238,6 +238,25 @@ describe('local multilingual module', () => {
     expect(synchronizeNews).not.toHaveBeenCalled();
   });
 
+  it('preserves the binding rejection reason in job error details', async () => {
+    const handler = createPluginJobExecutionHandlers({
+      reconcileServiceBinding: async (_, reportFailure) => {
+        reportFailure('binding_mismatch');
+        return false;
+      },
+      synchronizeNews: vi.fn(),
+      readLocalReadiness: async () => ({
+        schemaReady: true,
+        providerConfigured: true,
+        serviceConfigured: true,
+      }),
+    })[APP_TRANSLATIONS_LIFECYCLE_JOB]!;
+
+    await expect(handler(context('reconcile'))).rejects.toMatchObject({
+      cause: { reasonCode: 'binding_mismatch', retry: { kind: 'retryable' } },
+    });
+  });
+
   it.each(['reconcile', 'suspend'])('retries an unconfirmed %s', async (operation) => {
     await expect(
       createPluginJobExecutionHandlers({

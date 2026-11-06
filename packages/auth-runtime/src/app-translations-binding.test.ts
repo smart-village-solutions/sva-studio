@@ -122,7 +122,10 @@ it.each([
         ? new Response('', { status: 503 })
         : Response.json(data)
   );
-  expect(await reconcileAppTranslationServiceBinding(context())).toBe(false);
+  const reportFailure = vi.fn();
+  expect(await reconcileAppTranslationServiceBinding(context(), reportFailure)).toBe(false);
+  if (change === 'conflict')
+    expect(reportFailure).toHaveBeenCalledExactlyOnceWith('binding_mismatch');
   expect(state.save).not.toHaveBeenCalled();
 });
 it('does not fetch for disabled, absent or inactive assignments', async () => {

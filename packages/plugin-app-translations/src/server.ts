@@ -4,7 +4,10 @@ import { APP_TRANSLATIONS_LIFECYCLE_JOB, APP_TRANSLATIONS_CATALOG_JOB } from './
 
 export type AppTranslationsLocalRuntime = {
   readonly translateCatalog?: PluginJobExecutionHandler;
-  readonly reconcileServiceBinding: (context: PluginJobHandlerContext) => Promise<boolean>;
+  readonly reconcileServiceBinding: (
+    context: PluginJobHandlerContext,
+    reportFailure: (reasonCode: string) => void
+  ) => Promise<boolean>;
   readonly synchronizeNews?: (context: PluginJobHandlerContext) => Promise<boolean>;
   readonly readLocalReadiness: (instanceId: string) => Promise<{
     readonly schemaReady: boolean;
@@ -16,7 +19,8 @@ const confirmNewsPolicy = async (
   synchronize: AppTranslationsLocalRuntime['synchronizeNews'],
   context: PluginJobHandlerContext,
   reconciled: boolean | undefined,
-  hasBinding: boolean
+  hasBinding: boolean,
+  reasonCode: string | undefined
 ): Promise<boolean> => {
   if (!synchronize) return reconciled ?? hasBinding;
   try {
@@ -29,6 +33,7 @@ const confirmNewsPolicy = async (
       cause: {
         code: 'app-translations.mainserver-policy-not-confirmed',
         messageKey: 'appTranslations.readiness.serviceMissing',
+        reasonCode: reasonCode ?? 'policy_sync_failed',
         retry: { kind: 'retryable' },
       },
     });
@@ -61,8 +66,11 @@ export const createPluginJobExecutionHandlers = (
       });
     }
     await context.throwIfCancellationRequested();
+    let reasonCode: string | undefined;
     const reconciled = ['provision', 'reconcile', 'reactivate'].includes(operation)
-      ? await runtime.reconcileServiceBinding(context)
+      ? await runtime.reconcileServiceBinding(context, (code) => {
+          reasonCode = code;
+        })
       : undefined;
     await context.throwIfCancellationRequested();
     const status = await runtime.readLocalReadiness(context.job.instanceId);
@@ -70,7 +78,8 @@ export const createPluginJobExecutionHandlers = (
       runtime.synchronizeNews,
       context,
       reconciled,
-      status.serviceConfigured
+      status.serviceConfigured,
+      reasonCode
     );
     await context.throwIfCancellationRequested();
     return {

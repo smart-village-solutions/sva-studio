@@ -32,18 +32,18 @@ const entrySchema = z
     format: z.enum(['plain', 'html']),
   })
   .strict();
-const requestSchema = z
+const requestEnvelope = z
   .object({
     schemaVersion: z.literal(1),
     instanceId: z.string().refine(isValidInstanceId),
     requestId: z.uuid(),
     sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
-    profileId: z.literal('news-v1'),
     sourceLocale: z.literal('de'),
     targetLocale: z.literal('en'),
-    entries: z.array(entrySchema).min(1).max(50),
   })
-  .strict()
+  .strict();
+const newsRequestSchema = requestEnvelope
+  .extend({ profileId: z.literal('news-v1'), entries: z.array(entrySchema).min(1).max(50) })
   .superRefine((value, ctx) => {
     if (
       new Set(value.entries.map((entry) => entry.key)).size !== value.entries.length ||
@@ -65,6 +65,25 @@ const requestSchema = z
         ctx.addIssue({ code: 'custom', message: 'invalid_news_text' });
     }
   });
+const settingsRequestSchema = requestEnvelope.extend({
+  profileId: z.literal('global-settings-v1'),
+  entries: z.tuple([
+    z
+      .object({
+        key: z.literal('label'),
+        format: z.literal('plain'),
+        text: z
+          .string()
+          .regex(/\S/u)
+          .refine(
+            (text) => !/[<>]|\{\{|%\{/.test(text) && new TextEncoder().encode(text).length <= 2048
+          ),
+      })
+      .strict(),
+  ]),
+});
+const requestSchema = z.union([newsRequestSchema, settingsRequestSchema]);
+
 const reply = (status: number, data: unknown) =>
   Response.json(data, {
     status,

@@ -1,5 +1,7 @@
 import {
+  appTranslationLanguage,
   deepLTargetCode,
+  isAppTranslationLocale,
   isValidInstanceId,
   readDeepLSettings,
   type CatalogValue,
@@ -39,7 +41,11 @@ const requestEnvelope = z
     requestId: z.uuid(),
     sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
     sourceLocale: z.literal('de'),
-    targetLocale: z.literal('en'),
+    targetLocale: z
+      .string()
+      .refine(
+        (locale) => isAppTranslationLocale(locale) && appTranslationLanguage(locale) !== 'de'
+      ),
   })
   .strict();
 const newsRequestSchema = requestEnvelope
@@ -90,7 +96,10 @@ const reply = (status: number, data: unknown) =>
     headers: { 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' },
   });
 
-const readAccess = async (instanceId: string) => {
+const readAccess = async (
+  instanceId: string,
+  targetLocale: z.infer<typeof requestEnvelope>['targetLocale']
+) => {
   const connection = await loadDefaultExternalInterfaceRecord(instanceId, 'sva_mainserver');
   const binding = bindingSchema.safeParse(connection?.publicConfig.translationService);
   if (!connection?.enabled || !binding.success) return null;
@@ -114,10 +123,14 @@ const readAccess = async (instanceId: string) => {
     !provider ||
     !settings ||
     !getDeepLSetupStatus(provider).ready ||
-    !settings.selectedLocales.includes('en')
+    !settings.selectedLocales.includes(targetLocale)
   )
     return null;
-  const targetCode = deepLTargetCode('en', settings.englishVariant, settings.availableLanguages);
+  const targetCode = deepLTargetCode(
+    targetLocale,
+    settings.englishVariant,
+    settings.availableLanguages
+  );
   return { binding: binding.data, connection, scope, provider, settings, targetCode };
 };
 
@@ -197,7 +210,7 @@ const authenticateTranslation = async (
   }
   if (identity.azp !== binding.data.clientId || identity.sub !== binding.data.subject)
     return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
-  const access = await readAccess(input.instanceId);
+  const access = await readAccess(input.instanceId, input.targetLocale);
   if (!access || JSON.stringify(access.binding) !== JSON.stringify(binding.data))
     return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
   return { access, identity };
@@ -252,7 +265,7 @@ export const appTranslationServiceHandler = async (request: Request): Promise<Re
         retryable: false,
       });
     assertTranslatedEntries(input, translated);
-    const current = await readAccess(input.instanceId);
+    const current = await readAccess(input.instanceId, input.targetLocale);
     if (!accessUnchanged(current, access))
       return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
     const result = {

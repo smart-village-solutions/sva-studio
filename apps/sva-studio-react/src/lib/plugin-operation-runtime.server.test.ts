@@ -257,7 +257,10 @@ describe('plugin operation runtime registration', () => {
     vi.mocked(auth.reconcileAppTranslationServiceBinding).mockResolvedValue(true);
     const provision = { ...ctx, tenantLifecycle: { operation: 'provision', generation: 1 } } as import('@sva/plugin-sdk').PluginJobHandlerContext;
     await handlers[jobTypeId]!.handler(provision);
-    expect(auth.reconcileAppTranslationServiceBinding).toHaveBeenCalledWith(provision);
+    expect(auth.reconcileAppTranslationServiceBinding).toHaveBeenCalledWith(
+      provision,
+      expect.any(Function)
+    );
     expect(handlers[jobTypeId]?.executionLane).toBe('default');
     await handlers[catalogJobType.jobTypeId]!.handler(ctx);
     expect(auth.runCatalogTranslation).toHaveBeenCalledWith(ctx);

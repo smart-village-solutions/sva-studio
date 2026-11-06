@@ -57,7 +57,7 @@ export const persistAppTranslationNewsReconcile = async (instanceId: string): Pr
   const pluginId = 'app-translations';
   const lifecycle = readPersistablePluginTenantLifecycleRegistry().get(pluginId);
   if (!lifecycle) return;
-  await withRegistryRepository((repository) =>
+  await withScopedRegistryRepository(instanceId, (repository) =>
     repository.persistPluginTenantLifecycleReconcileIntents({
       instanceId,
       lifecycles: [lifecycle],

@@ -618,13 +618,19 @@ it.each([
 });
 
 it.each([
-  ['provision', true, ['en'], ['en']],
-  ['reconcile', true, ['pt-PT', 'es', 'fr'], ['es', 'fr', 'pt-PT']],
-  ['reconcile', false, ['en'], []],
-  ['suspend', true, ['en'], []],
+  ['provision', true, ['en', 'hu'], ['en', 'hu'], { de: 'Deutsch', en: 'English', hu: 'Magyar' }],
+  [
+    'reconcile',
+    true,
+    ['pt-PT', 'es', 'fr'],
+    ['es', 'fr', 'pt-PT'],
+    { de: 'Deutsch', es: 'Español', fr: 'Français', 'pt-PT': 'Português (Portugal)' },
+  ],
+  ['reconcile', false, ['en'], [], { de: 'Deutsch' }],
+  ['suspend', true, ['en'], [], { de: 'Deutsch' }],
 ] as const)(
   'synchronizes %s with the central gateway and verified language selection',
-  async (operation, ready, selectedLocales, locales) => {
+  async (operation, ready, selectedLocales, locales, languageNames) => {
     const newsEnabled = locales.length > 0;
     const studioUrl = 'https://studio.example/api/v1/app-translations/translate';
     connection.publicConfig.translationService = binding;
@@ -635,7 +641,14 @@ it.each([
       .mockReset()
       .mockResolvedValueOnce(Response.json({ access_token: 'technical-token' }))
       .mockResolvedValueOnce(
-        Response.json({ ...metadata(), studioUrl, generation: 1, newsEnabled, locales })
+        Response.json({
+          ...metadata(),
+          studioUrl,
+          generation: 1,
+          newsEnabled,
+          locales,
+          languageNames,
+        })
       );
     const job = context();
     Object.assign(job.tenantLifecycle!, { operation });
@@ -651,6 +664,7 @@ it.each([
       serviceSubject: binding.subject,
       newsEnabled,
       locales,
+      languageNames,
     });
   }
 );

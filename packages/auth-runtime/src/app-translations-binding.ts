@@ -111,6 +111,7 @@ const requestServiceSetup = async (
   newsPolicy?: {
     readonly newsEnabled: boolean;
     readonly locales: readonly string[];
+    readonly languageNames: Readonly<Record<string, string>>;
     readonly generation: number;
     readonly serviceSubject: string;
   },
@@ -185,6 +186,7 @@ const newsSetupSchema = identitySchema.extend({
     .array(z.string().refine(isAppTranslationLocale))
     .max(APP_TRANSLATION_MAX_LOCALES)
     .optional(),
+  languageNames: z.record(z.string(), z.string()).optional(),
   generation: z.number().int().positive(),
 });
 
@@ -212,13 +214,23 @@ export const synchronizeAppTranslationNews = async (
   const locales =
     lifecycle.operation !== 'suspend' && provider.ready ? [...provider.selectedLocales].sort() : [];
   const newsEnabled = locales.length > 0;
+  const languageNames = Object.fromEntries(
+    ['de', ...locales].map((locale) => {
+      const name = new Intl.DisplayNames([locale], {
+        type: 'language',
+        languageDisplay: 'standard',
+        fallback: 'none',
+      }).of(locale);
+      return [locale, name?.replace(/^./u, (letter) => letter.toLocaleUpperCase(locale)) ?? locale];
+    })
+  );
   const generation = lifecycle.generation;
   const response = await requestServiceSetup(
     connection,
     context,
     url,
     studioUrl,
-    { newsEnabled, locales, generation, serviceSubject: binding.data.subject },
+    { newsEnabled, locales, languageNames, generation, serviceSubject: binding.data.subject },
     scope.primary_hostname
   );
   const result = newsSetupSchema.parse(await readBoundedJson(response, 20000));
@@ -228,6 +240,9 @@ export const synchronizeAppTranslationNews = async (
     result.generation !== generation ||
     result.newsEnabled !== newsEnabled ||
     JSON.stringify(result.locales ?? (newsEnabled ? ['en'] : [])) !== JSON.stringify(locales) ||
+    Object.entries(languageNames).some(
+      ([locale, name]) => result.languageNames?.[locale] !== name
+    ) ||
     JSON.stringify(result.binding) !== JSON.stringify(binding.data)
   )
     throw new Error('mainserver_translation_policy_not_confirmed');

@@ -4,7 +4,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 import {
   CONSTRUCTION_SITES_TYPE,
   constructionSiteDateSchema,
-  type ConstructionSiteRecord,
+  type ConstructionSiteListItem,
 } from './construction-sites-contract.js';
 import { errorJson, isResponse, json, matchRequestRoute } from './content-route-core.js';
 import { withMainserverContextBinding } from './content-route-context.js';
@@ -31,7 +31,7 @@ const filters = z
   })
   .refine((value) => !value.dateStart || !value.dateEnd || value.dateStart <= value.dateEnd);
 
-function matchesConstructionSite(item: ConstructionSiteRecord, filter: z.infer<typeof filters>) {
+function matchesConstructionSite(item: ConstructionSiteListItem, filter: z.infer<typeof filters>) {
   const date = item.input.dates[0];
   if (
     filter.search &&

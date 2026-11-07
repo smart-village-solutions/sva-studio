@@ -15,7 +15,7 @@ export type ConstructionSiteWrite =
 const client = createMainserverCrudClient<
   ConstructionSiteRecord,
   ConstructionSiteWrite,
-  ConstructionSiteList,
+  ConstructionSiteList & { data: readonly ConstructionSiteRecord[] },
   ConstructionSiteList
 >({
   basePath: '/api/v1/mainserver/construction-sites',
@@ -90,6 +90,8 @@ export function constructionSiteRejection(error: unknown): string | undefined {
     'construction_site_prewrite_failed',
     'construction_site_content_conflict',
     'construction_site_invalid_input',
+    'construction_site_geometry_payload_too_large',
+    'construction_site_geometry_unsupported',
     'construction_site_media_unavailable',
     'construction_site_not_found',
     'construction_site_incomplete',

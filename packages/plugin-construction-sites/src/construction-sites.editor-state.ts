@@ -32,6 +32,7 @@ function useEditorData(
   const [baseline, setBaseline] = useState(JSON.stringify(draft));
   const [resourceAccess, setResourceAccess] = useState<Readonly<Record<string, boolean>>>({});
   const [loading, setLoading] = useState(Boolean(id));
+  const [geometryDrawing, setGeometryDrawing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
   const [message, setMessage] = useState<string>();
@@ -46,7 +47,7 @@ function useEditorData(
   const dirty = baseline !== JSON.stringify(draft);
   const guard = useStudioEditorLeaveGuard({
     enabled: true,
-    hasUnsavedChanges: dirty || Boolean(pending),
+    hasUnsavedChanges: dirty || geometryDrawing || Boolean(pending),
   });
   return {
     id,
@@ -64,6 +65,8 @@ function useEditorData(
     setLoading,
     busy,
     setBusy,
+    geometryDrawing,
+    setGeometryDrawing,
     failure,
     setFailure,
     message,
@@ -83,49 +86,37 @@ function useEditorData(
     guard,
   };
 }
-function useEditorLoads({
-  id,
-  principal,
-  key,
-  setPending,
-  setCategories,
-  setCategoryError,
-  setLoading,
-  setRecord,
-  setDraft,
-  setBaseline,
-  setResourceAccess,
-  setFailure,
-}: ReturnType<typeof useEditorData>) {
+function useEditorLoads(data: ReturnType<typeof useEditorData>) {
+  const { id, principal, key } = data;
   useEffect(() => {
     let active = true;
-    setCategories(undefined);
-    setCategoryError(false);
+    data.setCategories(undefined);
+    data.setCategoryError(false);
     void listConstructionSiteCategories(principal).then(
-      (items) => active && setCategories(items),
-      () => active && setCategoryError(true)
+      (items) => active && data.setCategories(items),
+      () => active && data.setCategoryError(true)
     );
     return () => {
       active = false;
     };
   }, [principal, key]);
   useEffect(() => {
-    setPending(readConstructionSitePending(key));
+    data.setPending(readConstructionSitePending(key));
     if (!id) return;
     let active = true;
-    setLoading(true);
+    data.setLoading(true);
     void getConstructionSite(id, principal)
       .then(
         (result) => {
           if (!active) return;
-          setRecord(result.data);
-          setDraft(result.data.input);
-          setBaseline(JSON.stringify(result.data.input));
-          setResourceAccess(result.access);
+          data.setRecord(result.data);
+          data.setDraft(result.data.input);
+          data.setBaseline(JSON.stringify(result.data.input));
+          data.setResourceAccess(result.access);
         },
-        () => active && setFailure('messages.loadError')
+        () => active && data.setFailure('messages.loadError')
       )
-      .finally(() => active && setLoading(false));
+      .finally(() => active && data.setLoading(false));
     return () => {
       active = false;
     };
@@ -148,7 +139,8 @@ function useEditorCommit({
   return async (
     operation: ConstructionSitePending,
     recover: boolean,
-    revision = guard.captureRevision()
+    revision = guard.captureRevision(),
+    submittedSite: ConstructionSiteInput = draft
   ) => {
     setBusy(true);
     setFailure(undefined);
@@ -157,7 +149,10 @@ function useEditorCommit({
         operation.id,
         recover
           ? { recover: true, inputHash: operation.inputHash }
-          : { site: draft, ...(record ? { baseFingerprint: record.contentFingerprint } : {}) },
+          : {
+              site: submittedSite,
+              ...(record ? { baseFingerprint: record.contentFingerprint } : {}),
+            },
         principal,
         operation.operationId
       );
@@ -178,13 +173,13 @@ function useEditorCommit({
       if (code && !recover) {
         sessionStorage.removeItem(key);
         setPending(undefined);
-        setFailure(
-          code === 'construction_site_content_conflict'
-            ? `errors.${code}`
-            : code === 'forbidden' || code === 'stale_mainserver_context'
-              ? `errors.${code}`
-              : 'messages.saveError'
-        );
+        const specific = [
+          'construction_site_content_conflict',
+          'construction_site_geometry_payload_too_large',
+          'forbidden',
+          'stale_mainserver_context',
+        ].includes(code);
+        setFailure(specific ? `errors.${code}` : 'messages.saveError');
       } else setFailure('messages.unknown');
     } finally {
       setBusy(false);
@@ -221,6 +216,10 @@ export function useConstructionSiteEditor(
   };
   const save = async () => {
     if (saving.current || data.busy || data.pending || (id && !record)) return;
+    if (data.geometryDrawing) {
+      setErrors(['geometry']);
+      return;
+    }
     const parsed = constructionSiteInputSchema.safeParse(draft);
     if (!parsed.success) {
       setErrors(parsed.error.issues.map((issue) => issue.path.join('.')));
@@ -232,7 +231,7 @@ export function useConstructionSiteEditor(
     const revision = guard.captureRevision();
     try {
       const body = {
-        site: draft,
+        site: parsed.data,
         ...(record ? { baseFingerprint: record.contentFingerprint } : {}),
       };
       const operation = {
@@ -242,7 +241,7 @@ export function useConstructionSiteEditor(
       };
       sessionStorage.setItem(key, JSON.stringify(operation));
       setPending(operation);
-      await commit(operation, false, revision);
+      await commit(operation, false, revision, parsed.data);
     } catch {
       setFailure('messages.saveError');
     } finally {

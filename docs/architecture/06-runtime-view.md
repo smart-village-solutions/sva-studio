@@ -1655,3 +1655,7 @@ Ordinary-login MFA policy uses the existing realm job and independent read-back;
 its desired state must not be represented as an already applied state. Existing
 SSF step-up uses `acr_values=mfa` and `max_age=0`. See
 [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).
+
+### Geometrie-Roundtrip im Studio
+
+Abgeschlossene Zeichnungen und Koordinateneingaben ändern denselben Baustellen-Draft. Erst der Formular-Save führt Validierung, Normalisierung, frischen Detail-Read, Fingerprint-Prüfung, vorhandene Mutation und unabhängigen Geometrie-Readback aus. Request-Hash und gesendeter Body verwenden denselben normalisierten Snapshot. Unfertige Zeichnungen werden nicht gespeichert. Ein explizites `geometry: null` im Studio-Input entfernt den reservierten Schlüssel vor der Mutation aus dem vollständigen Payload; Erfolg setzt danach dessen tatsächliche Abwesenheit im Readback voraus. Der Mainserver bleibt unverändert und ersetzt das übergebene Payload wie bisher. Ausgelassene Geometrie übernimmt der Studio-Adapter aus dem frischen Snapshot; ein Legacy-CMS-Erhalt gehört nach Nutzerfestlegung nicht zum Umfang.

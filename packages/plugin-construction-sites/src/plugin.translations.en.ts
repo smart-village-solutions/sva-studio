@@ -91,6 +91,8 @@ export const constructionSiteTranslationsEn = {
     incomplete: 'Incomplete dates',
   },
   pagination: {
+    pageSize: 'Items per page',
+    results: '{{start}}–{{end}} of {{total}} items',
     label: 'Construction site pages',
     page: 'Page {{page}}',
     previous: 'Previous',

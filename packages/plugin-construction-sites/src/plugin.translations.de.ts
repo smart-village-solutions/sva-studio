@@ -91,6 +91,8 @@ export const constructionSiteTranslationsDe = {
     incomplete: 'Zeitraum unvollständig',
   },
   pagination: {
+    pageSize: 'Einträge pro Seite',
+    results: '{{start}}–{{end}} von {{total}} Einträgen',
     label: 'Baustellenseiten',
     page: 'Seite {{page}}',
     previous: 'Zurück',

@@ -53,6 +53,8 @@ export const persistProvisionedMainserverCredentials = async (input: {
     mainserverUserApplicationId: normalizedCredentials.apiKey,
     mainserverUserApplicationSecret: normalizedCredentials.apiSecret,
   });
+  // Mainserver provisioning may replace this attribute with its own tenant identifier.
+  nextAttributes.instanceId = [input.instanceId];
   const requiresWrite = !haveEqualIdentityAttributes(existingAttributes, nextAttributes);
 
   if (requiresWrite) {
@@ -65,7 +67,10 @@ export const persistProvisionedMainserverCredentials = async (input: {
 
   let readbackAttributes = existingAttributes;
   if (requiresWrite) {
-    readbackAttributes = await readAttributes(getSvaMainserverCredentialAttributeNames());
+    readbackAttributes = await readAttributes([
+      ...getSvaMainserverCredentialAttributeNames(),
+      'instanceId',
+    ]);
   }
 
   const readback = verifyMainserverCredentialReadback({
@@ -85,6 +90,17 @@ export const persistProvisionedMainserverCredentials = async (input: {
       message: 'Mainserver-Credentials wurden nach dem Speichern nicht vollständig bestätigt.',
       statusCode: readback.status === 'unavailable' ? 503 : 409,
       retryable: readback.status === 'unavailable',
+    });
+  }
+  if (
+    readbackAttributes?.instanceId?.length !== 1 ||
+    readbackAttributes.instanceId[0] !== input.instanceId
+  ) {
+    throw new MainserverUserProvisioningError({
+      code: 'mainserver_instance_scope_mismatch',
+      message:
+        'Die Studio-Instanzzuordnung wurde nach dem Mainserver-Provisioning nicht bestätigt.',
+      statusCode: 409,
     });
   }
 };

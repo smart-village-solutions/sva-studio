@@ -111,6 +111,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 069 | [Filerobot-Bildeditor mit begrenzter Accessibility-Abweichung](./ADR-069-filerobot-bildeditor-mit-begrenzter-accessibility-abweichung.md)                                     | ✅     | 2026-10-22         | Media / UI / Accessibility        |
 
 | 070 | [Technischen Übersetzungsdienst an bestehender Main-Server-Verbindung autorisieren](./ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md) | ✅ | 2026-10-27 | Integration / Auth / Übersetzung |
+| 071 | [Studio ownership of recording policy and tenant authentication](./ADR-071-recording-policy-and-tenant-authentication.md) | ✅ | 2026-11-02 | SSF / IAM / Authentication |
 
 ### Kanonischer Ablageort
 

@@ -34,11 +34,14 @@ describe('SSF authorization projection contract', () => {
       instanceId: 'studio_tenant_id',
       roles: 'ssf_roles',
       permissions: 'ssf_permissions',
+      languages: 'ssf_languages',
       authorizationRevision: 'ssf_authorization_revision',
     });
     expect(SSF_TENANT_PERMISSION_IDS).toEqual([
       'ssf.configuration.tenant.manage',
       'ssf.configuration.tenant.read',
+      'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
+      'ssf.recording.supervise', 'ssf.recording.recovery.custodian',
     ]);
   });
 

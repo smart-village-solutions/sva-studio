@@ -1,4 +1,7 @@
-import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
+import {
+  DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+  DEFAULT_EMAIL_VERIFICATION_TEMPLATE,
+} from '@sva/core';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -8,6 +11,12 @@ import { IamHttpError } from '../../../lib/iam-api';
 const api = vi.hoisted(() => ({
   getTenantAccountInvitationTemplate: vi.fn(),
   updateTenantAccountInvitationTemplate: vi.fn(),
+  getVerification: vi.fn(),
+  saveVerification: vi.fn(),
+}));
+vi.mock('../../../lib/iam-api-tenant-mail-templates', () => ({
+  getTenantEmailVerificationTemplate: api.getVerification,
+  updateTenantEmailVerificationTemplate: api.saveVerification,
 }));
 
 vi.mock('../../../lib/iam-api', async (importOriginal) => ({
@@ -25,9 +34,21 @@ const defaultView = {
   tenantName: 'Kassel',
   tenantHomepageUrl: 'https://kassel.example/',
 };
+const verificationView = {
+  template: DEFAULT_EMAIL_VERIFICATION_TEMPLATE,
+  stored: { revision: 3, kind: 'verification' },
+  source: 'server',
+  status: 'synced',
+  studioTexts: {},
+  keycloakTexts: {},
+  realm: 'tenant-a',
+  tenantName: 'Kassel',
+};
 
 describe('InvitationTemplatePage', () => {
   beforeEach(() => {
+    api.getVerification.mockResolvedValue({ data: verificationView });
+    api.saveVerification.mockResolvedValue({ data: { ...verificationView, source: 'instance' } });
     api.getTenantAccountInvitationTemplate.mockResolvedValue({ data: defaultView });
     api.updateTenantAccountInvitationTemplate.mockResolvedValue({
       data: {
@@ -37,6 +58,43 @@ describe('InvitationTemplatePage', () => {
         effectiveTemplate: { ...defaultView.effectiveTemplate, revision: 1 },
       },
     });
+  });
+
+  it('offers both templates and saves or removes the verification override through the session tenant API', async () => {
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => true)
+    );
+    render(<InvitationTemplatePage />);
+    expect(screen.getByRole('heading', { name: 'E-Mail-Vorlagen' })).toBeTruthy();
+    expect(await screen.findByText('Verwendete Vorlage: Servervorlage')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Account-Einladung anpassen' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'E-Mail-Bestätigung anpassen' }));
+    await screen.findByLabelText('Betreff');
+    fireEvent.change(screen.getByLabelText('Betreff'), {
+      target: { value: 'Adresse für Kassel bestätigen' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Vorlage speichern' }));
+    await vi.waitFor(() =>
+      expect(api.saveVerification).toHaveBeenCalledWith({
+        operation: 'save',
+        expectedRevision: 3,
+        template: {
+          ...DEFAULT_EMAIL_VERIFICATION_TEMPLATE,
+          subject: 'Adresse für Kassel bestätigen',
+        },
+      })
+    );
+    await screen.findByText(/gespeichert und zurückgelesen/);
+    fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Vorlage verwenden' }));
+    await vi.waitFor(() =>
+      expect(api.saveVerification).toHaveBeenLastCalledWith({
+        operation: 'save',
+        expectedRevision: 3,
+        template: null,
+      })
+    );
+    expect(api.updateTenantAccountInvitationTemplate).not.toHaveBeenCalled();
   });
 
   afterEach(() => {

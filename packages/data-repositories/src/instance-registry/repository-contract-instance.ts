@@ -162,6 +162,7 @@ export type InstanceRegistryInstanceRepository = {
       operations?: readonly Readonly<{ operation: string }>[];
     }>[];
     forcePluginIds: readonly string[];
+    reconcileActiveOnly?: boolean;
   }) => Promise<readonly string[]>;
   readonly syncProtectedSystemRolePermissions: (input: {
     instanceId: string;

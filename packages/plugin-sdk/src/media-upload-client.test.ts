@@ -53,7 +53,8 @@ describe('media upload client', () => {
     async (failedPart) => {
       let checkpoint: HostMediaUploadCheckpoint | undefined;
       let failed = false;
-      const fetch = vi.fn(async (request: RequestInfo | URL) => {
+      const fetch = vi.fn(async function (this: unknown, request: RequestInfo | URL) {
+        expect(this).toBeUndefined();
         const url = String(request);
         if (url.endsWith('/upload-sessions'))
           return Response.json({

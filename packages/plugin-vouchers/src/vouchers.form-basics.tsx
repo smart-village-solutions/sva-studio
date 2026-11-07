@@ -1,4 +1,4 @@
-import { Select, Textarea, RichTextHtmlEditor } from '@sva/studio-ui-react';
+import { SearchableMultiSelect, Textarea, RichTextHtmlEditor } from '@sva/studio-ui-react';
 import { useVoucherFormFields, type VoucherFormProps } from './vouchers.form-fields.js';
 import { VoucherMediaFields } from './vouchers.form-media.js';
 export function VoucherBasicsFields(props: VoucherFormProps) {
@@ -28,28 +28,30 @@ export function VoucherBasicsFields(props: VoucherFormProps) {
       )}
       {field(
         'categories',
-        <Select
+        <SearchableMultiSelect
           id="voucher-categories"
-          multiple
           value={props.draft.categories.map((item) => item.name)}
-          onChange={(event) =>
+          onValueChange={(names) =>
             props.change(
               'categories',
-              Array.from(event.target.selectedOptions, (item) => ({ name: item.value }))
+              names.map((name) => ({ name }))
             )
           }
-        >
-          {Array.from(
+          options={Array.from(
             new Set([
               ...props.categories.map((item) => item.name),
               ...props.draft.categories.map((item) => item.name),
             ])
-          ).map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </Select>
+          ).map((name) => ({ label: name, value: name }))}
+          placeholder={t('fields.categoriesSearchPlaceholder')}
+          searchLabel={t('fields.categoriesSearch')}
+          emptyText={t('fields.categoriesEmpty')}
+          helpText={t('help.categories')}
+          removeLabel={(name) => t('actions.removeCategory', { name })}
+          unavailableText={t('fields.categoryUnavailable')}
+          loading={false}
+          loadingText={t('messages.loading')}
+        />
       )}
       <VoucherMediaFields {...props} />
     </>

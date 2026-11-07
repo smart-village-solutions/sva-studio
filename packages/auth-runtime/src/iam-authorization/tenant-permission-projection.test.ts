@@ -132,3 +132,24 @@ describe('tenant permission projection', () => {
     }
   );
 });
+
+it('carries managed competence languages through the authoritative projection', async () => {
+  const subjects = await loadTenantPermissionProjectionSubjectsWithClient({ query: vi.fn().mockResolvedValue({ rows: [{ keycloak_subject: 'reviewer', role_name: 'reviewers', permission_key: 'ssf.recording.review', competence_languages: ['DE', 'en-us'] }] }) }, { instanceId: 'tenant-a', permissionIds: ['ssf.recording.review'] });
+  expect(subjects[0]).toMatchObject({ languages: ['de', 'en-US'] });
+});
+it('does not broaden restricted recording assignments into tenant-wide eligibility', async () => {
+  const subjects = await loadTenantPermissionProjectionSubjectsWithClient({ query: vi.fn().mockResolvedValue({ rows: [
+    { keycloak_subject: 'own', role_name: 'reviewers', permission_key: 'ssf.recording.review', access_scope: 'own' },
+    { keycloak_subject: 'record', role_name: 'reviewers', permission_key: 'ssf.recording.review', resource_id: 'one-record' },
+    { keycloak_subject: 'wrong-action', role_name: 'reviewers', permission_key: 'ssf.recording.review', action: 'content.read' },
+    { keycloak_subject: 'scoped', role_name: 'reviewers', permission_key: 'ssf.recording.review', scope: { organizationId: 'org' } },
+  ] }) }, { instanceId: 'tenant-a', permissionIds: ['ssf.recording.review'] });
+  expect(subjects).toEqual([]);
+});
+
+it('requires canonical active account eligibility in the directory source', async () => {
+  const query = vi.fn().mockResolvedValue({ rows: [] });
+  await loadTenantPermissionProjectionSubjectsWithClient({ query }, { instanceId: 'tenant-a', permissionIds: ['ssf.recording.review'], includeProfile: true });
+  const sql = query.mock.calls[0]?.[0];
+  for (const predicate of ["a.deletion_lifecycle_state = 'active'", 'a.permanently_deleted_at IS NULL', 'a.processing_restricted_at IS NULL', 'a.deactivated_at IS NULL']) expect(sql).toContain(predicate);
+});

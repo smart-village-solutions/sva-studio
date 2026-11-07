@@ -44,4 +44,4 @@ Maximal betroffene Bereiche sind das neue Fachplugin, vorhandene Plugin-/Distrib
 - [Plugin- und Zugriffsvertrag](./specs/plugin-platform/spec.md)
 - [Mainserver-Vertrag](./specs/sva-mainserver-integration/spec.md)
 
-Stand: Studio-Umsetzung erneut ausdrücklich freigegeben; die technische Importreferenz ist bis zum getrennten Mainserver-Fix als bekannte Ausnahme akzeptiert. SVA-1786 blockiert die Studio-Umsetzung nicht. Änderungen am Mainserver erfolgen nicht in diesem Auftrag. Externe Schreibtests, Push, PR, Merge und Rollout sind nicht beauftragt. Für reguläre Rollouts bleibt ausschließlich `docs/guides/studio-rollout-process.md` maßgeblich.
+Stand: Studio-Umsetzung lokal abgeschlossen; Push und PR gegen `main` sind inzwischen ausdrücklich beauftragt. Die technische Importreferenz ist bis zum getrennten Mainserver-Fix als bekannte Ausnahme akzeptiert. SVA-1786 blockiert die Studio-Umsetzung nicht. Änderungen am Mainserver erfolgen nicht in diesem Auftrag. Externe Schreibtests, Merge und Rollout sind nicht beauftragt. Für reguläre Rollouts bleibt ausschließlich `docs/guides/studio-rollout-process.md` maßgeblich.

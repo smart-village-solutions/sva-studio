@@ -9,7 +9,7 @@ paths:
   /api/v1/app-translations/translate:
     post:
       operationId: translateTechnicalNews
-      summary: Vollständige Nachrichtentextgruppe technisch von Deutsch nach Englisch übersetzen
+      summary: App-Inhalte technisch aus dem Deutschen in eine freigegebene Instanzsprache übersetzen
       description: >-
         Begrenzter synchroner Dienst für den Main-Server. Kein Sessionzugriff, keine
         zusätzliche Übersetzungsrolle, kein dynamischer Studio-Ergebnisspeicher.
@@ -17,7 +17,9 @@ paths:
         Issuer, Audience, azp und exaktes technisches sub an der bestehenden
         instanzgebundenen Main-Server-Schnittstellenverbindung. Keine automatische
         Organisationsauswahl und kein Gleichsetzen mit ausgehenden Organisationsaccounts. Der Main-Server besitzt Jobs
-        und Retries. 50 Einträge, 90000 UTF-8-Quellbytes, 100000 Bytes Gesamtrequest, 150000 Bytes Gesamtantwort.
+        und Retries. Zielsprache ist eine aktuell in Studio ausgewählte und geprüfte Sprache.
+        Bei global-settings-v1 ist genau ein Klartexteintrag mit Schlüssel label und maximal 2048 UTF-8-Bytes erlaubt.
+        Für news-v1 gelten 50 Einträge, 90000 UTF-8-Quellbytes, 100000 Bytes Gesamtrequest, 150000 Bytes Gesamtantwort.
         Übersetzte Einträge sind nicht leer oder ausschließlich Leerraum und umfassen jeweils höchstens 100000 UTF-8-Bytes.
         Übermittelte Quelltexte dürfen ebenfalls nicht leer oder ausschließlich Leerraum sein;
         optionale Felder ohne Text werden vor dem Request ausgelassen. Andernfalls folgt 400 vor jedem Anbieteraufruf.
@@ -42,9 +44,9 @@ paths:
                 instanceId: { type: string }
                 requestId: { type: string, format: uuid }
                 sourceDigest: { type: string, pattern: '^[a-f0-9]{64}$' }
-                profileId: { type: string, enum: [news-v1] }
+                profileId: { type: string, enum: [news-v1, global-settings-v1] }
                 sourceLocale: { type: string, enum: [de] }
-                targetLocale: { type: string, enum: [en] }
+                targetLocale: { type: string, maxLength: 32 }
                 entries:
                   type: array
                   minItems: 1
@@ -56,15 +58,15 @@ paths:
                     properties:
                       key:
                         type: string
-                        description: title, author, keywords oder contentBlocks.N.title/.intro/.body; eindeutige Schlüssel und genau ein nichtleerer title
+                        description: title, author, keywords, settings.onlySummaryLinkText, contentBlocks.N.title/.intro/.body oder contentBlocks.N.mediaContents.M.captionText bei news-v1; eindeutige Schlüssel und genau ein nichtleerer title; bei global-settings-v1 nur label
                       text: { type: string, minLength: 1, maxLength: 92160, pattern: '\S' }
                       format:
                         type: string
                         enum: [plain, html]
-                        description: html ausschließlich für body, übrige Felder plain
+                        description: body als html, intro als plain oder html, übrige Felder als plain
       responses:
         '200':
-          description: Gleiche Korrelation schemaVersion/requestId/sourceDigest/profileId/sourceLocale/targetLocale und vollständige entries in gleicher Reihenfolge mit gleichen key/format und englischem text; private no-store
+          description: Gleiche Korrelation schemaVersion/requestId/sourceDigest/profileId/sourceLocale/targetLocale und vollständige entries in gleicher Reihenfolge mit gleichen key/format und Text in der Zielsprache; private no-store
         '400':
           description: invalid_translation_request; keine Übersetzung; kein retry
         '401':
@@ -1154,6 +1156,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BulkDeactivateResponse'
+  /api/v1/iam/users/me/authentication-policy:
+    get:
+      summary: Read the current tenant login MFA policy
+      description: Requires iam.authenticationPolicy.manage in the authenticated tenant. Explicit instance IDs are rejected.
+      responses:
+        '200':
+          description: Desired policy and last independently verified applied policy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantLoginMfaPolicyResponse'
+        '403':
+          description: Missing tenant context or tenant permission.
+    patch:
+      summary: Queue a tenant login MFA policy change
+      description: Requires iam.authenticationPolicy.manage in the authenticated tenant. Returns pending until the existing provisioning worker verifies provider state. Explicit instance IDs are rejected.
+      parameters:
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTenantLoginMfaPolicyRequest'
+      responses:
+        '202':
+          description: Saved and queued; provider application is not yet verified.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantLoginMfaPolicyResponse'
+        '400':
+          description: Invalid or unknown request fields.
+        '403':
+          description: Missing tenant permission or invalid mutation context.
+        '409':
+          description: Revision changed; reload before retrying.
   /api/v1/iam/users/me/profile:
     get:
       summary: Eigenes Profil abrufen
@@ -1841,6 +1885,15 @@ paths:
       summary: Einladungsvorlage des Mandanten speichern oder abgleichen
       description: Dieselben save-, transfer- und adopt-Operationen im Session-Tenant mit iam.invitationTemplate.manage. Bestehende Requests ohne operation bleiben save-Requests. Antworten enthalten synchronization mit Studio-/Keycloak-Vergleich.
       responses: { default: { description: 'Antwort des Endpunkts.' } }
+  /api/v1/iam/users/me/email-verification-template:
+    get:
+      summary: Bestätigungsvorlage des Session-Mandanten lesen
+      description: Erfordert iam.invitationTemplate.manage. Liefert MailTemplateView mit geerbter oder eigener Vorlage und aktuellem Studio-/Keycloak-Vergleich. Eine Instanz-ID darf nicht übergeben werden.
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
+    patch:
+      summary: Bestätigungsvorlage des Session-Mandanten speichern oder abgleichen
+      description: Erfordert Sitzung, iam.invitationTemplate.manage, Actor-Account und CSRF. Unterstützt save mit subject/body oder null zum Entfernen des Overrides sowie transfer/adopt mit den gelesenen Studio-/Keycloak-Texten. expectedRevision schützt vor gleichzeitigen Änderungen. Die Quelle bleibt bei Synchronisierungsfehlern gespeichert; MailTemplateView meldet den tatsächlichen Abgleichsstand. Kein E-Mail-Versand.
+      responses: { default: { description: 'Antwort des Endpunkts.' } }
   /api/v1/iam/organizations/{organizationId}/provision-mainserver:
     parameters: [{ name: organizationId, in: path, required: true, schema: { type: string } }]
     post:
@@ -2169,6 +2222,48 @@ components:
         maximum: 100
         default: 20
   schemas:
+    UpdateTenantLoginMfaPolicyRequest:
+      type: object
+      additionalProperties: false
+      required: [mode, expectedRevision]
+      properties:
+        mode:
+          type: string
+          enum: [optional, required]
+        expectedRevision:
+          type: integer
+          minimum: 0
+    TenantLoginMfaPolicyResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [policy, revision]
+          properties:
+            revision:
+              type: integer
+              minimum: 0
+            runId:
+              type: string
+              format: uuid
+            policy:
+              type: object
+              required: [desiredMode, appliedMode, status]
+              properties:
+                desiredMode:
+                  type: string
+                  enum: [optional, required]
+                appliedMode:
+                  type: string
+                  nullable: true
+                  enum: [optional, required, null]
+                  description: Null until provider state has been independently verified.
+                status:
+                  type: string
+                  enum: [pending, applied, failed]
     ApiErrorResponse:
       type: object
       required: [error]

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { canonicalize } from 'json-canonicalize';
 import { z } from 'zod';
+import { SSF_RECORDING_PERMISSION_IDS } from './constants.js';
 
 /**
  * This version describes the authorization contract, not its current subjects.
@@ -23,6 +24,7 @@ export const SSF_TOKEN_CLAIMS = {
   roles: 'ssf_roles',
   /** @deprecated Not a conversation admission criterion; administrative permission checks remain independent. */
   permissions: 'ssf_permissions',
+  languages: 'ssf_languages',
   /** @deprecated No user-token revision comparison for conversations after SSF migration; runtime API revision remains supported. */
   authorizationRevision: 'ssf_authorization_revision',
 } as const;
@@ -30,6 +32,7 @@ export const SSF_TOKEN_CLAIMS = {
 export const SSF_TENANT_PERMISSION_IDS = [
   'ssf.configuration.tenant.manage',
   'ssf.configuration.tenant.read',
+  ...SSF_RECORDING_PERMISSION_IDS,
 ] as const;
 
 export const SSF_TENANT_ROLE_IDS = ['tenant_admin', 'user'] as const;
@@ -47,6 +50,7 @@ export const ssfAuthorizationProjectionSubjectSchema = z
     subject: subjectSchema,
     roles: z.array(roleSchema),
     permissions: z.array(permissionSchema),
+    languages: z.array(z.string().max(35).regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/u)).max(40).optional(),
   })
   .strict();
 
@@ -64,6 +68,7 @@ export type SsfEffectiveAuthorizationSubject = Readonly<{
   subject: string;
   roleNames: readonly string[];
   permissionIds: readonly string[];
+  languages?: readonly string[];
 }>;
 
 export const normalizeSsfAuthorizationProjection = (
@@ -75,6 +80,7 @@ export const normalizeSsfAuthorizationProjection = (
       subject: entry.subject,
       roles: sortedUnique(entry.roles),
       permissions: sortedUnique(entry.permissions),
+      ...(entry.languages?.length ? { languages: sortedUnique(entry.languages.map(tag => Intl.getCanonicalLocales(tag).join())) } : {}),
     }))
     .sort((left, right) => left.subject.localeCompare(right.subject));
 
@@ -139,6 +145,7 @@ export const createSsfAuthorizationProjection = (input: {
         subject: entry.subject,
         roles: [entry.roleNames.includes('system_admin') ? 'tenant_admin' : 'user'],
         permissions: ssfPermissions,
+        ...(entry.languages ? { languages: [...entry.languages] } : {}),
       },
     ];
   });

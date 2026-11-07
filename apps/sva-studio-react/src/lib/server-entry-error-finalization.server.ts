@@ -34,6 +34,7 @@ const safeRouteSegments = new Set([
   'iam',
   'instances',
   'invitation-template',
+  'email-verification-template',
   'items',
   'jobs',
   'keycloak',

@@ -244,6 +244,10 @@ export const updateSvaMainserverPoi = (
   }
 ) => getDefaultService().updatePoi(input);
 
+export const changeSvaMainserverPoiVisibility = (
+  input: SvaMainserverConnectionInput & { readonly poiId: string; readonly visible: boolean }
+) => getDefaultService().changePoiVisibility(input);
+
 export const deleteSvaMainserverPoi = (
   input: SvaMainserverConnectionInput & { readonly poiId: string }
 ) => getDefaultService().deletePoi(input);

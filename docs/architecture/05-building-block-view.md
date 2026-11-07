@@ -1116,7 +1116,7 @@ Details offen.
 - Die systemweite Zielvorgabe für neue Einladungen liegt getrennt vom Mailtext
   im bestehenden Serverdatensatz. Der bei der Nutzeranlage ausgewählte Zweck
   `studio` oder `ssf` liegt am Account und bleibt beim Resend erhalten.
-- Auf dem Tenant-Host zeigt `Benutzer -> Einladungsvorlage` denselben Editor
+- Auf dem Tenant-Host zeigt `Benutzer -> E-Mail-Vorlagen` beide bestehenden Editoren für Account-Einladung und E-Mail-Bestätigung
   mit einer auf die Session-Instanz begrenzten API. `@sva/auth-runtime` prüft
   `iam.invitationTemplate.manage`; die Registry-Persistenz bleibt gemeinsam.
 - `@sva/auth-runtime` vergleicht unmittelbar vor Create-Einladung und Resend
@@ -1193,7 +1193,7 @@ Die versionierte Formatdefinition erhält in Format 1 die bisherigen 22 Textfunk
 
 ### Begrenzter technischer Nachrichten-Übersetzungsdienst
 
-`auth-runtime/src/app-translations-service.ts` ergänzt den getrennten technischen POST-Handler für `news-v1` (de→en), ohne Session-Katalogrechte oder persistente dynamische Inhalte. Er nutzt JWT-Verifikation, die ausdrücklich erwarteten Identitätsmetadaten an der bestehenden Main-Server-Schnittstelle, die bestehende instanzgebundene Schnittstellenverbindung und den DeepL-Adapter. Der Main-Server behält Jobs, Retry und dynamische Ergebnisse. Aktueller Modul-/Sprach-/Konfigurationsstand wird vor Anbieterarbeit und Antwort geprüft. Die reale Eignung/Audience des vorhandenen Dienstausweises ist keine durch diese Implementierung belegte Betriebsfreigabe. Details und Grenzen: [ADR-070](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md).
+`auth-runtime/src/app-translations-service.ts` ergänzt den getrennten technischen POST-Handler für `news-v1` und `global-settings-v1` (Deutsch in die pro Instanz freigegebenen Zielsprachen), ohne Session-Katalogrechte oder persistente dynamische Inhalte. Er nutzt JWT-Verifikation, die ausdrücklich erwarteten Identitätsmetadaten an der bestehenden Main-Server-Schnittstelle, die bestehende instanzgebundene Schnittstellenverbindung und den DeepL-Adapter. Der Main-Server behält Jobs, Retry und dynamische Ergebnisse. Aktueller Modul-/Sprach-/Konfigurationsstand wird vor Anbieterarbeit und Antwort geprüft. Der bestehende Modulabgleich übermittelt die Sprachauswahl an den Main-Server. Die App liest dort die verfügbaren Sprachen, und der erste Inhaltsabruf kann eine Übersetzung anstoßen. Die reale Eignung/Audience des vorhandenen Dienstausweises ist keine durch diese Implementierung belegte Betriebsfreigabe. Details und Grenzen: [ADR-070](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md).
 
 ## Baustein Gutscheine
 
@@ -1253,3 +1253,23 @@ und Kalendergitter lesen dieselben berechneten Terminobjekte.
 ## Stellenplugin
 
 `@sva/plugin-jobs` liefert Fachschema, Liste, Editor, Medienanbindung und eigene `jobs.*`-Rechte. Der Studio-Mainserver-Adapter besitzt einen unabhängig validierten Eingangsvertrag; browserseitige Kompatibilität wird mit gemeinsamen Fällen geprüft. Der Host ergänzt ausschließlich die bestehenden Katalog-, Routing-, Principal- und Projektionspfade. Siehe [Stellenanzeigenreferenz](../reference/jobs.md).
+
+## SSF recording configuration and identity boundary
+
+- `plugin-ssf/content-v2-recording` validates sparse administrative drafts and
+  resolves complete effective recording policy before runtime revision hashing.
+  It runs outside the generic content merge so `recording.enabled` is retained.
+- The mounted SSF editor manages policy, inheritance and localized consent/resume
+  text. Root policy conflicts list affected tenants without discarding the draft.
+- Core/IAM persists managed account competence and supplies live, decrypted
+  display labels and effective tenant-wide grants through the existing host
+  server-factory composition. SSF receives a reader capability, not IAM database
+  access. The exported `plugin-ssf/server` entry binds the directory handler;
+  the separate lifecycle module retains its job handlers.
+- SDK module metadata and both host bootstrap paths retain administrator grant
+  exclusions. Configuration administration is not a recording grant.
+- Core/IAM and its existing realm provisioning workflow own authentication policy
+  application; SSF continues to enforce its own sensitive-action step-up.
+
+The ownership decision and release boundary are recorded in
+[ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).

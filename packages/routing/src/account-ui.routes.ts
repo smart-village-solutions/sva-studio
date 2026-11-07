@@ -47,6 +47,7 @@ export const createAccountUiRouteGuards = (diagnostics?: RoutingDiagnosticsHook)
     adminUsers: createAccountUiRouteGuard('adminUsers', diagnostics),
     adminUserCreate: createAccountUiRouteGuard('adminUserCreate', diagnostics),
     adminUserDetail: createAccountUiRouteGuard('adminUserDetail', diagnostics),
+    adminUserLoginMfa: createAccountUiRouteGuard('adminUserLoginMfa', diagnostics),
     adminUserInvitationTemplate: createAccountUiRouteGuard(
       'adminUserInvitationTemplate',
       diagnostics

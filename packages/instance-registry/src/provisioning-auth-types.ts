@@ -1,3 +1,4 @@
+import type { LoginMfaMode } from '@sva/core';
 import type { InstanceRealmMode } from '@sva/core';
 
 import {
@@ -123,11 +124,14 @@ export type KeycloakReadState = {
   readonly keycloakClientSecret: string | null;
   readonly tenantAdminClientSecret: string | null;
   readonly systemAdminRole: KeycloakRoleRepresentation;
+  readonly loginMfa?: { aligned: boolean; mode: LoginMfaMode };
   readonly realmBaselineAligned?: boolean;
   readonly userProfileBaselineAligned?: boolean;
 };
 
 export type KeycloakProvisioningInput = {
+  loginMfaMode?: LoginMfaMode;
+  loginMfaRevision?: number;
   instanceId: string;
   primaryHostname: string;
   realmMode: InstanceRealmMode;

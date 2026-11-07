@@ -389,3 +389,13 @@ Das optionale Baustellenplugin erweitert den vorhandenen GenericItem- und Princi
 ## Stellenplugin
 
 Das optionale Stellenplugin verwendet den bestehenden Mainserver-/GenericItem-Pfad für exakt `Job`, ohne weiteren Datenspeicher oder Plattformdienst. Die Studio-Umsetzung darf vor dem Mainserver-Fix SVA-1786 fortgesetzt werden; ausschließlich der Verlust technischer Importreferenz-Metadaten ist vorübergehend akzeptiert. Siehe [Stellenanzeigenreferenz](../reference/jobs.md).
+
+## SSF recording administration
+
+Recording settings extend the existing SSF installation template and sparse tenant
+overrides. Retention resolves tenant override, installation default, then 720
+hours, bounded to 1..8760. Tenant enablement remains explicit. Core/IAM owns
+competence languages and realm authentication policy; the plugin owns recording
+policy and editorial wording. A narrow host reader supplies live eligible users.
+Existing SDK metadata, lifecycle jobs and Keycloak provisioning are reused.
+See [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).

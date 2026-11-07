@@ -39,6 +39,8 @@ export const ROLE_PERMISSION_DESCRIPTION_LABELS: Readonly<Record<string, Transla
   'iam.user.read': 'admin.roles.permissionDescriptions.iamUserRead',
   'iam.user.write': 'admin.roles.permissionDescriptions.iamUserWrite',
   'iam.invitationTemplate.manage': 'admin.roles.permissionDescriptions.iamInvitationTemplateManage',
+  'iam.authenticationPolicy.manage':
+    'admin.roles.permissionDescriptions.iamAuthenticationPolicyManage',
   'iam.role.read': 'admin.roles.permissionDescriptions.iamRoleRead',
   'iam.role.write': 'admin.roles.permissionDescriptions.iamRoleWrite',
   'iam.org.read': 'admin.roles.permissionDescriptions.iamOrgRead',

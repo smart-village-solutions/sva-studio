@@ -81,7 +81,7 @@ describe('Mainserver editor field matrices', () => {
         payload: { hidden: true },
         externalId: 'external-1',
         tags: ['bestand'],
-        active: true,
+        active: false,
         categories: [],
         addresses: [],
         priceInformations: [],
@@ -98,6 +98,7 @@ describe('Mainserver editor field matrices', () => {
 
     expect(merged).toMatchObject({
       name: 'Neu',
+      active: false,
       externalId: '',
       payload: { hidden: true },
       tags: ['bestand'],

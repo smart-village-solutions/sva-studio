@@ -31,7 +31,7 @@ Status am 07.11.2026: Lokale Studio-Implementierung im eigenen Worktree `feature
 - [x] 4.1 Betroffene lokale Unit-/Type-/Runtime-/Integrations-/Security-/Datenintegritätsgates nach `DEVELOPMENT_RULES.md` ausführen; Scope vor einem affected-Unit-Run messen und breite unnötige Wiederholungen vermeiden.
 - [x] 4.2 Diffbezogenen Review nach Trigger-Matrix durchführen; Bestandserhalt, Identität, generische Umgehung, Wiederaufnahme und Löschvertrag anhand konkreter Evidenz bewerten.
 - [x] 4.3 OpenSpec Strict, Formatierung, Dateiplatzierung, Dokumentationsprüfung und Diff-Prüfung ausführen; alle hinzugefügten/entfernten Artefakte gegen unmittelbar gelieferte Fähigkeit prüfen.
-- [ ] 4.4 Erst nach gesonderter Benennung/Freigabe von Zielinstanz, Konto/Principal und isolierten Testdaten: tatsächlichen Serververtrag sowie Erstellen/Öffnen/Bearbeiten/Sichtbarkeit/Löschen prüfen und App-Darstellung fachlich abnehmen. Kein impliziter Auftrag für Push, PR, Merge oder Rollout.
+- [ ] 4.4 Erst nach gesonderter Benennung/Freigabe von Zielinstanz, Konto/Principal und isolierten Testdaten: tatsächlichen Serververtrag sowie Erstellen/Öffnen/Bearbeiten/Sichtbarkeit/Löschen prüfen und App-Darstellung fachlich abnehmen. Push und PR sind separat beauftragt; Merge und Rollout bleiben außerhalb dieses Auftrags.
 
 ## Tatsächlich erbrachte Nachweise
 

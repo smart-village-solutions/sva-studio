@@ -136,6 +136,7 @@ export const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
     ),
     phone: revealField(row.phone_ciphertext, `iam.accounts.phone:${row.keycloak_subject}`),
     preferredLanguage: row.preferred_language ?? undefined,
+    competenceLanguages: row.competence_languages ?? [],
     timezone: row.timezone ?? undefined,
     avatarUrl: row.avatar_url ?? undefined,
     notes: row.notes ?? undefined,

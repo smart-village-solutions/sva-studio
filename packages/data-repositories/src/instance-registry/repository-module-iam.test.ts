@@ -28,8 +28,39 @@ describe('instance registry repository module iam', () => {
     expect(statements[0]?.text).not.toMatch(/\breadiness\b/u);
     expect(statements[0]?.text).toContain('graphile_worker.sva_enqueue_job');
     expect(statements[0]?.text).toContain("identifier => 'plugin_tenant_lifecycle_retry'");
-    expect(statements[0]?.values).toEqual(['tenant-a', 'events', 'events-1:1', true, false]);
+    expect(statements[0]?.values).toEqual(['tenant-a', 'events', 'events-1:1', true, false, false]);
   });
+  it.each(['suspend', 'reactivate'])(
+    'keeps a provider edit from overriding %s',
+    async (operation) => {
+      const { executor, statements } = createQueuedExecutor([
+        [
+          {
+            effective_active: true,
+            access_state: 'suspended',
+            desired_operation: operation,
+            persisted: false,
+          },
+        ],
+      ]);
+      const request = createInstanceRegistryRepository(
+        executor
+      ).persistPluginTenantLifecycleReconcileIntents({
+        instanceId: 'tenant-a',
+        lifecycles: [{ pluginId: 'app-translations', contractRevision: 'translations-1' }],
+        forcePluginIds: ['app-translations'],
+        reconcileActiveOnly: true,
+      });
+      if (operation === 'reactivate')
+        await expect(request).rejects.toThrow('plugin_tenant_lifecycle_reconcile_conflict');
+      else await expect(request).resolves.toEqual([]);
+      expect(statements[0]?.text).toContain(
+        "NOT $6::boolean OR iam.instance_plugin_lifecycle.access_state = 'active'"
+      );
+      expect(statements[0]?.values.at(-1)).toBe(true);
+    }
+  );
+
   it('keeps a completed suspension unchanged after module revocation', async () => {
     const { executor } = createQueuedExecutor([
       [
@@ -79,7 +110,14 @@ describe('instance registry repository module iam', () => {
     expect(statements[0]?.text).toContain("ELSE 'suspend' END");
     expect(statements[0]?.text).toContain("EXCLUDED.desired_operation = 'suspend'");
     expect(statements[0]?.text).toContain('graphile_worker.sva_enqueue_job');
-    expect(statements[0]?.values).toEqual(['tenant-a', 'waste-management', 'waste-1', true, true]);
+    expect(statements[0]?.values).toEqual([
+      'tenant-a',
+      'waste-management',
+      'waste-1',
+      true,
+      true,
+      false,
+    ]);
   });
 
   it('fails a deactivation intent when an active lifecycle job prevents suspension', async () => {

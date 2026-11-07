@@ -5,6 +5,8 @@ import {
   logKeycloakWriteFailure,
   logKeycloakWriteSuccess,
   parseLocationHeader,
+  isRetryableStatus,
+  withTimeout,
 } from './helpers.js';
 import type { KeycloakUserCreateResponse } from './internal-models.js';
 import {
@@ -45,6 +47,35 @@ export class KeycloakOidcClientOperations extends KeycloakUserRoleOperations {
     });
 
     return typeof response.value === 'string' && response.value.length > 0 ? response.value : null;
+  }
+
+  async verifyOidcClientSecret(clientId: string, clientSecret: string): Promise<boolean> {
+    // Introspection authenticates the client without granting access to stored secrets or issuing tokens.
+    const response = await this.executeFetchWithTimeout(
+      `${this.baseUrl}/realms/${encodePathSegment(this.realm)}/protocol/openid-connect/token/introspect`,
+      {
+        method: 'POST',
+        redirect: 'error',
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          token: 'studio-client-credentials-probe',
+        }),
+      }
+    );
+    if (response.status === 401 || response.status === 403) return false;
+    if (response.status !== 200) {
+      throw new KeycloakAdminRequestError({
+        message: 'Keycloak client credential verification failed',
+        statusCode: response.status,
+        code: `http_${response.status}`,
+        retryable: isRetryableStatus(response.status),
+      });
+    }
+    const result: unknown = await withTimeout(response.json(), this.readTimeoutMs, 'read');
+    return (
+      typeof result === 'object' && result !== null && 'active' in result && result.active === false
+    );
   }
 
   async ensureOidcClient(input: EnsureOidcClientInput): Promise<void> {

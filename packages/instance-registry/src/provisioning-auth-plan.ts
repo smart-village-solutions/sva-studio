@@ -1,3 +1,4 @@
+import type { LoginMfaMode } from '@sva/core';
 import { isInstanceTenantAdminRequired, type InstanceRealmMode } from '@sva/core';
 
 import type { KeycloakTenantPlan, KeycloakTenantPreflight } from './keycloak-types.js';
@@ -23,6 +24,8 @@ import {
 export const KEYCLOAK_PLAN_CONTRACT_VERSION = '1.0' as const;
 
 type BuildPlanInput = {
+  loginMfaMode?: LoginMfaMode;
+  loginMfaRevision?: number;
   instanceId: string;
   realmMode: InstanceRealmMode;
   authClientSecret?: string;
@@ -111,6 +114,18 @@ const buildPlanSteps = (
 
   return [
     buildRealmStep(input.realmMode, input.state, blocked),
+    {
+      stepKey: 'login_mfa',
+      title: 'Tenant login MFA',
+      action: input.state?.loginMfa?.aligned ? 'verify' : 'update',
+      status: blocked ? 'blocked' : 'ready',
+      summary: 'Verify managed OTP flows, enrollment and fresh MFA evidence.',
+      details: {
+        desiredMode: input.loginMfaMode ?? 'optional',
+        revision: input.loginMfaRevision ?? 0,
+        aligned: input.state?.loginMfa?.aligned ?? false,
+      },
+    },
     ...buildRealmBaselinePlanSteps(input.state, blocked, realmBaselineApplicable),
     buildClientStep({
       blocked,

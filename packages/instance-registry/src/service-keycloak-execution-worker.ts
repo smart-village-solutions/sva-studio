@@ -1,3 +1,4 @@
+import { processLoginMfaRun } from './service-login-mfa.js';
 import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceKeycloakProvisioningRun } from '@sva/core';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
@@ -131,6 +132,10 @@ export const processClaimedKeycloakProvisioningRun = async (
 ) => {
   if (!run) {
     return null;
+  }
+
+  if (run.steps.find((step) => step.stepKey === 'queued')?.details.loginMfaOnly === true) {
+    return processLoginMfaRun(deps, run);
   }
 
   if (!hasProvisioningWorkerDependencies(deps)) {

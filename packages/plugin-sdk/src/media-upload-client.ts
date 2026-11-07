@@ -214,7 +214,8 @@ const putFileToSignedUrl = async (input: {
   readonly headers: Readonly<Record<string, string>>;
   readonly file: File;
 }): Promise<void> => {
-  const response = await input.fetch(input.uploadUrl, {
+  const { fetch } = input;
+  const response = await fetch(input.uploadUrl, {
     method: input.method,
     headers: input.headers,
     body: input.file,

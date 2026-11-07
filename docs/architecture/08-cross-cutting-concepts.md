@@ -157,6 +157,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Verpflichtende Verschlüsselung von Tokens im Redis-Store via `ENCRYPTION_KEY`; ohne Schlüssel werden Sessions weder angelegt noch aus dem Store ausgegeben
 - Sessionen führen nur den minimalen Auth-Kern (`sub/id`, `instanceId`, Rollen); Profilattribute wie Name und E-Mail gehören nicht zum Pflichtumfang der Session
 - Tenant-Sessions beziehen `instanceId` aus Host, Registry und Realm-Scope. Ein optionaler Token-Claim `instanceId` darf diesen Scope bestätigen, aber nicht ersetzen.
+- Nach Mainserver-Provisionierungen stellt der gemeinsame Credential-Persistenzpfad das Keycloak-Benutzerattribut `instanceId` auf die kanonische Studio-Instanz-ID zurück und bestätigt es gemeinsam mit den Credentials durch Rücklesen. Eine abweichende Mainserver-Mandantenkennung darf diese Login-Zuordnung nicht ersetzen; eine fehlende, mehrdeutige oder weiterhin abweichende Zuordnung gilt als fehlgeschlagene Provisionierungsbestätigung. Die Scope-Prüfung im Login bleibt unverändert aktiv.
 - Forced Reauth pro Benutzer erfolgt über `minimumSessionVersion` und `forcedReauthAt`; Keycloak-Logout ist optional zuschaltbar
 - Session-Refresh liest vor dem OIDC-Grant den aktuellen Redis-Stand, bündelt parallele Refreshes pro Session im Prozess und committet Tokens nur gegen das erwartete Tokenpaket. Feldupdates verwenden einen begrenzten Redis-CAS gegen Session und Widerrufsmarker; Konflikte führen zu frischem Read und feldweisem Retry. Verbindungsfehler, Konfliktlimit, Ablauf und Widerruf bleiben geschlossen.
 - Refresh-Fallback liest Session und Widerrufsmarker frisch. Er erhält den aktuellen Organisationskontext nur solange Sessionablauf und Reauth-Regeln ihn zulassen; gelöschte oder widerrufene Sessions werden ungültig.
@@ -280,6 +281,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Experimentelle Shell-Funktionen werden zusätzlich über die explizite Permission `experimental.read` gegated; sie ersetzt keine Fachrechte, sondern ergänzt sie.
 - Für experimentelle Menüpunkte gilt das additive Prinzip: fachliche Sichtbarkeit wie `app.read`, `cockpit.read` oder `iam.monitoring.read` bleibt führend und wird nur zusammen mit `experimental.read` materialisiert. Branding-Profile dürfen Sidebar-Bereiche und generische, nicht modulgebundene Links zusätzlich unterdrücken, ohne die zugrunde liegenden Rechte oder Routen zu verändern.
 - Normale Tenant-Administration nutzt ausschließlich einen tenantlokalen Keycloak-Adminpfad; Plattform-/Root-Credentials sind dafür kein zulässiger Fallback
+- Der Live-Postflight vor einer Instanzaktivierung bestätigt die gespeicherten Login- und Tenant-Admin-Zugangsdaten durch OIDC-Introspection eines absichtlich ungültigen Tokens. Nur eine authentifizierte Antwort mit `active: false` zählt als Nachweis; falsche Zugangsdaten, unerwartete Antworten und Ausfälle blockieren weiterhin. Der Tenant-Admin benötigt dafür kein Recht zum Lesen von Client-Geheimnissen. Der privilegierte Provisioner behält seinen bisherigen Secret-Readback.
 - Tenant-IAM-Betriebsdiagnostik auf der Instanz-Detailseite hält `configuration`, `access`, `reconcile` und `overall` getrennt; `overall` folgt strikt der Präzedenz `blocked` vor `degraded` vor `unknown` vor `ready`
 - Explizite Tenant-IAM-Access-Probes sind read-only, werden manuell ausgelöst und als korrelierbare Audit-Evidenz mit `requestId`, `errorCode`, `checkedAt` und stabiler Quelle `access_probe` persistiert
 - Die Instanz-Detailseite priorisiert im Erstblick aktuelle Betriebswahrheit vor historischer Evidenz. Ältere fehlgeschlagene Provisioning-Läufe bleiben diagnostisch sichtbar, dürfen aber nicht denselben Rang wie aktuelle blockierende Befunde erhalten.
@@ -1358,8 +1360,9 @@ Root-Mutationen benötigen Plattformzugriff beziehungsweise `instance.update`
 und Session-CSRF. Für das Speichern und Zurücksetzen der allgemeinen Einladungs-
 und Bestätigungsvorlage genügt die bestehende gültige Sitzung; diese redaktionellen
 Änderungen benötigen keine zusätzliche Fresh-Reauth. Instanzgebundene
-Mailvorlagen-Mutationen einschließlich Übertragen und Übernehmen behalten
-Fresh-Reauth. Der bestehende Tenant-Editor bleibt auf die
+Mailvorlagen-Mutationen der Plattformadministration einschließlich Übertragen und Übernehmen behalten
+Fresh-Reauth. Die Tenant-Editoren für Einladung und Bestätigung nutzen dieselbe bestehende
+Sitzungs-, Actor-, CSRF- und Rate-Limit-Prüfung und bleiben auf die
 Session-Instanz und `iam.invitationTemplate.manage` begrenzt. Instanz-ID und
 Realm-/Credential-Zuordnung kommen ausschließlich aus der autorisierten Registry;
 ein globaler Keycloak-Credential-Fallback ist ausgeschlossen. RLS schützt die
@@ -1390,3 +1393,25 @@ Für Baustellen bleiben unbekannte Payload- und Relationsmetadaten erhalten; nic
 ## Stellenplugin
 
 Jobs bewahren unbekannte Payload- und Relationsfelder. Nicht vollständig wiederherstellbare Daten und möglicherweise verborgene deaktivierte Kategorien sperren Updates. Der Anstellungsarten-Lookup benötigt Job-Lese- oder Erstellrecht und verwendet exakt `generic_item_job` als Tag. Fachliche Schreibsperren schützen auch bei deaktiviertem Modul vor generischer Anlage, Umtypisierung, Statusänderung, Löschung und Ownership-Umgehung. Operationsmarker sind an Instanz, Account, Organisation, Principal und Credential gebunden; der Browser persistiert keine Formulardaten. Siehe [Stellenanzeigenreferenz](../reference/jobs.md).
+
+## Recording policy, competence and authentication assurance
+
+Recording retention is a bounded duration, not unlimited storage or an archive
+migration command. The 720-hour fallback applies only to recording policy;
+tenant enablement, legal text and decryption grants are separate decisions.
+Studio preserves disabled/null legacy fields only for versioned compatibility.
+
+Managed `competenceLanguages` is distinct from self-service UI locale and cannot
+grant review or sworn status. Directory eligibility uses authoritative active
+account state and effective tenant-wide permissions, including role/group
+validity and restrictions. Labels are Unicode-bounded to the SSF contract;
+identity and grant data remain strict. Backend source errors fail closed rather
+than returning a stale or truncated list of eligible identities.
+
+Authentication policy is generic Core/IAM data. Optional ordinary-login MFA and
+fresh sensitive-action MFA are different requirements. UI state distinguishes
+desired policy from independently verified application in Keycloak; stale jobs
+cannot attest a newer request. Neither editorial wording nor an administrative
+role alone is evidence that recording or a second factor is active.
+
+See [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).

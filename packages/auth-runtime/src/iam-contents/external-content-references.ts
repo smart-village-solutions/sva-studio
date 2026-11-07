@@ -267,7 +267,7 @@ export const prepareExternalContent = async (input: CreateContentInput & {
 }): Promise<{ readonly contentId: string; readonly reference: ExternalContentReference }> => {
   return withInstanceScopedDb(input.instanceId, async (client) => {
     validatePublicationWindow(input);
-    const contentId = await insertContentRow(client, input);
+    const contentId = await insertContentRow(client, { ...input, publicationSource: 'mainserver' });
     const historyId = await insertContentHistory(client, {
       instanceId: input.instanceId,
       contentId,
@@ -312,7 +312,7 @@ export const updateExternalContentCore = async (input: {
   readonly authorDisplayMode: IamContentAuthorDisplayMode;
   readonly authorDisplayName: string;
 }): Promise<void> => {
-  const updated = await updateContent(input);
+  const updated = await updateContent({ ...input, publicationSource: 'mainserver' });
   if (!updated) throw new Error('external_content_core_not_found');
 };
 

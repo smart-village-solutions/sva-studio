@@ -22,9 +22,13 @@ export class ContentStateValidationError extends Error {
 export const isContentStateValidationError = (error: unknown): error is ContentStateValidationError =>
   error instanceof ContentStateValidationError;
 
-export const validateNextContentState = (next: NextContentStateValues): void => {
+export const validateNextContentState = (
+  next: NextContentStateValues,
+  publicationSource?: 'mainserver'
+): void => {
   const invariant = resolveContentPublicationInvariant({
-    status: next.nextStatus,
+    // A confirmed provider state may be visible without a publication timestamp.
+    status: publicationSource === 'mainserver' ? undefined : next.nextStatus,
     publishedAt: next.nextPublishedAt,
     publishFrom: next.nextPublishFrom,
     publishUntil: next.nextPublishUntil,

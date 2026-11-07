@@ -2,7 +2,7 @@
 
 ## Status und Quellen
 
-Der fachliche Entwurf wurde am 07.11.2026 als Grundlage des OpenSpec-Changes bestätigt. Der eigene Worktree `.worktrees/jobs-plugin` mit Branch `feature/jobs-plugin` basiert auf dem lokal vorhandenen `origin/main`, Commit `32556e7e150983c4f71e7115cc97451a4f5e336f`. Fremde uncommittete Änderungen am Baustellenmodul werden nicht übernommen. Dieses Dokument beschreibt den Sollzustand; Produktcode und Live-Abnahme fehlen noch.
+Der fachliche Entwurf wurde am 07.11.2026 als Grundlage des OpenSpec-Changes und nach Vorlage der schriftlichen Unterlagen zum Umsetzungsstart bestätigt. Der eigene Worktree `.worktrees/jobs-plugin` mit Branch `feature/jobs-plugin` basiert auf dem lokal vorhandenen `origin/main`, Commit `32556e7e150983c4f71e7115cc97451a4f5e336f`. Fremde uncommittete Änderungen am Baustellenmodul werden nicht übernommen. Die erste vollständige Vertragsprüfung hat die unten dokumentierte Stop-Bedingung ausgelöst; Produktcode und Live-Abnahme fehlen noch.
 
 | Quelle                                                                                                                                                                                                                                            | Belegter Vertrag                                                                                                                                 |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -116,3 +116,44 @@ Mit der Implementierung werden die verantwortlichen arc42-Abschnitte 04/05/06/08
 Vor Feld-/UI-Ausbau muss die schreibbare Feldinventur gegen den maßgeblichen Mainserver-Quellstand und den eingecheckten GraphQL-Snapshot bestätigt werden, einschließlich nicht sichtbarer Beziehungen und der technischen Integrationsrolle. Kann der bestehende Vertrag die beschriebenen Schutzanforderungen nicht tragen, wird vor einer Scope-Erweiterung angehalten; Datenverlustausnahmen werden nicht aus anderen Modulen abgeleitet.
 
 Live-Zielinstanz, verwendetes Konto/Principal und isolierte Testdaten sind noch nicht benannt. Deshalb sind externe Schreibtests nicht freigegeben. Plugin-Aktivierung für bestehende Instanzen, Live-Abnahme und regulärer Rollout sind getrennte spätere Schritte.
+
+## Vertragsprüfung beim Umsetzungsstart: Importreferenz bleibt nicht erhalten
+
+Der Nutzer hat den Umsetzungsstart nach Prüfung des schriftlichen Entwurfs beauftragt. Die vorgeschaltete Feldinventur hat am unveränderten lokalen Mainserver-Quellstand `76d2e12af092197f3cf58f2e4886fa8fe2a30c5b` einen zusätzlichen Datenintegritätsblocker belegt. Das ist keine Behauptung über einen betroffenen produktiven Job oder den tatsächlich ausgerollten Serverstand.
+
+### Ursache und Nachweis
+
+1. `app/models/data_resources/generic_item.rb:62` definiert `external_reference` als `has_one` mit `dependent: :destroy`.
+2. `app/services/resource_service.rb:280–321` zerstört beim gewöhnlichen Update alle derartigen Beziehungen. Ausgenommen ist nach Zeile 9 nur `likes`.
+3. `resource_service.rb:427–433` bestätigt die bereits erfolgte Löschung ausdrücklich und ruft `refresh_external_reference!` auf.
+4. `resource_service.rb:543–553` legt eine Referenz mit Provider, Ressourcen-ID, Typ und berechneter `unique_id` neu an. `last_import_run_id` wird nur bei vorhandenem Importkontext gesetzt. Die ursprüngliche Referenz-ID und Erstellungszeit werden ebenfalls nicht erhalten.
+5. `app/graphql/mutations/create_generic_item.rb:115–117` übergibt keinen Importkontext. Der aktuelle GraphQL-Vertrag bietet Importreferenz und Importmarker weder lesend noch schreibend an. Dies wurde zusätzlich programmgesteuert am eingecheckten Studio-Schema-Snapshot geprüft.
+
+Eine rein lokale Ruby-Reproduktion hat die tatsächliche unveränderte Methode `ResourceService#update_resource` aus diesem Checkout ausgeführt. ActiveRecord-Persistenz und der Job-/Referenzbestand waren synthetische In-Memory-Doubles; es wurden keine Datenbank oder externen Dienste verwendet und keine Dateien im Mainserver-Repository verändert. Ein Job mit nichtleerem Importmarker wurde ausschließlich am Titel geändert. Beobachtetes Ergebnis:
+
+```json
+{
+  "before": { "title": "Before", "last_import_run_id": "synthetic-import-run" },
+  "after": { "title": "After", "last_import_run_id": null },
+  "actual_source_method": "ResourceService#update_resource",
+  "database_used": false
+}
+```
+
+Ein unabhängiger Architektur-/Interoperabilitätsreview hat Ursache und die fehlende Studio-seitige Reparaturmöglichkeit bestätigt. Die Reproduktion isoliert die Methodenwirkung; sie ersetzt keinen Rails-/Datenbankintegrationstest am Zielserver. Der Verlust ist dennoch unmittelbar im geladenen Quellpfad belegt und kein bloßes externes Konkurrenzrennen.
+
+### Reichweite und vorhandene Alternativen
+
+Der aktuelle TMB-Stale-Cleanup nutzt Importmarker, seine vorhandenen Aufrufer betreffen jedoch nur EventRecord, PointOfInterest und Tour. Eine automatische TMB-Löschung von Stellenanzeigen wird deshalb ausdrücklich nicht behauptet. Belegt ist der Verstoß gegen den freigegebenen Erhaltvertrag für einen zulässigen Job mit nichtleerem Referenz-Importmarker. Über GraphQL ist nicht erkennbar, ob ein konkreter Job einen solchen Marker besitzt.
+
+Der vorhandene Nested-Sync benötigt einen Importkontext, den die Mutation nicht annimmt; `GenericItem` besitzt außerdem keinen entsprechenden `import_nested_sync_config`-Vertrag. `changeVisibility` ändert ausschließlich Sichtbarkeit und ist keine Alternative für Titel-/Inhaltsupdates. Der auf `Announcement` begrenzte `updateShout`-Pfad ist ebenfalls kein Job-Updatevertrag. Ein nachträglicher Readback kann die nicht lesbaren Metadaten weder prüfen noch wiederherstellen.
+
+### Stop-Bedingung und kleinster Korrekturvorschlag
+
+Die Aufgabe 1.5 ist nicht bestanden. Ohne Ausnahme vom Erhaltvertrag müsste der Studio-Adapter sämtliche Job-Inhaltsupdates sperren, weil er gefährdete Bestände nicht selektiv erkennen kann. Ein ausschließlich lesender beziehungsweise nur für Neuanlagen geeigneter Lieferumfang erfüllt den freigegebenen Auftrag nicht. Die Implementierung wird deshalb vor Plugin-Scaffolding und weiterem Produktcode-Ausbau angehalten.
+
+Empfehlung zur gezielten Scope-Erweiterung: Im vorhandenen Mainserver-`ResourceService#update_resource` die `external_reference` für `GenericItem` von der zerstörenden Relationsersetzung ausnehmen und über das bestehende `refresh_external_reference!` aktualisieren. Der Fix bleibt auf diesen aktuellen Verbraucher begrenzt; keine neue API, kein Dienst, keine Migration und keine Veränderung anderer Ressourcentypen sind vorgesehen. Die betroffene Kommentarstelle in `finalize_updated_resource!` wird dem tatsächlichen Erhalt angepasst.
+
+Konkrete Nachweise im vorhandenen `spec/services/resource_service_spec.rb`: Eine Titeländerung erhält Referenz-ID, Erstellungszeit und bestehenden Importmarker; `unique_id` folgt der vorhandenen Regel; ein ausdrücklich gesetzter Importkontext aktualisiert seinen Marker weiterhin; ungültige Updates erhalten den Ausgangszustand. Der gewöhnliche GraphQL-Aufruf muss diesen Pfad erreichen. Erst nach diesen Nachweisen kann die Job-Roundtrip-Prüfung gegen den korrigierten Serververtrag fortgesetzt werden. Dessen tatsächliche Bereitstellung ist eine gesonderte Integrationsvoraussetzung, keine bereits erfüllte Tatsache.
+
+Dieser Vorschlag ist noch keine Freigabe für Dateien im Mainserver-Repository. Das freigegebene Studio-Design schließt Mainserver-Änderungen aus, und Änderungen außerhalb des aktuellen Projektverzeichnisses brauchen nach `AGENTS.md` eine gezielte Nutzerfreigabe. Beantragter zusätzlicher Ort wäre ein eigener Worktree im lokalen Repository `/Users/wilimzig/Documents/Projects/SVA-Gitlab/mainserver/smart-village-app-mainserver`; externe Writes, Push, PR, Merge und Rollout sind von diesem Vorschlag nicht umfasst.

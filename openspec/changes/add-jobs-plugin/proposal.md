@@ -4,7 +4,7 @@
 
 Das alte CMS bietet eine eigene Stellenanzeigenmaske. Im Studio fehlt die fachliche Oberfläche für Anstellungsart, Arbeitgeber und Ansprechpartner; die technische GenericItem-Maske bildet insbesondere die Firmenangaben nicht ab. Ein optionales Fachplugin soll neue und bestehende Mainserver-Stellenanzeigen über denselben Datenvertrag verwalten.
 
-Der Nutzer hat den Entwurf am 07.11.2026 als Grundlage dieses OpenSpec-Changes freigegeben und einen eigenen Worktree beauftragt. Dieser schriftliche Entwurf steht zur Prüfung; eine Implementierung, ein PR oder eine Bereitstellung ist damit noch nicht erfolgt.
+Der Nutzer hat den Entwurf am 07.11.2026 als Grundlage dieses OpenSpec-Changes freigegeben und einen eigenen Worktree beauftragt. Nach Vorlage des schriftlichen Entwurfs hat er den Umsetzungsstart ausdrücklich beauftragt. Die erste vollständige Vertragsprüfung hat einen reproduzierten Verlust von Importreferenz-Metadaten im unveränderten Mainserver-Updatepfad belegt. Die im Entwurf vereinbarte Stop-Bedingung greift vor dem weiteren Produktcode-Ausbau; Details und der begrenzte Korrekturvorschlag stehen im Design.
 
 ## What Changes
 
@@ -43,4 +43,4 @@ Maximal betroffene Bereiche sind das neue Fachplugin, vorhandene Plugin-/Distrib
 - [Plugin- und Zugriffsvertrag](./specs/plugin-platform/spec.md)
 - [Mainserver-Vertrag](./specs/sva-mainserver-integration/spec.md)
 
-Stand: schriftlicher Entwurf zur Prüfung. Die Freigabe dieses Entwurfs ist Voraussetzung für die anschließende Implementierungsplanung. Externe Schreibtests, Push, PR, Merge und Rollout sind nicht beauftragt. Für reguläre Rollouts bleibt ausschließlich `docs/guides/studio-rollout-process.md` maßgeblich.
+Stand: Umsetzung freigegeben, am ersten Datenintegritätsnachweis vor Produktcode-Ausbau angehalten. Ein Mainserver-Fix oder eine Ausnahme vom Erhaltvertrag ist bisher nicht freigegeben. Externe Schreibtests, Push, PR, Merge und Rollout sind nicht beauftragt. Für reguläre Rollouts bleibt ausschließlich `docs/guides/studio-rollout-process.md` maßgeblich.

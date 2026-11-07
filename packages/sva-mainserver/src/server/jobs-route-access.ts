@@ -1,13 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import {
   authorizeContentPrimitiveForUser,
+  authorizeMainserverCreatePrincipal,
   authorizeMediaPrimitiveForUser,
+  resolveEffectivePermissions,
   withMediaService,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
 import { JOBS_TYPE, type JobInput, type JobRecord } from './jobs-contract.js';
 import { errorJson } from './content-route-core.js';
 import type { MainserverMutationActor } from './mutation-principal.js';
+import { emitMainserverMutationAuthorizationAudit } from './mutation-principal-authorization-audit.js';
 
 export const jobLocalAccess = async (
   ctx: AuthenticatedRequestContext,
@@ -31,6 +34,7 @@ export const jobLocalAccess = async (
 
 export async function authorizeJobMedia(
   ctx: AuthenticatedRequestContext,
+  actor: MainserverMutationActor,
   job: JobInput,
   previousIds: readonly string[],
   targetId?: string
@@ -42,8 +46,16 @@ export async function authorizeJobMedia(
     ),
   ];
   if (JSON.stringify(ids) === JSON.stringify(oldIds)) return null;
+  const permissions = await resolveEffectivePermissions({
+    instanceId: actor.instanceId,
+    keycloakSubject: actor.keycloakSubject,
+    ...(actor.activeOrganizationId ? { organizationId: actor.activeOrganizationId } : {}),
+  });
+  if (!permissions.ok) return errorJson(503, 'database_unavailable', 'database_unavailable');
   const manage = await authorizeMediaPrimitiveForUser({
     ctx,
+    instanceId: actor.instanceId,
+    permissions: permissions.permissions,
     action: 'media.reference.manage',
     resource: { targetType: JOBS_TYPE, ...(targetId ? { targetId } : {}) },
   });
@@ -52,6 +64,8 @@ export async function authorizeJobMedia(
   for (const assetId of ids) {
     const read = await authorizeMediaPrimitiveForUser({
       ctx,
+      instanceId: actor.instanceId,
+      permissions: permissions.permissions,
       action: 'media.read',
       resource: { assetId, visibility: 'public' },
     });
@@ -70,6 +84,32 @@ export async function authorizeJobMedia(
       return errorJson(409, 'job_media_unavailable', 'job_media_unavailable');
   }
   return null;
+}
+
+export async function authorizeJobPublication(actor: MainserverMutationActor) {
+  const permissions = await resolveEffectivePermissions({
+    instanceId: actor.instanceId,
+    keycloakSubject: actor.keycloakSubject,
+    ...(actor.activeOrganizationId ? { organizationId: actor.activeOrganizationId } : {}),
+  });
+  if (!permissions.ok) return errorJson(503, 'database_unavailable', 'database_unavailable');
+  const decision = authorizeMainserverCreatePrincipal({
+    ...actor,
+    action: 'content.publish',
+    contentType: JOBS_TYPE,
+    permissions: permissions.permissions,
+    actingPrincipalType: actor.mutationPrincipalContext.actingPrincipalType,
+  });
+  await emitMainserverMutationAuthorizationAudit({
+    actor,
+    action: 'content.publish',
+    contentType: JOBS_TYPE,
+    authorizationMode: decision.authorizationMode,
+    resolverMode: decision.resolverMode,
+    allowed: decision.allowed,
+    ...(!decision.allowed ? { reasonCode: decision.reason } : {}),
+  });
+  return decision.allowed ? null : errorJson(403, 'forbidden', 'forbidden');
 }
 
 export async function syncJobMedia(

@@ -70,9 +70,15 @@ export async function mutateJob(request: Request, ctx: AuthenticatedRequestConte
       );
     const parsed = writeSchema.safeParse(body);
     if (!parsed.success) return errorJson(400, 'job_invalid_input', 'job_invalid_input');
-    const prepared = await prepareWrite(ctx, actor, parsed.data, id);
+    const prepared = await prepareWrite(actor, parsed.data, id);
     if (isResponse(prepared)) return prepared;
-    const media = await authorizeJobMedia(ctx, parsed.data.job, prepared.previousMediaIds, id);
+    const media = await authorizeJobMedia(
+      ctx,
+      actor,
+      parsed.data.job,
+      prepared.previousMediaIds,
+      id
+    );
     if (isResponse(media)) return media;
     const providerAuthorization = await authorizeWrite(actor, prepared);
     if (isResponse(providerAuthorization)) return providerAuthorization;
@@ -149,7 +155,6 @@ async function executeWrite(
 }
 
 async function prepareWrite(
-  ctx: AuthenticatedRequestContext,
   actor: MainserverMutationActor,
   input: z.infer<typeof writeSchema>,
   id?: string
@@ -157,10 +162,6 @@ async function prepareWrite(
   const current = id ? await getSvaMainserverJob({ ...actor, jobId: id }) : undefined;
   if (current && input.baseFingerprint !== jobFingerprint(current.item))
     return errorJson(409, 'job_content_conflict', 'job_content_conflict');
-  if (input.job.visible && !current?.data.visible) {
-    const publish = await jobLocalAccess(ctx, 'content.publish', id);
-    if (isResponse(publish)) return publish;
-  }
   const prepared = prepareSvaMainserverJob(input.job, actor.operationExternalId, current?.item);
   return prepared;
 }

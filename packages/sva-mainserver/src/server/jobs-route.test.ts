@@ -3,9 +3,17 @@ import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type JobRecord } from './jobs-contract.js';
 import { jobFingerprint } from './jobs-snapshot.js';
+import type { EffectivePermission } from '@sva/iam-core';
+import type { MainserverMutationActor } from './mutation-principal.js';
 
 const state = vi.hoisted(() => ({
   deny: new Set<string>(),
+  principal: 'user' as 'user' | 'organization',
+  organizationId: undefined as string | undefined,
+  realMedia: false,
+  sessionPermissions: [] as EffectivePermission[],
+  permissions: vi.fn(),
+  audit: vi.fn(),
   csrf: false,
   credential: 'credential-1',
   entries: new Map<string, { hash: string; body?: unknown }>(),
@@ -23,65 +31,94 @@ const state = vi.hoisted(() => ({
   replaceReferences: vi.fn(),
   asset: vi.fn(),
 }));
-const actor = () => ({
+const actor = (): MainserverMutationActor => ({
   instanceId: 'tenant-1',
   keycloakSubject: 'subject-1',
   actorAccountId: 'account-1',
   operationExternalId: '4f392d13-2d02-4c24-845b-109bddbc5ff0',
-  actingPrincipalType: 'user',
+  ...(state.organizationId ? { activeOrganizationId: state.organizationId } : {}),
+  actingPrincipalType: state.principal,
   credentialFingerprint: state.credential,
-  mutationPrincipalContext: { actingPrincipalType: 'user' },
+  mutationPrincipalContext: {
+    version: 1,
+    instanceId: 'tenant-1',
+    keycloakSubject: 'subject-1',
+    actorAccountId: 'account-1',
+    ...(state.organizationId ? { activeOrganizationId: state.organizationId } : {}),
+    actingPrincipalType: state.principal,
+    actingPrincipalId:
+      state.principal === 'organization' ? (state.organizationId ?? 'organization-1') : 'account-1',
+    credentialSource: state.principal,
+    credentialFingerprint: state.credential,
+  },
 });
-vi.mock('@sva/auth-runtime/server', () => ({
-  withAuthenticatedUser: (_request: Request, callback: (ctx: unknown) => unknown) =>
-    callback({ user: { instanceId: 'tenant-1', id: 'subject-1' } }),
-  authorizeContentPrimitiveForUser: ({ action }: { action: string }) =>
-    Promise.resolve(
-      state.deny.has(action)
-        ? { ok: false, status: 403, error: 'forbidden', message: 'forbidden' }
-        : { ok: true, actor: { instanceId: 'tenant-1', keycloakSubject: 'subject-1' } }
-    ),
-  authorizeMediaPrimitiveForUser: ({ action }: { action: string }) =>
-    Promise.resolve(
-      state.deny.has(action)
-        ? { ok: false, status: 403, error: 'forbidden', message: 'forbidden' }
-        : { ok: true, actor: { instanceId: 'tenant-1' } }
-    ),
-  validateCsrf: () => (state.csrf ? {} : null),
-  withExternalContentMutationLock: ({ execute }: { execute: () => unknown }) => execute(),
-  withMediaService: (_id: string, callback: (service: unknown) => unknown) =>
-    callback({
-      getAssetById: state.asset,
-      listReferencesByTarget: async () => [],
-      replaceReferences: state.replaceReferences,
-    }),
-  reserveIdempotency: async (input: {
-    endpoint: string;
-    idempotencyKey: string;
-    payloadHash: string;
-  }) => {
-    const key = `${input.endpoint}:${input.idempotencyKey}`;
-    const entry = state.entries.get(key);
-    if (!entry) {
-      state.entries.set(key, { hash: input.payloadHash });
-      return { status: 'reserved' };
-    }
-    if (entry.hash !== input.payloadHash) return { status: 'conflict' };
-    return entry.body
-      ? { status: 'replay', responseBody: entry.body, responseStatus: 200 }
-      : { status: 'conflict' };
-  },
-  completeIdempotency: async (input: {
-    endpoint: string;
-    idempotencyKey: string;
-    responseBody: unknown;
-  }) => {
-    const entry = state.entries.get(`${input.endpoint}:${input.idempotencyKey}`);
-    if (entry) entry.body = input.responseBody;
-  },
-}));
-vi.mock('@sva/server-runtime', () => ({
+vi.mock('@sva/auth-runtime/server', async (original) => {
+  const actual = await original<typeof import('@sva/auth-runtime/server')>();
+  return {
+    authorizeMainserverCreatePrincipal: actual.authorizeMainserverCreatePrincipal,
+    resolveEffectivePermissions: (input: unknown) => state.permissions(input),
+    withAuthenticatedUser: (_request: Request, callback: (ctx: unknown) => unknown) =>
+      callback({ sessionId: 'session-1', user: { instanceId: 'tenant-1', id: 'subject-1' } }),
+    authorizeContentPrimitiveForUser: ({ action }: { action: string }) =>
+      Promise.resolve(
+        state.deny.has(action)
+          ? { ok: false, status: 403, error: 'forbidden', message: 'forbidden' }
+          : { ok: true, actor: { instanceId: 'tenant-1', keycloakSubject: 'subject-1' } }
+      ),
+    authorizeMediaPrimitiveForUser: (
+      input: Parameters<typeof actual.authorizeMediaPrimitiveForUser>[0]
+    ) => {
+      if (state.realMedia)
+        return actual.authorizeMediaPrimitiveForUser({
+          ...input,
+          permissions: input.permissions ?? state.sessionPermissions,
+        });
+      return Promise.resolve(
+        state.deny.has(input.action)
+          ? { ok: false, status: 403, error: 'forbidden', message: 'forbidden' }
+          : { ok: true, actor: { instanceId: 'tenant-1' } }
+      );
+    },
+    validateCsrf: () => (state.csrf ? {} : null),
+    withExternalContentMutationLock: ({ execute }: { execute: () => unknown }) => execute(),
+    withMediaService: (_id: string, callback: (service: unknown) => unknown) =>
+      callback({
+        getAssetById: state.asset,
+        listReferencesByTarget: async () => [],
+        replaceReferences: state.replaceReferences,
+      }),
+    reserveIdempotency: async (input: {
+      endpoint: string;
+      idempotencyKey: string;
+      payloadHash: string;
+    }) => {
+      const key = `${input.endpoint}:${input.idempotencyKey}`;
+      const entry = state.entries.get(key);
+      if (!entry) {
+        state.entries.set(key, { hash: input.payloadHash });
+        return { status: 'reserved' };
+      }
+      if (entry.hash !== input.payloadHash) return { status: 'conflict' };
+      return entry.body
+        ? { status: 'replay', responseBody: entry.body, responseStatus: 200 }
+        : { status: 'conflict' };
+    },
+    completeIdempotency: async (input: {
+      endpoint: string;
+      idempotencyKey: string;
+      responseBody: unknown;
+    }) => {
+      const entry = state.entries.get(`${input.endpoint}:${input.idempotencyKey}`);
+      if (entry) entry.body = input.responseBody;
+    },
+  };
+});
+vi.mock('@sva/server-runtime', async (original) => ({
+  ...(await original<typeof import('@sva/server-runtime')>()),
   createSdkLogger: () => ({ warn: vi.fn(), info: vi.fn(), debug: vi.fn(), error: vi.fn() }),
+}));
+vi.mock('./mutation-principal-authorization-audit.js', () => ({
+  emitMainserverMutationAuthorizationAudit: (input: unknown) => state.audit(input),
 }));
 vi.mock('./content-route-context.js', () => ({
   withMainserverContextBinding: (response: Response) => response,
@@ -142,6 +179,19 @@ const request = (body: unknown, id?: string) =>
 beforeEach(() => {
   vi.clearAllMocks();
   state.deny.clear();
+  state.principal = 'user';
+  state.organizationId = undefined;
+  state.realMedia = false;
+  state.sessionPermissions = [];
+  state.audit.mockResolvedValue(undefined);
+  state.permissions.mockImplementation(async () => ({
+    ok: true,
+    permissions: [
+      { action: 'content.publish', resourceType: 'content', accessScope: 'all' },
+      { action: 'media.read', resourceType: 'media' },
+      { action: 'media.reference.manage', resourceType: 'media' },
+    ].filter((permission) => !state.deny.has(permission.action)),
+  }));
   state.entries.clear();
   state.csrf = false;
   state.credential = 'credential-1';
@@ -388,4 +438,159 @@ describe('jobs HTTP contract', () => {
     expect((await dispatch(remove(recovery)))?.status).toBe(409);
     expect(state.verifyDeleted).toHaveBeenCalledTimes(1);
   });
+});
+
+describe('selected Job mutation principal', () => {
+  it('rejects visible organization creates when only own publication is granted', async () => {
+    state.principal = 'organization';
+    state.organizationId = 'organization-1';
+    state.permissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'content.publish', resourceType: 'content', accessScope: 'own' }],
+    });
+    const response = await dispatch(request({ job: { ...input(), visible: true } }));
+    expect(response?.status).toBe(403);
+    expect(state.write).not.toHaveBeenCalled();
+    expect(state.audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'content.publish',
+        allowed: false,
+        actor: expect.objectContaining({ actingPrincipalType: 'organization' }),
+      })
+    );
+  });
+  it('retains the host rule that organization grants also allow own content', async () => {
+    state.principal = 'user';
+    state.organizationId = 'organization-1';
+    state.permissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        { action: 'content.publish', resourceType: 'content', accessScope: 'organization' },
+      ],
+    });
+    expect((await dispatch(request({ job: { ...input(), visible: true } })))?.status).toBe(201);
+    expect(state.audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'content.publish',
+        allowed: true,
+        actor: expect.objectContaining({ actingPrincipalType: 'user' }),
+      })
+    );
+  });
+  const mediaJob = () => ({
+    ...input(),
+    mediaContents: [
+      {
+        contentType: 'image',
+        hostMediaAssetId: '10000000-0000-4000-8000-000000000001',
+        sourceUrl: { url: 'https://example.org/photo.jpg', description: '' },
+        captionText: '',
+        copyright: '',
+      },
+    ],
+  });
+  const mediaPermissions: EffectivePermission[] = [
+    { action: 'media.read', resourceType: 'media' },
+    { action: 'media.reference.manage', resourceType: 'media' },
+  ];
+  it('does not use personal media grants for an organization mutation', async () => {
+    state.principal = 'organization';
+    state.organizationId = 'organization-1';
+    state.realMedia = true;
+    state.sessionPermissions = mediaPermissions;
+    state.permissions.mockResolvedValue({ ok: true, permissions: [] });
+    expect((await dispatch(request({ job: mediaJob() })))?.status).toBe(403);
+    expect(state.write).not.toHaveBeenCalled();
+  });
+  it('accepts organization media grants without requiring personal media grants', async () => {
+    state.principal = 'organization';
+    state.organizationId = 'organization-1';
+    state.realMedia = true;
+    state.permissions.mockResolvedValue({ ok: true, permissions: mediaPermissions });
+    expect((await dispatch(request({ job: mediaJob() })))?.status).toBe(201);
+    expect(state.permissions).toHaveBeenCalledWith({
+      instanceId: 'tenant-1',
+      keycloakSubject: 'subject-1',
+      organizationId: 'organization-1',
+    });
+    expect(state.write).toHaveBeenCalledTimes(1);
+  });
+  it('fails closed before writing if actor permission resolution is unavailable', async () => {
+    state.principal = 'organization';
+    state.organizationId = 'organization-1';
+    state.realMedia = true;
+    state.sessionPermissions = mediaPermissions;
+    state.permissions.mockResolvedValue({ ok: false, error: 'database_unavailable' });
+    expect((await dispatch(request({ job: mediaJob() })))?.status).toBe(503);
+    expect(state.write).not.toHaveBeenCalled();
+  });
+  it.each(['user', 'organization'] as const)(
+    'permits visible creation for the matching %s scope',
+    async (principal) => {
+      state.principal = principal;
+      state.organizationId = 'organization-1';
+      state.permissions.mockResolvedValue({
+        ok: true,
+        permissions: [
+          {
+            action: 'content.publish',
+            resourceType: 'content',
+            accessScope: principal === 'user' ? 'own' : 'organization',
+          },
+        ],
+      });
+      expect((await dispatch(request({ job: { ...input(), visible: true } })))?.status).toBe(201);
+      expect(state.write).toHaveBeenCalledTimes(1);
+    }
+  );
+  it('does not require publication rights for a hidden create', async () => {
+    state.permissions.mockResolvedValue({ ok: true, permissions: [] });
+    expect((await dispatch(request({ job: input() })))?.status).toBe(201);
+    expect(state.permissions).not.toHaveBeenCalled();
+  });
+  it('rechecks publication for recovery before reading or writing the provider', async () => {
+    const body = { job: { ...input(), visible: true } };
+    state.write.mockRejectedValueOnce(new TypeError('lost response'));
+    expect((await dispatch(request(body)))?.status).toBe(409);
+    state.permissions.mockResolvedValue({ ok: true, permissions: [] });
+    const inputHash = createHash('sha256').update(JSON.stringify(body)).digest('hex');
+    expect((await dispatch(request({ recover: true, inputHash })))?.status).toBe(403);
+    expect(state.write).toHaveBeenCalledTimes(1);
+    expect(state.recover).not.toHaveBeenCalled();
+  });
+  it('rechecks actor media rights on recovery without issuing another provider mutation', async () => {
+    state.principal = 'organization';
+    state.organizationId = 'organization-1';
+    state.realMedia = true;
+    state.permissions.mockResolvedValue({ ok: true, permissions: mediaPermissions });
+    state.write.mockRejectedValueOnce(new TypeError('lost response'));
+    const job = mediaJob();
+    const body = { job };
+    expect((await dispatch(request(body)))?.status).toBe(409);
+    state.sessionPermissions = mediaPermissions;
+    state.permissions.mockResolvedValue({ ok: true, permissions: [] });
+    state.recover.mockResolvedValue({ ...record(), input: job });
+    const inputHash = createHash('sha256').update(JSON.stringify(body)).digest('hex');
+    expect((await dispatch(request({ recover: true, inputHash })))?.status).toBe(403);
+    expect(state.write).toHaveBeenCalledTimes(1);
+    expect(state.replaceReferences).not.toHaveBeenCalled();
+  });
+  it.each(['media.read', 'media.reference.manage'])(
+    'requires actor-bound %s for an existing Job update',
+    async (action) => {
+      state.principal = 'organization';
+      state.organizationId = 'organization-1';
+      state.realMedia = true;
+      state.sessionPermissions = mediaPermissions;
+      state.permissions.mockResolvedValue({
+        ok: true,
+        permissions: mediaPermissions.filter((permission) => permission.action !== action),
+      });
+      expect(
+        (await dispatch(request({ job: mediaJob(), baseFingerprint: jobFingerprint(item) }, '42')))
+          ?.status
+      ).toBe(403);
+      expect(state.write).not.toHaveBeenCalled();
+    }
+  );
 });

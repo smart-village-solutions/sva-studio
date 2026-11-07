@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { reserveIdempotency, type AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 import { JOBS_TYPE, type JobRecord } from './jobs-contract.js';
 import { errorJson, isResponse, json } from './content-route-core.js';
-import { authorizeJobMedia, syncJobMedia } from './jobs-route-access.js';
+import { authorizeJobMedia, authorizeJobPublication, syncJobMedia } from './jobs-route-access.js';
 import { getSvaMainserverJob, recoverSvaMainserverJob } from './service.js';
 import type { JobPreparedWrite } from './service-internals/service-jobs.js';
 import {
@@ -49,6 +49,10 @@ function mutationReply(data: JobRecord, operation: 'create' | 'update', partial 
 
 export async function authorizeWrite(actor: MainserverMutationActor, prepared: JobPreparedWrite) {
   const action = prepared.id ? 'jobs.update' : 'jobs.create';
+  if (!prepared.id && prepared.expected.visible === true) {
+    const publication = await authorizeJobPublication(actor);
+    if (isResponse(publication)) return publication;
+  }
   if (!prepared.id)
     return authorizeMainserverCreateForPrincipal({
       actor,
@@ -136,7 +140,7 @@ export async function recover(
     item: data,
   });
   if (isResponse(readAccess)) return readAccess;
-  const media = await authorizeJobMedia(ctx, data.input, prepared.previousMediaIds, data.id);
+  const media = await authorizeJobMedia(ctx, actor, data.input, prepared.previousMediaIds, data.id);
   if (isResponse(media)) return media;
   return finish(actor, data, prepared);
 }

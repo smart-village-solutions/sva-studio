@@ -154,15 +154,7 @@ export function constructionSiteListRead(value: RawRecord): ConstructionSiteList
 }
 
 export function constructionSiteRead(value: RawRecord): ConstructionSiteRecord {
-  const identity = z
-    .object({
-      id: z.string().min(1),
-      genericType: z.literal('ConstructionSite'),
-      title: z.string().nullish(),
-      visible: z.boolean(),
-      dataProvider: z.object({ id: z.string().min(1), name: z.string().nullish() }),
-    })
-    .parse(value);
+  const identity = constructionSiteListRead(value);
   const payload = object(value.payload);
   const geometry = constructionSiteGeometrySchema.safeParse(payload.constructionSiteGeometry);
   let writeBlockedReason: string | undefined;
@@ -184,17 +176,9 @@ export function constructionSiteRead(value: RawRecord): ConstructionSiteRecord {
     dateEnd: string(date.dateEnd),
   }));
   return {
-    id: identity.id,
-    genericType: identity.genericType,
-    title: identity.title ?? '',
-    visible: identity.visible,
-    updatedAt: string(value.updatedAt),
+    ...identity,
     contentFingerprint: constructionSiteFingerprint(value),
     writeBlockedReason,
-    dataProvider: {
-      id: identity.dataProvider.id,
-      ...(identity.dataProvider.name ? { name: identity.dataProvider.name } : {}),
-    },
     input: {
       ...(geometry.success ? { geometry: geometry.data } : {}),
       title: identity.title ?? '',

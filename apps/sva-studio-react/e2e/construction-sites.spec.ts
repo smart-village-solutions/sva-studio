@@ -185,7 +185,7 @@ test('draws and edits construction site geometry and roundtrips the existing rec
   await page.getByRole('button', { name: 'Fläche 2 auswählen', exact: true }).click();
   await page.getByRole('button', { name: 'Strecke 1 auswählen', exact: true }).click();
   await expect(line.getByLabel('Punkt 2: Längengrad', { exact: true })).toHaveValue('');
-  await line.getByLabel('Punkt 2: Längengrad', { exact: true }).fill('13.501');
+  await line.getByLabel('Punkt 2: Längengrad', { exact: true }).fill('13.5010000001');
   await page.screenshot({
     path: test.info().outputPath('construction-site-create-desktop.png'),
     fullPage: true,
@@ -218,7 +218,7 @@ test('draws and edits construction site geometry and roundtrips the existing rec
   await page
     .getByRole('group', { name: 'Strecke 1', exact: true })
     .getByLabel('Punkt 2: Längengrad', { exact: true })
-    .fill('13.502');
+    .fill('13.5020000001');
   const geometryTools = page.getByRole('group', { name: 'Kartenwerkzeuge', exact: true });
   await geometryTools.getByRole('button', { name: 'Rückgängig', exact: true }).click();
   await expect(
@@ -278,6 +278,10 @@ test('draws and edits construction site geometry and roundtrips the existing rec
   await expect(
     page.getByRole('region', { name: 'Baustellenkarte' }).locator('canvas')
   ).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Baustellenkarte' })).toHaveAttribute(
+    'aria-busy',
+    'false'
+  );
   await expect(page.getByRole('group', { name: 'Kartenwerkzeuge', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Form löschen', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Änderungen speichern', exact: true })).toHaveCount(

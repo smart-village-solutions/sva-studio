@@ -1,59 +1,6 @@
+import { constructionGeometryDe } from './construction-sites.geometry-translations.js';
 export const constructionSiteTranslationsDe = {
-  geometry: {
-    title: 'Standort, Strecken und Flächen',
-    description:
-      'Ein Standortpunkt dient der Verortung. Strecken und Flächen beschreiben den betroffenen Bereich.',
-    forms: 'Formen',
-    formCount: 'Formen · {{count}} von 10',
-    pointCount: '{{count}} Punkte',
-    independent: 'Standortpunkte bleiben unabhängig.',
-    empty:
-      'Noch keine Strecke oder Fläche vorhanden. Zeichnen Sie auf der Karte oder erfassen Sie die Koordinaten.',
-    selectFeature: '{{name}} auswählen',
-    selectionHelp: 'Eckpunkte verschieben. Kleine Punkte fügen einen weiteren Eckpunkt ein.',
-    polygonHelp: 'Geschlossene Fläche ohne Aussparungen.',
-    lineHelp: 'Die Reihenfolge der Punkte bestimmt den Streckenverlauf.',
-    coordinatesFor: 'Koordinaten · {{name}}',
-    coordinateHelp:
-      'Punkte in Streckenreihenfolge. Änderungen werden sofort in die Karte übernommen. Flächen schließen sich automatisch.',
-    limits:
-      '{{count}} von 1.000 Positionen · Höchstens 500 Positionen je Form. Flächen ohne Aussparungen.',
-    formLimit:
-      '10 Formen sind vorhanden. Entfernen Sie eine Form, bevor Sie eine weitere zeichnen.',
-    zoomIn: 'Karte vergrößern',
-    zoomOut: 'Karte verkleinern',
-
-    addLineCoordinates: 'Strecke über Koordinaten erfassen',
-    addPolygonCoordinates: 'Fläche über Koordinaten erfassen',
-    feature: '{{kind}} {{position}}',
-    area: 'Fläche',
-    route: 'Strecke',
-    coordinate: 'Punkt {{position}}: {{axis}}',
-    moveUp: 'Punkt {{position}} nach oben verschieben',
-    moveDown: 'Punkt {{position}} nach unten verschieben',
-    up: 'Nach oben',
-    down: 'Nach unten',
-    removePoint: 'Punkt {{position}} entfernen',
-    removePointShort: 'Punkt entfernen',
-    addPoint: 'Punkt hinzufügen',
-    deleteFeature: 'Form löschen',
-
-    tools: 'Kartenwerkzeuge',
-    select: 'Auswahl',
-    location: 'Standort setzen',
-    linestring: 'Strecke zeichnen',
-    polygon: 'Fläche zeichnen',
-    undo: 'Rückgängig',
-    redo: 'Wiederholen',
-    deleteSelected: 'Ausgewählte Form löschen',
-    cancelDrawing: 'Zeichnung verwerfen',
-    invalid: 'Die Geometrie ist ungültig. Prüfen Sie die Koordinaten.',
-    drawing:
-      'Zeichnung abschließen oder verwerfen, bevor Sie speichern. Mit Eingabe abschließen, mit Escape abbrechen.',
-    help: 'Strecken und Flächen werden zusammen mit der Baustelle gespeichert.',
-    map: 'Baustellenkarte',
-    showLocation: 'Standort {{position}} auf der Karte bearbeiten',
-  },
+  geometry: constructionGeometryDe,
   navigation: {
     title: 'Baustellen',
   },

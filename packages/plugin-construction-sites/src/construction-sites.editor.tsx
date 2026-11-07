@@ -28,18 +28,17 @@ type Props = Readonly<{
 }>;
 export function ConstructionSiteEditor({ state: s, principalControl, history }: Props) {
   const pt = usePluginTranslation('construction-sites');
-  const { id } = s;
-  const created = !id && Boolean(s.record);
+  const created = !s.id && Boolean(s.record);
   const canSave =
-    (id ? Boolean(s.record) && s.access.canUpdate : s.access.canCreate) &&
+    (s.id ? Boolean(s.record) && s.access.canUpdate : s.access.canCreate) &&
     !s.record?.writeBlockedReason &&
     !created;
   const disabled = s.busy || Boolean(s.pending) || !canSave;
   return (
     <StudioDetailPageTemplate
       stickyActions
-      title={pt(id ? 'editor.edit' : 'editor.create')}
-      description={!id ? pt('editor.intro') : undefined}
+      title={pt(s.id ? 'editor.edit' : 'editor.create')}
+      description={!s.id ? pt('editor.intro') : undefined}
       actions={
         <Button asChild variant="secondary">
           <Link
@@ -157,13 +156,8 @@ function EditorPanels({
   history,
 }: Readonly<{ s: Props['state']; disabled: boolean; history: ReactNode }>) {
   const pt = usePluginTranslation('construction-sites');
-  const { id } = s;
   const [tab, setTab] = useState<'basis' | 'content' | 'history'>('basis');
-  const lifecycle = s.record
-    ? s.record.visible
-      ? 'content.changeStatus'
-      : 'content.publish'
-    : 'content.publish';
+  const lifecycle = s.record?.visible ? 'content.changeStatus' : 'content.publish';
   const canPublish = s.record
     ? s.access.session.unscopedPermissionActions.includes(lifecycle) ||
       s.resourceAccess[lifecycle] === true
@@ -214,7 +208,7 @@ function EditorPanels({
         }))}
       />
 
-      {id ? (
+      {s.id ? (
         <StudioDetailTabs
           ariaLabel={pt('tabs.label')}
           mobileSelectLabel={pt('tabs.label')}

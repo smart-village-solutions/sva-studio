@@ -86,49 +86,37 @@ function useEditorData(
     guard,
   };
 }
-function useEditorLoads({
-  id,
-  principal,
-  key,
-  setPending,
-  setCategories,
-  setCategoryError,
-  setLoading,
-  setRecord,
-  setDraft,
-  setBaseline,
-  setResourceAccess,
-  setFailure,
-}: ReturnType<typeof useEditorData>) {
+function useEditorLoads(data: ReturnType<typeof useEditorData>) {
+  const { id, principal, key } = data;
   useEffect(() => {
     let active = true;
-    setCategories(undefined);
-    setCategoryError(false);
+    data.setCategories(undefined);
+    data.setCategoryError(false);
     void listConstructionSiteCategories(principal).then(
-      (items) => active && setCategories(items),
-      () => active && setCategoryError(true)
+      (items) => active && data.setCategories(items),
+      () => active && data.setCategoryError(true)
     );
     return () => {
       active = false;
     };
   }, [principal, key]);
   useEffect(() => {
-    setPending(readConstructionSitePending(key));
+    data.setPending(readConstructionSitePending(key));
     if (!id) return;
     let active = true;
-    setLoading(true);
+    data.setLoading(true);
     void getConstructionSite(id, principal)
       .then(
         (result) => {
           if (!active) return;
-          setRecord(result.data);
-          setDraft(result.data.input);
-          setBaseline(JSON.stringify(result.data.input));
-          setResourceAccess(result.access);
+          data.setRecord(result.data);
+          data.setDraft(result.data.input);
+          data.setBaseline(JSON.stringify(result.data.input));
+          data.setResourceAccess(result.access);
         },
-        () => active && setFailure('messages.loadError')
+        () => active && data.setFailure('messages.loadError')
       )
-      .finally(() => active && setLoading(false));
+      .finally(() => active && data.setLoading(false));
     return () => {
       active = false;
     };
@@ -185,14 +173,13 @@ function useEditorCommit({
       if (code && !recover) {
         sessionStorage.removeItem(key);
         setPending(undefined);
-        setFailure(
-          code === 'construction_site_content_conflict' ||
-            code === 'construction_site_geometry_payload_too_large'
-            ? `errors.${code}`
-            : code === 'forbidden' || code === 'stale_mainserver_context'
-              ? `errors.${code}`
-              : 'messages.saveError'
-        );
+        const specific = [
+          'construction_site_content_conflict',
+          'construction_site_geometry_payload_too_large',
+          'forbidden',
+          'stale_mainserver_context',
+        ].includes(code);
+        setFailure(specific ? `errors.${code}` : 'messages.saveError');
       } else setFailure('messages.unknown');
     } finally {
       setBusy(false);

@@ -87,66 +87,16 @@ export function LocationFields(props: ConstructionSiteFormProps) {
   return (
     <StudioDetailCard title={pt('geometry.title')} description={pt('geometry.description')}>
       {draft.locations.map((location, index) => (
-        <div key={location.sourceIndex ?? `new-${index}`} className="space-y-4">
-          <StudioField
-            id={constructionSiteFieldId(`locations.${index}.name`)}
-            label={pt('fields.name')}
-          >
-            <Input
-              id={constructionSiteFieldId(`locations.${index}.name`)}
-              value={location.name}
-              onChange={(event) => update(index, { name: event.currentTarget.value })}
-            />
-          </StudioField>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {(['latitude', 'longitude'] as const).map((key) => (
-              <StudioField
-                key={key}
-                id={constructionSiteFieldId(`locations.${index}.${key}`)}
-                label={pt(`fields.${key}`)}
-                error={
-                  errors.includes(`locations.${index}.${key}`)
-                    ? pt('validation.incomplete_coordinates')
-                    : undefined
-                }
-              >
-                <Input
-                  id={constructionSiteFieldId(`locations.${index}.${key}`)}
-                  type="number"
-                  step="any"
-                  value={location[key] ?? ''}
-                  aria-invalid={errors.includes(`locations.${index}.${key}`)}
-                  onChange={(event) =>
-                    update(index, {
-                      [key]:
-                        event.currentTarget.value === '' ? null : event.currentTarget.valueAsNumber,
-                    })
-                  }
-                />
-              </StudioField>
-            ))}
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            aria-pressed={locationIndex === index}
-            onClick={() => setActiveLocation(index)}
-          >
-            {pt('geometry.showLocation', { position: index + 1 })}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() =>
-              change(
-                'locations',
-                draft.locations.filter((_, position) => position !== index)
-              )
-            }
-          >
-            {pt('actions.remove')}
-          </Button>
-        </div>
+        <LocationRow
+          key={location.sourceIndex ?? `new-${index}`}
+          draft={draft}
+          change={change}
+          errors={errors}
+          index={index}
+          locationIndex={locationIndex}
+          setActiveLocation={setActiveLocation}
+          update={update}
+        />
       ))}
       <AddLocation {...props} />
       <ConstructionSiteMap
@@ -171,6 +121,86 @@ export function LocationFields(props: ConstructionSiteFormProps) {
         disabled={props.disabled || props.geometryDrawing === true}
       />
     </StudioDetailCard>
+  );
+}
+
+function LocationRow({
+  draft,
+  change,
+  errors,
+  index,
+  locationIndex,
+  setActiveLocation,
+  update,
+}: Pick<ConstructionSiteFormProps, 'draft' | 'change' | 'errors'> & {
+  index: number;
+  locationIndex: number;
+  setActiveLocation: (index: number) => void;
+  update: (index: number, value: Partial<ConstructionSiteInput['locations'][number]>) => void;
+}) {
+  const pt = usePluginTranslation('construction-sites');
+  const location = draft.locations[index]!;
+  return (
+    <div key={location.sourceIndex ?? `new-${index}`} className="space-y-4">
+      <StudioField
+        id={constructionSiteFieldId(`locations.${index}.name`)}
+        label={pt('fields.name')}
+      >
+        <Input
+          id={constructionSiteFieldId(`locations.${index}.name`)}
+          value={location.name}
+          onChange={(event) => update(index, { name: event.currentTarget.value })}
+        />
+      </StudioField>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {(['latitude', 'longitude'] as const).map((key) => (
+          <StudioField
+            key={key}
+            id={constructionSiteFieldId(`locations.${index}.${key}`)}
+            label={pt(`fields.${key}`)}
+            error={
+              errors.includes(`locations.${index}.${key}`)
+                ? pt('validation.incomplete_coordinates')
+                : undefined
+            }
+          >
+            <Input
+              id={constructionSiteFieldId(`locations.${index}.${key}`)}
+              type="number"
+              step="any"
+              value={location[key] ?? ''}
+              aria-invalid={errors.includes(`locations.${index}.${key}`)}
+              onChange={(event) =>
+                update(index, {
+                  [key]:
+                    event.currentTarget.value === '' ? null : event.currentTarget.valueAsNumber,
+                })
+              }
+            />
+          </StudioField>
+        ))}
+      </div>
+      <Button
+        type="button"
+        variant="secondary"
+        aria-pressed={locationIndex === index}
+        onClick={() => setActiveLocation(index)}
+      >
+        {pt('geometry.showLocation', { position: index + 1 })}
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() =>
+          change(
+            'locations',
+            draft.locations.filter((_, position) => position !== index)
+          )
+        }
+      >
+        {pt('actions.remove')}
+      </Button>
+    </div>
   );
 }
 

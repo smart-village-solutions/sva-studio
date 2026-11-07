@@ -362,6 +362,29 @@ describe('geometry service roundtrip', () => {
       service.verifyConstructionSiteWrite({ ...connection, prepared, siteId: '42' })
     ).rejects.toThrow('construction_site_readback_mismatch');
   });
+  it('allows unrelated edits with unchanged geometry above the geometry payload budget', async () => {
+    const { service, stored } = setup();
+    const payload = stored().payload as RawRecord;
+    payload.opaque = 'ä'.repeat(31 * 1024);
+    payload.constructionSiteGeometry = geometry;
+    const before = await service.getConstructionSite({ ...connection, siteId: '42' });
+    const prepared = service.prepareConstructionSite(
+      { ...before.data.input, title: 'Geänderter Titel' },
+      'geo-unchanged',
+      before.item
+    );
+    expect(prepared.expected.title).toBe('Geänderter Titel');
+    expect((prepared.expected.payload as RawRecord).constructionSiteGeometry).toEqual(geometry);
+    const changed = structuredClone(geometry);
+    changed.features[0]!.geometry.coordinates[1] = [13.002, 52.002];
+    expect(() =>
+      service.prepareConstructionSite(
+        { ...before.data.input, geometry: changed },
+        'geo-changed',
+        before.item
+      )
+    ).toThrow('construction_site_geometry_payload_too_large');
+  });
   it('enforces UTF-8 size on the merged payload including retained fields', async () => {
     const { service, stored } = setup();
     (stored().payload as RawRecord).opaque = 'ä'.repeat(31 * 1024);

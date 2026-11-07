@@ -1069,6 +1069,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 5.0.3
         version: 5.0.3(vitest@5.0.3)
+      fast-check:
+        specifier: ^3.23.2
+        version: 3.23.2
       jsdom:
         specifier: 29.1.1
         version: 29.1.1

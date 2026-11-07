@@ -16,7 +16,13 @@ import {
   constructionSiteRead,
   constructionSiteListRead,
 } from '../construction-sites-snapshot.js';
-import { raw, records, voucherWriteMatches, type RawRecord } from '../vouchers-snapshot.js';
+import {
+  raw,
+  records,
+  voucherWriteMatches,
+  voucherSnapshotHash,
+  type RawRecord,
+} from '../vouchers-snapshot.js';
 import type { ServiceContext } from './service-context.js';
 import { assertUpstreamScanLimit, withUpdatedPayload } from './shared.js';
 
@@ -93,21 +99,23 @@ const prepareConstructionSite = (
   operationId: string,
   existing?: RawRecord
 ): ConstructionSitePreparedWrite => {
-  const expected = buildConstructionSiteWrite(constructionSiteInputSchema.parse(input), existing);
+  const parsed = constructionSiteInputSchema.parse(input);
+  const before = existing ? constructionSiteRead(existing).input : undefined;
+  const expected = buildConstructionSiteWrite(parsed, existing);
   expected.payload = {
     ...withUpdatedPayload(expected.payload, existing?.payload),
     studioConstructionSiteOperation: operationId,
   };
   if (
-    input.geometry &&
+    parsed.geometry &&
+    voucherSnapshotHash({ geometry: parsed.geometry }) !==
+      voucherSnapshotHash({ geometry: before?.geometry }) &&
     new TextEncoder().encode(JSON.stringify(expected.payload)).length > 60 * 1024
   )
     throw new Error('construction_site_geometry_payload_too_large');
   if (!existing) expected.externalId = `studio-construction-site:${operationId}`;
-  const previousMediaIds = existing
-    ? constructionSiteRead(existing).input.mediaContents.flatMap((item) =>
-        item.hostMediaAssetId ? [item.hostMediaAssetId] : []
-      )
+  const previousMediaIds = before
+    ? before.mediaContents.flatMap((item) => (item.hostMediaAssetId ? [item.hostMediaAssetId] : []))
     : [];
   return {
     ...(existing

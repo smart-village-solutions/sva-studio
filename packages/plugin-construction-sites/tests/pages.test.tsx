@@ -654,6 +654,16 @@ it('reorders polygon points by keyboard controls while keeping the closing point
       target: { value: String(latitude) },
     });
   }
+  fireEvent.click(within(group).getByRole('button', { name: 'Punkt hinzufügen' }));
+  fireEvent.change(within(group).getByLabelText('Punkt 4: Längengrad'), {
+    target: { value: '13' },
+  });
+  fireEvent.change(within(group).getByLabelText('Punkt 4: Breitengrad'), {
+    target: { value: '52.01' },
+  });
+  fireEvent.click(within(group).getByRole('button', { name: 'Punkt 4 nach oben verschieben' }));
+  fireEvent.click(within(group).getByRole('button', { name: 'Punkt 3 nach unten verschieben' }));
+  fireEvent.click(within(group).getByRole('button', { name: 'Punkt 4 entfernen' }));
   expect(within(group).queryByLabelText('Punkt 4: Breitengrad')).toBeNull();
   fireEvent.click(within(group).getByRole('button', { name: 'Punkt 3 nach oben verschieben' }));
   expect((within(group).getByLabelText('Punkt 2: Breitengrad') as HTMLInputElement).value).toBe(

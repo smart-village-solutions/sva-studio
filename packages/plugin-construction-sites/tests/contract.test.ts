@@ -269,3 +269,49 @@ describe('construction site geometry contract', () => {
     ).toBe(false);
   });
 });
+
+it('normalizes arbitrary valid rings and lines idempotently without changing the input', async () => {
+  const fc = await import('fast-check');
+  fc.assert(
+    fc.property(
+      fc.integer({ min: -179000, max: 178000 }),
+      fc.integer({ min: -89000, max: 88000 }),
+      fc.integer({ min: 1, max: 99 }),
+      fc.boolean(),
+      fc.boolean(),
+      (x, y, remainder, polygon, reverse) => {
+        const longitude = x / 1000 + remainder / 1e9;
+        const latitude = y / 1000 + remainder / 1e9;
+        const ring = [
+          [longitude, latitude],
+          [longitude + 0.01, latitude],
+          [longitude + 0.01, latitude + 0.01],
+          [longitude, latitude],
+        ];
+        if (reverse) ring.reverse();
+        const input = {
+          ...valid(),
+          geometry: {
+            version: 1,
+            type: 'FeatureCollection',
+            features: [
+              {
+                type: 'Feature',
+                id: '8b51428e-832b-49ea-a9f7-537608e344e1',
+                properties: {},
+                geometry: polygon
+                  ? { type: 'Polygon', coordinates: [ring] }
+                  : { type: 'LineString', coordinates: ring.slice(0, 2) },
+              },
+            ],
+          },
+        };
+        const before = structuredClone(input);
+        const normalized = constructionSiteInputSchema.parse(input);
+        expect(constructionSiteInputSchema.parse(normalized)).toEqual(normalized);
+        expect(input).toEqual(before);
+      }
+    ),
+    { numRuns: 100 }
+  );
+});

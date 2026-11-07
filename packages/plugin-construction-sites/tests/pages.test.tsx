@@ -234,8 +234,83 @@ describe('construction site editorial UI', () => {
     expect(screen.getByLabelText(/^Titel/).matches(':disabled')).toBe(true);
     expect(screen.queryByRole('button', { name: 'Änderungen speichern' })).toBeNull();
   });
+  it('uses title links and keeps filters, creation and pagination in the shared table', async () => {
+    const { container } = render(<ConstructionSitesListPage />);
+    const titles = await screen.findAllByRole('link', { name: 'Brückenbau' });
+    expect(titles[0]?.getAttribute('href')).toBe('/admin/construction-sites/42');
+    expect(screen.queryByRole('link', { name: 'Bearbeiten', exact: true })).toBeNull();
+    const table = screen.getByRole('table', { name: 'Baustellen' });
+    const frame = table.closest('[data-layout]');
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent)
+    ).toEqual(['Titel', 'Standort', 'Beginn', 'Ende', 'Zeitraumstatus', 'Letzte Änderung']);
+    expect(frame?.contains(screen.getByLabelText('Titel suchen'))).toBe(true);
+    expect(frame?.contains(screen.getByRole('link', { name: 'Baustelle anlegen' }))).toBe(true);
+    expect(frame?.contains(screen.getByRole('navigation', { name: 'Baustellenseiten' }))).toBe(
+      true
+    );
+    expect(container.querySelectorAll('a[href="/admin/construction-sites/new"]')).toHaveLength(1);
+    expect(screen.getByText('1–1 von 1 Einträgen')).toBeTruthy();
+  });
+  it('keeps filters focused while loading and available after empty results or failures', async () => {
+    const view = render(<ConstructionSitesListPage />);
+    await screen.findAllByRole('link', { name: 'Brückenbau' });
+    let finish: ((value: unknown) => void) | undefined;
+    state.list.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const search = screen.getByLabelText('Titel suchen');
+    search.focus();
+    fireEvent.change(search, { target: { value: 'Brücke' } });
+    state.search = { search: 'Brücke' };
+    view.rerender(<ConstructionSitesListPage />);
+    await screen.findByText('Baustellen werden geladen…');
+    expect(screen.getByLabelText('Titel suchen')).toBe(search);
+    expect(document.activeElement).toBe(search);
+    expect(screen.queryByRole('link', { name: 'Brückenbau' })).toBeNull();
+    await act(async () =>
+      finish?.({
+        data: [],
+        pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 0 },
+      })
+    );
+    await screen.findByText('Keine passenden Baustellen vorhanden.');
+    expect(document.activeElement).toBe(search);
+    expect(screen.getByText('0–0 von 0 Einträgen')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Zurück' }).matches(':disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Weiter' }).matches(':disabled')).toBe(true);
+    state.list.mockRejectedValueOnce(new Error('network'));
+    state.search = { search: 'Brücke', category: 'Verkehr' };
+    view.rerender(<ConstructionSitesListPage />);
+    await screen.findByText('Die Baustellen konnten nicht geladen werden.');
+    expect(document.activeElement).toBe(search);
+    expect(screen.getByRole('link', { name: 'Baustelle anlegen' })).toBeTruthy();
+    expect(screen.queryByRole('navigation', { name: 'Baustellenseiten' })).toBeNull();
+  });
+  it('opens readable sites without offering creation when the create permission is absent', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      subjectId: 'reader',
+      instanceId: 'tenant',
+      assignedModules: ['construction-sites'],
+      roles: [],
+      permissionActions: ['construction-sites.read'],
+    });
+    render(<ConstructionSitesListPage />);
+    await screen.findAllByRole('link', { name: 'Brückenbau' });
+    expect(screen.queryByRole('link', { name: 'Baustelle anlegen' })).toBeNull();
+  });
   it('lists the primary location, dates and temporal state, preserving filters during pagination', async () => {
-    state.search = { category: 'Verkehr', page: 2 };
+    state.search = { category: 'Verkehr', search: 'Brücke', page: 2 };
+    state.list.mockResolvedValueOnce({
+      data: [record],
+      pagination: { page: 2, pageSize: 25, hasNextPage: true, total: 51 },
+    });
     render(
       <ConstructionSitesListPage
         principalControl={{ kind: 'fixed', value: 'organization', label: 'Town' }}
@@ -251,6 +326,16 @@ describe('construction site editorial UI', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
     const navigation = state.navigate.mock.calls[0]?.[0];
     expect(navigation.search(state.search)).toMatchObject({ category: 'Verkehr', page: 1 });
+    expect(screen.getByText('26–26 von 51 Einträgen')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Einträge pro Seite'), { target: { value: '50' } });
+    const resized = state.navigate.mock.calls[1]?.[0];
+    expect(resized.search(state.search)).toMatchObject({
+      category: 'Verkehr',
+      q: 'Brücke',
+      page: 1,
+      pageSize: 50,
+      type: 'construction-sites.construction-site',
+    });
   });
   it('edits optional traffic, zero coordinates, categories and rich text without losing their input', async () => {
     const { container } = render(<ConstructionSitesCreatePage />);

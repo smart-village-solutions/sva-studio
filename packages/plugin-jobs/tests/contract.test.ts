@@ -61,4 +61,71 @@ describe('Job input and ownership boundary', () => {
     ]);
     expect(pluginJobs.contentHistory).toMatchObject({ mode: 'host' });
   });
+  it('validates non-empty contact links and media URLs before a write', () => {
+    const job = { ...createJobDefaults('2026-11-07'), title: 'Stelle', employmentType: 'Vollzeit' };
+    const contact = {
+      ...job.contacts[0]!,
+      email: 'jobs@example.org',
+      webUrls: [{ url: 'https://example.org/jobs', description: 'Karriere' }],
+    };
+    expect(jobInputSchema.safeParse({ ...job, contacts: [contact] }).success).toBe(true);
+    expect(
+      jobInputSchema.safeParse({
+        ...job,
+        contacts: [{ ...contact, webUrls: [{ url: 'javascript:alert(1)', description: '' }] }],
+      }).success
+    ).toBe(false);
+    expect(
+      jobInputSchema.safeParse({
+        ...job,
+        mediaContents: [
+          {
+            contentType: 'audio',
+            sourceUrl: { url: 'https://example.org/a.mp3', description: '' },
+            copyright: '',
+            captionText: '',
+          },
+        ],
+      }).success
+    ).toBe(true);
+    expect(
+      jobInputSchema.safeParse({
+        ...job,
+        mediaContents: [
+          {
+            contentType: 'video',
+            sourceUrl: { url: 'https://', description: '' },
+            copyright: '',
+            captionText: '',
+          },
+        ],
+      }).success
+    ).toBe(false);
+  });
+  it('distinguishes planned, running and incomplete periods without changing visibility', () => {
+    const job = createJobDefaults('2026-11-07');
+    expect(jobTemporalState(job, '2026-11-01')).toBe('planned');
+    expect(jobTemporalState(job, '2026-11-08')).toBe('ongoing');
+    expect(jobTemporalState({ ...job, dates: [] }, '2026-11-08')).toBe('incomplete');
+    expect(jobTemporalState({ ...job, dates: [{ dateEnd: '2026-11-01' }] }, '2026-11-08')).toBe(
+      'incomplete'
+    );
+    expect(
+      jobInputSchema.safeParse({
+        ...job,
+        title: 'Stelle',
+        employmentType: 'Vollzeit',
+        dates: [{ dateEnd: '2026-02-30' }],
+      }).success
+    ).toBe(false);
+    expect(
+      jobInputSchema.safeParse({
+        ...job,
+        title: 'Stelle',
+        employmentType: 'Vollzeit',
+        dates: [{ dateEnd: '' }],
+      }).success
+    ).toBe(false);
+    expect(job.visible).toBe(false);
+  });
 });

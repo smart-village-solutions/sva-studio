@@ -315,7 +315,27 @@ test('draws and edits construction site geometry and roundtrips the existing rec
   await page.getByRole('link', { name: 'Zur Übersicht', exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/content\?.*type=construction-sites/);
   await expect(page.getByRole('heading', { name: 'Baustellen', exact: true })).toBeVisible();
-  await expect(page.getByText('Brückenbau', { exact: true }).first()).toBeVisible();
+  const tableFrame = page.locator('[data-layout]').filter({ has: page.locator('#cs-search') });
+  await expect(tableFrame.getByRole('link', { name: 'Brückenbau', exact: true })).toBeVisible();
+  await expect(
+    tableFrame.getByRole('link', { name: 'Baustelle anlegen', exact: true })
+  ).toBeVisible();
+  await expect(tableFrame.getByRole('navigation', { name: 'Baustellenseiten' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Bearbeiten', exact: true })).toHaveCount(0);
+  await page.screenshot({
+    path: test.info().outputPath('construction-site-list-desktop.png'),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(tableFrame).toHaveAttribute('data-layout', 'compact');
+  await expect(tableFrame.getByRole('link', { name: 'Brückenbau', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+  await page.screenshot({
+    path: test.info().outputPath('construction-site-list-mobile.png'),
+    fullPage: true,
+  });
   const filtered = page.waitForRequest(
     (request) =>
       request.url().includes('/mainserver/construction-sites?') &&
@@ -324,4 +344,18 @@ test('draws and edits construction site geometry and roundtrips the existing rec
   await page.getByLabel('Titel suchen').fill('Brücke');
   await filtered;
   await expect(page.getByLabel('Titel suchen')).toHaveValue('Brücke');
+  const resized = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return (
+      url.pathname.endsWith('/mainserver/construction-sites') &&
+      url.searchParams.get('search') === 'Brücke' &&
+      url.searchParams.get('pageSize') === '50'
+    );
+  });
+  await page.getByLabel('Einträge pro Seite').selectOption('50');
+  await resized;
+  await expect(page.getByLabel('Einträge pro Seite')).toHaveValue('50');
+  await expect(tableFrame).toHaveAttribute('data-layout', 'compact');
+  await tableFrame.getByRole('link', { name: 'Brückenbau', exact: true }).click();
+  await expect(page.locator('#cs-title')).toHaveValue('Brückenbau');
 });

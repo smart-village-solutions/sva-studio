@@ -88,6 +88,8 @@ Die öffentliche History-Projektion enthält Actor-Anzeige, Aktion, Zeitpunkt, s
 
 Mainserver-basierte Inhalte erhalten erst nach einer erfolgreichen fachlichen Mutation einen lokalen History-Core und eine gebundene Provider-Referenz. Abgelehnte oder fehlgeschlagene Versuche bleiben ausschließlich im Audit- und Diagnosepfad. Direkte Änderungen außerhalb des Studios werden nicht nachträglich als Studio-History rekonstruiert.
 
+Ein bestätigter Mainserver-Zustand darf auch bei Status `published` ohne fachlichen Veröffentlichungszeitpunkt in den History-Core übernommen werden. Der bestehende External-Content-Pfad kennzeichnet diese Herkunft ausschließlich serverintern über `publicationSource = mainserver`. Anlegen und Aktualisieren ergänzen dabei kein Ersatzdatum; vorhandene echte Veröffentlichungszeitpunkte bleiben erhalten. Die Prüfung des Veröffentlichungsfensters und die idempotente Historienkorrelation gelten weiterhin. Normale Content-Requests können die Herkunft nicht setzen; für lokal gepflegte Inhalte bleibt das Veröffentlichungsdatum bei `published` verpflichtend. Der Mainserver-Vertrag wird dafür nicht verändert.
+
 Ein fehlender History-Core oder eine fehlende Provider-Referenz blockiert weder Liste, Detail noch Bearbeitung eines durch die typspezifische IAM-Action autorisierten Mainserver-Inhalts. `404 not_found` des History-Pfads wird für typisierte Mainserver-Inhalte als leere Studio-History mit der dokumentierten Abdeckung `studio_mutations` behandelt.
 
 ## Plugin-eigene Einzelmutationen

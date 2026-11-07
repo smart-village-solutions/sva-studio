@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ContentStateValidationError } from './repository-state-validation.js';
+import { recordSuccessfulExternalContentMutation } from './external-content-mutations.js';
+import { updateExternalContentCore } from './external-content-references.js';
 import type {
   ContentHistoryRow,
   ContentRow,
@@ -73,6 +75,7 @@ vi.mock('./repository-state.js', () => ({
 
 vi.mock('./repository-write-helpers.js', () => ({
   emitContentCreatedActivity: (...args: unknown[]) => state.emitContentCreatedActivityMock(...args),
+  emitExternalContentUpdatedActivity: vi.fn(),
   emitContentDeletedActivity: (...args: unknown[]) => state.emitContentDeletedActivityMock(...args),
   emitContentUpdatedActivity: (...args: unknown[]) => state.emitContentUpdatedActivityMock(...args),
   emitContentOwnershipTransferredActivity: (...args: unknown[]) =>
@@ -622,6 +625,151 @@ describe('iam content repository', () => {
     await expect(createContent(createCreateInput())).rejects.toBe(error);
     expect(state.insertContentRowMock).not.toHaveBeenCalled();
     expect(state.insertContentHistoryMock).not.toHaveBeenCalled();
+  });
+
+  describe('confirmed Mainserver publication without a timestamp', () => {
+    beforeEach(async () => {
+      const contentState =
+        await vi.importActual<typeof import('./repository-state.js')>('./repository-state.js');
+      const writes = await vi.importActual<typeof import('./repository-write-helpers.js')>(
+        './repository-write-helpers.js'
+      );
+      state.resolveNextContentStateMock.mockImplementation(contentState.resolveNextContentState);
+      state.insertContentRowMock.mockImplementation(writes.insertContentRow);
+      state.updateContentRowMock.mockImplementation(writes.updateContentRow);
+    });
+
+    it.each([
+      ['poi.point-of-interest', false],
+      ['poi.point-of-interest', true],
+      ['events.event-record', false],
+      ['events.event-record', true],
+      ['generic-items.generic-item', false],
+      ['generic-items.generic-item', true],
+    ] as const)(
+      'records %s (existing Core: %s) without inventing a date',
+      async (contentType, existing) => {
+        const reference = {
+          id: 'reference-1',
+          instance_id: 'instance-1',
+          content_id: 'content-1',
+          source_system: 'mainserver',
+          source_entity_type: contentType,
+          source_entity_id: 'provider-1',
+          operation_external_id: 'mutation-1',
+          reconciliation_status: 'bound',
+          last_error_code: null,
+        };
+        state.queryMock.mockImplementation(async (sql: string) => {
+          if (sql.includes('FROM iam.external_content_references')) {
+            return { rows: existing ? [reference] : [] };
+          }
+          if (sql.includes('INSERT INTO iam.external_content_references'))
+            return { rows: [reference] };
+          if (sql.includes('INSERT INTO iam.contents')) return { rows: [{ id: 'content-1' }] };
+          return { rows: [] };
+        });
+
+        await expect(
+          recordSuccessfulExternalContentMutation({
+            ...createCreateInput({ contentType, status: 'published', authorDisplayMode: 'user' }),
+            operation: 'create',
+            mutationRef: 'mutation-1',
+            sourceSystem: 'mainserver',
+            sourceEntityType: contentType,
+            sourceEntityId: 'provider-1',
+            authorDisplayName: 'Autor',
+          })
+        ).resolves.toBe('content-1');
+
+        const write = state.queryMock.mock.calls.find(([sql]) =>
+          existing ? sql.includes('UPDATE iam.contents') : sql.includes('INSERT INTO iam.contents')
+        );
+        expect(write).toBeDefined();
+        expect(write?.[1][existing ? 9 : 6]).toBeNull();
+        if (existing) {
+          expect(write?.[0]).toContain('published_at = $10::timestamptz');
+          expect(state.persistContentUpdateHistoryMock).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ mutationRef: 'mutation-1' }),
+            expect.anything(),
+            expect.objectContaining({ status: 'published', mutationFinalized: false })
+          );
+        } else {
+          expect(write?.[0]).not.toContain('COALESCE($7::timestamptz');
+          expect(state.insertContentHistoryMock).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ mutationRef: 'mutation-1', nextStatus: 'published' })
+          );
+          expect(state.queryMock).toHaveBeenCalledWith(
+            expect.stringContaining("SET source_entity_id = $3, reconciliation_status = 'bound'"),
+            ['instance-1', 'reference-1', 'provider-1']
+          );
+        }
+      }
+    );
+
+    it('still rejects local publication without a timestamp before writing', async () => {
+      await expect(updateContent(createUpdateInput({ status: 'published' }))).rejects.toThrow(
+        'content_published_at_required'
+      );
+      expect(state.updateContentRowMock).not.toHaveBeenCalled();
+      expect(state.persistContentUpdateHistoryMock).not.toHaveBeenCalled();
+    });
+
+    it.each(['provider', 'existing'] as const)(
+      'preserves a real %s publication timestamp',
+      async (source) => {
+        const publishedAt = '2026-11-04T10:00:00.000Z';
+        state.loadCurrentContentRowMock.mockResolvedValue(
+          createContentRow({
+            published_at: source === 'existing' ? publishedAt : null,
+          })
+        );
+        await updateExternalContentCore({
+          ...createUpdateInput({ status: 'published' }),
+          ...(source === 'provider' ? { publishedAt } : {}),
+          authorDisplayMode: 'user',
+          authorDisplayName: 'Autor',
+        });
+        const write = state.queryMock.mock.calls.find(([sql]) =>
+          sql.includes('UPDATE iam.contents')
+        );
+        expect(write?.[1][9]).toBe(publishedAt);
+      }
+    );
+
+    it('still validates publication windows for confirmed Mainserver updates', async () => {
+      state.loadCurrentContentRowMock.mockResolvedValue(
+        createContentRow({
+          publish_from: '2026-11-06T10:00:00.000Z',
+          publish_until: '2026-11-04T10:00:00.000Z',
+        })
+      );
+      await expect(
+        updateExternalContentCore({
+          ...createUpdateInput({ status: 'published' }),
+          authorDisplayMode: 'user',
+          authorDisplayName: 'Autor',
+        })
+      ).rejects.toThrow('content_publication_window_invalid');
+      expect(state.updateContentRowMock).not.toHaveBeenCalled();
+      expect(state.persistContentUpdateHistoryMock).not.toHaveBeenCalled();
+    });
+
+    it('does not repeat a finalized Mainserver history entry', async () => {
+      state.resolveContentUpdateReplayMock.mockResolvedValue({
+        mutationFinalized: true,
+        skip: true,
+      });
+      await updateExternalContentCore({
+        ...createUpdateInput({ status: 'published', mutationRef: 'mutation-1' }),
+        authorDisplayMode: 'user',
+        authorDisplayName: 'Autor',
+      });
+      expect(state.updateContentRowMock).not.toHaveBeenCalled();
+      expect(state.persistContentUpdateHistoryMock).not.toHaveBeenCalled();
+    });
   });
 
   it('returns undefined on update when the current content row is missing', async () => {

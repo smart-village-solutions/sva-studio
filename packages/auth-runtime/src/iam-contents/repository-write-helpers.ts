@@ -63,6 +63,10 @@ export const insertContentRow = async (
   input: CreateContentInput
 ): Promise<string> => {
   const authorDisplay = await resolveCreateAuthorDisplay(client, input);
+  const publishedAtSql =
+    input.publicationSource === 'mainserver'
+      ? '$7::timestamptz'
+      : "COALESCE($7::timestamptz, CASE WHEN $11 = 'published' THEN NOW() ELSE NULL END)";
   const insert = await client.query<{ id: string }>(
     `
 INSERT INTO iam.contents (
@@ -73,7 +77,7 @@ INSERT INTO iam.contents (
 )
 VALUES (
   gen_random_uuid(), $1, $2, $3::uuid, $4::uuid, $5::uuid, $6,
-  COALESCE($7::timestamptz, CASE WHEN $11 = 'published' THEN NOW() ELSE NULL END),
+  ${publishedAtSql},
   $8::timestamptz, $9::timestamptz, $10::uuid, $15, $12, $10::uuid, $10::uuid, $13::jsonb, $11, $14,
   gen_random_uuid()::text
 )
@@ -126,6 +130,10 @@ export const updateContentRow = async (
     readonly ownerOrganizationId: string | null;
   }
 ): Promise<void> => {
+  const publishedAtSql =
+    input.publicationSource === 'mainserver'
+      ? '$10::timestamptz'
+      : "COALESCE($10::timestamptz, CASE WHEN $8 = 'published' THEN NOW() ELSE NULL END)";
   await client.query(
     `
 UPDATE iam.contents
@@ -139,7 +147,7 @@ SET
   payload_json = $7::jsonb,
   status = $8,
   validation_state = $9,
-  published_at = COALESCE($10::timestamptz, CASE WHEN $8 = 'published' THEN NOW() ELSE NULL END),
+  published_at = ${publishedAtSql},
   publish_from = $11::timestamptz,
   publish_until = $12::timestamptz,
   updated_at = NOW(),

@@ -20,9 +20,27 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({
     to,
     params,
+    search,
     children,
-  }: Readonly<{ to: string; params?: { id: string }; children: React.ReactNode }>) => (
-    <a href={to.replace('$id', params?.id ?? '')}>{children}</a>
+  }: Readonly<{
+    to: string;
+    params?: { id: string };
+    search?: Record<string, unknown>;
+    children: React.ReactNode;
+  }>) => (
+    <a
+      href={`${to.replace('$id', params?.id ?? '')}${
+        search
+          ? `?${new URLSearchParams(
+              Object.entries(search)
+                .filter(([, value]) => value !== undefined)
+                .map(([key, value]) => [key, String(value)])
+            )}`
+          : ''
+      }`}
+    >
+      {children}
+    </a>
   ),
   useParams: () => ({ id: '42' }),
   useSearch: () => api.search,
@@ -165,7 +183,13 @@ describe('Job list and history journeys', () => {
       })
       .mockRejectedValueOnce(new Error('offline'));
     api.categories.mockRejectedValue(new Error('lookup unavailable'));
-    render(
+    api.navigate.mockImplementation(
+      ({ search }: { search: (current: Record<string, unknown>) => Record<string, unknown> }) => {
+        api.search = search(api.search);
+        return Promise.resolve();
+      }
+    );
+    const view = render(
       <JobsListPage
         principalControl={{
           kind: 'selectable',
@@ -180,6 +204,18 @@ describe('Job list and history journeys', () => {
     await screen.findByText('Keine passenden Stellenanzeigen vorhanden.');
     expect(api.list).toHaveBeenLastCalledWith(expect.anything(), 'organization');
     fireEvent.change(screen.getByLabelText('Handeln als'), { target: { value: 'user' } });
+    view.rerender(
+      <JobsListPage
+        principalControl={{
+          kind: 'selectable',
+          value: 'organization',
+          options: [
+            { value: 'organization', label: 'Stadt' },
+            { value: 'user', label: 'Persönlich' },
+          ],
+        }}
+      />
+    );
     await screen.findByText('Die Stellenanzeigen konnten nicht geladen werden.');
     expect(api.list).toHaveBeenLastCalledWith(expect.anything(), 'user');
   });
@@ -230,7 +266,13 @@ describe('Job list and history journeys', () => {
   });
 
   it('changes the editing principal without reusing the previous provider context', async () => {
-    render(
+    api.navigate.mockImplementation(
+      ({ search }: { search: (current: Record<string, unknown>) => Record<string, unknown> }) => {
+        api.search = search(api.search);
+        return Promise.resolve();
+      }
+    );
+    const view = render(
       <JobsEditPage
         principalControl={{
           kind: 'selectable',
@@ -245,6 +287,7 @@ describe('Job list and history journeys', () => {
     );
     await screen.findByRole('button', { name: 'Änderungen speichern' });
     fireEvent.change(screen.getByLabelText('Handeln als'), { target: { value: 'user' } });
+    view.rerender(<JobsEditPage principalControl={selectableControl} />);
     await waitFor(() => expect(api.get).toHaveBeenLastCalledWith('42', 'user'));
     expect(api.categories).toHaveBeenLastCalledWith('user');
   });
@@ -275,7 +318,7 @@ describe('Job page acceptance', () => {
     render(<JobsListPage />);
     expect((await screen.findAllByText('Stadtverwaltung')).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: 'Stadtentwicklung' })[0]!.getAttribute('href')).toBe(
-      '/admin/jobs/42'
+      '/admin/jobs/42?principal=user'
     );
     expect(screen.getByLabelText('Einträge pro Seite')).toBeDefined();
   });
@@ -294,5 +337,61 @@ describe('Job page acceptance', () => {
     await screen.findByText('Die Stellenanzeige wurde gelöscht.');
     expect(api.remove).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: 'Stellenanzeige löschen' })).toBeNull();
+  });
+});
+
+const selectableControl = {
+  kind: 'selectable' as const,
+  value: 'organization' as const,
+  options: [
+    { value: 'organization' as const, label: 'Stadt' },
+    { value: 'user' as const, label: 'Persönlich' },
+  ],
+  readinessByPrincipal: { organization: 'ready' as const, user: 'ready' as const },
+};
+describe('Job principal navigation', () => {
+  it('carries the list principal into detail and create links and the destination editor', async () => {
+    api.search = { principal: 'user' };
+    const list = render(<JobsListPage principalControl={selectableControl} />);
+    for (const link of await screen.findAllByRole('link', { name: 'Stadtentwicklung' }))
+      expect(link.getAttribute('href')).toBe('/admin/jobs/42?principal=user');
+    for (const link of screen.getAllByRole('link', { name: 'Stellenanzeige anlegen' }))
+      expect(link.getAttribute('href')).toBe('/admin/jobs/new?principal=user');
+    expect(api.list).toHaveBeenLastCalledWith(expect.anything(), 'user');
+    list.unmount();
+    render(<JobsEditPage principalControl={selectableControl} />);
+    await waitFor(() => expect(api.get).toHaveBeenLastCalledWith('42', 'user'));
+    expect(api.categories).toHaveBeenLastCalledWith('user');
+  });
+  it('restores the same principal and pending operation after reloading a create page', async () => {
+    api.search = { principal: 'user' };
+    api.save.mockRejectedValueOnce(new TypeError('lost response')).mockResolvedValue(record);
+    const page = render(<JobsCreatePage principalControl={selectableControl} />);
+    await screen.findByRole('option', { name: 'Vollzeit' });
+    fireEvent.change(screen.getByLabelText(/^Titel/), { target: { value: 'Neue Stelle' } });
+    fireEvent.change(screen.getByLabelText(/^Anstellungsart/), { target: { value: 'Vollzeit' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Stellenanzeige anlegen' }));
+    await screen.findByRole('button', { name: 'Speicherergebnis prüfen' });
+    const operationId = api.save.mock.calls[0]?.[3];
+    expect(api.save.mock.calls[0]?.[2]).toBe('user');
+    page.unmount();
+    render(<JobsCreatePage principalControl={selectableControl} />);
+    const recovery = await screen.findByRole('button', { name: 'Speicherergebnis prüfen' });
+    expect(api.save).toHaveBeenCalledTimes(1);
+    fireEvent.click(recovery);
+    await waitFor(() => expect(api.save).toHaveBeenCalledTimes(2));
+    expect(api.save.mock.calls[1]).toEqual([
+      undefined,
+      { recover: true, inputHash: expect.any(String) },
+      'user',
+      operationId,
+    ]);
+  });
+  it('keeps a host-fixed identity authoritative over a conflicting URL preference', async () => {
+    api.search = { principal: 'organization' };
+    render(
+      <JobsEditPage principalControl={{ kind: 'fixed', value: 'user', label: 'Persönlich' }} />
+    );
+    await waitFor(() => expect(api.get).toHaveBeenLastCalledWith('42', 'user'));
   });
 });

@@ -44,16 +44,19 @@ const record = {
 describe('Job editor operations', () => {
   it('reloads category choices for the selected principal without retaining stale choices', async () => {
     api.categories.mockResolvedValue([{ id: 'org', name: 'Organisation' }]);
-    const { result } = renderHook(() => useJobEditor(undefined, 'principal', 'organization'));
+    const { result, rerender } = renderHook(
+      (principal: 'user' | 'organization') => useJobEditor(undefined, 'principal', principal),
+      { initialProps: 'organization' as 'user' | 'organization' }
+    );
     await waitFor(() => expect(result.current.categories).toHaveLength(1));
     expect(api.categories).toHaveBeenLastCalledWith('organization');
     api.categories.mockRejectedValueOnce(new Error('unavailable'));
-    act(() => result.current.setPrincipal('user'));
+    rerender('user');
     await waitFor(() => expect(result.current.categoryError).toBe(true));
     expect(result.current.categories).toEqual([]);
     expect(api.categories).toHaveBeenLastCalledWith('user');
     api.categories.mockResolvedValue([{ id: 'org', name: 'Organisation' }]);
-    act(() => result.current.setPrincipal('organization'));
+    rerender('organization');
     await waitFor(() => expect(result.current.categories).toHaveLength(1));
     expect(result.current.categoryError).toBe(false);
   });
@@ -187,6 +190,15 @@ describe('Job editor operations', () => {
   });
   it.each([
     'forbidden',
+    'data_provider_mismatch',
+    'data_provider_missing',
+    'database_unavailable',
+    'identity_provider_unavailable',
+    'acting_principal_not_allowed',
+    'organization_mainserver_credentials_missing',
+    'missing_credentials',
+    'partial_credentials',
+    'mainserver_data_provider_identity_conflict',
     'job_prewrite_failed',
     'job_media_unavailable',
     'job_not_found',
@@ -240,6 +252,29 @@ describe('Job editor operations', () => {
     expect(result.current.pending).toBeUndefined();
     expect(sessionStorage.length).toBe(0);
     expect(result.current.draft.title).toBe('Road');
+    await act(async () => result.current.save());
+    expect(api.save).toHaveBeenCalledTimes(2);
+  });
+  it.each([
+    'data_provider_mismatch',
+    'data_provider_missing',
+    'database_unavailable',
+    'identity_provider_unavailable',
+    'acting_principal_not_allowed',
+    'organization_mainserver_credentials_missing',
+    'missing_credentials',
+    'partial_credentials',
+    'mainserver_data_provider_identity_conflict',
+  ])('retains an editable update after the definitive provider rejection %s', async (code) => {
+    api.get.mockResolvedValue({ data: record, access: { 'jobs.update': true } });
+    api.save.mockRejectedValueOnce(new MainserverApiError(code)).mockResolvedValue(record);
+    const { result } = renderHook(() => useJobEditor('123', code));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => result.current.change('title', 'Updated job'));
+    await act(async () => result.current.save());
+    expect(result.current.pending).toBeUndefined();
+    expect(sessionStorage.length).toBe(0);
+    expect(result.current.draft.title).toBe('Updated job');
     await act(async () => result.current.save());
     expect(api.save).toHaveBeenCalledTimes(2);
   });

@@ -22,12 +22,13 @@ import {
 } from '@sva/studio-ui-react';
 import { jobTemporalState, type JobList } from './contract.js';
 import { listJobs, listJobCategories } from './jobs.api.js';
-import { useJobAccess } from './jobs.access.js';
+import { useJobAccess, resolveJobPrincipal } from './jobs.access.js';
 import { ListFilters, listFilters } from './jobs.list-filters.js';
 
 function listColumns(
   pt: ReturnType<typeof usePluginTranslation>,
-  today: string
+  today: string,
+  principal: MainserverActingPrincipalType
 ): readonly StudioColumnDef<JobList['data'][number]>[] {
   return [
     {
@@ -38,6 +39,7 @@ function listColumns(
           className="underline underline-offset-4"
           to="/admin/jobs/$id"
           params={{ id: item.id }}
+          search={{ principal }}
         >
           {item.title}
         </Link>
@@ -80,7 +82,11 @@ function listColumns(
     },
   ];
 }
-function ListTable({ result, today }: Readonly<{ result: JobList; today: string }>) {
+function ListTable({
+  result,
+  today,
+  principal,
+}: Readonly<{ result: JobList; today: string; principal: MainserverActingPrincipalType }>) {
   const pt = usePluginTranslation('jobs');
   return (
     <StudioDataTable
@@ -90,7 +96,7 @@ function ListTable({ result, today }: Readonly<{ result: JobList; today: string 
       getRowId={(item) => item.id}
       selectionMode="none"
       emptyState={null}
-      columns={listColumns(pt, today)}
+      columns={listColumns(pt, today, principal)}
       labels={{
         selectionColumn: pt('fields.actions'),
         actionsColumn: pt('fields.actions'),
@@ -197,20 +203,14 @@ export function JobsListPage({
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as Record<string, unknown>;
   const { page, pageSize } = normalizeListSearch(search);
-  const { filters, filter } = listFilters(search, navigate, pageSize);
+  const { filters, filter, setPrincipal } = listFilters(search, navigate, pageSize);
   const query = JSON.stringify({ ...filters, page, pageSize });
   const scope = JSON.stringify([
     access.session.instanceId,
     access.session.subjectId,
     access.session.organizationId,
   ]);
-  const [selectedPrincipal, setPrincipal] = useState<MainserverActingPrincipalType>(
-    principalControl?.value ?? 'user'
-  );
-  const principal =
-    principalControl?.kind === 'selectable'
-      ? selectedPrincipal
-      : (principalControl?.value ?? 'user');
+  const principal = resolveJobPrincipal(search.principal, principalControl);
   const { result, state, categories } = useListData(query, scope, principal);
   const today = toDatetimeLocalValue(new Date().toISOString()).slice(0, 10);
   return (
@@ -220,7 +220,9 @@ export function JobsListPage({
       primaryAction={
         access.canCreate ? (
           <Button asChild>
-            <Link to="/admin/jobs/new">{pt('actions.create')}</Link>
+            <Link to="/admin/jobs/new" search={{ principal }}>
+              {pt('actions.create')}
+            </Link>
           </Button>
         ) : undefined
       }
@@ -242,7 +244,7 @@ export function JobsListPage({
           {!result.data.length ? (
             <StudioEmptyState>{pt('list.empty')}</StudioEmptyState>
           ) : (
-            <ListTable result={result} today={today} />
+            <ListTable result={result} today={today} principal={principal} />
           )}
           {listPagination(result, page, pageSize, navigate, pt)}
         </div>

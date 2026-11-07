@@ -598,6 +598,18 @@ describe('admin resource routes', () => {
       visible: 'false',
       temporal: 'planned',
     });
+    for (const principal of ['user', 'organization'])
+      expect(listRoute?.validateSearch?.({ type: 'jobs.job', principal })).toHaveProperty(
+        'principal',
+        principal
+      );
+    for (const principal of ['invalid', ['user'], 1])
+      expect(listRoute?.validateSearch?.({ type: 'jobs.job', principal })).not.toHaveProperty(
+        'principal'
+      );
+    expect(
+      listRoute?.validateSearch?.({ type: 'news.article', principal: 'user' })
+    ).not.toHaveProperty('principal');
     expect(listRoute?.validateSearch?.({ type: [], page: '1' })).not.toHaveProperty('type');
     expect(
       listRoute?.validateSearch?.({ type: 'news.article', languageCode: 'de', page: '1' })

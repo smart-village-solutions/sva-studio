@@ -150,14 +150,17 @@ export const normalizeAdminResourceListSearch = (
 const normalizeContentFilters = (contentType: string, search: Record<string, unknown>) => {
   const fields =
     contentType === 'jobs.job'
-      ? ['employmentType', 'visible', 'temporal']
+      ? ['employmentType', 'visible', 'temporal', 'principal']
       : contentType === 'construction-sites.construction-site'
         ? ['category', 'dateStart', 'dateEnd']
         : [];
   return Object.fromEntries(
-    fields.flatMap((key) =>
-      typeof search[key] === 'string' && search[key].trim() ? [[key, search[key].trim()]] : []
-    )
+    fields.flatMap((key) => {
+      const value = typeof search[key] === 'string' ? search[key].trim() : '';
+      if (!value) return [];
+      if (key === 'principal' && value !== 'user' && value !== 'organization') return [];
+      return [[key, value]];
+    })
   );
 };
 

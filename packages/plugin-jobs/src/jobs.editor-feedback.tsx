@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { usePluginTranslation, type MainserverActingPrincipalType } from '@sva/plugin-sdk';
 import {
   Button,
   AlertDialog,
@@ -43,7 +43,11 @@ export function EditorFeedback({ s, created }: Readonly<{ s: JobEditorState; cre
       ) : null}
       {created && s.record && !s.pending ? (
         <Button asChild>
-          <Link to="/admin/jobs/$id" params={{ id: s.record.id }}>
+          <Link
+            to="/admin/jobs/$id"
+            params={{ id: s.record.id }}
+            search={{ principal: s.principal }}
+          >
             {pt('actions.openSaved')}
           </Link>
         </Button>
@@ -55,8 +59,10 @@ export function EditorPrincipal({
   s,
   created,
   principalControl,
+  onPrincipalChange,
 }: Readonly<{
   s: JobEditorState;
+  onPrincipalChange: (principal: MainserverActingPrincipalType) => void;
   created: boolean;
   principalControl?: MainserverPrincipalControlModel;
 }>) {
@@ -69,7 +75,7 @@ export function EditorPrincipal({
         id="job-principal"
         label={pt(id ? 'principal.actAs' : 'principal.createAs')}
         value={s.principal}
-        onChange={s.setPrincipal}
+        onChange={onPrincipalChange}
         options={resolveMainserverPrincipalOptions(principalControl, {
           value: s.principal,
           label: pt(`principal.${s.principal}`),
@@ -113,7 +119,7 @@ export function EditorActions({ s }: Readonly<{ s: JobEditorState }>) {
   return (
     <div className="flex flex-wrap gap-2">
       <Button asChild variant="secondary">
-        <Link to="/admin/content" search={{ type: 'jobs.job', page: 1 }}>
+        <Link to="/admin/content" search={{ type: 'jobs.job', page: 1, principal: s.principal }}>
           {pt('actions.back')}
         </Link>
       </Button>

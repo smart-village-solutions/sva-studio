@@ -10,7 +10,7 @@ export function useEditorData(
   scope: string,
   initialPrincipal: MainserverActingPrincipalType
 ) {
-  const [principal, setPrincipal] = useState<MainserverActingPrincipalType>(initialPrincipal);
+  const principal = initialPrincipal;
   const key = `jobs:${scope}:${principal}:${id ?? 'new'}`;
   const [record, setRecord] = useState<JobRecord>();
   const [draft, setDraft] = useState(() =>
@@ -39,7 +39,6 @@ export function useEditorData(
     deleted,
     setDeleted,
     principal,
-    setPrincipal,
     key,
     record,
     setRecord,

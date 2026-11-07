@@ -131,5 +131,16 @@ export function listFilters(
       }),
       replace: true,
     });
-  return { filters, filter };
+  const setPrincipal = (principal: MainserverActingPrincipalType) =>
+    void navigate({
+      to: '/admin/content',
+      search: (current: Record<string, unknown>) => ({
+        ...current,
+        type: 'jobs.job',
+        principal,
+        page: 1,
+      }),
+      replace: true,
+    });
+  return { filters, filter, setPrincipal };
 }

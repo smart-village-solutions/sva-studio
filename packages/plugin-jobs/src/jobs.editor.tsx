@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { usePluginTranslation, type MainserverActingPrincipalType } from '@sva/plugin-sdk';
 import {
   StudioDetailPageTemplate,
   StudioDetailTabs,
@@ -20,6 +20,7 @@ type Props = Readonly<{
   state: ReturnType<typeof useJobEditor>;
   principalControl?: MainserverPrincipalControlModel;
   history: ReactNode;
+  onPrincipalChange: (principal: MainserverActingPrincipalType) => void;
 }>;
 function editorCanSave(s: Props['state'], created: boolean): boolean {
   const { id } = s;
@@ -31,7 +32,7 @@ function editorCanSave(s: Props['state'], created: boolean): boolean {
     !s.loading
   );
 }
-export function JobEditor({ state: s, principalControl, history }: Props) {
+export function JobEditor({ state: s, principalControl, history, onPrincipalChange }: Props) {
   const pt = usePluginTranslation('jobs');
   const { id } = s;
   const created = !id && Boolean(s.record);
@@ -62,7 +63,12 @@ export function JobEditor({ state: s, principalControl, history }: Props) {
           }}
         >
           <EditorFeedback s={s} created={created} />
-          <EditorPrincipal s={s} created={created} principalControl={principalControl} />
+          <EditorPrincipal
+            s={s}
+            created={created}
+            principalControl={principalControl}
+            onPrincipalChange={onPrincipalChange}
+          />
           {!s.deleted ? <EditorPanels s={s} disabled={disabled} history={history} /> : null}
         </form>
       )}

@@ -1411,3 +1411,7 @@ cannot attest a newer request. Neither editorial wording nor an administrative
 role alone is evidence that recording or a second factor is active.
 
 See [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).
+
+### Geometriegrenzen im Studio
+
+Baustellengeometrien werden als versionierte GeoJSON-FeatureCollection unter einem reservierten Payload-Schlüssel geführt. Unabhängige Client-/Studio-Server-Verträge prüfen Zahlenbereiche, Normalisierung, Mengen-/UTF-8-Grenzen und Polygon-Selbstüberschneidungen; gemeinsame Verhaltensfälle sichern beide Vertrauensgrenzen. Standortpunkte und unberührte Payload-Felder bleiben erhalten. Fremdversionen blockieren reduzierte Writes. Der Mainserver speichert das vollständige Studio-Payload unverändert über seinen bestehenden Ersetzungspfad; eine zusätzliche Geometrievalidierung oder Legacy-Erhaltung im Mainserver ist nicht Teil dieses Umfangs. Lokale Fixtures beweisen keinen produktiven Roundtrip.

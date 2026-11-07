@@ -1044,6 +1044,12 @@ importers:
       maplibre-gl:
         specifier: 6.9.0
         version: 6.9.0
+      terra-draw:
+        specifier: 1.39.0
+        version: 1.39.0
+      terra-draw-maplibre-gl-adapter:
+        specifier: 1.5.0
+        version: 1.5.0(maplibre-gl@6.9.0)(terra-draw@1.39.0)
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -1840,6 +1846,9 @@ importers:
       '@sva/waste-management-contracts':
         specifier: workspace:*
         version: link:../waste-management-contracts
+      terra-draw:
+        specifier: 1.39.0
+        version: 1.39.0
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -10013,6 +10022,15 @@ packages:
     resolution: {integrity: sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ==}
     engines: {node: '>=6'}
 
+  terra-draw-maplibre-gl-adapter@1.5.0:
+    resolution: {integrity: sha512-wUv7WDIKln+cWkJOJZ68cOLwFhcBXlSN3GF56Dx8GLnmTTnQEZbIyzWRHjsxhn+TOXvxBOlCDl5JmCghIW3L4g==}
+    peerDependencies:
+      maplibre-gl: '>=4'
+      terra-draw: ^1.0.0
+
+  terra-draw@1.39.0:
+    resolution: {integrity: sha512-W9myUqAlxTQYydNM6cI1kmaU3/i9IlNUfzbfjr7sZVfE5YrJ1ogEpMTKKXdlXdON7tB/nMd3sPL26u7CAzCxKA==}
+
   text-hex@1.0.0:
     resolution: {integrity: sha512-uuVGNWzgJ4yhRaNSiubPY7OjISw4sw4E5Uv0wbjp+OzcbmVU/rsT8ujgcXJhn9ypzsgr5vlzpPqP+MBBKcGvbg==}
 
@@ -15432,6 +15450,8 @@ snapshots:
       maplibre-gl: 6.9.0
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
+      terra-draw: 1.39.0
+      terra-draw-maplibre-gl-adapter: 1.5.0(maplibre-gl@6.9.0)(terra-draw@1.39.0)
       zod: 4.6.7
     transitivePeerDependencies:
       - '@babel/core'
@@ -20466,6 +20486,13 @@ snapshots:
       fs-constants: 1.0.0
       inherits: 2.0.4
       readable-stream: 3.6.2
+
+  terra-draw-maplibre-gl-adapter@1.5.0(maplibre-gl@6.9.0)(terra-draw@1.39.0):
+    dependencies:
+      maplibre-gl: 6.9.0
+      terra-draw: 1.39.0
+
+  terra-draw@1.39.0: {}
 
   text-hex@1.0.0: {}
 

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Input, StudioDetailCard, StudioField } from '@sva/studio-ui-react';
 import type { ConstructionSiteInput } from './contract.js';
@@ -5,6 +6,7 @@ import {
   constructionSiteFieldId,
   type ConstructionSiteFormProps,
 } from './construction-sites.form.js';
+import { ConstructionSiteGeometryFields } from './construction-sites.geometry-fields.js';
 import { ConstructionSiteMap } from './construction-sites.map.js';
 export function TrafficFields({ draft, change, errors }: ConstructionSiteFormProps) {
   const pt = usePluginTranslation('construction-sites');
@@ -70,6 +72,12 @@ export function TrafficFields({ draft, change, errors }: ConstructionSiteFormPro
 
 export function LocationFields(props: ConstructionSiteFormProps) {
   const { draft, change, errors } = props;
+  const [activeLocation, setActiveLocation] = useState(0);
+  const [selectedId, setSelectedId] = useState<string>();
+  const features = draft.geometry?.features ?? [];
+  const selectedFeatureId =
+    features.find((feature) => feature.id === selectedId)?.id ?? features[0]?.id;
+  const locationIndex = activeLocation < draft.locations.length ? activeLocation : 0;
   const pt = usePluginTranslation('construction-sites');
   const update = (index: number, value: Partial<ConstructionSiteInput['locations'][number]>) =>
     change(
@@ -77,7 +85,7 @@ export function LocationFields(props: ConstructionSiteFormProps) {
       draft.locations.map((item, position) => (position === index ? { ...item, ...value } : item))
     );
   return (
-    <StudioDetailCard title={pt('fields.locations')} description={pt('editor.primary')}>
+    <StudioDetailCard title={pt('geometry.title')} description={pt('geometry.description')}>
       {draft.locations.map((location, index) => (
         <div key={location.sourceIndex ?? `new-${index}`} className="space-y-4">
           <StudioField
@@ -118,12 +126,14 @@ export function LocationFields(props: ConstructionSiteFormProps) {
               </StudioField>
             ))}
           </div>
-          <ConstructionSiteMap
-            latitude={location.latitude}
-            longitude={location.longitude}
-            disabled={props.disabled}
-            onChange={(latitude, longitude) => update(index, { latitude, longitude })}
-          />
+          <Button
+            type="button"
+            variant="secondary"
+            aria-pressed={locationIndex === index}
+            onClick={() => setActiveLocation(index)}
+          >
+            {pt('geometry.showLocation', { position: index + 1 })}
+          </Button>
           <Button
             type="button"
             variant="secondary"
@@ -139,6 +149,27 @@ export function LocationFields(props: ConstructionSiteFormProps) {
         </div>
       ))}
       <AddLocation {...props} />
+      <ConstructionSiteMap
+        latitude={draft.locations[locationIndex]?.latitude ?? null}
+        longitude={draft.locations[locationIndex]?.longitude ?? null}
+        geometry={draft.geometry}
+        selectedFeatureId={selectedFeatureId}
+        onSelectFeature={setSelectedId}
+        disabled={props.disabled}
+        onDrawingChange={props.onGeometryDrawingChange}
+        onGeometryChange={(geometry) => change('geometry', geometry)}
+        onChange={(latitude, longitude) =>
+          draft.locations.length
+            ? update(locationIndex, { latitude, longitude })
+            : change('locations', [{ name: '', latitude, longitude }])
+        }
+      />
+      <ConstructionSiteGeometryFields
+        {...props}
+        selectedFeatureId={selectedFeatureId}
+        onSelectFeature={setSelectedId}
+        disabled={props.disabled || props.geometryDrawing === true}
+      />
     </StudioDetailCard>
   );
 }

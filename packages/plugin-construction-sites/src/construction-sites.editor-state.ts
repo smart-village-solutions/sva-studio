@@ -32,6 +32,7 @@ function useEditorData(
   const [baseline, setBaseline] = useState(JSON.stringify(draft));
   const [resourceAccess, setResourceAccess] = useState<Readonly<Record<string, boolean>>>({});
   const [loading, setLoading] = useState(Boolean(id));
+  const [geometryDrawing, setGeometryDrawing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
   const [message, setMessage] = useState<string>();
@@ -46,7 +47,7 @@ function useEditorData(
   const dirty = baseline !== JSON.stringify(draft);
   const guard = useStudioEditorLeaveGuard({
     enabled: true,
-    hasUnsavedChanges: dirty || Boolean(pending),
+    hasUnsavedChanges: dirty || geometryDrawing || Boolean(pending),
   });
   return {
     id,
@@ -64,6 +65,8 @@ function useEditorData(
     setLoading,
     busy,
     setBusy,
+    geometryDrawing,
+    setGeometryDrawing,
     failure,
     setFailure,
     message,
@@ -148,7 +151,8 @@ function useEditorCommit({
   return async (
     operation: ConstructionSitePending,
     recover: boolean,
-    revision = guard.captureRevision()
+    revision = guard.captureRevision(),
+    submittedSite: ConstructionSiteInput = draft
   ) => {
     setBusy(true);
     setFailure(undefined);
@@ -157,7 +161,10 @@ function useEditorCommit({
         operation.id,
         recover
           ? { recover: true, inputHash: operation.inputHash }
-          : { site: draft, ...(record ? { baseFingerprint: record.contentFingerprint } : {}) },
+          : {
+              site: submittedSite,
+              ...(record ? { baseFingerprint: record.contentFingerprint } : {}),
+            },
         principal,
         operation.operationId
       );
@@ -179,7 +186,8 @@ function useEditorCommit({
         sessionStorage.removeItem(key);
         setPending(undefined);
         setFailure(
-          code === 'construction_site_content_conflict'
+          code === 'construction_site_content_conflict' ||
+            code === 'construction_site_geometry_payload_too_large'
             ? `errors.${code}`
             : code === 'forbidden' || code === 'stale_mainserver_context'
               ? `errors.${code}`
@@ -221,6 +229,10 @@ export function useConstructionSiteEditor(
   };
   const save = async () => {
     if (saving.current || data.busy || data.pending || (id && !record)) return;
+    if (data.geometryDrawing) {
+      setErrors(['geometry']);
+      return;
+    }
     const parsed = constructionSiteInputSchema.safeParse(draft);
     if (!parsed.success) {
       setErrors(parsed.error.issues.map((issue) => issue.path.join('.')));
@@ -232,7 +244,7 @@ export function useConstructionSiteEditor(
     const revision = guard.captureRevision();
     try {
       const body = {
-        site: draft,
+        site: parsed.data,
         ...(record ? { baseFingerprint: record.contentFingerprint } : {}),
       };
       const operation = {
@@ -242,7 +254,7 @@ export function useConstructionSiteEditor(
       };
       sessionStorage.setItem(key, JSON.stringify(operation));
       setPending(operation);
-      await commit(operation, false, revision);
+      await commit(operation, false, revision, parsed.data);
     } catch {
       setFailure('messages.saveError');
     } finally {

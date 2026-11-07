@@ -6,9 +6,13 @@ import {
   parse,
   type IntrospectionQuery,
   typeFromAST,
+  validate,
 } from 'graphql';
 import schemaSnapshot from '../../generated/schema.snapshot.json';
-import { constructionSiteWriteFields } from '../../generated/construction-sites.js';
+import {
+  constructionSiteWriteFields,
+  constructionSiteListDocument,
+} from '../../generated/construction-sites.js';
 import { constructionSiteRead } from '../construction-sites-snapshot.js';
 import { createConstructionSiteService } from './service-construction-sites.js';
 import type { WriteShape, RawRecord } from '../vouchers-snapshot.js';
@@ -95,7 +99,7 @@ function setup(defaultCategory?: string) {
         stored = {
           ...stored,
           ...emptyRelations,
-          ...call.variables,
+          ...structuredClone(call.variables),
           categories: [
             ...(call.variables.categories as RawRecord[]).map((item) => ({
               ...item,
@@ -255,4 +259,115 @@ describe('ConstructionSite GraphQL roundtrip', () => {
       ).toHaveLength(1);
     }
   );
+});
+
+describe('geometry service roundtrip', () => {
+  it('uses a schema-valid list projection without payload, coordinates or editor metadata', async () => {
+    const schema = buildClientSchema(schemaSnapshot.data as unknown as IntrospectionQuery);
+    expect(validate(schema, parse(constructionSiteListDocument))).toEqual([]);
+    expect(constructionSiteListDocument).not.toMatch(
+      /\b(payload|contentBlocks|mediaContents|geoLocation)\b/
+    );
+    const { service, stored } = setup();
+    (stored().payload as RawRecord).constructionSiteGeometry = { version: 99 };
+    const list = await service.listConstructionSiteCandidates(connection);
+    expect(list[0]?.input).toEqual({
+      dates: [{ dateStart: '2026-11-01', dateEnd: '2026-11-10' }],
+      locations: [{ name: 'Brücke' }],
+      categories: [{ name: 'Verkehr' }],
+    });
+    expect(list[0]).not.toHaveProperty('contentFingerprint');
+    expect(list[0]).not.toHaveProperty('writeBlockedReason');
+  });
+  const geometry = {
+    version: 1 as const,
+    type: 'FeatureCollection' as const,
+    features: [
+      {
+        type: 'Feature' as const,
+        id: '8b51428e-832b-49ea-a9f7-537608e344e1',
+        properties: {},
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: [
+            [13, 52],
+            [13.001, 52.001],
+          ] as [number, number][],
+        },
+      },
+    ],
+  };
+  it('writes, reloads and changes geometry through the real service with an upstream fixture', async () => {
+    const { service, stored } = setup();
+    const before = await service.getConstructionSite({ ...connection, siteId: '42' });
+    const prepared = service.prepareConstructionSite(
+      { ...before.data.input, geometry },
+      'geo-create',
+      before.item
+    );
+    const saved = await service.writeConstructionSite({ ...connection, prepared });
+    expect(saved.input.geometry).toEqual(geometry);
+    const reread = await service.getConstructionSite({ ...connection, siteId: '42' });
+    const changed = structuredClone(geometry);
+    changed.features[0]!.geometry.coordinates[1] = [13.002, 52.002];
+    const update = service.prepareConstructionSite(
+      { ...reread.data.input, geometry: changed },
+      'geo-change',
+      reread.item
+    );
+    expect(
+      (await service.writeConstructionSite({ ...connection, prepared: update })).input.geometry
+    ).toEqual(changed);
+    expect(stored().locations).toEqual(before.item.locations);
+    expect(stored().payload).toMatchObject({ opaque: { keep: [1, 2] } });
+  });
+  it('deletes geometry using the unchanged upstream replacement semantics', async () => {
+    const { service, stored } = setup();
+    (stored().payload as RawRecord).constructionSiteGeometry = geometry;
+    const before = await service.getConstructionSite({ ...connection, siteId: '42' });
+    const prepared = service.prepareConstructionSite(
+      { ...before.data.input, geometry: null },
+      'geo-delete',
+      before.item
+    );
+    expect(prepared.expected.payload).not.toHaveProperty('constructionSiteGeometry');
+    expect(
+      (await service.writeConstructionSite({ ...connection, prepared })).input.geometry
+    ).toBeUndefined();
+    expect(stored().payload).not.toHaveProperty('constructionSiteGeometry');
+    expect(stored().payload).toMatchObject({ opaque: { keep: [1, 2] } });
+    expect(stored().locations).toEqual(before.item.locations);
+    // Recovery reads the result without another write. A leftover null is still a mismatch.
+    expect(
+      (await service.recoverConstructionSite({ ...connection, prepared })).input.geometry
+    ).toBeUndefined();
+    (stored().payload as RawRecord).constructionSiteGeometry = null;
+    await expect(
+      service.verifyConstructionSiteWrite({ ...connection, prepared, siteId: '42' })
+    ).rejects.toThrow('construction_site_readback_mismatch');
+  });
+  it('requires exact geometry readback, including unexpected properties', async () => {
+    const { service, stored } = setup();
+    const before = await service.getConstructionSite({ ...connection, siteId: '42' });
+    const prepared = service.prepareConstructionSite(
+      { ...before.data.input, geometry },
+      'geo-read',
+      before.item
+    );
+    await service.writeConstructionSite({ ...connection, prepared });
+    (
+      (stored().payload as RawRecord).constructionSiteGeometry as Record<string, unknown>
+    ).unexpected = true;
+    await expect(
+      service.verifyConstructionSiteWrite({ ...connection, prepared, siteId: '42' })
+    ).rejects.toThrow('construction_site_readback_mismatch');
+  });
+  it('enforces UTF-8 size on the merged payload including retained fields', async () => {
+    const { service, stored } = setup();
+    (stored().payload as RawRecord).opaque = 'ä'.repeat(31 * 1024);
+    const before = await service.getConstructionSite({ ...connection, siteId: '42' });
+    expect(() =>
+      service.prepareConstructionSite({ ...before.data.input, geometry }, 'geo-size', before.item)
+    ).toThrow('construction_site_geometry_payload_too_large');
+  });
 });

@@ -14,6 +14,7 @@ import {
   buildConstructionSiteWrite,
   constructionSiteFingerprint,
   constructionSiteRead,
+  constructionSiteListRead,
 } from '../construction-sites-snapshot.js';
 import { raw, records, voucherWriteMatches, type RawRecord } from '../vouchers-snapshot.js';
 import type { ServiceContext } from './service-context.js';
@@ -70,7 +71,7 @@ const listConstructionSiteCandidates = async (
   context: Context,
   input: SvaMainserverConnectionInput
 ) => {
-  const data: ReturnType<typeof constructionSiteRead>[] = [];
+  const data: ReturnType<typeof constructionSiteListRead>[] = [];
   let skip = 0;
   for (;;) {
     assertUpstreamScanLimit(skip);
@@ -82,7 +83,7 @@ const listConstructionSiteCandidates = async (
       { skip, limit: 100 }
     );
     const page = records(response.genericItems);
-    data.push(...page.map(constructionSiteRead));
+    data.push(...page.map(constructionSiteListRead));
     if (page.length < 100) return data;
     skip += page.length;
   }
@@ -97,6 +98,11 @@ const prepareConstructionSite = (
     ...withUpdatedPayload(expected.payload, existing?.payload),
     studioConstructionSiteOperation: operationId,
   };
+  if (
+    input.geometry &&
+    new TextEncoder().encode(JSON.stringify(expected.payload)).length > 60 * 1024
+  )
+    throw new Error('construction_site_geometry_payload_too_large');
   if (!existing) expected.externalId = `studio-construction-site:${operationId}`;
   const previousMediaIds = existing
     ? constructionSiteRead(existing).input.mediaContents.flatMap((item) =>
@@ -124,8 +130,17 @@ const verifyConstructionSiteWrite = async (
 ) => {
   const result = await getConstructionSite(context, { ...input, siteId: input.siteId });
   const { categories, ...expected } = input.prepared.expected;
+  const expectedPayload = raw(expected.payload);
+  const actualPayload = raw(result.item.payload);
+  const expectedGeometry = expectedPayload.constructionSiteGeometry;
+  const geometryMatches =
+    expectedGeometry == null
+      ? !Object.prototype.hasOwnProperty.call(actualPayload, 'constructionSiteGeometry')
+      : constructionSiteFingerprint({ geometry: actualPayload.constructionSiteGeometry }) ===
+        constructionSiteFingerprint({ geometry: expectedGeometry });
   const categoryNames = records(result.item.categories).map((category) => category.name);
   if (
+    !geometryMatches ||
     !voucherWriteMatches(result.item, expected) ||
     !records(categories).every((category) => categoryNames.includes(category.name)) ||
     (input.prepared.providerId && input.prepared.providerId !== result.data.dataProvider?.id)

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { constructionSiteGeometrySchema } from './construction-sites.geometry.js';
 
 export const CONSTRUCTION_SITES_TYPE = 'construction-sites.construction-site' as const;
 export const CONSTRUCTION_SITES_GENERIC_TYPE = 'ConstructionSite' as const;
@@ -59,6 +60,7 @@ export const constructionSiteInputSchema = z
     categories: z.array(z.object({ name: z.string().trim().min(1).max(1000) }).strict()).max(100),
     mediaContents: z.array(mediaSchema).max(100),
     visible: z.boolean(),
+    geometry: constructionSiteGeometrySchema.nullable().optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -110,8 +112,17 @@ export type ConstructionSiteRecord = Readonly<{
   reconciliationRequired?: boolean;
   dataProvider?: Readonly<{ id: string; name?: string }>;
 }>;
+export type ConstructionSiteListItem = Pick<
+  ConstructionSiteRecord,
+  'id' | 'genericType' | 'title' | 'visible' | 'updatedAt' | 'dataProvider'
+> &
+  Readonly<{
+    input: Pick<ConstructionSiteInput, 'dates' | 'categories'> & {
+      locations: readonly Pick<ConstructionSiteInput['locations'][number], 'name'>[];
+    };
+  }>;
 export type ConstructionSiteList = Readonly<{
-  data: readonly ConstructionSiteRecord[];
+  data: readonly ConstructionSiteListItem[];
   pagination: Readonly<{ page: number; pageSize: number; hasNextPage: boolean; total: number }>;
 }>;
 export type ConstructionSiteTemporalState = 'planned' | 'ongoing' | 'ended' | 'incomplete';

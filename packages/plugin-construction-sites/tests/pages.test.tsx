@@ -9,6 +9,7 @@ import {
 } from '../src/construction-sites.pages.js';
 import { ConstructionSitesListPage } from '../src/construction-sites.list.js';
 import { createConstructionSiteDefaults } from '../src/contract.js';
+import { constructionSiteRequestHash } from '../src/construction-sites.api.js';
 const state = vi.hoisted(() => ({
   id: '42' as string | undefined,
   search: {} as Record<string, unknown>,
@@ -19,6 +20,7 @@ const state = vi.hoisted(() => ({
   categories: vi.fn(),
   history: vi.fn(),
   realMedia: false,
+  drawingChange: undefined as undefined | ((drawing: boolean) => void),
 }));
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -66,7 +68,12 @@ vi.mock('../src/construction-sites.api.js', async (original) => ({
   listConstructionSites: (...args: unknown[]) => state.list(...args),
   listConstructionSiteCategories: (...args: unknown[]) => state.categories(...args),
 }));
-vi.mock('../src/construction-sites.map.js', () => ({ ConstructionSiteMap: () => null }));
+vi.mock('../src/construction-sites.map.js', () => ({
+  ConstructionSiteMap: (props: { onDrawingChange?: (drawing: boolean) => void }) => {
+    state.drawingChange = props.onDrawingChange;
+    return null;
+  },
+}));
 vi.mock('../src/construction-sites.form-media.js', async (original) => {
   const actual = await original<typeof import('../src/construction-sites.form-media.js')>();
   return {
@@ -260,7 +267,9 @@ describe('construction site editorial UI', () => {
     const traffic = screen.getByRole('heading', { name: 'Einschränkungen' }).closest('section')!;
     fireEvent.click(within(traffic).getByRole('button', { name: 'Hinzufügen' }));
     fireEvent.change(screen.getByLabelText('Einschränkungen'), { target: { value: 'Langsam' } });
-    const location = screen.getByRole('heading', { name: 'Standort' }).closest('section')!;
+    const location = screen
+      .getByRole('heading', { name: 'Standort, Strecken und Flächen' })
+      .closest('section')!;
     fireEvent.click(within(location).getByRole('button', { name: 'Hinzufügen' }));
     fireEvent.change(screen.getByLabelText('Bezeichnung'), { target: { value: 'Brücke' } });
     fireEvent.change(screen.getByLabelText('Breitengrad'), { target: { value: '0' } });
@@ -318,7 +327,9 @@ describe('construction site editorial UI', () => {
     const traffic = screen.getByRole('heading', { name: 'Einschränkungen' }).closest('section')!;
     fireEvent.click(within(traffic).getAllByRole('button', { name: 'Entfernen' })[0]!);
     fireEvent.change(screen.getByDisplayValue('Two'), { target: { value: 'Remaining' } });
-    const location = screen.getByRole('heading', { name: 'Standort' }).closest('section')!;
+    const location = screen
+      .getByRole('heading', { name: 'Standort, Strecken und Flächen' })
+      .closest('section')!;
     fireEvent.click(within(location).getByRole('button', { name: 'Entfernen' }));
     const description = screen
       .getByRole('heading', { name: 'Weitere Informationen' })
@@ -491,4 +502,183 @@ describe('construction site editorial UI', () => {
     ).toBe(true);
     expect(state.save).not.toHaveBeenCalled();
   });
+});
+
+describe('geometry coordinate editor', () => {
+  it('creates a route without a map and saves the same typed geometry draft', async () => {
+    state.id = undefined;
+    render(<ConstructionSitesCreatePage />);
+    fireEvent.change(screen.getByLabelText(/^Titel/), { target: { value: 'Straßenbau' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Strecke über Koordinaten erfassen' }));
+    const group = screen.getByRole('group', { name: 'Strecke 1', exact: true });
+    for (const [label, value] of [
+      ['Punkt 1: Längengrad', '13'],
+      ['Punkt 1: Breitengrad', '52'],
+      ['Punkt 2: Längengrad', '13.01'],
+      ['Punkt 2: Breitengrad', '52.01'],
+    ])
+      fireEvent.change(within(group).getByLabelText(label!), { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Baustelle anlegen', exact: true }));
+    await waitFor(() => expect(state.save).toHaveBeenCalledOnce());
+    expect(state.save.mock.calls[0]![1].site.geometry.features[0].geometry).toEqual({
+      type: 'LineString',
+      coordinates: [
+        [13, 52],
+        [13.01, 52.01],
+      ],
+    });
+  });
+  it('prevents a server write while the map contains an unfinished drawing', async () => {
+    state.id = undefined;
+    render(<ConstructionSitesCreatePage />);
+    fireEvent.change(screen.getByLabelText(/^Titel/), { target: { value: 'Straßenbau' } });
+    act(() => state.drawingChange?.(true));
+    fireEvent.click(screen.getByRole('button', { name: 'Baustelle anlegen', exact: true }));
+    expect(state.save).not.toHaveBeenCalled();
+    act(() => state.drawingChange?.(false));
+    fireEvent.click(screen.getByRole('button', { name: 'Baustelle anlegen', exact: true }));
+    await waitFor(() => expect(state.save).toHaveBeenCalledOnce());
+  });
+  it('removes the last feature with an explicit null deletion signal', async () => {
+    state.id = undefined;
+    render(<ConstructionSitesCreatePage />);
+    fireEvent.change(screen.getByLabelText(/^Titel/), { target: { value: 'Straßenbau' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Fläche über Koordinaten erfassen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Form löschen', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Baustelle anlegen', exact: true }));
+    await waitFor(() => expect(state.save).toHaveBeenCalledOnce());
+    expect(state.save.mock.calls[0]![1].site.geometry).toBeNull();
+  });
+});
+
+it('reorders polygon points by keyboard controls while keeping the closing point automatic', async () => {
+  state.id = undefined;
+  render(<ConstructionSitesCreatePage />);
+  fireEvent.change(screen.getByLabelText(/^Titel/), { target: { value: 'Platzsanierung' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Fläche über Koordinaten erfassen' }));
+  const group = screen.getByRole('group', { name: 'Fläche 1', exact: true });
+  for (const [index, longitude, latitude] of [
+    [1, 13, 52],
+    [2, 13.01, 52],
+    [3, 13.01, 52.01],
+  ]) {
+    fireEvent.change(within(group).getByLabelText(`Punkt ${index}: Längengrad`), {
+      target: { value: String(longitude) },
+    });
+    fireEvent.change(within(group).getByLabelText(`Punkt ${index}: Breitengrad`), {
+      target: { value: String(latitude) },
+    });
+  }
+  expect(within(group).queryByLabelText('Punkt 4: Breitengrad')).toBeNull();
+  fireEvent.click(within(group).getByRole('button', { name: 'Punkt 3 nach oben verschieben' }));
+  expect((within(group).getByLabelText('Punkt 2: Breitengrad') as HTMLInputElement).value).toBe(
+    '52.01'
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Baustelle anlegen', exact: true }));
+  await waitFor(() => expect(state.save).toHaveBeenCalledOnce());
+  const points = state.save.mock.calls[0]![1].site.geometry.features[0].geometry.coordinates[0];
+  expect(points).toHaveLength(4);
+  expect(points[0]).toEqual(points[3]);
+  expect(points.slice(0, -1)).toEqual(
+    expect.arrayContaining([
+      [13, 52],
+      [13.01, 52],
+      [13.01, 52.01],
+    ])
+  );
+});
+
+it('stops coordinate creation at ten shapes and allows it again after removal', () => {
+  state.id = undefined;
+  render(<ConstructionSitesCreatePage />);
+  const add = screen.getByRole('button', { name: 'Strecke über Koordinaten erfassen' });
+  for (let index = 0; index < 10; index++) fireEvent.click(add);
+  expect(add.matches(':disabled')).toBe(true);
+  expect(
+    screen.getByRole('button', { name: 'Fläche über Koordinaten erfassen' }).matches(':disabled')
+  ).toBe(true);
+  fireEvent.click(
+    within(screen.getByRole('group', { name: 'Strecke 10', exact: true })).getByRole('button', {
+      name: 'Form löschen',
+      exact: true,
+    })
+  );
+  expect(add.matches(':disabled')).toBe(false);
+});
+
+it('shows stored coordinates without geometry mutation actions for a read-only record', async () => {
+  publishSessionAccessSnapshot({
+    isResolved: true,
+    subjectId: 'actor',
+    instanceId: 'tenant',
+    assignedModules: ['construction-sites'],
+    roles: [],
+    permissionActions: ['construction-sites.read'],
+    unscopedPermissionActions: [],
+  });
+  state.get.mockResolvedValue({
+    data: {
+      ...record,
+      input: {
+        ...record.input,
+        geometry: {
+          version: 1,
+          type: 'FeatureCollection',
+          features: [
+            {
+              type: 'Feature',
+              id: '8b51428e-832b-49ea-a9f7-537608e344e1',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  [13, 52],
+                  [13.01, 52.01],
+                ],
+              },
+            },
+          ],
+        },
+      },
+    },
+    access: { 'construction-sites.update': false },
+  });
+  render(<ConstructionSitesEditPage />);
+  await screen.findByDisplayValue('Brückenbau');
+  fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+  expect(screen.getByLabelText('Punkt 1: Breitengrad').matches(':disabled')).toBe(true);
+  expect(screen.queryByRole('button', { name: 'Strecke über Koordinaten erfassen' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Form löschen', exact: true })).toBeNull();
+  expect(state.save).not.toHaveBeenCalled();
+});
+
+it('hashes exactly the normalized geometry body sent to the server', async () => {
+  state.id = undefined;
+  let finish: ((result: typeof record) => void) | undefined;
+  state.save.mockImplementationOnce(
+    () =>
+      new Promise<typeof record>((resolve) => {
+        finish = resolve;
+      })
+  );
+  render(<ConstructionSitesCreatePage />);
+  fireEvent.change(screen.getByLabelText(/^Titel/), { target: { value: 'Straßenbau' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Strecke über Koordinaten erfassen' }));
+  const group = screen.getByRole('group', { name: 'Strecke 1', exact: true });
+  for (const [label, value] of [
+    ['Punkt 1: Längengrad', '13.123456789'],
+    ['Punkt 1: Breitengrad', '52'],
+    ['Punkt 2: Längengrad', '13.01'],
+    ['Punkt 2: Breitengrad', '52.01'],
+  ])
+    fireEvent.change(within(group).getByLabelText(label!), { target: { value } });
+  fireEvent.click(screen.getByRole('button', { name: 'Baustelle anlegen', exact: true }));
+  await waitFor(() => expect(state.save).toHaveBeenCalledOnce());
+  const body = state.save.mock.calls[0]![1];
+  expect(body.site.geometry.features[0].geometry.coordinates[0][0]).toBe(13.123457);
+  const key = Object.keys(sessionStorage).find((key) => key.startsWith('construction-sites:'));
+  expect(key).toBeDefined();
+  const pending = JSON.parse(sessionStorage.getItem(key!)!);
+  expect(pending.inputHash).toBe(await constructionSiteRequestHash(body));
+  await act(async () => finish?.(record));
 });

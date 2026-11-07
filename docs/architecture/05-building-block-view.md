@@ -1269,3 +1269,7 @@ und Kalendergitter lesen dieselben berechneten Terminobjekte.
 
 The ownership decision and release boundary are recorded in
 [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).
+
+## Baustellengeometrie im Studio
+
+Das bestehende Baustellenplugin ergänzt seinen MapLibre-Kartenpfad lokal um Terra Draw und eine Koordinatenansicht. Der Studio-Mainserver-Adapter besitzt eine unabhängige Geometrievalidierung. Die einzige Datenquelle bleibt das GenericItem-Payload; weder ein neues Workspace-Package noch eine zusätzliche Geodatenbank werden eingeführt. Nach Nutzerfestlegung wird das alte CMS nicht mehr für Baustellen verwendet. Die Erweiterung verwendet deshalb den unveränderten Mainserver und übernimmt Erhalt sowie Schlüsselentfernung im vollständigen Studio-Payload. Siehe [Baustellenreferenz](../reference/construction-sites.md).

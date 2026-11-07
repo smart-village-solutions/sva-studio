@@ -22,9 +22,11 @@ export const constructionSiteFields = `${selection(fields)} id visible updatedAt
 export const constructionSiteDetailDocument = `query SvaMainserverConstructionSiteDetail($id: ID!) {
   genericItem(id: $id) { ${constructionSiteFields} }
 }`;
+export const constructionSiteListFields = `id genericType title visible updatedAt
+  dataProvider { id name } locations { name } dates { dateStart dateEnd } categories { name }`;
 export const constructionSiteListDocument = `query SvaMainserverConstructionSiteList($limit: Int!, $skip: Int!) {
   genericItems(genericType: "ConstructionSite", limit: $limit, skip: $skip, order: id_ASC) {
-    ${constructionSiteFields}
+    ${constructionSiteListFields}
   }
 }`;
 export const constructionSiteOperationDocument = `query SvaMainserverConstructionSiteOperation($externalId: ID!) {

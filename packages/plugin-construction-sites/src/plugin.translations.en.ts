@@ -1,4 +1,56 @@
 export const constructionSiteTranslationsEn = {
+  geometry: {
+    title: 'Location, routes and areas',
+    description:
+      'A location point places the construction site. Routes and areas describe the affected region.',
+    forms: 'Shapes',
+    formCount: 'Shapes · {{count}} of 10',
+    pointCount: '{{count}} points',
+    independent: 'Location points remain independent.',
+    empty: 'No route or area yet. Draw on the map or enter coordinates.',
+    selectFeature: 'Select {{name}}',
+    selectionHelp: 'Move vertices. Small points insert an additional vertex.',
+    polygonHelp: 'Closed area without holes.',
+    lineHelp: 'The order of points defines the route.',
+    coordinatesFor: 'Coordinates · {{name}}',
+    coordinateHelp:
+      'Points in route order. Changes appear on the map immediately. Areas close automatically.',
+    limits: '{{count}} of 1,000 positions · At most 500 positions per shape. Areas without holes.',
+    formLimit: '10 shapes are present. Remove a shape before drawing another one.',
+    zoomIn: 'Zoom in on map',
+    zoomOut: 'Zoom out on map',
+
+    addLineCoordinates: 'Enter route coordinates',
+    addPolygonCoordinates: 'Enter area coordinates',
+    feature: '{{kind}} {{position}}',
+    area: 'Area',
+    route: 'Route',
+    coordinate: 'Point {{position}}: {{axis}}',
+    moveUp: 'Move point {{position}} up',
+    moveDown: 'Move point {{position}} down',
+    up: 'Move up',
+    down: 'Move down',
+    removePoint: 'Remove point {{position}}',
+    removePointShort: 'Remove point',
+    addPoint: 'Add point',
+    deleteFeature: 'Delete shape',
+
+    tools: 'Map tools',
+    select: 'Select',
+    location: 'Set location',
+    linestring: 'Draw route',
+    polygon: 'Draw area',
+    undo: 'Undo',
+    redo: 'Redo',
+    deleteSelected: 'Delete selected shape',
+    cancelDrawing: 'Discard drawing',
+    invalid: 'The geometry is invalid. Check the coordinates.',
+    drawing:
+      'Finish or discard the drawing before saving. Press Enter to finish or Escape to cancel.',
+    help: 'Routes and areas are saved together with the construction site.',
+    map: 'Construction site map',
+    showLocation: 'Edit location {{position}} on the map',
+  },
   navigation: {
     title: 'Construction sites',
   },
@@ -181,6 +233,8 @@ export const constructionSiteTranslationsEn = {
     mediaPickerMetadataSaveError: 'The metadata could not be saved.',
   },
   errors: {
+    construction_site_geometry_payload_too_large:
+      'The geometry and existing construction site data exceed the storage limit. Reduce the geometry or the data.',
     construction_site_content_conflict:
       'The construction site changed in the meantime. Your input is preserved; reload the current version to compare.',
     construction_site_invalid_input: 'Please correct the highlighted fields.',

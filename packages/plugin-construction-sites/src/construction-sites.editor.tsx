@@ -177,10 +177,12 @@ function EditorPanels({
     categoryError: s.categoryError,
     disabled,
     canPublish,
+    onGeometryDrawingChange: s.setGeometryDrawing,
+    geometryDrawing: s.geometryDrawing,
   };
   const content = (
     <fieldset disabled={disabled} className="min-w-0 space-y-6">
-      <ConstructionSiteContentFields {...fields} />
+      <ConstructionSiteContentFields key={s.key} {...fields} />
     </fieldset>
   );
   const basis = (
@@ -247,7 +249,11 @@ function EditorSaveButton({
       type="submit"
       form="construction-site-form"
       status={s.busy ? 'saving' : s.message === 'messages.saved' ? 'saved' : 'idle'}
-      disabled={disabled || (!id && !isMainserverPrincipalReady(principalControl, s.principal))}
+      disabled={
+        disabled ||
+        s.geometryDrawing ||
+        (!id && !isMainserverPrincipalReady(principalControl, s.principal))
+      }
       labels={{
         idle: pt(id ? 'actions.update' : 'actions.create'),
         saving: pt('actions.saving'),

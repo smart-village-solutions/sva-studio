@@ -1386,3 +1386,7 @@ Ergebnisse; während des Rollout-Abgleichs sind parallele direkte Realm-Edits au
 ## Baustellenplugin
 
 Für Baustellen bleiben unbekannte Payload- und Relationsmetadaten erhalten; nicht wiederherstellbare Daten blockieren den Write. Ausdrücklich akzeptiert ist allein der Entfall nicht mehr gelesener deaktivierter Kategoriezuordnungen. Sichtbarkeit verwendet Host-Lifecycle-Rechte; Dateiverknüpfungen verwenden die vorhandene Medienverwaltung. Der ausschließlich auf Baustellen gefilterte Kategorie-Lookup wird mit `construction-sites.read` oder `construction-sites.create` autorisiert und verwendet bei expliziter Auswahl den bestehenden Principal-Resolver; ungefilterte Abfragen und Kategorienverwaltung behalten ihre eigenen Rechte. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+
+## Stellenplugin
+
+Jobs bewahren unbekannte Payload- und Relationsfelder. Nicht vollständig wiederherstellbare Daten und möglicherweise verborgene deaktivierte Kategorien sperren Updates. Der Anstellungsarten-Lookup benötigt Job-Lese- oder Erstellrecht und verwendet exakt `generic_item_job` als Tag. Fachliche Schreibsperren schützen auch bei deaktiviertem Modul vor generischer Anlage, Umtypisierung, Statusänderung, Löschung und Ownership-Umgehung. Operationsmarker sind an Instanz, Account, Organisation, Principal und Credential gebunden; der Browser persistiert keine Formulardaten. Siehe [Stellenanzeigenreferenz](../reference/jobs.md).

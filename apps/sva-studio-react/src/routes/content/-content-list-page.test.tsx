@@ -1,3 +1,4 @@
+import { isBulkActionableContent, type RegisteredContentRow } from './-content-list-row-actions';
 import { readNormalizedRouteState, updateRouteState } from './-content-list-route-state';
 import type { RegisteredStudioContentType } from '@sva/plugin-sdk';
 import { studioContentTypes } from '../../lib/plugins';
@@ -1366,19 +1367,29 @@ describe('ContentListPage', () => {
 
   it('clears only the voucher location filter and returns to the first page', () => {
     searchState = {
-      type: 'vouchers.voucher', poiId: '33394', status: 'published', page: 3,
-      pageSize: 50, sortBy: 'title', sortDirection: 'asc',
+      type: 'vouchers.voucher',
+      poiId: '33394',
+      status: 'published',
+      page: 3,
+      pageSize: 50,
+      sortBy: 'title',
+      sortDirection: 'asc',
     };
     useContentsMock.mockReturnValue(createContentsApiResult());
     render(<ContentListPage />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Gutscheine aller Orte anzeigen' }));
 
-    const updater = navigateMock.mock.calls.at(-1)?.[0]?.search as
-      (current: Record<string, unknown>) => Record<string, unknown>;
+    const updater = navigateMock.mock.calls.at(-1)?.[0]?.search as (
+      current: Record<string, unknown>
+    ) => Record<string, unknown>;
     expect(updater(searchState)).toEqual({
-      type: 'vouchers.voucher', status: 'published', page: 1, pageSize: 50,
-      sortBy: 'title', sortDirection: 'asc',
+      type: 'vouchers.voucher',
+      status: 'published',
+      page: 1,
+      pageSize: 50,
+      sortBy: 'title',
+      sortDirection: 'asc',
     });
   });
 
@@ -2022,9 +2033,7 @@ describe('ContentListPage', () => {
       await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
       fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
       const reopenedDialog = await screen.findByRole('alertdialog');
-      fireEvent.click(
-        within(reopenedDialog).getByRole('button', { name: 'Löschen' })
-      );
+      fireEvent.click(within(reopenedDialog).getByRole('button', { name: 'Löschen' }));
       await waitFor(() => expect(remove).toHaveBeenCalledExactlyOnceWith('item-1', 'user'));
       await waitFor(() => expect(refetchWithOutcome).toHaveBeenCalledOnce());
     }
@@ -2157,4 +2166,8 @@ describe('ContentListPage', () => {
     );
     expect(deleteNewsMock).not.toHaveBeenCalled();
   });
+});
+
+it('keeps projected Jobs out of Core bulk mutations', () => {
+  expect(isBulkActionableContent({ contentType: 'jobs.job' } as RegisteredContentRow)).toBe(false);
 });

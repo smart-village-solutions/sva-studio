@@ -1249,3 +1249,7 @@ und Kalendergitter lesen dieselben berechneten Terminobjekte.
 ## Baustellenplugin
 
 `@sva/plugin-construction-sites` liefert Fachschema, Liste und Editor. Browser und Studio-Mainserver-Adapter validieren an ihren jeweiligen Eingangsgrenzen; gemeinsame Vertragsfixtures prüfen die Kompatibilität. Der Server benötigt kein optionales Fachplugin zur Laufzeit. Der Host registriert Zuständigkeit, Routing, Rechte und die bestehende Inhaltsprojektion. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+
+## Stellenplugin
+
+`@sva/plugin-jobs` liefert Fachschema, Liste, Editor, Medienanbindung und eigene `jobs.*`-Rechte. Der Studio-Mainserver-Adapter besitzt einen unabhängig validierten Eingangsvertrag; browserseitige Kompatibilität wird mit gemeinsamen Fällen geprüft. Der Host ergänzt ausschließlich die bestehenden Katalog-, Routing-, Principal- und Projektionspfade. Siehe [Stellenanzeigenreferenz](../reference/jobs.md).

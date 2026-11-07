@@ -369,6 +369,9 @@ importers:
       '@sva/plugin-generic-items':
         specifier: workspace:*
         version: file:packages/plugin-generic-items(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ajv@8.20.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@sva/plugin-jobs':
+        specifier: workspace:*
+        version: link:../../packages/plugin-jobs
       '@sva/plugin-news':
         specifier: workspace:*
         version: link:../../packages/plugin-news
@@ -1211,6 +1214,49 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@opentelemetry/api@1.10.0)(@types/node@25.9.1)(@vitest/coverage-v8@5.0.3)(happy-dom@21.0.4)(jsdom@29.1.1)(msw@2.15.0(@types/node@25.9.1)(typescript@7.0.2))(vite@8.3.5(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
+  packages/plugin-jobs:
+    dependencies:
+      '@sva/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
+      '@sva/studio-ui-react':
+        specifier: workspace:*
+        version: file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
+      maplibre-gl:
+        specifier: 6.9.0
+        version: 6.9.0
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@tanstack/react-router':
+        specifier: 1.170.41
+        version: 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@testing-library/react':
+        specifier: 16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitest/coverage-v8':
+        specifier: 5.0.3
+        version: 5.0.3(vitest@5.0.3)
+      jsdom:
+        specifier: 29.1.1
+        version: 29.1.1
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: 19.3.0
+        version: 19.3.0(react@19.3.0)
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@opentelemetry/api@1.10.0)(@types/node@25.9.1)(@vitest/coverage-v8@5.0.3)(happy-dom@21.0.4)(jsdom@29.1.1)(msw@2.15.0(@types/node@25.9.1)(typescript@7.0.2))(vite@8.3.5(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+
   packages/plugin-news:
     dependencies:
       '@hookform/resolvers':
@@ -1719,9 +1765,6 @@ importers:
 
   packages/studio-ui-react:
     dependencies:
-      '@tabler/icons-react':
-        specifier: ^3.46.0
-        version: 3.46.0(react@19.3.0)
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.23
         version: 1.1.23(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -1749,6 +1792,9 @@ importers:
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
+      '@tabler/icons-react':
+        specifier: ^3.46.0
+        version: 3.46.0(react@19.3.0)
       '@tanstack/react-table':
         specifier: ^9.2.4
         version: 9.2.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -1844,6 +1890,9 @@ importers:
       '@sva/plugin-construction-sites':
         specifier: workspace:*
         version: file:packages/plugin-construction-sites(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
+      '@sva/plugin-jobs':
+        specifier: workspace:*
+        version: file:packages/plugin-jobs(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
       '@vitest/coverage-v8':
         specifier: ^5.0.3
         version: 5.0.3(vitest@5.0.3)
@@ -5990,6 +6039,13 @@ packages:
       '@tanstack/react-router': 1.170.41
       react: ^19.3.0
       react-dom: ^19.3.0
+
+  '@sva/plugin-jobs@file:packages/plugin-jobs':
+    resolution: {directory: packages/plugin-jobs, type: directory}
+    peerDependencies:
+      '@tanstack/react-router': 1.170.41
+      react: 19.3.0
+      react-dom: 19.3.0
 
   '@sva/plugin-poi@file:packages/plugin-poi':
     resolution: {directory: packages/plugin-poi, type: directory}
@@ -15501,6 +15557,24 @@ snapshots:
       - vest
       - yup
 
+  '@sva/plugin-jobs@file:packages/plugin-jobs(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)':
+    dependencies:
+      '@sva/plugin-sdk': file:packages/plugin-sdk
+      '@sva/studio-ui-react': file:packages/studio-ui-react(@babel/core@7.29.7)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-hook-form@7.80.0(react@19.3.0))(react@19.3.0)
+      '@tanstack/react-router': 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@floating-ui/dom'
+      - '@tiptap/core'
+      - '@tiptap/pm'
+      - '@types/react'
+      - '@types/react-dom'
+      - konva
+      - react-hook-form
+
   '@sva/plugin-poi@file:packages/plugin-poi(@babel/core@7.29.7)(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
       '@sva/plugin-sdk': file:packages/plugin-sdk
@@ -15607,6 +15681,7 @@ snapshots:
       '@sva/core': file:packages/core
       '@sva/media': file:packages/media
       '@sva/plugin-sdk': file:packages/plugin-sdk
+      '@tabler/icons-react': 3.46.0(react@19.3.0)
       '@tanstack/react-table': 9.2.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@tiptap/extension-link': 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)
       '@tiptap/react': 3.31.3(@floating-ui/dom@1.8.0)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -15615,7 +15690,6 @@ snapshots:
       clsx: 2.1.1
       date-fns: 4.4.0
       dompurify: 3.4.17
-      '@tabler/icons-react': 3.46.0(react@19.3.0)
       react: 19.3.0
       react-day-picker: 10.0.1(@types/react@19.3.0)(react@19.3.0)
       react-dom: 19.3.0(react@19.3.0)
@@ -19866,6 +19940,14 @@ snapshots:
   react-is@19.3.1: {}
 
   react-konva-utils@1.1.0(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-konva@19.3.2(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0):
+    dependencies:
+      konva: 9.3.18
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+      react-konva: 19.3.2(@types/react@19.3.0)(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      use-image: 1.1.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+
+  react-konva-utils@1.1.0(konva@9.3.18)(react-dom@19.3.0(react@19.3.0))(react-konva@19.3.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0):
     dependencies:
       konva: 9.3.18
       react: 19.3.0

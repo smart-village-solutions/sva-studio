@@ -1,0 +1,41 @@
+publiccodeYmlVersion: '0'
+name: Stellenanzeigen
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: development
+softwareType: addon
+description:
+  de:
+    shortDescription: Stellenanzeigen mit Arbeitgeber, Kontakt, Laufzeit und Dateien redaktionell pflegen.
+    longDescription:
+      Das optionale Stellenmodul unterstützt kommunale Redaktionsteams beim Erstellen,
+      Bearbeiten und Löschen von Stellenanzeigen. Arbeitgeber, Firmenkontakt und Ansprechpartner
+      werden getrennt erfasst. Anstellungsarten stammen aus den bestehenden Mainserver-Kategorien.
+      Bestehende Anzeigen bleiben ohne Datenmigration im Mainserver. Eigene Fachrechte und die
+      Instanzaktivierung steuern den Zugriff. Redaktionelle Laufzeit und öffentliche Sichtbarkeit
+      werden getrennt angezeigt. Dateien und Änderungsverlauf verwenden die vorhandenen Studio-Verträge.
+    features:
+      - Stellenanzeigen erstellen, bearbeiten und bestätigt löschen
+      - Arbeitgeber, Ansprechpartner und Laufzeit pflegen
+      - Dateien zuordnen und Studio-Änderungsverlauf lesen
+  en:
+    localisedName: Jobs
+    shortDescription: Edit job listings with employers, contacts, dates and files.
+    longDescription: This optional module helps municipal editorial teams create, edit and delete
+      job listings. Employers, company contacts and contact persons are maintained separately.
+      Employment types use existing Mainserver categories. Existing listings remain in the
+      Mainserver without a data migration. Instance activation and dedicated permissions control
+      access. Editorial dates are displayed independently of public visibility. Files and change
+      history use the existing Studio contracts and keep editorial changes traceable.
+    features:
+      - Create, edit and confirm deletion of job listings
+      - Maintain employers, contacts and editorial dates
+      - Attach files and read Studio change history
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Smart Village Solutions

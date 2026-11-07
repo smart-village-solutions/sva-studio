@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverCategoriesListItem } from '../types.js';
+import { JOBS_TYPE } from './jobs-contract.js';
 import { CONSTRUCTION_SITES_TYPE } from './construction-sites-contract.js';
 import { parseCategorySaveInput } from './categories-route-input.js';
 import {
@@ -44,6 +45,7 @@ const categoryContentDataTypes = [
   'point_of_interest',
   'generic_item_voucher',
   'generic_item_construction_site',
+  'generic_item_job',
 ] as const;
 type CategoryContentDataType = (typeof categoryContentDataTypes)[number];
 
@@ -72,17 +74,25 @@ const toCategoryResponseItem = ({
 
 const authorize = async (
   ctx: AuthenticatedRequestContext,
-  action: CategoryAction | 'construction-sites.read' | 'construction-sites.create',
+  action:
+    | CategoryAction
+    | 'construction-sites.read'
+    | 'construction-sites.create'
+    | 'jobs.read'
+    | 'jobs.create',
   request: Request
 ): Promise<CategoriesActor | Response> => {
   const result = await authorizeContentPrimitiveForUser({
     ctx,
     action,
+    ...(action.startsWith('jobs.') ? { resource: { contentType: JOBS_TYPE } } : {}),
     ...(action.startsWith('construction-sites.')
       ? { resource: { contentType: CONSTRUCTION_SITES_TYPE } }
       : {}),
   });
   if (!result.ok) {
+    if (action === 'jobs.read' && result.status === 403)
+      return authorize(ctx, 'jobs.create', request);
     if (action === 'construction-sites.read' && result.status === 403)
       return authorize(ctx, 'construction-sites.create', request);
     return errorJson(result.status, result.error, result.message, result.permissionDenial);
@@ -93,7 +103,7 @@ const authorize = async (
     activeOrganizationId: result.actor.organizationId ?? ctx.activeOrganizationId,
   };
   if (
-    action.startsWith('construction-sites.') &&
+    (action.startsWith('construction-sites.') || action.startsWith('jobs.')) &&
     request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER)
   )
     return (
@@ -120,8 +130,13 @@ const readCategories = async (
     if (dataType instanceof Response) return dataType;
     const categories = await listSvaMainserverCategories(actor);
     const filteredCategories = dataType
-      ? categories.filter(
-          (category) => category.dataTypes.length === 0 || category.dataTypes.includes(dataType)
+      ? categories.filter((category) =>
+          dataType === 'generic_item_job'
+            ? category.tagList
+                ?.split(',')
+                .map((tag) => tag.trim())
+                .includes(dataType) === true
+            : category.dataTypes.length === 0 || category.dataTypes.includes(dataType)
         )
       : categories;
     return json({ data: filteredCategories.map(toCategoryResponseItem) });
@@ -212,7 +227,16 @@ const dispatchAuthenticated = async (
     matched.kind === 'collection' &&
     !new URL(request.url).searchParams.has('view') &&
     readCategoryContentDataType(request) === 'generic_item_construction_site';
-  const action = constructionLookup ? 'construction-sites.read' : requestedAction;
+  const jobLookup =
+    requestedAction === 'categories.read' &&
+    matched.kind === 'collection' &&
+    !new URL(request.url).searchParams.has('view') &&
+    readCategoryContentDataType(request) === 'generic_item_job';
+  const action = jobLookup
+    ? 'jobs.read'
+    : constructionLookup
+      ? 'construction-sites.read'
+      : requestedAction;
   try {
     if (request.method !== 'GET') {
       const csrfFailure = validateCsrf(request, getWorkspaceContext().requestId);

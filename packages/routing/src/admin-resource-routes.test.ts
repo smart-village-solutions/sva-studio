@@ -585,6 +585,19 @@ describe('admin resource routes', () => {
         dateStart: '2026-11-01',
       })
     ).not.toHaveProperty('category');
+    expect(
+      listRoute?.validateSearch?.({
+        type: 'jobs.job',
+        employmentType: ' Vollzeit ',
+        visible: 'false',
+        temporal: 'planned',
+      })
+    ).toMatchObject({
+      type: 'jobs.job',
+      employmentType: 'Vollzeit',
+      visible: 'false',
+      temporal: 'planned',
+    });
     expect(listRoute?.validateSearch?.({ type: [], page: '1' })).not.toHaveProperty('type');
     expect(
       listRoute?.validateSearch?.({ type: 'news.article', languageCode: 'de', page: '1' })

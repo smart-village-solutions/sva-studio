@@ -421,6 +421,26 @@
       }
     },
     {
+      "id": "jobs.content.create",
+      "path": "/admin/jobs/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "jobs"
+      },
+      "titleKey": "jobs.navigation.title"
+    },
+    {
+      "id": "jobs.content.detail",
+      "path": "/admin/jobs/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "jobs"
+      },
+      "titleKey": "jobs.navigation.title"
+    },
+    {
       "id": "media.overview",
       "path": "/media",
       "pageType": "overview",

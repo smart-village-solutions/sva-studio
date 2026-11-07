@@ -4,7 +4,7 @@
 
 Das alte CMS bietet eine eigene Stellenanzeigenmaske. Im Studio fehlt die fachliche Oberfläche für Anstellungsart, Arbeitgeber und Ansprechpartner; die technische GenericItem-Maske bildet insbesondere die Firmenangaben nicht ab. Ein optionales Fachplugin soll neue und bestehende Mainserver-Stellenanzeigen über denselben Datenvertrag verwalten.
 
-Der Nutzer hat den Entwurf am 07.11.2026 als Grundlage dieses OpenSpec-Changes freigegeben und einen eigenen Worktree beauftragt. Nach Vorlage des schriftlichen Entwurfs hat er den Umsetzungsstart ausdrücklich beauftragt. Die erste vollständige Vertragsprüfung hat einen reproduzierten Verlust von Importreferenz-Metadaten im unveränderten Mainserver-Updatepfad belegt. Die im Entwurf vereinbarte Stop-Bedingung greift vor dem weiteren Produktcode-Ausbau; Details und der begrenzte Korrekturvorschlag stehen im Design.
+Der Nutzer hat den Entwurf am 07.11.2026 als Grundlage dieses OpenSpec-Changes freigegeben und einen eigenen Worktree beauftragt. Nach Vorlage des schriftlichen Entwurfs hat er den Umsetzungsstart ausdrücklich beauftragt. Die erste vollständige Vertragsprüfung hat einen reproduzierten Verlust von Importreferenz-Metadaten im unveränderten Mainserver-Updatepfad belegt. Der Nutzer hat anschließend die Fortsetzung im Studio vor dem Mainserver-Fix ausdrücklich beauftragt. Die technische Importreferenz ist als eng begrenzte vorläufige Ausnahme akzeptiert; der Mainserver-Fix ist Daniel in SVA-1786 zugewiesen.
 
 ## What Changes
 
@@ -23,6 +23,7 @@ Der Nutzer hat den Entwurf am 07.11.2026 als Grundlage dieses OpenSpec-Changes f
 - Keine Bewerbungsverwaltung, Bewerberdaten, zusätzlichen Freigabeprozesse, Importe, Benachrichtigungen, Massenaktionen oder neue Veröffentlichungsplanung.
 - Veröffentlichungs- und Ablaufdatum lösen in diesem Lieferumfang keine automatische Veröffentlichung, Ausblendung, Archivierung oder Löschung aus.
 - Keine POI-Verknüpfung, Rabatt-/Kontingentfunktionen, neuen Hintergrundjobs oder generische Formular-/Adapterplattform.
+- Vorläufig akzeptierte Ausnahme ausschließlich für die vom unveränderten Mainserver neu erzeugte technische Importreferenz einschließlich Referenz-ID, Erstellungszeit und Importmarker (SVA-1786). Diese Ausnahme gilt nicht für Inhaltsfelder, Payload oder weitere Beziehungen.
 - Keine Übernahme der speziell für Baustellen akzeptierten Ausnahme zum Verlust deaktivierter Kategoriezuordnungen. Nicht sicher erhaltbarer Bestand sperrt Updates vor dem Provider-Write.
 
 Maximal betroffene Bereiche sind das neue Fachplugin, vorhandene Plugin-/Distributions-/Routenkataloge, der zuständige Studio-Mainserver-Adapter einschließlich Kategorie-Lookup und notwendiger Schutz generischer Schreibwege sowie unmittelbar zugehörige Tests, Übersetzungen und Dokumentation. Gemeinsame Packages werden nur über bestehende öffentliche Verträge genutzt; eine Erweiterung dieser Verträge oder eine neue Infrastruktur ist nicht pauschal freigegeben.
@@ -43,4 +44,4 @@ Maximal betroffene Bereiche sind das neue Fachplugin, vorhandene Plugin-/Distrib
 - [Plugin- und Zugriffsvertrag](./specs/plugin-platform/spec.md)
 - [Mainserver-Vertrag](./specs/sva-mainserver-integration/spec.md)
 
-Stand: Umsetzung freigegeben, am ersten Datenintegritätsnachweis vor Produktcode-Ausbau angehalten. Ein Mainserver-Fix oder eine Ausnahme vom Erhaltvertrag ist bisher nicht freigegeben. Externe Schreibtests, Push, PR, Merge und Rollout sind nicht beauftragt. Für reguläre Rollouts bleibt ausschließlich `docs/guides/studio-rollout-process.md` maßgeblich.
+Stand: Studio-Umsetzung erneut ausdrücklich freigegeben; die technische Importreferenz ist bis zum getrennten Mainserver-Fix als bekannte Ausnahme akzeptiert. SVA-1786 blockiert die Studio-Umsetzung nicht. Änderungen am Mainserver erfolgen nicht in diesem Auftrag. Externe Schreibtests, Push, PR, Merge und Rollout sind nicht beauftragt. Für reguläre Rollouts bleibt ausschließlich `docs/guides/studio-rollout-process.md` maßgeblich.

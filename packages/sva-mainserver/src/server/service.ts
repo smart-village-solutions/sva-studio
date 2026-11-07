@@ -44,6 +44,21 @@ export const recoverSvaMainserverConstructionSite = (
   ...args: Parameters<DefaultService['recoverConstructionSite']>
 ) => getDefaultService().recoverConstructionSite(...args);
 
+export const getSvaMainserverJob = (...args: Parameters<DefaultService['getJob']>) =>
+  getDefaultService().getJob(...args);
+export const listSvaMainserverJobCandidates = (
+  ...args: Parameters<DefaultService['listJobCandidates']>
+) => getDefaultService().listJobCandidates(...args);
+export const prepareSvaMainserverJob = (...args: Parameters<DefaultService['prepareJob']>) =>
+  getDefaultService().prepareJob(...args);
+export const writeSvaMainserverJob = (...args: Parameters<DefaultService['writeJob']>) =>
+  getDefaultService().writeJob(...args);
+export const recoverSvaMainserverJob = (...args: Parameters<DefaultService['recoverJob']>) =>
+  getDefaultService().recoverJob(...args);
+
+export const deleteSvaMainserverJob = (...args: Parameters<DefaultService['deleteJob']>) =>
+  getDefaultService().deleteJob(...args);
+
 export const listSvaMainserverVouchers = (
   input: SvaMainserverConnectionInput & {
     page: number;
@@ -284,3 +299,7 @@ export const createSvaMainserverWastePickupTimes = (
 export const deleteSvaMainserverWastePickupTimes = (
   input: SvaMainserverConnectionInput & { readonly items: readonly SvaMainserverWasteSyncItem[] }
 ) => getDefaultService().deleteWastePickupTimes(input);
+
+export const verifySvaMainserverJobDeleted = (
+  ...args: Parameters<DefaultService['verifyJobDeleted']>
+) => getDefaultService().verifyJobDeleted(...args);

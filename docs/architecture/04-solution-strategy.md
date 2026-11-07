@@ -385,3 +385,7 @@ Die bestehende Principal-Projektion kann eine lokale, geheimnisfreie Mainserver-
 ## Baustellenplugin
 
 Das optionale Baustellenplugin erweitert den vorhandenen GenericItem- und Principal-Pfad für den exakten Typ `ConstructionSite`; es führt weder einen zweiten Datenspeicher noch einen neuen Plattformdienst ein. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+
+## Stellenplugin
+
+Das optionale Stellenplugin verwendet den bestehenden Mainserver-/GenericItem-Pfad für exakt `Job`, ohne weiteren Datenspeicher oder Plattformdienst. Die Studio-Umsetzung darf vor dem Mainserver-Fix SVA-1786 fortgesetzt werden; ausschließlich der Verlust technischer Importreferenz-Metadaten ist vorübergehend akzeptiert. Siehe [Stellenanzeigenreferenz](../reference/jobs.md).

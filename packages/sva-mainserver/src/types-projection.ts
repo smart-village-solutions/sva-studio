@@ -9,6 +9,7 @@ export type SvaMainserverProjectionContentType =
   | 'cockpit-cards.cockpit-card'
   | 'vouchers.voucher'
   | 'construction-sites.construction-site'
+  | 'jobs.job'
   | 'projects.project'
   | 'surveys.survey';
 
@@ -18,6 +19,7 @@ export type SvaMainserverGenericItemProjectionContentType =
   | 'cockpit-cards.cockpit-card'
   | 'vouchers.voucher'
   | 'construction-sites.construction-site'
+  | 'jobs.job'
   | 'projects.project';
 
 const svaMainserverGenericItemProjectionContentTypes = new Set<string>([
@@ -25,6 +27,7 @@ const svaMainserverGenericItemProjectionContentTypes = new Set<string>([
   'faq.faq',
   'cockpit-cards.cockpit-card',
   'construction-sites.construction-site',
+  'jobs.job',
   'projects.project',
   'vouchers.voucher',
 ]);

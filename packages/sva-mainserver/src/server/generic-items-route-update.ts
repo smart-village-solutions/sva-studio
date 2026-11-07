@@ -101,6 +101,8 @@ export const handleUpdateRequest = async (
     contentId: itemId,
     operation: async () => {
       const existingItem = await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId });
+      if (existingItem?.genericType === 'Job')
+        return errorJson(409, 'job_dedicated_editor_required', 'job_dedicated_editor_required');
       if (contentKind === 'faq' && existingItem && existingItem.genericType !== 'FAQ') {
         return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
       }
@@ -117,6 +119,8 @@ export const handleUpdateRequest = async (
             ? await validateCockpitCardWriteOrResponse(request)
             : await parseGenericItemOrResponse(request);
       if (isResponse(genericItem)) return genericItem;
+      if (genericItem.genericType === 'Job')
+        return errorJson(409, 'job_dedicated_editor_required', 'job_dedicated_editor_required');
       if (contentKind === 'faq' && !existingItem)
         return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
       if (contentKind === 'cockpit-cards' && !existingItem)

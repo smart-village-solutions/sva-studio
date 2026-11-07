@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  dispatchSvaMainserverJobsRequest: vi.fn().mockResolvedValue(null),
   dispatchSvaMainserverGenericItemsRequest: vi.fn(),
   dispatchSvaMainserverConstructionSitesRequest: vi.fn().mockResolvedValue(null),
   dispatchSvaMainserverVouchersRequest: vi.fn().mockResolvedValue(null),
@@ -8,6 +9,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/sva-mainserver/server', () => ({
+  dispatchSvaMainserverJobsRequest: state.dispatchSvaMainserverJobsRequest,
   dispatchSvaMainserverGenericItemsRequest: state.dispatchSvaMainserverGenericItemsRequest,
   dispatchSvaMainserverConstructionSitesRequest:
     state.dispatchSvaMainserverConstructionSitesRequest,
@@ -86,6 +88,18 @@ describe('mainserver generic items app adapter', () => {
       request,
       response,
       'vouchers.voucher'
+    );
+    expect(state.dispatchSvaMainserverGenericItemsRequest).not.toHaveBeenCalled();
+  });
+  it('dispatches Jobs through their dedicated route and canonical projection', async () => {
+    const response = new Response(JSON.stringify({ data: { id: '42' } }), { status: 201 });
+    const request = new Request('https://studio.test/api/v1/mainserver/jobs', { method: 'POST' });
+    state.dispatchSvaMainserverJobsRequest.mockResolvedValueOnce(response);
+    await expect(dispatchMainserverGenericItemsRequest(request)).resolves.toBe(response);
+    expect(state.refreshProjectionAfterMainserverMutation).toHaveBeenCalledWith(
+      request,
+      response,
+      'jobs.job'
     );
     expect(state.dispatchSvaMainserverGenericItemsRequest).not.toHaveBeenCalled();
   });

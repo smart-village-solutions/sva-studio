@@ -562,3 +562,7 @@ dokumentiert und darf keine Funktion still entfernen.
 ## Baustellenplugin
 
 Baustellen müssen nach einer verlorenen Antwort oder einem lokalen Teilfehler ohne erneuten Provider-Write wieder aufgenommen werden. Lokale Schema-, Roundtrip-, Rechte- und Formulartests belegen diesen Vertrag. Das verbleibende Konkurrenzfenster zu externen Mainserver-Schreibern und die separate Ziel-App-Abnahme werden ausdrücklich ausgewiesen. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+
+## Stellenplugin
+
+Job-Vertragstests müssen ersetzende Provider-Mutationen und unabhängigen Readback einschließlich zusätzlicher Arbeitgeber/Kontakte/Daten, Nullable-Metadaten und typübergreifender externe-ID-Kollisionen abdecken. Weitere Pflichtfälle sind Antwortverlust, Reload, Kontextwechsel, lokale Teilfehler und bestätigtes Löschen ohne automatischen Retry. Das verbleibende externe Konkurrenzfenster, die akzeptierte Importreferenz-Ausnahme und die gesonderte Live-/App-Abnahme werden ausdrücklich ausgewiesen. Siehe [Stellenanzeigenreferenz](../reference/jobs.md).

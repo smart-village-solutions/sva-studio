@@ -35,7 +35,7 @@ Das System MUST vor einer Neuanlage mit externer ID einen frischen vollständige
 
 ### Requirement: Job-Updates erhalten den autoritativen Bestand
 
-Das System MUST vor Updates sämtliche durch den tatsächlichen Mainserver-Schreibpfad ersetzten Felder und Beziehungen frisch mit derselben Identität lesen und einen Inhaltsfingerprint gegen die Editor-Baseline prüfen. Nicht bearbeitete Payload-Schlüssel, Felder, Beziehungen, Reihenfolgen und Metadaten MUST erhalten bleiben. Beschädigte, ausgelassene oder nicht verlustfrei rekonstruierbare Daten MUST vor dem Provider-Write zur Ablehnung führen.
+Das System MUST vor Updates sämtliche durch den tatsächlichen Mainserver-Schreibpfad ersetzten Felder und Beziehungen frisch mit derselben Identität lesen und einen Inhaltsfingerprint gegen die Editor-Baseline prüfen. Nicht bearbeitete Payload-Schlüssel, Felder, Beziehungen, Reihenfolgen und Metadaten MUST erhalten bleiben. Beschädigte, ausgelassene oder nicht verlustfrei rekonstruierbare API-Inhaltsdaten MUST vor dem Provider-Write zur Ablehnung führen. Als ausdrücklich akzeptierte vorläufige Ausnahme MUST die vom bisherigen Mainserver neu erzeugte technische Importreferenz einschließlich Referenz-ID, Erstellungszeit und Importmarker von der Erhaltzusage ausgenommen sein; SVA-1786 verfolgt die getrennte Behebung. Diese Ausnahme MUST keine anderen Inhalte oder Beziehungen freigeben.
 
 #### Scenario: Reine Titeländerung erhält Firmen und zusätzliche Metadaten
 

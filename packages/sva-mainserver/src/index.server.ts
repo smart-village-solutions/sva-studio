@@ -24,3 +24,5 @@ export {
 export { dispatchSvaMainserverVouchersRequest } from './server/vouchers-route.js';
 
 export { dispatchSvaMainserverConstructionSitesRequest } from './server/construction-sites-route.js';
+
+export { dispatchSvaMainserverJobsRequest } from './server/jobs-route.js';

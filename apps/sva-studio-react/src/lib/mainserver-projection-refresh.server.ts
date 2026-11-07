@@ -17,6 +17,7 @@ type MainserverProjectionContentType =
   | 'cockpit-cards.cockpit-card'
   | 'vouchers.voucher'
   | 'construction-sites.construction-site'
+  | 'jobs.job'
   | 'projects.project'
   | 'surveys.survey';
 
@@ -38,6 +39,7 @@ const mainserverCollectionSegments = new Set([
   'surveys',
   'vouchers',
   'construction-sites',
+  'jobs',
 ]);
 
 const shouldRefreshProjectionForRequest = (request: Request, response: Response): boolean =>

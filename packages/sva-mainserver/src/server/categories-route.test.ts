@@ -715,4 +715,36 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       message: 'Mainserver-Kategorien-Anfrage ist fehlgeschlagen.',
     });
   });
+  it('allows a Job creator to look up only exactly tagged employment names with the selected principal', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('jobs.create');
+    const selected = {
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      actingPrincipalType: 'organization',
+    };
+    state.resolveMainserverResourceActor.mockResolvedValue(selected);
+    state.listSvaMainserverCategories.mockResolvedValue([
+      { id: '1', name: 'Vollzeit', tagList: 'other, generic_item_job', dataTypes: [] },
+      {
+        id: '2',
+        name: 'Wrong',
+        tagList: 'generic_item_job_extra',
+        dataTypes: ['generic_item_job'],
+      },
+      { id: '3', name: 'Untagged', tagList: '', dataTypes: [] },
+    ]);
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories?dataType=generic_item_job', {
+        headers: { 'x-sva-acting-principal-type': 'organization' },
+      })
+    );
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toMatchObject({ data: [{ id: '1', name: 'Vollzeit' }] });
+    expect(state.listSvaMainserverCategories).toHaveBeenCalledWith(selected);
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'jobs.create', resource: { contentType: 'jobs.job' } })
+    );
+    expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
+  });
 });

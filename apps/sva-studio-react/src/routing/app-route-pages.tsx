@@ -12,19 +12,23 @@ import {
 export const ContentListRoutePage = () => {
   const search = useSearch({ strict: false }) as { type?: string };
   const listBinding =
-    search.type === 'construction-sites.construction-site'
+    search.type === 'jobs.job'
       ? studioPlugins
-          .find((plugin) => plugin.id === 'construction-sites')
-          ?.viewBindings?.find((binding) => binding.bindingKey === 'constructionSitesList')
-      : undefined;
-  const ConstructionSitesList = listBinding?.component as
+          .find((plugin) => plugin.id === 'jobs')
+          ?.viewBindings?.find((binding) => binding.bindingKey === 'jobsList')
+      : search.type === 'construction-sites.construction-site'
+        ? studioPlugins
+            .find((plugin) => plugin.id === 'construction-sites')
+            ?.viewBindings?.find((binding) => binding.bindingKey === 'constructionSitesList')
+        : undefined;
+  const PluginList = listBinding?.component as
     React.ComponentType<{ principalControl?: MainserverPrincipalControlModel }> | undefined;
   const mutationCapabilities = useMainserverMutationCapabilities();
   const resolution = useMainserverPrincipalControl();
 
-  if (ConstructionSitesList)
+  if (PluginList)
     return resolution.kind === 'ready' ? (
-      <ConstructionSitesList principalControl={resolution.control} />
+      <PluginList principalControl={resolution.control} />
     ) : (
       <MainserverPrincipalAlert reason={resolution.reason} />
     );

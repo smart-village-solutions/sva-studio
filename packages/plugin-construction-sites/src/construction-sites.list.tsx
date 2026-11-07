@@ -21,6 +21,7 @@ import {
   StudioLoadingState,
   StudioErrorState,
   StudioEmptyState,
+  type StudioColumnDef,
   type MainserverPrincipalControlModel,
 } from '@sva/studio-ui-react';
 import { constructionSiteTemporalState, type ConstructionSiteList } from './contract.js';
@@ -64,6 +65,116 @@ function useListData(query: string, scope: string, principal: MainserverActingPr
   }, [scope, principal]);
   return { result, state, categories };
 }
+type Translator = ReturnType<typeof usePluginTranslation>;
+function listColumns(
+  pt: Translator,
+  today: string
+): StudioColumnDef<ConstructionSiteList['data'][number]>[] {
+  return [
+    {
+      id: 'title',
+      header: pt('fields.title'),
+      cell: (item) => (
+        <StudioTableValueAction asChild emphasis="primary">
+          <Link to="/admin/construction-sites/$id" params={{ id: item.id }}>
+            {item.title}
+          </Link>
+        </StudioTableValueAction>
+      ),
+    },
+    {
+      id: 'location',
+      header: pt('fields.locations'),
+      cell: (item) => item.input.locations[0]?.name ?? '',
+    },
+    {
+      id: 'start',
+      header: pt('fields.dateStart'),
+      cell: (item) => item.input.dates[0]?.dateStart ?? '',
+    },
+    {
+      id: 'end',
+      header: pt('fields.dateEnd'),
+      cell: (item) => item.input.dates[0]?.dateEnd ?? '',
+    },
+    {
+      id: 'state',
+      header: pt('fields.state'),
+      cell: (item) => pt(`temporal.${constructionSiteTemporalState(item.input.dates[0], today)}`),
+    },
+    {
+      id: 'updated',
+      header: pt('fields.updatedAt'),
+      cell: (item) => formatDateTimeInEditorTimeZone(item.updatedAt) ?? item.updatedAt,
+    },
+  ];
+}
+function listFooter(
+  result: ConstructionSiteList,
+  page: number,
+  pageSize: number,
+  navigatePage: (page: number, pageSize: number) => void,
+  pt: Translator
+) {
+  return (
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <StudioField id="cs-page-size" label={pt('pagination.pageSize')}>
+        <Select
+          id="cs-page-size"
+          value={String(pageSize)}
+          onChange={(event) => navigatePage(1, Number(event.currentTarget.value))}
+        >
+          {[25, 50, 100].map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </Select>
+      </StudioField>
+      <div className="space-y-1">
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          {pt('pagination.results', {
+            start: result.data.length ? (page - 1) * pageSize + 1 : 0,
+            end: result.data.length ? (page - 1) * pageSize + result.data.length : 0,
+            total: result.pagination.total,
+          })}
+        </p>
+        <StudioPagination
+          page={page}
+          hasNextPage={result.pagination.hasNextPage}
+          ariaLabel={pt('pagination.label')}
+          pageLabel={pt('pagination.page', { page })}
+          previousLabel={pt('pagination.previous')}
+          nextLabel={pt('pagination.next')}
+          onPageChange={(next) => navigatePage(next, pageSize)}
+        />
+      </div>
+    </div>
+  );
+}
+function listPrincipal(
+  principalControl: MainserverPrincipalControlModel | undefined,
+  principal: MainserverActingPrincipalType,
+  setPrincipal: (principal: MainserverActingPrincipalType) => void,
+  pt: Translator
+) {
+  return (
+    <MainserverPrincipalControl
+      id="cs-list-principal"
+      label={pt('principal.actAs')}
+      value={principal}
+      onChange={setPrincipal}
+      options={resolveMainserverPrincipalOptions(principalControl, {
+        value: principal,
+        label: pt(`principal.${principal}`),
+      })}
+      contextOptions={principalControl?.contextOptions}
+      onContextChange={principalControl?.onContextChange}
+      readinessByPrincipal={principalControl?.readinessByPrincipal}
+      readinessMessage={principalControl?.readinessMessage}
+    />
+  );
+}
 export function ConstructionSitesListPage({
   principalControl,
 }: Readonly<{ principalControl?: MainserverPrincipalControlModel }>) {
@@ -101,20 +212,7 @@ export function ConstructionSitesListPage({
     });
   return (
     <StudioListPageTemplate title={pt('list.title')} description={pt('list.description')}>
-      <MainserverPrincipalControl
-        id="cs-list-principal"
-        label={pt('principal.actAs')}
-        value={principal}
-        onChange={setPrincipal}
-        options={resolveMainserverPrincipalOptions(principalControl, {
-          value: principal,
-          label: pt(`principal.${principal}`),
-        })}
-        contextOptions={principalControl?.contextOptions}
-        onContextChange={principalControl?.onContextChange}
-        readinessByPrincipal={principalControl?.readinessByPrincipal}
-        readinessMessage={principalControl?.readinessMessage}
-      />
+      {listPrincipal(principalControl, principal, setPrincipal, pt)}
       <section aria-busy={state === 'loading'} aria-label={pt('list.title')}>
         <StudioDataTable
           sorting={{ mode: 'disabled' }}
@@ -131,45 +229,7 @@ export function ConstructionSitesListPage({
               <StudioEmptyState>{pt('list.empty')}</StudioEmptyState>
             )
           }
-          columns={[
-            {
-              id: 'title',
-              header: pt('fields.title'),
-              cell: (item) => (
-                <StudioTableValueAction asChild emphasis="primary">
-                  <Link to="/admin/construction-sites/$id" params={{ id: item.id }}>
-                    {item.title}
-                  </Link>
-                </StudioTableValueAction>
-              ),
-            },
-            {
-              id: 'location',
-              header: pt('fields.locations'),
-              cell: (item) => item.input.locations[0]?.name ?? '',
-            },
-            {
-              id: 'start',
-              header: pt('fields.dateStart'),
-              cell: (item) => item.input.dates[0]?.dateStart ?? '',
-            },
-            {
-              id: 'end',
-              header: pt('fields.dateEnd'),
-              cell: (item) => item.input.dates[0]?.dateEnd ?? '',
-            },
-            {
-              id: 'state',
-              header: pt('fields.state'),
-              cell: (item) =>
-                pt(`temporal.${constructionSiteTemporalState(item.input.dates[0], today)}`),
-            },
-            {
-              id: 'updated',
-              header: pt('fields.updatedAt'),
-              cell: (item) => formatDateTimeInEditorTimeZone(item.updatedAt) ?? item.updatedAt,
-            },
-          ]}
+          columns={listColumns(pt, today)}
           toolbarCenter={<ListFilters filters={filters} categories={categories} filter={filter} />}
           toolbarEnd={
             access.canCreate ? (
@@ -179,41 +239,9 @@ export function ConstructionSitesListPage({
             ) : undefined
           }
           footer={
-            state === 'ready' && result ? (
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <StudioField id="cs-page-size" label={pt('pagination.pageSize')}>
-                  <Select
-                    id="cs-page-size"
-                    value={String(pageSize)}
-                    onChange={(event) => navigatePage(1, Number(event.currentTarget.value))}
-                  >
-                    {[25, 50, 100].map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                  </Select>
-                </StudioField>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground" aria-live="polite">
-                    {pt('pagination.results', {
-                      start: result.data.length ? (page - 1) * pageSize + 1 : 0,
-                      end: result.data.length ? (page - 1) * pageSize + result.data.length : 0,
-                      total: result.pagination.total,
-                    })}
-                  </p>
-                  <StudioPagination
-                    page={page}
-                    hasNextPage={result.pagination.hasNextPage}
-                    ariaLabel={pt('pagination.label')}
-                    pageLabel={pt('pagination.page', { page })}
-                    previousLabel={pt('pagination.previous')}
-                    nextLabel={pt('pagination.next')}
-                    onPageChange={(next) => navigatePage(next, pageSize)}
-                  />
-                </div>
-              </div>
-            ) : undefined
+            state === 'ready' && result
+              ? listFooter(result, page, pageSize, navigatePage, pt)
+              : undefined
           }
           labels={{
             selectionColumn: pt('fields.actions'),

@@ -18,12 +18,68 @@ import {
   Select,
   StudioField,
   type MainserverPrincipalControlModel,
+  type StudioColumnDef,
 } from '@sva/studio-ui-react';
 import { jobTemporalState, type JobList } from './contract.js';
 import { listJobs, listJobCategories } from './jobs.api.js';
 import { useJobAccess } from './jobs.access.js';
 import { ListFilters, listFilters } from './jobs.list-filters.js';
 
+function listColumns(
+  pt: ReturnType<typeof usePluginTranslation>,
+  today: string
+): readonly StudioColumnDef<JobList['data'][number]>[] {
+  return [
+    {
+      id: 'title',
+      header: pt('fields.title'),
+      cell: (item) => (
+        <Link
+          className="underline underline-offset-4"
+          to="/admin/jobs/$id"
+          params={{ id: item.id }}
+        >
+          {item.title}
+        </Link>
+      ),
+    },
+    {
+      id: 'employer',
+      header: pt('fields.companies'),
+      cell: (item) => item.input.companies[0]?.name ?? '',
+    },
+    {
+      id: 'employmentType',
+      header: pt('fields.employmentType'),
+      cell: (item) => item.input.employmentType,
+    },
+    {
+      id: 'visible',
+      header: pt('fields.visible'),
+      cell: (item) => pt(item.visible ? 'fields.visibleYes' : 'fields.visibleNo'),
+    },
+    {
+      id: 'publicationDate',
+      header: pt('fields.publicationDate'),
+      cell: (item) => item.input.publicationDate,
+    },
+    {
+      id: 'end',
+      header: pt('fields.dateEnd'),
+      cell: (item) => item.input.dates[0]?.dateEnd ?? '',
+    },
+    {
+      id: 'state',
+      header: pt('fields.state'),
+      cell: (item) => pt(`temporal.${jobTemporalState(item.input, today)}`),
+    },
+    {
+      id: 'updated',
+      header: pt('fields.updatedAt'),
+      cell: (item) => formatDateTimeInEditorTimeZone(item.updatedAt) ?? item.updatedAt,
+    },
+  ];
+}
 function ListTable({ result, today }: Readonly<{ result: JobList; today: string }>) {
   const pt = usePluginTranslation('jobs');
   return (
@@ -34,56 +90,7 @@ function ListTable({ result, today }: Readonly<{ result: JobList; today: string 
       getRowId={(item) => item.id}
       selectionMode="none"
       emptyState={null}
-      columns={[
-        {
-          id: 'title',
-          header: pt('fields.title'),
-          cell: (item) => (
-            <Link
-              className="underline underline-offset-4"
-              to="/admin/jobs/$id"
-              params={{ id: item.id }}
-            >
-              {item.title}
-            </Link>
-          ),
-        },
-        {
-          id: 'employer',
-          header: pt('fields.companies'),
-          cell: (item) => item.input.companies[0]?.name ?? '',
-        },
-        {
-          id: 'employmentType',
-          header: pt('fields.employmentType'),
-          cell: (item) => item.input.employmentType,
-        },
-        {
-          id: 'visible',
-          header: pt('fields.visible'),
-          cell: (item) => pt(item.visible ? 'fields.visibleYes' : 'fields.visibleNo'),
-        },
-        {
-          id: 'publicationDate',
-          header: pt('fields.publicationDate'),
-          cell: (item) => item.input.publicationDate,
-        },
-        {
-          id: 'end',
-          header: pt('fields.dateEnd'),
-          cell: (item) => item.input.dates[0]?.dateEnd ?? '',
-        },
-        {
-          id: 'state',
-          header: pt('fields.state'),
-          cell: (item) => pt(`temporal.${jobTemporalState(item.input, today)}`),
-        },
-        {
-          id: 'updated',
-          header: pt('fields.updatedAt'),
-          cell: (item) => formatDateTimeInEditorTimeZone(item.updatedAt) ?? item.updatedAt,
-        },
-      ]}
+      columns={listColumns(pt, today)}
       labels={{
         selectionColumn: pt('fields.actions'),
         actionsColumn: pt('fields.actions'),
@@ -126,6 +133,61 @@ function useListData(query: string, scope: string, principal: MainserverActingPr
     };
   }, [scope, principal]);
   return { result, state, categories };
+}
+function listPagination(
+  result: JobList,
+  page: number,
+  pageSize: number,
+  navigate: ReturnType<typeof useNavigate>,
+  pt: ReturnType<typeof usePluginTranslation>
+) {
+  return (
+    <>
+      <StudioField id="job-pageSize" label={pt('fields.pageSize')}>
+        <Select
+          id="job-pageSize"
+          value={String(pageSize)}
+          onChange={(event) =>
+            void navigate({
+              to: '/admin/content',
+              search: (current: Record<string, unknown>) => ({
+                ...current,
+                type: 'jobs.job',
+                page: 1,
+                pageSize: Number(event.currentTarget.value),
+              }),
+            })
+          }
+        >
+          {[25, 50, 100].map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </Select>
+      </StudioField>
+      <StudioPagination
+        page={page}
+        hasNextPage={result.pagination.hasNextPage}
+        ariaLabel={pt('pagination.label')}
+        pageLabel={pt('pagination.page', { page })}
+        previousLabel={pt('pagination.previous')}
+        nextLabel={pt('pagination.next')}
+        onPageChange={(next) =>
+          void navigate({
+            to: '/admin/content',
+            search: (current: Record<string, unknown>) => ({
+              ...current,
+              type: 'jobs.job',
+              q: current.search,
+              page: next,
+              pageSize,
+            }),
+          })
+        }
+      />
+    </>
+  );
 }
 export function JobsListPage({
   principalControl,
@@ -182,49 +244,7 @@ export function JobsListPage({
           ) : (
             <ListTable result={result} today={today} />
           )}
-          <StudioField id="job-pageSize" label={pt('fields.pageSize')}>
-            <Select
-              id="job-pageSize"
-              value={String(pageSize)}
-              onChange={(event) =>
-                void navigate({
-                  to: '/admin/content',
-                  search: (current: Record<string, unknown>) => ({
-                    ...current,
-                    type: 'jobs.job',
-                    page: 1,
-                    pageSize: Number(event.currentTarget.value),
-                  }),
-                })
-              }
-            >
-              {[25, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </Select>
-          </StudioField>
-          <StudioPagination
-            page={page}
-            hasNextPage={result.pagination.hasNextPage}
-            ariaLabel={pt('pagination.label')}
-            pageLabel={pt('pagination.page', { page })}
-            previousLabel={pt('pagination.previous')}
-            nextLabel={pt('pagination.next')}
-            onPageChange={(next) =>
-              void navigate({
-                to: '/admin/content',
-                search: (current: Record<string, unknown>) => ({
-                  ...current,
-                  type: 'jobs.job',
-                  q: current.search,
-                  page: next,
-                  pageSize,
-                }),
-              })
-            }
-          />
+          {listPagination(result, page, pageSize, navigate, pt)}
         </div>
       ) : null}
     </StudioOverviewPageTemplate>

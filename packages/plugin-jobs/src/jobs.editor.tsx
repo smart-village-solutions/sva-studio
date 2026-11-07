@@ -1,93 +1,48 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
-  Button,
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
   StudioDetailPageTemplate,
   StudioDetailTabs,
   StudioFormSummaryErrors,
   StudioLoadingState,
-  StudioSaveButton,
-  StudioPersistentFormError,
-  StudioFormSummary,
-  MainserverPrincipalControl,
-  resolveMainserverPrincipalOptions,
-  isMainserverPrincipalReady,
   type MainserverPrincipalControlModel,
 } from '@sva/studio-ui-react';
 import type { useJobEditor } from './jobs.editor-state.js';
 import { JobBasisFields, JobContentFields, jobFieldId } from './jobs.fields.js';
+import { canPublishJob } from './jobs.access.js';
+import {
+  EditorActions,
+  EditorFeedback,
+  EditorPrincipal,
+  EditorSaveButton,
+} from './jobs.editor-feedback.js';
 type Props = Readonly<{
   state: ReturnType<typeof useJobEditor>;
   principalControl?: MainserverPrincipalControlModel;
   history: ReactNode;
 }>;
-export function JobEditor({ state: s, principalControl, history }: Props) {
-  const pt = usePluginTranslation('jobs');
+function editorCanSave(s: Props['state'], created: boolean): boolean {
   const { id } = s;
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const created = !id && Boolean(s.record);
-  const canSave =
+  return (
     (id ? Boolean(s.record) && s.access.canUpdate : s.access.canCreate) &&
     !s.record?.writeBlockedReason &&
     !created &&
     !s.deleted &&
-    !s.loading;
+    !s.loading
+  );
+}
+export function JobEditor({ state: s, principalControl, history }: Props) {
+  const pt = usePluginTranslation('jobs');
+  const { id } = s;
+  const created = !id && Boolean(s.record);
+  const canSave = editorCanSave(s, created);
   const disabled = s.busy || s.deleted || Boolean(s.pending) || !canSave;
   return (
     <StudioDetailPageTemplate
       stickyActions
       title={pt(id ? 'editor.edit' : 'editor.create')}
       description={!id ? pt('editor.intro') : undefined}
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="secondary">
-            <Link to="/admin/content" search={{ type: 'jobs.job', page: 1 }}>
-              {pt('actions.back')}
-            </Link>
-          </Button>
-          {s.record && s.access.canDelete && !s.deleted && !s.loading ? (
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={s.busy || Boolean(s.pending)}
-              onClick={() => setConfirmDelete(true)}
-            >
-              {pt('actions.delete')}
-            </Button>
-          ) : null}
-          <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{pt('confirmation.title')}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {pt('confirmation.description', { title: s.record?.title ?? '' })}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{pt('actions.cancel')}</AlertDialogCancel>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => {
-                    setConfirmDelete(false);
-                    void s.remove();
-                  }}
-                >
-                  {pt('actions.delete')}
-                </Button>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      }
+      actions={<EditorActions s={s} />}
       primaryAction={
         canSave ? (
           <EditorSaveButton s={s} disabled={disabled} principalControl={principalControl} />
@@ -115,67 +70,6 @@ export function JobEditor({ state: s, principalControl, history }: Props) {
   );
 }
 
-function EditorFeedback({ s, created }: Readonly<{ s: Props['state']; created: boolean }>) {
-  const pt = usePluginTranslation('jobs');
-  return (
-    <>
-      {s.failure ? <StudioPersistentFormError message={pt(s.failure)} /> : null}
-      {s.message === 'messages.saved' || s.message === 'messages.deleted' ? (
-        <StudioFormSummary kind="success">{pt(s.message)}</StudioFormSummary>
-      ) : s.message ? (
-        <p role="status">{pt(s.message)}</p>
-      ) : null}
-      {s.record?.writeBlockedReason ? <p role="alert">{pt('messages.blocked')}</p> : null}
-      {s.categoryError ? <p role="status">{pt('messages.categoryError')}</p> : null}
-      {s.pending ? (
-        <StudioPersistentFormError
-          message={pt(s.pending.kind === 'delete' ? 'messages.deleteUnknown' : 'messages.unknown')}
-          retryLabel={pt(s.pending.kind === 'delete' ? 'actions.checkDelete' : 'actions.recover')}
-          retryDisabled={s.busy}
-          onRetry={() => void s.recover()}
-        />
-      ) : null}
-      {created && s.record && !s.pending ? (
-        <Button asChild>
-          <Link to="/admin/jobs/$id" params={{ id: s.record.id }}>
-            {pt('actions.openSaved')}
-          </Link>
-        </Button>
-      ) : null}
-    </>
-  );
-}
-function EditorPrincipal({
-  s,
-  created,
-  principalControl,
-}: Readonly<{
-  s: Props['state'];
-  created: boolean;
-  principalControl?: MainserverPrincipalControlModel;
-}>) {
-  const pt = usePluginTranslation('jobs');
-  const { id } = s;
-  return (
-    <fieldset disabled={s.busy || s.dirty || Boolean(s.pending) || created}>
-      <MainserverPrincipalControl
-        fixedLabel={!id ? pt('principal.responsible') : undefined}
-        id="job-principal"
-        label={pt(id ? 'principal.actAs' : 'principal.createAs')}
-        value={s.principal}
-        onChange={s.setPrincipal}
-        options={resolveMainserverPrincipalOptions(principalControl, {
-          value: s.principal,
-          label: pt(`principal.${s.principal}`),
-        })}
-        contextOptions={principalControl?.contextOptions}
-        onContextChange={principalControl?.onContextChange}
-        readinessByPrincipal={principalControl?.readinessByPrincipal}
-        readinessMessage={principalControl?.readinessMessage}
-      />
-    </fieldset>
-  );
-}
 function focusMediaUrl(field: string) {
   const mediaUrl = /^job-mediaContents-(\d+)-sourceUrl-url$/.exec(field);
   if (mediaUrl)
@@ -189,16 +83,19 @@ function focusMediaUrl(field: string) {
       input.focus();
     }, 0);
 }
-function EditorPanels({
-  s,
-  disabled,
-  history,
-}: Readonly<{ s: Props['state']; disabled: boolean; history: ReactNode }>) {
-  const pt = usePluginTranslation('jobs');
-  const { id } = s;
-  const [tab, setTab] = useState<'basis' | 'content' | 'history'>('basis');
+function focusJobError(field: string) {
+  focusMediaUrl(field);
+  const element = document.getElementById(field);
+  for (let parent = element?.parentElement; parent; parent = parent.parentElement)
+    if (parent instanceof HTMLDetailsElement) parent.open = true;
+  const control = element?.matches('input,select,textarea,[contenteditable],button')
+    ? element
+    : element?.querySelector<HTMLElement>('input,select,textarea,[contenteditable],button');
+  (control as HTMLElement | null)?.focus();
+}
+function useErrorFocus(errors: readonly string[], setTab: (tab: 'basis' | 'content') => void) {
   useEffect(() => {
-    const path = s.errors[0];
+    const path = errors[0];
     if (!path) return;
     const field = jobFieldId(path);
     setTab(
@@ -207,27 +104,22 @@ function EditorPanels({
         : 'content'
     );
     const timer = globalThis.setTimeout(() => {
-      focusMediaUrl(field);
-      const element = document.getElementById(field);
-      for (let parent = element?.parentElement; parent; parent = parent.parentElement)
-        if (parent instanceof HTMLDetailsElement) parent.open = true;
-      const control = element?.matches('input,select,textarea,[contenteditable],button')
-        ? element
-        : element?.querySelector<HTMLElement>('input,select,textarea,[contenteditable],button');
-      (control as HTMLElement | null)?.focus();
+      focusJobError(field);
     }, 0);
     return () => globalThis.clearTimeout(timer);
-  }, [s.errors]);
+  }, [errors, setTab]);
+}
+function EditorPanels({
+  s,
+  disabled,
+  history,
+}: Readonly<{ s: Props['state']; disabled: boolean; history: ReactNode }>) {
+  const pt = usePluginTranslation('jobs');
+  const { id } = s;
+  const [tab, setTab] = useState<'basis' | 'content' | 'history'>('basis');
+  useErrorFocus(s.errors, setTab);
 
-  const lifecycle = s.record
-    ? s.record.visible
-      ? 'content.changeStatus'
-      : 'content.publish'
-    : 'content.publish';
-  const canPublish = s.record
-    ? s.access.session.unscopedPermissionActions.includes(lifecycle) ||
-      s.resourceAccess[lifecycle] === true
-    : s.access.permissionActions.includes(lifecycle);
+  const canPublish = canPublishJob(s.record, s.access, s.resourceAccess);
   const fields = {
     draft: s.draft,
     change: s.change,
@@ -292,31 +184,5 @@ function EditorPanels({
         </>
       )}
     </>
-  );
-}
-
-function EditorSaveButton({
-  s,
-  disabled,
-  principalControl,
-}: Readonly<{
-  s: Props['state'];
-  disabled: boolean;
-  principalControl?: MainserverPrincipalControlModel;
-}>) {
-  const pt = usePluginTranslation('jobs');
-  const { id } = s;
-  return (
-    <StudioSaveButton
-      type="submit"
-      form="job-form"
-      status={s.busy ? 'saving' : s.message === 'messages.saved' ? 'saved' : 'idle'}
-      disabled={disabled || (!id && !isMainserverPrincipalReady(principalControl, s.principal))}
-      labels={{
-        idle: pt(id ? 'actions.update' : 'actions.create'),
-        saving: pt('actions.saving'),
-        saved: pt('actions.saved'),
-      }}
-    />
   );
 }

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { jobInputSchema, type JobInput } from '../jobs-contract.js';
+import { jobInputSchema, isJobEmploymentTypeAllowed, type JobInput } from '../jobs-contract.js';
 import {
   jobDetailDocument,
   jobListDocument,
@@ -228,19 +228,11 @@ const writeJob = async (
       )
     )
       throw new JobPrewriteError('job_external_id_conflict');
-    const employmentType = raw(prepared.expected.payload).employmentType;
     if (
-      employmentType &&
-      employmentType !== prepared.previousEmploymentType &&
-      !categories.some(
-        (category) =>
-          category.active === true &&
-          category.name === employmentType &&
-          typeof category.tagList === 'string' &&
-          category.tagList
-            .split(',')
-            .map((tag) => tag.trim())
-            .includes('generic_item_job')
+      !isJobEmploymentTypeAllowed(
+        categories,
+        raw(prepared.expected.payload).employmentType,
+        prepared.previousEmploymentType
       )
     )
       throw new JobPrewriteError('job_employment_type_invalid');

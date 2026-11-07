@@ -1,135 +1,14 @@
-import { useEffect, useState, useRef } from 'react';
-import { toDatetimeLocalValue, type MainserverActingPrincipalType } from '@sva/plugin-sdk';
-import { useStudioEditorLeaveGuard } from '@sva/studio-ui-react';
-import { createJobDefaults, jobInputSchema, type JobInput, type JobRecord } from './contract.js';
-import {
-  jobRejection,
-  getJob,
-  listJobCategories,
-  readJobPending,
-  jobRequestHash,
-  saveJob,
-  removeJob,
-  type JobPending,
-} from './jobs.api.js';
-import { useJobAccess } from './jobs.access.js';
+import type { MainserverActingPrincipalType } from '@sva/plugin-sdk';
+import { jobInputSchema, type JobInput } from './contract.js';
+import { jobRejection, jobRequestHash, saveJob, removeJob, type JobPending } from './jobs.api.js';
+import { useEditorData, useEditorLoads, type JobEditorData } from './jobs.editor-data.js';
 
-function useEditorData(
-  id: string | undefined,
-  scope: string,
-  initialPrincipal: MainserverActingPrincipalType
-) {
-  const [principal, setPrincipal] = useState<MainserverActingPrincipalType>(initialPrincipal);
-  const key = `jobs:${scope}:${principal}:${id ?? 'new'}`;
-  const [record, setRecord] = useState<JobRecord>();
-  const [draft, setDraft] = useState(() =>
-    createJobDefaults(toDatetimeLocalValue(new Date().toISOString()).slice(0, 10))
-  );
-  const [baseline, setBaseline] = useState(JSON.stringify(draft));
-  const [resourceAccess, setResourceAccess] = useState<Readonly<Record<string, boolean>>>({});
-  const [deleted, setDeleted] = useState(false);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string>();
-  const [message, setMessage] = useState<string>();
-  const [errors, setErrors] = useState<readonly string[]>([]);
-  const [categories, setCategories] = useState<readonly { id: string; name: string }[]>();
-  const [categoryError, setCategoryError] = useState(false);
-  const [pending, setPending] = useState<JobPending | undefined>(() => readJobPending(key));
-  const saving = useRef(false);
-  const access = useJobAccess(resourceAccess);
-  const dirty = baseline !== JSON.stringify(draft);
-  const guard = useStudioEditorLeaveGuard({
-    enabled: !deleted,
-    hasUnsavedChanges: dirty || Boolean(pending),
-  });
-  return {
-    id,
-    deleted,
-    setDeleted,
-    principal,
-    setPrincipal,
-    key,
-    record,
-    setRecord,
-    draft,
-    setDraft,
-    setBaseline,
-    resourceAccess,
-    setResourceAccess,
-    loading,
-    setLoading,
-    busy,
-    setBusy,
-    failure,
-    setFailure,
-    message,
-    setMessage,
-    errors,
-    setErrors,
-    categories: categories ?? [],
-    setCategories,
-    categoryError,
-    setCategoryError,
-    categoriesLoading: categories === undefined && !categoryError,
-    pending,
-    setPending,
-    saving,
-    access,
-    dirty,
-    guard,
-  };
-}
-function useEditorLoads({
-  id,
-  principal,
-  key,
-  setPending,
-  setCategories,
-  setCategoryError,
-  setLoading,
-  setRecord,
-  setDraft,
-  setBaseline,
-  setResourceAccess,
-  setFailure,
-}: ReturnType<typeof useEditorData>) {
-  useEffect(() => {
-    let active = true;
-    setCategories(undefined);
-    setCategoryError(false);
-    void listJobCategories(principal).then(
-      (items) => active && setCategories(items),
-      () => active && setCategoryError(true)
-    );
-    return () => {
-      active = false;
-    };
-  }, [principal, key]);
-  useEffect(() => {
-    setPending(readJobPending(key));
-    if (!id) return;
-    let active = true;
-    setLoading(true);
-    setRecord(undefined);
-    setResourceAccess({});
-    setFailure(undefined);
-    void getJob(id, principal)
-      .then(
-        (result) => {
-          if (!active) return;
-          setRecord(result.data);
-          setDraft(result.data.input);
-          setBaseline(JSON.stringify(result.data.input));
-          setResourceAccess(result.access);
-        },
-        () => active && setFailure('messages.loadError')
-      )
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [id, principal, key]);
+function rejectionMessage(code: string): string {
+  return (code.startsWith('job_') && code !== 'job_prewrite_failed') ||
+    code === 'forbidden' ||
+    code === 'stale_mainserver_context'
+    ? `errors.${code}`
+    : 'messages.saveError';
 }
 function useEditorCommit({
   key,
@@ -145,7 +24,7 @@ function useEditorCommit({
   setDraft,
   setBaseline,
   setDeleted,
-}: ReturnType<typeof useEditorData>) {
+}: JobEditorData) {
   return async (operation: JobPending, recover: boolean, revision = guard.captureRevision()) => {
     setBusy(true);
     setFailure(undefined);
@@ -197,17 +76,44 @@ function useEditorCommit({
       if (code && !recover) {
         sessionStorage.removeItem(key);
         setPending(undefined);
-        setFailure(
-          (code.startsWith('job_') && code !== 'job_prewrite_failed') ||
-            code === 'forbidden' ||
-            code === 'stale_mainserver_context'
-            ? `errors.${code}`
-            : 'messages.saveError'
-        );
+        setFailure(rejectionMessage(code));
       } else
         setFailure(operation.kind === 'delete' ? 'messages.deleteUnknown' : 'messages.unknown');
     } finally {
       setBusy(false);
+    }
+  };
+}
+function useEditorRemove(data: JobEditorData, commit: ReturnType<typeof useEditorCommit>) {
+  const { record, saving, setPending, setFailure, key } = data;
+  return async () => {
+    if (
+      !record ||
+      data.deleted ||
+      data.pending ||
+      data.busy ||
+      saving.current ||
+      !data.access.canDelete
+    )
+      return;
+    saving.current = true;
+    data.setBusy(true);
+    try {
+      const body = { baseFingerprint: record.contentFingerprint };
+      const operation: JobPending = {
+        operationId: crypto.randomUUID(),
+        inputHash: await jobRequestHash(body),
+        id: record.id,
+        kind: 'delete',
+      };
+      sessionStorage.setItem(key, JSON.stringify(operation));
+      setPending(operation);
+      await commit(operation, false);
+    } catch {
+      setFailure('messages.saveError');
+    } finally {
+      saving.current = false;
+      data.setBusy(false);
     }
   };
 }
@@ -231,6 +137,7 @@ export function useJobEditor(
     setFailure,
   } = data;
   const commit = useEditorCommit(data);
+  const removeDraft = useEditorRemove(data, commit);
   const change = <K extends keyof JobInput>(field: K, value: JobInput[K]) => {
     guard.markChanged();
     setDraft((current) => ({ ...current, [field]: value }));
@@ -271,36 +178,7 @@ export function useJobEditor(
     ...data,
     change,
     save,
-    remove: async () => {
-      if (
-        !record ||
-        data.deleted ||
-        data.pending ||
-        data.busy ||
-        saving.current ||
-        !data.access.canDelete
-      )
-        return;
-      saving.current = true;
-      data.setBusy(true);
-      try {
-        const body = { baseFingerprint: record.contentFingerprint };
-        const operation: JobPending = {
-          operationId: crypto.randomUUID(),
-          inputHash: await jobRequestHash(body),
-          id: record.id,
-          kind: 'delete',
-        };
-        sessionStorage.setItem(key, JSON.stringify(operation));
-        setPending(operation);
-        await commit(operation, false);
-      } catch {
-        setFailure('messages.saveError');
-      } finally {
-        saving.current = false;
-        data.setBusy(false);
-      }
-    },
+    remove: removeDraft,
     recover: () => (data.pending ? commit(data.pending, true) : Promise.resolve()),
   };
 }

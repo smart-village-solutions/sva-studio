@@ -182,3 +182,21 @@ export function jobTemporalState(
     return 'incomplete';
   return value.publicationDate > today ? 'planned' : end! < today ? 'ended' : 'ongoing';
 }
+
+export function isJobEmploymentTypeAllowed(
+  categories: readonly { active: boolean; name: string; tagList: string | null }[],
+  employmentType: unknown,
+  previousEmploymentType: string | undefined
+): boolean {
+  if (!employmentType || employmentType === previousEmploymentType) return true;
+  return categories.some(
+    (category) =>
+      category.active === true &&
+      category.name === employmentType &&
+      typeof category.tagList === 'string' &&
+      category.tagList
+        .split(',')
+        .map((tag) => tag.trim())
+        .includes('generic_item_job')
+  );
+}

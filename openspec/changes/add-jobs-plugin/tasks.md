@@ -74,3 +74,11 @@ Browsernachweis mit synthetischem lokalem Provider und isoliertem Testbrowser:
 - Übersicht und Editor bei 390 Pixeln: `scrollWidth == innerWidth`. Light/Dark-Übersicht sowie Desktop-Editor visuell geprüft; optionale fehlende Karte lässt manuelle Koordinaten verfügbar. Lokale Screenshots liegen unter `output/playwright/`; Testbrowser und Fixture-Server wurden anschließend beendet.
 
 Die drei gebündelten Implementierungsreviews prüften Codequalität/Datenvertrag, Sicherheit/Testqualität/Logging sowie Dokumentation/UX/Accessibility/i18n/User Journey. Die notwendigen Befunde wurden in den bestehenden Pfaden korrigiert und gezielt nachgeprüft: strikte Kategorien, leere externe IDs, Delete ohne globale Inaktivitätssperre, Core-/Bulk-Schreibschutz sowie Arbeitgeber-Spalte, Fehlerzuordnung/Fokus, Leerzustand, Übersetzung und Kartenanbindung. Danach bestanden aus diesen Reviews keine offenen unmittelbar blockierenden lokalen Befunde. Diese Evidenz ist keine Live-, CI-/Merge- oder App-Freigabe. Abschnitt 4.4 bleibt offen.
+
+## CI-Korrekturen für PR #2080
+
+Die kalte CI-Ausführung löste den Browservertrag über den nicht gebauten Plugin-Einstieg auf. Die bestehende Vitest-Aliasliste verweist für die Kompatibilitätsprüfung nun direkt auf den tatsächlichen Browservertrag, wie bereits beim Baustellenplugin. Die bestehende Service-Fixture bildet außerdem den zusätzlichen GenericItem-Read vor dem Sichtbarkeitswechsel ab. Beide zuvor roten Testdateien bestanden gezielt mit 122 Tests.
+
+Die vorhandenen Editor-, Formular- und Übersetzungsteile wurden innerhalb des Jobs-Packages aufgeteilt und doppelte Prüfungen in den bestehenden Funktionen zusammengeführt. Die Job-Dispatch-Funktion wird bei unverändertem öffentlichen Server-Vertrag über den zuständigen GenericItem-Einstieg reexportiert. Es gibt keine neue Plattformschicht, neue Produktfunktion, abgesenkten Schwellenwerte oder zusätzlichen Ausnahmeeinträge. Das Komplexitäts-Gate bestand ohne neue Befunde; die Jobs-Fehlerlogs benennen das richtige Modul.
+
+Nach den Korrekturen bestanden gezielt die 49 Plugin-Tests, 82 Adapter-/GenericItem-Tests, die Routing-Tests, die Plugin-Typprüfung, der Übersetzungscheck sowie Formatierung und Dateiplatzierung. Die verbindliche Gesamtprüfung erfolgt durch die GitHub-Gates am jeweils gepushten HEAD. Die Zielinstanz-/App-Abnahme aus 4.4 bleibt davon unabhängig offen.

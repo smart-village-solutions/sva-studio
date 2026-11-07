@@ -83,6 +83,13 @@ const completeGenericItemUpdate = async (input: {
   return data;
 };
 
+const readUpdateInput = (request: Request, contentKind: ContentKind) =>
+  contentKind === 'faq'
+    ? validateFaqWriteOrResponse(request)
+    : contentKind === 'cockpit-cards'
+      ? validateCockpitCardWriteOrResponse(request)
+      : parseGenericItemOrResponse(request);
+
 export const handleUpdateRequest = async (
   request: Request,
   ctx: AuthenticatedRequestContext,
@@ -112,12 +119,7 @@ export const handleUpdateRequest = async (
         existingItem.genericType !== 'COCKPIT_CARD'
       )
         return errorJson(404, 'not_found', 'Kachel wurde nicht gefunden.');
-      const genericItem =
-        contentKind === 'faq'
-          ? await validateFaqWriteOrResponse(request)
-          : contentKind === 'cockpit-cards'
-            ? await validateCockpitCardWriteOrResponse(request)
-            : await parseGenericItemOrResponse(request);
+      const genericItem = await readUpdateInput(request, contentKind);
       if (isResponse(genericItem)) return genericItem;
       if (genericItem.genericType === 'Job')
         return errorJson(409, 'job_dedicated_editor_required', 'job_dedicated_editor_required');

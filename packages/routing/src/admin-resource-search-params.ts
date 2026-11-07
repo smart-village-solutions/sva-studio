@@ -147,6 +147,20 @@ export const normalizeAdminResourceListSearch = (
   };
 };
 
+const normalizeContentFilters = (contentType: string, search: Record<string, unknown>) => {
+  const fields =
+    contentType === 'jobs.job'
+      ? ['employmentType', 'visible', 'temporal']
+      : contentType === 'construction-sites.construction-site'
+        ? ['category', 'dateStart', 'dateEnd']
+        : [];
+  return Object.fromEntries(
+    fields.flatMap((key) =>
+      typeof search[key] === 'string' && search[key].trim() ? [[key, search[key].trim()]] : []
+    )
+  );
+};
+
 export const normalizeContentAdminResourceListSearch = (
   resource: AdminResourceDefinition,
   search: Record<string, unknown>
@@ -169,19 +183,6 @@ export const normalizeContentAdminResourceListSearch = (
     ...(contentType === '' ? {} : { type: contentType }),
     ...(languageCode === '' ? {} : { languageCode }),
     ...(poiId === '' ? {} : { poiId }),
-    ...(contentType === 'jobs.job'
-      ? Object.fromEntries(
-          ['employmentType', 'visible', 'temporal'].flatMap((key) =>
-            typeof search[key] === 'string' && search[key].trim() ? [[key, search[key].trim()]] : []
-          )
-        )
-      : {}),
-    ...(contentType === 'construction-sites.construction-site'
-      ? Object.fromEntries(
-          ['category', 'dateStart', 'dateEnd'].flatMap((key) =>
-            typeof search[key] === 'string' && search[key].trim() ? [[key, search[key].trim()]] : []
-          )
-        )
-      : {}),
+    ...normalizeContentFilters(contentType, search),
   };
 };

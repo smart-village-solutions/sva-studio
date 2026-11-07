@@ -4339,6 +4339,15 @@ describe('createSvaMainserverService', () => {
                 recurringWeekdays: [],
               },
             };
+          case 'SvaMainserverGenericItemDetail':
+            return {
+              genericItem: {
+                id: 'generic-1',
+                genericType: 'Generic',
+                title: 'Inhalt',
+                visible: true,
+              },
+            };
           case 'SvaMainserverPoiDetail':
             return {
               pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true },

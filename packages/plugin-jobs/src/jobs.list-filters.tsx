@@ -9,6 +9,26 @@ import {
   type MainserverPrincipalControlModel,
 } from '@sva/studio-ui-react';
 
+type ListFilterProps = Readonly<{
+  principalControl?: MainserverPrincipalControlModel;
+  principal: MainserverActingPrincipalType;
+  onPrincipalChange: (principal: MainserverActingPrincipalType) => void;
+  filters: Record<string, string>;
+  categories: readonly { id: string; name: string }[];
+  filter: (key: string, value: string) => void;
+}>;
+
+function principalOptions(
+  model: MainserverPrincipalControlModel | undefined,
+  principal: MainserverActingPrincipalType,
+  pt: ReturnType<typeof usePluginTranslation>
+) {
+  return resolveMainserverPrincipalOptions(model, {
+    value: principal,
+    label: pt(`principal.${principal}`),
+  });
+}
+
 export function ListFilters({
   filters,
   categories,
@@ -16,14 +36,7 @@ export function ListFilters({
   principalControl,
   principal,
   onPrincipalChange,
-}: Readonly<{
-  principalControl?: MainserverPrincipalControlModel;
-  principal: MainserverActingPrincipalType;
-  onPrincipalChange: (principal: MainserverActingPrincipalType) => void;
-  filters: Record<string, string>;
-  categories: readonly { id: string; name: string }[];
-  filter: (key: string, value: string) => void;
-}>) {
+}: ListFilterProps) {
   const pt = usePluginTranslation('jobs');
   return (
     <>
@@ -32,10 +45,7 @@ export function ListFilters({
         label={pt('principal.actAs')}
         value={principal}
         onChange={onPrincipalChange}
-        options={resolveMainserverPrincipalOptions(principalControl, {
-          value: principal,
-          label: pt(`principal.${principal}`),
-        })}
+        options={principalOptions(principalControl, principal, pt)}
         contextOptions={principalControl?.contextOptions}
         onContextChange={principalControl?.onContextChange}
         readinessByPrincipal={principalControl?.readinessByPrincipal}

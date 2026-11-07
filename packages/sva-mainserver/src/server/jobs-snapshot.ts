@@ -191,7 +191,7 @@ export function jobRead(value: RawRecord): JobRecord {
 }
 function original(values: unknown, index?: number): RawRecord {
   if (index === undefined) return {};
-  const items = records(values);
+  const items = records(values ?? []);
   if (!items[index]) throw new Error('job_content_conflict');
   return items[index];
 }
@@ -217,6 +217,46 @@ function retainNullGroups(source: unknown, projected: unknown): unknown {
     );
   return projected;
 }
+function mergeCompany(
+  item: JobInput['companies'][number],
+  companies: unknown,
+  before: JobInput['companies'] | undefined
+): RawRecord {
+  const previous = original(companies, item.sourceIndex);
+  const previousAddress = object(previous.address);
+  const baseline = before?.find(
+    (company) => company.sourceIndex === item.sourceIndex && item.sourceIndex !== undefined
+  );
+  return {
+    ...previous,
+    name: baseline?.name === item.name ? previous.name : item.name,
+    contact:
+      baseline && hash(baseline.contact) === hash(item.contact)
+        ? previous.contact
+        : mergeContact(previous.contact, item.contact),
+    address:
+      baseline && hash(baseline.address) === hash(item.address)
+        ? previous.address
+        : {
+            ...previousAddress,
+            addition: item.address.addition,
+            street: item.address.street,
+            zip: item.address.zip,
+            city: item.address.city,
+            geoLocation:
+              item.address.latitude === null
+                ? null
+                : {
+                    ...object(previousAddress.geoLocation),
+                    latitude: item.address.latitude,
+                    longitude: item.address.longitude,
+                  },
+          },
+  };
+}
+const hasContactData = (item: JobInput['contacts'][number]) =>
+  item.sourceIndex !== undefined || JSON.stringify(item) !== JSON.stringify(emptyJobContact());
+
 export function buildJobWrite(input: JobInput, existing?: RawRecord): RawRecord {
   if (existing) assertJobWritable(existing);
   const base = existing ? raw(retainNullGroups(existing, snapshot(existing, jobWriteFields))) : {};
@@ -239,7 +279,7 @@ export function buildJobWrite(input: JobInput, existing?: RawRecord): RawRecord 
     contentBlocks: unchanged('contentBlocks')
       ? base.contentBlocks
       : input.contentBlocks.map((item) => {
-          const previous = original(base.contentBlocks ?? [], item.sourceIndex);
+          const previous = original(base.contentBlocks, item.sourceIndex);
           return {
             ...previous,
             body: previous.body === item.body ? item.body : sanitizeRichTextHtml(item.body),
@@ -248,60 +288,23 @@ export function buildJobWrite(input: JobInput, existing?: RawRecord): RawRecord 
     dates: unchanged('dates')
       ? base.dates
       : input.dates.map((item) => ({
-          ...original(base.dates ?? [], item.sourceIndex),
+          ...original(base.dates, item.sourceIndex),
           dateEnd: item.dateEnd || null,
         })),
     contacts: unchanged('contacts')
       ? base.contacts
       : input.contacts
-          .filter(
-            (item) =>
-              item.sourceIndex !== undefined ||
-              JSON.stringify(item) !== JSON.stringify(emptyJobContact())
-          )
-          .map((item) => mergeContact(original(base.contacts ?? [], item.sourceIndex), item)),
+          .filter(hasContactData)
+          .map((item) => mergeContact(original(base.contacts, item.sourceIndex), item)),
     companies: unchanged('companies')
       ? base.companies
       : input.companies
           .filter((item) => item.sourceIndex !== undefined || item.name.trim())
-          .map((item) => {
-            const previous = original(base.companies ?? [], item.sourceIndex);
-            const previousAddress = object(previous.address);
-            const baseline = before?.companies.find(
-              (company) =>
-                company.sourceIndex === item.sourceIndex && item.sourceIndex !== undefined
-            );
-            return {
-              ...previous,
-              name: baseline?.name === item.name ? previous.name : item.name,
-              contact:
-                baseline && hash(baseline.contact) === hash(item.contact)
-                  ? previous.contact
-                  : mergeContact(previous.contact, item.contact),
-              address:
-                baseline && hash(baseline.address) === hash(item.address)
-                  ? previous.address
-                  : {
-                      ...previousAddress,
-                      addition: item.address.addition,
-                      street: item.address.street,
-                      zip: item.address.zip,
-                      city: item.address.city,
-                      geoLocation:
-                        item.address.latitude === null
-                          ? null
-                          : {
-                              ...object(previousAddress.geoLocation),
-                              latitude: item.address.latitude,
-                              longitude: item.address.longitude,
-                            },
-                    },
-            };
-          }),
+          .map((item) => mergeCompany(item, base.companies, before?.companies)),
     mediaContents: unchanged('mediaContents')
       ? base.mediaContents
       : input.mediaContents.map(({ sourceIndex, hostMediaAssetId, ...item }) => {
-          const previous = original(base.mediaContents ?? [], sourceIndex);
+          const previous = original(base.mediaContents, sourceIndex);
           return {
             ...previous,
             ...item,

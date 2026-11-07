@@ -123,7 +123,7 @@ export async function dispatchSvaMainserverJobsRequest(request: Request): Promis
         error instanceof Error && /^job_[a-z_]+$/.test(error.message)
           ? error.message
           : 'job_request_failed';
-      logger.warn('Construction job request failed', {
+    logger.warn('Job request failed', {
         operation: 'jobs_request',
         error_code: code,
       });

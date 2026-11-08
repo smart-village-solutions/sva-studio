@@ -15,7 +15,7 @@ export const SearchFeedback = ({
   query: SearchQuery;
   retry: () => void;
 }) => {
-  const t = usePluginTranslation('search');
+  const pt = usePluginTranslation('search');
   const errorKey =
     error === 'search_not_configured'
       ? 'notConfigured'
@@ -31,13 +31,13 @@ export const SearchFeedback = ({
         className="text-sm text-muted-foreground"
       >
         {loading
-          ? t('loading')
+          ? pt('loading')
           : result
             ? result.complete
-              ? t('count', { allowed: result.allowed, denied: result.denied })
-              : t('available', { allowed: result.allowed })
+              ? pt('count', { allowed: result.allowed, denied: result.denied })
+              : pt('available', { allowed: result.allowed })
             : !query.q
-              ? t('initial')
+              ? pt('initial')
               : null}
       </div>
       {error ? (
@@ -45,28 +45,28 @@ export const SearchFeedback = ({
           role="alert"
           className="space-y-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4"
         >
-          <p>{t(errorKey)}</p>
+          <p>{pt(errorKey)}</p>
           <Button variant="secondary" onClick={retry}>
-            {t('retry')}
+            {pt('retry')}
           </Button>
         </div>
       ) : null}
       {result && !result.complete ? (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
-          <p>{t('incomplete')}</p>
+          <p>{pt('incomplete')}</p>
           <Button variant="secondary" onClick={retry}>
-            {t('retry')}
+            {pt('retry')}
           </Button>
         </div>
       ) : null}
       {result && result.complete && result.items.length === 0 ? (
-        <p className="py-8 text-muted-foreground">{t('empty')}</p>
+        <p className="py-8 text-muted-foreground">{pt('empty')}</p>
       ) : null}
     </>
   );
 };
 export const SearchResultList = ({ result }: { result: SearchResults | null }) => {
-  const t = usePluginTranslation('search');
+  const pt = usePluginTranslation('search');
   return (
     <>
       {result ? (
@@ -74,7 +74,7 @@ export const SearchResultList = ({ result }: { result: SearchResults | null }) =
           {result.items.map((item) => (
             <li key={`${item.contentType}:${item.id}`} className="space-y-2 p-5">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{t(`types.${item.contentType.split('.')[0]}`)}</Badge>
+                <Badge variant="secondary">{pt(`types.${item.contentType.split('.')[0]}`)}</Badge>
                 <span className="text-sm text-muted-foreground">{item.providerName}</span>
               </div>
               <h2 className="text-lg font-semibold">
@@ -106,12 +106,12 @@ export const SearchPaging = ({
   loading: boolean;
   update: (query: SearchQuery) => void;
 }) => {
-  const t = usePluginTranslation('search');
+  const pt = usePluginTranslation('search');
   return (
     <>
       {result && (query.page > 1 || result.hasNextPage) ? (
         <nav
-          aria-label={t('page', { page: query.page })}
+          aria-label={pt('page', { page: query.page })}
           className="flex items-center justify-between gap-3"
         >
           <Button
@@ -119,15 +119,15 @@ export const SearchPaging = ({
             disabled={query.page <= 1 || loading}
             onClick={() => update({ ...query, page: query.page - 1 })}
           >
-            {t('previous')}
+            {pt('previous')}
           </Button>
-          <span className="text-sm">{t('page', { page: query.page })}</span>
+          <span className="text-sm">{pt('page', { page: query.page })}</span>
           <Button
             variant="secondary"
             disabled={!result.hasNextPage || loading}
             onClick={() => update({ ...query, page: query.page + 1 })}
           >
-            {t('next')}
+            {pt('next')}
           </Button>
         </nav>
       ) : null}

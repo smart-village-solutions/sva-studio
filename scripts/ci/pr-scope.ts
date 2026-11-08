@@ -58,6 +58,7 @@ const integrationEscalationPatterns = [
 
 const pluginUiBuildRelevantPatterns = [
   /^packages\/plugin-news\/src\/.*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-search\/src\/.*\.(?:ts|tsx)$/u,
   /^packages\/plugin-events\/src\/.*\.(?:ts|tsx)$/u,
   /^packages\/plugin-faq\/src\/.*\.(?:ts|tsx)$/u,
   /^packages\/plugin-poi\/src\/.*\.(?:ts|tsx)$/u,
@@ -67,6 +68,7 @@ const pluginUiBuildRelevantPatterns = [
 
 const pluginUiA11yRelevantPatterns = [
   /^packages\/plugin-news\/src\/.*\.tsx$/u,
+  /^packages\/plugin-search\/src\/.*\.tsx$/u,
   /^packages\/plugin-events\/src\/.*\.tsx$/u,
   /^packages\/plugin-faq\/src\/.*\.tsx$/u,
   /^packages\/plugin-poi\/src\/.*\.tsx$/u,
@@ -246,7 +248,7 @@ export const resolveChangedFiles = (
       encoding: 'utf8',
     });
 
-  let output = '';
+  let output: string;
 
   try {
     output = runDiff(diffMode === 'direct' ? `${base}..${head}` : `${base}...${head}`);

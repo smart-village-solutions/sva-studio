@@ -45,6 +45,19 @@ describe('pr-scope', () => {
     });
   });
 
+  it('classifies the active search UI as app-build and accessibility relevant', () => {
+    expectDecision(classifyPrScope(['packages/plugin-search/src/search-page.tsx']), {
+      codeRelevant: true,
+      qualityGateMode: 'affected',
+      appBuildMode: 'affected',
+      a11yMode: 'affected',
+    });
+    expectDecision(classifyPrScope(['packages/plugin-search/src/plugin.translations.ts']), {
+      appBuildMode: 'affected',
+      a11yMode: 'skip',
+    });
+  });
+
   it('classifies plugin waste-management tsx changes as app-build and accessibility relevant', () => {
     const decision = classifyPrScope([
       'packages/plugin-waste-management/src/waste-management.page.tsx',
@@ -311,10 +324,17 @@ describe('pr-scope', () => {
   });
 
   it('uses the complete live-to-target diff for a diverged Staging line switch', () => {
-    expect(resolveChangedFiles('beta', 'hotfix', (args) => {
-      expect(args.at(-1)).toBe('beta..hotfix');
-      return 'D\tpackages/data/migrations/0104_beta_only.sql\nM\tapps/sva-studio-react/src/index.ts';
-    }, 'direct')).toEqual([
+    expect(
+      resolveChangedFiles(
+        'beta',
+        'hotfix',
+        (args) => {
+          expect(args.at(-1)).toBe('beta..hotfix');
+          return 'D\tpackages/data/migrations/0104_beta_only.sql\nM\tapps/sva-studio-react/src/index.ts';
+        },
+        'direct'
+      )
+    ).toEqual([
       'packages/data/migrations/0104_beta_only.sql',
       'apps/sva-studio-react/src/index.ts',
     ]);

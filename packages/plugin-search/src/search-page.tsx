@@ -51,7 +51,7 @@ const useSearchResults = (query: SearchQuery, contextKey: string) => {
   return { result, loading, error, retry: () => setRetry((value) => value + 1) };
 };
 export const SearchResultsPage = ({ contextKey = '' }: { readonly contextKey?: string }) => {
-  const t = usePluginTranslation('search');
+  const pt = usePluginTranslation('search');
   const search = useSearch({ strict: false });
   const query = useMemo(() => parseSearchQuery(search), [search]);
   const navigate = useNavigate();
@@ -64,10 +64,10 @@ export const SearchResultsPage = ({ contextKey = '' }: { readonly contextKey?: s
     setInput(query.q);
   }, [query.q]);
   return (
-    <StudioOverviewPageTemplate title={t('title')} description={t('description')}>
+    <StudioOverviewPageTemplate title={pt('title')} description={pt('description')}>
       <form
         role="search"
-        aria-label={t('title')}
+        aria-label={pt('title')}
         className="flex flex-wrap gap-3"
         onSubmit={(event) => {
           event.preventDefault();
@@ -77,14 +77,14 @@ export const SearchResultsPage = ({ contextKey = '' }: { readonly contextKey?: s
         <Input
           autoFocus
           type="search"
-          aria-label={t('prompt')}
-          placeholder={t('prompt')}
+          aria-label={pt('prompt')}
+          placeholder={pt('prompt')}
           value={input}
           maxLength={250}
           onChange={(event) => setInput(event.target.value)}
           className="min-w-0 flex-1"
         />
-        <Button type="submit">{t('submit')}</Button>
+        <Button type="submit">{pt('submit')}</Button>
       </form>
       <SearchFilters
         query={query}

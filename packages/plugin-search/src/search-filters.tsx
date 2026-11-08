@@ -9,8 +9,8 @@ type FilterProps = {
 };
 const MultiFilter = ({ field: key, ...props }: FilterProps & { field: 'types' | 'categories' }) => {
   const { query, options, loading, onChange } = props;
-  const t = usePluginTranslation('search');
-  const label = t(key === 'types' ? 'type' : 'category');
+  const pt = usePluginTranslation('search');
+  const label = pt(key === 'types' ? 'type' : 'category');
   return (
     <div className="min-w-0 space-y-2">
       <label className="text-sm font-medium" htmlFor={`search-${key}`}>
@@ -23,16 +23,16 @@ const MultiFilter = ({ field: key, ...props }: FilterProps & { field: 'types' | 
         disabled={loading}
         options={options[key].map((value) => ({
           value,
-          label: key === 'types' ? t(`types.${value.split('.')[0]}`) : value,
+          label: key === 'types' ? pt(`types.${value.split('.')[0]}`) : value,
         }))}
         onValueChange={(value) => onChange({ ...query, [key]: value, page: 1 })}
-        placeholder={t('choose')}
-        emptyText={t('noOptions')}
+        placeholder={pt('choose')}
+        emptyText={pt('noOptions')}
         helpText=""
-        loadingText={t('loading')}
-        searchLabel={t('filterSearch')}
-        unavailableText={t('noOptions')}
-        removeLabel={(value) => t('remove', { label: value })}
+        loadingText={pt('loading')}
+        searchLabel={pt('filterSearch')}
+        unavailableText={pt('noOptions')}
+        removeLabel={(value) => pt('remove', { label: value })}
       />
     </div>
   );
@@ -48,7 +48,7 @@ export const SearchFilters = ({
   readonly loading: boolean;
   readonly onChange: (query: SearchQuery) => void;
 }) => {
-  const t = usePluginTranslation('search');
+  const pt = usePluginTranslation('search');
   const update = (patch: Partial<SearchQuery>) => onChange({ ...query, ...patch, page: 1 });
   return (
     <div className="space-y-3 rounded-xl border border-border bg-card p-4">
@@ -69,7 +69,7 @@ export const SearchFilters = ({
         />
         <div className="space-y-2">
           <label htmlFor="search-provider" className="text-sm font-medium">
-            {t('provider')}
+            {pt('provider')}
           </label>
           <Select
             id="search-provider"
@@ -77,7 +77,7 @@ export const SearchFilters = ({
             disabled={loading}
             onChange={(event) => update({ provider: event.target.value })}
           >
-            <option value="">{t('allProviders')}</option>
+            <option value="">{pt('allProviders')}</option>
             {options.providers.map((provider) => (
               <option key={provider.id} value={provider.id}>
                 {provider.name}
@@ -90,10 +90,10 @@ export const SearchFilters = ({
         <div className="flex flex-wrap gap-2">
           {query.provider ? (
             <Button variant="secondary" size="sm" onClick={() => update({ provider: '' })}>
-              {t('remove', {
+              {pt('remove', {
                 label:
                   options.providers.find((entry) => entry.id === query.provider)?.name ??
-                  t('provider'),
+                  pt('provider'),
               })}
             </Button>
           ) : null}
@@ -102,7 +102,7 @@ export const SearchFilters = ({
             size="sm"
             onClick={() => update({ types: [], categories: [], provider: '' })}
           >
-            {t('reset')}
+            {pt('reset')}
           </Button>
         </div>
       ) : null}

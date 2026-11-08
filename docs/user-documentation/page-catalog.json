@@ -565,6 +565,15 @@
       "titleKey": "projects.navigation.title"
     },
     {
+      "id": "search.results",
+      "path": "/plugins/search",
+      "pageType": "overview",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "search"
+      }
+    },
+    {
       "id": "ssf.system-configuration",
       "path": "/plugins/ssf/system-configuration",
       "pageType": "setup",

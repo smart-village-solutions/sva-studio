@@ -3,13 +3,13 @@ import { IconSearch } from '@tabler/icons-react';
 import { Button, Input } from '@sva/studio-ui-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 export const SearchHeader = ({ onSearch }: { readonly onSearch: (q: string) => void }) => {
-  const t = usePluginTranslation('search');
+  const pt = usePluginTranslation('search');
   const [q, setQuery] = useState('');
   return (
     <>
       <form
         role="search"
-        aria-label={t('title')}
+        aria-label={pt('title')}
         className="hidden min-w-0 max-w-md flex-1 items-center gap-2 lg:flex"
         onSubmit={(event) => {
           event.preventDefault();
@@ -21,11 +21,11 @@ export const SearchHeader = ({ onSearch }: { readonly onSearch: (q: string) => v
           value={q}
           onChange={(event) => setQuery(event.target.value)}
           maxLength={250}
-          placeholder={t('prompt')}
-          aria-label={t('prompt')}
+          placeholder={pt('prompt')}
+          aria-label={pt('prompt')}
           className="rounded-full bg-surface-inset"
         />
-        <Button type="submit" size="icon" variant="tertiary" aria-label={t('submit')}>
+        <Button type="submit" size="icon" variant="tertiary" aria-label={pt('submit')}>
           <IconSearch aria-hidden="true" className="h-5 w-5" />
         </Button>
       </form>
@@ -34,7 +34,7 @@ export const SearchHeader = ({ onSearch }: { readonly onSearch: (q: string) => v
         size="icon"
         variant="tertiary"
         className="lg:hidden"
-        aria-label={t('open')}
+        aria-label={pt('open')}
         onClick={() => onSearch('')}
       >
         <IconSearch aria-hidden="true" className="h-5 w-5" />

@@ -17,8 +17,9 @@ vi.stubGlobal('fetch', state.fetch);
 
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: (_options?: unknown) => ({
-    validator: () => ({
-      handler: (handler: (input: { data: unknown }) => Promise<unknown>) => handler,
+    validator: (validate: (data: unknown) => unknown) => ({
+      handler: (handler: (input: { data: unknown }) => Promise<unknown>) =>
+        async ({ data }: { data: unknown }) => handler({ data: await validate(data) }),
     }),
     handler: (handler: () => Promise<unknown>) => handler,
   }),

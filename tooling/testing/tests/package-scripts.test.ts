@@ -345,7 +345,7 @@ describe('workspace package scripts', () => {
     expect(qualityWorkflow).toContain(
       'run: pnpm exec tsx scripts/ci/affected-unit-gate.ts --residual-only'
     );
-    expect(qualityWorkflow).toContain('needs: [unit-residual, coverage]');
+    expect(qualityWorkflow).toContain('needs: [unit-residual, unit-app, coverage]');
     expect(e2eWorkflow).toContain('schedule:');
     expect(e2eWorkflow).toContain("PLAYWRIGHT_MAX_FAILURES: '0'");
   });

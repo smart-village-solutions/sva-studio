@@ -1,3 +1,4 @@
+import { searchTranslations } from './plugin.translations.js';
 import {
   candidateKey,
   searchModels,
@@ -89,6 +90,26 @@ const scanCandidates = async (host: SearchEngineHost, now: () => number) => {
   }
   return { documents, denied, complete: done.size === searchModels.length && unresolved === 0 };
 };
+const sortDocuments = (
+  documents: SearchDocument[],
+  query: SearchQuery,
+  locale: 'de' | 'en'
+): SearchDocument[] => {
+  const field = query.sortBy ?? 'title';
+  const direction = query.sortDirection === 'desc' ? -1 : 1;
+  const labels = searchTranslations[locale].search.types;
+  const value = (document: SearchDocument): string => {
+    const label = labels[document.contentType.split('.')[0] as keyof typeof labels];
+    return field === 'contentType' && typeof label === 'string' ? label : document[field];
+  };
+  return documents.sort(
+    (left, right) =>
+      direction *
+        value(left).localeCompare(value(right), locale, { sensitivity: 'base', numeric: true }) ||
+      left.contentType.localeCompare(right.contentType) ||
+      left.id.localeCompare(right.id, 'de', { numeric: true })
+  );
+};
 const optionsFor = (documents: readonly SearchDocument[]): SearchResults['options'] => {
   const providers = new Map<string, string>();
   for (const document of documents)
@@ -104,13 +125,18 @@ const optionsFor = (documents: readonly SearchDocument[]): SearchResults['option
 /** Candidates are resolved before any presentation data, options or paging leaves the server. */
 export const executeSearch = async (
   query: SearchQuery,
-  host: SearchEngineHost
+  host: SearchEngineHost,
+  locale: 'de' | 'en' = 'de'
 ): Promise<SearchResults> => {
   const scan = query.q
     ? await scanCandidates(host, host.now ?? Date.now)
     : { documents: [], denied: 0, complete: true };
   if (!(await host.isCurrent())) throw new Error('search_context_changed');
-  const permitted = scan.documents.filter((document) => matches(document, query));
+  const permitted = sortDocuments(
+    scan.documents.filter((document) => matches(document, query)),
+    query,
+    locale
+  );
   const start = (query.page - 1) * pageSize;
   return {
     items: permitted.slice(start, start + pageSize),

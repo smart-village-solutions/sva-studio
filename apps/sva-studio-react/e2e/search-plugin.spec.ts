@@ -83,7 +83,11 @@ test('search header, results, filters and mobile entry use the existing plugin',
   await expect(page.getByRole('button', { name: 'Nachrichten entfernen' })).toBeVisible();
   await page.getByLabel('Inhaltstyp', { exact: true }).click();
   await page.getByRole('checkbox', { name: 'Veranstaltungen', exact: true }).click();
-  await expect(page.locator('main').getByRole('searchbox')).toHaveValue('Kultur');
+  await expect(page.locator('main').getByRole('searchbox')).toHaveCount(0);
+  await expect(header.getByRole('searchbox')).toHaveValue('Kultur');
+  await expect(page.getByRole('table', { name: 'Suchergebnisse' })).toBeVisible();
+  await page.getByRole('button', { name: 'Titel', exact: true }).click();
+  await expect(page).toHaveURL(/sortDirection=desc/);
   await expect(page).toHaveURL(/q=Kultur/);
   await expect(page.getByRole('button', { name: 'Nachrichten entfernen' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Veranstaltungen entfernen' })).toBeVisible();
@@ -94,7 +98,8 @@ test('search header, results, filters and mobile entry use the existing plugin',
     .analyze();
   expect(accessibility.violations).toEqual([]);
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(header.getByRole('button', { name: 'Suche öffnen' })).toBeVisible();
+  await expect(header.getByRole('searchbox', { name: 'Inhalte durchsuchen' })).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: 'Inhalte durchsuchen' })).toHaveCount(1);
   await expect(page.getByRole('link', { name: 'Kultur im Rathaus' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true

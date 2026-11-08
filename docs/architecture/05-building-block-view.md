@@ -1284,4 +1284,4 @@ Das bestehende Baustellenplugin ergänzt seinen MapLibre-Kartenpfad lokal um Ter
 
 ## Suchplugin und Host-Anbindung
 
-`packages/plugin-search` besitzt Descriptor, Browser-Ansicht, validierten Suchzustand, Meilisearch-Kandidatenabfrage und Zählablauf. Das konkrete Host-Wiring in `search-mainserver.server.ts` verwendet bestehende Mainserver-Detaildispatcher, Typregistry und effektive Permissions. Der Host materialisiert Route und Serverhandler; es entsteht weder ein weiteres Suchpackage noch eine allgemeine Header- oder Autorisierungsplattform.
+`packages/plugin-search` besitzt Descriptor, das einzige Suchfeld im Header, die Ergebnisseite mit vorhandener `StudioDataTable`, validierten Such-/Sortierzustand, Meilisearch-Kandidatenabfrage und Zählablauf. Die Sortierung erfolgt nach der Autorisierung und vor dem Paging. Das konkrete Host-Wiring in `search-mainserver.server.ts` verwendet bestehende Mainserver-Detaildispatcher, Typregistry und effektive Permissions. Der Host materialisiert Route und Serverhandler; es entsteht weder ein weiteres Suchpackage noch eine allgemeine Header- oder Autorisierungsplattform.

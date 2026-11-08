@@ -1,11 +1,15 @@
 export const searchModels = ['NewsItem', 'EventRecord', 'PointOfInterest', 'GenericItem'] as const;
 export type SearchModel = (typeof searchModels)[number];
+const searchSortFields = ['title', 'contentType', 'providerName'] as const;
+type SearchSortField = (typeof searchSortFields)[number];
 export type SearchQuery = Readonly<{
   q: string;
   types: readonly string[];
   categories: readonly string[];
   provider: string;
   page: number;
+  sortBy?: SearchSortField;
+  sortDirection?: 'asc' | 'desc';
 }>;
 export type SearchCandidate = Readonly<{
   model: SearchModel;
@@ -58,6 +62,21 @@ const strings = (value: unknown): readonly string[] => {
     ),
   ].sort();
 };
+const readSearchSort = (
+  input: Record<string, unknown>
+): Pick<SearchQuery, 'sortBy' | 'sortDirection'> => {
+  const sortBy = input.sortBy;
+  const sortDirection = input.sortDirection;
+  if (
+    (sortBy !== undefined && !searchSortFields.includes(sortBy as SearchSortField)) ||
+    (sortDirection !== undefined && sortDirection !== 'asc' && sortDirection !== 'desc')
+  )
+    throw new Error('invalid_search');
+  return {
+    ...(sortBy ? { sortBy: sortBy as SearchSortField } : {}),
+    ...(sortDirection ? { sortDirection: sortDirection as 'asc' | 'desc' } : {}),
+  };
+};
 export const parseSearchQuery = (input: Record<string, unknown>): SearchQuery => {
   const q = typeof input.q === 'string' ? input.q.trim() : '';
   const provider = typeof input.provider === 'string' ? input.provider.trim() : '';
@@ -71,7 +90,14 @@ export const parseSearchQuery = (input: Record<string, unknown>): SearchQuery =>
     page > 1000
   )
     throw new Error('invalid_search');
-  return { q, provider, page, types: strings(input.types), categories: strings(input.categories) };
+  return {
+    q,
+    provider,
+    page,
+    types: strings(input.types),
+    categories: strings(input.categories),
+    ...readSearchSort(input),
+  };
 };
 export const readSearchQuery = (url: URL): SearchQuery =>
   parseSearchQuery({
@@ -80,9 +106,13 @@ export const readSearchQuery = (url: URL): SearchQuery =>
     types: url.searchParams.getAll('types'),
     categories: url.searchParams.getAll('categories'),
     page: url.searchParams.get('page') ?? 1,
+    sortBy: url.searchParams.get('sortBy') ?? undefined,
+    sortDirection: url.searchParams.get('sortDirection') ?? undefined,
   });
 export const searchQueryParams = (query: SearchQuery): URLSearchParams => {
   const result = new URLSearchParams({ q: query.q, page: String(query.page) });
+  if (query.sortBy) result.set('sortBy', query.sortBy);
+  if (query.sortDirection) result.set('sortDirection', query.sortDirection);
   for (const type of query.types) result.append('types', type);
   for (const category of query.categories) result.append('categories', category);
   if (query.provider) result.set('provider', query.provider);

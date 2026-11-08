@@ -48,6 +48,8 @@ const routeState = vi.hoisted(() => ({
   faqLabel: 'FAQ',
 }));
 
+vi.mock('../providers/locale-provider', () => ({ useLocale: () => ({ locale: 'de' }) }));
+
 vi.mock('@sva/plugin-app-translations', () => ({
   CatalogsPage: ({ platform }: { platform?: boolean }) => (
     <div data-testid="translation-catalog-scope">{platform ? 'platform' : 'instance'}</div>

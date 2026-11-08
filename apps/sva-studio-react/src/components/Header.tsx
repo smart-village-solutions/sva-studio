@@ -160,7 +160,7 @@ export default function Header({
           </div>
         ) : null}
         {showOrganizationContext ? (
-          <div className="col-span-3 row-start-3 min-w-0 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+          <div className="col-span-3 min-w-0 lg:col-span-1 lg:col-start-2 lg:row-start-1">
             <OrganizationContextSwitcher allowPersonal={isSystemAdmin} />
           </div>
         ) : null}

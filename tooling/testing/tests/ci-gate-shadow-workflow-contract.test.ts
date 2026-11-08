@@ -114,6 +114,7 @@ describe('consolidated CI gate workflows', () => {
     expect(prGates).toContain('studio-ref: ${{ github.event.pull_request.head.sha }}');
     expect(mainGates).toContain('studio-ref: ${{ github.sha }}');
     expect(prGates).toContain('needs: [scope, plugin-compatibility]');
+    expect(prGates).toContain("needs.scope.outputs.quality_gate_mode != 'skip'");
     expect(prGates).toContain("needs.plugin-compatibility.result != 'success' && needs.plugin-compatibility.result != 'skipped'");
   });
 

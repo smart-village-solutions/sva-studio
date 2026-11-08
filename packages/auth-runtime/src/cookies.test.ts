@@ -1,8 +1,20 @@
+import { createHash } from 'node:crypto';
+import { createSilentSsoResponse } from './auth-route-cookies.js';
 import { describe, expect, it } from 'vitest';
 
 import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
 
 describe('auth-runtime cookies', () => {
+  it.each(['success', 'failure'] as const)('prepares a hash policy for the fixed silent-SSO %s script', async status => {
+    const response = createSilentSsoResponse(status);
+    const html = await response.text();
+    const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+    expect(script).toContain('window.location.origin');
+    const hash = createHash('sha256').update(script ?? '').digest('base64');
+    expect(response.headers.get('content-security-policy-report-only')).toBe(`script-src 'sha256-${hash}'; object-src 'none'; base-uri 'self'`);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+
   it('reads a named cookie from request headers', () => {
     const request = new Request('https://example.test', {
       headers: { cookie: 'session=abc; theme=dark' },

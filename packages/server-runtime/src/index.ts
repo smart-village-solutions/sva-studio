@@ -105,4 +105,4 @@ export const createSdkLogger = (
 
 export { getEncryptionConfig, protectField, revealField } from './server/field-encryption.server.js';
 
-export { fetchPublicHttps } from './server/public-https-fetch.server.js';
+export { fetchPublicHttps, fetchMapGeocoding } from './server/public-https-fetch.server.js';

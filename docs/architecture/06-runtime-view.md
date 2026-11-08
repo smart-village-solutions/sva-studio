@@ -1663,3 +1663,9 @@ SSF step-up uses `acr_values=mfa` and `max_age=0`. See
 ### Geometrie-Roundtrip im Studio
 
 Abgeschlossene Zeichnungen und Koordinateneingaben ändern denselben Baustellen-Draft. Erst der Formular-Save führt Validierung, Normalisierung, frischen Detail-Read, Fingerprint-Prüfung, vorhandene Mutation und unabhängigen Geometrie-Readback aus. Request-Hash und gesendeter Body verwenden denselben normalisierten Snapshot. Unfertige Zeichnungen werden nicht gespeichert. Ein explizites `geometry: null` im Studio-Input entfernt den reservierten Schlüssel vor der Mutation aus dem vollständigen Payload; Erfolg setzt danach dessen tatsächliche Abwesenheit im Readback voraus. Der Mainserver bleibt unverändert und ersetzt das übergebene Payload wie bisher. Ausgelassene Geometrie übernimmt der Studio-Adapter aus dem frischen Snapshot; ein Legacy-CMS-Erhalt gehört nach Nutzerfestlegung nicht zum Umfang.
+
+### Persönlicher Bearer-Zugriff und Geocoding-Budget
+
+Nach JWT-Verifikation und Host-/Tenant-Bindung prüft der persönliche Auth-Pfad den aktuellen Sperr-/Kontozustand. Eine fachliche Sperre liefert 403, ein ungültiges Token 401 und eine nicht prüfbare Abhängigkeit 503; der Bearer-Pfad provisioniert keine Accounts. Rollen- und Permission-Abfragen geben für inaktive oder gesperrte Accounts keine erhaltenen Grants frei.
+
+Suggest, Geocode, Reverse und Postleitzahl-Batch tragen dieselbe serverseitig gebundene Instanz-ID bis zum Provider. Unmittelbar vor jedem Netzwerkversuch, auch jedem manuellen Redirect-Hop, verbraucht der Provider atomar das Tenant-Budget. Die erste Freigabe startet ein 60-Sekunden-Fenster, Ablehnungen verlängern es nicht. Erschöpfung liefert 429 und die verbleibende Wartezeit (`Retry-After`); Redis-Ausfall liefert 503 ohne Providerzugriff. Der Server-Function-Pfad überträgt Budgetfehler als begrenzten Datensatz, weil TanStack zusätzliche `Error`-Felder beim Serialisieren verwirft. Batch-Pacing und Gesamtbudget bleiben zusätzlich bestehen.

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   enrichRoles: vi.fn(async (user: unknown) => user),
   resolveSessionUser: vi.fn(async (_request: Request, user: unknown) => user),
   getRemoteJwks: vi.fn(),
+  lifecycle: vi.fn(async (): Promise<Response | null> => null),
 }));
 
 vi.mock('./config-request.js', () => ({ resolvePersonalApiAuthBinding: mocks.binding }));
@@ -13,6 +14,7 @@ vi.mock('./effective-session-roles.js', () => ({
   enrichSessionUserWithEffectiveRoles: mocks.enrichRoles,
 }));
 vi.mock('./middleware-hosts.js', () => ({ resolveSessionUser: mocks.resolveSessionUser }));
+vi.mock('./middleware-guards.js', () => ({ ensureAccountLifecycleAllowsAccess: mocks.lifecycle }));
 vi.mock('./service-token.js', () => ({
   getRemoteServiceJwks: mocks.getRemoteJwks,
   isServiceIdentityProviderUnavailable: () => false,
@@ -40,6 +42,7 @@ describe('personal MCP API token authentication', () => {
     mocks.getRemoteJwks.mockReturnValue(localJwks);
     mocks.resolveSessionUser.mockImplementation(async (_request, user) => user);
     mocks.enrichRoles.mockImplementation(async (user) => user);
+    mocks.lifecycle.mockResolvedValue(null);
     ({ authenticatePersonalApiRequest: authenticate } = await import('./personal-api-auth.js'));
   });
 
@@ -91,4 +94,27 @@ describe('personal MCP API token authentication', () => {
       expect((result as Response).status).toBe(401);
     }
   });
+
+  it.each([403, 503])(
+    'stops before role hydration when the current account check returns %s',
+    async (status) => {
+      mocks.lifecycle.mockResolvedValue(new Response(null, { status }));
+      const result = await authenticate(
+        new Request('https://tenant-a.example/api/v1/iam/users', {
+          headers: { authorization: `Bearer ${await signToken()}` },
+        })
+      );
+      expect(result).toBeInstanceOf(Response);
+      expect((result as Response).status).toBe(status);
+      expect(mocks.lifecycle).toHaveBeenCalledWith(
+        expect.any(Request),
+        expect.objectContaining({
+          id: 'kc-provider-1',
+          instanceId: 'tenant-a',
+        }),
+        { requireCurrentAccount: true }
+      );
+      expect(mocks.enrichRoles).not.toHaveBeenCalled();
+    }
+  );
 });

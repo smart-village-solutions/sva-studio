@@ -754,3 +754,7 @@ policy to Core/IAM. It records explicit recording grants, preserved administrato
 exclusions, the live host-reader boundary and durable reconciliation. Runtime
 and validation are described in sections 05, 06 and 08; implementation does not
 itself establish production promotion or tenant recording readiness.
+
+## Aktuelle Kontoprüfung persönlicher Bearer-Zugriffe
+
+[ADR-023](../adr/ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md) und [ADR-067](../adr/ADR-067-persoenlicher-plattform-und-tenant-zugang-im-studio-mcp.md) präzisieren die bestehende Zuständigkeit: aktueller Redis-/Tenant-Account-/Plattform-Keycloak-Status vor persönlichen API-Handlern, unabhängig von erhaltenen Grants oder JWT-Laufzeit. Die Änderungen betreffen Abschnitt 04/05/06/08; der bestehende Browser-/DSR-Vertrag bleibt erhalten.

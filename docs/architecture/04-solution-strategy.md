@@ -399,3 +399,7 @@ competence languages and realm authentication policy; the plugin owns recording
 policy and editorial wording. A narrow host reader supplies live eligible users.
 Existing SDK metadata, lifecycle jobs and Keycloak provisioning are reused.
 See [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).
+
+### Aktueller Kontozustand bei persönlichen API-Zugriffen
+
+Persönliche Bearer-Zugriffe prüfen vor Rollenhydration und Handler den Redis-Sperrmarker und den aktuellen Kontozustand. Tenant-Accounts benötigen einen aktiven, nicht gesperrten oder gelöschten Account samt passender Instanzmitgliedschaft; Plattform-Accounts einen gezielten Keycloak-Read mit übereinstimmendem Subject und explizitem `enabled: true`, ohne lokalen Tenant-Spiegel. Ein gültiger JWT oder erhaltene Rollenzuweisungen ersetzen diese Prüfung nicht. Browser-, JIT- und DSR-Ausnahmen behalten ihren bestehenden Vertrag.

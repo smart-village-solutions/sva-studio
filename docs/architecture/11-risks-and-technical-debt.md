@@ -721,3 +721,7 @@ Ein versehentlich übernommener allgemeiner Plugin-Glob oder Seiten-Import kann 
 ## Gutscheine: destruktiver Provider-Vertrag
 
 Der Mainserver ersetzt bei Ortsupdates Gutscheine und Kontingente und entfernt Einlösungen. Der Nutzer akzeptiert diesen Reset derzeit nach Bestätigung. Öffentliche Filter für Kategorien und Ankündigungen sowie nicht atomare externe Konkurrenz erzwingen konservative Write-Grenzen. Idempotenzdaten sind auf 24 Stunden begrenzt; überschreibt eine spätere Mutation die Operationsmarkierung, kann ein älterer unklarer Save nicht sicher bestätigt werden. Eine Änderung des Providers ist separat als Mainserver #445 / SVA-1778 erfasst. Siehe [Gutscheinreferenz](../reference/vouchers.md).
+
+## Offene Browser- und Edge-Abnahme der Script-CSP
+
+Die lokale Härtung ergänzt Header und eine Script-Policy im Report-Only-Modus. Produktive Edge-Header und die vollständigen Login-/Logout-/Silent-SSO-, Karten-, Medien-, Download- und Embed-Flows sind damit noch nicht abgenommen. Vor Enforcement müssen konkrete Zielhosts lesend freigegeben, App-/Edge-Ownership geklärt und dieselben Policies am ausgelieferten Build geprüft werden. Report-Only schließt F06 des historischen OWASP-Reviews (`docs/reports/2026-11-08-owasp-cheat-sheet-review.md`) nicht. Weitere, dort nicht ausgewählte Map-Limiter und GitHub-Action-Pinning bleiben außerhalb dieses Changes.

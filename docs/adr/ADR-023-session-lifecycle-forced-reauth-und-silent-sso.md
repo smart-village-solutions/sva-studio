@@ -211,3 +211,7 @@ Security-Pfad inklusive IdP-Logout.
 
 Diese ADR ist gültig, bis SVA Studio das BFF-Auth-Modell grundsätzlich verlässt
 oder ein anderes Session-/Reauth-Modell beschließt.
+
+## Präzisierung: Persönliche Bearer-Zugriffe
+
+Der aktuelle Lifecycle-Read für persönliche Bearer-Zugriffe erfolgt unabhängig von Browser-Session-TTL, Rollenhydration und Permission-Snapshot. Er berücksichtigt Redis-`loginBlocked` und den aktuellen Tenant-Account samt Mitgliedschaft oder den gezielten Plattform-Keycloak-Status. Nicht prüfbare Abhängigkeiten sperren mit 503, fachliche Kontosperren mit 403. Der bestehende Browser-/JIT-/DSR-Vertrag und die Session-Laufzeiten werden dadurch nicht erweitert oder verkürzt.

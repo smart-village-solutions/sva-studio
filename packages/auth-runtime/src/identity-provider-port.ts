@@ -92,6 +92,7 @@ export type ExecuteActionsEmailInput = {
 };
 
 export interface IdentityProviderPort {
+  getUserStatus?(externalId: string): Promise<boolean | null>;
   createUser(input: CreateIdentityUserInput): Promise<IdentityUser>;
   executeActionsEmail?(externalId: string, input: ExecuteActionsEmailInput): Promise<void>;
   getEffectiveRealmEmailMessages?(locale: string): Promise<Readonly<Record<string, string>>>;

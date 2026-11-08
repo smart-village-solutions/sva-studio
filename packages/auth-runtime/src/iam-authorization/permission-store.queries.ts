@@ -58,7 +58,12 @@ FROM iam.accounts a
 JOIN (
 ${ROLE_ASSIGNMENT_SOURCE_SQL}
 ) source
-  ON source.account_id = a.id
+  ON source.account_id = a.id AND source.instance_id = a.instance_id
+  AND a.status = 'active' AND a.is_blocked = false
+  AND a.soft_deleted_at IS NULL AND a.permanently_deleted_at IS NULL
+  AND a.deletion_lifecycle_state = 'active' AND a.deactivated_at IS NULL
+  AND a.processing_restricted_at IS NULL
+  AND EXISTS (SELECT 1 FROM iam.instance_memberships membership WHERE membership.instance_id = a.instance_id AND membership.account_id = a.id)
 `;
 
 export type TenantPermissionProjectionSubject = Readonly<{
@@ -117,14 +122,6 @@ LEFT JOIN iam.instance_modules permission_module
   ON permission_module.instance_id = p.instance_id
  AND permission_module.module_id = split_part(p.permission_key, '.', 1)
 WHERE a.instance_id = $1
-  AND a.status = 'active'
-  AND a.is_blocked = false
-  AND a.soft_deleted_at IS NULL
-  AND a.permanently_deleted_at IS NULL
-  AND a.deletion_lifecycle_state = 'active'
-  AND a.deactivated_at IS NULL
-  AND a.processing_restricted_at IS NULL
-  AND EXISTS (SELECT 1 FROM iam.instance_memberships membership WHERE membership.instance_id = a.instance_id AND membership.account_id = a.id)
   AND p.permission_key = ANY($2::text[])
   AND (p.permission_key = ANY($3::text[]) OR permission_module.effective_active = true)
 ORDER BY a.keycloak_subject, r.role_name, p.permission_key

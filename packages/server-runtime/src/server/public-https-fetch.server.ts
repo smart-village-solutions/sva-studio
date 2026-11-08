@@ -44,25 +44,43 @@ const publicLookup: LookupFunction = (hostname, options, callback) => {
 
 const dispatcher = new Agent({ connect: { lookup: publicLookup } });
 
-/** Fetch a public HTTPS destination; caller owns timeout and response-body limits. */
-export const fetchPublicHttps = async (
+const isPrivateHostname = (hostname: string): boolean =>
+  hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local') ||
+  (isIP(hostname) !== 0 && !isPublicAddress(hostname));
+
+const fetchCheckedDestination = async (
   input: string | URL,
-  init: RequestInit = {}
+  init: RequestInit,
+  policy: { allowHttp: boolean; allowPrivateHosts: boolean }
 ): Promise<Response> => {
   const url = new URL(input);
   const hostname = unbracket(url.hostname).toLowerCase();
   if (
-    url.protocol !== 'https:' || url.username || url.password ||
-    hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local') ||
-    (isIP(hostname) !== 0 && !isPublicAddress(hostname)) ||
+    (url.protocol !== 'https:' && !(policy.allowHttp && url.protocol === 'http:')) ||
+    url.username ||
+    url.password ||
+    (!policy.allowPrivateHosts && isPrivateHostname(hostname)) ||
     (init.redirect !== undefined && init.redirect !== 'error' && init.redirect !== 'manual')
-  ) {
+  )
     throw rejectedTarget();
-  }
-  // IP literals skip DNS, so they are checked above. DNS names are checked by publicLookup.
-  const options: RequestInit & { dispatcher: Agent } = {
-    ...init, redirect: init.redirect ?? 'error', dispatcher,
-  };
-  // Keep fetch and dispatcher on the same Undici version; Node's bundled version may differ.
-  return undiciFetch(url, options as Parameters<typeof undiciFetch>[1]) as unknown as Promise<Response>;
+  // Explicit private mode uses Undici's ordinary resolver; the public mode binds checked DNS to the socket.
+  return undiciFetch(url, {
+    ...init,
+    redirect: init.redirect ?? 'error',
+    ...(policy.allowPrivateHosts ? {} : { dispatcher }),
+  } as Parameters<typeof undiciFetch>[1]) as unknown as Promise<Response>;
 };
+
+/** Fetch a public HTTPS destination; caller owns timeout and response-body limits. */
+export const fetchPublicHttps = (input: string | URL, init: RequestInit = {}): Promise<Response> =>
+  fetchCheckedDestination(input, init, { allowHttp: false, allowPrivateHosts: false });
+
+/** Geocoding supports HTTP and an explicit server-owned private-network opt-in. Redirects remain manual. */
+export const fetchMapGeocoding = (
+  input: string | URL,
+  init: RequestInit = {},
+  policy: { allowPrivateHosts: boolean } = { allowPrivateHosts: false },
+): Promise<Response> => fetchCheckedDestination(input, { redirect: 'manual', ...init }, {
+  allowHttp: true,
+  allowPrivateHosts: policy.allowPrivateHosts,
+});

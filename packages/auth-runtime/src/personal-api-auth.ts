@@ -8,6 +8,7 @@ import { enrichSessionUserWithEffectiveRoles } from './effective-session-roles.j
 import { isServiceIdentityProviderUnavailable, getRemoteServiceJwks } from './service-token.js';
 import { resolveSessionUser } from './middleware-hosts.js';
 import { markPersonalApiRequestAuthenticated } from './personal-api-request-state.js';
+import { ensureAccountLifecycleAllowsAccess } from './middleware-guards.js';
 
 const PERSONAL_MCP_CLIENT_ID = 'sva-studio-mcp-personal';
 
@@ -55,6 +56,10 @@ export const authenticatePersonalApiRequest = async (
       scope: binding.scope,
     });
     const hostBoundUser = await resolveSessionUser(request, rawUser);
+    const lifecycleError = await ensureAccountLifecycleAllowsAccess(request, hostBoundUser, {
+      requireCurrentAccount: true,
+    });
+    if (lifecycleError) return lifecycleError;
     const user = await enrichSessionUserWithEffectiveRoles(hostBoundUser);
     markPersonalApiRequestAuthenticated(request);
     return { user, expiresAt: payload.exp * 1000 };

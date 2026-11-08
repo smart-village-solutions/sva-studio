@@ -22,7 +22,6 @@ services:
     restart: 'no'
     networks:
       - studio-internal
-      - ssf-edge
 
   provisioner:
     image: ${SVA_IMAGE_REF:?SVA_IMAGE_REF must be set}

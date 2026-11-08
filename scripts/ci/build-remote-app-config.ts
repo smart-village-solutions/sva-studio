@@ -54,24 +54,26 @@ export const buildRemoteAppConfig = (input: {
   profile: string;
   overrides: string;
   busApiAdminToken?: string;
+  meiliSearchKey?: string;
 }) => {
   const profile = parseRemoteConfigLayer(input.environment, 'Remote-Profil', input.profile);
   const overrides = new Map(
     parseRemoteConfigLayer(input.environment, 'geschuetztes Override-Bundle', input.overrides)
       .values
   );
-  if (input.busApiAdminToken) {
-    if (
-      input.busApiAdminToken !== input.busApiAdminToken.trim() ||
-      /[\r\n]/u.test(input.busApiAdminToken)
-    )
+  for (const [key, value] of [
+    ['BUS_API_ADMIN_TOKEN', input.busApiAdminToken],
+    ['MEILI_SEARCH_KEY', input.meiliSearchKey],
+  ] as const) {
+    if (!value) continue;
+    if (value !== value.trim() || /[\r\n]/u.test(value))
       fail(
         input.environment,
         'PROMOTE_CONFIG_INVALID',
-        'Das separate Bus-Admin-Secret ist ungueltig formatiert.',
-        'BUS_API_ADMIN_TOKEN ohne Zeilenumbrueche oder aeussere Leerzeichen setzen.'
+        `Das separate Secret ${key} ist ungueltig formatiert.`,
+        `${key} ohne Zeilenumbrueche oder aeussere Leerzeichen setzen.`
       );
-    overrides.set('BUS_API_ADMIN_TOKEN', input.busApiAdminToken);
+    overrides.set(key, value);
   }
   if (
     input.environment !== 'staging' &&
@@ -111,11 +113,16 @@ export const buildRemoteAppConfig = (input: {
       'Remote-Profil und geschuetztes Override-Bundle vervollstaendigen.'
     );
   for (const [key, value] of merged) validateRemoteConfigValue(input.environment, key, value);
-  if (merged.get('MEDIA_SCAN_ENABLED') === 'true' &&
-      (!merged.get('MEDIA_CLAMAV_HOST') || !merged.get('MEDIA_SCAN_QUARANTINE_BUCKET'))) {
-    fail(input.environment, 'PROMOTE_CONFIG_INVALID',
+  if (
+    merged.get('MEDIA_SCAN_ENABLED') === 'true' &&
+    (!merged.get('MEDIA_CLAMAV_HOST') || !merged.get('MEDIA_SCAN_QUARANTINE_BUCKET'))
+  ) {
+    fail(
+      input.environment,
+      'PROMOTE_CONFIG_INVALID',
       'Aktiver Medien-Scan benötigt den gemeinsamen Scanner-Host und einen privaten Eingangs-Bucket.',
-      'MEDIA_CLAMAV_HOST=studio-clamav_clamav und MEDIA_SCAN_QUARANTINE_BUCKET im freigegebenen Remote-Profil setzen.');
+      'MEDIA_CLAMAV_HOST=studio-clamav_clamav und MEDIA_SCAN_QUARANTINE_BUCKET im freigegebenen Remote-Profil setzen.'
+    );
   }
   const keys = [...merged.keys()].sort();
   const source = `${keys.map((key) => `${key}=${merged.get(key) ?? ''}`).join('\n')}\n`;
@@ -177,10 +184,16 @@ export const runBuildRemoteAppConfig = (
         );
     const stagingBeaconOverrides =
       environment === 'staging'
-        ? ([
-            ['FALLOW_BROWSER_INGEST_KEY', env.FALLOW_BROWSER_INGEST_KEY, /^fallow_pub_k1_[A-Za-z0-9_-]{16,}$/u],
-            ['BEACON_API_KEY', env.BEACON_API_KEY, /^fallow_live_k1_[A-Za-z0-9_-]{16,}$/u],
-          ] as const).map(([key, value, pattern]) => {
+        ? (
+            [
+              [
+                'FALLOW_BROWSER_INGEST_KEY',
+                env.FALLOW_BROWSER_INGEST_KEY,
+                /^fallow_pub_k1_[A-Za-z0-9_-]{16,}$/u,
+              ],
+              ['BEACON_API_KEY', env.BEACON_API_KEY, /^fallow_live_k1_[A-Za-z0-9_-]{16,}$/u],
+            ] as const
+          ).map(([key, value, pattern]) => {
             if (!value || !pattern.test(value))
               fail(
                 environment,
@@ -196,6 +209,7 @@ export const runBuildRemoteAppConfig = (
       profile: readFileSync(resolve(profilePath), 'utf8'),
       overrides: [protectedOverrides, ...stagingBeaconOverrides].join('\n'),
       busApiAdminToken: env.BUS_API_ADMIN_TOKEN,
+      meiliSearchKey: env.MEILI_SEARCH_KEY,
     });
     writeConfigEvidenceOutputs(candidate, env.GITHUB_OUTPUT);
     writeFileSync(resolve(outputPath), candidate.source, { mode: 0o600 });

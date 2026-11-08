@@ -1,20 +1,17 @@
 import { Button, SearchableMultiSelect, Select } from '@sva/studio-ui-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import type { SearchQuery, SearchResults } from './search-contract.js';
-export const SearchFilters = ({
-  query,
-  options,
-  loading,
-  onChange,
-}: {
+type FilterProps = {
   readonly query: SearchQuery;
   readonly options: SearchResults['options'];
   readonly loading: boolean;
   readonly onChange: (query: SearchQuery) => void;
-}) => {
+};
+const MultiFilter = ({ field: key, ...props }: FilterProps & { field: 'types' | 'categories' }) => {
+  const { query, options, loading, onChange } = props;
   const t = usePluginTranslation('search');
-  const update = (patch: Partial<SearchQuery>) => onChange({ ...query, ...patch, page: 1 });
-  const multiselect = (key: 'types' | 'categories', label: string) => (
+  const label = t(key === 'types' ? 'type' : 'category');
+  return (
     <div className="min-w-0 space-y-2">
       <label className="text-sm font-medium" htmlFor={`search-${key}`}>
         {label}
@@ -28,7 +25,7 @@ export const SearchFilters = ({
           value,
           label: key === 'types' ? t(`types.${value.split('.')[0]}`) : value,
         }))}
-        onValueChange={(value) => update({ [key]: value })}
+        onValueChange={(value) => onChange({ ...query, [key]: value, page: 1 })}
         placeholder={t('choose')}
         emptyText={t('noOptions')}
         helpText=""
@@ -39,11 +36,37 @@ export const SearchFilters = ({
       />
     </div>
   );
+};
+export const SearchFilters = ({
+  query,
+  options,
+  loading,
+  onChange,
+}: {
+  readonly query: SearchQuery;
+  readonly options: SearchResults['options'];
+  readonly loading: boolean;
+  readonly onChange: (query: SearchQuery) => void;
+}) => {
+  const t = usePluginTranslation('search');
+  const update = (patch: Partial<SearchQuery>) => onChange({ ...query, ...patch, page: 1 });
   return (
     <div className="space-y-3 rounded-xl border border-border bg-card p-4">
       <div className="grid gap-4 md:grid-cols-3">
-        {multiselect('types', t('type'))}
-        {multiselect('categories', t('category'))}
+        <MultiFilter
+          field="types"
+          query={query}
+          options={options}
+          loading={loading}
+          onChange={onChange}
+        />
+        <MultiFilter
+          field="categories"
+          query={query}
+          options={options}
+          loading={loading}
+          onChange={onChange}
+        />
         <div className="space-y-2">
           <label htmlFor="search-provider" className="text-sm font-medium">
             {t('provider')}

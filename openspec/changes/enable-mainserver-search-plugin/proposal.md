@@ -29,4 +29,4 @@ Maximal betroffen sind `packages/plugin-search`, dessen bestehendes Host-/Katalo
 
 ## Status
 
-Der fachliche Umfang und der schriftliche Entwurf wurden im Gespräch ausdrücklich freigegeben. Die Implementierung erfolgt im Worktree `.worktrees/mainserver-search-plugin` auf `feature/mainserver-search-plugin`; produktive Aktivierung, Schlüsselbereitstellung und Deployment sind nicht beauftragt. Zugangswerte und Dokumentinhalte werden hier nicht festgehalten.
+Der fachliche Umfang und der schriftliche Entwurf wurden im Gespräch ausdrücklich freigegeben. Die Implementierung erfolgt im Worktree `.worktrees/mainserver-search-plugin` auf `feature/mainserver-search-plugin`; Der Folgeauftrag autorisiert Quellenzuordnung, Bereitstellung des eingeschränkten Staging-Schlüssels, Aktivierung der Sandbox-Suche und den regulären Staging-Rollout. Production bleibt ausgeschlossen. Zugangswerte und Dokumentinhalte werden hier nicht festgehalten.

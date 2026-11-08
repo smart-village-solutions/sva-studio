@@ -24,14 +24,15 @@ export type SearchHost = Readonly<{
   ) => Promise<SearchResolution>;
   contextStamp: (context: SearchUserContext) => Promise<string | null>;
 }>;
-export const readSearchConnection = (
-  instanceId: string,
-  graphqlUrl: string,
-  env: Readonly<Record<string, string | undefined>>
-): SearchConnection => {
+const validMunicipalities = (value: unknown): value is number[] =>
+  Array.isArray(value) &&
+  value.length > 0 &&
+  value.length <= 50 &&
+  value.every((id: unknown) => typeof id === 'number' && Number.isSafeInteger(id) && id > 0);
+const readSource = (instanceId: string, graphqlUrl: string, sourceJson: string | undefined) => {
   let source: unknown;
   try {
-    const sources: unknown = JSON.parse(env.MEILI_SOURCES ?? '{}');
+    const sources: unknown = JSON.parse(sourceJson ?? '{}');
     source =
       sources &&
       typeof sources === 'object' &&
@@ -46,14 +47,17 @@ export const readSearchConnection = (
   if (
     config.graphqlBaseUrl !== graphqlUrl ||
     !['production', 'staging', 'development', 'test'].includes(String(config.environment)) ||
-    !Array.isArray(config.municipalityIds) ||
-    config.municipalityIds.length === 0 ||
-    config.municipalityIds.length > 50 ||
-    !config.municipalityIds.every(
-      (id: unknown) => typeof id === 'number' && Number.isSafeInteger(id) && id > 0
-    )
+    !validMunicipalities(config.municipalityIds)
   )
     throw new Error('search_not_configured');
+  return config;
+};
+export const readSearchConnection = (
+  instanceId: string,
+  graphqlUrl: string,
+  env: Readonly<Record<string, string | undefined>>
+): SearchConnection => {
+  const config = readSource(instanceId, graphqlUrl, env.MEILI_SOURCES);
   const url = new URL(env.MEILI_URL ?? 'https://invalid.invalid');
   if (
     url.protocol !== 'https:' ||

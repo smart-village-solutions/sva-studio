@@ -10,6 +10,7 @@ import {
 } from '../lib/auth-diagnostics';
 import Header from './Header';
 
+const headerSearchState = vi.hoisted(() => ({ allowed: false, binding: true, navigate: vi.fn() }));
 const useAuthMock = vi.fn();
 const useLocaleMock = vi.fn();
 const useThemeMock = vi.fn();
@@ -68,13 +69,43 @@ vi.mock('../hooks/use-organization-context', () => ({
   useOrganizationContext: () => useOrganizationContextMock(),
 }));
 
-vi.mock('../lib/plugins', () => ({ studioPlugins: [{ id: 'search' }] }));
+vi.mock('../lib/plugins', () => ({
+  get studioPlugins() {
+    return [
+      {
+        id: 'search',
+        routes: [
+          {
+            id: 'search.results',
+            accessRequirement: {
+              kind: 'tenant',
+              moduleId: 'search',
+              actions: { mode: 'allOf', values: ['search.read'] },
+            },
+          },
+        ],
+        viewBindings: headerSearchState.binding
+          ? [
+              {
+                bindingKey: 'searchHeader',
+                component: ({ onSearch }: { onSearch: (q: string) => void }) => (
+                  <button onClick={() => onSearch('culture')}>Plugin search</button>
+                ),
+              },
+            ]
+          : [],
+      },
+    ];
+  },
+}));
 vi.mock('../providers/effective-access-provider', () => ({
-  useEffectiveAccess: () => ({ decide: () => ({ status: 'denied' }) }),
+  useEffectiveAccess: () => ({
+    decide: () => ({ status: headerSearchState.allowed ? 'allowed' : 'denied' }),
+  }),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => headerSearchState.navigate,
   Link: ({
     to,
     children,
@@ -130,6 +161,9 @@ describe('Header auth actions', () => {
   });
 
   beforeEach(() => {
+    headerSearchState.allowed = false;
+    headerSearchState.binding = true;
+    headerSearchState.navigate.mockReset();
     localStorageState.clear();
     sessionStorageState.clear();
     Object.defineProperty(window, 'localStorage', {
@@ -252,7 +286,8 @@ describe('Header auth actions', () => {
     expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
   });
 
-  it('zeigt für authenticated user Konto-Link und Logout', async () => {
+  it('zeigt für authenticated user Konto-Link, Logout und die erlaubte Suchbindung', async () => {
+    headerSearchState.allowed = true;
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
@@ -280,7 +315,19 @@ describe('Header auth actions', () => {
       setLocale: vi.fn(),
     });
 
-    render(<Header />);
+    const view = render(<Header />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Plugin search' }));
+    expect(headerSearchState.navigate).toHaveBeenCalledWith({
+      to: '/plugins/search',
+      search: { q: 'culture', page: 1 },
+    });
+    headerSearchState.binding = false;
+    view.rerender(<Header />);
+    expect(screen.queryByRole('button', { name: 'Plugin search' })).toBeNull();
+    headerSearchState.binding = true;
+    headerSearchState.allowed = false;
+    view.rerender(<Header />);
+    expect(screen.queryByRole('button', { name: 'Plugin search' })).toBeNull();
 
     expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
 

@@ -28,4 +28,13 @@
 - Beide Plugin-Kataloge und die vorhandene Distributionsauswahl führen Search für Studio; SSF schließt es aus. Der Header verwendet das bestehende Browser-View-Binding des Plugins, damit ausgeschlossene Distributionen keinen statischen Search-Import erhalten.
 - Der reguläre App-Build einschließlich Chunk-Provenienz, Typechecks, i18n, Server-Runtime, Dateiplatzierung und strikte OpenSpec-Validierung sind erfolgreich abgeschlossen.
 - Vorhandene, nicht durch die Änderung eingeführte Vite-/Tooling-Hinweise und eine ESLint-Warnung im Distributionsskript bleiben außerhalb dieses Lieferabschnitts. Die geänderte Suchlogik und Oberfläche haben keine ESLint-Befunde.
-- Die ursprüngliche `.env.local` und der Master Key wurden nicht übernommen. Kein Push, keine Schlüsselanlage, keine Mandantenaktivierung und kein Deployment.
+- Die ursprüngliche `.env.local` und der Master Key wurden nicht in den Worktree übernommen. Der Folgeauftrag umfasst jetzt den regulären Staging-Rollout.
+
+## 4. Autorisierter Staging-Rollout
+
+- [x] 4.1 Bestehende Sandbox-Mainserver-Verbindung, Gemeinde-ID 7 und fehlende globale Quellen read-only bestätigen; gemeinsame Indizes gezielt abgleichen.
+- [x] 4.2 Eingeschränkten unbefristeten Staging-Schlüssel als GitHub-Environment-Secret bereitstellen.
+- [x] 4.3 Bestehenden Remote-Konfigurations- und Compose-App-Pfad ergänzen; mit Dummy-Key gerendert und per Unit-Test prüfen.
+- [ ] 4.4 Coverage-Vertrag des bisherigen inaktiven Plugins ergänzen und exakten PR-HEAD über reguläre Gates prüfen.
+- [ ] 4.5 Main-Build, Dev und Staging-Promote mit identischem Digest einschließlich Backup, One-shots und Runtime-Smoke erfolgreich abschließen.
+- [ ] 4.6 Search für Sandbox zuweisen, bestehende IAM-Baseline verwenden und Suchpfad live mit aktuellen Ressourcenrechten prüfen.

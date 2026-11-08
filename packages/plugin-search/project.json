@@ -34,6 +34,13 @@
           "packages/plugin-search/tests/**/*.{ts,tsx}"
         ]
       }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/plugin-search",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.config.ts"
+      }
     }
   },
   "tags": ["scope:plugin", "type:lib"]

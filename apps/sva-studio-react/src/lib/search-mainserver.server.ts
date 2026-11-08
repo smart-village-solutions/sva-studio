@@ -111,6 +111,28 @@ const mapDocument = (
   };
 };
 
+const resolveDeniedCandidate = (
+  query: SearchQuery,
+  candidate: SearchCandidate,
+  contentType: string
+): SearchResolution => {
+  if (query.types.length && !query.types.includes(contentType)) return { kind: 'excluded' };
+  if (
+    (query.provider && candidate.providerId === undefined) ||
+    (query.categories.length && candidate.categories === undefined)
+  )
+    return { kind: 'unresolved' };
+  if (query.provider && query.provider !== candidate.providerId) return { kind: 'excluded' };
+  if (
+    query.categories.length &&
+    !query.categories.some((category) =>
+      candidate.categories?.some((value) => plainText(value) === category)
+    )
+  )
+    return { kind: 'excluded' };
+  return { kind: 'denied' };
+};
+
 export const resolveSearchCandidate = async (
   context: SearchUserContext,
   query: SearchQuery,
@@ -140,21 +162,7 @@ export const resolveSearchCandidate = async (
       new Request(url, { method: 'GET', headers, signal: context.request.signal })
     );
     if (response?.status === 403) {
-      if (query.types.length && !query.types.includes(contentType)) return { kind: 'excluded' };
-      if (
-        (query.provider && candidate.providerId === undefined) ||
-        (query.categories.length && candidate.categories === undefined)
-      )
-        return { kind: 'unresolved' };
-      if (query.provider && query.provider !== candidate.providerId) return { kind: 'excluded' };
-      if (
-        query.categories.length &&
-        !query.categories.some((category) =>
-          candidate.categories?.some((value) => plainText(value) === category)
-        )
-      )
-        return { kind: 'excluded' };
-      return { kind: 'denied' };
+      return resolveDeniedCandidate(query, candidate, contentType);
     }
     if (!response?.ok) return { kind: 'unresolved' };
     const payload: unknown = await response.json();

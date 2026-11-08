@@ -19,7 +19,8 @@
         "{workspaceRoot}/packages/plugin-faq/src/**",
         "{workspaceRoot}/packages/plugin-poi/src/**",
         "{workspaceRoot}/packages/plugin-construction-sites/src/**",
-        "{workspaceRoot}/packages/plugin-waste-management/src/**"
+        "{workspaceRoot}/packages/plugin-waste-management/src/**",
+        "{workspaceRoot}/packages/plugin-search/src/**"
       ],
       "outputs": [],
       "options": {

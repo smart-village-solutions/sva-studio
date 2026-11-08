@@ -17,6 +17,7 @@ import type {
   WasteServerLoaderHost,
 } from '@sva/waste-management-runtime/server';
 import { authRoutePaths } from '@sva/routing/auth';
+import type { SearchHost } from '@sva/plugin-search/server';
 
 import {
   createPluginBuildRegistries,
@@ -68,7 +69,9 @@ const getServerModuleCandidates = (
   if (sourceType === 'workspace' && normalizedEntry.endsWith('.js')) {
     candidates.push(normalizedEntry.slice(0, -'.js'.length) + '.ts');
   }
-  for (const fallback of sourceType === 'workspace' ? ['src/server.ts', 'src/server/index.ts'] : []) {
+  for (const fallback of sourceType === 'workspace'
+    ? ['src/server.ts', 'src/server/index.ts']
+    : []) {
     if (!candidates.includes(fallback)) candidates.push(fallback);
   }
   return candidates;
@@ -84,7 +87,9 @@ const resolveServerModule = (source: StudioPluginServerSource) =>
 type WastePluginServerCapabilities = Omit<
   WasteServerContextHost,
   'startPluginOperationJobFromFacade'
-> & WasteServerLoaderHost & WasteJobHost;
+> &
+  WasteServerLoaderHost &
+  WasteJobHost;
 
 const createWastePluginServerCapabilities = (): WastePluginServerCapabilities => ({
   emitAuthAuditEvent: pluginServerHost.emitAuthAuditEvent,
@@ -127,11 +132,26 @@ export const createPluginServerExecutionHandlersFromSnapshot = async (input: {
     if (!source.manifest.entryPoints.server) continue;
     const factory = (await loadServerModule(source))?.createPluginServerHandlers;
     if (!factory) throw new Error(`missing_plugin_server_module_factory:${source.pluginId}`);
-    const bindings = source.pluginId === 'waste-management'
-      ? (factory as (capabilities: WastePluginServerCapabilities) => Readonly<Record<string, PluginServerExecutionHandler>>)(createWastePluginServerCapabilities())
-      : source.pluginId === 'ssf'
-        ? (factory as (capabilities: SsfPluginServerCapabilities) => Readonly<Record<string, PluginServerExecutionHandler>>)({ readPermissionDirectorySubjects: readTenantPermissionDirectorySubjects })
-      : (factory as () => Readonly<Record<string, PluginServerExecutionHandler>>)();
+    const bindings =
+      source.pluginId === 'waste-management'
+        ? (
+            factory as (
+              capabilities: WastePluginServerCapabilities
+            ) => Readonly<Record<string, PluginServerExecutionHandler>>
+          )(createWastePluginServerCapabilities())
+        : source.pluginId === 'ssf'
+          ? (
+              factory as (
+                capabilities: SsfPluginServerCapabilities
+              ) => Readonly<Record<string, PluginServerExecutionHandler>>
+            )({ readPermissionDirectorySubjects: readTenantPermissionDirectorySubjects })
+          : source.pluginId === 'search'
+            ? (
+                factory as (
+                  host: SearchHost
+                ) => Readonly<Record<string, PluginServerExecutionHandler>>
+              )((await import('./search-mainserver.server.js')).searchMainserverHost)
+            : (factory as () => Readonly<Record<string, PluginServerExecutionHandler>>)();
     for (const [handlerId, handler] of Object.entries(bindings)) {
       if (typeof handler !== 'function') {
         throw new Error(`invalid_plugin_server_handler_binding:${source.pluginId}:${handlerId}`);

@@ -3,6 +3,11 @@ import { CatalogsPage } from '@sva/plugin-app-translations';
 import type { PluginDefinition, PluginViewBinding } from '@sva/plugin-sdk';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
+import { useAuth } from '../providers/auth-provider';
+import { useEffectiveAccess } from '../providers/effective-access-provider';
+import { useOrganizationContext } from '../hooks/use-organization-context';
+import { Button, StudioLoadingState } from '@sva/studio-ui-react';
+import { t } from '../i18n';
 import {
   ContentEditorPage,
   normalizeContentEditorTab,
@@ -50,8 +55,52 @@ const hostAppRouteBindings: StudioAppRouteBindings = {
   contentDetail: ContentDetailRoutePage,
 };
 
+export const SearchPluginRoutePage = ({
+  Page,
+}: {
+  readonly Page: React.ComponentType<{ contextKey?: string }>;
+}) => {
+  const { user } = useAuth();
+  const access = useEffectiveAccess();
+  const organization = useOrganizationContext();
+  if (organization.isLoading || organization.isUpdating)
+    return <StudioLoadingState>{t('content.principal.contextLoading')}</StudioLoadingState>;
+  if (organization.error || !organization.context)
+    return (
+      <div role="alert" className="space-y-3">
+        <p>{t('content.principal.contextUnavailable')}</p>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            void organization.refetch();
+          }}
+        >
+          {t('shared.errorFallback.retry')}
+        </Button>
+      </div>
+    );
+  const contextKey = JSON.stringify([
+    user?.id,
+    user?.instanceId,
+    organization.context.activeOrganizationId,
+    access.snapshot,
+  ]);
+  return <Page key={contextKey} contextKey={contextKey} />;
+};
+
 export const studioRoutePlugins: readonly PluginDefinition[] = studioPlugins.map((plugin) => ({
   ...plugin,
+  routes:
+    plugin.id === 'search'
+      ? plugin.routes.map((route) => ({
+          ...route,
+          component: () => (
+            <SearchPluginRoutePage
+              Page={route.component as React.ComponentType<{ contextKey?: string }>}
+            />
+          ),
+        }))
+      : plugin.routes,
   viewBindings: (() => {
     const contributed = [...(plugin.viewBindings ?? [])];
     for (const resource of plugin.adminResources ?? []) {

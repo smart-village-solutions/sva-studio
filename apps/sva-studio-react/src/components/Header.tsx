@@ -1,7 +1,14 @@
 /** Header-Komponente der App-Shell mit globalen Aktionen. */
-import { IconLanguage as Languages, IconMenu as Menu, IconMoon as Moon, IconSun as Sun } from '@tabler/icons-react';
+import {
+  IconLanguage as Languages,
+  IconMenu as Menu,
+  IconMoon as Moon,
+  IconSun as Sun,
+} from '@tabler/icons-react';
 import React from 'react';
-import { useRouterState } from '@tanstack/react-router';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { useEffectiveAccess } from '../providers/effective-access-provider';
+import { studioPlugins } from '../lib/plugins';
 import {
   resolveOrganizationContextState,
   resolveUserDisplayName,
@@ -54,6 +61,16 @@ export default function Header({
     loginWithDevAuth,
     logout,
   } = useAuth();
+  const navigate = useNavigate();
+  const access = useEffectiveAccess();
+  const searchPlugin = studioPlugins.find((plugin) => plugin.id === 'search');
+  const searchRequirement = searchPlugin?.routes?.find(
+    (route) => route.id === 'search.results'
+  )?.accessRequirement;
+  const SearchHeader = searchPlugin?.viewBindings?.find(
+    (binding) => binding.bindingKey === 'searchHeader'
+  )?.component as React.ComponentType<{ onSearch: (q: string) => void }> | undefined;
+  const canSearch = searchRequirement && access.decide(searchRequirement).status === 'allowed';
   const organizationContext = useOrganizationContext();
   const organizationContextState = resolveOrganizationContextState({
     roleNames: user?.roles,
@@ -124,6 +141,22 @@ export default function Header({
             >
               <Menu aria-hidden="true" className="h-5 w-5" />
             </Button>
+          ) : null}
+          {isHydrated &&
+          isAuthenticated &&
+          SearchHeader &&
+          canSearch &&
+          !organizationContext.isUpdating ? (
+            <div className="flex min-w-0 items-center lg:w-72">
+              <SearchHeader
+                onSearch={(q) => {
+                  void navigate({
+                    to: '/plugins/search' as never,
+                    search: { q, page: 1 } as never,
+                  });
+                }}
+              />
+            </div>
           ) : null}
         </div>
         {showOrganizationContext ? (

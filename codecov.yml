@@ -81,6 +81,7 @@ coverage:
         - packages/plugin-faq/
         - packages/plugin-news/
         - packages/plugin-poi/
+        - packages/plugin-search/
         - packages/plugin-sdk/
         - packages/plugin-ssf/
         - packages/plugin-surveys/

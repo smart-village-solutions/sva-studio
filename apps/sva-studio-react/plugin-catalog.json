@@ -112,8 +112,7 @@
   {
     "pluginId": "search",
     "sourceType": "workspace",
-    "enabled": false,
-    "availability": "in-development",
+    "enabled": true,
     "sourceRef": "packages/plugin-search"
   }
 ]

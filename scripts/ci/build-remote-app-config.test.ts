@@ -35,16 +35,107 @@ const overrides = Object.entries(remoteConfigContract)
   .join('\n');
 
 describe('remote app config builder', () => {
+  it('injects the separate search key without changing the source scope or config revision', () => {
+    const existingBundle = overrides
+      .split('\n')
+      .filter((line) => !line.startsWith('MEILI_SEARCH_KEY='))
+      .join('\n');
+    const baseline = buildRemoteAppConfig({ environment: 'staging', profile, overrides });
+    const result = buildRemoteAppConfig({
+      environment: 'staging',
+      profile,
+      overrides: existingBundle,
+      meiliSearchKey: 'restricted-search-test-key',
+    });
+    expect(result.source).toContain('MEILI_SEARCH_KEY=restricted-search-test-key\n');
+    expect(result.source).toContain('MEILI_SOURCES=value\n');
+    expect(result.configRevision).toBe(baseline.configRevision);
+    expect(
+      JSON.stringify({ keys: result.keys, secretReferences: result.secretReferences })
+    ).not.toContain('restricted-search-test-key');
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'staging',
+        profile: `${profile}\nMEILI_SEARCH_KEY=forbidden`,
+        overrides: existingBundle,
+      })
+    ).toThrow();
+    for (const meiliSearchKey of [' leading', 'trailing ', 'line\nbreak'])
+      expect(() =>
+        buildRemoteAppConfig({
+          environment: 'staging',
+          profile,
+          overrides: existingBundle,
+          meiliSearchKey,
+        })
+      ).toThrow();
+  });
+
+  it('requires a search endpoint and protected key only when a source is enabled', () => {
+    const without = (source: string, key: string) =>
+      source
+        .split('\n')
+        .filter((line) => !line.startsWith(`${key}=`))
+        .join('\n');
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'staging',
+        profile,
+        overrides: without(overrides, 'MEILI_SEARCH_KEY'),
+      })
+    ).toThrow(/PROMOTE_CONFIG_REQUIRED_KEY_MISSING/u);
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'staging',
+        profile: without(profile, 'MEILI_URL'),
+        overrides,
+      })
+    ).toThrow(/PROMOTE_CONFIG_REQUIRED_KEY_MISSING/u);
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'dev',
+        profile: without(without(profile, 'MEILI_SOURCES'), 'MEILI_URL'),
+        overrides: without(overrides, 'MEILI_SEARCH_KEY'),
+      })
+    ).not.toThrow();
+  });
+
+  it('passes search configuration only to the app and binds Sandbox to its existing Mainserver', () => {
+    const compose = readFileSync(new URL('../../compose.yaml', import.meta.url), 'utf8');
+    const [app, otherServices] = compose.split('  provisioner:');
+    for (const key of ['MEILI_URL', 'MEILI_SOURCES', 'MEILI_SEARCH_KEY']) {
+      expect(app).toContain(`${key}=\${${key}:-}`);
+      expect(otherServices).not.toContain(key);
+    }
+    const staging = readFileSync(
+      new URL('../../config/runtime/remote/staging.vars', import.meta.url),
+      'utf8'
+    );
+    const values = parseRemoteConfigLayer('staging', 'profile', staging).values;
+    expect(JSON.parse(values.get('MEILI_SOURCES') ?? '{}')).toEqual({
+      'de-studio-sandbox': {
+        graphqlBaseUrl: 'https://de-studio-sandbox.staging-server.smart-village.app/graphql',
+        environment: 'staging',
+        municipalityIds: [7],
+      },
+    });
+    expect(staging).not.toContain('MEILI_SEARCH_KEY=');
+  });
+
   it('requires the shared scanner host and private bucket for activation', () => {
     const source = profile.replace('MEDIA_SCAN_ENABLED=false', 'MEDIA_SCAN_ENABLED=true');
-    expect(buildRemoteAppConfig({ environment: 'staging', profile: source, overrides }).source).toContain('MEDIA_SCAN_ENABLED=true\n');
+    expect(
+      buildRemoteAppConfig({ environment: 'staging', profile: source, overrides }).source
+    ).toContain('MEDIA_SCAN_ENABLED=true\n');
     for (const invalid of [
       source.replace('MEDIA_CLAMAV_HOST=studio-clamav_clamav', 'MEDIA_CLAMAV_HOST='),
       source.replace('MEDIA_CLAMAV_HOST=studio-clamav_clamav', 'MEDIA_CLAMAV_HOST=other-scanner'),
       source.replace('MEDIA_SCAN_QUARANTINE_BUCKET=value', 'MEDIA_SCAN_QUARANTINE_BUCKET='),
       source.replace('MEDIA_SCAN_ENABLED=true', 'MEDIA_SCAN_ENABLED=yes'),
     ]) {
-      expect(() => buildRemoteAppConfig({ environment: 'staging', profile: invalid, overrides })).toThrow();
+      expect(() =>
+        buildRemoteAppConfig({ environment: 'staging', profile: invalid, overrides })
+      ).toThrow();
     }
   });
 

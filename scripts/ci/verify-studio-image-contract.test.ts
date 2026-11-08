@@ -147,7 +147,7 @@ const verify = (input: ReturnType<typeof validInput>) =>
   });
 
 describe('verify-studio-image-contract', () => {
-  describe.each(['construction-sites', 'jobs'])('%s package inventory', (pluginId) => {
+  describe.each(['construction-sites', 'jobs', 'search'])('%s package inventory', (pluginId) => {
     const packageName = `plugin-${pluginId}`;
     it.each(['studio', 'custom'] as const)(
       'verifies chunks and requires the package in %s',

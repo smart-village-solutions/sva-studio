@@ -1135,6 +1135,15 @@ describe('createSvaMainserverService', () => {
                 genericItems: [],
               },
             });
+          case 'SvaMainserverJobDeletionVerification':
+            return createJsonResponse(200, {
+              data: {
+                categories: [
+                  { id: '1', name: 'Vollzeit', active: true, tagList: 'generic_item_job' },
+                ],
+                genericItem: stored,
+              },
+            });
           case 'SvaMainserverJobCategoriesGuard':
             return createJsonResponse(200, {
               data: {

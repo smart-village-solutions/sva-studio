@@ -8,6 +8,7 @@ import {
   jobWriteFields,
   jobCollisionDocument,
   jobCategoriesGuardDocument,
+  jobDeletionVerificationDocument,
 } from '../../generated/jobs.js';
 import { svaMainserverDestroyRecordDocument } from '../../generated/events-poi.js';
 import type { SvaMainserverConnectionInput } from '../../types.js';
@@ -271,14 +272,14 @@ const verifyJobDeleted = async (
   context: Context,
   input: SvaMainserverConnectionInput & { jobId: string }
 ) => {
-  await categoriesGuard(context, input, false);
-  const after = await execute<{ genericItem: unknown }>(
+  const after = await execute<{ categories: unknown; genericItem: unknown }>(
     context,
     input,
-    jobDetailDocument,
-    'SvaMainserverJobDetail',
+    jobDeletionVerificationDocument,
+    'SvaMainserverJobDeletionVerification',
     { id: input.jobId }
   );
+  guardCategories.parse(after.categories);
   if (after.genericItem !== null) throw new JobWriteError('job_outcome_unknown', input.jobId);
 };
 const deleteJob = async (

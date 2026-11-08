@@ -30,7 +30,25 @@ export const dispatchMainserverGenericItemsRequest = async (
               : pathname.startsWith('/api/v1/mainserver/cockpit-cards')
                 ? 'cockpit-cards.cockpit-card'
                 : 'generic-items.generic-item';
-    await refreshProjectionAfterMainserverMutation(request, response, contentType);
+    const complete = await refreshProjectionAfterMainserverMutation(request, response, contentType);
+    if (contentType === 'jobs.job' && complete === false) return partialJobResponse(response);
   }
   return response;
 };
+
+async function partialJobResponse(response: Response): Promise<Response> {
+  const body = (await response.clone().json()) as {
+    data: Record<string, unknown>;
+    meta?: Record<string, unknown>;
+  };
+  const headers = new Headers(response.headers);
+  headers.delete('content-length');
+  return Response.json(
+    {
+      ...body,
+      data: { ...body.data, reconciliationRequired: true },
+      meta: { ...body.meta, reconciliationStatus: 'reconciliation_required' },
+    },
+    { status: 202, headers }
+  );
+}

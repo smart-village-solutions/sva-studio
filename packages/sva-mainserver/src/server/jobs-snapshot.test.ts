@@ -13,6 +13,7 @@ import {
   jobCollisionDocument,
   jobCategoriesGuardDocument,
   jobOperationDocument,
+  jobDeletionVerificationDocument,
 } from '../generated/jobs.js';
 import { assertJobWritable, buildJobWrite, jobRead } from './jobs-snapshot.js';
 import { createJobDefaults, jobInputSchema, jobTemporalState } from './jobs-contract.js';
@@ -26,6 +27,7 @@ describe('Job contract and snapshot', () => {
     jobCollisionDocument,
     jobCategoriesGuardDocument,
     jobOperationDocument,
+    jobDeletionVerificationDocument,
   ])('validates the actual GraphQL document against the existing schema', (document) => {
     const schema = buildClientSchema(schemaSnapshot.data as unknown as IntrospectionQuery);
     expect(validate(schema, parse(document)).map((error) => error.message)).toEqual([]);

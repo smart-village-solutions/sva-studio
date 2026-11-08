@@ -31,6 +31,11 @@ export const jobCollisionDocument = `query SvaMainserverJobCollision($externalId
 export const jobCategoriesGuardDocument = `query SvaMainserverJobCategoriesGuard {
   categories(includeInactive: true) { id name active tagList }
 }`;
+// The role proof and absence read share one GraphQL authentication context.
+export const jobDeletionVerificationDocument = `query SvaMainserverJobDeletionVerification($id: ID!) {
+  categories(includeInactive: true) { id name active tagList }
+  genericItem(id: $id) { id }
+}`;
 export const jobOperationDocument = `query SvaMainserverJobOperation($externalId: ID!, $limit: Int!, $skip: Int!) {
   genericItems(genericType: "Job", externalId: $externalId, limit: $limit, skip: $skip, order: id_ASC) { ${jobFields} }
 }`;

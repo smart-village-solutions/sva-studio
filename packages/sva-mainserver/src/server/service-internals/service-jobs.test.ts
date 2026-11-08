@@ -25,6 +25,8 @@ function setup() {
   let lostResponse = false;
   let tamper = false;
   let deletion = false;
+  let filteredDelete = false;
+  let currentCanManage = true;
   const schema = buildClientSchema(schemaSnapshot.data as unknown as IntrospectionQuery);
   const execute = vi.fn(
     async (call: {
@@ -69,15 +71,19 @@ function setup() {
         case 'SvaMainserverJobCollision':
           return { categories, genericItems: collision };
         case 'SvaMainserverJobCategoriesGuard':
+          if (deletion && filteredDelete) currentCanManage = false;
           return { categories };
+        case 'SvaMainserverJobDeletionVerification':
+          if (!currentCanManage) throw new Error('Access not permitted');
+          return { categories, genericItem: structuredClone(stored) };
         case 'SvaMainserverJobOperation':
           return { genericItems: stored ? [structuredClone(stored)] : [] };
         case 'SvaMainserverDestroyRecord':
           deletion = true;
-          stored = null;
+          if (!filteredDelete) stored = null;
           return { destroyRecord: { id: call.variables.id, statusCode: 200 } };
         default:
-          return { genericItem: structuredClone(stored) };
+          return { genericItem: currentCanManage ? structuredClone(stored) : null };
       }
     }
   );
@@ -113,6 +119,9 @@ function setup() {
       stored = null;
     },
     deleted: () => deletion,
+    filteredDelete: () => {
+      filteredDelete = true;
+    },
   };
 }
 describe('Job provider writes and independent readback', () => {
@@ -272,6 +281,28 @@ describe('Job provider writes and independent readback', () => {
       test.execute.mock.calls.some(([call]) => call.operationName === 'SvaMainserverJobCollision')
     ).toBe(false);
     expect(test.stored().externalId).toBeNull();
+  });
+  it('does not treat a separately filtered null as proof of deletion', async () => {
+    const test = setup();
+    test.filteredDelete();
+    const current = jobRead(test.stored());
+    await expect(
+      test.service.deleteJob({
+        ...connection,
+        jobId: current.id,
+        fingerprint: current.contentFingerprint,
+      })
+    ).rejects.toMatchObject({ message: 'job_outcome_unknown', providerId: '42' });
+    expect(test.stored().id).toBe('42');
+    const operations = test.execute.mock.calls.map(([call]) => call.operationName);
+    expect(operations.slice(operations.indexOf('SvaMainserverDestroyRecord') + 1)).toEqual([
+      'SvaMainserverJobDeletionVerification',
+    ]);
+    expect(
+      test.execute.mock.calls.filter(
+        ([call]) => call.operationName === 'SvaMainserverDestroyRecord'
+      )
+    ).toHaveLength(1);
   });
   it('permits confirmed deletion despite unrelated inactive categories', async () => {
     const test = setup();

@@ -29,8 +29,8 @@
   "devDependencies": {
     "@sva/plugin-construction-sites": "workspace:*",
     "@sva/plugin-jobs": "workspace:*",
-    "@vitest/coverage-v8": "^5.0.3",
+    "@vitest/coverage-v8": "^5.1.0",
     "graphql": "16.14.2",
-    "vitest": "^5.0.3"
+    "vitest": "^5.1.0"
   }
 }

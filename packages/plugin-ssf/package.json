@@ -44,7 +44,7 @@
   "dependencies": {
     "@sva/plugin-sdk": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
-    "json-canonicalize": "^3.0.0",
+    "json-canonicalize": "^3.0.1",
     "pg": "^8.22.0",
     "sanitize-html": "^2.18.1",
     "zod": "^4.6.7"

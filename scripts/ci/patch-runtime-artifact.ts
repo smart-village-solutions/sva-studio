@@ -31,8 +31,10 @@ export const rewriteReactShimRequires = (source: string): string => {
   if (!source.includes(reactShimMarker)) return source;
 
   const count = source.split(externalReactRequire).length - 1;
-  if (count !== 2 || !/^import \{[^}]*\bas require_react\b[^}]*\} from /m.test(source)) {
-    throw new Error('SSR-React-Shim-Vertrag geaendert: gebuendelte React-Referenz oder zwei externe Requires fehlen.');
+  if ((count !== 2 && count !== 4) || !/^import \{[^}]*\bas require_react\b[^}]*\} from /m.test(source)) {
+    throw new Error(
+      'SSR-React-Shim-Vertrag geaendert: gebuendelte React-Referenz oder zwei beziehungsweise vier externe Requires fehlen.'
+    );
   }
 
   return source.replaceAll(externalReactRequire, 'require_react()');

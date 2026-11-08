@@ -32,8 +32,9 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: (_options?: unknown) => ({
-    inputValidator: () => ({
-      handler: (handler: (input: { data: unknown }) => Promise<unknown>) => handler,
+    validator: (validate: (data: unknown) => unknown) => ({
+      handler: (handler: (input: { data: unknown }) => Promise<unknown>) =>
+        async ({ data }: { data: unknown }) => handler({ data: await validate(data) }),
     }),
     handler: (handler: () => Promise<unknown>) => handler,
   }),
@@ -157,11 +158,11 @@ describe('interfaces app adapter', () => {
     expect(await resolveAvailableInterfaceTypes('de-musterhausen')).not.toContain('deepl');
     state.loadInstanceById.mockResolvedValue({ assignedModules: ['app-translations'] });
     expect(await resolveAvailableInterfaceTypes('de-musterhausen')).toContain('deepl');
-    const { checkDeepLInterfaceForRequest } = await import('./interfaces-api');
+    const { checkDeepLInterfaceForRequest, checkDeepLInterfaceServerFn } = await import('./interfaces-api');
     setAuthenticatedUserContext();
     state.readConfiguredPluginTenantAccess.mockResolvedValue({ allowed: true });
     state.checkDeepLLanguages.mockResolvedValue({ ok: true });
-    await expect(checkDeepLInterfaceForRequest({ id: 'deepl:de-musterhausen' })).resolves.toEqual({
+    await expect(checkDeepLInterfaceServerFn({ data: { id: 'deepl:de-musterhausen' } })).resolves.toEqual({
       ok: true,
     });
     expect(state.checkDeepLLanguages).toHaveBeenCalledWith(
@@ -647,10 +648,10 @@ describe('interfaces app adapter', () => {
       status: 'sent',
       recipient: 'actor@example.test',
     });
-    const { testMailInterfaceForRequest } = await import('./interfaces-api');
+    const { testMailInterfaceServerFn } = await import('./interfaces-api');
 
     await expect(
-      testMailInterfaceForRequest({ instanceId: 'de-musterhausen', id: 'mail-1' }, state.request)
+      testMailInterfaceServerFn({ data: { instanceId: 'de-musterhausen', id: 'mail-1' } })
     ).resolves.toEqual({ status: 'sent', recipient: 'actor@example.test' });
     expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'integration.manage' })

@@ -29,12 +29,12 @@
     "@sva/mail-runtime": "workspace:*",
     "exceljs": "^4.4.0",
     "fflate": "^0.8.2",
-    "pg": "^8.22.0",
+    "pg": "^8.23.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@sva/iam-core": "workspace:*",
-    "@types/pg": "^8.20.0",
+    "@types/pg": "^8.23.1",
     "@vitest/coverage-v8": "^5.0.3",
     "vitest": "^5.0.3"
   }

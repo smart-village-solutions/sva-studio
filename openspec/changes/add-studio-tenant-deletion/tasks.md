@@ -26,3 +26,5 @@
 - [x] Bestehenden Erfolgspfad bei Refetch-Netzwerkfehler durch gezielten Hook-Test nachweisen.
 
 Nach diesen Folgekorrekturen werden die GitHub-Gates des neuen exakten HEAD als Gesamtvalidierung verwendet. Die PostgreSQL-Tests sind lokal belegt; der bestehende PR-Integration-Runner führt `data-repositories` derzeit nicht aus. Dieser PR führt keinen weiteren CI-Pfad ein.
+
+- [x] Draft-RLS nach SQL-Kommando trennen: gewöhnliche globale/kommunale Sessions behalten SELECT/INSERT/UPDATE, erhalten aber kein DELETE; PostgreSQL-Regressionssuite mit Down/Up und vollständiger Tenant-Löschung: 9 Tests erfolgreich.

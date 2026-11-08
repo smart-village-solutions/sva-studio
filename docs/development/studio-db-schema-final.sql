@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict MRUaRzGQanVl9a9yk1XSoyGeIw8Hm45jXVUtI7oMgjXvOKQz17uwQeQz7FsPPnX
+\restrict yXnebYrXGS1QwgqzqJZW49fhepGRcnqTwLNFZQO2LhAm2saFhgjngpkclDu8aMG
 
 -- Dumped from database version 17.11 (Homebrew)
 -- Dumped by pg_dump version 17.11 (Homebrew)
@@ -5264,6 +5264,13 @@ ALTER TABLE iam.app_translation_catalog_drafts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE iam.app_translation_catalog_releases ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: app_translation_catalog_drafts app_translation_draft_insert; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_draft_insert ON iam.app_translation_catalog_drafts FOR INSERT TO iam_app WITH CHECK ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text)))));
+
+
+--
 -- Name: app_translation_catalog_drafts app_translation_draft_instance_delete; Type: POLICY; Schema: iam; Owner: -
 --
 
@@ -5273,10 +5280,17 @@ CREATE POLICY app_translation_draft_instance_delete ON iam.app_translation_catal
 
 
 --
--- Name: app_translation_catalog_drafts app_translation_draft_scope; Type: POLICY; Schema: iam; Owner: -
+-- Name: app_translation_catalog_drafts app_translation_draft_read; Type: POLICY; Schema: iam; Owner: -
 --
 
-CREATE POLICY app_translation_draft_scope ON iam.app_translation_catalog_drafts TO iam_app USING ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text))))) WITH CHECK ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text)))));
+CREATE POLICY app_translation_draft_read ON iam.app_translation_catalog_drafts FOR SELECT TO iam_app USING ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text)))));
+
+
+--
+-- Name: app_translation_catalog_drafts app_translation_draft_update; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_draft_update ON iam.app_translation_catalog_drafts FOR UPDATE TO iam_app USING ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text))))) WITH CHECK ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text)))));
 
 
 --
@@ -5702,4 +5716,4 @@ CREATE POLICY studio_jobs_observability_policy ON iam.studio_jobs FOR SELECT TO 
 -- PostgreSQL database dump complete
 --
 
-\unrestrict MRUaRzGQanVl9a9yk1XSoyGeIw8Hm45jXVUtI7oMgjXvOKQz17uwQeQz7FsPPnX
+\unrestrict yXnebYrXGS1QwgqzqJZW49fhepGRcnqTwLNFZQO2LhAm2saFhgjngpkclDu8aMG

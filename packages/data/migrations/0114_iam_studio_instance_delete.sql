@@ -14,6 +14,19 @@ BEGIN
   RAISE EXCEPTION 'app_translation_revision_immutable' USING ERRCODE = '23514';
 END;
 $$;
+-- The former FOR ALL policy must not authorize DELETE through permissive OR semantics.
+DROP POLICY app_translation_draft_scope ON iam.app_translation_catalog_drafts;
+CREATE POLICY app_translation_draft_read ON iam.app_translation_catalog_drafts FOR SELECT TO iam_app
+USING ((scope = 'global' AND nullif(current_setting('app.catalog_platform', true), '') = 'true' AND iam.current_instance_id() IS NULL) OR
+       (scope = 'municipal' AND instance_id = iam.current_instance_id() AND organization_id::text = nullif(current_setting('app.organization_id', true), '')));
+CREATE POLICY app_translation_draft_insert ON iam.app_translation_catalog_drafts FOR INSERT TO iam_app
+WITH CHECK ((scope = 'global' AND nullif(current_setting('app.catalog_platform', true), '') = 'true' AND iam.current_instance_id() IS NULL) OR
+       (scope = 'municipal' AND instance_id = iam.current_instance_id() AND organization_id::text = nullif(current_setting('app.organization_id', true), '')));
+CREATE POLICY app_translation_draft_update ON iam.app_translation_catalog_drafts FOR UPDATE TO iam_app
+USING ((scope = 'global' AND nullif(current_setting('app.catalog_platform', true), '') = 'true' AND iam.current_instance_id() IS NULL) OR
+       (scope = 'municipal' AND instance_id = iam.current_instance_id() AND organization_id::text = nullif(current_setting('app.organization_id', true), '')))
+WITH CHECK ((scope = 'global' AND nullif(current_setting('app.catalog_platform', true), '') = 'true' AND iam.current_instance_id() IS NULL) OR
+       (scope = 'municipal' AND instance_id = iam.current_instance_id() AND organization_id::text = nullif(current_setting('app.organization_id', true), '')));
 CREATE POLICY app_translation_draft_instance_delete ON iam.app_translation_catalog_drafts
   FOR ALL TO iam_app
   USING (instance_id = iam.current_instance_id() AND current_setting('app.deleting_instance', true) = instance_id
@@ -100,6 +113,14 @@ GRANT EXECUTE ON FUNCTION iam.delete_studio_instance(text, timestamptz, text, te
 -- +goose Down
 -- +goose StatementBegin
 DROP FUNCTION iam.delete_studio_instance(text, timestamptz, text, text);
+DROP POLICY app_translation_draft_read ON iam.app_translation_catalog_drafts;
+DROP POLICY app_translation_draft_insert ON iam.app_translation_catalog_drafts;
+DROP POLICY app_translation_draft_update ON iam.app_translation_catalog_drafts;
+CREATE POLICY app_translation_draft_scope ON iam.app_translation_catalog_drafts TO iam_app
+USING ((scope = 'global' AND nullif(current_setting('app.catalog_platform', true), '') = 'true' AND iam.current_instance_id() IS NULL) OR
+       (scope = 'municipal' AND instance_id = iam.current_instance_id() AND organization_id::text = nullif(current_setting('app.organization_id', true), '')))
+WITH CHECK ((scope = 'global' AND nullif(current_setting('app.catalog_platform', true), '') = 'true' AND iam.current_instance_id() IS NULL) OR
+       (scope = 'municipal' AND instance_id = iam.current_instance_id() AND organization_id::text = nullif(current_setting('app.organization_id', true), '')));
 DROP POLICY app_translation_draft_instance_delete ON iam.app_translation_catalog_drafts;
 DROP POLICY app_translation_release_instance_delete ON iam.app_translation_catalog_releases;
 REVOKE DELETE ON iam.app_translation_catalog_drafts, iam.app_translation_catalog_releases FROM iam_app;

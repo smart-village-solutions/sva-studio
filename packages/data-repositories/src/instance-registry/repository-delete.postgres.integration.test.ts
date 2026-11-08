@@ -71,6 +71,8 @@ describe.skipIf(!enabled)('Studio-only tenant deletion on PostgreSQL', () => {
       VALUES ('municipal','old',$1,'test',$2,$3,1,1,'["de"]','{}',repeat('c',64))`, [orgId, manifestId, releaseId]);
     await client.query(`INSERT INTO iam.app_translation_catalog_drafts(scope,instance_id,organization_id,contract_id,manifest_id,base_release_id,supported_locales)
       VALUES ('municipal','old',$1,'test',$2,$3,'["de"]')`, [orgId, manifestId, releaseId]);
+    await client.query(`INSERT INTO iam.app_translation_catalog_drafts(scope,contract_id,manifest_id,supported_locales)
+      VALUES ('global','test',$1,'["de"]')`, [manifestId]);
     await client.query(`INSERT INTO iam.media_content_save_operations(id,instance_id,actor_subject,target_type,target_id,status,expires_at)
       VALUES ('00000000-0000-4000-8000-000000000010','old','test','news','test-content','committed',now()+interval '1 day');
       INSERT INTO iam.media_assets(id,instance_id,storage_key,media_type,mime_type,byte_size,visibility,upload_status,processing_status)
@@ -121,6 +123,16 @@ describe.skipIf(!enabled)('Studio-only tenant deletion on PostgreSQL', () => {
     await client.query(`INSERT INTO iam.studio_jobs(id,instance_id,job_type_id,queue_name,status,input_payload,idempotency_key,scheduled_at)
       VALUES (gen_random_uuid(),'old','test','test','running','{}','test',now())`);
     await expect(remove()).rejects.toThrow('instance_delete_busy');
+  });
+  it('preserves municipal and global drafts in ordinary catalog sessions', async () => {
+    await client.query("SELECT set_config('app.organization_id',$1,true)", [orgId]);
+    expect((await client.query("SELECT id FROM iam.app_translation_catalog_drafts WHERE instance_id='old'")).rowCount).toBe(1);
+    expect((await client.query("UPDATE iam.app_translation_catalog_drafts SET draft_revision=draft_revision+1 WHERE instance_id='old'")).rowCount).toBe(1);
+    expect((await client.query("DELETE FROM iam.app_translation_catalog_drafts WHERE instance_id='old'")).rowCount).toBe(0);
+    await client.query("SELECT set_config('app.instance_id','',true), set_config('app.organization_id','',true), set_config('app.catalog_platform','true',true)");
+    expect((await client.query("SELECT id FROM iam.app_translation_catalog_drafts WHERE scope='global'")).rowCount).toBe(1);
+    expect((await client.query("UPDATE iam.app_translation_catalog_drafts SET draft_revision=draft_revision+1 WHERE scope='global'")).rowCount).toBe(1);
+    expect((await client.query("DELETE FROM iam.app_translation_catalog_drafts WHERE scope='global'")).rowCount).toBe(0);
   });
   it('keeps sealed catalogs immutable outside the deletion function', async () => {
     await client.query("SELECT set_config('app.organization_id',$1,true)", [orgId]);

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  dispatchSvaMainserverJobsRequest: vi.fn().mockResolvedValue(null),
   dispatchSvaMainserverGenericItemsRequest: vi.fn(),
   dispatchSvaMainserverConstructionSitesRequest: vi.fn().mockResolvedValue(null),
   dispatchSvaMainserverVouchersRequest: vi.fn().mockResolvedValue(null),
@@ -8,6 +9,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/sva-mainserver/server', () => ({
+  dispatchSvaMainserverJobsRequest: state.dispatchSvaMainserverJobsRequest,
   dispatchSvaMainserverGenericItemsRequest: state.dispatchSvaMainserverGenericItemsRequest,
   dispatchSvaMainserverConstructionSitesRequest:
     state.dispatchSvaMainserverConstructionSitesRequest,
@@ -86,6 +88,50 @@ describe('mainserver generic items app adapter', () => {
       request,
       response,
       'vouchers.voucher'
+    );
+    expect(state.dispatchSvaMainserverGenericItemsRequest).not.toHaveBeenCalled();
+  });
+  it.each(['POST', 'PATCH', 'DELETE'])(
+    'keeps the Jobs recovery contract after a failed %s projection refresh',
+    async (method) => {
+      const response = Response.json(
+        {
+          data: { id: '42', deleted: method === 'DELETE' },
+          meta: { operation: method === 'POST' ? 'create' : 'update' },
+        },
+        {
+          status: method === 'POST' ? 201 : 200,
+          headers: {
+            'x-sva-mainserver-entity-id': '42',
+            'x-sva-mainserver-context': 'binding',
+            'content-length': '1',
+          },
+        }
+      );
+      state.dispatchSvaMainserverJobsRequest.mockResolvedValueOnce(response);
+      state.refreshProjectionAfterMainserverMutation.mockResolvedValueOnce(false);
+      const result = await dispatchMainserverGenericItemsRequest(
+        new Request('https://studio.test/api/v1/mainserver/jobs/42', { method })
+      );
+      expect(result?.status).toBe(202);
+      expect(await result?.json()).toMatchObject({
+        data: { id: '42', deleted: method === 'DELETE', reconciliationRequired: true },
+        meta: { reconciliationStatus: 'reconciliation_required' },
+      });
+      expect(result?.headers.get('x-sva-mainserver-entity-id')).toBe('42');
+      expect(result?.headers.get('x-sva-mainserver-context')).toBe('binding');
+      expect(result?.headers.has('content-length')).toBe(false);
+    }
+  );
+  it('dispatches Jobs through their dedicated route and canonical projection', async () => {
+    const response = new Response(JSON.stringify({ data: { id: '42' } }), { status: 201 });
+    const request = new Request('https://studio.test/api/v1/mainserver/jobs', { method: 'POST' });
+    state.dispatchSvaMainserverJobsRequest.mockResolvedValueOnce(response);
+    await expect(dispatchMainserverGenericItemsRequest(request)).resolves.toBe(response);
+    expect(state.refreshProjectionAfterMainserverMutation).toHaveBeenCalledWith(
+      request,
+      response,
+      'jobs.job'
     );
     expect(state.dispatchSvaMainserverGenericItemsRequest).not.toHaveBeenCalled();
   });

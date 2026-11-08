@@ -331,6 +331,7 @@ describe('content projection reconciliation paging', () => {
           FAQ: 'faq.faq',
           COCKPIT_CARD: 'cockpit-cards.cockpit-card',
           ConstructionSite: 'construction-sites.construction-site',
+          Job: 'jobs.job',
           FeaturedProject: 'projects.project',
           Voucher: 'vouchers.voucher',
         },

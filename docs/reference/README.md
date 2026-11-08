@@ -28,6 +28,7 @@ How-to-Anleitungen gehören nach [Entwicklung](../development/README.md), ausfü
 - [Inhaber von Inhalten übertragen](./content-ownership-transfer.md)
 - [Gutscheine im Studio](./vouchers.md)
 - [Baustellen im Studio](./construction-sites.md)
+- [Stellenanzeigen im Studio](./jobs.md)
 - [Featured Projects](./featured-projects.md)
 - [IAM-Authorization-API-Vertrag](./iam-authorization-api-contract.md)
 - [IAM-Authorization-Reason-Codes](./iam-authorization-reason-codes.md)

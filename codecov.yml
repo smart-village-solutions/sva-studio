@@ -75,6 +75,7 @@ coverage:
         - packages/plugin-categories/
         - packages/plugin-cockpit-cards/
         - packages/plugin-construction-sites/
+        - packages/plugin-jobs/
         - packages/plugin-projects/
         - packages/plugin-events/
         - packages/plugin-faq/

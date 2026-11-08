@@ -1632,6 +1632,10 @@ bisherigen Abläufen. Live-Mail-/Linktests sind ein getrennt freizugebender Roll
 
 Ein Baustellen-Update durchläuft Principal-/Objektprüfung, frischen Vollsnapshot, Fingerprint-Prüfung, Host-Lock, einmalige Mainserver-Mutation und unabhängigen Readback. Bei Antwortverlust prüft Recovery ausschließlich denselben gespeicherten Vorgang und führt lokale Folgeschritte nach. Siehe [Baustellenreferenz](../reference/construction-sites.md).
 
+## Stellenplugin
+
+Ein Job-Update durchläuft lokale Fachautorisierung, Principal-/Provider-/Objektprüfung, vollständigen frischen Snapshot, Fingerprint, providerweiten typübergreifenden externe-ID-Kollisionsread, Studio-Lock, einmalige Mutation und unabhängigen Readback. Recovery identifiziert denselben Vorgang und schreibt nicht erneut. Bestätigtes Löschen prüft die Abwesenheit unabhängig und führt lokale Medien-/Projektionsschritte nach; der Kontext für einen Lösch-Readback kann auch bei verschwundenem Objekt neu gebunden werden. Siehe [Stellenanzeigenreferenz](../reference/jobs.md).
+
 ## SSF recording policy and reviewer updates
 
 1. An authorized administrator edits the installation template or a tenant's

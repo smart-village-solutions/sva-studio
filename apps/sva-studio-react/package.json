@@ -32,6 +32,7 @@
     "@sva/media": "workspace:*",
     "@sva/monitoring-client": "workspace:*",
     "@sva/plugin-app-translations": "workspace:*",
+    "@sva/plugin-application-workspace": "https://github.com/smart-village-solutions/sva-studio_plugin-application-overview/releases/download/v0.0.1/sva-plugin-application-workspace-0.0.1.tgz",
     "@sva/plugin-categories": "workspace:*",
     "@sva/plugin-cockpit": "workspace:*",
     "@sva/plugin-cockpit-cards": "workspace:*",

@@ -114,5 +114,12 @@
     "sourceType": "workspace",
     "enabled": true,
     "sourceRef": "packages/plugin-search"
+  },
+  {
+    "pluginId": "application-workspace",
+    "sourceType": "installed-distribution",
+    "enabled": true,
+    "sourceRef": "@sva/plugin-application-workspace",
+    "distribution": "studio"
   }
 ]

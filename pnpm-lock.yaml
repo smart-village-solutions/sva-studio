@@ -304,8 +304,8 @@ importers:
         specifier: ^5.9.1
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.80.0(react@19.3.0))(zod@4.6.7)
       '@kern-ux/native':
-        specifier: ^2.6.4
-        version: 2.6.4
+        specifier: ^2.8.2
+        version: 2.8.2
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.23
         version: 1.1.23(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -3713,8 +3713,8 @@ packages:
   '@js-sdsl/ordered-map@4.4.2':
     resolution: {integrity: sha512-iUKgm52T8HOE/makSxjqoWhe95ZJA1/G1sYsGev2JDKUSS14KAgg1LHb+Ba+IPow0xflbnSkOsZcO08C7w1gYw==}
 
-  '@kern-ux/native@2.6.4':
-    resolution: {integrity: sha512-h5nmC7KMEeXoj8OB6akVMaUJrtscd3sczDRvGZjfAt2MtZ9/yIDBOMvjN85X711eDSPRVbNwVUnL+ZwFo4fSig==}
+  '@kern-ux/native@2.8.2':
+    resolution: {integrity: sha512-2AT25YD95iByLDUqY/fBou6Vt09tI1/RgpLy0lqUbLmV5aoeuUuz/BZ4zDJbbblyo96T3bywIlbwGbRUw0s+Og==}
 
   '@keyv/bigmap@1.3.1':
     resolution: {integrity: sha512-WbzE9sdmQtKy8vrNPa9BRnwZh5UF4s1KTmSK0KUVLo3eff5BlQNNWDnFOouNpKfPKDnms9xynJjsMYjMaT/aFQ==}
@@ -12637,7 +12637,7 @@ snapshots:
 
   '@js-sdsl/ordered-map@4.4.2': {}
 
-  '@kern-ux/native@2.6.4': {}
+  '@kern-ux/native@2.8.2': {}
 
   '@keyv/bigmap@1.3.1(keyv@5.6.0)':
     dependencies:

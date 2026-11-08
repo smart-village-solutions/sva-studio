@@ -1,5 +1,6 @@
 // fallow-ignore-file code-duplication
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { jobFixture } from './jobs-test-fixture.js';
 
 const state = vi.hoisted(() => ({
   loadSvaMainserverInstanceConfig: vi.fn(),
@@ -73,6 +74,13 @@ import {
   getSvaMainserverConstructionSite,
   listSvaMainserverConstructionSiteCandidates,
   prepareSvaMainserverConstructionSite,
+  getSvaMainserverJob,
+  listSvaMainserverJobCandidates,
+  prepareSvaMainserverJob,
+  writeSvaMainserverJob,
+  recoverSvaMainserverJob,
+  deleteSvaMainserverJob,
+  verifySvaMainserverJobDeleted,
   writeSvaMainserverConstructionSite,
   recoverSvaMainserverConstructionSite,
   changeSvaMainserverEventVisibility,
@@ -1084,6 +1092,134 @@ describe('createSvaMainserverService', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
     expect(readCredentials).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves Job pagination, organization identity and nested edits through the public service lifecycle', async () => {
+    let stored: RawRecord | null = jobFixture();
+    const original = structuredClone(stored);
+    state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'organization',
+      credentials: { apiKey: 'key-1', apiSecret: 'secret-1' },
+    });
+    const operations: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.body instanceof URLSearchParams)
+          return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
+        const { operationName, variables } = JSON.parse(String(init?.body)) as {
+          operationName: string;
+          variables: RawRecord;
+        };
+        operations.push(operationName);
+        switch (operationName) {
+          case 'SvaMainserverJobList':
+            return createJsonResponse(200, {
+              data: {
+                genericItems: Array.from(
+                  { length: variables.skip === 0 ? 100 : 1 },
+                  (_, index) => ({ ...stored, id: String(Number(variables.skip) + index + 1) })
+                ),
+              },
+            });
+          case 'SvaMainserverJobDetail':
+            return createJsonResponse(200, { data: { genericItem: stored } });
+          case 'SvaMainserverJobCollision':
+            return createJsonResponse(200, {
+              data: {
+                categories: [
+                  { id: '1', name: 'Vollzeit', active: true, tagList: 'generic_item_job' },
+                ],
+                genericItems: [],
+              },
+            });
+          case 'SvaMainserverJobCategoriesGuard':
+            return createJsonResponse(200, {
+              data: {
+                categories: [
+                  { id: '1', name: 'Vollzeit', active: true, tagList: 'generic_item_job' },
+                ],
+              },
+            });
+          case 'SvaMainserverJobWrite':
+            stored = { ...stored, ...variables };
+            stored.mediaContents = (stored.mediaContents as RawRecord[]).map((media) => ({
+              height: null,
+              width: null,
+              ...media,
+            }));
+            return createJsonResponse(200, { data: { createGenericItem: { id: '42' } } });
+          case 'SvaMainserverDestroyRecord':
+            stored = null;
+            return createJsonResponse(200, {
+              data: { destroyRecord: { id: '42', statusCode: 200 } },
+            });
+          default:
+            throw new Error(`Unexpected Job operation: ${operationName}`);
+        }
+      })
+    );
+    const connection = {
+      instanceId: baseConfig.instanceId,
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: 'org-1',
+      actingPrincipalType: 'organization' as const,
+    };
+    const listed = await listSvaMainserverJobCandidates(connection);
+    expect(listed).toHaveLength(101);
+    expect(listed.at(-1)?.id).toBe('101');
+    const current = await getSvaMainserverJob({ ...connection, jobId: '42' });
+    const prepared = prepareSvaMainserverJob(
+      {
+        ...current.data.input,
+        title: 'Neue Stelle',
+        contacts: current.data.input.contacts.map((contact) => ({
+          ...contact,
+          email: 'updated@example.org',
+        })),
+        mediaContents: current.data.input.mediaContents.map((media) => ({
+          ...media,
+          sourceUrl: { ...media.sourceUrl, url: 'https://example.org/updated.pdf' },
+        })),
+      },
+      'public-job-operation',
+      current.item
+    );
+    const saved = await writeSvaMainserverJob({ ...connection, prepared });
+    expect(saved).toMatchObject({
+      id: '42',
+      title: 'Neue Stelle',
+      input: {
+        contacts: [expect.objectContaining({ email: 'updated@example.org' })],
+        mediaContents: [
+          expect.objectContaining({
+            sourceUrl: expect.objectContaining({ url: 'https://example.org/updated.pdf' }),
+          }),
+        ],
+      },
+    });
+    expect(stored).toMatchObject({
+      companies: original.companies,
+      dates: original.dates,
+      payload: original.payload,
+    });
+    expect((stored!.mediaContents as RawRecord[])[0]?.payload).toMatchObject({ opaque: true });
+    expect(await recoverSvaMainserverJob({ ...connection, prepared })).toEqual(saved);
+    expect(operations.filter((operation) => operation === 'SvaMainserverJobWrite')).toHaveLength(1);
+    await expect(
+      deleteSvaMainserverJob({ ...connection, jobId: '42', fingerprint: saved.contentFingerprint })
+    ).resolves.toBe('42');
+    await expect(
+      verifySvaMainserverJobDeleted({ ...connection, jobId: '42' })
+    ).resolves.toBeUndefined();
+    expect(
+      operations.filter((operation) => operation === 'SvaMainserverDestroyRecord')
+    ).toHaveLength(1);
+    expect(state.readEffectiveSvaMainserverCredentialsWithStatus.mock.calls[0]?.[0]).toMatchObject(
+      connection
+    );
   });
 
   it('keeps construction pagination, organization credentials and opaque media metadata through update and recovery', async () => {

@@ -220,6 +220,22 @@ describe('Job provider writes and independent readback', () => {
       'job_outcome_unknown'
     );
   });
+  it('reports a disappeared readback with the known provider ID and no retry', async () => {
+    const test = setup();
+    const prepared = test.service.prepareJob(jobRead(test.stored()).input, 'op-1', test.stored());
+    test.disappear();
+    await expect(
+      test.service.verifyJobWrite({ ...connection, prepared, jobId: '42' })
+    ).rejects.toMatchObject({ message: 'job_readback_mismatch', providerId: '42' });
+    expect(test.writes()).toHaveLength(0);
+  });
+  it('keeps delete verification uncertain while the object still exists', async () => {
+    const test = setup();
+    await expect(
+      test.service.verifyJobDeleted({ ...connection, jobId: '42' })
+    ).rejects.toMatchObject({ message: 'job_outcome_unknown', providerId: '42' });
+    expect(test.deleted()).toBe(false);
+  });
   it('reports a mismatched independent readback with the known ID', async () => {
     const test = setup();
     test.tamper();

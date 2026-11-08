@@ -116,7 +116,10 @@ vi.mock('./mutation-principal.js', async () => ({
   authorizeMainserverCreateForPrincipal: async () => ({}),
   authorizeMainserverExistingContent: (input: unknown) => state.authorizeExisting(input),
   finalizeMainserverMutation: (input: unknown) => state.finalize(input),
-  recordCreatedMainserverDataProvider: async () => ({ outcome: 'observed' }),
+  recordCreatedMainserverDataProvider: async ({ reread }: { reread: () => Promise<unknown> }) => {
+    await reread();
+    return { outcome: 'observed' };
+  },
 }));
 vi.mock('./service.js', () => ({
   deleteSvaMainserverJob: (...args: unknown[]) => state.remove(...args),
@@ -310,6 +313,24 @@ describe('jobs HTTP contract', () => {
       data: { id: '42', reconciliationRequired: true },
       meta: { reconciliationStatus: 'reconciliation_required' },
     });
+    expect(state.write).toHaveBeenCalledTimes(1);
+  });
+  it('retains provider success when both local journal finalizations fail', async () => {
+    state.finalize.mockRejectedValue(new Error('journal unavailable'));
+    const response = await dispatch(request({ job: input() }));
+    expect(response?.status).toBe(202);
+    expect(await response?.json()).toMatchObject({
+      data: { id: '42', reconciliationRequired: true },
+    });
+    expect(state.write).toHaveBeenCalledTimes(1);
+    expect(state.finalize).toHaveBeenCalledTimes(2);
+  });
+  it('retains an uncertain write when its failure cannot be journaled', async () => {
+    state.write.mockRejectedValueOnce(new TypeError('lost response'));
+    state.finalize.mockRejectedValue(new Error('journal unavailable'));
+    const response = await dispatch(request({ job: input() }));
+    expect(response?.status).toBe(409);
+    expect(await response?.json()).toMatchObject({ error: 'job_outcome_unknown' });
     expect(state.write).toHaveBeenCalledTimes(1);
   });
   it('authorizes records before applying the page window', async () => {

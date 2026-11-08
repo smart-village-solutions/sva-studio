@@ -67,7 +67,7 @@ export const SearchResultsPage = ({ contextKey = '' }: { readonly contextKey?: s
     <StudioOverviewPageTemplate title={pt('title')} description={pt('description')}>
       <form
         role="search"
-        aria-label={pt('title')}
+        aria-label={pt('resultsLandmark')}
         className="flex flex-wrap gap-3"
         onSubmit={(event) => {
           event.preventDefault();

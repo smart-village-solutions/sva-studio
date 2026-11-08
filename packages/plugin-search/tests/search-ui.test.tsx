@@ -56,6 +56,17 @@ const data = {
   },
 };
 describe('search interface', () => {
+  it('distinguishes global and results search landmarks when both are visible', () => {
+    state.search = { ...state.search, q: '' };
+    render(
+      <>
+        <SearchHeader onSearch={vi.fn()} />
+        <SearchResultsPage />
+      </>
+    );
+    expect(screen.getByRole('search', { name: 'search.headerLandmark' })).toBeTruthy();
+    expect(screen.getByRole('search', { name: 'search.resultsLandmark' })).toBeTruthy();
+  });
   it('waits for a search term and preserves filters when submitting a new term', () => {
     state.search = { ...state.search, q: '', categories: ['Culture'] };
     const fetcher = vi.fn();

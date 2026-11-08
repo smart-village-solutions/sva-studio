@@ -9,7 +9,7 @@ export const SearchHeader = ({ onSearch }: { readonly onSearch: (q: string) => v
     <>
       <form
         role="search"
-        aria-label={pt('title')}
+        aria-label={pt('headerLandmark')}
         className="hidden min-w-0 max-w-md flex-1 items-center gap-2 lg:flex"
         onSubmit={(event) => {
           event.preventDefault();

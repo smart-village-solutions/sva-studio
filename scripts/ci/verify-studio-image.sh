@@ -131,6 +131,24 @@ else
   exit 1
 fi
 
+# Exercise the shipped wrapper as the image user, without a writable cache or egress.
+if docker run --rm --network=none --read-only --entrypoint node "${IMAGE_REF}" -e '
+  const { execFileSync } = require("node:child_process");
+  const { version } = require("./packages/data/goose.config.json");
+  const actual = execFileSync("bash", ["packages/data/scripts/goosew.sh", "--version"], {
+    encoding: "utf8",
+    timeout: 15000,
+  }).trim();
+  if (actual !== `goose version: ${version}`) {
+    throw new Error(`Unexpected Goose version: ${actual}; expected ${version}`);
+  }
+'; then
+  mark_phase goose-offline ok
+else
+  fail_verify artifact-invalid goose-offline "Goose ist im Runtime-Image nicht offline in der konfigurierten Version ausfuehrbar."
+  exit 1
+fi
+
 docker image inspect "${IMAGE_REF}" > "${IMAGE_INSPECT_PATH}"
 docker run --rm --entrypoint cat "${IMAGE_REF}" \
   .output/server/generated/studio-distribution.json > "${RUNTIME_MANIFEST_PATH}"

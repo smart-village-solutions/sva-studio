@@ -116,6 +116,19 @@ function setup() {
   };
 }
 describe('Job provider writes and independent readback', () => {
+  it.each([false, true])(
+    'captures original visibility %s before preparing a transition',
+    (visible) => {
+      const test = setup();
+      const original = { ...test.stored(), visible };
+      const prepared = test.service.prepareJob(
+        { ...jobRead(original).input, visible: !visible },
+        'op-1',
+        original
+      );
+      expect(prepared).toMatchObject({ previousVisible: visible, expected: { visible: !visible } });
+    }
+  );
   it('roundtrips a title edit through replacing nested writes with all unrelated legacy data intact', async () => {
     const test = setup();
     const before = structuredClone(test.stored());

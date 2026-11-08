@@ -23,6 +23,7 @@ const preparedSchema = z
     providerId: z.string().optional(),
     previousEmploymentType: z.string().optional(),
     previousMediaIds: z.array(z.string()),
+    previousVisible: z.boolean(),
     expected: z.record(z.string(), z.unknown()),
   })
   .strict();
@@ -67,7 +68,10 @@ export async function authorizeWrite(actor: MainserverMutationActor, prepared: J
     contentId: prepared.id,
     item: current.data,
     additionalActions: toMainserverAdditionalActions(
-      resolveMainserverVisibilityAction(current.data.visible, prepared.expected.visible as boolean)
+      resolveMainserverVisibilityAction(
+        prepared.previousVisible,
+        prepared.expected.visible as boolean
+      )
     ),
   });
 }

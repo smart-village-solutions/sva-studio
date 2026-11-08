@@ -123,7 +123,8 @@ vi.mock('./mutation-principal-authorization-audit.js', () => ({
 vi.mock('./content-route-context.js', () => ({
   withMainserverContextBinding: (response: Response) => response,
 }));
-vi.mock('./mutation-principal.js', () => ({
+vi.mock('./mutation-principal.js', async () => ({
+  ...(await import('./mutation-principal-lifecycle.js')),
   resolveMainserverMutationActor: () => actor(),
   resolveMainserverResourceActor: () => actor(),
   resolveMainserverResourceAccess: (input: unknown) => state.resourceAccess(input),
@@ -131,8 +132,6 @@ vi.mock('./mutation-principal.js', () => ({
   authorizeMainserverExistingContent: (input: unknown) => state.authorizeExisting(input),
   finalizeMainserverMutation: (input: unknown) => state.finalize(input),
   recordCreatedMainserverDataProvider: async () => ({ outcome: 'observed' }),
-  resolveMainserverVisibilityAction: () => undefined,
-  toMainserverAdditionalActions: () => [],
 }));
 vi.mock('./service.js', () => ({
   deleteSvaMainserverJob: (...args: unknown[]) => state.remove(...args),
@@ -210,6 +209,7 @@ beforeEach(() => {
     ...(existing ? { id: existing.id } : {}),
     expected: { title: job.title, visible: job.visible },
     previousMediaIds: [],
+    previousVisible: existing?.visible === true,
   }));
   state.remove.mockResolvedValue('42');
   state.verifyDeleted.mockResolvedValue(undefined);
@@ -219,8 +219,11 @@ beforeEach(() => {
   state.resourceAccess.mockImplementation(({ actions }) =>
     Object.fromEntries(actions.map((action: string) => [action, !state.deny.has(action)]))
   );
-  state.authorizeExisting.mockImplementation(({ action }: { action: string }) =>
-    state.deny.has(action) ? new Response(null, { status: 403 }) : {}
+  state.authorizeExisting.mockImplementation(
+    ({ action, additionalActions = [] }: { action: string; additionalActions?: string[] }) =>
+      [action, ...additionalActions].some((required) => state.deny.has(required))
+        ? new Response(null, { status: 403 })
+        : {}
   );
 });
 describe('jobs HTTP contract', () => {
@@ -557,6 +560,77 @@ describe('selected Job mutation principal', () => {
     expect((await dispatch(request({ recover: true, inputHash })))?.status).toBe(403);
     expect(state.write).toHaveBeenCalledTimes(1);
     expect(state.recover).not.toHaveBeenCalled();
+  });
+  it.each([
+    [false, true, 'content.publish'],
+    [true, false, 'content.changeStatus'],
+  ] as const)(
+    'retains %s → %s lifecycle authorization during update recovery',
+    async (before, after, action) => {
+      const original = { ...item, visible: before };
+      state.get.mockResolvedValue({ data: { ...record(), visible: before }, item: original });
+      state.write.mockRejectedValueOnce(new TypeError('lost response'));
+      const body = {
+        job: { ...input(), visible: after },
+        baseFingerprint: jobFingerprint(original),
+      };
+      expect((await dispatch(request(body, '42')))?.status).toBe(409);
+      state.get.mockResolvedValue({
+        data: { ...record(), visible: after },
+        item: { ...original, visible: after },
+      });
+      state.deny.add(action);
+      const recovery = {
+        recover: true,
+        inputHash: createHash('sha256').update(JSON.stringify(body)).digest('hex'),
+      };
+      expect((await dispatch(request(recovery, '42')))?.status).toBe(403);
+      expect(state.recover).not.toHaveBeenCalled();
+      expect(state.replaceReferences).not.toHaveBeenCalled();
+      state.deny.delete(action);
+      expect((await dispatch(request(recovery, '42')))?.status).toBe(200);
+      expect(state.authorizeExisting).toHaveBeenCalledWith(
+        expect.objectContaining({ additionalActions: [action] })
+      );
+      expect(state.write).toHaveBeenCalledTimes(1);
+    }
+  );
+  it.each([false, true])(
+    'does not add a lifecycle requirement to an unchanged %s update',
+    async (visible) => {
+      const original = { ...item, visible };
+      state.get.mockResolvedValue({ data: { ...record(), visible }, item: original });
+      state.deny.add('content.publish');
+      state.deny.add('content.changeStatus');
+      state.write.mockRejectedValueOnce(new TypeError('lost response'));
+      const body = { job: { ...input(), visible }, baseFingerprint: jobFingerprint(original) };
+      expect((await dispatch(request(body, '42')))?.status).toBe(409);
+      const recovery = {
+        recover: true,
+        inputHash: createHash('sha256').update(JSON.stringify(body)).digest('hex'),
+      };
+      expect((await dispatch(request(recovery, '42')))?.status).toBe(200);
+      expect(state.write).toHaveBeenCalledTimes(1);
+    }
+  );
+  it('does not complete recovery when its saved original visibility is missing', async () => {
+    const body = { job: input(), baseFingerprint: jobFingerprint(item) };
+    state.write.mockRejectedValueOnce(new TypeError('lost response'));
+    expect((await dispatch(request(body, '42')))?.status).toBe(409);
+    const saved = [...state.entries.values()].find((entry) => entry.body);
+    if (!saved) throw new Error('missing expectation');
+    saved.body = Object.fromEntries(
+      Object.entries(saved.body as Record<string, unknown>).filter(
+        ([key]) => key !== 'previousVisible'
+      )
+    );
+    const recovery = {
+      recover: true,
+      inputHash: createHash('sha256').update(JSON.stringify(body)).digest('hex'),
+    };
+    expect((await dispatch(request(recovery, '42')))?.status).toBe(502);
+    expect(state.recover).not.toHaveBeenCalled();
+    expect(state.write).toHaveBeenCalledTimes(1);
   });
   it('rechecks actor media rights on recovery without issuing another provider mutation', async () => {
     state.principal = 'organization';

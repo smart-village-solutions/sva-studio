@@ -26,6 +26,7 @@ export type JobPreparedWrite = Readonly<{
   providerId?: string;
   previousEmploymentType?: string;
   previousMediaIds: readonly string[];
+  previousVisible: boolean;
   expected: RawRecord;
 }>;
 /** A definitive rejection before the mutation; the operation can safely be corrected. */
@@ -103,6 +104,7 @@ const prepareJob = (
           previousEmploymentType: jobRead(existing).input.employmentType,
         }
       : {}),
+    previousVisible: existing?.visible === true,
     previousMediaIds: existing
       ? jobRead(existing).input.mediaContents.flatMap((media) =>
           media.hostMediaAssetId ? [media.hostMediaAssetId] : []

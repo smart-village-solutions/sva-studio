@@ -104,13 +104,20 @@ export const createPluginServerHandlers = (
       const connection = readSearchConnection(context.actor.instanceId, graphqlUrl, process.env);
       const stamp = await host.contextStamp(context);
       if (!stamp) return json({ error: 'search_context_changed' }, 409);
-      const data = await executeSearch(query, {
-        readPage: (model, offset) => readCandidatePage(connection, query, model, offset),
-        resolve: (candidate) => host.resolve(context, query, candidate),
-        isCurrent: async () =>
-          (await host.contextStamp(context)) === stamp &&
-          (await host.loadGraphqlUrl(instanceId)) === graphqlUrl,
-      });
+      const locale = context.request.headers.get('Accept-Language')?.toLowerCase().startsWith('en')
+        ? 'en'
+        : 'de';
+      const data = await executeSearch(
+        query,
+        {
+          readPage: (model, offset) => readCandidatePage(connection, query, model, offset),
+          resolve: (candidate) => host.resolve(context, query, candidate),
+          isCurrent: async () =>
+            (await host.contextStamp(context)) === stamp &&
+            (await host.loadGraphqlUrl(instanceId)) === graphqlUrl,
+        },
+        locale
+      );
       return json({ data });
     } catch (error) {
       const code = error instanceof Error ? error.message : '';

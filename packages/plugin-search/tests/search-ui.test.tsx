@@ -209,10 +209,13 @@ describe('search interface', () => {
       'fetch',
       vi.fn().mockImplementation(async () => Response.json({ data }))
     );
-    render(<SearchResultsPage contextKey="org1" />);
+    render(<SearchResultsPage contextKey="org1" locale="en" />);
     expect((await findResultLink()).getAttribute('href')).toBe('/admin/news/42');
     expect(screen.getByRole('status').textContent).toContain('20 30');
     expect(screen.getByLabelText('search.provider')).toBeTruthy();
+    expect(vi.mocked(fetch).mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({ headers: { 'Accept-Language': 'en' } })
+    );
     expect(screen.queryByText('search.incomplete')).toBeNull();
   });
   it('distinguishes incomplete counts from final counts', async () => {

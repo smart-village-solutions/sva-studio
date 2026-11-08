@@ -74,7 +74,7 @@ Das System SHALL erlaubte und eindeutig wegen Berechtigung ausgeschlossene Treff
 
 ### Requirement: Ergebnisseite mit kombinierbaren Filtern
 
-Das Suchplugin SHALL genau ein dauerhaftes Suchfeld im Header auf Desktop und Mobil sowie eine Ergebnisseite mit zugänglichen Treffern in der vorhandenen StudioDataTable, Zählstatus, Inhaltstyp- und Kategorie-Mehrfachauswahl sowie einem Datenanbieterfilter anbieten. Die Ergebnisseite MUST ohne zusätzliche Sucheingabe auskommen. Titel, Inhaltstyp und Datenanbieter MUST über die üblichen Tabellenfunktionen sortierbar sein. Filteroptionen und Optionszahlen MUST aus dem berechtigt lesbaren Bestand stammen. Suchbegriff, fachliche Filter, Sortierung und sichtbares Paging MUST hostvalidiert und typisiert in der URL abgebildet werden.
+Das Suchplugin SHALL genau ein dauerhaftes Suchfeld im Header auf Desktop und Mobil sowie eine Ergebnisseite mit zugänglichen Treffern in der vorhandenen StudioDataTable, Zählstatus, Inhaltstyp- und Kategorie-Mehrfachauswahl sowie einem Datenanbieterfilter anbieten. Die Ergebnisseite MUST ohne zusätzliche Sucheingabe auskommen. Titel, Inhaltstyp und Datenanbieter MUST über die üblichen Tabellenfunktionen sortierbar sein. Die Sortierung der Inhaltstypen MUST ihre Anzeigenamen in der aktiven Studio-Sprache verwenden. Filteroptionen und Optionszahlen MUST aus dem berechtigt lesbaren Bestand stammen. Suchbegriff, fachliche Filter, Sortierung und sichtbares Paging MUST hostvalidiert und typisiert in der URL abgebildet werden.
 
 #### Scenario: Benutzer kombiniert Filter
 

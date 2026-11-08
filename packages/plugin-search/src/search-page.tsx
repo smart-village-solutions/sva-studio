@@ -9,7 +9,7 @@ import {
   type SearchResults,
 } from './search-contract.js';
 import { SearchFeedback, SearchResultTable } from './search-results.js';
-const useSearchResults = (query: SearchQuery, contextKey: string) => {
+const useSearchResults = (query: SearchQuery, contextKey: string, locale: 'de' | 'en') => {
   const [result, setResult] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,6 +27,7 @@ const useSearchResults = (query: SearchQuery, contextKey: string) => {
     setLoading(true);
     void fetch(`/api/v1/plugins/search/query?${queryKey}`, {
       credentials: 'same-origin',
+      headers: { 'Accept-Language': locale },
       cache: 'no-store',
       signal: controller.signal,
     })
@@ -45,15 +46,21 @@ const useSearchResults = (query: SearchQuery, contextKey: string) => {
       current = false;
       controller.abort();
     };
-  }, [queryKey, contextKey, retry]);
+  }, [queryKey, contextKey, locale, retry]);
   return { result, loading, error, retry: () => setRetry((value) => value + 1) };
 };
-export const SearchResultsPage = ({ contextKey = '' }: { readonly contextKey?: string }) => {
+export const SearchResultsPage = ({
+  contextKey = '',
+  locale = 'de',
+}: {
+  readonly contextKey?: string;
+  readonly locale?: 'de' | 'en';
+}) => {
   const pt = usePluginTranslation('search');
   const search = useSearch({ strict: false });
   const query = useMemo(() => parseSearchQuery(search), [search]);
   const navigate = useNavigate();
-  const { result, loading, error, retry } = useSearchResults(query, contextKey);
+  const { result, loading, error, retry } = useSearchResults(query, contextKey, locale);
   const update = (next: SearchQuery) => {
     void navigate({ to: '/plugins/search' as never, search: next as never });
   };

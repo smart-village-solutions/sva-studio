@@ -24,6 +24,36 @@ const host = (overrides: Partial<SearchEngineHost> = {}): SearchEngineHost => ({
   ...overrides,
 });
 describe('authorized search', () => {
+  it('sorts translated content-type labels before paging in German and English', async () => {
+    const testHost = host({
+      readPage: async (model) => ({
+        candidates:
+          model === 'GenericItem'
+            ? Array.from({ length: 25 }, (_, i) => ({ model, id: String(i) }))
+            : [],
+        exhausted: true,
+      }),
+      resolve: async (candidate) => ({
+        kind: 'allowed',
+        document: {
+          ...document(candidate.id),
+          contentType:
+            Number(candidate.id) < 20
+              ? 'cockpit-cards.cockpit-card'
+              : 'construction-sites.construction-site',
+        },
+      }),
+    });
+    const sortedQuery = { ...query, sortBy: 'contentType' as const, page: 2 };
+    const german = await executeSearch(sortedQuery, testHost, 'de');
+    const english = await executeSearch(sortedQuery, testHost, 'en');
+    expect(german.items.map((item) => item.contentType)).toEqual(
+      Array(5).fill('cockpit-cards.cockpit-card')
+    );
+    expect(english.items.map((item) => item.contentType)).toEqual(
+      Array(5).fill('construction-sites.construction-site')
+    );
+  });
   it('sorts the authorized result set before paging, including descending order', async () => {
     const testHost = host({
       readPage: async (model) => ({

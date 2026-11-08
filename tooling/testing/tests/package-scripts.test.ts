@@ -704,6 +704,15 @@ describe('workspace package scripts', () => {
     expect(loadProjectJson('apps/project-report').targets?.['test:coverage']?.cache).toBe(false);
   });
 
+  it('retains required unit dependency builds when coverage supplies its execution evidence', () => {
+    for (const project of ['data', 'sva-mainserver', 'waste-management-runtime']) {
+      const targets = loadProjectJson(`packages/${project}`).targets;
+      expect(targets?.['test:coverage']?.dependsOn).toEqual(
+        expect.arrayContaining(targets?.['test:unit']?.dependsOn ?? [])
+      );
+    }
+  });
+
   it('uses the configured Node version file during workspace setup', () => {
     const workspaceSetupAction = loadWorkspaceSetupAction();
 

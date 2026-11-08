@@ -136,16 +136,17 @@ jobs:
           docker ps -a
           exit 1
 
-      - name: Inventory complete E2E selection
-        run: |
-          mkdir -p apps/sva-studio-react/.nx
-          PLAYWRIGHT_JSON_OUTPUT_FILE=.nx/app-e2e-manifest.json pnpm --filter sva-studio-react exec playwright test --list --reporter=json
-
       - name: Run complete app E2E suite uncached
         id: app_e2e
         env:
           PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ github.workspace }}/apps/sva-studio-react/.nx/app-e2e-results.json
         run: pnpm nx run sva-studio-react:test:e2e --skipNxCache --shard=${{ matrix.shard }}/4 --workers=1 --reporter=list,json,html
+
+      - name: Inventory complete E2E selection
+        if: always()
+        run: |
+          mkdir -p apps/sva-studio-react/.nx
+          PLAYWRIGHT_JSON_OUTPUT_FILE=.nx/app-e2e-manifest.json pnpm --filter sva-studio-react exec playwright test --list --reporter=json
 
       - name: Checkout trusted shard evidence writer
         if: always()

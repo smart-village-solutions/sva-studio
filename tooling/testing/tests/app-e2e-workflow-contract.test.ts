@@ -41,6 +41,17 @@ describe('App E2E workflow contract', () => {
     expect(prGate).not.toContain('test:e2e');
   });
 
+  it('discovers the inventory after Nx builds runtime dependencies, including failed test runs', () => {
+    const execution = workflow.indexOf('name: Run complete app E2E suite uncached');
+    const inventory = workflow.indexOf('name: Inventory complete E2E selection');
+    const writer = workflow.indexOf('name: Write source-bound E2E shard evidence');
+
+    expect(execution).toBeGreaterThanOrEqual(0);
+    expect(inventory).toBeGreaterThan(execution);
+    expect(writer).toBeGreaterThan(inventory);
+    expect(workflow).toContain('name: Inventory complete E2E selection\n        if: always()');
+  });
+
   it('keeps canonical main deterministic and diagnostics explicitly retryable', () => {
     expect(workflow).toContain("PLAYWRIGHT_MAX_FAILURES: '0'");
     expect(workflow).toContain(

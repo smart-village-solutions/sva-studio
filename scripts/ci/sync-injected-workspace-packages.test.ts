@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -101,10 +102,12 @@ describe('sync-injected-workspace-packages', () => {
       Object.entries(process.env).filter(([name]) => !name.startsWith('NX_'))
     );
     execFileSync(
-      'pnpm',
+      process.execPath,
       [
-        'exec',
-        'nx',
+        path.join(
+          path.dirname(createRequire(import.meta.url).resolve('nx/package.json')),
+          'dist/bin/nx.js'
+        ),
         'run-many',
         '-t',
         'build',

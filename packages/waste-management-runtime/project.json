@@ -40,6 +40,7 @@
     },
     "test:coverage": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "options": {
         "cwd": "packages/waste-management-runtime",
         "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"

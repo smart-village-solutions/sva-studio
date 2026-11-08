@@ -24,6 +24,7 @@ export type PermissionKey =
   | 'iam.accounts.delete'
   | 'iam.user.read'
   | 'iam.user.write'
+  | 'iam.authenticationPolicy.manage'
   | 'iam.invitationTemplate.manage'
   | 'iam.role.read'
   | 'iam.role.write'

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useStudioEditorLeaveGuard } from '@sva/studio-ui-react';
 
@@ -13,11 +13,38 @@ type BlockerOptions = {
   withResolver: boolean;
 };
 const state = vi.hoisted(() => ({
+  user: { id: 'user-1', instanceId: 'de-musterhausen', roles: [] as string[] } as {
+    id: string;
+    instanceId: string;
+    roles: string[];
+  } | null,
+  organizationId: 'org-1',
+  refreshSession: vi.fn(async () => undefined),
+  refetchOrganization: vi.fn(async () => undefined),
+  fetchAuth: vi.fn(),
+  getContext: vi.fn(),
   options: null as BlockerOptions | null,
   register: null as Register | null,
   blocked: false,
   proceed: vi.fn(),
   reset: vi.fn(),
+}));
+vi.mock('../providers/auth-provider', () => ({
+  useAuth: () => ({ user: state.user, refreshSession: state.refreshSession }),
+}));
+vi.mock('../hooks/use-organization-context', () => ({
+  useOrganizationContext: () => ({
+    context: { activeOrganizationId: state.organizationId },
+    error: null,
+    refetch: state.refetchOrganization,
+  }),
+}));
+vi.mock('../lib/iam-api', () => ({
+  fetchWithRequestTimeout: state.fetchAuth,
+  getMyOrganizationContext: state.getContext,
+}));
+vi.mock('../providers/effective-access-invalidation', () => ({
+  requestEffectiveAccessInvalidation: vi.fn(),
 }));
 vi.mock('@tanstack/react-router', () => ({
   useBlocker: (options: BlockerOptions) => {
@@ -64,13 +91,108 @@ const leaving = () =>
 
 describe('ContentEditorLeaveBoundary', () => {
   beforeEach(() => {
+    state.user = { id: 'user-1', instanceId: 'de-musterhausen', roles: [] };
+    state.organizationId = 'org-1';
+    state.refetchOrganization.mockReset().mockResolvedValue(undefined);
+    state.fetchAuth.mockResolvedValue(Response.json({ user: state.user }));
+    state.getContext.mockResolvedValue({ data: { activeOrganizationId: 'org-1' } });
     state.options = null;
     state.register = null;
     state.blocked = false;
     state.proceed.mockReset();
     state.reset.mockReset();
   });
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('retains a mounted draft during auth navigation and resumes only after explicit verification', async () => {
+    const view = render(
+      <ContentEditorLeaveBoundary>
+        <Editor dirty />
+      </ContentEditorLeaveBoundary>
+    );
+    const editor = screen.getByRole('button', { name: 'Save confirmed' });
+    const event = new Event('studio:auth-recovery-navigation', { cancelable: true });
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    expect(editor.closest('fieldset')?.hidden).toBe(true);
+    const login = screen.getByRole('link', { name: 'content.leaveGuard.signInNewTab' });
+    expect(login.getAttribute('target')).toBe('_blank');
+    expect(state.fetchAuth).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'content.leaveGuard.resumeEditor' }));
+    await waitFor(() => expect(editor.closest('fieldset')?.hidden).toBe(false));
+    expect(screen.getByRole('button', { name: 'Save confirmed' })).toBe(editor);
+    expect(leaving()).toBe(true);
+    view.unmount();
+  });
+  it.each(['account', 'organization'])('keeps the draft locked for a changed %s', async (kind) => {
+    render(
+      <ContentEditorLeaveBoundary>
+        <Editor dirty />
+      </ContentEditorLeaveBoundary>
+    );
+    if (kind === 'account')
+      state.fetchAuth.mockResolvedValueOnce(
+        Response.json({ user: { id: 'other', instanceId: 'de-musterhausen' } })
+      );
+    else state.getContext.mockResolvedValueOnce({ data: { activeOrganizationId: 'other-org' } });
+    act(() => {
+      window.dispatchEvent(new Event('studio:auth-recovery-navigation', { cancelable: true }));
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'content.leaveGuard.resumeEditor' }));
+    await screen.findByText('content.leaveGuard.sessionRecoveryFailed');
+    expect(screen.queryByRole('button', { name: 'Save confirmed' })).toBeNull();
+    expect(state.refreshSession).not.toHaveBeenCalled();
+  });
+  it('checks the final published organization after the recovery refetch', async () => {
+    state.refetchOrganization.mockImplementationOnce(async () => {
+      state.organizationId = 'changed-during-refetch';
+    });
+    render(
+      <ContentEditorLeaveBoundary>
+        <Editor dirty />
+      </ContentEditorLeaveBoundary>
+    );
+    act(() => {
+      window.dispatchEvent(new Event('studio:auth-recovery-navigation', { cancelable: true }));
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'content.leaveGuard.resumeEditor' }));
+    await screen.findByText('content.leaveGuard.sessionRecoveryFailed');
+    expect(screen.queryByRole('button', { name: 'Save confirmed' })).toBeNull();
+  });
+
+  it('keeps a nested media or targeting draft protected when the main form is clean', () => {
+    const view = render(
+      <ContentEditorLeaveBoundary>
+        <Editor />
+        <Editor dirty />
+      </ContentEditorLeaveBoundary>
+    );
+    expect(leaving()).toBe(true);
+    const event = new Event('studio:auth-recovery-navigation', { cancelable: true });
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    view.unmount();
+  });
+
+  it('allows normal auth navigation without an unsaved editor', () => {
+    render(
+      <ContentEditorLeaveBoundary>
+        <Editor />
+      </ContentEditorLeaveBoundary>
+    );
+    const event = new Event('studio:auth-recovery-navigation', { cancelable: true });
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(false);
+  });
 
   it('allows navigation without an editor registration and does not show a dialog', () => {
     render(

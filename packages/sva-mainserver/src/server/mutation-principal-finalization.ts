@@ -105,6 +105,7 @@ const readMutationFailureCode = (error: unknown): string => {
 export const finalizeMainserverMutationFailure = async (input: {
   readonly actor: MainserverMutationActor;
   readonly error: unknown;
+  readonly providerOutcome?: 'failed' | 'unknown';
   readonly completedSteps?: readonly string[];
   readonly contentId?: string;
   readonly observedDataProviderId?: string;
@@ -113,7 +114,7 @@ export const finalizeMainserverMutationFailure = async (input: {
   try {
     await finalizeMainserverMutation({
       actor: input.actor,
-      providerOutcome: 'failed',
+      providerOutcome: input.providerOutcome ?? 'failed',
       reconciliationStatus: 'reconciliation_required',
       completedSteps: input.completedSteps ?? [],
       contentId: input.contentId,

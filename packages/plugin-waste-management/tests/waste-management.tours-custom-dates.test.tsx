@@ -4,19 +4,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteToursCustomDatesField } from '../src/waste-management.tours-custom-dates.js';
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${JSON.stringify(values)}` : key,
 }));
 
-vi.mock('@tabler/icons-react', () => ({
-  IconCalendarPlus: () => <span aria-hidden="true">calendar</span>,
-  IconChevronLeft: () => <span aria-hidden="true">left</span>,
-  IconChevronRight: () => <span aria-hidden="true">right</span>,
-  IconTrash: () => <span aria-hidden="true">trash</span>,
-}));
-
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/studio-ui-react')>()),
   StudioDestructiveActionDialog: ({
     open,
     title,
@@ -126,9 +121,13 @@ describe('WasteToursCustomDatesField', () => {
     fireEvent.click(screen.getByRole('button', { name: '2025' }));
     fireEvent.click(screen.getByRole('button', { name: '2026' }));
     fireEvent.click(screen.getByRole('button', { name: '2027' }));
-    fireEvent.click(screen.getAllByRole('button', { name: '1' })[0]!);
+    fireEvent.click(
+      screen.getByRole('button', { name: /(?:^|, )1\. Januar 2027$|January 1, 2027$/ })
+    );
     expect(onChange).toHaveBeenCalledWith([{ date: '2027-01-01' }]);
-    fireEvent.click(screen.getByRole('button', { name: 'tours.actions.cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.close' }));
+
+    expect(onChange).toHaveBeenLastCalledWith([{ date: '2027-01-01' }]);
 
     rerender(
       <WasteToursCustomDatesField
@@ -155,12 +154,14 @@ describe('WasteToursCustomDatesField', () => {
     expect(screen.getAllByText('tours.customDates.assignmentSection.summaryEmpty')).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.openPicker' }));
-    fireEvent.click(screen.getAllByRole('button', { name: '1' })[0]!);
+    fireEvent.click(
+      screen.getByRole('button', { name: /(?:^|, )1\. Januar 2027$|January 1, 2027$/ })
+    );
     expect(
       screen.getByText('tours.customDates.dialog.removeDescription:{"value":"2027-01-01"}')
     ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.dialog.removeCancel' }));
-    fireEvent.click(screen.getByRole('button', { name: 'tours.actions.cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.close' }));
 
     fireEvent.click(
       screen.getAllByRole('button', { name: 'tours.customDates.actions.removeDate' })[0]!
@@ -253,8 +254,8 @@ describe('WasteToursCustomDatesField', () => {
     expect(
       screen.getByText('tours.customDates.assignmentSection.summaryCount:{"value":1}')
     ).toBeTruthy();
-    fireEvent.focus(screen.getByLabelText('tours.customDates.fields.location'));
-    fireEvent.change(screen.getByLabelText('tours.customDates.fields.location'), {
+    fireEvent.click(screen.getByLabelText('tours.customDates.fields.location'));
+    fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'Markt' },
     });
     fireEvent.click(screen.getByRole('option', { name: 'Musterhausen / Markt' }));
@@ -329,8 +330,8 @@ describe('WasteToursCustomDatesField', () => {
       />
     );
 
-    fireEvent.focus(screen.getAllByLabelText('tours.customDates.fields.location')[0]!);
-    fireEvent.change(screen.getAllByLabelText('tours.customDates.fields.location')[0]!, {
+    fireEvent.click(screen.getAllByLabelText('tours.customDates.fields.location')[0]!);
+    fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'Markt' },
     });
     fireEvent.click(screen.getByRole('option', { name: 'Musterhausen / Markt' }));
@@ -366,14 +367,14 @@ describe('WasteToursCustomDatesField', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'tours.customDates.actions.editAssignments' })
     );
-    fireEvent.focus(screen.getByLabelText('tours.customDates.fields.location'));
-    fireEvent.change(screen.getByLabelText('tours.customDates.fields.location'), {
+    fireEvent.click(screen.getByLabelText('tours.customDates.fields.location'));
+    fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'Unbekannt' },
     });
     expect(screen.getByText('tours.customDates.fields.locationSearchEmpty')).toBeTruthy();
 
     fireEvent.click(
-      screen.getByRole('option', { name: 'tours.customDates.fields.locationPlaceholder' })
+      screen.getByRole('button', { name: 'tours.customDates.actions.clearLocation' })
     );
     expect(onAssignmentsChange).toHaveBeenCalledWith([
       {
@@ -401,7 +402,7 @@ describe('WasteToursCustomDatesField', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('exposes the location picker as a labeled group and marks the empty option as selected when no location is chosen', () => {
+  it('exposes the location picker as a labeled group and exposes the shared search and clear action when no location is chosen', () => {
     render(
       <WasteToursCustomDatesField
         customDates={[{ date: '2027-01-01' }]}
@@ -424,13 +425,13 @@ describe('WasteToursCustomDatesField', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'tours.customDates.actions.editAssignments' })
     );
-    fireEvent.focus(screen.getByLabelText('tours.customDates.fields.location'));
+    fireEvent.click(screen.getByLabelText('tours.customDates.fields.location'));
 
     expect(screen.getByRole('group', { name: 'tours.customDates.fields.location' })).toBeTruthy();
     expect(
       screen
-        .getByRole('option', { name: 'tours.customDates.fields.locationPlaceholder' })
-        .getAttribute('aria-selected')
+        .getByRole('button', { name: 'tours.customDates.fields.location' })
+        .getAttribute('aria-expanded')
     ).toBe('true');
   });
 });

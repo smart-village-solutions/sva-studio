@@ -4,7 +4,7 @@ import type { PluginServerHandlerExecutionContext } from '@sva/plugin-sdk';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createDefaultSsfAdminV2Dependencies, createSsfAdminV2Handlers } from '../src/server/content-v2-admin.js';
-import type { SsfSystemContentV2 } from '../src/content-v2-repository.js';
+import { SsfContentV2TenantConflict, type SsfSystemContentV2 } from '../src/content-v2-repository.js';
 import { ssfInstallationContentV2FieldsSchema, ssfRuntimeContentV2FieldsSchema } from '../src/content-v2-contracts.js';
 
 const context = (scope: 'platform' | 'tenant'): PluginServerHandlerExecutionContext => ({
@@ -45,6 +45,22 @@ describe('SSF V2 admin supported-language catalog', () => {
   const legal = (locale = 'de-DE') => ({ sourceLocale: locale, version: 'test-draft', localizations: [{
     locale, mode2Consent: null, mode3Consent: null, guestRecordingRelease: null, staffRecordingRelease: null, recordingStatus: null,
   }] });
+
+  it('reports affected tenant identifiers only through the root write response', async () => {
+    const previous = systemContent();
+    const conflict = async (): Promise<never> => { throw new SsfContentV2TenantConflict(['synthetic-alpha', 'synthetic-beta']); };
+    const handlers = createSsfAdminV2Handlers({ readSystemV2: async () => previous, writeSystemV2: conflict,
+      readTenantV2: async () => ({ runtimeTemplate: previous.runtimeTemplate, overrides: {} }), writeTenantV2: conflict });
+    const root = await handlers['ssf.system-content-v2.write']?.(writeContext('platform', previous));
+    expect(root?.status).toBe(422);
+    await expect(root?.json()).resolves.toEqual({ error: 'invalid_configuration', affectedTenants: ['synthetic-alpha', 'synthetic-beta'] });
+    const forbidden = await handlers['ssf.system-content-v2.write']?.(writeContext('tenant', previous));
+    expect(forbidden?.status).toBe(403);
+    await expect(forbidden?.json()).resolves.toEqual({ error: 'forbidden' });
+    const tenant = await handlers['ssf.tenant-content-v2.write']?.(writeContext('tenant', {}));
+    expect(tenant?.status).toBe(422);
+    await expect(tenant?.json()).resolves.toEqual({ error: 'invalid_configuration' });
+  });
 
   it('rejects newly introduced unsupported legal languages at the administration boundary', async () => {
     const previous = systemContent();

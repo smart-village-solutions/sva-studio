@@ -44,6 +44,14 @@ describe('resolveBreadcrumbItems', () => {
     ]);
   });
 
+  it('labels the tenant email templates page before matching a dynamic user', () => {
+    expect(resolveBreadcrumbItems('/admin/users/invitation-template')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/admin/users', label: 'Benutzerverwaltung' },
+      { label: 'E-Mail-Vorlagen' },
+    ]);
+  });
+
   it('returns role detail breadcrumbs for dynamic role pages', () => {
     expect(resolveBreadcrumbItems('/admin/roles/role-1')).toEqual([
       { href: '/', label: 'Übersicht' },

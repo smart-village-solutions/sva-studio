@@ -37,13 +37,15 @@ const SelectedLocationsSummary = ({
 }: Readonly<{ locations: BulkDialogProps['selectedLocations'] }>) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <div className="space-y-2 rounded-md border border-border/60 p-3">
+    <div className="space-y-2 rounded-md border border-border-subtle p-3">
       <p className="text-sm font-medium">
         {pt('masterData.collectionLocations.bulk.selectedTitle')}
       </p>
       <div className="flex flex-wrap gap-2">
         {locations.map((location) => (
-          <Badge key={location.id} variant="outline">{location.label}</Badge>
+          <Badge key={location.id} variant="outline">
+            {location.label}
+          </Badge>
         ))}
       </div>
     </div>

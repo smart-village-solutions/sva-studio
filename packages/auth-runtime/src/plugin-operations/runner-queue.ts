@@ -13,7 +13,7 @@ type QueueClient = {
 const enqueuePluginTenantLifecycleTask = (
   client: QueueClient,
   input: { readonly instanceId: string; readonly pluginId: string; readonly runAt: Date },
-  jobKeyPurpose: 'retry' | 'recovery'
+  jobKeyPurpose: 'retry' | 'recovery' | 'reconcile'
 ): Promise<unknown> =>
   client.query(
     `SELECT graphile_worker.sva_enqueue_job(
@@ -26,9 +26,13 @@ const enqueuePluginTenantLifecycleTask = (
     )`,
     [
       pluginTenantLifecycleRetryTaskIdentifier,
-      JSON.stringify({ instanceId: input.instanceId, pluginId: input.pluginId }),
+      JSON.stringify({
+        instanceId: input.instanceId,
+        pluginId: input.pluginId,
+        ...(jobKeyPurpose === 'reconcile' ? { operation: 'reconcile' } : {}),
+      }),
       'plugin-tenant-lifecycle',
-      5,
+      jobKeyPurpose === 'reconcile' ? 25 : 5,
       `plugin-tenant-lifecycle-${jobKeyPurpose}:${input.instanceId}:${input.pluginId}`,
       input.runAt,
     ]
@@ -43,6 +47,12 @@ export const enqueuePluginTenantLifecycleRecovery = (
   client: QueueClient,
   input: { readonly instanceId: string; readonly pluginId: string; readonly runAt: Date }
 ): Promise<unknown> => enqueuePluginTenantLifecycleTask(client, input, 'recovery');
+
+/** Durable mutation follow-up uses the existing lifecycle retry task and its own key. */
+export const enqueuePluginTenantLifecycleReconcile = (
+  client: QueueClient,
+  input: { readonly instanceId: string; readonly pluginId: string; readonly runAt: Date }
+): Promise<unknown> => enqueuePluginTenantLifecycleTask(client, input, 'reconcile');
 
 export const enqueueStudioJobWithClient = async (
   client: QueueClient,

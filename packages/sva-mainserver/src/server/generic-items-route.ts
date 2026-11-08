@@ -126,3 +126,5 @@ export const dispatchSvaMainserverGenericItemsRequest = async (
 
   return withAuthenticatedUser(request, (ctx) => dispatchAuthenticated(request, route, ctx));
 };
+
+export { dispatchSvaMainserverJobsRequest } from './jobs-route.js';

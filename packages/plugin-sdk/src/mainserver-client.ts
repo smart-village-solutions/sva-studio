@@ -1,3 +1,4 @@
+import { attachMainserverErrorMetadata } from './mainserver-error-metadata.js';
 import {
   createMainserverMutationHeaders,
   createMainserverReadHeaders,
@@ -12,20 +13,21 @@ import {
   invalidateBindingOnStaleContext,
 } from './mainserver-context-binding.js';
 import type { MainserverDataDeviation, MainserverDetailResult } from './mainserver-detail.js';
-
 export type MainserverListQuery = Readonly<{
   page: number;
   pageSize: number;
 }>;
 export type MainserverMutationOptions = Readonly<{
   operationId?: string;
+  idempotencyKey?: string;
   contentMediaSaveOperationId?: string;
 }>;
-
 const addContentMediaSaveOperationHeader = (
   headers: Headers,
   mutationOptions?: MainserverMutationOptions
 ): Headers => {
+  if (mutationOptions?.idempotencyKey)
+    headers.set('Idempotency-Key', mutationOptions.idempotencyKey);
   if (mutationOptions?.contentMediaSaveOperationId) {
     headers.set(
       CONTENT_MEDIA_SAVE_OPERATION_ID_HEADER,
@@ -150,7 +152,19 @@ const createMainserverUpdateMutation =
     actingPrincipalType: MainserverActingPrincipalType,
     mutationOptions?: MainserverMutationOptions
   ): Promise<TItem> => {
-    await input.ensureContextBinding(contentId, actingPrincipalType);
+    try {
+      await input.ensureContextBinding(contentId, actingPrincipalType);
+    } catch (cause) {
+      const error =
+        cause instanceof Error
+          ? cause
+          : input.options.errorFactory(
+              'mainserver_context_preflight_failed',
+              'mainserver_context_preflight_failed'
+            );
+      attachMainserverErrorMetadata({ error, mutationOutcome: 'not_applied' });
+      throw error;
+    }
     try {
       const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
         url: `${input.options.basePath}/${encodeURIComponent(contentId)}`,

@@ -38,6 +38,12 @@ export const adminUiRouteDefinitions: readonly UiRouteDefinition[] = [
     documentation: page('admin.users.detail', 'detail'),
   },
   {
+    binding: 'adminUserLoginMfa',
+    path: uiRoutePaths.adminUserLoginMfa,
+    guard: 'adminUserLoginMfa',
+    documentation: page('admin.users.authentication-policy', 'detail'),
+  },
+  {
     binding: 'adminUserInvitationTemplate',
     path: uiRoutePaths.adminUserInvitationTemplate,
     guard: 'adminUserInvitationTemplate',

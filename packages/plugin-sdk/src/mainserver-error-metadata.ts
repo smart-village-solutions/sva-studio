@@ -10,17 +10,25 @@ export const readMainserverErrorRequestId = (error: unknown): string | undefined
 
 export const attachMainserverErrorMetadata = (input: {
   readonly error: Error;
-  readonly httpStatus: number;
+  readonly httpStatus?: number;
+  readonly mutationOutcome?: string | null;
   readonly requestId?: string;
   readonly details?: unknown;
   readonly permissionDenial?: PermissionDenialDetails;
 }): void => {
   const { error, httpStatus, requestId, details, permissionDenial } = input;
-  if (!('httpStatus' in error)) {
+  if (httpStatus !== undefined && !('httpStatus' in error)) {
     Object.defineProperty(error, 'httpStatus', {
       configurable: true,
       enumerable: false,
       value: httpStatus,
+    });
+  }
+  if (input.mutationOutcome === 'not_applied' || input.mutationOutcome === 'unknown') {
+    Object.defineProperty(error, 'mutationOutcome', {
+      configurable: true,
+      enumerable: false,
+      value: input.mutationOutcome,
     });
   }
   if (permissionDenial && !('permissionDenial' in error)) {
@@ -45,3 +53,12 @@ export const attachMainserverErrorMetadata = (input: {
     });
   }
 };
+
+/** Only an explicit server guarantee permits a new write after an error. */
+export const readMainserverMutationFailureOutcome = (error: unknown): 'not_applied' | 'unknown' =>
+  typeof error === 'object' &&
+  error !== null &&
+  'mutationOutcome' in error &&
+  error.mutationOutcome === 'not_applied'
+    ? 'not_applied'
+    : 'unknown';

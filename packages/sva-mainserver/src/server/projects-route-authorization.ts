@@ -38,8 +38,16 @@ export const authorizeProjectOrResponse = async (
     resource: { contentType: PROJECTS_CONTENT_TYPE, ...resource },
     credentialVisibleCompatibility: action !== 'projects.read',
   });
-  if (!result.ok)
-    return errorJson(result.status, result.error, result.message, result.permissionDenial);
+  if (!result.ok) {
+    const response = errorJson(
+      result.status,
+      result.error,
+      result.message,
+      result.permissionDenial
+    );
+    if (action !== 'projects.read') response.headers.set('X-SVA-Mutation-Outcome', 'not_applied');
+    return response;
+  }
   return {
     instanceId: result.actor.instanceId,
     keycloakSubject: result.actor.keycloakSubject,

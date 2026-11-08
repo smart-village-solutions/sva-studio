@@ -36,6 +36,103 @@
         "timeZone": { "type": "string", "minLength": 1, "maxLength": 100, "description": "IANA time zone, e.g. Europe/Berlin." }
       }
     },
+    "recording": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Complete effective tenant recording policy. Omitted when no complete policy is configured. Enablement is explicit per tenant. Audit retention must be at least retentionHours.",
+      "required": [
+        "enabled",
+        "legalBasis",
+        "signature",
+        "idCheck",
+        "retentionHours",
+        "verificationRequired",
+        "recoveryMode",
+        "timestampAuthorityUrl",
+        "auditRetentionHours"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "legalBasis": {
+          "enum": [
+            "consent",
+            "statutory"
+          ]
+        },
+        "signature": {
+          "enum": [
+            "off",
+            "optional",
+            "required"
+          ]
+        },
+        "idCheck": {
+          "enum": [
+            "off",
+            "optional",
+            "required"
+          ]
+        },
+        "retentionHours": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8760,
+          "description": "Tenant override, otherwise installation default, otherwise 720 hours."
+        },
+        "verificationRequired": {
+          "type": "boolean"
+        },
+        "recoveryMode": {
+          "enum": [
+            "standard",
+            "enhanced"
+          ]
+        },
+        "timestampAuthorityUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "maxLength": 2048
+        },
+        "auditRetentionHours": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "texts": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "locale",
+              "consentHtml",
+              "resumePromptHtml"
+            ],
+            "properties": {
+              "locale": {
+                "type": "string",
+                "maxLength": 35,
+                "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+              },
+              "consentHtml": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 65536
+              },
+              "resumePromptHtml": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 65536
+              }
+            }
+          }
+        }
+      }
+    },
     "legalTexts": {
       "type": "object",
       "additionalProperties": false,

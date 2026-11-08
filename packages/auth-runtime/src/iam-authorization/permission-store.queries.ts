@@ -1,5 +1,7 @@
 import type { EffectivePermission } from '@sva/iam-core';
-import { tenantCorePermissionCatalog } from '@sva/core';
+import { tenantCorePermissionCatalog, normalizeCompetenceLanguages } from '@sva/core';
+import { revealField } from '@sva/server-runtime';
+import { filterTenantEffectivePermissions } from './root-only-permissions.js';
 
 import type { QueryClient } from '../db.js';
 
@@ -63,12 +65,23 @@ export type TenantPermissionProjectionSubject = Readonly<{
   keycloakSubject: string;
   roleNames: readonly string[];
   permissionIds: readonly string[];
+  languages?: readonly string[];
+  displayName?: string;
 }>;
 
 type TenantPermissionProjectionRow = Readonly<{
   keycloak_subject: string;
   role_name: string;
   permission_key: string;
+  access_scope?: PermissionRow['access_scope'];
+  scope?: Record<string, unknown>;
+  resource_id?: string;
+  resource_type?: string;
+  action?: string;
+  competence_languages?: readonly string[];
+  display_name_ciphertext?: string | null;
+  first_name_ciphertext?: string | null;
+  last_name_ciphertext?: string | null;
 }>;
 
 export const loadTenantPermissionProjectionSubjectsWithClient = async (
@@ -76,6 +89,7 @@ export const loadTenantPermissionProjectionSubjectsWithClient = async (
   input: Readonly<{
     instanceId: string;
     permissionIds: readonly string[];
+    includeProfile?: boolean;
   }>
 ): Promise<readonly TenantPermissionProjectionSubject[]> => {
   if (input.permissionIds.length === 0) return [];
@@ -85,7 +99,9 @@ export const loadTenantPermissionProjectionSubjectsWithClient = async (
 SELECT DISTINCT
   a.keycloak_subject,
   r.role_name,
-  p.permission_key
+  p.permission_key, p.action, p.resource_type, p.resource_id, p.scope, rp.access_scope,
+  a.competence_languages,
+  ${input.includeProfile ? 'a.display_name_ciphertext, a.first_name_ciphertext, a.last_name_ciphertext' : 'NULL::text AS display_name_ciphertext, NULL::text AS first_name_ciphertext, NULL::text AS last_name_ciphertext'}
 ${ROLE_PERMISSION_JOIN_SQL}
  AND source.instance_id = $1
 JOIN iam.roles r
@@ -102,6 +118,13 @@ LEFT JOIN iam.instance_modules permission_module
  AND permission_module.module_id = split_part(p.permission_key, '.', 1)
 WHERE a.instance_id = $1
   AND a.status = 'active'
+  AND a.is_blocked = false
+  AND a.soft_deleted_at IS NULL
+  AND a.permanently_deleted_at IS NULL
+  AND a.deletion_lifecycle_state = 'active'
+  AND a.deactivated_at IS NULL
+  AND a.processing_restricted_at IS NULL
+  AND EXISTS (SELECT 1 FROM iam.instance_memberships membership WHERE membership.instance_id = a.instance_id AND membership.account_id = a.id)
   AND p.permission_key = ANY($2::text[])
   AND (p.permission_key = ANY($3::text[]) OR permission_module.effective_active = true)
 ORDER BY a.keycloak_subject, r.role_name, p.permission_key
@@ -113,14 +136,30 @@ ORDER BY a.keycloak_subject, r.role_name, p.permission_key
     ]
   );
 
+  const resolveUserDisplayName = input.includeProfile ? (await import('@sva/iam-admin')).resolveUserDisplayName : undefined;
   const projectionBySubject = new Map<
     string,
-    { roleNames: Set<string>; permissionIds: Set<string> }
+    { roleNames: Set<string>; permissionIds: Set<string>; languages?: readonly string[]; displayName?: string }
   >();
   for (const row of result.rows) {
+    // Flat claims/directories have no record or organization context. Restricted
+    // grants must never be widened into a tenant-wide capability.
+    const effective = filterTenantEffectivePermissions(toEffectivePermissions([{ ...row, organization_id: null }]));
+    if (!effective.some(permission =>
+      permission.action === row.permission_key &&
+      (!permission.accessScope || permission.accessScope === 'all') &&
+      !permission.resourceId && !permission.organizationId &&
+      (!permission.scope || Object.keys(permission.scope).length === 0))) continue;
     const projection = projectionBySubject.get(row.keycloak_subject) ?? {
       roleNames: new Set<string>(),
       permissionIds: new Set<string>(),
+      ...(row.competence_languages ? { languages: normalizeCompetenceLanguages(row.competence_languages) } : {}),
+      ...(resolveUserDisplayName ? { displayName: resolveUserDisplayName({
+        keycloakSubject: row.keycloak_subject,
+        decryptedDisplayName: revealField(row.display_name_ciphertext, `iam.accounts.display_name:${row.keycloak_subject}`),
+        firstName: revealField(row.first_name_ciphertext, `iam.accounts.first_name:${row.keycloak_subject}`),
+        lastName: revealField(row.last_name_ciphertext, `iam.accounts.last_name:${row.keycloak_subject}`),
+      }) } : {}),
     };
     projection.roleNames.add(row.role_name);
     projection.permissionIds.add(row.permission_key);
@@ -128,6 +167,8 @@ ORDER BY a.keycloak_subject, r.role_name, p.permission_key
   }
   return [...projectionBySubject].map(([keycloakSubject, projection]) => ({
     keycloakSubject,
+    ...(projection.languages ? { languages: projection.languages } : {}),
+    ...(projection.displayName ? { displayName: projection.displayName } : {}),
     roleNames: [...projection.roleNames].sort((left, right) => left.localeCompare(right)),
     permissionIds: [...projection.permissionIds].sort((left, right) => left.localeCompare(right)),
   }));

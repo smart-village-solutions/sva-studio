@@ -1,36 +1,8 @@
+import { IconChevronDown, IconChevronUp, IconTrash } from '@tabler/icons-react';
 import { Button, Checkbox, Input, StudioField } from '@sva/studio-ui-react';
 
 import { questionTypeSupportsFreeTextOptionToggle, type SurveyQuestionFormValues } from './surveys.detail-content-model.js';
 import type { SurveyContentTranslate } from './surveys.question-editor.shared.js';
-
-function DownIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" className="h-4 w-4 fill-none stroke-current stroke-2">
-      <path d="M4 6l4 4 4-4" />
-    </svg>
-  );
-}
-
-function UpIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" className="h-4 w-4 fill-none stroke-current stroke-2">
-      <path d="M4 10l4-4 4 4" />
-    </svg>
-  );
-}
-
-function DeleteIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" className="h-4 w-4 fill-none stroke-current stroke-[1.5]">
-      <path d="M3.5 4.5h9" />
-      <path d="M6 4.5V3.25h4v1.25" />
-      <path d="M5.25 6.25v5.5" />
-      <path d="M8 6.25v5.5" />
-      <path d="M10.75 6.25v5.5" />
-      <path d="M4.5 4.5l.5 8h6l.5-8" />
-    </svg>
-  );
-}
 
 export function SurveyOptionTitleField({
   pt,
@@ -88,7 +60,7 @@ export function SurveyOptionActionButtons({
         aria-label={pt('actions.moveOptionDown', { index: optionIndex + 1 })}
         onClick={() => onMove(optionIndex + 1)}
       >
-        <DownIcon />
+        <IconChevronDown aria-hidden="true" className="h-4 w-4" />
       </Button>
       <Button
         type="button"
@@ -99,7 +71,7 @@ export function SurveyOptionActionButtons({
         aria-label={pt('actions.moveOptionUp', { index: optionIndex + 1 })}
         onClick={() => onMove(optionIndex - 1)}
       >
-        <UpIcon />
+        <IconChevronUp aria-hidden="true" className="h-4 w-4" />
       </Button>
       <Button
         type="button"
@@ -109,7 +81,7 @@ export function SurveyOptionActionButtons({
         aria-label={pt('actions.deleteOption', { index: optionIndex + 1 })}
         onClick={() => onDelete(questionIndex, optionIndex)}
       >
-        <DeleteIcon />
+        <IconTrash aria-hidden="true" className="h-4 w-4" />
       </Button>
     </>
   );

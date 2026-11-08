@@ -7,11 +7,66 @@ import {
   MainserverApiError,
   requestMainserverJson,
 } from './mainserver-client.js';
+import { readMainserverMutationFailureOutcome } from './mainserver-error-metadata.js';
 import { omitDeviatedMainserverFields } from './mainserver-detail.js';
 
 describe('mainserver-client', () => {
   const readHeaders = (headers: HeadersInit | undefined): Record<string, string> =>
     Object.fromEntries(new Headers(headers).entries());
+
+  it('proves a failed context preflight did not start a PATCH', async () => {
+    const fetch = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => {
+      throw new TypeError('lost detail read');
+    });
+    const client = createMainserverCrudClient<
+      { id: string },
+      { title: string },
+      { data: { id: string }[] },
+      unknown,
+      Error
+    >({
+      basePath: '/news',
+      fetch,
+      errorFactory: (_code, message) => new Error(message),
+      mapListResponse: (response) => response,
+    });
+    const error = await client
+      .update('news-1', { title: 'Changed' }, 'user', { operationId: 'not-started-1' })
+      .catch((failure: unknown) => failure);
+    expect(readMainserverMutationFailureOutcome(error)).toBe('not_applied');
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch.mock.calls[0]?.[1]?.method).not.toBe('PATCH');
+  });
+
+  it('uses the caller operation and idempotency keys for one create attempt without retrying', async () => {
+    const fetch = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => {
+      throw new TypeError('lost reply');
+    });
+    const client = createMainserverCrudClient<
+      { id: string },
+      { title: string },
+      { data: { id: string }[] },
+      unknown,
+      Error
+    >({
+      basePath: '/news',
+      fetch,
+      errorFactory: (_code, message) => new Error(message),
+      mapListResponse: (response) => response,
+      createHeaders: () => ({ 'Idempotency-Key': 'generated-fallback' }),
+    });
+    await expect(
+      client.create({ title: 'Test' }, 'user', {
+        operationId: 'operation-stable-1',
+        idempotencyKey: 'idempotency-stable-1',
+      })
+    ).rejects.toThrow('lost reply');
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(readHeaders(fetch.mock.calls[0]?.[1]?.headers)).toMatchObject({
+      'x-sva-operation-id': 'operation-stable-1',
+      'idempotency-key': 'idempotency-stable-1',
+    });
+  });
 
   it('omits degraded field groups without changing independent input fields', () => {
     expect(

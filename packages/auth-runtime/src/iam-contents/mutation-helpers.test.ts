@@ -37,7 +37,7 @@ vi.mock('../db.js', () => ({
 }));
 
 const {
-  rejectVoucherCoreMutation,
+  rejectDedicatedEditorCoreMutation,
   createFailureResponse,
   createFailureResponseFromResponse,
   parseCreateRequest,
@@ -77,15 +77,24 @@ describe('content mutation helpers', () => {
     state.reserveIdempotencyMock.mockResolvedValue({ status: 'reserved' });
     state.createApiErrorMock.mockImplementation(
       (status: number, code: string, message: string, requestId?: string) =>
-        new Response(JSON.stringify({ error: { code, message }, ...(requestId ? { requestId } : {}) }), {
-          status,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        new Response(
+          JSON.stringify({ error: { code, message }, ...(requestId ? { requestId } : {}) }),
+          {
+            status,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
     );
   });
 
   it('stores explicit create failures as failed idempotent responses', async () => {
-    const response = await createFailureResponse(actor, 'idem-1', 400, 'invalid_request', 'Ungültig');
+    const response = await createFailureResponse(
+      actor,
+      'idem-1',
+      400,
+      'invalid_request',
+      'Ungültig'
+    );
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
@@ -114,7 +123,11 @@ describe('content mutation helpers', () => {
       { status: 503, headers: { 'Content-Type': 'application/json' } }
     );
 
-    const response = await createFailureResponseFromResponse(actor, 'idem-1', authorizationResponse);
+    const response = await createFailureResponseFromResponse(
+      actor,
+      'idem-1',
+      authorizationResponse
+    );
 
     await expect(response.json()).resolves.toEqual({
       error: {
@@ -128,7 +141,11 @@ describe('content mutation helpers', () => {
   });
 
   it('falls back to a generic authorization body when the response is not json', async () => {
-    const response = await createFailureResponseFromResponse(actor, 'idem-1', new Response('forbidden', { status: 403 }));
+    const response = await createFailureResponseFromResponse(
+      actor,
+      'idem-1',
+      new Response('forbidden', { status: 403 })
+    );
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({
@@ -140,24 +157,37 @@ describe('content mutation helpers', () => {
   it('falls back when a json authorization response contains unexpected fields', async () => {
     const authorizationResponse = new Response(
       JSON.stringify({
-        error: { code: 'database_unavailable', message: 'Berechtigungen konnten nicht geprüft werden.' },
+        error: {
+          code: 'database_unavailable',
+          message: 'Berechtigungen konnten nicht geprüft werden.',
+        },
         requestId: 'request-1',
         debug: { stack: 'internal' },
       }),
       { status: 503, headers: { 'Content-Type': 'application/json' } }
     );
 
-    const response = await createFailureResponseFromResponse(actor, 'idem-1', authorizationResponse);
+    const response = await createFailureResponseFromResponse(
+      actor,
+      'idem-1',
+      authorizationResponse
+    );
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({
-      error: { code: 'authorization_failed', message: 'Keine Berechtigung für diese Inhaltsoperation.' },
+      error: {
+        code: 'authorization_failed',
+        message: 'Keine Berechtigung für diese Inhaltsoperation.',
+      },
       requestId: 'request-1',
     });
   });
 
   it('parses valid create requests and returns the normalized payload', async () => {
-    const result = await parseCreateRequest(new Request('https://studio.test/api/v1/iam/contents'), actor);
+    const result = await parseCreateRequest(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      actor
+    );
 
     expect(result).toMatchObject({
       idempotencyKey: 'idem-1',
@@ -170,18 +200,31 @@ describe('content mutation helpers', () => {
   it('returns early for csrf, idempotency, schema and payload validation errors', async () => {
     const csrfResponse = new Response('csrf', { status: 403 });
     state.validateCsrfMock.mockReturnValueOnce(csrfResponse);
-    expect(await parseCreateRequest(new Request('https://studio.test/api/v1/iam/contents'), actor)).toBe(csrfResponse);
+    expect(
+      await parseCreateRequest(new Request('https://studio.test/api/v1/iam/contents'), actor)
+    ).toBe(csrfResponse);
 
     const idempotencyResponse = new Response('missing-idem', { status: 400 });
     state.requireIdempotencyKeyMock.mockReturnValueOnce({ error: idempotencyResponse });
-    expect(await parseCreateRequest(new Request('https://studio.test/api/v1/iam/contents'), actor)).toBe(idempotencyResponse);
+    expect(
+      await parseCreateRequest(new Request('https://studio.test/api/v1/iam/contents'), actor)
+    ).toBe(idempotencyResponse);
 
     state.parseRequestBodyMock.mockResolvedValueOnce({ ok: false, message: 'Body ungültig' });
-    const parseError = await parseCreateRequest(new Request('https://studio.test/api/v1/iam/contents'), actor);
+    const parseError = await parseCreateRequest(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      actor
+    );
     expect((parseError as Response).status).toBe(400);
 
-    state.validateContentTypePayloadMock.mockReturnValueOnce({ ok: false, message: 'Payload ungültig' });
-    const payloadError = await parseCreateRequest(new Request('https://studio.test/api/v1/iam/contents'), actor);
+    state.validateContentTypePayloadMock.mockReturnValueOnce({
+      ok: false,
+      message: 'Payload ungültig',
+    });
+    const payloadError = await parseCreateRequest(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      actor
+    );
     expect((payloadError as Response).status).toBe(400);
   });
 
@@ -194,7 +237,10 @@ describe('content mutation helpers', () => {
     const replay = await reserveCreateIdempotency(actor, 'idem-1', '{"a":1}');
     expect(replay?.status).toBe(201);
 
-    state.reserveIdempotencyMock.mockResolvedValueOnce({ status: 'conflict', message: 'bereits verwendet' });
+    state.reserveIdempotencyMock.mockResolvedValueOnce({
+      status: 'conflict',
+      message: 'bereits verwendet',
+    });
     const conflict = await reserveCreateIdempotency(actor, 'idem-1', '{"a":2}');
     expect(conflict?.status).toBe(409);
 
@@ -203,9 +249,9 @@ describe('content mutation helpers', () => {
     expect(state.toPayloadHashMock).toHaveBeenCalled();
   });
   it('reserves voucher authoring for the aggregate writer while retaining other Core content types', async () => {
-    expect(rejectVoucherCoreMutation('vouchers.voucher', 'request-1')?.status).toBe(409);
-    expect(rejectVoucherCoreMutation('news.article', 'request-1')).toBeNull();
-    expect(rejectVoucherCoreMutation('custom.record', 'request-1')).toBeNull();
+    expect(rejectDedicatedEditorCoreMutation('vouchers.voucher', 'request-1')?.status).toBe(409);
+    expect(rejectDedicatedEditorCoreMutation('jobs.job', 'request-1')?.status).toBe(409);
+    expect(rejectDedicatedEditorCoreMutation('news.article', 'request-1')).toBeNull();
+    expect(rejectDedicatedEditorCoreMutation('custom.record', 'request-1')).toBeNull();
   });
-
 });

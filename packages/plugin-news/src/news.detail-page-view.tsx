@@ -11,6 +11,8 @@ import {
   StudioDetailPageTemplate,
   StudioDestructiveActionDialog,
   StudioSaveButton,
+  StudioDetailTabs,
+  type StudioDetailTabDefinition,
   createStudioMediaPickerLabels,
   resolveStudioMediaPickerFeedback,
   useStudioMediaReferenceSync,
@@ -18,9 +20,7 @@ import {
 } from '@sva/studio-ui-react';
 import { NewsDetailMediaPicker } from './news.detail-page-media-picker.js';
 import { NewsDetailSaveStatus } from './news.detail-page-save-status.js';
-import { NewsDetailTabs } from './news.detail-page-tabs.js';
 import { useNewsDetailMedia } from './news.detail-page-media.js';
-import { createNewsDetailTabDefinitions } from './news.detail-tabs.js';
 import type {
   NewsMediaPickerAsset,
   PluginTranslator,
@@ -54,17 +54,17 @@ type NewsDetailPageViewProps = Readonly<{
   addManualMedia: () => string;
   canUpdateMedia: boolean;
   saveCurrentItem: () => Promise<void>;
+  checkSaveOutcome: () => Promise<void>;
+  checkingSave: boolean;
   deleteNavigationFailed: boolean;
   statusMessage: StatusMessage | null;
   retryCreatedContentId: string | null;
   navigateToCreatedDetail: (id: string) => Promise<void>;
   completeCreateSave: () => boolean;
   setStatusMessage: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
-  tabs: ReturnType<typeof createNewsDetailTabDefinitions>;
+  tabs: readonly StudioDetailTabDefinition<NewsDetailTabId>[];
   activeTab: NewsDetailTabId;
   handleTabChange: (tab: NewsDetailTabId) => void;
-  warmTab: (tab: NewsDetailTabId) => void;
-  visitedTabs: readonly NewsDetailTabId[];
   deleteDialogOpen: boolean;
   deleteErrorMessage: string | null;
   onDelete: () => Promise<void>;
@@ -192,7 +192,19 @@ export const NewsDetailPageView = (props: NewsDetailPageViewProps) => {
           }}
         >
           <NewsDetailSaveStatus {...props} />
-          {mode === 'create' ? tabs[0]?.panel : <NewsDetailTabs {...props} />}
+          {mode === 'create' ? (
+            tabs[0]?.panel
+          ) : (
+            <StudioDetailTabs<NewsDetailTabId>
+              tabs={tabs}
+              value={props.activeTab}
+              onValueChange={props.handleTabChange}
+              ariaLabel={pt('tabs.ariaLabel')}
+              mobileSelectLabel={pt('tabs.mobileLabel')}
+              keepMounted
+              preloadOnIntent
+            />
+          )}
         </form>
       </FormProvider>
       <StudioDestructiveActionDialog

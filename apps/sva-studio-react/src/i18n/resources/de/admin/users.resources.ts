@@ -153,6 +153,8 @@ export const usersAdminDEResources = {
       'Wenn Sie die Markierung entfernen, gelten für dieses Konto ab dem nächsten Prüflauf wieder die automatischen Löschregeln. Frühere Änderungen am Kontostatus werden dadurch nicht rückgängig gemacht.',
     rolesLabel: 'Rollen auswählen',
     groupsLabel: 'Gruppen auswählen',
+    competenceLanguages: 'Kompetenzsprachen',
+    competenceLanguagesHint: 'Sprachcodes durch Kommas trennen, z. B. de, en-GB. Maximal 40. Unabhängig von der Oberflächensprache.',
     notesLabel: 'Notizen',
     notesCounter: '{{count}} / 2000 Zeichen',
     validation: {

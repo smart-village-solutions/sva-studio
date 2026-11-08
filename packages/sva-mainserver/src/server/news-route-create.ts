@@ -38,6 +38,7 @@ export const handleCollectionCreate = async (
   requestId: string | undefined,
   logSuccess: (operation: string, newsId?: string) => void
 ) => {
+  let providerWriteStarted = false;
   const workflow = createMutationWorkflow<
     AuthenticatedRequestContext,
     Record<never, never>,
@@ -89,9 +90,12 @@ export const handleCollectionCreate = async (
         payloadHash: toPayloadHash(parsed.rawBody),
       });
       if (idempotency.status === 'replay') {
+        // A cached error can follow a partially completed provider write.
+        providerWriteStarted = true;
         return json(idempotency.responseBody, idempotency.responseStatus);
       }
       if (idempotency.status === 'conflict') {
+        providerWriteStarted = true;
         return errorJson(409, 'idempotency_key_reuse', idempotency.message);
       }
 
@@ -99,7 +103,18 @@ export const handleCollectionCreate = async (
     },
     parse: async ({ parsed }) => parsed,
     execute: async ({ context, actor, actorInfo, idempotencyKey, input: parsed }) =>
-      executeNewsCreate({ request, context, actor, actorInfo, idempotencyKey, parsed, logSuccess }),
+      executeNewsCreate({
+        request,
+        context,
+        actor,
+        actorInfo,
+        idempotencyKey,
+        parsed,
+        logSuccess,
+        onProviderWrite: () => {
+          providerWriteStarted = true;
+        },
+      }),
     mapError: (error) => {
       const logFailure = isUnexpectedMainserverError(error) ? logger.error : logger.warn;
       logFailure('Mainserver News route failed', {
@@ -117,5 +132,11 @@ export const handleCollectionCreate = async (
     respond: (response) => response,
   });
 
-  return workflow(request, ctx);
+  const response = await workflow(request, ctx);
+  if (!response.ok)
+    response.headers.set(
+      'X-SVA-Mutation-Outcome',
+      providerWriteStarted ? 'unknown' : 'not_applied'
+    );
+  return response;
 };

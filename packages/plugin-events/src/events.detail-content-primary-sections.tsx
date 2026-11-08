@@ -4,7 +4,7 @@ import { getHostMapGeocodingConfig } from '@sva/plugin-sdk';
 import { Button, Checkbox, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import { createDefaultDate, type EventsDetailFormValues } from './events.detail-form.js';
-import { EventsDetailCard } from './events.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import { EventsDateInput } from './events.detail-date-input.js';
 import {
   ContentInput,
@@ -128,7 +128,7 @@ export function EventsDateSection(props: EventsDateSectionProps) {
       : [createDefaultDate()];
 
   return (
-    <EventsDetailCard
+    <StudioDetailCard
       title={props.pt('cards.content.dates.title')}
       description={props.pt('cards.content.dates.description')}
       actions={
@@ -153,6 +153,6 @@ export function EventsDateSection(props: EventsDateSectionProps) {
         </RepeaterItem>
       ))}
       {props.children}
-    </EventsDetailCard>
+    </StudioDetailCard>
   );
 }

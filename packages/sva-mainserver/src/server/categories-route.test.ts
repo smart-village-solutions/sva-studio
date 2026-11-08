@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { jobActorFixture } from './jobs-test-fixture.js';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
@@ -11,15 +12,22 @@ const state = vi.hoisted(() => ({
   listSvaMainserverCategoryManagement: vi.fn(),
   saveSvaMainserverCategory: vi.fn(),
   deleteSvaMainserverCategory: vi.fn(),
+  resolveMainserverResourceActor: vi.fn(),
+  permissions: vi.fn(),
 }));
 
-vi.mock('@sva/auth-runtime/server', () => ({
+vi.mock('@sva/auth-runtime/server', async (original) => ({
+  ...(await original<typeof import('@sva/auth-runtime/server')>()),
+  resolveEffectivePermissions: state.permissions,
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
   resolveActorInfo: state.resolveActorInfo,
   reserveIdempotency: state.reserveIdempotency,
   completeIdempotency: state.completeIdempotency,
   validateCsrf: state.validateCsrf,
+}));
+vi.mock('./mutation-principal.js', () => ({
+  resolveMainserverResourceActor: state.resolveMainserverResourceActor,
 }));
 
 vi.mock('./service.js', async (importOriginal) => {
@@ -50,6 +58,10 @@ const ctx = {
 describe('dispatchSvaMainserverCategoriesRequest', () => {
   beforeEach(() => {
     state.validateCsrf.mockReturnValue(null);
+    state.permissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'jobs.create', resourceType: 'jobs', accessScope: 'all' }],
+    });
   });
 
   afterEach(() => {
@@ -57,15 +69,20 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
   });
 
   const allow = (action: string) => {
-    state.authorizeContentPrimitiveForUser.mockResolvedValue({
-      ok: true,
-      actor: {
-        instanceId: 'de-musterhausen',
-        keycloakSubject: 'subject-1',
-        organizationId: '22222222-2222-2222-8222-222222222222',
-      },
-      permissions: [action],
-    });
+    state.authorizeContentPrimitiveForUser.mockImplementation(
+      ({ action: requested }: { action: string }) =>
+        requested === action
+          ? {
+              ok: true,
+              actor: {
+                instanceId: 'de-musterhausen',
+                keycloakSubject: 'subject-1',
+                organizationId: '22222222-2222-2222-8222-222222222222',
+              },
+              permissions: [action],
+            }
+          : { ok: false, status: 403, error: 'forbidden', message: 'forbidden' }
+    );
   };
 
   it('ignores unrelated routes without touching auth', async () => {
@@ -188,6 +205,115 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       ],
     });
   });
+
+  it('allows construction editors to read only compatible choices without category-management rights', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('construction-sites.read');
+    state.listSvaMainserverCategories.mockResolvedValue([
+      { id: 'universal', name: 'Allgemein', dataTypes: [] },
+      { id: 'construction', name: 'Verkehr', dataTypes: ['generic_item_construction_site'] },
+      { id: 'news', name: 'Presse', dataTypes: ['news_item'] },
+    ]);
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_construction_site'
+      )
+    );
+    expect(response?.status).toBe(200);
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'construction-sites.read',
+        resource: { contentType: 'construction-sites.construction-site' },
+      })
+    );
+    await expect(response?.json()).resolves.toEqual({
+      data: [
+        { id: 'universal', name: 'Allgemein' },
+        { id: 'construction', name: 'Verkehr' },
+      ],
+    });
+  });
+
+  it('denies the construction lookup without construction read or create permission', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.read');
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_construction_site'
+      )
+    );
+    expect(response?.status).toBe(403);
+    expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+  });
+
+  it.each(['construction-sites.read', 'construction-sites.create'])(
+    'loads construction choices with the selected principal and only %s',
+    async (action) => {
+      state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+      allow(action);
+      state.listSvaMainserverCategories.mockResolvedValue([]);
+      for (const principal of ['organization', 'user']) {
+        const scopedActor = {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'subject-1',
+          actingPrincipalType: principal,
+        };
+        state.resolveMainserverResourceActor.mockResolvedValue(scopedActor);
+        const request = new Request(
+          'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_construction_site',
+          {
+            headers: { 'X-SVA-Acting-Principal-Type': principal },
+          }
+        );
+        expect((await dispatchSvaMainserverCategoriesRequest(request))?.status).toBe(200);
+        expect(state.resolveMainserverResourceActor).toHaveBeenCalledWith(
+          expect.objectContaining({ request, ctx })
+        );
+        expect(state.listSvaMainserverCategories).toHaveBeenLastCalledWith(scopedActor);
+      }
+      state.resolveMainserverResourceActor.mockResolvedValue(undefined);
+      const denied = new Request(
+        'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_construction_site',
+        {
+          headers: { 'X-SVA-Acting-Principal-Type': 'user' },
+        }
+      );
+      expect((await dispatchSvaMainserverCategoriesRequest(denied))?.status).toBe(403);
+      expect(state.listSvaMainserverCategories).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it.each(
+    (
+      [
+        ['GET', '/categories'],
+        ['GET', '/categories?dataType=event_record'],
+        ['GET', '/categories?view=management&dataType=generic_item_construction_site'],
+        ['GET', '/categories/cat-1?dataType=generic_item_construction_site'],
+        ['GET', '/categories?dataType=generic_item_construction_site&dataType=news_item'],
+        ['POST', '/categories?dataType=generic_item_construction_site'],
+        ['DELETE', '/categories/cat-1?dataType=generic_item_construction_site'],
+      ] as const
+    ).flatMap(([method, path]) =>
+      ['construction-sites.read', 'construction-sites.create'].map(
+        (action) => [method, path, action] as const
+      )
+    )
+  )(
+    'does not grant category administration through %s %s with %s',
+    async (method, path, action) => {
+      state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+      allow(action);
+      const response = await dispatchSvaMainserverCategoriesRequest(
+        new Request(`https://studio.test/api/v1/mainserver${path}`, { method })
+      );
+      expect(response?.status).toBe(403);
+      expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+      expect(state.listSvaMainserverCategoryManagement).not.toHaveBeenCalled();
+      expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
+      expect(state.deleteSvaMainserverCategory).not.toHaveBeenCalled();
+    }
+  );
 
   it.each([
     'https://studio.test/api/v1/mainserver/categories?dataType=unknown',
@@ -596,5 +722,120 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       error: 'internal_error',
       message: 'Mainserver-Kategorien-Anfrage ist fehlgeschlagen.',
     });
+  });
+  it.each(['jobs.read', 'jobs.create'])(
+    'denies an organization Job lookup with only personal %s',
+    async (action) => {
+      state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+      allow(action);
+      state.resolveMainserverResourceActor.mockResolvedValue(
+        jobActorFixture({
+          instanceId: 'de-musterhausen',
+          principal: 'organization',
+          organizationId: ctx.activeOrganizationId,
+        })
+      );
+      state.permissions.mockResolvedValue({
+        ok: true,
+        permissions: [{ action, resourceType: 'jobs', accessScope: 'own' }],
+      });
+      state.listSvaMainserverCategories.mockResolvedValue([]);
+      const response = await dispatchSvaMainserverCategoriesRequest(
+        new Request('https://studio.test/api/v1/mainserver/categories?dataType=generic_item_job', {
+          headers: { 'x-sva-acting-principal-type': 'organization' },
+        })
+      );
+      expect(response?.status).toBe(403);
+      expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+    }
+  );
+  it.each(['jobs.read', 'jobs.create'])(
+    'allows an actor-matching Job lookup with %s',
+    async (action) => {
+      state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+      allow(action);
+      for (const principal of ['user', 'organization'] as const) {
+        state.resolveMainserverResourceActor.mockResolvedValue(
+          jobActorFixture({
+            instanceId: 'de-musterhausen',
+            principal,
+            organizationId: ctx.activeOrganizationId,
+          })
+        );
+        state.permissions.mockResolvedValue({
+          ok: true,
+          permissions: [
+            {
+              action,
+              resourceType: 'jobs',
+              accessScope: principal === 'user' ? 'own' : 'organization',
+            },
+          ],
+        });
+        state.listSvaMainserverCategories.mockResolvedValue([]);
+        const response = await dispatchSvaMainserverCategoriesRequest(
+          new Request(
+            'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_job',
+            { headers: { 'x-sva-acting-principal-type': principal } }
+          )
+        );
+        expect(response?.status).toBe(200);
+      }
+    }
+  );
+  it('denies a Job lookup if actor permissions cannot be resolved', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('jobs.read');
+    state.resolveMainserverResourceActor.mockResolvedValue(jobActorFixture());
+    state.permissions.mockResolvedValue({ ok: false, error: 'database_unavailable' });
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories?dataType=generic_item_job', {
+        headers: { 'x-sva-acting-principal-type': 'user' },
+      })
+    );
+    expect(response?.status).toBe(503);
+    expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+  });
+  it('requires a resolved selected principal for a Job category lookup', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('jobs.read');
+    state.resolveMainserverResourceActor.mockResolvedValue(undefined);
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories?dataType=generic_item_job')
+    );
+    expect(response?.status).toBe(403);
+    expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+  });
+  it('allows a Job creator to look up only exactly tagged employment names with the selected principal', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('jobs.create');
+    const selected = jobActorFixture({
+      instanceId: 'de-musterhausen',
+      principal: 'organization',
+      organizationId: ctx.activeOrganizationId,
+    });
+    state.resolveMainserverResourceActor.mockResolvedValue(selected);
+    state.listSvaMainserverCategories.mockResolvedValue([
+      { id: '1', name: 'Vollzeit', tagList: 'other, generic_item_job', dataTypes: [] },
+      {
+        id: '2',
+        name: 'Wrong',
+        tagList: 'generic_item_job_extra',
+        dataTypes: ['generic_item_job'],
+      },
+      { id: '3', name: 'Untagged', tagList: '', dataTypes: [] },
+    ]);
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories?dataType=generic_item_job', {
+        headers: { 'x-sva-acting-principal-type': 'organization' },
+      })
+    );
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toMatchObject({ data: [{ id: '1', name: 'Vollzeit' }] });
+    expect(state.listSvaMainserverCategories).toHaveBeenCalledWith(selected);
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'jobs.create', resource: { contentType: 'jobs.job' } })
+    );
+    expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
   });
 });

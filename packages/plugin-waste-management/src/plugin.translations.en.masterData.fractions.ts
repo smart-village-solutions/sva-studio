@@ -33,6 +33,7 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     edit: 'Edit',
     delete: 'Delete',
     deleteSelected: 'Delete selected',
+    toggleStatus: 'Change status of fraction {{value}}',
     activateStatus: 'Activate fraction {{value}}',
     deactivateStatus: 'Deactivate fraction {{value}}',
     cancel: 'Cancel',

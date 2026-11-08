@@ -31,6 +31,7 @@ afterEach(() => {
 });
 describe('waste-management master-data location table views', () => {
   it('forwards filter controls and sorting actions', () => {
+    const onOpenCreateLocation = vi.fn();
     const onTourFilterChange = vi.fn();
     const onLocationYearChange = vi.fn();
     const onLocationTourStatusChange = vi.fn();
@@ -67,7 +68,7 @@ describe('waste-management master-data location table views', () => {
         onOpenCreateCity={vi.fn()}
         onOpenCreateStreet={vi.fn()}
         onOpenCreateHouseNumber={vi.fn()}
-        onOpenCreateLocation={vi.fn()}
+        onOpenCreateLocation={onOpenCreateLocation}
         onOpenBulkAssignments={vi.fn()}
         onTourFilterChange={onTourFilterChange}
         onToggleSelectAll={onToggleSelectAll}
@@ -80,6 +81,10 @@ describe('waste-management master-data location table views', () => {
       />
     );
 
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.actions.createLocation' })
+    );
+    expect(onOpenCreateLocation).toHaveBeenCalledTimes(1);
     fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.filters.tour'), {
       target: { value: 'tour-1' },
     });

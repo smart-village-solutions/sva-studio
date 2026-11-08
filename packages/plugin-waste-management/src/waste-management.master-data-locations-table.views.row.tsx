@@ -201,7 +201,7 @@ export const WasteMasterDataLocationsRow = ({
     resolveLocationRowProjection(location, maps);
 
   return (
-    <tr className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20">
+    <tr className="animate-row-hover border-b border-border-subtle align-top text-[14px] text-foreground hover:bg-surface-inset">
       <td className="px-3 py-3 align-top">
         <Checkbox
           aria-label={pt('masterData.locationsWorkspace.table.selectRow', { rowId: location.id })}

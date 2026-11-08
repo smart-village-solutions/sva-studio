@@ -96,6 +96,7 @@ describe('technical news translation', () => {
       for (const key of [
         'author',
         'keywords',
+        'settings.onlySummaryLinkText',
         'contentBlocks.0.title',
         'contentBlocks.0.intro',
         'contentBlocks.0.body',
@@ -130,6 +131,72 @@ describe('technical news translation', () => {
       payload().entries.map((entry) => entry.text),
       expect.any(AbortSignal)
     );
+  });
+  it.each(['fr', 'pt-PT', 'es'])(
+    'translates both profiles for selected locale %s',
+    async (targetLocale) => {
+      Object.assign(provider.publicConfig, {
+        selectedLocales: [targetLocale],
+        availableLanguages: [{ code: targetLocale, name: targetLocale, tagHandling: true }],
+      });
+      const news = await appTranslationServiceHandler(request({ ...payload(), targetLocale }));
+      expect(news.status).toBe(200);
+      expect(await news.json()).toMatchObject({ targetLocale });
+
+      state.translate.mockResolvedValue(['Localized label']);
+      const home = await appTranslationServiceHandler(
+        request({
+          ...payload(),
+          targetLocale,
+          profileId: 'global-settings-v1',
+          entries: [{ key: 'label', format: 'plain', text: 'Unsere Termine' }],
+        })
+      );
+      expect(home.status).toBe(200);
+      expect(await home.json()).toMatchObject({ targetLocale });
+      expect(state.translate.mock.calls.map(([, target]) => target)).toEqual([
+        targetLocale,
+        targetLocale,
+      ]);
+    }
+  );
+
+  it('accepts one plain settings label and rejects arbitrary paths before provider work', async () => {
+    const input = {
+      ...payload(),
+      profileId: 'global-settings-v1',
+      entries: [{ key: 'label', format: 'plain', text: 'Unsere Termine' }],
+    };
+    state.translate.mockResolvedValue(['Our events']);
+    const result = await appTranslationServiceHandler(request(input));
+    expect(result.status).toBe(200);
+    expect((await result.json()).entries).toEqual([
+      { key: 'label', format: 'plain', text: 'Our events' },
+    ]);
+    input.entries[0].key = 'settings.url';
+    expect((await appTranslationServiceHandler(request(input))).status).toBe(400);
+    expect(state.translate).toHaveBeenCalledTimes(1);
+  });
+
+  it('translates a formatted intro and a plain article button in the same group', async () => {
+    const input = payload();
+    input.entries.push(
+      { key: 'contentBlocks.0.intro', text: '<p><strong>Einleitung</strong></p>', format: 'html' },
+      { key: 'settings.onlySummaryLinkText', text: 'Zum vollständigen Artikel', format: 'plain' }
+    );
+    state.translate.mockResolvedValue([
+      'News',
+      '<p>Hello</p>',
+      '<p><strong>Intro</strong></p>',
+      'Read the full article',
+    ]);
+
+    const result = await appTranslationServiceHandler(request(input));
+    expect(result.status).toBe(200);
+    expect((await result.json()).entries.slice(-2)).toEqual([
+      { key: 'contentBlocks.0.intro', text: '<p><strong>Intro</strong></p>', format: 'html' },
+      { key: 'settings.onlySummaryLinkText', text: 'Read the full article', format: 'plain' },
+    ]);
   });
   it.each([
     { azp: binding.clientId, sub: 'human' },
@@ -185,6 +252,38 @@ describe('technical news translation', () => {
           { key: 'contentBlocks.0.body', text: '<script>bad()</script>', format: 'html' },
         ],
       },
+      {
+        ...payload(),
+        entries: [
+          ...payload().entries,
+          { key: 'contentBlocks.0.intro', text: '<p onclick="bad()">Intro</p>', format: 'html' },
+        ],
+      },
+      {
+        ...payload(),
+        entries: [
+          ...payload().entries,
+          { key: 'settings.onlySummaryLinkText', text: '<p>Read more</p>', format: 'html' },
+        ],
+      },
+      {
+        ...payload(),
+        entries: [
+          ...payload().entries,
+          {
+            key: 'contentBlocks.0.mediaContents.1.captionText',
+            text: '<p>Bild</p>',
+            format: 'html',
+          },
+        ],
+      },
+      {
+        ...payload(),
+        entries: [
+          ...payload().entries,
+          { key: 'contentBlocks.0.mediaContents.1.copyright', text: 'Redaktion', format: 'plain' },
+        ],
+      },
     ];
     for (const input of cases)
       expect(
@@ -203,7 +302,8 @@ it('accepts a title-only news group and all agreed plain metadata fields', async
     { key: 'author', text: 'Redaktion', format: 'plain' },
     { key: 'keywords', text: 'Stadt', format: 'plain' },
     { key: 'contentBlocks.0.title', text: 'Titel', format: 'plain' },
-    { key: 'contentBlocks.0.intro', text: 'Einleitung', format: 'plain' }
+    { key: 'contentBlocks.0.intro', text: 'Einleitung', format: 'plain' },
+    { key: 'contentBlocks.0.mediaContents.1.captionText', text: 'Die Bibliothek', format: 'plain' }
   );
   state.translate.mockResolvedValue(input.entries.map(() => 'English'));
   expect((await appTranslationServiceHandler(request(input))).status).toBe(200);

@@ -13,9 +13,19 @@ describe('poi.detail-form', () => {
   it('creates hidden content and serializes only an explicit visibility choice', () => {
     const values = createDefaultPoiDetailFormValues();
     expect(values.basis.active).toBe(false);
-    expect(mapPoiDetailFormValuesToInput(values).active).toBe(false);
+    expect(mapPoiDetailFormValuesToInput(values, {}).visible).toBe(false);
     values.basis.active = true;
-    expect(mapPoiDetailFormValuesToInput(values).active).toBe(true);
+    expect(mapPoiDetailFormValuesToInput(values, {}).visible).toBe(true);
+    expect(mapPoiDetailFormValuesToInput(values, {})).not.toHaveProperty('active');
+  });
+
+  it.each([[false, true], [true, false]] as const)('uses visibility %s independently of active %s', (visible, active) => {
+    const values = mapPoiItemToDetailFormValues({
+      id: 'poi', name: 'Ort', contentType: 'poi.point-of-interest', status: 'published',
+      createdAt: '', updatedAt: '', visible, active,
+    });
+    expect(values.basis.active).toBe(visible);
+    expect(mapPoiDetailFormValuesToInput(values, {}).visible).toBe(visible);
   });
 
   it('maps a poi item into the fixed tab form model', () => {
@@ -470,7 +480,7 @@ describe('poi.detail-form', () => {
     ).toEqual({
       name: 'Test POI',
       mobileDescription: '',
-      active: false,
+      visible: false,
       externalId: '',
       keywords: '',
       addresses: [{ geoLocation: { latitude: 52.5, longitude: undefined } }],
@@ -1058,7 +1068,7 @@ describe('poi.detail-form', () => {
 
       expect(input).toMatchObject({
         name: 'Bibliothek',
-        active: false,
+        visible: false,
         categoryName: 'Kultur',
         categories: [{ name: 'Kultur' }, { name: 'Service' }],
         mobileDescription: '',
@@ -1180,10 +1190,10 @@ describe('poi.detail-form', () => {
       ...overrides,
     });
 
-    it('keeps category precedence, active defaults, and empty-list defaults', () => {
+    it('keeps category precedence, visibility defaults, and empty-list defaults', () => {
       const explicit = mapPoiItemToDetailFormValues(
         item({
-          active: false,
+          visible: false,
           categoryName: 'Legacy',
           categories: [{ name: 'Primär' }, { name: 'Sekundär' }],
           addresses: [],

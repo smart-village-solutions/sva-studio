@@ -37,6 +37,8 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'generic-items.generic-item',
   'cockpit-cards.cockpit-card',
   'projects.project',
+  'vouchers.voucher',
+  'jobs.job',
 ]);
 
 export const resolveRowAccess = (

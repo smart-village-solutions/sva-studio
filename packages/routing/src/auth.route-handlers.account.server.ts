@@ -60,9 +60,17 @@ export const accountAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.getMyProfileHandler),
     PATCH: routeHandler(authRuntimeRoutes.updateMyProfileHandler),
   },
+  '/api/v1/iam/users/me/authentication-policy': {
+    GET: routeHandler(authRuntimeRoutes.getTenantLoginMfaHandler),
+    PATCH: routeHandler(authRuntimeRoutes.updateTenantLoginMfaHandler),
+  },
   '/api/v1/iam/users/me/invitation-template': {
     GET: routeHandler(authRuntimeRoutes.getTenantInvitationTemplateHandler),
     PATCH: routeHandler(authRuntimeRoutes.updateTenantInvitationTemplateHandler),
+  },
+  '/api/v1/iam/users/me/email-verification-template': {
+    GET: routeHandler(authRuntimeRoutes.getTenantEmailVerificationTemplateHandler),
+    PATCH: routeHandler(authRuntimeRoutes.updateTenantEmailVerificationTemplateHandler),
   },
   '/api/v1/iam/organizations': {
     GET: routeHandler(authRuntimeRoutes.listOrganizationsHandler),

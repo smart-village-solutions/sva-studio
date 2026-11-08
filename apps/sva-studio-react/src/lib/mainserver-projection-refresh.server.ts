@@ -16,6 +16,8 @@ type MainserverProjectionContentType =
   | 'faq.faq'
   | 'cockpit-cards.cockpit-card'
   | 'vouchers.voucher'
+  | 'construction-sites.construction-site'
+  | 'jobs.job'
   | 'projects.project'
   | 'surveys.survey';
 
@@ -36,6 +38,8 @@ const mainserverCollectionSegments = new Set([
   'projects',
   'surveys',
   'vouchers',
+  'construction-sites',
+  'jobs',
 ]);
 
 const shouldRefreshProjectionForRequest = (request: Request, response: Response): boolean =>
@@ -118,11 +122,12 @@ export const refreshProjectionAfterMainserverMutation = async (
   request: Request,
   response: Response,
   contentType: MainserverProjectionContentType
-): Promise<void> => {
+): Promise<false | void> => {
   if (!shouldRefreshProjectionForRequest(request, response)) {
     return;
   }
 
+  const incomplete = contentType === 'jobs.job' ? false : undefined;
   const body = (await response
     .clone()
     .json()
@@ -144,7 +149,7 @@ export const refreshProjectionAfterMainserverMutation = async (
       method: request.method,
       requestPath: new URL(request.url).pathname,
     });
-    return;
+    return incomplete;
   }
 
   const followUpContext = readMainserverMutationFollowUpContext(request);
@@ -157,7 +162,7 @@ export const refreshProjectionAfterMainserverMutation = async (
         entityId: entityId ?? null,
       }
     );
-    return;
+    return incomplete;
   }
 
   const mediaSaveOperationId = request.headers.get(CONTENT_MEDIA_SAVE_OPERATION_ID_HEADER)?.trim();
@@ -195,6 +200,7 @@ export const refreshProjectionAfterMainserverMutation = async (
       instanceId: followUpContext.instanceId,
       operationExternalId: followUpContext.operationExternalId,
     });
+    const authorizationMode = journal?.authorizationMode ?? 'credential_visible_compatibility';
     await refreshProjectedContentsForMainserverMutation({
       instanceId: followUpContext.instanceId,
       keycloakSubject: followUpContext.keycloakSubject,
@@ -204,19 +210,14 @@ export const refreshProjectionAfterMainserverMutation = async (
       mutationRef: followUpContext.operationExternalId,
       actingPrincipalType: followUpContext.actingPrincipalType,
       credentialFingerprint: followUpContext.credentialFingerprint,
-      authorizationMode: journal?.authorizationMode ?? 'credential_visible_compatibility',
+      authorizationMode,
       ...(followUpContext.activeOrganizationId
         ? { organizationId: followUpContext.activeOrganizationId }
         : {}),
       ...(operation ? { operation } : {}),
       ...(entityId ? { entityId } : {}),
     });
-    await refreshVoucherAggregateProjection(
-      body,
-      followUpContext,
-      contentType,
-      journal?.authorizationMode ?? 'credential_visible_compatibility'
-    );
+    await refreshVoucherAggregateProjection(body, followUpContext, contentType, authorizationMode);
   } catch (error) {
     logger.warn('Mainserver mutation projection refresh failed after a successful provider write', {
       instanceId: followUpContext.instanceId,
@@ -226,6 +227,7 @@ export const refreshProjectionAfterMainserverMutation = async (
       operationExternalId: followUpContext.operationExternalId,
       error: error instanceof Error ? error.message : String(error),
     });
+    return incomplete;
   }
 };
 

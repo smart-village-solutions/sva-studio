@@ -7,7 +7,13 @@ import { formatEditorDateTime } from '../../../lib/editor-date-time';
 
 const formatDateTime = (value?: string) => formatEditorDateTime(value) ?? value ?? '—';
 
-const scopeOrder: readonly InstanceAuditCheck['scope'][] = ['run', 'instance', 'registry', 'keycloak', 'localIam'];
+const scopeOrder: readonly InstanceAuditCheck['scope'][] = [
+  'run',
+  'instance',
+  'registry',
+  'keycloak',
+  'localIam',
+];
 
 const groupChecksByScope = (checks: readonly InstanceAuditCheck[]) =>
   scopeOrder
@@ -20,9 +26,9 @@ const groupChecksByScope = (checks: readonly InstanceAuditCheck[]) =>
 const readStatusClassName = (status: InstanceAuditCheck['status']) => {
   switch (status) {
     case 'pass':
-      return 'bg-emerald-500/10 text-emerald-700';
+      return 'bg-status-success text-status-success-foreground';
     case 'warn':
-      return 'bg-amber-500/10 text-amber-700';
+      return 'bg-status-warning text-status-warning-foreground';
     case 'fail':
       return 'bg-destructive/10 text-destructive';
     default:
@@ -66,7 +72,9 @@ const AuditCheckList = ({ checks }: { checks: readonly InstanceAuditCheck[] }) =
                   <p className="text-sm font-medium">{check.title}</p>
                   <p className="text-xs text-muted-foreground">{check.message}</p>
                 </div>
-                <span className={`rounded-full px-2 py-1 text-xs font-medium ${readStatusClassName(check.status)}`}>
+                <span
+                  className={`rounded-full px-2 py-1 text-xs font-medium ${readStatusClassName(check.status)}`}
+                >
                   {t(`admin.instances.audit.status.${check.status}`)}
                 </span>
               </div>
@@ -99,7 +107,8 @@ const AuditCheckList = ({ checks }: { checks: readonly InstanceAuditCheck[] }) =
               ) : null}
               {check.remediationHint ? (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  <span className="font-medium">{t('admin.instances.audit.remediationHint')}</span> {check.remediationHint}
+                  <span className="font-medium">{t('admin.instances.audit.remediationHint')}</span>{' '}
+                  {check.remediationHint}
                 </p>
               ) : null}
             </div>
@@ -135,7 +144,13 @@ export const InstanceAuditRunSection = ({
         <h3 className="text-base font-semibold">{title}</h3>
         <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
-      <Button type="button" variant="secondary" size="sm" onClick={() => void onRefresh()} disabled={auditLoading}>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={() => void onRefresh()}
+        disabled={auditLoading}
+      >
         {auditLoading ? loadingLabel : refreshLabel}
       </Button>
     </div>
@@ -160,7 +175,10 @@ export const InstanceAuditRunSection = ({
         <AuditCheckList checks={auditRun.checks} />
 
         {auditRun.instances.map((instance) => (
-          <div key={instance.instanceId} className="space-y-3 rounded-xl border border-border/60 p-4">
+          <div
+            key={instance.instanceId}
+            className="space-y-3 rounded-xl border border-border/60 p-4"
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h4 className="text-sm font-semibold">{instance.displayName}</h4>

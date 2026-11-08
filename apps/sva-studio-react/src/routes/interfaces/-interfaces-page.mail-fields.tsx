@@ -1,3 +1,4 @@
+import { Select } from '@sva/studio-ui-react';
 import { t } from '../../i18n';
 import type { InstanceInterfaceDraft } from '../../lib/instance-interfaces';
 import { Input } from '../../components/ui/input';
@@ -62,9 +63,8 @@ export const MailTransportFields = ({
           <Label htmlFor="mail-security-mode">
             {t('interfaces.forms.mailTransport.securityMode')}
           </Label>
-          <select
+          <Select
             id="mail-security-mode"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={draft.config.securityMode}
             onChange={(event) =>
               updateConfig({
@@ -81,13 +81,12 @@ export const MailTransportFields = ({
             <option value="tls">
               {t('interfaces.forms.mailTransport.securityModeOptions.tls')}
             </option>
-          </select>
+          </Select>
         </div>
         <div className="grid gap-2">
           <Label htmlFor="mail-auth-mode">{t('interfaces.forms.mailTransport.authMode')}</Label>
-          <select
+          <Select
             id="mail-auth-mode"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={draft.config.authMode}
             onChange={(event) =>
               updateConfig({
@@ -99,7 +98,7 @@ export const MailTransportFields = ({
             <option value="basic">
               {t('interfaces.forms.mailTransport.authModeOptions.basic')}
             </option>
-          </select>
+          </Select>
         </div>
       </div>
 

@@ -51,7 +51,7 @@ export const TemplatesPage = () => {
         template: draft,
       });
       setTemplate(response.data);
-      return true;
+      return response.data.unsynchronizedInstances?.length ? 'pending' : 'synced';
     } catch (error) {
       if (
         error instanceof IamHttpError &&

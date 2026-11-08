@@ -1,5 +1,5 @@
-import type { LucideIcon } from 'lucide-react';
-import { Ban, Download, FileSearch, Lock, ShieldPlus, Trash2 } from 'lucide-react';
+import type { TablerIcon } from '@tabler/icons-react';
+import { IconBan as Ban, IconDownload as Download, IconFileSearch as FileSearch, IconLock as Lock, IconShieldPlus as ShieldPlus, IconTrash as Trash2 } from '@tabler/icons-react';
 
 import { Button } from '@sva/studio-ui-react';
 import { Card, CardContent } from '../../components/ui/card';
@@ -59,7 +59,7 @@ const actionCards = [
     readHandler: (props: PrivacyActionCardsProps) => props.onOpenRestrictionDialog,
   },
 ] as const satisfies readonly {
-  readonly icon: LucideIcon;
+  readonly icon: TablerIcon;
   readonly title: string;
   readonly body: string;
   readonly cta: string;
@@ -72,8 +72,8 @@ export const PrivacyActionCards = (props: Readonly<PrivacyActionCardsProps>) => 
       const Icon = card.icon;
 
       return (
-      <Card key={card.title} className="h-full min-h-[12.5rem]">
-        <CardContent className="flex h-full flex-col gap-4 p-4">
+      <Card key={card.title} className="h-full min-h-[12.5rem] min-w-0">
+        <CardContent className="flex h-full flex-col gap-4 pt-4 sm:pt-6">
           <article className="flex flex-1 flex-col gap-3">
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/30 text-primary">
@@ -87,7 +87,7 @@ export const PrivacyActionCards = (props: Readonly<PrivacyActionCardsProps>) => 
           </article>
           <Button
             type="button"
-            className="mt-auto w-full"
+            className="mt-auto h-auto min-h-11 w-full whitespace-normal"
             disabled={props.disabled}
             onClick={card.readHandler(props)}
           >

@@ -19,7 +19,7 @@ describe('SSF plugin metadata', () => {
 
     expect(contract).toMatchObject({
       moduleId: 'ssf',
-      permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+      permissionIds: expect.arrayContaining(['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage', 'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn', 'ssf.recording.supervise', 'ssf.recording.recovery.custodian']),
       systemRoles: [
         {
           roleName: 'system_admin',

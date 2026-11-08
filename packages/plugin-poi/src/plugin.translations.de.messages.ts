@@ -6,6 +6,8 @@ export const poiMessagesDe = {
     'Diese Ortsänderung speichert auch die folgenden Gutscheine. Ihre Inhalte und bisherigen Einlösungen bleiben erhalten. Fortfahren?\n\n{{vouchers}}',
   voucherResetCancelled:
     'Speichern abgebrochen. Der Ort und seine Gutscheine wurden nicht geändert.',
+  visibilityPartialFailure:
+    'Der Ort wurde gespeichert, aber die Sichtbarkeit konnte nicht aktualisiert werden. Öffnen Sie den gespeicherten Ort und prüfen Sie die Sichtbarkeit.',
   createdNavigationError:
     'Der Inhalt wurde angelegt, aber die Bearbeitungsansicht konnte nicht geöffnet werden.',
   unsavedAfterCreate:

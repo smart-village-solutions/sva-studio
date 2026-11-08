@@ -16,7 +16,13 @@ const useThemeMock = vi.fn();
 const useOrganizationContextMock = vi.fn();
 const organizationContextSwitcherMock = vi.fn(
   (_props?: { variant?: 'inline' | 'menu'; allowPersonal?: boolean }) => (
-    <div data-testid="organization-context-switcher">Organization Context</div>
+    <div
+      data-testid={
+        _props?.variant === 'menu' ? 'organization-context-menu' : 'organization-context-switcher'
+      }
+    >
+      Organization Context
+    </div>
   )
 );
 const localStorageState = new Map<string, string>();
@@ -102,8 +108,14 @@ describe('Header auth actions', () => {
     useLocaleMock.mockReset();
     useOrganizationContextMock.mockReset();
     organizationContextSwitcherMock.mockReset();
-    organizationContextSwitcherMock.mockImplementation(() => (
-      <div data-testid="organization-context-switcher">Organization Context</div>
+    organizationContextSwitcherMock.mockImplementation((_props) => (
+      <div
+        data-testid={
+          _props?.variant === 'menu' ? 'organization-context-menu' : 'organization-context-switcher'
+        }
+      >
+        Organization Context
+      </div>
     ));
     localStorageState.clear();
     sessionStorageState.clear();
@@ -264,7 +276,7 @@ describe('Header auth actions', () => {
 
     render(<Header />);
 
-    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
+    expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
 
     const accountTrigger = await screen.findByRole('button', { name: /Test User/ });
     accountTrigger.click();
@@ -301,10 +313,10 @@ describe('Header auth actions', () => {
     expect(screen.queryByText('Sicherheit')).toBeNull();
     expect(screen.getAllByText('Test User')).toHaveLength(1);
     expect(screen.getByRole('dialog', { name: 'Kontomenü' }).className).toContain('rounded-lg');
-    expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
+    expect(screen.getByTestId('organization-context-menu')).toBeTruthy();
     expect(
       screen
-        .getByTestId('organization-context-switcher')
+        .getByTestId('organization-context-menu')
         .compareDocumentPosition(screen.getByRole('menuitem', { name: 'Mein Konto' }))
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(organizationContextSwitcherMock).toHaveBeenCalledWith(
@@ -374,7 +386,7 @@ describe('Header auth actions', () => {
     accountTrigger.click();
 
     await waitFor(() => {
-      expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
+      expect(screen.getByTestId('organization-context-menu')).toBeTruthy();
     });
 
     expect(organizationContextSwitcherMock).toHaveBeenCalledWith(
@@ -669,7 +681,7 @@ describe('Header auth actions', () => {
     expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
   });
 
-  it('platziert den Organisationswechsler nur im Kontomenue', async () => {
+  it('shows the organization context in the header and retains the account menu selector', async () => {
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
@@ -699,13 +711,13 @@ describe('Header auth actions', () => {
 
     render(<Header />);
 
-    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
+    expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
 
     const accountTrigger = await screen.findByRole('button', { name: /Test User/ });
     accountTrigger.click();
 
     await waitFor(() => {
-      expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
+      expect(screen.getByTestId('organization-context-menu')).toBeTruthy();
     });
   });
 
@@ -766,7 +778,7 @@ describe('Header auth actions', () => {
       expect(screen.getByRole('menuitem', { name: 'Mein Konto' })).toBeTruthy();
     });
 
-    expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
+    expect(screen.getByTestId('organization-context-menu')).toBeTruthy();
     expect(screen.getAllByRole('separator')).toHaveLength(3);
     expect(
       screen

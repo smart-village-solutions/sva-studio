@@ -65,6 +65,7 @@ export type IamInstanceAuditEvent = {
 };
 
 export type IamInstanceListItem = {
+  readonly loginMfaPolicy?: import('../instances/registry.js').LoginMfaPolicyState;
   readonly instanceId: string;
   readonly displayName: string;
   readonly status: InstanceStatus;
@@ -115,6 +116,7 @@ export type IamInstanceKeycloakStatus = {
   readonly tenantAdminClientSecretReadable: boolean;
   readonly tenantAdminClientSecretAligned: boolean;
   readonly runtimeSecretSource: 'tenant' | 'global';
+  readonly loginMfaAligned?: boolean;
   readonly realmBaselineAligned?: boolean;
   readonly userProfileBaselineAligned?: boolean;
   readonly instanceIdMapperAligned?: boolean;

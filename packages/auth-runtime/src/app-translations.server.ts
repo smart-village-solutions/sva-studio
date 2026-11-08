@@ -13,4 +13,7 @@ export {
 export { runCatalogTranslation } from './app-translations-jobs.js';
 export { appTranslationServiceHandler } from './app-translations-service.js';
 
-export { reconcileAppTranslationServiceBinding } from './app-translations-binding.js';
+export {
+  reconcileAppTranslationServiceBinding,
+  synchronizeAppTranslationNews,
+} from './app-translations-binding.js';

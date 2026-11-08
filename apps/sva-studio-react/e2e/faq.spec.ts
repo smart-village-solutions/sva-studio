@@ -239,7 +239,6 @@ test('creates an FAQ on one page and retains edit tabs for update and delete', a
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.evaluate(() => window.scrollTo(0, 0));
 
-
   // An unchanged create form can be left without confirmation.
   await page.getByRole('link', { name: 'Zurück', exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
@@ -269,7 +268,10 @@ test('creates an FAQ on one page and retains edit tabs for update and delete', a
 
   // Chromium's native reload warning preserves the current document when dismissed.
   const nativeDialogPromise = page.waitForEvent('dialog');
-  const reloadResult = page.reload({ timeout: 5_000 }).then(() => null, (error: unknown) => error);
+  const reloadResult = page.reload({ timeout: 5_000 }).then(
+    () => null,
+    (error: unknown) => error
+  );
   const nativeDialog = await nativeDialogPromise;
   expect(nativeDialog.type()).toBe('beforeunload');
   await nativeDialog.dismiss();
@@ -311,22 +313,75 @@ test('creates an FAQ on one page and retains edit tabs for update and delete', a
   await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
 });
 
-
-test('editorial create pages keep their core fields and save action usable on narrow screens', async ({ page }) => {
-  test.setTimeout(120_000);
-  const modules = ['news', 'events', 'poi', 'surveys', 'faq', 'cockpit-cards', 'projects', 'generic-items', 'vouchers'];
-  const permissionActions = modules.flatMap((module) => ['read', 'create', 'update', 'delete'].map((action) => `${module}.${action}`));
-  await page.route('**/api/v1/**', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({data: [], pagination: {page: 1, pageSize: 25, total: 0, hasNextPage: false}})}));
+test('editorial create pages keep their core fields and save action usable on narrow screens', async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  const modules = [
+    'news',
+    'events',
+    'poi',
+    'surveys',
+    'faq',
+    'cockpit-cards',
+    'projects',
+    'generic-items',
+    'vouchers',
+  ];
+  const permissionActions = modules.flatMap((module) =>
+    ['read', 'create', 'update', 'delete'].map((action) => `${module}.${action}`)
+  );
+  await page.route('**/api/v1/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [],
+        pagination: { page: 1, pageSize: 25, total: 0, hasNextPage: false },
+      }),
+    })
+  );
   await mockSharedShellRequests(page);
-  await page.route('**/auth/me', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({user: {...faqUser.user, assignedModules: modules, permissionActions}})}));
-  await page.route('**/iam/me/permissions?**', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({...faqPermissions, permissions: permissionActions.map((action) => ({action, resourceType: action.split('.')[0]}))})}));
-  await page.route('**/api/v1/mainserver/mutation-capabilities', (route) => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({data: {enabledActions: permissionActions}})}));
+  await page.route('**/auth/me', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        user: { ...faqUser.user, assignedModules: modules, permissionActions },
+      }),
+    })
+  );
+  await page.route('**/iam/me/permissions?**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ...faqPermissions,
+        permissions: permissionActions.map((action) => ({
+          action,
+          resourceType: action.split('.')[0],
+        })),
+      }),
+    })
+  );
+  await page.route('**/api/v1/mainserver/mutation-capabilities', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { enabledActions: permissionActions } }),
+    })
+  );
   await gotoHomeAsAuthenticatedUser(page);
   const pages = [
-    ['news', '#news-title'], ['events', '#event-title'], ['poi', '#poi-name'],
-    ['surveys', '#survey-title'], ['faq', '#faq-question'],
-    ['cockpit-cards', '#cockpit-card-heading'], ['projects', '#project-title'],
-    ['generic-items', '#generic-item-title'], ['vouchers', '#voucher-title'],
+    ['news', '#news-title'],
+    ['events', '#event-title'],
+    ['poi', '#poi-name'],
+    ['surveys', '#survey-title'],
+    ['faq', '#faq-question'],
+    ['cockpit-cards', '#cockpit-card-heading'],
+    ['projects', '#project-title'],
+    ['generic-items', '#generic-item-title'],
+    ['vouchers', '#voucher-title'],
   ] as const;
   for (const [type, field] of pages) {
     await navigateClientSide(page, `/admin/${type}/new`);
@@ -334,50 +389,85 @@ test('editorial create pages keep their core fields and save action usable on na
     await expect(page.getByRole('tablist')).toHaveCount(0);
     const save = page.locator('button[type="submit"][form]');
     await expect(save).toHaveCount(1);
-    for (const width of [1280, 390]) {
-      await page.setViewportSize({width, height: 800});
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await expect(save).toBeInViewport();
-      const actionBar = page.locator('.sticky').filter({has: save});
-      const rightInset = await actionBar.evaluate((bar) => {
-        const button = bar.querySelector('button[type="submit"]');
-        if (!button) throw new Error('Missing submit action');
-        return bar.getBoundingClientRect().right - button.getBoundingClientRect().right;
-      });
-      expect(rightInset).toBeGreaterThanOrEqual(0);
-      expect(rightInset).toBeLessThanOrEqual(24);
-      const card = page.locator('[data-slot="studio-detail-card"]:visible').first();
-      await expect(card).toBeVisible();
-      expect(await actionBar.evaluate((element) => getComputedStyle(element).backgroundColor))
-        .toBe(await card.evaluate((element) => getComputedStyle(element).backgroundColor));
-      const nestedSurfaces = page.locator(':is(details, [data-slot="studio-detail-card"]) :is(details, [data-slot="studio-detail-card"])');
-      for (const surface of await nestedSurfaces.all()) {
-        expect(await surface.evaluate((element) => {
-          const style = getComputedStyle(element);
-          return {border: style.borderTopWidth, padding: style.paddingTop, background: style.backgroundColor};
-        })).toEqual({border: '0px', padding: '0px', background: 'rgba(0, 0, 0, 0)'});
+    for (const mode of ['light', 'dark'] as const) {
+      if ((await page.locator('html').getAttribute('data-theme-mode')) !== mode) {
+        await page
+          .getByRole('button', {
+            name: mode === 'dark' ? 'Dunklen Modus aktivieren' : 'Hellen Modus aktivieren',
+          })
+          .click();
       }
-      await page.screenshot({path: test.info().outputPath(`create-${type}-${width}.png`), fullPage: true});
-      if (type === 'surveys') {
-        const summaries = await page.locator('#survey-create-text > details > summary, #survey-create-participation > details > summary').all();
-        for (const summary of summaries) await summary.click();
+      await expect(page.locator('html')).toHaveAttribute('data-theme-mode', mode);
+      for (const width of [320, 390, 768, 1024, 1280, 1728]) {
+        await page.setViewportSize({ width, height: 800 });
         await page.evaluate(() => window.scrollTo(0, 0));
-        await page.screenshot({path: test.info().outputPath(`create-surveys-${width}-expanded.png`), fullPage: true});
-        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-        for (const summary of summaries) await summary.click();
+        await expect(save).toBeInViewport();
+        expect(await page.locator('form form, button button, a button, button a').count()).toBe(0);
+        const actionBar = page.locator('.sticky').filter({ has: save });
+        const rightInset = await actionBar.evaluate((bar) => {
+          const button = bar.querySelector('button[type="submit"]');
+          if (!button) throw new Error('Missing submit action');
+          return bar.getBoundingClientRect().right - button.getBoundingClientRect().right;
+        });
+        expect(rightInset).toBeGreaterThanOrEqual(0);
+        expect(rightInset).toBeLessThanOrEqual(24);
+        const card = page.locator('[data-slot="studio-detail-card"]:visible').first();
+        await expect(card).toBeVisible();
+        expect(
+          await actionBar.evaluate((element) => getComputedStyle(element).backgroundColor)
+        ).toBe(await card.evaluate((element) => getComputedStyle(element).backgroundColor));
+        const nestedSurfaces = page.locator(
+          ':is(details, [data-slot="studio-detail-card"]) :is(details, [data-slot="studio-detail-card"])'
+        );
+        for (const surface of await nestedSurfaces.all()) {
+          expect(
+            await surface.evaluate((element) => {
+              const style = getComputedStyle(element);
+              return {
+                border: style.borderTopWidth,
+                padding: style.paddingTop,
+                background: style.backgroundColor,
+              };
+            })
+          ).toEqual({ border: '0px', padding: '0px', background: 'rgba(0, 0, 0, 0)' });
+        }
+        await page.screenshot({
+          path: test.info().outputPath(`create-${type}-${mode}-${width}.png`),
+          fullPage: true,
+        });
+        if (type === 'surveys') {
+          const summaries = await page
+            .locator(
+              '#survey-create-text > details > summary, #survey-create-participation > details > summary'
+            )
+            .all();
+          for (const summary of summaries) await summary.click();
+          await page.evaluate(() => window.scrollTo(0, 0));
+          await page.screenshot({
+            path: test.info().outputPath(`create-surveys-${mode}-${width}-expanded.png`),
+            fullPage: true,
+          });
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+          ).toBe(true);
+          for (const summary of summaries) await summary.click();
+        }
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+        ).toBe(true);
+        if (type === 'faq' && width === 390) {
+          const publication = page.locator('#faq-publication-date');
+          await publication.focus();
+          await expect
+            .poll(async () => {
+              const fieldBox = await publication.boundingBox();
+              const barBox = await page.locator('.sticky').filter({ has: save }).boundingBox();
+              if (!fieldBox || !barBox) throw new Error('Missing focused field or action bar');
+              return fieldBox.y + fieldBox.height - barBox.y;
+            })
+            .toBeLessThanOrEqual(0);
+        }
       }
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-      if (type === 'faq' && width === 390) {
-        const publication = page.locator('#faq-publication-date');
-        await publication.focus();
-        await expect.poll(async () => {
-          const fieldBox = await publication.boundingBox();
-          const barBox = await page.locator('.sticky').filter({has: save}).boundingBox();
-          if (!fieldBox || !barBox) throw new Error('Missing focused field or action bar');
-          return fieldBox.y + fieldBox.height - barBox.y;
-        }).toBeLessThanOrEqual(0);
-      }
-
     }
   }
 });

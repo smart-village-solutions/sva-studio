@@ -74,22 +74,8 @@ export const buildUpdatedUserParams = (
   userId: string,
   instanceId: string,
   keycloakSubject: string,
-  payload: {
-    readonly email?: string;
-    readonly displayName?: string;
-    readonly firstName?: string;
-    readonly lastName?: string;
-    readonly phone?: string;
-    readonly position?: string;
-    readonly department?: string;
-    readonly avatarUrl?: string;
-    readonly preferredLanguage?: string;
-    readonly timezone?: string;
-    readonly status?: 'active' | 'inactive' | 'pending';
-    readonly notes?: string;
-    readonly isTechnicalAccount?: boolean;
-  }
-): readonly (string | boolean | null)[] => [
+  payload: UpdateUserPersistencePayload
+): readonly (string | boolean | readonly string[] | null)[] => [
   userId,
   instanceId,
   payload.email ? protectField(payload.email, `iam.accounts.email:${keycloakSubject}`) : null,
@@ -111,6 +97,7 @@ export const buildUpdatedUserParams = (
   payload.status ?? null,
   payload.notes ?? null,
   payload.isTechnicalAccount ?? null,
+  payload.competenceLanguages ?? null,
 ];
 
 const updateUserAccountRecord = async (input: {
@@ -137,6 +124,7 @@ SET
   status = COALESCE($13, status),
   notes = COALESCE($14, notes),
   is_technical_account = COALESCE($15::boolean, is_technical_account),
+  competence_languages = COALESCE($16::text[], competence_languages),
   updated_at = NOW()
 WHERE id = $1::uuid
   AND instance_id = $2;
@@ -200,7 +188,7 @@ const invalidateUpdatedUserPermissions = async (
   await deps.notifyPermissionInvalidation(input.client, {
     instanceId: input.instanceId,
     keycloakSubject: input.keycloakSubject,
-    trigger: 'user_updated',
+    trigger: input.payload.competenceLanguages !== undefined ? 'user_competence_languages_changed' : 'user_updated',
   });
 };
 

@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+import { IconCheck as Check } from '@tabler/icons-react';
 import * as React from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from './alert.js';

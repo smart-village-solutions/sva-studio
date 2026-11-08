@@ -1,0 +1,45 @@
+publiccodeYmlVersion: '0'
+name: Baustellen
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: development
+softwareType: addon
+description:
+  de:
+    shortDescription: Erfasst Baustellen mit Zeitraum, Standort, Einschränkungen und Dateien.
+    longDescription: Das Baustellenmodul unterstützt kommunale Redaktionsteams beim
+      Erstellen und Bearbeiten von Baustellenmeldungen. Sie pflegen Titel,
+      Beschreibungen, Zeiträume, Standorte, Richtung, Grund und Einschränkungen.
+      Kategorien und Dateien ergänzen die Meldung. Bestehende Mainserver-Inhalte
+      werden ohne Datenmigration übernommen. Instanzzuweisung und eigene Fachrechte
+      steuern den Zugriff. Die zeitliche Einordnung erklärt den angegebenen Zeitraum,
+      während Sichtbarkeit und Änderungen über die vorhandenen Studio-Verträge
+      verwaltet werden. Eine Historie macht die im Studio ausgeführten Änderungen
+      nachvollziehbar.
+    features:
+      - Baustellen erstellen und bearbeiten
+      - Zeitraum und Kartenstandort pflegen
+      - Einschränkungen, Kategorien und Dateien zuordnen
+  en:
+    localisedName: Construction sites
+    shortDescription: Manages construction sites with dates, location, restrictions and files.
+    longDescription: This addon helps municipal editorial teams create and edit
+      construction site notices. Editors maintain titles, descriptions, dates,
+      locations, direction, cause and restrictions. Categories and files supplement
+      each notice. Existing Mainserver records remain in their original storage
+      without a data migration. Instance activation and dedicated permissions control
+      access. Temporal labels explain the supplied date range independently of
+      visibility. The module uses the existing Studio editing and history contracts
+      to keep editorial changes understandable and traceable.
+    features:
+      - Create and edit construction sites
+      - Maintain dates and map locations
+      - Assign restrictions, categories and files
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Smart Village Solutions

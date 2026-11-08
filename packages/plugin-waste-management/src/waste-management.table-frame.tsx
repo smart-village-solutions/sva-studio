@@ -65,7 +65,7 @@ export const WastePanelTableBottomBar = ({
   readonly onPageChange: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
 }) => (
-  <div className="-mt-px flex items-center justify-between gap-3 border-t border-border bg-card px-4 py-4 text-sm text-muted-foreground">
+  <div className="-mt-px flex flex-wrap items-center justify-between gap-3 border-t border-border bg-card px-4 py-4 text-sm text-muted-foreground">
     <div className="flex items-center gap-2">
       <span>{pt('meta.pagination.pageSizeLabel')}</span>
       <Select
@@ -80,7 +80,7 @@ export const WastePanelTableBottomBar = ({
         <option value="100">100</option>
       </Select>
     </div>
-    <div className="flex items-center gap-4">
+    <div className="flex flex-wrap items-center gap-4">
       <p aria-live="polite">
         {pt('meta.pagination.rangeLabel', {
           start: totalItems === 0 ? 0 : (page - 1) * pageSize + 1,
@@ -89,7 +89,13 @@ export const WastePanelTableBottomBar = ({
         })}
       </p>
       <nav aria-label={pt('meta.pagination.ariaLabel')} className="flex items-center gap-2">
-        <Button type="button" variant="secondary" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
           {pt('meta.pagination.previous')}
         </Button>
         <Button

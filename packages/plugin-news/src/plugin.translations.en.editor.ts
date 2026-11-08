@@ -104,6 +104,7 @@ export const newsTranslationsENEditor = {
     applyLink: 'Apply link',
   },
   actions: {
+    checkSaveOutcome: 'Check save outcome',
     cancel: 'Cancel',
     create: 'Create news',
     update: 'Save changes',
@@ -143,6 +144,15 @@ export const newsTranslationsENEditor = {
     pageLabel: 'Page {{page}}',
   },
   messages: {
+    saveOutcomeUnknown:
+      'The save outcome is still unknown. Check the original operation before saving again. Your input remains in this open editor.',
+    saveOutcomeCheckFailed:
+      'The save outcome could not be checked. Check your session and organization context, then check the status again. No content save was repeated.',
+    saveNotApplied:
+      'The original operation did not save any content. You can save your current input again.',
+    saveRecovered:
+      'The original operation was saved. Your current input has been preserved. Review it before saving again.',
+
     requestReference: 'Error reference:',
     copyRequestReference: 'Copy reference',
     requestReferenceCopied: 'Copied',

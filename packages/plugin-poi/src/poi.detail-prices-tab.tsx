@@ -9,21 +9,36 @@ export function PoiDetailPricesTab({ pt }: Readonly<{ pt: (key: string) => strin
   const { fields, append, remove } = useFieldArray({ control, name: 'content.prices' });
 
   return (
-    <PoiDetailSectionCard title={pt('cards.prices.entries.title')} description={pt('cards.prices.entries.description')}>
+    <PoiDetailSectionCard
+      title={pt('cards.prices.entries.title')}
+      description={pt('cards.prices.entries.description')}
+    >
       {fields.map((field, index) => (
-        <div key={field.id} className="rounded-xl border border-border/60 p-4">
+        <div key={field.id} className="rounded-lg border border-border-subtle p-4">
           <StudioFieldGroup columns={2}>
             <StudioField id={`poi-price-name-${index}`} label={pt('fields.priceName')}>
               <Input id={`poi-price-name-${index}`} {...register(`content.prices.${index}.name`)} />
             </StudioField>
             <StudioField id={`poi-price-amount-${index}`} label={pt('fields.amount')}>
-              <Input id={`poi-price-amount-${index}`} {...register(`content.prices.${index}.amount`)} />
+              <Input
+                id={`poi-price-amount-${index}`}
+                {...register(`content.prices.${index}.amount`)}
+              />
             </StudioField>
             <StudioField id={`poi-price-category-${index}`} label={pt('fields.priceCategory')}>
-              <Input id={`poi-price-category-${index}`} {...register(`content.prices.${index}.category`)} />
+              <Input
+                id={`poi-price-category-${index}`}
+                {...register(`content.prices.${index}.category`)}
+              />
             </StudioField>
-            <StudioField id={`poi-price-description-${index}`} label={pt('fields.priceDescription')}>
-              <Input id={`poi-price-description-${index}`} {...register(`content.prices.${index}.description`)} />
+            <StudioField
+              id={`poi-price-description-${index}`}
+              label={pt('fields.priceDescription')}
+            >
+              <Input
+                id={`poi-price-description-${index}`}
+                {...register(`content.prices.${index}.description`)}
+              />
             </StudioField>
           </StudioFieldGroup>
           {fields.length > 1 ? (
@@ -35,7 +50,11 @@ export function PoiDetailPricesTab({ pt }: Readonly<{ pt: (key: string) => strin
           ) : null}
         </div>
       ))}
-      <Button type="button" variant="secondary" onClick={() => append({ name: '', amount: '', description: '', category: '' })}>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => append({ name: '', amount: '', description: '', category: '' })}
+      >
         {pt('actions.add')}
       </Button>
     </PoiDetailSectionCard>

@@ -28,6 +28,8 @@ export const resolveKeycloakStatus = async (
   if (deps.getKeycloakStatus) {
     try {
       const status = await deps.getKeycloakStatus({
+        loginMfaMode: loaded.instance.loginMfaPolicy?.desiredMode ?? 'optional',
+        loginMfaRevision: loaded.instance.loginMfaRevision ?? 0,
         instanceId: loaded.instance.instanceId,
         primaryHostname: loaded.instance.primaryHostname,
         realmMode: loaded.instance.realmMode,

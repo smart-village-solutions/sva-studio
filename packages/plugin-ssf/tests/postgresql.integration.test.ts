@@ -242,6 +242,44 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       template: a.runtimeTemplate, overrides: a.overrides }).staff.dashboard.headline).toBe('Tenant A');
   });
 
+  it('persists recording overrides, reset inheritance and invalid-write rollback across tenants', async () => {
+    const system = await readSsfSystemContentV2(rootPool);
+    const previousA = await readSsfTenantContentV2(rootPool, 'tenant-a');
+    const previousB = await readSsfTenantContentV2(rootPool, 'tenant-b');
+    if (!system.runtimeTemplate) throw new Error('missing_test_template');
+    const template = { ...system.runtimeTemplate, recording: { legalBasis: 'consent' as const,
+      signature: 'optional' as const, idCheck: 'off' as const, verificationRequired: true,
+      recoveryMode: 'standard' as const, timestampAuthorityUrl: 'https://tsa.example.org/tsr',
+      auditRetentionHours: 8760, retentionHours: 720 } };
+    const effective = async (id: string) => {
+      const saved = await readSsfTenantContentV2(tenantPool, id);
+      return resolveSsfRuntimeContentV2({ tenant: { id, displayName: id, timeZone: 'Europe/Berlin' },
+        template: saved.runtimeTemplate, overrides: saved.overrides });
+    };
+    try {
+      await replaceSsfSystemContentV2(rootPool, { installation: null, runtimeTemplate: template });
+      await writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { enabled: true, retentionHours: 241 } });
+      await writeSsfTenantContentV2(tenantPool, 'tenant-b', { recording: { enabled: false, retentionHours: 1440 } });
+      expect((await effective('tenant-a')).recording).toMatchObject({ enabled: true, retentionHours: 241 });
+      expect((await effective('tenant-b')).recording).toMatchObject({ enabled: false, retentionHours: 1440 });
+      await expect(writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { retentionHours: 8761 } })).rejects.toThrow();
+      expect((await effective('tenant-a')).recording?.retentionHours).toBe(241);
+      await writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { enabled: true } });
+      expect((await effective('tenant-a')).recording?.retentionHours).toBe(720);
+      await writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { enabled: true, auditRetentionHours: 800 } });
+      await expect(replaceSsfSystemContentV2(rootPool, { installation: null,
+        runtimeTemplate: { ...template, recording: { ...template.recording, retentionHours: 1440 } },
+      })).rejects.toMatchObject({ affectedTenants: ['tenant-a'] });
+      expect((await readSsfSystemContentV2(rootPool)).runtimeTemplate?.recording?.retentionHours).toBe(720);
+      await expect(writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { enabled: true, retentionHours: 9000 } })).rejects.toThrow();
+      expect((await effective('tenant-b')).recording?.retentionHours).toBe(1440);
+    } finally {
+      await writeSsfTenantContentV2(rootPool, 'tenant-a', previousA.overrides ?? {});
+      await writeSsfTenantContentV2(rootPool, 'tenant-b', previousB.overrides ?? {});
+      await replaceSsfSystemContentV2(rootPool, { installation: null, runtimeTemplate: system.runtimeTemplate });
+    }
+  });
+
   it('rejects a runtime template larger than the response limit before writing it', async () => {
     const before = await readSsfSystemContentV2(rootPool);
     const runtime = JSON.parse(readFileSync(new URL(
@@ -263,8 +301,10 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       guestLanguages: locales.map((locale) => ({
         ...language,
         locale,
-        guest: { ...language.guest, explanationHtml: longHtml, storageQuestionHtml: longHtml },
-        feedback: { ...language.feedback, noticeHtml: longHtml },
+        guest: { ...language.guest, explanationHtml: longHtml, storageQuestionHtml: null },
+        feedback: { ...language.feedback, noticeHtml: longHtml, questions: Array.from({ length: 20 }, (_, index) => ({
+          id: `question${index}`, type: 'longText' as const, question: 'Q'.repeat(500), placeholder: 'P'.repeat(500),
+        })) },
       })),
     };
 
@@ -489,6 +529,98 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       false
     );
   });
+
+  it.each(['ready', 'blocked'] as const)(
+    'invalidates %s evidence when only the authorization contract revision changes',
+    async (status) => {
+      const desired = {
+        contractVersion: SSF_AUTHORIZATION_PROJECTION_VERSION,
+        instanceId: `revision-change-${status}`,
+        subjects: [
+          {
+            subject: 'existing-user',
+            roles: ['user' as const],
+            permissions: ['ssf.configuration.tenant.read' as const],
+          },
+        ],
+      };
+      const initial = await stageSsfAuthorizationProjection(rootPool, desired);
+      const evidenceTimestamp = new Date('2026-01-01T00:00:00Z');
+      await rootPool.query(
+        `UPDATE ssf.authorization_projections
+            SET status = $2, confirmed_revision = desired_revision,
+                confirmed_projection = desired_projection, sessions_revoked_revision = desired_revision,
+                last_error_code = $3, confirmed_at = $4, sessions_revoked_at = $4
+          WHERE instance_id = $1`,
+        [
+          desired.instanceId,
+          status,
+          status === 'blocked' ? 'target_readback_failed' : null,
+          evidenceTimestamp,
+        ]
+      );
+      const readEvidence = async () =>
+        (
+          await rootPool.query(
+            `SELECT generation, status, desired_revision, desired_projection, confirmed_revision,
+                confirmed_projection, sessions_revoked_revision, last_error_code,
+                confirmed_at, sessions_revoked_at, confirmed_has_subjects
+           FROM ssf.authorization_projections WHERE instance_id = $1`,
+            [desired.instanceId]
+          )
+        ).rows[0];
+      const unchanged = await readEvidence();
+      await stageSsfAuthorizationProjection(rootPool, desired);
+      expect(await readEvidence()).toEqual(unchanged);
+
+      // Model an older deployed permission catalog with identical subject JSON.
+      const oldRevision = `sha256:${'a'.repeat(64)}`;
+      expect(initial.desiredRevision).not.toBe(oldRevision);
+      await rootPool.query(
+        `UPDATE ssf.authorization_projections
+            SET desired_revision = $2, confirmed_revision = $2, sessions_revoked_revision = $2
+          WHERE instance_id = $1`,
+        [desired.instanceId, oldRevision]
+      );
+      await expect(
+        readReadySsfAuthorizationRevision(tenantPool, desired.instanceId)
+      ).resolves.toBeNull();
+      const staged = await stageSsfAuthorizationProjection(rootPool, desired);
+      expect(staged).toMatchObject({
+        generation: initial.generation + 1,
+        status: 'pending',
+        desiredRevision: initial.desiredRevision,
+        desiredProjection: desired,
+        confirmedRevision: null,
+        confirmedProjection: null,
+        sessionsRevokedRevision: null,
+        lastErrorCode: null,
+      });
+      expect(await readEvidence()).toMatchObject({
+        confirmed_at: null,
+        sessions_revoked_at: null,
+        confirmed_has_subjects: false,
+      });
+      await expect(
+        readReadySsfAuthorizationRevision(tenantPool, desired.instanceId)
+      ).resolves.toBeNull();
+      expect(await stageSsfAuthorizationProjection(rootPool, desired)).toEqual(staged);
+      await expect(
+        claimSsfAuthorizationProjection(rootPool, {
+          instanceId: desired.instanceId,
+          generation: initial.generation,
+          desiredRevision: oldRevision,
+        })
+      ).resolves.toBe(false);
+      await expect(
+        claimSsfAuthorizationProjection(rootPool, {
+          instanceId: desired.instanceId,
+          generation: staged.generation,
+          desiredRevision: staged.desiredRevision,
+        })
+      ).resolves.toBe(true);
+    }
+  );
 
   it('rejects concurrent projection work for one tenant while another proceeds', async () => {
     const store = createPostgresSsfAuthorizationProjectionStore(rootPool);

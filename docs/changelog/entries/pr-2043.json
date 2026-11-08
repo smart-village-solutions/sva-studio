@@ -1,0 +1,4 @@
+{
+  "prNumber": 2043,
+  "body": "E-Mail-Vorlagen pro Instanz bearbeiten\n\n- Unter Benutzer → E-Mail-Vorlagen können berechtigte Instanzadmins jetzt sowohl die Account-Einladung als auch die E-Mail-Bestätigung für ihre eigene Instanz anpassen.\n- Eigene Vorlagen lassen sich entfernen, um wieder die allgemeine Vorlage zu verwenden. Speichern und Keycloak-Abgleich nutzen die bestehenden Konflikt- und Synchronisierungsprüfungen."
+}

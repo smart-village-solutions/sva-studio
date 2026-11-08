@@ -193,6 +193,14 @@ Rollback erfolgt wie bei den anderen Mainserver-Content-Typen über `iam.instanc
 
 ## Credential-Rotation
 
+Beim Speichern der Credential-Attribute liest der Keycloak-Adapter die aktuelle
+E-Mail-Adresse des Benutzers und sendet sie unverändert im Update mit, sofern
+der Aufrufer keine E-Mail-Adresse übergibt. Keycloak validiert auch bei solchen
+Attribut-Updates die Pflichtfelder des Benutzerprofils. Fehlt die vorhandene
+E-Mail-Adresse, bricht der Adapter vor dem Schreiben mit dem Feldfehler
+`email` / `error-user-attribute-required` ab; die E-Mail-Pflicht bleibt bestehen.
+Ein fehlgeschlagener Profilabruf verhindert ebenfalls das Schreiben.
+
 1. Betroffenen Benutzer in Keycloak identifizieren.
 2. Attribute `mainserverUserApplicationId` und `mainserverUserApplicationSecret` neu setzen.
 3. Falls der Benutzer noch nicht migriert wurde, werden `sva_mainserver_api_key` und `sva_mainserver_api_secret` zur Laufzeit weiterhin als vollständiges Legacy-Paar gelesen; kanonische und Legacy-Einzelwerte werden nie zu einem scheinbar vollständigen Paar kombiniert. Neue Schreibvorgänge sollen nur noch die kanonischen Attribute verwenden.

@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import { ZodError } from 'zod';
 
 import {
   ssfInstallationContentV2FieldsSchema,
@@ -102,13 +103,20 @@ export const replaceSsfSystemContentV2 = async (
       const tenants = await client.query<{ instance_id: string; runtime_content_v2: unknown }>(
         'SELECT instance_id, runtime_content_v2 FROM ssf.tenant_settings WHERE runtime_content_v2 IS NOT NULL'
       );
+      const affectedTenants: string[] = [];
       for (const tenant of tenants.rows) {
-        resolveSsfRuntimeContentV2({
-          tenant: { id: tenant.instance_id, displayName: tenant.instance_id, timeZone: 'Europe/Berlin' },
-          template: runtimeTemplate,
-          overrides: tenant.runtime_content_v2,
-        });
+        try {
+          resolveSsfRuntimeContentV2({
+            tenant: { id: tenant.instance_id, displayName: tenant.instance_id, timeZone: 'Europe/Berlin' },
+            template: runtimeTemplate,
+            overrides: tenant.runtime_content_v2,
+          });
+        } catch (error) {
+          if (!(error instanceof ZodError)) throw error;
+          affectedTenants.push(tenant.instance_id);
+        }
       }
+      if (affectedTenants.length) throw new SsfContentV2TenantConflict(affectedTenants);
     }
     if (installation !== null) {
       await client.query(
@@ -169,3 +177,7 @@ export const writeSsfTenantContentV2 = async (
     );
     return sanitized;
   });
+
+export class SsfContentV2TenantConflict extends Error {
+  constructor(readonly affectedTenants: readonly string[]) { super('ssf_v2_affected_tenant_policy_invalid'); }
+}

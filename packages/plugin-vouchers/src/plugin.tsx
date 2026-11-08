@@ -17,11 +17,11 @@ const base = createStandardContentPluginContribution({
   editorBindingKey: 'vouchersEditor',
 });
 const permissions = definePluginPermissions('vouchers', [
-  ...base.permissions.filter((item) => item.id !== 'vouchers.delete'),
+  ...base.permissions,
   { id: 'vouchers.publish', titleKey: 'vouchers.permissions.publish' },
 ]);
 const actions = definePluginActions('vouchers', [
-  ...base.actions.filter((item) => item.id !== 'vouchers.delete'),
+  ...base.actions,
   {
     id: 'vouchers.publish',
     titleKey: 'vouchers.actions.publish',

@@ -1,3 +1,4 @@
+import type { TenantLoginMfaPolicyView } from '@sva/core';
 import type {
   ApiItemResponse,
   ApiListResponse,
@@ -16,24 +17,6 @@ import type {
 } from '@sva/plugin-sdk';
 
 import { patchJson, postJson, putJson, requestJson } from './iam-http-client';
-
-export type RootMainserverInterface = {
-  readonly instanceId: string;
-  readonly status: 'missing' | 'disabled' | 'configured' | 'error';
-  readonly errorCode?: string;
-  readonly config: {
-    readonly graphqlBaseUrl: string;
-    readonly oauthTokenUrl: string;
-    readonly enabled: boolean;
-  } | null;
-};
-
-export type RootMainserverInterfaceListEntry = Pick<
-  RootMainserverInterface,
-  'instanceId' | 'status' | 'errorCode'
-> & {
-  readonly displayName: string;
-};
 
 export const listRootMainserverInterfaces = () =>
   requestJson<{ data: { entries: RootMainserverInterfaceListEntry[] } }>(
@@ -55,6 +38,8 @@ export const saveRootMainserverInterface = (
   );
 
 import type {
+  RootMainserverInterface,
+  RootMainserverInterfaceListEntry,
   CreateInstancePayload,
   InstancesQuery,
   UpdateInstancePayload,
@@ -207,3 +192,15 @@ export const updateTenantAccountInvitationTemplate = async (
     ApiItemResponse<TenantAccountInvitationTemplateView>,
     UpdateTenantAccountInvitationTemplatePayload
   >('/api/v1/iam/users/me/invitation-template', payload);
+
+export const getTenantLoginMfa = () =>
+  requestJson<ApiItemResponse<TenantLoginMfaPolicyView>>(
+    '/api/v1/iam/users/me/authentication-policy'
+  );
+export const updateTenantLoginMfa = (
+  payload: import('./iam-api-instance-types').UpdateTenantLoginMfaPayload
+) =>
+  patchJson<ApiItemResponse<TenantLoginMfaPolicyView>, typeof payload>(
+    '/api/v1/iam/users/me/authentication-policy',
+    payload
+  );

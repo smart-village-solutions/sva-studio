@@ -1,11 +1,82 @@
 import { loadInstanceById } from '@sva/data-repositories/server';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { resolveTenantAdminClientSecret } from './config-tenant-secret.js';
 import { getKeycloakAdminClientSecret } from './runtime-secrets.js';
 
 export type IdentityUserAttributes = Readonly<Record<string, readonly string[]>>;
 
+const logger = createSdkLogger({ component: 'keycloak-user-attributes' });
+const REQUEST_TIMEOUT_MS = 10_000;
+
+const logResolutionFailure = (
+  reasonCode:
+    | 'instance_lookup_failed'
+    | 'instance_not_found'
+    | 'tenant_admin_client_missing'
+    | 'tenant_admin_client_secret_lookup_failed'
+    | 'tenant_admin_client_secret_missing'
+    | 'tenant_admin_client_secret_unreadable'
+    | 'configuration_missing',
+  instanceId?: string
+): void => {
+  logger.warn('keycloak_user_attributes_unavailable', {
+    operation: 'resolve_identity_provider',
+    reason_code: reasonCode,
+    ...(instanceId ? { instance_id: instanceId } : {}),
+  });
+};
+
+const readKeycloakJson = async (
+  url: string,
+  init: RequestInit,
+  operation: 'fetch_token' | 'get_user_attributes',
+  instanceId?: string
+): Promise<Record<string, unknown>> => {
+  const controller = new AbortController();
+  let reasonCode = 'network_error';
+  let httpStatus: number | undefined;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reasonCode = 'timeout';
+      controller.abort();
+      reject(new Error('Keycloak request timed out'));
+    }, REQUEST_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([
+      (async () => {
+        const response = await fetch(url, { ...init, signal: controller.signal });
+        if (!response.ok) {
+          reasonCode = 'http_error';
+          httpStatus = response.status;
+          throw new Error(`Keycloak ${operation} failed with HTTP ${response.status}`);
+        }
+        reasonCode = 'invalid_response';
+        const payload: unknown = await response.json();
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+          throw new Error('Invalid Keycloak response');
+        }
+        return payload as Record<string, unknown>;
+      })(),
+      timeout,
+    ]);
+  } catch (error) {
+    logger.warn('keycloak_user_attributes_unavailable', {
+      operation,
+      reason_code: reasonCode,
+      ...(instanceId ? { instance_id: instanceId } : {}),
+      ...(httpStatus === undefined ? {} : { http_status: httpStatus }),
+    });
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 type KeycloakClientConfig = {
+  readonly instanceId?: string;
   readonly baseUrl: string;
   readonly realm: string;
   readonly adminRealm: string;
@@ -15,7 +86,10 @@ type KeycloakClientConfig = {
 
 type IdentityProviderResolution = {
   readonly provider: {
-    getUserAttributes(externalId: string, attributeNames?: readonly string[]): Promise<IdentityUserAttributes>;
+    getUserAttributes(
+      externalId: string,
+      attributeNames?: readonly string[]
+    ): Promise<IdentityUserAttributes>;
   };
 };
 
@@ -56,6 +130,7 @@ const filterUserAttributes = (
 };
 
 class KeycloakUserAttributeReader {
+  private readonly instanceId?: string;
   private readonly baseUrl: string;
   private readonly realm: string;
   private readonly adminRealm: string;
@@ -64,6 +139,7 @@ class KeycloakUserAttributeReader {
   private cachedToken?: { readonly value: string; readonly expiresAtMs: number };
 
   constructor(config: KeycloakClientConfig) {
+    this.instanceId = config.instanceId;
     this.baseUrl = normalizeBaseUrl(config.baseUrl);
     this.realm = config.realm;
     this.adminRealm = config.adminRealm;
@@ -76,20 +152,20 @@ class KeycloakUserAttributeReader {
     attributeNames?: readonly string[]
   ): Promise<IdentityUserAttributes> {
     const token = await this.getAccessToken();
-    const response = await fetch(
+    const user = await readKeycloakJson(
       `${this.baseUrl}/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
+      'get_user_attributes',
+      this.instanceId
     );
-    if (!response.ok) {
-      throw new Error(`Keycloak get_user_attributes failed with HTTP ${response.status}`);
-    }
-
-    const user = (await response.json()) as { attributes?: IdentityUserAttributes };
-    return filterUserAttributes(user.attributes, attributeNames);
+    return filterUserAttributes(
+      user.attributes as IdentityUserAttributes | undefined,
+      attributeNames
+    );
   }
 
   private async getAccessToken(): Promise<string> {
@@ -103,7 +179,7 @@ class KeycloakUserAttributeReader {
       client_id: this.clientId,
       client_secret: this.clientSecret,
     });
-    const response = await fetch(
+    const parsed = await readKeycloakJson(
       `${this.baseUrl}/realms/${encodePathSegment(this.adminRealm)}/protocol/openid-connect/token`,
       {
         method: 'POST',
@@ -111,14 +187,16 @@ class KeycloakUserAttributeReader {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: body.toString(),
-      }
+      },
+      'fetch_token',
+      this.instanceId
     );
-    if (!response.ok) {
-      throw new Error(`Keycloak fetch_token failed with HTTP ${response.status}`);
-    }
-
-    const parsed = (await response.json()) as { access_token?: unknown; expires_in?: unknown };
     if (typeof parsed.access_token !== 'string' || !parsed.access_token) {
+      logger.warn('keycloak_user_attributes_unavailable', {
+        operation: 'fetch_token',
+        reason_code: 'invalid_response',
+        ...(this.instanceId ? { instance_id: this.instanceId } : {}),
+      });
       throw new Error('Keycloak token response did not include access_token');
     }
 
@@ -152,6 +230,7 @@ export const resolveIdentityProvider = (): IdentityProviderResolution | null => 
   try {
     return createPlatformIdentityProvider();
   } catch {
+    logResolutionFailure('configuration_missing');
     return null;
   }
 };
@@ -159,19 +238,39 @@ export const resolveIdentityProvider = (): IdentityProviderResolution | null => 
 export const resolveIdentityProviderForInstance = async (
   instanceId: string
 ): Promise<IdentityProviderResolution | null> => {
-  const instance = await loadInstanceById(instanceId).catch(() => null);
-  if (!instance?.tenantAdminClient?.clientId) {
+  let instance: Awaited<ReturnType<typeof loadInstanceById>>;
+  try {
+    instance = await loadInstanceById(instanceId);
+  } catch {
+    logResolutionFailure('instance_lookup_failed', instanceId);
+    return null;
+  }
+  if (!instance) {
+    logResolutionFailure('instance_not_found', instanceId);
+    return null;
+  }
+  if (!instance.tenantAdminClient?.clientId) {
+    logResolutionFailure('tenant_admin_client_missing', instanceId);
     return null;
   }
 
   const tenantSecret = await resolveTenantAdminClientSecret(instanceId);
   if (!tenantSecret.secret) {
+    const reason = tenantSecret.reason;
+    logResolutionFailure(
+      reason === 'tenant_admin_client_secret_lookup_failed' ||
+        reason === 'tenant_admin_client_secret_unreadable'
+        ? reason
+        : 'tenant_admin_client_secret_missing',
+      instanceId
+    );
     return null;
   }
 
   try {
     return {
       provider: new KeycloakUserAttributeReader({
+        instanceId,
         baseUrl: requireEnv('KEYCLOAK_ADMIN_BASE_URL'),
         realm: instance.authRealm,
         adminRealm: instance.authRealm,
@@ -180,6 +279,7 @@ export const resolveIdentityProviderForInstance = async (
       }),
     };
   } catch {
+    logResolutionFailure('configuration_missing', instanceId);
     return null;
   }
 };

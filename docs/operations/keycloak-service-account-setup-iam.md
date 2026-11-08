@@ -35,13 +35,13 @@ Der tenantgebundene IAM-Service-Account benötigt zusätzlich:
 
 Begründung und Scope:
 
-| Rolle | Erlaubte Operationen | Nicht damit begründete Operationen |
-| --- | --- | --- |
-| `manage-users` | User anlegen, aktualisieren, deaktivieren; technische Sonderrollen gezielt an User schreiben | allgemeinen Realm-Rollenkatalog für fachliche Tenant-Rollen ändern |
-| `view-users` | User lesen, Detailansichten laden | Schreibzugriffe auf User oder Rollen |
-| `view-realm` | Realm-Metadaten und Rollenbestand lesen | Änderungen an Rollen, Clients oder Flows |
-| `manage-realm` | technische Sonderrollen wie `system_admin` im Tenant-Realm anlegen, aktualisieren und löschen | fachliche Tenant-Rollen, Clients, Identity Provider oder Auth-Flows verwalten |
-| `view-clients` (nur Tenant-IAM) | den in der Registry referenzierten Login-Client lesen | Clients, Redirect-URIs, Mapper oder Secrets verändern |
+| Rolle                           | Erlaubte Operationen                                                                          | Nicht damit begründete Operationen                                            |
+| ------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `manage-users`                  | User anlegen, aktualisieren, deaktivieren; technische Sonderrollen gezielt an User schreiben  | allgemeinen Realm-Rollenkatalog für fachliche Tenant-Rollen ändern            |
+| `view-users`                    | User lesen, Detailansichten laden                                                             | Schreibzugriffe auf User oder Rollen                                          |
+| `view-realm`                    | Realm-Metadaten und Rollenbestand lesen                                                       | Änderungen an Rollen, Clients oder Flows                                      |
+| `manage-realm`                  | technische Sonderrollen wie `system_admin` im Tenant-Realm anlegen, aktualisieren und löschen | fachliche Tenant-Rollen, Clients, Identity Provider oder Auth-Flows verwalten |
+| `view-clients` (nur Tenant-IAM) | den in der Registry referenzierten Login-Client lesen                                         | Clients, Redirect-URIs, Mapper oder Secrets verändern                         |
 
 Explizit verboten:
 
@@ -123,3 +123,37 @@ Die Rotation erfolgt spätestens alle 90 Tage (BSI-Grundschutz ORP.4) im Dual-Se
 - `GET /api/v1/iam/roles` zeigt IAM-Rollen als kanonische Fachsicht; Keycloak-Rollen erscheinen nur als technische Diagnose oder Driftcode.
 - Keine `401`/`403`-Fehler bei Keycloak-Admin-Aufrufen.
 - Keine Secrets oder Tokens in Logs; Audit-Events enthalten nur `workspace_id`, `operation`, `result`, `error_code?`, `request_id`, `trace_id?`, `span_id?`.
+
+## 8. Diagnose von Mainserver-Credential-Lesefehlern
+
+Der bestehende Attributreader meldet `keycloak_user_attributes_unavailable`
+mit `operation`, einem festen `reason_code` und, im Tenant-Pfad, `instance_id`.
+Bei HTTP-Fehlern kommt ausschließlich der numerische `http_status` hinzu.
+Benutzer-IDs, Attributnamen und -werte, URLs, Token, Secrets, Antworttexte und
+freie Exception-Texte werden nicht in diese Diagnose übernommen.
+
+| Operation / Ursache                                                                                                           | Bedeutung und Prüfung                                                                                                                  |
+| ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `resolve_identity_provider` / `instance_lookup_failed`                                                                        | Instanz-Registry war nicht lesbar; Datenbankzugriff prüfen.                                                                            |
+| `instance_not_found` oder `tenant_admin_client_missing`                                                                       | Instanz beziehungsweise Tenant-Admin-Client fehlt im bestehenden Registry-Vertrag.                                                     |
+| `tenant_admin_client_secret_lookup_failed`, `tenant_admin_client_secret_missing` oder `tenant_admin_client_secret_unreadable` | Secret-Zugriff, Vorhandensein und Entschlüsselbarkeit getrennt prüfen; keine Secret-Werte ausgeben.                                    |
+| `configuration_missing`                                                                                                       | Erforderliche Runtime-Konfiguration des Readers fehlt.                                                                                 |
+| `fetch_token` oder `get_user_attributes` / `http_error`                                                                       | Token- und Attributendpunkt anhand des HTTP-Status getrennt prüfen; bei 401/403 Realm, Client und dessen bestehende Sollrechte prüfen. |
+| `network_error`, `timeout` oder `invalid_response`                                                                            | Transportfehler, überschrittenes Zeitlimit beziehungsweise ungültige JSON-/Tokenantwort unterscheiden.                                 |
+
+Jeder HTTP-Aufruf einschließlich JSON-Antwortlesen ist auf zehn Sekunden
+begrenzt und erhält ein Abort-Signal. Die Grenze gilt je Token- beziehungsweise
+Attributabruf, nicht für vorgelagerte Datenbankzugriffe. Es gibt keinen neuen
+Retry- oder Scheduler-Pfad. Die bisherigen Credential-Statuswerte und der
+Tenant-spezifische Zugriff ohne globalen Admin-Fallback bleiben bestehen.
+
+Ein erfolgreicher direkter Credential-Abruf beweist noch keine erfolgreiche
+Inhaltsprojektion. Bei einer Recovery müssen der ursprüngliche Benutzer,
+die aktive Organisation, der Inhaltstyp und der genaue Projektionskontext
+übereinstimmen. Der vorhandene POST-Endpunkt
+`/api/v1/iam/contents/refresh` mit `recoverCredentials: true` prüft CSRF,
+die aktuelle Sitzung und die aktuellen Leserechte erneut. Für einen begrenzten
+Wiederanlauf die betroffenen `visibleTypes` angeben und `force: true` verwenden.
+Die Prüfung darf nicht durch fremde Sitzungen oder direkte SQL-Statusänderungen
+ersetzt werden. Nach dem Aufruf sind `syncStates`, Projektionsinhalt und ein
+separater Datenbank-Readback zu vergleichen; HTTP 200 allein genügt nicht.

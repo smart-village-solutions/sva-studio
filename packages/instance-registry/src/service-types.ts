@@ -132,6 +132,7 @@ export type InstanceRegistryService = {
   }): Promise<RealmCatalog>;
   retryTenantProvisioning(input: RetryTenantProvisioningInput): Promise<IamInstanceListItem | null>;
   updateInstance(input: UpdateInstanceInput): Promise<IamInstanceDetail | null>;
+  deleteInstance(input: { instanceId: string; expectedUpdatedAt: string; actorId: string; requestId?: string }): Promise<boolean>;
   changeStatus(input: ChangeInstanceStatusInput): Promise<ChangeInstanceStatusResult>;
   getKeycloakStatus(instanceId: string): Promise<KeycloakTenantStatus | null>;
   getKeycloakPreflight(instanceId: string): Promise<KeycloakTenantPreflight | null>;

@@ -26,6 +26,7 @@ import {
   assignGroupMembership,
   assignGroupRole,
   archiveInstance,
+  deleteInstance,
   assignOrganizationMembership,
   bulkDeactivateUsers,
   bulkReprovisionMainserverUsers,
@@ -2305,4 +2306,19 @@ describe('iam-api transparency helpers', () => {
       })
     );
   });
+});
+
+
+it('sends a confirmed, idempotency-keyed DELETE only to the local Studio instance endpoint', async () => {
+  resetRequestSingleFlight();
+  const fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ data: { instanceId: 'demo', deleted: true } }), { headers: { 'content-type': 'application/json' } }));
+  await deleteInstance('demo', '2026-11-08T00:00:00.000Z', 'DELETE demo');
+  expect(fetchMock).toHaveBeenCalledWith('/api/v1/iam/instances/demo', expect.objectContaining({
+    method: 'DELETE', credentials: 'include',
+    body: JSON.stringify({ instanceId: 'demo', expectedUpdatedAt: '2026-11-08T00:00:00.000Z', confirmation: 'DELETE demo' }),
+  }));
+  const headers = new Headers(fetchMock.mock.calls.at(-1)?.[1]?.headers);
+  expect(headers.get('Idempotency-Key')).toBeTruthy();
 });

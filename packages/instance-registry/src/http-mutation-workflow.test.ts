@@ -147,3 +147,53 @@ describe('instance registry mutation workflow', () => {
     expect((csrfResult as Response).status).toBe(403);
   });
 });
+
+describe('Studio-only deletion HTTP contract', () => {
+  const payload = { instanceId: 'demo', expectedUpdatedAt: '2026-11-08T00:00:00.000Z', confirmation: 'DELETE demo' };
+  const setup = (body = payload) => {
+    const deps = createDeps();
+    const deleteInstance = vi.fn(async () => true);
+    deps.confirmCriticalMutation = vi.fn(async () => null);
+    vi.mocked(deps.parseRequestBody).mockImplementation(async (request, schema) => {
+      const result = schema.safeParse(await request.json());
+      return result.success ? { ok: true, data: result.data } : { ok: false, message: 'invalid' };
+    });
+    vi.mocked(deps.withScopedRegistryService).mockImplementation(async (_id, work) => work({ deleteInstance } as never));
+    const request = new Request('http://localhost/api/v1/iam/instances/demo', { method: 'DELETE', body: JSON.stringify(body), headers: { 'content-type': 'application/json' } });
+    return { deps, deleteInstance, request, run: () => createInstanceRegistryMutationHttpHandlers(deps).deleteInstance(request, { userId: 'admin' }) };
+  };
+  it('requires explicit confirmation and bypasses activation-policy reconciliation', async () => {
+    const state = setup();
+    expect((await state.run()).status).toBe(200);
+    expect(state.deleteInstance).toHaveBeenCalledWith({ instanceId: 'demo', expectedUpdatedAt: payload.expectedUpdatedAt, actorId: 'admin', requestId: 'req-order' });
+    const options = vi.mocked(state.deps.withScopedRegistryService).mock.calls[0]?.[2];
+    expect(await options?.shouldReconcileActivationPolicies?.({} as never)).toBe(false);
+    expect(state.deps.confirmCriticalMutation).toHaveBeenCalledWith(expect.objectContaining({ actionId: 'instance.delete' }));
+  });
+  it.each(['ensurePlatformAccess', 'validateCsrf', 'requireFreshReauth'] as const)('fails closed on %s', async (guard) => {
+    const state = setup();
+    vi.mocked(state.deps[guard]).mockReturnValue(new Response('denied', { status: 403 }));
+    expect((await state.run()).status).toBe(403);
+    expect(state.deleteInstance).not.toHaveBeenCalled();
+  });
+  it.each([
+    { ...payload, confirmation: 'DELETE other' },
+    { ...payload, instanceId: 'other', confirmation: 'DELETE other' },
+    { ...payload, expectedUpdatedAt: 'invalid' },
+  ])('rejects an invalid or wrong-target confirmation', async (body) => {
+    const state = setup(body);
+    expect((await state.run()).status).toBe(400);
+    expect(state.deleteInstance).not.toHaveBeenCalled();
+  });
+  it('accepts the exact PostgreSQL timestamp returned by the real instance list', async () => {
+    const state = setup({ ...payload, expectedUpdatedAt: '2026-11-08 00:00:00.123456+00' });
+    expect((await state.run()).status).toBe(200);
+    expect(state.deleteInstance).toHaveBeenCalledWith(expect.objectContaining({ expectedUpdatedAt: '2026-11-08 00:00:00.123456+00' }));
+  });
+  it('honors rejected machine confirmation without deleting', async () => {
+    const state = setup();
+    vi.mocked(state.deps.confirmCriticalMutation!).mockResolvedValue(new Response('denied', { status: 409 }));
+    expect((await state.run()).status).toBe(409);
+    expect(state.deleteInstance).not.toHaveBeenCalled();
+  });
+});

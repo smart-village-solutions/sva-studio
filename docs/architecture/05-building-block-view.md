@@ -1277,3 +1277,13 @@ The ownership decision and release boundary are recorded in
 ## Baustellengeometrie im Studio
 
 Das bestehende Baustellenplugin ergänzt seinen MapLibre-Kartenpfad lokal um Terra Draw und eine Koordinatenansicht. Der Studio-Mainserver-Adapter besitzt eine unabhängige Geometrievalidierung. Die einzige Datenquelle bleibt das GenericItem-Payload; weder ein neues Workspace-Package noch eine zusätzliche Geodatenbank werden eingeführt. Nach Nutzerfestlegung wird das alte CMS nicht mehr für Baustellen verwendet. Die Erweiterung verwendet deshalb den unveränderten Mainserver und übernimmt Erhalt sowie Schlüsselentfernung im vollständigen Studio-Payload. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+
+### Lokale Instanzlöschung
+
+Die Instanzverwaltung führt den bestätigten `instance.delete`-Pfad vom bestehenden
+Root-Admin-UI über Routing und Auth-Runtime zum Instanz-Service und zur
+`SECURITY INVOKER`-Datenbankfunktion `iam.delete_studio_instance`. Die bestehende
+Scoped-Transaktion deaktiviert für diesen Aufruf die Aktivierungs-Reconciliation
+und deren externe Lifecycle-Follow-ups. Die Löschung benötigt keine neuen Packages,
+Worker oder Provider. Mainserver, Keycloak, Objektspeicher und externe
+Plugin-Datenbanken gehören ausdrücklich nicht zu ihrer Mutationsgrenze.

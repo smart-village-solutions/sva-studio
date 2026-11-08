@@ -1903,6 +1903,56 @@ paths:
     get:
       summary: Verfügbare Keycloak-Rollen lesen
       responses: { default: { description: 'Antwort des Endpunkts.' } }
+  /api/v1/iam/instances/{instanceId}:
+    delete:
+      operationId: deleteStudioInstance
+      summary: Archivierte Studio-Instanz ausschließlich lokal endgültig löschen
+      description: >-
+        Root-Admin-Zugriff, Session-CSRF, frische Reauthentisierung und ausdrückliche
+        Bestätigung der Instanz-ID sind erforderlich. Maschinenzugriffe benötigen
+        instance.delete und eine gültige Challenge-Bestätigung. Die lokale Löschung
+        ist atomar und hinterlässt einen Plattform-Audit-Eintrag. Mainserver,
+        Keycloak, Objektspeicher und externe Plugin-Datenbanken bleiben unverändert.
+        Laufende oder ausstehende Arbeit und aktive Aufbewahrungssperren blockieren.
+      parameters:
+        - in: path
+          name: instanceId
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [instanceId, expectedUpdatedAt, confirmation]
+              properties:
+                instanceId: { type: string }
+                expectedUpdatedAt:
+                  type: string
+                  description: Exakter updatedAt-Wert der aktuellen Instanzliste, einschließlich Mikrosekunden und Zeitzone.
+                  example: '2026-11-08 12:00:00.123456+00'
+                confirmation:
+                  type: string
+                  description: DELETE gefolgt von einem Leerzeichen und der exakten Instanz-ID.
+                  example: DELETE testgemeinde
+      responses:
+        '200':
+          description: Lokale Instanz gelöscht; data enthält instanceId und deleted=true.
+        '400': { description: Ungültige oder nicht zielgebundene Bestätigung beziehungsweise fehlender Idempotency-Key. }
+        '401': { description: Authentisierung fehlt. }
+        '403': { description: Root-Admin-Zugriff, CSRF oder frische Anmeldung fehlen. }
+        '404': { description: Instanz existiert nicht beziehungsweise wurde bereits gelöscht. }
+        '409':
+          description: >-
+            instance_delete_conflict bei veränderter oder nicht archivierter Instanz,
+            instance_delete_busy bei ausstehender Arbeit,
+            instance_delete_legal_hold bei aktiver Aufbewahrungssperre.
   /api/v1/iam/instances/{instanceId}/keycloak/mail-templates/{templateKind}:
     parameters:
       - { name: instanceId, in: path, required: true, schema: { type: string } }

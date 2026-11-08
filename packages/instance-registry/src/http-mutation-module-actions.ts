@@ -1,4 +1,6 @@
 import type { InstanceStatus } from '@sva/core';
+import { z } from 'zod';
+import { readDetailInstanceId } from './http-contracts.js';
 
 import {
   assignModuleSchema,
@@ -266,4 +268,43 @@ export const createMutateInstanceStatusHandler = <TContext>(
     ctx: TContext,
     nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>
   ): Promise<Response> => handlers[nextStatus](request, ctx);
+};
+
+
+export const createDeleteInstanceHandler = <TContext>(
+  deps: InstanceRegistryMutationHttpDeps<TContext>,
+  mapMutationError: InstanceRegistryMutationErrorMapper
+) => {
+  const schema = z.object({
+    instanceId: z.string().min(1),
+    expectedUpdatedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}(?::?\d{2})?)$/)
+      .refine((value) => Number.isFinite(Date.parse(value))),
+    confirmation: z.string(),
+  }).strict().refine((value) => value.confirmation === `DELETE ${value.instanceId}`);
+  const handler = createScopedRegistryMutationHandler(deps, {
+    operation: 'delete_instance',
+    criticalActionId: 'instance.delete',
+    scopedServiceOptions: { shouldReconcileActivationPolicies: async () => false },
+    parse: async (request) => {
+      const parsed = await deps.parseRequestBody<z.infer<typeof schema>>(request, schema);
+      if (!parsed.ok) return parsed;
+      return parsed.data.instanceId === readDetailInstanceId(request)
+        ? parsed
+        : { ok: false as const, message: 'Die bestätigte Instanz stimmt nicht mit dem Ziel überein.' };
+    },
+    execute: (service, input) => service.deleteInstance({
+      instanceId: input.instanceId,
+      expectedUpdatedAt: input.payload.expectedUpdatedAt,
+      actorId: input.actorId,
+      requestId: input.requestId,
+    }),
+    respond: (deleted, state) => deleted
+      ? deps.jsonResponse(200, deps.asApiItem({ instanceId: state.instanceId, deleted: true }, state.requestId))
+      : deps.createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', state.requestId),
+    mapMutationError,
+  });
+  return (request: Request, ctx: TContext): Promise<Response> => {
+    const reauthError = deps.requireFreshReauth(request, ctx);
+    return reauthError ? Promise.resolve(reauthError) : handler(request, ctx);
+  };
 };

@@ -17,6 +17,7 @@ import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-dia
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Card } from '../../../components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
@@ -49,6 +50,17 @@ export const InstancesPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
   const instancesApi = useInstances();
+  const [deleteTarget, setDeleteTarget] = React.useState<InstanceRow | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = React.useState('');
+  const [deleting, setDeleting] = React.useState(false);
+  const submitDeletion = async () => {
+    if (!deleteTarget || deleting || deleteConfirmation !== `DELETE ${deleteTarget.instanceId}`) return;
+    setDeleting(true);
+    try {
+      const result = await instancesApi.deleteInstance(deleteTarget.instanceId, deleteTarget.updatedAt, deleteConfirmation);
+      if (result) { setDeleteTarget(null); setDeleteConfirmation(''); }
+    } finally { setDeleting(false); }
+  };
   const [auditExpanded, setAuditExpanded] = React.useState(false);
   const [mainserverEntries, setMainserverEntries] = React.useState<ReadonlyMap<string, RootMainserverInterfaceListEntry>>(new Map());
   const [mainserverLoadError, setMainserverLoadError] = React.useState(false);
@@ -241,6 +253,12 @@ export const InstancesPage = () => {
                       variant: 'destructive',
                       onSelect: () => void instancesApi.archiveInstance(instance.instanceId),
                     },
+                    ...(instance.status === 'archived' ? [{
+                      id: 'delete',
+                      label: t('admin.instances.actions.delete'),
+                      variant: 'destructive' as const,
+                      onSelect: () => { instancesApi.clearMutationError(); setDeleteConfirmation(''); setDeleteTarget(instance); },
+                    }] : []),
                   ]}
                 />
               </details>
@@ -248,6 +266,29 @@ export const InstancesPage = () => {
           )}
         />
       </StudioListPageTemplate>
+
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => {
+        if (!open && !deleting) { setDeleteTarget(null); setDeleteConfirmation(''); }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('admin.instances.actions.delete')}</DialogTitle>
+            <DialogDescription>{t('admin.instances.actions.deleteDescription', { instanceId: deleteTarget?.instanceId ?? '' })}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(event) => { event.preventDefault(); void submitDeletion(); }} className="space-y-4">
+            <Label htmlFor="instance-delete-confirmation">{t('admin.instances.actions.deleteConfirmation', { phrase: `DELETE ${deleteTarget?.instanceId ?? ''}` })}</Label>
+            <Input id="instance-delete-confirmation" value={deleteConfirmation} disabled={deleting}
+              autoComplete="off" onChange={(event) => setDeleteConfirmation(event.target.value)} />
+            {instancesApi.mutationError ? <Alert className="border-destructive/40 bg-destructive/10 text-destructive"><AlertDescription>{getErrorMessage(instancesApi.mutationError)}</AlertDescription></Alert> : null}
+            <DialogFooter>
+              <Button type="button" variant="secondary" disabled={deleting} onClick={() => { setDeleteTarget(null); setDeleteConfirmation(''); }}>{t('admin.instances.actions.cancelDelete')}</Button>
+              <Button type="submit" variant="destructive" disabled={deleting || deleteConfirmation !== `DELETE ${deleteTarget?.instanceId ?? ''}`}>
+                {t(deleting ? 'admin.instances.actions.deleting' : 'admin.instances.actions.delete')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {instancesApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">

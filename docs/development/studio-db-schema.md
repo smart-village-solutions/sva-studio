@@ -617,3 +617,18 @@ The latest run supplies pending/failure diagnostics; failed reconciliation retai
 the last verified mode. Completion compares desired revision, mode and run ID,
 preventing superseded workers from certifying a newer request. Tenant writes,
 run creation and the existing instance audit event share the scoped transaction.
+
+### Studio-Tenants endgültig löschen — Migration 0114
+
+`iam.delete_studio_instance(text, timestamptz, text, text)` entfernt ausschließlich die
+lokalen Daten einer archivierten Studio-Instanz im aktuellen RLS-Scope. Die Funktion
+läuft mit den Rechten des Aufrufers, prüft den bestätigten Änderungsstand und sperrt
+Instanzmutationen mit dem bestehenden Advisory-Lock. Aktive Aufbewahrungssperren
+sowie ausstehende oder laufende Jobs und Provisionings blockieren den Vorgang.
+Referenzen werden vor dem Registry-Cascade entfernt; ein Fehler rollt den gesamten
+Funktionsaufruf zurück. Ein `instance.deleted`-Eintrag bleibt im Plattform-Audit.
+
+Die ergänzenden Katalog-Policies erlauben das Entfernen kommunaler Drafts und Releases
+nur für den archivierten Tenant im expliziten Löschkontext. Globale Manifeste und
+Releases bleiben unveränderlich. Der Löschpfad besitzt keine Mainserver-, Keycloak-,
+Objektspeicher- oder Plugin-Datenbank-Aufrufe. Externe Ressourcen bleiben erhalten.

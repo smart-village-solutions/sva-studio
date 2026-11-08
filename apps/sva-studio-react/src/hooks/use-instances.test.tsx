@@ -34,6 +34,7 @@ const reconcileInstanceKeycloakMock = vi.fn();
 const activateInstanceMock = vi.fn();
 const suspendInstanceMock = vi.fn();
 const archiveInstanceMock = vi.fn();
+const deleteInstanceMock = vi.fn();
 const getInstanceAuditRunMock = vi.fn();
 const getSingleInstanceAuditRunMock = vi.fn();
 const authMockValue = {
@@ -114,6 +115,7 @@ vi.mock('../lib/iam-api', async () => {
     reconcileInstanceKeycloak: (...args: unknown[]) => reconcileInstanceKeycloakMock(...args),
     activateInstance: (...args: unknown[]) => activateInstanceMock(...args),
     suspendInstance: (...args: unknown[]) => suspendInstanceMock(...args),
+    deleteInstance: (...args: unknown[]) => deleteInstanceMock(...args),
     archiveInstance: (...args: unknown[]) => archiveInstanceMock(...args),
   };
   return new Proxy(actual, {
@@ -1423,4 +1425,20 @@ describe('useInstances', () => {
       code: 'database_unavailable',
     });
   });
+  it('refreshes the list after deletion without reloading the removed tenant or probing Keycloak', async () => {
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
+    await act(async () => { await result.current.loadInstance('demo'); });
+    getInstanceMock.mockClear();
+    getInstanceKeycloakStatusMock.mockClear();
+    getSingleInstanceAuditRunMock.mockClear();
+    deleteInstanceMock.mockResolvedValue({ data: { instanceId: 'demo', deleted: true } });
+    await act(async () => { await result.current.deleteInstance('demo', '2026-11-08T00:00:00.000Z', 'DELETE demo'); });
+    expect(deleteInstanceMock).toHaveBeenCalledWith('demo', '2026-11-08T00:00:00.000Z', 'DELETE demo');
+    expect(result.current.selectedInstance).toBeNull();
+    expect(getInstanceMock).not.toHaveBeenCalled();
+    expect(getInstanceKeycloakStatusMock).not.toHaveBeenCalled();
+    expect(getSingleInstanceAuditRunMock).not.toHaveBeenCalled();
+  });
+
 });

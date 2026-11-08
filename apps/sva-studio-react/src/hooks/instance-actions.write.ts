@@ -4,6 +4,7 @@ import {
   activateInstance,
   assignInstanceModule,
   archiveInstance,
+  deleteInstance,
   bootstrapInstanceAdminStructure,
   createInstance,
   executeInstanceKeycloakProvisioning,
@@ -133,6 +134,8 @@ export const createInstanceWriteActions = ({
     mutate(() => activateInstance(instanceId), instanceId, 'activate_instance'),
   suspendInstance: async (instanceId: string) =>
     mutate(() => suspendInstance(instanceId), instanceId, 'suspend_instance'),
+  deleteInstance: async (instanceId: string, expectedUpdatedAt: string, confirmation: string) =>
+    mutate(() => deleteInstance(instanceId, expectedUpdatedAt, confirmation), instanceId, 'delete_instance'),
   archiveInstance: async (instanceId: string) =>
     mutate(() => archiveInstance(instanceId), instanceId, 'archive_instance'),
 });

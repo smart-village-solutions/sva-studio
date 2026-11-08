@@ -1419,3 +1419,14 @@ See [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).
 ### Geometriegrenzen im Studio
 
 Baustellengeometrien werden als versionierte GeoJSON-FeatureCollection unter einem reservierten Payload-Schlüssel geführt. Unabhängige Client-/Studio-Server-Verträge prüfen Zahlenbereiche, Normalisierung, Mengen-/UTF-8-Grenzen und Polygon-Selbstüberschneidungen; gemeinsame Verhaltensfälle sichern beide Vertrauensgrenzen. Standortpunkte und unberührte Payload-Felder bleiben erhalten. Fremdversionen blockieren reduzierte Writes. Der Mainserver speichert das vollständige Studio-Payload unverändert über seinen bestehenden Ersetzungspfad; eine zusätzliche Geometrievalidierung oder Legacy-Erhaltung im Mainserver ist nicht Teil dieses Umfangs. Lokale Fixtures beweisen keinen produktiven Roundtrip.
+
+### Archivierte Instanzen endgültig löschen
+
+Die lokale Instanzlöschung verlangt Root-Admin-Zugriff, CSRF-Schutz, frische Anmeldung
+und die ausdrückliche Bestätigung der Instanz-ID. Die SQL-Funktion prüft Archivstatus,
+bestätigten Änderungsstand, RLS-Scope, aktive Aufbewahrungssperren und ausstehende
+Arbeit unter dem bestehenden Instanz-Lock. Lokale Daten und Secrets werden atomar
+entfernt; globale Kataloge, andere Tenants und externe Systeme bleiben erhalten.
+Ein Plattform-Audit-Eintrag überlebt die Tenant-Löschung. Der lokale Host-Cache wird
+erst nach erfolgreicher Transaktion geleert. Details und verbleibende externe
+Ressourcen beschreibt [der Instanzbetrieb](../operations/instance-keycloak-provisioning.md#archivierte-studio-instanz-endgültig-löschen).

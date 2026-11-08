@@ -111,6 +111,12 @@ export type InstanceRegistryRepository = Readonly<LoginMfaRepository> & Instance
     actorId?: string;
     requestId?: string;
   }) => Promise<InstanceRegistryRecord | null>;
+  readonly deleteInstance: (input: {
+    instanceId: string;
+    expectedUpdatedAt: string;
+    actorId: string;
+    requestId?: string;
+  }) => Promise<boolean>;
   readonly setInstanceStatus: (input: {
     instanceId: string;
     status: InstanceStatus;

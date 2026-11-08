@@ -8,6 +8,7 @@ import {
 import { createGetInstanceDetail } from './service-detail.js';
 import {
   createChangeStatusHandler,
+  createDeleteInstanceHandler,
   createProvisioningRequestHandler,
   createUpdateInstanceHandler,
 } from './service-instance-mutations.js';
@@ -79,6 +80,7 @@ export const createInstanceRegistryService = (
   retryTenantProvisioning: createRetryTenantProvisioningHandler(deps),
   updateInstance: createUpdateInstanceHandler(deps),
   changeStatus: createChangeStatusHandler(deps),
+  deleteInstance: createDeleteInstanceHandler(deps),
   getKeycloakPreflight: createGetKeycloakPreflightHandler(deps),
   planKeycloakProvisioning: createPlanKeycloakProvisioningHandler(deps),
   executeKeycloakProvisioning: createExecuteKeycloakProvisioningHandler(deps),

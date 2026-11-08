@@ -160,6 +160,17 @@ export const createProvisioningRequestHandler =
     };
   };
 
+export const createDeleteInstanceHandler =
+  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['deleteInstance'] =>
+  async (input) => {
+    const current = await deps.repository.getInstanceById(input.instanceId);
+    if (!current) return false;
+    assertTenantHostnameAvailable(deps, current.primaryHostname);
+    const deleted = await deps.repository.deleteInstance(input);
+    if (deleted) invalidateHostWithLog(deps.invalidateHost, current.primaryHostname, current.instanceId);
+    return deleted;
+  };
+
 export const createChangeStatusHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['changeStatus'] =>
   async (input) => {

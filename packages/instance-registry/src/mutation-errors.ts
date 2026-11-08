@@ -11,6 +11,9 @@ export type InstanceMutationErrorCode =
   | 'tenant_hostname_conflict'
   | 'auth_realm_conflict'
   | 'instance_configuration_change_blocked'
+  | 'instance_delete_conflict'
+  | 'instance_delete_busy'
+  | 'instance_delete_legal_hold'
   | 'provisioning_retry_mode_invalid'
   | 'provisioning_retry_instance_status_invalid'
   | 'provisioning_retry_not_safe'
@@ -40,6 +43,9 @@ const stableConflictCodes = [
   'auth_realm_conflict',
   'tenant_hostname_conflict',
   'instance_configuration_change_blocked',
+  'instance_delete_conflict',
+  'instance_delete_busy',
+  'instance_delete_legal_hold',
   'provisioning_retry_mode_invalid',
   'provisioning_retry_instance_status_invalid',
   'provisioning_retry_not_safe',

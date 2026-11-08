@@ -98,6 +98,9 @@ export const probeTenantIamAccessMutation = (
   ctx: RegistryRequestContext
 ): Promise<Response> => mutationHandlers.probeTenantIamAccess(request, ctx);
 
+export const deleteInstanceMutation = (request: Request, ctx: RegistryRequestContext): Promise<Response> =>
+  mutationHandlers.deleteInstance(request, ctx);
+
 export const mutateInstanceStatus = (
   request: Request,
   ctx: RegistryRequestContext,

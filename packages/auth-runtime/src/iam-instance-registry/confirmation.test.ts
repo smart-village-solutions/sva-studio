@@ -95,13 +95,14 @@ describe('critical registry confirmation', () => {
     expect(changed).not.toBe(first);
   });
 
-  it('keeps all five critical actions static and requires a module for revoke prepare', async () => {
+  it('keeps all critical actions static and requires a module for revoke prepare', async () => {
     const { CRITICAL_REGISTRY_ACTIONS, validateConfirmationModuleId } =
       await import('./confirmation.js');
     expect(CRITICAL_REGISTRY_ACTIONS).toEqual([
       'instance.status.activate',
       'instance.status.suspend',
       'instance.status.archive',
+      'instance.delete',
       'instance.module.revoke',
       'instance.secret.rotate',
     ]);

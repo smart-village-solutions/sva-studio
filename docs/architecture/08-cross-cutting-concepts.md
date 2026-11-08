@@ -603,7 +603,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Mobile Navigation nutzt ein zugängliches Drawer-/`Sheet`-Muster statt projektspezifischer Spezialinteraktionen
 - Das überarbeitete Designsystem wird im bestehenden RGB-Tokenpfad und `@sva/studio-ui-react` umgesetzt; News nutzt gemeinsame Detail-Tabs mit optionaler Intent-Vorladung, ohne fachliche Speicherverträge zu verlagern
 - Ohne gespeicherte Präferenz gelten Drawer unter 1024 px, Rail ab 1024 px und Sidebar ab 1280 px. Bestehende Collapse-Werte bleiben erhalten; automatische Breitenwechsel persistieren keine Präferenz
-- Kollabierte Untermenüs bleiben als vorhandene zugängliche Flyouts erhalten. Header-Kontext und Kontomenü verwenden eindeutige Control-IDs; Seitenköpfe richten sich nach tatsächlicher Inhaltsbreite
+- Kollabierte Untermenüs bleiben als vorhandene zugängliche Flyouts erhalten. Der Organisationswechsel liegt ausschließlich im Kontomenü; neben der globalen Suche wird keine zweite Kontextauswahl angezeigt. Das Suchfeld hält am Desktop zusätzlichen Abstand zur Sidebar-Steuerung; sein zugänglich beschrifteter Submit-Button liegt optisch innerhalb der Suchfeld-Umrandung. Organisationsauswahl und Kontomenü verwenden eindeutige Control-IDs; Seitenköpfe richten sich nach tatsächlicher Inhaltsbreite
 
 ### Review-Governance
 

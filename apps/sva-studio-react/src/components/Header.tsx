@@ -23,7 +23,6 @@ import { useLocale } from '../providers/locale-provider';
 import { useTheme } from '../providers/theme-provider';
 import { HeaderAuthAction } from './header-auth-action';
 import { HeaderDropdownMenu, type HeaderDropdownItem } from './header-dropdown-menu';
-import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
 
 type HeaderProps = Readonly<{
   isLoading?: boolean;
@@ -148,7 +147,7 @@ export default function Header({
         SearchHeader &&
         canSearch &&
         !organizationContext.isUpdating ? (
-          <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:w-72">
+          <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:ml-2.5 lg:w-72">
             <SearchHeader
               onSearch={(q) => {
                 void navigate({
@@ -157,11 +156,6 @@ export default function Header({
                 });
               }}
             />
-          </div>
-        ) : null}
-        {showOrganizationContext ? (
-          <div className="col-span-3 min-w-0 lg:col-span-1 lg:col-start-2 lg:row-start-1">
-            <OrganizationContextSwitcher allowPersonal={isSystemAdmin} />
           </div>
         ) : null}
         <div className="col-start-3 row-start-1 flex items-center justify-end gap-2 sm:gap-3">

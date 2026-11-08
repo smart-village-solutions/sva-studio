@@ -121,3 +121,22 @@ Offen bis tatsächliche Endstände vorliegen: terminale zusätzliche Baselines,
 drei vergleichbare Nachher-Läufe je strukturellem Abschnitt, fünf unveränderte
 Flake-Wiederholungen und zehn repräsentative CI-Endstände für Median/P90.
 Lokale Importprofile unter wechselnder Rechnerlast sind kein Ersatz dafür.
+
+### E2E-Schrittprofil der zusätzlichen Baseline
+
+Der erfolgreiche Lauf `42528820959` am unveränderten Ausgangscommit enthält
+einen vollständigen HTML-Schrittbericht, aber wegen `retain-on-failure` keinen
+Trace eines erfolgreichen Tests. Die längsten Fälle sind Responsive-Erstellung
+(83,72 Sekunden), Baustellengeometrie (64,29 Sekunden) und benutzerdefiniertes
+Wiederholungsmuster (34,51 Sekunden). Bei der Geometrie fallen vier Reloads und
+die folgenden Inhalt-Tab-Aktionen mit jeweils etwa vier Sekunden auf. Diese
+Reloads prüfen Offline-Betrieb, Leserechte, erneute Bearbeitung und persistierte
+Löschung; ihre Entfernung würde Nachweise schwächen. Der Wiederholungsfall
+enthält zwei echte Accessibility-Prüfungen mit 2,75 und 2,45 Sekunden.
+
+Die bestehenden Router-, Locator- und `aria-busy`-Prüfungen warten bereits auf
+Zustand. Der Bericht belegt nicht, dass ein Wechsel von `load` auf
+`domcontentloaded` die verbleibenden Navigationszeiten beseitigt. Deshalb wurde
+kein spekulativer Readiness-Fix eingebaut. Die vier vorher beobachteten
+News-Bildfehler treten auf dem festgelegten Ausgangscommit nicht mehr auf;
+Bildreferenzen wurden in dieser Änderung nicht aktualisiert.

@@ -153,8 +153,13 @@ describe('hotfix source contract', () => {
     expect(e2eWorkflow).toContain('ref: ${{ steps.hotfix.outputs.source_sha || github.sha }}');
     expect(e2eWorkflow).toContain('test:e2e --skipNxCache');
     expect(e2eWorkflow).toContain("inputs.mode != 'hotfix' && 'true' || 'false'");
-    expect(e2eWorkflow).toContain('HOTFIX_SOURCE_SHA: ${{ needs.e2e.outputs.source-sha }}');
+    expect(e2eWorkflow).toContain('HOTFIX_SOURCE_SHA: ${{ inputs.hotfix_sha }}');
     expect(e2eWorkflow).toContain('GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}');
+    expect(e2eWorkflow).toContain('path: .nx/e2e-controller');
+    expect(e2eWorkflow).toContain(
+      'node --experimental-strip-types .nx/e2e-controller/scripts/ci/write-app-e2e-evidence.ts'
+    );
+    expect(e2eWorkflow).not.toContain('needs.e2e.outputs.source-sha');
   });
 
   it('keeps Hotfix and Beta switches inside the protected Promote gates', () => {

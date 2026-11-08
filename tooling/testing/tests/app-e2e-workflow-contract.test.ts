@@ -21,7 +21,7 @@ const crossBrowserFirefoxSpec = resolve(
 );
 
 describe('App E2E workflow contract', () => {
-  it('runs exactly one complete uncached suite for main and diagnostic events, never PRs', () => {
+  it('partitions one complete uncached suite across four isolated runners, never PRs', () => {
     expect(workflow).toContain('push:');
     expect(workflow).toContain('branches: [main]');
     expect(workflow).toContain('schedule:');
@@ -32,6 +32,12 @@ describe('App E2E workflow contract', () => {
     expect(workflow).not.toContain('e2e_mode');
     expect(workflow.match(/sva-studio-react:test:e2e/gu)).toHaveLength(1);
     expect(workflow).toContain('sva-studio-react:test:e2e --skipNxCache');
+    expect(workflow).toContain('shard: [1, 2, 3, 4]');
+    expect(workflow).toContain('fail-fast: false');
+    expect(workflow).toContain('--shard=${{ matrix.shard }}/4');
+    expect(playwrightConfig).toContain('workers: 1');
+    expect(workflow).toContain('--workers=1');
+    expect(workflow).toContain('Inventory complete E2E selection');
     expect(prGate).not.toContain('test:e2e');
   });
 
@@ -67,13 +73,16 @@ describe('App E2E workflow contract', () => {
     const firstTypeScriptController = workflow.indexOf('node --experimental-strip-types');
 
     expect(workflow).toContain(
-      'name: app-e2e-report-${{ github.run_id }}-${{ github.run_attempt }}'
+      'name: app-e2e-report-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}'
     );
     expect(workflow).toContain('apps/sva-studio-react/playwright-report');
     expect(workflow).toContain('apps/sva-studio-react/test-results');
     expect(workflow).toMatch(/evidence:\n[\s\S]*needs: e2e\n\s+if: always\(\)/u);
     expect(workflow).toContain('APP_E2E_RESULT: ${{ needs.e2e.result }}');
-    expect(workflow).toContain('APP_E2E_TEST_OUTCOME: ${{ needs.e2e.outputs.test-outcome }}');
+    expect(workflow).toContain('APP_E2E_SHARD_DIRECTORY: artifacts/app-e2e-shards');
+    expect(workflow).toContain('pattern: app-e2e-shard-*-${{ github.run_id }}');
+    expect(workflow).toContain('if-no-files-found: error');
+    expect(workflow).toContain('name: App E2E\n    needs: e2e');
     expect(workflow).toContain(
       'name: app-e2e-evidence-${{ github.run_id }}-${{ github.run_attempt }}'
     );

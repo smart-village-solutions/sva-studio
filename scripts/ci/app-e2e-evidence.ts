@@ -1,3 +1,8 @@
+import { validateAppE2EShards } from './app-e2e-shard-evidence.ts';
+export {
+  validateAppE2EShards,
+  writeAppE2EShardEvidenceFromEnvironment,
+} from './app-e2e-shard-evidence.ts';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
@@ -255,23 +260,14 @@ export const parseAppE2EEvidence = (value: unknown): AppE2EEvidence | null => {
   }
 };
 
-export const writeAppE2EEvidenceFromEnvironment = (
-  env: NodeJS.ProcessEnv = process.env
-): string => {
+const resolveEnvironmentSource = (
+  env: NodeJS.ProcessEnv
+): Pick<AppE2EEvidence, 'headSha' | 'hotfix'> => {
   const controlledHotfix = env.HOTFIX_MODE === 'hotfix';
-  if (controlledHotfix && env.GITHUB_WORKFLOW_SHA !== env.GITHUB_SHA) {
+  if (controlledHotfix && env.GITHUB_WORKFLOW_SHA !== env.GITHUB_SHA)
     throw new Error('Hotfix-E2E-Controller stimmt nicht mit dem Main-HEAD überein.');
-  }
-  const evidence = buildAppE2EEvidence({
-    workflow: env.GITHUB_WORKFLOW ?? '',
-    event: env.GITHUB_EVENT_NAME ?? '',
-    ref: env.GITHUB_REF ?? '',
-    branch: env.GITHUB_REF_NAME ?? '',
+  return {
     headSha: controlledHotfix ? (env.HOTFIX_SOURCE_SHA ?? '') : (env.GITHUB_SHA ?? ''),
-    runId: env.GITHUB_RUN_ID ?? '',
-    runAttempt: Number(env.GITHUB_RUN_ATTEMPT),
-    result: env.APP_E2E_RESULT ?? '',
-    testOutcome: env.APP_E2E_TEST_OUTCOME ?? '',
     ...(controlledHotfix
       ? {
           hotfix: {
@@ -282,6 +278,25 @@ export const writeAppE2EEvidenceFromEnvironment = (
           },
         }
       : {}),
+  };
+};
+
+export const writeAppE2EEvidenceFromEnvironment = (
+  env: NodeJS.ProcessEnv = process.env
+): string => {
+  const source = resolveEnvironmentSource(env);
+  if (env.APP_E2E_SHARD_DIRECTORY)
+    validateAppE2EShards(env.APP_E2E_SHARD_DIRECTORY, source.headSha, env.GITHUB_RUN_ID ?? '');
+  const evidence = buildAppE2EEvidence({
+    workflow: env.GITHUB_WORKFLOW ?? '',
+    event: env.GITHUB_EVENT_NAME ?? '',
+    ref: env.GITHUB_REF ?? '',
+    branch: env.GITHUB_REF_NAME ?? '',
+    ...source,
+    runId: env.GITHUB_RUN_ID ?? '',
+    runAttempt: Number(env.GITHUB_RUN_ATTEMPT),
+    result: env.APP_E2E_RESULT ?? '',
+    testOutcome: env.APP_E2E_SHARD_DIRECTORY ? 'success' : (env.APP_E2E_TEST_OUTCOME ?? ''),
   });
   const runnerTemp = env.RUNNER_TEMP;
   if (!runnerTemp) throw new Error('RUNNER_TEMP fehlt.');

@@ -105,7 +105,7 @@ describe('consolidated CI gate workflows', () => {
     expect(mainGates).not.toContain('sva-studio-react:build');
   });
 
-  it('binds the external reference to immutable commits and the required App Build gate', () => {
+  it('binds the external reference to immutable commits and the required PR Integration gate', () => {
     for (const source of [prGates, mainGates]) {
       const reference = source.match(/sva-studio_plugin-application-overview\/\.github\/workflows\/quality\.yml@([a-f0-9]{40})/u);
       expect(reference).not.toBeNull();
@@ -113,7 +113,9 @@ describe('consolidated CI gate workflows', () => {
     }
     expect(prGates).toContain('studio-ref: ${{ github.event.pull_request.head.sha }}');
     expect(mainGates).toContain('studio-ref: ${{ github.sha }}');
-    expect(prGates).toContain('needs: [scope, plugin-compatibility]');
+    const integrationJob = prGates.slice(prGates.indexOf('\n  integration:'), prGates.indexOf('\n  a11y:'));
+    expect(integrationJob).toContain('needs: [scope, plugin-compatibility]');
+    expect(integrationJob).toContain('Enforce relevant plugin compatibility');
     expect(prGates).toContain("needs.scope.outputs.quality_gate_mode != 'skip'");
     expect(prGates).toContain("needs.plugin-compatibility.result != 'success' && needs.plugin-compatibility.result != 'skipped'");
   });

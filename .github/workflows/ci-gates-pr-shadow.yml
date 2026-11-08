@@ -366,7 +366,8 @@ jobs:
 
   integration:
     name: PR Integration
-    needs: scope
+    needs: [scope, plugin-compatibility]
+    if: always() && needs.scope.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -380,6 +381,9 @@ jobs:
           --health-timeout 3s
           --health-retries 10
     steps:
+      - name: Enforce relevant plugin compatibility
+        if: needs.plugin-compatibility.result != 'success' && needs.plugin-compatibility.result != 'skipped'
+        run: exit 1
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -439,14 +443,10 @@ jobs:
 
   app-build:
     name: App Build
-    needs: [scope, plugin-compatibility]
-    if: always() && needs.scope.result == 'success'
+    needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Enforce relevant plugin compatibility
-        if: needs.plugin-compatibility.result != 'success' && needs.plugin-compatibility.result != 'skipped'
-        run: exit 1
       - name: Checkout
         uses: actions/checkout@v7
         with:

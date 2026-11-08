@@ -13,6 +13,9 @@ minimumReleaseAgeIgnoreMissingTime: false
 minimumReleaseAgeStrict: true
 trustPolicy: no-downgrade
 trustPolicyExclude:
+  # Same first-party GitHub artifact as above; no npm provenance history exists.
+  # Remove together with its exact minimumReleaseAgeExclude entry on registry migration.
+  - "@sva/plugin-application-workspace@0.0.1"
   # Legacy toolchains in the current Nx/Babel/TanStack plugin graph still resolve semver 6.3.1.
   # Remove this exact-version exception once the transitive graph no longer requires semver 6.x.
   - semver@6.3.1

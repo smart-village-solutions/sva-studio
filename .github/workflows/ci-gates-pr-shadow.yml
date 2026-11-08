@@ -29,6 +29,8 @@ jobs:
       app_build_mode: ${{ steps.scope.outputs.app_build_mode }}
       documentation_catalog_mode: ${{ steps.scope.outputs.documentation_catalog_mode }}
       db_schema_mode: ${{ steps.scope.outputs.db_schema_mode }}
+      coverage_priority_matrix: ${{ steps.scope.outputs.coverage_priority_matrix }}
+      coverage_remaining_matrix: ${{ steps.scope.outputs.coverage_remaining_matrix }}
 
     steps:
       - name: Checkout
@@ -275,8 +277,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        partition:
-          [app-1, app-2, app-3, app-4, waste-1, waste-2, direct-1, direct-2, direct-3, direct-4]
+        partition: ${{ fromJSON(needs.scope.outputs.coverage_priority_matrix) }}
     env:
       REDIS_URL: redis://127.0.0.1:6379
     steps:
@@ -331,7 +332,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        partition: [remaining-1, remaining-2, remaining-3, remaining-4]
+        partition: ${{ fromJSON(needs.scope.outputs.coverage_remaining_matrix) }}
     env:
       REDIS_URL: redis://127.0.0.1:6379
     steps:

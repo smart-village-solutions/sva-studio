@@ -16,6 +16,15 @@ Grundlage ist der vom Nutzer ausdrücklich zur Implementierung freigegebene Plan
 
 Bestehende Nx-Targets und Scope-Controller bleiben zuständig. App-Routen: vier Datei-Shards, App-Coverage: vier Datei-Shards, Abfallplugin-Coverage: zwei Datei-Shards; andere Coverage-Projekte: vier Projekt-Shards. E2E: vier voneinander isolierte Runner mit je einem Worker. Reportausgaben sind runnerlokal; nur validierte Artefakte werden aggregiert. Teilwiederholungen dürfen nur Evidenz derselben Quelle übernehmen. Keine Änderung am Release-Vertrag ohne negative Tests auf fehlende Shards und falsche Quelle.
 
+Die bestehende PR-Scope-CLI teilt die 14 Coverage-Partitionen anhand des
+Git-Diffs und der Projektmanifeste auf zwei Matrizen auf; sie installiert dafür
+keine Dependencies und startet Nx nicht. Schwere App-/Abfall-Shards gehören
+nur bei direkter Änderung zur Prioritätsmenge. Die identische reine Zuordnung
+bestimmt beim frühen Merge die verpflichtenden Reports; der bestehende
+Coverage-Controller prüft den vollständigen Plan erneut gegen den Quellstand.
+Ein Graphfehler bewahrt einen bereits erfolgreichen Git-Diff für diese
+Zuordnung, während die vollständige Fallback-Menge verpflichtend bleibt.
+
 ## Nachweise
 
 Gezielte Vitest-Vertragstests auf Scope/Fallback/No-op, Vollständigkeit, doppelte/fremde/manipulierte Reports, rote/abgebrochene Jobs und Teilwiederholung; Skript-Typecheck und erforderliche Runtime-Gates. Fresh-/Shard-Mengen und Coverage-Zähler werden verglichen. Drei gepaarte Messungen und fünf Flake-Wiederholungen je struktureller Änderung; zehn CI-Endstände zur abschließenden Median-/P90-Bewertung. Solange diese fehlen, keine Zielerreichung behaupten.

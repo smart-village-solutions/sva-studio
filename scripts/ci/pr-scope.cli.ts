@@ -3,6 +3,8 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { classifyPrScope, resolveChangedFiles, type PrScopeDecision } from './pr-scope.ts';
+import { buildCoverageWorkflowMatrices } from './coverage-plan.ts';
+import { loadWorkspaceProjectRoots } from './nx-project-graph.ts';
 
 interface PrScopeCliOptions {
   base: string;
@@ -55,20 +57,28 @@ const createGithubOutputLines = (
   decision: PrScopeDecision,
   base: string,
   head: string
-): string[] => [
-  `base=${base}`,
-  `head=${head}`,
-  `code_relevant=${decision.codeRelevant ? 'true' : 'false'}`,
-  `quality_gate_mode=${decision.qualityGateMode}`,
-  `coverage_mode=${decision.coverageMode}`,
-  `integration_mode=${decision.integrationMode}`,
-  `a11y_mode=${decision.a11yMode}`,
-  `runtime_verify_mode=${decision.runtimeVerifyMode}`,
-  `app_build_mode=${decision.appBuildMode}`,
-  `documentation_catalog_mode=${decision.documentationCatalogMode}`,
-  `db_schema_mode=${decision.dbSchemaMode}`,
-  `escalation_reasons=${decision.escalationReasons.join(',')}`,
-];
+): string[] => {
+  const matrices = buildCoverageWorkflowMatrices(
+    decision.changedFiles,
+    loadWorkspaceProjectRoots()
+  );
+  return [
+    `base=${base}`,
+    `head=${head}`,
+    `code_relevant=${decision.codeRelevant ? 'true' : 'false'}`,
+    `quality_gate_mode=${decision.qualityGateMode}`,
+    `coverage_mode=${decision.coverageMode}`,
+    `integration_mode=${decision.integrationMode}`,
+    `a11y_mode=${decision.a11yMode}`,
+    `runtime_verify_mode=${decision.runtimeVerifyMode}`,
+    `app_build_mode=${decision.appBuildMode}`,
+    `documentation_catalog_mode=${decision.documentationCatalogMode}`,
+    `db_schema_mode=${decision.dbSchemaMode}`,
+    `escalation_reasons=${decision.escalationReasons.join(',')}`,
+    `coverage_priority_matrix=${JSON.stringify(matrices.priority)}`,
+    `coverage_remaining_matrix=${JSON.stringify(matrices.remaining)}`,
+  ];
+};
 
 export interface PrScopeEvidence {
   schemaVersion: 1;

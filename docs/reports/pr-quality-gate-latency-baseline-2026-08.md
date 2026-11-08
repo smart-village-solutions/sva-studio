@@ -151,6 +151,23 @@ erfolgte mit ungecachten Nx-Targets auf demselben Rechner; parallele gezielte
 Tooling-Prüfungen verursachen wechselnde Rechnerlast. Das ist kein
 GitHub-Latenznachweis.
 
+Die drei Abfallplugin-Läufe dauern 155,17 / 107,29 / 106,68 Sekunden (Median
+107,29 Sekunden gegenüber 175,45 Sekunden, −38,85 %). Auch hier stimmen die
+Testfall-Multimengen aller drei Vorher- und Nachher-Läufe exakt überein:
+108 Dateien, 632 Fälle, keine Skips. Beide lokalen 30-Prozent-Ziele werden
+damit in dieser kleinen Stichprobe erreicht. Nx-Caching war deaktiviert;
+vorhandene Vitest-/Vite-Optimierungscaches und geteilte Rechnerlast sind keine
+Garantie für identische Cold-Start-Zeiten auf frischen GitHub-Runnern.
+
+Im letzten Routenprofil bleiben 125,79 Sekunden erfasste Importarbeit (62 %):
+Die zehn teuersten Einträge führen von Instance-Erstellung über Fehlertexte,
+Berechtigungsbezeichnungen und Plugin-Registry sowie IAM-Seite und Router.
+Beim Abfallplugin verbleiben 62,32 Sekunden (62 %); die zehn teuersten Einträge
+betreffen Import-Section, Page-Support, Studio-UI-Root, Page, Fraction-Reminder
+und benutzerdefinierte Tourdaten. Diese realen UI-/Registry-Verträge bleiben
+erhalten; die Testisolation wurde nicht pauschal aufgehoben. Eine weitere
+Helper-Umleitung über 28 Importstellen wurde für diesen Abschnitt verworfen.
+
 Die drei ungeänderten E2E-Baseline-Jobs dauern einschließlich Setup/Upload
 1.094 / 1.112 / 1.080 Sekunden (Median 18:14 Minuten). Die eigentlichen
 E2E-Ausführungsschritte benötigen 1.002 / 1.019 / 1.001 Sekunden. Die drei

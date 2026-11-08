@@ -54,6 +54,8 @@ describe('sync-injected-workspace-packages', () => {
       path.join(tempRoot, 'nx.json'),
       JSON.stringify({
         neverConnectToCloud: true,
+        // Scheduling assertions must not probe unrelated mounted volumes for cache sizing.
+        maxCacheSize: '1MB',
         targetDefaults: { 'check:runtime': { parallelism: defaults['check:runtime'].parallelism } },
       })
     );

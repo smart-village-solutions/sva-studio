@@ -170,6 +170,16 @@ describe('mandatory distributed coverage reports', () => {
     }
     return directory;
   };
+  it('allows the priority decision before rest reports exist while the final decision stays closed', () => {
+    const directory = arrange();
+    fs.rmSync(path.join(directory, 'coverage-partition-remaining-1'), { recursive: true });
+    expect(validateCoveragePartitions({
+      directory, baseSha: 'base', headSha: 'head', expected: ['direct-1'],
+    })).toHaveLength(1);
+    expect(() => validateCoveragePartitions({
+      directory, baseSha: 'base', headSha: 'head', expected: ['direct-1', 'remaining-1'],
+    })).toThrow();
+  });
   it('accepts complete reports and explicit empty partitions', () => {
     expect(
       validateCoveragePartitions({

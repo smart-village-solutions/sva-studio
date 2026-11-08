@@ -6,7 +6,7 @@
 - [x] C: Coverage aufteilen, zusammenführen und früh auswerten
 - [x] D: Main-Doppelarbeit entfernen und Sonar trennen
 - [x] E: E2E isoliert aufteilen, Responsive-Fälle parametrisieren
-- [ ] Gezielte Negativtests, Typ-/Runtime- und Dokumentationsprüfungen
+- [x] Gezielte Negativtests, Typ-/Runtime- und Dokumentationsprüfungen
 - [ ] Gepaarte Messungen, Flake-Wiederholungen und zehn CI-Endstände
 
 Die Implementierungsmarkierungen ersetzen keine Abnahme: GitHub-Endstände,

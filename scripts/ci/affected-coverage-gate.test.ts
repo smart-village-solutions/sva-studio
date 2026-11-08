@@ -4,6 +4,7 @@ import {
   buildCoveragePartitionCommand,
   buildCoverageProjectCommand,
   buildEarlyCoverageGateCommand,
+  buildCoverageWorkflowMatrices,
   excludeCoverageExemptProjects,
 } from './coverage-plan.ts';
 import { validateCoverageTestResults } from './validate-downloaded-coverage.ts';
@@ -126,6 +127,7 @@ describe('affected-coverage-gate', () => {
         loadWorkspaceProjectRoots,
       })
     ).toMatchObject({
+      changedFiles: ['packages/plugin-news/src/index.ts'],
       affectedProjects: ['plugin-news'],
       projectRoots: [{ name: 'plugin-news', root: 'packages/plugin-news' }],
       changedProjectPlan: {
@@ -156,6 +158,38 @@ describe('affected-coverage-gate', () => {
 });
 
 describe('distributed coverage plan', () => {
+  const roots = [
+    { name: 'core', root: 'packages/core' },
+    { name: 'sva-studio-react', root: 'apps/sva-studio-react' },
+    { name: 'plugin-waste-management', root: 'packages/plugin-waste-management' },
+  ];
+  it.each([
+    [false, false],
+    [true, false],
+    [false, true],
+    [true, true],
+  ])(
+    'routes only directly changed heavy projects into priority (app=%s, waste=%s)',
+    (app, waste) => {
+      const changedFiles = [
+        'packages/core/src/index.ts',
+        'pnpm-lock.yaml',
+        ...(app ? ['apps/sva-studio-react/src/server.ts'] : []),
+        ...(waste ? ['packages/plugin-waste-management/src/index.ts'] : []),
+      ];
+      const { priority, remaining } = buildCoverageWorkflowMatrices(changedFiles, roots);
+      expect(priority.filter((part) => part.startsWith('app-'))).toHaveLength(app ? 4 : 0);
+      expect(priority.filter((part) => part.startsWith('waste-'))).toHaveLength(waste ? 2 : 0);
+      expect(priority.filter((part) => part.startsWith('direct-'))).toHaveLength(4);
+      expect(new Set([...priority, ...remaining]).size).toBe(14);
+      expect([...priority, ...remaining].sort()).toEqual([...coveragePartitions].sort());
+      expect(priority.some((part) => remaining.includes(part))).toBe(false);
+    }
+  );
+  it('keeps configuration-only heavy work in the rest group and rejects missing manifest roots', () => {
+    expect(buildCoverageWorkflowMatrices(['nx.json'], roots).priority).toHaveLength(4);
+    expect(() => buildCoverageWorkflowMatrices([], roots.slice(0, 1))).toThrow(/Projektroot/);
+  });
   const plan = {
     changedFiles: ['packages/core/src/index.ts', 'nx.json'],
     affectedProjects: ['core', 'data', 'plugin-waste-management', 'sva-studio-react'],

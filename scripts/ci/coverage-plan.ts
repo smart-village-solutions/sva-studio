@@ -33,8 +33,9 @@ export const resolveCoveragePlan = (
   fullProjects: string[],
   dependencies: CoveragePlanDependencies
 ): ResolvedCoveragePlan => {
+  let changedFiles: string[] = [];
   try {
-    const changedFiles = dependencies.resolveChangedFiles(options.base, options.head);
+    changedFiles = dependencies.resolveChangedFiles(options.base, options.head);
     const affectedProjects = dependencies.getCoverageProjects(options.base, options.head, full);
     const projectRoots = dependencies.loadNxProjectRoots();
     return {
@@ -64,7 +65,7 @@ export const resolveCoveragePlan = (
     }
 
     return {
-      changedFiles: [],
+      changedFiles,
       affectedProjects: fullProjects,
       projectRoots,
       changedProjectPlan: {
@@ -96,6 +97,32 @@ export const coveragePartitions = [
 ] as const;
 export type CoveragePartition = (typeof coveragePartitions)[number];
 
+const directlyChangedCoverageProjects = (
+  changedFiles: readonly string[],
+  projectRoots: readonly ProjectRoot[]
+): string[] =>
+  projectRoots
+    .filter(({ root }) => changedFiles.some((file) => file.startsWith(`${root}/`)))
+    .map(({ name }) => name);
+
+export const buildCoverageWorkflowMatrices = (
+  changedFiles: readonly string[],
+  projectRoots: readonly ProjectRoot[]
+): { priority: CoveragePartition[]; remaining: CoveragePartition[] } => {
+  const heavyProjects = { app: 'sva-studio-react', waste: 'plugin-waste-management' };
+  for (const project of Object.values(heavyProjects)) {
+    if (!projectRoots.some(({ name }) => name === project))
+      throw new Error(`Coverage-Matrix kann Projektroot nicht auflösen: ${project}`);
+  }
+  const direct = directlyChangedCoverageProjects(changedFiles, projectRoots);
+  const priority = coveragePartitions.filter((partition) => {
+    if (partition.startsWith('direct-')) return true;
+    if (partition.startsWith('remaining-')) return false;
+    return direct.includes(partition.startsWith('app-') ? heavyProjects.app : heavyProjects.waste);
+  });
+  return { priority, remaining: coveragePartitions.filter((part) => !priority.includes(part)) };
+};
+
 export const parseCoveragePartition = (value: string): CoveragePartition => {
   if (!coveragePartitions.includes(value as CoveragePartition))
     throw new Error(`Ungültige Coverage-Partition: ${value}`);
@@ -121,9 +148,7 @@ export const selectCoveragePartition = (plan: ResolvedCoveragePlan, value: strin
 export const prioritizeChangedCoverageProjects = (
   plan: ResolvedCoveragePlan
 ): ResolvedCoveragePlan => {
-  const mapped = plan.projectRoots
-    .filter(({ root }) => plan.changedFiles.some((file) => file.startsWith(`${root}/`)))
-    .map(({ name }) => name);
+  const mapped = directlyChangedCoverageProjects(plan.changedFiles, plan.projectRoots);
   const plannedProjects =
     plan.changedProjectPlan.mode === 'full-fallback'
       ? [...plan.changedProjectPlan.directProjects, ...plan.changedProjectPlan.remainingProjects]

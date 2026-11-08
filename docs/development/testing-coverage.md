@@ -171,7 +171,7 @@ zur abgeschlossenen Shadow-Abnahme stehen in
 `../reports/ci-gate-shadow-parity-2026-08.md`.
 
 - Pull Requests:
-  - Required Check `Coverage`: für reguläre PRs bewusster No-op. Bei Coverage-/CI-kritischen Änderungen laufen priorisierte und restliche Partitionen parallel. Nach vollständigen Prioritätsreports werden Paket-Floors, Baseline-Deltas und New-Code-Abdeckung früh geprüft; `Coverage Complete` prüft anschließend den gesamten Scope einschließlich globaler Floors und New-Code-Gate.
+  - Required Check `Coverage`: für reguläre PRs bewusster No-op. Bei Coverage-/CI-kritischen Änderungen laufen priorisierte und restliche Partitionen parallel. Die bestehende Scope-CLI ordnet App-/Abfall-Shards nur bei direkter Änderung der Prioritätsmenge zu; rein transitive schwere Projekte laufen im Rest. Nach vollständigen Prioritätsreports werden Paket-Floors, Baseline-Deltas und New-Code-Abdeckung früh geprüft; `Coverage Complete` prüft anschließend den gesamten Scope einschließlich globaler Floors und New-Code-Gate.
   - Der finale Job `Coverage` akzeptiert ausschließlich versionierte, Head-SHA-gebundene und disjunkte Projektartefakte; fehlende, doppelte, veraltete, überlappende oder manipulierte Reports stoppen fail-closed
   - Job `Complexity`: separates, blockierendes Komplexitäts-Gate
   - Job `PR Integration`: `affected`, `full` oder bewusster No-op für die allgemeinen echten Integrationsziele; Monitoring-spezifische Läufe bleiben bewusst im separaten Workflow `monitoring-stack`

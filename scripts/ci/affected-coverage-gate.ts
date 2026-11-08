@@ -8,6 +8,7 @@ import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-
 import { clearWorkspaceCoverageOutputs, mergeProjectCoverage } from './validate-downloaded-coverage.ts';
 import { planChangedProjectsWithFallback } from './changed-project-plan.ts';
 import {
+  buildCoverageWorkflowMatrices,
   coveragePartitions,
   parseCoveragePartition,
   buildAppCoverageCommand,
@@ -239,8 +240,9 @@ export const mergeCoveragePartitions = (
 ): void => {
   const startedAt = new Date();
   if (!directory) throw new Error('Coverage-Partitionsverzeichnis fehlt.');
+  const current = resolveCurrentCoveragePlan(options);
   const expected = priorityOnly
-    ? coveragePartitions.filter((partition) => !partition.startsWith('remaining-'))
+    ? buildCoverageWorkflowMatrices(current.changedFiles, current.projectRoots).priority
     : coveragePartitions;
   const entries = validateCoveragePartitions({
     directory,
@@ -249,7 +251,6 @@ export const mergeCoveragePartitions = (
     expected,
   });
   const resolved = entries[0].plan;
-  const current = resolveCurrentCoveragePlan(options);
   if (JSON.stringify(resolved) !== JSON.stringify(current))
     throw new Error('Coverage-Plan entspricht nicht dem aktuellen Quellstand.');
   const projects = priorityOnly

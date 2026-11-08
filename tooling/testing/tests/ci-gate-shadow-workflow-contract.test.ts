@@ -33,6 +33,14 @@ describe('consolidated CI gate workflows', () => {
     expect(prGates).not.toContain('CI Shadow');
   });
 
+  it('uses the shared scope matrices so transitive heavy projects do not delay changed coverage', () => {
+    expect(prGates).toContain('partition: ${{ fromJSON(needs.scope.outputs.coverage_priority_matrix) }}');
+    expect(prGates).toContain('partition: ${{ fromJSON(needs.scope.outputs.coverage_remaining_matrix) }}');
+    const early = prGates.slice(prGates.indexOf('\n  coverage-early:'), prGates.indexOf('\n  coverage-complete:'));
+    expect(early).toContain('needs: [scope, coverage-priority]');
+    expect(early).not.toContain('needs: [scope, coverage-remaining]');
+  });
+
   it('computes the general PR scope exactly once and retains SHA-bound evidence', () => {
     const scopeStart = prGates.indexOf('\n  scope:');
     const lintStart = prGates.indexOf('\n  lint:', scopeStart);

@@ -10,8 +10,13 @@ export interface FileCoverage {
   instrumentedBranchesByLine: Map<number, number>;
 }
 
-export function parseLcovCoverage(rootDir: string): Map<string, FileCoverage> {
-  const workspaceRoots = [path.join(rootDir, 'apps'), path.join(rootDir, 'packages')];
+export function parseLcovCoverage(
+  rootDir: string,
+  externalPlugin = false
+): Map<string, FileCoverage> {
+  const workspaceRoots = externalPlugin
+    ? [path.join(rootDir, 'coverage')]
+    : [path.join(rootDir, 'apps'), path.join(rootDir, 'packages')];
   const lcovFiles = workspaceRoots.flatMap((workspaceRoot) =>
     findCoverageArtifacts(workspaceRoot, 'lcov.info')
   );

@@ -1450,3 +1450,9 @@ Die ausdrücklich gemeinsame Tabler-Icon-Auswahl liegt in `@sva/studio-ui-react`
 Kacheltexte sind kommunale Inhalte mit Pflichtwerten auf Deutsch und feldweisem Sprach-Fallback; feste UI-Texte nutzen den vorhandenen Übersetzungspfad. Externe Links sind HTTPS-Ziele ohne eingebettete Zugangsdaten und öffnen mit `noopener noreferrer`. Der Arbeitsplatz teilt keine Studio-Tokens oder Cookies mit Zielanwendungen und ruft diese nicht serverseitig ab.
 
 Der Anwendungsarbeitsplatz wird als externes Paket `@sva/plugin-application-workspace` aus einem eigenständigen Repository konsumiert. Header-Einstieg und Content-only-Layout stammen aus validierten Plugin-Beiträgen; der gemeinsame IconPicker und der instanzgebundene Speicher-/Audit-Adapter bleiben Host-Eigentum. Die bisherige Workspace-Kopie entfällt.
+
+## Qualität eigenständiger Plugins
+
+Der gemeinsame Vertrag QS-01 bis QS-09 im Plugin-Guide gilt unabhängig vom Repository. Externe Quellwurzeln werden ausdrücklich an die vorhandenen Boundary-, UI-, Coverage-/Regressions-, New-Code- und Komplexitätsprüfer übergeben; leere Globs, fehlende Berichte und nicht erfasste produktive Quellen sind kein Erfolgsnachweis. Strenge externe Prüfungen ändern den bisherigen Warnmodus der Workspace-Boundary-Prüfung nicht stillschweigend. Review-pflichtige Runtime-Signale werden einzeln begründet, ohne private Imports freizugeben.
+
+Das Referenz-Plugin erzeugt öffentliche SDK-/UI-Peers aus einem festen Studio-Commit und hält deren Digests fest. Der Kandidat wird einmal gepackt, außerhalb beider Quellbäume installiert und danach mit identischen Bytes über die normalen Studio-Paket-/Katalogpfade geprüft. Die Host-Nachweise verwenden echte Redis-Sitzungen und disposable PostgreSQL-Daten; Browser-Fixtures ersetzen dabei keine API-Autorisierungsprüfung. Ein optionales Plugin darf keine feste Studio-Quellcodeabhängigkeit erzwingen.

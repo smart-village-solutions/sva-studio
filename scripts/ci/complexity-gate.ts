@@ -67,7 +67,10 @@ function resolveComplexityPaths(rootDir: string): ComplexityPaths {
   };
 }
 
-function loadComplexityData(rootDir: string): {
+function loadComplexityData(
+  rootDir: string,
+  pluginRoot?: string
+): {
   paths: ComplexityPaths;
   policy: ComplexityPolicy;
   baseline: ComplexityBaseline;
@@ -88,8 +91,23 @@ function loadComplexityData(rootDir: string): {
   return {
     paths,
     policy: rawPolicy,
-    baseline,
-    analyzedFiles: resolveModuleFiles(rootDir, rawPolicy.modules),
+    baseline: pluginRoot ? { files: {} } : baseline,
+    analyzedFiles: resolveModuleFiles(
+      pluginRoot ?? rootDir,
+      pluginRoot
+        ? [
+            {
+              id: 'external-plugin',
+              label: 'External plugin',
+              class: 'kritisch',
+              owner: 'plugin-maintainers',
+              reviewCadence: 'each change',
+              include: ['src/**/*.ts', 'src/**/*.tsx'],
+              exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/**/*.d.ts'],
+            },
+          ]
+        : rawPolicy.modules
+    ),
   };
 }
 
@@ -105,7 +123,12 @@ export function runComplexityGate(options: RunComplexityGateOptions = {}): RunCo
   const baseRef = options.baseRef?.trim();
   const headRef = options.headRef?.trim() || 'HEAD';
   const stepSummaryPath = options.stepSummaryPath ?? process.env.GITHUB_STEP_SUMMARY ?? null;
-  const { paths, policy, baseline, analyzedFiles: allAnalyzedFiles } = loadComplexityData(rootDir);
+  const {
+    paths,
+    policy,
+    baseline,
+    analyzedFiles: allAnalyzedFiles,
+  } = loadComplexityData(rootDir, options.pluginRoot);
 
   if (allAnalyzedFiles.length === 0) {
     throw new Error('No files matched the complexity policy');
@@ -177,6 +200,7 @@ export function main(): number {
   try {
     const result = runComplexityGate({
       rootDir,
+      pluginRoot: readCliOptionValue(process.argv, '--plugin-root'),
       updateBaseline,
       baseRef,
       headRef,

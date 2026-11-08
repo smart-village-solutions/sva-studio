@@ -11,6 +11,8 @@ const testDir = path.dirname(fileURLToPath(import.meta.url));
 
 type RunSonarNewCodeGate = (options: {
   rootDir?: string;
+  policyRoot?: string;
+  externalPlugin?: boolean;
   baseRef?: string;
   headRef?: string;
   targetPct?: number;
@@ -415,4 +417,22 @@ describe('sonar new code gate', () => {
     expect(result.consideredFiles).toBe(0);
     expect(result.ignoredFiles).toBe(1);
   });
+});
+
+it('measures external plugin new code with the existing LCOV/diff rules and rejects missing reports', async () => {
+  const rootDir = createTempWorkspace();
+  initGitRepo(rootDir);
+  writePolicy(rootDir);
+  writeSourceFile(rootDir, 'src/index.ts', 'export const value = 1;\n');
+  commitAll(rootDir, 'base');
+  writeSourceFile(rootDir, 'src/index.ts', 'export const value = 2;\n');
+  commitAll(rootDir, 'change');
+  writeLcov(rootDir, '.', 'src/index.ts', { da: [[1, 0]] });
+  const run = await loadRunSonarNewCodeGate();
+  const options = { rootDir, policyRoot: rootDir, externalPlugin: true, baseRef: 'HEAD~1' };
+  expect(run(options)).toMatchObject({ passed: false, consideredFiles: 1, coveragePct: 0 });
+  writeLcov(rootDir, '.', 'src/index.ts', { da: [[1, 1]] });
+  expect(run(options)).toMatchObject({ passed: true, coveragePct: 100 });
+  fs.unlinkSync(path.join(rootDir, 'coverage/lcov.info'));
+  expect(() => run(options)).toThrow('external_plugin_lcov_required');
 });

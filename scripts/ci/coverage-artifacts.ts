@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { assertCoveragePolicy, readJson } from './coverage-policy.ts';
+import { isLikelyNonExecutableFile } from './new-code-coverage-source.ts';
 import { toMetricValues, toPct } from './coverage-metrics.ts';
 import type {
   CoverageBaseline,
@@ -116,7 +117,11 @@ function resolveCoveragePaths(rootDir: string): CoveragePaths {
   };
 }
 
-export function loadCoverageData(rootDir: string): LoadedCoverageData {
+export function loadCoverageData(
+  rootDir: string,
+  pluginRoot?: string,
+  pluginBaselinePath?: string
+): LoadedCoverageData {
   const paths = resolveCoveragePaths(rootDir);
   if (!fs.existsSync(paths.policyPath)) {
     throw new Error(`Coverage policy not found: ${paths.policyPath}`);
@@ -125,13 +130,27 @@ export function loadCoverageData(rootDir: string): LoadedCoverageData {
   const rawPolicy = readJson<unknown>(paths.policyPath);
   assertCoveragePolicy(rawPolicy);
 
+  if (pluginRoot) {
+    paths.workspaceRoots = [pluginRoot];
+    paths.baselinePath =
+      pluginBaselinePath ?? path.join(pluginRoot, 'config/coverage-baseline.json');
+    const name = path.basename(pluginRoot);
+    rawPolicy.perProjectFloors = { [name]: rawPolicy.globalFloors };
+    rawPolicy.exemptProjects = [];
+    rawPolicy.criticalProjects = {};
+    if (!fs.existsSync(paths.baselinePath)) throw new Error('external_plugin_baseline_required');
+  }
+  const externalName = pluginRoot
+    ? readJson<{ name: string }>(path.join(pluginRoot, 'package.json')).name
+    : null;
+  if (pluginRoot) rawPolicy.perProjectFloors = { [externalName!]: rawPolicy.globalFloors };
   const baseline = fs.existsSync(paths.baselinePath)
     ? readJson<CoverageBaseline>(paths.baselinePath)
     : { projects: {} };
 
   const summaries = paths.workspaceRoots.flatMap((dir) => findCoverageSummaries(dir));
   const projects = summaries.reduce<Record<string, MetricFloors>>((acc, summaryPath) => {
-    const projectName = projectFromCoveragePath(summaryPath);
+    const projectName = externalName ?? projectFromCoveragePath(summaryPath);
     if (!projectName) {
       return acc;
     }
@@ -149,9 +168,9 @@ export function loadCoverageData(rootDir: string): LoadedCoverageData {
   const fileCoverageByProject = lcovFiles.reduce<
     Record<string, Record<string, FileCoverageMetrics>>
   >((acc, lcovPath) => {
-    const projectName = projectFromCoveragePath(
-      lcovPath.replace(/lcov\.info$/, 'coverage-summary.json')
-    );
+    const projectName =
+      externalName ??
+      projectFromCoveragePath(lcovPath.replace(/lcov\.info$/, 'coverage-summary.json'));
     if (!projectName) {
       return acc;
     }
@@ -165,6 +184,24 @@ export function loadCoverageData(rootDir: string): LoadedCoverageData {
     return acc;
   }, {});
 
+  if (pluginRoot) {
+    const coverage = fileCoverageByProject[externalName!] ?? {};
+    const sourceRoot = path.join(pluginRoot, 'src');
+    const files = fs
+      .readdirSync(sourceRoot, { recursive: true, encoding: 'utf8' })
+      .filter((file) => /\.tsx?$/.test(file) && !/\.(?:test|spec|d)\.tsx?$/.test(file));
+    if (!files.length) throw new Error('external_plugin_sources_required');
+    for (const file of files) {
+      const absolutePath = path.join(sourceRoot, file);
+      const relative = path.relative(rootDir, absolutePath).split(path.sep).join('/');
+      if (
+        !(relative in coverage) &&
+        !isLikelyNonExecutableFile(file, fs.readFileSync(absolutePath, 'utf8').split('\n'))
+      ) {
+        throw new Error(`external_plugin_source_missing_from_lcov:${file}`);
+      }
+    }
+  }
   return {
     paths,
     policy: rawPolicy,

@@ -122,6 +122,24 @@ describe('remote app config builder', () => {
     expect(staging).not.toContain('MEILI_SEARCH_KEY=');
   });
 
+  it('binds the production search source to Guben and keeps its key protected', () => {
+    const profile = readFileSync(
+      new URL('../../config/runtime/remote/prod.vars', import.meta.url),
+      'utf8'
+    );
+    const values = parseRemoteConfigLayer('prod', 'profile', profile).values;
+    expect(values.get('MEILI_URL')).toBe('https://search.common.smart-village.app');
+    expect(JSON.parse(values.get('MEILI_SOURCES') ?? '{}')).toEqual({
+      'bb-guben': {
+        graphqlBaseUrl: 'https://bb-guben.server.smart-village.app/graphql',
+        environment: 'production',
+        municipalityIds: [27],
+      },
+    });
+    expect(profile).not.toContain('MEILI_SEARCH_KEY=');
+    expect(profile).not.toContain('MEILI_MASTER_KEY=');
+  });
+
   it('requires the shared scanner host and private bucket for activation', () => {
     const source = profile.replace('MEDIA_SCAN_ENABLED=false', 'MEDIA_SCAN_ENABLED=true');
     expect(

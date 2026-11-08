@@ -624,3 +624,5 @@ describe('ModulesPage', () => {
     expect(screen.queryByRole('link', { name: 'Plugin-Einstellungen' })).toBeNull();
   });
 });
+
+// Fixed route-scope selection for the test acceleration comparison.

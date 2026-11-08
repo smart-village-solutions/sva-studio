@@ -106,6 +106,7 @@ describe('studio-distribution-artifact', () => {
     const studio = JSON.parse(runArtifactCommand('selection', '', 'studio').toString('utf8'));
     expect(studio.pluginIds).toContain('vouchers');
     expect(studio.pluginIds).toContain('construction-sites');
+    expect(studio.pluginIds).toContain('jobs');
     expect(studio.pluginIds).toContain('app-translations');
     const ssf = JSON.parse(runArtifactCommand('selection', '', 'ssf').toString('utf8'));
     expect(ssf.pluginIds).not.toContain('app-translations');
@@ -425,6 +426,7 @@ describe('studio-distribution-artifact', () => {
         'events',
         'faq',
         'generic-items',
+        'jobs',
         'news',
         'poi',
         'projects',
@@ -512,6 +514,7 @@ describe('studio-distribution-artifact', () => {
         'plugin-events',
         'plugin-faq',
         'plugin-generic-items',
+        'plugin-jobs',
         'plugin-news',
         'plugin-poi',
         'plugin-projects',

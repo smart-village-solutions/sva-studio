@@ -106,7 +106,7 @@ export const instancesAdminDEResources = {
     reauthRequired:
       'Bitte erneut anmelden und die Vorlage danach neu öffnen. Ihr Entwurf bleibt bis dahin erhalten.',
     currentTexts: 'Zwischenzeitlich gespeicherte Texte',
-    title: 'E-Mail-Adresse bestätigen',
+    title: 'E-Mail-Bestätigung',
     open: 'E-Mail-Bestätigung anpassen',
     description:
       'Diese deutschen Texte gelten für Registrierung und Adressänderung. Die Vorlage wird im Studio gespeichert und mit dem Keycloak-Realm abgeglichen. Es wird keine E-Mail versendet.',

@@ -1,6 +1,6 @@
 {
   "name": "@sva/plugin-app-translations",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "EUPL-1.2",
   "private": true,
   "type": "module",

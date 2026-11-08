@@ -53,6 +53,20 @@ const readPersistablePluginTenantLifecycleRegistry = () =>
     )
   );
 
+export const persistAppTranslationNewsReconcile = async (instanceId: string): Promise<void> => {
+  const pluginId = 'app-translations';
+  const lifecycle = readPersistablePluginTenantLifecycleRegistry().get(pluginId);
+  if (!lifecycle) return;
+  await withScopedRegistryRepository(instanceId, (repository) =>
+    repository.persistPluginTenantLifecycleReconcileIntents({
+      instanceId,
+      lifecycles: [lifecycle],
+      forcePluginIds: [pluginId],
+      reconcileActiveOnly: true,
+    })
+  );
+};
+
 const readReservedPluginOidcClientIds = (): readonly string[] =>
   readInstanceRegistryPluginOidcClientRequirements().map(({ clientId }) => clientId);
 

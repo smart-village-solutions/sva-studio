@@ -7,6 +7,22 @@ import {
 } from './schemas.js';
 
 describe('iam content schemas', () => {
+  it('does not allow request bodies to opt into Mainserver publication rules', () => {
+    const publication = { status: 'published', publicationSource: 'mainserver' };
+    expect(
+      createContentSchema.safeParse({
+        ...publication,
+        contentType: 'news.article',
+        title: 'News',
+        payload: {},
+      }).success
+    ).toBe(false);
+    expect(updateContentSchema.safeParse(publication).success).toBe(false);
+    expect(updateContentSchema.parse({ title: 'News', publicationSource: 'mainserver' })).toEqual({
+      title: 'News',
+    });
+  });
+
   it('requires publishedAt when creating published content', () => {
     const result = createContentSchema.safeParse({
       contentType: 'news.article',

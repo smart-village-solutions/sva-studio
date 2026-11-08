@@ -310,6 +310,42 @@ describe('provisioning-auth-state', () => {
     );
   });
 
+  it.each(['demo', 'another-instance'])(
+    'uses credential proofs only for owned clients (%s)',
+    async (owner) => {
+      const client = createClient({
+        getOidcClientByClientId: vi.fn(async (clientId: string) => ({
+          id: `${clientId}-id`,
+          attributes: {
+            managed_by: 'studio',
+            instance_id: owner,
+            artifact_key: clientId === 'login' ? 'login_client' : 'tenant_admin_client',
+          },
+        })),
+        getOidcClientSecretValue: vi.fn(async () => {
+          throw new Error('HTTP 403');
+        }),
+      });
+      const readSecret = vi.fn(async (id: string) => (id === 'login' ? 'verified-login' : null));
+      const state = await createReadKeycloakState(
+        () => client,
+        readSecret
+      )({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'login',
+        authClientSecretConfigured: true,
+        tenantAdminClient: { clientId: 'tenant-admin' },
+      });
+      expect(state.keycloakClientSecret).toBe(owner === 'demo' ? 'verified-login' : null);
+      expect(state.tenantAdminClientSecret).toBeNull();
+      expect(readSecret).toHaveBeenCalledTimes(owner === 'demo' ? 2 : 0);
+      expect(client.getOidcClientSecretValue).not.toHaveBeenCalled();
+    }
+  );
+
   it('returns an empty auth state when the realm does not exist', async () => {
     const client = createClient({
       getRealm: vi.fn(async () => null),

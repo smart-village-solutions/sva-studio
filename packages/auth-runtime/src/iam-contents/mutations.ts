@@ -12,7 +12,7 @@ import { validateCsrf } from '../iam-account-management/csrf.js';
 import { validateContentTypePayload } from './content-type-registry.js';
 import { authorizeUpdateContentActions } from './mutation-authorization.js';
 import {
-  rejectVoucherCoreMutation,
+  rejectDedicatedEditorCoreMutation,
   createFailureResponse,
   createFailureResponseFromResponse,
   logCreateFailure,
@@ -83,8 +83,11 @@ export const createContentResponse = async (
   if (prepared instanceof Response) {
     return prepared;
   }
-  const voucherError = rejectVoucherCoreMutation(prepared.parsedData.contentType, actor.requestId);
-  if (voucherError) return voucherError;
+  const dedicatedEditorError = rejectDedicatedEditorCoreMutation(
+    prepared.parsedData.contentType,
+    actor.requestId
+  );
+  if (dedicatedEditorError) return dedicatedEditorError;
   const parsedData = {
     ...prepared.parsedData,
     organizationId: actor.activeOrganizationId,
@@ -192,8 +195,11 @@ export const updateContentResponse = async (
   if (authorizationError) {
     return authorizationError;
   }
-  const voucherError = rejectVoucherCoreMutation(currentContent.contentType, actor.requestId);
-  if (voucherError) return voucherError;
+  const dedicatedEditorError = rejectDedicatedEditorCoreMutation(
+    currentContent.contentType,
+    actor.requestId
+  );
+  if (dedicatedEditorError) return dedicatedEditorError;
 
   try {
     const updatedId = await updateContent({
@@ -271,8 +277,11 @@ export const deleteContentResponse = async (
     if (authorizationError) {
       return authorizationError;
     }
-    const voucherError = rejectVoucherCoreMutation(currentContent.contentType, actor.requestId);
-    if (voucherError) return voucherError;
+    const dedicatedEditorError = rejectDedicatedEditorCoreMutation(
+      currentContent.contentType,
+      actor.requestId
+    );
+    if (dedicatedEditorError) return dedicatedEditorError;
 
     const deletedId = await deleteContent({
       instanceId: actor.instanceId,

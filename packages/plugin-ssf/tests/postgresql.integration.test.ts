@@ -530,6 +530,98 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     );
   });
 
+  it.each(['ready', 'blocked'] as const)(
+    'invalidates %s evidence when only the authorization contract revision changes',
+    async (status) => {
+      const desired = {
+        contractVersion: SSF_AUTHORIZATION_PROJECTION_VERSION,
+        instanceId: `revision-change-${status}`,
+        subjects: [
+          {
+            subject: 'existing-user',
+            roles: ['user' as const],
+            permissions: ['ssf.configuration.tenant.read' as const],
+          },
+        ],
+      };
+      const initial = await stageSsfAuthorizationProjection(rootPool, desired);
+      const evidenceTimestamp = new Date('2026-01-01T00:00:00Z');
+      await rootPool.query(
+        `UPDATE ssf.authorization_projections
+            SET status = $2, confirmed_revision = desired_revision,
+                confirmed_projection = desired_projection, sessions_revoked_revision = desired_revision,
+                last_error_code = $3, confirmed_at = $4, sessions_revoked_at = $4
+          WHERE instance_id = $1`,
+        [
+          desired.instanceId,
+          status,
+          status === 'blocked' ? 'target_readback_failed' : null,
+          evidenceTimestamp,
+        ]
+      );
+      const readEvidence = async () =>
+        (
+          await rootPool.query(
+            `SELECT generation, status, desired_revision, desired_projection, confirmed_revision,
+                confirmed_projection, sessions_revoked_revision, last_error_code,
+                confirmed_at, sessions_revoked_at, confirmed_has_subjects
+           FROM ssf.authorization_projections WHERE instance_id = $1`,
+            [desired.instanceId]
+          )
+        ).rows[0];
+      const unchanged = await readEvidence();
+      await stageSsfAuthorizationProjection(rootPool, desired);
+      expect(await readEvidence()).toEqual(unchanged);
+
+      // Model an older deployed permission catalog with identical subject JSON.
+      const oldRevision = `sha256:${'a'.repeat(64)}`;
+      expect(initial.desiredRevision).not.toBe(oldRevision);
+      await rootPool.query(
+        `UPDATE ssf.authorization_projections
+            SET desired_revision = $2, confirmed_revision = $2, sessions_revoked_revision = $2
+          WHERE instance_id = $1`,
+        [desired.instanceId, oldRevision]
+      );
+      await expect(
+        readReadySsfAuthorizationRevision(tenantPool, desired.instanceId)
+      ).resolves.toBeNull();
+      const staged = await stageSsfAuthorizationProjection(rootPool, desired);
+      expect(staged).toMatchObject({
+        generation: initial.generation + 1,
+        status: 'pending',
+        desiredRevision: initial.desiredRevision,
+        desiredProjection: desired,
+        confirmedRevision: null,
+        confirmedProjection: null,
+        sessionsRevokedRevision: null,
+        lastErrorCode: null,
+      });
+      expect(await readEvidence()).toMatchObject({
+        confirmed_at: null,
+        sessions_revoked_at: null,
+        confirmed_has_subjects: false,
+      });
+      await expect(
+        readReadySsfAuthorizationRevision(tenantPool, desired.instanceId)
+      ).resolves.toBeNull();
+      expect(await stageSsfAuthorizationProjection(rootPool, desired)).toEqual(staged);
+      await expect(
+        claimSsfAuthorizationProjection(rootPool, {
+          instanceId: desired.instanceId,
+          generation: initial.generation,
+          desiredRevision: oldRevision,
+        })
+      ).resolves.toBe(false);
+      await expect(
+        claimSsfAuthorizationProjection(rootPool, {
+          instanceId: desired.instanceId,
+          generation: staged.generation,
+          desiredRevision: staged.desiredRevision,
+        })
+      ).resolves.toBe(true);
+    }
+  );
+
   it('rejects concurrent projection work for one tenant while another proceeds', async () => {
     const store = createPostgresSsfAuthorizationProjectionStore(rootPool);
     let releaseTenantA: (() => void) | undefined;

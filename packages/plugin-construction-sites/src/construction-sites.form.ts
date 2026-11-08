@@ -8,8 +8,11 @@ export type ConstructionSiteFormProps = Readonly<{
   categoryError?: boolean;
   canPublish: boolean;
   disabled: boolean;
+  geometryDrawing?: boolean;
+  onGeometryDrawingChange?: (drawing: boolean) => void;
 }>;
 export const constructionSiteFieldId = (path: string) => {
+  if (path.startsWith('geometry')) return 'cs-geometry';
   if (!path.startsWith('mediaContents')) return `cs-${path.replace(/\./g, '-')}`;
   const url = /^mediaContents\.(\d+)\.sourceUrl\.url$/.exec(path);
   if (url) return `cs-mediaContents-${url[1]}-sourceUrl-url`;

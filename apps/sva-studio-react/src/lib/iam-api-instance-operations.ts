@@ -181,6 +181,7 @@ export const getServerEmailVerificationTemplate = () =>
   requestJson<ApiItemResponse<ServerEmailVerificationTemplateView>>(
     '/api/v1/iam/templates/email-verification'
   );
+
 export const updateServerEmailVerificationTemplate = (payload: {
   expectedRevision: number;
   template: EmailVerificationTemplate | null;

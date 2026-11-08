@@ -17,7 +17,13 @@ import {
   useStudioMediaReferenceSync,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
-import { createPoi, updatePoi, PoiApiError } from './poi.api.js';
+import {
+  createPoi,
+  updatePoi,
+  setPoiVisibility,
+  PoiApiError,
+  readPoiVisibilityFailureContentId,
+} from './poi.api.js';
 import {
   mapPoiDetailFormValuesToInput,
   parsePoiPayloadText,
@@ -25,7 +31,8 @@ import {
 } from './poi.detail-form.js';
 import type { PoiDetailTabId } from './poi.detail-tabs.js';
 import { poiMediaUsagesToContents } from './poi.content-media-adapter.js';
-import { validatePoiSubmission } from './poi.detail-page.validation.js';
+import type { PoiContentItem } from './poi.types.js';
+import { confirmDegradedCorrection, validatePoiSubmission } from './poi.detail-page.validation.js';
 
 const poiSaveErrorMessage = (saveError: unknown, pt: (key: string) => string) =>
   saveError instanceof PoiApiError
@@ -38,30 +45,6 @@ const poiSaveErrorMessage = (saveError: unknown, pt: (key: string) => string) =>
 
 export type PoiStatusMessage = Readonly<{ kind: 'success' | 'error'; text: string }>;
 
-const deviationFormPaths: Readonly<
-  Record<string, Parameters<UseFormReturn<PoiDetailFormValues>['getFieldState']>[0]>
-> = {
-  name: 'name',
-  categories: 'basis.categories',
-  active: 'basis.active',
-  description: 'content.description',
-  mobileDescription: 'content.mobileDescription',
-  addresses: 'content.addresses',
-  location: 'content.location',
-  contact: 'content.contact',
-  openingHours: 'content.openingHours',
-  webUrls: 'content.webUrls',
-  operatingCompany: 'content.operator',
-  priceInformations: 'content.prices',
-  mediaContents: 'content.mediaContents',
-  certificates: 'content.certificates',
-  accessibilityInformation: 'content.accessibilityInformation',
-  tags: 'content.tagsText',
-  payload: 'content.payloadText',
-  externalId: 'settings.externalId',
-  keywords: 'settings.keywords',
-};
-
 type SaveInput = Readonly<{
   methods: UseFormReturn<PoiDetailFormValues>;
   canSave: boolean;
@@ -71,9 +54,11 @@ type SaveInput = Readonly<{
   contentId?: string;
   instanceId?: string;
   mediaUsages: readonly ContentMediaUsage[];
+  mediaDirty: boolean;
   requiresReferenceSync: boolean;
   mediaReferenceSync: ReturnType<typeof useStudioMediaReferenceSync>;
   saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
+  setLoadedItem: Dispatch<SetStateAction<PoiContentItem | null>>;
   setStatus: Dispatch<SetStateAction<PoiStatusMessage | null>>;
   setMediaSavePhaseKey: Dispatch<SetStateAction<string | null>>;
   setActiveTab: (tab: PoiDetailTabId) => void;
@@ -83,33 +68,6 @@ type SaveInput = Readonly<{
   navigate: NavigateFn;
   pt: ReturnType<typeof usePluginTranslation>;
 }>;
-
-const confirmDegradedCorrection = ({
-  methods,
-  deviations,
-  deviationFieldLabels,
-  pt,
-}: SaveInput) => {
-  const correctedDegradedFields = deviations
-    .map(({ fieldGroup }) => fieldGroup)
-    .filter((fieldGroup) => {
-      const fieldPath = deviationFormPaths[fieldGroup];
-      return fieldPath ? methods.getFieldState(fieldPath).isDirty : false;
-    });
-  if (
-    correctedDegradedFields.length > 0 &&
-    !globalThis.confirm(
-      pt('messages.degradedCorrectionConfirm', {
-        fields: correctedDegradedFields
-          .map((field) => deviationFieldLabels[field] ?? field)
-          .join(', '),
-      })
-    )
-  ) {
-    return null;
-  }
-  return correctedDegradedFields;
-};
 
 const createPoiSaveContent = (
   { mode, contentId, actingPrincipalType, mediaUsages, deviations }: SaveInput,
@@ -172,10 +130,9 @@ const savePoiWithMedia = async (
     : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
 };
 
-export const usePoiDetailSave = (input: SaveInput) => {
+const submitPoi = async (input: SaveInput, values: PoiDetailFormValues) => {
   const {
     methods,
-    canSave,
     mode,
     mediaUsages,
     mediaReferenceSync,
@@ -187,64 +144,106 @@ export const usePoiDetailSave = (input: SaveInput) => {
     navigate,
     pt,
   } = input;
-  return methods.handleSubmit(async (values) => {
-    if (!canSave || (mode === 'create' && input.leaveGuard.hasCreated())) return;
-    methods.clearErrors();
-    setStatus(null);
-    const validation = validatePoiSubmission({
-      methods,
-      values,
-      mediaUsages,
-      setActiveTab,
-      focusFieldById,
-    });
-    if (!validation.valid) {
-      if (!('payloadError' in validation)) {
-        setStatus({ kind: 'error', text: pt('messages.validationError') });
-      }
+  methods.clearErrors();
+  setStatus(null);
+  const validation = validatePoiSubmission({
+    methods,
+    values,
+    mediaUsages,
+    setActiveTab,
+    focusFieldById,
+  });
+  if (!validation.valid) {
+    if (!('payloadError' in validation)) {
+      setStatus({ kind: 'error', text: pt('messages.validationError') });
+    }
+    return;
+  }
+  const payload = validation.payload;
+  const leaveRevision = input.leaveGuard.captureRevision();
+  const operationId = saveFeedback.beginSaving();
+  setMediaSavePhaseKey(null);
+  try {
+    const correctedDegradedFields = confirmDegradedCorrection(input);
+    if (!correctedDegradedFields) {
+      saveFeedback.reset();
       return;
     }
-    const payload = validation.payload;
-    const leaveRevision = input.leaveGuard.captureRevision();
-    const operationId = saveFeedback.beginSaving();
-    setMediaSavePhaseKey(null);
-    try {
-      const correctedDegradedFields = confirmDegradedCorrection(input);
-      if (!correctedDegradedFields) {
-        saveFeedback.reset();
-        return;
-      }
-      const saveContent = createPoiSaveContent(input, values, payload, correctedDegradedFields);
-      const result = await savePoiWithMedia(input, saveContent);
-      if (mode === 'create') input.leaveGuard.rememberCreated(result.saved.id);
-      const handledResult = mediaReferenceSync.consumeSaveResult(result);
-      const saved = handledResult.saved;
-      if (handledResult.referenceFailed) {
-        input.leaveGuard.rememberPartialSave(leaveRevision);
-        setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
-        saveFeedback.markFailed(operationId);
-        return;
-      }
-      setStatus(null);
-      saveFeedback.markSaved(operationId);
-      if (mode === 'create') {
-        input.leaveGuard.acknowledgeSaved(leaveRevision);
-        await navigate({
-          to: '/admin/poi/$id',
-          params: { id: saved.id },
-          state: (previous) => addStudioCreatedSaveFeedback(previous, 'poi', saved.id),
-        });
-      }
-    } catch (saveError) {
-      if (mode === 'create' && input.leaveGuard.hasCreated()) {
-        setStatus({ kind: 'success', text: pt('messages.createdNavigationError') });
-        return;
-      }
-      setStatus({
-        kind: 'error',
-        text: poiSaveErrorMessage(saveError, pt),
-      });
+    const saveContent = createPoiSaveContent(input, values, payload, correctedDegradedFields);
+    const result = await savePoiWithMedia(input, saveContent);
+    if (mode === 'create') input.leaveGuard.rememberCreated(result.saved.id);
+    const handledResult = mediaReferenceSync.consumeSaveResult(result);
+    const saved = handledResult.saved;
+    if (handledResult.referenceFailed) {
+      input.leaveGuard.rememberPartialSave(leaveRevision);
+      setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
       saveFeedback.markFailed(operationId);
+      return;
     }
-  });
+    setStatus(null);
+    saveFeedback.markSaved(operationId);
+    if (mode === 'create') {
+      input.leaveGuard.acknowledgeSaved(leaveRevision);
+      await navigate({
+        to: '/admin/poi/$id',
+        params: { id: saved.id },
+        state: (previous) => addStudioCreatedSaveFeedback(previous, 'poi', saved.id),
+      });
+    }
+  } catch (saveError) {
+    const savedContentId = readPoiVisibilityFailureContentId(saveError);
+    if (savedContentId) {
+      input.leaveGuard.rememberCreated(savedContentId);
+      setStatus({ kind: 'error', text: pt('messages.visibilityPartialFailure') });
+      saveFeedback.markFailed(operationId);
+      return;
+    }
+    if (mode === 'create' && input.leaveGuard.hasCreated()) {
+      setStatus({ kind: 'success', text: pt('messages.createdNavigationError') });
+      return;
+    }
+    setStatus({ kind: 'error', text: poiSaveErrorMessage(saveError, pt) });
+    saveFeedback.markFailed(operationId);
+  }
 };
+
+const isVisibilityOnlyChange = (input: SaveInput, values: PoiDetailFormValues): boolean => {
+  const defaults = input.methods.formState.defaultValues;
+  return (
+    input.mode === 'edit' &&
+    defaults?.basis?.active !== undefined &&
+    defaults.basis.active !== values.basis.active &&
+    !input.mediaDirty &&
+    !input.mediaReferenceSync.hasPendingRetry &&
+    JSON.stringify({ ...defaults, basis: { ...defaults.basis, active: values.basis.active } }) ===
+      JSON.stringify(values)
+  );
+};
+
+const savePoiVisibility = async (input: SaveInput, contentId: string, visible: boolean) => {
+  const { methods, saveFeedback, setStatus, pt } = input;
+  methods.clearErrors();
+  setStatus(null);
+  const operationId = saveFeedback.beginSaving();
+  try {
+    await setPoiVisibility(contentId, visible, input.actingPrincipalType);
+    const currentVisibility = methods.getValues('basis.active');
+    methods.resetField('basis.active', { defaultValue: visible });
+    if (currentVisibility !== visible) {
+      methods.setValue('basis.active', currentVisibility, { shouldDirty: true });
+    }
+    input.setLoadedItem((item) => (item?.id === contentId ? { ...item, visible } : item));
+    saveFeedback.markSaved(operationId);
+  } catch (error) {
+    setStatus({ kind: 'error', text: poiSaveErrorMessage(error, pt) });
+    saveFeedback.markFailed(operationId);
+  }
+};
+
+export const usePoiDetailSave = (input: SaveInput) =>
+  input.methods.handleSubmit((values) => {
+    if (!input.canSave || (input.mode === 'create' && input.leaveGuard.hasCreated())) return;
+    return input.contentId && isVisibilityOnlyChange(input, values)
+      ? savePoiVisibility(input, input.contentId, values.basis.active)
+      : submitPoi(input, values);
+  });

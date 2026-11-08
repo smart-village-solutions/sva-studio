@@ -11,6 +11,7 @@ import {
   listActiveInstanceIdsForWorker,
   readAppTranslationsLocalReadiness,
   reconcileAppTranslationServiceBinding,
+  synchronizeAppTranslationNews,
   runCatalogTranslation,
 } from '@sva/auth-runtime/server';
 import {
@@ -191,6 +192,9 @@ const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
   'app-translations.local': () => ({
     readLocalReadiness: readAppTranslationsLocalReadiness,
     reconcileServiceBinding: reconcileAppTranslationServiceBinding,
+    ...(['staging', 'production'].includes(process.env.SVA_DEPLOYMENT_ENVIRONMENT ?? '')
+      ? { synchronizeNews: synchronizeAppTranslationNews }
+      : {}),
     translateCatalog: runCatalogTranslation,
   }),
   'waste-management.operations': () =>

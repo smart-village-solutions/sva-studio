@@ -272,3 +272,12 @@ sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür ge�
 - **Kontextabhängig:** Instanzzuweisung, Rechte und DataProvider bestimmen den Zugriff. Die Karte benötigt eine konfigurierte Schnittstelle. Zeitraumstatus plant keine Veröffentlichung. Deaktivierte Kategoriezuordnungen dürfen beim Speichern entfallen; andere zusätzliche Bestandsdaten werden erhalten oder blockieren den Save. Ein unklarer Save wird über denselben Vorgang geprüft, nicht erneut angelegt.
 - **Leitfragen / Stichwörter:** Wann beginnt und endet die Baustelle? Wo liegt sie? Was wird eingeschränkt? Baustelle, Zeitraum, Standort, Sichtbarkeit, Speicherergebnis prüfen.
 - **Evidenz:** [Baustellenreferenz](../../../reference/construction-sites.md), `packages/plugin-construction-sites/src/`, `packages/sva-mainserver/src/server/construction-sites-route.ts`.
+
+## `jobs.content.create` und `jobs.content.detail` – Stellenanzeigen
+
+- **Route / Typ / Owner:** `/admin/jobs/new` und `/admin/jobs/$id`, Plugin `jobs`; Übersicht `/admin/content?type=jobs.job`.
+- **Nutzerziel:** Eine Stelle mit Arbeitgeber und Ansprechpartner veröffentlichungsfähig erfassen, bearbeiten oder bestätigt löschen.
+- **Produktfakten:** Titel, Anstellungsart, Veröffentlichungsdatum und erstes Ablaufdatum sind erforderlich. Neue Anzeigen beginnen unsichtbar mit heute und 28 Tagen Laufzeit. Firmenkontakt und Ansprechpartner sind getrennte Bereiche; zusätzliche Bestandseinträge bleiben erhalten. Ein geändertes Veröffentlichungsdatum überschreibt das Ablaufdatum nicht. Bearbeiten bietet Basis, Inhalt und Studio-Historie. Löschen erfordert eine ausdrückliche Bestätigung.
+- **Kontextabhängig:** Modulzuweisung, Fachrechte, DataProvider und ausgewählte Identität bestimmen den Zugriff. Laufzeit schaltet die Sichtbarkeit nicht automatisch um. Unklare Speicher- und Löschvorgänge werden mit derselben Operationsidentität geprüft, ohne zweite Mutation. Nicht vollständig erhaltbare Bestandsdaten sperren die Bearbeitung; die gesondert dokumentierte technische Importreferenz-Ausnahme wird über SVA-1786 behoben.
+- **Leitfragen / Stichwörter:** Wer bietet die Stelle an? Wer nimmt Bewerbungen entgegen? Welche Anstellungsart gilt? Bis wann läuft die Ausschreibung? Stellenanzeige, Arbeitgeber, Ansprechpartner, Sichtbarkeit, Speicherergebnis prüfen, Löschen.
+- **Evidenz:** [Stellenanzeigenreferenz](../../../reference/jobs.md), `packages/plugin-jobs/src/`, `packages/sva-mainserver/src/server/jobs-route.ts`.

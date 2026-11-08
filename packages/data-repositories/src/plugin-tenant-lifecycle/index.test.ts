@@ -63,7 +63,7 @@ describe('plugin tenant lifecycle repository', () => {
     });
 
     expect(result.desiredGeneration).toBe(2);
-    expect(statements[0]?.values).toEqual(['tenant-a', 'speech', 'reconcile', null]);
+    expect(statements[0]?.values).toEqual(['tenant-a', 'speech', 'reconcile', null, null]);
     expect(statements[0]?.text).toContain(
       'desired_generation = iam.instance_plugin_lifecycle.desired_generation + 1'
     );
@@ -87,7 +87,7 @@ describe('plugin tenant lifecycle repository', () => {
     };
     await createPluginTenantLifecycleRepository(executor).requestLifecycle(request);
 
-    expect(statements[0]?.values).toEqual(['tenant-a', 'speech', 'reconcile', 'speech-2:1']);
+    expect(statements[0]?.values).toEqual(['tenant-a', 'speech', 'reconcile', 'speech-2:1', null]);
     expect(statements[0]?.text).toContain('contract_revision = EXCLUDED.contract_revision');
     expect(statements[0]?.text).not.toContain('readiness_revision =');
     expect(statements[0]?.text).not.toContain('completed_generation =');
@@ -104,6 +104,23 @@ describe('plugin tenant lifecycle repository', () => {
         operation: 'reconcile',
       })
     ).rejects.toThrow('plugin_tenant_lifecycle_request_conflict');
+  });
+
+  it('rejects an automatic suspension after the intended generation changed', async () => {
+    const { executor, statements } = createExecutor([]);
+    const repository = createPluginTenantLifecycleRepository(executor);
+    await expect(
+      repository.requestLifecycle({
+        instanceId: 'tenant-a',
+        pluginId: 'speech',
+        operation: 'suspend',
+        expectedGeneration: 2,
+      })
+    ).rejects.toThrow('plugin_tenant_lifecycle_request_conflict');
+    expect(statements[0]?.text).toContain(
+      'iam.instance_plugin_lifecycle.desired_generation = $5::bigint'
+    );
+    expect(statements[0]?.values.at(-1)).toBe(2);
   });
 
   it('claims only the exact desired operation and generation', async () => {

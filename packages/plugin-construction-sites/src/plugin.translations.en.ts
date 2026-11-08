@@ -1,4 +1,6 @@
+import { constructionGeometryEn } from './construction-sites.geometry-translations.js';
 export const constructionSiteTranslationsEn = {
+  geometry: constructionGeometryEn,
   navigation: {
     title: 'Construction sites',
   },
@@ -91,6 +93,8 @@ export const constructionSiteTranslationsEn = {
     incomplete: 'Incomplete dates',
   },
   pagination: {
+    pageSize: 'Items per page',
+    results: '{{start}}–{{end}} of {{total}} items',
     label: 'Construction site pages',
     page: 'Page {{page}}',
     previous: 'Previous',
@@ -181,6 +185,8 @@ export const constructionSiteTranslationsEn = {
     mediaPickerMetadataSaveError: 'The metadata could not be saved.',
   },
   errors: {
+    construction_site_geometry_payload_too_large:
+      'The geometry and existing construction site data exceed the storage limit. Reduce the geometry or the data.',
     construction_site_content_conflict:
       'The construction site changed in the meantime. Your input is preserved; reload the current version to compare.',
     construction_site_invalid_input: 'Please correct the highlighted fields.',

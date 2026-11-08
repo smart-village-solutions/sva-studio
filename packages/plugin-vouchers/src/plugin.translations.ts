@@ -3,6 +3,12 @@ import { voucherTranslationsDe } from './plugin.translations.de.js';
 import { voucherTranslationsEn } from './plugin.translations.en.js';
 const mediaMessages = {
   de: {
+    mediaPickerTitle: 'Medium hinzufügen',
+    mediaPickerDescription: 'Wählen Sie ein öffentliches Bild aus der Studio-Medienbibliothek.',
+    mediaPickerLibraryAction: 'Medium aus der Bibliothek hinzufügen',
+    mediaPickerLinkAction: 'Medium per Link hinzufügen',
+    mediaPickerReviewMode: 'Prüfen',
+    mediaPickerLoadError: 'Medien konnten nicht geladen werden.',
     mediaMoveUp: 'Nach oben verschieben',
     mediaMoveDown: 'Nach unten verschieben',
     mediaRefreshMetadata: 'Metadaten aus Mediathek aktualisieren',
@@ -40,6 +46,12 @@ const mediaMessages = {
     mediaPickerMetadataSaveError: 'Die Metadaten konnten nicht gespeichert werden.',
   },
   en: {
+    mediaPickerTitle: 'Add media',
+    mediaPickerDescription: 'Choose a public image from the Studio media library.',
+    mediaPickerLibraryAction: 'Add media from the library',
+    mediaPickerLinkAction: 'Add media by link',
+    mediaPickerReviewMode: 'Review',
+    mediaPickerLoadError: 'Media could not be loaded.',
     mediaMoveUp: 'Move up',
     mediaMoveDown: 'Move down',
     mediaRefreshMetadata: 'Update metadata from media library',

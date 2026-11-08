@@ -38,11 +38,14 @@ const validateMutationCapability = (
     `${definition.contentType}.${operation}`
   );
 
-  const expectedAction = `${namespace}.${operation === 'delete' ? 'delete' : 'update'}`;
+  const allowedActions =
+    operation === 'delete'
+      ? [`${namespace}.delete`]
+      : [`${namespace}.update`, `${namespace}.publish`];
   if (
     typeof capability.requiredAction !== 'string' ||
     parseNamespacedPluginIdentifier(capability.requiredAction)?.namespace !== namespace ||
-    capability.requiredAction !== expectedAction ||
+    !allowedActions.includes(capability.requiredAction) ||
     typeof capability.execute !== 'function' ||
     (capability.requiresMainserverMutationAction !== undefined &&
       capability.requiresMainserverMutationAction !== true)

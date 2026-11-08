@@ -1,5 +1,7 @@
 import {
+  appTranslationLanguage,
   deepLTargetCode,
+  isAppTranslationLocale,
   isValidInstanceId,
   readDeepLSettings,
   type CatalogValue,
@@ -25,29 +27,37 @@ const entrySchema = z
   .object({
     key: z
       .string()
-      .regex(/^(title|author|keywords|contentBlocks\.(0|[1-9][0-9]{0,5})\.(title|intro|body))$/),
+      .regex(
+        /^(title|author|keywords|settings\.onlySummaryLinkText|contentBlocks\.(0|[1-9][0-9]{0,5})\.(title|intro|body|mediaContents\.(0|[1-9][0-9]{0,5})\.captionText))$/
+      ),
     text: z.string().max(92160).regex(/\S/u),
     format: z.enum(['plain', 'html']),
   })
   .strict();
-const requestSchema = z
+const requestEnvelope = z
   .object({
     schemaVersion: z.literal(1),
     instanceId: z.string().refine(isValidInstanceId),
     requestId: z.uuid(),
     sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
-    profileId: z.literal('news-v1'),
     sourceLocale: z.literal('de'),
-    targetLocale: z.literal('en'),
-    entries: z.array(entrySchema).min(1).max(50),
+    targetLocale: z
+      .string()
+      .refine(
+        (locale) => isAppTranslationLocale(locale) && appTranslationLanguage(locale) !== 'de'
+      ),
   })
-  .strict()
+  .strict();
+const newsRequestSchema = requestEnvelope
+  .extend({ profileId: z.literal('news-v1'), entries: z.array(entrySchema).min(1).max(50) })
   .superRefine((value, ctx) => {
     if (
       new Set(value.entries.map((entry) => entry.key)).size !== value.entries.length ||
       value.entries.filter((entry) => entry.key === 'title').length !== 1 ||
       value.entries.some(
-        (entry) => entry.format !== (entry.key.endsWith('.body') ? 'html' : 'plain')
+        (entry) =>
+          !entry.key.endsWith('.intro') &&
+          entry.format !== (entry.key.endsWith('.body') ? 'html' : 'plain')
       ) ||
       value.entries.reduce((size, entry) => size + new TextEncoder().encode(entry.text).length, 0) >
         90000
@@ -61,13 +71,35 @@ const requestSchema = z
         ctx.addIssue({ code: 'custom', message: 'invalid_news_text' });
     }
   });
+const settingsRequestSchema = requestEnvelope.extend({
+  profileId: z.literal('global-settings-v1'),
+  entries: z.tuple([
+    z
+      .object({
+        key: z.literal('label'),
+        format: z.literal('plain'),
+        text: z
+          .string()
+          .regex(/\S/u)
+          .refine(
+            (text) => !/[<>]|\{\{|%\{/.test(text) && new TextEncoder().encode(text).length <= 2048
+          ),
+      })
+      .strict(),
+  ]),
+});
+const requestSchema = z.union([newsRequestSchema, settingsRequestSchema]);
+
 const reply = (status: number, data: unknown) =>
   Response.json(data, {
     status,
     headers: { 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' },
   });
 
-const readAccess = async (instanceId: string) => {
+const readAccess = async (
+  instanceId: string,
+  targetLocale: z.infer<typeof requestEnvelope>['targetLocale']
+) => {
   const connection = await loadDefaultExternalInterfaceRecord(instanceId, 'sva_mainserver');
   const binding = bindingSchema.safeParse(connection?.publicConfig.translationService);
   if (!connection?.enabled || !binding.success) return null;
@@ -91,10 +123,14 @@ const readAccess = async (instanceId: string) => {
     !provider ||
     !settings ||
     !getDeepLSetupStatus(provider).ready ||
-    !settings.selectedLocales.includes('en')
+    !settings.selectedLocales.includes(targetLocale)
   )
     return null;
-  const targetCode = deepLTargetCode('en', settings.englishVariant, settings.availableLanguages);
+  const targetCode = deepLTargetCode(
+    targetLocale,
+    settings.englishVariant,
+    settings.availableLanguages
+  );
   return { binding: binding.data, connection, scope, provider, settings, targetCode };
 };
 
@@ -174,7 +210,7 @@ const authenticateTranslation = async (
   }
   if (identity.azp !== binding.data.clientId || identity.sub !== binding.data.subject)
     return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
-  const access = await readAccess(input.instanceId);
+  const access = await readAccess(input.instanceId, input.targetLocale);
   if (!access || JSON.stringify(access.binding) !== JSON.stringify(binding.data))
     return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
   return { access, identity };
@@ -229,7 +265,7 @@ export const appTranslationServiceHandler = async (request: Request): Promise<Re
         retryable: false,
       });
     assertTranslatedEntries(input, translated);
-    const current = await readAccess(input.instanceId);
+    const current = await readAccess(input.instanceId, input.targetLocale);
     if (!accessUnchanged(current, access))
       return reply(403, { ...correlation, error: 'translation_forbidden', retryable: false });
     const result = {

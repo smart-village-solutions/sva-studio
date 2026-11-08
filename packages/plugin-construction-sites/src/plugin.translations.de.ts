@@ -1,4 +1,6 @@
+import { constructionGeometryDe } from './construction-sites.geometry-translations.js';
 export const constructionSiteTranslationsDe = {
+  geometry: constructionGeometryDe,
   navigation: {
     title: 'Baustellen',
   },
@@ -91,6 +93,8 @@ export const constructionSiteTranslationsDe = {
     incomplete: 'Zeitraum unvollständig',
   },
   pagination: {
+    pageSize: 'Einträge pro Seite',
+    results: '{{start}}–{{end}} von {{total}} Einträgen',
     label: 'Baustellenseiten',
     page: 'Seite {{page}}',
     previous: 'Zurück',
@@ -189,6 +193,8 @@ export const constructionSiteTranslationsDe = {
     mediaPickerMetadataSaveError: 'Die Metadaten konnten nicht gespeichert werden.',
   },
   errors: {
+    construction_site_geometry_payload_too_large:
+      'Die Geometrie und die vorhandenen Baustellenangaben überschreiten das Speicherlimit. Reduzieren Sie die Geometrie oder die Angaben.',
     construction_site_content_conflict:
       'Die Baustelle wurde zwischenzeitlich geändert. Ihre Eingaben bleiben erhalten; laden Sie den aktuellen Stand zum Vergleich neu.',
     construction_site_invalid_input: 'Bitte korrigieren Sie die markierten Angaben.',

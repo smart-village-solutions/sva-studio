@@ -16,7 +16,6 @@ import {
   getSvaMainserverVoucherPoi,
   listSvaMainserverPoi,
   listSvaMainserverVouchers,
-  loadSvaMainserverDataProviderIdentity,
 } from './service.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import {
@@ -130,7 +129,6 @@ export const locations = async (request: Request, ctx: AuthenticatedRequestConte
   if (isResponse(authorized)) return authorized;
   const actor = await resolveMainserverResourceActor({ request, ctx, authorizedActor: authorized });
   if (!actor) return errorJson(403, 'forbidden', 'forbidden');
-  const identity = await loadSvaMainserverDataProviderIdentity(actor);
   const page = await listSvaMainserverPoi({
     ...actor,
     ...parseMainserverListQuery(request),
@@ -138,15 +136,15 @@ export const locations = async (request: Request, ctx: AuthenticatedRequestConte
   });
   const data = [];
   for (const item of page.data) {
-    if (item.dataProvider?.id !== identity.dataProvider.id) continue;
+    if (!item.dataProvider?.id?.trim()) continue;
     const access = await resolveMainserverResourceAccess({
       actor,
-      actions: ['poi.update'],
+      actions: ['poi.read', 'poi.update'],
       contentType: 'poi.point-of-interest',
       item,
-      forceExactScopeActions: ['poi.update'],
+      forceExactScopeActions: ['poi.read', 'poi.update'],
     });
-    if (access['poi.update'])
+    if (access['poi.read'] && access['poi.update'])
       data.push({ id: item.id, name: item.name, addresses: item.addresses });
   }
   return json({ data, pagination: page.pagination });

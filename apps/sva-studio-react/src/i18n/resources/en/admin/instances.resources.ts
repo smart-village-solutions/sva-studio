@@ -103,7 +103,7 @@ export const instancesAdminENResources = {
 
     reauthRequired: 'Sign in again, then reopen the template. Your draft is retained until then.',
     currentTexts: 'Messages saved in the meantime',
-    title: 'Verify email address',
+    title: 'Email verification',
     open: 'Edit email verification',
     description:
       'These German texts apply to registration and email address changes. Saving takes immediate effect in this municipality’s Keycloak realm. No email is sent.',

@@ -215,6 +215,20 @@ Lokaler Nachweis ST-3.9 vom 30. Oktober: 29 Bindungsfälle einschließlich echte
 
 PR-Reviewkorrektur #2007: Ein während des OAuth-Abrufs geänderter Instanzhostname wird vor dem entfernten Setup erneut mit dem ausgewählten Ziel verglichen. Die bestehende abschließende CAS-Prüfung allein käme für diesen externen Write zu spät. Der konkrete Fehler wurde zunächst rot reproduziert und nach der lokalen Korrektur gezielt grün geprüft; kein neuer Vertrag oder Ausführungspfad.
 
+### ST-3.10 Modulbasierte Nachrichtenfreigabe für Staging und Production
+
+- [x] Mainserver verwendet die zentrale, je Umgebung festgelegte Studio-Dienstroute und akzeptiert den gewünschten Nachrichtenstatus über den bestehenden authentifizierten Einrichtungsweg. Host-Kommune, Bindung, Generation und zulässigen Zielwechsel prüfen.
+- [ ] Studio überträgt den gewünschten Status bei Modulaktivierung, Reaktivierung, Abgleich, Änderung des DeepL-Zugangs oder der Englisch-Auswahl und bei Modul- oder Schnittstellenentzug. Bestehende Lifecycle- und Reparaturpfade wiederverwenden.
+- [ ] Neue Instanz mit regulärer Domain und bestehende Instanz mit eigener Domain oder abweichender Mainserver-Kennung nachweisen. Falsche Umgebung, fremde Identität, veralteten Auftrag, Wiederholung und widersprüchliche Generationen abdecken.
+- [ ] Deutsches Original bei fehlendem DeepL-Zugang und nach bestätigtem Entzug einschließlich fertiger Cachetreffer prüfen. Laufenden Job, Wiederanlauf nach Verbindungsfehler und erneute Aktivierung abdecken.
+- [ ] Einführung Mainserver vor Studio auf Staging prüfen. Bestehende aktive Bindungen und den einmaligen Abgleich verifizieren. Echte englische Nachricht für zwei getrennte Instanzen nachweisen. Veröffentlichung in Production gesondert freigeben.
+
+Lokal nachgewiesen sind Modulaktivierung und -entzug, Änderung und Entzug von DeepL
+einschließlich gemeinsamem Commit des Abgleichs, Auswahl von Englisch, Ablehnung
+veralteter Generationen und Rückfall auf das Original mit vorhandenem Cache.
+Der Wechsel oder Entzug der Mainserver-Zuordnung selbst und die Live-Abnahme
+auf Staging stehen aus. Mainserver-MR !1075 enthält den serverseitigen Vertrag.
+
 ## 5. Dynamischer MySQL-Bestand und Hintergrundausführung — Main-Server federführend
 
 Die frühere dauerhafte Studio-PostgreSQL-/Graphile-Ergebnisstrecke ist durch den Main-Server-Plan 002 ersetzt; feste Studio-Katalogjobs bleiben unverändert. Konkrete Implementierung separat freigeben.

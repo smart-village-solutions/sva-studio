@@ -5,6 +5,11 @@ import { ssfInstallationContentV2FieldsSchema, ssfRuntimeContentV2FieldsSchema }
 export const SSF_SYSTEM_CONTENT_V2_ADMIN_PATH = '/api/v1/plugins/ssf/content-v2/system' as const;
 export const SSF_TENANT_CONTENT_V2_ADMIN_PATH = '/api/v1/plugins/ssf/content-v2/tenant' as const;
 
+export const ssfRecordingPolicyConflictSchema = z.object({
+  error: z.literal('invalid_configuration'),
+  affectedTenants: z.array(z.string().min(1).max(128)).min(1),
+});
+
 export const ssfSupportedLanguagesCatalogSchema = z.object({
   languages: z.record(z.string().regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/),
     z.object({ name: z.string().min(1), native: z.string().min(1) }).strict()).refine(

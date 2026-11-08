@@ -1,9 +1,7 @@
 import { parsePermissionDenialDetails, type PermissionDenialDetails } from '@sva/core';
-
 import { mergeRequestHeaders } from './http-client.js';
 import { combineAbortSignals } from './mainserver-abort-signal.js';
 import { attachMainserverErrorMetadata } from './mainserver-error-metadata.js';
-
 export type MainserverErrorFactory<TError extends Error> = (
   code: string,
   message: string,
@@ -246,6 +244,7 @@ const assertMainserverResponseOk = async <TError extends Error>(
   attachMainserverErrorMetadata({
     error,
     httpStatus: response.status,
+    mutationOutcome: response.headers?.get?.('X-SVA-Mutation-Outcome'),
     ...(requestId ? { requestId } : {}),
     details,
     permissionDenial,

@@ -144,6 +144,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 
 ### Security und Privacy
 
+- Der Keycloak-Adapter ergänzt bei Benutzerattribut-Updates ohne explizite E-Mail die frisch aus demselben Benutzerprofil gelesene E-Mail unverändert. Fehlt sie oder scheitert der Profilabruf, erfolgt kein Write. Damit erfüllen auch Mainserver-Credential-Updates die E-Mail-Pflicht des Benutzerprofils, ohne sie abzuschwächen.
 - OIDC Authorization Code Flow mit PKCE
 - Persönliche MCP-Bearer-Tokens werden nur für ausdrücklich aktivierte Verwaltungsrouten und Methoden angenommen. Im ersten Schritt sind dies `GET` und `POST /api/v1/iam/users`; `azp`, Issuer und Studio-Audience werden getrennt geprüft und aus Host sowie Realm aufgelöst. Ein ungültiger oder nicht zugelassener Bearer-Token fällt nie auf ein Cookie zurück.
 - Der lokale MCP wählt persönliche Plattform- und Tenant-Kontexte explizit aus; PKCE-State, Nonce und Verifier sind loginversuchsgebunden. Access-/Refresh-Tokens bleiben standardmäßig pro Kontext im Prozessspeicher. Ein ausdrücklich aktivierter macOS-Keychain-Modus speichert nur Refresh-Token mit Kontext- und Subject-Bindung; Restore erfordert OIDC-Refresh und Userinfo-Readback. Logout löscht und widerruft, Shutdown erhält ausschließlich im Keychain-Modus die gespeicherte Sitzung. Der HTTP-Client nutzt ausschließlich den konfigurierten HTTPS-Studio-Ursprung, folgt keinen Redirects und fällt nie auf das Service-Credential zurück.
@@ -156,6 +157,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Verpflichtende Verschlüsselung von Tokens im Redis-Store via `ENCRYPTION_KEY`; ohne Schlüssel werden Sessions weder angelegt noch aus dem Store ausgegeben
 - Sessionen führen nur den minimalen Auth-Kern (`sub/id`, `instanceId`, Rollen); Profilattribute wie Name und E-Mail gehören nicht zum Pflichtumfang der Session
 - Tenant-Sessions beziehen `instanceId` aus Host, Registry und Realm-Scope. Ein optionaler Token-Claim `instanceId` darf diesen Scope bestätigen, aber nicht ersetzen.
+- Nach Mainserver-Provisionierungen stellt der gemeinsame Credential-Persistenzpfad das Keycloak-Benutzerattribut `instanceId` auf die kanonische Studio-Instanz-ID zurück und bestätigt es gemeinsam mit den Credentials durch Rücklesen. Eine abweichende Mainserver-Mandantenkennung darf diese Login-Zuordnung nicht ersetzen; eine fehlende, mehrdeutige oder weiterhin abweichende Zuordnung gilt als fehlgeschlagene Provisionierungsbestätigung. Die Scope-Prüfung im Login bleibt unverändert aktiv.
 - Forced Reauth pro Benutzer erfolgt über `minimumSessionVersion` und `forcedReauthAt`; Keycloak-Logout ist optional zuschaltbar
 - Session-Refresh liest vor dem OIDC-Grant den aktuellen Redis-Stand, bündelt parallele Refreshes pro Session im Prozess und committet Tokens nur gegen das erwartete Tokenpaket. Feldupdates verwenden einen begrenzten Redis-CAS gegen Session und Widerrufsmarker; Konflikte führen zu frischem Read und feldweisem Retry. Verbindungsfehler, Konfliktlimit, Ablauf und Widerruf bleiben geschlossen.
 - Refresh-Fallback liest Session und Widerrufsmarker frisch. Er erhält den aktuellen Organisationskontext nur solange Sessionablauf und Reauth-Regeln ihn zulassen; gelöschte oder widerrufene Sessions werden ungültig.
@@ -279,6 +281,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Experimentelle Shell-Funktionen werden zusätzlich über die explizite Permission `experimental.read` gegated; sie ersetzt keine Fachrechte, sondern ergänzt sie.
 - Für experimentelle Menüpunkte gilt das additive Prinzip: fachliche Sichtbarkeit wie `app.read`, `cockpit.read` oder `iam.monitoring.read` bleibt führend und wird nur zusammen mit `experimental.read` materialisiert. Branding-Profile dürfen Sidebar-Bereiche und generische, nicht modulgebundene Links zusätzlich unterdrücken, ohne die zugrunde liegenden Rechte oder Routen zu verändern.
 - Normale Tenant-Administration nutzt ausschließlich einen tenantlokalen Keycloak-Adminpfad; Plattform-/Root-Credentials sind dafür kein zulässiger Fallback
+- Der Live-Postflight vor einer Instanzaktivierung bestätigt die gespeicherten Login- und Tenant-Admin-Zugangsdaten durch OIDC-Introspection eines absichtlich ungültigen Tokens. Nur eine authentifizierte Antwort mit `active: false` zählt als Nachweis; falsche Zugangsdaten, unerwartete Antworten und Ausfälle blockieren weiterhin. Der Tenant-Admin benötigt dafür kein Recht zum Lesen von Client-Geheimnissen. Der privilegierte Provisioner behält seinen bisherigen Secret-Readback.
 - Tenant-IAM-Betriebsdiagnostik auf der Instanz-Detailseite hält `configuration`, `access`, `reconcile` und `overall` getrennt; `overall` folgt strikt der Präzedenz `blocked` vor `degraded` vor `unknown` vor `ready`
 - Explizite Tenant-IAM-Access-Probes sind read-only, werden manuell ausgelöst und als korrelierbare Audit-Evidenz mit `requestId`, `errorCode`, `checkedAt` und stabiler Quelle `access_probe` persistiert
 - Die Instanz-Detailseite priorisiert im Erstblick aktuelle Betriebswahrheit vor historischer Evidenz. Ältere fehlgeschlagene Provisioning-Läufe bleiben diagnostisch sichtbar, dürfen aber nicht denselben Rang wie aktuelle blockierende Befunde erhalten.
@@ -598,7 +601,9 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Theme-Varianten sind instanzfähig vorbereitet: `instanceId` kann eine Theme-Auswahl beeinflussen, ohne die Shell-Komponenten selbst zu verzweigen
 - `@kern-ux/native` dient in Phase 1 nur als gebündelte Font-Quelle (`Fira Sans`), nicht als globaler CSS-Reset oder konkurrierende Komponentenlaufzeit
 - Mobile Navigation nutzt ein zugängliches Drawer-/`Sheet`-Muster statt projektspezifischer Spezialinteraktionen
-- Komplexe Alt-Muster wie kollabierte Flyout-Submenüs oder pixelgenaue Active-Indikatoren bleiben bewusst außerhalb des Initial-Scope
+- Das überarbeitete Designsystem wird im bestehenden RGB-Tokenpfad und `@sva/studio-ui-react` umgesetzt; News nutzt gemeinsame Detail-Tabs mit optionaler Intent-Vorladung, ohne fachliche Speicherverträge zu verlagern
+- Ohne gespeicherte Präferenz gelten Drawer unter 1024 px, Rail ab 1024 px und Sidebar ab 1280 px. Bestehende Collapse-Werte bleiben erhalten; automatische Breitenwechsel persistieren keine Präferenz
+- Kollabierte Untermenüs bleiben als vorhandene zugängliche Flyouts erhalten. Header-Kontext und Kontomenü verwenden eindeutige Control-IDs; Seitenköpfe richten sich nach tatsächlicher Inhaltsbreite
 
 ### Review-Governance
 
@@ -864,6 +869,7 @@ Der zentrale Migrationsprincipal darf nur das Registry-Inventar lesen; in der Fa
 
 ### Waste-Mainserver-Abgleichsstatus
 
+- Die bestehende Transferaufbereitung vererbt Termine aktiver Abholorte ohne Straße oder mit der kanonischen Import-Sammelstraße `Alle Straßen` auf vorhandene aktive Straßen-/Hausnummernadressen desselben Orts. Bestehende Sammeladressen bleiben Transferziele. Eine gesetzte Quellregion begrenzt die Ziele auf deren eigene oder aus dem Ort abgeleitete Region. Konkrete Straßenzuordnungen bleiben lokal. Pro Datum, Abfallart und Adresse erhält der Mainserver einen Tagestermin mit sämtlichen bereinigten, semantisch deduplizierten Haltestellenhinweisen in stabiler Reihenfolge. Mehrere zusammengeführte Haltestellenhinweise werden für bestehende App-Textanzeigen in Klartext mit Zeilenumbrüchen übertragen; einzelne Hinweise behalten das bisherige Format. Der bestehende Sync-Schlüssel einschließlich Hinweis erkennt Änderungen; betroffene Alttermine werden vor der Neuanlage entfernt, da der Bulk-Endpunkt vorhandene Tagesidentitäten nicht aktualisiert. Das Quellmodell und der Mainserver-/App-Vertrag bleiben unverändert; siehe [Tourenreferenz](../reference/waste-management-tour-gueltigkeit.md#ortstermine-an-die-app-übertragen).
 - Eine Singleton-Revision in der externen Waste-Tenant-Datenbank kennzeichnet relevante Änderungen an der Terminmaterialisierungsquelle. Statement-Trigger erhöhen sie transaktionsgebunden; der Runtime-Principal darf den Zustand lesen, aber nicht zurücksetzen.
 - Die Trigger-Allowlist umfasst ausschließlich Tabellen, deren Daten der bestehende Mainserver-Sync liest. PDF-, Reminder-, Consent-, Token-, Outbox- und sonstige betriebliche Änderungen erzeugen keinen falschen Abgleichsbedarf.
 - Der zentrale Jobstore bleibt die einzige Historie für Laufstatus und bestätigte Quellrevision. Es entstehen weder eine zweite Jobtabelle noch eine fachliche Mainserver-Kopie.
@@ -1257,6 +1263,7 @@ Der bei der Initialisierung gewählte Eingang bindet den Scan-Vertrag. Nur Uploa
 Tags bleiben validierte globale Asset-Metadaten mit bestehender Instanz-/IAM-Grenze. Sie erweitern keine Berechtigungen; Tagwerte werden nicht geloggt. ClamAV bleibt als GPLv2-Dienst über das dokumentierte Scan-Protokoll vom EUPL-Code getrennt, ohne `libclamav`-Linking. Das Scan-Gate akzeptiert ausschließlich vollständig geprüfte Bytes mit bestätigter Signaturaktualität. Ein Scanner-Ping ist kein Aktualitätsnachweis; Detailregeln stehen in [ADR-068](../adr/ADR-068-clamav-als-virenscanner-fuer-medienuploads.md).
 
 Der Dateibericht des Bestandsscans wird ausschließlich über den medienberechtigten Endpunkt ausgeliefert. Generische Job-Antworten beim Lesen und Löschen verwenden dieselbe Ergebnisredaktion; Monitoring-Rechte erweitern keine Medienrechte. Die Signaturaltersmetrik prüft dieselbe Übereinstimmung zwischen Aktualitätsnachweis und geladener ClamAV-Revision wie der Scan und meldet Ausfall oder Abweichung als Sperrwert.
+
 ### Lokale App-Kataloge: Scope, Korrekturen und Unveränderlichkeit
 
 Feste Katalogtexte werden als globale oder kommunale Drafts gepflegt. Overrides gelten pro Sprache/Schlüssel; abweichendes kommunales Deutsch erzeugt keine anderen Overrides. Manuelle fremdsprachige Werte speichern ihren deutschen Quelldigest und dessen Bestätigung. Bei geändertem tatsächlichem Quelltext bleibt die Korrektur erhalten, neue Versiegelung verlangt aber ausdrückliche Bestätigung. Manifestimport übernimmt fehlende deutsche Defaults einmalig und überschreibt keine redaktionellen Werte.
@@ -1295,17 +1302,17 @@ Der bestehende Katalogentwurf erhält durch Migration 0110 nur die JSONB-Standar
 
 Vor Anfrage und Commit werden Claim/Attempt/Worker, Heartbeat, Abbruch, aktive Mitgliedschaft und Konfiguration erneut geprüft. DeepL-I/O liegt außerhalb der Schreibtransaktion. Werte, Revision und Jobcheckpoint committen gemeinsam; die bestehende Jobsteuerung bewahrt auch direkt gespeicherte Checkpoints nach Fehlern. Nach externem Edit kein Rebase. Maximal 50 Einheiten/100 KiB je Anfrage, 30 Sekunden, 4 MiB Antwort und drei Jobversuche. Platzhalter und literale Tags werden reversibel geschützt und positionsbezogen validiert; Arrays werden erst vollständig geschrieben. Vor Commit kann eine Wiederholung erneut Anbieterkosten verursachen; nach Commit werden fertige Batches nicht erneut angefordert.
 
-
 ### Technischer Main-Server-Übersetzungsaufruf
 
 Der begrenzte Nachrichtendienst verwendet die gemeinsame JWT-Kryptoprüfung und prüft `azp`/konkretes `sub` gegen vertrauenswürdige Metadaten der bestehenden Main-Server-Verbindung. Eine menschliche Anmeldung, Clientname oder Request-Mandant genügt nicht; zusätzliche Übersetzungsrollen und eine parallele Bindingregistry entfallen. Der Adapter greift nur auf instanzgebundene Konfiguration zu und wählt keine Organisation aus. Die ausgehende Organisationsidentität wird nicht als eingehender Serviceaccount vorausgesetzt. Prüfung von Modul, Sprache und Konfiguration vor Anbieterarbeit und Antwort, begrenzte Requests/Deadline und die bestehende Bulk-Ratenbegrenzung schützen den direkten Dienst. Keine dynamischen Texte in Studio persistieren oder loggen. Vertragsdetails und noch offene Live-Evidenz stehen in [ADR-070](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md).
 
 Die Moduloperationen `provision`, `reconcile` und `reactivate` richten diese Bindung automatisch über die öffentliche, Keycloak-bestätigte Identitätsauskunft des administrativ zugeordneten Mainservers ein. Readiness bleibt lesend. Die Auskunft enthält ausschließlich technischen Principal und Studio-Ziel, keine Token oder Secrets. Studio prüft Public-HTTPS-Ziele, feste Audience und Instanz sowie die technische Route auf dem Instanzhost oder der zentralen `SVA_PUBLIC_BASE_URL`. Eine abweichende bestehende Bindung wird nicht überschrieben. Instanz-/Modulsperren, konkreter Lifecycle-Auftrag und `xmin`-Vergleich verhindern die Übernahme nach Widerruf oder Zuordnungswechsel. Reaktivierung darf nur innerhalb ihres beanspruchten Auftrags vorbereiten; der Dienst bleibt bis `active` gesperrt. Ein Zuordnungswechsel beziehungsweise die Deaktivierung entfernt die alte Freigabe. Kein neues Datenbankschema oder öffentlicher Pluginvertrag; die bestehende hostinjizierte Laufzeit übernimmt den Anschluss. Siehe [ADR-070](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md).
 
-
 ## Gutscheinidentität und Save-Bestätigung
 
 Bestehende Gutschein-Datenbank-IDs werden im verschachtelten Input erhalten; `payload.id` bleibt die ergänzende fachliche Identität für Rückzuordnung und Recovery. Die Vorbereitung ist an aktuellen Gesamtbestand, Formular und Principal-Kontext gebunden. Mit dem korrigierten Mainserver entfällt der Reset von Kontingenten und Einlösungen; die pauschale Anbietertyp-Sperre ist nicht mehr erforderlich. CSRF, Idempotenz und Operationsjournal bleiben im vorhandenen Host-Vertrag. Der vorbereitete vollständige Sollzustand bleibt serverseitig im bestehenden Idempotenzdatensatz. Recovery prüft ihn vor Referenzänderungen und Erfolgsbestätigung gegen den gelesenen Gesamtbestand; ausschließlich die beim Write neu erzeugten technischen Payload-Felder `studioUpdatedAt` und `studioUpdateId` sind ausgenommen. Eine eindeutige Ablehnung vor dem Write lässt den Editor korrigierbar, ein unklarer Schreibausgang bleibt gesperrt. Medienreferenzen und Core-Historie werden nach eindeutiger Rückzuordnung erhalten. Siehe [Gutscheinreferenz](../reference/vouchers.md).
+
+Die endgültige Gutscheinlöschung läuft separat über `vouchers.delete` und den bestehenden Mainserver-`destroyRecord`-Vertrag. Sie prüft CSRF und den konkreten Datenanbieter-Principal, schreibt keinen POI-Gesamtbestand und wiederholt die Mutation nicht automatisch. Der Bestätigungsdialog weist auf mögliche Restdaten und verwaiste Verknüpfungen hin; diese akzeptierten Folgen sind keine Löschsperre. Allgemeine Core- und GenericItem-Pfade bleiben für Gutscheine gesperrt.
 
 ## Scopegebundene UI-Revalidierung und lokale Mainserver-Readiness
 
@@ -1315,14 +1322,47 @@ Die lokale Principal-Projektion enthält für persönliche und organisatorische 
 
 Bei `stale_mainserver_context` löscht das Plugin-SDK sein betroffenes Binding und wiederholt keinen Write. Der Core-Content-, News- und Event-Editor invalidiert die zugehörigen Freigaben, lädt Kontext und Detail nach ausdrücklicher Recovery-Aktion erneut und bewahrt den Formularentwurf. Der Nutzer startet einen weiteren Write ausdrücklich.
 
+### News-Speicherergebnis und geschützter offener Entwurf
+
+News hält pro Save eine stabile Operationskennung; Create verwendet diese auch
+für den vorhandenen Idempotenzvertrag. Nach Transportverlust, unbekanntem
+Providerergebnis oder partieller Mutation ist ein neuer Inhaltswrite gesperrt.
+Die rein lesende News-Operationsroute filtert das bestehende Journal nach
+Session-Instanz, Account, aktiver Organisation und konkretem Principal und prüft
+aktuelle Aktionsrechte. Ein fehlender Eintrag oder HTTP-4xx beweist keine
+Nichtausführung. Nur ausdrücklich vor dem Providerwrite abgelehnte Versuche
+sind sicher erneut speicherbar. Ein bestätigtes Ergebnis erlaubt ausschließlich
+den vorhandenen Medienreferenzabschluss; sein Retry wiederholt keinen Contentwrite.
+Keine neue Persistenz oder globale Exactly-once-Garantie entsteht.
+Der gemeinsame Medien-Save-Pfad erhält `not_applied` auch für nachweislich
+vorgelagerte lokale Eingabe-, CSRF-, Kontext- und Autorisierungsablehnungen der
+übrigen Content-Plugins. Allgemeine Provider-/4xx-Fehler tragen diesen Nachweis
+nicht; ihre Uploads bleiben vor destruktiver Bereinigung geschützt.
+
+Die bestehende Host-Leave-Boundary schützt Erstellen und Detailbearbeitung.
+Bei Sessionverlust behält sie einen ungespeicherten Editor im Dokument, sperrt
+und verbirgt dessen Controls und unterbindet die automatische Auth-Navigation. React `Activity` erhält dabei auch lokalen Dialogzustand und pausiert die Portal-/Fokuseffekte; ein verstecktes Fieldset allein würde Dialogportale nicht sperren.
+Die Authentifizierung und ihre Rechte werden weiterhin verworfen. Anmeldung
+in neuem Tab und ausdrücklich geprüfte identische Identität/Instanz/Organisation
+(einschließlich abschließend publiziertem Kontext) ermöglichen die Wiederaufnahme.
+Ressourcen-Principal-Reloads behalten bereits gemountete Formulare deaktiviert.
+Neue Eingaben während Save/Ergebnisprüfung werden nicht als gespeichert quittiert
+oder zurückgesetzt. Entwürfe bleiben ausschließlich im geöffneten Dokument;
+Neuladen/Schließen besitzt keine zusätzliche lokale Draft-Persistenz.
+
 ### Integrität und Rechte für Waste-Tour-Fraktionen
 
 UUID-Fremdschlüssel sichern Tour- und Fraktionsbezug innerhalb derselben Tenant-Datenbank. Verwendete Fraktionen sind löschgeschützt; Tourlöschung entfernt ausschließlich deren Zuordnungen. Runtime-Rollen erhalten nur SELECT auf `waste_tour_fractions`; der öffentliche Principal besitzt keine Ausführungsrechte auf den Schreibfunktionen. Während Expand schreibt ein nicht öffentlich ausführbarer Definer-Trigger die Relation, nach Contract die explizit freigegebene Definer-Funktion mit festem `pg_catalog`-Search-Path und vollständig qualifizierten Tabellen. Schema-Verifikation prüft neben Tabellenexistenz auch Typen, Fremdschlüssel, Eindeutigkeit und Revisions-Trigger. Die bestehenden Audit- und Autorisierungsgrenzen bleiben unverändert.
 
 ### Sicherheitsgrenzen der Studio-Mailvorlagen
 
-Root-Mutationen benötigen Plattformzugriff beziehungsweise `instance.update`,
-Session-CSRF und Fresh-Reauth. Der bestehende Tenant-Editor bleibt auf die
+Root-Mutationen benötigen Plattformzugriff beziehungsweise `instance.update`
+und Session-CSRF. Für das Speichern und Zurücksetzen der allgemeinen Einladungs-
+und Bestätigungsvorlage genügt die bestehende gültige Sitzung; diese redaktionellen
+Änderungen benötigen keine zusätzliche Fresh-Reauth. Instanzgebundene
+Mailvorlagen-Mutationen der Plattformadministration einschließlich Übertragen und Übernehmen behalten
+Fresh-Reauth. Die Tenant-Editoren für Einladung und Bestätigung nutzen dieselbe bestehende
+Sitzungs-, Actor-, CSRF- und Rate-Limit-Prüfung und bleiben auf die
 Session-Instanz und `iam.invitationTemplate.manage` begrenzt. Instanz-ID und
 Realm-/Credential-Zuordnung kommen ausschließlich aus der autorisierten Registry;
 ein globaler Keycloak-Credential-Fallback ist ausgeschlossen. RLS schützt die
@@ -1345,3 +1385,37 @@ Ergebnisse; während des Rollout-Abgleichs sind parallele direkte Realm-Edits au
 ## SSF legal text and recording authority
 
 `legalTexts` is optional editorial content in the v2 runtime configuration. Separate groups preserve the distinction between consent for processing and release of a recording section, including distinct guest and staff wording. Editing these texts cannot change storage mode, retention, or recording authorization. Missing translations remain explicit; draft identifiers and unresolved contacts are preserved. Existing tenant permissions and HTML sanitization apply. SSF must implement the actual interaction and evidence separately; a text revision is not a consent record. Before downgrading to an older strict content schema, restore the previous JSON without the new block.
+
+## Baustellenplugin
+
+Für Baustellen bleiben unbekannte Payload- und Relationsmetadaten erhalten; nicht wiederherstellbare Daten blockieren den Write. Ausdrücklich akzeptiert ist allein der Entfall nicht mehr gelesener deaktivierter Kategoriezuordnungen. Sichtbarkeit verwendet Host-Lifecycle-Rechte; Dateiverknüpfungen verwenden die vorhandene Medienverwaltung. Der ausschließlich auf Baustellen gefilterte Kategorie-Lookup wird mit `construction-sites.read` oder `construction-sites.create` autorisiert und verwendet bei expliziter Auswahl den bestehenden Principal-Resolver; ungefilterte Abfragen und Kategorienverwaltung behalten ihre eigenen Rechte. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+
+## Stellenplugin
+
+Jobs bewahren unbekannte Payload- und Relationsfelder. Nicht vollständig wiederherstellbare Daten und möglicherweise verborgene deaktivierte Kategorien sperren Updates. Der Anstellungsarten-Lookup benötigt Job-Lese- oder Erstellrecht und verwendet exakt `generic_item_job` als Tag. Fachliche Schreibsperren schützen auch bei deaktiviertem Modul vor generischer Anlage, Umtypisierung, Statusänderung, Löschung und Ownership-Umgehung. Der Kategorien-Lookup prüft Lese- oder Erstellrechte für den ausgewählten Actor. Veröffentlichung bei Neuanlage sowie Medienrechte bei Write und Recovery werden für den aufgelösten Mutation-Actor geprüft; der bestehende Host-Scope-Vertrag bleibt maßgeblich. Jobs-Anlage, Update und Löschung serialisieren Kollisionsprüfung und Provider-Mutation über denselben vorhandenen Lock pro DataProvider; verschachtelte Locks sind dafür nicht nötig. Die Jobs-Löschverifikation liest Management-Rollennachweis und Objektabwesenheit in derselben GraphQL-Anfrage. Fehler des anschließenden Projektions-/Historienrefreshs bleiben im vorhandenen Jobs-Antwortvertrag als Teilerfolg mit Recovery erhalten. Die Jobs-Reservation enthält die ursprüngliche Sichtbarkeit, damit Update-Recovery das Lifecycle-Recht des ursprünglichen Übergangs erneut prüft, auch wenn der Provider bereits den Zielzustand meldet. Operationsmarker sind an Instanz, Account, Organisation, Principal und Credential gebunden; der Browser persistiert keine Formulardaten. Siehe [Stellenanzeigenreferenz](../reference/jobs.md).
+
+## Recording policy, competence and authentication assurance
+
+Recording retention is a bounded duration, not unlimited storage or an archive
+migration command. The 720-hour fallback applies only to recording policy;
+tenant enablement, legal text and decryption grants are separate decisions.
+Studio preserves disabled/null legacy fields only for versioned compatibility.
+
+Managed `competenceLanguages` is distinct from self-service UI locale and cannot
+grant review or sworn status. Directory eligibility uses authoritative active
+account state and effective tenant-wide permissions, including role/group
+validity and restrictions. Labels are Unicode-bounded to the SSF contract;
+identity and grant data remain strict. Backend source errors fail closed rather
+than returning a stale or truncated list of eligible identities.
+
+Authentication policy is generic Core/IAM data. Optional ordinary-login MFA and
+fresh sensitive-action MFA are different requirements. UI state distinguishes
+desired policy from independently verified application in Keycloak; stale jobs
+cannot attest a newer request. Neither editorial wording nor an administrative
+role alone is evidence that recording or a second factor is active.
+
+See [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).
+
+### Geometriegrenzen im Studio
+
+Baustellengeometrien werden als versionierte GeoJSON-FeatureCollection unter einem reservierten Payload-Schlüssel geführt. Unabhängige Client-/Studio-Server-Verträge prüfen Zahlenbereiche, Normalisierung, Mengen-/UTF-8-Grenzen und Polygon-Selbstüberschneidungen; gemeinsame Verhaltensfälle sichern beide Vertrauensgrenzen. Standortpunkte und unberührte Payload-Felder bleiben erhalten. Fremdversionen blockieren reduzierte Writes. Der Mainserver speichert das vollständige Studio-Payload unverändert über seinen bestehenden Ersetzungspfad; eine zusätzliche Geometrievalidierung oder Legacy-Erhaltung im Mainserver ist nicht Teil dieses Umfangs. Lokale Fixtures beweisen keinen produktiven Roundtrip.

@@ -3,17 +3,27 @@ import * as React from 'react';
 
 export type StudioEditorLeaveGuardRegister = (check: () => boolean) => () => void;
 
-const EditorLeaveGuardContext = React.createContext<StudioEditorLeaveGuardRegister | null>(null);
+const EditorLeaveGuardContext = React.createContext<Readonly<{
+  register: StudioEditorLeaveGuardRegister;
+  suspended: boolean;
+}> | null>(null);
+
+/** Portals keep React context even when their DOM lives outside the editor. */
+export const useStudioEditorSuspended = (): boolean =>
+  React.useContext(EditorLeaveGuardContext)?.suspended ?? false;
 
 export function StudioEditorLeaveGuardProvider({
   register,
+  suspended = false,
   children,
 }: Readonly<{
   register: StudioEditorLeaveGuardRegister;
+  suspended?: boolean;
   children: React.ReactNode;
 }>) {
+  const value = React.useMemo(() => ({ register, suspended }), [register, suspended]);
   return (
-    <EditorLeaveGuardContext.Provider value={register}>{children}</EditorLeaveGuardContext.Provider>
+    <EditorLeaveGuardContext.Provider value={value}>{children}</EditorLeaveGuardContext.Provider>
   );
 }
 
@@ -27,7 +37,7 @@ export function useStudioEditorLeaveGuard({
   enabled,
   hasUnsavedChanges,
 }: Readonly<{ enabled: boolean; hasUnsavedChanges: boolean }>) {
-  const register = React.useContext(EditorLeaveGuardContext);
+  const register = React.useContext(EditorLeaveGuardContext)?.register;
   const dirtyRef = React.useRef(hasUnsavedChanges);
   const revisionRef = React.useRef(0);
   const savedRevisionMismatchRef = React.useRef(false);

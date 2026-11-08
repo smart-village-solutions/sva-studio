@@ -33,6 +33,7 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     edit: 'Bearbeiten',
     delete: 'Löschen',
     deleteSelected: 'Markierte löschen',
+    toggleStatus: 'Status von Fraktion {{value}} ändern',
     activateStatus: 'Fraktion {{value}} aktivieren',
     deactivateStatus: 'Fraktion {{value}} deaktivieren',
     cancel: 'Abbrechen',

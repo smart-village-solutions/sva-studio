@@ -1,5 +1,5 @@
 import type { IdentityProviderPort } from '../identity-provider-port.js';
-import { KeycloakPersonalMcpAccessOperations } from './personal-mcp-access.js';
+import { KeycloakLoginMfaOperations } from './login-mfa.js';
 
 export { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from './errors.js';
 export type { KeycloakAdminFieldError } from './errors.js';
@@ -19,5 +19,5 @@ export {
 } from './env-config.js';
 
 export class KeycloakAdminClient
-  extends KeycloakPersonalMcpAccessOperations
+  extends KeycloakLoginMfaOperations
   implements IdentityProviderPort {}

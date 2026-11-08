@@ -31,7 +31,7 @@ export function SurveyQuestionOptionsEditor({
   requestDeleteOption: (questionIndex: number, optionIndex: number) => void;
 }>) {
   return (
-    <div className="space-y-3 border-t border-border/60 pt-4">
+    <div className="space-y-3 border-t border-border-subtle pt-4">
       {question.options.map((option, optionIndex) => (
         <SurveyQuestionOptionItem
           key={getSurveyQuestionOptionRenderKey(question, questionIndex, optionIndex)}
@@ -51,7 +51,10 @@ export function SurveyQuestionOptionsEditor({
         onClick={() =>
           updateQuestion(questionIndex, (currentQuestion) => ({
             ...currentQuestion,
-            options: [...currentQuestion.options, createDefaultSurveyQuestionOption(currentQuestion.options.length)],
+            options: [
+              ...currentQuestion.options,
+              createDefaultSurveyQuestionOption(currentQuestion.options.length),
+            ],
           }))
         }
       >

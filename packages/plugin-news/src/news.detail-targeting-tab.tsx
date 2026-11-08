@@ -49,7 +49,7 @@ function TargetingSummary({ selected, staleIds, pt, onRemove }: TargetingSummary
 
   return (
     <div className="space-y-3">
-      <ul className="divide-y divide-border/60 rounded-lg border border-border/60 bg-background">
+      <ul className="divide-y divide-border/60 rounded-lg border border-border-subtle bg-card">
         {visible.map((key) => {
           const targetId = wasteLocationKeyId(key);
           const targetLabel = `${key.street}, ${key.zip} ${key.city}`;
@@ -165,14 +165,14 @@ export function NewsDetailTargetingSection({
           <p className="text-sm text-muted-foreground">{pt('targeting.card.sentReadOnly')}</p>
         ) : null}
       </div>
-      <div className="space-y-4 rounded-xl border border-border/60 bg-muted/10 p-4">
+      <div className="space-y-4 rounded-lg border border-border-subtle bg-muted p-4">
         {selected.length === 0 ? (
           <>
             <p className="text-sm font-medium">{pt('targeting.mode.global')}</p>
             <TargetingSummary selected={selected} staleIds={staleIds} pt={pt} />
           </>
         ) : (
-          <details className="group rounded-lg border border-border/60 bg-background">
+          <details className="group rounded-lg border border-border-subtle bg-card">
             <summary className="cursor-pointer select-none px-3 py-3 text-sm font-medium marker:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
               <span className="inline-flex flex-wrap items-center gap-2">
                 <span>{pt('targeting.mode.targeted', { count: selected.length })}</span>

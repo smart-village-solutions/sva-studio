@@ -2,9 +2,15 @@ import { contentDEErrors } from './content.errors.resources.js';
 
 export const contentDEResources = {
   leaveGuard: {
+    sessionRecovery:
+      'Ihre Sitzung muss erneut geprüft werden. Ihre Eingaben bleiben in diesem geöffneten Editor erhalten. Melden Sie sich bei Bedarf in einem neuen Tab an und prüfen Sie danach Konto und Organisation. Es wird nichts automatisch gespeichert.',
+    sessionRecoveryFailed:
+      'Die Wiederaufnahme ist noch nicht möglich. Melden Sie sich mit demselben Konto und derselben Organisation an und prüfen Sie erneut.',
+    signInNewTab: 'In neuem Tab anmelden',
+    resumeEditor: 'Sitzung und Kontext prüfen',
     title: 'Ungespeicherte Eingaben verwerfen?',
     description:
-      'Ihre Änderungen wurden noch nicht gespeichert. Wenn Sie diese Seite verlassen, gehen die ungespeicherten Eingaben verloren.',
+      'Es gibt offene Eingaben oder einen noch nicht bestätigten Speichervorgang. Beim Verlassen gehen offene Eingaben in dieser Ansicht verloren. Bereits gestartete Speichervorgänge werden dadurch nicht zurückgenommen.',
     discard: 'Verwerfen und verlassen',
     stay: 'Weiterbearbeiten',
   },
@@ -67,6 +73,8 @@ export const contentDEResources = {
     deleteConfirmTitle: 'Inhalt endgültig löschen?',
     deleteConfirmDescription:
       'Der Inhalt „{{title}}“ wird endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
+    deleteVoucherConfirmDescription:
+      'Der Gutschein „{{title}}“ wird endgültig gelöscht. Dabei können Restdaten und verwaiste Verknüpfungen, etwa zu Kontingenten oder Einlösungen, zurückbleiben. Diese Aktion kann nicht rückgängig gemacht werden.',
     deleteBulkConfirmTitle: 'Ausgewählte Inhalte endgültig löschen?',
     deleteBulkConfirmDescription:
       '{{count}} ausgewählte Inhalte werden endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',

@@ -33,6 +33,13 @@ Der fachlich freigegebene Integrationsentwurf für SSF ist im [Studio–SSF-Vert
 
 Das [SSF-Login-Mandantenverzeichnis V1](./api/ssf-admin-login-mandanten-v1.md) liefert aktive Mandanten mit ID, Bezeichnung, Realm und Tenant-Studio-URL für den SSF-eigenen Login.
 
+The [SSF recording directory V2](./api/ssf-recording-directory-v2.md) supplies
+live eligible recording permission holders and reviewer competence languages.
+Its [schema](./api/ssf-recording-directory-v2.schema.json) and
+[synthetic example](./api/ssf-recording-directory-v2.example.json) complement
+the recording policy in runtime configuration. Ownership and authentication
+boundaries are recorded in [ADR-071](./adr/ADR-071-recording-policy-and-tenant-authentication.md).
+
 Das SSF-V2-Zielbild beschreibt zwei neue Endpunkte:
 [Installationsinhalte vor der Mandantenauswahl](./api/ssf-installation-content-v2.schema.json)
 mit [Beispiel](./api/ssf-installation-content-v2.example.json) und

@@ -36,8 +36,12 @@ INSERT INTO iam.instance_plugin_lifecycle (
   instance_id, plugin_id, access_state, readiness_status, desired_operation,
   desired_generation, completed_generation, contract_revision, requested_at, updated_at
 )
-VALUES ($1, $2, CASE WHEN $3 = 'suspend' THEN 'suspended' ELSE 'active' END,
-  'pending', $3, 1, 0, $4, NOW(), NOW())
+SELECT $1, $2, CASE WHEN $3 = 'suspend' THEN 'suspended' ELSE 'active' END,
+  'pending', $3, 1, 0, $4, NOW(), NOW()
+WHERE $5::bigint IS NULL OR EXISTS (
+  SELECT 1 FROM iam.instance_plugin_lifecycle
+  WHERE instance_id = $1 AND plugin_id = $2 AND desired_generation = $5::bigint
+)
 ON CONFLICT (instance_id, plugin_id) DO UPDATE
 SET access_state = CASE
       WHEN EXCLUDED.desired_operation = 'suspend' THEN 'suspended'
@@ -59,9 +63,16 @@ SET access_state = CASE
     updated_at = NOW()
 WHERE iam.instance_plugin_lifecycle.active_job_id IS NULL
   AND iam.instance_plugin_lifecycle.claimed_generation IS NULL
+  AND ($5::bigint IS NULL OR iam.instance_plugin_lifecycle.desired_generation = $5::bigint)
 RETURNING *;
 `,
-        [input.instanceId, input.pluginId, input.operation, input.contractRevision ?? null]
+        [
+          input.instanceId,
+          input.pluginId,
+          input.operation,
+          input.contractRevision ?? null,
+          input.expectedGeneration ?? null,
+        ]
       )
     );
     if (!record) throw new Error('plugin_tenant_lifecycle_request_conflict');

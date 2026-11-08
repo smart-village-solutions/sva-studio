@@ -8,6 +8,7 @@ export type UpdateUserPersistencePayload = {
   readonly department?: string;
   readonly avatarUrl?: string;
   readonly preferredLanguage?: string;
+    readonly competenceLanguages?: readonly string[];
   readonly timezone?: string;
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly notes?: string;

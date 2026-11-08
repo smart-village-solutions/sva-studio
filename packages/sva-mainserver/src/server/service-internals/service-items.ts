@@ -2,13 +2,29 @@ import type { SvaMainserverConnectionInput, SvaMainserverGenericItemInput } from
 import { toSvaMainserverError, withUpdatedPayload, type SvaMainserverListInput } from './shared.js';
 import type { ServiceContext } from './service-context.js';
 
+const assertNonJob = (...types: readonly string[]) => {
+  if (types.includes('Job'))
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'job_dedicated_editor_required',
+      statusCode: 409,
+    });
+};
+
 export const createItemService = ({
   loadValidatedInstanceConfig,
   loadListCredentialMetadata,
   poiOperations,
   genericItemOperations,
   genericItemVisibilityOperations,
-}: Pick<ServiceContext, 'loadValidatedInstanceConfig' | 'loadListCredentialMetadata' | 'poiOperations' | 'genericItemOperations' | 'genericItemVisibilityOperations'>) => {
+}: Pick<
+  ServiceContext,
+  | 'loadValidatedInstanceConfig'
+  | 'loadListCredentialMetadata'
+  | 'poiOperations'
+  | 'genericItemOperations'
+  | 'genericItemVisibilityOperations'
+>) => {
   const listPoi = async (input: SvaMainserverListInput) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     const credentialMetadata = await loadListCredentialMetadata(input);
@@ -34,6 +50,8 @@ export const createItemService = ({
     }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    const current = await genericItemOperations.getGenericItemWithConfig(input, config);
+    assertNonJob(current.genericType);
     await genericItemVisibilityOperations.changeGenericItemVisibilityWithConfig(input, config);
   };
 
@@ -47,8 +65,13 @@ export const createItemService = ({
   const createGenericItem = async (
     input: SvaMainserverConnectionInput & { readonly genericItem: SvaMainserverGenericItemInput }
   ) => {
+    assertNonJob(input.genericItem.genericType);
     if (input.genericItem.genericType === 'Voucher')
-      throw toSvaMainserverError({code: 'invalid_response', message: 'voucher_dedicated_editor_required', statusCode: 409});
+      throw toSvaMainserverError({
+        code: 'invalid_response',
+        message: 'voucher_dedicated_editor_required',
+        statusCode: 409,
+      });
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return genericItemOperations.writeGenericItemWithConfig(input, config);
   };
@@ -61,8 +84,13 @@ export const createItemService = ({
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     const current = await genericItemOperations.getGenericItemWithConfig(input, config);
+    assertNonJob(current.genericType, input.genericItem.genericType);
     if (current.genericType === 'Voucher' || input.genericItem.genericType === 'Voucher')
-      throw toSvaMainserverError({code: 'invalid_response', message: 'voucher_dedicated_editor_required', statusCode: 409});
+      throw toSvaMainserverError({
+        code: 'invalid_response',
+        message: 'voucher_dedicated_editor_required',
+        statusCode: 409,
+      });
     return genericItemOperations.writeGenericItemWithConfig(
       {
         ...input,
@@ -81,7 +109,13 @@ export const createItemService = ({
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     const current = await genericItemOperations.getGenericItemWithConfig(input, config);
-    if (current.genericType === 'Voucher') throw toSvaMainserverError({code: 'invalid_response', message: 'voucher_delete_unsupported', statusCode: 409});
+    assertNonJob(current.genericType);
+    if (current.genericType === 'Voucher')
+      throw toSvaMainserverError({
+        code: 'invalid_response',
+        message: 'voucher_delete_unsupported',
+        statusCode: 409,
+      });
     return genericItemOperations.destroyGenericItemWithConfig(input, config);
   };
 

@@ -35,8 +35,12 @@ Empfohlen ist für neue lokale Setups ausschließlich `SVA_DEV_AUTH` plus `VITE_
 
 ## Verhalten
 
-- Der Browser bleibt zunächst unauthentifiziert.
-- Die Shell zeigt einen expliziten Button `Als Dev-User anmelden`.
+- Der Browser bleibt zunächst unauthentifiziert. Ein früherer Sitzungsmarker
+  im Browser löst bei fehlendem Cookie im Dev-Modus keine automatische
+  Login-Weiterleitung aus; die Anmeldung erfolgt durch einen bewussten Klick.
+- Die Startseite bietet `Als Dev-User anmelden` an. Auch die primäre Aktion
+  `Login` verwendet bei aktiviertem Dev-Auth-Modus dieselbe direkte Anmeldung.
+  Außerhalb dieses Modus bleibt `Login` ein Link auf den regulären Anmeldeweg.
 - `POST /auth/dev-login` aktiviert lokal eine Dev-Auth-Session über ein Cookie.
 - `/auth/me` liefert danach einen synthetischen Benutzerkontext.
 - `POST /auth/dev-logout` entfernt die lokale Dev-Auth-Session wieder.

@@ -118,6 +118,7 @@ function setup() {
   const service = createVoucherService({
     loadValidatedInstanceConfig: vi.fn(),
     executeGraphqlWithConfig: execute as ServiceContext['executeGraphqlWithConfig'],
+    genericItemOperations: createGenericItemOperations(execute as GraphqlExecutor),
   });
   const fingerprint = () =>
     voucherSnapshotHash({ snapshot: voucherWriteSnapshot(poi), provider: poi.dataProvider });
@@ -349,6 +350,54 @@ describe('voucher aggregate write', () => {
     expect(
       execute.mock.calls.filter(([call]) => call.operationName === 'SvaMainserverVoucherWrite')
     ).toHaveLength(1);
+  });
+});
+
+describe('dedicated voucher deletion', () => {
+  it('destroys only the voucher and tolerates absent related records without rewriting its POI', async () => {
+    const { service, execute, poi } = setup();
+    const current = { ...voucher('2', 'uuid-2'), pointOfInterest: null, quota: null };
+    execute.mockImplementation(async ({ operationName }) => {
+      if (operationName === 'SvaMainserverVoucherDetail') return { genericItem: current };
+      if (operationName === 'SvaMainserverDestroyRecord')
+        return { destroyRecord: { statusCode: 200 } };
+      throw new Error('unexpected_operation');
+    });
+    await expect(service.deleteVoucher({ ...connection, voucherId: '2' })).resolves.toEqual({
+      id: '2',
+    });
+    expect(execute.mock.calls.map(([call]) => call.operationName)).toEqual([
+      'SvaMainserverVoucherDetail',
+      'SvaMainserverDestroyRecord',
+    ]);
+    expect(execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        variables: { id: '2', recordType: 'GenericItem' },
+        allowRetry: false,
+      }),
+      undefined
+    );
+    expect(poi.vouchers.map((item) => item.id)).toEqual(['2', '3']);
+  });
+
+  it('does not destroy a non-voucher record', async () => {
+    const { service, execute } = setup();
+    execute.mockResolvedValue({ genericItem: { ...voucher('2', 'uuid-2'), genericType: 'FAQ' } });
+    await expect(service.deleteVoucher({ ...connection, voucherId: '2' })).rejects.toThrow();
+    expect(execute).toHaveBeenCalledOnce();
+  });
+
+  it('does not report a failed provider deletion as success', async () => {
+    const { service, execute } = setup();
+    execute.mockImplementation(async ({ operationName }) =>
+      operationName === 'SvaMainserverVoucherDetail'
+        ? { genericItem: voucher('2', 'uuid-2') }
+        : { destroyRecord: { statusCode: 422 } }
+    );
+    await expect(service.deleteVoucher({ ...connection, voucherId: '2' })).rejects.toMatchObject({
+      statusCode: 502,
+    });
+    expect(execute).toHaveBeenCalledTimes(2);
   });
 });
 

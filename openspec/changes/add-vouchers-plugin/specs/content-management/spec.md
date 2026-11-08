@@ -150,7 +150,7 @@ Studio SHALL die vom Mainserver registrierten Einlösungen pro Gutschein in Übe
 
 ### Requirement: Sichtbarkeit ohne Inhaltsreset
 
-Studio SHALL reines Anzeigen/Ausblenden eines Gutscheins über die vorhandene direkte Sichtbarkeitsmutation ausführen und SHALL dabei keinen POI-Inhalts-Save auslösen. Harte Gutscheinlöschung und eigenständige Archivierung SHALL im ersten Plugin-Umfang nicht angeboten werden.
+Studio SHALL reines Anzeigen/Ausblenden eines Gutscheins über die vorhandene direkte Sichtbarkeitsmutation ausführen und SHALL dabei keinen POI-Inhalts-Save auslösen. Eigenständige Archivierung SHALL nicht angeboten werden. Endgültige Gutscheinlöschung SHALL in der gemeinsamen Inhaltsübersicht mit `vouchers.delete` nach Bestätigung verfügbar sein; mögliche Restdaten oder verwaiste Verknüpfungen SHALL als Warnung angezeigt werden und MUST die Löschung nicht grundsätzlich sperren.
 
 #### Scenario: Gutschein wird ausgeblendet
 
@@ -158,3 +158,11 @@ Studio SHALL reines Anzeigen/Ausblenden eines Gutscheins über die vorhandene di
 - **THEN** verwendet Studio `changeVisibility` für das bestehende GenericItem
 - **AND** bleiben im nachgewiesenen Mainserver-Vertrag Gutschein-ID, Kontingent und Einlösungen erhalten
 - **AND** zeigt Studio erst nach bestätigtem Ergebnis Erfolg
+
+#### Scenario: Gutschein wird trotz möglicher Restdaten gelöscht
+
+- **WHEN** ein Benutzer mit `vouchers.delete` die endgültige Löschung bestätigt
+- **THEN** prüft Studio CSRF, Instanz und Datenanbieter-Principal und löscht nur das benannte Voucher-GenericItem über den dedizierten Gutschein-Endpunkt
+- **AND** warnt der Dialog vor möglichen Restdaten und verwaisten Verknüpfungen, ohne eine zusätzliche Bereinigung oder einen vollständigen Ortsbestand zu verlangen
+- **AND** bleiben allgemeine Core- und GenericItem-Löschwege für Gutscheine gesperrt
+- **AND** werden weder der Ort noch Geschwistergutscheine neu gespeichert und wird die Löschmutation nicht automatisch wiederholt

@@ -26,7 +26,7 @@ import { assertUpstreamScanLimit, withUpdatedPayload, toSvaMainserverError } fro
 import { voucherRecordSchema } from '../vouchers-read-model.js';
 type VoucherServiceContext = Pick<
   ServiceContext,
-  'loadValidatedInstanceConfig' | 'executeGraphqlWithConfig'
+  'loadValidatedInstanceConfig' | 'executeGraphqlWithConfig' | 'genericItemOperations'
 >;
 const execute = async <T>(
   context: VoucherServiceContext,
@@ -237,6 +237,14 @@ export function buildVoucherWrite(
 export const createVoucherService = (context: VoucherServiceContext) => ({
   listVouchers: (input: Parameters<typeof listVouchers>[1]) => listVouchers(context, input),
   getVoucher: (input: Parameters<typeof getVoucher>[1]) => getVoucher(context, input),
+  deleteVoucher: async (input: Parameters<typeof getVoucher>[1]) => {
+    await getVoucher(context, input);
+    const config = await context.loadValidatedInstanceConfig(input, 'load_instance_config');
+    return context.genericItemOperations.destroyGenericItemWithConfig(
+      { ...input, genericItemId: input.voucherId, allowRetry: false },
+      config
+    );
+  },
   getPoiVoucherState: (input: Parameters<typeof getPoiVoucherState>[1]) =>
     getPoiVoucherState(context, input),
   getVoucherPoi: (input: Parameters<typeof getVoucherPoi>[1]) => getVoucherPoi(context, input),

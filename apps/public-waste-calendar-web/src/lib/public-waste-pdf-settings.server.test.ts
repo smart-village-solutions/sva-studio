@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ExternalInterfaceRecord } from '@sva/core';
 import { createWasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
@@ -59,6 +59,12 @@ const createExternalInterfaceRecord = (
 });
 
 describe('public waste pdf settings', () => {
+  beforeEach(() => {
+    vi.stubEnv('IAM_DATABASE_URL', undefined);
+    vi.stubEnv('PUBLIC_WASTE_PDF_BRANDING_ASSET_URL', undefined);
+    vi.stubEnv('PUBLIC_WASTE_PDF_CONTACT_BLOCK', undefined);
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
     vi.unstubAllEnvs();
@@ -87,6 +93,7 @@ describe('public waste pdf settings', () => {
   });
 
   it('merges partial waste pdf settings with legacy or env fallbacks per field', async () => {
+    vi.stubEnv('IAM_DATABASE_URL', 'postgres://iam-test');
     vi.stubEnv('PUBLIC_WASTE_PDF_CONTACT_BLOCK', 'Env Contact');
     poolConnectMock.mockResolvedValue({
       query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
@@ -114,6 +121,7 @@ describe('public waste pdf settings', () => {
   });
 
   it('falls through to legacy or env values when waste settings exist but are empty', async () => {
+    vi.stubEnv('IAM_DATABASE_URL', 'postgres://iam-test');
     poolConnectMock.mockResolvedValue({
       query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
       release: vi.fn(),
@@ -139,6 +147,7 @@ describe('public waste pdf settings', () => {
   });
 
   it('falls back to interface public config when no waste pdf settings exist yet', async () => {
+    vi.stubEnv('IAM_DATABASE_URL', '  postgres://iam-test  ');
     vi.stubEnv('PUBLIC_WASTE_PDF_BRANDING_ASSET_URL', '');
     vi.stubEnv('PUBLIC_WASTE_PDF_CONTACT_BLOCK', '');
     poolConnectMock.mockResolvedValue({
@@ -163,6 +172,12 @@ describe('public waste pdf settings', () => {
       expect.objectContaining({
         getDatabaseUrl: expect.any(Function),
       })
+    );
+    expect(listExternalInterfaceRecordsMock.mock.calls[0]?.[1]?.getDatabaseUrl?.()).toBe(
+      'postgres://iam-test'
+    );
+    expect(loadDefaultExternalInterfaceRecordMock.mock.calls[0]?.[2]?.getDatabaseUrl?.()).toBe(
+      'postgres://iam-test'
     );
     expect(result).toEqual({
       contactBlock: 'Default Contact',
@@ -192,5 +207,65 @@ describe('public waste pdf settings', () => {
         'https://www.landkreis-prignitz.de/global/wGlobal/layout/images/logos/wappen-logo.png',
       contactBlock: 'Abfallberatung Prignitz',
     });
+    expect(listExternalInterfaceRecordsMock).not.toHaveBeenCalled();
+    expect(loadDefaultExternalInterfaceRecordMock).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, '', '   '])(
+    'skips IAM lookups when IAM_DATABASE_URL is %j despite a waste connection',
+    async (iamDatabaseUrl) => {
+      vi.stubEnv('IAM_DATABASE_URL', iamDatabaseUrl);
+      vi.stubEnv('PUBLIC_WASTE_PDF_CONTACT_BLOCK', 'Env Contact');
+      poolConnectMock.mockResolvedValue({
+        query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+        release: vi.fn(),
+      });
+      repositoryMock.getWastePdfStaticSettings.mockResolvedValue(null);
+
+      const result = await loadPublicWastePdfStaticConfig('tenant-a', {
+        getDatabaseUrl: () => 'postgres://waste-test',
+      });
+
+      expect(result).toEqual({ contactBlock: 'Env Contact' });
+      expect(listExternalInterfaceRecordsMock).not.toHaveBeenCalled();
+      expect(loadDefaultExternalInterfaceRecordMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it('preserves partial waste settings and fills missing fields from env without IAM', async () => {
+    vi.stubEnv('PUBLIC_WASTE_PDF_BRANDING_ASSET_URL', 'https://cdn.example/env-logo.svg');
+    vi.stubEnv('PUBLIC_WASTE_PDF_CONTACT_BLOCK', 'Env Contact');
+    poolConnectMock.mockResolvedValue({
+      query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+      release: vi.fn(),
+    });
+    repositoryMock.getWastePdfStaticSettings.mockResolvedValue({
+      pdfBrandingAssetUrl: 'https://cdn.example/waste-logo.svg',
+      pdfContactBlock: undefined,
+    });
+
+    const result = await loadPublicWastePdfStaticConfig('tenant-a', {
+      getDatabaseUrl: () => 'postgres://waste-test',
+    });
+
+    expect(result).toEqual({
+      brandingAssetUrl: 'https://cdn.example/waste-logo.svg',
+      contactBlock: 'Env Contact',
+    });
+    expect(listExternalInterfaceRecordsMock).not.toHaveBeenCalled();
+    expect(loadDefaultExternalInterfaceRecordMock).not.toHaveBeenCalled();
+  });
+
+  it('uses env values after a waste settings read failure without attempting IAM lookups', async () => {
+    vi.stubEnv('PUBLIC_WASTE_PDF_CONTACT_BLOCK', 'Env Contact');
+    poolConnectMock.mockRejectedValueOnce(new Error('waste_database_unavailable'));
+
+    const result = await loadPublicWastePdfStaticConfig('tenant-a', {
+      getDatabaseUrl: () => 'postgres://waste-test',
+    });
+
+    expect(result).toEqual({ contactBlock: 'Env Contact' });
+    expect(listExternalInterfaceRecordsMock).not.toHaveBeenCalled();
+    expect(loadDefaultExternalInterfaceRecordMock).not.toHaveBeenCalled();
   });
 });

@@ -16,7 +16,9 @@ describe('server-safe Mainserver GenericItem registry', () => {
   it('loads the enabled workspace ownership declarations', () => {
     expect(Object.fromEntries(studioMainserverGenericTypeRegistry)).toEqual({
       COCKPIT_CARD: 'cockpit-cards.cockpit-card',
+      ConstructionSite: 'construction-sites.construction-site',
       FAQ: 'faq.faq',
+      Job: 'jobs.job',
       Voucher: 'vouchers.voucher',
       FeaturedProject: 'projects.project',
     });

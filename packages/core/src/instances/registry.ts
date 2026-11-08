@@ -24,7 +24,22 @@ export const trafficEnabledInstanceStatuses = ['active'] as const;
 export type InstanceStatus = (typeof instanceStatuses)[number];
 export type TrafficEnabledInstanceStatus = (typeof trafficEnabledInstanceStatuses)[number];
 
+export type LoginMfaMode = 'optional' | 'required';
+export type LoginMfaPolicyState = Readonly<{
+  desiredMode: LoginMfaMode;
+  appliedMode: LoginMfaMode | null;
+  status: 'pending' | 'applied' | 'failed';
+}>;
+export type TenantLoginMfaPolicyView = Readonly<{
+  policy: LoginMfaPolicyState;
+  revision: number;
+  runId?: string;
+}>;
+
 export type InstanceRegistryRecord = {
+  readonly loginMfaPolicy?: LoginMfaPolicyState;
+  readonly loginMfaRevision?: number;
+  readonly loginMfaRunId?: string;
   readonly instanceId: string;
   readonly displayName: string;
   readonly timeZone: string;

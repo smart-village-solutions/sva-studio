@@ -52,7 +52,6 @@ export type PoiDetailPageViewModel = Readonly<{
   canUploadMedia: boolean;
   canUpdateMedia: boolean;
   activeTab: PoiDetailTabId;
-  visitedTabs: readonly PoiDetailTabId[];
   categoryOptions: readonly PoiCategoryOption[];
   categoryOptionsLoading: boolean;
   categoryOptionsError: string | null;
@@ -61,35 +60,50 @@ export type PoiDetailPageViewModel = Readonly<{
   deviationFieldLabels: Readonly<Record<string, string>>;
   tabs: readonly PoiDetailTabDefinition[];
   handleTabChange: (tab: PoiDetailTabId) => void;
-  warmTab: (tab: PoiDetailTabId) => void;
   submit: ReturnType<typeof usePoiDetailSave>;
   remove: () => Promise<void>;
 }>;
 
-export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
+function PoiDetailActions({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
   const {
     mode,
     pt,
-    methods,
-    canSave,
-    formId,
-    saveFeedback,
-    mediaSavePhaseKey,
     accessCapabilities,
     deletePending,
     setDeleteErrorMessage,
     setDeleteDialogOpen,
-    media,
   } = view;
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button asChild variant="secondary">
+        <Link to="/admin/content">{pt('actions.back')}</Link>
+      </Button>
+      {mode === 'edit' && accessCapabilities.canDelete ? (
+        <Button
+          type="button"
+          variant="destructive"
+          disabled={deletePending}
+          onClick={() => {
+            setDeleteErrorMessage(null);
+            setDeleteDialogOpen(true);
+          }}
+        >
+          {pt('actions.delete')}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
+  const { mode, pt, methods, canSave, formId, saveFeedback, mediaSavePhaseKey, media } = view;
   const active = useWatch({ control: methods.control, name: 'basis.active' });
   return (
     <FormProvider {...methods}>
       <StudioDetailPageTemplate
         stickyActions={mode === 'create'}
         title={mode === 'create' ? pt('detail.createTitle') : pt('detail.editTitle')}
-        description={
-          mode === 'edit' ? pt('detail.editDescription') : undefined
-        }
+        description={mode === 'edit' ? pt('detail.editDescription') : undefined}
         primaryAction={
           canSave ? (
             <div className="flex flex-col items-end gap-1">
@@ -114,30 +128,15 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
                   saved: pt('actions.saved'),
                 }}
               />
-              {mode === 'create' ? <p className="text-sm text-muted-foreground">{pt(active ? 'create.activeEffect' : 'create.inactiveEffect')}</p> : null}
+              {mode === 'create' ? (
+                <p className="text-sm text-muted-foreground">
+                  {pt(active ? 'create.activeEffect' : 'create.inactiveEffect')}
+                </p>
+              ) : null}
             </div>
           ) : undefined
         }
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="secondary">
-              <Link to="/admin/content">{pt('actions.back')}</Link>
-            </Button>
-            {mode === 'edit' && accessCapabilities.canDelete ? (
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={deletePending}
-                onClick={() => {
-                  setDeleteErrorMessage(null);
-                  setDeleteDialogOpen(true);
-                }}
-              >
-                {pt('actions.delete')}
-              </Button>
-            ) : null}
-          </div>
-        }
+        actions={<PoiDetailActions view={view} />}
       >
         <PoiDetailMediaOverlay {...view} />
         <PoiDetailForm view={view} />

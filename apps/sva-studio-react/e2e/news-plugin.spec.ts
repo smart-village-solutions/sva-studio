@@ -124,10 +124,18 @@ test.describe('news plugin', () => {
     let detailReads = 0;
     let writes = 0;
     await page.route('**/auth/me', async (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) })
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(authenticatedUser),
+      })
     );
     await page.route('**/iam/me/permissions?**', async (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(permissionPayload) })
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(permissionPayload),
+      })
     );
     await page.route('**/api/v1/mainserver/mutation-capabilities', async (route) =>
       route.fulfill({
@@ -137,7 +145,11 @@ test.describe('news plugin', () => {
       })
     );
     await page.route('**/api/v1/mainserver/categories*', async (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) })
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [] }),
+      })
     );
     await page.route('**/api/v1/mainserver/news/news-stale', async (route) => {
       if (route.request().method() === 'GET') {
@@ -164,7 +176,7 @@ test.describe('news plugin', () => {
       await route.fulfill({
         status: 409,
         contentType: 'application/json',
-        headers: { 'X-Request-Id': 'news-stale-ref' },
+        headers: { 'X-Request-Id': 'news-stale-ref', 'X-SVA-Mutation-Outcome': 'not_applied' },
         body: JSON.stringify({ error: 'stale_mainserver_context', message: 'stale context' }),
       });
     });
@@ -174,16 +186,177 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/news/news-stale');
     await expectNewsEditorReady(page, 'edit');
     await page.locator('#news-title').fill('Entwurf nach Kontextwechsel');
-    await page.getByRole('button', { name: /Speichern|news\.actions\.save/ }).last().click();
+    await page
+      .getByRole('button', { name: /Speichern|news\.actions\.save/ })
+      .last()
+      .click();
 
     await expect(page.getByText('news-stale-ref')).toBeVisible();
-    await expect(page.getByRole('button', { name: /Kontext neu laden|Reload context/ })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /Kontext neu laden|Reload context/ })
+    ).toBeVisible();
     expect(writes).toBe(1);
     await page.getByRole('button', { name: /Kontext neu laden|Reload context/ }).click();
     await expect.poll(() => detailReads).toBeGreaterThan(1);
     await expect(page.locator('#news-title')).toHaveValue('Entwurf nach Kontextwechsel');
     expect(writes).toBe(1);
   });
+
+  test('recovers a lost create reply without another content write and keeps later input', async ({
+    page,
+  }) => {
+    const saved: NewsRecord = {
+      id: 'news-recovered',
+      title: 'Abgesendet',
+      contentType: 'news.article',
+      status: 'published',
+      author: 'Editor One',
+      createdAt: '2026-11-01T10:00:00Z',
+      updatedAt: '2026-11-01T10:00:00Z',
+      visible: false,
+      payload: {},
+      dataProvider: { id: 'provider-1', name: 'Redaktion' },
+    };
+    let writes = 0;
+    let checks = 0;
+    let operationId = '';
+    await page.route('**/auth/me', (route) => route.fulfill({ json: authenticatedUser }));
+    await page.route('**/iam/me/permissions?**', (route) =>
+      route.fulfill({ json: permissionPayload })
+    );
+    await page.route('**/api/v1/mainserver/mutation-capabilities', (route) =>
+      route.fulfill({ json: { data: { enabledActions: ['news.create', 'news.update'] } } })
+    );
+    await page.route('**/api/v1/mainserver/categories*', (route) =>
+      route.fulfill({ json: { data: [] } })
+    );
+    await page.route('**/api/v1/mainserver/news**', async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (request.method() === 'POST') {
+        writes++;
+        operationId = request.headers()['x-sva-operation-id'] ?? '';
+        expect(request.headers()['idempotency-key']).toBe(operationId);
+        await route.abort('connectionfailed');
+      } else if (path.includes('/operations/')) {
+        checks++;
+        expect(path.endsWith(operationId)).toBe(true);
+        await route.fulfill({
+          json: {
+            data: {
+              operationId,
+              outcome: checks === 1 ? 'unknown' : 'succeeded',
+              ...(checks > 1 ? { contentId: saved.id } : {}),
+            },
+          },
+        });
+      } else
+        await route.fulfill({
+          json: { data: saved, meta: { access: { 'news.update': true } } },
+          headers: { 'X-SVA-Context-Binding': 'v1.recovered' },
+        });
+    });
+    await routeUnifiedContentOverview(page, [saved]);
+    await gotoHomeAsAuthenticatedUser(page);
+    await navigateClientSide(page, '/admin/news/new');
+    await expectNewsEditorReady(page, 'create');
+    await page.locator('#news-title').fill('Abgesendet');
+    await page.getByRole('button', { name: /Entwurf anlegen/ }).click();
+    const check = page.getByRole('button', { name: /Speicherergebnis prüfen/ });
+    await expect(check).toBeVisible();
+    await page.locator('#news-title').fill('Später weiterbearbeitet');
+    await check.click();
+    await expect(check).toBeEnabled();
+    expect(writes).toBe(1);
+    await check.click();
+    await expect(page.getByText(/Die ursprüngliche Operation wurde gespeichert/)).toBeVisible();
+    await expect(page.locator('#news-title')).toHaveValue('Später weiterbearbeitet');
+    await expect(page).toHaveURL(/news\/new$/);
+    expect(checks).toBe(2);
+    expect(writes).toBe(1);
+    const accessibility = await new AxeBuilder({ page }).include('#main-content').analyze();
+    expect(accessibility.violations).toEqual([]);
+  });
+
+  for (const mode of ['create', 'edit'] as const) {
+    test(`retains the ${mode} editor through explicit session recovery`, async ({ page }) => {
+      const item: NewsRecord = {
+        id: 'news-session',
+        title: 'Ausgangstitel',
+        contentType: 'news.article',
+        status: 'published',
+        author: 'Editor One',
+        createdAt: '2026-11-01T10:00:00Z',
+        updatedAt: '2026-11-01T10:00:00Z',
+        payload: {},
+        dataProvider: { id: 'provider-1', name: 'Redaktion' },
+      };
+      let writes = 0;
+      const mediaActions = ['media.read', 'media.create', 'media.reference.manage'] as const;
+      await page.route('**/auth/me', (route) =>
+        route.fulfill({
+          json: {
+            ...authenticatedUser,
+            user: {
+              ...authenticatedUser.user,
+              permissionActions: [...authenticatedUser.user.permissionActions, ...mediaActions],
+            },
+          },
+        })
+      );
+      await page.route('**/iam/me/permissions?**', (route) =>
+        route.fulfill({
+          json: {
+            ...permissionPayload,
+            permissions: [
+              ...permissionPayload.permissions,
+              ...mediaActions.map((action) => ({ action, resourceType: 'media' })),
+            ],
+          },
+        })
+      );
+      await page.route('**/api/v1/mainserver/mutation-capabilities', (route) =>
+        route.fulfill({ json: { data: { enabledActions: ['news.create', 'news.update'] } } })
+      );
+      await page.route('**/api/v1/mainserver/categories*', (route) =>
+        route.fulfill({ json: { data: [] } })
+      );
+      await page.route('**/api/v1/mainserver/news**', async (route) => {
+        if (route.request().method() !== 'GET') writes++;
+        await route.fulfill({
+          json: { data: item, meta: { access: { 'news.update': true } } },
+          headers: { 'X-SVA-Context-Binding': 'v1.session' },
+        });
+      });
+      await routeUnifiedContentOverview(page, [item]);
+      await gotoHomeAsAuthenticatedUser(page);
+      await navigateClientSide(
+        page,
+        mode === 'create' ? '/admin/news/new' : `/admin/news/${item.id}`
+      );
+      await expectNewsEditorReady(page, mode);
+      const draftTitle = mode === 'create' ? '' : 'Offener Sitzungsentwurf';
+      if (mode === 'edit') await page.locator('#news-title').fill(draftTitle);
+      if (mode === 'create') await openNewsCreateMedia(page);
+      else await openNewsDetailTab(page, /Inhalte|Content/);
+      await page.getByRole('button', { name: /Medium hinzufügen/ }).click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await page.evaluate(() =>
+        window.dispatchEvent(new Event('studio:auth-recovery-navigation', { cancelable: true }))
+      );
+      await expect(page.locator('#news-title')).toBeHidden();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.getByRole('link', { name: /In neuem Tab anmelden/ })).toHaveAttribute(
+        'target',
+        '_blank'
+      );
+      await page.getByRole('button', { name: /Sitzung und Kontext prüfen/ }).click();
+      await expect(page.getByRole('button', { name: /Sitzung und Kontext prüfen/ })).toHaveCount(0);
+      await expect(page.locator('#news-title')).toHaveValue(draftTitle);
+      await expect(page.getByRole('dialog')).toBeVisible();
+      expect(writes).toBe(0);
+    });
+  }
 
   test('supports draft creation, publication, and delete in the simplified news editor', async ({
     page,
@@ -344,10 +517,16 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/news/new');
     await expectPluginPageHeading(page, /Nachricht anlegen|news\.editor\.createTitle/);
     await page.getByLabel(/Überschrift|news\.fields\.title/).fill('Erste News');
-    await expect(page.locator('dl').filter({ hasText: 'Verantwortlich:' })).toContainText('Editor One');
+    await expect(page.locator('dl').filter({ hasText: 'Verantwortlich:' })).toContainText(
+      'Editor One'
+    );
     await expect(page.getByRole('textbox', { name: /Erstellen als/ })).toHaveCount(0);
     const categoryTrigger = page.locator('#news-category');
-    await page.locator('details').filter({has: categoryTrigger}).locator(':scope > summary').click();
+    await page
+      .locator('details')
+      .filter({ has: categoryTrigger })
+      .locator(':scope > summary')
+      .click();
     await expect(categoryTrigger).toBeEnabled();
     await categoryTrigger.click();
     const categorySearch = page.getByRole('textbox', {
@@ -361,7 +540,7 @@ test.describe('news plugin', () => {
     await expect(page.getByRole('tab', { name: /Inhalte|news\.tabs\.content/ })).toHaveCount(0);
     const introduction = page.locator('#news-content-intro');
     await expect(introduction).toBeHidden();
-    await page.locator('details').filter({has: introduction}).locator(':scope > summary').click();
+    await page.locator('details').filter({ has: introduction }).locator(':scope > summary').click();
     await introduction.fill('Kurztext');
     const bodyEditorContainer = page.locator('[data-rich-text-editor-id="news-content-body"]');
     const bodyEditor = page.locator('#news-content-body');
@@ -1000,5 +1179,149 @@ test.describe('news plugin', () => {
     expect(
       result.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))
     ).toEqual([]);
+  });
+
+  test.describe('design system migration references', () => {
+    test.use({ locale: 'de-DE', timezoneId: 'Europe/Berlin' });
+    for (const theme of ['sva-default', 'sva-forest'] as const) {
+      for (const mode of ['light', 'dark'] as const) {
+        test(`visual migration reference ${theme} ${mode}`, async ({ page }) => {
+          test.setTimeout(180_000);
+          await page.clock.setFixedTime(new Date('2026-04-13T12:10:00.000Z'));
+          await page.emulateMedia({ reducedMotion: 'reduce' });
+          await page.addInitScript((mode) => {
+            localStorage.setItem('sva-studio.theme-mode', mode);
+            localStorage.setItem('sva-studio-locale', 'de');
+            localStorage.removeItem('sva-studio-sidebar-collapsed');
+          }, mode);
+          const items: NewsRecord[] = [
+            {
+              id: 'news-visual',
+              title: 'Neue Angebote für unsere Gemeinde',
+              contentType: 'news.article',
+              status: 'published',
+              author: 'Editor One',
+              createdAt: '2026-04-13T12:10:00.000Z',
+              updatedAt: '2026-04-13T12:10:00.000Z',
+              publishedAt: '2026-04-13T12:10:00.000Z',
+              visible: true,
+              categories: [{ name: 'Gemeindeleben' }],
+              payload: {},
+              contentBlocks: [
+                {
+                  intro: 'Informationen aus der Gemeinde.',
+                  body: '<p>Entdecken Sie die neuen Angebote vor Ort.</p>',
+                },
+              ],
+            },
+          ];
+          await page.route('**/auth/me', (route) =>
+            route.fulfill({
+              json: authenticatedUser,
+            })
+          );
+          await page.route('**/iam/me/permissions?**', (route) =>
+            route.fulfill({
+              json: permissionPayload,
+            })
+          );
+          await page.route('**/api/v1/mainserver/news**', (route) =>
+            fulfillContentRoute(route, items)
+          );
+          await page.route('**/api/v1/mainserver/categories*', (route) =>
+            route.fulfill({
+              json: { data: [{ id: 'category-visual', name: 'Gemeindeleben' }] },
+            })
+          );
+          await page.route('**/api/v1/iam/me/context', (route) =>
+            route.fulfill({
+              json: {
+                data: {
+                  activeOrganizationId: 'org-1',
+                  personalMainserverReadiness: 'ready',
+                  organizations: [
+                    {
+                      organizationId: 'org-1',
+                      organizationKey: 'gemeinde-beispiel',
+                      displayName: 'Gemeinde Beispiel',
+                      organizationType: 'municipality',
+                      contentAuthorPolicy: 'org_or_personal',
+                      isActive: true,
+                      isDefaultContext: true,
+                      mainserverReadiness: 'ready',
+                    },
+                  ],
+                },
+              },
+            })
+          );
+          await routeUnifiedContentOverview(page, items);
+          await gotoHomeAsAuthenticatedUser(page);
+
+          for (const view of ['overview', 'create', 'edit'] as const) {
+            await navigateClientSide(
+              page,
+              view === 'overview'
+                ? '/admin/content'
+                : view === 'create'
+                  ? '/admin/news/new'
+                  : '/admin/news/news-visual'
+            );
+            if (view === 'overview') await expectContentOverviewReady(page);
+            else await expectNewsEditorReady(page, view);
+
+            for (const width of [320, 390, 768, 1023, 1024, 1025, 1279, 1280, 1281, 1728]) {
+              await page.setViewportSize({ width, height: 900 });
+              // Exercise the real page with a fixed visual theme, independently of
+              // the synthetic user's tenant; persistence has its own shell tests.
+              await page.evaluate((theme) => {
+                document.documentElement.dataset.theme = theme;
+                return document.fonts.ready.then(() => undefined);
+              }, theme);
+              await expect(page.locator('html')).toHaveAttribute('data-theme-mode', mode);
+              await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+              await expect(page.locator('#main-content')).toHaveAttribute('aria-busy', 'false');
+              await expect
+                .poll(
+                  () =>
+                    page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+                  { message: `${view} at ${width}px must not overflow the document` }
+                )
+                .toBe(true);
+              expect(
+                await page.locator('form form, button button, a button, button a').count()
+              ).toBe(0);
+              const sidebar = page.locator('aside[aria-label="Seitenleiste"]');
+              if (width < 1024) await expect(sidebar).toBeHidden();
+              else
+                await expect
+                  .poll(async () => (await sidebar.boundingBox())?.width)
+                  .toBe(width < 1280 ? 80 : 288);
+              if (width === 390 || width === 1280) {
+                await expect(page).toHaveScreenshot(
+                  `studio-${view}-${theme}-${mode}-${width}.png`,
+                  {
+                    fullPage: true,
+                    animations: 'disabled',
+                  }
+                );
+              }
+            }
+            if (view === 'edit') {
+              const tabs = page.getByRole('tablist').getByRole('tab');
+              await tabs.nth(0).focus();
+              await page.keyboard.press('ArrowRight');
+              await expect(tabs.nth(1)).toBeFocused();
+              await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+              await page.keyboard.press('ArrowRight');
+              await expect(tabs.nth(2)).toBeFocused();
+              await expect(tabs.nth(2)).toHaveAttribute('aria-selected', 'true');
+              await page.keyboard.press('Home');
+              await expect(tabs.nth(0)).toBeFocused();
+            }
+          }
+        });
+      }
+    }
   });
 });

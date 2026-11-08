@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   write: vi.fn(),
   detail: vi.fn(),
   visibility: vi.fn(),
+  remove: vi.fn(),
   provider: vi.fn(),
   finalize: vi.fn(),
   access: vi.fn(),
@@ -50,9 +51,9 @@ vi.mock('./service.js', () => ({
   writeSvaMainserverVoucher: state.write,
   getSvaMainserverVoucher: state.detail,
   changeSvaMainserverGenericItemVisibility: state.visibility,
+  deleteSvaMainserverVoucher: state.remove,
   listSvaMainserverVouchers: state.list,
   listSvaMainserverPoi: state.locations,
-  loadSvaMainserverDataProviderIdentity: () => ({ dataProvider: { id: 'provider' } }),
 }));
 import { dispatchSvaMainserverVouchersRequest } from './vouchers-route.js';
 const voucher = {
@@ -104,7 +105,7 @@ beforeEach(() => {
     },
     fingerprint,
   });
-  state.access.mockResolvedValue({ 'vouchers.read': true, 'poi.update': true });
+  state.access.mockResolvedValue({ 'vouchers.read': true, 'poi.read': true, 'poi.update': true });
   state.provider.mockResolvedValue({});
   state.reserve.mockResolvedValue({ status: 'reserved' });
   state.write.mockResolvedValue({ id: '3', dataProvider: { id: 'provider' } });
@@ -129,25 +130,61 @@ describe('voucher request boundaries', () => {
         ? { ok: false, status: 403, error: 'forbidden', message: 'forbidden' }
         : { ok: true, actor: { instanceId: 'tenant', keycloakSubject: 'subject' } }
     );
-    state.access.mockResolvedValue({ 'poi.update': true });
+    state.access.mockResolvedValue({ 'poi.read': true, 'poi.update': true });
     const response = await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher }));
     expect(response?.status).toBe(200);
     expect(state.access).toHaveBeenCalledWith(
       expect.objectContaining({
-        actions: ['poi.update'],
+        actions: ['poi.read', 'poi.update'],
         contentType: 'poi.point-of-interest',
         item: expect.objectContaining({ id: '1', dataProvider: { id: 'provider' } }),
-        forceExactScopeActions: ['poi.update'],
+        forceExactScopeActions: ['poi.read', 'poi.update'],
       })
     );
     expect(state.write).not.toHaveBeenCalled();
   });
-  it('rejects preparation when the provider-bound parent POI update grant is missing', async () => {
-    state.access.mockResolvedValue({ 'poi.update': false });
+  it.each(['poi.read', 'poi.update'])('rejects preparation when the exact %s grant is missing', async (action) => {
+    state.access.mockResolvedValue({ 'poi.read': action !== 'poi.read', 'poi.update': action !== 'poi.update' });
     const response = await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher }));
     expect(response?.status).toBe(403);
     expect(state.reserve).not.toHaveBeenCalled();
     expect(state.write).not.toHaveBeenCalled();
+  });
+  it.each([null, {}, { id: '' }, { id: ' ' }, { id: 123 }])('rejects an invalid POI data provider %j before preparing a write', async (dataProvider) => {
+    const aggregate = await state.aggregate();
+    state.aggregate.mockResolvedValue({ ...aggregate, poi: { ...aggregate.poi, dataProvider } });
+    const response = await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher }));
+    expect(response?.status).toBe(403);
+    expect(state.access).not.toHaveBeenCalled();
+    expect(state.reserve).not.toHaveBeenCalled();
+    expect(state.write).not.toHaveBeenCalled();
+  });
+  it.each(['prepare', 'commit'])('allows an authorized admin to %s a voucher for another owner', async (operation) => {
+    const aggregate = await state.aggregate();
+    state.aggregate.mockResolvedValue({
+      ...aggregate,
+      poi: { ...aggregate.poi, dataProvider: { id: 'foreign' } },
+    });
+    if (operation === 'commit') {
+      state.reserve
+        .mockResolvedValueOnce({ status: 'replay', responseBody: { siblingIdentities: { '2': 'uuid-2' } } })
+        .mockResolvedValueOnce({ status: 'reserved' });
+      state.write.mockResolvedValue({ id: '3', dataProvider: { id: 'foreign' } });
+    }
+    const response = await dispatchSvaMainserverVouchersRequest(request(operation, {
+      voucher,
+      ...(operation === 'commit' ? { preparationId: id, preparationFingerprint: fingerprint } : {}),
+    }));
+    expect(response?.status).toBe(200);
+    expect(state.access).toHaveBeenCalledWith(expect.objectContaining({
+      item: { id: '1', dataProvider: { id: 'foreign' } },
+      actions: ['poi.read', 'poi.update'],
+      forceExactScopeActions: ['poi.read', 'poi.update'],
+    }));
+    if (operation === 'commit') {
+      expect(state.write).toHaveBeenCalledOnce();
+      expect(state.finalize).toHaveBeenCalledWith(expect.objectContaining({ observedDataProviderId: 'foreign' }));
+    } else expect(state.write).not.toHaveBeenCalled();
   });
   it('rejects missing CSRF protection', async () => {
     state.csrf.mockReturnValue({ code: 'bad' });
@@ -427,6 +464,25 @@ describe('authorized voucher reads', () => {
     dispatchSvaMainserverVouchersRequest(
       new Request(`https://studio.test/api/v1/mainserver/vouchers${path}`)
     );
+  it('offers another owner location when both exact resource grants allow it', async () => {
+    state.readActor.mockReturnValue(actor);
+    state.locations.mockResolvedValue({
+      data: [
+        { id: '1', name: 'Other owner location', addresses: [], dataProvider: { id: 'foreign' } },
+        { id: '2', name: 'Missing provider', dataProvider: null },
+        { id: '3', name: 'Blank provider', dataProvider: { id: ' ' } },
+      ],
+      pagination: { page: 1, hasNextPage: false },
+    });
+    const response = await get('/locations');
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toMatchObject({ data: [{ id: '1', name: 'Other owner location' }] });
+    expect(state.access).toHaveBeenCalledOnce();
+    expect(state.access).toHaveBeenCalledWith(expect.objectContaining({
+      item: expect.objectContaining({ dataProvider: { id: 'foreign' } }),
+      forceExactScopeActions: ['poi.read', 'poi.update'],
+    }));
+  });
   it('requires both local permission and a resolved read principal', async () => {
     expect((await get(''))?.status).toBe(403);
     state.local.mockResolvedValue({
@@ -490,7 +546,7 @@ describe('authorized voucher reads', () => {
     state.access.mockResolvedValue({ 'vouchers.read': false });
     expect((await get('/2'))?.status).toBe(403);
   });
-  it('returns only owned editable locations without changing upstream pagination', async () => {
+  it('returns only readable and editable locations without changing upstream pagination', async () => {
     expect((await get('/locations'))?.status).toBe(403);
     state.readActor.mockReturnValue(actor);
     state.locations.mockResolvedValue({
@@ -499,16 +555,21 @@ describe('authorized voucher reads', () => {
         { id: '2', name: 'Foreign', dataProvider: { id: 'other' } },
         { id: '3', name: 'Denied', dataProvider: { id: 'provider' } },
         { id: '4', name: 'No provider', dataProvider: null },
+        { id: '5', name: 'Unreadable', dataProvider: { id: 'provider' } },
       ],
       pagination: { page: 2, hasNextPage: true },
     });
-    state.local.mockImplementation(({ action }) =>
-      action === 'poi.update'
+    state.local.mockImplementation(({ action, credentialVisibleCompatibility }) =>
+      action === 'poi.update' || (action === 'poi.read' && !credentialVisibleCompatibility)
         ? { ok: false, status: 403, error: 'forbidden', message: 'forbidden' }
         : { ok: true, actor }
     );
-    state.access.mockImplementation(({ item }) => ({ 'poi.update': item.id === '1' }));
+    state.access.mockImplementation(({ item }) => ({
+      'poi.read': item.id !== '5',
+      'poi.update': item.id === '1' || item.id === '5',
+    }));
     const response = await get('/locations?page=2&pageSize=100');
+    expect(response?.status).toBe(200);
     expect(await response?.json()).toEqual({
       data: [{ id: '1', name: 'Allowed', addresses: [] }],
       pagination: { page: 2, hasNextPage: true },
@@ -518,9 +579,9 @@ describe('authorized voucher reads', () => {
     );
     expect(state.access).toHaveBeenCalledWith(
       expect.objectContaining({
-        actions: ['poi.update'],
+        actions: ['poi.read', 'poi.update'],
         contentType: 'poi.point-of-interest',
-        forceExactScopeActions: ['poi.update'],
+        forceExactScopeActions: ['poi.read', 'poi.update'],
       })
     );
   });
@@ -562,10 +623,12 @@ describe('voucher pre-write rejection contracts', () => {
       ...aggregate,
       poi: { ...aggregate.poi, dataProvider: { id: 'foreign' } },
     });
+    state.access.mockResolvedValue({ 'poi.read': true, 'poi.update': false });
     expect(
       (await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher })))?.status
     ).toBe(403);
     state.aggregate.mockResolvedValue(aggregate);
+    state.access.mockResolvedValue({ 'poi.read': true, 'poi.update': true });
     expect(
       (
         await dispatchSvaMainserverVouchersRequest(
@@ -608,7 +671,7 @@ describe('voucher pre-write rejection contracts', () => {
     expect(
       (
         await dispatchSvaMainserverVouchersRequest(
-          new Request('https://studio.test/api/v1/mainserver/vouchers/2', { method: 'DELETE' })
+          new Request('https://studio.test/api/v1/mainserver/vouchers/2', { method: 'PUT' })
         )
       )?.status
     ).toBe(405);
@@ -621,6 +684,100 @@ describe('voucher pre-write rejection contracts', () => {
       (await dispatchSvaMainserverVouchersRequest(request('prepare', { voucher })))?.status
     ).toBe(409);
     expect(state.write).not.toHaveBeenCalled();
+  });
+});
+
+describe('voucher deletion', () => {
+  const deleteRequest = (voucherId = '2') =>
+    new Request(`https://studio.test/api/v1/mainserver/vouchers/${voucherId}`, {
+      method: 'DELETE',
+    });
+
+  beforeEach(() => {
+    state.detail.mockResolvedValue({
+      id: '2',
+      dataProvider: { id: 'provider' },
+      pointOfInterest: null,
+      quota: null,
+    });
+    state.remove.mockResolvedValue({ id: '2' });
+  });
+
+  it('deletes with voucher permission and provider authorization even without a POI or quota', async () => {
+    const response = await dispatchSvaMainserverVouchersRequest(deleteRequest());
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toEqual({ data: { id: '2' } });
+    expect(state.local).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'vouchers.delete',
+        resource: { contentType: 'vouchers.voucher', contentId: '2' },
+      })
+    );
+    expect(state.provider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'vouchers.delete',
+        contentType: 'vouchers.voucher',
+        contentId: '2',
+        item: { id: '2', dataProvider: { id: 'provider' } },
+      })
+    );
+    expect(state.remove).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        voucherId: '2',
+        instanceId: 'tenant',
+        actingPrincipalType: 'organization',
+      })
+    );
+    expect(state.finalize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerOutcome: 'succeeded',
+        contentId: '2',
+        completedSteps: ['provider_write', 'tombstone'],
+      })
+    );
+    expect(state.aggregate).not.toHaveBeenCalled();
+    expect(state.write).not.toHaveBeenCalled();
+  });
+
+  it('rejects missing CSRF before reading or deleting a voucher', async () => {
+    state.csrf.mockReturnValue({ code: 'invalid' });
+    expect((await dispatchSvaMainserverVouchersRequest(deleteRequest()))?.status).toBe(403);
+    expect(state.detail).not.toHaveBeenCalled();
+    expect(state.remove).not.toHaveBeenCalled();
+  });
+
+  it('requires vouchers.delete rather than generic content deletion rights', async () => {
+    state.local.mockResolvedValue({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'forbidden',
+    });
+    expect((await dispatchSvaMainserverVouchersRequest(deleteRequest()))?.status).toBe(403);
+    expect(state.detail).not.toHaveBeenCalled();
+    expect(state.remove).not.toHaveBeenCalled();
+  });
+
+  it('rejects a provider denial before deletion', async () => {
+    state.provider.mockResolvedValue(new Response(null, { status: 403 }));
+    expect((await dispatchSvaMainserverVouchersRequest(deleteRequest()))?.status).toBe(403);
+    expect(state.remove).not.toHaveBeenCalled();
+    expect(state.finalize).not.toHaveBeenCalled();
+  });
+
+  it('does not retry failed deletion or finalize it as successful', async () => {
+    state.remove.mockRejectedValueOnce(new Error('upstream_unavailable'));
+    expect((await dispatchSvaMainserverVouchersRequest(deleteRequest()))?.status).toBe(502);
+    expect(state.remove).toHaveBeenCalledOnce();
+    expect(state.finalize).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed voucher IDs without consulting the provider', async () => {
+    expect((await dispatchSvaMainserverVouchersRequest(deleteRequest('invalid')))?.status).toBe(
+      405
+    );
+    expect(state.detail).not.toHaveBeenCalled();
+    expect(state.remove).not.toHaveBeenCalled();
   });
 });
 

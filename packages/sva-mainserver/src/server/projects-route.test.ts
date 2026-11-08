@@ -540,6 +540,7 @@ describe('projects route', () => {
     );
 
     expect(forbidden?.status).toBe(403);
+    expect(forbidden?.headers.get('X-SVA-Mutation-Outcome')).toBe('not_applied');
     expect(state.resolveMutationPrincipalContext).not.toHaveBeenCalled();
     expect(state.reserveIdempotency).not.toHaveBeenCalled();
     expect(state.createGenericItem).not.toHaveBeenCalled();

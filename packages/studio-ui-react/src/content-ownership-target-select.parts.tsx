@@ -1,5 +1,5 @@
 import type { IamContentOwnershipTarget } from '@sva/core';
-import { Building2, Check, Search, UserRound } from 'lucide-react';
+import { IconBuilding as Building2, IconCheck as Check, IconSearch as Search, IconUser as UserRound } from '@tabler/icons-react';
 import { useRef, type RefObject } from 'react';
 
 import { Input } from './input.js';

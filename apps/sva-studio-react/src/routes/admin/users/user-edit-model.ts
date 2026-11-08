@@ -1,5 +1,6 @@
 import type { IamUserDetail, IamUserPermissionTraceItem } from '@sva/core';
 import { z } from 'zod';
+import { normalizeCompetenceLanguages } from '@sva/core';
 
 import { t } from '../../../i18n';
 import { pickInitials } from '../../../lib/display-name';
@@ -19,6 +20,7 @@ export type UserFormValues = {
   department: string;
   status: 'active' | 'inactive' | 'pending';
   preferredLanguage: string;
+  competenceLanguages: string;
   timezone: string;
   notes: string;
   roleIds: string[];
@@ -40,6 +42,9 @@ export const createUserEditSchema = () =>
     department: z.string(),
     status: z.enum(['active', 'inactive', 'pending']),
     preferredLanguage: z.string(),
+    competenceLanguages: z.string().refine(value => {
+      try { normalizeCompetenceLanguages(value.split(/[\s,;]+/u).filter(Boolean)); return true; } catch { return false; }
+    }, "Invalid language tags (maximum 40)."),
     timezone: z.string(),
     notes: z.string().max(2000, t('admin.users.edit.validation.notesTooLong')),
     roleIds: z.array(z.string()),
@@ -149,6 +154,7 @@ export const toUserFormValues = (user: IamUserDetail | null | undefined): UserFo
     department,
     status,
     preferredLanguage,
+    competenceLanguages: (user?.competenceLanguages ?? []).join(', '),
     timezone,
     notes,
     roleIds: readRoleIds(user),
@@ -170,6 +176,7 @@ export const toUserUpdatePayload = (formValues: UserFormValues): UpdateUserPaylo
   department: formValues.department || undefined,
   status: formValues.status,
   preferredLanguage: formValues.preferredLanguage || undefined,
+  competenceLanguages: normalizeCompetenceLanguages(formValues.competenceLanguages.split(/[\s,;]+/u).filter(Boolean)),
   timezone: formValues.timezone || undefined,
   notes: formValues.notes.slice(0, 2000) || undefined,
   roleIds: formValues.roleIds,
@@ -329,6 +336,7 @@ export const hasUserFormChanges = (baseline: UserFormValues, current: UserFormVa
   baseline.department !== current.department ||
   baseline.status !== current.status ||
   baseline.preferredLanguage !== current.preferredLanguage ||
+  baseline.competenceLanguages !== current.competenceLanguages ||
   baseline.timezone !== current.timezone ||
   baseline.notes !== current.notes ||
   !areStringArraysEqual(baseline.roleIds, current.roleIds) ||

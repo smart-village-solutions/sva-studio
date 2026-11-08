@@ -111,7 +111,7 @@ export const mapPoiItemToDetailFormValues = (item: PoiContentItem): PoiDetailFor
       : item.categoryName
         ? [item.categoryName]
         : [],
-    active: item.active !== false,
+    active: item.visible !== false,
   },
   content: mapPoiContentToFormValues(item),
   settings: {

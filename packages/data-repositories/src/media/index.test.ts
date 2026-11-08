@@ -1097,10 +1097,31 @@ describe('media repository', () => {
       'tenant-a',
       'actor-1',
     ]);
-    expect(statements[6]?.text).toContain("status = 'content_saved'");
+    expect(statements[6]?.text).toContain("ELSE 'content_saved' END");
     expect(statements[9]?.text).toContain('INSERT INTO iam.media_references');
     expect(statements[13]?.text).toContain("status = 'reconciliation_required'");
     expect(statements[15]?.text).toContain('DELETE FROM iam.media_assets');
+  });
+
+  it('permits confirmed reference recovery while excluding cleanup states and target changes', () => {
+    const statement = mediaStatements.markContentSaveOperationContentSaved({
+      ...contentSaveIdentity,
+      targetId: 'news-1',
+    });
+    expect(statement.values).toEqual([
+      contentSaveIdentity.operationId,
+      'tenant-a',
+      'actor-1',
+      'news-1',
+    ]);
+    expect(statement.text).toContain('instance_id = $2');
+    expect(statement.text).toContain('actor_subject = $3');
+    expect(statement.text).toContain("'outcome_unknown', 'reconciliation_required'");
+    expect(statement.text).toContain('(target_id IS NULL OR target_id = $4)');
+    expect(statement.text).toContain("status = 'committed' AND target_id = $4");
+    expect(statement.text).toContain("CASE WHEN status = 'committed' THEN status ELSE 'content_saved' END");
+    expect(statement.text).not.toContain("'abandon_pending'");
+    expect(statement.text).not.toContain("'abandoned'");
   });
 
   it('claims only expired safe states and preserves unknown or confirmed outcomes', () => {

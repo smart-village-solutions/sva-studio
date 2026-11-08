@@ -45,8 +45,6 @@ export type EventsDetailPageViewProps = Readonly<{
   tabs: readonly EventsDetailTabDefinition[];
   activeTab: EventsDetailTabId;
   handleTabChange: (tabId: EventsDetailTabId) => void;
-  warmTab: (tabId: EventsDetailTabId) => void;
-  visitedTabs: readonly EventsDetailTabId[];
   categoryOptions: readonly EventCategoryOption[];
   categoryOptionsError: string | null;
   categoryOptionsLoading: boolean;
@@ -91,7 +89,11 @@ const EventsDetailSaveAction = ({
           saved: pt('actions.saved'),
         }}
       />
-      {mode === 'create' ? <p className="text-sm text-muted-foreground">{pt(visible ? 'create.visibleEffect' : 'create.hiddenEffect')}</p> : null}
+      {mode === 'create' ? (
+        <p className="text-sm text-muted-foreground">
+          {pt(visible ? 'create.visibleEffect' : 'create.hiddenEffect')}
+        </p>
+      ) : null}
     </div>
   );
 };
@@ -128,9 +130,7 @@ export function EventsDetailPageView(props: EventsDetailPageViewProps) {
       <StudioDetailPageTemplate
         stickyActions={mode === 'create'}
         title={mode === 'create' ? pt('detail.createTitle') : pt('detail.editTitle')}
-        description={
-          mode === 'edit' ? pt('detail.editDescription') : undefined
-        }
+        description={mode === 'edit' ? pt('detail.editDescription') : undefined}
         primaryAction={canSave ? <EventsDetailSaveAction {...props} /> : undefined}
         actions={<EventsDetailNavigationActions {...props} />}
       >

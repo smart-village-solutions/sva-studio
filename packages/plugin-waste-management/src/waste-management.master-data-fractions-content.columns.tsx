@@ -1,6 +1,6 @@
 import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { cn, type StudioColumnDef } from '@sva/studio-ui-react';
+import { StudioSwitch, type StudioColumnDef } from '@sva/studio-ui-react';
 
 const createFractionIdentityColumn = (
   pt: ReturnType<typeof usePluginTranslation>
@@ -43,6 +43,7 @@ const createFractionColorColumn = (
   cell: (fraction) => (
     <div className="flex items-center gap-2">
       <span
+        role="img"
         aria-label={pt('masterData.fractions.table.colorSwatch', { value: fraction.color })}
         className="inline-block h-6 w-6 shrink-0 rounded-sm border border-border/70"
         style={{ backgroundColor: fraction.color }}
@@ -88,34 +89,14 @@ const createFractionStatusColumn = ({
   sortValue: (fraction) => (fraction.active ? 'active' : 'inactive'),
   cell: (fraction) => (
     <div className="flex items-center justify-center">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={fraction.active}
-        aria-label={
-          fraction.active
-            ? pt('masterData.fractions.actions.deactivateStatus', { value: fraction.name })
-            : pt('masterData.fractions.actions.activateStatus', { value: fraction.name })
-        }
+      <StudioSwitch
+        checked={fraction.active}
+        aria-label={pt('masterData.fractions.actions.toggleStatus', { value: fraction.name })}
         disabled={saving}
-        className={cn(
-          'relative inline-flex h-[18px] w-8 shrink-0 items-center rounded-full border border-transparent transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-          'disabled:cursor-not-allowed disabled:opacity-60',
-          fraction.active ? 'bg-primary' : 'bg-muted'
-        )}
-        onClick={() => {
-          void onToggleFractionStatus(fraction, !fraction.active);
+        onCheckedChange={(active) => {
+          void onToggleFractionStatus(fraction, active);
         }}
-      >
-        <span
-          aria-hidden="true"
-          className={cn(
-            'pointer-events-none inline-block h-[14px] w-[14px] rounded-full bg-background shadow-sm transition-transform',
-            fraction.active ? 'translate-x-[16px]' : 'translate-x-0.5'
-          )}
-        />
-      </button>
+      />
     </div>
   ),
 });

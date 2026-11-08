@@ -150,7 +150,7 @@ const OpeninghourRow = ({
   openingHour: GenericItemsDetailFormValues['openingHours'][number];
 }> &
   Readonly<{ canRemove: boolean; onRemove: () => void }>) => (
-  <section className="overflow-hidden rounded-xl border border-border/60 bg-card">
+  <section className="overflow-hidden rounded-lg border border-border-subtle bg-card">
     <div className="flex items-center justify-between bg-muted px-4 py-3 text-card-foreground">
       <h4 className="text-base font-semibold">{labels.openingHourItem}</h4>
       {canRemove ? (

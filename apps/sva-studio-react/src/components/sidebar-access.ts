@@ -115,6 +115,15 @@ const resolveSidebarAdminAccess = ({
     isAuthenticated && isIamAdminEnabled() && hasOrganizationAdminAccess(accessUser);
   const canAccessAdminInstances =
     isAuthenticated && isIamAdminEnabled() && hasPlatformInstanceAdminAccess(accessUser);
+  const canAccessTenantLoginMfa =
+    isAuthenticated &&
+    isIamAdminEnabled() &&
+    Boolean(user?.instanceId) &&
+    hasPermissionAction(
+      'iam.authenticationPolicy.manage',
+      contentAccessApi.permissionActions,
+      contentAccessApi.isLoading
+    );
   const canAccessTenantInvitationTemplate =
     isAuthenticated &&
     isIamAdminEnabled() &&
@@ -137,6 +146,7 @@ const resolveSidebarAdminAccess = ({
     canAccessAdminUsers,
     canAccessAdminOrganizations,
     canAccessAdminInstances,
+    canAccessTenantLoginMfa,
     canAccessTenantInvitationTemplate,
     canAccessAdminRoles,
     canAccessAdminGroups,

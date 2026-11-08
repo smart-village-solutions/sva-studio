@@ -81,6 +81,30 @@ Die bestehende Main-Server-Municipality↔Studio-Mandant-Verbindung MUST die fac
 - **THEN** prüft der Main-Server den aktuellen Originalzugriff erneut und gibt über diesen Bezug keinen übersetzten Text aus
 - **AND** löst diese Auslieferungssperre keine Cachelöschung aus
 
+### Requirement: Nachrichtenübersetzung folgt der Modulfreigabe in Studio
+
+In Staging und Production MUST Studio den Mainserver-Status über den
+vorhandenen, instanzgebundenen Einrichtungsweg abgleichen. Die Freigabe für das
+bestehende englische Nachrichtenprofil MUST aus aktivem Modul, bestätigter
+Mainserver-Bindung und geprüftem DeepL-Zugang mit Englisch folgen. Je Umgebung
+MUST eine zentral konfigurierte, exakte HTTPS-Dienstroute für alle dort
+zugeordneten Instanzen genügen. Mainserver MUST vor dem Versand die gebundene
+Identität verwenden. Studio MUST sie weiterhin je Instanz autorisieren.
+
+#### Scenario: Neue Instanz mit abweichender Studio-Domain
+
+- **GIVEN** der Mainserver ist an eine neue Studio-Instanz mit eigener Domain gebunden
+- **WHEN** das Modul aktiv und Englisch für den geprüften DeepL-Zugang gewählt ist
+- **THEN** übernimmt der Mainserver die Freigabe beim Modulabgleich
+- **AND** erreicht der App-Abruf die Übersetzung ohne Instanzliste im Deployment
+
+#### Scenario: Modul entzogen während ein älterer Auftrag läuft
+
+- **GIVEN** eine freigegebene Instanz hat fertige Übersetzungen im Mainserver
+- **WHEN** der Mainserver die neuere Entzugsgeneration bestätigt
+- **THEN** blockiert er neue Jobs und fertige Treffer für diese Instanz
+- **AND** kann ein später eintreffender älterer Auftrag die Freigabe nicht wiederherstellen
+
 ### Requirement: Aktuelle Quellenprüfung ohne dauerhaften Originalabgleich
 
 Main-Server MUST im App-Pfad vor neuen Anfragen, Cachetreffern und Statusabrufen aktuelle Herkunft, passenden Text und Lesbarkeit prüfen. Kurzlebige Locators/Digests oder geschützte Statushandles dürfen dafür verwendet werden; sie MUST keinen dauerhaften Originalverwendungsbestand begründen. App-IDs, Texte, Mandantenwerte und URLs MUST keine Rechte erzeugen. Für externe Inhalte einschließlich Bus MUST ausschließlich fest konfigurierte geprüfte Quellen/Gebiete und zulässige Darstellungsfelder verwendet werden. Für Bus MUST die bestätigte Frischegrenze von höchstens 300 Sekunden seit erfolgreichem Upstream-Abruf/Validierung im vorhandenen Bus-Cache gelten; kürzere Vorgaben, Cacheverbote und erforderliche Validierung MUST erhalten bleiben. HIT MUST die Frist nicht verlängern; STALE oder unbelegbare Frische MUST als Herkunftsnachweis ausscheiden. Die koordinierte Bus-Anpassung und Behandlung alter länger gültiger Einträge MUST vor Nutzung nachgewiesen sein; zusätzlicher Main-Server-Cache oder Altersnachweisdienst MUST entfallen. Frische anderer Quellen und Fallback MUST vor Aktivierung konkretisiert sein. Timeout, Teilantwort, 404 oder veralteter Proxycache MUST keine Cache-Löschsignale sein. Bei fehlendem Herkunftsnachweis MUST die Anfrage sicher scheitern und das vereinbarte App-Rückfallverhalten gelten.

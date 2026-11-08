@@ -55,7 +55,9 @@ export function SurveyQuestionSection({
           requestDeleteOption={requestDeleteOption}
         />
       ) : (
-        <p className="border-t border-border/60 pt-4 text-sm text-muted-foreground">{pt('messages.freeTextQuestionHint')}</p>
+        <p className="border-t border-border-subtle pt-4 text-sm text-muted-foreground">
+          {pt('messages.freeTextQuestionHint')}
+        </p>
       )}
     </section>
   );

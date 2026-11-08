@@ -1,7 +1,7 @@
-import { BarChart3, CalendarDays, FileText, MapPin, Shapes } from 'lucide-react';
+import { IconChartBar as BarChart3, IconCalendarMonth as CalendarDays, IconFileText as FileText, IconMapPin as MapPin, IconCategory as Shapes } from '@tabler/icons-react';
 import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
-import type { LucideIcon } from 'lucide-react';
+import type { TablerIcon } from '@tabler/icons-react';
 
 import { useContentAccess } from '../../hooks/use-content-access';
 import { t } from '../../i18n';
@@ -30,7 +30,7 @@ const contentTypePresentationByNamespace = {
     icon: BarChart3,
     descriptionKey: 'content.typePicker.typeDescriptions.surveys',
   },
-} as const satisfies Record<string, { icon: LucideIcon; descriptionKey: string }>;
+} as const satisfies Record<string, { icon: TablerIcon; descriptionKey: string }>;
 
 type KnownContentTypeNamespace = keyof typeof contentTypePresentationByNamespace;
 
@@ -39,7 +39,7 @@ const resolveContentTypeNamespace = (contentType: string): string => contentType
 const isKnownContentTypeNamespace = (value: string): value is KnownContentTypeNamespace =>
   value in contentTypePresentationByNamespace;
 
-const resolveTypePresentation = (contentType: string): { icon: LucideIcon; description: string } => {
+const resolveTypePresentation = (contentType: string): { icon: TablerIcon; description: string } => {
   const namespace = resolveContentTypeNamespace(contentType);
   if (isKnownContentTypeNamespace(namespace)) {
     const knownPresentation = contentTypePresentationByNamespace[namespace];

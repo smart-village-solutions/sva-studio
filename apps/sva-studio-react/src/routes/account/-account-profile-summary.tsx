@@ -75,7 +75,7 @@ const AccountProfileProjectionWarning = ({ profile }: { profile: IamUserDetail |
   }
 
   return (
-    <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900">
+    <Alert className="border-status-warning-foreground bg-status-warning text-status-warning-foreground">
       <AlertTitle>{t('account.projection.warningTitle')}</AlertTitle>
       <AlertDescription className="space-y-2">
         <p>{t('account.projection.warningBody')}</p>

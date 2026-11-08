@@ -9,7 +9,8 @@ vi.mock('@sva/plugin-sdk', () => ({
     values ? `${key}:${Object.values(values).join('|')}` : key,
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async () => ({
+  ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),
   Alert: ({ children }: { children: React.ReactNode }) => <div role="alert">{children}</div>,
   AlertTitle: ({ children }: { children: React.ReactNode }) => <strong>{children}</strong>,
   AlertDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { CalendarDays, ImageUp, Newspaper, Users, type LucideIcon } from 'lucide-react';
+import { IconCalendarMonth as CalendarDays, IconPhotoUp as ImageUp, IconNews as Newspaper, IconUsersGroup as Users, type TablerIcon } from '@tabler/icons-react';
 
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { useContentAccess } from '../hooks/use-content-access';
@@ -14,7 +14,7 @@ import type { useAuth } from '../providers/auth-provider';
 
 type HomeActionCard = {
   readonly description: string;
-  readonly icon: LucideIcon;
+  readonly icon: TablerIcon;
   readonly id: string;
   readonly title: string;
   readonly to: string;
@@ -32,7 +32,7 @@ const resolveHomeActionCards = (
   const accessUser = user ? { ...user, permissionActions } : null;
   const hasModulePermission = (moduleId: string, action: string) =>
     user?.assignedModules?.includes(moduleId) === true && permissionActions.includes(action);
-  const addContentCard = (id: string, moduleId: string, action: string, icon: LucideIcon) => {
+  const addContentCard = (id: string, moduleId: string, action: string, icon: TablerIcon) => {
     const to = findCreatePath(action);
     if (to && hasModulePermission(moduleId, action)) {
       cards.push({

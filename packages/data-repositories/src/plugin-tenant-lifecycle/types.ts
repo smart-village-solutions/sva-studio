@@ -38,6 +38,7 @@ export type PluginTenantLifecycleRepository = {
     readonly instanceId: string;
     readonly pluginId: string;
     readonly operation: PluginTenantLifecycleOperation;
+    readonly expectedGeneration?: number;
     readonly contractRevision?: string;
   }) => Promise<PluginTenantLifecycleRecord>;
   readonly getLifecycle: (

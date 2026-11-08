@@ -1,4 +1,12 @@
-import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
+import {
+  DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+  DEFAULT_EMAIL_VERIFICATION_TEMPLATE,
+} from '@sva/core';
+import {
+  mutateMailTemplate,
+  readMailTemplate,
+  MailTemplateConflict,
+} from '../iam-instance-registry/mail-template-sync.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -15,7 +23,12 @@ vi.mock('../instance-permission-authorization.js', () => ({
 vi.mock('./mutation-request-context.shared.js', () => ({
   resolveMutationActorWithAccount: mocks.resolveActor,
 }));
-vi.mock('../iam-instance-registry/mail-template-sync.js',()=>({readMailTemplate:vi.fn(async()=>undefined),synchronizeMailTemplate:vi.fn(),mutateMailTemplate:vi.fn(),MailTemplateConflict:class extends Error{}}));
+vi.mock('../iam-instance-registry/mail-template-sync.js', () => ({
+  readMailTemplate: vi.fn(async () => undefined),
+  synchronizeMailTemplate: vi.fn(),
+  mutateMailTemplate: vi.fn(),
+  MailTemplateConflict: class extends Error {},
+}));
 vi.mock('../iam-instance-registry/repository.js', () => ({
   withScopedRegistryRepository: mocks.scopedRepository,
   withRegistryRepository: mocks.registryRepository,
@@ -69,6 +82,121 @@ afterEach(() => {
 });
 
 describe('tenant invitation template handler', () => {
+  it('uses only the session tenant for verification reads, saves and reset', async () => {
+    vi.mocked(readMailTemplate).mockResolvedValueOnce({ source: 'server' } as never);
+    const response = await getTenantInvitationTemplateInternal(
+      request('GET'),
+      context('tenant-a'),
+      'verification'
+    );
+    expect(response.status).toBe(200);
+    expect(readMailTemplate).toHaveBeenCalledWith('tenant-a', 'verification');
+    expect((await response.json()).data.source).toBe('server');
+    for (const template of [DEFAULT_EMAIL_VERIFICATION_TEMPLATE, null]) {
+      const result = await updateTenantInvitationTemplateInternal(
+        request('PATCH', '', { expectedRevision: 2, template }),
+        context('tenant-a'),
+        'verification'
+      );
+      expect(result.status).toBe(200);
+      expect(mutateMailTemplate).toHaveBeenLastCalledWith(
+        'tenant-a',
+        'verification',
+        {
+          operation: 'save',
+          expectedRevision: 2,
+          template,
+        },
+        'account-1'
+      );
+    }
+    expect(repository.updateAccountInvitationTemplate).not.toHaveBeenCalled();
+  });
+
+  it('protects verification against missing permission, foreign tenants, actor mismatch and invalid input', async () => {
+    const spoofed = await getTenantInvitationTemplateInternal(
+      request('GET', '?instanceId=tenant-b'),
+      context('tenant-a'),
+      'verification'
+    );
+    expect(spoofed.status).toBe(400);
+    mocks.authorize.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Denied',
+    });
+    expect(
+      (
+        await getTenantInvitationTemplateInternal(
+          request('GET'),
+          context('tenant-a'),
+          'verification'
+        )
+      ).status
+    ).toBe(403);
+    expect(
+      (await getTenantInvitationTemplateInternal(request('GET'), context(), 'verification')).status
+    ).toBe(403);
+    mocks.resolveActor.mockResolvedValueOnce({
+      actor: { instanceId: 'tenant-b', actorAccountId: 'account-1' },
+    });
+    expect(
+      (
+        await updateTenantInvitationTemplateInternal(
+          request('PATCH', '', { expectedRevision: 0, template: null }),
+          context('tenant-a'),
+          'verification'
+        )
+      ).status
+    ).toBe(403);
+    expect(
+      (
+        await updateTenantInvitationTemplateInternal(
+          request('PATCH', '', {
+            expectedRevision: 0,
+            template: { ...DEFAULT_EMAIL_VERIFICATION_TEMPLATE, instanceId: 'tenant-b' },
+          }),
+          context('tenant-a'),
+          'verification'
+        )
+      ).status
+    ).toBe(400);
+    expect(mutateMailTemplate).not.toHaveBeenCalled();
+    expect(readMailTemplate).not.toHaveBeenCalled();
+  });
+
+  it('passes reconciliation snapshots and returns verification conflicts without overwriting', async () => {
+    const payload = {
+      operation: 'transfer',
+      expectedRevision: 2,
+      expectedStudioTexts: { emailVerificationSubject: 'Studio' },
+      expectedKeycloakTexts: { emailVerificationSubject: 'External' },
+    };
+    expect(
+      (
+        await updateTenantInvitationTemplateInternal(
+          request('PATCH', '', payload),
+          context('tenant-a'),
+          'verification'
+        )
+      ).status
+    ).toBe(200);
+    expect(mutateMailTemplate).toHaveBeenLastCalledWith(
+      'tenant-a',
+      'verification',
+      payload,
+      'account-1'
+    );
+    vi.mocked(mutateMailTemplate).mockRejectedValueOnce(new MailTemplateConflict());
+    const conflict = await updateTenantInvitationTemplateInternal(
+      request('PATCH', '', { expectedRevision: 0, template: DEFAULT_EMAIL_VERIFICATION_TEMPLATE }),
+      context('tenant-a'),
+      'verification'
+    );
+    expect(conflict.status).toBe(409);
+    expect((await conflict.json()).error.code).toBe('mail_template_conflict');
+  });
   it('reads only the session tenant and returns a narrow inherited view', async () => {
     const response = await getTenantInvitationTemplateInternal(request('GET'), context('tenant-a'));
     expect(response.status).toBe(200);

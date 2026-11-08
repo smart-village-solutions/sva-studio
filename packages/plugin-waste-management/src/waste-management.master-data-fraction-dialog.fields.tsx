@@ -8,9 +8,12 @@ import {
 } from '@sva/studio-ui-react';
 import { Controller, useForm } from 'react-hook-form';
 
-import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
+import { StudioSwitch } from '@sva/studio-ui-react';
 import type { FractionFormState } from './waste-management.master-data.forms.js';
-import { collectSummaryErrors, type BaseProps } from './waste-management.master-data-entity-dialogs.shared.js';
+import {
+  collectSummaryErrors,
+  type BaseProps,
+} from './waste-management.master-data-entity-dialogs.shared.js';
 
 const FractionDialogTextFields = ({
   clearErrors,
@@ -62,27 +65,33 @@ const FractionDialogTextFields = ({
       <Input
         id="waste-fraction-name-de"
         {...register('translations.de' as const, {
-          onChange: (event) => onChange({ translations: { ...translations, de: event.target.value } }),
+          onChange: (event) =>
+            onChange({ translations: { ...translations, de: event.target.value } }),
         })}
       />
     </StudioField>
-    <StudioField id="waste-fraction-name-en" label={pt('masterData.fractions.fields.translationEn')}>
+    <StudioField
+      id="waste-fraction-name-en"
+      label={pt('masterData.fractions.fields.translationEn')}
+    >
       <Input
         id="waste-fraction-name-en"
         {...register('translations.en' as const, {
-          onChange: (event) => onChange({ translations: { ...translations, en: event.target.value } }),
+          onChange: (event) =>
+            onChange({ translations: { ...translations, en: event.target.value } }),
         })}
       />
     </StudioField>
-    <StudioField id="waste-fraction-color" label={pt('masterData.fractions.fields.color')}>
-      <Input id="waste-fraction-color" {...register('color', { onChange: (event) => onChange({ color: event.target.value }) })} />
-    </StudioField>
-    <StudioField id="waste-fraction-container-size" label={pt('masterData.fractions.fields.containerSize')}>
-      <Input id="waste-fraction-container-size" {...register('containerSize', { onChange: (event) => onChange({ containerSize: event.target.value }) })} />
-    </StudioField>
-    <StudioField id="waste-fraction-description" label={pt('masterData.fractions.fields.description')}>
-      <Input id="waste-fraction-description" {...register('description', { onChange: (event) => onChange({ description: event.target.value }) })} />
-    </StudioField>
+    {(['color', 'containerSize', 'description'] as const).map((field) => {
+      const id = `waste-fraction-${field === 'containerSize' ? 'container-size' : field}`;
+      return (
+        <StudioField key={field} id={id} label={pt(`masterData.fractions.fields.${field}`)}>
+          <Input id={id} {...register(field, {
+            onChange: (event) => onChange({ [field]: event.target.value }),
+          })} />
+        </StudioField>
+      );
+    })}
   </StudioFieldGroup>
 );
 
@@ -102,17 +111,19 @@ const FractionDialogActiveField = ({
       name="active"
       control={control}
       render={({ field }) => (
-        <WasteManagementFormSwitch
+        <StudioSwitch
           checked={field.value}
-          ariaLabel={pt('masterData.fractions.fields.active')}
-          onChange={(nextActive) => {
+          aria-label={pt('masterData.fractions.fields.active')}
+          onCheckedChange={(nextActive) => {
             field.onChange(nextActive);
             onChange({ active: nextActive });
           }}
         />
       )}
     />
-    <span className="text-sm text-muted-foreground">{active ? pt('common.active') : pt('common.inactive')}</span>
+    <span className="text-sm text-muted-foreground">
+      {active ? pt('common.active') : pt('common.inactive')}
+    </span>
   </div>
 );
 

@@ -2,6 +2,7 @@ import type { PluginManifest, PluginServerExecutionHandler } from '@sva/plugin-s
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const authRuntimeMocks = vi.hoisted(() => ({
+  readTenantPermissionDirectorySubjects: vi.fn(),
   createPluginServerHandlerDispatcher: vi.fn(() => async () => null),
   createSsfRuntimePluginServiceAccess: vi.fn(
     (_dependencies?: {
@@ -154,4 +155,10 @@ describe('plugin server runtime loader', () => {
       })
     );
   });
+});
+
+it.each(['workspace', 'installed-distribution'] as const)('injects only the live IAM directory capability into SSF (%s)', async sourceType => {
+  const factory = vi.fn(() => ({ 'ssf.recording-directory-v2': () => new Response('ok') }));
+  await createPluginServerExecutionHandlersFromSnapshot({ pluginSources: [{ ...source('ssf'), sourceType }], loadServerModule: vi.fn().mockResolvedValue({ createPluginServerHandlers: factory }) });
+  expect(factory).toHaveBeenCalledWith({ readPermissionDirectorySubjects: authRuntimeMocks.readTenantPermissionDirectorySubjects });
 });

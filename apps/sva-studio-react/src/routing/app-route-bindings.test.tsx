@@ -49,8 +49,9 @@ const routeState = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/plugin-app-translations', () => ({
-  CatalogsPage: ({ platform }: { platform?: boolean }) =>
-    <div data-testid="translation-catalog-scope">{platform ? 'platform' : 'instance'}</div>,
+  CatalogsPage: ({ platform }: { platform?: boolean }) => (
+    <div data-testid="translation-catalog-scope">{platform ? 'platform' : 'instance'}</div>
+  ),
 }));
 
 vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
@@ -289,6 +290,17 @@ vi.mock('../lib/plugins', async () => {
     routes: [],
     adminResources: [],
     viewBindings: [{ bindingKey: 'categories', component: categories.CategoriesPage }],
+  } as never);
+  studioPlugins.push({
+    id: 'construction-sites',
+    displayName: 'Construction sites',
+    routes: [],
+    adminResources: [],
+    viewBindings: [{
+      bindingKey: 'constructionSitesList',
+      component: ({ principalControl }: { principalControl?: MainserverPrincipalControlModel }) =>
+        <div data-testid="construction-list-principal">{principalControl?.value}</div>,
+    }],
   } as never);
   const adminResources = studioPlugins.flatMap((plugin) => plugin.adminResources ?? []);
   return {
@@ -1252,9 +1264,8 @@ describe('appRouteBindings', () => {
         if (url !== '/api/v1/mainserver/vouchers/6829') throw new Error('Forbidden');
         return { data: { dataProvider: { id: 'provider-1' } } };
       });
-      const { MainserverResourcePrincipalBoundary } = await import(
-        './mainserver-resource-principal-boundary'
-      );
+      const { MainserverResourcePrincipalBoundary } =
+        await import('./mainserver-resource-principal-boundary');
       render(
         <MainserverResourcePrincipalBoundary contentType="vouchers.voucher">
           {(control) => <div data-testid="voucher-principal">{control.value}</div>}
@@ -1274,6 +1285,33 @@ describe('appRouteBindings', () => {
       expect(screen.queryByText('Resource principal unavailable')).toBeNull();
     }
   );
+
+  it('retains the mounted detail editor but disables it while its principal context is rechecked', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
+    const { MainserverResourcePrincipalBoundary } =
+      await import('./mainserver-resource-principal-boundary');
+    const editor = (control: MainserverPrincipalControlModel) => (
+      <input aria-label="Retained draft" defaultValue={control.value} />
+    );
+    const view = render(
+      <MainserverResourcePrincipalBoundary contentType="news.article">
+        {editor}
+      </MainserverResourcePrincipalBoundary>
+    );
+    const input = await screen.findByLabelText('Retained draft');
+    fireEvent.change(input, { target: { value: 'Unsaved edit' } });
+    routeState.organizationContextIsLoading = true;
+    routeState.getContent.mockReturnValueOnce(new Promise(() => undefined));
+    view.rerender(
+      <MainserverResourcePrincipalBoundary contentType="news.article">
+        {editor}
+      </MainserverResourcePrincipalBoundary>
+    );
+    await waitFor(() => expect(input.closest('fieldset')?.disabled).toBe(true));
+    expect(screen.getByLabelText('Retained draft')).toBe(input);
+    expect((input as HTMLInputElement).value).toBe('Unsaved edit');
+  });
 
   it('renders a regular loading status before showing an edit route', async () => {
     routeState.params = { id: 'content-1' };
@@ -1307,6 +1345,7 @@ describe('appRouteBindings', () => {
   });
 
   it('enables the ownership panel only after server-side transfer authorization', async () => {
+    routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
     routeState.params = { id: 'content-1' };
     routeState.enabledMainserverMutationActions = ['content.transferOwnership'];
     routeState.requestMainserverJson
@@ -1342,6 +1381,7 @@ describe('appRouteBindings', () => {
   });
 
   it('keeps server transfer authorization independent from delayed capability loading', async () => {
+    routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
     routeState.params = { id: 'content-1' };
     routeState.requestMainserverJson
       .mockResolvedValueOnce({
@@ -1577,6 +1617,22 @@ describe('appRouteBindings', () => {
     });
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByTestId('news-edit-page')).toBeNull();
+  });
+
+  it('passes the host principal to the construction overview and waits for a ready context', async () => {
+    routeState.search = { type: 'construction-sites.construction-site' };
+    routeState.organizationContext = {
+      activeOrganizationId: 'org-1',
+      organizations: [{ organizationId: 'org-1', organizationKey: 'org-1', displayName: 'Town',
+        organizationType: 'municipality', contentAuthorPolicy: 'org_only', isActive: true, isDefaultContext: true }],
+    };
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const page = render(<appRouteBindings.content />);
+    expect(screen.getByTestId('construction-list-principal').textContent).toBe('organization');
+    routeState.organizationContextIsLoading = true;
+    page.rerender(<appRouteBindings.content />);
+    expect(screen.queryByTestId('construction-list-principal')).toBeNull();
+    expect(screen.getByText('Author context loading')).toBeTruthy();
   });
 
   it('offers organization or personal principal choice when contentAuthorPolicy is org_or_personal', async () => {

@@ -68,6 +68,8 @@ describe('content ownership editor conformance', () => {
 
     expect(boundary).toMatch(/enabledActions\.includes\(\s*'content\.transferOwnership'\s*\)/u);
     expect(boundary).toContain('supported={transferSupported && transferCapabilityConfirmed}');
-    expect(boundary).toContain('canTransfer={transferAuthorized}');
+    expect(boundary).toContain(
+      "canTransfer={resolution.kind === 'ready' && Boolean(user) && transferAuthorized}"
+    );
   });
 });

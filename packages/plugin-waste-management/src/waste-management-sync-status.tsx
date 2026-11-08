@@ -53,14 +53,17 @@ type WasteManagementMainserverSyncStatusProps = Readonly<{
 }>;
 
 const SyncStatusLoading = ({ pt }: Pick<WasteManagementMainserverSyncStatusProps, 'pt'>) => (
-  <section className="min-h-24 rounded-xl border bg-muted/30 p-4" aria-busy="true">
+  <section className="min-h-24 rounded-lg border bg-surface-inset p-4" aria-busy="true">
     <p className="font-medium">{pt('page.syncStatus.loadingTitle')}</p>
     <p className="mt-1 text-sm text-muted-foreground">{pt('page.syncStatus.loadingText')}</p>
   </section>
 );
 
 const SyncStatusError = ({ pt }: Pick<WasteManagementMainserverSyncStatusProps, 'pt'>) => (
-  <section className="rounded-xl border border-destructive/40 bg-destructive/5 p-4" role="alert">
+  <section
+    className="rounded-lg border border-status-error-foreground/40 bg-status-error text-status-error-foreground p-4"
+    role="alert"
+  >
     <p className="font-medium text-destructive">{pt('page.syncStatus.errorTitle')}</p>
     <p className="mt-1 text-sm text-muted-foreground">{pt('page.syncStatus.errorText')}</p>
   </section>
@@ -80,7 +83,7 @@ const SyncStatusRunning = ({
 
   return (
     <section
-      className="rounded-xl border border-primary/30 bg-primary/5 p-4"
+      className="rounded-lg border border-primary/30 bg-primary/5 p-4"
       aria-live="polite"
       aria-labelledby="waste-mainserver-sync-title"
     >
@@ -118,7 +121,7 @@ const SyncStatusClean = ({
 }) => {
   const lastFinishedAt = formatFinishedAt(status.lastSuccessfulSync?.finishedAt);
   return (
-    <section className="rounded-xl border bg-muted/20 p-4" aria-live="polite">
+    <section className="rounded-lg border bg-surface-inset p-4" aria-live="polite">
       <p className="font-medium">{pt('page.syncStatus.cleanTitle')}</p>
       <p className="mt-1 text-sm text-muted-foreground">
         {lastFinishedAt
@@ -150,10 +153,10 @@ const SyncStatusActionable = ({
 
   return (
     <section
-      className={`rounded-xl border p-4 ${
+      className={`rounded-lg border p-4 ${
         latestAttemptFailed
-          ? 'border-destructive/40 bg-destructive/5'
-          : 'border-amber-500/40 bg-amber-500/5'
+          ? 'border-status-error-foreground/40 bg-status-error text-status-error-foreground'
+          : 'border-status-warning-foreground/40 bg-status-warning'
       }`}
       aria-live="polite"
       aria-labelledby="waste-mainserver-sync-title"

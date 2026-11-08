@@ -3,7 +3,7 @@ import { Button, Input, Select, StudioField, StudioSection } from '@sva/studio-u
 
 import { SsfV2Field as Field, readSsfV2Path as readPath, type SsfV2EditorProps as EditorProps } from './admin.content-v2-field-control.js';
 import type { SsfInstallationContentV2Fields, SsfRuntimeContentV2Fields } from './content-v2-contracts.js';
-import type { SsfSupportedLanguagesCatalog } from './content-v2-admin-contracts.js';
+import type { SsfSystemContentV2View, SsfSupportedLanguagesCatalog } from './content-v2-admin-contracts.js';
 
 type FormValue = SsfInstallationContentV2Fields | SsfRuntimeContentV2Fields;
 type Path = readonly (string | number)[];
@@ -162,4 +162,26 @@ export const SsfInstallationV2Editor = (props: EditorProps<SsfInstallationConten
       <FeedbackFields {...props} path={['localization', 'feedback']} />
     </div>
   );
+};
+
+export const editableSystemContent = (saved: SsfSystemContentV2View) => {
+  const defaultLocale = saved.supportedLanguages?.admin_default;
+  const installation = saved.installation ?? blankSsfInstallationV2();
+  const runtimeTemplate = saved.runtimeTemplate ?? blankSsfRuntimeTemplateV2();
+  return {
+    installation:
+      saved.installation || !defaultLocale
+        ? installation
+        : {
+            ...installation,
+            localization: { ...installation.localization, locale: defaultLocale },
+          },
+    runtimeTemplate:
+      saved.runtimeTemplate || !defaultLocale
+        ? runtimeTemplate
+        : {
+            ...runtimeTemplate,
+            staff: { ...runtimeTemplate.staff, locale: defaultLocale },
+          },
+  };
 };

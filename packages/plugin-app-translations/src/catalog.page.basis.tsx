@@ -18,7 +18,7 @@ export const CatalogBasis = ({ model }: { model: CatalogPageViewModel }) => {
   } = model;
   return (
     <section
-      className="space-y-3 rounded-lg border border-border p-5"
+      className="space-y-3 rounded-lg border border-border-subtle bg-card p-4 sm:p-6"
       aria-labelledby="catalog-base-heading"
     >
       <h2 id="catalog-base-heading" className="font-semibold">

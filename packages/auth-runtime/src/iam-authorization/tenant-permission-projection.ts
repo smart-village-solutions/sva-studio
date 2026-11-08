@@ -54,3 +54,23 @@ ${ROLE_ASSIGNMENT_SOURCE_SQL}
     return result.rows[0]?.present === true;
   });
 };
+
+export type PermissionDirectorySubject = Readonly<{
+  keycloakSubject: string;
+  displayName: string;
+  permissionIds: readonly string[];
+  languages: readonly string[];
+}>;
+
+/** Live, uncached IAM authority; profile access and decryption remain host-owned. */
+export const readTenantPermissionDirectorySubjects = async (input: {
+  readonly instanceId: string;
+  readonly permissionIds: readonly string[];
+}): Promise<readonly PermissionDirectorySubject[]> => withInstanceScopedDb(
+  input.instanceId,
+  async client => (await loadTenantPermissionProjectionSubjectsWithClient(client, { ...input, includeProfile: true }))
+    .map(subject => ({ keycloakSubject: subject.keycloakSubject,
+      displayName: subject.displayName ?? subject.keycloakSubject,
+      permissionIds: subject.permissionIds, languages: subject.languages ?? [] })),
+  { isolationLevel: 'repeatable read' }
+);

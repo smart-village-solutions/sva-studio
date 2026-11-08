@@ -237,31 +237,39 @@ describe('mainserver projection refresh', () => {
     );
   });
 
-  it('derives delete refresh identity from the request path', async () => {
-    await refreshProjectionAfterMainserverMutation(
-      new Request('https://studio.test/api/v1/mainserver/events/event-9', { method: 'DELETE' }),
-      new Response(JSON.stringify({ data: { id: 'event-9' } }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
-      'events.event-record'
-    );
+  it.each([
+    ['events', 'events.event-record', 'event-9'],
+    ['vouchers', 'vouchers.voucher', '2'],
+  ] as const)(
+    'derives delete refresh identity from the %s request path',
+    async (collection, contentType, entityId) => {
+      await refreshProjectionAfterMainserverMutation(
+        new Request(`https://studio.test/api/v1/mainserver/${collection}/${entityId}`, {
+          method: 'DELETE',
+        }),
+        new Response(JSON.stringify({ data: { id: entityId } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+        contentType
+      );
 
-    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith({
-      instanceId: 'de-musterhausen',
-      keycloakSubject: 'kc-user-1',
-      actorAccountId: 'account-1',
-      actorDisplayName: 'Redaktion',
-      mutationRef: 'operation-1',
-      contentType: 'events.event-record',
-      organizationId: 'org-1',
-      actingPrincipalType: 'organization',
-      credentialFingerprint: 'a'.repeat(64),
-      authorizationMode: 'exact',
-      operation: 'delete',
-      entityId: 'event-9',
-    });
-  });
+      expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+        actorAccountId: 'account-1',
+        actorDisplayName: 'Redaktion',
+        mutationRef: 'operation-1',
+        contentType,
+        organizationId: 'org-1',
+        actingPrincipalType: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+        authorizationMode: 'exact',
+        operation: 'delete',
+        entityId,
+      });
+    }
+  );
 
   it('derives the entity id from nested mutation paths like visibility updates', async () => {
     await refreshProjectionAfterMainserverMutation(
@@ -329,6 +337,50 @@ describe('mainserver projection refresh', () => {
     expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
   });
 
+  it.each(['POST', 'PATCH', 'DELETE'])(
+    'reports an incomplete Jobs projection after successful %s',
+    async (method) => {
+      state.refreshProjectedContentsForMainserverMutation.mockRejectedValueOnce(
+        new Error('projection down')
+      );
+      const result = await refreshProjectionAfterMainserverMutation(
+        new Request('https://studio.test/api/v1/mainserver/jobs/42', { method }),
+        Response.json({ data: { id: '42' } }),
+        'jobs.job'
+      );
+      expect(result).toBe(false);
+    }
+  );
+  it('retries a failed Jobs follow-up with the same operation identity', async () => {
+    const request = new Request('https://studio.test/api/v1/mainserver/jobs/42', {
+      method: 'PATCH',
+    });
+    const response = Response.json({ data: { id: '42' } });
+    state.refreshProjectedContentsForMainserverMutation.mockRejectedValueOnce(
+      new Error('projection down')
+    );
+    expect(await refreshProjectionAfterMainserverMutation(request, response, 'jobs.job')).toBe(
+      false
+    );
+    expect(
+      await refreshProjectionAfterMainserverMutation(request, response, 'jobs.job')
+    ).toBeUndefined();
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ mutationRef: 'operation-1', entityId: '42' })
+    );
+  });
+  it('reports missing Jobs follow-up identity as incomplete', async () => {
+    state.readMainserverMutationFollowUpContext.mockReturnValueOnce(undefined);
+    expect(
+      await refreshProjectionAfterMainserverMutation(
+        new Request('https://studio.test/api/v1/mainserver/jobs/42', { method: 'PATCH' }),
+        Response.json({ data: { id: '42' } }),
+        'jobs.job'
+      )
+    ).toBe(false);
+    expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
+  });
   it('preserves a successful provider write when the projection follow-up fails', async () => {
     state.refreshProjectedContentsForMainserverMutation.mockRejectedValueOnce(
       new Error('projection down')

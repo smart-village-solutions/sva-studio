@@ -7,7 +7,7 @@ export const CatalogMessages = ({ model }: { model: CatalogPageViewModel }) => {
       {error && (
         <p
           role="alert"
-          className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-destructive"
+          className="rounded-md border border-status-error-foreground/40 bg-status-error text-status-error-foreground p-4 text-destructive"
         >
           {pt(
             [
@@ -48,7 +48,10 @@ export const CatalogScope = ({ model }: { model: CatalogPageViewModel }) => {
           : `${overview.scope.instanceId} / ${overview.scope.organizationId}`}
       </p>
       {!sourceOnly && overview.setup && (
-        <section role="status" className="space-y-2 rounded-lg border border-border bg-card p-5">
+        <section
+          role="status"
+          className="space-y-2 rounded-lg border border-border-subtle bg-card p-4 sm:p-6"
+        >
           <h2 className="font-semibold">{pt(ready ? 'setupReady' : 'setupTitle')}</h2>
           <p>{pt(`setupReasons.${overview.setup.reason}`)}</p>
           {overview.canManageInterfaces ? (
@@ -68,7 +71,7 @@ export const CatalogImport = ({ model }: { model: CatalogPageViewModel }) => {
   const { dirty, busy, pt, importFile } = model;
   return (
     <section
-      className="space-y-4 rounded-lg border border-border bg-card p-6"
+      className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6"
       aria-labelledby="catalog-import-heading"
     >
       <h2 id="catalog-import-heading" className="text-lg font-semibold">

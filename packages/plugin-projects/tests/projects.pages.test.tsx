@@ -6,20 +6,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProjectsCreatePage, ProjectsEditPage, ProjectsListPage } from '../src/projects.pages.js';
 
 const renderGuarded = (element: React.ReactElement) => {
-  let check = () => false;
+  const checks = new Set<() => boolean>();
   const view = render(
     <StudioEditorLeaveGuardProvider
       register={(next) => {
-        check = next;
+        checks.add(next);
         return () => {
-          check = () => false;
+          checks.delete(next);
         };
       }}
     >
       {element}
     </StudioEditorLeaveGuardProvider>
   );
-  return { ...view, hasUnsavedChanges: () => check() };
+  return { ...view, hasUnsavedChanges: () => [...checks].some((check) => check()) };
 };
 
 const state = vi.hoisted(() => ({
@@ -457,7 +457,7 @@ describe('projects pages', () => {
     expect(guarded.hasUnsavedChanges()).toBe(false);
 
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
-    expect(guarded.hasUnsavedChanges()).toBe(false);
+    expect(guarded.hasUnsavedChanges()).toBe(true);
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: { files: [new File(['image'], 'upload.jpg', { type: 'image/jpeg' })] },
     });

@@ -35,6 +35,7 @@ describe('SSF V2 response contracts', () => {
     const runtime = example('ssf-runtime-configuration-v2.example.json') as Record<string, unknown>;
     const storage = runtime['conversationContentStorage'] as Record<string, unknown>;
     storage['mode'] = 'disabled';
+    storage['retentionHours'] = 24;
     expect(ssfRuntimeConfigurationV2Schema.safeParse(runtime).success).toBe(false);
   });
 });

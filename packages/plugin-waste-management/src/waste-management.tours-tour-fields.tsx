@@ -27,7 +27,7 @@ const TourSection = ({
   readonly description: string;
   readonly children: ReactNode;
 }) => (
-  <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
+  <div className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
     <div className="space-y-1">
       <p className="text-sm font-semibold text-foreground">{title}</p>
       <p className="text-sm text-muted-foreground">{description}</p>
@@ -162,6 +162,7 @@ export const WasteToursTourFields = ({
           {showsCustomDates ? (
             <StudioField
               id="waste-tour-custom-dates"
+              className="min-w-0"
               label={pt('tours.fields.customDates')}
               description={pt('tours.fieldHints.customDates')}
             >

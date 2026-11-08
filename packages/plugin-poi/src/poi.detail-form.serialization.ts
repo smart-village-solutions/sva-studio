@@ -234,7 +234,7 @@ export const mapPoiDetailFormValuesToInput = (
       ? { description: compactString(values.content.description) }
       : {}),
     mobileDescription: compactString(values.content.mobileDescription) ?? '',
-    active: values.basis.active,
+    visible: values.basis.active,
     externalId: values.settings.externalId?.trim() ?? '',
     keywords: values.settings.keywords?.trim() ?? '',
     ...categories,

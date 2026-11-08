@@ -87,6 +87,8 @@ export const isLiveKeycloakStatusReadyForActivation = async (
       );
     const status = await deps.getKeycloakStatus({
       ...loaded.instance,
+      loginMfaMode: loaded.instance.loginMfaPolicy?.desiredMode ?? 'optional',
+      loginMfaRevision: loaded.instance.loginMfaRevision ?? 0,
       authClientSecret: loaded.authClientSecret,
       tenantAdminClientSecret: loaded.tenantAdminClientSecret,
       pluginOidcClients: scopedPluginOidcClients,
@@ -172,6 +174,8 @@ export const refreshManagedRealmSmtpPasswordStatus = async (
 
   try {
     const liveStatus = await deps.getKeycloakStatus({
+      loginMfaMode: instance.loginMfaPolicy?.desiredMode ?? 'optional',
+      loginMfaRevision: instance.loginMfaRevision ?? 0,
       instanceId: instance.instanceId,
       primaryHostname: instance.primaryHostname,
       realmMode: instance.realmMode,

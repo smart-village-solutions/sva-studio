@@ -44,11 +44,6 @@ const resolvePublicWasteDataDatabaseUrl = (
 ): (() => string | undefined) =>
   getDatabaseUrl ?? (() => process.env.PUBLIC_WASTE_DATABASE_URL?.trim());
 
-const resolveLegacySettingsDatabaseUrl =
-  (getDatabaseUrl?: () => string | undefined): (() => string | undefined) =>
-  () =>
-    process.env.IAM_DATABASE_URL?.trim() || getDatabaseUrl?.();
-
 const resolvePublicWasteSchemaName =
   (getSchemaName?: () => string | undefined): (() => string) =>
   () =>
@@ -125,15 +120,18 @@ export const loadPublicWastePdfStaticConfig = async (
     };
   }
 
-  const getDatabaseUrl = resolveLegacySettingsDatabaseUrl(options.getDatabaseUrl);
-  const interfaceRecords = await Promise.resolve(
-    listExternalInterfaceRecords(instanceId, { getDatabaseUrl })
-  ).catch(() => []);
+  const legacyDatabaseUrl = readOptionalTrimmedEnv(process.env.IAM_DATABASE_URL);
+  const getDatabaseUrl = () => legacyDatabaseUrl;
+  const interfaceRecords = legacyDatabaseUrl
+    ? await Promise.resolve(listExternalInterfaceRecords(instanceId, { getDatabaseUrl })).catch(() => [])
+    : [];
   const selectedInterface =
     findSelectedWasteManagementInterfaceRecord(interfaceRecords) ??
-    (await Promise.resolve(
-      loadDefaultExternalInterfaceRecord(instanceId, 'postgresql', { getDatabaseUrl })
-    ).catch(() => null));
+    (legacyDatabaseUrl
+      ? await Promise.resolve(
+          loadDefaultExternalInterfaceRecord(instanceId, 'postgresql', { getDatabaseUrl })
+        ).catch(() => null)
+      : null);
 
   const fallbackConfig = !selectedInterface
     ? {

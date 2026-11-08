@@ -33,6 +33,7 @@ export type PoiFormInput = {
   readonly description?: string;
   readonly mobileDescription?: string;
   readonly active?: boolean;
+  readonly visible?: boolean;
   readonly externalId?: string;
   readonly keywords?: string;
   readonly categoryName?: string;
@@ -65,7 +66,7 @@ export type PoiCategoryOption = {
 export type PoiContentItem = PoiFormInput & {
   readonly id: string;
   readonly contentType: string;
-  readonly status: 'published';
+  readonly status: 'draft' | 'published';
   readonly visible?: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;

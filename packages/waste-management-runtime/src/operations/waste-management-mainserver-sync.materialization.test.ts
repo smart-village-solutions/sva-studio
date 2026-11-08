@@ -22,6 +22,303 @@ const buildTour = (override: Partial<WasteTourRecord> = {}): WasteTourRecord =>
   }) as unknown as WasteTourRecord;
 
 describe('waste-management-mainserver-sync.materialization', () => {
+  describe('city-wide pickup inheritance', () => {
+    const buildInput = (): Parameters<typeof buildStudioRowsFromMaterialization>[0] => {
+      const timestamps = { createdAt: '', updatedAt: '' };
+      return {
+        pickupDates: buildMaterializedLocationTourPickupDates({
+          tours: [buildTour()],
+          links: [],
+          locationTourPickupDates: [],
+          tourAssignments: [
+            {
+              id: 'morning',
+              tourId: 'tour-1',
+              pickupDate: '2026-06-10',
+              note: '09–11 Uhr, Rathaus',
+              locationIds: ['city-wide'],
+              ...timestamps,
+            },
+            {
+              id: 'afternoon',
+              tourId: 'tour-1',
+              pickupDate: '2026-06-10',
+              note: '14–16 Uhr, Bahnhof',
+              locationIds: ['city-wide'],
+              ...timestamps,
+            },
+          ],
+          tourDateShifts: [],
+          globalDateShifts: [],
+          holidayRules: [],
+          currentYear: 2026,
+          nextYear: 2027,
+        }),
+        tours: [buildTour({ description: '<p>Schadstoffmobil</p>' })],
+        fractions: [
+          {
+            id: 'fraction-1',
+            name: 'Schadstoffmobil',
+            pdfShortLabel: 'SM',
+            color: '#111',
+            active: true,
+            reminderConfig: {
+              reminderCount: 'none',
+              channels: { push: false, email: false, calendar: false },
+            },
+            ...timestamps,
+          },
+        ],
+        cities: [
+          {
+            id: 'city-1',
+            name: 'Musterhausen',
+            postalCode: '12345',
+            regionId: 'region-1',
+            ...timestamps,
+          },
+          { id: 'city-2', name: 'Nachbarort', ...timestamps },
+        ],
+        streets: [
+          { id: 'street-1', cityId: 'city-1', name: 'Hauptstraße', ...timestamps },
+          { id: 'street-2', cityId: 'city-1', name: 'Bahnhofstraße', ...timestamps },
+          { id: 'street-other', cityId: 'city-2', name: 'Fremde Straße', ...timestamps },
+          { id: 'street-inactive', cityId: 'city-1', name: 'Inaktive Straße', ...timestamps },
+        ],
+        houseNumbers: [{ id: 'house-1', streetId: 'street-1', number: '5', ...timestamps }],
+        locations: [
+          { id: 'city-wide', cityId: 'city-1', active: true, ...timestamps },
+          {
+            id: 'street-location',
+            cityId: 'city-1',
+            streetId: 'street-1',
+            active: true,
+            ...timestamps,
+          },
+          {
+            id: 'house-location',
+            cityId: 'city-1',
+            streetId: 'street-1',
+            houseNumberId: 'house-1',
+            active: true,
+            ...timestamps,
+          },
+          {
+            id: 'second-street',
+            cityId: 'city-1',
+            streetId: 'street-2',
+            active: true,
+            ...timestamps,
+          },
+          {
+            id: 'inactive',
+            cityId: 'city-1',
+            streetId: 'street-inactive',
+            active: false,
+            ...timestamps,
+          },
+          {
+            id: 'other-city',
+            cityId: 'city-2',
+            streetId: 'street-other',
+            active: true,
+            ...timestamps,
+          },
+          {
+            id: 'invalid-street',
+            cityId: 'city-1',
+            streetId: 'street-other',
+            active: true,
+            ...timestamps,
+          },
+        ],
+      };
+    };
+
+    it('transfers every city assignment to active street and house-number addresses with all stop notes', () => {
+      const input = buildInput();
+      const rows = buildStudioRowsFromMaterialization(input);
+      expect(rows).toHaveLength(3);
+      for (const street of ['Hauptstraße', 'Hauptstraße 5', 'Bahnhofstraße']) {
+        expect(rows.filter((row) => row.street === street)).toEqual([
+          expect.objectContaining({
+            pickupDate: '2026-06-10',
+            wasteType: 'SM',
+            city: 'Musterhausen',
+            zip: '12345',
+            note: 'Schadstoffmobil\n09–11 Uhr, Rathaus\n14–16 Uhr, Bahnhof',
+          }),
+        ]);
+      }
+      expect(input.pickupDates.every((pickup) => pickup.locationId === 'city-wide')).toBe(true);
+    });
+
+    it('deduplicates direct and inherited appointments and duplicate target addresses', () => {
+      const input = buildInput();
+      const rows = buildStudioRowsFromMaterialization({
+        ...input,
+        pickupDates: [
+          ...input.pickupDates,
+          { ...input.pickupDates[0]!, id: 'direct', locationId: 'street-location' },
+        ],
+        locations: [...input.locations, { ...input.locations[1]!, id: 'duplicate-street' }],
+      });
+      expect(rows).toHaveLength(3);
+      expect(new Set(rows.map((row) => row.key)).size).toBe(3);
+      expect(rows).toEqual(buildStudioRowsFromMaterialization(input));
+    });
+
+    it('keeps merged stop notes stable when assignment order changes', () => {
+      const input = buildInput();
+      const forward = buildStudioRowsFromMaterialization(input);
+      const reversed = buildStudioRowsFromMaterialization({
+        ...input,
+        pickupDates: [...input.pickupDates].reverse(),
+      });
+      expect(reversed).toEqual(forward);
+    });
+
+    it('renders merged rich-text stops as decoded plain text and deduplicates equivalent notes', () => {
+      const input = buildInput();
+      const morning = input.pickupDates[0]!;
+      const afternoon = input.pickupDates[1]!;
+      const rows = buildStudioRowsFromMaterialization({
+        ...input,
+        pickupDates: [
+          { ...morning, note: '<p>09–11 Uhr, Rathaus &amp; Markt</p><script>alert(1)</script>' },
+          { ...morning, id: 'duplicate', note: '<strong>09–11 Uhr, Rathaus &amp; Markt</strong>' },
+          { ...afternoon, note: '<p>14–16 Uhr, <strong>Bahnhof</strong></p>' },
+        ],
+      });
+
+      expect(rows).toHaveLength(3);
+      for (const row of rows) {
+        expect(row.note).toBe('Schadstoffmobil\n09–11 Uhr, Rathaus & Markt\n14–16 Uhr, Bahnhof');
+        expect(row.note).not.toMatch(/<[^>]*>|&amp;|alert/u);
+      }
+    });
+
+    it.each([
+      null,
+      undefined,
+      '',
+      '  ',
+      '<script>alert(1)</script>',
+      '<strong>09–11 Uhr, Rathaus</strong>',
+    ])(
+      'preserves the original format of a single stop note alongside empty or equivalent note %s',
+      (duplicateNote) => {
+        const input = buildInput();
+        const rows = buildStudioRowsFromMaterialization({
+          ...input,
+          pickupDates: [
+            { ...input.pickupDates[0]!, note: '<p>09–11 Uhr, Rathaus</p>' },
+            { ...input.pickupDates[1]!, note: duplicateNote },
+          ],
+        });
+        const [singleNoteRow] = buildStudioRowsFromMaterialization({
+          ...input,
+          pickupDates: [{ ...input.pickupDates[0]!, note: '<p>09–11 Uhr, Rathaus</p>' }],
+        });
+
+        expect(rows).toHaveLength(3);
+        expect(singleNoteRow!.note).toBe(
+          '<div><p>Schadstoffmobil</p></div><div><p>09–11 Uhr, Rathaus</p></div>'
+        );
+        for (const row of rows) expect(row.note).toBe(singleNoteRow!.note);
+      }
+    );
+
+    it.each(['Alle Straßen', '  alle straßen  '])(
+      'inherits imported all-streets source %s and preserves its existing catch-all address',
+      (allStreetsName) => {
+        const input = buildInput();
+        const importedInput = {
+          ...input,
+          streets: [
+            ...input.streets,
+            {
+              id: 'all-streets',
+              cityId: 'city-1',
+              name: allStreetsName,
+              createdAt: '',
+              updatedAt: '',
+            },
+          ],
+          houseNumbers: [
+            ...(input.houseNumbers ?? []),
+            {
+              id: 'all-houses',
+              streetId: 'all-streets',
+              number: 'Alle Hausnummern',
+              createdAt: '',
+              updatedAt: '',
+            },
+          ],
+          locations: input.locations.map((location) =>
+            location.id === 'city-wide'
+              ? { ...location, streetId: 'all-streets', houseNumberId: 'all-houses' }
+              : location
+          ),
+        };
+        const rows = buildStudioRowsFromMaterialization(importedInput);
+        expect(rows).toHaveLength(4);
+        for (const street of [
+          allStreetsName.trim(),
+          'Hauptstraße',
+          'Hauptstraße 5',
+          'Bahnhofstraße',
+        ]) {
+          expect(rows.filter((row) => row.street === street)).toHaveLength(1);
+        }
+        expect(new Set(rows.map((row) => row.key)).size).toBe(4);
+        const onlyCatchAllRows = buildStudioRowsFromMaterialization({
+          ...importedInput,
+          locations: importedInput.locations.filter((location) => location.id === 'city-wide'),
+        });
+        expect(onlyCatchAllRows).toHaveLength(1);
+        expect(onlyCatchAllRows.every((row) => row.street === allStreetsName.trim())).toBe(true);
+      }
+    );
+
+    it('respects regional restrictions and falls back to the city region for targets without one', () => {
+      const input = buildInput();
+      const rows = buildStudioRowsFromMaterialization({
+        ...input,
+        locations: input.locations.map((location) => ({
+          ...location,
+          ...(location.id === 'city-wide' ? { regionId: 'region-1' } : {}),
+          ...(location.id === 'second-street' ? { regionId: 'region-2' } : {}),
+        })),
+      });
+      expect(rows.map((row) => row.street)).toEqual(['Hauptstraße', 'Hauptstraße 5']);
+    });
+
+    it('keeps a directly assigned street appointment local to that address', () => {
+      const input = buildInput();
+      const rows = buildStudioRowsFromMaterialization({
+        ...input,
+        pickupDates: [{ ...input.pickupDates[0]!, locationId: 'street-location' }],
+      });
+      expect(rows).toEqual([expect.objectContaining({ street: 'Hauptstraße' })]);
+    });
+
+    it('skips inactive city-wide sources and unpublished tours', () => {
+      const input = buildInput();
+      expect(
+        buildStudioRowsFromMaterialization({
+          ...input,
+          locations: input.locations.map((location) =>
+            location.id === 'city-wide' ? { ...location, active: false } : location
+          ),
+        })
+      ).toEqual([]);
+      expect(
+        buildStudioRowsFromMaterialization({ ...input, tours: [buildTour({ status: 'draft' })] })
+      ).toEqual([]);
+    });
+  });
+
   it('uses the central tour validity window for every linked location', () => {
     const result = buildMaterializedLocationTourPickupDates({
       tours: [buildTour({ recurrence: 'weekly', firstDate: '2026-01-01', endDate: '2026-01-15' })],

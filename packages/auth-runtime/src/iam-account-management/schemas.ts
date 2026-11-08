@@ -1,8 +1,17 @@
 import { z } from 'zod';
+import { normalizeCompetenceLanguages } from '@sva/core';
+
 import { iamRolePermissionAssignmentScopes } from '@sva/iam-core';
 
 import { uuidLikeString } from '../shared/validators.js';
 import { USER_STATUS } from './types.js';
+
+const competenceLanguagesSchema = z.array(z.string()).max(40).transform((values, context) => {
+  try { return normalizeCompetenceLanguages(values); } catch {
+    context.addIssue({ code: 'custom', message: 'Invalid competence languages.' });
+    return z.NEVER;
+  }
+});
 
 const hasDefinedEntries = (value: Record<string, unknown>): boolean =>
   Object.values(value).some((entry) => entry !== undefined);
@@ -46,6 +55,7 @@ export const createUserSchema = z.object({
 
 export const updateUserSchema = z
   .object({
+    competenceLanguages: competenceLanguagesSchema.optional(),
     email: z.string().email().optional(),
     firstName: z.string().trim().min(1).max(200).optional(),
     lastName: z.string().trim().min(1).max(200).optional(),

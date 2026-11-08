@@ -20,6 +20,7 @@ export const uiRoutePaths = {
   adminUsers: '/admin/users',
   adminUserCreate: '/admin/users/new',
   adminUserDetail: '/admin/users/$userId',
+  adminUserLoginMfa: '/admin/users/authentication-policy',
   adminUserInvitationTemplate: '/admin/users/invitation-template',
   adminOrganizations: '/admin/organizations',
   adminOrganizationCreate: '/admin/organizations/new',

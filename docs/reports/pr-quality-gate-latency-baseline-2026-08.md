@@ -231,3 +231,34 @@ Main-Workflow mit fest auf `2aaa6d121` gepinnten Checkouts. Dadurch sehen auch
 die Workflow-Vertragstests denselben finalen Quellstand wie der geteilte Lauf.
 Nach Auswertung wird der Diagnosebranch entfernt; kein zweiter kanonischer
 CI-Pfad wird eingeführt.
+
+### Zählervergleich und stabilisierte Fokus-Readiness
+
+Der vollständige ungeteilte Referenzlauf
+[42534122640](https://github.com/smart-village-solutions/sva-studio/actions/runs/42534122640)
+ist grün: Coverage-Vertrag 23:41 Minuten, Coverage-Gate bestanden. Alle
+37 gemeinsamen Pflichtprojekte besitzen dieselben Dateimengen, Funktions-
+und Branch-Definitionen sowie identische LF/LH/BRF/BRH/FNF-Zähler. Ein
+zusätzlicher Legacy-Report gehört zum bereits ausgenommenen Tooling-Projekt.
+
+Die einzige Summary-Abweichung betrifft eine Funktion/ein Statement in
+`studio-media-picker-central-metadata.tsx`: Der bestehende Review-Test endet,
+bevor sein RAF-Fokuswechsel abgeschlossen ist. Er wartet nun auf den sichtbaren
+Fokuszustand, bevor er den Dialog verlässt. Keine bestehende Assertion wird
+entfernt. Drei gezielte instrumentierte Dateiläufe decken den Callback jedes
+Mal ab: Functions 21/21, Statements 59/59, Lines 53/53, Branches 36/41.
+
+Rohe DA-/FNDA-/BRDA-Ausführungshäufigkeiten weichen in 65 Dateien aus sieben
+Projekten ab. Unveränderte Zufallsdatentests und Render-/Effektwiederholungen
+sind konkrete Einflussgrößen; diese Differenzen werden nicht weggefiltert.
+Die Behauptung vollständig identischer LCOV-Dateien für die gesamte Suite
+wäre daher falsch. Der deterministische native Merge-Vertrag bleibt separat
+bytegleich nachgewiesen. Vollständige neue Gate-/Summary-Endstände nach der
+Fokus-Stabilisierung sind vor Abnahme erneut auszuwerten.
+
+Der korrigierte E2E-Lauf
+[42535856666](https://github.com/smart-village-solutions/sva-studio/actions/runs/42535856666)
+ist einschließlich Finalizer grün. Seine gültige Diagnose-Evidenz bindet alle
+95 IDs und die unveränderten neun Skips an den exakten Commit; keine Retries
+oder Flakes. Aktivzeit 7:02 Minuten, tatsächliche Wartezeit einschließlich
+Queue 9:26 Minuten, aufsummierte Runnerzeit 23:41 Minuten. Weiterhin n=1.

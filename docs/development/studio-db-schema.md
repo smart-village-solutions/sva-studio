@@ -98,7 +98,7 @@ Die additive Migration `0107_app_translation_catalog_basis.sql` ergänzt ausschl
 - `app_translation_catalog_drafts`: genau ein Draft je globalem Vertrag beziehungsweise Instanz/Organisation/Vertrag. Sprachmenge und sprachbezogene Werte/Override-Metadaten liegen gemeinsam als JSONB vor; bedingte Draftrevision und Zeilensperre sichern konkurrierende Änderungen.
 - `app_translation_catalog_releases`: vollständige unveränderliche lokale Sätze mit einer gemeinsamen Satzrevision, gepinnter Manifest-/Basis-/Draftidentität, Sprachsnapshot-Nutzlasten und Prüfsummen. Zustand ausschließlich `sealed`, noch keine Remote-Aktivierung oder Veröffentlichung.
 
-Partielle Unique-Indizes unterscheiden globale und kommunale Scopes; kommunale Zeilen haben einen zusammengesetzten FK auf die echte Instanz-/Organisationsbindung. Alle drei Tabellen erzwingen RLS auch für den Owner. Der interne Serverpfad setzt transaktionslokal `app.instance_id`, `app.organization_id` und `app.catalog_platform` stets gemeinsam neu. Globale Drafts/Importe benötigen Plattformkontext; kommunale Runtimezugriffe sehen nur die eigene Organisation und unveränderliche globale Basissätze. Globale Manifeste und Basissätze enthalten öffentliche Katalogtexte, keine persönlichen Nutzerwerte. Runtime-Schreibrechte sind explizit begrenzt, unabhängig von Default-Grants; Trigger verbieten Änderungen/Löschungen an Manifesten und versiegelten Sätzen. Die DB-Settings werden ausschließlich nach serverseitiger Session-/Actionprüfung gesetzt und sind keine Autorisierungsquelle aus App-Payloads.
+Partielle Unique-Indizes unterscheiden globale und kommunale Scopes; kommunale Zeilen haben einen zusammengesetzten FK auf die echte Instanz-/Organisationsbindung. Alle drei Tabellen erzwingen RLS auch für den Owner. Der interne Serverpfad setzt transaktionslokal `app.instance_id`, `app.organization_id` und `app.catalog_platform` stets gemeinsam neu. Globale Drafts/Importe benötigen Plattformkontext; kommunale Runtimezugriffe sehen nur die eigene Organisation und unveränderliche globale Basissätze. Globale Manifeste und Basissätze enthalten öffentliche Katalogtexte, keine persönlichen Nutzerwerte. Migration `0114` trennt die Draft-Policies für SELECT, INSERT und UPDATE, damit die neue DELETE-Berechtigung ausschließlich im archivierten Tenant-Löschkontext greift; gewöhnliche globale und kommunale Katalogsessions können keine Drafts löschen. Runtime-Schreibrechte sind explizit begrenzt, unabhängig von Default-Grants; Trigger verbieten Änderungen/Löschungen an Manifesten und versiegelten Sätzen. Die DB-Settings werden ausschließlich nach serverseitiger Session-/Actionprüfung gesetzt und sind keine Autorisierungsquelle aus App-Payloads.
 
 Die interne Implementierung liegt in Core, Data-Repositories und Auth-Runtime; kein dynamischer Cache, neuer Serviceclient oder zusätzlicher Jobpfad. `executeAppTranslationOperation` nutzt die vorhandene Session-/CSRF-/Root-Prüfung beziehungsweise tenantseitige Actionprüfung samt aktiver Organisation. Vollständige Tests verwenden `APP_TRANSLATIONS_TEST_DATABASE_URL` ausschließlich mit einer disponiblen, auf `_test` endenden Datenbank. Die Migration wurde mit PostgreSQL 16 einschließlich vollständigem Up → Down → Up geprüft; das ist kein Nachweis einer Änderung der laufenden Studio-Datenbank.
 
@@ -618,6 +618,21 @@ the last verified mode. Completion compares desired revision, mode and run ID,
 preventing superseded workers from certifying a newer request. Tenant writes,
 run creation and the existing instance audit event share the scoped transaction.
 
+### Studio-Tenants endgültig löschen — Migration 0114
+
+`iam.delete_studio_instance(text, timestamptz, text, text)` entfernt ausschließlich die
+lokalen Daten einer archivierten Studio-Instanz im aktuellen RLS-Scope. Die Funktion
+läuft mit den Rechten des Aufrufers, prüft den bestätigten Änderungsstand und sperrt
+Instanzmutationen mit dem bestehenden Advisory-Lock. Aktive Aufbewahrungssperren
+sowie ausstehende oder laufende Jobs und Provisionings blockieren den Vorgang.
+Referenzen werden vor dem Registry-Cascade entfernt; ein Fehler rollt den gesamten
+Funktionsaufruf zurück. Ein `instance.deleted`-Eintrag bleibt im Plattform-Audit.
+
+Die ergänzenden Katalog-Policies erlauben das Entfernen kommunaler Drafts und Releases
+nur für den archivierten Tenant im expliziten Löschkontext. Globale Manifeste und
+Releases bleiben unveränderlich. Der Löschpfad besitzt keine Mainserver-, Keycloak-,
+Objektspeicher- oder Plugin-Datenbank-Aufrufe. Externe Ressourcen bleiben erhalten.
+
 ## Kommunaler Anwendungsarbeitsplatz
 
-Migration `0114_application_workspace_settings` ergänzt `iam.application_workspace_settings` mit einer Konfiguration je Instanz: Version, geordnete Kacheln als JSON und Änderungszeitpunkt. Der Instanz-Fremdschlüssel löscht die Konfiguration bei Instanzlöschung. Erzwungene RLS erlaubt Zugriff ausschließlich bei passendem `iam.current_instance_id()`; auch fehlender Kontext wird abgelehnt. Schreibzugriffe erfolgen mit Versionsprüfung und Audit im selben Host-Transaktionskontext. Plugin-Deaktivierung löscht keine Daten; die Down-Migration erhält den Bestand für ältere Runtimes.
+Migration `0115_application_workspace_settings` ergänzt `iam.application_workspace_settings` mit einer Konfiguration je Instanz: Version, geordnete Kacheln als JSON und Änderungszeitpunkt. Der Instanz-Fremdschlüssel löscht die Konfiguration bei Instanzlöschung. Erzwungene RLS erlaubt Zugriff ausschließlich bei passendem `iam.current_instance_id()`; auch fehlender Kontext wird abgelehnt. Schreibzugriffe erfolgen mit Versionsprüfung und Audit im selben Host-Transaktionskontext. Plugin-Deaktivierung löscht keine Daten; die Down-Migration erhält den Bestand für ältere Runtimes.

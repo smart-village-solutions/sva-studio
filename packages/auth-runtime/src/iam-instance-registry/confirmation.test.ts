@@ -95,13 +95,14 @@ describe('critical registry confirmation', () => {
     expect(changed).not.toBe(first);
   });
 
-  it('keeps all five critical actions static and requires a module for revoke prepare', async () => {
+  it('keeps all critical actions static and requires a module for revoke prepare', async () => {
     const { CRITICAL_REGISTRY_ACTIONS, validateConfirmationModuleId } =
       await import('./confirmation.js');
     expect(CRITICAL_REGISTRY_ACTIONS).toEqual([
       'instance.status.activate',
       'instance.status.suspend',
       'instance.status.archive',
+      'instance.delete',
       'instance.module.revoke',
       'instance.secret.rotate',
     ]);
@@ -374,6 +375,7 @@ describe('critical registry confirmation', () => {
   });
 
   it.each([
+    ['instance.delete', 'DELETE demo'],
     ['instance.status.archive', 'ARCHIVE demo'],
     ['instance.status.suspend', 'SUSPEND demo'],
     ['instance.secret.rotate', 'ROTATE SECRET FOR demo'],
@@ -395,6 +397,9 @@ describe('critical registry confirmation', () => {
 
     expect(response.status).toBe(201);
     expect(await response.json()).toMatchObject({ data: { actionId, confirmationPhrase } });
+    const options = state.withScopedRegistryService.mock.calls.at(-1)?.[2];
+    if (actionId === 'instance.delete') expect(await options.shouldReconcileActivationPolicies()).toBe(false);
+    else expect(options).toBeUndefined();
     expect(service.prepareConfirmationChallenge).toHaveBeenCalledWith(
       expect.objectContaining({ actionId, confirmationPhrase })
     );

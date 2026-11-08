@@ -28,6 +28,7 @@ import {
   activateInstanceInternal,
   assignInstanceModuleInternal,
   archiveInstanceInternal,
+  deleteInstanceInternal,
   bootstrapInstanceAdminStructureInternal,
   createInstanceInternal,
   getInstanceDraftReadinessInternal,
@@ -297,6 +298,8 @@ export const instanceRegistryHandlers = {
     ),
   suspendInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.status.suspend', suspendInstanceInternal),
+  deleteInstance: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, 'instance.delete', deleteInstanceInternal),
   archiveInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.status.archive', archiveInstanceInternal),
 };

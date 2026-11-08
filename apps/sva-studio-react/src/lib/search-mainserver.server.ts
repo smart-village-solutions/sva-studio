@@ -41,9 +41,12 @@ const routes = {
   },
 } as const;
 type RoutedType = keyof typeof routes;
+// Keep only the automatically selected principal for this request, never its credentials.
+const principalByRequest = new WeakMap<Request, 'organization' | 'user'>();
 const typeFor = async (
   context: SearchUserContext,
-  candidate: SearchCandidate
+  candidate: SearchCandidate,
+  principal: 'organization' | 'user'
 ): Promise<{ contentType: string; visible: boolean; source?: Record<string, unknown> }> => {
   if (candidate.model === 'NewsItem') return { contentType: 'news.article', visible: true };
   if (candidate.model === 'EventRecord')
@@ -57,7 +60,7 @@ const typeFor = async (
     instanceId,
     keycloakSubject: context.actor.id,
     activeOrganizationId: context.activeOrganizationId,
-    actingPrincipalType: context.activeOrganizationId ? 'organization' : 'user',
+    actingPrincipalType: principal,
     genericItemId: candidate.id,
   });
   return {
@@ -139,7 +142,10 @@ export const resolveSearchCandidate = async (
   candidate: SearchCandidate
 ): Promise<SearchResolution> => {
   try {
-    const { contentType, visible, source } = await typeFor(context, candidate);
+    if (!principalByRequest.has(context.request)) await contextStamp(context);
+    const principal = principalByRequest.get(context.request);
+    if (!principal) return { kind: 'unresolved' };
+    const { contentType, visible, source } = await typeFor(context, candidate, principal);
     if (!visible) return { kind: 'unresolved' };
     if (!Object.hasOwn(routes, contentType)) return { kind: 'unresolved' };
     const definition = studioServerPluginSnapshot.registry.studioContentTypes.find(
@@ -153,10 +159,7 @@ export const resolveSearchCandidate = async (
     const headers = new Headers(context.request.headers);
     headers.delete('content-length');
     headers.delete('content-type');
-    headers.set(
-      'X-SVA-Acting-Principal-Type',
-      context.activeOrganizationId ? 'organization' : 'user'
-    );
+    headers.set('X-SVA-Acting-Principal-Type', principal);
     const mainserver = await import('@sva/sva-mainserver/server');
     const response = await mainserver[route.handler](
       new Request(url, { method: 'GET', headers, signal: context.request.signal })
@@ -212,15 +215,17 @@ const contextStamp = async (context: SearchUserContext): Promise<string | null> 
       instanceId,
       keycloakSubject: current.user.id,
       activeOrganizationId: current.activeOrganizationId,
-      actingPrincipalType: current.activeOrganizationId ? 'organization' : 'user',
     });
-    if (permissions.ok && credentials.status === 'ok')
+    if (permissions.ok && credentials.status === 'ok') {
+      if (!principalByRequest.has(context.request))
+        principalByRequest.set(context.request, credentials.source);
       stamp = JSON.stringify([
         permissions.permissions,
         credentials.source,
         credentials.organizationId,
         credentials.credentialFingerprint,
       ]);
+    }
     return new Response(null, { status: permissions.ok ? 204 : 503 });
   });
   return stamp;

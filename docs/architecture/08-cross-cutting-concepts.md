@@ -1420,6 +1420,17 @@ See [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).
 
 Baustellengeometrien werden als versionierte GeoJSON-FeatureCollection unter einem reservierten Payload-Schlüssel geführt. Unabhängige Client-/Studio-Server-Verträge prüfen Zahlenbereiche, Normalisierung, Mengen-/UTF-8-Grenzen und Polygon-Selbstüberschneidungen; gemeinsame Verhaltensfälle sichern beide Vertrauensgrenzen. Standortpunkte und unberührte Payload-Felder bleiben erhalten. Fremdversionen blockieren reduzierte Writes. Der Mainserver speichert das vollständige Studio-Payload unverändert über seinen bestehenden Ersetzungspfad; eine zusätzliche Geometrievalidierung oder Legacy-Erhaltung im Mainserver ist nicht Teil dieses Umfangs. Lokale Fixtures beweisen keinen produktiven Roundtrip.
 
+### Archivierte Instanzen endgültig löschen
+
+Die lokale Instanzlöschung verlangt Root-Admin-Zugriff, CSRF-Schutz, frische Anmeldung
+und die ausdrückliche Bestätigung der Instanz-ID. Die SQL-Funktion prüft Archivstatus,
+bestätigten Änderungsstand, RLS-Scope, aktive Aufbewahrungssperren und ausstehende
+Arbeit unter dem bestehenden Instanz-Lock. Lokale Daten und Secrets werden atomar
+entfernt; globale Kataloge, andere Tenants und externe Systeme bleiben erhalten.
+Ein Plattform-Audit-Eintrag überlebt die Tenant-Löschung. Der lokale Host-Cache wird
+erst nach erfolgreicher Transaktion geleert. Details und verbleibende externe
+Ressourcen beschreibt [der Instanzbetrieb](../operations/instance-keycloak-provisioning.md#archivierte-studio-instanz-endgültig-löschen).
+
 ### HTTP-, Token- und Browsergrenzen
 
 Der Public-Waste-Adapter zählt tatsächliche Body-Bytes unabhängig von `Content-Length`, lehnt Übergrößen mit 413 vor dem Runtime-Handler ab und hält den Socket nur für die zustellbare Ablehnung offen. DOI-Links enthalten Rohsecrets; nur deren neu berechneter SHA-256-Hash wird nachgeschlagen. Signierte Abmeldelinks bleiben getrennt.
@@ -1428,7 +1439,7 @@ Studio-HTML erlaubt standardmäßig Framing nur aus derselben Origin. Der besteh
 
 ## Berechtigungen und Zustände der Mainserver-Suche
 
-`search.read` erlaubt die Nutzung der Suche; fachliche Typ- und Ressourcenrechte bleiben unverändert. DataProvider-Gleichheit und Organisationsmitgliedschaft sind kein eigenständiges Leserecht. Trefferangaben und Facetten stammen nur aus autorisierten Detailzugriffen; die bewusst freigegebene aggregierte Ablehnungszahl enthält keine Einzelangaben. Nicht auflösbare oder technisch fehlgeschlagene Kandidaten werden nicht als Berechtigungsablehnung gezählt. Suchantworten sind privat und nicht cachebar; Schlüssel, Suchbegriffe und Dokumentinhalte gelangen nicht in technische Logs. Native Formulare, vorhandene Design-System-Controls, de/en-Texte und Status-Live-Regionen tragen die zugängliche Oberfläche. Das bestehende IAM-Modell aus Abschnitt 04 wird dabei nicht erweitert.
+`search.read` erlaubt die Nutzung der Suche; fachliche Typ- und Ressourcenrechte bleiben unverändert. DataProvider-Gleichheit und Organisationsmitgliedschaft sind kein eigenständiges Leserecht. Die bestehende Credential-Policy bestimmt den Leseprincipal automatisch; die Auswahl wird pro Request ohne Credential-Werte gehalten und bei der abschließenden Kontextprüfung frisch verglichen. Die explizite Detailautorisierung bleibt bestehen, ein fehlgeschlagener Read führt nicht zum Ausprobieren eines anderen Principals. Trefferangaben und Facetten stammen nur aus autorisierten Detailzugriffen; die bewusst freigegebene aggregierte Ablehnungszahl enthält keine Einzelangaben. Nicht auflösbare oder technisch fehlgeschlagene Kandidaten werden nicht als Berechtigungsablehnung gezählt. Suchantworten sind privat und nicht cachebar; Schlüssel, Suchbegriffe und Dokumentinhalte gelangen nicht in technische Logs. Native Formulare, vorhandene Design-System-Controls, de/en-Texte und Status-Live-Regionen tragen die zugängliche Oberfläche. Das bestehende IAM-Modell aus Abschnitt 04 wird dabei nicht erweitert.
 
 ## Kommunaler Anwendungsarbeitsplatz
 

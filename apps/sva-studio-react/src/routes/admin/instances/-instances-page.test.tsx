@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InstancesPage } from './-instances-page';
@@ -225,5 +225,39 @@ describe('InstancesPage', () => {
     expect(screen.getAllByText('Demo').length).toBeGreaterThan(0);
     expect(screen.getByText('Instanz erreichbar')).toBeTruthy();
     expect(screen.getByText('HTTP 302')).toBeTruthy();
+  });
+});
+
+
+describe('Studio tenant deletion confirmation', () => {
+  afterEach(cleanup);
+  beforeEach(() => { listMainserverInterfacesMock.mockResolvedValue({ data: { entries: [] } }); });
+  it('requires the exact target phrase before deleting an archived tenant', async () => {
+    const deleteInstance = vi.fn().mockResolvedValue({ deleted: true });
+    useInstancesMock.mockReturnValue(createInstancesApiState({
+      instances: [{ instanceId: 'old', displayName: 'Old', status: 'archived', parentDomain: 'example.test', primaryHostname: 'old.example.test', updatedAt: '2026-11-08T00:00:00.000Z' }],
+      deleteInstance,
+    }));
+    render(<InstancesPage />);
+    fireEvent.click(screen.getAllByText('Weitere Aktionen', { selector: 'summary' })[0]!);
+    fireEvent.click(screen.getAllByText('Endgültig löschen')[0]!);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.textContent).toContain('Mainserver und Keycloak bleiben unverändert');
+    const submit = within(dialog).getByRole('button', { name: 'Endgültig löschen' });
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+    const input = within(dialog).getByLabelText('Zur Bestätigung DELETE old eingeben.');
+    fireEvent.change(input, { target: { value: 'DELETE other' } });
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+    expect(deleteInstance).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: 'DELETE old' } });
+    fireEvent.click(submit);
+    await waitFor(() => expect(deleteInstance).toHaveBeenCalledWith('old', '2026-11-08T00:00:00.000Z', 'DELETE old'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+  it('does not offer deletion for active tenants', () => {
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+    render(<InstancesPage />);
+    fireEvent.click(screen.getAllByText('Weitere Aktionen', { selector: 'summary' })[0]!);
+    expect(screen.queryByText('Endgültig löschen')).toBeNull();
   });
 });

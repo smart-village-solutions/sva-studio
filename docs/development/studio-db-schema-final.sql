@@ -2,14 +2,15 @@
 -- PostgreSQL database dump
 --
 
-\restrict 9Od8uZSboj5mrvRAIzTSPvZ9Lx5CAlP55AmPc41pg1ugOA2oE67PPaSrcKbqrFZ
+\restrict yXnebYrXGS1QwgqzqJZW49fhepGRcnqTwLNFZQO2LhAm2saFhgjngpkclDu8aMG
 
--- Dumped from database version 16.15
--- Dumped by pg_dump version 16.15
+-- Dumped from database version 17.11 (Homebrew)
+-- Dumped by pg_dump version 17.11 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -167,6 +168,79 @@ $$;
 
 
 --
+-- Name: delete_studio_instance(text, timestamp with time zone, text, text); Type: FUNCTION; Schema: iam; Owner: -
+--
+
+CREATE FUNCTION iam.delete_studio_instance(p_instance text, p_updated_at timestamp with time zone, p_actor text, p_request text) RETURNS boolean
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'iam'
+    AS $$
+DECLARE
+  target iam.instances%ROWTYPE;
+  previous_retention text := current_setting('iam.retention_mode', true);
+  previous_deleting text := current_setting('app.deleting_instance', true);
+BEGIN
+  IF p_instance IS DISTINCT FROM iam.current_instance_id() THEN
+    RAISE EXCEPTION 'instance_delete_scope_mismatch';
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_instance, 0));
+  SELECT * INTO target FROM iam.instances WHERE id = p_instance FOR UPDATE;
+  IF NOT FOUND THEN RETURN false; END IF;
+  IF target.status <> 'archived' OR p_updated_at IS NULL OR target.updated_at <> p_updated_at
+     OR target.primary_hostname = target.parent_domain THEN
+    RAISE EXCEPTION 'instance_delete_conflict';
+  END IF;
+  IF EXISTS (SELECT 1 FROM iam.legal_holds WHERE instance_id = p_instance AND active) THEN
+    RAISE EXCEPTION 'instance_delete_legal_hold';
+  END IF;
+  IF EXISTS (SELECT 1 FROM iam.studio_jobs WHERE instance_id = p_instance AND status IN ('queued', 'running', 'retrying'))
+    OR EXISTS (SELECT 1 FROM iam.instance_keycloak_provisioning_runs WHERE instance_id = p_instance AND overall_status IN ('planned', 'running'))
+    OR EXISTS (SELECT 1 FROM iam.instance_provisioning_runs WHERE instance_id = p_instance
+      AND (status IN ('requested', 'provisioning') OR lease_expires_at > now())) THEN
+    RAISE EXCEPTION 'instance_delete_busy';
+  END IF;
+
+  PERFORM set_config('app.deleting_instance', p_instance, true);
+  PERFORM set_config('iam.retention_mode', 'true', true);
+  -- Remove references that deliberately restrict account/organization deletion first.
+  DELETE FROM iam.app_translation_catalog_drafts WHERE instance_id = p_instance;
+  DELETE FROM iam.app_translation_catalog_releases WHERE instance_id = p_instance;
+  DELETE FROM iam.data_subject_export_jobs WHERE instance_id = p_instance;
+  DELETE FROM iam.data_subject_request_events WHERE instance_id = p_instance;
+  DELETE FROM iam.data_subject_requests WHERE instance_id = p_instance;
+  DELETE FROM iam.account_profile_corrections WHERE instance_id = p_instance;
+  DELETE FROM iam.permission_change_requests WHERE instance_id = p_instance;
+  DELETE FROM iam.delegations WHERE instance_id = p_instance;
+  DELETE FROM iam.impersonation_sessions WHERE instance_id = p_instance;
+  DELETE FROM iam.legal_holds WHERE instance_id = p_instance;
+  DELETE FROM iam.legal_text_acceptances WHERE instance_id = p_instance;
+  DELETE FROM iam.instance_plugin_lifecycle WHERE instance_id = p_instance;
+  DELETE FROM iam.instance_waste_provisioning WHERE instance_id = p_instance;
+  DELETE FROM iam.studio_jobs WHERE instance_id = p_instance;
+  -- These tables have no direct FK to the registry.
+  DELETE FROM iam.content_history WHERE instance_id = p_instance;
+  DELETE FROM iam.contents WHERE instance_id = p_instance;
+  DELETE FROM iam.content_list_projection WHERE instance_id = p_instance;
+  DELETE FROM iam.content_list_projection_sync_state WHERE instance_id = p_instance;
+  -- Delete all rows of self-referencing trees in one statement, before their parent cascade.
+  DELETE FROM iam.media_content_save_operation_references WHERE instance_id = p_instance;
+  DELETE FROM iam.media_assets WHERE instance_id = p_instance;
+  DELETE FROM iam.geo_units WHERE instance_id = p_instance;
+  DELETE FROM iam.instances WHERE id = p_instance;
+
+  PERFORM set_config('iam.retention_mode', coalesce(previous_retention, ''), true);
+  PERFORM set_config('app.deleting_instance', coalesce(previous_deleting, ''), true);
+  -- Keep the deletion evidence outside the tenant's cascading audit history.
+  PERFORM set_config('app.instance_id', '', true);
+  INSERT INTO iam.platform_activity_logs(event_type, actor_user_id, request_id, payload)
+    VALUES ('instance.deleted', p_actor, p_request, jsonb_build_object('instanceId', p_instance));
+  PERFORM set_config('app.instance_id', p_instance, true);
+  RETURN true;
+END;
+$$;
+
+
+--
 -- Name: plugin_tenant_lifecycle_observability_snapshot(); Type: FUNCTION; Schema: iam; Owner: -
 --
 
@@ -274,6 +348,13 @@ CREATE FUNCTION iam.reject_app_translation_revision_change() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
+  IF TG_OP = 'DELETE' AND TG_TABLE_NAME = 'app_translation_catalog_releases' THEN
+    IF OLD.instance_id = iam.current_instance_id()
+     AND current_setting('app.deleting_instance', true) = OLD.instance_id
+     AND EXISTS (SELECT 1 FROM iam.instances WHERE id = OLD.instance_id AND status = 'archived') THEN
+      RETURN OLD;
+    END IF;
+  END IF;
   RAISE EXCEPTION 'app_translation_revision_immutable' USING ERRCODE = '23514';
 END;
 $$;
@@ -5183,10 +5264,33 @@ ALTER TABLE iam.app_translation_catalog_drafts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE iam.app_translation_catalog_releases ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: app_translation_catalog_drafts app_translation_draft_scope; Type: POLICY; Schema: iam; Owner: -
+-- Name: app_translation_catalog_drafts app_translation_draft_insert; Type: POLICY; Schema: iam; Owner: -
 --
 
-CREATE POLICY app_translation_draft_scope ON iam.app_translation_catalog_drafts TO iam_app USING ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text))))) WITH CHECK ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text)))));
+CREATE POLICY app_translation_draft_insert ON iam.app_translation_catalog_drafts FOR INSERT TO iam_app WITH CHECK ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text)))));
+
+
+--
+-- Name: app_translation_catalog_drafts app_translation_draft_instance_delete; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_draft_instance_delete ON iam.app_translation_catalog_drafts TO iam_app USING (((instance_id = iam.current_instance_id()) AND (current_setting('app.deleting_instance'::text, true) = instance_id) AND (EXISTS ( SELECT 1
+   FROM iam.instances
+  WHERE ((instances.id = app_translation_catalog_drafts.instance_id) AND (instances.status = 'archived'::text)))))) WITH CHECK (false);
+
+
+--
+-- Name: app_translation_catalog_drafts app_translation_draft_read; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_draft_read ON iam.app_translation_catalog_drafts FOR SELECT TO iam_app USING ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text)))));
+
+
+--
+-- Name: app_translation_catalog_drafts app_translation_draft_update; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_draft_update ON iam.app_translation_catalog_drafts FOR UPDATE TO iam_app USING ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text))))) WITH CHECK ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text)))));
 
 
 --
@@ -5214,6 +5318,15 @@ ALTER TABLE iam.app_translation_manifests ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY app_translation_release_insert ON iam.app_translation_catalog_releases FOR INSERT TO iam_app WITH CHECK ((((scope = 'global'::text) AND (NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND ((organization_id)::text = NULLIF(current_setting('app.organization_id'::text, true), ''::text)))));
+
+
+--
+-- Name: app_translation_catalog_releases app_translation_release_instance_delete; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_release_instance_delete ON iam.app_translation_catalog_releases TO iam_app USING (((instance_id = iam.current_instance_id()) AND (current_setting('app.deleting_instance'::text, true) = instance_id) AND (EXISTS ( SELECT 1
+   FROM iam.instances
+  WHERE ((instances.id = app_translation_catalog_releases.instance_id) AND (instances.status = 'archived'::text)))))) WITH CHECK (false);
 
 
 --
@@ -5603,9 +5716,9 @@ CREATE POLICY studio_jobs_observability_policy ON iam.studio_jobs FOR SELECT TO 
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 9Od8uZSboj5mrvRAIzTSPvZ9Lx5CAlP55AmPc41pg1ugOA2oE67PPaSrcKbqrFZ
+\unrestrict yXnebYrXGS1QwgqzqJZW49fhepGRcnqTwLNFZQO2LhAm2saFhgjngpkclDu8aMG
 
--- Application workspace settings (migration 0114).
+-- Application workspace settings (migration 0115).
 CREATE TABLE IF NOT EXISTS iam.application_workspace_settings (
   instance_id text PRIMARY KEY REFERENCES iam.instances(id) ON DELETE CASCADE,
   version integer NOT NULL DEFAULT 0 CHECK (version >= 0),

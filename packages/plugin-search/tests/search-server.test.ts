@@ -44,6 +44,58 @@ const run = async (input = context(), patch: Partial<SearchHost> = {}) => {
   return handler(input);
 };
 describe('search HTTP boundary', () => {
+  it.each([
+    ['de', ['news.article', 'events.event-record']],
+    ['en', ['events.event-record', 'news.article']],
+  ])(
+    'uses the existing request language %s for content-type ordering',
+    async (locale, expected) => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockImplementation(async () =>
+            Response.json({ hits: [{ id: '42' }], estimatedTotalHits: 1 })
+          )
+      );
+      const input = context('?q=city&sortBy=contentType');
+      const response = await run(
+        {
+          ...input,
+          request: new Request(input.request, { headers: { 'Accept-Language': String(locale) } }),
+        },
+        {
+          resolve: async (_context, _query, candidate) => {
+            const contentType =
+              candidate.model === 'NewsItem'
+                ? 'news.article'
+                : candidate.model === 'EventRecord'
+                  ? 'events.event-record'
+                  : '';
+            return contentType
+              ? {
+                  kind: 'allowed',
+                  document: {
+                    id: candidate.id,
+                    contentType,
+                    title: 'Allowed',
+                    excerpt: '',
+                    href: '/allowed',
+                    providerId: '',
+                    providerName: '',
+                    categories: [],
+                  },
+                }
+              : { kind: 'excluded' };
+          },
+        }
+      );
+      const payload = await response.json();
+      expect(payload.data.items.map((item: { contentType: string }) => item.contentType)).toEqual(
+        expected
+      );
+    }
+  );
   it('returns only authorized data with private cache headers', async () => {
     const fetcher = vi.fn().mockImplementation(async () => Response.json({ hits: [{ id: 1 }] }));
     vi.stubGlobal('fetch', fetcher);

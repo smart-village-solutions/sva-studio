@@ -1,4 +1,7 @@
 export const errorsInstancesAdminENResources = {
+  deleteConflict: 'The instance must be archived and unchanged. Please reload the list.',
+  deleteBusy: 'The instance still has pending or running jobs or provisioning runs.',
+  deleteLegalHold: 'An active legal hold prevents deletion.',
   stalePlan:
     'The confirmed plan is outdated. No new execution was approved. Load and review the current provisioning preview.',
   unauthorized: 'Your session is no longer valid. Please sign in again.',

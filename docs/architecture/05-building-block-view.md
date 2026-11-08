@@ -1278,13 +1278,23 @@ The ownership decision and release boundary are recorded in
 
 Das bestehende Baustellenplugin ergänzt seinen MapLibre-Kartenpfad lokal um Terra Draw und eine Koordinatenansicht. Der Studio-Mainserver-Adapter besitzt eine unabhängige Geometrievalidierung. Die einzige Datenquelle bleibt das GenericItem-Payload; weder ein neues Workspace-Package noch eine zusätzliche Geodatenbank werden eingeführt. Nach Nutzerfestlegung wird das alte CMS nicht mehr für Baustellen verwendet. Die Erweiterung verwendet deshalb den unveränderten Mainserver und übernimmt Erhalt sowie Schlüsselentfernung im vollständigen Studio-Payload. Siehe [Baustellenreferenz](../reference/construction-sites.md).
 
+### Lokale Instanzlöschung
+
+Die Instanzverwaltung führt den bestätigten `instance.delete`-Pfad vom bestehenden
+Root-Admin-UI über Routing und Auth-Runtime zum Instanz-Service und zur
+`SECURITY INVOKER`-Datenbankfunktion `iam.delete_studio_instance`. Die bestehende
+Scoped-Transaktion deaktiviert für diesen Aufruf die Aktivierungs-Reconciliation
+und deren externe Lifecycle-Follow-ups. Die Löschung benötigt keine neuen Packages,
+Worker oder Provider. Mainserver, Keycloak, Objektspeicher und externe
+Plugin-Datenbanken gehören ausdrücklich nicht zu ihrer Mutationsgrenze.
+
 ### Sicherheitsgrenzen der bestehenden Adapter
 
 `auth-runtime` besitzt den aktuellen Lifecycle-Read für persönliche Bearer-Zugriffe sowie die gefilterten Rollen-/Permission-Reads. Das vorhandene Rate-Limit-Modul besitzt zusätzlich ein atomar befristetes Redis-Budget pro Geocoding-Tenant. Der vorhandene `server-runtime`-Transport bindet DNS-/IP-Prüfung an den tatsächlich verwendeten Socket; der enge Geocoding-Export erlaubt HTTP und die bestehende explizite private Server-Ausnahme, während `fetchPublicHttps` strikt bleibt. Der öffentliche HTTP-Adapter begrenzt eingehende Bodies auf 65.536 Bytes. Der Reminder-Page-Handler hasht DOI-Rohsecrets immer, ohne gespeicherte Digests als Bearer zu akzeptieren. Es entstehen keine neuen Packages oder Services.
 
 ## Suchplugin und Host-Anbindung
 
-`packages/plugin-search` besitzt Descriptor, Browser-Ansicht, validierten Suchzustand, Meilisearch-Kandidatenabfrage und Zählablauf. Das konkrete Host-Wiring in `search-mainserver.server.ts` verwendet bestehende Mainserver-Detaildispatcher, Typregistry und effektive Permissions. Der Host materialisiert Route und Serverhandler; es entsteht weder ein weiteres Suchpackage noch eine allgemeine Header- oder Autorisierungsplattform.
+`packages/plugin-search` besitzt Descriptor, das einzige Suchfeld im Header, die Ergebnisseite mit vorhandener `StudioDataTable`, validierten Such-/Sortierzustand, Meilisearch-Kandidatenabfrage und Zählablauf. Die Sortierung erfolgt nach der Autorisierung und vor dem Paging. Das konkrete Host-Wiring in `search-mainserver.server.ts` verwendet bestehende Mainserver-Detaildispatcher, Typregistry und effektive Permissions. Der Host materialisiert Route und Serverhandler; es entsteht weder ein weiteres Suchpackage noch eine allgemeine Header- oder Autorisierungsplattform.
 
 ## Kommunaler Anwendungsarbeitsplatz
 

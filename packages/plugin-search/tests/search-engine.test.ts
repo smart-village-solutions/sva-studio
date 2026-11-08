@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { executeSearch, type SearchEngineHost } from '../src/search-engine.js';
-import { parseSearchQuery, type SearchDocument } from '../src/search-contract.js';
+import {
+  parseSearchQuery,
+  readSearchQuery,
+  searchQueryParams,
+  type SearchDocument,
+} from '../src/search-contract.js';
 const document = (id: string): SearchDocument => ({
   id,
   contentType: 'news.article',
@@ -19,6 +24,70 @@ const host = (overrides: Partial<SearchEngineHost> = {}): SearchEngineHost => ({
   ...overrides,
 });
 describe('authorized search', () => {
+  it('sorts translated content-type labels before paging in German and English', async () => {
+    const testHost = host({
+      readPage: async (model) => ({
+        candidates:
+          model === 'GenericItem'
+            ? Array.from({ length: 25 }, (_, i) => ({ model, id: String(i) }))
+            : [],
+        exhausted: true,
+      }),
+      resolve: async (candidate) => ({
+        kind: 'allowed',
+        document: {
+          ...document(candidate.id),
+          contentType:
+            Number(candidate.id) < 20
+              ? 'cockpit-cards.cockpit-card'
+              : 'construction-sites.construction-site',
+        },
+      }),
+    });
+    const sortedQuery = { ...query, sortBy: 'contentType' as const, page: 2 };
+    const german = await executeSearch(sortedQuery, testHost, 'de');
+    const english = await executeSearch(sortedQuery, testHost, 'en');
+    expect(german.items.map((item) => item.contentType)).toEqual(
+      Array(5).fill('cockpit-cards.cockpit-card')
+    );
+    expect(english.items.map((item) => item.contentType)).toEqual(
+      Array(5).fill('construction-sites.construction-site')
+    );
+  });
+  it('sorts the authorized result set before paging, including descending order', async () => {
+    const testHost = host({
+      readPage: async (model) => ({
+        candidates:
+          model === 'NewsItem'
+            ? Array.from({ length: 25 }, (_, i) => ({ model, id: String(25 - i) }))
+            : [],
+        exhausted: true,
+      }),
+      resolve: async (candidate) => ({
+        kind: 'allowed',
+        document: { ...document(candidate.id), title: `Title ${candidate.id}` },
+      }),
+    });
+    const ascending = await executeSearch({ ...query, page: 2 }, testHost);
+    expect(ascending.items.map((item) => item.id)).toEqual(['21', '22', '23', '24', '25']);
+    const descending = await executeSearch(
+      { ...query, sortBy: 'title', sortDirection: 'desc' },
+      testHost
+    );
+    expect(descending.items[0]?.id).toBe('25');
+    expect(() => parseSearchQuery({ sortBy: 'private' })).toThrow('invalid_search');
+    expect(() => parseSearchQuery({ sortDirection: 'random' })).toThrow('invalid_search');
+    const sortedQuery = parseSearchQuery({
+      q: 'city',
+      types: ['news.article'],
+      sortBy: 'providerName',
+      sortDirection: 'desc',
+      page: 2,
+    });
+    expect(
+      readSearchQuery(new URL(`https://studio.example/search?${searchQueryParams(sortedQuery)}`))
+    ).toEqual(sortedQuery);
+  });
   it('keeps excluded candidates out of records and filter options and scans later pages', async () => {
     const result = await executeSearch(
       query,

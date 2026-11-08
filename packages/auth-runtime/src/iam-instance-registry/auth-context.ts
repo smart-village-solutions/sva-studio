@@ -8,6 +8,7 @@ export const REGISTRY_ACTIONS = {
   provisionRunRead: 'instance.provision.run.read',
   create: 'instance.create',
   update: 'instance.update',
+  delete: 'instance.delete',
   provisionPlan: 'instance.provision.plan',
   provisionExecute: 'instance.provision.execute',
   reconcile: 'instance.reconcile',

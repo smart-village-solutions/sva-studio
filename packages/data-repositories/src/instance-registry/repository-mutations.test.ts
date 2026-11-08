@@ -40,6 +40,16 @@ const expectSqlValues = (
 };
 
 describe('instance registry mutation SQL values', () => {
+  it('deletes through the scoped atomic Studio-only function without interpolating identifiers', async () => {
+    const { executor, statements } = createQueuedExecutor([[{ deleted: true }]]);
+    const repository = createInstanceRegistryRepository(executor);
+    expect(await repository.deleteInstance({ instanceId: 'tenant-a', expectedUpdatedAt: '2026-11-08T00:00:00Z', actorId: 'admin' })).toBe(true);
+    expect(statements).toEqual([{
+      text: 'SELECT iam.delete_studio_instance($1, $2::timestamptz, $3, $4) AS deleted;',
+      values: ['tenant-a', '2026-11-08T00:00:00Z', 'admin', null],
+    }]);
+  });
+
   it('maps a minimal create input to the exact 21-value contract and upserts the hostname second', async () => {
     const { executor, statements } = createQueuedExecutor([
       [instanceRow],

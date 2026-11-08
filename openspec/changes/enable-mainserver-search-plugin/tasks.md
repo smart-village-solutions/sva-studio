@@ -38,3 +38,11 @@
 - [ ] 4.4 Coverage-Vertrag des bisherigen inaktiven Plugins ergänzen und exakten PR-HEAD über reguläre Gates prüfen.
 - [ ] 4.5 Main-Build, Dev und Staging-Promote mit identischem Digest einschließlich Backup, One-shots und Runtime-Smoke erfolgreich abschließen.
 - [ ] 4.6 Search für Sandbox zuweisen, bestehende IAM-Baseline verwenden und Suchpfad live mit aktuellen Ressourcenrechten prüfen.
+
+
+## 5. Bestätigte UX-Anpassung
+
+- [x] 5.1 Vorhandene Credential-Auswahl verwenden und explizite Detailautorisierung ohne Kontowechsel erhalten.
+- [x] 5.2 Ausschließlich das Header-Suchfeld einschließlich mobiler Darstellung und URL-Synchronisierung verwenden.
+- [x] 5.3 Bestehende StudioDataTable mit Sortierung vor Paging und Filtern verwenden; bisherigen Ergebnispfad ersetzen.
+- [ ] 5.4 Gezielt testen, Dokumentation aktualisieren und finale Scope-/Sicherheitsprüfung durchführen.

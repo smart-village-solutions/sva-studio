@@ -79,7 +79,7 @@ describe.skipIf(!url)('application workspace PostgreSQL', () => {
   });
   it('preserves configuration across a nondestructive migration rollback and replay', async () => {
     const migration = await readFile(
-      new URL('../../data/migrations/0114_application_workspace_settings.sql', import.meta.url),
+      new URL('../../data/migrations/0115_application_workspace_settings.sql', import.meta.url),
       'utf8'
     );
     const [up, down] = migration.split('-- +goose Down');

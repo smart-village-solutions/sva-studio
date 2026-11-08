@@ -14,6 +14,7 @@ export const CRITICAL_REGISTRY_ACTIONS = [
   'instance.status.activate',
   'instance.status.suspend',
   'instance.status.archive',
+  'instance.delete',
   'instance.module.revoke',
   'instance.secret.rotate',
 ] as const;
@@ -233,5 +234,7 @@ export const prepareInstanceConfirmationInternal = async (
       },
       requestId,
     });
-  });
+  }, actionId === 'instance.delete'
+    ? { shouldReconcileActivationPolicies: async () => false }
+    : undefined);
 };

@@ -63,6 +63,7 @@ vi.mock('../log-context.js', () => ({
 
 vi.mock('./core.js', () => ({
   activateInstanceInternal: vi.fn(async () => new Response('activate', { status: 200 })),
+  deleteInstanceInternal: vi.fn(async () => new Response('delete', { status: 200 })),
   archiveInstanceInternal: vi.fn(async () => new Response('archive', { status: 200 })),
   assignInstanceModuleInternal: vi.fn(async () => new Response('assign', { status: 200 })),
   bootstrapInstanceAdminStructureInternal: vi.fn(
@@ -144,6 +145,14 @@ const lifecycleEndpointActionMatrix = lifecycleEndpointActions.flatMap((endpoint
 );
 
 describe('iam-instance-registry/server', () => {
+  it('routes tenant deletion through authenticated instance.delete action authorization', async () => {
+    const response = await instanceRegistryHandlers.deleteInstance(new Request('https://studio.example.org/api/v1/iam/instances/demo', {
+      method: 'DELETE', headers: { authorization: 'Bearer signed-token' },
+    }));
+    expect(response.status).toBe(200);
+    expect(state.authenticateRegistryServiceToken).toHaveBeenCalledWith('signed-token', 'instance.delete');
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     state.withAuthenticatedUser.mockImplementation(
@@ -462,9 +471,9 @@ describe('iam-instance-registry/server', () => {
       )
     );
 
-    expect(responses).toHaveLength(32);
+    expect(responses).toHaveLength(33);
     expect(responses.every((response) => response.status === 200)).toBe(true);
-    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(32);
+    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(33);
     expect(state.prepareInstanceConfirmationInternal).toHaveBeenCalledOnce();
   });
 });

@@ -5586,3 +5586,20 @@ describe('instance registry service facade', () => {
     expect(status).toBeNull();
   });
 });
+
+
+describe('Studio-only instance deletion', () => {
+  it('uses only the local repository and cache invalidation, without external reconciliation', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({ ...baseInstance, status: 'archived' })),
+      deleteInstance: vi.fn(async () => true),
+    });
+    const external = vi.fn(() => { throw new Error('external_mutation_forbidden'); });
+    const deps = createDeps(repository, { readKeycloakStateViaProvisioner: external, provisionInstanceAuth: external, deleteProvisionedRealm: external });
+    const service = createInstanceRegistryService(deps);
+    expect(await service.deleteInstance({ instanceId: 'demo', expectedUpdatedAt: baseInstance.updatedAt, actorId: 'admin' })).toBe(true);
+    expect(repository.deleteInstance).toHaveBeenCalledOnce();
+    expect(deps.invalidateHost).toHaveBeenCalledWith(baseInstance.primaryHostname);
+    expect(external).not.toHaveBeenCalled();
+  });
+});

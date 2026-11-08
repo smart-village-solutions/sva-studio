@@ -4,6 +4,7 @@ import type { PluginDefinition, PluginViewBinding } from '@sva/plugin-sdk';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 import { useAuth } from '../providers/auth-provider';
+import { useLocale } from '../providers/locale-provider';
 import { useEffectiveAccess } from '../providers/effective-access-provider';
 import { useOrganizationContext } from '../hooks/use-organization-context';
 import { Button, StudioLoadingState } from '@sva/studio-ui-react';
@@ -58,9 +59,10 @@ const hostAppRouteBindings: StudioAppRouteBindings = {
 export const SearchPluginRoutePage = ({
   Page,
 }: {
-  readonly Page: React.ComponentType<{ contextKey?: string }>;
+  readonly Page: React.ComponentType<{ contextKey?: string; locale?: 'de' | 'en' }>;
 }) => {
   const { user } = useAuth();
+  const { locale } = useLocale();
   const access = useEffectiveAccess();
   const organization = useOrganizationContext();
   if (organization.isLoading || organization.isUpdating)
@@ -85,7 +87,7 @@ export const SearchPluginRoutePage = ({
     organization.context.activeOrganizationId,
     access.snapshot,
   ]);
-  return <Page key={contextKey} contextKey={contextKey} />;
+  return <Page key={contextKey} contextKey={contextKey} locale={locale} />;
 };
 
 export const studioRoutePlugins: readonly PluginDefinition[] = studioPlugins.map((plugin) => ({
@@ -96,7 +98,12 @@ export const studioRoutePlugins: readonly PluginDefinition[] = studioPlugins.map
           ...route,
           component: () => (
             <SearchPluginRoutePage
-              Page={route.component as React.ComponentType<{ contextKey?: string }>}
+              Page={
+                route.component as React.ComponentType<{
+                  contextKey?: string;
+                  locale?: 'de' | 'en';
+                }>
+              }
             />
           ),
         }))

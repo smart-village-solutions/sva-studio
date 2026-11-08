@@ -105,6 +105,18 @@ describe('consolidated CI gate workflows', () => {
     expect(mainGates).not.toContain('sva-studio-react:build');
   });
 
+  it('binds the external reference to immutable commits and the required App Build gate', () => {
+    for (const source of [prGates, mainGates]) {
+      const reference = source.match(/sva-studio_plugin-application-overview\/\.github\/workflows\/quality\.yml@([a-f0-9]{40})/u);
+      expect(reference).not.toBeNull();
+      expect(source).toContain(`plugin-ref: ${reference?.[1]}`);
+    }
+    expect(prGates).toContain('studio-ref: ${{ github.event.pull_request.head.sha }}');
+    expect(mainGates).toContain('studio-ref: ${{ github.sha }}');
+    expect(prGates).toContain('needs: [scope, plugin-compatibility]');
+    expect(prGates).toContain("needs.plugin-compatibility.result != 'success' && needs.plugin-compatibility.result != 'skipped'");
+  });
+
   it('checks out complete history before Main coverage and SonarCloud', () => {
     const coverageStart = mainGates.indexOf('\n  coverage:');
     const complexityStart = mainGates.indexOf('\n  complexity:', coverageStart);

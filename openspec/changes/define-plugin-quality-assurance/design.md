@@ -53,7 +53,7 @@ Fork-/PR-Code ist untrusted: keine Release-Tokens oder privaten Registry-Zugangs
 
 Die anfängliche Bestandsaufnahme bezog sich auf lokale, unveröffentlichte Host-/SDK-/UI-Erweiterungen. Die Einführung erzeugt öffentliche Peer-Artefakte aus einem sauberen Studio-Commit und prüft deren Digests. Die Version `0.0.1` allein ist weiterhin kein hinreichender Vertragsnachweis; Commit und Artefaktidentität bleiben erforderlich.
 
-Portable bestehende Prüfer, isolierter Paket-Consumer, echte Redis-/Cookie-/API-/PostgreSQL-Tests und Browserprüfungen werden im Implementierungsstand zusammengeführt. Vor Musterfreigabe bleiben der endgültige Host-/Plugin-Pin, vollständige terminale Remote-Gates samt Merge-Schutz, der Runtime-Start ohne optionales Paket sowie die gesonderte manuelle UI-/Fachabnahme nachzuweisen. Sonar-/Codecov-Projekt und Zugänge sind konkret abzustimmen; deren fehlende Anbindung zählt nicht als bestanden.
+Portable bestehende Prüfer, isolierter Paket-Consumer, echte Redis-/Cookie-/API-/PostgreSQL-Tests und Browserprüfungen sind im Implementierungsstand zusammengeführt und lokal geprüft. Der vorhandene Studio-Runtime-Artefaktnachweis startet den ohne optionales Paket gebauten Host einschließlich Health- und Root-Prüfung erfolgreich. Der Studio-Workflow ruft denselben externen Workflow mit festen Plugin-/Host-SHAs auf; relevante Kompatibilitätsfehler blockieren den bestehenden erforderlichen App-Build-Check. SonarCloud unter `smart-village-app` und Codecov für das konkrete Plugin-Repository wurden ausdrücklich freigegeben. Vor Musterfreigabe bleiben vollständige terminale Remote-Gates samt Merge-Schutz sowie die gesonderte manuelle UI-/Fachabnahme nachzuweisen; fehlende Analysen zählen nicht als bestanden.
 
 ## Lieferabschnitte und Rücknahme
 

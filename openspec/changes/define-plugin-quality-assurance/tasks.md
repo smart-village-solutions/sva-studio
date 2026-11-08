@@ -14,7 +14,7 @@
 - [ ] 2.1 Passenden Studio-/SDK-/UI-Kandidaten committen, versionieren und als unveränderliche installierbare CI-Eingaben bereitstellen; keine uncommitteten lokalen Links als Bootstrap.
 - [x] 2.2 Plugin-Gates für statische Qualität, Grenzen, Security, Verhalten, Coverage, New Code und Komplexität auf die vorhandenen Regeln ausrichten; externe Projektwurzeln im zuständigen vorhandenen Pfad unterstützen.
 - [ ] 2.3 Isolierten Clean-Install-/Paket-/Runtime-Consumer und echte Host-Kompatibilität des Kandidaten nachweisen, einschließlich Aktivierung, fehlendem Paket und relevanten Negativfällen.
-- [ ] 2.4 Tests für neue Gate-Logik, relevante arc42-Abschnitte 08/10 und normale Entwicklerbefehle zusammen mit der Implementierung aktualisieren.
+- [x] 2.4 Tests für neue Gate-Logik, relevante arc42-Abschnitte 08/10 und normale Entwicklerbefehle zusammen mit der Implementierung aktualisieren.
 - [ ] 2.5 GitHub-Workflow und erforderliche Statusprüfungen sowie Sonar-/Codecov-Projektbezüge nach konkret abgestimmtem Konto/Ziel einrichten; vollständige Läufe am exakten HEAD beobachten.
 - [ ] 2.6 Geprüftes Paket über Commit/Digest identifizieren; eine Freigabe darf keine ungeprüften neu erzeugten Bytes ersetzen. Keine NPM-Veröffentlichung oder Auslieferung ohne gesonderten Auftrag.
 

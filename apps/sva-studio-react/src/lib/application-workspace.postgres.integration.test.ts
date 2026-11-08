@@ -89,7 +89,7 @@ it('rolls back the actual storage adapter when its actual audit insert fails', a
   expect((await (await call()).json()).data).toEqual({version:1,tiles:configuration.tiles});
 });
 it('keeps the injected adapter tenant-bound independently of a caller supplied tile', async () => {
-  const foreignContext = { scope:'tenant', actor:{ id:subject,roles:[],instanceId:foreign } } as Extract<PluginServerHandlerExecutionContext,{scope:'tenant'|'platform'}>;
+  const foreignContext: Extract<PluginServerHandlerExecutionContext,{scope:'tenant'|'platform'}> = { request: request(), sessionId, pluginId: 'application-workspace', handlerId: 'application-workspace.settings.save', pathParams: {}, scope:'tenant', actor:{ id:subject,roles:[],instanceId:foreign } };
   expect(await applicationWorkspaceHost.read(foreign)).toEqual({version:0,tiles:[]});
   await applicationWorkspaceHost.save(foreignContext,{version:0,tiles:[]});
   expect((await applicationWorkspaceHost.read(instance)).tiles).toEqual(configuration.tiles);

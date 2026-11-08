@@ -1,5 +1,5 @@
 import * as Popover from '@radix-ui/react-popover';
-import { CalendarDays } from 'lucide-react';
+import { IconCalendarMonth as CalendarDays } from '@tabler/icons-react';
 import * as React from 'react';
 
 import { Button } from './button.js';

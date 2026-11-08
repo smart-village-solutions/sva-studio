@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { Heart } from 'lucide-react';
+import { IconHeart as Heart } from '@tabler/icons-react';
 
 import { t } from '../i18n';
 import { readLatestAuthDiagnosticSnapshot } from '../lib/auth-diagnostics';
@@ -87,10 +87,25 @@ const clearConsumedHomeAuthSearch = (): void => {
   window.history.replaceState(window.history.state, '', nextHref);
 };
 
-const AnonymousHeroActions = ({ loginHref }: { readonly loginHref: string }) => (
+const AnonymousHeroActions = ({
+  loginHref,
+  loginWithDevAuth,
+}: {
+  readonly loginHref: string;
+  readonly loginWithDevAuth?: () => Promise<void> | void;
+}) => (
   <div className="flex w-full max-w-xl flex-col items-center gap-3 sm:flex-row sm:justify-center">
-    <Button asChild className="h-12 min-w-48 rounded-full px-8 text-base">
-      <a href={loginHref}>{t('shell.header.login')}</a>
+    <Button
+      asChild={!loginWithDevAuth}
+      type={loginWithDevAuth ? 'button' : undefined}
+      onClick={loginWithDevAuth ? () => void loginWithDevAuth() : undefined}
+      className="h-12 min-w-48 rounded-full px-8 text-base"
+    >
+      {loginWithDevAuth ? (
+        t('shell.header.login')
+      ) : (
+        <a href={loginHref}>{t('shell.header.login')}</a>
+      )}
     </Button>
   </div>
 );
@@ -108,7 +123,7 @@ const HomeOpenSourceClaim = () => (
         aria-label={t('home.hero.openSourceLoveLabel')}
         className="inline-flex items-center text-rose-500"
       >
-        <Heart aria-hidden="true" className="h-4 w-4 fill-current" strokeWidth={1.8} />
+        <Heart aria-hidden="true" className="h-4 w-4 fill-current" />
         <span className="sr-only">{t('home.hero.openSourceLoveLabel')}</span>
       </span>
       <span>{` ${t('home.hero.openSourceSuffix')}`}</span>
@@ -272,7 +287,10 @@ export const HomePage = () => {
               )}
             </div>
             {!isAuthenticated && !isLoading ? (
-              <AnonymousHeroActions loginHref={heroLoginHref} />
+              <AnonymousHeroActions
+                loginHref={heroLoginHref}
+                loginWithDevAuth={isDevAuthAvailable ? loginWithDevAuth : undefined}
+              />
             ) : null}
             {isAnonymousHome && !isLoading && isDevAuthAvailable ? (
               <DevAuthPrompt

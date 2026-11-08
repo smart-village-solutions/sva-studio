@@ -11,8 +11,8 @@
     "icon": null
   },
   "conversationContentStorage": {
-    "mode": "ask",
-    "retentionHours": 24
+    "mode": "disabled",
+    "retentionHours": null
   },
   "staff": {
     "locale": "de-DE",
@@ -94,7 +94,7 @@
       "icon": null,
       "guest": {
         "explanationHtml": "<p>Welcome. You are now connected with a member of staff of the City of Kassel. Speak or type in your language; KasselDIALOG translates for both of you. You do not need an account.</p>",
-        "storageQuestionHtml": "<p>May we store the content of this conversation for 24 hours to improve translation quality? You can continue without agreeing.</p>"
+        "storageQuestionHtml": null
       },
       "feedback": {
         "headline": "Share your feedback",
@@ -158,7 +158,7 @@
       "icon": null,
       "guest": {
         "explanationHtml": "<p>Hoş geldiniz. Artık Kassel Belediyesi'nden bir çalışanla bağlantıdasınız. Kendi dilinizde konuşun veya yazın; KasselDIALOG her ikiniz için çeviri yapar. Hesap açmanız gerekmez.</p>",
-        "storageQuestionHtml": "<p>Çeviri kalitesini iyileştirmek için bu görüşmenin içeriğini 24 saat boyunca saklamamıza izin veriyor musunuz? Onay vermeden de devam edebilirsiniz.</p>"
+        "storageQuestionHtml": null
       },
       "feedback": {
         "headline": "Deneyiminizi paylaşın",
@@ -222,7 +222,7 @@
       "icon": null,
       "guest": {
         "explanationHtml": "<p>Здравствуйте! Вы подключены к сотруднику городской администрации Касселя. Говорите или пишите на своём языке — KasselDIALOG переведёт для вас обоих. Учётная запись не нужна.</p>",
-        "storageQuestionHtml": "<p>Разрешаете ли вы хранить содержание этого разговора в течение 24 часов для улучшения качества перевода? Вы можете продолжить и без согласия.</p>"
+        "storageQuestionHtml": null
       },
       "feedback": {
         "headline": "Поделитесь отзывом",

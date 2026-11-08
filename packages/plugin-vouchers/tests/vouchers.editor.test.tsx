@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MainserverApiError,
@@ -17,6 +17,7 @@ const state = vi.hoisted(() => ({
   delivery: vi.fn(),
   history: vi.fn(),
   get: vi.fn(),
+  locations: vi.fn(),
   prepare: vi.fn(),
   commit: vi.fn(),
   reconcile: vi.fn(),
@@ -45,11 +46,10 @@ vi.mock('../src/vouchers.api.js', () => ({
   commitVoucher: state.commit,
   reconcileVoucher: state.reconcile,
   changeVoucherVisibility: state.visibility,
-  listVoucherCategories: async () => ({ data: [{ id: 'cat', name: 'Kultur' }] }),
-  listVoucherLocations: async () => ({
-    data: [{ id: '1', name: 'Ort' }],
-    pagination: { hasNextPage: false },
+  listVoucherCategories: async () => ({
+    data: [{ id: 'cat', name: 'Kultur' }, { id: 'cat-2', name: 'Freizeit' }],
   }),
+  listVoucherLocations: state.locations,
 }));
 import { VoucherEditor } from '../src/vouchers.editor.js';
 const labels = pluginVouchersTranslations.de.vouchers;
@@ -113,6 +113,10 @@ beforeEach(() => {
       'vouchers.publish',
     ],
   });
+  state.locations.mockReset().mockResolvedValue({
+    data: [{ id: '1', name: 'Ort' }],
+    pagination: { hasNextPage: false },
+  });
   state.get.mockResolvedValue({
     data: record,
     meta: { access: { 'vouchers.read': true, 'vouchers.update': true, 'vouchers.publish': true } },
@@ -132,6 +136,32 @@ const edit = async () => {
   fireEvent.change(title, { target: { value: 'Neu' } });
 };
 describe('voucher editor', () => {
+  it('opens, searches and changes multiple categories while retaining existing assignments', async () => {
+    state.get.mockResolvedValue({
+      data: { ...record, categories: [{ name: 'Bestandskategorie' }] },
+      meta: { access: { 'vouchers.read': true, 'vouchers.update': true } },
+      fetchedAt: '2026-10-24T12:00:00Z',
+    });
+    await edit();
+    const trigger = screen.getByLabelText(labels.fields.categories);
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    const search = screen.getByRole('textbox', { name: 'Kategorien suchen' });
+    fireEvent.change(search, { target: { value: 'kult' } });
+    expect(screen.queryByRole('checkbox', { name: 'Freizeit' })).toBeNull();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Kultur' }));
+    fireEvent.change(search, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Freizeit' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Kultur' }));
+    fireEvent.keyDown(search, { key: 'Escape' });
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: labels.actions.update }));
+    await waitFor(() => expect(state.prepare).toHaveBeenCalledOnce());
+    expect(state.prepare.mock.calls[0][0]).toMatchObject({
+      categories: [{ name: 'Bestandskategorie' }, { name: 'Freizeit' }],
+    });
+  });
   it('links back to the canonical voucher content list', async () => {
     await edit();
     expect(screen.getByRole('link', { name: labels.actions.back }).getAttribute('href'))
@@ -193,10 +223,10 @@ describe('editorial workflows', () => {
     render(<VoucherEditor />);
     const change = (label: string, value: string) =>
       fireEvent.change(screen.getByLabelText(label, { exact: false }), { target: { value } });
-    await screen.findByRole('option', { name: 'Ort' });
+    fireEvent.click(await screen.findByRole('button', { name: labels.fields.location }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Ort' }));
     change(labels.fields.title, 'Familienkarte');
     change(labels.fields.teaser, 'Gemeinsam entdecken');
-    change(labels.fields.location, '1');
     change(labels.fields.discountMode, 'price');
     change(labels.fields.originalPrice, '20,50');
     change(labels.fields.discountValue, '15,25');
@@ -710,9 +740,8 @@ it('keeps rich text and category selection in the same content save and removes 
     target: { value: '<p>Mit Anmeldung</p>' },
   });
   fireEvent.blur(document.getElementById('voucher-body-html')!);
-  const category = screen.getByLabelText(labels.fields.categories) as HTMLSelectElement;
-  category.options[0].selected = true;
-  fireEvent.change(category);
+  fireEvent.click(screen.getByLabelText(labels.fields.categories));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Kultur' }));
   fireEvent.click(screen.getByRole('button', { name: labels.media.add }));
   fireEvent.click(screen.getByRole('button', { name: labels.media.remove }));
   fireEvent.click(screen.getByRole('button', { name: labels.actions.update }));
@@ -764,4 +793,58 @@ it('uses an exact resource grant to offer visibility to a scoped publisher', asy
   render(<VoucherEditor id="2" />);
   await screen.findByRole('button', { name: labels.actions.show });
   expect(screen.getByLabelText(labels.fields.title).closest('fieldset')?.disabled).toBe(true);
+});
+
+
+it('loads every location page automatically and offers alphabetical searchable choices', async () => {
+  state.locations
+    .mockResolvedValueOnce({ data: [], pagination: { hasNextPage: true } })
+    .mockResolvedValueOnce({
+      data: [{ id: '3', name: 'Zoo' }, { id: '1', name: 'Ärztehaus' }],
+      pagination: { hasNextPage: true },
+    })
+    .mockResolvedValueOnce({
+      data: [{ id: '2', name: 'Bürgerhaus' }], pagination: { hasNextPage: false },
+    });
+  render(<VoucherEditor />);
+  await waitFor(() => expect(state.locations).toHaveBeenCalledTimes(3));
+  expect(state.locations).toHaveBeenNthCalledWith(3, 3, 'user');
+  expect(screen.queryByRole('button', { name: labels.actions.next })).toBeNull();
+  expect(screen.queryByText(labels.confirmation.hint)).toBeNull();
+  fireEvent.click(await screen.findByRole('button', { name: labels.fields.location }));
+  expect(within(await screen.findByRole('listbox', { name: labels.fields.location })).getAllByRole('option').map((option) => option.textContent)).toEqual([
+    'Ärztehaus', 'Bürgerhaus', 'Zoo',
+  ]);
+  const search = screen.getByRole('combobox', { name: labels.fields.locationSearch });
+  fireEvent.change(search, { target: { value: 'bürger' } });
+  expect(within(screen.getByRole('listbox', { name: labels.fields.location })).getAllByRole('option').map((option) => option.textContent)).toEqual(['Bürgerhaus']);
+  fireEvent.click(screen.getByRole('option', { name: 'Bürgerhaus' }));
+  expect(screen.getByRole('button', { name: labels.fields.location }).textContent).toContain('Bürgerhaus');
+  fireEvent.click(screen.getByRole('button', { name: labels.fields.location }));
+  fireEvent.change(screen.getByRole('combobox', { name: labels.fields.locationSearch }), {
+    target: { value: 'unbekannt' },
+  });
+  expect(screen.getByText(labels.fields.locationsEmpty)).toBeDefined();
+});
+
+it('keeps an existing location fixed and places the redemption hint in the save section', async () => {
+  await edit();
+  expect((screen.getByRole('button', { name: labels.fields.location }) as HTMLButtonElement).disabled).toBe(true);
+  expect(document.getElementById('voucher-section-location')?.textContent).not.toContain(labels.confirmation.hint);
+  expect(document.getElementById('voucher-section-save')?.textContent).toContain(labels.confirmation.hint);
+});
+
+
+it('reports a failed later location page without losing the draft or loaded choices', async () => {
+  state.locations
+    .mockResolvedValueOnce({ data: [{ id: '1', name: 'Ort' }], pagination: { hasNextPage: true } })
+    .mockRejectedValueOnce(new Error('unavailable'));
+  render(<VoucherEditor />);
+  const title = await screen.findByLabelText(labels.fields.title);
+  fireEvent.change(title, { target: { value: 'Mein Gutschein' } });
+  await screen.findByText(labels.messages.error);
+  expect((title as HTMLInputElement).value).toBe('Mein Gutschein');
+  expect(screen.queryByText(labels.messages.loading)).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: labels.fields.location }));
+  expect(screen.getByRole('option', { name: 'Ort' })).toBeDefined();
 });

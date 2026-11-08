@@ -1,3 +1,4 @@
+import { isPendingLifecycleSuspension } from './automatic-schedule.js';
 import type {
   PluginTenantLifecycleOrchestratorDependencies,
   StartPluginTenantLifecycleInput,
@@ -28,9 +29,6 @@ export const resolveLifecycleOperation = async (
     throw lifecycleError(pluginTenantLifecycleHostErrorCodes.notDeclared, input.pluginId);
   }
   const activation = await dependencies.resolveActivation(input.instanceId, input.pluginId);
-  if (!activation?.effectiveActive) {
-    throw lifecycleError(pluginTenantLifecycleHostErrorCodes.inactive, input.pluginId);
-  }
   const operationDefinition = lifecycle.operations.find(
     ({ operation }) => operation === input.operation
   );
@@ -42,10 +40,16 @@ export const resolveLifecycleOperation = async (
     );
   }
   const currentLifecycle = await dependencies.resolveLifecycle(input.instanceId, input.pluginId);
+  const pendingSuspension =
+    input.operation === 'suspend' && isPendingLifecycleSuspension(currentLifecycle);
+  if (!activation?.effectiveActive && !pendingSuspension) {
+    throw lifecycleError(pluginTenantLifecycleHostErrorCodes.inactive, input.pluginId);
+  }
   const resumesPersistedRetry =
     currentLifecycle?.retryKind === 'retryable' &&
     currentLifecycle.desiredOperation === input.operation;
   const invalidTransition =
+    !pendingSuspension &&
     !resumesPersistedRetry &&
     ((input.operation === 'suspend' && currentLifecycle?.accessState === 'suspended') ||
       (input.operation === 'reactivate' && currentLifecycle?.accessState !== 'suspended'));

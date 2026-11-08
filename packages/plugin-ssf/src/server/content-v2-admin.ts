@@ -6,7 +6,7 @@ import { ssfSupportedLanguagesCatalogSchema, ssfSystemContentV2InputSchema, ssfT
 import type { SsfLegalTexts } from '../content-v2-contracts.js';
 import { effectiveSsfRuntimeFieldsV2 } from '../content-v2-overrides.js';
 import {
-  readSsfSystemContentV2, readSsfTenantContentV2,
+  SsfContentV2TenantConflict, readSsfSystemContentV2, readSsfTenantContentV2,
   replaceSsfSystemContentV2, writeSsfTenantContentV2,
   type SsfSystemContentV2, type SsfTenantContentV2,
 } from '../content-v2-repository.js';
@@ -163,6 +163,9 @@ const writeSystem = (dependencies: SsfAdminV2Dependencies): PluginServerExecutio
     await dependencies.writeSystemV2(parsed.data);
     return jsonResponse(200, await withSupportedLanguages(dependencies.readSystemV2(), dependencies.readSupportedLanguages), correlationId);
   } catch (error) {
+    if (error instanceof SsfContentV2TenantConflict) return jsonResponse(422, {
+      error: 'invalid_configuration', affectedTenants: error.affectedTenants,
+    }, correlationId);
     const invalid = invalidInput(error);
     return jsonResponse(invalid ? 422 : 503,
       { error: invalid ? 'invalid_configuration' : 'configuration_unavailable' }, correlationId);

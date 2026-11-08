@@ -20,11 +20,12 @@ import {
 import { GenericItemsDetailPage } from '../src/generic-items.detail-page.js';
 
 const navigateMock = vi.fn();
-let hasUnsavedChanges = () => false;
+const leaveChecks = new Set<() => boolean>();
+const hasUnsavedChanges = () => [...leaveChecks].some((check) => check());
 const registerLeaveCheck = (check: () => boolean) => {
-  hasUnsavedChanges = check;
+  leaveChecks.add(check);
   return () => {
-    hasUnsavedChanges = () => false;
+    leaveChecks.delete(check);
   };
 };
 const render = (element: React.ReactElement) =>
@@ -124,7 +125,7 @@ vi.mock('@sva/plugin-sdk', async () => {
 
 describe('GenericItemsDetailPage', () => {
   beforeEach(() => {
-    hasUnsavedChanges = () => false;
+    leaveChecks.clear();
     vi.clearAllMocks();
     detailAccessState.access = {};
     publishSessionAccessSnapshot({
@@ -425,7 +426,9 @@ describe('GenericItemsDetailPage', () => {
     expect(
       screen.getByRole('link', { name: 'genericItems.actions.openSavedContent' })
     ).toBeTruthy();
-    await act(async () => { fireEvent.submit(document.querySelector('form')!); });
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form')!);
+    });
     await waitFor(() => expect(createGenericItem).toHaveBeenCalledTimes(1));
   });
 

@@ -31,7 +31,7 @@ export const WasteOutputConfigurationSection = ({
   readonly translate: WasteOutputTranslate;
 }) => (
   <form className="space-y-4" onSubmit={onSubmit}>
-    <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
+    <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">{translate('output.pdf.title')}</h3>
         <p className="text-sm text-muted-foreground">{translate('output.pdf.description')}</p>

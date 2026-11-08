@@ -34,11 +34,12 @@ import {
 import { EventsDetailPage } from '../src/events.detail-page.js';
 
 const navigateMock = vi.fn();
-let hasUnsavedChanges = () => false;
+const leaveChecks = new Set<() => boolean>();
+const hasUnsavedChanges = () => [...leaveChecks].some((check) => check());
 const registerLeaveCheck = (check: () => boolean) => {
-  hasUnsavedChanges = check;
+  leaveChecks.add(check);
   return () => {
-    hasUnsavedChanges = () => false;
+    leaveChecks.delete(check);
   };
 };
 const render = (element: React.ReactElement) =>
@@ -146,7 +147,7 @@ vi.mock('@tanstack/react-router', () => ({
 
 describe('EventsDetailPage', () => {
   beforeEach(() => {
-    hasUnsavedChanges = () => false;
+    leaveChecks.clear();
     publishSessionAccessSnapshot({
       isResolved: true,
       permissionActions: [
@@ -912,7 +913,7 @@ describe('EventsDetailPage', () => {
         files: [new File(['image'], 'uploaded.jpg', { type: 'image/jpeg' })],
       },
     });
-    expect(hasUnsavedChanges()).toBe(false);
+    expect(hasUnsavedChanges()).toBe(true);
     fireEvent.click(await screen.findByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() =>

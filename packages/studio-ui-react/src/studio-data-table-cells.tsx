@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ArrowDownAZ, ArrowUpDown, ArrowUpZA } from 'lucide-react';
+import { IconSortAscendingLetters as ArrowDownAZ, IconArrowsSort as ArrowUpDown, IconSortDescendingLetters as ArrowUpZA } from '@tabler/icons-react';
 import { flexRender, type RowData } from '@tanstack/react-table';
 import type { LegacyHeader, LegacyRow, LegacyTable } from '@tanstack/react-table/legacy';
 

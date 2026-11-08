@@ -19,7 +19,7 @@ import { formatTourDisplayDate } from './waste-management.tours.table-row.parts.
 const WasteTourShiftDetailItem = ({ detail }: { readonly detail: TourShiftDetail }) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <li className="rounded-md border border-border/60 p-3">
+    <li className="rounded-md border border-border-subtle p-3">
       <p className="font-medium">{pt(`tours.shiftDetails.sources.${detail.source}`)}</p>
       <p className="mt-1 text-sm">
         {pt('tours.shiftDetails.dateChange', {

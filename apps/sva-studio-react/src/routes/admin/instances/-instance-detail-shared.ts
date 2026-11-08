@@ -74,6 +74,7 @@ export const KEYCLOAK_STATUS_LABELS = {
     'admin.instances.keycloakStatus.tenantAdminClientSecretConfigured',
   tenantAdminClientSecretReadable: 'admin.instances.keycloakStatus.tenantAdminClientSecretReadable',
   tenantAdminClientSecretAligned: 'admin.instances.keycloakStatus.tenantAdminClientSecretAligned',
+  loginMfaAligned: 'admin.instances.keycloakStatus.loginMfaAligned',
   realmBaselineAligned: 'admin.instances.keycloakStatus.realmBaselineAligned',
   userProfileBaselineAligned: 'admin.instances.keycloakStatus.userProfileBaselineAligned',
   instanceIdMapperAligned: 'admin.instances.keycloakStatus.instanceIdMapperAligned',

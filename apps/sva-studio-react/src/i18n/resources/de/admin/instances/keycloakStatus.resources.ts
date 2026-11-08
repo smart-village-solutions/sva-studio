@@ -1,4 +1,5 @@
 export const keycloakStatusInstancesAdminDEResources = {
+  loginMfaAligned: 'Anmelde-MFA verifiziert',
   ok: 'OK',
   missing: 'Fehlt',
   realmExists: 'Realm vorhanden',

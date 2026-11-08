@@ -2,7 +2,7 @@ import type {
   WasteManagementEmailReminderConfig,
   WasteManagementSettingsInterfaceOption,
 } from '@sva/waste-management-contracts';
-import { Input, StudioField, Textarea } from '@sva/studio-ui-react';
+import { Checkbox, Select, Input, StudioField, Textarea } from '@sva/studio-ui-react';
 import type { ComponentProps } from 'react';
 
 export type OutputTranslate = (key: string, variables?: Record<string, string | number>) => string;
@@ -103,7 +103,7 @@ const ActivationToggles = ({ patch, translate, value }: SectionProps) => (
       label={translate('output.emailReminder.fields.enabled')}
       description={translate('output.emailReminder.fieldHints.enabled')}
     >
-      <input
+      <Checkbox
         id="waste-email-reminder-enabled"
         type="checkbox"
         checked={value.enabled}
@@ -115,7 +115,7 @@ const ActivationToggles = ({ patch, translate, value }: SectionProps) => (
       label={translate('output.emailReminder.fields.publicSignupEnabled')}
       description={translate('output.emailReminder.fieldHints.publicSignupEnabled')}
     >
-      <input
+      <Checkbox
         id="waste-email-reminder-public-signup-enabled"
         type="checkbox"
         checked={value.publicSignupEnabled}
@@ -146,9 +146,8 @@ export const ActivationAndTransportSection = ({
           label={translate('output.emailReminder.fields.transportId')}
           description={translate('output.emailReminder.fieldHints.transportId')}
         >
-          <select
+          <Select
             id="waste-email-reminder-transport-id"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={value.transportId}
             onChange={(event) => patch('transportId', event.currentTarget.value)}
           >
@@ -157,9 +156,9 @@ export const ActivationAndTransportSection = ({
                 {option.name}
               </option>
             ))}
-          </select>
+          </Select>
         </StudioField>
-        <div className="space-y-2 rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">
+        <div className="space-y-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
           <p>{translate('output.emailReminder.meta.transportType')}</p>
           <p className="font-medium text-foreground">{selected?.typeKey ?? '-'}</p>
           <p>{translate('output.emailReminder.meta.transportStatus')}</p>

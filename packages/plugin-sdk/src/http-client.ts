@@ -19,7 +19,8 @@ export const requestJson = async <T>(input: {
   readonly init?: RequestInit;
   readonly errorFactory?: (response: Response) => Error;
 }): Promise<T> => {
-  const response = await input.fetch(input.url, {
+  const { fetch } = input;
+  const response = await fetch(input.url, {
     credentials: 'include',
     ...input.init,
     headers: mergeRequestHeaders({ Accept: 'application/json' }, input.init?.headers),

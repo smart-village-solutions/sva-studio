@@ -1,0 +1,29 @@
+{
+  "contractVersion": "2.0",
+  "tenantId": "synthetic-tenant-a",
+  "users": [
+    {
+      "sub": "synthetic-custodian",
+      "displayName": "Synthetic Custodian",
+      "permissions": [
+        "ssf.recording.recovery.custodian"
+      ],
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "sub": "synthetic-reviewer",
+      "displayName": "Synthetic Reviewer",
+      "permissions": [
+        "ssf.recording.review",
+        "ssf.recording.review.sworn"
+      ],
+      "languages": [
+        "de",
+        "en-US"
+      ]
+    }
+  ],
+  "directoryRevision": "sha256:2b426ee5df85175252a376ce5721d98d06cec1f3003817df5e14146664d30826"
+}

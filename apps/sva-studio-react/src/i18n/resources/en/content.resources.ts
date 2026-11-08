@@ -2,8 +2,16 @@ import { contentENErrors } from './content.errors.resources.js';
 
 export const contentENResources = {
   leaveGuard: {
+    sessionRecovery:
+      'Your session must be checked again. Your input remains in this open editor. If needed, sign in in a new tab, then check your account and organization. Nothing will be saved automatically.',
+    sessionRecoveryFailed:
+      'The editor cannot be resumed yet. Sign in with the same account and organization, then check again.',
+    signInNewTab: 'Sign in in a new tab',
+    resumeEditor: 'Check session and context',
+
     title: 'Discard unsaved changes?',
-    description: 'Your changes have not been saved. Leaving this page discards the unsaved input.',
+    description:
+      'There is open input or an unconfirmed save. Leaving this view discards open input. Saves that have already started are not undone.',
     discard: 'Discard and leave',
     stay: 'Continue editing',
   },
@@ -65,6 +73,8 @@ export const contentENResources = {
     deleteConfirmTitle: 'Delete content permanently?',
     deleteConfirmDescription:
       'The content item “{{title}}” will be permanently deleted. This action cannot be undone.',
+    deleteVoucherConfirmDescription:
+      'The voucher “{{title}}” will be permanently deleted. Residual data and orphaned links, for example to quotas or redemptions, may remain. This action cannot be undone.',
     deleteBulkConfirmTitle: 'Delete selected content permanently?',
     deleteBulkConfirmDescription:
       '{{count}} selected content items will be permanently deleted. This action cannot be undone.',

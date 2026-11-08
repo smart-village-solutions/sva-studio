@@ -27,7 +27,9 @@ export const handleItemUpdate = async (
   requestId: string | undefined,
   logSuccess: (operation: string, newsId?: string) => void
 ) => {
+  let providerWriteStarted = false;
   return createNewsItemMutationHandler({
+    providerWriteStarted: () => providerWriteStarted,
     route,
     action: 'news.update',
     requestId,
@@ -60,7 +62,10 @@ export const handleItemUpdate = async (
           { kind: 'item', newsId: route.newsId },
           actor,
           preserveExistingNewsMetadata(parsed.news, existing),
-          parsed.visible
+          parsed.visible,
+          () => {
+            providerWriteStarted = true;
+          }
         );
         await finalizeMainserverMutation({
           actor,
@@ -74,6 +79,8 @@ export const handleItemUpdate = async (
         await finalizeMainserverMutationFailure({
           actor,
           error,
+          providerOutcome: providerWriteStarted ? 'unknown' : 'failed',
+          completedSteps: providerWriteStarted ? [] : ['provider_write_not_started'],
           contentId: route.newsId,
         });
         await emitNewsAuditEvent({
@@ -253,8 +260,10 @@ const updateNewsForRoute = async (
     readonly activeOrganizationId?: string;
   },
   news: SvaMainserverNewsInput,
-  visible?: boolean
+  visible: boolean | undefined,
+  onProviderWrite: () => void
 ) => {
+  onProviderWrite();
   const data = await updateSvaMainserverNews({ ...actor, newsId: route.newsId, news });
   if (visible !== undefined) {
     await changeSvaMainserverNewsVisibility({ ...actor, newsId: route.newsId, visible });

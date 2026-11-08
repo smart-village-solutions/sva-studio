@@ -59,6 +59,29 @@ describe('SearchableMultiSelect', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it.each(['name', 'row'] as const)(
+    'selects a category by its %s without closing the panel',
+    (target) => {
+      const onValueChange = vi.fn();
+      render(<SearchableMultiSelect {...defaultProps} onValueChange={onValueChange} />);
+      const trigger = screen.getByRole('button', { name: defaultProps.placeholder });
+      fireEvent.click(trigger);
+      const searchInput = screen.getByLabelText(defaultProps.searchLabel);
+      const name = screen.getByText('Kultur');
+      const clickTarget = target === 'name' ? name : name.closest('label');
+      if (!clickTarget) throw new Error('Category row is missing');
+
+      // Emulate the browser's default focus loss when mousedown is not cancelled.
+      if (fireEvent.mouseDown(clickTarget)) searchInput.blur();
+      fireEvent.mouseUp(clickTarget);
+      fireEvent.click(clickTarget);
+
+      expect(onValueChange).toHaveBeenCalledExactlyOnceWith(['Kultur']);
+      expect(trigger.getAttribute('aria-expanded')).toBe('true');
+      expect(screen.getByLabelText('Mobilität')).toBeTruthy();
+    }
+  );
+
   it('preserves an unavailable selected value and allows removing it', () => {
     const onValueChange = vi.fn();
     render(

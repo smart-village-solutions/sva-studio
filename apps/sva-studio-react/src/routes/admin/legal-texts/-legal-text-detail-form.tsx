@@ -42,10 +42,9 @@ export const LegalTextDetailForm = ({
     <form
       id="legal-text-edit-form"
       className="space-y-4"
-      aria-readonly={!canUpdate}
       onSubmit={onSubmit}
     >
-      <fieldset className="contents" disabled={!canUpdate}>
+      <fieldset className="grid min-w-0 gap-4" disabled={!canUpdate}>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="legal-text-edit-name">{t('admin.legalTexts.fields.name')}</Label>

@@ -28,17 +28,19 @@ import {
   getPoi,
   getPoiDetail,
   listPoiCategories,
+  setPoiVisibility,
   updatePoi,
 } from '../src/poi.api.js';
 
 import { PoiDetailPage } from '../src/poi.detail-page.js';
 
 const navigateMock = vi.fn();
-let hasUnsavedChanges = () => false;
+const leaveChecks = new Set<() => boolean>();
+const hasUnsavedChanges = () => [...leaveChecks].some((check) => check());
 const registerLeaveCheck = (check: () => boolean) => {
-  hasUnsavedChanges = check;
+  leaveChecks.add(check);
   return () => {
-    hasUnsavedChanges = () => false;
+    leaveChecks.delete(check);
   };
 };
 const render = (element: React.ReactElement) =>
@@ -48,14 +50,15 @@ const render = (element: React.ReactElement) =>
     </StudioEditorLeaveGuardProvider>
   );
 
-vi.mock('../src/poi.api.js', () => ({
+vi.mock('../src/poi.api.js', async () => ({
+  ...await vi.importActual<typeof import('../src/poi.api.js')>('../src/poi.api.js'),
   createPoi: vi.fn(),
   deletePoi: vi.fn(),
   getPoi: vi.fn(),
   getPoiDetail: vi.fn(),
   listPoiCategories: vi.fn(async () => []),
   listPoi: vi.fn(),
-  PoiApiError: class PoiApiError extends Error { constructor(public readonly code: string, message = code) { super(message); } },
+  setPoiVisibility: vi.fn(),
   updatePoi: vi.fn(),
 }));
 
@@ -152,10 +155,12 @@ vi.mock('@tanstack/react-router', () => ({
     search?: Record<string, string>;
   }) => (
     <a
-      href={Object.entries(params ?? {}).reduce(
-        (path, [key, value]) => path.replace(`$${key}`, value),
-        to
-      ) + (search ? `?${new URLSearchParams(search)}` : '')}
+      href={
+        Object.entries(params ?? {}).reduce(
+          (path, [key, value]) => path.replace(`$${key}`, value),
+          to
+        ) + (search ? `?${new URLSearchParams(search)}` : '')
+      }
     >
       {children}
     </a>
@@ -197,7 +202,9 @@ const resolveMockMediaAsset = (assetId: string) => {
 describe('PoiDetailPage', () => {
   it('links to only the vouchers of the current location on the canonical content list', async () => {
     publishSessionAccessSnapshot({
-      isResolved: true, assignedModules: ['poi', 'vouchers'], roles: [],
+      isResolved: true,
+      assignedModules: ['poi', 'vouchers'],
+      roles: [],
       permissionActions: ['poi.read', 'vouchers.read'],
       unscopedPermissionActions: ['poi.read', 'vouchers.read'],
     });
@@ -217,7 +224,7 @@ describe('PoiDetailPage', () => {
   };
 
   beforeEach(() => {
-    hasUnsavedChanges = () => false;
+    leaveChecks.clear();
     publishSessionAccessSnapshot({
       isResolved: true,
       permissionActions: [
@@ -246,6 +253,7 @@ describe('PoiDetailPage', () => {
     vi.mocked(listPoiCategories).mockReset();
     vi.mocked(listPoiCategories).mockResolvedValue([] as never);
     vi.mocked(updatePoi).mockReset();
+    vi.mocked(setPoiVisibility).mockReset();
     vi.mocked(listHostMediaAssets).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
@@ -424,6 +432,24 @@ describe('PoiDetailPage', () => {
     expect(hasUnsavedChanges()).toBe(true);
     expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Unsaved draft');
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('keeps the created POI after visibility failure, wrapped by media: %s', async (wrapped) => {
+    const error = Object.assign(new PoiApiError('poi_visibility_failed'), {
+      details: { contentId: 'poi-created' },
+    });
+    vi.mocked(createPoi).mockRejectedValueOnce(wrapped
+      ? Object.assign(new Error('content_media_save_outcome_unknown'), { cause: error }) : error);
+    render(<PoiDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Saved place' } });
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+    await screen.findByText('poi.messages.visibilityPartialFailure');
+    expect(screen.getByRole('link', { name: 'poi.actions.openSavedContent' }).getAttribute('href')).toBe('/admin/poi/poi-created');
+    expect(navigateMock).not.toHaveBeenCalled();
+    const calls = vi.mocked(createPoi).mock.calls.length;
+    await act(async () => { fireEvent.submit(document.querySelector('form')!); });
+    expect(createPoi).toHaveBeenCalledTimes(calls);
+    expect(hasUnsavedChanges()).toBe(true);
   });
 
   it('leave guard preserves changes made during create and prevents a second create', async () => {
@@ -660,15 +686,20 @@ describe('PoiDetailPage', () => {
     });
   }, 30_000);
 
-  it.each(['missing_credentials', 'organization_mainserver_credentials_missing'])('explains credential failures without backend details: %s', async (code) => {
-    vi.mocked(createPoi).mockRejectedValueOnce(new PoiApiError(code, 'API-Key or API-Secret missing'));
-    render(<PoiDetailPage mode="create" />);
-    fireEvent.change(await screen.findByLabelText('Name'), {target: {value: 'New content'}});
-    fireEvent.click(screen.getAllByRole('button', {name: /Speichern|anlegen/})[0]!);
-    await waitFor(() => expect(screen.getByText('poi.create.saveUnavailable')).toBeTruthy());
-    expect(screen.queryByText(/API-Key/)).toBeNull();
-    expect(screen.getByDisplayValue('New content')).toBeTruthy();
-  });
+  it.each(['missing_credentials', 'organization_mainserver_credentials_missing'])(
+    'explains credential failures without backend details: %s',
+    async (code) => {
+      vi.mocked(createPoi).mockRejectedValueOnce(
+        new PoiApiError(code, 'API-Key or API-Secret missing')
+      );
+      render(<PoiDetailPage mode="create" />);
+      fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'New content' } });
+      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+      await waitFor(() => expect(screen.getByText('poi.create.saveUnavailable')).toBeTruthy());
+      expect(screen.queryByText(/API-Key/)).toBeNull();
+      expect(screen.getByDisplayValue('New content')).toBeTruthy();
+    }
+  );
 
   it('renders Create without tabs or history and keeps a single ordered form', async () => {
     render(<PoiDetailPage mode="create" />);
@@ -993,6 +1024,35 @@ describe('PoiDetailPage', () => {
       expect(screen.getByDisplayValue('Kurz mobil')).toBeTruthy();
     });
   });
+
+  it.each([false, true])(
+    'uses a visibility-only write when no other POI fields changed (content edited: %s)',
+    async (contentEdited) => {
+      vi.mocked(getPoiDetail).mockResolvedValue({
+        data: { id: 'poi-1', name: 'Rathaus', visible: false, payload: {} },
+        access: { 'poi.update': true, 'content.publish': true },
+        deviations: [],
+      } as never);
+      vi.mocked(updatePoi).mockResolvedValue({ id: 'poi-1', name: 'Rathaus' } as never);
+      render(<PoiDetailPage mode="edit" contentId="poi-1" instanceId="de-musterhausen" />);
+
+      fireEvent.click(await screen.findByLabelText('Aktiv'));
+      if (contentEdited) {
+        fireEvent.change(screen.getByDisplayValue('Rathaus'), { target: { value: 'Neuer Name' } });
+      }
+      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+
+      if (contentEdited) {
+        await waitFor(() => expect(updatePoi).toHaveBeenCalledWith(
+          'poi-1', expect.objectContaining({ name: 'Neuer Name', visible: true }), 'user'
+        ));
+        expect(setPoiVisibility).not.toHaveBeenCalled();
+      } else {
+        await waitFor(() => expect(setPoiVisibility).toHaveBeenCalledExactlyOnceWith('poi-1', true, 'user'));
+        expect(updatePoi).not.toHaveBeenCalled();
+      }
+    }
+  );
 
   it('reflects loaded opening hours as checked checkboxes', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({

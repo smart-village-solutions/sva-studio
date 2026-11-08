@@ -1,5 +1,10 @@
+import { LoginMfaPage } from '../routes/admin/users/-login-mfa-page';
 import type { AppRouteBindings } from '@sva/routing';
-import { normalizeIamTab, normalizeRoleDetailTab, normalizeOrganizationDetailTab } from '@sva/routing/route-search';
+import {
+  normalizeIamTab,
+  normalizeRoleDetailTab,
+  normalizeOrganizationDetailTab,
+} from '@sva/routing/route-search';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 import NotFound from '../components/NotFound';
@@ -187,6 +192,7 @@ export const coreAppRouteBindings = {
   adminUsers: UserListPage,
   adminUserCreate: UserCreatePage,
   adminUserDetail: UserEditRoutePage,
+  adminUserLoginMfa: LoginMfaPage,
   adminUserInvitationTemplate: InvitationTemplatePage,
   adminOrganizations: OrganizationsRoutePage,
   adminOrganizationCreate: OrganizationCreatePage,

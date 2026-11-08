@@ -101,59 +101,63 @@ const TourWorkspaceActions = (props: WasteToursFormContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
   if (props.mode !== 'edit' || !props.persistedTour || !props.search) return null;
   const schedulingDirty = hasSchedulingChanges(props.form, props.persistedTour);
-  const schedulingAction = props.canManageScheduling && isWasteTourValidityApplicable(props.persistedTour) ? (
-    <TourShiftSchedulingAction form={props.form} persistedTour={props.persistedTour} search={props.search} pt={pt} />
-  ) : null;
+  const schedulingAction =
+    props.canManageScheduling && isWasteTourValidityApplicable(props.persistedTour) ? (
+      <TourShiftSchedulingAction
+        form={props.form}
+        persistedTour={props.persistedTour}
+        search={props.search}
+        pt={pt}
+      />
+    ) : null;
   return (
-          <section
-            className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-shell"
-            aria-label={pt('tours.workspace.title')}
+    <section
+      className="space-y-3 rounded-lg border border-border-subtle bg-card p-4 sm:p-6"
+      aria-label={pt('tours.workspace.title')}
+    >
+      <div className="space-y-1">
+        <h2 className="text-sm font-semibold text-foreground">{pt('tours.workspace.title')}</h2>
+        <p className="text-sm text-muted-foreground">{pt('tours.workspace.description')}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {props.onOpenAssignments ? (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={props.assignmentContextLoading}
+            onClick={props.onOpenAssignments}
           >
-            <div className="space-y-1">
-              <h2 className="text-sm font-semibold text-foreground">
-                {pt('tours.workspace.title')}
-              </h2>
-              <p className="text-sm text-muted-foreground">{pt('tours.workspace.description')}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {props.onOpenAssignments ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={props.assignmentContextLoading}
-                  onClick={props.onOpenAssignments}
-                >
-                  {pt('tours.workspace.assignments')}
-                </Button>
-              ) : null}
-              {props.onOpenCalendar ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={schedulingDirty}
-                  onClick={props.onOpenCalendar}
-                >
-                  {pt('tours.workspace.calendar')}
-                </Button>
-              ) : null}
-              <Link
-                to="/plugins/waste-management"
-                search={toWasteTourSchedulingSearch(props.search, props.persistedTour.id)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={buttonVariants({ variant: 'secondary' })}
-                aria-label={`${pt('tours.workspace.scheduling')} – ${pt('tours.actions.opensInNewTab')}`}
-              >
-                {pt('tours.workspace.scheduling')}
-              </Link>
-              {schedulingAction}
-            </div>
-            {schedulingDirty ? (
-              <p className="text-sm text-muted-foreground">
-                {pt('tours.messages.saveSchedulingBeforeShift')}
-              </p>
-            ) : null}
-          </section>
+            {pt('tours.workspace.assignments')}
+          </Button>
+        ) : null}
+        {props.onOpenCalendar ? (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={schedulingDirty}
+            onClick={props.onOpenCalendar}
+          >
+            {pt('tours.workspace.calendar')}
+          </Button>
+        ) : null}
+        <Link
+          to="/plugins/waste-management"
+          search={toWasteTourSchedulingSearch(props.search, props.persistedTour.id)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={buttonVariants({ variant: 'secondary' })}
+          aria-label={`${pt('tours.workspace.scheduling')} – ${pt('tours.actions.opensInNewTab')}`}
+        >
+          {pt('tours.workspace.scheduling')}
+        </Link>
+        {schedulingAction}
+      </div>
+      {schedulingDirty ? (
+        <p className="text-sm text-muted-foreground">
+          {pt('tours.messages.saveSchedulingBeforeShift')}
+        </p>
+      ) : null}
+    </section>
   );
 };
 
@@ -199,14 +203,14 @@ export const WasteToursFormContent = (props: WasteToursFormContentProps) => {
         <TourWorkspaceActions {...props} />
 
         {props.showDuplicationHint ? (
-          <div className="rounded-2xl border border-info/40 bg-info/5 px-4 py-3 text-sm text-foreground">
+          <div className="rounded-lg border border-info/40 bg-info/5 px-4 py-3 text-sm text-foreground">
             {pt('tours.messages.duplicateHint', {
               sourceName: props.duplicateFromTourName ?? '',
             })}
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background px-5 py-4 shadow-shell">
           <WastePendingSaveButton type="submit" saving={props.saving} label={saveLabel} />
           <Button
             type="button"

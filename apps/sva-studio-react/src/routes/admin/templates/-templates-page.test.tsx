@@ -61,7 +61,19 @@ describe('TemplatesPage', () => {
         }),
       })
     );
-    expect((await screen.findByRole('status')).textContent).toContain('gespeichert');
+    expect(await screen.findByText('Allgemeine Vorlage gespeichert. Erbende Instanzen wurden abgeglichen.')).toBeTruthy();
+  });
+
+  it('shows a saved but unsynchronized invitation inside the editor', async () => {
+    api.updateServerAccountInvitationTemplate.mockResolvedValueOnce({
+      data: { ...defaultView, revision: 1, unsynchronizedInstances: ['demo'] },
+    });
+    render(<TemplatesPage />);
+    await screen.findByText('Verwendete Vorlage: SVA-Standard');
+    fireEvent.click(screen.getByRole('button', { name: 'Account-Einladung anpassen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Vorlage speichern' }));
+    expect(await screen.findByText('Im Studio gespeichert, aber nicht synchronisiert. Bitte den Keycloak-Abgleich prüfen.')).toBeTruthy();
+    expect(screen.queryByText('Allgemeine Vorlage gespeichert. Erbende Instanzen wurden abgeglichen.')).toBeNull();
   });
 
   it('saves the destination without replacing the invitation text', async () => {

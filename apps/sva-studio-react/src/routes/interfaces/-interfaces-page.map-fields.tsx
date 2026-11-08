@@ -1,4 +1,4 @@
-import { Checkbox } from '@sva/studio-ui-react';
+import { Checkbox, Select } from '@sva/studio-ui-react';
 
 import { t } from '../../i18n';
 import type { InstanceInterfaceDraft } from '../../lib/instance-interfaces';
@@ -53,9 +53,8 @@ export const MapGeocodingFields = ({
       <div className="grid gap-2 md:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="map-provider">{t('interfaces.forms.mapGeocoding.provider')}</Label>
-          <select
+          <Select
             id="map-provider"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={draft.config.provider}
             onChange={(event) =>
               updateConfig({
@@ -67,7 +66,7 @@ export const MapGeocodingFields = ({
             <option value="custom">
               {t('interfaces.forms.mapGeocoding.providerOptions.custom')}
             </option>
-          </select>
+          </Select>
         </div>
         <div className="grid gap-2">
           <Label htmlFor="map-style-url">{t('interfaces.forms.mapGeocoding.styleUrl')}</Label>

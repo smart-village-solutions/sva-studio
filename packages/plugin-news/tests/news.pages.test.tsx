@@ -592,15 +592,22 @@ describe('News editor pages', () => {
     vi.mocked(fetchIamContentHistory).mockResolvedValue([]);
   });
 
-  it.each(['missing_credentials', 'organization_mainserver_credentials_missing'])('explains credential failures without backend details: %s', async (code) => {
-    vi.mocked(createNews).mockRejectedValueOnce(new NewsApiError(code, 'API-Key or API-Secret missing'));
-    render(<NewsCreatePage />);
-    fireEvent.change(screen.getByLabelText('Titel'), {target: {value: 'New content'}});
-    clickPrimaryAction('News anlegen');
-    await waitFor(() => expect(screen.getByText('news.create.saveUnavailable')).toBeTruthy());
-    expect(screen.queryByText(/API-Key/)).toBeNull();
-    expect(screen.getByDisplayValue('New content')).toBeTruthy();
-  });
+  it.each(['missing_credentials', 'organization_mainserver_credentials_missing'])(
+    'explains credential failures without backend details: %s',
+    async (code) => {
+      vi.mocked(createNews).mockRejectedValueOnce(
+        Object.assign(new NewsApiError(code, 'API-Key or API-Secret missing'), {
+          mutationOutcome: 'not_applied',
+        })
+      );
+      render(<NewsCreatePage />);
+      fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'New content' } });
+      clickPrimaryAction('News anlegen');
+      await waitFor(() => expect(screen.getByText('news.create.saveUnavailable')).toBeTruthy());
+      expect(screen.queryByText(/API-Key/)).toBeNull();
+      expect(screen.getByDisplayValue('New content')).toBeTruthy();
+    }
+  );
 
   it('allows creating news without content body', async () => {
     render(<NewsCreatePage />);
@@ -1017,7 +1024,9 @@ describe('News editor pages', () => {
   });
 
   it('shows a save error when creating news fails', async () => {
-    vi.mocked(createNews).mockRejectedValueOnce(new NewsApiError('forbidden'));
+    vi.mocked(createNews).mockRejectedValueOnce(
+      Object.assign(new NewsApiError('forbidden'), { mutationOutcome: 'not_applied' })
+    );
 
     render(<NewsCreatePage />);
 
@@ -1040,7 +1049,10 @@ describe('News editor pages', () => {
 
   it('combines the general invalid-request error with the concrete backend detail', async () => {
     vi.mocked(createNews).mockRejectedValueOnce(
-      new NewsApiError('invalid_request', 'Titel und Veröffentlichungsdatum sind erforderlich.')
+      Object.assign(
+        new NewsApiError('invalid_request', 'Titel und Veröffentlichungsdatum sind erforderlich.'),
+        { mutationOutcome: 'not_applied' }
+      )
     );
 
     render(<NewsCreatePage />);
@@ -1066,7 +1078,13 @@ describe('News editor pages', () => {
 
   it('combines the invalid-config error with the concrete backend detail', async () => {
     vi.mocked(createNews).mockRejectedValueOnce(
-      new NewsApiError('invalid_config', 'Die OAuth-Konfiguration der Instanz ist unvollständig.')
+      Object.assign(
+        new NewsApiError(
+          'invalid_config',
+          'Die OAuth-Konfiguration der Instanz ist unvollständig.'
+        ),
+        { mutationOutcome: 'not_applied' }
+      )
     );
 
     render(<NewsCreatePage />);
@@ -1108,9 +1126,9 @@ describe('News editor pages', () => {
     clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
-      expect(screen.getByText('Der Mainserver hat die News-Anfrage abgelehnt.')).toBeTruthy();
+      expect(screen.getByText('news.messages.saveOutcomeUnknown')).toBeTruthy();
     });
-    expect(screen.queryByText(/Details:/)).toBeNull();
+    expect(screen.queryByText(/Details:|Upstream resolver timeout/)).toBeNull();
   });
 
   it('shows a load error when loading an existing news entry fails', async () => {
@@ -1670,7 +1688,7 @@ describe('News editor pages', () => {
     clickPrimaryAction('Änderungen speichern');
 
     await waitFor(() => {
-      expect(screen.getByText('Der Mainserver hat die News-Anfrage abgelehnt.')).toBeTruthy();
+      expect(screen.getByText('news.messages.saveOutcomeUnknown')).toBeTruthy();
     });
   });
 

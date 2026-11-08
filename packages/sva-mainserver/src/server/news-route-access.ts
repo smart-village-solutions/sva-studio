@@ -1,11 +1,16 @@
 import {
   authorizeContentPrimitiveForUser,
+  loadMainserverMutationJournal,
+  resolveActorInfo,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import type { SvaMainserverConnectionInput } from '../types.js';
 import { errorJson, isResponse, json } from './content-route-core.js';
-import { MAINSERVER_ACTING_PRINCIPAL_HEADER } from './content-route-context.js';
+import {
+  readActingPrincipalType,
+  MAINSERVER_ACTING_PRINCIPAL_HEADER,
+} from './content-route-context.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import {
   resolveMainserverMutationActor,
@@ -19,6 +24,7 @@ export const NEWS_CONTENT_TYPE = 'news.article';
 const logger = createSdkLogger({ component: 'sva-mainserver-news-route', level: 'info' });
 export type RouteMatch =
   | { readonly kind: 'collection' }
+  | { readonly kind: 'operation'; readonly operationId: string }
   | { readonly kind: 'item'; readonly newsId: string }
   | { readonly kind: 'itemVisibility'; readonly newsId: string };
 
@@ -203,4 +209,60 @@ export const handleItemRead = async (
   }
   logSuccess('mainserver_news_detail', route.newsId);
   return json(resourceActor ? { data, meta: { access } } : { data });
+};
+
+/** Read-only recovery: never creates an actor, reserves an operation or calls the provider. */
+export const handleOperationRead = async (
+  request: Request,
+  route: Extract<RouteMatch, { kind: 'operation' }>,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
+  const principal = readActingPrincipalType(request);
+  if (isResponse(principal)) return principal;
+  if (!principal)
+    return errorJson(400, 'acting_principal_type_required', 'Mutationsprincipal erforderlich.');
+  const actorInfo = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+  if ('error' in actorInfo) return actorInfo.error;
+  if (actorInfo.actor.instanceId !== ctx.user.instanceId) {
+    return errorJson(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.');
+  }
+  const accountId = actorInfo.actor.actorAccountId;
+  if (!accountId)
+    return errorJson(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.');
+  const entry = await loadMainserverMutationJournal({
+    instanceId: actorInfo.actor.instanceId,
+    operationExternalId: route.operationId,
+    readScope: {
+      actorAccountId: accountId,
+      activeOrganizationId: ctx.activeOrganizationId ?? null,
+      actingPrincipalType: principal,
+    },
+  });
+  if (
+    !entry ||
+    entry.contentType !== NEWS_CONTENT_TYPE ||
+    (entry.actionId !== 'news.create' && entry.actionId !== 'news.update')
+  ) {
+    return errorJson(404, 'operation_not_found', 'Speicheroperation nicht gefunden.');
+  }
+  const permission = await authorizeOrResponse(ctx, entry.actionId, entry.contentId, false);
+  if (isResponse(permission)) return permission;
+  const outcome =
+    entry.providerOutcome === 'succeeded' &&
+    entry.contentId &&
+    entry.completedSteps.includes('provider_write')
+      ? 'succeeded'
+      : entry.providerOutcome === 'failed' &&
+          entry.completedSteps.includes('provider_write_not_started')
+        ? 'not_applied'
+        : entry.providerOutcome === 'pending'
+          ? 'pending'
+          : 'unknown';
+  return json({
+    data: {
+      operationId: route.operationId,
+      outcome,
+      ...(outcome === 'succeeded' ? { contentId: entry.contentId } : {}),
+    },
+  });
 };

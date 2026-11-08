@@ -15,7 +15,7 @@ export const StudioSummaryCard = React.forwardRef<HTMLDivElement, StudioSummaryC
   ({ className, eyebrow, value, description, valueClassName, children, ...props }, ref) => (
     <Card
       ref={ref}
-      className={cn('border-border/70 bg-background/90 p-4 shadow-shell', className)}
+      className={cn('border-border-subtle bg-card p-4 shadow-none', className)}
       {...props}
     >
       <div className="space-y-2">
@@ -24,9 +24,7 @@ export const StudioSummaryCard = React.forwardRef<HTMLDivElement, StudioSummaryC
           <div className={cn('text-3xl font-semibold text-foreground', valueClassName)}>
             {value}
           </div>
-          {description ? (
-            <div className="text-sm text-muted-foreground">{description}</div>
-          ) : null}
+          {description ? <div className="text-sm text-muted-foreground">{description}</div> : null}
         </div>
         {children ? <div className="pt-1">{children}</div> : null}
       </div>

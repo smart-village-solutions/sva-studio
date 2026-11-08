@@ -1,3 +1,4 @@
+import { isBulkActionableContent, type RegisteredContentRow } from './-content-list-row-actions';
 import { readNormalizedRouteState, updateRouteState } from './-content-list-route-state';
 import type { RegisteredStudioContentType } from '@sva/plugin-sdk';
 import { studioContentTypes } from '../../lib/plugins';
@@ -1366,19 +1367,29 @@ describe('ContentListPage', () => {
 
   it('clears only the voucher location filter and returns to the first page', () => {
     searchState = {
-      type: 'vouchers.voucher', poiId: '33394', status: 'published', page: 3,
-      pageSize: 50, sortBy: 'title', sortDirection: 'asc',
+      type: 'vouchers.voucher',
+      poiId: '33394',
+      status: 'published',
+      page: 3,
+      pageSize: 50,
+      sortBy: 'title',
+      sortDirection: 'asc',
     };
     useContentsMock.mockReturnValue(createContentsApiResult());
     render(<ContentListPage />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Gutscheine aller Orte anzeigen' }));
 
-    const updater = navigateMock.mock.calls.at(-1)?.[0]?.search as
-      (current: Record<string, unknown>) => Record<string, unknown>;
+    const updater = navigateMock.mock.calls.at(-1)?.[0]?.search as (
+      current: Record<string, unknown>
+    ) => Record<string, unknown>;
     expect(updater(searchState)).toEqual({
-      type: 'vouchers.voucher', status: 'published', page: 1, pageSize: 50,
-      sortBy: 'title', sortDirection: 'asc',
+      type: 'vouchers.voucher',
+      status: 'published',
+      page: 1,
+      pageSize: 50,
+      sortBy: 'title',
+      sortDirection: 'asc',
     });
   });
 
@@ -1978,6 +1989,56 @@ describe('ContentListPage', () => {
     },
   };
 
+  it.each([true, false])(
+    'deletes vouchers only with voucher permission and a non-blocking warning: %s',
+    async (allowed) => {
+      const remove = vi.fn(async () => undefined);
+      const voucherIndex = registryDefinitions.findIndex(
+        (definition) => definition.contentType === 'vouchers.voucher'
+      );
+      registryDefinitions[voucherIndex] = {
+        ...registryDefinitions[voucherIndex]!,
+        mutations: { delete: { requiredAction: 'vouchers.delete', execute: remove } },
+      };
+      const access = useContentAccessMock();
+      useContentAccessMock.mockReturnValue({
+        ...access,
+        permissionActions: [
+          ...access.permissionActions,
+          'content.delete',
+          'vouchers.read',
+          ...(allowed ? ['vouchers.delete'] : []),
+        ],
+      });
+      const refetchWithOutcome = vi.fn(async () => true);
+      useContentsMock.mockReturnValue(
+        createContentsApiResult({
+          contents: [{ ...mutationRow, contentType: 'vouchers.voucher' }],
+          refetchWithOutcome,
+        })
+      );
+      render(<ContentListPage />);
+      const button = screen.getAllByRole('button', { name: 'Löschen' })[0]! as HTMLButtonElement;
+      expect(button.disabled).toBe(!allowed);
+      if (!allowed) {
+        expect(remove).not.toHaveBeenCalled();
+        return;
+      }
+      fireEvent.click(button);
+      const dialog = screen.getByRole('alertdialog');
+      expect(within(dialog).getByText(/Restdaten.*verwaiste Verknüpfungen/)).toBeTruthy();
+      expect(remove).not.toHaveBeenCalled();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
+      expect(remove).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+      fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+      const reopenedDialog = await screen.findByRole('alertdialog');
+      fireEvent.click(within(reopenedDialog).getByRole('button', { name: 'Löschen' }));
+      await waitFor(() => expect(remove).toHaveBeenCalledExactlyOnceWith('item-1', 'user'));
+      await waitFor(() => expect(refetchWithOutcome).toHaveBeenCalledOnce());
+    }
+  );
+
   it('uses the shared list, dialog, delete and refresh path for an additional contribution', async () => {
     const remove = vi.fn(async () => undefined);
     const status = vi.fn(async () => undefined);
@@ -2105,4 +2166,8 @@ describe('ContentListPage', () => {
     );
     expect(deleteNewsMock).not.toHaveBeenCalled();
   });
+});
+
+it('keeps projected Jobs out of Core bulk mutations', () => {
+  expect(isBulkActionableContent({ contentType: 'jobs.job' } as RegisteredContentRow)).toBe(false);
 });

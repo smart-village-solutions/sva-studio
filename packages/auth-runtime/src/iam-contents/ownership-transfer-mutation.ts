@@ -1,4 +1,4 @@
-import { rejectVoucherCoreMutation } from './mutation-helpers.js';
+import { rejectDedicatedEditorCoreMutation } from './mutation-helpers.js';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import {
@@ -69,8 +69,11 @@ export const transferContentOwnershipResponse = async (
     ownerOrganizationId: currentContent.ownerOrganizationId,
   });
   if (authorizationError) return authorizationError;
-  const voucherError = rejectVoucherCoreMutation(currentContent.contentType, actor.requestId);
-  if (voucherError) return voucherError;
+  const dedicatedEditorError = rejectDedicatedEditorCoreMutation(
+    currentContent.contentType,
+    actor.requestId
+  );
+  if (dedicatedEditorError) return dedicatedEditorError;
   try {
     const result = await transferContentOwnership({
       instanceId: actor.instanceId,

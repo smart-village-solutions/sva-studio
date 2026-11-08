@@ -1,14 +1,79 @@
 /** Verifies the value-free editor/host connection and synchronous save acknowledgement. */
-import { act, render, renderHook } from '@testing-library/react';
-import type React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import * as React from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from './dialog.js';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogTitle,
+  AlertDialogDescription,
+} from './alert-dialog.js';
 
 import {
   StudioEditorLeaveGuardProvider,
   useStudioEditorLeaveGuard,
 } from './studio-editor-leave-guard.js';
 
+afterEach(cleanup);
+
 describe('studio editor leave guard', () => {
+  it.each(['dialog', 'alertdialog'])(
+    'suspends a portalled %s without losing its draft or trapping recovery focus',
+    async (kind) => {
+      const register = () => () => undefined;
+      const Root = kind === 'dialog' ? Dialog : AlertDialog;
+      const Content = kind === 'dialog' ? DialogContent : AlertDialogContent;
+      const Title = kind === 'dialog' ? DialogTitle : AlertDialogTitle;
+      const Description = kind === 'dialog' ? DialogDescription : AlertDialogDescription;
+      const Draft = () => {
+        const [value, setValue] = React.useState('Draft');
+        return (
+          <input
+            aria-label="Dialog draft"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+          />
+        );
+      };
+      const Harness = ({ suspended }: { suspended: boolean }) => (
+        <>
+          <button type="button">Recover</button>
+          <StudioEditorLeaveGuardProvider register={register} suspended={suspended}>
+            <Root open>
+              <Content>
+                <Title>Editor</Title>
+                <Description>Draft editor</Description>
+                <Draft />
+              </Content>
+            </Root>
+          </StudioEditorLeaveGuardProvider>
+        </>
+      );
+      const view = render(<Harness suspended={false} />);
+      const input = await screen.findByLabelText('Dialog draft');
+      fireEvent.change(input, { target: { value: 'Unsaved dialog metadata' } });
+      view.rerender(<Harness suspended />);
+      await waitFor(() => expect(screen.queryByRole(kind)).toBeNull());
+      expect(document.body.style.pointerEvents).not.toBe('none');
+      const recover = screen.getByRole('button', { name: 'Recover' });
+      recover.focus();
+      expect(document.activeElement).toBe(recover);
+      view.rerender(<Harness suspended={false} />);
+      expect(await screen.findByLabelText('Dialog draft')).toBe(input);
+      expect((input as HTMLInputElement).value).toBe('Unsaved dialog metadata');
+    }
+  );
+
   it('reports live dirty state, acknowledges immediately and re-arms after a new edit', () => {
     let check: (() => boolean) | undefined;
     const cleanup = vi.fn();

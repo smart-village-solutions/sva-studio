@@ -41,7 +41,9 @@ export const WasteTourShiftCreateLink = ({
   const content = (
     <>
       {children ?? <span>{label}</span>}
-      {showExternalIcon ? <IconExternalLink aria-hidden="true" className="h-4 w-4" /> : null}
+      {showExternalIcon ? (
+        <IconExternalLink aria-hidden="true" className="h-4 w-4" />
+      ) : null}
       {disabledDescription ? <span className="sr-only"> {disabledDescription}</span> : null}
     </>
   );

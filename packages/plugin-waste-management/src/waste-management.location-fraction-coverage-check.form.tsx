@@ -7,7 +7,12 @@ import type { FormEvent } from 'react';
 import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-state.js';
 
 const CoverageDateFields = ({
-  year, startDate, endDate, onYearChange, onStartDateChange, onEndDateChange,
+  year,
+  startDate,
+  endDate,
+  onYearChange,
+  onStartDateChange,
+  onEndDateChange,
 }: Readonly<{
   year: string;
   startDate: string;

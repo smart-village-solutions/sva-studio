@@ -1,3 +1,4 @@
+import type { LoginMfaMode } from '@sva/core';
 import type { MailTemplateSource } from '@sva/core';
 import type { IamInstanceListItem } from '@sva/core';
 
@@ -96,4 +97,27 @@ export type MailTemplateMutationPayload = {
   template?: MailTemplateSource | null;
   expectedStudioTexts?: Readonly<Record<string, string>>;
   expectedKeycloakTexts?: Readonly<Record<string, string>>;
+};
+
+export type UpdateTenantLoginMfaPayload = {
+  mode: LoginMfaMode;
+  expectedRevision: number;
+};
+
+export type RootMainserverInterface = {
+  readonly instanceId: string;
+  readonly status: 'missing' | 'disabled' | 'configured' | 'error';
+  readonly errorCode?: string;
+  readonly config: {
+    readonly graphqlBaseUrl: string;
+    readonly oauthTokenUrl: string;
+    readonly enabled: boolean;
+  } | null;
+};
+
+export type RootMainserverInterfaceListEntry = Pick<
+  RootMainserverInterface,
+  'instanceId' | 'status' | 'errorCode'
+> & {
+  readonly displayName: string;
 };

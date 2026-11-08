@@ -8,6 +8,7 @@ export const voucherTranslationsEn = {
     empty: 'No vouchers found.',
   },
   actions: {
+    removeCategory: 'Remove category {{name}}',
     create: 'Create voucher',
     edit: 'Edit',
     update: 'Save changes',
@@ -31,6 +32,7 @@ export const voucherTranslationsEn = {
     read: 'Read vouchers',
     create: 'Create vouchers',
     update: 'Edit vouchers',
+    delete: 'Delete vouchers',
     publish: 'Show and hide vouchers',
   },
   editor: {
@@ -52,6 +54,8 @@ export const voucherTranslationsEn = {
     teaser: 'Introduction (optional)',
     body: 'Description (optional)',
     location: 'Location',
+    locationSearch: 'Search locations',
+    locationsEmpty: 'No matching locations found.',
     search: 'Search',
     discountMode: 'Discount type',
     discountValue: 'Discount / new price',
@@ -63,6 +67,10 @@ export const voucherTranslationsEn = {
     dateEnd: 'Redeemable until (optional)',
     visible: 'Show in the app',
     categories: 'Category',
+    categoriesSearch: 'Search categories',
+    categoriesSearchPlaceholder: 'Search or select a category',
+    categoriesEmpty: 'No matching categories found.',
+    categoryUnavailable: 'no longer available',
     media: 'Images',
     principal: 'Act as',
     actions: 'Actions',
@@ -88,6 +96,7 @@ export const voucherTranslationsEn = {
     visible: 'Visible',
   },
   help: {
+    categories: 'If needed, select one or more existing categories.',
     quotaSummary: '{{maximum}} redemptions in total · {{period}}.',
     personAboveTotal:
       'The per-person maximum exceeds the total quota and does not add a further limit.',
@@ -118,12 +127,6 @@ export const voucherTranslationsEn = {
     error: 'The request could not be completed. Your entries are retained.',
     invalid: 'Please check the highlighted fields.',
     dirtyVisibility: 'Save or discard your content changes first.',
-    mediaPickerTitle: 'Add media',
-    mediaPickerDescription: 'Choose a public image from the Studio media library.',
-    mediaPickerLibraryAction: 'Add media from the library',
-    mediaPickerLinkAction: 'Add media by link',
-    mediaPickerReviewMode: 'Review',
-    mediaPickerLoadError: 'Media could not be loaded.',
     mediaPickerLoading: 'Loading media.',
     imagePickerEmpty: 'No images found.',
     mediaPickerUploadRegionLabel: 'Upload image file',
@@ -146,7 +149,7 @@ export const voucherTranslationsEn = {
     title: 'Reset redemptions at this location and save?',
     description:
       'All previous redemptions of the vouchers below will be deleted. Previously used vouchers may be redeemed again. This cannot be undone in Studio.',
-    hint: 'Saving preserves existing redemptions of the vouchers at this location.',
+    hint: 'Editing this voucher does not reset recorded redemptions, including those of other vouchers at the same location.',
   },
   usage: {
     title: 'Usage',

@@ -33,6 +33,24 @@ import { wizardInstancesAdminENResources } from './instances/wizard.resources.js
 import { workflowInstancesAdminENResources } from './instances/workflow.resources.js';
 
 export const instancesAdminENResources = {
+  loginMfa: {
+    title: 'Authentication policy',
+    description:
+      'Choose whether your organisation requires an authenticator code at ordinary login. Sensitive actions still require fresh MFA.',
+    label: 'Ordinary login MFA',
+    optional: 'Optional',
+    required: 'Required',
+    unverified: 'Not verified',
+    enrollment:
+      'Users enroll and manage their authenticator in Keycloak. Optional mode still asks enrolled users for their code.',
+    pending: 'Pending verification',
+    applied: 'Applied and verified',
+    failed: 'Application failed. Save again to retry, or contact your administrator.',
+    appliedMode: 'Last verified policy: {{mode}}',
+    save: 'Save policy',
+    loading: 'Loading authentication policy…',
+    error: 'The policy could not be loaded or saved. Reload and try again.',
+  },
   actions: actionsInstancesAdminENResources,
   adminBootstrap: adminBootstrapInstancesAdminENResources,
   audit: auditInstancesAdminENResources,
@@ -52,6 +70,7 @@ export const instancesAdminENResources = {
   history: historyInstancesAdminENResources,
   instanceModules: instanceModulesInstancesAdminENResources,
   mailSync: {
+    serverSaved: 'General template saved. Inheriting instances have been compared and synchronized.',
     remedy: 'Open invitation template and Keycloak comparison',
     "title": "Keycloak template synchronization",
     "blocked": "Invitation delivery is blocked until the invitation template is synchronized.",
@@ -77,21 +96,20 @@ export const instancesAdminENResources = {
     }
 },
   emailVerification: {
-    serverTitle: 'General email verification template',
+    serverTitle: 'Email verification',
     serverDescription: 'This standard applies to instances without an override. Saving synchronizes inheriting instances only; custom templates are retained. No email is sent.',
-    serverSaved: 'General template saved. Inheriting instances have been compared and synchronized.',
     resetServerConfirm: 'Reset the general verification template to the neutral built-in standard?',
     resetInstance: 'Use general template',
 
     reauthRequired: 'Sign in again, then reopen the template. Your draft is retained until then.',
     currentTexts: 'Messages saved in the meantime',
-    title: 'Verify email address',
-    open: 'Edit verification template',
+    title: 'Email verification',
+    open: 'Edit email verification',
     description:
       'These German texts apply to registration and email address changes. Saving takes immediate effect in this municipality’s Keycloak realm. No email is sent.',
     realm: 'Target realm: {{realm}}',
     tokens:
-      'Body placeholders: {{tenantName}}, {{verificationLink}}, {{linkExpiresIn}}. Include exactly one verification link. No subject placeholders, HTML or free URLs.',
+      'Allowed placeholders: {{tenantName}}, {{verificationLink}}, {{linkExpiresIn}}. The verification link must occur exactly once in the message body.',
     previewLink: '[Verify email address]',
     htmlWarning:
       'The existing HTML differs from the generated layout. Saving regenerates it from the message body.',
@@ -105,7 +123,7 @@ export const instancesAdminENResources = {
       'The messages changed in the meantime. Your draft is preserved. The current messages are shown for comparison. Review them before saving again.',
     saveFailed:
       'Saving was not confirmed. Keycloak may already have received the change. Your draft is preserved; close, reopen and check the current messages.',
-    reset: 'Apply neutral default',
+    reset: 'Use SVA default',
     resetConfirm: 'Remove this instance override and use the current general verification template?',
   },
   invitation: invitationInstancesAdminENResources,

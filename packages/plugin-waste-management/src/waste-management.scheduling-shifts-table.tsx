@@ -96,7 +96,7 @@ export const WasteSchedulingShiftsTable = ({
         canSelectRow={(row) => row.canDelete}
         bulkActions={bulkActions}
         toolbarEnd={
-          <Button type="button" className="rounded-lg" onClick={onOpenCreateShiftDialog}>
+          <Button type="button" className="rounded-md" onClick={onOpenCreateShiftDialog}>
             {pt('scheduling.actions.openCreate')}
           </Button>
         }

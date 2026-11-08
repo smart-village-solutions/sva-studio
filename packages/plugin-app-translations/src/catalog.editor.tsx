@@ -21,7 +21,7 @@ export const CatalogEditor = ({ sourceOnly = true, ...props }: CatalogEditorProp
     <section
       ref={state.section}
       tabIndex={-1}
-      className="space-y-5 rounded-lg border border-border bg-card p-6"
+      className="space-y-5 rounded-lg border border-border-subtle bg-card p-4 sm:p-6"
       aria-labelledby="catalog-editor-heading"
     >
       <h2 id="catalog-editor-heading" className="text-xl font-semibold">

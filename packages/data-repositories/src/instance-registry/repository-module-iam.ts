@@ -29,6 +29,8 @@ type ModuleIamRepository = Pick<
 
 type LifecycleIntentRow = {
   effective_active: boolean;
+  access_state: string | null;
+  desired_operation: string | null;
   lifecycle_exists: boolean;
   active_job_id: string | null;
   persisted: boolean;
@@ -37,7 +39,7 @@ type LifecycleIntentRow = {
 
 const persistPluginTenantLifecycleReconcileIntentSql = `
 WITH module_state AS MATERIALIZED (
-  SELECT modules.effective_active,
+  SELECT modules.effective_active, lifecycle.access_state, lifecycle.desired_operation,
     lifecycle.active_job_id,
     lifecycle.plugin_id IS NOT NULL AS lifecycle_exists,
     COALESCE(lifecycle.access_state = 'suspended'
@@ -60,8 +62,9 @@ WITH module_state AS MATERIALIZED (
   SELECT $1, $2, CASE WHEN module_state.effective_active THEN 'provision' ELSE 'suspend' END,
     1, 'pending', $3, now(), NULL, NULL, NULL, now()
   FROM module_state
-  WHERE module_state.effective_active
-    OR ($5::boolean AND module_state.lifecycle_exists AND NOT module_state.suspend_completed)
+  WHERE (module_state.effective_active
+    OR ($5::boolean AND module_state.lifecycle_exists AND NOT module_state.suspend_completed))
+    AND (NOT $6::boolean OR (module_state.effective_active AND module_state.access_state = 'active'))
   ON CONFLICT (instance_id, plugin_id) DO UPDATE
   SET desired_operation = CASE WHEN EXCLUDED.desired_operation = 'suspend' THEN 'suspend'
       WHEN iam.instance_plugin_lifecycle.access_state = 'suspended' THEN 'reactivate'
@@ -74,6 +77,7 @@ WITH module_state AS MATERIALIZED (
     next_recheck_at = now(), retry_kind = NULL, retry_after = NULL,
     recovery_error_code = NULL, updated_at = now()
   WHERE iam.instance_plugin_lifecycle.active_job_id IS NULL
+    AND (NOT $6::boolean OR iam.instance_plugin_lifecycle.access_state = 'active')
     AND ($4::boolean OR EXCLUDED.desired_operation = 'suspend'
       OR iam.instance_plugin_lifecycle.access_state = 'suspended'
       OR iam.instance_plugin_lifecycle.contract_revision IS DISTINCT FROM EXCLUDED.contract_revision)
@@ -88,7 +92,8 @@ WITH module_state AS MATERIALIZED (
   )
   FROM intent
 )
-SELECT module_state.effective_active, module_state.lifecycle_exists,
+SELECT module_state.effective_active, module_state.access_state, module_state.desired_operation,
+  module_state.lifecycle_exists,
   module_state.active_job_id, module_state.suspend_completed, EXISTS (SELECT 1 FROM intent) AS persisted,
   (SELECT count(*) FROM enqueued) AS enqueued_count
 FROM module_state;
@@ -98,7 +103,7 @@ const createPersistPluginTenantLifecycleReconcileIntents =
   (
     executor: SqlExecutor
   ): InstanceRegistryRepository['persistPluginTenantLifecycleReconcileIntents'] =>
-  async ({ instanceId, lifecycles, forcePluginIds }) => {
+  async ({ instanceId, lifecycles, forcePluginIds, reconcileActiveOnly = false }) => {
     const forced = new Set(forcePluginIds);
     const persisted: string[] = [];
     for (const lifecycle of [...lifecycles].sort((left, right) =>
@@ -112,10 +117,21 @@ const createPersistPluginTenantLifecycleReconcileIntents =
           lifecycle.contractRevision,
           forced.has(lifecycle.pluginId),
           lifecycle.operations?.some(({ operation }) => operation === 'suspend') === true,
+          reconcileActiveOnly,
         ])
       );
       const row = rows[0];
       if (row?.persisted) persisted.push(lifecycle.pluginId);
+      if (reconcileActiveOnly) {
+        if (
+          row?.effective_active &&
+          !row.persisted &&
+          (row.access_state === 'active' || row.desired_operation === 'reactivate')
+        ) {
+          throw new Error(`plugin_tenant_lifecycle_reconcile_conflict:${lifecycle.pluginId}`);
+        }
+        continue;
+      }
       if (
         row &&
         !row.effective_active &&

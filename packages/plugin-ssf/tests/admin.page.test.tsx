@@ -4,6 +4,8 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { SsfSystemConfigurationPage, SsfTenantConfigurationPage } from '../src/admin.page.js';
+
 const state = vi.hoisted(() => ({
   accessSnapshot: {
     isResolved: true,
@@ -133,9 +135,15 @@ describe('SSF configuration pages', () => {
     state.writeTenant.mockReset();
   });
 
+  it('hides the retired legacy storage choice and question editor', async () => {
+    render(<SsfSystemConfigurationPage />);
+    await screen.findByRole('button', { name: 'actions.save' });
+    expect(screen.queryByLabelText('fields.storageMode')).toBeNull();
+    expect(screen.queryAllByLabelText('fields.storageQuestion')).toHaveLength(0);
+  });
+
   it('keeps the system draft visible and reports a failed save', async () => {
     state.writeSystem.mockRejectedValue(new Error('write failed'));
-    const { SsfSystemConfigurationPage } = await import('../src/admin.page.js');
     render(<SsfSystemConfigurationPage />);
 
     await screen.findByDisplayValue('<p>Angemeldet</p>');
@@ -148,7 +156,6 @@ describe('SSF configuration pages', () => {
   it('edits, discards and saves system defaults', async () => {
     const savedConfiguration = { ...systemConfiguration, defaultLocale: 'en' as const };
     state.writeSystem.mockResolvedValue(savedConfiguration);
-    const { SsfSystemConfigurationPage } = await import('../src/admin.page.js');
     render(<SsfSystemConfigurationPage />);
 
     const defaultLocale = (await screen.findByLabelText(
@@ -172,7 +179,6 @@ describe('SSF configuration pages', () => {
 
   it('retries a failed system configuration load', async () => {
     state.readSystem.mockRejectedValueOnce(new Error('read failed'));
-    const { SsfSystemConfigurationPage } = await import('../src/admin.page.js');
     render(<SsfSystemConfigurationPage />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'status.loadError' }));
@@ -183,7 +189,6 @@ describe('SSF configuration pages', () => {
 
   it('renders inherited tenant values read-only without a manage permission', async () => {
     state.accessSnapshot.permissionActions = ['ssf.configuration.tenant.read'];
-    const { SsfTenantConfigurationPage } = await import('../src/admin.page.js');
     render(<SsfTenantConfigurationPage />);
 
     await screen.findByDisplayValue('<p>Angemeldet</p>');
@@ -196,7 +201,6 @@ describe('SSF configuration pages', () => {
 
   it('writes tenant overrides and renders the confirmed read-back', async () => {
     state.writeTenant.mockResolvedValue(tenantView);
-    const { SsfTenantConfigurationPage } = await import('../src/admin.page.js');
     render(<SsfTenantConfigurationPage />);
 
     await screen.findByDisplayValue('<p>Angemeldet</p>');
@@ -208,12 +212,10 @@ describe('SSF configuration pages', () => {
 
   it('writes edited tenant locale and inheritance controls', async () => {
     state.writeTenant.mockResolvedValue(tenantView);
-    const { SsfTenantConfigurationPage } = await import('../src/admin.page.js');
     render(<SsfTenantConfigurationPage />);
 
     await screen.findByDisplayValue('<p>Angemeldet</p>');
     fireEvent.change(screen.getByLabelText('fields.defaultLocale'), { target: { value: 'en' } });
-    fireEvent.change(screen.getByLabelText('fields.storageMode'), { target: { value: 'ask' } });
     const checkboxes = screen.getAllByRole('checkbox');
     fireEvent.click(checkboxes[0]!);
     fireEvent.click(checkboxes[1]!);
@@ -227,7 +229,7 @@ describe('SSF configuration pages', () => {
       expect(state.writeTenant).toHaveBeenCalledWith(
         expect.objectContaining({
           defaultLocale: 'en',
-          conversationContentStorageMode: 'ask',
+          conversationContentStorageMode: null,
           locales: expect.arrayContaining([
             expect.objectContaining({
               locale: 'de-DE',
@@ -243,7 +245,6 @@ describe('SSF configuration pages', () => {
   it('reports tenant load and save failures without losing the draft', async () => {
     state.readTenant.mockRejectedValueOnce(new Error('read failed'));
     state.writeTenant.mockRejectedValue(new Error('write failed'));
-    const { SsfTenantConfigurationPage } = await import('../src/admin.page.js');
     render(<SsfTenantConfigurationPage />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'status.loadError' }));

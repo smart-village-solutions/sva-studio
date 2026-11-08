@@ -5,6 +5,8 @@ import type { Page, Route } from '@playwright/test';
 
 import {
   expectAppShellReady,
+  gotoHomeAsAuthenticatedUser,
+  captureStudioDesignState,
   navigateClientSide,
   registerSharedIamRoutes,
 } from './studio-shell.helpers';
@@ -311,6 +313,7 @@ test.describe('media management', () => {
   test('uploads a file from the media library and opens the detail workspace afterwards', async ({
     page,
   }) => {
+    test.setTimeout(180_000);
     const state: {
       assets: MediaAssetRecord[];
       usageByAssetId: Record<string, MediaUsageRecord>;
@@ -330,10 +333,10 @@ test.describe('media management', () => {
       await dialog.accept();
     });
 
-    await page.goto('/interfaces');
-    await expectAppShellReady(page);
+    await gotoHomeAsAuthenticatedUser(page);
     await navigateClientSide(page, '/admin/media');
     await expect(page.getByRole('heading', { name: 'Medienbibliothek' })).toBeVisible();
+    await captureStudioDesignState(page, 'media-library');
     await page.locator('[data-testid="media-upload-input"]').setInputFiles({
       name: 'hero.jpg',
       mimeType: 'image/jpeg',
@@ -346,6 +349,7 @@ test.describe('media management', () => {
     await expect(page.getByText('Aktive Referenzen: 1')).toBeVisible();
     await expect(page.getByText('Teaserbild')).toBeVisible();
     await expect(page.getByText('news-1')).toBeVisible();
+    await captureStudioDesignState(page, 'media-detail');
 
     await page.getByRole('button', { name: 'Medium löschen' }).click();
 

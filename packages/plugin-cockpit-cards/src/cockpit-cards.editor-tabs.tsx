@@ -92,7 +92,7 @@ export function cockpitCardEditorTabs({
         label: pt('tabs.content.label'),
         panel: (
           <div className="space-y-6">
-            <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-5">
+            <div className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
               <HeadingField form={form} pt={pt} />
             </div>
             {

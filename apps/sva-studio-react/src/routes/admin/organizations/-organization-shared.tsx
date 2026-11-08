@@ -4,6 +4,7 @@ import type {
   IamOrganizationType,
 } from '@sva/core';
 import React from 'react';
+import { StudioFieldGroup } from '@sva/studio-ui-react';
 
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -249,135 +250,145 @@ export const OrganizationForm = ({
   const parentOptions = getOrganizationParentOptions(organizations, excludeOrganizationId);
 
   return (
-    <form className="space-y-4" aria-readonly={readOnly} onSubmit={onSubmit}>
-      <fieldset className="contents" disabled={readOnly}>
-        <div className="grid gap-1 text-sm text-foreground">
-          <Label htmlFor="organization-key">{t('admin.organizations.form.keyLabel')}</Label>
-          <Input
-            id="organization-key"
-            value={formValues.organizationKey}
-            onChange={(event) =>
-              onOrganizationKeyChange
-                ? onOrganizationKeyChange(event.target.value)
-                : setFormValues((current) => ({ ...current, organizationKey: event.target.value }))
-            }
-          />
-        </div>
-        <div className="grid gap-1 text-sm text-foreground">
-          <Label htmlFor="organization-name">{t('admin.organizations.form.nameLabel')}</Label>
-          <Input
-            id="organization-name"
-            value={formValues.displayName}
-            onChange={(event) =>
-              onDisplayNameChange
-                ? onDisplayNameChange(event.target.value)
-                : setFormValues((current) => ({ ...current, displayName: event.target.value }))
-            }
-          />
-        </div>
-        <div className="grid gap-1 text-sm text-foreground md:grid-cols-2 md:gap-4">
-          <div className="grid gap-1">
-            <Label htmlFor="organization-type">{t('admin.organizations.form.typeLabel')}</Label>
+    <form onSubmit={onSubmit}>
+      <fieldset className="min-w-0" disabled={readOnly}>
+        <StudioFieldGroup>
+          <div className="grid gap-1 text-sm text-foreground">
+            <Label htmlFor="organization-key">{t('admin.organizations.form.keyLabel')}</Label>
+            <Input
+              id="organization-key"
+              value={formValues.organizationKey}
+              onChange={(event) =>
+                onOrganizationKeyChange
+                  ? onOrganizationKeyChange(event.target.value)
+                  : setFormValues((current) => ({
+                      ...current,
+                      organizationKey: event.target.value,
+                    }))
+              }
+            />
+          </div>
+          <div className="grid gap-1 text-sm text-foreground">
+            <Label htmlFor="organization-name">{t('admin.organizations.form.nameLabel')}</Label>
+            <Input
+              id="organization-name"
+              value={formValues.displayName}
+              onChange={(event) =>
+                onDisplayNameChange
+                  ? onDisplayNameChange(event.target.value)
+                  : setFormValues((current) => ({ ...current, displayName: event.target.value }))
+              }
+            />
+          </div>
+          <StudioFieldGroup columns={2}>
+            <div className="grid gap-1">
+              <Label htmlFor="organization-type">{t('admin.organizations.form.typeLabel')}</Label>
+              <Select
+                id="organization-type"
+                value={formValues.organizationType}
+                onChange={(event) =>
+                  setFormValues((current) => ({
+                    ...current,
+                    organizationType: event.target.value as IamOrganizationType,
+                  }))
+                }
+              >
+                {organizationTypeOptions.map((type) => (
+                  <option key={type} value={type}>
+                    {t(ORGANIZATION_TYPE_KEYS[type])}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="grid gap-1">
+              <Label htmlFor="organization-policy">
+                {t('admin.organizations.form.policyLabel')}
+              </Label>
+              <Select
+                id="organization-policy"
+                value={formValues.contentAuthorPolicy}
+                onChange={(event) =>
+                  setFormValues((current) => ({
+                    ...current,
+                    contentAuthorPolicy: event.target.value as OrganizationContentAuthorPolicy,
+                  }))
+                }
+              >
+                <option value="org_only">{t('admin.organizations.policies.orgOnly')}</option>
+                <option value="org_or_personal">
+                  {t('admin.organizations.policies.orgOrPersonal')}
+                </option>
+              </Select>
+            </div>
+          </StudioFieldGroup>
+          <div className="grid gap-1 text-sm text-foreground">
+            <Label htmlFor="organization-parent">{t('admin.organizations.form.parentLabel')}</Label>
             <Select
-              id="organization-type"
-              value={formValues.organizationType}
+              id="organization-parent"
+              value={formValues.parentOrganizationId}
               onChange={(event) =>
                 setFormValues((current) => ({
                   ...current,
-                  organizationType: event.target.value as IamOrganizationType,
+                  parentOrganizationId: event.target.value,
                 }))
               }
             >
-              {organizationTypeOptions.map((type) => (
-                <option key={type} value={type}>
-                  {t(ORGANIZATION_TYPE_KEYS[type])}
+              <option value="">{t('admin.organizations.form.parentNone')}</option>
+              {parentOptions.map((organization) => (
+                <option key={organization.id} value={organization.id}>
+                  {organization.displayName}
                 </option>
               ))}
             </Select>
           </div>
-          <div className="grid gap-1">
-            <Label htmlFor="organization-policy">{t('admin.organizations.form.policyLabel')}</Label>
-            <Select
-              id="organization-policy"
-              value={formValues.contentAuthorPolicy}
+          <div className="grid gap-1 text-sm text-foreground">
+            <Label htmlFor="organization-mainserver-app-id">
+              {t('admin.organizations.form.mainserverApplicationIdLabel')}
+            </Label>
+            <Input
+              id="organization-mainserver-app-id"
+              value={formValues.mainserverApplicationId}
               onChange={(event) =>
                 setFormValues((current) => ({
                   ...current,
-                  contentAuthorPolicy: event.target.value as OrganizationContentAuthorPolicy,
+                  mainserverApplicationId: event.target.value,
                 }))
               }
-            >
-              <option value="org_only">{t('admin.organizations.policies.orgOnly')}</option>
-              <option value="org_or_personal">
-                {t('admin.organizations.policies.orgOrPersonal')}
-              </option>
-            </Select>
+            />
           </div>
-        </div>
-        <div className="grid gap-1 text-sm text-foreground">
-          <Label htmlFor="organization-parent">{t('admin.organizations.form.parentLabel')}</Label>
-          <Select
-            id="organization-parent"
-            value={formValues.parentOrganizationId}
-            onChange={(event) =>
-              setFormValues((current) => ({ ...current, parentOrganizationId: event.target.value }))
-            }
-          >
-            <option value="">{t('admin.organizations.form.parentNone')}</option>
-            {parentOptions.map((organization) => (
-              <option key={organization.id} value={organization.id}>
-                {organization.displayName}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="grid gap-1 text-sm text-foreground">
-          <Label htmlFor="organization-mainserver-app-id">
-            {t('admin.organizations.form.mainserverApplicationIdLabel')}
-          </Label>
-          <Input
-            id="organization-mainserver-app-id"
-            value={formValues.mainserverApplicationId}
-            onChange={(event) =>
-              setFormValues((current) => ({
-                ...current,
-                mainserverApplicationId: event.target.value,
-              }))
-            }
-          />
-        </div>
-        <div className="grid gap-1 text-sm text-foreground">
-          <Label htmlFor="organization-mainserver-app-secret">
-            {t('admin.organizations.form.mainserverApplicationSecretLabel')}
-          </Label>
-          <Input
-            id="organization-mainserver-app-secret"
-            type="password"
-            autoComplete="new-password"
-            value={formValues.mainserverApplicationSecret}
-            placeholder={t('admin.organizations.form.mainserverApplicationSecretPlaceholder')}
-            onChange={(event) =>
-              setFormValues((current) => ({
-                ...current,
-                mainserverApplicationSecret: event.target.value,
-              }))
-            }
-          />
-          <span className="text-xs text-muted-foreground">
-            {formValues.mainserverApplicationSecretSet
-              ? t('admin.organizations.form.mainserverApplicationSecretConfigured')
-              : t('admin.organizations.form.mainserverApplicationSecretMissing')}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {t('admin.organizations.form.mainserverApplicationSecretHint')}
-          </span>
-        </div>
-        {readOnly ? null : (
-          <div className="flex justify-end gap-2">
-            {actions}
-            {submitAction}
+          <div className="grid gap-1 text-sm text-foreground">
+            <Label htmlFor="organization-mainserver-app-secret">
+              {t('admin.organizations.form.mainserverApplicationSecretLabel')}
+            </Label>
+            <Input
+              id="organization-mainserver-app-secret"
+              type="password"
+              autoComplete="new-password"
+              value={formValues.mainserverApplicationSecret}
+              placeholder={t('admin.organizations.form.mainserverApplicationSecretPlaceholder')}
+              onChange={(event) =>
+                setFormValues((current) => ({
+                  ...current,
+                  mainserverApplicationSecret: event.target.value,
+                }))
+              }
+            />
+            <span className="text-xs text-muted-foreground">
+              {formValues.mainserverApplicationSecretSet
+                ? t('admin.organizations.form.mainserverApplicationSecretConfigured')
+                : t('admin.organizations.form.mainserverApplicationSecretMissing')}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {t('admin.organizations.form.mainserverApplicationSecretHint')}
+            </span>
           </div>
-        )}
+          {readOnly ? null : (
+            <div className="flex justify-end gap-2">
+              {actions}
+              {submitAction}
+            </div>
+          )}
+        </StudioFieldGroup>
       </fieldset>
     </form>
   );

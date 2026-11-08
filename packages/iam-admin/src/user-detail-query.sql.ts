@@ -29,6 +29,7 @@ SELECT
   a.position,
   a.department,
   a.preferred_language,
+  a.competence_languages,
   a.timezone,
   a.avatar_url,
   a.notes,

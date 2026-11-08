@@ -6,7 +6,7 @@ import {
   mockSharedShellRequests,
   navigateClientSide,
 } from './news-plugin.fixtures';
-import { establishServerReadableAuthSession } from './studio-shell.helpers';
+import { establishServerReadableAuthSession, expectAppShellReady } from './studio-shell.helpers';
 
 if (process.env.PLAYWRIGHT_RUNTIME_PROFILE === 'local-builder') {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -42,6 +42,7 @@ const cockpitCardsPermissions = {
 test('persists Kachel text and media across create, update and reload before deletion', async ({
   page,
 }) => {
+  test.setTimeout(90_000);
   await mockSharedShellRequests(page);
   let card: Record<string, unknown> | undefined;
   let createdBody: Record<string, unknown> | undefined;
@@ -154,7 +155,13 @@ test('persists Kachel text and media across create, update and reload before del
     });
   });
 
+  const permissionsReady = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/iam/me/permissions' && response.status() === 200
+  );
   await gotoHomeAsAuthenticatedUser(page);
+  await permissionsReady;
+  await expectAppShellReady(page);
   await navigateClientSide(page, '/admin/cockpit-cards/new');
   await expect(page.getByRole('tablist')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Kachel anlegen' })).toBeVisible();

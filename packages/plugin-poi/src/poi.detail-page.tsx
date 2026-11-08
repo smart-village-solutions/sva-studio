@@ -26,7 +26,7 @@ import { usePoiDetailDelete } from './poi.detail-page.delete.js';
 import { usePoiDetailLoad } from './poi.detail-page.load.js';
 import { usePoiDetailMedia } from './poi.detail-page.media.js';
 import { PoiDetailPageView, type PoiDetailPageViewModel } from './poi.detail-page.view.js';
-import { createPoiDetailTabDefinitions, usePoiDetailTabState } from './poi.detail-tabs.js';
+import { createPoiDetailTabDefinitions, type PoiDetailTabId } from './poi.detail-tabs.js';
 import type { PoiCategoryOption, PoiContentItem } from './poi.types.js';
 
 type StatusMessage = Readonly<{ kind: 'success' | 'error'; text: string }>;
@@ -128,7 +128,8 @@ export function PoiDetailPage({
   const canSelectMedia = mediaCapabilities.canSelect;
   const canUploadMedia = mediaCapabilities.canUpload;
   const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
-  const { activeTab, setActiveTab, visitedTabs, handleTabChange, warmTab } = usePoiDetailTabState();
+  const [activeTab, setActiveTab] = React.useState<PoiDetailTabId>('basis');
+  const handleTabChange = setActiveTab;
   const [categoryOptions, setCategoryOptions] = React.useState<readonly PoiCategoryOption[]>([]);
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
@@ -140,7 +141,8 @@ export function PoiDetailPage({
   const media = usePoiDetailMedia({ instanceId, mode, methods, pt });
   const {
     mediaUsages,
-    setMediaUsages,
+    mediaDirty,
+    setLoadedMediaUsages,
     mediaReferenceSync,
     requiresReferenceSync,
     setRequiresReferenceSync,
@@ -158,7 +160,7 @@ export function PoiDetailPage({
     methods,
     pt,
     refreshMediaAssets,
-    setMediaUsages,
+    setMediaUsages: setLoadedMediaUsages,
     setRequiresReferenceSync,
     setMediaReferencesReady,
     setStatus,
@@ -182,11 +184,13 @@ export function PoiDetailPage({
     contentId,
     instanceId,
     mediaUsages,
+    mediaDirty,
     requiresReferenceSync,
     mediaReferenceSync,
     leaveGuard: media.leaveGuard,
     saveFeedback,
     setStatus,
+    setLoadedItem,
     setMediaSavePhaseKey,
     setActiveTab,
     focusFieldById,
@@ -239,7 +243,6 @@ export function PoiDetailPage({
     canUploadMedia,
     canUpdateMedia,
     activeTab,
-    visitedTabs,
     categoryOptions,
     categoryOptionsLoading,
     categoryOptionsError,
@@ -248,7 +251,6 @@ export function PoiDetailPage({
     deviationFieldLabels,
     tabs,
     handleTabChange,
-    warmTab,
     submit,
     remove,
   };

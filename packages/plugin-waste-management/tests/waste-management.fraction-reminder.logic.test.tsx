@@ -26,11 +26,11 @@ vi.mock('@sva/waste-management-contracts', async (importOriginal) => {
   };
 });
 
-vi.mock('@sva/studio-ui-react', () => ({
-  Select: ({
-    children,
-    ...props
-  }: React.ComponentProps<'select'>) => <select {...props}>{children}</select>,
+vi.mock('@sva/studio-ui-react', async () => ({
+  ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),
+  Select: ({ children, ...props }: React.ComponentProps<'select'>) => (
+    <select {...props}>{children}</select>
+  ),
   StudioField: ({
     id,
     label,
@@ -49,29 +49,6 @@ vi.mock('@sva/studio-ui-react', () => ({
     </label>
   ),
   StudioFieldGroup: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-}));
-
-vi.mock('../src/waste-management.form-switch.js', () => ({
-  WasteManagementFormSwitch: ({
-    checked,
-    ariaLabel,
-    disabled,
-    onChange,
-  }: {
-    readonly checked: boolean;
-    readonly ariaLabel: string;
-    readonly disabled?: boolean;
-    readonly onChange: (checked: boolean) => void;
-  }) => (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-    >
-      {checked ? 'on' : 'off'}
-    </button>
-  ),
 }));
 
 const createForm = (
@@ -172,9 +149,12 @@ describe('waste fraction reminder logic', () => {
       </>
     );
 
-    fireEvent.change(document.getElementById('waste-fraction-reminder-count') as HTMLSelectElement, {
-      target: { value: 'twice' },
-    });
+    fireEvent.change(
+      document.getElementById('waste-fraction-reminder-count') as HTMLSelectElement,
+      {
+        target: { value: 'twice' },
+      }
+    );
     expect(onChange).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -185,7 +165,11 @@ describe('waste fraction reminder logic', () => {
       })
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.fields.reminderChannelEmailEnabled' }));
+    fireEvent.click(
+      screen.getByRole('switch', {
+        name: 'masterData.fractions.fields.reminderChannelEmailEnabled',
+      })
+    );
     expect(onChange).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
@@ -221,9 +205,12 @@ describe('waste fraction reminder logic', () => {
 
     render(<FractionReminderChannelSlots channel="push" form={form} onChange={onChange} />);
 
-    fireEvent.change(document.getElementById('waste-fraction-push-slot-1-max-lead-days') as HTMLSelectElement, {
-      target: { value: '3' },
-    });
+    fireEvent.change(
+      document.getElementById('waste-fraction-push-slot-1-max-lead-days') as HTMLSelectElement,
+      {
+        target: { value: '3' },
+      }
+    );
     expect(onChange).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -238,9 +225,12 @@ describe('waste fraction reminder logic', () => {
       })
     );
 
-    fireEvent.change(document.getElementById('waste-fraction-push-slot-2-default-lead-days') as HTMLSelectElement, {
-      target: { value: '1' },
-    });
+    fireEvent.change(
+      document.getElementById('waste-fraction-push-slot-2-default-lead-days') as HTMLSelectElement,
+      {
+        target: { value: '1' },
+      }
+    );
     expect(onChange).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({

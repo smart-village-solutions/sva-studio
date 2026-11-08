@@ -1,7 +1,7 @@
 import {
   IconAppWindow,
-  IconArticle,
-  IconCategory,
+  IconFileText as IconArticle,
+  IconTags as IconCategory,
   IconDeviceMobile,
   IconFileText,
   IconGauge,

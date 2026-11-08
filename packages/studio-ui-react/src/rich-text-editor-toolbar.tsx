@@ -1,17 +1,17 @@
 import * as React from 'react';
 import type { Editor } from '@tiptap/react';
 import {
-  Bold,
-  CodeXml,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  Redo2,
-  RemoveFormatting,
-  Underline,
-  Undo2,
-} from 'lucide-react';
+  IconBold as Bold,
+  IconCode as CodeXml,
+  IconItalic as Italic,
+  IconLink as Link2,
+  IconList as List,
+  IconListNumbers as ListOrdered,
+  IconArrowForwardUp as Redo2,
+  IconClearFormatting as RemoveFormatting,
+  IconUnderline as Underline,
+  IconArrowBackUp as Undo2,
+} from '@tabler/icons-react';
 
 import { Button } from './button.js';
 import { Select } from './select.js';

@@ -2907,3 +2907,10 @@ describe('audit event helpers', () => {
     ).toThrow('duplicate_plugin_audit_event:news.created');
   });
 });
+
+it('validates and carries administrator permission exclusions through module registries', () => {
+  const moduleIam = definePluginModuleIamContract('recordings', { moduleId: 'recordings', permissionIds: ['recordings.manage','recordings.review'], systemRoles: [{ roleName: 'system_admin', permissionIds: ['recordings.manage'] }], systemAdminPermissionExclusions: ['recordings.review'] });
+  const registry = createPluginModuleIamRegistry([{ id: 'recordings', displayName: 'Synthetic recordings', permissions: [{ id: 'recordings.manage' }, { id: 'recordings.review' }], moduleIam }]);
+  expect(registry.get('recordings')?.systemAdminPermissionExclusions).toEqual(['recordings.review']);
+  expect(() => definePluginModuleIamContract('recordings', { ...moduleIam, systemAdminPermissionExclusions: ['another.review'] })).toThrow('unknown_plugin_module_iam_permission_exclusion');
+});

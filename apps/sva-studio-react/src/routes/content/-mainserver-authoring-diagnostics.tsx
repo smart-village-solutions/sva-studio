@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
+import { IconChevronDown as ChevronDown } from '@tabler/icons-react';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '@sva/studio-ui-react';

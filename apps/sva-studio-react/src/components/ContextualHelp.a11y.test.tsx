@@ -38,6 +38,12 @@ describe('ContextualHelp accessibility', () => {
     expect(await screen.findByRole('link', { name: 'Auf GitHub bearbeiten' })).toBeTruthy();
     await expect(expectNoA11yViolations(dialog)).resolves.toBeUndefined();
 
+    // Autofocus opens the close button tooltip above the dialog in the shared Radix stack.
+    expect(screen.getByRole('tooltip')).toBeTruthy();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await vi.waitFor(() => expect(screen.queryByRole('tooltip')).toBeNull());
+    expect(screen.getByRole('dialog')).toBe(dialog);
+
     fireEvent.keyDown(dialog, { key: 'Escape' });
     await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await vi.waitFor(() => expect(document.activeElement).toBe(trigger));

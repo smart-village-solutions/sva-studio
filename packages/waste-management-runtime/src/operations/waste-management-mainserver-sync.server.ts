@@ -218,14 +218,15 @@ export const runWasteManagementMainserverSync = async (input: {
 
   if (!input.dryRun) {
     await processBatches({
-      items: createItems,
-      operationMode: 'create',
-      writer: input.createItems,
-    });
-    await processBatches({
       items: deleteItems,
       operationMode: 'delete',
       writer: input.deleteItems,
+    });
+    // Existing same-day records must be gone: the bulk API does not update their notes.
+    await processBatches({
+      items: createItems,
+      operationMode: 'create',
+      writer: input.createItems,
     });
   }
 
@@ -351,7 +352,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
       await reportSyncProgress(
         input.progressReporter,
         buildSyncProgress({
-          completedSteps: isCreate ? 4 : 5,
+          completedSteps: isCreate ? 5 : 4,
           currentStepKey,
           currentStepLabel: formatBatchStepLabel(details),
           details,

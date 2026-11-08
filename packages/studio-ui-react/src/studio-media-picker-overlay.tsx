@@ -1,6 +1,7 @@
 import { StudioConfirmDialog } from './studio-confirm-dialog.js';
 import { createMetadataDraft } from './studio-media-picker-overlay.shared.js';
 import * as React from 'react';
+import { useStudioEditorLeaveGuard } from './studio-editor-leave-guard.js';
 import { useContentMediaTranslation } from '@sva/plugin-sdk/content-media';
 import type { StudioMediaImageEdit } from './media-image-editor-state.js';
 import type { MediaEditorialMetadataPatch, MediaFocusPoint } from '@sva/media';
@@ -186,6 +187,7 @@ export const StudioMediaPickerOverlay = (props: StudioMediaPickerOverlayProps) =
     uploadPhase,
   } = props;
   const t = useContentMediaTranslation();
+  useStudioEditorLeaveGuard({ enabled: open, hasUnsavedChanges: open });
   const [confirmDiscard, setConfirmDiscard] = React.useState(false);
   const [workspaceDirty, setWorkspaceDirty] = React.useState(false);
   React.useEffect(() => {

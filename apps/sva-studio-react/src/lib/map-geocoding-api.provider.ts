@@ -42,20 +42,42 @@ const normalizeProviderRequestUrl = async (
 };
 
 const fetchJsonWithTimeout = async (
+  instanceId: string,
   config: MapGeocodingRuntimeConfigWithSecrets,
   url: URL,
   timeoutMs: number,
-  redirectCount = 0,
+  redirectCount = 0
 ): Promise<GeoapifyResponse> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    // fallow-ignore-next-line security-sink -- custom provider URLs are normalized before fetch and before manual redirect follow-up.
-    const response = await fetch(url, {
-      signal: controller.signal,
-      ...(config.provider === 'custom' ? { redirect: 'manual' as const } : {}),
-    });
+    const { consumeGeocodingBudget } = await import('@sva/auth-runtime/server');
+    const limit = Number.parseInt(config.rateLimitPerMinute, 10);
+    let budget;
+    try {
+      budget = await consumeGeocodingBudget({
+        instanceId,
+        limit: Number.isSafeInteger(limit) && limit > 0 ? limit : 60,
+      });
+    } catch {
+      throw createClientError('budget_unavailable', { statusCode: 503 });
+    }
+    if (!budget.allowed) {
+      throw createClientError('rate_limited', {
+        statusCode: 429,
+        retryAfterSeconds: budget.retryAfterSeconds,
+      });
+    }
+    const { fetchMapGeocoding } = await import('@sva/server-runtime');
+    const response = await fetchMapGeocoding(
+      url,
+      {
+        signal: controller.signal,
+        redirect: 'manual',
+      },
+      { allowPrivateHosts: config.provider === 'custom' && shouldAllowPrivateMapGeocodingTargets() }
+    );
     if (config.provider === 'custom' && response.status >= 300 && response.status < 400) {
       if (redirectCount >= MAX_CUSTOM_PROVIDER_REDIRECTS) {
         throw createClientError('provider_error', {
@@ -72,11 +94,13 @@ const fetchJsonWithTimeout = async (
         });
       }
 
+      await response.body?.cancel();
       return fetchJsonWithTimeout(
+        instanceId,
         config,
         await normalizeProviderRequestUrl(config, new URL(location, url)),
         timeoutMs,
-        redirectCount + 1,
+        redirectCount + 1
       );
     }
 
@@ -106,6 +130,7 @@ const fetchJsonWithTimeout = async (
 };
 
 export const executeProviderRequest = async (input: {
+  instanceId: string;
   config: MapGeocodingRuntimeConfigWithSecrets;
   mode: 'suggest' | 'geocode' | 'reverse';
   query?: string;
@@ -120,9 +145,10 @@ export const executeProviderRequest = async (input: {
       coordinates: input.coordinates,
     });
     const payload = await fetchJsonWithTimeout(
+      input.instanceId,
       input.config,
       await normalizeProviderRequestUrl(input.config, providerUrl),
-      parsePositiveInteger(input.config.requestTimeoutMs),
+      parsePositiveInteger(input.config.requestTimeoutMs)
     );
     return normalizeProviderFeatures(payload, input.config.provider);
   } finally {

@@ -34,3 +34,7 @@ Der vorhandene `@sva/studio-mcp` erhält opt-in persönliche Kontext-Tools. Jede
 
 - [ADR-047: Keycloak-Service-Accounts für die lokale MCP-Control-Plane](./ADR-047-keycloak-service-accounts-fuer-lokale-mcp-control-plane.md)
 - [ADR-018: Auth-Routing-Error-Contract und Korrelation](./ADR-018-auth-routing-error-contract-und-korrelation.md)
+
+## Präzisierung: Widerruf trotz weiterhin gültigem JWT
+
+Persönliche Requests prüfen nach Token- und Hostbindung vor jedem Handler den aktuellen Kontozustand. Tenant-Zugriffe verlangen aktive Mitgliedschaft und einen weder blockierten, deaktivierten, gelöschten noch verarbeitungsbeschränkten Account. Plattform-Zugriffe benötigen keinen lokalen IAM-Spiegel; ein gezielter Keycloak-Read muss das Token-Subject und `enabled: true` bestätigen. Redis-`loginBlocked` sperrt beide Bereiche. Fachliche Sperre/fehlender Account liefert 403, ungültiges Token 401, unprüfbarer Redis-/DB-/Keycloak-Zustand 503. Erhaltene Rollen und Permission-Snapshots umgehen diesen Read nicht; Bearer-Requests lösen kein JIT-Provisioning aus.

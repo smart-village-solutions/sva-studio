@@ -10,7 +10,6 @@ import {
 } from '@sva/waste-management-contracts/unsubscribe-token';
 import {
   createSha256Hash,
-  normalizeBearerTokenToHash,
   toIsoString,
 } from './public-waste-email-reminders-signup-support.server.js';
 import {
@@ -56,7 +55,7 @@ const handleDoiReminderAction = async (input: {
     return renderDoiActionError(input.page, 'invalid');
   }
   const result = await input.deps.activateByDoiTokenHash({
-    tokenHash: normalizeBearerTokenToHash(input.token, input.hashValue),
+    tokenHash: input.hashValue(input.token),
     now: input.now,
   });
   if (result.status === 'activated' || result.status === 'already_active') {

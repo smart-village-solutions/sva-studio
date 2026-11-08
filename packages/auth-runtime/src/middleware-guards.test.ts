@@ -14,6 +14,13 @@ const dbMocks = vi.hoisted(() => ({
   }),
   resolvePool: vi.fn(),
   withResolvedInstanceDb: vi.fn(),
+  query: vi.fn(),
+  control: vi.fn(),
+  getUserStatus: vi.fn(),
+}));
+vi.mock('./redis-session.js', () => ({ getSessionControlState: dbMocks.control }));
+vi.mock('./iam-account-management/shared-runtime.js', () => ({
+  resolveIdentityProvider: () => ({ provider: { getUserStatus: dbMocks.getUserStatus } }),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -39,12 +46,11 @@ describe('middleware-guards', () => {
     vi.unstubAllEnvs();
     vi.spyOn(Date, 'now').mockReturnValue(5_000);
     dbMocks.resolvePool.mockReturnValue({} as object);
+    dbMocks.control.mockResolvedValue(undefined);
+    dbMocks.getUserStatus.mockResolvedValue(true);
+    dbMocks.query.mockResolvedValue({ rows: [{ account_allowed: true }] });
     dbMocks.withResolvedInstanceDb.mockImplementation(async (_resolvePool, _instanceId, work) =>
-      work({
-        query: vi.fn(async () => ({
-          rows: [{ deletion_lifecycle_state: 'active' }],
-        })),
-      })
+      work({ query: dbMocks.query })
     );
   });
 
@@ -135,6 +141,94 @@ describe('middleware-guards', () => {
 
     expect(dbMocks.resolvePool).not.toHaveBeenCalled();
     expect(dbMocks.withResolvedInstanceDb).not.toHaveBeenCalled();
+  });
+
+  it('freshly checks the tenant account on every personal request even with retained roles', async () => {
+    const { ensureAccountLifecycleAllowsAccess: check } = await import('./middleware-guards.js');
+    const request = new Request('https://tenant.example/api/v1/iam/users');
+    const user = { id: 'subject', instanceId: 'tenant', roles: ['system_admin'] };
+    await expect(check(request, user, { requireCurrentAccount: true })).resolves.toBeNull();
+    dbMocks.query.mockResolvedValue({ rows: [{ account_allowed: false }] });
+    expect((await check(request, user, { requireCurrentAccount: true }))?.status).toBe(403);
+    expect(dbMocks.query).toHaveBeenCalledTimes(2);
+    expect(dbMocks.query).toHaveBeenCalledWith(expect.stringContaining("a.status = 'active'"), [
+      'tenant',
+      'subject',
+    ]);
+  });
+
+  it('honors the existing Redis login block before reading account or roles', async () => {
+    dbMocks.control.mockResolvedValue({ loginBlocked: true });
+    const { ensureAccountLifecycleAllowsAccess: check } = await import('./middleware-guards.js');
+    const result = await check(
+      new Request('https://tenant.example/'),
+      {
+        id: 'subject',
+        instanceId: 'tenant',
+        roles: ['system_admin'],
+      },
+      { requireCurrentAccount: true }
+    );
+    expect(result?.status).toBe(403);
+    expect(dbMocks.query).not.toHaveBeenCalled();
+  });
+
+  it.each(['redis', 'database'])(
+    'does not grant access when %s cannot be read',
+    async (dependency) => {
+      if (dependency === 'redis') dbMocks.control.mockRejectedValue(new Error('unavailable'));
+      else dbMocks.query.mockRejectedValue(new Error('unavailable'));
+      const { ensureAccountLifecycleAllowsAccess: check } = await import('./middleware-guards.js');
+      expect(
+        (
+          await check(
+            new Request('https://tenant.example/'),
+            {
+              id: 'subject',
+              instanceId: 'tenant',
+              roles: [],
+            },
+            { requireCurrentAccount: true }
+          )
+        )?.status
+      ).toBe(503);
+    }
+  );
+
+  it.each([true, false, null])(
+    'checks platform status %s without inventing a tenant account',
+    async (enabled) => {
+      dbMocks.getUserStatus.mockResolvedValue(enabled);
+      const { ensureAccountLifecycleAllowsAccess: check } = await import('./middleware-guards.js');
+      const result = await check(
+        new Request('https://studio.example/'),
+        {
+          id: 'platform-subject',
+          roles: ['system_admin'],
+        },
+        { requireCurrentAccount: true }
+      );
+      expect(result?.status ?? null).toBe(enabled === true ? null : 403);
+      expect(dbMocks.getUserStatus).toHaveBeenCalledWith('platform-subject');
+      expect(dbMocks.query).not.toHaveBeenCalled();
+    }
+  );
+
+  it('fails closed when the platform status cannot be verified', async () => {
+    dbMocks.getUserStatus.mockRejectedValue(new Error('unavailable'));
+    const { ensureAccountLifecycleAllowsAccess: check } = await import('./middleware-guards.js');
+    expect(
+      (
+        await check(
+          new Request('https://studio.example/'),
+          {
+            id: 'platform-subject',
+            roles: [],
+          },
+          { requireCurrentAccount: true }
+        )
+      )?.status
+    ).toBe(503);
   });
 
   it('maps session store, hydration, and unexpected middleware failures to stable api errors', async () => {

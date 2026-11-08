@@ -412,6 +412,8 @@ Hast du Fragen zu ADRs?
 
 ---
 
+Die bestehenden Entscheidungen [ADR-023](./ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md) und [ADR-067](./ADR-067-persoenlicher-plattform-und-tenant-zugang-im-studio-mcp.md) präzisieren seit dem 8. November 2026 die aktuelle Kontoprüfung persönlicher Bearer-Zugriffe. Browser-/DSR- und lokale MCP-Tokenverträge bleiben erhalten; es wurde keine neue ADR eingeführt.
+
 ## Verwandte Ressourcen
 
 - [ADR GitHub Repository](https://adr.github.io/)

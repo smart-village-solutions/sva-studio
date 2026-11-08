@@ -13,6 +13,8 @@ import {
   readJsonBody,
   jsonResponse,
   readMapGeocodingErrorCode,
+  type AuthenticatedMapGeocodingContext,
+  type MapGeocodingRuntimeConfigWithSecrets,
 } from './map-geocoding-api.shared.js';
 import {
   executeGeocodeOperation,
@@ -23,14 +25,42 @@ import {
   runGetConfigOperation,
   runReverseGeocodeOperation,
   runSuggestOperation,
-  withCurrentRequestGeocodingOperation,
+  withGeocodingOperation,
+  type MapGeocodingOperationDiagnostics,
 } from './map-geocoding-api.operations.js';
+
+const withCurrentRequestGeocodingOperation = async <T>(
+  operation: 'get_config' | 'suggest' | 'geocode' | 'reverse_geocode',
+  run: (
+    ctx: AuthenticatedMapGeocodingContext,
+    config: MapGeocodingRuntimeConfigWithSecrets,
+    diagnostics: MapGeocodingOperationDiagnostics
+  ) => Promise<T>
+): Promise<T> => {
+  try {
+    const { getRequest } = await import('@tanstack/react-start/server');
+    return await withGeocodingOperation(getRequest(), operation, run);
+  } catch (error) {
+    const code = readMapGeocodingErrorCode(error);
+    if (code !== 'rate_limited' && code !== 'budget_unavailable') throw error;
+    // TanStack's shallow Error serializer drops custom fields. This bounded record survives the wire.
+    const response = createErrorResponse(error);
+    throw {
+      code,
+      message: code,
+      statusCode: response.status,
+      ...(response.headers.has('retry-after')
+        ? { retryAfterSeconds: Number(response.headers.get('retry-after')) }
+        : {}),
+    };
+  }
+};
 
 const withRouteResponse = async <T>(run: () => Promise<T>): Promise<Response> => {
   try {
     return jsonResponse(200, await run());
   } catch (error) {
-    return createErrorResponse(readMapGeocodingErrorCode(error));
+    return createErrorResponse(error);
   }
 };
 
@@ -66,23 +96,23 @@ export const suggestMapAddressesServerFn = createServerFn({ method: 'POST' })
     if (!query) {
       throw createClientError('invalid_input');
     }
-    return withCurrentRequestGeocodingOperation('suggest', async (_ctx, config, diagnostics) =>
-      executeSuggestOperation(config, query, diagnostics),
+    return withCurrentRequestGeocodingOperation('suggest', async (ctx, config, diagnostics) =>
+      executeSuggestOperation(ctx.user.instanceId, config, query, diagnostics)
     );
   });
 
 export const geocodeMapAddressServerFn = createServerFn({ method: 'POST' })
   .inputValidator((data: MapGeocodingAddressInput) => data)
   .handler(async ({ data }): Promise<MapGeocodingFeature> =>
-    withCurrentRequestGeocodingOperation('geocode', async (_ctx, config, diagnostics) =>
-      executeGeocodeOperation(config, data, diagnostics),
-    ),
+    withCurrentRequestGeocodingOperation('geocode', async (ctx, config, diagnostics) =>
+      executeGeocodeOperation(ctx.user.instanceId, config, data, diagnostics)
+    )
   );
 
 export const reverseGeocodeMapCoordinatesServerFn = createServerFn({ method: 'POST' })
   .inputValidator((data: MapGeocodingCoordinates) => data)
   .handler(async ({ data }): Promise<MapGeocodingFeature> =>
-    withCurrentRequestGeocodingOperation('reverse_geocode', async (_ctx, config, diagnostics) =>
-      executeReverseGeocodeOperation(config, data, diagnostics),
-    ),
+    withCurrentRequestGeocodingOperation('reverse_geocode', async (ctx, config, diagnostics) =>
+      executeReverseGeocodeOperation(ctx.user.instanceId, config, data, diagnostics)
+    )
   );

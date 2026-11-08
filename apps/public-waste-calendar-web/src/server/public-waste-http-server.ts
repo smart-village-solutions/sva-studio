@@ -14,14 +14,23 @@ const normalizeForwardedProto = (value: string | readonly string[] | undefined):
   return null;
 };
 
+const MAX_REQUEST_BODY_BYTES = 65_536;
+class RequestBodyTooLargeError extends Error {}
+
 const readRequestBody = async (request: IncomingMessage): Promise<Buffer> => {
-  const chunks: Buffer[] = [];
-
-  for await (const chunk of request) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  if (Number(request.headers['content-length']) > MAX_REQUEST_BODY_BYTES) {
+    throw new RequestBodyTooLargeError();
   }
-
-  return Buffer.concat(chunks);
+  const chunks: Buffer[] = [];
+  let byteLength = 0;
+  // Keep the socket alive long enough to deliver the rejection on early iterator return.
+  for await (const chunk of request.iterator({ destroyOnReturn: false })) {
+    const buffer: Buffer = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
+    byteLength += buffer.length;
+    if (byteLength > MAX_REQUEST_BODY_BYTES) throw new RequestBodyTooLargeError();
+    chunks.push(buffer);
+  }
+  return Buffer.concat(chunks, byteLength);
 };
 
 const toRequest = async (request: IncomingMessage): Promise<Request> => {
@@ -62,6 +71,24 @@ const writeResponse = async (nodeResponse: ServerResponse, response: Response): 
     nodeResponse.setHeader(key, value);
   });
 
+  if (!nodeResponse.hasHeader('x-content-type-options'))
+    nodeResponse.setHeader('x-content-type-options', 'nosniff');
+  if (!nodeResponse.hasHeader('referrer-policy'))
+    nodeResponse.setHeader('referrer-policy', 'no-referrer');
+  if (response.headers.get('content-type')?.includes('text/html')) {
+    if (!nodeResponse.hasHeader('content-security-policy') && !nodeResponse.hasHeader('x-frame-options'))
+      nodeResponse.setHeader('content-security-policy', 'frame-ancestors *');
+    if (
+      !nodeResponse.hasHeader('content-security-policy-report-only') &&
+      !response.headers.has('content-security-policy')
+    ) {
+      nodeResponse.setHeader(
+        'content-security-policy-report-only',
+        "script-src 'self'; object-src 'none'; base-uri 'self'"
+      );
+    }
+  }
+
   if (!response.body) {
     nodeResponse.end();
     return;
@@ -74,10 +101,20 @@ export const createPublicWasteHttpServer = (input: {
   readonly runtime: Pick<PublicWasteRuntime, 'handle'>;
 }): Server =>
   createServer(async (request, response) => {
+    response.setHeader('x-content-type-options', 'nosniff');
+    response.setHeader('referrer-policy', 'no-referrer');
     try {
       const runtimeResponse = await input.runtime.handle(await toRequest(request));
       await writeResponse(response, runtimeResponse);
     } catch (error) {
+      if (error instanceof RequestBodyTooLargeError) {
+        request.pause();
+        response.statusCode = 413;
+        response.shouldKeepAlive = false;
+        response.setHeader('connection', 'close');
+        response.end();
+        return;
+      }
       response.statusCode = 500;
       response.setHeader('content-type', 'text/plain; charset=utf-8');
       response.end('Internal Server Error');

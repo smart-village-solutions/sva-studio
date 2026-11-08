@@ -58,6 +58,12 @@ describe('consolidated CI gate workflows', () => {
 
   it('keeps Unit and Coverage aggregation fail-closed', () => {
     expect(prGates).toContain('name: Unit Fast Feedback');
+    expect(prGates).toContain('  unit-app:\n');
+    expect(prGates).toContain(
+      'partition: [ui, hooks, server, routes-1, routes-2, routes-3, routes-4]'
+    );
+    expect(prGates).toContain('test "$APP_RESULT" = "success"');
+    expect(prGates).toContain('--phase app --app-job ${{ matrix.partition }}');
     expect(prGates).toContain('name: Unit Complete');
     expect(prGates).toContain('name: Unit');
     expect(prGates).toContain('--expected unit-direct,unit-remaining');
@@ -126,11 +132,15 @@ describe('consolidated CI gate workflows', () => {
     expect(mainGates).not.toContain('pr-scope');
     expect(mainGates).not.toContain('actions/cache');
     expect(mainGates).not.toContain('test:unit:affected');
+    expect(mainGates).toContain('needs: [unit-residual, coverage]');
+    expect(mainGates).toContain('--residual-only');
+    expect(mainGates).toContain('  sonar:\n');
+    expect(mainGates).toContain('needs: coverage');
     expect(mainGates).not.toContain('test:coverage:affected');
     expect(mainGates).not.toContain('Parity');
     expect(mainGates).not.toContain('CI Shadow');
-    expect(mainGates).toContain('pnpm test:unit');
-    expect(mainGates).toContain('pnpm test:coverage');
+    expect(mainGates).toContain('--residual-only');
+    expect(mainGates).toContain('--merge-partitions');
     expect(mainGates).toContain('pnpm test:integration');
   });
 

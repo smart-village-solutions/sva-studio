@@ -2,12 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import type { CiFeedbackEvidence } from './ci-feedback-evidence.ts';
+import { assertSeparateAppUnitEvidence, type CiFeedbackEvidence } from './ci-feedback-evidence.ts';
 import { selectRemainingUnitProjects, unitShardId } from './unit-shards.ts';
 
 export interface AggregateCiFeedbackOptions {
   gate: CiFeedbackEvidence['gate'];
   headSha: string;
+  baseSha?: string;
   expectedShards: readonly string[];
   evidenceDirectory: string;
 }
@@ -62,7 +63,8 @@ const groupEvidenceByShard = (
 const acceptExpectedEvidence = (
   expectedShards: readonly string[],
   byShard: ReadonlyMap<string, CiFeedbackEvidence[]>,
-  headSha: string
+  headSha: string,
+  baseSha?: string
 ): Map<string, CiFeedbackEvidence> => {
   const acceptedEvidence = new Map<string, CiFeedbackEvidence>();
   for (const shardId of expectedShards) {
@@ -80,6 +82,8 @@ const acceptExpectedEvidence = (
         `CI-Evidenz ${shardId} gehört zu ${evidence.headSha}, erwartet ist ${headSha}.`
       );
     }
+    if (baseSha !== undefined && evidence.baseSha !== baseSha)
+      throw new Error(`CI-Evidenz ${shardId} gehört zu einer anderen Base.`);
     if (evidence.status === 'failed') {
       throw new Error(`CI-Shard ist fehlgeschlagen: ${shardId}`);
     }
@@ -103,7 +107,11 @@ const assertUnitPlan = (
   projectsByShard: ReadonlyMap<string, Set<string>>
 ): void => {
   const directEvidence = acceptedEvidence.get('unit-direct');
-  const remainingIds = [...acceptedEvidence.keys()].filter((id) => id !== 'unit-direct');
+  const appIds = [...acceptedEvidence.keys()].filter((id) => id.startsWith('unit-app-'));
+  const remainingIds = [...acceptedEvidence.keys()].filter(
+    (id) => id !== 'unit-direct' && !id.startsWith('unit-app-')
+  );
+  const separateApp = appIds.length > 0;
   if (!directEvidence?.plan || remainingIds.length === 0) {
     throw new Error('Unit-Evidenz enthält keinen auswertbaren Scope-Plan.');
   }
@@ -125,9 +133,12 @@ const assertUnitPlan = (
       );
     }
   };
-  assertExactProjects('unit-direct', directEvidence.plan.directProjects);
+  if (separateApp) assertSeparateAppUnitEvidence(acceptedEvidence, projectsByShard);
+  const nonAppProjects = (projects: readonly string[]): string[] =>
+    separateApp ? projects.filter((project) => project !== 'sva-studio-react') : [...projects];
+  assertExactProjects('unit-direct', nonAppProjects(directEvidence.plan.directProjects));
   if (remainingIds.length === 1 && remainingIds[0] === 'unit-remaining') {
-    assertExactProjects('unit-remaining', directEvidence.plan.remainingProjects);
+    assertExactProjects('unit-remaining', nonAppProjects(directEvidence.plan.remainingProjects));
     return;
   }
   // Derive the complete layout from the expected list, never from reported
@@ -140,7 +151,7 @@ const assertUnitPlan = (
     }
     assertExactProjects(
       shardId,
-      selectRemainingUnitProjects(directEvidence.plan.remainingProjects, shard)
+      nonAppProjects(selectRemainingUnitProjects(directEvidence.plan.remainingProjects, shard))
     );
   }
 };
@@ -177,7 +188,12 @@ export const aggregateCiFeedback = (
     .map(readEvidence)
     .filter((evidence) => evidence.gate === options.gate);
   const byShard = groupEvidenceByShard(relevantEvidence);
-  const acceptedEvidence = acceptExpectedEvidence(expectedShards, byShard, options.headSha);
+  const acceptedEvidence = acceptExpectedEvidence(
+    expectedShards,
+    byShard,
+    options.headSha,
+    options.baseSha
+  );
   const projectsByShard = projectsFromEvidence(acceptedEvidence);
 
   if (options.gate === 'unit') {
@@ -191,7 +207,10 @@ export const aggregateCiFeedback = (
     throw new Error(`Unerwartete CI-Evidenz: ${unexpectedShards.sort().join(', ')}`);
   }
 
-  assertNoProjectOverlap(expectedShards, projectsByShard);
+  assertNoProjectOverlap(
+    expectedShards.filter((id) => !id.startsWith('unit-app-')),
+    projectsByShard
+  );
 
   const statuses = Object.fromEntries(
     [...acceptedEvidence].map(([shardId, evidence]) => [shardId, evidence.status])
@@ -216,6 +235,7 @@ const parseArguments = (args: readonly string[]): AggregateCiFeedbackOptions => 
   return {
     gate,
     headSha: read('--head'),
+    baseSha: read('--base'),
     expectedShards: read('--expected').split(',').filter(Boolean),
     evidenceDirectory: read('--evidence-dir'),
   };

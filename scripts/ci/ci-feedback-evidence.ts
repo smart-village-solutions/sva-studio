@@ -1,6 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import {
+  appUnitJobs,
+  isAppUnitJobSelected,
+  resolveAppUnitJob,
+  type AppUnitExecutionPlan,
+  type AppUnitManifest,
+} from './affected-unit-plan.ts';
 import type { ChangedProjectPlan } from './changed-project-plan.ts';
 
 export interface CiFeedbackDuration {
@@ -20,6 +27,8 @@ export interface CiFeedbackEvidence {
   headSha: string;
   scopeMode: 'affected' | 'full';
   plan: ChangedProjectPlan | null;
+  appPlan?: AppUnitExecutionPlan;
+  appManifest?: AppUnitManifest;
   phases: CiFeedbackDuration[];
   timing: {
     workflowCreatedAt: string | null;
@@ -57,6 +66,8 @@ interface BuildCiFeedbackEvidenceOptions {
   headSha: string;
   scopeMode: CiFeedbackEvidence['scopeMode'];
   plan: ChangedProjectPlan | null;
+  appPlan?: AppUnitExecutionPlan;
+  appManifest?: AppUnitManifest;
   phases: readonly CiFeedbackDuration[];
   startedAt: Date;
   finishedAt: Date;
@@ -84,6 +95,8 @@ export const buildCiFeedbackEvidence = (
   headSha: options.headSha,
   scopeMode: options.scopeMode,
   plan: options.plan,
+  ...(options.appPlan ? { appPlan: options.appPlan } : {}),
+  ...(options.appManifest ? { appManifest: options.appManifest } : {}),
   phases: options.phases.map((phase) => ({
     ...phase,
     projects: phase.projects ? [...phase.projects] : undefined,
@@ -155,4 +168,84 @@ export const writeCiFeedbackEvidence = (
   }
 
   return evidencePath;
+};
+
+const assertAppManifestCases = (manifest: AppUnitManifest, slice: string): void => {
+  if (
+    manifest.tests.some(
+      (test) =>
+        !manifest.files.includes(test.file) ||
+        !['passed', 'pending', 'todo', 'skipped', 'disabled'].includes(test.status)
+    )
+  )
+    throw new Error(`Ungültiger App-Testreport: ${slice}`);
+};
+const assertAppManifestGroup = (
+  manifests: (AppUnitManifest | undefined)[],
+  slice: string
+): void => {
+  if (manifests.some((manifest) => !manifest)) throw new Error(`App-Dateiinventar fehlt: ${slice}`);
+  const complete = manifests.map((manifest) => manifest!);
+  const expected = [...complete[0].expectedFiles].sort();
+  if (
+    new Set(expected).size !== expected.length ||
+    complete.some(
+      (manifest) => JSON.stringify([...manifest.expectedFiles].sort()) !== JSON.stringify(expected)
+    )
+  )
+    throw new Error(`App-Dateiinventare unterscheiden sich: ${slice}`);
+  const actual = complete.flatMap((manifest) => manifest.files).sort();
+  if (new Set(actual).size !== actual.length || JSON.stringify(actual) !== JSON.stringify(expected))
+    throw new Error(`App-Testdateien sind unvollständig oder doppelt: ${slice}`);
+  for (const manifest of complete) assertAppManifestCases(manifest, slice);
+};
+const assertAppManifests = (accepted: ReadonlyMap<string, CiFeedbackEvidence>): void => {
+  for (const slice of ['ui', 'hooks', 'server', 'routes']) {
+    const entries = appUnitJobs
+      .filter((job) => resolveAppUnitJob(job).slice === slice)
+      .map((job) => accepted.get(`unit-app-${job}`)!)
+      .filter((entry) => entry.status === 'passed');
+    if (entries.length > 0)
+      assertAppManifestGroup(
+        entries.map((entry) => entry.appManifest),
+        slice
+      );
+  }
+};
+const assertAppJobEvidence = (
+  evidence: CiFeedbackEvidence,
+  job: string,
+  selected: boolean,
+  projects: readonly string[]
+): void => {
+  const expected = selected ? ['sva-studio-react'] : [];
+  if (JSON.stringify([...projects].sort()) !== JSON.stringify(expected))
+    throw new Error(`App-Unit-Shard ${job} ist unvollständig.`);
+  const valid = selected
+    ? evidence.status === 'passed' &&
+      evidence.phases.length === 1 &&
+      evidence.phases[0].label === `unit:app:${job}`
+    : evidence.status === 'skipped' && evidence.phases.length === 0;
+  if (!valid) throw new Error(`App-Unit-Shard ${job} enthält keine passende Ausführung.`);
+};
+export const assertSeparateAppUnitEvidence = (
+  accepted: ReadonlyMap<string, CiFeedbackEvidence>,
+  projectsByShard: ReadonlyMap<string, Set<string>>
+): void => {
+  const expectedIds = appUnitJobs.map((job) => `unit-app-${job}`).sort();
+  const appIds = [...accepted.keys()].filter((id) => id.startsWith('unit-app-')).sort();
+  if (JSON.stringify(appIds) !== JSON.stringify(expectedIds))
+    throw new Error('Unvollständige App-Unit-Shards.');
+  const plan = accepted.get('unit-direct')?.appPlan;
+  if (!plan) throw new Error('App-Testplan fehlt.');
+  for (const evidence of accepted.values())
+    if (JSON.stringify(evidence.appPlan) !== JSON.stringify(plan))
+      throw new Error('App-Testpläne unterscheiden sich.');
+  for (const job of appUnitJobs) {
+    const id = `unit-app-${job}`;
+    assertAppJobEvidence(accepted.get(id)!, job, isAppUnitJobSelected(plan, job), [
+      ...(projectsByShard.get(id) ?? []),
+    ]);
+  }
+  assertAppManifests(accepted);
 };

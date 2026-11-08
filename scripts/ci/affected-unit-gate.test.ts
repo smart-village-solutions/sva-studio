@@ -3,17 +3,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildUnitProjectCommand,
+  coverageExecutesSameUnitCommand,
   hasPlannedUnitProjects,
   resolveAppUnitExecutionPlan,
   runAffectedUnitGate,
   runAffectedUnitGateCli,
 } from './affected-unit-gate.ts';
-import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-plan.ts';
-import { runCiCommand } from './ci-command-runner.ts';
+import {
+  appUnitJobs,
+  buildAppUnitCommand,
+  buildAppUnitJobCommand,
+  isAppUnitJobSelected,
+  planAppUnitExecution,
+} from './affected-unit-plan.ts';
+import { CiCommandExecutionError, runCiCommand } from './ci-command-runner.ts';
 import { writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
 import { loadNxProjectRoots } from './nx-project-graph.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
-import { parseUnitShard, selectRemainingUnitProjects } from './unit-shards.ts';
+import { runAppUnitPartition, parseUnitShard, selectRemainingUnitProjects } from './unit-shards.ts';
 
 vi.mock('node:child_process', () => ({ execFileSync: vi.fn() }));
 vi.mock('./ci-command-runner.ts', async (importOriginal) => ({
@@ -24,7 +31,10 @@ vi.mock('./ci-feedback-evidence.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./ci-feedback-evidence.ts')>()),
   writeCiFeedbackEvidence: vi.fn(),
 }));
-vi.mock('./nx-project-graph.ts', () => ({ loadNxProjectRoots: vi.fn() }));
+vi.mock('./nx-project-graph.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./nx-project-graph.ts')>()),
+  loadNxProjectRoots: vi.fn(),
+}));
 vi.mock('./pr-scope.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./pr-scope.ts')>()),
   resolveChangedFiles: vi.fn(),
@@ -314,4 +324,79 @@ describe('remaining Unit shards', () => {
     );
     expect(runCiCommand).not.toHaveBeenCalled();
   });
+});
+
+describe('separate app runners', () => {
+  it('partitions routes into four jobs without changing the other slice commands', () => {
+    expect(appUnitJobs.filter((job) => job.startsWith('routes-'))).toHaveLength(4);
+    expect(buildAppUnitJobCommand('routes-4')).toBe(
+      'pnpm nx run sva-studio-react:test:unit:routes --skipNxCache --maxWorkers=1 --shard=4/4'
+    );
+    expect(buildAppUnitJobCommand('server')).toBe(
+      'pnpm nx run sva-studio-react:test:unit:server --skipNxCache --maxWorkers=1'
+    );
+    expect(() => buildAppUnitJobCommand('routes-5')).toThrow(/Ungültiger/);
+  });
+  it('selects only the planned slices and expands aggregate plans completely', () => {
+    const plan = { mode: 'slices' as const, reason: 'test', slices: ['routes' as const] };
+    expect(appUnitJobs.filter((job) => isAppUnitJobSelected(plan, job))).toEqual([
+      'routes-1',
+      'routes-2',
+      'routes-3',
+      'routes-4',
+    ]);
+    expect(
+      appUnitJobs.every((job) => isAppUnitJobSelected({ ...plan, mode: 'aggregate' }, job))
+    ).toBe(true);
+    expect(appUnitJobs.some((job) => isAppUnitJobSelected({ ...plan, mode: 'skip' }, job))).toBe(
+      false
+    );
+  });
+});
+
+describe('Main coverage reuses only identical test commands', () => {
+  const target = {
+    executor: 'nx:run-commands',
+    options: {
+      cwd: 'packages/example',
+      command: 'pnpm exec vitest run tests --config vitest.config.ts',
+    },
+  };
+  it('accepts only the addition of instrumentation to the same command', () => {
+    expect(
+      coverageExecutesSameUnitCommand(target, {
+        ...target,
+        options: { ...target.options, command: target.options.command + ' --coverage' },
+      })
+    ).toBe(true);
+  });
+  it('keeps different configurations, working directories and test selections as residual tests', () => {
+    for (const options of [
+      { ...target.options, command: 'pnpm exec vitest run --coverage' },
+      { ...target.options, cwd: 'other' },
+      { ...target.options, command: target.options.command + ' --coverage.include=src/**' },
+    ])
+      expect(coverageExecutesSameUnitCommand(target, { ...target, options })).toBe(false);
+    expect(coverageExecutesSameUnitCommand({ executor: 'nx:noop' }, target)).toBe(false);
+  });
+});
+
+it('preserves failed App partition duration and retry evidence', () => {
+  const failure = new CiCommandExecutionError('app command', 'deterministic', [
+    { attempt: 1, durationMs: 12, classification: 'deterministic', signal: null },
+  ]);
+  vi.mocked(runCiCommand).mockImplementation(() => {
+    throw failure;
+  });
+  const report = vi.fn();
+  expect(() =>
+    runAppUnitPartition({ mode: 'aggregate', reason: 'test', slices: [] }, 'routes-1', report)
+  ).toThrow(failure);
+  expect(report).toHaveBeenCalledWith({
+    label: 'unit:app:routes-1',
+    projects: ['sva-studio-react'],
+    durationMs: 12,
+    retryCount: 0,
+  });
+  vi.mocked(runCiCommand).mockReset();
 });

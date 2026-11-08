@@ -1,3 +1,13 @@
+import { clearWorkspaceCoverageOutputs } from './coverage-artifacts.ts';
+import {
+  buildAppCoverageCommand,
+  buildCoveragePartitionCommand,
+  buildCoverageProjectCommand,
+  buildEarlyCoverageGateCommand,
+  excludeCoverageExemptProjects,
+} from './coverage-plan.ts';
+import { validateCoverageTestResults } from './validate-downloaded-coverage.ts';
+import { writeCoverageShardEvidence } from './coverage-shard-evidence.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -5,14 +15,11 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  buildAppCoverageCommand,
-  buildCoverageProjectCommand,
-  buildEarlyCoverageGateCommand,
-  clearWorkspaceCoverageOutputs,
-  excludeCoverageExemptProjects,
-  writeCoverageShardShadowEvidence,
-} from './affected-coverage-gate.ts';
-import { resolveCoveragePlan } from './coverage-plan.ts';
+  coveragePartitions,
+  prioritizeChangedCoverageProjects,
+  selectCoveragePartition,
+  resolveCoveragePlan,
+} from './coverage-plan.ts';
 import { loadWorkspaceProjectRoots } from './nx-project-graph.ts';
 
 const temporaryDirectories: string[] = [];
@@ -49,28 +56,18 @@ describe('affected-coverage-gate', () => {
     ).toEqual(['plugin-news']);
   });
 
-  it('keeps shard evidence write failures observational in the required coverage runner', () => {
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-
+  it('fails closed when mandatory project reports are missing', () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'required-coverage-'));
+    temporaryDirectories.push(directory);
     expect(() =>
-      writeCoverageShardShadowEvidence(
-        {
-          rootDir: '/workspace',
-          project: 'plugin-news',
-          phase: 'direct',
-          headSha: 'head',
-          projectRoots: [{ name: 'plugin-news', root: 'packages/plugin-news' }],
-        },
-        () => {
-          throw new Error('missing shard report');
-        }
-      )
-    ).not.toThrow();
-    expect(warning).toHaveBeenCalledWith(
-      'Coverage-Shard-Shadow-Evidenz konnte nicht geschrieben werden: missing shard report'
-    );
-
-    warning.mockRestore();
+      writeCoverageShardEvidence({
+        rootDir: directory,
+        project: 'example',
+        phase: 'direct',
+        headSha: 'head',
+        projectRoots: [{ name: 'example', root: 'packages/example' }],
+      })
+    ).toThrow(/fehlt/);
   });
 
   it('clears stale workspace coverage outputs before affected runs', () => {
@@ -155,5 +152,80 @@ describe('affected-coverage-gate', () => {
     expect(loadWorkspaceProjectRoots(rootDirectory)).toEqual([
       { name: 'example', root: 'packages/example' },
     ]);
+  });
+});
+
+describe('distributed coverage plan', () => {
+  const plan = {
+    changedFiles: ['packages/core/src/index.ts', 'nx.json'],
+    affectedProjects: ['core', 'data', 'plugin-waste-management', 'sva-studio-react'],
+    changedProjectPlan: {
+      mode: 'full-fallback' as const,
+      reason: 'unmapped',
+      directProjects: [],
+      remainingProjects: ['core', 'data', 'plugin-waste-management', 'sva-studio-react'],
+      unmappedFiles: ['nx.json'],
+    },
+    projectRoots: [{ name: 'core', root: 'packages/core' }],
+  };
+  it('prioritizes mapped changes without reducing a full fallback', () => {
+    const next = prioritizeChangedCoverageProjects(plan);
+    expect(next.changedProjectPlan.directProjects).toEqual(['core']);
+    expect(
+      [
+        ...next.changedProjectPlan.directProjects,
+        ...next.changedProjectPlan.remainingProjects,
+      ].sort()
+    ).toEqual([...plan.affectedProjects].sort());
+  });
+  it('preserves the complete fallback when Nx reports only a subset', () => {
+    const next = prioritizeChangedCoverageProjects({ ...plan, affectedProjects: ['core'] });
+    expect(next.affectedProjects).toEqual([...plan.changedProjectPlan.remainingProjects].sort());
+    expect(
+      [
+        ...next.changedProjectPlan.directProjects,
+        ...next.changedProjectPlan.remainingProjects,
+      ].sort()
+    ).toEqual([...plan.changedProjectPlan.remainingProjects].sort());
+    const empty = prioritizeChangedCoverageProjects({ ...plan, affectedProjects: [] });
+    expect(empty.affectedProjects).toEqual(next.affectedProjects);
+  });
+  it('assigns regular projects once and heavy projects their exact file shard count', () => {
+    const projects = coveragePartitions.flatMap((partition) =>
+      selectCoveragePartition(prioritizeChangedCoverageProjects(plan), partition)
+    );
+    expect(projects.filter((project) => project === 'core')).toHaveLength(1);
+    expect(projects.filter((project) => project === 'data')).toHaveLength(1);
+    expect(projects.filter((project) => project === 'sva-studio-react')).toHaveLength(4);
+    expect(projects.filter((project) => project === 'plugin-waste-management')).toHaveLength(2);
+    expect(() => selectCoveragePartition(plan, 'app-5')).toThrow(/Ungültige/);
+  });
+});
+
+describe('coverage execution contract', () => {
+  it('keeps reports separate and instruments the heavy shard', () => {
+    expect(buildCoveragePartitionCommand('sva-studio-react', 'app-2')).toContain('--shard=2/4');
+    expect(buildCoveragePartitionCommand('plugin-waste-management', 'waste-1')).toContain(
+      '--shard=1/2'
+    );
+    expect(buildCoveragePartitionCommand('core', 'direct-1')).not.toContain('--shard=');
+  });
+  it('requires a successful, exact, disjoint test file union', () => {
+    const result = {
+      success: true,
+      numFailedTests: 0,
+      numFailedTestSuites: 0,
+      testResults: [{ name: '/repo/a.test.ts', assertionResults: [] }],
+    };
+    expect(() => validateCoverageTestResults([result], ['a.test.ts'], '/repo')).not.toThrow();
+    expect(() => validateCoverageTestResults([result, result], ['a.test.ts'], '/repo')).toThrow(
+      /Doppelte/
+    );
+    expect(() =>
+      validateCoverageTestResults([result], ['a.test.ts', 'b.test.ts'], '/repo')
+    ).toThrow(/unvollständig/);
+    expect(() =>
+      validateCoverageTestResults([{ ...result, success: false }], ['a.test.ts'], '/repo')
+    ).toThrow(/fehlgeschlagen/);
   });
 });

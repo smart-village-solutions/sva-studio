@@ -1298,7 +1298,8 @@ test.describe('news plugin', () => {
                   .poll(async () => (await sidebar.boundingBox())?.width)
                   .toBe(width < 1280 ? 80 : 288);
               if (width === 390 || width === 1280) {
-                await expect(page).toHaveScreenshot(
+                // Report the whole visual matrix; every mismatch still fails this test.
+                await expect.soft(page).toHaveScreenshot(
                   `studio-${view}-${theme}-${mode}-${width}.png`,
                   {
                     fullPage: true,

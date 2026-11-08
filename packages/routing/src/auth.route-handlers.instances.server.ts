@@ -53,6 +53,7 @@ export const instanceAuthHandlerMap = {
   '/api/v1/iam/instances/$instanceId': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstance),
     PATCH: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.updateInstance),
+    DELETE: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.deleteInstance),
   },
   '/api/v1/iam/instances/$instanceId/provisioning/retry': {
     POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.retryTenantProvisioning),

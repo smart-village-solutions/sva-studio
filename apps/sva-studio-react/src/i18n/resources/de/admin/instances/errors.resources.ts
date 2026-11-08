@@ -1,4 +1,7 @@
 export const errorsInstancesAdminDEResources = {
+  deleteConflict: 'Die Instanz muss archiviert und unverändert sein. Bitte die Liste neu laden.',
+  deleteBusy: 'Die Instanz hat noch ausstehende oder laufende Jobs beziehungsweise Provisioning-Läufe.',
+  deleteLegalHold: 'Eine aktive Aufbewahrungssperre verhindert die Löschung.',
   stalePlan:
     'Der bestätigte Plan ist veraltet. Es wurde keine neue Ausführung freigegeben. Laden und prüfen Sie die aktuelle Provisioning-Vorschau.',
   unauthorized: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',

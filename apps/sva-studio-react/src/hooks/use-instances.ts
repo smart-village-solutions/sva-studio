@@ -254,7 +254,9 @@ export const useInstances = () => {
           await refreshSession();
         }
         await refetch();
-        if (instanceId) {
+        if (instanceId && operation === 'delete_instance') {
+          setSelectedInstance((current) => current?.instanceId === instanceId ? null : current);
+        } else if (instanceId) {
           await loadInstance(instanceId);
           await refreshInstanceAudit(instanceId);
         }

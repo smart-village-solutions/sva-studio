@@ -34,6 +34,7 @@ const reconcileInstanceKeycloakMock = vi.fn();
 const activateInstanceMock = vi.fn();
 const suspendInstanceMock = vi.fn();
 const archiveInstanceMock = vi.fn();
+const deleteInstanceMock = vi.fn();
 const getInstanceAuditRunMock = vi.fn();
 const getSingleInstanceAuditRunMock = vi.fn();
 const authMockValue = {
@@ -59,6 +60,15 @@ const waitForInstancesLoaded = async (
     expect(result.current.isLoading).toBe(false);
   });
 };
+
+vi.mock('../lib/iam-http-client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/iam-http-client')>();
+  return { ...actual, requestJson: (path: string, init?: RequestInit) => {
+    if (init?.method !== 'DELETE') return actual.requestJson(path, init);
+    const payload = JSON.parse(String(init.body));
+    return deleteInstanceMock(payload.instanceId, payload.expectedUpdatedAt, payload.confirmation);
+  } };
+});
 
 vi.mock('../lib/iam-api', async () => {
   const actual = await vi.importActual<typeof import('../lib/iam-api')>('../lib/iam-api');
@@ -1423,4 +1433,32 @@ describe('useInstances', () => {
       code: 'database_unavailable',
     });
   });
+  it('refreshes the list after deletion without reloading the removed tenant or probing Keycloak', async () => {
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
+    await act(async () => { await result.current.loadInstance('demo'); });
+    getInstanceMock.mockClear();
+    getInstanceKeycloakStatusMock.mockClear();
+    getSingleInstanceAuditRunMock.mockClear();
+    deleteInstanceMock.mockResolvedValue({ data: { instanceId: 'demo', deleted: true } });
+    await act(async () => { await result.current.deleteInstance('demo', '2026-11-08T00:00:00.000Z', 'DELETE demo'); });
+    expect(deleteInstanceMock).toHaveBeenCalledWith('demo', '2026-11-08T00:00:00.000Z', 'DELETE demo');
+    expect(result.current.selectedInstance).toBeNull();
+    expect(getInstanceMock).not.toHaveBeenCalled();
+    expect(getInstanceKeycloakStatusMock).not.toHaveBeenCalled();
+    expect(getSingleInstanceAuditRunMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps a committed deletion successful when list refresh has a network error', async () => {
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
+    deleteInstanceMock.mockResolvedValue({ data: { instanceId: 'demo', deleted: true } });
+    listInstancesMock.mockRejectedValueOnce({ status: 503, code: 'network_error', message: 'offline' });
+    let deleted: unknown;
+    await act(async () => { deleted = await result.current.deleteInstance('demo', '2026-11-08T00:00:00.000Z', 'DELETE demo'); });
+    expect(deleted).toEqual({ instanceId: 'demo', deleted: true });
+    expect(result.current.mutationError).toBeNull();
+    expect(result.current.error).toMatchObject({ status: 503, code: 'network_error' });
+  });
+
 });

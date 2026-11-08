@@ -14,6 +14,9 @@ export const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = 
     'Der Hostname ist für den Studio-Root oder einen Infrastruktur-Dienst reserviert.',
   tenant_hostname_conflict: 'Der Hostname ist bereits einer anderen Studio-Instanz zugeordnet.',
   auth_realm_conflict: 'Der Keycloak-Realm ist bereits einer anderen Studio-Instanz zugeordnet.',
+  instance_delete_conflict: 'Nur eine unverändert archivierte Instanz kann gelöscht werden. Bitte laden Sie die Liste neu.',
+  instance_delete_busy: 'Die Instanz hat noch ausstehende oder laufende Jobs beziehungsweise Provisioning-Läufe.',
+  instance_delete_legal_hold: 'Eine aktive Aufbewahrungssperre verhindert die Löschung.',
   instance_configuration_change_blocked:
     'Die Instanzkonfiguration kann während eines geplanten oder laufenden Provisionings nicht geändert werden. Bitte versuchen Sie es danach erneut.',
   provisioning_retry_mode_invalid:

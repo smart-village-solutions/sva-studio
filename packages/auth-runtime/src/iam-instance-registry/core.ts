@@ -1,3 +1,5 @@
+import { resetInstanceRegistryCache } from '@sva/data-repositories/server';
+
 import { synchronizeMailTemplate, synchronizeInheritedMailTemplates } from './mail-template-sync.js';
 import {
   asApiItem,
@@ -19,6 +21,7 @@ import {
   bootstrapInstanceAdminStructureMutation,
   mapInstanceMutationError,
   mutateInstanceStatus,
+  deleteInstanceMutation,
   revokeInstanceModuleMutation,
   seedInstanceIamBaselineMutation,
 } from './core-mutations.js';
@@ -178,6 +181,12 @@ export const suspendInstanceInternal = async (
   request: Request,
   ctx: RegistryRequestContext
 ): Promise<Response> => mutateInstanceStatus(request, ctx, 'suspended');
+
+export const deleteInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> => {
+  const response = await deleteInstanceMutation(request, ctx);
+  if (response.ok) resetInstanceRegistryCache();
+  return response;
+};
 
 export const archiveInstanceInternal = async (
   request: Request,

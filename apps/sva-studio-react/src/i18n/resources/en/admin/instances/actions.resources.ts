@@ -1,4 +1,8 @@
 export const actionsInstancesAdminENResources = {
+  delete: 'Delete permanently',
+  deleteDescription: 'The archived Studio instance {{instanceId}} and its local data, connections and credentials will be permanently deleted. Mainserver and Keycloak remain unchanged. Object storage files and external plugin databases are not cleaned up.',
+  deleteConfirmation: 'Enter {{phrase}} to confirm.',
+  cancelDelete: 'Cancel',
   more: 'More actions',
   create: 'Create instance',
   edit: 'Edit',

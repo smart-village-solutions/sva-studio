@@ -43,6 +43,9 @@ export const getInstanceErrorMessage = (error: IamHttpError | null) => {
       return t('admin.instances.errors.csrfValidationFailed');
     case 'reauth_required':
       return t('admin.instances.errors.reauthRequired');
+    case 'instance_delete_conflict': return t('admin.instances.errors.deleteConflict');
+    case 'instance_delete_busy': return t('admin.instances.errors.deleteBusy');
+    case 'instance_delete_legal_hold': return t('admin.instances.errors.deleteLegalHold');
     case 'conflict':
       return t('admin.instances.errors.conflict');
     case 'database_unavailable':

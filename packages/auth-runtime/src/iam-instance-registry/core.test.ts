@@ -34,6 +34,8 @@ const state = vi.hoisted(() => {
     assignInstanceModuleMutation: vi.fn(async () => new Response('assign')),
     bootstrapInstanceAdminStructureMutation: vi.fn(async () => new Response('bootstrap')),
     mapInstanceMutationError: vi.fn(),
+    resetInstanceRegistryCache: vi.fn(),
+    deleteInstanceMutation: vi.fn(async () => new Response('deleted')),
     mutateInstanceStatus: vi.fn(
       async (_request, _ctx, nextStatus: string) => new Response(nextStatus)
     ),
@@ -98,7 +100,10 @@ vi.mock('./http.js', () => ({
   requireFreshReauth: state.requireFreshReauth,
 }));
 
+vi.mock('@sva/data-repositories/server', () => ({ resetInstanceRegistryCache: state.resetInstanceRegistryCache }));
+
 vi.mock('./core-mutations.js', () => ({
+  deleteInstanceMutation: state.deleteInstanceMutation,
   assignInstanceModuleMutation: state.assignInstanceModuleMutation,
   bootstrapInstanceAdminStructureMutation: state.bootstrapInstanceAdminStructureMutation,
   mapInstanceMutationError: state.mapInstanceMutationError,
@@ -125,6 +130,17 @@ vi.mock('./plugin-activation-policy-snapshot.js', () => ({
 }));
 
 describe('iam-instance-registry core handlers', () => {
+  it('clears all local hostname aliases only after a successful delete response', async () => {
+    const subject = await import('./core.js');
+    const request = new Request('https://studio.example/api/v1/iam/instances/demo', { method: 'DELETE' });
+    state.deleteInstanceMutation.mockResolvedValueOnce(new Response('blocked', { status: 409 }));
+    await subject.deleteInstanceInternal(request, {} as never);
+    expect(state.resetInstanceRegistryCache).not.toHaveBeenCalled();
+    state.deleteInstanceMutation.mockResolvedValueOnce(new Response('deleted'));
+    await subject.deleteInstanceInternal(request, {} as never);
+    expect(state.resetInstanceRegistryCache).toHaveBeenCalledOnce();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     state.readInstanceRegistryPluginOidcClientRequirements.mockReturnValue([]);

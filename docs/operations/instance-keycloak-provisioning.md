@@ -664,3 +664,46 @@ Für eine echte Abnahme muss ein frischer Provisioning-Plan mit der aktuellen Ba
 - [Keycloak-Tenant-Realm-Bootstrap für Studio](./keycloak-tenant-realm-bootstrap.md)
 - [Keycloak Service-Account Setup für IAM-User- und Rollen-Management](./keycloak-service-account-setup-iam.md)
 - [Deployment-Runbook: IAM Account- und Admin-UI](./iam-deployment-runbook.md)
+
+## Archivierte Studio-Instanz endgültig löschen
+
+In der Root-Instanzübersicht steht bei archivierten Instanzen unter „Weitere
+Aktionen“ die Aktion „Endgültig löschen“ bereit. Vorher ausstehende Jobs und
+Provisioning-Läufe abschließen beziehungsweise über deren bestehende Bedienpfade
+beenden. Aktive Aufbewahrungssperren verhindern die Löschung. Eine frische Anmeldung
+und die Eingabe von `DELETE <instanceId>` sind erforderlich.
+
+Die Aktion löscht unwiderruflich die Daten der gewählten Instanz in der aktuellen
+Studio-Datenbank, einschließlich lokaler Accounts, Inhalte, Medienmetadaten,
+Hostnamen, Schnittstellenkonfiguration und verschlüsselter Zugangsdaten. Globale
+Kataloge, andere Instanzen und der Plattform-Audit bleiben bestehen.
+**Mainserver und Keycloak werden nicht verändert; es gibt keine schreibenden Aufrufe an diese Systeme.** Das gilt auch
+für von Studio angelegte Realms, Clients, Rollen und Benutzer. Dateien im
+Objektspeicher, externe Plugin-Datenbanken, DNS und Ingress-Konfiguration bleiben
+erhalten. Eine Wiederherstellung lokaler Daten erfolgt bei Bedarf aus dem regulären
+Datenbank-Backup; die Löschfunktion hat keinen Undo-Pfad.
+
+Der API-Einstieg ist `DELETE /api/v1/iam/instances/{instanceId}` mit JSON:
+
+```json
+{
+  "instanceId": "testgemeinde",
+  "expectedUpdatedAt": "2026-11-08 12:00:00.123456+00",
+  "confirmation": "DELETE testgemeinde"
+}
+```
+
+`expectedUpdatedAt` muss aus der aktuellen Instanzliste stammen. Sessions benötigen
+Root-Host, Root-Admin-Rolle, CSRF-Schutz und frische Reauth-Evidenz. Der bestehende
+`Idempotency-Key`-Header bleibt erforderlich; ein Wiederholungsaufruf nach erfolgter
+Löschung liefert `404`. Maschinenzugriffe benötigen die Aktion `instance.delete`
+sowie die bestehende Challenge-Bestätigung. Es wird kein zusätzlicher MCP-Löschtool
+bereitgestellt.
+
+Bei Erfolg liefert die API `200` mit `data: { instanceId, deleted: true }`. Ein
+veränderter oder nicht archivierter Tenant liefert `instance_delete_conflict`,
+ausstehende Arbeit `instance_delete_busy` und aktive Aufbewahrungssperren
+`instance_delete_legal_hold`, jeweils mit `409`. Die Datenbankfunktion rollt bei
+Fehlern alle Teillöschungen zurück; der Löschbeleg `instance.deleted` wird atomar
+in `iam.platform_activity_logs` gespeichert. Die Migration `0114` muss vor Nutzung
+der neuen Anwendungsversion über den kanonischen Rollout-Prozess angewendet sein.

@@ -205,6 +205,7 @@ const authServerMocks = vi.hoisted(() => {
       seedInstanceIamBaseline: vi.fn(async () => response('seedInstanceIamBaselineHandler')),
       activateInstance: vi.fn(async () => response('activateInstanceHandler')),
       suspendInstance: vi.fn(async () => response('suspendInstanceHandler')),
+      deleteInstance: vi.fn(async () => response('deleteInstanceHandler')),
       archiveInstance: vi.fn(async () => response('archiveInstanceHandler')),
     },
     wasteManagementHandlers: {
@@ -476,6 +477,12 @@ describe('auth.routes.server', () => {
       ).toHaveBeenCalledTimes(2);
     }
   );
+
+  it('dispatches DELETE on the existing instance route to its authenticated deletion handler', async () => {
+    const response = await dispatchAuthRouteRequest(new Request('https://studio.example/api/v1/iam/instances/demo', { method: 'DELETE' }));
+    expect(response?.status).toBe(200);
+    expect(authServerMocks.instanceRegistryHandlers.deleteInstance).toHaveBeenCalledOnce();
+  });
 
   it('routes general confirmation reads and writes through the guarded registry handler', async () => {
     const handlers = resolveAuthHandlers('/api/v1/iam/templates/email-verification');

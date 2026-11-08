@@ -251,11 +251,11 @@ describe('ModulesPage', () => {
     expect(card).toBeTruthy();
     expect(within(card!).getByText('Meldungen')).toBeTruthy();
     expect(within(card!).getByText('Frag den Assistenten')).toBeTruthy();
-    expect(within(card!).getByText('Suche')).toBeTruthy();
-    expect(within(card!).getAllByText('In Entwicklung')).toHaveLength(3);
+    expect(within(card!).queryByText('Suche')).toBeNull();
+    expect(within(card!).getAllByText('In Entwicklung')).toHaveLength(2);
     expect(within(card!).queryByRole('button')).toBeNull();
     expect(studioPluginSnapshot.registry.plugins.some((plugin) => plugin.id === 'search')).toBe(
-      false
+      true
     );
   });
 

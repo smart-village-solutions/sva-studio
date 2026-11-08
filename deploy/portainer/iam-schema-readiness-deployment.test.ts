@@ -82,7 +82,7 @@ describe('IAM schema readiness deployment contract', () => {
     expect(standaloneProvisioner).toContain('./migrate-entrypoint.sh');
     expect(standaloneProvisioner).toContain("SSF_PLUGIN_DATABASE_ENABLED: 'true'");
     expect(standaloneProvisioner).toMatch(
-      /migrate:[\s\S]*?networks:\n\s+- studio-internal\n\s+- ssf-edge\n\n  provisioner:/u
+      /migrate:[\s\S]*?networks:\n\s+- studio-internal\n\n  provisioner:/u
     );
     expect(standaloneRunbook).toContain('keycloak-provisioner.compose.yml');
     expect(standaloneRunbook).toContain('ps app provisioner');

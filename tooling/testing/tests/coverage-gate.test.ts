@@ -726,3 +726,50 @@ describe('coverage gate', () => {
     expect(baseline.projects['server-runtime'].branches).toBe(66);
   });
 });
+
+it('applies shared floors and regression policy to an external root and rejects absent reports', () => {
+  const rootDir = createTempWorkspace();
+  writePolicy(rootDir, {
+    globalFloors: { lines: 85, statements: 85, functions: 85, branches: 85 },
+  });
+  const pluginRoot = path.join(rootDir, 'external-plugin');
+  fs.mkdirSync(path.join(pluginRoot, 'coverage'), { recursive: true });
+  fs.mkdirSync(path.join(pluginRoot, 'config'));
+  fs.writeFileSync(
+    path.join(pluginRoot, 'package.json'),
+    JSON.stringify({ name: '@sva/plugin-external' })
+  );
+  fs.writeFileSync(
+    path.join(pluginRoot, 'config/coverage-baseline.json'),
+    JSON.stringify({
+      projects: {
+        '@sva/plugin-external': { lines: 90, statements: 90, functions: 90, branches: 90 },
+      },
+    })
+  );
+  fs.mkdirSync(path.join(pluginRoot, 'src'));
+  fs.writeFileSync(path.join(pluginRoot, 'src/index.ts'), 'export const value = 1;');
+  fs.writeFileSync(
+    path.join(pluginRoot, 'coverage/lcov.info'),
+    'SF:src/index.ts\nDA:1,1\nend_of_record\n'
+  );
+  const summary = {
+    total: Object.fromEntries(
+      ['lines', 'statements', 'functions', 'branches'].map((metric) => [
+        metric,
+        { total: 100, covered: 89, skipped: 0, pct: 89 },
+      ])
+    ),
+  };
+  fs.writeFileSync(
+    path.join(pluginRoot, 'coverage/coverage-summary.json'),
+    JSON.stringify(summary)
+  );
+  expect(
+    runCoverageGate({ rootDir, pluginRoot, requireSummaries: true, stepSummaryPath: null }).errors
+  ).toEqual(expect.arrayContaining([expect.stringContaining('dropped by 1.00pp')]));
+  fs.unlinkSync(path.join(pluginRoot, 'coverage/coverage-summary.json'));
+  expect(() => runCoverageGate({ rootDir, pluginRoot, requireSummaries: true })).toThrow(
+    'No coverage-summary'
+  );
+});

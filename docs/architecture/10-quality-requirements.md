@@ -566,3 +566,11 @@ Baustellen müssen nach einer verlorenen Antwort oder einem lokalen Teilfehler o
 ## Stellenplugin
 
 Job-Vertragstests müssen ersetzende Provider-Mutationen und unabhängigen Readback einschließlich zusätzlicher Arbeitgeber/Kontakte/Daten, Nullable-Metadaten und typübergreifender externe-ID-Kollisionen abdecken. Weitere Pflichtfälle sind Antwortverlust, Reload, Kontextwechsel, lokale Teilfehler und bestätigtes Löschen ohne automatischen Retry. Das verbleibende externe Konkurrenzfenster, die akzeptierte Importreferenz-Ausnahme und die gesonderte Live-/App-Abnahme werden ausdrücklich ausgewiesen. Siehe [Stellenanzeigenreferenz](../reference/jobs.md).
+
+
+## Plugin-QS über Repository-Grenzen
+
+- Wenn ein Plugin ausgelagert wird, erfassen die gemeinsamen Prüfer weiterhin seine vollständigen produktiven Quellen. Bei fehlender Coverage oder leerem externen Scope scheitert der Nachweis. Für neue Plugins gelten 85 % je Gesamtmetrik und die vorhandene New-Code-/Regressions-/Komplexitäts-Policy.
+- Wenn ein Paket nur durch zufällige Elternabhängigkeiten funktioniert, scheitert der frische Consumer außerhalb des Studio-Baums. Commit, öffentliche Peers und Paket-Digest sind Teil der Evidenz.
+- Wenn Sitzung, Instanz, Modulaktivierung oder Rechte fehlen beziehungsweise entzogen werden, verhindert der tatsächliche Host-Dispatcher den direkten Zugriff. Ein Fehler im tatsächlichen Audit-Insert rollt die Konfigurationsänderung vollständig zurück; ein Readback belegt den unveränderten Zustand.
+- Wenn sich öffentliche SDK-/UI-/Host-Verträge ändern, muss das Referenzpaket gegen den neuen Kandidaten geprüft werden, auch ohne Plugin-Commit. Veröffentlichung und Studio-Übernahme müssen dieselben geprüften Paketbytes verwenden. CI-Erfolg, manuelle UI-/Fachabnahme und Freigabe als Musterlösung bleiben getrennte Nachweise.

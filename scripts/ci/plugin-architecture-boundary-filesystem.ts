@@ -37,8 +37,18 @@ const isPluginPackageName = (packageName: string): boolean =>
   packageName.startsWith('@sva/plugin-') && packageName !== '@sva/plugin-sdk';
 
 export const readPluginPackages = async (
-  projectRoot: string
+  projectRoot: string, externalOnly = false
 ): Promise<readonly PluginPackage[]> => {
+  const rootManifest = path.join(projectRoot, 'package.json');
+  if (await pathExists(rootManifest)) {
+    const packageJson = JSON.parse(await readFile(rootManifest, 'utf8')) as PackageJson;
+    if (isPluginPackageName(packageJson.name ?? '')) {
+      const files = await collectSourceFiles(path.join(projectRoot, 'src'));
+      if (files.length === 0) throw new Error('external_plugin_sources_required');
+      return [{ packageName: packageJson.name!, packageDir: projectRoot, packageJson }];
+    }
+  }
+  if (externalOnly) throw new Error('explicit_external_plugin_root_required');
   const packagesDir = path.join(projectRoot, 'packages');
   if (!(await pathExists(packagesDir))) {
     return [];
@@ -98,12 +108,13 @@ export const normalizeWorkspaceModuleSpecifier = async (
   const normalized = path.posix.normalize(moduleSpecifier.replaceAll('\\', '/'));
   const withoutRelativePrefix = normalized.replace(/^(?:(?:\.\.\/)|(?:\.\/))+/, '');
   if (withoutRelativePrefix.startsWith('apps/')) return withoutRelativePrefix;
+  if (path.isAbsolute(moduleSpecifier)) return `external-path:${moduleSpecifier}`;
   if (!normalized.startsWith('.')) return null;
   const resolvedPath = path.resolve(path.dirname(importerPath), moduleSpecifier);
   const pluginPackagePrefix = `${packageDir}${path.sep}`;
   if (resolvedPath === packageDir || resolvedPath.startsWith(pluginPackagePrefix)) return null;
   const projectRootPrefix = `${projectRoot}${path.sep}`;
-  if (!resolvedPath.startsWith(projectRootPrefix)) return null;
+  if (!resolvedPath.startsWith(projectRootPrefix)) return `external-path:${moduleSpecifier}`;
   const resolvedRelativePath = toPosixRelativePath(projectRoot, resolvedPath);
   if (resolvedRelativePath.startsWith('apps/')) return resolvedRelativePath;
   if (!resolvedRelativePath.startsWith('packages/')) return null;

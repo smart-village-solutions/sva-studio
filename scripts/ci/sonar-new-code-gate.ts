@@ -10,6 +10,8 @@ import { isSonarCoverageExcludedPath, readSonarCoverageExclusions } from './sona
 
 interface RunSonarNewCodeGateOptions {
   rootDir?: string;
+  policyRoot?: string;
+  externalPlugin?: boolean;
   baseRef?: string;
   headRef?: string;
   targetPct?: number;
@@ -68,13 +70,17 @@ export function runSonarNewCodeGate(
   const baseRef = options.baseRef ?? 'origin/main';
   const headRef = options.headRef ?? resolveSonarHeadRef();
   const targetPct = options.targetPct ?? defaultTargetPct;
-  const policy = loadPolicy(rootDir);
+  const policy = loadPolicy(options.policyRoot ?? rootDir);
   const sonarCoverageExclusions = readSonarCoverageExclusions(rootDir);
-  const projectRoots = resolveProjectRoots(rootDir, policy);
+  const projectRoots = options.externalPlugin
+    ? [path.join(rootDir, 'src')]
+    : resolveProjectRoots(rootDir, policy);
   const changedFiles = listChangedFiles(rootDir, baseRef, headRef, projectRoots).filter(
     (changedFile) => !isSonarCoverageExcludedPath(changedFile.path, sonarCoverageExclusions)
   );
-  const coverageByFile = parseLcovCoverage(rootDir);
+  const coverageByFile = parseLcovCoverage(rootDir, options.externalPlugin);
+  if (options.externalPlugin && coverageByFile.size === 0)
+    throw new Error('external_plugin_lcov_required');
 
   const {
     coveredLines,
@@ -116,6 +122,8 @@ export function runSonarNewCodeGate(
 
 function parseArgs(argv: string[]): RunSonarNewCodeGateOptions {
   return argv.reduce<RunSonarNewCodeGateOptions>((options, argument) => {
+    if (argument === '--external-plugin') options.externalPlugin = true;
+    if (argument.startsWith('--policy-root=')) options.policyRoot = argument.slice(14);
     if (argument.startsWith('--base=')) {
       options.baseRef = argument.slice('--base='.length);
       return options;

@@ -166,7 +166,10 @@ describe('complexity gate', () => {
     const scriptDir = path.join(rootDir, 'scripts/debug/otel');
     fs.mkdirSync(scriptDir, { recursive: true });
     fs.writeFileSync(path.join(scriptDir, 'diagnostic.mts'), 'export const diagnostic = true;\n');
-    fs.writeFileSync(path.join(scriptDir, 'diagnostic.d.mts'), 'export declare const diagnostic: boolean;\n');
+    fs.writeFileSync(
+      path.join(scriptDir, 'diagnostic.d.mts'),
+      'export declare const diagnostic: boolean;\n'
+    );
 
     const policy = JSON.parse(
       fs.readFileSync(path.join(process.cwd(), 'tooling/quality/complexity-policy.json'), 'utf8')
@@ -519,4 +522,18 @@ describe('complexity gate', () => {
       ])
     );
   });
+});
+
+it('checks an external src root using the shared critical thresholds and rejects an empty root', () => {
+  const rootDir = createTempWorkspace();
+  writePolicy(rootDir);
+  const pluginRoot = path.join(rootDir, 'external');
+  fs.mkdirSync(path.join(pluginRoot, 'src'), { recursive: true });
+  const file = path.join(pluginRoot, 'src/index.ts');
+  fs.writeFileSync(file, 'export const a = 1;\nexport const b = 2;\n');
+  const result = runComplexityGate({ rootDir, pluginRoot, stepSummaryPath: null });
+  expect(result.passed).toBe(false);
+  expect(result.analyzedFiles.map((f) => f.metrics.filePath)).toEqual(['src/index.ts']);
+  fs.unlinkSync(file);
+  expect(() => runComplexityGate({ rootDir, pluginRoot })).toThrow('No files matched');
 });

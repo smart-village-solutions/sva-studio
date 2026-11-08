@@ -31,7 +31,9 @@ const state = vi.hoisted(() => ({
   readAccountCreateContribution: vi.fn(),
 }));
 
-vi.mock('../iam-instance-registry/mail-template-sync.js',()=>({readMailTemplate:state.readMailTemplate}));
+vi.mock('../iam-instance-registry/mail-template-sync.js', () => ({
+  readMailTemplate: state.readMailTemplate,
+}));
 vi.mock('./user-create-persistence.js', () => ({
   persistCreatedUser: state.persistCreatedUser,
   prepareCreatedUserAssignments: state.prepareCreatedUserAssignments,
@@ -78,7 +80,7 @@ vi.mock('./mainserver-user-provisioning.js', () => ({
 
 describe('executeCreateUser', () => {
   beforeEach(() => {
-    state.readMailTemplate.mockResolvedValue({status:'synced'});
+    state.readMailTemplate.mockResolvedValue({ status: 'synced' });
     vi.clearAllMocks();
     state.persistCreatedUser.mockResolvedValue({
       responseData: {
@@ -210,11 +212,98 @@ describe('executeCreateUser', () => {
     expect(createUser).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { instanceIds: undefined },
+    { instanceIds: ['bb-frankfurt'] },
+    { instanceIds: ['bb-frankfurt-oder', 'other-instance'] },
+  ])(
+    'restores the Studio instance after Mainserver provisioning changed it to $instanceIds',
+    async ({ instanceIds }) => {
+      const attributes = {
+        ...(instanceIds ? { instanceId: instanceIds } : {}),
+        locale: ['de'],
+        mainserverUserApplicationId: ['mainserver-app-1'],
+        mainserverUserApplicationSecret: ['mainserver-secret-1'],
+      };
+      const getUserAttributes = vi
+        .fn()
+        .mockResolvedValueOnce(attributes)
+        .mockResolvedValueOnce({ ...attributes, instanceId: ['bb-frankfurt-oder'] });
+      const updateUser = vi.fn(async () => undefined);
+      const { persistProvisionedMainserverCredentials } =
+        await import('./mainserver-credential-persistence.js');
+
+      await persistProvisionedMainserverCredentials({
+        identityProvider: { getUserAttributes, updateUser },
+        instanceId: 'bb-frankfurt-oder',
+        keycloakSubject: 'kc-user-1',
+        credentials: {
+          dataProviderId: '4711',
+          mainserverUserApplicationId: 'mainserver-app-1',
+          mainserverUserApplicationSecret: 'mainserver-secret-1',
+        },
+        trackKeycloakCall: state.trackKeycloakCall,
+      });
+
+      expect(updateUser).toHaveBeenCalledExactlyOnceWith('kc-user-1', {
+        attributes: { ...attributes, instanceId: ['bb-frankfurt-oder'] },
+      });
+      expect(getUserAttributes).toHaveBeenLastCalledWith(
+        'kc-user-1',
+        expect.arrayContaining([
+          'instanceId',
+          'mainserverUserApplicationId',
+          'mainserverUserApplicationSecret',
+        ])
+      );
+    }
+  );
+
+  it.each([
+    { instanceIds: undefined },
+    { instanceIds: ['bb-frankfurt'] },
+    { instanceIds: ['bb-frankfurt-oder', 'other-instance'] },
+  ])(
+    'rejects a credential readback whose Studio instance is still $instanceIds',
+    async ({ instanceIds }) => {
+      const attributes = {
+        mainserverUserApplicationId: ['mainserver-app-1'],
+        mainserverUserApplicationSecret: ['mainserver-secret-1'],
+      };
+      const { persistProvisionedMainserverCredentials } =
+        await import('./mainserver-credential-persistence.js');
+
+      await expect(
+        persistProvisionedMainserverCredentials({
+          identityProvider: {
+            getUserAttributes: vi
+              .fn()
+              .mockResolvedValueOnce({ ...attributes, instanceId: ['bb-frankfurt'] })
+              .mockResolvedValueOnce({
+                ...attributes,
+                ...(instanceIds ? { instanceId: instanceIds } : {}),
+              }),
+            updateUser: vi.fn(async () => undefined),
+          },
+          instanceId: 'bb-frankfurt-oder',
+          keycloakSubject: 'kc-user-1',
+          credentials: {
+            dataProviderId: '4711',
+            mainserverUserApplicationId: 'mainserver-app-1',
+            mainserverUserApplicationSecret: 'mainserver-secret-1',
+          },
+          trackKeycloakCall: state.trackKeycloakCall,
+        })
+      ).rejects.toMatchObject({ code: 'mainserver_instance_scope_mismatch', statusCode: 409 });
+    }
+  );
+
   it('skips the Keycloak write when the Mainserver attributes are already current', async () => {
     const updateUser = vi.fn(async () => undefined);
     const identityProvider = {
       provider: {
         getUserAttributes: vi.fn(async () => ({
+          instanceId: ['instance-1'],
           locale: ['de'],
           mainserverUserApplicationId: ['mainserver-app-1'],
           mainserverUserApplicationSecret: ['mainserver-secret-1'],
@@ -328,6 +417,7 @@ describe('executeCreateUser', () => {
             .fn()
             .mockResolvedValueOnce({})
             .mockResolvedValueOnce({
+              instanceId: ['instance-1'],
               mainserverUserApplicationId: ['mainserver-app-1'],
               mainserverUserApplicationSecret: ['mainserver-secret-1'],
             }),
@@ -345,6 +435,7 @@ describe('executeCreateUser', () => {
     ).resolves.toBeUndefined();
     expect(updateUser).toHaveBeenCalledWith('kc-user-1', {
       attributes: {
+        instanceId: ['instance-1'],
         mainserverUserApplicationId: ['mainserver-app-1'],
         mainserverUserApplicationSecret: ['mainserver-secret-1'],
       },
@@ -606,6 +697,7 @@ describe('executeCreateUser', () => {
     expect(identityProvider.provider.getUserAttributes).toHaveBeenCalledWith('kc-user-1');
     expect(identityProvider.provider.updateUser).toHaveBeenCalledWith('kc-user-1', {
       attributes: {
+        instanceId: ['instance-1'],
         locale: ['de'],
         mainserverUserApplicationId: ['mainserver-app-1'],
         mainserverUserApplicationSecret: ['mainserver-secret-1'],
@@ -786,7 +878,7 @@ describe('executeCreateUser', () => {
   });
 
   it('keeps user creation successful and blocks a drifted custom invitation', async () => {
-    state.readMailTemplate.mockResolvedValue({status:'drift'});
+    state.readMailTemplate.mockResolvedValue({ status: 'drift' });
     state.resolveAuthConfigForInstance.mockResolvedValue({
       clientId: 'sva-studio',
       redirectUri: 'https://tenant.example.test/auth/callback',

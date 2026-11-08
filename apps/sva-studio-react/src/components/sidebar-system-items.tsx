@@ -1,15 +1,15 @@
 import {
-  IconActivityHeartbeat,
-  IconBuildingCommunity,
+  IconActivity as IconActivityHeartbeat,
+  IconBuilding as IconBuildingCommunity,
   IconFileText,
-  IconHierarchy3,
-  IconPackages,
+  IconSitemap as IconHierarchy3,
+  IconPackage as IconPackages,
   IconDeviceMobile,
   IconPlugConnected,
   IconShieldCheck,
-  IconShieldLock,
-  IconTemplate,
-  IconUserSquareRounded,
+  IconShield as IconShieldLock,
+  IconLayoutDashboard as IconTemplate,
+  IconAddressBook as IconUserSquareRounded,
   IconUsersGroup,
 } from '@tabler/icons-react';
 import { t } from '../i18n';
@@ -25,6 +25,7 @@ const buildUserChildren = (access: SidebarAccess): SidebarLeafItem[] => {
     canAccessAdminPrivacy,
     canAccessAdminRoles,
     canAccessAdminUsers,
+    canAccessTenantLoginMfa,
     canAccessTenantInvitationTemplate,
   } = access;
   return [
@@ -36,6 +37,17 @@ const buildUserChildren = (access: SidebarAccess): SidebarLeafItem[] => {
             to: '/admin/users',
             label: t('shell.sidebar.accounts'),
             icon: IconUserSquareRounded,
+          },
+        ]
+      : []),
+    ...(canAccessTenantLoginMfa
+      ? [
+          {
+            kind: 'link' as const,
+            id: 'login-mfa',
+            to: '/admin/users/authentication-policy',
+            label: t('shell.sidebar.loginMfa'),
+            icon: IconShieldLock,
           },
         ]
       : []),

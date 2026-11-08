@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { StudioDetailTabs } from './studio-detail-tabs.js';
@@ -6,6 +6,31 @@ import { StudioDetailTabs } from './studio-detail-tabs.js';
 describe('StudioDetailTabs', () => {
   afterEach(() => {
     cleanup();
+  });
+
+  it('lets a panel own its heading and context-bound actions without adding a duplicate heading', () => {
+    render(
+      <StudioDetailTabs
+        ariaLabel="Bereiche"
+        tabs={[
+          {
+            id: 'tours',
+            label: 'Touren',
+            title: null,
+            panel: (
+              <section>
+                <h2>Touren bearbeiten</h2>
+                <button type="button">Neue Tour</button>
+              </section>
+            ),
+          },
+        ]}
+      />
+    );
+    expect(screen.getByRole('heading', { name: 'Touren bearbeiten' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Touren', exact: true })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Neue Tour' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Touren' })).toBeTruthy();
   });
 
   it('renders an accessible tablist with mobile select fallback and desktop triggers', () => {
@@ -64,7 +89,7 @@ describe('StudioDetailTabs', () => {
     expect(screen.getByText('Inhalte Panel')).toBeTruthy();
   });
 
-  it('switches the active tab when arrow-key roving focus changes the Radix value', () => {
+  it('switches the active tab and focus on repeated arrow keys', async () => {
     render(
       <StudioDetailTabs
         ariaLabel="Detailbereiche"
@@ -77,13 +102,19 @@ describe('StudioDetailTabs', () => {
 
     const baseTab = screen.getByRole('tab', { name: 'Basis' });
 
+    baseTab.focus();
+    expect(document.activeElement).toBe(baseTab);
     fireEvent.keyDown(baseTab, { key: 'ArrowRight' });
-
-    expect(screen.getByRole('tab', { name: 'Inhalte' }).getAttribute('data-state')).toBe('active');
+    const contentTab = screen.getByRole('tab', { name: 'Inhalte' });
+    await waitFor(() => expect(document.activeElement).toBe(contentTab));
+    expect(contentTab.getAttribute('data-state')).toBe('active');
     expect(screen.getByText('Inhalte Panel')).toBeTruthy();
+    fireEvent.keyDown(contentTab, { key: 'ArrowRight' });
+    await waitFor(() => expect(document.activeElement).toBe(baseTab));
+    expect(baseTab.getAttribute('data-state')).toBe('active');
   });
 
-  it('supports reverse and boundary keyboard navigation across enabled tabs', () => {
+  it('supports reverse and boundary keyboard navigation across enabled tabs', async () => {
     render(
       <StudioDetailTabs
         ariaLabel="Detailbereiche"
@@ -97,15 +128,23 @@ describe('StudioDetailTabs', () => {
     );
 
     const baseTab = screen.getByRole('tab', { name: 'Basis' });
+    baseTab.focus();
     fireEvent.keyDown(baseTab, { key: 'End' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Historie' }))
+    );
     expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('data-state')).toBe('active');
 
     const historyTab = screen.getByRole('tab', { name: 'Historie' });
     fireEvent.keyDown(historyTab, { key: 'ArrowLeft' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Inhalte' }))
+    );
     expect(screen.getByRole('tab', { name: 'Inhalte' }).getAttribute('data-state')).toBe('active');
 
     const contentTab = screen.getByRole('tab', { name: 'Inhalte' });
     fireEvent.keyDown(contentTab, { key: 'Home' });
+    await waitFor(() => expect(document.activeElement).toBe(baseTab));
     expect(screen.getByRole('tab', { name: 'Basis' }).getAttribute('data-state')).toBe('active');
   });
 
@@ -174,6 +213,76 @@ describe('StudioDetailTabs', () => {
     expect(screen.getByText('Historie Panel')).toBeTruthy();
   });
 
+  it('does not preload unvisited panels on hover by default', () => {
+    render(
+      <StudioDetailTabs
+        ariaLabel="Detailbereiche"
+        keepMounted
+        tabs={[
+          { id: 'base', label: 'Basis', panel: <p>Basis Panel</p> },
+          { id: 'history', label: 'Historie', panel: <input aria-label="Notiz" /> },
+        ]}
+      />
+    );
+    fireEvent.mouseEnter(screen.getByRole('tab', { name: 'Historie' }));
+    expect(screen.queryByRole('textbox', { name: 'Notiz', hidden: true })).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Basis' }).getAttribute('data-state')).toBe('active');
+  });
+
+  it('preloads on hover without activation and preserves the same panel and input on repeated intent', () => {
+    const onValueChange = vi.fn();
+    render(
+      <StudioDetailTabs
+        ariaLabel="Detailbereiche"
+        keepMounted
+        preloadOnIntent
+        tabs={[
+          { id: 'base', label: 'Basis', panel: <p>Basis Panel</p> },
+          { id: 'history', label: 'Historie', panel: <input aria-label="Notiz" /> },
+        ]}
+        onValueChange={onValueChange}
+      />
+    );
+    const historyTab = screen.getByRole('tab', { name: 'Historie' });
+    fireEvent.mouseEnter(historyTab);
+    const input = screen.getByRole('textbox', { name: 'Notiz', hidden: true });
+    fireEvent.change(input, { target: { value: 'Entwurf behalten' } });
+    fireEvent.mouseEnter(historyTab);
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('tab', { name: 'Basis' }).getAttribute('data-state')).toBe('active');
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'history' } });
+    expect(screen.getByRole('textbox', { name: 'Notiz' })).toBe(input);
+    expect((input as HTMLInputElement).value).toBe('Entwurf behalten');
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'base' } });
+    expect(screen.getByRole('textbox', { name: 'Notiz', hidden: true })).toBe(input);
+  });
+
+  it('preserves automatic focus activation and never preloads disabled or hidden panels', () => {
+    const onValueChange = vi.fn();
+    render(
+      <StudioDetailTabs
+        ariaLabel="Detailbereiche"
+        keepMounted
+        preloadOnIntent
+        onValueChange={onValueChange}
+        tabs={[
+          { id: 'base', label: 'Basis', panel: <p>Basis Panel</p> },
+          { id: 'history', label: 'Historie', panel: <p>Historie Panel</p> },
+          { id: 'disabled', label: 'Gesperrt', disabled: true, panel: <p>Gesperrtes Panel</p> },
+          { id: 'hidden', label: 'Versteckt', isVisible: false, panel: <p>Verstecktes Panel</p> },
+        ]}
+      />
+    );
+    fireEvent.mouseEnter(screen.getByRole('tab', { name: 'Gesperrt' }));
+    fireEvent.focus(screen.getByRole('tab', { name: 'Gesperrt' }));
+    expect(screen.queryByText('Gesperrtes Panel')).toBeNull();
+    expect(screen.queryByText('Verstecktes Panel')).toBeNull();
+    fireEvent.focus(screen.getByRole('tab', { name: 'Historie' }));
+    expect(onValueChange).toHaveBeenCalledWith('history');
+    expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('data-state')).toBe('active');
+  });
+
   it('does not keep the previous panel mounted when keepMounted is disabled', () => {
     render(
       <StudioDetailTabs
@@ -234,15 +343,13 @@ describe('StudioDetailTabs', () => {
     expect(screen.getByText('Steuert den Veröffentlichungsstatus.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Veröffentlichen' })).toBeTruthy();
     expect(screen.getByText('Freigabe Panel')).toBeTruthy();
-    expect(screen.getByRole('tablist').className).toContain('ml-[10px]');
-    expect(screen.getByRole('tablist').className).toContain('gap-10');
+    expect(screen.getByRole('tablist').className).toContain('overflow-x-auto');
+    expect(screen.getByRole('tablist').className).toContain('gap-0');
     expect(screen.getByRole('heading', { name: 'Freigabe' }).className).toContain('text-base');
     expect(screen.getByText('Steuert den Veröffentlichungsstatus.').className).toContain(
       'leading-relaxed'
     );
-    expect(screen.getByRole('tabpanel').firstElementChild?.className).toContain(
-      'bg-[rgb(var(--waste-panel-surface))]'
-    );
+    expect(screen.getByRole('tabpanel').firstElementChild?.className).toContain('bg-surface-inset');
   });
 
   it('announces blocked tab switches through an accessible status surface', () => {
@@ -265,6 +372,30 @@ describe('StudioDetailTabs', () => {
     expect(status.getAttribute('aria-live')).toBe('polite');
     expect(status.textContent).toContain('Bitte zuerst speichern.');
     expect(screen.getByRole('tab', { name: 'Basis' }).getAttribute('data-state')).toBe('active');
+  });
+
+  it('keeps a blocked keyboard switch on the current panel and announces the reason', async () => {
+    render(
+      <StudioDetailTabs
+        ariaLabel="Detailbereiche"
+        onBeforeTabChange={() => 'Bitte zuerst speichern.'}
+        tabs={[
+          { id: 'base', label: 'Basis', panel: <p>Basis Panel</p> },
+          { id: 'content', label: 'Inhalte', panel: <p>Inhalte Panel</p> },
+        ]}
+      />
+    );
+    const baseTab = screen.getByRole('tab', { name: 'Basis' });
+    baseTab.focus();
+    expect(document.activeElement).toBe(baseTab);
+    fireEvent.keyDown(baseTab, { key: 'ArrowRight' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Inhalte' }))
+    );
+    expect(screen.getByRole('tab', { name: 'Basis' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByText('Basis Panel')).toBeTruthy();
+    expect(screen.queryByText('Inhalte Panel')).toBeNull();
+    expect(screen.getByRole('status').textContent).toContain('Bitte zuerst speichern.');
   });
 
   it('keeps a controlled value authoritative until the parent rerenders', () => {

@@ -9,6 +9,8 @@ export type ApiErrorCode =
   | 'invalid_request'
   | 'invalid_account_invitation_template'
   | 'account_invitation_template_revision_conflict'
+  | 'mail_template_conflict'
+  | 'invalid_mail_template'
   | 'invalid_instance_id'
   | 'invalid_organization_id'
   | 'organization_inactive'

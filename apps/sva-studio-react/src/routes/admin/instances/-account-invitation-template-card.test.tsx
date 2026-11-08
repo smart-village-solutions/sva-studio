@@ -50,6 +50,21 @@ describe('AccountInvitationTemplateCard', () => {
     await vi.waitFor(() => expect(onSave).toHaveBeenCalledWith(null));
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Instanzvorlage entfernen'));
   });
+  it('clears the previous save message on reopen while preserving a new draft', async () => {
+    const onSave = vi.fn(async () => true);
+    render(<AccountInvitationTemplateCard instance={instance} onSave={onSave} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Account-Einladung anpassen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Vorlage speichern' }));
+    const saved = 'Im Studio gespeichert. Den Synchronisierungsstand zeigt der Keycloak-Abgleich.';
+    await screen.findByText(saved);
+    fireEvent.change(screen.getByLabelText('Betreff'), { target: { value: 'Neuer Entwurf' } });
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Account-Einladung anpassen' }));
+    expect(screen.queryByText(saved)).toBeNull();
+    expect((screen.getByLabelText('Betreff') as HTMLInputElement).value).toBe('Neuer Entwurf');
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
   it('prevents duplicate saves while validation and the request are pending', async () => {
     let finish!: (saved: boolean) => void;
     const onSave = vi.fn(

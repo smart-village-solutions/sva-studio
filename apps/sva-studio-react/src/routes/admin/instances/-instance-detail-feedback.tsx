@@ -99,13 +99,13 @@ export const InstanceDetailFeedback = ({
     ) : null}
 
     {workerPendingProjection && !missingWorkerEnvName ? (
-      <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200">
+      <Alert className="border-status-warning-foreground bg-status-warning text-status-warning-foreground">
         <AlertDescription>{t('admin.instances.feedback.workerProjectionHint')}</AlertDescription>
       </Alert>
     ) : null}
 
     {workerUnavailableWarning && !missingWorkerEnvName ? (
-      <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200">
+      <Alert className="border-status-warning-foreground bg-status-warning text-status-warning-foreground">
         <AlertDescription>{t('admin.instances.feedback.workerUnavailable')}</AlertDescription>
       </Alert>
     ) : null}

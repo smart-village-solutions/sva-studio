@@ -96,7 +96,7 @@ describe('InstanceAuditRunSection', () => {
 
     const passBadge = screen.getAllByText('Pass').find((element) => element.tagName === 'SPAN');
     expect(passBadge).toBeTruthy();
-    expect(passBadge?.className).toContain('text-emerald-700');
+    expect(passBadge?.className).toContain('text-status-success-foreground');
 
     fireEvent.click(screen.getByRole('button', { name: 'Audit starten' }));
 

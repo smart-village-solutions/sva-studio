@@ -198,7 +198,7 @@ const enrichProjectionRowsWithBindingState = async (
 const resolveSlimProjectionStatus = (
   item: SvaMainserverProjectionListItem
 ): MainserverProjectionRowInput['status'] => {
-  if (item.visible === false || item.active === false || item.status === 'DRAFT') return 'draft';
+  if (item.visible === false || (item.contentType !== 'poi.point-of-interest' && item.active === false) || item.status === 'DRAFT') return 'draft';
   return item.status === 'ARCHIVED' ? 'archived' : 'published';
 };
 

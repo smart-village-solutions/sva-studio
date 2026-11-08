@@ -34,7 +34,7 @@ const CoverageIssueItem = ({
 }>) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <li className="flex flex-col gap-2 rounded-md border border-border/60 bg-card p-3 sm:flex-row sm:items-start sm:justify-between">
+    <li className="flex flex-col gap-2 rounded-md border border-border-subtle bg-card p-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="space-y-1">
         <p className="font-medium text-foreground">{getLocationLabel(location)}</p>
         {issue.kind === 'incomplete' ? (

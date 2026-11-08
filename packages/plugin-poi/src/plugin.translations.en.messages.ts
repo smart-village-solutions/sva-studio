@@ -5,6 +5,8 @@ export const poiMessagesEn = {
   voucherResetConfirmation:
     'This location change also saves the following vouchers. Their content and existing redemptions are preserved. Continue?\n\n{{vouchers}}',
   voucherResetCancelled: 'Save cancelled. The location and its vouchers were not changed.',
+  visibilityPartialFailure:
+    'The place was saved, but its visibility could not be updated. Open the saved place and check its visibility.',
   createdNavigationError: 'The content was created, but the editing view could not be opened.',
   unsavedAfterCreate: 'The content was created. Newer changes in this form have not been saved.',
   loading: 'Loading POI.',

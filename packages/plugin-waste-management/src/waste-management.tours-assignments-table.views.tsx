@@ -52,7 +52,7 @@ export const TourAssignmentsSortingControls = ({
 }>) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-2">
+    <div className="grid gap-3 rounded-lg border border-border bg-surface-inset p-3 sm:grid-cols-2">
       <div className="space-y-2">
         <span className="block text-sm font-medium text-foreground">
           {pt('tours.assignments.workspace.sortingOrder')}
@@ -105,7 +105,7 @@ export const CompactTourAssignments = (props: AssignmentTableViewProps) => {
       {props.locations.map((location) => (
         <article
           key={location.id}
-          className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell"
+          className="rounded-lg border border-border-subtle bg-card p-3 text-sm text-foreground shadow-shell"
         >
           <div className="mb-3 flex items-start gap-3">
             <Checkbox
@@ -136,13 +136,13 @@ export const WideTourAssignments = (props: AssignmentTableViewProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const sortedField = props.includeRegionInSorting ? 'regionName' : 'cityName';
   return (
-    <div className="overflow-x-auto rounded-lg border border-border/60">
+    <div className="overflow-x-auto rounded-lg border border-border-subtle">
       <table
         className="min-w-full border-collapse"
         aria-label={pt('tours.assignments.workspace.tableLabel')}
       >
         <caption className="sr-only">{pt('tours.assignments.workspace.tableCaption')}</caption>
-        <thead className="bg-muted/20 text-left text-[13px] text-foreground">
+        <thead className="bg-surface-inset text-left text-[13px] text-foreground">
           <tr className="border-b border-border/70">
             <th scope="col" className="w-12 px-3 py-3">
               {props.selectAll}
@@ -169,7 +169,7 @@ export const WideTourAssignments = (props: AssignmentTableViewProps) => {
           {props.locations.map((location) => (
             <tr
               key={location.id}
-              className="border-b border-border/60 align-top text-sm text-foreground hover:bg-muted/20"
+              className="border-b border-border-subtle align-top text-sm text-foreground hover:bg-surface-inset"
             >
               <td className="px-3 py-3">
                 <Checkbox

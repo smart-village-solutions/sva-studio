@@ -2,10 +2,9 @@ import {
   registerPluginTranslationResolver,
   type PluginCatalogEntry,
   type PluginManifest,
-  type PluginModuleIamRegistryEntry,
 } from '@sva/plugin-sdk';
 import { createBrowserLogger } from '@sva/monitoring-client/logging';
-import type { StudioModuleIamContract } from '@sva/studio-module-iam';
+import { createStudioModuleIamContracts, type StudioModuleCatalogEntry } from './plugin-module-iam.js';
 import { appAdminResources } from '../routing/admin-resources';
 
 import {
@@ -161,22 +160,7 @@ export const studioPluginCatalog = studioPluginCatalogReport.catalog;
 export const studioPluginCatalogIssues = studioPluginCatalogReport.issues;
 export const studioPluginSnapshot = studioPluginCatalogReport.snapshot;
 export const studioHostModuleIamContracts = studioHostModuleContracts;
-type StudioModuleCatalogEntry = Pick<
-  StudioModuleIamContract,
-  'moduleId' | 'descriptionKey' | 'permissionIds' | 'systemRoles'
->;
-export const createStudioModuleIamContracts = (
-  pluginContracts: readonly PluginModuleIamRegistryEntry[],
-  hostContracts: readonly StudioModuleIamContract[]
-): readonly StudioModuleCatalogEntry[] => [
-  ...pluginContracts.map((contract) => ({
-    moduleId: contract.moduleId,
-    descriptionKey: `plugins.${contract.ownerPluginId}.description`,
-    permissionIds: contract.permissionIds,
-    systemRoles: contract.systemRoles,
-  })),
-  ...hostContracts,
-];
+export { createStudioModuleIamContracts } from './plugin-module-iam.js';
 
 export const studioModuleIamContracts = createStudioModuleIamContracts(
   studioPluginSnapshot.registry.pluginModuleIamContracts,

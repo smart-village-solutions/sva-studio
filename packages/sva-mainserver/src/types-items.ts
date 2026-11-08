@@ -101,6 +101,7 @@ export type SvaMainserverPoiInput = {
   readonly externalId?: string;
   readonly keywords?: string;
   readonly active?: boolean;
+  readonly visible?: boolean;
   readonly categoryName?: string;
   readonly payload?: unknown;
   readonly categories?: readonly SvaMainserverCategoryInput[];
@@ -121,7 +122,7 @@ export type SvaMainserverPoiItem = {
   readonly id: string;
   readonly name: string;
   readonly contentType: 'poi.point-of-interest';
-  readonly status: 'published';
+  readonly status: 'draft' | 'published';
   readonly description?: string;
   readonly mobileDescription?: string;
   readonly externalId?: string;

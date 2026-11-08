@@ -1,8 +1,14 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Input, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
-import type { ReactNode } from 'react';
+import {
+  Button,
+  StudioDetailCard,
+  Input,
+  StudioField,
+  StudioFieldGroup,
+  Textarea,
+} from '@sva/studio-ui-react';
 
-import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
+import { StudioSwitch } from '@sva/studio-ui-react';
 import type { FractionFormState } from './waste-management.master-data.forms.js';
 import {
   isHexColor,
@@ -11,24 +17,6 @@ import {
 import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 
 const normalizeColor = (value: string) => value.trim().toLowerCase();
-
-export const FractionSection = ({
-  title,
-  description,
-  children,
-}: {
-  readonly title: string;
-  readonly description: string;
-  readonly children: ReactNode;
-}) => (
-  <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
-    <div className="space-y-1">
-      <p className="text-sm font-semibold text-foreground">{title}</p>
-      <p className="text-sm text-muted-foreground">{description}</p>
-    </div>
-    {children}
-  </section>
-);
 
 export const FractionFormActions = ({
   cancelLabel,
@@ -41,7 +29,7 @@ export const FractionFormActions = ({
   readonly saving: boolean;
   readonly onCancel: () => void;
 }) => (
-  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
+  <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background px-5 py-4 shadow-shell">
     <WastePendingSaveButton type="submit" saving={saving} label={saveLabel} />
     <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
       {cancelLabel}
@@ -132,7 +120,7 @@ export const FractionBasicsSection = ({
   const pt = usePluginTranslation('wasteManagement');
 
   return (
-    <FractionSection
+    <StudioDetailCard
       title={pt('masterData.fractions.createView.sections.basics')}
       description={pt('masterData.fractions.createView.sections.basicsHint')}
     >
@@ -143,7 +131,7 @@ export const FractionBasicsSection = ({
         onChange={onChange}
         pt={pt}
       />
-    </FractionSection>
+    </StudioDetailCard>
   );
 };
 
@@ -161,7 +149,7 @@ export const FractionPresentationSection = ({
   const pt = usePluginTranslation('wasteManagement');
 
   return (
-    <FractionSection
+    <StudioDetailCard
       title={pt('masterData.fractions.createView.sections.presentation')}
       description={pt('masterData.fractions.createView.sections.presentationHint')}
     >
@@ -191,7 +179,7 @@ export const FractionPresentationSection = ({
           </div>
         </StudioField>
       </StudioFieldGroup>
-    </FractionSection>
+    </StudioDetailCard>
   );
 };
 
@@ -205,16 +193,16 @@ export const FractionVisibilitySection = ({
   const pt = usePluginTranslation('wasteManagement');
 
   return (
-    <FractionSection
+    <StudioDetailCard
       title={pt('masterData.fractions.createView.sections.visibility')}
       description={pt('masterData.fractions.createView.sections.visibilityHint')}
     >
       <div className="space-y-2">
         <div className="flex items-center gap-3">
-          <WasteManagementFormSwitch
+          <StudioSwitch
             checked={form.active}
-            ariaLabel={pt('masterData.fractions.fields.active')}
-            onChange={(active) => onChange({ active })}
+            aria-label={pt('masterData.fractions.fields.active')}
+            onCheckedChange={(active) => onChange({ active })}
           />
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">
@@ -231,6 +219,6 @@ export const FractionVisibilitySection = ({
           {pt('masterData.fractions.createView.fieldHints.active')}
         </p>
       </div>
-    </FractionSection>
+    </StudioDetailCard>
   );
 };

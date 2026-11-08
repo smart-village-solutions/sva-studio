@@ -754,6 +754,8 @@ describe('waste management helper modules', () => {
       setLinkForm: vi.fn(),
       setAssignmentsDialogOpen: vi.fn(),
       setSchedulingOverview: vi.fn(),
+      setSchedulingLoadState: vi.fn(),
+      schedulingRequestRef: { current: 0 },
       setCalendarOpen: vi.fn(),
     };
 

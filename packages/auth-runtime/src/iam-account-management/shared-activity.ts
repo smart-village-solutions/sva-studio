@@ -115,6 +115,10 @@ export const notifyPermissionInvalidation = async (
   client: QueryClient,
   input: { instanceId: string; keycloakSubject?: string; trigger: string }
 ) => {
+  if (input.trigger === 'user_competence_languages_changed') {
+    const { enqueueSsfAuthorizationReconcileWithClient } = await import('../ssf-authorization-projection-reconcile.js');
+    await enqueueSsfAuthorizationReconcileWithClient(client, input.instanceId);
+  }
   await bumpPermissionRevisionWithClient(
     client,
     input.keycloakSubject

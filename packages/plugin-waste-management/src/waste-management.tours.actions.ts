@@ -1,5 +1,5 @@
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
-import { getWasteManagementSchedulingOverview } from './waste-management.api.js';
+import { loadWasteToursSchedulingOverview } from './waste-management.tours-overview.parts.js';
 
 import {
   createDefaultLocationTourLinkForm,
@@ -48,13 +48,16 @@ export const createWasteToursActions = (state: WasteToursState) => ({
     state.setAssignmentsDialogOpen(true);
   },
   openCalendar: async (tour: WasteTourRecord) => {
+    const request = ++state.schedulingRequestRef.current;
     state.setSelectedTour(tour);
-    try {
-      state.setSchedulingOverview(await getWasteManagementSchedulingOverview());
-    } catch {
-      state.setSchedulingOverview(null);
-    }
+    state.setSchedulingOverview(null);
+    state.setSchedulingLoadState('loading');
     state.setCalendarOpen(true);
+    await loadWasteToursSchedulingOverview({
+      isMounted: () => state.schedulingRequestRef.current === request,
+      setSchedulingOverview: state.setSchedulingOverview,
+      setSchedulingLoadState: state.setSchedulingLoadState,
+    });
   },
   resetTourForm: () => state.setTourForm(createDefaultTourForm()),
   resetLinkForm: () => state.setLinkForm(createDefaultLocationTourLinkForm()),

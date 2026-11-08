@@ -1,7 +1,10 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import { useWasteSettingsCustomRecurrenceLogic } from './waste-management.settings-custom-recurrence.logic.js';
-import type { CustomRecurrencePresetInputState, DeletedPresetFallbackState } from './waste-management.settings.shared.js';
+import type {
+  CustomRecurrencePresetInputState,
+  DeletedPresetFallbackState,
+} from './waste-management.settings.shared.js';
 import { WasteSettingsCustomRecurrenceDeleteDialog } from './waste-management.settings-custom-recurrence-delete-dialog.js';
 import { WasteSettingsCustomRecurrenceDialog } from './waste-management.settings-custom-recurrence-dialog.js';
 import {
@@ -31,16 +34,15 @@ export const WasteSettingsCustomRecurrenceSection = ({
   });
 
   return (
-    <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
+    <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">{pt('settings.messages.customRecurrencesTitle')}</h3>
-        <p className="text-sm text-muted-foreground">{pt('settings.messages.customRecurrencesDescription')}</p>
+        <p className="text-sm text-muted-foreground">
+          {pt('settings.messages.customRecurrencesDescription')}
+        </p>
       </div>
 
-      <WasteSettingsCustomRecurrenceDraftRow
-        saving={saving}
-        onAdd={controller.openCreateDialog}
-      />
+      <WasteSettingsCustomRecurrenceDraftRow saving={saving} onAdd={controller.openCreateDialog} />
       <WasteSettingsCustomRecurrenceTable
         items={controller.sortedItems}
         saving={saving}
@@ -59,8 +61,12 @@ export const WasteSettingsCustomRecurrenceSection = ({
       <WasteSettingsCustomRecurrenceDeleteDialog
         open={Boolean(controller.deletingItem)}
         preset={controller.deletingItem}
-        availableFallbacks={controller.sortedItems.filter((item) => item.id !== controller.deletingItem?.id)}
-        initialFallback={controller.deletingItem ? deletedPresetFallbacks[controller.deletingItem.id] : undefined}
+        availableFallbacks={controller.sortedItems.filter(
+          (item) => item.id !== controller.deletingItem?.id
+        )}
+        initialFallback={
+          controller.deletingItem ? deletedPresetFallbacks[controller.deletingItem.id] : undefined
+        }
         onOpenChange={(open) => {
           if (!open) {
             controller.setDeletingItem(null);

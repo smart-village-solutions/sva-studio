@@ -544,3 +544,8 @@ describe('user update identity predicates', () => {
     expect(shouldUpdateUserIdentityPayload({ roleIds: ['role-editor'] })).toBe(false);
   });
 });
+
+it('keeps competence-only updates in IAM without a Keycloak mutation', () => {
+  expect(shouldUpdateUserIdentityPayload({ competenceLanguages: ['de'] })).toBe(false);
+  expect(shouldUpdateUserIdentityAttributes({ competenceLanguages: [] })).toBe(false);
+});

@@ -6,6 +6,11 @@ import type { IamSeedPlan, PermissionKey, PersonaSeed } from './types.js';
 // IDs bleiben ausschließlich für reproduzierbare SQL-Fixtures stabil; fachliche Metadaten stammen aus dem Katalog.
 const permissionIdFixtures = [
   [
+    '40111111-1111-1111-1111-111111111180',
+    'iam.authenticationPolicy.manage',
+    'Manage tenant authentication policy',
+  ],
+  [
     '40111111-1111-1111-1111-111111111168',
     'iam.accounts.delete',
     'Delete tenant accounts physically',

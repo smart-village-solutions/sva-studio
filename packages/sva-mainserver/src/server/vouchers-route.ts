@@ -13,11 +13,48 @@ import {
   resolveMainserverMutationActor,
   runMainserverMutationWithFailureFinalization,
 } from './mutation-principal.js';
-import { changeSvaMainserverGenericItemVisibility, getSvaMainserverVoucher } from './service.js';
+import {
+  changeSvaMainserverGenericItemVisibility,
+  deleteSvaMainserverVoucher,
+  getSvaMainserverVoucher,
+} from './service.js';
 import { TYPE, BASE, local } from './vouchers-route-access.js';
 import { mutate } from './vouchers-route-write.js';
 import { reconcile, locations, read } from './vouchers-route-read.js';
 const logger = createSdkLogger({ component: 'sva-mainserver-vouchers-route', level: 'info' });
+const remove = async (request: Request, ctx: AuthenticatedRequestContext, id: string) => {
+  if (validateCsrf(request))
+    return errorJson(403, 'csrf_validation_failed', 'csrf_validation_failed');
+  const authorized = await local(ctx, 'vouchers.delete', id);
+  if (isResponse(authorized)) return authorized;
+  const actor = await resolveMainserverMutationActor({ request, ctx, authorizedActor: authorized });
+  if (isResponse(actor)) return actor;
+  return runMainserverMutationWithFailureFinalization({
+    actor,
+    contentId: id,
+    operation: async () => {
+      const item = await getSvaMainserverVoucher({ ...actor, voucherId: id });
+      const check = await authorizeMainserverExistingContent({
+        actor,
+        action: 'vouchers.delete',
+        contentType: TYPE,
+        contentId: id,
+        item: { id: item.id, dataProvider: item.dataProvider ?? undefined },
+      });
+      if (isResponse(check)) return check;
+      const data = await deleteSvaMainserverVoucher({ ...actor, voucherId: id });
+      await finalizeMainserverMutation({
+        actor,
+        providerOutcome: 'succeeded',
+        reconciliationStatus: 'complete',
+        completedSteps: ['provider_write', 'tombstone'],
+        contentId: id,
+        observedDataProviderId: item.dataProvider?.id,
+      });
+      return json({ data });
+    },
+  });
+};
 const visibility = async (request: Request, ctx: AuthenticatedRequestContext, id: string) => {
   if (validateCsrf(request))
     return errorJson(403, 'csrf_validation_failed', 'csrf_validation_failed');
@@ -73,7 +110,7 @@ export const dispatchSvaMainserverVouchersRequest = async (
       let result: Response;
       if (request.method === 'GET' && suffix === 'locations')
         result = await locations(request, ctx);
-      else if (request.method === 'GET' && (!suffix || /^\d+$/.test(suffix)))
+      else if (request.method === 'GET' && /^\d*$/.test(suffix))
         result = await read(request, ctx, suffix || undefined);
       else if (request.method === 'POST' && suffix === 'reconcile')
         result = await reconcile(request, ctx);
@@ -81,6 +118,8 @@ export const dispatchSvaMainserverVouchersRequest = async (
         result = await mutate(request, ctx, suffix);
       else if (request.method === 'POST' && /^\d+\/visibility$/.test(suffix))
         result = await visibility(request, ctx, suffix.split('/')[0]!);
+      else if (request.method === 'DELETE' && /^\d+$/.test(suffix))
+        result = await remove(request, ctx, suffix);
       else result = errorJson(405, 'method_not_allowed', 'method_not_allowed');
       return withMainserverContextBinding(result, ctx);
     } catch (error) {

@@ -4,7 +4,11 @@ import type {
   IamKeycloakObjectEditability,
 } from '@sva/core';
 import { Button, type StudioColumnDef } from '@sva/studio-ui-react';
-import { IconAlertTriangle, IconEdit, IconTrash } from '@tabler/icons-react';
+import {
+  IconAlertTriangle,
+  IconEdit,
+  IconTrash,
+} from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 
 import { Badge } from '../../../components/ui/badge';
@@ -86,7 +90,10 @@ const UserDisplayNameCell = ({ user }: { user: UserListUser }) => {
           title={warningLabel}
           className="inline-flex text-amber-600"
         >
-          <IconAlertTriangle aria-hidden="true" className="h-4 w-4 stroke-current" />
+          <IconAlertTriangle
+            aria-hidden="true"
+            className="h-4 w-4 stroke-current"
+          />
         </span>
       ) : null}
     </span>

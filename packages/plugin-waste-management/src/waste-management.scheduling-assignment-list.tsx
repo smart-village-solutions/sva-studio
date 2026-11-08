@@ -68,7 +68,7 @@ const AssignmentRow = ({
   readonly onEdit: (entry: WasteTourAssignmentRecord) => void;
   readonly onDeleteRequest: (entry: WasteTourAssignmentRecord) => void;
 }) => (
-  <tr className="border-b border-border/60 align-top text-[14px] last:border-b-0 hover:bg-muted/20">
+  <tr className="border-b border-border-subtle align-top text-[14px] last:border-b-0 hover:bg-surface-inset">
     <td className="px-3 py-3">{entry.pickupDate}</td>
     <td className="px-3 py-3">
       {search ? (
@@ -132,7 +132,7 @@ const WasteTourAssignmentsTable = ({
       aria-label={pt('scheduling.assignments.table.ariaLabel')}
     >
       <caption className="sr-only">{pt('scheduling.assignments.table.caption')}</caption>
-      <thead className="bg-muted/20 text-left text-[13px]">
+      <thead className="bg-surface-inset text-left text-[13px]">
         <tr className="border-b border-border/70">
           {(['pickupDate', 'tour', 'locations', 'note', 'actions'] as const).map((column) => (
             <th
@@ -200,9 +200,9 @@ export const WasteTourExplicitAssignmentsList = ({
         </h3>
         <p className="text-sm text-muted-foreground">{pt('scheduling.assignments.description')}</p>
       </div>
-      <div className="overflow-hidden rounded-none border-y border-border bg-card shadow-shell">
-        <div className="flex items-center justify-end border-b border-border/60 px-4 py-3">
-          <Button type="button" className="rounded-lg" onClick={onCreate}>
+      <div className="overflow-hidden rounded-none border border-border-subtle bg-card">
+        <div className="flex items-center justify-end border-b border-border-subtle px-4 py-3">
+          <Button type="button" className="rounded-md" onClick={onCreate}>
             {pt('scheduling.assignments.actions.openCreate')}
           </Button>
         </div>

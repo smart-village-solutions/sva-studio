@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileImage, Upload } from 'lucide-react';
+import { IconPhoto as FileImage, IconUpload as Upload } from '@tabler/icons-react';
 
 import { Button } from './button.js';
 
@@ -113,7 +113,7 @@ const MediaIntakePanelBody = ({
 }>) => (
   <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 text-center">
     <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border/70 bg-muted/40 text-muted-foreground">
-      <Upload aria-hidden="true" className="h-8 w-8" strokeWidth={2.2} />
+      <Upload aria-hidden="true" className="h-8 w-8" />
     </div>
 
     <div className="space-y-2">

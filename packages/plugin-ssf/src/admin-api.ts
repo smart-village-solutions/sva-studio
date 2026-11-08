@@ -13,6 +13,7 @@ import {
 import {
   SSF_SYSTEM_CONTENT_V2_ADMIN_PATH,
   SSF_TENANT_CONTENT_V2_ADMIN_PATH,
+  ssfRecordingPolicyConflictSchema,
   ssfSystemContentV2ViewSchema,
   ssfTenantContentV2ViewSchema,
   type SsfSystemContentV2Input,
@@ -20,9 +21,21 @@ import {
   type SsfTenantContentV2View,
 } from './content-v2-admin-contracts.js';
 
+export class SsfRecordingPolicyConflictError extends Error {
+  constructor(readonly affectedTenants: readonly string[]) {
+    super('ssf_configuration_recording_policy_conflict');
+  }
+}
+
 const requestJson = async (url: string, init?: RequestInit): Promise<unknown> => {
   const response = await fetch(url, init);
-  if (!response.ok) throw new Error(`ssf_configuration_http_${response.status}`);
+  if (!response.ok) {
+    if (url === SSF_SYSTEM_CONTENT_V2_ADMIN_PATH && init?.method === 'PUT' && response.status === 422) {
+      const conflict = ssfRecordingPolicyConflictSchema.safeParse(await response.json().catch(() => null));
+      if (conflict.success) throw new SsfRecordingPolicyConflictError(conflict.data.affectedTenants);
+    }
+    throw new Error(`ssf_configuration_http_${response.status}`);
+  }
   return response.json();
 };
 

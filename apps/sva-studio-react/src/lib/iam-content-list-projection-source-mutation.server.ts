@@ -110,6 +110,8 @@ const createGenericItemMutationLoader =
       | 'faq.faq'
       | 'cockpit-cards.cockpit-card'
       | 'vouchers.voucher'
+      | 'construction-sites.construction-site'
+      | 'jobs.job'
       | 'projects.project'
     >,
     overrideContentType: boolean
@@ -164,6 +166,11 @@ export const mainserverMutationProjectionLoaders: Record<
   'vouchers.voucher': createGenericItemMutationLoader('vouchers.voucher', true),
   'faq.faq': createGenericItemMutationLoader('faq.faq', true),
   'cockpit-cards.cockpit-card': createGenericItemMutationLoader('cockpit-cards.cockpit-card', true),
+  'construction-sites.construction-site': createGenericItemMutationLoader(
+    'construction-sites.construction-site',
+    true
+  ),
+  'jobs.job': createGenericItemMutationLoader('jobs.job', true),
   'projects.project': createGenericItemMutationLoader('projects.project', true),
   'news.article': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
     const item = await getSvaMainserverNews({

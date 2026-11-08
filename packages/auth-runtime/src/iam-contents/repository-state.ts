@@ -9,7 +9,7 @@ export type NextContentState = NextContentStateValues & {
 
 export const resolveNextContentState = (current: ContentRow, input: UpdateContentInput): NextContentState => {
   const next = resolveNextContentStateValues(current, input);
-  validateNextContentState(next);
+  validateNextContentState(next, input.publicationSource);
   return {
     ...next,
     changedFields: resolveContentChangedFields(current, next),

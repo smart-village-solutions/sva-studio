@@ -15,6 +15,7 @@ const ADMIN_ONLY_PROFILE_ATTRIBUTES = [
   { name: SSF_TOKEN_CLAIMS.instanceId, multivalued: false },
   { name: SSF_TOKEN_CLAIMS.roles, multivalued: true },
   { name: SSF_TOKEN_CLAIMS.permissions, multivalued: true },
+  { name: SSF_TOKEN_CLAIMS.languages, multivalued: true },
   { name: SSF_TOKEN_CLAIMS.authorizationRevision, multivalued: false },
 ] as const;
 
@@ -98,6 +99,7 @@ export const ensureClaimMappers = async (tenant: SsfKeycloakProjectionTenant): P
     [SSF_TOKEN_CLAIMS.instanceId, false],
     [SSF_TOKEN_CLAIMS.roles, true],
     [SSF_TOKEN_CLAIMS.permissions, true],
+    [SSF_TOKEN_CLAIMS.languages, true],
     [SSF_TOKEN_CLAIMS.authorizationRevision, false],
   ] as const) {
     await tenant.client.ensureUserAttributeProtocolMapper({
@@ -125,7 +127,7 @@ export const verifyClaimMappers = async (tenant: SsfKeycloakProjectionTenant): P
     const candidates = mappers.filter((mapper) => mapper.config?.['claim.name'] === claimName);
     const mapper = candidates[0];
     const multivalued =
-      claimName === SSF_TOKEN_CLAIMS.roles || claimName === SSF_TOKEN_CLAIMS.permissions;
+      claimName === SSF_TOKEN_CLAIMS.roles || claimName === SSF_TOKEN_CLAIMS.permissions || claimName === SSF_TOKEN_CLAIMS.languages;
     if (
       candidates.length !== 1 ||
       mapper?.protocol !== 'openid-connect' ||

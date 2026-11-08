@@ -162,6 +162,7 @@ export const mergePoiUpdateWithCurrent = (
   const degradedFields = new Set(deviations.map(({ fieldGroup }) => fieldGroup));
   return {
     ...submitted,
+    active: preserveDefinedUnlessDegraded('active', current.active, submitted.active, degradedFields),
     mobileDescription: preserveDefinedUnlessDegraded(
       'mobileDescription',
       current.mobileDescription,

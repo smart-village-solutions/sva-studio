@@ -19,7 +19,7 @@ import {
   SurveyParticipationCard,
   SurveyDetailContentTab,
 } from './surveys.detail-content-tab.js';
-import { SurveyDetailCard } from './surveys.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 import { SurveyQuestionListEditor } from './surveys.question-list-editor.js';
 import { useFormContext, useWatch } from 'react-hook-form';
 import type { SurveyDetailFormValues } from './surveys.detail-form.js';
@@ -118,7 +118,7 @@ export function SurveyCreateFields({
     <StudioSection className="space-y-6">
       <p>{pt('create.intro')}</p>
       <section id="survey-create-text" tabIndex={-1} className="space-y-6">
-        <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-5">
+        <div className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6">
           <SurveyIdentityCard pt={pt} titleOnly />
         </div>
         <details className="open:space-y-4">
@@ -127,12 +127,12 @@ export function SurveyCreateFields({
         </details>
       </section>
       <section id="survey-create-questions" tabIndex={-1}>
-        <SurveyDetailCard
+        <StudioDetailCard
           title={pt('cards.content.questions.title')}
           description={pt('create.help.questions')}
         >
           <SurveyQuestionListEditor pt={pt} createMode />
-        </SurveyDetailCard>
+        </StudioDetailCard>
       </section>
       <section id="survey-create-participation" tabIndex={-1} className="space-y-6">
         <details className="open:space-y-4">
@@ -150,9 +150,9 @@ export function SurveyCreateFields({
         </details>
       </section>
       <section id="survey-create-status" tabIndex={-1} className="space-y-3">
-        <SurveyDetailCard title={pt('fields.status')} description={pt('create.help.status')}>
+        <StudioDetailCard title={pt('fields.status')} description={pt('create.help.status')}>
           <SurveyStatusField pt={pt} />
-        </SurveyDetailCard>
+        </StudioDetailCard>
         <p className="text-sm text-muted-foreground">
           {pt('create.effect.schedule', {
             start: basis.startAt || pt('create.noLimit'),

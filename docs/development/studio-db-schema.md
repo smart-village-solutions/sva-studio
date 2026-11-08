@@ -463,6 +463,7 @@ Kernidee:
 - Der erfolgreiche Scan neuer Uploads liegt als `scanStatus: clean` im vorhandenen `media_assets.technical`-JSONB und wird mit derselben Finalisierung gespeichert. Er hält die gewählte Sichtbarkeit für den vorhandenen Änderungspfad fest; zusätzliche Spalten oder Tabellen sind nicht erforderlich.
 - Speicherverbrauch und Limits werden relational pro Instanz geführt. Die Bereinigung provisorischer Assets gibt ausschließlich bereits gebuchte Kontingente für `upload_status = processed` und `processing_status = ready` frei; diese Zustände und die Buchung werden atomar finalisiert. Ausstehende, fehlgeschlagene oder blockierte Uploads werden ohne Quotenabzug entfernt.
 - Content-Editoren halten neu gewählte Dateien zunächst ausschließlich als lokale Browser-Entwürfe. Erst beim fachlichen Speichern werden sie einer benutzergebundenen `media_content_save_operation` zugeordnet und als `provisional` hochgeladen.
+- Der bestehende Referenzabschluss kann nach bestätigtem Inhaltserfolg auch `outcome_unknown` oder `reconciliation_required` nach `content_saved` überführen. Instanz, Actor und vorhandene Ziel-ID bleiben gebunden; `abandon_pending` und `abandoned` sind ausgeschlossen. Ein bereits `committed` abgeschlossener Vorgang wird nicht wieder zu `content_saved` herabgestuft; sein wiederholter Commit ersetzt keine inzwischen neueren Zielreferenzen. Dies ist ein Operationsübergang ohne Schemaänderung.
 - Provisorische Assets sind nicht Teil der Medienbibliothek. Nach erfolgreichem Content-Write ersetzt ein atomarer Commit die Zielreferenzen und aktiviert die zugehörigen Assets; bei einem eindeutig fehlgeschlagenen Write werden die provisorischen Objekte über denselben Operationskontext entfernt.
 - Aktive Assets werden für die gemeinsame Cursor-Paginierung mit dem Bucket über einen binär (`COLLATE "C"`) sortierten Storage-Key-Index gelesen.
 - `provisional_operation_id`, `provisional_owner_subject`, `provisional_draft_id` und `provisional_expires_at` begrenzen Zugriff, Idempotenz und spätere Reconciliation. Unklare Write-Ausgänge werden nicht durch voreiliges Löschen verschleiert.
@@ -601,3 +602,18 @@ Die versionierte Migration `20261030_01_expand_waste_tour_fractions` übernimmt 
 `20261030_02_contract_waste_tour_fractions` ist nicht Teil der standardmäßig ausgewählten Migrationen. Erst `WASTE_TOUR_FRACTIONS_CONTRACT_CONFIRMED=true` im bestehenden Migrationsprofil bestätigt den vollständigen Wechsel aller Studio-, Kalender- und Worker-Versionen, das Ende alter Rollback-Kandidaten und den Backup-/Restore-Nachweis. Contract ersetzt den Körper der Zuordnungsfunktion durch direkte relationale Writes und entfernt nach erneutem Bestandsvergleich den Kompatibilitätstrigger, die Arrayspalte und ihren GIN-Index. Bis zur separat freigegebenen Aktivierung bleibt die Brücke bestehen. Der kanonische Bedienablauf bleibt [Studio-Rollout](../guides/studio-rollout-process.md).
 
 Der zentrale Snapshot `studio-db-schema-final.sql` wurde auf Betroffenheit geprüft und bleibt unverändert: Diese Fachbeziehung gehört zu den getrennten Waste-Tenant-Datenbanken, nicht zu den zentralen `packages/data/migrations/`. Schema-Builder und versionierter Waste-Katalog werden durch PostgreSQL-Integrationstests auf denselben Expand-Vertrag geprüft.
+
+## Managed competence languages (migration 0112)
+
+`iam.accounts.competence_languages` is a non-null text array, defaulting to an empty list. The managed account editor validates up to 40 canonical language tags. Omitted PATCH values preserve existing data; an explicit empty list clears it. This field is independent of interface language and is unavailable to self-profile writes. It grants no permission or sworn status. Migration 0112 does not enable recording or grant recording permissions.
+
+### Tenant login MFA policy (migration 0113)
+
+`iam.instances` owns `login_mfa_desired_mode` (optional by default), nullable
+`login_mfa_applied_mode`, monotonic `login_mfa_revision`, nullable verified
+`login_mfa_applied_revision`, and `login_mfa_run_id` referencing the existing
+Keycloak provisioning run. No existing realm is marked verified by migration.
+The latest run supplies pending/failure diagnostics; failed reconciliation retains
+the last verified mode. Completion compares desired revision, mode and run ID,
+preventing superseded workers from certifying a newer request. Tenant writes,
+run creation and the existing instance audit event share the scoped transaction.

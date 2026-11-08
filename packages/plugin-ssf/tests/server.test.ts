@@ -107,6 +107,7 @@ describe('SSF plugin server handler', () => {
     const handlers = createSsfPluginServerHandlers({ runtimeHandler });
 
     expect(Object.keys(handlers)).toEqual([
+      'ssf.recording-directory-v2',
       SSF_RUNTIME_SERVER_HANDLER_ID,
       SSF_RUNTIME_V2_SERVER_HANDLER_ID,
     ]);

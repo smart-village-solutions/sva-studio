@@ -27,6 +27,7 @@
   "dependencies": {
     "@sva/plugin-sdk": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
+    "@tabler/icons-react": "^3.46.0",
     "react-hook-form": "^7.76.0"
   },
   "peerDependencies": {
@@ -39,8 +40,8 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitest/coverage-v8": "^5.0.3",
-    "tooling-testing": "workspace:*",
     "happy-dom": "^21.0.4",
+    "tooling-testing": "workspace:*",
     "vitest": "^5.0.3"
   }
 }

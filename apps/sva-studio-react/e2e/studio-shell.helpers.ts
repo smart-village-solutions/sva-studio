@@ -1,4 +1,5 @@
-import { expect, type BrowserContext, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { resolveUserInitials } from '@sva/core';
 
 const escapeForRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -40,10 +41,7 @@ export const gotoHomeAsAuthenticatedUser = async (page: Page, expectedUserName =
   await expect(page.getByRole('button', { name: expectedTriggerPattern })).toBeVisible();
 };
 
-export const establishServerReadableAuthSession = async (
-  context: BrowserContext,
-  page: Page
-) => {
+export const establishServerReadableAuthSession = async (context: BrowserContext, page: Page) => {
   const origin = new URL(page.url()).origin;
   const response = await context.request.post(
     new URL('/auth/dev-login?returnTo=%2F', origin).toString(),
@@ -160,4 +158,58 @@ export const registerSharedIamRoutes = async (
       }),
     });
   });
+};
+
+/** Capture existing flows in a fixed locale/theme/viewport matrix. */
+export const captureStudioDesignState = async (page: Page, name: string, scope = 'main') => {
+  for (const mode of ['light', 'dark'] as const) {
+    if ((await page.locator('html').getAttribute('data-theme-mode')) !== mode) {
+      const label = mode === 'dark' ? 'Dunklen Modus aktivieren' : 'Hellen Modus aktivieren';
+      const openLayer = await page
+        .locator('[role=dialog], [role=combobox][aria-expanded=true]')
+        .count();
+      if (!openLayer && (await page.getByRole('button', { name: label }).count())) {
+        await page.getByRole('button', { name: label }).click();
+      } else {
+        // Invoke the real handler for visual state setup when a modal or search must stay open,
+        // keeping the user's open form, focus and dialog state intact.
+        await page.getByRole('button', { name: label, includeHidden: true }).evaluate((element) => {
+          if (element instanceof HTMLButtonElement) element.click();
+        });
+      }
+    }
+    for (const width of [320, 390, 768, 1024, 1280, 1728]) {
+      await page.setViewportSize({ width, height: 900 });
+      const openSearch = page.locator('[role=combobox][aria-expanded=true]');
+      const hasOpenSearch = (await openSearch.count()) > 0;
+      if (hasOpenSearch) {
+        await page.locator('[aria-haspopup=listbox][aria-expanded=true]').scrollIntoViewIfNeeded();
+        await expect(openSearch.first()).toBeInViewport();
+        await openSearch.first().click({ trial: true });
+      } else {
+        await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+      }
+      await expect(page.locator('html')).toHaveAttribute('data-theme-mode', mode);
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+        .toBeLessThanOrEqual(width);
+      expect(await page.locator('form form, button button, a button, button a').count()).toBe(0);
+      if (width === 1280) {
+        const result = await new AxeBuilder({ page }).include(scope).analyze();
+        expect(
+          result.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))
+        ).toEqual([]);
+      }
+      await page.screenshot({
+        path: test.info().outputPath(`${name}-${mode}-${width}.png`),
+        fullPage: !hasOpenSearch,
+      });
+    }
+  }
+  await page
+    .getByRole('button', { name: 'Hellen Modus aktivieren', includeHidden: true })
+    .evaluate((element) => {
+      if (element instanceof HTMLButtonElement) element.click();
+    });
+  await page.setViewportSize({ width: 1280, height: 900 });
 };

@@ -55,10 +55,10 @@ export const createSsfRuntimeErrorResponse = (
   retryable: boolean
 ): Response =>
   jsonResponse(status, {
-    contractVersion: new URL(request.url).pathname === '/internal/plugins/ssf/v2/runtime-configuration'
+    contractVersion: ['/internal/plugins/ssf/v2/runtime-configuration', '/internal/plugins/ssf/v2/recording-directory'].includes(new URL(request.url).pathname)
       ? '2.0' : SSF_RUNTIME_CONTRACT_VERSION,
     error: {
-      code,
+      code: new URL(request.url).pathname === '/internal/plugins/ssf/v2/recording-directory' && code === 'runtime_configuration_unavailable' ? 'recording_directory_unavailable' : code,
       message: 'Runtime configuration is unavailable.',
       retryable,
       correlationId: ssfCorrelationIdForError(request),

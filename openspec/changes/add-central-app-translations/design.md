@@ -373,6 +373,49 @@ Der Mainserver verwendet ausschließlich seinen bereits konfigurierten vertrauli
 
 Kritische Nachweise: frische Einrichtung und unveränderte Wiederholung; Modul aus/an und veralteter Lifecycle-Auftrag; fehlender technischer Zugang; gewöhnlicher Benutzer oder fremde Kommune; HTTPS-/Pfad-/Bodygrenzen; Ziel- und Mapperkonflikte; unveränderte fremde Einstellungen und Secrets; Keycloak-Ausfall und Wiederholung nach Teilfehler. Ein erfolgreicher lokaler Test ersetzt den noch offenen Live-Nachweis der Sandbox nicht.
 
+### 6.5 Nachrichtenübersetzung über das Modul freigeben
+
+In Staging und Production steuert Studio die Nachrichtenfreigabe für jede
+zugeordnete Instanz. Ein aktives Modul, eine bestätigte Mainserver-Bindung und
+ein geprüfter DeepL-Zugang mit Englisch ergeben zusammen die Freigabe für das
+bestehende Nachrichtenprofil. Moduländerungen, DeepL-Konfiguration und Sprachauswahl
+stoßen denselben Abgleich an. Englisch bleibt der Umfang dieses Lieferabschnitts
+für dynamische Nachrichten.
+
+Je Umgebung vertraut der Mainserver dem bereits vorhandenen zentralen
+Übersetzungsendpunkt der zugehörigen Studio-Installation. Die exakt konfigurierte
+HTTPS-Adresse ist das Ziel vor Tokenabruf und Versand. Die bestehende, bestätigte
+Bindung identifiziert die Instanz im Request. Studio prüft dort weiterhin Issuer,
+Audience, Client, Subject, Instanz, Modul und Sprache. Ein Kunde mit eigener
+Studio-Domain oder abweichender Mainserver-Kennung nutzt denselben Weg.
+Die Staging-Zentralroute antwortet ohne Token mit dem erwarteten Dienstfehler 401.
+
+Der vorhandene, authentifizierte Einrichtungsaufruf überträgt bei Aktivierung,
+Abgleich, Reaktivierung und Entzug zusätzlich den gewünschten Zustand mit der
+Studio-Auftragsgeneration. Studio verwendet den bestehenden technischen Zugang
+der zugeordneten Instanz. Mainserver prüft die Host-Kommune und ihre bestätigte
+Studio-Identität, bevor er die Freigabe in den bestehenden kommunalen
+Übersetzungseinstellungen speichert. Unter derselben Zeilensperre wird eine
+ältere Generation abgewiesen. Die Wiederholung derselben Generation mit
+identischem Zustand bestätigt den bestehenden Wert. Derselben Generation
+zugeordnete widersprüchliche Zustände werden als Konflikt gemeldet.
+
+Studio sperrt neue Provider-Aufrufe beim Entzug unmittelbar über den bestehenden
+Modulguard. Der Mainserver beendet mit bestätigtem Entzug das Einreihen von Jobs
+und die Auslieferung fertiger Treffer. Bis der Mainserver den Entzug bestätigt,
+können bei einem Verbindungsfehler bereits gespeicherte Ergebnisse sichtbar
+bleiben. Der bestehende Lifecycle meldet den ausstehenden Abgleich und übernimmt
+Retry und Reparatur. Laufende Jobs prüfen vor Übernahme des Ergebnisses erneut
+ihre Freigabe und Quellversion. Eine erneute Freigabe kann zulässige Treffer
+weiterverwenden.
+
+Die Einführung erfolgt Mainserver vor Studio. Alte Identitätsabfragen und
+Einrichtungsaufrufe bleiben während des Übergangs kompatibel. Einmalig werden
+bereits aktive Module über den vorhandenen Lifecycle abgeglichen. Die bisherige
+Pilotfreigabe wird dabei in die vom Modul gesteuerte Freigabe überführt. Vor der
+Produktivfreigabe sind der Ablauf für zwei Staging-Instanzen und der Rückfall bei
+Entzug mit vorhandenem Cache nachzuweisen.
+
 ## 7. Generischer Cache und Worker
 
 ```text
@@ -787,6 +830,6 @@ Nachweise: 16 Core-Tests für beide Exportversionen/Katalogwerte und ein Reposit
 
 ### Lokaler Nachweisstand ST-3
 
-Der Handler `auth-runtime/src/app-translations-service.ts` und die technische POST-Registrierung liefern `schemaVersion: 1`, `requestId`, `sourceDigest`, `profileId: news-v1`, `sourceLocale: de`, `targetLocale: en` sowie vollständige `entries` in unveränderter Reihenfolge mit denselben `key`/`format`. Pilotkeys: `title`, `author`, `keywords`, `contentBlocks.N.title`/`.intro`/`.body`, nur body HTML; genau ein nichtleerer Titel. Grenzen: 50 Einträge, 90000 UTF-8-Quellbytes, 100000 Gesamtrequestbytes, 35-Sekunden-Abbruchsignal für die Übersetzungsphase nach der Authentifizierung; bestehender Bulk-Ratenbegrenzer je Instanz/Service-Subject. HTML muss dem bestehenden Sanitizerprofil entsprechen; Tag-/Attributfolge bleibt exakt. Fehler liefern keine Teilergebnisse. Wiederholung/Job/MySQL gehören zum Main-Server.
+Der Handler `auth-runtime/src/app-translations-service.ts` und die technische POST-Registrierung liefern `schemaVersion: 1`, `requestId`, `sourceDigest`, `profileId: news-v1`, `sourceLocale: de`, `targetLocale: en` sowie vollständige `entries` in unveränderter Reihenfolge mit denselben `key`/`format`. Pilotkeys: `title`, `author`, `keywords`, `settings.onlySummaryLinkText`, `contentBlocks.N.title`/`.intro`/`.body` und `contentBlocks.N.mediaContents.M.captionText`. Der Body ist HTML, der Anreißer kann HTML oder Klartext sein und Bildbeschreibungen sind Klartext. Genau ein Titel ist erforderlich. Grenzen: 50 Einträge, 90000 UTF-8-Quellbytes, 100000 Gesamtrequestbytes, 35-Sekunden-Abbruchsignal für die Übersetzungsphase nach der Authentifizierung; bestehender Bulk-Ratenbegrenzer je Instanz/Service-Subject. HTML muss dem bestehenden Sanitizerprofil entsprechen; Tag-/Attributfolge bleibt exakt. Fehler liefern keine Teilergebnisse. Wiederholung/Job/MySQL gehören zum Main-Server.
 
 Die bestehende Default-Schnittstelle hält unter `translationService` erwarteten HTTPS-Issuer, Client, exaktes Service-Subject und Audience; `settings.ts` erhält diese beim gewöhnlichen URL-Speichern. Kein technischer Account wird angelegt und keine zusätzliche Rolle geprüft. Die ausgehende Organisationsprovisionierung ist keine eingehende Serviceidentität. Ein passender realer Dienstausweis/Audience und die ausdrücklich konfigurierte bestehende Verbindung bleiben Voraussetzungen vor Live-Anbieterarbeit; Unit-/Schema-Lesetests behaupten keinen fertigen Live-Durchstich.

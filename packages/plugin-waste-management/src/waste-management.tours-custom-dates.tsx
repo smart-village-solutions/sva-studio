@@ -53,8 +53,6 @@ export const WasteToursCustomDatesField = ({
   const [pendingDelete, setPendingDelete] = useState<TourCustomDatePendingDelete | null>(null);
   const [duplicateAssignmentId, setDuplicateAssignmentId] = useState<string | null>(null);
   const [activeAssignmentDate, setActiveAssignmentDate] = useState<string | null>(null);
-  const [activeLocationPickerId, setActiveLocationPickerId] = useState<string | null>(null);
-  const [locationSearchValues, setLocationSearchValues] = useState<Record<string, string>>({});
   const [year, setYear] = useState(initialYear);
 
   useEffect(() => {
@@ -174,7 +172,6 @@ export const WasteToursCustomDatesField = ({
 
   const removeAssignment = (assignmentId: string) => {
     setDuplicateAssignmentId((current) => (current === assignmentId ? null : current));
-    setActiveLocationPickerId((current) => (current === assignmentId ? null : current));
     onAssignmentsChange(dateLocationAssignments.filter((entry) => entry.id !== assignmentId));
   };
 
@@ -207,7 +204,7 @@ export const WasteToursCustomDatesField = ({
       </div>
 
       {sortedDates.length === 0 ? (
-        <p className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+        <p className="rounded-lg border border-border-subtle bg-surface-inset px-4 py-3 text-sm text-muted-foreground">
           {pt('tours.customDates.empty')}
         </p>
       ) : (
@@ -222,10 +219,6 @@ export const WasteToursCustomDatesField = ({
           addAssignment={addAssignment}
           locations={locations}
           locationLabels={locationLabels}
-          activeLocationPickerId={activeLocationPickerId}
-          setActiveLocationPickerId={setActiveLocationPickerId}
-          locationSearchValues={locationSearchValues}
-          setLocationSearchValues={setLocationSearchValues}
           duplicateAssignmentId={duplicateAssignmentId}
           updateAssignment={updateAssignment}
         />

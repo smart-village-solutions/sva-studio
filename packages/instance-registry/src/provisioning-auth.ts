@@ -77,6 +77,8 @@ export const createInstanceKeycloakPlanReader =
       const state = await readState(input);
       const preflight = await getPreflight(input);
       return buildPlan({
+        loginMfaMode: input.loginMfaMode,
+        loginMfaRevision: input.loginMfaRevision,
         instanceId: input.instanceId,
         realmMode: input.realmMode,
         authClientSecret: input.authClientSecret,
@@ -91,6 +93,8 @@ export const createInstanceKeycloakPlanReader =
     } catch {
       const preflight = await getPreflight(input);
       return buildPlan({
+        loginMfaMode: input.loginMfaMode,
+        loginMfaRevision: input.loginMfaRevision,
         instanceId: input.instanceId,
         realmMode: input.realmMode,
         authClientSecret: input.authClientSecret,

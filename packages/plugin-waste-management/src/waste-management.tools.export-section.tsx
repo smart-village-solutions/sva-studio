@@ -37,7 +37,7 @@ const WasteExportProfileSelector = ({
             <label
               key={profile.profileId}
               htmlFor={id}
-              className="flex items-start gap-2 rounded-lg border border-border/60 p-3"
+              className="flex items-start gap-2 rounded-lg border border-border-subtle p-3"
             >
               <Checkbox
                 id={id}
@@ -85,7 +85,7 @@ export const WasteToolsExportSection = ({
     profileIds.length > 0 && (targetFormat === 'application/zip' || profileIds.length === 1);
 
   return (
-    <section className="space-y-4 rounded-xl border border-border/70 bg-background/80 p-4">
+    <section className="space-y-4 rounded-lg border border-border-subtle bg-card p-4">
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">{pt('tools.exports.title')}</h3>
         <p className="text-sm text-muted-foreground">{pt('tools.exports.description')}</p>

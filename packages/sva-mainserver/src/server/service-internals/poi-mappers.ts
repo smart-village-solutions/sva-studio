@@ -122,7 +122,7 @@ export const mapPoiItemDetail = (
       id: parsed.data.id,
       name: parsed.data.name ?? '',
       contentType: 'poi.point-of-interest',
-      status: 'published',
+      status: parsed.data.visible === false ? 'draft' : 'published',
       ...(optionalString(parsed.data.description)
         ? { description: optionalString(parsed.data.description) }
         : {}),

@@ -56,7 +56,7 @@ export const WasteSchedulingListView = ({
   return (
     <div className="space-y-4">
       {search.tourId ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border-subtle bg-card p-3 text-sm">
           <span className="mr-auto font-medium">
             {pt('scheduling.tourContext.active', { name: selectedTour?.name ?? search.tourId })}
           </span>

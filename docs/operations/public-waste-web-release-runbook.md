@@ -48,6 +48,15 @@ beim Bootstrap fail-closed als `public_waste_config_invalid` ab; dadurch kann
 eine falsch zugeordnete Konfiguration keine Daten eines anderen Tenants
 freigeben.
 
+PDF-Logo und Kontaktblock werden bevorzugt aus `public.waste_settings` der
+Waste-Tenant-Datenbank gelesen. Der Legacy-Fallback auf die zentrale
+Schnittstellenverwaltung wird nur mit einer ausdrücklich konfigurierten
+`IAM_DATABASE_URL` verwendet; `PUBLIC_WASTE_DATABASE_URL` und die übergebene
+Waste-Verbindung ersetzen diese niemals. Ohne IAM-Verbindung werden fehlende
+Felder direkt aus `PUBLIC_WASTE_PDF_BRANDING_ASSET_URL` und
+`PUBLIC_WASTE_PDF_CONTACT_BLOCK` ergänzt. Die öffentliche Runtime benötigt für
+die PDF-Erzeugung keine zusätzliche IAM-Verbindung.
+
 ## Voraussetzungen in GitHub
 
 Für den Releaseworkflow werden mindestens diese GitHub-Konfigurationen

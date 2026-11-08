@@ -110,7 +110,10 @@ export const UserManagementPanel = ({
         </Label>
       </div>
       {user.isTechnicalAccount && !formValues.isTechnicalAccount ? (
-        <Alert className="border-amber-500/40 bg-amber-500/10 md:col-span-2" role="status">
+        <Alert
+          className="border-status-warning-foreground bg-status-warning text-status-warning-foreground md:col-span-2"
+          role="status"
+        >
           <AlertDescription>{t('admin.users.edit.removeTechnicalAccountWarning')}</AlertDescription>
         </Alert>
       ) : null}
@@ -121,6 +124,12 @@ export const UserManagementPanel = ({
       <div className="grid gap-2 text-sm text-foreground">
         <Label htmlFor="user-timezone">{t('account.fields.timezone')}</Label>
         <Input {...register('timezone')} id="user-timezone" />
+      </div>
+      <div className="grid gap-2 text-sm text-foreground">
+        <Label htmlFor="user-competence-languages">{t('admin.users.edit.competenceLanguages')}</Label>
+        <Input {...register('competenceLanguages')} id="user-competence-languages" aria-describedby="user-competence-languages-hint" />
+        <span id="user-competence-languages-hint">{t('admin.users.edit.competenceLanguagesHint')}</span>
+        {form.formState.errors.competenceLanguages ? <span role="alert">{form.formState.errors.competenceLanguages.message}</span> : null}
       </div>
       <UserRoleSelection controller={controller} />
       <div className="md:col-span-2">

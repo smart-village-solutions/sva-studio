@@ -3,6 +3,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { mergeRequestHeaders, requestJson } from './http-client.js';
 
 describe('http-client', () => {
+  it('calls injected fetch without an object receiver, as required by browser fetch', async () => {
+    const fetchMock = vi.fn(function (this: unknown) {
+      expect(this).toBeUndefined();
+      return Promise.resolve(Response.json({ data: 'ok' }));
+    });
+
+    await expect(requestJson({ fetch: fetchMock, url: '/api/test' })).resolves.toEqual({ data: 'ok' });
+  });
+
   it('merges headers across plain objects, tuples and Headers instances with last-write-wins semantics', () => {
     expect(
       Object.fromEntries(

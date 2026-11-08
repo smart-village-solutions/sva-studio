@@ -28,11 +28,14 @@ const TourCustomDateMainRow = ({
 }: MainRowProps) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <tr className="border-t border-border/60 align-top">
+    <tr className="border-t border-border-subtle align-top">
       <td className="px-4 py-3">
         <span className="text-sm font-medium text-foreground">{entry.date}</span>
       </td>
       <td className="px-4 py-3">
+        <label className="sr-only" htmlFor={`waste-tour-custom-date-${entry.date}`}>
+          {pt('tours.customDates.fields.comment')} {entry.date}
+        </label>
         <Input
           id={`waste-tour-custom-date-${entry.date}`}
           value={entry.description ?? ''}
@@ -98,10 +101,6 @@ type TableProps = Readonly<{
   readonly addAssignment: (date: string) => void;
   readonly locations: readonly { id: string; label: string }[];
   readonly locationLabels: ReadonlyMap<string, string>;
-  readonly activeLocationPickerId: string | null;
-  readonly setActiveLocationPickerId: Dispatch<SetStateAction<string | null>>;
-  readonly locationSearchValues: Readonly<Record<string, string>>;
-  readonly setLocationSearchValues: Dispatch<SetStateAction<Record<string, string>>>;
   readonly duplicateAssignmentId: string | null;
   readonly updateAssignment: (
     id: string,
@@ -120,16 +119,17 @@ export const TourCustomDatesTable = ({
   addAssignment,
   locations,
   locationLabels,
-  activeLocationPickerId,
-  setActiveLocationPickerId,
-  locationSearchValues,
-  setLocationSearchValues,
   duplicateAssignmentId,
   updateAssignment,
 }: TableProps) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
-    <div className="overflow-hidden border border-border/70 bg-card shadow-shell">
+    <div
+      role="group"
+      aria-label={pt('tours.customDates.title')}
+      tabIndex={0}
+      className="min-w-0 overflow-x-auto rounded-lg border border-border-subtle bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
       <table className="min-w-full border-collapse">
         <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
@@ -171,10 +171,6 @@ export const TourCustomDatesTable = ({
                     addAssignment={addAssignment}
                     locations={locations}
                     locationLabels={locationLabels}
-                    activeLocationPickerId={activeLocationPickerId}
-                    setActiveLocationPickerId={setActiveLocationPickerId}
-                    locationSearchValues={locationSearchValues}
-                    setLocationSearchValues={setLocationSearchValues}
                     duplicateAssignmentId={duplicateAssignmentId}
                     updateAssignment={updateAssignment}
                     setPendingDelete={setPendingDelete}

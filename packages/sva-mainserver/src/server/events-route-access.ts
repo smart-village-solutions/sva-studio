@@ -92,6 +92,7 @@ export const authorizeMutationOrResponse = async (
 ): Promise<MainserverMutationActor | Response> => {
   const authorizedActor = await authorizeOrResponse(ctx, contentKind, action, contentId);
   if (isResponse(authorizedActor)) {
+    authorizedActor.headers.set('X-SVA-Mutation-Outcome', 'not_applied');
     return authorizedActor;
   }
   return resolveMainserverMutationActor({ request, ctx, authorizedActor });

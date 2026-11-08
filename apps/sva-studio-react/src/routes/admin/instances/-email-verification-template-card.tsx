@@ -41,22 +41,17 @@ const VerificationForm = ({
     .replaceAll('{{linkExpiresIn}}', t('admin.instances.invitation.previewExpiry'));
   return (
     <div className="space-y-4 py-4">
-      <p className="text-sm">
-        {t('admin.instances.invitation.source', {
-          source: t(`admin.instances.invitation.sources.${view.source}`),
-        })}
-      </p>
       {'stored' in view ? (
         <p className="text-sm">
           {t('admin.instances.emailVerification.realm', { realm: view.realm })}
         </p>
       ) : null}
       {!('stored' in view) && view.unsynchronizedInstances?.length ? (
-        <p role="status">
+        <p role="status" className="text-sm">
           {t('admin.instances.mailSync.savedPending')} {view.unsynchronizedInstances.join(', ')}
         </p>
       ) : null}
-      <p className="text-xs text-muted-foreground">
+      <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
         {t('admin.instances.emailVerification.tokens')}
       </p>
       <StudioField
@@ -134,88 +129,92 @@ export const EmailVerificationTemplateCard = (props: VerificationCardProps) => {
   const { open, view, draft, message, loading, saving, save, changeOpen } = editor;
   return (
     <Card className="space-y-3 p-4">
-      <h2 className="text-sm font-medium">
-        {t(
-          server
-            ? 'admin.instances.emailVerification.serverTitle'
-            : 'admin.instances.emailVerification.title'
-        )}
-      </h2>
-      <p className="text-xs text-muted-foreground">
-        {t(
-          server
-            ? 'admin.instances.emailVerification.serverDescription'
-            : 'admin.instances.emailVerification.description'
-        )}
-      </p>
-      <Dialog open={open} onOpenChange={changeOpen}>
-        <DialogTrigger asChild>
-          <Button type="button" variant="secondary" disabled={disabled}>
-            {t('admin.instances.emailVerification.open')}
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {t(
-                server
-                  ? 'admin.instances.emailVerification.serverTitle'
-                  : 'admin.instances.emailVerification.title'
-              )}
-            </DialogTitle>
-            <DialogDescription>
-              {t(
-                server
-                  ? 'admin.instances.emailVerification.serverDescription'
-                  : 'admin.instances.emailVerification.description'
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          {loading ? (
-            <StudioLoadingState>{t('admin.instances.invitation.loading')}</StudioLoadingState>
-          ) : (
-            <VerificationForm editor={editor} disabled={saving || disabled} />
-          )}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-medium text-foreground">
+            {t(
+              server
+                ? 'admin.instances.emailVerification.serverTitle'
+                : 'admin.instances.emailVerification.title'
+            )}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {view
+              ? t('admin.instances.invitation.source', {
+                  source: t(`admin.instances.invitation.sources.${view.source}`),
+                })
+              : (message ?? t('admin.instances.invitation.loading'))}
+          </p>
+        </div>
+        <Dialog open={open} onOpenChange={changeOpen}>
+          <DialogTrigger asChild>
+            <Button type="button" variant="secondary" disabled={disabled}>
+              {t('admin.instances.emailVerification.open')}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {t(
+                  server
+                    ? 'admin.instances.emailVerification.serverTitle'
+                    : 'admin.instances.emailVerification.title'
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                {t(
+                  server
+                    ? 'admin.instances.emailVerification.serverDescription'
+                    : 'admin.instances.emailVerification.description'
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            {loading ? (
+              <StudioLoadingState>{t('admin.instances.invitation.loading')}</StudioLoadingState>
+            ) : (
+              <VerificationForm editor={editor} disabled={saving || disabled} />
+            )}
 
-          {message ? (
-            <p role="status" aria-live="polite">
-              {message}
-            </p>
-          ) : null}
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={!view || loading || saving || disabled}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    t(
-                      server
-                        ? 'admin.instances.emailVerification.resetServerConfirm'
-                        : 'admin.instances.emailVerification.resetConfirm'
+            {message ? (
+              <p role="status" aria-live="polite" className="mb-4 text-sm">
+                {message}
+              </p>
+            ) : null}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!view || loading || saving || disabled}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      t(
+                        server
+                          ? 'admin.instances.emailVerification.resetServerConfirm'
+                          : 'admin.instances.emailVerification.resetConfirm'
+                      )
                     )
                   )
-                )
-                  void save(null);
-              }}
-            >
-              {t(
-                server
-                  ? 'admin.instances.emailVerification.reset'
-                  : 'admin.instances.emailVerification.resetInstance'
-              )}
-            </Button>
-            <Button
-              type="button"
-              disabled={!view || loading || saving || disabled}
-              onClick={() => void save(draft)}
-            >
-              {t(saving ? 'account.actions.saving' : 'admin.instances.invitation.save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                    void save(null);
+                }}
+              >
+                {t(
+                  server
+                    ? 'admin.instances.emailVerification.reset'
+                    : 'admin.instances.emailVerification.resetInstance'
+                )}
+              </Button>
+              <Button
+                type="button"
+                disabled={!view || loading || saving || disabled}
+                onClick={() => void save(draft)}
+              >
+                {t(saving ? 'account.actions.saving' : 'admin.instances.invitation.save')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </Card>
   );
 };

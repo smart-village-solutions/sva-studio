@@ -119,9 +119,8 @@ const createBoundContent = async (
       skipUpdate: project && !input.ownershipPrincipal && concurrent.source_entity_type === 'GenericItem',
     };
 
-    const contentId = await insertContentRow(
-      client,
-      input.ownershipPrincipal
+    const contentId = await insertContentRow(client, {
+      ...(input.ownershipPrincipal
         ? {
             ...input,
             organizationId:
@@ -130,8 +129,9 @@ const createBoundContent = async (
                 : undefined,
             confirmedExternalOwner: input.ownershipPrincipal,
           }
-        : input
-    );
+        : input),
+      publicationSource: 'mainserver',
+    });
     const changedFields = [
       'title',
       'payload',

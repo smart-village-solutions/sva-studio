@@ -28,17 +28,14 @@ export function VoucherEditorHeader({ state: s, actions }: Props) {
     <>
       <fieldset
         disabled={s.busy || s.hasChanges || s.unknown}
-        className="space-y-4 rounded-2xl border border-border/60 bg-card p-5"
+        className="space-y-4 rounded-lg border border-border-subtle bg-card p-4 sm:p-6"
       >
         <MainserverPrincipalControl
           id="voucher-principal"
           label={s.t('fields.principal')}
           value={s.principal}
           options={options}
-          onChange={(value) => {
-            s.setLocationPage(1);
-            s.setPrincipal(value);
-          }}
+          onChange={s.setPrincipal}
           contextOptions={s.principalControl?.contextOptions}
           onContextChange={s.principalControl?.onContextChange}
         />

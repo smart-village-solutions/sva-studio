@@ -100,6 +100,7 @@ export type PluginModuleIamSystemRoleDefinition = {
 };
 
 export type PluginModuleIamContract = {
+  readonly systemAdminPermissionExclusions?: readonly string[];
   readonly moduleId: string;
   readonly permissionIds: readonly string[];
   readonly systemRoles: readonly PluginModuleIamSystemRoleDefinition[];

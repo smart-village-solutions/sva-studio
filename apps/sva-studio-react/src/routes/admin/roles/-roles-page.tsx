@@ -63,9 +63,7 @@ export const RolesPage = () => {
     const localExternalRoleNames = new Set(visibleRoles.map((role) => role.externalRoleName));
     const localRows = visibleRoles.map(toLocalRoleRow);
     const orphanedStudioRows = keycloakRolesApi.roles
-      .filter(
-        (role) => role.managedBy === 'studio' && !localExternalRoleNames.has(role.roleName)
-      )
+      .filter((role) => role.managedBy === 'studio' && !localExternalRoleNames.has(role.roleName))
       .map(toKeycloakRoleRow);
     const sourceRoles =
       isPlatformScope || roleTypeFilter === 'studio'
@@ -96,7 +94,8 @@ export const RolesPage = () => {
   const pageIsLoading =
     selectedApi.isLoading ||
     (!isPlatformScope && roleTypeFilter === 'studio' && keycloakRolesApi.isLoading);
-  const keepsFiltersWhileLoading = !isPlatformScope && keycloakRolesApi.isLoading && !rolesApi.isLoading;
+  const keepsFiltersWhileLoading =
+    !isPlatformScope && keycloakRolesApi.isLoading && !rolesApi.isLoading;
   const errorApi =
     selectedApi.error || isPlatformScope || roleTypeFilter !== 'studio'
       ? selectedApi

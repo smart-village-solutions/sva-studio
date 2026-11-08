@@ -58,6 +58,7 @@ describe('SSF authorization projection runtime', () => {
       readSubjects: vi.fn(async () => [
         {
           keycloakSubject: 'keycloak-subject-1',
+          languages: ['de', 'en-US'],
           roleNames: ['system_admin'],
           permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
         },
@@ -119,6 +120,7 @@ describe('SSF authorization projection runtime', () => {
       subjects: [
         {
           subject: 'keycloak-subject-1',
+          languages: ['de', 'en-US'],
           roles: ['tenant_admin'],
           permissions: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
         },

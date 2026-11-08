@@ -194,6 +194,14 @@
       }
     },
     {
+      "id": "admin.users.authentication-policy",
+      "path": "/admin/users/authentication-policy",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
       "id": "admin.users.create",
       "path": "/admin/users/new",
       "pageType": "create",
@@ -269,6 +277,26 @@
         "pluginId": "cockpit-cards"
       },
       "titleKey": "cockpit-cards.navigation.title"
+    },
+    {
+      "id": "construction-sites.content.create",
+      "path": "/admin/construction-sites/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "construction-sites"
+      },
+      "titleKey": "construction-sites.navigation.title"
+    },
+    {
+      "id": "construction-sites.content.detail",
+      "path": "/admin/construction-sites/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "construction-sites"
+      },
+      "titleKey": "construction-sites.navigation.title"
     },
     {
       "id": "content.create",
@@ -399,6 +427,26 @@
       "owner": {
         "kind": "host"
       }
+    },
+    {
+      "id": "jobs.content.create",
+      "path": "/admin/jobs/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "jobs"
+      },
+      "titleKey": "jobs.navigation.title"
+    },
+    {
+      "id": "jobs.content.detail",
+      "path": "/admin/jobs/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "jobs"
+      },
+      "titleKey": "jobs.navigation.title"
     },
     {
       "id": "media.overview",

@@ -214,7 +214,8 @@ const deleteStatement = (instanceId: string, id: string): SqlStatement => ({
   text: `
 DELETE FROM iam.instance_external_interfaces
 WHERE instance_id = $1
-  AND id = $2;
+  AND id = $2
+RETURNING type_key;
 `,
   values: [instanceId, id],
 });

@@ -66,11 +66,11 @@ export type StudioSectionProps = Readonly<{
 
 export function StudioSection({ title, description, actions, children, className }: StudioSectionProps) {
   return (
-    <section className={cn('space-y-4', className)}>
+    <section className={cn('min-w-0 space-y-4', className)}>
       {title || description || actions ? (
         <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            {title ? <h2 className="text-lg font-semibold text-foreground">{title}</h2> : null}
+            {title ? <h2 className="break-words text-base font-semibold text-foreground">{title}</h2> : null}
             {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
           </div>
           {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">{actions}</div> : null}
@@ -89,7 +89,7 @@ export type StudioEditSurfaceProps = Readonly<{
 
 export function StudioEditSurface({ children, footer, className }: StudioEditSurfaceProps) {
   return (
-    <div className={cn('rounded-lg border border-border bg-card p-4 shadow-sm', className)}>
+    <div className={cn('rounded-lg border border-border-subtle bg-card p-4 sm:p-6', className)}>
       <div className="space-y-5">{children}</div>
       {footer ? <div className="mt-6 border-t border-border pt-4">{footer}</div> : null}
     </div>

@@ -26,6 +26,16 @@ const de = {
       systemStorageMode: 'Systemstandard für Gesprächsspeicherung',
     },
     v2: {
+      recording: {
+        affectedTenants: 'Die Aufnahmerichtlinie wurde nicht gespeichert. Passen Sie zuerst die Aufbewahrung der Prüfprotokolle für die folgenden Mandanten an die neue Aufnahmefrist an und versuchen Sie es erneut.',
+        installationDefault: 'Installationsstandard', title: 'Aufnahmerichtlinie', notice: 'Aufnahmen benötigen eine ausdrückliche Aktivierung für den Mandanten und eine vollständige gültige Richtlinie. Verfasste Rechtstexte und Aufbewahrungsfristen vor der Nutzung prüfen.',
+        enabled: 'Aufnahmen für diesen Mandanten aktivieren', retentionHours: 'Aufbewahrung der Aufnahmen in Stunden', effectiveRetention: 'Wirksame Aufbewahrung der Aufnahmen in Stunden',
+        resetRetention: 'Aufbewahrung auf den Installationsstandard zurücksetzen', legalBasis: 'Rechtsgrundlage', signature: 'Unterschrift', idCheck: 'Identitätsprüfung',
+        verificationRequired: 'Verifikation erforderlich', recoveryMode: 'Wiederherstellungsmodus', timestampAuthorityUrl: 'HTTPS-URL des Zeitstempeldienstes',
+        auditRetentionHours: 'Aufbewahrung der Prüfprotokolle in Stunden', consentHtml: 'Einwilligungstext zur Aufnahme', resumePromptHtml: 'Text zur Wiederaufnahme',
+        addText: 'Aufnahmetexte hinzufügen', removeText: 'Aufnahmetexte entfernen',
+        options: { consent: 'Einwilligung', statutory: 'Gesetzlich', off: 'Aus', optional: 'Optional', required: 'Erforderlich', standard: 'Standard', enhanced: 'Erweitert' },
+      },
       legalTexts: {
         title: 'Einwilligungen und Aufnahmefreigaben', add: 'Rechtstexte einrichten',
         sourceLocale: 'Sprache der Originalfassung', version: 'Version der Originalfassung',
@@ -102,6 +112,11 @@ const de = {
       linkPrompt: 'Link-Adresse',
     },
     permissions: {
+      recording_request: 'Aufnahme anfordern',
+      recording_review: 'Aufnahmen prüfen',
+      recording_review_sworn: 'Aufnahmen vereidigt prüfen',
+      recording_supervise: 'Aufnahmen beaufsichtigen',
+      recording_recovery_custodian: 'Aufnahmewiederherstellung verwalten',
       systemRead: 'SSF-Systemstandards lesen',
       systemManage: 'SSF-Systemstandards verwalten',
       tenantRead: 'SSF-Konfiguration lesen',
@@ -136,6 +151,16 @@ const en = {
       systemStorageMode: 'System default for conversation storage',
     },
     v2: {
+      recording: {
+        affectedTenants: 'The recording policy was not saved. First increase audit retention for the following tenants to cover the new recording retention, then retry.',
+        installationDefault: 'Installation default', title: 'Recording policy', notice: 'Recording requires an explicit tenant enable action and a complete valid policy. Review authored legal wording and retention before use.',
+        enabled: 'Enable recording for this tenant', retentionHours: 'Recording retention in hours', effectiveRetention: 'Effective recording retention in hours',
+        resetRetention: 'Reset recording retention to installation default', legalBasis: 'Legal basis', signature: 'Signature', idCheck: 'Identity check',
+        verificationRequired: 'Verification required', recoveryMode: 'Recovery mode', timestampAuthorityUrl: 'HTTPS timestamp authority URL',
+        auditRetentionHours: 'Audit retention in hours', consentHtml: 'Recording consent wording', resumePromptHtml: 'Recording resume wording',
+        addText: 'Add recording wording', removeText: 'Remove recording wording',
+        options: { consent: 'Consent', statutory: 'Statutory', off: 'Off', optional: 'Optional', required: 'Required', standard: 'Standard', enhanced: 'Enhanced' },
+      },
       legalTexts: {
         title: 'Consents and recording releases', add: 'Configure legal texts',
         sourceLocale: 'Source language', version: 'Source version',
@@ -212,6 +237,11 @@ const en = {
       linkPrompt: 'Link address',
     },
     permissions: {
+      recording_request: 'Request recording',
+      recording_review: 'Review recordings',
+      recording_review_sworn: 'Review recordings as a sworn reviewer',
+      recording_supervise: 'Supervise recordings',
+      recording_recovery_custodian: 'Act as recording recovery custodian',
       systemRead: 'Read SSF system defaults',
       systemManage: 'Manage SSF system defaults',
       tenantRead: 'Read SSF configuration',

@@ -8,13 +8,13 @@ import {
   type SurveyContentTranslate,
 } from './surveys.question-editor.shared.js';
 import { surveyResultVisibilityValues } from './surveys.detail-content-model.js';
-import { SurveyDetailCard } from './surveys.detail-card.js';
+import { StudioDetailCard } from '@sva/studio-ui-react';
 
 export function SurveyDescriptionCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
   const { register } = useFormContext<SurveyDetailFormValues>();
 
   return (
-    <SurveyDetailCard
+    <StudioDetailCard
       title={pt('cards.content.descriptions.title')}
       description={pt('cards.content.descriptions.description')}
     >
@@ -42,7 +42,7 @@ export function SurveyDescriptionCard({ pt }: Readonly<{ pt: SurveyContentTransl
           />
         </StudioField>
       </div>
-    </SurveyDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -93,7 +93,7 @@ export function SurveyParticipationCard({
   const showResultsInApp = useWatch({ name: 'content.showResultsInApp' }) ?? false;
 
   return (
-    <SurveyDetailCard
+    <StudioDetailCard
       title={pt(
         createMode
           ? section === 'results'
@@ -141,7 +141,7 @@ export function SurveyParticipationCard({
         ) : null}
         {createMode && section === 'anonymity' ? <SurveyNoticesCard pt={pt} plain /> : null}
       </div>
-    </SurveyDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -182,12 +182,12 @@ export function SurveyNoticesCard({
   return plain ? (
     fields
   ) : (
-    <SurveyDetailCard
+    <StudioDetailCard
       title={pt('cards.content.notices.title')}
       description={pt('cards.content.notices.description')}
     >
       {fields}
-    </SurveyDetailCard>
+    </StudioDetailCard>
   );
 }
 
@@ -197,12 +197,12 @@ export function SurveyDetailContentTab({ pt }: Readonly<{ pt: SurveyContentTrans
       <SurveyDescriptionCard pt={pt} />
       <SurveyParticipationCard pt={pt} />
       <SurveyNoticesCard pt={pt} />
-      <SurveyDetailCard
+      <StudioDetailCard
         title={pt('cards.content.questions.title')}
         description={pt('cards.content.questions.description')}
       >
         <SurveyQuestionListEditor pt={pt} />
-      </SurveyDetailCard>
+      </StudioDetailCard>
     </div>
   );
 }

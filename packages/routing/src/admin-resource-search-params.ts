@@ -20,7 +20,10 @@ export type AdminResourceListSearchState = Readonly<{
   pageSize?: number;
 }>;
 
-const readSearchValue = (search: Readonly<Record<string, unknown>>, param: string): string | undefined => {
+const readSearchValue = (
+  search: Readonly<Record<string, unknown>>,
+  param: string
+): string | undefined => {
   const value = search[param];
   if (typeof value === 'string') {
     const trimmed = value.trim();
@@ -134,10 +137,55 @@ export const normalizeAdminResourceListSearch = (
   }
 
   return {
-    search: capabilities.search ? readSearchValue(search, capabilities.search.param ?? 'q') : undefined,
+    search: capabilities.search
+      ? readSearchValue(search, capabilities.search.param ?? 'q')
+      : undefined,
     filters: normalizeFilters(capabilities, search),
     sort: normalizeSort(capabilities, search),
     page: normalizePage(capabilities.pagination, search),
     pageSize: normalizePageSize(capabilities.pagination, search),
+  };
+};
+
+const normalizeContentFilters = (contentType: string, search: Record<string, unknown>) => {
+  const fields =
+    contentType === 'jobs.job'
+      ? ['employmentType', 'visible', 'temporal', 'principal']
+      : contentType === 'construction-sites.construction-site'
+        ? ['category', 'dateStart', 'dateEnd']
+        : [];
+  return Object.fromEntries(
+    fields.flatMap((key) => {
+      const value = typeof search[key] === 'string' ? search[key].trim() : '';
+      if (!value) return [];
+      if (key === 'principal' && value !== 'user' && value !== 'organization') return [];
+      return [[key, value]];
+    })
+  );
+};
+
+export const normalizeContentAdminResourceListSearch = (
+  resource: AdminResourceDefinition,
+  search: Record<string, unknown>
+) => {
+  const normalized = normalizeAdminResourceListSearch(resource, search);
+  const contentType =
+    resource.resourceId === 'content' && typeof search.type === 'string' ? search.type.trim() : '';
+  const languageCode =
+    contentType === 'faq.faq' && typeof search.languageCode === 'string'
+      ? search.languageCode.trim().toLowerCase()
+      : '';
+  const poiId =
+    contentType === 'vouchers.voucher' &&
+    typeof search.poiId === 'string' &&
+    /^\d+$/.test(search.poiId.trim())
+      ? search.poiId.trim()
+      : '';
+  return {
+    ...normalized,
+    ...(contentType === '' ? {} : { type: contentType }),
+    ...(languageCode === '' ? {} : { languageCode }),
+    ...(poiId === '' ? {} : { poiId }),
+    ...normalizeContentFilters(contentType, search),
   };
 };

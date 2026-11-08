@@ -16,7 +16,7 @@ export const WasteMasterDataActiveTourBanner = ({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-muted/30 px-4 py-3">
+    <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-surface-inset px-4 py-3">
       <span className="text-sm text-muted-foreground">
         {pt('masterData.locationsWorkspace.filters.activeTour')}
       </span>
@@ -46,7 +46,7 @@ export const WasteMasterDataLocationsHeader = ({
   const pt = usePluginTranslation('wasteManagement');
 
   return (
-    <thead className="bg-muted/20 text-left text-[13px] text-foreground">
+    <thead className="bg-surface-inset text-left text-[13px] text-foreground">
       <tr className="border-b border-border/70">
         <th scope="col" className="w-12 px-3 py-3">
           <Checkbox

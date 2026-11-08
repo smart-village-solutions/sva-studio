@@ -21,25 +21,25 @@ const WasteToolsPreviewMetrics = ({ previewResult }: { readonly previewResult: P
   const pt = usePluginTranslation('wasteManagement');
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <div className="rounded-xl border border-border/70 bg-muted/10 p-3">
+      <div className="rounded-lg border border-border/70 bg-surface-inset p-3">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
           {pt('tools.imports.wizard.metrics.validRows')}
         </p>
         <p className="mt-1 text-2xl font-semibold">{previewResult.validRowCount}</p>
       </div>
-      <div className="rounded-xl border border-border/70 bg-muted/10 p-3">
+      <div className="rounded-lg border border-border/70 bg-surface-inset p-3">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
           {pt('tools.imports.wizard.metrics.invalidRows')}
         </p>
         <p className="mt-1 text-2xl font-semibold">{previewResult.invalidRowCount}</p>
       </div>
-      <div className="rounded-xl border border-border/70 bg-muted/10 p-3">
+      <div className="rounded-lg border border-border/70 bg-surface-inset p-3">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
           {pt('tools.imports.wizard.metrics.createdTours')}
         </p>
         <p className="mt-1 text-2xl font-semibold">{previewResult.newTours.length}</p>
       </div>
-      <div className="rounded-xl border border-border/70 bg-muted/10 p-3">
+      <div className="rounded-lg border border-border/70 bg-surface-inset p-3">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
           {pt('tools.imports.wizard.metrics.createdAssignments')}
         </p>
@@ -84,7 +84,7 @@ const WasteToolsPreviewSummary = ({ previewResult }: { readonly previewResult: P
   return (
     <div className="space-y-4">
       <WasteToolsPreviewMetrics previewResult={previewResult} />
-      <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+      <div className="rounded-lg border border-border-subtle bg-card p-4">
         <p className="text-sm font-semibold">{pt('tools.imports.previewTitle')}</p>
         <p className="mt-1 text-sm text-muted-foreground">
           {pt('tools.imports.previewSummary', {
@@ -214,7 +214,7 @@ export const WasteToolsPreviewStep = ({
         <WasteToolsPreviewSummary previewResult={previewResult} />
       ) : (
         <div className="space-y-4">
-          <div className="rounded-xl border border-border/70 bg-muted/10 p-4">
+          <div className="rounded-lg border border-border/70 bg-surface-inset p-4">
             <p className="text-sm font-semibold">{pt('tools.imports.wizard.confirmTitle')}</p>
             <p className="mt-1 text-sm text-muted-foreground">{profile.description}</p>
           </div>

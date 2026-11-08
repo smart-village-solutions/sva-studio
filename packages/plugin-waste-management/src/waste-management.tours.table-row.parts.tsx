@@ -1,4 +1,8 @@
-import { IconCalendarMonth, IconCopy, IconTrash } from '@tabler/icons-react';
+import {
+  IconCalendarMonth,
+  IconCopy,
+  IconTrash,
+} from '@tabler/icons-react';
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {

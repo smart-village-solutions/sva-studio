@@ -36,7 +36,7 @@ export const guardPluginTenantExecution = (
         job.instanceId,
         pluginId
       );
-      if (!effectivelyActive) {
+      if (!effectivelyActive && lifecycleMetadata.operation !== 'suspend') {
         throw Object.assign(new Error(`plugin_tenant_lifecycle_inactive:${pluginId}`), {
           cause: {
             category: 'permanent',
@@ -50,7 +50,8 @@ export const guardPluginTenantExecution = (
       if (
         lifecycle?.activeJobId !== job.id ||
         lifecycle.claimedGeneration !== lifecycleMetadata.generation ||
-        lifecycle.desiredOperation !== lifecycleMetadata.operation
+        lifecycle.desiredOperation !== lifecycleMetadata.operation ||
+        (lifecycleMetadata.operation === 'suspend' && lifecycle.accessState !== 'suspended')
       ) {
         throw Object.assign(
           new Error(`plugin_tenant_lifecycle_claim_stale:${pluginId}:${job.id}`),

@@ -20,6 +20,9 @@ export const WasteToursFractionSelection = ({
     {fractions.length ? (
       fractions.map((fraction) => {
         const checked = selectedFractionIds.includes(fraction.id);
+        const label = fraction.containerSize
+          ? `${fraction.name} (${fraction.containerSize})`
+          : fraction.name;
         return (
           <label
             key={fraction.id}
@@ -30,6 +33,7 @@ export const WasteToursFractionSelection = ({
             ].join(' ')}
           >
             <Checkbox
+              aria-label={label}
               checked={checked}
               disabled={disabled}
               onChange={(event) =>
@@ -40,18 +44,13 @@ export const WasteToursFractionSelection = ({
                 )
               }
             />
-            <div
+            <span
+              role="img"
               aria-label={pt('masterData.fractions.table.colorSwatch', { value: fraction.color })}
               className="inline-block h-6 w-6 shrink-0 rounded-sm border border-border/70"
               style={{ backgroundColor: fraction.color }}
             />
-            <div className="min-w-0 flex-1">
-              <span className="truncate font-medium text-foreground">
-                {fraction.containerSize
-                  ? `${fraction.name} (${fraction.containerSize})`
-                  : fraction.name}
-              </span>
-            </div>
+            <span className="min-w-0 flex-1 truncate font-medium text-foreground">{label}</span>
           </label>
         );
       })

@@ -17,9 +17,9 @@ describe('StudioFilterSurface', () => {
     );
 
     const surface = screen.getByRole('search');
-    expect(surface.className).toContain('border-border/70');
-    expect(surface.className).toContain('bg-card/85');
+    expect(surface.className).toContain('border-border-subtle');
+    expect(surface.className).toContain('bg-card');
     expect(surface.className).toContain('p-4');
-    expect(surface.className).toContain('shadow-shell');
+    expect(surface.className).toContain('shadow-none');
   });
 });

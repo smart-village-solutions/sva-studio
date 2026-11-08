@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { compileEmailVerificationTemplate, DEFAULT_EMAIL_VERIFICATION_TEMPLATE } from '@sva/core';
 import { IamHttpError } from '../../../lib/iam-api';
@@ -40,8 +40,8 @@ afterEach(() => {
 });
 const open = async () => {
   render(<EmailVerificationTemplateCard instanceId="bb-havelland" />);
-  expect(api.get).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Bestätigungsvorlage anpassen' }));
+  await screen.findByText('Verwendete Vorlage: SVA-Standard');
+  fireEvent.click(screen.getByRole('button', { name: 'E-Mail-Bestätigung anpassen' }));
   await screen.findByLabelText('Betreff');
 };
 describe('verification editor', () => {
@@ -49,6 +49,7 @@ describe('verification editor', () => {
     await open();
     expect(api.get).toHaveBeenCalledWith('bb-havelland', 'verification');
     expect(screen.getByText('Ziel-Realm: bb-havelland')).toBeTruthy();
+    expect(within(screen.getByRole('dialog')).queryByText(/Verwendete Vorlage:/)).toBeNull();
     expect(screen.getByText(/Bitte bestätigen Sie Ihre E-Mail-Adresse für Havelland/)).toBeTruthy();
     expect(screen.queryByRole('link')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Vorlage speichern' }));
@@ -108,11 +109,11 @@ describe('verification editor', () => {
     expect(await screen.findByText(/Änderung kann bereits in Keycloak/)).toBeTruthy();
     expect((screen.getByLabelText('Betreff') as HTMLInputElement).value).toBe('Mein Entwurf');
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape', code: 'Escape' });
-    fireEvent.click(screen.getByRole('button', { name: 'Bestätigungsvorlage anpassen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'E-Mail-Bestätigung anpassen' }));
     expect(((await screen.findByLabelText('Betreff')) as HTMLInputElement).value).toBe(
       'Mein Entwurf'
     );
-    expect(api.get).toHaveBeenCalledTimes(2);
+    expect(api.get).toHaveBeenLastCalledWith('bb-havelland', 'verification');
   });
   it('shows concurrently changed texts while retaining the local draft', async () => {
     await open();
@@ -170,9 +171,25 @@ describe('general confirmation editor', () => {
   const openGeneral = async () => {
     api.getServer.mockResolvedValue({ data: general });
     render(<EmailVerificationTemplateCard mode="server" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Bestätigungsvorlage anpassen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'E-Mail-Bestätigung anpassen' }));
     await screen.findByLabelText('Betreff');
   };
+  it('shows the source in the overview and matches the invitation overlay layout', async () => {
+    api.getServer.mockResolvedValue({ data: general });
+    render(<EmailVerificationTemplateCard mode="server" />);
+    expect(await screen.findByText('Verwendete Vorlage: Servervorlage')).toBeTruthy();
+    expect(screen.queryByText(/Dieser Standard gilt/)).toBeNull();
+    const button = screen.getByRole('button', { name: 'E-Mail-Bestätigung anpassen' });
+    fireEvent.click(button);
+    const dialog = within(screen.getByRole('dialog'));
+    await dialog.findByLabelText('Betreff');
+    expect(dialog.queryByText(/Verwendete Vorlage:/)).toBeNull();
+    expect(dialog.getByText(/Dieser Standard gilt/)).toBeTruthy();
+    const tokens = dialog.getByText(/^Erlaubte Platzhalter:/);
+    expect(tokens.textContent).toContain(
+      'Der Bestätigungslink muss genau einmal im Nachrichtentext stehen.'
+    );
+  });
   it('saves the general standard through its own endpoint and shows incomplete synchronization', async () => {
     api.saveServer.mockResolvedValue({
       data: { ...general, revision: 4, unsynchronizedInstances: ['bb-havelland'] },
@@ -218,7 +235,7 @@ describe('general confirmation editor', () => {
         template: DEFAULT_EMAIL_VERIFICATION_TEMPLATE,
       },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Neutralen Standard übernehmen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'SVA-Standard verwenden' }));
     await vi.waitFor(() =>
       expect(api.saveServer).toHaveBeenCalledWith({ expectedRevision: 3, template: null })
     );

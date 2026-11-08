@@ -17,7 +17,7 @@ export const SearchHeader = ({ onSearch }: { readonly onSearch: (q: string) => v
     <form
       role="search"
       aria-label={pt('headerLandmark')}
-      className="flex w-full min-w-0 items-center gap-2"
+      className="relative w-full min-w-0"
       onSubmit={(event) => {
         event.preventDefault();
         if (pathname === '/plugins/search') {
@@ -35,9 +35,15 @@ export const SearchHeader = ({ onSearch }: { readonly onSearch: (q: string) => v
         maxLength={250}
         placeholder={pt('prompt')}
         aria-label={pt('prompt')}
-        className="min-w-0 rounded-full bg-surface-inset"
+        className="min-w-0 rounded-full bg-surface-inset pr-12"
       />
-      <Button type="submit" size="icon" variant="tertiary" aria-label={pt('submit')}>
+      <Button
+        type="submit"
+        size="icon"
+        variant="tertiary"
+        aria-label={pt('submit')}
+        className="absolute inset-y-0 right-0 rounded-full"
+      >
         <IconSearch aria-hidden="true" className="h-5 w-5" />
       </Button>
     </form>

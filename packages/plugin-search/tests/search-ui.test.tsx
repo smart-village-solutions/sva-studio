@@ -121,6 +121,10 @@ describe('search interface', () => {
     expect(screen.getByRole('search', { name: 'search.headerLandmark' })).toBeTruthy();
     expect(screen.getAllByRole('search')).toHaveLength(1);
     expect(screen.getAllByRole('searchbox')).toHaveLength(1);
+    const submit = screen.getByRole('button', { name: 'search.submit' });
+    expect(submit.getAttribute('type')).toBe('submit');
+    submit.focus();
+    expect(document.activeElement).toBe(submit);
   });
   it('waits for a search term and preserves filters when submitting a new term', () => {
     state.search = { ...state.search, q: '', categories: ['Culture'] };
@@ -135,7 +139,7 @@ describe('search interface', () => {
     expect(screen.getByText('search.initial')).toBeTruthy();
     expect(fetcher).not.toHaveBeenCalled();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: ' new city ' } });
-    fireEvent.submit(screen.getByRole('search'));
+    fireEvent.click(screen.getByRole('button', { name: 'search.submit' }));
     expect(state.navigate).toHaveBeenCalledWith(
       expect.objectContaining({
         search: expect.objectContaining({ q: 'new city', categories: ['Culture'], page: 1 }),
@@ -225,6 +229,10 @@ describe('search interface', () => {
     expect(onSearch).toHaveBeenCalledWith('city');
     expect(screen.getByRole('search').className).not.toContain('hidden');
     expect(screen.getAllByRole('searchbox')).toHaveLength(1);
+    const submit = screen.getByRole('button', { name: 'search.submit' });
+    expect(submit.getAttribute('type')).toBe('submit');
+    submit.focus();
+    expect(document.activeElement).toBe(submit);
   });
   it('shows exact allowed and denied counts with safe accessible detail links', async () => {
     vi.stubGlobal(

@@ -329,7 +329,7 @@ describe('Header auth actions', () => {
     view.rerender(<Header />);
     expect(screen.queryByRole('button', { name: 'Plugin search' })).toBeNull();
 
-    expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
+    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
 
     const accountTrigger = await screen.findByRole('button', { name: /Test User/ });
     accountTrigger.click();
@@ -734,12 +734,13 @@ describe('Header auth actions', () => {
     expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
   });
 
-  it('shows the organization context in the header and retains the account menu selector', async () => {
+  it('zeigt neben der Suche keinen Kontextwechsel und behält ihn im Kontomenü', async () => {
+    headerSearchState.allowed = true;
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
         name: 'Test User',
-        roles: ['editor'],
+        roles: ['system_admin'],
         permissionActions: ['experimental.read'],
       },
       isAuthenticated: true,
@@ -764,7 +765,8 @@ describe('Header auth actions', () => {
 
     render(<Header />);
 
-    expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Plugin search' })).toBeTruthy();
+    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
 
     const accountTrigger = await screen.findByRole('button', { name: /Test User/ });
     accountTrigger.click();

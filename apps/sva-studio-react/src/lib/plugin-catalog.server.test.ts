@@ -14,8 +14,14 @@ vi.mock('../../../../packages/plugin-ssf/src/admin.page.js', () => {
 });
 
 import { studioServerPluginCatalogReport } from './plugin-catalog.server.js';
+import { resolveInstalledPluginSources } from '../../plugin-installed-inputs.vite.js';
 
 describe('server plugin catalog', () => {
+  it('excludes the installed Studio workspace from the SSF profile', () => {
+    expect(resolveInstalledPluginSources(process.cwd(), 'ssf').map(({ catalog }) => catalog.pluginId))
+      .not.toContain('application-workspace');
+  });
+
   it('registers the installed application workspace in the Studio distribution', () => {
     const registry = studioServerPluginCatalogReport.snapshot.registry;
     const plugin = registry.pluginRegistry.get('application-workspace');

@@ -251,6 +251,24 @@
       }
     },
     {
+      "id": "application-workspace.overview",
+      "path": "/plugins/application-workspace",
+      "pageType": "overview",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "application-workspace"
+      }
+    },
+    {
+      "id": "application-workspace.settings",
+      "path": "/plugins/application-workspace/settings",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "application-workspace"
+      }
+    },
+    {
       "id": "categories.overview",
       "path": "/categories",
       "pageType": "overview",

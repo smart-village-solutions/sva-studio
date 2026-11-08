@@ -1,6 +1,6 @@
 import { access, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
@@ -15,6 +15,7 @@ import { collectDocumentationPageCatalog } from '../../packages/routing/src/docu
 import { appAdminResources } from '../../apps/sva-studio-react/src/routing/admin-resources.ts';
 import {
   extractPluginDefinition,
+  getPackagePluginDescriptorCandidates,
   getWorkspacePluginDescriptorCandidates,
   type StudioPluginCatalogConfigEntry,
 } from '../../apps/sva-studio-react/src/lib/plugin-catalog-loader.ts';
@@ -82,9 +83,15 @@ const loadWorkspacePlugin = async (
 };
 
 const loadPackagePlugin = async (
-  entry: StudioPluginCatalogConfigEntry
+  entry: StudioPluginCatalogConfigEntry,
+  manifest: PluginManifest
 ): Promise<PluginDefinition> => {
-  const definition = extractPluginDefinition(await import(entry.sourceRef));
+  const descriptorEntry = getPackagePluginDescriptorCandidates(manifest)[0];
+  const packageRoot = dirname(packageRequire.resolve(`${entry.sourceRef}/plugin.manifest.json`));
+  const moduleUrl = descriptorEntry
+    ? pathToFileURL(resolve(packageRoot, descriptorEntry)).href
+    : entry.sourceRef;
+  const definition = extractPluginDefinition(await import(moduleUrl));
   if (definition?.id !== entry.pluginId) {
     throw new Error(`documentation_plugin_module_missing:${entry.pluginId}`);
   }
@@ -99,7 +106,7 @@ const loadEnabledPlugins = async (): Promise<readonly PluginDefinition[]> => {
       const definition =
         entry.sourceType === 'workspace'
           ? await loadWorkspacePlugin(entry, manifest)
-          : await loadPackagePlugin(entry);
+          : await loadPackagePlugin(entry, manifest);
       return { definition, manifest };
     })
   );

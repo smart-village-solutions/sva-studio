@@ -6,7 +6,6 @@ import { toMetricValues, toPct } from './coverage-metrics.ts';
 import type {
   CoverageBaseline,
   CoveragePaths,
-  CoveragePolicy,
   CoverageSummary,
   FileCoverageMetrics,
   LoadedCoverageData,
@@ -134,8 +133,6 @@ export function loadCoverageData(
     paths.workspaceRoots = [pluginRoot];
     paths.baselinePath =
       pluginBaselinePath ?? path.join(pluginRoot, 'config/coverage-baseline.json');
-    const name = path.basename(pluginRoot);
-    rawPolicy.perProjectFloors = { [name]: rawPolicy.globalFloors };
     rawPolicy.exemptProjects = [];
     rawPolicy.criticalProjects = {};
     if (!fs.existsSync(paths.baselinePath)) throw new Error('external_plugin_baseline_required');
@@ -143,7 +140,10 @@ export function loadCoverageData(
   const externalName = pluginRoot
     ? readJson<{ name: string }>(path.join(pluginRoot, 'package.json')).name
     : null;
-  if (pluginRoot) rawPolicy.perProjectFloors = { [externalName!]: rawPolicy.globalFloors };
+  if (pluginRoot) {
+    if (!externalName) throw new Error('external_plugin_name_required');
+    rawPolicy.perProjectFloors = { [externalName]: rawPolicy.globalFloors };
+  }
   const baseline = fs.existsSync(paths.baselinePath)
     ? readJson<CoverageBaseline>(paths.baselinePath)
     : { projects: {} };
@@ -184,24 +184,8 @@ export function loadCoverageData(
     return acc;
   }, {});
 
-  if (pluginRoot) {
-    const coverage = fileCoverageByProject[externalName!] ?? {};
-    const sourceRoot = path.join(pluginRoot, 'src');
-    const files = fs
-      .readdirSync(sourceRoot, { recursive: true, encoding: 'utf8' })
-      .filter((file) => /\.tsx?$/.test(file) && !/\.(?:test|spec|d)\.tsx?$/.test(file));
-    if (!files.length) throw new Error('external_plugin_sources_required');
-    for (const file of files) {
-      const absolutePath = path.join(sourceRoot, file);
-      const relative = path.relative(rootDir, absolutePath).split(path.sep).join('/');
-      if (
-        !(relative in coverage) &&
-        !isLikelyNonExecutableFile(file, fs.readFileSync(absolutePath, 'utf8').split('\n'))
-      ) {
-        throw new Error(`external_plugin_source_missing_from_lcov:${file}`);
-      }
-    }
-  }
+  if (pluginRoot && externalName)
+    assertExternalPluginCoverage(rootDir, pluginRoot, fileCoverageByProject[externalName] ?? {});
   return {
     paths,
     policy: rawPolicy,
@@ -295,4 +279,26 @@ function resolveTypeScriptTwin(rootDir: string, absoluteFilePath: string): strin
 function readLcovCounter(record: string, label: string): number {
   const match = record.match(new RegExp(`^${label}:(\\d+)$`, 'm'));
   return match ? Number(match[1]) : 0;
+}
+
+function assertExternalPluginCoverage(
+  rootDir: string,
+  pluginRoot: string,
+  coverage: Record<string, FileCoverageMetrics>
+): void {
+  const sourceRoot = path.join(pluginRoot, 'src');
+  const files = fs
+    .readdirSync(sourceRoot, { recursive: true, encoding: 'utf8' })
+    .filter((file) => /\.tsx?$/.test(file) && !/\.(?:test|spec|d)\.tsx?$/.test(file));
+  if (!files.length) throw new Error('external_plugin_sources_required');
+  for (const file of files) {
+    const absolutePath = path.join(sourceRoot, file);
+    const relative = path.relative(rootDir, absolutePath).split(path.sep).join('/');
+    if (
+      !(relative in coverage) &&
+      !isLikelyNonExecutableFile(file, fs.readFileSync(absolutePath, 'utf8').split('\n'))
+    ) {
+      throw new Error(`external_plugin_source_missing_from_lcov:${file}`);
+    }
+  }
 }

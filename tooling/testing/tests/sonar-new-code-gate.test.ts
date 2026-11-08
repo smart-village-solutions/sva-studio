@@ -429,7 +429,7 @@ it('measures external plugin new code with the existing LCOV/diff rules and reje
   commitAll(rootDir, 'change');
   writeLcov(rootDir, '.', 'src/index.ts', { da: [[1, 0]] });
   const run = await loadRunSonarNewCodeGate();
-  const options = { rootDir, policyRoot: rootDir, externalPlugin: true, baseRef: 'HEAD~1' };
+  const options = { rootDir, policyRoot: rootDir, externalPlugin: true, baseRef: 'HEAD~1', headRef: 'HEAD' };
   expect(run(options)).toMatchObject({ passed: false, consideredFiles: 1, coveragePct: 0 });
   writeLcov(rootDir, '.', 'src/index.ts', { da: [[1, 1]] });
   expect(run(options)).toMatchObject({ passed: true, coveragePct: 100 });

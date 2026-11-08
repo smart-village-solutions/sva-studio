@@ -5713,22 +5713,52 @@ CREATE POLICY studio_jobs_observability_policy ON iam.studio_jobs FOR SELECT TO 
 
 
 --
+-- Name: application_workspace_settings; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.application_workspace_settings (
+    instance_id text NOT NULL,
+    version integer DEFAULT 0 NOT NULL,
+    tiles jsonb DEFAULT '[]'::jsonb NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT application_workspace_settings_tiles_check CHECK (((jsonb_typeof(tiles) = 'array'::text) AND (jsonb_array_length(tiles) <= 100))),
+    CONSTRAINT application_workspace_settings_version_check CHECK ((version >= 0))
+);
+
+ALTER TABLE ONLY iam.application_workspace_settings FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: application_workspace_settings application_workspace_settings_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.application_workspace_settings
+    ADD CONSTRAINT application_workspace_settings_pkey PRIMARY KEY (instance_id);
+
+
+--
+-- Name: application_workspace_settings application_workspace_settings_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.application_workspace_settings
+    ADD CONSTRAINT application_workspace_settings_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: application_workspace_settings; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.application_workspace_settings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: application_workspace_settings application_workspace_settings_instance_scope; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY application_workspace_settings_instance_scope ON iam.application_workspace_settings USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 \unrestrict yXnebYrXGS1QwgqzqJZW49fhepGRcnqTwLNFZQO2LhAm2saFhgjngpkclDu8aMG
-
--- Application workspace settings (migration 0115).
-CREATE TABLE IF NOT EXISTS iam.application_workspace_settings (
-  instance_id text PRIMARY KEY REFERENCES iam.instances(id) ON DELETE CASCADE,
-  version integer NOT NULL DEFAULT 0 CHECK (version >= 0),
-  tiles jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(tiles) = 'array' AND jsonb_array_length(tiles) <= 100),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-ALTER TABLE iam.application_workspace_settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE iam.application_workspace_settings FORCE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS application_workspace_settings_instance_scope ON iam.application_workspace_settings;
-CREATE POLICY application_workspace_settings_instance_scope ON iam.application_workspace_settings
-  USING (instance_id = iam.current_instance_id())
-  WITH CHECK (instance_id = iam.current_instance_id());
-GRANT SELECT, INSERT, UPDATE ON iam.application_workspace_settings TO iam_app;

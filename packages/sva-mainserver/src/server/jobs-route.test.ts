@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type JobRecord } from './jobs-contract.js';
 import { jobFingerprint } from './jobs-snapshot.js';
 import type { EffectivePermission } from '@sva/iam-core';
-import type { MainserverMutationActor } from './mutation-principal.js';
+import { jobActorFixture } from './jobs-test-fixture.js';
 
 const state = vi.hoisted(() => ({
   deny: new Set<string>(),
@@ -31,27 +31,12 @@ const state = vi.hoisted(() => ({
   replaceReferences: vi.fn(),
   asset: vi.fn(),
 }));
-const actor = (): MainserverMutationActor => ({
-  instanceId: 'tenant-1',
-  keycloakSubject: 'subject-1',
-  actorAccountId: 'account-1',
-  operationExternalId: '4f392d13-2d02-4c24-845b-109bddbc5ff0',
-  ...(state.organizationId ? { activeOrganizationId: state.organizationId } : {}),
-  actingPrincipalType: state.principal,
-  credentialFingerprint: state.credential,
-  mutationPrincipalContext: {
-    version: 1,
-    instanceId: 'tenant-1',
-    keycloakSubject: 'subject-1',
-    actorAccountId: 'account-1',
-    ...(state.organizationId ? { activeOrganizationId: state.organizationId } : {}),
-    actingPrincipalType: state.principal,
-    actingPrincipalId:
-      state.principal === 'organization' ? (state.organizationId ?? 'organization-1') : 'account-1',
-    credentialSource: state.principal,
-    credentialFingerprint: state.credential,
-  },
-});
+const actor = () =>
+  jobActorFixture({
+    principal: state.principal,
+    organizationId: state.organizationId,
+    credential: state.credential,
+  });
 vi.mock('@sva/auth-runtime/server', async (original) => {
   const actual = await original<typeof import('@sva/auth-runtime/server')>();
   return {

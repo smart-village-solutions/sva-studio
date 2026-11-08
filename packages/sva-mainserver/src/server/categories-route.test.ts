@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { jobActorFixture } from './jobs-test-fixture.js';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
@@ -12,9 +13,12 @@ const state = vi.hoisted(() => ({
   saveSvaMainserverCategory: vi.fn(),
   deleteSvaMainserverCategory: vi.fn(),
   resolveMainserverResourceActor: vi.fn(),
+  permissions: vi.fn(),
 }));
 
-vi.mock('@sva/auth-runtime/server', () => ({
+vi.mock('@sva/auth-runtime/server', async (original) => ({
+  ...(await original<typeof import('@sva/auth-runtime/server')>()),
+  resolveEffectivePermissions: state.permissions,
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
   resolveActorInfo: state.resolveActorInfo,
@@ -54,6 +58,10 @@ const ctx = {
 describe('dispatchSvaMainserverCategoriesRequest', () => {
   beforeEach(() => {
     state.validateCsrf.mockReturnValue(null);
+    state.permissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'jobs.create', resourceType: 'jobs', accessScope: 'all' }],
+    });
   });
 
   afterEach(() => {
@@ -715,14 +723,97 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       message: 'Mainserver-Kategorien-Anfrage ist fehlgeschlagen.',
     });
   });
+  it.each(['jobs.read', 'jobs.create'])(
+    'denies an organization Job lookup with only personal %s',
+    async (action) => {
+      state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+      allow(action);
+      state.resolveMainserverResourceActor.mockResolvedValue(
+        jobActorFixture({
+          instanceId: 'de-musterhausen',
+          principal: 'organization',
+          organizationId: ctx.activeOrganizationId,
+        })
+      );
+      state.permissions.mockResolvedValue({
+        ok: true,
+        permissions: [{ action, resourceType: 'jobs', accessScope: 'own' }],
+      });
+      state.listSvaMainserverCategories.mockResolvedValue([]);
+      const response = await dispatchSvaMainserverCategoriesRequest(
+        new Request('https://studio.test/api/v1/mainserver/categories?dataType=generic_item_job', {
+          headers: { 'x-sva-acting-principal-type': 'organization' },
+        })
+      );
+      expect(response?.status).toBe(403);
+      expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+    }
+  );
+  it.each(['jobs.read', 'jobs.create'])(
+    'allows an actor-matching Job lookup with %s',
+    async (action) => {
+      state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+      allow(action);
+      for (const principal of ['user', 'organization'] as const) {
+        state.resolveMainserverResourceActor.mockResolvedValue(
+          jobActorFixture({
+            instanceId: 'de-musterhausen',
+            principal,
+            organizationId: ctx.activeOrganizationId,
+          })
+        );
+        state.permissions.mockResolvedValue({
+          ok: true,
+          permissions: [
+            {
+              action,
+              resourceType: 'jobs',
+              accessScope: principal === 'user' ? 'own' : 'organization',
+            },
+          ],
+        });
+        state.listSvaMainserverCategories.mockResolvedValue([]);
+        const response = await dispatchSvaMainserverCategoriesRequest(
+          new Request(
+            'https://studio.test/api/v1/mainserver/categories?dataType=generic_item_job',
+            { headers: { 'x-sva-acting-principal-type': principal } }
+          )
+        );
+        expect(response?.status).toBe(200);
+      }
+    }
+  );
+  it('denies a Job lookup if actor permissions cannot be resolved', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('jobs.read');
+    state.resolveMainserverResourceActor.mockResolvedValue(jobActorFixture());
+    state.permissions.mockResolvedValue({ ok: false, error: 'database_unavailable' });
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories?dataType=generic_item_job', {
+        headers: { 'x-sva-acting-principal-type': 'user' },
+      })
+    );
+    expect(response?.status).toBe(503);
+    expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+  });
+  it('requires a resolved selected principal for a Job category lookup', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('jobs.read');
+    state.resolveMainserverResourceActor.mockResolvedValue(undefined);
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories?dataType=generic_item_job')
+    );
+    expect(response?.status).toBe(403);
+    expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+  });
   it('allows a Job creator to look up only exactly tagged employment names with the selected principal', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     allow('jobs.create');
-    const selected = {
+    const selected = jobActorFixture({
       instanceId: 'de-musterhausen',
-      keycloakSubject: 'subject-1',
-      actingPrincipalType: 'organization',
-    };
+      principal: 'organization',
+      organizationId: ctx.activeOrganizationId,
+    });
     state.resolveMainserverResourceActor.mockResolvedValue(selected);
     state.listSvaMainserverCategories.mockResolvedValue([
       { id: '1', name: 'Vollzeit', tagList: 'other, generic_item_job', dataTypes: [] },

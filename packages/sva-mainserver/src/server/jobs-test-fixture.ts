@@ -1,3 +1,4 @@
+import type { MainserverMutationActor } from './mutation-principal-types.js';
 import { jobWriteFields } from '../generated/jobs.js';
 import type { RawRecord, WriteShape } from './vouchers-snapshot.js';
 const blank = (shape: WriteShape): RawRecord =>
@@ -67,3 +68,35 @@ export function jobFixture(): RawRecord {
     ],
   };
 }
+
+export const jobActorFixture = ({
+  principal = 'user',
+  organizationId,
+  credential = 'credential-1',
+  instanceId = 'tenant-1',
+}: {
+  principal?: 'user' | 'organization';
+  organizationId?: string;
+  credential?: string;
+  instanceId?: string;
+} = {}): MainserverMutationActor => ({
+  instanceId,
+  keycloakSubject: 'subject-1',
+  actorAccountId: 'account-1',
+  operationExternalId: '4f392d13-2d02-4c24-845b-109bddbc5ff0',
+  ...(organizationId ? { activeOrganizationId: organizationId } : {}),
+  actingPrincipalType: principal,
+  credentialFingerprint: credential,
+  mutationPrincipalContext: {
+    version: 1,
+    instanceId,
+    keycloakSubject: 'subject-1',
+    actorAccountId: 'account-1',
+    ...(organizationId ? { activeOrganizationId: organizationId } : {}),
+    actingPrincipalType: principal,
+    actingPrincipalId:
+      principal === 'organization' ? (organizationId ?? 'organization-1') : 'account-1',
+    credentialSource: principal,
+    credentialFingerprint: credential,
+  },
+});

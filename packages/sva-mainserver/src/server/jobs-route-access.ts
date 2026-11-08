@@ -9,7 +9,11 @@ import {
 } from '@sva/auth-runtime/server';
 import { JOBS_TYPE, type JobInput, type JobRecord } from './jobs-contract.js';
 import { errorJson } from './content-route-core.js';
-import type { MainserverMutationActor } from './mutation-principal.js';
+import {
+  resolveMainserverResourceActor,
+  type MainserverMutationActor,
+} from './mutation-principal.js';
+import type { SvaMainserverConnectionInput } from '../types.js';
 import { emitMainserverMutationAuthorizationAudit } from './mutation-principal-authorization-audit.js';
 
 export const jobLocalAccess = async (
@@ -31,6 +35,32 @@ export const jobLocalAccess = async (
       }
     : errorJson(decision.status, decision.error, decision.message, decision.permissionDenial);
 };
+
+export async function authorizeJobCategoryLookup(
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  authorizedActor: SvaMainserverConnectionInput
+) {
+  const actor = await resolveMainserverResourceActor({ request, ctx, authorizedActor });
+  if (!actor) return errorJson(403, 'forbidden', 'forbidden');
+  const permissions = await resolveEffectivePermissions({
+    instanceId: actor.instanceId,
+    keycloakSubject: actor.keycloakSubject,
+    ...(actor.activeOrganizationId ? { organizationId: actor.activeOrganizationId } : {}),
+  });
+  if (!permissions.ok) return errorJson(503, 'database_unavailable', 'database_unavailable');
+  const allowed = ['jobs.read', 'jobs.create'].some(
+    (action) =>
+      authorizeMainserverCreatePrincipal({
+        ...actor,
+        action,
+        contentType: JOBS_TYPE,
+        permissions: permissions.permissions,
+        actingPrincipalType: actor.mutationPrincipalContext.actingPrincipalType,
+      }).allowed
+  );
+  return allowed ? actor : errorJson(403, 'forbidden', 'forbidden');
+}
 
 export async function authorizeJobMedia(
   ctx: AuthenticatedRequestContext,

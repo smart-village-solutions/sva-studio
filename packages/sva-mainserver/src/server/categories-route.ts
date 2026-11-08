@@ -12,6 +12,7 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverCategoriesListItem } from '../types.js';
 import { JOBS_TYPE } from './jobs-contract.js';
+import { authorizeJobCategoryLookup } from './jobs-route-access.js';
 import { CONSTRUCTION_SITES_TYPE } from './construction-sites-contract.js';
 import { parseCategorySaveInput } from './categories-route-input.js';
 import {
@@ -102,8 +103,9 @@ const authorize = async (
     keycloakSubject: result.actor.keycloakSubject,
     activeOrganizationId: result.actor.organizationId ?? ctx.activeOrganizationId,
   };
+  if (action.startsWith('jobs.')) return authorizeJobCategoryLookup(request, ctx, actor);
   if (
-    (action.startsWith('construction-sites.') || action.startsWith('jobs.')) &&
+    action.startsWith('construction-sites.') &&
     request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER)
   )
     return (

@@ -15,12 +15,13 @@ const useSearchResults = (query: SearchQuery, contextKey: string, locale: 'de' |
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const queryKey = searchQueryParams(query).toString();
+  useEffect(() => setResult(null), [contextKey]);
   useEffect(() => {
     const controller = new AbortController();
     let current = true;
-    setResult(null);
     setError('');
     if (!query.q) {
+      setResult(null);
       setLoading(false);
       return () => controller.abort();
     }
@@ -37,7 +38,10 @@ const useSearchResults = (query: SearchQuery, contextKey: string, locale: 'de' |
         if (current) setResult(payload.data);
       })
       .catch((failure: unknown) => {
-        if (current) setError(failure instanceof Error ? failure.message : 'search_unavailable');
+        if (current) {
+          setResult(null);
+          setError(failure instanceof Error ? failure.message : 'search_unavailable');
+        }
       })
       .finally(() => {
         if (current) setLoading(false);

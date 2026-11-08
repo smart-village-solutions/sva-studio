@@ -120,55 +120,55 @@ export const SearchResultTable = ({
   const pt = usePluginTranslation('search');
 
   return (
-    <StudioDataTable
-      ariaLabel={pt('table.caption')}
-      caption={pt('table.caption')}
-      data={result?.items ?? []}
-      columns={resultColumns(pt)}
-      getRowId={(item) => `${item.contentType}:${item.id}`}
-      selectionMode="none"
-      isLoading={loading}
-      loadingState={null}
-      emptyState={!query.q ? null : result?.complete ? pt('empty') : null}
-      labels={{
-        selectionColumn: pt('table.selection'),
-        actionsColumn: pt('table.actions'),
-        loading: pt('loading'),
-        selectAllRows: (label) => label,
-        selectRow: ({ label }) => label,
-      }}
-      sorting={{
-        mode: 'external',
-        labels: {
-          field: pt('table.sortField'),
-          direction: pt('table.sortDirection'),
-          none: pt('table.sortNone'),
-          ascending: pt('table.ascending'),
-          descending: pt('table.descending'),
-        },
-        state: [{ id: query.sortBy ?? 'title', desc: query.sortDirection === 'desc' }],
-        onChange: ([sort]) => {
-          if (sort)
-            update(
-              parseSearchQuery({
-                ...query,
-                sortBy: sort.id,
-                sortDirection: sort.desc ? 'desc' : 'asc',
-                page: 1,
-              })
-            );
-        },
-      }}
-      toolbarCenter={
-        <SearchFilters
-          query={query}
-          options={result?.options ?? { types: [], categories: [], providers: [] }}
-          loading={loading}
-          onChange={update}
-        />
-      }
-      footer={<SearchPaging result={result} query={query} loading={loading} update={update} />}
-    />
+    <div aria-busy={loading}>
+      <StudioDataTable
+        ariaLabel={pt('table.caption')}
+        caption={pt('table.caption')}
+        data={result?.items ?? []}
+        columns={resultColumns(pt)}
+        getRowId={(item) => `${item.contentType}:${item.id}`}
+        selectionMode="none"
+        emptyState={!query.q ? null : result?.complete ? pt('empty') : null}
+        labels={{
+          selectionColumn: pt('table.selection'),
+          actionsColumn: pt('table.actions'),
+          loading: pt('loading'),
+          selectAllRows: (label) => label,
+          selectRow: ({ label }) => label,
+        }}
+        sorting={{
+          mode: 'external',
+          labels: {
+            field: pt('table.sortField'),
+            direction: pt('table.sortDirection'),
+            none: pt('table.sortNone'),
+            ascending: pt('table.ascending'),
+            descending: pt('table.descending'),
+          },
+          state: [{ id: query.sortBy ?? 'title', desc: query.sortDirection === 'desc' }],
+          onChange: ([sort]) => {
+            if (sort)
+              update(
+                parseSearchQuery({
+                  ...query,
+                  sortBy: sort.id,
+                  sortDirection: sort.desc ? 'desc' : 'asc',
+                  page: 1,
+                })
+              );
+          },
+        }}
+        toolbarCenter={
+          <SearchFilters
+            query={query}
+            options={result?.options ?? { types: [], categories: [], providers: [] }}
+            loading={loading}
+            onChange={update}
+          />
+        }
+        footer={<SearchPaging result={result} query={query} loading={loading} update={update} />}
+      />
+    </div>
   );
 };
 export const SearchPaging = ({

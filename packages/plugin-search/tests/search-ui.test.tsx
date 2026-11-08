@@ -67,6 +67,28 @@ const findResultLink = async () =>
     name: 'Allowed city article',
   });
 describe('search interface', () => {
+  it('keeps table controls and keyboard focus while reloading, but clears a changed access context', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ data }))
+      .mockImplementation(() => new Promise<Response>(() => undefined));
+    vi.stubGlobal('fetch', fetcher);
+    const view = render(<SearchResultsPage contextKey="org1" />);
+    await findResultLink();
+    const sorting = screen.getByRole('button', { name: 'search.table.title' });
+    const filter = screen.getByLabelText('search.type');
+    sorting.focus();
+    state.search = { ...state.search, q: 'another city' };
+    view.rerender(<SearchResultsPage contextKey="org1" />);
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole('button', { name: 'search.table.title' })).toBe(sorting);
+    expect(screen.getByLabelText('search.type')).toBe(filter);
+    expect(document.activeElement).toBe(sorting);
+    expect(screen.getByRole('table', { name: 'search.table.caption' })).toBeTruthy();
+    view.rerender(<SearchResultsPage contextKey="org2" />);
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
+    expect(screen.queryByText('Allowed city article')).toBeNull();
+  });
   it('uses standard table columns and emits external sorting with filters preserved', async () => {
     state.search = { ...state.search, categories: ['Culture'], page: 3 };
     vi.stubGlobal(

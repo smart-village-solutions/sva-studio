@@ -292,6 +292,8 @@ export const sharedVitestConfig = defineConfig({
   },
   test: {
     name: 'sva-studio-react',
+    // Apply the existing workspace peer aliases inside the installed plugin as well.
+    server: { deps: { inline: ['@sva/plugin-application-workspace'] } },
     environment: 'happy-dom',
     setupFiles: [studioMswSetupFile],
     // Serielle Ausführung reduziert Flakes in der UI-Testumgebung und stabilisiert affected-Läufe.

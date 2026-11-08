@@ -5,10 +5,17 @@ preferWorkspacePackages: true
 engineStrict: true
 nodeVersion: 24.15.0
 minimumReleaseAge: 1440
+# First-party GitHub artifact: CI run 42520182805; integrity remains pinned in pnpm-lock.yaml.
+# Remove this exact exception when the dependency moves to an age-verifiable npm release.
+minimumReleaseAgeExclude:
+  - "@sva/plugin-application-workspace@0.0.1"
 minimumReleaseAgeIgnoreMissingTime: false
 minimumReleaseAgeStrict: true
 trustPolicy: no-downgrade
 trustPolicyExclude:
+  # Same first-party GitHub artifact as above; no npm provenance history exists.
+  # Remove together with its exact minimumReleaseAgeExclude entry on registry migration.
+  - "@sva/plugin-application-workspace@0.0.1"
   # Legacy toolchains in the current Nx/Babel/TanStack plugin graph still resolve semver 6.3.1.
   # Remove this exact-version exception once the transitive graph no longer requires semver 6.x.
   - semver@6.3.1

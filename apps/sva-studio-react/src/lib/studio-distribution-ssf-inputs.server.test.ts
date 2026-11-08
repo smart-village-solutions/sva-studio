@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
+// The shared runner composes Studio; this suite explicitly models the SSF profile.
+vi.mock('virtual:studio-installed-plugin-catalog', () => ({ installedPluginCatalogConfig: [] }));
+vi.mock('virtual:studio-installed-plugin-client', () => ({
+  nodeManifestModules: {}, nodePluginModuleLoaders: {}, nodeDescriptorModuleLoaders: {},
+}));
+vi.mock('virtual:studio-installed-plugin-server', () => ({
+  nodeManifestModules: {}, nodeServerModuleLoaders: {}, nodeDescriptorModuleLoaders: {}, nodeJobModuleLoaders: {},
+}));
+
 const registerPluginOperationExecutionHandlersMock = vi.fn();
 const registerStudioJobExecutionHandlersMock = vi.fn();
 const createPluginJobExecutionHandlersMock = vi.fn(() => ({

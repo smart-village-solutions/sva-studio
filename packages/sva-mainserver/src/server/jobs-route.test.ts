@@ -5,6 +5,7 @@ import { type JobRecord } from './jobs-contract.js';
 import { jobFingerprint } from './jobs-snapshot.js';
 import type { EffectivePermission } from '@sva/iam-core';
 import { jobActorFixture } from './jobs-test-fixture.js';
+import { JobPrewriteError } from './service-internals/service-jobs.js';
 
 const state = vi.hoisted(() => ({
   deny: new Set<string>(),
@@ -16,6 +17,9 @@ const state = vi.hoisted(() => ({
   audit: vi.fn(),
   csrf: false,
   credential: 'credential-1',
+  identity: vi.fn(),
+  lock: vi.fn(),
+  locks: new Map<string, Promise<void>>(),
   entries: new Map<string, { hash: string; body?: unknown }>(),
   remove: vi.fn(),
   verifyDeleted: vi.fn(),
@@ -65,7 +69,7 @@ vi.mock('@sva/auth-runtime/server', async (original) => {
       );
     },
     validateCsrf: () => (state.csrf ? {} : null),
-    withExternalContentMutationLock: ({ execute }: { execute: () => unknown }) => execute(),
+    withExternalContentMutationLock: (input: unknown) => state.lock(input),
     withMediaService: (_id: string, callback: (service: unknown) => unknown) =>
       callback({
         getAssetById: state.asset,
@@ -110,7 +114,10 @@ vi.mock('./content-route-context.js', () => ({
 }));
 vi.mock('./mutation-principal.js', async () => ({
   ...(await import('./mutation-principal-lifecycle.js')),
-  resolveMainserverMutationActor: () => actor(),
+  resolveMainserverMutationActor: ({ request }: { request: Request }) => ({
+    ...actor(),
+    operationExternalId: request.headers.get('X-SVA-Operation-Id') ?? actor().operationExternalId,
+  }),
   resolveMainserverResourceActor: () => actor(),
   resolveMainserverResourceAccess: (input: unknown) => state.resourceAccess(input),
   authorizeMainserverCreateForPrincipal: async () => ({}),
@@ -122,6 +129,7 @@ vi.mock('./mutation-principal.js', async () => ({
   },
 }));
 vi.mock('./service.js', () => ({
+  loadSvaMainserverDataProviderIdentity: (input: unknown) => state.identity(input),
   deleteSvaMainserverJob: (...args: unknown[]) => state.remove(...args),
   verifySvaMainserverJobDeleted: (...args: unknown[]) => state.verifyDeleted(...args),
   listSvaMainserverCategories: (...args: unknown[]) => state.categories(...args),
@@ -180,6 +188,35 @@ beforeEach(() => {
     ].filter((permission) => !state.deny.has(permission.action)),
   }));
   state.entries.clear();
+  state.locks.clear();
+  state.identity.mockResolvedValue({ dataProvider: { id: 'provider-1' } });
+  state.lock.mockImplementation(
+    async ({
+      instanceId,
+      referenceId,
+      execute,
+    }: {
+      instanceId: string;
+      referenceId: string;
+      execute: () => Promise<unknown>;
+    }) => {
+      const key = `${instanceId}:${referenceId}`;
+      const previous = state.locks.get(key) ?? Promise.resolve();
+      let release: () => void = () => undefined;
+      state.locks.set(
+        key,
+        new Promise<void>((resolve) => {
+          release = resolve;
+        })
+      );
+      await previous;
+      try {
+        return await execute();
+      } finally {
+        release();
+      }
+    }
+  );
   state.csrf = false;
   state.credential = 'credential-1';
   state.categories.mockResolvedValue([
@@ -195,7 +232,11 @@ beforeEach(() => {
   state.get.mockResolvedValue({ data: record(), item });
   state.prepare.mockImplementation((job, _operationId, existing) => ({
     ...(existing ? { id: existing.id } : {}),
-    expected: { title: job.title, visible: job.visible },
+    expected: {
+      title: job.title,
+      visible: job.visible,
+      externalId: job.externalId || `studio-job:${_operationId}`,
+    },
     previousMediaIds: [],
     previousVisible: existing?.visible === true,
   }));
@@ -215,6 +256,76 @@ beforeEach(() => {
   );
 });
 describe('jobs HTTP contract', () => {
+  it.each([false, true])(
+    'serializes competing Job creates with a preceding update=%s for the same external ID',
+    async (updating) => {
+      let stored: string | undefined;
+      let writes = 0;
+      state.write.mockImplementation(async ({ prepared }) => {
+        const collision = stored;
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        if (collision) throw new JobPrewriteError('job_external_id_conflict');
+        stored = prepared.expected.title;
+        writes++;
+        return { ...record(), title: stored };
+      });
+      const firstBody = {
+        job: { ...input(), title: 'First', externalId: 'shared' },
+        ...(updating ? { baseFingerprint: jobFingerprint(item) } : {}),
+      };
+      const first = request(firstBody, updating ? '42' : undefined);
+      const second = request({ job: { ...input(), title: 'Second', externalId: 'shared' } });
+      first.headers.set('X-SVA-Operation-Id', '11111111-1111-4111-8111-111111111111');
+      second.headers.set('X-SVA-Operation-Id', '22222222-2222-4222-8222-222222222222');
+      const responses = await Promise.all([dispatch(first), dispatch(second)]);
+      expect(responses.filter((response) => response?.ok)).toHaveLength(1);
+      expect(responses.filter((response) => response?.status === 409)).toHaveLength(1);
+      expect(writes).toBe(1);
+      const winner = responses.find((response) => response?.ok);
+      expect((await winner?.json()).data.title).toBe(stored);
+      const keys = state.lock.mock.calls.map(([lock]) => lock.referenceId);
+      expect(keys).toHaveLength(2);
+      expect(new Set(keys).size).toBe(1);
+      expect(keys[0]).not.toContain('shared');
+    }
+  );
+  it('uses the same provider lock for create and delete', async () => {
+    const create = request({ job: input() });
+    create.headers.set('X-SVA-Operation-Id', '11111111-1111-4111-8111-111111111111');
+    expect((await dispatch(create))?.status).toBe(201);
+    const remove = new Request(`${base}/42`, {
+      method: 'DELETE',
+      headers: { 'X-SVA-Operation-Id': '22222222-2222-4222-8222-222222222222' },
+      body: JSON.stringify({ baseFingerprint: 'a'.repeat(64) }),
+    });
+    expect((await dispatch(remove))?.status).toBe(200);
+    expect(state.lock.mock.calls[0]?.[0].referenceId).toBe(
+      state.lock.mock.calls[1]?.[0].referenceId
+    );
+  });
+  it('separates provider locks while retaining one key across operations and credentials', async () => {
+    const keys: string[] = [];
+    for (const [index, provider] of ['provider-1', 'provider-1', 'provider-2'].entries()) {
+      state.identity.mockResolvedValue({ dataProvider: { id: provider } });
+      state.credential = `credential-${index}`;
+      const call = request({ job: { ...input(), externalId: `external-${index}` } });
+      call.headers.set('X-SVA-Operation-Id', `0000000${index}-0000-4000-8000-000000000000`);
+      expect((await dispatch(call))?.status).toBe(201);
+      keys.push(state.lock.mock.calls[index]?.[0].referenceId);
+    }
+    expect(keys[0]).toBe(keys[1]);
+    expect(keys[2]).not.toBe(keys[0]);
+    expect(keys[0]).not.toContain('provider-1');
+  });
+  it('rejects an unavailable create provider identity before reserving or writing', async () => {
+    state.identity.mockRejectedValueOnce(new Error('identity down'));
+    const response = await dispatch(request({ job: input() }));
+    expect(response?.status).toBe(502);
+    expect(await response?.json()).toMatchObject({ error: 'job_prewrite_failed' });
+    expect(state.entries.size).toBe(0);
+    expect(state.lock).not.toHaveBeenCalled();
+    expect(state.write).not.toHaveBeenCalled();
+  });
   it('does not claim unrelated routes and rejects an unconfirmed delete', async () => {
     expect(await dispatch(new Request('https://studio.test/other'))).toBeNull();
     expect((await dispatch(new Request(`${base}/42`, { method: 'DELETE' })))?.status).toBe(400);

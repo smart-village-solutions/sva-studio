@@ -167,7 +167,7 @@ export async function removeJob(request: Request, ctx: AuthenticatedRequestConte
   try {
     await withExternalContentMutationLock({
       instanceId: actor.instanceId,
-      referenceId: `GenericItem:${id}`,
+      referenceId: `GenericItem:jobs-provider:${createHash('sha256').update(current.data.dataProvider.id).digest('hex')}`,
       execute: () =>
         deleteSvaMainserverJob({
           ...actor,

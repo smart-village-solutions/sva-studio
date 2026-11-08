@@ -12,7 +12,12 @@ import { errorJson, isResponse } from './content-route-core.js';
 import { jobLocalAccess, authorizeJobMedia } from './jobs-route-access.js';
 import { jobFingerprint } from './jobs-snapshot.js';
 import { voucherSnapshotHash } from './vouchers-snapshot.js';
-import { getSvaMainserverJob, prepareSvaMainserverJob, writeSvaMainserverJob } from './service.js';
+import {
+  getSvaMainserverJob,
+  prepareSvaMainserverJob,
+  writeSvaMainserverJob,
+  loadSvaMainserverDataProviderIdentity,
+} from './service.js';
 import {
   JobPrewriteError,
   JobWriteError,
@@ -102,7 +107,7 @@ async function executeWrite(
   actor: MainserverMutationActor,
   scope: Scope,
   hash: string,
-  prepared: JobPreparedWrite,
+  prepared: JobPreparedWrite & Readonly<{ providerId: string }>,
   id?: string
 ) {
   const reservation = await reserveIdempotency({
@@ -127,14 +132,11 @@ async function executeWrite(
   });
   if (attempt.status !== 'reserved') return recover(ctx, actor, scope, hash, id);
   try {
-    const execute = () => writeSvaMainserverJob({ ...actor, prepared });
-    const data = id
-      ? await withExternalContentMutationLock({
-          instanceId: actor.instanceId,
-          referenceId: `GenericItem:${id}`,
-          execute,
-        })
-      : await execute();
+    const data = await withExternalContentMutationLock({
+      instanceId: actor.instanceId,
+      referenceId: `GenericItem:jobs-provider:${createHash('sha256').update(prepared.providerId).digest('hex')}`,
+      execute: () => writeSvaMainserverJob({ ...actor, prepared }),
+    });
     return await finish(actor, data, prepared);
   } catch (error) {
     const conflict = error instanceof JobPrewriteError;
@@ -163,5 +165,9 @@ async function prepareWrite(
   if (current && input.baseFingerprint !== jobFingerprint(current.item))
     return errorJson(409, 'job_content_conflict', 'job_content_conflict');
   const prepared = prepareSvaMainserverJob(input.job, actor.operationExternalId, current?.item);
-  return prepared;
+  return {
+    ...prepared,
+    providerId:
+      prepared.providerId ?? (await loadSvaMainserverDataProviderIdentity(actor)).dataProvider.id,
+  };
 }

@@ -122,7 +122,7 @@ describe('remote app config builder', () => {
     expect(staging).not.toContain('MEILI_SEARCH_KEY=');
   });
 
-  it('binds the production search source to Guben and keeps its key protected', () => {
+  it('binds production search to Guben and its activated global source', () => {
     const profile = readFileSync(
       new URL('../../config/runtime/remote/prod.vars', import.meta.url),
       'utf8'
@@ -133,7 +133,7 @@ describe('remote app config builder', () => {
       'bb-guben': {
         graphqlBaseUrl: 'https://bb-guben.server.smart-village.app/graphql',
         environment: 'production',
-        municipalityIds: [27],
+        municipalityIds: [27, 40],
       },
     });
     expect(profile).not.toContain('MEILI_SEARCH_KEY=');

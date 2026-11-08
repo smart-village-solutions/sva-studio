@@ -104,7 +104,10 @@ export const buildRemoteAppConfig = (input: {
       );
   }
   const merged = new Map([...profile.values, ...overrides]);
-  const missing = requiredRemoteConfigKeys.filter((key) => !merged.has(key));
+  const requiredKeys = merged.has('MEILI_SOURCES')
+    ? [...requiredRemoteConfigKeys, 'MEILI_URL', 'MEILI_SEARCH_KEY']
+    : requiredRemoteConfigKeys;
+  const missing = requiredKeys.filter((key) => !merged.has(key));
   if (missing.length > 0)
     fail(
       input.environment,

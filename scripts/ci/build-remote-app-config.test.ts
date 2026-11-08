@@ -40,11 +40,7 @@ describe('remote app config builder', () => {
       .split('\n')
       .filter((line) => !line.startsWith('MEILI_SEARCH_KEY='))
       .join('\n');
-    const baseline = buildRemoteAppConfig({
-      environment: 'staging',
-      profile,
-      overrides: existingBundle,
-    });
+    const baseline = buildRemoteAppConfig({ environment: 'staging', profile, overrides });
     const result = buildRemoteAppConfig({
       environment: 'staging',
       profile,
@@ -73,6 +69,35 @@ describe('remote app config builder', () => {
           meiliSearchKey,
         })
       ).toThrow();
+  });
+
+  it('requires a search endpoint and protected key only when a source is enabled', () => {
+    const without = (source: string, key: string) =>
+      source
+        .split('\n')
+        .filter((line) => !line.startsWith(`${key}=`))
+        .join('\n');
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'staging',
+        profile,
+        overrides: without(overrides, 'MEILI_SEARCH_KEY'),
+      })
+    ).toThrow(/PROMOTE_CONFIG_REQUIRED_KEY_MISSING/u);
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'staging',
+        profile: without(profile, 'MEILI_URL'),
+        overrides,
+      })
+    ).toThrow(/PROMOTE_CONFIG_REQUIRED_KEY_MISSING/u);
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'dev',
+        profile: without(without(profile, 'MEILI_SOURCES'), 'MEILI_URL'),
+        overrides: without(overrides, 'MEILI_SEARCH_KEY'),
+      })
+    ).not.toThrow();
   });
 
   it('passes search configuration only to the app and binds Sandbox to its existing Mainserver', () => {

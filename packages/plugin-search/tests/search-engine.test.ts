@@ -109,6 +109,19 @@ describe('authorized search', () => {
     );
     expect(result.complete).toBe(false);
   });
+  it('stops at the shared candidate budget before any model approaches the index cap', async () => {
+    const readPage = vi
+      .fn<SearchEngineHost['readPage']>()
+      .mockImplementation(async (model, offset) => ({
+        candidates: Array.from({ length: 100 }, (_, i) => ({ model, id: String(offset + i) })),
+        exhausted: false,
+      }));
+    const result = await executeSearch(query, host({ readPage, now: () => 0 }));
+    expect(result.allowed).toBe(10_000);
+    expect(result.complete).toBe(false);
+    expect(readPage).toHaveBeenCalledTimes(100);
+    expect(readPage.mock.calls.every(([, offset]) => offset < 10_000)).toBe(true);
+  });
   it('validates query size, page and arrays', () => {
     expect(() => parseSearchQuery({ q: 'x'.repeat(251) })).toThrow();
     expect(() => parseSearchQuery({ page: 1.2 })).toThrow();

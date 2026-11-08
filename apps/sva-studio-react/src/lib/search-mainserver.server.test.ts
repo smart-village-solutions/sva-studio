@@ -17,9 +17,6 @@ vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: async (_request: Request, callback: (ctx: unknown) => Promise<Response>) =>
     callback(state.current),
 }));
-vi.mock('@sva/core', () => ({
-  convertRichTextHtmlToPlainText: (value: string) => value.replace(/<[^>]*>/g, ''),
-}));
 vi.mock('@sva/sva-mainserver/server', () => ({
   dispatchSvaMainserverNewsRequest: state.dispatch,
   dispatchSvaMainserverEventsRequest: state.dispatch,

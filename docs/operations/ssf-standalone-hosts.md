@@ -117,6 +117,11 @@ geprüften SSF-Digest bezeichnen und App und Worker an genau diesen Digest binde
 Vor dem Start führt das Skript den einmaligen Dienst `migrate`
 mit demselben Digest aus. Ein fehlgeschlagener IAM- oder SSF-Plugin-Migrationsschritt beendet
 `up.sh`, bevor App und Provisioner aktualisiert werden.
+Das Runtime-Image enthält Goose in der Version aus `packages/data/goose.config.json`
+bereits checksum-geprüft im Cache des vorhandenen Wrappers. Die Image-Prüfung führt
+den Wrapper mit `--version` als Image-Benutzer ohne Netzwerk und mit schreibgeschütztem
+Dateisystem aus und vergleicht die konfigurierte Version. Der interne Migrationsdienst
+benötigt dadurch keinen GitHub-Download, zusätzlichen Cache oder Downloader-Dienst.
 Ein Provisioning-Auftrag darf erst erneut eingereiht werden,
 wenn `provisioner` läuft; bereits wartende Aufträge werden vom Provisioner selbst übernommen.
 

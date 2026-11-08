@@ -1,11 +1,6 @@
 {
   "version": 1,
-  "metrics": [
-    "lines",
-    "statements",
-    "functions",
-    "branches"
-  ],
+  "metrics": ["lines", "statements", "functions", "branches"],
   "globalFloors": {
     "lines": 85,
     "statements": 85,
@@ -13,10 +8,7 @@
     "branches": 85
   },
   "maxAllowedDropPctPoints": 0.5,
-  "exemptProjects": [
-    "tooling-testing",
-    "public-waste-calendar-web"
-  ],
+  "exemptProjects": ["tooling-testing", "public-waste-calendar-web"],
   "newCodeExemptProjects": [],
   "perProjectFloors": {
     "core": {
@@ -240,6 +232,12 @@
       "statements": 85,
       "functions": 88,
       "branches": 72
+    },
+    "plugin-search": {
+      "lines": 85,
+      "statements": 85,
+      "functions": 85,
+      "branches": 85
     }
   },
   "criticalProjects": {

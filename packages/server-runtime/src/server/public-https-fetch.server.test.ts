@@ -11,7 +11,7 @@ vi.mock('undici', () => ({
   },
 }));
 
-import { fetchPublicHttps } from './public-https-fetch.server.js';
+import { fetchPublicHttps, fetchMapGeocoding } from './public-https-fetch.server.js';
 
 const resolveConnection = async (all = false) => {
   const { lookup } = state.connect as { lookup: LookupFunction };
@@ -43,6 +43,26 @@ describe('fetchPublicHttps', () => {
   ])('rejects unsafe literal destination %s before fetch', async (url) => {
     await expect(fetchPublicHttps(url)).rejects.toThrow('public_https_target_rejected');
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('permits public HTTP for geocoding without weakening the HTTPS-only consumer', async () => {
+    await fetchMapGeocoding('http://geo.example/search');
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(URL),
+      expect.objectContaining({ dispatcher: expect.anything(), redirect: 'manual' })
+    );
+    await expect(fetchPublicHttps('http://geo.example/search')).rejects.toThrow();
+    await expect(fetchMapGeocoding('http://127.0.0.1/search')).rejects.toThrow();
+    await fetchMapGeocoding('http://127.0.0.1/search', {}, { allowPrivateHosts: true });
+    await expect(
+      fetchMapGeocoding('ftp://geo.example/search', {}, { allowPrivateHosts: true })
+    ).rejects.toThrow();
+    await expect(
+      fetchMapGeocoding('http://user:secret@geo.example/search', {}, { allowPrivateHosts: true })
+    ).rejects.toThrow();
+    await expect(
+      fetchMapGeocoding('https://geo.example', { redirect: 'follow' })
+    ).rejects.toThrow();
   });
 
   it('checks DNS at connection time and passes only those addresses to the socket', async () => {
@@ -81,7 +101,10 @@ describe('fetchPublicHttps', () => {
     await expect(resolveConnection()).rejects.toThrow('ENOTFOUND');
   });
 
-  it('blocks the actual Undici connection when DNS changes to a private address', async () => {
+  it.each([
+    { fetchTarget: fetchPublicHttps, url: 'https://cdn.example' },
+    { fetchTarget: fetchMapGeocoding, url: 'http://geo.example' },
+  ])('blocks the actual Undici connection for $url when DNS changes to a private address', async ({ fetchTarget, url }) => {
     const { Agent, fetch: transportFetch } = await vi.importActual<typeof import('undici')>('undici');
     const agent = new Agent({ connect: state.connect as { lookup: LookupFunction } });
     state.lookup.mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
@@ -89,7 +112,7 @@ describe('fetchPublicHttps', () => {
       state.fetch.mockImplementationOnce((url: URL, init: Parameters<typeof transportFetch>[1]) =>
         transportFetch(url, { ...init, dispatcher: agent })
       );
-      await expect(fetchPublicHttps('https://cdn.example', { signal: AbortSignal.timeout(1000) })).rejects.toMatchObject({
+      await expect(fetchTarget(url, { signal: AbortSignal.timeout(1000) })).rejects.toMatchObject({
         cause: expect.objectContaining({ message: 'public_https_target_rejected' }),
       });
       expect(state.lookup).toHaveBeenCalled();

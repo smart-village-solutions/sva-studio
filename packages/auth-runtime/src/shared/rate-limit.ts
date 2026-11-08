@@ -1,3 +1,6 @@
+import type Redis from 'ioredis';
+import { getRedisClient } from '../redis.js';
+
 import {
   BULK_RATE_LIMIT,
   READ_RATE_LIMIT,
@@ -31,24 +34,23 @@ const resolveRateLimit = (scope: RateScope): number => {
   return WRITE_RATE_LIMIT;
 };
 
-const createRateLimitPruner = (
-  rateLimiterStore: Map<string, RateBucket>,
-  maxRateBuckets: number
-) => (now: number): void => {
-  for (const [key, bucket] of rateLimiterStore.entries()) {
-    if (now - bucket.windowStartedAt >= RATE_WINDOW_MS) {
-      rateLimiterStore.delete(key);
+const createRateLimitPruner =
+  (rateLimiterStore: Map<string, RateBucket>, maxRateBuckets: number) =>
+  (now: number): void => {
+    for (const [key, bucket] of rateLimiterStore.entries()) {
+      if (now - bucket.windowStartedAt >= RATE_WINDOW_MS) {
+        rateLimiterStore.delete(key);
+      }
     }
-  }
 
-  while (rateLimiterStore.size > maxRateBuckets) {
-    const oldestKey = rateLimiterStore.keys().next().value;
-    if (!oldestKey) {
-      break;
+    while (rateLimiterStore.size > maxRateBuckets) {
+      const oldestKey = rateLimiterStore.keys().next().value;
+      if (!oldestKey) {
+        break;
+      }
+      rateLimiterStore.delete(oldestKey);
     }
-    rateLimiterStore.delete(oldestKey);
-  }
-};
+  };
 
 export const createRateLimitConsumer = (
   input: {
@@ -56,11 +58,12 @@ export const createRateLimitConsumer = (
   } = {}
 ) => {
   const rateLimiterStore = new Map<string, RateBucket>();
-  const pruneExpiredBuckets = createRateLimitPruner(rateLimiterStore, input.maxBuckets ?? MAX_RATE_BUCKETS);
+  const pruneExpiredBuckets = createRateLimitPruner(
+    rateLimiterStore,
+    input.maxBuckets ?? MAX_RATE_BUCKETS
+  );
 
-  return (
-    consumeInput: ConsumeRateLimitInput
-  ): Response | null => {
+  return (consumeInput: ConsumeRateLimitInput): Response | null => {
     const limit = resolveRateLimit(consumeInput.scope);
     const now = consumeInput.now ?? Date.now();
     pruneExpiredBuckets(now);
@@ -88,3 +91,41 @@ export const createRateLimitConsumer = (
 };
 
 export const consumeRateLimit = createRateLimitConsumer();
+
+// One tenant budget for interactive and batch geocoding, atomic across server processes.
+const GEOCODING_BUDGET_SCRIPT = `
+local count = tonumber(redis.call('GET', KEYS[1]) or '0')
+if count >= tonumber(ARGV[1]) then
+  return {0, redis.call('PTTL', KEYS[1])}
+end
+count = redis.call('INCR', KEYS[1])
+if count == 1 then redis.call('PEXPIRE', KEYS[1], 60000) end
+return {1, redis.call('PTTL', KEYS[1])}
+`;
+
+export const consumeGeocodingBudget = async (
+  input: { instanceId: string; limit: number },
+  redis: Pick<Redis, 'eval'> = getRedisClient()
+): Promise<{ allowed: true } | { allowed: false; retryAfterSeconds: number }> => {
+  if (!input.instanceId || !Number.isSafeInteger(input.limit) || input.limit < 1) {
+    throw new Error('invalid_geocoding_budget');
+  }
+  const result = await redis.eval(
+    GEOCODING_BUDGET_SCRIPT,
+    1,
+    `geocoding-rate-limit:${input.instanceId}`,
+    input.limit
+  );
+  if (
+    !Array.isArray(result) ||
+    result.length !== 2 ||
+    ![0, 1].includes(result[0]) ||
+    typeof result[1] !== 'number' ||
+    result[1] < 0
+  ) {
+    throw new Error('geocoding_budget_unavailable');
+  }
+  return result[0] === 1
+    ? { allowed: true }
+    : { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil(result[1] / 1000)) };
+};

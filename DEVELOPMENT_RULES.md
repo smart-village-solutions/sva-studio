@@ -881,7 +881,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Implement length limits and character restrictions
 - Proper encoding for external API calls (use `encodeURIComponent`)
 - Sanitize all HTML content (use DOMPurify if HTML rendering required)
-- RLS policies must be in place for all Supabase tables
+- PostgreSQL-Zugriffe müssen den serverseitig aufgelösten Instanzkontext, parametrisierte Queries und die vorgesehenen RLS-Policies verwenden. Optionale Supabase-Schnittstellen ersetzen keine Studio-Authentifizierung oder -Autorisierung.
 
 ### ❌ FORBIDDEN
 
@@ -935,13 +935,13 @@ Before any implementation goes live, verify:
 - ✅ **Data Exposure**: No sensitive data in console logs or error messages
 - ✅ **API Security**: External API calls use proper encoding
 - ✅ **File Uploads**: Size limits, type validation, secure storage
-- ✅ **CSRF Protection**: Supabase handles this automatically
-- ✅ **Rate Limiting**: Consider for public-facing endpoints
+- ✅ **CSRF Protection**: Cookie-authentifizierte Mutationen müssen den zuständigen Origin-/CSRF-Schutz durchlaufen; OIDC-State, PKCE und Nonce schützen den Login-Flow. Keycloak oder SameSite allein ersetzen diese Prüfungen nicht.
+- ✅ **Rate Limiting**: Öffentliche Eingänge begrenzen; Geocoding verbraucht vor jedem Provider-Versuch das gemeinsame Redis-Budget des Tenants und verweigert bei nicht prüfbarem Budget den Zugriff.
 
 #### Common Security Vulnerabilities to Prevent
 
 1. **SQL Injection**
-   - Use Supabase client properly (auto-parameterized)
+   - PostgreSQL ausschließlich mit parametrisierten Queries und serverseitig gebundenem Instanzkontext ansprechen.
    - Never concatenate user input into queries
    - RLS policies as defense in depth
 
@@ -951,7 +951,8 @@ Before any implementation goes live, verify:
    - Validate and sanitize all user input
 
 3. **Broken Authentication**
-   - Use Supabase Auth (already secure)
+   - Keycloak/OIDC für Identität und JWT-Verifikation nutzen; Browser-Sessions und Sperrmarker liegen in Redis.
+   - Persönliche Bearer-Zugriffe prüfen den aktuellen Kontozustand vor Rollen-/Permission-Hydration; alte Token und erhaltene Rollen heben eine Sperre nicht auf.
    - Implement proper session management
    - Verify user identity on all protected operations
 
@@ -964,6 +965,8 @@ Before any implementation goes live, verify:
    - Check permissions on every operation
    - Workspace isolation via RLS
    - Role-based access control (RBAC)
+
+Die maßgeblichen Mechanismen und Grenzen stehen in [IAM-Architektur](docs/architecture/iam-service-architektur.md), [Sicherheitskonzepten](docs/architecture/08-cross-cutting-concepts.md), [Session-Lifecycle](docs/adr/ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md) und [persönlichem API-Zugang](docs/adr/ADR-067-persoenlicher-plattform-und-tenant-zugang-im-studio-mcp.md). URL-Kodierung allein schützt externe Requests nicht vor SSRF: DNS-/IP-Prüfung muss am Verbindungsaufbau gelten. Öffentliche HTTP-Bodies und Token-Verifier benötigen eigene Grenzen; gespeicherte Hashes sind niemals gültige Bearer-Secrets.
 
 #### Security Testing Process
 

@@ -165,6 +165,10 @@ RUN case "${SVA_STUDIO_DISTRIBUTION}" in \
       *) echo "invalid_studio_distribution:${SVA_STUDIO_DISTRIBUTION}" >&2; exit 1 ;; \
     esac
 RUN chmod +x entrypoint.sh bootstrap-entrypoint.sh migrate-entrypoint.sh provisioner-entrypoint.sh packages/data/scripts/goosew.sh
+# Populate the wrapper's checksum-verified cache while the image build has egress.
+# Executing Goose also rejects an incompatible binary or unexpected version.
+RUN expected_version="$(node -p 'require("./packages/data/goose.config.json").version')" \
+  && test "$(bash packages/data/scripts/goosew.sh --version)" = "goose version: ${expected_version}"
 RUN chown -R node:node /app
 
 USER node

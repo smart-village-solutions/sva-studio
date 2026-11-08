@@ -17,12 +17,14 @@ const effectiveAccessMock = {
   },
   permissionActions: [] as string[],
   retry: retryEffectiveAccessMock,
+  decide: () => ({ status: 'denied' }),
 };
 
 /**
  * Mockt den TanStack-Link für DOM-basierte Komponententests.
  */
 vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
   useRouterState: (options?: {
     select?: (state: { location: { pathname: string } }) => unknown;
   }) => {

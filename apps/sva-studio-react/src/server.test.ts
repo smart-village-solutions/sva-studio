@@ -254,7 +254,9 @@ describe('server transport', () => {
     dispatchMainserverMetadataRequestMock.mockResolvedValue(null);
     dispatchAggregatedContentListRequestMock.mockResolvedValue(null);
     dispatchMapGeocodingRequestMock.mockResolvedValue(null);
-    dispatchAuthRouteRequestMock.mockResolvedValue(new Response('auth', { status: 200 }));
+    dispatchAuthRouteRequestMock.mockResolvedValue(
+      new Response('auth', { status: 200, headers: { 'content-type': 'text/html' } })
+    );
     createStartHandlerMock.mockReturnValue(startFetch);
 
     const mod = await import('./server');
@@ -270,6 +272,9 @@ describe('server transport', () => {
     );
     expect(dispatchAuthRouteRequestMock).toHaveBeenCalledTimes(1);
     expect(startFetch).not.toHaveBeenCalled();
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+    expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'self'");
     await expect(response.text()).resolves.toBe('auth');
   });
 

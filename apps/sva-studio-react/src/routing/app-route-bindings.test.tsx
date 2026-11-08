@@ -48,6 +48,8 @@ const routeState = vi.hoisted(() => ({
   faqLabel: 'FAQ',
 }));
 
+vi.mock('../providers/locale-provider', () => ({ useLocale: () => ({ locale: 'de' }) }));
+
 vi.mock('@sva/plugin-app-translations', () => ({
   CatalogsPage: ({ platform }: { platform?: boolean }) => (
     <div data-testid="translation-catalog-scope">{platform ? 'platform' : 'instance'}</div>
@@ -148,6 +150,11 @@ vi.mock('../i18n', () => ({
         'shell.sidebar.license': 'License',
       }) as Record<string, string>
     )[key] ?? key,
+}));
+
+vi.mock('../providers/effective-access-provider', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../providers/effective-access-provider')>()),
+  useEffectiveAccess: () => ({ snapshot: { status: 'ready', generation: 1 } }),
 }));
 
 vi.mock('../lib/plugins', async () => {
@@ -296,11 +303,16 @@ vi.mock('../lib/plugins', async () => {
     displayName: 'Construction sites',
     routes: [],
     adminResources: [],
-    viewBindings: [{
-      bindingKey: 'constructionSitesList',
-      component: ({ principalControl }: { principalControl?: MainserverPrincipalControlModel }) =>
-        <div data-testid="construction-list-principal">{principalControl?.value}</div>,
-    }],
+    viewBindings: [
+      {
+        bindingKey: 'constructionSitesList',
+        component: ({
+          principalControl,
+        }: {
+          principalControl?: MainserverPrincipalControlModel;
+        }) => <div data-testid="construction-list-principal">{principalControl?.value}</div>,
+      },
+    ],
   } as never);
   const adminResources = studioPlugins.flatMap((plugin) => plugin.adminResources ?? []);
   return {
@@ -1623,8 +1635,17 @@ describe('appRouteBindings', () => {
     routeState.search = { type: 'construction-sites.construction-site' };
     routeState.organizationContext = {
       activeOrganizationId: 'org-1',
-      organizations: [{ organizationId: 'org-1', organizationKey: 'org-1', displayName: 'Town',
-        organizationType: 'municipality', contentAuthorPolicy: 'org_only', isActive: true, isDefaultContext: true }],
+      organizations: [
+        {
+          organizationId: 'org-1',
+          organizationKey: 'org-1',
+          displayName: 'Town',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_only',
+          isActive: true,
+          isDefaultContext: true,
+        },
+      ],
     };
     const { appRouteBindings } = await import('./app-route-bindings');
     const page = render(<appRouteBindings.content />);
@@ -1972,5 +1993,18 @@ describe('appRouteBindings', () => {
     render(<appRouteBindings.poiDetail />);
     await waitFor(() => expect(screen.getByTestId('poi-edit-page')).toBeTruthy());
     expect(screen.getByTestId('poi-edit-page').textContent).toBe('de-musterhausen');
+  });
+});
+
+describe('search plugin access context', () => {
+  it('shows an organization error with recovery instead of an endless loading state', async () => {
+    routeState.organizationContextError = new Error('unavailable');
+    const { SearchPluginRoutePage } = await import('./app-route-bindings');
+    render(<SearchPluginRoutePage Page={() => <div>Search results</div>} />);
+    expect(screen.getByRole('alert').textContent).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'shared.errorFallback.retry' }));
+    expect(routeState.refetchOrganizationContext).toHaveBeenCalled();
+    expect(screen.queryByText('Search results')).toBeNull();
+    routeState.organizationContextError = null;
   });
 });

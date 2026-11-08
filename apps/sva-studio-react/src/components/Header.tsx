@@ -1,7 +1,14 @@
 /** Header-Komponente der App-Shell mit globalen Aktionen. */
-import { IconLanguage as Languages, IconMenu as Menu, IconMoon as Moon, IconSun as Sun } from '@tabler/icons-react';
+import {
+  IconLanguage as Languages,
+  IconMenu as Menu,
+  IconMoon as Moon,
+  IconSun as Sun,
+} from '@tabler/icons-react';
 import React from 'react';
-import { useRouterState } from '@tanstack/react-router';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { useEffectiveAccess } from '../providers/effective-access-provider';
+import { studioPlugins } from '../lib/plugins';
 import {
   resolveOrganizationContextState,
   resolveUserDisplayName,
@@ -54,6 +61,16 @@ export default function Header({
     loginWithDevAuth,
     logout,
   } = useAuth();
+  const navigate = useNavigate();
+  const access = useEffectiveAccess();
+  const searchPlugin = studioPlugins.find((plugin) => plugin.id === 'search');
+  const searchRequirement = searchPlugin?.routes?.find(
+    (route) => route.id === 'search.results'
+  )?.accessRequirement;
+  const SearchHeader = searchPlugin?.viewBindings?.find(
+    (binding) => binding.bindingKey === 'searchHeader'
+  )?.component as React.ComponentType<{ onSearch: (q: string) => void }> | undefined;
+  const canSearch = searchRequirement && access.decide(searchRequirement).status === 'allowed';
   const organizationContext = useOrganizationContext();
   const organizationContextState = resolveOrganizationContextState({
     roleNames: user?.roles,
@@ -106,7 +123,7 @@ export default function Header({
   return (
     <header className="sticky top-0 z-40 bg-background">
       <div className="grid min-h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 border-b border-border-subtle px-4 py-2 text-sm text-foreground sm:px-6">
-        <div className="flex min-w-0 items-center">
+        <div className="col-start-1 row-start-1 flex min-w-0 items-center lg:hidden">
           {onOpenMobileNavigation ? (
             <Button
               type="button"
@@ -126,8 +143,24 @@ export default function Header({
             </Button>
           ) : null}
         </div>
+        {isHydrated &&
+        isAuthenticated &&
+        SearchHeader &&
+        canSearch &&
+        !organizationContext.isUpdating ? (
+          <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:w-72">
+            <SearchHeader
+              onSearch={(q) => {
+                void navigate({
+                  to: '/plugins/search' as never,
+                  search: { q, page: 1 } as never,
+                });
+              }}
+            />
+          </div>
+        ) : null}
         {showOrganizationContext ? (
-          <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+          <div className="col-span-3 min-w-0 lg:col-span-1 lg:col-start-2 lg:row-start-1">
             <OrganizationContextSwitcher allowPersonal={isSystemAdmin} />
           </div>
         ) : null}

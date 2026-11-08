@@ -503,3 +503,45 @@ Erst diese Nachweise schließen den Konflikt. Ein HTTP-Erfolg ohne anschließend
 - Wurden Credentials bereits in Keycloak geschrieben, entscheidet der Mainserver-Betrieb anhand des tatsächlichen `User`-/`Member`-/DataProvider-Zustands über die Nacharbeit. Secrets werden dabei weder kopiert noch in Diagnosedaten ausgegeben.
 
 Für den Credential-Commit werden die vorhandenen Instanz- und Benutzerrevisionszeilen in fester Reihenfolge mit `FOR SHARE` bis zum Transaktionsende gesperrt. Fehlende Zeilen werden vorher mit dem bisherigen impliziten Startwert `1` angelegt. Die bestehenden Revisions-UPSERTs für Rechteänderungen werden dadurch serialisiert: Ein früherer Rechteentzug führt nach dem Warten zum Revisionskonflikt und verhindert die Rücksicherung; ein späterer Rechteentzug kann erst nach dem Recovery-Commit abschließen. Die normalen Permission-Reads bleiben ohne zusätzliche Sperren. Keine Schemaänderung.
+
+## Suchplugin einrichten
+
+Das bestehende optionale Studio-Plugin `search` verwendet `GET /api/v1/plugins/search/query`. Seine Route und der Header-Einstieg benötigen die reguläre Modulaktivierung und `search.read`. Das einzige Suchfeld befindet sich im Header; die Ergebnisse nutzen die bestehende `StudioDataTable` mit Filtern und serverseitiger Sortierung vor dem Paging. Der Leseprincipal wird mit der vorhandenen automatischen Credential-Auflösung gewählt, nicht durch einen zusätzlichen Kontowechsel. Der ausgewählte Principal bleibt für den Request gebunden; nach einer Ablehnung wird kein alternativer Zugang ausprobiert. Die fachlichen Leserechte werden anschließend weiterhin über die bestehenden Mainserver-Detailzugriffe geprüft; die Suche legt keine neuen Mainserver-Datensätze, Indizes oder Schlüssel an.
+
+Die serverseitige Laufzeit benötigt folgende ausdrücklich konfigurierte Werte:
+
+| Variable           | Bedeutung                                                                                                               |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `MEILI_URL`        | HTTPS-Origin der vorhandenen Meilisearch-Instanz, ohne Benutzerinformationen, Query oder Fragment                       |
+| `MEILI_SEARCH_KEY` | Geschützter, eingeschränkter Schlüssel für die Suchaktionen auf den vorgesehenen Indizes                                |
+| `MEILI_SOURCES`    | JSON-Objekt mit exakter Studio-Instanz-ID als Schlüssel und `graphqlBaseUrl`, `environment`, `municipalityIds` als Wert |
+
+`graphqlBaseUrl` muss exakt der aktivierten Mainserver-Verbindung der Instanz entsprechen. `environment` ist einer der Werte `production`, `staging`, `development` oder `test`; `municipalityIds` ist eine nicht leere Liste positiver Ganzzahlen. Betreiber prüfen diese Gemeindezuordnung einschließlich ausdrücklich freigegebener globaler Quellen vor der Aktivierung. Der Browser kann weder Quelle noch Indexumgebung oder Gemeindeumfang bestimmen.
+
+Beispiel für die **geheimnisfreie Struktur** von `MEILI_SOURCES`:
+
+```json
+{
+  "example-instance": {
+    "graphqlBaseUrl": "https://example.invalid/graphql",
+    "environment": "staging",
+    "municipalityIds": [123]
+  }
+}
+```
+
+Es gibt keinen Fallback auf `MEILI_MASTER_KEY`. Vorhandene Diagnosewerte aus `.env.local` werden nicht in Worktrees, Build-Artefakte oder Laufzeitkonfigurationen kopiert. Der reguläre Promote übernimmt `MEILI_SEARCH_KEY` aus dem gleichnamigen GitHub-Environment-Secret. URL und Quellenzuordnung kommen aus dem getrackten Remote-Profil; alle drei Werte werden ausschließlich an den App-Service übergeben. Ein Suchschlüssel muss über diesen geschützten Konfigurationsweg separat bereitgestellt werden; seine Erstellung und die Aktivierung eines produktiven Mandanten bedürfen des konkreten Betriebsauftrags. Schlüssel, Suchbegriffe und Dokumentinhalte gehören nicht in Logs oder Reports.
+
+Der Suchlauf liest 100 Kandidaten je Upstream-Seite und autorisiert höchstens vier Ressourcen gleichzeitig. Das Scanbudget beträgt 15 Sekunden beziehungsweise 10.000 deduplizierte Kandidaten pro Anfrage; einzelne Meilisearch-Aufrufe haben fünf Sekunden Timeout. Bereits laufende Mainserver-Detailzugriffe behalten ihre bestehenden Timeouts, sodass die gesamte HTTP-Laufzeit länger als das Scanbudget sein kann. Exakte Zahlen setzen eine vollständige Erfassung unterhalb des vorhandenen Indexlimits voraus. Wiederholungen beginnen einen neuen Lauf; es gibt keine zusätzliche Suchwarteschlange oder persistente Suchhistorie. Hohe Trefferzahlen erfordern vor einer breiten Aktivierung einen repräsentativen Laufzeittest.
+
+| Zustand                  | Verhalten                                                                                            |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `search_not_configured`  | Kein Suchschlüssel, ungültige Quellkonfiguration oder nicht passende Mainserver-Verbindung; HTTP 503 |
+| `invalid_search`         | Suchbegriff, Filter oder Paging verletzen die Eingabegrenzen; HTTP 400                               |
+| `search_context_changed` | Sitzung, Organisation oder effektive Permissions passen nicht mehr zum Anfang des Laufs; HTTP 409    |
+| `search_unavailable`     | Meilisearch oder eine notwendige technische Prüfung ist fehlgeschlagen; HTTP 503                     |
+| Unvollständige Zählung   | Erlaubte bereits geprüfte Treffer bleiben sichtbar, die Gesamtzahl wird nicht als exakt bezeichnet   |
+
+Die Rücknahme erfolgt durch reguläres Deaktivieren des optionalen Plugins. Mainserver-Indizes und die SQL-Suche der Inhaltsübersicht benötigen dafür keine Datenrückmigration. Spätere reguläre Rollouts folgen ausschließlich [dem Studio-Rollout-Prozess](../guides/studio-rollout-process.md).
+
+Für die erste Staging-Aktivierung ist `de-studio-sandbox` auf die bestehende GraphQL-Verbindung `https://de-studio-sandbox.staging-server.smart-village.app/graphql` und `municipalityIds: [7]` begrenzt. Der Mainserver-Abgleich vom 8. November 2026 bestätigt keine aktivierten globalen Quellen. Die vier Indexnamen verwenden das Suffix `_staging`. Separate unbefristete Suchschlüssel für Dev, Staging und Production existieren; für diesen Rollout wird ausschließlich der Staging-Schlüssel bereitgestellt. Das lokale Diagnoseverzeichnis ist kein Secret-Ursprung des Worktrees oder der Build-Artefakte.

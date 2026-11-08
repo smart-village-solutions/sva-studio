@@ -143,12 +143,14 @@ ruft SSF nicht direkt auf. Der Katalog wird nicht in Studio persistiert; ein
 Ausfall verhindert nur Sprachänderungen und das Hinzufügen von Sprachen, nicht
 die Bearbeitung vorhandener Texte.
 
-
 ## Bus-API-Key-Verwaltung
 
 Studio verwaltet Bus-Kundenkeys über die interne Admin-API des Bus-Servers ab Version 0.7.3. Der Bus bleibt führend für Keys, Hashing und Proxy-Zugriff; Studio besitzt ausschließlich die persönliche Plattformautorisierung und den instanzgebundenen Bedienpfad unter Betrieb im Root-Instanzdetail.
 
-
 ## Gutscheine und unveränderter Mainserver
 
 Das optionale Gutscheinmodul verwendet den bestehenden Mainserver-Vertrag für verschachtelte POI-Gutscheine. Weder App noch Mainserver werden hierfür verändert. Ein Studio-Write kann Einlösungen aller Gutscheine des Ortes zurücksetzen; öffentliche Read-Filter begrenzen nachweislich sichere Writes. Die konkreten Grenzen stehen in der [Gutscheinreferenz](../reference/vouchers.md).
+
+## Mainserver-Suche im Studio
+
+Das optionale Suchplugin ergänzt den bestehenden Mainserver-Kontext um eine Suche über bereits sichtbar indexierte Inhalte. Es erhält Kandidaten aus Meilisearch und übernimmt die fachlichen Leseregeln der bestehenden Studio-/Mainserver-Detailzugriffe. Studio-eigene Inhalte und die Indexierung unsichtbarer Datensätze bleiben außerhalb dieses Umfangs.

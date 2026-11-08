@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { createWasteManagementUnsubscribeToken } from '@sva/waste-management-contracts/unsubscribe-token';
 
@@ -627,6 +628,34 @@ describe('public waste reminder action characterization', () => {
     expect(response?.status).toBe(200);
     await expect(response?.text()).resolves.toContain(testCase.expectedText);
     expect(harness.calls).toEqual([]);
+  });
+
+  it('accepts only the raw DOI secret, never the stored SHA-256 verifier', async () => {
+    const rawToken = 'a-random-doi-secret';
+    const storedHash = `sha256:${createHash('sha256').update(rawToken).digest('hex')}`;
+    const activateByDoiTokenHash = vi.fn(async ({ tokenHash }: { tokenHash: string }) =>
+      tokenHash === storedHash
+        ? { status: 'activated' as const, subscriptionId: 'subscription-1', locationLabel: 'Test' }
+        : { status: 'invalid' as const }
+    );
+    const handler = createReminderPageHandler({
+      activateByDoiTokenHash,
+      loadUnsubscribeSubscriptionById: vi.fn(async () => null),
+      unsubscribeByTokenHash: vi.fn(async () => ({ status: 'invalid' as const })),
+    });
+    const valid = await invokeReminderAction({
+      handler,
+      pathname: reminderActionConfig.doiConfirmPath,
+      query: { token: rawToken },
+    });
+    expect(valid?.headers.get('location')).toContain('state=activated');
+    const stolenVerifier = await invokeReminderAction({
+      handler,
+      pathname: reminderActionConfig.doiConfirmPath,
+      query: { token: storedHash },
+    });
+    expect(stolenVerifier?.headers.get('location')).toContain('reason=invalid');
+    expect(activateByDoiTokenHash.mock.calls[1]?.[0].tokenHash).not.toBe(storedHash);
   });
 
   it('rejects a missing DOI token before hashing or activation', async () => {

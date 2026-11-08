@@ -47,7 +47,10 @@ FROM (
   JOIN iam.roles r
     ON r.instance_id = ar.instance_id
    AND r.id = ar.role_id
-  WHERE a.keycloak_subject = $2
+  WHERE a.keycloak_subject = $2 AND a.instance_id = $1
+    AND a.status = 'active' AND a.is_blocked = false
+    AND a.soft_deleted_at IS NULL AND a.permanently_deleted_at IS NULL
+    AND a.deletion_lifecycle_state = 'active' AND a.deactivated_at IS NULL
 
   UNION
 
@@ -71,7 +74,10 @@ FROM (
   JOIN iam.roles r
     ON r.instance_id = gr.instance_id
    AND r.id = gr.role_id
-  WHERE a.keycloak_subject = $2
+  WHERE a.keycloak_subject = $2 AND a.instance_id = $1
+    AND a.status = 'active' AND a.is_blocked = false
+    AND a.soft_deleted_at IS NULL AND a.permanently_deleted_at IS NULL
+    AND a.deletion_lifecycle_state = 'active' AND a.deactivated_at IS NULL
 ) AS effective_roles
 ORDER BY role_key ASC
     `,

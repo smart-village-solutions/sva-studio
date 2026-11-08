@@ -192,7 +192,7 @@ export const upsertInstanceInterfaceForRequest = async (
 };
 
 export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: UpsertInstanceInterfaceInput) => data)
+  .validator((data: UpsertInstanceInterfaceInput) => data)
   .handler(async ({ data }): Promise<InstanceInterface> => upsertInstanceInterfaceForRequest(data));
 
 type TestMailInterfaceInput = Readonly<{ instanceId?: string; id: string; locale?: 'de' | 'en' }>;
@@ -246,7 +246,7 @@ export const testMailInterfaceForRequest = async (
 };
 
 export const testMailInterfaceServerFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: TestMailInterfaceInput) => data)
+  .validator((data: TestMailInterfaceInput) => data)
   .handler(async ({ data }): Promise<MailTestResult> => testMailInterfaceForRequest(data));
 
 type DeleteInstanceInterfaceInput = Readonly<{
@@ -287,13 +287,13 @@ export const deleteInstanceInterfaceForRequest = async (
 };
 
 export const deleteInstanceInterfaceServerFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: DeleteInstanceInterfaceInput) => data)
+  .validator((data: DeleteInstanceInterfaceInput) => data)
   .handler(async ({ data }): Promise<{ deleted: boolean }> =>
     deleteInstanceInterfaceForRequest(data)
   );
 
 export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST' })
-  .inputValidator((data: SaveSvaMainserverInterfaceSettingsInput['data']) => data)
+  .validator((data: SaveSvaMainserverInterfaceSettingsInput['data']) => data)
   .handler(async ({ data }): Promise<SvaMainserverInstanceConfig> => {
     try {
       const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');

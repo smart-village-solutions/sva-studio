@@ -876,6 +876,7 @@ paths:
   /api/v1/iam/users:
     get:
       summary: Nutzerliste (paginiert)
+      description: Persönliche Bearer-Zugriffe prüfen den aktuellen Kontostatus vor Handler und Rollenhydration. Sperre oder fehlende passende Mitgliedschaft liefert 403, nicht prüfbare Redis-/DB-/Keycloak-Abhängigkeit 503.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
@@ -893,6 +894,12 @@ paths:
           schema:
             type: string
       responses:
+        '401':
+          description: Ungültiges oder fehlendes Token.
+        '403':
+          description: Konto gesperrt oder Berechtigung beziehungsweise passende Mitgliedschaft fehlt.
+        '503':
+          description: Aktueller Konto- oder Sperrstatus ist nicht prüfbar.
         '200':
           description: Erfolgreiche Nutzerliste.
           content:
@@ -920,6 +927,12 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateUserRequest'
       responses:
+        '401':
+          description: Ungültiges oder fehlendes Token.
+        '403':
+          description: Konto gesperrt oder Berechtigung beziehungsweise passende Mitgliedschaft fehlt.
+        '503':
+          description: Aktueller Konto- oder Sperrstatus ist nicht prüfbar.
         '201':
           description: Nutzer angelegt.
           content:

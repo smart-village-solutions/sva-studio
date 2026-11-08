@@ -131,6 +131,52 @@ const readResponseErrorDiagnostics = async (
   }
 };
 
+const applyResponseSecurityHeaders = (request: Request, response: Response): Response => {
+  const headers = new Headers(response.headers);
+  if (!headers.has('x-content-type-options')) headers.set('x-content-type-options', 'nosniff');
+  if (!headers.has('referrer-policy'))
+    headers.set(
+      'referrer-policy',
+      new URL(request.url).pathname.startsWith('/auth/')
+        ? 'no-referrer'
+        : 'strict-origin-when-cross-origin'
+    );
+  if (headers.get('content-type')?.includes('text/html')) {
+    // The existing local Builder profile is an intentional preview iframe consumer.
+    const builderPreview =
+      process.env.NODE_ENV !== 'production' &&
+      process.env.SVA_RUNTIME_PROFILE === 'local-builder';
+    if (!headers.has('content-security-policy'))
+      headers.set(
+        'content-security-policy',
+        builderPreview
+          ? "frame-ancestors 'self' https://builder.io https://*.builder.io"
+          : "frame-ancestors 'self'"
+      );
+    if (!builderPreview && !headers.has('x-frame-options'))
+      headers.set('x-frame-options', 'SAMEORIGIN');
+  }
+  try {
+    for (const name of [
+      'x-content-type-options',
+      'referrer-policy',
+      'content-security-policy',
+      'x-frame-options',
+    ]) {
+      const value = headers.get(name);
+      if (value) response.headers.set(name, value);
+    }
+  } catch {
+    // Redirect/fetch responses can have immutable headers.
+    response = new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  }
+  return response;
+};
+
 export const finalizeProtectedApiResponse = async (
   request: Request,
   response: Response,
@@ -138,6 +184,7 @@ export const finalizeProtectedApiResponse = async (
   getLogger: () => Promise<PluginWorkerBootstrapLogger>,
   phase: 'response' | 'dispatch' = 'response'
 ): Promise<Response> => {
+  response = applyResponseSecurityHeaders(request, response);
   const routeTemplate = resolveProtectedApiRouteTemplate(request);
   if (!routeTemplate || response.status < 400) return response;
 

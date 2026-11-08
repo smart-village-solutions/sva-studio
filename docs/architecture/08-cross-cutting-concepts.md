@@ -1430,3 +1430,13 @@ entfernt; globale Kataloge, andere Tenants und externe Systeme bleiben erhalten.
 Ein Plattform-Audit-Eintrag überlebt die Tenant-Löschung. Der lokale Host-Cache wird
 erst nach erfolgreicher Transaktion geleert. Details und verbleibende externe
 Ressourcen beschreibt [der Instanzbetrieb](../operations/instance-keycloak-provisioning.md#archivierte-studio-instanz-endgültig-löschen).
+
+### HTTP-, Token- und Browsergrenzen
+
+Der Public-Waste-Adapter zählt tatsächliche Body-Bytes unabhängig von `Content-Length`, lehnt Übergrößen mit 413 vor dem Runtime-Handler ab und hält den Socket nur für die zustellbare Ablehnung offen. DOI-Links enthalten Rohsecrets; nur deren neu berechneter SHA-256-Hash wird nachgeschlagen. Signierte Abmeldelinks bleiben getrennt.
+
+Studio-HTML erlaubt standardmäßig Framing nur aus derselben Origin. Der bestehende lokale Builder-Vorschaumodus erlaubt dessen Frame-Origins profilgebunden. Der öffentliche Kalender unterstützt weiterhin Cross-Origin-iframes (`frame-ancestors *`, kein ergänzter `X-Frame-Options`-Header) sowie die zusätzliche Shadow-DOM-Einbettung und behält credential-freies API-/Asset-CORS. Tokenhaltige Auth-Antworten und öffentliche Kalenderantworten verwenden `no-referrer`, normale Studio-Antworten `strict-origin-when-cross-origin`; strengere vorhandene Policies bleiben bestehen. Die vorbereitete Script-CSP erlaubt eigene Skripte, requestbezogene SSR-Nonces und den festen Theme-Hash ohne `unsafe-inline` oder `unsafe-eval`. Sie ist ausdrücklich Report-Only bis zur Browser- und Betriebsabnahme.
+
+## Berechtigungen und Zustände der Mainserver-Suche
+
+`search.read` erlaubt die Nutzung der Suche; fachliche Typ- und Ressourcenrechte bleiben unverändert. DataProvider-Gleichheit und Organisationsmitgliedschaft sind kein eigenständiges Leserecht. Die bestehende Credential-Policy bestimmt den Leseprincipal automatisch; die Auswahl wird pro Request ohne Credential-Werte gehalten und bei der abschließenden Kontextprüfung frisch verglichen. Die explizite Detailautorisierung bleibt bestehen, ein fehlgeschlagener Read führt nicht zum Ausprobieren eines anderen Principals. Trefferangaben und Facetten stammen nur aus autorisierten Detailzugriffen; die bewusst freigegebene aggregierte Ablehnungszahl enthält keine Einzelangaben. Nicht auflösbare oder technisch fehlgeschlagene Kandidaten werden nicht als Berechtigungsablehnung gezählt. Suchantworten sind privat und nicht cachebar; Schlüssel, Suchbegriffe und Dokumentinhalte gelangen nicht in technische Logs. Native Formulare, vorhandene Design-System-Controls, de/en-Texte und Status-Live-Regionen tragen die zugängliche Oberfläche. Das bestehende IAM-Modell aus Abschnitt 04 wird dabei nicht erweitert.

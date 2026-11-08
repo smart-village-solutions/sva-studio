@@ -6,6 +6,9 @@ vi.mock('../../../../packages/plugin-waste-management/src/waste-management.page.
 vi.mock('../../../../packages/plugin-waste-management/src/plugin.tsx', () => {
   throw new Error('browser_entry_evaluated_on_server');
 });
+vi.mock('../../../../packages/plugin-search/src/search-page.js', () => {
+  throw new Error('search_browser_page_evaluated_on_server');
+});
 vi.mock('../../../../packages/plugin-ssf/src/admin.page.js', () => {
   throw new Error('ssf_browser_page_evaluated_on_server');
 });
@@ -16,6 +19,10 @@ describe('server plugin catalog', () => {
   it('loads the active descriptors without evaluating browser pages', () => {
     const registry = studioServerPluginCatalogReport.snapshot.registry;
     expect(registry.pluginRegistry.has('app-translations')).toBe(true);
+    expect(registry.pluginRegistry.get('search')?.routes[0]?.path).toBe('/plugins/search');
+    expect(registry.pluginServerHandlerRegistry.get('search.query')?.path).toBe(
+      '/api/v1/plugins/search/query'
+    );
     expect(registry.pluginTenantLifecycleRegistry.has('app-translations')).toBe(true);
     expect(registry.pluginRegistry.get('app-translations')?.routes[0]?.path).toBe(
       '/plugins/app-translations'

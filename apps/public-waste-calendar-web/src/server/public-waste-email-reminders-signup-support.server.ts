@@ -68,14 +68,9 @@ export class PublicWasteReminderSignupError extends Error {
 
 export const createSha256Hash = (value: string): string =>
   `sha256:${createHash('sha256').update(value).digest('hex')}`;
-const sha256HashPattern = /^sha256:[0-9a-f]{64}$/i;
 export const createOpaqueToken = (): string => randomBytes(32).toString('base64url');
 export const toIsoString = (value: Date): string => value.toISOString();
 
-export const normalizeBearerTokenToHash = (
-  token: string,
-  hashValue: (value: string) => string
-): string => (sha256HashPattern.test(token) ? token.toLowerCase() : hashValue(token));
 const resolveRequestIp = (request: Request): string => {
   const forwardedFor = request.headers.get('x-forwarded-for');
   if (forwardedFor) {

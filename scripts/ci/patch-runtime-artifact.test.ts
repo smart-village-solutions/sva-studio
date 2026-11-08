@@ -27,6 +27,18 @@ describe('SSR React shim artifact', () => {
     expect(patched.match(/require_react\(\)/g)).toHaveLength(2);
   });
 
+  it('uses the renderer React instance when two shim versions are bundled', () => {
+    const duplicatedShim = `${bundledShim}\n${bundledShim.replace(/^import[^\n]*\n/, '')}`;
+
+    const patched = rewriteReactShimRequires(duplicatedShim);
+
+    expect(patched).not.toContain('__require("react")');
+    expect(patched.match(/require_react\(\)/g)).toHaveLength(4);
+    expect(() => rewriteReactShimRequires(duplicatedShim.replace('var React2 = __require("react");', ''))).toThrow(
+      'SSR-React-Shim-Vertrag geaendert'
+    );
+  });
+
   it('fails when the bundler changes the shim contract', () => {
     expect(() => rewriteReactShimRequires(bundledShim.replace('var React2 = __require("react");', ''))).toThrow(
       'SSR-React-Shim-Vertrag geaendert'

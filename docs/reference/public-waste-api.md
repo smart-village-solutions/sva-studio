@@ -120,3 +120,9 @@ Die angebotenen E-Mail- und Kalendererinnerungen berücksichtigen Abfallarten au
 ## Bewusste Nicht-Ziele
 
 Dieser Ausbau führt keine Quellenversion, keinen neuen fachlichen Abfallartencode, keine neue Termin-ID, keine Pagination und keinen Sammelendpunkt für alle Termine ein. Rate Limiting und weitere Ingress-Regeln werden getrennt von diesem fachlichen API-Change behandelt.
+
+## HTTP- und DOI-Sicherheitsvertrag
+
+Der Node-Adapter akzeptiert höchstens 65.536 Body-Bytes pro Request (einschließlich unbekannter POST-Routen). Übergrößen werden anhand des angekündigten oder tatsächlichen Umfangs vor Runtime-/Signup-Aufruf mit HTTP 413 beantwortet, auch bei Chunked-Encoding und unvollständig sendenden Clients. GET/HEAD und credential-freies API-/Asset-CORS bleiben erhalten.
+
+DOI-Parameter sind Rohsecrets und werden vor dem Lookup immer neu mit SHA-256 gehasht. Ein gespeicherter `sha256:`-Digest ist kein gültiger Aktivierungstoken; bestehende Rohsecret-Links brauchen keine Migration. Signierte Abmeldung, Statusseiten und Redirects behalten ihren Vertrag. HTTP-Antworten erhalten bei fehlendem Header `nosniff` und `no-referrer`; Öffentliches HTML erlaubt mit `frame-ancestors *` weiterhin die bestehende Cross-Origin-iframe-Einbettung und erhält zunächst eine Script-CSP als Report-Only. Ein pauschaler `X-Frame-Options: SAMEORIGIN`-Header wird dafür nicht ergänzt; explizite strengere Runtime-Policies bleiben erhalten. Die zusätzliche Shadow-DOM-Einbettung benötigt kein iframe und keine CORS-Credentials.

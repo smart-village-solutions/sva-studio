@@ -153,7 +153,7 @@ describe('public waste http server', () => {
     }
   });
 
-  it('forwards requests to the runtime handler and writes the response back', async () => {
+  it.each(['default', 'csp', 'xfo'])('forwards responses with framing policy=%s', async (policy) => {
     const handle = vi.fn(async (request: Request) => {
       expect(new URL(request.url).pathname).toBe('/health/live');
       return new Response('ok', {
@@ -161,6 +161,8 @@ describe('public waste http server', () => {
         headers: {
           'content-type': 'text/html; charset=utf-8',
           'x-runtime': 'public-waste',
+          ...(policy === 'csp' ? { 'content-security-policy': "frame-ancestors 'none'" } : {}),
+          ...(policy !== 'default' ? { 'x-frame-options': 'DENY' } : {}),
         },
       });
     });
@@ -212,8 +214,12 @@ describe('public waste http server', () => {
     expect(response.headers['x-runtime']).toBe('public-waste');
     expect(response.headers['x-content-type-options']).toBe('nosniff');
     expect(response.headers['referrer-policy']).toBe('no-referrer');
-    expect(response.headers['content-security-policy']).toContain("frame-ancestors 'self'");
-    expect(response.headers['content-security-policy-report-only']).toContain("script-src 'self'");
+    expect(response.headers['content-security-policy']).toBe(
+      policy === 'csp' ? "frame-ancestors 'none'" : policy === 'default' ? 'frame-ancestors *' : undefined
+    );
+    expect(response.headers['x-frame-options']).toBe(policy === 'default' ? undefined : 'DENY');
+    if (policy === 'csp') expect(response.headers['content-security-policy-report-only']).toBeUndefined();
+    else expect(response.headers['content-security-policy-report-only']).toContain("script-src 'self'");
     expect(response.headers['access-control-allow-origin']).toBeUndefined();
     expect(response.body).toBe('ok');
     expect(handle).toHaveBeenCalledTimes(1);

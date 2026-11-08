@@ -76,10 +76,8 @@ const writeResponse = async (nodeResponse: ServerResponse, response: Response): 
   if (!nodeResponse.hasHeader('referrer-policy'))
     nodeResponse.setHeader('referrer-policy', 'no-referrer');
   if (response.headers.get('content-type')?.includes('text/html')) {
-    if (!nodeResponse.hasHeader('content-security-policy'))
-      nodeResponse.setHeader('content-security-policy', "frame-ancestors 'self'");
-    if (!nodeResponse.hasHeader('x-frame-options'))
-      nodeResponse.setHeader('x-frame-options', 'SAMEORIGIN');
+    if (!nodeResponse.hasHeader('content-security-policy') && !nodeResponse.hasHeader('x-frame-options'))
+      nodeResponse.setHeader('content-security-policy', 'frame-ancestors *');
     if (
       !nodeResponse.hasHeader('content-security-policy-report-only') &&
       !response.headers.has('content-security-policy')

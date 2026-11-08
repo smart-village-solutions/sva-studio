@@ -51,7 +51,6 @@ FROM (
     AND a.status = 'active' AND a.is_blocked = false
     AND a.soft_deleted_at IS NULL AND a.permanently_deleted_at IS NULL
     AND a.deletion_lifecycle_state = 'active' AND a.deactivated_at IS NULL
-    AND a.processing_restricted_at IS NULL
 
   UNION
 
@@ -79,7 +78,6 @@ FROM (
     AND a.status = 'active' AND a.is_blocked = false
     AND a.soft_deleted_at IS NULL AND a.permanently_deleted_at IS NULL
     AND a.deletion_lifecycle_state = 'active' AND a.deactivated_at IS NULL
-    AND a.processing_restricted_at IS NULL
 ) AS effective_roles
 ORDER BY role_key ASC
     `,

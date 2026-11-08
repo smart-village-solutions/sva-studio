@@ -35,6 +35,7 @@ const pool = url ? new Pool({ connectionString: url, max: 3 }) : null;
 const schema = `owasp_auth_${randomUUID().replaceAll('-', '')}`;
 const accountId = randomUUID();
 const roleId = randomUUID();
+const groupId = randomUUID();
 const permissionId = randomUUID();
 const organizationId = randomUUID();
 const subject = 'synthetic-subject';
@@ -107,12 +108,18 @@ describe.skipIf(!url)('personal tokens against committed PostgreSQL account stat
       [permissionId, tenant, 'iam.user.read']
     );
     await execute(
+      "INSERT INTO iam.groups(id,instance_id,group_key,display_name,group_type) VALUES($1,$2,'test','Test','role_bundle')",
+      [groupId, tenant]
+    );
+    await execute('INSERT INTO iam.group_roles(instance_id,group_id,role_id) VALUES($1,$2,$3)', [tenant, groupId, roleId]);
+    await execute(
       'INSERT INTO iam.role_permissions(instance_id,role_id,permission_id) VALUES($1,$2,$3)',
       [tenant, roleId, permissionId]
     );
   });
   beforeEach(async () => {
     mocks.control.mockResolvedValue(undefined);
+    await execute('DELETE FROM iam.account_groups');
     await execute('DELETE FROM iam.account_roles');
     await execute('DELETE FROM iam.instance_memberships');
     await execute('DELETE FROM iam.accounts');
@@ -147,7 +154,6 @@ describe.skipIf(!url)('personal tokens against committed PostgreSQL account stat
     'permanently_deleted_at = NOW()',
     "deletion_lifecycle_state = 'deactivated'",
     'deactivated_at = NOW()',
-    'processing_restricted_at = NOW()',
   ])(
     'blocks the same signed token after committing %s while preserving grants',
     async (assignment) => {
@@ -192,6 +198,28 @@ describe.skipIf(!url)('personal tokens against committed PostgreSQL account stat
       expect(user.roles).toEqual([]);
     }
   );
+
+  it('preserves browser roles and permissions under a processing restriction while denying personal tokens', async () => {
+    await execute('UPDATE iam.accounts SET processing_restricted_at = NOW() WHERE id = $1', [accountId]);
+    for (const source of ['direct', 'group']) {
+      if (source === 'group') {
+        await execute('DELETE FROM iam.account_roles');
+        await execute('INSERT INTO iam.account_groups(instance_id,account_id,group_id) VALUES($1,$2,$3)', [tenant, accountId, groupId]);
+      }
+      expect(((await authenticatePersonalApiRequest(request())) as Response).status).toBe(403);
+      const browserUser = await enrichSessionUserWithEffectiveRoles({ id: subject, instanceId: tenant, roles: [] });
+      expect(browserUser.roles).toEqual(['system_admin']);
+      for (const scope of [
+        { instanceId: tenant, keycloakSubject: subject },
+        { instanceId: tenant, keycloakSubject: subject, organizationId },
+      ]) {
+        expect(await loadPermissionsWithClient(client, scope)).not.toEqual([]);
+      }
+      expect(await loadTenantPermissionProjectionSubjectsWithClient(client, {
+        instanceId: tenant, permissionIds: ['iam.user.read'],
+      })).toEqual([]);
+    }
+  });
 
   it('allows an explicitly reactivated account with its retained role', async () => {
     await execute("UPDATE iam.accounts SET status = 'inactive'");

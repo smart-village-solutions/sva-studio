@@ -1,10 +1,9 @@
-import type { IamInstanceDetail } from '@sva/core';
+import type { ApiItemResponse, IamInstanceDetail } from '@sva/core';
 
 import {
   activateInstance,
   assignInstanceModule,
   archiveInstance,
-  deleteInstance,
   bootstrapInstanceAdminStructure,
   createInstance,
   executeInstanceKeycloakProvisioning,
@@ -23,6 +22,14 @@ import {
   type ReconcileTenantIamRolesPayload,
   type UpdateInstancePayload,
 } from '../lib/iam-api';
+
+import { createJsonMutationRequestInit, requestJson } from '../lib/iam-http-client';
+
+const deleteInstance = async (instanceId: string, expectedUpdatedAt: string, confirmation: string): Promise<ApiItemResponse<{ instanceId: string; deleted: true }>> =>
+  requestJson(`/api/v1/iam/instances/${encodeURIComponent(instanceId)}`, {
+    ...createJsonMutationRequestInit('POST', { instanceId, expectedUpdatedAt, confirmation }, { idempotent: true }),
+    method: 'DELETE',
+  });
 
 export type InstanceActionContext = {
   mutate: <T>(

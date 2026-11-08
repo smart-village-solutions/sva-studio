@@ -71,6 +71,12 @@ describe.skipIf(!enabled)('Studio-only tenant deletion on PostgreSQL', () => {
       VALUES ('municipal','old',$1,'test',$2,$3,1,1,'["de"]','{}',repeat('c',64))`, [orgId, manifestId, releaseId]);
     await client.query(`INSERT INTO iam.app_translation_catalog_drafts(scope,instance_id,organization_id,contract_id,manifest_id,base_release_id,supported_locales)
       VALUES ('municipal','old',$1,'test',$2,$3,'["de"]')`, [orgId, manifestId, releaseId]);
+    await client.query(`INSERT INTO iam.media_content_save_operations(id,instance_id,actor_subject,target_type,target_id,status,expires_at)
+      VALUES ('00000000-0000-4000-8000-000000000010','old','test','news','test-content','committed',now()+interval '1 day');
+      INSERT INTO iam.media_assets(id,instance_id,storage_key,media_type,mime_type,byte_size,visibility,upload_status,processing_status)
+      VALUES ('00000000-0000-4000-8000-000000000011','old','old/test.png','image','image/png',1,'public','processed','ready');
+      INSERT INTO iam.media_content_save_operation_references(id,instance_id,operation_id,asset_id,role)
+      VALUES ('00000000-0000-4000-8000-000000000012','old','00000000-0000-4000-8000-000000000010','00000000-0000-4000-8000-000000000011','gallery')`);
     await client.query("SET LOCAL ROLE iam_app; SELECT set_config('app.instance_id','old',true)");
   });
   afterEach(async () => { await client?.query('ROLLBACK'); client?.release(); });
@@ -79,7 +85,7 @@ describe.skipIf(!enabled)('Studio-only tenant deletion on PostgreSQL', () => {
     expect(await remove()).toBe(true);
     expect(await remove()).toBe(false);
     await client.query('RESET ROLE');
-    for (const table of ['instances','instance_hostnames','accounts','instance_memberships','organizations','activity_logs','app_translation_catalog_releases','app_translation_catalog_drafts']) {
+    for (const table of ['instances','instance_hostnames','accounts','instance_memberships','organizations','activity_logs','app_translation_catalog_releases','app_translation_catalog_drafts','media_assets','media_content_save_operations','media_content_save_operation_references']) {
       const column = table === 'instances' ? 'id' : 'instance_id';
       expect((await client.query(`SELECT count(*)::int AS n FROM iam.${table} WHERE ${column}='old'`)).rows[0].n).toBe(0);
     }

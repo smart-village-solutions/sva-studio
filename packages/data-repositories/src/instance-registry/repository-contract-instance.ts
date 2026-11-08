@@ -101,6 +101,13 @@ export type ModuleActivationRollbackState = {
 };
 
 export type InstanceRegistryInstanceRepository = {
+  readonly deleteInstance: (input: {
+    instanceId: string;
+    expectedUpdatedAt: string;
+    actorId: string;
+    requestId?: string;
+  }) => Promise<boolean>;
+
   readonly prepareConfirmationChallenge: (
     input: PrepareInstanceConfirmationChallengeInput
   ) => Promise<InstanceConfirmationChallengeRecord>;

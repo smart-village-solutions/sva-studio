@@ -234,5 +234,7 @@ export const prepareInstanceConfirmationInternal = async (
       },
       requestId,
     });
-  });
+  }, actionId === 'instance.delete'
+    ? { shouldReconcileActivationPolicies: async () => false }
+    : undefined);
 };

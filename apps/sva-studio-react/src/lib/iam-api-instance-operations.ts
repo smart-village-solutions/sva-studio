@@ -6,7 +6,7 @@ import type {
 } from '@sva/core';
 import type { ApiItemResponse, IamInstanceDetail, IamInstanceListItem } from '@sva/core';
 
-import { createJsonMutationRequestInit, patchJson, postJson, requestJson } from './iam-http-client';
+import { patchJson, postJson, requestJson } from './iam-http-client';
 
 import type {
   MailTemplateMutationPayload,
@@ -153,12 +153,6 @@ export const suspendInstance = async (
     { status: 'suspended' },
     true
   );
-
-export const deleteInstance = async (instanceId: string, expectedUpdatedAt: string, confirmation: string): Promise<ApiItemResponse<{ instanceId: string; deleted: true }>> =>
-  requestJson(`/api/v1/iam/instances/${encodeURIComponent(instanceId)}`, {
-    ...createJsonMutationRequestInit('POST', { instanceId, expectedUpdatedAt, confirmation }, { idempotent: true }),
-    method: 'DELETE',
-  });
 
 export const archiveInstance = async (
   instanceId: string

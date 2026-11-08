@@ -61,6 +61,15 @@ const waitForInstancesLoaded = async (
   });
 };
 
+vi.mock('../lib/iam-http-client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/iam-http-client')>();
+  return { ...actual, requestJson: (path: string, init?: RequestInit) => {
+    if (init?.method !== 'DELETE') return actual.requestJson(path, init);
+    const payload = JSON.parse(String(init.body));
+    return deleteInstanceMock(payload.instanceId, payload.expectedUpdatedAt, payload.confirmation);
+  } };
+});
+
 vi.mock('../lib/iam-api', async () => {
   const actual = await vi.importActual<typeof import('../lib/iam-api')>('../lib/iam-api');
   const mocked = {
@@ -115,7 +124,6 @@ vi.mock('../lib/iam-api', async () => {
     reconcileInstanceKeycloak: (...args: unknown[]) => reconcileInstanceKeycloakMock(...args),
     activateInstance: (...args: unknown[]) => activateInstanceMock(...args),
     suspendInstance: (...args: unknown[]) => suspendInstanceMock(...args),
-    deleteInstance: (...args: unknown[]) => deleteInstanceMock(...args),
     archiveInstance: (...args: unknown[]) => archiveInstanceMock(...args),
   };
   return new Proxy(actual, {
@@ -1439,6 +1447,18 @@ describe('useInstances', () => {
     expect(getInstanceMock).not.toHaveBeenCalled();
     expect(getInstanceKeycloakStatusMock).not.toHaveBeenCalled();
     expect(getSingleInstanceAuditRunMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps a committed deletion successful when list refresh has a network error', async () => {
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
+    deleteInstanceMock.mockResolvedValue({ data: { instanceId: 'demo', deleted: true } });
+    listInstancesMock.mockRejectedValueOnce({ status: 503, code: 'network_error', message: 'offline' });
+    let deleted: unknown;
+    await act(async () => { deleted = await result.current.deleteInstance('demo', '2026-11-08T00:00:00.000Z', 'DELETE demo'); });
+    expect(deleted).toEqual({ instanceId: 'demo', deleted: true });
+    expect(result.current.mutationError).toBeNull();
+    expect(result.current.error).toMatchObject({ status: 503, code: 'network_error' });
   });
 
 });

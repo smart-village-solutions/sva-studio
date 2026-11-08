@@ -78,6 +78,7 @@ BEGIN
   DELETE FROM iam.content_list_projection WHERE instance_id = p_instance;
   DELETE FROM iam.content_list_projection_sync_state WHERE instance_id = p_instance;
   -- Delete all rows of self-referencing trees in one statement, before their parent cascade.
+  DELETE FROM iam.media_content_save_operation_references WHERE instance_id = p_instance;
   DELETE FROM iam.media_assets WHERE instance_id = p_instance;
   DELETE FROM iam.geo_units WHERE instance_id = p_instance;
   DELETE FROM iam.instances WHERE id = p_instance;

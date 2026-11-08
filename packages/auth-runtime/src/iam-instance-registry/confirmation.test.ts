@@ -375,6 +375,7 @@ describe('critical registry confirmation', () => {
   });
 
   it.each([
+    ['instance.delete', 'DELETE demo'],
     ['instance.status.archive', 'ARCHIVE demo'],
     ['instance.status.suspend', 'SUSPEND demo'],
     ['instance.secret.rotate', 'ROTATE SECRET FOR demo'],
@@ -396,6 +397,9 @@ describe('critical registry confirmation', () => {
 
     expect(response.status).toBe(201);
     expect(await response.json()).toMatchObject({ data: { actionId, confirmationPhrase } });
+    const options = state.withScopedRegistryService.mock.calls.at(-1)?.[2];
+    if (actionId === 'instance.delete') expect(await options.shouldReconcileActivationPolicies()).toBe(false);
+    else expect(options).toBeUndefined();
     expect(service.prepareConfirmationChallenge).toHaveBeenCalledWith(
       expect.objectContaining({ actionId, confirmationPhrase })
     );

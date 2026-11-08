@@ -3,7 +3,6 @@ export const actionsInstancesAdminDEResources = {
   deleteDescription: 'Die archivierte Studio-Instanz {{instanceId}} und ihre lokalen Daten, Verknüpfungen und Zugangsdaten werden unwiderruflich gelöscht. Mainserver und Keycloak bleiben unverändert. Dateien im Objektspeicher und externe Plugin-Datenbanken werden nicht bereinigt.',
   deleteConfirmation: 'Zur Bestätigung {{phrase}} eingeben.',
   cancelDelete: 'Abbrechen',
-  deleting: 'Wird gelöscht …',
   more: 'Weitere Aktionen',
   create: 'Instanz anlegen',
   edit: 'Bearbeiten',

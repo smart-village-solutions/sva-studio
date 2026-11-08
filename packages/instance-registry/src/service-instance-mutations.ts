@@ -160,8 +160,7 @@ export const createProvisioningRequestHandler =
     };
   };
 
-export const createDeleteInstanceHandler =
-  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['deleteInstance'] =>
+export const createDeleteInstanceHandler = (deps: InstanceRegistryServiceDeps): InstanceRegistryService['deleteInstance'] =>
   async (input) => {
     const current = await deps.repository.getInstanceById(input.instanceId);
     if (!current) return false;

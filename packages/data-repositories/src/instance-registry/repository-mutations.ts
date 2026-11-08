@@ -240,13 +240,11 @@ ${buildInstanceSelectColumns()};
 };
 
 export const createMutationRepository = (executor: SqlExecutor): MutationRepository => ({
-  deleteInstance: async (input) => {
-    const rows = await queryRows<{ deleted: boolean }>(executor, statement(
+  deleteInstance: async (input) =>
+    (await queryRows<{ deleted: boolean }>(executor, statement(
       'SELECT iam.delete_studio_instance($1, $2::timestamptz, $3, $4) AS deleted;',
       [input.instanceId, input.expectedUpdatedAt, input.actorId, input.requestId ?? null]
-    ));
-    return rows[0]?.deleted === true;
-  },
+    )))[0]?.deleted === true,
   createInstance: (input) => createInstance(executor, input),
   updateInstance: (input) => updateInstance(executor, input),
   updateAccountInvitationTemplate: (input) =>

@@ -2,6 +2,8 @@ export const searchTranslations = {
   de: {
     search: {
       title: 'Suche',
+      headerLandmark: 'Globale Suche',
+      resultsLandmark: 'Suchergebnisse durchsuchen',
       description: 'Öffentliche Mainserver-Inhalte im aktuellen Organisationskontext durchsuchen.',
       prompt: 'Inhalte durchsuchen',
       submit: 'Suchen',
@@ -48,6 +50,8 @@ export const searchTranslations = {
   en: {
     search: {
       title: 'Search',
+      headerLandmark: 'Global search',
+      resultsLandmark: 'Search results query',
       description: 'Search public Mainserver content in the current organization context.',
       prompt: 'Search content',
       submit: 'Search',

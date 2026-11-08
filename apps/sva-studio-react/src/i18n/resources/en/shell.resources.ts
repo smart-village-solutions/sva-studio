@@ -117,7 +117,9 @@ export const shellENResources = {
     ariaLabel: 'Breadcrumb navigation',
     wasteCalendar: 'Waste calendar',
   },
+  pluginSettings: 'Plugin settings',
   header: {
+    applications: 'Applications',
     navAriaLabel: 'Main navigation',
     authLoading: 'Loading authentication status.',
     languageSwitcher: 'Switch language',

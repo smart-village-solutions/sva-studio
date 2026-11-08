@@ -169,7 +169,8 @@ export const adminResources: readonly AdminResourceDefinition[] = [];
     expect(
       violations.some(
         (violation) =>
-          violation.relativePath.endsWith('src/server-context.ts') && violation.rule === 'workspace-import'
+          violation.relativePath.endsWith('src/server-context.ts') &&
+          violation.rule === 'workspace-import'
       )
     ).toBe(true);
     expect(
@@ -805,4 +806,75 @@ export const pluginDrift = authorize;
       );
     }
   });
+});
+
+describe('external plugin roots', () => {
+  it('checks registry peers and source imports even without packages directory', async () => {
+    const root = createTempWorkspace();
+    writeJson(path.join(root, 'package.json'), {
+      name: '@sva/plugin-reference',
+      peerDependencies: { '@sva/auth-runtime': '^1.0.0' },
+    });
+    writeText(
+      path.join(root, 'src/index.ts'),
+      "import { privateApi } from '@sva/plugin-sdk/src/internal';\nimport '../outside.js';\nexport { privateApi }; "
+    );
+    const result = await runPluginArchitectureBoundaryGuard(root, [], { mode: 'strict' });
+    expect(result.exitCode).toBe(1);
+    expect(result.violations.some((v) => v.subject === '@sva/auth-runtime')).toBe(true);
+    expect(
+      result.violations.some((v) => v.importSpecifier === '@sva/plugin-sdk/src/internal')
+    ).toBe(true);
+  });
+  it('rejects escapes outside an external plugin and empty sources', async () => {
+    const root = createTempWorkspace();
+    writeJson(path.join(root, 'package.json'), { name: '@sva/plugin-reference' });
+    writeText(path.join(root, 'src/index.ts'), "import '../../host.js';");
+    expect(await collectPluginArchitectureViolations(root)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ resolvedTarget: 'external-path:../../host.js' }),
+      ])
+    );
+    rmSync(path.join(root, 'src/index.ts'));
+    await expect(collectPluginArchitectureViolations(root)).rejects.toThrow(
+      'external_plugin_sources_required'
+    );
+  });
+});
+
+it('accepts reviewed runtime signals without allowing private imports', async () => {
+  const root = createTempWorkspace();
+  writeJson(path.join(root, 'package.json'), { name: '@sva/plugin-reference' });
+  writeText(path.join(root, 'src/server.ts'), "import '@sva/auth-runtime';");
+  const reviewBaselinePath = path.join(root, 'review.md');
+  writeText(
+    reviewBaselinePath,
+    '## Machine Readable Baseline\n```json\n' +
+      JSON.stringify([
+        {
+          packageName: '@sva/plugin-reference',
+          relativePath: 'src/server.ts',
+          rule: 'review-required-path-signal',
+          subject: 'server.ts',
+          owner: 'maintainer',
+          justification: 'Injected host only',
+          removalChange: 'Contract change',
+        },
+      ]) +
+      '\n```'
+  );
+  const result = await runPluginArchitectureBoundaryGuard(root, [], {
+    mode: 'strict',
+    reviewBaselinePath,
+  });
+  expect(result.exitCode).toBe(1);
+  expect(result.unallowlistedViolations.map((v) => v.rule)).toEqual(['workspace-import']);
+});
+
+
+it('fails closed for an explicit external directory with no plugin manifest', async () => {
+  const root = createTempWorkspace();
+  await expect(runPluginArchitectureBoundaryGuard(root, [], {mode:'strict',externalOnly:true})).rejects.toThrow('explicit_external_plugin_root_required');
+  writeJson(path.join(root,'package.json'), {name:'not-a-plugin'});
+  await expect(runPluginArchitectureBoundaryGuard(root, [], {mode:'strict',externalOnly:true})).rejects.toThrow('explicit_external_plugin_root_required');
 });

@@ -116,3 +116,9 @@ Die Projekt-Tags lauten `scope:studio-ui-react` und `type:lib`.
 - API-Einstiegspunkt: `packages/studio-ui-react/src/index.ts`
 - Verhaltens- und Accessibility-Beispiele: `packages/studio-ui-react/src/studio-primitives.test.tsx` und `packages/studio-ui-react/src/media-reference-field.test.tsx`
 - Übergreifende Entwicklungsregeln im Repository: `DEVELOPMENT_RULES.md`
+
+## Tabler-Icon-Auswahl
+
+`IconPicker` kombiniert die vorhandenen Popover-, Input- und Button-Primitives mit dem Tabler-Outline-Katalog (3.46.0, MIT). Feld-, Such-, Hinweis-, Leer- und Aktionsbeschriftungen kommen vom übersetzenden Verbraucher. Die Auswahl liefert nur eine stabile Iconkennung. `TablerIcon` stellt bekannte Kennungen dekorativ mit Kontur 2 dar und verwendet bei unbekannten Kennungen ein Standardsymbol. Der Katalog in `src/tabler-icon-catalog.ts` liest die mitgelieferte Tabler-Metadatendatei `dist/esm/icons-list.mjs` direkt; eine duplizierte Iconliste wird nicht gepflegt. Die Namensableitung wurde gegen alle 5130 Outline-Einträge der eingesetzten Version geprüft.
+
+[Figma-Komponente mit neun Zuständen](https://www.figma.com/design/TpqaB3bLGPK73ypkj7oE8G/Designsystem-SVA-Studio?node-id=262-5037), [Light-Abnahme](https://www.figma.com/design/TpqaB3bLGPK73ypkj7oE8G/Designsystem-SVA-Studio?node-id=262-5237), [Dark-Abnahme](https://www.figma.com/design/TpqaB3bLGPK73ypkj7oE8G/Designsystem-SVA-Studio?node-id=262-5462). Icon ist eine Instance-Swap-Property; State enthält Empty, Selected, Hover, Focus, Disabled, Readonly, Error, Open und NoResults.

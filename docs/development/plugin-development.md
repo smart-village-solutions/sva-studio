@@ -657,6 +657,78 @@ Vor einem Push bevorzugt:
 
 - `pnpm test:pr`
 
+## Qualitätsvertrag für Studio-Plugins
+
+**Status:** vom Nutzer freigegeben; technische Einführung und Nachweise laufen im [OpenSpec-Change](../../openspec/changes/define-plugin-quality-assurance/proposal.md). Bestehende verbindliche Studio-Regeln gelten weiterhin; dieser Vertrag senkt keine bestehende Anforderung ab. Remote-Gates und Musterfreigabe gelten erst mit ihrer tatsächlichen Verifikation.
+
+Die Herkunft des Plugins – Workspace oder separates Repository – darf das Qualitätsziel nicht verändern. Ein eigenes Repository trennt Ownership, Versionierung und Veröffentlichung; die Laufzeitintegration bleibt ein Vertrag mit dem Studio-Core. Als erste Referenz dient `smart-village-solutions/sva-studio_plugin-application-overview`. Bis alle anwendbaren Nachweise vorliegen, ist es **Musterkandidat**, keine abgenommene Musterlösung.
+
+### QS-01: Eigenständiger und reproduzierbarer Nachweis
+
+- Jedes Plugin besitzt deklarierte Toolchain, Lockfile und dokumentierte Befehle für Build, Types, Lint, Unit und Coverage. Externe Plugins benötigen dafür keinen künstlichen Nx-Workspace.
+- Ein sauberer Runner außerhalb des Studio-Verzeichnisbaums kann die Prüfungen mit explizit bereitgestellten öffentlichen SDK-/UI-/Peer-Paketen ausführen. Werkzeuge und Laufzeitpakete dürfen nicht zufällig aus Elternverzeichnissen oder Entwickler-Caches kommen.
+- Abhängigkeiten und Prüfeingaben sind unveränderlich identifiziert. Lokale `link:`-/`workspace:`-Entwicklung und bewegliche Branch-Referenzen sind kein Release- oder CI-Reproduzierbarkeitsnachweis. Im veröffentlichten externen Plugin dürfen keine lokalen Entwicklungslinks verbleiben.
+- Jeder Nachweis ist einem konkreten Plugin-Commit, Policy-/Toolchain-Stand und, bei Host-Tests, dem konkreten Studio-/SDK-/UI-Stand zugeordnet. Fehlende oder veraltete Evidenz gilt nicht als bestanden.
+
+### QS-02: Gleiche statische Qualität und Architekturgrenzen
+
+- TypeScript-Strictness, Lint-, Komplexitäts-, Dependency-/Security- und Dokumentationsregeln entsprechen den anwendbaren Studio-Regeln. Prüfungen erfassen den kompletten produktiven Plugin-Code und öffentliche Exporte, nicht nur monorepoübliche Pfade.
+- Es gelten die bestehenden Standard-/Advanced-Path-Regeln: öffentliche SDK-/UI-Verträge, eigene Action-Namespaces, getrennte Browser-/Server-Entries, keine privaten Host-Imports und keine duplizierten Basis-Controls. Ein fehlender Treffer eines `packages/plugin-*`-Globs ist keine erfolgreiche Boundary-Prüfung.
+- Komplexität wird nach der identifizierten Studio-Policy bewertet. Aktuelle zentrale Defaultwerte sind 260 Dateizeilen, 80 Funktionszeilen, zyklomatische Komplexität 15 und 12 öffentliche Exporte; Zählung, Klassifizierung, Hotspots und Ticket-Ausnahmen bestimmen die bestehenden Prüfer. Keine ad hoc erfundene zweite Metrik im Plugin.
+- Neue Dependency-/Security-Befunde sind nach der vorhandenen Security-Governance zu bewerten und relevante Blocker zu beheben. Neue Ausnahmen, Exclusions oder Baselines benötigen begründete Prüfung und dürfen keine ungelösten Befunde verstecken.
+
+### QS-03: Verhalten, Coverage und New Code
+
+- Neue oder geänderte Fachlogik, Validierung und kritische UI-/Server-Flows erhalten aussagekräftige Vitest-Tests. Negativfälle und Fehlerzustände gehören zur betreffenden Invariante; reine Implementierungsspiegel und die Testanzahl allein sind kein Qualitätsbeleg.
+- Für neue Plugins gelten mindestens **85 % je Lines, Statements, Functions und Branches**. Höhere vereinbarte Projekt-/Hotspot-Floors bleiben bestehen. Bestehende niedrigere Brownfield-Floors sind keine Erlaubnis, neue externe Plugins niedriger anzusetzen.
+- Zusätzlich gelten die Studio-Regeln für New Code und Regression gegenüber der überprüften Baseline: derzeit 85 % New Code nach dem bestehenden LCOV-/Diff-Verfahren sowie höchstens 0,5 Prozentpunkte zulässiger Drop laut Coverage-Policy. Eine feste Gesamtquote ersetzt diese Prüfungen nicht.
+- Alle produktiven Dateien und relevanten öffentlichen Entrypoints werden erfasst. Quellen, veränderte Dateien und Coverage-Berichte dürfen nicht wegen ihres externen Repository-Pfads stillschweigend aus der Bewertung verschwinden. Fehlende Berichte scheitern geschlossen.
+
+### QS-04: UI, Übersetzungen und zugängliche Bedienung
+
+Bei UI-Beiträgen sind Studio-Designsystem, unterstützte Sprachen und der Projektstandard WCAG 2.1 AA maßgeblich. Zu prüfen sind Labels und Fehlermeldungen, Tastatur/Fokus, responsive Ansicht, Light/Dark, Sprachwechsel/Fallback sowie Lade-, Leer-, Fehler-, Konflikt- und Read-only-Zustände, soweit der Verbraucher diese hat.
+
+Automatische UI-/Accessibility-Tests werden um eine gezielte manuelle Prüfung kritischer Interaktionsmuster ergänzt, insbesondere bei neuen Auswahl-, Dialog- oder Navigationsmustern. Axe und Screenshots ersetzen keine vollständige manuelle oder fachliche Abnahme. Für unveränderte UI in reinen Dokumentationsänderungen ist kein künstlicher neuer kompletter Browserlauf erforderlich. Der Nachweis macht den tatsächlich geprüften Umfang und seine Grenzen sichtbar.
+
+### QS-05: Server-, Sicherheits- und Dateninvarianten
+
+- Serverseitige Beiträge prüfen veröffentlichte Node-Entries ohne Browser-Runtime; relative Runtime-Imports und deklarierte Dependencies erfüllen den Studio-Serververtrag. Keine Instanziierung von React-/DOM-Code als Voraussetzung eines Serverimports.
+- Jede Mutation wird serverseitig autorisiert und validiert; Namespace, Instanzbindung, Modulaktivierung, Rechte und gegebenenfalls CSRF werden auch über direkte API-Aufrufe geprüft. Browser-Guards oder gemockte Host-Kontexte sind dafür kein Ersatz.
+- Tenant-Daten erfordern positive und negative Isolationstests, Rechteentzug und relevante Kontextwechsel. Persistente Änderungen erfordern echte disposable Datenbanktests für Readback, konkurrierende Revisionen und Transaktionsfehler. Ein Auditfehler muss im tatsächlichen Host-Speicherpfad die betreffende Änderung zurückrollen.
+- Fehler müssen unterscheidbar und betrieblich nachvollziehbar sein; keine Geheimnisse, Zugangsdaten oder unnötige PII in Artefakten, Logs oder URLs. Audit, Logging und Error-Handling verwenden die bestehenden öffentlichen Host-Verträge.
+- Migration, Deaktivierung, Reaktivierung und Rücknahme erhalten einen konkreten Datenhaltungsvertrag; Moduldeaktivierung darf keine stillschweigende Datenlöschung auslösen.
+- Jobs, Imports oder Exports benötigen zusätzlich ihre tatsächlich genutzten Abbruch-, Retry-/Idempotenz-, Fortschritts- und Fehlergrenzen. Plugins ohne solche Beiträge müssen keine nicht vorhandenen Jobs nachbauen.
+
+### QS-06: Echte Plugin-/Host-Kompatibilität
+
+- Das gepackte Kandidatenartefakt wird in einem frischen Consumer installiert und über dieselben Manifest-/Katalog-/Entrypoints wie ein normales installiertes Paket in echtem Studio geladen. Source-Aliase, private Host-Imports und lokale Symlinks sind kein Freigabenachweis.
+- Die deklarierten SDK-/UI-/Host-Versionen müssen den tatsächlich benötigten Vertrag eindeutig bestimmen. Unveröffentlichte Kandidaten sind nur mit festem Commit und Artefaktidentität zulässig; gleich benannte, aber inhaltlich andere `0.0.1`-Pakete sind kein eindeutiger Vertrag.
+- Die relevante Kompatibilitätsmatrix deckt die deklarierte Untergrenze und den aktuellen freigegebenen Stand ab; bei Änderung öffentlicher Host-Verträge zusätzlich den Kandidaten. Keine unbegrenzte Kombination aller Versionen/Betriebssysteme verlangen.
+- Soweit anwendbar: Laden der Beiträge, Aktivierung/Deaktivierung, unbekanntes/inkompatibles Paket, anonyme und fremde Kontexte, benötigte Rechte, direkte API sowie Abwesenheit des optionalen Pakets prüfen. Ohne optionales Paket muss der Host einen belegten zulässigen Build-/Startzustand erreichen; private starre Abhängigkeiten zählen als Befund.
+- Plugin-Änderungen, relevante Studio-/SDK-/UI-Vertragsänderungen und die Übernahme einer Plugin-Version in Studio lösen die jeweiligen Nachweise aus. Eine Änderung im Core darf nicht unbemerkt bleiben, nur weil im Plugin-Repository kein Commit entstanden ist.
+
+### QS-07: Geprüftes Artefakt und kontrollierte Veröffentlichung
+
+Die Freigabe nennt Plugin-SHA, Paketname/-version, Digest, Host-/SDK-/UI-Stand und Gate-/Review-Ergebnisse. Manifest, Exports, Lizenz, Paketinhalt und alle installierbaren Laufzeit-Abhängigkeiten sind geprüft; Dev-Abhängigkeiten dürfen echte Runtime-Dependencies nicht verdecken. React bleibt eine vom Consumer bereitgestellte Laufzeitinstanz.
+
+Genau das geprüfte Paket wird veröffentlicht beziehungsweise in Studio übernommen. Ein erneutes Packen oder Austauschen von Bytes nach den Tests verwirft den Artefaktnachweis, sofern Identität nicht belegt ist. Registry-Veröffentlichung, Änderung der Studio-Dependency, Tenant-Aktivierung und Rollout sind getrennte Schritte. Für Studio bleibt der vorhandene kanonische Rollout-Prozess maßgeblich.
+
+### QS-08: Verbindliche CI-, Review- und Merge-Evidenz
+
+- Relevante Plugin-Änderungen benötigen erfolgreiche automatische Pflichtprüfungen am exakten finalen HEAD. Required Checks/Rulesets müssen diese Ergebnisse wirksam schützen. Lokale Testläufe sind Shift-left-Evidenz und ersetzen diesen Nachweis nicht.
+- Ausgelassene, abgebrochene, unbekannte, falsch zugeordnete oder veraltete Pflichtprüfungen dürfen nicht als grüner Gesamtzustand interpretiert werden. Dokumentationsänderungen dürfen einen nachvollziehbar anderen Prüfumfang haben; wesentliche Code-, Workflow-, Dependency- und Policy-Änderungen dürfen nicht unter einem Docs-Filter verschwinden.
+- Codecov-/Sonar-Ergebnisse werden entsprechend `DEVELOPMENT_RULES.md` geprüft und bewertet. Interne Coverage-/New-Code-/Komplexitäts-Gates bleiben verbindlich. Ein nicht angebundener Dienst ist kein positiver Qualitätsnachweis; rote Befunde oder Ausnahmen erhalten Ursache, Risiko und die bestehende erforderliche Freigabe.
+- Reviews folgen der vorhandenen Trigger-Matrix, insbesondere Testqualität, i18n/Content, UX/Accessibility und bei entsprechenden Grenzen Security/Assurance. Kein eigenes kopiertes Agentensystem je Plugin anlegen.
+- Untrusted PR-/Fork-Code erhält keine Release- oder Organisationsgeheimnisse. Vertrauensgrenzen und Berechtigungen von Tests, Analyse und Veröffentlichung bleiben getrennt. Keine allgemeinen automatischen Retries für deterministische Test-/Policy-Fehler; E2E-/Integrations-Evidenz nicht durch unsichere Cache-Wiederverwendung ersetzen.
+
+### QS-09: Ownership, Ausnahmen und Referenzstatus
+
+Das Plattformteam besitzt die gemeinsamen SDK-/Host-/QS-Verträge; Plugin-Maintainer besitzen Plugin-Code, eigene Gates und die gemeldete Kompatibilität. Die Referenzfreigabe wird gemeinsam anhand der tatsächlichen anwendbaren Nachweise erteilt und nennt einen konkreten Commit.
+
+Das Referenz-Repository dokumentiert die Zuordnung QS-01 bis QS-09, anwendbare Profile und verbleibende Lücken. Es wird erst nach vollständiger Abnahme als Musterlösung bezeichnet. Nichtanwendbarkeit benötigt eine fachliche Begründung; Ausnahmen benötigen Owner, begründete Risikobewertung, Ticket und überprüfbare Endbedingung. Ein Warn-only- oder Shadow-Check ist nicht heimlich ein Merge-Gate, und ein nicht vorhandener Check ist keine Ausnahmegenehmigung.
+
+Die gemeinsame Policy wird über einen festgelegten Versions-/Commit-Stand referenziert. Regeländerungen lösen eine gezielte Neubewertung des Musters aus. Vorhandene Prüfer und Workflow-Pfade erweitern, statt ihre Logik je Repository zu kopieren oder eine zusätzliche reine Koordinationsschicht einzuführen.
+
 ## Referenzen
 
 - [arc42 Bausteinsicht](../architecture/05-building-block-view.md)
@@ -678,3 +750,20 @@ Vor einer Editormigration ist eine Feldmatrix für harte, kontrollierte, Passthr
 Der Browser-Einstieg darf die bestehenden `contentTypes` seines Descriptors um `mutations.delete` und `mutations.status` ergänzen. Jeder Beitrag nennt eine im eigenen Plugin deklarierte `requiredAction` und einen `execute`-Handler mit Content-ID und `MainserverActingPrincipalType`; Statusbeiträge nennen zusätzlich eindeutige `supportedStatuses`. `requiresMainserverMutationAction: true` erhält die zusätzliche Laufzeitfreigabe der Survey-Mutationen. Die Registry prüft Deklarationen und Handler-Verfügbarkeit, nicht Funktionskörper.
 
 Handler verwenden bestehende Plugin-API-Clients. Bei Read-Merge-Write erhalten sie alle übrigen Felder; Event-/POI-Detailabweichungen mit möglicher Schreibwirkung müssen vor dem Update abbrechen. Node-Descriptor, Manifest und Job-Einstiege enthalten keine Browserhandler. Die gemeinsame Liste orchestriert Dialoge, Berechtigungsanzeige, Bulk-Ergebnisse und Refresh; fehlende Beiträge haben keinen ausführbaren Fallback.
+
+## Plugin-Einstellungen und Anwendungsarbeitsplatz
+
+Ein Plugin kann optional `settings: { routeId: 'eigenes-plugin.settings' }` deklarieren. Der Host validiert die eigene registrierte Tenant-Route samt Action-/Module-IAM-Bezug. Die Tenant-Modulübersicht zeigt den Einstieg nur bei wirksamer Aktivierung und erlaubter Access-Entscheidung; direkte API-Aufrufe prüfen dieselben Grenzen erneut. Die Root-Modulzuweisung wird dadurch nicht erweitert.
+
+Lesende Plugin-Handler dürfen `accessRequirement: { kind: 'authenticated' }` verwenden, wenn das Plugin einen passenden Module-IAM-Vertrag besitzt. Der Host verlangt eine verifizierte Instanz und wirksame Aktivierung des besitzenden Plugins; ausschließlich GET ist zulässig. Geschützte Einstellungen behalten explizite Tenant-Rechte. Der Host veröffentlicht den zentralen Studio-Sprachkatalog über `readPluginLocales()`; Plugin-Kachelinhalte bleiben eigene Daten und sind keine dynamisch erzeugten UI-Schlüssel.
+
+Die gemeinsame `IconPicker`-Komponente aus `@sva/studio-ui-react` nimmt lokalisierte Feld-, Such-, Leer- und Aktionsbeschriftungen entgegen. Sie gibt eine kanonische Tabler-Outline-Kennung zurück. Fachliche URL-, Text- und Berechtigungsvalidierung verbleiben im Plugin.
+
+
+### Externer Anwendungsarbeitsplatz
+
+`@sva/plugin-application-workspace` wird im eigenständigen Repository `studio-plugin-application-workspace` gepflegt. Die lokale Entwicklung verwendet einen benachbarten Checkout und den vorhandenen Katalogtyp `linked-package`; ein veröffentlichtes Paket verwendet `installed-distribution`. Beide benötigen eine direkte App-Abhängigkeit, manifestierte `dist`-Entrypoints und `distribution: studio`. Es gibt keine Workspace-Kopie des Plugins. Studio besitzt keine feste Dependency auf dieses optionale Plugin und lässt sich ohne dessen Checkout installieren und bauen. Eine konkrete Installation oder der Integrationstest ergänzt die direkte App-Dependency und den Katalogeintrag ausdrücklich mit einem identifizierten Paket; lokale Links dienen ausschließlich der Entwicklung.
+
+Das Plugin konsumiert ausschließlich die öffentlichen SDK-/UI-Pakete und React als Peers. Sein exportierter Server-Adaptertyp bindet die bestehende instanzgebundene Datenbank- und Audit-Infrastruktur des Hosts an. Die Host-Migration bleibt im kanonischen DB-Pfad; Paketinstallation ersetzt weder Migration noch Tenant-Aktivierung.
+
+Der bestehende Navigationsvertrag erlaubt für diesen Verbraucher `section: header` mit `icon: grid-dots`. Der Beitrag muss auf eine eigene registrierte Route mit identischer Action und Access-Anforderung zeigen. `routes[].layout: content-only` blendet nur die Sidebar und den mobilen Navigationseinstieg aus; Sitzungs-, Berechtigungs- und Rechtstext-Gates bleiben bestehen. Header-Beiträge werden nicht zusätzlich in der Sidebar gerendert. Die gemeinsame UI-Bibliothek bleibt einschließlich IconPicker im Studio; der Build erfasst die Klassen des installierten Plugin-`dist` explizit als Tailwind-Quelle.

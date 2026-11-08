@@ -150,3 +150,39 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     process.exit(1);
   }
 }
+
+const IGNORED_DIRECTORY_NAMES = new Set([
+  'node_modules',
+  '.git',
+  '.nx',
+  '.output',
+  'dist',
+  'build',
+  '.generated',
+]);
+const removeProjectRootCoverageDirectory = (workspaceRootPath: string): void => {
+  if (!fs.existsSync(workspaceRootPath)) {
+    return;
+  }
+
+  for (const entry of fs.readdirSync(workspaceRootPath, { withFileTypes: true })) {
+    if (!entry.isDirectory() || IGNORED_DIRECTORY_NAMES.has(entry.name)) {
+      continue;
+    }
+
+    const coverageDirectoryPath = path.join(workspaceRootPath, entry.name, 'coverage');
+    if (fs.existsSync(coverageDirectoryPath)) {
+      fs.rmSync(coverageDirectoryPath, { recursive: true, force: true });
+    }
+  }
+};
+
+export const clearWorkspaceCoverageOutputs = (rootDir = process.cwd()): void => {
+  for (const workspaceRoot of ['apps', 'packages'].map((directory) => path.join(rootDir, directory))) {
+    removeProjectRootCoverageDirectory(workspaceRoot);
+  }
+  fs.rmSync(path.join(rootDir, 'artifacts', 'ci-feedback', 'coverage-shards'), {
+    recursive: true,
+    force: true,
+  });
+};

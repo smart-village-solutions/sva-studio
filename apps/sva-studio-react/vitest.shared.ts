@@ -236,6 +236,9 @@ export const sharedVitestConfig = defineConfig({
       '@sva/studio-module-iam': fileURLToPath(
         new URL('../../packages/studio-module-iam/src/index.ts', import.meta.url)
       ),
+      '@sva/studio-ui-react/tabler-icon-catalog': fileURLToPath(
+        new URL('../../packages/studio-ui-react/src/tabler-icon-catalog.ts', import.meta.url)
+      ),
       '@sva/studio-ui-react': fileURLToPath(
         new URL('../../packages/studio-ui-react/src/index.ts', import.meta.url)
       ),

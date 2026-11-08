@@ -1,12 +1,11 @@
 import fs from 'node:fs';
-import { clearWorkspaceCoverageOutputs } from './coverage-artifacts.ts';
 import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cli-options.ts';
 import { CiCommandExecutionError, runCiCommand } from './ci-command-runner.ts';
 import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
-import { mergeProjectCoverage } from './validate-downloaded-coverage.ts';
+import { clearWorkspaceCoverageOutputs, mergeProjectCoverage } from './validate-downloaded-coverage.ts';
 import { planChangedProjectsWithFallback } from './changed-project-plan.ts';
 import {
   coveragePartitions,

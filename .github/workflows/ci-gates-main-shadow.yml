@@ -356,3 +356,13 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup-pnpm-workspace
       - run: pnpm exec tsx scripts/ci/check-db-schema-snapshot.ts
+
+  plugin-compatibility:
+    name: Plugin Reference
+    permissions:
+      contents: read
+      id-token: write
+    uses: smart-village-solutions/sva-studio_plugin-application-overview/.github/workflows/quality.yml@f93fafc79f48d799883f8b05e4973d18904a9382
+    with:
+      plugin-ref: f93fafc79f48d799883f8b05e4973d18904a9382
+      studio-ref: ${{ github.sha }}

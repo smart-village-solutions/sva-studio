@@ -23,6 +23,7 @@ const pluginDefinitionAllowedKeys = new Set([
   'id',
   'displayName',
   'routes',
+  'settings',
   'viewBindings',
   'navigation',
   'actions',
@@ -211,6 +212,9 @@ export const assertPluginRegistryServerHandlers = ({
       throw new Error(
         `plugin_server_handler_access_requirement_missing:${pluginNamespace}:${handlerId}`
       );
+    }
+    if (handler.accessRequirement.kind === 'authenticated' && handler.method !== 'GET') {
+      throw new Error(`plugin_authenticated_handler_read_only:${pluginNamespace}:${handlerId}`);
     }
     const actionId = normalizePluginIdentifier(handler.actionId);
     assertPluginServerHandlerActionOwned(pluginNamespace, handlerId, actionId);

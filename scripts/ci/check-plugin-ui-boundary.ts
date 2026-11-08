@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as ts from 'typescript';
 
+import { readPluginPackages } from './plugin-architecture-boundary-filesystem.ts';
 import { isCliEntrypoint } from './path-safety.js';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -43,11 +44,6 @@ const DUPLICATE_BASIS_CONTROL_EXPORT_NAMES = new Set([
 const APP_INTERNAL_IMPORT_PREFIX = 'apps/sva-studio-react/src/';
 const APP_LOCAL_BUTTON_PATH = 'apps/sva-studio-react/src/components/ui/button.tsx';
 
-type PackageInfo = {
-  readonly packageDir: string;
-  readonly packageName: string;
-};
-
 type SourceFileBoundaryResult = {
   readonly hasAppInternalImport: boolean;
   readonly duplicateBasisControlExportName: string | null;
@@ -84,40 +80,15 @@ const collectSourceFiles = async (directory: string): Promise<string[]> => {
   return files;
 };
 
-const readPluginPackages = async (projectRoot: string): Promise<PackageInfo[]> => {
-  const packagesDir = path.join(projectRoot, 'packages');
-  const entries = await readdir(packagesDir, { withFileTypes: true });
-  const pluginPackages: PackageInfo[] = [];
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) {
-      continue;
-    }
-
-    const packageDir = path.join(packagesDir, entry.name);
-    const packageJsonPath = path.join(packageDir, 'package.json');
-    if (!(await pathExists(packageJsonPath))) {
-      continue;
-    }
-
-    const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as { name?: string };
-    const packageName = packageJson.name ?? '';
-    if (!packageName.startsWith('@sva/plugin-') || packageName === '@sva/plugin-sdk') {
-      continue;
-    }
-
-    pluginPackages.push({ packageDir, packageName });
-  }
-
-  return pluginPackages;
-};
-
 const hasExportModifier = (node: { readonly modifiers?: ts.NodeArray<ts.ModifierLike> }): boolean =>
   node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) ?? false;
 
 const isAppInternalModuleSpecifier = (moduleSpecifier: string): boolean => {
   const normalizedModuleSpecifier = path.posix.normalize(moduleSpecifier.replaceAll('\\', '/'));
-  const normalizedWithoutRelativePrefix = normalizedModuleSpecifier.replace(/^(?:(?:\.\.\/)|(?:\.\/))+/, '');
+  const normalizedWithoutRelativePrefix = normalizedModuleSpecifier.replace(
+    /^(?:(?:\.\.\/)|(?:\.\/))+/,
+    ''
+  );
 
   if (normalizedModuleSpecifier.startsWith(APP_INTERNAL_IMPORT_PREFIX)) {
     return true;
@@ -128,7 +99,10 @@ const isAppInternalModuleSpecifier = (moduleSpecifier: string): boolean => {
 
 const getDuplicateVariableExportName = (statement: ts.VariableStatement): string | null => {
   for (const declaration of statement.declarationList.declarations) {
-    if (ts.isIdentifier(declaration.name) && DUPLICATE_BASIS_CONTROL_EXPORT_NAMES.has(declaration.name.text)) {
+    if (
+      ts.isIdentifier(declaration.name) &&
+      DUPLICATE_BASIS_CONTROL_EXPORT_NAMES.has(declaration.name.text)
+    ) {
       return declaration.name.text;
     }
   }
@@ -201,7 +175,11 @@ const hasAppInternalImport = (sourceFile: ts.SourceFile): boolean => {
       return;
     }
 
-    if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+    if (
+      ts.isExportDeclaration(node) &&
+      node.moduleSpecifier &&
+      ts.isStringLiteral(node.moduleSpecifier)
+    ) {
       found = isAppInternalModuleSpecifier(node.moduleSpecifier.text);
       return;
     }
@@ -223,8 +201,17 @@ const hasAppInternalImport = (sourceFile: ts.SourceFile): boolean => {
   return found;
 };
 
-export const checkPluginUiBoundarySource = (filePath: string, sourceCode: string): SourceFileBoundaryResult => {
-  const sourceFile = ts.createSourceFile(filePath, sourceCode, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+export const checkPluginUiBoundarySource = (
+  filePath: string,
+  sourceCode: string
+): SourceFileBoundaryResult => {
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    sourceCode,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX
+  );
   return {
     hasAppInternalImport: hasAppInternalImport(sourceFile),
     duplicateBasisControlExportName: getDuplicateExportName(sourceFile),
@@ -247,14 +234,19 @@ const collectBoundaryViolations = (
   }
 
   if (boundaryResult.duplicateBasisControlExportName) {
-    violations.push(`${relativePath}: exportiert ${boundaryResult.duplicateBasisControlExportName} als lokalen Basiscontrol`);
+    violations.push(
+      `${relativePath}: exportiert ${boundaryResult.duplicateBasisControlExportName} als lokalen Basiscontrol`
+    );
   }
 
   return violations;
 };
 
-export const checkPluginUiBoundary = async (projectRoot = PROJECT_ROOT): Promise<readonly string[]> => {
-  const pluginPackages = await readPluginPackages(projectRoot);
+export const checkPluginUiBoundary = async (
+  projectRoot = PROJECT_ROOT,
+  externalOnly = false
+): Promise<readonly string[]> => {
+  const pluginPackages = await readPluginPackages(projectRoot, externalOnly);
   const violations: string[] = [];
 
   if (await pathExists(path.join(projectRoot, APP_LOCAL_BUTTON_PATH))) {
@@ -283,11 +275,16 @@ export const checkPluginUiBoundary = async (projectRoot = PROJECT_ROOT): Promise
 };
 
 const run = async (): Promise<void> => {
-  const violations = await checkPluginUiBoundary();
+  const pluginRoot = process.argv.find((arg) => arg.startsWith('--plugin-root='))?.slice(14);
+  const violations = await checkPluginUiBoundary(
+    pluginRoot ? path.resolve(pluginRoot) : PROJECT_ROOT, Boolean(pluginRoot)
+  );
 
   if (violations.length > 0) {
     console.error('Plugin-UI-Boundary-Check fehlgeschlagen.');
-    console.error('\nPlugins muessen gemeinsame Basiscontrols aus @sva/studio-ui-react komponieren.');
+    console.error(
+      '\nPlugins muessen gemeinsame Basiscontrols aus @sva/studio-ui-react komponieren.'
+    );
     console.error(
       'Fachspezifische Wrapper sind erlaubt, duerfen aber keine Studio-Basiscontrols wie u. a. Button/Input/Table/Dialog neu definieren.\n'
     );
@@ -297,7 +294,9 @@ const run = async (): Promise<void> => {
     process.exit(1);
   }
 
-  console.info('Plugin-UI-Boundary-Check erfolgreich (kein lokaler App-Button, keine App-UI-Imports oder Plugin-Basiscontrol-Duplikate erkannt).');
+  console.info(
+    'Plugin-UI-Boundary-Check erfolgreich (kein lokaler App-Button, keine App-UI-Imports oder Plugin-Basiscontrol-Duplikate erkannt).'
+  );
 };
 
 if (isCliEntrypoint(import.meta.url, process.argv[1])) {

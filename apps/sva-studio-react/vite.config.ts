@@ -494,6 +494,9 @@ const config = defineConfig({
       ),
       '@sva/plugin-poi/poi.pages': resolveAppPath('../../packages/plugin-poi/src/poi.pages.tsx'),
       '@sva/studio-module-iam': resolveAppPath('../../packages/studio-module-iam/src/index.ts'),
+      '@sva/studio-ui-react/tabler-icon-catalog': resolveAppPath(
+        '../../packages/studio-ui-react/src/tabler-icon-catalog.ts'
+      ),
       '@sva/studio-ui-react': resolveAppPath('../../packages/studio-ui-react/src/index.ts'),
       '@sva/server-runtime': resolveAppPath('../../packages/server-runtime/src/index.ts'),
       '@sva/monitoring-client/server': resolveAppPath(

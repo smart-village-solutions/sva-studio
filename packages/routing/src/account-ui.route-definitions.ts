@@ -62,7 +62,7 @@ export const accountUiRouteGuardDefinitions: Record<
   modules: {
     kind: 'protected',
     route: uiRoutePaths.modules,
-    requiredAnyPermissions: ['modules.read'],
+    requiredAnyPermissions: ['modules.read', 'application-workspace.settings.read'],
     requiredAnyRoles: ['instance_registry_admin'],
   },
   content: { kind: 'protected', route: uiRoutePaths.content },

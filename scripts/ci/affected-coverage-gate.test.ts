@@ -1,4 +1,4 @@
-import { clearWorkspaceCoverageOutputs } from './coverage-artifacts.ts';
+import { clearWorkspaceCoverageOutputs } from './validate-downloaded-coverage.ts';
 import {
   buildAppCoverageCommand,
   buildCoveragePartitionCommand,

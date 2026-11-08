@@ -1,14 +1,19 @@
 import {
   registerPluginTranslationResolver,
+  registerPluginLocaleResolver,
   type PluginCatalogEntry,
   type PluginManifest,
 } from '@sva/plugin-sdk';
 import { createBrowserLogger } from '@sva/monitoring-client/logging';
-import { createStudioModuleIamContracts, type StudioModuleCatalogEntry } from './plugin-module-iam.js';
+import {
+  createStudioModuleIamContracts,
+  type StudioModuleCatalogEntry,
+} from './plugin-module-iam.js';
 import { appAdminResources } from '../routing/admin-resources';
 
 import {
   i18nResources,
+  getActiveLocale,
   mergeI18nResources,
   resetMergedI18nResources,
   resetTranslatorCache,
@@ -255,3 +260,8 @@ export const initializePluginTranslations = () => {
 };
 
 initializePluginTranslations();
+
+registerPluginLocaleResolver(() => ({
+  locale: getActiveLocale(),
+  supportedLocales: Object.keys(i18nResources),
+}));

@@ -45,6 +45,21 @@ vi.mock('@tanstack/react-router', () => ({
   },
 }));
 
+vi.mock('../lib/plugins', () => ({
+  studioPlugins: [
+    {
+      id: 'tenant-portal',
+      routes: [
+        {
+          id: 'tenant-portal.overview',
+          path: '/plugins/application-workspace',
+          layout: 'content-only',
+        },
+      ],
+    },
+  ],
+}));
+
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
 }));
@@ -131,7 +146,10 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-  effectiveAccessMock.snapshot = { status: 'ready', scope: { kind: 'tenant', instanceId: 'tenant-a' } };
+  effectiveAccessMock.snapshot = {
+    status: 'ready',
+    scope: { kind: 'tenant', instanceId: 'tenant-a' },
+  };
   effectiveAccessMock.permissionActions = [];
   useAuthMock.mockReturnValue({
     user: {
@@ -213,24 +231,31 @@ describe('AppShell', () => {
     expect(screen.getByRole('status', { name: 'Anmeldung erfolgreich' })).toBeTruthy();
   });
 
-  it.each(['anonymous', 'loading', 'unresolved', 'recovering', 'error', 'degraded', 'unknownPermissions'])(
-    'does not confuse %s sessions with pending role assignment',
-    (state) => {
-      const auth = setRolelessSession();
-      useAuthMock.mockReturnValue({
-        ...auth,
-        ...(state === 'anonymous' ? { user: null, isAuthenticated: false } : {}),
-        ...(state === 'loading' ? { isLoading: true } : {}),
-        ...(state === 'unresolved' ? { hasResolvedSession: false } : {}),
-        ...(state === 'recovering' ? { isRecoveringSession: true } : {}),
-        ...(state === 'error' ? { error: new Error('session failed') } : {}),
-        ...(state === 'degraded' ? { user: { ...auth.user, permissionStatus: 'degraded' } } : {}),
-        ...(state === 'unknownPermissions' ? { user: { ...auth.user, permissionActions: undefined } } : {}),
-      });
-      render(<AppShell>Inhalt</AppShell>);
-      expect(screen.queryByRole('status', { name: 'Anmeldung erfolgreich' })).toBeNull();
-    }
-  );
+  it.each([
+    'anonymous',
+    'loading',
+    'unresolved',
+    'recovering',
+    'error',
+    'degraded',
+    'unknownPermissions',
+  ])('does not confuse %s sessions with pending role assignment', (state) => {
+    const auth = setRolelessSession();
+    useAuthMock.mockReturnValue({
+      ...auth,
+      ...(state === 'anonymous' ? { user: null, isAuthenticated: false } : {}),
+      ...(state === 'loading' ? { isLoading: true } : {}),
+      ...(state === 'unresolved' ? { hasResolvedSession: false } : {}),
+      ...(state === 'recovering' ? { isRecoveringSession: true } : {}),
+      ...(state === 'error' ? { error: new Error('session failed') } : {}),
+      ...(state === 'degraded' ? { user: { ...auth.user, permissionStatus: 'degraded' } } : {}),
+      ...(state === 'unknownPermissions'
+        ? { user: { ...auth.user, permissionActions: undefined } }
+        : {}),
+    });
+    render(<AppShell>Inhalt</AppShell>);
+    expect(screen.queryByRole('status', { name: 'Anmeldung erfolgreich' })).toBeNull();
+  });
 
   it.each(['loading', 'unresolved', 'error', 'foreignTenant', 'platform', 'permissions'])(
     'does not show the notice for a %s effective-access snapshot',
@@ -259,7 +284,9 @@ describe('AppShell', () => {
     setRolelessSession();
     setActiveLocale('en');
     render(<AppShell>Content</AppShell>);
-    expect(screen.getByRole('status', { name: 'Sign-in successful' }).textContent).toContain('Your administrator');
+    expect(screen.getByRole('status', { name: 'Sign-in successful' }).textContent).toContain(
+      'Your administrator'
+    );
   });
 
   it('versteckt die Breadcrumbs auf der Startseite', async () => {
@@ -415,5 +442,21 @@ describe('AppShell', () => {
 
     await screen.findByRole('navigation', { name: 'Brotkrumen-Navigation' });
     expect(await screen.findByTestId('legal-text-acceptance-dialog')).toBeTruthy();
+  });
+  it('hides sidebar and mobile navigation only on the application overview', async () => {
+    const view = render(
+      <AppShell currentPathname="/plugins/application-workspace">
+        <div>Arbeitsplatz</div>
+      </AppShell>
+    );
+    expect(screen.queryByRole('complementary', { name: 'Seitenleiste' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Navigation öffnen|Menü öffnen/ })).toBeNull();
+    expect(await screen.findByTestId('legal-text-acceptance-dialog')).toBeTruthy();
+    view.rerender(
+      <AppShell currentPathname="/plugins/application-workspace/settings">
+        <div>Einstellungen</div>
+      </AppShell>
+    );
+    expect(screen.getByRole('complementary', { name: 'Seitenleiste' })).toBeTruthy();
   });
 });

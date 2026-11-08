@@ -93,7 +93,8 @@ vi.mock('../providers/theme-provider', () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock('../i18n', () => ({
+vi.mock('../i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../i18n')>()),
   t: (key: string) =>
     key === 'shell.appName'
       ? 'SVA Studio'

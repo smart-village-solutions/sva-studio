@@ -76,3 +76,10 @@ export const mergePluginTranslations = (
 
   return merged;
 };
+
+/** Host-provided Studio locale catalog, shared with plugin-owned text editors. */
+let localeResolver = () => ({ locale: 'de', supportedLocales: ['de', 'en'] as readonly string[] });
+export const registerPluginLocaleResolver = (resolver: typeof localeResolver): void => {
+  localeResolver = resolver;
+};
+export const readPluginLocales = () => localeResolver();

@@ -365,7 +365,11 @@ neue Trust Boundary noch verteilte Zustands-, Migrations- oder
 Deployment-Semantik verändert. Dazu zählen typischerweise kleine Bugfixes,
 Text- und UI-Korrekturen sowie begrenzte Refactorings ohne neue
 Verhaltensdimension. Für solche Änderungen sind keine künstlichen PR-Stacks,
-Zustandsmatrizen oder zusätzlichen OpenSpec-Changes zu erzeugen.
+Zustandsmatrizen oder zusätzlichen OpenSpec-Changes zu erzeugen. Das gilt auch
+für eine gemeinsam genutzte UI-Komponente, solange sich keine fachlichen oder
+sicherheitsrelevanten Verträge ändern. Eine zusammengehörige UI-Korrektur samt
+betroffenen bestehenden Bildreferenzen bleibt in einem Lieferabschnitt; der
+gemeinsame Baustein allein begründet keinen umfangreicheren Prüfprozess.
 
 ### Leitlinien für systemübergreifende Großvorhaben
 
@@ -669,7 +673,7 @@ Testbarkeit und niedrige strukturelle Komplexität sind keine nachgelagerten Opt
 
 ### Gate-Anforderungen
 
-- Neue Features und Verhaltensänderungen müssen Unit-Tests erhalten.
+- Neue Features und Änderungen fachlichen oder interaktiven Verhaltens müssen angemessene Unit-Tests erhalten. Reine Darstellungsänderungen folgen dem proportionalen Nachweis nach Abschnitt 5.2.
 - Coverage darf pro Projekt und global nicht unter die Baseline bzw. definierte Floors fallen.
 - Kritische Module müssen ihre definierten Mindest-Floors in `tooling/testing/coverage-policy.json` erfüllen.
 - Kritische Hotspots dürfen über `hotspotFloors` feiner granulierte Floors erhalten.
@@ -680,7 +684,7 @@ Testbarkeit und niedrige strukturelle Komplexität sind keine nachgelagerten Opt
 ### ❌ FORBIDDEN im Gate-Kontext
 
 - PRs mit neuer Funktionalität ohne zugehörige Tests.
-- Baseline-Updates ohne dokumentierte Team-Freigabe.
+- Änderungen an Coverage- oder Komplexitäts-Baselines ohne dokumentierte Team-Freigabe.
 - Exemptions als dauerhafte Umgehung des Coverage-Gates.
 - Neue Komplexitäts-Findings ohne Ticket-Referenz in `tooling/quality/complexity-policy.json`.
 - Absenkung von Coverage-Floors, nur weil ein kritischer Hotspot komplexer geworden ist.
@@ -688,15 +692,14 @@ Testbarkeit und niedrige strukturelle Komplexität sind keine nachgelagerten Opt
 ### Process
 
 1. Tests parallel zur Feature-Implementierung schreiben.
-2. Lokal Coverage ausführen: `pnpm test:coverage`.
-3. Gate vor PR prüfen: `pnpm coverage-gate`.
-4. Komplexitäts-Gate prüfen: `pnpm complexity-gate`.
-5. Bei Exemption oder Komplexitätsüberschreitung: Ticket erstellen bzw. referenzieren und Team-Genehmigung dokumentieren.
+2. Den kleinsten relevanten lokalen Test-/Type-Gate-Pfad gemäß Abschnitt 5.2 ausführen.
+3. Coverage- und Komplexitäts-Gates für den exakten PR-HEAD auswerten. Vorhandene CI-Nachweise verwenden; lokale Coverage- oder Komplexitätsläufe nur für einen konkreten fehlenden Nachweis oder zur gezielten Reproduktion eines Befunds ergänzen.
+4. Bei Exemption oder Komplexitätsüberschreitung: Ticket erstellen bzw. referenzieren und Team-Genehmigung dokumentieren.
 
 ### Enforcement
 
 - PRs ohne angemessene Tests werden in Reviews abgelehnt.
-- Baseline- oder Policy-Änderungen brauchen eine explizite Begründung im PR.
+- Änderungen an Coverage-/Komplexitäts-Baselines oder Gate-Policies brauchen eine explizite Begründung im PR; beabsichtigte Bildreferenzänderungen sind davon getrennt nach Abschnitt 5.2 zu bewerten.
 - Die PR-Checkliste muss Coverage-Nachweise enthalten: `docs/reports/PR_CHECKLIST.md`.
 - Die PR-Checkliste muss auch Komplexitäts-Nachweise und Ticketbezüge enthalten.
 
@@ -734,7 +737,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 
 ### Process
 
-1. Lokal die internen Gates ausführen (`pnpm test:coverage`, `pnpm coverage-gate`, `pnpm complexity-gate`).
+1. Lokale Prüfungen nach Abschnitt 5.2 auf den geänderten Pfad und sein Risiko begrenzen. Vorhandene CI-Nachweise nicht durch pauschale zusätzliche lokale Vollsuite-, Coverage- oder Komplexitätsläufe duplizieren.
 2. PR-Pipeline abwarten und Sonar- sowie Codecov-Status prüfen.
 3. Bei Befunden: Fix priorisieren oder begründete Ausnahme inkl. Ticket im PR dokumentieren.
 4. Merge erst nach nachvollziehbarer Bewertung aller Quality-Gates.
@@ -756,13 +759,17 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Reine Text-, Kommentar- und Dokumentationsänderungen benötigen keine lokalen Tests.
 - Vor dem Commit ist sicherzustellen, dass neue oder geänderte Logik durch Tests abgedeckt ist.
 - Verifikation muss den kleinsten relevanten echten Gate-Pfad bevorzugen, nicht pauschal den größten Lauf.
+- Bei reinen Darstellungsänderungen ohne geänderte Fachlogik, Datenflüsse, Verträge, Autorisierung oder Tastatur-/Fokusbedienung genügt eine gezielte Sichtprüfung als lokaler Nachweis. Zusätzliche lokale Unit-/Type-Läufe sind nur bei einem konkreten Risiko oder Fehlersignal erforderlich. Keine neuen Tests ergänzen, die lediglich CSS-Klassen, Pixelwerte oder unveränderte Implementierungsdetails wiederholen. Konkrete Verhaltens-, Accessibility- oder Sicherheitsrisiken behalten ihre passenden Tests und Pflicht-Gates.
+- Bei beabsichtigten visuellen Änderungen zuerst prüfen, ob die neue Darstellung den Auftrag erfüllt. Danach die betroffenen bestehenden Bildreferenzen zusammenhängend erfassen und gemeinsam vor dem Merge aktualisieren; bei einem gemeinsamen UI-Baustein alle dadurch betroffenen Ansichten berücksichtigen. Keine neuen Referenzmatrizen allein wegen einer kleinen UI-Korrektur anlegen.
+- Ein konkreter Auftrag zur visuellen Änderung deckt die notwendige Anpassung der betroffenen Bildreferenzen ab; dafür ist keine zusätzliche Freigabe als Coverage-Baseline-Änderung erforderlich. Regressionen nicht durch Referenzupdates verdecken und Vergleichstoleranzen nicht lockern.
+- Vollständige App-E2E-Läufe nicht zur schrittweisen Ermittlung erwartbarer Bildreferenzänderungen verwenden. Dafür den vorhandenen betroffenen Test gezielt nutzen und alle Abweichungen derselben Änderung vor dem nächsten Merge zusammenhängend behandeln; jede Abweichung muss weiterhin als Fehler gewertet werden.
 - Lokale `affected`-Runs gegen `origin/main` müssen vorab im Scope geprüft werden, wenn der PR-Branch bereits viele Altänderungen enthält.
 - Bei großem affected-Scope sind für initiale oder scope-erweiternde Pushes gezielte Fixblock-Gates zulässig und dem breiten lokalen affected-Lauf vorzuziehen, sofern die Abweichung transparent dokumentiert wird.
 - PR-Unit- und PR-Coverage-Gates führen direkt geänderte Projekte vor transitiv betroffenen Projekten aus; der verbleibende affected Scope bleibt vollständig erhalten.
 - Die stabilen Required-Check-Kontexte `Unit` und `Coverage` werden ausschließlich von finalen Aggregatoren gesetzt. Interne Fast-Feedback-, Rest- und Coverage-Teiljobs sind keine alternativen Freigabesignale; fehlende, doppelte, veraltete, rote oder überlappende Evidenz ist fail-closed.
 - Deterministische Unit-, Snapshot-, Type- und Policy-Fehler werden in PR-Gates nicht automatisch wiederholt. Ein Retry ist nur für einen explizit klassifizierten temporären Infrastrukturfehler zulässig und darf bereits erfolgreiche Targets nicht pauschal erneut ausführen.
 - E2E- und Integrationstargets bleiben ungecacht. Coverage-Caching darf nur targetweise nach einem Contract-Test aktiviert werden, der Fresh Run und Cache Restore einschließlich Gate-Ergebnis als identisch nachweist.
-- Pull Requests starten keine vollständige App-E2E-Suite. Der vollständige Lauf erfolgt pro Push auf `main`; nur dessen erfolgreiche Head-SHA-gebundene Evidenz darf zusammen mit der getrennten OCI-Revisionsprüfung einen regulären Staging-Promote freigeben.
+- Pull Requests starten keine vollständige App-E2E-Suite. Der vollständige Lauf erfolgt pro Push auf `main`; nur dessen erfolgreiche Head-SHA-gebundene Evidenz darf zusammen mit der getrennten OCI-Revisionsprüfung einen regulären Staging-Promote freigeben. Dieser automatische Freigabelauf ist kein Auftrag zu zusätzlichen lokalen Vollprüfungen oder einer Erweiterung der CI für kleine Korrekturen.
 
 ### ❌ FORBIDDEN
 

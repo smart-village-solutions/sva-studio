@@ -1,4 +1,4 @@
-import type { PluginRouteDefinition } from './plugin-definition-types.js';
+import type { PluginNavigationItem, PluginRouteDefinition } from './plugin-definition-types.js';
 import {
   assertPluginContributionAllowedKeys,
   assertPluginRoutePathAllowed,
@@ -20,6 +20,7 @@ const routeDefinitionAllowedKeys = new Set([
   'id',
   'path',
   'documentation',
+  'layout',
   'guard',
   'actionId',
   'serverHandlerId',
@@ -33,6 +34,7 @@ const navigationItemAllowedKeys = new Set([
   'href',
   'titleKey',
   'section',
+  'icon',
   'actionId',
   'requiredAction',
   'accessRequirement',
@@ -49,6 +51,9 @@ export const assertPluginRegistryRoutes = ({
       pluginNamespace,
       normalizePluginIdentifier(route.id)
     );
+    if (route.layout !== undefined && route.layout !== 'content-only') {
+      throw new Error(`plugin_route_layout_invalid:${pluginNamespace}:${route.id}`);
+    }
     assertPluginRoutePathAllowed(pluginNamespace, normalizePluginIdentifier(route.id), route.path);
     assertPluginPermissionReference(plugin, pluginNamespace, route.id, route.guard);
     assertPluginAccessRequirement(
@@ -168,6 +173,7 @@ export const assertPluginRegistryNavigation = ({
     ) {
       throw new Error(`plugin_navigation_target_invalid:${pluginNamespace}:${navigationItem.id}`);
     }
+    assertNavigationPresentation({ plugin, pluginNamespace }, navigationItem);
     assertPluginPermissionReference(
       plugin,
       pluginNamespace,
@@ -223,3 +229,25 @@ export const assertPluginRegistryNavigation = ({
     }
   }
 };
+
+function assertNavigationPresentation(
+  { plugin, pluginNamespace }: Pick<PluginRegistryValidationContext, 'plugin' | 'pluginNamespace'>,
+  navigationItem: PluginNavigationItem
+): void {
+  if (navigationItem.section === 'header') {
+    const route = plugin.routes.find((candidate) => candidate.path === navigationItem.to);
+    if (
+      !route ||
+      navigationItem.href ||
+      navigationItem.icon !== 'grid-dots' ||
+      plugin.moduleIam?.moduleId !== pluginNamespace ||
+      !route.actionId ||
+      route.actionId !== navigationItem.actionId ||
+      !hasMatchingPluginAccessRequirement(route.accessRequirement, navigationItem.accessRequirement)
+    ) {
+      throw new Error(`plugin_header_navigation_invalid:${pluginNamespace}:${navigationItem.id}`);
+    }
+  } else if (navigationItem.icon !== undefined) {
+    throw new Error(`plugin_navigation_icon_invalid:${pluginNamespace}:${navigationItem.id}`);
+  }
+}

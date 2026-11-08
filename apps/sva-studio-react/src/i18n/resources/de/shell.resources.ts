@@ -120,7 +120,9 @@ export const shellDEResources = {
     ariaLabel: 'Brotkrumen-Navigation',
     wasteCalendar: 'Abfallkalender',
   },
+  pluginSettings: 'Plugin-Einstellungen',
   header: {
+    applications: 'Anwendungen',
     navAriaLabel: 'Hauptnavigation',
     authLoading: 'Authentifizierungsstatus wird geladen.',
     languageSwitcher: 'Sprache wechseln',

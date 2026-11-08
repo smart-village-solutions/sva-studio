@@ -10,7 +10,12 @@ import {
 } from '../lib/auth-diagnostics';
 import Header from './Header';
 
-const headerSearchState = vi.hoisted(() => ({ allowed: false, binding: true, navigate: vi.fn() }));
+const headerSearchState = vi.hoisted(() => ({
+  allowed: false,
+  binding: true,
+  workspace: false,
+  navigate: vi.fn(),
+}));
 const useAuthMock = vi.fn();
 const useLocaleMock = vi.fn();
 const useThemeMock = vi.fn();
@@ -72,6 +77,24 @@ vi.mock('../hooks/use-organization-context', () => ({
 vi.mock('../lib/plugins', () => ({
   get studioPlugins() {
     return [
+      ...(headerSearchState.workspace
+        ? [
+            {
+              id: 'tenant-portal',
+              routes: [],
+              navigation: [
+                {
+                  id: 'tenant-portal.header',
+                  section: 'header',
+                  icon: 'grid-dots',
+                  to: '/plugins/tenant-portal',
+                  titleKey: 'shell.header.applications',
+                  accessRequirement: { kind: 'authenticated' },
+                },
+              ],
+            },
+          ]
+        : []),
       {
         id: 'search',
         routes: [
@@ -100,7 +123,15 @@ vi.mock('../lib/plugins', () => ({
 }));
 vi.mock('../providers/effective-access-provider', () => ({
   useEffectiveAccess: () => ({
-    decide: () => ({ status: headerSearchState.allowed ? 'allowed' : 'denied' }),
+    decide: (requirement?: { kind: string }) => ({
+      status:
+        requirement?.kind === 'authenticated' || headerSearchState.allowed ? 'allowed' : 'denied',
+    }),
+    snapshot: {
+      status: 'ready',
+      scope: { kind: 'tenant', instanceId: 'tenant-a' },
+      assignedModules: headerSearchState.workspace ? ['tenant-portal'] : [],
+    },
   }),
 }));
 
@@ -162,6 +193,7 @@ describe('Header auth actions', () => {
 
   beforeEach(() => {
     headerSearchState.allowed = false;
+    headerSearchState.workspace = false;
     headerSearchState.binding = true;
     headerSearchState.navigate.mockReset();
     localStorageState.clear();
@@ -1181,5 +1213,22 @@ describe('Header auth actions', () => {
     expect(screen.queryByRole('button', { name: 'Systemmeldungen' })).toBeNull();
     expect(screen.queryByRole('textbox', { name: 'Suche' })).toBeNull();
     expect(screen.queryByRole('textbox', { name: 'Frag den Assistenten' })).toBeNull();
+  });
+  it('shows applications for an activated tenant without a specialist role', () => {
+    headerSearchState.workspace = true;
+    useAuthMock.mockReturnValue({
+      user: { id: 'user-1', name: 'Nutzer', instanceId: 'tenant-a', roles: [] },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+    useThemeMock.mockReturnValue({ mode: 'light', toggleMode: vi.fn() });
+    useLocaleMock.mockReturnValue({ locale: 'de', setLocale: vi.fn() });
+    const view = render(<Header />);
+    expect(screen.getByRole('link', { name: 'Anwendungen' }).getAttribute('href')).toBe(
+      '/plugins/tenant-portal'
+    );
+    headerSearchState.workspace = false;
+    view.rerender(<Header />);
+    expect(screen.queryByRole('link', { name: 'Anwendungen' })).toBeNull();
   });
 });

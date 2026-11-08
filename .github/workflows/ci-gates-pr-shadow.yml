@@ -540,7 +540,8 @@ jobs:
 
   integration:
     name: PR Integration
-    needs: scope
+    needs: [scope, plugin-compatibility]
+    if: always() && needs.scope.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -554,6 +555,9 @@ jobs:
           --health-timeout 3s
           --health-retries 10
     steps:
+      - name: Enforce relevant plugin compatibility
+        if: needs.plugin-compatibility.result != 'success' && needs.plugin-compatibility.result != 'skipped'
+        run: exit 1
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -682,3 +686,15 @@ jobs:
       - name: Run DB Schema Snapshot contract
         if: needs.scope.outputs.db_schema_mode != 'skip'
         run: pnpm exec tsx scripts/ci/check-db-schema-snapshot.ts
+
+  plugin-compatibility:
+    name: Plugin Reference
+    needs: scope
+    if: needs.scope.outputs.app_build_mode != 'skip' || needs.scope.outputs.runtime_verify_mode != 'skip' || needs.scope.outputs.quality_gate_mode != 'skip'
+    permissions:
+      contents: read
+      id-token: write
+    uses: smart-village-solutions/sva-studio_plugin-application-overview/.github/workflows/quality.yml@f93fafc79f48d799883f8b05e4973d18904a9382
+    with:
+      plugin-ref: f93fafc79f48d799883f8b05e4973d18904a9382
+      studio-ref: ${{ github.event.pull_request.head.sha }}

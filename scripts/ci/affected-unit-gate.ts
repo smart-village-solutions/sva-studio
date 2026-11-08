@@ -258,7 +258,10 @@ export const runAffectedUnitGateCli = (args: readonly string[]): number => {
 };
 
 export const runResidualUnitGate = (): void => {
-  for (const project of loadResidualUnitProjects()) runCiCommand(buildUnitProjectCommand(project));
+  for (const project of loadResidualUnitProjects()) {
+    if (process.env.CI_UNIT_APP_SEPARATE === '1' && project === 'sva-studio-react') continue;
+    runCiCommand(buildUnitProjectCommand(project));
+  }
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -37,22 +37,76 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-pnpm-workspace
       - name: Run Unit tests without an identical instrumented command
+        env:
+          CI_UNIT_APP_SEPARATE: '1'
         run: pnpm exec tsx scripts/ci/affected-unit-gate.ts --residual-only
+
+  unit-app:
+    name: App Unit (${{ matrix.partition }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        partition: [ui, hooks, server, routes-1, routes-2, routes-3, routes-4]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run isolated full App Unit partition
+        env:
+          NX_RUN_FULL: '1'
+          CI_UNIT_APP_SEPARATE: '1'
+        run: pnpm exec tsx scripts/ci/affected-unit-gate.ts --base ${{ github.sha }} --head ${{ github.sha }} --phase app --app-job ${{ matrix.partition }}
+      - name: Upload App Unit evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-feedback-app-${{ matrix.partition }}-${{ github.run_id }}
+          path: artifacts/ci-feedback/unit-unit-app-${{ matrix.partition }}.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
 
   unit:
     name: Unit
     if: always()
-    needs: [unit-residual, coverage]
+    needs: [unit-residual, unit-app, coverage]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require residual and instrumented test execution
+      - name: Require residual, App and instrumented test execution
         env:
           RESIDUAL_RESULT: ${{ needs.unit-residual.result }}
+          APP_RESULT: ${{ needs.unit-app.result }}
           COVERAGE_RESULT: ${{ needs.coverage.result }}
         run: |
+          set -euo pipefail
           test "$RESIDUAL_RESULT" = success
+          test "$APP_RESULT" = success
           test "$COVERAGE_RESULT" = success
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .nvmrc
+            scripts/ci
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: unit-feedback-app-*-${{ github.run_id }}
+          path: artifacts/downloaded-unit-feedback
+          merge-multiple: true
+      - name: Validate complete App Unit evidence
+        run: >-
+          node scripts/ci/ci-feedback-aggregate.ts --app-only --gate unit
+          --base ${{ github.sha }} --head ${{ github.sha }}
+          --expected unit-app-ui,unit-app-hooks,unit-app-server,unit-app-routes-1,unit-app-routes-2,unit-app-routes-3,unit-app-routes-4
+          --evidence-dir artifacts/downloaded-unit-feedback
 
   types:
     name: Types

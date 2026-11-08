@@ -8,6 +8,7 @@ import {
   resolveAppUnitExecutionPlan,
   runAffectedUnitGate,
   runAffectedUnitGateCli,
+  runResidualUnitGate,
 } from './affected-unit-gate.ts';
 import {
   appUnitJobs,
@@ -18,7 +19,7 @@ import {
 } from './affected-unit-plan.ts';
 import { CiCommandExecutionError, runCiCommand } from './ci-command-runner.ts';
 import { writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
-import { loadNxProjectRoots } from './nx-project-graph.ts';
+import { loadResidualUnitProjects, loadNxProjectRoots } from './nx-project-graph.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
 import { runAppUnitPartition, parseUnitShard, selectRemainingUnitProjects } from './unit-shards.ts';
 
@@ -34,6 +35,7 @@ vi.mock('./ci-feedback-evidence.ts', async (importOriginal) => ({
 vi.mock('./nx-project-graph.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./nx-project-graph.ts')>()),
   loadNxProjectRoots: vi.fn(),
+  loadResidualUnitProjects: vi.fn(),
 }));
 vi.mock('./pr-scope.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./pr-scope.ts')>()),
@@ -399,4 +401,19 @@ it('preserves failed App partition duration and retry evidence', () => {
     retryCount: 0,
   });
   vi.mocked(runCiCommand).mockReset();
+});
+
+describe('separate Main App residual selection', () => {
+  afterEach(() => vi.unstubAllEnvs());
+  it.each([undefined, '0', '1'])('preserves residual projects with separate App=%s', (separate) => {
+    vi.mocked(runCiCommand).mockClear();
+    vi.mocked(loadResidualUnitProjects).mockReturnValue(['sva-studio-react', 'unit-only']);
+    vi.stubEnv('CI_UNIT_APP_SEPARATE', separate);
+    runResidualUnitGate();
+    expect(vi.mocked(runCiCommand).mock.calls.map(([command]) => command)).toEqual(
+      (separate === '1' ? ['unit-only'] : ['sva-studio-react', 'unit-only']).map(
+        buildUnitProjectCommand
+      )
+    );
+  });
 });

@@ -155,7 +155,13 @@ describe('consolidated CI gate workflows', () => {
     expect(mainGates).not.toContain('pr-scope');
     expect(mainGates).not.toContain('actions/cache');
     expect(mainGates).not.toContain('test:unit:affected');
-    expect(mainGates).toContain('needs: [unit-residual, coverage]');
+    expect(mainGates).toContain('needs: [unit-residual, unit-app, coverage]');
+    expect(mainGates).toContain('--app-only --gate unit');
+    expect(mainGates).toContain('test "$APP_RESULT" = success');
+    expect(mainGates).toContain(
+      'partition: [ui, hooks, server, routes-1, routes-2, routes-3, routes-4]'
+    );
+    expect(mainGates).toContain("CI_UNIT_APP_SEPARATE: '1'");
     expect(mainGates).toContain('--residual-only');
     expect(mainGates).toContain('  sonar:\n');
     expect(mainGates).toContain('needs: coverage');

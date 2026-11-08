@@ -5,6 +5,7 @@ import {
   appUnitJobs,
   isAppUnitJobSelected,
   resolveAppUnitJob,
+  resolveAppUnitExecutionPlan,
   type AppUnitExecutionPlan,
   type AppUnitManifest,
 } from './affected-unit-plan.ts';
@@ -230,13 +231,14 @@ const assertAppJobEvidence = (
 };
 export const assertSeparateAppUnitEvidence = (
   accepted: ReadonlyMap<string, CiFeedbackEvidence>,
-  projectsByShard: ReadonlyMap<string, Set<string>>
+  projectsByShard: ReadonlyMap<string, Set<string>>,
+  expectedPlan = accepted.get('unit-direct')?.appPlan
 ): void => {
   const expectedIds = appUnitJobs.map((job) => `unit-app-${job}`).sort();
   const appIds = [...accepted.keys()].filter((id) => id.startsWith('unit-app-')).sort();
   if (JSON.stringify(appIds) !== JSON.stringify(expectedIds))
     throw new Error('Unvollständige App-Unit-Shards.');
-  const plan = accepted.get('unit-direct')?.appPlan;
+  const plan = expectedPlan;
   if (!plan) throw new Error('App-Testplan fehlt.');
   for (const evidence of accepted.values())
     if (JSON.stringify(evidence.appPlan) !== JSON.stringify(plan))
@@ -248,4 +250,26 @@ export const assertSeparateAppUnitEvidence = (
     ]);
   }
   assertAppManifests(accepted);
+};
+
+export const assertFullAppUnitEvidence = (
+  accepted: ReadonlyMap<string, CiFeedbackEvidence>,
+  projectsByShard: ReadonlyMap<string, Set<string>>
+): void => {
+  const sourcePlan = accepted.values().next().value?.plan;
+  if (
+    !sourcePlan ||
+    sourcePlan.directProjects.length > 0 ||
+    !sourcePlan.remainingProjects.includes('sva-studio-react')
+  )
+    throw new Error('Vollständiger App-Unit-Scope fehlt.');
+  for (const evidence of accepted.values()) {
+    if (
+      evidence.scopeMode !== 'full' ||
+      JSON.stringify(evidence.plan) !== JSON.stringify(sourcePlan)
+    )
+      throw new Error('App-Unit-Shards verwenden unterschiedliche vollständige Scope-Pläne.');
+  }
+  const appPlan = resolveAppUnitExecutionPlan([], ['sva-studio-react'], sourcePlan, true);
+  assertSeparateAppUnitEvidence(accepted, projectsByShard, appPlan);
 };

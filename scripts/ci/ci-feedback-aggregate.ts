@@ -2,7 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { assertSeparateAppUnitEvidence, type CiFeedbackEvidence } from './ci-feedback-evidence.ts';
+import {
+  assertFullAppUnitEvidence,
+  assertSeparateAppUnitEvidence,
+  type CiFeedbackEvidence,
+} from './ci-feedback-evidence.ts';
 import { selectRemainingUnitProjects, unitShardId } from './unit-shards.ts';
 
 export interface AggregateCiFeedbackOptions {
@@ -11,6 +15,7 @@ export interface AggregateCiFeedbackOptions {
   baseSha?: string;
   expectedShards: readonly string[];
   evidenceDirectory: string;
+  appOnly?: boolean;
 }
 
 export interface AggregateCiFeedbackResult {
@@ -180,6 +185,16 @@ export const aggregateCiFeedback = (
   options: AggregateCiFeedbackOptions
 ): AggregateCiFeedbackResult => {
   const expectedShards = [...new Set(options.expectedShards)].sort();
+  if (
+    options.appOnly &&
+    (options.gate !== 'unit' ||
+      !options.baseSha ||
+      options.baseSha !== options.headSha ||
+      expectedShards.some((id) => !id.startsWith('unit-app-')))
+  )
+    throw new Error(
+      'App-only-Aggregation verlangt einen vollständigen Unit-Lauf für denselben Base-/Head-Commit.'
+    );
   if (expectedShards.length !== options.expectedShards.length) {
     throw new Error('Die erwartete Shard-Liste enthält Duplikate.');
   }
@@ -197,7 +212,8 @@ export const aggregateCiFeedback = (
   const projectsByShard = projectsFromEvidence(acceptedEvidence);
 
   if (options.gate === 'unit') {
-    assertUnitPlan(acceptedEvidence, projectsByShard);
+    if (options.appOnly) assertFullAppUnitEvidence(acceptedEvidence, projectsByShard);
+    else assertUnitPlan(acceptedEvidence, projectsByShard);
   }
 
   const unexpectedShards = [...byShard.keys()].filter(
@@ -238,6 +254,7 @@ const parseArguments = (args: readonly string[]): AggregateCiFeedbackOptions => 
     baseSha: read('--base'),
     expectedShards: read('--expected').split(',').filter(Boolean),
     evidenceDirectory: read('--evidence-dir'),
+    appOnly: args.includes('--app-only'),
   };
 };
 

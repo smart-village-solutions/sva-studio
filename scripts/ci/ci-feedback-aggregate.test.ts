@@ -367,3 +367,106 @@ it('rejects evidence agreeing on a base that differs from the workflow source', 
     })
   ).toThrow(/Base/);
 });
+
+describe('full Main App Unit aggregation', () => {
+  const arrange = () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'main-app-unit-'));
+    directories.push(directory);
+    const plan: ChangedProjectPlan = {
+      mode: 'affected-fallback',
+      reason: 'no-safe-direct-project-mapping',
+      directProjects: [],
+      remainingProjects: ['sva-studio-react', 'unit-only'],
+      unmappedFiles: [],
+    };
+    const expectedShards = appUnitJobs.map((job) => `unit-app-${job}`);
+    for (const job of appUnitJobs) {
+      const file = writeEvidence(directory, `unit-app-${job}`, ['sva-studio-react'], {
+        plan,
+        baseSha: 'head',
+      });
+      const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+      value.scopeMode = 'full';
+      value.appPlan = { mode: 'aggregate', reason: 'app-in-remaining-scope', slices: [] };
+      value.phases = [{ label: `unit:app:${job}`, projects: ['sva-studio-react'], durationMs: 1 }];
+      value.appManifest = {
+        expectedFiles: job.startsWith('routes-')
+          ? ['routes-1', 'routes-2', 'routes-3', 'routes-4']
+          : [job],
+        files: [job],
+        tests: [{ file: job, name: 'scenario', status: 'passed' }],
+      };
+      fs.writeFileSync(file, JSON.stringify(value));
+    }
+    return {
+      gate: 'unit' as const,
+      headSha: 'head',
+      baseSha: 'head',
+      evidenceDirectory: directory,
+      expectedShards,
+      appOnly: true,
+    };
+  };
+  it('accepts seven full App manifests without fabricated direct or residual evidence', () => {
+    expect(aggregateCiFeedback(arrange()).shards).toHaveLength(7);
+  });
+  it.each([
+    'missing',
+    'foreign-base',
+    'foreign-head',
+    'affected',
+    'skip',
+    'wrong-label',
+    'missing-file',
+    'overlap',
+    'wrong-plan',
+    'shared-skip',
+    'duplicate',
+    'unexpected',
+  ])('rejects %s Main evidence', (kind) => {
+    const options = arrange();
+    const file = fs
+      .readdirSync(options.evidenceDirectory)
+      .find((name) => name.includes('unit-app-routes-4'));
+    if (!file) throw new Error('App fixture is missing routes-4');
+    const filePath = path.join(options.evidenceDirectory, file);
+    const value = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (kind === 'missing') fs.rmSync(filePath);
+    else if (kind === 'duplicate')
+      fs.copyFileSync(
+        filePath,
+        path.join(options.evidenceDirectory, 'unit-unit-app-duplicate.json')
+      );
+    else if (kind === 'unexpected') writeEvidence(options.evidenceDirectory, 'unit-direct', []);
+    else if (kind === 'shared-skip') {
+      for (const name of fs.readdirSync(options.evidenceDirectory)) {
+        const entryPath = path.join(options.evidenceDirectory, name);
+        const entry = JSON.parse(fs.readFileSync(entryPath, 'utf8'));
+        entry.appPlan = { mode: 'skip', reason: 'app-not-affected', slices: [] };
+        fs.writeFileSync(entryPath, JSON.stringify(entry));
+      }
+    } else {
+      if (kind === 'foreign-base') value.baseSha = 'foreign';
+      if (kind === 'foreign-head') value.headSha = 'foreign';
+      if (kind === 'affected') value.scopeMode = 'affected';
+      if (kind === 'skip') {
+        value.status = 'skipped';
+        value.phases = [];
+      }
+      if (kind === 'wrong-label') value.phases[0].label = 'unit:app:ui';
+      if (kind === 'missing-file') value.appManifest.files = [];
+      if (kind === 'overlap') value.appManifest.files = ['routes-3'];
+      if (kind === 'wrong-plan') value.plan.remainingProjects = ['unit-only'];
+      fs.writeFileSync(filePath, JSON.stringify(value));
+    }
+    expect(() => aggregateCiFeedback(options)).toThrow();
+  });
+  it('does not allow the expected list to remove a Main App slot', () => {
+    const options = arrange();
+    options.expectedShards.pop();
+    expect(() => aggregateCiFeedback(options)).toThrow();
+  });
+  it('requires the workflow base to equal its head', () => {
+    expect(() => aggregateCiFeedback({ ...arrange(), baseSha: 'other' })).toThrow();
+  });
+});

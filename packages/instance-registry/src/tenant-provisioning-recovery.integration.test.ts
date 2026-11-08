@@ -159,6 +159,7 @@ const buildAcceptedKeycloakState = (input: KeycloakProvisioningInput): KeycloakR
         role_key: ['system_admin'],
       },
     },
+    loginMfa: { aligned: true, mode: input.loginMfaMode ?? 'optional' },
     realmBaselineAligned: true,
     userProfileBaselineAligned: true,
   };

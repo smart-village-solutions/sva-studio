@@ -70,7 +70,6 @@ export function PoiDetailBasisTab({
     setValue,
   } = useFormContext<PoiDetailFormValues>();
   const name = useWatch({ control, name: 'name' }) ?? '';
-  const active = useWatch({ control, name: 'basis.active' }) ?? true;
   const nameField = getStudioFormFieldProps({
     id: 'poi-name',
     error: translateFieldError(errors.name, pt),
@@ -147,12 +146,18 @@ export function PoiDetailBasisTab({
         ) : null}
         {!section || section === 'active' ? (
           <StudioField id="poi-active" label={pt('fields.active')}>
-            <Checkbox
-              id="poi-active"
-              checked={active}
-              onChange={(event) =>
-                setValue('basis.active', event.target.checked, { shouldDirty: true })
-              }
+            <Controller
+              name="basis.active"
+              control={control}
+              render={({ field }) => (
+                <Checkbox
+                  id="poi-active"
+                  ref={field.ref}
+                  checked={field.value}
+                  onBlur={field.onBlur}
+                  onChange={(event) => field.onChange(event.target.checked)}
+                />
+              )}
             />
           </StudioField>
         ) : null}

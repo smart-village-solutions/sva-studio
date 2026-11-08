@@ -16,6 +16,7 @@ export type AccountUiRouteGuardKey =
   | 'adminUsers'
   | 'adminUserCreate'
   | 'adminUserDetail'
+  | 'adminUserLoginMfa'
   | 'adminUserInvitationTemplate'
   | 'adminOrganizations'
   | 'adminOrganizationCreate'
@@ -88,6 +89,11 @@ export const accountUiRouteGuardDefinitions: Record<
     kind: 'admin',
     route: uiRoutePaths.adminUserDetail,
     requiredPermissions: ['iam.user.read'],
+  },
+  adminUserLoginMfa: {
+    kind: 'protected',
+    route: uiRoutePaths.adminUserLoginMfa,
+    requiredPermissions: ['iam.authenticationPolicy.manage'],
   },
   adminUserInvitationTemplate: {
     kind: 'protected',

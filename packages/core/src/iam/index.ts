@@ -131,3 +131,4 @@ export {
   iamKeycloakServiceIdentities,
   iamTenantIamEvidenceClassifications,
 } from './account-management-contract.js';
+export { normalizeCompetenceLanguages } from './competence-languages.js';

@@ -1,6 +1,6 @@
 import { DayPicker, type DayPickerProps, type ChevronProps } from 'react-day-picker';
 
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
+import { IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconChevronUp as ChevronUp, IconChevronDown as ChevronDown } from '@tabler/icons-react';
 
 import { buttonVariants } from './button.js';
 import { cn } from './utils.js';
@@ -14,7 +14,7 @@ function CalendarChevron({ orientation, className }: ChevronProps) {
         : orientation === 'up'
           ? ChevronUp
           : ChevronDown;
-  return <Icon aria-hidden="true" strokeWidth={1} className={className} />;
+  return <Icon aria-hidden="true" className={className} />;
 }
 
 // shadcn Calendar composition; DayPicker owns the date grid and keyboard behavior.

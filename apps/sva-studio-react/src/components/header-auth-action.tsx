@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
+import { IconChevronDown as ChevronDown } from '@tabler/icons-react';
 import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
 import { Button } from '@sva/studio-ui-react';
 import { t } from '../i18n';

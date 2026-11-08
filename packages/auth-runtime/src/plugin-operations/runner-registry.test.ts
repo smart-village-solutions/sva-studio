@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
   withStudioJobLifecycleRepositories: vi.fn(),
   withStudioJobRepository: vi.fn(),
   runConfiguredPluginTenantProvisioningSchedule: vi.fn(async () => undefined),
+  runConfiguredPluginTenantReconcile: vi.fn(async () => undefined),
   scheduleConfiguredPluginTenantProvisioning: vi.fn(),
   enqueuePluginTenantLifecycleRetry: vi.fn(async () => undefined),
   isConfiguredPluginTenantLifecycleJobType: vi.fn(() => false),
@@ -52,6 +53,7 @@ vi.mock('./repository.js', () => ({
 }));
 
 vi.mock('../iam-instance-registry/repository.js', () => ({
+  runConfiguredPluginTenantReconcile: state.runConfiguredPluginTenantReconcile,
   runConfiguredPluginTenantProvisioningSchedule:
     state.runConfiguredPluginTenantProvisioningSchedule,
   scheduleConfiguredPluginTenantProvisioning: state.scheduleConfiguredPluginTenantProvisioning,
@@ -457,6 +459,20 @@ describe('plugin operation runner registry', () => {
       attempts: 2,
       maxAttempts: 5,
     });
+  });
+
+  it('retains mutation reconciliation when the first worker attempt conflicts with an active job', async () => {
+    const registry = await import('./runner-registry.js');
+    const task = registry.createStudioJobTaskList(() => new Map())[registry.pluginTenantLifecycleRetryTaskIdentifier];
+    if (!task) throw new Error('retry task missing');
+    state.runConfiguredPluginTenantReconcile.mockRejectedValueOnce(new Error('plugin_tenant_lifecycle_request_conflict'));
+    const payload = { instanceId: 'tenant-a', pluginId: 'ssf', operation: 'reconcile' };
+    await expect(task(payload, {} as never)).rejects.toThrow('request_conflict');
+    state.runConfiguredPluginTenantReconcile.mockResolvedValueOnce(undefined);
+    await task(payload, {} as never);
+    expect(state.runConfiguredPluginTenantReconcile).toHaveBeenCalledTimes(2);
+    expect(state.runConfiguredPluginTenantReconcile).toHaveBeenLastCalledWith('tenant-a', 'ssf');
+    expect(state.runConfiguredPluginTenantProvisioningSchedule).not.toHaveBeenCalled();
   });
 
   it('propagates durable lifecycle retry task failures to the worker', async () => {

@@ -714,7 +714,7 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Templates' }).getAttribute('href')).toBe(
       '/admin/templates'
     );
-    expect(screen.queryByRole('link', { name: 'Einladungsvorlage' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'E-Mail-Vorlagen' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
   });
 
@@ -785,7 +785,7 @@ describe('Sidebar', () => {
     });
     const view = renderSidebar({ user });
     fireEvent.click(screen.getByRole('button', { name: 'Benutzer' }));
-    expect(screen.getByRole('link', { name: 'Einladungsvorlage' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: 'E-Mail-Vorlagen' }).getAttribute('href')).toBe(
       '/admin/users/invitation-template'
     );
 
@@ -794,7 +794,7 @@ describe('Sidebar', () => {
       user: { ...user, permissionActions: ['iam.user.write'] },
       contentAccess: createContentAccessState({ permissionActions: [] }),
     });
-    expect(screen.queryByRole('link', { name: 'Einladungsvorlage' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'E-Mail-Vorlagen' })).toBeNull();
   });
 
   it('rendert Schnittstellen mit integration.manage auch ohne Legacy-Rollenname', () => {

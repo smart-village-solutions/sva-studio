@@ -4189,7 +4189,7 @@ describe('instance registry service facade', () => {
     );
   });
 
-  it('seeds core and SSF system-admin grants for an explicitly assigned optional module', async () => {
+  it('bootstraps the SSF host contract without implicitly granting recording permissions', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => ({ ...baseInstance, assignedModules: ['ssf'] })),
       listAssignedModules: vi.fn(async () => ['ssf']),
@@ -4200,22 +4200,22 @@ describe('instance registry service facade', () => {
       })),
     });
     const deps = createDeps(repository, {
-      moduleIamRegistry: new Map([
-        [
-          'ssf',
-          {
-            moduleId: 'ssf',
-            ownerPluginId: 'ssf',
-            permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
-            systemRoles: [
-              {
-                roleName: 'system_admin',
-                permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
-              },
-            ],
-          },
+      // The app composition test asserts this exact descriptor-derived host contract.
+      moduleIamRegistry: new Map([['ssf', {
+        moduleId: 'ssf',
+        permissionIds: [
+          'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
+          'ssf.recording.supervise', 'ssf.recording.recovery.custodian',
+          'ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage',
         ],
-      ]),
+        systemAdminPermissionExclusions: [
+          'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
+          'ssf.recording.supervise', 'ssf.recording.recovery.custodian',
+        ],
+        systemRoles: [{ roleName: 'system_admin', permissionIds: [
+          'ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage',
+        ] }],
+      }]]),
       readModuleActivationPolicySnapshot: () => ({
         revision: 'ssf-optional-1',
         modules: [
@@ -4256,7 +4256,10 @@ describe('instance registry service facade', () => {
         contracts: [
           expect.objectContaining({
             moduleId: 'ssf',
-            permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+            permissions: expect.arrayContaining([
+              'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
+              'ssf.recording.supervise', 'ssf.recording.recovery.custodian',
+            ].map((key) => expect.objectContaining({ key }))),
             systemRoles: [
               {
                 roleName: 'system_admin',

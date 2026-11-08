@@ -8,6 +8,8 @@ import {
   StudioFormSummaryErrors,
   StudioLoadingState,
   StudioSaveButton,
+  StudioPersistentFormError,
+  StudioFormSummary,
   MainserverPrincipalControl,
   resolveMainserverPrincipalOptions,
   isMainserverPrincipalReady,
@@ -26,18 +28,17 @@ type Props = Readonly<{
 }>;
 export function ConstructionSiteEditor({ state: s, principalControl, history }: Props) {
   const pt = usePluginTranslation('construction-sites');
-  const { id } = s;
-  const created = !id && Boolean(s.record);
+  const created = !s.id && Boolean(s.record);
   const canSave =
-    (id ? Boolean(s.record) && s.access.canUpdate : s.access.canCreate) &&
+    (s.id ? Boolean(s.record) && s.access.canUpdate : s.access.canCreate) &&
     !s.record?.writeBlockedReason &&
     !created;
   const disabled = s.busy || Boolean(s.pending) || !canSave;
   return (
     <StudioDetailPageTemplate
       stickyActions
-      title={pt(id ? 'editor.edit' : 'editor.create')}
-      description={!id ? pt('editor.intro') : undefined}
+      title={pt(s.id ? 'editor.edit' : 'editor.create')}
+      description={!s.id ? pt('editor.intro') : undefined}
       actions={
         <Button asChild variant="secondary">
           <Link
@@ -79,21 +80,21 @@ function EditorFeedback({ s, created }: Readonly<{ s: Props['state']; created: b
   const pt = usePluginTranslation('construction-sites');
   return (
     <>
-      {s.failure ? (
-        <p role="alert" className="text-destructive">
-          {pt(s.failure)}
-        </p>
+      {s.failure ? <StudioPersistentFormError message={pt(s.failure)} /> : null}
+      {s.message === 'messages.saved' ? (
+        <StudioFormSummary kind="success">{pt(s.message)}</StudioFormSummary>
+      ) : s.message ? (
+        <p role="status">{pt(s.message)}</p>
       ) : null}
-      {s.message ? <p role="status">{pt(s.message)}</p> : null}
       {s.record?.writeBlockedReason ? <p role="alert">{pt('messages.blocked')}</p> : null}
       {s.categoryError ? <p role="status">{pt('messages.categoryError')}</p> : null}
       {s.pending ? (
-        <div className="space-y-2">
-          <p role="alert">{pt('messages.unknown')}</p>
-          <Button type="button" disabled={s.busy} onClick={() => void s.recover()}>
-            {pt('actions.recover')}
-          </Button>
-        </div>
+        <StudioPersistentFormError
+          message={pt('messages.unknown')}
+          retryLabel={pt('actions.recover')}
+          retryDisabled={s.busy}
+          onRetry={() => void s.recover()}
+        />
       ) : null}
       {created && s.record && !s.pending ? (
         <Button asChild>
@@ -119,6 +120,7 @@ function EditorPrincipal({
   return (
     <fieldset disabled={s.busy || s.dirty || Boolean(s.pending) || created}>
       <MainserverPrincipalControl
+        fixedLabel={!id ? pt('principal.responsible') : undefined}
         id="cs-principal"
         label={pt(id ? 'principal.actAs' : 'principal.createAs')}
         value={s.principal}
@@ -154,13 +156,8 @@ function EditorPanels({
   history,
 }: Readonly<{ s: Props['state']; disabled: boolean; history: ReactNode }>) {
   const pt = usePluginTranslation('construction-sites');
-  const { id } = s;
   const [tab, setTab] = useState<'basis' | 'content' | 'history'>('basis');
-  const lifecycle = s.record
-    ? s.record.visible
-      ? 'content.changeStatus'
-      : 'content.publish'
-    : 'content.publish';
+  const lifecycle = s.record?.visible ? 'content.changeStatus' : 'content.publish';
   const canPublish = s.record
     ? s.access.session.unscopedPermissionActions.includes(lifecycle) ||
       s.resourceAccess[lifecycle] === true
@@ -170,12 +167,16 @@ function EditorPanels({
     change: s.change,
     errors: s.errors,
     categories: s.categories,
+    categoriesLoading: s.categoriesLoading,
+    categoryError: s.categoryError,
     disabled,
     canPublish,
+    onGeometryDrawingChange: s.setGeometryDrawing,
+    geometryDrawing: s.geometryDrawing,
   };
   const content = (
     <fieldset disabled={disabled} className="min-w-0 space-y-6">
-      <ConstructionSiteContentFields {...fields} />
+      <ConstructionSiteContentFields key={s.key} {...fields} />
     </fieldset>
   );
   const basis = (
@@ -184,11 +185,12 @@ function EditorPanels({
     </fieldset>
   );
   const tabs = [
-    { id: 'basis' as const, label: pt('tabs.basis'), panel: basis },
-    { id: 'content' as const, label: pt('tabs.content'), panel: content },
+    { id: 'basis' as const, label: pt('tabs.basis'), icon: 'basis' as const, panel: basis },
+    { id: 'content' as const, label: pt('tabs.content'), icon: 'content' as const, panel: content },
     {
       id: 'history' as const,
       label: pt('tabs.history'),
+      icon: 'history' as const,
       panel: history,
     },
   ];
@@ -206,7 +208,7 @@ function EditorPanels({
         }))}
       />
 
-      {id ? (
+      {s.id ? (
         <StudioDetailTabs
           ariaLabel={pt('tabs.label')}
           mobileSelectLabel={pt('tabs.label')}
@@ -241,7 +243,11 @@ function EditorSaveButton({
       type="submit"
       form="construction-site-form"
       status={s.busy ? 'saving' : s.message === 'messages.saved' ? 'saved' : 'idle'}
-      disabled={disabled || (!id && !isMainserverPrincipalReady(principalControl, s.principal))}
+      disabled={
+        disabled ||
+        s.geometryDrawing ||
+        (!id && !isMainserverPrincipalReady(principalControl, s.principal))
+      }
       labels={{
         idle: pt(id ? 'actions.update' : 'actions.create'),
         saving: pt('actions.saving'),

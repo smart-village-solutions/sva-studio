@@ -1,4 +1,6 @@
+import { constructionGeometryDe } from './construction-sites.geometry-translations.js';
 export const constructionSiteTranslationsDe = {
+  geometry: constructionGeometryDe,
   navigation: {
     title: 'Baustellen',
   },
@@ -15,6 +17,7 @@ export const constructionSiteTranslationsDe = {
     cancel: 'Abbrechen',
     add: 'Hinzufügen',
     remove: 'Entfernen',
+    removeCategory: 'Kategorie {{name}} entfernen',
     save: 'Speichern',
     saving: 'Wird gespeichert…',
     saved: 'Gespeichert',
@@ -47,6 +50,11 @@ export const constructionSiteTranslationsDe = {
     latitude: 'Breitengrad',
     longitude: 'Längengrad',
     categories: 'Kategorien',
+    categoriesPlaceholder: 'Kategorien auswählen',
+    categoriesSearch: 'Kategorien suchen',
+    categoriesEmpty: 'Keine passenden Kategorien gefunden.',
+    categoryUnavailable: 'Nicht verfügbar',
+    categoryLoadError: 'Die Kategorieauswahl ist derzeit nicht verfügbar.',
     media: 'Dateien',
     mediaType: 'Dateiart',
     visible: 'Sichtbar',
@@ -85,6 +93,8 @@ export const constructionSiteTranslationsDe = {
     incomplete: 'Zeitraum unvollständig',
   },
   pagination: {
+    pageSize: 'Einträge pro Seite',
+    results: '{{start}}–{{end}} von {{total}} Einträgen',
     label: 'Baustellenseiten',
     page: 'Seite {{page}}',
     previous: 'Zurück',
@@ -119,6 +129,7 @@ export const constructionSiteTranslationsDe = {
       'Die Karte ist derzeit nicht verfügbar. Sie können die Koordinaten weiterhin eingeben.',
     categoryError:
       'Die Kategorien konnten nicht geladen werden. Bestehende Zuordnungen bleiben erhalten.',
+    categoriesLoading: 'Kategorien werden geladen…',
     mediaPrimary:
       'Die geprüfte App verwendet die erste Datei als Bild. Weitere Dateitypen werden je nach App unterschiedlich dargestellt.',
     navigationFailed: 'Die Baustelle ist gespeichert. Öffnen Sie sie über den angezeigten Link.',
@@ -182,6 +193,8 @@ export const constructionSiteTranslationsDe = {
     mediaPickerMetadataSaveError: 'Die Metadaten konnten nicht gespeichert werden.',
   },
   errors: {
+    construction_site_geometry_payload_too_large:
+      'Die Geometrie und die vorhandenen Baustellenangaben überschreiten das Speicherlimit. Reduzieren Sie die Geometrie oder die Angaben.',
     construction_site_content_conflict:
       'Die Baustelle wurde zwischenzeitlich geändert. Ihre Eingaben bleiben erhalten; laden Sie den aktuellen Stand zum Vergleich neu.',
     construction_site_invalid_input: 'Bitte korrigieren Sie die markierten Angaben.',

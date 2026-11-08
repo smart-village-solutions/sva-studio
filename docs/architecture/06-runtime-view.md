@@ -1480,8 +1480,10 @@ Nachweis gesperrt.
 
 ### Szenario 23: Vererbte Account-Einladung je Studio-Installation und Instanz
 
-Ein Tenant-Benutzer mit `iam.invitationTemplate.manage` kann den Override der
-eigenen Instanz unter `/admin/users/invitation-template` bearbeiten. Die API
+Ein Tenant-Benutzer mit `iam.invitationTemplate.manage` kann die Overrides für Account-Einladung und E-Mail-Bestätigung der
+eigenen Instanz unter `Benutzer -> E-Mail-Vorlagen` (`/admin/users/invitation-template`) bearbeiten.
+Die Bestätigung nutzt `GET/PATCH /api/v1/iam/users/me/email-verification-template` und
+den bestehenden Mailvorlagen-Abgleich für Speichern, Reset, Übernehmen und Übertragen. Die API
 bezieht die Instanz ausschließlich aus der Session, prüft den Actor und nutzt
 einen scoped Registry-Zugriff mit derselben Validierung und Revisionierung.
 Ein angegebener Fremd-Instanzparameter wird abgewiesen.
@@ -1594,6 +1596,8 @@ Bei `stale_mainserver_context` verwirft das SDK das betroffene Context-Binding. 
 4. Vor dem Speichern werden aktives Modul, unveränderte Zuordnung, Instanzhost und genau der beanspruchte Auftrag erneut atomar geprüft. Nur die Bindung wird ergänzt. Bei Reaktivierung bleibt der eingehende Dienst bis zum regulären Lifecycle-Abschluss gesperrt.
 5. Readiness und Suspend legen keine Freigabe an. Ändert ein Administrator die Mainserver-Zuordnung, entfällt ihre alte Freigabe. Der bestehende Modulabgleich kann anschließend die passende Bindung neu einrichten. Details: [ADR-070](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md).
 
+Beim Abgleich der Sprachfreigabe ermittelt Studio die Eigennamen mit `Intl.DisplayNames` und überträgt sie zusammen mit den freigegebenen Sprachcodes. Der Mainserver liefert der App über GraphQL nur Namen für aktuell freigegebene Sprachen sowie Deutsch. Die App liest beides beim Öffnen. Bei der Einführung muss der Mainserver das zusätzliche Feld `languageNames` vor Studio unterstützen. Ein regulärer Modulabgleich ergänzt die Namen für bestehende Instanzen.
+
 ## Atomare Änderung einer Waste-Tour mit Fraktionen
 
 Der vorhandene Repository-Upsert ruft `upsert_waste_tour(...)` auf. Die DB-Funktion schreibt und sperrt zuerst die Tour; nach Abschluss ihrer Trigger ersetzt sie über `replace_waste_tour_fractions(...)` die geordneten Fraktionszuordnungen. Ein Fehler rollt beide Schritte einschließlich der Mainserver-Quellrevision zurück. Parallele Änderungen derselben Tour werden über die Tourzeile serialisiert; Bulk-Jahresübernahmen schreiben nach Tour-ID sortiert. Fremdschlüssel verhindern auch bei konkurrierendem Löschen einer Fraktion verwaiste Referenzen. Während Expand führt der alte Array-Write denselben Zuordnungsersatz per Trigger aus. Nach Contract bleiben die Signaturen der neuen Verbraucher unverändert.
@@ -1627,3 +1631,35 @@ bisherigen Abläufen. Live-Mail-/Linktests sind ein getrennt freizugebender Roll
 ## Baustellenplugin
 
 Ein Baustellen-Update durchläuft Principal-/Objektprüfung, frischen Vollsnapshot, Fingerprint-Prüfung, Host-Lock, einmalige Mainserver-Mutation und unabhängigen Readback. Bei Antwortverlust prüft Recovery ausschließlich denselben gespeicherten Vorgang und führt lokale Folgeschritte nach. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+
+## Stellenplugin
+
+Ein Job-Update durchläuft lokale Fachautorisierung, Principal-/Provider-/Objektprüfung, vollständigen frischen Snapshot, Fingerprint, providerweiten typübergreifenden externe-ID-Kollisionsread, Studio-Lock, einmalige Mutation und unabhängigen Readback. Recovery identifiziert denselben Vorgang und schreibt nicht erneut. Bestätigtes Löschen prüft die Abwesenheit unabhängig und führt lokale Medien-/Projektionsschritte nach; der Kontext für einen Lösch-Readback kann auch bei verschwundenem Objekt neu gebunden werden. Siehe [Stellenanzeigenreferenz](../reference/jobs.md).
+
+## SSF recording policy and reviewer updates
+
+1. An authorized administrator edits the installation template or a tenant's
+   recording overrides. Studio validates the effective policy transactionally;
+   an installation change that invalidates tenant audit retention is rejected
+   with an actionable affected-tenant list.
+2. SSF reads the tenant runtime policy using the existing technical identity and
+   canonical host tenant binding. Studio returns effective retention and a
+   revision. Missing or invalid recording policy does not enable recording.
+3. For a directory request the host authenticates and authorizes the service,
+   resolves its tenant, and supplies a live IAM reader. The plugin formats only
+   eligible recording holders and returns a deterministic directory revision.
+4. Managed competence changes persist and enqueue the existing durable lifecycle
+   retry task in the same account transaction. An active reconcile conflict is
+   retried after the previous job finishes, so later language changes converge.
+5. The existing projection updates Keycloak attributes without erasing omitted
+   profile fields. Newly issued SSF access tokens contain current projected
+   permission and language claims; the directory itself remains uncached.
+
+Ordinary-login MFA policy uses the existing realm job and independent read-back;
+its desired state must not be represented as an already applied state. Existing
+SSF step-up uses `acr_values=mfa` and `max_age=0`. See
+[ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).
+
+### Geometrie-Roundtrip im Studio
+
+Abgeschlossene Zeichnungen und Koordinateneingaben ändern denselben Baustellen-Draft. Erst der Formular-Save führt Validierung, Normalisierung, frischen Detail-Read, Fingerprint-Prüfung, vorhandene Mutation und unabhängigen Geometrie-Readback aus. Request-Hash und gesendeter Body verwenden denselben normalisierten Snapshot. Unfertige Zeichnungen werden nicht gespeichert. Ein explizites `geometry: null` im Studio-Input entfernt den reservierten Schlüssel vor der Mutation aus dem vollständigen Payload; Erfolg setzt danach dessen tatsächliche Abwesenheit im Readback voraus. Der Mainserver bleibt unverändert und ersetzt das übergebene Payload wie bisher. Ausgelassene Geometrie übernimmt der Studio-Adapter aus dem frischen Snapshot; ein Legacy-CMS-Erhalt gehört nach Nutzerfestlegung nicht zum Umfang.

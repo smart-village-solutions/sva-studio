@@ -55,6 +55,8 @@ Fehlschläge bleiben fail-closed. Redigierte Fehlerdetails werden am Asset gespe
 
 Fehlverhalten im Frontend:
 
+Der SDK-HTTP-Client und der direkte Storage-Transfer rufen die übergebene `fetch`-Funktion ohne Objektbindung auf. Ein Methodenaufruf wie `input.fetch(...)` bindet den falschen Browserkontext und bricht mit `Illegal invocation` ab, bevor eine Anfrage gesendet wird. Dies betrifft auch Medienauswahl und Uploads in Inhaltsplugins; eine allgemeine Metadatenfehlermeldung allein belegt daher keinen Serverfehler.
+
 - Schlägt die Initialisierung fehl, bleibt der Nutzer in der Bibliothek und erhält eine fachlich redigierte Fehlermeldung.
 - Schlägt der direkte Storage-Upload fehl, wird kein Abschluss-Call ausgeführt; die Bibliothek bleibt offen und zeigt den Uploadfehler an.
 - Schlägt nur der Abschluss fehl, existiert bereits ein reserviertes Asset im Pending-Zustand und kann technisch nachverfolgt werden.

@@ -1,5 +1,5 @@
 import { resolveEditorLocale, usePluginTranslation } from '@sva/plugin-sdk';
-import { ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight } from 'lucide-react';
+import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import {
   Badge,
   Calendar,
@@ -117,7 +117,7 @@ export const TourCustomDatesSelectionDialog = ({
               disabled={disabled}
               onClick={() => onYearChange(year - 1)}
             >
-              <IconChevronLeft strokeWidth={1} aria-hidden="true" className="mr-2 h-4 w-4" />
+              <IconChevronLeft aria-hidden="true" className="mr-2 h-4 w-4" />
               {year - 1}
             </Button>
             <div className="flex flex-col items-center gap-2">
@@ -133,7 +133,7 @@ export const TourCustomDatesSelectionDialog = ({
               onClick={() => onYearChange(year + 1)}
             >
               {year + 1}
-              <IconChevronRight strokeWidth={1} aria-hidden="true" className="ml-2 h-4 w-4" />
+              <IconChevronRight aria-hidden="true" className="ml-2 h-4 w-4" />
             </Button>
           </div>
           <div className="overflow-y-auto px-3 pb-4 sm:px-6">

@@ -231,3 +231,19 @@ describe('service-keycloak-execution-failures', () => {
     );
   });
 });
+
+it('retains a safe actionable authentication binding conflict diagnostic', async () => {
+  const repository = {
+    appendKeycloakProvisioningStep: vi.fn(),
+    updateKeycloakProvisioningRun: vi.fn(),
+  };
+  await failRun({ repository } as never, {
+    runId: 'mfa-run',
+    instanceId: 'tenant',
+    intent: 'provision',
+    error: new Error('login_mfa_binding_conflict:realm'),
+  });
+  expect(repository.appendKeycloakProvisioningStep).toHaveBeenCalledWith(
+    expect.objectContaining({ details: { reasonCode: 'LOGIN_MFA_BINDING_CONFLICT' } })
+  );
+});

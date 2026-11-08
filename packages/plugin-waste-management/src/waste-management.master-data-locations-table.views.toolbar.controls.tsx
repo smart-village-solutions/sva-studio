@@ -1,9 +1,9 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
-  Filter as IconFilter,
-  ArrowDownAZ as IconSortAZ,
-  ArrowDownZA as IconSortZA,
-} from 'lucide-react';
+  IconFilter,
+  IconSortAscendingLetters as IconSortAZ,
+  IconSortDescendingLetters as IconSortZA,
+} from '@tabler/icons-react';
 import { Button, Checkbox, Input, Select } from '@sva/studio-ui-react';
 import { useEffect, useState } from 'react';
 import type { WasteMasterDataLocationsTableProps } from './waste-management.master-data-locations-table.types.js';
@@ -54,9 +54,9 @@ export const WasteLocationsSortControl = ({
         onClick={() => onSortDirectionChange(sortDirection === 'asc' ? 'desc' : 'asc')}
       >
         {sortDirection === 'asc' ? (
-          <IconSortAZ strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+          <IconSortAZ aria-hidden="true" className="h-4 w-4" />
         ) : (
-          <IconSortZA strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+          <IconSortZA aria-hidden="true" className="h-4 w-4" />
         )}
         {pt(
           sortDirection === 'asc'
@@ -206,7 +206,7 @@ export const WasteLocationsFiltersToggle = ({
       aria-controls="waste-locations-filters"
       onClick={onToggleFiltersOpen}
     >
-      <IconFilter strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+      <IconFilter aria-hidden="true" className="h-4 w-4" />
       {pt('masterData.locationsWorkspace.filters.filtersTitle')}
     </Button>
   );

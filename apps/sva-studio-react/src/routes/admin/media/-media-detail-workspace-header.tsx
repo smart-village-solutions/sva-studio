@@ -1,5 +1,5 @@
 import React from 'react';
-import { Copy, Download, ExternalLink, QrCode } from 'lucide-react';
+import { IconCopy as Copy, IconDownload as Download, IconExternalLink as ExternalLink, IconQrcode as QrCode } from '@tabler/icons-react';
 import * as QRCode from 'qrcode';
 
 import { ModalDialog } from '../../../components/ModalDialog';

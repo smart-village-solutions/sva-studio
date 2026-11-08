@@ -193,6 +193,10 @@ export const mainserverProjectionPageLoaders: Record<
     overrideContentType: true,
     continueAfterEmptyPage: true,
   }),
+  'jobs.job': createGenericItemPageLoader({
+    overrideContentType: true,
+    continueAfterEmptyPage: true,
+  }),
   'projects.project': createGenericItemPageLoader({
     overrideContentType: true,
     continueAfterEmptyPage: true,

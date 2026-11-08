@@ -138,6 +138,7 @@ describe('SSF Keycloak authorization projection target', () => {
 
     expect(attributes.get('user-1')).toEqual({
       locale: ['de'],
+      [SSF_TOKEN_CLAIMS.languages]: [],
       [SSF_TOKEN_CLAIMS.instanceId]: ['tenant-a'],
       [SSF_TOKEN_CLAIMS.roles]: ['tenant_admin'],
       [SSF_TOKEN_CLAIMS.permissions]: [
@@ -147,11 +148,12 @@ describe('SSF Keycloak authorization projection target', () => {
       [SSF_TOKEN_CLAIMS.authorizationRevision]: [revision],
     });
     expect(attributes.get('stale-user')).toEqual({ locale: ['en'] });
-    expect(client.ensureUserAttributeProtocolMapper).toHaveBeenCalledTimes(4);
+    expect(client.ensureUserAttributeProtocolMapper).toHaveBeenCalledTimes(5);
     expect(client.ensureAdminOnlyUserProfileAttributes).toHaveBeenCalledWith([
       { name: SSF_TOKEN_CLAIMS.instanceId, multivalued: false },
       { name: SSF_TOKEN_CLAIMS.roles, multivalued: true },
       { name: SSF_TOKEN_CLAIMS.permissions, multivalued: true },
+      { name: SSF_TOKEN_CLAIMS.languages, multivalued: true },
       { name: SSF_TOKEN_CLAIMS.authorizationRevision, multivalued: false },
     ]);
     expect(client.ensureUserAttributeProtocolMapper).toHaveBeenCalledWith(
@@ -419,4 +421,27 @@ it('fails readiness closed when an SSF profile attribute becomes user-editable',
   await expect(target.readBack('tenant-a')).rejects.toThrow(
     'ssf_keycloak_projection_user_profile_mismatch'
   );
+});
+
+it('reconciles language-only changes into the staff-client mapper and read-back without changing contract revision', async () => {
+  const { client, attributes } = createClient();
+  const target = createSsfKeycloakAuthorizationProjectionTarget({
+    resolveTenant: async instanceId => ({ instanceId, clientId: 'ssf', client }),
+    revokeSsfTenantSessions: vi.fn(),
+  });
+  const base = desiredProjection();
+  const first = { ...base, subjects: base.subjects.map(subject => ({ ...subject, languages: ['de'] })) };
+  const second = { ...base, subjects: base.subjects.map(subject => ({ ...subject, languages: ['en-US'] })) };
+  const revision = createSsfAuthorizationRevision(first);
+  await target.reconcile(first, revision);
+  expect(attributes.get('user-1')?.ssf_languages).toEqual(['de']);
+  await target.reconcile(second, revision);
+  expect(createSsfAuthorizationRevision(second)).toBe(revision);
+  expect(await target.readBack('tenant-a')).toEqual(second);
+  expect(client.ensureUserAttributeProtocolMapper).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'ssf', claimName: 'ssf_languages', userAttribute: 'ssf_languages', multivalued: true, exclusiveClaim: true }));
+  // A newly minted access token uses the current managed user attribute.
+  const languageMapper = (await client.listEffectiveClientProtocolMappers('ssf')).find(mapper => mapper.config['claim.name'] === 'ssf_languages');
+  const userAttribute = languageMapper?.config['user.attribute'];
+  if (!userAttribute) throw new Error('language mapper missing');
+  expect(attributes.get('user-1')?.[userAttribute]).toEqual(['en-US']);
 });

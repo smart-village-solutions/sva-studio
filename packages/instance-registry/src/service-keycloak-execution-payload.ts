@@ -40,6 +40,8 @@ export const buildKeycloakProvisioningPayloadFingerprint = (input: {
 export const buildProvisioningInput = (
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>
 ) => ({
+  loginMfaMode: loaded.instance.loginMfaPolicy?.desiredMode ?? 'optional',
+  loginMfaRevision: loaded.instance.loginMfaRevision ?? 0,
   instanceId: loaded.instance.instanceId,
   primaryHostname: loaded.instance.primaryHostname,
   realmMode: loaded.instance.realmMode,

@@ -3,7 +3,7 @@ import {
   type IamContentAccessSummary,
   type IamContentListItem,
 } from '@sva/core';
-import { Trash2 as IconTrash } from 'lucide-react';
+import { IconTrash } from '@tabler/icons-react';
 import {
   StudioTableActionButton,
   StudioTableValueAction,
@@ -38,6 +38,7 @@ const MAIN_SERVER_CONTENT_TYPES = new Set([
   'cockpit-cards.cockpit-card',
   'projects.project',
   'vouchers.voucher',
+  'jobs.job',
 ]);
 
 export const resolveRowAccess = (
@@ -155,7 +156,7 @@ export const ContentRowActions = ({
   return (
     <StudioTableActionButton
       label={t('content.actions.delete')}
-      icon={<IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4" />}
+      icon={<IconTrash aria-hidden="true" className="h-4 w-4" />}
       tone="destructive"
       disabled={!canDelete}
       onClick={() => {

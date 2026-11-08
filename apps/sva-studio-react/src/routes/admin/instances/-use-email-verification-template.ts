@@ -16,9 +16,15 @@ import {
   updateServerEmailVerificationTemplate,
 } from '../../../lib/iam-api-instance-operations';
 
+import {
+  getTenantEmailVerificationTemplate,
+  updateTenantEmailVerificationTemplate,
+} from '../../../lib/iam-api-tenant-mail-templates';
+
 type VerificationView = MailTemplateView | ServerEmailVerificationTemplateView;
 export type VerificationCardProps = { readonly disabled?: boolean } & (
   | { readonly mode: 'server'; readonly instanceId?: never }
+  | { readonly mode: 'tenant'; readonly instanceId?: never }
   | { readonly mode?: 'instance'; readonly instanceId: string }
 );
 type Operation = 'save' | 'transfer' | 'adopt';
@@ -28,7 +34,9 @@ const useVerificationDraft = (props: VerificationCardProps) => {
   const load = () =>
     props.mode === 'server'
       ? getServerEmailVerificationTemplate()
-      : getInstanceMailTemplate(props.instanceId, 'verification');
+      : props.mode === 'tenant'
+        ? getTenantEmailVerificationTemplate()
+        : getInstanceMailTemplate(props.instanceId, 'verification');
   const [open, setOpen] = React.useState(false);
   const [view, setView] = React.useState<VerificationView | null>(null);
   const [draft, setDraft] = React.useState<EmailVerificationTemplate>(
@@ -38,10 +46,10 @@ const useVerificationDraft = (props: VerificationCardProps) => {
   const [invalidField, setInvalidField] = React.useState<'subject' | 'body' | null>(null);
   const [conflict, setConflict] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const draftState = React.useRef({ key: server ? 'server' : props.instanceId, dirty: false });
+  const contextKey = props.mode === 'tenant' ? 'tenant' : server ? 'server' : props.instanceId;
+  const draftState = React.useRef({ key: contextKey, dirty: false });
   React.useEffect(() => {
-    if (!open) return;
-    const key = server ? 'server' : props.instanceId;
+    const key = contextKey;
     if (draftState.current.key !== key) draftState.current = { key, dirty: false };
     let active = true;
     setLoading(true);
@@ -64,7 +72,7 @@ const useVerificationDraft = (props: VerificationCardProps) => {
     return () => {
       active = false;
     };
-  }, [props.instanceId, open, server]);
+  }, [props.instanceId, open, server, props.mode]);
   const changeDraft = (value: EmailVerificationTemplate) => {
     draftState.current.dirty = true;
     setDraft(value);
@@ -111,7 +119,12 @@ const writeTemplate = async (
     ).data;
   if (props.mode !== 'server' && 'stored' in view)
     return (
-      await updateInstanceMailTemplate(props.instanceId, 'verification', {
+      await (
+        props.mode === 'tenant'
+          ? updateTenantEmailVerificationTemplate
+          : (payload: Parameters<typeof updateTenantEmailVerificationTemplate>[0]) =>
+              updateInstanceMailTemplate(props.instanceId, 'verification', payload)
+      )({
         operation,
         expectedRevision: view.stored.revision,
         ...(operation === 'save'
@@ -130,9 +143,7 @@ const saveMessage = (data: VerificationView, server: boolean) => {
     'stored' in data ? data.status === 'synced' : !data.unsynchronizedInstances?.length;
   if (!synchronized) return t('admin.instances.mailSync.savedPending');
   return t(
-    server
-      ? 'admin.instances.emailVerification.serverSaved'
-      : 'admin.instances.emailVerification.saved'
+    server ? 'admin.instances.mailSync.serverSaved' : 'admin.instances.emailVerification.saved'
   );
 };
 

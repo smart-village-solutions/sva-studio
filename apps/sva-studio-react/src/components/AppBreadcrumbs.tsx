@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react';
+import { IconChevronRight as ChevronRight } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 
 import { t } from '../i18n';
@@ -20,7 +20,7 @@ export function AppBreadcrumbs({ pathname }: AppBreadcrumbsProps) {
           return (
             <li key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-2">
               {index > 0 ? (
-                <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={1} aria-hidden="true" />
+                <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />
               ) : null}
               {item.href && !isLast ? (
                 <Link

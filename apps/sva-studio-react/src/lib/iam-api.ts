@@ -75,6 +75,7 @@ export type CreateUserPayload = {
 export type UpdateUserPayload = Partial<
   Omit<CreateUserPayload, 'roleIds' | 'invitationPurpose'>
 > & {
+  readonly competenceLanguages?: readonly string[];
   readonly roleIds?: readonly string[];
   readonly groupIds?: readonly string[];
   readonly status?: 'active' | 'inactive' | 'pending';

@@ -5,7 +5,7 @@ import type {
   WasteTourRecord,
 } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { ListChecks as IconChecklist } from 'lucide-react';
+import { IconChecklist } from '@tabler/icons-react';
 import {
   useEffect,
   useMemo,
@@ -57,7 +57,7 @@ const CoverageCheckHeader = () => {
         id="waste-location-coverage-title"
         className="flex items-center gap-2 font-semibold text-foreground"
       >
-        <IconChecklist strokeWidth={1} aria-hidden="true" className="h-5 w-5" />
+        <IconChecklist aria-hidden="true" className="h-5 w-5" />
         {pt('masterData.locationsWorkspace.coverage.title')}
       </h3>
       <p className="text-sm text-muted-foreground">

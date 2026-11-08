@@ -1,9 +1,9 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
-  ArrowUpDown as IconArrowsSort,
-  ArrowDownAZ as IconSortAZ,
-  ArrowDownZA as IconSortZA,
-} from 'lucide-react';
+  IconArrowsSort,
+  IconSortAscendingLetters as IconSortAZ,
+  IconSortDescendingLetters as IconSortZA,
+} from '@tabler/icons-react';
 import { Button, Checkbox } from '@sva/studio-ui-react';
 
 export type WasteToursSortField = 'name' | 'recurrence' | 'dateRange' | 'locations' | 'status';
@@ -11,12 +11,12 @@ export type WasteToursSortDirection = 'asc' | 'desc';
 
 const SortIcon = ({ direction }: { readonly direction: false | WasteToursSortDirection }) => {
   if (direction === 'asc') {
-    return <IconSortAZ strokeWidth={1} className="h-4 w-4" aria-hidden="true" />;
+    return <IconSortAZ className="h-4 w-4" aria-hidden="true" />;
   }
   if (direction === 'desc') {
-    return <IconSortZA strokeWidth={1} className="h-4 w-4" aria-hidden="true" />;
+    return <IconSortZA className="h-4 w-4" aria-hidden="true" />;
   }
-  return <IconArrowsSort strokeWidth={1} className="h-4 w-4" aria-hidden="true" />;
+  return <IconArrowsSort className="h-4 w-4" aria-hidden="true" />;
 };
 
 const SortLabel = ({

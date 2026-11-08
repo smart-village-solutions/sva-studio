@@ -20,6 +20,7 @@ export const DEFAULT_MAINSERVER_VISIBLE_TYPES = [
   'faq.faq',
   'cockpit-cards.cockpit-card',
   'construction-sites.construction-site',
+  'jobs.job',
   'projects.project',
   'vouchers.voucher',
   'surveys.survey',

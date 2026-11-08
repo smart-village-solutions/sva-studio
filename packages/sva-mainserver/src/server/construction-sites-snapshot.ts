@@ -1,7 +1,9 @@
 import { z } from 'zod';
+import { constructionSiteGeometrySchema } from './construction-sites-geometry.js';
 import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 import type {
   ConstructionSiteInput,
+  ConstructionSiteListItem,
   ConstructionSiteRecord,
 } from './construction-sites-contract.js';
 import { constructionSiteWriteFields } from '../generated/construction-sites.js';
@@ -106,6 +108,11 @@ export function assertConstructionSiteWritable(value: RawRecord): void {
   if (detail.deviations.length) throw new Error('construction_site_incomplete');
   const payload = payloadOf(value);
   if (
+    'constructionSiteGeometry' in payload &&
+    !constructionSiteGeometrySchema.safeParse(payload.constructionSiteGeometry).success
+  )
+    throw new Error('construction_site_geometry_unsupported');
+  if (
     ['cause', 'direction'].some((key) => payload[key] != null && typeof payload[key] !== 'string')
   )
     throw new Error('construction_site_incomplete');
@@ -117,7 +124,7 @@ export function assertConstructionSiteWritable(value: RawRecord): void {
     throw new Error('construction_site_incomplete');
 }
 
-export function constructionSiteRead(value: RawRecord): ConstructionSiteRecord {
+export function constructionSiteListRead(value: RawRecord): ConstructionSiteListItem {
   const identity = z
     .object({
       id: z.string().min(1),
@@ -127,13 +134,39 @@ export function constructionSiteRead(value: RawRecord): ConstructionSiteRecord {
       dataProvider: z.object({ id: z.string().min(1), name: z.string().nullish() }),
     })
     .parse(value);
+  return {
+    ...identity,
+    title: identity.title ?? '',
+    updatedAt: string(value.updatedAt),
+    dataProvider: {
+      id: identity.dataProvider.id,
+      ...(identity.dataProvider.name ? { name: identity.dataProvider.name } : {}),
+    },
+    input: {
+      dates: list(value.dates).map((date) => ({
+        dateStart: string(date.dateStart),
+        dateEnd: string(date.dateEnd),
+      })),
+      locations: list(value.locations).map((location) => ({ name: string(location.name) })),
+      categories: list(value.categories).map((category) => ({ name: string(category.name) })),
+    },
+  };
+}
+
+export function constructionSiteRead(value: RawRecord): ConstructionSiteRecord {
+  const identity = constructionSiteListRead(value);
   const payload = object(value.payload);
+  const geometry = constructionSiteGeometrySchema.safeParse(payload.constructionSiteGeometry);
   let writeBlockedReason: string | undefined;
   try {
     assertConstructionSiteWritable(value);
   } catch (error) {
     writeBlockedReason =
-      error instanceof Error && error.message === 'construction_site_dependents_unsupported'
+      error instanceof Error &&
+      [
+        'construction_site_dependents_unsupported',
+        'construction_site_geometry_unsupported',
+      ].includes(error.message)
         ? error.message
         : 'construction_site_incomplete';
   }
@@ -143,18 +176,11 @@ export function constructionSiteRead(value: RawRecord): ConstructionSiteRecord {
     dateEnd: string(date.dateEnd),
   }));
   return {
-    id: identity.id,
-    genericType: identity.genericType,
-    title: identity.title ?? '',
-    visible: identity.visible,
-    updatedAt: string(value.updatedAt),
+    ...identity,
     contentFingerprint: constructionSiteFingerprint(value),
     writeBlockedReason,
-    dataProvider: {
-      id: identity.dataProvider.id,
-      ...(identity.dataProvider.name ? { name: identity.dataProvider.name } : {}),
-    },
     input: {
+      ...(geometry.success ? { geometry: geometry.data } : {}),
       title: identity.title ?? '',
       visible: identity.visible,
       cause: string(payload.cause),
@@ -209,8 +235,14 @@ function buildConstructionSitePayload(
   payload: RawRecord,
   before: ConstructionSiteInput | undefined
 ): RawRecord {
+  const retainedPayload = { ...payload };
+  if (input.geometry === null) delete retainedPayload.constructionSiteGeometry;
   return {
-    ...payload,
+    ...retainedPayload,
+    ...(input.geometry == null ||
+    (before && hash({ geometry: input.geometry }) === hash({ geometry: before.geometry }))
+      ? {}
+      : { constructionSiteGeometry: input.geometry }),
     ...(input.direction === before?.direction ? {} : { direction: input.direction }),
     ...(input.cause === before?.cause ? {} : { cause: input.cause }),
     ...(before && hash(input.restrictions) === hash(before.restrictions)

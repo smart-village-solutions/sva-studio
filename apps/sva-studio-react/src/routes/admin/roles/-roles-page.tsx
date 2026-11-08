@@ -1,4 +1,4 @@
-import { Pencil as IconEdit, RefreshCw as IconRefresh, Trash2 as IconTrash } from 'lucide-react';
+import { IconEdit, IconRefresh, IconTrash } from '@tabler/icons-react';
 import { Button, StudioDataTable, StudioListPageTemplate } from '@sva/studio-ui-react';
 import React from 'react';
 import { Link } from '@tanstack/react-router';
@@ -196,7 +196,7 @@ export const RolesPage = () => {
                           aria-label={t('admin.roles.actions.edit')}
                           title={t('admin.roles.actions.edit')}
                         >
-                          <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+                          <IconEdit aria-hidden="true" className="h-4 w-4" />
                         </Link>
                       </Button>
                       {canUpdateRoles && localRole.syncState === 'failed' ? (
@@ -209,7 +209,7 @@ export const RolesPage = () => {
                           title={t('admin.roles.actions.retrySync')}
                           onClick={() => void rolesApi.retryRoleSync(role.id)}
                         >
-                          <IconRefresh strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+                          <IconRefresh aria-hidden="true" className="h-4 w-4" />
                         </Button>
                       ) : null}
                       {canDeleteRoles ? (
@@ -222,7 +222,7 @@ export const RolesPage = () => {
                           title={t('admin.roles.actions.delete')}
                           onClick={() => setDeleteRoleId(role.id)}
                         >
-                          <IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+                          <IconTrash aria-hidden="true" className="h-4 w-4" />
                         </Button>
                       ) : null}
                     </>

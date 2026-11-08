@@ -14,13 +14,13 @@ import {
 
 export type SupportedOwnershipContentType = Exclude<
   SvaMainserverProjectionContentType,
-  'surveys.survey' | 'vouchers.voucher' | 'construction-sites.construction-site'
+  'surveys.survey' | 'vouchers.voucher' | 'construction-sites.construction-site' | 'jobs.job'
 >;
 
 export type ContentOwnershipRouteMatch = Readonly<{
   contentType: Exclude<
     SvaMainserverProjectionContentType,
-    'vouchers.voucher' | 'construction-sites.construction-site'
+    'vouchers.voucher' | 'construction-sites.construction-site' | 'jobs.job'
   >;
   contentId: string;
   operation: 'authorization' | 'targets' | 'transfer';
@@ -89,7 +89,9 @@ export const matchesOwnershipContentType = (
     case 'projects.project':
       return item.genericType === PROJECTS_GENERIC_TYPE;
     case 'generic-items.generic-item':
-      return !['FAQ', 'COCKPIT_CARD', PROJECTS_GENERIC_TYPE, 'Voucher'].includes(item.genericType);
+      return !['FAQ', 'COCKPIT_CARD', PROJECTS_GENERIC_TYPE, 'Voucher', 'Job'].includes(
+        item.genericType
+      );
     default:
       return true;
   }

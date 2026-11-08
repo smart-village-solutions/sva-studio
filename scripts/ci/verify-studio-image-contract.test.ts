@@ -147,29 +147,28 @@ const verify = (input: ReturnType<typeof validInput>) =>
   });
 
 describe('verify-studio-image-contract', () => {
-  it.each(['studio', 'custom'] as const)(
-    'verifies construction-site chunks and requires their package in %s',
-    (distribution) => {
-      const input = validInput(distribution, ['construction-sites']);
-      for (const chunk of input.chunkProvenance.chunks)
-        chunk.pluginPackages.push('plugin-construction-sites');
-      expect(JSON.parse(verify(input)).includedPluginIds).toContain('construction-sites');
-      input.packages = input.packages.filter((name) => name !== 'plugin-construction-sites');
-      expect(() => verify(input)).toThrow('plugin_package_inventory_mismatch:construction-sites');
-    }
-  );
-  it('rejects construction-site code in the SSF image', () => {
-    const input = validInput('ssf');
-    for (const chunk of input.chunkProvenance.chunks)
-      chunk.pluginPackages.push('plugin-construction-sites');
-    expect(() => verify(input)).toThrow(
-      'chunk_provenance_excluded_plugin:plugin-construction-sites'
+  describe.each(['construction-sites', 'jobs'])('%s package inventory', (pluginId) => {
+    const packageName = `plugin-${pluginId}`;
+    it.each(['studio', 'custom'] as const)(
+      'verifies chunks and requires the package in %s',
+      (distribution) => {
+        const input = validInput(distribution, [pluginId]);
+        for (const chunk of input.chunkProvenance.chunks) chunk.pluginPackages.push(packageName);
+        expect(JSON.parse(verify(input)).includedPluginIds).toContain(pluginId);
+        input.packages = input.packages.filter((name) => name !== packageName);
+        expect(() => verify(input)).toThrow(`plugin_package_inventory_mismatch:${pluginId}`);
+      }
     );
-  });
-  it('rejects a construction-site package outside the selected custom set', () => {
-    const input = validInput('custom', ['news']);
-    input.packages.push('plugin-construction-sites');
-    expect(() => verify(input)).toThrow('plugin_package_inventory_mismatch:construction-sites');
+    it('rejects plugin code in the SSF image', () => {
+      const input = validInput('ssf');
+      for (const chunk of input.chunkProvenance.chunks) chunk.pluginPackages.push(packageName);
+      expect(() => verify(input)).toThrow(`chunk_provenance_excluded_plugin:${packageName}`);
+    });
+    it('rejects a package outside the selected custom set', () => {
+      const input = validInput('custom', ['news']);
+      input.packages.push(packageName);
+      expect(() => verify(input)).toThrow(`plugin_package_inventory_mismatch:${pluginId}`);
+    });
   });
   it.each(['studio', 'custom'] as const)(
     'verifies app translation chunks and requires their package in %s',

@@ -15,6 +15,7 @@ export type SsfAuthorizationProjectionSource = Readonly<{
       keycloakSubject: string;
       roleNames: readonly string[];
       permissionIds: readonly string[];
+      languages?: readonly string[];
     }>[]
   >;
 }>;
@@ -51,10 +52,11 @@ export const createSsfAuthorizationProjectionRuntime = (dependencies: {
             instanceId,
             permissionIds: SSF_TENANT_PERMISSION_IDS,
           });
-          const subjects = sourceSubjects.map(({ keycloakSubject, roleNames, permissionIds }) => ({
+          const subjects = sourceSubjects.map(({ keycloakSubject, roleNames, permissionIds, languages }) => ({
             subject: keycloakSubject,
             roleNames,
             permissionIds,
+            languages,
           }));
           return createSsfAuthorizationProjection({ instanceId, subjects });
         },

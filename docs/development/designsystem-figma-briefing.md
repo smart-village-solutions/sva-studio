@@ -33,7 +33,7 @@ eine produktive Bereitstellung oder fachliche Abnahme.
   notwendige Zustandsmerkmale und Fokus einsetzen.
 - **Nur das aktive Standard-Theme in Light und Dark bearbeiten.** Die grüne
   Forest-Variante bleibt zurückgestellt; ihre Reaktivierung ist kein Auftrag.
-- Fira Sans und die vorhandene Lucide-Iconsprache erhalten.
+- Fira Sans erhalten. Produktentscheidung vom 2. November 2026: durchgängig Tabler Icons mit Standardkontur 2 statt Lucide verwenden.
 - Zustände und Rollen zentral definieren. Keine lokalen Farbausnahmen oder
   abweichenden Basisbausteine für einzelne Plugins erzeugen.
 - Vorhandene Funktionen auf kleinen Ansichten zugänglich halten. Aktionen,

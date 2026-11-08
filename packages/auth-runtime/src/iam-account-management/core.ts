@@ -1,3 +1,7 @@
+import {
+  getTenantLoginMfaInternal,
+  updateTenantLoginMfaInternal,
+} from './tenant-login-mfa-handler.js';
 import { bulkDeactivateInternal } from './user-bulk-deactivate-handler.js';
 import { bulkReprovisionMainserverInternal } from './user-bulk-reprovision-mainserver-handler.js';
 import { createUserInternal } from './user-create-handler.js';
@@ -58,7 +62,10 @@ export const createUserHandler = async (request: Request): Promise<Response> =>
 
 export const sendPasswordSetupEmailHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, sendPasswordSetupEmailInternal, {
-    personalBearerRoute: { method: 'POST', path: '/api/v1/iam/users/$userId/send-password-setup-email' },
+    personalBearerRoute: {
+      method: 'POST',
+      path: '/api/v1/iam/users/$userId/send-password-setup-email',
+    },
   });
 
 export const getTenantInvitationTemplateHandler = async (request: Request): Promise<Response> =>
@@ -66,6 +73,20 @@ export const getTenantInvitationTemplateHandler = async (request: Request): Prom
 
 export const updateTenantInvitationTemplateHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, updateTenantInvitationTemplateInternal);
+
+export const getTenantEmailVerificationTemplateHandler = async (
+  request: Request
+): Promise<Response> =>
+  withAuthenticatedIamHandler(request, (req, ctx) =>
+    getTenantInvitationTemplateInternal(req, ctx, 'verification')
+  );
+
+export const updateTenantEmailVerificationTemplateHandler = async (
+  request: Request
+): Promise<Response> =>
+  withAuthenticatedIamHandler(request, (req, ctx) =>
+    updateTenantInvitationTemplateInternal(req, ctx, 'verification')
+  );
 
 export const reprovisionMainserverUserHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, reprovisionMainserverUserInternal);
@@ -128,3 +149,8 @@ export const deleteRoleHandler = async (request: Request): Promise<Response> =>
 
 export const reconcileHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, reconcilePlaceholderInternal);
+
+export const getTenantLoginMfaHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, getTenantLoginMfaInternal);
+export const updateTenantLoginMfaHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, updateTenantLoginMfaInternal);

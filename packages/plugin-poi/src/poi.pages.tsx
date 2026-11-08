@@ -30,7 +30,7 @@ const createPoiListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
     id: 'active',
     header: pt('fields.active'),
     cell: (item: PoiContentItem) =>
-      item.active === false ? pt('values.notAvailable') : pt('values.active'),
+      item.visible === false ? pt('values.notAvailable') : pt('values.active'),
   },
 ];
 

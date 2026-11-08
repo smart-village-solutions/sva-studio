@@ -8,9 +8,11 @@ export const ssfModuleIamContract = {
   namespace: 'ssf',
   ownerPluginId: 'ssf',
   descriptionKey: 'plugins.ssf.description',
-  permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
+  permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read',
+    'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
+    'ssf.recording.supervise', 'ssf.recording.recovery.custodian'],
   tenantBootstrapRoles: [ssfSystemAdminRole],
   rootSystemRoles: [],
   systemRoles: [ssfSystemAdminRole],
-  systemAdminPermissionExclusions: undefined,
+  systemAdminPermissionExclusions: ['ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn', 'ssf.recording.supervise', 'ssf.recording.recovery.custodian'],
 } as const;

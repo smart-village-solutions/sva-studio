@@ -93,6 +93,8 @@ export const createPlanKeycloakProvisioningHandler =
         runs[0].overallStatus === 'succeeded';
       const plan = await deps.planKeycloakProvisioning({
         ...loaded.instance,
+        loginMfaMode: loaded.instance.loginMfaPolicy?.desiredMode ?? 'optional',
+        loginMfaRevision: loaded.instance.loginMfaRevision ?? 0,
         ...(completedNewRealmRun ? { realmMode: 'existing' as const } : {}),
         authClientSecret: loaded.authClientSecret,
         tenantAdminClientSecret: loaded.tenantAdminClientSecret,
@@ -122,6 +124,8 @@ export const createPlanKeycloakProvisioningHandler =
       tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
     });
     const plan = buildPlan({
+      loginMfaMode: loaded.instance.loginMfaPolicy?.desiredMode ?? 'optional',
+      loginMfaRevision: loaded.instance.loginMfaRevision ?? 0,
       instanceId: loaded.instance.instanceId,
       realmMode: loaded.instance.realmMode,
       authClientSecret: loaded.authClientSecret,

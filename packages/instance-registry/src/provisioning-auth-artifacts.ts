@@ -1,3 +1,4 @@
+import type { LoginMfaMode } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 import type { KeycloakProvisioningInput, TenantAdminBootstrap } from './provisioning-auth-types.js';
 import type {
@@ -38,6 +39,7 @@ const rethrowAfterSuccessfulRealmCleanup = (error: unknown): never => {
 };
 
 type ProvisionInstanceAuthArtifactsInput = {
+  loginMfaMode?: LoginMfaMode;
   instanceId: string;
   primaryHostname: string;
   realmMode: 'new' | 'existing';
@@ -181,6 +183,15 @@ const reconcileInstanceAuthArtifacts = async (
     });
     await client.ensureTenantAdminServiceAccess(input.tenantAdminClient.clientId);
   }
+  await client.ensureLoginMfaPolicy({
+    mode: input.loginMfaMode ?? 'optional',
+    clientIds: [
+      input.authClientId,
+      ...(pluginOidcClientRequirements ?? [])
+        .filter((requirement) => requirement.contractVersion === '2.0')
+        .map((requirement) => requirement.clientId),
+    ],
+  });
   await client.ensureRealmRole(SYSTEM_ADMIN_ROLE, input.instanceId, {
     allowLegacyRealmRoleMigration: input.allowLegacyRealmRoleMigration,
   });

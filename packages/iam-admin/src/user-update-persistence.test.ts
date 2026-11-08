@@ -71,6 +71,7 @@ describe('user-update-persistence', () => {
       'active',
       null,
       null,
+      null,
     ]);
   });
 
@@ -136,6 +137,7 @@ describe('user-update-persistence', () => {
       null,
       null,
       true,
+      null,
     ]);
     expect(deps.emitActivityLog).toHaveBeenCalledWith(
       client,
@@ -360,4 +362,16 @@ describe('user-update-persistence', () => {
     expect(deps.clearUserSessionLoginBlock).toHaveBeenCalledWith('kc-1');
     expect(events).toEqual(['tx:start', 'tx:end', 'clear']);
   });
+});
+
+it('preserves omission and clears explicit managed competence languages', () => {
+  expect(buildUpdatedUserParams('user', 'tenant', 'kc', {}).at(-1)).toBe(null);
+  expect(buildUpdatedUserParams('user', 'tenant', 'kc', { competenceLanguages: [] }).at(-1)).toEqual([]);
+  expect(buildUpdatedUserParams('user', 'tenant', 'kc', { competenceLanguages: ['de', 'en'] }).at(-1)).toEqual(['de', 'en']);
+});
+
+it.each([{ competenceLanguages: ['de'] }, { competenceLanguages: [] }])('signals managed competence edits/clears for transactional reconciliation (%j)', async ({ competenceLanguages }) => {
+  const { deps, persistence } = createPersistenceTestContext();
+  await persistence.persistUpdatedUserDetail({ instanceId: 'tenant-a', actorAccountId: 'admin', userId: 'user-1', keycloakSubject: 'reviewer', payload: { competenceLanguages } });
+  expect(deps.notifyPermissionInvalidation).toHaveBeenCalledWith(expect.anything(), { instanceId: 'tenant-a', keycloakSubject: 'reviewer', trigger: 'user_competence_languages_changed' });
 });

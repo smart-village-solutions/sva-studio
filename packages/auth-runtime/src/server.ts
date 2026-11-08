@@ -140,8 +140,10 @@ export { resolveActorAccountIdWithProvision } from './iam-account-management/sha
 export { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
 export {
   readTenantPermissionProjectionSubjects,
+  readTenantPermissionDirectorySubjects,
   hasActiveTenantPermissionProjectionSubject,
   type TenantPermissionProjectionSubject,
+  type PermissionDirectorySubject,
 } from './iam-authorization/tenant-permission-projection.js';
 export { withMediaRepository, withMediaService } from './iam-media/index.js';
 export { completeMediaUploadHandler } from './iam-media/core.js';
@@ -276,8 +278,7 @@ export { dispatchSsfAdminLoginDirectoryRequest } from './ssf-admin-login-directo
 export { dispatchSsfInstallationContentV2Request } from './ssf-installation-content-v2.js';
 export { shouldEnforceLegalTextCompliance } from './middleware-compliance.js';
 export { withLegalTextCompliance } from './legal-text-enforcement.js';
-export { jitProvisionAccount, jitProvisionAccountWithClient } from './jit-provisioning.js';
-export type { JitProvisionInput, JitProvisionResult } from './jit-provisioning.js';
+export { jitProvisionAccount, jitProvisionAccountWithClient, type JitProvisionInput, type JitProvisionResult } from './jit-provisioning.js';
 export {
   closeRedis,
   getLastRedisError,

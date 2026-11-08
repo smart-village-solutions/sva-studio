@@ -43,6 +43,9 @@ const persistAtomicLifecycleStart: PersistPluginTenantLifecycleStart = async ({
         instanceId: request.instanceId,
         pluginId: request.pluginId,
         operation: request.operation,
+        ...(request.expectedGeneration === undefined
+          ? {}
+          : { expectedGeneration: request.expectedGeneration }),
         ...(contractRevision ? { contractRevision } : {}),
       });
       const jobId = randomUUID();
@@ -143,6 +146,12 @@ const scheduleAutomaticLifecycleDefinition = async (input: {
     input.instanceId,
     (resolvedRepository) => resolvedRepository.getLifecycle(input.instanceId, pluginId)
   );
+  if (
+    !input.activation.effectiveActive &&
+    (lifecycle?.desiredOperation !== 'suspend' ||
+      lifecycle.desiredGeneration <= lifecycle.completedGeneration)
+  )
+    return true;
   if (lifecycle?.activeJobId) {
     try {
       await reconcileClaimedLifecycleJob({
@@ -176,6 +185,9 @@ const scheduleAutomaticLifecycleDefinition = async (input: {
       instanceId: input.instanceId,
       pluginId,
       operation: schedule.operation,
+      ...(schedule.operation === 'suspend' && lifecycle
+        ? { expectedGeneration: lifecycle.desiredGeneration }
+        : {}),
       scheduledAt: schedule.scheduledAt,
     });
     return true;
@@ -207,14 +219,15 @@ export const ensureConfiguredPluginTenantProvisioning = async (
   const activations = await withRegistryRepository((repository) =>
     repository.listModuleActivations(instanceId)
   );
-  const effectiveActivations = new Map(
-    activations
-      .filter(({ effectiveActive }) => effectiveActive)
-      .map((activation) => [activation.moduleId, activation])
+  const activationsByModule = new Map(
+    activations.map((activation) => [activation.moduleId, activation])
   );
   let pendingDefinitions = [...lifecycleRegistry.values()].flatMap((definition) => {
-    const activation = effectiveActivations.get(definition.pluginId);
-    return activation ? [{ definition, activation }] : [];
+    const activation = activationsByModule.get(definition.pluginId);
+    const managesSuspension = definition.pluginId === 'app-translations';
+    return activation && (activation.effectiveActive || managesSuspension)
+      ? [{ definition, activation }]
+      : [];
   });
   for (
     let attempt = 0;

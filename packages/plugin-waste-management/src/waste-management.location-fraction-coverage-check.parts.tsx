@@ -1,7 +1,7 @@
 import type { WasteCollectionLocationRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
-import { Pencil as IconEdit, Route as IconRoute } from 'lucide-react';
+import { IconEdit, IconRoute } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 
 import type { WasteLocationFractionCoverageIssue } from './waste-management.location-fraction-coverage.js';
@@ -61,12 +61,12 @@ const CoverageIssueItem = ({
             to="/plugins/waste-management"
             search={toWasteCollectionLocationEditSearch(search, location.id)}
           >
-            <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+            <IconEdit aria-hidden="true" className="h-4 w-4" />
             {pt('masterData.locationsWorkspace.coverage.edit')}
           </Link>
         ) : (
           <>
-            <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+            <IconEdit aria-hidden="true" className="h-4 w-4" />
             {pt('masterData.locationsWorkspace.coverage.edit')}
           </>
         )}
@@ -156,7 +156,7 @@ export const CoverageResults = ({
           })}
         </p>
         <Button type="button" variant="secondary" onClick={onAssign}>
-          <IconRoute strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+          <IconRoute aria-hidden="true" className="h-4 w-4" />
           {pt('masterData.locationsWorkspace.coverage.selectAndAssign', {
             value: result.issues.length,
           })}

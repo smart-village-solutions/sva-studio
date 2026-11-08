@@ -43,6 +43,13 @@ Die neue Foundation übernimmt die semantischen Light-/Dark-Rollen aus dem
 stabil. `surface-inset`, `border-subtle` und explizite Statusfarben ergänzen
 gezielt die vorhandenen Tokens. Forest behält seine grüne Aktionspalette.
 
+Die Produktkorrektur vom 2. November 2026 verwendet `bg-surface-inset` für
+Input, Textarea und Auswahlfelder, damit sie sich von Cards abheben.
+Feldkontur, Fokus-, Fehler- und Disabled-Rollen bleiben erhalten.
+Die Aktionskarten auf `/account/privacy` erhalten rundum 16 px, ab `sm`
+24 px Innenabstand, einschließlich der Oberkante ohne separaten CardHeader.
+Lange Aktionsbeschriftungen dürfen auf schmalen Ansichten umbrechen.
+
 Die Gestaltung ist freigegeben und wird bereits vor Bibliotheksveröffentlichung verwendet. Forest wird erst später wieder aktiv gestaltet; bestehende Theme-IDs bleiben erhalten.
 
 Die dokumentierten Figma-Werte für Secondary-Konturen und deaktivierte Texte
@@ -67,8 +74,9 @@ Collapse-Werte `0`/`1` bleiben Präferenzen; automatische Viewportwechsel schrei
 keine Auswahl. Die Arbeitsorganisation erscheint zusätzlich in der Kopfzeile,
 auf schmalen Ansichten in einer eigenen Zeile. Kontokontext und Mitgliedschaften
 bleiben im Kontomenü erreichbar; mehrfach gerenderte Auswahlfelder besitzen
-getrennte IDs. Eigene Sidebar-Motive nutzen Lucide, dynamische Plugin-Icons
-bleiben dem zuständigen Beitrag zugeordnet.
+getrennte IDs. Studio-Icons verwenden durchgängig `@tabler/icons-react` mit der Standardkontur 2
+(24-px-ViewBox); dünnere Einzelvorgaben entfallen. Dynamische Plugin-Icons
+bleiben dem zuständigen Beitrag zugeordnet und verwenden ebenfalls Tabler.
 
 `StudioPageHeader` richtet seine Aktionen anhand der Inhaltsbreite aus.
 Gemeinsame Detail-Tabs besitzen lokale horizontale Scrollregionen und eine

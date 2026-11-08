@@ -1,4 +1,6 @@
+import { constructionGeometryEn } from './construction-sites.geometry-translations.js';
 export const constructionSiteTranslationsEn = {
+  geometry: constructionGeometryEn,
   navigation: {
     title: 'Construction sites',
   },
@@ -15,6 +17,7 @@ export const constructionSiteTranslationsEn = {
     cancel: 'Cancel',
     add: 'Add',
     remove: 'Remove',
+    removeCategory: 'Remove category {{name}}',
     save: 'Save',
     saving: 'Saving…',
     saved: 'Saved',
@@ -47,6 +50,11 @@ export const constructionSiteTranslationsEn = {
     latitude: 'Latitude',
     longitude: 'Longitude',
     categories: 'Categories',
+    categoriesPlaceholder: 'Select categories',
+    categoriesSearch: 'Search categories',
+    categoriesEmpty: 'No matching categories found.',
+    categoryUnavailable: 'Unavailable',
+    categoryLoadError: 'Category selection is currently unavailable.',
     media: 'Files',
     mediaType: 'File type',
     visible: 'Visible',
@@ -85,6 +93,8 @@ export const constructionSiteTranslationsEn = {
     incomplete: 'Incomplete dates',
   },
   pagination: {
+    pageSize: 'Items per page',
+    results: '{{start}}–{{end}} of {{total}} items',
     label: 'Construction site pages',
     page: 'Page {{page}}',
     previous: 'Previous',
@@ -115,6 +125,7 @@ export const constructionSiteTranslationsEn = {
       'This record is currently read-only here. Additional or incomplete data first requires an administrative review.',
     mapUnavailable: 'The map is unavailable. You can still enter the coordinates.',
     categoryError: 'Could not load categories. Existing assignments will be preserved.',
+    categoriesLoading: 'Loading categories…',
     mediaPrimary:
       'The inspected app uses the first file as its image. Support for further file types depends on the app.',
     navigationFailed: 'The construction site was saved. Open it using the displayed link.',
@@ -174,6 +185,8 @@ export const constructionSiteTranslationsEn = {
     mediaPickerMetadataSaveError: 'The metadata could not be saved.',
   },
   errors: {
+    construction_site_geometry_payload_too_large:
+      'The geometry and existing construction site data exceed the storage limit. Reduce the geometry or the data.',
     construction_site_content_conflict:
       'The construction site changed in the meantime. Your input is preserved; reload the current version to compare.',
     construction_site_invalid_input: 'Please correct the highlighted fields.',

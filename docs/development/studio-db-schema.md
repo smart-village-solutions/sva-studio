@@ -602,3 +602,18 @@ Die versionierte Migration `20261030_01_expand_waste_tour_fractions` übernimmt 
 `20261030_02_contract_waste_tour_fractions` ist nicht Teil der standardmäßig ausgewählten Migrationen. Erst `WASTE_TOUR_FRACTIONS_CONTRACT_CONFIRMED=true` im bestehenden Migrationsprofil bestätigt den vollständigen Wechsel aller Studio-, Kalender- und Worker-Versionen, das Ende alter Rollback-Kandidaten und den Backup-/Restore-Nachweis. Contract ersetzt den Körper der Zuordnungsfunktion durch direkte relationale Writes und entfernt nach erneutem Bestandsvergleich den Kompatibilitätstrigger, die Arrayspalte und ihren GIN-Index. Bis zur separat freigegebenen Aktivierung bleibt die Brücke bestehen. Der kanonische Bedienablauf bleibt [Studio-Rollout](../guides/studio-rollout-process.md).
 
 Der zentrale Snapshot `studio-db-schema-final.sql` wurde auf Betroffenheit geprüft und bleibt unverändert: Diese Fachbeziehung gehört zu den getrennten Waste-Tenant-Datenbanken, nicht zu den zentralen `packages/data/migrations/`. Schema-Builder und versionierter Waste-Katalog werden durch PostgreSQL-Integrationstests auf denselben Expand-Vertrag geprüft.
+
+## Managed competence languages (migration 0112)
+
+`iam.accounts.competence_languages` is a non-null text array, defaulting to an empty list. The managed account editor validates up to 40 canonical language tags. Omitted PATCH values preserve existing data; an explicit empty list clears it. This field is independent of interface language and is unavailable to self-profile writes. It grants no permission or sworn status. Migration 0112 does not enable recording or grant recording permissions.
+
+### Tenant login MFA policy (migration 0113)
+
+`iam.instances` owns `login_mfa_desired_mode` (optional by default), nullable
+`login_mfa_applied_mode`, monotonic `login_mfa_revision`, nullable verified
+`login_mfa_applied_revision`, and `login_mfa_run_id` referencing the existing
+Keycloak provisioning run. No existing realm is marked verified by migration.
+The latest run supplies pending/failure diagnostics; failed reconciliation retains
+the last verified mode. Completion compares desired revision, mode and run ID,
+preventing superseded workers from certifying a newer request. Tenant writes,
+run creation and the existing instance audit event share the scoped transaction.

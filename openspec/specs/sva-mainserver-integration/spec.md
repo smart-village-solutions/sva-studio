@@ -959,6 +959,8 @@ Das System MUST Mainserver-Inhalte aller unterstützten projizierten Inhaltstype
 
 Der Host MUST fehlende Veröffentlichungszeitpunkte als optionalen Wert normalisieren und darf weder einen einzelnen Datensatz noch den gesamten Typ-Snapshot allein deshalb ablehnen. Er MUST weiterhin unverzichtbare Strukturfelder wie eine stabile Quell-ID deterministisch validieren.
 
+Diese Regel MUST auch für den lokalen Inhaltskern und die Studio-Historie nach einer bestätigten Mainserver-Mutation gelten. Der bestehende interne Übernahmeweg MUST fehlende Veröffentlichungszeitpunkte beim Anlegen und Aktualisieren ohne automatisch erzeugtes Ersatzdatum verarbeiten. Die Herkunft MUST servergeführt bleiben; normale lokale Content-Requests dürfen die Datumspflicht für `published` nicht über diese Regel umgehen. Veröffentlichungsfenster und Historien-Idempotenz MUST weiterhin geprüft werden.
+
 #### Scenario: News besitzt kein Veröffentlichungsdatum
 
 - **GIVEN** eine Mainserver-News enthält weder `publicationDate` noch `publishedAt`

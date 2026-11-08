@@ -9,6 +9,12 @@ import type {
 } from '@sva/core';
 
 export type InstanceListRow = {
+  login_mfa_desired_mode?: 'optional' | 'required';
+  login_mfa_applied_mode?: 'optional' | 'required' | null;
+  login_mfa_revision?: number;
+  login_mfa_applied_revision?: number | null;
+  login_mfa_run_id?: string | null;
+  login_mfa_run_status?: string | null;
   instance_id: string;
   display_name: string;
   time_zone: string;

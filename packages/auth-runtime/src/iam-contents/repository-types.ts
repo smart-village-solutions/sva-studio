@@ -48,6 +48,8 @@ export type ContentHistoryRow = {
 };
 
 export type CreateContentInput = {
+  /** Server-owned provenance; never accepted from content request bodies. */
+  publicationSource?: 'mainserver';
   instanceId: string;
   actorAccountId: string;
   actorDisplayName: string;
@@ -68,6 +70,8 @@ export type CreateContentInput = {
 };
 
 export type UpdateContentInput = {
+  /** Server-owned provenance; never accepted from content request bodies. */
+  publicationSource?: 'mainserver';
   instanceId: string;
   actorAccountId: string;
   actorDisplayName: string;

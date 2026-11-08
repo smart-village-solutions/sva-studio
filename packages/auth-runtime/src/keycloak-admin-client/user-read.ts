@@ -1,5 +1,5 @@
 import { KeycloakRoleOperations } from './roles.js';
-import { KeycloakAdminUnavailableError } from './errors.js';
+import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from './errors.js';
 import {
   encodePathSegment,
   filterUserAttributes,
@@ -15,6 +15,24 @@ import type {
 import type { IdentityListedUser, IdentityUserAttributes } from '../identity-provider-port.js';
 
 export class KeycloakUserReadOperations extends KeycloakRoleOperations {
+  async getUserStatus(externalId: string): Promise<boolean | null> {
+    if (this.isCircuitOpen()) throw new KeycloakAdminUnavailableError('Keycloak unavailable.');
+    try {
+      const user = await this.executeWithResilience<KeycloakAdminUser>({
+        method: 'GET',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}`,
+        operation: 'get_user_status',
+      });
+      if (user.id !== externalId || typeof user.enabled !== 'boolean') {
+        throw new KeycloakAdminUnavailableError('Keycloak user status is incomplete.');
+      }
+      return user.enabled;
+    } catch (error) {
+      if (error instanceof KeycloakAdminRequestError && error.statusCode === 404) return null;
+      throw error;
+    }
+  }
+
   async getUserAttributes(
     externalId: string,
     attributeNames?: readonly string[]

@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+import { defaultSerovalPlugins } from '@tanstack/react-router/ssr/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
@@ -6,6 +8,7 @@ const state = vi.hoisted(() => ({
   authorizeInstancePermissionForUser: vi.fn(),
   getStoredMapGeocodingRuntimeConfig: vi.fn(),
   fetch: vi.fn(),
+  consumeGeocodingBudget: vi.fn(),
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
@@ -32,18 +35,22 @@ vi.mock('@tanstack/react-start/server', () => ({
 vi.mock('@sva/auth-runtime/server', () => ({
   authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
   withAuthenticatedUser: state.withAuthenticatedUser,
-  normalizeOutboundHttpUrl: vi.fn(async (value: string, options?: { allowPrivateHosts?: boolean }) => {
-    const url = new URL(value);
-    const isPrivateTarget = ['localhost', '127.0.0.1'].includes(url.hostname);
-    if (isPrivateTarget && options?.allowPrivateHosts !== true) {
-      return null;
+  consumeGeocodingBudget: state.consumeGeocodingBudget,
+  normalizeOutboundHttpUrl: vi.fn(
+    async (value: string, options?: { allowPrivateHosts?: boolean }) => {
+      const url = new URL(value);
+      const isPrivateTarget = ['localhost', '127.0.0.1'].includes(url.hostname);
+      if (isPrivateTarget && options?.allowPrivateHosts !== true) {
+        return null;
+      }
+      return url.toString();
     }
-    return url.toString();
-  }),
+  ),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
+  fetchMapGeocoding: (url: URL, init: RequestInit) => state.fetch(url, init),
 }));
 
 vi.mock('./instance-interfaces-server.js', () => ({
@@ -58,6 +65,7 @@ describe('map-geocoding-api', () => {
     state.authorizeInstancePermissionForUser.mockReset();
     state.getStoredMapGeocodingRuntimeConfig.mockReset();
     state.fetch.mockReset();
+    state.consumeGeocodingBudget.mockReset().mockResolvedValue({ allowed: true });
     state.logger.info.mockReset();
     state.logger.warn.mockReset();
     state.logger.error.mockReset();
@@ -71,7 +79,7 @@ describe('map-geocoding-api', () => {
           instanceId: 'de-musterhausen',
           roles: ['editor'],
         },
-      }),
+      })
     );
     state.authorizeInstancePermissionForUser.mockResolvedValue({
       ok: true,
@@ -100,6 +108,97 @@ describe('map-geocoding-api', () => {
     });
   });
 
+  it('preserves tenant budget denial and Retry-After across REST and server-function boundaries', async () => {
+    const { suggestMapAddressesHandler, suggestMapAddressesServerFn } =
+      await import('./map-geocoding-api');
+    state.consumeGeocodingBudget.mockResolvedValue({ allowed: false, retryAfterSeconds: 23 });
+    const response = await suggestMapAddressesHandler(
+      new Request('http://localhost/api/v1/iam/map-geocoding/suggest', {
+        method: 'POST',
+        body: JSON.stringify({ query: 'Test' }),
+      })
+    );
+    expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('23');
+    await expect(suggestMapAddressesServerFn({ data: { query: 'Test' } })).rejects.toMatchObject({
+      code: 'rate_limited',
+      statusCode: 429,
+      retryAfterSeconds: 23,
+    });
+    // Exercise the actual installed TanStack serializer, which intentionally drops Error custom fields.
+    const requireFromRouter = createRequire(
+      createRequire(import.meta.url).resolve('@tanstack/react-router')
+    );
+    const { toJSON, fromJSON } = requireFromRouter('seroval');
+    const serverError = await suggestMapAddressesServerFn({ data: { query: 'Test' } }).catch(
+      (error: unknown) => error
+    );
+    const wireError = fromJSON(toJSON(serverError, { plugins: defaultSerovalPlugins }), {
+      plugins: defaultSerovalPlugins,
+    });
+    expect(wireError).toMatchObject({
+      code: 'rate_limited',
+      statusCode: 429,
+      retryAfterSeconds: 23,
+    });
+    expect(state.consumeGeocodingBudget).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      limit: 60,
+    });
+    expect(state.fetch).not.toHaveBeenCalled();
+  });
+
+  it('charges every redirect attempt and shares the budget with the postal-code batch resolver', async () => {
+    const { runSuggestOperation, createMapPostalCodeResolver } =
+      await import('./map-geocoding-api.operations.js');
+    state.getStoredMapGeocodingRuntimeConfig.mockResolvedValue({
+      ...(await state.getStoredMapGeocodingRuntimeConfig()),
+      provider: 'custom',
+      suggestEndpoint: 'https://geo.example/suggest',
+      geocodeEndpoint: 'https://geo.example/geocode',
+      reverseGeocodeEndpoint: 'https://geo.example/reverse',
+    });
+    state.consumeGeocodingBudget
+      .mockResolvedValueOnce({ allowed: true })
+      .mockResolvedValue({ allowed: false, retryAfterSeconds: 17 });
+    state.fetch.mockResolvedValueOnce(
+      new Response(null, { status: 302, headers: { location: 'https://geo.example/next' } })
+    );
+    await expect(runSuggestOperation(state.request, 'Test')).rejects.toMatchObject({
+      code: 'rate_limited',
+      retryAfterSeconds: 17,
+    });
+    expect(state.fetch).toHaveBeenCalledTimes(1);
+    expect(state.consumeGeocodingBudget).toHaveBeenCalledTimes(2);
+    const resolver = await createMapPostalCodeResolver('de-musterhausen');
+    expect(resolver.rateLimitPerMinute).toBe(60);
+    await expect(resolver.resolve('Test')).rejects.toMatchObject({
+      code: 'rate_limited',
+      retryAfterSeconds: 17,
+    });
+    expect(state.fetch).toHaveBeenCalledTimes(1);
+    expect(state.consumeGeocodingBudget).toHaveBeenLastCalledWith({
+      instanceId: 'de-musterhausen',
+      limit: 60,
+    });
+  });
+
+  it('fails closed when the shared budget cannot be checked', async () => {
+    const { geocodeMapAddressHandler } = await import('./map-geocoding-api');
+    state.consumeGeocodingBudget.mockRejectedValue(
+      new Error('connection failed with sensitive details')
+    );
+    const response = await geocodeMapAddressHandler(
+      new Request('http://localhost/api/v1/iam/map-geocoding/geocode', {
+        method: 'POST',
+        body: JSON.stringify({ street: 'Test' }),
+      })
+    );
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain('sensitive');
+    expect(state.fetch).not.toHaveBeenCalled();
+  });
+
   it('returns the public runtime config without exposing secrets', async () => {
     const { getMapGeocodingConfigServerFn } = await import('./map-geocoding-api');
 
@@ -114,7 +213,7 @@ describe('map-geocoding-api', () => {
     expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'poi.read',
-      }),
+      })
     );
   });
 
@@ -143,11 +242,11 @@ describe('map-geocoding-api', () => {
     });
     expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ action: 'poi.read' }),
+      expect.objectContaining({ action: 'poi.read' })
     );
     expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ action: 'events.read' }),
+      expect.objectContaining({ action: 'events.read' })
     );
   });
 
@@ -178,7 +277,9 @@ describe('map-geocoding-api', () => {
 
     const { suggestMapAddressesServerFn } = await import('./map-geocoding-api');
 
-    await expect(suggestMapAddressesServerFn({ data: { query: 'Musterstraße 1' } })).resolves.toEqual([
+    await expect(
+      suggestMapAddressesServerFn({ data: { query: 'Musterstraße 1' } })
+    ).resolves.toEqual([
       {
         label: 'Musterstraße 1, 12345 Musterstadt',
         coordinates: { latitude: 52.52, longitude: 13.405 },
@@ -197,7 +298,7 @@ describe('map-geocoding-api', () => {
     expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'poi.update',
-      }),
+      })
     );
     expect(state.logger.info).toHaveBeenCalledWith(
       'Map geocoding operation succeeded',
@@ -212,7 +313,7 @@ describe('map-geocoding-api', () => {
         operation_duration_ms: expect.any(Number),
         total_duration_ms: expect.any(Number),
         provider_request_duration_ms: expect.any(Number),
-      }),
+      })
     );
   });
 
@@ -250,16 +351,18 @@ describe('map-geocoding-api', () => {
 
     const { suggestMapAddressesServerFn } = await import('./map-geocoding-api');
 
-    await expect(suggestMapAddressesServerFn({ data: { query: 'Musterstraße 1' } })).resolves.toMatchObject([
+    await expect(
+      suggestMapAddressesServerFn({ data: { query: 'Musterstraße 1' } })
+    ).resolves.toMatchObject([
       expect.objectContaining({ label: 'Musterstraße 1, 12345 Musterstadt' }),
     ]);
     expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ action: 'poi.update' }),
+      expect.objectContaining({ action: 'poi.update' })
     );
     expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ action: 'poi.create' }),
+      expect.objectContaining({ action: 'poi.create' })
     );
   });
 
@@ -303,29 +406,51 @@ describe('map-geocoding-api', () => {
 
     const { suggestMapAddressesServerFn } = await import('./map-geocoding-api');
 
-    await expect(suggestMapAddressesServerFn({ data: { query: 'Musterstraße 1' } })).resolves.toMatchObject([
+    await expect(
+      suggestMapAddressesServerFn({ data: { query: 'Musterstraße 1' } })
+    ).resolves.toMatchObject([
       expect.objectContaining({ label: 'Musterstraße 1, 12345 Musterstadt' }),
     ]);
     expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ action: 'poi.update' }),
+      expect.objectContaining({ action: 'poi.update' })
     );
     expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ action: 'poi.create' }),
+      expect.objectContaining({ action: 'poi.create' })
     );
     expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
       3,
-      expect.objectContaining({ action: 'events.update' }),
+      expect.objectContaining({ action: 'events.update' })
     );
   });
 
   it('allows generic-item editors to use provider-backed geocoding when poi and event permissions are missing', async () => {
     state.authorizeInstancePermissionForUser
-      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung für diese Instanzoperation.' })
-      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung für diese Instanzoperation.' })
-      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung für diese Instanzoperation.' })
-      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung für diese Instanzoperation.' })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
       .mockResolvedValueOnce({
         ok: true,
         actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
@@ -336,7 +461,12 @@ describe('map-geocoding-api', () => {
       json: async () => ({
         features: [
           {
-            properties: { formatted: 'Musterstraße 1, 12345 Musterstadt', lat: 52.52, lon: 13.405, country_code: 'de' },
+            properties: {
+              formatted: 'Musterstraße 1, 12345 Musterstadt',
+              lat: 52.52,
+              lon: 13.405,
+              country_code: 'de',
+            },
           },
         ],
       }),
@@ -344,16 +474,31 @@ describe('map-geocoding-api', () => {
 
     const { suggestMapAddressesServerFn } = await import('./map-geocoding-api');
 
-    await expect(suggestMapAddressesServerFn({ data: { query: 'Musterstraße 1' } })).resolves.toMatchObject([
+    await expect(
+      suggestMapAddressesServerFn({ data: { query: 'Musterstraße 1' } })
+    ).resolves.toMatchObject([
       expect.objectContaining({ label: 'Musterstraße 1, 12345 Musterstadt' }),
     ]);
-    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(5, expect.objectContaining({ action: 'generic-items.update' }));
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
+      5,
+      expect.objectContaining({ action: 'generic-items.update' })
+    );
   });
 
   it('allows generic-item editors to load public geocoding config when poi and event read permissions are missing', async () => {
     state.authorizeInstancePermissionForUser
-      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung für diese Instanzoperation.' })
-      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung für diese Instanzoperation.' })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Instanzoperation.',
+      })
       .mockResolvedValueOnce({
         ok: true,
         actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
@@ -370,7 +515,10 @@ describe('map-geocoding-api', () => {
       reverseGeocodeEnabled: true,
       killSwitchEnabled: false,
     });
-    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(3, expect.objectContaining({ action: 'generic-items.read' }));
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ action: 'generic-items.read' })
+    );
   });
 
   it('rejects provider-backed geocoding calls without poi or event write permissions', async () => {
@@ -419,7 +567,7 @@ describe('map-geocoding-api', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: 'Musterstraße 1' }),
-      }),
+      })
     );
 
     expect(response.status).toBe(403);
@@ -428,8 +576,14 @@ describe('map-geocoding-api', () => {
       message: 'forbidden',
     });
     expect(state.fetch).not.toHaveBeenCalled();
-    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(5, expect.objectContaining({ action: 'generic-items.update' }));
-    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(6, expect.objectContaining({ action: 'generic-items.create' }));
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
+      5,
+      expect.objectContaining({ action: 'generic-items.update' })
+    );
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(
+      6,
+      expect.objectContaining({ action: 'generic-items.create' })
+    );
   });
 
   it('requests Geoapify geocoding in geojson format so feature payloads are normalized correctly', async () => {
@@ -464,7 +618,7 @@ describe('map-geocoding-api', () => {
           city: 'Bad Belzig',
           country: 'Deutschland',
         },
-      }),
+      })
     ).resolves.toMatchObject({
       label: 'Klein Glien 25, 14806 Bad Belzig, Germany',
       coordinates: { latitude: 52.1319617, longitude: 12.5171171 },
@@ -476,7 +630,7 @@ describe('map-geocoding-api', () => {
           get: expect.any(Function),
         }),
       }),
-      expect.any(Object),
+      expect.any(Object)
     );
     const [url] = state.fetch.mock.calls[0] ?? [];
     expect(url).toBeInstanceOf(URL);
@@ -491,7 +645,9 @@ describe('map-geocoding-api', () => {
 
     const { suggestMapAddressesServerFn } = await import('./map-geocoding-api');
 
-    await expect(suggestMapAddressesServerFn({ data: { query: 'leer' } })).rejects.toThrow('no_result');
+    await expect(suggestMapAddressesServerFn({ data: { query: 'leer' } })).rejects.toThrow(
+      'no_result'
+    );
   });
 
   it('fails closed when the tenant interface is disabled or kill-switched', async () => {
@@ -532,7 +688,7 @@ describe('map-geocoding-api', () => {
           latitude: 52.52,
           longitude: 13.405,
         },
-      }),
+      })
     ).rejects.toThrow('timeout');
     expect(state.logger.warn).toHaveBeenCalledWith(
       'Map geocoding operation failed',
@@ -549,7 +705,7 @@ describe('map-geocoding-api', () => {
         operation_duration_ms: expect.any(Number),
         total_duration_ms: expect.any(Number),
         provider_request_duration_ms: expect.any(Number),
-      }),
+      })
     );
   });
 
@@ -557,7 +713,7 @@ describe('map-geocoding-api', () => {
     const { getMapGeocodingConfigHandler } = await import('./map-geocoding-api');
 
     const response = await getMapGeocodingConfigHandler(
-      new Request('http://localhost/api/v1/iam/map-geocoding/config'),
+      new Request('http://localhost/api/v1/iam/map-geocoding/config')
     );
 
     expect(response.status).toBe(200);
@@ -584,7 +740,7 @@ describe('map-geocoding-api', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: 'leer' }),
-      }),
+      })
     );
 
     expect(response.status).toBe(404);
@@ -606,10 +762,13 @@ describe('map-geocoding-api', () => {
           },
         });
       } catch {
-        return new Response(JSON.stringify({ error: { code: 'invalid_config', message: 'invalid_config' } }), {
-          status: 503,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return new Response(
+          JSON.stringify({ error: { code: 'invalid_config', message: 'invalid_config' } }),
+          {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
       }
     });
     state.fetch.mockResolvedValue({
@@ -624,7 +783,7 @@ describe('map-geocoding-api', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: 'leer' }),
-      }),
+      })
     );
 
     expect(response.status).toBe(404);
@@ -648,9 +807,14 @@ describe('map-geocoding-api', () => {
       sanitizeMapGeocodingErrorCode,
     } = await import('./map-geocoding-api.shared.js');
 
-    expect(compactQuery({ query: ' Poi ', street: ' Hauptstraße 1 ', zip: ' 12345 ', city: ' Musterstadt ' })).toBe(
-      'Poi, Hauptstraße 1, 12345, Musterstadt',
-    );
+    expect(
+      compactQuery({
+        query: ' Poi ',
+        street: ' Hauptstraße 1 ',
+        zip: ' 12345 ',
+        city: ' Musterstadt ',
+      })
+    ).toBe('Poi, Hauptstraße 1, 12345, Musterstadt');
     expect(parsePositiveInteger(' 4800 ')).toBe(4800);
     expect(parsePositiveInteger('abc')).toBe(3000);
 
@@ -694,8 +858,8 @@ describe('map-geocoding-api', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: '{"query":',
-        }),
-      ),
+        })
+      )
     ).rejects.toThrow('invalid_input');
 
     const normalizedFeatures = normalizeProviderFeatures(
@@ -722,7 +886,7 @@ describe('map-geocoding-api', () => {
           },
         ],
       },
-      'custom',
+      'custom'
     );
     expect(normalizedFeatures).toEqual([
       {
@@ -754,7 +918,7 @@ describe('map-geocoding-api', () => {
         apiKey: 'geoapify-key',
       },
       'reverse',
-      { coordinates: { latitude: 52.52, longitude: 13.405 } },
+      { coordinates: { latitude: 52.52, longitude: 13.405 } }
     );
     expect(geoapifyUrl.toString()).toContain('/reverse?');
     expect(geoapifyUrl.searchParams.get('apiKey')).toBe('geoapify-key');
@@ -774,7 +938,7 @@ describe('map-geocoding-api', () => {
         rateLimitPerMinute: '60',
       },
       'suggest',
-      { query: 'Musterstraße 1' },
+      { query: 'Musterstraße 1' }
     );
     expect(customUrl.toString()).toBe('https://custom.example/suggest?query=Musterstra%C3%9Fe+1');
 
@@ -794,8 +958,8 @@ describe('map-geocoding-api', () => {
           rateLimitPerMinute: '60',
         },
         'suggest',
-        { query: 'Musterstraße 1' },
-      ),
+        { query: 'Musterstraße 1' }
+      )
     ).toThrow('invalid_input');
   });
 
@@ -862,14 +1026,25 @@ describe('map-geocoding-api', () => {
         ],
       }),
     });
-    await expect(executeSuggestOperation(config, 'Musterstraße 1')).resolves.toHaveLength(1);
-
-    await expect(executeSuggestOperation({ ...config, autocompleteEnabled: false }, 'Musterstraße 1')).rejects.toThrow(
-      'disabled',
-    );
-    await expect(executeGeocodeOperation(config, { street: '   ' })).rejects.toThrow('invalid_input');
     await expect(
-      executeReverseGeocodeOperation(config, { latitude: Number.NaN, longitude: 13.405 }),
+      executeSuggestOperation('de-musterhausen', config, 'Musterstraße 1')
+    ).resolves.toHaveLength(1);
+
+    await expect(
+      executeSuggestOperation(
+        'de-musterhausen',
+        { ...config, autocompleteEnabled: false },
+        'Musterstraße 1'
+      )
+    ).rejects.toThrow('disabled');
+    await expect(
+      executeGeocodeOperation('de-musterhausen', config, { street: '   ' })
+    ).rejects.toThrow('invalid_input');
+    await expect(
+      executeReverseGeocodeOperation('de-musterhausen', config, {
+        latitude: Number.NaN,
+        longitude: 13.405,
+      })
     ).rejects.toThrow('invalid_input');
 
     state.fetch.mockResolvedValueOnce({
@@ -877,21 +1052,32 @@ describe('map-geocoding-api', () => {
       status: 429,
       json: async () => ({}),
     });
-    await expect(executeProviderRequest({ config, mode: 'suggest', query: 'Musterstraße' })).rejects.toThrow(
-      'rate_limited',
-    );
+    await expect(
+      executeProviderRequest({
+        instanceId: 'de-musterhausen',
+        config,
+        mode: 'suggest',
+        query: 'Musterstraße',
+      })
+    ).rejects.toThrow('rate_limited');
 
     state.fetch.mockResolvedValueOnce({
       ok: false,
       status: 500,
       json: async () => ({}),
     });
-    await expect(executeProviderRequest({ config, mode: 'geocode', query: 'Musterstraße' })).rejects.toThrow(
-      'provider_error',
-    );
+    await expect(
+      executeProviderRequest({
+        instanceId: 'de-musterhausen',
+        config,
+        mode: 'geocode',
+        query: 'Musterstraße',
+      })
+    ).rejects.toThrow('provider_error');
 
     await expect(
       executeSuggestOperation(
+        'de-musterhausen',
         {
           ...config,
           provider: 'custom',
@@ -899,18 +1085,19 @@ describe('map-geocoding-api', () => {
           geocodeEndpoint: 'https://custom.example/geocode',
           reverseGeocodeEndpoint: 'https://custom.example/reverse',
         },
-        'Musterstraße 1',
-      ),
+        'Musterstraße 1'
+      )
     ).rejects.toThrow('invalid_input');
 
     state.fetch.mockResolvedValueOnce(
       new Response(null, {
         status: 302,
         headers: { location: 'https://localhost/internal-geocode' },
-      }),
+      })
     );
     await expect(
       executeProviderRequest({
+        instanceId: 'de-musterhausen',
         config: {
           ...config,
           provider: 'custom',
@@ -920,7 +1107,7 @@ describe('map-geocoding-api', () => {
         },
         mode: 'suggest',
         query: 'Musterstraße',
-      }),
+      })
     ).rejects.toThrow('invalid_input');
 
     state.fetch.mockImplementationOnce(async (_url: URL, init?: RequestInit) => {
@@ -929,10 +1116,11 @@ describe('map-geocoding-api', () => {
     });
     await expect(
       executeProviderRequest({
+        instanceId: 'de-musterhausen',
         config: { ...config, requestTimeoutMs: '1' },
         mode: 'reverse',
         coordinates: { latitude: 52.52, longitude: 13.405 },
-      }),
+      })
     ).rejects.toThrow('timeout');
   });
 
@@ -958,6 +1146,7 @@ describe('map-geocoding-api', () => {
 
     await expect(
       executeSuggestOperation(
+        'de-musterhausen',
         {
           provider: 'custom',
           styleUrl: 'https://tiles.example/styles/poi',
@@ -971,8 +1160,8 @@ describe('map-geocoding-api', () => {
           requestTimeoutMs: '3000',
           rateLimitPerMinute: '60',
         },
-        'Musterstraße 1',
-      ),
+        'Musterstraße 1'
+      )
     ).resolves.toHaveLength(1);
   });
 
@@ -984,7 +1173,7 @@ describe('map-geocoding-api', () => {
         new Response(null, {
           status: 302,
           headers: { location: 'https://redirect.example/suggest' },
-        }),
+        })
       )
       .mockResolvedValueOnce({
         ok: true,
@@ -1003,6 +1192,7 @@ describe('map-geocoding-api', () => {
 
     await expect(
       executeProviderRequest({
+        instanceId: 'de-musterhausen',
         config: {
           provider: 'custom',
           styleUrl: 'https://tiles.example/styles/poi',
@@ -1018,7 +1208,7 @@ describe('map-geocoding-api', () => {
         },
         mode: 'suggest',
         query: 'Musterstraße 1',
-      }),
+      })
     ).resolves.toHaveLength(1);
   });
 
@@ -1026,17 +1216,17 @@ describe('map-geocoding-api', () => {
     const { dispatchMapGeocodingRequest } = await import('./map-geocoding-api.server.js');
 
     const configResponse = await dispatchMapGeocodingRequest(
-      new Request('http://localhost/api/v1/iam/map-geocoding/config'),
+      new Request('http://localhost/api/v1/iam/map-geocoding/config')
     );
     expect(configResponse?.status).toBe(200);
 
     const methodNotAllowedResponse = await dispatchMapGeocodingRequest(
-      new Request('http://localhost/api/v1/iam/map-geocoding/config', { method: 'POST' }),
+      new Request('http://localhost/api/v1/iam/map-geocoding/config', { method: 'POST' })
     );
     expect(methodNotAllowedResponse?.status).toBe(405);
 
     await expect(
-      dispatchMapGeocodingRequest(new Request('http://localhost/api/v1/iam/map-geocoding/unknown')),
+      dispatchMapGeocodingRequest(new Request('http://localhost/api/v1/iam/map-geocoding/unknown'))
     ).resolves.toBeNull();
   });
 });

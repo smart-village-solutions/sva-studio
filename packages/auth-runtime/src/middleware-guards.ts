@@ -4,6 +4,8 @@ import { createApiError } from './api-error.js';
 import { buildLogContext } from './log-context.js';
 import { SessionStoreUnavailableError, SessionUserHydrationError } from './runtime-errors.js';
 import type { SessionUser } from './types.js';
+import { resolvePool, withResolvedInstanceDb } from './db.js';
+import { getSessionControlState } from './redis-session.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
@@ -52,14 +54,53 @@ export const logComplianceDiagnosticsIfEnabled = (request: Request, user: Sessio
 };
 
 export const ensureAccountLifecycleAllowsAccess = async (
-  request: Request,
+  _request: Request,
   user: SessionUser,
-  options?: { isLocalDevelopmentAuth?: boolean }
+  options?: { isLocalDevelopmentAuth?: boolean; requireCurrentAccount?: boolean }
 ): Promise<Response | null> => {
-  void request;
-  void user;
-  void options;
-  return null;
+  // Browser/JIT/DSR contracts remain session-driven. Personal tokens need a fresh account read.
+  if (!options?.requireCurrentAccount || options.isLocalDevelopmentAuth) return null;
+  const requestId = buildLogContext(user.instanceId, { includeTraceId: true }).request_id;
+  const denied = () =>
+    createApiError(403, 'forbidden', 'Anmeldung erforderlich.', requestId, {
+      reason_code: 'personal_api_account_blocked',
+    });
+  try {
+    if ((await getSessionControlState(user.id))?.loginBlocked) return denied();
+    if (!user.instanceId) {
+      const { resolveIdentityProvider } =
+        await import('./iam-account-management/shared-runtime.js');
+      const provider = resolveIdentityProvider()?.provider;
+      if (!provider?.getUserStatus) throw new Error('identity_provider_status_unavailable');
+      return (await provider.getUserStatus(user.id)) === true ? null : denied();
+    }
+    const allowed = await withResolvedInstanceDb(resolvePool, user.instanceId, async (client) => {
+      const result = await client.query<{ account_allowed: boolean }>(
+        `
+SELECT EXISTS (
+  SELECT 1 FROM iam.accounts a
+  JOIN iam.instance_memberships im ON im.account_id = a.id AND im.instance_id = $1
+  WHERE a.keycloak_subject = $2 AND a.instance_id = $1
+    AND a.status = 'active' AND a.is_blocked = false
+    AND a.soft_deleted_at IS NULL AND a.permanently_deleted_at IS NULL
+    AND a.deletion_lifecycle_state = 'active' AND a.deactivated_at IS NULL
+    AND a.processing_restricted_at IS NULL
+) AS account_allowed`,
+        [user.instanceId, user.id]
+      );
+      return result.rows[0]?.account_allowed === true;
+    });
+    return allowed ? null : denied();
+  } catch (error) {
+    logger.warn('Personal API account state could not be verified', {
+      operation: 'personal_api_account_check',
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
+      request_id: requestId,
+    });
+    return createApiError(503, 'internal_error', 'Authentifizierungsfehler.', requestId, {
+      reason_code: 'personal_api_account_check_unavailable',
+    });
+  }
 };
 
 export const logUnexpectedMiddlewareError = (request: Request, error: unknown): Response => {

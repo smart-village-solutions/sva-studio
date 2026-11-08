@@ -205,3 +205,7 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
 - `packages/core/src/iam/account-management-contract.ts`
 - `packages/auth-runtime/src/iam-account-management/platform-handlers.ts`
 - `packages/iam-admin/src/group-mutation-handlers.ts`
+
+## Aktueller Kontostatus persönlicher API-Tokens
+
+Für die zugelassenen persönlichen Bearer-Methoden auf `/api/v1/iam/users` gilt zusätzlich zur JWT-/Hostprüfung ein aktueller Kontoread vor Handler und Rollenhydration. Ein gesperrter, inaktiver, gelöschter oder verarbeitungsbeschränkter Tenant-Account beziehungsweise fehlende passende Mitgliedschaft liefert 403 (`reason_code: personal_api_account_blocked`). Plattform-Subjects müssen in Keycloak vorhanden und explizit aktiviert sein. Nicht prüfbare Redis-/DB-/Keycloak-Zustände liefern 503 (`reason_code: personal_api_account_check_unavailable`), ungültige Tokens weiterhin 401. Die Gründe stehen in den Fehlerdetails und sind keine neuen `/iam/authorize`-Entscheidungscodes.

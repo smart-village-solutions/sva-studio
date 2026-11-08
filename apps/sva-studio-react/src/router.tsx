@@ -19,6 +19,7 @@ import {
 } from './lib/plugin-route-scope';
 import { appRouteBindings, studioRoutePlugins } from '#studio-app-route-bindings';
 import { createAppRootRoute } from './routes/__root';
+import { createThemeBootstrapScript } from './lib/theme';
 const getRuntimeRouteFactories = createIsomorphicFn()
   .server(async () => {
     const [{ getRequest }, { resolveServerPluginRouteScope }, mod] = await Promise.all([
@@ -329,12 +330,33 @@ export const createRuntimeRouteTree = <TFactories extends readonly AppRouteFacto
   return requestRootRoute.addChildren([...runtimeRoutes]);
 };
 
+const createSsrScriptPolicy = createIsomorphicFn()
+  .server(async () => {
+    const [{ randomBytes, createHash }, { setResponseHeader, getResponseHeader }] =
+      await Promise.all([import('node:crypto'), import('@tanstack/react-start/server')]);
+    const nonce = randomBytes(24).toString('base64');
+    const themeHash = createHash('sha256').update(createThemeBootstrapScript()).digest('base64');
+    if (
+      !getResponseHeader('Content-Security-Policy') &&
+      !getResponseHeader('Content-Security-Policy-Report-Only')
+    ) {
+      setResponseHeader(
+        'Content-Security-Policy-Report-Only',
+        `script-src 'self' 'nonce-${nonce}' 'sha256-${themeHash}'; object-src 'none'; base-uri 'self'`
+      );
+    }
+    return nonce;
+  })
+  .client(() => undefined);
+
 export const getRouter = async () => {
   const runtimeRouteFactories = await getRuntimeRouteFactories();
   const routeTree = createRuntimeRouteTree(runtimeRouteFactories);
 
+  const nonce = await createSsrScriptPolicy();
   const router = createRouter({
     routeTree,
+    ssr: { nonce },
     context: {
       auth: {
         getUser: getRouteGuardUser,

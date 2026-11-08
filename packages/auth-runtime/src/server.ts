@@ -312,8 +312,7 @@ export {
   readInstanceSsfLoginClientsReady,
   readInstanceSsfProvisioningLoginClientsReady,
 } from './ssf-login-clients.js';
-
 export { mediaUploadProcessingStudioJobRegistration } from './iam-media/upload-processing-job.js';
-
 export { mediaInventoryScanStudioJobRegistration } from './iam-media/inventory-scan-job.js';
 export * from './app-translations.server.js';
+export { consumeGeocodingBudget } from './shared/rate-limit.js';

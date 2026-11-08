@@ -164,9 +164,30 @@ vi.mock('./routes/__root', () => ({
 
 vi.mock('@tanstack/react-start/server', () => ({
   getRequest: routerMocks.getRequestSpy,
+  setResponseHeader: vi.fn(),
+  getResponseHeader: vi.fn(),
 }));
 
 describe('router runtime helpers', () => {
+  it('uses a fresh SSR nonce and a hash for the fixed theme script in a report-only policy', async () => {
+    routerMocks.executionMode.current = 'server';
+    const { getRouter } = await import('./router');
+    const { setResponseHeader } = await import('@tanstack/react-start/server');
+    const first = await getRouter();
+    const second = await getRouter();
+    const firstNonce = first.options.ssr?.nonce;
+    expect(firstNonce).toMatch(/^[A-Za-z0-9+/]{32}$/);
+    expect(second.options.ssr?.nonce).not.toBe(firstNonce);
+    expect(setResponseHeader).toHaveBeenCalledWith(
+      'Content-Security-Policy-Report-Only',
+      expect.stringContaining(`'nonce-${firstNonce}'`)
+    );
+    const policy = vi.mocked(setResponseHeader).mock.calls.at(-1)?.[1];
+    expect(policy).toContain("'sha256-");
+    expect(policy).not.toContain('unsafe-inline');
+    expect(policy).not.toContain('unsafe-eval');
+  });
+
   beforeEach(() => {
     vi.unstubAllEnvs();
     resetSessionAccessSnapshot();

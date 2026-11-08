@@ -1,4 +1,4 @@
-import { FilePenLine, History } from 'lucide-react';
+import { IconFilePencil as FilePenLine, IconHistory as History } from '@tabler/icons-react';
 import {
   Select as StudioSelect,
   Tabs,

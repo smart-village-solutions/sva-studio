@@ -87,6 +87,7 @@ export type PluginPermissionRegistryEntry = {
 };
 
 export type PluginModuleIamRegistryEntry = {
+  readonly systemAdminPermissionExclusions?: readonly string[];
   readonly moduleId: string;
   readonly namespace: string;
   readonly ownerPluginId: string;

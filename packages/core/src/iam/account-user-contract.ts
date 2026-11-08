@@ -107,6 +107,7 @@ export type IamUserDetail = IamUserListItem & {
   readonly lastName?: string;
   readonly phone?: string;
   readonly preferredLanguage?: string;
+  readonly competenceLanguages?: readonly string[];
   readonly timezone?: string;
   readonly avatarUrl?: string;
   readonly notes?: string;

@@ -199,7 +199,7 @@ describe('iam content list mainserver mapping', () => {
     });
   });
 
-  it('maps hidden or inactive mainserver records as drafts', () => {
+  it('maps hidden mainserver records as drafts', () => {
     expect(
       mapNewsItem(
         {
@@ -248,13 +248,21 @@ describe('iam content list mainserver mapping', () => {
           id: 'poi-draft',
           contentType: 'poi.point-of-interest',
           name: 'Entwurf',
-          active: false,
+          visible: false,
+          active: true,
           ...publishedTimestamps,
         } as never,
         'instance-1',
         []
       ).status
     ).toBe('draft');
+  });
+
+  it('keeps visible POI published even when the unused active flag is false', () => {
+    expect(mapPoiItem({
+      id: 'poi-visible', name: 'Ort', contentType: 'poi.point-of-interest',
+      visible: true, active: false, ...publishedTimestamps,
+    } as never, 'instance-1', []).status).toBe('published');
   });
 
   it('falls back across localized survey values and keeps malformed namespaces read-only', () => {

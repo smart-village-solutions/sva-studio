@@ -149,6 +149,8 @@ export const usersAdminENResources = {
       'If you remove this label, the automatic deletion rules will apply to this account again from the next check. Earlier changes to the account status will not be undone.',
     rolesLabel: 'Choose roles',
     groupsLabel: 'Choose groups',
+    competenceLanguages: 'Competence languages',
+    competenceLanguagesHint: 'Comma-separated language tags, e.g. de, en-GB. Maximum 40. Independent of the interface language.',
     notesLabel: 'Notes',
     notesCounter: '{{count}} / 2000 characters',
     validation: {

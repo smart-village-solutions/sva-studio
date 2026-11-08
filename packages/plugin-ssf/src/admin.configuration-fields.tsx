@@ -27,7 +27,6 @@ type LocaleField =
 const localeFields: readonly [LocaleField, string][] = [
   ['authenticatedHomeExplanationHtml', 'fields.authenticated'],
   ['guestExplanationHtml', 'fields.guest'],
-  ['conversationContentStorageQuestionHtml', 'fields.storageQuestion'],
 ];
 
 const LocaleRichTextField = ({
@@ -172,32 +171,11 @@ const ConfigurationSelects = ({
             ))}
           </Select>
         </StudioField>
-        <StudioField id="ssf-storage-mode" label={pt('fields.storageMode')}>
-          <Select
-            id="ssf-storage-mode"
-            value={value.conversationContentStorageMode ?? ''}
-            disabled={disabled}
-            onChange={(event) =>
-              onChange({
-                ...value,
-                conversationContentStorageMode: event.target.value || null,
-              } as Configuration)
-            }
-          >
-            {isTenant ? <option value="">{pt('fields.inherit')}</option> : null}
-            <option value="ask">{pt('fields.ask')}</option>
-            <option value="disabled">{pt('fields.disabled')}</option>
-          </Select>
-        </StudioField>
       </div>
       {tenantSystem ? (
         <div className="space-y-1 text-xs text-muted-foreground">
           <p>
             {pt('fields.systemDefaultLocale')}: {tenantSystem.defaultLocale}
-          </p>
-          <p>
-            {pt('fields.systemStorageMode')}:{' '}
-            {pt(`fields.${tenantSystem.conversationContentStorageMode}`)}
           </p>
         </div>
       ) : null}

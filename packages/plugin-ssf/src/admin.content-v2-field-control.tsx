@@ -1,5 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Checkbox, Input, RichTextHtmlEditor, StudioField, Textarea } from '@sva/studio-ui-react';
+import { Button, Checkbox, Input, RichTextHtmlEditor, StudioField, StudioFormSummary, Textarea } from '@sva/studio-ui-react';
 import { useMemo } from 'react';
 
 import { createSsfEditorLabels } from './admin.editor-labels.js';
@@ -123,3 +123,11 @@ const ContentField = <T extends FormValue>({
 
 export const SsfV2Field = <T extends FormValue>(props: Readonly<SsfV2EditorProps<T> & { path: Path; labelKey: string; kind?: FieldKind; nullable?: boolean }>) =>
   <ContentField {...props} root={props.value} />;
+
+export const SsfV2FormSummary = ({ status }: { status: string }) => {
+  const pt = usePluginTranslation('ssf');
+  if (status === 'saved') return <StudioFormSummary kind="success">{pt('status.saved')}</StudioFormSummary>;
+  if (status === 'invalid') return <StudioFormSummary kind="error">{pt('v2.invalid')}</StudioFormSummary>;
+  if (status === 'error') return <StudioFormSummary kind="error">{pt('status.saveError')}</StudioFormSummary>;
+  return null;
+};

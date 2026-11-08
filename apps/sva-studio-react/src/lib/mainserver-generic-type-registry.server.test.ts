@@ -18,6 +18,7 @@ describe('server-safe Mainserver GenericItem registry', () => {
       COCKPIT_CARD: 'cockpit-cards.cockpit-card',
       ConstructionSite: 'construction-sites.construction-site',
       FAQ: 'faq.faq',
+      Job: 'jobs.job',
       Voucher: 'vouchers.voucher',
       FeaturedProject: 'projects.project',
     });

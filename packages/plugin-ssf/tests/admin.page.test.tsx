@@ -135,6 +135,13 @@ describe('SSF configuration pages', () => {
     state.writeTenant.mockReset();
   });
 
+  it('hides the retired legacy storage choice and question editor', async () => {
+    render(<SsfSystemConfigurationPage />);
+    await screen.findByRole('button', { name: 'actions.save' });
+    expect(screen.queryByLabelText('fields.storageMode')).toBeNull();
+    expect(screen.queryAllByLabelText('fields.storageQuestion')).toHaveLength(0);
+  });
+
   it('keeps the system draft visible and reports a failed save', async () => {
     state.writeSystem.mockRejectedValue(new Error('write failed'));
     render(<SsfSystemConfigurationPage />);
@@ -209,7 +216,6 @@ describe('SSF configuration pages', () => {
 
     await screen.findByDisplayValue('<p>Angemeldet</p>');
     fireEvent.change(screen.getByLabelText('fields.defaultLocale'), { target: { value: 'en' } });
-    fireEvent.change(screen.getByLabelText('fields.storageMode'), { target: { value: 'ask' } });
     const checkboxes = screen.getAllByRole('checkbox');
     fireEvent.click(checkboxes[0]!);
     fireEvent.click(checkboxes[1]!);
@@ -223,7 +229,7 @@ describe('SSF configuration pages', () => {
       expect(state.writeTenant).toHaveBeenCalledWith(
         expect.objectContaining({
           defaultLocale: 'en',
-          conversationContentStorageMode: 'ask',
+          conversationContentStorageMode: null,
           locales: expect.arrayContaining([
             expect.objectContaining({
               locale: 'de-DE',

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Folder } from 'lucide-react';
+import { IconFolder as Folder } from '@tabler/icons-react';
 
 import { Badge } from '../../../components/ui/badge';
 import { Card, CardContent } from '../../../components/ui/card';

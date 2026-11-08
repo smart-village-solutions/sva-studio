@@ -8,6 +8,7 @@ import { pluginCockpitCardsTranslations } from '../../packages/plugin-cockpit-ca
 import { pluginEventsTranslations } from '../../packages/plugin-events/src/plugin.translations';
 import { pluginFaqTranslations } from '../../packages/plugin-faq/src/plugin.translations';
 import { pluginGenericItemsTranslations } from '../../packages/plugin-generic-items/src/plugin.translations';
+import { pluginJobsTranslations } from '../../packages/plugin-jobs/src/plugin.translations';
 import { pluginNewsTranslations } from '../../packages/plugin-news/src/plugin.translations';
 import { pluginPoiTranslations } from '../../packages/plugin-poi/src/plugin.translations';
 import { pluginProjectsTranslations } from '../../packages/plugin-projects/src/plugin.translations';
@@ -31,6 +32,7 @@ export const SOURCE_ROOTS = [
   'packages/plugin-cockpit-cards/src',
   'packages/plugin-poi/src',
   'packages/plugin-construction-sites/src',
+  'packages/plugin-jobs/src',
   'packages/plugin-projects/src',
   'packages/plugin-surveys/src',
   'packages/plugin-waste-management/src',
@@ -46,6 +48,7 @@ const SOURCE_ROOT_CONFIGS = [
   { relativeRoot: 'packages/plugin-cockpit-cards/src', namespace: 'cockpit-cards' },
   { relativeRoot: 'packages/plugin-poi/src', namespace: 'poi' },
   { relativeRoot: 'packages/plugin-construction-sites/src', namespace: 'construction-sites' },
+  { relativeRoot: 'packages/plugin-jobs/src', namespace: 'jobs' },
   { relativeRoot: 'packages/plugin-projects/src', namespace: 'projects' },
   { relativeRoot: 'packages/plugin-surveys/src', namespace: 'surveys' },
   { relativeRoot: 'packages/plugin-waste-management/src', namespace: 'wasteManagement' },
@@ -63,6 +66,7 @@ const pluginTranslationResources = [
   pluginSurveysTranslations,
   pluginVouchersTranslations,
   pluginConstructionSitesTranslations,
+  pluginJobsTranslations,
   wasteManagementPluginTranslations,
 ] as const;
 

@@ -1,4 +1,4 @@
-import { Bell } from 'lucide-react';
+import { IconBell as Bell } from '@tabler/icons-react';
 import { Button } from '@sva/studio-ui-react';
 
 /** Existing Studio header presentation, retained for the future Notifications plugin. */

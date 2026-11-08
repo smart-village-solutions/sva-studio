@@ -1,5 +1,5 @@
 /** Header-Komponente der App-Shell mit globalen Aktionen. */
-import { Languages, Menu, Moon, Sun } from 'lucide-react';
+import { IconLanguage as Languages, IconMenu as Menu, IconMoon as Moon, IconSun as Sun } from '@tabler/icons-react';
 import React from 'react';
 import { useRouterState } from '@tanstack/react-router';
 import {
@@ -122,7 +122,7 @@ export default function Header({
               size="icon"
               variant="secondary"
             >
-              <Menu aria-hidden="true" strokeWidth={1} className="h-5 w-5" />
+              <Menu aria-hidden="true" className="h-5 w-5" />
             </Button>
           ) : null}
         </div>
@@ -149,7 +149,7 @@ export default function Header({
                 className={iconButtonClassName}
                 onClick={toggle}
               >
-                <Languages aria-hidden="true" strokeWidth={1} className="h-4 w-4" />
+                <Languages aria-hidden="true" className="h-4 w-4" />
               </Button>
             )}
           />
@@ -171,9 +171,9 @@ export default function Header({
             className={iconButtonClassName}
           >
             {resolvedMode === 'dark' ? (
-              <Sun aria-hidden="true" strokeWidth={1} className="h-4 w-4" />
+              <Sun aria-hidden="true" className="h-4 w-4" />
             ) : (
-              <Moon aria-hidden="true" strokeWidth={1} className="h-4 w-4" />
+              <Moon aria-hidden="true" className="h-4 w-4" />
             )}
           </Button>
           <HeaderAuthAction

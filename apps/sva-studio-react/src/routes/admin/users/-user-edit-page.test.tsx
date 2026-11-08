@@ -459,6 +459,7 @@ describe('UserEditPage', () => {
       department: '',
       status: 'active' as const,
       preferredLanguage: 'de',
+      competenceLanguages: '',
       timezone: 'Europe/Berlin',
       notes: '',
       roleIds: ['role-1'],
@@ -509,6 +510,7 @@ describe('UserEditPage', () => {
         department: '',
         status: 'active',
         preferredLanguage: 'de',
+        competenceLanguages: '',
         timezone: 'Europe/Berlin',
         notes: 'note',
         roleIds: ['role-1'],
@@ -528,6 +530,7 @@ describe('UserEditPage', () => {
       department: undefined,
       status: 'active',
       preferredLanguage: 'de',
+      competenceLanguages: [],
       timezone: 'Europe/Berlin',
       notes: 'note',
       roleIds: ['role-1'],
@@ -1094,11 +1097,13 @@ describe('UserEditPage', () => {
     const notesField = document.querySelector('textarea');
     expect(notesField).toBeTruthy();
     fireEvent.change(notesField as HTMLTextAreaElement, { target: { value: 'saved note' } });
+    fireEvent.change(screen.getByLabelText('Kompetenzsprachen'), { target: { value: 'DE, en-us' } });
     const saveButtons = screen.getAllByRole('button', { name: 'Änderungen speichern' });
     expect(saveButtons).toHaveLength(2);
     fireEvent.click(saveButtons[1]!);
 
     await waitFor(() => {
+      expect(save).toHaveBeenCalledWith(expect.objectContaining({ competenceLanguages: ['de', 'en-US'] }));
       expect(save).toHaveBeenCalledTimes(1);
       expect(screen.queryByText('Nutzerdaten wurden gespeichert.')).toBeNull();
     });
@@ -1272,6 +1277,7 @@ describe('UserEditPage', () => {
         department: undefined,
         status: 'active',
         preferredLanguage: 'de',
+        competenceLanguages: [],
         timezone: 'Europe/Berlin',
         notes: undefined,
         roleIds: ['role-1', 'role-2'],
@@ -1419,6 +1425,7 @@ describe('UserEditPage', () => {
         department: undefined,
         status: 'active',
         preferredLanguage: 'de',
+        competenceLanguages: [],
         timezone: 'Europe/Berlin',
         notes: undefined,
         roleIds: ['role-1'],

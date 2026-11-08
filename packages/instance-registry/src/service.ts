@@ -1,3 +1,4 @@
+import { createUpdateLoginMfaPolicy } from './service-login-mfa.js';
 import { isTrafficEnabledInstanceStatus } from '@sva/core';
 
 import {
@@ -60,6 +61,7 @@ export const createInstanceRegistryService = (
       },
     });
   },
+  updateLoginMfaPolicy: createUpdateLoginMfaPolicy(deps),
   listInstances: createListInstances(deps.repository),
   getServerAccountInvitationTemplate: () => getServerAccountInvitationTemplate(deps.repository),
   updateServerAccountInvitationTemplate: (input) =>

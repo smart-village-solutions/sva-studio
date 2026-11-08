@@ -137,7 +137,7 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
   await expect(page.getByText('content.read')).toBeVisible();
 });
 
-test('read-only user detail blocks implicit submit and a direct mutation remains forbidden', async ({
+test('read-only user detail blocks form submission and a direct mutation remains forbidden', async ({
   page,
 }) => {
   let patchRequests = 0;
@@ -207,9 +207,12 @@ test('read-only user detail blocks implicit submit and a direct mutation remains
   await navigateClientSide(page, '/admin/users/account-2');
   await expect(page.getByRole('heading', { name: 'User Two' })).toBeVisible();
   await page.getByRole('tab', { name: 'Verwaltung' }).click();
-  await expect(page.locator('form[aria-readonly="true"]')).toBeVisible();
+  const form = page.locator('#user-edit-form');
+  await expect(form).toBeVisible();
+  await expect(form.locator(':scope > fieldset')).toHaveJSProperty('disabled', true);
+  await expect(form.getByLabel('Mainserver Application-ID')).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Änderungen speichern' })).toBeDisabled();
-  await page.getByLabel('Mainserver Application-ID').press('Enter');
+  await form.evaluate((element: HTMLFormElement) => element.requestSubmit());
   expect(patchRequests).toBe(0);
 
   const directMutationStatus = await page.evaluate(

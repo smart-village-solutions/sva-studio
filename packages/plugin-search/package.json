@@ -21,7 +21,7 @@
   "dependencies": {
     "@sva/plugin-sdk": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
-    "lucide-react": "^1.28.0"
+    "@tabler/icons-react": "^3.46.0"
   },
   "peerDependencies": {
     "react": "^19.3.0"

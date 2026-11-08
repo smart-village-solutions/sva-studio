@@ -305,6 +305,20 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it.each([
+    [{ attributes: { ssf_languages: ['de'] } }, { username: 'synthetic-user', email: 'synthetic@example.test', firstName: 'Synthetic', lastName: 'Tester', enabled: false }],
+    [{ attributes: { ssf_languages: [] }, email: 'changed@example.test', firstName: '', lastName: 'Updated', enabled: true }, { username: 'synthetic-user', email: 'changed@example.test', firstName: '', lastName: 'Updated', enabled: true }],
+  ])('preserves omitted root profile fields while honoring explicit attribute-update values', async (input, expected) => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { id: 'kc-user-1', username: 'synthetic-user', email: 'synthetic@example.test', firstName: 'Synthetic', lastName: 'Tester', enabled: false }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+    await client.updateUser('kc-user-1', input);
+    const put = fetchImpl.mock.calls.find(([, init]) => init?.method === 'PUT');
+    expect(JSON.parse(String(put?.[1]?.body))).toEqual({ ...expected, attributes: input.attributes });
+  });
+
   it.each([undefined, '', '   '])(
     'rejects attribute updates without an existing email (%s)',
     async (email) => {
@@ -337,18 +351,19 @@ describe('Keycloak admin client', () => {
     expect(fetchImpl.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
   });
 
-  it('uses an explicitly supplied email without loading the previous profile', async () => {
+  it('uses an explicitly supplied email while preserving omitted profile fields', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { id: 'kc-user-1', email: 'previous@example.test' }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
     const client = await createClient(fetchImpl);
     const input = { email: 'new@example.com', attributes: { custom: ['value'] } };
 
     await expect(client.updateUser('kc-user-1', input)).resolves.toBeUndefined();
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(fetchImpl).toHaveBeenNthCalledWith(
-      2,
+      3,
       'https://keycloak.example/admin/realms/demo/users/kc-user-1',
       expect.objectContaining({ method: 'PUT', body: JSON.stringify(input) })
     );
@@ -2593,6 +2608,54 @@ describe('Keycloak admin client', () => {
     expect(requestUrl).toContain('username=tenant.admin');
     expect(requestUrl).toContain('exact=true');
     expect(requestUrl).toContain('max=1');
+  });
+
+  it('verifies client credentials without reading secrets or issuing a token', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(createJsonResponse(200, { active: false }));
+    const client = await createClient(fetchImpl);
+
+    await expect(client.verifyOidcClientSecret('login-client', 'login-secret')).resolves.toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe(
+      'https://keycloak.example/realms/demo/protocol/openid-connect/token/introspect'
+    );
+    expect(init).toEqual(expect.objectContaining({ method: 'POST', redirect: 'error' }));
+    expect(Object.fromEntries(new URLSearchParams(init.body))).toEqual({
+      client_id: 'login-client',
+      client_secret: 'login-secret',
+      token: 'studio-client-credentials-probe',
+    });
+    expect(JSON.stringify(Object.values(state.logger).map((logger) => logger.mock.calls))).not.toContain('login-secret');
+  });
+
+  it.each([
+    [401, { error: 'invalid_client' }],
+    [403, { error: 'forbidden' }],
+    [200, { active: true }],
+    [200, {}],
+    [200, null],
+  ])('rejects an unsuccessful credential proof (%s, %j)', async (status, payload) => {
+    const client = await createClient(
+      vi.fn().mockResolvedValue(createJsonResponse(status, payload))
+    );
+    await expect(client.verifyOidcClientSecret('login-client', 'stale-secret')).resolves.toBe(
+      false
+    );
+  });
+
+  it('fails closed on unavailable or malformed credential proof responses', async () => {
+    const unavailable = await createClient(vi.fn().mockResolvedValue(createJsonResponse(503, {})));
+    await expect(unavailable.verifyOidcClientSecret('login', 'secret')).rejects.toThrow();
+    const malformed = await createClient(vi.fn().mockResolvedValue(new Response('invalid json')));
+    await expect(malformed.verifyOidcClientSecret('login', 'secret')).rejects.toThrow();
+  });
+
+  it.each([201, 202])('rejects unexpected successful HTTP status %s', async (status) => {
+    const client = await createClient(
+      vi.fn().mockResolvedValue(createJsonResponse(status, { active: false }))
+    );
+    await expect(client.verifyOidcClientSecret('login', 'secret')).rejects.toThrow();
   });
 
   it('filters user attributes and returns null for missing client secrets or realms', async () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, X, RefreshCw } from 'lucide-react';
+import { IconAlertTriangle as AlertTriangle, IconX as X, IconRefresh as RefreshCw } from '@tabler/icons-react';
 import { Button } from '@sva/studio-ui-react';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';

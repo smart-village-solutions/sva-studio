@@ -8,6 +8,7 @@ export const voucherTranslationsDe = {
     empty: 'Keine Gutscheine gefunden.',
   },
   actions: {
+    removeCategory: 'Kategorie {{name}} entfernen',
     create: 'Gutschein erstellen',
     edit: 'Bearbeiten',
     update: 'Änderungen speichern',
@@ -54,6 +55,8 @@ export const voucherTranslationsDe = {
     teaser: 'Einleitung (optional)',
     body: 'Beschreibung (optional)',
     location: 'Ort',
+    locationSearch: 'Ort suchen',
+    locationsEmpty: 'Keine passenden Orte gefunden.',
     search: 'Suchen',
     discountMode: 'Rabattart',
     discountValue: 'Rabatt / neuer Preis',
@@ -65,6 +68,10 @@ export const voucherTranslationsDe = {
     dateEnd: 'Einlösbar bis (optional)',
     visible: 'In der App anzeigen',
     categories: 'Kategorie',
+    categoriesSearch: 'Kategorien suchen',
+    categoriesSearchPlaceholder: 'Kategorie suchen oder auswählen',
+    categoriesEmpty: 'Keine passenden Kategorien gefunden.',
+    categoryUnavailable: 'nicht mehr verfügbar',
     media: 'Bilder',
     principal: 'Handeln als',
     actions: 'Aktionen',
@@ -90,6 +97,7 @@ export const voucherTranslationsDe = {
     visible: 'Sichtbar',
   },
   help: {
+    categories: 'Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.',
     quotaSummary: 'Insgesamt {{maximum}} Einlösungen · {{period}}.',
     personAboveTotal:
       'Das Personenmaximum liegt über dem Gesamtkontingent und begrenzt die Nutzung nicht zusätzlich.',
@@ -120,12 +128,6 @@ export const voucherTranslationsDe = {
     error: 'Die Anfrage konnte nicht abgeschlossen werden. Ihre Eingaben bleiben erhalten.',
     invalid: 'Bitte prüfen Sie die markierten Angaben.',
     dirtyVisibility: 'Speichern oder verwerfen Sie zuerst Ihre Inhaltsänderungen.',
-    mediaPickerTitle: 'Medium hinzufügen',
-    mediaPickerDescription: 'Wählen Sie ein öffentliches Bild aus der Studio-Medienbibliothek.',
-    mediaPickerLibraryAction: 'Medium aus der Bibliothek hinzufügen',
-    mediaPickerLinkAction: 'Medium per Link hinzufügen',
-    mediaPickerReviewMode: 'Prüfen',
-    mediaPickerLoadError: 'Medien konnten nicht geladen werden.',
     mediaPickerLoading: 'Medien werden geladen.',
     imagePickerEmpty: 'Keine Bilder gefunden.',
     mediaPickerUploadRegionLabel: 'Bilddatei hochladen',
@@ -151,7 +153,7 @@ export const voucherTranslationsDe = {
     title: 'Einlösungen am Ort zurücksetzen und speichern?',
     description:
       'Alle bisherigen Einlösungen der unten genannten Gutscheine werden gelöscht. Bereits verwendete Gutscheine können erneut eingelöst werden. Dies lässt sich im Studio nicht rückgängig machen.',
-    hint: 'Beim Speichern bleiben die bisherigen Einlösungen der Gutscheine dieses Ortes erhalten.',
+    hint: 'Änderungen an diesem Gutschein setzen bereits erfasste Einlösungen nicht zurück. Das gilt auch für andere Gutscheine am selben Ort.',
   },
   usage: {
     title: 'Nutzung',

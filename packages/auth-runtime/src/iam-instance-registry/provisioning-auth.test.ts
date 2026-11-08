@@ -10,11 +10,13 @@ const state = vi.hoisted(() => ({
     provisionInstanceAuthArtifacts: vi.fn(async () => ({ factory, kind: 'provision' })),
     deleteKeycloakRealm: vi.fn(async () => undefined),
   })),
-  createReadKeycloakState: vi.fn((factory) =>
-    vi.fn(async (input) => ({
-      client: factory(input.authRealm),
-      kind: 'tenant-state',
-    }))
+  createReadKeycloakState: vi.fn(
+    (factory, readSecret?: (clientId: string) => Promise<string | null>) =>
+      vi.fn(async (input) => ({
+        client: factory(input.authRealm),
+        readSecret,
+        kind: 'tenant-state',
+      }))
   ),
   createReadKeycloakClientSecrets: vi.fn((factory) =>
     vi.fn(async () => ({ factory, keycloakClientSecret: 'secret', tenantAdminClientSecret: null }))
@@ -33,8 +35,9 @@ const state = vi.hoisted(() => ({
     kind: 'status',
     readState,
   })),
+  verifyOidcClientSecret: vi.fn(async () => true),
   KeycloakAdminClient: vi.fn(function KeycloakAdminClient(this: object, config: unknown) {
-    Object.assign(this, { config });
+    Object.assign(this, { config, verifyOidcClientSecret: state.verifyOidcClientSecret });
   }),
   KeycloakAdminRequestError: class extends Error {
     constructor(
@@ -99,6 +102,7 @@ vi.mock('./plugin-activation-policy-snapshot.js', () => ({
 describe('iam-instance-registry provisioning auth wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.verifyOidcClientSecret.mockResolvedValue(true);
     state.readInstanceRegistryPluginOidcClientRequirements.mockReturnValue([]);
     vi.resetModules();
   });
@@ -297,6 +301,34 @@ describe('iam-instance-registry provisioning auth wiring', () => {
     });
     expect(state.createReadKeycloakState).toHaveBeenCalledOnce();
   });
+
+  it.each([true, false])(
+    'authenticates each stored client credential before accepting alignment (%s)',
+    async (valid) => {
+      state.verifyOidcClientSecret.mockResolvedValue(valid);
+      const subject = await import('./provisioning-auth-state.js');
+      await subject.readKeycloakStateViaTenantAdmin({
+        instanceId: 'demo',
+        primaryHostname: 'demo.studio.example',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'login',
+        authClientSecretConfigured: true,
+        authClientSecret: 'login-secret',
+        tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: true },
+        tenantAdminClientSecret: 'admin-secret',
+      });
+      const readSecret = state.createReadKeycloakState.mock.calls[0]?.[1];
+      expect(readSecret).toBeTypeOf('function');
+      await expect(readSecret?.('login')).resolves.toBe(valid ? 'login-secret' : null);
+      await expect(readSecret?.('tenant-admin')).resolves.toBe(valid ? 'admin-secret' : null);
+      await expect(readSecret?.('unrelated-client')).resolves.toBeNull();
+      expect(state.verifyOidcClientSecret.mock.calls).toEqual([
+        ['login', 'login-secret'],
+        ['tenant-admin', 'admin-secret'],
+      ]);
+    }
+  );
 
   it('fails closed when tenant-admin credentials are incomplete', async () => {
     const subject = await import('./provisioning-auth-state.js');

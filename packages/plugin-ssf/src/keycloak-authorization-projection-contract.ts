@@ -78,5 +78,6 @@ export type ProjectedSubject = Readonly<{
   subject: string;
   roles: readonly string[];
   permissions: readonly string[];
+  languages: readonly string[];
   authorizationRevision: string;
 }>;

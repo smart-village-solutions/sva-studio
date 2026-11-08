@@ -141,7 +141,10 @@ export const parseCreateRequest = async (
     return createApiError(400, 'invalid_request', parsed.message, actor.requestId);
   }
 
-  const payloadValidation = validateContentTypePayload(parsed.data.contentType, parsed.data.payload);
+  const payloadValidation = validateContentTypePayload(
+    parsed.data.contentType,
+    parsed.data.payload
+  );
   if (!payloadValidation.ok) {
     return createApiError(400, 'invalid_request', payloadValidation.message, actor.requestId);
   }
@@ -185,8 +188,13 @@ export const logCreateFailure = (actor: ResolvedContentActor['actor'], error: un
   });
 };
 
-// Voucher authoring belongs to the aggregate adapter, including archive and ownership.
-export const rejectVoucherCoreMutation = (contentType: string, requestId?: string): Response | null =>
+// These external content types belong to their dedicated adapters, including status and ownership.
+export const rejectDedicatedEditorCoreMutation = (
+  contentType: string,
+  requestId?: string
+): Response | null =>
   contentType === 'vouchers.voucher'
     ? createApiError(409, 'conflict', 'voucher_dedicated_editor_required', requestId)
-    : null;
+    : contentType === 'jobs.job'
+      ? createApiError(409, 'conflict', 'job_dedicated_editor_required', requestId)
+      : null;

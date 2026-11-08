@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { ssfRecordingPolicySchema, ssfRecordingSettingsSchema } from './content-v2-recording.js';
+
 import { normalizeSsfLocale, ssfRevisionSchema } from './contracts.js';
 
 const text = z.string().min(1).max(500);
@@ -123,6 +125,7 @@ const runtimeContentFieldsObjectSchema = z
   .object({
     branding,
     legalTexts: ssfLegalTextsSchema.optional(),
+    recording: ssfRecordingSettingsSchema.optional(),
     conversationContentStorage: z
       .object({
         mode: z.enum(['ask', 'disabled']),
@@ -182,6 +185,7 @@ export const ssfInstallationContentV2Schema = ssfInstallationContentV2FieldsSche
 export const ssfRuntimeConfigurationV2Schema = runtimeContentFieldsObjectSchema.extend({
   contractVersion: z.literal('2.0'),
   configurationRevision: ssfRevisionSchema,
+  recording: ssfRecordingPolicySchema.optional(),
   tenant: z.object({ id: text.max(128), displayName: text.max(200), timeZone: text.max(100) }).strict(),
 }).strict().superRefine((value, context) => {
   for (const issue of runtimeContentIssues(value)) context.addIssue({ code: 'custom', ...issue });

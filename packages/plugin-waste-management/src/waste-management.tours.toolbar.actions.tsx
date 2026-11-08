@@ -1,9 +1,9 @@
 import {
-  CalendarClock as IconCalendarTime,
-  Filter as IconFilter,
-  ToggleRight as IconToggleRight,
-  Trash2 as IconTrash,
-} from 'lucide-react';
+  IconCalendarClock as IconCalendarTime,
+  IconFilter,
+  IconToggleRight,
+  IconTrash,
+} from '@tabler/icons-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, cn } from '@sva/studio-ui-react';
 
@@ -100,7 +100,7 @@ const WasteToursBulkActions = ({
         disabled={selectedCount === 0}
         onClick={onOpenBulkStatus}
       >
-        <IconToggleRight strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+        <IconToggleRight aria-hidden="true" className="h-4 w-4" />
         {pt('tours.bulkStatusDialog.open')}
       </Button>
       <Button
@@ -110,7 +110,7 @@ const WasteToursBulkActions = ({
         disabled={selectedCount === 0 || validitySelectionExceedsLimit}
         onClick={onOpenBulkValidity}
       >
-        <IconCalendarTime strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+        <IconCalendarTime aria-hidden="true" className="h-4 w-4" />
         {pt('tours.bulkValidityDialog.title')}
       </Button>
       {validitySelectionExceedsLimit ? (
@@ -128,7 +128,7 @@ const WasteToursBulkActions = ({
         disabled={selectedCount === 0}
         onClick={onOpenBulkDelete}
       >
-        <IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+        <IconTrash aria-hidden="true" className="h-4 w-4" />
         {pt('tours.table.deleteSelected')}
       </Button>
     </>
@@ -161,7 +161,7 @@ const WasteToursFilterActions = ({
         aria-expanded={filterDialogOpen}
         onClick={onOpenFilterDialog}
       >
-        <IconFilter strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+        <IconFilter aria-hidden="true" className="h-4 w-4" />
         {pt('tours.filters.open')}
       </Button>
     </>

@@ -1,5 +1,5 @@
 import { Slot } from '@radix-ui/react-slot';
-import { Pencil } from 'lucide-react';
+import { IconEdit as Pencil } from '@tabler/icons-react';
 import * as React from 'react';
 
 import { Button, type ButtonProps } from './button.js';

@@ -1,10 +1,10 @@
 /** Sidebar der App-Shell mit Bereichsnavigation, Untermenüs und Desktop-Collapse. */
 import {
-  FileBadge as IconCertificate,
-  Headset as IconHeadset,
-  LifeBuoy as IconHelpCircle,
-  Users as IconUsersGroup,
-} from 'lucide-react';
+  IconCertificate,
+  IconHeadset,
+  IconLifebuoy as IconHelpCircle,
+  IconUsersGroup,
+} from '@tabler/icons-react';
 import React from 'react';
 import { Sheet, SheetContent } from './ui/sheet';
 import { t } from '../i18n';

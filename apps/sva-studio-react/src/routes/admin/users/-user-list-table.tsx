@@ -5,10 +5,10 @@ import type {
 } from '@sva/core';
 import { Button, type StudioColumnDef } from '@sva/studio-ui-react';
 import {
-  TriangleAlert as IconAlertTriangle,
-  Pencil as IconEdit,
-  Trash2 as IconTrash,
-} from 'lucide-react';
+  IconAlertTriangle,
+  IconEdit,
+  IconTrash,
+} from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 
 import { Badge } from '../../../components/ui/badge';
@@ -91,7 +91,6 @@ const UserDisplayNameCell = ({ user }: { user: UserListUser }) => {
           className="inline-flex text-amber-600"
         >
           <IconAlertTriangle
-            strokeWidth={1}
             aria-hidden="true"
             className="h-4 w-4 stroke-current"
           />
@@ -316,7 +315,7 @@ export const UserListRowActions = ({
           aria-label={t('admin.users.actions.edit')}
           title={t('admin.users.actions.edit')}
         >
-          <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+          <IconEdit aria-hidden="true" className="h-4 w-4" />
         </Button>
       ) : (
         <Button asChild type="button" size="icon" variant="secondary">
@@ -326,7 +325,7 @@ export const UserListRowActions = ({
             aria-label={t('admin.users.actions.edit')}
             title={t('admin.users.actions.edit')}
           >
-            <IconEdit strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+            <IconEdit aria-hidden="true" className="h-4 w-4" />
           </Link>
         </Button>
       )}
@@ -340,7 +339,7 @@ export const UserListRowActions = ({
           title={deleteBlocked ? deleteDisabledReason : t('admin.users.actions.delete')}
           onClick={() => onDeleteAction(user.id)}
         >
-          <IconTrash strokeWidth={1} aria-hidden="true" className="h-4 w-4" />
+          <IconTrash aria-hidden="true" className="h-4 w-4" />
         </Button>
       ) : null}
     </>

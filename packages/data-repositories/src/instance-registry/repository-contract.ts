@@ -1,5 +1,6 @@
 import type {
   InstanceAuditEvent,
+  AccountInvitationPurpose,
   AccountInvitationTemplate,
   ServerAccountInvitationTemplateState,
   InstanceKeycloakProvisioningRun,
@@ -28,7 +29,9 @@ export type {
   ModuleActivationRollbackState,
 } from './repository-contract-instance.js';
 
-export type InstanceRegistryRepository = InstanceRegistryInstanceRepository & Readonly<ReturnType<typeof import('./repository-mail-templates.js').createMailTemplateRepository>> & {
+type LoginMfaRepository = ReturnType<typeof import('./repository-login-mfa.js').createLoginMfaRepository>;
+
+export type InstanceRegistryRepository = Readonly<LoginMfaRepository> & InstanceRegistryInstanceRepository & Readonly<ReturnType<typeof import('./repository-mail-templates.js').createMailTemplateRepository>> & {
   readonly createInstance: (input: {
     instanceId: string;
     displayName: string;
@@ -96,7 +99,7 @@ export type InstanceRegistryRepository = InstanceRegistryInstanceRepository & Re
   readonly updateServerAccountInvitationTemplate: (input: {
     expectedRevision: number;
     template?: AccountInvitationTemplate | null;
-    defaultPurpose?: import('@sva/core').AccountInvitationPurpose;
+    defaultPurpose?: AccountInvitationPurpose;
     actorId?: string;
   }) => Promise<ServerAccountInvitationTemplateState>;
   readonly updateInstanceKeycloakSecrets: (input: {

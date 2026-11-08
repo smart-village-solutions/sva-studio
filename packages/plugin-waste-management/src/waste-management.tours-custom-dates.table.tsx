@@ -1,7 +1,7 @@
 import { Fragment, type Dispatch, type SetStateAction } from 'react';
 import type { WasteCustomTourDate } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Trash2 as IconTrash } from 'lucide-react';
+import { IconTrash } from '@tabler/icons-react';
 import { Button, Input } from '@sva/studio-ui-react';
 import type { TourDateLocationAssignmentFormState } from './waste-management.tours.types.js';
 import type { TourCustomDatePendingDelete } from './waste-management.tours-custom-date-delete-dialogs.js';
@@ -81,7 +81,7 @@ const TourCustomDateMainRow = ({
             className="text-destructive hover:text-destructive"
             onClick={() => setPendingDelete({ kind: 'date', date: entry.date })}
           >
-            <IconTrash strokeWidth={1} aria-hidden="true" className="mr-2 h-4 w-4" />
+            <IconTrash aria-hidden="true" className="mr-2 h-4 w-4" />
             {pt('tours.customDates.actions.removeDate')}
           </Button>
         </div>

@@ -106,7 +106,9 @@ describe('external content references', () => {
         reconciliationStatus: 'pending',
       },
     });
-    expect(state.insertContentRow).toHaveBeenCalled();
+    expect(state.insertContentRow).toHaveBeenCalledWith(
+      expect.anything(), expect.objectContaining({ publicationSource: 'mainserver' })
+    );
     expect(state.insertHistory).toHaveBeenCalled();
     expect(state.updateRevision).toHaveBeenCalledWith(
       expect.objectContaining({ query: state.query }),
@@ -1009,6 +1011,7 @@ describe('external content references', () => {
       authorDisplayName: 'Redaktion',
     };
     await expect(updateExternalContentCore(update)).resolves.toBeUndefined();
+    expect(state.updateContent).toHaveBeenCalledWith({ ...update, publicationSource: 'mainserver' });
     await expect(updateExternalContentCore(update)).rejects.toThrow(
       'external_content_core_not_found'
     );

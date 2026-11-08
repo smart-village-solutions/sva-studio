@@ -29,6 +29,17 @@ Figma ist die Gestaltungsquelle. Fachfunktionen, Payloads und Rechte folgen
 weiterhin den bestehenden Code-/Spec-Verträgen. Eine fehlende Darstellung im
 Design berechtigt nicht zur Entfernung oder Deaktivierung einer Funktion.
 
+### Produktkorrekturen vom 2. November 2026
+
+Die nachfolgenden ursprünglichen Lucide-Zuordnungen dokumentieren den Migrationsstand;
+die Nutzerentscheidung ersetzt die Iconvorgabe durch durchgängige Tabler Icons mit
+Standardkontur 2 (24-px-ViewBox). Eingabefelder, Textareas und Auswahlfelder verwenden
+die vorhandene `surface/inset`-Rolle statt der Card-Fläche. Auf `/account/privacy`
+erhalten Aktionskarten ohne separaten Header auf allen Seiten 16 px beziehungsweise
+24 px ab `sm` Innenabstand. Fachfunktionen, Berechtigungen und API-Verträge bleiben
+unverändert. In Figma sind diese Entscheidungen in den Grundlagen und der
+bestehenden Qualitätsübergabe festgehalten; der dortige Iconkatalog ist noch abzugleichen.
+
 ## 2. Inventur und Komponenten-Zuordnung
 
 Die Inventur erfasst die am Referenzcommit vorhandenen Plugin-Packages sowie

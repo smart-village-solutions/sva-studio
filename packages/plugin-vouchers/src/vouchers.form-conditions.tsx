@@ -81,6 +81,7 @@ export function VoucherSaveSummary(props: VoucherFormProps) {
           false,
           t('help.visibility')
         )}
+      {props.edit && <p className="text-sm text-muted-foreground">{t('confirmation.hint')}</p>}
       <h3 className="font-medium">{t('sections.summary')}</h3>
       <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
         {(

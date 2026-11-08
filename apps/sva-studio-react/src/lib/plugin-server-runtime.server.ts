@@ -1,8 +1,10 @@
 import {
   createPluginServerHandlerDispatcher,
+  readTenantPermissionDirectorySubjects,
   type PluginServerHandlerDispatcherDependencies,
 } from '@sva/auth-runtime/server';
 import { pluginServerHost } from '@sva/auth-runtime/plugin-server-host';
+import type { SsfPluginServerCapabilities } from '@sva/plugin-ssf/server';
 import type {
   PluginManifest,
   PluginCatalogSourceType,
@@ -127,6 +129,8 @@ export const createPluginServerExecutionHandlersFromSnapshot = async (input: {
     if (!factory) throw new Error(`missing_plugin_server_module_factory:${source.pluginId}`);
     const bindings = source.pluginId === 'waste-management'
       ? (factory as (capabilities: WastePluginServerCapabilities) => Readonly<Record<string, PluginServerExecutionHandler>>)(createWastePluginServerCapabilities())
+      : source.pluginId === 'ssf'
+        ? (factory as (capabilities: SsfPluginServerCapabilities) => Readonly<Record<string, PluginServerExecutionHandler>>)({ readPermissionDirectorySubjects: readTenantPermissionDirectorySubjects })
       : (factory as () => Readonly<Record<string, PluginServerExecutionHandler>>)();
     for (const [handlerId, handler] of Object.entries(bindings)) {
       if (typeof handler !== 'function') {

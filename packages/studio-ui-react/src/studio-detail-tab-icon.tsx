@@ -1,16 +1,16 @@
 import {
-  CalendarClock,
-  Database,
-  MapPin,
-  Recycle,
-  Route,
-  ChartColumn,
-  FileText,
-  History,
-  Images,
-  ShieldCheck,
-  SlidersHorizontal,
-} from 'lucide-react';
+  IconCalendarClock as CalendarClock,
+  IconDatabase as Database,
+  IconMapPin as MapPin,
+  IconRecycle as Recycle,
+  IconRoute as Route,
+  IconChartBar as ChartColumn,
+  IconFileText as FileText,
+  IconHistory as History,
+  IconPhoto as Images,
+  IconShieldCheck as ShieldCheck,
+  IconAdjustmentsHorizontal as SlidersHorizontal,
+} from '@tabler/icons-react';
 
 import { cn } from './utils.js';
 
@@ -47,5 +47,5 @@ export function StudioDetailTabIcon({
 }: Readonly<{ name: StudioDetailTabIconName; className?: string }>) {
   const Icon = studioDetailTabIcons[name];
 
-  return <Icon aria-hidden="true" strokeWidth={1} className={cn('h-4 w-4 shrink-0', className)} />;
+  return <Icon aria-hidden="true" className={cn('h-4 w-4 shrink-0', className)} />;
 }

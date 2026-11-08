@@ -99,7 +99,7 @@ it('reads and saves the general confirmation template separately', async () => {
     actorId: 'admin',
   });
 });
-it.each(['access', 'csrf', 'fresh'] as const)(
+it.each(['access', 'csrf'] as const)(
   'guards the general template with %s',
   async (guard) => {
     s[guard].mockReturnValue(new Response(null, { status: 403 }));
@@ -110,6 +110,16 @@ it.each(['access', 'csrf', 'fresh'] as const)(
     expect(s.saveServer).not.toHaveBeenCalled();
   }
 );
+it('saves the general template with an existing session without fresh reauthentication', async () => {
+  s.fresh.mockReturnValue(new Response(null, { status: 403 }));
+  s.saveServer.mockResolvedValue({ revision: 1, unsynchronizedInstances: [] });
+  const response = await handleServer(
+    serverRequest('PATCH', { expectedRevision: 0, template: null }),
+    ctx
+  );
+  expect(response.status).toBe(200);
+  expect(s.saveServer).toHaveBeenCalledWith({ expectedRevision: 0, template: null, actorId: 'admin' });
+});
 it('rejects arbitrary instance scope and stale general revisions', async () => {
   expect(
     (

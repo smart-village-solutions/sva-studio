@@ -33,6 +33,7 @@ export const toListItem = (
   realmMode: item.realmMode,
   authRealm: item.authRealm,
   authClientId: item.authClientId,
+  loginMfaPolicy: item.loginMfaPolicy,
   authIssuerUrl: item.authIssuerUrl,
   authClientSecretConfigured: item.authClientSecretConfigured,
   tenantAdminClient: item.tenantAdminClient,

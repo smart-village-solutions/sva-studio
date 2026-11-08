@@ -84,12 +84,33 @@ const hasCurrentReadinessEvidence = (
   );
 };
 
+export const isPendingLifecycleSuspension = (lifecycle: Lifecycle): boolean =>
+  lifecycle?.accessState === 'suspended' &&
+  lifecycle.desiredOperation === 'suspend' &&
+  lifecycle.desiredGeneration > lifecycle.completedGeneration &&
+  lifecycle.retryKind !== 'terminal' &&
+  (lifecycle.readinessStatus === 'pending' || lifecycle.retryKind === 'retryable');
+
+const resolveSuspensionSchedule = (
+  definition: PluginTenantLifecycleRegistryEntry,
+  lifecycle: Lifecycle,
+  now: Date
+): Schedule | null =>
+  lifecycle &&
+  !lifecycle.activeJobId &&
+  isPendingLifecycleSuspension(lifecycle) &&
+  hasOperation(definition, 'suspend') &&
+  !isAfter(lifecycle.retryAfter, now)
+    ? createSchedule('suspend', now)
+    : null;
+
 export const resolveAutomaticProvisioningSchedule = (
   definition: PluginTenantLifecycleRegistryEntry,
   activation: TenantModuleActivationRecord,
   lifecycle: Lifecycle
 ): Schedule | null => {
   const now = new Date();
+  if (!activation.effectiveActive) return resolveSuspensionSchedule(definition, lifecycle, now);
   if (!lifecycle) {
     return createSchedule(resolveInitialOperation(definition), now);
   }

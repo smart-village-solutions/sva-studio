@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { Heart } from 'lucide-react';
+import { IconHeart as Heart } from '@tabler/icons-react';
 
 import { t } from '../i18n';
 import { readLatestAuthDiagnosticSnapshot } from '../lib/auth-diagnostics';
@@ -123,7 +123,7 @@ const HomeOpenSourceClaim = () => (
         aria-label={t('home.hero.openSourceLoveLabel')}
         className="inline-flex items-center text-rose-500"
       >
-        <Heart aria-hidden="true" className="h-4 w-4 fill-current" strokeWidth={1.8} />
+        <Heart aria-hidden="true" className="h-4 w-4 fill-current" />
         <span className="sr-only">{t('home.hero.openSourceLoveLabel')}</span>
       </span>
       <span>{` ${t('home.hero.openSourceSuffix')}`}</span>

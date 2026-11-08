@@ -615,7 +615,7 @@ describe('InstanceDetailPage', () => {
       expect(payload).not.toHaveProperty('authClientSecret');
       if (operation === 'reset') expect(payload?.accountInvitationTemplate).toBeNull();
       else expect(payload?.accountInvitationTemplate).not.toHaveProperty('revision');
-      await waitFor(() => expect(screen.getByText(/Vorlage.*gespeichert/)).toBeTruthy());
+      await screen.findByText('Im Studio gespeichert. Den Synchronisierungsstand zeigt der Keycloak-Abgleich.');
       fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
       await activateTab('Doctor');
       await activateTab('Einstellungen');

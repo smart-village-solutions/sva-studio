@@ -7,6 +7,9 @@ import type { PluginServerHandlerRegistryEntry } from '@sva/plugin-sdk';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  SSF_RECORDING_DIRECTORY_ENDPOINT_PATH,
+  SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID,
+  ssfPlugin,
   SSF_RUNTIME_ENDPOINT_PATH,
   SSF_RUNTIME_TENANT_HEADER,
   SSF_RUNTIME_SERVER_HANDLER_ID,
@@ -84,18 +87,28 @@ const createEndpoint = (runtimeHandler = vi.fn().mockResolvedValue(configuration
     readAuthorizationRevision: vi.fn().mockResolvedValue(authorizationRevision),
     emitSecurityAudit: vi.fn().mockResolvedValue(undefined),
   });
+  const directoryReader = vi.fn().mockResolvedValue([{ keycloakSubject: 'synthetic-reviewer', displayName: 'Synthetic Reviewer', permissionIds: ['ssf.recording.review'], languages: ['de'] }]);
   return {
+    directoryReader,
     runtimeHandler,
     dispatch: createPluginServerHandlerDispatcher({
       descriptors: new Map([
         [descriptor.id, descriptor],
+        [SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID, {
+          ...descriptor,
+          id: SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID,
+          path: SSF_RECORDING_DIRECTORY_ENDPOINT_PATH,
+        }],
         [SSF_RUNTIME_V2_SERVER_HANDLER_ID, {
           ...descriptor,
           id: SSF_RUNTIME_V2_SERVER_HANDLER_ID,
           path: SSF_RUNTIME_V2_ENDPOINT_PATH,
         }],
       ]),
-      handlers: createSsfPluginServerHandlers({ runtimeHandler }),
+      handlers: createSsfPluginServerHandlers({
+        runtimeHandler,
+        capabilities: { readPermissionDirectorySubjects: directoryReader },
+      }),
       dependencies: access,
     }),
   };
@@ -121,6 +134,22 @@ describe('SSF runtime endpoint integration', () => {
     expect(body).toEqual(configuration);
     expect(body.tenant.id).toBe('tenant-a');
     expect(endpoint.runtimeHandler).toHaveBeenCalledOnce();
+  });
+
+  it('dispatches the declared directory endpoint using only the authenticated tenant binding', async () => {
+    const endpoint = createEndpoint();
+    expect(ssfPlugin.serverHandlers).toContainEqual({
+      id: SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID,
+      path: SSF_RECORDING_DIRECTORY_ENDPOINT_PATH,
+      method: 'GET',
+      actionId: SSF_RUNTIME_SERVICE_ACTION,
+      accessRequirement: descriptor.accessRequirement,
+    });
+    const response = await endpoint.dispatch(new Request(`https://studio.test${SSF_RECORDING_DIRECTORY_ENDPOINT_PATH}`, { headers: request().headers }));
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toMatchObject({ contractVersion: '2.0', tenantId: 'tenant-a', users: [{ sub: 'synthetic-reviewer', permissions: ['ssf.recording.review'], languages: ['de'] }] });
+    expect(endpoint.directoryReader).toHaveBeenCalledWith({ instanceId: 'tenant-a', permissionIds: expect.arrayContaining(['ssf.recording.review']) });
+    expect(endpoint.runtimeHandler).not.toHaveBeenCalled();
   });
 
   it('blocks browser-like and competing tenant requests before domain execution', async () => {

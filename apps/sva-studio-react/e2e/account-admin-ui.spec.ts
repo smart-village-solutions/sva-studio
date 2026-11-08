@@ -167,7 +167,7 @@ test('csrf header is required for mutating iam endpoints', async ({ page }) => {
   expect(statusWithCsrf).toBe(200);
 });
 
-test('organization form keeps field spacing across semantic fieldsets', async ({ page }) => {
+test('organization form keeps field spacing across viewport sizes', async ({ page }) => {
   test.setTimeout(120_000);
   await registerAccountAdminAuthRoute(page);
   const organization = {
@@ -200,13 +200,20 @@ test('organization form keeps field spacing across semantic fieldsets', async ({
   const form = page.locator('form').filter({ has: page.locator('#organization-key') });
   await expect(form.locator('#organization-name')).toHaveValue('Landkreis Beispiel');
   const assertFieldGap = async (previousId: string, nextId: string) => {
-    const previous = await form.locator(`#${previousId}`).boundingBox();
-    const nextLabel = await form.locator(`label[for="${nextId}"]`).boundingBox();
-    expect(previous).not.toBeNull();
-    expect(nextLabel).not.toBeNull();
-    const gap = nextLabel!.y - (previous!.y + previous!.height);
-    expect(gap).toBeGreaterThanOrEqual(15.5);
-    expect(gap).toBeLessThanOrEqual(16.5);
+    await expect(async () => {
+      const gap = await form.evaluate(
+        (element, ids) => {
+          const previous = element.querySelector(`#${ids.previousId}`);
+          const nextLabel = element.querySelector(`label[for="${ids.nextId}"]`);
+          if (!previous || !nextLabel) throw new Error('Expected both field spacing targets.');
+          // Read both rectangles in one frame so scrolling cannot skew their difference.
+          return nextLabel.getBoundingClientRect().top - previous.getBoundingClientRect().bottom;
+        },
+        { previousId, nextId }
+      );
+      expect(gap).toBeGreaterThanOrEqual(15.5);
+      expect(gap).toBeLessThanOrEqual(16.5);
+    }).toPass({ timeout: 5_000 });
   };
   for (const width of [320, 390, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });

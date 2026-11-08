@@ -84,6 +84,7 @@ export interface MetricViolation {
 
 export interface RunComplexityGateOptions {
   rootDir?: string;
+  pluginRoot?: string;
   updateBaseline?: boolean;
   baseRef?: string;
   headRef?: string;

@@ -68,3 +68,7 @@ Externe Systeme (IdP/Keycloak, ggf. weitere Backends) werden integriert, aber
 nicht in diesem Repository betrieben.
 
 Konzept-Referenz (Kontext): `concepts/konzeption-cms-v2/01_Einleitung/Einleitung.md`
+
+## Kommunaler Anwendungsarbeitsplatz
+
+Das optionale Plugin `application-workspace` ergänzt einen Einstieg „Anwendungen“ in der Kopfzeile. Alle angemeldeten Nutzer einer wirksam aktivierten Instanz erhalten denselben instanzweiten Katalog; einzelne Zielanwendungen prüfen ihre Rechte selbst. Die Übersicht `/plugins/application-workspace` verwendet die bestehende Shell ohne Seitenleiste, während die Einstellungsseite das normale Layout behält. Die Studio-Kachel ist fest an erster Stelle und führt nach `/`.

@@ -58,7 +58,7 @@ export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCovera
   const regressionProjectFilter = options.regressionProjectFilter ?? [];
   const stepSummaryPath = options.stepSummaryPath ?? process.env.GITHUB_STEP_SUMMARY ?? null;
 
-  const loaded = loadCoverageData(rootDir);
+  const loaded = loadCoverageData(rootDir, options.pluginRoot, options.pluginBaselinePath);
   const { paths, policy, baseline, projects, fileCoverageByProject } = loaded;
 
   if (Object.keys(projects).length === 0) {
@@ -138,6 +138,8 @@ export function main(): number {
   try {
     const result = runCoverageGate({
       rootDir,
+      pluginRoot: process.argv.find((arg) => arg.startsWith('--plugin-root='))?.slice(14),
+      pluginBaselinePath: process.argv.find((arg) => arg.startsWith('--baseline-file='))?.slice(16),
       updateBaseline,
       requireSummaries,
       evaluateRegressions,

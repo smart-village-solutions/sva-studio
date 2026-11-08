@@ -15,7 +15,38 @@ import { resolveModuleDescription, resolveModuleName } from './-module-descripti
 
 const useInstancesMock = vi.fn();
 const useAuthMock = vi.fn();
+const settingsAccess = vi.hoisted(() => ({ allowed: false, contribution: false }));
 const readinessState = vi.hoisted(() => ({ items: [] as unknown[], error: null as unknown }));
+
+vi.mock('../../../lib/plugins', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../lib/plugins')>();
+  return {
+    ...actual,
+    get studioPlugins() {
+      return actual.studioPlugins.map((plugin) =>
+        plugin.id === 'news' && settingsAccess.contribution
+          ? {
+              ...plugin,
+              settings: { routeId: 'news.settings' },
+              routes: [
+                ...plugin.routes,
+                {
+                  id: 'news.settings',
+                  path: '/plugins/news/settings',
+                  component: () => null,
+                  accessRequirement: {
+                    kind: 'tenant' as const,
+                    moduleId: 'news',
+                    allOf: ['news.read'],
+                  },
+                },
+              ],
+            }
+          : plugin
+      );
+    },
+  };
+});
 
 vi.mock('../../../hooks/use-instances', () => ({
   useInstances: () => useInstancesMock(),
@@ -27,6 +58,9 @@ vi.mock('../../../providers/auth-provider', () => ({
 
 vi.mock('../../../providers/effective-access-provider', () => ({
   useEffectiveAuth: () => useAuthMock(),
+  useEffectiveAccess: () => ({
+    decide: () => ({ status: settingsAccess.allowed ? 'allowed' : 'denied' }),
+  }),
 }));
 
 vi.mock('../../../components/ConfirmDialog', () => ({
@@ -114,6 +148,8 @@ const createDeferred = <T,>() => {
 describe('ModulesPage', () => {
   beforeEach(() => {
     readinessState.items = [];
+    settingsAccess.allowed = false;
+    settingsAccess.contribution = false;
     readinessState.error = null;
   });
   it('uses localized public metadata and falls back for modules without metadata', () => {
@@ -568,5 +604,23 @@ describe('ModulesPage', () => {
       screen.getAllByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })[1]!
     );
     expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', ['news']);
+  });
+  it('shows injected plugin settings only for an assigned module with read access', () => {
+    settingsAccess.contribution = true;
+    useAuthMock.mockReturnValue({
+      user: { instanceId: 'demo', assignedModules: ['news'] },
+    });
+    settingsAccess.allowed = true;
+    const view = render(<ModulesPage />);
+    expect(screen.getByRole('link', { name: 'Plugin-Einstellungen' }).getAttribute('href')).toBe(
+      '/plugins/news/settings'
+    );
+    settingsAccess.allowed = false;
+    view.rerender(<ModulesPage />);
+    expect(screen.queryByRole('link', { name: 'Plugin-Einstellungen' })).toBeNull();
+    settingsAccess.allowed = true;
+    useAuthMock.mockReturnValue({ user: { instanceId: 'demo', assignedModules: [] } });
+    view.rerender(<ModulesPage />);
+    expect(screen.queryByRole('link', { name: 'Plugin-Einstellungen' })).toBeNull();
   });
 });

@@ -1,7 +1,38 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import './plugins';
 import { resolveBreadcrumbItems } from './breadcrumbs';
+
+vi.mock('./plugins', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./plugins')>();
+  return {
+    ...actual,
+    studioPlugins: [
+      ...actual.studioPlugins,
+      {
+        id: 'application-workspace',
+        displayName: 'Workspace fixture',
+        routes: [
+          { id: 'overview', path: '/plugins/application-workspace', component: () => null },
+          {
+            id: 'settings',
+            path: '/plugins/application-workspace/settings',
+            component: () => null,
+          },
+        ],
+        settings: { routeId: 'settings' },
+        navigation: [
+          {
+            id: 'workspace',
+            to: '/plugins/application-workspace',
+            section: 'header',
+            titleKey: 'shell.header.applications',
+          },
+        ],
+      },
+    ],
+  };
+});
 
 describe('resolveBreadcrumbItems', () => {
   it('shows the app hierarchy without a link to a nonexistent group page', () => {
@@ -172,6 +203,17 @@ describe('resolveBreadcrumbItems', () => {
       { href: '/account', label: 'Mein Konto' },
       { href: '/account/privacy', label: 'Datenschutz & Transparenz' },
       { label: 'Datenschutzfall-Detail' },
+    ]);
+  });
+  it('uses injected plugin header and settings contributions without requiring a package', () => {
+    expect(resolveBreadcrumbItems('/plugins/application-workspace')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { label: 'Anwendungen' },
+    ]);
+    expect(resolveBreadcrumbItems('/plugins/application-workspace/settings')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/plugins/application-workspace', label: 'Anwendungen' },
+      { label: 'Plugin-Einstellungen' },
     ]);
   });
 });

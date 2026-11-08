@@ -47,6 +47,8 @@ export interface GateError {
 
 export interface RunCoverageGateOptions {
   rootDir?: string;
+  pluginRoot?: string;
+  pluginBaselinePath?: string;
   updateBaseline?: boolean;
   requireSummaries?: boolean;
   evaluateRegressions?: boolean;

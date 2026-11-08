@@ -145,13 +145,19 @@ export const createPluginServerExecutionHandlersFromSnapshot = async (input: {
                 capabilities: SsfPluginServerCapabilities
               ) => Readonly<Record<string, PluginServerExecutionHandler>>
             )({ readPermissionDirectorySubjects: readTenantPermissionDirectorySubjects })
-          : source.pluginId === 'search'
+          : source.pluginId === 'application-workspace'
             ? (
-                factory as (
-                  host: SearchHost
+                factory as unknown as (
+                  host: typeof import('./application-workspace.server.js').applicationWorkspaceHost
                 ) => Readonly<Record<string, PluginServerExecutionHandler>>
-              )((await import('./search-mainserver.server.js')).searchMainserverHost)
-            : (factory as () => Readonly<Record<string, PluginServerExecutionHandler>>)();
+              )((await import('./application-workspace.server.js')).applicationWorkspaceHost)
+            : source.pluginId === 'search'
+              ? (
+                  factory as (
+                    host: SearchHost
+                  ) => Readonly<Record<string, PluginServerExecutionHandler>>
+                )((await import('./search-mainserver.server.js')).searchMainserverHost)
+              : (factory as () => Readonly<Record<string, PluginServerExecutionHandler>>)();
     for (const [handlerId, handler] of Object.entries(bindings)) {
       if (typeof handler !== 'function') {
         throw new Error(`invalid_plugin_server_handler_binding:${source.pluginId}:${handlerId}`);

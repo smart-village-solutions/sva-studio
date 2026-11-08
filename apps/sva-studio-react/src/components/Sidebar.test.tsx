@@ -36,7 +36,7 @@ type PluginNavigationItemMock = {
   to?: string;
   href?: string;
   titleKey: string;
-  section: 'dataManagement' | 'applications' | 'system';
+  section: PluginNavigationItem['section'];
   requiredAction?: string;
   actionId?: string;
   accessRequirement?: PluginNavigationItem['accessRequirement'];

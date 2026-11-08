@@ -1,3 +1,4 @@
+import { insertActivityLog } from './audit-event-writes.js';
 import { emitAuthAuditEvent } from './audit-events.js';
 import { evaluateAuthorizeDecision } from '@sva/iam-core';
 import {
@@ -73,6 +74,7 @@ const isAuthorizedPluginRequest = (input: {
 }): boolean => getAuthorizedPluginRequest(input) !== null;
 
 export const pluginServerHost = {
+  insertActivityLog,
   emitAuthAuditEvent,
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,

@@ -7,8 +7,8 @@ import { Card } from '../../../components/ui/card';
 import { usePluginTenantReadiness } from '../../../hooks/use-plugin-tenant-readiness';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
-import { studioModuleIamContracts, studioPluginCatalog } from '../../../lib/plugins';
-import { useEffectiveAuth } from '../../../providers/effective-access-provider';
+import { studioModuleIamContracts, studioPluginCatalog, studioPlugins } from '../../../lib/plugins';
+import { useEffectiveAccess, useEffectiveAuth } from '../../../providers/effective-access-provider';
 import { InstanceModulesWorkspace } from './-instance-modules-workspace';
 import { resolveModuleDescription, resolveModuleName } from './-module-description';
 
@@ -17,6 +17,7 @@ const TenantModulesPage = ({
 }: {
   readonly assignedModules: readonly string[];
 }) => {
+  const access = useEffectiveAccess();
   const assignedModuleIds = new Set(assignedModules);
   const availableModuleIds = new Set(studioModuleIamContracts.map((module) => module.moduleId));
   const unavailableModuleIds = [...assignedModuleIds].filter(
@@ -55,6 +56,22 @@ const TenantModulesPage = ({
                 <tr key={module.moduleId} className="border-t border-border align-top">
                   <td className="px-3 py-2 font-medium text-foreground">
                     {resolveModuleName(module.moduleId)}
+                    {(() => {
+                      const plugin = studioPlugins.find((entry) => entry.id === module.moduleId);
+                      const route = plugin?.routes.find(
+                        (entry) => entry.id === plugin.settings?.routeId
+                      );
+                      return assignedModuleIds.has(module.moduleId) &&
+                        route?.accessRequirement &&
+                        access.decide(route.accessRequirement).status === 'allowed' ? (
+                        <a
+                          className="mt-2 block rounded text-sm text-primary underline focus-visible:ring-2 focus-visible:ring-ring"
+                          href={route.path}
+                        >
+                          {t('shell.pluginSettings')}
+                        </a>
+                      ) : null;
+                    })()}
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {assignedModuleIds.has(module.moduleId)

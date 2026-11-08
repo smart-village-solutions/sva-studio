@@ -78,6 +78,19 @@ export const createPluginRegistry = (
     assertPluginRegistryActions(context);
     assertPluginRegistryServerHandlers(context);
     assertPluginRegistryRoutes(context);
+    if (plugin.settings) {
+      const keys = Object.keys(plugin.settings);
+      const route = plugin.routes.find((entry) => entry.id === plugin.settings?.routeId);
+      if (
+        keys.some((key) => key !== 'routeId') ||
+        !route ||
+        !route.actionId ||
+        route.accessRequirement?.kind !== 'tenant' ||
+        route.accessRequirement.moduleId !== context.pluginNamespace
+      ) {
+        throw new Error(`invalid_plugin_settings_route:${context.pluginNamespace}`);
+      }
+    }
     assertPluginRegistryStandardContentRouteGuardrails(context);
     assertPluginRegistryNavigation(context);
     assertPluginRegistryPermissions(context);

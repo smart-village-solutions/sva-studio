@@ -241,3 +241,7 @@ export { Calendar } from './calendar.js';
 export * from './card.js';
 
 export { Radio } from './radio.js';
+
+export { IconPicker, type IconPickerProps } from './icon-picker.js';
+export { TablerIcon } from './tabler-icon.js';
+export { tablerIconNames, isTablerIconName } from './tabler-icon-catalog.js';

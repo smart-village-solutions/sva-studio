@@ -94,7 +94,7 @@ const collectPackageViolations = async (
     }
     for (const [dependencyName, version] of Object.entries(dependencies)) {
       if (
-        !isWorkspaceDependency(dependencyName, version) ||
+        !(dependencyName.startsWith('@sva/') || isWorkspaceDependency(dependencyName, version)) ||
         isAllowedWorkspaceDependency(pluginPackage.packageName, dependencyName)
       ) {
         continue;
@@ -191,9 +191,9 @@ const collectPackageViolations = async (
 };
 
 export const collectPluginArchitectureViolations = async (
-  projectRoot = PROJECT_ROOT
+  projectRoot = PROJECT_ROOT, externalOnly = false
 ): Promise<readonly PluginArchitectureViolation[]> => {
-  const pluginPackages = await readPluginPackages(projectRoot);
+  const pluginPackages = await readPluginPackages(projectRoot, externalOnly);
   const nestedViolations = await Promise.all(
     pluginPackages.map((pluginPackage) => collectPackageViolations(pluginPackage, projectRoot))
   );

@@ -225,13 +225,19 @@ export const sharedVitestConfig = defineConfig({
         new URL('../../packages/plugin-sdk/src/route-documentation.ts', import.meta.url)
       ),
       '@sva/plugin-sdk/content-media': fileURLToPath(
-        new URL('../../packages/plugin-sdk/src/content-media-contracts-public-api.ts', import.meta.url)
+        new URL(
+          '../../packages/plugin-sdk/src/content-media-contracts-public-api.ts',
+          import.meta.url
+        )
       ),
       '@sva/plugin-sdk': fileURLToPath(
         new URL('../../packages/plugin-sdk/src/index.ts', import.meta.url)
       ),
       '@sva/studio-module-iam': fileURLToPath(
         new URL('../../packages/studio-module-iam/src/index.ts', import.meta.url)
+      ),
+      '@sva/studio-ui-react/tabler-icon-catalog': fileURLToPath(
+        new URL('../../packages/studio-ui-react/src/tabler-icon-catalog.ts', import.meta.url)
       ),
       '@sva/studio-ui-react': fileURLToPath(
         new URL('../../packages/studio-ui-react/src/index.ts', import.meta.url)

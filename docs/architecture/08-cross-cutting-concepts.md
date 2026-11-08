@@ -548,7 +548,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - `@sva/studio-ui-react` ist der gemeinsame Kapselungspunkt für shadcn-/Radix-Primitives, semantische Design-Tokens und wiederverwendbare Studio-Komponenten.
 - Host-Seiten und Plugin-Custom-Views verwenden dieselben Page-, Form-, State-, Table- und Action-Primitives, damit Accessibility, Fokusverhalten, Fehlermeldungen und visuelle Varianten nicht pro Fachpaket auseinanderlaufen.
 - Fachplugins dürfen Domain-Wrapper bauen, wenn diese Studio-Primitives komponieren und keine eigenen visuellen Varianten, ARIA-Semantik oder Token-Schicht neu definieren.
-- Spezialcontrols wie Rich-Text, Upload, Medienauswahl, Farbe, Icon und Geo-Auswahl werden erst bei nachgewiesenem pluginübergreifendem Bedarf in die gemeinsame UI-Basis aufgenommen; vorher bleiben sie bewusst fachnah und schmal.
+- Spezialcontrols wie Rich-Text, Upload, Medienauswahl, Farbe und Geo-Auswahl werden erst bei nachgewiesenem pluginübergreifendem Bedarf in die gemeinsame UI-Basis aufgenommen; vorher bleiben sie bewusst fachnah und schmal.
 - Enforcement erfolgt über Nx-`depConstraints`, ESLint-Importverbote und den CI-Check `pnpm check:plugin-ui-boundary`.
 - Das IAM-Acceptance-Gate ist bewusst ein separates Nx-Target ohne PR-CI-Zwang, weil es reale Laufzeitabhängigkeiten gegen eine dedizierte Testumgebung prüft
 
@@ -1440,3 +1440,19 @@ Studio-HTML erlaubt standardmäßig Framing nur aus derselben Origin. Der besteh
 ## Berechtigungen und Zustände der Mainserver-Suche
 
 `search.read` erlaubt die Nutzung der Suche; fachliche Typ- und Ressourcenrechte bleiben unverändert. DataProvider-Gleichheit und Organisationsmitgliedschaft sind kein eigenständiges Leserecht. Die bestehende Credential-Policy bestimmt den Leseprincipal automatisch; die Auswahl wird pro Request ohne Credential-Werte gehalten und bei der abschließenden Kontextprüfung frisch verglichen. Die explizite Detailautorisierung bleibt bestehen, ein fehlgeschlagener Read führt nicht zum Ausprobieren eines anderen Principals. Trefferangaben und Facetten stammen nur aus autorisierten Detailzugriffen; die bewusst freigegebene aggregierte Ablehnungszahl enthält keine Einzelangaben. Nicht auflösbare oder technisch fehlgeschlagene Kandidaten werden nicht als Berechtigungsablehnung gezählt. Suchantworten sind privat und nicht cachebar; Schlüssel, Suchbegriffe und Dokumentinhalte gelangen nicht in technische Logs. Native Formulare, vorhandene Design-System-Controls, de/en-Texte und Status-Live-Regionen tragen die zugängliche Oberfläche. Das bestehende IAM-Modell aus Abschnitt 04 wird dabei nicht erweitert.
+
+## Kommunaler Anwendungsarbeitsplatz
+
+Das optionale Plugin `application-workspace` ergänzt einen Einstieg „Anwendungen“ in der Kopfzeile. Alle angemeldeten Nutzer einer wirksam aktivierten Instanz erhalten denselben instanzweiten Katalog; einzelne Zielanwendungen prüfen ihre Rechte selbst. Die Übersicht `/plugins/application-workspace` verwendet die bestehende Shell ohne Seitenleiste, während die Einstellungsseite das normale Layout behält. Die Studio-Kachel ist fest an erster Stelle und führt nach `/`.
+
+Die ausdrücklich gemeinsame Tabler-Icon-Auswahl liegt in `@sva/studio-ui-react`, aufgebaut auf vorhandenen Popover-, Input- und Button-Primitives. Sie verwendet Outline-Icons mit Kontur 2, stabile Kennungen, Suche, Vorschau, Tastatursteuerung und semantische Tokens für alle Studio-Themes. Die Glyphen werden erst bei tatsächlicher Anzeige geladen; die Kopfzeile benötigt sie nicht. Der erste Verbraucher ist der Kacheleditor. [Figma-Komponente](https://www.figma.com/design/TpqaB3bLGPK73ypkj7oE8G/Designsystem-SVA-Studio?node-id=262-5037) und Code decken neun Zustände ab.
+
+Kacheltexte sind kommunale Inhalte mit Pflichtwerten auf Deutsch und feldweisem Sprach-Fallback; feste UI-Texte nutzen den vorhandenen Übersetzungspfad. Externe Links sind HTTPS-Ziele ohne eingebettete Zugangsdaten und öffnen mit `noopener noreferrer`. Der Arbeitsplatz teilt keine Studio-Tokens oder Cookies mit Zielanwendungen und ruft diese nicht serverseitig ab.
+
+Der Anwendungsarbeitsplatz wird als externes Paket `@sva/plugin-application-workspace` aus einem eigenständigen Repository konsumiert. Header-Einstieg und Content-only-Layout stammen aus validierten Plugin-Beiträgen; der gemeinsame IconPicker und der instanzgebundene Speicher-/Audit-Adapter bleiben Host-Eigentum. Die bisherige Workspace-Kopie entfällt.
+
+## Qualität eigenständiger Plugins
+
+Der gemeinsame Vertrag QS-01 bis QS-09 im Plugin-Guide gilt unabhängig vom Repository. Externe Quellwurzeln werden ausdrücklich an die vorhandenen Boundary-, UI-, Coverage-/Regressions-, New-Code- und Komplexitätsprüfer übergeben; leere Globs, fehlende Berichte und nicht erfasste produktive Quellen sind kein Erfolgsnachweis. Strenge externe Prüfungen ändern den bisherigen Warnmodus der Workspace-Boundary-Prüfung nicht stillschweigend. Review-pflichtige Runtime-Signale werden einzeln begründet, ohne private Imports freizugeben.
+
+Das Referenz-Plugin erzeugt öffentliche SDK-/UI-Peers aus einem festen Studio-Commit und hält deren Digests fest. Der Kandidat wird einmal gepackt, außerhalb beider Quellbäume installiert und danach mit identischen Bytes über die normalen Studio-Paket-/Katalogpfade geprüft. Die Host-Nachweise verwenden echte Redis-Sitzungen und disposable PostgreSQL-Daten; Browser-Fixtures ersetzen dabei keine API-Autorisierungsprüfung. Ein optionales Plugin darf keine feste Studio-Quellcodeabhängigkeit erzwingen.

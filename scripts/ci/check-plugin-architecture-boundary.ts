@@ -25,6 +25,8 @@ import {
 } from './plugin-architecture-boundary-lib.ts';
 import {
   diffViolationsAgainstAllowlist,
+  diffViolationsAgainstBaseline,
+  parsePluginArchitectureBaseline,
   parsePluginArchitectureAllowlist,
   type PluginArchitectureAllowlistEntry,
 } from './plugin-architecture-boundary-baseline.ts';
@@ -39,10 +41,16 @@ export type PluginArchitectureBoundaryCheckResult = {
   exitCode: 0 | 1;
 };
 
-export const DEFAULT_ALLOWLIST_PATH = path.join(PROJECT_ROOT, 'config', 'plugin-architecture-allowlist.json');
+export const DEFAULT_ALLOWLIST_PATH = path.join(
+  PROJECT_ROOT,
+  'config',
+  'plugin-architecture-allowlist.json'
+);
 
 type RunPluginArchitectureBoundaryGuardOptions = {
   mode?: PluginArchitectureBoundaryCheckMode;
+  reviewBaselinePath?: string;
+  externalOnly?: boolean;
 };
 
 const loadPluginArchitectureAllowlist = async (
@@ -58,15 +66,24 @@ const loadPluginArchitectureAllowlist = async (
 
 export const runPluginArchitectureBoundaryGuard = async (
   projectRoot = PROJECT_ROOT,
-  allowlistPathOrEntries: string | readonly PluginArchitectureAllowlistEntry[] = DEFAULT_ALLOWLIST_PATH,
+  allowlistPathOrEntries:
+    string | readonly PluginArchitectureAllowlistEntry[] = DEFAULT_ALLOWLIST_PATH,
   options: RunPluginArchitectureBoundaryGuardOptions = {}
 ): Promise<PluginArchitectureBoundaryCheckResult> => {
   const mode = options.mode ?? 'warn';
   const [allowlist, violations] = await Promise.all([
     loadPluginArchitectureAllowlist(allowlistPathOrEntries),
-    collectPluginArchitectureViolations(projectRoot),
+    collectPluginArchitectureViolations(projectRoot, options.externalOnly),
   ]);
-  const unallowlistedViolations = diffViolationsAgainstAllowlist(violations, allowlist);
+  let unallowlistedViolations = diffViolationsAgainstAllowlist(violations, allowlist);
+  if (options.reviewBaselinePath) {
+    const reviewed = parsePluginArchitectureBaseline(
+      await readFile(options.reviewBaselinePath, 'utf8')
+    );
+    if (reviewed.some((entry) => entry.rule !== 'review-required-path-signal'))
+      throw new Error('only_runtime_signals_can_be_reviewed');
+    unallowlistedViolations = diffViolationsAgainstBaseline(unallowlistedViolations, reviewed);
+  }
 
   return {
     mode,
@@ -97,7 +114,19 @@ export const reportPluginArchitectureBoundaryGuardResult = (
 };
 
 const run = async (): Promise<void> => {
-  const result = await runPluginArchitectureBoundaryGuard(PROJECT_ROOT, DEFAULT_ALLOWLIST_PATH);
+  const pluginRoot = process.argv.find((arg) => arg.startsWith('--plugin-root='))?.slice(14);
+  const allowlist = process.argv.find((arg) => arg.startsWith('--allowlist='))?.slice(12);
+  const result = await runPluginArchitectureBoundaryGuard(
+    pluginRoot ? path.resolve(pluginRoot) : PROJECT_ROOT,
+    allowlist ?? (pluginRoot ? [] : DEFAULT_ALLOWLIST_PATH),
+    {
+      mode: pluginRoot ? 'strict' : 'warn',
+      externalOnly: Boolean(pluginRoot),
+      reviewBaselinePath: process.argv
+        .find((arg) => arg.startsWith('--review-baseline='))
+        ?.slice(18),
+    }
+  );
   if (!reportPluginArchitectureBoundaryGuardResult(result)) {
     return;
   }

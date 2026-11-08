@@ -141,6 +141,13 @@ export const assertPluginAccessRequirement = (
     );
     return;
   }
+  if (
+    requirement.kind === 'authenticated' &&
+    plugin.moduleIam?.moduleId === pluginNamespace &&
+    !legacyRequiredAction
+  ) {
+    return;
+  }
   if (requirement.kind !== 'tenant') {
     throw new Error(
       `plugin_access_requirement_scope_invalid:${pluginNamespace}:${source}:${requirement.kind}`

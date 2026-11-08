@@ -10,6 +10,7 @@ import { AppBreadcrumbs } from './AppBreadcrumbs';
 import { ContextualHelpBoundary } from './ContextualHelpBoundary';
 import Header from './Header';
 import { t } from '../i18n';
+import { studioPlugins } from '../lib/plugins';
 import { useAuth } from '../providers/auth-provider';
 import { useEffectiveAccess } from '../providers/effective-access-provider';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
@@ -141,7 +142,14 @@ export default function AppShell({
     effectiveAccess.snapshot.scope.instanceId === user.instanceId &&
     effectiveAccess.permissionActions.length === 0;
   const [isHydrated, setIsHydrated] = React.useState(false);
-  const showSidebar = isAuthenticated && !isAuthLoading;
+  const showSidebar =
+    isAuthenticated &&
+    !isAuthLoading &&
+    !studioPlugins.some((plugin) =>
+      plugin.routes.some(
+        (route) => route.path === currentPathname && route.layout === 'content-only'
+      )
+    );
   const showBreadcrumbs = isHydrated && currentPathname !== '/';
   const showLegalTextAcceptanceDialog = shouldRenderLegalTextAcceptanceDialog({
     isHydrated,
@@ -205,7 +213,11 @@ export default function AppShell({
                 <LazyPermissionsDegradedBanner />
               </React.Suspense>
               {showRoleAssignmentPending ? (
-                <Alert role="status" aria-live="polite" aria-labelledby="role-assignment-pending-title">
+                <Alert
+                  role="status"
+                  aria-live="polite"
+                  aria-labelledby="role-assignment-pending-title"
+                >
                   <AlertTitle id="role-assignment-pending-title">
                     {t('shell.roleAssignmentPending.title')}
                   </AlertTitle>

@@ -184,15 +184,27 @@ const resolveSidebarSystemAccess = ({
           MODULES_READ_PERMISSION,
           contentAccessApi.permissionActions,
           contentAccessApi.isLoading
+        )) ||
+      (Boolean(user?.instanceId) &&
+        user?.assignedModules?.includes('application-workspace') &&
+        hasPermissionAction(
+          'application-workspace.settings.read',
+          contentAccessApi.permissionActions,
+          contentAccessApi.isLoading
         )));
   return {
     canAccessInterfaces,
     canAccessExperimentalFeatures,
     canAccessSystemTools,
     canAccessModules,
-    canAccessAppTexts: isAuthenticated && Boolean(user?.instanceId) && hasPermissionAction(
-      'app-texts.catalog.read', contentAccessApi.permissionActions, contentAccessApi.isLoading
-    ),
+    canAccessAppTexts:
+      isAuthenticated &&
+      Boolean(user?.instanceId) &&
+      hasPermissionAction(
+        'app-texts.catalog.read',
+        contentAccessApi.permissionActions,
+        contentAccessApi.isLoading
+      ),
   };
 };
 

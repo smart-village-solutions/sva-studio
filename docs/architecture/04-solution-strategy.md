@@ -403,3 +403,7 @@ See [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md).
 ### Aktueller Kontozustand bei persönlichen API-Zugriffen
 
 Persönliche Bearer-Zugriffe prüfen vor Rollenhydration und Handler den Redis-Sperrmarker und den aktuellen Kontozustand. Tenant-Accounts benötigen einen aktiven, nicht gesperrten oder gelöschten Account samt passender Instanzmitgliedschaft; Plattform-Accounts einen gezielten Keycloak-Read mit übereinstimmendem Subject und explizitem `enabled: true`, ohne lokalen Tenant-Spiegel. Ein gültiger JWT oder erhaltene Rollenzuweisungen ersetzen diese Prüfung nicht. Browser-, JIT- und DSR-Ausnahmen behalten ihren bestehenden Vertrag.
+
+### Anwendungsarbeitsplatz
+
+Der Arbeitsplatz erweitert bestehende Plugin-, Host-, IAM- und Studio-UI-Verträge. Die vorhandene Access-Art `authenticated` wird für lesende Plugin-Handler mit einer serverseitigen Prüfung der Modulaktivierung verwendet; Mutationen behalten explizite Tenant-Rechte. Es entsteht kein neues Rollenmodell und kein zweiter Anmeldeweg. SSO-Anbindungen der Zielanwendungen bleiben separat.

@@ -14,6 +14,7 @@ export type MapGeocodingLogger = {
 type MapGeocodingClientError = Error & {
   code?: string;
   statusCode?: number;
+  retryAfterSeconds?: number;
   endpoint?: string;
   provider?: string;
 };
@@ -25,6 +26,7 @@ const mapGeocodingErrorCodes = [
   'no_result',
   'provider_error',
   'rate_limited',
+  'budget_unavailable',
   'timeout',
   'unauthorized',
   'forbidden',
@@ -38,7 +40,7 @@ export type AuthenticatedMapGeocodingContext = Readonly<{
   sessionId: string;
   user: {
     id: string;
-    instanceId?: string;
+    instanceId: string;
     roles: string[];
   };
 }>;
@@ -76,15 +78,17 @@ export const createClientError = (
   code: string,
   details: {
     statusCode?: number;
+    retryAfterSeconds?: number;
     endpoint?: string;
     provider?: string;
-  } = {},
+  } = {}
 ): Error => {
   const error = new Error(code) as MapGeocodingClientError;
   error.code = code;
   if (details.statusCode !== undefined) {
     error.statusCode = details.statusCode;
   }
+  if (details.retryAfterSeconds !== undefined) error.retryAfterSeconds = details.retryAfterSeconds;
   if (details.endpoint) {
     error.endpoint = details.endpoint;
   }
@@ -104,12 +108,9 @@ export const readMapGeocodingErrorCode = (
   error: unknown,
   fallback: MapGeocodingErrorCode = 'provider_error',
 ): MapGeocodingErrorCode => {
-  if (!(error instanceof Error)) {
-    return fallback;
-  }
-
+  if (typeof error !== 'object' || error === null) return fallback;
   const candidate = error as MapGeocodingClientError;
-  return sanitizeMapGeocodingErrorCode(candidate.code ?? error.message, fallback);
+  return sanitizeMapGeocodingErrorCode(candidate.code ?? candidate.message, fallback);
 };
 
 export const readMapGeocodingErrorDiagnostics = (error: unknown): Record<string, unknown> => {
@@ -137,27 +138,38 @@ export const readMapGeocodingErrorDiagnostics = (error: unknown): Record<string,
   return diagnostics;
 };
 
-export const createErrorResponse = (code: string): Response =>
-  ((safeCode) =>
-  jsonResponse(
-    safeCode === 'unauthorized'
+export const createErrorResponse = (error: unknown): Response => {
+  const code =
+    typeof error === 'string'
+      ? sanitizeMapGeocodingErrorCode(error)
+      : readMapGeocodingErrorCode(error);
+  const status =
+    code === 'unauthorized'
       ? 401
-      : safeCode === 'forbidden'
+      : code === 'forbidden'
         ? 403
-      : safeCode === 'no_result'
-        ? 404
-        : safeCode === 'disabled'
-          ? 503
-          : safeCode === 'rate_limited'
-            ? 429
-            : safeCode === 'timeout'
-              ? 504
-              : 400,
-    {
-      error: { code: safeCode, message: safeCode },
-      message: safeCode,
-    },
-  ))(sanitizeMapGeocodingErrorCode(code));
+        : code === 'no_result'
+          ? 404
+          : code === 'disabled' || code === 'budget_unavailable'
+            ? 503
+            : code === 'rate_limited'
+              ? 429
+              : code === 'timeout'
+                ? 504
+                : 400;
+  const retry =
+    error instanceof Error ? (error as MapGeocodingClientError).retryAfterSeconds : undefined;
+  const retryAfterSeconds =
+    code === 'rate_limited' && typeof retry === 'number' && Number.isFinite(retry) && retry > 0
+      ? Math.ceil(retry)
+      : undefined;
+  const response = jsonResponse(status, {
+    error: { code, message: code, ...(retryAfterSeconds ? { retryAfterSeconds } : {}) },
+    message: code,
+  });
+  if (retryAfterSeconds) response.headers.set('Retry-After', String(retryAfterSeconds));
+  return response;
+};
 
 export const readJsonBody = async <T>(request: Request): Promise<T> => {
   try {

@@ -63,6 +63,41 @@ describe('Keycloak admin client', () => {
     vi.unstubAllEnvs();
   });
 
+  it.each([true, false])('reads a platform user status directly (enabled %s)', async (enabled) => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { access_token: 'synthetic', expires_in: 120 })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, { id: 'subject', enabled }));
+    const client = await createClient(fetchImpl);
+    await expect(client.getUserStatus('subject')).resolves.toBe(enabled);
+    expect(String(fetchImpl.mock.calls[1]?.[0])).toContain('/admin/realms/demo/users/subject');
+  });
+
+  it('distinguishes a missing user from an unverified or incomplete status', async () => {
+    const missing = await createClient(
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          createJsonResponse(200, { access_token: 'synthetic', expires_in: 120 })
+        )
+        .mockResolvedValue(createJsonResponse(404, {}))
+    );
+    await expect(missing.getUserStatus('subject')).resolves.toBeNull();
+    for (const response of [{ id: 'subject' }, { id: 'other', enabled: true }]) {
+      const incomplete = await createClient(
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            createJsonResponse(200, { access_token: 'synthetic', expires_in: 120 })
+          )
+          .mockResolvedValue(createJsonResponse(200, response))
+      );
+      await expect(incomplete.getUserStatus('subject')).rejects.toMatchObject({ statusCode: 503 });
+    }
+  });
+
   it('proves realm creation capability from the provisioner token without mutating Keycloak', async () => {
     const token = `header.${Buffer.from(
       JSON.stringify({

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { serialize as serializeCookie } from 'cookie-es';
 import { appendSetCookie, deleteCookieHeader } from './cookies.js';
 import { encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie.js';
@@ -119,16 +120,20 @@ export const attachDeletedCookie = (response: Response, name: string) => {
   return 'response';
 };
 
-export const createSilentSsoResponse = (status: 'success' | 'failure') =>
-  new Response(
-    `<!doctype html><html><body><script>
+export const createSilentSsoResponse = (status: 'success' | 'failure') => {
+  const script = `
 window.parent.postMessage({ type: 'sva-auth:silent-sso', status: '${status}' }, window.location.origin);
-</script></body></html>`,
+`;
+  const hash = createHash('sha256').update(script).digest('base64');
+  return new Response(
+    `<!doctype html><html><body><script>${script}</script></body></html>`,
     {
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store',
+        'Content-Security-Policy-Report-Only': `script-src 'sha256-${hash}'; object-src 'none'; base-uri 'self'`,
       },
     }
   );
+};

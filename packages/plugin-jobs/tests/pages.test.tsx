@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { assert, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { publishSessionAccessSnapshot, registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { JobsCreatePage, JobsEditPage } from '../src/jobs.pages.js';
 import { JobsListPage } from '../src/jobs.list.js';
@@ -317,9 +317,9 @@ describe('Job page acceptance', () => {
   it('shows the employer in the overview and routes to the dedicated editor', async () => {
     render(<JobsListPage />);
     expect((await screen.findAllByText('Stadtverwaltung')).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: 'Stadtentwicklung' })[0]!.getAttribute('href')).toBe(
-      '/admin/jobs/42?principal=user'
-    );
+    const link = screen.getAllByRole('link', { name: 'Stadtentwicklung' })[0];
+    assert.exists(link);
+    expect(link.getAttribute('href')).toBe('/admin/jobs/42?principal=user');
     expect(screen.getByLabelText('Einträge pro Seite')).toBeDefined();
   });
   it('requires a named confirmation before deletion and offers no second delete after success', async () => {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { assert, afterEach, describe, expect, it, vi } from 'vitest';
 import { createJobDefaults, emptyJobCompany, type JobInput } from '../src/contract.js';
 import { JobBasisFields, JobContentFields } from '../src/jobs.fields.js';
 vi.mock('@sva/plugin-sdk', async (original) => ({
@@ -52,13 +52,15 @@ function Form({
 describe('Job editorial fields', () => {
   it('preserves a second employer and expiry while editing the first employer and publication date', () => {
     render(<Form />);
-    fireEvent.change(screen.getAllByLabelText('fields.companyName')[0]!, {
+    fireEvent.change(screen.getByDisplayValue('Erste Firma'), {
       target: { value: 'Neue Firma' },
     });
     fireEvent.change(screen.getByLabelText(/fields.publicationDate/), {
       target: { value: '2026-11-08' },
     });
-    const draft = JSON.parse(screen.getByTestId('draft').textContent!);
+    const text = screen.getByTestId('draft').textContent;
+    assert.exists(text);
+    const draft = JSON.parse(text);
     expect(draft.companies.map((item: { name: string }) => item.name)).toEqual([
       'Neue Firma',
       'Zweite Firma',
@@ -211,10 +213,14 @@ describe('Job editing journeys', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'actions.add' }));
     fireEvent.click(await screen.findByRole('button', { name: 'richText.htmlMode' }));
-    fireEvent.change(document.querySelector('textarea')!, { target: { value: '<p>Aufgaben</p>' } });
-    fireEvent.blur(document.querySelector('textarea')!);
+    const html = document.querySelector('textarea');
+    assert.exists(html);
+    fireEvent.change(html, { target: { value: '<p>Aufgaben</p>' } });
+    fireEvent.blur(html);
     await waitFor(() => expect(readDraft().contentBlocks[0]?.body).toContain('Aufgaben'));
-    fireEvent.change(screen.getAllByLabelText('fields.mediaType')[0]!, {
+    const mediaType = screen.getAllByLabelText('fields.mediaType')[0];
+    assert.exists(mediaType);
+    fireEvent.change(mediaType, {
       target: { value: 'video' },
     });
     expect(readDraft().mediaContents.map((medium) => medium.contentType)).toEqual([

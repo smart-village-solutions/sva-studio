@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor, cleanup } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { assert, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MainserverApiError, publishSessionAccessSnapshot } from '@sva/plugin-sdk';
 import { createJobDefaults } from '../src/contract.js';
 import { useJobEditor } from '../src/jobs.editor-state.js';
@@ -287,7 +287,8 @@ describe('Job editor operations', () => {
     await waitFor(() => expect(first.result.current.record).toBeDefined());
     await act(async () => first.result.current.remove());
     const operation = first.result.current.pending;
-    expect(operation?.kind).toBe('delete');
+    assert.exists(operation);
+    expect(operation.kind).toBe('delete');
     expect(api.remove).toHaveBeenCalledTimes(1);
     expect(sessionStorage.getItem('jobs:delete-scope:user:123')).not.toContain('Road');
     first.unmount();
@@ -297,9 +298,9 @@ describe('Job editor operations', () => {
     await act(async () => second.result.current.recover());
     expect(api.remove.mock.calls[1]).toEqual([
       '123',
-      { recover: true, inputHash: operation!.inputHash },
+      { recover: true, inputHash: operation.inputHash },
       'user',
-      operation!.operationId,
+      operation.operationId,
     ]);
     expect(second.result.current.deleted).toBe(true);
     expect(second.result.current.pending).toBeUndefined();

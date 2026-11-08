@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { assert, describe, expect, it, vi } from 'vitest';
 import {
   buildClientSchema,
   coerceInputValue,
@@ -38,7 +38,9 @@ function setup() {
       switch (call.operationName) {
         case 'SvaMainserverJobWrite': {
           expect(call.allowRetry).toBe(false);
-          for (const variable of getOperationAST(parse(call.document))!.variableDefinitions ?? [])
+          const operation = getOperationAST(parse(call.document));
+          assert.exists(operation);
+          for (const variable of operation.variableDefinitions ?? [])
             coerceInputValue(
               call.variables[variable.variable.name.value],
               typeFromAST(schema, variable.type) as Parameters<typeof coerceInputValue>[1]
@@ -97,7 +99,10 @@ function setup() {
   return {
     service,
     execute,
-    stored: () => stored!,
+    stored: () => {
+      assert.exists(stored);
+      return stored;
+    },
     writes: () =>
       execute.mock.calls.filter(([call]) => call.operationName === 'SvaMainserverJobWrite'),
     collision: (value: RawRecord[]) => {
@@ -107,7 +112,9 @@ function setup() {
       categories = [{ active: true }];
     },
     inactive: () => {
-      categories[1]!.active = false;
+      const category = categories[1];
+      assert.exists(category);
+      category.active = false;
     },
     lost: () => {
       lostResponse = true;

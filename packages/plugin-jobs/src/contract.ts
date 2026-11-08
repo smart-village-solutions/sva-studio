@@ -175,10 +175,11 @@ export function jobTemporalState(
 ) {
   const end = value.dates[0]?.dateEnd;
   if (
+    typeof end !== 'string' ||
     !jobDateSchema.safeParse(value.publicationDate).success ||
     !jobDateSchema.safeParse(end).success ||
-    end! < value.publicationDate
+    end < value.publicationDate
   )
     return 'incomplete';
-  return value.publicationDate > today ? 'planned' : end! < today ? 'ended' : 'ongoing';
+  return value.publicationDate > today ? 'planned' : end < today ? 'ended' : 'ongoing';
 }

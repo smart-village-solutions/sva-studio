@@ -30,15 +30,13 @@ function useEditorCommit({
     setFailure(undefined);
     try {
       if (operation.kind === 'delete') {
-        if (!operation.id) throw new Error('job_outcome_unknown');
-        const result = await removeJob(
-          operation.id,
-          recover
-            ? { recover: true, inputHash: operation.inputHash }
-            : { baseFingerprint: record!.contentFingerprint },
-          principal,
-          operation.operationId
-        );
+        const body = recover
+          ? { recover: true as const, inputHash: operation.inputHash }
+          : record
+            ? { baseFingerprint: record.contentFingerprint }
+            : undefined;
+        if (!operation.id || !body) throw new Error('job_outcome_unknown');
+        const result = await removeJob(operation.id, body, principal, operation.operationId);
         setDeleted(true);
         if (result.reconciliationRequired) {
           setMessage('messages.deletePartial');

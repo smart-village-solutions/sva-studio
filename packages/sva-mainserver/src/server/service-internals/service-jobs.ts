@@ -207,7 +207,7 @@ const writeJob = async (
       assertJobWritable(current.item);
       if (jobFingerprint(current.item) !== prepared.fingerprint)
         throw new JobPrewriteError('job_content_conflict');
-      providerId = current.data.dataProvider!.id;
+      providerId = String(raw(current.item.dataProvider).id);
     } else providerId = (await context.loadDataProviderIdentity(input)).dataProvider.id;
     const externalId =
       typeof prepared.expected.externalId === 'string' && prepared.expected.externalId.trim()

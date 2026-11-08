@@ -2,7 +2,7 @@ import {
   jobInputSchema as browserSchema,
   createJobDefaults as browserDefaults,
 } from '@sva/plugin-jobs';
-import { describe, expect, it } from 'vitest';
+import { assert, describe, expect, it } from 'vitest';
 import { buildClientSchema, parse, validate, type IntrospectionQuery } from 'graphql';
 import schemaSnapshot from '../generated/schema.snapshot.json';
 import {
@@ -49,7 +49,8 @@ describe('Job contract and snapshot', () => {
       'categories',
     ])
       expect(write[key], key).toEqual(stored[key]);
-    const originalMedia = (stored.mediaContents as RawRecord[])[0]!;
+    const originalMedia = (stored.mediaContents as RawRecord[])[0];
+    assert.exists(originalMedia);
     const { height: _height, width: _width, ...writableMedia } = originalMedia;
     expect(write.mediaContents).toEqual([writableMedia]);
     expect(write.title).toBe('Neuer Titel');
@@ -88,8 +89,10 @@ describe('Job contract and snapshot', () => {
   it('rejects forged source indices and sanitizes changed HTML', () => {
     const stored = jobFixture();
     const input = jobRead(stored).input;
+    const company = input.companies[0];
+    assert.exists(company);
     expect(() =>
-      buildJobWrite({ ...input, companies: [{ ...input.companies[0]!, sourceIndex: 99 }] }, stored)
+      buildJobWrite({ ...input, companies: [{ ...company, sourceIndex: 99 }] }, stored)
     ).toThrow('job_content_conflict');
     expect(
       buildJobWrite(
@@ -101,17 +104,21 @@ describe('Job contract and snapshot', () => {
   it('preserves company address metadata while editing a contact and accepts zero coordinates', () => {
     const stored = jobFixture();
     const input = jobRead(stored).input;
-    input.companies[0]!.contact.email = 'jobs@example.org';
+    const company = input.companies[0];
+    assert.exists(company);
+    company.contact.email = 'jobs@example.org';
     const write = buildJobWrite(input, stored);
-    expect((write.companies as RawRecord[])[0]!.address).toEqual(
-      (stored.companies as RawRecord[])[0]!.address
-    );
+    const before = (stored.companies as RawRecord[])[0];
+    const after = (write.companies as RawRecord[])[0];
+    assert.exists(before);
+    assert.exists(after);
+    expect(after.address).toEqual(before.address);
     expect((write.companies as RawRecord[])[1]).toEqual((stored.companies as RawRecord[])[1]);
     expect(jobInputSchema.safeParse(input).success).toBe(true);
   });
   it('uses 28 calendar days, handles leap years and separates temporal state from visibility', () => {
     const input = { ...createJobDefaults('2028-02-01'), title: 'Neu', employmentType: 'Vollzeit' };
-    expect(input.dates[0]!.dateEnd).toBe('2028-02-29');
+    expect(input.dates[0]?.dateEnd).toBe('2028-02-29');
     expect(input.visible).toBe(false);
     expect(jobTemporalState(input, '2028-03-01')).toBe('ended');
     expect(jobTemporalState(input, '2028-01-31')).toBe('planned');

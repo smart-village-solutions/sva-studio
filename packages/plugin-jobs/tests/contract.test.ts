@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   createJobDefaults,
   emptyJobCompany,
+  emptyJobContact,
   jobInputSchema,
   jobTemporalState,
 } from '../src/contract.js';
@@ -64,7 +65,7 @@ describe('Job input and ownership boundary', () => {
   it('validates non-empty contact links and media URLs before a write', () => {
     const job = { ...createJobDefaults('2026-11-07'), title: 'Stelle', employmentType: 'Vollzeit' };
     const contact = {
-      ...job.contacts[0]!,
+      ...emptyJobContact(),
       email: 'jobs@example.org',
       webUrls: [{ url: 'https://example.org/jobs', description: 'Karriere' }],
     };

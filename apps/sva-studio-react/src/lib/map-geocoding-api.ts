@@ -60,7 +60,7 @@ export const getMapGeocodingConfigServerFn = createServerFn().handler(async (): 
 );
 
 export const suggestMapAddressesServerFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: { query: string }) => data)
+  .validator((data: { query: string }) => data)
   .handler(async ({ data }): Promise<readonly MapGeocodingFeature[]> => {
     const query = data.query.trim();
     if (!query) {
@@ -72,7 +72,7 @@ export const suggestMapAddressesServerFn = createServerFn({ method: 'POST' })
   });
 
 export const geocodeMapAddressServerFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: MapGeocodingAddressInput) => data)
+  .validator((data: MapGeocodingAddressInput) => data)
   .handler(async ({ data }): Promise<MapGeocodingFeature> =>
     withCurrentRequestGeocodingOperation('geocode', async (_ctx, config, diagnostics) =>
       executeGeocodeOperation(config, data, diagnostics),
@@ -80,7 +80,7 @@ export const geocodeMapAddressServerFn = createServerFn({ method: 'POST' })
   );
 
 export const reverseGeocodeMapCoordinatesServerFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: MapGeocodingCoordinates) => data)
+  .validator((data: MapGeocodingCoordinates) => data)
   .handler(async ({ data }): Promise<MapGeocodingFeature> =>
     withCurrentRequestGeocodingOperation('reverse_geocode', async (_ctx, config, diagnostics) =>
       executeReverseGeocodeOperation(config, data, diagnostics),

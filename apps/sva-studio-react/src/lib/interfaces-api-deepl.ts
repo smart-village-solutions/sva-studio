@@ -43,5 +43,5 @@ export const checkDeepLInterfaceForRequest = async (
   });
 };
 export const checkDeepLInterfaceServerFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => checkDeepLInterfaceForRequest(data));

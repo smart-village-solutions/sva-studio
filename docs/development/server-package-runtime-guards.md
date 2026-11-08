@@ -39,6 +39,8 @@ Exportierte Factory-Funktionen müssen ihre Rückgabetypen auch über injizierte
 
 Das gebaute SSR-Artefakt wird zusätzlich durch `scripts/ci/patch-runtime-artifact.ts` auf dieselbe React-Instanz wie der Renderer gebunden. Der vorhandene Shim-Patch unterstützt genau zwei externe React-Referenzen sowie vier Referenzen, wenn zwei Versionen von `use-sync-external-store` im Bundle liegen. Fehlende gebündelte React-Referenzen und abweichende Anzahlen brechen den Build weiterhin ab.
 
+Die Eingabevalidierung der Server-Funktionen wird mit `.validator(...)` an den aktuellen TanStack-Start-Builder gebunden.
+
 ## Was als Runtime-Import zählt
 
 Als Runtime-Import gelten insbesondere:

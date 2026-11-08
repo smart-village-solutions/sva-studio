@@ -140,3 +140,39 @@ Zustand. Der Bericht belegt nicht, dass ein Wechsel von `load` auf
 kein spekulativer Readiness-Fix eingebaut. Die vier vorher beobachteten
 News-Bildfehler treten auf dem festgelegten Ausgangscommit nicht mehr auf;
 Bildreferenzen wurden in dieser Änderung nicht aktualisiert.
+
+### Nachträge aus den ersten echten Ausführungen
+
+Die drei lokalen Routenläufe nach der Optimierung dauern 186,68 / 211,46 /
+209,55 Sekunden (Median 209,55 Sekunden gegenüber 324,50 Sekunden, −35,42 %).
+Die Multimengen aus Datei, vollständigem Testnamen und Status sind einschließlich
+doppelter Anzeigenamen identisch: 90 Dateien, 926 Fälle, keine Skips. Die Messung
+erfolgte mit ungecachten Nx-Targets auf demselben Rechner; parallele gezielte
+Tooling-Prüfungen verursachen wechselnde Rechnerlast. Das ist kein
+GitHub-Latenznachweis.
+
+Die drei ungeänderten E2E-Baseline-Jobs dauern einschließlich Setup/Upload
+1.094 / 1.112 / 1.080 Sekunden (Median 18:14 Minuten). Die eigentlichen
+E2E-Ausführungsschritte benötigen 1.002 / 1.019 / 1.001 Sekunden. Die drei
+vollständigen Coverage-Vertragsschritte auf demselben Ausgangscommit benötigen
+966 / 997 / 1.645 Sekunden. Beim dritten Baseline-Lauf erreicht der anschließende
+Sonar-Schritt das bisherige Job-Zeitlimit; dieser Job ist ausdrücklich kein
+erfolgreicher Gesamtendstand.
+
+Der erste neue Main-Diagnoselauf `42531689343` deckt eine zuvor durch gemeinsame
+Build-Reihenfolge verdeckte Voraussetzung auf: Die Coverage-Targets von Data,
+Mainserver und Abfall-Runtime brauchen dieselben `^build`-Voraussetzungen wie
+ihre Unit-Targets. Ein gezielter instrumentierter Abfall-Runtime-Test besteht
+nach der Ergänzung. Im E2E-Diagnoselauf `42531691678` wird das unabhängige
+Inventar zu früh vor diesen Nx-Builds gelesen. Die Erhebung wird hinter den
+vorhandenen Nx-Testlauf verschoben; ein Reihenfolgevertrag prüft das.
+
+Für den Protobuf-Fehler bestätigt Sonar den Mechanismus
+[JS-2753](https://community.sonarsource.com/t/sonarjs-14-3-invalid-utf-8-protobuf-errors-pr-analysis-times-out-before-upload/190532):
+Ein alleinstehendes Unicode-Surrogat in einem gültigen Stringliteral kann die
+AST-Übertragung für Taint-Analyse beschädigen. Der betroffene negative
+Übersetzungstest erzeugt denselben Laufzeitstring jetzt mit
+`String.fromCharCode(0xd800)`; seine neun Tests bestehen. Ein AST-Scan findet
+keine weiteren solchen String-/Template-Literale in den Sonar-Quellen. Ein
+fehlerfreier Scannerlauf auf dem neuen Commit bleibt als Incident-Nachweis
+erforderlich.

@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Input, StudioOverviewPageTemplate } from '@sva/studio-ui-react';
+import { StudioListPageTemplate } from '@sva/studio-ui-react';
 import {
   parseSearchQuery,
   searchQueryParams,
   type SearchQuery,
   type SearchResults,
 } from './search-contract.js';
-import { SearchFilters } from './search-filters.js';
-import { SearchFeedback, SearchPaging, SearchResultList } from './search-results.js';
-const emptyOptions: SearchResults['options'] = { types: [], categories: [], providers: [] };
+import { SearchFeedback, SearchResultTable } from './search-results.js';
 const useSearchResults = (query: SearchQuery, contextKey: string) => {
   const [result, setResult] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(false);
@@ -55,46 +53,15 @@ export const SearchResultsPage = ({ contextKey = '' }: { readonly contextKey?: s
   const search = useSearch({ strict: false });
   const query = useMemo(() => parseSearchQuery(search), [search]);
   const navigate = useNavigate();
-  const [input, setInput] = useState(query.q);
   const { result, loading, error, retry } = useSearchResults(query, contextKey);
   const update = (next: SearchQuery) => {
     void navigate({ to: '/plugins/search' as never, search: next as never });
   };
-  useEffect(() => {
-    setInput(query.q);
-  }, [query.q]);
   return (
-    <StudioOverviewPageTemplate title={pt('title')} description={pt('description')}>
-      <form
-        role="search"
-        aria-label={pt('resultsLandmark')}
-        className="flex flex-wrap gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          update({ ...query, q: input.trim(), page: 1 });
-        }}
-      >
-        <Input
-          autoFocus
-          type="search"
-          aria-label={pt('prompt')}
-          placeholder={pt('prompt')}
-          value={input}
-          maxLength={250}
-          onChange={(event) => setInput(event.target.value)}
-          className="min-w-0 flex-1"
-        />
-        <Button type="submit">{pt('submit')}</Button>
-      </form>
-      <SearchFilters
-        query={query}
-        options={result?.options ?? emptyOptions}
-        loading={loading}
-        onChange={update}
-      />
+    <section className="space-y-5">
+      <StudioListPageTemplate title={pt('title')} description={pt('description')} />
       <SearchFeedback result={result} loading={loading} error={error} query={query} retry={retry} />
-      <SearchResultList result={result} />
-      <SearchPaging result={result} query={query} loading={loading} update={update} />
-    </StudioOverviewPageTemplate>
+      <SearchResultTable result={result} query={query} loading={loading} update={update} />
+    </section>
   );
 };

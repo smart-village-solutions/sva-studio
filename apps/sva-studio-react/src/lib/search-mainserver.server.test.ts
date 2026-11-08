@@ -55,7 +55,7 @@ vi.mock('./mainserver-generic-type-registry.server.js', () => ({
 }));
 import { resolveSearchCandidate, searchMainserverHost } from './search-mainserver.server.js';
 import type { SearchUserContext } from '@sva/plugin-search/server';
-const context: SearchUserContext = {
+let context: SearchUserContext = {
   scope: 'tenant',
   request: new Request('https://studio.example/api/v1/plugins/search/query', {
     headers: { Cookie: 'session=private' },
@@ -70,6 +70,12 @@ const context: SearchUserContext = {
 const query = { q: 'city', types: [], categories: [], provider: '', page: 1 };
 beforeEach(() => {
   vi.clearAllMocks();
+  context = {
+    ...context,
+    request: new Request('https://studio.example/api/v1/plugins/search/query', {
+      headers: { Cookie: 'session=private' },
+    }),
+  };
   state.current.activeOrganizationId = 'org';
   state.credentials.mockResolvedValue({
     status: 'ok',
@@ -92,6 +98,35 @@ beforeEach(() => {
   );
 });
 describe('search uses existing resource reads', () => {
+  it('uses the policy-selected personal reader without changing the active organization', async () => {
+    state.credentials.mockResolvedValue({
+      status: 'ok',
+      source: 'user',
+      credentialFingerprint: 'personal',
+    });
+    await resolveSearchCandidate(context, query, { model: 'NewsItem', id: '42' });
+    const request = state.dispatch.mock.calls[0]?.[0] as Request;
+    expect(request.headers.get('X-SVA-Acting-Principal-Type')).toBe('user');
+    expect(state.credentials).toHaveBeenCalledWith({
+      instanceId: 'town',
+      keycloakSubject: 'user',
+      activeOrganizationId: 'org',
+    });
+    expect(state.current.activeOrganizationId).toBe('org');
+    state.dispatch.mockResolvedValueOnce(new Response(null, { status: 403 }));
+    expect(await resolveSearchCandidate(context, query, { model: 'NewsItem', id: '43' })).toEqual({
+      kind: 'denied',
+    });
+    expect(state.credentials).toHaveBeenCalledTimes(1);
+    expect(state.dispatch).toHaveBeenCalledTimes(2);
+  });
+  it('does not issue detail reads when automatic credential resolution is unavailable', async () => {
+    state.credentials.mockResolvedValue({ status: 'acting_principal_not_allowed' });
+    expect(await resolveSearchCandidate(context, query, { model: 'NewsItem', id: '42' })).toEqual({
+      kind: 'unresolved',
+    });
+    expect(state.dispatch).not.toHaveBeenCalled();
+  });
   it('only returns presentation data after the existing detail route allows it', async () => {
     const result = await resolveSearchCandidate(context, query, { model: 'NewsItem', id: '42' });
     expect(result).toMatchObject({

@@ -123,7 +123,7 @@ export default function Header({
   return (
     <header className="sticky top-0 z-40 bg-background">
       <div className="grid min-h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 border-b border-border-subtle px-4 py-2 text-sm text-foreground sm:px-6">
-        <div className="flex min-w-0 items-center">
+        <div className="col-start-1 row-start-1 flex min-w-0 items-center lg:hidden">
           {onOpenMobileNavigation ? (
             <Button
               type="button"
@@ -142,25 +142,25 @@ export default function Header({
               <Menu aria-hidden="true" className="h-5 w-5" />
             </Button>
           ) : null}
-          {isHydrated &&
-          isAuthenticated &&
-          SearchHeader &&
-          canSearch &&
-          !organizationContext.isUpdating ? (
-            <div className="flex min-w-0 items-center lg:w-72">
-              <SearchHeader
-                onSearch={(q) => {
-                  void navigate({
-                    to: '/plugins/search' as never,
-                    search: { q, page: 1 } as never,
-                  });
-                }}
-              />
-            </div>
-          ) : null}
         </div>
+        {isHydrated &&
+        isAuthenticated &&
+        SearchHeader &&
+        canSearch &&
+        !organizationContext.isUpdating ? (
+          <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:w-72">
+            <SearchHeader
+              onSearch={(q) => {
+                void navigate({
+                  to: '/plugins/search' as never,
+                  search: { q, page: 1 } as never,
+                });
+              }}
+            />
+          </div>
+        ) : null}
         {showOrganizationContext ? (
-          <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+          <div className="col-span-3 row-start-3 min-w-0 lg:col-span-1 lg:col-start-2 lg:row-start-1">
             <OrganizationContextSwitcher allowPersonal={isSystemAdmin} />
           </div>
         ) : null}

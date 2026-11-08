@@ -50,11 +50,11 @@ Der Berechtigungsfilter wird vor dem Paging der sichtbaren Treffer angewendet. E
 ### Oberfläche
 
 - Desktop: beschriftetes Suchformular in der Kopfzeile, Submit per Enter oder Suchbutton; keine Anfrage nur durch jeden Tastendruck.
-- Mobil: Suchsymbol als Einstieg in dieselbe Ergebnisseite. Organisation, Navigation und bestehende Header-Aktionen bleiben erreichbar.
-- Ergebnisseite: Suchfeld, Kontext der aktiven Organisation, Zählstatus und Ergebnisliste mit Titel, Inhaltstyp, Textauszug und Datenanbieter. Titel verlinken vorhandene Detailseiten.
+- Mobil: Dasselbe Header-Suchfeld bleibt in einer eigenen Zeile sichtbar. Organisation, Navigation und bestehende Header-Aktionen bleiben erreichbar.
+- Ergebnisseite: Keine weitere Sucheingabe; Zählstatus und vorhandene StudioDataTable mit Titel samt Textauszug, Inhaltstyp, Datenanbieter und Kategorien. Titel verlinken vorhandene Detailseiten.
 - Filter: Inhaltstyp und Kategorie als Mehrfachauswahl, Datenanbieter als Auswahl; kombinierbar, mit entfernbaren Markierungen und „Filter zurücksetzen“. Es gibt zunächst keine weiteren Sortier- oder Datumsfilter.
 - Filteroptionen und etwaige Optionszahlen stammen ausschließlich aus dem lesbaren Bestand im zulässigen Kontext; rohe Meilisearch-Facetten ausgeschlossener Inhalte werden nicht ausgegeben. Freie oder manipulierte Filterwerte erweitern niemals den Zugriff.
-- `q`, Typen, Kategorien, Datenanbieter und sichtbare Ergebnisseite werden hostvalidiert und typisiert in der URL abgebildet. Browser-Zurück stellt den Suchzustand wieder her; Filteränderungen setzen das Paging zurück. Organisationskontext bleibt sitzungsgeführt.
+- `q`, Typen, Kategorien, Datenanbieter, Sortierung und sichtbare Ergebnisseite werden hostvalidiert und typisiert in der URL abgebildet. Browser-Zurück stellt den Suchzustand wieder her; Filteränderungen setzen das Paging zurück. Organisationskontext bleibt sitzungsgeführt.
 - Leerer Suchbegriff startet keinen Vollbestandsscan. Keine Treffer, laufende Abfrage, unvollständige Prüfung und technische Fehler erhalten unterscheidbare Zustände. Ergebnisse einer überholten Anfrage überschreiben keine neuere Suche.
 - Vorhandene Design-System-Komponenten und semantische Tokens; deutsche und englische Übersetzungen, Tastaturbedienbarkeit, sichtbarer Fokus, Status-Live-Region und WCAG 2.1 AA. Meilisearch-Highlight-HTML wird nicht ungeprüft in die Seite übernommen.
 
@@ -85,3 +85,12 @@ Die Funktion wird zunächst in Dev mit getrenntem, eingeschränktem Suchzugang e
 ### Erster fachlicher Live-Test
 
 Als erster Testmandant ist Sandbox mit Mainserver Staging vorgesehen. Die Auswahl autorisiert noch keine Konfiguration, Schlüsselanlage oder Bereitstellung.
+
+
+## Bestätigte UX-Anpassung vom 8. November 2026
+
+Der Nutzer bestätigt die übliche StudioDataTable mit Titel, Inhaltstyp, Datenanbieter, Kategorien, Spaltensortierung, Filtern und Paging. Das einzige Suchfeld bleibt auf allen Ansichten im Header, auch mobil; auf der Ergebnisseite gibt es keine zweite Eingabe. Suchbegriff, Filter, Sortierung und Paging bleiben in der URL. Die Sortierung erfolgt nach der Rechteprüfung und vor dem Paging auf der tatsächlich geprüften Treffermenge; unvollständige Läufe bleiben als solche erkennbar.
+
+Die Suche erzwingt keinen Organisationsprincipal mehr. Sie nutzt die vorhandene automatische Credential-Auflösung für die aktive Sitzung und Organisationsrichtlinie und übergibt den so bestimmten Principal weiterhin explizit an die bestehenden autorisierenden Detailrouten. Es gibt keine Vereinigung aller Organisationen und keinen Wechsel zu einem anderen Zugang nach einer Ablehnung. Die frische Kontext-/Credentialprüfung nach dem Lauf bleibt erhalten. Globale Kontosteuerung, Schreibaktionen, Indizes, Secrets und Rollout-Konfiguration gehören nicht zum Änderungsscope.
+
+Nachweise: UI-Test für genau ein dauerhaftes Header-Suchfeld, URL-Synchronisierung und Filtererhalt; DataTable-Sortier-/Filtertest; Engine-Test für Sortierung vor Paging; Host-Test für automatische Auswahl und unveränderte Detailautorisierung; gezielte Typechecks, i18n, Server-Runtime und Dateiplatzierung.

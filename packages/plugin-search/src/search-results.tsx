@@ -1,7 +1,13 @@
 import { Link } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Badge, Button } from '@sva/studio-ui-react';
-import type { SearchQuery, SearchResults } from './search-contract.js';
+import { Button, StudioDataTable, type StudioColumnDef } from '@sva/studio-ui-react';
+import {
+  parseSearchQuery,
+  type SearchDocument,
+  type SearchQuery,
+  type SearchResults,
+} from './search-contract.js';
+import { SearchFilters } from './search-filters.js';
 export const SearchFeedback = ({
   result,
   loading,
@@ -59,40 +65,110 @@ export const SearchFeedback = ({
           </Button>
         </div>
       ) : null}
-      {result && result.complete && result.items.length === 0 ? (
-        <p className="py-8 text-muted-foreground">{pt('empty')}</p>
-      ) : null}
     </>
   );
 };
-export const SearchResultList = ({ result }: { result: SearchResults | null }) => {
+const resultColumns = (
+  pt: ReturnType<typeof usePluginTranslation>
+): readonly StudioColumnDef<SearchDocument>[] => [
+  {
+    id: 'title',
+    header: pt('table.title'),
+    sortable: true,
+    sortLabel: pt('table.title'),
+    sortValue: (item) => item.title,
+    cell: (item) => (
+      <div className="space-y-1">
+        <Link to={item.href as never} className="text-primary underline-offset-4 hover:underline">
+          {item.title}
+        </Link>
+        {item.excerpt ? (
+          <p className="max-w-prose text-sm text-muted-foreground">{item.excerpt}</p>
+        ) : null}
+      </div>
+    ),
+  },
+  {
+    id: 'contentType',
+    header: pt('type'),
+    sortable: true,
+    sortLabel: pt('type'),
+    sortValue: (item) => item.contentType,
+    cell: (item) => pt(`types.${item.contentType.split('.')[0]}`),
+  },
+  {
+    id: 'providerName',
+    header: pt('provider'),
+    sortable: true,
+    sortLabel: pt('provider'),
+    sortValue: (item) => item.providerName,
+    cell: (item) => item.providerName,
+  },
+  { id: 'categories', header: pt('category'), cell: (item) => item.categories.join(', ') },
+];
+export const SearchResultTable = ({
+  result,
+  query,
+  loading,
+  update,
+}: {
+  result: SearchResults | null;
+  query: SearchQuery;
+  loading: boolean;
+  update: (query: SearchQuery) => void;
+}) => {
   const pt = usePluginTranslation('search');
+
   return (
-    <>
-      {result ? (
-        <ul className="divide-y divide-border rounded-xl border border-border bg-card">
-          {result.items.map((item) => (
-            <li key={`${item.contentType}:${item.id}`} className="space-y-2 p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{pt(`types.${item.contentType.split('.')[0]}`)}</Badge>
-                <span className="text-sm text-muted-foreground">{item.providerName}</span>
-              </div>
-              <h2 className="text-lg font-semibold">
-                <Link
-                  to={item.href as never}
-                  className="text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-                >
-                  {item.title}
-                </Link>
-              </h2>
-              {item.excerpt ? (
-                <p className="max-w-prose text-sm text-muted-foreground">{item.excerpt}</p>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </>
+    <StudioDataTable
+      ariaLabel={pt('table.caption')}
+      caption={pt('table.caption')}
+      data={result?.items ?? []}
+      columns={resultColumns(pt)}
+      getRowId={(item) => `${item.contentType}:${item.id}`}
+      selectionMode="none"
+      isLoading={loading}
+      loadingState={null}
+      emptyState={!query.q ? null : result?.complete ? pt('empty') : null}
+      labels={{
+        selectionColumn: pt('table.selection'),
+        actionsColumn: pt('table.actions'),
+        loading: pt('loading'),
+        selectAllRows: (label) => label,
+        selectRow: ({ label }) => label,
+      }}
+      sorting={{
+        mode: 'external',
+        labels: {
+          field: pt('table.sortField'),
+          direction: pt('table.sortDirection'),
+          none: pt('table.sortNone'),
+          ascending: pt('table.ascending'),
+          descending: pt('table.descending'),
+        },
+        state: [{ id: query.sortBy ?? 'title', desc: query.sortDirection === 'desc' }],
+        onChange: ([sort]) => {
+          if (sort)
+            update(
+              parseSearchQuery({
+                ...query,
+                sortBy: sort.id,
+                sortDirection: sort.desc ? 'desc' : 'asc',
+                page: 1,
+              })
+            );
+        },
+      }}
+      toolbarCenter={
+        <SearchFilters
+          query={query}
+          options={result?.options ?? { types: [], categories: [], providers: [] }}
+          loading={loading}
+          onChange={update}
+        />
+      }
+      footer={<SearchPaging result={result} query={query} loading={loading} update={update} />}
+    />
   );
 };
 export const SearchPaging = ({

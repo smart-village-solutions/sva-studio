@@ -89,6 +89,17 @@ const scanCandidates = async (host: SearchEngineHost, now: () => number) => {
   }
   return { documents, denied, complete: done.size === searchModels.length && unresolved === 0 };
 };
+const sortDocuments = (documents: SearchDocument[], query: SearchQuery): SearchDocument[] => {
+  const field = query.sortBy ?? 'title';
+  const direction = query.sortDirection === 'desc' ? -1 : 1;
+  return documents.sort(
+    (left, right) =>
+      direction *
+        left[field].localeCompare(right[field], 'de', { sensitivity: 'base', numeric: true }) ||
+      left.contentType.localeCompare(right.contentType) ||
+      left.id.localeCompare(right.id, 'de', { numeric: true })
+  );
+};
 const optionsFor = (documents: readonly SearchDocument[]): SearchResults['options'] => {
   const providers = new Map<string, string>();
   for (const document of documents)
@@ -110,7 +121,10 @@ export const executeSearch = async (
     ? await scanCandidates(host, host.now ?? Date.now)
     : { documents: [], denied: 0, complete: true };
   if (!(await host.isCurrent())) throw new Error('search_context_changed');
-  const permitted = scan.documents.filter((document) => matches(document, query));
+  const permitted = sortDocuments(
+    scan.documents.filter((document) => matches(document, query)),
+    query
+  );
   const start = (query.page - 1) * pageSize;
   return {
     items: permitted.slice(start, start + pageSize),

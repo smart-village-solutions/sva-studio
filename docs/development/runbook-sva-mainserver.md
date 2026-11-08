@@ -506,7 +506,7 @@ Für den Credential-Commit werden die vorhandenen Instanz- und Benutzerrevisions
 
 ## Suchplugin einrichten
 
-Das bestehende optionale Studio-Plugin `search` verwendet `GET /api/v1/plugins/search/query`. Seine Route und der Header-Einstieg benötigen die reguläre Modulaktivierung und `search.read`. Die fachlichen Leserechte werden anschließend über die bestehenden Mainserver-Detailzugriffe geprüft; die Suche legt keine neuen Mainserver-Datensätze, Indizes oder Schlüssel an.
+Das bestehende optionale Studio-Plugin `search` verwendet `GET /api/v1/plugins/search/query`. Seine Route und der Header-Einstieg benötigen die reguläre Modulaktivierung und `search.read`. Das einzige Suchfeld befindet sich im Header; die Ergebnisse nutzen die bestehende `StudioDataTable` mit Filtern und serverseitiger Sortierung vor dem Paging. Der Leseprincipal wird mit der vorhandenen automatischen Credential-Auflösung gewählt, nicht durch einen zusätzlichen Kontowechsel. Der ausgewählte Principal bleibt für den Request gebunden; nach einer Ablehnung wird kein alternativer Zugang ausprobiert. Die fachlichen Leserechte werden anschließend weiterhin über die bestehenden Mainserver-Detailzugriffe geprüft; die Suche legt keine neuen Mainserver-Datensätze, Indizes oder Schlüssel an.
 
 Die serverseitige Laufzeit benötigt folgende ausdrücklich konfigurierte Werte:
 

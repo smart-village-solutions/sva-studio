@@ -42,6 +42,13 @@ Das System SHALL Suchkandidaten vor Ausgabe anhand der bestehenden Studio-Lesere
 - **THEN** enthält die Browserantwort nur für erlaubte Kandidaten Titel, Vorschau, Datenanbieter und Detailverweis
 - **AND** wird eine erlaubte Leseentscheidung nicht als Bearbeitungsberechtigung verwendet
 
+#### Scenario: Lesen ohne manuellen Kontowechsel
+
+- **WHEN** eine Suche im bestehenden Sitzungskontext ausgeführt wird
+- **THEN** bestimmt die vorhandene Credential-Policy den Leseprincipal automatisch
+- **AND** bleibt die explizite Ressourcenautorisierung mit diesem Principal erhalten
+- **AND** führt eine Rechteablehnung nicht zum Ausprobieren eines anderen Zugangs
+
 #### Scenario: Kontext wechselt während einer Anfrage
 
 - **WHEN** Benutzer, Instanz oder aktive Organisation während Suche oder Zählung wechselt
@@ -67,7 +74,7 @@ Das System SHALL erlaubte und eindeutig wegen Berechtigung ausgeschlossene Treff
 
 ### Requirement: Ergebnisseite mit kombinierbaren Filtern
 
-Das Suchplugin SHALL eine Ergebnisseite mit Suchfeld, zugänglichen Treffern, Zählstatus, Inhaltstyp- und Kategorie-Mehrfachauswahl sowie einem Datenanbieterfilter anbieten. Filteroptionen und Optionszahlen MUST aus dem berechtigt lesbaren Bestand stammen. Suchbegriff, fachliche Filter und sichtbares Paging MUST hostvalidiert und typisiert in der URL abgebildet werden.
+Das Suchplugin SHALL genau ein dauerhaftes Suchfeld im Header auf Desktop und Mobil sowie eine Ergebnisseite mit zugänglichen Treffern in der vorhandenen StudioDataTable, Zählstatus, Inhaltstyp- und Kategorie-Mehrfachauswahl sowie einem Datenanbieterfilter anbieten. Die Ergebnisseite MUST ohne zusätzliche Sucheingabe auskommen. Titel, Inhaltstyp und Datenanbieter MUST über die üblichen Tabellenfunktionen sortierbar sein. Filteroptionen und Optionszahlen MUST aus dem berechtigt lesbaren Bestand stammen. Suchbegriff, fachliche Filter, Sortierung und sichtbares Paging MUST hostvalidiert und typisiert in der URL abgebildet werden.
 
 #### Scenario: Benutzer kombiniert Filter
 
@@ -84,7 +91,7 @@ Das Suchplugin SHALL eine Ergebnisseite mit Suchfeld, zugänglichen Treffern, Z�
 
 ### Requirement: Paging nach Zugriffsprüfung
 
-Das System SHALL berechtigte Treffer vor dem sichtbaren Paging auswählen und bei Bedarf weitere Upstream-Seiten prüfen. Es MUST eine stabile, deduplizierte Reihenfolge verwenden und MUST eine Kandidatenseite ohne erlaubte Treffer von einem erschöpften Suchbestand unterscheiden.
+Das System SHALL berechtigte Treffer vor dem sichtbaren Paging auswählen und gemäß der validierten Sortierung ordnen und bei Bedarf weitere Upstream-Seiten prüfen. Es MUST eine stabile, deduplizierte Reihenfolge verwenden und MUST eine Kandidatenseite ohne erlaubte Treffer von einem erschöpften Suchbestand unterscheiden.
 
 #### Scenario: Erste Kandidatenseite enthält nur ausgeschlossene Treffer
 
@@ -98,7 +105,7 @@ Das System SHALL vorhandene Studio-Design-System-Komponenten, deutsche und engli
 
 #### Scenario: Suche wird per Tastatur oder mobil bedient
 
-- **WHEN** ein Benutzer das Desktop-Suchfeld per Enter absendet oder den mobilen Sucheinstieg verwendet
+- **WHEN** ein Benutzer das Suchfeld im Header auf Desktop oder Mobil per Enter absendet
 - **THEN** führt der Einstieg zur selben zugänglichen Ergebnisseite
 - **AND** sind Fokus, Filterbedienung und Statusmeldungen ohne Maus verständlich
 

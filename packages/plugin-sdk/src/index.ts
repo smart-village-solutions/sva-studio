@@ -272,3 +272,5 @@ export * from './plugin-tenant-lifecycle.js';
 export * from './data-exchange-public-api.js';
 // prettier-ignore
 export { hasContentLifecycleAccess, resolveContentLifecycleAction, resolveContentVisibilityAction } from './standard-content-access.js';
+
+export { registerPluginLocaleResolver, readPluginLocales } from './plugin-translations.js';

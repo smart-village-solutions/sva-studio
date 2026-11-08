@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config';
 import baseConfig from './vitest.config.js';
 
 if (
+  !process.env.APPLICATION_WORKSPACE_TEST_DATABASE_URL &&
   !process.env.APP_TRANSLATIONS_TEST_DATABASE_URL &&
   !process.env.INSTANCE_PROVISIONING_INTEGRATION_DB &&
   !process.env.MAIL_TEMPLATES_TEST_ADMIN_URL

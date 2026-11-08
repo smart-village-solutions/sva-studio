@@ -202,6 +202,14 @@ export const createPluginServerHandlerDispatcher = (input: {
           translate,
         });
         if (accessError) return accessError;
+      } else if (requirement.kind === 'authenticated' && descriptor.method === 'GET') {
+        const instanceId = context.user.instanceId;
+        if (
+          !instanceId ||
+          !(await readTenantAccess(instanceId, descriptor.ownerPluginId)).allowed
+        ) {
+          return createError(request, translate, 403, 'forbidden', 'pluginUnavailable');
+        }
       } else {
         return createError(request, translate, 403, 'forbidden', 'unsupportedScope');
       }
@@ -212,7 +220,7 @@ export const createPluginServerHandlerDispatcher = (input: {
           sessionId: context.sessionId,
           pluginId: descriptor.ownerPluginId,
           handlerId: descriptor.id,
-          scope: requirement.kind,
+          scope: requirement.kind === 'authenticated' ? 'tenant' : requirement.kind,
           pathParams,
           ...(context.activeOrganizationId
             ? { activeOrganizationId: context.activeOrganizationId }

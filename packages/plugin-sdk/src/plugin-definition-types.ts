@@ -12,12 +12,14 @@ import type { RouteDocumentation } from './route-documentation.js';
 
 export type PluginRouteGuard = string;
 
-export type PluginNavigationSection = 'dataManagement' | 'applications' | 'system';
+export type PluginNavigationSection = 'dataManagement' | 'applications' | 'system' | 'header';
 
 export type PluginRouteDefinition = {
   readonly id: string;
   readonly path: string;
   readonly documentation?: RouteDocumentation;
+  /** Keep the host header and content while hiding sidebar and mobile navigation. */
+  readonly layout?: 'content-only';
   readonly guard?: PluginRouteGuard;
   readonly actionId?: string;
   readonly serverHandlerId?: string;
@@ -62,6 +64,8 @@ export type PluginNavigationItem = {
   readonly href?: string;
   readonly titleKey: string;
   readonly section: PluginNavigationSection;
+  /** Supported host glyph for a header entry. */
+  readonly icon?: 'grid-dots';
   readonly actionId?: string;
   readonly requiredAction?: PluginRouteGuard;
   readonly accessRequirement?: UiAccessRequirement;
@@ -130,6 +134,8 @@ export type PluginDefinition = {
   readonly routes: readonly PluginRouteDefinition[];
   /** Browser-only custom views. This field is omitted from server descriptors. */
   readonly viewBindings?: readonly PluginViewBinding[];
+  /** Optional entry into this plugin's registered tenant settings route. */
+  readonly settings?: Readonly<{ routeId: string }>;
   readonly navigation?: readonly PluginNavigationItem[];
   readonly actions?: readonly PluginActionDefinition[];
   readonly serverHandlers?: readonly PluginServerHandlerDefinition[];

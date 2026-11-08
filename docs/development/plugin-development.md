@@ -678,3 +678,20 @@ Vor einer Editormigration ist eine Feldmatrix für harte, kontrollierte, Passthr
 Der Browser-Einstieg darf die bestehenden `contentTypes` seines Descriptors um `mutations.delete` und `mutations.status` ergänzen. Jeder Beitrag nennt eine im eigenen Plugin deklarierte `requiredAction` und einen `execute`-Handler mit Content-ID und `MainserverActingPrincipalType`; Statusbeiträge nennen zusätzlich eindeutige `supportedStatuses`. `requiresMainserverMutationAction: true` erhält die zusätzliche Laufzeitfreigabe der Survey-Mutationen. Die Registry prüft Deklarationen und Handler-Verfügbarkeit, nicht Funktionskörper.
 
 Handler verwenden bestehende Plugin-API-Clients. Bei Read-Merge-Write erhalten sie alle übrigen Felder; Event-/POI-Detailabweichungen mit möglicher Schreibwirkung müssen vor dem Update abbrechen. Node-Descriptor, Manifest und Job-Einstiege enthalten keine Browserhandler. Die gemeinsame Liste orchestriert Dialoge, Berechtigungsanzeige, Bulk-Ergebnisse und Refresh; fehlende Beiträge haben keinen ausführbaren Fallback.
+
+## Plugin-Einstellungen und Anwendungsarbeitsplatz
+
+Ein Plugin kann optional `settings: { routeId: 'eigenes-plugin.settings' }` deklarieren. Der Host validiert die eigene registrierte Tenant-Route samt Action-/Module-IAM-Bezug. Die Tenant-Modulübersicht zeigt den Einstieg nur bei wirksamer Aktivierung und erlaubter Access-Entscheidung; direkte API-Aufrufe prüfen dieselben Grenzen erneut. Die Root-Modulzuweisung wird dadurch nicht erweitert.
+
+Lesende Plugin-Handler dürfen `accessRequirement: { kind: 'authenticated' }` verwenden, wenn das Plugin einen passenden Module-IAM-Vertrag besitzt. Der Host verlangt eine verifizierte Instanz und wirksame Aktivierung des besitzenden Plugins; ausschließlich GET ist zulässig. Geschützte Einstellungen behalten explizite Tenant-Rechte. Der Host veröffentlicht den zentralen Studio-Sprachkatalog über `readPluginLocales()`; Plugin-Kachelinhalte bleiben eigene Daten und sind keine dynamisch erzeugten UI-Schlüssel.
+
+Die gemeinsame `IconPicker`-Komponente aus `@sva/studio-ui-react` nimmt lokalisierte Feld-, Such-, Leer- und Aktionsbeschriftungen entgegen. Sie gibt eine kanonische Tabler-Outline-Kennung zurück. Fachliche URL-, Text- und Berechtigungsvalidierung verbleiben im Plugin.
+
+
+### Externer Anwendungsarbeitsplatz
+
+`@sva/plugin-application-workspace` wird im eigenständigen Repository `studio-plugin-application-workspace` gepflegt. Die lokale Entwicklung verwendet einen benachbarten Checkout und den vorhandenen Katalogtyp `linked-package`; ein veröffentlichtes Paket verwendet `installed-distribution`. Beide benötigen eine direkte App-Abhängigkeit, manifestierte `dist`-Entrypoints und `distribution: studio`. Es gibt keine Workspace-Kopie des Plugins. Studio besitzt keine feste Dependency auf dieses optionale Plugin und lässt sich ohne dessen Checkout installieren und bauen. Eine konkrete Installation oder der Integrationstest ergänzt die direkte App-Dependency und den Katalogeintrag ausdrücklich mit einem identifizierten Paket; lokale Links dienen ausschließlich der Entwicklung.
+
+Das Plugin konsumiert ausschließlich die öffentlichen SDK-/UI-Pakete und React als Peers. Sein exportierter Server-Adaptertyp bindet die bestehende instanzgebundene Datenbank- und Audit-Infrastruktur des Hosts an. Die Host-Migration bleibt im kanonischen DB-Pfad; Paketinstallation ersetzt weder Migration noch Tenant-Aktivierung.
+
+Der bestehende Navigationsvertrag erlaubt für diesen Verbraucher `section: header` mit `icon: grid-dots`. Der Beitrag muss auf eine eigene registrierte Route mit identischer Action und Access-Anforderung zeigen. `routes[].layout: content-only` blendet nur die Sidebar und den mobilen Navigationseinstieg aus; Sitzungs-, Berechtigungs- und Rechtstext-Gates bleiben bestehen. Header-Beiträge werden nicht zusätzlich in der Sidebar gerendert. Die gemeinsame UI-Bibliothek bleibt einschließlich IconPicker im Studio; der Build erfasst die Klassen des installierten Plugin-`dist` explizit als Tailwind-Quelle.

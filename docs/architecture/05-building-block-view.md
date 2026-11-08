@@ -1285,3 +1285,11 @@ Das bestehende Baustellenplugin ergänzt seinen MapLibre-Kartenpfad lokal um Ter
 ## Suchplugin und Host-Anbindung
 
 `packages/plugin-search` besitzt Descriptor, Browser-Ansicht, validierten Suchzustand, Meilisearch-Kandidatenabfrage und Zählablauf. Das konkrete Host-Wiring in `search-mainserver.server.ts` verwendet bestehende Mainserver-Detaildispatcher, Typregistry und effektive Permissions. Der Host materialisiert Route und Serverhandler; es entsteht weder ein weiteres Suchpackage noch eine allgemeine Header- oder Autorisierungsplattform.
+
+## Kommunaler Anwendungsarbeitsplatz
+
+Das optionale Plugin `application-workspace` ergänzt einen Einstieg „Anwendungen“ in der Kopfzeile. Alle angemeldeten Nutzer einer wirksam aktivierten Instanz erhalten denselben instanzweiten Katalog; einzelne Zielanwendungen prüfen ihre Rechte selbst. Die Übersicht `/plugins/application-workspace` verwendet die bestehende Shell ohne Seitenleiste, während die Einstellungsseite das normale Layout behält. Die Studio-Kachel ist fest an erster Stelle und führt nach `/`.
+
+`@sva/plugin-application-workspace` besitzt Kachelvalidierung, Sprach-Fallback, UI und fachliche Handler. Der Host bindet Sitzungen, Instanzkontext und Persistenz an. `iam.application_workspace_settings` speichert Kacheln und Version; Host-Schreibvorgänge und der bestehende Activity-Log-Auditpfad teilen dieselbe Transaktion. Das Plugin importiert ausschließlich öffentliche SDK-/UI-Verträge. Der Einstellungsbeitrag `settings.routeId` verweist auf eine validierte Tenant-Route desselben Plugins.
+
+Der Anwendungsarbeitsplatz wird als externes Paket `@sva/plugin-application-workspace` aus einem eigenständigen Repository konsumiert. Header-Einstieg und Content-only-Layout stammen aus validierten Plugin-Beiträgen; der gemeinsame IconPicker und der instanzgebundene Speicher-/Audit-Adapter bleiben Host-Eigentum. Die bisherige Workspace-Kopie entfällt.

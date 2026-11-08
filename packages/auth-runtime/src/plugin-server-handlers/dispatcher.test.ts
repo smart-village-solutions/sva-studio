@@ -377,13 +377,15 @@ describe('plugin server handler dispatcher', () => {
     const request = new Request('https://tenant.test/api/v1/waste-management/history');
 
     await expect(dispatch(request)).rejects.toThrow('handler failed');
-    expect(pluginServerHost.isAuthorizedPluginRequest({
-      request,
-      handlerId: descriptor.id,
-      pluginId: 'waste-management',
-      instanceId: 'tenant-a',
-      keycloakSubject: 'user-1',
-    })).toBe(false);
+    expect(
+      pluginServerHost.isAuthorizedPluginRequest({
+        request,
+        handlerId: descriptor.id,
+        pluginId: 'waste-management',
+        instanceId: 'tenant-a',
+        keycloakSubject: 'user-1',
+      })
+    ).toBe(false);
   });
 
   it('accepts any one granted domain action', async () => {
@@ -893,5 +895,55 @@ describe('plugin server handler dispatcher', () => {
         message: 'You do not have platform permission for this plugin endpoint.',
       },
     });
+  });
+});
+
+describe('authenticated module reads', () => {
+  it.each([true, false])(
+    'checks current activation without requiring a role: %s',
+    async (allowed) => {
+      const descriptor: PluginServerHandlerRegistryEntry = {
+        ...tenantDescriptor(),
+        accessRequirement: { kind: 'authenticated' },
+      };
+      const handler = vi.fn<PluginServerExecutionHandler>(() => Response.json({ data: [] }));
+      const resolvePermissions = vi.fn();
+      const dispatch = createPluginServerHandlerDispatcher({
+        descriptors: new Map([[descriptor.id, descriptor]]),
+        handlers: { [descriptor.id]: handler },
+        dependencies: {
+          authenticate: authenticateAs({ id: 'user-1', roles: [], instanceId: 'tenant-a' }),
+          readTenantAccess: vi
+            .fn()
+            .mockResolvedValue({ allowed, reason: allowed ? 'allowed' : 'module_not_assigned' }),
+          resolvePermissions,
+        },
+      });
+      const response = await dispatch(new Request('https://tenant.test/api/v1/plugins/news/items'));
+      expect(response?.status).toBe(allowed ? 200 : 403);
+      expect(handler).toHaveBeenCalledTimes(allowed ? 1 : 0);
+      expect(resolvePermissions).not.toHaveBeenCalled();
+    }
+  );
+  it('rejects a platform session without a bound tenant', async () => {
+    const descriptor: PluginServerHandlerRegistryEntry = {
+      ...tenantDescriptor(),
+      accessRequirement: { kind: 'authenticated' },
+    };
+    const handler = vi.fn();
+    const readTenantAccess = vi.fn();
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([[descriptor.id, descriptor]]),
+      handlers: { [descriptor.id]: handler },
+      dependencies: {
+        authenticate: authenticateAs({ id: 'user-1', roles: ['instance_registry_admin'] }),
+        readTenantAccess,
+      },
+    });
+    expect(
+      (await dispatch(new Request('https://tenant.test/api/v1/plugins/news/items')))?.status
+    ).toBe(403);
+    expect(handler).not.toHaveBeenCalled();
+    expect(readTenantAccess).not.toHaveBeenCalled();
   });
 });

@@ -617,3 +617,7 @@ The latest run supplies pending/failure diagnostics; failed reconciliation retai
 the last verified mode. Completion compares desired revision, mode and run ID,
 preventing superseded workers from certifying a newer request. Tenant writes,
 run creation and the existing instance audit event share the scoped transaction.
+
+## Kommunaler Anwendungsarbeitsplatz
+
+Migration `0114_application_workspace_settings` ergänzt `iam.application_workspace_settings` mit einer Konfiguration je Instanz: Version, geordnete Kacheln als JSON und Änderungszeitpunkt. Der Instanz-Fremdschlüssel löscht die Konfiguration bei Instanzlöschung. Erzwungene RLS erlaubt Zugriff ausschließlich bei passendem `iam.current_instance_id()`; auch fehlender Kontext wird abgelehnt. Schreibzugriffe erfolgen mit Versionsprüfung und Audit im selben Host-Transaktionskontext. Plugin-Deaktivierung löscht keine Daten; die Down-Migration erhält den Bestand für ältere Runtimes.

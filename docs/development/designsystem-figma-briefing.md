@@ -153,13 +153,13 @@ Tourenentwurf. Eine Aktion, die diese Änderungen nicht rückgängig macht, muss
 „Schließen“ heißen. Der bisherige „Abbrechen“-Button erhält deshalb diese
 Beschriftung. Eine rücksetzende Dialogkopie ist nicht beauftragt.
 
-| Aktion | Festgelegte Wirkung |
-| ------ | ------------------- |
-| Kalender öffnen | Aktuellen Tourenentwurf anzeigen. |
-| Tage auswählen | Den übergeordneten Tourenentwurf sofort ändern; keine dauerhafte Speicherung. |
-| Schließen, Escape und andere bereits unterstützte Schließwege | Dialog schließen und bereits erfolgte Änderungen im Tourenentwurf erhalten. |
-| Vorhandene Aktion „Auswahl übernehmen“ | Schließt derzeit ebenfalls lediglich den Dialog; kein zusätzlicher Übertragungs- oder Speicherweg. |
-| Tour speichern | Bestehenden dauerhaften Speicherweg verwenden. |
+| Aktion                                                        | Festgelegte Wirkung                                                                                |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Kalender öffnen                                               | Aktuellen Tourenentwurf anzeigen.                                                                  |
+| Tage auswählen                                                | Den übergeordneten Tourenentwurf sofort ändern; keine dauerhafte Speicherung.                      |
+| Schließen, Escape und andere bereits unterstützte Schließwege | Dialog schließen und bereits erfolgte Änderungen im Tourenentwurf erhalten.                        |
+| Vorhandene Aktion „Auswahl übernehmen“                        | Schließt derzeit ebenfalls lediglich den Dialog; kein zusätzlicher Übertragungs- oder Speicherweg. |
+| Tour speichern                                                | Bestehenden dauerhaften Speicherweg verwenden.                                                     |
 
 Die vorhandene Verlustbestätigung beim Entfernen eines Termins mit wertvollen
 Zusatzangaben bleibt erhalten. „Behalten“ oder Escape in dieser Bestätigung
@@ -264,6 +264,10 @@ Zustände, mobile Bedienbarkeit und gemessene Kontraste nachvollziehbar sind,
 der Funktionsbestand erhalten ist und Produktentscheidungen explizit benannt
 sind. Design-Review, Umsetzung im Code und manuelle
 Produkt-/Accessibility-Abnahme bleiben unterscheidbare Schritte.
+
+## Ergänzung: gemeinsame Tabler-Icon-Auswahl
+
+Für den Anwendungsarbeitsplatz wurde die [IconPicker-Komponente](https://www.figma.com/design/TpqaB3bLGPK73ypkj7oE8G/Designsystem-SVA-Studio?node-id=262-5037) ergänzt. Neun Zustände: Empty, Selected, Hover, Focus, Disabled, Readonly, Error, Open und NoResults. Vorhandene Komponenten und semantische Light-/Dark-Variablen bleiben führend; Icons werden über Instance Swap ersetzt. Suchfläche, Vorschau und Tastaturvertrag sind dokumentiert. Die [Light-Prüfansicht](https://www.figma.com/design/TpqaB3bLGPK73ypkj7oE8G/Designsystem-SVA-Studio?node-id=262-5237) und [Dark-Prüfansicht](https://www.figma.com/design/TpqaB3bLGPK73ypkj7oE8G/Designsystem-SVA-Studio?node-id=262-5462) verwenden editierbare Instanzen. Code-Gegenstück: `IconPicker` in `@sva/studio-ui-react`.
 
 ## Arbeitsgrundlagen
 

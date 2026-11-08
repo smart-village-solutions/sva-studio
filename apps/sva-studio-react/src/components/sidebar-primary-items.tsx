@@ -39,6 +39,10 @@ const pluginIconBySection = {
 const resolvePluginNavigationItems = (access: SidebarAccess) => {
   const { user, brandingProfile, contentAccessApi, decideAccess, canAccessCockpitLink } = access;
   const pluginNavigationItems = studioPluginNavigation
+    .filter(
+      (item): item is typeof item & { section: Exclude<typeof item.section, 'header'> } =>
+        item.section !== 'header'
+    )
     .filter((item) => item.id !== 'cockpit.navigation' || canAccessCockpitLink)
     .map((item) => {
       const action = item.actionId ? getStudioPluginAction(item.actionId) : undefined;

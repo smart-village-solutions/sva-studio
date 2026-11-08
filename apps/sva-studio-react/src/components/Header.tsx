@@ -1,6 +1,7 @@
 /** Header-Komponente der App-Shell mit globalen Aktionen. */
 import {
   IconLanguage as Languages,
+  IconGridDots,
   IconMenu as Menu,
   IconMoon as Moon,
   IconSun as Sun,
@@ -70,6 +71,22 @@ export default function Header({
   const SearchHeader = searchPlugin?.viewBindings?.find(
     (binding) => binding.bindingKey === 'searchHeader'
   )?.component as React.ComponentType<{ onSearch: (q: string) => void }> | undefined;
+  const headerNavigation = studioPlugins.flatMap((plugin) =>
+    (plugin.navigation ?? [])
+      .filter(
+        (item) =>
+          item.section === 'header' &&
+          item.to &&
+          item.accessRequirement &&
+          access.snapshot.status === 'ready' &&
+          access.snapshot.scope.kind === 'tenant' &&
+          access.snapshot.scope.instanceId === user?.instanceId &&
+          'assignedModules' in access.snapshot &&
+          access.snapshot.assignedModules.includes(plugin.moduleIam?.moduleId ?? plugin.id) &&
+          access.decide(item.accessRequirement).status === 'allowed'
+      )
+      .map((item) => ({ ...item, ownerPluginId: plugin.id }))
+  );
   const canSearch = searchRequirement && access.decide(searchRequirement).status === 'allowed';
   const organizationContext = useOrganizationContext();
   const organizationContextState = resolveOrganizationContextState({
@@ -165,6 +182,20 @@ export default function Header({
           </div>
         ) : null}
         <div className="col-start-3 row-start-1 flex items-center justify-end gap-2 sm:gap-3">
+          {headerNavigation.map((item) => (
+            <Button
+              key={`${item.ownerPluginId}:${item.id}`}
+              asChild
+              variant="tertiary"
+              size="icon"
+              className={iconButtonClassName}
+              tooltip={t(item.titleKey)}
+            >
+              <a href={item.to} aria-label={t(item.titleKey)}>
+                <IconGridDots aria-hidden="true" className="h-4 w-4" />
+              </a>
+            </Button>
+          ))}
           <HeaderDropdownMenu
             align="right"
             menuLabel={t('shell.header.languageSwitcher')}

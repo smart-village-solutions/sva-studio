@@ -73,6 +73,10 @@ fachliche Frage hebt diesen Status nicht auf; sie ist in
 | `surveys.content.detail`       | 05      | Quellengeprüft |
 | `waste-management.overview`    | 06      | Quellengeprüft |
 
+## Ergänzung vom 8. November 2026
+
+`application-workspace.overview` und `application-workspace.settings` sind mit deutschen und englischen Bedienhinweisen in Dossier 04 aufgenommen. Diese lokale Ergänzung ist noch keine Veröffentlichung im separaten Hilfe-Repository.
+
 ## Abgrenzung des Stichtags
 
 Neue Seiten, die nach diesem Stichtag in `page-catalog.json` aufgenommen werden, sind nicht

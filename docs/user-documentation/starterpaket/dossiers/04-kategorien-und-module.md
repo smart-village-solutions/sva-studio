@@ -53,3 +53,20 @@ Gesicherte Textstände werden unter „App-Texte“ und „Mehrsprachigkeit“ v
 Bei vorhandenem kommunalem Entwurf wird die aktuell verwendete zentrale Basis mit Textbestand, Textstandnummer und Sprachen angezeigt. Die Auswahl bleibt geschlossen. Nur wenn eine andere zentrale Basis desselben Textbestands verfügbar ist, lässt sich „Ausgangsstand wechseln“ öffnen und anschließend ausdrücklich übernehmen oder abbrechen. „Eigenen App-Textentwurf anlegen“ erscheint ausschließlich ohne bestehenden Entwurf. Eigene gesicherte Instanzstände sind keine zentralen Basisangebote.
 
 Vor einem Sammelauftrag werden die tatsächlich fehlenden oder veralteten Standardtexte insgesamt und je Zielsprache gezählt. Ist nichts zu übersetzen, werden weder ein Job noch eine DeepL-Anfrage erzeugt. Der gespeicherte Fortschritt unterscheidet übersetzte und übersprungene Texte und nennt die zuletzt bearbeitete Sprache. Bei einem Abbruch oder Fehler bleiben nicht gespeicherte Texte offen; der sichere Fehlerstatus erklärt die Ursache. Ein späterer Lauf setzt auf dem gespeicherten Stand auf.
+
+## `application-workspace.overview` – Anwendungen
+
+- **Route / Typ / Owner:** `/plugins/application-workspace`, Übersicht, Plugin `application-workspace`.
+- **Nutzerziel:** Kommunale Web-Anwendungen von einem gemeinsamen Arbeitsplatz öffnen.
+- **Bedienung (Deutsch):** Nach Aktivierung für die Kommune erscheint oben das 3×3-Symbol „Anwendungen“. Die Seite zeigt Kacheln ohne Seitenleiste. SVA Studio steht immer zuerst; „Studio öffnen“ führt zurück. Andere Anwendungen öffnen in einem neuen Tab und können eine eigene Anmeldung oder weitere Rechte verlangen.
+- **Instructions (English):** Once enabled for your municipality, use the Applications grid icon in the header. Studio always appears first and opens in the current tab. Other applications open in a new tab and retain their own login and access rules.
+- **Berechtigung:** Alle angemeldeten Benutzer einer aktivierten Instanz, auch ohne Fachrolle. Keine öffentliche Anwendungsliste.
+
+## `application-workspace.settings` – Plugin-Einstellungen
+
+- **Route / Typ / Owner:** `/plugins/application-workspace/settings`, Detail, Plugin `application-workspace`.
+- **Bedienung (Deutsch):** Unter „Module“ am aktiven Anwendungsmodul „Plugin-Einstellungen“ öffnen. Icon aus der durchsuchbaren Tabler-Auswahl, HTTPS-Zieladresse, Name, Beschreibung und Schaltflächentext pflegen. Die drei deutschen Texte sind Pflicht; weitere Sprachen sind optional und verwenden bei fehlenden Feldern Deutsch. Kacheln lassen sich per Schaltflächen sortieren und nach Bestätigung entfernen. Alle Änderungen gemeinsam speichern. Die Studio-Kachel bleibt unveränderlich.
+- **Konflikte:** Bei einer zwischenzeitlichen Änderung bleibt der Entwurf erhalten. Zuerst „Gespeicherten Stand prüfen“, dann bei Bedarf bewusst „Aktuellen Stand übernehmen“. Bei unklarem Speicherergebnis wird kein automatischer Schreibversuch gestartet.
+- **Instructions (English):** Open Modules → Plugin settings on the active Applications module. Select a Tabler icon and enter an HTTPS address, name, description and button text. German texts are required; missing translations fall back to German per field. Reorder tiles with the move buttons and confirm removals, then save the configuration. After a conflict or unknown save outcome, check the saved configuration before continuing.
+- **Berechtigung:** `application-workspace.settings.read` zum Lesen; zusätzlich `application-workspace.settings.update` zum Ändern. Modulzuweisung bleibt eine separate Root-Admin-Aufgabe.
+- **Evidenz:** Plugin-Vertrag, UI-/Handler-Tests und PostgreSQL-Tests im eigenständigen Repository `studio-plugin-application-workspace` (`src/`) sowie `packages/data-repositories/src/application-workspace.postgres.integration.test.ts`. Browser-/Produktabnahme ist gesondert nachzuweisen.

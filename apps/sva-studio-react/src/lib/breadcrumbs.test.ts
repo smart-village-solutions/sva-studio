@@ -174,4 +174,15 @@ describe('resolveBreadcrumbItems', () => {
       { label: 'Datenschutzfall-Detail' },
     ]);
   });
+  it('uses the installed plugin header and settings contributions', () => {
+    expect(resolveBreadcrumbItems('/plugins/application-workspace')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { label: 'Anwendungen' },
+    ]);
+    expect(resolveBreadcrumbItems('/plugins/application-workspace/settings')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/plugins/application-workspace', label: 'Anwendungen' },
+      { label: 'Plugin-Einstellungen' },
+    ]);
+  });
 });

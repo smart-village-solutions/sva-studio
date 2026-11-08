@@ -157,8 +157,26 @@ describe('plugin server runtime loader', () => {
   });
 });
 
-it.each(['workspace', 'installed-distribution'] as const)('injects only the live IAM directory capability into SSF (%s)', async sourceType => {
-  const factory = vi.fn(() => ({ 'ssf.recording-directory-v2': () => new Response('ok') }));
-  await createPluginServerExecutionHandlersFromSnapshot({ pluginSources: [{ ...source('ssf'), sourceType }], loadServerModule: vi.fn().mockResolvedValue({ createPluginServerHandlers: factory }) });
-  expect(factory).toHaveBeenCalledWith({ readPermissionDirectorySubjects: authRuntimeMocks.readTenantPermissionDirectorySubjects });
+it.each(['workspace', 'installed-distribution'] as const)(
+  'injects only the live IAM directory capability into SSF (%s)',
+  async (sourceType) => {
+    const factory = vi.fn(() => ({ 'ssf.recording-directory-v2': () => new Response('ok') }));
+    await createPluginServerExecutionHandlersFromSnapshot({
+      pluginSources: [{ ...source('ssf'), sourceType }],
+      loadServerModule: vi.fn().mockResolvedValue({ createPluginServerHandlers: factory }),
+    });
+    expect(factory).toHaveBeenCalledWith({
+      readPermissionDirectorySubjects: authRuntimeMocks.readTenantPermissionDirectorySubjects,
+    });
+  }
+);
+
+it('injects the host-owned workspace capability without a static plugin dependency', async () => {
+  const factory = vi.fn(() => ({ 'application-workspace.list': () => new Response('ok') }));
+  const handlers = await createPluginServerExecutionHandlersFromSnapshot({
+    pluginSources: [{ ...source('application-workspace'), sourceType: 'installed-distribution', sourceRef: '@sva/plugin-application-workspace' }],
+    loadServerModule: vi.fn().mockResolvedValue({ createPluginServerHandlers: factory }),
+  });
+  expect(factory).toHaveBeenCalledWith(expect.objectContaining({ read: expect.any(Function), save: expect.any(Function), isIconName: expect.any(Function) }));
+  expect(handlers['application-workspace.list']).toBeTypeOf('function');
 });

@@ -1673,3 +1673,11 @@ Suggest, Geocode, Reverse und Postleitzahl-Batch tragen dieselbe serverseitig ge
 ## Mainserver-Inhalte suchen
 
 Der angemeldete Benutzer sendet den Suchbegriff über die Kopfzeile oder `/plugins/search`. Der hostgeschützte Suchhandler bestimmt die konfigurierte Instanzquelle, erfasst Meilisearch-Kandidaten und prüft diese über bestehende Ressourcen-Reads. Nur zugängliche aktuelle Angaben und Filteroptionen werden ausgegeben. Sitzung, aktive Organisation, effektive Permissions und Mainserver-Verbindung werden vor der Antwort nochmals geprüft; alte UI-Anfragen werden bei Kontextwechsel verworfen. Vollständige Prüfungen liefern getrennte Zahlen für erlaubte und berechtigungsbedingt ausgeschlossene Treffer, begrenzte Läufe einen ausdrücklich unvollständigen Stand.
+
+## Kommunaler Anwendungsarbeitsplatz
+
+Das optionale Plugin `application-workspace` ergänzt einen Einstieg „Anwendungen“ in der Kopfzeile. Alle angemeldeten Nutzer einer wirksam aktivierten Instanz erhalten denselben instanzweiten Katalog; einzelne Zielanwendungen prüfen ihre Rechte selbst. Die Übersicht `/plugins/application-workspace` verwendet die bestehende Shell ohne Seitenleiste, während die Einstellungsseite das normale Layout behält. Die Studio-Kachel ist fest an erster Stelle und führt nach `/`.
+
+Beim Lesen prüft der Dispatcher Anmeldung, verifizierte Instanz und aktuelle Modulaktivierung. Einstellungen benötigen `application-workspace.settings.read`, Speichern zusätzlich `application-workspace.settings.update`. Der Host bindet `withInstanceDb`, prüft die erwartete Version und schreibt Auditnachweise für Konfiguration und betroffene Kachelkennungen vor dem Commit. RLS erzwingt die Instanzgrenze. Kontextwechsel verwerfen überholte UI-Antworten; Versionskonflikte erhalten den Entwurf. Ein unklarer Schreibausgang erlaubt zuerst eine Ergebnisprüfung, keinen automatischen Wiederholungsversuch.
+
+Der Anwendungsarbeitsplatz wird als externes Paket `@sva/plugin-application-workspace` aus einem eigenständigen Repository konsumiert. Header-Einstieg und Content-only-Layout stammen aus validierten Plugin-Beiträgen; der gemeinsame IconPicker und der instanzgebundene Speicher-/Audit-Adapter bleiben Host-Eigentum. Die bisherige Workspace-Kopie entfällt.

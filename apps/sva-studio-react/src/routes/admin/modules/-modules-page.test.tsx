@@ -15,6 +15,7 @@ import { resolveModuleDescription, resolveModuleName } from './-module-descripti
 
 const useInstancesMock = vi.fn();
 const useAuthMock = vi.fn();
+const settingsAccess = vi.hoisted(() => ({ allowed: false }));
 const readinessState = vi.hoisted(() => ({ items: [] as unknown[], error: null as unknown }));
 
 vi.mock('../../../hooks/use-instances', () => ({
@@ -27,6 +28,9 @@ vi.mock('../../../providers/auth-provider', () => ({
 
 vi.mock('../../../providers/effective-access-provider', () => ({
   useEffectiveAuth: () => useAuthMock(),
+  useEffectiveAccess: () => ({
+    decide: () => ({ status: settingsAccess.allowed ? 'allowed' : 'denied' }),
+  }),
 }));
 
 vi.mock('../../../components/ConfirmDialog', () => ({
@@ -114,6 +118,7 @@ const createDeferred = <T,>() => {
 describe('ModulesPage', () => {
   beforeEach(() => {
     readinessState.items = [];
+    settingsAccess.allowed = false;
     readinessState.error = null;
   });
   it('uses localized public metadata and falls back for modules without metadata', () => {
@@ -568,5 +573,18 @@ describe('ModulesPage', () => {
       screen.getAllByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })[1]!
     );
     expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', ['news']);
+  });
+  it('shows plugin settings only for an assigned module with read access', () => {
+    useAuthMock.mockReturnValue({
+      user: { instanceId: 'demo', assignedModules: ['application-workspace'] },
+    });
+    settingsAccess.allowed = true;
+    const view = render(<ModulesPage />);
+    expect(screen.getByRole('link', { name: 'Plugin-Einstellungen' }).getAttribute('href')).toBe(
+      '/plugins/application-workspace/settings'
+    );
+    settingsAccess.allowed = false;
+    view.rerender(<ModulesPage />);
+    expect(screen.queryByRole('link', { name: 'Plugin-Einstellungen' })).toBeNull();
   });
 });

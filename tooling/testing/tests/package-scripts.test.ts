@@ -713,7 +713,7 @@ describe('workspace package scripts', () => {
   it('keeps the affected unit gate app-slice-aware', () => {
     const affectedUnitGate = loadAffectedUnitGateScript();
     const affectedUnitPlan = loadScript('scripts/ci/affected-unit-plan.ts');
-    const affectedCoverageGate = loadScript('scripts/ci/affected-coverage-gate.ts');
+    const coveragePlan = loadScript('scripts/ci/coverage-plan.ts');
     const runPrGateScript = loadRunPrGateScript();
 
     expect(affectedUnitPlan).toContain(
@@ -729,7 +729,7 @@ describe('workspace package scripts', () => {
     expect(affectedUnitGate).not.toContain('buildAppUnitCommand()} --nxBail');
     expect(affectedUnitGate).not.toContain('buildAppUnitCommand(slice)} --nxBail');
     expect(affectedUnitGate).not.toContain('retries: 1');
-    expect(affectedCoverageGate).toContain('`pnpm nx run ${APP_PROJECT}:test:coverage`');
+    expect(coveragePlan).toContain('`pnpm nx run sva-studio-react:test:coverage`');
     expect(runPrGateScript).toContain('formatDurationSummary');
     expect(runPrGateScript).toContain('for (const entry of runAffectedUnitGate({ base, head }))');
   });

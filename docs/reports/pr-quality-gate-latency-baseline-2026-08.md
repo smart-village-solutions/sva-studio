@@ -66,3 +66,58 @@ Der direkt zuordenbare rote Nachweis ist [Quality-Gates-Run 32512004585](https:/
 Zwei weitere rote Coverage-Läufe, [32596085495](https://github.com/smart-village-solutions/sva-studio/actions/runs/32596085495) und [32597900544](https://github.com/smart-village-solutions/sva-studio/actions/runs/32597900544), meldeten erst nach dem vollständigen Restlauf eine Baseline-Abweichung in `monitoring-client`. Das Projekt gehörte jeweils nicht zur direkt geänderten Phase. Diese Läufe werden deshalb nicht als direkt verursachtes Fast-Feedback gewertet, bleiben aber als Beleg erhalten, dass der disjunkte Rest und das finale globale Gate weiterhin Fehler finden.
 
 Die rote direkt zuordenbare Stichprobe umfasst in diesem Fenster nur einen Lauf. Dessen 172 Sekunden liegen unter beiden Zielgrenzen, erlauben aber keine statistisch belastbare Median-/P90-Aussage für rote Fälle. Die Fortführung der Stichprobe ist deshalb als nicht blockierendes Follow-up in Issue `#1155` erfasst. Für den pragmatischen Change-Abschluss ist diese Messgrenze ausdrücklich akzeptiert; sie wird nicht als größere Stichprobe dargestellt. Ein runnerübergreifender unterstützter Nx-Remote-Cache ist nicht aktiviert; der bedingte Nachweis von mindestens 30 Prozent Cache-Einsparung ist daher nicht anwendbar und wird nicht behauptet.
+
+## Fortschreibung: Testbeschleunigung am 8. November 2026
+
+Basis ist `cae1b538fbf6b8adc823001b84b2bb9391343f8a`. Ziel sind kürzere
+Wartezeiten; zusätzliche Runner sind ausdrücklich akzeptiert. Keine der
+folgenden Zielgrößen ist allein durch eine Modellrechnung erfüllt:
+normaler PR Median ≤ 4 Minuten/P90 ≤ 6 Minuten, Voll-Coverage-PR Median ≤ 8
+Minuten/P90 ≤ 12 Minuten, Main-Tests ohne Sonar Median ≤ 10 Minuten,
+App-E2E Median ≤ 8 Minuten. Queue und Runner-Minuten werden separat berichtet.
+
+### Vorliegende GitHub-Belege
+
+- [App-Routensuite](https://github.com/smart-village-solutions/sva-studio/actions/runs/42525143072/job/128867060498): 379,98 Sekunden, 72 Prozent Importzeit, 90 Dateien/926 Tests.
+- [PR-Voll-Coverage](https://github.com/smart-village-solutions/sva-studio/actions/runs/42522886089/job/128860121991): 1.275 Sekunden für den Vertrag; App-Target 516,48 Sekunden, Abfallplugin-Target 195,01 Sekunden. New-Code-Gate anschließend 73,10 statt 85 Prozent.
+- [Grüner Basis-Main-Lauf](https://github.com/smart-village-solutions/sva-studio/actions/runs/42525973902) und [grüner Basis-E2E-Lauf](https://github.com/smart-village-solutions/sva-studio/actions/runs/42525973930): die zuvor beobachteten vier Screenshot-Fehler sind in dieser Basis bereits behoben. Keine Bildbaselines werden deshalb geändert.
+- Zusätzliche Voll-Baselines desselben Commits: [Main 2](https://github.com/smart-village-solutions/sva-studio/actions/runs/42528818369), [E2E 2](https://github.com/smart-village-solutions/sva-studio/actions/runs/42528820959), [Main 3](https://github.com/smart-village-solutions/sva-studio/actions/runs/42528864374), [E2E 3](https://github.com/smart-village-solutions/sva-studio/actions/runs/42528869994). Diagnose-Refs lösen keinen Build-/Promote-Auftrag aus.
+
+### Lokale Ausgangsmessung
+
+Je drei unveränderte Läufe unter Node 24.15.0; kein Wechsel der Locale-Imports während der Baseline:
+
+| Suite        | Vitest-Laufzeiten          |   Median | Unveränderte Auswahl   |
+| ------------ | -------------------------- | -------: | ---------------------- |
+| App-Routen   | 344,90 / 323,65 / 324,50 s | 324,50 s | 90 Dateien, 926 Tests  |
+| Abfallplugin | 187,20 / 175,45 / 166,94 s | 175,45 s | 108 Dateien, 632 Tests |
+
+Diagnostische Läufe mit paralleler Last werden nicht als Vergleichsbaseline gezählt.
+Die Importprofile zeigen insbesondere den Upstream-Locale-Barrel des Kalenders;
+DayPicker-spezifische Accessibility-Labels müssen bei einer Optimierung erhalten bleiben.
+
+### Lokale direkte Nachweise und Aussagegrenzen
+
+- Vollständige App-Server-Suite unter Node ohne globales DOM/MSW-Setup:
+  57 Dateien und 553 Tests bestanden; eine Datei/fünf Testfälle bereits vorher
+  übersprungen. Dies ist ein Funktionsnachweis, kein gepaarter Laufzeitvergleich.
+- Ein echter ungeteilter Vitest-Lauf und zwei instrumentierte Shards mit
+  überlappenden Quellzeilen liefern nach nativem Blob-Merge identische
+  Coverage-Zähler und LCOV-Daten.
+- Ein echter Wrapper-Lauf erfasst unabhängig alle Testdateien und die tatsächlich
+  ausgeführte Shard-Teilmenge einschließlich Testnamen/Status.
+- Der echte Nx-Taskgraph des gemeinsamen Typ-DAG enthält genau einen ausführenden
+  App-`test:types`-Task und seinen Noop-Alias.
+- Gezielte Negativtests prüfen fehlende, doppelte, fremde und beschädigte Reports,
+  falsche Base/Head-Werte, Planabweichungen sowie eine unvollständige Dateiunion.
+
+Die Quellenprüfung findet keine ungültig UTF-8-kodierten Dateien in den
+konfigurierten Sonar-Quellverzeichnissen. Der beobachtete Protobuf-Fehler im
+Analyzer ist damit noch nicht ursächlich erklärt: Im untersuchten Lauf wurde
+der Analysebericht anschließend trotzdem hochgeladen. Die getrennte
+Scanner-Diagnostik darf nicht als bereits bestätigte Fehlerbehebung gelten.
+
+Offen bis tatsächliche Endstände vorliegen: terminale zusätzliche Baselines,
+drei vergleichbare Nachher-Läufe je strukturellem Abschnitt, fünf unveränderte
+Flake-Wiederholungen und zehn repräsentative CI-Endstände für Median/P90.
+Lokale Importprofile unter wechselnder Rechnerlast sind kein Ersatz dafür.

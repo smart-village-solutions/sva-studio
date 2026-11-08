@@ -166,19 +166,19 @@ produktiv und enthalten keine Paritätslogik mehr.
 
 Die vier früheren Orchestrierungsworkflows und die beiden Paritätsjobs sind
 entfernt. Codecov wird je PR-/Main-Coverage-Lauf höchstens einmal beschrieben;
-der SonarCloud-Scan bleibt genau einmal im Main-/Nightly-Coverage-Job. Details
+der SonarCloud-Scan läuft genau einmal in einem separaten Main-/Nightly-Job nach validierter Coverage. Details
 zur abgeschlossenen Shadow-Abnahme stehen in
 `../reports/ci-gate-shadow-parity-2026-08.md`.
 
 - Pull Requests:
-  - Required Check `Coverage`: für reguläre PRs bewusster No-op; Coverage-/CI-kritische Änderungen führen im internen Job `Coverage Complete` direkt geänderte Projekte zuerst aus, prüfen deren Paket-Floors und Baseline-Deltas sofort und validieren danach den übrigen Scope einschließlich globaler und New-Code-Gates
+  - Required Check `Coverage`: für reguläre PRs bewusster No-op. Bei Coverage-/CI-kritischen Änderungen laufen priorisierte und restliche Partitionen parallel. Nach vollständigen Prioritätsreports werden Paket-Floors, Baseline-Deltas und New-Code-Abdeckung früh geprüft; `Coverage Complete` prüft anschließend den gesamten Scope einschließlich globaler Floors und New-Code-Gate.
   - Der finale Job `Coverage` akzeptiert ausschließlich versionierte, Head-SHA-gebundene und disjunkte Projektartefakte; fehlende, doppelte, veraltete, überlappende oder manipulierte Reports stoppen fail-closed
   - Job `Complexity`: separates, blockierendes Komplexitäts-Gate
   - Job `PR Integration`: `affected`, `full` oder bewusster No-op für die allgemeinen echten Integrationsziele; Monitoring-spezifische Läufe bleiben bewusst im separaten Workflow `monitoring-stack`
   - Reine Doku-/Meta-PRs starten die Workflows weiterhin, beenden die betroffenen Jobs aber bewusst früh als erfolgreicher No-op, damit Required Checks nicht im Status `expected` hängen bleiben
-- Workflow- und CI-Dateiänderungen werden über `tooling-testing` targeted abgesichert und eskalieren Quality-/Coverage-Läufe nicht automatisch auf den vollen Produkt-Workspace
+- Gewöhnliche CI-Helfer werden über `tooling-testing` und den betroffenen Scope abgesichert. Die zentralen `ci-gates-pr/main-shadow.yml`-Workflows und explizite Root-Konfigurationen eskalieren weiterhin gemäß `pr-scope` auf vollständige Coverage beziehungsweise vollständige Quality-Gates.
 - Main + Nightly:
-  - Job `Coverage`: `test:coverage` (voll)
+  - Job `Coverage`: vollständige instrumentierte Partitionen zusammenführen und alle Floors prüfen
   - Der Coverage-Job lädt die vollständige Git-Historie bereits beim Checkout mit `fetch-depth: 0`; SonarCloud darf keinen nachgelagerten `git fetch --unshallow` benötigen
   - Job `Complexity`: blockierend
   - Job `Integration`: voller, verpflichtender Integrationslauf
@@ -188,7 +188,7 @@ zur abgeschlossenen Shadow-Abnahme stehen in
 | Workflow / Jobname in GitHub                  | Zweck                                                                                                 | Trigger-Modell           |
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------ |
 | `CI Gates (PR) / Coverage`                    | Stabiler PR-Aggregator; No-op nur bei explizitem Scope, sonst fail-closed über `Coverage Complete`    | alle PRs                 |
-| `CI Gates (PR) / Unit`                        | Stabiler Aggregator über `Unit Fast Feedback` und vier parallele `Unit Complete`-Shards               | alle PRs                 |
+| `CI Gates (PR) / Unit`                        | Stabiler Aggregator über direkte/restliche Projekte und sieben getrennte App-Partitionen              | alle PRs                 |
 | `CI Gates (PR) / Lint`, `Types`, `Complexity` | Kanonisch gescopte statische und typbezogene Gates                                                    | alle PRs                 |
 | `CI Gates (PR) / PR Integration`              | Allgemeine echte Integrationsziele ohne Monitoring-Stack-Duplikat                                     | alle PRs                 |
 | `CI Gates (PR) / App Build`                   | Relevanter App-Build einschließlich selektivem `verify:runtime-artifact`                              | alle PRs                 |
@@ -227,43 +227,82 @@ die stabilen Aggregatoren `Unit` und `Coverage` treffen daraus die öffentliche,
 fail-closed Endentscheidung. Logs und Artefakte bleiben damit prüfbar, ohne eine
 zweite Summary- oder Paritätspolicy einzuführen.
 
-### Parallele Unit-Complete-Ausführung
+### Parallele Unit- und Coverage-Ausführung
 
-`Unit Fast Feedback` führt weiterhin die direkt geänderten Projekte aus. Die
-verbleibende Projektmenge verteilt `scripts/ci/unit-shards.ts` deterministisch
-auf vier `Unit Complete`-Jobs: Shard 1 enthält ausschließlich
-`sva-studio-react`, die übrigen Projekte werden dedupliziert, nach Namen
-sortiert und reihum auf Shards 2–4 verteilt. Die App bleibt als längstes
-gemessenes Target allein; die bestehenden Nx-Targets und App-Testauswahl
-werden nicht zerlegt. Die Verteilung benötigt keine externen Laufzeitdaten.
+Die bisherigen Nx-Targets und ihre lokalen Dateifilter bleiben erhalten. In der
+PR-CI führen `Unit Fast Feedback` und die vier `Unit Complete`-Jobs ausschließlich
+die Nicht-App-Projekte aus. Die App läuft unabhängig davon in sieben Jobs:
+UI, Hooks, Server sowie vier Datei-Shards der Routensuite. Jeder App-Runner
+verwendet einen Worker. Betroffene Teilsuiten werden weiterhin vom bestehenden
+App-Scope-Plan ausgewählt; bei transitiver App-Betroffenheit läuft die vollständige
+App-Auswahl. Nicht ausgewählte Partitionen liefern explizite No-op-Evidenz.
 
-Lokal bleibt `pnpm test:unit:affected` unverändert vollständig. Ein einzelner
-Rest-Shard lässt sich mit
-`pnpm test:unit:affected --phase remaining --shard 2/4` ausführen.
-Ungültige Shard-Parameter und Sharding anderer Phasen werden abgewiesen.
-Affected- und Full-Fallback-Scope verwenden dieselbe Verteilung.
+Der Required Check `Unit` verlangt alle Jobresultate und alle erwarteten
+Artefakte für dieselbe Base/Head-Kombination. Die App-Evidenz enthält das
+unabhängig ermittelte vollständige Dateiinventar jeder Teilsuite, die tatsächlich
+ausgeführten Dateien sowie Testnamen und Status. Die Dateivereinigung muss
+vollständig und disjunkt sein. App-CI-Läufe werden frisch ausgeführt, damit ein
+Nx-Terminalcache ohne Reportausgabe keinen Testnachweis vortäuscht; lokale
+Unit-Targets behalten ihren bestehenden Cache.
 
-Jeder Shard veröffentlicht den vollständigen Scope-Plan und ausschließlich
-seine ausgeführten Projekte, auch als explizite `skipped`-Evidenz bei leerer
-Teilmenge. Der Required Check `Unit` verlangt erfolgreiche Jobresultate,
-`unit-direct` sowie alle vier `unit-remaining-N-of-4`-Artefakte. Er prüft
-Head-SHA, gleiche Base und gleichen Scope-Modus, identische Scope-Pläne, exakte Projektzuordnung
-sowie Disjunktheit. Fehlende, doppelte, fremde, fehlgeschlagene oder
-unvollständige Evidenz blockiert den Check. Doku-No-ops bleiben erfolgreich.
+Coverage nutzt denselben Controller wie zuvor:
 
-Die Matrix verwendet `fail-fast: true`; innerhalb jedes Shards stoppt der
-Runner beim ersten fehlgeschlagenen Target. Der bestehende einmalige Retry
-für als Infrastrukturfehler klassifizierte Kommandos bleibt erhalten.
-Artefaktnamen enthalten Shard und `github.run_id`, aber nicht
-`github.run_attempt`; `overwrite: true` ersetzt bei Teilwiederholungen nur die
-Evidenz des erneut ausgeführten Shards. Abgebrochene Shards müssen ebenfalls
-erfolgreich wiederholt werden, bevor `Unit` grün werden kann.
+- App: vier instrumentierte Datei-Shards;
+- Abfallplugin: zwei instrumentierte Datei-Shards;
+- übrige Projekte: vier deterministische Projekt-Shards mit getrennten Jobs
+  für direkte und verbleibende Projekte.
 
-Nx-Targets, deren Cache-Inputs und der runnerlokale Nx-Cache bleiben erhalten.
-Der bestehende pnpm-Cache wird weiter genutzt; zwischen Runnern wird kein
-lokales `.nx/cache` übertragen. Zusätzliche Runner bauen deshalb ihre eigenen
-Abhängigkeiten. Laufzeit, Retries und Grenzen der Stichprobe sind im
-Repository-Messbericht `docs/reports/unit-complete-sharding-1328.md` dokumentiert.
+`coverage-plan.ts` priorisiert gemappte Änderungen auch im Voll-Fallback,
+behält dabei jedoch die gesamte geplante Fallback-Menge. Leere Partitionen
+veröffentlichen explizite, quellengebundene Evidenz. Die Reports werden mit
+Prüfsummen, Base/Head, vollständigem Scope-Plan sowie Ausführungszeiten und
+Retryzahlen gebunden. Fehlende oder manipulierte Reports blockieren.
+
+Vitest-Blob-Reports werden instrumentiert pro Projekt zusammengeführt; Prozentwerte
+werden niemals addiert. Vor der Freigabe wird die vollständige Dateivereinigung
+gegen die Vitest-Discovery geprüft. `Changed Code Coverage` bewertet nach Abschluss der priorisierten Reports
+deren Paket-Floors und Baseline-Deltas sowie den neuen Code; `Coverage Complete` prüft später
+den vollständigen Scope und unveränderte globale Floors. Der stabile Required
+Check `Coverage` bleibt der abschließende Freigabepunkt. Coverage bleibt ungecacht.
+
+Main/Nightly führt identische Unit- und Coverage-Kommandos nur instrumentiert
+aus. Ein Vergleich von Executor, Arbeitsverzeichnis und exaktem Kommando mit
+entferntem `--coverage` entscheidet über die Übernahme. Abweichende Konfigurationen,
+fehlende Coverage-Targets und policy-exempte Projekte laufen als `Unit Residual`
+parallel weiter. Insbesondere die App-Unit-Konfigurationen werden nicht allein
+wegen ähnlicher Dateimengen durch ihre andere Coverage-Konfiguration ersetzt.
+`Unit` verlangt sowohl erfolgreiche Residual- als auch Coverage-Ausführung.
+
+Der App-Typecheck besitzt nur noch einen ausführenden Pfad `test:types`.
+`typecheck` ist ein kompatibler Alias. Die Root-Skripte starten beide Targets in
+einem gemeinsamen Nx-DAG, damit der ungecachte ausführende Task genau einmal
+vorkommt. Abhängige Builds und Server-Runtime-Gates bleiben erhalten.
+
+Codecov wird einmal nach der Zusammenführung beschrieben. Sonar erhält die
+fertigen Reports in einem getrennten Job mit vollständiger Git-Historie;
+seine Analysezeit zählt nicht als Testausführungszeit. Queue, Job-Setup,
+Partitionausführung und Aggregation sind bei Vergleichen getrennt auszuweisen.
+Fehlende Zeitangaben bleiben als nicht verfügbar markiert.
+
+### Vier isolierte App-E2E-Runner
+
+Der bestehende Workflow `App E2E` verteilt die vollständige Playwright-Auswahl
+auf vier Runner. Jeder besitzt einen eigenen App-/Redis-/Monitoring-Stack und
+einen Worker. Der Responsive-Formulartest enthält neun eigenständige Typfälle;
+beide Themes und alle sechs bisherigen Viewportbreiten bleiben erhalten.
+
+Der bestehende Evidenzwriter prüft vier quellen- und laufgebundene Teilnachweise,
+das gemeinsame vollständige Testinventar und die disjunkte Chromium-Testmenge.
+Das Auth-Setup wird in jedem isolierten Stack erneut geprüft. Erst danach wird
+die unveränderte externe E2E-Evidenz erzeugt. Main bleibt ohne Retry; diagnostische
+Läufe bleiben diagnostisch. Hotfix-Testquelle und vertrauenswürdiger
+Workflow-Controller bleiben getrennt. Einzelne Shards sind keine Release-Freigabe.
+
+Die historischen Messungen stehen unter
+`docs/reports/unit-complete-sharding-1328.md` und
+`docs/reports/pr-quality-gate-latency-baseline-2026-08.md`.
+Neue Laufzeitziele gelten erst nach den dort dokumentierten Vergleichsmessungen
+als erreicht.
 
 ### Echte Integrationsziele
 

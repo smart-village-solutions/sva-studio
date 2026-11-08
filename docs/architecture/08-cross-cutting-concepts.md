@@ -617,7 +617,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Das Register enthält nur aktuell gemessene Überschreitungen; nach einem Refactoring entfallen verwaiste `fileLines`-Einträge, während andere aktuelle Metriken getrennt getrackt bleiben
 - Bei modularem IAM-Refactoring wird Restschuld am tatsächlichen Kernmodul (`core.ts` oder feingranulare Teilbausteine) und nicht am historischen Fassadenpfad dokumentiert
 - Kritische Coverage-Hotspots werden in `tooling/testing/coverage-policy.json` als `hotspotFloors` geführt
-- Workflow- und CI-Dateiänderungen werden im PR-Pfad gezielt über `tooling-testing` abgesichert und nicht automatisch durch volle Produkt-Suiten eskaliert
+- Gewöhnliche CI-Helfer werden im PR-Pfad über `tooling-testing` und affected abgesichert; zentrale `ci-gates-pr/main-shadow.yml`-Workflows und explizite Root-Konfigurationen behalten ihre konservative Voll-Coverage-/Quality-Eskalation gemäß `pr-scope`.
 - Normative Accessibility und heuristische Nutzersicht sind bewusst getrennt:
   - `ux-accessibility.agent.md` für WCAG/BITV, Fokus, Tastatur und Screenreader
   - `user-journey-usability.agent.md` für Friktion, Verständlichkeit und Aufgabenbewältigung
@@ -966,6 +966,16 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - Ausschließlich `pr-scope` erzeugt einmal pro PR-Head eine Scope-Evidenz mit Schema-Version, Base-SHA, Head-SHA, normalisierter Dateiliste, Gate-Modi und Fallback-Gründen. Alle PR-Gates konsumieren diese Entscheidung; sie führen keine zweite allgemeine Pfadpolicy. Fehlende Scope- oder Worker-Evidenz lässt die stabilen Unit-/Coverage-Aggregatoren fail-closed enden.
 - Main und Nightly übernehmen weder PR-Scope noch PR-Cache und führen die nicht deploymentbezogenen Verträge vollständig aus. App-Build, Main-E2E und Promote bleiben außerhalb der konsolidierten Main-Topologie und behalten ihre bestehende Release-Ownership.
 - Die abgeschlossene Shadow-Parität bleibt als historischer, Head-SHA-gebundener Nachweis unter `docs/reports/ci-gate-shadow-parity-2026-08.md` erhalten; produktive Workflows führen keine Paritätssammler oder Legacy-Scope-Berechnung mehr aus.
+
+Die CI verteilt App-Unit-, Coverage- und E2E-Ausführung über isolierte Runner.
+Freigaben entstehen ausschließlich nach validierter Vollständigkeit und
+Base-/Head-Identität der Teilnachweise; instrumentierte Coverage wird pro
+Projekt zusammengeführt. E2E hält einen Worker und einen eigenen Service-Stack
+je Runner. Die externe Main-/Hotfix-Evidenz bleibt kompatibel. Identische
+Unit-/Coverage-Kommandos dürfen auf Main einen gemeinsamen instrumentierten
+Nachweis nutzen; abweichende Testkonfigurationen bleiben separat geprüft.
+Details und Rücknahmegrenzen stehen in der
+[Testing-Dokumentation](../development/testing-coverage.md).
 
 ### Fail-closed Reihenfolge der ABAC-Regeln
 

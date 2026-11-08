@@ -1277,3 +1277,7 @@ The ownership decision and release boundary are recorded in
 ## Baustellengeometrie im Studio
 
 Das bestehende Baustellenplugin ergänzt seinen MapLibre-Kartenpfad lokal um Terra Draw und eine Koordinatenansicht. Der Studio-Mainserver-Adapter besitzt eine unabhängige Geometrievalidierung. Die einzige Datenquelle bleibt das GenericItem-Payload; weder ein neues Workspace-Package noch eine zusätzliche Geodatenbank werden eingeführt. Nach Nutzerfestlegung wird das alte CMS nicht mehr für Baustellen verwendet. Die Erweiterung verwendet deshalb den unveränderten Mainserver und übernimmt Erhalt sowie Schlüsselentfernung im vollständigen Studio-Payload. Siehe [Baustellenreferenz](../reference/construction-sites.md).
+
+## Suchplugin und Host-Anbindung
+
+`packages/plugin-search` besitzt Descriptor, Browser-Ansicht, validierten Suchzustand, Meilisearch-Kandidatenabfrage und Zählablauf. Das konkrete Host-Wiring in `search-mainserver.server.ts` verwendet bestehende Mainserver-Detaildispatcher, Typregistry und effektive Permissions. Der Host materialisiert Route und Serverhandler; es entsteht weder ein weiteres Suchpackage noch eine allgemeine Header- oder Autorisierungsplattform.

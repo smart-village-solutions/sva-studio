@@ -107,9 +107,11 @@ describe('studio-distribution-artifact', () => {
     expect(studio.pluginIds).toContain('vouchers');
     expect(studio.pluginIds).toContain('construction-sites');
     expect(studio.pluginIds).toContain('jobs');
+    expect(studio.pluginIds).toContain('search');
     expect(studio.pluginIds).toContain('app-translations');
     const ssf = JSON.parse(runArtifactCommand('selection', '', 'ssf').toString('utf8'));
     expect(ssf.pluginIds).not.toContain('app-translations');
+    expect(ssf.pluginIds).not.toContain('search');
     const appPackage = JSON.parse(
       readFileSync(path.join(workspaceRoot, 'apps/sva-studio-react/package.json'), 'utf8')
     );
@@ -130,7 +132,7 @@ describe('studio-distribution-artifact', () => {
     expect(selection.pluginSetFingerprint).toMatch(/^[a-f0-9]{64}$/u);
   });
 
-  it.each(['', 'news,news', 'unknown', 'news,', 'media', 'search', 'assistant', 'notifications'])(
+  it.each(['', 'news,news', 'unknown', 'news,', 'media', 'assistant', 'notifications'])(
     'rejects an invalid custom selection %j before writing an artifact',
     (pluginIds) => {
       expect(() => runArtifactCommand('selection', '', 'custom', pluginIds)).toThrow();
@@ -430,6 +432,7 @@ describe('studio-distribution-artifact', () => {
         'news',
         'poi',
         'projects',
+        'search',
         'surveys',
         'vouchers',
         'waste-management',
@@ -518,6 +521,7 @@ describe('studio-distribution-artifact', () => {
         'plugin-news',
         'plugin-poi',
         'plugin-projects',
+        'plugin-search',
         'plugin-surveys',
         'plugin-vouchers',
         'plugin-waste-management',

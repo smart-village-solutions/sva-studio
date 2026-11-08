@@ -431,3 +431,7 @@ Der dedizierte Stack `studio-clamav` betreibt einen gemeinsamen internen ClamAV-
 ### Kompatibilitätsgrenze der Waste-Fraktionsnormalisierung
 
 Der Studio-Migrationsjob läuft vor dem App-Austausch; die öffentliche Kalender-App wird unabhängig veröffentlicht. Daher erweitert die reguläre Migration zunächst kompatibel um `waste_tour_fractions` und eine transaktionale Array-Brücke. Erst danach können die neuen Kalender-/Studio-/Worker-Versionen unabhängig ausgerollt werden. Die inkompatible Entfernung der Arrayspalte ist standardmäßig deaktiviert und benötigt im vorhandenen Migrationsprofil die ausdrückliche Bestätigung `WASTE_TOUR_FRACTIONS_CONTRACT_CONFIRMED=true`, dass alle Altverbraucher und alten Rollback-Versionen außer Betrieb sind. Ein reiner Image-Rollback ist nach Contract unzulässig. Diese Kompatibilitätsbedingung ergänzt keinen zweiten Bedienpfad; für reguläre Rollouts gilt ausschließlich [Studio-Rollout](../guides/studio-rollout-process.md).
+
+## Suchplugin und vorhandene Meilisearch-Instanz
+
+Das Suchplugin verwendet die vorhandene Meilisearch-Instanz ausschließlich vom Studio-Server aus. `MEILI_URL`, der geschützte `MEILI_SEARCH_KEY` und die instanzbezogene Zuordnung `MEILI_SOURCES` werden serverseitig zugeführt. Der Quellvertrag bindet Gemeindeumfang und Indexumgebung an die konfigurierte Mainserver-Verbindung. Ein Master Key ist kein Anwendungsschlüssel. Diese Erweiterung erzeugt keinen neuen Dienst oder Deploymentpfad; Einrichtungsregeln stehen im [Mainserver-Runbook](../development/runbook-sva-mainserver.md#suchplugin-einrichten).

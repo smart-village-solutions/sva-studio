@@ -9,7 +9,8 @@
     "studioVersionRange": "^0.0.1"
   },
   "entryPoints": {
-    "descriptor": "./dist/plugin.js",
-    "browser": "./dist/plugin.js"
+    "descriptor": "./dist/descriptor.js",
+    "browser": "./dist/index.js",
+    "server": "./dist/server.js"
   }
 }

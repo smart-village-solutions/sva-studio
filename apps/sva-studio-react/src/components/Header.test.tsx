@@ -68,7 +68,13 @@ vi.mock('../hooks/use-organization-context', () => ({
   useOrganizationContext: () => useOrganizationContextMock(),
 }));
 
+vi.mock('../lib/plugins', () => ({ studioPlugins: [{ id: 'search' }] }));
+vi.mock('../providers/effective-access-provider', () => ({
+  useEffectiveAccess: () => ({ decide: () => ({ status: 'denied' }) }),
+}));
+
 vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
   Link: ({
     to,
     children,

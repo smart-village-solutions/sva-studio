@@ -1,38 +1,43 @@
-publiccodeYmlVersion: "0"
+publiccodeYmlVersion: '0'
 name: Suche
 url: https://github.com/smart-village-solutions/sva-studio
 platforms:
   - web
-developmentStatus: concept
+developmentStatus: development
 softwareType: addon
 description:
   de:
-    shortDescription: Geplantes Suchmodul im Studio; es ist noch nicht verfügbar oder einer
-      Instanz zuweisbar.
-    longDescription: Geplantes Suchmodul im Studio; es ist noch nicht verfügbar oder einer
-      Instanz zuweisbar. Dieses Plugin ist als eigenständiger Suchbereich vorbereitet.
-      Die bisherige Darstellung dient als Vorschau. Eine nutzbare Suche über
-      Studio-Inhalte ist noch nicht freigegeben und kann derzeit nicht aktiviert werden.
-      Das Plugin ist im Katalog als in Entwicklung gekennzeichnet. Es bietet derzeit
-      keine zuweisbare Funktion und wird nicht als verfügbares Modul geladen. Die
-      Beschreibung erläutert ausschließlich den geplanten Bereich und macht den
-      Entwicklungsstand in der Modulübersicht sichtbar. Eine spätere Freigabe benötigt
-      einen eigenen geprüften Funktionsumfang und die reguläre Plugin-Registrierung.
+    shortDescription: Öffentliche Mainserver-Inhalte im Studio suchen und nach Inhaltstyp, Kategorie und Datenanbieter filtern.
+    longDescription: >-
+      Das optionale Suchmodul ergänzt die Kopfzeile des SVA Studios um einen gemeinsamen
+      Sucheinstieg und eine eigene Ergebnisseite. Es verwendet vorhandene Meilisearch-Indizes
+      für sichtbare Mainserver-Inhalte. Studio prüft jeden Treffer serverseitig mit den
+      bestehenden Ressourcenrechten des Benutzers und seiner aktiven Organisation.
+      Suchbegriff und Filter bleiben über die URL wiederherstellbar. Die Anzeige unterscheidet
+      zugängliche Ergebnisse, aggregierte Berechtigungsablehnungen und unvollständige Prüfungen.
+      Titel, Vorschauen und Filteroptionen ausgeschlossener Inhalte werden nicht ausgegeben.
+      Unsichtbare Inhalte und Studio-eigene Daten gehören nicht zum ersten Umfang.
     features:
-      - Suche im SVA Studio nutzen
+      - Sucheinstieg in der Kopfzeile und eigene Ergebnisseite
+      - Kombinierbare Filter für Inhaltstyp, Kategorie und Datenanbieter
+      - Serverseitige Ressourcenprüfung und vollständigkeitsabhängige Trefferzahlen
   en:
     localisedName: Search
-    shortDescription: Planned Studio search module; it is not yet available or assignable to an instance.
-    longDescription: Planned Studio search module; it is not yet available or assignable to
-      an instance. This addon belongs to SVA Studio and is described independently from
-      its technical package identifier. The module overview displays its public name,
-      purpose, and current availability so administrators can understand the scope
-      before assigning it to an instance. Access to available modules is still governed
-      by the Studio module assignment and the relevant permissions. The source package
-      carries this metadata with the plugin, so it can move to a separate repository
-      together with the module.
+    shortDescription: Search public Mainserver content in Studio and filter by content type, category and data provider.
+    longDescription: >-
+      The optional search module adds a shared search entry to the SVA Studio header and
+      provides a dedicated results page. It uses existing Meilisearch indexes for visible
+      Mainserver content. Studio checks each result on the server using existing resource
+      permissions for the user and the active organization. Search terms and filters can
+      be restored from the URL. The interface distinguishes accessible results, aggregate
+      permission denials and incomplete checks. Titles, previews and filter options from
+      excluded content are never returned. Invisible records and Studio-owned data remain
+      outside the initial scope. Deployment requires a separately configured restricted key.
     features:
-      - Use Search in SVA Studio
+      - Header entry and dedicated results page
+      - Combined content type, category and data provider filters
+      - Server-side resource checks and completeness-aware result counts
+
 legal:
   license: EUPL-1.2
   mainCopyrightOwner: Smart Village Solutions SVS GmbH
@@ -43,6 +48,7 @@ maintenance:
       affiliation: Smart Village Solutions SVS GmbH
       email: operations@smart-village.app
 localisation:
-  localisationReady: false
+  localisationReady: true
   availableLanguages:
     - de
+    - en

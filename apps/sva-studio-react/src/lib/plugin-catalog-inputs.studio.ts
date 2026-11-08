@@ -89,8 +89,7 @@ const workspacePluginCatalogConfig = [
   {
     pluginId: 'search',
     sourceType: 'workspace',
-    enabled: false,
-    availability: 'in-development',
+    enabled: true,
     sourceRef: 'packages/plugin-search',
   },
 ] as const satisfies readonly StudioPluginCatalogConfigEntry[];

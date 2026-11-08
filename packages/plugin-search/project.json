@@ -18,6 +18,22 @@
       "options": {
         "command": "tsc -p packages/plugin-search/tsconfig.lib.json --noEmit"
       }
+    },
+    "test:unit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/plugin-search",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.config.ts"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": [
+          "packages/plugin-search/src/**/*.{ts,tsx}",
+          "packages/plugin-search/tests/**/*.{ts,tsx}"
+        ]
+      }
     }
   },
   "tags": ["scope:plugin", "type:lib"]

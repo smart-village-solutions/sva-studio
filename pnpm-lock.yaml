@@ -381,6 +381,9 @@ importers:
       '@sva/plugin-projects':
         specifier: workspace:*
         version: link:../../packages/plugin-projects
+      '@sva/plugin-search':
+        specifier: workspace:*
+        version: link:../../packages/plugin-search
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
@@ -1463,6 +1466,9 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0
     devDependencies:
+      '@tanstack/react-router':
+        specifier: 1.170.41
+        version: 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@types/react':
         specifier: ^19.3.0
         version: 19.3.0

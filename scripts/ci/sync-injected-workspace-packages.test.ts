@@ -20,6 +20,20 @@ const writePackageJson = (packageDir: string, name: string) => {
 };
 
 describe('sync-injected-workspace-packages', () => {
+  it('routes the compatible app typecheck target through the single executable type gate', () => {
+    const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
+    const { targets } = JSON.parse(
+      readFileSync(path.join(repoRoot, 'apps/sva-studio-react/project.json'), 'utf8')
+    );
+
+    expect(targets.typecheck.executor).toBe('nx:noop');
+    expect(targets.typecheck.dependsOn).toEqual(['test:types']);
+    expect(targets.typecheck.options).toBeUndefined();
+    expect(targets['test:types'].executor).toBe('nx:run-commands');
+    expect(targets['test:types'].dependsOn).toContain('^build');
+    expect(targets['test:types'].options.command).toContain('pnpm exec tsc --noEmit');
+  });
+
   afterEach(() => {
     for (const tempDir of tempDirs.splice(0)) {
       rmSync(tempDir, { recursive: true, force: true });

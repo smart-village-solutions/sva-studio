@@ -225,7 +225,10 @@ export const sharedVitestConfig = defineConfig({
         new URL('../../packages/plugin-sdk/src/route-documentation.ts', import.meta.url)
       ),
       '@sva/plugin-sdk/content-media': fileURLToPath(
-        new URL('../../packages/plugin-sdk/src/content-media-contracts-public-api.ts', import.meta.url)
+        new URL(
+          '../../packages/plugin-sdk/src/content-media-contracts-public-api.ts',
+          import.meta.url
+        )
       ),
       '@sva/plugin-sdk': fileURLToPath(
         new URL('../../packages/plugin-sdk/src/index.ts', import.meta.url)
@@ -287,6 +290,21 @@ export const sharedVitestConfig = defineConfig({
   test: {
     name: 'sva-studio-react',
     environment: 'happy-dom',
+    // Only real third-party calendar code is prebundled. Vitest keeps
+    // discovery disabled, so workspace source remains visible to coverage.
+    deps: {
+      optimizer: {
+        client: {
+          enabled: true,
+          include: [
+            '@sva/studio-ui-react > react-day-picker',
+            '@sva/studio-ui-react > react-day-picker/locale/de',
+            '@sva/studio-ui-react > react-day-picker/locale/en-GB',
+            '@sva/studio-ui-react > react-day-picker/locale/en-US',
+          ],
+        },
+      },
+    },
     setupFiles: [studioMswSetupFile],
     // Serielle Ausführung reduziert Flakes in der UI-Testumgebung und stabilisiert affected-Läufe.
     pool: 'threads',

@@ -342,7 +342,10 @@ describe('workspace package scripts', () => {
     const qualityWorkflow = loadMainGatesWorkflow();
     const e2eWorkflow = loadAppE2EWorkflow();
 
-    expect(qualityWorkflow).toContain('run: pnpm test:unit');
+    expect(qualityWorkflow).toContain(
+      'run: pnpm exec tsx scripts/ci/affected-unit-gate.ts --residual-only'
+    );
+    expect(qualityWorkflow).toContain('needs: [unit-residual, coverage]');
     expect(e2eWorkflow).toContain('schedule:');
     expect(e2eWorkflow).toContain("PLAYWRIGHT_MAX_FAILURES: '0'");
   });
@@ -402,8 +405,8 @@ describe('workspace package scripts', () => {
     const packageJson = loadRootPackageJson();
     const typesScript = packageJson.scripts?.['test:types'];
 
-    expect(typesScript).toContain('nx run-many -t test:types --parallel=1');
-    expect(typesScript).toContain('nx run-many -t typecheck --parallel=1');
+    expect(typesScript).toContain('nx run-many -t test:types typecheck --parallel=1');
+    expect(typesScript?.match(/nx run-many/gu)).toHaveLength(1);
     expect(typesScript).not.toContain('--projects=');
   });
 
@@ -447,7 +450,7 @@ describe('workspace package scripts', () => {
       'tsx scripts/ci/affected-coverage-gate.ts --base ${NX_BASE:-origin/main} --head ${NX_HEAD:-HEAD}'
     );
     expect(packageJson.scripts?.['test:types:affected']).toBe(
-      'pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected --target=test:types --base=${NX_BASE:-origin/main} --parallel=1 && env -u NO_COLOR nx affected --target=typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected && pnpm exec tsc -p tsconfig.scripts.json --noEmit'
+      'pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected -t test:types typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected && pnpm exec tsc -p tsconfig.scripts.json --noEmit'
     );
     expect(packageJson.scripts?.['check:server-runtime:affected']).toBe(
       'env -u NO_COLOR NODE_OPTIONS="${NODE_OPTIONS:-} --import=./scripts/ci/node-listener-budget.mjs" nx affected --target=check:runtime --base=${NX_BASE:-origin/main} --parallel=1'

@@ -314,16 +314,12 @@
       }
     },
     "typecheck": {
-      "executor": "nx:run-commands",
+      "executor": "nx:noop",
       "parallelism": false,
       "cache": false,
-      "dependsOn": ["^build"],
+      "dependsOn": ["test:types"],
       "inputs": ["default", "^production", "frontendTooling"],
-      "outputs": [],
-      "options": {
-        "cwd": "apps/sva-studio-react",
-        "command": "pnpm exec tsx ../../scripts/ci/sync-injected-workspace-packages.ts . && pnpm exec tsc --noEmit -p tsconfig.json"
-      }
+      "outputs": []
     },
     "lint": {
       "executor": "@nx/eslint:lint",

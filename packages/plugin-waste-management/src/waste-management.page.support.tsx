@@ -17,10 +17,8 @@ import {
   StudioField,
   StudioFieldGroup,
 } from '@sva/studio-ui-react';
-import ExcelJS from 'exceljs';
 
 import { WasteManagementApiError } from './waste-management.api.js';
-const { Workbook } = ExcelJS;
 
 export type StatusMessage = {
   readonly kind: 'success' | 'error' | 'warning';
@@ -105,7 +103,8 @@ const createImportTemplateWorkbookBuffer = async (
   const sampleRow = [...profile.requiredColumns, ...profile.optionalColumns].map(
     (column) => column.example ?? ''
   );
-  const workbook = new Workbook();
+  const { default: ExcelJS } = await import('exceljs');
+  const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Import');
   worksheet.addRow(headers);
   worksheet.addRow(sampleRow);

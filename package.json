@@ -112,7 +112,7 @@
   },
   "homepage": "https://github.com/smart-village-solutions/sva-studio#readme",
   "devDependencies": {
-    "@aws-sdk/client-s3": "^3.1144.0",
+    "@aws-sdk/client-s3": "^3.1159.0",
     "@eslint/js": "^10.0.1",
     "@graphql-inspector/cli": "7.0.0",
     "@nx/eslint": "^23.2.1",
@@ -137,7 +137,7 @@
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^5.1.0",
     "autoprefixer": "10.6.2",
-    "eslint": "^10.11.0",
+    "eslint": "^10.13.0",
     "fallow": "3.34.0",
     "happy-dom": "^21.0.4",
     "knip": "^6.29.0",

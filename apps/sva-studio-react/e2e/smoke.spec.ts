@@ -386,12 +386,10 @@ test('router keeps the shell active during client-side navigation', async ({ pag
   expect(pageErrors).toEqual([]);
 });
 
+const devLoginTest = process.env.PLAYWRIGHT_RUNTIME_PROFILE === 'local-builder' ? test : test.skip;
+
 for (const label of [/^(?:Login|Anmelden)$/, 'Als Dev-User anmelden']) {
-  test(`local dev login works through the real browser session: ${label}`, async ({ page }) => {
-    test.skip(
-      process.env.PLAYWRIGHT_RUNTIME_PROFILE !== 'local-builder',
-      'Requires the local dev-auth runtime.'
-    );
+  devLoginTest(`local dev login works through the real browser session: ${label}`, async ({ page }) => {
     await page.context().clearCookies();
     await page.addInitScript(() => window.localStorage.setItem('sva_auth_had_session', '1'));
     await page.goto('/');

@@ -271,7 +271,10 @@ entferntem `--coverage` entscheidet über die Übernahme. Abweichende Konfigurat
 fehlende Coverage-Targets und policy-exempte Projekte laufen als `Unit Residual`
 parallel weiter. Insbesondere die App-Unit-Konfigurationen werden nicht allein
 wegen ähnlicher Dateimengen durch ihre andere Coverage-Konfiguration ersetzt.
-`Unit` verlangt sowohl erfolgreiche Residual- als auch Coverage-Ausführung.
+Die App verwendet auch auf Main dieselben sieben separaten Unit-Partitionen;
+`Unit Residual` führt sie dadurch nicht noch einmal aus. `Unit` verlangt
+erfolgreiche Residual-, App- und Coverage-Ausführung und prüft alle sieben
+vollständigen App-Manifeste für Base = Head = aktueller Commit.
 
 Der App-Typecheck besitzt nur noch einen ausführenden Pfad `test:types`.
 `typecheck` ist ein kompatibler Alias. Die Root-Skripte starten beide Targets in

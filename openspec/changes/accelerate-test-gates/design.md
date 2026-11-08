@@ -25,6 +25,14 @@ Coverage-Controller prüft den vollständigen Plan erneut gegen den Quellstand.
 Ein Graphfehler bewahrt einen bereits erfolgreichen Git-Diff für diese
 Zuordnung, während die vollständige Fallback-Menge verpflichtend bleibt.
 
+Der erste Main-Nachweis zeigt den verbleibenden seriellen App-Unit-Restlauf als
+kritischen Pfad. Main verwendet deshalb dieselben sieben App-Unit-Partitionen
+wie der PR-Pfad, jeweils mit einem Worker und vollständigem Base-/Head- sowie
+Datei-/Fallmengennachweis. Der verbleibende Unit-Job führt ausschließlich die
+anderen nicht durch identische Coverage-Ausführung gedeckten Projekte aus.
+Der stabile Main-Check `Unit` verlangt Coverage, Restlauf und alle sieben
+App-Nachweise; es entsteht kein weiterer Controller.
+
 ## Nachweise
 
 Gezielte Vitest-Vertragstests auf Scope/Fallback/No-op, Vollständigkeit, doppelte/fremde/manipulierte Reports, rote/abgebrochene Jobs und Teilwiederholung; Skript-Typecheck und erforderliche Runtime-Gates. Fresh-/Shard-Mengen und Coverage-Zähler werden verglichen. Drei gepaarte Messungen und fünf Flake-Wiederholungen je struktureller Änderung; zehn CI-Endstände zur abschließenden Median-/P90-Bewertung. Solange diese fehlen, keine Zielerreichung behaupten.

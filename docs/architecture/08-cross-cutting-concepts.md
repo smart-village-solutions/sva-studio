@@ -974,6 +974,8 @@ Projekt zusammengeführt. E2E hält einen Worker und einen eigenen Service-Stack
 je Runner. Die externe Main-/Hotfix-Evidenz bleibt kompatibel. Identische
 Unit-/Coverage-Kommandos dürfen auf Main einen gemeinsamen instrumentierten
 Nachweis nutzen; abweichende Testkonfigurationen bleiben separat geprüft.
+Die sieben App-Unit-Partitionen gelten auch im Main-Restlauf; der finale
+Unit-Nachweis verlangt zusätzlich deren vollständige commitgebundene Manifeste.
 Details und Rücknahmegrenzen stehen in der
 [Testing-Dokumentation](../development/testing-coverage.md).
 

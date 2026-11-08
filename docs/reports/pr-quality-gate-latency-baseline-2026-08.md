@@ -111,13 +111,12 @@ DayPicker-spezifische Accessibility-Labels müssen bei einer Optimierung erhalte
 - Gezielte Negativtests prüfen fehlende, doppelte, fremde und beschädigte Reports,
   falsche Base/Head-Werte, Planabweichungen sowie eine unvollständige Dateiunion.
 
-Die Quellenprüfung findet keine ungültig UTF-8-kodierten Dateien in den
-konfigurierten Sonar-Quellverzeichnissen. Der beobachtete Protobuf-Fehler im
-Analyzer ist damit noch nicht ursächlich erklärt: Im untersuchten Lauf wurde
-der Analysebericht anschließend trotzdem hochgeladen. Die getrennte
-Scanner-Diagnostik darf nicht als bereits bestätigte Fehlerbehebung gelten.
+Die initiale Quellenprüfung findet keine ungültig UTF-8-kodierten Dateien in
+den konfigurierten Sonar-Quellverzeichnissen. Erst die spätere AST-Prüfung
+grenzt den Protobuf-Fehler auf ein gültiges, aber problematisches
+Unicode-Stringliteral ein; Workaround und Folgelauf sind unten dokumentiert.
 
-Offen bis tatsächliche Endstände vorliegen: terminale zusätzliche Baselines,
+Offen bis tatsächliche Endstände vorliegen: vollständige gepaarte GitHub-Vergleiche,
 drei vergleichbare Nachher-Läufe je strukturellem Abschnitt, fünf unveränderte
 Flake-Wiederholungen und zehn repräsentative CI-Endstände für Median/P90.
 Lokale Importprofile unter wechselnder Rechnerlast sind kein Ersatz dafür.
@@ -193,3 +192,42 @@ AST-Übertragung für Taint-Analyse beschädigen. Der betroffene negative
 keine weiteren solchen String-/Template-Literale in den Sonar-Quellen. Ein
 fehlerfreier Scannerlauf auf dem neuen Commit bleibt als Incident-Nachweis
 erforderlich.
+
+### Erster vollständiger Main-Nachweis und E2E-Evidenzfehler
+
+Auf `2aaa6d121f83ac10ee3636ebca7b90e84d0a5982` besteht
+[Main 42533181710](https://github.com/smart-village-solutions/sva-studio/actions/runs/42533181710)
+vollständig. Unit und Coverage sind nach 10:29 Minuten ab Runanlage grün;
+die kritische Aktivzeit ohne Queue beträgt 8:58 Minuten. Die längste
+Coverage-Partition braucht 247 Sekunden, der Aggregator 152 Sekunden.
+Der noch ungeteilte App-Unit-Restlauf dominiert den Unit-Restjob mit insgesamt
+536 Sekunden. Diese Beobachtung begründet die Wiederverwendung der sieben
+bereits vorhandenen App-Partitionen auch im Main-Restlauf.
+
+Die Test-/Coverage-Jobs benötigen zusammen 47:07 Runner-Minuten; sämtliche
+Workflowjobs ohne Sonar 74:09 Minuten. Das sind aufsummierte aktive Jobzeiten,
+keine Abrechnungsschätzung. Ein erfolgreicher Lauf belegt weder Median noch P90.
+
+Sonar läuft separat 6:33 Minuten, davon 5:47 Minuten im Scan-Schritt.
+Bei unverändertem Analyzer `14.4.0.46458` treten keine Protobuf-/UTF-8-Fehler
+und keine Scanner-ERROR-Zeilen mehr auf. Der Bericht wird hochgeladen; der
+JS/TS-Umfang umfasst 3.640 statt zuvor 3.627 Dateien. Die weiterhin gemeldeten
+32 nicht auflösbaren LCOV-Pfade sind eine getrennte bestehende Warnung.
+Die Sonar-Laufzeit wurde dadurch nicht nachweislich kürzer.
+
+[E2E 42533183992](https://github.com/smart-village-solutions/sva-studio/actions/runs/42533183992)
+hat vier erfolgreiche Shards ohne Retries oder neue Skips. Gegenüber der
+Baseline bleiben alle Szenarien erhalten; der eine Responsive-Sammelfall
+wird durch neun erfolgreiche Fälle ersetzt. Der Finalizer blockiert korrekt,
+weil zwei vorhandene Devlogin-Tests ihre unveränderte Profilbedingung erst
+innerhalb des Testkörpers auswerten: Discovery meldet sie aktiv, Ausführung
+übersprungen. Die Bedingung wird an der Testdeklaration getroffen; der
+Validator bleibt streng. Die erste Messung beträgt 8:03 Minuten kritische
+Aktivzeit und 11:26 Minuten einschließlich Queue, ist wegen rotem Finalizer
+ausdrücklich kein erfolgreicher Abnahmelauf. Runnerzeit: 25:38 Minuten.
+
+Der vorübergehende Vergleichsbranch nutzt den bisherigen ungeteilten
+Main-Workflow mit fest auf `2aaa6d121` gepinnten Checkouts. Dadurch sehen auch
+die Workflow-Vertragstests denselben finalen Quellstand wie der geteilte Lauf.
+Nach Auswertung wird der Diagnosebranch entfernt; kein zweiter kanonischer
+CI-Pfad wird eingeführt.

@@ -68,7 +68,7 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
         ctx.user.id,
         canManageInterfaces
       );
-      if (result?.delivery) {
+      if (result && 'delivery' in result && result.delivery) {
         await publishAppTextCatalog(result.delivery);
         return response(200, { data: { revision: result.delivery.revision } });
       }

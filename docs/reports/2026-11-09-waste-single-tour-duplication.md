@@ -4,7 +4,7 @@
 
 Datum, Fraktion und Rhythmus beim Duplizieren einer einzelnen Tour ohne erneute Eingabe übernehmen und eine eigenständige Kopie als Entwurf speichern. Ausgangspunkt ist Zeile 43 im [Prüfblatt](https://docs.google.com/spreadsheets/d/1TAYWlYVIga6SVjd11H5aL2dnhV7lfAcSNNF2HN48uqo/edit#gid=939932647).
 
-Betroffen sind ausschließlich die vorhandene Create-Requestvalidierung, Duplizierungstests, die zugehörige Spezifikation und dieser Nachweis. Jahresübernahme, zusätzliche Bearbeitungsfunktionen, Feiertagsberechnung und Mainserver-Synchronisation sind ausgeschlossen. PR #2124 und seine vier Dateien bleiben unverändert. Es erfolgen keine produktiven Datenänderungen, kein Merge und kein Rollout.
+Betroffen sind ausschließlich die vorhandene Create-Requestvalidierung und Zielbestandsprüfung, Duplizierungstests, die zugehörige Spezifikation und dieser Nachweis. Jahresübernahme, zusätzliche Bearbeitungsfunktionen, Feiertagsberechnung und Mainserver-Synchronisation sind ausgeschlossen. PR #2124 und seine vier Dateien bleiben unverändert. Es erfolgen keine produktiven Datenänderungen, kein Merge und kein Rollout.
 
 ## Befund und historische Reproduktion
 
@@ -16,6 +16,8 @@ Ein separater Datenintegritätsfehler im untersuchten Speicherpfad wurde dagegen
 
 Die minimale Korrektur erweitert ausschließlich das bestehende Create-Schema um die Prüfung unterschiedlicher Quell-/Ziel-IDs vor jedem Write. Groß-/Kleinschreibung, Klammern, Bindestriche und die bereits vorhandene Whitespace-Normalisierung berücksichtigen äquivalente UUID-Schreibweisen. Fünf Regressionstests erwarten nun HTTP 400, keinerlei Save-/Kopier-/Rollback-Aufruf und erhaltene Quelldaten.
 
+Dieselbe Invariante wurde anschließend für alle vorhandenen Create-Verbraucher und den gemeinsamen Schreibpfad geprüft: Auch eine dritte bestehende Tour durfte nicht als Kopierziel überschrieben werden. Der zusätzliche Test reproduzierte deren Rollback-Löschung. Die vorhandene `loadWasteTourById`-Dependency prüft deshalb beim Duplizieren das Ziel vor dem Save; ein bereits vorhandenes Ziel führt zu HTTP 409 ohne Writes. Der positive Pfad speichert weiterhin eine neue Tour und liest sie nach dem Kopieren zurück. Diese Vorabprüfung ersetzt keinen atomaren Insert und serialisiert keine konkurrierenden Requests mit derselben neuen ID.
+
 ## Vollständiger bestehender Datenpfad
 
 1. `packages/plugin-waste-management/src/waste-management.tours-list-view.navigation.ts`: Die Tabellenaktion verwendet `mapTourToDuplicateForm`, setzt den Create-Modus und übergibt `duplicateFromTourId` an die bestehende Route.
@@ -24,7 +26,7 @@ Die minimale Korrektur erweitert ausschließlich das bestehende Create-Schema um
 4. `waste-management.tours-form-view.tsx` und `waste-management.tours.tour-mutations.ts`: Das Formular übergibt die Quell-ID beim Erstellen. `toCreateTourInput` erzeugt den Request mit `status: draft`; feste Turnusse und Presets verwenden ihre Datumsgrenzen, individuelle Termine verwenden `customDates`, Abruf erzeugt keine erfundenen Datumsgrenzen.
 5. `waste-management.api.operations.tours.ts`: POST nach `/api/v1/waste-management/tours` über den vorhandenen Mutationstransport.
 6. `packages/waste-management-runtime/src/handlers/tours.ts` und `http-schemas.tours.ts`: Tourverwaltung, zusätzliche Planungsberechtigung bei Duplizierung, CSRF und Eingaben werden geprüft. Der Create-Vertrag erlaubt ausschließlich den Status Entwurf und weist gleiche Quell-/Ziel-IDs vor jeder Mutation ab.
-7. `handlers/tours-write-support.ts`: `createWasteTourWriteInput` normalisiert die übergebenen Werte. Der bestehende Saver schreibt die neue Tour; anschließend werden die Beziehungen kopiert und die gespeicherte Tour über `loadWasteTourById` zurückgelesen.
+7. `handlers/tours-write-support.ts`: `createWasteTourWriteInput` normalisiert die übergebenen Werte. Bei Duplizierungen wird zuerst die Ziel-ID auf bestehenden Tourbestand geprüft (Konflikt: HTTP 409). Der bestehende Saver schreibt die neue Tour; anschließend werden die Beziehungen kopiert und die gespeicherte Tour über `loadWasteTourById` zurückgelesen.
 8. `server-loaders.entitiesrules.ts` und `repositories/master-data.tours.ts`: Der Saver ruft `upsertWasteTour` auf. `upsert_waste_tour` erhält Fraktionen, Turnus/Preset, Datum, individuelle Termine und Status als Parameter; die Definition unter `operations/waste-tour-fractions.schema.ts` speichert Fraktionszuordnungen mit der neuen Tour-ID und setzt `active` nur bei veröffentlichten Touren.
 
 ## Geltende Kopierregeln
@@ -43,10 +45,10 @@ Die maßgeblichen Anforderungen stehen in [der Waste-Spezifikation](../../opensp
 Die Tests verwenden ausschließlich synthetische Daten; die UI-API ist gemockt. Der serverseitige Handler-Test verwendet einen getrennten In-Memory-Bestand für Quelle und Kopie und liest die Kopie über die bestehende Readback-Dependency zurück. Das ist kein PostgreSQL-Integrationstest und keine Live-Abnahme.
 
 - `waste-management.page.test.tsx`: vier Duplizierungsfälle ab Tabellenaktion einschließlich erneutem Mount, sichtbarer Vorbelegung, unverändertem Requestinhalt, neuer ID, Entwurfsstatus und unveränderter Quelle. Ein einzelner individueller Termin mit Beschreibung ist enthalten.
-- `handlers.test.ts`: Speicherung genau einer neuen Tour, Rücklesen des gespeicherten Entwurfs, Übernahme der vier Beziehungstypen, unveränderter Quellbestand; fünf Ablehnungsfälle für gleiche Quell-/Ziel-IDs; vorhandene Fälle für fehlende Planungsberechtigung und Rollback.
+- `handlers.test.ts`: Speicherung genau einer neuen Tour, Rücklesen des gespeicherten Entwurfs, Übernahme der vier Beziehungstypen, unveränderter Quellbestand; sechs Ablehnungsfälle für gleiche Quell-/Ziel-IDs und eine dritte bestehende Zieltour; vorhandene Fälle für fehlende Planungsberechtigung und Rollback.
 - Vorhandene gezielte Tests für Navigation, Mapping, Formular-Submit und Kopieren abhängiger Daten ergänzen diese Nachweise.
 
-Ergebnis: 64 gezielt ausgeführte Tests grün (25 UI, 4 Navigation, 8 Mapping, 13 Submit, 8 Handler, 6 Write-Support); Typ-Gate für `waste-management-runtime`, Server-Runtime-Gesamtgate (20 Projekte), File-Placement, Diff- und Formatprüfung bestanden. Die zunächst kollidierenden lokalen Buildkopien wurden durch getrennte Typ-/Runtime-Läufe bereinigt. Die acht ausgewählten Handlerfälle lassen 47 fachfremde Fälle dieser Datei bewusst aus. Test-Quality- und Documentation-Review sowie das zusätzliche Security-/Code-Quality-Review des ID-Schutzes meldeten keine blockierenden Befunde.
+Ergebnis: 65 gezielt ausgeführte Tests grün (25 UI, 4 Navigation, 8 Mapping, 13 Submit, 9 Handler, 6 Write-Support); Typ-Gate für `waste-management-runtime`, Server-Runtime-Gesamtgate (20 Projekte), File-Placement, Diff- und Formatprüfung bestanden. Die zunächst kollidierenden lokalen Buildkopien wurden durch getrennte Typ-/Runtime-Läufe bereinigt. Die neun ausgewählten Handlerfälle lassen 47 fachfremde Fälle dieser Datei bewusst aus. Test-Quality- und Documentation-Review sowie das zusätzliche Security-/Code-Quality-Review des ID-Schutzes meldeten keine blockierenden Befunde.
 
 Ausführbare lokale Befehle (jeweils im isolierten Worktree):
 

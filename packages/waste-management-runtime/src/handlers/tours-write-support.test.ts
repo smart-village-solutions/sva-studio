@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { WasteManagementHandlerDeps } from './types.js';
 
 const { loggerInfo, emitWasteAuditEvent, updateWasteVisibleStatus } = vi.hoisted(() => ({
   loggerInfo: vi.fn(),
@@ -356,21 +357,25 @@ describe('waste tour write support', () => {
   });
 
   it('returns 201, emits success, updates visible status, and duplicates dependencies when requested', async () => {
-    const loadSavedTour = vi.fn(async () => ({
-      id: 'tour-1',
-      name: 'Restmuell Nord',
-      description: undefined,
-      wasteFractionIds: ['fraction-1'],
-      recurrence: 'weekly',
-      customRecurrenceId: undefined,
-      firstDate: '2026-01-01',
-      endDate: undefined,
-      customDates: undefined,
-      status: 'draft',
-      locationCount: 0,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    }));
+    const loadSavedTour = vi.fn<NonNullable<WasteManagementHandlerDeps['loadWasteTourById']>>(
+      async () => ({
+        id: 'tour-1',
+        name: 'Restmuell Nord',
+        description: undefined,
+        wasteFractionIds: ['fraction-1'],
+        recurrence: 'weekly',
+        customRecurrenceId: undefined,
+        firstDate: '2026-01-01',
+        endDate: undefined,
+        customDates: undefined,
+        status: 'draft',
+        locationCount: 0,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      })
+    );
+
+    loadSavedTour.mockResolvedValueOnce(null);
 
     const response = await createWasteManagementTourAfterValidation({
       deps: {

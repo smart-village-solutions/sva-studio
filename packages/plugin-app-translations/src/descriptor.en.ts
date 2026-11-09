@@ -46,7 +46,7 @@ export const englishTranslations = {
         languages_required:
           'Select and save at least one target language in the verified interface.',
         ready:
-          'Verified and selected languages are available for local catalog editing. Automatic translations can be started explicitly. App delivery will follow later.',
+          'Verified and selected languages are available for local catalog editing. Automatic translations can be started explicitly. You can publish saved snapshots to the app.',
       },
       catalog_setup_required: 'First complete and verify DeepL setup. Existing texts are retained.',
       sourceRequired: 'First create the German source under App → App texts.',

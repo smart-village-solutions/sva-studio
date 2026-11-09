@@ -357,3 +357,164 @@ CI-Fällen überein. Drei vollständige lokale Coverage-Dateiläufe bestehen;
 im ersten benötigen die zuvor roten Fälle 312/597 Millisekunden und der
 gesamte Lauf 16,60 Sekunden. Das ist ein lokaler Diagnosebeleg; die vollständige
 Cloud-Wiederholungsreihe nach diesem Fix bleibt erforderlich.
+
+
+### Vergleichsreihen nach der Aufteilung (November 2026)
+
+Die folgenden Werte sind kritische Aktivzeiten im Job-Abhängigkeitsgraphen:
+Setup, Installation, Tests und Aggregation sind enthalten; Scheduler- und
+Queue-Zeiten nicht. Tatsächliche Wartezeit und aufsummierte Runnerzeit stehen
+getrennt daneben. Alle P90-Werte verwenden nearest rank; bei drei oder sechs
+Wiederholungen beschreiben sie nur diese kleine kontrollierte Stichprobe.
+
+| Vergleich | Vorher, Median | Nachher, Median | Einordnung |
+| --- | ---: | ---: | --- |
+| Normaler PR: Unit | 7:42 | 3:46 | −51,1 %, identische 927 Routenfälle |
+| Normaler PR: alle Required Checks | 9:25 | 8:26,5 | −10,4 %; Vier-Minuten-Ziel verfehlt |
+| Main: Unit und Coverage ohne Sonar | 24:49 | 7:01 | Drei gepaarte Quellstand-Wiederholungen |
+| App-E2E einschließlich Aggregation | 18:14 | 7:25,5 | Aktivmedian erfüllt; beobachtete Wartezeit darüber |
+
+**Normaler PR.** Der feste Scope ändert ausschließlich einen abschließenden
+Kommentar in einer vorhandenen Routentestdatei. Die Baseline
+[42535155508](https://github.com/smart-village-solutions/sva-studio/actions/runs/42535155508)
+hat drei erfolgreiche Versuche auf Basis `eb0c51e35`. Der Kandidat vor dem
+Integration-Split
+[42539172078](https://github.com/smart-village-solutions/sva-studio/actions/runs/42539172078)
+hat sechs erfolgreiche Versuche auf Basis `df53a9a3a`; danach folgen sechs
+Erfolge in
+[42548223201](https://github.com/smart-village-solutions/sva-studio/actions/runs/42548223201)
+auf Basis `3b8b10dee`. Jede Reihe verwendet einen unveränderlichen Basisbranch
+und einen eigenen festen Kommentar-Head; alle 15 tatsächlichen Fallmultimengen
+sind mit 927 Fällen in 90 Dateien gleich. Es gibt keine Statusabweichungen.
+
+Nach dem Split beträgt der Required-P90 8:52 statt 10:57 Minuten. Die
+beobachtete Required-Wartezeit einschließlich Queue sinkt im Median von
+12:05 auf 9:09 Minuten; wechselnde Schedulerlast beeinflusst diesen Vergleich.
+Die aufsummierte Runnerzeit des gesamten Workflows steigt im Median von
+31:23 auf 42:09,5 Minuten (+34,3 %). Das ist der erlaubte Preis der Parallelität,
+keine gemessene GitHub-Abrechnung.
+
+Der verbleibende kritische Pfad ist Scope → Plugin Quality → Studio
+Compatibility → PR Integration. Die eigene Integration startet jetzt parallel.
+Der obligatorische externe Plugin-Kompatibilitätstest bleibt länger als das
+Vier-Minuten-Ziel. Sein gepinnter Workflow und der aktuelle divergierende
+Main-Stand des separaten Plugin-Repositories wurden lesend geprüft; ein
+unbegründeter Ref-Wechsel würde zusätzliche Produktänderungen übernehmen und
+ist keine nachgewiesene Beschleunigung. Dieser Auftrag verändert das separate
+Repository nicht. Das Gesamtziel bleibt ausdrücklich offen.
+
+**Main und Coverage-Parität.** Der geteilte Main-Diagnoselauf
+[42538791168](https://github.com/smart-village-solutions/sva-studio/actions/runs/42538791168)
+besteht alle drei Versuche auf `df53a9a3a`; P90 für Unit/Coverage ist 7:23
+Minuten. Die tatsächliche Wartezeit beträgt im Median 19:36 Minuten,
+P90 28:36 Minuten. Die Scheduleranteile sind damit wesentlich; die
+aufsummierte Unit-/Coverage-Runnerzeit liegt im Median bei 64:37 Minuten.
+Sonar benötigt separat im Median 5:46 Minuten. Das Zehn-Minuten-Ziel ist nur
+für den Aktivpfad nachgewiesen, nicht für die beobachtete Wartezeit.
+
+Der ungeteilte Referenzlauf
+[42538796786](https://github.com/smart-village-solutions/sva-studio/actions/runs/42538796786)
+checkt denselben Quellstand aus. Seine drei Unit-/Coverage-/Sonar-Ergebnisse
+sind grün; der dritte Gesamtworkflow ist wegen HTTP 502 beim Docker-Hub-Pull
+von PostgreSQL rot und zählt nicht als erfolgreicher Gesamtendstand.
+Die eigentlichen Coverage-Schritte dauern 15:27, 24:51 und 23:22 Minuten.
+
+Alle 37 Pflichtprojekte besitzen zwischen den drei ungeteilten Läufen und
+den geteilten Versuchen 2/3 identische Datei-/Branch-/Funktionsdefinitionen,
+Covered-Zähler und Summaries. Im geteilten Versuch 1 wird zusätzlich der
+bereits vorhandene Abbruchpfad `if (!active) return` eines spät erfüllten
+Autorisierungs-Promises ausgeführt. Diese einzelne schedulingabhängige
+Statement-/Branch-Differenz bleibt sichtbar. Gate-Entscheidungen sind gleich.
+Rohe DA-/FNDA-/BRDA-Ausführungshäufigkeiten unterscheiden sich bereits
+zwischen unveränderten ungeteilten Läufen (113 beziehungsweise 121 Dateien);
+eine bytegleiche vollständige LCOV-Datei ist deshalb nicht nachgewiesen.
+Der deterministische native Merge-Test weist Bytegleichheit separat nach.
+
+**E2E nach dem Fixture-Fix.**
+[42546120112](https://github.com/smart-village-solutions/sva-studio/actions/runs/42546120112)
+besteht sechs unveränderte Versuche auf `908a5a22f`: identische 95 IDs,
+neun bestehende Skips, keine Retries und keine Flakes. Alle vier visuellen
+Linux-Fälle bestehen in jedem Versuch, insgesamt 24 Bildvergleiche ohne
+Änderung einer Referenzdatei. Der Aktiv-P90 beträgt 8:21 Minuten, die
+tatsächliche Wartezeit im Median 8:27,5 und P90 9:59 Minuten. Die Runnerzeit
+summiert sich über sechs Versuche auf 157:27 Minuten. Diese Diagnoseklasse
+stellt keinen kanonischen Main-Release-Nachweis aus.
+
+Die hier verlinkten Kohorten besitzen jeweils ausdrücklich genannte feste
+Quellstände; spätere Commits werden nicht rückwirkend als getestet bezeichnet.
+Mehr als zehn erfolgreiche CI-Läufe aus den kontrollierten normalen und
+vollständigen PR-Scopes liegen vor. Diese Abdeckung der beiden geplanten
+Messpfade ist keine große Stichprobe unterschiedlicher Änderungen. Median
+und P90 werden deshalb pro Scope samt Stichprobengröße ausgewiesen; eine
+breite Aussage über die spätere reale Nutzung ist damit nicht belegt.
+
+
+### Vollständiger PR nach dem letzten Testfix
+
+[42552160055](https://github.com/smart-village-solutions/sva-studio/actions/runs/42552160055)
+besteht sechs unveränderte Versuche auf `c26cf1eb2`. Jeder Versuch bindet
+dieselbe Base/Head-Kombination und dieselbe tatsächliche App-Fallmultimenge
+von 2.407 Fällen einschließlich bestehender Skips. Alle Required Checks sind
+grün; kein roter oder abgebrochener Zwischenversuch wird als Erfolg gezählt.
+
+| Vollständiger PR, n=6 | Median | P90, nearest rank |
+| --- | ---: | ---: |
+| Unit-Aktivpfad | 7:48 | 12:16 |
+| Coverage-Aktivpfad | 7:14 | 7:25 |
+| Gesamter Required-Aktivpfad | 9:09 | 12:16 |
+| Tatsächliche Required-Wartezeit | 11:03 | 15:41 |
+| Aufsummierte Runnerzeit, gesamter Workflow | 107:32 | 116:21 |
+
+Der vollständige PR verfehlt damit das Gesamtziel von acht Minuten Median
+und zwölf Minuten P90. Fünf der sechs aktiven kritischen Pfade führen durch
+die Plugin-Kompatibilität. Der andere Versuch enthält einen langsamen
+Hooks-Runner: 145 Sekunden Workspace-Setup und 316,49 Sekunden Build-Vorarbeit
+vor dem eigentlichen Testtarget; Vitest selbst meldet 190,29 Sekunden, davon
+elf Prozent Tests. Diese Vorarbeit wird weder als Queue ausgeblendet noch
+werden erforderliche Build-Gates entfernt. Das verbleibende Profil ist damit
+belegt, eine weitere Einsparung an diesem Pfad noch nicht.
+
+Die sechs Erfolge bestätigen auch den SSF-Abfragefix im vollständigen
+Coverage-Kontext. Gegenüber der vorherigen roten Ausführung bleiben alle
+24 SSF-Fälle und ihre Assertions erhalten. Die vollständige Wiederholungsreihe
+ist ein Stabilitätsnachweis für diesen festen Scope, keine unbegrenzte
+Flake-Garantie. Die spätere reine Dokumentationsaktualisierung erhält einen
+eigenen PR-Endstand; die Messreihe wird nicht rückwirkend an ihn umgebunden.
+
+
+### Vollständiges ursprüngliches Unit-Inventar
+
+Das ausgeführte native Inventar auf exakt
+`cae1b538fbf6b8adc823001b84b2bb9391343f8a` und Node `v24.15.0` umfasst alle
+41 ursprünglichen Unit-Projekte: 44 kanonische Rohreports, 1.408 eindeutige
+Dateien und 13.994 Testfälle, davon 13.866 erfolgreich und 128 bestehende
+Skips; keine fehlgeschlagenen oder Todo-Fälle. Native Summenzähler stimmen
+mit der ausgezählten Fallmultimenge überein. Die Rohreports mit Dateipfaden,
+tatsächlichen Titeln und Status sind unverändert samt SHA256-Manifest
+archiviert; dynamische `%j`-Titel werden nicht normalisiert.
+
+Der diagnostische Gesamtlauf
+[42556158606](https://github.com/smart-village-solutions/sva-studio/actions/runs/42556158606)
+erreicht das unveränderte 30-Minuten-Limit. Alle anderen 40 Projekte sowie
+die App-Teilsuiten UI, Routes und Hooks liefern zuvor erfolgreiche Reports.
+Nur das ursprüngliche App-Server-Target fehlt: Seine Tests starten nach den
+Build-Voraussetzungen erst kurz vor dem Limit. Der gezielte Ergänzungslauf
+[42559216883](https://github.com/smart-village-solutions/sva-studio/actions/runs/42559216883)
+führt ausschließlich dieses bestehende Target mit denselben Voraussetzungen
+aus und besteht (58 Dateien, 558 Fälle einschließlich fünf Skips).
+
+Die beiden Reportmengen sind disjunkt und entsprechen zusammen exakt den
+44 erwarteten Pfaden. Zusätzliche `node_modules`-Kopien im ersten Upload
+werden nicht als zusätzliche Reports gezählt. Der abgebrochene Gesamtlauf
+bleibt abgebrochen; die Vereinigung belegt ausschließlich das Inventar und
+ist weder ein erfolgreicher Performance-Vergleich noch Release-Evidenz.
+
+Die nativen Kandidaten-Coverage-Inventare erfassen 37 der 41 Unit-Projekte;
+die vier übrigen Projekte werden weiterhin separat als Unit-Auswahl geprüft.
+Ein vollständiger roher Fall-ID-Vergleich über unterschiedliche Quellstände
+wird daraus nicht behauptet: Zwischenzeitliche Main-Erweiterungen und ein
+bereits vorhandener `Date.now()`-Wert in einem `%j`-Testtitel bleiben sichtbar.
+Die unveränderten gepaarten App-/Abfall-Fallmultimengen, die sieben tatsächlichen
+App-Teilnachweise und die geprüfte Coverage-/Unit-Befehlszuordnung sind davon
+getrennte Nachweise. Die temporären Vergleichs-PRs sind geschlossen; die
+Diagnosebranches werden nach Sicherung der Ergebnisse entfernt.

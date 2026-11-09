@@ -223,6 +223,40 @@ describe('verify-studio-image-contract', () => {
     expect(() => verify(input)).toThrow();
   });
 
+  it('accepts a declared installed SVA plugin only when its package is present', () => {
+    const input = validInput('studio');
+    input.runtimeManifest.installedPlugins.push({
+      pluginId: 'application-workspace', sourceRef: '@sva/plugin-application-workspace',
+    });
+    input.runtimeManifest.includedPluginIds.push('application-workspace');
+    input.packages.push('plugin-application-workspace');
+    for (const chunk of input.chunkProvenance.chunks) {
+      chunk.pluginPackages.push('@sva/plugin-application-workspace');
+    }
+    expect(JSON.parse(verify(input)).presentWorkspacePackages).toContain('plugin-application-workspace');
+    input.packages = input.packages.filter((name) => name !== 'plugin-application-workspace');
+    expect(() => verify(input)).toThrow('installed_plugin_package_missing:plugin-application-workspace');
+  });
+
+  it('rejects an undeclared installed SVA plugin package', () => {
+    const input = validInput('studio');
+    input.packages.push('plugin-application-workspace');
+    expect(() => verify(input)).toThrow('unexpected_plugin_package_present:plugin-application-workspace');
+  });
+
+  it('does not allow a physical SVA plugin through a declaration in another npm scope', () => {
+    const input = validInput('studio');
+    input.runtimeManifest.installedPlugins.push({
+      pluginId: 'application-workspace', sourceRef: '@vendor/plugin-application-workspace',
+    });
+    input.runtimeManifest.includedPluginIds.push('application-workspace');
+    input.packages.push('plugin-application-workspace');
+    for (const chunk of input.chunkProvenance.chunks) {
+      chunk.pluginPackages.push('@vendor/plugin-application-workspace');
+    }
+    expect(() => verify(input)).toThrow('unexpected_plugin_package_present:plugin-application-workspace');
+  });
+
   it.each(['@vendor/plugin.calendar', '@vendor/plugin_calendar'])(
     'accepts valid npm package names in the runtime image manifest: %s',
     (sourceRef) => {

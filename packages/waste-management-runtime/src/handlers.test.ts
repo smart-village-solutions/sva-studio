@@ -1871,8 +1871,27 @@ describe('waste-management auth runtime handlers', () => {
       },
     ] as const;
 
-    const saveWasteTour = vi.fn(async () => undefined);
-    const loadWasteTourById = vi.fn(async () => savedTour);
+    const sourceTour: WasteTourRecord = { ...savedTour, id: 'tour-source-1', status: 'published' };
+    const sourceBefore = structuredClone({
+      sourceTour,
+      sourceLinks,
+      sourcePickupDates,
+      sourceTourAssignments,
+      sourceShifts,
+    });
+    const storedTours = new Map([[sourceTour.id, sourceTour]]);
+    const saveWasteTour = vi.fn(
+      async (_instanceId: string, input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => {
+        storedTours.set(input.id, {
+          ...input,
+          createdAt: savedTour.createdAt,
+          updatedAt: savedTour.updatedAt,
+        });
+      }
+    );
+    const loadWasteTourById = vi.fn(
+      async (_instanceId: string, id: string) => storedTours.get(id) ?? null
+    );
     const listWasteLocationTourLinksByTourId = vi.fn(async () => sourceLinks);
     const saveWasteLocationTourLink = vi.fn(async () => undefined);
     const listWasteLocationTourPickupDates = vi.fn(async () => sourcePickupDates);
@@ -1975,8 +1994,123 @@ describe('waste-management auth runtime handlers', () => {
       })
     );
     expect(deleteWasteTour).not.toHaveBeenCalled();
+    expect(saveWasteTour).toHaveBeenCalledTimes(1);
+    expect(saveWasteTour).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({
+        id: 'tour-copy-1',
+        wasteFractionIds: ['fraction-2'],
+        recurrence: 'biweekly',
+        firstDate: '2026-05-19',
+        customDates: savedTour.customDates,
+        status: 'draft',
+      })
+    );
     expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({ data: savedTour });
+    expect(storedTours.get(sourceTour.id)).toEqual(sourceBefore.sourceTour);
+    expect({
+      sourceTour,
+      sourceLinks,
+      sourcePickupDates,
+      sourceTourAssignments,
+      sourceShifts,
+    }).toEqual(sourceBefore);
+    expect(storedTours.size).toBe(2);
   });
+
+  it.each([
+    ['aaaaaaaa-1111-4111-8111-111111111111', 400],
+    ['  aaaaaaaa-1111-4111-8111-111111111111  ', 400],
+    ['AAAAAAAA-1111-4111-8111-111111111111', 400],
+    ['{aaaaaaaa-1111-4111-8111-111111111111}', 400],
+    ['aaaaaaaa111141118111111111111111', 400],
+    ['bbbbbbbb-2222-4222-8222-222222222222', 409],
+  ] as const)(
+    'rejects duplication onto an existing tour ID %s before any write or rollback',
+    async (targetId, expectedStatus) => {
+      const source: WasteTourRecord = {
+        id: 'aaaaaaaa-1111-4111-8111-111111111111',
+        name: 'TEST Quelle',
+        wasteFractionIds: ['fraction-2'],
+        recurrence: 'weekly',
+        firstDate: '2026-05-19',
+        status: 'published',
+        createdAt: '2026-05-09T12:00:00.000Z',
+        updatedAt: '2026-05-09T12:00:00.000Z',
+      };
+      const storedTours = new Map([[source.id, structuredClone(source)]]);
+      if (expectedStatus === 409) {
+        storedTours.set(targetId, { ...source, id: targetId, name: 'TEST Andere Tour' });
+      }
+      const storedBefore = structuredClone(storedTours);
+      const saveWasteTour = vi.fn(
+        async (_instanceId: string, input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => {
+          storedTours.set(input.id, { ...source, ...input });
+        }
+      );
+      const deleteWasteTour = vi.fn(async (_instanceId: string, id: string) => {
+        storedTours.delete(id);
+      });
+      const saveWasteLocationTourLink = vi.fn(async () => {
+        throw new Error('TEST copy failed');
+      });
+      const response = await createWasteManagementTourInternal(
+        new Request('https://studio.test/api/v1/waste-management/tours', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify({
+            id: targetId,
+            duplicateFromTourId: source.id,
+            name: 'TEST Kopie',
+            wasteFractionIds: source.wasteFractionIds,
+            recurrence: source.recurrence,
+            firstDate: source.firstDate,
+            status: 'draft',
+          }),
+        }),
+        actor,
+        {
+          ...defaultHostDeps,
+          getRequestId: () => 'req-test',
+          saveWasteTour,
+          deleteWasteTour,
+          loadWasteTourById: vi.fn(
+            async (_instanceId: string, id: string) => storedTours.get(id) ?? null
+          ),
+          listWasteLocationTourLinksByTourId: vi.fn(async () => [
+            {
+              id: 'link-source',
+              locationId: 'location-1',
+              tourId: source.id,
+              createdAt: source.createdAt,
+              updatedAt: source.updatedAt,
+            },
+          ]),
+          listWasteLocationTourPickupDates: vi.fn(async () => []),
+          listWasteTourAssignments: vi.fn(async () => []),
+          listWasteTourDateShiftsByTourId: vi.fn(async () => []),
+          saveWasteLocationTourLink,
+          resolvePermissions: vi.fn(async () => ({
+            ok: true as const,
+            permissions: [
+              ...allowPermission('waste-management.tours.manage'),
+              ...allowPermission('waste-management.scheduling.manage'),
+            ],
+          })),
+        }
+      );
+      expect.soft(response.status).toBe(expectedStatus);
+      expect.soft(saveWasteTour).not.toHaveBeenCalled();
+      expect.soft(saveWasteLocationTourLink).not.toHaveBeenCalled();
+      expect.soft(deleteWasteTour).not.toHaveBeenCalled();
+      expect.soft(storedTours).toEqual(storedBefore);
+    }
+  );
 
   it('rejects duplicated waste tour creation without scheduling permission', async () => {
     const saveWasteTour = vi.fn(async () => undefined);

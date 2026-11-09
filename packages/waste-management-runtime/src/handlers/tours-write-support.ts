@@ -128,6 +128,18 @@ export const createWasteManagementTourAfterValidation = async ({
     readonly duplicateFromTourId?: string;
   };
 }): Promise<Response> => {
+  if (
+    input.duplicateFromTourId &&
+    (await requireDeps(deps.loadWasteTourById, 'loadWasteTourById')(instanceId, input.id))
+  ) {
+    return createApiError(
+      409,
+      'conflict',
+      'Eine Waste-Tour mit dieser ID existiert bereits.',
+      requestId
+    );
+  }
+
   await requireDeps(deps.saveWasteTour, 'saveWasteTour')(
     instanceId,
     createWasteTourWriteInput(input)

@@ -175,6 +175,7 @@ const AddressRowsTable = ({
   };
   return (
     <StudioDataTable
+      selectionMode="none"
       ariaLabel={pt('masterData.locationsWorkspace.addresses.tableLabel')}
       caption={pt('masterData.locationsWorkspace.addresses.tableCaption')}
       labels={labels}

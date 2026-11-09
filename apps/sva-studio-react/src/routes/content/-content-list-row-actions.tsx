@@ -117,7 +117,7 @@ export const isBulkActionableContent = (item: RegisteredContentRow): boolean =>
 
 export const buildBulkActionLabel = (
   actionLabelKey: 'content.actions.archive' | 'content.actions.delete'
-): string => `${t(actionLabelKey)} (${t('content.bulk.scope.explicitIds')})`;
+): string => `${t(actionLabelKey)} (${t('content.actions.selection')})`;
 
 export const resolveEffectiveRowAccess = (
   item: RegisteredContentRow,

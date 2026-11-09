@@ -1779,7 +1779,7 @@ describe('ContentListPage', () => {
     expect(screen.getByText('1 Inhalte wurden endgültig gelöscht.')).toBeTruthy();
   });
 
-  it('disables local bulk mutations when only scoped actions are available', async () => {
+  it('hides local bulk mutations and selection when only scoped actions are available', async () => {
     useContentsMock.mockReturnValue(
       createContentsApiResult({
         contents: [
@@ -1814,12 +1814,9 @@ describe('ContentListPage', () => {
 
     render(<ContentListPage />);
 
-    expect(
-      screen.getByRole('button', { name: 'Archivieren (Auswahl)' }).hasAttribute('disabled')
-    ).toBe(true);
-    expect(screen.getByRole('button', { name: 'Löschen (Auswahl)' }).hasAttribute('disabled')).toBe(
-      true
-    );
+    expect(screen.queryByRole('button', { name: 'Archivieren (Auswahl)' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Löschen (Auswahl)' })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' })).toBeNull();
   });
 
   it('uses a sentinel visible type when no readable content types are available', () => {
@@ -2098,6 +2095,79 @@ describe('ContentListPage', () => {
     expect(deleteContents).not.toHaveBeenCalled();
     expect(refetchWithOutcome).toHaveBeenCalledTimes(2);
   });
+
+  it.each([
+    ['published', 'draft', 'Auswahl veröffentlichen'],
+    ['draft', 'published', 'Auswahl ausblenden'],
+  ] as const)(
+    'sets voucher selection to %s with publish permission',
+    async (target, source, label) => {
+      searchState = { type: 'vouchers.voucher' };
+      const execute = vi
+        .fn(async () => undefined)
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('status update failed'));
+      const index = registryDefinitions.findIndex(
+        (definition) => definition.contentType === 'vouchers.voucher'
+      );
+      registryDefinitions[index] = {
+        ...registryDefinitions[index]!,
+        mutations: {
+          status: {
+            requiredAction: 'vouchers.publish',
+            supportedStatuses: ['draft', 'published'],
+            execute,
+          },
+        },
+      };
+      const refetchWithOutcome = vi.fn(async () => true);
+      useContentsMock.mockReturnValue(
+        createContentsApiResult({
+          contents: [
+            { ...mutationRow, contentType: 'vouchers.voucher', status: source },
+            { ...mutationRow, contentType: 'vouchers.voucher', status: source, id: 'item-2' },
+            { ...mutationRow, contentType: 'vouchers.voucher', status: target, id: 'item-3' },
+            {
+              ...mutationRow,
+              contentType: 'vouchers.voucher',
+              status: source,
+              id: 'item-4',
+              access: { ...mutationRow.access, canUpdate: false },
+            },
+          ],
+          refetchWithOutcome,
+        })
+      );
+      const access = useContentAccessMock();
+      useContentAccessMock.mockReturnValue({ ...access, permissionActions: ['vouchers.read'] });
+      const view = render(<ContentListPage />);
+      const selectAll = 'Inhalte: Alle Zeilen auswählen';
+      expect(screen.queryByRole('checkbox', { name: selectAll })).toBeNull();
+
+      useContentAccessMock.mockReturnValue({
+        ...access,
+        permissionActions: ['vouchers.read', 'vouchers.publish'],
+      });
+      view.rerender(<ContentListPage />);
+      expect(screen.queryByRole('button', { name: 'Löschen (Auswahl)' })).toBeNull();
+      expect(screen.getByRole('button', { name: label })).toHaveProperty('disabled', true);
+      fireEvent.click(screen.getByRole('checkbox', { name: selectAll }));
+      fireEvent.click(screen.getByRole('button', { name: label }));
+      const dialog = screen.getByRole('alertdialog', { name: label });
+      expect(within(dialog).getByText(/2 ausgewählte Gutscheine/)).toBeTruthy();
+      fireEvent.click(within(dialog).getByRole('button', { name: label }));
+      expect(await within(dialog).findByRole('alert')).toBeTruthy();
+      expect(execute.mock.calls).toEqual([
+        ['item-1', target, 'user'],
+        ['item-2', target, 'user'],
+      ]);
+      fireEvent.click(within(dialog).getByRole('button', { name: label }));
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+      expect(execute).toHaveBeenCalledTimes(3);
+      expect(execute).toHaveBeenLastCalledWith('item-2', target, 'user');
+      expect(refetchWithOutcome).toHaveBeenCalledTimes(2);
+    }
+  );
 
   it('uses the shared list, dialog, delete and refresh path for an additional contribution', async () => {
     const remove = vi.fn(async () => undefined);

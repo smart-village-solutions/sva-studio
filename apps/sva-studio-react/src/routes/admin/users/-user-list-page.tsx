@@ -52,6 +52,7 @@ export const UserListPage = () => {
   const canUpdateUsers = isIamAccessAllowed(access.update);
   const canDeleteUsers = isIamAccessAllowed(access.delete);
   const canManageKeycloakRoles = isIamAccessAllowed(roleAccess.update);
+  const hasBulkActions = isIamBulkEnabled() && !isPlatformScope && canUpdateUsers;
   const statusActionDialogKeys = getStatusActionDialogTranslationKeys(statusActionDialog);
 
   const pageCount = Math.max(1, Math.ceil(usersApi.total / usersApi.pageSize));
@@ -102,8 +103,9 @@ export const UserListPage = () => {
               {t('admin.users.messages.emptyState')}
             </Card>
           }
+          selectionMode={hasBulkActions ? 'multiple' : 'none'}
           bulkActions={
-            isIamBulkEnabled() && !isPlatformScope && canUpdateUsers
+            hasBulkActions
               ? [
                   {
                     id: 'bulk-deactivate',

@@ -619,6 +619,7 @@ describe('UserListPage', () => {
     render(<UserListPage />);
 
     expect(screen.getByRole('heading', { name: 'Plattform-Benutzer' })).toBeTruthy();
+    expect(screen.queryAllByRole('checkbox', { name: /auswählen/ })).toHaveLength(0);
     expect(screen.queryByRole('link', { name: 'Nutzer anlegen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Bearbeiten' })).toBeNull();
     expect(screen.queryByRole('switch', { name: 'Aktivstatus für Alice' })).toBeNull();

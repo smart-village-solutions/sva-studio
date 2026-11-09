@@ -259,7 +259,7 @@ export const ContentListPage = ({
     rowDeleteError,
     setRowDeleteError,
     pendingBulkDeletion,
-    bulkDeleteDescription,
+    bulkDialog,
     setPendingBulkDeletion,
     bulkDeletePending,
     bulkDeleteError,
@@ -295,7 +295,7 @@ export const ContentListPage = ({
       {destructiveResult ? (
         <StudioPersistentActionResult
           kind={destructiveResult.kind}
-          title={t('content.messages.deleteSuccessTitle')}
+          title={destructiveResult.title ?? t('content.messages.deleteSuccessTitle')}
           description={destructiveResult.description}
           dismissLabel={t('content.actions.dismissFeedback')}
           onDismiss={() => setDestructiveResult(null)}
@@ -379,10 +379,7 @@ export const ContentListPage = ({
 
       <StudioDestructiveActionDialog
         open={pendingBulkDeletion !== null}
-        title={t('content.actions.deleteBulkConfirmTitle')}
-        description={bulkDeleteDescription}
-        confirmLabel={t('content.actions.delete')}
-        pendingLabel={t('content.actions.deletePending')}
+        {...bulkDialog}
         cancelLabel={t('content.actions.cancel')}
         pending={bulkDeletePending}
         errorMessage={bulkDeleteError}

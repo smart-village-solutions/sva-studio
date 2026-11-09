@@ -41,13 +41,6 @@ export const contentENResources = {
     partialResultsLabel: 'Locally available content {{start}}–{{end}} of currently {{total}}',
     pageSizeLabel: 'Page size',
   },
-  bulk: {
-    scope: {
-      explicitIds: 'Selection',
-      currentPage: 'Current page',
-      allMatchingQuery: 'All matches',
-    },
-  },
   actions: {
     create: 'New content',
     createForType: 'Create {{type}}',
@@ -73,6 +66,13 @@ export const contentENResources = {
     deleteConfirmTitle: 'Delete content permanently?',
     deleteConfirmDescription:
       'The content item “{{title}}” will be permanently deleted. This action cannot be undone.',
+    selection: 'Selection',
+    publishSelection: 'Publish selection',
+    hideSelection: 'Hide selection',
+    bulkStatusConfirm: '{{count}} selected vouchers will be set to “{{status}}”.',
+    bulkStatusError:
+      '{{failedCount}} vouchers could not be updated. The failed selection is retained.',
+    bulkStatusSuccess: 'Visibility was updated for the selected vouchers.',
     deleteVoucherWarning:
       'Residual data and orphaned links, such as quota or redemption references, may remain.',
     deleteBulkConfirmTitle: 'Delete selected content permanently?',

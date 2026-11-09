@@ -80,6 +80,8 @@ export const WasteSchedulingShiftsTable = ({
     [pt, saving]
   );
 
+  const hasDeletableRows = pagedRows.items.some((row) => row.canDelete);
+
   usePagedRouteSync({ page, safePage: pagedRows.safePage, onPageChange, onSyncPageChange });
 
   return (
@@ -92,9 +94,9 @@ export const WasteSchedulingShiftsTable = ({
         data={pagedRows.items}
         columns={columns}
         getRowId={(row) => `${row.kind}:${row.id}`}
-        selectionMode="multiple"
+        selectionMode={hasDeletableRows ? 'multiple' : 'none'}
         canSelectRow={(row) => row.canDelete}
-        bulkActions={bulkActions}
+        bulkActions={hasDeletableRows ? bulkActions : []}
         toolbarEnd={
           <Button type="button" className="rounded-md" onClick={onOpenCreateShiftDialog}>
             {pt('scheduling.actions.openCreate')}

@@ -41,13 +41,6 @@ export const contentDEResources = {
     partialResultsLabel: 'Lokal verfügbare Inhalte {{start}}–{{end}} von derzeit {{total}}',
     pageSizeLabel: 'Seitengröße',
   },
-  bulk: {
-    scope: {
-      explicitIds: 'Auswahl',
-      currentPage: 'Aktuelle Seite',
-      allMatchingQuery: 'Alle Treffer',
-    },
-  },
   actions: {
     create: 'Neuer Inhalt',
     createForType: '{{type}} erstellen',
@@ -73,6 +66,13 @@ export const contentDEResources = {
     deleteConfirmTitle: 'Inhalt endgültig löschen?',
     deleteConfirmDescription:
       'Der Inhalt „{{title}}“ wird endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
+    selection: 'Auswahl',
+    publishSelection: 'Auswahl veröffentlichen',
+    hideSelection: 'Auswahl ausblenden',
+    bulkStatusConfirm: '{{count}} ausgewählte Gutscheine erhalten den Status „{{status}}“.',
+    bulkStatusError:
+      '{{failedCount}} Gutscheine konnten nicht aktualisiert werden. Die fehlgeschlagene Auswahl bleibt erhalten.',
+    bulkStatusSuccess: 'Die Sichtbarkeit der ausgewählten Gutscheine wurde geändert.',
     deleteVoucherWarning:
       'Dabei können Restdaten und verwaiste Verknüpfungen, etwa zu Kontingenten oder Einlösungen, zurückbleiben.',
     deleteBulkConfirmTitle: 'Ausgewählte Inhalte endgültig löschen?',

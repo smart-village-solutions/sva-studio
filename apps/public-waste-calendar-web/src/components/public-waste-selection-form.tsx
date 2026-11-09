@@ -116,22 +116,33 @@ export function PublicWasteSelectionForm(
       ) : null}
       {props.selectionPath.length === 0 ? null : (
         <div className="selection-path" aria-label="Auswahlpfad">
-          {props.selectionPath.map((entry, index) => (
-            <button
-              key={`${entry.step}-${entry.label}`}
-              type="button"
-              className="selection-path-chip"
-              aria-label={`${entry.step} ändern`}
-              disabled={entry.automaticallySelected}
-              onClick={() => props.onEditStep(index)}
-            >
-              <span className="selection-path-chip-step">{entry.step}</span>
-              <strong className="selection-path-chip-label">{entry.label}</strong>
-              {entry.automaticallySelected ? null : (
+          {props.selectionPath.map((entry, index) => {
+            const pathLabel = (
+              <>
+                <span className="selection-path-chip-step">{entry.step}</span>
+                <strong className="selection-path-chip-label">{entry.label}</strong>
+              </>
+            );
+            return entry.automaticallySelected ? (
+              <span
+                key={`${entry.step}-${entry.label}`}
+                className="selection-path-chip selection-path-chip--automatic"
+              >
+                {pathLabel}
+              </span>
+            ) : (
+              <button
+                key={`${entry.step}-${entry.label}`}
+                type="button"
+                className="selection-path-chip"
+                aria-label={`${entry.step} ändern`}
+                onClick={() => props.onEditStep(index)}
+              >
+                {pathLabel}
                 <span className="selection-path-chip-action">Ändern</span>
-              )}
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
       <div className="selection-step-card">

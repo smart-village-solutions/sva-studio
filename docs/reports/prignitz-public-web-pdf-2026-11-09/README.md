@@ -43,7 +43,7 @@ Die Slugs folgen dem aktuellen Regionsnamen. Bei einer Stammdaten-Umbenennung m�
 
 - [Live-PDF Wittenberge, Ahornweg, 2026](./live-wittenberge-2026.pdf): direkt vom öffentlichen PDF-Endpunkt, alle sechs angebotenen Fraktionen. Beide Seiten mit Poppler gerendert und geprüft. Das Logo fehlt; der Platzhalter überläuft. [Seite 1 vorher](./live-pdf-seite-1.png).
 - [Lokales PDF derselben öffentlichen Auswahl](./lokal-wittenberge-2026.pdf): über `handlePublicWastePdfRequest` aus den gelesenen öffentlichen Kalenderdaten und leerer statischer Branding-Konfiguration erzeugt; kein Zugriff auf produktive Einstellungen. [Seite 1 nachher](./lokal-pdf-seite-1.png), [Seite 2 nachher](./lokal-pdf-seite-2.png). Beide visuell geprüft: Raster/Legende unverändert, Platzhalter innerhalb des Rahmens. `pdftotext -bbox` bestätigt x=646 bis 796,997 innerhalb des Rahmens 640–803 mit 5 Punkten Innenabstand.
-- [Lokale regionale Rücknavigation](./lokal-region-zurueck.png): Screenshot aus dem bestehenden Browser-Regressionsfall mit synthetischen Rathenow-Daten, keine produktive Prignitz-Abnahme. Tastatur-Rücksprung, Fokus, erneute Auswahl und Adressänderung geprüft.
+- [Lokale regionale Rücknavigation](./lokal-region-zurueck.png): Screenshot aus dem bestehenden Browser-Regressionsfall mit synthetischen Rathenow-Daten, keine produktive Prignitz-Abnahme. Tastatur-Rücksprung, Fokus, erneute Auswahl und Adressänderung geprüft. [Automatisch gewählter Ort als reiner Pfadtext](./lokal-automatischer-pfad.png): keine Änderungs-/Zurück-Aktion für den automatischen Schritt; visuell und mit Axe geprüft.
 
 ### Freigegebenes Landkreislogo
 
@@ -61,6 +61,8 @@ Der Nutzer hat im Verlauf der Prüfung diese [freigegebene Grafik aus der Medien
 - Gebündelter Code-/Test-/UX-/i18n-Fachreview ohne blockierenden Befund; Dokumentationsreview abgeschlossen; die Pflegewege wurden an die tatsächlichen UI-Labels „PDF-Inhalte“ und „Hinweis“ angeglichen.
 
 Der erste CI-Lauf meldete ausschließlich einen neuen Dateilängenbefund (273 > 260 Zeilen) im Auswahlformular. Die bereits vorhandene Tastaturnavigation wurde unverändert in die bestehende Datei der Auswahlergebnisse verschoben. Dadurch bleibt das Formular unter dem Grenzwert, ohne neue Datei, Abstraktion oder veränderte Tastatursemantik. Die 21 gezielten Tests, der Typecheck und das Komplexitäts-Gate wurden danach erneut grün geprüft.
+
+Ein anschließender automatischer Review wies auf irreführende Änderungssemantik der automatischen Pfadeinträge hin. Diese stehen nun als nichtinteraktiver Text ohne Zeiger-/Hover-Affordanz im bestehenden Auswahlpfad. Die 21 gezielten Tests und der regionale Browserfall einschließlich Fokus und Axe wurden danach erneut bestanden; es gibt keinen neuen Komponentenpfad.
 
 Der XERJ-Index `studio-code` stand auf `60059753`, der Worktree auf `67a5be6b9`; Fundstellen deshalb am aktuellen zuständigen Pfad geprüft. `payload-code` lieferte nur eine allgemeine Breadcrumb-Referenz (MIT), keine passende Regionsbindung. Es wurde kein Fremdcode übernommen, keine neue Abstraktions- oder Export-Schicht eingeführt.
 

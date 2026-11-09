@@ -23,9 +23,10 @@ describe('PublicWasteSelectionForm', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
     expect(onEditStep).toHaveBeenCalledWith(0);
-    expect(
-      (screen.getByRole('button', { name: 'Straße ändern' }) as HTMLButtonElement).disabled
-    ).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Straße ändern' })).toBeNull();
+    expect(screen.getByText('Am alten Hafen')).toBeTruthy();
+    fireEvent.click(screen.getByText('Am alten Hafen'));
+    expect(onEditStep).toHaveBeenCalledTimes(1);
 
     rerender(
       <PublicWasteSelectionForm

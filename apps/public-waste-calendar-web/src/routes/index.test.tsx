@@ -231,9 +231,8 @@ describe('PublicWasteIndexPage', () => {
     render(<PublicWasteIndexPage />);
     await screen.findByRole('combobox', { name: 'Straße suchen' });
     expect(screen.queryByRole('button', { name: 'Zurück' })).toBeNull();
-    expect((screen.getByRole('button', { name: 'Ort ändern' }) as HTMLButtonElement).disabled).toBe(
-      true
-    );
+    expect(screen.queryByRole('button', { name: 'Ort ändern' })).toBeNull();
+    expect(screen.getByText('Rathenow')).toBeTruthy();
     fireEvent.click(screen.getByRole('option', { name: 'Am alten Hafen' }));
     await screen.findByRole('combobox', { name: 'Hausnummer suchen' });
     fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));

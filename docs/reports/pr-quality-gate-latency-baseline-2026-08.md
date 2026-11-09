@@ -294,3 +294,26 @@ als exakte Head-Abnahme. Sämtliche 20 PR-Checkouts werden explizit an den
 deklarierten Head gebunden; ein Vertragstest sichert Scope, Ausführung und
 Aggregation gemeinsam ab. Die normalen Vergleiche verwenden unveränderliche
 Basisbranches und sind von dieser beweglichen Main-Basis nicht betroffen.
+
+### Wiederholter Screenshot-Flake und vollständige visuelle HTTP-Fixtures
+
+Die sechs E2E-Versuche von `42538794039` sind zwar auf GitHub grün, der letzte
+enthält jedoch einen Retry-Flake bei `visual migration reference sva-forest dark`.
+Die fünf vorherigen Versuche sind flakefrei. Aktivmedian 7:59 Minuten,
+P90 (nearest rank) 8:44 Minuten; Wall-Median einschließlich Queue 10:52 Minuten.
+Diese Reihe erfüllt die Flake-Abnahme ausdrücklich nicht.
+
+Expected/Actual/Diff und Trace zeigen ein Vite-Fehleroverlay über der ansonsten
+gleichen Darstellung. Ein ungefixtureter GET auf `mutation-capabilities`
+erzeugt HTTP 500 (`socket hang up`); später antwortet dieser Endpunkt wie die
+ebenfalls ungefixturete Ownership-Autorisierung mit HTTP 403
+(`tenant_host_invalid`). Nur die beiden exakten GET-Metadatenrouten werden
+im bestehenden visuellen Describe mit dem beobachteten verweigerten Zustand
+beantwortet. Andere Methoden bleiben unverändert. Es werden weder Overlays
+unterdrückt noch Timeouts, Assertions oder Bildreferenzen verändert.
+
+Der isolierte lokale Nx-Lauf mit vier visuellen Fällen und ohne Retry bestätigt
+die vorgesehenen 403-Antworten ohne HTTP 500 oder Overlay. Seine Darwin-Bilder
+zeigen einen bestehenden Header-Referenzdrift; alle 48 Golden-Dateien bleiben
+hashgleich. Der Linux-Bildvergleich und eine neue unveränderte Flake-Reihe
+müssen den Fix noch bestätigen.

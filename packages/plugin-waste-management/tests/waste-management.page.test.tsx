@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 
 import { WasteManagementPage } from '../src/waste-management.page.js';
@@ -395,8 +395,9 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
 vi.mock('../src/waste-management.api.js', () => wasteManagementApiMocks);
 
 describe('WasteManagementPage', () => {
+  afterEach(cleanup);
+
   beforeEach(() => {
-    cleanup();
     Object.assign(uiAccessMock, {
       isResolved: true,
       hasError: false,

@@ -42,6 +42,7 @@
     },
     "test:coverage": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "options": {
         "cwd": "packages/sva-mainserver",
         "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.config.ts"

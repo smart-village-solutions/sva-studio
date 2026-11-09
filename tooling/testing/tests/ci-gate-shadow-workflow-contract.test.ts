@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +12,17 @@ const workflow = (name: string): string => fs.readFileSync(workflowPath(name), '
 describe('consolidated CI gate workflows', () => {
   const prGates = workflow('ci-gates-pr-shadow.yml');
   const mainGates = workflow('ci-gates-main-shadow.yml');
+
+  it('tests the declared PR head instead of an independently updated merge ref', () => {
+    const checkouts = prGates.split(/^ {6}- /mu).filter((step) =>
+      step.includes('uses: actions/checkout@')
+    );
+
+    expect(checkouts.length).toBeGreaterThan(0);
+    for (const checkout of checkouts) {
+      expect(checkout).toContain('ref: ${{ github.event.pull_request.head.sha }}');
+    }
+  });
 
   it('publishes exactly the seven stable required names from the PR workflow', () => {
     expect(prGates).toContain('name: CI Gates (PR)');
@@ -31,6 +43,14 @@ describe('consolidated CI gate workflows', () => {
     }
     expect(jobNames).not.toContain('CI Shadow / Parity');
     expect(prGates).not.toContain('CI Shadow');
+  });
+
+  it('uses the shared scope matrices so transitive heavy projects do not delay changed coverage', () => {
+    expect(prGates).toContain('partition: ${{ fromJSON(needs.scope.outputs.coverage_priority_matrix) }}');
+    expect(prGates).toContain('partition: ${{ fromJSON(needs.scope.outputs.coverage_remaining_matrix) }}');
+    const early = prGates.slice(prGates.indexOf('\n  coverage-early:'), prGates.indexOf('\n  coverage-complete:'));
+    expect(early).toContain('needs: [scope, coverage-priority]');
+    expect(early).not.toContain('needs: [scope, coverage-remaining]');
   });
 
   it('computes the general PR scope exactly once and retains SHA-bound evidence', () => {
@@ -58,6 +78,12 @@ describe('consolidated CI gate workflows', () => {
 
   it('keeps Unit and Coverage aggregation fail-closed', () => {
     expect(prGates).toContain('name: Unit Fast Feedback');
+    expect(prGates).toContain('  unit-app:\n');
+    expect(prGates).toContain(
+      'partition: [ui, hooks, server, routes-1, routes-2, routes-3, routes-4]'
+    );
+    expect(prGates).toContain('test "$APP_RESULT" = "success"');
+    expect(prGates).toContain('--phase app --app-job ${{ matrix.partition }}');
     expect(prGates).toContain('name: Unit Complete');
     expect(prGates).toContain('name: Unit');
     expect(prGates).toContain('--expected unit-direct,unit-remaining');
@@ -113,11 +139,48 @@ describe('consolidated CI gate workflows', () => {
     }
     expect(prGates).toContain('studio-ref: ${{ github.event.pull_request.head.sha }}');
     expect(mainGates).toContain('studio-ref: ${{ github.sha }}');
-    const integrationJob = prGates.slice(prGates.indexOf('\n  integration:'), prGates.indexOf('\n  a11y:'));
-    expect(integrationJob).toContain('needs: [scope, plugin-compatibility]');
-    expect(integrationJob).toContain('Enforce relevant plugin compatibility');
+    const executionJob = prGates.slice(prGates.indexOf('\n  integration-execution:'), prGates.indexOf('\n  integration:'));
+    const integrationJob = prGates.slice(prGates.indexOf('\n  integration:'), prGates.indexOf('\n  file-placement:'));
+    expect(executionJob).toContain('needs: scope');
+    expect(executionJob).not.toContain('plugin-compatibility');
+    expect(executionJob).toContain('pnpm test:integration');
+    expect(integrationJob).toContain('needs: [scope, integration-execution, plugin-compatibility]');
+    expect(integrationJob).toContain('if: always()');
+    expect(integrationJob).toContain('Enforce Integration and relevant plugin compatibility');
+    expect(integrationJob).not.toContain('pnpm test:integration');
     expect(prGates).toContain("needs.scope.outputs.quality_gate_mode != 'skip'");
-    expect(prGates).toContain("needs.plugin-compatibility.result != 'success' && needs.plugin-compatibility.result != 'skipped'");
+  });
+
+  it.each([
+    ['full success', 'full', 'success', 'success', 'true', 'success', 0],
+    ['affected success', 'affected', 'success', 'success', 'true', 'success', 0],
+    ['plugin-only scope', 'skip', 'success', 'skipped', 'true', 'success', 0],
+    ['documentation no-op', 'skip', 'success', 'skipped', 'false', 'skipped', 0],
+    ['failed scope', 'full', 'failure', 'success', 'true', 'success', 1],
+    ['missing scope', 'full', 'skipped', 'success', 'true', 'success', 1],
+    ['failed execution', 'full', 'success', 'failure', 'true', 'success', 1],
+    ['cancelled execution', 'affected', 'success', 'cancelled', 'true', 'success', 1],
+    ['unexpectedly skipped execution', 'affected', 'success', 'skipped', 'true', 'success', 1],
+    ['failed plugin', 'full', 'success', 'success', 'true', 'failure', 1],
+    ['cancelled plugin', 'full', 'success', 'success', 'true', 'cancelled', 1],
+    ['unexpectedly skipped plugin', 'skip', 'success', 'skipped', 'true', 'skipped', 1],
+  ] as const)('keeps the real Integration shell gate fail-closed: %s', (
+    _label, mode, scopeResult, executionResult, pluginRequired, pluginResult, expectedStatus
+  ) => {
+    const integrationJob = prGates.slice(prGates.indexOf('\n  integration:'), prGates.indexOf('\n  file-placement:'));
+    const script = integrationJob.match(/run: \|\n((?: {10}.+\n)+)/u)?.[1].replace(/^ {10}/gmu, '');
+    if (!script) throw new Error('Missing Integration result gate');
+    const result = spawnSync('bash', ['-e', '-c', script], {
+      env: {
+        SCOPE_RESULT: scopeResult,
+        INTEGRATION_MODE: mode,
+        EXECUTION_RESULT: executionResult,
+        PLUGIN_REQUIRED: pluginRequired,
+        PLUGIN_RESULT: pluginResult,
+      },
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(expectedStatus);
   });
 
   it('checks out complete history before Main coverage and SonarCloud', () => {
@@ -141,11 +204,21 @@ describe('consolidated CI gate workflows', () => {
     expect(mainGates).not.toContain('pr-scope');
     expect(mainGates).not.toContain('actions/cache');
     expect(mainGates).not.toContain('test:unit:affected');
+    expect(mainGates).toContain('needs: [unit-residual, unit-app, coverage]');
+    expect(mainGates).toContain('--app-only --gate unit');
+    expect(mainGates).toContain('test "$APP_RESULT" = success');
+    expect(mainGates).toContain(
+      'partition: [ui, hooks, server, routes-1, routes-2, routes-3, routes-4]'
+    );
+    expect(mainGates).toContain("CI_UNIT_APP_SEPARATE: '1'");
+    expect(mainGates).toContain('--residual-only');
+    expect(mainGates).toContain('  sonar:\n');
+    expect(mainGates).toContain('needs: coverage');
     expect(mainGates).not.toContain('test:coverage:affected');
     expect(mainGates).not.toContain('Parity');
     expect(mainGates).not.toContain('CI Shadow');
-    expect(mainGates).toContain('pnpm test:unit');
-    expect(mainGates).toContain('pnpm test:coverage');
+    expect(mainGates).toContain('--residual-only');
+    expect(mainGates).toContain('--merge-partitions');
     expect(mainGates).toContain('pnpm test:integration');
   });
 

@@ -29,16 +29,84 @@ jobs:
       - uses: ./.github/actions/setup-pnpm-workspace
       - run: pnpm test:eslint
 
-  unit:
-    name: Unit
+  unit-residual:
+    name: Unit Residual
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run Unit tests without an identical instrumented command
+        env:
+          CI_UNIT_APP_SEPARATE: '1'
+        run: pnpm exec tsx scripts/ci/affected-unit-gate.ts --residual-only
+
+  unit-app:
+    name: App Unit (${{ matrix.partition }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        partition: [ui, hooks, server, routes-1, routes-2, routes-3, routes-4]
     steps:
       - uses: actions/checkout@v7
         with:
           filter: tree:0
+          fetch-depth: 0
       - uses: ./.github/actions/setup-pnpm-workspace
-      - run: pnpm test:unit
+      - name: Run isolated full App Unit partition
+        env:
+          NX_RUN_FULL: '1'
+          CI_UNIT_APP_SEPARATE: '1'
+        run: pnpm exec tsx scripts/ci/affected-unit-gate.ts --base ${{ github.sha }} --head ${{ github.sha }} --phase app --app-job ${{ matrix.partition }}
+      - name: Upload App Unit evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-feedback-app-${{ matrix.partition }}-${{ github.run_id }}
+          path: artifacts/ci-feedback/unit-unit-app-${{ matrix.partition }}.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  unit:
+    name: Unit
+    if: always()
+    needs: [unit-residual, unit-app, coverage]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require residual, App and instrumented test execution
+        env:
+          RESIDUAL_RESULT: ${{ needs.unit-residual.result }}
+          APP_RESULT: ${{ needs.unit-app.result }}
+          COVERAGE_RESULT: ${{ needs.coverage.result }}
+        run: |
+          set -euo pipefail
+          test "$RESIDUAL_RESULT" = success
+          test "$APP_RESULT" = success
+          test "$COVERAGE_RESULT" = success
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .nvmrc
+            scripts/ci
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: unit-feedback-app-*-${{ github.run_id }}
+          path: artifacts/downloaded-unit-feedback
+          merge-multiple: true
+      - name: Validate complete App Unit evidence
+        run: >-
+          node scripts/ci/ci-feedback-aggregate.ts --app-only --gate unit
+          --base ${{ github.sha }} --head ${{ github.sha }}
+          --expected unit-app-ui,unit-app-hooks,unit-app-server,unit-app-routes-1,unit-app-routes-2,unit-app-routes-3,unit-app-routes-4
+          --evidence-dir artifacts/downloaded-unit-feedback
 
   types:
     name: Types
@@ -51,35 +119,136 @@ jobs:
       - uses: ./.github/actions/setup-pnpm-workspace
       - run: pnpm test:types
 
-  coverage:
-    name: Coverage
+  coverage-priority:
+    name: Coverage Priority (${{ matrix.partition }})
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      matrix:
+        partition:
+          [app-1, app-2, app-3, app-4, waste-1, waste-2, direct-1, direct-2, direct-3, direct-4]
     env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       REDIS_URL: redis://127.0.0.1:6379
-      COVERAGE_GATE_REQUIRE_SUMMARIES: '1'
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout
+        uses: actions/checkout@v7
         with:
+          filter: tree:0
           fetch-depth: 0
-      - uses: ./.github/actions/setup-pnpm-workspace
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
       - name: Start Redis
         run: docker run -d --name sva-studio-redis-coverage -p 6379:6379 redis:7-alpine
       - name: Wait for Redis readiness
         run: |
-          set -euo pipefail
           for i in {1..30}; do
-            if docker exec sva-studio-redis-coverage redis-cli -p 6379 ping | grep -q PONG; then
-              exit 0
-            fi
+            if docker exec sva-studio-redis-coverage redis-cli ping | grep -q PONG; then exit 0; fi
             sleep 2
           done
           exit 1
-      - name: Run full Coverage contract
+      - name: Run Coverage partition
+        env:
+          NX_BASE: ${{ github.sha }}
+          NX_HEAD: ${{ github.sha }}
+          NX_RUN_FULL: '1'
+        run: pnpm exec tsx scripts/ci/affected-coverage-gate.ts --base ${{ github.sha }} --head ${{ github.sha }} --partition ${{ matrix.partition }}
+      - name: Upload partition reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-partition-${{ matrix.partition }}
+          path: |
+            apps/*/coverage/**
+            packages/*/coverage/**
+            artifacts/ci-feedback/coverage-partitions/${{ matrix.partition }}.json
+            artifacts/ci-feedback/coverage-coverage-${{ matrix.partition }}.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+      - name: Stop Redis
+        if: always()
+        run: docker rm -f sva-studio-redis-coverage || true
+
+  coverage-remaining:
+    name: Coverage Remaining (${{ matrix.partition }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      matrix:
+        partition: [remaining-1, remaining-2, remaining-3, remaining-4]
+    env:
+      REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Start Redis
+        run: docker run -d --name sva-studio-redis-coverage -p 6379:6379 redis:7-alpine
+      - name: Wait for Redis readiness
         run: |
-          pnpm test:coverage
+          for i in {1..30}; do
+            if docker exec sva-studio-redis-coverage redis-cli ping | grep -q PONG; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Run Coverage partition
+        env:
+          NX_BASE: ${{ github.sha }}
+          NX_HEAD: ${{ github.sha }}
+          NX_RUN_FULL: '1'
+        run: pnpm exec tsx scripts/ci/affected-coverage-gate.ts --base ${{ github.sha }} --head ${{ github.sha }} --partition ${{ matrix.partition }}
+      - name: Upload partition reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-partition-${{ matrix.partition }}
+          path: |
+            apps/*/coverage/**
+            packages/*/coverage/**
+            artifacts/ci-feedback/coverage-partitions/${{ matrix.partition }}.json
+            artifacts/ci-feedback/coverage-coverage-${{ matrix.partition }}.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+      - name: Stop Redis
+        if: always()
+        run: docker rm -f sva-studio-redis-coverage || true
+
+  coverage:
+    name: Coverage
+    if: always()
+    needs: [coverage-priority, coverage-remaining]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      COVERAGE_GATE_REQUIRE_SUMMARIES: '1'
+      NX_RUN_FULL: '1'
+    steps:
+      - name: Require all instrumented partitions
+        env:
+          PRIORITY_RESULT: ${{ needs.coverage-priority.result }}
+          REMAINING_RESULT: ${{ needs.coverage-remaining.result }}
+        run: |
+          test "$PRIORITY_RESULT" = success
+          test "$REMAINING_RESULT" = success
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-partition-*
+          path: artifacts/downloaded-coverage-parts
+      - name: Merge and evaluate full Coverage contract
+        run: |
+          pnpm exec tsx scripts/ci/affected-coverage-gate.ts --base ${{ github.sha }} --head ${{ github.sha }} --merge-partitions artifacts/downloaded-coverage-parts
           pnpm coverage-gate
       - name: Upload to Codecov
         if: always() && env.CODECOV_TOKEN != ''
@@ -97,32 +266,51 @@ jobs:
         with:
           name: coverage-reports-${{ github.run_id }}
           path: |
-            **/coverage/coverage-summary.json
-            **/coverage/lcov.info
+            apps/*/coverage/coverage-summary.json
+            apps/*/coverage/lcov.info
+            packages/*/coverage/coverage-summary.json
+            packages/*/coverage/lcov.info
             tooling/testing/coverage-policy.json
           if-no-files-found: error
           overwrite: true
           retention-days: 7
+
+  sonar:
+    name: SonarCloud
+    needs: coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-pnpm-workspace
+        if: env.SONAR_TOKEN != ''
+      - uses: actions/download-artifact@v8
+        if: env.SONAR_TOKEN != ''
+        with:
+          name: coverage-reports-${{ github.run_id }}
+          path: .
       - name: Prepare SonarCloud coverage report
-        if: always() && env.SONAR_TOKEN != ''
+        if: env.SONAR_TOKEN != ''
         run: pnpm sonar:prepare-lcov
       - name: Setup Java for SonarCloud
-        if: always() && env.SONAR_TOKEN != ''
+        if: env.SONAR_TOKEN != ''
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
       - name: SonarCloud Scan
-        if: always() && env.SONAR_TOKEN != ''
+        if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v7
         with:
           args: >
             -Dsonar.scanner.skipJreProvisioning=true
+            -Dsonar.verbose=true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      - name: Stop Redis
-        if: always()
-        run: docker rm -f sva-studio-redis-coverage || true
 
   complexity:
     name: Complexity

@@ -70,7 +70,7 @@ describe('SSF V2 content administration', () => {
     api.readSystem.mockResolvedValue({ installation: null, runtimeTemplate, supportedLanguages });
     const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
     render(<SsfSystemContentV2Page />);
-    expect(await screen.findByLabelText('v2.recording.retentionHours')).toBeTruthy();
+    expect(await screen.findByRole('spinbutton', { name: 'v2.recording.retentionHours' })).toBeTruthy();
     expect(screen.queryByLabelText('fields.storageMode')).toBeNull();
     expect(screen.queryByLabelText('v2.recording.enabled')).toBeNull();
   });
@@ -90,13 +90,14 @@ describe('SSF V2 content administration', () => {
     });
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
-    const verification = await screen.findByLabelText('v2.recording.verificationRequired') as HTMLInputElement;
+    const verification = await screen.findByRole('checkbox', { name: 'v2.recording.verificationRequired' }) as HTMLInputElement;
     expect(verification.checked).toBe(false);
-    for (const [key, value] of [['legalBasis', 'consent'], ['signature', 'off'], ['idCheck', 'optional'], ['recoveryMode', 'standard'],
-      ['timestampAuthorityUrl', 'https://tsa.example.org/tsr'], ['auditRetentionHours', '8760']]) {
-      fireEvent.change(screen.getByLabelText(`v2.recording.${key}`), { target: { value } });
+    for (const [key, value, role] of [['legalBasis', 'consent', 'combobox'], ['signature', 'off', 'combobox'],
+      ['idCheck', 'optional', 'combobox'], ['recoveryMode', 'standard', 'combobox'],
+      ['timestampAuthorityUrl', 'https://tsa.example.org/tsr', 'textbox'], ['auditRetentionHours', '8760', 'spinbutton']] as const) {
+      fireEvent.change(screen.getByRole(role, { name: `v2.recording.${key}` }), { target: { value } });
     }
-    fireEvent.click(screen.getByLabelText('v2.recording.enabled'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'v2.recording.enabled' }));
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
     await waitFor(() => expect(policies).toEqual([expect.objectContaining({ enabled: true, verificationRequired: false, retentionHours: 720 })]));
     expect(verification.checked).toBe(false);
@@ -110,7 +111,7 @@ describe('SSF V2 content administration', () => {
     api.writeSystem.mockResolvedValue({ installation: null, runtimeTemplate, supportedLanguages });
     const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
     render(<SsfSystemContentV2Page />);
-    expect((await screen.findByLabelText('v2.recording.verificationRequired') as HTMLInputElement).checked).toBe(false);
+    expect((await screen.findByRole('checkbox', { name: 'v2.recording.verificationRequired' }) as HTMLInputElement).checked).toBe(false);
     const save = screen.getAllByRole('button', { name: 'actions.save' })[1];
     if (!save) throw new Error('missing_template_save');
     fireEvent.click(save);
@@ -131,7 +132,7 @@ describe('SSF V2 content administration', () => {
     api.writeTenant.mockImplementation(async (overrides) => ({ runtimeTemplate, overrides, supportedLanguages }));
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
-    const checkbox = await screen.findByLabelText('v2.recording.enabled') as HTMLInputElement;
+    const checkbox = await screen.findByRole('checkbox', { name: 'v2.recording.enabled' }) as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
     const control = checkbox.closest('div.space-y-2') ?? checkbox.parentElement;
     if (!control) throw new Error('missing_enablement_control');
@@ -147,7 +148,7 @@ describe('SSF V2 content administration', () => {
     };
     save();
     await waitFor(() => expect(api.writeTenant).toHaveBeenLastCalledWith({ recording: { enabled: false } }));
-    const currentCheckbox = screen.getByLabelText('v2.recording.enabled') as HTMLInputElement;
+    const currentCheckbox = screen.getByRole('checkbox', { name: 'v2.recording.enabled' }) as HTMLInputElement;
     fireEvent.click(currentCheckbox);
     expect(currentCheckbox.checked).toBe(true);
     save();
@@ -163,7 +164,7 @@ describe('SSF V2 content administration', () => {
     api.writeTenant.mockImplementation(async (overrides) => ({ runtimeTemplate, overrides, supportedLanguages }));
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
-    expect((await screen.findByLabelText('v2.recording.retentionHours') as HTMLInputElement).value).toBe('241');
+    expect((await screen.findByRole('spinbutton', { name: 'v2.recording.retentionHours' }) as HTMLInputElement).value).toBe('241');
     fireEvent.click(screen.getByRole('button', { name: 'v2.recording.resetRetention' }));
     expect(screen.getByText('v2.recording.effectiveRetention: 721')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
@@ -174,7 +175,7 @@ describe('SSF V2 content administration', () => {
     api.readSystem.mockResolvedValue({ installation: null, runtimeTemplate, supportedLanguages });
     const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
     render(<SsfSystemContentV2Page />);
-    fireEvent.change(await screen.findByLabelText('v2.recording.retentionHours'), { target: { value: '8761' } });
+    fireEvent.change(await screen.findByRole('spinbutton', { name: 'v2.recording.retentionHours' }), { target: { value: '8761' } });
     const saves = screen.getAllByRole('button', { name: 'actions.save' });
     const templateSave = saves[1];
     if (!templateSave) throw new Error('missing_template_save');
@@ -187,7 +188,7 @@ describe('SSF V2 content administration', () => {
     api.readTenant.mockResolvedValue({ runtimeTemplate, overrides: {}, supportedLanguages });
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
-    fireEvent.click(await screen.findByLabelText('v2.recording.enabled'));
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'v2.recording.enabled' }));
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
     expect((await screen.findAllByText('v2.invalid')).length).toBeGreaterThan(0);
     expect(api.writeTenant).not.toHaveBeenCalled();
@@ -204,7 +205,7 @@ describe('SSF V2 content administration', () => {
     }), { status: 422, headers: { 'content-type': 'application/json' } })));
     const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
     render(<SsfSystemContentV2Page />);
-    const retention = await screen.findByLabelText('v2.recording.retentionHours');
+    const retention = await screen.findByRole('spinbutton', { name: 'v2.recording.retentionHours' });
     fireEvent.change(retention, { target: { value: '1440' } });
     const save = screen.getAllByRole('button', { name: 'actions.save' })[1];
     if (!save) throw new Error('missing_template_save');
@@ -245,12 +246,12 @@ describe('SSF V2 content administration', () => {
     const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
     render(<SsfSystemContentV2Page />);
 
-    await screen.findByLabelText('v2.newLanguage');
+    await screen.findByRole('combobox', { name: 'v2.newLanguage' });
     const staffLocale = document.getElementById('ssf-v2-staff-locale');
     if (!staffLocale) throw new Error('ssf_v2_staff_locale_missing');
     expect(staffLocale.tagName).toBe('SELECT');
     expect(document.getElementById('ssf-v2-localization-locale')?.tagName).toBe('SELECT');
-    const languageSelect = screen.getByLabelText('v2.newLanguage');
+    const languageSelect = screen.getByRole('combobox', { name: 'v2.newLanguage' });
     expect(Array.from((languageSelect as HTMLSelectElement).options).some((option) => option.value === 'de')).toBe(false);
     fireEvent.change(languageSelect, { target: { value: 'ar' } });
     fireEvent.click(screen.getByRole('button', { name: 'v2.addLanguage' }));
@@ -265,7 +266,8 @@ describe('SSF V2 content administration', () => {
     const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
     render(<SsfSystemContentV2Page />);
 
-    const staffLocale = await screen.findByLabelText('v2.locale', { selector: '#ssf-v2-staff-locale' }) as HTMLSelectElement;
+    const staffLocaleLabel = await screen.findByText('v2.locale', { selector: 'label[for="ssf-v2-staff-locale"]' });
+    const staffLocale = within(staffLocaleLabel).getByRole('combobox', { name: 'v2.locale' }) as HTMLSelectElement;
     expect(Array.from(staffLocale.options).some((option) => option.value === 'en')).toBe(false);
   });
 
@@ -277,14 +279,14 @@ describe('SSF V2 content administration', () => {
     const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
     render(<SsfSystemContentV2Page />);
 
-    await screen.findAllByLabelText('v2.locale');
+    await screen.findAllByRole('combobox', { name: 'v2.locale' });
     expect(screen.getAllByRole('status').some((status) => status.textContent?.includes('v2.languageCatalogUnavailable'))).toBe(true);
     expect((document.getElementById('ssf-v2-staff-locale') as HTMLSelectElement | null)?.disabled).toBe(true);
     expect((document.getElementById('ssf-v2-localization-locale') as HTMLSelectElement | null)?.disabled).toBe(true);
-    expect((screen.getByLabelText('v2.newLanguage') as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByRole('combobox', { name: 'v2.newLanguage' }) as HTMLSelectElement).disabled).toBe(true);
     expect(screen.getAllByRole('button', { name: 'v2.removeLanguage' })
       .every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
-    expect((screen.getByLabelText('v2.dashboardHeadline') as HTMLInputElement).disabled).toBe(false);
+    expect((screen.getByRole('textbox', { name: 'v2.dashboardHeadline' }) as HTMLInputElement).disabled).toBe(false);
   });
 
   it('clears an optional feedback length without sending null', async () => {
@@ -295,7 +297,7 @@ describe('SSF V2 content administration', () => {
     const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
     render(<SsfSystemContentV2Page />);
 
-    await screen.findAllByLabelText('v2.maxLength');
+    await screen.findAllByRole('spinbutton', { name: 'v2.maxLength' });
     const length = document.getElementById('ssf-v2-staff-feedback-questions-4-maxLength');
     if (!length) throw new Error('max_length_field_missing');
     fireEvent.change(length, { target: { value: '' } });
@@ -319,7 +321,7 @@ describe('SSF V2 content administration', () => {
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
 
-    const heading = await screen.findByLabelText('v2.dashboardHeadline');
+    const heading = await screen.findByRole('textbox', { name: 'v2.dashboardHeadline' });
     fireEvent.change(heading, { target: { value: 'Tenant heading' } });
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
     await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({
@@ -345,7 +347,7 @@ describe('SSF V2 content administration', () => {
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
 
-    await screen.findAllByLabelText('v2.iconUrl');
+    await screen.findAllByRole('textbox', { name: 'v2.iconUrl' });
     const input = document.getElementById('ssf-v2-guest-0-icon-url');
     if (!input) throw new Error('ssf_v2_icon_input_missing');
     const inherit = input.closest('label')?.nextElementSibling?.nextElementSibling?.querySelector('button');
@@ -381,7 +383,7 @@ describe('SSF V2 content administration', () => {
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
 
-    expect((await screen.findByLabelText('English (en)') as HTMLInputElement).disabled).toBe(true);
+    expect((await screen.findByRole('checkbox', { name: 'English (en)' }) as HTMLInputElement).disabled).toBe(true);
   });
 
   it('discards a hidden unsaved guest translation', async () => {
@@ -444,7 +446,7 @@ describe('SSF V2 content administration', () => {
     const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
     render(<SsfSystemContentV2Page />);
     fireEvent.click(await screen.findByRole('button', { name: 'v2.legalTexts.add' }));
-    expect((screen.getByLabelText('v2.legalTexts.sourceLocale') as HTMLSelectElement).value).toBe('de-DE');
+    expect((screen.getByRole('combobox', { name: 'v2.legalTexts.sourceLocale' }) as HTMLSelectElement).value).toBe('de-DE');
     expect(screen.getByRole('group', { name: 'v2.legalTexts.mode2Consent' })).toBeTruthy();
   });
 
@@ -483,7 +485,9 @@ describe('SSF V2 content administration', () => {
     render(<SsfTenantContentV2Page canManage={false} />);
     const readOnly = await screen.findByRole('group', { name: 'v2.legalTexts.mode2Consent' });
     expect((within(readOnly).getByLabelText('v2.legalTexts.headline') as HTMLInputElement).disabled).toBe(true);
-    expect((screen.getByLabelText('v2.legalTexts.version') as HTMLInputElement).disabled).toBe(true);
+    const legalSection = readOnly.closest('section');
+    if (!legalSection) throw new Error('ssf_legal_section_missing');
+    expect((within(legalSection).getByRole('textbox', { name: 'v2.legalTexts.version' }) as HTMLInputElement).disabled).toBe(true);
     expect(screen.queryByRole('button', { name: 'actions.save' })).toBeNull();
   });
 });

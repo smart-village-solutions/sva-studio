@@ -29,11 +29,14 @@ jobs:
       app_build_mode: ${{ steps.scope.outputs.app_build_mode }}
       documentation_catalog_mode: ${{ steps.scope.outputs.documentation_catalog_mode }}
       db_schema_mode: ${{ steps.scope.outputs.db_schema_mode }}
+      coverage_priority_matrix: ${{ steps.scope.outputs.coverage_priority_matrix }}
+      coverage_remaining_matrix: ${{ steps.scope.outputs.coverage_remaining_matrix }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
 
@@ -69,6 +72,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -94,6 +98,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -103,6 +108,7 @@ jobs:
         if: needs.scope.outputs.quality_gate_mode != 'skip'
         env:
           NX_BASE: ${{ github.event.pull_request.base.sha }}
+          CI_UNIT_APP_SEPARATE: '1'
           NX_HEAD: ${{ github.event.pull_request.head.sha }}
           NX_RUN_FULL: ${{ needs.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}
         run: pnpm test:unit:affected --phase direct
@@ -129,6 +135,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -138,6 +145,7 @@ jobs:
         if: needs.scope.outputs.quality_gate_mode != 'skip'
         env:
           NX_BASE: ${{ github.event.pull_request.base.sha }}
+          CI_UNIT_APP_SEPARATE: '1'
           NX_HEAD: ${{ github.event.pull_request.head.sha }}
           NX_RUN_FULL: ${{ needs.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}
         run: pnpm test:unit:affected --phase remaining --shard ${{ matrix.shard }}/4
@@ -151,6 +159,43 @@ jobs:
           overwrite: true
           retention-days: 7
 
+  unit-app:
+    name: App Unit (${{ matrix.partition }})
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        partition: [ui, hooks, server, routes-1, routes-2, routes-3, routes-4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          filter: tree:0
+          fetch-depth: 0
+      - name: Setup workspace
+        if: needs.scope.outputs.quality_gate_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run isolated App Unit partition
+        if: needs.scope.outputs.quality_gate_mode != 'skip'
+        env:
+          NX_BASE: ${{ github.event.pull_request.base.sha }}
+          NX_HEAD: ${{ github.event.pull_request.head.sha }}
+          NX_RUN_FULL: ${{ needs.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}
+          CI_UNIT_APP_SEPARATE: '1'
+        run: pnpm test:unit:affected --phase app --app-job ${{ matrix.partition }}
+      - name: Upload App Unit evidence
+        if: always() && needs.scope.outputs.code_relevant == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-feedback-app-${{ matrix.partition }}-${{ github.run_id }}
+          path: artifacts/ci-feedback/unit-unit-app-${{ matrix.partition }}.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
   unit:
     name: Unit
     if: always()
@@ -158,12 +203,14 @@ jobs:
       - scope
       - unit-direct
       - unit-remaining
+      - unit-app
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout Unit evidence validator
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: blob:none
           sparse-checkout: |
             .nvmrc
@@ -184,6 +231,7 @@ jobs:
           EVIDENCE_REQUIRED: ${{ needs.scope.outputs.code_relevant }}
           SCOPE_RESULT: ${{ needs.scope.result }}
           DIRECT_RESULT: ${{ needs.unit-direct.result }}
+          APP_RESULT: ${{ needs.unit-app.result }}
           REMAINING_RESULT: ${{ needs.unit-remaining.result }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -191,13 +239,15 @@ jobs:
           test "$SCOPE_RESULT" = "success"
           test "$DIRECT_RESULT" = "success"
           test "$REMAINING_RESULT" = "success"
+          test "$APP_RESULT" = "success"
           if [ "$EVIDENCE_REQUIRED" != "true" ]; then
             exit 0
           fi
           node scripts/ci/ci-feedback-aggregate.ts \
             --gate unit \
             --head "$HEAD_SHA" \
-            --expected unit-direct,unit-remaining-1-of-4,unit-remaining-2-of-4,unit-remaining-3-of-4,unit-remaining-4-of-4 \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --expected unit-direct,unit-remaining-1-of-4,unit-remaining-2-of-4,unit-remaining-3-of-4,unit-remaining-4-of-4,unit-app-ui,unit-app-hooks,unit-app-server,unit-app-routes-1,unit-app-routes-2,unit-app-routes-3,unit-app-routes-4 \
             --evidence-dir artifacts/downloaded-unit-feedback
 
   types:
@@ -209,6 +259,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -225,18 +276,22 @@ jobs:
             pnpm test:types:affected
           fi
 
-  coverage:
-    name: Coverage Complete
+  coverage-priority:
+    name: Coverage Priority (${{ matrix.partition }})
     needs: scope
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      matrix:
+        partition: ${{ fromJSON(needs.scope.outputs.coverage_priority_matrix) }}
     env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       REDIS_URL: redis://127.0.0.1:6379
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -248,28 +303,156 @@ jobs:
       - name: Wait for Redis readiness
         if: needs.scope.outputs.coverage_mode != 'skip'
         run: |
-          set -euo pipefail
           for i in {1..30}; do
-            if docker exec sva-studio-redis-coverage redis-cli -p 6379 ping | grep -q PONG; then
-              exit 0
-            fi
+            if docker exec sva-studio-redis-coverage redis-cli ping | grep -q PONG; then exit 0; fi
             sleep 2
           done
           exit 1
-      - name: Run Coverage contract
+      - name: Run Coverage partition
         if: needs.scope.outputs.coverage_mode != 'skip'
         env:
           NX_BASE: ${{ github.event.pull_request.base.sha }}
           NX_HEAD: ${{ github.event.pull_request.head.sha }}
           NX_RUN_FULL: ${{ needs.scope.outputs.coverage_mode == 'full' && '1' || '0' }}
-          COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ needs.scope.outputs.coverage_mode == 'full' && '1' || '0' }}
-        run: |
-          pnpm test:coverage:affected
-          pnpm sonar-new-code-gate --base=${{ github.event.pull_request.base.sha }}
-          pnpm coverage-gate
+        run: pnpm test:coverage:affected --partition ${{ matrix.partition }}
+      - name: Upload partition reports
+        if: always() && needs.scope.outputs.coverage_mode != 'skip'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-partition-${{ matrix.partition }}
+          path: |
+            apps/*/coverage/**
+            packages/*/coverage/**
+            artifacts/ci-feedback/coverage-partitions/${{ matrix.partition }}.json
+            artifacts/ci-feedback/coverage-coverage-${{ matrix.partition }}.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
       - name: Stop Redis
         if: always() && needs.scope.outputs.coverage_mode != 'skip'
         run: docker rm -f sva-studio-redis-coverage || true
+
+  coverage-remaining:
+    name: Coverage Remaining (${{ matrix.partition }})
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      matrix:
+        partition: ${{ fromJSON(needs.scope.outputs.coverage_remaining_matrix) }}
+    env:
+      REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          filter: tree:0
+          fetch-depth: 0
+      - name: Setup workspace
+        if: needs.scope.outputs.coverage_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Start Redis
+        if: needs.scope.outputs.coverage_mode != 'skip'
+        run: docker run -d --name sva-studio-redis-coverage -p 6379:6379 redis:7-alpine
+      - name: Wait for Redis readiness
+        if: needs.scope.outputs.coverage_mode != 'skip'
+        run: |
+          for i in {1..30}; do
+            if docker exec sva-studio-redis-coverage redis-cli ping | grep -q PONG; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Run Coverage partition
+        if: needs.scope.outputs.coverage_mode != 'skip'
+        env:
+          NX_BASE: ${{ github.event.pull_request.base.sha }}
+          NX_HEAD: ${{ github.event.pull_request.head.sha }}
+          NX_RUN_FULL: ${{ needs.scope.outputs.coverage_mode == 'full' && '1' || '0' }}
+        run: pnpm test:coverage:affected --partition ${{ matrix.partition }}
+      - name: Upload partition reports
+        if: always() && needs.scope.outputs.coverage_mode != 'skip'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-partition-${{ matrix.partition }}
+          path: |
+            apps/*/coverage/**
+            packages/*/coverage/**
+            artifacts/ci-feedback/coverage-partitions/${{ matrix.partition }}.json
+            artifacts/ci-feedback/coverage-coverage-${{ matrix.partition }}.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+      - name: Stop Redis
+        if: always() && needs.scope.outputs.coverage_mode != 'skip'
+        run: docker rm -f sva-studio-redis-coverage || true
+
+  coverage-early:
+    name: Changed Code Coverage
+    needs: [scope, coverage-priority]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-pnpm-workspace
+        if: needs.scope.outputs.coverage_mode != 'skip'
+      - uses: actions/download-artifact@v8
+        if: needs.scope.outputs.coverage_mode != 'skip'
+        with:
+          pattern: coverage-partition-*
+          path: artifacts/downloaded-coverage-parts
+      - name: Evaluate changed code as soon as priority reports are complete
+        if: needs.scope.outputs.coverage_mode != 'skip'
+        env:
+          NX_RUN_FULL: ${{ needs.scope.outputs.coverage_mode == 'full' && '1' || '0' }}
+        run: |
+          pnpm exec tsx scripts/ci/affected-coverage-gate.ts --base ${{ github.event.pull_request.base.sha }} --head ${{ github.event.pull_request.head.sha }} --merge-partitions artifacts/downloaded-coverage-parts --priority-only
+          pnpm sonar-new-code-gate --base=${{ github.event.pull_request.base.sha }}
+
+  coverage:
+    name: Coverage Complete
+    if: always()
+    needs: [scope, coverage-priority, coverage-remaining, coverage-early]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - name: Require successful complete partition execution
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          PRIORITY_RESULT: ${{ needs.coverage-priority.result }}
+          REMAINING_RESULT: ${{ needs.coverage-remaining.result }}
+          EARLY_RESULT: ${{ needs.coverage-early.result }}
+        run: |
+          test "$SCOPE_RESULT" = success
+          test "$PRIORITY_RESULT" = success
+          test "$REMAINING_RESULT" = success
+          test "$EARLY_RESULT" = success
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-pnpm-workspace
+        if: needs.scope.outputs.coverage_mode != 'skip'
+      - uses: actions/download-artifact@v8
+        if: needs.scope.outputs.coverage_mode != 'skip'
+        with:
+          pattern: coverage-partition-*
+          path: artifacts/downloaded-coverage-parts
+      - name: Merge and evaluate the full Coverage contract
+        if: needs.scope.outputs.coverage_mode != 'skip'
+        env:
+          NX_RUN_FULL: ${{ needs.scope.outputs.coverage_mode == 'full' && '1' || '0' }}
+          COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ needs.scope.outputs.coverage_mode == 'full' && '1' || '0' }}
+        run: |
+          pnpm exec tsx scripts/ci/affected-coverage-gate.ts --base ${{ github.event.pull_request.base.sha }} --head ${{ github.event.pull_request.head.sha }} --merge-partitions artifacts/downloaded-coverage-parts
+          pnpm sonar-new-code-gate --base=${{ github.event.pull_request.base.sha }}
+          pnpm coverage-gate
       - name: Upload to Codecov
         if: always() && env.CODECOV_TOKEN != '' && needs.scope.outputs.coverage_mode != 'skip'
         uses: codecov/codecov-action@v7
@@ -281,13 +464,15 @@ jobs:
           flags: unittests
           name: coverage-${{ github.run_id }}
       - name: Upload Coverage evidence
-        if: always() && needs.scope.outputs.code_relevant == 'true' && needs.scope.outputs.coverage_mode != 'skip'
+        if: always() && needs.scope.outputs.coverage_mode != 'skip'
         uses: actions/upload-artifact@v7
         with:
           name: coverage-reports-${{ github.run_id }}
           path: |
-            **/coverage/coverage-summary.json
-            **/coverage/lcov.info
+            apps/*/coverage/coverage-summary.json
+            apps/*/coverage/lcov.info
+            packages/*/coverage/coverage-summary.json
+            packages/*/coverage/lcov.info
             artifacts/ci-feedback/coverage-coverage-complete.json
             artifacts/ci-feedback/coverage-shards/*.json
             tooling/testing/coverage-policy.json
@@ -307,6 +492,7 @@ jobs:
       - name: Checkout Coverage evidence validators
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: blob:none
           sparse-checkout: |
             .nvmrc
@@ -337,6 +523,7 @@ jobs:
           node scripts/ci/ci-feedback-aggregate.ts \
             --gate coverage \
             --head "$HEAD_SHA" \
+            --base "${{ github.event.pull_request.base.sha }}" \
             --expected coverage-complete \
             --evidence-dir artifacts/downloaded-coverage
           node scripts/ci/validate-downloaded-coverage.ts artifacts/downloaded-coverage "$HEAD_SHA"
@@ -350,6 +537,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -364,10 +552,10 @@ jobs:
             pnpm complexity-gate --base ${{ github.event.pull_request.base.sha }}
           fi
 
-  integration:
-    name: PR Integration
-    needs: [scope, plugin-compatibility]
-    if: always() && needs.scope.result == 'success'
+  integration-execution:
+    name: Integration Tests
+    needs: scope
+    if: needs.scope.result == 'success' && needs.scope.outputs.integration_mode != 'skip'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -381,19 +569,15 @@ jobs:
           --health-timeout 3s
           --health-retries 10
     steps:
-      - name: Enforce relevant plugin compatibility
-        if: needs.plugin-compatibility.result != 'success' && needs.plugin-compatibility.result != 'skipped'
-        run: exit 1
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
-        if: needs.scope.outputs.integration_mode != 'skip'
         uses: ./.github/actions/setup-pnpm-workspace
       - name: Run Integration contract
-        if: needs.scope.outputs.integration_mode != 'skip'
         env:
           POSTGRES_PASSWORD: test-postgres-password
           APP_DB_USER: sva_app
@@ -407,6 +591,34 @@ jobs:
             pnpm exec tsx scripts/ci/run-integration-gate.ts --mode affected --base ${{ github.event.pull_request.base.sha }}
           fi
 
+  integration:
+    name: PR Integration
+    needs: [scope, integration-execution, plugin-compatibility]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Enforce Integration and relevant plugin compatibility
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          INTEGRATION_MODE: ${{ needs.scope.outputs.integration_mode }}
+          EXECUTION_RESULT: ${{ needs.integration-execution.result }}
+          PLUGIN_REQUIRED: ${{ needs.scope.outputs.app_build_mode != 'skip' || needs.scope.outputs.runtime_verify_mode != 'skip' || needs.scope.outputs.quality_gate_mode != 'skip' }}
+          PLUGIN_RESULT: ${{ needs.plugin-compatibility.result }}
+        run: |
+          set -euo pipefail
+          test "$SCOPE_RESULT" = "success"
+          if [ "$INTEGRATION_MODE" = "skip" ]; then
+            test "$EXECUTION_RESULT" = "skipped"
+          else
+            test "$EXECUTION_RESULT" = "success"
+          fi
+          if [ "$PLUGIN_REQUIRED" = "true" ]; then
+            test "$PLUGIN_RESULT" = "success"
+          else
+            test "$PLUGIN_RESULT" = "success" || test "$PLUGIN_RESULT" = "skipped"
+          fi
+
   file-placement:
     name: File Placement
     needs: scope
@@ -416,6 +628,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
@@ -433,6 +646,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
       - name: Setup workspace
         if: needs.scope.outputs.a11y_mode != 'skip'
@@ -450,6 +664,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -471,6 +686,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
@@ -486,6 +702,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
       - name: Setup workspace
         if: needs.scope.outputs.documentation_catalog_mode != 'skip'
@@ -504,6 +721,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace

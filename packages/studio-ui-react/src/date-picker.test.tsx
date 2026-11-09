@@ -41,6 +41,16 @@ function Field(props: Partial<DatePickerProps> = {}) {
 }
 
 describe('DatePicker', () => {
+  it.each([
+    ['de-DE', /^Montag, 9\. März 2026/],
+    ['en-GB', /^Monday, 9 March 2026/],
+    ['en-US', /^Monday, March 9, 2026/],
+  ] as const)('keeps localized calendar day labels for %s', async (locale, dayLabel) => {
+    render(<Field locale={locale} value="2026-03-09" />);
+    fireEvent.click(screen.getByRole('button', { name: labels.openCalendar }));
+    expect(await screen.findByRole('button', { name: dayLabel })).toBeDefined();
+  });
+
   it('preserves partial input and focus; normalizes only after blur', () => {
     const onChange = vi.fn();
     render(<Field onChange={onChange} />);

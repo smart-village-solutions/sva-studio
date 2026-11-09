@@ -24,8 +24,11 @@ export default mergeConfig(
           '../core/src/rich-text-html-policy.ts'
         ),
         '@sva/core': resolve(currentDir, '../core/src/index.ts'),
-        '@sva/plugin-sdk/content-media': resolve(currentDir, '../plugin-sdk/src/content-media-contracts-public-api.ts'),
-      '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
+        '@sva/plugin-sdk/content-media': resolve(
+          currentDir,
+          '../plugin-sdk/src/content-media-contracts-public-api.ts'
+        ),
+        '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
         '@sva/waste-management-contracts/job-definitions': resolve(
           currentDir,
           '../waste-management-contracts/src/job-definitions.ts'
@@ -41,6 +44,21 @@ export default mergeConfig(
     test: {
       name: 'plugin-waste-management',
       environment: 'happy-dom',
+      // Only real third-party calendar code is prebundled. Vitest keeps
+      // discovery disabled, so workspace source remains visible to coverage.
+      deps: {
+        optimizer: {
+          client: {
+            enabled: true,
+            include: [
+              '@sva/studio-ui-react > react-day-picker',
+              '@sva/studio-ui-react > react-day-picker/locale/de',
+              '@sva/studio-ui-react > react-day-picker/locale/en-GB',
+              '@sva/studio-ui-react > react-day-picker/locale/en-US',
+            ],
+          },
+        },
+      },
       setupFiles: [studioMswSetupFile],
       include: ['tests/**/*.{test,spec}.{ts,tsx}', 'src/**/*.{test,spec}.{ts,tsx}'],
       pool: 'threads',

@@ -1,5 +1,7 @@
 import * as Popover from '@radix-ui/react-popover';
-import { de, enGB, enUS } from 'react-day-picker/locale';
+import { de } from 'react-day-picker/locale/de';
+import { enGB } from 'react-day-picker/locale/en-GB';
+import { enUS } from 'react-day-picker/locale/en-US';
 
 import { Calendar } from './calendar.js';
 import type { DatePickerProps } from './date-picker.js';

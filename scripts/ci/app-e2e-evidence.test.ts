@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -8,6 +8,8 @@ import {
   buildAppE2EEvidence,
   parseAppE2EEvidence,
   writeAppE2EEvidenceFromEnvironment,
+  writeAppE2EShardEvidenceFromEnvironment,
+  validateAppE2EShards,
 } from './app-e2e-evidence.ts';
 
 const sha = 'a'.repeat(40);
@@ -96,7 +98,8 @@ describe('App E2E evidence', () => {
       { hotfix: { ...hotfix, baseTag: 'studio-v0.11.0-beta.1' } },
       { hotfix: { ...hotfix, ref: 'refs/heads/feature/unrelated' } },
       { evidenceClass: 'diagnostic' },
-    ]) expect(parseAppE2EEvidence({ ...evidence, ...invalid })).toBeNull();
+    ])
+      expect(parseAppE2EEvidence({ ...evidence, ...invalid })).toBeNull();
   });
 
   it('writes only validated controlled hotfix metadata from a Main dispatch', () => {
@@ -119,9 +122,17 @@ describe('App E2E evidence', () => {
         HOTFIX_REF: hotfix.ref,
         RUNNER_TEMP: directory,
       };
-      const evidence = parseAppE2EEvidence(JSON.parse(readFileSync(writeAppE2EEvidenceFromEnvironment(env), 'utf8')));
-      expect(evidence).toMatchObject({ evidenceClass: 'controlled-hotfix', headSha: hotfixSha, hotfix });
-      expect(() => writeAppE2EEvidenceFromEnvironment({ ...env, GITHUB_WORKFLOW_SHA: hotfixSha })).toThrow();
+      const evidence = parseAppE2EEvidence(
+        JSON.parse(readFileSync(writeAppE2EEvidenceFromEnvironment(env), 'utf8'))
+      );
+      expect(evidence).toMatchObject({
+        evidenceClass: 'controlled-hotfix',
+        headSha: hotfixSha,
+        hotfix,
+      });
+      expect(() =>
+        writeAppE2EEvidenceFromEnvironment({ ...env, GITHUB_WORKFLOW_SHA: hotfixSha })
+      ).toThrow();
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
@@ -231,5 +242,217 @@ describe('App E2E evidence', () => {
         testOutcome: 'cancelled',
       })
     ).toThrow();
+  });
+});
+
+describe('App E2E shard completeness', () => {
+  const report = (ids: string[], status = 'passed') => ({
+    suites: [
+      {
+        specs: [
+          {
+            id: 'setup',
+            tests: [
+              {
+                projectName: 'auth-setup',
+                expectedStatus: 'passed',
+                results: [{ status: 'passed' }],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        specs: ids.map((id) => ({
+          id,
+          tests: [
+            {
+              projectName: 'chromium',
+              expectedStatus: 'passed',
+              results: [{ status }],
+            },
+          ],
+        })),
+      },
+    ],
+  });
+  const withShards = (
+    run: (directory: string) => void,
+    amendResults: (results: ReturnType<typeof report>) => void = () => {}
+  ) => {
+    const directory = mkdtempSync(join(tmpdir(), 'app-e2e-shards-'));
+    const shards = join(directory, 'shards');
+    try {
+      const manifest = join(directory, 'manifest.json');
+      const results = join(directory, 'results.json');
+      writeFileSync(manifest, JSON.stringify(report(['a', 'b', 'c', 'd'])));
+      for (let shard = 1; shard <= 4; shard += 1) {
+        const shardReport = report(['abcd'[shard - 1]]);
+        amendResults(shardReport);
+        writeFileSync(results, JSON.stringify(shardReport));
+        writeAppE2EShardEvidenceFromEnvironment({
+          APP_E2E_SHARD_INDEX: String(shard),
+          APP_E2E_SOURCE_SHA: sha,
+          APP_E2E_TEST_OUTCOME: 'success',
+          GITHUB_RUN_ID: '123',
+          APP_E2E_MANIFEST_PATH: manifest,
+          APP_E2E_REPORT_PATH: results,
+          APP_E2E_SHARD_DIRECTORY: shards,
+        });
+      }
+      run(shards);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  };
+
+  it('accepts exactly four complete disjoint source-bound shards', () => {
+    withShards((directory) =>
+      expect(() => validateAppE2EShards(directory, sha, '123')).not.toThrow()
+    );
+  });
+
+  it('accepts runtime skips from older hotfix sources without changing test identity', () => {
+    // Older release smoke tests call test.skip() inside their body: --list
+    // reports expectedStatus=passed, execution reports expectedStatus=skipped.
+    withShards(
+      (directory) => expect(() => validateAppE2EShards(directory, sha, '123')).not.toThrow(),
+      (results) => {
+        const test = results.suites[1].specs[0].tests[0];
+        test.expectedStatus = 'skipped';
+        test.results = [{ status: 'skipped' }];
+      }
+    );
+  });
+
+  it.each([
+    ['passed', 'skipped'],
+    ['skipped', 'passed'],
+    ['passed', 'failed'],
+    ['passed', 'timedOut'],
+    ['passed', 'interrupted'],
+    ['unknown', 'unknown'],
+  ])('rejects expected status %s with actual status %s', (expectedStatus, status) => {
+    expect(() =>
+      withShards(
+        () => {},
+        (results) => {
+          const test = results.suites[1].specs[0].tests[0];
+          test.expectedStatus = expectedStatus;
+          test.results = [{ status }];
+        }
+      )
+    ).toThrow();
+  });
+
+  it('rejects a runtime-skipped authentication setup', () => {
+    expect(() =>
+      withShards(
+        () => {},
+        (results) => {
+          const setup = results.suites[0].specs[0].tests[0];
+          setup.expectedStatus = 'skipped';
+          setup.results = [{ status: 'skipped' }];
+        }
+      )
+    ).toThrow();
+  });
+
+  it('rejects a missing shard', () => {
+    withShards((directory) => {
+      unlinkSync(join(directory, 'app-e2e-shard-4.json'));
+      expect(() => validateAppE2EShards(directory, sha, '123')).toThrow('unvollständig');
+    });
+  });
+
+  it.each([
+    { shard: 1 },
+    { headSha: hotfixSha },
+    { runId: '456' },
+    { testOutcome: 'failure' },
+    { testOutcome: 'cancelled' },
+    { manifestHash: 'forged' },
+    { executedTestIds: [] },
+    { executedTestIds: ['auth-setup:setup'] },
+    { executedTestIds: ['auth-setup:setup', 'chromium:b', 'chromium:b'] },
+    { executedTestIds: ['auth-setup:setup', 'chromium:foreign'] },
+    { executedTestIds: ['auth-setup:setup', 'chromium:b:skipped'] },
+    { executedTestIds: ['auth-setup:setup', 'chromium:a'] },
+    { extra: true },
+  ])('rejects incomplete, overlapping or foreign evidence %j', (patch) => {
+    withShards((directory) => {
+      const target = join(directory, 'app-e2e-shard-2.json');
+      const evidence = JSON.parse(readFileSync(target, 'utf8'));
+      writeFileSync(target, JSON.stringify({ ...evidence, ...patch }));
+      expect(() => validateAppE2EShards(directory, sha, '123')).toThrow();
+    });
+  });
+
+  it.each([false, true])(
+    'allows repeated attempts only for an explicitly retryable diagnostic (%s)',
+    (allowRetry) => {
+      withShards((directory) => {
+        const results = report(['d']);
+        results.suites[1].specs[0].tests[0].results = [{ status: 'failed' }, { status: 'passed' }];
+        const reportPath = join(directory, '..', 'results.json');
+        writeFileSync(reportPath, JSON.stringify(results));
+        const write = () =>
+          writeAppE2EShardEvidenceFromEnvironment({
+            APP_E2E_SHARD_INDEX: '4',
+            APP_E2E_SOURCE_SHA: sha,
+            APP_E2E_TEST_OUTCOME: 'success',
+            APP_E2E_ALLOW_RETRY: String(allowRetry),
+            GITHUB_RUN_ID: '123',
+            APP_E2E_MANIFEST_PATH: join(directory, '..', 'manifest.json'),
+            APP_E2E_REPORT_PATH: reportPath,
+            APP_E2E_SHARD_DIRECTORY: directory,
+          });
+        if (allowRetry) expect(write).not.toThrow();
+        else expect(write).toThrow();
+      });
+    }
+  );
+
+  it('preserves completed shard tests when later job cleanup fails', () => {
+    withShards((directory) => {
+      const output = writeAppE2EEvidenceFromEnvironment({
+        GITHUB_WORKFLOW: 'App E2E',
+        GITHUB_EVENT_NAME: 'push',
+        GITHUB_REF: 'refs/heads/main',
+        GITHUB_REF_NAME: 'main',
+        GITHUB_SHA: sha,
+        GITHUB_RUN_ID: '123',
+        GITHUB_RUN_ATTEMPT: '1',
+        APP_E2E_RESULT: 'failure',
+        APP_E2E_TEST_OUTCOME: 'failure',
+        APP_E2E_SHARD_DIRECTORY: directory,
+        RUNNER_TEMP: directory,
+      });
+      expect(parseAppE2EEvidence(JSON.parse(readFileSync(output, 'utf8')))).toMatchObject({
+        result: 'failure',
+        testOutcome: 'success',
+        evidenceClass: 'canonical-main',
+      });
+    });
+  });
+
+  it('refuses to publish final evidence when shard validation fails', () => {
+    withShards((directory) => {
+      expect(() =>
+        writeAppE2EEvidenceFromEnvironment({
+          GITHUB_WORKFLOW: 'App E2E',
+          GITHUB_EVENT_NAME: 'push',
+          GITHUB_REF: 'refs/heads/main',
+          GITHUB_REF_NAME: 'main',
+          GITHUB_SHA: hotfixSha,
+          GITHUB_RUN_ID: '123',
+          GITHUB_RUN_ATTEMPT: '1',
+          APP_E2E_RESULT: 'success',
+          APP_E2E_TEST_OUTCOME: 'success',
+          APP_E2E_SHARD_DIRECTORY: directory,
+          RUNNER_TEMP: directory,
+        })
+      ).toThrow();
+    });
   });
 });

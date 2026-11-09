@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -6,6 +7,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   validateCoverageShardEvidence,
+  validateCoveragePartitions,
+  writeCoveragePartitionEvidence,
   writeCoverageShardEvidence,
 } from './coverage-shard-evidence.ts';
 
@@ -128,3 +131,146 @@ describe('coverage-shard-evidence', () => {
     ).toThrow();
   });
 });
+
+describe('mandatory distributed coverage reports', () => {
+  const arrange = () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'coverage-partitions-'));
+    directories.push(directory);
+    const plan = {
+      changedFiles: [],
+      affectedProjects: ['example'],
+      projectRoots: [{ name: 'example', root: 'packages/example' }],
+      changedProjectPlan: {
+        mode: 'changed-first' as const,
+        reason: 'test',
+        directProjects: ['example'],
+        remainingProjects: [],
+        unmappedFiles: [],
+      },
+    };
+    for (const partition of ['direct-1', 'remaining-1']) {
+      const root = path.join(directory, `coverage-partition-${partition}`);
+      fs.mkdirSync(path.join(root, 'packages/example/coverage'), { recursive: true });
+      for (const file of ['coverage-summary.json', 'lcov.info', 'test-results.json'])
+        fs.writeFileSync(path.join(root, 'packages/example/coverage', file), '{}');
+      writeCoveragePartitionEvidence(
+        {
+          partition,
+          baseSha: 'base',
+          headSha: 'head',
+          plan,
+          phases:
+            partition === 'direct-1'
+              ? [{ label: 'test', durationMs: 1, projects: ['example'] }]
+              : [],
+          timing: { startedAt: '2026-11-08T10:00:00Z', finishedAt: '2026-11-08T10:00:01Z' },
+        },
+        root
+      );
+    }
+    return directory;
+  };
+  it('allows the priority decision before rest reports exist while the final decision stays closed', () => {
+    const directory = arrange();
+    fs.rmSync(path.join(directory, 'coverage-partition-remaining-1'), { recursive: true });
+    expect(validateCoveragePartitions({
+      directory, baseSha: 'base', headSha: 'head', expected: ['direct-1'],
+    })).toHaveLength(1);
+    expect(() => validateCoveragePartitions({
+      directory, baseSha: 'base', headSha: 'head', expected: ['direct-1', 'remaining-1'],
+    })).toThrow();
+  });
+  it('accepts complete reports and explicit empty partitions', () => {
+    expect(
+      validateCoveragePartitions({
+        directory: arrange(),
+        baseSha: 'base',
+        headSha: 'head',
+        expected: ['direct-1', 'remaining-1'],
+      })
+    ).toHaveLength(2);
+  });
+  it.each(['missing', 'modified', 'wrong-head', 'wrong-base', 'duplicate', 'plan-drift'])(
+    'rejects %s reports',
+    (kind) => {
+      const directory = arrange();
+      const file = path.join(
+        directory,
+        'coverage-partition-direct-1/artifacts/ci-feedback/coverage-partitions/direct-1.json'
+      );
+      const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (kind === 'missing') fs.rmSync(file);
+      else if (kind === 'modified')
+        fs.writeFileSync(
+          path.join(directory, 'coverage-partition-direct-1/packages/example/coverage/lcov.info'),
+          'modified'
+        );
+      else {
+        if (kind === 'wrong-head') value.headSha = 'foreign';
+        if (kind === 'wrong-base') value.baseSha = 'foreign';
+        if (kind === 'duplicate') value.reports.push(value.reports[0]);
+        if (kind === 'plan-drift') value.plan.changedFiles = ['other'];
+        fs.writeFileSync(file, JSON.stringify(value));
+      }
+      expect(() =>
+        validateCoveragePartitions({
+          directory,
+          baseSha: 'base',
+          headSha: 'head',
+          expected: ['direct-1', 'remaining-1'],
+        })
+      ).toThrow();
+    }
+  );
+});
+
+it('merges actual instrumented Vitest blobs with identical coverage counters', () => {
+  // Real subprocess contract: summing percentages would fail this overlap case.
+  const root = fs.mkdtempSync(path.join(process.cwd(), '.nx', 'coverage-merge-contract-'));
+  directories.push(root);
+  fs.writeFileSync(
+    path.join(root, 'source.ts'),
+    'export const classify = (n: number) => n > 0 ? "positive" : "other";'
+  );
+  for (const [name, value, expected] of [
+    ['positive', 1, 'positive'],
+    ['negative', -1, 'other'],
+  ] as const) {
+    fs.writeFileSync(
+      path.join(root, `${name}.test.ts`),
+      `import { it, expect } from 'vitest'; import { classify } from './source'; it('${name}',()=>expect(classify(${value})).toBe('${expected}'));`
+    );
+  }
+  fs.writeFileSync(
+    path.join(root, 'vitest.config.ts'),
+    `export default { test: { include: ['*.test.ts'], maxWorkers: 1, coverage: { provider: 'v8', include: ['source.ts'], reporter: ['json','json-summary','lcov'] } } };`
+  );
+  const bin = path.resolve('node_modules/vitest/vitest.mjs');
+  const run = (args: string[]) =>
+    execFileSync(process.execPath, [bin, ...args], {
+      cwd: root,
+      stdio: 'pipe',
+      env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '' },
+    });
+  run(['run', '--coverage', '--coverage.reportsDirectory=baseline']);
+  const original = JSON.parse(
+    fs.readFileSync(path.join(root, 'baseline/coverage-final.json'), 'utf8')
+  );
+  expect(Object.keys(original)).toHaveLength(1);
+  fs.mkdirSync(path.join(root, 'blobs'));
+  for (let index = 1; index <= 2; index++)
+    run([
+      'run',
+      '--coverage',
+      `--shard=${index}/2`,
+      `--coverage.reportsDirectory=part-${index}`,
+      '--reporter=blob',
+      `--outputFile.blob=blobs/${index}.json`,
+    ]);
+  run(['--mergeReports=blobs', '--coverage', '--coverage.reportsDirectory=merged']);
+  const merged = JSON.parse(fs.readFileSync(path.join(root, 'merged/coverage-final.json'), 'utf8'));
+  expect(merged).toEqual(original);
+  expect(fs.readFileSync(path.join(root, 'merged/lcov.info'), 'utf8')).toEqual(
+    fs.readFileSync(path.join(root, 'baseline/lcov.info'), 'utf8')
+  );
+}, 30000);

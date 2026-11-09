@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -20,6 +21,20 @@ const writePackageJson = (packageDir: string, name: string) => {
 };
 
 describe('sync-injected-workspace-packages', () => {
+  it('routes the compatible app typecheck target through the single executable type gate', () => {
+    const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
+    const { targets } = JSON.parse(
+      readFileSync(path.join(repoRoot, 'apps/sva-studio-react/project.json'), 'utf8')
+    );
+
+    expect(targets.typecheck.executor).toBe('nx:noop');
+    expect(targets.typecheck.dependsOn).toEqual(['test:types']);
+    expect(targets.typecheck.options).toBeUndefined();
+    expect(targets['test:types'].executor).toBe('nx:run-commands');
+    expect(targets['test:types'].dependsOn).toContain('^build');
+    expect(targets['test:types'].options.command).toContain('pnpm exec tsc --noEmit');
+  });
+
   afterEach(() => {
     for (const tempDir of tempDirs.splice(0)) {
       rmSync(tempDir, { recursive: true, force: true });
@@ -39,6 +54,8 @@ describe('sync-injected-workspace-packages', () => {
       path.join(tempRoot, 'nx.json'),
       JSON.stringify({
         neverConnectToCloud: true,
+        // Scheduling assertions must not probe unrelated mounted volumes for cache sizing.
+        maxCacheSize: '1MB',
         targetDefaults: { 'check:runtime': { parallelism: defaults['check:runtime'].parallelism } },
       })
     );
@@ -87,10 +104,12 @@ describe('sync-injected-workspace-packages', () => {
       Object.entries(process.env).filter(([name]) => !name.startsWith('NX_'))
     );
     execFileSync(
-      'pnpm',
+      process.execPath,
       [
-        'exec',
-        'nx',
+        path.join(
+          path.dirname(createRequire(import.meta.url).resolve('nx/package.json')),
+          'dist/bin/nx.js'
+        ),
         'run-many',
         '-t',
         'build',

@@ -17,19 +17,6 @@ import {
   type SvaMainserverPoiListQuery,
 } from '../../generated/events-poi.js';
 
-import {
-  voucherPoiDocument,
-  voucherPoiWriteFields,
-  voucherWriteDocument,
-} from '../../generated/vouchers.js';
-import {
-  assertVoucherPoiWritable,
-  raw,
-  records,
-  voucherSnapshotHash,
-  voucherWriteSnapshot,
-  voucherWriteMatches,
-} from '../vouchers-snapshot.js';
 import { mapOptionalPoiItem, mapPoiItem, mapPoiItemDetail } from './poi-mappers.js';
 import {
   toSvaMainserverError,
@@ -66,6 +53,7 @@ const buildPoiMutationVariables = (input: {
   ...includeTruthyField('contact', input.poi.contact),
   ...includeTruthyField('priceInformations', input.poi.priceInformations),
   ...includeTruthyField('openingHours', input.poi.openingHours),
+  ...includeDefinedField('lunches', input.poi.lunches),
   ...includeTruthyField('operatingCompany', input.poi.operatingCompany),
   ...includeTruthyField('webUrls', input.poi.webUrls),
   ...includeTruthyField('mediaContents', input.poi.mediaContents),
@@ -204,99 +192,11 @@ const writePoiWithConfig = async (
     readonly poiId?: string;
     readonly forceCreate?: boolean;
     readonly dataProviderId?: string;
-    readonly voucherResetFingerprint?: string;
-    readonly voucherResetIdentities?: Readonly<Record<string, string>>;
-    readonly voucherResetOperationId?: string;
   },
   config: SvaMainserverInstanceConfig
 ): Promise<SvaMainserverPoiItem> => {
-  if (input.poiId && input.voucherResetFingerprint) {
-    const response = await executeGraphqlWithConfig<{
-      pointOfInterest: unknown;
-      categories: unknown;
-    }>(
-      {
-        ...input,
-        document: voucherPoiDocument,
-        operationName: 'SvaMainserverVoucherPoi',
-        variables: { id: input.poiId },
-      },
-      config
-    );
-    const poi = raw(response.pointOfInterest);
-    assertVoucherPoiWritable(poi, records(response.categories));
-    const snapshot = raw(voucherWriteSnapshot(poi));
-    if (
-      voucherSnapshotHash({ snapshot, provider: poi.dataProvider }) !==
-      input.voucherResetFingerprint
-    )
-      throw new Error('voucher_content_conflict');
-    const siblings = records(poi.vouchers);
-    const vouchers = records(snapshot.vouchers).map((item, i) => {
-      const identity = input.voucherResetIdentities?.[String(siblings[i]?.id)];
-      if (!identity) throw new Error('voucher_identity_conflict');
-      return {
-        ...item,
-        payload: { ...(item.payload == null ? {} : raw(item.payload)), id: identity },
-      };
-    });
-    const merged = {
-      ...snapshot,
-      ...buildPoiMutationVariables(input),
-      vouchers,
-      payload: {
-        ...raw(input.poi.payload ?? snapshot.payload ?? {}),
-        studioVoucherOperationId: input.voucherResetOperationId,
-      },
-    };
-    const variables = raw(voucherWriteSnapshot(merged, voucherPoiWriteFields, false));
-    await executeGraphqlWithConfig(
-      {
-        ...input,
-        document: voucherWriteDocument,
-        operationName: 'SvaMainserverVoucherWrite',
-        variables: { ...variables, id: input.poiId },
-        allowRetry: false,
-      },
-      config
-    );
-    const readback = await executeGraphqlWithConfig<{ pointOfInterest: unknown }>(
-      {
-        ...input,
-        document: voucherPoiDocument,
-        operationName: 'SvaMainserverVoucherPoi',
-        variables: { id: input.poiId },
-      },
-      config
-    );
-    if (!voucherWriteMatches(readback.pointOfInterest, variables))
-      throw new Error('voucher_reconciliation_required');
-    const after = records(raw(readback.pointOfInterest).vouchers);
-    const voucherIdChanges = siblings.map((item) => {
-      const identity = input.voucherResetIdentities?.[String(item.id)];
-      const matches = after.filter(
-        (record) => record.payload != null && raw(record.payload).id === identity
-      );
-      if (matches.length !== 1) throw new Error('voucher_reconciliation_required');
-      return { previousId: String(item.id), id: String(matches[0]!.id) };
-    });
-    const refreshed = await executeGraphqlWithConfig<SvaMainserverPoiDetailQuery>(
-      {
-        ...input,
-        document: svaMainserverPoiDetailDocument,
-        operationName: 'SvaMainserverPoiDetail',
-        variables: { id: input.poiId },
-      },
-      config
-    );
-    return Object.assign(mapOptionalPoiItem(refreshed.pointOfInterest), { voucherIdChanges });
-  }
-  if (input.poiId)
-    await assertPoiWithoutVouchers(
-      executeGraphqlWithConfig,
-      { ...input, poiId: input.poiId },
-      config
-    );
+  // The Mainserver preserves existing vouchers when the field is omitted.
+  // Ordinary POI writes must never enter the nested voucher writer.
   const response = await executeGraphqlWithConfig<SvaMainserverCreatePoiMutation>(
     {
       ...input,

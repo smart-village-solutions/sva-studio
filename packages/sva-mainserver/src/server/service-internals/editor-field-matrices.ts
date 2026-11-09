@@ -50,6 +50,7 @@ export const poiEditorFieldMatrix = {
   contact: 'controlled',
   priceInformations: 'controlled',
   openingHours: 'controlled',
+  lunches: 'passthrough',
   operatingCompany: 'controlled',
   webUrls: 'controlled',
   mediaContents: 'controlled',

@@ -1,10 +1,8 @@
 export const poiMessagesEn = {
-  voucherResetUnavailable: 'This location and its vouchers could not be safely prepared for saving. Check permissions and existing vouchers.',
-  voucherSaveUnknown: 'The save outcome is unknown. Reload and inspect this location before another save attempt.',
+  voucherOperationUnavailable: 'This action is unavailable because the location has linked vouchers. Manage them in the voucher editor.',
+  editorReloadRequired: 'The location editor has been updated. Reload the page before saving again.',
+  lunchesUnavailable: 'Existing lunch offers could not be loaded completely. The location was not saved. Reload the page and try again.',
   vouchersForLocation: 'View vouchers at this location',
-  voucherResetConfirmation:
-    'This location change also saves the following vouchers. Their content and existing redemptions are preserved. Continue?\n\n{{vouchers}}',
-  voucherResetCancelled: 'Save cancelled. The location and its vouchers were not changed.',
   visibilityPartialFailure:
     'The place was saved, but its visibility could not be updated. Open the saved place and check its visibility.',
   createdNavigationError: 'The content was created, but the editing view could not be opened.',

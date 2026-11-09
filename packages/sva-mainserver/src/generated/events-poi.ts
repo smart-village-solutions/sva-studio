@@ -177,6 +177,15 @@ export type SvaMainserverPoiFragment = {
   readonly contact?: SvaMainserverContactFragment | null;
   readonly priceInformations?: readonly SvaMainserverPriceFragment[] | null;
   readonly openingHours?: readonly SvaMainserverOpeningHourFragment[] | null;
+  readonly lunches?:
+    | readonly {
+        readonly text: string | null;
+        readonly pointOfInterestAttributes: string | null;
+        readonly lunchOffers:
+          readonly { readonly name: string | null; readonly price: string | null }[] | null;
+        readonly dates: readonly SvaMainserverDateFragment[] | null;
+      }[]
+    | null;
   readonly operatingCompany?: SvaMainserverOperatingCompanyFragment | null;
   readonly webUrls?: readonly SvaMainserverWebUrlFragment[] | null;
   readonly mediaContents?: readonly SvaMainserverMediaContentFragment[] | null;
@@ -435,6 +444,12 @@ const poiFields = `
     useYear
     description
   }
+  lunches {
+    text
+    pointOfInterestAttributes
+    lunchOffers { name price }
+    dates { weekday dateStart dateEnd timeStart timeEnd timeDescription useOnlyTimeDescription }
+  }
   operatingCompany {
     ${operatingCompanyFields}
   }
@@ -579,6 +594,7 @@ export const svaMainserverCreatePoiDocument = `
     $contact: ContactInput
     $priceInformations: [PriceInput!]
     $openingHours: [OpeningHourInput!]
+    $lunches: [LunchInput!]
     $operatingCompany: OperatingCompanyInput
     $webUrls: [WebUrlInput!]
     $mediaContents: [MediaContentInput!]
@@ -604,6 +620,7 @@ export const svaMainserverCreatePoiDocument = `
       contact: $contact
       priceInformations: $priceInformations
       openingHours: $openingHours
+      lunches: $lunches
       operatingCompany: $operatingCompany
       webUrls: $webUrls
       mediaContents: $mediaContents

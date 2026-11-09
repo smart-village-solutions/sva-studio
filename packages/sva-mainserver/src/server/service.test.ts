@@ -859,6 +859,7 @@ describe('createSvaMainserverService', () => {
         id,
         title: 'Unchanged',
         name: 'Unchanged',
+        lunches: [],
         genericType: 'COCKPIT_CARD',
         publishedAt: '2026-10-01T10:00:00.000Z',
         visible: true,
@@ -2463,6 +2464,7 @@ describe('createSvaMainserverService', () => {
       visible: true,
     };
     const poiItem = {
+      lunches: [],
       id: 'poi-1',
       name: 'Stadtpark',
       description: 'Gruene Mitte',
@@ -2511,9 +2513,6 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
-      .mockResolvedValueOnce(
-        createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } })
-      )
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
       .mockResolvedValueOnce(
         createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } })
@@ -2654,7 +2653,7 @@ describe('createSvaMainserverService', () => {
     );
     expect(
       requestBodies.filter((body) => body.operationName === 'SvaMainserverPoiVoucherGuard')
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     const businessBodies = requestBodies.filter(
       (body) => body.operationName !== 'SvaMainserverPoiVoucherGuard'
     );
@@ -2698,6 +2697,7 @@ describe('createSvaMainserverService', () => {
       recurringWeekdays: [1],
     };
     const poiItem = {
+      lunches: [],
       id: 'poi-1',
       name: 'POI',
       payload: {},
@@ -2724,9 +2724,6 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
-      .mockResolvedValueOnce(
-        createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } })
-      )
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
       .mockResolvedValueOnce(
         createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } })
@@ -3015,15 +3012,12 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } },
+          data: { pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] } },
         })
       )
       .mockResolvedValueOnce(
-        createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } })
-      )
-      .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } },
+          data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] } },
         })
       );
     vi.stubGlobal('fetch', fetchImpl);
@@ -3040,7 +3034,7 @@ describe('createSvaMainserverService', () => {
       })
     ).resolves.toMatchObject({ id: 'poi-1' });
 
-    const requestBody = JSON.parse(fetchImpl.mock.calls[3]?.[1]?.body as string) as {
+    const requestBody = JSON.parse(fetchImpl.mock.calls[2]?.[1]?.body as string) as {
       variables?: Record<string, unknown>;
     };
     expect(requestBody.variables).toMatchObject({
@@ -3063,15 +3057,12 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } },
+          data: { pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] } },
         })
       )
       .mockResolvedValueOnce(
-        createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } })
-      )
-      .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } },
+          data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] } },
         })
       );
     vi.stubGlobal('fetch', fetchImpl);
@@ -3089,7 +3080,7 @@ describe('createSvaMainserverService', () => {
       })
     ).resolves.toMatchObject({ id: 'poi-1' });
 
-    const requestBody = JSON.parse(fetchImpl.mock.calls[3]?.[1]?.body as string) as {
+    const requestBody = JSON.parse(fetchImpl.mock.calls[2]?.[1]?.body as string) as {
       variables?: Record<string, unknown>;
     };
     expect(requestBody.variables).toMatchObject({
@@ -4495,7 +4486,7 @@ describe('createSvaMainserverService', () => {
             };
           case 'SvaMainserverPoiDetail':
             return {
-              pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true },
+              pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] },
             };
           case 'SvaMainserverWasteAddresses':
             return { wasteAddresses: [] };

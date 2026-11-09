@@ -1,11 +1,8 @@
 export const poiMessagesDe = {
-  voucherResetUnavailable: 'Der Ort konnte mit seinen Gutscheinen nicht sicher zum Speichern vorbereitet werden. Prüfen Sie Berechtigungen und Gutscheinbestand.',
-  voucherSaveUnknown: 'Der Ausgang des Speicherns ist unklar. Laden und prüfen Sie den Ort vor einem weiteren Speicherversuch.',
+  voucherOperationUnavailable: 'Die Aktion ist wegen verknüpfter Gutscheine nicht möglich. Bearbeiten Sie die Gutscheine im Gutscheinbereich.',
+  editorReloadRequired: 'Die Ortsbearbeitung wurde aktualisiert. Laden Sie die Seite neu, bevor Sie erneut speichern.',
+  lunchesUnavailable: 'Die vorhandenen Mittagsangebote konnten nicht vollständig geladen werden. Der Ort wurde nicht gespeichert. Laden Sie die Seite neu und versuchen Sie es erneut.',
   vouchersForLocation: 'Gutscheine dieses Ortes ansehen',
-  voucherResetConfirmation:
-    'Diese Ortsänderung speichert auch die folgenden Gutscheine. Ihre Inhalte und bisherigen Einlösungen bleiben erhalten. Fortfahren?\n\n{{vouchers}}',
-  voucherResetCancelled:
-    'Speichern abgebrochen. Der Ort und seine Gutscheine wurden nicht geändert.',
   visibilityPartialFailure:
     'Der Ort wurde gespeichert, aber die Sichtbarkeit konnte nicht aktualisiert werden. Öffnen Sie den gespeicherten Ort und prüfen Sie die Sichtbarkeit.',
   createdNavigationError:

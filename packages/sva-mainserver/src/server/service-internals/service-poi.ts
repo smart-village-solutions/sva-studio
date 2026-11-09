@@ -41,19 +41,29 @@ export const createPoiService = ({
     input: SvaMainserverConnectionInput & {
       readonly poiId: string;
       readonly poi: SvaMainserverPoiInput;
-      readonly voucherResetFingerprint?: string;
-      readonly voucherResetIdentities?: Readonly<Record<string, string>>;
-      readonly voucherResetOperationId?: string;
     }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     const current = await poiOperations.getPoiDetailWithConfig(input, config);
+    // Mainserver replaces lunches on a POI write, even when the field is omitted.
+    // Never turn an absent or malformed server read into an empty relation.
+    if (
+      !current.data.lunches ||
+      current.deviations.some(({ fieldGroup }) => fieldGroup === 'lunches')
+    ) {
+      throw toSvaMainserverError({
+        code: 'invalid_response',
+        message: 'poi_lunch_snapshot_incomplete',
+        statusCode: 502,
+      });
+    }
     return poiOperations.writePoiWithConfig(
       {
         ...input,
         poi: {
           ...mergePoiUpdateWithCurrent(current.data, input.poi, current.deviations),
           payload: withUpdatedPayload(input.poi.payload, current.data.payload),
+          lunches: current.data.lunches,
         },
         forceCreate: true,
       },

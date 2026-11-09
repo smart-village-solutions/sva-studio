@@ -35,6 +35,30 @@ const certificateSchema = z.object({
   name: z.string().nullish(),
 });
 
+const lunchSchema = z.object({
+  text: z.string().nullable(),
+  pointOfInterestAttributes: z.string().nullable(),
+  lunchOffers: z
+    .array(z.object({ name: z.string().nullable(), price: z.string().nullable() }))
+    .nullable(),
+  dates: z
+    .array(
+      z.object({
+        weekday: z.string().nullable(),
+        dateStart: z.string().nullable(),
+        dateEnd: z.string().nullable(),
+        timeStart: z.string().nullable(),
+        timeEnd: z.string().nullable(),
+        timeDescription: z.string().nullable(),
+        useOnlyTimeDescription: z
+          .enum(['true', 'false'])
+          .nullable()
+          .transform((value) => (value === null ? null : value === 'true')),
+      })
+    )
+    .nullable(),
+});
+
 const poiItemSchema = z.object({
   id: z.string().min(1),
   name: z.string().nullish(),
@@ -50,6 +74,7 @@ const poiItemSchema = z.object({
   contact: contactSchema.nullish(),
   priceInformations: z.array(priceSchema).nullish(),
   openingHours: z.array(openingHourSchema).nullish(),
+  lunches: z.array(lunchSchema).nullish(),
   operatingCompany: operatingCompanySchema.nullish(),
   webUrls: z
     .array(
@@ -145,6 +170,7 @@ export const mapPoiItemDetail = (
       ...(mapContact(parsed.data.contact) ? { contact: mapContact(parsed.data.contact) } : {}),
       priceInformations: (parsed.data.priceInformations ?? []).map(mapPrice),
       openingHours: (parsed.data.openingHours ?? []).map(mapOpeningHour),
+      ...(parsed.data.lunches !== undefined ? { lunches: parsed.data.lunches ?? [] } : {}),
       ...(mapOperatingCompany(parsed.data.operatingCompany)
         ? { operatingCompany: mapOperatingCompany(parsed.data.operatingCompany) }
         : {}),

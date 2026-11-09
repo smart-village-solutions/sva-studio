@@ -181,7 +181,10 @@ export const buildBulkActionButtons = ({
       actions.push({
         id: `voucher-selection-${targetStatus}`,
         label: voucherBulkStatusLabel(targetStatus),
-        disabled: (rows) => !rows.every(canChangeVoucherStatus) || !rows.some(needsChange),
+        disabled: (rows) => {
+          const rowsToChange = rows.filter(needsChange);
+          return rowsToChange.length === 0 || !rowsToChange.every(canChangeVoucherStatus);
+        },
         onClick: ({ selectedRows, clearSelection }) =>
           requestBulkAction({
             selectedRows: selectedRows.filter(needsChange),

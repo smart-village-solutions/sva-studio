@@ -2113,6 +2113,7 @@ describe('ContentListPage', () => {
       registryDefinitions[index] = {
         ...registryDefinitions[index]!,
         mutations: {
+          delete: { requiredAction: 'vouchers.delete', execute: vi.fn() },
           status: {
             requiredAction: 'vouchers.publish',
             supportedStatuses: ['draft', 'published'],
@@ -2126,7 +2127,13 @@ describe('ContentListPage', () => {
           contents: [
             { ...mutationRow, contentType: 'vouchers.voucher', status: source },
             { ...mutationRow, contentType: 'vouchers.voucher', status: source, id: 'item-2' },
-            { ...mutationRow, contentType: 'vouchers.voucher', status: target, id: 'item-3' },
+            {
+              ...mutationRow,
+              contentType: 'vouchers.voucher',
+              status: target,
+              id: 'item-3',
+              access: { ...mutationRow.access, canUpdate: false },
+            },
             {
               ...mutationRow,
               contentType: 'vouchers.voucher',
@@ -2146,12 +2153,16 @@ describe('ContentListPage', () => {
 
       useContentAccessMock.mockReturnValue({
         ...access,
-        permissionActions: ['vouchers.read', 'vouchers.publish'],
+        permissionActions: ['vouchers.read', 'vouchers.publish', 'vouchers.delete'],
       });
       view.rerender(<ContentListPage />);
-      expect(screen.queryByRole('button', { name: 'Löschen (Auswahl)' })).toBeNull();
       expect(screen.getByRole('button', { name: label })).toHaveProperty('disabled', true);
       fireEvent.click(screen.getByRole('checkbox', { name: selectAll }));
+      expect(screen.getByRole('button', { name: label })).toHaveProperty('disabled', true);
+      fireEvent.click(
+        screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile item-4 auswählen' })[0]!
+      );
+      expect(screen.getByRole('button', { name: label })).toHaveProperty('disabled', false);
       fireEvent.click(screen.getByRole('button', { name: label }));
       const dialog = screen.getByRole('alertdialog', { name: label });
       expect(within(dialog).getByText(/2 ausgewählte Gutscheine/)).toBeTruthy();

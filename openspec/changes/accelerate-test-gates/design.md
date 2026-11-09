@@ -16,6 +16,11 @@ Grundlage ist der vom Nutzer ausdrücklich zur Implementierung freigegebene Plan
 
 Bestehende Nx-Targets und Scope-Controller bleiben zuständig. App-Routen: vier Datei-Shards, App-Coverage: vier Datei-Shards, Abfallplugin-Coverage: zwei Datei-Shards; andere Coverage-Projekte: vier Projekt-Shards. E2E: vier voneinander isolierte Runner mit je einem Worker. Reportausgaben sind runnerlokal; nur validierte Artefakte werden aggregiert. Teilwiederholungen dürfen nur Evidenz derselben Quelle übernehmen. Keine Änderung am Release-Vertrag ohne negative Tests auf fehlende Shards und falsche Quelle.
 
+Alle Checkouts des PR-Workflows verwenden ausdrücklich den gemeldeten
+`github.event.pull_request.head.sha`. Der implizite GitHub-Merge-Ref kann
+zusätzlichen Main-Code enthalten und darf keine als Base-/Head-Nachweis
+ausgestellte Testausführung ersetzen. Das gilt auch für Scope und Aggregatoren.
+
 Die bestehende PR-Scope-CLI teilt die 14 Coverage-Partitionen anhand des
 Git-Diffs und der Projektmanifeste auf zwei Matrizen auf; sie installiert dafür
 keine Dependencies und startet Nx nicht. Schwere App-/Abfall-Shards gehören

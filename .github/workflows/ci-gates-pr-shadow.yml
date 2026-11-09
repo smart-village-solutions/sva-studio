@@ -36,6 +36,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
 
@@ -71,6 +72,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -96,6 +98,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -132,6 +135,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -168,6 +172,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -205,6 +210,7 @@ jobs:
       - name: Checkout Unit evidence validator
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: blob:none
           sparse-checkout: |
             .nvmrc
@@ -253,6 +259,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -284,6 +291,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -339,6 +347,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -387,6 +396,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - uses: ./.github/actions/setup-pnpm-workspace
         if: needs.scope.outputs.coverage_mode != 'skip'
@@ -425,6 +435,7 @@ jobs:
           test "$EARLY_RESULT" = success
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - uses: ./.github/actions/setup-pnpm-workspace
         if: needs.scope.outputs.coverage_mode != 'skip'
@@ -481,6 +492,7 @@ jobs:
       - name: Checkout Coverage evidence validators
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: blob:none
           sparse-checkout: |
             .nvmrc
@@ -525,6 +537,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -562,6 +575,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -591,6 +605,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
@@ -608,6 +623,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
       - name: Setup workspace
         if: needs.scope.outputs.a11y_mode != 'skip'
@@ -625,6 +641,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
@@ -646,6 +663,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
@@ -661,6 +679,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
       - name: Setup workspace
         if: needs.scope.outputs.documentation_catalog_mode != 'skip'
@@ -679,6 +698,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace

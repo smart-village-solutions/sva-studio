@@ -281,3 +281,16 @@ und überspringt ausschließlich beim Report-Merge die übrigen Testtarget-
 Abhängigkeiten. Testläufe und deren Pflicht-Gates bleiben unverändert.
 16 kleine Tests einschließlich deterministischer nativer Merge-Parität und
 Skript-Typecheck bestehen; die CI-Einsparung ist erst im nächsten Lauf messbar.
+
+### Tatsächlich getesteter PR-Quellstand
+
+Der PR-Lauf `42538589989` meldet Base `eb0c51e351ef24b4dc361df74b2198092cb5ef2f`
+und Head `df53a9a3a0dcec69f36165be54f58b79ae6bb228`, checkt tatsächlich aber
+GitHubs Merge `26d727e808dce7f3734659330533432f53fddad1` gegen den inzwischen
+weitergelaufenen Main `a921dc541b771898c47a118c55f17fb78041ec74` aus. Das erklärt
+zwei zusätzliche Plugin-Katalogfälle gegenüber dem exakten Main-/Referenzstand.
+Seine Zeiten sind diagnostisch; der Lauf und seine Wiederholungen zählen nicht
+als exakte Head-Abnahme. Sämtliche 20 PR-Checkouts werden explizit an den
+deklarierten Head gebunden; ein Vertragstest sichert Scope, Ausführung und
+Aggregation gemeinsam ab. Die normalen Vergleiche verwenden unveränderliche
+Basisbranches und sind von dieser beweglichen Main-Basis nicht betroffen.

@@ -12,6 +12,17 @@ describe('consolidated CI gate workflows', () => {
   const prGates = workflow('ci-gates-pr-shadow.yml');
   const mainGates = workflow('ci-gates-main-shadow.yml');
 
+  it('tests the declared PR head instead of an independently updated merge ref', () => {
+    const checkouts = prGates.split(/^      - /mu).filter((step) =>
+      step.includes('uses: actions/checkout@')
+    );
+
+    expect(checkouts.length).toBeGreaterThan(0);
+    for (const checkout of checkouts) {
+      expect(checkout).toContain('ref: ${{ github.event.pull_request.head.sha }}');
+    }
+  });
+
   it('publishes exactly the seven stable required names from the PR workflow', () => {
     expect(prGates).toContain('name: CI Gates (PR)');
     expect(prGates).toContain('on:\n  pull_request:');

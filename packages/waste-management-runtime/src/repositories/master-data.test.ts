@@ -1818,6 +1818,6 @@ it('lists, upserts, and deletes holiday rule records with scope and strategy fil
   ]);
 
   expect(list.statements[0]?.text).toContain('FROM waste_holiday_rules');
-  expect(list.statements[0]?.text).toContain('holiday_date::text');
+  expect(list.statements[0]?.text).toContain("to_char(holiday_date, 'YYYY-MM-DD') AS holiday_date");
   expect(list.statements[0]?.values).toEqual(['NW', 2026]);
 });

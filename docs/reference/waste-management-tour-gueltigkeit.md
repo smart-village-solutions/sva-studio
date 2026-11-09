@@ -55,6 +55,8 @@ werden als `published`, mit `active = false` als `draft` übernommen.
 
 ## Ortstermine an die App übertragen
 
+Der Mainserver erhält die effektiven Abholtermine einschließlich tourbezogener, globaler und konfigurierter Feiertagsverschiebungen. Feiertage werden bereits beim Lesen aus PostgreSQL als reine Datumswerte (`YYYY-MM-DD`) ausgegeben, damit die Terminberechnung sie ohne Zeitzonenumrechnung berücksichtigt. Der Abgleich vergleicht das aktuelle und das nächste Kalenderjahr, löscht nicht mehr zum Sollbestand gehörende Termine und legt die korrigierten Termine anschließend an. Nach einer Korrektur der Terminberechnung ist ein erneuter Mainserver-Abgleich erforderlich; erst dessen erfolgreicher Abschluss und die Prüfung des übertragenen Bestands bestätigen die Bereinigung.
+
 Ein Termin für einen aktiven Abholort mit `Alle Straßen` gilt beim Mainserver-Abgleich für alle vorhandenen aktiven Straßen- und Hausnummernadressen desselben Orts. Das gilt sowohl für berechnete Tourtermine als auch für explizite Einsätze, etwa des Schadstoffmobils. Der Termin bleibt im Studio einmal auf Ortsebene gepflegt; erst die Transferaufbereitung erzeugt die konkreten Straßentermine für die bestehende App-Schnittstelle.
 
 Die Transferaufbereitung erkennt sowohl Abholorte ohne Straßen-ID als auch die unterstützte Importdarstellung mit einer eigenen Straße namens `Alle Straßen`. Bei importierten Abholorten bleibt auch die bisherige Sammeladresse als Transferziel erhalten, damit Orte ohne konkrete Straßen ihren Kalender behalten. Die öffentliche Web-/PDF-Abfrage benötigt für die Vererbung weiterhin einen Abholort ohne Straßen-ID; eine importierte Sammelstraße allein ersetzt diese Ortszuordnung dort nicht.

@@ -37,6 +37,11 @@ const collectSpecTestIds = (spec: unknown, executed: boolean, allowRetry: boolea
       typeof test.expectedStatus !== 'string'
     )
       throw new Error('E2E-Projekt fehlt.');
+    if (
+      !['passed', 'failed', 'skipped'].includes(test.expectedStatus) ||
+      (test.projectName === 'auth-setup' && test.expectedStatus !== 'passed')
+    )
+      throw new Error('Ungültiger erwarteter E2E-Teststatus.');
     if (executed) {
       const results = Array.isArray(test.results) ? test.results : [];
       const lastResult = results.at(-1);
@@ -49,7 +54,9 @@ const collectSpecTestIds = (spec: unknown, executed: boolean, allowRetry: boolea
     }
     if (test.projectName !== 'chromium' && test.projectName !== 'auth-setup')
       throw new Error('Unerwartetes E2E-Projekt.');
-    ids.push(`${test.projectName}:${spec.id}:${test.expectedStatus}`);
+    // Runtime test.skip() changes expectedStatus after discovery, including in
+    // existing hotfix sources. Validate outcomes above, independently of identity.
+    ids.push(`${test.projectName}:${spec.id}`);
   }
   return ids;
 };

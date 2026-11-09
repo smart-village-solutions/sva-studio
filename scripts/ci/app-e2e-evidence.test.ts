@@ -276,7 +276,10 @@ describe('App E2E shard completeness', () => {
       },
     ],
   });
-  const withShards = (run: (directory: string) => void) => {
+  const withShards = (
+    run: (directory: string) => void,
+    amendResults: (results: ReturnType<typeof report>) => void = () => {}
+  ) => {
     const directory = mkdtempSync(join(tmpdir(), 'app-e2e-shards-'));
     const shards = join(directory, 'shards');
     try {
@@ -284,7 +287,9 @@ describe('App E2E shard completeness', () => {
       const results = join(directory, 'results.json');
       writeFileSync(manifest, JSON.stringify(report(['a', 'b', 'c', 'd'])));
       for (let shard = 1; shard <= 4; shard += 1) {
-        writeFileSync(results, JSON.stringify(report(['abcd'[shard - 1]])));
+        const shardReport = report(['abcd'[shard - 1]]);
+        amendResults(shardReport);
+        writeFileSync(results, JSON.stringify(shardReport));
         writeAppE2EShardEvidenceFromEnvironment({
           APP_E2E_SHARD_INDEX: String(shard),
           APP_E2E_SOURCE_SHA: sha,
@@ -307,6 +312,52 @@ describe('App E2E shard completeness', () => {
     );
   });
 
+  it('accepts runtime skips from older hotfix sources without changing test identity', () => {
+    // Older release smoke tests call test.skip() inside their body: --list
+    // reports expectedStatus=passed, execution reports expectedStatus=skipped.
+    withShards(
+      (directory) => expect(() => validateAppE2EShards(directory, sha, '123')).not.toThrow(),
+      (results) => {
+        const test = results.suites[1].specs[0].tests[0];
+        test.expectedStatus = 'skipped';
+        test.results = [{ status: 'skipped' }];
+      }
+    );
+  });
+
+  it.each([
+    ['passed', 'skipped'],
+    ['skipped', 'passed'],
+    ['passed', 'failed'],
+    ['passed', 'timedOut'],
+    ['passed', 'interrupted'],
+    ['unknown', 'unknown'],
+  ])('rejects expected status %s with actual status %s', (expectedStatus, status) => {
+    expect(() =>
+      withShards(
+        () => {},
+        (results) => {
+          const test = results.suites[1].specs[0].tests[0];
+          test.expectedStatus = expectedStatus;
+          test.results = [{ status }];
+        }
+      )
+    ).toThrow();
+  });
+
+  it('rejects a runtime-skipped authentication setup', () => {
+    expect(() =>
+      withShards(
+        () => {},
+        (results) => {
+          const setup = results.suites[0].specs[0].tests[0];
+          setup.expectedStatus = 'skipped';
+          setup.results = [{ status: 'skipped' }];
+        }
+      )
+    ).toThrow();
+  });
+
   it('rejects a missing shard', () => {
     withShards((directory) => {
       unlinkSync(join(directory, 'app-e2e-shard-4.json'));
@@ -322,11 +373,11 @@ describe('App E2E shard completeness', () => {
     { testOutcome: 'cancelled' },
     { manifestHash: 'forged' },
     { executedTestIds: [] },
-    { executedTestIds: ['auth-setup:setup:passed'] },
-    { executedTestIds: ['auth-setup:setup:passed', 'chromium:b:passed', 'chromium:b:passed'] },
-    { executedTestIds: ['auth-setup:setup:passed', 'chromium:foreign'] },
-    { executedTestIds: ['auth-setup:setup:passed', 'chromium:b:skipped'] },
-    { executedTestIds: ['auth-setup:setup:passed', 'chromium:a:passed'] },
+    { executedTestIds: ['auth-setup:setup'] },
+    { executedTestIds: ['auth-setup:setup', 'chromium:b', 'chromium:b'] },
+    { executedTestIds: ['auth-setup:setup', 'chromium:foreign'] },
+    { executedTestIds: ['auth-setup:setup', 'chromium:b:skipped'] },
+    { executedTestIds: ['auth-setup:setup', 'chromium:a'] },
     { extra: true },
   ])('rejects incomplete, overlapping or foreign evidence %j', (patch) => {
     withShards((directory) => {

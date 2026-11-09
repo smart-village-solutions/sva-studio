@@ -304,6 +304,12 @@ Das Auth-Setup wird in jedem isolierten Stack erneut geprüft. Erst danach wird
 die unveränderte externe E2E-Evidenz erzeugt. Main bleibt ohne Retry; diagnostische
 Läufe bleiben diagnostisch. Hotfix-Testquelle und vertrauenswürdiger
 Workflow-Controller bleiben getrennt. Einzelne Shards sind keine Release-Freigabe.
+Die Testidentität besteht aus Playwright-Projekt und Spec-ID; der erwartete
+Ergebnisstatus wird separat gegen das tatsächliche Ergebnis geprüft. Damit
+bleiben auch Hotfix-Quellen kompatibel, deren Tests erst im Testkörper
+`test.skip()` aufrufen. Das Auth-Setup muss in jedem Shard erfolgreich sein;
+unerwartete Ergebnisse, fehlende Tests und überlappende Teilmengen werden
+weiterhin abgelehnt.
 
 Die historischen Messungen stehen unter
 `docs/reports/unit-complete-sharding-1328.md` und

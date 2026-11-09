@@ -467,10 +467,7 @@ describe('ContentListPage', () => {
       '/admin/content/new'
     );
     expect(screen.getByText('1–2 von 2 Inhalten')).toBeTruthy();
-    expect(screen.getByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' })).toBeTruthy();
-    expect(
-      screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile content-1 auswählen' })
-    ).toHaveLength(2);
+    expect(screen.queryAllByRole('checkbox', { name: /Inhalte:.*auswählen/ })).toHaveLength(0);
     expect(
       screen.getAllByRole('link', { name: 'Startseite bearbeiten' })[0]?.getAttribute('href')
     ).toBe('/admin/news/content-1');
@@ -1657,10 +1654,7 @@ describe('ContentListPage', () => {
 
     expect(screen.queryByRole('button', { name: 'Löschen (Auswahl)' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Archivieren (Auswahl)' })).toBeNull();
-    expect(screen.getByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' })).toBeTruthy();
-    expect(
-      screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile content-1 auswählen' })
-    ).toHaveLength(2);
+    expect(screen.queryAllByRole('checkbox', { name: /Inhalte:.*auswählen/ })).toHaveLength(0);
   });
 
   it('shows local-only bulk actions when the current page contains IAM content', async () => {
@@ -2038,6 +2032,72 @@ describe('ContentListPage', () => {
       await waitFor(() => expect(refetchWithOutcome).toHaveBeenCalledOnce());
     }
   );
+
+  it('bulk deletes permitted vouchers through their own mutation and retries only failed rows', async () => {
+    searchState = { type: 'vouchers.voucher' };
+    const remove = vi
+      .fn(async () => undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('delete failed'));
+    const voucherIndex = registryDefinitions.findIndex(
+      (definition) => definition.contentType === 'vouchers.voucher'
+    );
+    registryDefinitions[voucherIndex] = {
+      ...registryDefinitions[voucherIndex]!,
+      mutations: { delete: { requiredAction: 'vouchers.delete', execute: remove } },
+    };
+    const access = useContentAccessMock();
+    const setPermission = (allowed: boolean) =>
+      useContentAccessMock.mockReturnValue({
+        ...access,
+        permissionActions: [
+          'content.delete',
+          'vouchers.read',
+          ...(allowed ? ['vouchers.delete'] : []),
+        ],
+      });
+    setPermission(false);
+    const deleteContents = vi.fn();
+    const refetchWithOutcome = vi.fn(async () => true);
+    useContentsMock.mockReturnValue(
+      createContentsApiResult({
+        contents: [
+          { ...mutationRow, contentType: 'vouchers.voucher' },
+          { ...mutationRow, contentType: 'vouchers.voucher', id: 'item-2' },
+        ],
+        deleteContents,
+        refetchWithOutcome,
+      })
+    );
+
+    const view = render(<ContentListPage />);
+    const selectAll = 'Inhalte: Alle Zeilen auswählen';
+    expect(screen.queryByRole('checkbox', { name: selectAll })).toBeNull();
+
+    setPermission(true);
+    view.rerender(<ContentListPage />);
+    fireEvent.click(screen.getByRole('checkbox', { name: selectAll }));
+    expect(screen.queryByRole('button', { name: 'Archivieren (Auswahl)' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen (Auswahl)' }));
+    const dialog = screen.getByRole('alertdialog');
+    expect(within(dialog).getByText(/2 ausgewählte Inhalte.*Restdaten/)).toBeTruthy();
+    expect(remove).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+
+    expect(await within(dialog).findByRole('alert')).toBeTruthy();
+    expect(remove.mock.calls).toEqual([
+      ['item-1', 'user'],
+      ['item-2', 'user'],
+    ]);
+    expect(within(dialog).getByText(/1 ausgewählte Inhalte/)).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(remove).toHaveBeenCalledTimes(3);
+    expect(remove).toHaveBeenLastCalledWith('item-2', 'user');
+    expect(deleteContents).not.toHaveBeenCalled();
+    expect(refetchWithOutcome).toHaveBeenCalledTimes(2);
+  });
 
   it('uses the shared list, dialog, delete and refresh path for an additional contribution', async () => {
     const remove = vi.fn(async () => undefined);

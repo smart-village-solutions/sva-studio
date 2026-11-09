@@ -27,7 +27,6 @@ import {
 } from './-content-list-route-state';
 import {
   ContentRowActions,
-  isBulkActionableContent,
   resolveListMutationPrincipal,
   useContentColumns,
   type RegisteredContentRow,
@@ -167,6 +166,7 @@ export const ContentListTable = ({
   routeState,
   registeredContents,
   bulkActionButtons,
+  canSelectContent,
   readableContentTypes,
   effectivePermissionActions,
   enabledMainserverMutationActions,
@@ -185,6 +185,7 @@ export const ContentListTable = ({
   routeState: ContentListRouteState;
   registeredContents: readonly RegisteredContentRow[];
   bulkActionButtons: readonly StudioBulkAction<RegisteredContentRow>[];
+  canSelectContent: (item: RegisteredContentRow) => boolean;
   readableContentTypes: readonly (typeof studioContentTypes)[number][];
   effectivePermissionActions: readonly string[];
   enabledMainserverMutationActions: readonly string[];
@@ -238,8 +239,8 @@ export const ContentListTable = ({
         data={registeredContents}
         columns={contentColumns}
         getRowId={(item) => item.id}
-        selectionMode="multiple"
-        canSelectRow={isBulkActionableContent}
+        selectionMode={bulkActionButtons.length > 0 ? 'multiple' : 'none'}
+        canSelectRow={canSelectContent}
         bulkActions={bulkActionButtons}
         isLoading={
           contentsApi.isLoading ||

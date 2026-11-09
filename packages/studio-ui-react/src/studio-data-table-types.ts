@@ -15,7 +15,7 @@ export type StudioDataTableLabels = Readonly<{
 export type StudioBulkAction<TData> = Readonly<{
   id: string;
   label: React.ReactNode;
-  disabled?: boolean;
+  disabled?: boolean | ((selectedRows: readonly TData[]) => boolean);
   variant?: ButtonProps['variant'];
   onClick: (context: { selectedRows: TData[]; clearSelection: () => void }) => void | Promise<void>;
   render?: React.ReactNode;

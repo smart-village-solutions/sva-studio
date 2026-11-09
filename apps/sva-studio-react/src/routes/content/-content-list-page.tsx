@@ -259,6 +259,7 @@ export const ContentListPage = ({
     rowDeleteError,
     setRowDeleteError,
     pendingBulkDeletion,
+    bulkDialog,
     setPendingBulkDeletion,
     bulkDeletePending,
     bulkDeleteError,
@@ -267,6 +268,7 @@ export const ContentListPage = ({
     confirmRowDeletion,
     confirmBulkDeletion,
     bulkActionButtons,
+    canSelectContent,
   } = useContentListDeletion({
     permissionActions: effectivePermissionActions,
     enabledMainserverMutationActions,
@@ -293,7 +295,7 @@ export const ContentListPage = ({
       {destructiveResult ? (
         <StudioPersistentActionResult
           kind={destructiveResult.kind}
-          title={t('content.messages.deleteSuccessTitle')}
+          title={destructiveResult.title ?? t('content.messages.deleteSuccessTitle')}
           description={destructiveResult.description}
           dismissLabel={t('content.actions.dismissFeedback')}
           onDismiss={() => setDestructiveResult(null)}
@@ -338,6 +340,7 @@ export const ContentListPage = ({
         routeState={routeState}
         registeredContents={registeredContents}
         bulkActionButtons={bulkActionButtons}
+        canSelectContent={canSelectContent}
         readableContentTypes={readableContentTypes}
         effectivePermissionActions={effectivePermissionActions}
         enabledMainserverMutationActions={enabledMainserverMutationActions}
@@ -376,12 +379,7 @@ export const ContentListPage = ({
 
       <StudioDestructiveActionDialog
         open={pendingBulkDeletion !== null}
-        title={t('content.actions.deleteBulkConfirmTitle')}
-        description={t('content.actions.deleteBulkConfirmDescription', {
-          count: pendingBulkDeletion?.selectedRows.length ?? 0,
-        })}
-        confirmLabel={t('content.actions.delete')}
-        pendingLabel={t('content.actions.deletePending')}
+        {...bulkDialog}
         cancelLabel={t('content.actions.cancel')}
         pending={bulkDeletePending}
         errorMessage={bulkDeleteError}

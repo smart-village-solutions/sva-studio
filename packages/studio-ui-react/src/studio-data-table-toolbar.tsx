@@ -37,7 +37,11 @@ export function StudioDataTableToolbar<TData>({
         type="button"
         variant={action.variant ?? 'secondary'}
         className="disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground"
-        disabled={action.disabled ?? selectedRows.length === 0}
+        disabled={
+          typeof action.disabled === 'function'
+            ? selectedRows.length === 0 || action.disabled(selectedRows)
+            : (action.disabled ?? selectedRows.length === 0)
+        }
         onClick={() => void action.onClick({ selectedRows, clearSelection })}
       >
         {action.label}

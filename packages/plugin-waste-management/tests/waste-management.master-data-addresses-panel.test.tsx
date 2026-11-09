@@ -301,9 +301,10 @@ describe('Waste master-data addresses panel', () => {
         );
       };
       const { container } = render(<RouteHarness />);
+      expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
       const names = () =>
         [...container.querySelectorAll('tbody tr')].map(
-          (row) => row.querySelectorAll('td')[1]?.textContent
+          (row) => row.querySelector('td')?.textContent
         );
       const first = addressEntityType === 'houseNumber' ? '2' : 'Alpha';
       const last = addressEntityType === 'houseNumber' ? '10' : 'Zulu';

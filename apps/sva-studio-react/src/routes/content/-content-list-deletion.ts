@@ -2,15 +2,22 @@ import {
   readStudioDestructiveNavigationFeedback,
   removeStudioActionNavigationFeedback,
   type MainserverPrincipalControlModel,
-  type StudioBulkAction,
 } from '@sva/studio-ui-react';
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import React from 'react';
-import { useContents } from '../../hooks/use-contents';
+import { useContents, type ContentBulkMutationResult } from '../../hooks/use-contents';
 import { t } from '../../i18n';
+import {
+  deleteSelectedContents,
+  updateVoucherSelection,
+  buildBulkActionButtons,
+  voucherBulkStatusLabel,
+  voucherStatusEligibility,
+  type PendingBulkAction,
+} from './-content-list-bulk-actions';
 import { type ContentListRouteState, type RouteSearchState } from './-content-list-route-state';
 import {
-  buildBulkActionLabel,
+  canDeleteMainserverItem,
   deleteMainserverItem,
   resolveRowAccess,
   isBulkActionableContent,
@@ -20,83 +27,79 @@ import {
 
 type ContentDeletionResult = Readonly<{
   kind: 'success';
+  title?: string;
   description: string;
 }>;
-type PendingBulkDeletion = Readonly<{
-  clearSelection: () => void;
-  selectedRows: readonly RegisteredContentRow[];
-}>;
+const withVoucherDeletionWarning = (description: string, contentType?: string): string =>
+  contentType === 'vouchers.voucher'
+    ? `${description} ${t('content.actions.deleteVoucherWarning')}`
+    : description;
 
-const useBulkActionButtons = ({
-  contentsApi,
-  routeState,
-  hasBulkActionableContents,
-  unscopedPermissionActions,
-  setBulkDeleteError,
-  setPendingBulkDeletion,
-}: Readonly<{
-  contentsApi: ReturnType<typeof useContents>;
-  routeState: ContentListRouteState;
-  hasBulkActionableContents: boolean;
-  unscopedPermissionActions: readonly string[];
-  setBulkDeleteError: React.Dispatch<React.SetStateAction<string | null>>;
-  setPendingBulkDeletion: React.Dispatch<React.SetStateAction<PendingBulkDeletion | null>>;
-}>): readonly StudioBulkAction<RegisteredContentRow>[] => {
-  return React.useMemo<readonly StudioBulkAction<RegisteredContentRow>[]>(
-    () =>
-      hasBulkActionableContents
-        ? [
-            {
-              id: 'archive-selection',
-              label: buildBulkActionLabel('content.actions.archive'),
-              disabled: !unscopedPermissionActions.includes('content.archive'),
-              onClick: async ({ selectedRows, clearSelection }) => {
-                if (selectedRows.length === 0) {
-                  return;
-                }
-                await contentsApi.archiveContents({
-                  actionId: 'content.archive',
-                  contentIds: selectedRows.map((item) => item.id),
-                  matchingCount: selectedRows.length,
-                  page: routeState.page,
-                  pageSize: routeState.pageSize,
-                  selectionMode: 'explicitIds',
-                  sort: routeState.sort,
-                  statusFilter: routeState.status,
-                });
-                clearSelection();
-              },
-            },
-            {
-              id: 'delete-selection',
-              label: buildBulkActionLabel('content.actions.delete'),
-              disabled: !unscopedPermissionActions.includes('content.delete'),
-              variant: 'destructive',
-              onClick: ({ selectedRows, clearSelection }) => {
-                if (selectedRows.length === 0) return;
-                setBulkDeleteError(null);
-                setPendingBulkDeletion({ selectedRows, clearSelection });
-              },
-            },
-          ]
-        : [],
-    [
-      contentsApi,
-      hasBulkActionableContents,
-      routeState.page,
-      routeState.pageSize,
-      routeState.sort,
-      routeState.status,
-      unscopedPermissionActions,
-    ]
-  );
+const bulkDialogCopy = (pending: PendingBulkAction | null) => {
+  const status = pending?.targetStatus;
+  const count = pending?.selectedRows.length ?? 0;
+  return status
+    ? {
+        title: voucherBulkStatusLabel(status),
+        description: t('content.actions.bulkStatusConfirm', {
+          count,
+          status: t(`content.status.${status}`),
+        }),
+        confirmLabel: voucherBulkStatusLabel(status),
+        pendingLabel: t('content.messages.loading'),
+      }
+    : {
+        title: t('content.actions.deleteBulkConfirmTitle'),
+        description: withVoucherDeletionWarning(
+          t('content.actions.deleteBulkConfirmDescription', { count }),
+          pending?.selectedRows[0]?.contentType
+        ),
+        confirmLabel: t('content.actions.delete'),
+        pendingLabel: t('content.actions.deletePending'),
+      };
 };
 
-const useDestructiveFeedbackNavigation = (
-  locationState: unknown,
-  navigate: ReturnType<typeof useNavigate>,
-  setDestructiveResult: React.Dispatch<React.SetStateAction<ContentDeletionResult | null>>
-): void => {
+const bulkError = (pending: PendingBulkAction, failedCount: number): string =>
+  t(pending.targetStatus ? 'content.actions.bulkStatusError' : 'content.messages.deleteBulkError', {
+    failedCount,
+  });
+
+const bulkSuccess = (
+  pending: PendingBulkAction,
+  result: ContentBulkMutationResult
+): ContentDeletionResult => {
+  if (pending.targetStatus) {
+    const description = t('content.actions.bulkStatusSuccess');
+    return {
+      kind: 'success',
+      title: t('content.history.actions.statusChanged'),
+      description: result.refreshFailed
+        ? `${description} ${t('content.messages.loadError')}`
+        : description,
+    };
+  }
+  return {
+    kind: 'success',
+    description: result.refreshFailed
+      ? t('content.messages.deleteRefreshError')
+      : t('content.messages.deleteBulkSuccess', { count: result.acceptedCount }),
+  };
+};
+
+const useDestructiveFeedback = () => {
+  const navigate = useNavigate();
+  const locationState = useLocation().state;
+  const [destructiveResult, setDestructiveResult] = React.useState<ContentDeletionResult | null>(
+    () => {
+      const feedback = readStudioDestructiveNavigationFeedback(locationState);
+      return feedback
+        ? {
+            kind: 'success',
+            description: t('content.messages.deleteSuccess', { id: feedback.resourceId }),
+          }
+        : null;
+    }
+  );
   React.useEffect(() => {
     const feedback = readStudioDestructiveNavigationFeedback(locationState);
     if (!feedback) return;
@@ -110,8 +113,19 @@ const useDestructiveFeedbackNavigation = (
       search: (current: RouteSearchState) => current,
       state: (previous) => removeStudioActionNavigationFeedback(previous),
     });
-  }, [locationState, navigate, setDestructiveResult]);
+  }, [locationState, navigate]);
+  return [destructiveResult, setDestructiveResult] as const;
 };
+
+type ContentListDeletionInput = Readonly<{
+  contentsApi: ReturnType<typeof useContents>;
+  routeState: ContentListRouteState;
+  registeredContents: readonly RegisteredContentRow[];
+  principalControl: MainserverPrincipalControlModel | undefined;
+  unscopedPermissionActions: readonly string[];
+  permissionActions: readonly string[];
+  enabledMainserverMutationActions: readonly string[];
+}>;
 
 export const useContentListDeletion = ({
   contentsApi,
@@ -121,67 +135,67 @@ export const useContentListDeletion = ({
   unscopedPermissionActions,
   permissionActions,
   enabledMainserverMutationActions,
-}: Readonly<{
-  contentsApi: ReturnType<typeof useContents>;
-  routeState: ContentListRouteState;
-  registeredContents: readonly RegisteredContentRow[];
-  principalControl: MainserverPrincipalControlModel | undefined;
-  unscopedPermissionActions: readonly string[];
-  permissionActions: readonly string[];
-  enabledMainserverMutationActions: readonly string[];
-}>) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [destructiveResult, setDestructiveResult] = React.useState<ContentDeletionResult | null>(
-    () => {
-      const feedback = readStudioDestructiveNavigationFeedback(location.state);
-      return feedback
-        ? {
-            kind: 'success',
-            description: t('content.messages.deleteSuccess', { id: feedback.resourceId }),
-          }
-        : null;
-    }
-  );
+}: ContentListDeletionInput) => {
+  const [destructiveResult, setDestructiveResult] = useDestructiveFeedback();
   const [pendingRowDeletion, setPendingRowDeletion] = React.useState<RegisteredContentRow | null>(
     null
   );
   const [rowDeletePending, setRowDeletePending] = React.useState(false);
   const [rowDeleteError, setRowDeleteError] = React.useState<string | null>(null);
-  const [pendingBulkDeletion, setPendingBulkDeletion] = React.useState<PendingBulkDeletion | null>(
+  const [pendingBulkDeletion, setPendingBulkDeletion] = React.useState<PendingBulkAction | null>(
     null
   );
   const [bulkDeletePending, setBulkDeletePending] = React.useState(false);
   const [bulkDeleteError, setBulkDeleteError] = React.useState<string | null>(null);
   const deleteFocusFallbackRef = React.useRef<HTMLElement | null>(null);
-  useDestructiveFeedbackNavigation(location.state, navigate, setDestructiveResult);
-  const hasBulkActionableContents = React.useMemo(
-    () => registeredContents.some(isBulkActionableContent),
-    [registeredContents]
+  const voucherSelection = routeState.type === 'vouchers.voucher';
+  const canDeleteVoucher = (item: RegisteredContentRow): boolean =>
+    item.contentType === 'vouchers.voucher' &&
+    resolveRowAccess(item.access, contentsApi.error).canRead &&
+    item.access?.state !== 'server_denied' &&
+    resolveListMutationPrincipal(item, principalControl) !== undefined &&
+    canDeleteMainserverItem(item.contentType, permissionActions, enabledMainserverMutationActions);
+  const canChangeVoucherStatus = voucherStatusEligibility(
+    principalControl,
+    permissionActions,
+    enabledMainserverMutationActions
   );
+  const canSelectContent = (item: RegisteredContentRow): boolean =>
+    voucherSelection
+      ? canDeleteVoucher(item) || canChangeVoucherStatus(item)
+      : isBulkActionableContent(item);
 
-  const confirmRowDeletion = React.useCallback(async () => {
+  const deleteMainserverRow = async (item: RegisteredContentRow): Promise<void> => {
+    const currentItem = registeredContents.find(
+      (row) => row.id === item.id && row.contentType === item.contentType
+    );
+    if (
+      !currentItem ||
+      !resolveRowAccess(currentItem.access, contentsApi.error).canRead ||
+      currentItem.access?.state === 'server_denied'
+    ) {
+      throw new Error('content_mutation_unavailable');
+    }
+    const principal = resolveListMutationPrincipal(currentItem, principalControl);
+    if (!principal) {
+      throw new Error('mainserver_mutation_principal_unavailable');
+    }
+    await deleteMainserverItem(
+      item.contentType,
+      item.id,
+      principal,
+      permissionActions,
+      enabledMainserverMutationActions
+    );
+  };
+
+  const confirmRowDeletion = async () => {
     const item = pendingRowDeletion;
     if (!item || rowDeletePending) return;
     setRowDeletePending(true);
     setRowDeleteError(null);
     try {
-      const currentItem = registeredContents.find(
-        (row) => row.id === item.id && row.contentType === item.contentType
-      );
-      if (!currentItem || !resolveRowAccess(currentItem.access, contentsApi.error).canRead)
-        throw new Error('content_mutation_unavailable');
-      const principal = resolveListMutationPrincipal(currentItem, principalControl);
-      if (!principal) {
-        throw new Error('mainserver_mutation_principal_unavailable');
-      }
-      await deleteMainserverItem(
-        item.contentType,
-        item.id,
-        principal,
-        permissionActions,
-        enabledMainserverMutationActions
-      );
+      await deleteMainserverRow(item);
     } catch {
       setRowDeleteError(t('content.messages.deleteError'));
       setRowDeletePending(false);
@@ -201,37 +215,32 @@ export const useContentListDeletion = ({
       });
     }
     setRowDeletePending(false);
-  }, [
-    contentsApi,
-    pendingRowDeletion,
-    principalControl,
-    rowDeletePending,
-    permissionActions,
-    enabledMainserverMutationActions,
-    registeredContents,
-  ]);
+  };
 
-  const confirmBulkDeletion = React.useCallback(async () => {
+  const confirmBulkDeletion = async () => {
     const pending = pendingBulkDeletion;
     if (!pending || bulkDeletePending) return;
     setBulkDeletePending(true);
     setBulkDeleteError(null);
     let result: Awaited<ReturnType<typeof contentsApi.deleteContents>>;
     try {
-      result = await contentsApi.deleteContents({
-        actionId: 'content.delete',
-        contentIds: pending.selectedRows.map((item) => item.id),
-        matchingCount: pending.selectedRows.length,
-        page: routeState.page,
-        pageSize: routeState.pageSize,
-        selectionMode: 'explicitIds',
-        sort: routeState.sort,
-        statusFilter: routeState.status,
-      });
+      const status = pending.targetStatus;
+      result = status
+        ? await updateVoucherSelection(pending.selectedRows, status, {
+            registeredContents,
+            principalControl,
+            permissionActions,
+            enabledMainserverMutationActions,
+            refresh: contentsApi.refetchWithOutcome,
+          })
+        : await deleteSelectedContents(
+            pending.selectedRows,
+            contentsApi,
+            routeState,
+            deleteMainserverRow
+          );
     } catch {
-      setBulkDeleteError(
-        t('content.messages.deleteBulkError', { failedCount: pending.selectedRows.length })
-      );
+      setBulkDeleteError(bulkError(pending, pending.selectedRows.length));
       setBulkDeletePending(false);
       return;
     }
@@ -243,46 +252,44 @@ export const useContentListDeletion = ({
         ...pending,
         selectedRows: pending.selectedRows.filter((item) => failedIds.has(item.id)),
       });
-      setBulkDeleteError(
-        t('content.messages.deleteBulkError', { failedCount: result.failedCount })
-      );
+      setBulkDeleteError(bulkError(pending, result.failedCount));
       return;
     }
 
     pending.clearSelection();
     setPendingBulkDeletion(null);
-    setDestructiveResult({
-      kind: 'success',
-      description: result.refreshFailed
-        ? t('content.messages.deleteRefreshError')
-        : t('content.messages.deleteBulkSuccess', { count: result.acceptedCount }),
-    });
-  }, [bulkDeletePending, contentsApi, pendingBulkDeletion, routeState]);
+    setDestructiveResult(bulkSuccess(pending, result));
+  };
 
-  const bulkActionButtons = useBulkActionButtons({
+  const bulkActionButtons = buildBulkActionButtons({
     contentsApi,
     routeState,
-    hasBulkActionableContents,
+    registeredContents,
+    canDeleteVoucher,
+    canChangeVoucherStatus,
+    voucherSelection,
     unscopedPermissionActions,
-    setBulkDeleteError,
-    setPendingBulkDeletion,
+    requestBulkAction: (pending) => {
+      if (pending.selectedRows.length === 0) return;
+      setBulkDeleteError(null);
+      setPendingBulkDeletion(pending);
+    },
   });
 
   return {
     destructiveResult,
     setDestructiveResult,
     pendingRowDeletion,
-    rowDeleteDescription: t(
-      pendingRowDeletion?.contentType === 'vouchers.voucher'
-        ? 'content.actions.deleteVoucherConfirmDescription'
-        : 'content.actions.deleteConfirmDescription',
-      { title: pendingRowDeletion?.title ?? '' }
+    rowDeleteDescription: withVoucherDeletionWarning(
+      t('content.actions.deleteConfirmDescription', { title: pendingRowDeletion?.title ?? '' }),
+      pendingRowDeletion?.contentType
     ),
     setPendingRowDeletion,
     rowDeletePending,
     rowDeleteError,
     setRowDeleteError,
     pendingBulkDeletion,
+    bulkDialog: bulkDialogCopy(pendingBulkDeletion),
     setPendingBulkDeletion,
     bulkDeletePending,
     bulkDeleteError,
@@ -291,5 +298,6 @@ export const useContentListDeletion = ({
     confirmRowDeletion,
     confirmBulkDeletion,
     bulkActionButtons,
+    canSelectContent,
   };
 };

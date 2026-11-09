@@ -94,7 +94,9 @@ for (const distRoot of distRoots) walk(distRoot);"
 RUN pnpm exec tsx scripts/ci/check-production-jsx-runtime.ts /workspace/apps/sva-studio-react
 # pnpm 11 shared-lockfile deploy corrupts remote tarball IDs with workspace peers.
 # Remove --legacy when modern deploy preserves those dependency IDs correctly.
-RUN pnpm --filter sva-studio-react deploy --legacy --prod /workspace/.deploy/sva-studio-react
+# Legacy deploy changes the builder install state to production; restore only builder tools.
+RUN pnpm --filter sva-studio-react deploy --legacy --prod /workspace/.deploy/sva-studio-react \
+    && pnpm install --frozen-lockfile --prod=false
 RUN pnpm exec tsx scripts/ci/studio-distribution-artifact.ts prune-deploy \
       /workspace/.deploy/sva-studio-react "${SVA_STUDIO_DISTRIBUTION}"
 RUN node -e 'const manifest = require("./apps/sva-studio-react/.output/server/generated/studio-distribution.json"); const expected = process.env.SVA_STUDIO_DISTRIBUTION === "custom" ? process.env.SVA_STUDIO_PLUGIN_SET_FINGERPRINT : undefined; if (manifest.distribution !== process.env.SVA_STUDIO_DISTRIBUTION || manifest.pluginSetFingerprint !== expected) { throw new Error("studio_plugin_set_image_metadata_mismatch"); }'

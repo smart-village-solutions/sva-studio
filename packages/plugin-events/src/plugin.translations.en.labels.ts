@@ -59,7 +59,7 @@ export const eventsENLabels = {
     weekday: 'Weekday',
     useOnlyTimeDescription: 'Use time note only',
     organizerName: 'Organization/company',
-    organizerNameHelp: 'Required as soon as further organizer details are entered.',
+    organizerNameHelp: 'Required once you enter an email, phone number, or organizer address.',
     firstName: 'First name',
     lastName: 'Last name',
     fax: 'Fax',

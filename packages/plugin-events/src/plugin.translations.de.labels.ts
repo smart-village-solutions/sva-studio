@@ -59,7 +59,8 @@ export const eventsDELabels = {
     weekday: 'Wochentag',
     useOnlyTimeDescription: 'Nur Zeit-Hinweis verwenden',
     organizerName: 'Institution/Firma',
-    organizerNameHelp: 'Erforderlich, sobald weitere Veranstalterangaben ausgefüllt werden.',
+    organizerNameHelp:
+      'Erforderlich, sobald Sie E-Mail, Telefon oder eine Adresse des Veranstalters eintragen.',
     firstName: 'Vorname',
     lastName: 'Nachname',
     fax: 'Fax',

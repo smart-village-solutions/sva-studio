@@ -652,6 +652,38 @@ describe('EventsDetailPage', () => {
     expect((screen.getByLabelText('Enddatum') as HTMLInputElement).value).toBe('12.06.2026');
   });
 
+  it('opens a loaded organizer address and saves it unchanged', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1278',
+      title: 'Stadtfest',
+      organizer: {
+        name: 'Kulturamt',
+        address: { street: 'Marktplatz 1', zip: '12345', city: 'Linz' },
+        contact: { firstName: 'Erika', fax: '0123 99' },
+      },
+    } as never);
+    vi.mocked(updateEvent).mockResolvedValueOnce({ id: 'event-1278', title: 'Stadtfest' } as never);
+
+    render(<EventsDetailPage mode="edit" contentId="1278" />);
+    fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+
+    const street = await waitFor(() => {
+      const element = document.getElementById('event-organizer-street');
+      if (!element) throw new Error('organizer_street_missing');
+      return element;
+    });
+    await waitFor(() => expect((street.closest('details') as HTMLDetailsElement).open).toBe(true));
+    expect((street as HTMLInputElement).value).toBe('Marktplatz 1');
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+    await waitFor(() => expect(updateEvent).toHaveBeenCalled());
+    expect(vi.mocked(updateEvent).mock.calls[0]?.[1].organizer).toEqual({
+      name: 'Kulturamt',
+      address: { street: 'Marktplatz 1', zip: '12345', city: 'Linz' },
+      contact: { firstName: 'Erika', fax: '0123 99' },
+    });
+  });
+
   it('retains other dates and input identity when changing the first date', async () => {
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1280',

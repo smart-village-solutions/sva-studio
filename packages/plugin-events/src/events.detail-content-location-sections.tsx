@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useFieldArray, useFormContext, useWatch, type UseFormSetValue } from 'react-hook-form';
 import { Button, StudioFieldGroup } from '@sva/studio-ui-react';
 
@@ -20,7 +20,10 @@ import {
   type EventsContentTranslator as Translator,
 } from './events.detail-content-section-fields.js';
 import type { EventsMapCapabilities } from './events.detail-content-primary-sections.js';
-import { hasEventOrganizerContent } from './events.detail-form-structured-serializers.js';
+import {
+  hasEventOrganizerAddressContent,
+  hasEventOrganizerContent,
+} from './events.detail-form-structured-serializers.js';
 import { EventsGeoAddressFields } from './events.geo-address-fields.js';
 
 const dirty = { shouldDirty: true } as const;
@@ -197,6 +200,7 @@ export function EventsOrganizerSection({ capabilities, pt }: LocationSectionProp
   const organizerNameError = errors.content?.organizer?.name;
   const organizerHasContent = hasEventOrganizerContent(organizer);
   const organizerNameMissing = organizerHasContent && (organizer.name ?? '').trim().length === 0;
+  const [addressOpen, setAddressOpen] = useState(() => hasEventOrganizerAddressContent(organizer));
   const path = 'content.organizer.address' as const;
 
   useEffect(() => {
@@ -217,37 +221,47 @@ export function EventsOrganizerSection({ capabilities, pt }: LocationSectionProp
         pt={pt}
         setValue={setValue}
       />
-      <EventsGeoAddressFields
-        pt={pt}
-        addition={optionalText(address.addition)}
-        additionId="event-organizer-addition"
-        city={optionalText(address.city)}
-        cityId="event-organizer-city"
-        geocodingEnabled={capabilities.geocodingEnabled}
-        mapEnabled={capabilities.mapEnabled}
-        mapStyleUrl={capabilities.mapStyleUrl}
-        latitude={optionalText(geoLocation.latitude)}
-        latitudeError={organizerErrors?.latitude ? pt('validation.geoLocation') : undefined}
-        latitudeId="event-organizer-latitude"
-        longitude={optionalText(geoLocation.longitude)}
-        longitudeError={organizerErrors?.longitude ? pt('validation.geoLocation') : undefined}
-        longitudeId="event-organizer-longitude"
-        reverseGeocodingEnabled={capabilities.reverseGeocodingEnabled}
-        street={optionalText(address.street)}
-        streetId="event-organizer-street"
-        zip={optionalText(address.zip)}
-        zipId="event-organizer-zip"
-        onAdditionChange={(value) => setValue(`${path}.addition`, value, dirty)}
-        onCityChange={(value) => setValue(`${path}.city`, value, dirty)}
-        onCoordinatesChange={({ latitude, longitude }) => {
-          setValue(`${path}.geoLocation.latitude`, latitude, dirty);
-          setValue(`${path}.geoLocation.longitude`, longitude, dirty);
-        }}
-        onLatitudeChange={(value) => setValue(`${path}.geoLocation.latitude`, value, dirty)}
-        onLongitudeChange={(value) => setValue(`${path}.geoLocation.longitude`, value, dirty)}
-        onStreetChange={(value) => setValue(`${path}.street`, value, dirty)}
-        onZipChange={(value) => setValue(`${path}.zip`, value, dirty)}
-      />
+      <details
+        className="space-y-4"
+        open={addressOpen}
+        onToggle={(event) => setAddressOpen(event.currentTarget.open)}
+      >
+        <summary className="cursor-pointer text-sm font-medium text-foreground">
+          {pt('cards.content.organizer.address')} · {pt('create.optional')}
+        </summary>
+        <p className="text-sm text-muted-foreground">{pt('cards.content.organizer.addressHelp')}</p>
+        <EventsGeoAddressFields
+          pt={pt}
+          addition={optionalText(address.addition)}
+          additionId="event-organizer-addition"
+          city={optionalText(address.city)}
+          cityId="event-organizer-city"
+          geocodingEnabled={capabilities.geocodingEnabled}
+          mapEnabled={capabilities.mapEnabled}
+          mapStyleUrl={capabilities.mapStyleUrl}
+          latitude={optionalText(geoLocation.latitude)}
+          latitudeError={organizerErrors?.latitude ? pt('validation.geoLocation') : undefined}
+          latitudeId="event-organizer-latitude"
+          longitude={optionalText(geoLocation.longitude)}
+          longitudeError={organizerErrors?.longitude ? pt('validation.geoLocation') : undefined}
+          longitudeId="event-organizer-longitude"
+          reverseGeocodingEnabled={capabilities.reverseGeocodingEnabled}
+          street={optionalText(address.street)}
+          streetId="event-organizer-street"
+          zip={optionalText(address.zip)}
+          zipId="event-organizer-zip"
+          onAdditionChange={(value) => setValue(`${path}.addition`, value, dirty)}
+          onCityChange={(value) => setValue(`${path}.city`, value, dirty)}
+          onCoordinatesChange={({ latitude, longitude }) => {
+            setValue(`${path}.geoLocation.latitude`, latitude, dirty);
+            setValue(`${path}.geoLocation.longitude`, longitude, dirty);
+          }}
+          onLatitudeChange={(value) => setValue(`${path}.geoLocation.latitude`, value, dirty)}
+          onLongitudeChange={(value) => setValue(`${path}.geoLocation.longitude`, value, dirty)}
+          onStreetChange={(value) => setValue(`${path}.street`, value, dirty)}
+          onZipChange={(value) => setValue(`${path}.zip`, value, dirty)}
+        />
+      </details>
     </StudioDetailCard>
   );
 }

@@ -55,7 +55,7 @@ Die React-Seiten erwarten eine Host-Umgebung, in der folgende Infrastruktur bere
 
 Beim Speichern ergänzt die UI optionale Host-Media-Referenzen für das Headerbild. Beim Bearbeiten lädt sie zusätzlich bestehende Media-Referenzen und POI-Optionen nach.
 
-Der Veranstalter ist insgesamt optional. Vollständig leere Veranstalterfelder werden nicht in den Mainserver-Payload aufgenommen. Sobald Name, Adresse oder Kontaktdaten eines Veranstalters vorhanden sind, muss das Feld `Institution/Firma` einen Namen enthalten; andernfalls verhindert die UI den Request, markiert das Namensfeld und fokussiert es im Content-Tab.
+Der Veranstalter ist insgesamt optional. Name, E-Mail und Telefon stehen direkt im Abschnitt; die selten benötigte Adresse des Veranstalters (Ortsbezeichnung, Straße, PLZ, Ort, Karte und Koordinaten) liegt in einem als optional gekennzeichneten, einklappbaren Bereich. Er ist bei leerer Adresse geschlossen und öffnet sich automatisch, wenn eine gespeicherte Veranstaltung bereits Adress- oder Koordinatenangaben enthält; Einklappen verwirft keine Werte. Vollständig leere Veranstalterfelder werden nicht in den Mainserver-Payload aufgenommen. Sobald Name, Adresse oder Kontaktdaten eines Veranstalters vorhanden sind, muss das Feld `Institution/Firma` einen Namen enthalten; andernfalls verhindert die UI den Request, markiert das Namensfeld und fokussiert es im Content-Tab.
 
 ## Projektstruktur
 

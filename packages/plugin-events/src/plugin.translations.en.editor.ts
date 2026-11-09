@@ -168,7 +168,14 @@ export const eventsENEditor = {
         description: 'Addresses and location labels for the event.',
         itemTitle: 'Location',
       },
-      organizer: { title: 'Organizer', description: 'Institution, company, or responsible body.' },
+      organizer: {
+        title: 'Organizer',
+        description:
+          'Institution, company, or responsible body. All details are optional; usually the name is enough.',
+        address: 'Organizer address',
+        addressHelp:
+          'Only fill this in if the organizer address is needed. The event location belongs in the "Venue" section.',
+      },
       contacts: {
         title: 'Contacts',
         description: 'Named contacts for questions.',

@@ -275,6 +275,11 @@ describe('StudioMediaPickerReviewPanel', () => {
     expect(choices[1].checked).toBe(true);
     expect(screen.queryByRole('dialog')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'media.editor.applySelectedMetadata' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { name: 'media.editor.centralMetadataTitle' })
+      )
+    );
     fireEvent.click(screen.getByRole('button', { name: 'media.editor.backToSelection' }));
     expect((screen.getByLabelText('Alternativtext') as HTMLInputElement).value).toBe(
       'Eigener Alternativtext'

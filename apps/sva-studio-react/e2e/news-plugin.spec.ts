@@ -1183,6 +1183,34 @@ test.describe('news plugin', () => {
 
   test.describe('design system migration references', () => {
     test.use({ locale: 'de-DE', timezoneId: 'Europe/Berlin' });
+    test.beforeEach(async ({ page }) => {
+      // Keep the existing denied metadata state within this synthetic visual fixture.
+      for (const path of [
+        '**/api/v1/mainserver/mutation-capabilities',
+        '**/api/v1/mainserver/content-ownership/news.article/news-visual/authorization',
+      ]) {
+        await page.route(path, async (route) => {
+          if (route.request().method() !== 'GET') {
+            await route.fallback();
+            return;
+          }
+          await route.fulfill({
+            status: 403,
+            json: {
+              error: {
+                code: 'forbidden',
+                message: 'Host not permitted for this operation',
+                details: { reason_code: 'tenant_host_invalid' },
+                classification: 'tenant_host_validation',
+                status: 'manuelle_pruefung_erforderlich',
+                recommendedAction: 'erneut_versuchen',
+                safeDetails: { reason_code: 'tenant_host_invalid' },
+              },
+            },
+          });
+        });
+      }
+    });
     for (const theme of ['sva-default', 'sva-forest'] as const) {
       for (const mode of ['light', 'dark'] as const) {
         test(`visual migration reference ${theme} ${mode}`, async ({ page }) => {

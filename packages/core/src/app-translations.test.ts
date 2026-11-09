@@ -113,7 +113,15 @@ describe('fixed app catalogs', () => {
   it('canonicalizes without normalizing text, rejects unsafe JSON and validates placeholders', async () => {
     expect(canonicalCatalogJson({ z: '😀', a: '\n' })).toBe('{"a":"\\n","z":"😀"}');
     expect(await catalogDigest({ a: 1, z: 'x' })).toBe(await catalogDigest({ z: 'x', a: 1 }));
-    for (const value of [NaN, 0.1, undefined, '\ud800', new Date(), Array(2), { ä: 1 }])
+    for (const value of [
+      NaN,
+      0.1,
+      undefined,
+      String.fromCharCode(0xd800),
+      new Date(),
+      Array(2),
+      { ä: 1 },
+    ])
       expect(() => canonicalCatalogJson(value)).toThrow('invalid_catalog');
     expect(validateCatalogManifest(manifest)).toEqual(manifest);
     for (const value of ['', 'Hello', 'Hi {{other}}', 'Hi {{name'])

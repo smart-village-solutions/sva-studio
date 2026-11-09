@@ -1,17 +1,30 @@
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
-import { createRequire } from 'node:module';
+import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cli-options.ts';
 import { CiCommandExecutionError, runCiCommand } from './ci-command-runner.ts';
 import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
+import { clearWorkspaceCoverageOutputs, mergeProjectCoverage } from './validate-downloaded-coverage.ts';
 import { planChangedProjectsWithFallback } from './changed-project-plan.ts';
-import { readJson, type CoveragePolicy } from './coverage-gate.ts';
-import { resolveCoveragePlan, type ResolvedCoveragePlan } from './coverage-plan.ts';
-import { writeCoverageShardEvidence } from './coverage-shard-evidence.ts';
-import { loadNxProjectRoots, loadWorkspaceProjectRoots } from './nx-project-graph.ts';
-import { resolveChangedFiles } from './pr-scope.ts';
+import {
+  buildCoverageWorkflowMatrices,
+  coveragePartitions,
+  parseCoveragePartition,
+  buildAppCoverageCommand,
+  buildCoverageProjectCommand,
+  buildEarlyCoverageGateCommand,
+  buildCoveragePartitionCommand,
+  resolveCurrentCoveragePlan,
+  selectCoveragePartition,
+  type ResolvedCoveragePlan,
+} from './coverage-plan.ts';
+import {
+  validateCoveragePartitions,
+  writeCoveragePartitionEvidence,
+  writeCoverageShardEvidence,
+  type CoveragePartitionEvidence,
+} from './coverage-shard-evidence.ts';
 
 export interface DurationEntry {
   label: string;
@@ -21,93 +34,6 @@ export interface DurationEntry {
 }
 
 const APP_PROJECT = 'sva-studio-react';
-const COVERAGE_WORKSPACE_ROOTS = ['apps', 'packages'] as const;
-const IGNORED_DIRECTORY_NAMES = new Set([
-  'node_modules',
-  '.git',
-  '.nx',
-  '.output',
-  'dist',
-  'build',
-  '.generated',
-]);
-const require = createRequire(import.meta.url);
-
-const getCoverageProjects = (base: string, head: string, full: boolean): string[] => {
-  const nxPackageJson = require.resolve('nx/package.json');
-  const nxEntrypoint = path.join(path.dirname(nxPackageJson), 'dist', 'bin', 'nx.js');
-  const scopeArguments = full ? [] : ['--affected', '--base', base, '--head', head];
-  const output = execFileSync(
-    process.execPath,
-    [nxEntrypoint, 'show', 'projects', '--withTarget=test:coverage', ...scopeArguments, '--json'],
-    {
-      encoding: 'utf8',
-      env: process.env,
-    }
-  ).trim();
-
-  if (output.length === 0) {
-    return [];
-  }
-
-  return JSON.parse(output) as string[];
-};
-
-export const excludeCoverageExemptProjects = (
-  projects: readonly string[],
-  exemptProjects: readonly string[]
-): string[] => {
-  const exemptions = new Set(exemptProjects);
-  return projects.filter((project) => !exemptions.has(project));
-};
-
-export const buildAppCoverageCommand = (): string => `pnpm nx run ${APP_PROJECT}:test:coverage`;
-
-export const buildCoverageProjectCommand = (project: string): string =>
-  `env -u NO_COLOR pnpm nx run ${project}:test:coverage --nxBail --output-style=stream`;
-
-export const buildEarlyCoverageGateCommand = (projects: readonly string[]): string =>
-  `COVERAGE_GATE_EVALUATE_REGRESSIONS=1 COVERAGE_GATE_PROJECT_FILTER=${projects.join(',')} pnpm coverage-gate`;
-
-export const writeCoverageShardShadowEvidence = (
-  options: Parameters<typeof writeCoverageShardEvidence>[0],
-  writeEvidence: typeof writeCoverageShardEvidence = writeCoverageShardEvidence
-): void => {
-  try {
-    writeEvidence(options);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.warn(`Coverage-Shard-Shadow-Evidenz konnte nicht geschrieben werden: ${message}`);
-  }
-};
-
-const removeProjectRootCoverageDirectory = (workspaceRootPath: string): void => {
-  if (!fs.existsSync(workspaceRootPath)) {
-    return;
-  }
-
-  for (const entry of fs.readdirSync(workspaceRootPath, { withFileTypes: true })) {
-    if (!entry.isDirectory() || IGNORED_DIRECTORY_NAMES.has(entry.name)) {
-      continue;
-    }
-
-    const coverageDirectoryPath = path.join(workspaceRootPath, entry.name, 'coverage');
-    if (fs.existsSync(coverageDirectoryPath)) {
-      fs.rmSync(coverageDirectoryPath, { recursive: true, force: true });
-    }
-  }
-};
-
-export const clearWorkspaceCoverageOutputs = (rootDir = process.cwd()): void => {
-  for (const workspaceRoot of COVERAGE_WORKSPACE_ROOTS) {
-    removeProjectRootCoverageDirectory(path.join(rootDir, workspaceRoot));
-  }
-  fs.rmSync(path.join(rootDir, 'artifacts', 'ci-feedback', 'coverage-shards'), {
-    recursive: true,
-    force: true,
-  });
-};
-
 const executeCoveragePlan = (
   options: BaseHeadCliOptions,
   resolvedPlan: ResolvedCoveragePlan,
@@ -123,7 +49,7 @@ const executeCoveragePlan = (
         projects: [project],
         retryCount: result.retryCount,
       });
-      writeCoverageShardShadowEvidence({
+      writeCoverageShardEvidence({
         project,
         phase,
         headSha: options.head,
@@ -162,25 +88,12 @@ const executeCoveragePlan = (
 export const runAffectedCoverageGate = (
   options: BaseHeadCliOptions,
   reportDuration?: (entry: DurationEntry) => void,
-  reportPlan?: (plan: ReturnType<typeof planChangedProjectsWithFallback>) => void
+  reportPlan?: (plan: ReturnType<typeof planChangedProjectsWithFallback>) => void,
+  partition?: string
 ): DurationEntry[] => {
+  const startedAt = new Date();
   clearWorkspaceCoverageOutputs();
-  const full = process.env.NX_RUN_FULL === '1';
-  const coveragePolicy = readJson<CoveragePolicy>(
-    path.join(process.cwd(), 'tooling/testing/coverage-policy.json')
-  );
-  const getPolicyCoveredProjects = (base: string, head: string, runFull: boolean): string[] =>
-    excludeCoverageExemptProjects(
-      getCoverageProjects(base, head, runFull),
-      coveragePolicy.exemptProjects
-    );
-  const fullProjects = getPolicyCoveredProjects(options.base, options.head, true);
-  const resolvedPlan = resolveCoveragePlan(options, full, fullProjects, {
-    resolveChangedFiles,
-    getCoverageProjects: getPolicyCoveredProjects,
-    loadNxProjectRoots,
-    loadWorkspaceProjectRoots,
-  });
+  const resolvedPlan = resolveCurrentCoveragePlan(options);
   const { affectedProjects, changedFiles, changedProjectPlan } = resolvedPlan;
   reportPlan?.(changedProjectPlan);
   const durationEntries: DurationEntry[] = [];
@@ -195,7 +108,7 @@ export const runAffectedCoverageGate = (
       {
         base: options.base,
         head: options.head,
-        scopeMode: full ? 'full' : 'affected',
+        scopeMode: process.env.NX_RUN_FULL === '1' ? 'full' : 'affected',
         changedFiles,
         affectedProjects,
         changedProjectPlan,
@@ -205,12 +118,30 @@ export const runAffectedCoverageGate = (
     )
   );
 
-  if (affectedProjects.length === 0) {
+  if (affectedProjects.length === 0 && !partition) {
     console.log('Keine betroffenen Coverage-Projekte erkannt.');
     return durationEntries;
   }
 
-  executeCoveragePlan(options, resolvedPlan, recordDuration);
+  if (partition) {
+    for (const project of selectCoveragePartition(resolvedPlan, partition)) {
+      const result = runCiCommand(buildCoveragePartitionCommand(project, partition));
+      recordDuration({
+        label: `coverage:${partition}:${project}`,
+        projects: [project],
+        durationMs: result.durationMs,
+        retryCount: result.retryCount,
+      });
+    }
+    writeCoveragePartitionEvidence({
+      partition,
+      baseSha: options.base,
+      headSha: options.head,
+      plan: resolvedPlan,
+      phases: durationEntries,
+      timing: { startedAt: startedAt.toISOString(), finishedAt: new Date().toISOString() },
+    });
+  } else executeCoveragePlan(options, resolvedPlan, recordDuration);
 
   return durationEntries;
 };
@@ -227,6 +158,14 @@ const parseOptionalDate = (value: string | undefined): Date | null => {
 
 export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
   const options = parseBaseHeadCliOptions(args);
+  const partitionIndex = args.indexOf('--partition');
+  const partition =
+    partitionIndex >= 0 ? parseCoveragePartition(args[partitionIndex + 1] ?? '') : undefined;
+  const mergeIndex = args.indexOf('--merge-partitions');
+  if (mergeIndex >= 0) {
+    mergeCoveragePartitions(options, args[mergeIndex + 1], args.includes('--priority-only'));
+    return 0;
+  }
   const startedAt = new Date();
   const full = process.env.NX_RUN_FULL === '1';
   let plan: ReturnType<typeof planChangedProjectsWithFallback> | null = null;
@@ -238,18 +177,19 @@ export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
       (entry) => durationEntries.push(entry),
       (reportedPlan) => {
         plan = reportedPlan;
-      }
+      },
+      partition
     );
   } catch (error) {
     writeCiFeedbackEvidence(
       buildCiFeedbackEvidence({
         gate: 'coverage',
         role: 'complete',
-        shardId: 'coverage-complete',
+        shardId: partition ? `coverage-${partition}` : 'coverage-complete',
         status: 'failed',
         baseSha: options.base,
         headSha: options.head,
-        scopeMode: full ? 'full' : 'affected',
+        scopeMode: process.env.NX_RUN_FULL === '1' ? 'full' : 'affected',
         plan,
         phases: durationEntries,
         startedAt,
@@ -276,7 +216,7 @@ export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
     buildCiFeedbackEvidence({
       gate: 'coverage',
       role: 'complete',
-      shardId: 'coverage-complete',
+      shardId: partition ? `coverage-${partition}` : 'coverage-complete',
       status: durationEntries.length === 0 ? 'skipped' : 'passed',
       baseSha: options.base,
       headSha: options.head,
@@ -291,6 +231,67 @@ export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
   );
 
   return 0;
+};
+
+export const mergeCoveragePartitions = (
+  options: BaseHeadCliOptions,
+  directory: string | undefined,
+  priorityOnly = false
+): void => {
+  const startedAt = new Date();
+  if (!directory) throw new Error('Coverage-Partitionsverzeichnis fehlt.');
+  const current = resolveCurrentCoveragePlan(options);
+  const expected = priorityOnly
+    ? buildCoverageWorkflowMatrices(current.changedFiles, current.projectRoots).priority
+    : coveragePartitions;
+  const entries = validateCoveragePartitions({
+    directory,
+    baseSha: options.base,
+    headSha: options.head,
+    expected,
+  });
+  const resolved = entries[0].plan;
+  if (JSON.stringify(resolved) !== JSON.stringify(current))
+    throw new Error('Coverage-Plan entspricht nicht dem aktuellen Quellstand.');
+  const projects = priorityOnly
+    ? resolved.changedProjectPlan.directProjects
+    : resolved.affectedProjects;
+  const rootDir = process.cwd();
+  clearWorkspaceCoverageOutputs(rootDir);
+  const mergePhases: DurationEntry[] = [];
+  for (const project of projects) {
+    const projectStarted = performance.now();
+    mergeProjectCoverage(project, entries, directory, rootDir);
+    mergePhases.push({
+      label: `coverage:merge:${project}`,
+      projects: [project],
+      durationMs: performance.now() - projectStarted,
+    });
+    writeCoverageShardEvidence({
+      project,
+      phase: resolved.changedProjectPlan.directProjects.includes(project) ? 'direct' : 'remaining',
+      headSha: options.head,
+      projectRoots: resolved.projectRoots,
+    });
+  }
+  if (priorityOnly && projects.length > 0) runCiCommand(buildEarlyCoverageGateCommand(projects));
+  if (!priorityOnly)
+    writeCiFeedbackEvidence(
+      buildCiFeedbackEvidence({
+        gate: 'coverage',
+        role: 'complete',
+        shardId: 'coverage-complete',
+        status: projects.length ? 'passed' : 'skipped',
+        baseSha: options.base,
+        headSha: options.head,
+        scopeMode: process.env.NX_RUN_FULL === '1' ? 'full' : 'affected',
+        plan: resolved.changedProjectPlan,
+        phases: [...entries.flatMap((entry) => entry.phases), ...mergePhases],
+        startedAt,
+        finishedAt: new Date(),
+        aggregationMs: Date.now() - startedAt.getTime(),
+      })
+    );
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

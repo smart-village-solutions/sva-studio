@@ -295,6 +295,21 @@ export const sharedVitestConfig = defineConfig({
     // Apply the existing workspace peer aliases inside the installed plugin as well.
     server: { deps: { inline: ['@sva/plugin-application-workspace'] } },
     environment: 'happy-dom',
+    // Only real third-party calendar code is prebundled. Vitest keeps
+    // discovery disabled, so workspace source remains visible to coverage.
+    deps: {
+      optimizer: {
+        client: {
+          enabled: true,
+          include: [
+            '@sva/studio-ui-react > react-day-picker',
+            '@sva/studio-ui-react > react-day-picker/locale/de',
+            '@sva/studio-ui-react > react-day-picker/locale/en-GB',
+            '@sva/studio-ui-react > react-day-picker/locale/en-US',
+          ],
+        },
+      },
+    },
     setupFiles: [studioMswSetupFile],
     // Serielle Ausführung reduziert Flakes in der UI-Testumgebung und stabilisiert affected-Läufe.
     pool: 'threads',

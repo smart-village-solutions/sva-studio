@@ -1,3 +1,4 @@
+import type { ChangedProjectPlan } from './changed-project-plan.ts';
 import { isNonCodeRelevantPath } from './pr-scope.ts';
 
 export type AppUnitSlice = 'hooks' | 'routes' | 'server' | 'ui';
@@ -94,4 +95,80 @@ export const planAppUnitExecution = (
     return { mode: 'aggregate', reason: 'unclear-app-slice', slices: [] };
   }
   return { mode: 'slices', reason: 'app-only-sliceable-change', slices: slices.sort() };
+};
+
+/** Fixed runner layout; local Nx targets and their test selection stay unchanged. */
+export const appUnitJobs = [
+  'ui',
+  'hooks',
+  'server',
+  'routes-1',
+  'routes-2',
+  'routes-3',
+  'routes-4',
+] as const;
+export type AppUnitJob = (typeof appUnitJobs)[number];
+
+export const resolveAppUnitJob = (job: string): { slice: AppUnitSlice; shard?: string } => {
+  if (!appUnitJobs.includes(job as AppUnitJob)) throw new Error(`Ungültiger App-Unit-Job: ${job}`);
+  return job.startsWith('routes-')
+    ? { slice: 'routes', shard: `${job.slice(-1)}/4` }
+    : { slice: job as AppUnitSlice };
+};
+
+export const isAppUnitJobSelected = (plan: AppUnitExecutionPlan, job: string): boolean => {
+  const { slice } = resolveAppUnitJob(job);
+  return plan.mode === 'aggregate' || (plan.mode === 'slices' && plan.slices.includes(slice));
+};
+
+export const buildAppUnitJobCommand = (job: string): string => {
+  const { slice, shard } = resolveAppUnitJob(job);
+  return `${buildAppUnitCommand(slice)} --skipNxCache --maxWorkers=1${shard ? ` --shard=${shard}` : ''}`;
+};
+
+export interface AppUnitManifest {
+  expectedFiles: string[];
+  files: string[];
+  tests: { file: string; name: string; status: string }[];
+}
+
+export interface TestCommandTarget {
+  executor?: string;
+  options?: { command?: string; cwd?: string };
+}
+
+export const coverageExecutesSameUnitCommand = (
+  unit: TestCommandTarget | undefined,
+  coverage: TestCommandTarget | undefined
+): boolean => {
+  if (unit?.executor !== 'nx:run-commands' || coverage?.executor !== 'nx:run-commands')
+    return false;
+  if (
+    !unit.options?.command ||
+    !coverage.options?.command ||
+    unit.options.cwd !== coverage.options.cwd
+  )
+    return false;
+  const withoutInstrumentation = coverage.options.command
+    .replace(/(?:^|\s)--coverage(?=\s|$)/gu, '')
+    .trim();
+  return withoutInstrumentation === unit.options.command.trim();
+};
+
+export const resolveAppUnitExecutionPlan = (
+  changedFiles: readonly string[],
+  affectedProjects: readonly string[],
+  changedProjectPlan: ChangedProjectPlan,
+  separateApp = false
+): AppUnitExecutionPlan => {
+  if (separateApp && changedProjectPlan.remainingProjects.includes(APP_PROJECT))
+    return { mode: 'aggregate', reason: 'app-in-remaining-scope', slices: [] };
+  if (
+    changedProjectPlan.reason === 'nx-project-graph-unavailable' &&
+    affectedProjects.includes(APP_PROJECT)
+  ) {
+    return { mode: 'aggregate', reason: 'nx-project-graph-unavailable', slices: [] };
+  }
+
+  return planAppUnitExecution(changedFiles, affectedProjects);
 };

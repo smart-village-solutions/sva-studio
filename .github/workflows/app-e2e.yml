@@ -32,12 +32,13 @@ permissions:
 
 jobs:
   e2e:
-    name: App E2E
+    name: App E2E Shard (${{ matrix.shard }}/4)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    outputs:
-      test-outcome: ${{ steps.app_e2e.outcome }}
-      source-sha: ${{ steps.source.outputs.sha }}
     env:
       SVA_AUTH_ISSUER: https://accounts.google.com
       SVA_AUTH_CLIENT_ID: gha-e2e-client
@@ -137,13 +138,50 @@ jobs:
 
       - name: Run complete app E2E suite uncached
         id: app_e2e
-        run: pnpm nx run sva-studio-react:test:e2e --skipNxCache
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ github.workspace }}/apps/sva-studio-react/.nx/app-e2e-results.json
+        run: pnpm nx run sva-studio-react:test:e2e --skipNxCache --shard=${{ matrix.shard }}/4 --workers=1 --reporter=list,json,html
+
+      - name: Inventory complete E2E selection
+        if: always()
+        run: |
+          mkdir -p apps/sva-studio-react/.nx
+          PLAYWRIGHT_JSON_OUTPUT_FILE=.nx/app-e2e-manifest.json pnpm --filter sva-studio-react exec playwright test --list --reporter=json
+
+      - name: Checkout trusted shard evidence writer
+        if: always()
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .nx/e2e-controller
+          filter: tree:0
+
+      - name: Write source-bound E2E shard evidence
+        if: always() && steps.source.outputs.sha != ''
+        env:
+          APP_E2E_SHARD_INDEX: ${{ matrix.shard }}
+          APP_E2E_SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          APP_E2E_TEST_OUTCOME: ${{ steps.app_e2e.outcome }}
+          APP_E2E_SHARD_DIRECTORY: artifacts/app-e2e-shards
+          APP_E2E_MANIFEST_PATH: apps/sva-studio-react/.nx/app-e2e-manifest.json
+          APP_E2E_REPORT_PATH: apps/sva-studio-react/.nx/app-e2e-results.json
+        run: node --experimental-strip-types .nx/e2e-controller/scripts/ci/write-app-e2e-evidence.ts
+
+      - name: Upload E2E shard evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-e2e-shard-${{ matrix.shard }}-${{ github.run_id }}
+          path: artifacts/app-e2e-shards/app-e2e-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
 
       - name: Upload Playwright diagnostics
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: app-e2e-report-${{ github.run_id }}-${{ github.run_attempt }}
+          name: app-e2e-report-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             apps/sva-studio-react/playwright-report
             apps/sva-studio-react/test-results
@@ -157,7 +195,7 @@ jobs:
           docker rm -f sva-studio-redis-e2e || true
 
   evidence:
-    name: App E2E Evidence
+    name: App E2E
     needs: e2e
     if: always()
     runs-on: ubuntu-latest
@@ -170,13 +208,21 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      - name: Download E2E shard evidence
+        uses: actions/download-artifact@v8
+        with:
+          pattern: app-e2e-shard-*-${{ github.run_id }}
+          path: artifacts/app-e2e-shards
+          merge-multiple: true
+
       - name: Write redacted App E2E evidence
         id: evidence
         env:
           APP_E2E_RESULT: ${{ needs.e2e.result }}
-          APP_E2E_TEST_OUTCOME: ${{ needs.e2e.outputs.test-outcome }}
+          APP_E2E_TEST_OUTCOME: ${{ needs.e2e.result == 'success' && 'success' || 'failure' }}
+          APP_E2E_SHARD_DIRECTORY: artifacts/app-e2e-shards
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
-          HOTFIX_SOURCE_SHA: ${{ needs.e2e.outputs.source-sha }}
+          HOTFIX_SOURCE_SHA: ${{ inputs.hotfix_sha }}
           HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
           HOTFIX_REF: ${{ inputs.hotfix_ref }}
           HOTFIX_MODE: ${{ inputs.mode }}

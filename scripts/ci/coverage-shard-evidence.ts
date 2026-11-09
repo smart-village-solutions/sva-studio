@@ -2,6 +2,12 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import type { CiFeedbackDuration } from './ci-feedback-evidence.ts';
+import {
+  coveragePartitions,
+  selectCoveragePartition,
+  type ResolvedCoveragePlan,
+} from './coverage-plan.ts';
 import type { ProjectRoot } from './changed-project-plan.ts';
 
 export interface CoverageReportReference {
@@ -164,4 +170,132 @@ export const validateCoverageShardEvidence = (options: {
   }
 
   return evidence.sort((left, right) => left.shardId.localeCompare(right.shardId));
+};
+
+export interface CoveragePartitionEvidence {
+  schemaVersion: 1;
+  partition: string;
+  baseSha: string;
+  headSha: string;
+  plan: ResolvedCoveragePlan;
+  phases: CiFeedbackDuration[];
+  timing: { startedAt: string; finishedAt: string };
+  reports: {
+    project: string;
+    path: string;
+    sha256: string;
+    kind: 'blob' | 'summary' | 'lcov' | 'tests';
+  }[];
+}
+
+export const coveragePartitionReports = (
+  plan: ResolvedCoveragePlan,
+  partition: string
+): Omit<CoveragePartitionEvidence['reports'][number], 'sha256'>[] => {
+  const heavy = partition.startsWith('app-') || partition.startsWith('waste-');
+  return selectCoveragePartition(plan, partition).flatMap((project) => {
+    const root = resolveProjectRoot(project, plan.projectRoots);
+    const entries: { kind: CoveragePartitionEvidence['reports'][number]['kind']; file: string }[] =
+      heavy
+        ? [
+            { kind: 'blob', file: `${partition}.blob.json` },
+            { kind: 'tests', file: 'test-results.json' },
+          ]
+        : [
+            { kind: 'summary', file: 'coverage-summary.json' },
+            { kind: 'lcov', file: 'lcov.info' },
+            { kind: 'tests', file: 'test-results.json' },
+          ];
+    return entries.map(({ kind, file }) => ({ project, kind, path: `${root}/coverage/${file}` }));
+  });
+};
+
+export const writeCoveragePartitionEvidence = (
+  input: Omit<CoveragePartitionEvidence, 'schemaVersion' | 'reports'>,
+  rootDir = process.cwd()
+): void => {
+  const reports = coveragePartitionReports(input.plan, input.partition).map((report) => ({
+    ...report,
+    sha256: hashFile(path.join(rootDir, report.path)),
+  }));
+  const directory = path.join(rootDir, 'artifacts', 'ci-feedback', 'coverage-partitions');
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(
+    path.join(directory, `${input.partition}.json`),
+    JSON.stringify({ schemaVersion: 1, ...input, reports })
+  );
+};
+
+const assertCoveragePartitionExecution = (
+  value: CoveragePartitionEvidence,
+  partition: string
+): void => {
+  if (
+    !Array.isArray(value.phases) ||
+    !Number.isFinite(Date.parse(value.timing?.startedAt)) ||
+    !Number.isFinite(Date.parse(value.timing?.finishedAt)) ||
+    Date.parse(value.timing.finishedAt) < Date.parse(value.timing.startedAt)
+  )
+    throw new Error(`Coverage-Zeitevidenz fehlt: ${partition}`);
+  const phaseProjects = value.phases.flatMap((phase) => phase.projects ?? []).sort();
+  if (
+    JSON.stringify(phaseProjects) !==
+      JSON.stringify(selectCoveragePartition(value.plan, partition).sort()) ||
+    value.phases.some((phase) => !Number.isFinite(phase.durationMs) || phase.durationMs < 0)
+  )
+    throw new Error(`Coverage-Ausführungsevidenz fehlt: ${partition}`);
+};
+
+export const validateCoveragePartitions = (input: {
+  directory: string;
+  baseSha: string;
+  headSha: string;
+  expected?: readonly string[];
+}): CoveragePartitionEvidence[] => {
+  const expected = input.expected ?? coveragePartitions;
+  const allowed = new Set(coveragePartitions.map((partition) => `coverage-partition-${partition}`));
+  if (
+    fs
+      .readdirSync(input.directory)
+      .some((name) => name.startsWith('coverage-partition-') && !allowed.has(name))
+  )
+    throw new Error('Unerwartete Coverage-Partition.');
+  if (new Set(expected).size !== expected.length)
+    throw new Error('Doppelte erwartete Coverage-Partition.');
+  const entries = expected.map((partition) => {
+    const root = path.join(input.directory, `coverage-partition-${partition}`);
+    const file = path.join(
+      root,
+      'artifacts',
+      'ci-feedback',
+      'coverage-partitions',
+      `${partition}.json`
+    );
+    const value = JSON.parse(fs.readFileSync(file, 'utf8')) as CoveragePartitionEvidence;
+    if (
+      value.schemaVersion !== 1 ||
+      value.partition !== partition ||
+      value.baseSha !== input.baseSha ||
+      value.headSha !== input.headSha
+    )
+      throw new Error(`Fremde Coverage-Partition: ${partition}`);
+    assertCoveragePartitionExecution(value, partition);
+    const reports = coveragePartitionReports(value.plan, partition);
+    if (value.reports.length !== reports.length)
+      throw new Error(`Unvollständige Coverage-Partition: ${partition}`);
+    for (const report of reports) {
+      const matches = value.reports.filter(
+        (entry) =>
+          entry.project === report.project &&
+          entry.path === report.path &&
+          entry.kind === report.kind
+      );
+      if (matches.length !== 1 || hashFile(path.join(root, report.path)) !== matches[0].sha256)
+        throw new Error(`Coverage-Report fehlt oder ist verändert: ${report.path}`);
+    }
+    return value;
+  });
+  if (entries.some((entry) => JSON.stringify(entry.plan) !== JSON.stringify(entries[0].plan)))
+    throw new Error('Coverage-Partitionen verwenden unterschiedliche Pläne.');
+  return entries;
 };

@@ -342,7 +342,10 @@ describe('workspace package scripts', () => {
     const qualityWorkflow = loadMainGatesWorkflow();
     const e2eWorkflow = loadAppE2EWorkflow();
 
-    expect(qualityWorkflow).toContain('run: pnpm test:unit');
+    expect(qualityWorkflow).toContain(
+      'run: pnpm exec tsx scripts/ci/affected-unit-gate.ts --residual-only'
+    );
+    expect(qualityWorkflow).toContain('needs: [unit-residual, unit-app, coverage]');
     expect(e2eWorkflow).toContain('schedule:');
     expect(e2eWorkflow).toContain("PLAYWRIGHT_MAX_FAILURES: '0'");
   });
@@ -402,8 +405,8 @@ describe('workspace package scripts', () => {
     const packageJson = loadRootPackageJson();
     const typesScript = packageJson.scripts?.['test:types'];
 
-    expect(typesScript).toContain('nx run-many -t test:types --parallel=1');
-    expect(typesScript).toContain('nx run-many -t typecheck --parallel=1');
+    expect(typesScript).toContain('nx run-many -t test:types typecheck --parallel=1');
+    expect(typesScript?.match(/nx run-many/gu)).toHaveLength(1);
     expect(typesScript).not.toContain('--projects=');
   });
 
@@ -447,7 +450,7 @@ describe('workspace package scripts', () => {
       'tsx scripts/ci/affected-coverage-gate.ts --base ${NX_BASE:-origin/main} --head ${NX_HEAD:-HEAD}'
     );
     expect(packageJson.scripts?.['test:types:affected']).toBe(
-      'pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected --target=test:types --base=${NX_BASE:-origin/main} --parallel=1 && env -u NO_COLOR nx affected --target=typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected && pnpm exec tsc -p tsconfig.scripts.json --noEmit'
+      'pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected -t test:types typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected && pnpm exec tsc -p tsconfig.scripts.json --noEmit'
     );
     expect(packageJson.scripts?.['check:server-runtime:affected']).toBe(
       'env -u NO_COLOR NODE_OPTIONS="${NODE_OPTIONS:-} --import=./scripts/ci/node-listener-budget.mjs" nx affected --target=check:runtime --base=${NX_BASE:-origin/main} --parallel=1'
@@ -701,6 +704,15 @@ describe('workspace package scripts', () => {
     expect(loadProjectJson('apps/project-report').targets?.['test:coverage']?.cache).toBe(false);
   });
 
+  it('retains required unit dependency builds when coverage supplies its execution evidence', () => {
+    for (const project of ['data', 'sva-mainserver', 'waste-management-runtime']) {
+      const targets = loadProjectJson(`packages/${project}`).targets;
+      expect(targets?.['test:coverage']?.dependsOn).toEqual(
+        expect.arrayContaining(targets?.['test:unit']?.dependsOn ?? [])
+      );
+    }
+  });
+
   it('uses the configured Node version file during workspace setup', () => {
     const workspaceSetupAction = loadWorkspaceSetupAction();
 
@@ -710,7 +722,7 @@ describe('workspace package scripts', () => {
   it('keeps the affected unit gate app-slice-aware', () => {
     const affectedUnitGate = loadAffectedUnitGateScript();
     const affectedUnitPlan = loadScript('scripts/ci/affected-unit-plan.ts');
-    const affectedCoverageGate = loadScript('scripts/ci/affected-coverage-gate.ts');
+    const coveragePlan = loadScript('scripts/ci/coverage-plan.ts');
     const runPrGateScript = loadRunPrGateScript();
 
     expect(affectedUnitPlan).toContain(
@@ -726,7 +738,7 @@ describe('workspace package scripts', () => {
     expect(affectedUnitGate).not.toContain('buildAppUnitCommand()} --nxBail');
     expect(affectedUnitGate).not.toContain('buildAppUnitCommand(slice)} --nxBail');
     expect(affectedUnitGate).not.toContain('retries: 1');
-    expect(affectedCoverageGate).toContain('`pnpm nx run ${APP_PROJECT}:test:coverage`');
+    expect(coveragePlan).toContain('`pnpm nx run sva-studio-react:test:coverage`');
     expect(runPrGateScript).toContain('formatDurationSummary');
     expect(runPrGateScript).toContain('for (const entry of runAffectedUnitGate({ base, head }))');
   });

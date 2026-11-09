@@ -228,15 +228,15 @@ describe('useOrganizations', () => {
       expect(listOrganizationsMock).toHaveBeenCalledTimes(1);
     });
 
+    vi.useFakeTimers();
     act(() => {
       result.current.setSearch('beta');
     });
 
     await act(async () => {
-      await new Promise((resolve) => {
-        globalThis.window.setTimeout(resolve, 350);
-      });
+      await vi.advanceTimersByTimeAsync(350);
     });
+    vi.useRealTimers();
 
     await waitFor(() => {
       expect(listOrganizationsMock).toHaveBeenCalledTimes(2);

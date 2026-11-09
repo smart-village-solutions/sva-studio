@@ -262,3 +262,22 @@ ist einschließlich Finalizer grün. Seine gültige Diagnose-Evidenz bindet alle
 95 IDs und die unveränderten neun Skips an den exakten Commit; keine Retries
 oder Flakes. Aktivzeit 7:02 Minuten, tatsächliche Wartezeit einschließlich
 Queue 9:26 Minuten, aufsummierte Runnerzeit 23:41 Minuten. Weiterhin n=1.
+
+### Verbleibende Build-Vorarbeit beim Coverage-Merge
+
+Der grüne Voll-Fallback-PR `42533166259` benötigt im Service-Modell
+16 + 246 + 128 + 133 + 12 = 535 Sekunden (8:55 Minuten), einschließlich beider
+Aggregationen und Setups. Seine tatsächliche Wartezeit von 19:37 Minuten ist
+durch stark überlappende Diagnose-Workflows und Queue belastet. Der App-Merge
+beansprucht früh 60,8 und abschließend 59,4 Sekunden. Davon entfallen jeweils
+rund 57 Sekunden auf 34 Build-Abhängigkeiten; der native Vitest-Target selbst
+benötigt jeweils nur rund 3,2 Sekunden.
+
+Der gemeinsame Konfigurationsloader benötigt tatsächlich nur `plugin-sdk`
+mit `core`, `iam-core` und `media`. Ein frischer isolierter Checkout lädt mit
+genau diesen vier erzeugten Dist-Verzeichnissen erfolgreich sämtliche
+242 App- und 108 Abfall-Testdateien. Der Merge-Helper baut diese Kette vor
+und überspringt ausschließlich beim Report-Merge die übrigen Testtarget-
+Abhängigkeiten. Testläufe und deren Pflicht-Gates bleiben unverändert.
+16 kleine Tests einschließlich deterministischer nativer Merge-Parität und
+Skript-Typecheck bestehen; die CI-Einsparung ist erst im nächsten Lauf messbar.

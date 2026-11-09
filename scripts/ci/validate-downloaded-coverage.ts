@@ -103,13 +103,16 @@ export const mergeProjectCoverage = (
   const cwd = path.join(rootDir, projectRoot);
   const config = project === 'sva-studio-react' ? 'vitest.coverage.config.ts' : 'vitest.config.ts';
   const filters = project === 'sva-studio-react' ? [] : ['tests'];
-  // Nx must build the configuration's runtime package imports on a fresh runner.
+  // Config loading needs the SDK's runtime exports, not the app's complete build graph.
+  execFileSync('pnpm', ['nx', 'run', 'plugin-sdk:build'], { cwd: rootDir, stdio: 'inherit' });
+  // Only report merging skips test prerequisites; instrumented test runs retain them.
   execFileSync(
     'pnpm',
     [
       'nx',
       'run',
       `${project}:test:coverage`,
+      '--excludeTaskDependencies',
       `--mergeReports=${inputDir}`,
       '--reporter=json',
       '--outputFile.json=coverage/test-results.json',

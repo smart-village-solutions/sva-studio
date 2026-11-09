@@ -33,6 +33,12 @@ anderen nicht durch identische Coverage-Ausführung gedeckten Projekte aus.
 Der stabile Main-Check `Unit` verlangt Coverage, Restlauf und alle sieben
 App-Nachweise; es entsteht kein weiterer Controller.
 
+Der native Report-Merge führt keine Tests aus. Seine Vorarbeit darf deshalb
+auf die tatsächlich vom gemeinsamen Vitest-Konfigurationsloader benötigte
+Plugin-SDK-Buildkette begrenzt werden; ein frischer isolierter Checkout muss
+die App- und Abfall-Konfiguration damit laden können. Die tatsächlichen
+Unit-/Coverage-Testtargets behalten ihre vollständigen Build- und Runtime-Gates.
+
 ## Nachweise
 
 Gezielte Vitest-Vertragstests auf Scope/Fallback/No-op, Vollständigkeit, doppelte/fremde/manipulierte Reports, rote/abgebrochene Jobs und Teilwiederholung; Skript-Typecheck und erforderliche Runtime-Gates. Fresh-/Shard-Mengen und Coverage-Zähler werden verglichen. Drei gepaarte Messungen und fünf Flake-Wiederholungen je struktureller Änderung; zehn CI-Endstände zur abschließenden Median-/P90-Bewertung. Solange diese fehlen, keine Zielerreichung behaupten.

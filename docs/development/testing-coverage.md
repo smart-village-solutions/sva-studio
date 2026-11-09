@@ -259,7 +259,10 @@ Prüfsummen, Base/Head, vollständigem Scope-Plan sowie Ausführungszeiten und
 Retryzahlen gebunden. Fehlende oder manipulierte Reports blockieren.
 
 Vitest-Blob-Reports werden instrumentiert pro Projekt zusammengeführt; Prozentwerte
-werden niemals addiert. Vor der Freigabe wird die vollständige Dateivereinigung
+werden weder addiert noch gemittelt. Der reine Report-Merge baut nur die benötigte
+Plugin-SDK-Kette vor und überspringt anschließend die Testtarget-Abhängigkeiten;
+die eigentlichen Shard-Testläufe behalten ihre vollständigen Voraussetzungen.
+Vor der Freigabe wird die vollständige Dateivereinigung
 gegen die Vitest-Discovery geprüft. `Changed Code Coverage` bewertet nach Abschluss der priorisierten Reports
 deren Paket-Floors und Baseline-Deltas sowie den neuen Code; `Coverage Complete` prüft später
 den vollständigen Scope und unveränderte globale Floors. Der stabile Required

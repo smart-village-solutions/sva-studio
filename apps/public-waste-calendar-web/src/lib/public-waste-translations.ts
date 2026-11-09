@@ -2,6 +2,7 @@ const publicWasteMessages = {
   de: {
     'calendar.title': 'Abfallkalender',
     'calendar.loading': 'Abfallkalender wird geladen.',
+    'selection.back': 'Zurück',
     'selection.fractionsWithEmailReminder':
       'Diese Auswahl steuert Liste, Kalenderexport, PDF/Druckversion und E-Mail-Erinnerung gemeinsam.',
     'selection.fractionsWithoutEmailReminder':
@@ -32,6 +33,7 @@ const publicWasteMessages = {
   en: {
     'calendar.title': 'Waste calendar',
     'calendar.loading': 'Loading waste calendar.',
+    'selection.back': 'Back',
     'selection.fractionsWithEmailReminder':
       'This selection controls the list, calendar export, PDF/print version and email reminders.',
     'selection.fractionsWithoutEmailReminder':

@@ -1,12 +1,14 @@
 import React from 'react';
-import { IconSearch } from '@tabler/icons-react';
+import { IconArrowLeft, IconSearch } from '@tabler/icons-react';
 
 import type { PublicWasteSelectableEntry } from '../lib/public-waste-contract.js';
 import { PublicWasteSelectionResults } from './public-waste-selection-results.js';
+import { createPublicWasteTranslator } from '../lib/public-waste-translations.js';
 
 export type PublicWasteSelectionPathItem = {
   readonly step: string;
   readonly label: string;
+  readonly automaticallySelected?: boolean;
 };
 
 const normalizeSearchValue = (value: string): string =>
@@ -105,6 +107,14 @@ export function PublicWasteSelectionForm(
   const [canScrollDown, setCanScrollDown] = React.useState(false);
   const [activeOptionIndex, setActiveOptionIndex] = React.useState(-1);
   const resultsRef = React.useRef<HTMLDivElement>(null);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const [t] = React.useState(() =>
+    createPublicWasteTranslator(document.documentElement.lang || 'de')
+  );
+  const previousStepIndex = props.selectionPath.reduce(
+    (previousIndex, entry, index) => (entry.automaticallySelected ? previousIndex : index),
+    -1
+  );
   const comboboxId = React.useId();
   const resultsId = `${comboboxId}-results`;
   const statusId = `${comboboxId}-status`;
@@ -122,6 +132,7 @@ export function PublicWasteSelectionForm(
   React.useEffect(() => {
     setSearchQuery('');
     setActiveOptionIndex(-1);
+    searchInputRef.current?.focus();
   }, [props.nextStepLabel, props.options]);
 
   const { activateOption, handleSearchKeyDown } = useSelectionNavigation({
@@ -159,6 +170,16 @@ export function PublicWasteSelectionForm(
         <h2 className="section-title">Standort wählen</h2>
         <p className="body-copy">Stellen Sie Ihren Abholort Schritt für Schritt zusammen.</p>
       </div>
+      {previousStepIndex >= 0 ? (
+        <button
+          type="button"
+          className="selection-summary-action"
+          onClick={() => props.onEditStep(previousStepIndex)}
+        >
+          <IconArrowLeft size={18} stroke={1.75} aria-hidden="true" />
+          <span>{t('selection.back')}</span>
+        </button>
+      ) : null}
       {props.selectionPath.length === 0 ? null : (
         <div className="selection-path" aria-label="Auswahlpfad">
           {props.selectionPath.map((entry, index) => (
@@ -167,11 +188,14 @@ export function PublicWasteSelectionForm(
               type="button"
               className="selection-path-chip"
               aria-label={`${entry.step} ändern`}
+              disabled={entry.automaticallySelected}
               onClick={() => props.onEditStep(index)}
             >
               <span className="selection-path-chip-step">{entry.step}</span>
               <strong className="selection-path-chip-label">{entry.label}</strong>
-              <span className="selection-path-chip-action">Ändern</span>
+              {entry.automaticallySelected ? null : (
+                <span className="selection-path-chip-action">Ändern</span>
+              )}
             </button>
           ))}
         </div>
@@ -190,6 +214,7 @@ export function PublicWasteSelectionForm(
             <div className="selection-search-shell">
               <IconSearch size={18} stroke={1.75} aria-hidden="true" />
               <input
+                ref={searchInputRef}
                 id={`selection-search-${props.nextStepLabel}`}
                 className="selection-search-input"
                 type="text"

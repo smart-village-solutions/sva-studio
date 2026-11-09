@@ -35,3 +35,16 @@
   PDF-Konfiguration, öffentliche Webversion, Datentool, Audit.
 - **Evidenz:** `packages/plugin-waste-management/src/waste-management.page.tsx`,
   `plugin.translations.de.*.ts`, `plugin.tsx`.
+
+### PDF-Legende und Logo
+
+Die Legende entsteht aus den gepflegten Abfallarten (Name, Kürzel, Farbe, Beschreibung),
+Tourbeschreibungen und Terminnotizen. Diese Inhalte werden an ihren jeweiligen Stammdaten
+bearbeitet; unter **Ausgabe → PDF-Inhalte** werden die Branding-Grafik und der
+Kontaktblock gepflegt. Es gibt kein separates Freitextfeld „PDF-Legende“.
+
+Die kompakte Legende hat höchstens acht Zeilen und kürzt lange Texte. Deshalb können weitere
+Hinweise entfallen; sie ersetzt nicht alle Termindetails. Ein umfangreicherer Hinweisbereich
+benötigt eine fachliche Layoutentscheidung. Das Landkreislogo muss als konkret freigegebene,
+öffentlich ladbare Grafik vorliegen. Fehlt diese, zeigt der Export den vorhandenen Platzhalter.
+Details zu Pflegewegen und Grenzen stehen in der [Public-Waste-Referenz](../../../reference/public-waste-api.md#pdf-legende-und-landkreislogo-pflegen).

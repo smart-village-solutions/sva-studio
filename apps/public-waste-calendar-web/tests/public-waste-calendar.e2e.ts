@@ -228,7 +228,7 @@ test('resolves a location, restores it from cookie, and exposes accessible expor
 
 test('keeps an iframe calendar bound to its URL region across repeated address searches and exports', async ({
   page,
-}) => {
+}, testInfo) => {
   const regionId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const cityId = '22222222-2222-4222-8222-222222222222';
   const streetId = '33333333-3333-4333-8333-333333333333';
@@ -355,6 +355,16 @@ test('keeps an iframe calendar bound to its URL region across repeated address s
     await expect(page.getByRole('combobox', { name: 'Region suchen' })).toHaveCount(0);
     await page.getByRole('combobox', { name: 'Ort suchen' }).fill('Rat');
     await page.getByRole('option', { name: 'Rathenow' }).click();
+    await expect(page.getByRole('button', { name: 'Zurück' })).toBeVisible();
+    await page.getByRole('button', { name: 'Zurück' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('combobox', { name: 'Ort suchen' })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Zurück' })).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: 'Region suchen' })).toHaveCount(0);
+    await page.getByRole('option', { name: 'Rathenow' }).click();
+    await expect(page.getByRole('combobox', { name: 'Straße suchen' })).toBeFocused();
+    await expectNoAccessibilityViolations(page);
+    await page.screenshot({ path: testInfo.outputPath('regional-back-navigation.png') });
     await page.getByRole('combobox', { name: 'Straße suchen' }).fill('Hafen');
     await page.getByRole('option', { name: 'Am alten Hafen' }).click();
     await page.getByRole('combobox', { name: 'Hausnummer suchen' }).fill('12');

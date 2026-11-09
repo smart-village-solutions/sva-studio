@@ -182,6 +182,12 @@ describe('PublicWasteIndexPage', () => {
       target: { value: 'Rat' },
     });
     fireEvent.click(await screen.findByRole('option', { name: 'Rathenow' }));
+    await screen.findByRole('combobox', { name: 'Straße suchen' });
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+    expect(await screen.findByRole('combobox', { name: 'Ort suchen' })).toBeTruthy();
+    expect(screen.queryByRole('combobox', { name: 'Region suchen' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Zurück' })).toBeNull();
+    fireEvent.click(screen.getByRole('option', { name: 'Rathenow' }));
     fireEvent.change(await screen.findByRole('combobox', { name: 'Straße suchen' }), {
       target: { value: 'Hafen' },
     });
@@ -208,6 +214,32 @@ describe('PublicWasteIndexPage', () => {
         );
       })
     ).toBe(true);
+  });
+
+  it('skips an automatic city when navigating back within a bound region', async () => {
+    window.history.replaceState({}, '', `/?regionId=${BOUND_REGION_ID}`);
+    fetchMock.mockImplementation(async (input) => {
+      const url = new URL(String(input), window.location.origin);
+      expect(url.searchParams.get('regionId')).toBe(BOUND_REGION_ID);
+      const payload = url.searchParams.has('streetId')
+        ? selectionPayloads.street
+        : url.searchParams.has('cityId')
+          ? selectionPayloads.city
+          : { ...selectionPayloads.root, options: [selectionPayloads.root.options[1]] };
+      return new Response(JSON.stringify(payload));
+    });
+    render(<PublicWasteIndexPage />);
+    await screen.findByRole('combobox', { name: 'Straße suchen' });
+    expect(screen.queryByRole('button', { name: 'Zurück' })).toBeNull();
+    expect((screen.getByRole('button', { name: 'Ort ändern' }) as HTMLButtonElement).disabled).toBe(
+      true
+    );
+    fireEvent.click(screen.getByRole('option', { name: 'Am alten Hafen' }));
+    await screen.findByRole('combobox', { name: 'Hausnummer suchen' });
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+    expect(await screen.findByRole('combobox', { name: 'Straße suchen' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Zurück' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Region suchen' })).toBeNull();
   });
 
   it('fails closed when a readable region path is unknown or ambiguous', async () => {

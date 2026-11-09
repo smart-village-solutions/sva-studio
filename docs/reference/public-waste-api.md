@@ -11,7 +11,7 @@ Der Ortskatalog verändert keine Waste-Fachdaten. Er liefert keine E-Mail-Abonne
 Die bestehende Kalenderoberfläche lässt sich ohne iframe mit einem div und einem JavaScript-Modul einbetten:
 
 ```html
-<div data-public-waste-calendar data-region="amt-bad-wilsnack"></div>
+<div data-public-waste-calendar data-region="amt-bad-wilsnack-weisen"></div>
 <script type="module" src="https://abfallkalender.example/embed.js"></script>
 ```
 
@@ -32,14 +32,31 @@ Der Kalender verwendet die vorhandenen semantischen Auswahl- und Kalenderkompone
 Einbettende Seiten begrenzen die öffentliche Weboberfläche über einen lesbaren Regionspfad dauerhaft auf eine öffentlich auswählbare Region. Der Pfad wird aus dem Regionsnamen gebildet; Umlaute werden als `ae`, `oe` beziehungsweise `ue`, `ß` als `ss` und Worttrenner als Bindestriche geschrieben:
 
 ```text
-https://abfallkalender.example/amt-bad-wilsnack
+https://abfallkalender.example/amt-bad-wilsnack-weisen
 ```
 
 Die verfügbaren Namen und Slugs liefert `GET /api/public-waste/regions`. Der Katalog veröffentlicht nur nicht leere, eindeutig auflösbare Slugs. Die Auswahl beginnt direkt beim Ort. „Adresse ändern“, weitere Adresssuchen und die aus dem gewählten Standort abgeleiteten Kalender-, PDF-, iCal- und Erinnerungsaktionen behalten die URL-Region bei. Ohne Regionspfad bleibt die regionsübergreifende Auswahl unverändert. Formal ungültige, unbekannte oder nicht eindeutige Slugs werden mit einem Fehlerzustand abgelehnt; es erfolgt kein ungefilterter Fallback.
 
+„Zurück“ führt während der Auswahl zum letzten selbst gewählten Schritt; automatisch übernommene Einzelauswahlen werden übersprungen und bieten keine wirkungslose Änderungsaktion. Der Fokus wechselt in das Suchfeld des Zielschritts. Am Anfang eines regionalen Einstiegs gibt es keinen Rücksprung zur regionsübergreifenden Auswahl. „Adresse ändern“ beginnt erneut innerhalb der URL-Region. Eine Rücknavigation zur vorgeschalteten Landkreis-Karte bleibt Aufgabe der einbettenden Website; die Kalenderoberfläche verwendet dafür weder Browser-History noch eine erfundene Zieladresse.
+
 Der Slug folgt dem aktuellen Regionsnamen. Wird dieser Name in den Stammdaten geändert, muss die einbettende Seite den Link anhand des aktuellen Regionskatalogs aktualisieren. Der Pfad ist damit ein lesbarer Kundenlink, aber kein namensunabhänglicher Permalink.
 
 Bestehende technische Einbindungen mit genau einem gültigen Suchparameter `regionId` bleiben kompatibel, sind aber nicht das Format für neue öffentliche Links.
+
+## PDF-Legende und Landkreislogo pflegen
+
+Das PDF wird im bestehenden Endpunkt `/api/public-waste/pdf` für Adresse, Jahr und gewählte Abfallarten erzeugt. Die Legende ist aus vorhandenen Fachdaten abgeleitet, kein separat bearbeitbares Textdokument:
+
+| Inhalt                                        | Bestehender Pflegeweg im Studio-Abfallkalender           |
+| --------------------------------------------- | -------------------------------------------------------- |
+| Fraktionsname, Kürzel, Farbe und Beschreibung | Abfallarten → betreffende Abfallart bearbeiten           |
+| Allgemeiner Tourhinweis                       | Touren → betreffende Tour → Beschreibung                 |
+| Hinweis zu einem Termin                       | Termine der Tour → betreffenden Termin → Hinweis         |
+| Logo und Kontaktblock                         | Ausgabe → PDF-Inhalte → Branding-Grafik und Kontaktblock |
+
+Leere Beschreibungen erzeugen keine zusätzlichen Hinweise. HTML wird zu Klartext umgewandelt. Die kompakte Legende steht auf beiden Halbjahresseiten und enthält höchstens acht Zeilen: bei Verschiebungen zuerst deren Erklärung, danach Fraktionen und kontextbezogene Hinweise. Mindestens eine Hinweiszeile bleibt reserviert, wenn Hinweise vorliegen. Lange Zeilen werden mit `...` gekürzt; weitere Hinweise können bei ausgeschöpfter Zeilenzahl entfallen. Sie ist daher keine vollständige Wiedergabe sämtlicher Termindetails. Ein vollständiger Hinweisanhang oder eine andere Verteilung benötigt eine fachliche Layoutentscheidung; vorhandene Inhalte dürfen dafür nicht erfunden werden.
+
+Die führende Quelle für `pdfBrandingAssetUrl` und `pdfContactBlock` ist `waste_settings` der Waste-Datenbank; Legacy-/Umgebungs-Fallbacks beschreibt das [Release-Runbook](../operations/public-waste-web-release-runbook.md). Eine fehlende oder nicht ladbare Grafik führt zum vorhandenen Platzhalter, dessen Text innerhalb des Rahmens bleibt. Der Export lädt eine konfigurierte öffentliche HTTPS-Grafik über den bestehenden geschützten Ladepfad und bettet sie proportional ein. Die Anwendung enthält kein fest eingebautes Landkreislogo. Für dessen Verwendung müssen die konkret freigegebene Grafik und eine passende Asset-URL vorliegen; eine Test-URL oder eine allgemeine Landkreisgrafik belegt keine Freigabe.
 
 ## Abholorte laden
 

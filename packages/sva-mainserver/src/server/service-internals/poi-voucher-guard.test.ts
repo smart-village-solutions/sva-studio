@@ -1,3 +1,4 @@
+import { parse, visit } from 'graphql';
 import { describe, expect, it, vi } from 'vitest';
 import { mapPoiItemDetail } from './poi-mappers.js';
 import { createPoiService } from './service-poi.js';
@@ -5,6 +6,11 @@ import type { ServiceContext } from './service-context.js';
 import { createPoiOperations } from './poi-operations.js';
 import type { GraphqlExecutor } from './shared.js';
 import type { SvaMainserverInstanceConfig } from '../../types.js';
+import {
+  svaMainserverPoiListDocument,
+  svaMainserverPoiDetailDocument,
+  svaMainserverCreatePoiDocument,
+} from '../../generated/events-poi.js';
 const config = {} as SvaMainserverInstanceConfig;
 const input = { instanceId: 'tenant', keycloakSubject: 'subject', poiId: '1' };
 describe('POI visibility', () => {
@@ -127,7 +133,9 @@ it('preserves existing lunch offers from the immediate server read on an ordinar
     loadValidatedInstanceConfig: async () => config,
     poiOperations: createPoiOperations(execute as GraphqlExecutor),
   } as unknown as ServiceContext);
-  await expect(service.updatePoi({ ...input, poi: Object.assign({ name: 'Neu' }, { lunches: [] }) })).resolves.toMatchObject({
+  await expect(
+    service.updatePoi({ ...input, poi: Object.assign({ name: 'Neu' }, { lunches: [] }) })
+  ).resolves.toMatchObject({
     id: '1',
   });
   expect(execute).toHaveBeenCalledTimes(2);
@@ -149,3 +157,18 @@ it.each([undefined, [{ text: 'incomplete' }], 'invalid'])(
     expect(execute).toHaveBeenCalledOnce();
   }
 );
+
+it.each([
+  ['list', svaMainserverPoiListDocument, false],
+  ['detail', svaMainserverPoiDetailDocument, true],
+  ['write response', svaMainserverCreatePoiDocument, false],
+] as const)('loads lunch snapshots only for POI details (%s)', (_name, document, hasLunches) => {
+  const fields = new Set<string>();
+  visit(parse(document), {
+    Field(node) {
+      fields.add(node.name.value);
+    },
+  });
+  expect(fields.has('lunches')).toBe(hasLunches);
+  expect(fields.has('vouchers')).toBe(false);
+});

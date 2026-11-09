@@ -444,12 +444,6 @@ const poiFields = `
     useYear
     description
   }
-  lunches {
-    text
-    pointOfInterestAttributes
-    lunchOffers { name price }
-    dates { weekday dateStart dateEnd timeStart timeEnd timeDescription useOnlyTimeDescription }
-  }
   operatingCompany {
     ${operatingCompanyFields}
   }
@@ -572,6 +566,12 @@ export const svaMainserverPoiDetailDocument = `
   query SvaMainserverPoiDetail($id: ID!) {
     pointOfInterest(id: $id) {
       ${poiFields}
+      lunches {
+        text
+        pointOfInterestAttributes
+        lunchOffers { name price }
+        dates { weekday dateStart dateEnd timeStart timeEnd timeDescription useOnlyTimeDescription }
+      }
     }
   }
 `;

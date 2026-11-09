@@ -33,13 +33,14 @@ type SelectionStepKey = (typeof selectionStepKeys)[keyof typeof selectionStepKey
 
 const appendSelectionPathItem = (
   selectionPath: readonly PublicWasteSelectionPathItem[],
-  response: Pick<PublicWasteSelectionResponse, 'step'>,
+  response: Pick<PublicWasteSelectionResponse, 'step' | 'options'>,
   option: { readonly label: string }
 ): readonly PublicWasteSelectionPathItem[] => [
   ...selectionPath,
   {
     step: selectionStepLabels[response.step],
     label: option.label,
+    automaticallySelected: response.options.length === 1,
   },
 ];
 

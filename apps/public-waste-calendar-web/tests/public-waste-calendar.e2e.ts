@@ -228,7 +228,8 @@ test('resolves a location, restores it from cookie, and exposes accessible expor
 
 test('keeps an iframe calendar bound to its URL region across repeated address searches and exports', async ({
   page,
-}) => {
+}, testInfo) => {
+  let automaticallySelectCity = false;
   const regionId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const cityId = '22222222-2222-4222-8222-222222222222';
   const streetId = '33333333-3333-4333-8333-333333333333';
@@ -288,7 +289,9 @@ test('keeps an iframe calendar bound to its URL region across repeated address s
         step: 'city',
         options: [
           { id: cityId, label: 'Rathenow' },
-          { id: '22222222-2222-4222-8222-222222222223', label: 'Premnitz' },
+          ...(automaticallySelectCity
+            ? []
+            : [{ id: '22222222-2222-4222-8222-222222222223', label: 'Premnitz' }]),
         ],
       },
     });
@@ -355,6 +358,16 @@ test('keeps an iframe calendar bound to its URL region across repeated address s
     await expect(page.getByRole('combobox', { name: 'Region suchen' })).toHaveCount(0);
     await page.getByRole('combobox', { name: 'Ort suchen' }).fill('Rat');
     await page.getByRole('option', { name: 'Rathenow' }).click();
+    await expect(page.getByRole('button', { name: 'Zurück' })).toBeVisible();
+    await page.getByRole('button', { name: 'Zurück' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('combobox', { name: 'Ort suchen' })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Zurück' })).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: 'Region suchen' })).toHaveCount(0);
+    await page.getByRole('option', { name: 'Rathenow' }).click();
+    await expect(page.getByRole('combobox', { name: 'Straße suchen' })).toBeFocused();
+    await expectNoAccessibilityViolations(page);
+    await page.screenshot({ path: testInfo.outputPath('regional-back-navigation.png') });
     await page.getByRole('combobox', { name: 'Straße suchen' }).fill('Hafen');
     await page.getByRole('option', { name: 'Am alten Hafen' }).click();
     await page.getByRole('combobox', { name: 'Hausnummer suchen' }).fill('12');
@@ -384,6 +397,15 @@ test('keeps an iframe calendar bound to its URL region across repeated address s
   await page.getByRole('button', { name: 'E-Mail-Erinnerung anfordern' }).click();
   await expect(reminderRequest).resolves.toBeTruthy();
   await expect(page.getByText('Bestätigungslink versendet')).toBeVisible();
+
+  automaticallySelectCity = true;
+  await page.getByRole('button', { name: 'Adresse ändern' }).click();
+  await expect(page.getByRole('combobox', { name: 'Straße suchen' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Ort ändern' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Zurück' })).toHaveCount(0);
+  await expect(page.getByText('Rathenow', { exact: true })).toBeVisible();
+  await expectNoAccessibilityViolations(page);
+  await page.screenshot({ path: testInfo.outputPath('regional-automatic-path.png') });
 });
 
 test('rejects a malformed URL region without starting an unfiltered selection', async ({

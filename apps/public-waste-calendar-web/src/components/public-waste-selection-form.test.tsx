@@ -4,6 +4,62 @@ import { describe, expect, it, vi } from 'vitest';
 import { PublicWasteSelectionForm } from './public-waste-selection-form.js';
 
 describe('PublicWasteSelectionForm', () => {
+  it('returns to the latest editable step and skips automatic selections', () => {
+    const onEditStep = vi.fn();
+    const { rerender } = render(
+      <PublicWasteSelectionForm
+        nextStepLabel="Hausnummer"
+        options={[
+          { id: '1', label: '12' },
+          { id: '2', label: '14' },
+        ]}
+        selectionPath={[
+          { step: 'Ort', label: 'Rathenow' },
+          { step: 'Straße', label: 'Am alten Hafen', automaticallySelected: true },
+        ]}
+        onEditStep={onEditStep}
+        onSelectOption={() => undefined}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+    expect(onEditStep).toHaveBeenCalledWith(0);
+    expect(screen.queryByRole('button', { name: 'Straße ändern' })).toBeNull();
+    expect(screen.getByText('Am alten Hafen')).toBeTruthy();
+    fireEvent.click(screen.getByText('Am alten Hafen'));
+    expect(onEditStep).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <PublicWasteSelectionForm
+        nextStepLabel="Ort"
+        options={[
+          { id: '1', label: 'Rathenow' },
+          { id: '2', label: 'Nauen' },
+        ]}
+        selectionPath={[]}
+        onEditStep={onEditStep}
+        onSelectOption={() => undefined}
+      />
+    );
+    expect(screen.queryByRole('button', { name: 'Zurück' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('combobox', { name: 'Ort suchen' }));
+  });
+
+  it('does not offer back navigation for automatic selections alone', () => {
+    render(
+      <PublicWasteSelectionForm
+        nextStepLabel="Straße"
+        options={[
+          { id: '1', label: 'Hauptstraße' },
+          { id: '2', label: 'Dorfstraße' },
+        ]}
+        selectionPath={[{ step: 'Ort', label: 'Rathenow', automaticallySelected: true }]}
+        onEditStep={() => undefined}
+        onSelectOption={() => undefined}
+      />
+    );
+    expect(screen.queryByRole('button', { name: 'Zurück' })).toBeNull();
+  });
+
   it('shows all city options initially and filters them after typing', () => {
     const onSelectOption = vi.fn();
 

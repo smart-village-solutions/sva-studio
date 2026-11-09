@@ -474,6 +474,11 @@ body {
   border-radius: 0;
 }
 
+.selection-path-chip--automatic {
+  cursor: default;
+  border-bottom-color: transparent;
+}
+
 .selection-path-chip-step {
   color: rgb(96 96 96);
   font-size: 0.76rem;
@@ -524,7 +529,7 @@ body {
   font-size: 0.95rem;
 }
 
-.selection-path-chip:hover,
+button.selection-path-chip:hover,
 .selection-result:hover,
 .selection-result--active,
 .selection-trigger:hover,

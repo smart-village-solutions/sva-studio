@@ -3,6 +3,7 @@ import {
   BRANDING_BOX,
   buildBrandingImageCommand,
   getContrastingTextColor,
+  getHelveticaTextWidth,
   truncateHelveticaText,
 } from './waste-management-output.render.helpers.js';
 import {
@@ -10,7 +11,6 @@ import {
   PAGE_HEIGHT,
   SHIFT_MARKER_COLOR,
   drawText,
-  drawCenteredText,
   drawFilledRectangle,
   drawStrokedRectangle,
 } from './waste-management-output.render.drawing.js';
@@ -58,15 +58,18 @@ const renderHeader = (
     [0.55, 0.62, 0.7],
     1
   );
-  drawCenteredText({
+  const placeholderLabel = truncateHelveticaText(
+    page.brandingPlaceholderLabel,
+    11,
+    BRANDING_BOX.width - BRANDING_BOX.padding * 2
+  );
+  drawText({
     commands,
-    x: BRANDING_BOX.x,
-    top: BRANDING_BOX.top,
-    width: BRANDING_BOX.width,
-    height: BRANDING_BOX.height,
+    x: BRANDING_BOX.x + (BRANDING_BOX.width - getHelveticaTextWidth(placeholderLabel, 11)) / 2,
+    top: BRANDING_BOX.top + (BRANDING_BOX.height - 11) / 2 + 1,
     fontSize: 11,
-    text: page.brandingPlaceholderLabel,
-    fontName: 'F2',
+    text: placeholderLabel,
+    fontName: 'F1',
   });
 };
 

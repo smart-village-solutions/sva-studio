@@ -1,12 +1,17 @@
 import React from 'react';
-import { IconSearch } from '@tabler/icons-react';
+import { IconArrowLeft, IconSearch } from '@tabler/icons-react';
 
 import type { PublicWasteSelectableEntry } from '../lib/public-waste-contract.js';
-import { PublicWasteSelectionResults } from './public-waste-selection-results.js';
+import {
+  PublicWasteSelectionResults,
+  useSelectionNavigation,
+} from './public-waste-selection-results.js';
+import { createPublicWasteTranslator } from '../lib/public-waste-translations.js';
 
 export type PublicWasteSelectionPathItem = {
   readonly step: string;
   readonly label: string;
+  readonly automaticallySelected?: boolean;
 };
 
 const normalizeSearchValue = (value: string): string =>
@@ -23,75 +28,6 @@ const sortOptions = (
 ): readonly PublicWasteSelectableEntry[] =>
   [...options].sort((left, right) => left.label.localeCompare(right.label, 'de'));
 
-const useSelectionNavigation = (
-  input: Readonly<{
-    activeOptionIndex: number;
-    comboboxId: string;
-    filteredOptions: readonly PublicWasteSelectableEntry[];
-    onSelectOption: (optionId: string) => void;
-    searchQuery: string;
-    setActiveOptionIndex: React.Dispatch<React.SetStateAction<number>>;
-    setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
-  }>
-) => {
-  const activateOption = (index: number) => {
-    const option = input.filteredOptions[index];
-    if (!option) {
-      return;
-    }
-
-    input.setActiveOptionIndex(index);
-    document
-      .getElementById(`${input.comboboxId}-option-${option.id}`)
-      ?.scrollIntoView?.({ block: 'nearest' });
-  };
-
-  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Escape' && (input.searchQuery.length > 0 || input.activeOptionIndex >= 0)) {
-      event.preventDefault();
-      input.setSearchQuery('');
-      input.setActiveOptionIndex(-1);
-      return;
-    }
-
-    if (input.filteredOptions.length === 0) {
-      return;
-    }
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      activateOption(Math.min(input.activeOptionIndex + 1, input.filteredOptions.length - 1));
-      return;
-    }
-
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      activateOption(
-        input.activeOptionIndex <= 0
-          ? input.filteredOptions.length - 1
-          : input.activeOptionIndex - 1
-      );
-      return;
-    }
-
-    if (event.key === 'Home' || event.key === 'End') {
-      event.preventDefault();
-      activateOption(event.key === 'Home' ? 0 : input.filteredOptions.length - 1);
-      return;
-    }
-
-    if (event.key === 'Enter' && input.activeOptionIndex >= 0) {
-      event.preventDefault();
-      const activeOption = input.filteredOptions[input.activeOptionIndex];
-      if (activeOption) {
-        input.onSelectOption(activeOption.id);
-      }
-    }
-  };
-
-  return { activateOption, handleSearchKeyDown };
-};
-
 export function PublicWasteSelectionForm(
   props: Readonly<{
     nextStepLabel: string;
@@ -105,6 +41,14 @@ export function PublicWasteSelectionForm(
   const [canScrollDown, setCanScrollDown] = React.useState(false);
   const [activeOptionIndex, setActiveOptionIndex] = React.useState(-1);
   const resultsRef = React.useRef<HTMLDivElement>(null);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const [t] = React.useState(() =>
+    createPublicWasteTranslator(document.documentElement.lang || 'de')
+  );
+  const previousStepIndex = props.selectionPath.reduce(
+    (previousIndex, entry, index) => (entry.automaticallySelected ? previousIndex : index),
+    -1
+  );
   const comboboxId = React.useId();
   const resultsId = `${comboboxId}-results`;
   const statusId = `${comboboxId}-status`;
@@ -122,6 +66,7 @@ export function PublicWasteSelectionForm(
   React.useEffect(() => {
     setSearchQuery('');
     setActiveOptionIndex(-1);
+    searchInputRef.current?.focus();
   }, [props.nextStepLabel, props.options]);
 
   const { activateOption, handleSearchKeyDown } = useSelectionNavigation({
@@ -159,21 +104,45 @@ export function PublicWasteSelectionForm(
         <h2 className="section-title">Standort wählen</h2>
         <p className="body-copy">Stellen Sie Ihren Abholort Schritt für Schritt zusammen.</p>
       </div>
+      {previousStepIndex >= 0 ? (
+        <button
+          type="button"
+          className="selection-summary-action"
+          onClick={() => props.onEditStep(previousStepIndex)}
+        >
+          <IconArrowLeft size={18} stroke={1.75} aria-hidden="true" />
+          <span>{t('selection.back')}</span>
+        </button>
+      ) : null}
       {props.selectionPath.length === 0 ? null : (
         <div className="selection-path" aria-label="Auswahlpfad">
-          {props.selectionPath.map((entry, index) => (
-            <button
-              key={`${entry.step}-${entry.label}`}
-              type="button"
-              className="selection-path-chip"
-              aria-label={`${entry.step} ändern`}
-              onClick={() => props.onEditStep(index)}
-            >
-              <span className="selection-path-chip-step">{entry.step}</span>
-              <strong className="selection-path-chip-label">{entry.label}</strong>
-              <span className="selection-path-chip-action">Ändern</span>
-            </button>
-          ))}
+          {props.selectionPath.map((entry, index) => {
+            const pathLabel = (
+              <>
+                <span className="selection-path-chip-step">{entry.step}</span>
+                <strong className="selection-path-chip-label">{entry.label}</strong>
+              </>
+            );
+            return entry.automaticallySelected ? (
+              <span
+                key={`${entry.step}-${entry.label}`}
+                className="selection-path-chip selection-path-chip--automatic"
+              >
+                {pathLabel}
+              </span>
+            ) : (
+              <button
+                key={`${entry.step}-${entry.label}`}
+                type="button"
+                className="selection-path-chip"
+                aria-label={`${entry.step} ändern`}
+                onClick={() => props.onEditStep(index)}
+              >
+                {pathLabel}
+                <span className="selection-path-chip-action">Ändern</span>
+              </button>
+            );
+          })}
         </div>
       )}
       <div className="selection-step-card">
@@ -190,6 +159,7 @@ export function PublicWasteSelectionForm(
             <div className="selection-search-shell">
               <IconSearch size={18} stroke={1.75} aria-hidden="true" />
               <input
+                ref={searchInputRef}
                 id={`selection-search-${props.nextStepLabel}`}
                 className="selection-search-input"
                 type="text"

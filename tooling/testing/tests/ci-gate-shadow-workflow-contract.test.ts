@@ -13,7 +13,7 @@ describe('consolidated CI gate workflows', () => {
   const mainGates = workflow('ci-gates-main-shadow.yml');
 
   it('tests the declared PR head instead of an independently updated merge ref', () => {
-    const checkouts = prGates.split(/^      - /mu).filter((step) =>
+    const checkouts = prGates.split(/^ {6}- /mu).filter((step) =>
       step.includes('uses: actions/checkout@')
     );
 

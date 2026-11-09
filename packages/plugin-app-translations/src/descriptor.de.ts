@@ -49,7 +49,7 @@ export const germanTranslations = {
         languages_required:
           'In der geprüften Schnittstelle mindestens eine Zielsprache auswählen und speichern.',
         ready:
-          'Die geprüften und ausgewählten Sprachen sind für die lokale Katalogbearbeitung verfügbar. Automatische Übersetzungen können ausdrücklich gestartet werden. Die App-Auslieferung folgt später.',
+          'Die geprüften und ausgewählten Sprachen sind für die lokale Katalogbearbeitung verfügbar. Automatische Übersetzungen können ausdrücklich gestartet werden. Gesicherte Textstände kannst du für die App freigeben.',
       },
       catalog_setup_required:
         'Bitte zuerst die DeepL-Schnittstelle vollständig einrichten und prüfen. Vorhandene Texte bleiben erhalten.',

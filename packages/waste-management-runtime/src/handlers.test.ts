@@ -2019,6 +2019,91 @@ describe('waste-management auth runtime handlers', () => {
     expect(storedTours.size).toBe(2);
   });
 
+  it.each([
+    'aaaaaaaa-1111-4111-8111-111111111111',
+    '  aaaaaaaa-1111-4111-8111-111111111111  ',
+    'AAAAAAAA-1111-4111-8111-111111111111',
+    '{aaaaaaaa-1111-4111-8111-111111111111}',
+    'aaaaaaaa111141118111111111111111',
+  ])('rejects duplication onto the source ID %s before any write or rollback', async (targetId) => {
+    const source: WasteTourRecord = {
+      id: 'aaaaaaaa-1111-4111-8111-111111111111',
+      name: 'TEST Quelle',
+      wasteFractionIds: ['fraction-2'],
+      recurrence: 'weekly',
+      firstDate: '2026-05-19',
+      status: 'published',
+      createdAt: '2026-05-09T12:00:00.000Z',
+      updatedAt: '2026-05-09T12:00:00.000Z',
+    };
+    const storedTours = new Map([[source.id, structuredClone(source)]]);
+    const saveWasteTour = vi.fn(
+      async (_instanceId: string, input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => {
+        storedTours.set(input.id, { ...source, ...input });
+      }
+    );
+    const deleteWasteTour = vi.fn(async (_instanceId: string, id: string) => {
+      storedTours.delete(id);
+    });
+    const saveWasteLocationTourLink = vi.fn(async () => {
+      throw new Error('TEST copy failed');
+    });
+    const response = await createWasteManagementTourInternal(
+      new Request('https://studio.test/api/v1/waste-management/tours', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          id: targetId,
+          duplicateFromTourId: source.id,
+          name: 'TEST Kopie',
+          wasteFractionIds: source.wasteFractionIds,
+          recurrence: source.recurrence,
+          firstDate: source.firstDate,
+          status: 'draft',
+        }),
+      }),
+      actor,
+      {
+        ...defaultHostDeps,
+        getRequestId: () => 'req-test',
+        saveWasteTour,
+        deleteWasteTour,
+        loadWasteTourById: vi.fn(
+          async (_instanceId: string, id: string) => storedTours.get(id) ?? null
+        ),
+        listWasteLocationTourLinksByTourId: vi.fn(async () => [
+          {
+            id: 'link-source',
+            locationId: 'location-1',
+            tourId: source.id,
+            createdAt: source.createdAt,
+            updatedAt: source.updatedAt,
+          },
+        ]),
+        listWasteLocationTourPickupDates: vi.fn(async () => []),
+        listWasteTourAssignments: vi.fn(async () => []),
+        listWasteTourDateShiftsByTourId: vi.fn(async () => []),
+        saveWasteLocationTourLink,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [
+            ...allowPermission('waste-management.tours.manage'),
+            ...allowPermission('waste-management.scheduling.manage'),
+          ],
+        })),
+      }
+    );
+    expect.soft(response.status).toBe(400);
+    expect.soft(saveWasteTour).not.toHaveBeenCalled();
+    expect.soft(saveWasteLocationTourLink).not.toHaveBeenCalled();
+    expect.soft(deleteWasteTour).not.toHaveBeenCalled();
+    expect.soft(storedTours.get(source.id)).toEqual(source);
+  });
+
   it('rejects duplicated waste tour creation without scheduling permission', async () => {
     const saveWasteTour = vi.fn(async () => undefined);
 

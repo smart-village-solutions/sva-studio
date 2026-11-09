@@ -682,6 +682,7 @@ Das System SHALL im Tourenbereich eine Duplizierungsaktion bereitstellen, die de
 - **AND** der Name erhält initial das Suffix ` (Kopie)`
 - **AND** die ausgewählten Abfallfraktionen und der feste oder benutzerdefinierte Rhythmus bleiben ohne erneute Eingabe erhalten, auch beim erneuten Laden der Duplizierungsroute
 - **AND** die Kopie erhält eine neue ID und wird ausschließlich als Entwurf angelegt
+- **AND** der Server weist identische Quell- und Ziel-IDs einschließlich äquivalenter UUID-Schreibweisen vor jedem Schreibzugriff zurück
 
 ### Requirement: Waste-Management kopiert abhängige Tour-Beziehungen erst nach dem Speichern
 Das System SHALL Abholort-Zuordnungen und tourbezogene Datumsverschiebungen erst nach erfolgreichem Speichern der neuen Tour serverseitig übernehmen.

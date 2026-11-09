@@ -74,9 +74,20 @@ const wasteTourSchemaBase = z.object({
   customDates: z.array(wasteCustomTourDateSchema).optional(),
 });
 
-const createWasteTourSchema = wasteTourSchemaBase.extend({
-  status: z.literal('draft').optional().default('draft'),
-});
+const createWasteTourSchema = wasteTourSchemaBase
+  .extend({
+    status: z.literal('draft').optional().default('draft'),
+  })
+  .refine(
+    ({ id, duplicateFromTourId }) =>
+      !duplicateFromTourId ||
+      id.replace(/[{}-]/g, '').toLowerCase() !==
+        duplicateFromTourId.replace(/[{}-]/g, '').toLowerCase(),
+    {
+      path: ['duplicateFromTourId'],
+      message: 'Quelle und Kopie müssen unterschiedliche Tour-IDs haben.',
+    }
+  );
 
 const updateWasteTourSchema = wasteTourSchemaBase.omit({ id: true }).extend({
   status: z.enum(wasteTourStatuses),

@@ -336,3 +336,24 @@ weiterhin verpflichtend. Zwölf positive und negative Fälle prüfen die echte
 Shell einschließlich No-op, Fehler, Abbruch und unerwartetem Überspringen;
 der gezielte Workflowvertrag umfasst insgesamt 24 erfolgreiche Tests.
 Die Einsparung des Splits muss in folgenden Cloud-Läufen gemessen werden.
+
+### SSF-Formularabfragen unter Coverage
+
+Der erste Lauf nach dem Integration-Split (`42547664987`) besteht dessen
+Integrationsprüfungen, scheitert aber im Coverage-Projekt `plugin-ssf` an zwei
+unveränderten Fünf-Sekunden-Testlimits. Die Folge-Gates blockieren korrekt.
+Eine gezielte Phasenmessung zeigt globale `getByLabelText`-Abfragen mit
+1.855 beziehungsweise 1.631 Millisekunden bei 659/799 DOM-Knoten;
+Import und Rendern benötigen in dieser Messung nur 4–69 beziehungsweise
+1–8 Millisekunden. Die installierte Testing-Library traversiert für diese
+Abfragen sämtliche Elemente und deren Labelbeziehungen.
+
+Bekannte Felder werden im bestehenden Testfile über native Rollen und dieselben
+zugänglichen Namen abgefragt. Die Legal-Version bleibt zusätzlich auf ihren
+bestehenden Abschnitt begrenzt; breite Negativprüfungen auf fehlende Labels
+bleiben erhalten. Fixtures, Mocks, Testnamen, Eingabewerte, fachliche Assertions
+und Timeouts sind unverändert. Die Fallmultimenge stimmt exakt mit den 24
+CI-Fällen überein. Drei vollständige lokale Coverage-Dateiläufe bestehen;
+im ersten benötigen die zuvor roten Fälle 312/597 Millisekunden und der
+gesamte Lauf 16,60 Sekunden. Das ist ein lokaler Diagnosebeleg; die vollständige
+Cloud-Wiederholungsreihe nach diesem Fix bleibt erforderlich.

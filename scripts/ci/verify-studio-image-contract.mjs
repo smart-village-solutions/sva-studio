@@ -248,6 +248,14 @@ export const verifyStudioImageContract = (input) => {
     fail('invalid_workspace_package_inventory');
   }
   const present = new Set(packages);
+  const installedSvaPackages = new Set(
+    runtimeManifest.installedPlugins
+      .filter(({ sourceRef }) => sourceRef.startsWith('@sva/'))
+      .map(({ sourceRef }) => sourceRef.slice('@sva/'.length))
+  );
+  for (const name of installedSvaPackages) {
+    if (!present.has(name)) fail(`installed_plugin_package_missing:${name}`);
+  }
   if (!present.has('plugin-sdk')) fail('workspace_package_inventory_incomplete');
   for (const id of [...regularPlugins, 'ssf']) {
     const shouldBePresent =
@@ -259,6 +267,7 @@ export const verifyStudioImageContract = (input) => {
     if (
       name.startsWith('plugin-') &&
       name !== 'plugin-sdk' &&
+      !installedSvaPackages.has(name) &&
       ![...regularPlugins, 'ssf'].some((id) => name === `plugin-${id}`)
     ) {
       fail(`unexpected_plugin_package_present:${name}`);

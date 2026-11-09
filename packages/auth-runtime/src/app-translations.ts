@@ -8,6 +8,7 @@ import { readAppTranslationServiceBinding } from './app-translations-binding.js'
 import { readDeepLSetupStatus } from './app-translations-deepl.js';
 import { operationSchema, actionFor, type Operation } from './app-translations-operations.js';
 import { authorizeCatalogOperation } from './app-translations-execution.js';
+import { publishAppTextCatalog } from './app-translations-publish.js';
 import { runCatalogOperation } from './app-translations-execution.js';
 const logger = createSdkLogger({ component: 'app-translations' });
 const response = (status: number, value: unknown) =>
@@ -67,6 +68,10 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
         ctx.user.id,
         canManageInterfaces
       );
+      if (result && 'delivery' in result && result.delivery) {
+        await publishAppTextCatalog(result.delivery);
+        return response(200, { data: { revision: result.delivery.revision } });
+      }
       if (result && 'download' in result)
         return new Response(result.download, {
           headers: {

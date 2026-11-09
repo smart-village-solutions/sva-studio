@@ -38,3 +38,25 @@ export const exportCatalogTextsJs = async (
   catalogAssert(new TextEncoder().encode(source).length <= CATALOG_TEXTS_EXPORT_MAX_BYTES);
   return source;
 };
+
+export const createCatalogDelivery = async (
+  release: CatalogRelease,
+  rawManifest: CatalogManifest
+) => {
+  const manifest = validateCatalogManifest(rawManifest);
+  catalogAssert(
+    (await catalogDigest(manifest)) === manifestV2Digest,
+    'catalog_export_incompatible'
+  );
+  const locales = await verifyTextsRelease(release, manifest);
+  catalogAssert(release.scope.kind === 'municipal');
+  return {
+    schema: 'sva-mobile-app-texts-v2',
+    instanceId: release.scope.instanceId,
+    organizationId: release.scope.organizationId,
+    revision: release.catalogSetRevision,
+    catalogs: Object.fromEntries(
+      locales.map((locale) => [locale, release.catalogs[locale]!.values])
+    ),
+  };
+};

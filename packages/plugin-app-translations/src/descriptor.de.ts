@@ -158,6 +158,10 @@ export const germanTranslations = {
         'Der Textstand wurde nicht gesichert. Prüfe die folgenden Texte; ein Klick öffnet den betroffenen Eintrag. Manuelle Korrekturen bleiben erhalten.',
       releases: 'Gesicherte Textstände',
       preview: 'Textstand ansehen',
+      publishToApp: 'Für die App freigeben',
+      publishedToApp: 'Textstand für die App freigegeben.',
+      sealedSnapshot:
+        'Dieser Textstand ist unveränderlich. Die Freigabe bestimmt, welchen Stand die App abrufen kann.',
       downloadTexts: 'texts.js herunterladen',
       downloadingTexts: 'texts.js wird erstellt …',
       downloadedTexts: 'texts.js heruntergeladen. Noch nicht an Apps ausgeliefert.',
@@ -191,7 +195,8 @@ export const germanTranslations = {
       schema: 'Lokale Katalogbasis',
       provider: 'Zentraler DeepL-Zugang konfiguriert',
       service: 'Mainserver für Übersetzungen freigegeben',
-      serviceMissing: 'Mainserver-Freigabe fehlt. Mainserver-Zuordnung und Studio-Ziel prüfen, anschließend Modul abgleichen.',
+      serviceMissing:
+        'Mainserver-Freigabe fehlt. Mainserver-Zuordnung und Studio-Ziel prüfen, anschließend Modul abgleichen.',
       invalidContext: 'Ungültiger Modulauftrag',
     },
   },

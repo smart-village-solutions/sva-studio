@@ -1,5 +1,7 @@
 import { type CatalogOverview } from '@sva/plugin-sdk/app-translations';
+import { Button } from '@sva/studio-ui-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
+import { publishCatalog } from './catalog.page.snapshots.js';
 import {
   type CatalogPageViewModel,
   draftDetails,
@@ -21,6 +23,9 @@ export const CatalogRelease = ({
     languageNames,
     sourceOnly,
     platform,
+    canPublish,
+    busy,
+    dirty,
 
     downloadTexts,
     loadPreview,
@@ -58,7 +63,17 @@ export const CatalogRelease = ({
             {pt(downloadingId === release.id ? 'downloadingTexts' : 'downloadTexts')}
           </a>
         )}
-        <p className="text-sm text-muted-foreground">{pt('localOnly')}</p>
+        {!platform && !sourceOnly && canPublish && (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={busy || dirty}
+            onClick={() => void publishCatalog(model, release.id)}
+          >
+            {pt('publishToApp')}
+          </Button>
+        )}
+        <p className="text-sm text-muted-foreground">{pt('sealedSnapshot')}</p>
         <CatalogReleasePreview preview={preview} revision={release.catalogSetRevision} />
       </div>
     </details>

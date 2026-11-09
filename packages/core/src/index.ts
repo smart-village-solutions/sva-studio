@@ -251,6 +251,7 @@ export * from './app-translations.js';
 
 export {
   exportCatalogTextsJs,
+  createCatalogDelivery,
   CATALOG_TEXTS_EXPORT_MAX_BYTES,
 } from './app-translations-texts-export.js';
 

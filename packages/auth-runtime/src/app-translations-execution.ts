@@ -198,6 +198,14 @@ export const runCatalogOperation = async (
         ? startCatalogTranslation(client, scope, actorId, op)
         : catalogTranslationStatus(await readCatalogTranslationJob(client, scope, op.contractId));
     }
+    if (op.operation === 'publish') {
+      if (scope.kind !== 'municipal' || sourceOnly)
+        throw new AppTranslationError('catalog_forbidden');
+      const delivery = await repo.exportCatalogDelivery(op.releaseId);
+      if (Object.keys(delivery.catalogs).sort().join(',') !== [...allowedLocales].sort().join(','))
+        throw new AppTranslationError('catalog_conflict');
+      return { delivery };
+    }
     if (op.operation === 'downloadTexts') {
       if (scope.kind !== 'municipal') throw new AppTranslationError('catalog_forbidden');
       return { download: await repo.exportTexts(op.releaseId) };

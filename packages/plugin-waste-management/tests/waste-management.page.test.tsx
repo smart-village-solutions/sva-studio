@@ -1,4 +1,5 @@
 import React from 'react';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
@@ -2193,116 +2194,152 @@ describe('WasteManagementPage', () => {
     expect(screen.queryByText('Vorverlegt')).toBeNull();
   });
 
-  it('shows the duplication hint and sends duplicateFromTourId during create submit', async () => {
-    searchMock.mockImplementation(() => ({
-      tab: 'tours',
-      masterDataTab: 'fractions',
-      fractionsView: 'list',
-      toursView: 'create',
-      locationsView: 'list',
-      schedulingView: 'list',
-      q: '',
-      page: 1,
-      pageSize: 25,
-      status: 'all',
-      shiftContext: 'all',
-      fractionsSortBy: 'name',
-      fractionsSortDirection: 'asc',
-      duplicateFromTourId: 'tour-source-1',
-    }));
-    wasteManagementApiMocks.getWasteManagementMasterDataOverview.mockResolvedValueOnce({
-      fractions: [
-        {
-          id: 'fraction-1',
-          name: 'Restmüll',
-          active: true,
-          createdAt: '2026-05-09T10:00:00.000Z',
-          updatedAt: '2026-05-09T10:00:00.000Z',
-        },
-      ],
-      regions: [],
-      cities: [],
-      streets: [],
-      houseNumbers: [],
-      collectionLocations: [],
-      locationTourLinks: [],
-    });
-    wasteManagementApiMocks.getWasteManagementToursOverview
-      .mockResolvedValueOnce({
-        tours: [
+  it.each([
+    { recurrence: 'weekly', firstDate: '2026-05-19', endDate: '2026-12-31' },
+    {
+      recurrence: 'custom',
+      customDates: [{ date: '2026-06-02', description: 'TEST Einzeltermin' }],
+    },
+    {
+      recurrence: null,
+      customRecurrenceId: 'preset-test',
+      firstDate: '2026-05-19',
+      endDate: '2026-12-31',
+    },
+    { recurrence: 'on-demand' },
+  ] satisfies Partial<WasteTourRecord>[])(
+    'duplicates $recurrence / $customRecurrenceId without re-entering source fields',
+    async (schedule) => {
+      searchMock.mockImplementation(() => ({
+        tab: 'tours',
+        toursView: 'list',
+        q: '',
+        page: 1,
+        pageSize: 25,
+        status: 'all',
+        shiftContext: 'all',
+      }));
+      const source: WasteTourRecord = {
+        id: 'tour-source-1',
+        name: 'TEST Bio Nord',
+        description: 'TEST Tourbeschreibung',
+        wasteFractionIds: ['fraction-1'],
+        status: 'published',
+        createdAt: '2026-05-09T10:00:00.000Z',
+        updatedAt: '2026-05-09T10:00:00.000Z',
+        ...schedule,
+      };
+      const sourceBefore = structuredClone(source);
+      wasteManagementApiMocks.getWasteManagementMasterDataOverview.mockResolvedValue({
+        fractions: [
           {
-            id: 'tour-source-1',
-            name: 'Bio Nord',
-            wasteFractionIds: ['fraction-1'],
-            recurrence: 'weekly',
-            firstDate: '2026-05-19',
-            status: 'published',
-            createdAt: '2026-05-09T10:00:00.000Z',
-            updatedAt: '2026-05-09T10:00:00.000Z',
+            id: 'fraction-1',
+            name: 'Restmüll',
+            active: true,
+            createdAt: source.createdAt,
+            updatedAt: source.updatedAt,
           },
         ],
-      })
-      .mockResolvedValueOnce({
-        tours: [
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        collectionLocations: [],
+        locationTourLinks: [],
+      });
+      wasteManagementApiMocks.getWasteManagementToursOverview.mockResolvedValue({
+        tours: [source],
+        customRecurrencePresets: [
           {
-            id: 'tour-copy-1',
-            name: 'Bio Nord (Kopie)',
-            wasteFractionIds: ['fraction-1'],
-            recurrence: 'weekly',
-            firstDate: '2026-05-19',
-            status: 'draft',
-            createdAt: '2026-05-09T10:00:00.000Z',
-            updatedAt: '2026-05-09T10:00:00.000Z',
+            id: 'preset-test',
+            name: 'TEST 10 Tage',
+            intervalDays: 10,
+            createdAt: source.createdAt,
+            updatedAt: source.updatedAt,
           },
         ],
       });
-    wasteManagementApiMocks.createWasteManagementTour.mockReset();
-    wasteManagementApiMocks.createWasteManagementTour.mockImplementation(async () => ({
-      id: 'tour-copy-1',
-      name: 'Bio Nord (Kopie)',
-      wasteFractionIds: ['fraction-1'],
-      recurrence: 'weekly',
-      firstDate: '2026-05-19',
-      status: 'draft',
-      createdAt: '2026-05-09T10:00:00.000Z',
-      updatedAt: '2026-05-09T10:00:00.000Z',
-    }));
+      wasteManagementApiMocks.createWasteManagementTour.mockReset();
+      wasteManagementApiMocks.createWasteManagementTour.mockResolvedValue({
+        ...source,
+        id: 'tour-copy-1',
+        status: 'draft',
+      });
 
-    render(<WasteManagementPage />);
-
-    await waitFor(() => {
-      expect(wasteManagementApiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(1);
-    });
-
-    expect(screen.getByText('wasteManagement.tours.messages.duplicateHint')).toBeTruthy();
-    await waitFor(() => {
-      expect(
-        (screen.getByLabelText('wasteManagement.tours.fields.name') as HTMLInputElement).value
-      ).toBe('Bio Nord (Kopie)');
-    });
-    expect(
-      (screen.getByLabelText('wasteManagement.tours.fields.recurrence') as HTMLSelectElement).value
-    ).toBe('weekly');
-    expect(
-      (screen.getByLabelText('wasteManagement.tours.fields.firstDate') as HTMLInputElement).value
-    ).toBe('2026-05-19');
-    expect((screen.getByLabelText('Restmüll') as HTMLInputElement).checked).toBe(true);
-    fireEvent.click(
-      screen.getAllByRole('button', { name: 'wasteManagement.tours.actions.create' })[0]!
-    );
-
-    await waitFor(() => {
-      expect(wasteManagementApiMocks.createWasteManagementTour).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Bio Nord (Kopie)',
-          wasteFractionIds: ['fraction-1'],
-          recurrence: 'weekly',
-          firstDate: '2026-05-19',
-          duplicateFromTourId: 'tour-source-1',
-        })
+      const listView = render(<WasteManagementPage />);
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'wasteManagement.tours.actions.duplicate' })
       );
-    });
-  });
+      const duplicateNavigation = navigateMock.mock.calls.find(
+        ([options]) => options.search?.duplicateFromTourId === source.id
+      )?.[0];
+      expect(duplicateNavigation?.search).toMatchObject({
+        toursView: 'create',
+        duplicateFromTourId: source.id,
+      });
+      // A fresh mount must retain the copied values even after local form state is lost.
+      listView.unmount();
+      searchMock.mockImplementation(() => duplicateNavigation.search);
+      render(<WasteManagementPage />);
+
+      await waitFor(() => {
+        expect(
+          (screen.getByLabelText('wasteManagement.tours.fields.name') as HTMLInputElement).value
+        ).toBe('TEST Bio Nord (Kopie)');
+      });
+      expect(
+        (screen.getByLabelText('wasteManagement.tours.fields.recurrence') as HTMLSelectElement)
+          .value
+      ).toBe(source.customRecurrenceId ? 'preset:preset-test' : source.recurrence);
+      expect((screen.getByLabelText('Restmüll') as HTMLInputElement).checked).toBe(true);
+      if (source.firstDate) {
+        expect(
+          (screen.getByLabelText('wasteManagement.tours.fields.firstDate') as HTMLInputElement)
+            .value
+        ).toBe(source.firstDate);
+        expect(
+          (screen.getByLabelText('wasteManagement.tours.fields.endDate') as HTMLInputElement).value
+        ).toBe(source.endDate);
+      }
+      if (source.customDates?.length) {
+        expect(screen.getByDisplayValue('TEST Einzeltermin')).toBeTruthy();
+      }
+      expect(screen.getByText('wasteManagement.tours.messages.duplicateHint')).toBeTruthy();
+      expect(wasteManagementApiMocks.createWasteManagementTour).not.toHaveBeenCalled();
+      fireEvent.click(
+        screen.getAllByRole('button', { name: 'wasteManagement.tours.actions.create' })[0]!
+      );
+
+      await waitFor(() => {
+        expect(wasteManagementApiMocks.createWasteManagementTour).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: expect.any(String),
+            name: 'TEST Bio Nord (Kopie)',
+            description: source.description,
+            wasteFractionIds: source.wasteFractionIds,
+            recurrence: source.customRecurrenceId ? undefined : source.recurrence,
+            customRecurrenceId: source.customRecurrenceId,
+            firstDate: source.firstDate,
+            endDate: source.endDate,
+            customDates: source.customDates,
+            status: 'draft',
+            duplicateFromTourId: source.id,
+          })
+        );
+      });
+      expect(wasteManagementApiMocks.createWasteManagementTour.mock.calls[0]?.[0].id).not.toBe(
+        source.id
+      );
+      expect(wasteManagementApiMocks.updateWasteManagementTour).not.toHaveBeenCalled();
+      expect(
+        wasteManagementApiMocks.updateWasteManagementLocationTourPickupDate
+      ).not.toHaveBeenCalled();
+      expect(
+        wasteManagementApiMocks.deleteWasteManagementLocationTourPickupDate
+      ).not.toHaveBeenCalled();
+      expect(source).toEqual(sourceBefore);
+    }
+  );
 
   it('creates a tour-related waste date shift from the scheduling dialog', async () => {
     searchMock.mockImplementation(() => ({

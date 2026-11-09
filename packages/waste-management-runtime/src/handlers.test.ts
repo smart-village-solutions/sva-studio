@@ -1871,8 +1871,27 @@ describe('waste-management auth runtime handlers', () => {
       },
     ] as const;
 
-    const saveWasteTour = vi.fn(async () => undefined);
-    const loadWasteTourById = vi.fn(async () => savedTour);
+    const sourceTour: WasteTourRecord = { ...savedTour, id: 'tour-source-1', status: 'published' };
+    const sourceBefore = structuredClone({
+      sourceTour,
+      sourceLinks,
+      sourcePickupDates,
+      sourceTourAssignments,
+      sourceShifts,
+    });
+    const storedTours = new Map([[sourceTour.id, sourceTour]]);
+    const saveWasteTour = vi.fn(
+      async (_instanceId: string, input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => {
+        storedTours.set(input.id, {
+          ...input,
+          createdAt: savedTour.createdAt,
+          updatedAt: savedTour.updatedAt,
+        });
+      }
+    );
+    const loadWasteTourById = vi.fn(
+      async (_instanceId: string, id: string) => storedTours.get(id) ?? null
+    );
     const listWasteLocationTourLinksByTourId = vi.fn(async () => sourceLinks);
     const saveWasteLocationTourLink = vi.fn(async () => undefined);
     const listWasteLocationTourPickupDates = vi.fn(async () => sourcePickupDates);
@@ -1975,7 +1994,29 @@ describe('waste-management auth runtime handlers', () => {
       })
     );
     expect(deleteWasteTour).not.toHaveBeenCalled();
+    expect(saveWasteTour).toHaveBeenCalledTimes(1);
+    expect(saveWasteTour).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({
+        id: 'tour-copy-1',
+        wasteFractionIds: ['fraction-2'],
+        recurrence: 'biweekly',
+        firstDate: '2026-05-19',
+        customDates: savedTour.customDates,
+        status: 'draft',
+      })
+    );
     expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({ data: savedTour });
+    expect(storedTours.get(sourceTour.id)).toEqual(sourceBefore.sourceTour);
+    expect({
+      sourceTour,
+      sourceLinks,
+      sourcePickupDates,
+      sourceTourAssignments,
+      sourceShifts,
+    }).toEqual(sourceBefore);
+    expect(storedTours.size).toBe(2);
   });
 
   it('rejects duplicated waste tour creation without scheduling permission', async () => {

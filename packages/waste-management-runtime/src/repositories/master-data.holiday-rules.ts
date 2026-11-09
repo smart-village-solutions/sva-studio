@@ -86,7 +86,7 @@ const buildHolidayRuleListStatement = (filter: WasteHolidayRuleListFilter = {}):
     text: `
 SELECT
   id::text,
-  holiday_date,
+  to_char(holiday_date, 'YYYY-MM-DD') AS holiday_date,
   holiday_name,
   year,
   state_code,

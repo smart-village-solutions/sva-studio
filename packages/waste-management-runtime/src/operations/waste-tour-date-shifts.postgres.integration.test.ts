@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { wasteTenantMigrations } from '../../../../deploy/portainer/waste-tenant-migration-catalog.mjs';
 import { applySchemaStatements } from './waste-management-operations.schema.js';
 import { createSqlExecutor } from './waste-management-operations.shared.js';
+import { buildMaterializedLocationTourPickupDates } from './waste-management-mainserver-sync.materialization.js';
 
 const tourId = '10000000-0000-4000-8000-000000000001';
 const firstShiftId = '20000000-0000-4000-8000-000000000001';
@@ -101,6 +102,67 @@ describe('Waste tour date shifts against PostgreSQL', () => {
     expect(indexes.rows[0]?.indexdef).toContain('WHERE (NOT has_year)');
     expect(indexes.rows[1]?.indexdef).toContain('(tour_id, original_date) WHERE has_year');
   });
+
+  it.each(['ISO, MDY', 'SQL, DMY'])(
+    'materializes effective holiday pickups under %s DateStyle',
+    async (dateStyle) => {
+      await repository.upsertWasteHolidayRule({
+        id: '30000000-0000-4000-8000-000000000001',
+        holidayDate: '2026-12-25',
+        holidayName: 'Weihnachten',
+        year: 2026,
+        stateCode: 'BB',
+        sourceStatus: 'confirmed',
+        configurationStatus: 'configured',
+        conflictStatus: 'none',
+        scope: 'full-week',
+        strategy: 'advance',
+      });
+      const holidayRules = await withClient(async (client) => {
+        await client.query('BEGIN READ ONLY');
+        try {
+          await client.query("SELECT set_config('DateStyle', $1, true)", [dateStyle]);
+          return await createWasteMasterDataRepository(
+            createSqlExecutor(client)
+          ).listWasteHolidayRules({ year: 2026, stateCode: 'BB' });
+        } finally {
+          await client.query('ROLLBACK');
+        }
+      });
+      expect(holidayRules[0]?.holidayDate).toBe('2026-12-25');
+
+      const dates = buildMaterializedLocationTourPickupDates({
+        tours: [
+          {
+            id: tourId,
+            name: 'Bio',
+            wasteFractionIds: [],
+            recurrence: 'on-demand',
+            status: 'published',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+        links: [],
+        tourAssignments: [
+          {
+            id: 'assignment',
+            tourId,
+            pickupDate: '2026-12-24',
+            locationIds: ['location'],
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+        tourDateShifts: [],
+        globalDateShifts: [],
+        holidayRules,
+        currentYear: 2026,
+        nextYear: 2027,
+      });
+      expect(dates.map(({ pickupDate }) => pickupDate)).toEqual(['2026-12-23']);
+    }
+  );
 
   it('allows exactly one concurrent insert for equal specificity', async () => {
     const outcomes = await Promise.allSettled([

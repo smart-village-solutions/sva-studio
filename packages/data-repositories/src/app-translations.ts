@@ -17,6 +17,7 @@ export const createAppTranslationRepository = async (
   return {
     loadDraft: context.loadDraft,
     loadRelease: (id: string) => context.loadRelease(id),
+    exportCatalogDelivery: (id: string) => read.exportCatalogDelivery(context, id),
     overview: (
       ...args: Parameters<typeof read.overview> extends [unknown, ...infer Rest] ? Rest : never
     ) => read.overview(context, ...args),

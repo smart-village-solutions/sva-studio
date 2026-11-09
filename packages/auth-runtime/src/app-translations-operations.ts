@@ -55,6 +55,7 @@ export const operationSchema = z.discriminatedUnion('operation', [
     .strict(),
   z.object({ operation: z.literal('reset'), ...textFields }).strict(),
   z.object({ operation: z.literal('confirm'), ...textFields }).strict(),
+  z.object({ operation: z.literal('publish'), releaseId: z.uuid() }).strict(),
   z.object({ operation: z.literal('seal'), contractId, expectedRevision }).strict(),
 ]);
 export type Operation = z.infer<typeof operationSchema>;
@@ -65,7 +66,7 @@ export const actionFor = (op: Operation): string =>
           op.operation
         )
       ? 'app-translations.catalog.read'
-      : op.operation === 'seal'
+      : ['seal', 'publish'].includes(op.operation)
         ? 'app-translations.catalog.publish'
         : 'app-translations.catalog.write';
 export const dispatch = (
@@ -76,6 +77,7 @@ export const dispatch = (
   targetCodes: Readonly<Record<string, string>> = {}
 ) => {
   switch (op.operation) {
+    case 'publish':
     case 'downloadTexts':
     case 'translate':
     case 'translationStatus':

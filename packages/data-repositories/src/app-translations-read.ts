@@ -6,6 +6,7 @@ import {
   prepareCatalogRelease,
   type AppTranslationLocale,
   exportCatalogTextsJs,
+  createCatalogDelivery,
   CATALOG_TEXTS_EXPORT_MAX_BYTES,
   catalogDigest,
   resolveCatalogValues,
@@ -40,7 +41,7 @@ export const overview = async (context: CatalogRepositoryContext): Promise<Catal
       : { rows: [] };
   return { scope, catalogs: drafts.rows, releases: releases.rows, bases: bases.rows };
 };
-export const exportTexts = async (context: CatalogRepositoryContext, id: string) => {
+const verifiedReleaseSource = async (context: CatalogRepositoryContext, id: string) => {
   const { client, scope, instanceId, organizationId } = context;
 
   catalogAssert(scope.kind === 'municipal', 'catalog_forbidden');
@@ -75,7 +76,15 @@ export const exportTexts = async (context: CatalogRepositoryContext, id: string)
       entry.payload.scope.organizationId === organizationId
   );
   catalogAssert((await catalogDigest(entry.manifest)) === entry.digest);
-  return exportCatalogTextsJs(entry.payload, entry.manifest);
+  return { release: entry.payload, manifest: entry.manifest };
+};
+export const exportTexts = async (context: CatalogRepositoryContext, id: string) => {
+  const { release, manifest } = await verifiedReleaseSource(context, id);
+  return exportCatalogTextsJs(release, manifest);
+};
+export const exportCatalogDelivery = async (context: CatalogRepositoryContext, id: string) => {
+  const { release, manifest } = await verifiedReleaseSource(context, id);
+  return createCatalogDelivery(release, manifest);
 };
 export const readEffective = async (context: CatalogRepositoryContext, contractId: string) => {
   const { loadDraft, baseOf } = context;

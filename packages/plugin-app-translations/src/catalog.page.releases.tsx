@@ -1,8 +1,10 @@
 import { type CatalogOverview } from '@sva/plugin-sdk/app-translations';
+import { Button } from '@sva/studio-ui-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   type CatalogPageViewModel,
   draftDetails,
+  errorCode,
   type ReleasePreview,
 } from './catalog.page.state.js';
 
@@ -21,11 +23,33 @@ export const CatalogRelease = ({
     languageNames,
     sourceOnly,
     platform,
+    canPublish,
+    busy,
+    dirty,
+    overview,
+    catalog,
+    setBusy,
+    setError,
+    setNotice,
 
     downloadTexts,
     loadPreview,
   } = model;
   const preview = previews[release.id];
+  const publish = async () => {
+    if (!overview || busy || dirty) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      await catalog({ operation: 'publish', releaseId: release.id }, overview.scope);
+      setNotice('publishedToApp');
+    } catch (reason) {
+      setError(errorCode(reason));
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <details
       key={release.id}
@@ -58,7 +82,17 @@ export const CatalogRelease = ({
             {pt(downloadingId === release.id ? 'downloadingTexts' : 'downloadTexts')}
           </a>
         )}
-        <p className="text-sm text-muted-foreground">{pt('localOnly')}</p>
+        {!platform && !sourceOnly && canPublish && (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={busy || dirty}
+            onClick={() => void publish()}
+          >
+            {pt('publishToApp')}
+          </Button>
+        )}
+        <p className="text-sm text-muted-foreground">{pt('sealedSnapshot')}</p>
         <CatalogReleasePreview preview={preview} revision={release.catalogSetRevision} />
       </div>
     </details>

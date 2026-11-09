@@ -22,6 +22,7 @@ const state = vi.hoisted(() => ({
     loadDraft: vi.fn(),
     loadRelease: vi.fn(),
     exportTexts: vi.fn(),
+    exportCatalogDelivery: vi.fn(),
     editText: vi.fn(),
     readEffective: vi.fn(),
     seal: vi.fn(),
@@ -32,8 +33,12 @@ const state = vi.hoisted(() => ({
   permissions: vi.fn(),
   createRepo: vi.fn(),
   pluginAccess: vi.fn(),
+  publish: vi.fn(),
 }));
-vi.mock('./app-translations-binding.js', () => ({ readAppTranslationServiceBinding: async () => false }));
+vi.mock('./app-translations-publish.js', () => ({ publishAppTextCatalog: state.publish }));
+vi.mock('./app-translations-binding.js', () => ({
+  readAppTranslationServiceBinding: async () => false,
+}));
 vi.mock('./middleware.js', () => ({
   withAuthenticatedUser: (_request: Request, work: (ctx: unknown) => unknown) => work(state.ctx),
 }));
@@ -71,6 +76,35 @@ import {
 } from './app-translations.js';
 const request = new Request('https://tenant.test/internal', { method: 'POST' });
 describe('internal catalog session facade', () => {
+  it('publishes only an authorized sealed municipal catalog for the current language policy', async () => {
+    const op = { operation: 'publish', releaseId: '11111111-1111-4111-8111-111111111112' };
+    const scoped = new Request('https://tenant.test/internal', {
+      method: 'POST',
+      headers: {
+        'x-sva-catalog-mode': 'translations',
+        'x-sva-catalog-scope': JSON.stringify({
+          kind: 'municipal',
+          instanceId: 'tenant',
+          organizationId: state.ctx.activeOrganizationId,
+        }),
+      },
+    });
+    expect((await executeAppTranslationOperation(scoped, op)).status).toBe(403);
+    expect(state.publish).not.toHaveBeenCalled();
+    state.allowed = true;
+    const delivery = {
+      revision: '2',
+      catalogs: { de: { close: 'Schließen' }, en: { close: 'Close' } },
+    };
+    state.repo.exportCatalogDelivery.mockResolvedValue(delivery);
+    expect((await executeAppTranslationOperation(scoped, op)).status).toBe(200);
+    expect(state.repo.exportCatalogDelivery).toHaveBeenCalledWith(op.releaseId);
+    expect(state.publish).toHaveBeenCalledWith(delivery);
+    state.locales = ['de', 'hu'];
+    expect((await executeAppTranslationOperation(scoped, op)).status).toBe(409);
+    expect(state.publish).toHaveBeenCalledTimes(1);
+  });
+
   it('starts translations only with write permission, CSRF, matching scope and a strict payload', async () => {
     const start = vi
       .spyOn(catalogJobs, 'startCatalogTranslation')
@@ -697,7 +731,11 @@ describe('internal catalog session facade', () => {
     ]);
     state.providerReady = false;
     const status = await readAppTranslationsLocalReadiness('tenant-b');
-    expect(status).toEqual({ schemaReady: true, providerConfigured: false, serviceConfigured: false });
+    expect(status).toEqual({
+      schemaReady: true,
+      providerConfigured: false,
+      serviceConfigured: false,
+    });
     expect(JSON.stringify(status)).not.toContain('private');
     query.mockResolvedValue({ rows: [{ ready: false }] });
     expect((await readAppTranslationsLocalReadiness('tenant-b')).schemaReady).toBe(false);

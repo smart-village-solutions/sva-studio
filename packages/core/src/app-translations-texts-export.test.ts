@@ -13,7 +13,7 @@ import {
   type CatalogTexts,
   catalogAssert,
 } from './app-translations.js';
-import { exportCatalogTextsJs } from './app-translations-texts-export.js';
+import { createCatalogDelivery, exportCatalogTextsJs } from './app-translations-texts-export.js';
 const fixture = new URL('../__tests__/fixtures/mobile-texts/', import.meta.url);
 const manifest = validateCatalogManifest(
   JSON.parse(readFileSync(new URL('manifest.json', fixture), 'utf8'))
@@ -271,6 +271,23 @@ describe('mobile-app 5 texts.js format', () => {
   const manifestV2 = validateCatalogManifest(
     JSON.parse(readFileSync(new URL('manifest-v2.json', fixture), 'utf8'))
   );
+  it('delivers the verified v2 snapshot as data and rejects an older schema', async () => {
+    const snapshot = await release({}, manifestV2);
+    const result = await createCatalogDelivery(snapshot, manifestV2);
+    expect(result).toMatchObject({
+      schema: 'sva-mobile-app-texts-v2',
+      revision: snapshot.catalogSetRevision,
+      instanceId: scope.instanceId,
+      organizationId: scope.organizationId,
+    });
+    expect(result.catalogs.en?.['participationProject.categoryCount']).toEqual(
+      snapshot.catalogs.en?.values['participationProject.categoryCount']
+    );
+    await expect(createCatalogDelivery(await release(), manifest)).rejects.toThrow(
+      'catalog_export_incompatible'
+    );
+  });
+
   it('preserves all current strings, call signatures, plurals and the locale-local frequency lookup', async () => {
     const sourceV2 = readFileSync(new URL('texts-v2.reference.js', fixture), 'utf8');
     expect(createHash('sha256').update(sourceV2).digest('hex')).toBe(

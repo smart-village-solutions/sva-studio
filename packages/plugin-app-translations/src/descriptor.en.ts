@@ -151,6 +151,10 @@ export const englishTranslations = {
         'The text snapshot was not saved. Review the following texts; click an entry to open it. Manual corrections are preserved.',
       releases: 'Saved text snapshots',
       preview: 'View text snapshot',
+      publishToApp: 'Publish to app',
+      publishedToApp: 'Text catalog published to the app.',
+      sealedSnapshot:
+        'This text catalog is immutable. Publishing selects the catalog available to the app.',
       downloadTexts: 'Download texts.js',
       downloadingTexts: 'Preparing texts.js …',
       downloadedTexts: 'texts.js downloaded. Not yet delivered to apps.',
@@ -183,7 +187,8 @@ export const englishTranslations = {
       schema: 'Local catalog basis',
       provider: 'Central DeepL credential configured',
       service: 'Mainserver authorized for translations',
-      serviceMissing: 'Mainserver authorization is missing. Check the Mainserver assignment and Studio destination, then reconcile the module.',
+      serviceMissing:
+        'Mainserver authorization is missing. Check the Mainserver assignment and Studio destination, then reconcile the module.',
       invalidContext: 'Invalid module lifecycle request',
     },
   },

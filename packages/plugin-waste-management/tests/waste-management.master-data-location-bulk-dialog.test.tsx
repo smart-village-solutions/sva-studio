@@ -6,8 +6,7 @@ import { BulkLocationAssignmentsDialog } from '../src/waste-management.master-da
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation:
-    () =>
-    (key: string, variables?: Readonly<Record<string, string | number>>) =>
+    () => (key: string, variables?: Readonly<Record<string, string | number>>) =>
       variables?.value === undefined ? key : `${key}:${variables.value}`,
 }));
 
@@ -56,13 +55,22 @@ describe('BulkLocationAssignmentsDialog', () => {
       />
     );
 
+    const summary = screen.getByRole('region', {
+      name: 'masterData.collectionLocations.bulk.selectedTitle',
+    });
+    expect(summary.tabIndex).toBe(0);
+    summary.focus();
+    expect(document.activeElement).toBe(summary);
+
     expect(
       screen.getByText('masterData.collectionLocations.bulk.dialog.description:1')
     ).toBeTruthy();
     expect(
-      screen.getByRole('button', {
-        name: 'masterData.collectionLocations.bulk.actions.assign',
-      }).hasAttribute('disabled')
+      screen
+        .getByRole('button', {
+          name: 'masterData.collectionLocations.bulk.actions.assign',
+        })
+        .hasAttribute('disabled')
     ).toBe(false);
   });
 });

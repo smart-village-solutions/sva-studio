@@ -68,6 +68,29 @@ describe('waste-management cross-link navigation', () => {
     );
   });
 
+  it('preserves the location list filters and page when editing from coverage results', () => {
+    const locationSearch = {
+      ...search,
+      tab: 'locations' as const,
+      locationsView: 'list' as const,
+      q: 'Perleberg',
+      regionId: 'region-1',
+      cityId: 'city-1',
+      status: 'active' as const,
+      locationYear: 2027,
+      locationTourStatus: 'draft' as const,
+    };
+    expect(toWasteCollectionLocationEditSearch(locationSearch, 'location-2')).toEqual({
+      ...locationSearch,
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'edit',
+      wasteFractionId: undefined,
+      duplicateFromTourId: undefined,
+      collectionLocationId: 'location-2',
+    });
+  });
+
   it('opens scheduling with a visible tour filter and clears stale search state', () => {
     expect(toWasteTourSchedulingSearch(search, 'tour-2')).toEqual(
       expect.objectContaining({

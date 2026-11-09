@@ -319,6 +319,56 @@ describe('waste-management tours low coverage views', () => {
     expect(controller.onSubmitTour).toHaveBeenCalledWith(expect.anything(), 'create', 'tour-1');
   });
 
+  it('finds a city and street beyond the first 100 of 718 assignment options without losing search focus', () => {
+    const locations = Array.from({ length: 718 }, (_, index) => ({
+      id: `location-${index}`,
+      label: `Location ${index}`,
+      regionId: 'region',
+      regionName: 'Region',
+      cityId: `city-${index}`,
+      cityName: index === 717 ? 'Zielort' : `Ort ${index}`,
+      streetId: `street-${index}`,
+      streetName: index === 717 ? 'Zielstraße' : `Straße ${index}`,
+      houseNumberId: '',
+      houseNumberName: '1',
+      active: true,
+      ...(index === 717 ? { assignedLinkId: 'existing-link' } : {}),
+    }));
+    render(
+      <TourAssignmentsDialog
+        open
+        mode="edit"
+        form={{ tourId: 'tour' } as never}
+        tour={{ id: 'tour', name: 'Testtour' } as never}
+        locations={locations}
+        saving={false}
+        message={null}
+        onOpenChange={vi.fn()}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+    const table = screen.getByRole('table');
+    expect(within(table).getAllByRole('row')).toHaveLength(719);
+    // Existing assignments lead the complete selection, rather than changing the location list ordering.
+    expect(within(table).getAllByRole('row')[1]?.textContent).toContain('Zielort');
+    const input = screen.getByLabelText('filters.searchLabel');
+    input.focus();
+    for (const value of ['Z', 'Zi', 'Zie', 'Zielstraße'])
+      fireEvent.change(input, { target: { value } });
+    expect(document.activeElement).toBe(input);
+    expect(within(table).getAllByRole('row')).toHaveLength(2);
+    expect(within(table).getByText('Zielort')).toBeTruthy();
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('masterData.collectionLocations.fields.cityId'), {
+      target: { value: 'city-717' },
+    });
+    expect(within(table).getAllByRole('row')).toHaveLength(2);
+    expect(within(table).getByText('Zielstraße')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'tours.assignments.actions.resetFilters' }));
+    expect(within(table).getAllByRole('row')).toHaveLength(719);
+  });
+
   it('renders assignment dialog loading and fallback description branches', () => {
     render(
       <TourAssignmentsDialog

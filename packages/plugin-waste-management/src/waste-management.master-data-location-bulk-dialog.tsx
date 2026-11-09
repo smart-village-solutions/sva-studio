@@ -81,7 +81,12 @@ export const BulkLocationAssignmentsDialog = ({
           </DialogDescription>
         </DialogHeader>
         <form className="flex min-h-0 flex-1 flex-col gap-4" onSubmit={onSubmit}>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+          <div
+            role="region"
+            aria-label={pt('masterData.collectionLocations.bulk.selectedTitle')}
+            tabIndex={0}
+            className="min-h-0 flex-1 space-y-4 overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
             <StatusNotice message={message} />
             <StudioFieldGroup>
               <StudioField

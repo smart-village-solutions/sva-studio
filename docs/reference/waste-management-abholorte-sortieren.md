@@ -1,6 +1,6 @@
 # Waste-Abholorte global sortieren und auswählen
 
-Die Abholortliste unter **Waste Management → Stammdaten → Abholorte** wird
+Die Abholortliste unter **Abfallkalender → Abholorte** wird
 global in der instanzbezogenen Waste-Datenbank gefiltert, sortiert und
 paginiert. Die sichtbare Reihenfolge gilt deshalb für den gesamten Trefferbestand
 und nicht nur für die aktuelle Browserseite.
@@ -62,3 +62,33 @@ Die Migration prüft auch die ICU-Version. Bei Versionsdrift gilt das in der
 [Datenbankschema-Dokumentation](../development/studio-db-schema.md#datenbankweiter-sortiervertrag-für-waste-abholorte)
 beschriebene Wartungsverfahren; ein automatisches Versions-Refresh findet nicht
 statt.
+
+## Ansichten und Bearbeitungsrückweg
+
+Die **Abholortliste** sucht nach Ort und Straße über den Gesamtbestand. Region und
+Ort grenzen die Treffer ein; Jahr und Tourstatus grenzen die angezeigten
+Tourbezüge ein. Bereits zugeordnete Abholorte erhalten hier keine bevorzugte
+Listenposition.
+
+Unter **Stammdaten** wird nach Region, Ort, Straße oder Hausnummer gesucht.
+Mehrere Buchstaben können zusammenhängend eingegeben werden; Enter oder das
+Verlassen des Suchfelds übernimmt den Begriff. Die Sortierschaltflächen in den
+vorgesehenen Spalten sortieren den vollständigen Trefferbestand vor dem Blättern.
+
+Im Dialog **Tour-Zuordnung bearbeiten** beziehen sich Suche, Orts-/Straßenfilter
+und die bevorzugte Anzeige ausgewählter Abholorte auf die bearbeitete Tour.
+Die Adresssortierung wird über die Steuerelemente für Region und Richtung
+bedient; die Spaltenüberschriften dieses Dialogs sind keine Sortierschaltflächen.
+
+Wer aus der Abdeckungsprüfung einen Abholort zur Bearbeitung öffnet und
+abbricht, erhält die bisherigen Listeneinstellungen einschließlich Tourfilter
+und Seite zurück. Fraktion, Jahr beziehungsweise Zeitraum und die Auswahl zum
+Einbeziehen von Entwürfen bleiben während dieser Bearbeitung erhalten.
+Das Prüfergebnis wird nach der Rückkehr erneut berechnet, sobald **Prüfen**
+betätigt wird. Diese lokalen Prüfkriterien werden nicht über einen Seitenreload
+oder einen Wechsel in andere Arbeitsbereiche hinweg gespeichert.
+
+Lange Zuordnungsdialoge begrenzen ihre Höhe auf das Browserfenster. In der
+Sammelzuordnung ist der Bereich **Ausgewählte Abholorte** mit Tab erreichbar;
+Pfeiltasten sowie Bild auf/Bild ab scrollen die Zusammenfassung. Tourauswahl,
+Abbrechen und Zuweisen bleiben über Tab erreichbar.

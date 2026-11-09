@@ -57,6 +57,7 @@ export const toWasteCollectionLocationEditSearch = (
   collectionLocationId: string
 ): WasteManagementSearchParams => ({
   ...resetEntityEditSearch(search),
+  ...(search.tab === 'locations' ? { tourId: search.tourId, page: search.page } : {}),
   tab: 'locations',
   masterDataTab: 'locations',
   locationsView: 'edit',

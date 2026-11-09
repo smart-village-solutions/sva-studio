@@ -19,8 +19,6 @@ import {
   POI_CONTENT_TYPE,
   type RouteMatch,
 } from './poi-route-access.js';
-import { z } from 'zod';
-import { preparePoiVoucherUpdate, reconcileVoucherReferences } from './poi-route-vouchers.js';
 import { applyPoiVisibilityAfterWrite, createPoiContent, parsePoiInput } from './poi-route-input.js';
 import {
   authorizeMainserverExistingContent,
@@ -81,6 +79,14 @@ const handleItemUpdate = async (
     return actor;
   }
 
+  if ([
+    'x-sva-voucher-reset-mode',
+    'x-sva-voucher-reset-id',
+    'x-sva-voucher-reset-fingerprint',
+  ].some((header) => request.headers.has(header))) {
+    return errorJson(409, 'poi_editor_reload_required', 'poi_editor_reload_required');
+  }
+
   return runMainserverMutationWithFailureFinalization({
     actor,
     contentId: route.itemId,
@@ -97,10 +103,6 @@ const handleItemUpdate = async (
       }
 
       const existing = await getSvaMainserverPoiDetail({ ...actor, poiId: route.itemId });
-      if ('name' in parsed && request.headers.get('x-sva-voucher-reset-mode') === 'prepare') {
-        const preparation = await preparePoiVoucherUpdate({ request, ctx, actor, poiId: route.itemId, poi: parsed });
-        return isResponse(preparation) ? preparation : errorJson(409, 'voucher_confirmation_required', 'voucher_confirmation_required');
-      }
       const providerAuthorization = await authorizeMainserverExistingContent({
         actor,
         action: 'poi.update',
@@ -127,28 +129,13 @@ const handleItemUpdate = async (
         logSuccess('mainserver_poi_visibility_update', route.itemId);
         return json({ data: { ...existing.data, visible: parsed.visible, status: parsed.visible ? 'published' : 'draft' } });
       }
-      const voucherReset = await preparePoiVoucherUpdate({
-        request,
-        ctx,
-        actor,
-        poiId: route.itemId,
-        poi: parsed,
-      });
-      if (isResponse(voucherReset)) return voucherReset;
       const result = {
         data: await updateSvaMainserverPoi({
           ...actor,
           poiId: route.itemId,
           poi: parsed,
-          ...voucherReset,
         }),
       };
-      if ('voucherIdChanges' in result.data) {
-        const changes = z
-          .array(z.object({ previousId: z.string(), id: z.string() }))
-          .parse(result.data.voucherIdChanges);
-        await reconcileVoucherReferences(actor.instanceId, changes);
-      }
       const saved = await applyPoiVisibilityAfterWrite(actor, result.data, parsed.visible);
       if (isResponse(saved)) return saved;
       await finalizeMainserverMutation({

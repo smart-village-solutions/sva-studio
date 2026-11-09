@@ -77,6 +77,7 @@ describe('Mainserver editor field matrices', () => {
         id: 'poi-1',
         name: 'Alt',
         contentType: 'poi.point-of-interest',
+        lunches: [],
         status: 'published',
         payload: { hidden: true },
         externalId: 'external-1',

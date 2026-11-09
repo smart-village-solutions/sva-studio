@@ -5,6 +5,7 @@ import type {
   SvaMainserverPoiItem,
   MainserverDataDeviation,
 } from '../../types.js';
+import { toSvaMainserverError } from './shared.js';
 
 export type MainserverEditorFieldClassification =
   'hard' | 'controlled' | 'passthrough' | 'readonly' | 'not_preservable';
@@ -50,6 +51,7 @@ export const poiEditorFieldMatrix = {
   contact: 'controlled',
   priceInformations: 'controlled',
   openingHours: 'controlled',
+  lunches: 'passthrough',
   operatingCompany: 'controlled',
   webUrls: 'controlled',
   mediaContents: 'controlled',
@@ -160,8 +162,17 @@ export const mergePoiUpdateWithCurrent = (
   deviations: readonly Pick<MainserverDataDeviation, 'fieldGroup'>[] = []
 ): SvaMainserverPoiInput => {
   const degradedFields = new Set(deviations.map(({ fieldGroup }) => fieldGroup));
+  // Mainserver replaces lunches even when omitted; use only the immediate server read.
+  if (!current.lunches || degradedFields.has('lunches')) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'poi_lunch_snapshot_incomplete',
+      statusCode: 502,
+    });
+  }
   return {
     ...submitted,
+    lunches: current.lunches,
     active: preserveDefinedUnlessDegraded('active', current.active, submitted.active, degradedFields),
     mobileDescription: preserveDefinedUnlessDegraded(
       'mobileDescription',

@@ -913,6 +913,57 @@ describe('mainserver content route contracts', () => {
     expect(state.updateSvaMainserverPoi).not.toHaveBeenCalled();
   });
 
+  it.each(['dp-org-1', 'dp-other-owner'])(
+    'updates an authorized POI owned by %s without requesting voucher rights or transferring ownership',
+    async (dataProviderId) => {
+      mockAuthorizedMutation();
+      state.getSvaMainserverPoiDetail.mockResolvedValue({
+        data: { id: 'poi-1', dataProvider: { id: dataProviderId } }, deviations: [],
+      });
+      state.updateSvaMainserverPoi.mockResolvedValue({ id: 'poi-1', dataProvider: { id: dataProviderId } });
+      const response = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+        method: 'PATCH', body: JSON.stringify({ name: 'Ort', vouchers: [{ id: '2' }], dataProviderId: 'injected-owner' }),
+      }));
+      expect(response?.status).toBe(200);
+      expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'poi.update', contentId: 'poi-1', dataProviderId,
+      }));
+      expect(state.authorizeContentPrimitiveForUser.mock.calls.some(([call]) => call.action.startsWith('vouchers.'))).toBe(false);
+      expect(state.updateSvaMainserverPoi).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+        poiId: 'poi-1', poi: { name: 'Ort' },
+      }));
+      const written = state.updateSvaMainserverPoi.mock.calls[0]![0];
+      expect(written).not.toHaveProperty('dataProviderId');
+      expect(written).not.toHaveProperty('voucherResetFingerprint');
+    }
+  );
+
+  it('denies a foreign POI when the actor lacks provider-scoped update access', async () => {
+    mockAuthorizedMutation();
+    state.getSvaMainserverPoiDetail.mockResolvedValue({ data: { id: 'poi-1', dataProvider: { id: 'foreign' } }, deviations: [] });
+    state.authorizeMainserverDataProviderAccess.mockResolvedValue({ allowed: false, reason: 'access_scope_mismatch', authorizationMode: 'exact' });
+    const response = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+      method: 'PATCH', body: JSON.stringify({ name: 'Ort' }),
+    }));
+    expect(response?.status).toBe(403);
+    expect(state.updateSvaMainserverPoi).not.toHaveBeenCalled();
+    expect(state.changeSvaMainserverPoiVisibility).not.toHaveBeenCalled();
+  });
+
+  it.each(['X-SVA-Voucher-Reset-Mode', 'X-SVA-Voucher-Reset-Id', 'X-SVA-Voucher-Reset-Fingerprint'])(
+    'rejects stale editor header %s before any mutation', async (header) => {
+      mockAuthorizedMutation();
+      const response = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+        method: 'PATCH', headers: { [header]: 'prepare' }, body: JSON.stringify({ name: 'Ort' }),
+      }));
+      expect(response?.status).toBe(409);
+      await expect(response?.json()).resolves.toMatchObject({ error: 'poi_editor_reload_required' });
+      expect(state.updateSvaMainserverPoi).not.toHaveBeenCalled();
+      expect(state.changeSvaMainserverPoiVisibility).not.toHaveBeenCalled();
+      expect(state.beginMainserverMutationJournal).not.toHaveBeenCalled();
+    }
+  );
+
   it('applies editor visibility after saving POI content', async () => {
     mockAuthorizedMutation();
     state.getSvaMainserverPoiDetail.mockResolvedValue({ data: { id: 'poi-1', visible: true }, deviations: [] });

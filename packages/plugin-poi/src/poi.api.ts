@@ -19,9 +19,15 @@ export class PoiApiError extends Error {
     public readonly code: string,
     message = code
   ) {
-    super(code.startsWith('voucher_') && code !== 'voucher_reset_cancelled'
-      ? translatePluginKey('poi', ['voucher_outcome_unknown', 'voucher_reconciliation_required'].includes(code) ? 'messages.voucherSaveUnknown' : 'messages.voucherResetUnavailable')
-      : message);
+    super(
+      code.startsWith('voucher_')
+        ? translatePluginKey('poi', 'messages.voucherOperationUnavailable')
+        : code === 'poi_editor_reload_required'
+          ? translatePluginKey('poi', 'messages.editorReloadRequired')
+          : code === 'invalid_response' && message === 'poi_lunch_snapshot_incomplete'
+            ? translatePluginKey('poi', 'messages.lunchesUnavailable')
+            : message
+    );
     this.name = 'PoiApiError';
   }
 }
@@ -70,67 +76,8 @@ export const updatePoi = async (
   input: PoiFormInput,
   actingPrincipalType: MainserverActingPrincipalType,
   mutationOptions?: MainserverMutationOptions
-): Promise<PoiContentItem> => {
-  await poiClient.ensureMutationContext(contentId, actingPrincipalType);
-  const url = `/api/v1/mainserver/poi/${encodeURIComponent(contentId)}`;
-  const prepared = await requestMainserverJson<
-    {
-      voucherReset: {
-        required: boolean;
-        id?: string;
-        fingerprint?: string;
-        affected?: readonly { title: string }[];
-      };
-    },
-    PoiApiError
-  >({
-    url,
-    errorFactory: (code, message) => new PoiApiError(code, message),
-    init: {
-      method: 'PATCH',
-      headers: poiClient.mutationHeaders(contentId, actingPrincipalType, {
-        'X-SVA-Voucher-Reset-Mode': 'prepare',
-      }),
-      body: JSON.stringify(input),
-    },
-  });
-  if (!prepared.voucherReset.required)
-    return poiClient.update(contentId, input, actingPrincipalType, mutationOptions);
-  const reset = prepared.voucherReset;
-  if (
-    !reset.id ||
-    !reset.fingerprint ||
-    !globalThis.confirm(
-      translatePluginKey('poi', 'messages.voucherResetConfirmation', {
-        vouchers: (reset.affected ?? []).map((item) => item.title).join('\n'),
-      })
-    )
-  )
-    throw new PoiApiError(
-      'voucher_reset_cancelled',
-      translatePluginKey('poi', 'messages.voucherResetCancelled')
-    );
-  const headers = poiClient.mutationHeaders(
-    contentId,
-    actingPrincipalType,
-    {
-      'X-SVA-Voucher-Reset-Id': reset.id,
-      'X-SVA-Voucher-Reset-Fingerprint': reset.fingerprint,
-    },
-    mutationOptions?.operationId
-  );
-  if (mutationOptions?.contentMediaSaveOperationId)
-    headers.set(
-      'X-SVA-Content-Media-Save-Operation-Id',
-      mutationOptions.contentMediaSaveOperationId
-    );
-  const response = await requestMainserverJson<{ data: PoiContentItem }, PoiApiError>({
-    url,
-    errorFactory: (code, message) => new PoiApiError(code, message),
-    init: { method: 'PATCH', headers, body: JSON.stringify(input) },
-  });
-  return response.data;
-};
+): Promise<PoiContentItem> =>
+  poiClient.update(contentId, input, actingPrincipalType, mutationOptions);
 
 export const deletePoi = async (
   contentId: string,

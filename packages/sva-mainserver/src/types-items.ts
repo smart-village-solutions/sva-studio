@@ -94,6 +94,25 @@ export type SvaMainserverEventItem = {
   readonly dataProvider?: SvaMainserverDataProvider;
 };
 
+// Server-read lunch data is carried through POI updates; the Studio has no lunch editor.
+type PoiLunchInput = {
+  readonly text: string | null;
+  readonly pointOfInterestAttributes: string | null;
+  readonly lunchOffers:
+    readonly { readonly name: string | null; readonly price: string | null }[] | null;
+  readonly dates:
+    | readonly {
+        readonly weekday: string | null;
+        readonly dateStart: string | null;
+        readonly dateEnd: string | null;
+        readonly timeStart: string | null;
+        readonly timeEnd: string | null;
+        readonly timeDescription: string | null;
+        readonly useOnlyTimeDescription: boolean | null;
+      }[]
+    | null;
+};
+
 export type SvaMainserverPoiInput = {
   readonly name: string;
   readonly description?: string;
@@ -109,6 +128,7 @@ export type SvaMainserverPoiInput = {
   readonly contact?: SvaMainserverContactInput;
   readonly priceInformations?: readonly SvaMainserverPriceInput[];
   readonly openingHours?: readonly SvaMainserverOpeningHourInput[];
+  readonly lunches?: readonly PoiLunchInput[];
   readonly operatingCompany?: SvaMainserverOperatingCompanyInput;
   readonly webUrls?: readonly SvaMainserverWebUrlInput[];
   readonly mediaContents?: readonly SvaMainserverMediaContentInput[];
@@ -135,6 +155,7 @@ export type SvaMainserverPoiItem = {
   readonly contact?: SvaMainserverContact;
   readonly priceInformations: readonly SvaMainserverPrice[];
   readonly openingHours: readonly SvaMainserverOpeningHour[];
+  readonly lunches?: readonly PoiLunchInput[];
   readonly operatingCompany?: SvaMainserverOperatingCompany;
   readonly webUrls: readonly SvaMainserverWebUrl[];
   readonly mediaContents: readonly SvaMainserverMediaContent[];

@@ -238,9 +238,6 @@ export const updateSvaMainserverPoi = (
   input: SvaMainserverConnectionInput & {
     readonly poiId: string;
     readonly poi: SvaMainserverPoiInput;
-    readonly voucherResetFingerprint?: string;
-    readonly voucherResetIdentities?: Readonly<Record<string, string>>;
-    readonly voucherResetOperationId?: string;
   }
 ) => getDefaultService().updatePoi(input);
 

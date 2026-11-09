@@ -41,9 +41,6 @@ export const createPoiService = ({
     input: SvaMainserverConnectionInput & {
       readonly poiId: string;
       readonly poi: SvaMainserverPoiInput;
-      readonly voucherResetFingerprint?: string;
-      readonly voucherResetIdentities?: Readonly<Record<string, string>>;
-      readonly voucherResetOperationId?: string;
     }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');

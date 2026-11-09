@@ -159,6 +159,17 @@ describe('voucher aggregate write', () => {
       dateStart: '2026-02-01',
     });
   });
+  it('rejects a voucher from another provider before any aggregate mutation', async () => {
+    const { poi, service, execute } = setup();
+    poi.vouchers[0]!.dataProvider.id = 'foreign-provider';
+    await expect(service.getVoucherPoi({ ...connection, poiId: '1' })).rejects.toThrow('voucher_ownership_conflict');
+    await expect(service.writeVoucher({
+      ...connection, poiId: '1', voucherId: '2', voucher: input,
+      creationId: 'attempt', expectedFingerprint: 'unused',
+    })).rejects.toThrow('voucher_ownership_conflict');
+    expect(execute.mock.calls.some(([call]) => call.operationName === 'SvaMainserverVoucherWrite')).toBe(false);
+    expect(poi.vouchers[0]!.dataProvider.id).toBe('foreign-provider');
+  });
   it('preserves weekday and time rules when editing content without date boundaries', async () => {
     const { poi, service, fingerprint } = setup();
     const date = {

@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import {
   authorizeMediaPrimitiveForUser,
@@ -6,107 +5,9 @@ import {
   loadExternalContentReferenceBySourceEntity,
   withExternalContentMutationLock,
   withMediaService,
-  authorizeContentPrimitiveForUser,
-  reserveIdempotency,
-  completeIdempotency,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
-import type { SvaMainserverPoiInput } from '../types.js';
-import { errorJson, json } from './content-route-core.js';
-import {
-  getSvaMainserverPoiVoucherState,
-  loadSvaMainserverDataProviderIdentity,
-} from './service.js';
-import type { MainserverMutationActor } from './mutation-principal.js';
-import { raw, records, voucherSnapshotHash } from './vouchers-snapshot.js';
-const endpoint = 'mainserver:poi-voucher-reset';
-export async function preparePoiVoucherUpdate(
-  input: Readonly<{
-    request: Request;
-    ctx: AuthenticatedRequestContext;
-    actor: MainserverMutationActor;
-    poiId: string;
-    poi: SvaMainserverPoiInput;
-  }>
-) {
-  const { request, ctx, actor, poiId, poi } = input;
-  const preparing = request.headers.get('x-sva-voucher-reset-mode') === 'prepare';
-  // The low-level writer protects legacy clients without this preflight.
-  if (!preparing && !request.headers.has('x-sva-voucher-reset-id')) return {};
-  const state = await getSvaMainserverPoiVoucherState({ ...actor, poiId });
-  const siblings = records(state.poi.vouchers);
-  if (!siblings.length) return preparing ? json({ voucherReset: { required: false } }) : {};
-  const identity = await loadSvaMainserverDataProviderIdentity(actor);
-  if (raw(state.poi.dataProvider).id !== identity.dataProvider.id)
-    return errorJson(403, 'voucher_ownership_conflict', 'voucher_ownership_conflict');
-  for (const item of siblings) {
-    const access = await authorizeContentPrimitiveForUser({
-      ctx,
-      action: 'vouchers.update',
-      resource: { contentType: 'vouchers.voucher', contentId: String(item.id) },
-      credentialVisibleCompatibility: false,
-    });
-    if (!access.ok)
-      return errorJson(access.status, access.error, access.message, access.permissionDenial);
-  }
-  const fingerprint = preparing
-    ? state.fingerprint
-    : request.headers.get('x-sva-voucher-reset-fingerprint');
-  const id = preparing ? randomUUID() : request.headers.get('x-sva-voucher-reset-id');
-  if (!id || !/^[a-f0-9-]{36}$/i.test(id) || !fingerprint)
-    return errorJson(400, 'voucher_confirmation_required', 'voucher_confirmation_required');
-  const payloadHash = voucherSnapshotHash({
-    poiId,
-    poi,
-    fingerprint,
-    principal: actor.actingPrincipalType,
-    credential: actor.credentialFingerprint,
-    organization: actor.activeOrganizationId ?? null,
-  });
-  const scope = {
-    instanceId: actor.instanceId,
-    actorAccountId: actor.actorAccountId,
-    idempotencyKey: id,
-  };
-  const prepared = await reserveIdempotency({ ...scope, endpoint, payloadHash });
-  if (preparing) {
-    if (prepared.status !== 'reserved')
-      return errorJson(409, 'voucher_content_conflict', 'voucher_content_conflict');
-    const identities = existingVoucherIdentities(siblings);
-    const voucherReset = {
-      identities,
-      required: true,
-      id,
-      fingerprint,
-      affected: siblings.map((item) => ({ id: item.id, title: item.title })),
-    };
-    await completeIdempotency({
-      ...scope,
-      endpoint,
-      status: 'COMPLETED',
-      responseStatus: 200,
-      responseBody: voucherReset,
-    });
-    return json({ voucherReset });
-  }
-  if (prepared.status !== 'replay' || fingerprint !== state.fingerprint)
-    return errorJson(409, 'voucher_content_conflict', 'voucher_content_conflict');
-  const attempt = await reserveIdempotency({
-    ...scope,
-    endpoint: `${endpoint}:commit`,
-    payloadHash,
-  });
-  if (attempt.status !== 'reserved')
-    return errorJson(409, 'voucher_outcome_unknown', 'voucher_outcome_unknown');
-  const binding = z
-    .object({ identities: z.record(z.string(), z.string()) })
-    .parse(prepared.responseBody);
-  return {
-    voucherResetFingerprint: state.fingerprint,
-    voucherResetIdentities: binding.identities,
-    voucherResetOperationId: id,
-  };
-}
+import { errorJson } from './content-route-core.js';
 export async function reconcileVoucherReferences(
   instanceId: string,
   changes: readonly Readonly<{
@@ -245,12 +146,4 @@ export async function syncVoucherMedia(
       references,
     });
   });
-}
-function existingVoucherIdentities(siblings: readonly Record<string, unknown>[]) {
-  return Object.fromEntries(
-    siblings.map((item) => {
-      const id = item.payload == null ? undefined : raw(item.payload).id;
-      return [String(item.id), typeof id === 'string' && id ? id : randomUUID()];
-    })
-  );
 }

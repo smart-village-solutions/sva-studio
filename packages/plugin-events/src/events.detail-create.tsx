@@ -9,10 +9,8 @@ import {
   EventsDateSection,
   useEventsMapCapabilities,
 } from './events.detail-content-primary-sections.js';
-import {
-  EventsAddressSection,
-  EventsOrganizerSection,
-} from './events.detail-content-location-sections.js';
+import { EventsAddressSection } from './events.detail-content-location-sections.js';
+import { EventsOrganizerSection } from './events.detail-content-organizer-section.js';
 import {
   EventsDescriptionSection,
   EventsMediaSection,

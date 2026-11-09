@@ -6,10 +6,8 @@ import {
   EventsDescriptionSection,
   EventsMediaSection,
 } from './events.detail-content-secondary-sections.js';
-import {
-  EventsAddressSection,
-  EventsOrganizerSection,
-} from './events.detail-content-location-sections.js';
+import { EventsAddressSection } from './events.detail-content-location-sections.js';
+import { EventsOrganizerSection } from './events.detail-content-organizer-section.js';
 import {
   EventsContactSection,
   EventsLinkSection,

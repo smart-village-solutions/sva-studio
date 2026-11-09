@@ -38,6 +38,13 @@ export const eventsENLabels = {
     dataProvider: 'Original DataProvider',
     unavailable: 'Unavailable',
   },
+  organizer: {
+    description:
+      'Institution, company, or responsible body. All details are optional; usually the name is enough.',
+    address: 'Organizer address',
+    addressHelp:
+      'Only fill this in if the organizer address is needed. The event location belongs in the "Venue" section.',
+  },
   fields: {
     title: 'Title',
     description: 'Description',

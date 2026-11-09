@@ -38,6 +38,13 @@ export const eventsDELabels = {
     dataProvider: 'Ursprünglicher DataProvider',
     unavailable: 'Nicht verfügbar',
   },
+  organizer: {
+    description:
+      'Institution, Firma oder verantwortliche Stelle. Alle Angaben sind optional; meist genügt der Name.',
+    address: 'Adresse des Veranstalters',
+    addressHelp:
+      'Nur ausfüllen, wenn die Adresse des Veranstalters benötigt wird. Der Ort der Veranstaltung gehört in den Abschnitt „Veranstaltungsort“.',
+  },
   fields: {
     title: 'Überschrift',
     description: 'Beschreibung',

@@ -160,14 +160,7 @@ export const eventsDEEditor = {
         description: 'Adressen und Ortsbezeichnungen der Veranstaltung.',
         itemTitle: 'Ort',
       },
-      organizer: {
-        title: 'Veranstalter',
-        description:
-          'Institution, Firma oder verantwortliche Stelle. Alle Angaben sind optional; meist genügt der Name.',
-        address: 'Adresse des Veranstalters',
-        addressHelp:
-          'Nur ausfüllen, wenn die Adresse des Veranstalters benötigt wird. Der Ort der Veranstaltung gehört in den Abschnitt „Veranstaltungsort“.',
-      },
+      organizer: { title: 'Veranstalter' },
       contacts: {
         title: 'Ansprechpartner',
         description: 'Konkrete Kontaktpersonen für Rückfragen.',

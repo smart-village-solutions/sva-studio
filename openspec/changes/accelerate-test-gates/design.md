@@ -44,6 +44,15 @@ Plugin-SDK-Buildkette begrenzt werden; ein frischer isolierter Checkout muss
 die App- und Abfall-Konfiguration damit laden können. Die tatsächlichen
 Unit-/Coverage-Testtargets behalten ihre vollständigen Build- und Runtime-Gates.
 
+Die allgemeinen Integrationstests nutzen bereits einen eigenen Runner und
+keine Artefakte des Plugin-Kompatibilitätslaufs. Sie starten deshalb nach dem
+Scope parallel dazu. Der bestehende Required Check `PR Integration` verlangt
+anschließend beide Ergebnisse. Eine übersprungene Ausführung ist nur beim
+expliziten Integrations-No-op zulässig; eine übersprungene Plugin-Prüfung nur
+bei irrelevantem Plugin-Scope. Scope-Fehler, Abbruch und unerwartetes Überspringen
+bleiben blockierend. Testbefehle, Build-Abhängigkeiten und Datenisolation bleiben
+unverändert; es entsteht kein weiterer Controller oder Evidenzvertrag.
+
 ## Nachweise
 
 Gezielte Vitest-Vertragstests auf Scope/Fallback/No-op, Vollständigkeit, doppelte/fremde/manipulierte Reports, rote/abgebrochene Jobs und Teilwiederholung; Skript-Typecheck und erforderliche Runtime-Gates. Fresh-/Shard-Mengen und Coverage-Zähler werden verglichen. Drei gepaarte Messungen und fünf Flake-Wiederholungen je struktureller Änderung; zehn CI-Endstände zur abschließenden Median-/P90-Bewertung. Solange diese fehlen, keine Zielerreichung behaupten.

@@ -552,10 +552,10 @@ jobs:
             pnpm complexity-gate --base ${{ github.event.pull_request.base.sha }}
           fi
 
-  integration:
-    name: PR Integration
-    needs: [scope, plugin-compatibility]
-    if: always() && needs.scope.result == 'success'
+  integration-execution:
+    name: Integration Tests
+    needs: scope
+    if: needs.scope.result == 'success' && needs.scope.outputs.integration_mode != 'skip'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -569,9 +569,6 @@ jobs:
           --health-timeout 3s
           --health-retries 10
     steps:
-      - name: Enforce relevant plugin compatibility
-        if: needs.plugin-compatibility.result != 'success' && needs.plugin-compatibility.result != 'skipped'
-        run: exit 1
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -579,10 +576,8 @@ jobs:
           filter: tree:0
           fetch-depth: 0
       - name: Setup workspace
-        if: needs.scope.outputs.integration_mode != 'skip'
         uses: ./.github/actions/setup-pnpm-workspace
       - name: Run Integration contract
-        if: needs.scope.outputs.integration_mode != 'skip'
         env:
           POSTGRES_PASSWORD: test-postgres-password
           APP_DB_USER: sva_app
@@ -594,6 +589,34 @@ jobs:
             pnpm test:integration
           else
             pnpm exec tsx scripts/ci/run-integration-gate.ts --mode affected --base ${{ github.event.pull_request.base.sha }}
+          fi
+
+  integration:
+    name: PR Integration
+    needs: [scope, integration-execution, plugin-compatibility]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Enforce Integration and relevant plugin compatibility
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          INTEGRATION_MODE: ${{ needs.scope.outputs.integration_mode }}
+          EXECUTION_RESULT: ${{ needs.integration-execution.result }}
+          PLUGIN_REQUIRED: ${{ needs.scope.outputs.app_build_mode != 'skip' || needs.scope.outputs.runtime_verify_mode != 'skip' || needs.scope.outputs.quality_gate_mode != 'skip' }}
+          PLUGIN_RESULT: ${{ needs.plugin-compatibility.result }}
+        run: |
+          set -euo pipefail
+          test "$SCOPE_RESULT" = "success"
+          if [ "$INTEGRATION_MODE" = "skip" ]; then
+            test "$EXECUTION_RESULT" = "skipped"
+          else
+            test "$EXECUTION_RESULT" = "success"
+          fi
+          if [ "$PLUGIN_REQUIRED" = "true" ]; then
+            test "$PLUGIN_RESULT" = "success"
+          else
+            test "$PLUGIN_RESULT" = "success" || test "$PLUGIN_RESULT" = "skipped"
           fi
 
   file-placement:

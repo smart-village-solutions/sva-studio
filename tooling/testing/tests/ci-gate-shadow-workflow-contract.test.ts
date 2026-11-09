@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -138,11 +139,48 @@ describe('consolidated CI gate workflows', () => {
     }
     expect(prGates).toContain('studio-ref: ${{ github.event.pull_request.head.sha }}');
     expect(mainGates).toContain('studio-ref: ${{ github.sha }}');
-    const integrationJob = prGates.slice(prGates.indexOf('\n  integration:'), prGates.indexOf('\n  a11y:'));
-    expect(integrationJob).toContain('needs: [scope, plugin-compatibility]');
-    expect(integrationJob).toContain('Enforce relevant plugin compatibility');
+    const executionJob = prGates.slice(prGates.indexOf('\n  integration-execution:'), prGates.indexOf('\n  integration:'));
+    const integrationJob = prGates.slice(prGates.indexOf('\n  integration:'), prGates.indexOf('\n  file-placement:'));
+    expect(executionJob).toContain('needs: scope');
+    expect(executionJob).not.toContain('plugin-compatibility');
+    expect(executionJob).toContain('pnpm test:integration');
+    expect(integrationJob).toContain('needs: [scope, integration-execution, plugin-compatibility]');
+    expect(integrationJob).toContain('if: always()');
+    expect(integrationJob).toContain('Enforce Integration and relevant plugin compatibility');
+    expect(integrationJob).not.toContain('pnpm test:integration');
     expect(prGates).toContain("needs.scope.outputs.quality_gate_mode != 'skip'");
-    expect(prGates).toContain("needs.plugin-compatibility.result != 'success' && needs.plugin-compatibility.result != 'skipped'");
+  });
+
+  it.each([
+    ['full success', 'full', 'success', 'success', 'true', 'success', 0],
+    ['affected success', 'affected', 'success', 'success', 'true', 'success', 0],
+    ['plugin-only scope', 'skip', 'success', 'skipped', 'true', 'success', 0],
+    ['documentation no-op', 'skip', 'success', 'skipped', 'false', 'skipped', 0],
+    ['failed scope', 'full', 'failure', 'success', 'true', 'success', 1],
+    ['missing scope', 'full', 'skipped', 'success', 'true', 'success', 1],
+    ['failed execution', 'full', 'success', 'failure', 'true', 'success', 1],
+    ['cancelled execution', 'affected', 'success', 'cancelled', 'true', 'success', 1],
+    ['unexpectedly skipped execution', 'affected', 'success', 'skipped', 'true', 'success', 1],
+    ['failed plugin', 'full', 'success', 'success', 'true', 'failure', 1],
+    ['cancelled plugin', 'full', 'success', 'success', 'true', 'cancelled', 1],
+    ['unexpectedly skipped plugin', 'skip', 'success', 'skipped', 'true', 'skipped', 1],
+  ] as const)('keeps the real Integration shell gate fail-closed: %s', (
+    _label, mode, scopeResult, executionResult, pluginRequired, pluginResult, expectedStatus
+  ) => {
+    const integrationJob = prGates.slice(prGates.indexOf('\n  integration:'), prGates.indexOf('\n  file-placement:'));
+    const script = integrationJob.match(/run: \|\n((?: {10}.+\n)+)/u)?.[1].replace(/^ {10}/gmu, '');
+    if (!script) throw new Error('Missing Integration result gate');
+    const result = spawnSync('bash', ['-e', '-c', script], {
+      env: {
+        SCOPE_RESULT: scopeResult,
+        INTEGRATION_MODE: mode,
+        EXECUTION_RESULT: executionResult,
+        PLUGIN_REQUIRED: pluginRequired,
+        PLUGIN_RESULT: pluginResult,
+      },
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(expectedStatus);
   });
 
   it('checks out complete history before Main coverage and SonarCloud', () => {

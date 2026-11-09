@@ -317,3 +317,22 @@ die vorgesehenen 403-Antworten ohne HTTP 500 oder Overlay. Seine Darwin-Bilder
 zeigen einen bestehenden Header-Referenzdrift; alle 48 Golden-Dateien bleiben
 hashgleich. Der Linux-Bildvergleich und eine neue unveränderte Flake-Reihe
 müssen den Fix noch bestätigen.
+
+### Verbleibende Required-Kette und unabhängige Integration
+
+Der erste exakt auf Head `996b4945f` gepinnte Voll-PR-Lauf
+`42543330132` ist grün: Coverage benötigt im Service-DAG 6:44 Minuten,
+Unit 7:28 Minuten. Der gesamte Required-Pfad benötigt jedoch 13:52 Minuten:
+Scope 14 Sekunden, Plugin-Qualität 100 Sekunden, Studio-Kompatibilität
+410 Sekunden und danach Integration 308 Sekunden. Tatsächliche Wartezeit
+einschließlich Queue auf diesem Pfad: 17:06 Minuten. Das Gesamtziel ist damit
+trotz kürzerer Testpfade nicht erfüllt.
+
+Die Integrationsausführung verwendet schon zuvor einen eigenen Runner ohne
+Plugin-Artefakte. Ihre reine Startabhängigkeit wird entfernt; dieselben Befehle,
+Build-Voraussetzungen, Umgebungswerte und Redis-Isolation bleiben erhalten.
+Der bestehende Check `PR Integration` aggregiert beide tatsächlichen Ergebnisse
+weiterhin verpflichtend. Zwölf positive und negative Fälle prüfen die echte
+Shell einschließlich No-op, Fehler, Abbruch und unerwartetem Überspringen;
+der gezielte Workflowvertrag umfasst insgesamt 24 erfolgreiche Tests.
+Die Einsparung des Splits muss in folgenden Cloud-Läufen gemessen werden.

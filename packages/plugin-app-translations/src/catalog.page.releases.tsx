@@ -1,10 +1,10 @@
 import { type CatalogOverview } from '@sva/plugin-sdk/app-translations';
 import { Button } from '@sva/studio-ui-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
+import { publishCatalog } from './catalog.page.snapshots.js';
 import {
   type CatalogPageViewModel,
   draftDetails,
-  errorCode,
   type ReleasePreview,
 } from './catalog.page.state.js';
 
@@ -26,30 +26,11 @@ export const CatalogRelease = ({
     canPublish,
     busy,
     dirty,
-    overview,
-    catalog,
-    setBusy,
-    setError,
-    setNotice,
 
     downloadTexts,
     loadPreview,
   } = model;
   const preview = previews[release.id];
-  const publish = async () => {
-    if (!overview || busy || dirty) return;
-    setBusy(true);
-    setError('');
-    setNotice('');
-    try {
-      await catalog({ operation: 'publish', releaseId: release.id }, overview.scope);
-      setNotice('publishedToApp');
-    } catch (reason) {
-      setError(errorCode(reason));
-    } finally {
-      setBusy(false);
-    }
-  };
   return (
     <details
       key={release.id}
@@ -87,7 +68,7 @@ export const CatalogRelease = ({
             type="button"
             variant="secondary"
             disabled={busy || dirty}
-            onClick={() => void publish()}
+            onClick={() => void publishCatalog(model, release.id)}
           >
             {pt('publishToApp')}
           </Button>

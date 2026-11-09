@@ -51,3 +51,19 @@ export const loadPreview = async (model: CatalogPageModel, id: string) => {
     setError(errorCode(reason));
   }
 };
+
+export const publishCatalog = async (model: CatalogPageModel, releaseId: string) => {
+  const { overview, busy, dirty, setBusy, setError, setNotice, catalog } = model;
+  if (!overview || busy || dirty) return;
+  setBusy(true);
+  setError('');
+  setNotice('');
+  try {
+    await catalog({ operation: 'publish', releaseId }, overview.scope);
+    setNotice('publishedToApp');
+  } catch (reason) {
+    setError(errorCode(reason));
+  } finally {
+    setBusy(false);
+  }
+};

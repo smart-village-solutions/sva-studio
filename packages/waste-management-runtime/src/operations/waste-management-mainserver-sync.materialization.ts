@@ -1,5 +1,6 @@
 import {
   resolveEffectiveWasteTourDateShiftsForYear,
+  isWasteTourGlobalDateShiftApplicable,
   type WasteLocationTourPickupDateRecord,
   type WasteTourRecord,
 } from '@sva/waste-management-contracts';
@@ -20,7 +21,9 @@ import {
 } from './waste-management-mainserver-sync.materialization.shared.js';
 import { mergeMaterializedPickupDates } from './waste-management-mainserver-sync.materialization.merge.js';
 
-const isRuleApplicableToTour = (rule: MaterializationRule, tourId: string): boolean => {
+const isRuleApplicableToTour = (rule: MaterializationRule, tour: WasteTourRecord): boolean => {
+  if (rule.source !== 'tour' && !isWasteTourGlobalDateShiftApplicable(tour)) return false;
+  const tourId = tour.id;
   if (rule.appliesToTourId && rule.appliesToTourId !== tourId) {
     return false;
   }
@@ -271,7 +274,7 @@ const materializeLinkedPickupDates = (input: {
   ].sort((left, right) => left.pickupDate.localeCompare(right.pickupDate));
 
   for (const rule of input.rules) {
-    if (!isRuleApplicableToTour(rule, link.tourId)) continue;
+    if (!isRuleApplicableToTour(rule, tour)) continue;
     dates = applySingleRule(dates, rule);
     if (dates.length === 0) break;
   }
@@ -299,12 +302,13 @@ const materializeAssignedPickupDates = (
   rules: readonly MaterializationRule[]
 ): readonly MaterializedLocationTourPickupDateRecord[] =>
   (assignments ?? []).flatMap((assignment) => {
-    if (tourById.get(assignment.tourId)?.status !== 'published') return [];
+    const tour = tourById.get(assignment.tourId);
+    if (tour?.status !== 'published') return [];
     let dates: readonly Pick<WasteLocationTourPickupDateRecord, 'pickupDate' | 'note'>[] = [
       { pickupDate: assignment.pickupDate, note: assignment.note },
     ];
     for (const rule of rules) {
-      if (isRuleApplicableToTour(rule, assignment.tourId)) {
+      if (isRuleApplicableToTour(rule, tour)) {
         dates = applySingleRule(dates, rule);
       }
     }

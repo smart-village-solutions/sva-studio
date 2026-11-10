@@ -729,6 +729,8 @@ describe('public waste repository', () => {
         rows: [
           {
             assignment_id: 'assignment-1',
+            tour_recurrence: 'weekly',
+            tour_custom_recurrence_interval_days: null,
             pickup_date: '2026-01-01',
             tour_id: 'tour-1',
             tour_name: 'Restmuell',

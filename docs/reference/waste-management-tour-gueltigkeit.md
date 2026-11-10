@@ -67,6 +67,10 @@ Eine Zuordnung zu einer konkreten Straße wird weiterhin nur für diese Adresse 
 
 ## Verschiebungen nachvollziehen
 
+Touren, deren Termine ausschließlich individuell geplant werden (`Individuell`, `Bei Bedarf` oder ohne Wiederholungsrhythmus), sind von globalen Ausweichterminen und Feiertagsverschiebungen ausgenommen. Das gilt auch für globale Regeln mit einer expliziten Tourauswahl, für konkrete Einsätze mit Standzeiten und für importierte Einzeltermine. Tourbezogene Ausweichtermine bleiben wirksam, auch über den Jahreswechsel. Studio-Vorschau, Verschiebungszähler, öffentlicher Kalender einschließlich PDF und Mainserver-Aufbereitung verwenden dieselbe Abgrenzung.
+
+Feste Wiederholungen und eigene Rhythmen mit einem aufgelösten positiven Tagesabstand werden weiterhin global und nach Feiertagsregeln verschoben. Zusätzliche Einzeltermine und Einsätze einer solchen wiederkehrenden Tour folgen weiterhin deren Verschiebungsregeln. Die Ausnahme richtet sich nach der Terminlogik der Tour; gespeicherte Termine, Fraktionen und Hinweise werden dadurch nicht verändert. Bereits veröffentlichte Mainserver-Termine ändern sich erst durch einen erneuten Abgleich nach dem Rollout.
+
 Die Bearbeitungsseite einer gespeicherten Tour bündelt die Abholortzuordnung, den Jahreskalender und einen Link zu den auf diese Tour gefilterten Einsätzen und tourbezogenen Ausweichterminen. Die Terminliste öffnet sich in einem neuen Tab, damit ungespeicherte Formularangaben erhalten bleiben. Der Jahreskalender zeigt den gespeicherten Planungsstand; bei ungespeicherten Änderungen an der Terminlogik muss die Tour zuerst gespeichert werden.
 
 Die Spalte `Verschiebungen` der Tourentabelle zählt tourspezifische und globale Verschiebungen sowie tatsächlich berechnete Feiertagsverschiebungen. Ist mindestens eine Verschiebung vorhanden, öffnet der Zähler eine Detailansicht mit ursprünglichem und neuem Datum, Quelle und vorhandenem Grund. Zähler und Detailansicht basieren auf derselben chronologisch sortierten Datenmenge.

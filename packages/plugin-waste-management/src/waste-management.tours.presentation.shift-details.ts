@@ -1,3 +1,4 @@
+import { isWasteTourGlobalDateShiftApplicable } from '@sva/waste-management-contracts';
 import type { WasteManagementSchedulingOverview, WasteTourRecord } from './waste-management.api.js';
 import { calculateTourOccurrenceEntriesForYearInternal } from './waste-management.tours.presentation.calendar.js';
 import { normalizeDateOnly } from './waste-management.tours.presentation.holidays.js';
@@ -75,7 +76,8 @@ export const resolveTourShiftDetails = (
   const globalShifts: readonly TourShiftDetail[] = (scheduling.globalDateShifts ?? [])
     .filter(
       (shift) =>
-        shift.tourIds == null || shift.tourIds.length === 0 || shift.tourIds.includes(tour.id)
+        isWasteTourGlobalDateShiftApplicable(tour) &&
+        (shift.tourIds == null || shift.tourIds.length === 0 || shift.tourIds.includes(tour.id))
     )
     .map((shift) => ({
       id: shift.id,

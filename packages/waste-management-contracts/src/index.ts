@@ -196,6 +196,7 @@ export {
   buildWasteStreetKey,
   isValidWasteIsoDateOnly,
   isWasteTourValidityApplicable,
+  isWasteTourGlobalDateShiftApplicable,
   resolveEffectiveWasteTourDateShiftsForYear,
   resolveWasteTourValidityDates,
   wasteTourStatusBulkLimit,

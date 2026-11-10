@@ -1,5 +1,6 @@
 import {
   resolveEffectiveWasteTourDateShiftsForYear,
+  isWasteTourGlobalDateShiftApplicable,
   type WasteHolidayRuleRecord,
 } from '@sva/waste-management-contracts';
 import {
@@ -198,7 +199,8 @@ export const calculatePublicWasteCalendarEntries = (
         year
       )
     );
-    const relevantGlobalDateShifts = input.globalDateShifts.filter(
+    const applyGlobalRules = isWasteTourGlobalDateShiftApplicable(linkedTour.tour);
+    const relevantGlobalDateShifts = (applyGlobalRules ? input.globalDateShifts : []).filter(
       (shift) => !shift.tourIds || shift.tourIds.includes(linkedTour.tour.id)
     );
     const tourShiftMap = buildShiftMap(relevantTourDateShifts);
@@ -209,7 +211,7 @@ export const calculatePublicWasteCalendarEntries = (
       const globalShift = globalShiftMap.get(occurrence.date);
       const manuallyShiftedDate =
         tourShift?.actualDate ?? globalShift?.actualDate ?? occurrence.date;
-      const shiftedDate = holidayRules.reduce(
+      const shiftedDate = (applyGlobalRules ? holidayRules : []).reduce(
         (currentDate, rule) => applyHolidayRule(currentDate, rule),
         manuallyShiftedDate
       );

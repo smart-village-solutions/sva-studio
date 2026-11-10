@@ -103,9 +103,14 @@ describe('Waste tour date shifts against PostgreSQL', () => {
     expect(indexes.rows[1]?.indexdef).toContain('(tour_id, original_date) WHERE has_year');
   });
 
-  it.each(['ISO, MDY', 'SQL, DMY'])(
-    'materializes effective holiday pickups under %s DateStyle',
-    async (dateStyle) => {
+  it.each([
+    ['ISO, MDY', 'weekly', '2026-12-23'],
+    ['SQL, DMY', 'weekly', '2026-12-23'],
+    ['ISO, MDY', 'on-demand', '2026-12-24'],
+    ['SQL, DMY', 'on-demand', '2026-12-24'],
+  ] as const)(
+    'materializes holiday pickups under %s DateStyle for %s tours',
+    async (dateStyle, recurrence, expectedDate) => {
       await repository.upsertWasteHolidayRule({
         id: '30000000-0000-4000-8000-000000000001',
         holidayDate: '2026-12-25',
@@ -137,7 +142,7 @@ describe('Waste tour date shifts against PostgreSQL', () => {
             id: tourId,
             name: 'Bio',
             wasteFractionIds: [],
-            recurrence: 'on-demand',
+            recurrence,
             status: 'published',
             createdAt: '',
             updatedAt: '',
@@ -160,7 +165,7 @@ describe('Waste tour date shifts against PostgreSQL', () => {
         currentYear: 2026,
         nextYear: 2027,
       });
-      expect(dates.map(({ pickupDate }) => pickupDate)).toEqual(['2026-12-23']);
+      expect(dates.map(({ pickupDate }) => pickupDate)).toEqual([expectedDate]);
     }
   );
 

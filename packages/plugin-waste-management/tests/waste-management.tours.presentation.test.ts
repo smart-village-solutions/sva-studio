@@ -267,8 +267,9 @@ describe('waste-management.tours.presentation', () => {
       calculateTourOccurrencesForYear(
         {
           id: 'tour-holiday-rule',
-          recurrence: undefined,
-          firstDate: undefined,
+          recurrence: 'weekly',
+          firstDate: '2026-01-01',
+          endDate: '2026-01-01',
           customDates: [{ date: '2026-01-01' }, { date: '2026-01-02' }],
         } as never,
         2026,
@@ -293,8 +294,9 @@ describe('waste-management.tours.presentation', () => {
       calculateTourOccurrenceEntriesForYear(
         {
           id: 'tour-shifted-entries',
-          recurrence: undefined,
-          firstDate: undefined,
+          recurrence: 'weekly',
+          firstDate: '2026-01-01',
+          endDate: '2026-01-01',
           customDates: [{ date: '2026-01-01' }, { date: '2026-01-08' }],
         } as never,
         2026,
@@ -322,8 +324,9 @@ describe('waste-management.tours.presentation', () => {
       resolveTourShiftDetails(
         {
           id: 'tour-holiday-count',
-          recurrence: undefined,
-          firstDate: undefined,
+          recurrence: 'weekly',
+          firstDate: '2026-01-01',
+          endDate: '2026-01-01',
           customDates: [{ date: '2026-01-01' }, { date: '2026-01-02' }, { date: '2027-01-01' }],
         } as never,
         {
@@ -347,8 +350,9 @@ describe('waste-management.tours.presentation', () => {
       resolveTourShiftDetails(
         {
           id: 'tour-shift-details',
-          recurrence: undefined,
-          firstDate: undefined,
+          recurrence: 'weekly',
+          firstDate: '2026-01-08',
+          endDate: '2026-01-08',
           customDates: [{ date: '2026-01-08' }, { date: '2026-01-15' }, { date: '2026-01-22' }],
         } as never,
         {
@@ -488,7 +492,12 @@ describe('annual calendar calculation evidence', () => {
   });
 
   it('does not flag draft, empty, irrelevant or fully configured holiday rules as incomplete', () => {
-    const tour = { customDates: [{ date: '2026-01-05' }] };
+    const tour = {
+      recurrence: 'weekly',
+      firstDate: '2026-01-05',
+      endDate: '2026-01-05',
+      customDates: [],
+    };
     for (const holidayRules of [
       [],
       [{ holidayDate: '2026-01-06', configurationStatus: 'draft' }],
@@ -539,4 +548,59 @@ describe('annual calendar calculation evidence', () => {
     expect(result.outsideValidityMonths.slice(0, 4)).toEqual([false, true, false, true]);
     expect(calculate({ customDates: [] }).outsideValidityMonths).toEqual(Array(12).fill(false));
   });
+});
+
+describe('individual tour shift exemption', () => {
+  it.each(['custom', 'on-demand', null] as const)(
+    'keeps %s dates and tour shifts without global or holiday effects',
+    (recurrence) => {
+      const tour = {
+        id: 'tour-1',
+        recurrence,
+        customDates: [{ date: '2026-04-08' }, { date: '2025-12-31' }],
+      };
+      const scheduling = {
+        globalDateShifts: [
+          {
+            id: 'global',
+            originalDate: '2026-04-08',
+            actualDate: '2026-04-09',
+            tourIds: ['tour-1'],
+          },
+        ],
+        holidayRules: [
+          {
+            holidayDate: '2026-04-06',
+            holidayName: 'Ostern',
+            scope: 'full-week',
+            strategy: 'postpone',
+          },
+          {
+            holidayDate: '2026-01-01',
+            holidayName: 'Neujahr',
+            scope: 'full-week',
+            strategy: 'postpone',
+          },
+        ],
+        tourDateShifts: [],
+      };
+      const original = structuredClone({ tour, scheduling });
+      expect(calculateTourCalendarForYear(tour as never, 2026, scheduling as never)).toMatchObject({
+        entries: [{ date: '2026-04-08', shifted: false, originalDate: null }],
+        issues: [],
+      });
+      expect(resolveTourShiftDetails(tour as never, scheduling as never)).toEqual([]);
+      const withTourShifts = {
+        ...scheduling,
+        tourDateShifts: [
+          { tourId: 'tour-1', originalDate: '2026-04-08', actualDate: '2026-04-07', hasYear: true },
+          { tourId: 'tour-1', originalDate: '2025-12-31', actualDate: '2026-01-02', hasYear: true },
+        ],
+      };
+      expect(calculateTourOccurrencesForYear(tour as never, 2026, withTourShifts as never)).toEqual(
+        ['2026-01-02', '2026-04-07']
+      );
+      expect({ tour, scheduling }).toEqual(original);
+    }
+  );
 });

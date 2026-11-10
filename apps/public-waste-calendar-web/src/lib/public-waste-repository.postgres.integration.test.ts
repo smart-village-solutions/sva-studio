@@ -143,4 +143,77 @@ describe.skipIf(!databaseUrl)('Public Waste tour status against PostgreSQL', () 
       })
     ).resolves.toEqual([]);
   });
+  it.each([
+    ['custom', null, '2026-05-20'],
+    ['on-demand', null, '2026-05-20'],
+    [null, null, '2026-05-20'],
+    ['weekly', null, '2026-05-23'],
+    [null, 10, '2026-05-23'],
+  ] as const)(
+    'loads shift eligibility for %s tours with interval %s',
+    async (recurrence, intervalDays, expectedDate) => {
+      await client.query('BEGIN');
+      try {
+        await client.query(
+          `INSERT INTO ${schemaName}.waste_custom_recurrence_presets (id, interval_days) VALUES ($1, 10)`,
+          [ids.draftTour]
+        );
+        await client.query(
+          `UPDATE ${schemaName}.waste_tours SET status = 'published', recurrence = $2,
+        custom_recurrence_id = $3, custom_dates = '[{"date":"2026-05-20"}]'::jsonb WHERE id = $1`,
+          [ids.publishedTour, recurrence, intervalDays ? ids.draftTour : null]
+        );
+        await client.query(
+          `INSERT INTO ${schemaName}.waste_tour_assignments (id, tour_id, pickup_date, note)
+        VALUES ($1, $2, '2026-05-20', '09–10 Uhr')`,
+          [ids.publishedTour, ids.publishedTour]
+        );
+        await client.query(
+          `INSERT INTO ${schemaName}.waste_tour_assignment_locations (assignment_id, collection_location_id)
+        VALUES ($1, $2)`,
+          [ids.publishedTour, ids.location]
+        );
+        await client.query(
+          `INSERT INTO ${schemaName}.waste_global_date_shifts (id, original_date, actual_date, tour_ids)
+        VALUES ($1::uuid, '2026-05-20', '2026-05-22', ARRAY[$1::text])`,
+          [ids.publishedTour]
+        );
+        await client.query(
+          `INSERT INTO ${schemaName}.waste_holiday_rules
+        (id, holiday_date, holiday_name, year, state_code, source_status, configuration_status, conflict_status, scope, strategy, created_at, updated_at)
+        VALUES ($1, '2026-05-18', 'Testtag', 2026, 'BB', 'confirmed', 'configured', 'none', 'full-week', 'postpone', now(), now())`,
+          [ids.publishedTour]
+        );
+        const repository = createPublicWasteRepository({
+          schemaName,
+          execute: async <TRow>({
+            text,
+            values,
+          }: {
+            text: string;
+            values?: readonly unknown[];
+          }) => {
+            const result = await client.query(text, values ? [...values] : []);
+            return {
+              rowCount: result.rowCount ?? result.rows.length,
+              rows: result.rows as readonly TRow[],
+            };
+          },
+        });
+        const entries = await repository.loadCalendarEntries({
+          selection: { regionId: ids.region, cityId: ids.city, streetId: ids.street },
+          referenceDate: '2026-05-19',
+        });
+        expect(entries).toEqual([
+          expect.objectContaining({
+            date: expectedDate,
+            fractionId: ids.fraction,
+            note: '09–10 Uhr',
+          }),
+        ]);
+      } finally {
+        await client.query('ROLLBACK');
+      }
+    }
+  );
 });

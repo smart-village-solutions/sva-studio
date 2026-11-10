@@ -1,5 +1,6 @@
 import {
   resolveEffectiveWasteTourDateShiftsForYear,
+  isWasteTourGlobalDateShiftApplicable,
   type WasteHolidayRuleRecord,
 } from '@sva/waste-management-contracts';
 
@@ -80,6 +81,7 @@ const compareCalendarEntries = (
   left.fractionLabel.localeCompare(right.fractionLabel, 'de');
 
 const resolveApplicableShift = (input: {
+  readonly applyGlobalRules: boolean;
   readonly tourId: string;
   readonly pickupDate: string;
   readonly tourShifts: ReadonlyMap<string, CalendarShift>;
@@ -87,7 +89,9 @@ const resolveApplicableShift = (input: {
 }): CalendarShift | undefined => {
   const tourShift = input.tourShifts.get(`${input.tourId}:${input.pickupDate}`);
   const scopedGlobalShift = input.globalShifts.scoped.get(input.tourId)?.get(input.pickupDate);
-  const globalShift = scopedGlobalShift ?? input.globalShifts.shared.get(input.pickupDate);
+  const globalShift = input.applyGlobalRules
+    ? (scopedGlobalShift ?? input.globalShifts.shared.get(input.pickupDate))
+    : undefined;
   if (!tourShift) return globalShift;
 
   return {
@@ -130,8 +134,14 @@ const resolveAssignmentShift = (input: {
   readonly globalShifts: ReturnType<typeof createGlobalShiftMaps>;
   readonly holidayRules: readonly WasteHolidayRuleRecord[];
 }) => {
+  const applyGlobalRules = isWasteTourGlobalDateShiftApplicable({
+    recurrence: input.row.tour_recurrence,
+    customRecurrenceIntervalDays: input.row.tour_custom_recurrence_interval_days ?? undefined,
+  });
+  const holidayRules = applyGlobalRules ? input.holidayRules : [];
   const assignmentNote = input.row.note?.trim() || null;
   const shift = resolveApplicableShift({
+    applyGlobalRules,
     tourId: input.row.tour_id,
     pickupDate: input.pickupDate,
     tourShifts: input.tourShifts,
@@ -139,13 +149,13 @@ const resolveAssignmentShift = (input: {
   });
   if (!shift) {
     return {
-      shiftedDate: applyPublicWasteHolidayRulesToDate(input.pickupDate, input.holidayRules),
+      shiftedDate: applyPublicWasteHolidayRulesToDate(input.pickupDate, holidayRules),
       note: assignmentNote,
     } as const;
   }
 
   return {
-    shiftedDate: applyPublicWasteHolidayRulesToDate(shift.actualDate, input.holidayRules),
+    shiftedDate: applyPublicWasteHolidayRulesToDate(shift.actualDate, holidayRules),
     note: assignmentNote ?? shift.description,
   } as const;
 };

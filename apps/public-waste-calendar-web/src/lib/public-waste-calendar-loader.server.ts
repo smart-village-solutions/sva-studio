@@ -105,8 +105,8 @@ const loadGlobalDateShiftRows = (context: CalendarQueryContext) =>
     text: `
       SELECT
         id::text,
-        original_date,
-        actual_date,
+        to_char(original_date, 'YYYY-MM-DD') AS original_date,
+        to_char(actual_date, 'YYYY-MM-DD') AS actual_date,
         description,
         tour_ids
       FROM ${context.schemaName}.waste_global_date_shifts
@@ -123,6 +123,8 @@ const loadTourAssignmentRows = (context: CalendarQueryContext) =>
         t.id::text AS tour_id,
         t.name AS tour_name,
         t.description AS tour_description,
+        t.recurrence AS tour_recurrence,
+        crp.interval_days AS tour_custom_recurrence_interval_days,
         f.id AS fraction_id,
         f.name AS fraction_label,
         f.description AS fraction_description,
@@ -135,6 +137,7 @@ const loadTourAssignmentRows = (context: CalendarQueryContext) =>
       INNER JOIN ${context.schemaName}.waste_collection_locations cl
         ON cl.id = assignment_location.collection_location_id
       INNER JOIN ${context.schemaName}.waste_tours t ON t.id = assignment.tour_id
+      LEFT JOIN ${context.schemaName}.waste_custom_recurrence_presets crp ON crp.id = t.custom_recurrence_id
       LEFT JOIN ${context.schemaName}.waste_tour_fractions tf ON tf.tour_id = t.id
       LEFT JOIN ${context.schemaName}.waste_fractions f ON f.id = tf.fraction_id
       WHERE cl.active = true

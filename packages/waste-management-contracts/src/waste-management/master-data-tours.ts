@@ -77,3 +77,14 @@ export type WasteManagementToursOverview = {
   readonly tours: readonly WasteTourRecord[];
   readonly customRecurrencePresets?: readonly WasteCustomRecurrencePresetRecord[];
 };
+
+/** Global and holiday shifts apply only to tours with a recurring schedule. */
+export const isWasteTourGlobalDateShiftApplicable = (
+  tour: Pick<WasteTourRecord, 'recurrence' | 'customRecurrenceIntervalDays'>
+): boolean =>
+  (Number.isInteger(tour.customRecurrenceIntervalDays) &&
+    (tour.customRecurrenceIntervalDays ?? 0) > 0) ||
+  tour.recurrence === 'weekly' ||
+  tour.recurrence === 'biweekly' ||
+  tour.recurrence === 'fourweekly' ||
+  tour.recurrence === 'yearly';

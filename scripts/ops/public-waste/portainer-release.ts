@@ -269,11 +269,22 @@ export const releasePublicWasteStack = async (
     env.PORTAINER_ENDPOINT_NAME?.trim() || 'sva'
   );
 
+  const dockerInfo = (await (
+    await portainerRequest({
+      deps,
+      host,
+      apiKey,
+      path: `/api/endpoints/${String(endpointId)}/docker/info`,
+    })
+  ).json()) as { Swarm?: { Cluster?: { ID?: string } } };
+  const swarmId = requireEnvValue(dockerInfo.Swarm?.Cluster?.ID, 'Portainer-Swarm-ID');
+  const filters = new URLSearchParams({ filters: JSON.stringify({ SwarmID: swarmId }) });
+
   const stacksResponse = await portainerRequest({
     deps,
     host,
     apiKey,
-    path: '/api/stacks',
+    path: `/api/stacks?${filters.toString()}`,
   });
   const stacks = (await stacksResponse.json()) as PortainerStackRecord[];
   const stack = stacks.find(

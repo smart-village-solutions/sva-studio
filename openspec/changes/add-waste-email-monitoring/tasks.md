@@ -19,8 +19,10 @@ Keine produktive Aktivierung, Rollenvergabe, Browser-Sichtprüfung oder fachlich
 
 - [x] Tatsächlich gespeicherte Stornierungsgründe korrekt als Stornierung klassifizieren und testen.
 - [x] Bestehenden Host-Bindings-Test auf 68 Handler und die konkrete neue Bindung aktualisieren.
-- [x] UI-Tests nach `packages/plugin-waste-management/tests/` verschieben, damit reguläre Unit-/Coverage-Targets sie erfassen.
+- [x] Komponententests modulnah unter `src/` belassen und den ausschließenden `tests`-Filter der bestehenden Unit-/Coverage-Targets entfernen.
 - [x] Seite entlang ihrer vorhandenen Spalten-, Tabellen- und Seitenlogik aufteilen; Complexity-Grenzen unverändert einhalten.
 - [x] Tabellen beim Nachladen erhalten; Fokus gezielt in die Versanddetails beziehungsweise zurück in die Abo-Übersicht setzen. Erfolg, Fehler und Pagination mit verzögerten Antworten prüfen.
 
-Gezielte Nachweise dieser Fixrunde: Repository-Test (11 Tests), Host-Bindings-Test (10 Tests), UI-Test (8 Tests), reguläre Vitest-Testentdeckung mit Filter `tests`, Plugin-Typecheck und unverändertes Complexity-Gate.
+Gezielte Nachweise dieser Fixrunde: Repository-Test (11 Tests), Host-Bindings-Test (10 Tests), UI-Test (8 Tests), regulären Nx-Unit-Lauf und Testentdeckung anhand der bestehenden Vitest-Konfiguration, Plugin-Typecheck und unverändertes Complexity-Gate.
+
+Die korrigierten Nx-Targets wurden zusätzlich über `nx show project` und den regulären Plugin-Unit-Lauf geprüft: 649 Tests in 110 Dateien erfolgreich, einschließlich aller acht Monitoring-UI-Tests. Plugin- und Skript-Typecheck sind grün.

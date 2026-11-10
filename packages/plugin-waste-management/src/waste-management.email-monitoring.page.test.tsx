@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { publishSessionAccessSnapshot, resetSessionAccessSnapshot } from '@sva/plugin-sdk';
 import { wasteEmailMonitoringPermission } from '@sva/waste-management-contracts';
-import { WasteEmailMonitoringPage } from '../src/waste-management.email-monitoring.page.js';
-import { getWasteEmailMonitoring } from '../src/waste-management.api.read.js';
-vi.mock('../src/waste-management.api.read.js', () => ({ getWasteEmailMonitoring: vi.fn() }));
+import { WasteEmailMonitoringPage } from './waste-management.email-monitoring.page.js';
+import { getWasteEmailMonitoring } from './waste-management.api.read.js';
+vi.mock('./waste-management.api.read.js', () => ({ getWasteEmailMonitoring: vi.fn() }));
 vi.mock('@sva/plugin-sdk', async (original) => ({
   ...(await original<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string) => key,

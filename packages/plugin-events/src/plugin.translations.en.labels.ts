@@ -56,6 +56,7 @@ export const eventsENLabels = {
     timeStart: 'Start time',
     timeEnd: 'End time',
     dateExtras: 'Additional date details (optional)',
+    dateExtrasPosition: 'for date {{position}}',
     timeDescription: 'Time note (optional)',
     timeDescriptionHelp:
       'Additional time details, for example “Doors open at 6 pm” or “Starts after sunset”.',

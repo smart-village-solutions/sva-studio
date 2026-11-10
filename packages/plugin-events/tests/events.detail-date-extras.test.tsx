@@ -1,6 +1,6 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { FormProvider, useForm, type FieldErrors, type UseFormReturn } from 'react-hook-form';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { FormProvider, useForm, type UseFormReturn } from 'react-hook-form';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EventsDateSection } from '../src/events.detail-content-primary-sections.js';
@@ -28,6 +28,7 @@ const translations: Readonly<Record<string, string>> = {
   'cards.content.dates.description': 'Termine, Zeiten und optionale Hinweise zur Zeit.',
   'cards.content.dates.itemTitle': 'Termin',
   'fields.dateExtras': 'Weitere Terminangaben (optional)',
+  'fields.dateExtrasPosition': 'zu Termin {{position}}',
   'fields.dateStart': 'Startdatum',
   'fields.dateEnd': 'Enddatum',
   'fields.timeStart': 'Startzeit',
@@ -42,7 +43,8 @@ const translations: Readonly<Record<string, string>> = {
   'actions.addDate': 'Termin hinzufügen',
   'actions.remove': 'Entfernen',
 };
-const pt = (key: string) => translations[key] ?? key;
+const pt = (key: string, variables?: Readonly<Record<string, string | number>>) =>
+  (translations[key] ?? key).replace('{{position}}', String(variables?.position ?? ''));
 
 type EventDateValue = NonNullable<EventsDetailFormValues['content']['dates']>[number];
 
@@ -57,17 +59,13 @@ const emptyDate = (overrides: Partial<EventDateValue> = {}): EventDateValue => (
   ...overrides,
 });
 
-function renderDates(
-  dates: readonly EventDateValue[],
-  options: { readonly errors?: FieldErrors<EventsDetailFormValues> } = {}
-) {
+function renderDates(dates: readonly EventDateValue[]) {
   let form: UseFormReturn<EventsDetailFormValues> | undefined;
   const defaults = createDefaultEventsDetailFormValues();
 
   const Wrapper = () => {
     const methods = useForm<EventsDetailFormValues>({
       defaultValues: { ...defaults, content: { ...defaults.content, dates: [...dates] } },
-      ...(options.errors ? { errors: options.errors } : {}),
     });
     form = methods;
     return (
@@ -82,9 +80,8 @@ function renderDates(
 }
 
 const extrasSections = () =>
-  Array.from(document.querySelectorAll('details')).filter(
-    (element) =>
-      element.querySelector('summary')?.textContent === 'Weitere Terminangaben (optional)'
+  Array.from(document.querySelectorAll('details')).filter((element) =>
+    element.querySelector('summary')?.textContent?.startsWith('Weitere Terminangaben (optional)')
   );
 
 const extrasSection = (position = 0): HTMLDetailsElement => {
@@ -124,27 +121,6 @@ describe('EventsDateSection – weitere Terminangaben', () => {
     renderDates([emptyDate(), emptyDate({ timeDescription: 'Beginn nach Sonnenuntergang' })]);
 
     expect(extrasSections().map((section) => section.open)).toEqual([false, true]);
-  });
-
-  it('opens the extras section initially when it contains an existing validation error', () => {
-    renderDates([emptyDate()], {
-      errors: {
-        content: { dates: [{ weekday: { type: 'manual', message: 'Ungültig' } }] },
-      } as FieldErrors<EventsDetailFormValues>,
-    });
-
-    expect(extrasSection().open).toBe(true);
-  });
-
-  it('opens a collapsed extras section when a validation error appears in it', async () => {
-    const { form } = renderDates([emptyDate()]);
-    expect(extrasSection().open).toBe(false);
-
-    act(() => {
-      form().setError('content.dates.0.timeDescription', { type: 'manual', message: 'Ungültig' });
-    });
-
-    await waitFor(() => expect(extrasSection().open).toBe(true));
   });
 
   it('lets users open and close the section manually without changing the values', async () => {
@@ -197,22 +173,30 @@ describe('EventsDateSection – weitere Terminangaben', () => {
     });
   });
 
-  it('marks the output option as invalid and announces its existing error', () => {
-    renderDates([emptyDate()], {
-      errors: {
-        content: { dates: [{ useOnlyTimeDescription: { type: 'manual', message: 'Ungültig' } }] },
-      } as FieldErrors<EventsDetailFormValues>,
-    });
+  it('gives each extras toggle a distinct name that identifies its date', () => {
+    renderDates([emptyDate(), emptyDate()]);
 
-    const checkbox = screen.getByLabelText('Nur den Hinweis zur Zeit anzeigen');
-    const described = (checkbox.getAttribute('aria-describedby') ?? '')
-      .split(/\s+/)
-      .map((id) => document.getElementById(id)?.textContent);
-    expect(checkbox.getAttribute('aria-invalid')).toBe('true');
-    expect(described).toEqual([
-      'Verwendet die bestehende Ausgabeoption des Mainservers.',
-      'Ungültig',
+    expect(
+      extrasSections().map((section) => section.querySelector('summary')?.textContent)
+    ).toEqual([
+      'Weitere Terminangaben (optional) zu Termin 1',
+      'Weitere Terminangaben (optional) zu Termin 2',
     ]);
+  });
+
+  it('uses the date field id convention for the optional inputs', () => {
+    renderDates([emptyDate(), emptyDate()]);
+
+    for (const id of [
+      'event-weekday',
+      'event-time-description',
+      'event-only-time-description',
+      'event-weekday-1',
+      'event-time-description-1',
+      'event-only-time-description-1',
+    ]) {
+      expect(document.getElementById(id), id).not.toBeNull();
+    }
   });
 
   it('links the help texts to the optional inputs', () => {

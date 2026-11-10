@@ -99,7 +99,7 @@ vi.mock('@tanstack/react-router', () => ({
 const navigateMock = vi.fn();
 
 const dateExtrasSection = () => {
-  const section = document.getElementById('event-weekday-0')?.closest('details');
+  const section = document.getElementById('event-weekday')?.closest('details');
   if (!section) throw new Error('Missing date extras section');
   return section;
 };
@@ -374,7 +374,9 @@ describe('EventsListPage', () => {
     const section = dateExtrasSection();
     expect(section.open).toBe(false);
     expect(section.querySelector('summary')?.hidden).toBe(false);
-    expect(section.querySelector('summary')?.textContent).toBe('events.fields.dateExtras');
+    expect(section.querySelector('summary')?.textContent).toBe(
+      'events.fields.dateExtras events.fields.dateExtrasPosition'
+    );
   });
 
   it('keeps empty optional date details collapsed when editing an event', async () => {
@@ -409,7 +411,7 @@ describe('EventsListPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
     const section = await waitFor(dateExtrasSection);
     expect(section.open).toBe(true);
-    expect(section.querySelector<HTMLInputElement>('#event-weekday-0')?.value).toBe('Dienstag');
+    expect(section.querySelector<HTMLInputElement>('#event-weekday')?.value).toBe('Dienstag');
 
     const [saveButton] = screen.getAllByRole('button', { name: /Speichern|anlegen/ });
     if (!saveButton) throw new Error('Missing save button');

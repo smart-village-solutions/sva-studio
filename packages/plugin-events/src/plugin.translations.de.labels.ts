@@ -56,6 +56,7 @@ export const eventsDELabels = {
     timeStart: 'Startzeit',
     timeEnd: 'Endzeit',
     dateExtras: 'Weitere Terminangaben (optional)',
+    dateExtrasPosition: 'zu Termin {{position}}',
     timeDescription: 'Hinweis zur Zeit (optional)',
     timeDescriptionHelp:
       'Zusätzliche Angaben zur Zeit, zum Beispiel „Einlass ab 18 Uhr“ oder „Beginn nach Sonnenuntergang“.',

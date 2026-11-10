@@ -483,7 +483,7 @@ describe('EventsDetailContentTab', () => {
     });
     fireEvent.click(
       screen.getByLabelText('Nur den Hinweis zur Zeit anzeigen', {
-        selector: '#event-only-time-description-0',
+        selector: '#event-only-time-description',
       })
     );
     fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street-1' }), {

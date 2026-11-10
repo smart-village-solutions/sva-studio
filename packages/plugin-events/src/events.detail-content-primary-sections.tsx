@@ -1,17 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import {
-  useFieldArray,
-  useFormContext,
-  useFormState,
-  useWatch,
-  type UseFormSetValue,
-} from 'react-hook-form';
+import { useFieldArray, useFormContext, useWatch, type UseFormSetValue } from 'react-hook-form';
 import { getHostMapGeocodingConfig } from '@sva/plugin-sdk';
 import { Button, Checkbox, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import { createDefaultDate, type EventsDetailFormValues } from './events.detail-form.js';
 import { StudioDetailCard } from '@sva/studio-ui-react';
 import { EventsDateInput } from './events.detail-date-input.js';
+import { compactEventString } from './events.detail-form-serialization-common.js';
 import {
   ContentInput,
   indexedId,
@@ -90,48 +85,32 @@ function DateFields(props: DateFieldsProps) {
 }
 
 const hasDateExtrasValues = (date: EventDate) =>
-  Boolean(date.weekday?.trim()) ||
-  Boolean(date.timeDescription?.trim()) ||
+  compactEventString(date.weekday) !== undefined ||
+  compactEventString(date.timeDescription) !== undefined ||
   date.useOnlyTimeDescription === true;
 
 function DateExtrasFields({ date, index, pt, setValue }: DateFieldsProps) {
-  const { control } = useFormContext<EventsDetailFormValues>();
-  const { errors } = useFormState({ control, name: `content.dates.${index}` });
-  const dateErrors = errors.content?.dates?.[index];
-  const hasExtrasError = Boolean(
-    dateErrors?.weekday || dateErrors?.timeDescription || dateErrors?.useOnlyTimeDescription
-  );
-  const [open, setOpen] = useState(() => hasDateExtrasValues(date) || hasExtrasError);
-
-  useEffect(() => {
-    if (hasExtrasError) setOpen(true);
-  }, [hasExtrasError]);
-
-  const weekdayId = `event-weekday-${index}`;
-  const timeDescriptionId = `event-time-description-${index}`;
-  const onlyTimeDescriptionId = `event-only-time-description-${index}`;
+  const [open, setOpen] = useState(() => hasDateExtrasValues(date));
+  const onlyTimeDescriptionId = indexedId('event-only-time-description', index);
   return (
     <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary className="cursor-pointer text-sm font-medium text-foreground">
-        {pt('fields.dateExtras')}
+        {pt('fields.dateExtras')}{' '}
+        <span className="sr-only">{pt('fields.dateExtrasPosition', { position: index + 1 })}</span>
       </summary>
       <div className="mt-4 space-y-4">
         <StudioFieldGroup columns={2}>
           <ContentInput
-            id={weekdayId}
+            id={indexedId('event-weekday', index)}
             label={pt('fields.weekday')}
             description={pt('fields.weekdayHelp')}
-            error={dateErrors?.weekday?.message}
-            ariaInvalid={dateErrors?.weekday ? true : undefined}
             value={date.weekday}
             onChange={(value) => setValue(`content.dates.${index}.weekday`, value, dirty)}
           />
           <ContentInput
-            id={timeDescriptionId}
+            id={indexedId('event-time-description', index)}
             label={pt('fields.timeDescription')}
             description={pt('fields.timeDescriptionHelp')}
-            error={dateErrors?.timeDescription?.message}
-            ariaInvalid={dateErrors?.timeDescription ? true : undefined}
             value={date.timeDescription}
             onChange={(value) => setValue(`content.dates.${index}.timeDescription`, value, dirty)}
           />
@@ -140,15 +119,9 @@ function DateExtrasFields({ date, index, pt, setValue }: DateFieldsProps) {
           id={onlyTimeDescriptionId}
           label={pt('fields.useOnlyTimeDescription')}
           description={pt('fields.useOnlyTimeDescriptionHelp')}
-          error={dateErrors?.useOnlyTimeDescription?.message}
           controlProps={{
             id: onlyTimeDescriptionId,
-            ...(dateErrors?.useOnlyTimeDescription
-              ? {
-                  'aria-invalid': true,
-                  'aria-describedby': `${onlyTimeDescriptionId}-description ${onlyTimeDescriptionId}-error`,
-                }
-              : { 'aria-describedby': `${onlyTimeDescriptionId}-description` }),
+            'aria-describedby': `${onlyTimeDescriptionId}-description`,
           }}
         >
           <Checkbox

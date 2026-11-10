@@ -25,6 +25,7 @@ const createFixture = (
     sourceRef?: string;
     sdkVersion?: string;
     requiredCapabilities?: string[];
+    sourceType?: 'installed-distribution' | 'linked-package';
   } = {}
 ) => {
   const root = mkdtempSync(join(tmpdir(), 'studio-installed-plugin-'));
@@ -51,7 +52,7 @@ const createFixture = (
     JSON.stringify([
       {
         pluginId: 'calendar',
-        sourceType: 'installed-distribution',
+        sourceType: input.sourceType ?? 'installed-distribution',
         enabled: input.enabled ?? true,
         sourceRef,
         distribution: input.distribution ?? 'studio',
@@ -96,10 +97,12 @@ const createFixture = (
   return { appRoot, packageRoot };
 };
 
-const appendCatalogEntries = (appRoot: string, entries: readonly unknown[]) => {
+/** Appends entries to the fixture catalog and returns the index of the first appended entry. */
+const appendCatalogEntries = (appRoot: string, entries: readonly unknown[]): number => {
   const catalogPath = join(appRoot, 'plugin-catalog.json');
   const catalog = JSON.parse(readFileSync(catalogPath, 'utf8')) as unknown[];
   writeFileSync(catalogPath, JSON.stringify([...catalog, ...entries]));
+  return catalog.length;
 };
 
 afterEach(() => {
@@ -132,7 +135,9 @@ describe('installed plugin build inputs', () => {
     expect(code).toContain('Erstellt und veröffentlicht Nachrichten');
     expect(code).toContain('Mediathek');
     expect(code).toContain('"app-translations":{"name":"Mehrsprachigkeit"');
-    expect(code).toContain('Feste App-Texte lokal bearbeiten, kommunale Overrides verwalten und unveränderliche Prüfstände erstellen.');
+    expect(code).toContain(
+      'Feste App-Texte lokal bearbeiten, kommunale Overrides verwalten und unveränderliche Prüfstände erstellen.'
+    );
     expect(code).not.toContain('Smart Speech Flow');
   });
 
@@ -294,6 +299,14 @@ describe('installed plugin build inputs', () => {
     expect(sources.map((source) => source.catalog.pluginId)).toEqual(['calendar']);
   });
 
+  it('resolves linked-package catalog entries like installed distributions', () => {
+    const { appRoot } = createFixture({ jobsPath: null, sourceType: 'linked-package' });
+    const sources = resolveInstalledPluginSources(appRoot, 'studio');
+    expect(sources.map((source) => source.catalog)).toEqual([
+      expect.objectContaining({ pluginId: 'calendar', sourceType: 'linked-package' }),
+    ]);
+  });
+
   it.each([
     ['a misspelled source type', { sourceType: 'installed-distrbution' }],
     ['an unknown source type', { sourceType: 'remote' }],
@@ -317,22 +330,23 @@ describe('installed plugin build inputs', () => {
 
   it('identifies an invalid source type entry by index when it has no plugin id', () => {
     const { appRoot } = createFixture({ jobsPath: null });
-    appendCatalogEntries(appRoot, [{ sourceType: 'remote', enabled: true }]);
+    const index = appendCatalogEntries(appRoot, [{ sourceType: 'remote', enabled: true }]);
     expect(() => resolveInstalledPluginSources(appRoot, 'studio')).toThrow(
-      'plugin_catalog_source_type_invalid:#1'
+      `plugin_catalog_source_type_invalid:#${index}`
     );
   });
 
-  it.each([null, 'calendar', ['calendar']])(
-    'rejects a catalog entry that is not an object (%j)',
-    (entry) => {
-      const { appRoot } = createFixture({ jobsPath: null });
-      appendCatalogEntries(appRoot, [entry]);
-      expect(() => resolveInstalledPluginSources(appRoot, 'studio')).toThrow(
-        'plugin_catalog_entry_invalid:#1'
-      );
-    }
-  );
+  it.each([
+    ['null', null],
+    ['a string', 'calendar'],
+    ['an array', ['calendar']],
+  ])('rejects %s as a catalog entry', (_label, entry) => {
+    const { appRoot } = createFixture({ jobsPath: null });
+    const index = appendCatalogEntries(appRoot, [entry]);
+    expect(() => resolveInstalledPluginSources(appRoot, 'studio')).toThrow(
+      `plugin_catalog_entry_invalid:#${index}`
+    );
+  });
 
   it('rejects an unknown source type even when the entry targets another distribution', () => {
     const { appRoot } = createFixture({ jobsPath: null });
@@ -348,6 +362,31 @@ describe('installed plugin build inputs', () => {
     expect(() => resolveInstalledPluginSources(appRoot, 'studio')).toThrow(
       'plugin_catalog_source_type_invalid:maps'
     );
+  });
+
+  it('rejects an invalid workspace entry instead of skipping it', () => {
+    const { appRoot } = createFixture({ jobsPath: null });
+    appendCatalogEntries(appRoot, [
+      { pluginId: 'news', sourceType: 'workspace', enabled: 'false', sourceRef: 'packages/news' },
+    ]);
+    expect(() => resolveInstalledPluginSources(appRoot, 'studio')).toThrow(
+      'plugin_catalog_entry_invalid:news:enabled'
+    );
+  });
+
+  it.each([
+    [
+      'the module publiccode plugin',
+      (appRoot: string) => createModulePublicCodePlugin(appRoot, 'studio', []),
+    ],
+    [
+      'the selected workspace plugin',
+      (appRoot: string) => createSelectedWorkspacePluginInputsPlugin(appRoot, []),
+    ],
+  ])('validates the catalog before %s reads it', (_label, createPlugin) => {
+    const { appRoot } = createFixture({ jobsPath: null });
+    const index = appendCatalogEntries(appRoot, [null]);
+    expect(() => createPlugin(appRoot)).toThrow(`plugin_catalog_entry_invalid:#${index}`);
   });
 
   it('rejects an enabled SSF package whose job entrypoint the host cannot register', () => {

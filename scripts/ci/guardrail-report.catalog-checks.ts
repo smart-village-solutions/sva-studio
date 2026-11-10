@@ -7,6 +7,10 @@ import {
   type PluginManifest,
 } from '../../packages/plugin-sdk/src/index.ts';
 import type { StudioPluginCatalogConfigEntry } from '../../apps/sva-studio-react/src/lib/plugin-catalog-loader.ts';
+import {
+  isWorkspacePluginCatalogEntry,
+  parsePluginCatalogConfig,
+} from '../../apps/sva-studio-react/src/lib/plugin-catalog-config.ts';
 
 import {
   createGuardrailCheckResult,
@@ -20,13 +24,6 @@ export { buildArchitectureDriftCheck } from './guardrail-report.architecture-che
 
 type PluginCatalogLoaderModule =
   typeof import('../../apps/sva-studio-react/src/lib/plugin-catalog-loader.ts');
-
-type PluginCatalogConfigEntryJson = Readonly<{
-  pluginId: string;
-  sourceRef: string;
-  sourceType: 'installed-distribution' | 'linked-package' | 'workspace';
-  enabled: boolean;
-}>;
 
 const loadPluginCatalogLoaderModule = async (): Promise<PluginCatalogLoaderModule> =>
   import('../../apps/sva-studio-react/src/lib/plugin-catalog-loader.ts');
@@ -43,8 +40,9 @@ const readWorkspacePluginCatalogEntries = (
   repoRoot: string
 ): readonly StudioPluginCatalogConfigEntry[] => {
   const catalogPath = resolve(repoRoot, 'apps/sva-studio-react/plugin-catalog.json');
-  const rawEntries = readJsonFile<readonly PluginCatalogConfigEntryJson[]>(catalogPath);
-  return rawEntries.filter((entry) => entry.sourceType === 'workspace');
+  return parsePluginCatalogConfig(readJsonFile<unknown>(catalogPath)).filter(
+    isWorkspacePluginCatalogEntry
+  );
 };
 
 const readWorkspacePluginManifest = (

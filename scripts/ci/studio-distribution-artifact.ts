@@ -18,7 +18,8 @@ import {
 } from '../../apps/sva-studio-react/src/lib/plugin-catalog-loader.js';
 import { appAdminResources } from '../../apps/sva-studio-react/src/routing/admin-resources.js';
 import { resolveInstalledPluginSources } from '../../apps/sva-studio-react/plugin-installed-inputs.vite.js';
-import pluginCatalog from '../../apps/sva-studio-react/plugin-catalog.json';
+import { parsePluginCatalogConfig } from '../../apps/sva-studio-react/src/lib/plugin-catalog-config.js';
+import rawPluginCatalog from '../../apps/sva-studio-react/plugin-catalog.json';
 import { writeChunkProvenance } from './studio-chunk-provenance.js';
 
 const distributions = ['studio', 'ssf', 'custom'] as const;
@@ -70,6 +71,7 @@ const includedPluginIds: Readonly<Record<'studio' | 'ssf', readonly string[]>> =
   ssf: ['ssf'],
 };
 
+const pluginCatalog = parsePluginCatalogConfig(rawPluginCatalog);
 const workspacePluginIds = pluginCatalog
   .filter(({ sourceType, enabled }) => sourceType === 'workspace' && enabled)
   .map(({ pluginId }) => pluginId);

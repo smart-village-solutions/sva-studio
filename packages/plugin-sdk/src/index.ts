@@ -197,6 +197,7 @@ export {
   definePluginImportProfiles,
   definePluginJobTypes,
   definePluginManifest,
+  pluginCatalogSourceTypes,
   PLUGIN_PLATFORM_ADMIN_ROLE,
   PLUGIN_ROUTE_SCOPE_HEADER_NAME,
   defineMediaPickerDefinition,

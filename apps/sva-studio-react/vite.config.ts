@@ -19,7 +19,8 @@ import {
   resolveStudioDistribution,
   resolveStudioPluginIds,
 } from './src/lib/studio-distribution.js';
-import pluginCatalog from './plugin-catalog.json';
+import { parsePluginCatalogConfig } from './src/lib/plugin-catalog-config.js';
+import rawPluginCatalog from './plugin-catalog.json';
 
 const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, '');
 const resolveAppPath = (relativePath: string) =>
@@ -144,6 +145,7 @@ const studioDistribution = (() => {
     process.env.SVA_STUDIO_PLUGIN_IDS
   );
 })();
+const pluginCatalog = parsePluginCatalogConfig(rawPluginCatalog);
 const studioPluginIds = resolveStudioPluginIds(
   studioDistribution,
   process.env.SVA_STUDIO_PLUGIN_IDS,

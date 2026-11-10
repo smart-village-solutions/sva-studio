@@ -157,7 +157,7 @@ const responseStatusFor = (error: unknown): number => {
   if (message === 'forbidden' || message === 'permission_missing') return 403;
   if (message === 'interface_not_found') return 404;
   if (message.includes('conflict')) return 409;
-  if (/^(invalid_|.*_invalid|.*_required|.*_not_supported)$/u.test(message)) return 400;
+  if (/^(invalid_[a-z0-9_]+|.*_invalid|.*_required|.*_not_supported)$/u.test(message)) return 400;
   return 500;
 };
 

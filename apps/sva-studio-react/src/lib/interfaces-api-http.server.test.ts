@@ -245,6 +245,47 @@ describe('personal interface HTTP routes', () => {
     expect(state.remove).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['without explicit status', new Error('invalid_config')],
+    [
+      'with envelope status',
+      Object.assign(new Error('invalid_config'), { code: 'invalid_config', statusCode: 400 }),
+    ],
+  ])('answers a rejected second map geocoding interface %s with 400', async (_label, error) => {
+    state.upsert.mockRejectedValue(error);
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+    const response = await dispatchInterfacesApiRequest(
+      new Request('https://tenant-a.example/api/v1/interfaces', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          draft: {
+            type: 'mapGeocoding',
+            name: 'Zweite Karte',
+            enabled: true,
+            config: {
+              provider: 'geoapify',
+              styleUrl: 'https://tiles.example/styles/poi',
+              autocompleteEnabled: true,
+              geocodeEnabled: true,
+              reverseGeocodeEnabled: true,
+              suggestEndpoint: '',
+              geocodeEndpoint: '',
+              reverseGeocodeEndpoint: '',
+              requestTimeoutMs: '',
+              rateLimitPerMinute: '',
+              killSwitchEnabled: false,
+              apiKey: 'geoapify-key',
+            },
+          },
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    expect(await response?.json()).toEqual({ error: { code: 'invalid_config' } });
+  });
+
   it('keeps raw exception details out of HTTP errors and logs', async () => {
     state.upsert.mockRejectedValue(new Error('postgres://db-user:private-value@db.example/wm'));
     const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');

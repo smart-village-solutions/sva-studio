@@ -203,7 +203,7 @@ export const getErrorPayload = (error: unknown, fallbackCode?: string): ErrorPay
       ? 403
       : message === 'interface_not_found'
         ? 404
-        : /^(invalid_|.*_invalid|.*_required|.*_not_supported)$/u.test(message)
+        : /^(invalid_[a-z0-9_]+|.*_invalid|.*_required|.*_not_supported)$/u.test(message)
           ? 400
           : 500
   );

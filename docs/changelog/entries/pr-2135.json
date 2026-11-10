@@ -1,0 +1,4 @@
+{
+  "prNumber": 2135,
+  "body": "Im Veranstaltungseditor stehen Wochentag, Hinweis zur Zeit und die Option „Nur den Hinweis zur Zeit anzeigen“ je Termin jetzt beim Anlegen und Bearbeiten im Abschnitt „Weitere Terminangaben (optional)“. Der Abschnitt bleibt eingeklappt, solange keine Angaben vorhanden sind, und öffnet sich bei vorhandenen Werten automatisch. Hilfetexte erklären die Felder; bestehende und importierte Angaben bleiben unverändert erhalten."
+}

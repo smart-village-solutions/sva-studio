@@ -144,3 +144,18 @@ export const getWasteManagementSchedulingOverview =
         url: '/api/v1/waste-management/scheduling',
       })
     );
+
+export const getWasteEmailMonitoring = (
+  query: import('@sva/waste-management-contracts').WasteEmailMonitoringQuery
+) => {
+  const params = new URLSearchParams({
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+    deliveryPage: String(query.deliveryPage),
+  });
+  if (query.status) params.set('status', query.status);
+  if (query.subscriptionId) params.set('subscriptionId', query.subscriptionId);
+  return requestWasteManagementItem<
+    import('@sva/waste-management-contracts').WasteEmailMonitoringOverview
+  >({ url: `/api/v1/waste-management/email-monitoring?${params}` });
+};

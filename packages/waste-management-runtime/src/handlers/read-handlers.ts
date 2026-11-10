@@ -1,3 +1,4 @@
+import { getWasteEmailMonitoringInternal } from './email-monitoring.js';
 import { createApiError, readPage } from '@sva/server-runtime';
 
 import { authorizeWasteManagementAction } from './auth.js';
@@ -13,6 +14,7 @@ import type { AuthenticatedRequestContext, WasteManagementHandlerDeps } from './
 import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 
 export const wasteManagementReadHandlers = {
+  getWasteEmailMonitoringInternal,
   getWasteManagementMainserverSyncStatusInternal,
   getWasteManagementSettingsInternal: async (
     _request: Request,

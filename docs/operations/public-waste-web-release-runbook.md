@@ -83,6 +83,8 @@ Empfohlener Wert für `PUBLIC_WASTE_STACK_NAME`:
 6. Die Stacks `web-waste-calendar` und `web-waste-calendar-frankfurt-oder` werden unabhängig neu ausgerollt.
 7. Jeder Zieljob prüft seine eigene Basis-URL mit `/health/live`, `/` und `/api/public-waste/selection`.
 
+Der Releasehelfer liest vor der Stack-Auswahl die Swarm-ID über den konfigurierten Docker-Endpoint und fragt ausschließlich dessen Swarm-Stacks ab. Ohne lesbare Swarm-ID bricht er vor jedem Update ab. Zielstack und Endpoint-Zuordnung werden weiterhin getrennt geprüft; der Release ändert ausschließlich den Image-Tag des gewählten Stacks.
+
 Ein Fehlschlag eines Zieljobs macht den Release rot. Ein bereits erfolgreich aktualisierter anderer Zielstack bleibt unverändert auf dem neuen Tag; ein Rollback oder Retry erfolgt anschließend nur nach der Ursacheanalyse gezielt für den betroffenen Stack.
 
 ## Kanonische Domain umstellen

@@ -37,7 +37,14 @@ const useVerificationDraft = (props: VerificationCardProps) => {
       : props.mode === 'tenant'
         ? getTenantEmailVerificationTemplate()
         : getInstanceMailTemplate(props.instanceId, 'verification');
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpenState] = React.useState(false);
+  // Incremented only when the editor opens, so closing keeps the current source
+  // while every reopen still reads a fresh Studio/Keycloak comparison.
+  const [loadRequest, setLoadRequest] = React.useState(0);
+  const setOpen = (next: boolean) => {
+    if (next && !open) setLoadRequest((request) => request + 1);
+    setOpenState(next);
+  };
   const [view, setView] = React.useState<VerificationView | null>(null);
   const [draft, setDraft] = React.useState<EmailVerificationTemplate>(
     DEFAULT_EMAIL_VERIFICATION_TEMPLATE
@@ -72,7 +79,7 @@ const useVerificationDraft = (props: VerificationCardProps) => {
     return () => {
       active = false;
     };
-  }, [props.instanceId, open, server, props.mode]);
+  }, [props.instanceId, loadRequest, server, props.mode]);
   const changeDraft = (value: EmailVerificationTemplate) => {
     draftState.current.dirty = true;
     setDraft(value);

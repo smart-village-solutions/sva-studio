@@ -138,6 +138,28 @@ export const buildSidebarSystemItems = (
   const { canAccessAdminInstances, canAccessInterfaces, canAccessModules, canAccessSystemTools } =
     access;
   const userChildren = buildUserChildren(access);
+  const monitoringItems = pluginSystemItems.filter(
+    (item): item is SidebarLeafItem =>
+      item.kind === 'link' && item.id === 'plugin-waste-management.email-monitoring.navigation'
+  );
+  const otherPluginItems = pluginSystemItems.filter(
+    (item) => !monitoringItems.includes(item as SidebarLeafItem)
+  );
+  const monitoringChildren: SidebarLeafItem[] = [
+    ...(canAccessSystemTools
+      ? [
+          {
+            kind: 'link' as const,
+            id: 'monitoring-overview',
+            to: '/monitoring',
+            label: t('shell.sidebar.monitoring'),
+            icon: IconActivityHeartbeat,
+            exact: true,
+          },
+        ]
+      : []),
+    ...monitoringItems,
+  ];
 
   const systemItems: SidebarItem[] = [
     ...(userChildren.length > 0
@@ -203,18 +225,28 @@ export const buildSidebarSystemItems = (
           },
         ]
       : []),
-    ...(canAccessSystemTools
+    ...(monitoringItems.length > 0
       ? [
           {
-            kind: 'link' as const,
+            kind: 'group' as const,
             id: 'monitoring',
-            to: '/monitoring',
             label: t('shell.sidebar.monitoring'),
             icon: IconActivityHeartbeat,
+            children: monitoringChildren,
           },
-          ...pluginSystemItems,
         ]
-      : [...pluginSystemItems]),
+      : canAccessSystemTools
+        ? [
+            {
+              kind: 'link' as const,
+              id: 'monitoring',
+              to: '/monitoring',
+              label: t('shell.sidebar.monitoring'),
+              icon: IconActivityHeartbeat,
+            },
+          ]
+        : []),
+    ...otherPluginItems,
   ];
 
   return systemItems;

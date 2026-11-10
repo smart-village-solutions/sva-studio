@@ -48,9 +48,9 @@ describe('pluginWasteManagement contract', () => {
 
   it('declares each existing Waste method and path once as a server handler', () => {
     const descriptors = pluginWasteManagement.serverHandlers ?? [];
-    expect(descriptors).toHaveLength(67);
-    expect(new Set(descriptors.map(({ path }) => path)).size).toBe(50);
-    expect(new Set(descriptors.map(({ method, path }) => `${method} ${path}`)).size).toBe(67);
+    expect(descriptors).toHaveLength(68);
+    expect(new Set(descriptors.map(({ path }) => path)).size).toBe(51);
+    expect(new Set(descriptors.map(({ method, path }) => `${method} ${path}`)).size).toBe(68);
     expect(descriptors).toContainEqual(
       expect.objectContaining({
         path: '/api/v1/waste-management/tours/annual-transfer',
@@ -62,11 +62,11 @@ describe('pluginWasteManagement contract', () => {
 
   it('declares the canonical free plugin route, module iam and job registrations', () => {
     expect(pluginWasteManagement.actions).toEqual(wasteManagementActionDefinitions);
-    expect(wasteManagementActionDefinitions).toHaveLength(10);
-    expect(wasteManagementActionDefinitions.slice(0, 9).map(({ id }) => id)).toEqual(
+    expect(wasteManagementActionDefinitions).toHaveLength(11);
+    expect(wasteManagementActionDefinitions.slice(0, 10).map(({ id }) => id)).toEqual(
       wasteManagementPermissionDefinitions.map(({ id }) => id)
     );
-    expect(wasteManagementActionDefinitions[9]).toMatchObject({
+    expect(wasteManagementActionDefinitions[10]).toMatchObject({
       id: 'waste-management.annual-transfer.execute',
       accessRequirement: {
         kind: 'tenant',
@@ -78,6 +78,11 @@ describe('pluginWasteManagement contract', () => {
       },
     });
     expect(pluginWasteManagement.navigation).toEqual([
+      expect.objectContaining({
+        id: 'waste-management.email-monitoring.navigation',
+        requiredAction: 'waste-management.email-reminder-monitoring.read',
+        section: 'system',
+      }),
       {
         id: 'waste-management.navigation',
         to: '/plugins/waste-management',
@@ -94,7 +99,11 @@ describe('pluginWasteManagement contract', () => {
     expect(pluginWasteManagement.permissions).toEqual(wasteManagementPermissionDefinitions);
     expect(
       pluginWasteManagement.permissions
-        .filter(({ id }) => id !== 'waste-management.export.execute')
+        .filter(
+          ({ id }) =>
+            id !== 'waste-management.export.execute' &&
+            id !== 'waste-management.email-reminder-monitoring.read'
+        )
         .map(({ descriptionKey: _descriptionKey, ...permission }) => permission)
     ).toEqual([
       { id: 'waste-management.read', titleKey: 'wasteManagement.permissions.read.title' },
@@ -135,7 +144,9 @@ describe('pluginWasteManagement contract', () => {
     );
     expect(pluginWasteManagement.moduleIam).toEqual({
       moduleId: 'waste-management',
+      systemAdminPermissionExclusions: ['waste-management.email-reminder-monitoring.read'],
       permissionIds: [
+        'waste-management.email-reminder-monitoring.read',
         'waste-management.read',
         'waste-management.master-data.manage',
         'waste-management.tours.manage',
@@ -164,14 +175,36 @@ describe('pluginWasteManagement contract', () => {
       ],
     });
     expect(pluginWasteManagement.moduleIam).toEqual(wasteManagementModuleIam);
-    expect(pluginWasteManagement.routes).toHaveLength(1);
-    expect(pluginWasteManagement.routes[0]).toMatchObject({
+    expect(pluginWasteManagement.routes).toHaveLength(2);
+    expect(
+      pluginWasteManagement.routes.find(({ id }) => id === 'waste-management.email-monitoring')
+    ).toMatchObject({
+      path: '/plugins/waste-management/email-monitoring',
+      guard: 'waste-management.email-reminder-monitoring.read',
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: 'waste-management',
+        actions: { mode: 'allOf', values: ['waste-management.email-reminder-monitoring.read'] },
+      },
+    });
+    expect(pluginWasteManagement.serverHandlers).toContainEqual(
+      expect.objectContaining({
+        path: '/api/v1/waste-management/email-monitoring',
+        method: 'GET',
+        actionId: 'waste-management.email-reminder-monitoring.read',
+      })
+    );
+    expect(
+      pluginWasteManagement.routes.find(({ id }) => id === 'waste-management.home')
+    ).toMatchObject({
       id: 'waste-management.home',
       path: '/plugins/waste-management',
       guard: 'waste-management.read',
     });
     expect(
-      pluginWasteManagement.routes[0]?.validateSearch?.({ tab: 'settings', page: '2' })
+      pluginWasteManagement.routes
+        .find(({ id }) => id === 'waste-management.home')
+        ?.validateSearch?.({ tab: 'settings', page: '2' })
     ).toEqual({
       tab: 'settings',
       masterDataTab: 'locations',
@@ -213,7 +246,11 @@ describe('pluginWasteManagement contract', () => {
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
-    expect(pluginWasteManagement.routes[0]?.validateSearch?.({})).toEqual({
+    expect(
+      pluginWasteManagement.routes
+        .find(({ id }) => id === 'waste-management.home')
+        ?.validateSearch?.({})
+    ).toEqual({
       tab: 'fractions',
       masterDataTab: 'fractions',
       addressEntityType: 'region',
@@ -456,7 +493,10 @@ describe('pluginWasteManagement contract', () => {
         eventType: 'waste-management.region.updated',
         titleKey: 'wasteManagement.audit.regionUpdated',
       },
-      { eventType: 'waste-management.region.deleted', titleKey: 'wasteManagement.audit.regionDeleted' },
+      {
+        eventType: 'waste-management.region.deleted',
+        titleKey: 'wasteManagement.audit.regionDeleted',
+      },
       { eventType: 'waste-management.city.created', titleKey: 'wasteManagement.audit.cityCreated' },
       { eventType: 'waste-management.city.updated', titleKey: 'wasteManagement.audit.cityUpdated' },
       { eventType: 'waste-management.city.deleted', titleKey: 'wasteManagement.audit.cityDeleted' },
@@ -468,7 +508,10 @@ describe('pluginWasteManagement contract', () => {
         eventType: 'waste-management.street.updated',
         titleKey: 'wasteManagement.audit.streetUpdated',
       },
-      { eventType: 'waste-management.street.deleted', titleKey: 'wasteManagement.audit.streetDeleted' },
+      {
+        eventType: 'waste-management.street.deleted',
+        titleKey: 'wasteManagement.audit.streetDeleted',
+      },
       {
         eventType: 'waste-management.house-number.created',
         titleKey: 'wasteManagement.audit.houseNumberCreated',
@@ -477,7 +520,10 @@ describe('pluginWasteManagement contract', () => {
         eventType: 'waste-management.house-number.updated',
         titleKey: 'wasteManagement.audit.houseNumberUpdated',
       },
-      { eventType: 'waste-management.house-number.deleted', titleKey: 'wasteManagement.audit.houseNumberDeleted' },
+      {
+        eventType: 'waste-management.house-number.deleted',
+        titleKey: 'wasteManagement.audit.houseNumberDeleted',
+      },
       {
         eventType: 'waste-management.collection-location.created',
         titleKey: 'wasteManagement.audit.collectionLocationCreated',

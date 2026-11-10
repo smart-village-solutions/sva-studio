@@ -1,5 +1,6 @@
 // Existing Waste HTTP contract. The same tuples bind descriptors and server implementations.
 export const wasteManagementServerRoutes = [
+  ['/api/v1/waste-management/email-monitoring', 'GET', 'getEmailMonitoring', 'waste-management.email-reminder-monitoring.read'],
   ['/api/v1/waste-management/history', 'GET', 'getHistory', 'waste-management.read'],
   ['/api/v1/waste-management/master-data', 'GET', 'getMasterDataOverview', 'waste-management.read'],
   ['/api/v1/waste-management/fractions', 'POST', 'createFraction', 'waste-management.master-data.manage'],

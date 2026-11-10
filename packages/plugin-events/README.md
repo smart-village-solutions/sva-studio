@@ -55,6 +55,8 @@ Die React-Seiten erwarten eine Host-Umgebung, in der folgende Infrastruktur bere
 
 Beim Speichern ergänzt die UI optionale Host-Media-Referenzen für das Headerbild. Beim Bearbeiten lädt sie zusätzlich bestehende Media-Referenzen und POI-Optionen nach.
 
+Datum und Uhrzeit sind je Termin die primären Eingaben. Wochentag, Hinweis zur Zeit und die bestehende Mainserver-Ausgabeoption „Nur den Hinweis zur Zeit anzeigen“ (`weekday`, `timeDescription`, `useOnlyTimeDescription`) stehen beim Anlegen und Bearbeiten je Termin im einklappbaren Abschnitt „Weitere Terminangaben (optional)“. Der Abschnitt ist beim ersten Anzeigen eingeklappt, solange diese Angaben leer sind und die Option nicht aktiv ist; vorhandene Werte oder Validierungsfehler darin öffnen ihn. Danach öffnen und schließen Nutzer ihn selbst. Die Angaben sind weder Pflichtfelder noch werden sie berechnet; Öffnen, Schließen, unverändertes Speichern und Änderungen an Datum oder Uhrzeit lassen vorhandene oder importierte Werte unverändert.
+
 Der Veranstalter ist insgesamt optional. Vollständig leere Veranstalterfelder werden nicht in den Mainserver-Payload aufgenommen. Sobald Name, Adresse oder Kontaktdaten eines Veranstalters vorhanden sind, muss das Feld `Institution/Firma` einen Namen enthalten; andernfalls verhindert die UI den Request, markiert das Namensfeld und fokussiert es im Content-Tab.
 
 ## Projektstruktur

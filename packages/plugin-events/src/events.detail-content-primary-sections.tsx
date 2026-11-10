@@ -1,5 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { useFieldArray, useFormContext, useWatch, type UseFormSetValue } from 'react-hook-form';
+import {
+  useFieldArray,
+  useFormContext,
+  useFormState,
+  useWatch,
+  type UseFormSetValue,
+} from 'react-hook-form';
 import { getHostMapGeocodingConfig } from '@sva/plugin-sdk';
 import { Button, Checkbox, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
@@ -48,7 +54,6 @@ export function useEventsMapCapabilities() {
 export type EventsMapCapabilities = ReturnType<typeof useEventsMapCapabilities>;
 type EventDate = NonNullable<EventsDetailFormValues['content']['dates']>[number];
 type DateFieldsProps = Readonly<{
-  createMode?: boolean;
   date: EventDate;
   index: number;
   pt: Translator;
@@ -79,42 +84,88 @@ function DateFields(props: DateFieldsProps) {
           onChange={(value) => setValue(`content.dates.${index}.timeEnd`, value, dirty)}
         />
       </StudioFieldGroup>
-      <details open={props.createMode ? undefined : true}>
-        <summary hidden={!props.createMode}>{pt('create.dateExtras')}</summary>
+      <DateExtrasFields date={date} index={index} pt={pt} setValue={setValue} />
+    </>
+  );
+}
+
+const hasDateExtrasValues = (date: EventDate) =>
+  Boolean(date.weekday?.trim()) ||
+  Boolean(date.timeDescription?.trim()) ||
+  date.useOnlyTimeDescription === true;
+
+function DateExtrasFields({ date, index, pt, setValue }: DateFieldsProps) {
+  const { control } = useFormContext<EventsDetailFormValues>();
+  const { errors } = useFormState({ control, name: `content.dates.${index}` });
+  const dateErrors = errors.content?.dates?.[index];
+  const hasExtrasError = Boolean(
+    dateErrors?.weekday || dateErrors?.timeDescription || dateErrors?.useOnlyTimeDescription
+  );
+  const [open, setOpen] = useState(() => hasDateExtrasValues(date) || hasExtrasError);
+
+  useEffect(() => {
+    if (hasExtrasError) setOpen(true);
+  }, [hasExtrasError]);
+
+  const weekdayId = `event-weekday-${index}`;
+  const timeDescriptionId = `event-time-description-${index}`;
+  const onlyTimeDescriptionId = `event-only-time-description-${index}`;
+  return (
+    <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="cursor-pointer text-sm font-medium text-foreground">
+        {pt('fields.dateExtras')}
+      </summary>
+      <div className="mt-4 space-y-4">
         <StudioFieldGroup columns={2}>
           <ContentInput
-            id={`event-weekday-${index}`}
+            id={weekdayId}
             label={pt('fields.weekday')}
+            description={pt('fields.weekdayHelp')}
+            error={dateErrors?.weekday?.message}
+            ariaInvalid={dateErrors?.weekday ? true : undefined}
             value={date.weekday}
             onChange={(value) => setValue(`content.dates.${index}.weekday`, value, dirty)}
           />
           <ContentInput
-            id={`event-time-description-${index}`}
+            id={timeDescriptionId}
             label={pt('fields.timeDescription')}
+            description={pt('fields.timeDescriptionHelp')}
+            error={dateErrors?.timeDescription?.message}
+            ariaInvalid={dateErrors?.timeDescription ? true : undefined}
             value={date.timeDescription}
             onChange={(value) => setValue(`content.dates.${index}.timeDescription`, value, dirty)}
           />
         </StudioFieldGroup>
         <StudioField
-          id={`event-only-time-description-${index}`}
+          id={onlyTimeDescriptionId}
           label={pt('fields.useOnlyTimeDescription')}
+          description={pt('fields.useOnlyTimeDescriptionHelp')}
+          error={dateErrors?.useOnlyTimeDescription?.message}
+          controlProps={{
+            id: onlyTimeDescriptionId,
+            ...(dateErrors?.useOnlyTimeDescription
+              ? {
+                  'aria-invalid': true,
+                  'aria-describedby': `${onlyTimeDescriptionId}-description ${onlyTimeDescriptionId}-error`,
+                }
+              : { 'aria-describedby': `${onlyTimeDescriptionId}-description` }),
+          }}
         >
           <Checkbox
-            id={`event-only-time-description-${index}`}
+            id={onlyTimeDescriptionId}
             checked={date.useOnlyTimeDescription ?? false}
             onChange={(event) =>
               setValue(`content.dates.${index}.useOnlyTimeDescription`, event.target.checked, dirty)
             }
           />
         </StudioField>
-      </details>
-    </>
+      </div>
+    </details>
   );
 }
 
 export type EventsDateSectionProps = Readonly<{
   children?: ReactNode;
-  createMode?: boolean;
   pt: Translator;
 }>;
 
@@ -149,7 +200,7 @@ export function EventsDateSection(props: EventsDateSectionProps) {
           removeLabel={props.pt('actions.remove')}
           onRemove={dates.length > 1 ? () => datesArray.remove(index) : undefined}
         >
-          <DateFields {...props} date={date} index={index} setValue={setValue} />
+          <DateFields date={date} index={index} pt={props.pt} setValue={setValue} />
         </RepeaterItem>
       ))}
       {props.children}

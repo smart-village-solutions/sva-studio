@@ -55,9 +55,16 @@ export const eventsENLabels = {
     dateEnd: 'End date',
     timeStart: 'Start time',
     timeEnd: 'End time',
-    timeDescription: 'Time note',
-    weekday: 'Weekday',
-    useOnlyTimeDescription: 'Use time note only',
+    dateExtras: 'Additional date details (optional)',
+    timeDescription: 'Time note (optional)',
+    timeDescriptionHelp:
+      'Additional time details, for example “Doors open at 6 pm” or “Starts after sunset”.',
+    weekday: 'Weekday (optional)',
+    weekdayHelp:
+      'For a specific date, you do not need to enter the weekday as well. Existing or imported values can be edited here.',
+    useOnlyTimeDescription: 'Show only the time note',
+    useOnlyTimeDescriptionHelp:
+      'Uses the existing Mainserver output option. Saved dates and times are not deleted.',
     organizerName: 'Organization/company',
     organizerNameHelp: 'Required as soon as further organizer details are entered.',
     firstName: 'First name',

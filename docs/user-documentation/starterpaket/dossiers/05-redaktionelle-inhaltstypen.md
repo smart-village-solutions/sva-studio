@@ -61,13 +61,16 @@ sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür ge�
 - **Route / Typ / Owner:** `/admin/events/new`, Anlegen, Plugin `events`.
 - **Nutzerziel:** Eine Veranstaltung mit Termin, Ort, Kontakt und Veröffentlichung erfassen.
 - **Produktfakten:** Erfasst werden Titel, Beschreibung, Kategorien, Sichtbarkeit, einzelne oder
-  wiederkehrende Termine, Zeit-Hinweise, Veranstalter, Kontakte, Adresse und Karte,
+  wiederkehrende Termine, Hinweise zur Zeit, Veranstalter, Kontakte, Adresse und Karte,
   Links, Preise und Medien. Optionale Ergänzungen sind direkt erreichbar; technische Angaben
-  bleiben geschlossen. Wiederholungen unterstützen Tage, Wochen,
+  bleiben geschlossen. Je Termin stehen Datum und Uhrzeit vorn; Wochentag, Hinweis zur Zeit und
+  „Nur den Hinweis zur Zeit anzeigen“ liegen im Abschnitt „Weitere Terminangaben (optional)“, der
+  eingeklappt bleibt, solange diese Angaben leer sind. Der Wochentag muss bei einem konkreten
+  Datum nicht zusätzlich eingetragen werden. Wiederholungen unterstützen Tage, Wochen,
   Monate oder Jahre sowie Wochentage. Die Beschreibung lässt sich visuell oder als HTML bearbeiten.
 - **Validierung:** Titel erforderlich; gültige Datumswerte, HTTPS-URLs, valide Preise und Geo-
   Koordinaten. Kategorienamen sind auf 128 Zeichen begrenzt.
-- **Leitfragen / Stichwörter:** Einzeltermin oder Wiederholung? Welche Adresse? Nur Zeit-Hinweis?
+- **Leitfragen / Stichwörter:** Einzeltermin oder Wiederholung? Welche Adresse? Nur Hinweis zur Zeit?
   Veranstaltung, Terminserie, Veranstaltungsort, Preis.
 - **Evidenz:** `packages/plugin-events/src/events.detail-*.tsx`,
   `packages/plugin-events/src/plugin.translations.ts`.
@@ -76,8 +79,10 @@ sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür ge�
 
 - **Route / Typ / Owner:** `/admin/events/$id`, Detail, Plugin `events`.
 - **Nutzerziel:** Eine bestehende Veranstaltung und ihre strukturierten Angaben aktualisieren.
-- **Produktfakten:** Der Anlegeumfang wird um Historie und Löschen ergänzt. Adresse kann geocodiert
-  und ein Kartenpunkt rückwärts in eine Adresse übersetzt werden. Medienreferenzen können nach
+- **Produktfakten:** Der Anlegeumfang wird um Historie und Löschen ergänzt. Der Abschnitt „Weitere
+  Terminangaben (optional)“ öffnet sich beim Laden, wenn ein Termin dort bereits Angaben oder eine
+  aktive Ausgabeoption enthält; vorhandene und importierte Werte bleiben beim Speichern erhalten.
+  Adresse kann geocodiert und ein Kartenpunkt rückwärts in eine Adresse übersetzt werden. Medienreferenzen können nach
   partiellem Fehler erneut gespeichert werden. Die Beschreibung bietet eine visuelle und eine
   HTML-Ansicht; die gemeinsame Werkzeugleiste kann gemischte Textformatierungen gezielt entfernen.
 - **Kontextabhängig:** Kartenfunktionen benötigen eine aktive Karten-/Geocoding-Schnittstelle;

@@ -477,6 +477,74 @@ describe('events.detail-form', () => {
     });
   });
 
+  describe('optional date details round trip', () => {
+    const importedItem = {
+      id: 'event-imported',
+      contentType: 'events.event-record',
+      status: 'published',
+      createdAt: '2026-06-11T10:00:00.000Z',
+      updatedAt: '2026-06-11T10:00:00.000Z',
+      title: 'Importierter Termin',
+      dates: [
+        {
+          dateStart: '2026-06-11',
+          timeStart: '18:00',
+          weekday: 'Donnerstag',
+          timeDescription: 'Einlass ab 18 Uhr',
+          useOnlyTimeDescription: true,
+        },
+        { dateStart: '2026-06-12', weekday: 'Montag' },
+      ],
+    } satisfies EventContentItem;
+
+    it('keeps weekday, time note and output option on an unchanged save', () => {
+      expect(
+        mapEventsDetailFormValuesToInput(mapEventItemToDetailFormValues(importedItem)).dates
+      ).toEqual([
+        {
+          dateStart: '2026-06-11',
+          timeStart: '18:00',
+          weekday: 'Donnerstag',
+          timeDescription: 'Einlass ab 18 Uhr',
+          useOnlyTimeDescription: true,
+        },
+        { dateStart: '2026-06-12', weekday: 'Montag' },
+      ]);
+    });
+
+    it('keeps the optional details when only date, time or another field changes', () => {
+      const values = mapEventItemToDetailFormValues(importedItem);
+      const [firstDate, ...otherDates] = values.content.dates ?? [];
+      values.title = 'Neuer Titel';
+      values.content.dates = [
+        { ...firstDate, dateStart: '2026-06-18', timeStart: '19:30' },
+        ...otherDates,
+      ];
+
+      expect(mapEventsDetailFormValuesToInput(values)).toMatchObject({
+        title: 'Neuer Titel',
+        dates: [
+          {
+            dateStart: '2026-06-18',
+            timeStart: '19:30',
+            weekday: 'Donnerstag',
+            timeDescription: 'Einlass ab 18 Uhr',
+            useOnlyTimeDescription: true,
+          },
+          { dateStart: '2026-06-12', weekday: 'Montag' },
+        ],
+      });
+    });
+
+    it('saves dates without optional details unchanged', () => {
+      const values = createDefaultEventsDetailFormValues();
+      values.title = 'Ohne Zusatzangaben';
+      values.content.dates = [{ ...values.content.dates?.[0], dateStart: '2026-06-11' }];
+
+      expect(mapEventsDetailFormValuesToInput(values).dates).toEqual([{ dateStart: '2026-06-11' }]);
+    });
+  });
+
   it('keeps the stored calendar day when legacy ISO timestamps are normalized to date-only values', () => {
     expect(
       mapEventItemToDetailFormValues({

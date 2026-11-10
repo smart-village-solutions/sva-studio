@@ -152,7 +152,7 @@ export const eventsDEEditor = {
       },
       dates: {
         title: 'Termine',
-        description: 'Termine, Zeiten und optionale Zeit-Hinweise.',
+        description: 'Termine, Zeiten und optionale Hinweise zur Zeit.',
         itemTitle: 'Termin',
       },
       addresses: {

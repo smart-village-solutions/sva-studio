@@ -105,8 +105,8 @@ const loadGlobalDateShiftRows = (context: CalendarQueryContext) =>
     text: `
       SELECT
         id::text,
-        to_char(original_date, 'YYYY-MM-DD') AS original_date,
-        to_char(actual_date, 'YYYY-MM-DD') AS actual_date,
+        original_date,
+        actual_date,
         description,
         tour_ids
       FROM ${context.schemaName}.waste_global_date_shifts

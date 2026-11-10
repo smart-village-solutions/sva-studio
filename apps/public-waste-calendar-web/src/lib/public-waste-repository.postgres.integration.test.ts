@@ -22,7 +22,7 @@ const createFixtureStatements = [
   `CREATE TABLE ${schemaName}.waste_tour_fractions (tour_id UUID NOT NULL REFERENCES ${schemaName}.waste_tours(id) ON DELETE CASCADE, fraction_id UUID NOT NULL REFERENCES ${schemaName}.waste_fractions(id) ON DELETE RESTRICT, position INTEGER NOT NULL, PRIMARY KEY(tour_id, fraction_id));`,
   `CREATE TABLE ${schemaName}.waste_location_tour_links (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), location_id UUID NOT NULL, tour_id UUID NOT NULL);`,
   `CREATE TABLE ${schemaName}.waste_tour_date_shifts (id UUID PRIMARY KEY, tour_id UUID, original_date DATE, actual_date DATE, has_year BOOLEAN, description TEXT);`,
-  `CREATE TABLE ${schemaName}.waste_global_date_shifts (id UUID PRIMARY KEY, original_date DATE, actual_date DATE, description TEXT, tour_ids TEXT[]);`,
+  `CREATE TABLE ${schemaName}.waste_global_date_shifts (id UUID PRIMARY KEY, original_date TEXT, actual_date TEXT, description TEXT, tour_ids TEXT[]);`,
   `CREATE TABLE ${schemaName}.waste_tour_assignments (id UUID PRIMARY KEY, tour_id UUID, pickup_date DATE, note TEXT);`,
   `CREATE TABLE ${schemaName}.waste_tour_assignment_locations (assignment_id UUID, collection_location_id UUID);`,
   `CREATE TABLE ${schemaName}.waste_holiday_rules (id UUID PRIMARY KEY, holiday_date DATE, holiday_name TEXT, year INTEGER, state_code TEXT, source_status TEXT, configuration_status TEXT, conflict_status TEXT, scope TEXT, strategy TEXT, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ);`,

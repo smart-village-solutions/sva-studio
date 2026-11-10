@@ -245,14 +245,19 @@ describe('personal interface HTTP routes', () => {
     expect(state.remove).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['without explicit status', new Error('invalid_config')],
-    [
-      'with envelope status',
-      Object.assign(new Error('invalid_config'), { code: 'invalid_config', statusCode: 400 }),
-    ],
-  ])('answers a rejected second map geocoding interface %s with 400', async (_label, error) => {
-    state.upsert.mockRejectedValue(error);
+  it('keeps server-side invalid_* defects such as a malformed list projection as 500', async () => {
+    state.list.mockRejectedValue(new Error('invalid_interfaces_payload'));
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+    const response = await dispatchInterfacesApiRequest(
+      new Request('https://tenant-a.example/api/v1/interfaces', { method: 'GET' })
+    );
+
+    expect(response?.status).toBe(500);
+    expect(await response?.json()).toEqual({ error: { code: 'invalid_interfaces_payload' } });
+  });
+
+  it('answers a rejected second map geocoding interface with 400 invalid_config', async () => {
+    state.upsert.mockRejectedValue(new Error('invalid_config'));
     const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
     const response = await dispatchInterfacesApiRequest(
       new Request('https://tenant-a.example/api/v1/interfaces', {

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { compileEmailVerificationTemplate, DEFAULT_EMAIL_VERIFICATION_TEMPLATE } from '@sva/core';
 import { IamHttpError } from '../../../lib/iam-api';
@@ -173,8 +173,7 @@ describe('verification editor', () => {
     const { rerender } = render(<EmailVerificationTemplateCard instanceId="bb-havelland" />);
     rerender(<EmailVerificationTemplateCard instanceId="bb-prignitz" />);
     expect(await screen.findByText('Verwendete Vorlage: Instanzvorlage')).toBeTruthy();
-    resolveObsolete({ data: view });
-    await Promise.resolve();
+    await act(async () => resolveObsolete({ data: view }));
     expect(screen.getByText('Verwendete Vorlage: Instanzvorlage')).toBeTruthy();
     expect(api.get).toHaveBeenLastCalledWith('bb-prignitz', 'verification');
     fireEvent.click(screen.getByRole('button', { name: 'E-Mail-Bestätigung anpassen' }));

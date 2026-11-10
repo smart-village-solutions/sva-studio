@@ -41,8 +41,10 @@ const useVerificationDraft = (props: VerificationCardProps) => {
   // Incremented only when the editor opens, so closing keeps the current source
   // while every reopen still reads a fresh Studio/Keycloak comparison.
   const [loadRequest, setLoadRequest] = React.useState(0);
+  const openRef = React.useRef(false);
   const setOpen = (next: boolean) => {
-    if (next && !open) setLoadRequest((request) => request + 1);
+    if (next && !openRef.current) setLoadRequest((request) => request + 1);
+    openRef.current = next;
     setOpenState(next);
   };
   const [view, setView] = React.useState<VerificationView | null>(null);

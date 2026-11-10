@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isWasteTourGlobalDateShiftApplicable } from './master-data-tours.js';
 
 import {
   isWasteTourValidityApplicable,
@@ -60,4 +61,22 @@ describe('waste tour validity', () => {
       )
     ).toBeNull();
   });
+});
+
+describe('global shift applicability', () => {
+  it.each(['weekly', 'biweekly', 'fourweekly', 'yearly'] as const)(
+    'includes %s tours',
+    (recurrence) => {
+      expect(isWasteTourGlobalDateShiftApplicable({ recurrence })).toBe(true);
+    }
+  );
+  it.each(['custom', 'on-demand', null, undefined] as const)(
+    'excludes individual %s tours but includes resolved interval presets',
+    (recurrence) => {
+      expect(isWasteTourGlobalDateShiftApplicable({ recurrence })).toBe(false);
+      expect(
+        isWasteTourGlobalDateShiftApplicable({ recurrence, customRecurrenceIntervalDays: 10 })
+      ).toBe(true);
+    }
+  );
 });

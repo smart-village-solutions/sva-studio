@@ -1,6 +1,7 @@
 import {
   isValidWasteIsoDateOnly,
   isWasteTourValidityApplicable,
+  isWasteTourGlobalDateShiftApplicable,
   resolveEffectiveWasteTourDateShiftsForYear,
 } from '@sva/waste-management-contracts';
 
@@ -176,22 +177,25 @@ export const calculateTourOccurrenceEntriesForYearInternal = (
   scheduling: WasteManagementSchedulingOverview,
   issues?: CalendarIssues
 ): readonly TourOccurrenceEntryInternal[] => {
+  const effective = isWasteTourGlobalDateShiftApplicable(tour)
+    ? scheduling
+    : { ...scheduling, globalDateShifts: [], holidayRules: [] };
   const results = new Set<string>();
   collectScheduledTourDates(results, tour, year, issues);
   collectCustomTourDates(results, tour, year, issues);
 
   const tourShiftMap = buildShiftMap(
     resolveEffectiveWasteTourDateShiftsForYear(
-      (scheduling.tourDateShifts ?? []).filter((shift) => shift.tourId === tour.id),
+      (effective.tourDateShifts ?? []).filter((shift) => shift.tourId === tour.id),
       year
     )
   );
   const globalShiftMap = buildShiftMap(
-    (scheduling.globalDateShifts ?? []).filter(
+    (effective.globalDateShifts ?? []).filter(
       (shift) => !shift.tourIds || shift.tourIds.length === 0 || shift.tourIds.includes(tour.id)
     )
   );
-  const holidayRules = resolveHolidayRulesForYear(scheduling, year);
+  const holidayRules = resolveHolidayRulesForYear(effective, year);
 
   const shiftedResults = new Map<string, ShiftedTourOccurrence>();
   for (const date of results) {
@@ -199,7 +203,7 @@ export const calculateTourOccurrenceEntriesForYearInternal = (
     const manuallyShifted = isValidWasteIsoDateOnly(shiftTarget) ? shiftTarget : date;
     if (manuallyShifted !== shiftTarget) issues?.add('invalidDates');
     const { date: holidayShifted, holidayNames } = applyTourHolidayRules(
-      manuallyShifted, scheduling, holidayRules, issues
+      manuallyShifted, effective, holidayRules, issues
     );
     const shifted = holidayShifted !== date;
     const previous = shiftedResults.get(holidayShifted);
@@ -214,7 +218,7 @@ export const calculateTourOccurrenceEntriesForYearInternal = (
     });
   }
 
-  addInboundTourShifts(shiftedResults, tour, year, scheduling, holidayRules, issues);
+  addInboundTourShifts(shiftedResults, tour, year, effective, holidayRules, issues);
 
   return Array.from(shiftedResults.entries())
     .filter(([date]) => date.startsWith(`${year}-`))

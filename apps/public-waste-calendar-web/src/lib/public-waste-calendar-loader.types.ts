@@ -38,6 +38,8 @@ export type GlobalDateShiftRow = {
 };
 
 export type TourAssignmentRow = {
+  readonly tour_recurrence: CalendarEntryRow['tour_recurrence'];
+  readonly tour_custom_recurrence_interval_days: number | null;
   readonly assignment_id: string;
   readonly pickup_date: string;
   readonly tour_id: string;

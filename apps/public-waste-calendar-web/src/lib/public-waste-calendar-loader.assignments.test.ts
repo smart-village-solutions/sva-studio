@@ -13,6 +13,8 @@ const assignment = (overrides: Partial<TourAssignmentRow> = {}): TourAssignmentR
   tour_id: 'tour-1',
   tour_name: 'Restmüll',
   tour_description: null,
+  tour_recurrence: 'weekly',
+  tour_custom_recurrence_interval_days: null,
   fraction_id: 'fraction-1',
   fraction_label: 'Restmüll',
   fraction_description: null,
@@ -120,4 +122,91 @@ describe('public waste calendar assignment projection', () => {
       })
     );
   });
+});
+
+describe('individual assignment shift exemption', () => {
+  it.each(['custom', 'on-demand', null] as const)(
+    'excludes %s tours from global and holiday rules',
+    (recurrence) => {
+      const input: Parameters<typeof mergeCalendarAssignmentEntries>[0] = {
+        calculatedEntries: [],
+        assignmentRows: [
+          assignment({ tour_recurrence: recurrence, pickup_date: '2026-04-08', note: '09–10 Uhr' }),
+        ],
+        tourDateShiftRows: [],
+        globalDateShiftRows: [
+          globalShift({ original_date: '2026-04-08', actual_date: '2026-04-09' }),
+        ],
+        holidayRules: [
+          {
+            id: 'holiday',
+            holidayDate: '2026-04-06',
+            holidayName: 'Ostern',
+            year: 2026,
+            stateCode: 'BB',
+            sourceStatus: 'confirmed',
+            configurationStatus: 'configured',
+            conflictStatus: 'none',
+            scope: 'full-week',
+            strategy: 'postpone',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+        windowStart: '2026-01-01',
+        windowEnd: '2026-12-31',
+      };
+      const original = structuredClone(input);
+      expect(mergeCalendarAssignmentEntries(input)).toEqual([
+        expect.objectContaining({
+          date: '2026-04-08',
+          fractionId: 'fraction-1',
+          note: '09–10 Uhr',
+        }),
+      ]);
+      expect(
+        mergeCalendarAssignmentEntries({
+          ...input,
+          tourDateShiftRows: [
+            tourShift({ original_date: '2026-04-08', actual_date: '2026-04-07' }),
+          ],
+        })
+      ).toEqual([
+        expect.objectContaining({ date: '2026-04-07', isShifted: true, note: '09–10 Uhr' }),
+      ]);
+      expect(input).toEqual(original);
+    }
+  );
+});
+
+it('continues applying global and holiday rules to assignments of interval preset tours', () => {
+  const entries = mergeCalendarAssignmentEntries({
+    calculatedEntries: [],
+    assignmentRows: [
+      assignment({ tour_recurrence: null, tour_custom_recurrence_interval_days: 10 }),
+    ],
+    tourDateShiftRows: [],
+    globalDateShiftRows: [globalShift()],
+    holidayRules: [
+      {
+        id: 'holiday',
+        holidayDate: '2026-05-21',
+        holidayName: 'Testtag',
+        year: 2026,
+        stateCode: 'BB',
+        sourceStatus: 'confirmed',
+        configurationStatus: 'configured',
+        conflictStatus: 'none',
+        scope: 'holiday-only',
+        strategy: 'postpone',
+        createdAt: '',
+        updatedAt: '',
+      },
+    ],
+    windowStart: '2026-01-01',
+    windowEnd: '2026-12-31',
+  });
+  expect(entries).toEqual([
+    expect.objectContaining({ date: '2026-05-22', isShifted: true, note: 'Allgemein verschoben' }),
+  ]);
 });

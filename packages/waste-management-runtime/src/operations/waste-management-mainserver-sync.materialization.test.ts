@@ -22,6 +22,102 @@ const buildTour = (override: Partial<WasteTourRecord> = {}): WasteTourRecord =>
   }) as unknown as WasteTourRecord;
 
 describe('waste-management-mainserver-sync.materialization', () => {
+  it.each([
+    ['on-demand', undefined, false],
+    ['custom', undefined, false],
+    [null, undefined, false],
+    ['weekly', undefined, true],
+    [null, 10, true],
+  ] as const)(
+    'applies global rules according to the schedule of %s tours with interval %s',
+    (recurrence, customRecurrenceIntervalDays, applyGlobalRules) => {
+      const timestamps = { createdAt: '', updatedAt: '' };
+      const input: Parameters<typeof buildMaterializedLocationTourPickupDates>[0] = {
+        tours: [
+          buildTour({
+            recurrence,
+            customRecurrenceIntervalDays,
+            customDates: [{ date: '2026-04-08' }],
+          }),
+        ],
+        links: [{ id: 'link', tourId: 'tour-1', locationId: 'linked', ...timestamps }],
+        locationTourPickupDates: [
+          {
+            id: 'import',
+            tourId: 'tour-1',
+            locationId: 'linked',
+            pickupDate: '2026-04-09',
+            note: 'Import',
+            ...timestamps,
+          },
+        ],
+        tourAssignments: [
+          {
+            id: 'assignment',
+            tourId: 'tour-1',
+            locationIds: ['assigned'],
+            pickupDate: '2026-04-08',
+            note: '09–10 Uhr',
+            ...timestamps,
+          },
+        ],
+        tourDateShifts: [],
+        globalDateShifts: [
+          {
+            id: 'global',
+            originalDate: '2026-04-08',
+            actualDate: '2026-04-09',
+            hasYear: true,
+            tourIds: ['tour-1'],
+            ...timestamps,
+          },
+        ],
+        holidayRules: [
+          {
+            id: 'holiday',
+            holidayDate: '2026-04-06',
+            holidayName: 'Ostermontag',
+            year: 2026,
+            stateCode: 'BB',
+            sourceStatus: 'confirmed',
+            configurationStatus: 'configured',
+            conflictStatus: 'none',
+            scope: 'full-week',
+            strategy: 'postpone',
+            ...timestamps,
+          },
+        ],
+        currentYear: 2026,
+        nextYear: 2027,
+      };
+      const original = structuredClone(input);
+      expect(
+        buildMaterializedLocationTourPickupDates(input).map(({ locationId, pickupDate, note }) => ({
+          locationId,
+          pickupDate,
+          note,
+        }))
+      ).toEqual([
+        {
+          locationId: 'assigned',
+          pickupDate: applyGlobalRules ? '2026-04-09' : '2026-04-08',
+          note: '09–10 Uhr',
+        },
+        {
+          locationId: 'linked',
+          pickupDate: applyGlobalRules ? '2026-04-09' : '2026-04-08',
+          note: null,
+        },
+        {
+          locationId: 'linked',
+          pickupDate: applyGlobalRules ? '2026-04-10' : '2026-04-09',
+          note: 'Import',
+        },
+      ]);
+      expect(input).toEqual(original);
+    }
+  );
+
   describe('city-wide pickup inheritance', () => {
     const buildInput = (): Parameters<typeof buildStudioRowsFromMaterialization>[0] => {
       const timestamps = { createdAt: '', updatedAt: '' };
@@ -396,7 +492,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
     ]);
   });
 
-  it('applies date-shift and holiday rules to explicit assignments', () => {
+  it('keeps tour-specific shifts for individual assignments without a subsequent holiday shift', () => {
     const result = buildMaterializedLocationTourPickupDates({
       tours: [buildTour()],
       links: [],
@@ -447,7 +543,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
 
     expect(result).toEqual([
       expect.objectContaining({
-        pickupDate: '2026-01-03',
+        pickupDate: '2026-01-02',
         note: 'Sondertermin',
       }),
     ]);
@@ -1090,14 +1186,8 @@ describe('waste-management-mainserver-sync.materialization', () => {
   it('applies global shifts only to matching tours and prefers imported notes when dates are deduplicated', () => {
     const pickupDates = buildMaterializedLocationTourPickupDates({
       tours: [
-        buildTour({
-          id: 'tour-1',
-          customDates: [{ date: '2026-05-05' }],
-        }),
-        buildTour({
-          id: 'tour-2',
-          customDates: [{ date: '2026-05-05' }],
-        }),
+        buildTour({ recurrence: 'weekly', id: 'tour-1', customDates: [{ date: '2026-05-05' }] }),
+        buildTour({ recurrence: 'weekly', id: 'tour-2', customDates: [{ date: '2026-05-05' }] }),
       ],
       links: [
         {
@@ -1162,15 +1252,15 @@ describe('waste-management-mainserver-sync.materialization', () => {
   it('applies configured holiday rules and skips invalid scheduling records outside the sync window', () => {
     const pickupDates = buildMaterializedLocationTourPickupDates({
       tours: [
+        buildTour({ recurrence: 'weekly', customDates: [{ date: '2026-12-25' }] }),
         buildTour({
-          customDates: [{ date: '2026-12-25' }],
-        }),
-        buildTour({
+          recurrence: 'weekly',
           id: 'tour-archived',
           status: 'archived',
           customDates: [{ date: '2026-06-01' }],
         }),
         buildTour({
+          recurrence: 'weekly',
           id: 'tour-draft',
           status: 'draft',
           customDates: [{ date: '2026-06-02' }],

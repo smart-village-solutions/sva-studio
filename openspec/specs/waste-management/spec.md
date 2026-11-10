@@ -309,6 +309,14 @@ Das System SHALL Feiertage und andere globale Abweichungsgründe als eigenständ
 - **AND** die daraus resultierende Terminlogik bleibt für betroffene Touren nachvollziehbar
 - **AND** Feiertagsmanagement ist nicht nur als freier Text oder manueller Nebeneffekt abgebildet
 
+#### Scenario: Individuell geplante Touren bleiben von globalen Regeln ausgenommen
+
+- **WHEN** eine Tour ausschließlich individuell geplante Termine ohne festen oder benutzerdefinierten Intervallrhythmus besitzt
+- **THEN** bleiben ihre Termine von globalen Ausweichterminen und Feiertagsverschiebungen ausgenommen, auch bei expliziter globaler Tourauswahl
+- **AND** tourbezogene Ausweichtermine bleiben wirksam
+- **AND** Studio-Vorschau, öffentlicher Kalender und Mainserver-Aufbereitung wenden diese Abgrenzung konsistent an
+- **AND** gespeicherte Termine, Fraktionen und Hinweise bleiben unverändert
+
 ### Requirement: Waste-Daten sind instanzbezogen isoliert
 
 Das System SHALL Waste-Management-Daten im Zielbild instanzbezogen scopen.

@@ -364,3 +364,69 @@ describe('public waste calendar occurrences', () => {
     expect(entries.map((entry) => entry.date)).not.toContain('2026-05-02');
   });
 });
+
+describe('individual tour shift exemption', () => {
+  it.each(['custom', 'on-demand', null] as const)(
+    'keeps %s dates fixed but permits a tour-specific shift',
+    (recurrence) => {
+      const input: Parameters<typeof calculatePublicWasteCalendarEntries>[0] = {
+        referenceDate: '2026-04-01',
+        selection: { cityId: 'city', streetId: 'street' },
+        linkedTours: [
+          {
+            linkId: 'link',
+            locationId: 'location',
+            tour: {
+              id: 'tour',
+              name: 'Schadstoffmobil',
+              recurrence,
+              customDates: [{ date: '2026-04-08', description: '09–10 Uhr' }],
+              fractions: [{ id: 'sm', label: 'SM' }],
+            },
+          },
+        ],
+        tourDateShifts: [],
+        globalDateShifts: [
+          { id: 'global', originalDate: '2026-04-08', actualDate: '2026-04-09', tourIds: ['tour'] },
+        ],
+        holidayRules: [
+          {
+            id: 'holiday',
+            holidayDate: '2026-04-06',
+            holidayName: 'Ostermontag',
+            year: 2026,
+            stateCode: 'BB',
+            sourceStatus: 'confirmed',
+            configurationStatus: 'configured',
+            conflictStatus: 'none',
+            scope: 'full-week',
+            strategy: 'postpone',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+      };
+      const original = structuredClone(input);
+      expect(calculatePublicWasteCalendarEntries(input)).toEqual([
+        expect.objectContaining({ date: '2026-04-08', fractionId: 'sm', note: '09–10 Uhr' }),
+      ]);
+      expect(
+        calculatePublicWasteCalendarEntries({
+          ...input,
+          tourDateShifts: [
+            {
+              id: 'shift',
+              tourId: 'tour',
+              originalDate: '2026-04-08',
+              actualDate: '2026-04-07',
+              hasYear: true,
+            },
+          ],
+        })
+      ).toEqual([
+        expect.objectContaining({ date: '2026-04-07', isShifted: true, note: '09–10 Uhr' }),
+      ]);
+      expect(input).toEqual(original);
+    }
+  );
+});

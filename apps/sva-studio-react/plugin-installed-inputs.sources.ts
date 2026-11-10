@@ -45,12 +45,12 @@ export const readCatalog = (
   const raw = readJson(join(appRoot, 'plugin-catalog.json'));
   if (!Array.isArray(raw)) throw new Error('plugin_catalog_invalid');
   const entries: CatalogRecord[] = [];
-  for (const value of raw) {
-    if (
-      !isRecord(value) ||
-      !['installed-distribution', 'linked-package'].includes(String(value.sourceType))
-    ) {
-      continue;
+  for (const [index, value] of raw.entries()) {
+    if (!isRecord(value)) throw new Error(`plugin_catalog_entry_invalid:#${index}`);
+    if (value.sourceType === 'workspace') continue;
+    if (value.sourceType !== 'installed-distribution' && value.sourceType !== 'linked-package') {
+      const entryLabel = typeof value.pluginId === 'string' ? value.pluginId : `#${index}`;
+      throw new Error(`plugin_catalog_source_type_invalid:${entryLabel}`);
     }
     if (
       typeof value.pluginId !== 'string' ||

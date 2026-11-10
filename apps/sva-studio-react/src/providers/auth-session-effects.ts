@@ -139,7 +139,6 @@ export const useAuthSessionEffects = (
           authLogger.warn('auth_pre_expiry_silent_recovery_failed');
         }
         if (confirmedUserRef.current) {
-          requestEffectiveAccessInvalidation();
           await refreshSessionAndAccess();
         }
       })();

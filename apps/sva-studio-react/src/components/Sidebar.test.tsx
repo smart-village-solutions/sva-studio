@@ -6,7 +6,6 @@ import React from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IamContentAccessSummary } from '@sva/core';
 import { appTranslationsPlugin } from '@sva/plugin-app-translations';
-import { pluginNews } from '@sva/plugin-news';
 import type { PluginNavigationItem } from '@sva/plugin-sdk';
 
 import { mergeI18nResources } from '../i18n';
@@ -22,6 +21,7 @@ const COCKPIT_URL = 'https://cockpit.guben.de';
 
 const useAuthMock = vi.fn();
 const useContentAccessMock = vi.fn();
+const useOrganizationContextMock = vi.fn();
 const decideAccessMock = vi.fn();
 const useRouterStateMock = vi.fn();
 const localStorageState = new Map<string, string>();
@@ -83,7 +83,8 @@ const serializeSearch = (search: Readonly<Record<string, unknown>>): string => {
   return query ? `?${query}` : '';
 };
 
-beforeAll(() => {
+beforeAll(async () => {
+  const { pluginNews } = await import('@sva/plugin-news');
   mergeI18nResources(pluginNews.translations ?? {});
   mergeI18nResources(appTranslationsPlugin.translations ?? {});
   mergeI18nResources({
@@ -126,6 +127,10 @@ vi.mock('../providers/auth-provider', () => ({
 
 vi.mock('../hooks/use-content-access', () => ({
   useContentAccess: () => useContentAccessMock(),
+}));
+
+vi.mock('../hooks/use-organization-context', () => ({
+  useOrganizationContext: () => useOrganizationContextMock(),
 }));
 
 vi.mock('../providers/effective-access-provider', () => ({
@@ -254,6 +259,7 @@ const renderSidebar = (
 };
 
 beforeEach(() => {
+  useOrganizationContextMock.mockReturnValue({ context: null });
   useRouterStateMock.mockReturnValue({ pathname: '/', search: {} });
   useContentAccessMock.mockReturnValue({
     access: null,
@@ -333,6 +339,37 @@ it('zeigt den Tenant-Namen unter dem App-Titel und nutzt die Tenant-ID als Fallb
 });
 
 describe('Sidebar', () => {
+  it('keeps confirmed navigation during access refresh only for the same scope', () => {
+    const user = createSidebarUser({ instanceId: 'instance-1' });
+    const { rerender } = renderSidebar({
+      user,
+      contentAccess: createContentAccessState({ access: defaultEditableAccessState }),
+    });
+    expect(screen.getByText('Datenverwaltung')).toBeTruthy();
+
+    const loading = createContentAccessState({ isLoading: true, permissionActions: [] });
+    useContentAccessMock.mockReturnValue(loading);
+    rerender(<Sidebar />);
+    expect(screen.getByText('Datenverwaltung')).toBeTruthy();
+
+    useContentAccessMock.mockReturnValue(
+      createContentAccessState({ access: defaultBlockedAccessState, permissionActions: [] })
+    );
+    rerender(<Sidebar />);
+    expect(screen.queryByText('Datenverwaltung')).toBeNull();
+
+    useContentAccessMock.mockReturnValue(
+      createContentAccessState({ access: defaultEditableAccessState })
+    );
+    rerender(<Sidebar />);
+    expect(screen.getByText('Datenverwaltung')).toBeTruthy();
+
+    useOrganizationContextMock.mockReturnValue({ context: { activeOrganizationId: 'org-2' } });
+    useContentAccessMock.mockReturnValue(loading);
+    rerender(<Sidebar />);
+    expect(screen.queryByText('Datenverwaltung')).toBeNull();
+  });
+
   const enableRegisteredContentTypes = () => {
     studioPluginNavigationMock.items = [];
     studioContentTypesMock.items = [

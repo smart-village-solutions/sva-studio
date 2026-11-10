@@ -7,6 +7,7 @@ import {
 } from '@tabler/icons-react';
 import React from 'react';
 import { Sheet, SheetContent } from './ui/sheet';
+import { useOrganizationContext } from '../hooks/use-organization-context';
 import { t } from '../i18n';
 import { SidebarPanel } from './sidebar-panel';
 import { useSidebarAccess } from './sidebar-access';
@@ -35,6 +36,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const access = useSidebarAccess();
   const { user, canAccessExperimentalFeatures } = access;
+  const organization = useOrganizationContext();
   const tenantName = user?.instanceDisplayName?.trim() || user?.instanceId?.trim() || undefined;
   const [collapsePreference, setCollapsePreference] = React.useState<boolean | null>(null);
   const [compactDesktop, setCompactDesktop] = React.useState(false);
@@ -59,7 +61,41 @@ export default function Sidebar({
     globalThis.window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, next ? '1' : '0');
   };
 
-  const sections = useSidebarSections(access);
+  const currentSections = useSidebarSections(access);
+  const { isLoading: isAccessLoading, error: accessError } = access.contentAccessApi;
+  const scopeKey =
+    user &&
+    access.canAccessWorkspace &&
+    !organization.isLoading &&
+    !organization.isUpdating &&
+    !organization.error
+      ? JSON.stringify([
+          user.id,
+          user.instanceId,
+          organization.context?.activeOrganizationId ?? null,
+        ])
+      : null;
+  const confirmedSections = React.useRef<{
+    scopeKey: string;
+    sections: typeof currentSections;
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (!scopeKey || accessError) {
+      confirmedSections.current = null;
+    } else if (!isAccessLoading) {
+      confirmedSections.current = { scopeKey, sections: currentSections };
+    } else if (confirmedSections.current?.scopeKey !== scopeKey) {
+      confirmedSections.current = null;
+    }
+  }, [accessError, currentSections, isAccessLoading, scopeKey]);
+
+  // Keep only the rendered navigation while the current scope is revalidated.
+  const previous = confirmedSections.current;
+  const sections =
+    isAccessLoading && previous && previous.scopeKey === scopeKey
+      ? previous.sections
+      : currentSections;
 
   const footerItems = React.useMemo<readonly SidebarLeafItem[]>(
     () => [

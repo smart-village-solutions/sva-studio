@@ -342,6 +342,7 @@ describe('AuthProvider', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    const accessGenerationBeforeRenewal = getEffectiveAccessInvalidationGeneration();
     await waitFor(() => {
       expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 60_000);
       expect(scheduledCallback).not.toBeNull();
@@ -362,6 +363,7 @@ describe('AuthProvider', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(getEffectiveAccessInvalidationGeneration()).toBe(accessGenerationBeforeRenewal + 1);
     });
 
     expect(readAuthDiagnosticTrail()).toEqual(

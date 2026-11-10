@@ -95,6 +95,8 @@ Unter **Monitoring → E-Mail-Abos und Versand** stellt das Abfallkalender-Plugi
 
 Die nach Status filterbare Abo-Liste zeigt die maskierte Empfängeradresse, eine stabile Abo-Kennung, den Ort, abonnierte Fraktionen und Erinnerungsplätze sowie Anlage, Bestätigung und Abmeldung. Vor und nach dem `@` bleiben jeweils das erste und letzte Zeichen sichtbar, dazwischen stehen Sternchen. Adressteile mit höchstens zwei Zeichen werden vollständig maskiert. Straße, Hausnummer, Tokens, Hashes und Nachrichteninhalte werden nicht an den Browser übertragen. Die Maskierung dient der Wiedererkennung bekannter eigener Adressen; sie ist keine Anonymisierung.
 
+**Versand ansehen** setzt den Tastaturfokus in den Detailbereich; **Versand schließen** führt ihn in die Abo-Übersicht zurück. Die Tabellen bleiben während des Nachladens erhalten.
+
 **Versand ansehen** öffnet die gespeicherten Bestätigungs- und Erinnerungsnachrichten des Abos mit Status, Planungs-/Übergabezeit, Versuchszähler, Fraktion, Abholtermin und bereinigter Fehlerkategorie. Beide Listen sind seitenweise abrufbar. **Aktualisieren** lädt den aktuellen Stand neu. Es gibt keine Bearbeitung, Löschung, erneuten Versand oder Offenlegung der vollständigen Adresse.
 
 Die Auswertung liest die vorhandenen Abo- und Outbox-Tabellen. Sie ergänzt kein historisches Versandjournal: „Übergeben“ bestätigt die Übergabe an den Versanddienst, nicht den Postfachempfang; die Zeit entspricht dem Referenzzeitpunkt des Verarbeitungslaufs. Nach einem Fehlversuch kann „Geplant“ den nächsten Versuch anzeigen. Provider-Nachrichtenkennungen und freie Fehlertexte bleiben verborgen. Gelöschte oder bereinigte Outbox-Einträge lassen sich daraus nicht rekonstruieren.

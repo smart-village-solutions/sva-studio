@@ -16,6 +16,11 @@ describe('email monitoring privacy projection', () => {
     ['a@b@c', '***@***'],
   ])('masks %s on the server', (value, expected) => expect(maskWasteEmail(value)).toBe(expected));
 
+  it.each(['subscription_unsubscribed', 'doi_token_expired', 'reminder_no_longer_applicable'])(
+    'classifies the persisted cancellation reason %s without reporting a transport failure',
+    (reason) => expect(classifyWasteEmailError(reason)).toBe('cancelled')
+  );
+
   it('does not expose provider errors or message references as error text', () => {
     expect(classifyWasteEmailError('smtp failure for private@example.test token=secret')).toBe(
       'dispatch_failed'

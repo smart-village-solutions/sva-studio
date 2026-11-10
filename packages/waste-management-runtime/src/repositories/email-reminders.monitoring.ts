@@ -28,9 +28,8 @@ export const classifyWasteEmailError = (
   if (
     [
       'subscription_unsubscribed',
-      'subscription_expired',
-      'doi_expired',
-      'pickup_no_longer_materialized',
+      'doi_token_expired',
+      'reminder_no_longer_applicable',
     ].includes(value)
   )
     return 'cancelled';

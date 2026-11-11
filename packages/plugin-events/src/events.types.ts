@@ -35,6 +35,8 @@ export type EventWebUrl = {
 };
 
 export type EventMediaContent = {
+  /** Mainserver id of a stored entry; lets the host keep source metadata with this entry. */
+  readonly id?: string;
   readonly captionText?: string;
   readonly copyright?: string;
   readonly height?: number;

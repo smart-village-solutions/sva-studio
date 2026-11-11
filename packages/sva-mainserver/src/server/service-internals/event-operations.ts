@@ -56,7 +56,9 @@ const buildEventMutationVariables = (input: {
   ...(input.event.location ? { location: input.event.location } : {}),
   ...(input.event.contacts ? { contacts: input.event.contacts } : {}),
   ...(input.event.urls ? { urls: input.event.urls } : {}),
-  ...(input.event.mediaContents ? { mediaContents: input.event.mediaContents } : {}),
+  ...(input.event.mediaContents
+    ? { mediaContents: input.event.mediaContents.map(({ id: _id, ...media }) => media) }
+    : {}),
   ...(input.event.organizer ? { organizer: input.event.organizer } : {}),
   ...(input.event.priceInformations ? { priceInformations: input.event.priceInformations } : {}),
   ...(input.event.accessibilityInformation

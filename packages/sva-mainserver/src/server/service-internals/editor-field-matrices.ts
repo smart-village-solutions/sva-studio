@@ -5,7 +5,10 @@ import type {
   SvaMainserverPoiItem,
   MainserverDataDeviation,
 } from '../../types.js';
-import { preserveEventSourceData } from './event-source-preservation.js';
+import {
+  assertDegradedRelationsSubmitted,
+  preserveEventSourceData,
+} from './event-source-preservation.js';
 import { toSvaMainserverError } from './shared.js';
 
 export type MainserverEditorFieldClassification =
@@ -147,6 +150,7 @@ export const mergeEventUpdateWithCurrent = (
   deviations: readonly Pick<MainserverDataDeviation, 'fieldGroup'>[] = []
 ): SvaMainserverEventInput => {
   const degradedFields = new Set(deviations.map(({ fieldGroup }) => fieldGroup));
+  assertDegradedRelationsSubmitted(submitted, degradedFields);
   return {
     ...submitted,
     registrationRequired: preserveDefinedUnlessDegraded(
@@ -161,7 +165,7 @@ export const mergeEventUpdateWithCurrent = (
       submitted.maximumAttendees,
       degradedFields
     ),
-    ...preserveEventSourceData(current, submitted, degradedFields),
+    ...preserveEventSourceData(current, submitted),
     payload: preserveDefinedUnlessDegraded(
       'payload',
       current.payload,

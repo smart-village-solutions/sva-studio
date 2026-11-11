@@ -30,6 +30,11 @@ import type {
   SvaMainserverWebUrlInput,
 } from './types.js';
 
+/** Event media entry; `id` references a stored entry for the host merge and is never sent. */
+export type SvaMainserverEventMediaContentInput = SvaMainserverMediaContentInput & {
+  readonly id?: string;
+};
+
 export type SvaMainserverEventInput = {
   readonly payload?: unknown;
   readonly title: string;
@@ -49,7 +54,7 @@ export type SvaMainserverEventInput = {
   readonly location?: SvaMainserverLocationInput;
   readonly contacts?: readonly SvaMainserverContactInput[];
   readonly urls?: readonly SvaMainserverWebUrlInput[];
-  readonly mediaContents?: readonly SvaMainserverMediaContentInput[];
+  readonly mediaContents?: readonly SvaMainserverEventMediaContentInput[];
   readonly organizer?: SvaMainserverOperatingCompanyInput;
   readonly priceInformations?: readonly SvaMainserverPriceInput[];
   readonly accessibilityInformation?: SvaMainserverAccessibilityInformationInput;

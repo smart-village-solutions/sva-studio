@@ -101,6 +101,8 @@ export const eventsENLabels = {
     priceCategory: 'Price category',
     priceAmount: 'Price',
     priceDescription: 'Price description',
+    priceSourceValuesHint:
+      'This price contains further details from the source, such as age limits or a group price. They are kept when saving; to delete the price, select "Remove".',
     registrationRequired: 'Registration required',
     registrationRequiredHelp: 'Participants must register before the event.',
     maximumAttendees: 'Maximum number of participants (optional)',

@@ -160,7 +160,7 @@ const parseEventRelations = (
     return urls;
   }
 
-  const mediaContents = parseMediaContents(body.mediaContents);
+  const mediaContents = parseMediaContents(body.mediaContents, { includeStoredIds: true });
   if (isResponse(mediaContents)) {
     return mediaContents;
   }

@@ -53,6 +53,14 @@ const PRICE_PASSTHROUGH_NUMBERS = [
   'maxChildrenCount',
 ] as const;
 
+/**
+ * Whether a price carries source values without editor fields. `groupPrice: false` is the
+ * Mainserver default and alone carries no information.
+ */
+export const hasPriceSourceValues = (entry: EventPriceInformation): boolean =>
+  entry.groupPrice === true ||
+  PRICE_PASSTHROUGH_NUMBERS.some((key) => compactFiniteNumber(entry[key]) !== undefined);
+
 // Price attributes without editor fields come from the loaded event and are sent back unchanged.
 const serializePricePassthrough = (entry: EventPriceInformation) => ({
   ...(typeof entry.groupPrice === 'boolean' ? { groupPrice: entry.groupPrice } : {}),
@@ -72,12 +80,12 @@ const serializeVisiblePrice = (entry: EventPriceInformation) => ({
   ...(compactEventString(entry.category) ? { category: compactEventString(entry.category) } : {}),
 });
 
-// Whether a row is kept depends on the visible fields only; an emptied row is removed even if it
-// still carries passthrough attributes.
+// A row is kept while it has visible values or source values. Clearing the visible fields removes
+// a plain row; a row with source values is removed explicitly in the editor.
 export const serializeEventPrices = (prices: readonly EventPriceInformation[] | undefined | null) =>
   (prices ?? []).flatMap((entry) => {
     const visible = serializeVisiblePrice(entry);
-    return Object.keys(visible).length > 0
+    return Object.keys(visible).length > 0 || hasPriceSourceValues(entry)
       ? [{ ...visible, ...serializePricePassthrough(entry) }]
       : [];
   });
@@ -123,6 +131,15 @@ const serializeEventCategories = (categories: readonly string[] | undefined) =>
       }
     : undefined;
 
+/**
+ * The Mainserver reads weekdays as offsets from Monday (`'0'` Monday to `'6'` Sunday) and converts
+ * them with `to_i`, so the editor keeps them as unique, numerically sorted offset strings.
+ */
+export const normalizeWeekdayOffsets = (weekdays: readonly string[] | undefined): string[] =>
+  [...new Set((weekdays ?? []).map((entry) => entry.trim()).filter(Boolean))].sort(
+    (left, right) => Number(left) - Number(right)
+  );
+
 export const serializeEventBasis = (basis: SerializableBasis) => ({
   ...(serializeEventCategories(basis.categories) ?? {}),
   ...(compactEventString(basis.pointOfInterestId)
@@ -138,7 +155,7 @@ export const serializeEventBasis = (basis: SerializableBasis) => ({
   ...(compactEventString(basis.recurringInterval)
     ? { recurringInterval: compactEventString(basis.recurringInterval) }
     : {}),
-  recurringWeekdays: (basis.recurringWeekdays ?? []).map((entry) => entry.trim()).filter(Boolean),
+  recurringWeekdays: normalizeWeekdayOffsets(basis.recurringWeekdays),
 });
 
 export const serializeEventSettings = (settings: SerializableSettings) => ({

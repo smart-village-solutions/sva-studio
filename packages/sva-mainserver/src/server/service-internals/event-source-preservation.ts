@@ -3,8 +3,44 @@ import { toSvaMainserverError } from './shared.js';
 
 /**
  * Keeps event source data that has no Studio editor field. The Mainserver deletes and recreates
- * every relation on an update, so an omitted `location` or `repeatDuration` would be deleted.
+ * every relation on an update, so an omitted relation is deleted.
  */
+
+// Event relations the Mainserver replaces on every update with `forceCreate`.
+const REPLACED_RELATIONS = [
+  'dates',
+  'categories',
+  'addresses',
+  'location',
+  'contacts',
+  'urls',
+  'mediaContents',
+  'organizer',
+  'priceInformations',
+  'accessibilityInformation',
+  'repeatDuration',
+] as const satisfies readonly (keyof SvaMainserverEventInput)[];
+
+/**
+ * A client omits a relation whose read was degraded unless the editor corrected it. Sending the
+ * update without it would delete the stored relation, so the update is refused before any write.
+ */
+export const assertDegradedRelationsSubmitted = (
+  submitted: SvaMainserverEventInput,
+  degradedFields: ReadonlySet<string>
+): void => {
+  if (
+    REPLACED_RELATIONS.some(
+      (relation) => degradedFields.has(relation) && submitted[relation] === undefined
+    )
+  ) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'event_source_snapshot_incomplete',
+      statusCode: 502,
+    });
+  }
+};
 
 const withoutId = <T extends { readonly id?: string }>(value: T | undefined) => {
   if (!value) return undefined;
@@ -12,60 +48,29 @@ const withoutId = <T extends { readonly id?: string }>(value: T | undefined) => 
   return Object.keys(input).length > 0 ? input : undefined;
 };
 
-// A degraded read cannot be sent back faithfully, so the update is refused instead of
-// deleting the relation.
-const preserveRelation = <T>(
-  fieldGroup: string,
-  current: T | undefined,
-  submitted: T | undefined,
-  degradedFields: ReadonlySet<string>
-): T | undefined => {
-  if (submitted !== undefined) return submitted;
-  if (degradedFields.has(fieldGroup)) {
-    throw toSvaMainserverError({
-      code: 'invalid_response',
-      message: 'event_source_snapshot_incomplete',
-      statusCode: 502,
-    });
-  }
-  return current;
-};
-
-// Media payloads follow their image by source URL and are dropped when the image is replaced.
-// Payloads are never taken from the client.
+// Media payloads follow their stored entry by Mainserver id, so removing, reordering or
+// duplicating URLs cannot move a payload to another entry. Payloads are never taken from the
+// client; the ids are references only and are removed before the mutation.
 const reattachMediaPayloads = (
   current: SvaMainserverEventItem,
-  submitted: SvaMainserverEventInput['mediaContents'],
-  degradedFields: ReadonlySet<string>
+  submitted: SvaMainserverEventInput['mediaContents']
 ): SvaMainserverEventInput['mediaContents'] => {
-  if (!submitted || degradedFields.has('mediaContents')) {
-    return submitted;
-  }
-  const unmatched = current.mediaContents.filter((media) => media.payload !== undefined);
-  return submitted.map((media) => {
-    const index = unmatched.findIndex((entry) => entry.sourceUrl?.url === media.sourceUrl?.url);
-    if (!media.sourceUrl?.url || index < 0) return media;
-    const [match] = unmatched.splice(index, 1);
-    return { ...media, payload: match?.payload };
-  });
+  if (!submitted) return submitted;
+  const payloads = new Map(
+    current.mediaContents.flatMap((media) =>
+      media.id && media.payload !== undefined ? [[media.id, media.payload] as const] : []
+    )
+  );
+  return submitted.map((media) =>
+    media.id && payloads.has(media.id) ? { ...media, payload: payloads.get(media.id) } : media
+  );
 };
 
 export const preserveEventSourceData = (
   current: SvaMainserverEventItem,
-  submitted: SvaMainserverEventInput,
-  degradedFields: ReadonlySet<string>
+  submitted: SvaMainserverEventInput
 ): Pick<SvaMainserverEventInput, 'location' | 'repeatDuration' | 'mediaContents'> => ({
-  location: preserveRelation(
-    'location',
-    withoutId(current.location),
-    submitted.location,
-    degradedFields
-  ),
-  repeatDuration: preserveRelation(
-    'repeatDuration',
-    withoutId(current.repeatDuration),
-    submitted.repeatDuration,
-    degradedFields
-  ),
-  mediaContents: reattachMediaPayloads(current, submitted.mediaContents, degradedFields),
+  location: submitted.location ?? withoutId(current.location),
+  repeatDuration: submitted.repeatDuration ?? withoutId(current.repeatDuration),
+  mediaContents: reattachMediaPayloads(current, submitted.mediaContents),
 });

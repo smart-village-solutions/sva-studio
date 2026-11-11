@@ -74,11 +74,9 @@ describe('events.detail-form', () => {
     );
   });
 
-  it('removes a price row whose visible fields were emptied, even with passthrough attributes', () => {
+  it('removes an emptied price row whose only hidden value is the groupPrice default', () => {
     const values = mapEventItemToDetailFormValues(
-      importedItem({
-        priceInformations: [{ name: 'Alt', amount: 5, groupPrice: false, ageFrom: 6 }],
-      })
+      importedItem({ priceInformations: [{ name: 'Alt', amount: 5, groupPrice: false }] })
     );
     const [price] = values.content.priceInformations;
 
@@ -91,6 +89,34 @@ describe('events.detail-form', () => {
         },
       })
     ).not.toHaveProperty('priceInformations');
+  });
+
+  it('keeps an imported price row with only hidden values on an unrelated edit', () => {
+    const values = mapEventItemToDetailFormValues(
+      importedItem({ priceInformations: [{ groupPrice: true, minAdultCount: 2 }] })
+    );
+
+    expect(
+      mapEventsDetailFormValuesToInput({ ...values, title: 'Neuer Titel' }).priceInformations
+    ).toEqual([{ groupPrice: true, minAdultCount: 2 }]);
+  });
+
+  it('keeps a stored media id only as a reference of a filled entry', () => {
+    const values = mapEventItemToDetailFormValues(
+      importedItem({
+        mediaContents: [{ id: 'media-1', sourceUrl: { url: 'https://example.test/a.jpg' } }],
+      })
+    );
+
+    expect(mapEventsDetailFormValuesToInput(values).mediaContents).toEqual([
+      { id: 'media-1', sourceUrl: { url: 'https://example.test/a.jpg' } },
+    ]);
+    expect(
+      mapEventsDetailFormValuesToInput({
+        ...values,
+        content: { ...values.content, mediaContents: [{ id: 'media-1' } as never] },
+      })
+    ).not.toHaveProperty('mediaContents');
   });
 
   it('keeps Mainserver price attributes without editor fields on save', () => {
@@ -185,8 +211,8 @@ describe('events.detail-form', () => {
         accessibilityInformation: { description: 'Stufenlos zugänglich' },
         pointOfInterestId: 'poi-1',
         repeat: true,
-        recurringType: 'weekday',
-        recurringWeekdays: ['MO'],
+        recurringType: 1,
+        recurringWeekdays: [0],
         visible: false,
         tags: ['sommer', 'familie'],
       } satisfies EventContentItem)
@@ -196,8 +222,8 @@ describe('events.detail-form', () => {
         categories: ['Kultur', 'Open Air'],
         pointOfInterestId: 'poi-1',
         repeat: true,
-        recurringType: 'weekday',
-        recurringWeekdays: ['MO'],
+        recurringType: '1',
+        recurringWeekdays: ['0'],
       },
       content: {
         dates: [{ dateStart: '2026-06-11', timeDescription: 'ab 10 Uhr', weekday: 'Mittwoch' }],
@@ -758,7 +784,7 @@ describe('events.detail-form', () => {
           recurring: null,
           recurringType: '',
           recurringInterval: undefined,
-          recurringWeekdays: [' FR ', ' ', 'MO'],
+          recurringWeekdays: [' 4 ', ' ', '0', '4'],
         },
         content: {
           description: null,
@@ -790,7 +816,7 @@ describe('events.detail-form', () => {
       addresses: [{ geoLocation: { latitude: 0, longitude: 0 } }],
       priceInformations: [{ amount: 0 }],
       repeat: false,
-      recurringWeekdays: ['FR', 'MO'],
+      recurringWeekdays: ['0', '4'],
       visible: false,
     });
   });

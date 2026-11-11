@@ -101,6 +101,8 @@ export const eventsDELabels = {
     priceCategory: 'Preiskategorie',
     priceAmount: 'Preis',
     priceDescription: 'Preisbeschreibung',
+    priceSourceValuesHint:
+      'Dieser Preis enthält weitere Angaben aus der Quelle, etwa Altersgrenzen oder einen Gruppenpreis. Sie bleiben beim Speichern erhalten; zum Löschen des Preises wählen Sie „Entfernen“.',
     registrationRequired: 'Anmeldung erforderlich',
     registrationRequiredHelp: 'Teilnehmende müssen sich vor der Veranstaltung anmelden.',
     maximumAttendees: 'Maximale Teilnehmerzahl (optional)',

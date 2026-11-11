@@ -55,7 +55,7 @@ export const eventsENEditor = {
       'The following previously unreadable sections were changed: {{fields}}. Do you want to overwrite these values intentionally?',
     saveError: 'Event could not be saved.',
     sourceDataUnavailable:
-      'The event was not saved: its location or recurrence period from the source could not be read reliably and would otherwise be lost. Please contact support.',
+      'The event was not saved: some details from the source could not be read reliably and would otherwise be lost. Correct the areas reported as affected or contact support.',
     staleMainserverContext: 'Context changed. Reload and review your draft before saving.',
     deleteError: 'Event could not be deleted.',
     createSuccess: 'Event was created.',

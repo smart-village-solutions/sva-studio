@@ -92,6 +92,7 @@ const mapAddressToFormValue = (address?: EventAddress): EventAddressFormValue =>
 const mapMediaContentToFormValue = (
   mediaContent: NonNullable<NonNullable<EventContentItem['mediaContents']>[number]>
 ): EventMediaContentFormValue => ({
+  ...(mediaContent.id ? { id: mediaContent.id } : {}),
   captionText: mediaContent.captionText ?? '',
   copyright: mediaContent.copyright ?? '',
   contentType: mediaContent.contentType ?? '',

@@ -8,6 +8,7 @@ import {
   type EventsDetailFormValues,
 } from './events.detail-form.js';
 import { StudioDetailCard } from '@sva/studio-ui-react';
+import { hasPriceSourceValues } from './events.detail-form-input-serializers.js';
 import {
   ContentInput,
   indexedId,
@@ -151,8 +152,14 @@ export function EventsPriceSection({ pt }: SectionProps) {
           key={array.fields[index]?.id ?? `fallback-price-${index}`}
           title={pt('cards.content.prices.itemTitle')}
           removeLabel={pt('actions.remove')}
-          onRemove={prices.length > 1 ? () => array.remove(index) : undefined}
+          // A row with source values survives cleared fields, so it can always be removed here.
+          onRemove={
+            prices.length > 1 || hasPriceSourceValues(price) ? () => array.remove(index) : undefined
+          }
         >
+          {hasPriceSourceValues(price) ? (
+            <p className="text-sm text-muted-foreground">{pt('fields.priceSourceValuesHint')}</p>
+          ) : null}
           <StudioFieldGroup columns={2}>
             <ContentInput
               id={indexedId('event-price-category', index)}

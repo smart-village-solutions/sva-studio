@@ -173,6 +173,7 @@ const editorSubmission = (): SvaMainserverEventInput => ({
   urls: [{ url: 'https://tickets.example.test/4711', description: 'Tickets' }],
   mediaContents: [
     {
+      id: 'media-1',
       captionText: 'Plakat',
       copyright: 'Veranstalter',
       contentType: 'image',
@@ -385,6 +386,97 @@ describe('event import round trip against the Mainserver contract', () => {
 
     expect(writes[0]?.mediaContents).toEqual([
       { captionText: 'Neu', sourceUrl: { url: 'https://media.example.test/neu.jpg' } },
+    ]);
+  });
+
+  it('keeps each payload with its own entry when two media entries share a URL', async () => {
+    const url = 'https://media.example.test/plakat.jpg';
+    const stored = {
+      ...importedEvent(),
+      mediaContents: [
+        {
+          id: 'media-1',
+          captionText: 'Erstes',
+          payload: { sourceImageId: 'img-1' },
+          sourceUrl: { url },
+        },
+        {
+          id: 'media-2',
+          captionText: 'Zweites',
+          payload: { sourceImageId: 'img-2' },
+          sourceUrl: { url },
+        },
+      ],
+    };
+    const { service, writes } = createHarness(stored);
+
+    await service.updateEvent({
+      ...connection,
+      eventId: 'event-import-1',
+      event: {
+        ...editorSubmission(),
+        mediaContents: [{ id: 'media-2', captionText: 'Zweites', sourceUrl: { url } }],
+      },
+    });
+
+    assertValidMutationVariables(writes[0] ?? {});
+    expect(writes[0]?.mediaContents).toEqual([
+      { captionText: 'Zweites', payload: { sourceImageId: 'img-2' }, sourceUrl: { url } },
+    ]);
+  });
+
+  it('refuses a title-only update when the media snapshot is degraded and sends no write', async () => {
+    const stored = importedEvent();
+    const { service, writes } = createHarness({
+      ...stored,
+      mediaContents: [{ ...stored.mediaContents[0], height: '800' }],
+    });
+    const { mediaContents: _omitted, ...submission } = editorSubmission();
+
+    await expect(
+      service.updateEvent({
+        ...connection,
+        eventId: 'event-import-1',
+        event: { ...submission, title: 'Neuer Titel' },
+      })
+    ).rejects.toMatchObject({ message: 'event_source_snapshot_incomplete' });
+    expect(writes).toEqual([]);
+  });
+
+  it('refuses an update that omits any other degraded relation', async () => {
+    const { service, writes } = createHarness({
+      ...importedEvent(),
+      addresses: [{ id: 'address-1', street: 42 }],
+    });
+    const { addresses: _omitted, ...submission } = editorSubmission();
+
+    await expect(
+      service.updateEvent({ ...connection, eventId: 'event-import-1', event: submission })
+    ).rejects.toMatchObject({ message: 'event_source_snapshot_incomplete' });
+    expect(writes).toEqual([]);
+  });
+
+  it('writes a degraded relation that the editor corrected', async () => {
+    const stored = importedEvent();
+    const { service, writes } = createHarness({
+      ...stored,
+      mediaContents: [{ ...stored.mediaContents[0], height: '800' }],
+    });
+
+    await service.updateEvent({
+      ...connection,
+      eventId: 'event-import-1',
+      event: editorSubmission(),
+    });
+
+    // The malformed entry was dropped while reading, so its payload is unknown; the confirmed
+    // correction writes exactly what the editor submitted.
+    assertValidMutationVariables(writes[0] ?? {});
+    expect(writes[0]?.mediaContents).toEqual([
+      expect.objectContaining({ captionText: 'Plakat', height: 800 }),
+    ]);
+    expect(writes[0]?.mediaContents).toEqual([
+      expect.not.objectContaining({ payload: expect.anything() }),
     ]);
   });
 

@@ -538,6 +538,66 @@ describe('EventsListPage', () => {
       );
     });
 
+    it('shows imported weekly weekdays as selected and saves edits as sorted offsets', async () => {
+      vi.mocked(getEventDetail).mockResolvedValueOnce({
+        ...importedEventDetail(),
+        data: {
+          ...importedEventDetail().data,
+          repeat: true,
+          recurring: true,
+          recurringType: 1,
+          recurringInterval: 1,
+          recurringWeekdays: [4, 1],
+        },
+      } as never);
+      render(<EventsEditPage />);
+      await screen.findByDisplayValue('Flohmarkt im Park');
+      const weekday = (day: string) =>
+        screen.getByRole('button', { name: `events.fields.recurringWeekdayOptions.${day}` });
+
+      expect(weekday('tuesday').getAttribute('aria-pressed')).toBe('true');
+      expect(weekday('friday').getAttribute('aria-pressed')).toBe('true');
+      expect(weekday('thursday').getAttribute('aria-pressed')).toBe('false');
+      fireEvent.click(weekday('thursday'));
+      save();
+
+      await waitFor(() =>
+        expect(updateEvent).toHaveBeenCalledWith(
+          'event-1',
+          expect.objectContaining({ recurringWeekdays: ['1', '3', '4'] }),
+          'user'
+        )
+      );
+    });
+
+    it('keeps a hidden-only price row on an unrelated edit and removes it only explicitly', async () => {
+      const hiddenOnlyPrice = {
+        data: {
+          ...importedEventDetail().data,
+          priceInformations: [{ groupPrice: true, minAdultCount: 2 }],
+        },
+        deviations: [],
+      };
+      vi.mocked(getEventDetail).mockResolvedValueOnce(hiddenOnlyPrice as never);
+      render(<EventsEditPage />);
+      await openContentTab();
+
+      expect(screen.getByText('events.fields.priceSourceValuesHint')).toBeTruthy();
+      save();
+      await waitFor(() => expect(updateEvent).toHaveBeenCalledTimes(1));
+      expect(vi.mocked(updateEvent).mock.calls[0]?.[1]).toMatchObject({
+        priceInformations: [{ groupPrice: true, minAdultCount: 2 }],
+      });
+
+      const priceRow = screen.getByText('events.fields.priceSourceValuesHint').closest('div');
+      const remove = priceRow?.querySelector('button');
+      if (!remove) throw new Error('Missing remove button for the price row');
+      fireEvent.click(remove);
+      save();
+      await waitFor(() => expect(updateEvent).toHaveBeenCalledTimes(2));
+      expect(vi.mocked(updateEvent).mock.calls[1]?.[1]).not.toHaveProperty('priceInformations');
+    });
+
     it('blocks an invalid participant limit and marks the field', async () => {
       vi.mocked(getEventDetail).mockResolvedValueOnce(importedEventDetail() as never);
       render(<EventsEditPage />);

@@ -549,6 +549,41 @@ describe('mainserver content route contracts', () => {
     );
   });
 
+  it('forwards stored media ids for the event merge but never for POI', async () => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+    state.createSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });
+    const mediaContents = [{ id: 'media-1', sourceUrl: { url: 'https://example.invalid/a.jpg' } }];
+
+    await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Flohmarkt', mediaContents }),
+      })
+    );
+    await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Ort', mediaContents }),
+      })
+    );
+
+    expect(state.updateSvaMainserverEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: expect.objectContaining({
+          mediaContents: [{ id: 'media-1', sourceUrl: { url: 'https://example.invalid/a.jpg' } }],
+        }),
+      })
+    );
+    expect(state.createSvaMainserverPoi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        poi: expect.objectContaining({
+          mediaContents: [{ sourceUrl: { url: 'https://example.invalid/a.jpg' } }],
+        }),
+      })
+    );
+  });
+
   it('updates events with normalized optional fields and nested relations', async () => {
     mockAuthorizedMutation();
     state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });

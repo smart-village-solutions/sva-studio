@@ -54,6 +54,12 @@ no new translations or approvals are supplied by this change.
 
 ## Drafts and languages
 
+The existing page controllers compose focused field owners and read-only overview
+components. Tenant and root draft lifecycles live in their corresponding
+`admin.content-v2-tenant-state.ts` and `admin.content-v2-system-state.ts`; these
+retain the same revision acknowledgement and atomic save paths. Local file splits
+separate existing responsibilities rather than add alternate editors or services.
+
 Each page owns one save/discard unit, covering every tab and language. Root Default
 content includes both Installation and Tenant template tabs in its atomic unit.
 Language selectors list actual entries independently for guest content, recording

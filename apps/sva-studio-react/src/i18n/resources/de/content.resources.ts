@@ -394,7 +394,6 @@ export const contentDEResources = {
     titleRequired: 'Die Überschrift ist ein Pflichtfeld.',
     payloadJsonInvalid: 'Die Zusatzdaten müssen gültiges JSON sein.',
     publishedAtRequired: 'Für veröffentlichte Inhalte ist ein Veröffentlichungsdatum erforderlich.',
-    publishedAtInvalid:
-      'Bitte geben Sie ein gültiges Veröffentlichungsdatum in der Fachzeitzone Europe/Berlin ein.',
+    publishedAtInvalid: 'Bitte ein gültiges Veröffentlichungsdatum für Europe/Berlin angeben.',
   },
 } as const;

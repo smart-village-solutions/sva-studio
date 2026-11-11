@@ -2,7 +2,7 @@
 import { readSessionAccessSnapshot, subscribeSessionAccessSnapshot } from '@sva/plugin-sdk';
 import { useSyncExternalStore } from 'react';
 import { SsfTenantContentV2Page } from './admin.content-v2-tenant-page.js';
-import type { SsfTenantEditorPage } from './content-v2-admin-contracts.js';
+import type { SsfTenantEditorPage } from './content-v2-editor-contracts.js';
 
 const TenantPage = ({ page }: { page: SsfTenantEditorPage | 'overview' }) => {
   const access = useSyncExternalStore(

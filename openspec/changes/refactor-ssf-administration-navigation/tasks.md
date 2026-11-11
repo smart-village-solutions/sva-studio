@@ -131,3 +131,30 @@ Targeted suites after correction: `plugin-ssf:test:unit` with
 `--testFiles=tests/admin.content-v2-page.test.tsx` (19 passed) and
 `sva-studio-react:test:unit:ui` with `--testFiles=src/components/Sidebar.test.tsx`
 (58 passed). Targeted ESLint: zero errors; existing test assertion warnings remain.
+
+## Reopened implementation cleanup (2026-11-12)
+
+The user authorised simplifying the implementation after PR CI reported 29 new
+complexity findings and a timeout in the root language/tab regression test. This
+reopens implementation within the existing functional scope; it does not waive
+merge gates or authorise threshold/baseline changes. Existing field, persistence,
+revision and authority contracts remain the acceptance boundary.
+
+The existing controllers separate lifecycle/save logic from page composition and
+read-only summaries. Local field, translation and validation files are split only
+where their independent existing responsibilities exceed the mandatory file and
+function limits. All consumers stay on the original editor/repository path.
+Final targeted tests, unchanged complexity gate and exact-HEAD CI are required
+before continuing the previously requested merge and Kassel standalone rollout.
+
+Cleanup evidence: page tests 19/19 both normally and with V8 coverage; the former
+root timeout case completed in 561 ms under coverage without changing its timeout
+or assertions. Projection/repository/handler tests: 10/10, 10/10 and 21/21; real
+PostgreSQL integration: 15/15. Host boundary/context tests: 15/15 and 13/13; SDK
+settings/registry tests: 16/16 and 73/73. Plugin typecheck and targeted ESLint passed
+(zero lint errors). A read-only follow-up found no controller lifecycle regression.
+
+The optional aggregate i18n formatter check fails in its existing aggregator
+generator on the unrelated hyphenated `roles-permission-descriptions` identifier;
+it changed no files. Changed resources use the same Prettier configuration and
+are checked directly. This cleanup does not modify that generator.

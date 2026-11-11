@@ -5,6 +5,9 @@ import {
   SSF_EXPECTED_CONTENT_REVISION_HEADER,
   ssfAdminContentRevisionSchema,
   type SsfVersionedContent,
+} from './content-v2-editor-contracts.js';
+
+import {
   SSF_SYSTEM_CONTENT_V2_ADMIN_PATH,
   SSF_TENANT_CONTENT_V2_ADMIN_PATH,
   ssfRecordingPolicyConflictSchema,

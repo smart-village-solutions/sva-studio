@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { canonicalize } from 'json-canonicalize';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { ZodError } from 'zod';
 
 import {
@@ -73,6 +73,34 @@ export const readSsfTenantContentV2 = async (
     };
   });
 
+const assertExistingTenantContent = async (
+  client: PoolClient,
+  runtimeTemplate: SsfRuntimeContentV2Fields | null
+): Promise<void> => {
+  if (runtimeTemplate === null) return;
+  const tenants = await client.query<{ instance_id: string; runtime_content_v2: unknown }>(
+    'SELECT instance_id, runtime_content_v2 FROM ssf.tenant_settings WHERE runtime_content_v2 IS NOT NULL'
+  );
+  const affectedTenants: string[] = [];
+  for (const tenant of tenants.rows) {
+    try {
+      resolveSsfRuntimeContentV2({
+        tenant: {
+          id: tenant.instance_id,
+          displayName: tenant.instance_id,
+          timeZone: 'Europe/Berlin',
+        },
+        template: runtimeTemplate,
+        overrides: tenant.runtime_content_v2,
+      });
+    } catch (error) {
+      if (!(error instanceof ZodError)) throw error;
+      affectedTenants.push(tenant.instance_id);
+    }
+  }
+  if (affectedTenants.length) throw new SsfContentV2TenantConflict(affectedTenants);
+};
+
 export const replaceSsfSystemContentV2 = async (
   pool: Pool,
   input: SsfSystemContentV2,
@@ -113,29 +141,7 @@ export const replaceSsfSystemContentV2 = async (
     };
     assertSsfAdminContentRevision('platform', previous, options.expectedRevision);
     options.validate?.(previous);
-    if (runtimeTemplate !== null) {
-      const tenants = await client.query<{ instance_id: string; runtime_content_v2: unknown }>(
-        'SELECT instance_id, runtime_content_v2 FROM ssf.tenant_settings WHERE runtime_content_v2 IS NOT NULL'
-      );
-      const affectedTenants: string[] = [];
-      for (const tenant of tenants.rows) {
-        try {
-          resolveSsfRuntimeContentV2({
-            tenant: {
-              id: tenant.instance_id,
-              displayName: tenant.instance_id,
-              timeZone: 'Europe/Berlin',
-            },
-            template: runtimeTemplate,
-            overrides: tenant.runtime_content_v2,
-          });
-        } catch (error) {
-          if (!(error instanceof ZodError)) throw error;
-          affectedTenants.push(tenant.instance_id);
-        }
-      }
-      if (affectedTenants.length) throw new SsfContentV2TenantConflict(affectedTenants);
-    }
+    await assertExistingTenantContent(client, runtimeTemplate);
     if (installation !== null) {
       await client.query(
         `INSERT INTO ssf.server_settings (singleton, installation_content_v2)

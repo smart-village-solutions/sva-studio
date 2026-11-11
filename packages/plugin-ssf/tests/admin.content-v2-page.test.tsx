@@ -3,7 +3,7 @@
 import React from 'react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SsfTenantContentV2Page } from '../src/admin.content-v2-tenant-page.js';
 import { SsfSystemContentV2Page } from '../src/admin.content-v2-page.js';
@@ -433,47 +433,55 @@ describe('SSF independently saved administration pages', () => {
       acceptLabel: 'Yes',
       declineLabel: 'No',
     };
-    const source = view.runtimeTemplate.legalTexts!.localizations[0]!;
-    source.mode2Consent = { ...consent };
-    view.runtimeTemplate.legalTexts!.localizations.push({
-      ...source,
-      locale: 'en',
+    const sourceLocale = view.runtimeTemplate.legalTexts!.sourceLocale;
+    // This regression needs two legal locales and one staff field. Keep all other
+    // aggregate data valid without mounting unrelated question/consent editors.
+    view.installation.localization.feedback.questions =
+      view.installation.localization.feedback.questions.slice(0, 1);
+    view.runtimeTemplate.staff.feedback.questions =
+      view.runtimeTemplate.staff.feedback.questions.slice(0, 1);
+    view.runtimeTemplate.guestLanguages = view.runtimeTemplate.guestLanguages.slice(0, 1);
+    view.runtimeTemplate.guestLanguages[0]!.feedback.questions =
+      view.runtimeTemplate.guestLanguages[0]!.feedback.questions.slice(0, 1);
+    view.runtimeTemplate.legalTexts!.localizations = [sourceLocale, 'en'].map((locale) => ({
+      locale,
       mode2Consent: { ...consent },
-    });
+      mode3Consent: null,
+      guestRecordingRelease: null,
+      staffRecordingRelease: null,
+      recordingStatus: null,
+    }));
+    if (view.runtimeTemplate.recording) view.runtimeTemplate.recording.texts = [];
     api.readSystem.mockResolvedValue(view);
     render(<SsfSystemContentV2Page page="default-content" />);
-    await screen.findByRole('tab', { name: 'v2.template' });
-    clickTab('v2.template');
-    clickTab('administration.sections.wording');
-    fireEvent.change(screen.getByRole('textbox', { name: 'v2.legalTexts.headline' }), {
-      target: { value: '' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    const templateTab = await screen.findByRole('tab', { name: 'v2.template' });
+    fireEvent.mouseDown(templateTab, { button: 0, ctrlKey: false });
+    const wordingTab = screen.getByRole('tab', { name: 'administration.sections.wording' });
+    const staffTab = screen.getByRole('tab', { name: 'administration.sections.staff' });
+    fireEvent.mouseDown(wordingTab, { button: 0, ctrlKey: false });
+    const wording = within(
+      screen.getByRole('tabpanel', { name: 'administration.sections.wording' })
+    );
+    const visibleHeadline = () =>
+      wording
+        .getAllByLabelText('v2.legalTexts.headline')
+        .find((node) => !node.closest('[hidden]'))!;
+    fireEvent.change(visibleHeadline(), { target: { value: '' } });
+    const save = screen.getByRole('button', { name: 'actions.save' });
+    fireEvent.click(save);
     await waitFor(() => expect(document.activeElement).toHaveProperty('value', ''));
-    const selector = screen.getByRole('combobox', { name: 'administration.languageVersion' });
+    const selector = wording.getByRole('combobox', { name: 'administration.languageVersion' });
     fireEvent.change(selector, { target: { value: 'en' } });
-    fireEvent.change(screen.getByRole('textbox', { name: 'v2.legalTexts.headline' }), {
-      target: { value: 'English edit' },
-    });
+    fireEvent.change(visibleHeadline(), { target: { value: 'English edit' } });
     expect(selector).toHaveProperty('value', 'en');
-    clickTab('administration.sections.staff');
-    fireEvent.change(screen.getByRole('textbox', { name: 'v2.dashboardHeadline' }), {
+    fireEvent.mouseDown(staffTab, { button: 0, ctrlKey: false });
+    fireEvent.change(screen.getByLabelText('v2.dashboardHeadline'), {
       target: { value: 'Continue on another tab' },
     });
-    expect(
-      screen
-        .getByRole('tab', { name: 'administration.sections.staff' })
-        .getAttribute('aria-selected')
-    ).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
-    await waitFor(() =>
-      expect(
-        screen
-          .getByRole('tab', { name: 'administration.sections.wording' })
-          .getAttribute('aria-selected')
-      ).toBe('true')
-    );
-    expect(selector).toHaveProperty('value', source.locale);
+    expect(staffTab.getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(save);
+    await waitFor(() => expect(wordingTab.getAttribute('aria-selected')).toBe('true'));
+    expect(selector).toHaveProperty('value', sourceLocale);
     expect(api.writeSystem).not.toHaveBeenCalled();
   });
 

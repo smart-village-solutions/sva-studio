@@ -1,13 +1,10 @@
+import { projectSsfTenantPageOverrides } from '../src/content-v2-page-overrides.js';
 import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
 import { resolveSsfInstallationContentV2, resolveSsfRuntimeContentV2 } from '../src/content-v2.js';
-import {
-  diffSsfContentV2,
-  effectiveSsfRuntimeFieldsV2,
-  projectSsfTenantPageOverrides,
-} from '../src/content-v2-overrides.js';
+import { diffSsfContentV2, effectiveSsfRuntimeFieldsV2 } from '../src/content-v2-overrides.js';
 
 const readExample = (name: string): Record<string, unknown> =>
   JSON.parse(readFileSync(new URL(`../../../docs/api/${name}`, import.meta.url), 'utf8')) as Record<

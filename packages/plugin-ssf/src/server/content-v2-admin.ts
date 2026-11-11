@@ -1,3 +1,14 @@
+import {
+  SSF_CONTENT_REVISION_HEADER,
+  SSF_EXPECTED_CONTENT_REVISION_HEADER,
+  ssfAdminContentRevisionSchema,
+} from '../content-v2-editor-contracts.js';
+import {
+  assertTenantLocalesAreAllowed,
+  systemLocalesAreAllowed,
+  readSupportedLanguages,
+  readSsfLanguageCatalog as readCatalog,
+} from './content-v2-admin-languages.js';
 import type {
   PluginServerExecutionHandler,
   PluginServerHandlerModuleFactory,
@@ -6,15 +17,9 @@ import type { Pool } from 'pg';
 import { ZodError } from 'zod';
 
 import {
-  SSF_CONTENT_REVISION_HEADER,
-  SSF_EXPECTED_CONTENT_REVISION_HEADER,
-  ssfAdminContentRevisionSchema,
-  ssfSupportedLanguagesCatalogSchema,
   ssfSystemContentV2InputSchema,
   ssfTenantContentV2InputSchema,
 } from '../content-v2-admin-contracts.js';
-import type { SsfLegalTexts } from '../content-v2-contracts.js';
-import { effectiveSsfRuntimeFieldsV2 } from '../content-v2-overrides.js';
 import {
   createSsfAdminContentRevision,
   SsfContentRevisionConflict,
@@ -52,16 +57,6 @@ const withSupportedLanguages = async <T extends object>(
   return { ...resolvedValue, supportedLanguages: catalog };
 };
 
-const readCatalog = async (read: SsfAdminV2Dependencies['readSupportedLanguages']) => {
-  if (!read) return null;
-  try {
-    const parsed = ssfSupportedLanguagesCatalogSchema.safeParse(await read());
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
-};
-
 const contentResponse = async (
   value: Promise<SsfSystemContentV2 | SsfTenantContentV2>,
   scope: string,
@@ -89,152 +84,6 @@ const expectedRevision = (request: Request, correlationId: string): string | Res
 };
 const invalidConfiguration = () => {
   throw new Error('ssf_v2_locale_invalid');
-};
-
-const localeIsAllowed = (
-  locale: string,
-  previous: string | undefined,
-  catalog: Awaited<ReturnType<typeof readCatalog>>
-) => locale === previous || Boolean(catalog?.languages[locale]);
-
-const legalLocalesAreAllowed = (
-  next: SsfLegalTexts | undefined,
-  previous: SsfLegalTexts | undefined,
-  catalog: Awaited<ReturnType<typeof readCatalog>>
-): boolean => {
-  if (!next) return true;
-  const saved = new Set(previous?.localizations.map((entry) => entry.locale) ?? []);
-  if (!catalog)
-    return (
-      next.sourceLocale === previous?.sourceLocale &&
-      next.localizations.length === saved.size &&
-      next.localizations.every((entry) => saved.has(entry.locale))
-    );
-  return next.localizations.every(
-    ({ locale }) =>
-      saved.has(locale) ||
-      Boolean(catalog.languages[locale] ?? catalog.languages[locale.split('-')[0] ?? ''])
-  );
-};
-
-const systemLocalesAreAllowed = (
-  input: {
-    installation: SsfSystemContentV2['installation'];
-    runtimeTemplate: SsfSystemContentV2['runtimeTemplate'];
-  },
-  previous: SsfSystemContentV2,
-  catalog: Awaited<ReturnType<typeof readCatalog>>
-): boolean => {
-  if (
-    input.installation &&
-    !localeIsAllowed(
-      input.installation.localization.locale,
-      previous.installation?.localization.locale,
-      catalog
-    )
-  )
-    return false;
-  const previousRuntime = previous.runtimeTemplate;
-  if (!catalog && previousRuntime && input.runtimeTemplate) {
-    const previousGuests = previousRuntime.guestLanguages.map(({ locale }) => locale).sort();
-    const requestedGuests = input.runtimeTemplate.guestLanguages.map(({ locale }) => locale).sort();
-    if (
-      previousGuests.length !== requestedGuests.length ||
-      previousGuests.some((locale, index) => locale !== requestedGuests[index])
-    )
-      return false;
-  }
-  if (!input.runtimeTemplate) return true;
-  if (
-    !legalLocalesAreAllowed(input.runtimeTemplate.legalTexts, previousRuntime?.legalTexts, catalog)
-  )
-    return false;
-  if (!localeIsAllowed(input.runtimeTemplate.staff.locale, previousRuntime?.staff.locale, catalog))
-    return false;
-  const previousGuestLocales = new Set(
-    previousRuntime?.guestLanguages.map(({ locale }) => locale) ?? []
-  );
-  return input.runtimeTemplate.guestLanguages.every(
-    ({ locale }) => previousGuestLocales.has(locale) || Boolean(catalog?.languages[locale])
-  );
-};
-
-const tenantGuestChangesAreAllowed = (
-  input: Record<string, unknown>,
-  previous: SsfTenantContentV2,
-  catalog: Awaited<ReturnType<typeof readCatalog>>
-): boolean => {
-  if (catalog) return true;
-  const guestLanguages = input['guestLanguages'];
-  if (guestLanguages === undefined) return true;
-  if (!Array.isArray(guestLanguages)) return false;
-  const templateLocales = new Set(
-    previous.runtimeTemplate?.guestLanguages.map(({ locale }) => locale) ?? []
-  );
-  return guestLanguages.every((entry) => {
-    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return false;
-    const value = entry as Record<string, unknown>;
-    return (
-      typeof value['locale'] === 'string' &&
-      templateLocales.has(value['locale']) &&
-      value['enabled'] === undefined
-    );
-  });
-};
-
-const tenantLegalChangesAreAllowed = (
-  input: Record<string, unknown>,
-  previous: SsfTenantContentV2,
-  catalog: Awaited<ReturnType<typeof readCatalog>>
-): boolean => {
-  if (input['legalTexts'] === undefined || !previous.runtimeTemplate) return true;
-  const next = effectiveSsfRuntimeFieldsV2(previous.runtimeTemplate, input);
-  const saved = effectiveSsfRuntimeFieldsV2(previous.runtimeTemplate, previous.overrides);
-  return legalLocalesAreAllowed(next.legalTexts, saved.legalTexts, catalog);
-};
-
-const tenantStaffLocale = (
-  value: Record<string, unknown> | null | undefined
-): string | undefined => {
-  const staff = value?.staff;
-  if (typeof staff !== 'object' || staff === null || Array.isArray(staff)) return undefined;
-  const locale = (staff as Record<string, unknown>).locale;
-  return typeof locale === 'string' ? locale : undefined;
-};
-
-const SUPPORTED_LANGUAGES_CACHE_TTL_MS = 5 * 60 * 1000;
-let supportedLanguagesCache: { expiresAt: number; value: Promise<unknown> } | null = null;
-
-const readSupportedLanguages = (): Promise<unknown> => {
-  const now = Date.now();
-  if (
-    supportedLanguagesCache &&
-    (supportedLanguagesCache.expiresAt === 0 || supportedLanguagesCache.expiresAt > now)
-  ) {
-    return supportedLanguagesCache.value;
-  }
-
-  const value = fetch('https://api.dialog.kassel.de/api/languages/supported', {
-    signal: AbortSignal.timeout(5_000),
-    headers: { accept: 'application/json' },
-  })
-    .then(async (response) => {
-      if (!response.ok) throw new Error('ssf_supported_languages_unavailable');
-      return response.json();
-    })
-    .then((catalog) => {
-      supportedLanguagesCache = {
-        expiresAt: Date.now() + SUPPORTED_LANGUAGES_CACHE_TTL_MS,
-        value: Promise.resolve(catalog),
-      };
-      return catalog;
-    })
-    .catch((error: unknown) => {
-      supportedLanguagesCache = null;
-      throw error;
-    });
-  supportedLanguagesCache = { expiresAt: 0, value };
-  return value;
 };
 
 const invalidInput = (error: unknown): boolean =>
@@ -350,16 +199,7 @@ const writeTenant =
       const next = await dependencies.writeTenantV2(context.actor.instanceId, parsed.data, {
         expectedRevision: revision,
         validate: (previous) => {
-          const requestedLocale = tenantStaffLocale(parsed.data);
-          if (
-            !tenantLegalChangesAreAllowed(parsed.data, previous, catalog) ||
-            !tenantGuestChangesAreAllowed(parsed.data, previous, catalog)
-          )
-            invalidConfiguration();
-          const previousLocale =
-            tenantStaffLocale(previous.overrides) ?? previous.runtimeTemplate?.staff.locale;
-          if (requestedLocale && !localeIsAllowed(requestedLocale, previousLocale, catalog))
-            invalidConfiguration();
+          assertTenantLocalesAreAllowed(parsed.data, previous, catalog);
         },
       });
       return await contentResponse(

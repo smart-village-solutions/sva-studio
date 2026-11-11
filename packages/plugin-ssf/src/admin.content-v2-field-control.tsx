@@ -3,27 +3,23 @@ import {
   Button,
   Checkbox,
   Input,
-  Select,
   RichTextHtmlEditor,
+  Select,
   StudioField,
   Textarea,
 } from '@sva/studio-ui-react';
-import { useMemo, useId } from 'react';
-import type { SsfSupportedLanguagesCatalog } from './content-v2-admin-contracts.js';
-
+import { useId, useMemo } from 'react';
 import { createSsfEditorLabels } from './admin.editor-labels.js';
+import type { SsfSupportedLanguagesCatalog } from './content-v2-admin-contracts.js';
 import type {
   SsfInstallationContentV2Fields,
   SsfRuntimeContentV2Fields,
 } from './content-v2-contracts.js';
-
 type Path = readonly (string | number)[];
 type FormValue = SsfInstallationContentV2Fields | SsfRuntimeContentV2Fields;
 type FieldKind = 'text' | 'html' | 'url' | 'number' | 'checkbox' | 'textarea';
-
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
 export const readSsfV2Path = (value: unknown, path: Path): unknown =>
   path.reduce<unknown>(
     (current, segment) =>
@@ -34,7 +30,6 @@ export const readSsfV2Path = (value: unknown, path: Path): unknown =>
           : undefined,
     value
   );
-
 const readInheritedPath = (current: unknown, inherited: unknown, path: Path): unknown => {
   let source = current;
   let target = inherited;

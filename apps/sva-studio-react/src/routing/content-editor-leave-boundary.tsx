@@ -50,10 +50,38 @@ const isOriginalEditorContextConfirmed = (
         organization.context.activeOrganizationId === original.organizationId))
   );
 
-export function ContentEditorLeaveBoundary({
-  children,
-  protectContextChanges = false,
-}: Readonly<{ children: React.ReactNode; protectContextChanges?: boolean }>) {
+type AuthState = ReturnType<typeof useAuth>;
+type OrganizationState = ReturnType<typeof useOrganizationContext>;
+
+const hasEditorContextChanged = (
+  original: EditorContext,
+  user: AuthState['user'],
+  context: OrganizationState['context'],
+  protectContextChanges: boolean
+) =>
+  !isSameEditorUser(user, original) ||
+  Boolean(
+    protectContextChanges && context && context.activeOrganizationId !== original.organizationId
+  );
+
+const readEditorContext = (
+  user: AuthState['user'],
+  context: OrganizationState['context'],
+  error: OrganizationState['error']
+): EditorContext | null => {
+  if (!user || (user.instanceId && (!context || error))) return null;
+  return {
+    userId: user.id,
+    instanceId: user.instanceId,
+    organizationId: context?.activeOrganizationId,
+  };
+};
+
+/** Retain the original actor/context through recovery without coupling departure actions to authentication. */
+const useEditorSessionRecovery = (
+  hasDirtyEditors: () => boolean,
+  protectContextChanges: boolean
+) => {
   const auth = useAuth();
   const organization = useOrganizationContext();
   const [recoveryState, setRecoveryState] = React.useState<
@@ -62,45 +90,23 @@ export function ContentEditorLeaveBoundary({
   const recoveryRequired = recoveryState !== 'idle';
   const checkingRecovery = recoveryState === 'checking' || recoveryState === 'confirming';
   const originalContext = React.useRef<EditorContext | null>(null);
-  const checkers = React.useRef(new Map<() => boolean, StudioEditorLeaveActions | undefined>());
-  const [contextRequest, setContextRequest] =
-    React.useState<OrganizationContextChangeRequest | null>(null);
-  const pendingContext = React.useRef<OrganizationContextChangeRequest | null>(null);
-  const [saving, setSaving] = React.useState(false);
-  const register = React.useCallback((check: () => boolean, actions?: StudioEditorLeaveActions) => {
-    checkers.current.set(check, actions);
-    return () => {
-      checkers.current.delete(check);
-    };
-  }, []);
   const hasUnsavedChanges = React.useCallback(
-    () => recoveryRequired || [...checkers.current.keys()].some((check) => check()),
-    [recoveryRequired]
+    () => recoveryRequired || hasDirtyEditors(),
+    [recoveryRequired, hasDirtyEditors]
   );
   React.useLayoutEffect(() => {
     const original = originalContext.current;
     if (
       original &&
       hasUnsavedChanges() &&
-      (!isSameEditorUser(auth.user, original) ||
-        (protectContextChanges &&
-          organization.context &&
-          organization.context.activeOrganizationId !== original.organizationId))
+      hasEditorContextChanged(original, auth.user, organization.context, protectContextChanges)
     ) {
       if (!recoveryRequired) setRecoveryState('required');
       return;
     }
-    if (
-      !recoveryRequired &&
-      auth.user &&
-      (!auth.user.instanceId || (organization.context && !organization.error))
-    ) {
-      originalContext.current = {
-        userId: auth.user.id,
-        instanceId: auth.user.instanceId,
-        organizationId: organization.context?.activeOrganizationId,
-      };
-    }
+    if (recoveryRequired) return;
+    const context = readEditorContext(auth.user, organization.context, organization.error);
+    if (context) originalContext.current = context;
   }, [
     auth.user,
     organization.context,
@@ -168,6 +174,30 @@ export function ContentEditorLeaveBoundary({
       setRecoveryState('failed');
     }
   };
+  return { recoveryState, recoveryRequired, checkingRecovery, resumeEditor, hasUnsavedChanges };
+};
+
+export function ContentEditorLeaveBoundary({
+  children,
+  protectContextChanges = false,
+}: Readonly<{ children: React.ReactNode; protectContextChanges?: boolean }>) {
+  const checkers = React.useRef(new Map<() => boolean, StudioEditorLeaveActions | undefined>());
+  const [contextRequest, setContextRequest] =
+    React.useState<OrganizationContextChangeRequest | null>(null);
+  const pendingContext = React.useRef<OrganizationContextChangeRequest | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const register = React.useCallback((check: () => boolean, actions?: StudioEditorLeaveActions) => {
+    checkers.current.set(check, actions);
+    return () => {
+      checkers.current.delete(check);
+    };
+  }, []);
+  const hasDirtyEditors = React.useCallback(
+    () => [...checkers.current.keys()].some((check) => check()),
+    []
+  );
+  const { recoveryState, recoveryRequired, checkingRecovery, resumeEditor, hasUnsavedChanges } =
+    useEditorSessionRecovery(hasDirtyEditors, protectContextChanges);
   React.useEffect(() => {
     if (!protectContextChanges) return;
     const guard = (event: Event) => {

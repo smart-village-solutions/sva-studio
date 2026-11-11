@@ -1,5 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -441,6 +450,42 @@ describe('studio-distribution-artifact', () => {
       excludedWorkspacePackages: ['plugin-ssf'],
     });
   });
+
+  it.each(['studio', 'ssf', 'custom'] as const)(
+    'prunes installed Studio-only packages from %s according to the catalog selection',
+    (distribution) => {
+      const deployRoot = mkdtempSync(path.join(os.tmpdir(), 'studio-installed-pruning-'));
+      temporaryDirectories.push(deployRoot);
+      const nodeModules = path.join(deployRoot, 'node_modules');
+      const packageRoot = path.join(
+        nodeModules, '.pnpm', 'a-installed-tarball', 'node_modules', '@sva', 'plugin-application-workspace'
+      );
+      const directLink = path.join(nodeModules, '@sva', 'plugin-application-workspace');
+      const transitiveLink = path.join(
+        nodeModules, '.pnpm', 'z-consumer', 'node_modules', '@sva', 'plugin-application-workspace'
+      );
+      const sharedPackage = path.join(nodeModules, '@sva', 'plugin-sdk');
+      mkdirSync(packageRoot, { recursive: true });
+      mkdirSync(sharedPackage, { recursive: true });
+      mkdirSync(path.dirname(transitiveLink), { recursive: true });
+      writeFileSync(
+        path.join(packageRoot, 'package.json'),
+        JSON.stringify({ name: '@sva/plugin-application-workspace' })
+      );
+      symlinkSync(packageRoot, directLink, 'dir');
+      symlinkSync(packageRoot, transitiveLink, 'dir');
+
+      runArtifactCommand(
+        'prune-deploy', deployRoot, distribution, distribution === 'custom' ? 'ssf' : undefined
+      );
+
+      const retained = distribution === 'studio';
+      for (const location of [directLink, packageRoot, transitiveLink]) {
+        expect(lstatSync(location, { throwIfNoEntry: false }) !== undefined).toBe(retained);
+      }
+      expect(existsSync(sharedPackage)).toBe(true);
+    }
+  );
 
   it('writes the SSF exclusion contract and removes regular plugin packages', () => {
     const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'studio-distribution-artifact-'));

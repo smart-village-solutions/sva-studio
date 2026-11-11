@@ -67,7 +67,7 @@ export const eventsDELabels = {
     useOnlyTimeDescription: 'Nur Zeit-Hinweis verwenden',
     organizerName: 'Institution/Firma',
     organizerNameHelp:
-      'Erforderlich, sobald Sie E-Mail, Telefon oder eine Adresse des Veranstalters eintragen.',
+      'Erforderlich, sobald weitere Veranstalterangaben vorhanden sind, z. B. E-Mail, Telefon oder eine Adresse.',
     firstName: 'Vorname',
     lastName: 'Nachname',
     fax: 'Fax',

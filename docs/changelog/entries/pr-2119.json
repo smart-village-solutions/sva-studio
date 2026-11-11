@@ -1,4 +1,4 @@
 {
   "prNumber": 2119,
-  "body": "Im Veranstaltungseditor ist der Abschnitt „Veranstalter“ übersichtlicher.\n\n- Die Adresse des Veranstalters liegt jetzt in einem einklappbaren Bereich, der als optional gekennzeichnet ist. Bei gespeicherten Adressangaben öffnet er sich automatisch.\n- Hinweise erklären, dass alle Veranstalterangaben optional sind und der Name erst erforderlich wird, wenn E-Mail, Telefon oder eine Adresse eingetragen ist."
+  "body": "Im Veranstaltungseditor ist der Abschnitt „Veranstalter“ übersichtlicher.\n\n- Die Adresse des Veranstalters liegt jetzt in einem einklappbaren Bereich, der als optional gekennzeichnet ist. Bei gespeicherten Adressangaben öffnet er sich automatisch.\n- Hinweise erklären, dass alle Veranstalterangaben optional sind und der Name erst erforderlich wird, sobald weitere Veranstalterangaben vorhanden sind, z. B. E-Mail, Telefon oder eine Adresse."
 }

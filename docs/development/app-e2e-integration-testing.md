@@ -84,7 +84,7 @@ Wenn ein Service fehlt, bricht der Test früh mit klarer Fehlermeldung ab.
 - Workflow: `.github/workflows/app-e2e.yml` (`App E2E`)
 - läuft bei Pushes auf `main`, täglich geplant und manuell; Pull Requests starten keine vollständige App-E2E-Suite
 - führt ausschließlich die Chromium-Suite aus; ein Firefox-Smoke gehört nicht zum kanonischen App-E2E-Nachweis
-- installiert die gelockte Chromium-Version mit `pnpm --filter sva-studio-react exec playwright install chromium` und nutzt die vorhandenen Systembibliotheken des GitHub-Runners. Die tatsächlichen Browserläufe bleiben verpflichtend und schlagen bei fehlenden Bibliotheken fehl; eine APT-Mirror-Vorstufe ist dafür nicht erforderlich.
+- installiert Chromium mit Playwright und verwendet die vorinstallierten Systembibliotheken des GitHub-Runners. Die vollständige Chromium-Suite prüft die Laufzeitfähigkeit des Browsers.
 - Startet dieselben Services via Docker Compose
 - startet die App über das Nx-Target `sva-studio-react:serve`
 - führt `pnpm nx run sva-studio-react:test:e2e` aus

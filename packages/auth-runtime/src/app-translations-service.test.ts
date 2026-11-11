@@ -89,7 +89,7 @@ beforeEach(() => {
   state.translate.mockResolvedValue(['News', '<p>Hello</p>']);
 });
 afterEach(() => vi.useRealTimers());
-describe('technical news translation', () => {
+describe('technical app translation', () => {
   it.each(['', ' \n\t'])(
     'rejects empty optional entries before provider work (%j)',
     async (text) => {
@@ -133,7 +133,7 @@ describe('technical news translation', () => {
     );
   });
   it.each(['fr', 'pt-PT', 'es'])(
-    'translates both profiles for selected locale %s',
+    'translates each profile for selected locale %s',
     async (targetLocale) => {
       Object.assign(provider.publicConfig, {
         selectedLocales: [targetLocale],
@@ -154,7 +154,23 @@ describe('technical news translation', () => {
       );
       expect(home.status).toBe(200);
       expect(await home.json()).toMatchObject({ targetLocale });
+      state.translate.mockResolvedValue(['<p>Localized text</p>']);
+      const page = await appTranslationServiceHandler(
+        request({
+          ...payload(),
+          targetLocale,
+          profileId: 'static-html-v1',
+          entries: [{ key: 'content', format: 'html', text: '<p>Impressum</p>' }],
+        })
+      );
+      expect(page.status).toBe(200);
+      expect(await page.json()).toMatchObject({
+        profileId: 'static-html-v1',
+        targetLocale,
+        entries: [{ key: 'content', format: 'html', text: '<p>Localized text</p>' }],
+      });
       expect(state.translate.mock.calls.map(([, target]) => target)).toEqual([
+        targetLocale,
         targetLocale,
         targetLocale,
       ]);
@@ -176,6 +192,37 @@ describe('technical news translation', () => {
     input.entries[0].key = 'settings.url';
     expect((await appTranslationServiceHandler(request(input))).status).toBe(400);
     expect(state.translate).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects unsafe, oversized or incorrectly structured static HTML before provider work', async () => {
+    const content = { key: 'content', format: 'html', text: '<p>Impressum</p>' };
+    const malformed = [
+      [],
+      [content, content],
+      [{ ...content, key: 'title' }],
+      [{ ...content, format: 'plain' }],
+      [{ ...content, text: ' ' }],
+      [{ ...content, text: '<p><img src="https://example.org/pixel">Impressum</p>' }],
+      [{ ...content, text: `<p>${'ä'.repeat(45000)}</p>` }],
+    ];
+    for (const entries of malformed) {
+      const input = { ...payload(), profileId: 'static-html-v1', entries };
+      expect((await appTranslationServiceHandler(request(input))).status).toBe(400);
+    }
+    expect(state.translate).not.toHaveBeenCalled();
+  });
+
+  it('rejects structurally changed static HTML from the provider', async () => {
+    state.translate.mockResolvedValue(['<p><strong>Legal notice</strong></p>']);
+    const response = await appTranslationServiceHandler(
+      request({
+        ...payload(),
+        profileId: 'static-html-v1',
+        entries: [{ key: 'content', format: 'html', text: '<p>Impressum</p>' }],
+      })
+    );
+    expect(response.status).toBe(502);
+    expect(await response.json()).not.toHaveProperty('entries');
   });
 
   it('translates a formatted intro and a plain article button in the same group', async () => {

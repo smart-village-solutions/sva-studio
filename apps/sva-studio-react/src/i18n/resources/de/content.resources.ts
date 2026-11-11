@@ -1,5 +1,4 @@
 import { contentDEErrors } from './content.errors.resources.js';
-
 export const contentDEResources = {
   leaveGuard: {
     save: 'Speichern und fortfahren',
@@ -394,6 +393,7 @@ export const contentDEResources = {
     titleRequired: 'Die Überschrift ist ein Pflichtfeld.',
     payloadJsonInvalid: 'Die Zusatzdaten müssen gültiges JSON sein.',
     publishedAtRequired: 'Für veröffentlichte Inhalte ist ein Veröffentlichungsdatum erforderlich.',
-    publishedAtInvalid: 'Bitte ein gültiges Veröffentlichungsdatum für Europe/Berlin angeben.',
+    publishedAtInvalid:
+      'Bitte geben Sie ein gültiges Veröffentlichungsdatum in der Fachzeitzone Europe/Berlin ein.',
   },
 } as const;

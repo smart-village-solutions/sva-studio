@@ -88,7 +88,26 @@ const settingsRequestSchema = requestEnvelope.extend({
       .strict(),
   ]),
 });
-const requestSchema = z.union([newsRequestSchema, settingsRequestSchema]);
+const staticHtmlRequestSchema = requestEnvelope.extend({
+  profileId: z.literal('static-html-v1'),
+  entries: z.tuple([
+    z
+      .object({
+        key: z.literal('content'),
+        format: z.literal('html'),
+        text: z
+          .string()
+          .max(90000)
+          .regex(/\S/u)
+          .refine(
+            (text) =>
+              new TextEncoder().encode(text).length <= 90000 && sanitizeRichTextHtml(text) === text
+          ),
+      })
+      .strict(),
+  ]),
+});
+const requestSchema = z.union([newsRequestSchema, settingsRequestSchema, staticHtmlRequestSchema]);
 
 const reply = (status: number, data: unknown) =>
   Response.json(data, {

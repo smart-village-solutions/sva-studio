@@ -135,8 +135,13 @@ export const buildSidebarSystemItems = (
   access: SidebarAccess,
   pluginSystemItems: readonly SidebarItem[]
 ): SidebarItem[] => {
-  const { canAccessAdminInstances, canAccessInterfaces, canAccessModules, canAccessSystemTools } =
-    access;
+  const {
+    brandingProfile,
+    canAccessAdminInstances,
+    canAccessInterfaces,
+    canAccessModules,
+    canAccessSystemTools,
+  } = access;
   const userChildren = buildUserChildren(access);
   const monitoringItems = pluginSystemItems.filter(
     (item): item is SidebarLeafItem =>
@@ -195,7 +200,7 @@ export const buildSidebarSystemItems = (
           },
         ]
       : []),
-    ...(canAccessAdminInstances
+    ...(canAccessAdminInstances && brandingProfile.showGenericApplicationLinks
       ? [
           {
             kind: 'group' as const,

@@ -64,16 +64,13 @@ describe('App E2E workflow contract', () => {
     expect(playwrightConfig).toContain("screenshot: 'only-on-failure'");
   });
 
-  it('uses only Chromium and avoids the unreliable Azure apt mirror for browser dependencies', () => {
-    expect(workflow).toContain('Prefer HTTPS Ubuntu archives for Playwright dependencies');
-    expect(workflow).toContain('MIRRORS=/etc/apt/apt-mirrors.txt');
-    expect(workflow).toContain('if [ ! -f "$MIRRORS" ]; then');
-    expect(workflow).toContain('skipping mirror hardening');
+  it('installs locked Chromium using runner libraries without an APT mirror mutation', () => {
     expect(workflow).toContain(
-      'sudo sed -i \'/^http:\\/\\/azure\\.archive\\.ubuntu\\.com\\/ubuntu\\//d\' "$MIRRORS"'
+      'run: pnpm --filter sva-studio-react exec playwright install chromium\n'
     );
-    expect(workflow).toContain('playwright install --with-deps chromium');
-    expect(workflow).not.toContain('playwright install --with-deps chromium firefox');
+    expect(workflow).not.toContain('playwright install --with-deps');
+    expect(workflow).not.toContain('/etc/apt/apt-mirrors.txt');
+    expect(workflow).not.toMatch(/playwright install[^\n]*firefox/u);
     expect(playwrightConfig).not.toContain('firefox-smoke');
     expect(playwrightConfig).not.toContain('PLAYWRIGHT_ENABLE_FIREFOX_SMOKE');
     expect(existsSync(crossBrowserFirefoxSpec)).toBe(false);

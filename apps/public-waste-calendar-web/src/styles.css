@@ -1169,3 +1169,19 @@ button.selection-path-chip:hover,
     height: 1rem;
   }
 }
+
+/* The server-rendered reminder result uses the same calendar typography and controls. */
+.reminder-status-panel {
+  display: grid;
+  gap: 1.5rem;
+  padding-block: clamp(2rem, 8vw, 5rem);
+  overflow-wrap: anywhere;
+}
+
+.reminder-status-panel .selection-intro {
+  gap: 1rem;
+}
+
+.reminder-status-actions {
+  margin: 0;
+}

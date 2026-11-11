@@ -16,7 +16,7 @@ const buildStatusPageResponse = (input: {
   readonly returnLink?: Readonly<{ href: string; label: string }>;
 }): Response =>
   new Response(
-    `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.title)}</title></head><body><main><h1>${escapeHtml(input.headline)}</h1><p>${escapeHtml(input.body)}</p>${input.returnLink ? `<p><a href="${escapeHtml(input.returnLink.href)}">${escapeHtml(input.returnLink.label)}</a></p>` : ''}</main></body></html>`,
+    `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.title)}</title><link rel="stylesheet" href="/assets/calendar.css"></head><body><main class="panel reminder-status-panel"><div class="selection-intro"><h1 class="pickup-month-title">${escapeHtml(input.headline)}</h1><p class="body-copy">${escapeHtml(input.body)}</p></div>${input.returnLink ? `<p class="reminder-status-actions"><a class="action-cta-link" href="${escapeHtml(input.returnLink.href)}">${escapeHtml(input.returnLink.label)}</a></p>` : ''}</main></body></html>`,
     {
       status: 200,
       headers: {

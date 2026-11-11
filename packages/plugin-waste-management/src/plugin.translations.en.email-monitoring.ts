@@ -47,6 +47,8 @@ export const wasteEmailMonitoringTranslationsEN = {
     attemptsCount: 'Sending attempts so far: {{count}}',
     technicalDetails: 'Further details for enquiries',
     subscriptionId: 'Subscription reference',
+    subscriptionUnavailable:
+      'The sign-up details are not included in the current list. Select the subscription again in the overview if needed.',
     timingNotice:
       'The handover time shows when the system processed the message for sending. It does not confirm delivery. After retries, “Scheduled for” shows the next attempt. Earlier attempts are not listed individually.',
     stateDescriptions: {

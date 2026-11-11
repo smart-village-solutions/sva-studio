@@ -89,6 +89,7 @@ const DeliveryTable = ({
   onDeliveryPage,
 }: TableProps & { selected: WasteEmailSubscriptionSummary }) => {
   const heading = useRef<HTMLHeadingElement>(null);
+  const currentSubscription = data.subscriptions.find((row) => row.id === selected.id);
   useLayoutEffect(() => {
     heading.current?.focus();
   }, [selected.id]);
@@ -100,24 +101,34 @@ const DeliveryTable = ({
           tabIndex={-1}
           className="min-w-0 max-w-full text-lg font-semibold [overflow-wrap:anywhere]"
         >
-          {pt('emailMonitoring.deliveries')} · {selected.maskedEmail}
+          {pt('emailMonitoring.deliveries')} ·{' '}
+          {currentSubscription?.maskedEmail ?? selected.maskedEmail}
         </h2>
         <Button variant="secondary" onClick={() => onSelect(null)}>
           {pt('emailMonitoring.close')}
         </Button>
       </div>
-      <dl className="grid gap-4 rounded-lg border border-border bg-card p-4 text-sm sm:grid-cols-3">
-        {(['createdAt', 'activatedAt', 'unsubscribedAt'] as const).map((key, i) => (
-          <div key={key}>
-            <dt className="text-muted-foreground">
-              {pt(`emailMonitoring.${['created', 'activated', 'unsubscribed'][i]}`)}
-            </dt>
-            <dd className="mt-1 font-medium">
-              {formatEmailMonitoringTimestamp(selected[key], pt('emailMonitoring.unavailable'))}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      {currentSubscription ? (
+        <dl className="grid gap-4 rounded-lg border border-border bg-card p-4 text-sm sm:grid-cols-3">
+          {(['createdAt', 'activatedAt', 'unsubscribedAt'] as const).map((key, i) => (
+            <div key={key}>
+              <dt className="text-muted-foreground">
+                {pt(`emailMonitoring.${['created', 'activated', 'unsubscribed'][i]}`)}
+              </dt>
+              <dd className="mt-1 font-medium">
+                {formatEmailMonitoringTimestamp(
+                  currentSubscription[key],
+                  pt('emailMonitoring.unavailable')
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {pt('emailMonitoring.subscriptionUnavailable')}
+        </p>
+      )}
       <p className="text-sm text-muted-foreground">{pt('emailMonitoring.deliveryNotice')}</p>
       <StudioDataTable
         selectionMode="none"

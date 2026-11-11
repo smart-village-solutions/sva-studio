@@ -48,6 +48,8 @@ export const wasteEmailMonitoringTranslationsDE = {
     attemptsCount: 'Bisherige Versandversuche: {{count}}',
     technicalDetails: 'Weitere Angaben für Rückfragen',
     subscriptionId: 'Kennung dieses Abos',
+    subscriptionUnavailable:
+      'Die Anmeldedaten sind in der aktuellen Liste nicht enthalten. Wählen Sie das Abo bei Bedarf erneut in der Übersicht aus.',
     timingNotice:
       'Die Übergabezeit zeigt, wann das System den Versand bearbeitet hat. Sie bestätigt keine Zustellung. Bei erneuten Versuchen zeigt „Geplant für“ den nächsten Termin. Frühere Versuche werden nicht einzeln aufgeführt.',
     stateDescriptions: {

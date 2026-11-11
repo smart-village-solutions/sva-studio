@@ -142,6 +142,55 @@ describe('email monitoring page', () => {
       })
     );
   });
+  it.each([
+    ['activatedAt', '2026-11-11T10:00:00Z', 'active'],
+    ['unsubscribedAt', '2026-11-12T10:00:00Z', 'unsubscribed'],
+  ] as const)(
+    'refreshes the selected subscription %s from the response',
+    async (field, value, status) => {
+      allow([wasteEmailMonitoringPermission]);
+      render(<WasteEmailMonitoringPage />);
+      await screen.findAllByText(subscription.maskedEmail);
+      const [select] = screen.getAllByRole('button', { name: 'emailMonitoring.select' });
+      if (!select) throw new Error('missing subscription action');
+      fireEvent.click(select);
+      await screen.findByText('emailMonitoring.deliveryNotice');
+      vi.mocked(getWasteEmailMonitoring).mockResolvedValue({
+        ...data,
+        subscriptions: [{ ...subscription, status, [field]: value }],
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'emailMonitoring.refresh' }));
+      const expected = new Date(value).toLocaleString('de', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      });
+      await within(
+        screen.getByRole('region', { name: 'emailMonitoring.deliveries' })
+      ).findAllByText(expected);
+    }
+  );
+  it('keeps message controls and omits old dates when the selected row leaves the current list', async () => {
+    allow([wasteEmailMonitoringPermission]);
+    render(<WasteEmailMonitoringPage />);
+    await screen.findAllByText(subscription.maskedEmail);
+    const [select] = screen.getAllByRole('button', { name: 'emailMonitoring.select' });
+    if (!select) throw new Error('missing subscription action');
+    fireEvent.click(select);
+    await screen.findByText('emailMonitoring.deliveryNotice');
+    vi.mocked(getWasteEmailMonitoring).mockResolvedValue({ ...data, subscriptions: [], total: 0 });
+    const refresh = screen.getByRole('button', { name: 'emailMonitoring.refresh' });
+    refresh.focus();
+    fireEvent.click(refresh);
+    const details = within(screen.getByRole('region', { name: 'emailMonitoring.deliveries' }));
+    await details.findByText('emailMonitoring.subscriptionUnavailable');
+    const oldDate = new Date(subscription.createdAt).toLocaleString('de', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    });
+    expect(details.queryByText(oldDate)).toBeNull();
+    expect(details.getByRole('button', { name: 'emailMonitoring.close' })).toBeTruthy();
+    expect(document.activeElement).toBe(refresh);
+  });
   it('refreshes and paginates without exposing mail contents', async () => {
     allow([wasteEmailMonitoringPermission]);
     render(<WasteEmailMonitoringPage />);

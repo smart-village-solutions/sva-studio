@@ -126,15 +126,16 @@ describe('email monitoring page', () => {
     await screen.findAllByText(subscription.maskedEmail);
     const overview = within(screen.getByRole('table', { name: 'emailMonitoring.subscriptions' }));
     expect(overview.getByText('emailMonitoring.lastSentEmail')).toBeTruthy();
-    expect(overview.getByText('emailMonitoring.kinds.doi')).toBeTruthy();
+    expect(overview.getByText('emailMonitoring.kinds.doi', { exact: false })).toBeTruthy();
     expect(overview.getByText('emailMonitoring.nextEmail')).toBeTruthy();
-    expect(overview.getByText('emailMonitoring.kinds.reminder')).toBeTruthy();
+    expect(overview.getByText('emailMonitoring.kinds.reminder', { exact: false })).toBeTruthy();
     expect(
       overview.getByText(
         new Date(subscription.lastSentEmail.sentAt).toLocaleString('de', {
           dateStyle: 'short',
           timeStyle: 'short',
-        })
+        }),
+        { exact: false }
       )
     ).toBeTruthy();
     expect(
@@ -142,7 +143,8 @@ describe('email monitoring page', () => {
         new Date(subscription.nextEmail.scheduledAt).toLocaleString('de', {
           dateStyle: 'short',
           timeStyle: 'short',
-        })
+        }),
+        { exact: false }
       )
     ).toBeTruthy();
   });

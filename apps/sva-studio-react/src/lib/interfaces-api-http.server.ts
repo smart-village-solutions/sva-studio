@@ -10,7 +10,7 @@ import {
 } from './interfaces-api';
 import { listInstanceInterfaces } from './interfaces-api-list';
 import { dispatchMainserverSettingsRequest } from './interfaces-api-settings';
-import { getErrorStatusCode } from './interfaces-api-transport';
+import { getErrorStatusCode, isClientValidationErrorMessage } from './interfaces-api-transport';
 
 const logger = createSdkLogger({ component: 'interfaces-api-http' });
 const text = z.string().max(4096);
@@ -157,7 +157,7 @@ const responseStatusFor = (error: unknown): number => {
   if (message === 'forbidden' || message === 'permission_missing') return 403;
   if (message === 'interface_not_found') return 404;
   if (message.includes('conflict')) return 409;
-  if (/^(invalid_|.*_invalid|.*_required|.*_not_supported)$/u.test(message)) return 400;
+  if (isClientValidationErrorMessage(message)) return 400;
   return 500;
 };
 

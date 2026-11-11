@@ -1,3 +1,4 @@
+import { wasteEmailMonitoringPermission } from '@sva/waste-management-contracts';
 import {
   definePluginActions,
   definePluginPermissions,
@@ -19,6 +20,7 @@ import { wasteManagementModuleIam } from './waste-management.module-iam.js';
 export { wasteManagementAuditEventDefinitions } from './plugin.audit-events.js';
 
 export const wasteManagementPermissionDefinitions = definePluginPermissions('waste-management', [
+  { id: wasteEmailMonitoringPermission, titleKey: 'wasteManagement.emailMonitoring.permission' },
   { id: 'waste-management.read', titleKey: 'wasteManagement.permissions.read.title' },
   {
     id: 'waste-management.master-data.manage',
@@ -98,6 +100,17 @@ export const pluginWasteManagement: PluginDescriptor = {
   displayName: 'Waste Management',
   routes: [
     {
+      id: 'waste-management.email-monitoring',
+      path: '/plugins/waste-management/email-monitoring',
+      documentation: { kind: 'page', id: 'waste-management.email-monitoring', pageType: 'list' },
+      guard: wasteEmailMonitoringPermission,
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: 'waste-management',
+        actions: { mode: 'allOf', values: [wasteEmailMonitoringPermission] },
+      },
+    },
+    {
       id: 'waste-management.home',
       path: '/plugins/waste-management',
       documentation: {
@@ -116,6 +129,18 @@ export const pluginWasteManagement: PluginDescriptor = {
     },
   ],
   navigation: [
+    {
+      id: 'waste-management.email-monitoring.navigation',
+      to: '/plugins/waste-management/email-monitoring',
+      titleKey: 'wasteManagement.emailMonitoring.title',
+      section: 'system',
+      requiredAction: wasteEmailMonitoringPermission,
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: 'waste-management',
+        actions: { mode: 'allOf', values: [wasteEmailMonitoringPermission] },
+      },
+    },
     {
       id: 'waste-management.navigation',
       to: '/plugins/waste-management',

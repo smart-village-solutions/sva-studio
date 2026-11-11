@@ -1,3 +1,5 @@
+import { loadWasteEmailMonitoring } from './repositories/email-reminders.monitoring.js';
+import type { WasteEmailMonitoringQuery } from '@sva/waste-management-contracts';
 import type { StudioJobRepository } from '@sva/data-repositories';
 import type {
   listExternalInterfaceRecords,
@@ -115,6 +117,18 @@ export const createWasteServerLoaders = (host: WasteServerLoaderHost) => {
   const { previewWasteAddressMutation, mutateWasteAddressInTransaction } = context;
 
   const wasteManagementOverviewLoaders = {
+    loadWasteEmailMonitoring: (instanceId: string, query: WasteEmailMonitoringQuery) =>
+      context.withWasteClient(instanceId, 'load_email_monitoring', async (client) => {
+        await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+        try {
+          const result = await loadWasteEmailMonitoring(context.createSqlExecutor(client), query);
+          await client.query('COMMIT');
+          return result;
+        } catch (error) {
+          await client.query('ROLLBACK');
+          throw error;
+        }
+      }),
     loadWasteMainserverSyncStatus,
     loadMasterDataOverview,
     loadMasterDataFractionsOverview,

@@ -38,6 +38,13 @@ export const eventsDELabels = {
     dataProvider: 'Ursprünglicher DataProvider',
     unavailable: 'Nicht verfügbar',
   },
+  organizer: {
+    description:
+      'Institution, Firma oder verantwortliche Stelle. Alle Angaben sind optional; meist genügt der Name.',
+    address: 'Adresse des Veranstalters',
+    addressHelp:
+      'Nur ausfüllen, wenn die Adresse des Veranstalters benötigt wird. Der Ort der Veranstaltung gehört in den Abschnitt „Veranstaltungsort“.',
+  },
   fields: {
     title: 'Überschrift',
     description: 'Beschreibung',
@@ -67,7 +74,8 @@ export const eventsDELabels = {
     useOnlyTimeDescriptionHelp:
       'Verwendet die bestehende Ausgabeoption des Mainservers. Gespeicherte Datums- und Uhrzeitangaben werden dadurch nicht gelöscht.',
     organizerName: 'Institution/Firma',
-    organizerNameHelp: 'Erforderlich, sobald weitere Veranstalterangaben ausgefüllt werden.',
+    organizerNameHelp:
+      'Erforderlich, sobald weitere Veranstalterangaben vorhanden sind, z. B. E-Mail, Telefon oder eine Adresse.',
     firstName: 'Vorname',
     lastName: 'Nachname',
     fax: 'Fax',

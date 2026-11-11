@@ -167,7 +167,7 @@ export const eventsENEditor = {
         description: 'Addresses and location labels for the event.',
         itemTitle: 'Location',
       },
-      organizer: { title: 'Organizer', description: 'Institution, company, or responsible body.' },
+      organizer: { title: 'Organizer' },
       contacts: {
         title: 'Contacts',
         description: 'Named contacts for questions.',

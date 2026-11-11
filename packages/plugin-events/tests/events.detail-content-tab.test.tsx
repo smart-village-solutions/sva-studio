@@ -109,7 +109,10 @@ const pt = (key: string) =>
     'cards.content.addresses.description': 'Ort des Events',
     'cards.content.addresses.itemTitle': 'Ort',
     'cards.content.organizer.title': 'Veranstalter',
-    'cards.content.organizer.description': 'Organisation',
+    'organizer.description': 'Organisation',
+    'organizer.address': 'Adresse des Veranstalters',
+    'organizer.addressHelp': 'Nur nötig, wenn sie vom Veranstaltungsort abweicht.',
+    'create.optional': 'optional',
     'cards.content.contacts.title': 'Ansprechpartner',
     'cards.content.contacts.description': 'Kontaktmöglichkeiten',
     'cards.content.contacts.itemTitle': 'Kontakt',
@@ -255,6 +258,62 @@ function renderTab(
 }
 
 describe('EventsDetailContentTab', () => {
+  const organizerAddressDisclosure = () =>
+    screen
+      .getByText('Adresse des Veranstalters · optional')
+      .closest('details') as HTMLDetailsElement;
+
+  it('keeps the optional organizer address collapsed while it is empty', async () => {
+    renderTab();
+    await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
+
+    const disclosure = organizerAddressDisclosure();
+    expect(disclosure.open).toBe(false);
+    expect(disclosure.contains(document.getElementById('event-organizer-street'))).toBe(true);
+    expect(disclosure.contains(document.getElementById('event-organizer-latitude'))).toBe(true);
+    expect(disclosure.contains(document.getElementById('event-organizer-name'))).toBe(false);
+    expect(disclosure.contains(document.getElementById('event-organizer-email'))).toBe(false);
+    expect(screen.getByText('Nur nötig, wenn sie vom Veranstaltungsort abweicht.')).toBeTruthy();
+  });
+
+  it('opens the organizer address when the stored organizer already has one', async () => {
+    renderTab({
+      content: {
+        ...createDefaultEventsDetailFormValues().content,
+        organizer: {
+          name: 'Kulturamt',
+          address: {
+            addition: '',
+            street: 'Marktplatz 1',
+            zip: '',
+            city: '',
+            geoLocation: { latitude: '', longitude: '' },
+          },
+        },
+      },
+    });
+    await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
+
+    expect(organizerAddressDisclosure().open).toBe(true);
+  });
+
+  it('keeps entered organizer address values after collapsing the section again', async () => {
+    const { getValues } = renderTab();
+    await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
+    const disclosure = organizerAddressDisclosure();
+    const summary = disclosure.querySelector('summary') as HTMLElement;
+
+    fireEvent.click(summary);
+    expect(disclosure.open).toBe(true);
+    fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-organizer-street' }), {
+      target: { value: 'Rathausplatz 3' },
+    });
+    fireEvent.click(summary);
+
+    expect(disclosure.open).toBe(false);
+    expect(getValues().content.organizer.address?.street).toBe('Rathausplatz 3');
+  });
+
   it('persists canonical date values and persists the structured content sections', async () => {
     const { getValues } = renderTab();
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });

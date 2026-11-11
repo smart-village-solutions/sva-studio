@@ -650,6 +650,15 @@
       "titleKey": "vouchers.navigation.title"
     },
     {
+      "id": "waste-management.email-monitoring",
+      "path": "/plugins/waste-management/email-monitoring",
+      "pageType": "list",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "waste-management"
+      }
+    },
+    {
       "id": "waste-management.overview",
       "path": "/plugins/waste-management",
       "pageType": "overview",

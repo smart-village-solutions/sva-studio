@@ -253,3 +253,5 @@ export {
 
 export { buildWasteHolidayApiUrl, deriveHolidayRuleConfigurationStatus, normalizeWasteHolidayApiResponse, wasteHolidaySyncHorizonYears } from './waste-management-holiday-sync.js';
 export type { WasteHolidayApiEntry } from './waste-management-holiday-sync.js';
+
+export * from './waste-management-email-monitoring.js';

@@ -160,10 +160,7 @@ export const eventsDEEditor = {
         description: 'Adressen und Ortsbezeichnungen der Veranstaltung.',
         itemTitle: 'Ort',
       },
-      organizer: {
-        title: 'Veranstalter',
-        description: 'Institution, Firma oder verantwortliche Stelle.',
-      },
+      organizer: { title: 'Veranstalter' },
       contacts: {
         title: 'Ansprechpartner',
         description: 'Konkrete Kontaktpersonen für Rückfragen.',

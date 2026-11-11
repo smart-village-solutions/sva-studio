@@ -1,3 +1,4 @@
+import type { WasteEmailMonitoringDeps } from './email-monitoring.js';
 import type { WasteAnnualTourTransferHandlerDeps } from './annual-tour-transfer-deps.js';
 import type { WasteCollectionLocationReadHandlerDeps } from './collection-location-read-deps.js';
 import type { WasteMainserverSyncStatusHandlerDeps } from './mainserver-sync-status-deps.js';
@@ -9,4 +10,5 @@ export type WasteManagementHandlerDeps = WasteManagementHandlerHostDeps &
   WasteManagementHandlerMasterDataDeps &
   WasteAnnualTourTransferHandlerDeps &
   WasteCollectionLocationReadHandlerDeps &
-  WasteMainserverSyncStatusHandlerDeps;
+  WasteMainserverSyncStatusHandlerDeps &
+  WasteEmailMonitoringDeps;

@@ -277,44 +277,43 @@ describe('public waste portainer release', () => {
   });
 
   it('updates the remote stack payload without changing unrelated env values', async () => {
-    const fetch = vi
-      .fn<typeof globalThis.fetch>()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([
+    const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/api/endpoints/7/docker/info') {
+        return Response.json({ Swarm: { Cluster: { ID: 'swarm-test' } } });
+      }
+      if (url.pathname === '/api/stacks') {
+        if (url.searchParams.get('filters') !== JSON.stringify({ SwarmID: 'swarm-test' })) {
+          return Response.json(
+            { message: 'filters must contain SwarmID or EndpointID' },
+            { status: 400 }
+          );
+        }
+        return Response.json([{ Id: 42, Name: 'web-waste-calendar', EndpointId: 7 }]);
+      }
+      if (init?.method === 'PUT') return Response.json({});
+      if (url.pathname === '/api/stacks/42/file') {
+        return Response.json({
+          StackFileContent:
+            "version: '3.8'\nservices:\n  app:\n    image: ghcr.io/example/public-waste:v1.2.2\n",
+        });
+      }
+      if (url.pathname === '/api/stacks/42') {
+        return Response.json({
+          Id: 42,
+          Name: 'web-waste-calendar',
+          EndpointId: 7,
+          Env: [
+            { name: 'PUBLIC_WASTE_IMAGE_TAG', value: 'v1.2.2' },
             {
-              Id: 42,
-              Name: 'web-waste-calendar',
-              EndpointId: 7,
+              name: 'PUBLIC_WASTE_PUBLIC_HOST',
+              value: 'bb-prignitz.abfallkalender.smart-village.app',
             },
-          ])
-        )
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            Id: 42,
-            Name: 'web-waste-calendar',
-            EndpointId: 7,
-            Env: [
-              { name: 'PUBLIC_WASTE_IMAGE_TAG', value: 'v1.2.2' },
-              {
-                name: 'PUBLIC_WASTE_PUBLIC_HOST',
-                value: 'bb-prignitz.abfallkalender.smart-village.app',
-              },
-            ],
-          })
-        )
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            StackFileContent:
-              "version: '3.8'\nservices:\n  app:\n    image: ghcr.io/example/public-waste:v1.2.2\n",
-          })
-        )
-      )
-      .mockResolvedValueOnce(new Response('{}'));
+          ],
+        });
+      }
+      throw new Error('Unexpected request');
+    });
 
     const result = await releasePublicWasteStack(
       {
@@ -339,9 +338,9 @@ describe('public waste portainer release', () => {
       stackName: 'web-waste-calendar',
     });
 
-    expect(fetch).toHaveBeenCalledTimes(4);
+    expect(fetch).toHaveBeenCalledTimes(5);
 
-    const updateCall = fetch.mock.calls[3];
+    const updateCall = fetch.mock.calls.find((call) => call[1]?.method === 'PUT');
     expect(updateCall?.[0]).toBe('https://portainer.example.invalid/api/stacks/42?endpointId=7');
     expect(updateCall?.[1]).toMatchObject({
       method: 'PUT',
@@ -360,6 +359,29 @@ describe('public waste portainer release', () => {
         "version: '3.8'\nservices:\n  app:\n    image: ghcr.io/example/public-waste:v1.2.2\n",
     });
   });
+
+  it.each([{}, { Swarm: {} }, { Swarm: { Cluster: { ID: '' } } }])(
+    'stops before stack access when Docker info has no Swarm ID: %j',
+    async (dockerInfo) => {
+      const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(Response.json(dockerInfo));
+      await expect(
+        releasePublicWasteStack(
+          {
+            GITHUB_REF: 'refs/tags/waste-web-v1.2.3',
+            PUBLIC_WASTE_STACK_NAME: 'web-waste-calendar',
+            QUANTUM_API_KEY: 'test-key',
+            QUANTUM_ENDPOINT_ID: '7',
+            QUANTUM_HOST: 'https://portainer.example.invalid',
+          },
+          { commandExists: vi.fn().mockReturnValue(false), fetch, runCapture: vi.fn() }
+        )
+      ).rejects.toThrow('Portainer-Swarm-ID fehlt');
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch.mock.calls[0]?.[0]).toBe(
+        'https://portainer.example.invalid/api/endpoints/7/docker/info'
+      );
+    }
+  );
 
   it('starts the remote stack with the tenant PostgreSQL URL and one replica', async () => {
     const fetch = vi

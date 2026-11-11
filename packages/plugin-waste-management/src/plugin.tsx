@@ -1,3 +1,4 @@
+import { WasteEmailMonitoringPage } from './waste-management.email-monitoring.page.js';
 import type { PluginDefinition } from '@sva/plugin-sdk';
 
 import { pluginWasteManagement as descriptor } from './descriptor.js';
@@ -10,6 +11,7 @@ export {
 } from './descriptor.js';
 
 const routeComponents = {
+  'waste-management.email-monitoring': WasteEmailMonitoringPage,
   'waste-management.home': WasteManagementPage,
 } as const;
 

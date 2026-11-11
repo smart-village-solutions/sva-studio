@@ -652,6 +652,100 @@ describe('EventsDetailPage', () => {
     expect((screen.getByLabelText('Enddatum') as HTMLInputElement).value).toBe('12.06.2026');
   });
 
+  it('opens a loaded organizer address and saves it unchanged', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1278',
+      title: 'Stadtfest',
+      organizer: {
+        name: 'Kulturamt',
+        address: { street: 'Marktplatz 1', zip: '12345', city: 'Linz' },
+        contact: { firstName: 'Erika', fax: '0123 99' },
+      },
+    } as never);
+    vi.mocked(updateEvent).mockResolvedValueOnce({ id: 'event-1278', title: 'Stadtfest' } as never);
+
+    render(<EventsDetailPage mode="edit" contentId="1278" />);
+    fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+
+    const street = await waitFor(() => {
+      const element = document.getElementById('event-organizer-street');
+      if (!element) throw new Error('organizer_street_missing');
+      return element;
+    });
+    await waitFor(() => expect((street.closest('details') as HTMLDetailsElement).open).toBe(true));
+    expect((street as HTMLInputElement).value).toBe('Marktplatz 1');
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+    await waitFor(() => expect(updateEvent).toHaveBeenCalled());
+    expect(vi.mocked(updateEvent).mock.calls[0]?.[1].organizer).toEqual({
+      name: 'Kulturamt',
+      address: { street: 'Marktplatz 1', zip: '12345', city: 'Linz' },
+      contact: { firstName: 'Erika', fax: '0123 99' },
+    });
+  });
+
+  describe('organizer address disclosure when switching events without remounting', () => {
+    const eventsById: Record<string, unknown> = {
+      'without-address': {
+        id: 'without-address',
+        title: 'Lesung',
+        organizer: { name: 'Bibliothek' },
+      },
+      'with-address': {
+        id: 'with-address',
+        title: 'Stadtfest',
+        organizer: { name: 'Kulturamt', address: { street: 'Marktplatz 1', city: 'Linz' } },
+      },
+    };
+    const organizerStreet = () =>
+      document.getElementById('event-organizer-street') as HTMLInputElement | null;
+    const organizerDisclosure = () => organizerStreet()?.closest('details') as HTMLDetailsElement;
+    const waitForOrganizer = async (expected: { street: string; open: boolean }) => {
+      await waitFor(() => {
+        expect(organizerStreet()?.value).toBe(expected.street);
+        expect(organizerDisclosure().open).toBe(expected.open);
+      });
+    };
+
+    beforeEach(() => {
+      vi.mocked(getEvent).mockImplementation(async (contentId) => eventsById[contentId] as never);
+    });
+
+    it('resets the disclosure to the newly loaded organizer address in both directions', async () => {
+      const view = render(<EventsDetailPage mode="edit" contentId="without-address" />);
+      fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+      await waitForOrganizer({ street: '', open: false });
+
+      view.rerender(
+        <StudioEditorLeaveGuardProvider register={registerLeaveCheck}>
+          <EventsDetailPage mode="edit" contentId="with-address" />
+        </StudioEditorLeaveGuardProvider>
+      );
+      await waitForOrganizer({ street: 'Marktplatz 1', open: true });
+
+      view.rerender(
+        <StudioEditorLeaveGuardProvider register={registerLeaveCheck}>
+          <EventsDetailPage mode="edit" contentId="without-address" />
+        </StudioEditorLeaveGuardProvider>
+      );
+      await waitForOrganizer({ street: '', open: false });
+    });
+
+    it('keeps a manual toggle while editing the same event', async () => {
+      render(<EventsDetailPage mode="edit" contentId="with-address" />);
+      fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+      await waitForOrganizer({ street: 'Marktplatz 1', open: true });
+
+      fireEvent.click(organizerDisclosure().querySelector('summary')!);
+      fireEvent.change(document.getElementById('event-organizer-name')!, {
+        target: { value: 'Kulturamt Linz' },
+      });
+
+      expect(organizerDisclosure().open).toBe(false);
+      expect(organizerStreet()?.value).toBe('Marktplatz 1');
+    });
+  });
+
   it('retains other dates and input identity when changing the first date', async () => {
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1280',

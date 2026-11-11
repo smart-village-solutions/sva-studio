@@ -38,6 +38,13 @@ export const eventsENLabels = {
     dataProvider: 'Original DataProvider',
     unavailable: 'Unavailable',
   },
+  organizer: {
+    description:
+      'Institution, company, or responsible body. All details are optional; usually the name is enough.',
+    address: 'Organizer address',
+    addressHelp:
+      'Only fill this in if the organizer address is needed. The event location belongs in the "Venue" section.',
+  },
   fields: {
     title: 'Title',
     description: 'Description',
@@ -67,7 +74,8 @@ export const eventsENLabels = {
     useOnlyTimeDescriptionHelp:
       'Uses the existing Mainserver output option. Saved dates and times are not deleted.',
     organizerName: 'Organization/company',
-    organizerNameHelp: 'Required as soon as further organizer details are entered.',
+    organizerNameHelp:
+      'Required when other organizer details are present, such as an email address, phone number, or address.',
     firstName: 'First name',
     lastName: 'Last name',
     fax: 'Fax',

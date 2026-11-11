@@ -1,3 +1,4 @@
+import { wasteEmailMonitoringTranslationsEN } from './plugin.translations.en.email-monitoring.js';
 import { wasteManagementPluginTranslationsENNavigation } from './plugin.translations.en.navigation.js';
 import { wasteManagementPluginTranslationsENPage } from './plugin.translations.en.page.js';
 import { wasteManagementPluginTranslationsENActions } from './plugin.translations.en.actions.js';
@@ -18,6 +19,7 @@ import { wasteManagementPluginTranslationsENReadiness } from './plugin.translati
 import { createWasteManagementPluginTranslationLocale } from './plugin.translations.shared.base.js';
 
 export const wasteManagementPluginTranslationsEN = createWasteManagementPluginTranslationLocale([
+  wasteEmailMonitoringTranslationsEN,
   wasteManagementPluginTranslationsENNavigation,
   wasteManagementPluginTranslationsENPage,
   wasteManagementPluginTranslationsENActions,

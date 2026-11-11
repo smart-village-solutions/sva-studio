@@ -1199,6 +1199,48 @@ describe('interfaces app adapter', () => {
       )
     ).rejects.toMatchObject({ message: 'database_unavailable', statusCode: 500 });
   });
+
+  it('maps a rejected second map geocoding interface to a 400 validation error through the auth envelope', async () => {
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
+    state.upsertStoredInterface.mockRejectedValue(new Error('invalid_config'));
+    const request = new Request('https://tenant.example/api/v1/interfaces', {
+      method: 'POST',
+      headers: { authorization: 'Bearer verified-by-auth-middleware' },
+    });
+
+    const { upsertInstanceInterfaceForRequest } = await import('./interfaces-api');
+    await expect(
+      upsertInstanceInterfaceForRequest(
+        {
+          draft: {
+            type: 'mapGeocoding',
+            name: 'Zweite Karte',
+            enabled: true,
+            config: {
+              provider: 'geoapify',
+              styleUrl: 'https://tiles.example/styles/poi',
+              autocompleteEnabled: true,
+              geocodeEnabled: true,
+              reverseGeocodeEnabled: true,
+              suggestEndpoint: '',
+              geocodeEndpoint: '',
+              reverseGeocodeEndpoint: '',
+              requestTimeoutMs: '',
+              rateLimitPerMinute: '',
+              killSwitchEnabled: false,
+              apiKey: 'geoapify-key',
+            },
+          },
+        },
+        request
+      )
+    ).rejects.toMatchObject({ message: 'invalid_config', code: 'invalid_config', statusCode: 400 });
+    expect(state.getStoredInterface).not.toHaveBeenCalled();
+  });
   const mainserverConfig = {
     instanceId: 'de-musterhausen',
     providerKey: 'sva_mainserver',

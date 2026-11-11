@@ -110,10 +110,17 @@ export const serializeEventOrganizer = (organizer: SerializableOrganizer) => {
 const hasNonBlankCoordinate = (value?: string | null): boolean =>
   value !== undefined && value !== null && value.trim().length > 0;
 
+const hasNonBlankGeoLocation = (address?: SerializableAddress): boolean =>
+  hasNonBlankCoordinate(address?.geoLocation?.latitude) ||
+  hasNonBlankCoordinate(address?.geoLocation?.longitude);
+
 export const hasEventOrganizerContent = (organizer: SerializableOrganizer): boolean =>
   Object.keys(serializeEventOrganizer(organizer)).length > 0 ||
-  hasNonBlankCoordinate(organizer.address?.geoLocation?.latitude) ||
-  hasNonBlankCoordinate(organizer.address?.geoLocation?.longitude);
+  hasNonBlankGeoLocation(organizer.address);
+
+export const hasEventOrganizerAddressContent = (organizer: SerializableOrganizer): boolean =>
+  Object.keys(serializeEventAddress(organizer.address)).length > 0 ||
+  hasNonBlankGeoLocation(organizer.address);
 
 export const serializeEventMediaContents = (
   mediaContents: readonly (SerializableMediaContent | null | undefined)[] | undefined | null

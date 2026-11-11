@@ -80,6 +80,7 @@ export function EventsDetailEditorTabs(props: Props) {
             ) : null}
             {tab.id === 'content' ? (
               <EventsDetailContentTab
+                loadedEventId={loadedItem?.id}
                 mediaUsages={mediaUsages}
                 onAddManualMedia={addManualMedia}
                 onChangeMediaUsages={onChangeMediaUsages}

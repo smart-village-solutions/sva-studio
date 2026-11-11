@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { ssfModuleIamContract } from './ssf-module-iam-contract.js';
-it('registers explicit recording permissions without granting them to bootstrap or system admins', () => {
+it('grants all tenant permissions to bootstrap and system admins without root permissions', () => {
   expect(ssfModuleIamContract.permissionIds).toEqual(
     expect.arrayContaining([
       'ssf.recording.request',
@@ -14,8 +14,6 @@ it('registers explicit recording permissions without granting them to bootstrap 
     ...ssfModuleIamContract.tenantBootstrapRoles,
     ...ssfModuleIamContract.systemRoles,
   ])
-    expect(role.permissionIds).toEqual([
-      'ssf.configuration.tenant.manage',
-      'ssf.configuration.tenant.read',
-    ]);
+    expect(role.permissionIds).toEqual(ssfModuleIamContract.permissionIds);
+  expect(ssfModuleIamContract.rootSystemRoles).toEqual([]);
 });

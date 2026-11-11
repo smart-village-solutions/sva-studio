@@ -27,11 +27,13 @@ The SSF plugin receives a narrow host-supplied directory reader; it does not
 query IAM tables or own a duplicate account database. Directory labels are
 bounded for the consumer without excluding an otherwise eligible identity.
 
-Recording grants are explicit. Plugin metadata preserves
-`systemAdminPermissionExclusions` through SDK normalization, host composition
-and tenant bootstrap so adding a recording permission does not automatically
-grant it to every tenant administrator. Existing configuration-management
-permissions retain their normal baseline.
+Recording grants for ordinary tenant roles are explicit. The protected tenant-local
+`system_admin` receives all permissions of the assigned SSF module through the
+existing permission reconciliation, including recording permissions. This
+restores the existing tenant administrator invariant; administrator exclusions
+must not reduce those grants. Platform configuration actions remain separate,
+and recording enablement, language competence and sensitive-action step-up keep
+their existing independent checks.
 
 Competence changes schedule the existing durable tenant lifecycle reconciliation
 task in the account transaction. A change during a running reconciliation must

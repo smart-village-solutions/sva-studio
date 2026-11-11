@@ -1,15 +1,16 @@
 ## ADDED Requirements
 
-### Requirement: Explicit plugin administrator permission exclusions
+### Requirement: Complete tenant administrator permissions
 
-The plugin module IAM contract SHALL support optional `systemAdminPermissionExclusions` for declared module permission IDs. Descriptor validation, normalization, generated registry and host module-contract composition SHALL preserve these exclusions through tenant provisioning and reconciliation. Exclusions SHALL be validated against the owning module's declared permissions. Missing exclusions SHALL preserve existing behavior for other modules.
+The plugin module IAM contract SHALL register all tenant-local recording permission IDs. Tenant provisioning and reconciliation SHALL grant the protected tenant-local `system_admin` the complete permission set of the assigned module. Historical exclusion metadata MUST NOT reduce these grants. Root-only actions SHALL remain outside tenant module permissions.
 
-#### Scenario: Recording permission registration does not grant administrators
+#### Scenario: Recording permission registration preserves tenant administrator access
 
-- **WHEN** the SSF plugin registers its five recording permissions with administrator exclusions
-- **THEN** the normalized plugin contract and host bootstrap resolver retain the exclusions
-- **AND** creating or reconciling a tenant administrator does not automatically grant those recording permissions
-- **AND** the existing SSF configuration-management grants remain available
+- **WHEN** the SSF plugin registers its five tenant-local recording permissions
+- **THEN** provisioning and reconciliation grant those permissions to tenant-local `system_admin`
+- **AND** existing SSF configuration-management grants remain available
+- **AND** ordinary roles still require explicit recording grants
+- **AND** recording enablement, competence and sensitive-action step-up remain independent checks
 
 ### Requirement: Host supplied live permission directory capability
 

@@ -645,6 +645,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Ein Skip-Link ermöglicht direkten Sprung in den Contentbereich (`#main-content`)
 - Skeleton-Zustände werden konsistent über alle drei Kernbereiche bereitgestellt
 - Mobile-first Layout: Sidebar bleibt auf kleinen Viewports nutzbar, auf großen Viewports als feste Seitenleiste
+- Im ausgeklappten Seitenleistenkopf steht der Tenantname groß vor dem kleineren App-Namen. Lange Tenantnamen verwenden Wortumbruch und die native automatische Silbentrennung der Oberflächensprache; überlange Einzelwörter können zusätzlich innerhalb des Wortes umbrechen; ohne Tenantname bleibt der App-Name der Titel.
 - Am unteren Ende jeder Studio-Seite wird ein kompakter Runtime-Health-Indikator mit Polling für Postgres, Redis, Keycloak und den Autorisierungs-Cache angezeigt; ein Fehler beim Polling degradiert nur die Anzeige, nicht die restliche Shell
 
 Referenzen:
@@ -888,7 +889,7 @@ Der zentrale Migrationsprincipal darf nur das Registry-Inventar lesen; in der Fa
 
 - Permission-Keys bleiben vollständig qualifiziert und global eindeutig.
 - Root-, Tenant- und Modul-Availability werden vor Deployment validiert; Modul-Keys müssen im Namespace ihres Moduls liegen.
-- `systemAdminGrant` ist für Tenant- und Modul-Permissions standardmäßig `true`, für Root-Permissions immer `false`.
+- `system_admin` erhält sämtliche aktiven Tenant-Permissions und Rechte aktivierter, zugewiesener Module. Historische Angaben `systemAdminGrant: false` oder `systemAdminPermissionExclusions` schränken diese tenantlokalen Grants nicht ein; Root-Permissions bleiben immer ausgeschlossen.
 - Deprecation ist rein deklarativ und niemals ein Löschsignal. Destruktive Datenpflege benötigt eine eigene Migration und Freigabe.
 - Auditdaten enthalten nur IDs, Request-Korrelation und Zählwerte, keine freien Permission- oder Account-Payloads.
 
@@ -1473,6 +1474,6 @@ Das Referenz-Plugin erzeugt öffentliche SDK-/UI-Peers aus einem festen Studio-C
 
 ## Datenschutz und Zugriff bei Waste-E-Mail-Auswertungen
 
-`waste-management.email-reminder-monitoring.read` schützt Navigation, Route und `GET /api/v1/waste-management/email-monitoring` unabhängig von allgemeinen Monitoring-/Waste-Leserechten. Die Modul-IAM-Definition schließt die automatische System-Admin-Zuweisung aus. Die Runtime verwendet ausschließlich die authentifizierte Instanz und ihre bestehende Datenquellenauflösung; ein fremder `instanceId`-Queryparameter kann den Mandanten nicht wechseln.
+`waste-management.email-reminder-monitoring.read` schützt Navigation, Route und `GET /api/v1/waste-management/email-monitoring` unabhängig von allgemeinen Monitoring-/Waste-Leserechten. Die geschützte tenantlokale Rolle `system_admin` erhält das Recht automatisch über den bestehenden Permission-Sync. Für andere Rollen ist die gesonderte Zuweisung erforderlich. Die Runtime verwendet ausschließlich die authentifizierte Instanz und ihre bestehende Datenquellenauflösung; ein fremder `instanceId`-Queryparameter kann den Mandanten nicht wechseln.
 
 Die serverseitige Projektion maskiert beide Adressteile und liefert weder Rohadressen, Tokens, Hashes, vollständige Payloads noch freie Provider-Fehlertexte. Ort, Fraktion, stabile Abo-ID und Zeitpunkte bleiben für die berechtigte Diagnose sichtbar; das Ergebnis bleibt personenbezogen und ist keine Anonymisierung. Filter und Pagination werden begrenzt validiert, Antworten erhalten `Cache-Control: no-store`, UI-Zustände werden beim Identitäts-/Instanzwechsel verworfen. Die vorhandene Outbox liefert den aktuellen gespeicherten Versandstand, kein lückenloses Versandjournal oder Empfangsnachweis.

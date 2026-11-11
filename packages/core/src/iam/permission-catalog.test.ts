@@ -23,7 +23,7 @@ describe('permission catalog', () => {
     ).toBe(true);
   });
 
-  it('honors explicit opt-outs and never grants root permissions to system_admin', () => {
+  it('grants every tenant permission while never granting root permissions to system_admin', () => {
     expect(
       resolvesSystemAdminGrant({
         key: 'iam.example.write',
@@ -32,7 +32,7 @@ describe('permission catalog', () => {
         availability: { kind: 'tenant' },
         systemAdminGrant: false,
       })
-    ).toBe(false);
+    ).toBe(true);
     expect(
       corePermissionCatalog.find((entry) => entry.key === 'instance.registry.manage')
     ).toMatchObject({
@@ -56,7 +56,7 @@ describe('permission catalog', () => {
       true
     );
     expect(resolvesSystemAdminGrant(catalog.find((entry) => entry.key === 'surveys.export')!)).toBe(
-      false
+      true
     );
   });
 

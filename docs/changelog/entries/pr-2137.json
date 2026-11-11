@@ -1,0 +1,4 @@
+{
+  "prNumber": 2137,
+  "body": "System-Administratoren erhalten wieder sämtliche Rechte innerhalb ihres Tenants, einschließlich des E-Mail-Monitorings und der Rechte zugewiesener Module. Plattformrechte bleiben getrennt.\n\nDer Tenantname steht in der Seitenleiste jetzt groß über dem kleineren App-Namen. Lange Namen können mit automatischer Silbentrennung umbrechen."
+}

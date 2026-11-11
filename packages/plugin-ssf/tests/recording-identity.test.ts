@@ -14,7 +14,7 @@ const grants = [
   'ssf.recording.supervise',
   'ssf.recording.recovery.custodian',
 ];
-it('projects explicit recording grants and canonical competence languages without granting them to admins', () => {
+it('projects explicit recording grants and competence languages independently of role hints', () => {
   const projection = createSsfAuthorizationProjection({
     instanceId: 'tenant-a',
     subjects: [
@@ -30,10 +30,9 @@ it('projects explicit recording grants and canonical competence languages withou
     permissions: [...grants].sort(),
     languages: ['de', 'en'],
   });
-  expect(ssfPlugin.moduleIam.systemRoles[0].permissionIds).toEqual([
-    'ssf.configuration.tenant.read',
-    'ssf.configuration.tenant.manage',
-  ]);
+  expect(new Set(ssfPlugin.moduleIam.systemRoles[0].permissionIds)).toEqual(
+    new Set(ssfPlugin.moduleIam.permissionIds)
+  );
   expect(ssfPlugin.moduleIam.permissionIds).toEqual(expect.arrayContaining(grants));
   const changed = {
     ...projection,

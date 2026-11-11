@@ -4189,7 +4189,7 @@ describe('instance registry service facade', () => {
     );
   });
 
-  it('bootstraps the SSF host contract without implicitly granting recording permissions', async () => {
+  it('bootstraps all tenant SSF permissions for system_admin despite legacy exclusions', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => ({ ...baseInstance, assignedModules: ['ssf'] })),
       listAssignedModules: vi.fn(async () => ['ssf']),
@@ -4263,7 +4263,11 @@ describe('instance registry service facade', () => {
             systemRoles: [
               {
                 roleName: 'system_admin',
-                permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+                permissionIds: [
+                  'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
+                  'ssf.recording.supervise', 'ssf.recording.recovery.custodian',
+                  'ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage',
+                ],
               },
             ],
           }),
@@ -4323,7 +4327,7 @@ describe('instance registry service facade', () => {
         contracts: [
           expect.objectContaining({
             moduleId: 'media',
-            systemRoles: [{ roleName: 'system_admin', permissionIds: ['media.read'] }],
+            systemRoles: [{ roleName: 'system_admin', permissionIds: ['media.read', 'media.create'] }],
           }),
         ],
       })

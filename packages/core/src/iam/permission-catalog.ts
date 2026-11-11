@@ -10,6 +10,7 @@ export type PermissionDefinition = Readonly<{
   description: string;
   resourceType: string;
   availability: PermissionAvailability;
+  /** @deprecated Tenant grants are complete; root availability always denies the grant. */
   systemAdminGrant?: boolean;
   lifecycle?: PermissionLifecycle;
 }>;
@@ -17,6 +18,7 @@ export type PermissionDefinition = Readonly<{
 export type ModulePermissionCatalogContribution = Readonly<{
   moduleId: string;
   permissionIds: readonly string[];
+  /** @deprecated Accepted for existing contributors; never reduces system_admin grants. */
   systemAdminPermissionExclusions?: readonly string[];
 }>;
 
@@ -89,7 +91,7 @@ export const resolvesSystemAdminGrant = (definition: PermissionDefinition): bool
   if (definition.availability.kind === 'root') {
     return false;
   }
-  return definition.systemAdminGrant ?? true;
+  return true;
 };
 
 const assertNonBlank = (value: string, field: string, key: string): void => {
@@ -143,7 +145,6 @@ export const composePermissionCatalog = (
         description: `Module permission ${key}`,
         resourceType: key.split('.')[0] ?? key,
         availability: { kind: 'module', moduleId: contribution.moduleId },
-        ...(exclusions.has(key) ? { systemAdminGrant: false } : {}),
       }));
     }),
   ]);

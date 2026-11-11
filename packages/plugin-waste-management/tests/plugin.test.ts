@@ -144,7 +144,6 @@ describe('pluginWasteManagement contract', () => {
     );
     expect(pluginWasteManagement.moduleIam).toEqual({
       moduleId: 'waste-management',
-      systemAdminPermissionExclusions: ['waste-management.email-reminder-monitoring.read'],
       permissionIds: [
         'waste-management.email-reminder-monitoring.read',
         'waste-management.read',
@@ -161,6 +160,7 @@ describe('pluginWasteManagement contract', () => {
         {
           roleName: 'system_admin',
           permissionIds: [
+            'waste-management.email-reminder-monitoring.read',
             'waste-management.read',
             'waste-management.master-data.manage',
             'waste-management.tours.manage',

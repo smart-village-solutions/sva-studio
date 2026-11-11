@@ -322,7 +322,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-it('zeigt den Tenant-Namen unter dem App-Titel und nutzt die Tenant-ID als Fallback', () => {
+it('zeigt den Tenant-Namen vor dem App-Titel und nutzt die Tenant-ID als Fallback', () => {
   const { rerender } = renderSidebar({
     user: createSidebarUser({
       instanceId: 'tenant-a',

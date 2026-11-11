@@ -42,18 +42,15 @@ export const SidebarPanel = ({
     <div className="flex h-full flex-col">
       <div className="px-4 py-4">
         <div
-          className={`relative flex min-h-12 items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}
+          className={`relative flex min-h-12 items-center gap-3 ${isCollapsed ? 'justify-center' : 'justify-between'}`}
         >
           {showAppTitle ? (
-            <div className="min-w-0">
-              <p className="text-3xl font-semibold text-foreground">{appName}</p>
+            <div className="min-w-0 flex-1">
+              <p className="hyphens-auto text-balance text-3xl font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">
+                {tenantName || appName}
+              </p>
               {tenantName ? (
-                <p
-                  className="truncate text-xs font-medium text-muted-foreground"
-                  title={tenantName}
-                >
-                  {tenantName}
-                </p>
+                <p className="text-xs font-medium text-muted-foreground">{appName}</p>
               ) : null}
             </div>
           ) : null}

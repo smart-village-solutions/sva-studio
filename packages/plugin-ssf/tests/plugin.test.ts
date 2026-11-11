@@ -23,10 +23,15 @@ describe('SSF plugin metadata', () => {
       systemRoles: [
         {
           roleName: 'system_admin',
-          permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+          permissionIds: expect.arrayContaining([
+            'ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage',
+            'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
+            'ssf.recording.supervise', 'ssf.recording.recovery.custodian',
+          ]),
         },
       ],
     });
+    expect(new Set(contract?.systemRoles[0]?.permissionIds)).toEqual(new Set(contract?.permissionIds));
     expect(contract?.permissionIds).not.toContain('ssf.configuration.system.manage');
     expect(contract?.permissionIds).not.toContain('ssf.configuration.system.read');
   });

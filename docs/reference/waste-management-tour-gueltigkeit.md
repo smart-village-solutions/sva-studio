@@ -91,7 +91,7 @@ Eine Abfallart kann nicht gelöscht werden, solange sie einer Tour zugeordnet is
 
 ## E-Mail-Abos und Versand auswerten
 
-Unter **Monitoring → E-Mail-Abos und Versand** stellt das Abfallkalender-Plugin eine rein lesende Auswertung bereit. Voraussetzung sind das aktivierte und zugewiesene Modul sowie das gesonderte Recht `waste-management.email-reminder-monitoring.read`. Allgemeine Monitoring- und Abfallkalender-Leserechte reichen nicht aus; auch die System-Admin-Modulrolle erhält dieses Recht nicht automatisch. Die Freigabe erfolgt gezielt über die bestehende Rollenverwaltung.
+Unter **Monitoring → E-Mail-Abos und Versand** stellt das Abfallkalender-Plugin eine rein lesende Auswertung bereit. Voraussetzung sind das aktivierte und zugewiesene Modul sowie das gesonderte Recht `waste-management.email-reminder-monitoring.read`. Allgemeine Monitoring- und Abfallkalender-Leserechte reichen für andere Rollen nicht aus; die geschützte tenantlokale Rolle `system_admin` erhält dieses Recht wie alle Rechte zugewiesener Module automatisch über den bestehenden Permission-Sync. Für andere Rollen erfolgt die Freigabe gezielt über die bestehende Rollenverwaltung.
 
 Die nach Status filterbare Abo-Liste zeigt die maskierte Empfängeradresse, eine stabile Abo-Kennung, den Ort, abonnierte Fraktionen und Erinnerungsplätze sowie Anlage, Bestätigung und Abmeldung. Vor und nach dem `@` bleiben jeweils das erste und letzte Zeichen sichtbar, dazwischen stehen Sternchen. Adressteile mit höchstens zwei Zeichen werden vollständig maskiert. Straße, Hausnummer, Tokens, Hashes und Nachrichteninhalte werden nicht an den Browser übertragen. Die Maskierung dient der Wiedererkennung bekannter eigener Adressen; sie ist keine Anonymisierung.
 

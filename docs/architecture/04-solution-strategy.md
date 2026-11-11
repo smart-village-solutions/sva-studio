@@ -257,7 +257,7 @@ Die Instanz-Control-Plane wird über einen dünnen lokalen MCP-Adapter wiederver
 
 ### Ergänzung 2026-08: Kanonischer Permission-Katalog
 
-Core- und Modul-Permissions werden in einer typsicheren, validierten Katalogsicht zusammengeführt. Tenantweite und aktivierte Modul-Permissions erhalten standardmäßig einen verwalteten `system_admin`-Grant; Root-Permissions bleiben isoliert. Der Reconcile ist idempotent und additiv, während Löschungen ausschließlich über separate, ausdrücklich freigegebene Changes erfolgen.
+Core- und Modul-Permissions werden in einer typsicheren, validierten Katalogsicht zusammengeführt. Sämtliche tenantweiten und aktivierten, zugewiesenen Modul-Permissions erhalten einen verwalteten `system_admin`-Grant; Root-Permissions bleiben isoliert. Der Reconcile ist idempotent und additiv, während Löschungen ausschließlich über separate, ausdrücklich freigegebene Changes erfolgen.
 
 ### Ergänzung 2026-08: Changed-first PR-Feedback
 

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 type SessionUser = {
   id: string;
   instanceId?: string;
+  roles?: string[];
 };
 
 const INSTANCE_ID = '11111111-1111-4111-8111-111111111111';
@@ -194,7 +195,7 @@ describe('authorize handler', () => {
     const { authorizeHandler } = await import('./authorize.js');
     state.withAuthenticatedUser.mockImplementationOnce(
       async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
-        handler({ user: { ...baseUser, instanceId: '44444444-4444-4444-8444-444444444444' } })
+        handler({ user: { ...baseUser, roles: ['system_admin'], instanceId: '44444444-4444-4444-8444-444444444444' } })
     );
 
     const response = await authorizeHandler(
@@ -303,6 +304,10 @@ describe('authorize handler', () => {
 
   it('denies root-only tenant permissions fail-closed before decision evaluation', async () => {
     const { authorizeHandler } = await import('./authorize.js');
+    state.withAuthenticatedUser.mockImplementationOnce(
+      async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
+        handler({ user: { ...baseUser, roles: ['system_admin'] } })
+    );
     state.loadAuthorizeRequest.mockResolvedValueOnce({
       ...createPayload(),
       action: 'instance.registry.manage',

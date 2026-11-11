@@ -750,8 +750,8 @@ Zuordnung:
 
 [ADR-071](../adr/ADR-071-recording-policy-and-tenant-authentication.md) assigns
 recording policy/content to the SSF plugin and account competence/authentication
-policy to Core/IAM. It records explicit recording grants, preserved administrator
-exclusions, the live host-reader boundary and durable reconciliation. Runtime
+policy to Core/IAM. It records explicit grants for ordinary roles, complete
+tenant-local `system_admin` grants, the live host-reader boundary and durable reconciliation. Runtime
 and validation are described in sections 05, 06 and 08; implementation does not
 itself establish production promotion or tenant recording readiness.
 

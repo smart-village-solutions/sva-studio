@@ -172,6 +172,9 @@ export const EmailMonitoringTables = (props: TableProps) => {
         {props.pt('emailMonitoring.subscriptions')}
       </h2>
       <SubscriptionTable {...props} onSelect={onSelect} />
+      <p className="max-w-3xl text-sm text-muted-foreground">
+        {props.pt('emailMonitoring.deliverySummaryNotice')}
+      </p>
       {props.selected && <DeliveryTable {...props} selected={props.selected} onSelect={onSelect} />}
     </>
   );

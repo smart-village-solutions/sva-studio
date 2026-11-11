@@ -82,6 +82,8 @@ test.describe('waste management plugin', () => {
         createdAt: '2026-11-01T10:00:00Z',
         activatedAt: '2026-11-01T10:05:00Z',
         unsubscribedAt: null,
+        lastSentEmail: { kind: 'doi', sentAt: '2026-11-01T10:05:00Z' },
+        nextEmail: { kind: 'reminder', status: 'pending', scheduledAt: '2026-11-12T06:00:00Z' },
         items: [
           { fraction: 'Leichtverpackungen gelber Sack', slotId: 'yellow:email:first' },
           { fraction: 'Leichtverpackungen gelber Sack', slotId: 'yellow:email:second' },
@@ -126,6 +128,8 @@ test.describe('waste management plugin', () => {
         page.getByText('Abo bestätigt', { exact: true }).filter({ visible: true })
       ).toBeVisible();
       await expect(page.getByText('legacy-slot')).toHaveCount(0);
+      await expect(page.getByText('Zuletzt versendet', { exact: true }).filter({ visible: true })).toBeVisible();
+      await expect(page.getByText('Als Nächstes vorgemerkt', { exact: true }).filter({ visible: true })).toBeVisible();
       await page.screenshot({
         path: testInfo.outputPath(`monitoring-list-${width}.png`),
         fullPage: true,

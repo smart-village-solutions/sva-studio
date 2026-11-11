@@ -31,16 +31,8 @@ export const emailMonitoringSubscriptionColumns = (
       <div className="space-y-1 break-words">
         <p className="break-all font-medium">{row.maskedEmail}</p>
         <p className="text-muted-foreground">{row.city ?? pt('emailMonitoring.unavailable')}</p>
-      </div>
-    ),
-  },
-  {
-    id: 'status',
-    header: pt('emailMonitoring.status'),
-    cell: (row) => (
-      <div className="max-w-56 space-y-2">
         <Badge>{pt(`emailMonitoring.states.${row.status}`)}</Badge>
-        <p className="text-sm text-muted-foreground">
+        <p className="max-w-56 text-sm text-muted-foreground">
           {pt(`emailMonitoring.stateDescriptions.${row.status}`)}
         </p>
       </div>
@@ -69,6 +61,60 @@ export const emailMonitoringSubscriptionColumns = (
           </li>
         ))}
       </ul>
+    ),
+  },
+  {
+    id: 'delivery',
+    header: pt('emailMonitoring.emailDelivery'),
+    cell: (row) => (
+      <dl className="max-w-72 space-y-3 text-sm">
+        <div>
+          <dt className="font-medium">{pt('emailMonitoring.lastSentEmail')}</dt>
+          <dd>
+            {row.lastSentEmail ? (
+              <>
+                <p>{pt(`emailMonitoring.kinds.${row.lastSentEmail.kind}`)}</p>
+                <p className="text-xs text-muted-foreground">{pt('emailMonitoring.sent')}</p>
+                <p>
+                  {formatEmailMonitoringTimestamp(
+                    row.lastSentEmail.sentAt,
+                    pt('emailMonitoring.unavailable')
+                  )}
+                </p>
+              </>
+            ) : row.lastSentEmail === null ? (
+              pt('emailMonitoring.noSentEmail')
+            ) : (
+              pt('emailMonitoring.unavailable')
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium">
+            {row.nextEmail?.status === 'processing'
+              ? pt('emailMonitoring.deliveryStates.processing')
+              : pt('emailMonitoring.nextEmail')}
+          </dt>
+          <dd>
+            {row.nextEmail ? (
+              <>
+                <p>{pt(`emailMonitoring.kinds.${row.nextEmail.kind}`)}</p>
+                <p className="text-xs text-muted-foreground">{pt('emailMonitoring.scheduled')}</p>
+                <p>
+                  {formatEmailMonitoringTimestamp(
+                    row.nextEmail.scheduledAt,
+                    pt('emailMonitoring.unavailable')
+                  )}
+                </p>
+              </>
+            ) : row.nextEmail === null ? (
+              pt('emailMonitoring.noNextEmail')
+            ) : (
+              pt('emailMonitoring.unavailable')
+            )}
+          </dd>
+        </div>
+      </dl>
     ),
   },
 ];

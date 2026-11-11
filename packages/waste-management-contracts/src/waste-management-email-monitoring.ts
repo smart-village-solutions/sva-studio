@@ -18,6 +18,13 @@ export type WasteEmailSubscriptionSummary = Readonly<{
   activatedAt: string | null;
   unsubscribedAt: string | null;
   items: readonly Readonly<{ fraction: string; slotId: string }>[];
+  /** Absent with older API versions; null means no matching stored message. */
+  lastSentEmail?: Readonly<Pick<WasteEmailDeliverySummary, 'kind' | 'sentAt'>> | null;
+  nextEmail?: Readonly<
+    Pick<WasteEmailDeliverySummary, 'kind' | 'scheduledAt'> & {
+      status: 'pending' | 'processing';
+    }
+  > | null;
 }>;
 export type WasteEmailDeliverySummary = Readonly<{
   id: string;

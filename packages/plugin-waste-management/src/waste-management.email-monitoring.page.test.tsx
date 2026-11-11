@@ -29,6 +29,12 @@ const subscription = {
     { fraction: 'Bio A', slotId: 'bio:email:first' },
     { fraction: 'Altpapier', slotId: 'legacy-slot' },
   ],
+  lastSentEmail: { kind: 'doi' as const, sentAt: '2026-11-10T10:00:00Z' },
+  nextEmail: {
+    kind: 'reminder' as const,
+    status: 'pending' as const,
+    scheduledAt: '2026-11-12T06:00:00Z',
+  },
 };
 const data = { subscriptions: [subscription], total: 26, deliveries: [], deliveryTotal: 0 };
 const allow = (permissions: string[], instanceId = 'tenant-a') =>
@@ -114,6 +120,64 @@ describe('email monitoring page', () => {
     expect(screen.getByText('emailMonitoring.forbidden')).toBeTruthy();
     expect(getWasteEmailMonitoring).not.toHaveBeenCalled();
   });
+  it('shows stored sent and scheduled emails directly in the subscription overview', async () => {
+    allow([wasteEmailMonitoringPermission]);
+    render(<WasteEmailMonitoringPage />);
+    await screen.findAllByText(subscription.maskedEmail);
+    const overview = within(screen.getByRole('table', { name: 'emailMonitoring.subscriptions' }));
+    expect(overview.getByText('emailMonitoring.lastSentEmail')).toBeTruthy();
+    expect(overview.getByText('emailMonitoring.kinds.doi')).toBeTruthy();
+    expect(overview.getByText('emailMonitoring.nextEmail')).toBeTruthy();
+    expect(overview.getByText('emailMonitoring.kinds.reminder')).toBeTruthy();
+    expect(
+      overview.getByText(
+        new Date(subscription.lastSentEmail.sentAt).toLocaleString('de', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        })
+      )
+    ).toBeTruthy();
+    expect(
+      overview.getByText(
+        new Date(subscription.nextEmail.scheduledAt).toLocaleString('de', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        })
+      )
+    ).toBeTruthy();
+  });
+  it.each(['missing', 'empty', 'processing'] as const)(
+    'explains %s sending records without claiming a future delivery',
+    async (state) => {
+      const legacySubscription = { ...subscription };
+      Reflect.deleteProperty(legacySubscription, 'lastSentEmail');
+      Reflect.deleteProperty(legacySubscription, 'nextEmail');
+      const row =
+        state === 'missing'
+          ? legacySubscription
+          : state === 'empty'
+            ? { ...legacySubscription, lastSentEmail: null, nextEmail: null }
+            : {
+                ...subscription,
+                nextEmail: { ...subscription.nextEmail, status: 'processing' as const },
+              };
+      vi.mocked(getWasteEmailMonitoring).mockResolvedValue({ ...data, subscriptions: [row] });
+      allow([wasteEmailMonitoringPermission]);
+      render(<WasteEmailMonitoringPage />);
+      await screen.findAllByText(subscription.maskedEmail);
+      const overview = within(screen.getByRole('table', { name: 'emailMonitoring.subscriptions' }));
+      if (state === 'empty') {
+        expect(overview.getByText('emailMonitoring.noSentEmail')).toBeTruthy();
+        expect(overview.getByText('emailMonitoring.noNextEmail')).toBeTruthy();
+      } else if (state === 'missing') {
+        expect(overview.getAllByText('emailMonitoring.unavailable')).toHaveLength(2);
+        expect(overview.queryByText('emailMonitoring.noSentEmail')).toBeNull();
+      } else {
+        expect(overview.getByText('emailMonitoring.deliveryStates.processing')).toBeTruthy();
+        expect(overview.queryByText('emailMonitoring.nextEmail')).toBeNull();
+      }
+    }
+  );
   it('shows masked subscriptions, loads selected mail state and resets selection on filtering', async () => {
     allow([wasteEmailMonitoringPermission]);
     render(<WasteEmailMonitoringPage />);

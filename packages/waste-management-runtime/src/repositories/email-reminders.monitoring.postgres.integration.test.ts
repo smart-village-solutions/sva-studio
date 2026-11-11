@@ -81,6 +81,8 @@ describe.skipIf(!databaseUrl)('Email monitoring against PostgreSQL', () => {
       items: [{ fraction: 'Bio', slotId: 'bio:email:first' }],
       createdAt: '2026-11-01T10:00:00.000Z',
       activatedAt: '2026-11-01T10:01:00.000Z',
+      lastSentEmail: null,
+      nextEmail: null,
     });
     expect(result.deliveries[0]).toMatchObject({
       fraction: 'Bio',
@@ -95,6 +97,40 @@ describe.skipIf(!databaseUrl)('Email monitoring against PostgreSQL', () => {
     );
     const second = await loadWasteEmailMonitoring(executor, { ...query, page: 2, deliveryPage: 2 });
     expect(second).toMatchObject({ total: 1, subscriptions: [], deliveryTotal: 1, deliveries: [] });
+    for (const [key, kind, status, sendAt, sentAt] of [
+      ['old', 'doi', 'sent', '2026-11-01T10:00:00Z', '2026-11-01T10:00:00Z'],
+      ['latest', 'reminder', 'sent', '2026-11-02T10:00:00Z', '2026-11-02T10:00:00Z'],
+      ['ignored-failed', 'doi', 'failed', '2026-11-03T10:00:00Z', '2026-11-03T10:00:00Z'],
+      ['ignored-cancelled', 'doi', 'cancelled', '2026-11-04T10:00:00Z', '2026-11-04T10:00:00Z'],
+      ['next', 'doi', 'pending', '2026-11-02T06:00:00Z', null],
+      ['later', 'reminder', 'pending', '2026-11-03T06:00:00Z', null],
+      ['processing', 'reminder', 'processing', '2026-11-02T08:00:00Z', null],
+    ]) {
+      await client.query(
+        `INSERT INTO waste_email_reminder_outbox
+         (subscription_id,message_kind,transport_id,template_key,send_at,sent_at,dedupe_key,status,payload)
+         VALUES ($1,$2,'smtp','template',$3,$4,$5,$6,'{}')`,
+        [subscription, kind, sendAt, sentAt, key, status]
+      );
+    }
+    const overview = await loadWasteEmailMonitoring(executor, query);
+    expect(overview.subscriptions[0]).toMatchObject({
+      lastSentEmail: { kind: 'reminder', sentAt: '2026-11-02T10:00:00.000Z' },
+      nextEmail: {
+        kind: 'reminder',
+        status: 'processing',
+        scheduledAt: '2026-11-02T08:00:00.000Z',
+      },
+    });
+    await client.query(
+      "UPDATE waste_email_reminder_outbox SET status='cancelled' WHERE dedupe_key='processing'"
+    );
+    expect((await loadWasteEmailMonitoring(executor, query)).subscriptions[0]?.nextEmail).toEqual({
+      kind: 'doi',
+      status: 'pending',
+      scheduledAt: '2026-11-02T06:00:00.000Z',
+    });
+    expect(JSON.stringify(overview)).not.toMatch(/philipp|private|unsubscribeUrl|recipient/);
     await client.query(`SET search_path TO ${otherSchema}, public`);
     expect(await loadWasteEmailMonitoring(executor, query)).toEqual({
       total: 0,

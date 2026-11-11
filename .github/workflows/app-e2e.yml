@@ -94,7 +94,8 @@ jobs:
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
 
-      - name: Install Playwright browsers
+      - name: Install Playwright Chromium
+        # The browser suite verifies that the hosted runner's system libraries are sufficient.
         run: pnpm --filter sva-studio-react exec playwright install chromium
 
       - name: Start Redis for E2E

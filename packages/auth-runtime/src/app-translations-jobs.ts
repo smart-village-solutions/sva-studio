@@ -179,6 +179,7 @@ export const startCatalogTranslation = async (
       credentialRevision: config.settings.credentialRevision,
       interfaceId: config.record.id,
       generation: config.generation,
+      appModuleRevision: config.appModuleRevision,
       targetCodes: Object.fromEntries(
         locales.map((locale) => [locale, config.targetCodes[locale]])
       ),

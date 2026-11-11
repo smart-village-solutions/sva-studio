@@ -220,7 +220,8 @@ const bindingKeys = [
   'mediaUsage',
   'media',
   'categories',
-  'app',
+  'appTexts',
+  'adminAppTranslations',
   'interfaces',
   'help',
   'support',
@@ -1304,6 +1305,61 @@ describe('app.routes', () => {
       })
     ).resolves.toBeUndefined();
     expect(allowedGetUser).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires App for both tenant catalog routes and also Mehrsprachigkeit for the plugin route', async () => {
+    const pluginRoutes = getPluginRouteFactories([
+      {
+        id: 'app-translations',
+        displayName: 'Mehrsprachigkeit',
+        moduleIam: { moduleId: 'app-translations', permissionIds: [], systemRoles: [] },
+        routes: [
+          {
+            id: 'app-translations.catalogs',
+            path: '/plugins/app-translations',
+            accessRequirement: {
+              kind: 'tenant',
+              moduleId: 'app-translations',
+              actions: { mode: 'allOf', values: ['app-translations.catalog.read'] },
+            },
+            component: () => null,
+          },
+        ],
+      },
+    ]);
+    const routes = [...createUiRouteFactories(bindings, { adminResources }), ...pluginRoutes].map(
+      (factory) => readRouteOptions(factory({ id: 'root' } as never))
+    );
+    const checkAccess = (path: string, assignedModules: string[]) => {
+      const route = routes.find((route) => route.path === path)!;
+      return route.beforeLoad?.({
+        context: {
+          auth: {
+            getUser: async () => ({
+              instanceId: 'tenant',
+              roles: ['editor'],
+              permissionActions: ['app-texts.catalog.read', 'app-translations.catalog.read'],
+              assignedModules,
+            }),
+          },
+        },
+        location: { href: path },
+      });
+    };
+    expect(routes.some((route) => route.path === '/app')).toBe(false);
+    await expect(checkAccess('/app-texts', [])).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole',
+    });
+    await expect(checkAccess('/app-texts', ['app'])).resolves.toBeUndefined();
+    await expect(
+      checkAccess('/plugins/app-translations', ['app-translations'])
+    ).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole',
+    });
+    await expect(checkAccess('/plugins/app-translations', ['app'])).rejects.toBeDefined();
+    await expect(
+      checkAccess('/plugins/app-translations', ['app', 'app-translations'])
+    ).resolves.toBeUndefined();
   });
 
   it('blocks static media usage routes when module assignment or media.read is missing', async () => {

@@ -155,6 +155,7 @@ describe('ModulesPage', () => {
   it('uses localized public metadata and falls back for modules without metadata', () => {
     setActiveLocale('en');
     expect(resolveModuleName('media')).toBe('Media Library');
+    expect(resolveModuleName('app')).toBe('App');
     expect(resolveModuleDescription('media')).toContain('images and documents');
     expect(resolveModuleName('unknown-module')).toBe('unknown-module');
     expect(
@@ -170,6 +171,7 @@ describe('ModulesPage', () => {
         (contract) => contract.moduleId
       ),
       'media',
+      'app',
     ]);
     expect(studioPluginSnapshot.registry.pluginModuleIamRegistry.get('cockpit')).toMatchObject({
       ownerPluginId: 'cockpit',
@@ -188,7 +190,7 @@ describe('ModulesPage', () => {
       createStudioModuleIamContracts([], studioHostModuleIamContracts).map(
         (contract) => contract.moduleId
       )
-    ).toEqual(['media']);
+    ).toEqual(['media', 'app']);
     expect(
       createStudioModuleIamContracts(
         [
@@ -203,7 +205,7 @@ describe('ModulesPage', () => {
         ],
         studioHostModuleIamContracts
       ).map((contract) => contract.moduleId)
-    ).toEqual(['additional-plugin', 'media']);
+    ).toEqual(['additional-plugin', 'media', 'app']);
   });
 
   it('excludes disabled, incompatible and removed plugins from the assignable catalog', async () => {
@@ -266,7 +268,7 @@ describe('ModulesPage', () => {
         report.snapshot.registry.pluginModuleIamContracts,
         studioHostModuleIamContracts
       ).map((contract) => contract.moduleId)
-    ).toEqual(['additional-plugin', 'media']);
+    ).toEqual(['additional-plugin', 'media', 'app']);
     expect(report.issues.some((issue) => issue.pluginId === 'incompatible-plugin')).toBe(true);
   });
 
@@ -568,12 +570,13 @@ describe('ModulesPage', () => {
     render(<ModulesPage />);
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'demo' } });
     expect(screen.queryByRole('button', { name: 'Modul entziehen' })).toBeNull();
-    const assign = within(screen.getByRole('region', { name: 'news' })).getByRole('button', {
+    const assign = within(screen.getByRole('region', { name: 'app' })).getByRole('button', {
       name: 'Modul zuweisen',
     });
     fireEvent.click(assign);
     fireEvent.click(assign);
     expect(assignModule).toHaveBeenCalledTimes(1);
+    expect(assignModule).toHaveBeenCalledWith('demo', 'app');
     pending.resolve(true);
     await waitFor(() => expect((assign as HTMLButtonElement).disabled).toBe(false));
   });

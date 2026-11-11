@@ -89,7 +89,6 @@ const bindings: AppRouteBindings = {
   surveysDetail: () => 'surveysDetail',
   surveysEditor: () => 'surveysEditor',
   categories: () => 'categories',
-  app: () => 'app',
   interfaces: () => 'interfaces',
   help: () => 'help',
   support: () => 'support',

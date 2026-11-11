@@ -840,8 +840,8 @@ describe('appRouteBindings', () => {
   it('renders remaining placeholder bindings with translated section and title metadata', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
 
+    expect(appRouteBindings).not.toHaveProperty('app');
     const cases: Array<[keyof typeof appRouteBindings, string]> = [
-      ['app', 'Applications|App'],
       ['help', 'Help|Help'],
       ['support', 'Support|Support'],
       ['license', 'License|License'],

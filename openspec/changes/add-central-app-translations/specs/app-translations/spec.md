@@ -454,12 +454,34 @@ Die Formularanzeige MUST auch mit fremdsprachigem `Accept-Language` rein lesend 
 
 Das System MUST gemeinsame und kommunale deutsche App-Texte unabhängig vom optionalen Mehrsprachigkeitsmodul bereitstellen. Rootimport MUST ausschließlich deutsche Ausgangstexte aus dem bestehenden JSON-Manifest übernehmen. Kommunale deutsche Pflege MUST eigene Hostrechte `app-texts.catalog.read`, `.write`, `.publish` und den aktiven Organisationsscope prüfen. Die deutsche Bearbeitungsprojektion MUST Fremdsprachenwerte ausblenden und Fremdsprachenmutationen verweigern. Übersicht und unveränderliche Vorschau gesicherter Textstände MUST in beiden Ansichten alle enthaltenen Sprachen und den gesicherten Bearbeitungsstand desselben autorisierten Scopes anzeigen, auch bei inzwischen deaktivierten Sprachen; dadurch MUST NOT ein fremdsprachiges Schreibrecht entstehen. Deutsche Versiegelung MUST unabhängig von unvollständigen Übersetzungen möglich sein. Der Pluginmodus MUST deutsche Mutationen verweigern. Beide Ansichten MUST denselben Datenbestand verwenden und erhaltene Sprachwerte nicht löschen.
 
-#### Scenario: Deutsch bei deaktiviertem Modul
+#### Scenario: Deutsch bei deaktivierter Mehrsprachigkeit
 
-- **GIVEN** eine aktive Kommune besitzt Hostrechte für deutsche Texte und kein aktives Mehrsprachigkeitsmodul
+- **GIVEN** eine aktive Kommune besitzt das Modul „App“ und Hostrechte für deutsche Texte und kein aktives Mehrsprachigkeitsmodul
 - **WHEN** ihr Redakteur deutsche Texte liest, bearbeitet und einen vollständigen deutschen Prüfstand sichert
 - **THEN** sind die Operationen ohne Pluginzugang möglich und enthalten nur Deutsch
 - **AND** können weder gesetzte Modusheader noch Pluginrechte den Zugriff auf andere Sprachfassungen freischalten
+
+### Requirement: Instanzzuweisung für den App-Redaktionsbereich
+
+Das System MUST „App“ als optionales Modul ohne automatische Bestandszuweisung oder Standardaktivierung für neue Instanzen führen. Die kommunale Sidebar, direkte Katalogseiten und Katalogoperationen einschließlich Download MUST eine aktive App-Zuweisung zusätzlich zu den vorhandenen Rechten prüfen. Die redaktionelle Mehrsprachigkeit MUST zusätzlich die aktive Zuweisung von „Mehrsprachigkeit“ prüfen. Der experimentelle Einstieg `/app` entfällt.
+
+#### Scenario: App inaktiv oder deaktiviert
+
+- **WHEN** „App“ für die Instanz inaktiv ist
+- **THEN** fehlen beide kommunalen Katalogeinträge und direkte Seiten- sowie API-Aufrufe werden verweigert
+- **AND** werden redaktionelle Übersetzungsaufträge vor weiteren DeepL-Aufrufen und vor der Ergebnisübernahme gestoppt
+- **AND** bleiben bereits gespeicherte Ergebnisse erhalten
+
+#### Scenario: App nach einem Entzug erneut aktiviert
+
+- **WHEN** „App“ während eines redaktionellen Übersetzungsauftrags deaktiviert und erneut aktiviert wird
+- **THEN** darf dieser Auftrag keine weiteren Anbieteraufrufe starten oder verspätete Ergebnisse speichern
+
+#### Scenario: Plattformpflege und technischer Betrieb
+
+- **WHEN** „App“ für eine Instanz inaktiv ist
+- **THEN** bleibt die globale Standardpflege für berechtigte Plattformadministratoren verfügbar
+- **AND** bleiben App-Auslieferung, DeepL-Schnittstelle und technischer Übersetzungsdienst unabhängig von der App-Zuweisung
 
 ### Requirement: Sprachwahl in der instanzgebundenen DeepL-Konfiguration
 
@@ -470,7 +492,7 @@ Das System MUST den Schnittstellentyp DeepL erst nach Mehrsprachigkeits-Modulakt
 - **WHEN** eine Instanz das Modul aktiviert und noch keinen geprüften DeepL-Zugang besitzt
 - **THEN** kann ein entsprechend berechtigter Benutzer DeepL in der Schnittstellenverwaltung einrichten
 - **AND** erklärt der Modulbereich den fehlenden Schritt, ohne bereits Übersetzungsoperationen freizuschalten
-- **AND** bleiben deutsche Hosttexte nutzbar
+- **AND** bleiben deutsche Hosttexte mit aktivem Modul „App“ und den vorhandenen Hostrechten nutzbar
 
 #### Scenario: Anbieterprüfung und Sprachauswahl
 

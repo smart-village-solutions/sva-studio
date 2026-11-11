@@ -52,12 +52,6 @@ const renderLazyPage = <TProps extends object>(
   </React.Suspense>
 );
 
-const AppPlaceholderRoutePage = () => (
-  <PlaceholderPage
-    section={t('shell.sidebar.sections.applications')}
-    title={t('shell.sidebar.app')}
-  />
-);
 const HelpPlaceholderRoutePage = () => (
   <PlaceholderPage section={t('shell.sidebar.help')} title={t('shell.sidebar.help')} />
 );
@@ -184,7 +178,6 @@ export const coreAppRouteBindings = {
   mediaUsage: MediaUsagePage,
   media: MediaPage,
   adminMedia: MediaPage,
-  app: AppPlaceholderRoutePage,
   interfaces: InterfacesRoutePage,
   help: HelpPlaceholderRoutePage,
   support: SupportPlaceholderRoutePage,

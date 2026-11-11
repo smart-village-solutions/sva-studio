@@ -1,0 +1,4 @@
+{
+  "prNumber": 2141,
+  "body": "Importierte Veranstaltungen, etwa aus Biletado, bleiben im Studio vollständig: Anmeldepflicht und maximale Teilnehmerzahl sind im neuen Abschnitt „Anmeldung und Teilnahme“ sichtbar und bearbeitbar. Beim Speichern bleiben Angaben ohne eigenes Formularfeld wie Veranstaltungsort-Daten, Wiederholungszeitraum, Altersangaben zu Preisen und Bild-Metadaten erhalten. Außerdem schlägt das Speichern von Veranstaltungen aus dem Mainserver nicht mehr fehl."
+}

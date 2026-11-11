@@ -19,6 +19,7 @@ import {
   getWorkspacePluginDescriptorCandidates,
   type StudioPluginCatalogConfigEntry,
 } from '../../apps/sva-studio-react/src/lib/plugin-catalog-loader.ts';
+import { parsePluginCatalogConfig } from '../../apps/sva-studio-react/src/lib/plugin-catalog-config.ts';
 
 const outputPath = resolve('docs/user-documentation/page-catalog.json');
 const pluginCatalogPath = resolve('apps/sva-studio-react/plugin-catalog.json');
@@ -38,10 +39,7 @@ const bindings = new Proxy(
 
 const readPluginCatalog = async (): Promise<readonly StudioPluginCatalogConfigEntry[]> => {
   const value: unknown = JSON.parse(await readFile(pluginCatalogPath, 'utf8'));
-  if (!Array.isArray(value)) {
-    throw new Error('invalid_studio_plugin_catalog');
-  }
-  return value as readonly StudioPluginCatalogConfigEntry[];
+  return parsePluginCatalogConfig(value);
 };
 
 const readPluginManifest = async (

@@ -40,7 +40,13 @@ export type PluginManifest = {
   };
 };
 
-export type PluginCatalogSourceType = 'workspace' | 'linked-package' | 'installed-distribution';
+export const pluginCatalogSourceTypes = [
+  'workspace',
+  'linked-package',
+  'installed-distribution',
+] as const;
+
+export type PluginCatalogSourceType = (typeof pluginCatalogSourceTypes)[number];
 
 export type PluginCatalogEntry = {
   readonly pluginId: string;

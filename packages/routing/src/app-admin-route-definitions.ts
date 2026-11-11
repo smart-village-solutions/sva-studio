@@ -11,6 +11,7 @@ export const adminUiRouteDefinitions: readonly UiRouteDefinition[] = [
     binding: 'appTexts',
     path: uiRoutePaths.appTexts,
     guard: 'appTexts',
+    requiredModuleId: 'app',
     documentation: page('mobile-app.texts', 'overview'),
   },
   {

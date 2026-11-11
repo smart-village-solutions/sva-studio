@@ -89,7 +89,7 @@ const fixture = async (count = 60, source?: string, array = false): Promise<Fixt
     [instanceId, roleId, permissionId]
   );
   await pool!.query(
-    `INSERT INTO iam.instance_modules(instance_id,module_id,effective_active) VALUES ($1,'app-translations',true)`,
+    `INSERT INTO iam.instance_modules(instance_id,module_id,effective_active) VALUES ($1,'app-translations',true), ($1,'app',true)`,
     [instanceId]
   );
   await pool!.query(
@@ -463,13 +463,17 @@ describe.skipIf(!url)('fixed catalog jobs with PostgreSQL and Graphile', () => {
     'languages',
     'suspend',
     'reactivate',
+    'App deactivation',
+    'App reactivation',
+    'App reassignment',
     'permission',
     'membership',
     'blocked',
   ])(
     'rejects late responses after %s changes in PostgreSQL',
     async (change) => {
-      const f = await fixture();
+      const changesApp = change.startsWith('App ');
+      const f = changesApp ? await fixture(1, undefined, true) : await fixture();
       const job = await start(f);
       const normal = fetchMock.getMockImplementation()!;
       fetchMock.mockImplementationOnce(async (...args) => {
@@ -538,6 +542,28 @@ describe.skipIf(!url)('fixed catalog jobs with PostgreSQL and Graphile', () => {
             `UPDATE iam.instance_plugin_lifecycle SET access_state=$2, desired_generation=desired_generation+1 WHERE instance_id=$1`,
             [f.scope.instanceId, change === 'suspend' ? 'suspended' : 'active']
           );
+        if (change === 'App deactivation' || change === 'App reactivation') {
+          await pool!.query(
+            `UPDATE iam.instance_modules SET effective_active=false, state_revision=state_revision+1 WHERE instance_id=$1 AND module_id='app'`,
+            [f.scope.instanceId]
+          );
+          if (change === 'App reactivation') {
+            await pool!.query(
+              `UPDATE iam.instance_modules SET effective_active=true, state_revision=state_revision+1 WHERE instance_id=$1 AND module_id='app'`,
+              [f.scope.instanceId]
+            );
+          }
+        }
+        if (change === 'App reassignment') {
+          await pool!.query(
+            `DELETE FROM iam.instance_modules WHERE instance_id=$1 AND module_id='app'`,
+            [f.scope.instanceId]
+          );
+          await pool!.query(
+            `INSERT INTO iam.instance_modules(instance_id,module_id) VALUES ($1,'app')`,
+            [f.scope.instanceId]
+          );
+        }
         if (change === 'permission')
           await pool!.query('DELETE FROM iam.role_permissions WHERE permission_id=$1', [
             f.permissionId,

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { resolvePluginAuthComposition } from '#studio-plugin-auth-composition';
-import { studioHostModuleIamContracts } from '@sva/studio-module-iam';
+import { studioHostModuleContracts } from '#studio-module-iam-inputs';
 
 let configuredRevision: string | undefined;
 let reconciledRevision: string | undefined;
@@ -58,7 +58,7 @@ const configurePluginActivationPolicies =
         tenantLifecycles: studioServerPluginSnapshot.registry.tenantLifecycles,
         moduleIamContracts: [
           ...studioServerPluginSnapshot.registry.pluginModuleIamContracts,
-          ...studioHostModuleIamContracts,
+          ...studioHostModuleContracts,
         ],
       });
       configuredRevision = revision;

@@ -2,9 +2,8 @@
 
 ## Ergebnis
 
-Der Seitenkatalog vom 25. August 2026 enthält 59 Seiten-IDs. Jede dieser IDs besitzt in den zehn
-Dossiers einen eigenen Steckbrief mit Nutzerziel, Produktfakten, Kontext beziehungsweise Grenzen,
-redaktionellen Leitfragen, Stichwörtern, Querverweisen und Quellenevidenz.
+Die folgende Tabelle führt die quellengeprüften Steckbriefe des Starterpakets auf. Die zehn
+Dossiers beschreiben Nutzerziele, Produktfakten, Geltungsbereiche und die zugehörigen Quellen.
 
 `Quellengeprüft` bedeutet: Der Steckbrief wurde gegen die effektive Route sowie mindestens eine
 unmittelbar zugehörige UI-, Übersetzungs-, Vertrags- oder Testquelle abgeglichen. Eine offene
@@ -39,7 +38,6 @@ fachliche Frage hebt diesen Status nicht auf; sie ist in
 | `admin.users.create`           | 07      | Quellengeprüft |
 | `admin.users.detail`           | 07      | Quellengeprüft |
 | `admin.users.list`             | 07      | Quellengeprüft |
-| `app.overview`                 | 06      | Quellengeprüft |
 | `categories.overview`          | 04      | Quellengeprüft |
 | `cockpit-cards.content.create` | 05      | Quellengeprüft |
 | `cockpit-cards.content.detail` | 05      | Quellengeprüft |

@@ -180,18 +180,16 @@ const wasteManagementModuleIamContract: StudioModuleIamContract = {
   systemRoles: createSystemAdminSystemRoles(wasteManagementTenantBootstrapRoles),
 };
 
+const mediaPermissionIds = [
+  'media.read',
+  'media.create',
+  'media.update',
+  'media.reference.manage',
+  'media.delete',
+  'media.deliver.protected',
+] as const;
 const mediaTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[] = [
-  {
-    roleName: 'system_admin',
-    permissionIds: [
-      'media.read',
-      'media.create',
-      'media.update',
-      'media.reference.manage',
-      'media.delete',
-      'media.deliver.protected',
-    ],
-  },
+  { roleName: 'system_admin', permissionIds: mediaPermissionIds },
 ];
 
 const mediaModuleIamContract: StudioModuleIamContract = {
@@ -199,17 +197,20 @@ const mediaModuleIamContract: StudioModuleIamContract = {
   namespace: 'media',
   ownerPluginId: 'host',
   descriptionKey: 'host.media.description',
-  permissionIds: [
-    'media.read',
-    'media.create',
-    'media.update',
-    'media.reference.manage',
-    'media.delete',
-    'media.deliver.protected',
-  ],
+  permissionIds: mediaPermissionIds,
   tenantBootstrapRoles: mediaTenantBootstrapRoles,
   rootSystemRoles: [],
   systemRoles: createSystemAdminSystemRoles(mediaTenantBootstrapRoles),
+};
+
+const appModuleIamContract: StudioModuleIamContract = {
+  moduleId: 'app',
+  namespace: 'app',
+  ownerPluginId: 'host',
+  descriptionKey: 'host.app.description',
+  permissionIds: [],
+  tenantBootstrapRoles: [],
+  rootSystemRoles: [],
 };
 
 export const studioRegularPluginModuleIamContracts = [
@@ -231,6 +232,7 @@ export const studioPluginModuleIamContracts = [
 
 export const studioHostModuleIamContracts = [
   mediaModuleIamContract,
+  appModuleIamContract,
 ] as const satisfies readonly StudioModuleIamContract[];
 
 export const studioModuleIamContracts = [

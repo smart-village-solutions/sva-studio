@@ -2,6 +2,7 @@ import { modulePublicCode } from 'virtual:studio-module-publiccode';
 import { getActiveLocale, t } from '../../../i18n';
 
 export const resolveModuleName = (moduleId: string): string => {
+  if (moduleId === 'app') return t('shell.sidebar.app');
   const metadata = modulePublicCode[moduleId];
   const localizedName = metadata?.description[getActiveLocale()]?.localisedName?.trim();
   return localizedName || metadata?.name || moduleId;

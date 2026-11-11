@@ -125,7 +125,6 @@ nur die empfohlene Reihenfolge an. Für die Abnahme müssen sämtliche Einträge
 | 2     | Redaktionelle Inhaltstypen     | `projects.content.detail`      | Detail     | Plugin `projects`         |
 | 2     | Redaktionelle Inhaltstypen     | `surveys.content.create`       | Anlegen    | Plugin `surveys`          |
 | 2     | Redaktionelle Inhaltstypen     | `surveys.content.detail`       | Detail     | Plugin `surveys`          |
-| 2     | App und Abfallkalender         | `app.overview`                 | Übersicht  | Host                      |
 | 2     | App und Abfallkalender         | `waste-management.overview`    | Übersicht  | Plugin `waste-management` |
 | 3     | Identitäten und Berechtigungen | `admin.users.list`             | Liste      | Host                      |
 | 3     | Identitäten und Berechtigungen | `admin.users.create`           | Anlegen    | Host                      |

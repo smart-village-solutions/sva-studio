@@ -16,6 +16,7 @@ import {
   catalogTranslationStatus,
   readCatalogTranslationJob,
 } from './app-translations-jobs.js';
+import { lockAppModuleRevision } from './app-translations-job-state.js';
 import {
   dispatch,
   projectGermanCatalog,
@@ -180,6 +181,7 @@ export const runCatalogOperation = async (
   withIamAppDb(async (client) => {
     if (scope.kind === 'municipal') {
       await client.query("SELECT set_config('app.instance_id', $1, true)", [scope.instanceId]);
+      await lockAppModuleRevision(client, scope.instanceId);
       const active = await client.query(
         `SELECT o.id FROM iam.organizations o JOIN iam.instances i ON i.id = o.instance_id WHERE o.instance_id = $1 AND o.id = $2::uuid AND o.is_active AND i.status = 'active'`,
         [scope.instanceId, scope.organizationId]

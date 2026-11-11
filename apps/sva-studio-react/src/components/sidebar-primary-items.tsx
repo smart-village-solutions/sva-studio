@@ -101,7 +101,6 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
     canAccessContent,
     canAccessMedia,
     canAccessCategories,
-    canAccessApplicationLink,
     canAccessAppTexts,
     canAccessAdminInstances,
   } = access;
@@ -230,7 +229,9 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
           },
         ]
       : []),
-    ...pluginApplicationItems.filter((item) => item.moduleId === 'app-translations'),
+    ...pluginApplicationItems.filter(
+      (item) => item.moduleId === 'app-translations' && isModuleAssignedToUser('app', user)
+    ),
   ];
   const applicationItems: SidebarItem[] = [
     ...(appChildren.length > 0
@@ -241,17 +242,6 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
             label: t('shell.sidebar.app'),
             icon: IconDeviceMobile,
             children: appChildren,
-          },
-        ]
-      : []),
-    ...(canAccessApplicationLink && appChildren.length === 0
-      ? [
-          {
-            kind: 'link' as const,
-            id: 'app',
-            to: '/app',
-            label: t('shell.sidebar.app'),
-            icon: IconDeviceMobile,
           },
         ]
       : []),

@@ -501,7 +501,8 @@ describe('mainserver content route contracts', () => {
           recurring: 'weekly',
           recurringType: 'weekday',
           recurringInterval: '1',
-          recurringWeekdays: ['sa'],
+          // Numeric weekdays are the Mainserver read shape and must survive a write.
+          recurringWeekdays: ['sa', '0'],
           pointOfInterestId: 'poi-1',
         },
       })
@@ -1432,6 +1433,38 @@ describe('mainserver content route contracts', () => {
     expect(response?.status).toBe(200);
     expect(state.updateSvaMainserverEvent).toHaveBeenCalledWith(
       expect.objectContaining({ event: { title: 'Flohmarkt', ...participation } })
+    );
+  });
+
+  it('keeps recurrence values when the content list sends a read event back on a status change', async () => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: 'Flohmarkt',
+          recurring: true,
+          recurringType: 1,
+          recurringInterval: 2,
+          recurringWeekdays: [1, 5],
+          visible: false,
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: {
+          title: 'Flohmarkt',
+          recurring: 'true',
+          recurringType: '1',
+          recurringInterval: '2',
+          recurringWeekdays: ['1', '5'],
+        },
+      })
     );
   });
 

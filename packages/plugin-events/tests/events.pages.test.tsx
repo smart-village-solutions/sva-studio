@@ -544,6 +544,10 @@ describe('EventsListPage', () => {
 
       const limit = await openContentTab();
       fireEvent.change(limit, { target: { value: '2.5' } });
+      // Native number constraints would block the save silently on a hidden tab.
+      expect(limit.type).toBe('text');
+      expect(limit.inputMode).toBe('numeric');
+      expect(limit.closest('form')?.checkValidity()).toBe(true);
       save();
 
       expect(await screen.findByText('events.validation.maximumAttendees')).toBeTruthy();

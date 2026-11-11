@@ -10,6 +10,7 @@ import {
   svaMainserverDestroyRecordDocument,
   svaMainserverEventDetailDocument,
   svaMainserverEventListDocument,
+  svaMainserverEventUpdateSnapshotDocument,
   type SvaMainserverCreateEventMutation,
   type SvaMainserverDestroyRecordMutation,
   type SvaMainserverEventDetailQuery,
@@ -69,6 +70,22 @@ const buildEventMutationVariables = (input: {
   ...(input.event.pointOfInterestId ? { pointOfInterestId: input.event.pointOfInterestId } : {}),
 });
 
+const readEventDetail = async (
+  executeGraphqlWithConfig: GraphqlExecutor,
+  input: SvaMainserverConnectionInput & { readonly eventId: string },
+  config: SvaMainserverInstanceConfig,
+  query: { readonly document: string; readonly operationName: string }
+) => {
+  const response = await executeGraphqlWithConfig<SvaMainserverEventDetailQuery>(
+    { ...input, ...query, variables: { id: input.eventId } },
+    config
+  );
+  if (!response.eventRecord) {
+    return { data: mapOptionalEventItem(response.eventRecord), deviations: [] };
+  }
+  return mapEventItemDetail(response.eventRecord);
+};
+
 export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
   listEventsWithConfig: async (
     input: SvaMainserverListInput,
@@ -107,21 +124,21 @@ export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor)
   getEventDetailWithConfig: async (
     input: SvaMainserverConnectionInput & { readonly eventId: string },
     config: SvaMainserverInstanceConfig
-  ) => {
-    const response = await executeGraphqlWithConfig<SvaMainserverEventDetailQuery>(
-      {
-        ...input,
-        document: svaMainserverEventDetailDocument,
-        operationName: 'SvaMainserverEventDetail',
-        variables: { id: input.eventId },
-      },
-      config
-    );
-    if (!response.eventRecord) {
-      return { data: mapOptionalEventItem(response.eventRecord), deviations: [] };
-    }
-    return mapEventItemDetail(response.eventRecord);
-  },
+  ) =>
+    readEventDetail(executeGraphqlWithConfig, input, config, {
+      document: svaMainserverEventDetailDocument,
+      operationName: 'SvaMainserverEventDetail',
+    }),
+
+  // Server-only read before an update; it also selects media payloads for the merge.
+  getEventUpdateSnapshotWithConfig: async (
+    input: SvaMainserverConnectionInput & { readonly eventId: string },
+    config: SvaMainserverInstanceConfig
+  ) =>
+    readEventDetail(executeGraphqlWithConfig, input, config, {
+      document: svaMainserverEventUpdateSnapshotDocument,
+      operationName: 'SvaMainserverEventUpdateSnapshot',
+    }),
 
   writeEventWithConfig: async (
     input: SvaMainserverConnectionInput & {

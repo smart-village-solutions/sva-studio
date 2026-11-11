@@ -49,13 +49,12 @@ describe('events.detail-form', () => {
 
   it('normalizes Mainserver recurrence values instead of failing on save', () => {
     const values = mapEventItemToDetailFormValues(
-      // Runtime shape of the Mainserver read, which differs from the declared string types.
       importedItem({
         recurring: true,
         recurringType: 0,
         recurringInterval: 3,
         recurringWeekdays: [0, 6],
-      } as unknown as Partial<EventContentItem>)
+      })
     );
 
     expect(values.basis).toMatchObject({
@@ -70,9 +69,28 @@ describe('events.detail-form', () => {
       recurringInterval: '3',
       recurringWeekdays: ['0', '6'],
     });
+    expect(mapEventItemToDetailFormValues(importedItem({ recurring: false })).basis.recurring).toBe(
+      ''
+    );
+  });
+
+  it('removes a price row whose visible fields were emptied, even with passthrough attributes', () => {
+    const values = mapEventItemToDetailFormValues(
+      importedItem({
+        priceInformations: [{ name: 'Alt', amount: 5, groupPrice: false, ageFrom: 6 }],
+      })
+    );
+    const [price] = values.content.priceInformations;
+
     expect(
-      mapEventItemToDetailFormValues(importedItem({ recurring: false } as never)).basis.recurring
-    ).toBe('');
+      mapEventsDetailFormValuesToInput({
+        ...values,
+        content: {
+          ...values.content,
+          priceInformations: [{ ...price, name: '', amount: undefined }],
+        },
+      })
+    ).not.toHaveProperty('priceInformations');
   });
 
   it('keeps Mainserver price attributes without editor fields on save', () => {

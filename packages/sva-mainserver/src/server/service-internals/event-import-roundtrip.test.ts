@@ -3,6 +3,7 @@ import {
   getVariableValues,
   parse,
   validate,
+  visit,
   type IntrospectionQuery,
   type OperationDefinitionNode,
 } from 'graphql';
@@ -13,6 +14,9 @@ import {
   svaMainserverCreateEventDocument,
   svaMainserverEventDetailDocument,
   svaMainserverEventListDocument,
+  svaMainserverEventUpdateSnapshotDocument,
+  svaMainserverPoiDetailDocument,
+  svaMainserverPoiListDocument,
 } from '../../generated/events-poi.js';
 import type { SvaMainserverEventInput, SvaMainserverInstanceConfig } from '../../types.js';
 import { createEventOperations } from './event-operations.js';
@@ -52,7 +56,12 @@ const importedEvent = () => ({
   listDate: '2026-09-05',
   sortDate: '2026-09-05',
   repeat: false,
-  repeatDuration: { id: 'repeat-1', startDate: '2026-09-05', endDate: '2026-10-31', everyYear: false },
+  repeatDuration: {
+    id: 'repeat-1',
+    startDate: '2026-09-05',
+    endDate: '2026-10-31',
+    everyYear: false,
+  },
   recurring: false,
   recurringType: null,
   recurringInterval: null,
@@ -75,7 +84,15 @@ const importedEvent = () => ({
     regionName: 'Musterkreis',
     geoLocation: { latitude: 51.9, longitude: 14.7 },
   },
-  contacts: [{ id: 'contact-1', firstName: 'Erika', lastName: 'Muster', email: 'kontakt@example.test', webUrls: [] }],
+  contacts: [
+    {
+      id: 'contact-1',
+      firstName: 'Erika',
+      lastName: 'Muster',
+      email: 'kontakt@example.test',
+      webUrls: [],
+    },
+  ],
   urls: [{ id: 'url-1', url: 'https://tickets.example.test/4711', description: 'Tickets' }],
   mediaContents: [
     {
@@ -86,7 +103,11 @@ const importedEvent = () => ({
       height: 800,
       width: 600,
       payload: { sourceImageId: 'img-1' },
-      sourceUrl: { id: 'media-url-1', url: 'https://media.example.test/plakat.jpg', description: 'Plakat' },
+      sourceUrl: {
+        id: 'media-url-1',
+        url: 'https://media.example.test/plakat.jpg',
+        description: 'Plakat',
+      },
     },
   ],
   organizer: { id: 'organizer-1', name: 'Kulturverein Musterstadt' },
@@ -186,7 +207,7 @@ const editorSubmission = (): SvaMainserverEventInput => ({
 const createHarness = (stored: Record<string, unknown>) => {
   const writes: Record<string, unknown>[] = [];
   const executor = async <TResult>(input: GraphqlOperationInput): Promise<TResult> => {
-    if (input.operationName === 'SvaMainserverEventDetail') {
+    if (input.operationName !== 'SvaMainserverCreateEvent') {
       return { eventRecord: stored } as TResult;
     }
     writes.push(input.variables ?? {});
@@ -199,8 +220,24 @@ const createHarness = (stored: Record<string, unknown>) => {
   return { service, writes };
 };
 
+const selectsMediaPayload = (document: string) => {
+  let found = false;
+  visit(parse(document), {
+    Field(node) {
+      if (node.name.value === 'mediaContents') {
+        found ||=
+          node.selectionSet?.selections.some(
+            (selection) => selection.kind === 'Field' && selection.name.value === 'payload'
+          ) ?? false;
+      }
+    },
+  });
+  return found;
+};
+
 const assertValidMutationVariables = (variables: Record<string, unknown>) => {
-  const operation = parse(svaMainserverCreateEventDocument).definitions[0] as OperationDefinitionNode;
+  const operation = parse(svaMainserverCreateEventDocument)
+    .definitions[0] as OperationDefinitionNode;
   const coerced = getVariableValues(schema, operation.variableDefinitions ?? [], variables);
   expect(coerced.errors?.map((error) => error.message) ?? []).toEqual([]);
 };
@@ -210,11 +247,25 @@ describe('event import round trip against the Mainserver contract', () => {
     ['list', svaMainserverEventListDocument],
     ['detail', svaMainserverEventDetailDocument],
     ['create/update', svaMainserverCreateEventDocument],
+    ['update snapshot', svaMainserverEventUpdateSnapshotDocument],
   ])('validates the event %s document against the schema snapshot', (_name, document) => {
     expect(validate(schema, parse(document)).map((error) => error.message)).toEqual([]);
   });
 
-  it('reads registration requirement, participant limit and media payload into the projection', async () => {
+  it('selects media payloads only in the server-side read before an update', () => {
+    expect(selectsMediaPayload(svaMainserverEventUpdateSnapshotDocument)).toBe(true);
+    for (const document of [
+      svaMainserverEventListDocument,
+      svaMainserverEventDetailDocument,
+      svaMainserverCreateEventDocument,
+      svaMainserverPoiListDocument,
+      svaMainserverPoiDetailDocument,
+    ]) {
+      expect(selectsMediaPayload(document)).toBe(false);
+    }
+  });
+
+  it('reads registration requirement, participant limit and source relations into the projection', async () => {
     const { service } = createHarness(importedEvent());
 
     const detail = await service.getEventDetail({ ...connection, eventId: 'event-import-1' });
@@ -225,7 +276,6 @@ describe('event import round trip against the Mainserver contract', () => {
       maximumAttendees: 120,
       location: { name: 'Stadtpark', regionName: 'Musterkreis' },
       repeatDuration: { startDate: '2026-09-05', endDate: '2026-10-31', everyYear: false },
-      mediaContents: [expect.objectContaining({ payload: { sourceImageId: 'img-1' } })],
       priceInformations: [expect.objectContaining({ ageFrom: 6, maxChildrenCount: 3 })],
     });
   });
@@ -234,7 +284,11 @@ describe('event import round trip against the Mainserver contract', () => {
     const stored = importedEvent();
     const { service, writes } = createHarness(stored);
 
-    await service.updateEvent({ ...connection, eventId: 'event-import-1', event: editorSubmission() });
+    await service.updateEvent({
+      ...connection,
+      eventId: 'event-import-1',
+      event: editorSubmission(),
+    });
 
     const variables = writes[0] ?? {};
     assertValidMutationVariables(variables);
@@ -252,7 +306,12 @@ describe('event import round trip against the Mainserver contract', () => {
       repeatDuration: { startDate: '2026-09-05', endDate: '2026-10-31', everyYear: false },
       mediaContents: [expect.objectContaining({ payload: { sourceImageId: 'img-1' } })],
       priceInformations: [
-        expect.objectContaining({ ageFrom: 6, ageTo: 17, minChildrenCount: 1, maxChildrenCount: 3 }),
+        expect.objectContaining({
+          ageFrom: 6,
+          ageTo: 17,
+          minChildrenCount: 1,
+          maxChildrenCount: 3,
+        }),
       ],
       accessibilityInformation: {
         description: 'Stufenlos erreichbar',
@@ -298,8 +357,11 @@ describe('event import round trip against the Mainserver contract', () => {
 
   it('keeps stored participation values when a client omits them', async () => {
     const { service, writes } = createHarness(importedEvent());
-    const { registrationRequired: _required, maximumAttendees: _limit, ...submission } =
-      editorSubmission();
+    const {
+      registrationRequired: _required,
+      maximumAttendees: _limit,
+      ...submission
+    } = editorSubmission();
 
     await service.updateEvent({ ...connection, eventId: 'event-import-1', event: submission });
 
@@ -315,7 +377,9 @@ describe('event import round trip against the Mainserver contract', () => {
       eventId: 'event-import-1',
       event: {
         ...submission,
-        mediaContents: [{ captionText: 'Neu', sourceUrl: { url: 'https://media.example.test/neu.jpg' } }],
+        mediaContents: [
+          { captionText: 'Neu', sourceUrl: { url: 'https://media.example.test/neu.jpg' } },
+        ],
       },
     });
 
@@ -329,7 +393,10 @@ describe('event import round trip against the Mainserver contract', () => {
 
     await expect(
       service.updateEvent({ ...connection, eventId: 'event-import-1', event: editorSubmission() })
-    ).rejects.toMatchObject({ code: 'invalid_response', message: 'event_source_snapshot_incomplete' });
+    ).rejects.toMatchObject({
+      code: 'invalid_response',
+      message: 'event_source_snapshot_incomplete',
+    });
     expect(writes).toEqual([]);
   });
 });

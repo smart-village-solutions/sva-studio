@@ -7,16 +7,11 @@ import {
   ContentInput,
   type EventsContentTranslator as Translator,
 } from './events.detail-content-section-fields.js';
-import { isValidMaximumAttendees } from './events.validation.js';
+import { isValidMaximumAttendeesInput } from './events.validation.js';
 
 const dirty = { shouldDirty: true } as const;
 const registrationId = 'event-registration-required';
 export const EVENT_MAXIMUM_ATTENDEES_FIELD_ID = 'event-maximum-attendees';
-
-const isValidLimitInput = (value: string) => {
-  const trimmed = value.trim();
-  return trimmed.length === 0 || isValidMaximumAttendees(Number(trimmed));
-};
 
 export function EventsParticipationSection({ pt }: Readonly<{ pt: Translator }>) {
   const {
@@ -28,7 +23,7 @@ export function EventsParticipationSection({ pt }: Readonly<{ pt: Translator }>)
   const registrationRequired = useWatch({ control, name: 'content.registrationRequired' }) ?? false;
   const maximumAttendees = useWatch({ control, name: 'content.maximumAttendees' }) ?? '';
   const limitError = errors.content?.maximumAttendees;
-  const limitValid = isValidLimitInput(maximumAttendees);
+  const limitValid = isValidMaximumAttendeesInput(maximumAttendees);
 
   useEffect(() => {
     if (limitValid) clearErrors('content.maximumAttendees');
@@ -60,7 +55,9 @@ export function EventsParticipationSection({ pt }: Readonly<{ pt: Translator }>)
         id={EVENT_MAXIMUM_ATTENDEES_FIELD_ID}
         label={pt('fields.maximumAttendees')}
         description={pt('fields.maximumAttendeesHelp')}
-        type="number"
+        // A text input avoids native number constraints, which block saving silently when the
+        // field sits on a hidden tab; validation.maximumAttendees reports invalid values instead.
+        inputMode="numeric"
         value={maximumAttendees}
         ariaInvalid={limitError ? true : undefined}
         error={limitError ? pt('validation.maximumAttendees') : undefined}

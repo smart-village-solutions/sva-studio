@@ -119,14 +119,25 @@ export type EventFormInput = {
   readonly tags?: readonly string[];
   readonly pointOfInterestId?: string;
   readonly repeat?: boolean;
-  readonly recurring?: string;
-  readonly recurringType?: string;
-  readonly recurringInterval?: string;
-  readonly recurringWeekdays?: readonly string[];
+  // The editor writes strings; the host also accepts the Mainserver read shape below, so a read
+  // event can be sent back unchanged (for example on a status change from the content list).
+  readonly recurring?: string | boolean;
+  readonly recurringType?: string | number;
+  readonly recurringInterval?: string | number;
+  readonly recurringWeekdays?: readonly (string | number)[];
   readonly visible?: boolean;
 };
 
-export type EventContentItem = EventFormInput & {
+type MainserverReadShapeFields =
+  'recurring' | 'recurringType' | 'recurringInterval' | 'recurringWeekdays' | 'maximumAttendees';
+
+/** Event as the host returns it from the Mainserver. */
+export type EventContentItem = Omit<EventFormInput, MainserverReadShapeFields> & {
+  readonly recurring?: boolean;
+  readonly recurringType?: number;
+  readonly recurringInterval?: number;
+  readonly recurringWeekdays?: readonly number[];
+  readonly maximumAttendees?: number;
   readonly id: string;
   readonly contentType: string;
   readonly status: 'published';

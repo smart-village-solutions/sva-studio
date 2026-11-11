@@ -74,7 +74,17 @@ const parseEventDates = (
 
 const MAX_GRAPHQL_INT = 2_147_483_647;
 
-const eventParticipationSchema = z.object({
+// Events read from the Mainserver carry `recurring` as boolean and the other recurrence values
+// as numbers, while the mutation expects strings. The content list sends a read event back on a
+// status change, so both shapes are accepted instead of dropping the values.
+const readRecurrenceValue = (value: unknown): string | undefined =>
+  typeof value === 'number' && Number.isFinite(value) ? String(value) : readString(value);
+
+const readRecurringFlag = (value: unknown): string | undefined =>
+  typeof value === 'boolean' ? String(value) : readString(value);
+
+// Same rule as `eventParticipationSchema` in @sva/plugin-events; a contract test keeps them aligned.
+export const eventParticipationSchema = z.object({
   registrationRequired: z.boolean().optional(),
   // `null` clears a stored limit; omitting the field keeps it.
   maximumAttendees: z.number().int().min(0).max(MAX_GRAPHQL_INT).nullable().optional(),
@@ -239,15 +249,17 @@ const buildEventInput = (
     ...(readBoolean(body.repeat) !== undefined ? { repeat: readBoolean(body.repeat) } : {}),
     ...(readString(body.categoryName) ? { categoryName: readString(body.categoryName) } : {}),
     ...eventRelationFields(relations),
-    ...(readString(body.recurring) ? { recurring: readString(body.recurring) } : {}),
-    ...(readString(body.recurringType) ? { recurringType: readString(body.recurringType) } : {}),
-    ...(readString(body.recurringInterval)
-      ? { recurringInterval: readString(body.recurringInterval) }
+    ...(readRecurringFlag(body.recurring) ? { recurring: readRecurringFlag(body.recurring) } : {}),
+    ...(readRecurrenceValue(body.recurringType)
+      ? { recurringType: readRecurrenceValue(body.recurringType) }
+      : {}),
+    ...(readRecurrenceValue(body.recurringInterval)
+      ? { recurringInterval: readRecurrenceValue(body.recurringInterval) }
       : {}),
     ...(Array.isArray(body.recurringWeekdays)
       ? {
           recurringWeekdays: body.recurringWeekdays
-            .map(readString)
+            .map(readRecurrenceValue)
             .filter((value): value is string => Boolean(value)),
         }
       : {}),

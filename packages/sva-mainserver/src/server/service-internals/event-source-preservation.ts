@@ -38,7 +38,7 @@ const reattachMediaPayloads = (
   submitted: SvaMainserverEventInput['mediaContents'],
   degradedFields: ReadonlySet<string>
 ): SvaMainserverEventInput['mediaContents'] => {
-  if (!submitted || degradedFields.has('mediaContents') || degradedFields.has('mediaContents[]')) {
+  if (!submitted || degradedFields.has('mediaContents')) {
     return submitted;
   }
   const unmatched = current.mediaContents.filter((media) => media.payload !== undefined);

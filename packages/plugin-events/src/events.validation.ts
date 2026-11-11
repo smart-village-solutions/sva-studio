@@ -1,16 +1,16 @@
 import { isPersistableManualContentMediaUrl } from '@sva/studio-ui-react';
 
+import { eventParticipationSchema } from './events.contract.js';
+
 import type { EventFormInput } from './events.types.js';
 import { isValidDateOnlyValue } from './events.date-only.js';
 
-const MAX_GRAPHQL_INT = 2_147_483_647;
-
-/** The Mainserver stores the participant limit as a GraphQL `Int`. */
-export const isValidMaximumAttendees = (value: number): boolean =>
-  Number.isInteger(value) && value >= 0 && value <= MAX_GRAPHQL_INT;
-
 const hasInvalidMaximumAttendees = (value: number | null | undefined): boolean =>
-  typeof value === 'number' && !isValidMaximumAttendees(value);
+  !eventParticipationSchema.shape.maximumAttendees.safeParse(value).success;
+
+/** Rule for the limit field's text value: empty clears the limit. */
+export const isValidMaximumAttendeesInput = (value: string): boolean =>
+  value.trim().length === 0 || !hasInvalidMaximumAttendees(Number(value.trim()));
 
 const isHttpsUrl = (value: string): boolean => {
   try {

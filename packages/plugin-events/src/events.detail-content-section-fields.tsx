@@ -10,6 +10,7 @@ export const ContentInput = ({
   label,
   value = '',
   type,
+  inputMode,
   ariaInvalid,
   description,
   error,
@@ -20,6 +21,7 @@ export const ContentInput = ({
   label: string;
   value?: string | number;
   type?: 'date' | 'number' | 'time';
+  inputMode?: 'numeric';
   ariaInvalid?: true;
   description?: string;
   error?: string;
@@ -45,6 +47,7 @@ export const ContentInput = ({
       <Input
         id={id}
         type={type}
+        inputMode={inputMode}
         aria-required={required ? true : undefined}
         value={value}
         onChange={(event) => onChange(event.target.value)}

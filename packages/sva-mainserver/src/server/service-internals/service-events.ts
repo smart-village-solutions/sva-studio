@@ -44,7 +44,7 @@ export const createEventService = ({
     }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    const current = await eventOperations.getEventDetailWithConfig(input, config);
+    const current = await eventOperations.getEventUpdateSnapshotWithConfig(input, config);
     return eventOperations.writeEventWithConfig(
       {
         ...input,

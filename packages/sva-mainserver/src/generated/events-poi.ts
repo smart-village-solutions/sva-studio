@@ -338,13 +338,13 @@ const mediaContentFields = `
   height
   width
   contentType
-  payload
   sourceUrl {
     ${webUrlFields}
   }
 `;
 
-const eventFields = `
+// Media payloads hold raw source metadata; only the host's read before an update selects them.
+const buildEventFields = (media: string) => `
   payload
   id
   title
@@ -396,7 +396,7 @@ const eventFields = `
     ${webUrlFields}
   }
   mediaContents {
-    ${mediaContentFields}
+    ${media}
   }
   organizer {
     ${operatingCompanyFields}
@@ -413,6 +413,8 @@ const eventFields = `
   visible
   dataProvider { id name }
 `;
+
+const eventFields = buildEventFields(mediaContentFields);
 
 const poiFields = `
   id
@@ -488,6 +490,14 @@ export const svaMainserverEventDetailDocument = `
   query SvaMainserverEventDetail($id: ID!) {
     eventRecord(id: $id) {
       ${eventFields}
+    }
+  }
+`;
+
+export const svaMainserverEventUpdateSnapshotDocument = `
+  query SvaMainserverEventUpdateSnapshot($id: ID!) {
+    eventRecord(id: $id) {
+      ${buildEventFields(`${mediaContentFields} payload`)}
     }
   }
 `;

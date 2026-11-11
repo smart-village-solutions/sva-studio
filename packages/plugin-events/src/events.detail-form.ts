@@ -57,9 +57,9 @@ export {
 const mapNumberToString = (value?: number) =>
   typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
 
-// Despite the string types, the Mainserver returns `recurring` as boolean and the other
-// recurrence values as numbers; calling string methods on them made every save fail.
-const mapScalarToFormString = (value: unknown): string => {
+// The Mainserver returns `recurring` as boolean and the other recurrence values as numbers; the
+// form and the write contract use strings.
+const mapScalarToFormString = (value: string | number | boolean | undefined): string => {
   if (typeof value === 'string') return value;
   if (typeof value === 'number') return mapNumberToString(value);
   return value === true ? 'true' : '';
@@ -159,7 +159,7 @@ const mapEventContentToFormValue = (item: EventContentItem): EventsDetailFormVal
   accessibilityInformation:
     item.accessibilityInformation ?? createDefaultAccessibilityInformation(),
   registrationRequired: item.registrationRequired ?? false,
-  maximumAttendees: mapNumberToString(item.maximumAttendees ?? undefined),
+  maximumAttendees: mapNumberToString(item.maximumAttendees),
 });
 
 const mapEventSettingsToFormValue = (

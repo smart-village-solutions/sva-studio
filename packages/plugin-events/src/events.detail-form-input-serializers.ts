@@ -63,22 +63,24 @@ const serializePricePassthrough = (entry: EventPriceInformation) => ({
   ),
 });
 
+const serializeVisiblePrice = (entry: EventPriceInformation) => ({
+  ...(compactEventString(entry.name) ? { name: compactEventString(entry.name) } : {}),
+  ...(entry.amount !== undefined && Number.isFinite(entry.amount) ? { amount: entry.amount } : {}),
+  ...(compactEventString(entry.description)
+    ? { description: compactEventString(entry.description) }
+    : {}),
+  ...(compactEventString(entry.category) ? { category: compactEventString(entry.category) } : {}),
+});
+
+// Whether a row is kept depends on the visible fields only; an emptied row is removed even if it
+// still carries passthrough attributes.
 export const serializeEventPrices = (prices: readonly EventPriceInformation[] | undefined | null) =>
-  (prices ?? [])
-    .map((entry) => ({
-      ...(compactEventString(entry.name) ? { name: compactEventString(entry.name) } : {}),
-      ...(entry.amount !== undefined && Number.isFinite(entry.amount)
-        ? { amount: entry.amount }
-        : {}),
-      ...(compactEventString(entry.description)
-        ? { description: compactEventString(entry.description) }
-        : {}),
-      ...(compactEventString(entry.category)
-        ? { category: compactEventString(entry.category) }
-        : {}),
-      ...serializePricePassthrough(entry),
-    }))
-    .filter((entry) => Object.keys(entry).length > 0);
+  (prices ?? []).flatMap((entry) => {
+    const visible = serializeVisiblePrice(entry);
+    return Object.keys(visible).length > 0
+      ? [{ ...visible, ...serializePricePassthrough(entry) }]
+      : [];
+  });
 
 /**
  * The editor always sends both values so it can set and clear them: an empty limit becomes

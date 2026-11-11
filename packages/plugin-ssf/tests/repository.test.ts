@@ -9,6 +9,8 @@ import {
   upsertSsfTenantLocale,
 } from '../src/runtime.js';
 import {
+  createSsfAdminContentRevision,
+  SsfContentRevisionConflict,
   readSsfInstallationContentV2,
   readSsfSystemContentV2,
   readSsfTenantContentV2,
@@ -62,7 +64,7 @@ describe('SSF PostgreSQL repository', () => {
     );
     const clientQuery = vi.fn(async (sql: string) =>
       sql.includes('FROM ssf.server_settings')
-        ? result([{ runtime_content_v2: template }])
+        ? result([{ template, overrides }])
         : sql.includes('FROM ssf.tenant_settings')
           ? result([{ runtime_content_v2: overrides }])
           : result([])
@@ -86,10 +88,7 @@ describe('SSF PostgreSQL repository', () => {
       'app.instance_id',
       'tenant-a',
     ]);
-    expect(clientQuery).toHaveBeenCalledWith(
-      'SELECT runtime_content_v2 FROM ssf.tenant_settings WHERE instance_id = $1',
-      ['tenant-a']
-    );
+    expect(clientQuery).toHaveBeenCalledWith(expect.stringContaining('AS overrides'), ['tenant-a']);
     expect(release).toHaveBeenCalledOnce();
   });
 
@@ -112,7 +111,16 @@ describe('SSF PostgreSQL repository', () => {
       connect: vi.fn(async () => ({ query, release }) as unknown as PoolClient),
     } as unknown as Pool;
 
-    await replaceSsfSystemContentV2(pool, { installation, runtimeTemplate: template });
+    await replaceSsfSystemContentV2(
+      pool,
+      { installation, runtimeTemplate: template },
+      {
+        expectedRevision: createSsfAdminContentRevision('platform', {
+          installation: null,
+          runtimeTemplate: null,
+        }),
+      }
+    );
 
     const installationWrite = query.mock.calls.find(([sql]) =>
       sql.includes('installation_content_v2 = EXCLUDED.installation_content_v2')
@@ -120,7 +128,9 @@ describe('SSF PostgreSQL repository', () => {
     const runtimeWrite = query.mock.calls.find(([sql]) =>
       sql.includes('runtime_content_v2 = EXCLUDED.runtime_content_v2')
     );
-    expect(JSON.parse(String(installationWrite?.[1]?.[0]))).toMatchObject({ legal: installation.legal });
+    expect(JSON.parse(String(installationWrite?.[1]?.[0]))).toMatchObject({
+      legal: installation.legal,
+    });
     expect(JSON.parse(String(runtimeWrite?.[1]?.[0]))).toMatchObject({
       staff: { dashboard: { headline: template.staff.dashboard.headline } },
     });
@@ -148,10 +158,19 @@ describe('SSF PostgreSQL repository', () => {
     } as unknown as Pool;
 
     await expect(
-      replaceSsfSystemContentV2(pool, {
-        installation: null,
-        runtimeTemplate: runtimeTemplateV2(),
-      })
+      replaceSsfSystemContentV2(
+        pool,
+        {
+          installation: null,
+          runtimeTemplate: runtimeTemplateV2(),
+        },
+        {
+          expectedRevision: createSsfAdminContentRevision('platform', {
+            installation: null,
+            runtimeTemplate: null,
+          }),
+        }
+      )
     ).rejects.toThrow('ssf_v2_override_identity_unknown');
 
     expect(query).toHaveBeenCalledWith('ROLLBACK');
@@ -175,7 +194,14 @@ describe('SSF PostgreSQL repository', () => {
     } as unknown as Pool;
     const overrides = { staff: { dashboard: { headline: 'Tenant A' } } };
 
-    await expect(writeSsfTenantContentV2(pool, 'tenant-a', overrides)).resolves.toEqual(overrides);
+    await expect(
+      writeSsfTenantContentV2(pool, 'tenant-a', overrides, {
+        expectedRevision: createSsfAdminContentRevision('tenant-a', {
+          runtimeTemplate: template,
+          overrides: null,
+        }),
+      })
+    ).resolves.toEqual({ runtimeTemplate: template, overrides });
 
     expect(query).toHaveBeenCalledWith('SELECT set_config($1, $2, true);', [
       'app.instance_id',
@@ -188,6 +214,28 @@ describe('SSF PostgreSQL repository', () => {
     expect(query).toHaveBeenCalledWith('COMMIT');
     expect(release).toHaveBeenCalledOnce();
   });
+  it('rejects a stale root revision under the lock before any writes or validation', async () => {
+    const validate = vi.fn();
+    const query = vi.fn(async (sql: string) => {
+      void sql;
+      return result([]);
+    });
+    const pool = { connect: async () => ({ query, release: vi.fn() }) } as unknown as Pool;
+    await expect(
+      replaceSsfSystemContentV2(
+        pool,
+        { installation: null, runtimeTemplate: null },
+        {
+          expectedRevision: 'sha256:stale',
+          validate,
+        }
+      )
+    ).rejects.toBeInstanceOf(SsfContentRevisionConflict);
+    expect(validate).not.toHaveBeenCalled();
+    expect(query).toHaveBeenCalledWith('ROLLBACK');
+    expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT'))).toBe(false);
+  });
+
   it('provisions one tenant record idempotently and verifies it in the same transaction', async () => {
     const tenantRow = {
       instance_id: 'tenant-a',
@@ -215,11 +263,13 @@ describe('SSF PostgreSQL repository', () => {
     });
     expect(second).toEqual(first);
     expect(
-      query.mock.calls.filter(([sql]) =>
-        typeof sql === 'string' && sql.includes('ON CONFLICT (instance_id) DO NOTHING')
+      query.mock.calls.filter(
+        ([sql]) => typeof sql === 'string' && sql.includes('ON CONFLICT (instance_id) DO NOTHING')
       )
     ).toHaveLength(2);
-    expect(query.mock.calls.some(([sql]) => typeof sql === 'string' && sql.includes('UPDATE'))).toBe(false);
+    expect(
+      query.mock.calls.some(([sql]) => typeof sql === 'string' && sql.includes('UPDATE'))
+    ).toBe(false);
     expect(query).toHaveBeenCalledWith('SELECT set_config($1, $2, true);', [
       'app.instance_id',
       'tenant-a',
@@ -229,13 +279,15 @@ describe('SSF PostgreSQL repository', () => {
   it('reads only the explicitly bound tenant and rejects invalid identifiers before connecting', async () => {
     const query = vi.fn(async (sql: string) =>
       sql.includes('SELECT instance_id, status, revision')
-        ? result([{
-            instance_id: 'tenant-b',
-            status: 'prepared' as const,
-            revision: 1,
-            created_at: new Date('2026-09-07T12:00:00.000Z'),
-            updated_at: new Date('2026-09-07T12:00:00.000Z'),
-          }])
+        ? result([
+            {
+              instance_id: 'tenant-b',
+              status: 'prepared' as const,
+              revision: 1,
+              created_at: new Date('2026-09-07T12:00:00.000Z'),
+              updated_at: new Date('2026-09-07T12:00:00.000Z'),
+            },
+          ])
         : result([])
     );
     const client = { query, release: vi.fn() } as unknown as PoolClient;
@@ -267,9 +319,7 @@ describe('SSF PostgreSQL repository', () => {
     await expect(readSsfTenant(pool, ' tenant-b ')).rejects.toThrow(
       'ssf_tenant_instance_id_invalid'
     );
-    await expect(readSsfTenant(pool, 'Tenant-B')).rejects.toThrow(
-      'ssf_tenant_instance_id_invalid'
-    );
+    await expect(readSsfTenant(pool, 'Tenant-B')).rejects.toThrow('ssf_tenant_instance_id_invalid');
     await expect(readSsfTenant(pool, 'xn--tenant-b')).rejects.toThrow(
       'ssf_tenant_instance_id_invalid'
     );

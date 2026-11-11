@@ -3,6 +3,8 @@ export {
   StudioEditorLeaveGuardProvider,
   useStudioEditorLeaveGuard,
   type StudioEditorLeaveGuardRegister,
+  type StudioEditorLeaveActions,
+  useStudioEditorSuspended,
 } from './studio-editor-leave-guard.js';
 export {
   ContentOwnershipPanel,

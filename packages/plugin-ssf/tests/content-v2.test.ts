@@ -2,16 +2,18 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import { resolveSsfInstallationContentV2, resolveSsfRuntimeContentV2 } from '../src/content-v2.js';
 import {
-  resolveSsfInstallationContentV2,
-  resolveSsfRuntimeContentV2,
-} from '../src/content-v2.js';
-import {
-  diffSsfContentV2, effectiveSsfRuntimeFieldsV2,
+  diffSsfContentV2,
+  effectiveSsfRuntimeFieldsV2,
+  projectSsfTenantPageOverrides,
 } from '../src/content-v2-overrides.js';
 
 const readExample = (name: string): Record<string, unknown> =>
-  JSON.parse(readFileSync(new URL(`../../../docs/api/${name}`, import.meta.url), 'utf8')) as Record<string, unknown>;
+  JSON.parse(readFileSync(new URL(`../../../docs/api/${name}`, import.meta.url), 'utf8')) as Record<
+    string,
+    unknown
+  >;
 
 const template = (): Record<string, unknown> => {
   const fields = readExample('ssf-runtime-configuration-v2.example.json');
@@ -68,15 +70,21 @@ describe('SSF V2 content resolution', () => {
       overrides: { conversationContentStorage: { mode: 'disabled' } },
     });
     expect(response.conversationContentStorage).toEqual({ mode: 'disabled', retentionHours: null });
-    expect(response.guestLanguages.every((language) => language.guest.storageQuestionHtml === null)).toBe(true);
+    expect(
+      response.guestLanguages.every((language) => language.guest.storageQuestionHtml === null)
+    ).toBe(true);
   });
 
   it('rejects a tenant override that introduces another question ID', () => {
-    expect(() => resolveSsfRuntimeContentV2({
-      tenant,
-      template: template(),
-      overrides: { staff: { feedback: { questions: [{ id: 'unknown', question: 'Injected' }] } } },
-    })).toThrow('ssf_v2_override_identity_unknown');
+    expect(() =>
+      resolveSsfRuntimeContentV2({
+        tenant,
+        template: template(),
+        overrides: {
+          staff: { feedback: { questions: [{ id: 'unknown', question: 'Injected' }] } },
+        },
+      })
+    ).toThrow('ssf_v2_override_identity_unknown');
   });
 
   it('round-trips a field edit while retaining unknown questions and disabled languages', () => {
@@ -84,7 +92,9 @@ describe('SSF V2 content resolution', () => {
     const staff = source['staff'] as Record<string, unknown>;
     const feedback = staff['feedback'] as Record<string, unknown>;
     (feedback['questions'] as Record<string, unknown>[]).push({
-      id: 'futureQuestion', type: 'longText', question: 'Future question?',
+      id: 'futureQuestion',
+      type: 'longText',
+      question: 'Future question?',
     });
     const original = effectiveSsfRuntimeFieldsV2(source, {
       guestLanguages: [{ locale: 'tr', enabled: false }],
@@ -113,7 +123,9 @@ describe('SSF V2 content resolution', () => {
     const editedFirst = edited.guestLanguages[0];
     if (!editedFirst) throw new Error('ssf_v2_test_language_missing');
     editedFirst.icon = null;
-    const longText = edited.staff.feedback.questions.find((question) => question.id === 'improvementIdeas');
+    const longText = edited.staff.feedback.questions.find(
+      (question) => question.id === 'improvementIdeas'
+    );
     if (!longText || longText.type !== 'longText') throw new Error('ssf_v2_test_question_missing');
     delete longText.headline;
     delete longText.maxLength;
@@ -122,8 +134,108 @@ describe('SSF V2 content resolution', () => {
     const effective = effectiveSsfRuntimeFieldsV2(source, overrides);
     expect(effective.branding.logo).toBeNull();
     expect(effective.guestLanguages[0]?.icon).toBeNull();
-    const effectiveLongText = effective.staff.feedback.questions.find((question) => question.id === 'improvementIdeas');
+    const effectiveLongText = effective.staff.feedback.questions.find(
+      (question) => question.id === 'improvementIdeas'
+    );
     expect(effectiveLongText?.headline).toBeUndefined();
-    expect(effectiveLongText?.type === 'longText' ? effectiveLongText.maxLength : null).toBeUndefined();
+    expect(
+      effectiveLongText?.type === 'longText' ? effectiveLongText.maxLength : null
+    ).toBeUndefined();
+  });
+});
+
+describe('page-owned sparse overrides', () => {
+  it('preserves explicit equal overrides and other guest fields when saving feedback', () => {
+    const base = effectiveSsfRuntimeFieldsV2(template(), null);
+    const raw = {
+      staff: { dashboard: { headline: base.staff.dashboard.headline } },
+      guestLanguages: [
+        {
+          locale: 'en',
+          nativeName: 'Explicit English',
+          guest: { explanationHtml: '<p>Own explanation</p>' },
+        },
+      ],
+    };
+    const before = effectiveSsfRuntimeFieldsV2(base, raw);
+    const draft = structuredClone(before);
+    draft.guestLanguages.find((entry) => entry.locale === 'en')!.feedback.headline =
+      'Feedback changed';
+    const result = projectSsfTenantPageOverrides('feedback', base, raw, before, draft);
+    expect(result['staff']).toEqual(raw.staff);
+    expect(result['guestLanguages']).toMatchObject([
+      {
+        locale: 'en',
+        nativeName: 'Explicit English',
+        guest: { explanationHtml: '<p>Own explanation</p>' },
+        feedback: { headline: 'Feedback changed' },
+      },
+    ]);
+  });
+  it('preserves an equal explicit pin within the feedback object and question being edited', () => {
+    const base = effectiveSsfRuntimeFieldsV2(template(), null);
+    const raw = {
+      staff: {
+        feedback: {
+          headline: base.staff.feedback.headline,
+          questions: [
+            {
+              id: base.staff.feedback.questions[0]!.id,
+              question: base.staff.feedback.questions[0]!.question,
+            },
+          ],
+        },
+      },
+    };
+    const before = effectiveSsfRuntimeFieldsV2(base, raw);
+    const draft = structuredClone(before);
+    draft.staff.feedback.button = 'New submit';
+    draft.staff.feedback.questions[0]!.headline = 'Changed question heading';
+    const result = projectSsfTenantPageOverrides('feedback', base, raw, before, draft);
+    expect(result['staff']).toMatchObject({
+      feedback: {
+        headline: base.staff.feedback.headline,
+        button: 'New submit',
+        questions: [
+          {
+            id: base.staff.feedback.questions[0]!.id,
+            question: base.staff.feedback.questions[0]!.question,
+            headline: 'Changed question heading',
+          },
+        ],
+      },
+    });
+  });
+
+  it('removes only an edited/reset field and preserves hidden guest content on deactivation', () => {
+    const base = effectiveSsfRuntimeFieldsV2(template(), null);
+    const raw = {
+      guestLanguages: [
+        { locale: 'en', nativeName: 'Own name', guest: { explanationHtml: '<p>Own text</p>' } },
+      ],
+    };
+    const before = effectiveSsfRuntimeFieldsV2(base, raw);
+    const draft = structuredClone(before);
+    draft.guestLanguages = draft.guestLanguages.filter((entry) => entry.locale !== 'en');
+    const result = projectSsfTenantPageOverrides('languages', base, raw, before, draft);
+    expect(result['guestLanguages']).toEqual([{ ...raw.guestLanguages[0], enabled: false }]);
+  });
+  it('clears the entire owned media override on explicit reset but preserves later edits', () => {
+    const base = effectiveSsfRuntimeFieldsV2(template(), null);
+    base.branding.logo = { url: 'https://example.org/template.svg', alternativeText: 'Same' };
+    const raw = {
+      branding: { logo: { url: 'https://example.org/own.svg', alternativeText: 'Same' } },
+    };
+    const before = effectiveSsfRuntimeFieldsV2(base, raw);
+    const reset = structuredClone(before);
+    reset.branding.logo = base.branding.logo;
+    expect(
+      projectSsfTenantPageOverrides('appearance', base, raw, before, reset, [['branding', 'logo']])
+    ).toEqual({});
+    const edited = structuredClone(reset);
+    edited.branding.logo = { url: 'https://example.org/own.svg', alternativeText: 'Same' };
+    expect(
+      projectSsfTenantPageOverrides('appearance', base, raw, before, edited, [['branding', 'logo']])
+    ).toEqual({ branding: { logo: { url: 'https://example.org/own.svg' } } });
   });
 });

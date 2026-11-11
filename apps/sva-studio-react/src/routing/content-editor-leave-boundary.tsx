@@ -1,5 +1,10 @@
 import { useBlocker } from '@tanstack/react-router';
-import { Button, StudioConfirmDialog, StudioEditorLeaveGuardProvider } from '@sva/studio-ui-react';
+import {
+  Button,
+  StudioConfirmDialog,
+  StudioEditorLeaveGuardProvider,
+  type StudioEditorLeaveActions,
+} from '@sva/studio-ui-react';
 import React from 'react';
 
 import { t } from '../i18n';
@@ -7,7 +12,11 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { useAuth } from '../providers/auth-provider';
 import { AUTH_RECOVERY_NAVIGATION_EVENT, parseAuthUser } from '../providers/auth-provider-helpers';
 import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
-import { useOrganizationContext } from '../hooks/use-organization-context';
+import {
+  ORGANIZATION_CONTEXT_CHANGE_EVENT,
+  type OrganizationContextChangeRequest,
+  useOrganizationContext,
+} from '../hooks/use-organization-context';
 import { fetchAuthMeSingleFlight } from '../lib/auth-me-singleflight';
 import { createLoginHref } from '../lib/auth-navigation';
 import { fetchWithRequestTimeout, getMyOrganizationContext } from '../lib/iam-api';
@@ -35,12 +44,16 @@ const isOriginalEditorContextConfirmed = (
   Boolean(
     original &&
     isSameEditorUser(auth.user, original) &&
-    organization.context &&
-    !organization.error &&
-    organization.context.activeOrganizationId === original.organizationId
+    (!original.instanceId ||
+      (organization.context &&
+        !organization.error &&
+        organization.context.activeOrganizationId === original.organizationId))
   );
 
-export function ContentEditorLeaveBoundary({ children }: Readonly<{ children: React.ReactNode }>) {
+export function ContentEditorLeaveBoundary({
+  children,
+  protectContextChanges = false,
+}: Readonly<{ children: React.ReactNode; protectContextChanges?: boolean }>) {
   const auth = useAuth();
   const organization = useOrganizationContext();
   const [recoveryState, setRecoveryState] = React.useState<
@@ -49,31 +62,53 @@ export function ContentEditorLeaveBoundary({ children }: Readonly<{ children: Re
   const recoveryRequired = recoveryState !== 'idle';
   const checkingRecovery = recoveryState === 'checking' || recoveryState === 'confirming';
   const originalContext = React.useRef<EditorContext | null>(null);
-  const checkers = React.useRef(new Set<() => boolean>());
-  const register = React.useCallback((check: () => boolean) => {
-    checkers.current.add(check);
+  const checkers = React.useRef(new Map<() => boolean, StudioEditorLeaveActions | undefined>());
+  const [contextRequest, setContextRequest] =
+    React.useState<OrganizationContextChangeRequest | null>(null);
+  const pendingContext = React.useRef<OrganizationContextChangeRequest | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const register = React.useCallback((check: () => boolean, actions?: StudioEditorLeaveActions) => {
+    checkers.current.set(check, actions);
     return () => {
       checkers.current.delete(check);
     };
   }, []);
   const hasUnsavedChanges = React.useCallback(
-    () => recoveryRequired || [...checkers.current].some((check) => check()),
+    () => recoveryRequired || [...checkers.current.keys()].some((check) => check()),
     [recoveryRequired]
   );
   React.useLayoutEffect(() => {
     const original = originalContext.current;
-    if (original && hasUnsavedChanges() && !isSameEditorUser(auth.user, original)) {
+    if (
+      original &&
+      hasUnsavedChanges() &&
+      (!isSameEditorUser(auth.user, original) ||
+        (protectContextChanges &&
+          organization.context &&
+          organization.context.activeOrganizationId !== original.organizationId))
+    ) {
       if (!recoveryRequired) setRecoveryState('required');
       return;
     }
-    if (!recoveryRequired && auth.user && organization.context && !organization.error) {
+    if (
+      !recoveryRequired &&
+      auth.user &&
+      (!auth.user.instanceId || (organization.context && !organization.error))
+    ) {
       originalContext.current = {
         userId: auth.user.id,
         instanceId: auth.user.instanceId,
-        organizationId: organization.context.activeOrganizationId,
+        organizationId: organization.context?.activeOrganizationId,
       };
     }
-  }, [auth.user, organization.context, organization.error, recoveryRequired, hasUnsavedChanges]);
+  }, [
+    auth.user,
+    organization.context,
+    organization.error,
+    recoveryRequired,
+    hasUnsavedChanges,
+    protectContextChanges,
+  ]);
   React.useEffect(() => {
     const retainEditor = (event: Event) => {
       if (!hasUnsavedChanges()) return;
@@ -119,23 +154,66 @@ export function ContentEditorLeaveBoundary({ children }: Readonly<{ children: Re
         setRecoveryState('failed');
         return;
       }
-      const context = (await getMyOrganizationContext({ fresh: true })).data;
-      if (context.activeOrganizationId !== original.organizationId) {
-        setRecoveryState('failed');
-        return;
+      if (original.instanceId) {
+        const context = (await getMyOrganizationContext({ fresh: true })).data;
+        if (context.activeOrganizationId !== original.organizationId) {
+          setRecoveryState('failed');
+          return;
+        }
       }
       await auth.refreshSession();
-      await organization.refetch();
+      if (original.instanceId) await organization.refetch();
       setRecoveryState('confirming');
     } catch {
       setRecoveryState('failed');
     }
   };
+  React.useEffect(() => {
+    if (!protectContextChanges) return;
+    const guard = (event: Event) => {
+      if (!hasUnsavedChanges()) return;
+      const request = (event as CustomEvent<OrganizationContextChangeRequest>).detail;
+      event.preventDefault();
+      if (pendingContext.current) {
+        request.resolve(false);
+        return;
+      }
+      pendingContext.current = request;
+      setContextRequest(request);
+    };
+    window.addEventListener(ORGANIZATION_CONTEXT_CHANGE_EVENT, guard);
+    return () => {
+      window.removeEventListener(ORGANIZATION_CONTEXT_CHANGE_EVENT, guard);
+      pendingContext.current?.resolve(false);
+      pendingContext.current = null;
+    };
+  }, [protectContextChanges, hasUnsavedChanges]);
   const blocker = useBlocker({
     shouldBlockFn: ({ current, next }) => current.pathname !== next.pathname && hasUnsavedChanges(),
     enableBeforeUnload: hasUnsavedChanges,
     withResolver: true,
   });
+
+  const finishDeparture = (allowed: boolean) => {
+    if (pendingContext.current) {
+      pendingContext.current.resolve(allowed);
+      pendingContext.current = null;
+      setContextRequest(null);
+    } else if (allowed) blocker.proceed?.();
+    else blocker.reset?.();
+  };
+  const saveBeforeLeaving = async () => {
+    setSaving(true);
+    try {
+      for (const [check, actions] of checkers.current) {
+        if (check() && (!actions?.save || !(await actions.save()))) return;
+      }
+      finishDeparture(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+  const canSave = [...checkers.current.values()].some((actions) => actions?.save);
 
   return (
     <>
@@ -169,14 +247,29 @@ export function ContentEditorLeaveBoundary({ children }: Readonly<{ children: Re
         </fieldset>
       </StudioEditorLeaveGuardProvider>
       <StudioConfirmDialog
-        open={blocker.status === 'blocked'}
+        open={blocker.status === 'blocked' || contextRequest !== null}
         title={t('content.leaveGuard.title')}
         description={t('content.leaveGuard.description')}
         confirmLabel={t('content.leaveGuard.discard')}
         cancelLabel={t('content.leaveGuard.stay')}
-        onConfirm={() => blocker.proceed?.()}
-        onCancel={() => blocker.reset?.()}
-      />
+        confirmDisabled={saving}
+        cancelDisabled={saving}
+        onConfirm={() => {
+          for (const actions of checkers.current.values()) actions?.discard?.();
+          finishDeparture(true);
+        }}
+        onCancel={() => finishDeparture(false)}
+      >
+        {canSave ? (
+          <Button
+            type="button"
+            disabled={saving || recoveryRequired}
+            onClick={() => void saveBeforeLeaving()}
+          >
+            {t('content.leaveGuard.save')}
+          </Button>
+        ) : null}
+      </StudioConfirmDialog>
     </>
   );
 }

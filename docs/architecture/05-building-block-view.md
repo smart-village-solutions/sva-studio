@@ -1307,3 +1307,13 @@ Der Anwendungsarbeitsplatz wird als externes Paket `@sva/plugin-application-work
 ### E-Mail-Auswertung des Abfallkalender-Plugins
 
 `waste-management-contracts` definiert die datensparsame Leseprojektion für Abos und gespeicherte Versandstände. `waste-management-runtime` liest die bestehenden Tabellen innerhalb der authentifizierten Waste-Datenquelle in einer konsistenten, rein lesenden Transaktion und maskiert Empfänger vor der API-Antwort. `plugin-waste-management` besitzt Endpunkt, Action, Route und Ansicht; die Studio-Shell gruppiert den bereits autorisierten Navigationseintrag unter Monitoring. Es entstehen keine Tabellen, Versandpfade oder eigenen Logging-Dienste. Bedienung und Grenzen beschreibt die [Waste-Referenz](../reference/waste-management-tour-gueltigkeit.md#e-mail-abos-und-versand-auswerten).
+
+## SSF administration page composition
+
+`plugin-ssf` contributes five tenant and three root pages with the existing scope
+and action checks. Its current content repository remains the owner of the JSON
+aggregates. The SDK supports one optional application group level and an explicit
+editor-leave route marker; flat plugins remain unchanged. Both host distributions
+mount the existing editor boundary for marked routes. No new package or service
+is introduced. Field ownership and compatibility remainders are documented in
+[SSF administration](../development/ssf-v2-inhaltsverwaltung-ui.md).

@@ -1,7 +1,14 @@
 /** Connects one editor's unsaved-change signal to its host-owned navigation guard. */
 import * as React from 'react';
 
-export type StudioEditorLeaveGuardRegister = (check: () => boolean) => () => void;
+export type StudioEditorLeaveActions = Readonly<{
+  save?: () => Promise<boolean>;
+  discard?: () => void;
+}>;
+export type StudioEditorLeaveGuardRegister = (
+  check: () => boolean,
+  actions?: StudioEditorLeaveActions
+) => () => void;
 
 const EditorLeaveGuardContext = React.createContext<Readonly<{
   register: StudioEditorLeaveGuardRegister;
@@ -36,7 +43,14 @@ export function StudioEditorLeaveGuardProvider({
 export function useStudioEditorLeaveGuard({
   enabled,
   hasUnsavedChanges,
-}: Readonly<{ enabled: boolean; hasUnsavedChanges: boolean }>) {
+  onSave,
+  onDiscard,
+}: Readonly<{
+  enabled: boolean;
+  hasUnsavedChanges: boolean;
+  onSave?: () => Promise<boolean>;
+  onDiscard?: () => void;
+}>) {
   const register = React.useContext(EditorLeaveGuardContext)?.register;
   const dirtyRef = React.useRef(hasUnsavedChanges);
   const revisionRef = React.useRef(0);
@@ -44,11 +58,19 @@ export function useStudioEditorLeaveGuard({
   React.useLayoutEffect(() => {
     dirtyRef.current = hasUnsavedChanges;
   }, [hasUnsavedChanges]);
+  const actionsRef = React.useRef({ onSave, onDiscard });
+  React.useLayoutEffect(() => {
+    actionsRef.current = { onSave, onDiscard };
+  });
   const check = React.useCallback(() => dirtyRef.current || savedRevisionMismatchRef.current, []);
   React.useLayoutEffect(() => {
-    if (enabled && register) return register(check);
+    if (enabled && register)
+      return register(check, {
+        save: onSave ? () => actionsRef.current.onSave?.() ?? Promise.resolve(false) : undefined,
+        discard: onDiscard ? () => actionsRef.current.onDiscard?.() : undefined,
+      });
     return undefined;
-  }, [enabled, register, check]);
+  }, [enabled, register, check, Boolean(onSave), Boolean(onDiscard)]);
   const markChanged = React.useCallback(() => {
     revisionRef.current += 1;
   }, []);

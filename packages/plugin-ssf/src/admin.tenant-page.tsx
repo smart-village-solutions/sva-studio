@@ -1,133 +1,24 @@
-import {
-  readSessionAccessSnapshot,
-  subscribeSessionAccessSnapshot,
-  usePluginTranslation,
-} from '@sva/plugin-sdk';
-import {
-  Button,
-  StudioErrorState,
-  StudioFormActionBar,
-  StudioFormSummary,
-  StudioLoadingState,
-  StudioOverviewPageTemplate,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@sva/studio-ui-react';
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-
-import { readSsfTenantConfiguration, writeSsfTenantConfiguration } from './admin-api.js';
+/** Tenant pages share the existing aggregate editor and existing configuration authority. */
+import { readSessionAccessSnapshot, subscribeSessionAccessSnapshot } from '@sva/plugin-sdk';
+import { useSyncExternalStore } from 'react';
 import { SsfTenantContentV2Page } from './admin.content-v2-tenant-page.js';
-import { ConfigurationFields } from './admin.configuration-fields.js';
-import type {
-  SsfSystemConfigurationInput,
-  SsfTenantConfigurationInput,
-} from './admin-contracts.js';
+import type { SsfTenantEditorPage } from './content-v2-admin-contracts.js';
 
-const useCanManageTenantConfiguration = (): boolean =>
-  useSyncExternalStore(
+const TenantPage = ({ page }: { page: SsfTenantEditorPage | 'overview' }) => {
+  const access = useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
-  ).permissionActions.includes('ssf.configuration.tenant.manage');
-
-const SsfLegacyTenantConfiguration = ({ canManage }: { canManage: boolean }) => {
-  const pt = usePluginTranslation('ssf');
-  const [system, setSystem] = useState<SsfSystemConfigurationInput | null>(null);
-  const [saved, setSaved] = useState<SsfTenantConfigurationInput | null>(null);
-  const [draft, setDraft] = useState<SsfTenantConfigurationInput | null>(null);
-  const [state, setState] = useState<'loading' | 'ready' | 'error' | 'saving' | 'saved'>('loading');
-  const [saveFailed, setSaveFailed] = useState(false);
-  const load = useCallback(async () => {
-    try {
-      const next = await readSsfTenantConfiguration();
-      setSystem(next.system);
-      setSaved(next.overrides);
-      setDraft(next.overrides);
-      setState('ready');
-    } catch {
-      setState('error');
-    }
-  }, []);
-  useEffect(() => void load(), [load]);
-  const save = async (value: SsfTenantConfigurationInput) => {
-    setSaveFailed(false);
-    setState('saving');
-    try {
-      const next = await writeSsfTenantConfiguration(value);
-      setSystem(next.system);
-      setSaved(next.overrides);
-      setDraft(next.overrides);
-      setState('saved');
-    } catch {
-      setSaveFailed(true);
-      setState('ready');
-    }
-  };
-  if (state === 'loading') return <StudioLoadingState>{pt('status.loading')}</StudioLoadingState>;
-  if (state === 'error' || !draft || !system) {
-    return (
-      <StudioErrorState>
-        <Button type="button" onClick={() => void load()}>
-          {pt('status.loadError')}
-        </Button>
-      </StudioErrorState>
-    );
-  }
+  );
   return (
-    <div className="space-y-5">
-      {state === 'saved' ? (
-        <StudioFormSummary kind="success">{pt('status.saved')}</StudioFormSummary>
-      ) : null}
-      {saveFailed ? (
-        <StudioFormSummary kind="error">{pt('status.saveError')}</StudioFormSummary>
-      ) : null}
-      <ConfigurationFields
-        value={draft}
-        tenantSystem={system}
-        onChange={(next) => setDraft(next as SsfTenantConfigurationInput)}
-        disabled={!canManage || state === 'saving'}
-      />
-      {canManage ? (
-        <StudioFormActionBar>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={state === 'saving'}
-            onClick={() => setDraft(saved)}
-          >
-            {pt('actions.discard')}
-          </Button>
-          <Button type="button" disabled={state === 'saving'} onClick={() => void save(draft)}>
-            {pt(state === 'saving' ? 'actions.saving' : 'actions.save')}
-          </Button>
-        </StudioFormActionBar>
-      ) : null}
-    </div>
+    <SsfTenantContentV2Page
+      page={page}
+      canManage={access.permissionActions.includes('ssf.configuration.tenant.manage')}
+    />
   );
 };
-
-export const SsfTenantConfigurationPage = () => {
-  const pt = usePluginTranslation('ssf');
-  const canManage = useCanManageTenantConfiguration();
-  return (
-    <StudioOverviewPageTemplate
-      title={pt('page.tenantTitle')}
-      description={pt('page.tenantDescription')}
-    >
-      <Tabs defaultValue="v2">
-        <TabsList aria-label={pt('page.tenantTitle')}>
-          <TabsTrigger value="v2">{pt('v2.content')}</TabsTrigger>
-          <TabsTrigger value="v1">{pt('v2.legacy')}</TabsTrigger>
-        </TabsList>
-        <TabsContent value="v2">
-          <SsfTenantContentV2Page canManage={canManage} />
-        </TabsContent>
-        <TabsContent value="v1">
-          <SsfLegacyTenantConfiguration canManage={canManage} />
-        </TabsContent>
-      </Tabs>
-    </StudioOverviewPageTemplate>
-  );
-};
+export const SsfTenantConfigurationPage = () => <TenantPage page="overview" />;
+export const SsfTenantAppearancePage = () => <TenantPage page="appearance" />;
+export const SsfTenantLanguagesPage = () => <TenantPage page="languages" />;
+export const SsfTenantRecordingsPage = () => <TenantPage page="recordings" />;
+export const SsfTenantFeedbackPage = () => <TenantPage page="feedback" />;

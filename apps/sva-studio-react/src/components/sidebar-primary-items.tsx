@@ -51,7 +51,9 @@ const resolvePluginNavigationItems = (access: SidebarAccess) => {
         resolvedTitleKey:
           item.id === 'ssf.tenant-navigation'
             ? brandingProfile.ssfTenantNavigationTitleKey
-            : (action?.titleKey ?? item.titleKey),
+            : item.group
+              ? item.titleKey
+              : (action?.titleKey ?? item.titleKey),
         resolvedRequiredAction: action?.requiredAction ?? item.requiredAction,
         resolvedAccessRequirement: action?.accessRequirement ?? item.accessRequirement,
       };
@@ -85,11 +87,43 @@ const resolvePluginNavigationItems = (access: SidebarAccess) => {
       section: item.section,
       moduleId: getStudioPluginNavigationModuleId(item),
       accessScope: resolvedAccessRequirement?.kind,
+      group: item.group,
     }))
     .filter(
       (item) => item.accessScope === 'platform' || isModuleAssignedToUser(item.moduleId, user)
     );
-  return pluginNavigationItems;
+  return pluginNavigationItems.filter(
+    (item) =>
+      !item.group ||
+      (user?.instanceId ? item.accessScope === 'tenant' : item.accessScope === 'platform')
+  );
+};
+
+/** Group only already-authorised leaves; flat plugins retain their existing shape/order. */
+const groupPluginApplications = (
+  items: ReturnType<typeof resolvePluginNavigationItems>,
+  ssfTitleKey: string
+): SidebarItem[] => {
+  const result: SidebarItem[] = [];
+  for (const item of items) {
+    if (!item.group) {
+      result.push(item);
+      continue;
+    }
+    const existing = result.find((candidate) => candidate.id === item.group?.id);
+    if (existing?.kind === 'group') {
+      result[result.indexOf(existing)] = { ...existing, children: [...existing.children, item] };
+    } else {
+      result.push({
+        kind: 'group',
+        id: item.group.id,
+        label: t(item.moduleId === 'ssf' ? ssfTitleKey : item.group.titleKey),
+        icon: item.icon,
+        children: [item],
+      });
+    }
+  }
+  return result;
 };
 
 export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
@@ -164,7 +198,7 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
   ];
 
   const dataManagementItems: SidebarItem[] = [
-    ...(brandingProfile.showContentNavigation &&
+    ...((brandingProfile.showContentNavigation || creatableContentTypes.length > 0) &&
     canAccessWorkspace &&
     creatableContentTypes.length > 0
       ? [
@@ -179,7 +213,9 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
           },
         ]
       : []),
-    ...(brandingProfile.showContentNavigation && canAccessWorkspace && contentChildren.length > 0
+    ...((brandingProfile.showContentNavigation || readableContentTypes.length > 0) &&
+    canAccessWorkspace &&
+    contentChildren.length > 0
       ? [
           {
             kind: 'group' as const,
@@ -224,7 +260,7 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
             kind: 'link' as const,
             id: 'app-texts',
             to: '/app-texts',
-            label: t('appTranslations.ui.sourceTitle'),
+            label: t('shell.sidebar.appTexts'),
             icon: IconFileText,
           },
         ]
@@ -234,7 +270,7 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
     ),
   ];
   const applicationItems: SidebarItem[] = [
-    ...(brandingProfile.showGenericApplicationLinks && appChildren.length > 0
+    ...(appChildren.length > 0
       ? [
           {
             kind: 'group' as const,
@@ -245,7 +281,10 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
           },
         ]
       : []),
-    ...pluginApplicationItems.filter((item) => item.moduleId !== 'app-translations'),
+    ...groupPluginApplications(
+      pluginApplicationItems.filter((item) => item.moduleId !== 'app-translations'),
+      brandingProfile.ssfTenantNavigationTitleKey
+    ),
   ];
 
   const overviewItem: SidebarLeafItem = {

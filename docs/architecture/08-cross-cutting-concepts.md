@@ -1478,3 +1478,22 @@ Das Referenz-Plugin erzeugt öffentliche SDK-/UI-Peers aus einem festen Studio-C
 `waste-management.email-reminder-monitoring.read` schützt Navigation, Route und `GET /api/v1/waste-management/email-monitoring` unabhängig von allgemeinen Monitoring-/Waste-Leserechten. Die geschützte tenantlokale Rolle `system_admin` erhält das Recht automatisch über den bestehenden Permission-Sync. Für andere Rollen ist die gesonderte Zuweisung erforderlich. Die Runtime verwendet ausschließlich die authentifizierte Instanz und ihre bestehende Datenquellenauflösung; ein fremder `instanceId`-Queryparameter kann den Mandanten nicht wechseln.
 
 Die serverseitige Projektion maskiert beide Adressteile und liefert weder Rohadressen, Tokens, Hashes, vollständige Payloads noch freie Provider-Fehlertexte. Ort, Fraktion und Zeitpunkte bleiben für die berechtigte Diagnose sichtbar; die stabile Abo-ID steht im ausgewählten Abo unter den nativen, zunächst geschlossenen Zusatzangaben. Die kompakte Oberfläche erklärt Abo- und Versandzustände über den bestehenden `wasteManagement`-Übersetzungsnamensraum auf Deutsch und Englisch; das Ergebnis bleibt personenbezogen und ist keine Anonymisierung. Filter und Pagination werden begrenzt validiert, Antworten erhalten `Cache-Control: no-store`, UI-Zustände werden beim Identitäts-/Instanzwechsel verworfen. Die vorhandene Outbox liefert den aktuellen gespeicherten Versandstand, kein lückenloses Versandjournal oder Empfangsnachweis. Die paginierte Abo-Projektion ergänzt je sichtbarem Abo höchstens eine letzte gesendete und eine laufende beziehungsweise nächste vorgemerkte Nachricht; sie überträgt dafür nur Art, Status und UTC-Zeitpunkte und verändert weder Versandablauf noch Schema.
+
+## SSF editor integrity and compatibility
+
+Administrative revisions hash raw scope-bound configuration, including explicit
+overrides and the relevant template. They are distinct from runtime effective-content
+revisions and from representation ETags containing remote catalogue data. The
+existing common transaction lock makes the check and write atomic; a single-query
+tenant snapshot prevents mixed template/override reads.
+
+Page projections preserve unchanged explicit override leaves, including equal
+values inside edited feedback/legal objects. Language and tab switching preserve
+drafts; hidden invalid fields are exposed before focus. The enhanced host guard
+is opt-in for SSF editing routes. Unrelated authorised module navigation remains
+available, and existing flat plugin contracts retain their defaults.
+
+Legacy administration APIs and exclusive helpers are retired after explicit user
+confirmation that no existing consumers remain. Stored service data is preserved.
+No recording authority, installed translation models, schema or archive expiry
+changes are implied. See [SSF administration](../development/ssf-v2-inhaltsverwaltung-ui.md).

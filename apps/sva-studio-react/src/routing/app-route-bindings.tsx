@@ -1,3 +1,4 @@
+import { ContentEditorLeaveBoundary } from './content-editor-leave-boundary';
 import type { AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
 import { CatalogsPage } from '@sva/plugin-app-translations';
 import type { PluginDefinition, PluginViewBinding } from '@sva/plugin-sdk';
@@ -107,7 +108,18 @@ export const studioRoutePlugins: readonly PluginDefinition[] = studioPlugins.map
             />
           ),
         }))
-      : plugin.routes,
+      : plugin.routes.map((route) => {
+          if (!route.editorLeaveGuard) return route;
+          const Page = route.component as React.ComponentType;
+          return {
+            ...route,
+            component: () => (
+              <ContentEditorLeaveBoundary protectContextChanges>
+                <Page />
+              </ContentEditorLeaveBoundary>
+            ),
+          };
+        }),
   viewBindings: (() => {
     const contributed = [...(plugin.viewBindings ?? [])];
     for (const resource of plugin.adminResources ?? []) {

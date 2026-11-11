@@ -1,16 +1,10 @@
 import { createMainserverJsonRequestHeaders } from '@sva/plugin-sdk';
 
 import {
-  SSF_SYSTEM_CONFIGURATION_PATH,
-  SSF_TENANT_CONFIGURATION_PATH,
-  ssfEffectiveTenantConfigurationSchema,
-  ssfSystemConfigurationInputSchema,
-  ssfTenantConfigurationInputSchema,
-  type SsfSystemConfigurationInput,
-  type SsfTenantConfigurationInput,
-  type SsfTenantConfigurationView,
-} from './admin-contracts.js';
-import {
+  SSF_CONTENT_REVISION_HEADER,
+  SSF_EXPECTED_CONTENT_REVISION_HEADER,
+  ssfAdminContentRevisionSchema,
+  type SsfVersionedContent,
   SSF_SYSTEM_CONTENT_V2_ADMIN_PATH,
   SSF_TENANT_CONTENT_V2_ADMIN_PATH,
   ssfRecordingPolicyConflictSchema,
@@ -27,80 +21,78 @@ export class SsfRecordingPolicyConflictError extends Error {
   }
 }
 
-const requestJson = async (url: string, init?: RequestInit): Promise<unknown> => {
+const requestResponse = async (url: string, init?: RequestInit): Promise<Response> => {
   const response = await fetch(url, init);
   if (!response.ok) {
-    if (url === SSF_SYSTEM_CONTENT_V2_ADMIN_PATH && init?.method === 'PUT' && response.status === 422) {
-      const conflict = ssfRecordingPolicyConflictSchema.safeParse(await response.json().catch(() => null));
-      if (conflict.success) throw new SsfRecordingPolicyConflictError(conflict.data.affectedTenants);
+    if (
+      url === SSF_SYSTEM_CONTENT_V2_ADMIN_PATH &&
+      init?.method === 'PUT' &&
+      response.status === 422
+    ) {
+      const conflict = ssfRecordingPolicyConflictSchema.safeParse(
+        await response.json().catch(() => null)
+      );
+      if (conflict.success)
+        throw new SsfRecordingPolicyConflictError(conflict.data.affectedTenants);
     }
+    if (response.status === 412) throw new SsfContentConflictError();
     throw new Error(`ssf_configuration_http_${response.status}`);
   }
-  return response.json();
+  return response;
 };
+/** A stale draft stays local until the administrator deliberately reloads/discards it. */
+export class SsfContentConflictError extends Error {
+  constructor() {
+    super('ssf_content_revision_conflict');
+  }
+}
 
-export const readSsfSystemConfiguration = async (): Promise<SsfSystemConfigurationInput> =>
-  ssfSystemConfigurationInputSchema.parse(await requestJson(SSF_SYSTEM_CONFIGURATION_PATH));
+const requestContent = async <T>(
+  url: string,
+  parse: (value: unknown) => T,
+  init?: RequestInit
+): Promise<SsfVersionedContent<T>> => {
+  const response = await requestResponse(url, init);
+  const contentRevision = ssfAdminContentRevisionSchema.parse(
+    response.headers.get(SSF_CONTENT_REVISION_HEADER)
+  );
+  return { ...parse(await response.json()), contentRevision };
+};
+const contentWrite = (input: unknown, revision: string): RequestInit => ({
+  method: 'PUT',
+  headers: {
+    ...createMainserverJsonRequestHeaders(),
+    [SSF_EXPECTED_CONTENT_REVISION_HEADER]: ssfAdminContentRevisionSchema.parse(revision),
+  },
+  body: JSON.stringify(input),
+});
 
-export const writeSsfSystemConfiguration = async (
-  input: SsfSystemConfigurationInput
-): Promise<SsfSystemConfigurationInput> =>
-  ssfSystemConfigurationInputSchema.parse(
-    await requestJson(SSF_SYSTEM_CONFIGURATION_PATH, {
-      method: 'PUT',
-      headers: createMainserverJsonRequestHeaders(),
-      body: JSON.stringify(input),
-    })
+export const readSsfSystemContentV2 = (): Promise<SsfVersionedContent<SsfSystemContentV2View>> =>
+  requestContent(SSF_SYSTEM_CONTENT_V2_ADMIN_PATH, (value) =>
+    ssfSystemContentV2ViewSchema.parse(value)
   );
 
-export const readSsfTenantConfiguration = async (): Promise<SsfTenantConfigurationView> => {
-  const value = (await requestJson(SSF_TENANT_CONFIGURATION_PATH)) as SsfTenantConfigurationView;
-  return {
-    system: ssfSystemConfigurationInputSchema.parse(value.system),
-    overrides: ssfTenantConfigurationInputSchema.parse(value.overrides),
-    effective: ssfEffectiveTenantConfigurationSchema.parse(value.effective),
-  };
-};
-
-export const writeSsfTenantConfiguration = async (
-  input: SsfTenantConfigurationInput
-): Promise<SsfTenantConfigurationView> => {
-  const value = (await requestJson(SSF_TENANT_CONFIGURATION_PATH, {
-    method: 'PUT',
-    headers: createMainserverJsonRequestHeaders(),
-    body: JSON.stringify(input),
-  })) as SsfTenantConfigurationView;
-  return {
-    system: ssfSystemConfigurationInputSchema.parse(value.system),
-    overrides: ssfTenantConfigurationInputSchema.parse(value.overrides),
-    effective: ssfEffectiveTenantConfigurationSchema.parse(value.effective),
-  };
-};
-
-export const readSsfSystemContentV2 = async (): Promise<SsfSystemContentV2View> =>
-  ssfSystemContentV2ViewSchema.parse(await requestJson(SSF_SYSTEM_CONTENT_V2_ADMIN_PATH));
-
-export const writeSsfSystemContentV2 = async (
-  input: SsfSystemContentV2Input
-): Promise<SsfSystemContentV2View> =>
-  ssfSystemContentV2ViewSchema.parse(
-    await requestJson(SSF_SYSTEM_CONTENT_V2_ADMIN_PATH, {
-      method: 'PUT',
-      headers: createMainserverJsonRequestHeaders(),
-      body: JSON.stringify(input),
-    })
+export const writeSsfSystemContentV2 = (
+  input: SsfSystemContentV2Input,
+  expectedRevision: string
+): Promise<SsfVersionedContent<SsfSystemContentV2View>> =>
+  requestContent(
+    SSF_SYSTEM_CONTENT_V2_ADMIN_PATH,
+    (value) => ssfSystemContentV2ViewSchema.parse(value),
+    contentWrite(input, expectedRevision)
   );
 
-export const readSsfTenantContentV2 = async (): Promise<SsfTenantContentV2View> =>
-  ssfTenantContentV2ViewSchema.parse(await requestJson(SSF_TENANT_CONTENT_V2_ADMIN_PATH));
+export const readSsfTenantContentV2 = (): Promise<SsfVersionedContent<SsfTenantContentV2View>> =>
+  requestContent(SSF_TENANT_CONTENT_V2_ADMIN_PATH, (value) =>
+    ssfTenantContentV2ViewSchema.parse(value)
+  );
 
-export const writeSsfTenantContentV2 = async (
-  input: Record<string, unknown>
-): Promise<SsfTenantContentV2View> =>
-  ssfTenantContentV2ViewSchema.parse(
-    await requestJson(SSF_TENANT_CONTENT_V2_ADMIN_PATH, {
-      method: 'PUT',
-      headers: createMainserverJsonRequestHeaders(),
-      body: JSON.stringify(input),
-    })
+export const writeSsfTenantContentV2 = (
+  input: Record<string, unknown>,
+  expectedRevision: string
+): Promise<SsfVersionedContent<SsfTenantContentV2View>> =>
+  requestContent(
+    SSF_TENANT_CONTENT_V2_ADMIN_PATH,
+    (value) => ssfTenantContentV2ViewSchema.parse(value),
+    contentWrite(input, expectedRevision)
   );

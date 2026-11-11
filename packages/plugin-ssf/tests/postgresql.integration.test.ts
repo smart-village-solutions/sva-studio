@@ -21,17 +21,30 @@ import {
   upsertSsfTenantSettings,
 } from '../src/runtime.js';
 import {
-  readSsfSystemOverrides,
-  replaceSsfSystemConfiguration,
-  replaceSsfTenantConfiguration,
-} from '../src/admin-repository.js';
-import {
-  readSsfInstallationContentV2, readSsfSystemContentV2, readSsfTenantContentV2,
-  replaceSsfSystemContentV2, writeSsfTenantContentV2,
+  readSsfInstallationContentV2,
+  readSsfSystemContentV2,
+  readSsfTenantContentV2,
+  replaceSsfSystemContentV2 as replaceSystem,
+  writeSsfTenantContentV2 as writeTenant,
+  createSsfAdminContentRevision,
+  SsfContentRevisionConflict,
 } from '../src/content-v2-repository.js';
 import { ssfRuntimeContentV2FieldsSchema } from '../src/content-v2-contracts.js';
 import { normalizeSsfLocale } from '../src/contracts.js';
 import { resolveSsfRuntimeContentV2 } from '../src/content-v2.js';
+
+// Existing integration scenarios acquire explicit baselines just like a browser GET.
+const replaceSsfSystemContentV2 = async (pool: Pool, input: Parameters<typeof replaceSystem>[1]) =>
+  replaceSystem(pool, input, {
+    expectedRevision: createSsfAdminContentRevision('platform', await readSsfSystemContentV2(pool)),
+  });
+const writeSsfTenantContentV2 = async (pool: Pool, instanceId: string, input: unknown) =>
+  writeTenant(pool, instanceId, input, {
+    expectedRevision: createSsfAdminContentRevision(
+      instanceId,
+      await readSsfTenantContentV2(pool, instanceId)
+    ),
+  });
 
 const rootDatabaseUrl = process.env['SSF_TEST_ROOT_DATABASE_URL'];
 const tenantDatabaseUrl = process.env['SSF_TEST_TENANT_DATABASE_URL'];
@@ -146,55 +159,6 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     expect(tenantB.tenantLocales.map((entry) => entry.locale)).toEqual(['en']);
   });
 
-  it('atomically persists system defaults and tenant inheritance markers', async () => {
-    const systemInput = {
-      defaultLocale: 'de-DE' as const,
-      conversationContentStorageMode: 'ask' as const,
-      locales: [
-        {
-          locale: 'de-DE' as const,
-          available: true,
-          authenticatedHomeExplanationHtml: '<p>System</p>',
-          guestExplanationHtml: '<p>Gast</p>',
-          conversationContentStorageQuestionHtml: '<p>Speichern?</p>',
-        },
-        {
-          locale: 'en' as const,
-          available: true,
-          authenticatedHomeExplanationHtml: '<p>System</p>',
-          guestExplanationHtml: '<p>Guest</p>',
-          conversationContentStorageQuestionHtml: '<p>Store?</p>',
-        },
-      ],
-    };
-    await replaceSsfSystemConfiguration(rootPool, systemInput);
-    await replaceSsfTenantConfiguration(rootPool, 'tenant-b', {
-      defaultLocale: null,
-      conversationContentStorageMode: null,
-      locales: systemInput.locales.map(({ locale }) => ({
-        locale,
-        enabled: null,
-        authenticatedHomeExplanationHtml: null,
-        guestExplanationHtml: null,
-        conversationContentStorageQuestionHtml: null,
-      })),
-    });
-
-    const [system, tenant] = await Promise.all([
-      readSsfSystemOverrides(rootPool),
-      readSsfConfigurationOverrides(tenantPool, 'tenant-b'),
-    ]);
-    expect(system.serverSettings).toMatchObject({
-      defaultLocale: 'de-DE',
-      conversationContentStorageMode: 'ask',
-    });
-    expect(tenant.tenantSettings).toMatchObject({
-      defaultLocale: null,
-      conversationContentStorageMode: null,
-    });
-    expect(tenant.tenantLocales).toHaveLength(2);
-  });
-
   it('enforces RLS even when a query omits the repository predicate', async () => {
     const client = await tenantPool.connect();
     try {
@@ -211,12 +175,18 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
   });
 
   it('persists V2 installation and tenant content through scoped roles', async () => {
-    const installation = JSON.parse(readFileSync(new URL(
-      '../../../docs/api/ssf-installation-content-v2.example.json', import.meta.url
-    ), 'utf8')) as Record<string, unknown>;
-    const runtime = JSON.parse(readFileSync(new URL(
-      '../../../docs/api/ssf-runtime-configuration-v2.example.json', import.meta.url
-    ), 'utf8')) as Record<string, unknown>;
+    const installation = JSON.parse(
+      readFileSync(
+        new URL('../../../docs/api/ssf-installation-content-v2.example.json', import.meta.url),
+        'utf8'
+      )
+    ) as Record<string, unknown>;
+    const runtime = JSON.parse(
+      readFileSync(
+        new URL('../../../docs/api/ssf-runtime-configuration-v2.example.json', import.meta.url),
+        'utf8'
+      )
+    ) as Record<string, unknown>;
     delete installation['contractVersion'];
     delete installation['configurationRevision'];
     delete runtime['contractVersion'];
@@ -225,8 +195,12 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     const installationFields = installation;
     const runtimeFields = runtime;
     await replaceSsfSystemContentV2(rootPool, {
-      installation: installationFields as Parameters<typeof replaceSsfSystemContentV2>[1]['installation'],
-      runtimeTemplate: runtimeFields as Parameters<typeof replaceSsfSystemContentV2>[1]['runtimeTemplate'],
+      installation: installationFields as Parameters<
+        typeof replaceSsfSystemContentV2
+      >[1]['installation'],
+      runtimeTemplate: runtimeFields as Parameters<
+        typeof replaceSsfSystemContentV2
+      >[1]['runtimeTemplate'],
     });
     expect(await readSsfInstallationContentV2(tenantPool)).toMatchObject(installationFields);
     await writeSsfTenantContentV2(tenantPool, 'tenant-a', {
@@ -238,8 +212,69 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     ]);
     expect(a.overrides).toMatchObject({ staff: { dashboard: { headline: 'Tenant A' } } });
     expect(b.overrides).toBeNull();
-    expect(resolveSsfRuntimeContentV2({ tenant: { id: 'tenant-a', displayName: 'A', timeZone: 'Europe/Berlin' },
-      template: a.runtimeTemplate, overrides: a.overrides }).staff.dashboard.headline).toBe('Tenant A');
+    expect(
+      resolveSsfRuntimeContentV2({
+        tenant: { id: 'tenant-a', displayName: 'A', timeZone: 'Europe/Berlin' },
+        template: a.runtimeTemplate,
+        overrides: a.overrides,
+      }).staff.dashboard.headline
+    ).toBe('Tenant A');
+  });
+
+  it('serializes two independent database clients and rejects stale tenant/template revisions', async () => {
+    const baseline = await readSsfTenantContentV2(tenantPool, 'tenant-a');
+    const expectedRevision = createSsfAdminContentRevision('tenant-a', baseline);
+    const results = await Promise.allSettled([
+      writeTenant(
+        tenantPool,
+        'tenant-a',
+        { ...baseline.overrides, branding: { logo: null } },
+        { expectedRevision }
+      ),
+      writeTenant(
+        tenantPool,
+        'tenant-a',
+        { ...baseline.overrides, branding: { icon: null } },
+        { expectedRevision }
+      ),
+    ]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    const rejected = results.find((result) => result.status === 'rejected');
+    expect(rejected?.status === 'rejected' && rejected.reason).toBeInstanceOf(
+      SsfContentRevisionConflict
+    );
+    await writeSsfTenantContentV2(tenantPool, 'tenant-a', baseline.overrides ?? {});
+    const root = await readSsfSystemContentV2(rootPool);
+    if (!root.runtimeTemplate) throw new Error('missing_test_template');
+    const tenantBeforeTemplate = await readSsfTenantContentV2(tenantPool, 'tenant-a');
+    await replaceSsfSystemContentV2(rootPool, {
+      installation: null,
+      runtimeTemplate: {
+        ...root.runtimeTemplate,
+        staff: {
+          ...root.runtimeTemplate.staff,
+          dashboard: {
+            ...root.runtimeTemplate.staff.dashboard,
+            headline: 'Concurrent template change',
+          },
+        },
+      },
+    });
+    await expect(
+      writeTenant(tenantPool, 'tenant-a', baseline.overrides ?? {}, {
+        expectedRevision: createSsfAdminContentRevision('tenant-a', tenantBeforeTemplate),
+      })
+    ).rejects.toBeInstanceOf(SsfContentRevisionConflict);
+    await expect(
+      replaceSystem(
+        rootPool,
+        { installation: root.installation, runtimeTemplate: root.runtimeTemplate },
+        {
+          expectedRevision: createSsfAdminContentRevision('platform', root),
+        }
+      )
+    ).rejects.toBeInstanceOf(SsfContentRevisionConflict);
+    await replaceSsfSystemContentV2(rootPool, root);
   });
 
   it('persists recording overrides, reset inheritance and invalid-write rollback across tenants', async () => {
@@ -247,44 +282,88 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     const previousA = await readSsfTenantContentV2(rootPool, 'tenant-a');
     const previousB = await readSsfTenantContentV2(rootPool, 'tenant-b');
     if (!system.runtimeTemplate) throw new Error('missing_test_template');
-    const template = { ...system.runtimeTemplate, recording: { legalBasis: 'consent' as const,
-      signature: 'optional' as const, idCheck: 'off' as const, verificationRequired: true,
-      recoveryMode: 'standard' as const, timestampAuthorityUrl: 'https://tsa.example.org/tsr',
-      auditRetentionHours: 8760, retentionHours: 720 } };
+    const template = {
+      ...system.runtimeTemplate,
+      recording: {
+        legalBasis: 'consent' as const,
+        signature: 'optional' as const,
+        idCheck: 'off' as const,
+        verificationRequired: true,
+        recoveryMode: 'standard' as const,
+        timestampAuthorityUrl: 'https://tsa.example.org/tsr',
+        auditRetentionHours: 8760,
+        retentionHours: 720,
+      },
+    };
     const effective = async (id: string) => {
       const saved = await readSsfTenantContentV2(tenantPool, id);
-      return resolveSsfRuntimeContentV2({ tenant: { id, displayName: id, timeZone: 'Europe/Berlin' },
-        template: saved.runtimeTemplate, overrides: saved.overrides });
+      return resolveSsfRuntimeContentV2({
+        tenant: { id, displayName: id, timeZone: 'Europe/Berlin' },
+        template: saved.runtimeTemplate,
+        overrides: saved.overrides,
+      });
     };
     try {
       await replaceSsfSystemContentV2(rootPool, { installation: null, runtimeTemplate: template });
-      await writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { enabled: true, retentionHours: 241 } });
-      await writeSsfTenantContentV2(tenantPool, 'tenant-b', { recording: { enabled: false, retentionHours: 1440 } });
-      expect((await effective('tenant-a')).recording).toMatchObject({ enabled: true, retentionHours: 241 });
-      expect((await effective('tenant-b')).recording).toMatchObject({ enabled: false, retentionHours: 1440 });
-      await expect(writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { retentionHours: 8761 } })).rejects.toThrow();
+      await writeSsfTenantContentV2(tenantPool, 'tenant-a', {
+        recording: { enabled: true, retentionHours: 241 },
+      });
+      await writeSsfTenantContentV2(tenantPool, 'tenant-b', {
+        recording: { enabled: false, retentionHours: 1440 },
+      });
+      expect((await effective('tenant-a')).recording).toMatchObject({
+        enabled: true,
+        retentionHours: 241,
+      });
+      expect((await effective('tenant-b')).recording).toMatchObject({
+        enabled: false,
+        retentionHours: 1440,
+      });
+      await expect(
+        writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { retentionHours: 8761 } })
+      ).rejects.toThrow();
       expect((await effective('tenant-a')).recording?.retentionHours).toBe(241);
       await writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { enabled: true } });
       expect((await effective('tenant-a')).recording?.retentionHours).toBe(720);
-      await writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { enabled: true, auditRetentionHours: 800 } });
-      await expect(replaceSsfSystemContentV2(rootPool, { installation: null,
-        runtimeTemplate: { ...template, recording: { ...template.recording, retentionHours: 1440 } },
-      })).rejects.toMatchObject({ affectedTenants: ['tenant-a'] });
-      expect((await readSsfSystemContentV2(rootPool)).runtimeTemplate?.recording?.retentionHours).toBe(720);
-      await expect(writeSsfTenantContentV2(tenantPool, 'tenant-a', { recording: { enabled: true, retentionHours: 9000 } })).rejects.toThrow();
+      await writeSsfTenantContentV2(tenantPool, 'tenant-a', {
+        recording: { enabled: true, auditRetentionHours: 800 },
+      });
+      await expect(
+        replaceSsfSystemContentV2(rootPool, {
+          installation: null,
+          runtimeTemplate: {
+            ...template,
+            recording: { ...template.recording, retentionHours: 1440 },
+          },
+        })
+      ).rejects.toMatchObject({ affectedTenants: ['tenant-a'] });
+      expect(
+        (await readSsfSystemContentV2(rootPool)).runtimeTemplate?.recording?.retentionHours
+      ).toBe(720);
+      await expect(
+        writeSsfTenantContentV2(tenantPool, 'tenant-a', {
+          recording: { enabled: true, retentionHours: 9000 },
+        })
+      ).rejects.toThrow();
       expect((await effective('tenant-b')).recording?.retentionHours).toBe(1440);
     } finally {
       await writeSsfTenantContentV2(rootPool, 'tenant-a', previousA.overrides ?? {});
       await writeSsfTenantContentV2(rootPool, 'tenant-b', previousB.overrides ?? {});
-      await replaceSsfSystemContentV2(rootPool, { installation: null, runtimeTemplate: system.runtimeTemplate });
+      await replaceSsfSystemContentV2(rootPool, {
+        installation: null,
+        runtimeTemplate: system.runtimeTemplate,
+      });
     }
   });
 
   it('rejects a runtime template larger than the response limit before writing it', async () => {
     const before = await readSsfSystemContentV2(rootPool);
-    const runtime = JSON.parse(readFileSync(new URL(
-      '../../../docs/api/ssf-runtime-configuration-v2.example.json', import.meta.url
-    ), 'utf8')) as Record<string, unknown>;
+    const runtime = JSON.parse(
+      readFileSync(
+        new URL('../../../docs/api/ssf-runtime-configuration-v2.example.json', import.meta.url),
+        'utf8'
+      )
+    ) as Record<string, unknown>;
     delete runtime['contractVersion'];
     delete runtime['configurationRevision'];
     delete runtime['tenant'];
@@ -292,8 +371,11 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     const language = template.guestLanguages[0];
     if (!language) throw new Error('ssf_v2_test_language_missing');
     const longHtml = `<p>${'x'.repeat(65_529)}</p>`;
-    const locales = Array.from({ length: 26 * 26 }, (_, index) =>
-      `en-${String.fromCharCode(65 + Math.floor(index / 26))}${String.fromCharCode(65 + index % 26)}`)
+    const locales = Array.from(
+      { length: 26 * 26 },
+      (_, index) =>
+        `en-${String.fromCharCode(65 + Math.floor(index / 26))}${String.fromCharCode(65 + (index % 26))}`
+    )
       .filter((candidate) => normalizeSsfLocale(candidate) === candidate)
       .slice(0, 30);
     const oversized = {
@@ -302,16 +384,25 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
         ...language,
         locale,
         guest: { ...language.guest, explanationHtml: longHtml, storageQuestionHtml: null },
-        feedback: { ...language.feedback, noticeHtml: longHtml, questions: Array.from({ length: 20 }, (_, index) => ({
-          id: `question${index}`, type: 'longText' as const, question: 'Q'.repeat(500), placeholder: 'P'.repeat(500),
-        })) },
+        feedback: {
+          ...language.feedback,
+          noticeHtml: longHtml,
+          questions: Array.from({ length: 20 }, (_, index) => ({
+            id: `question${index}`,
+            type: 'longText' as const,
+            question: 'Q'.repeat(500),
+            placeholder: 'P'.repeat(500),
+          })),
+        },
       })),
     };
 
-    await expect(replaceSsfSystemContentV2(rootPool, {
-      installation: null,
-      runtimeTemplate: oversized,
-    })).rejects.toThrow('ssf_v2_response_too_large');
+    await expect(
+      replaceSsfSystemContentV2(rootPool, {
+        installation: null,
+        runtimeTemplate: oversized,
+      })
+    ).rejects.toThrow('ssf_v2_response_too_large');
     expect(await readSsfSystemContentV2(rootPool)).toEqual(before);
   });
 
@@ -320,30 +411,67 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     const before = await readSsfTenantContentV2(rootPool, 'tenant-a');
     const other = await readSsfTenantContentV2(tenantPool, 'tenant-b');
     if (!system.runtimeTemplate) throw new Error('ssf_test_template_missing');
-    const template = { ...system.runtimeTemplate, legalTexts: {
-      sourceLocale: 'de-DE', version: 'integration-draft', localizations: [{
-        locale: 'de-DE', mode2Consent: {
-          headline: 'Recording consent', bodyHtml: '<p>Template wording</p>', acceptLabel: 'Agree', declineLabel: 'Decline',
-        }, mode3Consent: null, guestRecordingRelease: null, staffRecordingRelease: null, recordingStatus: null,
-      }],
-    } };
+    const template = {
+      ...system.runtimeTemplate,
+      legalTexts: {
+        sourceLocale: 'de-DE',
+        version: 'integration-draft',
+        localizations: [
+          {
+            locale: 'de-DE',
+            mode2Consent: {
+              headline: 'Recording consent',
+              bodyHtml: '<p>Template wording</p>',
+              acceptLabel: 'Agree',
+              declineLabel: 'Decline',
+            },
+            mode3Consent: null,
+            guestRecordingRelease: null,
+            staffRecordingRelease: null,
+            recordingStatus: null,
+          },
+        ],
+      },
+    };
     try {
       await replaceSsfSystemContentV2(rootPool, { installation: null, runtimeTemplate: template });
-      await writeSsfTenantContentV2(rootPool, 'tenant-a', { legalTexts: { localizations: [{
-        locale: 'de-DE', mode2Consent: { bodyHtml: '<p onclick="bad()">Tenant wording</p><script>bad()</script>' },
-      }] } });
+      await writeSsfTenantContentV2(rootPool, 'tenant-a', {
+        legalTexts: {
+          localizations: [
+            {
+              locale: 'de-DE',
+              mode2Consent: {
+                bodyHtml: '<p onclick="bad()">Tenant wording</p><script>bad()</script>',
+              },
+            },
+          ],
+        },
+      });
       const saved = await readSsfTenantContentV2(tenantPool, 'tenant-a');
-      const effective = resolveSsfRuntimeContentV2({ tenant: { id: 'tenant-a', displayName: 'A', timeZone: 'Europe/Berlin' },
-        template: saved.runtimeTemplate, overrides: saved.overrides });
-      expect(effective.legalTexts?.localizations[0]?.mode2Consent?.bodyHtml).toBe('<p>Tenant wording</p>');
+      const effective = resolveSsfRuntimeContentV2({
+        tenant: { id: 'tenant-a', displayName: 'A', timeZone: 'Europe/Berlin' },
+        template: saved.runtimeTemplate,
+        overrides: saved.overrides,
+      });
+      expect(effective.legalTexts?.localizations[0]?.mode2Consent?.bodyHtml).toBe(
+        '<p>Tenant wording</p>'
+      );
       const untouched = await readSsfTenantContentV2(tenantPool, 'tenant-b');
       expect(untouched.overrides).toEqual(other.overrides);
-      const otherEffective = resolveSsfRuntimeContentV2({ tenant: { id: 'tenant-b', displayName: 'B', timeZone: 'Europe/Berlin' },
-        template: untouched.runtimeTemplate, overrides: untouched.overrides });
-      expect(otherEffective.legalTexts?.localizations[0]?.mode2Consent?.bodyHtml).toBe('<p>Template wording</p>');
+      const otherEffective = resolveSsfRuntimeContentV2({
+        tenant: { id: 'tenant-b', displayName: 'B', timeZone: 'Europe/Berlin' },
+        template: untouched.runtimeTemplate,
+        overrides: untouched.overrides,
+      });
+      expect(otherEffective.legalTexts?.localizations[0]?.mode2Consent?.bodyHtml).toBe(
+        '<p>Template wording</p>'
+      );
     } finally {
       await writeSsfTenantContentV2(rootPool, 'tenant-a', before.overrides ?? {});
-      await replaceSsfSystemContentV2(rootPool, { installation: null, runtimeTemplate: system.runtimeTemplate });
+      await replaceSsfSystemContentV2(rootPool, {
+        installation: null,
+        runtimeTemplate: system.runtimeTemplate,
+      });
     }
   });
 

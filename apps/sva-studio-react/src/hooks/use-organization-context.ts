@@ -16,6 +16,26 @@ import {
 import { useAuth } from '../providers/auth-provider';
 import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
 
+/** Host editor boundaries may defer a voluntary context mutation before it reaches the API. */
+export const ORGANIZATION_CONTEXT_CHANGE_EVENT = 'studio:before-organization-switch';
+export type OrganizationContextChangeRequest = { resolve: (allowed: boolean) => void };
+const confirmOrganizationSwitch = (): Promise<boolean> =>
+  new Promise((resolve) => {
+    if (typeof window === 'undefined') {
+      resolve(true);
+      return;
+    }
+    const event = new CustomEvent<OrganizationContextChangeRequest>(
+      ORGANIZATION_CONTEXT_CHANGE_EVENT,
+      {
+        cancelable: true,
+        detail: { resolve },
+      }
+    );
+    window.dispatchEvent(event);
+    if (!event.defaultPrevented) resolve(true);
+  });
+
 export type OrganizationContextValue = {
   readonly context: IamOrganizationContext | null;
   readonly isLoading: boolean;
@@ -118,7 +138,12 @@ const performOrganizationSwitch = async (
     } catch (cause) {
       const resolvedError = asIamError(cause);
       const confirmedContext = await readBackAmbiguousOrganizationSwitch(cause);
-      if (!input.publishIfCurrent(identityKey, sequence, () => {})) return false;
+      if (
+        !input.publishIfCurrent(identityKey, sequence, () => {
+          /* Only probe whether this request still owns the context. */
+        })
+      )
+        return false;
       if (confirmedContext) {
         requestEffectiveAccessInvalidation();
         input.lastPublishedOrganization.current = {
@@ -258,20 +283,24 @@ export const OrganizationContextProvider = ({
 
   const switchOrganization = React.useCallback(
     (organizationId: string | null): Promise<boolean> =>
-      performOrganizationSwitch(
-        {
-          identityKey,
-          currentIdentity,
-          requestSequence,
-          lastPublishedOrganization,
-          enqueue,
-          publishIfCurrent,
-          setContextSnapshot,
-          setErrorSnapshot,
-          setIsUpdating,
-          setIsLoading,
-        },
-        organizationId
+      confirmOrganizationSwitch().then((allowed) =>
+        allowed
+          ? performOrganizationSwitch(
+              {
+                identityKey,
+                currentIdentity,
+                requestSequence,
+                lastPublishedOrganization,
+                enqueue,
+                publishIfCurrent,
+                setContextSnapshot,
+                setErrorSnapshot,
+                setIsUpdating,
+                setIsLoading,
+              },
+              organizationId
+            )
+          : false
       ),
     [enqueue, identityKey, publishIfCurrent]
   );

@@ -1,61 +1,117 @@
-# SSF V2: Entwurf der Inhaltsverwaltung
+# SSF administration: navigation, pages and persistence
 
-**Stand:** Fachlich abgestimmter UI-Aufbau und Grundlage der Studio-Implementierung. Die V2-Endpunkte und Felder sind in den [Schemas für Installationsinhalte](../api/ssf-installation-content-v2.schema.json) und [Runtime-Konfiguration](../api/ssf-runtime-configuration-v2.schema.json) beschrieben.
+Status: locally implemented navigation/editor restructuring. Deployment and
+functional acceptance are separate. The owning change is
+`openspec/changes/refactor-ssf-administration-navigation`; its design preserves the
+supplied cross-repository field map and the approved implementation refinements.
 
-## Ziel und Zuständigkeit
+## Navigation and authority
 
-Die vorhandenen Plugin-Seiten bleiben die Einstiegspunkte: `System → SSF-Standards` für installationsweite Inhalte und die globale Vorlage, `Anwendungen → SSF-Konfiguration` für Abweichungen eines Mandanten. Die Systemseite bearbeitet auch Inhalte, die später in der mandantenbezogenen Runtime-Antwort erscheinen. Die Mandantenseite bearbeitet keine Installationsinhalte.
+The existing Applications section contains the branded Smart Speech Flow or
+Kassel DIALOG group. Tenant pages are Overview, Appearance and content, Languages,
+Recordings and Feedback at `/plugins/ssf/{overview,appearance,languages,recordings,feedback}`.
+Root pages are Installation overview, Default configuration and Default content
+at `/plugins/ssf/system/{overview,default-configuration,default-content}`.
 
-Die vorhandenen Aktionen für Lesen und Verwalten von System- beziehungsweise Mandantenkonfiguration bleiben getrennt. Die Mandantenseite bezieht ihren Mandanten aus dem geprüften Sitzungskontext; sie bietet keine freie Mandantenauswahl.
+The Studio homepage and authorised System administration retain their locations.
+Only empty Data management sections disappear; required unrelated modules remain
+navigable. Flat plugins keep their current navigation contract. Groups are generic
+SDK contributions whose leaves are independently checked for access and module
+assignment before composition. Root and tenant presentations follow the active
+host scope. Group visibility does not confer authority.
 
-## Systemseite
+Tenant pages use existing `ssf.configuration.tenant.read/manage` rights. Root uses
+existing platform actions. Neither configuration permission grants recording,
+reviewer, recovery-custodian or key access. The active host binds the tenant; no
+new tenant selector exists.
 
-Die Seite erhält zwei Hauptbereiche:
+## Field ownership and initial language creation
 
-1. **Installation:** Logo und Icon, Impressum-, Datenschutz- und Barrierefreiheitslink, Sprache der Start- und Loginseite, deren Texte sowie das Feedbackformular auf diesen Seiten. Diese Werte gelten, bevor SSF einen Mandanten kennt.
-2. **Vorlage für Mandanten:** Standardwerte für Branding, Mitarbeitendensprache, Dashboard, neues Gespräch, Gesprächsspeicherung mit Aufbewahrungsdauer, Gastsprachen und Feedback nach einem Gespräch. Änderungen an der Vorlage wirken auf alle Mandanten, die das betroffene Feld nicht überschreiben.
+| Page                          | Editable content                                                                                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tenant Appearance and content | Branding; staff dashboard/load/new-conversation texts; guest explanation                                                                            |
+| Tenant Languages              | Staff locale; template guest activation; guest names/icon                                                                                           |
+| Tenant Recordings             | Settings and explicit tenant enablement; retention/reset and technical fields; recording wording and independent legal source/version/localisations |
+| Tenant Feedback               | Existing staff and guest feedback forms, with supported question controls only                                                                      |
+| Root Default configuration    | Template languages/guest metadata; recording behaviour, retention and technical defaults, without tenant activation                                 |
+| Root Default content          | Installation branding/legal links/localisation/start/login/feedback and tenant-template texts/branding/recording wording/legal wording/feedback     |
 
-Innerhalb der Mandantenvorlage gliedern Abschnitte die Mitarbeitendenansicht, Gespräch und Speicherung, Gastsprachen sowie Feedback. Gastsprachen werden in Sprachreitern bearbeitet. Für jedes Feedbackformular gibt es eine übersichtliche Liste der fünf bekannten Fragen; die Textfelder einer Frage öffnen sich bei Bedarf.
+An existing valid runtime template is required. Missing configuration is labelled
+explicitly; read failures have retry and are not shown as empty configuration.
+Installation content can still be saved independently of an absent template.
+When a root administrator adds a guest language, the existing language operation
+also collects that new language's mandatory explanation and feedback text. After
+saving, these creation-only controls disappear and subsequent content editing is
+solely under Default content. This keeps strict existing schemas and does not
+invent translations or add an onboarding workflow.
 
-## Mandantenseite und Vererbung
+Required current controls, limits, inheritance and reset semantics remain. In
+particular, conversation-storage controls stay retired and disabled compatibility
+output remains valid. Technical recording fields retain their existing authority.
+New wording does not enable recording, implement a quality-session runtime or
+constitute legal approval. Existing legal source/import limitations remain binding;
+no new translations or approvals are supplied by this change.
 
-Die Mandantenseite verwendet dieselben Abschnitte der Mandantenvorlage. An jedem änderbaren Feld ist erkennbar, ob der Wert aus der Systemvorlage stammt oder lokal überschrieben wurde. „Systemstandard verwenden“ entfernt nur den Override dieses Feldes; der geerbte Wert bleibt sichtbar. Das gilt auch für Texte innerhalb einer Sprache und innerhalb einer Feedbackfrage. Die wirksame Gesprächsspeicherung berücksichtigt den geerbten oder überschriebenen Modus und die Aufbewahrungsdauer.
+## Drafts and languages
 
-Ein leeres optionales Text- oder Zahlenfeld entfernt den geerbten Wert; ein ausdrücklich geleertes Bildfeld unterdrückt das geerbte Bild. Wird die Speicherung nach `disabled` wieder aktiviert, übernimmt der Editor zunächst die Speicherangaben der Systemvorlage. Fehlen dort Angaben für `ask`, müssen sie vor dem Speichern ergänzt werden.
+Each page owns one save/discard unit, covering every tab and language. Root Default
+content includes both Installation and Tenant template tabs in its atomic unit.
+Language selectors list actual entries independently for guest content, recording
+wording and legal localisations. UI language, staff/installation locale and content
+selection remain distinct; changing a locale does not translate text.
 
-Ein Mandant kann eine in der Systemvorlage angebotene Gastsprache aktivieren oder deaktivieren und ihre Texte einzeln überschreiben. Eine nicht angebotene Sprache kann er nicht selbst hinzufügen. Mandantenname und Zeitzone bleiben in der allgemeinen Instanzverwaltung.
+Tab/language changes keep drafts. Hidden language errors expose their tab, locale
+and collapsed question before focusing the invalid field. Automatic error navigation
+runs once per validation result; subsequent manual tab/language choices remain
+active while editing until the next save validates again. Read-only users retain
+read access without save controls. Failed or stale writes preserve drafts. Success
+uses the sanitized committed response. Overview shows effective saved facts only,
+including inherited recording retention, without readiness claims.
 
-## Feedback in der ersten UI-Version
+The existing host editor-leave boundary is explicitly enabled for SSF editing
+routes in both Studio distributions. It offers Save/Discard/Stay, guards voluntary
+organisation switching before the API call and uses native unload confirmation.
+Forced session/context changes suspend drafts; root recovery verifies platform
+identity without requesting a tenant organisation context. Existing content-editor
+behaviour and unmarked plugin routes retain their defaults.
 
-Die UI zeigt nur `translationQuality`, `performance`, `usability`, `recommendation` und `improvementIdeas`. IDs, Fragetypen, Skalen und Reihenfolge sind fest. Bearbeitbar sind die sichtbaren Texte, die Pflichtangabe und beim Freitext Platzhalter und maximale Länge. Weitere Fragen können im V2-API-Vertrag vorkommen, werden aber erst nach einer eigenen UI-Erweiterung administrierbar. Die UI darf bestehende, ihr unbekannte Fragen beim Speichern nicht stillschweigend löschen.
+## Concurrency contract
 
-Das installationsweite Feedbackformular und die Formulare für Mitarbeitende und Gäste sind getrennte Inhalte. Feedbackantworten werden auf dem SSF-Server gespeichert; Einlesen und Löschen im Studio gehört nicht zu dieser Oberfläche. Die Zuordnung von Feedback vor der Mandantenauswahl muss für die spätere Integration festgelegt werden.
+The current administration endpoints remain:
 
-## Bearbeiten, Prüfen und Speichern
+- `GET/PUT /api/v1/plugins/ssf/content-v2/system`
+- `GET/PUT /api/v1/plugins/ssf/content-v2/tenant`
 
-Die vorhandenen Studio-Formularbausteine, Rich-Text-Editoren, Sprachreiter und Aktionen „Speichern“/„Verwerfen“ werden weiterverwendet. Der Entwurf bleibt beim Wechsel zwischen Bereichen erhalten. Nach erfolgreichem Speichern wird der bestätigte Stand angezeigt; Feldfehler und eine Zusammenfassung machen ungültige Eingaben erkennbar.
+Reads and accepted writes return `X-SSF-Content-Revision`. PUT requires the exact
+`X-SSF-Expected-Content-Revision` from the loaded baseline. Missing tokens return
+428, malformed/wildcard tokens 400 and stale tokens 412 without writing. Existing
+422 validation/affected-tenant conflicts and operational failures remain distinct.
+These headers are administrative concurrency tokens, not HTTP representation ETags.
+The independently fetched language catalogue is not part of the token.
 
-Server und UI prüfen Pflichtfelder, Feldlängen, HTTPS-URLs, die Grenzen der Aufbewahrungsdauer und die zulässigen Kombinationen von `ask`/`disabled` und `retentionHours`. Bei `disabled` ist die wirksame Dauer `null`, es wird keine Speicherfrage ausgeliefert. Bei `ask` stehen Dauer und lokalisierter Speicherhinweis unmittelbar nebeneinander. Ob die Aussage im freien HTML tatsächlich dieselbe Dauer und denselben Zweck nennt, erfordert eine redaktionelle Freigabe; eine automatische Textprüfung wäre nicht zuverlässig. Beispielwerte und Beispiel-URLs aus dem Vertrag werden nicht als produktiv freigegebene Inhalte übernommen.
+The hash covers raw installation/template state for root or template plus raw tenant
+overrides for the bound tenant. It is separate from effective runtime
+`configurationRevision`. Revision comparison, current-state validation and committed
+response capture occur under the existing `ssf.content.v2` advisory transaction
+lock. Tenant reads obtain template and overrides in a single SQL snapshot.
 
-Alle Eingabefelder erhalten sichtbare Beschriftungen; Reiter und Fragebereiche sind per Tastatur bedienbar. Fokus und Statusmeldungen folgen den bestehenden Studio-Formularmustern. HTML wird serverseitig erneut bereinigt; Berechtigungen und Mandantenbindung werden serverseitig geprüft.
+Page projections change only edited leaves and owned resets. Unchanged explicit
+overrides remain explicit even when equal to the template, including within
+feedback/legal/media objects and locale/question collections. Do not send a new
+partial override object through PUT: it replaces the complete override document.
+Do not retry a stale write with a fresh token without explicit user reconciliation.
 
-## Separate consent and recording-release texts
+## Legacy and operations
 
-The existing runtime editor manages optional `legalTexts` content: mode 2 consent, mode 3 consent, guest recording release, staff recording release, and recording status messages. Choice groups contain a heading, full rich-text body, and affirmative/negative labels. A group not supplied in a language remains `null`; German wording is not silently represented as a translation.
+V1/V2 switches, legacy editors, exclusive browser helpers, administration handlers,
+DTOs, view mappers and legacy admin repository helpers are removed. The user
+confirmed on 2026-11-12 that there are no existing consumers. The current V2
+administration paths are the editing API, and image verification probes those
+paths for wrong-scope denial. Runtime service API retirement remains a separate
+scope; stored legacy values and runtime compatibility output are not deleted or
+silently converted to recording consent.
 
-Source language and source version identify the original document. Legal languages are independent of guest languages, so German remains editable when it is the staff language. Add translations through the supported-language catalogue. Existing saved wording remains editable when the catalogue is unavailable. The system template defines available legal languages; tenant administrators override fields and reset them to the current template with the existing controls. Without a system legal template, a tenant can configure its own legal content.
-
-The checkbox indicates only whether a text group is provided. It does not grant consent or authorize recording. Disabling storage retains legal content. Draft identifiers and unresolved placeholders such as `[Kontakt/Widerrufsmöglichkeit]` remain visible until finalized. Saving text is not legal approval.
-
-The optional fields use the existing v2 response, HTML sanitizer, tenant scope, response-size limit, and content revision. Configurations without legal content remain valid. SSF conversation screens, recording control, and consent evidence require separate consumer implementation before the new groups can be used. The legacy `storageQuestionHtml` is not replaced automatically.
-
-For a tenant-specific import, read and preserve the previous overrides, then merge `legalTexts` into them before writing through the existing tenant-content API. That API replaces the override document; sending only the new block would discard unrelated overrides. Verify saved content by reading it back. Before reverting to an image whose strict schema predates `legalTexts`, restore the pre-import JSON content first.
-
-## Existing content acceptance checks
-
-- Systemwerte erscheinen in der Installationsantwort oder als Vorlage in der Runtime-Antwort am passenden V2-Endpunkt.
-- Ein einzelner Tenant-Override verändert nur sein Feld; Rücksetzen stellt die aktuelle Systemvorlage wieder her.
-- Deaktivierte Speicherung liefert `mode=disabled`, `retentionHours=null` und keine Speicherfrage; ungültige Kombinationen werden abgewiesen.
-- Ein Speichervorgang erhält unbekannte Feedbackfragen und andere nicht bearbeitbare Vertragsfelder.
-- System- und Mandantenberechtigungen, fremde Mandanten, ungültiges HTML und ungültige URLs werden negativ geprüft.
-- Die Redaktion prüft die konkreten Hinweise, Aufbewahrungswerte, Links und Übersetzungen vor produktiver Nutzung.
+No schema, data migration, production setting, archive expiry or deployment was
+changed. Any later legacy data transfer requires explicit precedence, conflict
+handling, repeatability and rollback evidence. Any downgrade must account for the
+currently stored JSON schema, including legal text fields.

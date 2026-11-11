@@ -1,27 +1,52 @@
-import type { PluginServerExecutionHandler, PluginServerHandlerModuleFactory } from '@sva/plugin-sdk';
+import type {
+  PluginServerExecutionHandler,
+  PluginServerHandlerModuleFactory,
+} from '@sva/plugin-sdk';
 import type { Pool } from 'pg';
 import { ZodError } from 'zod';
 
-import { ssfSupportedLanguagesCatalogSchema, ssfSystemContentV2InputSchema, ssfTenantContentV2InputSchema } from '../content-v2-admin-contracts.js';
+import {
+  SSF_CONTENT_REVISION_HEADER,
+  SSF_EXPECTED_CONTENT_REVISION_HEADER,
+  ssfAdminContentRevisionSchema,
+  ssfSupportedLanguagesCatalogSchema,
+  ssfSystemContentV2InputSchema,
+  ssfTenantContentV2InputSchema,
+} from '../content-v2-admin-contracts.js';
 import type { SsfLegalTexts } from '../content-v2-contracts.js';
 import { effectiveSsfRuntimeFieldsV2 } from '../content-v2-overrides.js';
 import {
-  SsfContentV2TenantConflict, readSsfSystemContentV2, readSsfTenantContentV2,
-  replaceSsfSystemContentV2, writeSsfTenantContentV2,
-  type SsfSystemContentV2, type SsfTenantContentV2,
+  createSsfAdminContentRevision,
+  SsfContentRevisionConflict,
+  type SsfContentWriteOptions,
+  SsfContentV2TenantConflict,
+  readSsfSystemContentV2,
+  readSsfTenantContentV2,
+  replaceSsfSystemContentV2,
+  writeSsfTenantContentV2,
+  type SsfSystemContentV2,
+  type SsfTenantContentV2,
 } from '../content-v2-repository.js';
 import { jsonResponse, readCorrelationId } from './responses.js';
 
 export type SsfAdminV2Dependencies = Readonly<{
   readSystemV2?: () => Promise<SsfSystemContentV2>;
-  writeSystemV2?: (input: SsfSystemContentV2) => Promise<void>;
+  writeSystemV2?: (
+    input: SsfSystemContentV2,
+    options: SsfContentWriteOptions<SsfSystemContentV2>
+  ) => Promise<SsfSystemContentV2>;
   readTenantV2?: (instanceId: string) => Promise<SsfTenantContentV2>;
-  writeTenantV2?: (instanceId: string, input: Record<string, unknown>) => Promise<unknown>;
+  writeTenantV2?: (
+    instanceId: string,
+    input: Record<string, unknown>,
+    options: SsfContentWriteOptions<SsfTenantContentV2>
+  ) => Promise<SsfTenantContentV2>;
   readSupportedLanguages?: () => Promise<unknown>;
 }>;
 
 const withSupportedLanguages = async <T extends object>(
-  value: Promise<T>, read: SsfAdminV2Dependencies['readSupportedLanguages']
+  value: Promise<T>,
+  read: SsfAdminV2Dependencies['readSupportedLanguages']
 ): Promise<T & { supportedLanguages: unknown | null }> => {
   const [resolvedValue, catalog] = await Promise.all([value, readCatalog(read)]);
   return { ...resolvedValue, supportedLanguages: catalog };
@@ -37,40 +62,101 @@ const readCatalog = async (read: SsfAdminV2Dependencies['readSupportedLanguages'
   }
 };
 
-const localeIsAllowed = (locale: string, previous: string | undefined, catalog: Awaited<ReturnType<typeof readCatalog>>) =>
-  locale === previous || Boolean(catalog?.languages[locale]);
+const contentResponse = async (
+  value: Promise<SsfSystemContentV2 | SsfTenantContentV2>,
+  scope: string,
+  correlationId: string,
+  read: SsfAdminV2Dependencies['readSupportedLanguages']
+) => {
+  const content = await withSupportedLanguages(value, read);
+  const { supportedLanguages: _catalog, ...stored } = content;
+  const response = jsonResponse(200, content, correlationId);
+  response.headers.set(
+    SSF_CONTENT_REVISION_HEADER,
+    createSsfAdminContentRevision(scope, stored as SsfSystemContentV2 | SsfTenantContentV2)
+  );
+  response.headers.set('Cache-Control', 'no-store');
+  return response;
+};
+const expectedRevision = (request: Request, correlationId: string): string | Response => {
+  const value = request.headers.get(SSF_EXPECTED_CONTENT_REVISION_HEADER);
+  if (value === null)
+    return jsonResponse(428, { error: 'content_revision_required' }, correlationId);
+  const parsed = ssfAdminContentRevisionSchema.safeParse(value);
+  return parsed.success
+    ? parsed.data
+    : jsonResponse(400, { error: 'invalid_content_revision' }, correlationId);
+};
+const invalidConfiguration = () => {
+  throw new Error('ssf_v2_locale_invalid');
+};
+
+const localeIsAllowed = (
+  locale: string,
+  previous: string | undefined,
+  catalog: Awaited<ReturnType<typeof readCatalog>>
+) => locale === previous || Boolean(catalog?.languages[locale]);
 
 const legalLocalesAreAllowed = (
-  next: SsfLegalTexts | undefined, previous: SsfLegalTexts | undefined,
+  next: SsfLegalTexts | undefined,
+  previous: SsfLegalTexts | undefined,
   catalog: Awaited<ReturnType<typeof readCatalog>>
 ): boolean => {
   if (!next) return true;
   const saved = new Set(previous?.localizations.map((entry) => entry.locale) ?? []);
-  if (!catalog) return next.sourceLocale === previous?.sourceLocale &&
-    next.localizations.length === saved.size && next.localizations.every((entry) => saved.has(entry.locale));
-  return next.localizations.every(({ locale }) => saved.has(locale) ||
-    Boolean(catalog.languages[locale] ?? catalog.languages[locale.split('-')[0] ?? '']));
+  if (!catalog)
+    return (
+      next.sourceLocale === previous?.sourceLocale &&
+      next.localizations.length === saved.size &&
+      next.localizations.every((entry) => saved.has(entry.locale))
+    );
+  return next.localizations.every(
+    ({ locale }) =>
+      saved.has(locale) ||
+      Boolean(catalog.languages[locale] ?? catalog.languages[locale.split('-')[0] ?? ''])
+  );
 };
 
 const systemLocalesAreAllowed = (
-  input: { installation: SsfSystemContentV2['installation']; runtimeTemplate: SsfSystemContentV2['runtimeTemplate'] },
+  input: {
+    installation: SsfSystemContentV2['installation'];
+    runtimeTemplate: SsfSystemContentV2['runtimeTemplate'];
+  },
   previous: SsfSystemContentV2,
   catalog: Awaited<ReturnType<typeof readCatalog>>
 ): boolean => {
-  if (input.installation && !localeIsAllowed(input.installation.localization.locale,
-    previous.installation?.localization.locale, catalog)) return false;
+  if (
+    input.installation &&
+    !localeIsAllowed(
+      input.installation.localization.locale,
+      previous.installation?.localization.locale,
+      catalog
+    )
+  )
+    return false;
   const previousRuntime = previous.runtimeTemplate;
   if (!catalog && previousRuntime && input.runtimeTemplate) {
     const previousGuests = previousRuntime.guestLanguages.map(({ locale }) => locale).sort();
     const requestedGuests = input.runtimeTemplate.guestLanguages.map(({ locale }) => locale).sort();
-    if (previousGuests.length !== requestedGuests.length || previousGuests.some((locale, index) => locale !== requestedGuests[index])) return false;
+    if (
+      previousGuests.length !== requestedGuests.length ||
+      previousGuests.some((locale, index) => locale !== requestedGuests[index])
+    )
+      return false;
   }
   if (!input.runtimeTemplate) return true;
-  if (!legalLocalesAreAllowed(input.runtimeTemplate.legalTexts, previousRuntime?.legalTexts, catalog)) return false;
-  if (!localeIsAllowed(input.runtimeTemplate.staff.locale, previousRuntime?.staff.locale, catalog)) return false;
-  const previousGuestLocales = new Set(previousRuntime?.guestLanguages.map(({ locale }) => locale) ?? []);
-  return input.runtimeTemplate.guestLanguages.every(({ locale }) =>
-    previousGuestLocales.has(locale) || Boolean(catalog?.languages[locale]));
+  if (
+    !legalLocalesAreAllowed(input.runtimeTemplate.legalTexts, previousRuntime?.legalTexts, catalog)
+  )
+    return false;
+  if (!localeIsAllowed(input.runtimeTemplate.staff.locale, previousRuntime?.staff.locale, catalog))
+    return false;
+  const previousGuestLocales = new Set(
+    previousRuntime?.guestLanguages.map(({ locale }) => locale) ?? []
+  );
+  return input.runtimeTemplate.guestLanguages.every(
+    ({ locale }) => previousGuestLocales.has(locale) || Boolean(catalog?.languages[locale])
+  );
 };
 
 const tenantGuestChangesAreAllowed = (
@@ -82,16 +168,23 @@ const tenantGuestChangesAreAllowed = (
   const guestLanguages = input['guestLanguages'];
   if (guestLanguages === undefined) return true;
   if (!Array.isArray(guestLanguages)) return false;
-  const templateLocales = new Set(previous.runtimeTemplate?.guestLanguages.map(({ locale }) => locale) ?? []);
+  const templateLocales = new Set(
+    previous.runtimeTemplate?.guestLanguages.map(({ locale }) => locale) ?? []
+  );
   return guestLanguages.every((entry) => {
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return false;
     const value = entry as Record<string, unknown>;
-    return typeof value['locale'] === 'string' && templateLocales.has(value['locale']) && value['enabled'] === undefined;
+    return (
+      typeof value['locale'] === 'string' &&
+      templateLocales.has(value['locale']) &&
+      value['enabled'] === undefined
+    );
   });
 };
 
 const tenantLegalChangesAreAllowed = (
-  input: Record<string, unknown>, previous: SsfTenantContentV2,
+  input: Record<string, unknown>,
+  previous: SsfTenantContentV2,
   catalog: Awaited<ReturnType<typeof readCatalog>>
 ): boolean => {
   if (input['legalTexts'] === undefined || !previous.runtimeTemplate) return true;
@@ -100,7 +193,9 @@ const tenantLegalChangesAreAllowed = (
   return legalLocalesAreAllowed(next.legalTexts, saved.legalTexts, catalog);
 };
 
-const tenantStaffLocale = (value: Record<string, unknown> | null | undefined): string | undefined => {
+const tenantStaffLocale = (
+  value: Record<string, unknown> | null | undefined
+): string | undefined => {
   const staff = value?.staff;
   if (typeof staff !== 'object' || staff === null || Array.isArray(staff)) return undefined;
   const locale = (staff as Record<string, unknown>).locale;
@@ -112,108 +207,178 @@ let supportedLanguagesCache: { expiresAt: number; value: Promise<unknown> } | nu
 
 const readSupportedLanguages = (): Promise<unknown> => {
   const now = Date.now();
-  if (supportedLanguagesCache && (supportedLanguagesCache.expiresAt === 0 || supportedLanguagesCache.expiresAt > now)) {
+  if (
+    supportedLanguagesCache &&
+    (supportedLanguagesCache.expiresAt === 0 || supportedLanguagesCache.expiresAt > now)
+  ) {
     return supportedLanguagesCache.value;
   }
 
   const value = fetch('https://api.dialog.kassel.de/api/languages/supported', {
     signal: AbortSignal.timeout(5_000),
     headers: { accept: 'application/json' },
-  }).then(async (response) => {
-    if (!response.ok) throw new Error('ssf_supported_languages_unavailable');
-    return response.json();
-  }).then((catalog) => {
-    supportedLanguagesCache = { expiresAt: Date.now() + SUPPORTED_LANGUAGES_CACHE_TTL_MS, value: Promise.resolve(catalog) };
-    return catalog;
-  }).catch((error: unknown) => {
-    supportedLanguagesCache = null;
-    throw error;
-  });
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error('ssf_supported_languages_unavailable');
+      return response.json();
+    })
+    .then((catalog) => {
+      supportedLanguagesCache = {
+        expiresAt: Date.now() + SUPPORTED_LANGUAGES_CACHE_TTL_MS,
+        value: Promise.resolve(catalog),
+      };
+      return catalog;
+    })
+    .catch((error: unknown) => {
+      supportedLanguagesCache = null;
+      throw error;
+    });
   supportedLanguagesCache = { expiresAt: 0, value };
   return value;
 };
 
-const invalidInput = (error: unknown): boolean => error instanceof ZodError ||
-  (error instanceof Error && error.message.startsWith('ssf_v2_'));
+const invalidInput = (error: unknown): boolean =>
+  error instanceof ZodError || (error instanceof Error && error.message.startsWith('ssf_v2_'));
 
-const readSystem = (dependencies: SsfAdminV2Dependencies): PluginServerExecutionHandler => async (context) => {
-  const correlationId = readCorrelationId(context.request);
-  if (context.scope !== 'platform') return jsonResponse(403, { error: 'forbidden' }, correlationId);
-  if (!dependencies.readSystemV2) return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
-  try {
-    return jsonResponse(200, await withSupportedLanguages(dependencies.readSystemV2(), dependencies.readSupportedLanguages), correlationId);
-  } catch {
-    return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
-  }
-};
+const readSystem =
+  (dependencies: SsfAdminV2Dependencies): PluginServerExecutionHandler =>
+  async (context) => {
+    const correlationId = readCorrelationId(context.request);
+    if (context.scope !== 'platform')
+      return jsonResponse(403, { error: 'forbidden' }, correlationId);
+    if (!dependencies.readSystemV2)
+      return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
+    try {
+      return await contentResponse(
+        dependencies.readSystemV2(),
+        'platform',
+        correlationId,
+        dependencies.readSupportedLanguages
+      );
+    } catch {
+      return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
+    }
+  };
 
-const writeSystem = (dependencies: SsfAdminV2Dependencies): PluginServerExecutionHandler => async (context) => {
-  const correlationId = readCorrelationId(context.request);
-  if (context.scope !== 'platform') return jsonResponse(403, { error: 'forbidden' }, correlationId);
-  const parsed = ssfSystemContentV2InputSchema.safeParse(await context.request.json().catch(() => null));
-  if (!parsed.success) return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
-  if (!dependencies.writeSystemV2 || !dependencies.readSystemV2) return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
-  try {
-    const [previous, catalog] = await Promise.all([
-      dependencies.readSystemV2(), readCatalog(dependencies.readSupportedLanguages),
-    ]);
-    if (!systemLocalesAreAllowed(parsed.data, previous, catalog)) {
+const writeSystem =
+  (dependencies: SsfAdminV2Dependencies): PluginServerExecutionHandler =>
+  async (context) => {
+    const correlationId = readCorrelationId(context.request);
+    if (context.scope !== 'platform')
+      return jsonResponse(403, { error: 'forbidden' }, correlationId);
+    const revision = expectedRevision(context.request, correlationId);
+    if (revision instanceof Response) return revision;
+    const parsed = ssfSystemContentV2InputSchema.safeParse(
+      await context.request.json().catch(() => null)
+    );
+    if (!parsed.success)
       return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
+    if (!dependencies.writeSystemV2 || !dependencies.readSystemV2)
+      return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
+    try {
+      const catalog = await readCatalog(dependencies.readSupportedLanguages);
+      const next = await dependencies.writeSystemV2(parsed.data, {
+        expectedRevision: revision,
+        validate: (previous) => {
+          if (!systemLocalesAreAllowed(parsed.data, previous, catalog)) invalidConfiguration();
+        },
+      });
+      return await contentResponse(
+        Promise.resolve(next),
+        'platform',
+        correlationId,
+        async () => catalog
+      );
+    } catch (error) {
+      if (error instanceof SsfContentRevisionConflict)
+        return jsonResponse(412, { error: 'content_revision_conflict' }, correlationId);
+      if (error instanceof SsfContentV2TenantConflict)
+        return jsonResponse(
+          422,
+          {
+            error: 'invalid_configuration',
+            affectedTenants: error.affectedTenants,
+          },
+          correlationId
+        );
+      const invalid = invalidInput(error);
+      return jsonResponse(
+        invalid ? 422 : 503,
+        { error: invalid ? 'invalid_configuration' : 'configuration_unavailable' },
+        correlationId
+      );
     }
-    await dependencies.writeSystemV2(parsed.data);
-    return jsonResponse(200, await withSupportedLanguages(dependencies.readSystemV2(), dependencies.readSupportedLanguages), correlationId);
-  } catch (error) {
-    if (error instanceof SsfContentV2TenantConflict) return jsonResponse(422, {
-      error: 'invalid_configuration', affectedTenants: error.affectedTenants,
-    }, correlationId);
-    const invalid = invalidInput(error);
-    return jsonResponse(invalid ? 422 : 503,
-      { error: invalid ? 'invalid_configuration' : 'configuration_unavailable' }, correlationId);
-  }
-};
+  };
 
-const readTenant = (dependencies: SsfAdminV2Dependencies): PluginServerExecutionHandler => async (context) => {
-  const correlationId = readCorrelationId(context.request);
-  if (context.scope !== 'tenant' || !context.actor.instanceId) return jsonResponse(403, { error: 'forbidden' }, correlationId);
-  if (!dependencies.readTenantV2) return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
-  try {
-    return jsonResponse(200, await withSupportedLanguages(dependencies.readTenantV2(context.actor.instanceId), dependencies.readSupportedLanguages), correlationId);
-  } catch {
-    return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
-  }
-};
+const readTenant =
+  (dependencies: SsfAdminV2Dependencies): PluginServerExecutionHandler =>
+  async (context) => {
+    const correlationId = readCorrelationId(context.request);
+    if (context.scope !== 'tenant' || !context.actor.instanceId)
+      return jsonResponse(403, { error: 'forbidden' }, correlationId);
+    if (!dependencies.readTenantV2)
+      return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
+    try {
+      return await contentResponse(
+        dependencies.readTenantV2(context.actor.instanceId),
+        context.actor.instanceId,
+        correlationId,
+        dependencies.readSupportedLanguages
+      );
+    } catch {
+      return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
+    }
+  };
 
-const writeTenant = (dependencies: SsfAdminV2Dependencies): PluginServerExecutionHandler => async (context) => {
-  const correlationId = readCorrelationId(context.request);
-  if (context.scope !== 'tenant' || !context.actor.instanceId) return jsonResponse(403, { error: 'forbidden' }, correlationId);
-  const parsed = ssfTenantContentV2InputSchema.safeParse(await context.request.json().catch(() => null));
-  if (!parsed.success) return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
-  if (!dependencies.writeTenantV2 || !dependencies.readTenantV2) return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
-  try {
-    const [previous, catalog] = await Promise.all([
-      dependencies.readTenantV2(context.actor.instanceId), readCatalog(dependencies.readSupportedLanguages),
-    ]);
-    const requestedLocale = tenantStaffLocale(parsed.data);
-    if (!tenantLegalChangesAreAllowed(parsed.data, previous, catalog)) {
+const writeTenant =
+  (dependencies: SsfAdminV2Dependencies): PluginServerExecutionHandler =>
+  async (context) => {
+    const correlationId = readCorrelationId(context.request);
+    if (context.scope !== 'tenant' || !context.actor.instanceId)
+      return jsonResponse(403, { error: 'forbidden' }, correlationId);
+    const revision = expectedRevision(context.request, correlationId);
+    if (revision instanceof Response) return revision;
+    const parsed = ssfTenantContentV2InputSchema.safeParse(
+      await context.request.json().catch(() => null)
+    );
+    if (!parsed.success)
       return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
+    if (!dependencies.writeTenantV2 || !dependencies.readTenantV2)
+      return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
+    try {
+      const catalog = await readCatalog(dependencies.readSupportedLanguages);
+      const next = await dependencies.writeTenantV2(context.actor.instanceId, parsed.data, {
+        expectedRevision: revision,
+        validate: (previous) => {
+          const requestedLocale = tenantStaffLocale(parsed.data);
+          if (
+            !tenantLegalChangesAreAllowed(parsed.data, previous, catalog) ||
+            !tenantGuestChangesAreAllowed(parsed.data, previous, catalog)
+          )
+            invalidConfiguration();
+          const previousLocale =
+            tenantStaffLocale(previous.overrides) ?? previous.runtimeTemplate?.staff.locale;
+          if (requestedLocale && !localeIsAllowed(requestedLocale, previousLocale, catalog))
+            invalidConfiguration();
+        },
+      });
+      return await contentResponse(
+        Promise.resolve(next),
+        context.actor.instanceId,
+        correlationId,
+        async () => catalog
+      );
+    } catch (error) {
+      if (error instanceof SsfContentRevisionConflict)
+        return jsonResponse(412, { error: 'content_revision_conflict' }, correlationId);
+      const invalid = invalidInput(error);
+      return jsonResponse(
+        invalid ? 422 : 503,
+        { error: invalid ? 'invalid_configuration' : 'configuration_unavailable' },
+        correlationId
+      );
     }
-    if (!tenantGuestChangesAreAllowed(parsed.data, previous, catalog)) {
-      return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
-    }
-    if (requestedLocale) {
-      const previousLocale = tenantStaffLocale(previous.overrides) ?? previous.runtimeTemplate?.staff.locale;
-      if (!localeIsAllowed(requestedLocale, previousLocale, catalog)) {
-        return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
-      }
-    }
-    await dependencies.writeTenantV2(context.actor.instanceId, parsed.data);
-    return jsonResponse(200, await withSupportedLanguages(dependencies.readTenantV2(context.actor.instanceId), dependencies.readSupportedLanguages), correlationId);
-  } catch (error) {
-    const invalid = invalidInput(error);
-    return jsonResponse(invalid ? 422 : 503,
-      { error: invalid ? 'invalid_configuration' : 'configuration_unavailable' }, correlationId);
-  }
-};
+  };
 
 export const createSsfAdminV2Handlers = (
   dependencies: SsfAdminV2Dependencies
@@ -225,14 +390,21 @@ export const createSsfAdminV2Handlers = (
 });
 
 export const createDefaultSsfAdminV2Dependencies = (
-  pool: Pool | null, rootPool: Pool | null
+  pool: Pool | null,
+  rootPool: Pool | null
 ): SsfAdminV2Dependencies => {
-  const unavailable = async (): Promise<never> => { throw new Error('ssf_database_unavailable'); };
+  const unavailable = async (): Promise<never> => {
+    throw new Error('ssf_database_unavailable');
+  };
   return {
     readSystemV2: pool ? () => readSsfSystemContentV2(pool) : unavailable,
-    writeSystemV2: rootPool ? (input) => replaceSsfSystemContentV2(rootPool, input) : unavailable,
+    writeSystemV2: rootPool
+      ? (input, options) => replaceSsfSystemContentV2(rootPool, input, options)
+      : unavailable,
     readTenantV2: pool ? (instanceId) => readSsfTenantContentV2(pool, instanceId) : unavailable,
-    writeTenantV2: pool ? (instanceId, input) => writeSsfTenantContentV2(pool, instanceId, input) : unavailable,
+    writeTenantV2: pool
+      ? (instanceId, input, options) => writeSsfTenantContentV2(pool, instanceId, input, options)
+      : unavailable,
     readSupportedLanguages,
   };
 };

@@ -584,8 +584,8 @@
       }
     },
     {
-      "id": "ssf.system-configuration",
-      "path": "/plugins/ssf/system-configuration",
+      "id": "ssf.system-default-configuration",
+      "path": "/plugins/ssf/system/default-configuration",
       "pageType": "setup",
       "owner": {
         "kind": "plugin",
@@ -593,8 +593,62 @@
       }
     },
     {
-      "id": "ssf.tenant-configuration",
-      "path": "/plugins/ssf/configuration",
+      "id": "ssf.system-default-content",
+      "path": "/plugins/ssf/system/default-content",
+      "pageType": "setup",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "ssf"
+      }
+    },
+    {
+      "id": "ssf.system-overview",
+      "path": "/plugins/ssf/system/overview",
+      "pageType": "overview",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "ssf"
+      }
+    },
+    {
+      "id": "ssf.tenant-appearance",
+      "path": "/plugins/ssf/appearance",
+      "pageType": "setup",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "ssf"
+      }
+    },
+    {
+      "id": "ssf.tenant-feedback",
+      "path": "/plugins/ssf/feedback",
+      "pageType": "setup",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "ssf"
+      }
+    },
+    {
+      "id": "ssf.tenant-languages",
+      "path": "/plugins/ssf/languages",
+      "pageType": "setup",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "ssf"
+      }
+    },
+    {
+      "id": "ssf.tenant-overview",
+      "path": "/plugins/ssf/overview",
+      "pageType": "overview",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "ssf"
+      }
+    },
+    {
+      "id": "ssf.tenant-recordings",
+      "path": "/plugins/ssf/recordings",
       "pageType": "setup",
       "owner": {
         "kind": "plugin",

@@ -197,6 +197,7 @@ export {
   definePluginImportProfiles,
   definePluginJobTypes,
   definePluginManifest,
+  isValidPluginNamespace,
   pluginCatalogSourceTypes,
   PLUGIN_PLATFORM_ADMIN_ROLE,
   PLUGIN_ROUTE_SCOPE_HEADER_NAME,

@@ -14,13 +14,20 @@ const reservedPluginNamespaces = new Set<string>(RESERVED_PLUGIN_NAMESPACES);
 
 export const normalizePluginIdentifier = (value: string): string => value.trim();
 
+/**
+ * Single source of the plugin namespace rule. Checks the exact value; use
+ * `normalizePluginNamespace` to trim before validating.
+ */
+export const isValidPluginNamespace = (value: string): boolean =>
+  PLUGIN_NAMESPACE_PATTERN.test(value);
+
 export const normalizePluginNamespace = (value: string): string => {
   const normalized = value.trim();
 
   if (normalized.length === 0) {
     throw new Error('invalid_plugin_namespace');
   }
-  if (PLUGIN_NAMESPACE_PATTERN.test(normalized) === false) {
+  if (isValidPluginNamespace(normalized) === false) {
     throw new Error(`invalid_plugin_namespace:${normalized}`);
   }
 

@@ -21,6 +21,7 @@ const createFixture = (
     browserPath?: string;
     exportsManifest?: boolean;
     jobsPath?: string | null;
+    pluginId?: string;
     runtimeRequirement?: string;
     sourceRef?: string;
     sdkVersion?: string;
@@ -32,6 +33,7 @@ const createFixture = (
   temporaryRoots.push(root);
   const appRoot = join(root, 'app');
   const sourceRef = input.sourceRef ?? '@vendor/calendar';
+  const pluginId = input.pluginId ?? 'calendar';
   const packageRoot = join(appRoot, 'node_modules', ...sourceRef.split('/'));
   mkdirSync(packageRoot, { recursive: true });
   const paths = {
@@ -51,7 +53,7 @@ const createFixture = (
     join(appRoot, 'plugin-catalog.json'),
     JSON.stringify([
       {
-        pluginId: 'calendar',
+        pluginId,
         sourceType: input.sourceType ?? 'installed-distribution',
         enabled: input.enabled ?? true,
         sourceRef,
@@ -74,7 +76,7 @@ const createFixture = (
   writeFileSync(
     join(packageRoot, 'plugin.manifest.json'),
     JSON.stringify({
-      pluginId: 'calendar',
+      pluginId,
       manifestVersion: 1,
       extensionTier: 'feature',
       tenantActivationPolicy: 'optional',
@@ -283,6 +285,18 @@ describe('installed plugin build inputs', () => {
     const { appRoot } = createFixture({ distribution: 'ssf', jobsPath: null });
     expect(resolveInstalledPluginSources(appRoot, 'studio')).toEqual([]);
     expect(resolveInstalledPluginSources(appRoot, 'ssf')).toHaveLength(1);
+  });
+
+  it('keeps resolving a plugin id the SDK accepts without blocking other distributions', () => {
+    const { appRoot } = createFixture({
+      distribution: 'ssf',
+      jobsPath: null,
+      pluginId: 'calendar--tools',
+    });
+    expect(resolveInstalledPluginSources(appRoot, 'studio')).toEqual([]);
+    expect(
+      resolveInstalledPluginSources(appRoot, 'ssf').map((source) => source.catalog.pluginId)
+    ).toEqual(['calendar--tools']);
   });
 
   it('ignores workspace catalog entries when resolving installed packages', () => {

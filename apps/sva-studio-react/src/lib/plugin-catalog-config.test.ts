@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pluginCatalogSourceTypes } from '@sva/plugin-sdk';
+import { isValidPluginNamespace, pluginCatalogSourceTypes } from '@sva/plugin-sdk';
 
 import {
   isInstalledPluginCatalogEntry,
@@ -54,6 +54,48 @@ describe('parsePluginCatalogConfig', () => {
     expect(
       parsePluginCatalogConfig([{ ...workspaceEntry, availability: 'in-development' }])[0]
     ).toMatchObject({ availability: 'in-development' });
+  });
+
+  it.each(['calendar--tools', 'calendar-', 'c4', 'a'.repeat(31)])(
+    'accepts the SDK-valid plugin id %s that the manifest and catalog contracts also accept',
+    (pluginId) => {
+      expect(isValidPluginNamespace(pluginId)).toBe(true);
+      expect(parsePluginCatalogConfig([{ ...installedEntry, pluginId }])[0]?.pluginId).toBe(
+        pluginId
+      );
+      expect(parsePluginCatalogConfig([{ ...workspaceEntry, pluginId }])[0]?.pluginId).toBe(
+        pluginId
+      );
+    }
+  );
+
+  it('does not let an SDK-valid id on an unselected installed entry block the catalog', () => {
+    const entries = parsePluginCatalogConfig([
+      workspaceEntry,
+      { ...installedEntry, pluginId: 'calendar--tools', distribution: 'ssf' },
+    ]);
+    expect(entries.filter(isInstalledPluginCatalogEntry).map(({ pluginId }) => pluginId)).toEqual([
+      'calendar--tools',
+    ]);
+  });
+
+  it.each([
+    ['starts with a digit', '1calendar'],
+    ['has a single character', 'a'],
+    ['exceeds 31 characters', 'a'.repeat(32)],
+    ['contains uppercase letters', 'Calendar'],
+    ['contains a dot', 'calendar.tools'],
+  ])('rejects a plugin id that %s like the SDK does', (_label, pluginId) => {
+    expect(isValidPluginNamespace(pluginId)).toBe(false);
+    expect(parseWith({ ...installedEntry, pluginId })).toThrow(
+      `plugin_catalog_entry_invalid:${pluginId}:pluginId`
+    );
+  });
+
+  it('rejects a plugin id with surrounding whitespace that would not match the manifest id', () => {
+    expect(parseWith({ ...installedEntry, pluginId: ' calendar ' })).toThrow(
+      'plugin_catalog_entry_invalid: calendar :pluginId'
+    );
   });
 
   it('rejects a catalog that is not an array', () => {

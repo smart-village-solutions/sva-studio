@@ -1,7 +1,13 @@
-import { pluginCatalogSourceTypes, type PluginCatalogSourceType } from '@sva/plugin-sdk';
+import {
+  isValidPluginNamespace,
+  pluginCatalogSourceTypes,
+  type PluginCatalogSourceType,
+} from '@sva/plugin-sdk';
 import { z } from 'zod';
 
-const pluginIdSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u);
+// Same rule the SDK applies to manifest and catalog plugin ids, so every id the platform can
+// load passes. The exact value is checked: the installed resolver compares it to the manifest id.
+const pluginIdSchema = z.string().refine(isValidPluginNamespace);
 
 const isWorkspaceRelativePath = (path: string): boolean =>
   path.length > 0 &&

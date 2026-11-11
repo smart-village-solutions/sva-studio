@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { compileEmailVerificationTemplate, DEFAULT_EMAIL_VERIFICATION_TEMPLATE } from '@sva/core';
 import { IamHttpError } from '../../../lib/iam-api';
@@ -147,6 +147,37 @@ describe('verification editor', () => {
         expectedKeycloakTexts: view.keycloakTexts,
       })
     );
+  });
+  it('keeps the loaded source when closing and compares freshly on reopen', async () => {
+    await open();
+    expect(api.get).toHaveBeenCalledTimes(2);
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape', code: 'Escape' });
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByText('Verwendete Vorlage: SVA-Standard')).toBeTruthy();
+    expect(screen.queryByText('Vorlage wird geladen.')).toBeNull();
+    expect(api.get).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByRole('button', { name: 'E-Mail-Bestätigung anpassen' }));
+    await screen.findByLabelText('Betreff');
+    expect(api.get).toHaveBeenCalledTimes(3);
+    expect(api.get).toHaveBeenLastCalledWith('bb-havelland', 'verification');
+  });
+  it('reads the new instance source on context change and discards obsolete responses', async () => {
+    let resolveObsolete: (value: { data: typeof view }) => void = () => undefined;
+    api.get.mockImplementation(
+      (instanceId: string) =>
+        new Promise((resolve) => {
+          if (instanceId === 'bb-havelland') resolveObsolete = resolve;
+          else resolve({ data: { ...view, realm: instanceId, source: 'instance' } });
+        })
+    );
+    const { rerender } = render(<EmailVerificationTemplateCard instanceId="bb-havelland" />);
+    rerender(<EmailVerificationTemplateCard instanceId="bb-prignitz" />);
+    expect(await screen.findByText('Verwendete Vorlage: Instanzvorlage')).toBeTruthy();
+    await act(async () => resolveObsolete({ data: view }));
+    expect(screen.getByText('Verwendete Vorlage: Instanzvorlage')).toBeTruthy();
+    expect(api.get).toHaveBeenLastCalledWith('bb-prignitz', 'verification');
+    fireEvent.click(screen.getByRole('button', { name: 'E-Mail-Bestätigung anpassen' }));
+    expect(await screen.findByText('Ziel-Realm: bb-prignitz')).toBeTruthy();
   });
   it('removes the instance override only after confirmation', async () => {
     vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));

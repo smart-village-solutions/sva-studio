@@ -41,7 +41,7 @@ Für neue oder grundlegend überarbeitete Studio-Flows gelten zusätzlich die ve
 ## Testablage und Ownership
 
 - Der Standard für neue Unit-Tests in Packages ist kolokiert unter `packages/<projekt>/src/**/*.test.ts` oder `*.test.tsx`.
-- Beim Zusammenführen partitionierter Coverage-Reports wird die erwartete Testmenge aus der jeweiligen Vitest-Konfiguration ohne zusätzlichen Verzeichnisfilter ermittelt. So werden Tests unter `src/` und `tests/` gleichermaßen auf Vollständigkeit geprüft.
+- Beim Zusammenführen der Blob-Shards von `sva-studio-react` und `plugin-waste-management` wird die erwartete Testmenge aus der jeweiligen Vitest-Konfiguration ohne zusätzlichen Verzeichnisfilter ermittelt. Für diese Partitionen werden Tests unter `src/` und `tests/` gleichermaßen auf Vollständigkeit geprüft; reguläre `direct-*`- und `remaining-*`-Partitionen übernehmen dagegen die einzelnen Coverage-Reports ohne diese Inventarprüfung.
 - Der Standard für neue App-nahe Tests ist kolokiert unter `apps/<app>/src/**/*.test.ts` oder `*.test.tsx`.
 - `packages/<projekt>/tests/` ist für paketweite Integrations-, Contract- und Composition-Tests reserviert.
 - `apps/<app>/tests/integration/` ist für appweite Integrations-Tests ohne echten Browser reserviert.

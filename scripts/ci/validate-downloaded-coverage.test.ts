@@ -6,7 +6,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildCiFeedbackEvidence } from './ci-feedback-evidence.ts';
 import { writeCoverageShardEvidence } from './coverage-shard-evidence.ts';
-import { validateDownloadedCoverage } from './validate-downloaded-coverage.ts';
+import {
+  resolveCoverageTargetFilters,
+  validateDownloadedCoverage,
+} from './validate-downloaded-coverage.ts';
 
 const directories: string[] = [];
 
@@ -14,6 +17,36 @@ afterEach(() => {
   for (const directory of directories.splice(0)) {
     fs.rmSync(directory, { recursive: true, force: true });
   }
+});
+
+const coverageCommand = (projectRoot: string): string =>
+  (
+    JSON.parse(fs.readFileSync(path.join(process.cwd(), projectRoot, 'project.json'), 'utf8')) as {
+      targets: Record<string, { options: { command: string } }>;
+    }
+  ).targets['test:coverage'].options.command;
+
+describe('resolveCoverageTargetFilters', () => {
+  it.each([
+    // Runs colocated tests in src as well; a fixed `tests` filter rejected its merged results.
+    ['packages/plugin-waste-management', []],
+    ['packages/plugin-events', ['tests']],
+    ['apps/sva-studio-react', []],
+  ])('applies the same filters as the %s coverage target', (projectRoot, filters) => {
+    const command = coverageCommand(projectRoot);
+    expect(resolveCoverageTargetFilters(command)).toEqual(filters);
+  });
+
+  it('ignores flag values and rejects commands without run-vitest-target', () => {
+    expect(
+      resolveCoverageTargetFilters(
+        'pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests --config vitest.config.ts --coverage'
+      )
+    ).toEqual(['tests']);
+    expect(() => resolveCoverageTargetFilters('vitest run --coverage')).toThrow(
+      'run-vitest-target.ts'
+    );
+  });
 });
 
 describe('validate-downloaded-coverage', () => {

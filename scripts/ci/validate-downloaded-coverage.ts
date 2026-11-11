@@ -68,6 +68,36 @@ export const validateCoverageTestResults = (
     throw new Error('Coverage-Testmenge ist unvollständig oder fremd.');
 };
 
+// Flags of the coverage targets that take their value as the next token.
+const VITEST_VALUE_FLAGS = new Set(['--config']);
+
+/**
+ * Positional Vitest filters of a coverage target command. The shards run exactly this command,
+ * so the discovery used to validate merged results must apply the same filters: some targets
+ * restrict themselves to `tests`, others also run colocated tests in `src`.
+ */
+export const resolveCoverageTargetFilters = (command: string): string[] => {
+  const [, targetArgs] = command.split('run-vitest-target.ts');
+  if (targetArgs === undefined) {
+    throw new Error('Coverage-Target verwendet run-vitest-target.ts nicht.');
+  }
+  const tokens = targetArgs.trim().split(/\s+/u).filter(Boolean);
+  return tokens.filter(
+    (token, index) => !token.startsWith('-') && !VITEST_VALUE_FLAGS.has(tokens[index - 1] ?? '')
+  );
+};
+
+const readCoverageTargetFilters = (rootDir: string, projectRoot: string): string[] => {
+  const project = readJson<{
+    targets?: Record<string, { options?: { command?: unknown } }>;
+  }>(path.join(rootDir, projectRoot, 'project.json'));
+  const command = project.targets?.['test:coverage']?.options?.command;
+  if (typeof command !== 'string') {
+    throw new Error(`Coverage-Target ohne auswertbaren Befehl: ${projectRoot}`);
+  }
+  return resolveCoverageTargetFilters(command);
+};
+
 export const mergeProjectCoverage = (
   project: string,
   entries: readonly CoveragePartitionEvidence[],
@@ -102,7 +132,7 @@ export const mergeProjectCoverage = (
     );
   const cwd = path.join(rootDir, projectRoot);
   const config = project === 'sva-studio-react' ? 'vitest.coverage.config.ts' : 'vitest.config.ts';
-  const filters = project === 'sva-studio-react' ? [] : ['tests'];
+  const filters = readCoverageTargetFilters(rootDir, projectRoot);
   // Config loading needs the SDK's runtime exports, not the app's complete build graph.
   execFileSync('pnpm', ['nx', 'run', 'plugin-sdk:build'], { cwd: rootDir, stdio: 'inherit' });
   // Only report merging skips test prerequisites; instrumented test runs retain them.
@@ -181,7 +211,9 @@ const removeProjectRootCoverageDirectory = (workspaceRootPath: string): void => 
 };
 
 export const clearWorkspaceCoverageOutputs = (rootDir = process.cwd()): void => {
-  for (const workspaceRoot of ['apps', 'packages'].map((directory) => path.join(rootDir, directory))) {
+  for (const workspaceRoot of ['apps', 'packages'].map((directory) =>
+    path.join(rootDir, directory)
+  )) {
     removeProjectRootCoverageDirectory(workspaceRoot);
   }
   fs.rmSync(path.join(rootDir, 'artifacts', 'ci-feedback', 'coverage-shards'), {

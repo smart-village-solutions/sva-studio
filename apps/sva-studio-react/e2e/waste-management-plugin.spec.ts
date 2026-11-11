@@ -5,6 +5,8 @@ import { mockWasteFacade, type WasteTourState } from './waste-management-plugin.
 
 import {
   establishServerReadableAuthSession,
+  gotoHomeAsAuthenticatedUser,
+  navigateClientSide,
   registerSharedIamRoutes,
 } from './studio-shell.helpers';
 
@@ -23,6 +25,7 @@ const mockSharedShellRequests = async (
         user: {
           id: `kc-${input.instanceId}`,
           name: 'Waste Operator',
+          displayName: 'Waste Operator',
           email: 'waste@example.com',
           instanceId: input.instanceId,
           assignedModules: ['waste-management'],
@@ -64,6 +67,94 @@ const openWastePlugin = async (page: Page) => {
 };
 
 test.describe('waste management plugin', () => {
+  for (const width of [1280, 390]) {
+    test(`renders readable email monitoring at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      await mockSharedShellRequests(page, {
+        instanceId: 'de-musterhausen',
+        permissionActions: ['waste-management.email-reminder-monitoring.read'],
+      });
+      const subscription = {
+        id: '11111111-1111-4111-8111-111111111111',
+        maskedEmail: 'a****************z@e****************e',
+        status: 'active',
+        city: 'Bad Wilsnack und Umgebung',
+        createdAt: '2026-11-01T10:00:00Z',
+        activatedAt: '2026-11-01T10:05:00Z',
+        unsubscribedAt: null,
+        lastSentEmail: { kind: 'doi', sentAt: '2026-11-01T10:05:00Z' },
+        nextEmail: { kind: 'reminder', status: 'pending', scheduledAt: '2026-11-12T06:00:00Z' },
+        items: [
+          { fraction: 'Leichtverpackungen gelber Sack', slotId: 'yellow:email:first' },
+          { fraction: 'Leichtverpackungen gelber Sack', slotId: 'yellow:email:second' },
+          { fraction: 'Papier, Pappe, Kartonagen', slotId: 'paper:email:first' },
+          { fraction: 'Hausmüll', slotId: 'legacy-slot' },
+        ],
+      };
+      await page.route('**/api/v1/waste-management/email-monitoring?**', async (route) => {
+        const selected = new URL(route.request().url()).searchParams.has('subscriptionId');
+        await route.fulfill({
+          json: {
+            data: {
+              subscriptions: [subscription],
+              total: 1,
+              deliveryTotal: selected ? 1 : 0,
+              deliveries: selected
+                ? [
+                    {
+                      id: 'delivery-1',
+                      kind: 'reminder',
+                      status: 'failed',
+                      createdAt: '2026-11-11T07:00:00Z',
+                      scheduledAt: '2026-11-12T07:00:00Z',
+                      sentAt: null,
+                      attempts: 2,
+                      fraction: 'Papier, Pappe, Kartonagen',
+                      pickupDate: '2026-11-13',
+                      error: 'dispatch_failed',
+                    },
+                  ]
+                : [],
+            },
+          },
+        });
+      });
+      await page.goto('/health/live');
+      await establishServerReadableAuthSession(page.context(), page);
+      await gotoHomeAsAuthenticatedUser(page, 'Waste Operator');
+      await navigateClientSide(page, '/plugins/waste-management/email-monitoring');
+      await expect(page.getByRole('heading', { name: 'E-Mail-Abos und Versand' })).toBeVisible();
+      await expect(
+        page.getByText('Abo bestätigt', { exact: true }).filter({ visible: true })
+      ).toBeVisible();
+      await expect(page.getByText('legacy-slot')).toHaveCount(0);
+      await expect(page.getByText('Zuletzt versendet', { exact: true }).filter({ visible: true })).toBeVisible();
+      await expect(page.getByText('Als Nächstes vorgemerkt', { exact: true }).filter({ visible: true })).toBeVisible();
+      await page.screenshot({
+        path: testInfo.outputPath(`monitoring-list-${width}.png`),
+        fullPage: true,
+      });
+      await page.getByRole('button', { name: 'Versand ansehen' }).filter({ visible: true }).click();
+      await expect(
+        page
+          .getByText(
+            'Beim Versand ist ein Problem aufgetreten. Bitte an die technische Betreuung wenden.'
+          )
+          .filter({ visible: true })
+      ).toBeVisible();
+      await expect(page.getByText(subscription.id, { exact: true })).toBeHidden();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({
+        path: testInfo.outputPath(`monitoring-deliveries-${width}.png`),
+        fullPage: true,
+      });
+      await page.getByText('Weitere Angaben für Rückfragen', { exact: true }).click();
+      await expect(page.getByText(subscription.id, { exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Versand schließen' }).click();
+      await expect(page.getByRole('heading', { name: 'Abonnements', exact: true })).toBeFocused();
+    });
+  }
+
   test.describe.configure({ timeout: 120_000 });
   test('keeps partial annual-calendar dates visible and explains missing recurring data', async ({
     page,

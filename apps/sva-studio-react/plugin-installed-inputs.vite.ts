@@ -5,10 +5,9 @@ import type { Plugin } from 'vite';
 import {
   isRecord,
   readCatalog,
-  readJson,
+  readValidatedPluginCatalog,
   resolveInstalledPluginSources,
   serializeJavaScriptValue,
-  type CatalogRecord,
   type Distribution,
   type EntryKind,
   type InstalledSource,
@@ -79,12 +78,11 @@ export const createModulePublicCodePlugin = (
   selectedPluginIds: readonly string[]
 ): Plugin => {
   const workspaceRoot = resolve(appRoot, '../..');
-  const rawCatalog = readJson(join(appRoot, 'plugin-catalog.json'));
-  if (!Array.isArray(rawCatalog)) throw new Error('plugin_catalog_invalid');
+  const catalog = readValidatedPluginCatalog(appRoot);
   const metadata: Record<string, ModulePublicCode> = {
     media: readModulePublicCode(join(workspaceRoot, 'packages/media/publiccode.yml'), 'media'),
   };
-  for (const entry of rawCatalog as CatalogRecord[]) {
+  for (const entry of catalog) {
     if (
       entry.sourceType !== 'workspace' ||
       (distribution === 'studio' && entry.pluginId === 'ssf') ||

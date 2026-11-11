@@ -12,7 +12,6 @@ export type AppRouteBindings = {
   readonly mediaUsage: RouteComponent;
   readonly media: RouteComponent;
   readonly adminMedia: RouteComponent;
-  readonly app: RouteComponent;
   readonly interfaces: RouteComponent;
   readonly help: RouteComponent;
   readonly support: RouteComponent;

@@ -6,7 +6,6 @@ Seitensteckbriefe bleiben dennoch verwendbar.
 
 | Bereich | Offene Frage | Warum relevant? | Benötigte Klärung |
 | --- | --- | --- | --- |
-| App | Soll `app.overview` als bewusste Platzhalterseite dokumentiert oder bis zur Fachanbindung nur mit einem kurzen Statushinweis versehen werden? | Eine ausführliche Anleitung würde nicht vorhandene Funktionen suggerieren. | Produktverantwortung App |
 | Medien | Welche maximale Dateigröße und vollständige Formatliste gelten in der produktiven Konfiguration? | Die UI nennt Beispieltypen, Grenzwerte können aber laufzeitabhängig sein. | Medienbetrieb und Runtime-Konfiguration |
 | Medien | Für welche Zielgruppen ist `/media` gegenüber `/admin/media` der vorgesehene Einstieg? | Beide Routen verwenden dieselbe Fassade, aber die Navigationssemantik ist nicht selbsterklärend. | Produkt und IAM |
 | Kategorien | In welchem führenden System und durch welche Rolle werden Kategorien aktuell geändert? | Die Studio-Seite zeigt Bearbeitungsaktionen nur deaktiviert. | Mainserver-Fachverantwortung |

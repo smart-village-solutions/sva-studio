@@ -1,4 +1,5 @@
 import {
+  AppTranslationError,
   deepLTargetCode,
   readDeepLSettings,
   type DeepLSetupStatus,
@@ -161,7 +162,8 @@ const translateBatch = async (
       body: translationBody(targetCode, batch),
       signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]),
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof AppTranslationError) throw error;
     fail('deepl_unavailable', true);
   }
   if (!response!.ok) {

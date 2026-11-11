@@ -4,6 +4,7 @@ import type { Plugin } from 'vite';
 import {
   isRecord,
   readJson,
+  readValidatedPluginCatalog,
   serializeJavaScriptValue,
   type CatalogRecord,
 } from './plugin-installed-inputs.sources.js';
@@ -94,9 +95,7 @@ export const createSelectedWorkspacePluginInputsPlugin = (
   selectedPluginIds: readonly string[]
 ): Plugin => {
   const workspaceRoot = resolve(appRoot, '../..');
-  const rawCatalog = readJson(join(appRoot, 'plugin-catalog.json'));
-  if (!Array.isArray(rawCatalog)) throw new Error('plugin_catalog_invalid');
-  const catalog = rawCatalog as CatalogRecord[];
+  const catalog = readValidatedPluginCatalog(appRoot);
   const knownIds = catalog
     .filter((entry) => entry.sourceType === 'workspace')
     .map((entry) => entry.pluginId);

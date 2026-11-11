@@ -193,27 +193,29 @@ describe('internal catalog session facade', () => {
     state.db.mockImplementation(async (work) =>
       work({
         query: async (sql: string) => ({
-          rows: sql.includes('instance_external_interfaces')
-            ? [
-                {
-                  id: 'deepl',
-                  publicConfig: {
-                    revision: 'r1',
-                    credentialRevision: 'k1',
-                    plan: 'pro',
-                    englishVariant: 'en-GB',
-                    selectedLocales: state.locales.filter((locale) => locale !== 'de'),
-                    availableLanguages: state.locales
-                      .filter((locale) => locale !== 'de')
-                      .map((locale) => ({
-                        code: locale === 'en' ? 'en-GB' : locale,
-                        name: locale,
-                        tagHandling: false,
-                      })),
+          rows: sql.includes("module_id='app'")
+            ? [{ revision: '1' }]
+            : sql.includes('instance_external_interfaces')
+              ? [
+                  {
+                    id: 'deepl',
+                    publicConfig: {
+                      revision: 'r1',
+                      credentialRevision: 'k1',
+                      plan: 'pro',
+                      englishVariant: 'en-GB',
+                      selectedLocales: state.locales.filter((locale) => locale !== 'de'),
+                      availableLanguages: state.locales
+                        .filter((locale) => locale !== 'de')
+                        .map((locale) => ({
+                          code: locale === 'en' ? 'en-GB' : locale,
+                          name: locale,
+                          tagHandling: false,
+                        })),
+                    },
                   },
-                },
-              ]
-            : [{ id: 'org' }],
+                ]
+              : [{ id: 'org' }],
         }),
       })
     );
@@ -557,9 +559,11 @@ describe('internal catalog session facade', () => {
             if (sql.includes("set_config('app.instance_id'")) tenant = values[0];
             return {
               rows:
-                sql.includes('FROM iam.organizations') && tenant === 'tenant'
-                  ? [{ id: 'org' }]
-                  : [],
+                sql.includes("module_id='app'") && tenant === 'tenant'
+                  ? [{ revision: '1' }]
+                  : sql.includes('FROM iam.organizations') && tenant === 'tenant'
+                    ? [{ id: 'org' }]
+                    : [],
             };
           },
         });
@@ -570,7 +574,37 @@ describe('internal catalog session facade', () => {
       );
       expect(result.status).toBe(200);
       expect(queries[0]).toContain("set_config('app.instance_id'");
-      expect(queries[1]).toContain('FROM iam.organizations');
+      expect(queries[1]).toContain("module_id='app'");
+      expect(queries[2]).toContain('FROM iam.organizations');
+    }
+  );
+  it.each(['source', 'translations'])(
+    'denies %s catalog reads without an active App assignment',
+    async (mode) => {
+      const namespace = mode === 'source' ? 'app-texts' : 'app-translations';
+      state.permissions.mockResolvedValue({
+        ok: true,
+        permissions: [
+          {
+            action: `${namespace}.catalog.read`,
+            resourceType: namespace,
+            organizationId: state.ctx.activeOrganizationId,
+          },
+        ],
+      });
+      state.db.mockImplementation(async (work) =>
+        work({
+          query: async (sql: string) => ({
+            rows: sql.includes("module_id='app'") ? [] : [{ id: 'org' }],
+          }),
+        })
+      );
+      const response = await executeAppTranslationOperation(
+        new Request(request, { headers: { 'X-SVA-Catalog-Mode': mode } }),
+        { operation: 'read', contractId: 'ui' }
+      );
+      expect(response.status).toBe(403);
+      expect(state.createRepo).not.toHaveBeenCalled();
     }
   );
   it('uses only the active stored organization and rejects session mismatch', async () => {

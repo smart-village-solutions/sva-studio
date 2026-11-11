@@ -3,18 +3,21 @@ import { isAbsolute, join, relative, sep } from 'node:path';
 import { resolve } from 'node:path';
 import { definePluginManifest, satisfiesVersionRange, type PluginManifest } from '@sva/plugin-sdk';
 import { studioHostPluginPlatform } from './src/lib/plugin-catalog-loader.js';
+import {
+  isInstalledPluginCatalogEntry,
+  parsePluginCatalogConfig,
+  type InstalledPluginCatalogConfigEntry,
+  type PluginCatalogConfigEntry,
+} from './src/lib/plugin-catalog-config.js';
 
 export type Distribution = 'studio' | 'ssf' | 'custom';
 export type EntryKind = 'browser' | 'descriptor' | 'server' | 'jobs';
-export type CatalogRecord = {
-  readonly pluginId: string;
-  readonly sourceType: 'workspace' | 'linked-package' | 'installed-distribution';
-  readonly enabled: boolean;
-  readonly sourceRef: string;
-  readonly distribution?: Distribution;
-};
+export type CatalogRecord = PluginCatalogConfigEntry;
 export type InstalledSource = {
-  readonly catalog: Omit<CatalogRecord, 'distribution'>;
+  readonly catalog: Pick<
+    InstalledPluginCatalogConfigEntry,
+    'pluginId' | 'sourceType' | 'enabled' | 'sourceRef'
+  >;
   readonly manifest: PluginManifest;
   readonly packageRoot: string;
   readonly files: Partial<Record<EntryKind, string>>;
@@ -37,41 +40,21 @@ export const serializeJavaScriptValue = (value: unknown): string => {
     .replaceAll('\u2029', '\\u2029');
 };
 
+export const readValidatedPluginCatalog = (appRoot: string): readonly PluginCatalogConfigEntry[] =>
+  parsePluginCatalogConfig(readJson(join(appRoot, 'plugin-catalog.json')));
+
 export const readCatalog = (
   appRoot: string,
   distribution: Distribution,
   selectedPluginIds: readonly string[]
-): readonly CatalogRecord[] => {
-  const raw = readJson(join(appRoot, 'plugin-catalog.json'));
-  if (!Array.isArray(raw)) throw new Error('plugin_catalog_invalid');
-  const entries: CatalogRecord[] = [];
-  for (const value of raw) {
-    if (
-      !isRecord(value) ||
-      !['installed-distribution', 'linked-package'].includes(String(value.sourceType))
-    ) {
-      continue;
-    }
-    if (
-      typeof value.pluginId !== 'string' ||
-      typeof value.sourceRef !== 'string' ||
-      !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/u.test(value.sourceRef) ||
-      value.sourceRef.split('/').some((part) => part === '.' || part === '..') ||
-      typeof value.enabled !== 'boolean' ||
-      (value.distribution !== 'studio' && value.distribution !== 'ssf')
-    ) {
-      throw new Error('installed_plugin_catalog_entry_invalid');
-    }
-    const entry = value as CatalogRecord;
-    if (
+): readonly InstalledPluginCatalogConfigEntry[] => {
+  return readValidatedPluginCatalog(appRoot)
+    .filter(isInstalledPluginCatalogEntry)
+    .filter((entry) =>
       distribution === 'custom'
         ? selectedPluginIds.includes(entry.pluginId)
         : entry.distribution === distribution
-    ) {
-      entries.push(entry);
-    }
-  }
-  return entries;
+    );
 };
 
 const resolveEntryFile = (
@@ -146,7 +129,7 @@ const resolveInstalledPluginSource = (
   appRoot: string,
   distribution: Distribution,
   dependencies: Record<string, unknown>,
-  entry: CatalogRecord
+  entry: InstalledPluginCatalogConfigEntry
 ): InstalledSource => {
   if (!Object.hasOwn(dependencies, entry.sourceRef)) {
     throw new Error(`installed_plugin_dependency_missing:${entry.pluginId}`);

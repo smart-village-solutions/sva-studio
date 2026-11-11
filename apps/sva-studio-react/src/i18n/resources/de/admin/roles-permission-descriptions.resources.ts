@@ -28,7 +28,7 @@ export const rolePermissionDescriptionsDE = {
   appTextsRead: 'Deutsche App-Texte lesen',
   appTextsWrite: 'Deutsche App-Texte bearbeiten',
   appTextsPublish: 'Deutschen Textstand sichern',
-  appRead: 'Den Link zur App im Seitenmenü sehen.',
+  appRead: 'Altrecht für den früheren App-Link. Der Zugang zur App-Redaktion erfordert das Modul „App“ und die jeweiligen Katalogrechte.',
   cockpitRead: 'Den Link zum Cockpit im Seitenmenü sehen.',
   modulesRead: 'Die Übersicht der verfügbaren Module sehen.',
   contentRead: 'Inhalte ansehen.',

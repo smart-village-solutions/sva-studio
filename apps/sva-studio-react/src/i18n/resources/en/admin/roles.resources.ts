@@ -121,7 +121,7 @@ export const rolesAdminENResources = {
     appTextsRead: 'Read German app texts',
     appTextsWrite: 'Edit German app texts',
     appTextsPublish: 'Seal German app texts',
-    appRead: 'See the app link in the side menu.',
+    appRead: 'Legacy permission for the former app link. Editorial access requires the App module and the corresponding catalog permissions.',
     cockpitRead: 'See the cockpit link in the side menu.',
     modulesRead: 'See the list of available modules.',
     contentRead: 'View content.',

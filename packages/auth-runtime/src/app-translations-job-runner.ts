@@ -12,7 +12,7 @@ import {
 } from '@sva/core';
 import { createAppTranslationRepository } from '@sva/data-repositories/server';
 import { z } from 'zod';
-import type { QueryClient } from './db.js';
+import { withInstanceDb, type QueryClient } from './db.js';
 import { translateDeepLValues } from './app-translations-deepl.js';
 import { isPluginOperationCancellationError } from './plugin-operations/job-cancellation.js';
 import type { StudioJobExecutionHandlerContext } from './plugin-operations/types.js';
@@ -20,6 +20,7 @@ import {
   inputSchema,
   safeError,
   jobs,
+  lockAppModuleRevision,
   withGuardedTranslationJob,
   type MunicipalScope,
   type CatalogTranslationInput,
@@ -146,6 +147,17 @@ export const runCatalogTranslation = async (context: StudioJobExecutionHandlerCo
       instanceId: context.job.instanceId,
       organizationId: input.organizationId,
     };
+    const fetchWhileAppActive: typeof fetch = async (...args) => {
+      const { response } = await withInstanceDb(scope.instanceId, async (client) => {
+        const revision = await lockAppModuleRevision(client, scope.instanceId);
+        catalogAssert(revision === input.appModuleRevision, 'catalog_forbidden');
+        // Keep the assignment locked through dispatch and release it before waiting for DeepL.
+        const response = fetch(...args);
+        void response.catch(() => undefined);
+        return { response };
+      });
+      return response;
+    };
     while (true) {
       await context.throwIfCancellationRequested();
       const prepared = await withGuardedTranslationJob(
@@ -159,7 +171,8 @@ export const runCatalogTranslation = async (context: StudioJobExecutionHandlerCo
             prepared.record,
             prepared.entries[0]!.targetCode,
             prepared.entries.map((entry) => entry.source),
-            context.abortSignal
+            context.abortSignal,
+            fetchWhileAppActive
           )
         : [];
       await context.throwIfCancellationRequested();

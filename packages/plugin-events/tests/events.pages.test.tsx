@@ -97,6 +97,12 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 const navigateMock = vi.fn();
+
+const dateExtrasSection = () => {
+  const section = document.getElementById('event-weekday')?.closest('details');
+  if (!section) throw new Error('Missing date extras section');
+  return section;
+};
 const paramsMock = vi.fn(() => ({ id: 'event-1' }));
 
 describe('EventsListPage', () => {
@@ -356,6 +362,74 @@ describe('EventsListPage', () => {
     await waitFor(() => {
       expect(createEvent).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Konzertabend', dates: [{ dateStart: '2026-02-28' }] }),
+        'user'
+      );
+    });
+  });
+
+  it('keeps empty optional date details collapsed behind a visible heading when creating', async () => {
+    render(<EventsCreatePage />);
+
+    await screen.findByLabelText('Titel');
+    const section = dateExtrasSection();
+    expect(section.open).toBe(false);
+    expect(section.querySelector('summary')?.hidden).toBe(false);
+    expect(section.querySelector('summary')?.textContent).toBe(
+      'events.fields.dateExtras events.fields.dateExtrasPosition'
+    );
+  });
+
+  it('keeps empty optional date details collapsed when editing an event', async () => {
+    render(<EventsEditPage />);
+
+    await screen.findByDisplayValue('Bestehendes Event');
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    const section = await waitFor(dateExtrasSection);
+    expect(section.open).toBe(false);
+    expect(section.querySelector('summary')?.hidden).toBe(false);
+  });
+
+  it('opens stored optional date details on edit and keeps them on an unchanged save', async () => {
+    vi.mocked(getEventDetail).mockResolvedValueOnce({
+      data: {
+        id: 'event-1',
+        title: 'Bestehendes Event',
+        dates: [
+          {
+            dateStart: '2026-04-14',
+            weekday: 'Dienstag',
+            timeDescription: 'Einlass ab 18 Uhr',
+            useOnlyTimeDescription: true,
+          },
+        ],
+      },
+      deviations: [],
+    } as never);
+    render(<EventsEditPage />);
+
+    await screen.findByDisplayValue('Bestehendes Event');
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    const section = await waitFor(dateExtrasSection);
+    expect(section.open).toBe(true);
+    expect(section.querySelector<HTMLInputElement>('#event-weekday')?.value).toBe('Dienstag');
+
+    const [saveButton] = screen.getAllByRole('button', { name: /Speichern|anlegen/ });
+    if (!saveButton) throw new Error('Missing save button');
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(updateEvent).toHaveBeenCalledWith(
+        'event-1',
+        expect.objectContaining({
+          dates: [
+            {
+              dateStart: '2026-04-14',
+              weekday: 'Dienstag',
+              timeDescription: 'Einlass ab 18 Uhr',
+              useOnlyTimeDescription: true,
+            },
+          ],
+        }),
         'user'
       );
     });

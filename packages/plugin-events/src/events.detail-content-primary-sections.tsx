@@ -6,6 +6,7 @@ import { Button, Checkbox, StudioField, StudioFieldGroup } from '@sva/studio-ui-
 import { createDefaultDate, type EventsDetailFormValues } from './events.detail-form.js';
 import { StudioDetailCard } from '@sva/studio-ui-react';
 import { EventsDateInput } from './events.detail-date-input.js';
+import { compactEventString } from './events.detail-form-serialization-common.js';
 import {
   ContentInput,
   indexedId,
@@ -48,7 +49,6 @@ export function useEventsMapCapabilities() {
 export type EventsMapCapabilities = ReturnType<typeof useEventsMapCapabilities>;
 type EventDate = NonNullable<EventsDetailFormValues['content']['dates']>[number];
 type DateFieldsProps = Readonly<{
-  createMode?: boolean;
   date: EventDate;
   index: number;
   pt: Translator;
@@ -79,42 +79,68 @@ function DateFields(props: DateFieldsProps) {
           onChange={(value) => setValue(`content.dates.${index}.timeEnd`, value, dirty)}
         />
       </StudioFieldGroup>
-      <details open={props.createMode ? undefined : true}>
-        <summary hidden={!props.createMode}>{pt('create.dateExtras')}</summary>
+      <DateExtrasFields date={date} index={index} pt={pt} setValue={setValue} />
+    </>
+  );
+}
+
+const hasDateExtrasValues = (date: EventDate) =>
+  compactEventString(date.weekday) !== undefined ||
+  compactEventString(date.timeDescription) !== undefined ||
+  date.useOnlyTimeDescription === true;
+
+function DateExtrasFields({ date, index, pt, setValue }: DateFieldsProps) {
+  // Derived once per mount. Date rows are keyed by their field-array id, which react-hook-form
+  // regenerates on reset, so a newly loaded event recomputes this; keep that key stable per row.
+  const [open, setOpen] = useState(() => hasDateExtrasValues(date));
+  const onlyTimeDescriptionId = indexedId('event-only-time-description', index);
+  return (
+    <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="cursor-pointer text-sm font-medium text-foreground">
+        {pt('fields.dateExtras')}{' '}
+        <span className="sr-only">{pt('fields.dateExtrasPosition', { position: index + 1 })}</span>
+      </summary>
+      <div className="mt-4 space-y-4">
         <StudioFieldGroup columns={2}>
           <ContentInput
-            id={`event-weekday-${index}`}
+            id={indexedId('event-weekday', index)}
             label={pt('fields.weekday')}
+            description={pt('fields.weekdayHelp')}
             value={date.weekday}
             onChange={(value) => setValue(`content.dates.${index}.weekday`, value, dirty)}
           />
           <ContentInput
-            id={`event-time-description-${index}`}
+            id={indexedId('event-time-description', index)}
             label={pt('fields.timeDescription')}
+            description={pt('fields.timeDescriptionHelp')}
             value={date.timeDescription}
             onChange={(value) => setValue(`content.dates.${index}.timeDescription`, value, dirty)}
           />
         </StudioFieldGroup>
         <StudioField
-          id={`event-only-time-description-${index}`}
+          id={onlyTimeDescriptionId}
           label={pt('fields.useOnlyTimeDescription')}
+          description={pt('fields.useOnlyTimeDescriptionHelp')}
+          controlProps={{
+            id: onlyTimeDescriptionId,
+            'aria-describedby': `${onlyTimeDescriptionId}-description`,
+          }}
         >
           <Checkbox
-            id={`event-only-time-description-${index}`}
+            id={onlyTimeDescriptionId}
             checked={date.useOnlyTimeDescription ?? false}
             onChange={(event) =>
               setValue(`content.dates.${index}.useOnlyTimeDescription`, event.target.checked, dirty)
             }
           />
         </StudioField>
-      </details>
-    </>
+      </div>
+    </details>
   );
 }
 
 export type EventsDateSectionProps = Readonly<{
   children?: ReactNode;
-  createMode?: boolean;
   pt: Translator;
 }>;
 
@@ -149,7 +175,7 @@ export function EventsDateSection(props: EventsDateSectionProps) {
           removeLabel={props.pt('actions.remove')}
           onRemove={dates.length > 1 ? () => datesArray.remove(index) : undefined}
         >
-          <DateFields {...props} date={date} index={index} setValue={setValue} />
+          <DateFields date={date} index={index} pt={props.pt} setValue={setValue} />
         </RepeaterItem>
       ))}
       {props.children}

@@ -6,7 +6,6 @@ export const eventsENEditor = {
     coordinates: 'Enter coordinates manually',
     categoryUnavailable:
       'Categories cannot be loaded right now. Please contact your administrator.',
-    dateExtras: 'Additional time details',
     titleHelp: 'What is the event called? A title is required.',
     createVisible: 'Save as visible',
     createHidden: 'Save hidden',

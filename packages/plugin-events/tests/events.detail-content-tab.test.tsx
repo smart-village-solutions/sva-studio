@@ -129,9 +129,9 @@ const pt = (key: string) =>
     'fields.dateEnd': 'Enddatum',
     'fields.timeStart': 'Startzeit',
     'fields.timeEnd': 'Endzeit',
-    'fields.weekday': 'Wochentag',
-    'fields.timeDescription': 'Zeit-Hinweis',
-    'fields.useOnlyTimeDescription': 'Nur Zeit-Hinweis verwenden',
+    'fields.weekday': 'Wochentag (optional)',
+    'fields.timeDescription': 'Hinweis zur Zeit (optional)',
+    'fields.useOnlyTimeDescription': 'Nur den Hinweis zur Zeit anzeigen',
     'fields.organizerName': 'Institution/Firma',
     'fields.firstName': 'Vorname',
     'fields.lastName': 'Nachname',
@@ -541,8 +541,8 @@ describe('EventsDetailContentTab', () => {
       target: { value: '2026-09-01' },
     });
     fireEvent.click(
-      screen.getByLabelText('Nur Zeit-Hinweis verwenden', {
-        selector: '#event-only-time-description-0',
+      screen.getByLabelText('Nur den Hinweis zur Zeit anzeigen', {
+        selector: '#event-only-time-description',
       })
     );
     fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street-1' }), {

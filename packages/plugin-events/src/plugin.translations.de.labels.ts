@@ -62,9 +62,17 @@ export const eventsDELabels = {
     dateEnd: 'Enddatum',
     timeStart: 'Startzeit',
     timeEnd: 'Endzeit',
-    timeDescription: 'Zeit-Hinweis',
-    weekday: 'Wochentag',
-    useOnlyTimeDescription: 'Nur Zeit-Hinweis verwenden',
+    dateExtras: 'Weitere Terminangaben (optional)',
+    dateExtrasPosition: 'zu Termin {{position}}',
+    timeDescription: 'Hinweis zur Zeit (optional)',
+    timeDescriptionHelp:
+      'Zusätzliche Angaben zur Zeit, zum Beispiel „Einlass ab 18 Uhr“ oder „Beginn nach Sonnenuntergang“.',
+    weekday: 'Wochentag (optional)',
+    weekdayHelp:
+      'Bei einem konkreten Datum müssen Sie den Wochentag nicht zusätzlich eintragen. Vorhandene oder importierte Angaben können hier bearbeitet werden.',
+    useOnlyTimeDescription: 'Nur den Hinweis zur Zeit anzeigen',
+    useOnlyTimeDescriptionHelp:
+      'Verwendet die bestehende Ausgabeoption des Mainservers. Gespeicherte Datums- und Uhrzeitangaben werden dadurch nicht gelöscht.',
     organizerName: 'Institution/Firma',
     organizerNameHelp:
       'Erforderlich, sobald weitere Veranstalterangaben vorhanden sind, z. B. E-Mail, Telefon oder eine Adresse.',
@@ -178,7 +186,6 @@ export const eventsDECreate = {
   coordinates: 'Position manuell angeben',
   categoryUnavailable:
     'Kategorien können derzeit nicht geladen werden. Bitte wenden Sie sich an Ihre Administration.',
-  dateExtras: 'Weitere Zeitangaben',
   titleHelp: 'Wie heißt die Veranstaltung? Der Titel ist erforderlich.',
   createVisible: 'Sichtbar speichern',
   createHidden: 'Verborgen speichern',

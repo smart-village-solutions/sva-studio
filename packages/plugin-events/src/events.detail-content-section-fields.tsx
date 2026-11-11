@@ -1,6 +1,9 @@
 import { Button, Input, StudioField } from '@sva/studio-ui-react';
 
-export type EventsContentTranslator = (key: string) => string;
+export type EventsContentTranslator = (
+  key: string,
+  variables?: Readonly<Record<string, string | number>>
+) => string;
 
 export const ContentInput = ({
   id,

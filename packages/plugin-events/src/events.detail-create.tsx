@@ -100,7 +100,7 @@ export function EventsDetailCreate(props: ComponentProps<typeof EventsDetailEdit
         <EventsDetailBasisTab {...basisProps} section="title" />
       </div>
       <div id="event-create-dates" tabIndex={-1}>
-        <EventsDateSection pt={pt} createMode>
+        <EventsDateSection pt={pt}>
           <details>
             <summary id="event-create-recurrence">
               {pt('create.sections.recurrence')} · {pt('create.optional')}

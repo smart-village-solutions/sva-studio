@@ -221,10 +221,8 @@ services:
       - node
       - ./candidate-preflight.mjs
     read_only: true
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
+    # The SVA Portainer non-admin policy rejects security_opt and cap_drop.
+    # Accepted candidate-only trade-off: docs/operations/swarm-deployment-runbook.md.
     deploy:
       replicas: 0
       restart_policy:

@@ -90,6 +90,8 @@ const hasDateExtrasValues = (date: EventDate) =>
   date.useOnlyTimeDescription === true;
 
 function DateExtrasFields({ date, index, pt, setValue }: DateFieldsProps) {
+  // Derived once per mount. Date rows are keyed by their field-array id, which react-hook-form
+  // regenerates on reset, so a newly loaded event recomputes this; keep that key stable per row.
   const [open, setOpen] = useState(() => hasDateExtrasValues(date));
   const onlyTimeDescriptionId = indexedId('event-only-time-description', index);
   return (

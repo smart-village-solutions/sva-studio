@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { FormProvider, useForm, type UseFormReturn } from 'react-hook-form';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -150,6 +150,22 @@ describe('EventsDateSection – weitere Terminangaben', () => {
     fireEvent.change(weekday, { target: { value: '' } });
 
     expect(section.open).toBe(true);
+  });
+
+  it('recomputes the state when another event is loaded into the mounted form', async () => {
+    const { form } = renderDates([emptyDate()]);
+    const loadEvent = (date: EventDateValue) => {
+      const defaults = createDefaultEventsDetailFormValues();
+      // Mirrors useEventsDetailItem: the edit page resets the form without remounting.
+      act(() => form().reset({ ...defaults, content: { ...defaults.content, dates: [date] } }));
+    };
+    expect(extrasSection().open).toBe(false);
+
+    loadEvent(emptyDate({ timeDescription: 'Einlass ab 18 Uhr' }));
+    await waitFor(() => expect(extrasSection().open).toBe(true));
+
+    loadEvent(emptyDate());
+    await waitFor(() => expect(extrasSection().open).toBe(false));
   });
 
   it('keeps extras untouched when only the date or time changes', () => {

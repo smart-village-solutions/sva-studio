@@ -82,74 +82,98 @@ describe('one-shot job compose documents', () => {
     expect(service.environment).not.toHaveProperty('SVA_MIGRATION_JOB_STACK');
   });
 
-  it('renders the staging Compose source into isolated one-shot documents', () => {
-    try {
-      execFileSync('docker', ['compose', 'version'], { stdio: 'ignore' });
-    } catch {
-      return;
-    }
-    const rendered = JSON.parse(
-      execFileSync(
-        'docker',
-        [
-          'compose',
-          '-f',
-          'compose.yaml',
-          '-f',
-          'deploy/compose.staging.yaml',
-          'config',
-          '--format',
-          'json',
-        ],
-        {
-          cwd: process.cwd(),
-          encoding: 'utf8',
-          env: {
-            ...process.env,
-            IMAGE_REF:
-              'example.invalid/studio@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-            STUDIO_JOB_WORKER_DB_PASSWORD: 'worker-password',
-            STUDIO_JOB_WORKER_DB_USER: 'sva_job_worker',
-            SVA_RUNTIME_PROFILE: 'studio',
-          },
-          stdio: ['ignore', 'pipe', 'pipe'],
-        }
-      )
-    ) as Parameters<typeof buildMigrationJobComposeDocument>[0];
+  it.each(['dev', 'staging', 'prod'] as const)(
+    'renders the %s Compose source into isolated one-shot documents',
+    (environment) => {
+      try {
+        execFileSync('docker', ['compose', 'version'], { stdio: 'ignore' });
+      } catch {
+        return;
+      }
+      const rendered = JSON.parse(
+        execFileSync(
+          'docker',
+          [
+            'compose',
+            '-f',
+            'compose.yaml',
+            '-f',
+            `deploy/compose.${environment}.yaml`,
+            'config',
+            '--format',
+            'json',
+          ],
+          {
+            cwd: process.cwd(),
+            encoding: 'utf8',
+            env: {
+              ...process.env,
+              IMAGE_REF:
+                'example.invalid/studio@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+              STUDIO_JOB_WORKER_DB_PASSWORD: 'worker-password',
+              STUDIO_JOB_WORKER_DB_USER: 'sva_job_worker',
+              SVA_RUNTIME_PROFILE: 'studio',
+            },
+            stdio: ['ignore', 'pipe', 'pipe'],
+          }
+        )
+      ) as Parameters<typeof buildMigrationJobComposeDocument>[0];
 
-    const migration = buildMigrationJobComposeDocument(rendered, input);
-    const bootstrap = buildBootstrapJobComposeDocument(rendered, {
-      ...input,
-      jobStackName: 'studio-staging-bootstrap-gha-123-1',
-    });
-    const candidate = buildMigrationJobComposeDocument(rendered, {
-      ...input,
-      jobServiceName: 'candidate',
-    });
-    const candidateService = candidate.services?.candidate as Record<string, unknown>;
-    const renderedServices = rendered.services as Record<
-      'app' | 'bootstrap' | 'provisioner',
-      { environment: Record<string, string> }
-    >;
-
-    expect(Object.keys(migration.services ?? {})).toEqual(['migrate']);
-    expect(Object.keys(bootstrap.services ?? {})).toEqual(['bootstrap']);
-    expect(candidateService.image).toBe(
-      'example.invalid/studio@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
-    );
-    expect(migration.networks?.internal).toEqual({
-      external: true,
-      name: 'studio-staging_internal',
-    });
-    expect(bootstrap.networks?.internal).toEqual({
-      external: true,
-      name: 'studio-staging_internal',
-    });
-    for (const serviceName of ['app', 'provisioner', 'bootstrap'] as const) {
-      expect(renderedServices[serviceName].environment).toMatchObject({
-        STUDIO_JOB_WORKER_DB_PASSWORD: 'worker-password',
-        STUDIO_JOB_WORKER_DB_USER: 'sva_job_worker',
+      const sourceStackName = environment === 'prod' ? 'studio' : `studio-${environment}`;
+      const jobInput = {
+        ...input,
+        internalNetworkName: `${sourceStackName}_internal`,
+        sourceStackName,
+      };
+      const migration = buildMigrationJobComposeDocument(rendered, jobInput);
+      const bootstrap = buildBootstrapJobComposeDocument(rendered, {
+        ...jobInput,
+        jobStackName: 'studio-staging-bootstrap-gha-123-1',
       });
-    }
-  }, 15_000);
+      const candidate = buildMigrationJobComposeDocument(rendered, {
+        ...jobInput,
+        jobServiceName: 'candidate',
+      });
+      const candidateService = candidate.services?.candidate as Record<string, unknown>;
+      const renderedServices = rendered.services as Record<
+        'app' | 'bootstrap' | 'provisioner',
+        { environment: Record<string, string> }
+      >;
+
+      expect(Object.keys(migration.services ?? {})).toEqual(['migrate']);
+      expect(Object.keys(bootstrap.services ?? {})).toEqual(['bootstrap']);
+      expect(Object.keys(candidate.services ?? {})).toEqual(['candidate']);
+      // Portainer's non-admin validator rejects even restrictive security_opt/cap_drop values.
+      expect(candidateService).not.toHaveProperty('security_opt');
+      expect(candidateService).not.toHaveProperty('cap_drop');
+      expect(candidateService).toMatchObject({
+        read_only: true,
+        deploy: { replicas: 1, restart_policy: { condition: 'none' } },
+      });
+      expect(candidateService).not.toHaveProperty('ports');
+      expect(candidateService).not.toHaveProperty('volumes');
+      expect(candidate.networks?.internal).toEqual({
+        external: true,
+        name: `${sourceStackName}_internal`,
+      });
+      expect(candidateService.image).toBe(
+        'example.invalid/studio@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+      );
+      expect(migration.networks?.internal).toEqual({
+        external: true,
+        name: `${sourceStackName}_internal`,
+      });
+      expect(bootstrap.networks?.internal).toEqual({
+        external: true,
+        name: `${sourceStackName}_internal`,
+      });
+      for (const serviceName of ['app', 'provisioner', 'bootstrap'] as const) {
+        expect(renderedServices[serviceName].environment).toMatchObject({
+          STUDIO_JOB_WORKER_DB_PASSWORD: 'worker-password',
+          STUDIO_JOB_WORKER_DB_USER: 'sva_job_worker',
+        });
+      }
+    },
+    15_000
+  );
 });

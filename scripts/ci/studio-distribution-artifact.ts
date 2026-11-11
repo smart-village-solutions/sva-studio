@@ -18,7 +18,10 @@ import {
 } from '../../apps/sva-studio-react/src/lib/plugin-catalog-loader.js';
 import { appAdminResources } from '../../apps/sva-studio-react/src/routing/admin-resources.js';
 import { resolveInstalledPluginSources } from '../../apps/sva-studio-react/plugin-installed-inputs.vite.js';
-import { parsePluginCatalogConfig } from '../../apps/sva-studio-react/src/lib/plugin-catalog-config.js';
+import {
+  isInstalledPluginCatalogEntry,
+  parsePluginCatalogConfig,
+} from '../../apps/sva-studio-react/src/lib/plugin-catalog-config.js';
 import rawPluginCatalog from '../../apps/sva-studio-react/plugin-catalog.json';
 import { writeChunkProvenance } from './studio-chunk-provenance.js';
 
@@ -121,18 +124,18 @@ const pluginSetFingerprint = (pluginIds: readonly string[]): string =>
   createHash('sha256').update(JSON.stringify(pluginIds)).digest('hex');
 
 const removePath = (path: string): void => {
-  if (existsSync(path)) rmSync(path, { force: true, recursive: true });
+  if (lstatSync(path, { throwIfNoEntry: false })) rmSync(path, { force: true, recursive: true });
 };
 
-const removeDeployedWorkspacePackage = (deployRoot: string, packageName: string): void => {
+const removeDeployedPackage = (deployRoot: string, packageName: string): void => {
   const nodeModules = join(deployRoot, 'node_modules');
-  removePath(join(nodeModules, '@sva', packageName));
+  removePath(join(nodeModules, packageName));
 
   const pnpmStore = join(nodeModules, '.pnpm');
   if (!existsSync(pnpmStore)) return;
   for (const entry of readdirSync(pnpmStore, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    removePath(join(pnpmStore, entry.name, 'node_modules', '@sva', packageName));
+    removePath(join(pnpmStore, entry.name, 'node_modules', packageName));
   }
 };
 
@@ -205,7 +208,15 @@ const pruneDeploy = (
 ): void => {
   assertDirectory(deployRoot);
   for (const packageName of packagesFor(distribution, selectedPluginIds)) {
-    removeDeployedWorkspacePackage(deployRoot, packageName);
+    removeDeployedPackage(deployRoot, `@sva/${packageName}`);
+  }
+  for (const entry of pluginCatalog.filter(isInstalledPluginCatalogEntry)) {
+    const selected =
+      entry.enabled &&
+      (distribution === 'custom'
+        ? selectedPluginIds.includes(entry.pluginId)
+        : entry.distribution === distribution);
+    if (!selected) removeDeployedPackage(deployRoot, entry.sourceRef);
   }
 };
 

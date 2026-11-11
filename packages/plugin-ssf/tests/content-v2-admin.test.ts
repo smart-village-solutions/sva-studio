@@ -474,3 +474,170 @@ describe('SSF administrative revision boundary', () => {
     expect(response.status).toBe(503);
   });
 });
+
+/** Boundary failures must remain distinct without exposing storage details or invoking writes. */
+describe('SSF administration failure and scope contracts', () => {
+  it.each([
+    ['ssf.system-content-v2.read', 'tenant'],
+    ['ssf.tenant-content-v2.read', 'platform'],
+    ['ssf.tenant-content-v2.read', 'unbound'],
+    ['ssf.system-content-v2.write', 'tenant'],
+    ['ssf.tenant-content-v2.write', 'platform'],
+    ['ssf.tenant-content-v2.write', 'unbound'],
+  ] as const)('denies %s in %s context before accessing storage', async (handlerId, scope) => {
+    const read = vi.fn();
+    const write = vi.fn();
+    const handlers = createHandlers({
+      readSystemV2: read,
+      readTenantV2: read,
+      writeSystemV2: write,
+      writeTenantV2: write,
+    });
+    const baseContext = writeContext(scope === 'platform' ? 'platform' : 'tenant', {});
+    const ctx =
+      scope === 'unbound' ? { ...baseContext, actor: { id: 'admin', roles: [] } } : baseContext;
+    const response = await handlers[handlerId]!(ctx);
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: 'forbidden' });
+    expect(read).not.toHaveBeenCalled();
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it.each(['platform', 'tenant'] as const)(
+    'reports unavailable %s storage instead of empty configuration',
+    async (scope) => {
+      const prefix = scope === 'platform' ? 'ssf.system-content-v2' : 'ssf.tenant-content-v2';
+      const handlers = createHandlers({});
+      const read = await handlers[`${prefix}.read`]!(context(scope));
+      expect(read.status).toBe(503);
+      await expect(read.json()).resolves.toEqual({ error: 'configuration_unavailable' });
+      const write = await handlers[`${prefix}.write`]!(
+        writeContext(scope, scope === 'platform' ? systemContent() : {})
+      );
+      expect(write.status).toBe(503);
+      await expect(write.json()).resolves.toEqual({ error: 'configuration_unavailable' });
+    }
+  );
+
+  it.each(['platform', 'tenant'] as const)(
+    'rejects malformed JSON and wrong-shape %s payloads without a write',
+    async (scope) => {
+      const write = vi.fn();
+      const handlers = createHandlers({
+        readSystemV2: async () => systemContent(),
+        readTenantV2: async () => ({ runtimeTemplate: null, overrides: null }),
+        writeSystemV2: write,
+        writeTenantV2: write,
+      });
+      const id =
+        scope === 'platform' ? 'ssf.system-content-v2.write' : 'ssf.tenant-content-v2.write';
+      const wrongShape = await handlers[id]!(writeContext(scope, []));
+      expect(wrongShape.status).toBe(422);
+      const baseContext = writeContext(scope, {});
+      const ctx = {
+        ...baseContext,
+        request: new Request(baseContext.request.url, {
+          method: 'PUT',
+          headers: baseContext.request.headers,
+          body: '{',
+        }),
+      };
+      const malformed = await handlers[id]!(ctx);
+      expect(malformed.status).toBe(422);
+      await expect(malformed.json()).resolves.toEqual({ error: 'invalid_configuration' });
+      expect(write).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    [new SsfContentRevisionConflict(), 412, 'content_revision_conflict'],
+    [new Error('ssf_v2_field_invalid'), 422, 'invalid_configuration'],
+    [new Error('private database detail'), 503, 'configuration_unavailable'],
+    ['private unknown failure', 503, 'configuration_unavailable'],
+  ] as const)(
+    'maps repository failure %s to %i without leaking details',
+    async (failure, status, code) => {
+      const fail = async (): Promise<never> => {
+        throw failure;
+      };
+      const handlers = createHandlers({
+        readSystemV2: fail,
+        readTenantV2: fail,
+        writeSystemV2: fail,
+        writeTenantV2: fail,
+      });
+      for (const scope of ['platform', 'tenant'] as const) {
+        const id =
+          scope === 'platform' ? 'ssf.system-content-v2.write' : 'ssf.tenant-content-v2.write';
+        const response = await handlers[id]!(
+          writeContext(scope, scope === 'platform' ? systemContent() : {})
+        );
+        expect(response.status).toBe(status);
+        await expect(response.json()).resolves.toEqual({ error: code });
+      }
+    }
+  );
+
+  it('returns tenant reads and committed writes with tenant-bound revisions, preserving failure distinction', async () => {
+    const next = {
+      runtimeTemplate: systemContent().runtimeTemplate,
+      overrides: { staff: { dashboard: { headline: 'Committed tenant text' } } },
+    };
+    const read = vi.fn().mockResolvedValue(next);
+    const write = vi.fn().mockResolvedValue(next);
+    const handlers = createHandlers({ readTenantV2: read, writeTenantV2: write });
+    const response = await handlers['ssf.tenant-content-v2.read']!(context('tenant'));
+    expect(response.status).toBe(200);
+    expect(read).toHaveBeenCalledWith('tenant-a');
+    expect(response.headers.get('X-SSF-Content-Revision')).toBe(
+      createSsfAdminContentRevision('tenant-a', next)
+    );
+    await expect(response.json()).resolves.toEqual({ ...next, supportedLanguages: null });
+    read.mockClear();
+    const saved = await handlers['ssf.tenant-content-v2.write']!(
+      writeContext('tenant', next.overrides)
+    );
+    expect(saved.status).toBe(200);
+    expect(read).not.toHaveBeenCalled();
+    expect(write).toHaveBeenCalledWith(
+      'tenant-a',
+      next.overrides,
+      expect.objectContaining({ expectedRevision: `sha256:${'0'.repeat(64)}` })
+    );
+    await expect(saved.json()).resolves.toEqual({ ...next, supportedLanguages: null });
+    read.mockRejectedValue(new Error('private read detail'));
+    const failed = await handlers['ssf.tenant-content-v2.read']!(context('tenant'));
+    expect(failed.status).toBe(503);
+    await expect(failed.json()).resolves.toEqual({ error: 'configuration_unavailable' });
+  });
+
+  it('requires an exact tenant write precondition before calling storage', async () => {
+    const write = vi.fn();
+    const handlers = createHandlers({ readTenantV2: vi.fn(), writeTenantV2: write });
+    for (const [revision, status] of [
+      [null, 428],
+      ['*', 400],
+    ] as const) {
+      const ctx = writeContext('tenant', {});
+      if (revision === null) ctx.request.headers.delete('X-SSF-Expected-Content-Revision');
+      else ctx.request.headers.set('X-SSF-Expected-Content-Revision', revision);
+      expect((await handlers['ssf.tenant-content-v2.write']!(ctx)).status).toBe(status);
+    }
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it('fails all unconfigured default storage operations without opening a database', async () => {
+    const dependencies = createDefaultSsfAdminV2Dependencies(null, null);
+    const options = { expectedRevision: `sha256:${'0'.repeat(64)}` };
+    await expect(dependencies.readSystemV2!()).rejects.toThrow('ssf_database_unavailable');
+    await expect(dependencies.readTenantV2!('tenant-a')).rejects.toThrow(
+      'ssf_database_unavailable'
+    );
+    await expect(dependencies.writeSystemV2!(systemContent(), options)).rejects.toThrow(
+      'ssf_database_unavailable'
+    );
+    await expect(dependencies.writeTenantV2!('tenant-a', {}, options)).rejects.toThrow(
+      'ssf_database_unavailable'
+    );
+  });
+});

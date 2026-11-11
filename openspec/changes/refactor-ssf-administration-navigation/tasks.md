@@ -158,3 +158,14 @@ The optional aggregate i18n formatter check fails in its existing aggregator
 generator on the unrelated hyphenated `roles-permission-descriptions` identifier;
 it changed no files. Changed resources use the same Prettier configuration and
 are checked directly. This cleanup does not modify that generator.
+
+Coverage follow-up: the changed-code gate identified 83.29% against its unchanged
+85% requirement. Added 26 real contract cases in the existing admin-handler, page
+projection and editor-page tests, without changing production code or thresholds.
+The combined `plugin-ssf:test:coverage` run passed 250 tests (15 PostgreSQL-only
+cases skipped there; their separate integration run passed). Re-evaluating the
+plugin LCOV with the existing gate functions raises its covered units from
+1579/1908 to 1701/1908; retaining unchanged CI evidence for the other projects
+projects global changed-code coverage of 88.94%. Final CI confirmation remains
+required. Manual rollout browser checks are explicitly skipped at user request;
+this does not waive automated merge/image gates or backup/health/digest checks.

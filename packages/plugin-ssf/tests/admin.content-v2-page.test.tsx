@@ -316,6 +316,182 @@ describe('SSF independently saved administration pages', () => {
     );
   });
 
+  it('keeps incomplete recording rows attached to their drafts and saves all surviving locales', async () => {
+    const view = tenantView();
+    const savedText = {
+      locale: 'de',
+      consentHtml: '<p>Saved consent</p>',
+      resumePromptHtml: '<p>Saved resume</p>',
+    };
+    view.runtimeTemplate.recording = { enabled: false, texts: [savedText] };
+    view.overrides = { staff: { feedback: { headline: 'Keep unrelated feedback' } } };
+    api.readTenant.mockResolvedValue(view);
+    api.writeTenant.mockImplementation(async (overrides) => ({ ...view, overrides }));
+    render(<SsfTenantContentV2Page page="recordings" canManage />);
+    await screen.findByRole('tab', { name: 'administration.sections.wording' });
+    clickTab('administration.sections.wording');
+    const wording = within(
+      screen.getByRole('heading', { name: 'administration.recordingWording' }).closest('section')!
+    );
+    const selector = wording.getByRole('combobox', {
+      name: 'administration.languageVersion',
+    }) as HTMLSelectElement;
+    const savedId = selector.value;
+    fireEvent.click(wording.getByRole('button', { name: 'v2.recording.addText' }));
+    const englishId = selector.value;
+    fireEvent.change(wording.getByLabelText('v2.locale'), { target: { value: 'en' } });
+    fireEvent.change(wording.getByLabelText('v2.recording.consentHtml'), {
+      target: { value: '<p>English consent draft</p>' },
+    });
+    fireEvent.change(wording.getByLabelText('v2.recording.resumePromptHtml'), {
+      target: { value: '<p>English resume draft</p>' },
+    });
+    fireEvent.click(wording.getByRole('button', { name: 'v2.recording.addText' }));
+    const unfinishedId = selector.value;
+    expect(new Set([savedId, englishId, unfinishedId]).size).toBe(3);
+    expect(
+      wording.getByRole('option', { name: 'administration.unfinishedLanguage' })
+    ).toHaveProperty('selected', true);
+    fireEvent.change(wording.getByLabelText('v2.recording.consentHtml'), {
+      target: { value: '<p>Unfinished consent</p>' },
+    });
+    fireEvent.change(wording.getByLabelText('v2.recording.resumePromptHtml'), {
+      target: { value: '<p>Unfinished resume</p>' },
+    });
+    const save = screen.getByRole('button', { name: 'actions.save' });
+    fireEvent.click(save);
+    await screen.findByText('v2.invalid', { selector: '[role="status"]' });
+    expect(api.writeTenant).not.toHaveBeenCalled();
+    expect(selector.value).toBe(unfinishedId);
+    expect(wording.getByLabelText('v2.locale')).toHaveProperty('value', '');
+    fireEvent.change(selector, { target: { value: savedId } });
+    expect(wording.getByLabelText('v2.recording.consentHtml')).toHaveProperty(
+      'value',
+      savedText.consentHtml
+    );
+    fireEvent.change(selector, { target: { value: englishId } });
+    expect(wording.getByLabelText('v2.locale')).toHaveProperty('value', 'en');
+    expect(wording.getByLabelText('v2.recording.consentHtml')).toHaveProperty(
+      'value',
+      '<p>English consent draft</p>'
+    );
+    fireEvent.change(selector, { target: { value: unfinishedId } });
+    expect(wording.getByLabelText('v2.recording.resumePromptHtml')).toHaveProperty(
+      'value',
+      '<p>Unfinished resume</p>'
+    );
+    fireEvent.click(wording.getByRole('button', { name: 'v2.recording.removeText' }));
+    expect(wording.queryByRole('option', { name: 'administration.unfinishedLanguage' })).toBeNull();
+    fireEvent.change(selector, { target: { value: englishId } });
+    expect(wording.getByLabelText('v2.recording.resumePromptHtml')).toHaveProperty(
+      'value',
+      '<p>English resume draft</p>'
+    );
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(api.writeTenant).toHaveBeenCalledWith(
+        {
+          staff: { feedback: { headline: 'Keep unrelated feedback' } },
+          recording: {
+            texts: [
+              savedText,
+              {
+                locale: 'en',
+                consentHtml: '<p>English consent draft</p>',
+                resumePromptHtml: '<p>English resume draft</p>',
+              },
+            ],
+          },
+        },
+        revision
+      )
+    );
+    await screen.findByText('status.saved');
+  });
+
+  it('retains guest metadata drafts across activation changes and resets only the guest icon', async () => {
+    const view = tenantView();
+    view.runtimeTemplate.guestLanguages = view.runtimeTemplate.guestLanguages.slice(0, 2);
+    const english = view.runtimeTemplate.guestLanguages[0]!;
+    const other = view.runtimeTemplate.guestLanguages[1]!;
+    const templateIcon = {
+      url: 'https://example.org/template-language.svg',
+      alternativeText: 'Template language icon',
+    };
+    english.icon = templateIcon;
+    view.overrides = {
+      staff: { feedback: { headline: 'Keep staff feedback' } },
+      guestLanguages: [
+        {
+          locale: english.locale,
+          icon: { url: 'https://example.org/own-language.svg', alternativeText: 'Own icon' },
+          guest: { explanationHtml: '<p>Keep guest explanation</p>' },
+        },
+      ],
+    };
+    api.readTenant.mockResolvedValue(view);
+    api.writeTenant.mockImplementation(async (overrides) => ({ ...view, overrides }));
+    render(<SsfTenantContentV2Page page="languages" canManage />);
+    const englishToggle = await screen.findByRole('checkbox', {
+      name: `${english.nativeName} (${english.locale})`,
+    });
+    const otherToggle = screen.getByRole('checkbox', {
+      name: `${other.nativeName} (${other.locale})`,
+    });
+    fireEvent.change(screen.getByLabelText('v2.nativeName'), {
+      target: { value: 'Edited English name' },
+    });
+    fireEvent.change(screen.getByLabelText('v2.iconUrl'), {
+      target: { value: 'https://example.org/draft-language.svg' },
+    });
+    fireEvent.change(screen.getByLabelText('v2.alternativeText'), {
+      target: { value: 'Draft icon text' },
+    });
+    fireEvent.click(englishToggle);
+    expect(otherToggle).toHaveProperty('disabled', true);
+    const selector = screen.getByRole('combobox', { name: 'administration.languageVersion' });
+    expect(selector).toHaveProperty('value', other.locale);
+    expect(
+      screen.queryByRole('option', { name: `Edited English name (${english.locale})` })
+    ).toBeNull();
+    fireEvent.click(englishToggle);
+    expect(otherToggle).toHaveProperty('disabled', false);
+    fireEvent.change(selector, { target: { value: english.locale } });
+    expect(screen.getByLabelText('v2.nativeName')).toHaveProperty('value', 'Edited English name');
+    expect(screen.getByLabelText('v2.iconUrl')).toHaveProperty(
+      'value',
+      'https://example.org/draft-language.svg'
+    );
+    expect(screen.getByLabelText('v2.alternativeText')).toHaveProperty('value', 'Draft icon text');
+    fireEvent.change(screen.getByLabelText('v2.iconUrl'), { target: { value: '' } });
+    expect(screen.queryByLabelText('v2.alternativeText')).toBeNull();
+    fireEvent.click(screen.getAllByRole('button', { name: 'fields.inherit' }).at(-1)!);
+    expect(screen.getByLabelText('v2.iconUrl')).toHaveProperty('value', templateIcon.url);
+    expect(screen.getByLabelText('v2.alternativeText')).toHaveProperty(
+      'value',
+      templateIcon.alternativeText
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    await waitFor(() =>
+      expect(api.writeTenant).toHaveBeenCalledWith(
+        {
+          staff: { feedback: { headline: 'Keep staff feedback' } },
+          guestLanguages: [
+            {
+              locale: english.locale,
+              guest: { explanationHtml: '<p>Keep guest explanation</p>' },
+              nativeName: 'Edited English name',
+            },
+          ],
+        },
+        revision
+      )
+    );
+    await screen.findByText('status.saved');
+    expect(englishToggle).toHaveProperty('checked', true);
+    expect(otherToggle).toHaveProperty('checked', true);
+  });
+
   it('rejects out-of-range root retention without truncation', async () => {
     render(<SsfSystemContentV2Page page="default-configuration" />);
     await screen.findByRole('tab', { name: 'administration.sections.retention' });

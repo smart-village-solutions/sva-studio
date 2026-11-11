@@ -236,3 +236,146 @@ describe('page-owned sparse overrides', () => {
     ).toEqual({ branding: { logo: { url: 'https://example.org/own.svg' } } });
   });
 });
+
+describe('page projection activation, inheritance and recording contracts', () => {
+  it('resets a guest icon by locale while retaining that language metadata and authored content', () => {
+    const base = effectiveSsfRuntimeFieldsV2(template(), null);
+    const language = base.guestLanguages.find((entry) => entry.locale === 'en')!;
+    language.icon = { url: 'https://example.org/inherited.svg', alternativeText: 'Same' };
+    const raw = {
+      guestLanguages: [
+        {
+          locale: 'en',
+          nativeName: 'Pinned name',
+          icon: { url: 'https://example.org/own.svg', alternativeText: 'Same' },
+          guest: { explanationHtml: '<p>Keep me</p>' },
+        },
+      ],
+    };
+    const before = effectiveSsfRuntimeFieldsV2(base, raw);
+    const draft = structuredClone(before);
+    draft.guestLanguages.reverse();
+    draft.guestLanguages.find((entry) => entry.locale === 'en')!.icon = language.icon;
+    const result = projectSsfTenantPageOverrides('languages', base, raw, before, draft, [
+      ['guestLanguages', 'en', 'icon'],
+    ]);
+    expect(result).toEqual({
+      guestLanguages: [
+        { locale: 'en', nativeName: 'Pinned name', guest: { explanationHtml: '<p>Keep me</p>' } },
+      ],
+    });
+    expect(
+      effectiveSsfRuntimeFieldsV2(base, result).guestLanguages.find(
+        (entry) => entry.locale === 'en'
+      )!.icon
+    ).toEqual(language.icon);
+    expect(raw.guestLanguages[0]!.icon.url).toBe('https://example.org/own.svg');
+  });
+
+  it('keeps guest media reset idempotent for already inherited and inactive languages', () => {
+    const base = effectiveSsfRuntimeFieldsV2(template(), null);
+    const noOverride = projectSsfTenantPageOverrides('languages', base, null, base, base, [
+      ['guestLanguages', 'en', 'icon'],
+    ]);
+    expect(noOverride).toEqual({});
+    const raw = {
+      guestLanguages: [
+        {
+          locale: 'en',
+          enabled: false,
+          icon: { url: 'https://example.org/own.svg', alternativeText: 'Own' },
+        },
+      ],
+    };
+    const before = effectiveSsfRuntimeFieldsV2(base, raw);
+    expect(
+      projectSsfTenantPageOverrides('languages', base, raw, before, before, [
+        ['guestLanguages', 'en', 'icon'],
+      ])
+    ).toEqual({ guestLanguages: [{ locale: 'en', enabled: false }] });
+  });
+
+  it.each([false, true])(
+    'reactivates a template language while preserving authored content=%s',
+    (hasContent) => {
+      const base = effectiveSsfRuntimeFieldsV2(template(), null);
+      const entry = {
+        locale: 'en',
+        enabled: false,
+        ...(hasContent ? { guest: { explanationHtml: '<p>Preserved hidden draft</p>' } } : {}),
+      };
+      const raw = { guestLanguages: [entry] };
+      const before = effectiveSsfRuntimeFieldsV2(base, raw);
+      const { enabled: _disabled, ...activeEntry } = entry;
+      const draft = effectiveSsfRuntimeFieldsV2(base, { guestLanguages: [activeEntry] });
+      const result = projectSsfTenantPageOverrides('languages', base, raw, before, draft);
+      expect(result).toEqual(hasContent ? { guestLanguages: [activeEntry] } : {});
+      expect(
+        effectiveSsfRuntimeFieldsV2(base, result).guestLanguages.map(({ locale }) => locale)
+      ).toContain('en');
+      expect(raw.guestLanguages[0]!.enabled).toBe(false);
+    }
+  );
+
+  it('removes only a reset staff field and follows future template changes', () => {
+    const base = effectiveSsfRuntimeFieldsV2(template(), null);
+    const raw = { staff: { locale: base.staff.locale, dashboard: { headline: 'Own headline' } } };
+    const before = effectiveSsfRuntimeFieldsV2(base, raw);
+    const draft = structuredClone(before);
+    draft.staff.dashboard.headline = base.staff.dashboard.headline;
+    const result = projectSsfTenantPageOverrides('appearance', base, raw, before, draft);
+    expect(result).toEqual({ staff: { locale: base.staff.locale } });
+    base.staff.dashboard.headline = 'Future template headline';
+    expect(effectiveSsfRuntimeFieldsV2(base, result).staff.dashboard.headline).toBe(
+      'Future template headline'
+    );
+  });
+
+  it('preserves explicit tenant disablement and resets retention without touching other page values', () => {
+    const base = effectiveSsfRuntimeFieldsV2(template(), null);
+    base.recording = {
+      enabled: false,
+      legalBasis: 'consent',
+      signature: 'off',
+      idCheck: 'off',
+      verificationRequired: false,
+      recoveryMode: 'standard',
+      retentionHours: 720,
+      auditRetentionHours: 900,
+      timestampAuthorityUrl: 'https://example.org/time',
+    };
+    const raw = {
+      recording: { enabled: true, retentionHours: 48, auditRetentionHours: 900 },
+      staff: { dashboard: { headline: 'Unrelated' } },
+    };
+    const before = effectiveSsfRuntimeFieldsV2(base, raw);
+    const draft = structuredClone(before);
+    draft.recording = {
+      ...draft.recording,
+      enabled: false,
+      retentionHours: null,
+      signature: 'required',
+    };
+    const result = projectSsfTenantPageOverrides('recordings', base, raw, before, draft);
+    expect(result).toEqual({
+      recording: { enabled: false, auditRetentionHours: 900, signature: 'required' },
+      staff: raw.staff,
+    });
+    const effective = effectiveSsfRuntimeFieldsV2(base, result);
+    expect(effective.recording).toMatchObject({
+      enabled: false,
+      retentionHours: 720,
+      signature: 'required',
+    });
+  });
+
+  it('stores incomplete disabled recording preparation without inventing an enabled runtime policy', () => {
+    const base = effectiveSsfRuntimeFieldsV2(template(), null);
+    delete base.recording;
+    const draft = structuredClone(base);
+    draft.recording = { enabled: false, legalBasis: 'consent', retentionHours: 48 };
+    const result = projectSsfTenantPageOverrides('recordings', base, null, base, draft);
+    expect(result).toEqual({ recording: draft.recording });
+    expect(effectiveSsfRuntimeFieldsV2(base, result).recording).toBeUndefined();
+  });
+});

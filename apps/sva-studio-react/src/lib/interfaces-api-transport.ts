@@ -175,6 +175,14 @@ const readClientErrorCode = (error: unknown): string | undefined => {
   return recordErrorCode ?? instanceErrorCode ?? messageErrorCode;
 };
 
+/**
+ * Classifies interface error codes that describe rejected client input (HTTP 400).
+ * Only an explicit allowlist of `invalid_*` codes counts as validation; other `invalid_*`
+ * codes such as `invalid_interfaces_payload` describe server defects and stay 5xx.
+ */
+export const isClientValidationErrorMessage = (message: string): boolean =>
+  /^(invalid_(?:config|input|request)|.*_invalid|.*_required|.*_not_supported)$/u.test(message);
+
 export const getErrorStatusCode = (error: unknown, fallback: number): number => {
   if (isRecord(error) && isNumericStatusCode(error.statusCode)) {
     return error.statusCode;
@@ -203,7 +211,7 @@ export const getErrorPayload = (error: unknown, fallbackCode?: string): ErrorPay
       ? 403
       : message === 'interface_not_found'
         ? 404
-        : /^(invalid_|.*_invalid|.*_required|.*_not_supported)$/u.test(message)
+        : isClientValidationErrorMessage(message)
           ? 400
           : 500
   );

@@ -245,6 +245,52 @@ describe('personal interface HTTP routes', () => {
     expect(state.remove).not.toHaveBeenCalled();
   });
 
+  it('keeps server-side invalid_* defects such as a malformed list projection as 500', async () => {
+    state.list.mockRejectedValue(new Error('invalid_interfaces_payload'));
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+    const response = await dispatchInterfacesApiRequest(
+      new Request('https://tenant-a.example/api/v1/interfaces', { method: 'GET' })
+    );
+
+    expect(response?.status).toBe(500);
+    expect(await response?.json()).toEqual({ error: { code: 'invalid_interfaces_payload' } });
+  });
+
+  it('answers a rejected second map geocoding interface with 400 invalid_config', async () => {
+    state.upsert.mockRejectedValue(new Error('invalid_config'));
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+    const response = await dispatchInterfacesApiRequest(
+      new Request('https://tenant-a.example/api/v1/interfaces', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          draft: {
+            type: 'mapGeocoding',
+            name: 'Zweite Karte',
+            enabled: true,
+            config: {
+              provider: 'geoapify',
+              styleUrl: 'https://tiles.example/styles/poi',
+              autocompleteEnabled: true,
+              geocodeEnabled: true,
+              reverseGeocodeEnabled: true,
+              suggestEndpoint: '',
+              geocodeEndpoint: '',
+              reverseGeocodeEndpoint: '',
+              requestTimeoutMs: '',
+              rateLimitPerMinute: '',
+              killSwitchEnabled: false,
+              apiKey: 'geoapify-key',
+            },
+          },
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    expect(await response?.json()).toEqual({ error: { code: 'invalid_config' } });
+  });
+
   it('keeps raw exception details out of HTTP errors and logs', async () => {
     state.upsert.mockRejectedValue(new Error('postgres://db-user:private-value@db.example/wm'));
     const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');

@@ -102,7 +102,6 @@ export const mergeProjectCoverage = (
     );
   const cwd = path.join(rootDir, projectRoot);
   const config = project === 'sva-studio-react' ? 'vitest.coverage.config.ts' : 'vitest.config.ts';
-  const filters = project === 'sva-studio-react' ? [] : ['tests'];
   // Config loading needs the SDK's runtime exports, not the app's complete build graph.
   execFileSync('pnpm', ['nx', 'run', 'plugin-sdk:build'], { cwd: rootDir, stdio: 'inherit' });
   // Only report merging skips test prerequisites; instrumented test runs retain them.
@@ -120,11 +119,10 @@ export const mergeProjectCoverage = (
     { cwd: rootDir, stdio: 'inherit' }
   );
   const discovered = JSON.parse(
-    execFileSync(
-      'pnpm',
-      ['exec', 'vitest', 'list', ...filters, '--config', config, '--filesOnly', '--json'],
-      { cwd, encoding: 'utf8' }
-    )
+    execFileSync('pnpm', ['exec', 'vitest', 'list', '--config', config, '--filesOnly', '--json'], {
+      cwd,
+      encoding: 'utf8',
+    })
   ) as { file: string }[];
   const results = reportEntries
     .filter((report) => report.kind === 'tests')
@@ -181,7 +179,9 @@ const removeProjectRootCoverageDirectory = (workspaceRootPath: string): void => 
 };
 
 export const clearWorkspaceCoverageOutputs = (rootDir = process.cwd()): void => {
-  for (const workspaceRoot of ['apps', 'packages'].map((directory) => path.join(rootDir, directory))) {
+  for (const workspaceRoot of ['apps', 'packages'].map((directory) =>
+    path.join(rootDir, directory)
+  )) {
     removeProjectRootCoverageDirectory(workspaceRoot);
   }
   fs.rmSync(path.join(rootDir, 'artifacts', 'ci-feedback', 'coverage-shards'), {

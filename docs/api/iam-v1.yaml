@@ -19,6 +19,7 @@ paths:
         Organisationsauswahl und kein Gleichsetzen mit ausgehenden Organisationsaccounts. Der Main-Server besitzt Jobs
         und Retries. Zielsprache ist eine aktuell in Studio ausgewählte und geprüfte Sprache.
         Bei global-settings-v1 ist genau ein Klartexteintrag mit Schlüssel label und maximal 2048 UTF-8-Bytes erlaubt.
+        Bei static-html-v1 ist genau ein Rich-Text-HTML-Eintrag mit Schlüssel content und maximal 90000 UTF-8-Quellbytes erlaubt.
         Für news-v1 gelten 50 Einträge, 90000 UTF-8-Quellbytes, 100000 Bytes Gesamtrequest, 150000 Bytes Gesamtantwort.
         Übersetzte Einträge sind nicht leer oder ausschließlich Leerraum und umfassen jeweils höchstens 100000 UTF-8-Bytes.
         Übermittelte Quelltexte dürfen ebenfalls nicht leer oder ausschließlich Leerraum sein;
@@ -38,13 +39,23 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [schemaVersion, instanceId, requestId, sourceDigest, profileId, sourceLocale, targetLocale, entries]
+              required:
+                [
+                  schemaVersion,
+                  instanceId,
+                  requestId,
+                  sourceDigest,
+                  profileId,
+                  sourceLocale,
+                  targetLocale,
+                  entries,
+                ]
               properties:
                 schemaVersion: { type: integer, enum: [1] }
                 instanceId: { type: string }
                 requestId: { type: string, format: uuid }
                 sourceDigest: { type: string, pattern: '^[a-f0-9]{64}$' }
-                profileId: { type: string, enum: [news-v1, global-settings-v1] }
+                profileId: { type: string, enum: [news-v1, global-settings-v1, static-html-v1] }
                 sourceLocale: { type: string, enum: [de] }
                 targetLocale: { type: string, maxLength: 32 }
                 entries:
@@ -58,12 +69,26 @@ paths:
                     properties:
                       key:
                         type: string
-                        description: title, author, keywords, settings.onlySummaryLinkText, contentBlocks.N.title/.intro/.body oder contentBlocks.N.mediaContents.M.captionText bei news-v1; eindeutige Schlüssel und genau ein nichtleerer title; bei global-settings-v1 nur label
+                        description: title, author, keywords, settings.onlySummaryLinkText, contentBlocks.N.title/.intro/.body oder contentBlocks.N.mediaContents.M.captionText bei news-v1; eindeutige Schlüssel und genau ein nichtleerer title; bei global-settings-v1 nur label, bei static-html-v1 nur content
                       text: { type: string, minLength: 1, maxLength: 92160, pattern: '\S' }
                       format:
                         type: string
                         enum: [plain, html]
-                        description: body als html, intro als plain oder html, übrige Felder als plain
+                        description: content (static-html-v1) und body als html, intro als plain oder html, übrige Felder als plain
+              allOf:
+                - if:
+                    properties:
+                      profileId: { const: static-html-v1 }
+                  then:
+                    properties:
+                      entries:
+                        minItems: 1
+                        maxItems: 1
+                        items:
+                          properties:
+                            key: { const: content }
+                            text: { maxLength: 90000 }
+                            format: { const: html }
       responses:
         '200':
           description: Gleiche Korrelation schemaVersion/requestId/sourceDigest/profileId/sourceLocale/targetLocale und vollständige entries in gleicher Reihenfolge mit gleichen key/format und Text in der Zielsprache; private no-store

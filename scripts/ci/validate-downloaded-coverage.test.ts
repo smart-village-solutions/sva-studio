@@ -1,55 +1,92 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { buildCiFeedbackEvidence } from './ci-feedback-evidence.ts';
-import { writeCoverageShardEvidence } from './coverage-shard-evidence.ts';
 import {
-  resolveCoverageTargetFilters,
+  writeCoverageShardEvidence,
+  type CoveragePartitionEvidence,
+} from './coverage-shard-evidence.ts';
+import {
+  mergeProjectCoverage,
   validateDownloadedCoverage,
 } from './validate-downloaded-coverage.ts';
+
+vi.mock('node:child_process', () => ({ execFileSync: vi.fn() }));
 
 const directories: string[] = [];
 
 afterEach(() => {
+  vi.resetAllMocks();
   for (const directory of directories.splice(0)) {
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
 
-const coverageCommand = (projectRoot: string): string =>
-  (
-    JSON.parse(fs.readFileSync(path.join(process.cwd(), projectRoot, 'project.json'), 'utf8')) as {
-      targets: Record<string, { options: { command: string } }>;
-    }
-  ).targets['test:coverage'].options.command;
-
-describe('resolveCoverageTargetFilters', () => {
-  it.each([
-    // Runs colocated tests in src as well; a fixed `tests` filter rejected its merged results.
-    ['packages/plugin-waste-management', []],
-    ['packages/plugin-events', ['tests']],
-    ['apps/sva-studio-react', []],
-  ])('applies the same filters as the %s coverage target', (projectRoot, filters) => {
-    const command = coverageCommand(projectRoot);
-    expect(resolveCoverageTargetFilters(command)).toEqual(filters);
-  });
-
-  it('ignores flag values and rejects commands without run-vitest-target', () => {
-    expect(
-      resolveCoverageTargetFilters(
-        'pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests --config vitest.config.ts --coverage'
-      )
-    ).toEqual(['tests']);
-    expect(() => resolveCoverageTargetFilters('vitest run --coverage')).toThrow(
-      'run-vitest-target.ts'
-    );
-  });
-});
-
 describe('validate-downloaded-coverage', () => {
+  it('discovers source-colocated tests when validating merged coverage and rejects missing files', () => {
+    const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'downloaded-coverage-'));
+    directories.push(rootDir);
+    const project = 'plugin-waste-management';
+    const projectRoot = `packages/${project}`;
+    const files = ['tests/plugin.test.ts', 'src/email-monitoring.page.test.tsx'].map((file) =>
+      path.join(rootDir, projectRoot, file)
+    );
+    const partitionDir = path.join(rootDir, 'coverage-partition-waste-1');
+    fs.mkdirSync(partitionDir);
+    fs.writeFileSync(path.join(partitionDir, 'report.blob.json'), '{}');
+    const resultPath = path.join(partitionDir, 'test-results.json');
+    const writeResults = (names: string[]) =>
+      fs.writeFileSync(
+        resultPath,
+        JSON.stringify({
+          success: true,
+          numFailedTests: 0,
+          numFailedTestSuites: 0,
+          testResults: names.map((name) => ({ name, assertionResults: [] })),
+        })
+      );
+    writeResults(files);
+    const entry: CoveragePartitionEvidence = {
+      schemaVersion: 1,
+      partition: 'waste-1',
+      baseSha: 'base',
+      headSha: 'head',
+      phases: [],
+      timing: { startedAt: '2026-11-11T12:00:00Z', finishedAt: '2026-11-11T12:00:01Z' },
+      plan: {
+        changedFiles: [],
+        affectedProjects: [project],
+        projectRoots: [{ name: project, root: projectRoot }],
+        changedProjectPlan: {
+          mode: 'changed-first',
+          reason: 'directly-changed-projects-first',
+          directProjects: [project],
+          remainingProjects: [],
+          unmappedFiles: [],
+        },
+      },
+      reports: [
+        { project, kind: 'blob', path: 'report.blob.json', sha256: 'unused' },
+        { project, kind: 'tests', path: 'test-results.json', sha256: 'unused' },
+      ],
+    };
+    vi.mocked(execFileSync).mockImplementation((_command, args) => {
+      if (args?.includes('list')) {
+        const discovered = args.includes('tests') ? files.slice(0, 1) : files;
+        return JSON.stringify(discovered.map((file) => ({ file })));
+      }
+      return '';
+    });
+
+    expect(() => mergeProjectCoverage(project, [entry], rootDir, rootDir)).not.toThrow();
+    writeResults(files.slice(0, 1));
+    expect(() => mergeProjectCoverage(project, [entry], rootDir, rootDir)).toThrow(/Testmenge/u);
+  });
+
   it('binds complete coverage reports and shard evidence to the aggregate plan and head', () => {
     const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'downloaded-coverage-'));
     directories.push(rootDir);

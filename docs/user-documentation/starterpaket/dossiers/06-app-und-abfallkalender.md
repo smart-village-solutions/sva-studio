@@ -1,19 +1,6 @@
 # Dossier 6: App und Abfallkalender
 
-## `app.overview` – App
-
-- **Route / Typ / Owner:** `/app`, Übersicht, Host.
-- **Nutzerziel:** Aktuell nur den vorbereiteten Navigationsbereich erkennen.
-- **Produktfakten:** Die Route rendert ausdrücklich eine Platzhalterseite. Navigation,
-  Berechtigungsprüfung und Shell sind integriert, konkrete Fachlogik und Datenquellen jedoch noch
-  nicht. Die Oberfläche bezeichnet den Status als „Bereit für Inhalt“.
-- **Redaktioneller Hinweis:** Keine Konfigurationsschritte erfinden und die Seite nicht als
-  funktionsfähige App-Konfiguration darstellen. Eine sehr kurze Statushilfe ist angemessener als
-  eine Bedienungsanleitung.
-- **Leitfragen / Stichwörter:** Für wen ist der Platzhalter sichtbar? Wohin soll bei Bedarf
-  verwiesen werden? App, Platzhalter, noch keine Fachlogik.
-- **Evidenz:** `routing/app-route-bindings.tsx`, `routes/-placeholder-page.tsx`,
-  `i18n/resources/de/placeholder.resources.ts`.
+Die Modulzuweisung und die Katalogpflege sind im [Dossier zu Kategorien und Modulen](04-kategorien-und-module.md#deutsche-app-texte-und-sprachen) beschrieben.
 
 ## `waste-management.overview` – Abfallkalender
 

@@ -12,7 +12,6 @@ export const uiRoutePaths = {
   mediaUsage: '/admin/media/$mediaId/usage',
   media: '/media',
   categories: '/categories',
-  app: '/app',
   interfaces: '/interfaces',
   help: '/help',
   support: '/support',

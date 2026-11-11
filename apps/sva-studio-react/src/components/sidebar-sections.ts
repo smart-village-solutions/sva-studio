@@ -51,7 +51,7 @@ export const useSidebarSections = (access: SidebarAccess): readonly SidebarSecti
     access.canAccessAdminRoles,
     access.canAccessAdminUsers,
     access.canAccessTenantInvitationTemplate,
-    access.canAccessApplicationLink,
+    access.canAccessAppTexts,
     access.canAccessCockpitLink,
     access.canAccessInterfaces,
     access.canAccessMedia,

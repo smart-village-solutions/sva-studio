@@ -497,7 +497,7 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Alle' }).getAttribute('href')).toBe(
       '/admin/content?page=1'
     );
-    expect(screen.getByRole('link', { name: 'App' }).getAttribute('href')).toBe('/app');
+    expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('href')).toBe(COCKPIT_URL);
     expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('target')).toBe('_blank');
 
@@ -776,7 +776,7 @@ describe('Sidebar', () => {
         instanceId: 'demo',
         roles: ['editor'],
         permissionActions: ['app-texts.catalog.read'],
-        assignedModules: [],
+        assignedModules: ['app'],
       }),
       route: '/app-texts',
     });
@@ -791,7 +791,7 @@ describe('Sidebar', () => {
       user: createSidebarUser({
         instanceId: 'demo',
         roles: ['system_admin'],
-        assignedModules: ['app-translations'],
+        assignedModules: ['app', 'app-translations'],
         permissionActions: ['app-texts.catalog.read', 'app-translations.catalog.read'],
       }),
       route: '/plugins/app-translations',
@@ -1156,22 +1156,23 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Kategorien' })).toBeNull();
   });
 
-  it('zeigt im Bereich Anwendungen nur den App-Link mit app.read-Berechtigung', () => {
+  it('blendet die App-Redaktion ohne App-Zuweisung trotz Katalogrechten aus', () => {
+    studioPluginNavigationMock.items = [...(appTranslationsPlugin.navigation ?? [])];
     renderSidebar({
       user: createSidebarUser({
-        id: 'user-3',
-        name: 'App Reader',
-        permissionActions: ['experimental.read'],
-      }),
-      contentAccess: createContentAccessState({
-        access: defaultReadOnlyAccessState,
-        permissionActions: ['app.read'],
+        instanceId: 'demo',
+        assignedModules: ['app-translations'],
+        permissionActions: [
+          'experimental.read',
+          'app.read',
+          'app-texts.catalog.read',
+          'app-translations.catalog.read',
+        ],
       }),
     });
 
-    expect(screen.getByText('Anwendungen')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'App' }).getAttribute('href')).toBe('/app');
-    expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'App' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
   });
 
   it('zeigt den Cockpit-Link nur bei Zuweisung und cockpit.read-Berechtigung', () => {
@@ -1308,7 +1309,7 @@ describe('Sidebar', () => {
     );
   });
 
-  it('blendet den Bereich Anwendungen komplett aus, wenn weder app.read noch cockpit.read vorhanden ist', () => {
+  it('blendet den Bereich Anwendungen ohne zugängliche Einträge aus', () => {
     renderSidebar({
       user: createSidebarUser({
         id: 'user-5',

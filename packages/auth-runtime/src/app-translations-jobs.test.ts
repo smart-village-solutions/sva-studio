@@ -19,7 +19,10 @@ const deps = vi.hoisted(() => ({
   translate: vi.fn(),
   enqueue: vi.fn(),
 }));
-vi.mock('./db.js', () => ({ withIamAppDb: deps.transaction }));
+vi.mock('./db.js', () => ({
+  withIamAppDb: deps.transaction,
+  withInstanceDb: (_instanceId: string, work: unknown) => deps.transaction(work),
+}));
 vi.mock('@sva/data-repositories/server', () => ({
   createAppTranslationRepository: deps.repository,
 }));
@@ -46,6 +49,7 @@ let draft: CatalogDraft;
 let base: CatalogRelease;
 let job: StudioJobRecord;
 let generation: string;
+let appModuleRevision: string | undefined;
 let credentials: string;
 const query = vi.fn();
 const context = (): StudioJobExecutionHandlerContext =>
@@ -66,6 +70,7 @@ const context = (): StudioJobExecutionHandlerContext =>
 beforeEach(() => {
   vi.clearAllMocks();
   generation = '1';
+  appModuleRevision = '1';
   credentials = 'credential-1';
   const keys = Object.fromEntries(
     Array.from({ length: 60 }, (_, index) => [
@@ -143,11 +148,15 @@ beforeEach(() => {
       credentialRevision: credentials,
       interfaceId: 'deepl',
       generation,
+      appModuleRevision,
       targetCodes: { fr: 'fr' },
       mode: 'missing',
     },
   };
   query.mockImplementation(async (sql: string) => {
+    if (sql.includes("module_id='app'")) {
+      return { rows: appModuleRevision ? [{ revision: appModuleRevision }] : [] };
+    }
     if (sql.includes('desired_generation')) return { rows: [{ generation }], rowCount: 1 };
     if (sql.includes('instance_external_interfaces'))
       return {
@@ -279,6 +288,31 @@ describe('catalog translation worker', () => {
       expect(job.progress?.completedSteps).toBe(0);
     }
   );
+  it('stops before calling DeepL when App is inactive', async () => {
+    appModuleRevision = undefined;
+    await expect(runCatalogTranslation(context())).rejects.toThrow('catalog_forbidden');
+    expect(deps.translate).not.toHaveBeenCalled();
+  });
+  it('blocks the next provider request when App is reactivated during the first request', async () => {
+    const fetchMock = vi.fn(async () => {
+      appModuleRevision = '3';
+      return new Response();
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      deps.translate.mockImplementationOnce(
+        async (_record, _target, _values, _signal, fetchImpl: typeof fetch) => {
+          await fetchImpl('https://api.deepl.com/v2/translate');
+          await fetchImpl('https://api.deepl.com/v2/translate');
+        }
+      );
+      await expect(runCatalogTranslation(context())).rejects.toThrow('catalog_forbidden');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(job.progress?.completedSteps).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it.each([
     'revision',
     'base',
@@ -287,6 +321,8 @@ describe('catalog translation worker', () => {
     'claim',
     'credentials',
     'generation',
+    'App deactivation',
+    'App reactivation',
     'permission',
     'cancel',
   ])('discards a provider response after %s changes', async (change) => {
@@ -299,6 +335,8 @@ describe('catalog translation worker', () => {
       if (change === 'cancel') job = { ...job, cancelRequestedAt: new Date().toISOString() };
       if (change === 'credentials') credentials = 'rotated';
       if (change === 'generation') generation = '2';
+      if (change === 'App deactivation') appModuleRevision = undefined;
+      if (change === 'App reactivation') appModuleRevision = '3';
       if (change === 'permission') deps.permissions.mockResolvedValue([]);
       return values;
     });

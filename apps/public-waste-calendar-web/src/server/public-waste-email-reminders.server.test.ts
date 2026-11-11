@@ -738,7 +738,11 @@ describe('public waste reminder action characterization', () => {
     });
     const html = await page!.text();
     expect(html).toContain('Ihre Erinnerung ist nun aktiv.');
-    expect(html).toContain('<a href="https://example.invalid">Abfallwirtschaft</a>');
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    const link = template.content.querySelector('a');
+    expect(link?.getAttribute('href')).toBe('https://example.invalid');
+    expect(link?.textContent).toBe('Abfallwirtschaft');
     expect(html).not.toContain('doi-token');
     expect(html).not.toContain('address');
   });

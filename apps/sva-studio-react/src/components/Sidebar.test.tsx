@@ -1276,6 +1276,39 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
   });
 
+  it.each([
+    { scope: 'tenant', roles: ['system_admin'], instanceId: 'tenant-a', route: '/app-texts' },
+    {
+      scope: 'root',
+      roles: ['instance_registry_admin'],
+      instanceId: undefined,
+      route: '/admin/app-translations',
+    },
+  ])('hides the App menu for $scope administrators in Kassel DIALOG', ({ roles, instanceId, route }) => {
+    studioPluginNavigationMock.items = [];
+    useRouterStateMock.mockReturnValue({ pathname: route, search: {} });
+    setupSidebarSession({
+      user: createSidebarUser({
+        roles,
+        instanceId,
+        assignedModules: ['app'],
+        permissionActions: ['app-texts.catalog.read', 'app.read', 'experimental.read'],
+      }),
+    });
+
+    render(
+      <StudioBrandingProvider branding="kassel-dialog">
+        <Sidebar />
+      </StudioBrandingProvider>
+    );
+
+    expect(screen.getByRole('link', { name: 'Übersicht' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'App' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'App-Texte' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Gemeinsame App-Texte' })).toBeNull();
+  });
+
   it('behält im Standard-Studio den generischen SSF-Navigationstitel bei', () => {
     studioPluginNavigationMock.items = [
       {

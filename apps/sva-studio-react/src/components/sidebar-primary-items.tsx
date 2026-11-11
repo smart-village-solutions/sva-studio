@@ -234,7 +234,7 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
     ),
   ];
   const applicationItems: SidebarItem[] = [
-    ...(appChildren.length > 0
+    ...(brandingProfile.showGenericApplicationLinks && appChildren.length > 0
       ? [
           {
             kind: 'group' as const,

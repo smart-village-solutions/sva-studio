@@ -1,14 +1,21 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { publishSessionAccessSnapshot, resetSessionAccessSnapshot } from '@sva/plugin-sdk';
+import {
+  publishSessionAccessSnapshot,
+  resetSessionAccessSnapshot,
+  registerPluginTranslationResolver,
+  registerPluginLocaleResolver,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
+import { wasteManagementPluginTranslations } from './plugin.translations.js';
 import { wasteEmailMonitoringPermission } from '@sva/waste-management-contracts';
 import { WasteEmailMonitoringPage } from './waste-management.email-monitoring.page.js';
 import { getWasteEmailMonitoring } from './waste-management.api.read.js';
 vi.mock('./waste-management.api.read.js', () => ({ getWasteEmailMonitoring: vi.fn() }));
 vi.mock('@sva/plugin-sdk', async (original) => ({
   ...(await original<typeof import('@sva/plugin-sdk')>()),
-  usePluginTranslation: () => (key: string) => key,
+  usePluginTranslation: vi.fn(() => (key: string) => key),
 }));
 const subscription = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -22,6 +29,12 @@ const subscription = {
     { fraction: 'Bio A', slotId: 'bio:email:first' },
     { fraction: 'Altpapier', slotId: 'legacy-slot' },
   ],
+  lastSentEmail: { kind: 'doi' as const, sentAt: '2026-11-10T10:00:00Z' },
+  nextEmail: {
+    kind: 'reminder' as const,
+    status: 'pending' as const,
+    scheduledAt: '2026-11-12T06:00:00Z',
+  },
 };
 const data = { subscriptions: [subscription], total: 26, deliveries: [], deliveryTotal: 0 };
 const allow = (permissions: string[], instanceId = 'tenant-a') =>
@@ -34,22 +47,146 @@ const allow = (permissions: string[], instanceId = 'tenant-a') =>
     subjectId: 'reader',
   });
 beforeEach(() => {
+  registerPluginLocaleResolver(() => ({ locale: 'de', supportedLocales: ['de', 'en'] }));
+  vi.mocked(usePluginTranslation).mockImplementation(() => (key: string) => key);
   resetSessionAccessSnapshot();
   vi.mocked(getWasteEmailMonitoring).mockReset().mockResolvedValue(data);
 });
 afterEach(cleanup);
 describe('email monitoring page', () => {
+  it.each([
+    ['de', '12.11.2026'],
+    ['en', 'Nov 12, 2026'],
+  ] as const)(
+    'resolves monitoring copy through the real %s plugin namespace',
+    async (locale, pickupLabel) => {
+      const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
+      vi.mocked(usePluginTranslation).mockImplementation(actual.usePluginTranslation);
+      registerPluginLocaleResolver(() => ({ locale, supportedLocales: ['de', 'en'] }));
+      registerPluginTranslationResolver((key, variables) => {
+        const value = key
+          .split('.')
+          .reduce<unknown>(
+            (node, part) =>
+              node && typeof node === 'object'
+                ? (node as Record<string, unknown>)[part]
+                : undefined,
+            wasteManagementPluginTranslations[locale]
+          );
+        return typeof value === 'string'
+          ? Object.entries(variables ?? {}).reduce(
+              (text, [name, replacement]) => text.split(`{{${name}}}`).join(String(replacement)),
+              value
+            )
+          : key;
+      });
+      vi.mocked(getWasteEmailMonitoring).mockResolvedValue({
+        ...data,
+        deliveryTotal: 1,
+        deliveries: [
+          {
+            id: 'localized-delivery',
+            kind: 'reminder',
+            status: 'sent',
+            createdAt: subscription.createdAt,
+            scheduledAt: subscription.createdAt,
+            sentAt: subscription.createdAt,
+            attempts: 1,
+            fraction: 'Bio',
+            pickupDate: '2026-11-12',
+            error: null,
+          },
+        ],
+      });
+      allow([wasteEmailMonitoringPermission]);
+      render(<WasteEmailMonitoringPage />);
+      await screen.findByRole('heading', {
+        name: wasteManagementPluginTranslations[locale].wasteManagement.emailMonitoring.title,
+      });
+      await screen.findAllByText(subscription.maskedEmail);
+      const copy = wasteManagementPluginTranslations[locale].wasteManagement.emailMonitoring;
+      const [select] = screen.getAllByRole('button', { name: copy.select });
+      if (!select) throw new Error('missing subscription action');
+      fireEvent.click(select);
+      await screen.findAllByText(copy.pickup.replace('{{date}}', pickupLabel));
+      expect(document.body.textContent).not.toMatch(
+        /waste-management\.emailMonitoring|wasteManagement\.emailMonitoring/
+      );
+    }
+  );
   it('does not fetch with general monitoring or calendar rights', async () => {
     allow(['iam.monitoring.read', 'waste-management.read']);
     render(<WasteEmailMonitoringPage />);
     expect(screen.getByText('emailMonitoring.forbidden')).toBeTruthy();
     expect(getWasteEmailMonitoring).not.toHaveBeenCalled();
   });
+  it('shows stored sent and scheduled emails directly in the subscription overview', async () => {
+    allow([wasteEmailMonitoringPermission]);
+    render(<WasteEmailMonitoringPage />);
+    await screen.findAllByText(subscription.maskedEmail);
+    const overview = within(screen.getByRole('table', { name: 'emailMonitoring.subscriptions' }));
+    expect(overview.getByText('emailMonitoring.lastSentEmail')).toBeTruthy();
+    expect(overview.getByText('emailMonitoring.kinds.doi', { exact: false })).toBeTruthy();
+    expect(overview.getByText('emailMonitoring.nextEmail')).toBeTruthy();
+    expect(overview.getByText('emailMonitoring.kinds.reminder', { exact: false })).toBeTruthy();
+    expect(
+      overview.getByText(
+        new Date(subscription.lastSentEmail.sentAt).toLocaleString('de', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        }),
+        { exact: false }
+      )
+    ).toBeTruthy();
+    expect(
+      overview.getByText(
+        new Date(subscription.nextEmail.scheduledAt).toLocaleString('de', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        }),
+        { exact: false }
+      )
+    ).toBeTruthy();
+  });
+  it.each(['missing', 'empty', 'processing'] as const)(
+    'explains %s sending records without claiming a future delivery',
+    async (state) => {
+      const legacySubscription = { ...subscription };
+      Reflect.deleteProperty(legacySubscription, 'lastSentEmail');
+      Reflect.deleteProperty(legacySubscription, 'nextEmail');
+      const row =
+        state === 'missing'
+          ? legacySubscription
+          : state === 'empty'
+            ? { ...legacySubscription, lastSentEmail: null, nextEmail: null }
+            : {
+                ...subscription,
+                nextEmail: { ...subscription.nextEmail, status: 'processing' as const },
+              };
+      vi.mocked(getWasteEmailMonitoring).mockResolvedValue({ ...data, subscriptions: [row] });
+      allow([wasteEmailMonitoringPermission]);
+      render(<WasteEmailMonitoringPage />);
+      await screen.findAllByText(subscription.maskedEmail);
+      const overview = within(screen.getByRole('table', { name: 'emailMonitoring.subscriptions' }));
+      if (state === 'empty') {
+        expect(overview.getByText('emailMonitoring.noSentEmail')).toBeTruthy();
+        expect(overview.getByText('emailMonitoring.noNextEmail')).toBeTruthy();
+      } else if (state === 'missing') {
+        expect(overview.getAllByText('emailMonitoring.unavailable')).toHaveLength(2);
+        expect(overview.queryByText('emailMonitoring.noSentEmail')).toBeNull();
+      } else {
+        expect(overview.getByText('emailMonitoring.deliveryStates.processing')).toBeTruthy();
+        expect(overview.queryByText('emailMonitoring.nextEmail')).toBeNull();
+      }
+    }
+  );
   it('shows masked subscriptions, loads selected mail state and resets selection on filtering', async () => {
     allow([wasteEmailMonitoringPermission]);
     render(<WasteEmailMonitoringPage />);
     await screen.findAllByText(subscription.maskedEmail);
-    expect(screen.getAllByText(/legacy-slot/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/legacy-slot/)).toBeNull();
+    expect(screen.queryByText(subscription.id)).toBeNull();
+    expect(screen.getAllByText('emailMonitoring.reminder').length).toBeGreaterThan(0);
     const [button] = screen.getAllByRole('button', { name: 'emailMonitoring.select' });
     if (!button) throw new Error('missing subscription action');
     fireEvent.click(button);
@@ -70,6 +207,55 @@ describe('email monitoring page', () => {
         deliveryPage: 1,
       })
     );
+  });
+  it.each([
+    ['activatedAt', '2026-11-11T10:00:00Z', 'active'],
+    ['unsubscribedAt', '2026-11-12T10:00:00Z', 'unsubscribed'],
+  ] as const)(
+    'refreshes the selected subscription %s from the response',
+    async (field, value, status) => {
+      allow([wasteEmailMonitoringPermission]);
+      render(<WasteEmailMonitoringPage />);
+      await screen.findAllByText(subscription.maskedEmail);
+      const [select] = screen.getAllByRole('button', { name: 'emailMonitoring.select' });
+      if (!select) throw new Error('missing subscription action');
+      fireEvent.click(select);
+      await screen.findByText('emailMonitoring.deliveryNotice');
+      vi.mocked(getWasteEmailMonitoring).mockResolvedValue({
+        ...data,
+        subscriptions: [{ ...subscription, status, [field]: value }],
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'emailMonitoring.refresh' }));
+      const expected = new Date(value).toLocaleString('de', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      });
+      await within(
+        screen.getByRole('region', { name: 'emailMonitoring.deliveries' })
+      ).findAllByText(expected);
+    }
+  );
+  it('keeps message controls and omits old dates when the selected row leaves the current list', async () => {
+    allow([wasteEmailMonitoringPermission]);
+    render(<WasteEmailMonitoringPage />);
+    await screen.findAllByText(subscription.maskedEmail);
+    const [select] = screen.getAllByRole('button', { name: 'emailMonitoring.select' });
+    if (!select) throw new Error('missing subscription action');
+    fireEvent.click(select);
+    await screen.findByText('emailMonitoring.deliveryNotice');
+    vi.mocked(getWasteEmailMonitoring).mockResolvedValue({ ...data, subscriptions: [], total: 0 });
+    const refresh = screen.getByRole('button', { name: 'emailMonitoring.refresh' });
+    refresh.focus();
+    fireEvent.click(refresh);
+    const details = within(screen.getByRole('region', { name: 'emailMonitoring.deliveries' }));
+    await details.findByText('emailMonitoring.subscriptionUnavailable');
+    const oldDate = new Date(subscription.createdAt).toLocaleString('de', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    });
+    expect(details.queryByText(oldDate)).toBeNull();
+    expect(details.getByRole('button', { name: 'emailMonitoring.close' })).toBeTruthy();
+    expect(document.activeElement).toBe(refresh);
   });
   it('refreshes and paginates without exposing mail contents', async () => {
     allow([wasteEmailMonitoringPermission]);
@@ -180,7 +366,7 @@ describe('email monitoring page', () => {
     fireEvent.click(open);
     await screen.findAllByText('emailMonitoring.deliveryStates.failed');
     expect(screen.getAllByText('emailMonitoring.errors.dispatch_failed').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Bio · 2026-11-12').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Bio').length).toBeGreaterThan(0);
     let finish!: () => void;
     vi.mocked(getWasteEmailMonitoring).mockImplementationOnce(
       () =>
@@ -198,7 +384,7 @@ describe('email monitoring page', () => {
         expect.objectContaining({ subscriptionId: subscription.id, deliveryPage: 2 })
       )
     );
-    expect(screen.queryAllByText('Bio · 2026-11-12')).toHaveLength(0);
+    expect(screen.queryAllByText('Bio')).toHaveLength(0);
     expect(document.activeElement).toBe(next);
     await act(async () => finish());
     expect(next.isConnected).toBe(true);

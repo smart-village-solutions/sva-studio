@@ -55,10 +55,28 @@ export const loadWasteEmailMonitoring = async (
       to_char(s.unsubscribed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "unsubscribedAt",
       COALESCE((SELECT jsonb_agg(jsonb_build_object('fraction', COALESCE(f.name, i.fraction_id::text), 'slotId', i.slot_id) ORDER BY f.name, i.slot_id)
         FROM waste_email_reminder_subscription_items i LEFT JOIN waste_fractions f ON f.id = i.fraction_id
-        WHERE i.subscription_id = s.id), '[]'::jsonb) AS items
-      FROM waste_email_reminder_subscriptions s LEFT JOIN waste_cities c ON c.id = s.city_id
-      WHERE ($1::text IS NULL OR s.status = $1)
-      ORDER BY s.created_at DESC, s.id DESC LIMIT $2 OFFSET $3`,
+        WHERE i.subscription_id = s.id), '[]'::jsonb) AS items,
+      last_sent.message AS "lastSentEmail", next_email.message AS "nextEmail"
+      FROM (
+        SELECT id, email, status, city_id, created_at, activated_at, unsubscribed_at
+        FROM waste_email_reminder_subscriptions
+        WHERE ($1::text IS NULL OR status = $1)
+        ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3
+      ) s
+      LEFT JOIN waste_cities c ON c.id = s.city_id
+      LEFT JOIN LATERAL (
+        SELECT jsonb_build_object('kind', message_kind,
+          'sentAt', to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) AS message
+        FROM waste_email_reminder_outbox WHERE subscription_id = s.id AND status = 'sent'
+        ORDER BY sent_at DESC NULLS LAST, created_at DESC, id DESC LIMIT 1
+      ) last_sent ON true
+      LEFT JOIN LATERAL (
+        SELECT jsonb_build_object('kind', message_kind, 'status', status,
+          'scheduledAt', to_char(send_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) AS message
+        FROM waste_email_reminder_outbox WHERE subscription_id = s.id AND status IN ('pending', 'processing')
+        ORDER BY CASE WHEN status = 'processing' THEN 0 ELSE 1 END, send_at ASC, id ASC LIMIT 1
+      ) next_email ON true
+      ORDER BY s.created_at DESC, s.id DESC`,
     values: [filter, query.pageSize, (query.page - 1) * query.pageSize],
   });
   let deliveries: readonly WasteEmailDeliverySummary[] = [];

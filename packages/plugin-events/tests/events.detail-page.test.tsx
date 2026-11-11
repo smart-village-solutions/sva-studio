@@ -684,6 +684,68 @@ describe('EventsDetailPage', () => {
     });
   });
 
+  describe('organizer address disclosure when switching events without remounting', () => {
+    const eventsById: Record<string, unknown> = {
+      'without-address': {
+        id: 'without-address',
+        title: 'Lesung',
+        organizer: { name: 'Bibliothek' },
+      },
+      'with-address': {
+        id: 'with-address',
+        title: 'Stadtfest',
+        organizer: { name: 'Kulturamt', address: { street: 'Marktplatz 1', city: 'Linz' } },
+      },
+    };
+    const organizerStreet = () =>
+      document.getElementById('event-organizer-street') as HTMLInputElement | null;
+    const organizerDisclosure = () => organizerStreet()?.closest('details') as HTMLDetailsElement;
+    const waitForOrganizer = async (expected: { street: string; open: boolean }) => {
+      await waitFor(() => {
+        expect(organizerStreet()?.value).toBe(expected.street);
+        expect(organizerDisclosure().open).toBe(expected.open);
+      });
+    };
+
+    beforeEach(() => {
+      vi.mocked(getEvent).mockImplementation(async (contentId) => eventsById[contentId] as never);
+    });
+
+    it('resets the disclosure to the newly loaded organizer address in both directions', async () => {
+      const view = render(<EventsDetailPage mode="edit" contentId="without-address" />);
+      fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+      await waitForOrganizer({ street: '', open: false });
+
+      view.rerender(
+        <StudioEditorLeaveGuardProvider register={registerLeaveCheck}>
+          <EventsDetailPage mode="edit" contentId="with-address" />
+        </StudioEditorLeaveGuardProvider>
+      );
+      await waitForOrganizer({ street: 'Marktplatz 1', open: true });
+
+      view.rerender(
+        <StudioEditorLeaveGuardProvider register={registerLeaveCheck}>
+          <EventsDetailPage mode="edit" contentId="without-address" />
+        </StudioEditorLeaveGuardProvider>
+      );
+      await waitForOrganizer({ street: '', open: false });
+    });
+
+    it('keeps a manual toggle while editing the same event', async () => {
+      render(<EventsDetailPage mode="edit" contentId="with-address" />);
+      fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+      await waitForOrganizer({ street: 'Marktplatz 1', open: true });
+
+      fireEvent.click(organizerDisclosure().querySelector('summary')!);
+      fireEvent.change(document.getElementById('event-organizer-name')!, {
+        target: { value: 'Kulturamt Linz' },
+      });
+
+      expect(organizerDisclosure().open).toBe(false);
+      expect(organizerStreet()?.value).toBe('Marktplatz 1');
+    });
+  });
+
   it('retains other dates and input identity when changing the first date', async () => {
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1280',

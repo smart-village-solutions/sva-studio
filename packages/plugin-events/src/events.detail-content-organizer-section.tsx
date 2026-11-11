@@ -93,6 +93,8 @@ export function EventsOrganizerSection({ capabilities, pt }: LocationSectionProp
   const organizerNameError = errors.content?.organizer?.name;
   const organizerHasContent = hasEventOrganizerContent(organizer);
   const organizerNameMissing = organizerHasContent && (organizer.name ?? '').trim().length === 0;
+  // Derived once per mount; the edit page keys this section by the loaded event ID so a
+  // different event recomputes it, while manual toggles survive edits of the same event.
   const [addressOpen, setAddressOpen] = useState(() => hasEventOrganizerAddressContent(organizer));
   const path = 'content.organizer.address' as const;
 

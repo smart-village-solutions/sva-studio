@@ -11,7 +11,7 @@ Core-Permissions, Modul-Permissions und Grants der geschützten Tenant-Rolle `sy
 
 `@sva/core` führt die typsicheren Core-Definitionen einschließlich Availability, Lifecycle und Default-Grant. `@sva/studio-module-iam` komponiert daraus und aus den bestehenden Modulverträgen die validierte Gesamtsicht `studioPermissionCatalog`.
 
-Aktive tenantweite Permissions und Permissions zugewiesener Module werden standardmäßig an `system_admin` vergeben. Abweichungen sind explizit als `systemAdminGrant: false` beziehungsweise `systemAdminPermissionExclusions` zu deklarieren. Root-Permissions sind von diesem Default ausgeschlossen.
+Aktive tenantweite Permissions und Permissions zugewiesener Module werden vollständig an `system_admin` vergeben. Die bestehende tenantlokale Vollzugriffsregel erlaubt keine Ausschlüsse. Historische Angaben `systemAdminGrant: false` beziehungsweise `systemAdminPermissionExclusions` bleiben als kompatible Eingabemetadaten akzeptiert, verkleinern die Grant-Menge aber nicht. Root-Permissions bleiben ausgeschlossen.
 
 Der Tenant-Reconcile verwendet `(instance_id, permission_key)` als natürliche Identität, legt fehlende Definitionen und verwaltete Grants idempotent an und aktualisiert fachliche Metadaten. Katalogentfernung oder Deprecation löschen weder Permission-Zeilen noch manuelle Grants oder Custom-Rollen. Ein destruktiver Cleanup benötigt einen eigenen Change und eine eigene Migration.
 

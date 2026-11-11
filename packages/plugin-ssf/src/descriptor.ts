@@ -77,8 +77,7 @@ const tenantPermissionIds = permissions.map(({ id }) => id);
 const moduleIam = definePluginModuleIamContract('ssf', {
   moduleId: 'ssf',
   permissionIds: tenantPermissionIds,
-  systemAdminPermissionExclusions: SSF_RECORDING_PERMISSION_IDS,
-  systemRoles: [{ roleName: 'system_admin', permissionIds: [SSF_ADMIN_ACTIONS.tenantRead, SSF_ADMIN_ACTIONS.tenantManage] }],
+  systemRoles: [{ roleName: 'system_admin', permissionIds: tenantPermissionIds }],
 });
 
 export const SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID = 'ssf.reconcile-authorization' as const;

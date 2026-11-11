@@ -9,7 +9,7 @@
 
 - [x] 2.1 Add recording permission IDs and reviewer languages to IAM administration and Keycloak projection.
 - [x] 2.2 Implement the live tenant recording-directory endpoint and matching authorization/error contract.
-- [x] 2.3 Register grants and endpoint in the plugin descriptor and `server/index.ts`; keep recording grants out of the automatic tenant-admin role baseline.
+- [x] 2.3 Register grants and endpoint in the plugin descriptor and `server/index.ts`; include all tenant-local recording permissions in the protected system_admin baseline while retaining explicit grants for ordinary roles.
 - [x] 2.4 Extend the host-owned authoritative IAM reader with display names and competence languages; inject it through the existing server capability composition, without plugin access to IAM tables.
 - [x] 2.5 Carry language-only changes through projection comparison, reconciliation and Keycloak read-back; verify workspace/installed server binding parity.
 

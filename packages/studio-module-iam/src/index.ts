@@ -144,6 +144,7 @@ const wasteManagementTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole
   {
     roleName: 'system_admin',
     permissionIds: [
+      'waste-management.email-reminder-monitoring.read',
       'waste-management.read',
       'waste-management.master-data.manage',
       'waste-management.tours.manage',
@@ -163,6 +164,7 @@ const wasteManagementModuleIamContract: StudioModuleIamContract = {
   ownerPluginId: 'waste-management',
   descriptionKey: 'plugins.waste-management.description',
   permissionIds: [
+    'waste-management.email-reminder-monitoring.read',
     'waste-management.read',
     'waste-management.master-data.manage',
     'waste-management.tours.manage',

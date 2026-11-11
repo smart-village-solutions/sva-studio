@@ -2,7 +2,6 @@ import { definePluginModuleIamContract } from '@sva/plugin-sdk';
 
 export const wasteManagementModuleIam = definePluginModuleIamContract('waste-management', {
   moduleId: 'waste-management',
-  systemAdminPermissionExclusions: ['waste-management.email-reminder-monitoring.read'],
   permissionIds: [
     'waste-management.email-reminder-monitoring.read',
     'waste-management.read',
@@ -19,6 +18,7 @@ export const wasteManagementModuleIam = definePluginModuleIamContract('waste-man
     {
       roleName: 'system_admin',
       permissionIds: [
+        'waste-management.email-reminder-monitoring.read',
         'waste-management.read',
         'waste-management.master-data.manage',
         'waste-management.tours.manage',

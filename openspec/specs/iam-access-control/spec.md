@@ -1775,21 +1775,21 @@ Das System MUST bekannte Core- und Modul-Permissions in einer typsicheren, valid
 - **THEN** schlägt die Validierung vor Deployment fehl
 - **AND** es wird kein partieller Katalogzustand persistiert
 
-### Requirement: Tenant-Permissions gewähren system_admin standardmäßig Vollzugriff
+### Requirement: Tenant-Permissions gewähren system_admin vollständigen tenantlokalen Zugriff
 
-Das System MUST aktive tenantweite Permissions und aktive Permissions zugewiesener Module standardmäßig als verwalteten Grant an die geschützte Tenant-Rolle `system_admin` binden. Abweichungen MUST pro Permission explizit im Katalog definiert sein. Root-Permissions dürfen niemals durch diesen Default an `system_admin` gebunden werden.
+Das System MUST aktive tenantweite Permissions und aktive Permissions zugewiesener Module vollständig als verwalteten Grant an die geschützte Tenant-Rolle `system_admin` binden. Ausschlussmetadaten MUST diese Grant-Menge nicht verkleinern. Root-Permissions dürfen niemals durch diesen Sync an `system_admin` gebunden werden.
 
-#### Scenario: Tenant-Permission ohne explizite Ausnahme
+#### Scenario: Vollständige tenantlokale Permissions
 
-- **WHEN** eine aktive tenantweite Permission keinen expliziten `systemAdminGrant`-Wert definiert
-- **THEN** behandelt der Katalog den Wert als `true`
+- **WHEN** eine aktive tenantweite Permission im Katalog deklariert ist
+- **THEN** berücksichtigt der Katalog diese Permission für `system_admin`
 - **AND** ergänzt der Reconcile den fehlenden Grant an `system_admin`
 
-#### Scenario: Explizite Ausnahme vom Default-Grant
+#### Scenario: Historische Ausschlussangaben verkleinern die Grant-Menge nicht
 
-- **WHEN** eine tenantweite oder modulbezogene Permission `systemAdminGrant=false` definiert
-- **THEN** erzeugt der Reconcile für diese Permission keinen automatischen `system_admin`-Grant
-- **AND** bleibt die Ausnahme im Katalog nachvollziehbar
+- **WHEN** eine tenantweite oder modulbezogene Permission historisch `systemAdminGrant=false` oder `systemAdminPermissionExclusions` definiert
+- **THEN** ergänzt der Reconcile auch für diese Permission den automatischen `system_admin`-Grant
+- **AND** bleiben Root-Permissions und nicht aktivierte Module weiterhin ausgeschlossen
 
 #### Scenario: Root-Permission bleibt isoliert
 

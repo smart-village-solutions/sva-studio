@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { resolvesSystemAdminGrant } from '@sva/core';
 
 import {
   getStudioModuleIamContract,
@@ -51,6 +52,7 @@ describe('@sva/studio-module-iam', () => {
     expect(studioModuleIamRegistry.get('waste-management')).toMatchObject({
       ownerPluginId: 'waste-management',
       permissionIds: [
+        'waste-management.email-reminder-monitoring.read',
         'waste-management.read',
         'waste-management.master-data.manage',
         'waste-management.tours.manage',
@@ -79,6 +81,21 @@ describe('@sva/studio-module-iam', () => {
     expect(new Set(studioPermissionCatalog.map((permission) => permission.key)).size).toBe(
       studioPermissionCatalog.length
     );
+  });
+
+  it('grants the complete tenant catalog, including waste email monitoring, to system_admin', () => {
+    expect(studioPermissionCatalog.map(({ key }) => key)).toContain(
+      'waste-management.email-reminder-monitoring.read'
+    );
+    for (const permission of studioPermissionCatalog) {
+      expect(resolvesSystemAdminGrant(permission), permission.key).toBe(
+        permission.availability.kind !== 'root'
+      );
+    }
+    for (const contract of studioModuleIamContracts) {
+      const admin = contract.systemRoles?.find(({ roleName }) => roleName === 'system_admin');
+      expect(new Set(admin?.permissionIds), contract.moduleId).toEqual(new Set(contract.permissionIds));
+    }
   });
 
   it('exposes normalized standard-content contracts for plugin modules', () => {
@@ -227,6 +244,7 @@ describe('@sva/studio-module-iam', () => {
       {
         roleName: 'system_admin',
         permissionIds: [
+          'waste-management.email-reminder-monitoring.read',
           'waste-management.read',
           'waste-management.master-data.manage',
           'waste-management.tours.manage',

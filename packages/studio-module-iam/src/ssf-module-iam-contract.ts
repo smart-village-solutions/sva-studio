@@ -1,6 +1,8 @@
 const ssfSystemAdminRole = {
   roleName: 'system_admin',
-  permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
+  permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read',
+    'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
+    'ssf.recording.supervise', 'ssf.recording.recovery.custodian'],
 } as const;
 
 export const ssfModuleIamContract = {
@@ -14,5 +16,4 @@ export const ssfModuleIamContract = {
   tenantBootstrapRoles: [ssfSystemAdminRole],
   rootSystemRoles: [],
   systemRoles: [ssfSystemAdminRole],
-  systemAdminPermissionExclusions: ['ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn', 'ssf.recording.supervise', 'ssf.recording.recovery.custodian'],
 } as const;

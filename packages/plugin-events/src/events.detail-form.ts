@@ -4,6 +4,7 @@ import {
   serializeEventAccessibility,
   serializeEventBasis,
   serializeEventContacts,
+  serializeEventParticipation,
   serializeEventPrices,
   serializeEventSettings,
 } from './events.detail-form-input-serializers.js';
@@ -55,6 +56,14 @@ export {
 
 const mapNumberToString = (value?: number) =>
   typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
+
+// Despite the string types, the Mainserver returns `recurring` as boolean and the other
+// recurrence values as numbers; calling string methods on them made every save fail.
+const mapScalarToFormString = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return mapNumberToString(value);
+  return value === true ? 'true' : '';
+};
 
 const mapGeoLocationToFormValue = (
   value?: { readonly latitude?: number; readonly longitude?: number } | null
@@ -132,10 +141,10 @@ const mapEventBasisToFormValue = (item: EventContentItem): EventsDetailFormValue
     (item.categoryName ? [item.categoryName] : []),
   pointOfInterestId: item.pointOfInterestId ?? '',
   repeat: item.repeat ?? false,
-  recurring: item.recurring ?? '',
-  recurringType: item.recurringType ?? '',
-  recurringInterval: item.recurringInterval ?? '',
-  recurringWeekdays: item.recurringWeekdays ?? [],
+  recurring: mapScalarToFormString(item.recurring),
+  recurringType: mapScalarToFormString(item.recurringType),
+  recurringInterval: mapScalarToFormString(item.recurringInterval),
+  recurringWeekdays: (item.recurringWeekdays ?? []).map(mapScalarToFormString).filter(Boolean),
 });
 
 const mapEventContentToFormValue = (item: EventContentItem): EventsDetailFormValues['content'] => ({
@@ -149,6 +158,8 @@ const mapEventContentToFormValue = (item: EventContentItem): EventsDetailFormVal
   priceInformations: mapEventPricesToFormValue(item.priceInformations),
   accessibilityInformation:
     item.accessibilityInformation ?? createDefaultAccessibilityInformation(),
+  registrationRequired: item.registrationRequired ?? false,
+  maximumAttendees: mapNumberToString(item.maximumAttendees ?? undefined),
 });
 
 const mapEventSettingsToFormValue = (
@@ -191,6 +202,7 @@ export const mapEventsDetailFormValuesToInput = (
     ...(Object.keys(organizer).length > 0 ? { organizer } : {}),
     ...(prices.length > 0 ? { priceInformations: prices } : {}),
     ...(Object.keys(accessibility).length > 0 ? { accessibilityInformation: accessibility } : {}),
+    ...serializeEventParticipation(values.content),
     ...serializeEventBasis(values.basis),
   };
 };

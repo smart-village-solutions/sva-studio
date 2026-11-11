@@ -11,6 +11,7 @@ import {
 } from './events.detail-content-primary-sections.js';
 import { EventsAddressSection } from './events.detail-content-location-sections.js';
 import { EventsOrganizerSection } from './events.detail-content-organizer-section.js';
+import { EventsParticipationSection } from './events.detail-content-participation-section.js';
 import {
   EventsDescriptionSection,
   EventsMediaSection,
@@ -69,6 +70,13 @@ function EventsCreateOptionalFields({
           {summary(content?.priceInformations)}
         </summary>
         <EventsPriceSection pt={pt} />
+      </details>
+      <details>
+        <summary id="event-create-participation">
+          {pt('participation.title')} · {pt('create.optional')} ·{' '}
+          {summary([content?.registrationRequired ? 'true' : '', content?.maximumAttendees])}
+        </summary>
+        <EventsParticipationSection pt={pt} />
       </details>
       <details>
         <summary id="event-create-technical">

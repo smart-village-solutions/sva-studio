@@ -7,6 +7,7 @@ import {
   compactEventString,
   serializeEventWebUrls,
 } from './events.detail-form-serialization-common.js';
+import { compactFiniteNumber } from './events.detail-form-structured-serializers.js';
 
 type SerializableBasis = Readonly<{
   categories?: readonly string[];
@@ -43,6 +44,25 @@ export const serializeEventContacts = (contacts: readonly EventContact[] | undef
     }))
     .filter((entry) => Object.keys(entry).length > 0);
 
+const PRICE_PASSTHROUGH_NUMBERS = [
+  'ageFrom',
+  'ageTo',
+  'minAdultCount',
+  'maxAdultCount',
+  'minChildrenCount',
+  'maxChildrenCount',
+] as const;
+
+// Price attributes without editor fields come from the loaded event and are sent back unchanged.
+const serializePricePassthrough = (entry: EventPriceInformation) => ({
+  ...(typeof entry.groupPrice === 'boolean' ? { groupPrice: entry.groupPrice } : {}),
+  ...Object.fromEntries(
+    PRICE_PASSTHROUGH_NUMBERS.map((key) => [key, compactFiniteNumber(entry[key])] as const).filter(
+      ([, value]) => value !== undefined
+    )
+  ),
+});
+
 export const serializeEventPrices = (prices: readonly EventPriceInformation[] | undefined | null) =>
   (prices ?? [])
     .map((entry) => ({
@@ -56,8 +76,28 @@ export const serializeEventPrices = (prices: readonly EventPriceInformation[] | 
       ...(compactEventString(entry.category)
         ? { category: compactEventString(entry.category) }
         : {}),
+      ...serializePricePassthrough(entry),
     }))
     .filter((entry) => Object.keys(entry).length > 0);
+
+/**
+ * The editor always sends both values so it can set and clear them: an empty limit becomes
+ * `null`, any other input stays a number so validation can reject non-integers. Values the
+ * form does not hold are omitted, which keeps the stored Mainserver values.
+ */
+export const serializeEventParticipation = (
+  content: Readonly<{ registrationRequired?: boolean; maximumAttendees?: string }>
+) => {
+  const limit = compactEventString(content.maximumAttendees);
+  return {
+    ...(typeof content.registrationRequired === 'boolean'
+      ? { registrationRequired: content.registrationRequired }
+      : {}),
+    ...(typeof content.maximumAttendees === 'string'
+      ? { maximumAttendees: limit === undefined ? null : Number(limit) }
+      : {}),
+  };
+};
 
 export const serializeEventAccessibility = (value: EventAccessibilityInformation) => ({
   ...(compactEventString(value.description)

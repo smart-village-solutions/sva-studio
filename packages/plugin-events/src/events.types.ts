@@ -54,6 +54,14 @@ export type EventPriceInformation = {
   readonly amount?: number;
   readonly description?: string;
   readonly category?: string;
+  // Mainserver price attributes without editor fields; carried through unchanged on save.
+  readonly groupPrice?: boolean;
+  readonly ageFrom?: number;
+  readonly ageTo?: number;
+  readonly minAdultCount?: number;
+  readonly maxAdultCount?: number;
+  readonly minChildrenCount?: number;
+  readonly maxChildrenCount?: number;
 };
 
 export type EventAccessibilityInformation = {
@@ -95,6 +103,9 @@ export type EventFormInput = {
   readonly description?: string;
   readonly externalId?: string;
   readonly keywords?: string;
+  readonly registrationRequired?: boolean;
+  /** `null` clears a stored participant limit. */
+  readonly maximumAttendees?: number | null;
   readonly categoryName?: string;
   readonly categories?: readonly EventCategory[];
   readonly dates?: readonly EventDate[];

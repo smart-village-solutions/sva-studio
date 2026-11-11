@@ -37,6 +37,12 @@ const buildEventMutationVariables = (input: {
   title: input.event.title,
   ...(input.event.payload === undefined ? {} : { payload: input.event.payload }),
   ...(input.event.parentId === undefined ? {} : { parentId: input.event.parentId }),
+  ...(input.event.registrationRequired === undefined
+    ? {}
+    : { registrationRequired: input.event.registrationRequired }),
+  ...(input.event.maximumAttendees === undefined
+    ? {}
+    : { maximumAttendees: input.event.maximumAttendees }),
   ...(input.event.keywords ? { keywords: input.event.keywords } : {}),
   ...(input.event.description ? { description: input.event.description } : {}),
   ...(input.event.externalId ? { externalId: input.event.externalId } : {}),

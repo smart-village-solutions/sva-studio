@@ -37,6 +37,9 @@ export type SvaMainserverEventInput = {
   readonly externalId?: string;
   readonly keywords?: string;
   readonly parentId?: number;
+  readonly registrationRequired?: boolean;
+  /** `null` clears a stored limit; an omitted value keeps it. */
+  readonly maximumAttendees?: number | null;
   readonly dates?: readonly SvaMainserverDateInput[];
   readonly repeat?: boolean;
   readonly repeatDuration?: SvaMainserverRepeatDurationInput;
@@ -68,6 +71,8 @@ export type SvaMainserverEventItem = {
   readonly externalId?: string;
   readonly keywords?: string;
   readonly parentId?: number;
+  readonly registrationRequired?: boolean;
+  readonly maximumAttendees?: number;
   readonly dates: readonly SvaMainserverDate[];
   readonly listDate?: string;
   readonly sortDate?: string;

@@ -34,7 +34,7 @@ type SerializableMediaContent = Readonly<{
   sourceUrl?: EventWebUrl;
 }>;
 
-const compactFiniteNumber = (value?: string | number | null) => {
+export const compactFiniteNumber = (value?: string | number | null) => {
   if (
     value === null ||
     value === undefined ||

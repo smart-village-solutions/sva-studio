@@ -83,6 +83,7 @@ export type SvaMainserverMediaContentInput = {
   readonly height?: number | string;
   readonly width?: number | string;
   readonly contentType?: string;
+  readonly payload?: unknown;
   readonly sourceUrl?: SvaMainserverWebUrlInput;
 };
 

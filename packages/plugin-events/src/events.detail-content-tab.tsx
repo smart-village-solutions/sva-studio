@@ -8,6 +8,7 @@ import {
 } from './events.detail-content-secondary-sections.js';
 import { EventsAddressSection } from './events.detail-content-location-sections.js';
 import { EventsOrganizerSection } from './events.detail-content-organizer-section.js';
+import { EventsParticipationSection } from './events.detail-content-participation-section.js';
 import {
   EventsContactSection,
   EventsLinkSection,
@@ -38,6 +39,7 @@ export function EventsDetailContentTab({ loadedEventId, ...props }: ContentTabPr
       <EventsContactSection pt={props.pt} />
       <EventsLinkSection pt={props.pt} />
       <EventsPriceSection pt={props.pt} />
+      <EventsParticipationSection pt={props.pt} />
     </div>
   );
 }

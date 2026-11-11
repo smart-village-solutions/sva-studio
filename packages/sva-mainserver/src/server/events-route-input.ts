@@ -1,4 +1,5 @@
 import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
+import { z } from 'zod';
 
 import type {
   SvaMainserverAccessibilityInformationInput,
@@ -69,6 +70,33 @@ const parseEventDates = (
     });
   }
   return dates;
+};
+
+const MAX_GRAPHQL_INT = 2_147_483_647;
+
+const eventParticipationSchema = z.object({
+  registrationRequired: z.boolean().optional(),
+  // `null` clears a stored limit; omitting the field keeps it.
+  maximumAttendees: z.number().int().min(0).max(MAX_GRAPHQL_INT).nullable().optional(),
+});
+
+type EventParticipation = z.infer<typeof eventParticipationSchema>;
+
+const parseEventParticipation = (
+  body: Record<string, unknown>
+): ParsedValue<EventParticipation> => {
+  const parsed = eventParticipationSchema.safeParse({
+    registrationRequired: body.registrationRequired,
+    maximumAttendees: body.maximumAttendees,
+  });
+  if (!parsed.success) {
+    return errorJson(
+      400,
+      'invalid_request',
+      'Die Anmeldepflicht muss ein Boolean und die maximale Teilnehmerzahl eine ganze Zahl ab 0 sein.'
+    );
+  }
+  return parsed.data;
 };
 
 const parseEventRelations = (
@@ -190,7 +218,8 @@ const buildEventInput = (
   body: Record<string, unknown>,
   title: string,
   dates: readonly SvaMainserverDateInput[] | undefined,
-  relations: EventRelations
+  relations: EventRelations,
+  participation: EventParticipation
 ): SvaMainserverEventInput => {
   const description = readString(body.description);
   const sanitizedDescription = description ? sanitizeRichTextHtml(description) : undefined;
@@ -200,6 +229,12 @@ const buildEventInput = (
     ...(sanitizedDescription ? { description: sanitizedDescription } : {}),
     ...(readString(body.externalId) ? { externalId: readString(body.externalId) } : {}),
     ...(readString(body.keywords) ? { keywords: readString(body.keywords) } : {}),
+    ...(participation.registrationRequired === undefined
+      ? {}
+      : { registrationRequired: participation.registrationRequired }),
+    ...(participation.maximumAttendees === undefined
+      ? {}
+      : { maximumAttendees: participation.maximumAttendees }),
     ...(dates ? { dates } : {}),
     ...(readBoolean(body.repeat) !== undefined ? { repeat: readBoolean(body.repeat) } : {}),
     ...(readString(body.categoryName) ? { categoryName: readString(body.categoryName) } : {}),
@@ -245,6 +280,11 @@ export const parseEventInput = async (
     return dates;
   }
 
+  const participation = parseEventParticipation(body);
+  if (isResponse(participation)) {
+    return participation;
+  }
+
   const visible = readBoolean(body.visible);
   if (body.visible !== undefined && visible === undefined) {
     return errorJson(
@@ -255,7 +295,7 @@ export const parseEventInput = async (
   }
 
   return {
-    event: buildEventInput(body, title, dates, relations),
+    event: buildEventInput(body, title, dates, relations, participation),
     ...(visible !== undefined ? { visible } : {}),
   };
 };

@@ -1,3 +1,4 @@
+import { eventsENValidation } from './plugin.translations.en.labels.js';
 export const eventsENEditor = {
   create: {
     saveUnavailable:
@@ -53,6 +54,8 @@ export const eventsENEditor = {
     degradedCorrectionConfirm:
       'The following previously unreadable sections were changed: {{fields}}. Do you want to overwrite these values intentionally?',
     saveError: 'Event could not be saved.',
+    sourceDataUnavailable:
+      'The event was not saved: its location or recurrence period from the source could not be read reliably and would otherwise be lost. Please contact support.',
     staleMainserverContext: 'Context changed. Reload and review your draft before saving.',
     deleteError: 'Event could not be deleted.',
     createSuccess: 'Event was created.',
@@ -236,15 +239,7 @@ export const eventsENEditor = {
     assetValue: 'Media library',
     contentValue: 'Content',
   },
-  validation: {
-    title: 'Title is required.',
-    dates: 'Dates must be valid.',
-    urls: 'URLs must start with https://.',
-    categories: 'Categories need a name with at most 128 characters.',
-    priceInformations: 'Price entries must contain valid numbers.',
-    geoLocation: 'Coordinates must be valid latitude and longitude values.',
-    organizerName: 'Enter an organizer name or remove the remaining organizer details.',
-  },
+  validation: eventsENValidation,
   values: {
     mediaContentTypes: {
       unspecified: 'Unspecified',

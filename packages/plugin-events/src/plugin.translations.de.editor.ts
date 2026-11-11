@@ -23,6 +23,8 @@ export const eventsDEEditor = {
     degradedCorrectionConfirm:
       'Die folgenden zuvor nicht sicher lesbaren Bereiche wurden geändert: {{fields}}. Sollen diese Werte bewusst überschrieben werden?',
     saveError: 'Die Veranstaltung konnte nicht gespeichert werden.',
+    sourceDataUnavailable:
+      'Die Veranstaltung wurde nicht gespeichert: Veranstaltungsort oder Wiederholungszeitraum aus der Quelle konnten nicht sicher gelesen werden und würden sonst verloren gehen. Bitte wenden Sie sich an den Support.',
     staleMainserverContext:
       'Der Organisations- oder Mainserver-Kontext hat sich geändert. Laden Sie den aktuellen Kontext neu und prüfen Sie Ihren Entwurf, bevor Sie erneut speichern.',
     deleteError: 'Die Veranstaltung konnte nicht gelöscht werden.',

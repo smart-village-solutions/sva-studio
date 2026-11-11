@@ -45,6 +45,10 @@ export const eventsENLabels = {
     addressHelp:
       'Only fill this in if the organizer address is needed. The event location belongs in the "Venue" section.',
   },
+  participation: {
+    title: 'Registration and participation',
+    description: 'Registration requirement and participant limit.',
+  },
   fields: {
     title: 'Title',
     description: 'Description',
@@ -97,6 +101,10 @@ export const eventsENLabels = {
     priceCategory: 'Price category',
     priceAmount: 'Price',
     priceDescription: 'Price description',
+    registrationRequired: 'Registration required',
+    registrationRequiredHelp: 'Participants must register before the event.',
+    maximumAttendees: 'Maximum number of participants (optional)',
+    maximumAttendeesHelp: 'Whole number from 0. Leave empty if participation is not limited.',
     mediaContents: 'Media',
     mediaCaption: 'Caption',
     mediaCopyright: 'Copyright',
@@ -178,3 +186,14 @@ export const eventsENLabels = {
     removeCategory: 'Remove category {{name}}',
   },
 } as const;
+
+export const eventsENValidation = {
+  title: 'Title is required.',
+  dates: 'Dates must be valid.',
+  urls: 'URLs must start with https://.',
+  categories: 'Categories need a name with at most 128 characters.',
+  priceInformations: 'Price entries must contain valid numbers.',
+  geoLocation: 'Coordinates must be valid latitude and longitude values.',
+  organizerName: 'Enter an organizer name or remove the remaining organizer details.',
+  maximumAttendees: 'The maximum number of participants must be a whole number from 0.',
+};

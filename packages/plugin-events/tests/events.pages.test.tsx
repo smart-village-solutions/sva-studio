@@ -435,6 +435,128 @@ describe('EventsListPage', () => {
     });
   });
 
+  describe('imported events', () => {
+    // Shape of an imported event as the host returns it: recurrence values as boolean and
+    // numbers, plus Mainserver price attributes the editor has no fields for.
+    const importedEventDetail = () => ({
+      data: {
+        id: 'event-1',
+        title: 'Flohmarkt im Park',
+        dates: [{ dateStart: '2026-09-05', timeStart: '10:00' }],
+        registrationRequired: true,
+        maximumAttendees: 120,
+        recurring: false,
+        recurringType: 1,
+        recurringInterval: 2,
+        recurringWeekdays: [1, 5],
+        priceInformations: [
+          {
+            name: 'Ermäßigt',
+            amount: 4,
+            category: 'Kinder',
+            ageFrom: 6,
+            ageTo: 17,
+            groupPrice: false,
+          },
+        ],
+        location: { name: 'Stadtpark' },
+        externalId: 'import-4711',
+      },
+      deviations: [],
+    });
+    const field = <T extends HTMLElement>(id: string) => {
+      const element = document.getElementById(id);
+      if (!element) throw new Error(`Missing field ${id}`);
+      return element as T;
+    };
+    const openContentTab = async () => {
+      await screen.findByDisplayValue('Flohmarkt im Park');
+      fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+      return waitFor(() => field<HTMLInputElement>('event-maximum-attendees'));
+    };
+    const save = () => {
+      const [saveButton] = screen.getAllByRole('button', { name: /Speichern|anlegen/ });
+      if (!saveButton) throw new Error('Missing save button');
+      fireEvent.click(saveButton);
+    };
+
+    it('shows registration requirement and participant limit and keeps hidden source values on an unchanged save', async () => {
+      vi.mocked(getEventDetail).mockResolvedValueOnce(importedEventDetail() as never);
+      render(<EventsEditPage />);
+
+      const limit = await openContentTab();
+      const registration = field<HTMLInputElement>('event-registration-required');
+      expect(registration.checked).toBe(true);
+      expect(limit.value).toBe('120');
+      expect(registration.getAttribute('aria-describedby')).toBe(
+        'event-registration-required-description'
+      );
+      expect(limit.getAttribute('aria-describedby')).toContain(
+        'event-maximum-attendees-description'
+      );
+
+      save();
+
+      await waitFor(() => expect(updateEvent).toHaveBeenCalledTimes(1));
+      const [, input] = vi.mocked(updateEvent).mock.calls[0] ?? [];
+      expect(input).toMatchObject({
+        registrationRequired: true,
+        maximumAttendees: 120,
+        recurringType: '1',
+        recurringInterval: '2',
+        recurringWeekdays: ['1', '5'],
+        externalId: 'import-4711',
+        priceInformations: [
+          {
+            name: 'Ermäßigt',
+            amount: 4,
+            category: 'Kinder',
+            ageFrom: 6,
+            ageTo: 17,
+            groupPrice: false,
+          },
+        ],
+      });
+      expect(input).not.toHaveProperty('recurring');
+    });
+
+    it('saves a changed registration requirement and clears the participant limit', async () => {
+      vi.mocked(getEventDetail).mockResolvedValueOnce(importedEventDetail() as never);
+      render(<EventsEditPage />);
+
+      const limit = await openContentTab();
+      fireEvent.click(field('event-registration-required'));
+      fireEvent.change(limit, { target: { value: '' } });
+      save();
+
+      await waitFor(() =>
+        expect(updateEvent).toHaveBeenCalledWith(
+          'event-1',
+          expect.objectContaining({ registrationRequired: false, maximumAttendees: null }),
+          'user'
+        )
+      );
+    });
+
+    it('blocks an invalid participant limit and marks the field', async () => {
+      vi.mocked(getEventDetail).mockResolvedValueOnce(importedEventDetail() as never);
+      render(<EventsEditPage />);
+
+      const limit = await openContentTab();
+      fireEvent.change(limit, { target: { value: '2.5' } });
+      save();
+
+      expect(await screen.findByText('events.validation.maximumAttendees')).toBeTruthy();
+      expect(limit.getAttribute('aria-invalid')).toBe('true');
+      expect(limit.getAttribute('aria-describedby')).toContain('event-maximum-attendees-error');
+      await waitFor(() => expect(document.activeElement).toBe(limit));
+      expect(updateEvent).not.toHaveBeenCalled();
+
+      fireEvent.change(limit, { target: { value: '25' } });
+      await waitFor(() => expect(limit.getAttribute('aria-invalid')).toBeNull());
+    });
+  });
+
   it('loads existing inline media contents on edit and keeps the update flow stable', async () => {
     vi.mocked(getEventDetail).mockResolvedValueOnce({
       data: {

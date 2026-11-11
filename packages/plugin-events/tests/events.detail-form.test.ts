@@ -9,6 +9,89 @@ import { hasEventOrganizerContent } from '../src/events.detail-form-structured-s
 import type { EventContentItem } from '../src/events.types.js';
 
 describe('events.detail-form', () => {
+  const importedItem = (overrides: Partial<EventContentItem> = {}): EventContentItem => ({
+    id: 'event-1',
+    title: 'Flohmarkt',
+    contentType: 'events.event-record',
+    status: 'published',
+    createdAt: '2026-08-01T10:00:00.000Z',
+    updatedAt: '2026-08-02T10:00:00.000Z',
+    dates: [{ dateStart: '2026-09-05' }],
+    ...overrides,
+  });
+
+  it('maps participation values into the form and back without change', () => {
+    const values = mapEventItemToDetailFormValues(
+      importedItem({ registrationRequired: true, maximumAttendees: 120 })
+    );
+
+    expect(values.content).toMatchObject({ registrationRequired: true, maximumAttendees: '120' });
+    expect(mapEventsDetailFormValuesToInput(values)).toMatchObject({
+      registrationRequired: true,
+      maximumAttendees: 120,
+    });
+  });
+
+  it('sends cleared participation values explicitly so stored values can be removed', () => {
+    const values = createDefaultEventsDetailFormValues();
+
+    expect(mapEventsDetailFormValuesToInput(values)).toMatchObject({
+      registrationRequired: false,
+      maximumAttendees: null,
+    });
+    expect(
+      mapEventsDetailFormValuesToInput({
+        ...values,
+        content: { ...values.content, maximumAttendees: ' 2.5 ' },
+      }).maximumAttendees
+    ).toBe(2.5);
+  });
+
+  it('normalizes Mainserver recurrence values instead of failing on save', () => {
+    const values = mapEventItemToDetailFormValues(
+      // Runtime shape of the Mainserver read, which differs from the declared string types.
+      importedItem({
+        recurring: true,
+        recurringType: 0,
+        recurringInterval: 3,
+        recurringWeekdays: [0, 6],
+      } as unknown as Partial<EventContentItem>)
+    );
+
+    expect(values.basis).toMatchObject({
+      recurring: 'true',
+      recurringType: '0',
+      recurringInterval: '3',
+      recurringWeekdays: ['0', '6'],
+    });
+    expect(mapEventsDetailFormValuesToInput(values)).toMatchObject({
+      recurring: 'true',
+      recurringType: '0',
+      recurringInterval: '3',
+      recurringWeekdays: ['0', '6'],
+    });
+    expect(
+      mapEventItemToDetailFormValues(importedItem({ recurring: false } as never)).basis.recurring
+    ).toBe('');
+  });
+
+  it('keeps Mainserver price attributes without editor fields on save', () => {
+    const price = {
+      name: 'Familie',
+      amount: 20,
+      groupPrice: true,
+      ageFrom: 0,
+      ageTo: 99,
+      minAdultCount: 1,
+      maxAdultCount: 2,
+      minChildrenCount: 1,
+      maxChildrenCount: 4,
+    };
+    const values = mapEventItemToDetailFormValues(importedItem({ priceInformations: [price] }));
+
+    expect(mapEventsDetailFormValuesToInput(values).priceInformations).toEqual([price]);
+  });
+
   it('creates hidden content and serializes only an explicit visibility choice', () => {
     const values = createDefaultEventsDetailFormValues();
     expect(values.settings.visible).toBe(false);

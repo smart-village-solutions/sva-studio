@@ -95,6 +95,7 @@ export type SvaMainserverMediaContentFragment = {
   readonly height?: number | null;
   readonly width?: number | null;
   readonly contentType?: string | null;
+  readonly payload?: unknown;
   readonly sourceUrl?: SvaMainserverWebUrlFragment | null;
 };
 
@@ -136,6 +137,8 @@ export type SvaMainserverEventFragment = {
   readonly externalId?: string | null;
   readonly keywords?: string | null;
   readonly parentId?: number | null;
+  readonly registrationRequired?: boolean | null;
+  readonly maximumAttendees?: number | null;
   readonly dates?: readonly SvaMainserverDateFragment[] | null;
   readonly listDate?: string | null;
   readonly sortDate?: string | null;
@@ -335,6 +338,7 @@ const mediaContentFields = `
   height
   width
   contentType
+  payload
   sourceUrl {
     ${webUrlFields}
   }
@@ -348,6 +352,8 @@ const eventFields = `
   externalId
   keywords
   parentId
+  registrationRequired
+  maximumAttendees
   dates {
     id
     dateStart
@@ -494,6 +500,8 @@ export const svaMainserverCreateEventDocument = `
     $dataProviderId: ID
     $pushNotification: Boolean
     $parentId: Int
+    $registrationRequired: Boolean
+    $maximumAttendees: Int
     $keywords: String
     $description: String
     $externalId: String
@@ -525,6 +533,8 @@ export const svaMainserverCreateEventDocument = `
       dataProviderId: $dataProviderId
       pushNotification: $pushNotification
       parentId: $parentId
+      registrationRequired: $registrationRequired
+      maximumAttendees: $maximumAttendees
       keywords: $keywords
       description: $description
       externalId: $externalId

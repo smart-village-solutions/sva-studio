@@ -1414,6 +1414,65 @@ describe('mainserver content route contracts', () => {
     expect(state.createSvaMainserverPoi).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [{ registrationRequired: true, maximumAttendees: 25 }],
+    [{ registrationRequired: false, maximumAttendees: 0 }],
+    [{ registrationRequired: false, maximumAttendees: null }],
+  ])('forwards event participation values %j', async (participation) => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Flohmarkt', ...participation }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ event: { title: 'Flohmarkt', ...participation } })
+    );
+  });
+
+  it('omits participation values that the client did not send', async () => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+
+    await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Flohmarkt' }),
+      })
+    );
+
+    const [[call]] = state.updateSvaMainserverEvent.mock.calls as [
+      [{ event: Record<string, unknown> }],
+    ];
+    expect(call.event).not.toHaveProperty('registrationRequired');
+    expect(call.event).not.toHaveProperty('maximumAttendees');
+  });
+
+  it.each([
+    [{ registrationRequired: 'true' }],
+    [{ maximumAttendees: -1 }],
+    [{ maximumAttendees: 1.5 }],
+    [{ maximumAttendees: '25' }],
+    [{ maximumAttendees: 2_147_483_648 }],
+  ])('rejects invalid event participation values %j before GraphQL', async (participation) => {
+    mockAuthorizedMutation();
+
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Flohmarkt', ...participation }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    expect(state.updateSvaMainserverEvent).not.toHaveBeenCalled();
+  });
+
   it('does not log create success when event payload validation fails', async () => {
     mockAuthorizedMutation();
 

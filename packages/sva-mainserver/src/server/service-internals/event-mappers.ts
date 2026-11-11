@@ -39,6 +39,8 @@ const eventItemSchema = z.object({
   externalId: z.string().nullish(),
   keywords: z.string().nullish(),
   parentId: z.number().nullish(),
+  registrationRequired: z.boolean().nullish(),
+  maximumAttendees: z.number().int().nonnegative().nullish(),
   dates: z.array(dateSchema).nullish(),
   listDate: z.string().nullish(),
   sortDate: z.string().nullish(),
@@ -107,6 +109,7 @@ export const mapEventItemDetail = (
   const category = mapCategory(parsed.data.category ?? {});
   const createdAt = parsed.data.createdAt ?? parsed.data.listDate ?? new Date(0).toISOString();
   const parentId = optionalNumber(parsed.data.parentId);
+  const maximumAttendees = optionalNumber(parsed.data.maximumAttendees);
   const recurringType = optionalNumber(parsed.data.recurringType);
   const recurringInterval = optionalNumber(parsed.data.recurringInterval);
   const repeatDuration = mapRepeatDuration(parsed.data.repeatDuration);
@@ -134,6 +137,10 @@ export const mapEventItemDetail = (
         ? { keywords: optionalString(parsed.data.keywords) }
         : {}),
       ...(parentId !== undefined ? { parentId } : {}),
+      ...(defined(parsed.data.registrationRequired)
+        ? { registrationRequired: parsed.data.registrationRequired }
+        : {}),
+      ...(maximumAttendees !== undefined ? { maximumAttendees } : {}),
       dates: (parsed.data.dates ?? []).map(mapDate),
       ...(optionalString(parsed.data.listDate)
         ? { listDate: optionalString(parsed.data.listDate) }

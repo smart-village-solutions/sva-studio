@@ -62,16 +62,18 @@ sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür ge�
 - **Nutzerziel:** Eine Veranstaltung mit Termin, Ort, Kontakt und Veröffentlichung erfassen.
 - **Produktfakten:** Erfasst werden Titel, Beschreibung, Kategorien, Sichtbarkeit, einzelne oder
   wiederkehrende Termine, Hinweise zur Zeit, Veranstalter, Kontakte, Adresse und Karte,
-  Links, Preise und Medien. Optionale Ergänzungen sind direkt erreichbar; technische Angaben
+  Links, Preise, Anmeldepflicht, maximale Teilnehmerzahl und Medien. Optionale Ergänzungen sind
+  direkt erreichbar; technische Angaben
   bleiben geschlossen. Je Termin stehen Datum und Uhrzeit vorn; Wochentag, Hinweis zur Zeit und
   „Nur den Hinweis zur Zeit anzeigen“ liegen im Abschnitt „Weitere Terminangaben (optional)“, der
   eingeklappt bleibt, solange diese Angaben leer sind. Der Wochentag muss bei einem konkreten
   Datum nicht zusätzlich eingetragen werden. Wiederholungen unterstützen Tage, Wochen,
   Monate oder Jahre sowie Wochentage. Die Beschreibung lässt sich visuell oder als HTML bearbeiten.
 - **Validierung:** Titel erforderlich; gültige Datumswerte, HTTPS-URLs, valide Preise und Geo-
-  Koordinaten. Kategorienamen sind auf 128 Zeichen begrenzt.
+  Koordinaten. Kategorienamen sind auf 128 Zeichen begrenzt. Die maximale Teilnehmerzahl ist leer
+  oder eine ganze Zahl ab 0.
 - **Leitfragen / Stichwörter:** Einzeltermin oder Wiederholung? Welche Adresse? Nur Hinweis zur Zeit?
-  Veranstaltung, Terminserie, Veranstaltungsort, Preis.
+  Ist eine Anmeldung nötig? Veranstaltung, Terminserie, Veranstaltungsort, Preis, Teilnehmerlimit.
 - **Evidenz:** `packages/plugin-events/src/events.detail-*.tsx`,
   `packages/plugin-events/src/plugin.translations.ts`.
 
@@ -82,13 +84,21 @@ sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür ge�
 - **Produktfakten:** Der Anlegeumfang wird um Historie und Löschen ergänzt. Der Abschnitt „Weitere
   Terminangaben (optional)“ öffnet sich beim Laden, wenn ein Termin dort bereits Angaben oder eine
   aktive Ausgabeoption enthält; vorhandene und importierte Werte bleiben beim Speichern erhalten.
+  Anmeldepflicht und maximale Teilnehmerzahl stehen im Abschnitt „Anmeldung und Teilnahme“ und sind
+  auch bei importierten Veranstaltungen (zum Beispiel aus Biletado) sichtbar und bearbeitbar. Angaben
+  aus der Quelle ohne eigenes Formularfeld, etwa Veranstaltungsort-Daten, Wiederholungszeitraum,
+  Altersangaben zu Preisen oder Bild-Metadaten, werden nicht angezeigt, beim Speichern aber
+  unverändert übernommen. Kann das Studio solche Quelldaten nicht sicher lesen, speichert es die
+  Veranstaltung nicht und zeigt einen Hinweis, statt die Daten zu verlieren. Änderungen an
+  importierten Veranstaltungen können beim nächsten Import überschrieben werden.
   Adresse kann geocodiert und ein Kartenpunkt rückwärts in eine Adresse übersetzt werden. Medienreferenzen können nach
   partiellem Fehler erneut gespeichert werden. Die Beschreibung bietet eine visuelle und eine
   HTML-Ansicht; die gemeinsame Werkzeugleiste kann gemischte Textformatierungen gezielt entfernen.
 - **Kontextabhängig:** Kartenfunktionen benötigen eine aktive Karten-/Geocoding-Schnittstelle;
   Credentials und DataProvider beeinflussen Schreibaktionen.
 - **Leitfragen / Stichwörter:** Wie korrigiert man eine Serie ohne falsche Termine? Welche Quelle hat
-  Vorrang bei Karte und Adresse? Veranstaltung bearbeiten, Geocoding, Historie, Medienreferenz.
+  Vorrang bei Karte und Adresse? Gehen beim Speichern importierter Veranstaltungen Daten verloren?
+  Veranstaltung bearbeiten, Geocoding, Historie, Medienreferenz, Biletado, Import.
 - **Evidenz:** `packages/plugin-events/src/events.detail-page.tsx`,
   `packages/plugin-events/src/events.location-map.*`.
 

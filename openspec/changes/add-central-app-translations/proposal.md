@@ -1,5 +1,7 @@
 # Change: Zentrale App-Sprachkataloge und dynamische Übersetzungen in Studio
 
+**Freigegebener Lieferabschnitt vom 11. November 2026:** Die Instanzzuweisung des optionalen Host-Moduls „App“ steuert die kommunale Redaktion für App-Texte und Mehrsprachigkeit. Bestehende und neue Instanzen starten inaktiv und werden bei Bedarf manuell aktiviert. Der Abschnitt betrifft Modulverwaltung, Navigation, Katalogautorisierung und feste redaktionelle Übersetzungsaufträge. Globale Standardpflege, App-Auslieferung, technische Übersetzungsdienste und manuelle Keys gehören außerhalb dieses Lieferabschnitts.
+
 ## Why
 
 **Aktuelle Fortsetzung 23. Oktober:** Der Nutzer hat inzwischen den App-Anschluss gegen master 5.0.0 und den Studio-Formatabgleich freigegeben. Nach anschließender Korrektur erfolgt die Locale-Wahl zentral vor dem App-Modulimport; ein angekündigter und bestätigter automatischer Neustart ersetzt die ursprünglich geplanten Ergänzungen in allen React-Verbrauchern. Maßgeblich ist Design 8.7. Keine gespeicherten Studio-Kataloge verändern, kein Commit und kein Push.

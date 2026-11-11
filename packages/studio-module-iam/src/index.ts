@@ -212,6 +212,16 @@ const mediaModuleIamContract: StudioModuleIamContract = {
   systemRoles: createSystemAdminSystemRoles(mediaTenantBootstrapRoles),
 };
 
+const appModuleIamContract: StudioModuleIamContract = {
+  moduleId: 'app',
+  namespace: 'app',
+  ownerPluginId: 'host',
+  descriptionKey: 'host.app.description',
+  permissionIds: [],
+  tenantBootstrapRoles: [],
+  rootSystemRoles: [],
+};
+
 export const studioRegularPluginModuleIamContracts = [
   categoriesModuleIamContract,
   newsModuleIamContract,
@@ -231,6 +241,7 @@ export const studioPluginModuleIamContracts = [
 
 export const studioHostModuleIamContracts = [
   mediaModuleIamContract,
+  appModuleIamContract,
 ] as const satisfies readonly StudioModuleIamContract[];
 
 export const studioModuleIamContracts = [

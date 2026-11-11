@@ -76,12 +76,6 @@ export const standardUiRouteDefinitions: readonly UiRouteDefinition[] = [
     documentation: page('categories.overview', 'overview'),
   },
   {
-    binding: 'app',
-    path: uiRoutePaths.app,
-    guard: 'account',
-    documentation: page('app.overview', 'overview'),
-  },
-  {
     binding: 'interfaces',
     path: uiRoutePaths.interfaces,
     guard: 'interfaces',

@@ -243,14 +243,6 @@
       }
     },
     {
-      "id": "app.overview",
-      "path": "/app",
-      "pageType": "overview",
-      "owner": {
-        "kind": "host"
-      }
-    },
-    {
       "id": "application-workspace.overview",
       "path": "/plugins/application-workspace",
       "pageType": "overview",

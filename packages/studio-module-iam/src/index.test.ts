@@ -24,7 +24,10 @@ describe('@sva/studio-module-iam', () => {
       'surveys',
       'waste-management',
     ]);
-    expect(studioHostModuleIamContracts.map((contract) => contract.moduleId)).toEqual(['media']);
+    expect(studioHostModuleIamContracts.map((contract) => contract.moduleId)).toEqual([
+      'media',
+      'app',
+    ]);
     expect(studioModuleIamContracts.map((contract) => contract.moduleId)).toEqual([
       'categories',
       'news',
@@ -37,7 +40,12 @@ describe('@sva/studio-module-iam', () => {
       'surveys',
       'waste-management',
       'media',
+      'app',
     ]);
+    expect(studioModuleIamRegistry.get('app')).toMatchObject({
+      ownerPluginId: 'host',
+      permissionIds: [],
+    });
     expect(studioModuleIamRegistry.get('media')).toMatchObject({
       ownerPluginId: 'host',
       permissionIds: [

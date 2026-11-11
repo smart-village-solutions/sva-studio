@@ -16,7 +16,6 @@ import { useAuth } from '../providers/auth-provider';
 import { useEffectiveAccess } from '../providers/effective-access-provider';
 import { useStudioBranding } from '../providers/studio-branding-provider';
 
-const APP_LINK_PERMISSION = 'app.read';
 const COCKPIT_LINK_PERMISSION = 'cockpit.read';
 const MODULES_READ_PERMISSION = 'modules.read';
 const CATEGORIES_READ_PERMISSION = 'categories.read';
@@ -200,6 +199,7 @@ const resolveSidebarSystemAccess = ({
     canAccessAppTexts:
       isAuthenticated &&
       Boolean(user?.instanceId) &&
+      isModuleAssignedToUser('app', user) &&
       hasPermissionAction(
         'app-texts.catalog.read',
         contentAccessApi.permissionActions,
@@ -238,15 +238,6 @@ export const useSidebarAccess = () => {
   const adminAccess = resolveSidebarAdminAccess(inputs);
   const systemAccess = resolveSidebarSystemAccess(inputs);
   const { canAccessExperimentalFeatures } = systemAccess;
-  const canAccessApplicationLink =
-    brandingProfile.showGenericApplicationLinks &&
-    canAccessWorkspace &&
-    canAccessExperimentalFeatures &&
-    hasPermissionAction(
-      APP_LINK_PERMISSION,
-      contentAccessApi.permissionActions,
-      contentAccessApi.isLoading
-    );
   const canAccessCockpitLink =
     brandingProfile.showGenericApplicationLinks &&
     canAccessWorkspace &&
@@ -268,7 +259,6 @@ export const useSidebarAccess = () => {
     canAccessCategories,
     ...adminAccess,
     ...systemAccess,
-    canAccessApplicationLink,
     canAccessCockpitLink,
   };
 };

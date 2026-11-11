@@ -77,7 +77,19 @@ export const readCatalogTranslationJob = async (
   );
   return row.rows[0] ? jobs(client).getJobById(scope.instanceId, row.rows[0].id) : null;
 };
+
+export const lockAppModuleRevision = async (client: QueryClient, instanceId: string) => {
+  const result = await client.query<{ revision: string }>(
+    `SELECT EXTRACT(EPOCH FROM created_at)::text || ':' || state_revision::text AS revision FROM iam.instance_modules WHERE instance_id=$1 AND module_id='app' AND effective_active FOR SHARE`,
+    [instanceId]
+  );
+  const assignment = result.rows[0];
+  catalogAssert(assignment, 'catalog_forbidden');
+  return assignment.revision;
+};
+
 export const configuration = async (client: QueryClient, scope: MunicipalScope) => {
+  const appModuleRevision = await lockAppModuleRevision(client, scope.instanceId);
   const lifecycle = await client.query<{ generation: string }>(
     `SELECT l.desired_generation::text AS generation FROM iam.instance_modules m JOIN iam.instance_plugin_lifecycle l ON l.instance_id=m.instance_id AND l.plugin_id=m.module_id JOIN iam.instances i ON i.id=m.instance_id JOIN iam.organizations o ON o.instance_id=i.id AND o.id=$2::uuid WHERE m.instance_id=$1 AND m.module_id='app-translations' AND m.effective_active AND l.access_state='active' AND i.status='active' AND o.is_active FOR SHARE OF m,l,i,o`,
     [scope.instanceId, scope.organizationId]
@@ -96,7 +108,13 @@ export const configuration = async (client: QueryClient, scope: MunicipalScope) 
       deepLTargetCode(locale, settings.englishVariant, settings.availableLanguages),
     ])
   );
-  return { record, settings, targetCodes, generation: lifecycle.rows[0].generation };
+  return {
+    record,
+    settings,
+    targetCodes,
+    generation: lifecycle.rows[0].generation,
+    appModuleRevision,
+  };
 };
 export const inputSchema = z
   .object({
@@ -109,6 +127,7 @@ export const inputSchema = z
     credentialRevision: z.string(),
     interfaceId: z.string(),
     generation: z.string(),
+    appModuleRevision: z.string().optional(),
     targetCodes: z.record(z.string(), z.string()).refine((value) => Object.keys(value).length > 0),
     mode: z.enum(['missing', 'municipal', 'standard']),
     key: z.string().optional(),
@@ -152,6 +171,7 @@ const assertJobConfiguration = (
   input: CatalogTranslationInput,
   draft: CatalogDraft
 ) => {
+  catalogAssert(config.appModuleRevision === input.appModuleRevision, 'catalog_forbidden');
   catalogAssert(
     config.generation === input.generation &&
       config.record.id === input.interfaceId &&

@@ -7,7 +7,10 @@ import { createMemoizedUserContext } from './admin-resource-authorization.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import { resolvePluginRouteGuard } from './plugin-route-guards.js';
 import type { RouteGuardContext } from './protected.routes.js';
-import { enforceRouteAccessRequirement } from './ui-route-access.js';
+import {
+  enforceRouteAccessRequirement,
+  enforceUiRouteAccessRequirements,
+} from './ui-route-access.js';
 import {
   toDocumentationPageCatalogEntry,
   type DocumentationPageCatalogEntry,
@@ -93,6 +96,13 @@ export const getPluginRouteFactories = (
                 });
               } else {
                 await guard?.(userContext.options);
+              }
+
+              if (!isPlatformRoute && pluginNamespace === 'app-translations') {
+                await enforceUiRouteAccessRequirements(
+                  { requiredModuleId: 'app' },
+                  { context: userContext.options.context as RouteGuardContext }
+                );
               }
 
               if (!requiredModuleId || accessRequirementCoversModule || isPlatformRoute) {

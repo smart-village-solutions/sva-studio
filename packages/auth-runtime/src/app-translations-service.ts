@@ -13,6 +13,7 @@ import { withIamAppDb } from './db.js';
 import { translationServiceBindingSchema as bindingSchema } from './app-translations-binding.js';
 import { readBoundedCatalogBody } from './app-translations.js';
 import { getDeepLSetupStatus, translateDeepLValues } from './app-translations-deepl.js';
+import { translateStaticHtml } from './app-translations-static-html.js';
 import { consumeRateLimit } from './shared/rate-limit.js';
 import {
   readBearerToken,
@@ -178,32 +179,6 @@ const assertTranslatedEntries = (
     throw new Error('deepl_invalid_response');
 };
 
-const translateStaticHtml = async (
-  access: TranslationServiceAccess,
-  html: string,
-  signal: AbortSignal
-): Promise<string[]> => {
-  // Mainserver sends one paragraph per visible text node and reapplies the result to its original DOM.
-  const paragraphs = Array.from(html.matchAll(/<p>([^<>]+)<\/p>/gu), ([, text]) =>
-    text!.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&')
-  );
-  const [result] = await translateDeepLValues(
-    access.provider,
-    access.targetCode,
-    [paragraphs],
-    signal
-  );
-  const translated = z.array(z.string().trim().min(1)).length(paragraphs.length).safeParse(result);
-  if (!translated.success) throw new Error('deepl_invalid_response');
-  return [
-    translated.data
-      .map(
-        (text) =>
-          `<p>${text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</p>`
-      )
-      .join(''),
-  ];
-};
 const accessUnchanged = (
   current: TranslationServiceAccess | null,
   access: TranslationServiceAccess
@@ -295,7 +270,12 @@ export const appTranslationServiceHandler = async (request: Request): Promise<Re
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(35000)]);
     const translated =
       input.profileId === 'static-html-v1'
-        ? await translateStaticHtml(access, input.entries[0].text, signal)
+        ? await translateStaticHtml(
+            access.provider,
+            access.targetCode,
+            input.entries[0].text,
+            signal
+          )
         : await translateDeepLValues(
             access.provider,
             access.targetCode,

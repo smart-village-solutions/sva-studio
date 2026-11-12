@@ -187,6 +187,7 @@ export const shellENResources = {
     media: 'Media',
     categories: 'Categories',
     app: 'App',
+    appTexts: 'App texts',
     cockpit: 'Cockpit',
     users: 'Users',
     accounts: 'Accounts',

@@ -20,6 +20,8 @@ export type PluginRouteDefinition = {
   readonly documentation?: RouteDocumentation;
   /** Keep the host header and content while hiding sidebar and mobile navigation. */
   readonly layout?: 'content-only';
+  /** Opt in to the existing host-owned editor leave boundary. */
+  readonly editorLeaveGuard?: true;
   readonly guard?: PluginRouteGuard;
   readonly actionId?: string;
   readonly serverHandlerId?: string;
@@ -59,6 +61,8 @@ export type PluginServerHandlerAccessRequirement =
   UiAccessRequirement | PluginTechnicalServiceAccessRequirement;
 
 export type PluginNavigationItem = {
+  /** One same-plugin application group; existing flat contributions stay unchanged. */
+  readonly group?: Readonly<{ id: string; titleKey: string }>;
   readonly id: string;
   readonly to?: string;
   readonly href?: string;

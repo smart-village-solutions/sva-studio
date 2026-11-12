@@ -40,6 +40,7 @@ type PluginNavigationItemMock = {
   requiredAction?: string;
   actionId?: string;
   accessRequirement?: PluginNavigationItem['accessRequirement'];
+  group?: PluginNavigationItem['group'];
 };
 const studioPluginNavigationMock = vi.hoisted(() => ({
   items: [
@@ -1175,24 +1176,32 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
   });
 
-  it('zeigt den Cockpit-Link nur bei Zuweisung und cockpit.read-Berechtigung', () => {
-    renderSidebar({
-      user: createSidebarUser({
-        id: 'user-4',
-        name: 'Cockpit Reader',
-        permissionActions: ['experimental.read'],
-        assignedModules: ['cockpit'],
-      }),
-      contentAccess: createContentAccessState({
-        access: defaultReadOnlyAccessState,
-        permissionActions: ['cockpit.read'],
-      }),
-    });
+  it.each(['sva-studio', 'kassel-dialog'] as const)(
+    'zeigt den autorisierten Cockpit-Link unter %s',
+    (branding) => {
+      setupSidebarSession({
+        user: createSidebarUser({
+          id: 'user-4',
+          name: 'Cockpit Reader',
+          permissionActions: ['experimental.read'],
+          assignedModules: ['cockpit'],
+        }),
+        contentAccess: createContentAccessState({
+          access: defaultReadOnlyAccessState,
+          permissionActions: ['cockpit.read'],
+        }),
+      });
+      render(
+        <StudioBrandingProvider branding={branding}>
+          <Sidebar />
+        </StudioBrandingProvider>
+      );
 
-    expect(screen.getByText('Anwendungen')).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('href')).toBe(COCKPIT_URL);
-  });
+      expect(screen.getByText('Anwendungen')).toBeTruthy();
+      expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
+      expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('href')).toBe(COCKPIT_URL);
+    }
+  );
 
   it('blendet Cockpit ohne Modulzuweisung trotz cockpit.read aus', () => {
     renderSidebar({
@@ -1219,7 +1228,7 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
   });
 
-  it('reduziert die Kassel-DIALOG-Navigation unabhängig von Rechten und Datentypen', () => {
+  it('behält benötigte fremde Inhaltsmodule in der Kassel-DIALOG-Navigation', () => {
     studioPluginNavigationMock.items = [
       {
         id: 'ssf.tenant-navigation',
@@ -1268,46 +1277,48 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Kassel DIALOG' }).getAttribute('href')).toBe(
       '/plugins/ssf/configuration'
     );
-    expect(screen.queryByRole('link', { name: 'Inhalt erstellen' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Inhalt erstellen' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Inhalte' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Inhalte' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Schnittstellen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
   });
 
   it.each([
-    { scope: 'tenant', roles: ['system_admin'], instanceId: 'tenant-a', route: '/app-texts' },
     {
       scope: 'root',
       roles: ['instance_registry_admin'],
       instanceId: undefined,
       route: '/admin/app-translations',
     },
-  ])('hides the App menu for $scope administrators in Kassel DIALOG', ({ roles, instanceId, route }) => {
-    studioPluginNavigationMock.items = [];
-    useRouterStateMock.mockReturnValue({ pathname: route, search: {} });
-    setupSidebarSession({
-      user: createSidebarUser({
-        roles,
-        instanceId,
-        assignedModules: ['app'],
-        permissionActions: ['app-texts.catalog.read', 'app.read', 'experimental.read'],
-      }),
-    });
+  ])(
+    'hides the App menu for $scope administrators in Kassel DIALOG',
+    ({ roles, instanceId, route }) => {
+      studioPluginNavigationMock.items = [];
+      useRouterStateMock.mockReturnValue({ pathname: route, search: {} });
+      setupSidebarSession({
+        user: createSidebarUser({
+          roles,
+          instanceId,
+          assignedModules: ['app'],
+          permissionActions: ['app-texts.catalog.read', 'app.read', 'experimental.read'],
+        }),
+      });
 
-    render(
-      <StudioBrandingProvider branding="kassel-dialog">
-        <Sidebar />
-      </StudioBrandingProvider>
-    );
+      render(
+        <StudioBrandingProvider branding="kassel-dialog">
+          <Sidebar />
+        </StudioBrandingProvider>
+      );
 
-    expect(screen.getByRole('link', { name: 'Übersicht' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'App' })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'App-Texte' })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Gemeinsame App-Texte' })).toBeNull();
-  });
+      expect(screen.getByRole('link', { name: 'Übersicht' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'App' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'App-Texte' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Gemeinsame App-Texte' })).toBeNull();
+    }
+  );
 
   it('behält im Standard-Studio den generischen SSF-Navigationstitel bei', () => {
     studioPluginNavigationMock.items = [
@@ -1339,6 +1350,59 @@ describe('Sidebar', () => {
 
     expect(screen.getByRole('link', { name: 'SSF-Konfiguration' }).getAttribute('href')).toBe(
       '/plugins/ssf/configuration'
+    );
+  });
+
+  it('keeps an explicitly assigned App editor discoverable in Kassel DIALOG', () => {
+    studioPluginNavigationMock.items = [];
+    setupSidebarSession({
+      user: createSidebarUser({
+        instanceId: 'tenant-a',
+        roles: ['system_admin'],
+        assignedModules: ['app'],
+        permissionActions: ['app-texts.catalog.read'],
+      }),
+      contentAccess: createContentAccessState({ permissionActions: ['app-texts.catalog.read'] }),
+    });
+    render(
+      <StudioBrandingProvider branding="kassel-dialog">
+        <Sidebar />
+      </StudioBrandingProvider>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'App' }));
+    expect(screen.getByRole('link', { name: 'App-Texte' }).getAttribute('href')).toBe('/app-texts');
+  });
+
+  it('groups authorised plugin leaves using branding without replacing their task labels', () => {
+    studioPluginNavigationMock.items = ['overview', 'languages'].map((page) => ({
+      id: `ssf.tenant-navigation-${page}`,
+      to: `/plugins/ssf/${page}`,
+      titleKey: page === 'overview' ? 'shell.sidebar.overview' : 'shell.sidebar.languages',
+      section: 'applications',
+      group: { id: 'ssf.application', titleKey: 'ssf.navigation.tenant' },
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: 'ssf',
+        actions: { mode: 'allOf', values: ['ssf.configuration.tenant.read'] },
+      },
+    }));
+    useRouterStateMock.mockReturnValue({ pathname: '/plugins/ssf/languages', search: {} });
+    setupSidebarSession({
+      user: createSidebarUser({ instanceId: 'tenant-a', assignedModules: ['ssf'] }),
+      contentAccess: createContentAccessState({
+        permissionActions: ['ssf.configuration.tenant.read'],
+      }),
+    });
+    render(
+      <StudioBrandingProvider branding="kassel-dialog">
+        <Sidebar />
+      </StudioBrandingProvider>
+    );
+    expect(
+      screen.getByRole('button', { name: 'Kassel DIALOG' }).getAttribute('aria-expanded')
+    ).toBe('true');
+    expect(screen.getByRole('link', { name: 'Sprachen' }).getAttribute('href')).toBe(
+      '/plugins/ssf/languages'
     );
   });
 

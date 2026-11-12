@@ -771,8 +771,8 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
 fi
 
 MEDIA_PATH='/api/v1/iam/media?instanceId=example-instance&visibility=public&limit=1'
-SSF_TENANT_PATH='/api/v1/plugins/ssf/tenant-configuration'
-SSF_SYSTEM_PATH='/api/v1/plugins/ssf/system-configuration'
+SSF_TENANT_PATH='/api/v1/plugins/ssf/content-v2/tenant'
+SSF_SYSTEM_PATH='/api/v1/plugins/ssf/content-v2/system'
 
 if [ "${VERIFY_STATUS}" = "ok" ]; then
   AUTH_TMP_DIR="$(mktemp -d)"

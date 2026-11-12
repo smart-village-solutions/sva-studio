@@ -239,7 +239,6 @@ export const useSidebarAccess = () => {
   const systemAccess = resolveSidebarSystemAccess(inputs);
   const { canAccessExperimentalFeatures } = systemAccess;
   const canAccessCockpitLink =
-    brandingProfile.showGenericApplicationLinks &&
     canAccessWorkspace &&
     canAccessExperimentalFeatures &&
     hasPermissionAction(

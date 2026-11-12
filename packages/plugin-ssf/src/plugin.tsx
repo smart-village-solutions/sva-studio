@@ -1,13 +1,28 @@
 import type { PluginDefinition } from '@sva/plugin-sdk';
 
-import { SsfSystemConfigurationPage, SsfTenantConfigurationPage } from './admin.page.js';
+import {
+  SsfSystemConfigurationPage,
+  SsfSystemDefaultsPage,
+  SsfSystemContentPage,
+  SsfTenantConfigurationPage,
+  SsfTenantAppearancePage,
+  SsfTenantLanguagesPage,
+  SsfTenantRecordingsPage,
+  SsfTenantFeedbackPage,
+} from './admin.page.js';
 import { ssfPlugin as descriptor } from './descriptor.js';
 
 export { SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID } from './descriptor.js';
 
 const routeComponents = {
-  'ssf-system-configuration': SsfSystemConfigurationPage,
-  'ssf-tenant-configuration': SsfTenantConfigurationPage,
+  'ssf-system-overview': SsfSystemConfigurationPage,
+  'ssf-system-default-configuration': SsfSystemDefaultsPage,
+  'ssf-system-default-content': SsfSystemContentPage,
+  'ssf-tenant-overview': SsfTenantConfigurationPage,
+  'ssf-tenant-appearance': SsfTenantAppearancePage,
+  'ssf-tenant-languages': SsfTenantLanguagesPage,
+  'ssf-tenant-recordings': SsfTenantRecordingsPage,
+  'ssf-tenant-feedback': SsfTenantFeedbackPage,
 } as const;
 
 if (descriptor.routes.length !== Object.keys(routeComponents).length) {

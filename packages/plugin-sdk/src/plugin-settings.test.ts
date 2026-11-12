@@ -113,3 +113,44 @@ describe('declarative plugin shell contributions', () => {
     ).toThrow('plugin_navigation_icon_invalid');
   });
 });
+
+describe('generic application grouping and editor opt-in', () => {
+  const leaf = {
+    id: 'workspace.settings-nav',
+    to: '/plugins/workspace/settings',
+    titleKey: 'settings',
+    section: 'applications' as const,
+    actionId: 'workspace.settings.read',
+    accessRequirement: requirement,
+    group: { id: 'workspace.application', titleKey: 'application' },
+  };
+  it('retains a validated group and an explicitly guarded route', () => {
+    const registry = createPluginRegistry([
+      { ...plugin, navigation: [leaf], routes: [{ ...plugin.routes[0]!, editorLeaveGuard: true }] },
+    ]);
+    expect(registry.get('workspace')?.navigation?.[0]?.group).toEqual(leaf.group);
+    expect(registry.get('workspace')?.routes[0]?.editorLeaveGuard).toBe(true);
+  });
+  it.each([
+    { ...leaf, group: { id: 'foreign.application', titleKey: 'application' } },
+    { ...leaf, section: 'system' as const },
+    { ...leaf, group: { id: 'workspace.application', titleKey: '' } },
+  ])('rejects invalid group ownership or presentation', (navigation) => {
+    expect(() => createPluginRegistry([{ ...plugin, navigation: [navigation] }])).toThrow(
+      'plugin_navigation_group_invalid'
+    );
+  });
+  it('rejects inconsistent shared group titles', () => {
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...plugin,
+          navigation: [
+            leaf,
+            { ...leaf, id: 'workspace.other', group: { ...leaf.group, titleKey: 'different' } },
+          ],
+        },
+      ])
+    ).toThrow('plugin_navigation_group_conflict');
+  });
+});

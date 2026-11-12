@@ -15,7 +15,7 @@ type BlockerOptions = {
 const state = vi.hoisted(() => ({
   user: { id: 'user-1', instanceId: 'de-musterhausen', roles: [] as string[] } as {
     id: string;
-    instanceId: string;
+    instanceId?: string;
     roles: string[];
   } | null,
   organizationId: 'org-1',
@@ -33,8 +33,9 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => ({ user: state.user, refreshSession: state.refreshSession }),
 }));
 vi.mock('../hooks/use-organization-context', () => ({
+  ORGANIZATION_CONTEXT_CHANGE_EVENT: 'studio:before-organization-switch',
   useOrganizationContext: () => ({
-    context: { activeOrganizationId: state.organizationId },
+    context: state.user?.instanceId ? { activeOrganizationId: state.organizationId } : null,
     error: null,
     refetch: state.refetchOrganization,
   }),
@@ -288,5 +289,83 @@ describe('ContentEditorLeaveBoundary', () => {
     expect(leaving()).toBe(true);
     act(current);
     expect(leaving()).toBe(false);
+  });
+  it('recovers a dirty root editor without requesting tenant organisation context', async () => {
+    state.user = { id: 'root-user', roles: ['instance_registry_admin'] };
+    state.fetchAuth.mockResolvedValue(Response.json({ user: state.user }));
+    render(
+      <ContentEditorLeaveBoundary protectContextChanges>
+        <Editor dirty />
+      </ContentEditorLeaveBoundary>
+    );
+    act(() => {
+      window.dispatchEvent(new Event('studio:auth-recovery-navigation', { cancelable: true }));
+    });
+    expect(screen.getByText('Save confirmed').closest('fieldset')?.hidden).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'content.leaveGuard.resumeEditor' }));
+    await waitFor(() =>
+      expect(screen.getByText('Save confirmed').closest('fieldset')?.hidden).toBe(false)
+    );
+    expect(state.getContext).not.toHaveBeenCalled();
+    expect(state.refetchOrganization).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])(
+    'retains a voluntary context switch until Save succeeds (%s)',
+    async (success) => {
+      const save = vi.fn(async () => success);
+      function ManagedEditor() {
+        useStudioEditorLeaveGuard({ enabled: true, hasUnsavedChanges: true, onSave: save });
+        return <div>Managed draft</div>;
+      }
+      render(
+        <ContentEditorLeaveBoundary protectContextChanges>
+          <ManagedEditor />
+        </ContentEditorLeaveBoundary>
+      );
+      const resolve = vi.fn();
+      act(() => {
+        window.dispatchEvent(
+          new CustomEvent('studio:before-organization-switch', {
+            cancelable: true,
+            detail: { resolve },
+          })
+        );
+      });
+      expect(resolve).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'content.leaveGuard.save' }));
+      await waitFor(() => expect(save).toHaveBeenCalledOnce());
+      if (success) await waitFor(() => expect(resolve).toHaveBeenCalledWith(true));
+      else {
+        expect(resolve).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByRole('button', { name: 'content.leaveGuard.stay' }));
+        expect(resolve).toHaveBeenCalledWith(false);
+      }
+    }
+  );
+
+  it('discards a dirty context draft once before permitting its mutation', () => {
+    const discard = vi.fn();
+    function ManagedEditor() {
+      useStudioEditorLeaveGuard({ enabled: true, hasUnsavedChanges: true, onDiscard: discard });
+      return null;
+    }
+    render(
+      <ContentEditorLeaveBoundary protectContextChanges>
+        <ManagedEditor />
+      </ContentEditorLeaveBoundary>
+    );
+    const resolve = vi.fn();
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('studio:before-organization-switch', {
+          cancelable: true,
+          detail: { resolve },
+        })
+      );
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'content.leaveGuard.discard' }));
+    expect(discard).toHaveBeenCalledOnce();
+    expect(resolve).toHaveBeenCalledExactlyOnceWith(true);
   });
 });

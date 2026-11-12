@@ -1,7 +1,7 @@
 import { contentDEErrors } from './content.errors.resources.js';
-
 export const contentDEResources = {
   leaveGuard: {
+    save: 'Speichern und fortfahren',
     sessionRecovery:
       'Ihre Sitzung muss erneut geprüft werden. Ihre Eingaben bleiben in diesem geöffneten Editor erhalten. Melden Sie sich bei Bedarf in einem neuen Tab an und prüfen Sie danach Konto und Organisation. Es wird nichts automatisch gespeichert.',
     sessionRecoveryFailed:

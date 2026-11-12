@@ -1681,3 +1681,18 @@ Das optionale Plugin `application-workspace` ergänzt einen Einstieg „Anwendun
 Beim Lesen prüft der Dispatcher Anmeldung, verifizierte Instanz und aktuelle Modulaktivierung. Einstellungen benötigen `application-workspace.settings.read`, Speichern zusätzlich `application-workspace.settings.update`. Der Host bindet `withInstanceDb`, prüft die erwartete Version und schreibt Auditnachweise für Konfiguration und betroffene Kachelkennungen vor dem Commit. RLS erzwingt die Instanzgrenze. Kontextwechsel verwerfen überholte UI-Antworten; Versionskonflikte erhalten den Entwurf. Ein unklarer Schreibausgang erlaubt zuerst eine Ergebnisprüfung, keinen automatischen Wiederholungsversuch.
 
 Der Anwendungsarbeitsplatz wird als externes Paket `@sva/plugin-application-workspace` aus einem eigenständigen Repository konsumiert. Header-Einstieg und Content-only-Layout stammen aus validierten Plugin-Beiträgen; der gemeinsame IconPicker und der instanzgebundene Speicher-/Audit-Adapter bleiben Host-Eigentum. Die bisherige Workspace-Kopie entfällt.
+
+## SSF page save and guarded departure
+
+An SSF editor loads the aggregate and its administrative revision, retains all
+page-local drafts across language/tab changes, and submits a complete aggregate
+with only owned edited leaves changed. Under the existing SSF advisory transaction
+lock, the repository checks the expected revision, validates current state,
+sanitizes and captures the committed response. A stale write returns 412 and the
+browser retains its draft; no automatic fresh-token retry occurs. Root Default
+content commits installation and template edits in one transaction.
+
+Marked editor routes reuse Save/Discard/Stay navigation protection. Voluntary
+organisation changes are confirmed before their API mutation; forced auth/context
+changes suspend drafts. Root recovery checks platform identity without tenant
+organisation reads. See [SSF administration](../development/ssf-v2-inhaltsverwaltung-ui.md).

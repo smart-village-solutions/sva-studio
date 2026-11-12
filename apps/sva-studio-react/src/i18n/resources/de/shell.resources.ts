@@ -192,6 +192,7 @@ export const shellDEResources = {
     media: 'Medien',
     categories: 'Kategorien',
     app: 'App',
+    appTexts: 'App-Texte',
     cockpit: 'Cockpit',
     users: 'Benutzer',
     accounts: 'Accounts',

@@ -1,38 +1,27 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import type { AuthenticatedRequestContext } from './types.js';
+import {
+  createWasteAuthDeps,
+  createWasteMutationRequest,
+  createWasteTestActor,
+  wasteActorInfo,
+} from '../../tests/test-utils/handler-fixtures.js';
+
 
 import { wasteManagementSettingsHandlers } from './settings.js';
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: {
-    id: 'user-1',
-    instanceId: 'tenant-a',
-    roles: ['system_admin'],
-  },
-};
+const actor = createWasteTestActor();
 
 const createRequest = (body: Record<string, unknown>) =>
-  new Request('https://studio.test/api/v1/waste-management/settings', {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Origin: 'https://studio.test',
-      'X-Requested-With': 'XMLHttpRequest',
-    },
-    body: JSON.stringify(body),
-  });
+  createWasteMutationRequest('PUT', 'https://studio.test/api/v1/waste-management/settings', body);
 
 const createRetryRequest = (idempotencyKey = 'retry-3') =>
-  new Request('https://studio.test/api/v1/waste-management/settings/provisioning/retry', {
-    method: 'POST',
-    headers: {
-      Origin: 'https://studio.test',
-      'X-Requested-With': 'XMLHttpRequest',
-      'Idempotency-Key': idempotencyKey,
-    },
-  });
+  createWasteMutationRequest(
+    'POST',
+    'https://studio.test/api/v1/waste-management/settings/provisioning/retry',
+    undefined,
+    { 'Idempotency-Key': idempotencyKey }
+  );
 
 const failedProvisioning = {
   instanceId: 'tenant-a',
@@ -44,19 +33,7 @@ const failedProvisioning = {
 };
 
 const createDeps = () => ({
-  getRequestId: () => 'req-test',
-  getSessionById: vi.fn(async () => ({
-    activeOrganizationId: 'org-1',
-  })),
-  resolvePermissions: vi.fn(async () => ({
-    ok: true as const,
-    permissions: [
-      {
-        action: 'waste-management.settings.manage',
-        resourceType: 'waste-management',
-      },
-    ],
-  })),
+  ...createWasteAuthDeps(['waste-management.settings.manage']),
   protectSecret: vi.fn((value: string) => `enc:${value}`),
   revealSecret: vi.fn(() => 'revealed'),
   checkWasteConnection: vi.fn(),
@@ -65,9 +42,6 @@ const createDeps = () => ({
 });
 
 describe('waste-management settings handlers', () => {
-  beforeEach(() => {
-  });
-
   it('retries failed tenant provisioning with a new generation and a correlated plugin job', async () => {
     const deps = createDeps();
     const requestWasteTenantProvisioning = vi.fn(async () => ({
@@ -102,9 +76,7 @@ describe('waste-management settings handlers', () => {
           updatedAt: '2026-08-02T09:05:00.000Z',
         })),
         requestWasteTenantProvisioning,
-        resolveActorInfo: vi.fn(async () => ({
-          actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-        })),
+        resolveActorInfo: vi.fn(async () => wasteActorInfo),
         startPluginOperationJob,
       }
     );
@@ -198,9 +170,7 @@ describe('waste-management settings handlers', () => {
           status: 'provisioning' as const,
           desiredGeneration: 3,
         })),
-        resolveActorInfo: vi.fn(async () => ({
-          actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-        })),
+        resolveActorInfo: vi.fn(async () => wasteActorInfo),
         startPluginOperationJob: vi.fn(async () => new Response(null, { status: 503 })),
         failWasteTenantProvisioningRequest,
       }

@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AuthenticatedRequestContext } from './types.js';
+import {
+  createWasteAuthDeps,
+  createWasteMutationRequest,
+  createWasteTestActor,
+} from '../../tests/test-utils/handler-fixtures.js';
 
 const updateWasteVisibleStatusMock = vi.hoisted(() => vi.fn(async () => undefined));
 
@@ -11,31 +15,20 @@ vi.mock('./settings-shared.js', async (importOriginal) => {
 
 import { wasteManagementTourStatusBulkHandlers } from './tour-status-bulk.js';
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: { id: 'user-1', instanceId: 'tenant-a', roles: ['system_admin'] },
-};
+const actor = createWasteTestActor();
 
 const tourIdOne = '11111111-1111-4111-8111-111111111111';
 const tourIdTwo = '22222222-2222-4222-8222-222222222222';
 
 const createRequest = (body: Record<string, unknown>) =>
-  new Request('https://studio.test/api/v1/waste-management/tours/bulk-status', {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Origin: 'https://studio.test',
-      'X-Requested-With': 'XMLHttpRequest',
-    },
-    body: JSON.stringify(body),
-  });
+  createWasteMutationRequest(
+    'PUT',
+    'https://studio.test/api/v1/waste-management/tours/bulk-status',
+    body
+  );
 
 const createDeps = () => ({
-  getRequestId: () => 'req-test',
-  resolvePermissions: vi.fn(async () => ({
-    ok: true as const,
-    permissions: [{ action: 'waste-management.tours.manage', resourceType: 'waste-management' }],
-  })),
+  ...createWasteAuthDeps(['waste-management.tours.manage']),
   emitAuditEvent: vi.fn(async () => undefined),
   updateWasteTourStatusBulk: vi.fn(async () => ({ updatedCount: 2 })),
 });

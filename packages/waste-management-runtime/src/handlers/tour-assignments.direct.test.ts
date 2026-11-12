@@ -1,36 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AuthenticatedRequestContext } from './types.js';
+import {
+  createWasteAuthDeps,
+  createWasteMutationHeaders,
+  createWasteMutationRequest,
+  createWasteTestActor,
+  grantWastePermissions,
+} from '../../tests/test-utils/handler-fixtures.js';
+
 import { wasteManagementTourAssignmentHandlers } from './tour-assignments.js';
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: {
-    id: 'user-1',
-    instanceId: 'tenant-a',
-    roles: ['system_admin'],
-  },
-};
+const actor = createWasteTestActor();
 
-const mutationHeaders = {
-  'content-type': 'application/json',
-  origin: 'https://studio.test',
-  'x-requested-with': 'XMLHttpRequest',
-};
+const mutationHeaders = createWasteMutationHeaders();
 
 const createDeps = () => ({
+  ...createWasteAuthDeps(['waste-management.scheduling.manage']),
   getRequestId: () => 'req-tour-assignment',
-  getSessionById: vi.fn(async () => ({ activeOrganizationId: 'org-1' })),
   emitAuditEvent: vi.fn(async () => undefined),
-  resolvePermissions: vi.fn(async () => ({
-    ok: true as const,
-    permissions: [
-      {
-        action: 'waste-management.scheduling.manage',
-        resourceType: 'waste-management',
-      },
-    ],
-  })),
 });
 
 const assignment = {
@@ -51,16 +38,16 @@ describe('waste-management tour assignment handlers', () => {
 
     const createResponse =
       await wasteManagementTourAssignmentHandlers.createWasteManagementTourAssignmentInternal(
-        new Request('https://studio.test/api/v1/waste-management/tour-assignments', {
-          method: 'POST',
-          headers: mutationHeaders,
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'POST',
+          'https://studio.test/api/v1/waste-management/tour-assignments',
+          {
             id: 'assignment-1',
             tourId: 'tour-1',
             pickupDate: '2026-05-12',
             locationIds: ['location-1', 'location-2', 'location-1'],
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),
@@ -80,16 +67,16 @@ describe('waste-management tour assignment handlers', () => {
 
     const updateResponse =
       await wasteManagementTourAssignmentHandlers.updateWasteManagementTourAssignmentInternal(
-        new Request('https://studio.test/api/v1/waste-management/tour-assignments/assignment-1', {
-          method: 'PUT',
-          headers: mutationHeaders,
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'PUT',
+          'https://studio.test/api/v1/waste-management/tour-assignments/assignment-1',
+          {
             tourId: 'tour-2',
             pickupDate: '2026-05-13',
             note: '  Zwei Halte  ',
             locationIds: ['location-3'],
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),
@@ -109,10 +96,10 @@ describe('waste-management tour assignment handlers', () => {
 
     const deleteResponse =
       await wasteManagementTourAssignmentHandlers.deleteWasteManagementTourAssignmentInternal(
-        new Request('https://studio.test/api/v1/waste-management/tour-assignments/assignment-1', {
-          method: 'DELETE',
-          headers: mutationHeaders,
-        }),
+        createWasteMutationRequest(
+          'DELETE',
+          'https://studio.test/api/v1/waste-management/tour-assignments/assignment-1'
+        ),
         actor,
         {
           ...createDeps(),
@@ -129,16 +116,16 @@ describe('waste-management tour assignment handlers', () => {
     const saveWasteTourAssignment = vi.fn(async () => undefined);
     const response =
       await wasteManagementTourAssignmentHandlers.createWasteManagementTourAssignmentInternal(
-        new Request('https://studio.test/api/v1/waste-management/tour-assignments', {
-          method: 'POST',
-          headers: mutationHeaders,
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'POST',
+          'https://studio.test/api/v1/waste-management/tour-assignments',
+          {
             id: 'assignment-1',
             tourId: 'tour-1',
             pickupDate: '2026-05-12',
             locationIds: [],
-          }),
-        }),
+          }
+        ),
         actor,
         { ...createDeps(), saveWasteTourAssignment }
       );
@@ -151,7 +138,7 @@ describe('waste-management tour assignment handlers', () => {
     const saveWasteTourAssignment = vi.fn(async () => undefined);
     const unauthorizedDeps = {
       ...createDeps(),
-      resolvePermissions: vi.fn(async () => ({ ok: true as const, permissions: [] })),
+      ...grantWastePermissions(),
       saveWasteTourAssignment,
     };
     const body = JSON.stringify({
@@ -191,15 +178,15 @@ describe('waste-management tour assignment handlers', () => {
     const saveWasteTourAssignment = vi.fn(async () => undefined);
     const response =
       await wasteManagementTourAssignmentHandlers.updateWasteManagementTourAssignmentInternal(
-        new Request('https://studio.test/api/v1/waste-management/tour-assignments/missing', {
-          method: 'PUT',
-          headers: mutationHeaders,
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'PUT',
+          'https://studio.test/api/v1/waste-management/tour-assignments/missing',
+          {
             tourId: 'tour-1',
             pickupDate: '2026-05-12',
             locationIds: ['location-1'],
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),

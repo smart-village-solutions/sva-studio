@@ -19,7 +19,9 @@ paths:
         Organisationsauswahl und kein Gleichsetzen mit ausgehenden Organisationsaccounts. Der Main-Server besitzt Jobs
         und Retries. Zielsprache ist eine aktuell in Studio ausgewählte und geprüfte Sprache.
         Bei global-settings-v1 ist genau ein Klartexteintrag mit Schlüssel label und maximal 2048 UTF-8-Bytes erlaubt.
-        Bei static-html-v1 ist genau ein Rich-Text-HTML-Eintrag mit Schlüssel content und maximal 90000 UTF-8-Quellbytes erlaubt.
+        Bei static-html-v1 ist genau ein HTML-Eintrag mit Schlüssel content und maximal 90000 UTF-8-Quellbytes erlaubt.
+        Der Main-Server übermittelt jeden sichtbaren Textknoten als maskierten Text in einem eigenen p-Element ohne Attribute.
+        Studio gibt die übersetzten Segmente in derselben Absatzstruktur und Reihenfolge zurück.
         Für news-v1 gelten 50 Einträge, 90000 UTF-8-Quellbytes, 100000 Bytes Gesamtrequest, 150000 Bytes Gesamtantwort.
         Übersetzte Einträge sind nicht leer oder ausschließlich Leerraum und umfassen jeweils höchstens 100000 UTF-8-Bytes.
         Übermittelte Quelltexte dürfen ebenfalls nicht leer oder ausschließlich Leerraum sein;

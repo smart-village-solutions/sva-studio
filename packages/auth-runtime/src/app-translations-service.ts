@@ -12,11 +12,7 @@ import { z } from 'zod';
 import { withIamAppDb } from './db.js';
 import { translationServiceBindingSchema as bindingSchema } from './app-translations-binding.js';
 import { readBoundedCatalogBody } from './app-translations.js';
-import {
-  getDeepLSetupStatus,
-  translateDeepLValues,
-  assertDeepLRequestSize,
-} from './app-translations-deepl.js';
+import { getDeepLSetupStatus, translateDeepLValues } from './app-translations-deepl.js';
 import { consumeRateLimit } from './shared/rate-limit.js';
 import {
   readBearerToken,
@@ -101,7 +97,9 @@ const staticHtmlRequestSchema = requestEnvelope.extend({
           .regex(/\S/u)
           .refine(
             (text) =>
-              new TextEncoder().encode(text).length <= 90000 && sanitizeRichTextHtml(text) === text
+              new TextEncoder().encode(text).length <= 90000 &&
+              /^(?:<p>[^<>]+<\/p>)+$/u.test(text) &&
+              sanitizeRichTextHtml(text) === text
           ),
       })
       .strict(),
@@ -178,6 +176,33 @@ const assertTranslatedEntries = (
     translated.some((value, index) => !validTranslatedEntry(value, input.entries[index]))
   )
     throw new Error('deepl_invalid_response');
+};
+
+const translateStaticHtml = async (
+  access: TranslationServiceAccess,
+  html: string,
+  signal: AbortSignal
+): Promise<string[]> => {
+  // Mainserver sends one paragraph per visible text node and reapplies the result to its original DOM.
+  const paragraphs = Array.from(html.matchAll(/<p>([^<>]+)<\/p>/gu), ([, text]) =>
+    text!.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&')
+  );
+  const [result] = await translateDeepLValues(
+    access.provider,
+    access.targetCode,
+    [paragraphs],
+    signal
+  );
+  const translated = z.array(z.string().trim().min(1)).length(paragraphs.length).safeParse(result);
+  if (!translated.success) throw new Error('deepl_invalid_response');
+  return [
+    translated.data
+      .map(
+        (text) =>
+          `<p>${text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</p>`
+      )
+      .join(''),
+  ];
 };
 const accessUnchanged = (
   current: TranslationServiceAccess | null,
@@ -268,14 +293,15 @@ export const appTranslationServiceHandler = async (request: Request): Promise<Re
     });
     if (limited) return reply(429, { ...correlation, error: 'rate_limited', retryable: true });
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(35000)]);
-    const values = input.entries.map((entry) => entry.text);
-    assertDeepLRequestSize(access.targetCode, values);
-    const translated = await translateDeepLValues(
-      access.provider,
-      access.targetCode,
-      values,
-      signal
-    );
+    const translated =
+      input.profileId === 'static-html-v1'
+        ? await translateStaticHtml(access, input.entries[0].text, signal)
+        : await translateDeepLValues(
+            access.provider,
+            access.targetCode,
+            input.entries.map((entry) => entry.text),
+            signal
+          );
     if (signal.aborted) throw new Error('deepl_unavailable');
     if (typeof identity.exp === 'number' && identity.exp * 1000 <= Date.now())
       return reply(401, {

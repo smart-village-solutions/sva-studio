@@ -1,36 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AuthenticatedRequestContext } from './types.js';
+import {
+  createWasteAuthDeps,
+  createWasteMutationHeaders,
+  createWasteTestActor,
+  grantWastePermissions,
+} from '../../tests/test-utils/handler-fixtures.js';
+
 import { wasteManagementTourAssignmentHandlers } from './tour-assignments.js';
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: {
-    id: 'user-1',
-    instanceId: 'tenant-a',
-    roles: ['system_admin'],
-  },
-};
+const actor = createWasteTestActor();
 
-const mutationHeaders = {
-  'content-type': 'application/json',
-  origin: 'https://studio.test',
-  'x-requested-with': 'XMLHttpRequest',
-};
+const mutationHeaders = createWasteMutationHeaders();
 
 const createDeps = () => ({
+  ...createWasteAuthDeps(['waste-management.scheduling.manage']),
   getRequestId: () => 'req-tour-assignment',
-  getSessionById: vi.fn(async () => ({ activeOrganizationId: 'org-1' })),
   emitAuditEvent: vi.fn(async () => undefined),
-  resolvePermissions: vi.fn(async () => ({
-    ok: true as const,
-    permissions: [
-      {
-        action: 'waste-management.scheduling.manage',
-        resourceType: 'waste-management',
-      },
-    ],
-  })),
 });
 
 const assignment = {
@@ -151,7 +137,7 @@ describe('waste-management tour assignment handlers', () => {
     const saveWasteTourAssignment = vi.fn(async () => undefined);
     const unauthorizedDeps = {
       ...createDeps(),
-      resolvePermissions: vi.fn(async () => ({ ok: true as const, permissions: [] })),
+      ...grantWastePermissions(),
       saveWasteTourAssignment,
     };
     const body = JSON.stringify({

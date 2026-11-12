@@ -1,46 +1,26 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AuthenticatedRequestContext } from './types.js';
+import {
+  createWasteAuthDeps,
+  createWasteMutationRequest,
+  createWasteTestActor,
+} from '../../tests/test-utils/handler-fixtures.js';
+
 import {
   authorizeWasteMasterDataMutationPathRequest,
   authorizeWasteMasterDataMutationRequest,
 } from './master-data-request-guards.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: {
-    id: 'user-1',
-    instanceId: 'tenant-a',
-    roles: ['system_admin'],
-  },
-};
+const actor = createWasteTestActor();
 
-const createHeaders = () => ({
-  origin: 'https://studio.test',
-  'x-requested-with': 'XMLHttpRequest',
-});
-
-const createDeps = (action = 'waste-management.master-data.manage'): WasteManagementHandlerDeps => ({
-  getRequestId: () => 'req-test',
-  resolvePermissions: vi.fn(async () => ({
-    ok: true as const,
-    permissions: [
-      {
-        action,
-        resourceType: 'waste-management',
-      },
-    ],
-  })),
-});
+const createDeps = (action = 'waste-management.master-data.manage'): WasteManagementHandlerDeps =>
+  createWasteAuthDeps([action]);
 
 describe('authorizeWasteMasterDataMutationRequest', () => {
   it('fails closed when the host permission resolver is missing', async () => {
     const result = await authorizeWasteMasterDataMutationRequest(
-      new Request('https://studio.test/api/v1/waste-management/regions', {
-        method: 'POST',
-        headers: createHeaders(),
-      }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/regions'),
       actor,
       { getRequestId: () => 'req-test' }
     );
@@ -54,10 +34,7 @@ describe('authorizeWasteMasterDataMutationRequest', () => {
 
   it('returns the authorized request context for create mutations', async () => {
     const result = await authorizeWasteMasterDataMutationRequest(
-      new Request('https://studio.test/api/v1/waste-management/regions', {
-        method: 'POST',
-        headers: createHeaders(),
-      }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/regions'),
       actor,
       createDeps()
     );
@@ -71,10 +48,7 @@ describe('authorizeWasteMasterDataMutationRequest', () => {
 
   it('rejects address master-data mutations without the plugin manage action', async () => {
     const result = await authorizeWasteMasterDataMutationPathRequest(
-      new Request('https://studio.test/api/v1/waste-management/regions/region-1', {
-        method: 'DELETE',
-        headers: createHeaders(),
-      }),
+      createWasteMutationRequest('DELETE', 'https://studio.test/api/v1/waste-management/regions/region-1'),
       actor,
       createDeps('waste-management.tours.manage'),
       { resourceIdName: 'regionId' }
@@ -88,10 +62,7 @@ describe('authorizeWasteMasterDataMutationRequest', () => {
 
   it('rejects update mutations without a path resource id', async () => {
     const result = await authorizeWasteMasterDataMutationPathRequest(
-      new Request('https://studio.test/api/v1/waste-management/regions/', {
-        method: 'PATCH',
-        headers: createHeaders(),
-      }),
+      createWasteMutationRequest('PATCH', 'https://studio.test/api/v1/waste-management/regions/'),
       actor,
       createDeps(),
       { resourceIdName: 'regionId' }

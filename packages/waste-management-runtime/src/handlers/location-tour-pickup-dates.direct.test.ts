@@ -1,36 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  createWasteAuthDeps,
+  createWasteMutationHeaders,
+  createWasteTestActor,
+  grantWastePermissions,
+} from '../../tests/test-utils/handler-fixtures.js';
+
 import type { AuthenticatedRequestContext } from './types.js';
 import { wasteManagementLocationTourPickupDateHandlers } from './location-tour-pickup-dates.js';
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: {
-    id: 'user-1',
-    instanceId: 'tenant-a',
-    roles: ['system_admin'],
-  },
-};
-
-const createHeaders = () => ({
-  'content-type': 'application/json',
-  origin: 'https://studio.test',
-  'x-requested-with': 'XMLHttpRequest',
-});
+const actor = createWasteTestActor();
 
 const createDeps = () => ({
-  getRequestId: () => 'req-test',
-  getSessionById: vi.fn(async () => ({ activeOrganizationId: 'org-1' })),
+  ...createWasteAuthDeps(['waste-management.scheduling.manage']),
   emitAuditEvent: vi.fn(async () => undefined),
-  resolvePermissions: vi.fn(async () => ({
-    ok: true as const,
-    permissions: [
-      {
-        action: 'waste-management.scheduling.manage',
-        resourceType: 'waste-management',
-      },
-    ],
-  })),
 });
 
 describe('waste-management location tour pickup date handlers', () => {
@@ -50,7 +34,7 @@ describe('waste-management location tour pickup date handlers', () => {
       await wasteManagementLocationTourPickupDateHandlers.createWasteManagementLocationTourPickupDateInternal(
         new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
           method: 'POST',
-          headers: createHeaders(),
+          headers: createWasteMutationHeaders(),
           body: JSON.stringify({
             id: 'pickup-date-1',
             locationId: 'location-1',
@@ -85,7 +69,7 @@ describe('waste-management location tour pickup date handlers', () => {
       await wasteManagementLocationTourPickupDateHandlers.updateWasteManagementLocationTourPickupDateInternal(
         new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1', {
           method: 'PUT',
-          headers: createHeaders(),
+          headers: createWasteMutationHeaders(),
           body: JSON.stringify({
             locationId: 'location-1',
             tourId: 'tour-1',
@@ -114,7 +98,7 @@ describe('waste-management location tour pickup date handlers', () => {
       await wasteManagementLocationTourPickupDateHandlers.deleteWasteManagementLocationTourPickupDateInternal(
         new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1', {
           method: 'DELETE',
-          headers: createHeaders(),
+          headers: createWasteMutationHeaders(),
         }),
         actor,
         {
@@ -133,7 +117,7 @@ describe('waste-management location tour pickup date handlers', () => {
       await wasteManagementLocationTourPickupDateHandlers.updateWasteManagementLocationTourPickupDateInternal(
         new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
           method: 'PUT',
-          headers: createHeaders(),
+          headers: createWasteMutationHeaders(),
           body: JSON.stringify({
             locationId: 'location-1',
             tourId: 'tour-1',
@@ -159,7 +143,7 @@ describe('waste-management location tour pickup date handlers', () => {
       await wasteManagementLocationTourPickupDateHandlers.createWasteManagementLocationTourPickupDateInternal(
         new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
           method: 'POST',
-          headers: createHeaders(),
+          headers: createWasteMutationHeaders(),
           body: JSON.stringify({
             id: 'pickup-date-2',
             locationId: 'location-1',
@@ -176,7 +160,7 @@ describe('waste-management location tour pickup date handlers', () => {
       await wasteManagementLocationTourPickupDateHandlers.updateWasteManagementLocationTourPickupDateInternal(
         new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates/pickup-date-2', {
           method: 'PUT',
-          headers: createHeaders(),
+          headers: createWasteMutationHeaders(),
           body: JSON.stringify({
             locationId: 'location-1',
             tourId: 'tour-1',
@@ -197,17 +181,14 @@ describe('waste-management location tour pickup date handlers', () => {
     const authError = new Response('forbidden', { status: 403 });
     const authDeniedDeps = {
       ...createDeps(),
-      resolvePermissions: vi.fn(async () => ({
-        ok: true as const,
-        permissions: [],
-      })),
+      ...grantWastePermissions(),
     };
 
     const createAuthDenied =
       await wasteManagementLocationTourPickupDateHandlers.createWasteManagementLocationTourPickupDateInternal(
         new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
           method: 'POST',
-          headers: createHeaders(),
+          headers: createWasteMutationHeaders(),
           body: JSON.stringify({
             id: 'pickup-date-3',
             locationId: 'location-1',
@@ -231,7 +212,7 @@ describe('waste-management location tour pickup date handlers', () => {
       await wasteManagementLocationTourPickupDateHandlers.updateWasteManagementLocationTourPickupDateInternal(
         new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1', {
           method: 'PUT',
-          headers: createHeaders(),
+          headers: createWasteMutationHeaders(),
           body: JSON.stringify({
             locationId: 'location-1',
             tourId: 'tour-1',
@@ -264,7 +245,7 @@ describe('waste-management location tour pickup date handlers', () => {
       await wasteManagementLocationTourPickupDateHandlers.deleteWasteManagementLocationTourPickupDateInternal(
         new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
           method: 'DELETE',
-          headers: createHeaders(),
+          headers: createWasteMutationHeaders(),
         }),
         actor,
         {
@@ -283,7 +264,7 @@ describe('waste-management location tour pickup date handlers', () => {
       await wasteManagementLocationTourPickupDateHandlers.createWasteManagementLocationTourPickupDateInternal(
         new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
           method: 'POST',
-          headers: createHeaders(),
+          headers: createWasteMutationHeaders(),
           body: JSON.stringify({
             id: 'pickup-date-new',
             locationId: 'location-1',

@@ -1,36 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  createWasteAuthDeps,
+  createWasteMutationHeaders,
+  createWasteTestActor,
+  grantWastePermissions,
+} from '../../tests/test-utils/handler-fixtures.js';
+
 import type { AuthenticatedRequestContext } from './types.js';
 import { wasteManagementHolidayRuleHandlers } from './holiday-rules.js';
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: {
-    id: 'user-1',
-    instanceId: 'tenant-a',
-    roles: ['system_admin'],
-  },
-};
-
-const createHeaders = () => ({
-  'content-type': 'application/json',
-  origin: 'https://studio.test',
-  'x-requested-with': 'XMLHttpRequest',
-});
+const actor = createWasteTestActor();
 
 const createDeps = () => ({
-  getRequestId: () => 'req-test',
-  getSessionById: vi.fn(async () => ({ activeOrganizationId: 'org-1' })),
+  ...createWasteAuthDeps(['waste-management.scheduling.manage']),
   emitAuditEvent: vi.fn(async () => undefined),
-  resolvePermissions: vi.fn(async () => ({
-    ok: true as const,
-    permissions: [
-      {
-        action: 'waste-management.scheduling.manage',
-        resourceType: 'waste-management',
-      },
-    ],
-  })),
 });
 
 describe('waste-management holiday rule handlers', () => {
@@ -63,7 +47,7 @@ describe('waste-management holiday rule handlers', () => {
     const response = await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
       new Request('https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1', {
         method: 'PUT',
-        headers: createHeaders(),
+        headers: createWasteMutationHeaders(),
         body: JSON.stringify({
           scope: 'holiday-only',
           strategy: 'advance',
@@ -96,7 +80,7 @@ describe('waste-management holiday rule handlers', () => {
     const response = await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
       new Request('https://studio.test/api/v1/waste-management/holiday-rules', {
         method: 'PUT',
-        headers: createHeaders(),
+        headers: createWasteMutationHeaders(),
         body: JSON.stringify({
           scope: 'holiday-only',
           strategy: 'advance',
@@ -123,7 +107,7 @@ describe('waste-management holiday rule handlers', () => {
     const authDenied = await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
       new Request('https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1', {
         method: 'PUT',
-        headers: createHeaders(),
+        headers: createWasteMutationHeaders(),
         body: JSON.stringify({
           scope: 'holiday-only',
           strategy: 'advance',
@@ -132,10 +116,7 @@ describe('waste-management holiday rule handlers', () => {
       actor,
       {
         ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [],
-        })),
+        ...grantWastePermissions(),
       }
     );
     expect(authDenied.status).toBe(403);
@@ -150,7 +131,7 @@ describe('waste-management holiday rule handlers', () => {
     const deleteMissingInstance = await wasteManagementHolidayRuleHandlers.deleteWasteManagementHolidayRuleInternal(
       new Request('https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1', {
         method: 'DELETE',
-        headers: createHeaders(),
+        headers: createWasteMutationHeaders(),
       }),
       missingInstanceActor,
       {
@@ -184,7 +165,7 @@ describe('waste-management holiday rule handlers', () => {
     const updateInvalidPayload = await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
       new Request('https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1', {
         method: 'PUT',
-        headers: createHeaders(),
+        headers: createWasteMutationHeaders(),
         body: JSON.stringify({
           strategy: 'invalid-strategy',
         }),
@@ -201,7 +182,7 @@ describe('waste-management holiday rule handlers', () => {
     const deleteMissingPath = await wasteManagementHolidayRuleHandlers.deleteWasteManagementHolidayRuleInternal(
       new Request('https://studio.test/api/v1/waste-management/holiday-rules', {
         method: 'DELETE',
-        headers: createHeaders(),
+        headers: createWasteMutationHeaders(),
       }),
       actor,
       {

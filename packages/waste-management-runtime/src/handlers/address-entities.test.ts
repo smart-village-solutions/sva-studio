@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  createWasteMutationHeaders,
+  createWasteTestActor,
+} from '../../tests/test-utils/handler-fixtures.js';
+
 import type { AuthenticatedRequestContext } from './types.js';
 import { createWasteAddressEntityImpactHandlers } from './address-entities.js';
 
@@ -12,10 +17,7 @@ const guardMocks = vi.hoisted(() => ({
 }));
 vi.mock('./master-data-request-guards.js', () => guardMocks);
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: { id: 'user-1', instanceId: 'tenant-a', roles: ['system_admin'] },
-};
+const actor = createWasteTestActor();
 const counts = {
   regions: 1, cities: 2, streets: 3, houseNumbers: 4, collectionLocations: 1,
   locationTourLinks: 0, locationTourPickupDates: 0, tourAssignmentLocations: 0,
@@ -43,7 +45,7 @@ describe('Waste address impact handlers', () => {
     const handlers = createWasteAddressEntityImpactHandlers(() => deps, withAuth);
     const request = new Request('https://studio.test/api/v1/waste-management/address-entities/impact-preview', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', origin: 'https://studio.test', 'x-requested-with': 'XMLHttpRequest' },
+      headers: createWasteMutationHeaders(),
       body: JSON.stringify({ entityType: 'region', entityId: 'region-1', mode: 'delete' }),
     });
 
@@ -64,7 +66,7 @@ describe('Waste address impact handlers', () => {
           : type === 'street' ? handlers.deleteStreet : handlers.deleteHouseNumber;
       const response = await action(new Request(`https://studio.test/api/v1/waste-management/${path}/entity-1`, {
         method: 'DELETE',
-        headers: { 'content-type': 'application/json', origin: 'https://studio.test', 'x-requested-with': 'XMLHttpRequest' },
+        headers: createWasteMutationHeaders(),
         body: JSON.stringify({ confirmationToken: 'snapshot' }),
       }));
 
@@ -98,7 +100,7 @@ describe('Waste address impact handlers', () => {
     const handlers = createWasteAddressEntityImpactHandlers(() => deps, withAuth);
     const response = await handlers.deleteRegion(new Request('https://studio.test/api/v1/waste-management/regions/region-1', {
       method: 'DELETE',
-      headers: { 'content-type': 'application/json', origin: 'https://studio.test', 'x-requested-with': 'XMLHttpRequest' },
+      headers: createWasteMutationHeaders(),
       body: JSON.stringify({ confirmationToken: 'snapshot' }),
     }));
 
@@ -115,7 +117,7 @@ describe('Waste address impact handlers', () => {
     const handlers = createWasteAddressEntityImpactHandlers(() => deps, withAuth);
     const response = await handlers.deleteRegion(new Request('https://studio.test/api/v1/waste-management/regions/region-1', {
       method: 'DELETE',
-      headers: { 'content-type': 'application/json', origin: 'https://studio.test', 'x-requested-with': 'XMLHttpRequest' },
+      headers: createWasteMutationHeaders(),
       body: JSON.stringify({ confirmationToken: 'snapshot' }),
     }));
 

@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  createWasteMutationRequest,
+  createWasteTestActor,
+  grantWastePermissions,
+} from '../../tests/test-utils/handler-fixtures.js';
+
+import {
   WasteAnnualTourTransferError,
   type WasteAnnualTourTransferPreview,
   type WasteAnnualTourTransferResult,
 } from '@sva/waste-management-contracts';
-import type { AuthenticatedRequestContext } from './types.js';
 
 const idempotency = vi.hoisted(() => ({
   reserve: vi.fn(),
@@ -26,10 +31,7 @@ const idempotencyDeps = {
 import { wasteManagementAnnualTourTransferHandlers } from './annual-tour-transfer.js';
 import { startAnnualTourTransferLeaseHeartbeat } from './annual-tour-transfer-idempotency.js';
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: { id: 'user-1', instanceId: 'tenant-a', roles: ['system_admin'] },
-};
+const actor = createWasteTestActor();
 
 const preview: WasteAnnualTourTransferPreview = {
   sourceYear: 2026,
@@ -57,25 +59,13 @@ const result: WasteAnnualTourTransferResult = {
   listTarget: { tourValidityPeriod: 'next', status: 'draft' },
 };
 
-const permissions = vi.fn(async () => ({
-  ok: true as const,
-  permissions: [
-    { action: 'waste-management.tours.manage', resourceType: 'waste-management' },
-    { action: 'waste-management.scheduling.manage', resourceType: 'waste-management' },
-  ],
-}));
+const permissions = grantWastePermissions(
+  'waste-management.tours.manage',
+  'waste-management.scheduling.manage'
+);
 
 const request = (path: string, body: unknown, headers: Record<string, string> = {}) =>
-  new Request(`https://studio.test${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Origin: 'https://studio.test',
-      'X-Requested-With': 'XMLHttpRequest',
-      ...headers,
-    },
-    body: JSON.stringify(body),
-  });
+  createWasteMutationRequest('POST', path, body, headers);
 
 describe('annual tour transfer handlers', () => {
   beforeEach(() => {
@@ -122,7 +112,7 @@ describe('annual tour transfer handlers', () => {
         actor,
         {
           getRequestId: () => 'req-1',
-          resolvePermissions: permissions,
+          ...permissions,
           ...idempotencyDeps,
           previewWasteAnnualTourTransfer: load,
           emitAuditEvent,
@@ -149,7 +139,7 @@ describe('annual tour transfer handlers', () => {
         }),
         actor,
         {
-          resolvePermissions: permissions,
+          ...permissions,
           ...idempotencyDeps,
           previewWasteAnnualTourTransfer: load,
         }
@@ -197,7 +187,7 @@ describe('annual tour transfer handlers', () => {
         request('/api/v1/waste-management/tours/annual-transfer/preview', { sourceYear: 2026 }),
         actor,
         {
-          resolvePermissions: permissions,
+          ...permissions,
           ...idempotencyDeps,
           previewWasteAnnualTourTransfer: vi.fn(async () => {
             throw error;
@@ -215,7 +205,7 @@ describe('annual tour transfer handlers', () => {
         request('/api/v1/waste-management/tours/annual-transfer/preview', { sourceYear: 2027 }),
         actor,
         {
-          resolvePermissions: permissions,
+          ...permissions,
           ...idempotencyDeps,
           previewWasteAnnualTourTransfer: vi.fn(async () => {
             throw new WasteAnnualTourTransferError('replacement_date_invalid', {
@@ -254,7 +244,7 @@ describe('annual tour transfer handlers', () => {
         actor,
         {
           getRequestId: () => 'req-1',
-          resolvePermissions: permissions,
+          ...permissions,
           ...idempotencyDeps,
           resolveActorInfo: vi.fn(async () => ({
             actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
@@ -324,7 +314,7 @@ describe('annual tour transfer handlers', () => {
         ),
         actor,
         {
-          resolvePermissions: permissions,
+          ...permissions,
           ...idempotencyDeps,
           resolveActorInfo: vi.fn(async () => ({
             actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
@@ -356,7 +346,7 @@ describe('annual tour transfer handlers', () => {
         ),
         actor,
         {
-          resolvePermissions: permissions,
+          ...permissions,
           ...idempotencyDeps,
           resolveActorInfo: vi.fn(async () => ({
             actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
@@ -389,7 +379,7 @@ describe('annual tour transfer handlers', () => {
         ),
         actor,
         {
-          resolvePermissions: permissions,
+          ...permissions,
           ...idempotencyDeps,
           resolveActorInfo: vi.fn(async () => ({
             actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
@@ -438,7 +428,7 @@ describe('annual tour transfer handlers', () => {
         ),
         actor,
         {
-          resolvePermissions: permissions,
+          ...permissions,
           ...idempotencyDeps,
           resolveActorInfo: vi.fn(async () => ({
             actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
@@ -477,7 +467,7 @@ describe('annual tour transfer handlers', () => {
         ),
         actor,
         {
-          resolvePermissions: permissions,
+          ...permissions,
           ...idempotencyDeps,
           resolveActorInfo: vi.fn(async () => ({
             actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
@@ -517,7 +507,7 @@ describe('annual tour transfer handlers', () => {
         ),
         actor,
         {
-          resolvePermissions: permissions,
+          ...permissions,
           ...idempotencyDeps,
           resolveActorInfo: vi.fn(async () => ({
             actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },

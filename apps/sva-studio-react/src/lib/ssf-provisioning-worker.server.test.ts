@@ -96,6 +96,9 @@ describe('SSF provisioning worker composition', () => {
           }),
         ])
       );
+      expect(snapshot.moduleIamContracts.map(({ moduleId }: { moduleId: string }) => moduleId)).toEqual([
+        'ssf',
+      ]);
       expect(snapshot.tenantLifecycles).toEqual([
         expect.objectContaining({ pluginId: 'ssf', contractVersion: 1 }),
       ]);

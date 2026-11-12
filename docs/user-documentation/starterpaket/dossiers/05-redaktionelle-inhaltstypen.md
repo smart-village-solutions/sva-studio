@@ -88,7 +88,8 @@ sich im Formular korrigieren; betroffene geschlossene Bereiche werden dafür ge�
   auch bei importierten Veranstaltungen (zum Beispiel aus Biletado) sichtbar und bearbeitbar. Angaben
   aus der Quelle ohne eigenes Formularfeld, etwa Veranstaltungsort-Daten, Wiederholungszeitraum,
   Altersangaben zu Preisen oder Bild-Metadaten, werden nicht angezeigt, beim Speichern aber
-  unverändert übernommen. Ein Preis mit solchen Angaben zeigt einen Hinweis und wird über
+  unverändert übernommen; wird die Adresse eines Bildes geändert, entfallen die Metadaten des
+  bisherigen Bildes. Ein Preis mit solchen Angaben zeigt einen Hinweis und wird über
   „Entfernen“ gelöscht. Bei wöchentlichen Wiederholungen werden importierte Wochentage korrekt
   ausgewählt angezeigt. Kann das Studio solche Quelldaten nicht sicher lesen, speichert es die
   Veranstaltung nicht und zeigt einen Hinweis, statt die Daten zu verlieren. Änderungen an

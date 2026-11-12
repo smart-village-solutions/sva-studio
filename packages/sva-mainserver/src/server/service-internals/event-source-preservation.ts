@@ -49,21 +49,29 @@ const withoutId = <T extends { readonly id?: string }>(value: T | undefined) => 
 };
 
 // Media payloads follow their stored entry by Mainserver id, so removing, reordering or
-// duplicating URLs cannot move a payload to another entry. Payloads are never taken from the
-// client; the ids are references only and are removed before the mutation.
+// duplicating URLs cannot move a payload to another entry. A payload describes its source image,
+// so it is re-attached only while the entry still points to the stored URL, and at most once.
+// Payloads are never taken from the client; the ids are references only and are removed before
+// the mutation.
 const reattachMediaPayloads = (
   current: SvaMainserverEventItem,
   submitted: SvaMainserverEventInput['mediaContents']
 ): SvaMainserverEventInput['mediaContents'] => {
   if (!submitted) return submitted;
-  const payloads = new Map(
+  const stored = new Map(
     current.mediaContents.flatMap((media) =>
-      media.id && media.payload !== undefined ? [[media.id, media.payload] as const] : []
+      media.id && media.payload !== undefined ? [[media.id, media] as const] : []
     )
   );
-  return submitted.map((media) =>
-    media.id && payloads.has(media.id) ? { ...media, payload: payloads.get(media.id) } : media
-  );
+  return submitted.map((media) => {
+    const id = media.id;
+    const match = id ? stored.get(id) : undefined;
+    if (!id || !match || match.sourceUrl?.url?.trim() !== media.sourceUrl?.url?.trim()) {
+      return media;
+    }
+    stored.delete(id);
+    return { ...media, payload: match.payload };
+  });
 };
 
 export const preserveEventSourceData = (

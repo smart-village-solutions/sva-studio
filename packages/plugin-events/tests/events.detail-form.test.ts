@@ -119,6 +119,82 @@ describe('events.detail-form', () => {
     ).not.toHaveProperty('mediaContents');
   });
 
+  it('sends every field of a Biletado-imported event back on an unchanged save', () => {
+    // Field shape the n8n Biletado import writes (see runbook); all values are synthetic.
+    const values = mapEventItemToDetailFormValues(
+      importedItem({
+        title: 'Hofflohmarkt',
+        description: '<p>Kurztext</p>\n<p>Beschreibung</p>',
+        externalId: 'biletado-0815',
+        tags: ['Markt', 'Familie'],
+        registrationRequired: true,
+        maximumAttendees: 40,
+        dates: [
+          { dateStart: '2026-09-05', dateEnd: '2026-09-05', timeStart: '10:00', timeEnd: '14:00' },
+        ],
+        categories: [{ name: 'Märkte' }],
+        addresses: [
+          { addition: 'Stadthof', street: 'Hofweg 3', zip: '12345', city: 'Musterstadt' },
+        ],
+        contacts: [
+          { firstName: 'Erika Muster', email: 'kontakt@example.test', phone: '01234 5678' },
+        ],
+        urls: [
+          { url: 'https://tickets.example.test/0815', description: 'Buchung / Anmeldung' },
+          { url: 'https://stadthof.example.test', description: 'Website des Veranstaltungsorts' },
+        ],
+        mediaContents: [
+          {
+            id: 'media-1',
+            contentType: 'image',
+            captionText: 'Hofflohmarkt',
+            sourceUrl: { url: 'https://media.example.test/hof.jpg' },
+          },
+        ],
+        organizer: { name: 'Kulturverein Musterstadt' },
+        priceInformations: [
+          { name: 'Erwachsene', amount: 5, category: 'Erwachsene', description: 'Erwachsene' },
+        ],
+      })
+    );
+
+    expect(mapEventsDetailFormValuesToInput(values)).toEqual({
+      title: 'Hofflohmarkt',
+      description: '<p>Kurztext</p>\n<p>Beschreibung</p>',
+      externalId: 'biletado-0815',
+      tags: ['Markt', 'Familie'],
+      registrationRequired: true,
+      maximumAttendees: 40,
+      dates: [
+        { dateStart: '2026-09-05', dateEnd: '2026-09-05', timeStart: '10:00', timeEnd: '14:00' },
+      ],
+      categoryName: 'Märkte',
+      categories: [{ name: 'Märkte' }],
+      addresses: [{ addition: 'Stadthof', street: 'Hofweg 3', zip: '12345', city: 'Musterstadt' }],
+      contacts: [{ firstName: 'Erika Muster', email: 'kontakt@example.test', phone: '01234 5678' }],
+      urls: [
+        { url: 'https://tickets.example.test/0815', description: 'Buchung / Anmeldung' },
+        { url: 'https://stadthof.example.test', description: 'Website des Veranstaltungsorts' },
+      ],
+      mediaContents: [
+        {
+          id: 'media-1',
+          contentType: 'image',
+          captionText: 'Hofflohmarkt',
+          sourceUrl: { url: 'https://media.example.test/hof.jpg' },
+        },
+      ],
+      organizer: { name: 'Kulturverein Musterstadt' },
+      priceInformations: [
+        { name: 'Erwachsene', amount: 5, category: 'Erwachsene', description: 'Erwachsene' },
+      ],
+      // Editor defaults for settings the import does not write.
+      repeat: false,
+      recurringWeekdays: [],
+      visible: true,
+    });
+  });
+
   it('keeps Mainserver price attributes without editor fields on save', () => {
     const price = {
       name: 'Familie',

@@ -205,6 +205,118 @@ const editorSubmission = (): SvaMainserverEventInput => ({
   recurringWeekdays: [],
 });
 
+// Fields the n8n Biletado import writes, as the Mainserver returns them. Source data without a
+// structured Mainserver field lives in `payload.biletado`. All values are synthetic test data.
+const biletadoImportedEvent = () => ({
+  id: 'event-biletado-1',
+  title: 'Hofflohmarkt',
+  description: '<p>Kurztext</p>\n<p>Beschreibung</p>',
+  externalId: 'biletado-0815',
+  registrationRequired: true,
+  maximumAttendees: 40,
+  payload: {
+    biletado: {
+      schemaVersion: 1,
+      tenantId: 'tenant-1',
+      eventLocation: { room: 'Scheune' },
+      tickets: [{ name: 'Tagesticket' }],
+    },
+  },
+  dates: [
+    {
+      id: 'date-1',
+      dateStart: '2026-09-05',
+      dateEnd: '2026-09-05',
+      timeStart: '10:00',
+      timeEnd: '14:00',
+    },
+  ],
+  categories: [{ id: 'cat-1', name: 'Märkte' }],
+  addresses: [
+    {
+      id: 'address-1',
+      addition: 'Stadthof',
+      street: 'Hofweg 3',
+      zip: '12345',
+      city: 'Musterstadt',
+    },
+  ],
+  location: { id: 'location-1', geoLocation: { latitude: 51.95, longitude: 14.71 } },
+  contacts: [
+    {
+      id: 'contact-1',
+      firstName: 'Erika Muster',
+      email: 'kontakt@example.test',
+      phone: '01234 5678',
+    },
+  ],
+  urls: [
+    { id: 'url-1', url: 'https://tickets.example.test/0815', description: 'Buchung / Anmeldung' },
+    {
+      id: 'url-2',
+      url: 'https://stadthof.example.test',
+      description: 'Website des Veranstaltungsorts',
+    },
+  ],
+  mediaContents: [
+    {
+      id: 'media-1',
+      contentType: 'image',
+      captionText: 'Hofflohmarkt',
+      sourceUrl: { id: 'media-url-1', url: 'https://media.example.test/hof.jpg' },
+    },
+  ],
+  organizer: { id: 'organizer-1', name: 'Kulturverein Musterstadt' },
+  priceInformations: [
+    {
+      id: 'price-1',
+      name: 'Erwachsene',
+      amount: 5,
+      category: 'Erwachsene',
+      description: 'Erwachsene',
+    },
+  ],
+  tagList: ['Markt', 'Familie'],
+  createdAt: '2026-08-01T10:00:00.000Z',
+  updatedAt: '2026-08-02T10:00:00.000Z',
+  visible: true,
+  dataProvider: { id: 'provider-1', name: 'Biletado' },
+});
+
+// What the editor submits for this event after an unchanged save; the plugin-events form test
+// pins the same submission from the editor side.
+const biletadoEditorSubmission = (): SvaMainserverEventInput => ({
+  title: 'Hofflohmarkt',
+  description: '<p>Kurztext</p>\n<p>Beschreibung</p>',
+  externalId: 'biletado-0815',
+  tags: ['Markt', 'Familie'],
+  registrationRequired: true,
+  maximumAttendees: 40,
+  dates: [{ dateStart: '2026-09-05', dateEnd: '2026-09-05', timeStart: '10:00', timeEnd: '14:00' }],
+  categoryName: 'Märkte',
+  categories: [{ name: 'Märkte' }],
+  addresses: [{ addition: 'Stadthof', street: 'Hofweg 3', zip: '12345', city: 'Musterstadt' }],
+  contacts: [{ firstName: 'Erika Muster', email: 'kontakt@example.test', phone: '01234 5678' }],
+  urls: [
+    { url: 'https://tickets.example.test/0815', description: 'Buchung / Anmeldung' },
+    { url: 'https://stadthof.example.test', description: 'Website des Veranstaltungsorts' },
+  ],
+  mediaContents: [
+    {
+      id: 'media-1',
+      contentType: 'image',
+      captionText: 'Hofflohmarkt',
+      sourceUrl: { url: 'https://media.example.test/hof.jpg' },
+    },
+  ],
+  organizer: { name: 'Kulturverein Musterstadt' },
+  priceInformations: [
+    { name: 'Erwachsene', amount: 5, category: 'Erwachsene', description: 'Erwachsene' },
+  ],
+  repeat: false,
+  recurringWeekdays: [],
+});
+
 const createHarness = (stored: Record<string, unknown>) => {
   const writes: Record<string, unknown>[] = [];
   const executor = async <TResult>(input: GraphqlOperationInput): Promise<TResult> => {
@@ -326,6 +438,55 @@ describe('event import round trip against the Mainserver contract', () => {
     expect(variables.repeatDuration).not.toHaveProperty('id');
   });
 
+  it('keeps every field the Biletado import wrote on an unchanged editor save', async () => {
+    const stored = biletadoImportedEvent();
+    const { service, writes } = createHarness(stored);
+
+    const detail = await service.getEventDetail({ ...connection, eventId: stored.id });
+    await service.updateEvent({
+      ...connection,
+      eventId: stored.id,
+      event: biletadoEditorSubmission(),
+    });
+
+    expect(detail.deviations).toEqual([]);
+    const variables = writes[0] ?? {};
+    assertValidMutationVariables(variables);
+    expect(variables).toMatchObject({
+      id: stored.id,
+      forceCreate: true,
+      externalId: 'biletado-0815',
+      title: 'Hofflohmarkt',
+      description: '<p>Kurztext</p>\n<p>Beschreibung</p>',
+      payload: expect.objectContaining({ biletado: stored.payload.biletado }),
+      registrationRequired: true,
+      maximumAttendees: 40,
+      dates: [
+        { dateStart: '2026-09-05', dateEnd: '2026-09-05', timeStart: '10:00', timeEnd: '14:00' },
+      ],
+      categories: [{ name: 'Märkte' }],
+      addresses: [{ addition: 'Stadthof', street: 'Hofweg 3', zip: '12345', city: 'Musterstadt' }],
+      location: { geoLocation: { latitude: 51.95, longitude: 14.71 } },
+      contacts: [{ firstName: 'Erika Muster', email: 'kontakt@example.test', phone: '01234 5678' }],
+      urls: [
+        { url: 'https://tickets.example.test/0815', description: 'Buchung / Anmeldung' },
+        { url: 'https://stadthof.example.test', description: 'Website des Veranstaltungsorts' },
+      ],
+      mediaContents: [
+        {
+          contentType: 'image',
+          captionText: 'Hofflohmarkt',
+          sourceUrl: { url: 'https://media.example.test/hof.jpg' },
+        },
+      ],
+      organizer: { name: 'Kulturverein Musterstadt' },
+      priceInformations: [
+        { name: 'Erwachsene', amount: 5, category: 'Erwachsene', description: 'Erwachsene' },
+      ],
+      tags: ['Markt', 'Familie'],
+    });
+  });
+
   it('keeps hidden source data when the editor changes only the title', async () => {
     const { service, writes } = createHarness(importedEvent());
 
@@ -422,6 +583,44 @@ describe('event import round trip against the Mainserver contract', () => {
     assertValidMutationVariables(writes[0] ?? {});
     expect(writes[0]?.mediaContents).toEqual([
       { captionText: 'Zweites', payload: { sourceImageId: 'img-2' }, sourceUrl: { url } },
+    ]);
+  });
+
+  it('drops the stored payload when an entry keeps its id but points to a new image', async () => {
+    const { service, writes } = createHarness(importedEvent());
+    const url = 'https://media.example.test/neu.jpg';
+
+    await service.updateEvent({
+      ...connection,
+      eventId: 'event-import-1',
+      event: {
+        ...editorSubmission(),
+        mediaContents: [{ id: 'media-1', captionText: 'Plakat', sourceUrl: { url } }],
+      },
+    });
+
+    expect(writes[0]?.mediaContents).toEqual([{ captionText: 'Plakat', sourceUrl: { url } }]);
+  });
+
+  it('attaches a stored payload to only one entry when a client repeats its id', async () => {
+    const { service, writes } = createHarness(importedEvent());
+    const sourceUrl = { url: 'https://media.example.test/plakat.jpg' };
+
+    await service.updateEvent({
+      ...connection,
+      eventId: 'event-import-1',
+      event: {
+        ...editorSubmission(),
+        mediaContents: [
+          { id: 'media-1', captionText: 'Plakat', sourceUrl },
+          { id: 'media-1', captionText: 'Kopie', sourceUrl },
+        ],
+      },
+    });
+
+    expect(writes[0]?.mediaContents).toEqual([
+      { captionText: 'Plakat', payload: { sourceImageId: 'img-1' }, sourceUrl },
+      { captionText: 'Kopie', sourceUrl },
     ]);
   });
 

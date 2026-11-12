@@ -36,9 +36,9 @@ export function StudioEditorLeaveGuardProvider({
 
 /**
  * Report changes without exposing form values or routing to the shared UI.
- * After a confirmed complete save, call acknowledgeSaved with the revision captured
- * before saving. Only a matching acknowledgement permits resetting the editor's own
- * dirty baseline; later edits keep the guard active.
+ * After a confirmed save or explicit reset to a saved snapshot, acknowledge the
+ * revision captured before that operation. Only a matching acknowledgement permits
+ * resetting the editor's own dirty baseline; later edits keep the guard active.
  */
 export function useStudioEditorLeaveGuard({
   enabled,
@@ -67,7 +67,13 @@ export function useStudioEditorLeaveGuard({
     if (enabled && register)
       return register(check, {
         save: onSave ? () => actionsRef.current.onSave?.() ?? Promise.resolve(false) : undefined,
-        discard: onDiscard ? () => actionsRef.current.onDiscard?.() : undefined,
+        discard: onDiscard
+          ? () => {
+              actionsRef.current.onDiscard?.();
+              savedRevisionMismatchRef.current = false;
+              dirtyRef.current = false;
+            }
+          : undefined,
       });
     return undefined;
   }, [enabled, register, check, Boolean(onSave), Boolean(onDiscard)]);

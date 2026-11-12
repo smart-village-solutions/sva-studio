@@ -41,21 +41,31 @@ const useTenantState = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const savingRef = useRef(false);
   const mediaResets = useRef<readonly string[][]>([]);
-  const accept = (next: SsfVersionedContent<SsfTenantContentV2View>) => {
-    const value = draftFromView(next);
+  const accept = (
+    next: SsfVersionedContent<SsfTenantContentV2View>,
+    value = draftFromView(next)
+  ) => {
     mediaResets.current = [];
     setSaved(next);
     setDraft(value);
     setBaseline(value);
     setErrors({});
   };
-  const load = useCallback(async () => {
+  const load = useCallback(async (canAccept?: () => boolean) => {
     setStatus('loading');
     try {
-      accept(await readSsfTenantContentV2());
+      const next = await readSsfTenantContentV2();
+      const value = draftFromView(next);
+      if (canAccept && !canAccept()) {
+        setStatus('conflict');
+        return false;
+      }
+      accept(next, value);
       setStatus('ready');
+      return true;
     } catch {
       setStatus('error');
+      return false;
     }
   }, []);
   useEffect(() => {
@@ -142,11 +152,19 @@ const saveTenant = async (
 };
 export const useSsfTenantEditor = (page: SsfTenantEditorPage | 'overview', canManage: boolean) => {
   const state = useTenantState();
-  const { draft, baseline, mediaResets, errors, discard, setDraft, status } = state;
+  const { draft, baseline, mediaResets, errors, setDraft, status } = state;
   const suspended = useStudioEditorSuspended();
   const pt = usePluginTranslation('ssf');
   const formRef = useRef<HTMLDivElement>(null);
   const save = () => saveTenant(state, page, canManage, suspended, guard, pt);
+  const discard = () => {
+    state.discard();
+    guard.acknowledgeSaved(guard.captureRevision());
+  };
+  const load = () => {
+    const revision = guard.captureRevision();
+    return state.load(() => guard.acknowledgeSaved(revision));
+  };
   const dirty =
     mediaResets.current.length > 0 || JSON.stringify(draft) !== JSON.stringify(baseline);
   const guard = useStudioEditorLeaveGuard({
@@ -177,6 +195,8 @@ export const useSsfTenantEditor = (page: SsfTenantEditorPage | 'overview', canMa
   };
   return {
     ...state,
+    discard,
+    load,
     formRef,
     save,
     change,

@@ -69,7 +69,11 @@ selection remain distinct; changing a locale does not translate text.
 Tab/language changes keep drafts. Hidden language errors expose their tab, locale
 and collapsed question before focusing the invalid field. Automatic error navigation
 runs once per validation result; subsequent manual tab/language choices remain
-active while editing until the next save validates again. Read-only users retain
+active while editing until the next save validates again. Explicit Discard and
+successful Reload acknowledge a reset to a saved baseline, including after an
+in-flight save retained a newer draft. Reload validates and checks the captured
+revision before adopting its snapshot; failed or superseded reads keep the draft
+and guard active. Read-only users retain
 read access without save controls. Failed or stale writes preserve drafts. Success
 uses the sanitized committed response. Overview shows effective saved facts only,
 including inherited recording retention, without readiness claims.

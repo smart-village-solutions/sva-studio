@@ -22,11 +22,54 @@ import {
 import {
   StudioEditorLeaveGuardProvider,
   useStudioEditorLeaveGuard,
+  type StudioEditorLeaveActions,
 } from './studio-editor-leave-guard.js';
 
 afterEach(cleanup);
 
 describe('studio editor leave guard', () => {
+  it.each([false, true])(
+    'only clears a rejected save acknowledgement after a completed discard (throws: %s)',
+    (throws) => {
+      let check = () => false;
+      let actions: StudioEditorLeaveActions | undefined;
+      const onDiscard = vi.fn(() => {
+        if (throws) throw new Error('discard failed');
+      });
+      const register = (next: () => boolean, nextActions?: StudioEditorLeaveActions) => {
+        check = next;
+        actions = nextActions;
+        return () => undefined;
+      };
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <StudioEditorLeaveGuardProvider register={register}>
+          {children}
+        </StudioEditorLeaveGuardProvider>
+      );
+      const { result, rerender } = renderHook(
+        ({ dirty }: { dirty: boolean }) =>
+          useStudioEditorLeaveGuard({ enabled: true, hasUnsavedChanges: dirty, onDiscard }),
+        { wrapper, initialProps: { dirty: true } }
+      );
+      const submitted = result.current.captureRevision();
+      act(() => result.current.markChanged());
+      expect(result.current.acknowledgeSaved(submitted)).toBe(false);
+      expect(check()).toBe(true);
+      if (throws) {
+        expect(() => act(() => actions?.discard?.())).toThrow('discard failed');
+        expect(check()).toBe(true);
+        return;
+      }
+      act(() => actions?.discard?.());
+      expect(onDiscard).toHaveBeenCalledOnce();
+      expect(check()).toBe(false);
+      rerender({ dirty: false });
+      act(() => result.current.markChanged());
+      rerender({ dirty: true });
+      expect(check()).toBe(true);
+    }
+  );
+
   it.each(['dialog', 'alertdialog'])(
     'suspends a portalled %s without losing its draft or trapping recovery focus',
     async (kind) => {

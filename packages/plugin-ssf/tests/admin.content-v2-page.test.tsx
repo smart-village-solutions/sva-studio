@@ -3,7 +3,8 @@
 import React from 'react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { StudioEditorLeaveGuardProvider } from '@sva/studio-ui-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SsfTenantContentV2Page } from '../src/admin.content-v2-tenant-page.js';
 import { SsfSystemContentV2Page } from '../src/admin.content-v2-page.js';
@@ -99,6 +100,72 @@ describe('SSF independently saved administration pages', () => {
     }));
   });
   afterEach(cleanup);
+
+  it.each(['discard', 'reload', 'reload-error'] as const)(
+    'releases a retained in-flight-save draft after explicit %s and protects later edits',
+    async (reset) => {
+      const initial = tenantView();
+      initial.runtimeTemplate.branding.logo = {
+        url: 'https://example.org/original.svg',
+        alternativeText: 'Logo',
+      };
+      const committed = {
+        ...initial,
+        overrides: { branding: { logo: { url: 'https://example.org/submitted.svg' } } },
+      };
+      api.readTenant.mockResolvedValueOnce(initial).mockResolvedValue(committed);
+      let finishSave: ((value: typeof committed) => void) | undefined;
+      api.writeTenant.mockReturnValue(
+        new Promise((resolve) => {
+          finishSave = resolve;
+        })
+      );
+      let check = () => false;
+      render(
+        <StudioEditorLeaveGuardProvider
+          register={(next) => {
+            check = next;
+            return () => undefined;
+          }}
+        >
+          <SsfTenantContentV2Page page="appearance" canManage />
+        </StudioEditorLeaveGuardProvider>
+      );
+      const logo = await screen.findByRole('textbox', { name: 'v2.logoUrl' });
+      fireEvent.change(logo, { target: { value: 'https://example.org/submitted.svg' } });
+      fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+      // Simulate a late editor transaction arriving after the submitted snapshot.
+      fireEvent.change(logo, { target: { value: 'https://example.org/later.svg' } });
+      await act(async () => finishSave?.(committed));
+      await screen.findByText('administration.conflict');
+      expect(check()).toBe(true);
+      if (reset === 'reload-error') api.readTenant.mockRejectedValueOnce(new Error('offline'));
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: reset === 'discard' ? 'actions.discard' : 'administration.reloadDiscard',
+        })
+      );
+      if (reset === 'reload-error') {
+        await screen.findByText('status.saveError');
+        expect(check()).toBe(true);
+        expect(screen.getByRole('textbox', { name: 'v2.logoUrl' })).toHaveProperty(
+          'value',
+          'https://example.org/later.svg'
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'actions.discard' }));
+      }
+      await waitFor(() => expect(check()).toBe(false));
+      const current = screen.getByRole('textbox', { name: 'v2.logoUrl' });
+      expect(current).toHaveProperty(
+        'value',
+        reset === 'reload'
+          ? 'https://example.org/submitted.svg'
+          : 'https://example.org/original.svg'
+      );
+      fireEvent.change(current, { target: { value: 'https://example.org/next.svg' } });
+      expect(check()).toBe(true);
+    }
+  );
 
   it('saves Appearance without changing explicit other-page overrides', async () => {
     const view = tenantView();

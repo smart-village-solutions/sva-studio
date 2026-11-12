@@ -169,3 +169,11 @@ plugin LCOV with the existing gate functions raises its covered units from
 projects global changed-code coverage of 88.94%. Final CI confirmation remains
 required. Manual rollout browser checks are explicitly skipped at user request;
 this does not waive automated merge/image gates or backup/health/digest checks.
+
+Final review correction: explicitly discarded or successfully reloaded snapshots
+clear a retained save-revision mismatch without adding a public hook API. The
+reload verifies its captured revision before adopting prepared data; failure or
+a superseding edit retains the draft and guard. Regression cases reproduced the
+latch before the fix; 10 shared-guard tests and 253 SSF tests pass under coverage.
+Discard callback failure and failed reload preserve protection, later edits re-arm
+it. Plugin types, targeted lint/format and the read-only follow-up are green.

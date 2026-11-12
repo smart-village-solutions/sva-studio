@@ -66,21 +66,31 @@ const useSystemState = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [affectedTenants, setAffectedTenants] = useState<readonly string[]>([]);
   const saving = useRef(false);
-  const accept = (next: SsfVersionedContent<SsfSystemContentV2View>) => {
-    const editable = editableSystemContent(next);
+  const accept = (
+    next: SsfVersionedContent<SsfSystemContentV2View>,
+    editable = editableSystemContent(next)
+  ) => {
     setSaved(next);
     setDraft(editable);
     setBaseline(editable);
     setErrors({});
     setAffectedTenants([]);
   };
-  const load = useCallback(async () => {
+  const load = useCallback(async (canAccept?: () => boolean) => {
     setStatus('loading');
     try {
-      accept(await readSsfSystemContentV2());
+      const next = await readSsfSystemContentV2();
+      const editable = editableSystemContent(next);
+      if (canAccept && !canAccept()) {
+        setStatus('conflict');
+        return false;
+      }
+      accept(next, editable);
       setStatus('ready');
+      return true;
     } catch {
       setStatus('error');
+      return false;
     }
   }, []);
   useEffect(() => {
@@ -179,11 +189,19 @@ const saveSystem = async (
 };
 export const useSsfSystemEditor = (page: Page) => {
   const state = useSystemState();
-  const { draft, baseline, errors, discard, status } = state;
+  const { draft, baseline, errors, status } = state;
   const pt = usePluginTranslation('ssf');
   const suspended = useStudioEditorSuspended();
   const formRef = useRef<HTMLDivElement>(null);
   const save = () => saveSystem(state, page, suspended, guard, pt);
+  const discard = () => {
+    state.discard();
+    guard.acknowledgeSaved(guard.captureRevision());
+  };
+  const load = () => {
+    const revision = guard.captureRevision();
+    return state.load(() => guard.acknowledgeSaved(revision));
+  };
   const guard = useStudioEditorLeaveGuard({
     enabled: page !== 'installation-overview',
     hasUnsavedChanges: JSON.stringify(draft) !== JSON.stringify(baseline),
@@ -206,6 +224,8 @@ export const useSsfSystemEditor = (page: Page) => {
   }, [errors]);
   return {
     ...state,
+    discard,
+    load,
     formRef,
     save,
     guard,

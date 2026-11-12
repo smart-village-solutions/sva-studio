@@ -101,6 +101,12 @@ describe('tabs keyboard and state contract', () => {
     fireEvent.keyDown(tab('Abfallarten'), { key: 'ArrowRight' });
     await expectActiveTab('Touren');
 
+    fireEvent.keyDown(tab('Touren'), { key: 'ArrowLeft' });
+    await expectActiveTab('Abfallarten');
+
+    fireEvent.keyDown(tab('Abfallarten'), { key: 'ArrowRight' });
+    await expectActiveTab('Touren');
+
     fireEvent.keyDown(tab('Touren'), { key: 'End' });
     await expectActiveTab('Kalender');
 

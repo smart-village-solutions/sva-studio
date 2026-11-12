@@ -56,7 +56,12 @@ const cases: readonly AxeCase[] = [
         </Button>
       </>
     ),
-    act: () => fireEvent.focus(screen.getByRole('button', { name: 'Suche' })),
+    act: () => {
+      const button = screen.getByRole('button', { name: 'Suche' });
+      fireEvent.focus(button);
+      // Ohne geöffneten Tooltip würde Axe die Beschreibungsbeziehung nicht prüfen.
+      expect(button.getAttribute('aria-describedby')).toBe(screen.getByRole('tooltip').id);
+    },
     // Der Tooltip portalt in den Body; aria-describedby muss dort auflösbar sein.
     target: () => document.body,
   },

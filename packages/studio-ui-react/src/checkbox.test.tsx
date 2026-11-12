@@ -30,7 +30,6 @@ describe('Checkbox', () => {
 
     rerender(renderSelectAll({ checked: false, indeterminate: true }));
     expect(control.indeterminate).toBe(true);
-    expect(screen.queryByRole('checkbox', { checked: false })).toBeNull();
+    expect(control.checked).toBe(false);
   });
-
 });

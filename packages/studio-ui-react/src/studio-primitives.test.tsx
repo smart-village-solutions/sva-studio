@@ -1506,6 +1506,31 @@ describe('studio-ui-react primitives', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
+  it('calls the destructive dialog cancel handler exactly once on cancel and never on confirm', () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    render(
+      <StudioDestructiveActionDialog
+        open
+        title="Schnittstelle löschen?"
+        description="Die Schnittstelle wird endgültig entfernt."
+        confirmLabel="Endgültig löschen"
+        pendingLabel="Wird gelöscht…"
+        cancelLabel="Abbrechen"
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
   it('ignores Escape on destructive dialogs while the action is pending', () => {
     const onCancel = vi.fn();
     const renderDestructive = (pending: boolean) => (

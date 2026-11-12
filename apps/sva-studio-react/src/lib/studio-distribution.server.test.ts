@@ -86,14 +86,14 @@ describe('studio distribution', () => {
     ).toEqual([{ moduleId: 'news' }, { moduleId: 'media' }]);
   });
 
-  it('includes only SSF and media in the SSF distribution', () => {
+  it('excludes the media host module from the SSF distribution', () => {
     expect(filterPluginCatalogForDistribution(catalog, 'ssf')).toEqual([catalog[1]]);
     expect(
       filterModuleContractsForDistribution(
         ['news', 'ssf', 'media'].map((moduleId) => ({ moduleId })),
         'ssf'
       )
-    ).toEqual([{ moduleId: 'ssf' }, { moduleId: 'media' }]);
+    ).toEqual([{ moduleId: 'ssf' }]);
   });
 
   it('keeps installed packages selected by the build profile in both distributions', () => {

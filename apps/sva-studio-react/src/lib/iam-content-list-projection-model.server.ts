@@ -260,6 +260,26 @@ const compareNormalizedProjectionText = (left: string, right: string): number =>
   return 0;
 };
 
+// Titles compare with the ICU rule `de-u-kn-true-ks-level2`, the same rule as the waste-management
+// collation `public.sva_de_numeric`: umlauts sort like their base letter (the plain letter first on
+// otherwise equal titles), case is ignored and numbers compare by value. Before comparing, this
+// read model also skips leading special characters, which the database collation does not do:
+// punctuation such as straight or typographic quotation marks, symbols, emoji including their
+// variation selectors and other combining marks, whitespace and invisible format characters.
+// Equal titles fall back to the id tie-breaker.
+const projectionTitleCollator = new Intl.Collator('de', {
+  usage: 'sort',
+  numeric: true,
+  sensitivity: 'accent',
+});
+const LEADING_TITLE_SPECIAL_CHARACTERS = /^[\p{P}\p{S}\p{M}\p{Cf}\s]+/u;
+
+const compareProjectionTitles = (left: string, right: string): number =>
+  projectionTitleCollator.compare(
+    left.replace(LEADING_TITLE_SPECIAL_CHARACTERS, ''),
+    right.replace(LEADING_TITLE_SPECIAL_CHARACTERS, '')
+  );
+
 const compareOptionalProjectionValues = (
   left: string | null,
   right: string | null,
@@ -307,7 +327,7 @@ export const compareProjectionRows = (
 
   switch (sortBy) {
     case 'title':
-      primaryResult = compareNormalizedProjectionText(left.title, right.title) * direction;
+      primaryResult = compareProjectionTitles(left.title, right.title) * direction;
       break;
     case 'createdAt':
       primaryResult =

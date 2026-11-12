@@ -787,7 +787,18 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
   fi
 fi
 
-if [ "${VERIFY_STATUS}" = "ok" ]; then
+if [ "${VERIFY_STATUS}" = "ok" ] && [ "${SVA_STUDIO_DISTRIBUTION}" = "ssf" ]; then
+  if probe_authenticated "${TENANT_HOST}" "${TENANT_ORIGIN}" "${AUTH_TMP_DIR}" "${MEDIA_PATH}" 403; then
+    set_phase_var MEDIA_AUTH_STATUS ok
+    mark_phase media-auth ok
+  else
+    set_phase_var MEDIA_AUTH_STATUS error
+    mark_phase media-auth error
+    fail_verify authorization-failed media-auth "Die Medienverwaltung muss in der SSF-Distribution gesperrt sein."
+  fi
+fi
+
+if [ "${VERIFY_STATUS}" = "ok" ] && [ "${SVA_STUDIO_DISTRIBUTION}" != "ssf" ]; then
   MEDIA_REVISION_BEFORE="$(permission_cache_revision)"
   if probe_authenticated "${TENANT_HOST}" "${TENANT_ORIGIN}" "${AUTH_TMP_DIR}" "${MEDIA_PATH}" 200 && \
     pnpm exec tsx "${AUTH_FIXTURE_SCRIPT}" revoke-media "${POSTGRES_NAME}" && \

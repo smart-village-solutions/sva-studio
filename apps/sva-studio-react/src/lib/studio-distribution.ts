@@ -49,7 +49,7 @@ export const resolveStudioDistribution = (
 };
 
 const ssfPluginIds = new Set(['ssf']);
-const ssfModuleIds = new Set(['ssf', 'media']);
+const ssfModuleIds = new Set(['ssf']);
 
 export const filterPluginCatalogForDistribution = (
   catalog: readonly StudioPluginCatalogConfigEntry[],

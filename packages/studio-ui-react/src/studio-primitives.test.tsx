@@ -1482,6 +1482,82 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByRole('button', { name: 'Abbrechen' })).toHaveProperty('disabled', true);
   });
 
+  it('only lets Escape cancel confirmation dialogs while cancellation is allowed', () => {
+    const onCancel = vi.fn();
+    const renderConfirm = (cancelDisabled: boolean) => (
+      <StudioConfirmDialog
+        open
+        title="Reset"
+        description="Wirklich ausführen?"
+        confirmLabel="Ja"
+        cancelLabel="Nein"
+        cancelDisabled={cancelDisabled}
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />
+    );
+    const { rerender } = render(renderConfirm(true));
+
+    fireEvent.keyDown(screen.getByRole('alertdialog', { name: 'Reset' }), { key: 'Escape' });
+    expect(onCancel).not.toHaveBeenCalled();
+
+    rerender(renderConfirm(false));
+    fireEvent.keyDown(screen.getByRole('alertdialog', { name: 'Reset' }), { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls the destructive dialog cancel handler exactly once on cancel and never on confirm', () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    render(
+      <StudioDestructiveActionDialog
+        open
+        title="Schnittstelle löschen?"
+        description="Die Schnittstelle wird endgültig entfernt."
+        confirmLabel="Endgültig löschen"
+        pendingLabel="Wird gelöscht…"
+        cancelLabel="Abbrechen"
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores Escape on destructive dialogs while the action is pending', () => {
+    const onCancel = vi.fn();
+    const renderDestructive = (pending: boolean) => (
+      <StudioDestructiveActionDialog
+        open
+        pending={pending}
+        title="Schnittstelle löschen?"
+        description="Die Schnittstelle wird endgültig entfernt."
+        confirmLabel="Endgültig löschen"
+        pendingLabel="Wird gelöscht…"
+        cancelLabel="Abbrechen"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />
+    );
+    const { rerender } = render(renderDestructive(true));
+    const dialog = screen.getByRole('alertdialog', { name: 'Schnittstelle löschen?' });
+
+    expect(dialog.getAttribute('aria-busy')).toBe('true');
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(onCancel).not.toHaveBeenCalled();
+
+    rerender(renderDestructive(false));
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
   it('returns focus to the destructive action trigger after cancellation', async () => {
     const Harness = () => {
       const [open, setOpen] = useState(false);

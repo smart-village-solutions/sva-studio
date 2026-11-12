@@ -112,11 +112,17 @@ describe('content list projection model', () => {
           '★ Sternfahrt',
           '​„Kino“',
           'Apfel',
+          '⚠️ Achtung',
+          '❤️ Herz',
+          '☀️ Sommerfest',
         ])
       ).toEqual([
+        '⚠️ Achtung',
         'Apfel',
         '+++ Eilmeldung +++',
+        '❤️ Herz',
         '​„Kino“',
+        '☀️ Sommerfest',
         '★ Sternfahrt',
         '🎄 Weihnachtsmarkt',
         'Zoo',

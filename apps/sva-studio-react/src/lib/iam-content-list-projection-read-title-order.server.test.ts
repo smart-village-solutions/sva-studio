@@ -45,31 +45,40 @@ const projectionRow = (
   source_data_provider_name: sourceDataProviderName,
 });
 
-const listTitlePages = async (contentType: string, titles: readonly string[]) => {
-  // Imported and Studio-created entries alternate so both kinds share one ordering.
-  fixture.projectionRows = titles.map((title, index) =>
-    projectionRow(contentType, `row-${index}`, title, index % 2 === 0 ? 'Biletado' : 'Studio')
-  );
+// A local content row from `iam.contents`; the projection deduplicates these by id.
+const localContentRow = (id: string, title: string) => ({
+  ...projectionRow('generic', id, title, 'Studio'),
+  source_system: 'iam' as const,
+  source_entity_type: 'iam.contents',
+});
+
+const markProjected = (contentType: string, count: number) => {
   fixture.syncStates.set(contentType, {
     last_started_at: null,
     last_succeeded_at: new Date().toISOString(),
     last_failed_at: null,
     last_error_code: null,
     last_error_message: null,
-    projected_count: titles.length,
+    projected_count: count,
   });
-  const [resourceType = contentType] = contentType.split('.');
-  state.resolveEffectivePermissions.mockResolvedValue({
-    ok: true,
-    permissions: [{ action: `${resourceType}.read`, resourceType }],
-  });
+};
 
+const readPermission = (contentType: string) => {
+  const [resourceType = contentType] = contentType.split('.');
+  return { action: `${resourceType}.read`, resourceType };
+};
+
+// Reads the first two pages (page size 2) in both directions.
+const readTitlePages = async (
+  query: { readonly type?: string; readonly visibleTypes: readonly string[] },
+  total: number
+) => {
   const readPage = async (page: number, sortDirection: 'asc' | 'desc') => {
     const response = await listProjectedContents(ctx, {
+      ...query,
+      visibleTypes: [...query.visibleTypes],
       page,
       pageSize: 2,
-      type: contentType,
-      visibleTypes: [contentType],
       sortBy: 'title',
       sortDirection,
     });
@@ -78,7 +87,7 @@ const listTitlePages = async (contentType: string, titles: readonly string[]) =>
       data: Array<{ title: string }>;
       pagination: { total: number };
     };
-    expect(payload.pagination.total).toBe(titles.length);
+    expect(payload.pagination.total).toBe(total);
     return payload.data.map(({ title }) => title);
   };
 
@@ -86,6 +95,21 @@ const listTitlePages = async (contentType: string, titles: readonly string[]) =>
     asc: [await readPage(1, 'asc'), await readPage(2, 'asc')],
     desc: [await readPage(1, 'desc'), await readPage(2, 'desc')],
   };
+};
+
+const listTitlePages = async (contentType: string, titles: readonly string[]) => {
+  // Imported and editorially created entries (different data providers) alternate so both kinds
+  // share one ordering.
+  fixture.projectionRows = titles.map((title, index) =>
+    projectionRow(contentType, `row-${index}`, title, index % 2 === 0 ? 'Biletado' : 'Studio')
+  );
+  markProjected(contentType, titles.length);
+  state.resolveEffectivePermissions.mockResolvedValue({
+    ok: true,
+    permissions: [readPermission(contentType)],
+  });
+
+  return readTitlePages({ type: contentType, visibleTypes: [contentType] }, titles.length);
 };
 
 describe('content projection title order', () => {
@@ -106,6 +130,34 @@ describe('content projection title order', () => {
     expect(pages.desc).toEqual([
       ['"Zirkus Roncalli"', '„IM OSTEN – Geschichten aus der Sonderzone“'],
       ['Flohmarkt von A–Z', 'Ärger im Park'],
+    ]);
+  });
+
+  it('sorts local Studio contents and Mainserver events together in the unfiltered list', async () => {
+    fixture.projectionRows = [
+      projectionRow('events.event-record', 'event-1', '„IM OSTEN“', 'Biletado'),
+      localContentRow('content-1', '"Zirkus"'),
+      projectionRow('events.event-record', 'event-2', 'Öko-Markt', 'Studio'),
+      localContentRow('content-2', 'apfelfest'),
+    ];
+    markProjected('events.event-record', 2);
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        { action: 'content.read', resourceType: 'content' },
+        readPermission('events.event-record'),
+      ],
+    });
+
+    const pages = await readTitlePages({ visibleTypes: ['generic', 'events.event-record'] }, 4);
+
+    expect(pages.asc).toEqual([
+      ['apfelfest', '„IM OSTEN“'],
+      ['Öko-Markt', '"Zirkus"'],
+    ]);
+    expect(pages.desc).toEqual([
+      ['"Zirkus"', 'Öko-Markt'],
+      ['„IM OSTEN“', 'apfelfest'],
     ]);
   });
 

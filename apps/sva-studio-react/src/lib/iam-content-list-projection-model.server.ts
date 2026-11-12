@@ -260,18 +260,19 @@ const compareNormalizedProjectionText = (left: string, right: string): number =>
   return 0;
 };
 
-// Titles use the project's German list collation, the ICU equivalent of `public.sva_de_numeric`
-// (`de-u-kn-true-ks-level2`): umlauts sort like their base letter (the plain letter first on
-// otherwise equal titles), case is ignored and numbers compare by value. Leading special
-// characters, such as straight or typographic quotation marks, other punctuation, symbols, emoji,
-// whitespace and invisible format characters, do not affect the placement. Equal titles fall back
-// to the id tie-breaker.
+// Titles compare with the ICU rule `de-u-kn-true-ks-level2`, the same rule as the waste-management
+// collation `public.sva_de_numeric`: umlauts sort like their base letter (the plain letter first on
+// otherwise equal titles), case is ignored and numbers compare by value. Before comparing, this
+// read model also skips leading special characters, which the database collation does not do:
+// punctuation such as straight or typographic quotation marks, symbols, emoji including their
+// variation selectors and other combining marks, whitespace and invisible format characters.
+// Equal titles fall back to the id tie-breaker.
 const projectionTitleCollator = new Intl.Collator('de', {
   usage: 'sort',
   numeric: true,
   sensitivity: 'accent',
 });
-const LEADING_TITLE_SPECIAL_CHARACTERS = /^[\p{P}\p{S}\p{Cf}\s]+/u;
+const LEADING_TITLE_SPECIAL_CHARACTERS = /^[\p{P}\p{S}\p{M}\p{Cf}\s]+/u;
 
 const compareProjectionTitles = (left: string, right: string): number =>
   projectionTitleCollator.compare(

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createWasteAuthDeps,
-  createWasteMutationHeaders,
+  createWasteMutationRequest,
   createWasteTestActor,
   grantWastePermissions,
 } from '../../tests/test-utils/handler-fixtures.js';
@@ -161,15 +161,15 @@ describe('waste-management collection location handlers', () => {
 
     const createResponse =
       await wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal(
-        new Request('https://studio.test/api/v1/waste-management/collection-locations', {
-          method: 'POST',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'POST',
+          'https://studio.test/api/v1/waste-management/collection-locations',
+          {
             id: 'location-1',
             cityId: 'city-1',
             active: true,
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),
@@ -191,17 +191,17 @@ describe('waste-management collection location handlers', () => {
 
     const updateResponse =
       await wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal(
-        new Request('https://studio.test/api/v1/waste-management/collection-locations/location-1', {
-          method: 'PUT',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'PUT',
+          'https://studio.test/api/v1/waste-management/collection-locations/location-1',
+          {
             cityId: 'city-1',
             regionId: 'region-1',
             streetId: 'street-1',
             houseNumberId: 'house-1',
             active: false,
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),
@@ -223,10 +223,10 @@ describe('waste-management collection location handlers', () => {
 
     const deleteResponse =
       await wasteManagementCollectionLocationHandlers.deleteWasteManagementCollectionLocationInternal(
-        new Request('https://studio.test/api/v1/waste-management/collection-locations/location-1', {
-          method: 'DELETE',
-          headers: createWasteMutationHeaders(),
-        }),
+        createWasteMutationRequest(
+          'DELETE',
+          'https://studio.test/api/v1/waste-management/collection-locations/location-1'
+        ),
         actor,
         {
           ...createDeps(),
@@ -241,15 +241,15 @@ describe('waste-management collection location handlers', () => {
   it('returns a specific persistence hint when the data source rejects collection locations without street references', async () => {
     const response =
       await wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal(
-        new Request('https://studio.test/api/v1/waste-management/collection-locations', {
-          method: 'POST',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'POST',
+          'https://studio.test/api/v1/waste-management/collection-locations',
+          {
             id: 'location-2',
             cityId: 'city-1',
             active: true,
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),
@@ -280,16 +280,16 @@ describe('waste-management collection location handlers', () => {
   it('returns a specific persistence hint when the data source rejects collection locations without house-number references', async () => {
     const response =
       await wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal(
-        new Request('https://studio.test/api/v1/waste-management/collection-locations', {
-          method: 'POST',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'POST',
+          'https://studio.test/api/v1/waste-management/collection-locations',
+          {
             id: 'location-3',
             cityId: 'city-1',
             streetId: 'street-1',
             active: true,
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),
@@ -320,15 +320,15 @@ describe('waste-management collection location handlers', () => {
   it('falls back to the generic persistence message for unrelated collection-location constraint columns', async () => {
     const response =
       await wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal(
-        new Request('https://studio.test/api/v1/waste-management/collection-locations', {
-          method: 'POST',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'POST',
+          'https://studio.test/api/v1/waste-management/collection-locations',
+          {
             id: 'location-4',
             cityId: 'city-1',
             active: true,
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),

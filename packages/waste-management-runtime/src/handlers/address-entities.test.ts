@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  createWasteMutationHeaders,
+  createWasteMutationRequest,
   createWasteTestActor,
 } from '../../tests/test-utils/handler-fixtures.js';
 
@@ -43,11 +43,11 @@ describe('Waste address impact handlers', () => {
   it('passes the validated preview into the authenticated tenant loader', async () => {
     const deps = createDeps();
     const handlers = createWasteAddressEntityImpactHandlers(() => deps, withAuth);
-    const request = new Request('https://studio.test/api/v1/waste-management/address-entities/impact-preview', {
-      method: 'POST',
-      headers: createWasteMutationHeaders(),
-      body: JSON.stringify({ entityType: 'region', entityId: 'region-1', mode: 'delete' }),
-    });
+    const request = createWasteMutationRequest(
+      'POST',
+      'https://studio.test/api/v1/waste-management/address-entities/impact-preview',
+      { entityType: 'region', entityId: 'region-1', mode: 'delete' }
+    );
 
     const response = await handlers.previewWasteAddressMutation(request);
     expect(response.status, await response.clone().text()).toBe(200);
@@ -64,11 +64,13 @@ describe('Waste address impact handlers', () => {
       const action = type === 'region' ? handlers.deleteRegion
         : type === 'city' ? handlers.deleteCity
           : type === 'street' ? handlers.deleteStreet : handlers.deleteHouseNumber;
-      const response = await action(new Request(`https://studio.test/api/v1/waste-management/${path}/entity-1`, {
-        method: 'DELETE',
-        headers: createWasteMutationHeaders(),
-        body: JSON.stringify({ confirmationToken: 'snapshot' }),
-      }));
+      const response = await action(
+        createWasteMutationRequest(
+          'DELETE',
+          `https://studio.test/api/v1/waste-management/${path}/entity-1`,
+          { confirmationToken: 'snapshot' }
+        )
+      );
 
       expect(response.status, await response.clone().text()).toBe(200);
       expect(deps.mutateWasteAddressInTransaction).toHaveBeenCalledWith('tenant-a', {
@@ -98,11 +100,13 @@ describe('Waste address impact handlers', () => {
     const deps = createDeps();
     deps.mutateWasteAddressInTransaction.mockRejectedValueOnce(Object.assign(new Error('db failure with data'), { code: 'XX000' }));
     const handlers = createWasteAddressEntityImpactHandlers(() => deps, withAuth);
-    const response = await handlers.deleteRegion(new Request('https://studio.test/api/v1/waste-management/regions/region-1', {
-      method: 'DELETE',
-      headers: createWasteMutationHeaders(),
-      body: JSON.stringify({ confirmationToken: 'snapshot' }),
-    }));
+    const response = await handlers.deleteRegion(
+      createWasteMutationRequest(
+        'DELETE',
+        'https://studio.test/api/v1/waste-management/regions/region-1',
+        { confirmationToken: 'snapshot' }
+      )
+    );
 
     expect(response.status).toBe(503);
     expect(deps.emitAuditEvent).toHaveBeenCalledWith(expect.objectContaining({
@@ -115,11 +119,13 @@ describe('Waste address impact handlers', () => {
     const deps = createDeps();
     deps.mutateWasteAddressInTransaction.mockRejectedValueOnce(Object.assign(new Error('serialization'), { code: '40001' }));
     const handlers = createWasteAddressEntityImpactHandlers(() => deps, withAuth);
-    const response = await handlers.deleteRegion(new Request('https://studio.test/api/v1/waste-management/regions/region-1', {
-      method: 'DELETE',
-      headers: createWasteMutationHeaders(),
-      body: JSON.stringify({ confirmationToken: 'snapshot' }),
-    }));
+    const response = await handlers.deleteRegion(
+      createWasteMutationRequest(
+        'DELETE',
+        'https://studio.test/api/v1/waste-management/regions/region-1',
+        { confirmationToken: 'snapshot' }
+      )
+    );
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'conflict' } });

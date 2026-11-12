@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createWasteAuthDeps,
-  createWasteMutationHeaders,
+  createWasteMutationRequest,
   createWasteTestActor,
   grantWastePermissions,
 } from '../../tests/test-utils/handler-fixtures.js';
@@ -44,22 +44,23 @@ describe('waste-management holiday rule handlers', () => {
       });
     const saveWasteHolidayRule = vi.fn(async () => undefined);
 
-    const response = await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
-      new Request('https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1', {
-        method: 'PUT',
-        headers: createWasteMutationHeaders(),
-        body: JSON.stringify({
-          scope: 'holiday-only',
-          strategy: 'advance',
-        }),
-      }),
-      actor,
-      {
-        ...createDeps(),
-        loadWasteHolidayRuleById,
-        saveWasteHolidayRule,
-      }
-    );
+    const response =
+      await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
+        createWasteMutationRequest(
+          'PUT',
+          'https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1',
+          {
+            scope: 'holiday-only',
+            strategy: 'advance',
+          }
+        ),
+        actor,
+        {
+          ...createDeps(),
+          loadWasteHolidayRuleById,
+          saveWasteHolidayRule,
+        }
+      );
 
     expect(response.status).toBe(200);
     expect(saveWasteHolidayRule).toHaveBeenCalledWith('tenant-a', {
@@ -77,21 +78,22 @@ describe('waste-management holiday rule handlers', () => {
   });
 
   it('returns invalid_request when the holidayRuleId path segment is missing', async () => {
-    const response = await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
-      new Request('https://studio.test/api/v1/waste-management/holiday-rules', {
-        method: 'PUT',
-        headers: createWasteMutationHeaders(),
-        body: JSON.stringify({
-          scope: 'holiday-only',
-          strategy: 'advance',
-        }),
-      }),
-      actor,
-      {
-        ...createDeps(),
-        loadWasteHolidayRuleById: vi.fn(async () => null),
-      }
-    );
+    const response =
+      await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
+        createWasteMutationRequest(
+          'PUT',
+          'https://studio.test/api/v1/waste-management/holiday-rules',
+          {
+            scope: 'holiday-only',
+            strategy: 'advance',
+          }
+        ),
+        actor,
+        {
+          ...createDeps(),
+          loadWasteHolidayRuleById: vi.fn(async () => null),
+        }
+      );
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
@@ -104,21 +106,22 @@ describe('waste-management holiday rule handlers', () => {
   });
 
   it('short-circuits update and delete on auth, instance, csrf, and invalid-payload guard failures', async () => {
-    const authDenied = await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
-      new Request('https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1', {
-        method: 'PUT',
-        headers: createWasteMutationHeaders(),
-        body: JSON.stringify({
-          scope: 'holiday-only',
-          strategy: 'advance',
-        }),
-      }),
-      actor,
-      {
-        ...createDeps(),
-        ...grantWastePermissions(),
-      }
-    );
+    const authDenied =
+      await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
+        createWasteMutationRequest(
+          'PUT',
+          'https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1',
+          {
+            scope: 'holiday-only',
+            strategy: 'advance',
+          }
+        ),
+        actor,
+        {
+          ...createDeps(),
+          ...grantWastePermissions(),
+        }
+      );
     expect(authDenied.status).toBe(403);
 
     const missingInstanceActor: AuthenticatedRequestContext = {
@@ -128,18 +131,19 @@ describe('waste-management holiday rule handlers', () => {
         instanceId: undefined,
       },
     };
-    const deleteMissingInstance = await wasteManagementHolidayRuleHandlers.deleteWasteManagementHolidayRuleInternal(
-      new Request('https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1', {
-        method: 'DELETE',
-        headers: createWasteMutationHeaders(),
-      }),
-      missingInstanceActor,
-      {
-        ...createDeps(),
-        loadWasteHolidayRuleById: vi.fn(async () => ({ id: 'holiday-rule-1' })),
-        deleteWasteHolidayRule: vi.fn(async () => undefined),
-      }
-    );
+    const deleteMissingInstance =
+      await wasteManagementHolidayRuleHandlers.deleteWasteManagementHolidayRuleInternal(
+        createWasteMutationRequest(
+          'DELETE',
+          'https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1'
+        ),
+        missingInstanceActor,
+        {
+          ...createDeps(),
+          loadWasteHolidayRuleById: vi.fn(async () => ({ id: 'holiday-rule-1' })),
+          deleteWasteHolidayRule: vi.fn(async () => undefined),
+        }
+      );
     expect(deleteMissingInstance.status).toBe(400);
 
     const updateMissingCsrf = await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
@@ -162,35 +166,37 @@ describe('waste-management holiday rule handlers', () => {
     );
     expect(updateMissingCsrf.status).toBe(403);
 
-    const updateInvalidPayload = await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
-      new Request('https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1', {
-        method: 'PUT',
-        headers: createWasteMutationHeaders(),
-        body: JSON.stringify({
-          strategy: 'invalid-strategy',
-        }),
-      }),
-      actor,
-      {
-        ...createDeps(),
-        loadWasteHolidayRuleById: vi.fn(async () => ({ id: 'holiday-rule-1' })),
-        saveWasteHolidayRule: vi.fn(async () => undefined),
-      }
-    );
+    const updateInvalidPayload =
+      await wasteManagementHolidayRuleHandlers.updateWasteManagementHolidayRuleInternal(
+        createWasteMutationRequest(
+          'PUT',
+          'https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1',
+          {
+            strategy: 'invalid-strategy',
+          }
+        ),
+        actor,
+        {
+          ...createDeps(),
+          loadWasteHolidayRuleById: vi.fn(async () => ({ id: 'holiday-rule-1' })),
+          saveWasteHolidayRule: vi.fn(async () => undefined),
+        }
+      );
     expect(updateInvalidPayload.status).toBe(400);
 
-    const deleteMissingPath = await wasteManagementHolidayRuleHandlers.deleteWasteManagementHolidayRuleInternal(
-      new Request('https://studio.test/api/v1/waste-management/holiday-rules', {
-        method: 'DELETE',
-        headers: createWasteMutationHeaders(),
-      }),
-      actor,
-      {
-        ...createDeps(),
-        loadWasteHolidayRuleById: vi.fn(async () => ({ id: 'holiday-rule-1' })),
-        deleteWasteHolidayRule: vi.fn(async () => undefined),
-      }
-    );
+    const deleteMissingPath =
+      await wasteManagementHolidayRuleHandlers.deleteWasteManagementHolidayRuleInternal(
+        createWasteMutationRequest(
+          'DELETE',
+          'https://studio.test/api/v1/waste-management/holiday-rules'
+        ),
+        actor,
+        {
+          ...createDeps(),
+          loadWasteHolidayRuleById: vi.fn(async () => ({ id: 'holiday-rule-1' })),
+          deleteWasteHolidayRule: vi.fn(async () => undefined),
+        }
+      );
     expect(deleteMissingPath.status).toBe(400);
 
     const deleteMissingCsrf = await wasteManagementHolidayRuleHandlers.deleteWasteManagementHolidayRuleInternal(

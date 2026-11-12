@@ -4,6 +4,7 @@ import {
   createWasteMutationRequest,
   createWasteTestActor,
   grantWastePermissions,
+  wasteActorInfo,
 } from '../../tests/test-utils/handler-fixtures.js';
 
 import {
@@ -246,9 +247,7 @@ describe('annual tour transfer handlers', () => {
           getRequestId: () => 'req-1',
           ...permissions,
           ...idempotencyDeps,
-          resolveActorInfo: vi.fn(async () => ({
-            actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-          })),
+          resolveActorInfo: vi.fn(async () => wasteActorInfo),
           createWasteAnnualTourTransfer: create,
           emitAuditEvent,
         }
@@ -316,9 +315,7 @@ describe('annual tour transfer handlers', () => {
         {
           ...permissions,
           ...idempotencyDeps,
-          resolveActorInfo: vi.fn(async () => ({
-            actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-          })),
+          resolveActorInfo: vi.fn(async () => wasteActorInfo),
           createWasteAnnualTourTransfer: vi.fn(async () => result),
           emitAuditEvent,
         }
@@ -348,9 +345,7 @@ describe('annual tour transfer handlers', () => {
         {
           ...permissions,
           ...idempotencyDeps,
-          resolveActorInfo: vi.fn(async () => ({
-            actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-          })),
+          resolveActorInfo: vi.fn(async () => wasteActorInfo),
           createWasteAnnualTourTransfer: vi.fn(async () => result),
           emitAuditEvent: vi.fn(async () => undefined),
         }
@@ -381,9 +376,7 @@ describe('annual tour transfer handlers', () => {
         {
           ...permissions,
           ...idempotencyDeps,
-          resolveActorInfo: vi.fn(async () => ({
-            actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-          })),
+          resolveActorInfo: vi.fn(async () => wasteActorInfo),
           createWasteAnnualTourTransfer: vi.fn(async () => {
             throw new Error('connection_lost_around_commit');
           }),
@@ -430,9 +423,7 @@ describe('annual tour transfer handlers', () => {
         {
           ...permissions,
           ...idempotencyDeps,
-          resolveActorInfo: vi.fn(async () => ({
-            actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-          })),
+          resolveActorInfo: vi.fn(async () => wasteActorInfo),
           createWasteAnnualTourTransfer: create,
           emitAuditEvent,
         }
@@ -469,9 +460,7 @@ describe('annual tour transfer handlers', () => {
         {
           ...permissions,
           ...idempotencyDeps,
-          resolveActorInfo: vi.fn(async () => ({
-            actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-          })),
+          resolveActorInfo: vi.fn(async () => wasteActorInfo),
           createWasteAnnualTourTransfer: create,
           emitAuditEvent,
         }
@@ -509,9 +498,7 @@ describe('annual tour transfer handlers', () => {
         {
           ...permissions,
           ...idempotencyDeps,
-          resolveActorInfo: vi.fn(async () => ({
-            actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-          })),
+          resolveActorInfo: vi.fn(async () => wasteActorInfo),
           createWasteAnnualTourTransfer: create,
           emitAuditEvent,
         }

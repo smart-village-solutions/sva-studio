@@ -1,11 +1,11 @@
 import { vi } from 'vitest';
 
-import type { EffectivePermission } from '@sva/iam-core';
-
 import type {
   AuthenticatedRequestContext,
   WasteManagementHandlerDeps,
 } from '../../src/handlers/types.js';
+
+type EffectivePermission = import('@sva/iam-core').EffectivePermission;
 
 const wasteTestOrigin = 'https://studio.test';
 const wasteTestRequestId = 'req-test';
@@ -28,13 +28,12 @@ export const createWasteTestActor = ({
   },
 });
 
+export const wasteActorInfo = {
+  actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
+};
+
 export const wasteResolvedActorInfo = {
-  actor: {
-    instanceId: 'tenant-a',
-    actorAccountId: 'account-1',
-    requestId: wasteTestRequestId,
-    traceId: 'trace-test',
-  },
+  actor: { ...wasteActorInfo.actor, requestId: wasteTestRequestId, traceId: 'trace-test' },
 };
 
 /** An action name grants that action on the plugin resource; pass a full permission for scoped grants. */
@@ -80,16 +79,14 @@ export const createWasteHandlerDeps = (
 ) => ({
   ...createWasteAuthDeps(grants),
   emitAuditEvent: vi.fn(async () => undefined),
-  resolveActorInfo: vi.fn(async () => ({
-    actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-  })),
+  resolveActorInfo: vi.fn(async () => wasteActorInfo),
   ...overrides,
 });
 
-const trustedOriginHeaders = {
-  origin: wasteTestOrigin,
+const trustedOriginHeaders = (origin: string = wasteTestOrigin) => ({
+  origin,
   'x-requested-with': 'XMLHttpRequest',
-};
+});
 
 // Header names are case-insensitive; normalising keeps an override from duplicating a default.
 const withHeaderOverrides = (
@@ -104,18 +101,31 @@ const withHeaderOverrides = (
 
 /** Headers of a same-origin browser mutation, as the CSRF guard of the host expects them. */
 export const createWasteMutationHeaders = (overrides: Record<string, string> = {}) =>
-  withHeaderOverrides({ 'content-type': 'application/json', ...trustedOriginHeaders }, overrides);
+  withHeaderOverrides({ 'content-type': 'application/json', ...trustedOriginHeaders() }, overrides);
 
-/** Same-origin mutation request; the JSON content type is only sent together with a body. */
+/**
+ * Same-origin mutation request: the origin header follows the request URL, and the JSON content
+ * type is only sent together with a body. Relative URLs resolve against the test origin.
+ */
 export const createWasteMutationRequest = (
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   url: string,
   body?: unknown,
   headers: Record<string, string> = {}
-): Request =>
-  new Request(
-    new URL(url, wasteTestOrigin),
+): Request => {
+  const target = new URL(url, wasteTestOrigin);
+  const defaults = trustedOriginHeaders(target.origin);
+  return new Request(
+    target,
     body === undefined
-      ? { method, headers: withHeaderOverrides(trustedOriginHeaders, headers) }
-      : { method, headers: createWasteMutationHeaders(headers), body: JSON.stringify(body) }
+      ? { method, headers: withHeaderOverrides(defaults, headers) }
+      : {
+          method,
+          headers: withHeaderOverrides(
+            { 'content-type': 'application/json', ...defaults },
+            headers
+          ),
+          body: JSON.stringify(body),
+        }
   );
+};

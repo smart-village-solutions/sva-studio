@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createWasteAuthDeps,
   createWasteMutationRequest,
   createWasteTestActor,
+  wasteActorInfo,
 } from '../../tests/test-utils/handler-fixtures.js';
 
 
@@ -41,9 +42,6 @@ const createDeps = () => ({
 });
 
 describe('waste-management settings handlers', () => {
-  beforeEach(() => {
-  });
-
   it('retries failed tenant provisioning with a new generation and a correlated plugin job', async () => {
     const deps = createDeps();
     const requestWasteTenantProvisioning = vi.fn(async () => ({
@@ -78,9 +76,7 @@ describe('waste-management settings handlers', () => {
           updatedAt: '2026-08-02T09:05:00.000Z',
         })),
         requestWasteTenantProvisioning,
-        resolveActorInfo: vi.fn(async () => ({
-          actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-        })),
+        resolveActorInfo: vi.fn(async () => wasteActorInfo),
         startPluginOperationJob,
       }
     );
@@ -174,9 +170,7 @@ describe('waste-management settings handlers', () => {
           status: 'provisioning' as const,
           desiredGeneration: 3,
         })),
-        resolveActorInfo: vi.fn(async () => ({
-          actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-        })),
+        resolveActorInfo: vi.fn(async () => wasteActorInfo),
         startPluginOperationJob: vi.fn(async () => new Response(null, { status: 503 })),
         failWasteTenantProvisioningRequest,
       }

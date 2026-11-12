@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createWasteAuthDeps,
-  createWasteMutationHeaders,
+  createWasteMutationRequest,
   createWasteTestActor,
   grantWastePermissions,
 } from '../../tests/test-utils/handler-fixtures.js';
@@ -32,16 +32,16 @@ describe('waste-management location tour pickup date handlers', () => {
 
     const createResponse =
       await wasteManagementLocationTourPickupDateHandlers.createWasteManagementLocationTourPickupDateInternal(
-        new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
-          method: 'POST',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'POST',
+          'https://studio.test/api/v1/waste-management/location-tour-pickup-dates',
+          {
             id: 'pickup-date-1',
             locationId: 'location-1',
             tourId: 'tour-1',
             pickupDate: '2026-05-12',
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),
@@ -67,16 +67,16 @@ describe('waste-management location tour pickup date handlers', () => {
 
     const updateResponse =
       await wasteManagementLocationTourPickupDateHandlers.updateWasteManagementLocationTourPickupDateInternal(
-        new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1', {
-          method: 'PUT',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'PUT',
+          'https://studio.test/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1',
+          {
             locationId: 'location-1',
             tourId: 'tour-1',
             pickupDate: '2026-05-13',
             note: '  Feiertag verschoben  ',
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),
@@ -96,10 +96,10 @@ describe('waste-management location tour pickup date handlers', () => {
 
     const deleteResponse =
       await wasteManagementLocationTourPickupDateHandlers.deleteWasteManagementLocationTourPickupDateInternal(
-        new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1', {
-          method: 'DELETE',
-          headers: createWasteMutationHeaders(),
-        }),
+        createWasteMutationRequest(
+          'DELETE',
+          'https://studio.test/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1'
+        ),
         actor,
         {
           ...createDeps(),
@@ -115,15 +115,15 @@ describe('waste-management location tour pickup date handlers', () => {
   it('returns specific invalid-request responses for missing path ids and invalid payloads', async () => {
     const updateMissingId =
       await wasteManagementLocationTourPickupDateHandlers.updateWasteManagementLocationTourPickupDateInternal(
-        new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
-          method: 'PUT',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'PUT',
+          'https://studio.test/api/v1/waste-management/location-tour-pickup-dates',
+          {
             locationId: 'location-1',
             tourId: 'tour-1',
             pickupDate: '2026-05-13',
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),
@@ -141,16 +141,16 @@ describe('waste-management location tour pickup date handlers', () => {
 
     const createInvalidPayload =
       await wasteManagementLocationTourPickupDateHandlers.createWasteManagementLocationTourPickupDateInternal(
-        new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
-          method: 'POST',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'POST',
+          'https://studio.test/api/v1/waste-management/location-tour-pickup-dates',
+          {
             id: 'pickup-date-2',
             locationId: 'location-1',
             tourId: 'tour-1',
             pickupDate: '13-05-2026',
-          }),
-        }),
+          }
+        ),
         actor,
         createDeps()
       );
@@ -158,15 +158,15 @@ describe('waste-management location tour pickup date handlers', () => {
 
     const updateInvalidPayload =
       await wasteManagementLocationTourPickupDateHandlers.updateWasteManagementLocationTourPickupDateInternal(
-        new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates/pickup-date-2', {
-          method: 'PUT',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'PUT',
+          'https://studio.test/api/v1/waste-management/location-tour-pickup-dates/pickup-date-2',
+          {
             locationId: 'location-1',
             tourId: 'tour-1',
             pickupDate: '14-05-2026',
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),
@@ -186,16 +186,16 @@ describe('waste-management location tour pickup date handlers', () => {
 
     const createAuthDenied =
       await wasteManagementLocationTourPickupDateHandlers.createWasteManagementLocationTourPickupDateInternal(
-        new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
-          method: 'POST',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'POST',
+          'https://studio.test/api/v1/waste-management/location-tour-pickup-dates',
+          {
             id: 'pickup-date-3',
             locationId: 'location-1',
             tourId: 'tour-1',
             pickupDate: '2026-05-14',
-          }),
-        }),
+          }
+        ),
         actor,
         authDeniedDeps
       );
@@ -210,15 +210,15 @@ describe('waste-management location tour pickup date handlers', () => {
     };
     const updateMissingInstance =
       await wasteManagementLocationTourPickupDateHandlers.updateWasteManagementLocationTourPickupDateInternal(
-        new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1', {
-          method: 'PUT',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'PUT',
+          'https://studio.test/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1',
+          {
             locationId: 'location-1',
             tourId: 'tour-1',
             pickupDate: '2026-05-14',
-          }),
-        }),
+          }
+        ),
         missingInstanceActor,
         {
           ...createDeps(),
@@ -243,10 +243,10 @@ describe('waste-management location tour pickup date handlers', () => {
 
     const deleteMissingId =
       await wasteManagementLocationTourPickupDateHandlers.deleteWasteManagementLocationTourPickupDateInternal(
-        new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
-          method: 'DELETE',
-          headers: createWasteMutationHeaders(),
-        }),
+        createWasteMutationRequest(
+          'DELETE',
+          'https://studio.test/api/v1/waste-management/location-tour-pickup-dates'
+        ),
         actor,
         {
           ...createDeps(),
@@ -262,16 +262,16 @@ describe('waste-management location tour pickup date handlers', () => {
 
     const response =
       await wasteManagementLocationTourPickupDateHandlers.createWasteManagementLocationTourPickupDateInternal(
-        new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
-          method: 'POST',
-          headers: createWasteMutationHeaders(),
-          body: JSON.stringify({
+        createWasteMutationRequest(
+          'POST',
+          'https://studio.test/api/v1/waste-management/location-tour-pickup-dates',
+          {
             id: 'pickup-date-new',
             locationId: 'location-1',
             tourId: 'tour-1',
             pickupDate: '2026-05-12',
-          }),
-        }),
+          }
+        ),
         actor,
         {
           ...createDeps(),

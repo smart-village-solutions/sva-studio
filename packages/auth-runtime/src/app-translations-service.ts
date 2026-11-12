@@ -12,11 +12,8 @@ import { z } from 'zod';
 import { withIamAppDb } from './db.js';
 import { translationServiceBindingSchema as bindingSchema } from './app-translations-binding.js';
 import { readBoundedCatalogBody } from './app-translations.js';
-import {
-  getDeepLSetupStatus,
-  translateDeepLValues,
-  assertDeepLRequestSize,
-} from './app-translations-deepl.js';
+import { getDeepLSetupStatus, translateDeepLValues } from './app-translations-deepl.js';
+import { translateStaticHtml } from './app-translations-static-html.js';
 import { consumeRateLimit } from './shared/rate-limit.js';
 import {
   readBearerToken,
@@ -101,7 +98,9 @@ const staticHtmlRequestSchema = requestEnvelope.extend({
           .regex(/\S/u)
           .refine(
             (text) =>
-              new TextEncoder().encode(text).length <= 90000 && sanitizeRichTextHtml(text) === text
+              new TextEncoder().encode(text).length <= 90000 &&
+              /^(?:<p>[^<>]+<\/p>)+$/u.test(text) &&
+              sanitizeRichTextHtml(text) === text
           ),
       })
       .strict(),
@@ -179,6 +178,7 @@ const assertTranslatedEntries = (
   )
     throw new Error('deepl_invalid_response');
 };
+
 const accessUnchanged = (
   current: TranslationServiceAccess | null,
   access: TranslationServiceAccess
@@ -268,14 +268,20 @@ export const appTranslationServiceHandler = async (request: Request): Promise<Re
     });
     if (limited) return reply(429, { ...correlation, error: 'rate_limited', retryable: true });
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(35000)]);
-    const values = input.entries.map((entry) => entry.text);
-    assertDeepLRequestSize(access.targetCode, values);
-    const translated = await translateDeepLValues(
-      access.provider,
-      access.targetCode,
-      values,
-      signal
-    );
+    const translated =
+      input.profileId === 'static-html-v1'
+        ? await translateStaticHtml(
+            access.provider,
+            access.targetCode,
+            input.entries[0].text,
+            signal
+          )
+        : await translateDeepLValues(
+            access.provider,
+            access.targetCode,
+            input.entries.map((entry) => entry.text),
+            signal
+          );
     if (signal.aborted) throw new Error('deepl_unavailable');
     if (typeof identity.exp === 'number' && identity.exp * 1000 <= Date.now())
       return reply(401, {

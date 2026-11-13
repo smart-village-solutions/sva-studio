@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applySchemaStatements } from '../operations/waste-management-operations.schema.js';
+import { buildWasteTourFractionsContractStatements } from '../operations/waste-tour-fractions.schema.js';
 import { processWasteFractionDeletion } from './fraction-deletion.js';
 
 const url = process.env.WASTE_DATE_SHIFT_TEST_DATABASE_URL;
@@ -337,6 +338,48 @@ describe.skipIf(!url)('fraction deletion PostgreSQL', () => {
       await planner.query('ROLLBACK');
       planner.release();
       await mutation?.catch(() => undefined);
+    }
+  });
+  it('rechecks after a concurrent contracted relation-only writer commits', async () => {
+    const original = (
+      await client.query(
+        "SELECT pg_get_functiondef('replace_waste_tour_fractions(uuid,text[])'::regprocedure) AS sql"
+      )
+    ).rows[0].sql;
+    const writer = await pool!.connect();
+    let mutation: Promise<unknown> | undefined;
+    try {
+      await client.query(buildWasteTourFractionsContractStatements(schema)[2]);
+      const preview = await processWasteFractionDeletion(client, input);
+      const pid = (await client.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+      await writer.query(`SET search_path TO ${schema}, public`);
+      await writer.query('BEGIN');
+      await writer.query('SELECT id FROM waste_tours WHERE id=$1 FOR UPDATE', [tour]);
+      mutation = processWasteFractionDeletion(client, input, preview.token);
+      const rejection = expect(mutation).rejects.toThrow('fraction_preview_stale');
+      await vi.waitFor(async () => {
+        const row = (
+          await writer.query('SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1', [pid])
+        ).rows[0];
+        expect(row.wait_event_type).toBe('Lock');
+      });
+      await writer.query('SELECT replace_waste_tour_fractions($1,$2)', [tour, [source, target]]);
+      await writer.query('COMMIT');
+      await rejection;
+      expect(
+        (
+          await client.query(
+            'SELECT fraction_id::text FROM waste_tour_fractions WHERE tour_id=$1 ORDER BY position',
+            [tour]
+          )
+        ).rows
+      ).toEqual([{ fraction_id: source }, { fraction_id: target }]);
+      expect(await count('waste_fractions')).toBe(3);
+    } finally {
+      await writer.query('ROLLBACK');
+      writer.release();
+      await mutation?.catch(() => undefined);
+      await client.query(original);
     }
   });
   it('includes a concurrent committed new referencing tour in stale preview rejection', async () => {

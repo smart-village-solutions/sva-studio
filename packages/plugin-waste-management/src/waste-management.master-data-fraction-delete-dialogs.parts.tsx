@@ -54,7 +54,9 @@ const DeletionChoices = ({
             <option value="delete-tours">
               {pt('masterData.fractions.deleteOptions.delete-tours')}
             </option>
-            <option value="replace">{pt('masterData.fractions.deleteOptions.replace')}</option>
+            {preview?.targets.length ? (
+              <option value="replace">{pt('masterData.fractions.deleteOptions.replace')}</option>
+            ) : null}
           </Select>
         </label>
       ) : null}

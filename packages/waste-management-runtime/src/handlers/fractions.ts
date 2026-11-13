@@ -4,7 +4,6 @@ import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import type { AuthenticatedRequestContext } from './types.js';
 import { createApiError, parseRequestBody } from '@sva/server-runtime';
 import {
-  createWasteFractionMutationResponse,
   enqueueWasteTypesSyncAfterMutation,
   normalizeWasteFractionReminderConfig,
   normalizeWasteFractionShortLabel,

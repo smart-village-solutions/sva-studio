@@ -47,3 +47,7 @@
 - Reminder-Planung und Fraktionslöschung verwenden eine gemeinsame tenantlokale Advisory-Sperre.
   Der PostgreSQL-Nachweis prüft außerdem, dass reguläre Tourbearbeitung während der Planung
   möglich bleibt und die Löschung weiter auf die Planung wartet.
+- Nach weiterem Review sperrt die Löschung vor dem Snapshot zusätzlich alle Tourzeilen,
+  damit auch der reine Relationswriter im Contract-Zustand ausgeschlossen ist. Der neue
+  PostgreSQL-Regressionstest scheitert ohne diesen Fix und besteht mit ihm (13 Tests insgesamt).
+- Ohne aktive Zielfraktion wird die Ersetzungsoption ausgeblendet (7 Dialogtests grün).

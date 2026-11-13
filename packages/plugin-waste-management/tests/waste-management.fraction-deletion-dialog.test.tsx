@@ -94,6 +94,15 @@ describe('fraction deletion dialog', () => {
       })
     );
   });
+  it('hides replacement when no active target exists', async () => {
+    api.previewWasteManagementFractionDeletion.mockImplementation(async (input) =>
+      result(input, { targets: [] })
+    );
+    show();
+    await screen.findByText(key('shared'));
+    expect(screen.queryByRole('option', { name: key('replace') })).toBeNull();
+    expect(screen.getByRole('option', { name: key('delete-tours') })).toBeTruthy();
+  });
   it('requires target selection and blocks collision results', async () => {
     api.previewWasteManagementFractionDeletion.mockImplementation(async (input) =>
       result(

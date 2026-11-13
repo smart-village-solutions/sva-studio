@@ -1500,6 +1500,9 @@ changes are implied. See [SSF administration](../development/ssf-v2-inhaltsverwa
 
 ## Bestätigte Fraktionslöschung und parallele Erinnerungsplanung
 
+Vor dem Ausführungssnapshot sperrt die Löschtransaktion auch die Tourzeilen mit `FOR UPDATE`.
+Das schließt reine Änderungen der Fraktionsrelation über den bestehenden Relationswriter aus.
+
 Vorschau und Ausführung der Fraktionslöschung erfordern den serverseitigen Tenant-Kontext,
 `waste-management.master-data.manage` und den bestehenden CSRF-Schutz. Ein SHA-256-Fingerprint
 bindet Variante, Quelle, Ziel und den relevanten Datenstand an die Bestätigung. Die Ausführung

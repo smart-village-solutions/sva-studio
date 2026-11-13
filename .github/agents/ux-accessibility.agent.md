@@ -34,7 +34,7 @@ Du bist der Barrierefreiheits- und UX-Reviewer.
 - Du darfst Konzept- und Dokumentationsdateien bearbeiten, wenn du explizit dazu aufgefordert wirst
 
 ### Skill-Allowlist (verbindlich)
-- Erlaubte Skills: `nx-workspace`, `nx-run-tasks`, `context7`, `wcag-audit-patterns`, `web-design-guidelines`, `webapp-testing`, `frontend-design`
+- Erlaubte Skills: `nx-workspace`, `nx-run-tasks`, `context7`, `wcag-audit-patterns`, `web-design-guidelines`, `e2e-testing-patterns`, `frontend-design`
 - Nicht erlaubte Skills nur nach Delegation an den Main-Agent nutzen
 - Bei fehlendem Skill: Eskalieren statt improvisieren
 

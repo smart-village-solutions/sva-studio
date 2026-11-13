@@ -73,6 +73,25 @@ const buildRealmBaselineCompletionStep = (status: KeycloakTenantStatus): Complet
   };
 };
 
+const buildUserProfileCompletionStep = (status: KeycloakTenantStatus): CompletionStep => {
+  const aligned = status.userProfileBaselineAligned === true;
+  return {
+    stepKey: 'user_profile',
+    title: 'Studio-Benutzerprofil abgleichen',
+    summary: aligned
+      ? 'Die Studio-Profilfelder entsprechen dem Sollzustand.'
+      : 'Die Studio-Profilfelder konnten nicht bestätigt werden.',
+    details: {
+      userProfileBaselineAligned: aligned,
+      titleKey: 'admin.instances.operations.keycloakSteps.userProfile.title',
+      summaryKey: aligned
+        ? 'admin.instances.operations.keycloakSteps.userProfile.aligned'
+        : 'admin.instances.operations.keycloakSteps.userProfile.failed',
+    },
+    ok: aligned,
+  };
+};
+
 const buildSmtpPasswordCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
   stepKey: 'smtp_password',
   title: 'SMTP-Passwort manuell setzen',
@@ -253,7 +272,7 @@ export const buildFinalRunSteps = (input: {
           buildRealmBaselineCompletionStep(input.status),
           buildSmtpPasswordCompletionStep(input.status),
         ]
-      : []),
+      : [buildUserProfileCompletionStep(input.status)]),
     buildClientCompletionStep(input.status),
     buildTenantAdminClientCompletionStep(input.status, input.tenantAdminServiceAccess),
     buildSecretCompletionStep(input.status),

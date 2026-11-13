@@ -155,10 +155,8 @@ const reconcileInstanceAuthArtifacts = async (
       rotateClientSecret: input.rotateClientSecret,
       ownership: { instanceId: input.instanceId, artifactKey: 'login_client' },
     });
+    await client.ensureAdminOnlyUserProfileAttributes(KEYCLOAK_REALM_BASELINE.userProfileAttributes);
     if (input.realmMode === 'new') {
-      await client.ensureAdminOnlyUserProfileAttributes(
-        KEYCLOAK_REALM_BASELINE.userProfileAttributes
-      );
       await client.ensureUserAttributeProtocolMapper({
         clientId: input.authClientId,
         ...KEYCLOAK_REALM_BASELINE.instanceIdMapper,

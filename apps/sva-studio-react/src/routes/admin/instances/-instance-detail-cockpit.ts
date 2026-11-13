@@ -226,9 +226,18 @@ export const buildInstanceDetailCockpitModel = (
   const workflowSteps = getSetupWorkflowSteps(instance, mutationError);
   const workflowActions = workflowSteps.flatMap((step) => (step.action ? [step.action] : []));
   const stalePlan = planNeedsRefresh || mutationError?.code === 'keycloak_plan_fingerprint_stale';
+  const shouldReconcileUserProfile =
+    instance.status === 'active' &&
+    instance.realmMode === 'existing' &&
+    instance.keycloakPlan?.overallStatus === 'ready' &&
+    (instance.keycloakPlan.steps.some(
+      (step) => step.stepKey === 'user_profile' && step.action === 'update'
+    ) || instance.keycloakStatus?.userProfileBaselineAligned === false);
   const primaryActionKey = stalePlan
     ? 'plan_provisioning'
-    : selectPrimaryAction(instance, workflowActions);
+    : shouldReconcileUserProfile
+      ? 'reconcileKeycloak'
+      : selectPrimaryAction(instance, workflowActions);
   const specialisedActions =
     !stalePlan && instance.keycloakPlan?.fingerprint
       ? workflowActions.filter(

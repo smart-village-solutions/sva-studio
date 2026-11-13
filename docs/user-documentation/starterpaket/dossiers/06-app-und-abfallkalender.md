@@ -35,3 +35,17 @@ Hinweise entfallen; sie ersetzt nicht alle Termindetails. Ein umfangreicherer Hi
 benötigt eine fachliche Layoutentscheidung. Das Landkreislogo muss als konkret freigegebene,
 öffentlich ladbare Grafik vorliegen. Fehlt diese, zeigt der Export den vorhandenen Platzhalter.
 Details zu Pflegewegen und Grenzen stehen in der [Public-Waste-Referenz](../../../reference/public-waste-api.md#pdf-legende-und-landkreislogo-pflegen).
+
+### Abfallfraktionen kontrolliert löschen
+
+Die Einzellöschung bietet bei verwendeten Fraktionen eine Auswirkungsvorschau. Eine Fraktion kann
+entweder aus weiterbestehenden Touren entfernt, durch eine andere aktive Fraktion ersetzt oder
+mit sämtlichen zugeordneten Touren und Terminen gelöscht werden. „Touren erhalten“ erscheint nur,
+wenn keine Tour dadurch fraktionslos wird. Beim vollständigen Löschen betrifft die Wirkung auch
+weitere Fraktionen gemeinsam genutzter Touren; ihre Stammdatensätze bleiben bestehen.
+
+Doppelte Zielzuordnungen werden vermieden; neu entstehende Abholkollisionen verhindern die
+Ersetzung. Erinnerungsauswahlen werden entfernt, nicht übertragen. Nicht mehr gültige ausstehende
+Erinnerungen werden storniert. Ändert sich der Datenbestand, muss die Vorschau erneut geprüft werden.
+Die Bedienung, Prüfgrenzen und Berechtigung beschreibt die
+[Waste-Referenz](../../../reference/waste-management-tour-gueltigkeit.md#abfallfraktion-löschen-oder-ersetzen).

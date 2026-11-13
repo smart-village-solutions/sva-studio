@@ -46,6 +46,7 @@ type MasterDataFractionsCopy = Readonly<{
   createView: MasterDataFractionsCreateViewCopy;
   translationBadge: string;
   dialog: CrudDialogCopy;
+  deleteOptions: Readonly<Record<string, string | Readonly<Record<string, string>>>>;
   deleteDialog: Readonly<Record<string, string>>;
   bulkDeleteDialog: Readonly<Record<string, string>>;
   statusDialog: Readonly<Record<string, string>>;
@@ -152,6 +153,7 @@ const createMasterDataFractionsTranslations = <const TCopy extends MasterDataFra
     createView: copy.createView,
     translationBadge: copy.translationBadge,
     dialog: createCrudDialog(copy.dialog),
+    deleteOptions: copy.deleteOptions,
     deleteDialog: copy.deleteDialog,
     bulkDeleteDialog: copy.bulkDeleteDialog,
     statusDialog: copy.statusDialog,

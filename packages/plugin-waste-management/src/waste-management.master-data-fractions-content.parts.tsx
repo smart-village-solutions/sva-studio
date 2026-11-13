@@ -1,4 +1,7 @@
-import type { WasteFractionRecord } from '@sva/waste-management-contracts';
+import type {
+  WasteFractionRecord,
+  WasteFractionDeleteConfirmation,
+} from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { IconFilter } from '@tabler/icons-react';
 import {
@@ -33,7 +36,10 @@ export type WasteFractionsContentProps = {
   readonly fractionsStatus: WasteManagementStatusFilter;
   readonly onOpenCreateFraction: () => void;
   readonly onOpenEditFraction: (fraction: WasteFractionRecord) => void;
-  readonly onOpenDeleteFraction: (fraction: WasteFractionRecord) => void | Promise<void>;
+  readonly onOpenDeleteFraction: (
+    fraction: WasteFractionRecord,
+    confirmation?: Omit<WasteFractionDeleteConfirmation, 'fractionId'>
+  ) => void | Promise<void>;
   readonly onDeleteFractions: (
     fractionIds: readonly string[]
   ) => WasteBulkDeleteResult | Promise<WasteBulkDeleteResult>;

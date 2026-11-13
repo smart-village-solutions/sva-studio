@@ -23,7 +23,7 @@ import {
   matchSelectionLocations,
   parseIsoDateUtc,
 } from './waste-management-email-reminder-dispatch.server.js';
-import type { WasteManagementOperationRuntime, WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
+import type { SqlClient, WasteManagementOperationRuntime, WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 
 const DEFAULT_REMINDER_SEND_HOUR_UTC = 6;
 const DEFAULT_OUTBOX_RETRY_DELAY_MINUTES = 15;
@@ -53,6 +53,21 @@ const scheduleReminder = async (
   return result === 'inserted' ? 'created' : 'duplicate';
 };
 
+/** Serialize only reminder planning against fraction deletion, not ordinary tour edits. */
+const withReminderPlanningLock = async <T>(client: SqlClient, work: () => Promise<T>): Promise<T> => {
+  await client.query('BEGIN');
+  try {
+    await client.query("SET LOCAL lock_timeout = '5s'");
+    await client.query("SELECT pg_advisory_xact_lock_shared(hashtext(current_schema()), hashtext('waste-fraction-deletion'))");
+    const result = await work();
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  }
+};
+
 export const createMaterializeEmailRemindersOperation = (
   deps: WasteOperationRuntimeDeps
 ): WasteManagementOperationRuntime['materializeEmailReminders'] => async (instanceId, input) => {
@@ -76,7 +91,7 @@ export const createMaterializeEmailRemindersOperation = (
   }
   const reminderConfig = reminderSettings.config;
 
-  const details = await withWasteClient(deps, instanceId, async ({ client, repository, dataSource }) => {
+  const details = await withWasteClient(deps, instanceId, async ({ client, repository, dataSource }) => withReminderPlanningLock(client, async () => {
     const unsubscribeSigningSecret = reminderSettings.unsubscribeSigningSecret ?? dataSource.databaseUrl;
     const reminderRepository = createWasteEmailReminderRepository(createSqlExecutor(client));
     const [subscriptions, fractions, tours, links, locations, pickupDates, tourAssignments, tourDateShifts, globalDateShifts, holidayRules] =
@@ -210,7 +225,7 @@ export const createMaterializeEmailRemindersOperation = (
       skippedPickupCount,
       cancelledOutboxCount,
     };
-  });
+  }));
 
   return buildOperationSummary(startedAt, details);
 };

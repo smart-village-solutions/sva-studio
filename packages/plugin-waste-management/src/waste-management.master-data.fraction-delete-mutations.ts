@@ -1,3 +1,4 @@
+import type { WasteFractionDeleteConfirmation } from '@sva/waste-management-contracts';
 import {
   deleteWasteManagementFraction,
   type WasteFractionMutationResponse,
@@ -59,14 +60,20 @@ const applyFractionSyncResults = (
 };
 
 export const createDeleteFractionHandler =
-  (ctx: FractionRegionSubmissionHelperContext) => async (fractionId: string) => {
+  (ctx: FractionRegionSubmissionHelperContext) =>
+  async (
+    fractionId: string,
+    confirmation?: Omit<WasteFractionDeleteConfirmation, 'fractionId'>
+  ) => {
     ctx.state.setSaving(true);
     ctx.state.setMessage(null);
     ctx.state.setLastOutcome(null);
     try {
       let response: WasteFractionMutationResponse<{ readonly id: string }>;
       try {
-        response = await deleteWasteManagementFraction(fractionId);
+        response = confirmation
+          ? await deleteWasteManagementFraction(fractionId, confirmation)
+          : await deleteWasteManagementFraction(fractionId);
       } catch (error) {
         setDeleteErrorMessage(ctx, error);
         throw error;

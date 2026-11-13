@@ -14,7 +14,7 @@ Der fachliche Entwurf wurde am 07.11.2026 als Grundlage des OpenSpec-Changes und
 | Neuerer lokaler Mainserver-Checkout `SVA-Gitlab/mainserver/smart-village-app-mainserver`, HEAD `76d2e12af092197f3cf58f2e4886fa8fe2a30c5b`, `app/graphql/types/query_types/generic_item_type.rb:52–54`, `app/services/resource_service.rb:263–329` | Detail-Read liefert nur aktive Kategorien; gewöhnliche Updates ersetzen Kategorien und abhängige Beziehungen                                     |
 | Studio `packages/sva-mainserver/src/server/vouchers-snapshot.ts:56–67`                                                                                                                                                                            | Bestehendes Vorbild für konservative Ablehnung bei möglicherweise verborgenen Kategoriezuordnungen                                               |
 
-Die Checkouts sind lokale Quellen, keine Bestätigung des produktiven Server-/App-Versionsstands. Die ältere Mainserver-Kopie unter `SVA/smart-village-app-mainserver` ersetzt die Prüfung des neueren Vertrags nicht. Vor Codeänderungen wird die Referenzsuche mit verfügbarem XERJ sowie Index-/Quellstand- und Lizenzprüfung nach `AGENTS.md` durchgeführt; für dieses Proposal wurde kein Referenzcode übernommen.
+Die Checkouts sind lokale Quellen, keine Bestätigung des produktiven Server-/App-Versionsstands. Die ältere Mainserver-Kopie unter `SVA/smart-village-app-mainserver` ersetzt die Prüfung des neueren Vertrags nicht. Für dieses Proposal wurde kein Referenzcode übernommen.
 
 ## Entscheidung und Alternativen
 

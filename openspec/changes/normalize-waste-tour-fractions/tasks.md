@@ -3,7 +3,7 @@
 - [x] 1.1 Proposal und Design fachlich prüfen und vor Implementierung freigeben; ausschließlich Tour–Fraktions-Zuordnungen als PR-Scope festhalten.
 - [x] 1.2 Alle DB-Leser/-Schreiber, Grants, Schema-Manifeste, Reset-/Seed-, Datenaustausch-, Duplikat- und Jahresübernahmepfade inventarisieren; Konflikte mit laufenden Changes prüfen.
 - [x] 1.3 Bestehende Migrationsreihenfolge prüfen und wegen fehlender Quieszenz den ausdrücklich freigegebenen Expand/Contract-Vertrag ausarbeiten; Contract standardmäßig deaktivieren.
-- [x] 1.4 Vor nichttrivialem Code XERJ-Referenzen gemäß AGENTS.md prüfen, Indexstand abgleichen; bestehende Transaktions-/Migrationspfade und Lizenzbedingungen berücksichtigen.
+- [x] 1.4 Bestehende Transaktions-/Migrationspfade und Lizenzbedingungen berücksichtigen.
 
 ## 2. Schema und Migration
 

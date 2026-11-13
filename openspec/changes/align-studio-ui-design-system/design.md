@@ -11,9 +11,7 @@ Figma-Versionssnapshot liegt diesem Plan nicht bei.
 
 Vor jedem Implementierungsslice den betreffenden Code und Figma-Knoten erneut
 lesen. Bei abweichenden Verträgen oder geändertem Design die betroffene
-Zuordnung aktualisieren, bevor Produktcode geändert wird. Vor nichttrivialen
-Codeänderungen außerdem die XERJ-Referenzsuche gemäß `AGENTS.md` ausführen,
-sofern der Dienst verfügbar ist, und Indexstand sowie Lizenz prüfen.
+Zuordnung aktualisieren, bevor Produktcode geändert wird.
 
 | Referenz                                                                                                                  | Figma-Knoten | Verwendung                                                         |
 | ------------------------------------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------ |

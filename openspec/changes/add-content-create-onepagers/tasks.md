@@ -1,7 +1,7 @@
 ## 1. Baseline und bestehende Verträge
 
 - [x] 1.1 Vor Implementierung Ziel, Nicht-Ziele und maximal betroffene Bereiche aus dem Proposal als PR-Scope festhalten; aktuelle Editor-Kompositionen und relevante laufende Changes gegen den Quellstand prüfen.
-- [x] 1.2 Gemäß AGENTS.md bei verfügbarem XERJ `studio-code` und passende Referenz nach bestehender Abschnittskomposition/Fehlerfokus durchsuchen, Fundstellen und Indexstand prüfen; ohne passenden Treffer im zuständigen Projektpfad bleiben.
+- [x] 1.2 Bestehende Abschnittskomposition und Fehlerfokus im zuständigen Projektpfad prüfen.
 - [x] 1.3 Vorhandene Feldabschnitte, Formular-/Submit-Owner und Default-/Mapping-Verträge der acht Plugins prüfen. Modellfelder ohne sichtbare Eingabe explizit von der Migration ausschließen.
 - [x] 1.4 Pro Plugin vor Umstellung einen kleinen aussagekräftigen Editor-Test für Create und Edit grün nachweisen; keine breite lokale Suite als Vorbedingung.
 

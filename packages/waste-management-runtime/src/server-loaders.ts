@@ -114,7 +114,12 @@ export const createWasteServerLoaders = (host: WasteServerLoaderHost) => {
   const { saveWasteLocationTourLinksBulk, updateWasteTourValidityBulk, updateWasteTourStatusBulk } =
     new WasteBulkLoaders(context);
   const { previewWasteAnnualTourTransfer, createWasteAnnualTourTransfer } = createAnnual(context);
-  const { previewWasteAddressMutation, mutateWasteAddressInTransaction } = context;
+  const {
+    previewWasteAddressMutation,
+    mutateWasteAddressInTransaction,
+    previewWasteFractionDeletion,
+    executeWasteFractionDeletion,
+  } = context;
 
   const wasteManagementOverviewLoaders = {
     loadWasteEmailMonitoring: (instanceId: string, query: WasteEmailMonitoringQuery) =>
@@ -140,6 +145,7 @@ export const createWasteServerLoaders = (host: WasteServerLoaderHost) => {
     previewWasteLocationTourPickupDateImport,
     previewWasteAnnualTourTransfer,
     previewWasteAddressMutation,
+    previewWasteFractionDeletion,
   } as const;
 
   const wasteManagementEntityLoaders = {
@@ -165,6 +171,7 @@ export const createWasteServerLoaders = (host: WasteServerLoaderHost) => {
     listWasteTourDateShiftsByTourId,
     loadWasteGlobalDateShiftById,
     previewWasteAddressMutation,
+    previewWasteFractionDeletion,
   } as const;
 
   const wasteManagementEntitySavers = {
@@ -200,6 +207,7 @@ export const createWasteServerLoaders = (host: WasteServerLoaderHost) => {
     deleteWasteGlobalDateShift,
     saveWasteGlobalDateShift,
     mutateWasteAddressInTransaction,
+    executeWasteFractionDeletion,
   } as const;
 
   const wasteManagementServerLoaderInternals = {

@@ -8,6 +8,7 @@ import {
   deleteWasteManagementHolidayRule,
   deleteWasteAddressEntity,
   deleteWasteManagementFraction,
+  previewWasteManagementFractionDeletion,
   createWasteManagementFraction,
   createWasteManagementGlobalDateShift,
   createWasteManagementLocationTourPickupDate,
@@ -86,11 +87,17 @@ describe('waste-management api client', () => {
     );
 
   it('sends the optional merge target with the delete confirmation', async () => {
-    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ data: { counts: {} } }), { status: 200 }));
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: { counts: {} } }), { status: 200 })
+    );
     await deleteWasteAddressEntity('street', 'source', 'snapshot', 'target');
-    expect(fetchMock).toHaveBeenCalledWith('/api/v1/waste-management/streets/source', expect.objectContaining({
-      method: 'DELETE', body: JSON.stringify({ confirmationToken: 'snapshot', targetEntityId: 'target' }),
-    }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/streets/source',
+      expect.objectContaining({
+        method: 'DELETE',
+        body: JSON.stringify({ confirmationToken: 'snapshot', targetEntityId: 'target' }),
+      })
+    );
   });
 
   it('loads waste settings through the host facade', async () => {
@@ -554,6 +561,30 @@ describe('waste-management api client', () => {
     );
   });
 
+  it('binds a single fraction deletion to its preview, variant and target', async () => {
+    const input = { fractionId: 'source', mode: 'replace' as const, targetFractionId: 'target' };
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: { token: 'preview-token' } }), { status: 200 })
+    );
+    await previewWasteManagementFractionDeletion(input);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/v1/waste-management/fractions/impact-preview',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify(input) })
+    );
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: { id: 'source' } }), { status: 200 })
+    );
+    const confirmation = {
+      mode: 'replace' as const,
+      targetFractionId: 'target',
+      confirmationToken: 'preview-token',
+    };
+    await deleteWasteManagementFraction('source', confirmation);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/v1/waste-management/fractions/source',
+      expect.objectContaining({ method: 'DELETE', body: JSON.stringify(confirmation) })
+    );
+  });
   it('deletes waste fractions through the host facade', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ data: { id: 'fraction-3' } }), {

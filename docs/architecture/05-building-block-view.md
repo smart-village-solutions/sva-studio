@@ -1211,6 +1211,15 @@ Der App-Dispatcher in `apps/sva-studio-react/src/server.ts` finalisiert Antworte
 
 `@sva/waste-management-runtime` besitzt die Tabelle `waste_tour_fractions` und den atomaren DB-Upsert `upsert_waste_tour(...)`. Kalender und Erinnerungen lesen dieselbe relationale Zuordnung; der äußere Vertrag `wasteFractionIds` bleibt unverändert. Während der begrenzten Expand/Contract-Migration bindet ein DB-Trigger alte Array-Schreiber an die Beziehungstabelle an. Details zu Fremdschlüsseln, Reihenfolge und Entfernung der Brücke stehen in der [Schemaübersicht](../development/studio-db-schema.md). Es entstehen keine zusätzlichen Packages oder Services.
 
+Die Fraktions-Einzellöschung erweitert denselben Pfad um eine serverseitige Auswirkungsvorschau
+und drei ausdrückliche Varianten: Zuordnungen entfernen, betroffene Touren kaskadierend löschen
+oder Quelle durch eine aktive Zielfraktion ersetzen. `waste-management-contracts` besitzt die
+Vorschau- und Bestätigungsverträge, `plugin-waste-management` den vorhandenen Löschdialog und
+`waste-management-runtime` Snapshot, Konfliktprüfung und Transaktion. Die Konfliktprüfung nutzt die
+bestehende Terminmaterialisierung mit einem vollständigen begrenzten Jahresbereich. Neue
+Dienste, Tabellen und alternative Berechnungswege entstehen nicht. Bedienung und Grenzen:
+[Waste-Referenz](../reference/waste-management-tour-gueltigkeit.md#abfallfraktion-löschen-oder-ersetzen).
+
 ### Gemeinsame Studio-Mailvorlagen
 
 `iam.instance_mail_templates` speichert Einladung und E-Mail-Bestätigung mit

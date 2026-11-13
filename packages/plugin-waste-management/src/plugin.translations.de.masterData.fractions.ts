@@ -171,6 +171,59 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     editTitle: 'Abfallfraktion bearbeiten',
     editDescription: 'Ändern Sie Name, Farbe, Sichtbarkeit und Erinnerungsangebot der Fraktion.',
   },
+  deleteOptions: {
+    mode: 'Was soll mit den zugeordneten Touren geschehen?',
+    choose: 'Bitte auswählen',
+    detach: 'Touren erhalten und nur diese Fraktion entfernen',
+    'delete-tours': 'Zugeordnete Touren und Termine mitlöschen',
+    replace: 'Durch eine andere Fraktion ersetzen',
+    target: 'Zielfraktion',
+    chooseTarget: 'Zielfraktion auswählen',
+    loading: 'Auswirkungen werden geprüft …',
+    impact: 'Auswirkungen der Fraktionslöschung',
+    tourCount: 'Betroffene Touren: {{count}}',
+    tour: '{{name}} ({{status}})',
+    shared: 'Weitere Fraktionen dieser Tour: {{fractions}}',
+    removeDates:
+      'Die aufgeführten Touren samt gespeicherten Terminen, Einsätzen, Verschiebungen und Abholortzuordnungen werden vollständig gelöscht – auch für ihre weiteren Fraktionen.',
+    keepDates: 'Touren, Termine, Einsätze und Abholortzuordnungen bleiben erhalten.',
+    reminders:
+      'Die Erinnerungsauswahl für die gelöschte Fraktion entfällt. Sie wird nicht auf eine Zielfraktion übertragen. Nicht mehr zutreffende ausstehende Erinnerungen werden storniert.',
+    refresh: 'Vorschau aktualisieren',
+    previewError: 'Die Vorschau konnte nicht geladen werden. Bitte versuchen Sie es erneut.',
+    executeError:
+      'Die Änderung konnte nicht ausgeführt werden. Bitte aktualisieren und prüfen Sie die Vorschau erneut.',
+    conflict: '{{tours}}: gleicher Abholtag {{date}} am Abholort {{location}}.',
+    counts: {
+      links: 'Abholortzuordnungen',
+      pickupDates: 'Gespeicherte Standorttermine',
+      assignments: 'Gespeicherte Einsätze',
+      shifts: 'Tourverschiebungen',
+      reminderItems: 'Entfallende Erinnerungsauswahlen',
+      pendingReminders: 'Zu stornierende Erinnerungen',
+    },
+    confirm: {
+      detach: 'Fraktion entfernen',
+      'delete-tours': 'Fraktion, Touren und Termine löschen',
+      replace: 'Fraktion ersetzen und löschen',
+    },
+    summary: {
+      detach: '„{{source}}“ wird entfernt. Die übrigen Fraktionen bleiben zugeordnet.',
+      'delete-tours': '„{{source}}“ und alle aufgeführten Touren werden endgültig gelöscht.',
+      replace: '„{{source}}“ wird durch „{{target}}“ ersetzt und anschließend gelöscht.',
+    },
+    blocked: {
+      'empty-tour':
+        'Mindestens eine Tour hätte danach keine Fraktion mehr. Wählen Sie eine andere Variante.',
+      'invalid-target': 'Bitte wählen Sie eine andere aktive Fraktion.',
+      'date-conflict':
+        'Die Ersetzung würde doppelte Abholtermine erzeugen. Bitte lösen Sie zuerst die aufgeführten Konflikte.',
+      'unbounded-schedule':
+        'Der gesamte Zeitraum lässt sich nicht vollständig prüfen. Bitte begrenzen oder prüfen Sie die betroffenen Touren und Verschiebungsregeln vor der Ersetzung.',
+      'reminder-dispatching':
+        'Eine betroffene Erinnerung wird gerade versandt. Bitte versuchen Sie es nach Abschluss des Versands erneut.',
+    },
+  },
   deleteDialog: {
     title: 'Abfallfraktion löschen',
     description: 'Die Abfallfraktion {{value}} wird dauerhaft gelöscht.',

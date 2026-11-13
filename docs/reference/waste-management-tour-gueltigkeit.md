@@ -100,3 +100,40 @@ Die nach Status filterbare, in der Breite begrenzte Abo-Liste bündelt Empfänge
 **Versand ansehen** öffnet die gespeicherten Bestätigungs- und Erinnerungsnachrichten des Abos mit erklärtem Versandstatus, gruppierten Zeitangaben, Anzahl der Versandversuche, Abfallart, Abholtermin und verständlichem Hinweis bei Versandproblemen. Abholtermine und Zeitangaben werden in der gewählten Studiosprache formatiert; Uhrzeiten erscheinen ohne Sekunden. Auf schmalen Bildschirmen nutzt die bestehende Tabelle ihre Kartenansicht. Beide Listen sind seitenweise abrufbar. **Aktualisieren** lädt den aktuellen Stand neu. Es gibt keine Bearbeitung, Löschung, erneuten Versand oder Offenlegung der vollständigen Adresse.
 
 Die Auswertung liest die vorhandenen Abo- und Outbox-Tabellen. Sie ergänzt kein historisches Versandjournal: „An E-Mail-Dienst übergeben“ bestätigt die Annahme durch den Versanddienst, nicht den Postfachempfang; „Versand bearbeitet am“ bezeichnet weiterhin den Referenzzeitpunkt des Verarbeitungslaufs. Nach einem Fehlversuch kann „Geplant für“ den nächsten Versuch anzeigen. Provider-Nachrichtenkennungen und freie Fehlertexte bleiben verborgen. Gelöschte oder bereinigte Outbox-Einträge lassen sich daraus nicht rekonstruieren.
+
+## Abfallfraktion löschen oder ersetzen
+
+Öffnen Sie im Bereich **Abfallfraktionen** die Löschaktion einer einzelnen Fraktion. Bei einer
+unbenutzten Fraktion genügt die einfache Löschbestätigung. Bei vorhandenen Tourzuordnungen
+wählen Sie ausdrücklich eine Variante:
+
+- **Touren erhalten und nur diese Fraktion entfernen** erscheint ausschließlich, wenn jede
+  betroffene Tour danach noch mindestens eine weitere Fraktion besitzt. Touren, Termine und
+  weitere Fraktionen bleiben erhalten.
+- **Zugeordnete Touren und Termine mitlöschen** entfernt alle zugeordneten Touren einschließlich
+  gespeicherter Termine, Einsätze, Tourverschiebungen und Abholortverknüpfungen. Das gilt auch
+  für Entwürfe und archivierte Touren. Gemeinsam genutzte Touren werden hervorgehoben; ihre
+  weiteren Fraktionsstammdaten und die Abholorte selbst bleiben bestehen.
+- **Durch eine andere Fraktion ersetzen** erhält Touren, IDs, Termine, Regeln und Hinweise.
+  Wählen Sie eine andere aktive Zielfraktion. Bereits vorhandene Zielzuordnungen bleiben pro Tour
+  genau einmal bestehen. Neu entstehende Überschneidungen verschiedener veröffentlichter Touren
+  für dieselbe Zielfraktion am selben Abholort und wirksamen Tag blockieren die Änderung.
+
+Prüfen Sie vor der Bestätigung die Auswirkungen und gegebenenfalls die Zielfraktion. Angezeigte
+Terminzahlen zählen gespeicherte Datensätze, keine unendlich fortgesetzten Wiederholungen. Die
+Konfliktprüfung verwendet die bestehende Terminauflösung einschließlich Einsätzen und
+Verschiebungen über den gesamten prüfbaren Gültigkeitsbereich. Konkurrierende Wiederholungen
+am selben Abholort ohne Enddatum, nicht vollständig prüfbare jährliche Jahreswechselverschiebungen
+und Prüfbereiche über 100 Jahre werden nicht als konfliktfrei freigegeben. Es werden keine Touren
+oder Termine automatisch zusammengeführt.
+
+Die Erinnerungsauswahlen für die gelöschte Fraktion entfallen und werden auch bei Ersetzung nicht
+auf die Zielfraktion übertragen. Nicht mehr zutreffende ausstehende Erinnerungen werden storniert;
+Erinnerungen für weiterhin vorhandene Abholungen bleiben bestehen. Ein bereits übergebener
+Versand lässt sich nicht zurückrufen und blockiert die Änderung vorübergehend.
+
+Ändern sich die Daten seit der Vorschau, aktualisieren und prüfen Sie sie erneut. Die Änderung wird
+vollständig in einer Transaktion gespeichert oder vollständig zurückgerollt. Erforderlich ist
+`waste-management.master-data.manage`. Die bestehende Mehrfachlöschung entfernt weiterhin
+keine Touren automatisch. Die lokale Speicherung und der anschließende Mainserver-Abgleich
+besitzen getrennte Erfolgsstände; bei einer Sync-Warnung verwenden Sie die angebotene Wiederholung.

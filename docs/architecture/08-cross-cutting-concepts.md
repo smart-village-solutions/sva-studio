@@ -1497,3 +1497,21 @@ Legacy administration APIs and exclusive helpers are retired after explicit user
 confirmation that no existing consumers remain. Stored service data is preserved.
 No recording authority, installed translation models, schema or archive expiry
 changes are implied. See [SSF administration](../development/ssf-v2-inhaltsverwaltung-ui.md).
+
+## Bestätigte Fraktionslöschung und parallele Erinnerungsplanung
+
+Vorschau und Ausführung der Fraktionslöschung erfordern den serverseitigen Tenant-Kontext,
+`waste-management.master-data.manage` und den bestehenden CSRF-Schutz. Ein SHA-256-Fingerprint
+bindet Variante, Quelle, Ziel und den relevanten Datenstand an die Bestätigung. Die Ausführung
+prüft die Vorschau unter tenantlokalen Tabellensperren erneut. SHARE ROW EXCLUSIVE sperrt
+reguläre DML-Schreiber auch gegen neue Tour-, Termin- und Erinnerungsdatensätze; ein Lock-Timeout
+führt zum Rollback und zur erneuten Vorschau. Der vorhandene relationale Schreibvertrag und
+ON DELETE RESTRICT bleiben erhalten. Quelle, Touränderungen und Outbox-Stornierungen committen
+zusammen oder gar nicht. Konfliktfreiheit wird bei nicht vollständig prüfbaren Zeiträumen verweigert.
+
+Der bestehende Erinnerungsplaner hält vom Lesen der Fachdaten bis zum Eintragen beziehungsweise
+Abgleichen der Outbox eine Transaktion mit SHARE-Sperren auf Fraktionen und Touren. Dadurch kann
+eine Löschung nicht zwischen alter Planung und späterem Enqueue committen. Bereits beanspruchte
+externe Zustellungen blockieren die betroffene Löschung; ein Datenbankrollback kann eine E-Mail
+nicht zurückrufen. Vorschau und Audit enthalten keine Empfängeradressen oder Token. Der bestehende
+Mainserver-Sync folgt erst nach dem lokalen Commit und hat einen getrennten Erfolgsstatus.

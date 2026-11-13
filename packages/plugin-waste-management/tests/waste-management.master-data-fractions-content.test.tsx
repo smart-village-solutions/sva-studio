@@ -11,6 +11,26 @@ const { clearSelectionMock, dataTableMock } = vi.hoisted(() => ({
   dataTableMock: vi.fn(),
 }));
 
+vi.mock('../src/waste-management.api.master-data-addresses.fractions.js', () => ({
+  previewWasteManagementFractionDeletion: vi.fn(async (input) => ({
+    input,
+    token: 'a'.repeat(64),
+    canDetach: true,
+    targets: [],
+    tours: [],
+    counts: {
+      links: 0,
+      pickupDates: 0,
+      assignments: 0,
+      shifts: 0,
+      reminderItems: 0,
+      pendingReminders: 0,
+    },
+    conflicts: [],
+    blockedReason: null,
+  })),
+}));
+
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${Object.values(values).join('|')}` : key,
@@ -274,7 +294,7 @@ describe('WasteMasterDataFractionsContent', () => {
     });
   });
 
-  it('maps fractions into a selectable sortable data table with icon actions and delete confirmation', () => {
+  it('maps fractions into a selectable sortable data table with icon actions and delete confirmation', async () => {
     const onOpenCreateFraction = vi.fn();
     const onOpenEditFraction = vi.fn();
     const onOpenDeleteFraction = vi.fn();
@@ -365,9 +385,16 @@ describe('WasteMasterDataFractionsContent', () => {
     expect(screen.getByRole('button', { name: 'masterData.fractions.filters.reset' })).toBeTruthy();
     expect(screen.getByText('masterData.fractions.deleteDialog.title')).toBeTruthy();
     fireEvent.click(
-      screen.getByRole('button', { name: 'masterData.fractions.deleteDialog.confirm' })
+      await screen.findByRole('button', {
+        name: 'masterData.fractions.deleteOptions.confirm.detach',
+      })
     );
-    expect(onOpenDeleteFraction).toHaveBeenCalledWith(fraction);
+    await waitFor(() =>
+      expect(onOpenDeleteFraction).toHaveBeenCalledWith(fraction, {
+        mode: 'detach',
+        confirmationToken: 'a'.repeat(64),
+      })
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.filters.reset' }));
     expect(onFractionsStatusChange).toHaveBeenCalledWith('all');

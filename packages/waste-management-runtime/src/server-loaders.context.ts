@@ -1,3 +1,8 @@
+import { processWasteFractionDeletion } from './repositories/fraction-deletion.js';
+import type {
+  WasteFractionDeleteInput,
+  WasteFractionDeleteConfirmation,
+} from '@sva/waste-management-contracts';
 import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import { createSdkLogger } from '@sva/server-runtime';
 import { findSelectedWasteManagementInterfaceRecord } from '@sva/waste-management-contracts';
@@ -6,7 +11,11 @@ import { resolveWasteDataSource } from './repositories/data-source.server.js';
 import { createWasteMasterDataRepository } from './repositories/master-data.js';
 import { mutateWasteAddressInTransaction } from './repositories/address-mutations.js';
 import { previewWasteAddressMutation } from './repositories/address-mutation-snapshot.js';
-import type { WasteAddressImpactCounts, WasteAddressImpactPreview, WasteAddressMutationPreviewInput } from '@sva/waste-management-contracts';
+import type {
+  WasteAddressImpactCounts,
+  WasteAddressImpactPreview,
+  WasteAddressMutationPreviewInput,
+} from '@sva/waste-management-contracts';
 import { createWasteProvisioningAccess } from './repositories/waste-provisioning-access.js';
 import type { WasteServerLoaderHost } from './server-loaders.js';
 
@@ -213,6 +222,15 @@ export class WasteLoaderContext {
     this.withWasteClient(instanceId, operation, async (client) =>
       work(createWasteMasterDataRepository(this.createSqlExecutor(client)))
     );
+  previewWasteFractionDeletion = (instanceId: string, input: WasteFractionDeleteInput) =>
+    this.withWasteClient(instanceId, 'preview_waste_fraction_deletion', (client) =>
+      processWasteFractionDeletion(client, input)
+    );
+  executeWasteFractionDeletion = (instanceId: string, input: WasteFractionDeleteConfirmation) =>
+    this.withWasteClient(instanceId, 'execute_waste_fraction_deletion', (client) => {
+      const { confirmationToken, ...selection } = input;
+      return processWasteFractionDeletion(client, selection, confirmationToken);
+    });
   previewWasteAddressMutation = async (
     instanceId: string,
     input: WasteAddressMutationPreviewInput

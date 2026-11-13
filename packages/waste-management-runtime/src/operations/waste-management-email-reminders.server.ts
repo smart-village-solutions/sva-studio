@@ -77,6 +77,11 @@ export const createMaterializeEmailRemindersOperation = (
   const reminderConfig = reminderSettings.config;
 
   const details = await withWasteClient(deps, instanceId, async ({ client, repository, dataSource }) => {
+    // Hold source locks until enqueue completes, excluding concurrent fraction deletion.
+    await client.query('BEGIN');
+    try {
+      await client.query("SET LOCAL lock_timeout = '5s'");
+      await client.query('LOCK TABLE waste_fractions, waste_tours IN SHARE MODE');
     const unsubscribeSigningSecret = reminderSettings.unsubscribeSigningSecret ?? dataSource.databaseUrl;
     const reminderRepository = createWasteEmailReminderRepository(createSqlExecutor(client));
     const [subscriptions, fractions, tours, links, locations, pickupDates, tourAssignments, tourDateShifts, globalDateShifts, holidayRules] =
@@ -201,6 +206,7 @@ export const createMaterializeEmailRemindersOperation = (
       now: referenceTime.toISOString(),
     });
 
+    await client.query('COMMIT');
     return {
       operation: 'materialize-email-reminders',
       mode: 'executed',
@@ -210,6 +216,10 @@ export const createMaterializeEmailRemindersOperation = (
       skippedPickupCount,
       cancelledOutboxCount,
     };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    }
   });
 
   return buildOperationSummary(startedAt, details);

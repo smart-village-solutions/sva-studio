@@ -28,6 +28,8 @@ const MATERIALIZATION_YEAR_OFFSET = 1;
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 export type WasteMaterializationContext = {
+  /** Complete explicit period for fraction replacement conflict checks. */
+  readonly years?: readonly number[];
   readonly tours: readonly WasteTourRecord[];
   readonly links: readonly WasteLocationTourLinkRecord[];
   readonly locationTourPickupDates?: readonly WasteLocationTourPickupDateRecord[];

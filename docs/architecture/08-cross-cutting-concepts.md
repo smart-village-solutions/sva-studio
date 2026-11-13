@@ -1500,15 +1500,18 @@ changes are implied. See [SSF administration](../development/ssf-v2-inhaltsverwa
 
 ## Bestätigte Fraktionslöschung und parallele Erinnerungsplanung
 
-Vor dem Ausführungssnapshot sperrt die Löschtransaktion auch die Tourzeilen mit `FOR UPDATE`.
-Das schließt reine Änderungen der Fraktionsrelation über den bestehenden Relationswriter aus.
+Vor dem Ausführungssnapshot sperrt die Löschtransaktion zuerst `waste_tours` in `EXCLUSIVE MODE`.
+Das schließt auch reine Relationswriter mit `FOR UPDATE` aus, ohne danach Zeilensperren
+aufzuwerten. Gewöhnliche Lesezugriffe bleiben möglich.
 
 Vorschau und Ausführung der Fraktionslöschung erfordern den serverseitigen Tenant-Kontext,
 `waste-management.master-data.manage` und den bestehenden CSRF-Schutz. Ein SHA-256-Fingerprint
 bindet Variante, Quelle, Ziel und den relevanten Datenstand an die Bestätigung. Die Ausführung
-prüft die Vorschau unter tenantlokalen Tabellensperren erneut. SHARE ROW EXCLUSIVE sperrt
-reguläre DML-Schreiber auch gegen neue Tour-, Termin- und Erinnerungsdatensätze; ein Lock-Timeout
-führt zum Rollback und zur erneuten Vorschau. Der vorhandene relationale Schreibvertrag und
+prüft die Vorschau unter tenantlokalen exklusiven Tabellensperren erneut. Sie sperren
+reguläre DML-Schreiber auch gegen neue Tour-, Termin- und Erinnerungsdatensätze. Nach der
+Tourtabelle werden die weiteren Sperren mit `NOWAIT` angefordert: Bei einer belegten Tabelle
+rollt nur die Löschung sofort zurück, ohne einen bestehenden Writer beim Sperrupgrade zu blockieren.
+Auch ein Lock-Timeout führt zum Rollback und zur erneuten Vorschau. Der vorhandene relationale Schreibvertrag und
 ON DELETE RESTRICT bleiben erhalten. Quelle, Touränderungen und Outbox-Stornierungen committen
 zusammen oder gar nicht. Konfliktfreiheit wird bei nicht vollständig prüfbaren Zeiträumen verweigert.
 

@@ -204,14 +204,14 @@ export const processWasteFractionDeletion = async (
       );
       await client.query("SET LOCAL statement_timeout = '15s'");
       // Infrequent destructive operation: tenant-local table locks also exclude phantom inserts
-      // from existing READ COMMITTED writers. Lock tour rows too: the contracted relation writer
-      // takes FOR UPDATE without updating the tour table.
-      await client.query(`LOCK TABLE waste_fractions, waste_tours, waste_custom_recurrence_presets,
+      // from existing READ COMMITTED writers. EXCLUSIVE also excludes relation-only ROW SHARE
+      // writers before acquiring other locks, avoiding a table-to-row lock upgrade cycle.
+      await client.query('LOCK TABLE waste_tours IN EXCLUSIVE MODE');
+      await client.query(`LOCK TABLE waste_fractions, waste_custom_recurrence_presets,
         waste_collection_locations, waste_location_tour_links, waste_location_tour_pickup_dates,
         waste_tour_assignments, waste_tour_assignment_locations, waste_tour_date_shifts,
         waste_global_date_shifts, waste_holiday_rules, waste_email_reminder_subscriptions,
-        waste_email_reminder_subscription_items, waste_email_reminder_outbox IN SHARE ROW EXCLUSIVE MODE`);
-      await client.query('SELECT id FROM waste_tours ORDER BY id FOR UPDATE');
+        waste_email_reminder_subscription_items, waste_email_reminder_outbox IN EXCLUSIVE MODE NOWAIT`);
     }
     const current = await snapshot(client, input);
     if (execute) {

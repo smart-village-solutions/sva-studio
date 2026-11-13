@@ -47,7 +47,12 @@
 - Reminder-Planung und Fraktionslöschung verwenden eine gemeinsame tenantlokale Advisory-Sperre.
   Der PostgreSQL-Nachweis prüft außerdem, dass reguläre Tourbearbeitung während der Planung
   möglich bleibt und die Löschung weiter auf die Planung wartet.
-- Nach weiterem Review sperrt die Löschung vor dem Snapshot zusätzlich alle Tourzeilen,
+- Nach weiterem Review sperrt die Löschung vor dem Snapshot zuerst die Tourtabelle exklusiv,
   damit auch der reine Relationswriter im Contract-Zustand ausgeschlossen ist. Der neue
-  PostgreSQL-Regressionstest scheitert ohne diesen Fix und besteht mit ihm (13 Tests insgesamt).
+  PostgreSQL-Regressionstest scheitert ohne diesen Fix und besteht mit ihm (15 Tests insgesamt).
+- Derselbe Paralleltest deckt sowohl den reinen Relationswriter als auch dessen anschließendes
+  Tour-UPDATE ab; die exklusive Tabellensperre ersetzt den zusätzlichen Zeilenscan.
 - Ohne aktive Zielfraktion wird die Ersetzungsoption ausgeblendet (7 Dialogtests grün).
+- Nach Prüfung der Adress- und Outbox-Writer werden weitere Tabellen exklusiv mit NOWAIT
+  gesperrt. Ein vorhandener Kindtabellen-Writer führt zum konfliktbehafteten Rollback der
+  Löschung; sein Sperrupgrade bleibt möglich (zusätzlicher PostgreSQL-Regressionstest).

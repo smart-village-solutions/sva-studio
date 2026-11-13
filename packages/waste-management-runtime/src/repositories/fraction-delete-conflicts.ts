@@ -1,5 +1,8 @@
 /** Collision checks reuse the production schedule materializer over the complete bounded period. */
-import type { WasteFractionDeletePreview } from '@sva/waste-management-contracts';
+import {
+  isWasteTourValidityApplicable,
+  type WasteFractionDeletePreview,
+} from '@sva/waste-management-contracts';
 import { buildMaterializedLocationTourPickupDates } from '../operations/waste-management-mainserver-sync.materialization.js';
 import type { WasteMaterializationContext } from '../operations/waste-management-mainserver-sync.materialization.shared.js';
 
@@ -136,8 +139,7 @@ export const findFractionReplacementConflicts = (
     tours.some(
       (tour) =>
         state.links.some((link) => link.tourId === tour.id) &&
-        tour.recurrence &&
-        tour.recurrence !== 'on-demand' &&
+        (isWasteTourValidityApplicable(tour) || (tour.customRecurrenceIntervalDays ?? 0) > 0) &&
         !tour.endDate
     )
   ) {
@@ -148,7 +150,9 @@ export const findFractionReplacementConflicts = (
   if (!years.length) return { conflicts: [], blockedReason: null };
   const occurrences = buildMaterializedLocationTourPickupDates({
     ...state,
-    tours,
+    tours: tours.map((tour) =>
+      tour.customRecurrenceId ? { ...tour, recurrence: 'custom' as const } : tour
+    ),
     years,
     currentYear: years[0],
     nextYear: years.at(-1)!,

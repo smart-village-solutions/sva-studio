@@ -123,7 +123,8 @@ Prüfen Sie vor der Bestätigung die Auswirkungen und gegebenenfalls die Zielfra
 Terminzahlen zählen gespeicherte Datensätze, keine unendlich fortgesetzten Wiederholungen. Die
 Konfliktprüfung verwendet die bestehende Terminauflösung einschließlich Einsätzen und
 Verschiebungen über den gesamten prüfbaren Gültigkeitsbereich. Konkurrierende Wiederholungen
-am selben Abholort ohne Enddatum, nicht vollständig prüfbare jährliche Jahreswechselverschiebungen
+am selben Abholort ohne Enddatum – auch gespeicherte Wiederholungsvorlagen –, nicht vollständig
+prüfbare jährliche Jahreswechselverschiebungen
 und Prüfbereiche über 100 Jahre werden nicht als konfliktfrei freigegeben. Es werden keine Touren
 oder Termine automatisch zusammengeführt.
 

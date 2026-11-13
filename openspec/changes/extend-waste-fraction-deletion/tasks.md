@@ -56,3 +56,6 @@
 - Nach Prüfung der Adress- und Outbox-Writer werden weitere Tabellen exklusiv mit NOWAIT
   gesperrt. Ein vorhandener Kindtabellen-Writer führt zum konfliktbehafteten Rollback der
   Löschung; sein Sperrupgrade bleibt möglich (zusätzlicher PostgreSQL-Regressionstest).
+- Die Konfliktprüfung erkennt gespeicherte Wiederholungsvorlagen auch bei leerem recurrence-Feld.
+  Unbegrenzte Vorlagen blockieren; begrenzte Vorlagen werden mit ihrem Intervall an die bestehende
+  Materialisierung übergeben. Elf gezielte Konflikttests prüfen auch beide Tourseiten und kollisionsfreie Fälle.

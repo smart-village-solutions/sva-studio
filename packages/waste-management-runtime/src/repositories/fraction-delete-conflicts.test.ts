@@ -173,6 +173,42 @@ describe('fraction replacement', () => {
       findFractionReplacementConflicts(assigned, 'source', 'target').conflicts[0]?.pickupDate
     ).toBe('2034-06-15');
   });
+  it.each(['source', 'target'])('blocks an unbounded saved preset on the %s tour', (fraction) => {
+    const preset = {
+      recurrence: null,
+      customRecurrenceId: 'preset',
+      customRecurrenceIntervalDays: 10,
+      endDate: undefined,
+    };
+    const input = state([
+      tour('a', ['source'], fraction === 'source' ? preset : {}),
+      tour('b', ['target'], fraction === 'target' ? preset : {}),
+    ]);
+    expect(findFractionReplacementConflicts(input, 'source', 'target').blockedReason).toBe(
+      'unbounded-schedule'
+    );
+    input.links[1].locationId = 'elsewhere';
+    expect(findFractionReplacementConflicts(input, 'source', 'target').blockedReason).toBeNull();
+  });
+  it.each(['2030-01-11', '2030-01-12'])('materializes bounded saved presets against %s', (date) => {
+    const input = state([
+      tour('a', ['source'], {
+        recurrence: null,
+        customRecurrenceId: 'preset',
+        customRecurrenceIntervalDays: 10,
+        endDate: '2030-01-31',
+      }),
+      tour('b', ['target'], {
+        recurrence: 'on-demand',
+        firstDate: undefined,
+        endDate: undefined,
+        customDates: [{ date }],
+      }),
+    ]);
+    expect(findFractionReplacementConflicts(input, 'source', 'target').blockedReason).toBe(
+      date === '2030-01-11' ? 'date-conflict' : null
+    );
+  });
   it('blocks incomplete checks of competing unbounded schedules but allows an isolated tour', () => {
     expect(
       findFractionReplacementConflicts(

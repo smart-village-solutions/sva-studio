@@ -209,5 +209,29 @@ export const buildRealmBaselinePlanSteps = (
   applicable: boolean
 ): KeycloakTenantPlan['steps'] => [
   buildRealmBaselineStep(state, blocked, applicable),
+  ...(!applicable ? [buildUserProfilePlanStep(state, blocked)] : []),
   buildSmtpPasswordPlanStep(Boolean(state?.realm?.smtpPasswordConfigured), blocked, applicable),
 ];
+
+const buildUserProfilePlanStep = (
+  state: KeycloakReadState | undefined,
+  blocked: boolean
+): KeycloakTenantPlan['steps'][number] => {
+  const aligned = state?.userProfileBaselineAligned === true;
+  return {
+    stepKey: 'user_profile',
+    title: 'Studio-Benutzerprofil abgleichen',
+    action: aligned ? 'verify' : 'update',
+    status: blocked ? 'blocked' : 'ready',
+    summary: aligned
+      ? 'Die Studio-Profilfelder entsprechen dem Sollzustand.'
+      : 'Studio ergänzt fehlende Profilfelder und prüft ihre administrativen Berechtigungen.',
+    details: {
+      userProfileBaselineAligned: aligned,
+      titleKey: 'admin.instances.operations.keycloakSteps.userProfile.title',
+      summaryKey: aligned
+        ? 'admin.instances.operations.keycloakSteps.userProfile.aligned'
+        : 'admin.instances.operations.keycloakSteps.userProfile.pending',
+    },
+  };
+};

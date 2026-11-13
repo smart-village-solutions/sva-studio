@@ -90,7 +90,7 @@ export const getKeycloakStatusEntries = (selectedInstance: SelectedInstance) => 
     ...(!managedRealmBaseline || status.realmBaselineAligned === undefined
       ? []
       : [[KEYCLOAK_STATUS_LABELS.realmBaselineAligned, status.realmBaselineAligned] as const]),
-    ...(!managedRealmBaseline || status.userProfileBaselineAligned === undefined
+    ...(status.userProfileBaselineAligned === undefined
       ? []
       : [
           [

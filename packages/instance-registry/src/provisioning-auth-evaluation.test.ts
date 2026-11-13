@@ -188,6 +188,25 @@ describe('provisioning-auth-evaluation', () => {
     expect(plan.driftSummary).not.toContain('Tenant-Admin wird erstellt');
   });
 
+  it.each([false, true])('plans the user profile of an existing realm (aligned: %s)', (aligned) => {
+    const plan = buildPlan({
+      instanceId: 'imported',
+      realmMode: 'existing',
+      preflight: { overallStatus: 'ready', checkedAt: '2026-09-11T00:00:00Z', checks: [] },
+      state: {
+        realm: { realm: 'imported' },
+        userProfileBaselineAligned: aligned,
+        pluginOidcClients: [],
+      } as never,
+    });
+
+    expect(plan.steps.find((step) => step.stepKey === 'user_profile')).toMatchObject({
+      action: aligned ? 'verify' : 'update',
+      details: { userProfileBaselineAligned: aligned },
+    });
+    expect(plan.steps.find((step) => step.stepKey === 'realm_baseline')?.action).toBe('skip');
+  });
+
   it('binds an approved tenant-admin adoption plan to the exact user without exposing the user id', () => {
     const makePlan = (userId: string) =>
       buildPlan({

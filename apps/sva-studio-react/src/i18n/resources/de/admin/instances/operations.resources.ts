@@ -24,6 +24,12 @@ export const operationsInstancesAdminDEResources = {
     fehlgeschlagen: 'Fehlgeschlagen',
   },
   keycloakSteps: {
+    userProfile: {
+      title: 'Studio-Benutzerprofil abgleichen',
+      aligned: 'Die Studio-Profilfelder entsprechen dem Sollzustand.',
+      pending: 'Studio ergänzt fehlende Profilfelder und prüft ihre administrativen Berechtigungen.',
+      failed: 'Die Studio-Profilfelder konnten nicht bestätigt werden.',
+    },
     realmBaseline: {
       title: 'Realm-Baseline anwenden',
       existing: 'Bestands-Realms werden nicht automatisch auf die New-Realm-Baseline umgestellt.',

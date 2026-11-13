@@ -3,6 +3,16 @@ import { describe, expect, it, vi } from 'vitest';
 import { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';
 
 describe('service-keycloak-run-steps', () => {
+  it('fails completion when the existing realm user profile cannot be confirmed', () => {
+    const steps = buildFinalRunSteps({
+      status: { userProfileBaselineAligned: false } as never,
+      intent: 'provision',
+      usedTemporaryPassword: false,
+    });
+
+    expect(steps.find((step) => step.stepKey === 'user_profile')).toMatchObject({ ok: false });
+  });
+
   it('appendRunStep keeps pending step without startedAt and finishedAt', async () => {
     const repository = {
       appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),

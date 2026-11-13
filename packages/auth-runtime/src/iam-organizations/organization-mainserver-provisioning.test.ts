@@ -238,6 +238,8 @@ describe('organization Mainserver provisioning', () => {
     ['*** 🏛️ ***', '', 'Organization', 'Tenant'],
     ['\u0000\nTeam\tNord\u007f', '  Stadt\nWest  ', 'Team Nord', 'Stadt West'],
     ['A'.repeat(300), 'B'.repeat(300), 'A'.repeat(255), 'B'.repeat(255)],
+    ['𐐀'.repeat(255), '𐐀'.repeat(255), '𐐀'.repeat(127), '𐐀'.repeat(127)],
+    ['A'.repeat(253) + '𐐀Z', 'A'.repeat(254) + '𐐀', 'A'.repeat(253) + '𐐀', 'A'.repeat(254)],
   ])('derives valid technical names for %j in %j', async (name, tenant, firstName, lastName) => {
     const { deriveOrganizationTechnicalIdentity } =
       await import('./organization-mainserver-provisioning.js');

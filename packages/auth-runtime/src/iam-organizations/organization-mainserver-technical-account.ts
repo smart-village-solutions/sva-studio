@@ -61,7 +61,10 @@ const normalizeTechnicalPersonName = (value: string, fallback: string): string =
     .replace(/[^\p{L}\p{M}\p{N} .'-]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  const bounded = Array.from(normalized).slice(0, 255).join('').trim();
+  const bounded = normalized
+    .slice(0, 255)
+    .replace(/[\uD800-\uDBFF]$/u, '')
+    .trim();
   return /[\p{L}\p{N}]/u.test(bounded) ? bounded : fallback;
 };
 
@@ -270,15 +273,8 @@ export const resolveOrganizationTechnicalAccount = async (input: {
     const account = await loadMappedAccountById(input.instanceId, input.technicalAccountId);
     if (account) {
       const derived = deriveOrganizationTechnicalIdentity(input);
-      return {
-        account,
-        identity: {
-          email: account.email ?? derived.email,
-          username: account.email ?? derived.username,
-          firstName: derived.firstName,
-          lastName: derived.lastName,
-        },
-      };
+      const email = account.email ?? derived.email;
+      return { account, identity: { ...derived, email, username: email } };
     }
   }
 

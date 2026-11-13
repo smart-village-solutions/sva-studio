@@ -154,7 +154,6 @@ Nicht ändern: `runner-worker.ts`, `runner-worker-support.ts`, `runner-repositor
 
 - [x] Lokalen Status und `git diff --stat 648f08c86e3e27b8aa644e1ddf621b7de5fe9d86..HEAD -- packages/auth-runtime packages/instance-registry` prüfen. Bei Drift die hier genannten Kanten und Verträge neu bestätigen.
 - [x] Isolierten Checkout innerhalb des freigegebenen Projektbereichs verwenden; fremde Änderungen nicht anfassen. Noch kein Push, PR, Merge oder Rollout ist Bestandteil dieses Planungsauftrags.
-- [x] Vor nichttrivialer Umsetzung den verfügbaren lokalen XERJ-Index mit `xerj_search` (`match` auf `body`) in `studio-code` sowie fachlich passender Referenz `payload-code` oder `keystone-code` konsultieren. Fundstellen, Quellstand und Lizenz prüfen; abweichende Begriffe gegebenenfalls über `xerj_semantic_search` auf `semantic_body` suchen. Keine Übernahme externer Architektur, wenn der bestehende lokale Pfad ausreicht.
 - [x] Aktuelle Zyklen und vier bereits grüne Basistests unten reproduzieren. Keine Umsetzung auf rotem relevantem Ausgangsstand.
 
 ### 1. Handler-Registry von Ausführung entkoppeln

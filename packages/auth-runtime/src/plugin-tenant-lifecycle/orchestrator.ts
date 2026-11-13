@@ -106,6 +106,7 @@ export type StartPluginTenantLifecycleInput = {
   readonly operation: PluginTenantLifecycleOperation;
   readonly expectedGeneration?: number;
   readonly actorAccountId?: string;
+  readonly usePersonalMainserverCredentials?: true;
   readonly requestId?: string;
   readonly scheduledAt: string;
 };

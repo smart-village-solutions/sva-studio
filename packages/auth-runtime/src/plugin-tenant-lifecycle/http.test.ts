@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   startConfiguredPluginTenantLifecycle: vi.fn(),
   isServiceRequest: true,
   validateSessionCsrf: vi.fn(() => null),
+  authorizeInstancePermissionForUser: vi.fn(),
 }));
 
 vi.mock('@sva/server-runtime', async (importOriginal) => ({
@@ -31,6 +32,11 @@ vi.mock('../iam-account-management/csrf.js', () => ({
   validateCsrf: state.validateSessionCsrf,
 }));
 
+vi.mock('../instance-permission-authorization.js', () => ({
+  authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode: (error: string) => error,
+}));
+
 vi.mock('./read-model.js', () => ({
   readConfiguredPluginTenantReadiness: state.readConfiguredPluginTenantReadiness,
 }));
@@ -46,16 +52,31 @@ import {
 } from './http.js';
 
 const context = {
-  authKind: 'service' as const,
+  authKind: 'keycloak_service' as const,
   user: { id: 'system-admin', roles: ['system_admin'] },
 };
+const tenantContext = {
+  authKind: 'session',
+  user: { id: 'tenant-admin', instanceId: 'tenant-a', roles: [] },
+} as const;
+const tenantUrl = 'https://tenant-a.studio.test/api/v1/iam/instances/tenant-a/plugin-readiness';
+const tenantRepair = (pluginId = 'app-translations', operation = 'reconcile', url = tenantUrl) =>
+  new Request(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pluginId, operation }),
+  });
 
 describe('plugin tenant lifecycle HTTP handlers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     state.isServiceRequest = true;
     state.validateSessionCsrf.mockReturnValue(null);
-    state.getInstanceById.mockResolvedValue({ instanceId: 'tenant-a' });
+    state.getInstanceById.mockResolvedValue({
+      instanceId: 'tenant-a',
+      primaryHostname: 'tenant-a.studio.test',
+    });
+    state.authorizeInstancePermissionForUser.mockResolvedValue({ ok: true });
     state.readConfiguredPluginTenantReadiness.mockResolvedValue([
       { pluginId: 'speech', status: 'blocked' },
     ]);
@@ -117,12 +138,19 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
       new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pluginId: 'speech', operation: 'reconcile' }),
+        body: JSON.stringify({
+          pluginId: 'speech',
+          operation: 'reconcile',
+          usePersonalMainserverCredentials: true,
+        }),
       }),
       context as never
     );
 
     expect(response.status).toBe(202);
+    expect(state.startConfiguredPluginTenantLifecycle.mock.calls[0][0]).not.toHaveProperty(
+      'usePersonalMainserverCredentials'
+    );
     expect(state.startConfiguredPluginTenantLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'tenant-a',
@@ -132,6 +160,68 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
         requestId: 'request-a',
       })
     );
+  });
+
+  it('starts the translation repair with the authorized tenant actor', async () => {
+    state.isServiceRequest = false;
+    const request = tenantRepair();
+    const response = await startPluginTenantLifecycleInternal(request, tenantContext as never);
+    expect(response.status).toBe(202);
+    expect(state.validateSessionCsrf).toHaveBeenCalledWith(request, 'request-a');
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith({
+      ctx: tenantContext,
+      action: 'integration.manage',
+      instanceId: 'tenant-a',
+    });
+    expect(state.startConfiguredPluginTenantLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorAccountId: 'tenant-admin',
+        instanceId: 'tenant-a',
+        usePersonalMainserverCredentials: true,
+      })
+    );
+  });
+
+  it.each([
+    ['speech', 'reconcile', tenantUrl],
+    ['app-translations', 'suspend', tenantUrl],
+    ['app-translations', 'reconcile', tenantUrl.replace('/tenant-a/', '/tenant-b/')],
+    ['app-translations', 'reconcile', tenantUrl.replace('tenant-a.studio', 'studio')],
+  ])(
+    'rejects a tenant request for %s / %s at %s outside its scope',
+    async (plugin, operation, url) => {
+      state.isServiceRequest = false;
+      const response = await startPluginTenantLifecycleInternal(
+        tenantRepair(plugin, operation, url),
+        tenantContext as never
+      );
+      expect(response.status).toBe(403);
+      expect(state.startConfiguredPluginTenantLifecycle).not.toHaveBeenCalled();
+    }
+  );
+
+  it('exposes only translation readiness to a tenant with integration management access', async () => {
+    state.readConfiguredPluginTenantReadiness.mockResolvedValue([
+      { pluginId: 'speech' },
+      { pluginId: 'app-translations' },
+    ]);
+    const response = await getPluginTenantReadinessInternal(
+      new Request(tenantUrl),
+      tenantContext as never
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: [{ pluginId: 'app-translations' }],
+    });
+
+    state.authorizeInstancePermissionForUser.mockResolvedValue({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+    });
+    const denied = await startPluginTenantLifecycleInternal(tenantRepair(), tenantContext as never);
+    expect(denied.status).toBe(403);
+    expect(state.startConfiguredPluginTenantLifecycle).not.toHaveBeenCalled();
   });
 
   it('keeps session lifecycle mutations behind the central CSRF gate', async () => {

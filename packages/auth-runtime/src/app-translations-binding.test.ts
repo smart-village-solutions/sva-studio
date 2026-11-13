@@ -6,6 +6,12 @@ const state = vi.hoisted(() => ({
   url: vi.fn(),
   credentials: vi.fn(),
   providerStatus: vi.fn(),
+  permissions: vi.fn(),
+  authorize: vi.fn(),
+}));
+vi.mock('@sva/iam-core', () => ({ evaluateAuthorizeDecision: state.authorize }));
+vi.mock('./iam-authorization/permission-store.queries.js', () => ({
+  loadPermissionsWithClient: state.permissions,
 }));
 vi.mock('./mainserver-effective-credentials.js', () => ({
   readEffectiveSvaMainserverCredentialsWithStatus: state.credentials,
@@ -368,6 +374,91 @@ const prepareSetup = () => {
     .mockResolvedValueOnce(Response.json({ access_token: 'setup-token', token_type: 'Bearer' }))
     .mockResolvedValueOnce(Response.json(metadata()));
 };
+
+const preparePersonalSetup = () => {
+  prepareSetup();
+  state.credentials.mockResolvedValue({
+    status: 'ok',
+    source: 'user',
+    credentials: { apiKey: 'personal-client', apiSecret: 'personal-secret' },
+  });
+  state.authorize.mockReturnValue({ allowed: true });
+  const job = context();
+  Object.assign(job.job, {
+    actorAccountId: 'tenant-admin',
+    inputPayload: { usePersonalMainserverCredentials: true },
+  });
+  Object.assign(job.tenantLifecycle!, { operation: 'reconcile' });
+  return job;
+};
+
+it('uses the initiating administrator for setup and policy sync without an organization', async () => {
+  const job = preparePersonalSetup();
+  expect(await reconcileAppTranslationServiceBinding(job)).toBe(true);
+  expect(fetcher.mock.calls[1][1].body.get('client_id')).toBe('personal-client');
+  expect(fetcher.mock.calls[2][1].headers.Authorization).toBe('Bearer setup-token');
+
+  connection.publicConfig.translationService = binding;
+  state.providerStatus.mockResolvedValue({ ready: true, selectedLocales: ['en'] });
+  fetcher
+    .mockResolvedValueOnce(Response.json({ access_token: 'personal-policy-token' }))
+    .mockResolvedValueOnce(
+      Response.json({
+        ...metadata(),
+        studioUrl: 'https://studio.example/api/v1/app-translations/translate',
+        generation: 1,
+        newsEnabled: true,
+        locales: ['en'],
+        languageNames: { de: 'Deutsch', en: 'English' },
+      })
+    );
+  await expect(synchronizeAppTranslationNews(job)).resolves.toBe(true);
+  expect(fetcher.mock.calls[4][1].headers.Authorization).toBe('Bearer personal-policy-token');
+  expect(state.credentials.mock.calls).toEqual([
+    [{ instanceId: 'de-town', keycloakSubject: 'tenant-admin', actingPrincipalType: 'user' }],
+    [{ instanceId: 'de-town', keycloakSubject: 'tenant-admin', actingPrincipalType: 'user' }],
+  ]);
+  expect(state.permissions).toHaveBeenCalledTimes(4);
+  expect(
+    state.query.mock.calls.some(([sql]) => sql.includes('organization_mainserver_credentials'))
+  ).toBe(false);
+});
+
+it('does not send a setup request when the personal actor loses access during OAuth', async () => {
+  const job = preparePersonalSetup();
+  state.authorize.mockReturnValueOnce({ allowed: true }).mockReturnValueOnce({ allowed: false });
+  expect(await reconcileAppTranslationServiceBinding(job)).toBe(false);
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(state.save).not.toHaveBeenCalled();
+});
+
+it('does not resolve personal credentials for an actor absent from the target instance', async () => {
+  const job = preparePersonalSetup();
+  const defaultQuery = state.query.getMockImplementation()!;
+  state.query.mockImplementation((sql, values) =>
+    sql.includes('FROM iam.accounts') ? { rows: [] } : defaultQuery(sql, values)
+  );
+  expect(await reconcileAppTranslationServiceBinding(job)).toBe(false);
+  expect(state.query).toHaveBeenCalledWith(
+    expect.stringContaining('instance_id=$1 AND keycloak_subject=$2'),
+    ['de-town', 'tenant-admin']
+  );
+  expect(state.credentials).not.toHaveBeenCalled();
+  expect(fetcher).toHaveBeenCalledOnce();
+});
+
+it('does not substitute an organization after the Mainserver denies the personal actor', async () => {
+  const job = preparePersonalSetup();
+  fetcher
+    .mockReset()
+    .mockResolvedValueOnce(new Response('', { status: 503 }))
+    .mockResolvedValueOnce(Response.json({ access_token: 'setup-token' }))
+    .mockResolvedValueOnce(new Response('', { status: 403 }));
+  expect(await reconcileAppTranslationServiceBinding(job)).toBe(false);
+  expect(state.credentials).toHaveBeenCalledOnce();
+  expect(fetcher).toHaveBeenCalledTimes(3);
+  expect(state.save).not.toHaveBeenCalled();
+});
 
 const prepareMultipleSetupCredentials = (responses: Response[]) => {
   prepareSetup();

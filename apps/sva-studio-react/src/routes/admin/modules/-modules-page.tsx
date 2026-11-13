@@ -7,17 +7,22 @@ import { Card } from '../../../components/ui/card';
 import { usePluginTenantReadiness } from '../../../hooks/use-plugin-tenant-readiness';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
+import { hasInterfacesAccess } from '../../../lib/iam-admin-access';
 import { studioModuleIamContracts, studioPluginCatalog, studioPlugins } from '../../../lib/plugins';
 import { useEffectiveAccess, useEffectiveAuth } from '../../../providers/effective-access-provider';
+import { PluginReadinessCard } from '../instances/-instance-plugin-readiness-card';
 import { InstanceModulesWorkspace } from './-instance-modules-workspace';
 import { resolveModuleDescription, resolveModuleName } from './-module-description';
 
 const TenantModulesPage = ({
   assignedModules,
+  translationReadinessInstanceId,
 }: {
   readonly assignedModules: readonly string[];
+  readonly translationReadinessInstanceId: string;
 }) => {
   const access = useEffectiveAccess();
+  const pluginReadiness = usePluginTenantReadiness(translationReadinessInstanceId);
   const assignedModuleIds = new Set(assignedModules);
   const availableModuleIds = new Set(studioModuleIamContracts.map((module) => module.moduleId));
   const unavailableModuleIds = [...assignedModuleIds].filter(
@@ -98,6 +103,16 @@ const TenantModulesPage = ({
           </table>
         </StudioTableSurface>
       </Card>
+      {translationReadinessInstanceId &&
+      (pluginReadiness.items.length > 0 || pluginReadiness.error) ? (
+        <PluginReadinessCard
+          plugins={pluginReadiness.items}
+          isLoading={pluginReadiness.isLoading}
+          activeAction={pluginReadiness.activeAction}
+          error={pluginReadiness.error}
+          onRepair={pluginReadiness.startRepair}
+        />
+      ) : null}
     </section>
   );
 };
@@ -193,7 +208,10 @@ export const ModulesPage = () => {
   return (
     <div className="space-y-5">
       {user?.instanceId ? (
-        <TenantModulesPage assignedModules={user.assignedModules ?? []} />
+        <TenantModulesPage
+          assignedModules={user.assignedModules ?? []}
+          translationReadinessInstanceId={hasInterfacesAccess(user) ? user.instanceId : ''}
+        />
       ) : (
         <AdminModulesPage />
       )}

@@ -8,15 +8,13 @@ import {
   loadDefaultExternalInterfaceRecord,
   saveMainserverTranslationServiceBinding,
 } from '@sva/data-repositories/server';
-import { evaluateAuthorizeDecision } from '@sva/iam-core';
 import { z } from 'zod';
 import type { StudioJobExecutionHandlerContext } from './plugin-operations/types.js';
 import { withIamAppDb } from './db.js';
 import { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
-import { readEffectiveSvaMainserverCredentialsWithStatus } from './mainserver-effective-credentials.js';
+import { selectAppTranslationSetupCredentials } from './app-translations-setup-credentials.js';
 import { readDeepLSetupStatus } from './app-translations-deepl.js';
 import { readBoundedJson } from './app-translations-binding-response.js';
-import { loadPermissionsWithClient } from './iam-authorization/permission-store.queries.js';
 import {
   appTranslationLanguageNames,
   languageNamesMatch,
@@ -90,47 +88,6 @@ export const readAppTranslationServiceBinding = async (instanceId: string): Prom
   );
 };
 
-const readSetupOrganization = (connection: ExternalInterfaceRecord, attempted: readonly string[]) =>
-  withIamAppDb(async (client) => {
-    await client.query("SELECT set_config('app.instance_id', $1, true)", [connection.instanceId]);
-    const result = await client.query<{ organization_id: string }>(
-      `SELECT c.organization_id FROM iam.organization_mainserver_credentials c
-       JOIN iam.organizations o ON o.instance_id=c.instance_id AND o.id=c.organization_id
-       JOIN iam.accounts a ON a.instance_id=c.instance_id AND a.id=c.technical_account_id
-       WHERE c.instance_id=$1 AND NOT (c.organization_id = ANY($2::uuid[]))
-         AND c.provisioning_status='ready' AND o.is_active
-         AND nullif(trim(c.mainserver_application_id),'') IS NOT NULL
-         AND nullif(trim(c.mainserver_application_secret_ciphertext),'') IS NOT NULL
-         AND a.is_technical_account AND a.status='active' AND NOT a.is_blocked
-         AND a.soft_deleted_at IS NULL AND a.permanently_deleted_at IS NULL AND a.deactivated_at IS NULL
-       ORDER BY o.id LIMIT 1`,
-      [connection.instanceId, attempted]
-    );
-    return result.rows[0]?.organization_id;
-  });
-
-const canUsePersonalSetupCredentials = (instanceId: string, keycloakSubject: string) =>
-  withIamAppDb(async (client) => {
-    await client.query("SELECT set_config('app.instance_id', $1, true)", [instanceId]);
-    const actor = await client.query(
-      `SELECT id FROM iam.accounts
-       WHERE instance_id=$1 AND keycloak_subject=$2 AND status='active'
-         AND NOT is_blocked AND NOT is_technical_account
-         AND soft_deleted_at IS NULL AND permanently_deleted_at IS NULL AND deactivated_at IS NULL`,
-      [instanceId, keycloakSubject]
-    );
-    if (actor.rows.length !== 1) return false;
-    const permissions = await loadPermissionsWithClient(client, { instanceId, keycloakSubject });
-    return evaluateAuthorizeDecision(
-      {
-        instanceId,
-        action: 'integration.manage',
-        resource: { type: 'integration', id: instanceId },
-      },
-      permissions
-    ).allowed;
-  });
-
 const requestServiceSetup = async (
   connection: ExternalInterfaceRecord,
   context: StudioJobExecutionHandlerContext,
@@ -152,37 +109,11 @@ const requestServiceSetup = async (
   const signal = context.abortSignal
     ? AbortSignal.any([context.abortSignal, AbortSignal.timeout(35000)])
     : AbortSignal.timeout(35000);
-  const usePersonalCredentials =
-    context.job.inputPayload?.usePersonalMainserverCredentials === true &&
-    context.tenantLifecycle?.operation === 'reconcile';
-  const actorSubject = usePersonalCredentials ? context.job.actorAccountId : undefined;
-  if (usePersonalCredentials && !actorSubject) throw new Error('mainserver_setup_actor_forbidden');
   const attempted: string[] = [];
   while (true) {
     signal.throwIfAborted();
-    const organizationId = actorSubject
-      ? undefined
-      : await readSetupOrganization(connection, attempted);
-    if (!actorSubject && !organizationId) {
-      throw new Error('mainserver_setup_credentials_missing');
-    }
-    if (
-      actorSubject &&
-      !(await canUsePersonalSetupCredentials(connection.instanceId, actorSubject))
-    )
-      throw new Error('mainserver_setup_actor_forbidden');
-    const credentials = await readEffectiveSvaMainserverCredentialsWithStatus({
-      instanceId: connection.instanceId,
-      keycloakSubject: actorSubject ?? '',
-      ...(organizationId
-        ? { activeOrganizationId: organizationId, actingPrincipalType: 'organization' }
-        : { actingPrincipalType: 'user' }),
-    });
-    if (
-      credentials.status !== 'ok' ||
-      credentials.source !== (usePersonalCredentials ? 'user' : 'organization')
-    )
-      throw new Error('mainserver_setup_credentials_missing');
+    const { credentials, organizationId, stillAllowed } =
+      await selectAppTranslationSetupCredentials(connection.instanceId, context, attempted);
     const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
       redirect: 'error',
@@ -190,8 +121,8 @@ const requestServiceSetup = async (
       headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        client_id: credentials.credentials.apiKey,
-        client_secret: credentials.credentials.apiSecret,
+        client_id: credentials.apiKey,
+        client_secret: credentials.apiSecret,
       }),
     });
     const token = z
@@ -207,10 +138,7 @@ const requestServiceSetup = async (
     const currentScope = await readActiveScope(connection, context);
     if (!currentScope || currentScope.primary_hostname !== expectedHostname)
       throw new Error('mainserver_setup_scope_changed');
-    const actorStillAllowed = actorSubject
-      ? await canUsePersonalSetupCredentials(connection.instanceId, actorSubject)
-      : (await readSetupOrganization(connection, attempted)) === organizationId;
-    if (!actorStillAllowed) throw new Error('mainserver_setup_scope_changed');
+    if (!(await stillAllowed())) throw new Error('mainserver_setup_scope_changed');
     const response = await fetch(url, {
       method: 'POST',
       redirect: 'error',

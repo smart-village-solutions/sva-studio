@@ -54,6 +54,17 @@ const stableOrganizationSuffix = (organizationId: string): string =>
     .slice(-8)
     .padStart(8, '0');
 
+const normalizeTechnicalPersonName = (value: string, fallback: string): string => {
+  // Keycloak validates these technical fields as person names, not organisation labels.
+  const normalized = value
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{M}\p{N} .'-]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const bounded = Array.from(normalized).slice(0, 255).join('').trim();
+  return /[\p{L}\p{N}]/u.test(bounded) ? bounded : fallback;
+};
+
 export const deriveOrganizationTechnicalIdentity = (input: {
   readonly organizationId: string;
   readonly organizationDisplayName: string;
@@ -67,8 +78,8 @@ export const deriveOrganizationTechnicalIdentity = (input: {
   return {
     email,
     username: email,
-    firstName: input.organizationDisplayName,
-    lastName: input.tenantDisplayName,
+    firstName: normalizeTechnicalPersonName(input.organizationDisplayName, 'Organization'),
+    lastName: normalizeTechnicalPersonName(input.tenantDisplayName, 'Tenant'),
   };
 };
 
@@ -172,6 +183,7 @@ const attachTechnicalAccount = async (input: {
   readonly operationReference: string;
   readonly actorAccountId: string;
   readonly actorSubject: string;
+  readonly organizationDisplayName: string;
   readonly identityProvider: IdentityProviderResolution;
   readonly identity: DerivedOrganizationTechnicalIdentity;
   readonly externalId: string;
@@ -195,7 +207,7 @@ const attachTechnicalAccount = async (input: {
                 email: input.identity.email,
                 firstName: input.identity.firstName,
                 lastName: input.identity.lastName,
-                displayName: input.identity.firstName,
+                displayName: input.organizationDisplayName,
                 status: 'active',
                 isTechnicalAccount: true,
                 roleIds: [],
@@ -263,8 +275,8 @@ export const resolveOrganizationTechnicalAccount = async (input: {
         identity: {
           email: account.email ?? derived.email,
           username: account.email ?? derived.username,
-          firstName: input.organizationDisplayName,
-          lastName: input.tenantDisplayName,
+          firstName: derived.firstName,
+          lastName: derived.lastName,
         },
       };
     }

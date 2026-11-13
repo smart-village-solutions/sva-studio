@@ -1,4 +1,4 @@
-import type { ApiErrorCode } from '@sva/core';
+import { normalizeHost, type ApiErrorCode } from '@sva/core';
 import { pluginTenantLifecycleOperations } from '@sva/plugin-sdk';
 import type { PluginTenantLifecycleOperation } from '@sva/plugin-sdk';
 import { getWorkspaceContext } from '@sva/server-runtime';
@@ -11,6 +11,10 @@ import {
 } from '../iam-account-management/api-helpers.js';
 import { validateCsrf as validateSessionCsrf } from '../iam-account-management/csrf.js';
 import {
+  authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode,
+} from '../instance-permission-authorization.js';
+import {
   REGISTRY_ACTIONS,
   type RegistryActionId,
   type RegistryRequestContext,
@@ -19,6 +23,7 @@ import { ensurePlatformAccess } from '../iam-instance-registry/http.js';
 import { withRegistryRepository } from '../iam-instance-registry/repository.js';
 import { isAuthenticatedRegistryServiceRequest } from '../iam-instance-registry/service-token.js';
 import { jsonResponse } from '../db.js';
+import { resolveEffectiveRequestHost } from '../request-hosts.js';
 import { translatePluginTenantLifecycleMessage } from './messages.js';
 import { readConfiguredPluginTenantReadiness } from './read-model.js';
 import { startConfiguredPluginTenantLifecycle } from './runtime.js';
@@ -73,19 +78,13 @@ const readInstanceId = (request: Request): string | null => {
 
 const readRequestId = (): string | undefined => getWorkspaceContext().requestId;
 
-const requireInstance = async (request: Request, instanceId: string): Promise<Response | null> => {
-  const instance = await withRegistryRepository((repository) =>
-    repository.getInstanceById(instanceId)
+const tenantAccessDenied = (request: Request): Response =>
+  createApiError(
+    403,
+    'forbidden',
+    translatePluginTenantLifecycleMessage(request, 'tenantAccessDenied'),
+    readRequestId()
   );
-  return instance
-    ? null
-    : createApiError(
-        404,
-        'not_found',
-        translatePluginTenantLifecycleMessage(request, 'instanceNotFound'),
-        readRequestId()
-      );
-};
 
 const readLifecycleError = (
   error: unknown
@@ -115,10 +114,11 @@ const readLifecycleError = (
 const readContext = async (
   request: Request,
   ctx: RegistryRequestContext
-): Promise<{ readonly instanceId: string } | Response> => {
-  const accessError = ensurePlatformAccess(request, ctx);
-  if (accessError) {
-    return accessError;
+): Promise<{ readonly instanceId: string; readonly tenantSession: boolean } | Response> => {
+  const tenantSession = ctx.authKind === 'session' && !!ctx.user.instanceId;
+  if (!tenantSession) {
+    const accessError = ensurePlatformAccess(request, ctx);
+    if (accessError) return accessError;
   }
   const instanceId = readInstanceId(request);
   if (!instanceId) {
@@ -129,8 +129,35 @@ const readContext = async (
       readRequestId()
     );
   }
-  const instanceError = await requireInstance(request, instanceId);
-  return instanceError ?? { instanceId };
+  if (tenantSession && ctx.user.instanceId !== instanceId) return tenantAccessDenied(request);
+  const instance = await withRegistryRepository((repository) =>
+    repository.getInstanceById(instanceId)
+  );
+  if (!instance) {
+    return createApiError(
+      404,
+      'not_found',
+      translatePluginTenantLifecycleMessage(request, 'instanceNotFound'),
+      readRequestId()
+    );
+  }
+  if (tenantSession) {
+    if (normalizeHost(resolveEffectiveRequestHost(request)) !== instance.primaryHostname)
+      return tenantAccessDenied(request);
+    const authorization = await authorizeInstancePermissionForUser({
+      ctx,
+      action: 'integration.manage',
+      instanceId,
+    });
+    if (!authorization.ok)
+      return createApiError(
+        authorization.status,
+        toInstancePermissionApiErrorCode(authorization.error),
+        authorization.message,
+        readRequestId()
+      );
+  }
+  return { instanceId, tenantSession };
 };
 
 export const getPluginTenantReadinessInternal = async (
@@ -142,7 +169,15 @@ export const getPluginTenantReadinessInternal = async (
     return context;
   }
   const readiness = await readConfiguredPluginTenantReadiness(context.instanceId);
-  return jsonResponse(200, asApiItem(readiness, readRequestId()));
+  return jsonResponse(
+    200,
+    asApiItem(
+      context.tenantSession
+        ? readiness.filter((item) => item.pluginId === 'app-translations')
+        : readiness,
+      readRequestId()
+    )
+  );
 };
 
 export const startPluginTenantLifecycleInternal = async (
@@ -163,6 +198,11 @@ export const startPluginTenantLifecycleInternal = async (
   if (!parsed.ok) {
     return createInvalidRequestResponse(request);
   }
+  if (
+    context.tenantSession &&
+    (parsed.data.pluginId !== 'app-translations' || parsed.data.operation !== 'reconcile')
+  )
+    return tenantAccessDenied(request);
 
   try {
     const result = await startConfiguredPluginTenantLifecycle({
@@ -170,6 +210,7 @@ export const startPluginTenantLifecycleInternal = async (
       pluginId: parsed.data.pluginId,
       operation: parsed.data.operation,
       actorAccountId: ctx.user.id,
+      ...(context.tenantSession ? { usePersonalMainserverCredentials: true } : {}),
       requestId: readRequestId(),
       scheduledAt: new Date().toISOString(),
     });

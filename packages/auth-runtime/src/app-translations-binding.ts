@@ -12,7 +12,7 @@ import { z } from 'zod';
 import type { StudioJobExecutionHandlerContext } from './plugin-operations/types.js';
 import { withIamAppDb } from './db.js';
 import { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
-import { readEffectiveSvaMainserverCredentialsWithStatus } from './mainserver-effective-credentials.js';
+import { selectAppTranslationSetupCredentials } from './app-translations-setup-credentials.js';
 import { readDeepLSetupStatus } from './app-translations-deepl.js';
 import { readBoundedJson } from './app-translations-binding-response.js';
 import {
@@ -88,25 +88,6 @@ export const readAppTranslationServiceBinding = async (instanceId: string): Prom
   );
 };
 
-const readSetupOrganization = (connection: ExternalInterfaceRecord, attempted: readonly string[]) =>
-  withIamAppDb(async (client) => {
-    await client.query("SELECT set_config('app.instance_id', $1, true)", [connection.instanceId]);
-    const result = await client.query<{ organization_id: string }>(
-      `SELECT c.organization_id FROM iam.organization_mainserver_credentials c
-       JOIN iam.organizations o ON o.instance_id=c.instance_id AND o.id=c.organization_id
-       JOIN iam.accounts a ON a.instance_id=c.instance_id AND a.id=c.technical_account_id
-       WHERE c.instance_id=$1 AND NOT (c.organization_id = ANY($2::uuid[]))
-         AND c.provisioning_status='ready' AND o.is_active
-         AND nullif(trim(c.mainserver_application_id),'') IS NOT NULL
-         AND nullif(trim(c.mainserver_application_secret_ciphertext),'') IS NOT NULL
-         AND a.is_technical_account AND a.status='active' AND NOT a.is_blocked
-         AND a.soft_deleted_at IS NULL AND a.permanently_deleted_at IS NULL AND a.deactivated_at IS NULL
-       ORDER BY o.id LIMIT 1`,
-      [connection.instanceId, attempted]
-    );
-    return result.rows[0]?.organization_id;
-  });
-
 const requestServiceSetup = async (
   connection: ExternalInterfaceRecord,
   context: StudioJobExecutionHandlerContext,
@@ -131,16 +112,8 @@ const requestServiceSetup = async (
   const attempted: string[] = [];
   while (true) {
     signal.throwIfAborted();
-    const organizationId = await readSetupOrganization(connection, attempted);
-    if (!organizationId) throw new Error('mainserver_setup_credentials_missing');
-    const credentials = await readEffectiveSvaMainserverCredentialsWithStatus({
-      instanceId: connection.instanceId,
-      keycloakSubject: '',
-      activeOrganizationId: organizationId,
-      actingPrincipalType: 'organization',
-    });
-    if (credentials.status !== 'ok' || credentials.source !== 'organization')
-      throw new Error('mainserver_setup_credentials_missing');
+    const { credentials, organizationId, stillAllowed } =
+      await selectAppTranslationSetupCredentials(connection.instanceId, context, attempted);
     const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
       redirect: 'error',
@@ -148,8 +121,8 @@ const requestServiceSetup = async (
       headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        client_id: credentials.credentials.apiKey,
-        client_secret: credentials.credentials.apiSecret,
+        client_id: credentials.apiKey,
+        client_secret: credentials.apiSecret,
       }),
     });
     const token = z
@@ -165,8 +138,7 @@ const requestServiceSetup = async (
     const currentScope = await readActiveScope(connection, context);
     if (!currentScope || currentScope.primary_hostname !== expectedHostname)
       throw new Error('mainserver_setup_scope_changed');
-    if ((await readSetupOrganization(connection, attempted)) !== organizationId)
-      throw new Error('mainserver_setup_scope_changed');
+    if (!(await stillAllowed())) throw new Error('mainserver_setup_scope_changed');
     const response = await fetch(url, {
       method: 'POST',
       redirect: 'error',
@@ -179,7 +151,7 @@ const requestServiceSetup = async (
       body: JSON.stringify({ instanceId: connection.instanceId, studioUrl, ...newsPolicy }),
     });
     // Only a definitive permission denial permits trying another existing identity.
-    if (response.status !== 403) return response;
+    if (response.status !== 403 || !organizationId) return response;
     await response.body?.cancel();
     attempted.push(organizationId);
   }

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MainserverUserProvisioningError } from '../iam-account-management/mainserver-user-provisioning-error.js';
+import type { CreateIdentityUserInput } from '../identity-provider-port.js';
 
 const state = vi.hoisted(() => ({
   client: { query: vi.fn() },
@@ -111,7 +112,9 @@ const prepareNewProvisioningAccount = () => {
   });
   const provider = {
     listUsers: vi.fn().mockResolvedValue([]),
-    createUser: vi.fn().mockResolvedValue({ externalId: 'kc-technical-1' }),
+    createUser: vi
+      .fn<(input: CreateIdentityUserInput) => Promise<{ externalId: string }>>()
+      .mockResolvedValue({ externalId: 'kc-technical-1' }),
     deactivateUser: vi.fn(),
   };
   state.resolveIdentityProviderForInstance.mockResolvedValue({ provider });
@@ -221,12 +224,130 @@ describe('organization Mainserver provisioning', () => {
         organizationDisplayName,
         tenantDisplayName,
       })
-    ).toEqual({
+    ).toMatchObject({
       email: expectedEmail,
       username: expectedEmail,
-      firstName: organizationDisplayName,
-      lastName: tenantDisplayName,
     });
+  });
+
+  it.each([
+    ['**Team Abfallwirtschaft', 'Frankfurt (Oder)', 'Team Abfallwirtschaft', 'Frankfurt Oder'],
+    ['Bauen & Wohnen / Team [Nord]', 'Stadt <West>', 'Bauen Wohnen Team Nord', 'Stadt West'],
+    ['東京 市民サービス', 'بلدية المدينة', '東京 市民サービス', 'بلدية المدينة'],
+    ['Café d’Art – Süd', 'Köln', 'Café d Art Süd', 'Köln'],
+    ['*** 🏛️ ***', '', 'Organization', 'Tenant'],
+    ['\u0000\nTeam\tNord\u007f', '  Stadt\nWest  ', 'Team Nord', 'Stadt West'],
+    ['A'.repeat(300), 'B'.repeat(300), 'A'.repeat(255), 'B'.repeat(255)],
+    ['𐐀'.repeat(255), '𐐀'.repeat(255), '𐐀'.repeat(127), '𐐀'.repeat(127)],
+    ['A'.repeat(253) + '𐐀Z', 'A'.repeat(254) + '𐐀', 'A'.repeat(253) + '𐐀', 'A'.repeat(254)],
+  ])('derives valid technical names for %j in %j', async (name, tenant, firstName, lastName) => {
+    const { deriveOrganizationTechnicalIdentity } =
+      await import('./organization-mainserver-provisioning.js');
+    expect(
+      deriveOrganizationTechnicalIdentity({
+        organizationId: organization.id,
+        organizationDisplayName: name,
+        tenantDisplayName: tenant,
+      })
+    ).toMatchObject({ firstName, lastName });
+  });
+
+  it('keeps the original Studio display name while sending valid technical names to Keycloak', async () => {
+    const provider = prepareNewProvisioningAccount();
+    const displayName = '**Team Abfallwirtschaft';
+    state.loadOrganizationDetail.mockResolvedValue({ ...organization, displayName });
+    state.loadInstanceById.mockResolvedValue({ displayName: 'Frankfurt (Oder)' });
+    provider.createUser.mockImplementation(async (input) => {
+      // Keycloak 26.8.1 person-name-prohibited-characters contract.
+      const prohibited = /[<>&"\v$%!#?§;*~/\\|^=[\]{}()\p{Cc}]/u;
+      if (prohibited.test(input.firstName ?? '') || prohibited.test(input.lastName ?? '')) {
+        throw new Error('error-person-name-invalid-character');
+      }
+      return { externalId: 'kc-technical-1' };
+    });
+    state.provisionMainserverUserCredentials.mockResolvedValueOnce({
+      dataProviderId: '4711',
+      mainserverUserApplicationId: 'org-app',
+      mainserverUserApplicationSecret: 'org-secret',
+    });
+    state.readEffectiveSvaMainserverCredentialsWithStatus
+      .mockResolvedValueOnce({
+        status: 'ok',
+        source: 'user',
+        credentials: { apiKey: 'actor-app', apiSecret: 'actor-secret' },
+        credentialFingerprint: 'c'.repeat(64),
+      })
+      .mockResolvedValueOnce({
+        status: 'ok',
+        source: 'organization',
+        credentials: { apiKey: 'org-app', apiSecret: 'org-secret' },
+        credentialFingerprint: 'a'.repeat(64),
+      });
+    const { provisionOrganizationMainserver } =
+      await import('./organization-mainserver-provisioning.js');
+    await expect(provisionOrganizationMainserver(actorInput)).resolves.toMatchObject({
+      outcome: 'ready',
+      organization: { displayName },
+    });
+    expect(provider.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        firstName: 'Team Abfallwirtschaft',
+        lastName: 'Frankfurt Oder',
+      })
+    );
+    expect(state.persistCreatedUser).toHaveBeenCalledWith(
+      state.client,
+      expect.objectContaining({
+        payload: expect.objectContaining({ displayName, firstName: 'Team Abfallwirtschaft' }),
+      })
+    );
+    expect(state.provisionMainserverUserCredentials).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          firstName: 'Team Abfallwirtschaft',
+          lastName: 'Frankfurt Oder',
+        }),
+      })
+    );
+  });
+
+  it('keeps an attached account and its email when retrying with special characters in names', async () => {
+    const provider = prepareNewProvisioningAccount();
+    const account = {
+      id: '33333333-3333-4333-8333-333333333333',
+      keycloakSubject: 'kc-technical-1',
+      email: 'existing@smart-village.app',
+      displayName: '**Team Abfallwirtschaft',
+      isTechnicalAccount: true,
+    };
+    state.client.query.mockResolvedValueOnce({
+      rows: [{ keycloak_subject: account.keycloakSubject }],
+    });
+    state.loadMappedUsersBySubject.mockResolvedValueOnce(
+      new Map([[account.keycloakSubject, account]])
+    );
+    const { resolveOrganizationTechnicalAccount } =
+      await import('./organization-mainserver-technical-account.js');
+    await expect(
+      resolveOrganizationTechnicalAccount({
+        ...actorInput,
+        organizationDisplayName: account.displayName,
+        tenantDisplayName: 'Frankfurt (Oder)',
+        technicalAccountId: account.id,
+        identityProvider: await state.resolveIdentityProviderForInstance(),
+      })
+    ).resolves.toMatchObject({
+      account,
+      identity: {
+        email: account.email,
+        username: account.email,
+        firstName: 'Team Abfallwirtschaft',
+        lastName: 'Frankfurt Oder',
+      },
+    });
+    expect(provider.createUser).not.toHaveBeenCalled();
+    expect(provider.listUsers).not.toHaveBeenCalled();
+    expect(state.persistCreatedUser).not.toHaveBeenCalled();
   });
 
   it('normalizes very long homogeneous and mixed-separator inputs', async () => {

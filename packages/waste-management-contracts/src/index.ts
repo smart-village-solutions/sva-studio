@@ -256,9 +256,4 @@ export type { WasteHolidayApiEntry } from './waste-management-holiday-sync.js';
 
 export * from './waste-management-email-monitoring.js';
 
-export type {
-  WasteFractionDeleteMode,
-  WasteFractionDeleteInput,
-  WasteFractionDeleteConfirmation,
-  WasteFractionDeletePreview,
-} from './waste-management/fraction-deletion.js';
+export type * from './waste-management/fraction-deletion.js';

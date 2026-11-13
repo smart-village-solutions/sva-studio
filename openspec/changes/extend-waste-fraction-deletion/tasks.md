@@ -36,3 +36,14 @@
 - Keine Schemaänderung und keine zusätzliche Dependency; bestehende Normalisierungs- und
   Sync-Pfade bleiben erhalten. Der Nachweis beschreibt die lokale Umsetzung vor PR-Erstellung; kein Deployment
   oder Live-Nachweis. Die lokale UI-Prüfung erfolgt über die echten Dialogkomponenten im DOM-Test.
+
+### PR-Korrekturen vor Merge
+
+- Der bestehende Übersetzungs-Mapper reicht die neuen Optionen in beiden Sprachen weiter;
+  das tatsächliche App-i18n-Gate wurde gezielt geprüft.
+- Der App-Runtime-Vertrag berücksichtigt den zusätzlichen Vorschau-Endpunkt.
+- Die Löschhandler liegen als Teil des bestehenden Fraktionspfads in einem eigenen lokalen Modul;
+  die Pflichtgrenzen werden ohne Policy- oder Baselineänderung eingehalten.
+- Reminder-Planung und Fraktionslöschung verwenden eine gemeinsame tenantlokale Advisory-Sperre.
+  Der PostgreSQL-Nachweis prüft außerdem, dass reguläre Tourbearbeitung während der Planung
+  möglich bleibt und die Löschung weiter auf die Planung wartet.

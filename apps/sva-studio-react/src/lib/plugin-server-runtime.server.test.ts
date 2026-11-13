@@ -85,7 +85,8 @@ describe('plugin server runtime loader', () => {
     const bindings = await createPluginServerExecutionHandlersFromSnapshot({
       pluginSources: [source('waste-management')],
     });
-    expect(Object.keys(bindings)).toHaveLength(68);
+    expect(Object.keys(bindings)).toHaveLength(69);
+    expect(bindings['waste-management.previewFractionDeletion.post']).toBeTypeOf('function');
     expect(bindings['waste-management.getEmailMonitoring.get']).toBeTypeOf('function');
     expect(bindings['waste-management.getHistory.get']).toBeTypeOf('function');
     expect(bindings['waste-management.previewWasteAddressMutation.post']).toBeTypeOf('function');

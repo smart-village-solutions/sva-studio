@@ -199,6 +199,9 @@ export const processWasteFractionDeletion = async (
   try {
     if (execute) {
       await client.query("SET LOCAL lock_timeout = '5s'");
+      await client.query(
+        "SELECT pg_advisory_xact_lock(hashtext(current_schema()), hashtext('waste-fraction-deletion'))"
+      );
       await client.query("SET LOCAL statement_timeout = '15s'");
       // Infrequent destructive operation: tenant-local table locks also exclude phantom inserts
       // from existing READ COMMITTED writers. The relation writer always locks waste_tours first.

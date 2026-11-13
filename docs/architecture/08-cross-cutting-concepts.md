@@ -1510,7 +1510,8 @@ ON DELETE RESTRICT bleiben erhalten. Quelle, Touränderungen und Outbox-Stornier
 zusammen oder gar nicht. Konfliktfreiheit wird bei nicht vollständig prüfbaren Zeiträumen verweigert.
 
 Der bestehende Erinnerungsplaner hält vom Lesen der Fachdaten bis zum Eintragen beziehungsweise
-Abgleichen der Outbox eine Transaktion mit SHARE-Sperren auf Fraktionen und Touren. Dadurch kann
+Abgleichen der Outbox eine Transaktion mit einer gemeinsamen tenantlokalen Advisory-Sperre
+gegenüber Fraktionslöschungen. Reguläre Tourbearbeitung wird dadurch nicht gesperrt. Dadurch kann
 eine Löschung nicht zwischen alter Planung und späterem Enqueue committen. Bereits beanspruchte
 externe Zustellungen blockieren die betroffene Löschung; ein Datenbankrollback kann eine E-Mail
 nicht zurückrufen. Vorschau und Audit enthalten keine Empfängeradressen oder Token. Der bestehende

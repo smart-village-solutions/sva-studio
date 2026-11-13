@@ -184,15 +184,13 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     tourCount: 'Betroffene Touren: {{count}}',
     tour: '{{name}} ({{status}})',
     shared: 'Weitere Fraktionen dieser Tour: {{fractions}}',
-    removeDates:
-      'Die aufgeführten Touren samt gespeicherten Terminen, Einsätzen, Verschiebungen und Abholortzuordnungen werden vollständig gelöscht – auch für ihre weiteren Fraktionen.',
+    removeDates: 'Touren und abhängige Daten entfallen vollständig, auch für weitere Fraktionen.',
     keepDates: 'Touren, Termine, Einsätze und Abholortzuordnungen bleiben erhalten.',
     reminders:
-      'Die Erinnerungsauswahl für die gelöschte Fraktion entfällt. Sie wird nicht auf eine Zielfraktion übertragen. Nicht mehr zutreffende ausstehende Erinnerungen werden storniert.',
+      'Erinnerungsauswahlen entfallen ohne Übertragung. Ungültige Erinnerungen werden storniert.',
     refresh: 'Vorschau aktualisieren',
     previewError: 'Die Vorschau konnte nicht geladen werden. Bitte versuchen Sie es erneut.',
-    executeError:
-      'Die Änderung konnte nicht ausgeführt werden. Bitte aktualisieren und prüfen Sie die Vorschau erneut.',
+    executeError: 'Änderung fehlgeschlagen. Bitte Vorschau erneut prüfen.',
     conflict: '{{tours}}: gleicher Abholtag {{date}} am Abholort {{location}}.',
     counts: {
       links: 'Abholortzuordnungen',
@@ -213,15 +211,11 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
       replace: '„{{source}}“ wird durch „{{target}}“ ersetzt und anschließend gelöscht.',
     },
     blocked: {
-      'empty-tour':
-        'Mindestens eine Tour hätte danach keine Fraktion mehr. Wählen Sie eine andere Variante.',
+      'empty-tour': 'Eine Tour würde fraktionslos. Bitte andere Variante wählen.',
       'invalid-target': 'Bitte wählen Sie eine andere aktive Fraktion.',
-      'date-conflict':
-        'Die Ersetzung würde doppelte Abholtermine erzeugen. Bitte lösen Sie zuerst die aufgeführten Konflikte.',
-      'unbounded-schedule':
-        'Der gesamte Zeitraum lässt sich nicht vollständig prüfen. Bitte begrenzen oder prüfen Sie die betroffenen Touren und Verschiebungsregeln vor der Ersetzung.',
-      'reminder-dispatching':
-        'Eine betroffene Erinnerung wird gerade versandt. Bitte versuchen Sie es nach Abschluss des Versands erneut.',
+      'date-conflict': 'Doppelte Abholtermine. Bitte Konflikte zuerst lösen.',
+      'unbounded-schedule': 'Zeitraum nicht prüfbar. Bitte Touren und Verschiebungen prüfen.',
+      'reminder-dispatching': 'Erinnerung im Versand. Bitte danach erneut versuchen.',
     },
   },
   deleteDialog: {

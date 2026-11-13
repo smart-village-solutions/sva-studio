@@ -50,7 +50,7 @@ const useFractionDeletionPreview = (
   }, [fractionId, mode, targetFractionId, revision]);
   return { preview, setPreview, loading, errorMessage, setErrorMessage };
 };
-const isDeletionPreviewReady = (
+const isPreviewReady = (
   preview: WasteFractionDeletePreview | null,
   fractionId: string | undefined,
   effectiveMode: WasteFractionDeleteMode | '',
@@ -89,13 +89,7 @@ export const WasteMasterDataFractionDeleteDialog = ({
     setTargetFractionId('');
   }, [fractionId]);
   const effectiveMode = mode || (preview && !preview.tours.length ? 'detach' : '');
-  const ready = isDeletionPreviewReady(
-    preview,
-    fractionId,
-    effectiveMode,
-    targetFractionId,
-    loading
-  );
+  const ready = isPreviewReady(preview, fractionId, effectiveMode, targetFractionId, loading);
   return (
     <StudioDestructiveActionDialog
       open={fractionPendingDelete !== null}
@@ -118,7 +112,6 @@ export const WasteMasterDataFractionDeleteDialog = ({
       onConfirm={async () => {
         if (!fractionPendingDelete || !preview || !ready || !effectiveMode) return;
         setPending(true);
-        setErrorMessage(null);
         try {
           await onOpenDeleteFraction(fractionPendingDelete, {
             mode: effectiveMode,

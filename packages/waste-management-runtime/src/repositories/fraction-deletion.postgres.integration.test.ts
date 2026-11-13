@@ -296,7 +296,23 @@ describe.skipIf(!url)('fraction deletion PostgreSQL', () => {
     try {
       await planner.query(`SET search_path TO ${schema}, public`);
       await planner.query('BEGIN');
-      await planner.query('LOCK TABLE waste_fractions,waste_tours IN SHARE MODE');
+      await planner.query(
+        "SELECT pg_advisory_xact_lock_shared(hashtext(current_schema()), hashtext('waste-fraction-deletion'))"
+      );
+      const editor = await pool!.connect();
+      try {
+        await editor.query(`SET search_path TO ${schema}, public`);
+        await editor.query('BEGIN');
+        await editor.query("SET LOCAL lock_timeout = '100ms'");
+        await editor.query(
+          "UPDATE waste_tours SET description = 'Editing stays available' WHERE id=$1",
+          [tour]
+        );
+        await editor.query('COMMIT');
+      } finally {
+        await editor.query('ROLLBACK');
+        editor.release();
+      }
       mutation = processWasteFractionDeletion(
         client,
         { fractionId: source, mode: 'delete-tours' },

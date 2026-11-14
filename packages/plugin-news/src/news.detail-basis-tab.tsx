@@ -5,9 +5,13 @@ import {
   getStudioFormFieldProps,
   StudioFormSummaryErrors,
 } from '@sva/studio-ui-react';
-import { Input, MainserverPrincipalControl, StudioField } from '@sva/studio-ui-react';
+import {
+  SearchableMultiSelect,
+  Input,
+  MainserverPrincipalControl,
+  StudioField,
+} from '@sva/studio-ui-react';
 
-import { NewsCategoryMultiselect } from './news.category-multiselect.js';
 import { StudioDetailCard } from '@sva/studio-ui-react';
 import type {
   NewsPrincipalControl,
@@ -192,19 +196,20 @@ export function NewsDetailBasisTab(props: NewsDetailBasisTabProps) {
               name="categories"
               control={control}
               render={({ field }) => (
-                <NewsCategoryMultiselect
-                  availableCategories={availableCategories}
+                <SearchableMultiSelect
+                  id="news-category"
+                  options={availableCategories.map(({ name }) => ({ label: name, value: name }))}
                   emptyText={pt('fields.categoriesEmpty')}
                   errorMessage={categoryOptionsError ? pt('create.categoryUnavailable') : undefined}
                   loading={categoryOptionsLoading}
                   helpText=""
-                  inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
+                  placeholder={pt('fields.categoriesSearchPlaceholder')}
                   loadingText={pt('messages.categoryOptionsLoading')}
                   searchLabel={pt('fields.categoriesSearch')}
                   unavailableText={pt('fields.categoryUnavailable')}
                   removeLabel={(name) => pt('actions.removeCategory', { name })}
                   value={field.value}
-                  onChange={field.onChange}
+                  onValueChange={field.onChange}
                 />
               )}
             />

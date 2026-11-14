@@ -152,6 +152,7 @@ describe('faq editor pages', () => {
       'faq-language-code',
       'faq-sort-weight',
       'faq-publication-date',
+      'faq-publication-date-time',
       'faq-visible',
     ]);
     expect(screen.getAllByRole('button', { name: 'actions.create' })).toHaveLength(1);

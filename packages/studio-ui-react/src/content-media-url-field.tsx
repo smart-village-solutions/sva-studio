@@ -108,8 +108,8 @@ export const ContentMediaUrlField = (props: ContentMediaUrlFieldProps) => {
     props.externalError,
     props.labels
   );
-  const valid =
-    isPersistableManualContentMediaUrl(props.value.trim()) && feedback !== 'checking' && !error;
+  // Explicit HTTP stays persistable while its optional HTTPS upgrade is checked.
+  const valid = isPersistableManualContentMediaUrl(props.value.trim()) && !error;
   React.useEffect(() => {
     props.onValidityChange?.(valid);
   }, [props.onValidityChange, valid]);

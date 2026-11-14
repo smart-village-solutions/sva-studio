@@ -1446,6 +1446,52 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['PATCH', 'news-1', 'news.update'],
+    ['PATCH', 'news-1/visibility', 'news.update'],
+    ['DELETE', 'news-1', 'news.delete'],
+  ] as const)('enforces exact organization scope for %s %s', async (method, path, action) => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.getSvaMainserverNews.mockResolvedValue({
+      id: 'news-1',
+      dataProvider: { id: 'foreign-provider' },
+    });
+    state.authorizeMainserverDataProviderAccess.mockImplementation(async (input) => ({
+      allowed: input.forceExactScopeAuthorization !== true,
+      authorizationMode: 'exact',
+      reason: 'data_provider_mismatch',
+    }));
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest(`https://studio.test/api/v1/mainserver/news/${path}`, {
+        method,
+        ...(method === 'PATCH'
+          ? {
+              body: JSON.stringify(
+                path.endsWith('visibility') ? { visible: true } : updateNewsInput
+              ),
+            }
+          : {}),
+      })
+    );
+    expect(response?.status).toBe(403);
+    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action,
+        forceExactScopeAuthorization: true,
+        dataProviderId: 'foreign-provider',
+      })
+    );
+    expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
+    expect(state.deleteSvaMainserverNews).not.toHaveBeenCalled();
+    expect(state.changeSvaMainserverNewsVisibility).not.toHaveBeenCalled();
+  });
+
   it('deletes news via mainserver hard delete', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);

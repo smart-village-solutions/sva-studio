@@ -56,3 +56,7 @@ openspec validate add-canonical-permission-catalog --strict
 pnpm check:server-runtime
 pnpm nx run-many --target=test:unit --projects=plugin-sdk,instance-registry,data-repositories,data,routing,sva-studio-react --parallel=4
 ```
+
+## Redaktionsprofil
+
+Die Modulbaseline definiert weiterhin die bestehende `system_admin`-Basis. Das konkrete Redaktionsprofil wird ausschließlich auf ausdrücklichen Auftrag über das persönliche MCP und bestehende Rollen-APIs angelegt; wiederholtes Seeding erweitert es nicht automatisch. Actions, Scope-Ausnahmen, nicht unterstützte Inhaltstypen und Readback sind im [MCP-Betrieb](../operations/studio-instance-mcp-betrieb.md#redaktionsprofil-für-ausdrücklich-ausgewählte-tenants) beschrieben. `content.publish` ist recordbezogen und unterstützt die bestehenden Zuweisungsscopes; ein Organisationsgrant bleibt deshalb bei der Persistenz erhalten.

@@ -23,6 +23,7 @@ const RECORD_SCOPED_PERMISSION_KEYS = [
   'content.updateMetadata',
   'content.updatePayload',
   'content.changeStatus',
+  'content.publish',
   'content.archive',
   'content.restore',
   'content.delete',

@@ -136,6 +136,7 @@ export const handleItemUpdate = async (
     execute: async (actor, parsed) => {
       const existing = await getSvaMainserverEventDetail({ ...actor, eventId: route.itemId });
       const providerAuthorization = await authorizeMainserverExistingContent({
+        forceExactScopeAuthorization: true,
         actor,
         action: pluginActionFor(route.contentKind, 'update'),
         contentType: EVENTS_CONTENT_TYPE,
@@ -206,6 +207,7 @@ export const handleItemDelete = async (
     execute: async (actor) => {
       const existing = await getSvaMainserverEventDetail({ ...actor, eventId: route.itemId });
       const providerAuthorization = await authorizeMainserverExistingContent({
+        forceExactScopeAuthorization: true,
         actor,
         action: pluginActionFor(route.contentKind, 'delete'),
         contentType: EVENTS_CONTENT_TYPE,

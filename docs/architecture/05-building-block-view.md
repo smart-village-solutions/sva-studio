@@ -232,6 +232,7 @@ Modulen der jeweiligen Bausteine.
 - bezieht kurzlebige Keycloak-Tokens aus ausschließlich lokaler Secret-Konfiguration und besitzt weder Datenbank- noch Keycloak-Admin-Zugriff
 - trennt Read-, kontrollierte und kritische Tools; Autorisierung und Confirmation-Challenges bleiben serverseitige Studio-Verantwortung
 - bietet mit `studio_instance_process` einen modularen Ablauf für Anlage, Reparatur und Anpassung, der ausschließlich vorhandene HTTP-Verträge kombiniert und einen Abschluss nur nach aktuellem Doctor-Read meldet
+- richtet mit `studio_personal_editor_roles_ensure` fehlende Redaktionsprofile für explizite persönliche Tenant-Kontexte über vorhandene Rollen-APIs ein; Bestandsrollen bleiben unverändert und Anlageerfolg verlangt unabhängigen Readback. News/Events/POI verwenden Organisationsscope, Medien/Kategorien die ausdrücklich vereinbarte instanzweite Ausnahme. Nicht unterstützte Inhaltsaktionen werden ausgewiesen, nicht freigegeben.
 
 14. Studio-Job-Hostpfad (`packages/auth-runtime`, `packages/routing`, `packages/data-repositories`, `packages/iam-governance`)
 

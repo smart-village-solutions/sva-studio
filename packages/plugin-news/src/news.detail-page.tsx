@@ -11,11 +11,7 @@ import {
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
 import { createDefaultNewsDetailFormValues, newsDetailFormResolver } from './news.detail-form.js';
-import {
-  resolvePluginActionLabel,
-  type PluginTranslator,
-  type StatusMessage,
-} from './news.detail-page.helpers.js';
+import { resolvePluginActionLabel, type PluginTranslator, type StatusMessage } from './news.detail-page.helpers.js';
 import { useNewsDetailMedia } from './news.detail-page-media.js';
 import { useNewsDetailOptions } from './news.detail-page-options.js';
 import { useNewsDetailLoad } from './news.detail-page-load.js';
@@ -24,11 +20,11 @@ import { useNewsDetailSave } from './news.detail-page-save.js';
 import { useNewsDetailDelete } from './news.detail-page-delete.js';
 import { createNewsDetailPanels } from './news.detail-page-panels.js';
 import { deriveDirtyNewsDetailTabs } from './news.detail-form-dirty.js';
-import type { NewsDetailTabId } from './news.types.js';
 import { NewsDetailPageView } from './news.detail-page-view.js';
 import { useNewsDetailAccess } from './news.detail-page-access.js';
+import { newsSaveSuccessStatus } from './news.save-feedback.js';
 import { pluginNewsActionIds } from './plugin.js';
-import type { NewsPrincipalControl, NewsContentItem, NewsDetailFormValues } from './news.types.js';
+import type { NewsDetailTabId, NewsPrincipalControl, NewsContentItem, NewsDetailFormValues } from './news.types.js';
 
 export const NewsDetailPage = ({
   mode,
@@ -141,14 +137,7 @@ export const NewsDetailPage = ({
   React.useEffect(() => {
     if (!isLoading && initiallySaved && !initialSaveFeedbackShownRef.current) {
       initialSaveFeedbackShownRef.current = true;
-      const publicationMode = methods.getValues('publicationMode');
-      setStatusMessage((current) => current ?? {
-        source: 'success',
-        text: pt(
-          publicationMode === 'draft' ? 'actions.savedDraft' :
-          publicationMode === 'scheduled' ? 'actions.savedScheduled' : 'actions.savedPublished'
-        ),
-      });
+      setStatusMessage((current) => newsSaveSuccessStatus(pt, methods.getValues('publicationMode'), current));
       saveFeedback.showSaved();
       onInitialSavedConsumed?.();
     }

@@ -29,7 +29,7 @@ import { NEWS_CONTENT_TYPE } from './news.constants.js';
 import { mapNewsItemToDetailFormValues } from './news.detail-form.js';
 import { didDeclineGlobalPush, newsSaveErrorStatus } from './news.detail-page.helpers.js';
 import type { WasteTargetingAvailability } from './news.waste-payload.js';
-import { addNewsCreatedSaveFeedback } from './news.save-feedback.js';
+import { addNewsCreatedSaveFeedback, newsSaveSuccessStatus } from './news.save-feedback.js';
 import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
 
 const persistNewsDetailContent = async ({
@@ -194,13 +194,7 @@ const completeNewsDetailSave = async (
   options.setLoadedItem(saved);
   options.setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
   options.setInvalidScheduledPublicationInput(false);
-  options.setStatusMessage({
-    source: 'success',
-    text: options.pt(
-      nextValues.publicationMode === 'draft' ? 'actions.savedDraft' :
-      nextValues.publicationMode === 'scheduled' ? 'actions.savedScheduled' : 'actions.savedPublished'
-    ),
-  });
+  options.setStatusMessage(newsSaveSuccessStatus(options.pt, nextValues.publicationMode));
   options.saveFeedback.markSaved(operationId);
 };
 

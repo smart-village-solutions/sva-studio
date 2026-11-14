@@ -203,8 +203,6 @@ export function useCockpitCardMedia(
     },
     [form, mediaUsages, onMediaChanged]
   );
-  const loadAssetSnapshot = (usage: ContentMediaUsage) =>
-    loadCockpitCardAssetSnapshot(usage, toDetail);
   return {
     mediaUsages,
     setMediaUsages,
@@ -218,7 +216,7 @@ export function useCockpitCardMedia(
     mediaAssets,
     mediaPicker,
     addManualMedia,
-    loadAssetSnapshot,
+    loadAssetSnapshot: (usage: ContentMediaUsage) => loadCockpitCardAssetSnapshot(usage, toDetail),
   };
 }
 

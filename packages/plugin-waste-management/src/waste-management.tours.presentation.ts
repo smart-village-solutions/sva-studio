@@ -1,5 +1,6 @@
-import { calculateTourOccurrenceEntriesForYearInternal } from './waste-management.tours.presentation.calendar.js';
+import { formatCalendarDate } from '@sva/plugin-sdk';
 import type { WasteManagementSchedulingOverview, WasteTourRecord } from './waste-management.api.js';
+import { calculateTourOccurrenceEntriesForYearInternal } from './waste-management.tours.presentation.calendar.js';
 
 export const formatTourRecurrence = (
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string,
@@ -35,14 +36,12 @@ export const formatTourRecurrence = (
 
 export const formatTourDateRange = (tour: WasteTourRecord) => {
   if (tour.firstDate && tour.endDate) {
-    return `${tour.firstDate} – ${tour.endDate}`;
+    return `${formatCalendarDate(tour.firstDate)} – ${formatCalendarDate(tour.endDate)}`;
   }
-  return tour.firstDate ?? tour.endDate ?? '—';
+  return formatCalendarDate(tour.firstDate ?? tour.endDate) ?? '—';
 };
 
-export {
-  calculateTourCalendarForYear,
-} from './waste-management.tours.presentation.calendar.js';
+export { calculateTourCalendarForYear } from './waste-management.tours.presentation.calendar.js';
 export { resolveTourShiftDetails } from './waste-management.tours.presentation.shift-details.js';
 export type { TourShiftDetail } from './waste-management.tours.presentation.shift-details.js';
 

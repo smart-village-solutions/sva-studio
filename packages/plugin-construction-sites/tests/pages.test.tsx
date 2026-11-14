@@ -1,15 +1,15 @@
-import React from 'react';
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { publishSessionAccessSnapshot } from '@sva/plugin-sdk';
-import { pluginConstructionSitesTranslations } from '../src/plugin.translations.js';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import React from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { constructionSiteRequestHash } from '../src/construction-sites.api.js';
+import { ConstructionSitesListPage } from '../src/construction-sites.list.js';
 import {
   ConstructionSitesCreatePage,
   ConstructionSitesEditPage,
 } from '../src/construction-sites.pages.js';
-import { ConstructionSitesListPage } from '../src/construction-sites.list.js';
 import { createConstructionSiteDefaults } from '../src/contract.js';
-import { constructionSiteRequestHash } from '../src/construction-sites.api.js';
+import { pluginConstructionSitesTranslations } from '../src/plugin.translations.js';
 const state = vi.hoisted(() => ({
   id: '42' as string | undefined,
   search: {} as Record<string, unknown>,
@@ -216,9 +216,15 @@ describe('construction site editorial UI', () => {
       />
     );
     await screen.findByDisplayValue('Brückenbau');
-    fireEvent.change(screen.getByLabelText(/^Ende/), { target: { value: '2026-12-20' } });
-    fireEvent.change(screen.getByLabelText(/^Beginn/), { target: { value: '2026-11-15' } });
-    expect((screen.getByLabelText(/^Ende/) as HTMLInputElement).value).toBe('2026-12-20');
+    fireEvent.change(screen.getByLabelText(/^Ende/, { selector: 'input' }), {
+      target: { value: '2026-12-20' },
+    });
+    fireEvent.change(screen.getByLabelText(/^Beginn/, { selector: 'input' }), {
+      target: { value: '2026-11-15' },
+    });
+    expect((screen.getByLabelText(/^Ende/, { selector: 'input' }) as HTMLInputElement).value).toBe(
+      '2026-12-20'
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
     await waitFor(() => expect(state.save).toHaveBeenCalledTimes(1));
     expect(state.save.mock.calls[0]?.slice(0, 2)).toEqual([
@@ -325,7 +331,7 @@ describe('construction site editorial UI', () => {
     );
     await screen.findAllByText('Brückenbau');
     expect(screen.getAllByText('Brücke').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('2026-11-01').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('01.11.2026').length).toBeGreaterThan(0);
     expect(state.list).toHaveBeenCalledWith(
       expect.objectContaining({ category: 'Verkehr', page: 2 }),
       'organization'

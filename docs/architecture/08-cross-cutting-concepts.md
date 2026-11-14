@@ -1522,3 +1522,9 @@ eine Löschung nicht zwischen alter Planung und späterem Enqueue committen. Ber
 externe Zustellungen blockieren die betroffene Löschung; ein Datenbankrollback kann eine E-Mail
 nicht zurückrufen. Vorschau und Audit enthalten keine Empfängeradressen oder Token. Der bestehende
 Mainserver-Sync folgt erst nach dem lokalen Commit und hat einen getrennten Erfolgsstatus.
+
+## Datums- und Zeitsemantik in Studio-Oberflächen
+
+Gemeinsame Eingaben im UI-Paket und frameworkfreie Formatter/Validatoren im Plugin-SDK unterscheiden Kalendertage, Uhrzeiten, lokale Datum-/Uhrzeitwerte und absolute Zeitpunkte. Lokalisierung ist eine Darstellungsfrage; Kalendertage und Uhrzeiten werden nicht in UTC umgerechnet. Absolute Zeitpunkte werden in der bestehenden Redaktionszeitzone `Europe/Berlin` bearbeitet. Unveränderte Referenzwerte erhalten Präzision und Winterzeit-Eindeutigkeit; nicht existente Sommerzeitwerte werden abgewiesen.
+
+Die API-Grenze bleibt beim bestehenden fachlichen Adapter: Er verantwortet Offset-/UTC-Format, optionale Werte und inklusive/exklusive Grenzen. Das betrifft insbesondere die exklusive Ablaufzeit eines Bus-API-Schlüssels und die polymorphen Stringfelder generischer Inhalte. Details, Verbraucher und Nachweise stehen in [Datumseingabe](../development/datumseingabe.md). Es entsteht kein zweites Datenmodell und keine neue Package-/Provider-Schicht.

@@ -57,47 +57,65 @@ describe('BusApiKeysCard', () => {
   });
   it.each(['cancel', 'failure'])('restores focus to revocation after %s', async (outcome) => {
     api.list.mockResolvedValue({ data: [key] });
-    api.mutate.mockRejectedValue(new IamHttpError({ status: 502, code: 'bus_unavailable', message: 'unavailable' }));
+    api.mutate.mockRejectedValue(
+      new IamHttpError({ status: 502, code: 'bus_unavailable', message: 'unavailable' })
+    );
     render(<BusApiKeysCard {...props} />);
     await screen.findByText('key-old');
     const trigger = screen.getByRole('button', { name: 'Sperren' });
     trigger.focus();
     fireEvent.click(trigger);
-    fireEvent.click(screen.getByRole('button', { name: outcome === 'cancel' ? 'Abbrechen' : 'Key jetzt sperren' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: outcome === 'cancel' ? 'Abbrechen' : 'Key jetzt sperren' })
+    );
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
-  it.each(['success', 'failure'])('ignores a previous key clipboard %s after another key is created', async (outcome) => {
-    let resolveCopy: () => void = () => undefined;
-    let rejectCopy: (error: Error) => void = () => undefined;
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
-      writeText: vi.fn(() => new Promise<void>((resolve, reject) => {
-        resolveCopy = resolve;
-        rejectCopy = reject;
-      })),
-    } });
-    api.create.mockResolvedValueOnce({ data: { keyId: 'key-a', apiKey: 'sk_a', auditRecorded: true } });
-    render(<BusApiKeysCard {...props} />);
-    await openForm();
-    submit();
-    await screen.findByText('sk_a');
-    fireEvent.click(screen.getByRole('button', { name: 'Key kopieren' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Ja, ich habe den API-Key kopiert' }));
-    await openForm();
-    submit();
-    await screen.findByText('sk_one_time');
-    await act(async () => {
-      if (outcome === 'success') resolveCopy();
-      else rejectCopy(new Error('clipboard denied'));
-    });
-    expect(screen.getByRole('status').querySelector('[aria-hidden="true"]')).not.toBeNull();
-    expect(screen.getByRole('dialog').querySelector('[role="alert"]')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
-    expect(screen.getByRole('alertdialog')).toBeTruthy();
-  });
+  it.each(['success', 'failure'])(
+    'ignores a previous key clipboard %s after another key is created',
+    async (outcome) => {
+      let resolveCopy: () => void = () => undefined;
+      let rejectCopy: (error: Error) => void = () => undefined;
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: vi.fn(
+            () =>
+              new Promise<void>((resolve, reject) => {
+                resolveCopy = resolve;
+                rejectCopy = reject;
+              })
+          ),
+        },
+      });
+      api.create.mockResolvedValueOnce({
+        data: { keyId: 'key-a', apiKey: 'sk_a', auditRecorded: true },
+      });
+      render(<BusApiKeysCard {...props} />);
+      await openForm();
+      submit();
+      await screen.findByText('sk_a');
+      fireEvent.click(screen.getByRole('button', { name: 'Key kopieren' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Ja, ich habe den API-Key kopiert' }));
+      await openForm();
+      submit();
+      await screen.findByText('sk_one_time');
+      await act(async () => {
+        if (outcome === 'success') resolveCopy();
+        else rejectCopy(new Error('clipboard denied'));
+      });
+      expect(screen.getByRole('status').querySelector('[aria-hidden="true"]')).not.toBeNull();
+      expect(screen.getByRole('dialog').querySelector('[role="alert"]')).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+      expect(screen.getByRole('alertdialog')).toBeTruthy();
+    }
+  );
   it.each([
-    ['bus_unavailable', 'Der Bus-Dienst ist derzeit nicht erreichbar oder hat die Anfrage abgelehnt.'],
+    [
+      'bus_unavailable',
+      'Der Bus-Dienst ist derzeit nicht erreichbar oder hat die Anfrage abgelehnt.',
+    ],
     ['bus_outcome_unknown', 'Die Sperrung konnte nicht bestätigt werden.'],
   ])('shows an appropriate revocation error for %s', async (code, message) => {
     api.list.mockResolvedValue({ data: [key] });
@@ -147,7 +165,7 @@ describe('BusApiKeysCard', () => {
       timeZone: 'Europe/Berlin',
     }).format(new Date());
     expect((screen.getByLabelText('Gültig bis einschließlich') as HTMLInputElement).value).toBe(
-      `${year}-12-31`
+      `31.12.${year}`
     );
     fireEvent.change(screen.getByLabelText('Gültig bis einschließlich'), {
       target: { value: '2028-02-29' },
@@ -172,11 +190,15 @@ describe('BusApiKeysCard', () => {
     expect(clipboard.writeText).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Key kopieren' }));
     await waitFor(() => expect(clipboard.writeText).toHaveBeenCalledWith('sk_one_time'));
-    await waitFor(() => expect(screen.getByRole('status').querySelector('[aria-hidden="true"]')).toBeNull());
+    await waitFor(() =>
+      expect(screen.getByRole('status').querySelector('[aria-hidden="true"]')).toBeNull()
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     await waitFor(() => expect(screen.queryByText('sk_one_time')).toBeNull());
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Key erstellen' })));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Key erstellen' }))
+    );
     expect(api.create).toHaveBeenCalledTimes(1);
     expect(localStorage.getItem('apiKey')).toBeNull();
     expect(sessionStorage.getItem('apiKey')).toBeNull();
@@ -207,7 +229,9 @@ describe('BusApiKeysCard', () => {
     await screen.findByText('sk_one_time');
     fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
     expect(screen.getByRole('alertdialog').textContent).toContain('nur einmal');
-    fireEvent.click(screen.getByRole('button', { name: 'Nein, ich muss den API-Key noch kopieren' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Nein, ich muss den API-Key noch kopieren' })
+    );
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(screen.getByText('sk_one_time')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Key kopieren' })).toBeTruthy();
@@ -315,8 +339,9 @@ describe('BusApiKeysCard', () => {
       ],
     });
     render(<BusApiKeysCard {...props} />);
-    await screen.findByText('2026-12-31');
-    expect(screen.getByText('2027-03-15T15:37:21.123Z')).toBeTruthy();
-    expect(screen.queryByText('2027-03-14')).toBeNull();
+    await screen.findByText('31.12.2026');
+    expect(document.querySelector('time[datetime="2027-03-15T15:37:21.123Z"]')).toBeTruthy();
+    expect(screen.getByText('15.03.2027, 16:37:21,123')).toBeTruthy();
+    expect(screen.queryByText('14.03.2027')).toBeNull();
   });
 });

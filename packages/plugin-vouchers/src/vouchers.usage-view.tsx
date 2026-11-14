@@ -1,4 +1,4 @@
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { formatDateTimeInEditorTimeZone, usePluginTranslation } from '@sva/plugin-sdk';
 import type { VoucherQuota } from './vouchers.types.js';
 import { getVoucherUsage } from './vouchers.usage.js';
 export function VoucherUsageView({
@@ -49,7 +49,7 @@ export function VoucherUsageView({
           )}
           {fetchedAt && (
             <p className="text-xs text-muted-foreground">
-              {t('usage.fetched', { date: new Date(fetchedAt).toLocaleString() })}
+              {t('usage.fetched', { date: formatDateTimeInEditorTimeZone(fetchedAt) ?? fetchedAt })}
             </p>
           )}
           <p className="text-sm text-muted-foreground">{t('usage.notice')}</p>

@@ -6,22 +6,34 @@ import { sharedCoverageConfig } from '../../vitest.config.ts';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
-export const createPluginVitestConfig = (input: Readonly<{
-  name: string;
-  setupFiles?: string[];
-  extraAliases?: Record<string, string>;
-}>): UserConfig =>
+export const createPluginVitestConfig = (
+  input: Readonly<{
+    name: string;
+    setupFiles?: string[];
+    extraAliases?: Record<string, string>;
+  }>
+): UserConfig =>
   defineConfig({
     resolve: {
       alias: {
-        '@sva/core/rich-text-html-policy': resolve(currentDir, '../core/src/rich-text-html-policy.ts'),
+        '@sva/core/rich-text-html-policy': resolve(
+          currentDir,
+          '../core/src/rich-text-html-policy.ts'
+        ),
         '@sva/core': resolve(currentDir, '../core/src/index.ts'),
         '@sva/media': resolve(currentDir, '../media/src/index.ts'),
-        '@sva/plugin-sdk/content-media': resolve(currentDir, './src/content-media-contracts-public-api.ts'),
+        '@sva/plugin-sdk/content-media': resolve(
+          currentDir,
+          './src/content-media-contracts-public-api.ts'
+        ),
+        '@sva/plugin-sdk/temporal': resolve(currentDir, './src/temporal.ts'),
         '@sva/plugin-sdk': resolve(currentDir, './src/index.ts'),
         '@sva/studio-ui-react': resolve(currentDir, '../studio-ui-react/src/index.ts'),
         ...Object.fromEntries(
-          Object.entries(input.extraAliases ?? {}).map(([key, target]) => [key, resolve(currentDir, target)])
+          Object.entries(input.extraAliases ?? {}).map(([key, target]) => [
+            key,
+            resolve(currentDir, target),
+          ])
         ),
       },
     },

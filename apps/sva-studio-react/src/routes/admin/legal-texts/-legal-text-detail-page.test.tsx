@@ -172,9 +172,17 @@ describe('LegalTextDetailPage', () => {
     });
     fireEvent.change(
       screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' }),
-      {
-        target: { value: '2026-04-10T10:45' },
-      }
+      { target: { value: '2026-04-10' } }
+    );
+    fireEvent.change(
+      document.getElementById(
+        (
+          screen.getByLabelText('Veröffentlicht am', {
+            selector: '#legal-text-edit-published',
+          }) as HTMLInputElement
+        ).id + '-time'
+      ) as HTMLInputElement,
+      { target: { value: '10:45' } }
     );
     fireEvent.change(
       screen.getByLabelText('Zielrollen-IDs', { selector: '#legal-text-edit-role-targets' }),
@@ -245,7 +253,7 @@ describe('LegalTextDetailPage', () => {
             selector: '#legal-text-edit-published',
           }) as HTMLInputElement
         ).value
-      ).toBe('2026-10-25T02:30');
+      ).toBe('25.10.2026');
     });
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
@@ -290,9 +298,17 @@ describe('LegalTextDetailPage', () => {
 
     fireEvent.change(
       screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' }),
-      {
-        target: { value: '2026-03-29T02:30' },
-      }
+      { target: { value: '2026-03-29' } }
+    );
+    fireEvent.change(
+      document.getElementById(
+        (
+          screen.getByLabelText('Veröffentlicht am', {
+            selector: '#legal-text-edit-published',
+          }) as HTMLInputElement
+        ).id + '-time'
+      ) as HTMLInputElement,
+      { target: { value: '02:30' } }
     );
     fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
 

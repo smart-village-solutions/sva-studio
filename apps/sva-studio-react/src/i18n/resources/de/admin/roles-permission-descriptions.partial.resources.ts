@@ -6,7 +6,8 @@ export const rolePermissionDescriptionsDE = {
   iamUserRead: 'Benutzerkonten und ihre Angaben ansehen.',
   iamUserWrite: 'Angaben zu Benutzerkonten ändern.',
   iamAuthenticationPolicyManage: 'Anmelderichtlinie verwalten',
-  iamInvitationTemplateManage: 'Die Vorlagen für Account-Einladungen und E-Mail-Bestätigungen der eigenen Instanz bearbeiten.',
+  iamInvitationTemplateManage:
+    'Die Vorlagen für Account-Einladungen und E-Mail-Bestätigungen der eigenen Instanz bearbeiten.',
   iamRoleRead: 'Rollen und ihre Zuweisungen ansehen.',
   iamRoleWrite: 'Rollen und ihre Zuweisungen ändern.',
   iamOrgRead: 'Organisationen und ihre Angaben ansehen.',
@@ -28,7 +29,8 @@ export const rolePermissionDescriptionsDE = {
   appTextsRead: 'Deutsche App-Texte lesen',
   appTextsWrite: 'Deutsche App-Texte bearbeiten',
   appTextsPublish: 'Deutschen Textstand sichern',
-  appRead: 'Altrecht für den früheren App-Link. Der Zugang zur App-Redaktion erfordert das Modul „App“ und die jeweiligen Katalogrechte.',
+  appRead:
+    'Altrecht für den früheren App-Link. Der Zugang zur App-Redaktion erfordert das Modul „App“ und die jeweiligen Katalogrechte.',
   cockpitRead: 'Den Link zum Cockpit im Seitenmenü sehen.',
   modulesRead: 'Die Übersicht der verfügbaren Module sehen.',
   contentRead: 'Inhalte ansehen.',

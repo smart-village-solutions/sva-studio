@@ -1,4 +1,24 @@
+import {
+  isCalendarDate,
+  isInstant,
+  isLocalDateTime,
+  isTimeOfDay,
+  translatePluginKey,
+} from '@sva/plugin-sdk';
 import { z } from 'zod';
+
+const optionalTemporal = (validate: (value: string) => boolean, message: string) =>
+  z.string().superRefine((value, ctx) => {
+    if (value && !validate(value))
+      ctx.addIssue({ code: 'custom', message: translatePluginKey('shared', message) });
+  });
+const calendarDate = optionalTemporal(isCalendarDate, 'datePicker.errors.invalid');
+const timeOfDay = optionalTemporal(isTimeOfDay, 'datePicker.errors.invalidTime');
+const instant = optionalTemporal(isInstant, 'datePicker.errors.invalidInstant');
+const flexibleDate = optionalTemporal(
+  (value) => isCalendarDate(value) || isLocalDateTime(value) || isInstant(value),
+  'datePicker.errors.invalid'
+);
 
 const createJsonObjectFieldSchema = (message: string) =>
   z.string().superRefine((value: string, ctx) => {
@@ -65,10 +85,7 @@ const geoPairFieldSchema = {
   longitude: z.string(),
 };
 
-const validateGeoPair = (
-  value: { latitude: string; longitude: string },
-  ctx: z.RefinementCtx
-) => {
+const validateGeoPair = (value: { latitude: string; longitude: string }, ctx: z.RefinementCtx) => {
   const latitudeFilled = value.latitude.trim().length > 0;
   const longitudeFilled = value.longitude.trim().length > 0;
   if (latitudeFilled !== longitudeFilled) {
@@ -98,7 +115,7 @@ export const genericItemsDetailFormSchema = z.object({
   keywords: z.string(),
   externalId: z.string(),
   publicationDate: z.string(),
-  publishedAt: z.string(),
+  publishedAt: instant,
   categories: z.array(z.string()).superRefine((values, ctx) => {
     if (values.some((value) => value.trim().length === 0 || value.trim().length > 128)) {
       ctx.addIssue({
@@ -129,14 +146,16 @@ export const genericItemsDetailFormSchema = z.object({
     })
   ),
   addresses: z.array(
-    z.object({
-      addition: z.string(),
-      street: z.string(),
-      zip: z.string(),
-      city: z.string(),
-      kind: z.string(),
-      ...geoPairFieldSchema,
-    }).superRefine(validateGeoPair)
+    z
+      .object({
+        addition: z.string(),
+        street: z.string(),
+        zip: z.string(),
+        city: z.string(),
+        kind: z.string(),
+        ...geoPairFieldSchema,
+      })
+      .superRefine(validateGeoPair)
   ),
   contentBlocks: z.array(
     z.object({
@@ -149,32 +168,34 @@ export const genericItemsDetailFormSchema = z.object({
   openingHours: z.array(
     z.object({
       weekday: z.string(),
-      dateFrom: z.string(),
-      dateTo: z.string(),
-      timeFrom: z.string(),
-      timeTo: z.string(),
+      dateFrom: calendarDate,
+      dateTo: calendarDate,
+      timeFrom: timeOfDay,
+      timeTo: timeOfDay,
       description: z.string(),
       open: z.boolean(),
     })
   ),
   mediaContents: z.array(mediaContentFormValueSchema),
   locations: z.array(
-    z.object({
-      name: z.string(),
-      department: z.string(),
-      district: z.string(),
-      regionName: z.string(),
-      state: z.string(),
-      ...geoPairFieldSchema,
-    }).superRefine(validateGeoPair)
+    z
+      .object({
+        name: z.string(),
+        department: z.string(),
+        district: z.string(),
+        regionName: z.string(),
+        state: z.string(),
+        ...geoPairFieldSchema,
+      })
+      .superRefine(validateGeoPair)
   ),
   dates: z.array(
     z.object({
       weekday: z.string(),
-      dateStart: z.string(),
-      dateEnd: z.string(),
-      timeStart: z.string(),
-      timeEnd: z.string(),
+      dateStart: flexibleDate,
+      dateEnd: flexibleDate,
+      timeStart: timeOfDay,
+      timeEnd: timeOfDay,
       timeDescription: z.string(),
       useOnlyTimeDescription: z.boolean(),
     })
@@ -198,10 +219,18 @@ export const genericItemsDetailFormSchema = z.object({
       groupPrice: z.boolean(),
       ageFrom: createOptionalNumberStringSchema('Preisangaben müssen valide Zahlen enthalten.'),
       ageTo: createOptionalNumberStringSchema('Preisangaben müssen valide Zahlen enthalten.'),
-      minAdultCount: createOptionalNumberStringSchema('Preisangaben müssen valide Zahlen enthalten.'),
-      maxAdultCount: createOptionalNumberStringSchema('Preisangaben müssen valide Zahlen enthalten.'),
-      minChildrenCount: createOptionalNumberStringSchema('Preisangaben müssen valide Zahlen enthalten.'),
-      maxChildrenCount: createOptionalNumberStringSchema('Preisangaben müssen valide Zahlen enthalten.'),
+      minAdultCount: createOptionalNumberStringSchema(
+        'Preisangaben müssen valide Zahlen enthalten.'
+      ),
+      maxAdultCount: createOptionalNumberStringSchema(
+        'Preisangaben müssen valide Zahlen enthalten.'
+      ),
+      minChildrenCount: createOptionalNumberStringSchema(
+        'Preisangaben müssen valide Zahlen enthalten.'
+      ),
+      maxChildrenCount: createOptionalNumberStringSchema(
+        'Preisangaben müssen valide Zahlen enthalten.'
+      ),
       description: z.string(),
       category: z.string(),
     })

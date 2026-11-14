@@ -230,6 +230,9 @@ export const sharedVitestConfig = defineConfig({
           import.meta.url
         )
       ),
+      '@sva/plugin-sdk/temporal': fileURLToPath(
+        new URL('../../packages/plugin-sdk/src/temporal.ts', import.meta.url)
+      ),
       '@sva/plugin-sdk': fileURLToPath(
         new URL('../../packages/plugin-sdk/src/index.ts', import.meta.url)
       ),

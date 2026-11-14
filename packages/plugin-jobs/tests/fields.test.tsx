@@ -55,7 +55,7 @@ describe('Job editorial fields', () => {
     fireEvent.change(screen.getByDisplayValue('Erste Firma'), {
       target: { value: 'Neue Firma' },
     });
-    fireEvent.change(screen.getByLabelText(/fields.publicationDate/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /^fields.publicationDate/ }), {
       target: { value: '2026-11-08' },
     });
     const text = screen.getByTestId('draft').textContent;
@@ -99,7 +99,7 @@ describe('Job editing journeys', () => {
     fireEvent.change(screen.getByLabelText(/^fields.employmentType/), {
       target: { value: 'Vollzeit' },
     });
-    fireEvent.change(screen.getByLabelText(/^fields.dateEnd/), { target: { value: '2026-12-10' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^fields.dateEnd/ }), { target: { value: '2026-12-10' } });
     fireEvent.click(screen.getByRole('switch'));
     expect(readDraft()).toMatchObject({
       title: 'Neue Stelle',

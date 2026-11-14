@@ -30,7 +30,8 @@ vi.mock('../src/waste-management.page.support.js', () => ({
     message ? <div>{message.text}</div> : null,
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/studio-ui-react')>()),
   StudioDestructiveActionDialog: ({
     open,
     title,
@@ -112,20 +113,6 @@ vi.mock('@sva/studio-ui-react', () => ({
         <button onClick={onCancel}>{cancelLabel}</button>
       </div>
     ) : null,
-  StudioField: ({
-    id,
-    label,
-    children,
-  }: {
-    readonly id: string;
-    readonly label: string;
-    readonly children: React.ReactNode;
-  }) => (
-    <label htmlFor={id}>
-      {label}
-      {children}
-    </label>
-  ),
   StudioFieldGroup: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   Textarea: (props: React.ComponentProps<'textarea'>) => <textarea {...props} />,
 }));

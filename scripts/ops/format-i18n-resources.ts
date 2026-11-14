@@ -133,7 +133,9 @@ const buildDirectoryAggregator = async (
   childAggregatorDefinitions: readonly AggregatorDefinition[]
 ): Promise<AggregatorDefinition | null> => {
   const childFileNames = await listChildFiles(directoryPath);
-  const resourceFileNames = childFileNames.filter((fileName) => fileName.endsWith('.resources.ts'));
+  const resourceFileNames = childFileNames.filter(
+    (fileName) => fileName.endsWith('.resources.ts') && !fileName.endsWith('.partial.resources.ts')
+  );
   const directResourceKeys = new Set(resourceFileNames.map((fileName) => stripResourceSuffix(fileName)));
   const childAggregatorEntries = childAggregatorDefinitions.map((definition) => ({
     key: stripResourceSuffix(basename(definition.filePath)),

@@ -13,7 +13,8 @@ vi.mock('@sva/plugin-sdk', async () => {
   };
 });
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/studio-ui-react')>()),
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
   Dialog: ({ open, children }: { readonly open: boolean; readonly children: React.ReactNode }) =>
     open ? <div>{children}</div> : null,

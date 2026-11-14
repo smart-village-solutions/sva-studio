@@ -1,27 +1,29 @@
-import type { ReactNode } from 'react';
 import {
   Input,
+  InstantInput,
   StudioField,
   StudioFieldGroup,
   getStudioFormFieldProps,
 } from '@sva/studio-ui-react';
-import { useFormContext } from 'react-hook-form';
+import type { ReactNode } from 'react';
+import { useController, useFormContext } from 'react-hook-form';
 import { GenericItemsDetailCard } from './generic-items.detail-card.js';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
 
-export const GenericItemsMetaCard = ({
-  labels,
-  createSection,
-  children,
-}: Readonly<{
+type MetaCardProps = Readonly<{
   children?: ReactNode;
   labels: Record<string, string>;
   createSection?: 'identity' | 'categories' | 'technical' | 'publication';
-}>) => {
+}>;
+
+export const GenericItemsMetaCard = ({ labels, createSection, children }: MetaCardProps) => {
   const {
     register,
     formState: { errors },
   } = useFormContext<GenericItemsDetailFormValues>();
+  const {
+    field: { onChange: onPublishedAtChange, ...publishedAtInput },
+  } = useController<GenericItemsDetailFormValues, 'publishedAt'>({ name: 'publishedAt' });
   const keywordsField = getStudioFormFieldProps({
     id: 'generic-item-keywords',
     hasDescription: true,
@@ -78,7 +80,14 @@ export const GenericItemsMetaCard = ({
           label={labels.publishedAt}
           description={labels.publishedAtHelp}
         >
-          <Input {...publishedAtField.controlProps} {...register('publishedAt')} />
+          <InstantInput
+            label={labels.publishedAt}
+            {...publishedAtField.controlProps}
+            value={publishedAtInput.value}
+            onBlur={publishedAtInput.onBlur}
+            ref={publishedAtInput.ref}
+            onValueChange={onPublishedAtChange}
+          />
         </StudioField>
       ) : null}
       {children}

@@ -1,16 +1,18 @@
 import {
   Button,
   Checkbox,
+  FormDateInput,
   Input,
   Select,
   StudioField,
   StudioFieldGroup,
+  TimeInput,
 } from '@sva/studio-ui-react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 
-import { PoiDetailSectionCard } from './poi.detail-section-card.js';
-import type { PoiDetailFormValues } from './poi.detail-form.js';
 import { createDefaultOpeningHour } from './poi.detail-form.defaults.js';
+import type { PoiDetailFormValues } from './poi.detail-form.js';
+import { PoiDetailSectionCard } from './poi.detail-section-card.js';
 import { POI_OPENING_HOUR_WEEKDAYS } from './poi.opening-hours.js';
 
 type PoiDetailOpeningHoursRowProps = Readonly<{
@@ -64,32 +66,30 @@ function PoiDetailOpeningHoursRow({
       <div className="space-y-4 p-4">
         <StudioFieldGroup columns={2}>
           <StudioField id={`poi-opening-date-from-${index}`} label={pt('fields.dateFrom')}>
-            <Input
+            <FormDateInput<PoiDetailFormValues>
+              label={pt('fields.dateFrom')}
               id={`poi-opening-date-from-${index}`}
-              type="date"
-              {...register(`content.openingHours.${index}.dateFrom`)}
+              name={`content.openingHours.${index}.dateFrom`}
             />
           </StudioField>
           <StudioField id={`poi-opening-date-to-${index}`} label={pt('fields.dateTo')}>
-            <Input
+            <FormDateInput<PoiDetailFormValues>
+              label={pt('fields.dateTo')}
               id={`poi-opening-date-to-${index}`}
-              type="date"
-              {...register(`content.openingHours.${index}.dateTo`)}
+              name={`content.openingHours.${index}.dateTo`}
             />
           </StudioField>
         </StudioFieldGroup>
         <StudioFieldGroup columns={2}>
           <StudioField id={`poi-opening-time-from-${index}`} label={pt('fields.timeFrom')}>
-            <Input
+            <TimeInput
               id={`poi-opening-time-from-${index}`}
-              type="time"
               {...register(`content.openingHours.${index}.timeFrom`)}
             />
           </StudioField>
           <StudioField id={`poi-opening-time-to-${index}`} label={pt('fields.timeTo')}>
-            <Input
+            <TimeInput
               id={`poi-opening-time-to-${index}`}
-              type="time"
               {...register(`content.openingHours.${index}.timeTo`)}
             />
           </StudioField>

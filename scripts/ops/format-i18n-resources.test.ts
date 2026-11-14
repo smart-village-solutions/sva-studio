@@ -22,14 +22,18 @@ const temporaryDirectories: string[] = [];
 afterEach(async () => {
   vi.restoreAllMocks();
   await Promise.all(
-    temporaryDirectories.splice(0).map((directoryPath) => rm(directoryPath, { recursive: true, force: true }))
+    temporaryDirectories
+      .splice(0)
+      .map((directoryPath) => rm(directoryPath, { recursive: true, force: true }))
   );
 });
 
 describe('deriveResourceExportName', () => {
   it('derives leaf, nested, and locale aggregator export names', () => {
     expect(deriveResourceExportName('de', 'de/shell.resources.ts')).toBe('shellDEResources');
-    expect(deriveResourceExportName('en', 'en/account/profile.resources.ts')).toBe('profileAccountENResources');
+    expect(deriveResourceExportName('en', 'en/account/profile.resources.ts')).toBe(
+      'profileAccountENResources'
+    );
     expect(deriveResourceExportName('en', 'en/admin/instances/page.resources.ts')).toBe(
       'pageInstancesAdminENResources'
     );
@@ -40,7 +44,9 @@ describe('deriveResourceExportName', () => {
 describe('collectResourceAggregators', () => {
   it('finds deterministic aggregator files for the current locale tree', async () => {
     const definitions = await collectResourceAggregators();
-    const relativeDefinitionPaths = definitions.map((definition) => relative(resourcesRoot, definition.filePath));
+    const relativeDefinitionPaths = definitions.map((definition) =>
+      relative(resourcesRoot, definition.filePath)
+    );
 
     expect(relativeDefinitionPaths).toContain('de.ts');
     expect(relativeDefinitionPaths).toContain('de/account.resources.ts');
@@ -96,12 +102,24 @@ describe('runI18nResourceFormatter', () => {
       'utf8'
     );
 
+    // A partial resource is imported by its owner, never an additional namespace.
+    const partialPath = resolve(nestedDirectory, 'permission-descriptions.partial.resources.ts');
+    await writeFile(partialPath, "export const descriptions={value:'Description'};", 'utf8');
+
     const changedFilePaths = await runI18nResourceFormatter({
       rootDirectoryPath: testResourcesRoot,
     });
     const aggregatorPath = resolve(testResourcesRoot, 'de/foo.resources.ts');
     const localeAggregatorPath = resolve(testResourcesRoot, 'de.ts');
 
+    expect(changedFilePaths).toContain(partialPath);
+    await expect(readFile(aggregatorPath, 'utf8')).resolves.not.toContain(
+      'permission-descriptions'
+    );
+    await expect(readFile(partialPath, 'utf8')).resolves.toContain("value: 'Description'");
+    await expect(
+      runI18nResourceFormatter({ rootDirectoryPath: testResourcesRoot, checkOnly: true })
+    ).resolves.toEqual([]);
     expect(changedFilePaths).toContain(aggregatorPath);
     expect(changedFilePaths).toContain(localeAggregatorPath);
     await expect(readFile(aggregatorPath, 'utf8')).resolves.toContain(

@@ -1,4 +1,7 @@
-import { mediaImageEditorResources, mediaEditorResources } from './media-editor.resources';
+import {
+  mediaImageEditorResources,
+  mediaEditorResources,
+} from './media-editor.partial.resources.js';
 
 export const mediaDEResources = {
   scan: {

@@ -16,8 +16,15 @@ export default defineConfig({
         replacement: resolve(__dirname, './packages/media/src/index.ts'),
       },
       {
+        find: /^@sva\/plugin-sdk\/temporal$/,
+        replacement: resolve(__dirname, './packages/plugin-sdk/src/temporal.ts'),
+      },
+      {
         find: /^@sva\/plugin-sdk\/content-media$/,
-        replacement: resolve(__dirname, './packages/plugin-sdk/src/content-media-contracts-public-api.ts'),
+        replacement: resolve(
+          __dirname,
+          './packages/plugin-sdk/src/content-media-contracts-public-api.ts'
+        ),
       },
       {
         find: /^@sva\/data\/server$/,
@@ -33,7 +40,10 @@ export default defineConfig({
       },
       {
         find: /^@sva\/monitoring-client\/logger-provider\.server$/,
-        replacement: resolve(__dirname, './packages/monitoring-client/src/logger-provider.server.ts'),
+        replacement: resolve(
+          __dirname,
+          './packages/monitoring-client/src/logger-provider.server.ts'
+        ),
       },
       {
         find: /^@sva\/monitoring-client\/logging$/,

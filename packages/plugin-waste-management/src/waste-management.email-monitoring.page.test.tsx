@@ -56,7 +56,7 @@ afterEach(cleanup);
 describe('email monitoring page', () => {
   it.each([
     ['de', '12.11.2026'],
-    ['en', 'Nov 12, 2026'],
+    ['en', '11/12/2026'],
   ] as const)(
     'resolves monitoring copy through the real %s plugin namespace',
     async (locale, pickupLabel) => {
@@ -129,24 +129,8 @@ describe('email monitoring page', () => {
     expect(overview.getByText('emailMonitoring.kinds.doi', { exact: false })).toBeTruthy();
     expect(overview.getByText('emailMonitoring.nextEmail')).toBeTruthy();
     expect(overview.getByText('emailMonitoring.kinds.reminder', { exact: false })).toBeTruthy();
-    expect(
-      overview.getByText(
-        new Date(subscription.lastSentEmail.sentAt).toLocaleString('de', {
-          dateStyle: 'short',
-          timeStyle: 'short',
-        }),
-        { exact: false }
-      )
-    ).toBeTruthy();
-    expect(
-      overview.getByText(
-        new Date(subscription.nextEmail.scheduledAt).toLocaleString('de', {
-          dateStyle: 'short',
-          timeStyle: 'short',
-        }),
-        { exact: false }
-      )
-    ).toBeTruthy();
+    expect(overview.getByText('10.11.2026, 11:00', { exact: false })).toBeTruthy();
+    expect(overview.getByText('12.11.2026, 07:00', { exact: false })).toBeTruthy();
   });
   it.each(['missing', 'empty', 'processing'] as const)(
     'explains %s sending records without claiming a future delivery',
@@ -209,11 +193,11 @@ describe('email monitoring page', () => {
     );
   });
   it.each([
-    ['activatedAt', '2026-11-11T10:00:00Z', 'active'],
-    ['unsubscribedAt', '2026-11-12T10:00:00Z', 'unsubscribed'],
+    ['activatedAt', '2026-11-11T10:00:00Z', 'active', '11.11.2026, 11:00'],
+    ['unsubscribedAt', '2026-11-12T10:00:00Z', 'unsubscribed', '12.11.2026, 11:00'],
   ] as const)(
     'refreshes the selected subscription %s from the response',
-    async (field, value, status) => {
+    async (field, value, status, expected) => {
       allow([wasteEmailMonitoringPermission]);
       render(<WasteEmailMonitoringPage />);
       await screen.findAllByText(subscription.maskedEmail);
@@ -226,10 +210,6 @@ describe('email monitoring page', () => {
         subscriptions: [{ ...subscription, status, [field]: value }],
       });
       fireEvent.click(screen.getByRole('button', { name: 'emailMonitoring.refresh' }));
-      const expected = new Date(value).toLocaleString('de', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-      });
       await within(
         screen.getByRole('region', { name: 'emailMonitoring.deliveries' })
       ).findAllByText(expected);
@@ -249,10 +229,7 @@ describe('email monitoring page', () => {
     fireEvent.click(refresh);
     const details = within(screen.getByRole('region', { name: 'emailMonitoring.deliveries' }));
     await details.findByText('emailMonitoring.subscriptionUnavailable');
-    const oldDate = new Date(subscription.createdAt).toLocaleString('de', {
-      dateStyle: 'short',
-      timeStyle: 'short',
-    });
+    const oldDate = '10.11.2026, 11:00';
     expect(details.queryByText(oldDate)).toBeNull();
     expect(details.getByRole('button', { name: 'emailMonitoring.close' })).toBeTruthy();
     expect(document.activeElement).toBe(refresh);

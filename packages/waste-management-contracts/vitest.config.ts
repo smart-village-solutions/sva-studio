@@ -12,7 +12,11 @@ export default defineConfig({
     alias: {
       '@sva/core': resolve(currentDir, '../core/src/index.ts'),
       '@sva/media': resolve(currentDir, '../media/src/index.ts'),
-      '@sva/plugin-sdk/content-media': resolve(currentDir, '../plugin-sdk/src/content-media-contracts-public-api.ts'),
+      '@sva/plugin-sdk/content-media': resolve(
+        currentDir,
+        '../plugin-sdk/src/content-media-contracts-public-api.ts'
+      ),
+      '@sva/plugin-sdk/temporal': resolve(currentDir, '../plugin-sdk/src/temporal.ts'),
       '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
     },
   },

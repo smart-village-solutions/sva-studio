@@ -41,6 +41,15 @@ describe('i18n resource structure', () => {
     expect(accountENResources.profile).toBe(profileAccountENResources);
   });
 
+  it('retains instance policy and mail translations after aggregator generation', () => {
+    expect(instancesAdminDEResources.loginMfa.title).toBe('Anmelderichtlinie');
+    expect(instancesAdminENResources.loginMfa.title).toBe('Authentication policy');
+    expect(instancesAdminDEResources.mailSync.title).toBe('Vorlagenabgleich mit Keycloak');
+    expect(instancesAdminENResources.mailSync.title).toBe('Keycloak template synchronization');
+    expect(instancesAdminDEResources.emailVerification.title).toBe('E-Mail-Bestätigung');
+    expect(instancesAdminENResources.emailVerification.title).toBe('Email verification');
+  });
+
   it('warns in both locales that interface deletion is permanent', () => {
     expect(interfacesDEResources.edit.deleteConfirmDescription).toContain('unwiderruflich');
     expect(interfacesENResources.edit.deleteConfirmDescription).toContain('permanently');

@@ -438,8 +438,14 @@ describe('ContentEditorPage', () => {
     );
 
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), {
-      target: { value: '2026-03-22T12:00' },
+      target: { value: '2026-03-22' },
     });
+    fireEvent.change(
+      document.getElementById(
+        (screen.getByLabelText('Veröffentlichungsdatum') as HTMLInputElement).id + '-time'
+      ) as HTMLInputElement,
+      { target: { value: '12:00' } }
+    );
     fireEvent.click(screen.getAllByRole('button', { name: 'Inhalt anlegen' })[1]!);
 
     await waitFor(() => {
@@ -487,8 +493,14 @@ describe('ContentEditorPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), {
-      target: { value: '2026-03-29T02:30' },
+      target: { value: '2026-03-29' },
     });
+    fireEvent.change(
+      document.getElementById(
+        (screen.getByLabelText('Veröffentlichungsdatum') as HTMLInputElement).id + '-time'
+      ) as HTMLInputElement,
+      { target: { value: '02:30' } }
+    );
     fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
 
     await waitFor(() => {

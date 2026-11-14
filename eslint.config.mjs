@@ -348,13 +348,13 @@ export default [
           paths: [
             {
               name: '@sva/plugin-sdk',
-              message: 'Studio UI darf nur den schmalen Content-Media-Vertrag des Plugin-SDK importieren.',
+              message: 'Studio UI darf nur die schmalen Content-Media- und Temporal-Verträge des Plugin-SDK importieren.',
             },
           ],
           patterns: [
             {
-              regex: '^@sva/plugin-sdk/(?!content-media$).+',
-              message: 'Studio UI darf nur @sva/plugin-sdk/content-media importieren.',
+              regex: '^@sva/plugin-sdk/(?!(?:content-media|temporal)$).+',
+              message: 'Studio UI darf nur @sva/plugin-sdk/content-media oder @sva/plugin-sdk/temporal importieren.',
             },
           ],
         },

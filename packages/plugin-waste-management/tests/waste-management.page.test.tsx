@@ -2296,10 +2296,10 @@ describe('WasteManagementPage', () => {
         expect(
           (screen.getByLabelText('wasteManagement.tours.fields.firstDate') as HTMLInputElement)
             .value
-        ).toBe(source.firstDate);
+        ).toBe('19.05.2026');
         expect(
           (screen.getByLabelText('wasteManagement.tours.fields.endDate') as HTMLInputElement).value
-        ).toBe(source.endDate);
+        ).toBe('31.12.2026');
       }
       if (source.customDates?.length) {
         expect(screen.getByDisplayValue('TEST Einzeltermin')).toBeTruthy();

@@ -1,6 +1,7 @@
 export const mainserverInstancesAdminENResources = {
   title: 'Mainserver interface',
-  description: 'Central configuration for this active instance. The status describes the saved entry, not Mainserver reachability.',
+  description:
+    'Central configuration for this active instance. The status describes the saved entry, not Mainserver reachability.',
   graphqlBaseUrl: 'GraphQL URL',
   oauthTokenUrl: 'OAuth token URL',
   enabled: 'Interface enabled',

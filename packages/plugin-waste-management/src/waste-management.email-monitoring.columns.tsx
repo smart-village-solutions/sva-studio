@@ -1,8 +1,12 @@
+import {
+  formatCalendarDate,
+  formatDateTimeInEditorTimeZone,
+  readPluginLocales,
+} from '@sva/plugin-sdk';
 import { Badge, type StudioColumnDef } from '@sva/studio-ui-react';
-import { readPluginLocales } from '@sva/plugin-sdk';
 import type {
-  WasteEmailSubscriptionSummary,
   WasteEmailDeliverySummary,
+  WasteEmailSubscriptionSummary,
 } from '@sva/waste-management-contracts';
 export type EmailMonitoringTranslate = (
   key: string,
@@ -13,13 +17,10 @@ export const formatEmailMonitoringTimestamp = (value: string | null, fallback: s
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime())
     ? fallback
-    : parsed.toLocaleString(readPluginLocales().locale, { dateStyle: 'short', timeStyle: 'short' });
+    : (formatDateTimeInEditorTimeZone(value, readPluginLocales().locale) ?? fallback);
 };
 const pickupDate = (value: string) =>
-  new Date(`${value}T00:00:00Z`).toLocaleDateString(readPluginLocales().locale, {
-    dateStyle: 'medium',
-    timeZone: 'UTC',
-  });
+  formatCalendarDate(value, readPluginLocales().locale) ?? value;
 
 export const emailMonitoringSubscriptionColumns = (
   pt: EmailMonitoringTranslate

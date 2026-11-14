@@ -130,8 +130,7 @@ describe('GroupDetailPage', () => {
     });
 
     const navigation = navigateMock.mock.calls.at(-1)?.[0] as
-      | { state?: (previous: Record<string, unknown>) => Record<string, unknown> }
-      | undefined;
+      { state?: (previous: Record<string, unknown>) => Record<string, unknown> } | undefined;
     expect(navigation?.state?.(locationState)).toEqual({ preserved: true });
   });
 
@@ -200,15 +199,31 @@ describe('GroupDetailPage', () => {
     );
     fireEvent.change(
       screen.getByLabelText('Gültig ab', { selector: '#group-membership-valid-from' }),
-      {
-        target: { value: '2026-04-10T12:00' },
-      }
+      { target: { value: '2026-04-10' } }
+    );
+    fireEvent.change(
+      document.getElementById(
+        (
+          screen.getByLabelText('Gültig ab', {
+            selector: '#group-membership-valid-from',
+          }) as HTMLInputElement
+        ).id + '-time'
+      ) as HTMLInputElement,
+      { target: { value: '12:00' } }
     );
     fireEvent.change(
       screen.getByLabelText('Gültig bis', { selector: '#group-membership-valid-until' }),
-      {
-        target: { value: '2026-04-20T12:00' },
-      }
+      { target: { value: '2026-04-20' } }
+    );
+    fireEvent.change(
+      document.getElementById(
+        (
+          screen.getByLabelText('Gültig bis', {
+            selector: '#group-membership-valid-until',
+          }) as HTMLInputElement
+        ).id + '-time'
+      ) as HTMLInputElement,
+      { target: { value: '12:00' } }
     );
     fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft zuweisen' }));
 
@@ -241,9 +256,17 @@ describe('GroupDetailPage', () => {
     );
     fireEvent.change(
       screen.getByLabelText('Gültig ab', { selector: '#group-membership-valid-from' }),
-      {
-        target: { value: '2026-03-29T02:30' },
-      }
+      { target: { value: '2026-03-29' } }
+    );
+    fireEvent.change(
+      document.getElementById(
+        (
+          screen.getByLabelText('Gültig ab', {
+            selector: '#group-membership-valid-from',
+          }) as HTMLInputElement
+        ).id + '-time'
+      ) as HTMLInputElement,
+      { target: { value: '02:30' } }
     );
     fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft zuweisen' }));
 

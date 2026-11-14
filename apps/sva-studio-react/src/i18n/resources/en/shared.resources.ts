@@ -1,4 +1,24 @@
 export const sharedENResources = {
+  datePicker: {
+    time: 'Time',
+    timeFor: 'Time: {{label}}',
+    openCalendar: 'Open calendar',
+    calendar: 'Select date',
+    navigation: 'Calendar navigation',
+    previousMonth: 'Previous month',
+    nextMonth: 'Next month',
+    formatHint: 'DD/MM/YYYY',
+    today: 'Today',
+    selected: 'Selected',
+    errors: {
+      invalidTime: 'Enter a valid time.',
+      invalidInstant: 'Enter a valid timestamp. The time must exist in the editorial time zone.',
+      invalid: 'Enter a valid date.',
+      required: 'Enter a date.',
+      min: 'The date is before the earliest allowed date.',
+      max: 'The date is after the latest allowed date.',
+    },
+  },
   errorFallback: {
     title: 'Error',
     heading: 'An unexpected error occurred',

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapGenericItemToDetailFormValues, mapGenericItemsDetailFormValuesToInput } from '../src/generic-items.detail-form.js';
+import {
+  mapGenericItemToDetailFormValues,
+  mapGenericItemsDetailFormValuesToInput,
+} from '../src/generic-items.detail-form.js';
 
 describe('generic items detail form mapping', () => {
   it('maps repeated links, contacts, addresses, media and dates into structured input arrays and drops empty rows', () => {
@@ -266,7 +269,10 @@ describe('generic items detail form mapping', () => {
           {
             captionText: 'Blockbild',
             contentType: 'image',
-            sourceUrl: { url: 'https://example.org/block-image.jpg', description: 'block-image.jpg' },
+            sourceUrl: {
+              url: 'https://example.org/block-image.jpg',
+              description: 'block-image.jpg',
+            },
           },
         ],
       },
@@ -308,10 +314,20 @@ describe('generic items detail form mapping', () => {
       categories: [],
       contacts: [{ firstName: '', lastName: '', email: '', phone: '', fax: '', webUrls: [] }],
       webUrls: [{ url: '', description: '' }],
-      addresses: [{ addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' }],
+      addresses: [
+        { addition: '', street: '', zip: '', city: '', kind: '', latitude: '', longitude: '' },
+      ],
       contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
       openingHours: [
-        { weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false },
+        {
+          weekday: '',
+          dateFrom: '',
+          dateTo: '',
+          timeFrom: '',
+          timeTo: '',
+          description: '',
+          open: false,
+        },
       ],
       mediaContents: [
         {
@@ -323,7 +339,17 @@ describe('generic items detail form mapping', () => {
           sourceUrl: { url: '', description: '' },
         },
       ],
-      locations: [{ name: '', department: '', district: '', regionName: '', state: '', latitude: '', longitude: '' }],
+      locations: [
+        {
+          name: '',
+          department: '',
+          district: '',
+          regionName: '',
+          state: '',
+          latitude: '',
+          longitude: '',
+        },
+      ],
       dates: [
         {
           weekday: '',
@@ -335,7 +361,9 @@ describe('generic items detail form mapping', () => {
           useOnlyTimeDescription: false,
         },
       ],
-      accessibilityInformations: [{ description: '', types: '', urls: [{ url: '', description: '' }] }],
+      accessibilityInformations: [
+        { description: '', types: '', urls: [{ url: '', description: '' }] },
+      ],
       priceInformations: [
         {
           name: '',
@@ -458,7 +486,17 @@ describe('generic items detail form mapping', () => {
         },
       ],
       contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
-      openingHours: [{ weekday: '', dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', description: '', open: false }],
+      openingHours: [
+        {
+          weekday: '',
+          dateFrom: '',
+          dateTo: '',
+          timeFrom: '',
+          timeTo: '',
+          description: '',
+          open: false,
+        },
+      ],
       mediaContents: [],
       locations: [
         {
@@ -471,8 +509,20 @@ describe('generic items detail form mapping', () => {
           longitude: '7.2166',
         },
       ],
-      dates: [{ weekday: '', dateStart: '', dateEnd: '', timeStart: '', timeEnd: '', timeDescription: '', useOnlyTimeDescription: false }],
-      accessibilityInformations: [{ description: '', types: '', urls: [{ url: '', description: '' }] }],
+      dates: [
+        {
+          weekday: '',
+          dateStart: '',
+          dateEnd: '',
+          timeStart: '',
+          timeEnd: '',
+          timeDescription: '',
+          useOnlyTimeDescription: false,
+        },
+      ],
+      accessibilityInformations: [
+        { description: '', types: '', urls: [{ url: '', description: '' }] },
+      ],
       priceInformations: [
         {
           name: '',
@@ -510,7 +560,10 @@ describe('generic items detail form mapping', () => {
             {
               captionText: 'Blockbild',
               contentType: 'image',
-              sourceUrl: { url: 'https://example.org/block-image.jpg', description: 'block-image.jpg' },
+              sourceUrl: {
+                url: 'https://example.org/block-image.jpg',
+                description: 'block-image.jpg',
+              },
             },
           ],
         },
@@ -530,7 +583,10 @@ describe('generic items detail form mapping', () => {
             contentType: 'image',
             height: '',
             width: '',
-            sourceUrl: { url: 'https://example.org/block-image.jpg', description: 'block-image.jpg' },
+            sourceUrl: {
+              url: 'https://example.org/block-image.jpg',
+              description: 'block-image.jpg',
+            },
           },
         ],
       },
@@ -545,10 +601,32 @@ describe('generic items detail form mapping', () => {
           {
             captionText: 'Blockbild',
             contentType: 'image',
-            sourceUrl: { url: 'https://example.org/block-image.jpg', description: 'block-image.jpg' },
+            sourceUrl: {
+              url: 'https://example.org/block-image.jpg',
+              description: 'block-image.jpg',
+            },
           },
         ],
       },
     ]);
   });
+});
+
+it('preserves calendar dates, local date/times, clock precision and instants in API input', () => {
+  const loaded = {
+    id: 'temporal-fixture',
+    title: 'Datumstest',
+    genericType: 'custom',
+    publicationDate: 'technical-legacy-value',
+    publishedAt: '2026-10-25T01:30:45.123456Z',
+    dates: [
+      { dateStart: '2026-01-01', timeStart: '00:30:45', useOnlyTimeDescription: false },
+      { dateStart: '2026-03-29T02:30', useOnlyTimeDescription: false },
+      { dateStart: '2026-10-25T01:30:45.123456Z', useOnlyTimeDescription: false },
+    ],
+  };
+  const payload = mapGenericItemsDetailFormValuesToInput(mapGenericItemToDetailFormValues(loaded));
+  expect(payload.publicationDate).toBe(loaded.publicationDate);
+  expect(payload.publishedAt).toBe(loaded.publishedAt);
+  expect(payload.dates).toEqual(loaded.dates);
 });

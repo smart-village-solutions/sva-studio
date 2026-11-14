@@ -104,6 +104,7 @@ const handleItemUpdate = async (
 
       const existing = await getSvaMainserverPoiDetail({ ...actor, poiId: route.itemId });
       const providerAuthorization = await authorizeMainserverExistingContent({
+        forceExactScopeAuthorization: true,
         actor,
         action: 'poi.update',
         contentType: POI_CONTENT_TYPE,
@@ -178,6 +179,7 @@ const handleItemDelete = async (
     operation: async () => {
       const existing = await getSvaMainserverPoiDetail({ ...actor, poiId: route.itemId });
       const providerAuthorization = await authorizeMainserverExistingContent({
+        forceExactScopeAuthorization: true,
         actor,
         action: 'poi.delete',
         contentType: POI_CONTENT_TYPE,

@@ -496,6 +496,43 @@ describe('Mainserver content authorization', () => {
     });
   });
 
+  it.each([
+    'news.update',
+    'news.delete',
+    'events.update',
+    'events.delete',
+    'poi.update',
+    'poi.delete',
+  ])('enforces explicit exact %s ownership even in shadow mode', async (action) => {
+    process.env.SVA_MAINSERVER_SCOPE_RESOLVER_MODE = 'shadow';
+    state.loadBinding.mockImplementation(async ({ principalType }: { principalType: string }) => ({
+      dataProviderId: principalType === 'organization' ? 'provider-organization' : 'provider-user',
+    }));
+    const input = {
+      ...context,
+      action,
+      forceExactScopeAuthorization: true,
+      permissions: [{ ...permission('organization'), action, resourceType: action.split('.')[0]! }],
+    };
+    await expect(
+      authorizeMainserverDataProviderAccess({ ...input, dataProviderId: 'provider-organization' })
+    ).resolves.toMatchObject({ allowed: true, authorizationMode: 'exact' });
+    await expect(
+      authorizeMainserverDataProviderAccess({ ...input, dataProviderId: 'provider-foreign' })
+    ).resolves.toMatchObject({
+      allowed: false,
+      reason: 'data_provider_mismatch',
+      authorizationMode: 'exact',
+    });
+    await expect(
+      authorizeMainserverDataProviderAccess({
+        ...input,
+        dataProviderId: 'provider-foreign',
+        permissions: [{ ...input.permissions[0]!, accessScope: 'all' }],
+      })
+    ).resolves.toMatchObject({ allowed: true, authorizationMode: 'exact' });
+  });
+
   it('allows unscoped and all permissions without a binding', async () => {
     for (const accessScope of [undefined, 'all'] as const) {
       await expect(

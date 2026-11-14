@@ -68,6 +68,35 @@ describe('content mutation authorization', () => {
     resolveContentAuthorizationPermissionsMock.mockResolvedValue({ permissions: [] });
   });
 
+  it.each([
+    ['organization', 'org-own', null],
+    ['organization', 'org-other', 403],
+    ['all', 'org-other', null],
+  ] as const)(
+    'enforces %s publish grants for owner %s',
+    async (accessScope, ownerOrganizationId, status) => {
+      const actual =
+        await vi.importActual<typeof import('./request-context.js')>('./request-context.js');
+      authorizeContentActionMock.mockImplementation(actual.authorizeContentAction);
+      resolveContentAuthorizationPermissionsMock.mockResolvedValue({
+        permissions: [
+          {
+            action: 'content.publish',
+            resourceType: 'content',
+            accessScope,
+          },
+        ],
+      });
+      const response = await authorizeUpdateContentActions(
+        { ...actor, actorAccountId: 'actor-1', activeOrganizationId: 'org-own' },
+        'content-1',
+        { ...content(), organizationId: 'org-own', ownerOrganizationId },
+        { status: 'published' }
+      );
+      expect(response?.status ?? null).toBe(status);
+    }
+  );
+
   it('resolves update capabilities to primitive actions', () => {
     expect(resolveUpdateContentActions(content(), { title: 'Updated' })).toEqual([
       { domainCapability: 'content.update_metadata', primitiveAction: 'content.updateMetadata' },

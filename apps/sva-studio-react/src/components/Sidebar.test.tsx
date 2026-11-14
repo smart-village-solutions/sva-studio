@@ -4,12 +4,17 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { IamContentAccessSummary } from '@sva/core';
+import {
+  summarizeContentAccess,
+  tenantCorePermissionCatalog,
+  type IamContentAccessSummary,
+} from '@sva/core';
 import { appTranslationsPlugin } from '@sva/plugin-app-translations';
 import type { PluginNavigationItem } from '@sva/plugin-sdk';
 
 import { mergeI18nResources } from '../i18n';
 import { StudioBrandingProvider } from '../providers/studio-branding-provider';
+import editorialRoleContract from '../test/fixtures/editor-role-baseline.json';
 import Sidebar from './Sidebar';
 
 const LICENSE_URL = 'https://github.com/smart-village-solutions/sva-studio/blob/main/LICENSE';
@@ -400,6 +405,90 @@ describe('Sidebar', () => {
       },
     ];
   };
+
+  describe.each(['test-one', 'test-two'])('editorial role acceptance in %s', (instanceId) => {
+    it('shows editorial navigation from the MCP grant contract without user or role administration', () => {
+      enableRegisteredContentTypes();
+      const permissionActions = editorialRoleContract.permissions.map(
+        ({ permissionKey }) => permissionKey
+      );
+      renderSidebar({
+        route: '/admin/content',
+        user: createSidebarUser({
+          instanceId,
+          roles: [editorialRoleContract.roleKey],
+          assignedModules: ['news', 'events', 'poi', 'media', 'categories'],
+        }),
+        contentAccess: createContentAccessState({
+          access: summarizeContentAccess(permissionActions.map((action) => ({ action }))),
+          permissionActions,
+        }),
+      });
+
+      for (const name of ['Nachrichten', 'Veranstaltungen', 'Orte', 'Medien', 'Kategorien']) {
+        expect(screen.getByRole('link', { name })).toBeTruthy();
+      }
+      expect(screen.getByRole('link', { name: 'Inhalt erstellen' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Benutzer' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Accounts' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Rollen' })).toBeNull();
+    });
+
+    it('retains administrative navigation with the canonical system-admin permissions', () => {
+      enableRegisteredContentTypes();
+      const permissionActions = [
+        ...new Set([
+          ...tenantCorePermissionCatalog.map(({ key }) => key),
+          ...editorialRoleContract.permissions.map(({ permissionKey }) => permissionKey),
+        ]),
+      ];
+      renderSidebar({
+        route: '/admin/content',
+        user: createSidebarUser({
+          instanceId,
+          roles: ['system_admin'],
+          assignedModules: ['news', 'events', 'poi', 'media', 'categories'],
+        }),
+        contentAccess: createContentAccessState({
+          access: summarizeContentAccess(permissionActions.map((action) => ({ action }))),
+          permissionActions,
+        }),
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Benutzer' }));
+      expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe(
+        '/admin/users'
+      );
+      expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe(
+        '/admin/roles'
+      );
+      expect(screen.getByRole('link', { name: 'Nachrichten' })).toBeTruthy();
+    });
+
+    it('honors an individually removed media permission instead of inferring it from the editor role name', () => {
+      enableRegisteredContentTypes();
+      const permissionActions = editorialRoleContract.permissions
+        .filter(({ permissionKey }) => permissionKey !== 'media.read')
+        .map(({ permissionKey }) => permissionKey);
+      renderSidebar({
+        route: '/admin/content',
+        user: createSidebarUser({
+          instanceId,
+          roles: [editorialRoleContract.roleKey],
+          assignedModules: ['news', 'events', 'poi', 'media', 'categories'],
+        }),
+        contentAccess: createContentAccessState({
+          access: summarizeContentAccess(permissionActions.map((action) => ({ action }))),
+          permissionActions,
+        }),
+      });
+
+      expect(screen.queryByRole('link', { name: 'Medien' })).toBeNull();
+      expect(screen.getByRole('link', { name: 'Kategorien' })).toBeTruthy();
+      expect(screen.getByRole('link', { name: 'Nachrichten' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Benutzer' })).toBeNull();
+    });
+  });
 
   it('uses the server-selected app name', () => {
     useRouterStateMock.mockReturnValue({ pathname: '/', search: {} });

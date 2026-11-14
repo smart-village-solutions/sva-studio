@@ -55,7 +55,9 @@ export const eventsDELabels = {
     categoriesEmpty: 'Keine passenden Kategorien gefunden.',
     categoryUnavailable: 'nicht mehr verfügbar',
     categoryName: 'Kategorie',
-    externalId: 'Externe ID',
+    externalId: 'Externe Kennung (optional)',
+    externalIdHelp:
+      'Kennung dieser Veranstaltung aus einem anderen System. Für die manuelle Anlage ist sie nicht erforderlich. Ändern Sie bestehende Kennungen nur in Abstimmung mit den Verantwortlichen der Anbindung.',
     keywords: 'Schlagwörter',
     visible: 'Sichtbar',
     dateStart: 'Startdatum',
@@ -211,7 +213,7 @@ export const eventsDECreate = {
     contacts: 'Kontakte ergänzen',
     links: 'Links ergänzen',
     prices: 'Eintrittspreise ergänzen',
-    technical: 'Technische Angaben',
+    technical: 'Externe Zuordnung',
     publication: 'Sichtbarkeit',
   },
 };

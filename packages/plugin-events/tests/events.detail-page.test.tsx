@@ -223,7 +223,7 @@ describe('EventsDetailPage', () => {
         'events.cards.content.prices.title': 'Preise',
         'events.cards.content.accessibility.title': 'Barrierefreiheit',
         'events.cards.settings.publication.title': 'Sichtbarkeit',
-        'events.cards.settings.technical.title': 'Technische Zusatzdaten',
+        'events.cards.settings.technical.title': 'Externe Zuordnung',
         'events.fields.title': 'Titel',
         'events.fields.categories': 'Kategorien',
         'events.fields.categoriesHelp': 'Mehrfachauswahl',
@@ -234,7 +234,7 @@ describe('EventsDetailPage', () => {
         'events.fields.dateEnd': 'Enddatum',
         'events.fields.repeat': 'Wiederholung',
         'events.fields.visible': 'Sichtbar',
-        'events.fields.externalId': 'Externe ID',
+        'events.fields.externalId': 'Externe Kennung (optional)',
         'events.fields.pointOfInterestId': 'Zugehöriger POI',
         'events.fields.pointOfInterestSearch': 'POI suchen',
         'events.fields.pointOfInterestSearchPlaceholder': 'POI suchen oder auswählen',
@@ -482,7 +482,7 @@ describe('EventsDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Sichtbarkeit')).toBeTruthy();
     });
-    expect(screen.getByText('Technische Zusatzdaten')).toBeTruthy();
+    expect(screen.getByText('Externe Zuordnung')).toBeTruthy();
     expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
     expect(screen.queryByLabelText('Tags')).toBeNull();
     expect(vi.mocked(listPoiForEventSelection)).not.toHaveBeenCalled();
@@ -1044,7 +1044,9 @@ describe('EventsDetailPage', () => {
       expect(screen.getByRole('button', { name: 'Kategorie Kultur entfernen' })).toBeTruthy();
     });
     openEventExtras();
-    fireEvent.change(screen.getByLabelText('Externe ID'), { target: { value: 'event-ext-1' } });
+    fireEvent.change(screen.getByLabelText('Externe Kennung (optional)'), {
+      target: { value: 'event-ext-1' },
+    });
     fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {

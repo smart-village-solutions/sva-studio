@@ -55,7 +55,9 @@ export const eventsENLabels = {
     categoriesEmpty: 'No matching categories found.',
     categoryUnavailable: 'no longer available',
     categoryName: 'Category',
-    externalId: 'External ID',
+    externalId: 'External identifier (optional)',
+    externalIdHelp:
+      'Identifier for this event from another system. It is not required when creating an event manually. Only change existing identifiers in agreement with those responsible for the integration.',
     keywords: 'Keywords',
     visible: 'Visible',
     dateStart: 'Start date',

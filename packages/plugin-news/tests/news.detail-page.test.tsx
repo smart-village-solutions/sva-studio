@@ -571,7 +571,7 @@ describe('NewsDetailPage', () => {
     expect(vi.mocked(uploadHostMediaFile)).not.toHaveBeenCalled();
     expect(vi.mocked(getHostMediaAsset)).not.toHaveBeenCalled();
     expect(screen.queryByText('Bild-URL konnte nicht ermittelt werden.')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Bild entfernen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.removeFromContent' }));
     await waitFor(() => expect(check()).toBe(false));
   });
 

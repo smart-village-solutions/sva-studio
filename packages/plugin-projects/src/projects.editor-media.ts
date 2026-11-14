@@ -184,26 +184,32 @@ export function useProjectEditorMedia(input: MediaInput) {
     onRetry: refreshMediaAssets,
   };
   const mediaPicker = useProjectMediaPicker({ ...input, mediaAssetsRef, refreshMediaAssets });
-  const addManualMedia = React.useCallback(() => {
-    input.onMediaChanged();
-    const usage = createManualContentMediaUsage({ sortOrder: input.mediaUsages.length });
-    const nextUsages = [...input.mediaUsages, usage];
-    input.setMediaUsages(nextUsages);
-    input.form.setValue('images', [...projectMediaUsagesToImages(nextUsages)], {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    input.setRequiresReferenceSync(
-      (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
-    );
-    return usage.uiId;
-  }, [
-    input.form,
-    input.mediaUsages,
-    input.setMediaUsages,
-    input.setRequiresReferenceSync,
-    input.onMediaChanged,
-  ]);
+  const addManualMedia = React.useCallback(
+    (persistentUrl = '') => {
+      input.onMediaChanged();
+      const usage = createManualContentMediaUsage({
+        persistentUrl,
+        sortOrder: input.mediaUsages.length,
+      });
+      const nextUsages = [...input.mediaUsages, usage];
+      input.setMediaUsages(nextUsages);
+      input.form.setValue('images', [...projectMediaUsagesToImages(nextUsages)], {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      input.setRequiresReferenceSync(
+        (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
+      );
+      return usage.uiId;
+    },
+    [
+      input.form,
+      input.mediaUsages,
+      input.setMediaUsages,
+      input.setRequiresReferenceSync,
+      input.onMediaChanged,
+    ]
+  );
   React.useEffect(() => {
     void refreshMediaAssets();
   }, [refreshMediaAssets]);

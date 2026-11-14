@@ -181,7 +181,7 @@ export function JobMediaOverlay({
   onAddManual,
 }: Readonly<{
   media: ReturnType<typeof useJobMediaPicker>;
-  onAddManual: () => string;
+  onAddManual: (persistentUrl?: string) => string;
 }>) {
   const { assets, picker, capabilities } = media;
   const pt = usePluginTranslation('jobs');

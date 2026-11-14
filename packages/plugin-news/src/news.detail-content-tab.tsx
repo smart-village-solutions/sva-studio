@@ -24,7 +24,7 @@ export type NewsDetailContentTabProps = Readonly<{
   section?: 'text' | 'media' | 'source';
   createMode?: boolean;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
-  onAddManualMedia: () => string;
+  onAddManualMedia: (persistentUrl?: string) => string;
   mediaUsages?: readonly ContentMediaUsage[];
   onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
   canSelectMedia?: boolean;

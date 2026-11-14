@@ -39,7 +39,7 @@ export type ViewInput = Readonly<{
   mediaAssets: readonly HostMediaAssetListItem[];
   mediaUsages: readonly ContentMediaUsage[];
   mediaPicker: ReturnType<typeof useProjectEditorMedia>['mediaPicker'];
-  addManualMedia: () => string;
+  addManualMedia: (persistentUrl?: string) => string;
   mediaReferenceSync: ReturnType<typeof useStudioMediaReferenceSync>;
   saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
   retryCreatedContentId: string | null;

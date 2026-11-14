@@ -130,23 +130,26 @@ export const useNewsDetailMedia = ({
       );
     },
   });
-  const addManualMedia = React.useCallback(() => {
-    const usage = {
-      ...createManualContentMediaUsage({ sortOrder: mediaUsages.length }),
-      additionalData: { contentType: 'image', width: '', height: '' },
-    };
-    const nextUsages = [...mediaUsages, usage];
-    methods.setValue(
-      'contentMedia',
-      contentMediaUsagesToMainserver(nextUsages) as NewsDetailFormValues['contentMedia'],
-      { shouldDirty: true }
-    );
-    setMediaUsages(nextUsages);
-    setRequiresReferenceSync(
-      (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
-    );
-    return usage.uiId;
-  }, [mediaUsages, methods]);
+  const addManualMedia = React.useCallback(
+    (persistentUrl = '') => {
+      const usage = {
+        ...createManualContentMediaUsage({ persistentUrl, sortOrder: mediaUsages.length }),
+        additionalData: { contentType: 'image', width: '', height: '' },
+      };
+      const nextUsages = [...mediaUsages, usage];
+      methods.setValue(
+        'contentMedia',
+        contentMediaUsagesToMainserver(nextUsages) as NewsDetailFormValues['contentMedia'],
+        { shouldDirty: true }
+      );
+      setMediaUsages(nextUsages);
+      setRequiresReferenceSync(
+        (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
+      );
+      return usage.uiId;
+    },
+    [mediaUsages, methods]
+  );
   const mediaPickerFeedback = React.useMemo(
     () => resolveStudioMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]

@@ -134,7 +134,7 @@ const GenericItemsWebUrls = ({ labels }: Readonly<{ labels: Record<string, strin
 type GenericItemsLinksMediaProps = Readonly<{
   labels: Record<string, string>;
   section?: 'media' | 'links';
-  onAddManualMedia: () => string;
+  onAddManualMedia: (persistentUrl?: string) => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   mediaUsages?: readonly ContentMediaUsage[];
   onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;

@@ -106,10 +106,10 @@ export function JobMediaFields({ draft, change, errors, disabled }: JobFormProps
     access.permissionActions.includes('media.read') &&
     access.permissionActions.includes('media.reference.manage');
   const usages = jobMediaUsages(draft, ids.current);
-  const addManual = () => {
+  const addManual = (persistentUrl = '') => {
     const media = {
       contentType: 'image' as const,
-      sourceUrl: { url: '', description: '' },
+      sourceUrl: { url: persistentUrl, description: '' },
       captionText: '',
       copyright: '',
     };

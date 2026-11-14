@@ -1,7 +1,15 @@
 import { createMediaEditingDocument } from '@sva/media';
 import * as React from 'react';
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createLocalStudioMediaPickerAsset,
@@ -9,6 +17,10 @@ import {
   type StudioMediaPickerAssetDetail,
   useStudioMediaPickerOverlay,
 } from './studio-media-picker-overlay.js';
+
+import { createStudioMediaPickerLabels } from './studio-media-picker-config.js';
+
+afterEach(cleanup);
 
 const createAsset = (
   overrides?: Partial<StudioMediaPickerAssetDetail>
@@ -214,7 +226,13 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(uploadAction.className).toContain('bg-action-secondary');
     expect(libraryAction.className).toContain('bg-action-primary');
     fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
-    expect(onAddManual).toHaveBeenCalledOnce();
+    expect(onAddManual).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+      target: { value: 'https://example.test/image.jpg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
+    expect(onAddManual).toHaveBeenCalledExactlyOnceWith('https://example.test/image.jpg');
     expect(onClose).toHaveBeenCalledOnce();
     await waitFor(() =>
       expect(document.activeElement).toBe(document.getElementById('content-media-manual-1-url'))
@@ -227,14 +245,14 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(screen.queryByLabelText('Upload')).toBeNull();
     expect(screen.getByLabelText('Suchen')).toBeTruthy();
 
+    onAddManual.mockClear();
+    onClose.mockClear();
     render(<Harness uploadPhase="uploading" />);
-    const manualAction = screen.getByRole('button', {
-      name: 'Medium per Link hinzufügen',
-    });
+    const manualAction = screen.getByRole('button', { name: 'Medium per Link hinzufügen' });
     expect((manualAction as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(manualAction);
-    expect(onAddManual).toHaveBeenCalledOnce();
-    expect(onClose).toHaveBeenCalledOnce();
+    expect(onAddManual).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('accepts content-specific metadata without writing central metadata', async () => {
@@ -843,5 +861,92 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(result.current.metadataDraft.title).toBe('Mein Entwurf');
     expect(result.current.errorCode).toBe('metadata_save_failed');
     expect(result.current.isSavingReviewAsset).toBe(false);
+  });
+});
+
+describe('media link selection in the shared dialog', () => {
+  const setup = () => {
+    const addManual = vi.fn(() => 'confirmed-link');
+    const Harness = () => {
+      const [open, setOpen] = React.useState(true);
+      const [url, setUrl] = React.useState('');
+      const [mode, setMode] = React.useState<'upload' | 'library'>('upload');
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Reopen
+          </button>
+          {url ? (
+            <input
+              id="content-media-confirmed-link-url"
+              aria-label="Added URL"
+              value={url}
+              readOnly
+            />
+          ) : null}
+          <StudioMediaPickerOverlay
+            open={open}
+            mode={mode}
+            onChangeMode={setMode}
+            assets={[]}
+            searchValue=""
+            onSearchValueChange={vi.fn()}
+            onClose={() => setOpen(false)}
+            onAddManual={(value) => {
+              setUrl(value ?? '');
+              return addManual();
+            }}
+            onSelectAsset={vi.fn()}
+            uploadPhase="idle"
+            onUploadFile={vi.fn()}
+            reviewAsset={null}
+            metadataDraft={createAsset().metadata}
+            onMetadataChange={vi.fn()}
+            onBackFromReview={vi.fn()}
+            onConfirmSelection={vi.fn()}
+            reviewSource="upload"
+            labels={createStudioMediaPickerLabels((key) => key)}
+          />
+        </>
+      );
+    };
+    render(<Harness />);
+    return { addManual };
+  };
+
+  it('keeps link input inside the dialog and adds it only on confirmation, then focuses the new usage', async () => {
+    const { addManual } = setup();
+    fireEvent.click(screen.getByRole('button', { name: 'messages.mediaPickerLinkAction' }));
+    expect(addManual).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+      target: { value: 'https://example.test/image.jpg' },
+    });
+    expect(addManual).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
+    expect(addManual).toHaveBeenCalledOnce();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Added URL' }))
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect((screen.getByRole('textbox', { name: 'Added URL' }) as HTMLInputElement).value).toBe(
+      'https://example.test/image.jpg'
+    );
+  });
+
+  it('discards a link draft without adding an empty usage and resets it on reopen', async () => {
+    const { addManual } = setup();
+    fireEvent.click(screen.getByRole('button', { name: 'messages.mediaPickerLinkAction' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+      target: { value: 'https://example.test/image.jpg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.editor.discardAction' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(addManual).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Reopen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'messages.mediaPickerLinkAction' }));
+    expect(
+      (screen.getByRole('textbox', { name: 'media.picker.url' }) as HTMLInputElement).value
+    ).toBe('');
   });
 });

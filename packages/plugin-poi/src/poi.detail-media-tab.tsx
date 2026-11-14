@@ -111,7 +111,7 @@ export function PoiDetailMediaTab({
   canSelectMedia?: boolean;
   canUploadMedia?: boolean;
   onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
-  onAddManualMedia: () => string;
+  onAddManualMedia: (persistentUrl?: string) => string;
   onLoadAssetSnapshot?: NonNullable<
     React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot']
   >;

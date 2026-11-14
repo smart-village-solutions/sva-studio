@@ -18,7 +18,7 @@ export const GenericItemsDetailContentTab = ({
   onLoadAssetSnapshot,
 }: Readonly<{
   labels: Record<string, string>;
-  onAddManualMedia: () => string;
+  onAddManualMedia: (persistentUrl?: string) => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   mediaUsages?: readonly ContentMediaUsage[];
   onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;

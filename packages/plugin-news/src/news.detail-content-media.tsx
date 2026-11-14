@@ -21,7 +21,7 @@ type NewsContentMediaSectionProps = Readonly<{
   mediaEditingDisabled: boolean;
   onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
-  onAddManualMedia: () => string;
+  onAddManualMedia: (persistentUrl?: string) => string;
 }>;
 
 export function NewsContentMediaSection({

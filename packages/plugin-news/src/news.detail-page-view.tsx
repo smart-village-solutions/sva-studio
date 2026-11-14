@@ -51,7 +51,7 @@ type NewsDetailPageViewProps = Readonly<{
   isAssetSelectable: (asset: NewsMediaPickerAsset) => boolean;
   mediaPicker: ReturnType<typeof useNewsDetailMedia>['mediaPicker'];
   mediaPickerLabels: ReturnType<typeof createStudioMediaPickerLabels>;
-  addManualMedia: () => string;
+  addManualMedia: (persistentUrl?: string) => string;
   canUpdateMedia: boolean;
   saveCurrentItem: () => Promise<void>;
   checkSaveOutcome: () => Promise<void>;

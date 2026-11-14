@@ -26,7 +26,7 @@ type Props = Readonly<{
   loadedItem: EventContentItem | null;
   mediaUsages: readonly ContentMediaUsage[];
   onChangeMediaUsages: (usages: readonly ContentMediaUsage[]) => void;
-  addManualMedia: () => string;
+  addManualMedia: (persistentUrl?: string) => string;
   canSelectMedia: boolean;
   canUploadMedia: boolean;
   mediaEditingDisabled: boolean;

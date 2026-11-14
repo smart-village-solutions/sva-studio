@@ -15,7 +15,7 @@ type MediaPickerInput = Readonly<{
   mediaPicker: ReturnType<typeof useProjectEditorMedia>['mediaPicker'];
   canUpdateMedia: boolean;
   mediaUsages: readonly ContentMediaUsage[];
-  addManualMedia: () => string;
+  addManualMedia: (persistentUrl?: string) => string;
   navigate: ReturnType<typeof useNavigate>;
 }>;
 

@@ -13,6 +13,10 @@ export const breadcrumbRoutes: ReadonlyArray<
   }>
 > = [
   {
+    pattern: /^\/changelog$/,
+    build: () => [overviewBreadcrumb(), { label: t('shell.sidebar.changelog') }],
+  },
+  {
     pattern: /^\/$/,
     build: () => [{ label: t('shell.sidebar.overview') }],
   },

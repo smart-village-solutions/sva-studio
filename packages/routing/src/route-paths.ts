@@ -13,6 +13,7 @@ export const uiRoutePaths = {
   media: '/media',
   categories: '/categories',
   interfaces: '/interfaces',
+  changelog: '/changelog',
   help: '/help',
   support: '/support',
   license: '/license',

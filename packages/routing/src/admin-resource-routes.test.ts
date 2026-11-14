@@ -90,6 +90,7 @@ const bindings: AppRouteBindings = {
   surveysEditor: () => 'surveysEditor',
   categories: () => 'categories',
   interfaces: () => 'interfaces',
+  changelog: () => 'changelog',
   help: () => 'help',
   support: () => 'support',
   license: () => 'license',

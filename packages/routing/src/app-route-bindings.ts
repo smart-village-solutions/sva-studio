@@ -2,6 +2,7 @@ import type { RouteComponent } from '@tanstack/react-router';
 
 export type AppRouteBindings = {
   readonly home: RouteComponent;
+  readonly changelog: RouteComponent;
   readonly account: RouteComponent;
   readonly accountPrivacy: RouteComponent;
   readonly accountPrivacyDetail: RouteComponent;

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const guardSpies = vi.hoisted(() => ({
+  changelog: vi.fn(async () => undefined),
   account: vi.fn(async () => undefined),
   accountPrivacy: vi.fn(async () => undefined),
   accountPrivacyDetail: vi.fn(async () => undefined),
@@ -210,6 +211,7 @@ describe('mergePluginViewBindings', () => {
 
 const bindingKeys = [
   'home',
+  'changelog',
   'account',
   'accountPrivacy',
   'accountPrivacyDetail',

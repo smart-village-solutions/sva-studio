@@ -136,3 +136,21 @@ keine Bereitstellung oder pauschale WCAG-Abnahme aller Plugins.
 - Neue Theme-Varianten nur zentral in `src/lib/theme.ts` und den zugehörigen CSS-Token-Overrides ergänzen.
 - Neue Shell-Interaktionen bevorzugt über standardisierte Primitives modellieren, aktuell insbesondere Drawer-/`Sheet`-Muster.
 - Größere Route-Flächen sollen bei Anpassungen opportunistisch auf semantische Tokens migriert werden, ohne die Shell erneut zu fragmentieren.
+
+## Release-Changelog
+
+Der Footer-Eintrag „Changelog“ führt alle angemeldeten Nutzer unabhängig von administrativen
+oder experimentellen Rechten nach `/changelog`. Die Seite zeigt maximal 20 reguläre,
+veröffentlichte `studio-vX.Y.Z`-Releases aus dem Studio-Repository mit Datum und Original-Notes.
+Ein Link führt zum vollständigen GitHub-Archiv. Die Liste behauptet keinen Deploymentstand.
+
+Der bestehende App-Server dispatcht `GET /api/studio/releases` an den app-lokalen
+`studio-release-notes.server.ts`-Handler. Die Anmeldung wird vor jedem Abruf geprüft, auch bei
+einem Cachetreffer. Der feste GitHub-Abruf lädt höchstens 100 Release-Metadaten und begrenzt
+Zeit (5 Sekunden) sowie Antwortgröße (2 MiB). Ein pro Prozess geteilter Fünf-Minuten-Cache und
+gemeinsame laufende Anfrage begrenzen die API-Last. Es werden keine zusätzlichen Zugangsdaten
+benötigt. Bei Upstreamfehlern erscheint eine verständliche Meldung mit erneutem Versuch.
+
+Die Notes werden mit dem bestehenden Markdown-Stack ohne rohes HTML und externe Bilder
+angezeigt. Links erlauben ausschließlich HTTP(S) ohne URL-Zugangsdaten; Quelle und Archiv
+führen fest zum Studio-Repository. Bedienoberfläche und Statusmeldungen sind in de/en gepflegt.

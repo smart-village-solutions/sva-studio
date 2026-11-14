@@ -30,6 +30,14 @@ const invoke = async (
 };
 
 describe('accountUiRouteGuards', () => {
+  it('protects changelog access by authentication without role requirements', async () => {
+    await expect(invoke(accountUiRouteGuards.changelog, null, '/changelog')).rejects.toMatchObject(
+      redirect({ href: '/?auth=login&returnTo=%2Fchangelog' })
+    );
+    await expect(
+      invoke(accountUiRouteGuards.changelog, { roles: [], permissionActions: [] }, '/changelog')
+    ).resolves.toBeUndefined();
+  });
   it('redirects account route to login when unauthenticated', async () => {
     await expect(invoke(accountUiRouteGuards.account, null, '/account')).rejects.toMatchObject(
       redirect({ href: '/?auth=login&returnTo=%2Faccount' })

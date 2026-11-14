@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import schemaSnapshot from '../../generated/schema.snapshot.json';
 import {
   eventEditorFieldMatrix,
+  eventFieldsOutsideEditorContract,
   genericItemEditorFieldMatrix,
   mergeEventUpdateWithCurrent,
   mergePoiUpdateWithCurrent,
@@ -69,6 +71,59 @@ describe('Mainserver editor field matrices', () => {
       keywords: '',
       tags: ['bestand'],
     });
+  });
+
+  it('classifies every Mainserver EventRecord field exactly once', () => {
+    const eventRecord = schemaSnapshot.data.__schema.types.find(
+      (type) => type.name === 'EventRecord'
+    );
+    const aliases: Readonly<Record<string, string>> = { tagList: 'tags' };
+    const contractFields = (eventRecord?.fields ?? [])
+      .map((field) => aliases[field.name] ?? field.name)
+      .sort();
+    const classified = [
+      ...Object.keys(eventEditorFieldMatrix),
+      ...Object.keys(eventFieldsOutsideEditorContract),
+    ].sort();
+
+    expect(contractFields.length).toBeGreaterThan(0);
+    expect(classified).toEqual(contractFields);
+    expect(eventEditorFieldMatrix).toMatchObject({
+      registrationRequired: 'controlled',
+      maximumAttendees: 'controlled',
+      location: 'passthrough',
+      repeatDuration: 'passthrough',
+      dataProvider: 'readonly',
+    });
+  });
+
+  it('omits degraded participation values so the Mainserver keeps the stored ones', () => {
+    const merged = mergeEventUpdateWithCurrent(
+      {
+        id: 'event-1',
+        title: 'Alt',
+        contentType: 'events.event-record',
+        status: 'published',
+        registrationRequired: true,
+        dates: [],
+        recurringWeekdays: [],
+        categories: [],
+        addresses: [],
+        contacts: [],
+        urls: [],
+        mediaContents: [],
+        priceInformations: [],
+        tags: [],
+        visible: true,
+        createdAt: '2026-01-01',
+        updatedAt: '2026-01-02',
+      },
+      { title: 'Neu' },
+      [{ fieldGroup: 'maximumAttendees' }]
+    );
+
+    expect(merged.registrationRequired).toBe(true);
+    expect(merged.maximumAttendees).toBeUndefined();
   });
 
   it('preserves omitted POI payload keys and accepts explicit clears', () => {

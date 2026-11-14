@@ -52,6 +52,7 @@ export const mediaContentSchema = z.object({
   height: z.number().nullish(),
   width: z.number().nullish(),
   contentType: z.string().nullish(),
+  payload: z.unknown().optional(),
   sourceUrl: webUrlSchema.nullish(),
 });
 

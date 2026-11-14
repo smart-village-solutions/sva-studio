@@ -501,7 +501,8 @@ describe('mainserver content route contracts', () => {
           recurring: 'weekly',
           recurringType: 'weekday',
           recurringInterval: '1',
-          recurringWeekdays: ['sa'],
+          // Numeric weekdays are the Mainserver read shape and must survive a write.
+          recurringWeekdays: ['sa', '0'],
           pointOfInterestId: 'poi-1',
         },
       })
@@ -544,6 +545,41 @@ describe('mainserver content route contracts', () => {
     expect(state.createSvaMainserverPoi).toHaveBeenCalledWith(
       expect.objectContaining({
         poi: expect.objectContaining({ description: '<h2>Titel</h2><a>Link</a>' }),
+      })
+    );
+  });
+
+  it('forwards stored media ids for the event merge but never for POI', async () => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+    state.createSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });
+    const mediaContents = [{ id: 'media-1', sourceUrl: { url: 'https://example.invalid/a.jpg' } }];
+
+    await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Flohmarkt', mediaContents }),
+      })
+    );
+    await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Ort', mediaContents }),
+      })
+    );
+
+    expect(state.updateSvaMainserverEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: expect.objectContaining({
+          mediaContents: [{ id: 'media-1', sourceUrl: { url: 'https://example.invalid/a.jpg' } }],
+        }),
+      })
+    );
+    expect(state.createSvaMainserverPoi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        poi: expect.objectContaining({
+          mediaContents: [{ sourceUrl: { url: 'https://example.invalid/a.jpg' } }],
+        }),
       })
     );
   });
@@ -1412,6 +1448,97 @@ describe('mainserver content route contracts', () => {
     await expect(response?.json()).resolves.toMatchObject({ error: 'invalid_request' });
     expect(state.createSvaMainserverEvent).not.toHaveBeenCalled();
     expect(state.createSvaMainserverPoi).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ registrationRequired: true, maximumAttendees: 25 }],
+    [{ registrationRequired: false, maximumAttendees: 0 }],
+    [{ registrationRequired: false, maximumAttendees: null }],
+  ])('forwards event participation values %j', async (participation) => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Flohmarkt', ...participation }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ event: { title: 'Flohmarkt', ...participation } })
+    );
+  });
+
+  it('keeps recurrence values when the content list sends a read event back on a status change', async () => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: 'Flohmarkt',
+          recurring: true,
+          recurringType: 1,
+          recurringInterval: 2,
+          recurringWeekdays: [1, 5],
+          visible: false,
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: {
+          title: 'Flohmarkt',
+          recurring: 'true',
+          recurringType: '1',
+          recurringInterval: '2',
+          recurringWeekdays: ['1', '5'],
+        },
+      })
+    );
+  });
+
+  it('omits participation values that the client did not send', async () => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+
+    await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Flohmarkt' }),
+      })
+    );
+
+    const [[call]] = state.updateSvaMainserverEvent.mock.calls as [
+      [{ event: Record<string, unknown> }],
+    ];
+    expect(call.event).not.toHaveProperty('registrationRequired');
+    expect(call.event).not.toHaveProperty('maximumAttendees');
+  });
+
+  it.each([
+    [{ registrationRequired: 'true' }],
+    [{ maximumAttendees: -1 }],
+    [{ maximumAttendees: 1.5 }],
+    [{ maximumAttendees: '25' }],
+    [{ maximumAttendees: 2_147_483_648 }],
+  ])('rejects invalid event participation values %j before GraphQL', async (participation) => {
+    mockAuthorizedMutation();
+
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Flohmarkt', ...participation }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    expect(state.updateSvaMainserverEvent).not.toHaveBeenCalled();
   });
 
   it('does not log create success when event payload validation fails', async () => {

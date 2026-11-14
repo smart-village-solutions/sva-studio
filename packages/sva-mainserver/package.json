@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@sva/plugin-construction-sites": "workspace:*",
+    "@sva/plugin-events": "workspace:*",
     "@sva/plugin-jobs": "workspace:*",
     "@vitest/coverage-v8": "^5.1.0",
     "graphql": "16.14.2",

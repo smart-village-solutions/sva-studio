@@ -81,6 +81,8 @@ const correctedDegradedFields = (context: SaveContext) => {
     mediaContents: 'content.mediaContents',
     organizer: 'content.organizer',
     priceInformations: 'content.priceInformations',
+    registrationRequired: 'content.registrationRequired',
+    maximumAttendees: 'content.maximumAttendees',
     accessibilityInformation: 'content.accessibilityInformation',
     externalId: 'settings.externalId',
     keywords: 'settings.keywords',

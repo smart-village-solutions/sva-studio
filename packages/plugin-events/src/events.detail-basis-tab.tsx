@@ -3,6 +3,7 @@ import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { Button, Checkbox, Input, Select, StudioField } from '@sva/studio-ui-react';
 
 import { EventsCategoryMultiselect } from './events.category-multiselect.js';
+import { normalizeWeekdayOffsets } from './events.detail-form-input-serializers.js';
 import type { EventsDetailFormValues } from './events.detail-form.js';
 import type { EventCategoryOption, EventContentItem } from './events.types.js';
 import { StudioDetailCard } from '@sva/studio-ui-react';
@@ -40,39 +41,40 @@ export function EventsDetailBasisTab({
     { value: '2', label: pt('fields.recurringTypeOptions.months') },
     { value: '3', label: pt('fields.recurringTypeOptions.years') },
   ];
+  // Values are Mainserver weekday offsets from Monday.
   const recurringWeekdayOptions = [
     {
-      value: 'MO',
+      value: '0',
       label: pt('fields.recurringWeekdayOptions.monday'),
       shortLabel: pt('fields.recurringWeekdayShortOptions.monday'),
     },
     {
-      value: 'TU',
+      value: '1',
       label: pt('fields.recurringWeekdayOptions.tuesday'),
       shortLabel: pt('fields.recurringWeekdayShortOptions.tuesday'),
     },
     {
-      value: 'WE',
+      value: '2',
       label: pt('fields.recurringWeekdayOptions.wednesday'),
       shortLabel: pt('fields.recurringWeekdayShortOptions.wednesday'),
     },
     {
-      value: 'TH',
+      value: '3',
       label: pt('fields.recurringWeekdayOptions.thursday'),
       shortLabel: pt('fields.recurringWeekdayShortOptions.thursday'),
     },
     {
-      value: 'FR',
+      value: '4',
       label: pt('fields.recurringWeekdayOptions.friday'),
       shortLabel: pt('fields.recurringWeekdayShortOptions.friday'),
     },
     {
-      value: 'SA',
+      value: '5',
       label: pt('fields.recurringWeekdayOptions.saturday'),
       shortLabel: pt('fields.recurringWeekdayShortOptions.saturday'),
     },
     {
-      value: 'SU',
+      value: '6',
       label: pt('fields.recurringWeekdayOptions.sunday'),
       shortLabel: pt('fields.recurringWeekdayShortOptions.sunday'),
     },
@@ -203,9 +205,11 @@ export function EventsDetailBasisTab({
                         aria-label={option.label}
                         className="min-w-11 rounded-full px-3"
                         onClick={() => {
-                          const nextWeekdays = recurringWeekdays.includes(option.value)
-                            ? recurringWeekdays.filter((entry) => entry !== option.value)
-                            : [...recurringWeekdays, option.value];
+                          const nextWeekdays = normalizeWeekdayOffsets(
+                            recurringWeekdays.includes(option.value)
+                              ? recurringWeekdays.filter((entry) => entry !== option.value)
+                              : [...recurringWeekdays, option.value]
+                          );
                           setValue('basis.recurringWeekdays', nextWeekdays, { shouldDirty: true });
                         }}
                       >

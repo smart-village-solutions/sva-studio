@@ -9,6 +9,209 @@ import { hasEventOrganizerContent } from '../src/events.detail-form-structured-s
 import type { EventContentItem } from '../src/events.types.js';
 
 describe('events.detail-form', () => {
+  const importedItem = (overrides: Partial<EventContentItem> = {}): EventContentItem => ({
+    id: 'event-1',
+    title: 'Flohmarkt',
+    contentType: 'events.event-record',
+    status: 'published',
+    createdAt: '2026-08-01T10:00:00.000Z',
+    updatedAt: '2026-08-02T10:00:00.000Z',
+    dates: [{ dateStart: '2026-09-05' }],
+    ...overrides,
+  });
+
+  it('maps participation values into the form and back without change', () => {
+    const values = mapEventItemToDetailFormValues(
+      importedItem({ registrationRequired: true, maximumAttendees: 120 })
+    );
+
+    expect(values.content).toMatchObject({ registrationRequired: true, maximumAttendees: '120' });
+    expect(mapEventsDetailFormValuesToInput(values)).toMatchObject({
+      registrationRequired: true,
+      maximumAttendees: 120,
+    });
+  });
+
+  it('sends cleared participation values explicitly so stored values can be removed', () => {
+    const values = createDefaultEventsDetailFormValues();
+
+    expect(mapEventsDetailFormValuesToInput(values)).toMatchObject({
+      registrationRequired: false,
+      maximumAttendees: null,
+    });
+    expect(
+      mapEventsDetailFormValuesToInput({
+        ...values,
+        content: { ...values.content, maximumAttendees: ' 2.5 ' },
+      }).maximumAttendees
+    ).toBe(2.5);
+  });
+
+  it('normalizes Mainserver recurrence values instead of failing on save', () => {
+    const values = mapEventItemToDetailFormValues(
+      importedItem({
+        recurring: true,
+        recurringType: 0,
+        recurringInterval: 3,
+        recurringWeekdays: [0, 6],
+      })
+    );
+
+    expect(values.basis).toMatchObject({
+      recurring: 'true',
+      recurringType: '0',
+      recurringInterval: '3',
+      recurringWeekdays: ['0', '6'],
+    });
+    expect(mapEventsDetailFormValuesToInput(values)).toMatchObject({
+      recurring: 'true',
+      recurringType: '0',
+      recurringInterval: '3',
+      recurringWeekdays: ['0', '6'],
+    });
+    expect(mapEventItemToDetailFormValues(importedItem({ recurring: false })).basis.recurring).toBe(
+      ''
+    );
+  });
+
+  it('removes an emptied price row whose only hidden value is the groupPrice default', () => {
+    const values = mapEventItemToDetailFormValues(
+      importedItem({ priceInformations: [{ name: 'Alt', amount: 5, groupPrice: false }] })
+    );
+    const [price] = values.content.priceInformations;
+
+    expect(
+      mapEventsDetailFormValuesToInput({
+        ...values,
+        content: {
+          ...values.content,
+          priceInformations: [{ ...price, name: '', amount: undefined }],
+        },
+      })
+    ).not.toHaveProperty('priceInformations');
+  });
+
+  it('keeps an imported price row with only hidden values on an unrelated edit', () => {
+    const values = mapEventItemToDetailFormValues(
+      importedItem({ priceInformations: [{ groupPrice: true, minAdultCount: 2 }] })
+    );
+
+    expect(
+      mapEventsDetailFormValuesToInput({ ...values, title: 'Neuer Titel' }).priceInformations
+    ).toEqual([{ groupPrice: true, minAdultCount: 2 }]);
+  });
+
+  it('keeps a stored media id only as a reference of a filled entry', () => {
+    const values = mapEventItemToDetailFormValues(
+      importedItem({
+        mediaContents: [{ id: 'media-1', sourceUrl: { url: 'https://example.test/a.jpg' } }],
+      })
+    );
+
+    expect(mapEventsDetailFormValuesToInput(values).mediaContents).toEqual([
+      { id: 'media-1', sourceUrl: { url: 'https://example.test/a.jpg' } },
+    ]);
+    expect(
+      mapEventsDetailFormValuesToInput({
+        ...values,
+        content: { ...values.content, mediaContents: [{ id: 'media-1' } as never] },
+      })
+    ).not.toHaveProperty('mediaContents');
+  });
+
+  it('sends every field of a Biletado-imported event back on an unchanged save', () => {
+    // Field shape the n8n Biletado import writes (see runbook); all values are synthetic.
+    const values = mapEventItemToDetailFormValues(
+      importedItem({
+        title: 'Hofflohmarkt',
+        description: '<p>Kurztext</p>\n<p>Beschreibung</p>',
+        externalId: 'biletado-0815',
+        tags: ['Markt', 'Familie'],
+        registrationRequired: true,
+        maximumAttendees: 40,
+        dates: [
+          { dateStart: '2026-09-05', dateEnd: '2026-09-05', timeStart: '10:00', timeEnd: '14:00' },
+        ],
+        categories: [{ name: 'Märkte' }],
+        addresses: [
+          { addition: 'Stadthof', street: 'Hofweg 3', zip: '12345', city: 'Musterstadt' },
+        ],
+        contacts: [
+          { firstName: 'Erika Muster', email: 'kontakt@example.test', phone: '01234 5678' },
+        ],
+        urls: [
+          { url: 'https://tickets.example.test/0815', description: 'Buchung / Anmeldung' },
+          { url: 'https://stadthof.example.test', description: 'Website des Veranstaltungsorts' },
+        ],
+        mediaContents: [
+          {
+            id: 'media-1',
+            contentType: 'image',
+            captionText: 'Hofflohmarkt',
+            sourceUrl: { url: 'https://media.example.test/hof.jpg' },
+          },
+        ],
+        organizer: { name: 'Kulturverein Musterstadt' },
+        priceInformations: [
+          { name: 'Erwachsene', amount: 5, category: 'Erwachsene', description: 'Erwachsene' },
+        ],
+      })
+    );
+
+    expect(mapEventsDetailFormValuesToInput(values)).toEqual({
+      title: 'Hofflohmarkt',
+      description: '<p>Kurztext</p>\n<p>Beschreibung</p>',
+      externalId: 'biletado-0815',
+      tags: ['Markt', 'Familie'],
+      registrationRequired: true,
+      maximumAttendees: 40,
+      dates: [
+        { dateStart: '2026-09-05', dateEnd: '2026-09-05', timeStart: '10:00', timeEnd: '14:00' },
+      ],
+      categoryName: 'Märkte',
+      categories: [{ name: 'Märkte' }],
+      addresses: [{ addition: 'Stadthof', street: 'Hofweg 3', zip: '12345', city: 'Musterstadt' }],
+      contacts: [{ firstName: 'Erika Muster', email: 'kontakt@example.test', phone: '01234 5678' }],
+      urls: [
+        { url: 'https://tickets.example.test/0815', description: 'Buchung / Anmeldung' },
+        { url: 'https://stadthof.example.test', description: 'Website des Veranstaltungsorts' },
+      ],
+      mediaContents: [
+        {
+          id: 'media-1',
+          contentType: 'image',
+          captionText: 'Hofflohmarkt',
+          sourceUrl: { url: 'https://media.example.test/hof.jpg' },
+        },
+      ],
+      organizer: { name: 'Kulturverein Musterstadt' },
+      priceInformations: [
+        { name: 'Erwachsene', amount: 5, category: 'Erwachsene', description: 'Erwachsene' },
+      ],
+      // Editor defaults for settings the import does not write.
+      repeat: false,
+      recurringWeekdays: [],
+      visible: true,
+    });
+  });
+
+  it('keeps Mainserver price attributes without editor fields on save', () => {
+    const price = {
+      name: 'Familie',
+      amount: 20,
+      groupPrice: true,
+      ageFrom: 0,
+      ageTo: 99,
+      minAdultCount: 1,
+      maxAdultCount: 2,
+      minChildrenCount: 1,
+      maxChildrenCount: 4,
+    };
+    const values = mapEventItemToDetailFormValues(importedItem({ priceInformations: [price] }));
+
+    expect(mapEventsDetailFormValuesToInput(values).priceInformations).toEqual([price]);
+  });
+
   it('creates hidden content and serializes only an explicit visibility choice', () => {
     const values = createDefaultEventsDetailFormValues();
     expect(values.settings.visible).toBe(false);
@@ -84,8 +287,8 @@ describe('events.detail-form', () => {
         accessibilityInformation: { description: 'Stufenlos zugänglich' },
         pointOfInterestId: 'poi-1',
         repeat: true,
-        recurringType: 'weekday',
-        recurringWeekdays: ['MO'],
+        recurringType: 1,
+        recurringWeekdays: [0],
         visible: false,
         tags: ['sommer', 'familie'],
       } satisfies EventContentItem)
@@ -95,8 +298,8 @@ describe('events.detail-form', () => {
         categories: ['Kultur', 'Open Air'],
         pointOfInterestId: 'poi-1',
         repeat: true,
-        recurringType: 'weekday',
-        recurringWeekdays: ['MO'],
+        recurringType: '1',
+        recurringWeekdays: ['0'],
       },
       content: {
         dates: [{ dateStart: '2026-06-11', timeDescription: 'ab 10 Uhr', weekday: 'Mittwoch' }],
@@ -657,7 +860,7 @@ describe('events.detail-form', () => {
           recurring: null,
           recurringType: '',
           recurringInterval: undefined,
-          recurringWeekdays: [' FR ', ' ', 'MO'],
+          recurringWeekdays: [' 4 ', ' ', '0', '4'],
         },
         content: {
           description: null,
@@ -689,7 +892,7 @@ describe('events.detail-form', () => {
       addresses: [{ geoLocation: { latitude: 0, longitude: 0 } }],
       priceInformations: [{ amount: 0 }],
       repeat: false,
-      recurringWeekdays: ['FR', 'MO'],
+      recurringWeekdays: ['0', '4'],
       visible: false,
     });
   });

@@ -880,7 +880,7 @@ describe('createSvaMainserverService', () => {
           return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
         if (body.operationName === 'SvaMainserverPoiVoucherGuard')
           return createJsonResponse(200, { data: { pointOfInterest: { vouchers: [] } } });
-        if (body.operationName.endsWith('Detail'))
+        if (/(Detail|UpdateSnapshot)$/.test(body.operationName))
           return createJsonResponse(200, { data: { [detailField]: staleDetail } });
         const variables = body.variables ?? {};
         writes.push(variables);
@@ -2661,7 +2661,7 @@ describe('createSvaMainserverService', () => {
       'SvaMainserverEventList',
       'SvaMainserverEventDetail',
       'SvaMainserverCreateEvent',
-      'SvaMainserverEventDetail',
+      'SvaMainserverEventUpdateSnapshot',
       'SvaMainserverCreateEvent',
       'SvaMainserverDestroyRecord',
       'SvaMainserverPoiList',
@@ -4467,6 +4467,7 @@ describe('createSvaMainserverService', () => {
           case 'SvaMainserverChangeNewsVisibility':
             return { changeVisibility: { id: 1, status: 'ok', statusCode: 200 } };
           case 'SvaMainserverEventDetail':
+          case 'SvaMainserverEventUpdateSnapshot':
             return {
               eventRecord: {
                 id: 'event-1',

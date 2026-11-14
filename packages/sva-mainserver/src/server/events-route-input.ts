@@ -1,4 +1,5 @@
 import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
+import { z } from 'zod';
 
 import type {
   SvaMainserverAccessibilityInformationInput,
@@ -71,6 +72,43 @@ const parseEventDates = (
   return dates;
 };
 
+const MAX_GRAPHQL_INT = 2_147_483_647;
+
+// Events read from the Mainserver carry `recurring` as boolean and the other recurrence values
+// as numbers, while the mutation expects strings. The content list sends a read event back on a
+// status change, so both shapes are accepted instead of dropping the values.
+const readRecurrenceValue = (value: unknown): string | undefined =>
+  typeof value === 'number' && Number.isFinite(value) ? String(value) : readString(value);
+
+const readRecurringFlag = (value: unknown): string | undefined =>
+  typeof value === 'boolean' ? String(value) : readString(value);
+
+// Same rule as `eventParticipationSchema` in @sva/plugin-events; a contract test keeps them aligned.
+export const eventParticipationSchema = z.object({
+  registrationRequired: z.boolean().optional(),
+  // `null` clears a stored limit; omitting the field keeps it.
+  maximumAttendees: z.number().int().min(0).max(MAX_GRAPHQL_INT).nullable().optional(),
+});
+
+type EventParticipation = z.infer<typeof eventParticipationSchema>;
+
+const parseEventParticipation = (
+  body: Record<string, unknown>
+): ParsedValue<EventParticipation> => {
+  const parsed = eventParticipationSchema.safeParse({
+    registrationRequired: body.registrationRequired,
+    maximumAttendees: body.maximumAttendees,
+  });
+  if (!parsed.success) {
+    return errorJson(
+      400,
+      'invalid_request',
+      'Die Anmeldepflicht muss ein Boolean und die maximale Teilnehmerzahl eine ganze Zahl ab 0 sein.'
+    );
+  }
+  return parsed.data;
+};
+
 const parseEventRelations = (
   body: Record<string, unknown>
 ): ParsedValue<{
@@ -122,7 +160,7 @@ const parseEventRelations = (
     return urls;
   }
 
-  const mediaContents = parseMediaContents(body.mediaContents);
+  const mediaContents = parseMediaContents(body.mediaContents, { includeStoredIds: true });
   if (isResponse(mediaContents)) {
     return mediaContents;
   }
@@ -190,7 +228,8 @@ const buildEventInput = (
   body: Record<string, unknown>,
   title: string,
   dates: readonly SvaMainserverDateInput[] | undefined,
-  relations: EventRelations
+  relations: EventRelations,
+  participation: EventParticipation
 ): SvaMainserverEventInput => {
   const description = readString(body.description);
   const sanitizedDescription = description ? sanitizeRichTextHtml(description) : undefined;
@@ -200,19 +239,27 @@ const buildEventInput = (
     ...(sanitizedDescription ? { description: sanitizedDescription } : {}),
     ...(readString(body.externalId) ? { externalId: readString(body.externalId) } : {}),
     ...(readString(body.keywords) ? { keywords: readString(body.keywords) } : {}),
+    ...(participation.registrationRequired === undefined
+      ? {}
+      : { registrationRequired: participation.registrationRequired }),
+    ...(participation.maximumAttendees === undefined
+      ? {}
+      : { maximumAttendees: participation.maximumAttendees }),
     ...(dates ? { dates } : {}),
     ...(readBoolean(body.repeat) !== undefined ? { repeat: readBoolean(body.repeat) } : {}),
     ...(readString(body.categoryName) ? { categoryName: readString(body.categoryName) } : {}),
     ...eventRelationFields(relations),
-    ...(readString(body.recurring) ? { recurring: readString(body.recurring) } : {}),
-    ...(readString(body.recurringType) ? { recurringType: readString(body.recurringType) } : {}),
-    ...(readString(body.recurringInterval)
-      ? { recurringInterval: readString(body.recurringInterval) }
+    ...(readRecurringFlag(body.recurring) ? { recurring: readRecurringFlag(body.recurring) } : {}),
+    ...(readRecurrenceValue(body.recurringType)
+      ? { recurringType: readRecurrenceValue(body.recurringType) }
+      : {}),
+    ...(readRecurrenceValue(body.recurringInterval)
+      ? { recurringInterval: readRecurrenceValue(body.recurringInterval) }
       : {}),
     ...(Array.isArray(body.recurringWeekdays)
       ? {
           recurringWeekdays: body.recurringWeekdays
-            .map(readString)
+            .map(readRecurrenceValue)
             .filter((value): value is string => Boolean(value)),
         }
       : {}),
@@ -245,6 +292,11 @@ export const parseEventInput = async (
     return dates;
   }
 
+  const participation = parseEventParticipation(body);
+  if (isResponse(participation)) {
+    return participation;
+  }
+
   const visible = readBoolean(body.visible);
   if (body.visible !== undefined && visible === undefined) {
     return errorJson(
@@ -255,7 +307,7 @@ export const parseEventInput = async (
   }
 
   return {
-    event: buildEventInput(body, title, dates, relations),
+    event: buildEventInput(body, title, dates, relations, participation),
     ...(visible !== undefined ? { visible } : {}),
   };
 };

@@ -577,6 +577,7 @@ describe('EventsDetailPage', () => {
         'contacts',
         'links',
         'prices',
+        'participation',
         'technical',
         'publication',
       ].map((id) => `event-create-${id}`)

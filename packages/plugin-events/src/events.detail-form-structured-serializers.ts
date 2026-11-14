@@ -26,6 +26,7 @@ type SerializableOrganizer = Readonly<{
 }>;
 
 type SerializableMediaContent = Readonly<{
+  id?: string | null;
   captionText?: string | null;
   copyright?: string | null;
   height?: string | number | null;
@@ -34,7 +35,7 @@ type SerializableMediaContent = Readonly<{
   sourceUrl?: EventWebUrl;
 }>;
 
-const compactFiniteNumber = (value?: string | number | null) => {
+export const compactFiniteNumber = (value?: string | number | null) => {
   if (
     value === null ||
     value === undefined ||
@@ -156,12 +157,15 @@ const serializeEventMediaSource = (entry: SerializableMediaContent) => {
   return sourceUrls.length > 0 ? { sourceUrl: sourceUrls[0] } : {};
 };
 
+// The stored id is only a reference for the host and never keeps an otherwise empty entry.
 function serializeEventMediaContent(entry: SerializableMediaContent) {
-  return {
+  const media = {
     ...serializeEventMediaText(entry),
     ...serializeEventMediaDimensions(entry),
     ...serializeEventMediaSource(entry),
   };
+  const id = compactEventString(entry.id);
+  return Object.keys(media).length > 0 && id ? { id, ...media } : media;
 }
 
 export const serializeEventDates = (dates: EventFormInput['dates']) =>

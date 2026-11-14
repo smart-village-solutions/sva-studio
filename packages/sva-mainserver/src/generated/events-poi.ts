@@ -95,6 +95,7 @@ export type SvaMainserverMediaContentFragment = {
   readonly height?: number | null;
   readonly width?: number | null;
   readonly contentType?: string | null;
+  readonly payload?: unknown;
   readonly sourceUrl?: SvaMainserverWebUrlFragment | null;
 };
 
@@ -136,6 +137,8 @@ export type SvaMainserverEventFragment = {
   readonly externalId?: string | null;
   readonly keywords?: string | null;
   readonly parentId?: number | null;
+  readonly registrationRequired?: boolean | null;
+  readonly maximumAttendees?: number | null;
   readonly dates?: readonly SvaMainserverDateFragment[] | null;
   readonly listDate?: string | null;
   readonly sortDate?: string | null;
@@ -340,7 +343,8 @@ const mediaContentFields = `
   }
 `;
 
-const eventFields = `
+// Media payloads hold raw source metadata; only the host's read before an update selects them.
+const buildEventFields = (media: string) => `
   payload
   id
   title
@@ -348,6 +352,8 @@ const eventFields = `
   externalId
   keywords
   parentId
+  registrationRequired
+  maximumAttendees
   dates {
     id
     dateStart
@@ -390,7 +396,7 @@ const eventFields = `
     ${webUrlFields}
   }
   mediaContents {
-    ${mediaContentFields}
+    ${media}
   }
   organizer {
     ${operatingCompanyFields}
@@ -407,6 +413,8 @@ const eventFields = `
   visible
   dataProvider { id name }
 `;
+
+const eventFields = buildEventFields(mediaContentFields);
 
 const poiFields = `
   id
@@ -486,6 +494,14 @@ export const svaMainserverEventDetailDocument = `
   }
 `;
 
+export const svaMainserverEventUpdateSnapshotDocument = `
+  query SvaMainserverEventUpdateSnapshot($id: ID!) {
+    eventRecord(id: $id) {
+      ${buildEventFields(`${mediaContentFields} payload`)}
+    }
+  }
+`;
+
 export const svaMainserverCreateEventDocument = `
   mutation SvaMainserverCreateEvent(
     $payload: JSON
@@ -494,6 +510,8 @@ export const svaMainserverCreateEventDocument = `
     $dataProviderId: ID
     $pushNotification: Boolean
     $parentId: Int
+    $registrationRequired: Boolean
+    $maximumAttendees: Int
     $keywords: String
     $description: String
     $externalId: String
@@ -525,6 +543,8 @@ export const svaMainserverCreateEventDocument = `
       dataProviderId: $dataProviderId
       pushNotification: $pushNotification
       parentId: $parentId
+      registrationRequired: $registrationRequired
+      maximumAttendees: $maximumAttendees
       keywords: $keywords
       description: $description
       externalId: $externalId

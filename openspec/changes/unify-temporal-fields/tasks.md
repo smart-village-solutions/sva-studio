@@ -48,3 +48,10 @@ Zwei zusätzliche Bearbeitungsfolgen sichern die unabhängigen Gültigkeiten des
 ## Referenzpräzision nach bewusster Bearbeitung
 
 Der Review-Befund zum Entfernen von Sekunden wurde in den SDK-Payloadtests reproduziert. Der Referenzvergleich berücksichtigt nun immer Sekunden und Millisekunden, einschließlich ihrer impliziten Nullwerte bei einer Eingabe ohne Sekunden. Unveränderte vollständige Eingaben erhalten weiterhin den ursprünglichen Offset, die spätere Winterzeitinstanz und feinere Quellpräzision. Die 16 gezielten SDK-Tests und zehn gemeinsamen Eingabetests bestehen; der UI-Test bestätigt ausdrücklich den API-Zeitpunkt nach dem Entfernen geladener Sekunden. Die bestehenden Serializer-Verbraucher nutzen die vollständigen Werte von `toDatetimeLocalValue`; es gibt keinen zusätzlichen Formatmodus.
+
+
+## Abfallwirtschaft: vollständige UI-Mocks und deterministische Anzeigen
+
+Der Coverage-Lauf deckte veraltete Anzeige-Erwartungen der E-Mail-Überwachung und einen vollständigen UI-Mock ohne `DateInput` auf. Eine statische Prüfung der relativen Import-/Exportpfade aller vollständigen UI-Mocks im Repository identifizierte drei betroffene Tests: Terminplanung, Toureninhalt und Gültigkeitsdialog. Deren Fehler wurden gezielt reproduziert. Die Mocks übernehmen nun nicht ersetzte Controls aus der echten UI; der Planungs-Test nutzt außerdem den echten `StudioField`, damit Formathinweise nicht fälschlich Teil des Labels werden.
+
+Die Anzeige-Assertions prüfen die tatsächlich vereinheitlichten Datumsformate und volle Jahreszahlen in der gewählten Locale sowie absolute Zeitpunkte ausdrücklich in `Europe/Berlin`, statt die Systemzeitzone des Testrechners zu verwenden. Bestehende API-Payload-, Filter- und Setzen-/Leeren-Assertions bleiben unverändert. Die vier gezielt geprüften Testdateien bestehen; zusätzliche Produktivcode- oder Vertragsänderungen waren dafür nicht notwendig.

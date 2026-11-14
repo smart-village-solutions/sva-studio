@@ -1,8 +1,14 @@
 import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
-import { Button, Checkbox, Input, Select, StudioField } from '@sva/studio-ui-react';
+import {
+  SearchableMultiSelect,
+  Button,
+  Checkbox,
+  Input,
+  Select,
+  StudioField,
+} from '@sva/studio-ui-react';
 
-import { EventsCategoryMultiselect } from './events.category-multiselect.js';
 import type { EventsDetailFormValues } from './events.detail-form.js';
 import type { EventCategoryOption, EventContentItem } from './events.types.js';
 import { StudioDetailCard } from '@sva/studio-ui-react';
@@ -115,20 +121,20 @@ export function EventsDetailBasisTab({
               name="basis.categories"
               control={control}
               render={({ field }) => (
-                <EventsCategoryMultiselect
-                  availableCategories={availableCategories}
+                <SearchableMultiSelect
+                  options={availableCategories.map(({ name }) => ({ label: name, value: name }))}
                   emptyText={pt('fields.categoriesEmpty')}
                   errorMessage={categoryOptionsError ? pt('create.categoryUnavailable') : undefined}
                   loading={categoryOptionsLoading}
                   helpText=""
-                  inputId="event-category"
-                  inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
+                  id="event-category"
+                  placeholder={pt('fields.categoriesSearchPlaceholder')}
                   loadingText={pt('messages.categoryOptionsLoading')}
                   searchLabel={pt('fields.categoriesSearch')}
                   unavailableText={pt('fields.categoryUnavailable')}
                   removeLabel={(name) => pt('actions.removeCategory').replace('{{name}}', name)}
                   value={field.value}
-                  onChange={field.onChange}
+                  onValueChange={field.onChange}
                 />
               )}
             />

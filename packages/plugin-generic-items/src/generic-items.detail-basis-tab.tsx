@@ -1,9 +1,14 @@
 import { GenericItemsMetaCard } from './generic-items.detail-meta-card.js';
 import { readFieldError } from '@sva/plugin-sdk';
-import { Checkbox, Input, StudioField, getStudioFormFieldProps } from '@sva/studio-ui-react';
+import {
+  SearchableMultiSelect,
+  Checkbox,
+  Input,
+  StudioField,
+  getStudioFormFieldProps,
+} from '@sva/studio-ui-react';
 import { Controller, useFormContext } from 'react-hook-form';
 
-import { GenericItemsCategoryMultiselect } from './generic-items.category-multiselect.js';
 import type { GenericItemCategoryOption } from './generic-items.api-types.js';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
 import { GenericItemsDetailCard } from './generic-items.detail-card.js';
@@ -34,20 +39,20 @@ export const GenericItemsCategoriesField = ({
         name="categories"
         control={control}
         render={({ field }) => (
-          <GenericItemsCategoryMultiselect
-            availableCategories={availableCategories}
+          <SearchableMultiSelect
+            options={availableCategories.map(({ name }) => ({ label: name, value: name }))}
             emptyText={labels.categoriesEmpty}
             errorMessage={categoryOptionsError ?? undefined}
             loading={categoryOptionsLoading}
             helpText={labels.categoriesHelp}
-            inputId="generic-item-category"
-            inputPlaceholder={labels.categoriesSearchPlaceholder}
+            id="generic-item-category"
+            placeholder={labels.categoriesSearchPlaceholder}
             loadingText={labels.categoryOptionsLoading}
             searchLabel={labels.categoriesSearch}
             unavailableText={labels.categoryUnavailable}
             removeLabel={(name) => labels.removeCategory.replace('{{name}}', name)}
             value={field.value}
-            onChange={field.onChange}
+            onValueChange={field.onChange}
           />
         )}
       />

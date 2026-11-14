@@ -77,6 +77,28 @@ function renderTab(defaultValues?: Partial<EventsDetailFormValues>) {
 }
 
 describe('EventsDetailBasisTab', () => {
+  it('updates form categories when clicking the name and the free row area', () => {
+    renderTab();
+    const trigger = screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' });
+    expect(trigger.id).toBe('event-category');
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByText('Kultur'));
+    expect(screen.getByRole('button', { name: 'Kultur' })).toBeTruthy();
+    expect((screen.getByRole('checkbox', { name: 'Kultur' }) as HTMLInputElement).checked).toBe(
+      true
+    );
+
+    const row = screen.getByText('Open Air').closest('label');
+    if (!row) throw new Error('Category row is missing');
+    fireEvent.click(row);
+    expect(screen.getByRole('button', { name: 'Kultur, Open Air' })).toBeTruthy();
+    expect((screen.getByRole('checkbox', { name: 'Open Air' }) as HTMLInputElement).checked).toBe(
+      true
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Kultur' }));
+    expect(screen.getByRole('button', { name: 'Open Air' })).toBeTruthy();
+  });
+
   it('does not render the removed POI relation fields', () => {
     renderTab();
 

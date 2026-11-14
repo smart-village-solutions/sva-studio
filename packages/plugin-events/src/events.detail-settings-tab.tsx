@@ -39,9 +39,14 @@ export function EventsDetailSettingsTab({
           title={pt('cards.settings.technical.title')}
           description={pt('cards.settings.technical.description')}
         >
-          <StudioField id="event-external-id" label={pt('fields.externalId')}>
+          <StudioField
+            id="event-external-id"
+            label={pt('fields.externalId')}
+            description={pt('fields.externalIdHelp')}
+          >
             <Input
               id="event-external-id"
+              aria-describedby="event-external-id-description"
               value={externalId}
               onChange={(event) =>
                 setValue('settings.externalId', event.target.value, { shouldDirty: true })

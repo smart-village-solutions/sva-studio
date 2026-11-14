@@ -59,6 +59,8 @@ Datum und Uhrzeit sind je Termin die primären Eingaben. Wochentag, Hinweis zur 
 
 Der Veranstalter ist insgesamt optional. Name, E-Mail und Telefon stehen direkt im Abschnitt; die selten benötigte Adresse des Veranstalters (Ortsbezeichnung, Straße, PLZ, Ort, Karte und Koordinaten) liegt in einem als optional gekennzeichneten, einklappbaren Bereich. Er ist bei leerer Adresse geschlossen und öffnet sich automatisch, wenn eine gespeicherte Veranstaltung bereits Adress- oder Koordinatenangaben enthält. Wechselt die Bearbeitungsseite ohne Neuaufbau zu einer anderen Veranstaltung, wird dieser Zustand für die neu geladenen Daten neu bestimmt; manuelles Auf- und Zuklappen bleibt beim Bearbeiten derselben Veranstaltung erhalten. Einklappen verwirft keine Werte. Vollständig leere Veranstalterfelder werden nicht in den Mainserver-Payload aufgenommen. Sobald Name, Adresse oder Kontaktdaten eines Veranstalters vorhanden sind, muss das Feld `Institution/Firma` einen Namen enthalten; andernfalls verhindert die UI den Request, markiert das Namensfeld und fokussiert es im Content-Tab.
 
+Die bisher als „Technische Zusatzdaten“ bezeichnete externe ID steht unter „Externe Zuordnung“. Das Feld „Externe Kennung (optional)“ erklärt beim Anlegen und Bearbeiten, dass es eine Kennung aus einem anderen System aufnimmt und für die manuelle Anlage nicht erforderlich ist. Bestehende Kennungen sollen nur in Abstimmung mit den Verantwortlichen der Anbindung geändert werden. Beim Anlegen bleibt der Bereich optional einklappbar, beim Bearbeiten steht er im Einstellungen-Tab. Feldname `externalId`, gespeicherte Werte und Mainserver-Verarbeitung bleiben unverändert.
+
 ## Projektstruktur
 
 ```text

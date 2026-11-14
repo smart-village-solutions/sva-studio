@@ -43,3 +43,8 @@ Die beschriebenen Nachweise sind lokal; GitHub-Gates, Merge und Rollout haben ge
 Der FAQ-Editor besitzt wie die übrigen Zeitpunktfelder einen Datumsteil und einen Uhrzeitteil. Seine bestehende Kontrollreihenfolge-Erwartung wurde entsprechend angepasst; die acht FAQ-Seitentests bestehen gezielt.
 
 Zwei zusätzliche Bearbeitungsfolgen sichern die unabhängigen Gültigkeiten des zusammengesetzten Zeitpunktfelds ab: ungültiger Kalendertag → gültiger Kalendertag mit nicht existenter Sommerzeit-Uhrzeit → gültiger Zeitpunkt sowie gültiger Zeitpunkt → Datum außerhalb der Grenzen → gültiges Datum. Vor der Korrektur ließ sich dabei jeweils ein unerwünschter Submit reproduzieren. Zeitpunktfehler gehören nun zum Uhrzeitfeld; die Kalendervalidierung bleibt beim Datumsteil. Die neun gezielten Eingabetests prüfen Ablehnung, anschließende erfolgreiche Korrektur, API-Zeitpunkte und Fehlerfokus. UI-Typprüfung, UI-Lint und Complexity-Gate bestehen. Es gibt keine neue Komponente, Schnittstelle oder Qualitätsausnahme.
+
+
+## Referenzpräzision nach bewusster Bearbeitung
+
+Der Review-Befund zum Entfernen von Sekunden wurde in den SDK-Payloadtests reproduziert. Der Referenzvergleich berücksichtigt nun immer Sekunden und Millisekunden, einschließlich ihrer impliziten Nullwerte bei einer Eingabe ohne Sekunden. Unveränderte vollständige Eingaben erhalten weiterhin den ursprünglichen Offset, die spätere Winterzeitinstanz und feinere Quellpräzision. Die 16 gezielten SDK-Tests und zehn gemeinsamen Eingabetests bestehen; der UI-Test bestätigt ausdrücklich den API-Zeitpunkt nach dem Entfernen geladener Sekunden. Die bestehenden Serializer-Verbraucher nutzen die vollständigen Werte von `toDatetimeLocalValue`; es gibt keinen zusätzlichen Formatmodus.

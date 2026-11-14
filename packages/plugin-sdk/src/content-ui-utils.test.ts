@@ -211,7 +211,7 @@ describe('calendar dates and local times', () => {
 
 describe('instant precision at the API boundary', () => {
   it('preserves imported seconds and the later occurrence of an ambiguous time', () => {
-    expect(fromDatetimeLocalValue('2026-10-25T02:30', '2026-10-25T01:30:45.123Z')).toBe(
+    expect(fromDatetimeLocalValue('2026-10-25T02:30:45.123', '2026-10-25T01:30:45.123Z')).toBe(
       '2026-10-25T01:30:45.123Z'
     );
     expect(fromDatetimeLocalValue('2026-07-01T12:30:45.123')).toBe('2026-07-01T10:30:45.123Z');
@@ -235,4 +235,12 @@ it('recognizes explicit instants and preserves source precision on unchanged ser
 it('does not interpret an offset-free value using the host time zone', () => {
   expect(formatDateTimeInEditorTimeZone('2026-07-01T12:30', 'de-DE')).toBe('2026-07-01T12:30');
   expect(toDatetimeLocalValue('2026-07-01T12:30')).toBe('');
+});
+
+it.each([
+  ['2026-07-01T10:30:45.123Z', '2026-07-01T12:30', '2026-07-01T10:30:00.000Z'],
+  ['2026-07-01T10:30:45.123Z', '2026-07-01T12:30:45', '2026-07-01T10:30:45.000Z'],
+  ['2026-07-01T10:30:00.123Z', '2026-07-01T12:30', '2026-07-01T10:30:00.000Z'],
+])('honors clearing displayed seconds or fractions from %s', (reference, local, expected) => {
+  expect(fromDatetimeLocalValue(local, reference)).toBe(expected);
 });

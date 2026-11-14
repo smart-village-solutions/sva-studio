@@ -218,3 +218,17 @@ it('retains calendar bounds when an instant edit is otherwise valid', () => {
   fireEvent.submit(day.form!);
   expect(save).toHaveBeenCalledWith('2026-07-01T10:30:00.000Z');
 });
+
+it('sends zero seconds when the editor clears loaded seconds', () => {
+  const change = vi.fn();
+  render(
+    <InstantInput
+      id="instant"
+      aria-label="Instant"
+      value="2026-07-01T10:30:45.123Z"
+      onValueChange={change}
+    />
+  );
+  fireEvent.change(document.getElementById('instant-time')!, { target: { value: '12:30' } });
+  expect(change).toHaveBeenCalledWith('2026-07-01T10:30:00.000Z');
+});

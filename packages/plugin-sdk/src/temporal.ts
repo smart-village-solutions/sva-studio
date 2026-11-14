@@ -211,8 +211,8 @@ export const fromDatetimeLocalValue = (value: string, referenceValue?: string): 
   const millisecond = Number((match.groups.fraction ?? '').padEnd(3, '0'));
   const matchesInput = (date: Date) =>
     toDatetimeLocalValue(date.toISOString()).slice(0, 16) === value.slice(0, 16) &&
-    (match.groups?.second === undefined ||
-      (date.getUTCSeconds() === second && date.getUTCMilliseconds() === millisecond));
+    date.getUTCSeconds() === second &&
+    date.getUTCMilliseconds() === millisecond;
 
   if (referenceValue) {
     const referenceDate = parseDate(referenceValue);

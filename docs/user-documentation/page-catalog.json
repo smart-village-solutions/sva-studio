@@ -269,6 +269,14 @@
       }
     },
     {
+      "id": "changelog.overview",
+      "path": "/changelog",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
       "id": "cockpit-cards.content.create",
       "path": "/admin/cockpit-cards/new",
       "pageType": "create",

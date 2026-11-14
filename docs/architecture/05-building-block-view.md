@@ -1327,3 +1327,11 @@ editor-leave route marker; flat plugins remain unchanged. Both host distribution
 mount the existing editor boundary for marked routes. No new package or service
 is introduced. Field ownership and compatibility remainders are documented in
 [SSF administration](../development/ssf-v2-inhaltsverwaltung-ui.md).
+
+### Studio-Release-Changelog
+
+Die App-Seite `/changelog` ist über den Sidebar-Footer für alle angemeldeten Nutzer erreichbar.
+Der app-lokale Handler `studio-release-notes.server.ts` liest über den bestehenden Server-Dispatch
+reguläre Studio-Releases aus dem festgelegten GitHub-Repository. Er liefert nur Version, Titel,
+Veröffentlichungsdatum und Notes an die UI. Release-Erzeugung und Deployment-Prozesse bleiben
+unverändert; die Anzeige wird nicht mit dem laufenden Image abgeglichen.

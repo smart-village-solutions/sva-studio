@@ -1,6 +1,7 @@
 /** Sidebar der App-Shell mit Bereichsnavigation, Untermenüs und Desktop-Collapse. */
 import {
   IconCertificate,
+  IconHistory,
   IconHeadset,
   IconLifebuoy as IconHelpCircle,
   IconUsersGroup,
@@ -99,6 +100,17 @@ export default function Sidebar({
 
   const footerItems = React.useMemo<readonly SidebarLeafItem[]>(
     () => [
+      ...(user
+        ? [
+            {
+              kind: 'link' as const,
+              id: 'changelog',
+              to: '/changelog',
+              label: t('shell.sidebar.changelog'),
+              icon: IconHistory,
+            },
+          ]
+        : []),
       ...(canAccessExperimentalFeatures
         ? [
             {
@@ -132,7 +144,7 @@ export default function Sidebar({
           ]
         : []),
     ],
-    [canAccessExperimentalFeatures]
+    [canAccessExperimentalFeatures, user]
   );
 
   return (

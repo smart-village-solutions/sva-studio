@@ -1447,6 +1447,14 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Monitoring' })).toBeNull();
   });
 
+  it('zeigt den Changelog ohne administrative oder experimentelle Rechte', () => {
+    renderSidebar({
+      user: createSidebarUser({ roles: [], permissionActions: [] }),
+      contentAccess: createContentAccessState({ access: defaultReadOnlyAccessState }),
+    });
+    expect(screen.getByRole('link', { name: 'Changelog' }).getAttribute('href')).toBe('/changelog');
+  });
+
   it('versteckt experimentelle Navigation ohne experimental.read trotz vorhandener Fachrechte', () => {
     renderSidebar({
       user: createSidebarUser({

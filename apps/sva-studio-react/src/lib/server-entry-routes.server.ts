@@ -92,6 +92,14 @@ export const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
     ),
   },
   {
+    label: 'studio release notes',
+    getDispatcher: lazyDispatcher(() =>
+      import('./studio-release-notes.server').then(
+        (module) => module.dispatchStudioReleaseNotesRequest
+      )
+    ),
+  },
+  {
     label: 'user documentation',
     getDispatcher: lazyDispatcher(() =>
       import('./user-documentation-api.server').then(

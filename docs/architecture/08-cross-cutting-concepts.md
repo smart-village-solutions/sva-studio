@@ -1522,3 +1522,16 @@ eine Löschung nicht zwischen alter Planung und späterem Enqueue committen. Ber
 externe Zustellungen blockieren die betroffene Löschung; ein Datenbankrollback kann eine E-Mail
 nicht zurückrufen. Vorschau und Audit enthalten keine Empfängeradressen oder Token. Der bestehende
 Mainserver-Sync folgt erst nach dem lokalen Commit und hat einen getrennten Erfolgsstatus.
+
+### Sicherheitsgrenze des Release-Changelogs
+
+`GET /api/studio/releases` verlangt pro Anfrage eine gültige Studio-Anmeldung, aber keine
+administrative Permission. Der Repository-Endpunkt ist fest vorgegeben, Redirects sind
+verboten. Timeout, begrenztes Lesen der Antwort, Schema-Prüfung sowie Cache und gemeinsame
+laufende Anfrage beschränken den externen Datenzugriff. Nur veröffentlichte stabile
+`studio-vX.Y.Z`-Releases werden ausgegeben. Fehlerdetails und personenbezogene Werte gelangen
+weder in die Antwort noch in das technische Warnereignis.
+
+Release Notes bleiben nicht vertrauenswürdiger Markdown-Inhalt: rohes HTML und Bilder werden
+nicht gerendert, Links werden auf HTTP(S) ohne Zugangsdaten beschränkt. Die Seite hat keine
+Schreibaktionen, keine Tenant-Konfiguration und keinen eigenen Release-Workflow.

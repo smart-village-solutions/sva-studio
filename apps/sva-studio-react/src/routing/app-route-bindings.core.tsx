@@ -52,6 +52,11 @@ const renderLazyPage = <TProps extends object>(
   </React.Suspense>
 );
 
+const LazyChangelogPage = React.lazy(async () => {
+  const mod = await import('../routes/-changelog-page');
+  return { default: mod.ChangelogPage };
+});
+
 const HelpPlaceholderRoutePage = () => (
   <PlaceholderPage section={t('shell.sidebar.help')} title={t('shell.sidebar.help')} />
 );
@@ -171,6 +176,7 @@ const AccountPrivacyDetailRoutePage = () => (
 
 export const coreAppRouteBindings = {
   home: HomePage,
+  changelog: () => renderLazyPage(LazyChangelogPage),
   account: AccountProfilePage,
   accountPrivacy: AccountPrivacyPage,
   accountPrivacyDetail: AccountPrivacyDetailRoutePage,

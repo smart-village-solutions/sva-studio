@@ -51,7 +51,7 @@ const render = (element: React.ReactElement) =>
   );
 
 vi.mock('../src/poi.api.js', async () => ({
-  ...await vi.importActual<typeof import('../src/poi.api.js')>('../src/poi.api.js'),
+  ...(await vi.importActual<typeof import('../src/poi.api.js')>('../src/poi.api.js')),
   createPoi: vi.fn(),
   deletePoi: vi.fn(),
   getPoi: vi.fn(),
@@ -269,6 +269,15 @@ describe('PoiDetailPage', () => {
       uploadSessionId: 'upload-1',
     } as never);
     vi.unstubAllGlobals();
+    // jsdom has no layout observer; focused icon tooltips use the browser API.
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
         'poi.create.createActive': 'Aktiv anlegen',
@@ -415,6 +424,10 @@ describe('PoiDetailPage', () => {
     expect(hasUnsavedChanges()).toBe(false);
     fireEvent.click(document.getElementById('content-media-add')!);
     fireEvent.click(await screen.findByRole('button', { name: 'Medium per Link hinzufügen' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+      target: { value: 'https://example.test/image.jpg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
     await waitFor(() => expect(hasUnsavedChanges()).toBe(true));
     fireEvent.click(
       document.querySelector<HTMLButtonElement>('button[id^="content-media-"][id$="-remove"]')!
@@ -434,23 +447,33 @@ describe('PoiDetailPage', () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
-  it.each([false, true])('keeps the created POI after visibility failure, wrapped by media: %s', async (wrapped) => {
-    const error = Object.assign(new PoiApiError('poi_visibility_failed'), {
-      details: { contentId: 'poi-created' },
-    });
-    vi.mocked(createPoi).mockRejectedValueOnce(wrapped
-      ? Object.assign(new Error('content_media_save_outcome_unknown'), { cause: error }) : error);
-    render(<PoiDetailPage mode="create" />);
-    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Saved place' } });
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
-    await screen.findByText('poi.messages.visibilityPartialFailure');
-    expect(screen.getByRole('link', { name: 'poi.actions.openSavedContent' }).getAttribute('href')).toBe('/admin/poi/poi-created');
-    expect(navigateMock).not.toHaveBeenCalled();
-    const calls = vi.mocked(createPoi).mock.calls.length;
-    await act(async () => { fireEvent.submit(document.querySelector('form')!); });
-    expect(createPoi).toHaveBeenCalledTimes(calls);
-    expect(hasUnsavedChanges()).toBe(true);
-  });
+  it.each([false, true])(
+    'keeps the created POI after visibility failure, wrapped by media: %s',
+    async (wrapped) => {
+      const error = Object.assign(new PoiApiError('poi_visibility_failed'), {
+        details: { contentId: 'poi-created' },
+      });
+      vi.mocked(createPoi).mockRejectedValueOnce(
+        wrapped
+          ? Object.assign(new Error('content_media_save_outcome_unknown'), { cause: error })
+          : error
+      );
+      render(<PoiDetailPage mode="create" />);
+      fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Saved place' } });
+      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+      await screen.findByText('poi.messages.visibilityPartialFailure');
+      expect(
+        screen.getByRole('link', { name: 'poi.actions.openSavedContent' }).getAttribute('href')
+      ).toBe('/admin/poi/poi-created');
+      expect(navigateMock).not.toHaveBeenCalled();
+      const calls = vi.mocked(createPoi).mock.calls.length;
+      await act(async () => {
+        fireEvent.submit(document.querySelector('form')!);
+      });
+      expect(createPoi).toHaveBeenCalledTimes(calls);
+      expect(hasUnsavedChanges()).toBe(true);
+    }
+  );
 
   it('leave guard preserves changes made during create and prevents a second create', async () => {
     let finishSave!: (value: unknown) => void;
@@ -676,7 +699,7 @@ describe('PoiDetailPage', () => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
-    const removeButtons = screen.getAllByRole('button', { name: 'Entfernen' });
+    const removeButtons = screen.getAllByRole('button', { name: 'media.picker.removeFromContent' });
     expect(removeButtons[0]).toBeTruthy();
     fireEvent.click(removeButtons[0] as HTMLButtonElement);
 
@@ -927,6 +950,10 @@ describe('PoiDetailPage', () => {
     switchSection('content');
     fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+      target: { value: 'https://example.test/image.jpg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
     const mediaUrl = screen.getAllByLabelText('URL').at(-1)!;
     fireEvent.change(mediaUrl, {
       target: { value: 'ftp://invalid.example/media.jpg' },
@@ -1043,12 +1070,18 @@ describe('PoiDetailPage', () => {
       fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
       if (contentEdited) {
-        await waitFor(() => expect(updatePoi).toHaveBeenCalledWith(
-          'poi-1', expect.objectContaining({ name: 'Neuer Name', visible: true }), 'user'
-        ));
+        await waitFor(() =>
+          expect(updatePoi).toHaveBeenCalledWith(
+            'poi-1',
+            expect.objectContaining({ name: 'Neuer Name', visible: true }),
+            'user'
+          )
+        );
         expect(setPoiVisibility).not.toHaveBeenCalled();
       } else {
-        await waitFor(() => expect(setPoiVisibility).toHaveBeenCalledExactlyOnceWith('poi-1', true, 'user'));
+        await waitFor(() =>
+          expect(setPoiVisibility).toHaveBeenCalledExactlyOnceWith('poi-1', true, 'user')
+        );
         expect(updatePoi).not.toHaveBeenCalled();
       }
     }
@@ -1330,9 +1363,9 @@ describe('PoiDetailPage', () => {
 
     switchSection('content');
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Entfernen' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'media.picker.removeFromContent' })).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.removeFromContent' }));
     fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {

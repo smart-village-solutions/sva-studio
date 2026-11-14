@@ -189,17 +189,20 @@ export function useCockpitCardMedia(
       return toDetail(asset, hasPersistablePublicDelivery(delivery) ? delivery.deliveryUrl : null);
     },
   });
-  const addManualMedia = React.useCallback(() => {
-    onMediaChanged();
-    const usage = createManualContentMediaUsage({ sortOrder: mediaUsages.length });
-    const nextUsages = [...mediaUsages, usage];
-    setMediaUsages(nextUsages);
-    form.setValue('images', [...cockpitCardUsagesToMedia(nextUsages)], { shouldDirty: true });
-    setRequiresReferenceSync(
-      (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
-    );
-    return usage.uiId;
-  }, [form, mediaUsages, onMediaChanged]);
+  const addManualMedia = React.useCallback(
+    (persistentUrl = '') => {
+      onMediaChanged();
+      const usage = createManualContentMediaUsage({ persistentUrl, sortOrder: mediaUsages.length });
+      const nextUsages = [...mediaUsages, usage];
+      setMediaUsages(nextUsages);
+      form.setValue('images', [...cockpitCardUsagesToMedia(nextUsages)], { shouldDirty: true });
+      setRequiresReferenceSync(
+        (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
+      );
+      return usage.uiId;
+    },
+    [form, mediaUsages, onMediaChanged]
+  );
   const loadAssetSnapshot = (usage: ContentMediaUsage) =>
     loadCockpitCardAssetSnapshot(usage, toDetail);
   return {

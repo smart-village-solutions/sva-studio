@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { useContentMediaTranslation } from '@sva/plugin-sdk/content-media';
+import { IconTrash } from '@tabler/icons-react';
 
 import { Badge } from './badge.js';
 import { Button } from './button.js';
@@ -113,7 +115,6 @@ const UsageActions = ({
   labels,
   onMove,
   onRefresh,
-  onRemove,
   refreshFailed,
   refreshing,
   total,
@@ -125,7 +126,6 @@ const UsageActions = ({
   | 'labels'
   | 'onMove'
   | 'onRefresh'
-  | 'onRemove'
   | 'refreshFailed'
   | 'refreshing'
   | 'total'
@@ -155,14 +155,6 @@ const UsageActions = ({
           {labels.actions.refreshMetadata}
         </Button>
       ) : null}
-      <Button
-        id={`content-media-${usage.uiId}-remove`}
-        type="button"
-        variant="secondary"
-        onClick={onRemove}
-      >
-        {labels.actions.remove}
-      </Button>
     </div>
     {refreshFailed ? (
       <p
@@ -176,19 +168,34 @@ const UsageActions = ({
   </>
 );
 
-export const ContentMediaUsageItem = (props: ItemProps) => (
-  <article className="grid gap-4 rounded-xl border border-border/60 p-4 lg:grid-cols-[minmax(12rem,18rem)_1fr]">
-    <Preview labels={props.labels} usage={props.usage} />
-    <div className="space-y-4">
-      <UsageFields
-        errors={props.errors}
-        labels={props.labels}
-        onUpdate={props.onUpdate}
-        supportedFields={props.supportedFields}
-        usage={props.usage}
-      />
-      {props.additionalFields}
-      <UsageActions {...props} />
-    </div>
-  </article>
-);
+export const ContentMediaUsageItem = (props: ItemProps) => {
+  const t = useContentMediaTranslation();
+  return (
+    <article className="relative grid gap-4 rounded-xl border border-border/60 p-4 pt-16 lg:grid-cols-[minmax(12rem,18rem)_1fr]">
+      <Button
+        id={`content-media-${props.usage.uiId}-remove`}
+        className="absolute right-3 top-3"
+        type="button"
+        variant="secondary"
+        size="icon"
+        aria-label={t('picker.removeFromContent')}
+        tooltip={t('picker.removeFromContent')}
+        onClick={props.onRemove}
+      >
+        <IconTrash aria-hidden="true" className="h-5 w-5" />
+      </Button>
+      <Preview labels={props.labels} usage={props.usage} />
+      <div className="space-y-4">
+        <UsageFields
+          errors={props.errors}
+          labels={props.labels}
+          onUpdate={props.onUpdate}
+          supportedFields={props.supportedFields}
+          usage={props.usage}
+        />
+        {props.additionalFields}
+        <UsageActions {...props} />
+      </div>
+    </article>
+  );
+};

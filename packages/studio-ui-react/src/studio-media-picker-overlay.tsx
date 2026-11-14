@@ -12,6 +12,7 @@ import {
   type StudioMediaPickerLibraryPanelProps,
 } from './studio-media-picker-library-panel.js';
 import { StudioMediaPickerModeActions } from './studio-media-picker-mode-actions.js';
+import { StudioMediaPickerLinkPanel } from './studio-media-picker-link-panel.js';
 import { StudioMediaPickerReviewPanel } from './studio-media-picker-review-panel.js';
 import type {
   StudioMediaPickerAssetDetail,
@@ -48,7 +49,7 @@ type StudioMediaPickerOverlayProps = Readonly<{
   onSearchValueChange: (value: string) => void;
   onClose: () => void;
   onChangeMode: (mode: 'library' | 'upload') => void;
-  onAddManual: () => string | void;
+  onAddManual?: (persistentUrl?: string) => string | void;
   onSelectAsset: (asset: StudioMediaPickerAssetSummary) => void | Promise<void>;
   uploadPhase: StudioMediaPickerUploadPhase;
   onUploadFile: (file: File) => void | Promise<void>;
@@ -98,7 +99,7 @@ const StudioMediaPickerOverlayBody = (
     uploadPhase,
   } = props;
   return (
-    <div className="max-h-[72vh] overflow-y-auto pr-1">
+    <div className="min-h-0 overflow-y-auto pr-1">
       {mode !== 'upload' && feedbackMessage ? (
         <p
           role={feedbackTone === 'error' ? 'alert' : 'status'}
@@ -148,10 +149,12 @@ const StudioMediaPickerOverlayBody = (
 const useMediaCloseGuard = (
   props: StudioMediaPickerOverlayProps,
   workspaceDirty: boolean,
+  linkDirty: boolean,
   onConfirm: () => void
 ) => {
   const dirty =
     workspaceDirty ||
+    linkDirty ||
     Boolean(props.reviewAsset?.localDraft) ||
     Boolean(
       props.reviewAsset &&
@@ -190,10 +193,19 @@ export const StudioMediaPickerOverlay = (props: StudioMediaPickerOverlayProps) =
   useStudioEditorLeaveGuard({ enabled: open, hasUnsavedChanges: open });
   const [confirmDiscard, setConfirmDiscard] = React.useState(false);
   const [workspaceDirty, setWorkspaceDirty] = React.useState(false);
+  const [manualOpen, setManualOpen] = React.useState(false);
+  const [manualUrl, setManualUrl] = React.useState('');
+  const acceptedManualUiId = React.useRef<string | null>(null);
   React.useEffect(() => {
-    if (!open) setWorkspaceDirty(false);
+    if (!open) {
+      setWorkspaceDirty(false);
+      setManualOpen(false);
+      setManualUrl('');
+    }
   }, [open]);
-  const close = useMediaCloseGuard(props, workspaceDirty, () => setConfirmDiscard(true));
+  const close = useMediaCloseGuard(props, workspaceDirty, Boolean(manualUrl), () =>
+    setConfirmDiscard(true)
+  );
   const isUploadBusy =
     uploadPhase === 'initializing' || uploadPhase === 'uploading' || uploadPhase === 'finalizing';
   const isBusy = isLoadingReviewAsset || isSavingReviewAsset || isUploadBusy;
@@ -214,8 +226,21 @@ export const StudioMediaPickerOverlay = (props: StudioMediaPickerOverlayProps) =
         }}
       />
       <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen && !isBusy ? close() : undefined)}>
-        <DialogContent className="max-h-[92vh] w-[min(96vw,1080px)] max-w-none overflow-hidden">
-          <DialogHeader>
+        <DialogContent
+          className="flex max-h-[92dvh] w-[min(96vw,1080px)] max-w-none flex-col gap-4 overflow-hidden"
+          onCloseAutoFocus={(event) => {
+            const uiId = acceptedManualUiId.current;
+            acceptedManualUiId.current = null;
+            const target = uiId
+              ? globalThis.document?.getElementById(`content-media-${uiId}-url`)
+              : null;
+            if (target) {
+              event.preventDefault();
+              target.focus();
+            }
+          }}
+        >
+          <DialogHeader className="shrink-0">
             <DialogTitle>{labels.title}</DialogTitle>
             <DialogDescription>{labels.description}</DialogDescription>
           </DialogHeader>
@@ -225,25 +250,42 @@ export const StudioMediaPickerOverlay = (props: StudioMediaPickerOverlayProps) =
               canUpload={canUpload}
               disabled={isBusy}
               labels={labels.modes}
-              mode={visibleMode}
-              onAddManual={onAddManual}
-              onChangeMode={onChangeMode}
-              onClose={onClose}
+              mode={manualOpen ? 'manual' : visibleMode}
+              onOpenManual={onAddManual ? () => setManualOpen(true) : undefined}
+              onChangeMode={(nextMode) => {
+                setManualOpen(false);
+                onChangeMode(nextMode);
+              }}
             />
           ) : null}
-          <StudioMediaPickerOverlayBody
-            {...props}
-            onClose={close}
-            {...(props.isUploadInitialized
-              ? {
-                  isMetadataEditable: false,
-                  onApplyImageEdit: undefined,
-                  onSaveCentralMetadata: undefined,
-                }
-              : {})}
-            onWorkspaceDirtyChange={setWorkspaceDirty}
-            mode={visibleMode}
-          />
+          {manualOpen && onAddManual ? (
+            <div className="flex min-h-0 flex-col">
+              <StudioMediaPickerLinkPanel
+                value={manualUrl}
+                onChange={setManualUrl}
+                disabled={isBusy}
+                onCancel={close}
+                onConfirm={(url) => {
+                  acceptedManualUiId.current = onAddManual(url) || null;
+                  onClose();
+                }}
+              />
+            </div>
+          ) : (
+            <StudioMediaPickerOverlayBody
+              {...props}
+              onClose={close}
+              {...(props.isUploadInitialized
+                ? {
+                    isMetadataEditable: false,
+                    onApplyImageEdit: undefined,
+                    onSaveCentralMetadata: undefined,
+                  }
+                : {})}
+              onWorkspaceDirtyChange={setWorkspaceDirty}
+              mode={visibleMode}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>

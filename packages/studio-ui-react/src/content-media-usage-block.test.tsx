@@ -351,7 +351,7 @@ describe('ContentMediaUsageBlock', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.removeFromContent' }));
 
     expect(revokeObjectUrl).toHaveBeenCalledOnce();
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:usage-remove');
@@ -438,7 +438,7 @@ describe('ContentMediaUsageBlock', () => {
         labels={labels}
       />
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.removeFromContent' }));
     await waitFor(() =>
       expect(document.activeElement).toBe(document.getElementById('content-media-add'))
     );

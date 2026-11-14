@@ -66,7 +66,13 @@ Das Abbrechen provisorischer Uploads zieht nur zuvor gebuchte Bytes und Asset-Za
 
 ## Medienauswahl in Inhaltsplugins
 
-News, Events, POI, Generic Items, Projects, Cockpit Cards und Gutscheine verwenden denselben Medienblock und Auswahldialog für Bibliothek, Upload und manuelle Bildadressen. Verfügbare Aktionen richten sich nach Inhalts- und Medienrechten; die unterstützten Metadaten bleiben fachmodulspezifisch. Abfall-Branding verwendet den Dialog für ein einzelnes Einstellungsbild.
+News, Events, POI, Generic Items, Projects, Cockpit Cards, Stellenanzeigen, Baustellen und Gutscheine verwenden denselben Medienblock und Auswahldialog für Bibliothek, Upload und manuelle Bildadressen. Verfügbare Aktionen richten sich nach Inhalts- und Medienrechten; die unterstützten Metadaten bleiben fachmodulspezifisch. Abfall-Branding verwendet den Dialog für ein einzelnes Einstellungsbild.
+
+„Medium hinzufügen“ öffnet den bestehenden Auswahldialog. Upload, Mediathek und Link sind dort gleichwertige Buttons mit Icons; der aktive Weg ist hervorgehoben. Die Buttons stehen auf schmalen Bildschirmen untereinander.
+
+Bei „Medium per Link hinzufügen“ bleibt die Eingabe im Dialog. Fügen Sie die direkte Bildadresse ein und prüfen Sie die Vorschau. Die bestehende URL-Prüfung normalisiert die Adresse und weist auf unsichere HTTP-Adressen hin. Erst „Medium übernehmen“ fügt einen ausgefüllten Eintrag zum Inhaltsentwurf hinzu; weitere Bildangaben lassen sich anschließend im Inhalt ergänzen. Eine fehlende Vorschau verhindert die Übernahme einer gültigen Adresse nicht. Beim Verwerfen bleiben keine leeren Einträge zurück. Nach der Übernahme liegt der Tastaturfokus auf dem URL-Feld des hinzugefügten Mediums.
+
+Der Mülleimer-Button oben rechts an jeder Medienkarte entfernt ausschließlich diese Verwendung aus dem Inhaltsentwurf. Sein Tooltip lautet „Medium aus diesem Inhalt entfernen“. Das Original in der Mediathek wird dadurch nicht gelöscht; die Änderung wird mit dem Inhalt gespeichert. Tastaturfokus und Statusansage bleiben beim Entfernen und Sortieren erhalten.
 
 Ladezustand, leerer Bestand und ein fehlgeschlagener Bibliotheksabruf werden getrennt angezeigt. Bei einem Fehler bleibt ein bereits geladener Bestand erhalten; der Abruf kann im Dialog wiederholt werden. Eine fehlgeschlagene Auswahl eines anderen Bibliotheksbildes darf das vorherige Bild nicht als neue Auswahl anbieten. Lokale Dateientwürfe bleiben bei fehlgeschlagenem Ersatz erhalten.
 
@@ -142,14 +148,14 @@ Die internen Schlüssel `.quarantine/` und `.protected/` sind dauerhaft vom norm
 
 ### Konfiguration und privater Eingang
 
-| Einstellung | Bedeutung |
-| --- | --- |
-| `MEDIA_SCAN_ENABLED` | Nur `true` aktiviert die Scan-Anforderung für neue Uploads; Standard `false`. Bereits im Quarantäne-Eingang liegende Uploads dürfen auch nach Deaktivierung nicht ohne Scan veröffentlicht werden. |
-| `MEDIA_CLAMAV_REPLICAS` | Nur lokale Compose-Tests; die zentrale Replik wird ausschließlich im Stack `studio-clamav` verwaltet. |
-| `MEDIA_CLAMAV_HOST`, `MEDIA_CLAMAV_PORT` | Zentraler interner Dienstname `studio-clamav_clamav`, Standardport `3310`; lokal `clamav`. Kein öffentlicher Port. |
-| `MEDIA_CLAMAV_SIGNATURE_STATE_PATH` | Für die App lesbarer Aktualitätsnachweis `/var/lib/clamav/studio-freshness` im Signaturvolume. |
-| `MEDIA_CLAMAV_TIMEOUT_MS` | Gesamtes Zeitlimit eines Protokollaustauschs, Standard 30 Sekunden. |
-| `MEDIA_SCAN_QUARANTINE_BUCKET` | Separater privater Bucket auf demselben ausgewählten S3-Dienst; darf nicht der Auslieferungs-Bucket sein. |
+| Einstellung                              | Bedeutung                                                                                                                                                                                          |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MEDIA_SCAN_ENABLED`                     | Nur `true` aktiviert die Scan-Anforderung für neue Uploads; Standard `false`. Bereits im Quarantäne-Eingang liegende Uploads dürfen auch nach Deaktivierung nicht ohne Scan veröffentlicht werden. |
+| `MEDIA_CLAMAV_REPLICAS`                  | Nur lokale Compose-Tests; die zentrale Replik wird ausschließlich im Stack `studio-clamav` verwaltet.                                                                                              |
+| `MEDIA_CLAMAV_HOST`, `MEDIA_CLAMAV_PORT` | Zentraler interner Dienstname `studio-clamav_clamav`, Standardport `3310`; lokal `clamav`. Kein öffentlicher Port.                                                                                 |
+| `MEDIA_CLAMAV_SIGNATURE_STATE_PATH`      | Für die App lesbarer Aktualitätsnachweis `/var/lib/clamav/studio-freshness` im Signaturvolume.                                                                                                     |
+| `MEDIA_CLAMAV_TIMEOUT_MS`                | Gesamtes Zeitlimit eines Protokollaustauschs, Standard 30 Sekunden.                                                                                                                                |
+| `MEDIA_SCAN_QUARANTINE_BUCKET`           | Separater privater Bucket auf demselben ausgewählten S3-Dienst; darf nicht der Auslieferungs-Bucket sein.                                                                                          |
 
 Der Bucket wird durch den Betreiber angelegt, nicht durch einen Upload-Request. Die vorhandenen Storage-Zugangsdaten benötigen dort Objektzugriff sowie `GetBucketAcl` und `GetBucketPolicy`. Die Anwendung akzeptiert für den Eingang nur private Owner-ACLs ohne Gruppenfreigaben und ohne Bucket-Policy; kann die Anbindung das nicht nachweisen, wird kein neues Upload-Ziel ausgegeben. Ein unbenannter kanonischer Owner-Grant wird bei S3-Anbindungen mit impliziter Owner-ACL akzeptiert. Die private MinIO-Platzhalterantwort ohne Eigentümer-ID ist ausschließlich mit genau einem `CanonicalUser`-Grant ohne weitere Grantee-Felder und mit `FULL_CONTROL` zulässig; fremde IDs, zusätzliche Grants, Gruppen und Bucket-Policies bleiben ausgeschlossen. Diese Antwortform entspricht dem [MinIO-ACL-Vertrag](https://github.com/minio/minio/blob/master/cmd/acl-handlers.go); es wird kein MinIO-Quellcode übernommen. Ein vorhandenes öffentliches Storage-Gateway darf diesen Bucket nicht zusätzlich veröffentlichen.
 

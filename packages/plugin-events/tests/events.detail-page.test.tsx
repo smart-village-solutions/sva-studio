@@ -386,6 +386,10 @@ describe('EventsDetailPage', () => {
     expect(hasUnsavedChanges()).toBe(false);
     fireEvent.click(document.getElementById('content-media-add')!);
     fireEvent.click(await screen.findByRole('button', { name: 'Medium per Link hinzufügen' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+      target: { value: 'https://example.test/image.jpg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
     await waitFor(() => expect(hasUnsavedChanges()).toBe(true));
     fireEvent.click(
       document.querySelector<HTMLButtonElement>('button[id^="content-media-"][id$="-remove"]')!

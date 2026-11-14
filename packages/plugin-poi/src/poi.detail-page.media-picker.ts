@@ -169,18 +169,21 @@ export const usePoiMediaPicker = (input: PickerInput) => {
     loadAsset: (assetId) => loadPoiAsset(assetId, input),
     saveAssetMetadata: (assetId, metadata) => savePoiAssetMetadata(assetId, metadata, input),
   });
-  const addManualMedia = React.useCallback(() => {
-    const usage = createManualContentMediaUsage({ sortOrder: mediaUsages.length });
-    const nextUsages = [...mediaUsages, usage];
-    setMediaUsages(nextUsages);
-    methods.setValue('content.mediaContents', poiMediaUsagesToContents(nextUsages), {
-      shouldDirty: true,
-    });
-    setRequiresReferenceSync(
-      (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
-    );
-    return usage.uiId;
-  }, [mediaUsages, methods]);
+  const addManualMedia = React.useCallback(
+    (persistentUrl = '') => {
+      const usage = createManualContentMediaUsage({ persistentUrl, sortOrder: mediaUsages.length });
+      const nextUsages = [...mediaUsages, usage];
+      setMediaUsages(nextUsages);
+      methods.setValue('content.mediaContents', poiMediaUsagesToContents(nextUsages), {
+        shouldDirty: true,
+      });
+      setRequiresReferenceSync(
+        (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
+      );
+      return usage.uiId;
+    },
+    [mediaUsages, methods]
+  );
   const mediaPickerFeedback = React.useMemo(
     () => resolveStudioMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]

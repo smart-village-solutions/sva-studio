@@ -49,6 +49,24 @@ export type DatePickerProps = Readonly<{
   error?: string;
 }>;
 
+const datePickerInputProps = (
+  props: DatePickerProps,
+  draft: ReturnType<typeof useDatePickerDraft>
+) => ({
+  ...draft.inputProps,
+  'aria-label': props['aria-label'],
+  'aria-describedby': [draft.inputProps['aria-describedby'], props['aria-describedby']]
+    .filter(Boolean)
+    .join(' '),
+  'aria-invalid': props['aria-invalid'] || draft.inputProps['aria-invalid'],
+  className: ['min-w-0 flex-1', props.className].filter(Boolean).join(' '),
+  id: props.id,
+  disabled: props.disabled,
+  readOnly: props.readOnly,
+  required: props.required,
+  autoComplete: 'off',
+});
+
 export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
   function DatePicker(props, forwardedRef) {
     const { id, label, labels, disabled, readOnly, required } = props;
@@ -67,20 +85,7 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
       <Popover.Root open={open && !disabled && !readOnly} onOpenChange={changeOpen}>
         <Popover.Anchor asChild>
           <div className="flex items-center gap-2">
-            <Input
-              {...draft.inputProps}
-              aria-label={props['aria-label']}
-              aria-describedby={[draft.inputProps['aria-describedby'], props['aria-describedby']]
-                .filter(Boolean)
-                .join(' ')}
-              aria-invalid={props['aria-invalid'] || draft.inputProps['aria-invalid']}
-              className={['min-w-0 flex-1', props.className].filter(Boolean).join(' ')}
-              id={id}
-              disabled={disabled}
-              readOnly={readOnly}
-              required={required}
-              autoComplete="off"
-            />
+            <Input {...datePickerInputProps(props, draft)} />
             {props.name ? (
               <input
                 type="hidden"

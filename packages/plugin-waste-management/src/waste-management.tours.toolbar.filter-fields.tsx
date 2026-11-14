@@ -173,50 +173,26 @@ const WasteToursToolbarDateFilterFields = ({
 
   return (
     <>
-      <WasteToursToolbarFilterField label={pt('tours.filters.firstDateFromLabel')}>
-        <DateInput
-          id="waste-tour-filter-date-1"
-          aria-label={pt('tours.filters.firstDateFromLabel')}
-          value={draftFirstDateFrom ?? ''}
-          onValueChange={(value) => {
-            if (!value || isCalendarDate(value)) onDraftFirstDateFromChange(value || undefined);
-          }}
-          className="h-10 rounded-lg"
-        />
-      </WasteToursToolbarFilterField>
-      <WasteToursToolbarFilterField label={pt('tours.filters.firstDateToLabel')}>
-        <DateInput
-          id="waste-tour-filter-date-2"
-          aria-label={pt('tours.filters.firstDateToLabel')}
-          value={draftFirstDateTo ?? ''}
-          onValueChange={(value) => {
-            if (!value || isCalendarDate(value)) onDraftFirstDateToChange(value || undefined);
-          }}
-          className="h-10 rounded-lg"
-        />
-      </WasteToursToolbarFilterField>
-      <WasteToursToolbarFilterField label={pt('tours.filters.endDateFromLabel')}>
-        <DateInput
-          id="waste-tour-filter-date-3"
-          aria-label={pt('tours.filters.endDateFromLabel')}
-          value={draftEndDateFrom ?? ''}
-          onValueChange={(value) => {
-            if (!value || isCalendarDate(value)) onDraftEndDateFromChange(value || undefined);
-          }}
-          className="h-10 rounded-lg"
-        />
-      </WasteToursToolbarFilterField>
-      <WasteToursToolbarFilterField label={pt('tours.filters.endDateToLabel')}>
-        <DateInput
-          id="waste-tour-filter-date-4"
-          aria-label={pt('tours.filters.endDateToLabel')}
-          value={draftEndDateTo ?? ''}
-          onValueChange={(value) => {
-            if (!value || isCalendarDate(value)) onDraftEndDateToChange(value || undefined);
-          }}
-          className="h-10 rounded-lg"
-        />
-      </WasteToursToolbarFilterField>
+      {(
+        [
+          [1, 'firstDateFromLabel', draftFirstDateFrom, onDraftFirstDateFromChange],
+          [2, 'firstDateToLabel', draftFirstDateTo, onDraftFirstDateToChange],
+          [3, 'endDateFromLabel', draftEndDateFrom, onDraftEndDateFromChange],
+          [4, 'endDateToLabel', draftEndDateTo, onDraftEndDateToChange],
+        ] as const
+      ).map(([index, label, value, onChange]) => (
+        <WasteToursToolbarFilterField key={index} label={pt(`tours.filters.${label}`)}>
+          <DateInput
+            id={`waste-tour-filter-date-${index}`}
+            aria-label={pt(`tours.filters.${label}`)}
+            value={value ?? ''}
+            onValueChange={(next) => {
+              if (!next || isCalendarDate(next)) onChange(next || undefined);
+            }}
+            className="h-10 rounded-lg"
+          />
+        </WasteToursToolbarFilterField>
+      ))}
     </>
   );
 };

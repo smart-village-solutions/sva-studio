@@ -251,6 +251,7 @@ describe('cockpit cards pages', () => {
       'cockpit-card-language',
       'cockpit-card-weight',
       'cockpit-card-publication',
+      'cockpit-card-publication-time',
       'cockpit-card-visible',
     ]);
     expect(screen.getAllByRole('button', { name: 'actions.create' })).toHaveLength(1);

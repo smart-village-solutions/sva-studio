@@ -6,23 +6,24 @@ import {
   getStudioFormFieldProps,
 } from '@sva/studio-ui-react';
 import type { ReactNode } from 'react';
-import { Controller, useFormContext } from 'react-hook-form';
+import { useController, useFormContext } from 'react-hook-form';
 import { GenericItemsDetailCard } from './generic-items.detail-card.js';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
 
-export const GenericItemsMetaCard = ({
-  labels,
-  createSection,
-  children,
-}: Readonly<{
+type MetaCardProps = Readonly<{
   children?: ReactNode;
   labels: Record<string, string>;
   createSection?: 'identity' | 'categories' | 'technical' | 'publication';
-}>) => {
+}>;
+
+export const GenericItemsMetaCard = ({ labels, createSection, children }: MetaCardProps) => {
   const {
     register,
     formState: { errors },
   } = useFormContext<GenericItemsDetailFormValues>();
+  const {
+    field: { onChange: onPublishedAtChange, ...publishedAtInput },
+  } = useController<GenericItemsDetailFormValues, 'publishedAt'>({ name: 'publishedAt' });
   const keywordsField = getStudioFormFieldProps({
     id: 'generic-item-keywords',
     hasDescription: true,
@@ -79,18 +80,13 @@ export const GenericItemsMetaCard = ({
           label={labels.publishedAt}
           description={labels.publishedAtHelp}
         >
-          <Controller
-            name="publishedAt"
-            render={({ field }) => (
-              <InstantInput
-                label={labels.publishedAt}
-                {...publishedAtField.controlProps}
-                value={field.value}
-                onValueChange={field.onChange}
-                onBlur={field.onBlur}
-                ref={field.ref}
-              />
-            )}
+          <InstantInput
+            label={labels.publishedAt}
+            {...publishedAtField.controlProps}
+            value={publishedAtInput.value}
+            onBlur={publishedAtInput.onBlur}
+            ref={publishedAtInput.ref}
+            onValueChange={onPublishedAtChange}
           />
         </StudioField>
       ) : null}

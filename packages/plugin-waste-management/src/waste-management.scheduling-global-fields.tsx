@@ -15,40 +15,30 @@ import type { GlobalDateShiftFormState } from './waste-management.scheduling.sha
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
-export const WasteSchedulingGlobalFields = ({
-  form,
-  tours,
-  pt,
-  onChange,
-}: {
+type GlobalFieldsProps = {
   readonly form: GlobalDateShiftFormState;
   readonly tours: readonly WasteTourRecord[];
   readonly pt: Translate;
   readonly onChange: (patch: Partial<GlobalDateShiftFormState>) => void;
-}) => (
+};
+
+export const WasteSchedulingGlobalFields = ({ form, tours, pt, onChange }: GlobalFieldsProps) => (
   <StudioFieldGroup>
-    <StudioField
-      id="waste-global-shift-original-date"
-      label={pt('scheduling.global.fields.originalDate')}
-    >
-      <DateInput
-        label={pt('scheduling.global.fields.originalDate')}
-        id="waste-global-shift-original-date"
-        value={form.originalDate}
-        onValueChange={(value) => onChange({ originalDate: value })}
-      />
-    </StudioField>
-    <StudioField
-      id="waste-global-shift-actual-date"
-      label={pt('scheduling.global.fields.actualDate')}
-    >
-      <DateInput
-        label={pt('scheduling.global.fields.actualDate')}
-        id="waste-global-shift-actual-date"
-        value={form.actualDate}
-        onValueChange={(value) => onChange({ actualDate: value })}
-      />
-    </StudioField>
+    {(
+      [
+        ['originalDate', 'waste-global-shift-original-date'],
+        ['actualDate', 'waste-global-shift-actual-date'],
+      ] as const
+    ).map(([field, id]) => (
+      <StudioField key={field} id={id} label={pt(`scheduling.global.fields.${field}`)}>
+        <DateInput
+          label={pt(`scheduling.global.fields.${field}`)}
+          id={id}
+          value={form[field]}
+          onValueChange={(value) => onChange({ [field]: value })}
+        />
+      </StudioField>
+    ))}
     <StudioField
       id="waste-global-shift-description"
       label={pt('scheduling.global.fields.description')}

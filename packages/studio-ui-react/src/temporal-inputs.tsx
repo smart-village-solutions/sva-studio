@@ -17,24 +17,20 @@ import {
 import { DatePicker, type DatePickerLabels, type DatePickerProps } from './date-picker.js';
 import { Input } from './input.js';
 
-type DateInputProps = Pick<
+type DateInputProps = Omit<
   DatePickerProps,
-  | 'id'
-  | 'disabled'
-  | 'readOnly'
-  | 'required'
-  | 'min'
-  | 'max'
-  | 'className'
-  | 'aria-label'
-  | 'aria-describedby'
-  | 'aria-invalid'
+  | 'label'
+  | 'value'
+  | 'onChange'
+  | 'onValidationChange'
+  | 'locale'
+  | 'labels'
+  | 'controlOnly'
+  | 'error'
 > & {
   label?: string;
-  name?: string;
   value: string;
   onValueChange: (value: string) => void;
-  onBlur?: () => void;
 };
 
 /** A calendar date control for an existing field; its value never contains a time zone. */
@@ -181,17 +177,16 @@ export const LocalDateTimeInput = React.forwardRef<HTMLInputElement, LocalDateTi
   ) {
     const generatedId = React.useId();
     const dateId = id ?? generatedId;
-    const timeId = `${dateId}-time`;
     const t = useTemporalTranslation();
     const [day = '', time = ''] = value.split('T');
     const [minDay, minTime] = min?.split('T') ?? [];
     const [maxDay, maxTime] = max?.split('T') ?? [];
     const join = (nextDay: string, nextTime: string) =>
       nextDay || nextTime ? `${nextDay}T${nextTime}` : '';
-    const timeLabel =
-      label || props['aria-label']
-        ? t('datePicker.timeFor', { label: label ?? props['aria-label'] ?? '' })
-        : t('datePicker.time');
+    const fieldLabel = label ?? props['aria-label'];
+    const timeLabel = fieldLabel
+      ? t('datePicker.timeFor', { label: fieldLabel })
+      : t('datePicker.time');
     return (
       <div
         className={['grid min-w-0 gap-2 sm:grid-cols-2', props.className].filter(Boolean).join(' ')}
@@ -209,11 +204,11 @@ export const LocalDateTimeInput = React.forwardRef<HTMLInputElement, LocalDateTi
           onBlur={onBlur}
           aria-label={props['aria-label']}
           aria-describedby={props['aria-describedby']}
-          aria-invalid={props['aria-invalid'] === true || props['aria-invalid'] === 'true'}
+          aria-invalid={String(props['aria-invalid']) === 'true'}
           onValueChange={(next) => onValueChange(join(next, time))}
         />
         <TimeInput
-          id={timeId}
+          id={`${dateId}-time`}
           value={time}
           required={props.required || Boolean(day)}
           aria-label={timeLabel}
@@ -223,7 +218,7 @@ export const LocalDateTimeInput = React.forwardRef<HTMLInputElement, LocalDateTi
           readOnly={props.readOnly}
           min={day === minDay ? minTime : undefined}
           max={day === maxDay ? maxTime : undefined}
-          step={props.step ?? 'any'}
+          step={props.step}
           onBlur={onBlur}
           onChange={(event) => onValueChange(join(day, event.target.value))}
         />

@@ -6,7 +6,8 @@ const calculateTourOccurrenceEntriesForYearMock = vi.hoisted(() => vi.fn());
 
 import { TourYearCalendarDialog } from '../src/waste-management.tours-year-calendar.js';
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${Object.values(values).join('|')}` : key,
   resolveEditorLocale: () => (document.documentElement.lang === 'en' ? 'en-GB' : 'de-DE'),

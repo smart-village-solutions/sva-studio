@@ -7,23 +7,25 @@ import {
   isInstant,
   isLocalDateTime,
   isTimeOfDay,
-} from './content-ui-utils.js';
+} from './temporal.js';
 
 import {
   compactOptionalString,
   contentMediaUploadPhaseMessageKey,
   findHostMediaReferenceAssetId,
-  formatDateTimeInEditorTimeZone,
-  formatTechnicalDateTimeInEditorTimeZone,
-  fromDatetimeLocalValue,
   getHostMediaAssetPersistentUrl,
   isSupportedContentMediaUploadFile,
   readHostMediaAssetCopyright,
   readHostMediaAssetFileName,
   readHostMediaAssetTitle,
-  toDatetimeLocalValue,
   toHostMediaFieldOptions,
 } from './content-ui-utils.js';
+import {
+  formatDateTimeInEditorTimeZone,
+  formatTechnicalDateTimeInEditorTimeZone,
+  fromDatetimeLocalValue,
+  toDatetimeLocalValue,
+} from './temporal.js';
 
 describe('content-ui-utils', () => {
   it('compacts optional strings and converts editor timestamps in Europe/Berlin safely', () => {

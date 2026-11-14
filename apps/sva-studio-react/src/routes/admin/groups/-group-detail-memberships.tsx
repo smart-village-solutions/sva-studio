@@ -1,4 +1,4 @@
-import { Button } from '@sva/studio-ui-react';
+import { Button, LocalDateTimeInput } from '@sva/studio-ui-react';
 
 import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Input } from '../../../components/ui/input';
@@ -61,14 +61,14 @@ export const GroupDetailMemberships = ({ state }: Readonly<{ state: GroupDetailS
             <Label htmlFor="group-membership-valid-from">
               {t('admin.groups.memberships.validFromLabel')}
             </Label>
-            <Input
+            <LocalDateTimeInput
+              label={t('admin.groups.memberships.validFromLabel')}
               id="group-membership-valid-from"
-              type="datetime-local"
               value={membershipForm.validFrom}
-              onChange={(event) =>
+              onValueChange={(value) =>
                 setMembershipForm((current) => ({
                   ...current,
-                  validFrom: event.target.value,
+                  validFrom: value,
                 }))
               }
             />
@@ -77,14 +77,14 @@ export const GroupDetailMemberships = ({ state }: Readonly<{ state: GroupDetailS
             <Label htmlFor="group-membership-valid-until">
               {t('admin.groups.memberships.validUntilLabel')}
             </Label>
-            <Input
+            <LocalDateTimeInput
+              label={t('admin.groups.memberships.validUntilLabel')}
               id="group-membership-valid-until"
-              type="datetime-local"
               value={membershipForm.validUntil}
-              onChange={(event) =>
+              onValueChange={(value) =>
                 setMembershipForm((current) => ({
                   ...current,
-                  validUntil: event.target.value,
+                  validUntil: value,
                 }))
               }
             />

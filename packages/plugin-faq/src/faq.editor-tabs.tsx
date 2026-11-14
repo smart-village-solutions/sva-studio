@@ -3,8 +3,9 @@ import {
   ContentOwnershipPanelSlot,
   getStudioFormFieldProps,
   Input,
-  StudioDetailTabs,
+  InstantInput,
   StudioDetailCard,
+  StudioDetailTabs,
   StudioField,
   Textarea,
   type StudioDetailTabDefinition,
@@ -98,10 +99,20 @@ const FaqPublicationField = ({ form, pt }: FaqEditorTabProps) => (
     label={pt('fields.publicationDate')}
     description={pt('create.dateHelp')}
   >
-    <Input
-      id="faq-publication-date"
-      aria-describedby="faq-publication-date-description"
-      {...form.register('publicationDate')}
+    <Controller
+      control={form.control}
+      name="publicationDate"
+      render={({ field }) => (
+        <InstantInput
+          label={pt('fields.publicationDate')}
+          id="faq-publication-date"
+          aria-describedby="faq-publication-date-description"
+          value={field.value ?? ''}
+          onValueChange={field.onChange}
+          onBlur={field.onBlur}
+          ref={field.ref}
+        />
+      )}
     />
   </StudioField>
 );

@@ -71,7 +71,8 @@ vi.mock('../src/cockpit-cards.api.js', () => ({
   listCockpitCardCategories: state.listCategories,
   updateCockpitCard: state.update,
 }));
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   alignHostMediaReferencesByOrder: ({
     itemCount,
     references,

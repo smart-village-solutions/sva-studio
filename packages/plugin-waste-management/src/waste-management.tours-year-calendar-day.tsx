@@ -1,22 +1,10 @@
+import { formatCalendarDate, usePluginTranslation } from '@sva/plugin-sdk';
 import { useId } from 'react';
-import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import type { WasteManagementSearchParams } from './search-params.js';
 import { WasteTourShiftCreateLink } from './waste-management.tour-shift-create-link.js';
 
 export type CalendarOccurrence = Readonly<{ shifted: boolean; originalDate: string | null }>;
-
-const formatCalendarDate = (value: string, locale: string): string => {
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isNaN(parsed.getTime())
-    ? value
-    : new Intl.DateTimeFormat(locale, {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        timeZone: 'UTC',
-      }).format(parsed);
-};
 
 const resolveCalendarDayClassName = (active: boolean, shifted: boolean): string => {
   if (!active) return 'border-transparent bg-transparent text-foreground';
@@ -39,26 +27,36 @@ type CalendarDayProps = {
   readonly pt: ReturnType<typeof usePluginTranslation>;
 };
 
-const CalendarShiftLink = ({ occurrence, canCreateShift, search, tourId, originalDate,
-  tourName, locale, pt }: Pick<CalendarDayProps,
+const CalendarShiftLink = ({
+  occurrence,
+  canCreateShift,
+  search,
+  tourId,
+  originalDate,
+  tourName,
+  locale,
+  pt,
+}: Pick<
+  CalendarDayProps,
   'occurrence' | 'canCreateShift' | 'search' | 'tourId' | 'tourName' | 'locale' | 'pt'
-> & Readonly<{ originalDate: string }>) => {
+> &
+  Readonly<{ originalDate: string }>) => {
   if (!occurrence || occurrence.shifted || !canCreateShift || !search || !tourId) return null;
   return (
-        <WasteTourShiftCreateLink
-          search={search}
-          tourId={tourId}
-          originalDate={originalDate}
-          label={pt('tours.actions.shiftDateAccessible', {
-            date: formatCalendarDate(originalDate, locale),
-            name: tourName ?? '',
-          })}
-          unstyled
-          showExternalIcon={false}
-          className="absolute inset-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          <span className="sr-only">{pt('tours.actions.shiftDate')}</span>
-        </WasteTourShiftCreateLink>
+    <WasteTourShiftCreateLink
+      search={search}
+      tourId={tourId}
+      originalDate={originalDate}
+      label={pt('tours.actions.shiftDateAccessible', {
+        date: formatCalendarDate(originalDate, locale) ?? originalDate,
+        name: tourName ?? '',
+      })}
+      unstyled
+      showExternalIcon={false}
+      className="absolute inset-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
+      <span className="sr-only">{pt('tours.actions.shiftDate')}</span>
+    </WasteTourShiftCreateLink>
   );
 };
 
@@ -82,7 +80,7 @@ export const TourYearCalendarDay = ({
   const shiftedLabel =
     shifted && occurrence?.originalDate
       ? pt('tours.yearCalendar.meta.shiftedReplacementFor', {
-          value: formatCalendarDate(occurrence.originalDate, locale),
+          value: formatCalendarDate(occurrence.originalDate, locale) ?? occurrence.originalDate,
         })
       : null;
   const shiftedDescriptionId = shiftedLabel ? descriptionId : undefined;
@@ -96,8 +94,16 @@ export const TourYearCalendarDay = ({
       className={`group relative flex min-h-11 items-center ${layout === 'list' ? 'flex-col justify-center gap-1 px-3 py-2' : 'min-w-11 justify-center p-1'} rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${resolveCalendarDayClassName(active, shifted)}`}
     >
       {layout === 'list' ? formatCalendarDate(originalDate, locale) : day}
-      <CalendarShiftLink occurrence={occurrence} canCreateShift={canCreateShift} search={search}
-        tourId={tourId} originalDate={originalDate} tourName={tourName} locale={locale} pt={pt} />
+      <CalendarShiftLink
+        occurrence={occurrence}
+        canCreateShift={canCreateShift}
+        search={search}
+        tourId={tourId}
+        originalDate={originalDate}
+        tourName={tourName}
+        locale={locale}
+        pt={pt}
+      />
       {shiftedLabel ? (
         <>
           <span
@@ -131,10 +137,11 @@ export const TourYearCalendarMonth = ({
   tourName,
   locale,
   pt,
-}: Omit<CalendarDayProps, 'day' | 'occurrence' | 'layout'> & Readonly<{
-  highlightedDays: ReadonlyMap<number, CalendarOccurrence>;
-  emptyMessage: string | undefined;
-}>) => {
+}: Omit<CalendarDayProps, 'day' | 'occurrence' | 'layout'> &
+  Readonly<{
+    highlightedDays: ReadonlyMap<number, CalendarOccurrence>;
+    emptyMessage: string | undefined;
+  }>) => {
   const dayProps = { monthIndex, year, tourId, search, canCreateShift, tourName, locale, pt };
   const first = new Date(Date.UTC(year, monthIndex, 1));
   const startWeekday = (first.getUTCDay() + 6) % 7;

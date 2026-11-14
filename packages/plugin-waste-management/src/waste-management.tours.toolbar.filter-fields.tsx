@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { toDatetimeLocalValue } from '@sva/plugin-sdk';
+import { isCalendarDate, usePluginTranslation } from '@sva/plugin-sdk';
+import { DateInput, Input, Select, StudioField } from '@sva/studio-ui-react';
 import { type WasteTourStatus } from '@sva/waste-management-contracts';
-import { Input, Select } from '@sva/studio-ui-react';
+import { useId, type ReactNode } from 'react';
 
 import type { WasteManagementTourValidityPeriod } from './search-params.js';
 
@@ -31,12 +32,19 @@ const WasteToursToolbarFilterField = ({
 }: {
   readonly label: string;
   readonly children: ReactNode;
-}) => (
-  <label className="flex min-w-44 flex-col gap-2 text-sm">
-    <span className="text-muted-foreground">{label}</span>
-    {children}
-  </label>
-);
+}) => {
+  const id = useId();
+  return (
+    <StudioField
+      id={id}
+      label={label}
+      controlProps={{ id }}
+      className="flex min-w-44 flex-col gap-2 text-sm"
+    >
+      {children}
+    </StudioField>
+  );
+};
 
 const TourValidityPeriodField = ({
   value,
@@ -46,7 +54,7 @@ const TourValidityPeriodField = ({
   onChange: (value: WasteManagementTourValidityPeriod) => void;
 }>) => {
   const pt = usePluginTranslation('wasteManagement');
-  const referenceYear = new Date().getFullYear();
+  const referenceYear = Number(toDatetimeLocalValue(new Date().toISOString()).slice(0, 4));
   return (
     <WasteToursToolbarFilterField label={pt('tours.filters.validityPeriodLabel')}>
       <Select
@@ -166,38 +174,46 @@ const WasteToursToolbarDateFilterFields = ({
   return (
     <>
       <WasteToursToolbarFilterField label={pt('tours.filters.firstDateFromLabel')}>
-        <Input
+        <DateInput
+          id="waste-tour-filter-date-1"
           aria-label={pt('tours.filters.firstDateFromLabel')}
-          type="date"
           value={draftFirstDateFrom ?? ''}
-          onChange={(event) => onDraftFirstDateFromChange(event.target.value || undefined)}
+          onValueChange={(value) => {
+            if (!value || isCalendarDate(value)) onDraftFirstDateFromChange(value || undefined);
+          }}
           className="h-10 rounded-lg"
         />
       </WasteToursToolbarFilterField>
       <WasteToursToolbarFilterField label={pt('tours.filters.firstDateToLabel')}>
-        <Input
+        <DateInput
+          id="waste-tour-filter-date-2"
           aria-label={pt('tours.filters.firstDateToLabel')}
-          type="date"
           value={draftFirstDateTo ?? ''}
-          onChange={(event) => onDraftFirstDateToChange(event.target.value || undefined)}
+          onValueChange={(value) => {
+            if (!value || isCalendarDate(value)) onDraftFirstDateToChange(value || undefined);
+          }}
           className="h-10 rounded-lg"
         />
       </WasteToursToolbarFilterField>
       <WasteToursToolbarFilterField label={pt('tours.filters.endDateFromLabel')}>
-        <Input
+        <DateInput
+          id="waste-tour-filter-date-3"
           aria-label={pt('tours.filters.endDateFromLabel')}
-          type="date"
           value={draftEndDateFrom ?? ''}
-          onChange={(event) => onDraftEndDateFromChange(event.target.value || undefined)}
+          onValueChange={(value) => {
+            if (!value || isCalendarDate(value)) onDraftEndDateFromChange(value || undefined);
+          }}
           className="h-10 rounded-lg"
         />
       </WasteToursToolbarFilterField>
       <WasteToursToolbarFilterField label={pt('tours.filters.endDateToLabel')}>
-        <Input
+        <DateInput
+          id="waste-tour-filter-date-4"
           aria-label={pt('tours.filters.endDateToLabel')}
-          type="date"
           value={draftEndDateTo ?? ''}
-          onChange={(event) => onDraftEndDateToChange(event.target.value || undefined)}
+          onValueChange={(value) => {
+            if (!value || isCalendarDate(value)) onDraftEndDateToChange(value || undefined);
+          }}
           className="h-10 rounded-lg"
         />
       </WasteToursToolbarFilterField>

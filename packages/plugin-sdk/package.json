@@ -26,6 +26,10 @@
     "./app-translations": {
       "types": "./dist/app-translations.d.ts",
       "default": "./dist/app-translations.js"
+    },
+    "./temporal": {
+      "types": "./dist/temporal.d.ts",
+      "default": "./dist/temporal.js"
     }
   },
   "dependencies": {

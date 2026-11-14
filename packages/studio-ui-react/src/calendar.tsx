@@ -1,6 +1,12 @@
+import { UTCDate } from '@date-fns/utc';
 import { DayPicker, type DayPickerProps, type ChevronProps } from 'react-day-picker';
 
-import { IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconChevronUp as ChevronUp, IconChevronDown as ChevronDown } from '@tabler/icons-react';
+import {
+  IconChevronLeft as ChevronLeft,
+  IconChevronRight as ChevronRight,
+  IconChevronUp as ChevronUp,
+  IconChevronDown as ChevronDown,
+} from '@tabler/icons-react';
 
 import { buttonVariants } from './button.js';
 import { cn } from './utils.js';
@@ -17,6 +23,13 @@ function CalendarChevron({ orientation, className }: ChevronProps) {
   return <Icon aria-hidden="true" className={className} />;
 }
 
+// DayPicker/date-fns preserve the Date subclass in their calendar arithmetic.
+// Supplying UTCDate also for newly constructed dates avoids host-zone skipped days.
+const calendarDateLib = {
+  newDate: (year: number, month: number, day: number) => new UTCDate(year, month, day),
+  today: () => new UTCDate(),
+};
+
 // shadcn Calendar composition; DayPicker owns the date grid and keyboard behavior.
 export function Calendar({ className, classNames, components, ...props }: DayPickerProps) {
   const dayButton = cn(
@@ -25,6 +38,7 @@ export function Calendar({ className, classNames, components, ...props }: DayPic
   );
   return (
     <DayPicker
+      dateLib={calendarDateLib}
       showOutsideDays
       navLayout="around"
       className={cn('w-fit bg-popover p-3 text-popover-foreground', className)}

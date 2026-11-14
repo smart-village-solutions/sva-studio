@@ -1,6 +1,6 @@
 import { StudioEditorLeaveGuardProvider } from '@sva/studio-ui-react';
-import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const renderGuarded = (element: React.ReactElement) => {
@@ -57,7 +57,8 @@ vi.mock('../src/faq.api.js', () => ({
   },
 }));
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   hasContentLifecycleAccess: (
     action: string | undefined,
     resourceAccess: Readonly<Record<string, boolean>>

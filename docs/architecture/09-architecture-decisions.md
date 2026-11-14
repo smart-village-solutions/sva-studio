@@ -635,7 +635,7 @@ Der Change `refactor-shared-editor-primitives` konkretisiert die bestehende
 Package-Strategie ohne neue generische Framework-Schicht: reine Clientverträge
 liegen im Plugin-SDK, React-Orchestrierung in der Studio-UI und Fachlogik in
 den Plugins. Die erlaubte UI-zu-SDK-Richtung ist auf den Subpath
-`content-media` begrenzt und wird statisch geprüft.
+`content-media` und `temporal` begrenzt und wird statisch geprüft.
 
 Zuordnung:
 

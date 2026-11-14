@@ -1,33 +1,34 @@
+import { formatCalendarDate } from '@sva/plugin-sdk';
 /** Baustellenübersicht mit gemeinsamen Studio-Tabellenbereichen und fachlichen Spalten. */
-import { useEffect, useState } from 'react';
-import { Link, useSearch, useNavigate } from '@tanstack/react-router';
 import {
-  normalizeListSearch,
-  type MainserverActingPrincipalType,
-  usePluginTranslation,
-  toDatetimeLocalValue,
   formatDateTimeInEditorTimeZone,
+  normalizeListSearch,
+  toDatetimeLocalValue,
+  usePluginTranslation,
+  type MainserverActingPrincipalType,
 } from '@sva/plugin-sdk';
 import {
   Button,
-  StudioListPageTemplate,
-  StudioTableValueAction,
   MainserverPrincipalControl,
   resolveMainserverPrincipalOptions,
   Select,
-  StudioField,
   StudioDataTable,
-  StudioPagination,
-  StudioLoadingState,
-  StudioErrorState,
   StudioEmptyState,
-  type StudioColumnDef,
+  StudioErrorState,
+  StudioField,
+  StudioListPageTemplate,
+  StudioLoadingState,
+  StudioPagination,
+  StudioTableValueAction,
   type MainserverPrincipalControlModel,
+  type StudioColumnDef,
 } from '@sva/studio-ui-react';
-import { constructionSiteTemporalState, type ConstructionSiteList } from './contract.js';
-import { listConstructionSites, listConstructionSiteCategories } from './construction-sites.api.js';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 import { useConstructionSiteAccess } from './construction-sites.access.js';
+import { listConstructionSiteCategories, listConstructionSites } from './construction-sites.api.js';
 import { ListFilters, listFilters } from './construction-sites.list-filters.js';
+import { constructionSiteTemporalState, type ConstructionSiteList } from './contract.js';
 
 function useListData(query: string, scope: string, principal: MainserverActingPrincipalType) {
   const [result, setResult] = useState<ConstructionSiteList>();
@@ -90,12 +91,12 @@ function listColumns(
     {
       id: 'start',
       header: pt('fields.dateStart'),
-      cell: (item) => item.input.dates[0]?.dateStart ?? '',
+      cell: (item) => formatCalendarDate(item.input.dates[0]?.dateStart) ?? '',
     },
     {
       id: 'end',
       header: pt('fields.dateEnd'),
-      cell: (item) => item.input.dates[0]?.dateEnd ?? '',
+      cell: (item) => formatCalendarDate(item.input.dates[0]?.dateEnd) ?? '',
     },
     {
       id: 'state',

@@ -1,11 +1,12 @@
-import type { ReactNode } from 'react';
 import {
   Input,
+  InstantInput,
   StudioField,
   StudioFieldGroup,
   getStudioFormFieldProps,
 } from '@sva/studio-ui-react';
-import { useFormContext } from 'react-hook-form';
+import type { ReactNode } from 'react';
+import { Controller, useFormContext } from 'react-hook-form';
 import { GenericItemsDetailCard } from './generic-items.detail-card.js';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
 
@@ -78,7 +79,19 @@ export const GenericItemsMetaCard = ({
           label={labels.publishedAt}
           description={labels.publishedAtHelp}
         >
-          <Input {...publishedAtField.controlProps} {...register('publishedAt')} />
+          <Controller
+            name="publishedAt"
+            render={({ field }) => (
+              <InstantInput
+                label={labels.publishedAt}
+                {...publishedAtField.controlProps}
+                value={field.value}
+                onValueChange={field.onChange}
+                onBlur={field.onBlur}
+                ref={field.ref}
+              />
+            )}
+          />
         </StudioField>
       ) : null}
       {children}

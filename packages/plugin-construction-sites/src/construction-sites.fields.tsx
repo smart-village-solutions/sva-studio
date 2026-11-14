@@ -1,22 +1,23 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
+  DateInput,
   Input,
+  RichTextHtmlEditor,
   SearchableMultiSelect,
   Select,
   StudioDetailCard,
   StudioField,
   StudioSwitch,
-  RichTextHtmlEditor,
 } from '@sva/studio-ui-react';
-import { TrafficFields, LocationFields } from './construction-sites.traffic-fields.js';
 import { ConstructionSiteMediaFields } from './construction-sites.form-media.js';
-
-export { constructionSiteFieldId } from './construction-sites.form.js';
 import {
   constructionSiteFieldId,
   type ConstructionSiteFormProps,
 } from './construction-sites.form.js';
+import { LocationFields, TrafficFields } from './construction-sites.traffic-fields.js';
+
+export { constructionSiteFieldId } from './construction-sites.form.js';
 export type { ConstructionSiteFormProps } from './construction-sites.form.js';
 
 export function ConstructionSiteBasisFields({
@@ -57,17 +58,17 @@ export function ConstructionSiteBasisFields({
                   errors.includes(`dates.${index}.${key}`) ? pt('validation.invalid') : undefined
                 }
               >
-                <Input
+                <DateInput
+                  label={pt(`fields.${key}`)}
                   id={constructionSiteFieldId(`dates.${index}.${key}`)}
-                  type="date"
                   value={date[key]}
                   required={index === 0}
                   aria-invalid={errors.includes(`dates.${index}.${key}`)}
-                  onChange={(event) =>
+                  onValueChange={(value) =>
                     change(
                       'dates',
                       draft.dates.map((item, position) =>
-                        position === index ? { ...item, [key]: event.currentTarget.value } : item
+                        position === index ? { ...item, [key]: value } : item
                       )
                     )
                   }

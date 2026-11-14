@@ -99,7 +99,8 @@ export const rolesAdminENResources = {
     iamUserRead: 'View user accounts and their details.',
     iamUserWrite: 'Change user account details.',
     iamAuthenticationPolicyManage: 'Manage tenant authentication policy',
-    iamInvitationTemplateManage: 'Edit account invitation and email verification templates for your instance.',
+    iamInvitationTemplateManage:
+      'Edit account invitation and email verification templates for your instance.',
     iamRoleRead: 'View roles and their assignments.',
     iamRoleWrite: 'Change roles and their assignments.',
     iamOrgRead: 'View organizations and their details.',
@@ -121,7 +122,8 @@ export const rolesAdminENResources = {
     appTextsRead: 'Read German app texts',
     appTextsWrite: 'Edit German app texts',
     appTextsPublish: 'Seal German app texts',
-    appRead: 'Legacy permission for the former app link. Editorial access requires the App module and the corresponding catalog permissions.',
+    appRead:
+      'Legacy permission for the former app link. Editorial access requires the App module and the corresponding catalog permissions.',
     cockpitRead: 'See the cockpit link in the side menu.',
     modulesRead: 'See the list of available modules.',
     contentRead: 'View content.',

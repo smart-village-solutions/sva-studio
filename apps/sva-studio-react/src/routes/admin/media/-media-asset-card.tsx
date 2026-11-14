@@ -1,3 +1,4 @@
+import { formatCalendarDate, toDatetimeLocalValue } from '@sva/plugin-sdk';
 import { Link } from '@tanstack/react-router';
 import { IconFolder as Folder } from '@tabler/icons-react';
 
@@ -65,22 +66,10 @@ const formatFileType = (mimeType: string | undefined): string => {
 };
 
 const formatUpdatedAt = (value: string | undefined): string | null => {
-  if (!value) {
-    return null;
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  const locale = getActiveLocale() === 'de' ? 'de-DE' : 'en-US';
-  return new Intl.DateTimeFormat(locale, {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(date);
+  const day = toDatetimeLocalValue(value).slice(0, 10);
+  return day
+    ? (formatCalendarDate(day, getActiveLocale() === 'de' ? 'de-DE' : 'en-GB') ?? null)
+    : null;
 };
 
 const imageMimeTypeByExtension: Readonly<Record<string, string>> = {

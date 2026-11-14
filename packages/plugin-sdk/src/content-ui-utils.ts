@@ -36,10 +36,10 @@ const createDateTimeFormatter = (
   });
 
 const datetimeLocalPattern =
-  /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2})$/;
+  /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2})(?::(?<second>\d{2})(?:\.(?<fraction>\d{1,3}))?)?$/;
 
 const parseDate = (value?: string): Date | null => {
-  if (!value) {
+  if (!value || !isInstant(value)) {
     return null;
   }
 
@@ -98,6 +98,61 @@ export const resolveEditorLocale = (locale?: string): string => {
   }
 };
 
+/** Calendar dates and wall-clock times have no time zone. Never parse them as instants. */
+export const isCalendarDate = (value: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+
+export const isTimeOfDay = (value: string): boolean =>
+  /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?$/.test(value);
+
+export const isLocalDateTime = (value: string): boolean => {
+  const [day, time, extra] = value.split('T');
+  return extra === undefined && isCalendarDate(day ?? '') && isTimeOfDay(time ?? '');
+};
+
+/** An instant must carry an explicit offset; browser-local parsing is never a wire contract. */
+export const isInstant = (value: string): boolean => {
+  const match =
+    /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?)(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (
+    !match ||
+    !isCalendarDate(match[1]!) ||
+    !isTimeOfDay(match[2]!.replace(/(\.\d{3})\d+$/, '$1'))
+  )
+    return false;
+  return Number.isFinite(Date.parse(value));
+};
+
+export const formatCalendarDate = (value?: string, locale?: string): string | undefined => {
+  if (!value || !isCalendarDate(value)) return value;
+  return new Intl.DateTimeFormat(resolveEditorLocale(locale), {
+    timeZone: 'UTC',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(`${value}T00:00:00.000Z`));
+};
+
+export const formatTimeOfDay = (value?: string, locale?: string): string | undefined => {
+  if (!value || !isTimeOfDay(value)) return value;
+  return new Intl.DateTimeFormat(resolveEditorLocale(locale), {
+    timeZone: 'UTC',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    ...(value.length > 5 ? { second: '2-digit' as const } : {}),
+    ...(value.includes('.') ? { fractionalSecondDigits: 3 as const } : {}),
+  }).format(new Date(`2000-01-01T${value}Z`));
+};
+
+export const formatLocalDateTime = (value?: string, locale?: string): string | undefined => {
+  if (!value || !isLocalDateTime(value)) return value;
+  return `${formatCalendarDate(value.split('T')[0], locale)}, ${formatTimeOfDay(value.split('T')[1], locale)}`;
+};
+
 export const formatDateTimeInEditorTimeZone = (
   value?: string,
   locale?: string
@@ -141,7 +196,12 @@ export const toDatetimeLocalValue = (value?: string): string => {
   }
 
   const parts = formatEditorDateTimeParts(date);
-  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+  const base = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+  const seconds = date.getUTCSeconds();
+  const milliseconds = date.getUTCMilliseconds();
+  return seconds || milliseconds
+    ? `${base}:${String(seconds).padStart(2, '0')}${milliseconds ? `.${String(milliseconds).padStart(3, '0')}` : ''}`
+    : base;
 };
 
 export const fromDatetimeLocalValue = (value: string, referenceValue?: string): string => {
@@ -159,6 +219,12 @@ export const fromDatetimeLocalValue = (value: string, referenceValue?: string): 
   const day = Number(match.groups.day);
   const hour = Number(match.groups.hour);
   const minute = Number(match.groups.minute);
+  const second = Number(match.groups.second ?? 0);
+  const millisecond = Number((match.groups.fraction ?? '').padEnd(3, '0'));
+  const matchesInput = (date: Date) =>
+    toDatetimeLocalValue(date.toISOString()).slice(0, 16) === value.slice(0, 16) &&
+    (match.groups?.second === undefined ||
+      (date.getUTCSeconds() === second && date.getUTCMilliseconds() === millisecond));
 
   if (
     [year, month, day, hour, minute].some((entry) => Number.isInteger(entry) === false) ||
@@ -169,19 +235,20 @@ export const fromDatetimeLocalValue = (value: string, referenceValue?: string): 
     hour < 0 ||
     hour > 23 ||
     minute < 0 ||
-    minute > 59
+    minute > 59 ||
+    second > 59
   ) {
     return '';
   }
 
   if (referenceValue) {
     const referenceDate = parseDate(referenceValue);
-    if (referenceDate && toDatetimeLocalValue(referenceDate.toISOString()) === value) {
-      return referenceDate.toISOString();
+    if (referenceDate && matchesInput(referenceDate)) {
+      return referenceValue;
     }
   }
 
-  const naiveUtcTime = Date.UTC(year, month - 1, day, hour, minute);
+  const naiveUtcTime = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
   const searchWindowMs = 4 * 60 * 60 * 1000;
 
   for (
@@ -190,7 +257,7 @@ export const fromDatetimeLocalValue = (value: string, referenceValue?: string): 
     currentMs += 60_000
   ) {
     const isoValue = new Date(currentMs).toISOString();
-    if (toDatetimeLocalValue(isoValue) === value) {
+    if (matchesInput(new Date(isoValue))) {
       return isoValue;
     }
   }

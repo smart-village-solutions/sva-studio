@@ -1,6 +1,6 @@
+import { isCalendarDate, usePluginTranslation } from '@sva/plugin-sdk';
+import { DateInput, Input, Select, StudioField } from '@sva/studio-ui-react';
 import { useNavigate } from '@tanstack/react-router';
-import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Input, Select, StudioField } from '@sva/studio-ui-react';
 
 export function ListFilters({
   filters,
@@ -38,11 +38,13 @@ export function ListFilters({
       </StudioField>
       {(['dateStart', 'dateEnd'] as const).map((key) => (
         <StudioField key={key} id={`cs-filter-${key}`} label={pt(`fields.${key}`)}>
-          <Input
+          <DateInput
+            label={pt(`fields.${key}`)}
             id={`cs-filter-${key}`}
-            type="date"
             value={filters[key]}
-            onChange={(event) => filter(key, event.currentTarget.value)}
+            onValueChange={(value) => {
+              if (!value || isCalendarDate(value)) filter(key, value);
+            }}
           />
         </StudioField>
       ))}

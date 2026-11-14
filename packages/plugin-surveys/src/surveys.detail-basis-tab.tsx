@@ -1,8 +1,9 @@
+import { Controller } from 'react-hook-form';
 import { SurveyMetadataCard } from './surveys.detail-metadata-card.js';
 // fallow-ignore-file code-duplication
+import { Button, Input, LocalDateTimeInput, Select, StudioField } from '@sva/studio-ui-react';
 import React from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { Button, Input, Select, StudioField } from '@sva/studio-ui-react';
 
 import { StudioDetailCard } from '@sva/studio-ui-react';
 import type { SurveyDetailFormValues } from './surveys.detail-form.js';
@@ -79,8 +80,6 @@ export function SurveyStatusField({ pt }: Readonly<{ pt: SurveyContentTranslate 
   );
 }
 export function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
-  const { register } = useFormContext<SurveyDetailFormValues>();
-
   return (
     <StudioDetailCard
       title={pt('cards.basis.schedule.title')}
@@ -88,10 +87,34 @@ export function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate
     >
       <div className="space-y-4">
         <StudioField id="survey-start-at" label={pt('fields.startAt')}>
-          <Input id="survey-start-at" type="datetime-local" {...register('basis.startAt')} />
+          <Controller
+            name={'basis.startAt'}
+            render={({ field }) => (
+              <LocalDateTimeInput
+                label={pt('fields.startAt')}
+                id="survey-start-at"
+                value={field.value}
+                onValueChange={field.onChange}
+                onBlur={field.onBlur}
+                ref={field.ref}
+              />
+            )}
+          />
         </StudioField>
         <StudioField id="survey-end-at" label={pt('fields.endAt')}>
-          <Input id="survey-end-at" type="datetime-local" {...register('basis.endAt')} />
+          <Controller
+            name={'basis.endAt'}
+            render={({ field }) => (
+              <LocalDateTimeInput
+                label={pt('fields.endAt')}
+                id="survey-end-at"
+                value={field.value}
+                onValueChange={field.onChange}
+                onBlur={field.onBlur}
+                ref={field.ref}
+              />
+            )}
+          />
         </StudioField>
         <p className="text-sm text-muted-foreground">{pt('messages.unlimitedScheduleHint')}</p>
       </div>

@@ -1,3 +1,4 @@
+import { toDatetimeLocalValue } from '@sva/plugin-sdk';
 import {
   Badge,
   Button,
@@ -98,31 +99,29 @@ const initialCalendarYear = (tour: WasteTourRecord | null, currentYear: number):
     : startYear;
 };
 
-const TourYearCalendarStatus = ({ id, statusKey, loading, reasons, pt }: Readonly<{
+const TourYearCalendarStatus = ({
+  id,
+  statusKey,
+  loading,
+  reasons,
+  pt,
+}: Readonly<{
   id: string;
   statusKey: string | null;
   loading: boolean;
   reasons: readonly string[];
   pt: TourYearCalendarTranslate;
 }>) => (
-            <div
-              id={id}
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-              className="space-y-1 text-sm"
-            >
-              {statusKey ? (
-                <p className="font-medium">{pt(`tours.yearCalendar.meta.${statusKey}`)}</p>
-              ) : null}
-              {!loading
-                ? reasons.map((reason) => (
-                    <p key={reason} className="text-muted-foreground">
-                      {pt(`tours.yearCalendar.meta.${reason}`)}
-                    </p>
-                  ))
-                : null}
-            </div>
+  <div id={id} role="status" aria-live="polite" aria-atomic="true" className="space-y-1 text-sm">
+    {statusKey ? <p className="font-medium">{pt(`tours.yearCalendar.meta.${statusKey}`)}</p> : null}
+    {!loading
+      ? reasons.map((reason) => (
+          <p key={reason} className="text-muted-foreground">
+            {pt(`tours.yearCalendar.meta.${reason}`)}
+          </p>
+        ))
+      : null}
+  </div>
 );
 
 const calendarStatusKey = (loading: boolean, complete: boolean, entryCount: number) =>
@@ -131,7 +130,10 @@ const calendarStatusKey = (loading: boolean, complete: boolean, entryCount: numb
 export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const locale = resolveEditorLocale();
-  const startYear = initialCalendarYear(props.tour, new Date().getFullYear());
+  const startYear = initialCalendarYear(
+    props.tour,
+    Number(toDatetimeLocalValue(new Date().toISOString()).slice(0, 4))
+  );
   const [year, setYear] = useState(startYear);
   const canCreateShift = Boolean(
     props.canManageScheduling && props.tour && isWasteTourValidityApplicable(props.tour)
@@ -172,8 +174,13 @@ export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
           <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
             <TourYearCalendarControls year={year} setYear={setYear} pt={pt} />
 
-            <TourYearCalendarStatus id={statusId} statusKey={statusKey}
-              loading={loading} reasons={reasons} pt={pt} />
+            <TourYearCalendarStatus
+              id={statusId}
+              statusKey={statusKey}
+              loading={loading}
+              reasons={reasons}
+              pt={pt}
+            />
             <div
               aria-describedby={statusId}
               className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3"

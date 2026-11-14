@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDatePickerValue, readDatePickerInput } from './date-picker-value.js';
+import {
+  formatDatePickerValue,
+  parseDatePickerValue,
+  readDatePickerInput,
+} from './date-picker-value.js';
 
 describe('date-only input contract', () => {
   it.each([
     ['9.9.2026', 'de-DE', '2026-09-09'],
     ['29.02.2024', 'de-DE', '2024-02-29'],
     ['2026-03-29', 'de-DE', '2026-03-29'],
+    ['2011-12-30', 'de-DE', '2011-12-30'],
     ['10/25/2026', 'en-US', '2026-10-25'],
     ['25/10/2026', 'en-GB', '2026-10-25'],
   ] as const)('reads %s in %s without shifting the day', (input, locale, value) => {
@@ -31,4 +36,9 @@ describe('date-only input contract', () => {
     ).toBeNull();
     expect(formatDatePickerValue(null, 'de-DE')).toBe('');
   });
+});
+
+it('uses UTC carriers for calendar dates without interpreting them as API instants', () => {
+  expect(parseDatePickerValue('2011-12-30')?.toISOString()).toBe('2011-12-30T00:00:00.000Z');
+  expect(parseDatePickerValue('2026-07-01')?.toISOString()).toBe('2026-07-01T00:00:00.000Z');
 });

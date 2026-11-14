@@ -1,4 +1,4 @@
-import { rolePermissionDescriptionsDE } from './roles-permission-descriptions.resources';
+import { rolePermissionDescriptionsDE } from './roles-permission-descriptions.partial.resources.js';
 
 export const rolesAdminDEResources = {
   page: {

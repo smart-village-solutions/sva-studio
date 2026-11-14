@@ -27,7 +27,8 @@ export const operationsInstancesAdminDEResources = {
     userProfile: {
       title: 'Studio-Benutzerprofil abgleichen',
       aligned: 'Die Studio-Profilfelder entsprechen dem Sollzustand.',
-      pending: 'Studio ergänzt fehlende Profilfelder und prüft ihre administrativen Berechtigungen.',
+      pending:
+        'Studio ergänzt fehlende Profilfelder und prüft ihre administrativen Berechtigungen.',
       failed: 'Die Studio-Profilfelder konnten nicht bestätigt werden.',
     },
     realmBaseline: {

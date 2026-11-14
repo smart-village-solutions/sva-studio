@@ -1,18 +1,20 @@
 import * as React from 'react';
 
-import type { DatePickerProps } from './date-picker.js';
 import {
   formatDatePickerValue,
   parseDatePickerValue,
   readDatePickerInput,
 } from './date-picker-value.js';
+import type { DatePickerProps } from './date-picker.js';
 
 export function useDatePickerDraft(
   props: DatePickerProps,
   forwardedRef: React.ForwardedRef<HTMLInputElement>
 ) {
   const { value, locale, labels, required, min, max, id } = props;
-  const [input, setInput] = React.useState(() => formatDatePickerValue(value, locale));
+  const [input, setInput] = React.useState(
+    () => formatDatePickerValue(value, locale) || value || ''
+  );
   const [touched, setTouched] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const emittedValue = React.useRef(value);
@@ -27,7 +29,7 @@ export function useDatePickerDraft(
   );
   React.useEffect(() => {
     if (value !== emittedValue.current || locale !== previousLocale.current) {
-      setInput(formatDatePickerValue(value, locale));
+      setInput(formatDatePickerValue(value, locale) || value || '');
       setTouched(false);
     }
     emittedValue.current = value;
@@ -42,11 +44,33 @@ export function useDatePickerDraft(
   React.useEffect(() => {
     props.onValidationChange?.(result.error);
   }, [props.onValidationChange, result.error]);
+  // Editor forms may use noValidate. A partial date must never turn into a saved empty date.
+  React.useEffect(() => {
+    const input = inputRef.current;
+    const form = input?.form;
+    if (!input || !form) return;
+    const validate = (event: Event) => {
+      if (
+        input.disabled ||
+        input.readOnly ||
+        !input.validity.customError ||
+        input.value.trim() === ''
+      )
+        return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setTouched(true);
+      input.focus();
+      input.reportValidity();
+    };
+    form.addEventListener('submit', validate, true);
+    return () => form.removeEventListener('submit', validate, true);
+  }, []);
   const changeInput = (next: string) => {
     const parsed = readDatePickerInput(next, locale, { required, min, max });
     setInput(next);
-    emittedValue.current = parsed.value;
-    props.onChange(parsed.value, parsed.error);
+    emittedValue.current = props.controlOnly && parsed.error ? next : parsed.value;
+    props.onChange(parsed.value, parsed.error, next);
   };
   const blur = () => {
     setTouched(true);
@@ -68,7 +92,10 @@ export function useDatePickerDraft(
       onBlur: blur,
       'aria-required': required || undefined,
       'aria-invalid': error ? true : undefined,
-      'aria-describedby': [`${id}-description`, error ? `${id}-error` : null]
+      'aria-describedby': [
+        props.controlOnly ? `${id}-format` : `${id}-description`,
+        error ? (props.controlOnly ? `${id}-input-error` : `${id}-error`) : null,
+      ]
         .filter(Boolean)
         .join(' '),
       onChange: (event: React.ChangeEvent<HTMLInputElement>) => changeInput(event.target.value),

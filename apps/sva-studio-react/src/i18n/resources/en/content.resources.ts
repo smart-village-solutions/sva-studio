@@ -1,4 +1,4 @@
-import { contentENErrors } from './content.errors.resources.js';
+import { contentENErrors } from './content.errors.partial.resources.js';
 
 export const contentENResources = {
   leaveGuard: {

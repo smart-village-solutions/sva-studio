@@ -276,3 +276,13 @@ export * from './data-exchange-public-api.js';
 export { hasContentLifecycleAccess, resolveContentLifecycleAction, resolveContentVisibilityAction } from './standard-content-access.js';
 
 export { registerPluginLocaleResolver, readPluginLocales } from './plugin-translations.js';
+
+export {
+  isCalendarDate,
+  isTimeOfDay,
+  isLocalDateTime,
+  isInstant,
+  formatCalendarDate,
+  formatTimeOfDay,
+  formatLocalDateTime,
+} from './content-ui-utils.js';

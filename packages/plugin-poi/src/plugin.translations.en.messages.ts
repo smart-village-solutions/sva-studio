@@ -1,4 +1,6 @@
 export const poiMessagesEn = {
+  savedVisible: 'Saved as visible',
+  savedHidden: 'Saved hidden',
   voucherOperationUnavailable: 'This action is unavailable because the location has linked vouchers. Manage them in the voucher editor.',
   editorReloadRequired: 'The location editor has been updated. Reload the page before saving again.',
   lunchesUnavailable: 'Existing lunch offers could not be loaded completely. The location was not saved. Reload the page and try again.',

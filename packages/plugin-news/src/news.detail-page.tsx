@@ -141,10 +141,18 @@ export const NewsDetailPage = ({
   React.useEffect(() => {
     if (!isLoading && initiallySaved && !initialSaveFeedbackShownRef.current) {
       initialSaveFeedbackShownRef.current = true;
+      const publicationMode = methods.getValues('publicationMode');
+      setStatusMessage((current) => current ?? {
+        source: 'success',
+        text: pt(
+          publicationMode === 'draft' ? 'actions.savedDraft' :
+          publicationMode === 'scheduled' ? 'actions.savedScheduled' : 'actions.savedPublished'
+        ),
+      });
       saveFeedback.showSaved();
       onInitialSavedConsumed?.();
     }
-  }, [initiallySaved, isLoading, onInitialSavedConsumed, saveFeedback]);
+  }, [initiallySaved, isLoading, onInitialSavedConsumed, saveFeedback, methods, pt]);
   const {
     mediaPicker,
     mediaPickerLabels,

@@ -2,6 +2,8 @@ import { eventsDECreate, eventsDEValidation } from './plugin.translations.de.lab
 export const eventsDEEditor = {
   create: eventsDECreate,
   messages: {
+    savedVisible: 'Sichtbar gespeichert',
+    savedHidden: 'Verborgen gespeichert',
     requestReference: 'Fehlerreferenz:',
     copyRequestReference: 'Referenz kopieren',
     requestReferenceCopied: 'Kopiert',

@@ -100,7 +100,7 @@ export const NewsDetailSaveStatus = (props: NewsDetailSaveStatusProps) => {
           }
         />
       ) : null}
-      {statusMessage?.source === 'recovered' ? (
+      {statusMessage?.source === 'recovered' || statusMessage?.source === 'success' ? (
         <StudioPersistentActionResult kind="success" title={statusMessage.text} />
       ) : statusMessage ? (
         <StudioPersistentFormError

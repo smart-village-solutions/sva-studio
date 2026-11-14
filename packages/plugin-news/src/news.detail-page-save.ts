@@ -194,7 +194,13 @@ const completeNewsDetailSave = async (
   options.setLoadedItem(saved);
   options.setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
   options.setInvalidScheduledPublicationInput(false);
-  options.setStatusMessage(null);
+  options.setStatusMessage({
+    source: 'success',
+    text: options.pt(
+      nextValues.publicationMode === 'draft' ? 'actions.savedDraft' :
+      nextValues.publicationMode === 'scheduled' ? 'actions.savedScheduled' : 'actions.savedPublished'
+    ),
+  });
   options.saveFeedback.markSaved(operationId);
 };
 

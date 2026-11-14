@@ -1,4 +1,6 @@
 export const poiMessagesDe = {
+  savedVisible: 'Sichtbar gespeichert',
+  savedHidden: 'Verborgen gespeichert',
   voucherOperationUnavailable: 'Die Aktion ist wegen verknüpfter Gutscheine nicht möglich. Bearbeiten Sie die Gutscheine im Gutscheinbereich.',
   editorReloadRequired: 'Die Ortsbearbeitung wurde aktualisiert. Laden Sie die Seite neu, bevor Sie erneut speichern.',
   lunchesUnavailable: 'Die vorhandenen Mittagsangebote konnten nicht vollständig geladen werden. Der Ort wurde nicht gespeichert. Laden Sie die Seite neu und versuchen Sie es erneut.',

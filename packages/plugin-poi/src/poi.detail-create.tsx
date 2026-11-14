@@ -3,17 +3,14 @@
  * Bestehende Feldabschnitte verwalten ihre Eingaben; der bestehende Editor behält den Submit.
  */
 import type { ReactNode } from 'react';
-import { useWatch } from 'react-hook-form';
 import { PoiDetailBasisTab } from './poi.detail-basis-tab.js';
-import { PoiDetailAdvancedTab } from './poi.detail-advanced-tab.js';
 import type { PoiDetailPageViewModel } from './poi.detail-page.view.js';
 
 export function PoiDetailCreate({
   view,
   content,
 }: Readonly<{ view: PoiDetailPageViewModel; content: ReactNode }>) {
-  const { pt, methods } = view;
-  const externalId = useWatch({ control: methods.control, name: 'settings.externalId' });
+  const { pt } = view;
   const basisProps = { ...view, availableCategories: view.categoryOptions };
   return (
     <div className="space-y-6">
@@ -31,13 +28,6 @@ export function PoiDetailCreate({
         <PoiDetailBasisTab {...basisProps} section="name" />
       </div>
       {content}
-      <details>
-        <summary id="poi-create-technical">
-          {pt('create.sections.technical')} · {pt('create.optional')} ·{' '}
-          {pt(externalId?.trim() ? 'create.filled' : 'create.empty')}
-        </summary>
-        <PoiDetailAdvancedTab pt={pt} />
-      </details>
       <div id="poi-create-active" tabIndex={-1}>
         <PoiDetailBasisTab {...basisProps} section="active" />
       </div>

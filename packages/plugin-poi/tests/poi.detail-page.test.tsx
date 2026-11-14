@@ -701,10 +701,20 @@ describe('PoiDetailPage', () => {
     }
   );
 
+  it.each([false, true])('confirms the saved visibility after creating content: %s', async (visible) => {
+    vi.mocked(createPoi).mockResolvedValueOnce({ id: 'created-1', name: 'New content', visible: !visible } as never);
+    render(<PoiDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'New content' } });
+    if (visible) fireEvent.click(screen.getByLabelText('Aktiv'));
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+    expect(await screen.findByText(`poi.messages.${!visible ? 'savedVisible' : 'savedHidden'}`)).toBeTruthy();
+  });
+
   it('renders Create without tabs or history and keeps a single ordered form', async () => {
     render(<PoiDetailPage mode="create" />);
     await screen.findByLabelText('Name');
     expect(hasUnsavedChanges()).toBe(false);
+    expect(screen.queryByLabelText('Externe ID')).toBeNull();
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Historie' })).toBeNull();
     expect(screen.getAllByRole('button', { name: /Speichern|anlegen/ })).toHaveLength(1);
@@ -721,7 +731,6 @@ describe('PoiDetailPage', () => {
         'links',
         'prices',
         'operator',
-        'technical',
         'active',
       ].map((id) => `poi-create-${id}`)
     );
@@ -806,7 +815,7 @@ describe('PoiDetailPage', () => {
       target: { value: 'http://example.com/poi' },
     });
     switchSection('settings');
-    expect(screen.getByLabelText('Externe ID')).toBeTruthy();
+    expect(screen.queryByLabelText('Externe ID')).toBeNull();
     expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
     expect(screen.queryByLabelText('Tags')).toBeNull();
     expect(screen.queryByLabelText('Barrierefreiheit')).toBeNull();

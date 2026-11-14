@@ -5,11 +5,22 @@ import { useStudioEditorLeaveGuard } from './studio-editor-leave-guard.js';
 import { useContentMediaTranslation } from '@sva/plugin-sdk/content-media';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './dialog.js';
 import { MediaIntakePanel } from './media-intake-panel.js';
-import { StudioMediaPickerLibraryPanel } from './studio-media-picker-library-panel.js';
+import {
+  StudioMediaPickerLibraryPanel,
+  type StudioMediaPickerLibraryPanelProps,
+} from './studio-media-picker-library-panel.js';
 import { StudioMediaPickerModeActions } from './studio-media-picker-mode-actions.js';
 import { StudioMediaPickerLinkPanel } from './studio-media-picker-link-panel.js';
-import { StudioMediaPickerReviewPanel } from './studio-media-picker-review-panel.js';
-import type { StudioMediaPickerOverlayProps } from './studio-media-picker-overlay.shared.js';
+import {
+  StudioMediaPickerReviewPanel,
+  type StudioMediaPickerReviewPanelProps,
+} from './studio-media-picker-review-panel.js';
+import type {
+  StudioMediaPickerAssetSummary,
+  StudioMediaPickerMode,
+  StudioMediaPickerOverlayLabels,
+  StudioMediaPickerUploadPhase,
+} from './studio-media-picker-overlay.shared.js';
 export type {
   StudioMediaPickerAssetDetail,
   StudioMediaPickerAssetSummary,
@@ -23,6 +34,24 @@ export type {
 } from './studio-media-picker-overlay.shared.js';
 export { useStudioMediaPickerOverlay } from './use-studio-media-picker-overlay.js';
 export { createLocalStudioMediaPickerAsset } from './studio-media-picker-local-asset.js';
+
+type StudioMediaPickerOverlayProps = StudioMediaPickerReviewPanelProps &
+  Readonly<{
+    libraryStatus?: StudioMediaPickerLibraryPanelProps['libraryStatus'];
+    open: boolean;
+    mode: StudioMediaPickerMode;
+    assets: readonly StudioMediaPickerAssetSummary[];
+    searchValue: string;
+    onSearchValueChange: (value: string) => void;
+    onChangeMode: (mode: 'library' | 'upload') => void;
+    onAddManual?: (persistentUrl?: string) => string | void;
+    onSelectAsset: (asset: StudioMediaPickerAssetSummary) => void | Promise<void>;
+    uploadPhase: StudioMediaPickerUploadPhase;
+    onUploadFile: (file: File) => void | Promise<void>;
+    isAssetSelectable?: (asset: StudioMediaPickerAssetSummary) => boolean;
+    labels: StudioMediaPickerOverlayLabels;
+    canUpload?: boolean;
+  }>;
 
 const StudioMediaPickerOverlayBody = (
   props: Omit<StudioMediaPickerOverlayProps, 'open' | 'onChangeMode' | 'onAddManual'> & {

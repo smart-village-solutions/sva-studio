@@ -1,6 +1,3 @@
-import type { StudioMediaPickerLibraryPanelProps } from './studio-media-picker-library-panel.js';
-import type { StudioMediaImageEdit } from './media-image-editor-state.js';
-import type { MediaEditorialMetadataPatch, MediaFocusPoint } from '@sva/media';
 import type {
   HostMediaUploadMetadata,
   HostMediaEditingUpload,
@@ -108,46 +105,3 @@ export const normalizeStudioMediaPickerSearchValue = (value: string) =>
 
 export const studioMediaPickerPreviewClassName =
   'flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-muted/20';
-
-export type StudioMediaPickerOverlayProps = Readonly<{
-  libraryStatus?: StudioMediaPickerLibraryPanelProps['libraryStatus'];
-  onWorkspaceDirtyChange?: (dirty: boolean) => void;
-  open: boolean;
-  mode: StudioMediaPickerMode;
-  reviewSource: StudioMediaPickerReviewSource;
-  assets: readonly StudioMediaPickerAssetSummary[];
-  searchValue: string;
-  onSearchValueChange: (value: string) => void;
-  onClose: () => void;
-  onChangeMode: (mode: 'library' | 'upload') => void;
-  onAddManual?: (persistentUrl?: string) => string | void;
-  onSelectAsset: (asset: StudioMediaPickerAssetSummary) => void | Promise<void>;
-  uploadPhase: StudioMediaPickerUploadPhase;
-  onUploadFile: (file: File) => void | Promise<void>;
-  reviewAsset: StudioMediaPickerAssetDetail | null;
-  metadataDraft: StudioMediaPickerMetadataDraft;
-  onMetadataChange: <Key extends keyof StudioMediaPickerMetadataDraft>(
-    key: Key,
-    value: StudioMediaPickerMetadataDraft[Key]
-  ) => void;
-  onBackFromReview: () => void;
-  onConfirmSelection: () => void | Promise<void>;
-  onOpenMediaManagement?: (assetId: string) => void | Promise<void>;
-  isLoadingReviewAsset?: boolean;
-  isSavingReviewAsset?: boolean;
-  isMetadataEditable?: boolean;
-  canConfirmSelection?: boolean;
-  initialEditorOpen?: boolean;
-  isUploadInitialized?: boolean;
-  persistenceContext?: 'content' | 'library' | 'settings';
-  canEditCentralMetadata?: boolean;
-  onImageFocusChange?: (focus: MediaFocusPoint) => void;
-  onApplyImageEdit?: (result: StudioMediaImageEdit) => void | Promise<void>;
-  onSaveCentralMetadata?: (metadata: MediaEditorialMetadataPatch) => Promise<boolean>;
-  visibleMetadataFields?: readonly StudioMediaPickerMetadataField[];
-  isAssetSelectable?: (asset: StudioMediaPickerAssetSummary) => boolean;
-  feedbackMessage?: string | null;
-  feedbackTone?: 'default' | 'success' | 'error';
-  labels: StudioMediaPickerOverlayLabels;
-  canUpload?: boolean;
-}>;

@@ -8,6 +8,6 @@
 ## Technischer Abnahmenachweis des vorhandenen Profils
 
 - [x] Tatsächlichen MCP-Rollen-POST in zwei synthetischen Testtenants speichern, unabhängig zurücklesen und wiederholte Ausführung sowie individuelle Rechteerhaltung prüfen.
-- [x] Erzeugte Grants an produktive Instanz-/Ownership-Prüfungen und bestehende Benutzer-/Rollen-Readhandler-Factories mit echten Guardcallbacks weitergeben; erlaubte und verweigerte Redaktions-/Adminfälle einschließlich Veröffentlichung und Tenant-/Organisationsgrenzen nachweisen.
+- [x] Erzeugte Grants an produktive Instanz-/Ownership-Prüfungen und bestehende Benutzer-/Rollen-Readhandler-Factories über lokale Callbacks zum produktiven Permissionguard weitergeben; erlaubte und verweigerte Redaktions-/Adminfälle einschließlich Veröffentlichung und Tenant-/Organisationsgrenzen nachweisen.
 - [x] Bestehende Sidebar-Tests mit demselben verbindlich abgeglichenen JSON-Grantvertrag ergänzen und gezielt prüfen.
 - [x] Script-Typecheck ausführen und synthetische I/O-Grenzen sowie weiterhin offene Live-Abnahme im bestehenden Entwicklungsdokument benennen.

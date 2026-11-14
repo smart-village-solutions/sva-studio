@@ -438,7 +438,7 @@ const unexpectedReadPath = (): never => {
   throw new Error('unexpected_read_path');
 };
 
-it('composes production user and role read-handler factories with real guards and produced assignments', async () => {
+it('composes read-handler factories with local callbacks invoking the production permission guard', async () => {
   const fixture = editorialTenants();
   await ensureEditorRoles({ contextIds: ['one', 'two'] }, fixture.contexts, fixture.call);
   const authorize = async (

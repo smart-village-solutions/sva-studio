@@ -104,6 +104,10 @@ export function EventsDetailPage({
     }
 
     initialSaveFeedbackShownRef.current = true;
+    setStatus((current) => current ?? {
+      kind: 'success',
+      text: pt(methods.getValues('settings.visible') ? 'messages.savedVisible' : 'messages.savedHidden'),
+    });
     saveFeedback.showSaved();
     void navigate({
       to: '/admin/events/$id',
@@ -111,7 +115,7 @@ export function EventsDetailPage({
       replace: true,
       state: (previous) => removeStudioSaveFeedback(previous),
     });
-  }, [contentId, loading, location.state, navigate, saveFeedback]);
+  }, [contentId, loading, location.state, navigate, saveFeedback, methods, pt]);
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,

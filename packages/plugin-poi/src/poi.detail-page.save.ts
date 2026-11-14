@@ -180,7 +180,10 @@ const submitPoi = async (input: SaveInput, values: PoiDetailFormValues) => {
       saveFeedback.markFailed(operationId);
       return;
     }
-    setStatus(null);
+    setStatus({
+      kind: 'success',
+      text: pt((saved.visible ?? saved.active ?? values.basis.active) ? 'messages.savedVisible' : 'messages.savedHidden'),
+    });
     saveFeedback.markSaved(operationId);
     if (mode === 'create') {
       input.leaveGuard.acknowledgeSaved(leaveRevision);
@@ -233,6 +236,7 @@ const savePoiVisibility = async (input: SaveInput, contentId: string, visible: b
       methods.setValue('basis.active', currentVisibility, { shouldDirty: true });
     }
     input.setLoadedItem((item) => (item?.id === contentId ? { ...item, visible } : item));
+    setStatus({ kind: 'success', text: pt(visible ? 'messages.savedVisible' : 'messages.savedHidden') });
     saveFeedback.markSaved(operationId);
   } catch (error) {
     setStatus({ kind: 'error', text: poiSaveErrorMessage(error, pt) });

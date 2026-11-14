@@ -295,6 +295,37 @@ describe('NewsDetailPage', () => {
     resetSessionAccessSnapshot();
   });
 
+  it.each([
+    [false, '2026-01-01T12:00:00.000Z', 'savedDraft'],
+    [true, '2026-01-01T12:00:00.000Z', 'savedPublished'],
+    [true, '2099-01-01T12:00:00.000Z', 'savedScheduled'],
+  ] as const)('confirms the returned publication state after saving: %s / %s', async (visible, publishedAt, key) => {
+    vi.mocked(getNewsDetail).mockResolvedValueOnce({
+      data: { id: 'news-1', title: 'Existing news', visible: false, payload: {} },
+      deviations: [],
+    } as never);
+    vi.mocked(saveNewsEditorItem).mockResolvedValueOnce({
+      id: 'news-1', title: 'Existing news', visible, publishedAt, payload: {},
+    } as never);
+    render(<NewsDetailPage mode="edit" contentId="news-1" />);
+    await screen.findByDisplayValue('Existing news');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[0]!);
+    expect(await screen.findByText(`news.actions.${key}`)).toBeTruthy();
+  });
+
+  it.each([
+    [false, '2026-01-01T12:00:00.000Z', 'savedDraft'],
+    [true, '2026-01-01T12:00:00.000Z', 'savedPublished'],
+    [true, '2099-01-01T12:00:00.000Z', 'savedScheduled'],
+  ] as const)('confirms the loaded publication state after creation: %s / %s', async (visible, publishedAt, key) => {
+    vi.mocked(getNewsDetail).mockResolvedValueOnce({
+      data: { id: 'news-created', title: 'Saved news', visible, publishedAt, payload: {} },
+      deviations: [],
+    } as never);
+    render(<NewsDetailPage mode="edit" contentId="news-created" initiallySaved />);
+    expect(await screen.findByText(`news.actions.${key}`)).toBeTruthy();
+  });
+
   it('renders one reachable save action after the editor', async () => {
     render(<NewsDetailPage mode="create" />);
 

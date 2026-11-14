@@ -558,10 +558,20 @@ describe('EventsDetailPage', () => {
     ).toBeTruthy();
   });
 
+  it.each([false, true])('confirms the saved visibility after creating content: %s', async (visible) => {
+    vi.mocked(createEvent).mockResolvedValueOnce({ id: 'created-1', title: 'New content', visible: !visible } as never);
+    render(<EventsDetailPage mode="create" />);
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'New content' } });
+    if (visible) fireEvent.click(screen.getByLabelText('Sichtbar'));
+    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+    expect(await screen.findByText(`events.messages.${!visible ? 'savedVisible' : 'savedHidden'}`)).toBeTruthy();
+  });
+
   it('renders Create without tabs or history and keeps a single ordered form', async () => {
     render(<EventsDetailPage mode="create" />);
     await screen.findByLabelText('Titel');
     expect(hasUnsavedChanges()).toBe(false);
+    expect(screen.queryByLabelText('Externe Kennung (optional)')).toBeNull();
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Historie' })).toBeNull();
     expect(screen.getAllByRole('button', { name: /Speichern|anlegen/ })).toHaveLength(1);
@@ -581,7 +591,6 @@ describe('EventsDetailPage', () => {
         'contacts',
         'links',
         'prices',
-        'technical',
         'publication',
       ].map((id) => `event-create-${id}`)
     );
@@ -1048,9 +1057,6 @@ describe('EventsDetailPage', () => {
       expect(screen.getByRole('button', { name: 'Kategorie Kultur entfernen' })).toBeTruthy();
     });
     openEventExtras();
-    fireEvent.change(screen.getByLabelText('Externe Kennung (optional)'), {
-      target: { value: 'event-ext-1' },
-    });
     fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
@@ -1060,7 +1066,6 @@ describe('EventsDetailPage', () => {
           title: 'Neues Event',
           categoryName: 'Kultur',
           categories: [{ name: 'Kultur' }],
-          externalId: 'event-ext-1',
           visible: false,
         }),
         'user'

@@ -1,4 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
+import type { PoiStatusMessage } from './poi.detail-page.save.js';
 
 export const createPoiDeviationFieldLabels = (
   pt: ReturnType<typeof usePluginTranslation>
@@ -28,4 +29,13 @@ export const createPoiDeviationFieldLabels = (
     createdAt: pt('fields.createdAt'),
     updatedAt: pt('fields.updatedAt'),
   };
+};
+
+export const poiSaveSuccessStatus = (
+  pt: (key: string) => string,
+  visible: boolean,
+  current: PoiStatusMessage | null = null
+): PoiStatusMessage => current ?? {
+  kind: 'success',
+  text: pt(visible ? 'messages.savedVisible' : 'messages.savedHidden'),
 };

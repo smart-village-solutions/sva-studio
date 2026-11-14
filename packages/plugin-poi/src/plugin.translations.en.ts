@@ -200,7 +200,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
       references: { title: 'Media', description: 'File references for the POI.' },
     },
     advanced: {
-      payload: { title: 'Technical metadata', description: 'Technical identifier of the POI.' },
+      payload: { title: 'External assignment', description: 'Optional identifier of the place in another system.' },
     },
     settings: {
       media: {

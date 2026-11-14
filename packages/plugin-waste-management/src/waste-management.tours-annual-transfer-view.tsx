@@ -196,7 +196,9 @@ export const AnnualTransferFooter = ({
         type="button"
         variant="secondary"
         disabled={controller.loading}
-        onClick={() => void controller.loadPreview()}
+        onClick={(event) => {
+          if (event.currentTarget.form?.reportValidity()) void controller.loadPreview();
+        }}
       >
         {translate('tours.annualTransfer.refreshPreview')}
       </Button>

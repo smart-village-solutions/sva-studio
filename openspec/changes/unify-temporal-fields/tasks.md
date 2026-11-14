@@ -60,3 +60,10 @@ Die Anzeige-Assertions prüfen die tatsächlich vereinheitlichten Datumsformate 
 ## Letzte im vollständigen Abfallwirtschaftslauf erreichte Teststellen
 
 Der vollständige Unit-/Coverage-Lauf erreichte drei weitere veraltete Teststellen: den vollständig ersetzten SDK-Export im Standort-Toolbar-Test, ISO-Anzeigeerwartungen beim unveränderten Duplizieren einer Tour und den Field-Mock im Tourenfeld-Test. Die Standortansicht verwendet jetzt auch im Test den echten Jahreshelfer. Die Duplikationsprüfung unterscheidet lokalisierte Eingabewerte ausdrücklich von den unveränderten ISO-Payloads. Der Tourenfeld-Test nutzt den echten `StudioField`; die bewusst ersetzten Gruppen-Controls werden über ihre eigenen Test-Buttons bedient und ihre sichtbaren Gruppenbeschriftungen weiter geprüft. Alle betroffenen Tests bestehen gezielt. Produktivcode, API-Erwartungen und Qualitätsgrenzen wurden dafür nicht geändert.
+
+
+## Entwurfsübergänge und neue generische Termine
+
+Der Review-Befund zum erneuten Eintippen eines Datumsteils wurde mit der späteren Winterzeitinstanz und sechs Nachkommastellen reproduziert. Das bestehende Zeitpunktfeld hält die letzte gültige Referenz während ungültiger Entwürfe fest; gültige externe Werte und vollständiges Leeren aktualisieren sie. Der Regressionstest prüft zugleich, dass bewusst gelöschte Sekunden weiterhin null werden. Alle elf gemeinsamen Eingabetests bestehen.
+
+Neue leere generische Termine verwenden wieder die lokale Datum-/Uhrzeitkomponente. Die bestehenden Übersetzungseinträge für Termin-Schaltfläche und Termin-Feldbeschriftungen sind im zuständigen Label-Pfad verdrahtet. Der vollständige Erstelltest fügt eine neue Zeile hinzu, bearbeitet Datum und Uhrzeit und prüft den lokalen ISO-Wert im tatsächlichen API-Aufruf. Die elf gezielten Detailseitentests bestehen. Bestehende geladene Wertarten und API-Verträge bleiben erhalten; es gibt keine neue Komponente oder Schnittstelle.

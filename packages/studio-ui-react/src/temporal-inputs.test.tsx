@@ -232,3 +232,28 @@ it('sends zero seconds when the editor clears loaded seconds', () => {
   fireEvent.change(document.getElementById('instant-time')!, { target: { value: '12:30' } });
   expect(change).toHaveBeenCalledWith('2026-07-01T10:30:00.000Z');
 });
+
+it('retains the loaded DST occurrence and source precision across incomplete date drafts', () => {
+  const change = vi.fn();
+  function Form() {
+    const [value, setValue] = useState('2026-10-25T01:30:45.123456Z');
+    return (
+      <InstantInput
+        id="instant"
+        aria-label="Instant"
+        value={value}
+        onValueChange={(next) => {
+          setValue(next);
+          change(next);
+        }}
+      />
+    );
+  }
+  render(<Form />);
+  const day = screen.getByLabelText('Instant');
+  fireEvent.change(day, { target: { value: '25.10.' } });
+  fireEvent.change(day, { target: { value: '25.10.2026' } });
+  expect(change).toHaveBeenLastCalledWith('2026-10-25T01:30:45.123456Z');
+  fireEvent.change(document.getElementById('instant-time')!, { target: { value: '02:30' } });
+  expect(change).toHaveBeenLastCalledWith('2026-10-25T00:30:00.000Z');
+});

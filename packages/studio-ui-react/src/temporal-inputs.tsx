@@ -217,6 +217,10 @@ export const InstantInput = React.forwardRef<HTMLInputElement, LocalDateTimeProp
   function InstantInput({ value, onValueChange, ...props }, ref) {
     const inputRef = React.useRef<HTMLInputElement | null>(null);
     const t = useTemporalTranslation();
+    const reference = React.useRef(value);
+    React.useEffect(() => {
+      if (!value || isInstant(value)) reference.current = value;
+    }, [value]);
     const local = isInstant(value) ? toDatetimeLocalValue(value) : value;
     const invalid = Boolean(value) && !isInstant(value);
     React.useEffect(() => {
@@ -237,7 +241,7 @@ export const InstantInput = React.forwardRef<HTMLInputElement, LocalDateTimeProp
         value={local}
         aria-invalid={invalid || props['aria-invalid']}
         onValueChange={(next) => {
-          onValueChange(next ? fromDatetimeLocalValue(next, value) || next : '');
+          onValueChange(next ? fromDatetimeLocalValue(next, reference.current) || next : '');
         }}
       />
     );

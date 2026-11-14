@@ -27,7 +27,7 @@ const GenericDateControl = ({
 }) => {
   // Rows are keyed by RHF field-array ids and remount on reset; clearing a value keeps its kind.
   const [kind] = useState(() =>
-    isInstant(value) ? 'instant' : isLocalDateTime(value) ? 'local' : 'date'
+    isInstant(value) ? 'instant' : !value || isLocalDateTime(value) ? 'local' : 'date'
   );
   if (kind === 'instant')
     return <InstantInput label={label} id={id} value={value} onValueChange={onValueChange} />;

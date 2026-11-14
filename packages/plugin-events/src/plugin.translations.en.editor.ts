@@ -186,10 +186,7 @@ export const eventsENEditor = {
     },
     settings: {
       publication: { title: 'Visibility', description: 'Event exposure.' },
-      technical: {
-        title: 'External reference',
-        description: 'Optional reference for the event in another system.',
-      },
+      technical: { title: 'External reference', description: 'Optional external identifier.' },
     },
   },
   history: {

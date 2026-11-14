@@ -1,14 +1,14 @@
 import type { IamLegalTextListItem } from '@sva/core';
 import React from 'react';
 
-import { Button } from '@sva/studio-ui-react';
+import { Button, LocalDateTimeInput } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { t } from '../../../i18n';
-import { formatLegalTextDateTime, type LegalTextStatus } from './-legal-texts-shared';
 import { LegalTextRichTextEditor } from './-legal-text-rich-text-editor';
+import { formatLegalTextDateTime, type LegalTextStatus } from './-legal-texts-shared';
 
 export type LegalTextDetailFormValues = {
   name: string;
@@ -39,11 +39,7 @@ export const LegalTextDetailForm = ({
   setFormValues: React.Dispatch<React.SetStateAction<LegalTextDetailFormValues>>;
 }>) => (
   <Card className="space-y-4 p-4">
-    <form
-      id="legal-text-edit-form"
-      className="space-y-4"
-      onSubmit={onSubmit}
-    >
+    <form id="legal-text-edit-form" className="space-y-4" onSubmit={onSubmit}>
       <fieldset className="grid min-w-0 gap-4" disabled={!canUpdate}>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -102,13 +98,13 @@ export const LegalTextDetailForm = ({
             <Label htmlFor="legal-text-edit-published">
               {t('admin.legalTexts.fields.publishedAt')}
             </Label>
-            <Input
+            <LocalDateTimeInput
+              label={t('admin.legalTexts.fields.publishedAt')}
               id="legal-text-edit-published"
-              type="datetime-local"
               value={formValues.publishedAt}
               required={formValues.status === 'valid'}
-              onChange={(event) =>
-                setFormValues((current) => ({ ...current, publishedAt: event.target.value }))
+              onValueChange={(value) =>
+                setFormValues((current) => ({ ...current, publishedAt: value }))
               }
             />
           </div>

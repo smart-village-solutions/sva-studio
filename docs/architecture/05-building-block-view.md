@@ -93,7 +93,7 @@ Modulen der jeweiligen Bausteine.
 - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
 - verwendet die framework-agnostische Rich-Text-Allowlist aus `@sva/core/rich-text-html-policy` und wendet sie im Browser mit DOMPurify an, ohne den Node-basierten Server-Sanitizer in das Client-Bundle zu übernehmen
 - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
-- besitzt die gemeinsame [Datumseingabe](../development/datumseingabe.md) mit lokalisiertem Eingabetext, Kalendernavigation und einem Kalenderdatum-Vertrag ohne Zeitzone; der Veranstaltungseditor bindet sie feldweise an React Hook Form an
+- besitzt die gemeinsame [Datumseingabe](../development/datumseingabe.md) mit lokalisiertem Eingabetext, Kalendernavigation und einem Kalenderdatum-Vertrag ohne Zeitzone; Studio-App und Fachplugins nutzen sie über `DatePicker`, `DateInput` beziehungsweise `FormDateInput`; `TimeInput`, `LocalDateTimeInput` und `InstantInput` unterscheiden Uhrzeiten, lokale Werte und absolute Zeitpunkte, während API-Konvertierungen beim zuständigen Adapter bleiben
 - ist alleiniger Owner des Studio-Buttons mit der fachlichen Varianten-API `primary`, `secondary`, `tertiary` und `destructive`; App und Plugins besitzen keine parallele Button-Basis
 - stellt für Buttons zentrale Theme-Zustände, 44 × 44 Pixel Mindestzielgröße, sichtbaren Fokus, Disabled-/Loading-Semantik und fokusfähige Icon-Tooltips bereit
 - ist der kanonische UI-Owner für die Formular-Foundation rund um `react-hook-form`-, Resolver- und Form-Bridge-Muster; Host und Plugins sollen keine parallelen Basis-Formularsysteme etablieren
@@ -232,6 +232,7 @@ Modulen der jeweiligen Bausteine.
 - bezieht kurzlebige Keycloak-Tokens aus ausschließlich lokaler Secret-Konfiguration und besitzt weder Datenbank- noch Keycloak-Admin-Zugriff
 - trennt Read-, kontrollierte und kritische Tools; Autorisierung und Confirmation-Challenges bleiben serverseitige Studio-Verantwortung
 - bietet mit `studio_instance_process` einen modularen Ablauf für Anlage, Reparatur und Anpassung, der ausschließlich vorhandene HTTP-Verträge kombiniert und einen Abschluss nur nach aktuellem Doctor-Read meldet
+- richtet mit `studio_personal_editor_roles_ensure` fehlende Redaktionsprofile für explizite persönliche Tenant-Kontexte über vorhandene Rollen-APIs ein; Bestandsrollen bleiben unverändert und Anlageerfolg verlangt unabhängigen Readback. News/Events/POI verwenden Organisationsscope, Medien/Kategorien die ausdrücklich vereinbarte instanzweite Ausnahme. Nicht unterstützte Inhaltsaktionen werden ausgewiesen, nicht freigegeben.
 
 14. Studio-Job-Hostpfad (`packages/auth-runtime`, `packages/routing`, `packages/data-repositories`, `packages/iam-governance`)
 
@@ -972,7 +973,7 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
 
 ### Ergänzung 2026-08: gemeinsame Editor-Primitiven
 
-- `@sva/plugin-sdk` besitzt List-Search-Normalisierung, Map-/Geocoding-Client und den schmalen öffentlichen Subpath `content-media`.
+- `@sva/plugin-sdk` besitzt List-Search-Normalisierung, Map-/Geocoding-Client und die schmalen öffentlichen Subpaths `content-media` und `temporal`.
 - `@sva/studio-ui-react` besitzt den Map-Lifecycle, Media-Picker-Konfiguration sowie den Media-Reference-Sync-Controller und seine Retry-Aktion.
 - Plugins besitzen weiterhin Payload, Mutation, Navigation, Übersetzung und bundlelokales Laden der MapLibre-Runtime.
 

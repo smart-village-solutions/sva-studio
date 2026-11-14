@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteLocationFractionCoverageCheck } from '../src/waste-management.location-fraction-coverage-check.js';
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${JSON.stringify(values)}` : key,
 }));
@@ -99,11 +100,11 @@ describe('WasteLocationFractionCoverageCheck', () => {
           'masterData.locationsWorkspace.coverage.startDate'
         ) as HTMLInputElement
       ).value
-    ).toBe('2027-01-01');
+    ).toBe('01.01.2027');
     expect(
       (screen.getByLabelText('masterData.locationsWorkspace.coverage.endDate') as HTMLInputElement)
         .value
-    ).toBe('2027-12-31');
+    ).toBe('31.12.2027');
     fireEvent.click(
       screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' })
     );

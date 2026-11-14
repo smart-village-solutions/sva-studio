@@ -4,17 +4,26 @@ import { dirname, resolve } from 'node:path';
 import sharedConfig from '../../vitest.config';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
-const studioMswSetupFile = fileURLToPath(new URL('../../tooling/testing/src/msw/setup.ts', import.meta.url));
+const studioMswSetupFile = fileURLToPath(
+  new URL('../../tooling/testing/src/msw/setup.ts', import.meta.url)
+);
 
 export default mergeConfig(
   sharedConfig,
   defineConfig({
     resolve: {
       alias: {
-        '@sva/core/rich-text-html-policy': resolve(currentDir, '../core/src/rich-text-html-policy.ts'),
+        '@sva/core/rich-text-html-policy': resolve(
+          currentDir,
+          '../core/src/rich-text-html-policy.ts'
+        ),
         '@sva/core': resolve(currentDir, '../core/src/index.ts'),
-        '@sva/plugin-sdk/content-media': resolve(currentDir, '../plugin-sdk/src/content-media-contracts-public-api.ts'),
-      '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
+        '@sva/plugin-sdk/content-media': resolve(
+          currentDir,
+          '../plugin-sdk/src/content-media-contracts-public-api.ts'
+        ),
+        '@sva/plugin-sdk/temporal': resolve(currentDir, '../plugin-sdk/src/temporal.ts'),
+        '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
         '@sva/studio-module-iam': resolve(currentDir, '../studio-module-iam/src/index.ts'),
         '@sva/studio-ui-react': resolve(currentDir, '../studio-ui-react/src/index.ts'),
       },

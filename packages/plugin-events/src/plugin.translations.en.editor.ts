@@ -30,7 +30,7 @@ export const eventsENEditor = {
       contacts: 'Add contacts',
       links: 'Add links',
       prices: 'Add admission prices',
-      technical: 'Technical details',
+      technical: 'External reference',
       publication: 'Visibility',
     },
   },
@@ -140,7 +140,7 @@ export const eventsENEditor = {
   detailTabs: {
     basis: { title: 'Basics', description: 'Core metadata and editorial basics.' },
     content: { title: 'Content', description: 'Dates, venues, organizer and detailed event data.' },
-    settings: { title: 'Settings', description: 'Media, visibility and technical metadata.' },
+    settings: { title: 'Settings', description: 'Visibility and reference to another system.' },
     history: { title: 'History', description: 'Change and activity history.' },
   },
   cards: {
@@ -186,7 +186,7 @@ export const eventsENEditor = {
     },
     settings: {
       publication: { title: 'Visibility', description: 'Event exposure.' },
-      technical: { title: 'Technical metadata', description: 'Technical identifier of the event.' },
+      technical: { title: 'External reference', description: 'Optional external identifier.' },
     },
   },
   history: {

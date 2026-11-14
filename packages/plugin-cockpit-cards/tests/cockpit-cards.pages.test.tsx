@@ -71,7 +71,8 @@ vi.mock('../src/cockpit-cards.api.js', () => ({
   listCockpitCardCategories: state.listCategories,
   updateCockpitCard: state.update,
 }));
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   alignHostMediaReferencesByOrder: ({
     itemCount,
     references,
@@ -250,6 +251,7 @@ describe('cockpit cards pages', () => {
       'cockpit-card-language',
       'cockpit-card-weight',
       'cockpit-card-publication',
+      'cockpit-card-publication-time',
       'cockpit-card-visible',
     ]);
     expect(screen.getAllByRole('button', { name: 'actions.create' })).toHaveLength(1);

@@ -42,7 +42,8 @@ export const invitationInstancesAdminDEResources = {
   destinationSaved: 'Das Standardziel wurde gespeichert.',
   destinationSaveFailed: 'Das Standardziel konnte nicht gespeichert werden.',
   tenantPageTitle: 'E-Mail-Vorlagen',
-  tenantPageDescription: 'Texte für Account-Einladungen und E-Mail-Bestätigungen Ihrer Instanz verwalten.',
+  tenantPageDescription:
+    'Texte für Account-Einladungen und E-Mail-Bestätigungen Ihrer Instanz verwalten.',
   loading: 'Vorlage wird geladen.',
   loadFailed: 'Die Vorlage konnte nicht geladen werden.',
   sampleTenantName: 'Beispiel-Tenant',

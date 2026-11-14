@@ -1,6 +1,6 @@
-import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import ExcelJS from 'exceljs';
+import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 const { Workbook } = ExcelJS;
 
@@ -24,20 +24,20 @@ import {
   ResetConfirmationDialog,
   StatusNotice,
   compactOptionalString,
-  downloadImportTemplate,
   downloadImportPreviewErrors,
+  downloadImportTemplate,
   formatUpdatedAt,
   resolveApiErrorCode,
   toJobStatusTone,
   toTechnicalStatusTone,
 } from '../src/waste-management.page.support.js';
+import { createWasteToursActions } from '../src/waste-management.tours.actions.js';
+import { createWasteToursAssignmentMutationHandlers } from '../src/waste-management.tours.assignments-mutations.js';
 import {
   calculateTourOccurrencesForYear,
   formatTourDateRange,
   formatTourRecurrence,
 } from '../src/waste-management.tours.presentation.js';
-import { createWasteToursActions } from '../src/waste-management.tours.actions.js';
-import { createWasteToursAssignmentMutationHandlers } from '../src/waste-management.tours.assignments-mutations.js';
 
 const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -1126,10 +1126,10 @@ describe('waste management helper modules', () => {
       'tours.meta.customRecurrenceLabel'
     );
     expect(formatTourDateRange({ firstDate: '2026-01-01', endDate: '2026-12-31' } as never)).toBe(
-      '2026-01-01 – 2026-12-31'
+      '01.01.2026 – 31.12.2026'
     );
     expect(formatTourDateRange({ firstDate: undefined, endDate: '2026-12-31' } as never)).toBe(
-      '2026-12-31'
+      '31.12.2026'
     );
 
     expect(

@@ -1,6 +1,6 @@
-import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Checkbox, Input, Select, StudioField } from '@sva/studio-ui-react';
+import { Button, Checkbox, DateInput, Input, Select, StudioField } from '@sva/studio-ui-react';
+import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { IconChecklist } from '@tabler/icons-react';
 import type { FormEvent } from 'react';
 
@@ -42,22 +42,22 @@ const CoverageDateFields = ({
         id="waste-location-coverage-start"
         label={pt('masterData.locationsWorkspace.coverage.startDate')}
       >
-        <Input
+        <DateInput
+          label={pt('masterData.locationsWorkspace.coverage.startDate')}
           id="waste-location-coverage-start"
-          type="date"
           value={startDate}
-          onChange={(event) => onStartDateChange(event.target.value)}
+          onValueChange={(value) => onStartDateChange(value)}
         />
       </StudioField>
       <StudioField
         id="waste-location-coverage-end"
         label={pt('masterData.locationsWorkspace.coverage.endDate')}
       >
-        <Input
+        <DateInput
+          label={pt('masterData.locationsWorkspace.coverage.endDate')}
           id="waste-location-coverage-end"
-          type="date"
           value={endDate}
-          onChange={(event) => onEndDateChange(event.target.value)}
+          onValueChange={(value) => onEndDateChange(value)}
         />
       </StudioField>
     </>

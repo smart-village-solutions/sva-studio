@@ -48,6 +48,7 @@ export const handleItemUpdate = async (
       try {
         const existing = await getSvaMainserverNews({ ...actor, newsId: route.newsId });
         const providerAuthorization = await authorizeMainserverExistingContent({
+          forceExactScopeAuthorization: true,
           actor,
           action: 'news.update',
           contentType: NEWS_CONTENT_TYPE,
@@ -142,6 +143,7 @@ export const handleItemDelete = async (
       try {
         const existing = await getSvaMainserverNews({ ...actor, newsId: route.newsId });
         const providerAuthorization = await authorizeMainserverExistingContent({
+          forceExactScopeAuthorization: true,
           actor,
           action: 'news.delete',
           contentType: NEWS_CONTENT_TYPE,
@@ -204,6 +206,7 @@ export const handleVisibilityUpdate = async (
       try {
         const existing = await getSvaMainserverNews({ ...actor, newsId: route.newsId });
         const providerAuthorization = await authorizeMainserverExistingContent({
+          forceExactScopeAuthorization: true,
           actor,
           action: 'news.update',
           contentType: NEWS_CONTENT_TYPE,

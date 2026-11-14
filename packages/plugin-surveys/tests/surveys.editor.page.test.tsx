@@ -42,7 +42,8 @@ vi.mock('@tanstack/react-router', () => ({
   useLocation: () => ({ state: {} }),
 }));
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   hasContentLifecycleAccess: (
     action: string | undefined,
     resourceAccess: Readonly<Record<string, boolean>>

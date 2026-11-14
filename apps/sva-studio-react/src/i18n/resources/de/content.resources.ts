@@ -1,4 +1,4 @@
-import { contentDEErrors } from './content.errors.resources.js';
+import { contentDEErrors } from './content.errors.partial.resources.js';
 export const contentDEResources = {
   leaveGuard: {
     save: 'Speichern und fortfahren',

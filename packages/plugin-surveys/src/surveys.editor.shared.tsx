@@ -1,6 +1,7 @@
 import {
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
+  translatePluginKey,
   usePluginTranslation,
 } from '@sva/plugin-sdk';
 import { type SurveyDetailFormValues } from './surveys.detail-form.js';
@@ -177,6 +178,11 @@ const buildRemovedQuestionMutations = (
       .map((question) => ({ id: question.id, delete: true as const })) ?? []
   );
 };
+const surveyInstant = (value: string, reference?: string) => {
+  const instant = fromDatetimeLocalValue(value, reference);
+  if (!instant) throw new Error(translatePluginKey('shared', 'datePicker.errors.invalidInstant'));
+  return instant;
+};
 export const toSurveyMutationInput = (
   values: SurveyDetailFormValues,
   loadedItem?: SurveyContentItem | null
@@ -191,8 +197,10 @@ export const toSurveyMutationInput = (
       ? { description: trimmedValueOrUndefined(values.content.description) }
       : {}),
     status: values.basis.status,
-    ...(values.basis.startAt ? { startAt: fromDatetimeLocalValue(values.basis.startAt) } : {}),
-    ...(values.basis.endAt ? { endAt: fromDatetimeLocalValue(values.basis.endAt) } : {}),
+    ...(values.basis.startAt
+      ? { startAt: surveyInstant(values.basis.startAt, loadedItem?.startAt) }
+      : {}),
+    ...(values.basis.endAt ? { endAt: surveyInstant(values.basis.endAt, loadedItem?.endAt) } : {}),
     resultVisibility: values.content.resultVisibility,
     targetAreaIds: values.basis.targetAreaIds,
     showResultsInApp: values.content.showResultsInApp,

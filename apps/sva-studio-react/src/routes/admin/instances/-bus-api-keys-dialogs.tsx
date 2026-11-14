@@ -1,13 +1,13 @@
-import { Button } from '@sva/studio-ui-react';
-import { Input } from '../../../components/ui/input';
-import { Label } from '../../../components/ui/label';
+import { Button, DateInput } from '@sva/studio-ui-react';
 import {
   Dialog,
   DialogContent,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogTitle,
 } from '../../../components/ui/dialog';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 import { t } from '../../../i18n';
 import type { BusKeysModel } from './-bus-api-keys-state';
 const prefix = 'admin.instances.busKeys.';
@@ -83,14 +83,14 @@ export const BusKeyCreateDialog = ({ model }: { model: BusKeysModel }) => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="bus-valid-through">{t(`${prefix}validThrough`)}</Label>
-            <Input
+            <DateInput
+              label={t(`${prefix}validThrough`)}
               id="bus-valid-through"
-              type="date"
               required
               disabled={busy}
               value={validThrough}
               aria-describedby="bus-expiry-help"
-              onChange={(event) => setValidThrough(event.target.value)}
+              onValueChange={(value) => setValidThrough(value)}
             />
             <p id="bus-expiry-help" className="text-sm text-muted-foreground">
               {t(`${prefix}utcExplanation`)} {expiresAt ?? t(`${prefix}invalid`)}

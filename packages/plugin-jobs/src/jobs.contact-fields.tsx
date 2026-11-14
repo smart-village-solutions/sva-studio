@@ -1,5 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Input, StudioDetailCard, StudioField } from '@sva/studio-ui-react';
+import { Button, DateInput, Input, StudioDetailCard, StudioField } from '@sva/studio-ui-react';
 import { emptyJobContact, type JobInput } from './contract.js';
 import { jobFieldId, type JobFormProps } from './jobs.form.js';
 
@@ -34,15 +34,26 @@ export function TextField({
       }}
       error={invalid ? pt('validation.invalid') : undefined}
     >
-      <Input
-        id={id}
-        type={type}
-        step={type === 'number' ? 'any' : undefined}
-        value={value}
-        required={required}
-        aria-invalid={invalid}
-        onChange={(event) => onChange(event.currentTarget.value)}
-      />
+      {type === 'date' ? (
+        <DateInput
+          id={id}
+          label={label}
+          value={value}
+          required={required}
+          aria-invalid={invalid}
+          onValueChange={onChange}
+        />
+      ) : (
+        <Input
+          id={id}
+          type={type}
+          step={type === 'number' ? 'any' : undefined}
+          value={value}
+          required={required}
+          aria-invalid={invalid}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+      )}
     </StudioField>
   );
 }

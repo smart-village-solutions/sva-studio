@@ -490,6 +490,7 @@ const config = defineConfig({
       '@sva/plugin-sdk/content-media': resolveAppPath(
         '../../packages/plugin-sdk/src/content-media-contracts-public-api.ts'
       ),
+      '@sva/plugin-sdk/temporal': resolveAppPath('../../packages/plugin-sdk/src/temporal.ts'),
       '@sva/plugin-sdk': resolveAppPath('../../packages/plugin-sdk/src/index.ts'),
       '@sva/plugin-events/events.pages': resolveAppPath(
         '../../packages/plugin-events/src/events.pages.tsx'

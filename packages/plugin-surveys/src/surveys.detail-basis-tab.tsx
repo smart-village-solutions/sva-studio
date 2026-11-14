@@ -1,13 +1,12 @@
 import { SurveyMetadataCard } from './surveys.detail-metadata-card.js';
 // fallow-ignore-file code-duplication
+import { Button, Input, LocalDateTimeInput, Select, StudioField } from '@sva/studio-ui-react';
 import React from 'react';
-import { useFormContext, useWatch } from 'react-hook-form';
-import { Button, Input, Select, StudioField } from '@sva/studio-ui-react';
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
 import { StudioDetailCard } from '@sva/studio-ui-react';
 import type { SurveyDetailFormValues } from './surveys.detail-form.js';
 import type { SurveyContentTranslate } from './surveys.question-editor.shared.js';
-import type { SurveyContentItem } from './surveys.types.js';
 
 export type SurveyTargetAreaOption = Readonly<{
   id: string;
@@ -79,20 +78,32 @@ export function SurveyStatusField({ pt }: Readonly<{ pt: SurveyContentTranslate 
   );
 }
 export function SurveyScheduleCard({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
-  const { register } = useFormContext<SurveyDetailFormValues>();
-
   return (
     <StudioDetailCard
       title={pt('cards.basis.schedule.title')}
       description={pt('cards.basis.schedule.description')}
     >
       <div className="space-y-4">
-        <StudioField id="survey-start-at" label={pt('fields.startAt')}>
-          <Input id="survey-start-at" type="datetime-local" {...register('basis.startAt')} />
-        </StudioField>
-        <StudioField id="survey-end-at" label={pt('fields.endAt')}>
-          <Input id="survey-end-at" type="datetime-local" {...register('basis.endAt')} />
-        </StudioField>
+        {(['startAt', 'endAt'] as const).map((name) => {
+          const id = name === 'startAt' ? 'survey-start-at' : 'survey-end-at';
+          return (
+            <StudioField key={name} id={id} label={pt(`fields.${name}`)}>
+              <Controller<SurveyDetailFormValues, `basis.${typeof name}`>
+                name={`basis.${name}`}
+                render={({ field }) => (
+                  <LocalDateTimeInput
+                    label={pt(`fields.${name}`)}
+                    id={id}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                  />
+                )}
+              />
+            </StudioField>
+          );
+        })}
         <p className="text-sm text-muted-foreground">{pt('messages.unlimitedScheduleHint')}</p>
       </div>
     </StudioDetailCard>
@@ -232,15 +243,11 @@ export function SurveyDetailBasisTab({
   loadedItem,
   availableTargetAreas,
   pt,
-}: Readonly<{
-  mode: 'create' | 'edit';
-  loadedItem: Pick<
-    SurveyContentItem,
-    'createdAt' | 'updatedAt' | 'publishedAt' | 'archivedAt'
-  > | null;
-  availableTargetAreas: readonly SurveyTargetAreaOption[];
-  pt: SurveyContentTranslate;
-}>) {
+}: Readonly<
+  React.ComponentProps<typeof SurveyMetadataCard> & {
+    availableTargetAreas: readonly SurveyTargetAreaOption[];
+  }
+>) {
   return (
     <div className="space-y-5">
       <SurveyIdentityCard pt={pt} />

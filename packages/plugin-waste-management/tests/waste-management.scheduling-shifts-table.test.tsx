@@ -1,19 +1,18 @@
-import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { WasteSchedulingShiftsTable } from '../src/waste-management.scheduling-shifts-table.js';
 import { WasteSchedulingRowsDeleteError } from '../src/waste-management.scheduling-mutations.js';
+import { WasteSchedulingShiftsTable } from '../src/waste-management.scheduling-shifts-table.js';
 
 const dataTableMock = vi.hoisted(() => vi.fn());
 const confirmDialogMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${Object.values(values).join('|')}` : key,
 }));
-
-
 
 vi.mock('@sva/studio-ui-react', () => ({
   StudioDestructiveActionDialog: ({
@@ -316,8 +315,8 @@ describe('WasteSchedulingShiftsTable', () => {
     render(<div>{originalDateColumn?.cell(row!)}</div>);
     render(<div>{actualDateColumn?.cell(row!)}</div>);
 
-    expect(screen.getByText('01.01.26')).toBeTruthy();
-    expect(screen.getByText('02.01.26')).toBeTruthy();
+    expect(screen.getByText('01.01.2026')).toBeTruthy();
+    expect(screen.getByText('02.01.2026')).toBeTruthy();
   });
 
   it('opens the delete confirmation and forwards the selected row', async () => {

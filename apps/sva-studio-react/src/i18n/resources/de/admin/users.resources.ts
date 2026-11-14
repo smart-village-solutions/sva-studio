@@ -154,7 +154,8 @@ export const usersAdminDEResources = {
     rolesLabel: 'Rollen auswählen',
     groupsLabel: 'Gruppen auswählen',
     competenceLanguages: 'Kompetenzsprachen',
-    competenceLanguagesHint: 'Sprachcodes durch Kommas trennen, z. B. de, en-GB. Maximal 40. Unabhängig von der Oberflächensprache.',
+    competenceLanguagesHint:
+      'Sprachcodes durch Kommas trennen, z. B. de, en-GB. Maximal 40. Unabhängig von der Oberflächensprache.',
     notesLabel: 'Notizen',
     notesCounter: '{{count}} / 2000 Zeichen',
     validation: {

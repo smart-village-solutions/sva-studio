@@ -1,6 +1,6 @@
-import type { WasteTourValidityDateOperation } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Input, Select, StudioField } from '@sva/studio-ui-react';
+import { DateInput, Select, StudioField } from '@sva/studio-ui-react';
+import type { WasteTourValidityDateOperation } from '@sva/waste-management-contracts';
 
 export type ValidityMode = WasteTourValidityDateOperation['mode'];
 
@@ -44,13 +44,13 @@ export const ValidityModeField = ({
       </StudioField>
       {mode === 'set' ? (
         <StudioField id={`${id}-date`} label={dateLabel} required>
-          <Input
+          <DateInput
+            label={dateLabel}
             id={`${id}-date`}
-            type="date"
             value={date}
             disabled={disabled}
             required
-            onChange={(event) => onDateChange(event.target.value)}
+            onValueChange={(value) => onDateChange(value)}
           />
         </StudioField>
       ) : null}

@@ -1,12 +1,13 @@
-import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import {
   Checkbox,
+  DateInput,
   Input,
   Select,
   StudioField,
   StudioFieldGroup,
   Textarea,
 } from '@sva/studio-ui-react';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 
 import {
   wasteFollowUpModeOptions,
@@ -16,7 +17,11 @@ import type { TourDateShiftFormState } from './waste-management.scheduling.share
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
-const WasteSchedulingTourReasonFields = ({ form, pt, onChange }: {
+const WasteSchedulingTourReasonFields = ({
+  form,
+  pt,
+  onChange,
+}: {
   readonly form: TourDateShiftFormState;
   readonly pt: Translate;
   readonly onChange: (patch: Partial<TourDateShiftFormState>) => void;
@@ -113,19 +118,19 @@ export const WasteSchedulingTourFields = ({
       id="waste-tour-shift-original-date"
       label={pt('scheduling.tour.fields.originalDate')}
     >
-      <Input
+      <DateInput
+        label={pt('scheduling.tour.fields.originalDate')}
         id="waste-tour-shift-original-date"
-        type="date"
         value={form.originalDate}
-        onChange={(event) => onChange({ originalDate: event.target.value })}
+        onValueChange={(value) => onChange({ originalDate: value })}
       />
     </StudioField>
     <StudioField id="waste-tour-shift-actual-date" label={pt('scheduling.tour.fields.actualDate')}>
-      <Input
+      <DateInput
+        label={pt('scheduling.tour.fields.actualDate')}
         id="waste-tour-shift-actual-date"
-        type="date"
         value={form.actualDate}
-        onChange={(event) => onChange({ actualDate: event.target.value })}
+        onValueChange={(value) => onChange({ actualDate: value })}
       />
     </StudioField>
     <StudioField id="waste-tour-shift-description" label={pt('scheduling.tour.fields.description')}>

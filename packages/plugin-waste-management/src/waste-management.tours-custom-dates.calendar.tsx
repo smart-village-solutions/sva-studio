@@ -1,8 +1,10 @@
-import { resolveEditorLocale, usePluginTranslation } from '@sva/plugin-sdk';
+import { resolveEditorLocale, toDatetimeLocalValue, usePluginTranslation } from '@sva/plugin-sdk';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import {
   Badge,
   Calendar,
+  parseDatePickerValue,
+  initialDatePickerMonth,
   buttonVariants,
   cn,
   Button,
@@ -20,7 +22,9 @@ const toDateOnly = (year: number, monthIndex: number, day: number) =>
 export const resolveInitialYear = (customDate: string, firstDate: string, endDate: string) => {
   const fallbackCandidate = customDate || firstDate || endDate;
   const candidateYear = fallbackCandidate ? Number(fallbackCandidate.slice(0, 4)) : Number.NaN;
-  return Number.isFinite(candidateYear) ? candidateYear : new Date().getFullYear();
+  return Number.isFinite(candidateYear)
+    ? candidateYear
+    : Number(toDatetimeLocalValue(new Date().toISOString()).slice(0, 4));
 };
 
 type TourCustomDatesSelectionDialogProps = Readonly<{
@@ -33,58 +37,67 @@ type TourCustomDatesSelectionDialogProps = Readonly<{
   readonly onToggleDate: (date: string) => void;
 }>;
 
-const TourCustomDateCalendar = ({ year, selectedDates, disabled, onToggleDate }:
-  Pick<TourCustomDatesSelectionDialogProps, 'year' | 'selectedDates' | 'disabled' | 'onToggleDate'>
-) => {
+const TourCustomDateCalendar = ({
+  year,
+  selectedDates,
+  disabled,
+  onToggleDate,
+}: Pick<
+  TourCustomDatesSelectionDialogProps,
+  'year' | 'selectedDates' | 'disabled' | 'onToggleDate'
+>) => {
   const locale = resolveEditorLocale();
-  const fullDate = new Intl.DateTimeFormat(locale, { dateStyle: 'full' });
-  const monthLabel = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' });
-  const weekdayLabel = new Intl.DateTimeFormat(locale, { weekday: 'short' });
-  const fullWeekdayLabel = new Intl.DateTimeFormat(locale, { weekday: 'long' });
-  const selected = Array.from(selectedDates, (value) => {
-    const [selectedYear, month, day] = value.split('-').map(Number);
-    return new Date(selectedYear!, month! - 1, day!);
+  const fullDate = new Intl.DateTimeFormat(locale, { dateStyle: 'full', timeZone: 'UTC' });
+  const monthLabel = new Intl.DateTimeFormat(locale, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
   });
+  const weekdayLabel = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' });
+  const fullWeekdayLabel = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' });
+  const selected = Array.from(selectedDates, parseDatePickerValue).filter(
+    (date): date is Date => date !== undefined
+  );
   return (
-            <Calendar
-              mode="multiple"
-              selected={selected}
-              month={new Date(year, 0, 1)}
-              numberOfMonths={12}
-              hideNavigation
-              disableNavigation
-              showOutsideDays={false}
-              weekStartsOn={1}
-              startMonth={new Date(year, 0, 1)}
-              endMonth={new Date(year, 11, 1)}
-              disabled={disabled}
-              className="w-full bg-transparent p-0"
-              classNames={{
-                months: 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3',
-                month:
-                  'min-w-0 space-y-2 rounded-lg border border-border-subtle bg-card p-1 sm:p-3',
-                month_caption: 'flex min-h-11 items-center px-2',
-                month_grid: 'w-full table-fixed border-collapse',
-                weekday: 'h-8 text-center text-xs font-normal text-muted-foreground',
-                day: 'h-11 p-0 text-center',
-                day_button: cn(
-                  buttonVariants({ variant: 'tertiary' }),
-                  'h-11 min-h-11 w-full min-w-9 p-0 font-medium'
-                ),
-              }}
-              formatters={{
-                formatCaption: (date) => monthLabel.format(date),
-                formatWeekdayName: (date) => weekdayLabel.format(date),
-              }}
-              labels={{
-                labelGrid: (date) => monthLabel.format(date),
-                labelDayButton: (date) => fullDate.format(date),
-                labelWeekday: (date) => fullWeekdayLabel.format(date),
-              }}
-              onDayClick={(date) =>
-                onToggleDate(toDateOnly(date.getFullYear(), date.getMonth(), date.getDate()))
-              }
-            />
+    <Calendar
+      mode="multiple"
+      today={initialDatePickerMonth(undefined)}
+      selected={selected}
+      month={parseDatePickerValue(`${year}-01-01`)}
+      numberOfMonths={12}
+      hideNavigation
+      disableNavigation
+      showOutsideDays={false}
+      weekStartsOn={1}
+      startMonth={parseDatePickerValue(`${year}-01-01`)}
+      endMonth={parseDatePickerValue(`${year}-12-01`)}
+      disabled={disabled}
+      className="w-full bg-transparent p-0"
+      classNames={{
+        months: 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3',
+        month: 'min-w-0 space-y-2 rounded-lg border border-border-subtle bg-card p-1 sm:p-3',
+        month_caption: 'flex min-h-11 items-center px-2',
+        month_grid: 'w-full table-fixed border-collapse',
+        weekday: 'h-8 text-center text-xs font-normal text-muted-foreground',
+        day: 'h-11 p-0 text-center',
+        day_button: cn(
+          buttonVariants({ variant: 'tertiary' }),
+          'h-11 min-h-11 w-full min-w-9 p-0 font-medium'
+        ),
+      }}
+      formatters={{
+        formatCaption: (date) => monthLabel.format(date),
+        formatWeekdayName: (date) => weekdayLabel.format(date),
+      }}
+      labels={{
+        labelGrid: (date) => monthLabel.format(date),
+        labelDayButton: (date) => fullDate.format(date),
+        labelWeekday: (date) => fullWeekdayLabel.format(date),
+      }}
+      onDayClick={(date) =>
+        onToggleDate(toDateOnly(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+      }
+    />
   );
 };
 
@@ -137,8 +150,12 @@ export const TourCustomDatesSelectionDialog = ({
             </Button>
           </div>
           <div className="overflow-y-auto px-3 pb-4 sm:px-6">
-            <TourCustomDateCalendar year={year} selectedDates={selectedDates}
-              disabled={disabled} onToggleDate={onToggleDate} />
+            <TourCustomDateCalendar
+              year={year}
+              selectedDates={selectedDates}
+              disabled={disabled}
+              onToggleDate={onToggleDate}
+            />
           </div>
           <DialogFooter className="border-t border-border/50 px-6 py-4">
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>

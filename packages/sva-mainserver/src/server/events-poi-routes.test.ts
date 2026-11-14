@@ -379,6 +379,50 @@ describe('mainserver content route contracts', () => {
     }
   );
 
+  it.each([
+    ['events', 'PATCH', dispatchSvaMainserverEventsRequest, state.getSvaMainserverEventDetail],
+    ['events', 'DELETE', dispatchSvaMainserverEventsRequest, state.getSvaMainserverEventDetail],
+    ['poi', 'PATCH', dispatchSvaMainserverPoiRequest, state.getSvaMainserverPoiDetail],
+    ['poi', 'DELETE', dispatchSvaMainserverPoiRequest, state.getSvaMainserverPoiDetail],
+  ] as const)(
+    'enforces exact organization scope for %s %s',
+    async (kind, method, dispatch, load) => {
+      mockAuthorizedMutation();
+      load.mockResolvedValue({
+        data: { id: 'item-1', dataProvider: { id: 'foreign-provider' } },
+        deviations: [],
+      });
+      state.authorizeMainserverDataProviderAccess.mockImplementation(async (input) => ({
+        allowed: input.forceExactScopeAuthorization !== true,
+        authorizationMode: 'exact',
+        reason: 'data_provider_mismatch',
+      }));
+      const response = await dispatch(
+        createRequest(`https://studio.test/api/v1/mainserver/${kind}/item-1`, {
+          method,
+          ...(method === 'PATCH'
+            ? { body: JSON.stringify(kind === 'events' ? { title: 'Event' } : { name: 'Ort' }) }
+            : {}),
+        })
+      );
+      expect(response?.status).toBe(403);
+      expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: `${kind}.${method === 'PATCH' ? 'update' : 'delete'}`,
+          forceExactScopeAuthorization: true,
+          dataProviderId: 'foreign-provider',
+        })
+      );
+      for (const write of [
+        state.updateSvaMainserverEvent,
+        state.deleteSvaMainserverEvent,
+        state.updateSvaMainserverPoi,
+        state.deleteSvaMainserverPoi,
+      ])
+        expect(write).not.toHaveBeenCalled();
+    }
+  );
+
   it('creates events with parsed dates, contact, URLs, addresses, recurrence and POI link', async () => {
     mockAuthorizedMutation();
     state.createSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });

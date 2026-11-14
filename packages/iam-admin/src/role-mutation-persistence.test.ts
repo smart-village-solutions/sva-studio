@@ -345,6 +345,28 @@ describe('role mutation persistence', () => {
     );
   });
 
+  it('preserves the organization scope for publication grants', async () => {
+    const { client, queries } = createClient([
+      [{ id: 'permission-publish', permission_key: 'content.publish' }],
+      [{ id: roleId }],
+      [],
+      [roleListRow],
+    ]);
+    await createRoleMutationPersistence(createDeps(client)).persistCreatedRole({
+      actor,
+      roleKey: 'editor',
+      displayName: 'Editor',
+      externalRoleName: 'Editor',
+      roleLevel: 20,
+      permissionIds: [],
+      permissionAssignments: [{ permissionId: 'permission-publish', accessScope: 'organization' }],
+    });
+    const assignment = queries.find(({ text }) =>
+      text.includes('INSERT INTO iam.role_permissions')
+    );
+    expect(assignment?.values).toContainEqual(['organization']);
+  });
+
   it('normalizes non-scope permission assignments to accessScope all before persisting', async () => {
     const { client, queries } = createClient([
       [

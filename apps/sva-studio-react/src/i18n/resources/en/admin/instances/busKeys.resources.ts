@@ -19,8 +19,7 @@ export const busKeysInstancesAdminENResources = {
   validThrough: 'Valid through and including',
   status: 'Status',
   actions: 'Actions',
-  utcExplanation:
-    'The key expires at the beginning of the following UTC day. Exact expiry:',
+  utcExplanation: 'The key expires at the beginning of the following UTC day. Exact expiry:',
   noExpiry: 'No expiry date',
   missing: 'Not provided',
   active: 'Active',

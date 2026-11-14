@@ -102,27 +102,48 @@ Vor Änderung oder Entfernung einer Kontextkonfiguration die gespeicherte Sitzun
 
 `studio_personal_users_api` verwendet relative Pfade ohne führenden Schrägstrich. Es erlaubt die freigegebenen Einzelaktionen für Accounts, Rollen, Gruppen, Organisationen und Schnittstellen:
 
-| Pfad unter `api/v1/` | Methoden / Aktionen                                                                                                          |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `iam/users`          | `GET`, `POST`; am Account `GET`, `PATCH`, `DELETE`; `POST` auf `deactivate` und `send-password-setup-email`                  |
-| `iam/roles`          | `GET`, `POST`; an der Rolle `PATCH`, `DELETE`                                                                                |
-| `iam/groups`         | `GET`, `POST`; an der Gruppe `GET`, `PATCH`, `DELETE`; Rollen- und Mitgliedschaftszuordnung über die bestehenden Unterrouten |
-| `iam/organizations`  | `GET`, `POST`; an der Organisation `GET`, `PATCH`, `DELETE`; Mitgliedschaften anlegen, ändern und entfernen                  |
-| `interfaces/mainserver` | `GET`, `POST`; öffentliche Mainserver-Konfiguration (`graphqlBaseUrl`, `oauthTokenUrl`, `enabled`) |
-| `interfaces`         | `GET`, `POST` mit `draft` und optionalem `existingId`; `DELETE interfaces/{interfaceId}`                                     |
+| Pfad unter `api/v1/`    | Methoden / Aktionen                                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `iam/users`             | `GET`, `POST`; am Account `GET`, `PATCH`, `DELETE`; `POST` auf `deactivate` und `send-password-setup-email`                  |
+| `iam/permissions`       | `GET`; tenantlokaler Katalog einschließlich Scope-Metadaten, nur aktive Modulberechtigungen                                  |
+| `iam/roles`             | `GET`, `POST`; an der Rolle `PATCH`, `DELETE`                                                                                |
+| `iam/groups`            | `GET`, `POST`; an der Gruppe `GET`, `PATCH`, `DELETE`; Rollen- und Mitgliedschaftszuordnung über die bestehenden Unterrouten |
+| `iam/organizations`     | `GET`, `POST`; an der Organisation `GET`, `PATCH`, `DELETE`; Mitgliedschaften anlegen, ändern und entfernen                  |
+| `interfaces/mainserver` | `GET`, `POST`; öffentliche Mainserver-Konfiguration (`graphqlBaseUrl`, `oauthTokenUrl`, `enabled`)                           |
+| `interfaces`            | `GET`, `POST` mit `draft` und optionalem `existingId`; `DELETE interfaces/{interfaceId}`                                     |
+
+### Redaktionsprofil für ausdrücklich ausgewählte Tenants
+
+`studio_personal_editor_roles_ensure` erhält ausschließlich `{"contextIds":["tenant-test-a","tenant-test-b"]}` (ein bis zwanzig eindeutige konfigurierte Tenant-Kontexte). Für jeden Kontext ist eine eigene persönliche Anmeldung mit den vorhandenen IAM-Verwaltungsrechten erforderlich. Plattformkontexte oder unbekannte IDs verhindern die gesamte Ausführung vor dem ersten Request; Service-Credentials sind kein Fallback.
+
+Das Tool liest Rollen und den tenantlokalen Permission-Katalog und setzt eine synchronisierte, Studio-verwaltete `system_admin`-Basis voraus. Es verändert diese Adminrolle nicht. Für ein fehlendes `editor`-Profil erzeugt es über `POST iam/roles` genau einen Rollensatz und liest anschließend die Rollen unabhängig erneut. `created` erfordert übereinstimmende Rollen-ID, Profilmarkierung, synchronisierten Zustand und exakt passende Actions/Scopes. Auch bei einem unsicheren Write-Ausgang erfolgt Readback; es gibt keinen automatischen zweiten Write und keine Erfolgsmeldung allein aufgrund einer Mutation.
+
+| Bereich                    | Standardumfang                                                                                                                                                                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Inhalte allgemein          | `content.read`, `updateMetadata`, `updatePayload`, `changeStatus`, `publish`, `archive`, `restore`, `delete` mit `organization`; `content.create` mit `all`, Erstellung an den serverseitigen aktuellen Organisationskontext gebunden |
+| News, Veranstaltungen, POI | Je aktivem Modul `read`, `update`, `delete` mit `organization`; `create` mit `all`, gebunden an den gewählten zulässigen Principal                                                                                                    |
+| Medien                     | `media.read`, `create`, `update`, `reference.manage`, `delete` mit `all`                                                                                                                                                              |
+| Kategorien                 | `categories.read`, `create`, `update`, `delete` mit `all`                                                                                                                                                                             |
+| Ausgeschlossen             | Benutzer-, Rollen- und Gruppenverwaltung, Integrationen, Ownership-Transfer sowie zusätzliche History-/Revisionsrechte                                                                                                                |
+
+Medien und Kategorien sind ausdrücklich instanzweite gemeinsame Ressourcen. Das Profil ist zunächst eine **sichere Teilmenge** für News, Veranstaltungen und POI; weitere Inhaltstypen erhalten keine stillschweigenden instanzweiten Grants. `unavailableModules` benennt nicht verfügbare Module und `unsupportedContentActions` nicht unterstützte CRUD-Actions im Katalog. Fehlt innerhalb eines vorhandenen Moduls eine benötigte Action oder ein unterstützter Organisationsscope, meldet das Tool `blocked` und legt keine Teilrolle an. Ein Server ohne organisationsbezogene `content.publish`-Metadaten wird ebenfalls blockiert.
+
+Bestehende `editor`-Rollen werden niemals erweitert, ersetzt oder automatisch übernommen. Ohne die eigene Markierung `studio:editor-baseline:v1` erfolgt `blocked` mit `existing_role_requires_review`. Bei markierten Rollen meldet `existing` mit `matchesStandard` und `differences` die Abweichungen; individuelle Entzüge bleiben erhalten. Die Markierung dient der Erkennung und ist keine Autorisierungsgrenze. Ergebnisse sind je Kontext getrennt; ein Fehler in einem Tenant ändert keine anderen als die ausdrücklich ausgewählten Tenants.
+
+Das Tool weist keine Accounts zu. Nach ausdrücklicher Auswahl der Empfänger können vorhandene Benutzer-/Gruppen-APIs zur Zuordnung der zurückgelesenen Rolle verwendet werden. Vorhandene Zuordnungen sind dabei zu erhalten; eine Rollenanlage allein ist kein Nachweis wirksamer Rechte eines Nutzers. Die Sichtbarkeit von Collection-Listen bleibt an den bestehenden Credential-/Mainserver-Vertrag gebunden; dieses Profil führt keinen neuen organisationsgenauen Listenfilter ein. Persönliche Profileinstellungen verwenden weiterhin den bestehenden Self-Service-Pfad. Kontextauswahl und Navigation bleiben an bestehende effektive Rechte gebunden. Produktive Zuordnungen und fachliche Abnahme sind eigene Freigaben.
 
 Beim Entfernen einer Gruppenmitgliedschaft benötigt `DELETE iam/groups/{groupId}/memberships` den JSON-Body `{ "keycloakSubject": "..." }`. Die übrigen freigegebenen DELETE-Aufrufe tragen keinen Body. Bulk-, Sync- und Mainserver-Provisionierungsaktionen sind nicht Teil dieses persönlichen MCP-Vertrags. Der Server prüft weiterhin die jeweilige Action, Tenant-Bindung, Lifecycle- und Löschschutzregeln sowie gegebenenfalls Fresh-Reauth.
 
 Alle sechs aktuell in Studio unterstützten Schnittstellenarten können über den persönlichen MCP angelegt werden:
 
-| Schnittstellenart | Anlegen/Speichern | Voraussetzung |
-| --- | --- | --- |
-| Mainserver | `POST api/v1/interfaces/mainserver` | `integration.manage`; öffentliche URLs und `enabled` |
-| S3 | `POST api/v1/interfaces`, `draft.type="s3"` | `integration.manage`; lokale Secret-Referenz |
-| Supabase | `POST api/v1/interfaces`, `draft.type="supabase"` | Zusätzlich zu `integration.manage` das zugewiesene Modul `waste-management`; lokale Secret-Referenzen |
-| PostgreSQL | `POST api/v1/interfaces`, `draft.type="postgresql"` | `integration.manage`; lokale Secret-Referenz |
-| Mailtransport | `POST api/v1/interfaces`, `draft.type="mailTransport"` | `integration.manage`; bei Authentifizierung lokale Secret-Referenz |
-| Karten/Geocoding | `POST api/v1/interfaces`, `draft.type="mapGeocoding"` | `integration.manage`; bei benötigtem API-Key lokale Secret-Referenz |
+| Schnittstellenart | Anlegen/Speichern                                      | Voraussetzung                                                                                         |
+| ----------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Mainserver        | `POST api/v1/interfaces/mainserver`                    | `integration.manage`; öffentliche URLs und `enabled`                                                  |
+| S3                | `POST api/v1/interfaces`, `draft.type="s3"`            | `integration.manage`; lokale Secret-Referenz                                                          |
+| Supabase          | `POST api/v1/interfaces`, `draft.type="supabase"`      | Zusätzlich zu `integration.manage` das zugewiesene Modul `waste-management`; lokale Secret-Referenzen |
+| PostgreSQL        | `POST api/v1/interfaces`, `draft.type="postgresql"`    | `integration.manage`; lokale Secret-Referenz                                                          |
+| Mailtransport     | `POST api/v1/interfaces`, `draft.type="mailTransport"` | `integration.manage`; bei Authentifizierung lokale Secret-Referenz                                    |
+| Karten/Geocoding  | `POST api/v1/interfaces`, `draft.type="mapGeocoding"`  | `integration.manage`; bei benötigtem API-Key lokale Secret-Referenz                                   |
 
 Die allgemeinen POST-Aufrufe verwenden `{ "draft": { "type": "...", "name": "...", "enabled": true, "config": { ... } } }`; vorhandene Einträge werden über `existingId` aktualisiert. Secret-Felder werden als `{ "secretRef": "..." }` lokal aufgelöst; Klartext-Secrets dürfen nicht im MCP-Aufruf stehen. Die bestehenden Modul-, Ownership-, Validierungs- und Healthcheck-Regeln gelten für alle Arten. Pluginverwaltete Einträge werden weiter durch ihren zuständigen Plugin-Pfad verwaltet.
 
@@ -159,7 +180,7 @@ Für gezielte Betriebsprüfungen stehen neben der aggregierten Diagnose eigenst�
 | Bereich                  | MCP-Tools                                                                                                                                                    | Erforderliche Studio-Action                                                                                              |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | Bestand und Evidenz      | `studio_instances_list`, `studio_instance_get`, `studio_instance_audit`, `studio_instances_audit`                                                            | `instance.list`, `instance.read`, `instance.audit.read`                                                                  |
-| Mainserver-Schnittstelle | `studio_mainserver_interfaces_list`, `studio_instance_mainserver_interface_get`, `studio_instance_mainserver_interface_save` | `instance.list`, `instance.read`, `instance.update` |
+| Mainserver-Schnittstelle | `studio_mainserver_interfaces_list`, `studio_instance_mainserver_interface_get`, `studio_instance_mainserver_interface_save`                                 | `instance.list`, `instance.read`, `instance.update`                                                                      |
 | Diagnose                 | `studio_instance_diagnose`, `studio_instance_keycloak_status`, `studio_instance_keycloak_preflight`                                                          | `instance.diagnose`                                                                                                      |
 | Provisioning             | `studio_instance_provisioning_plan`, `studio_instance_provisioning_execute`, `studio_instance_provisioning_run_get`, `studio_instance_reconcile`             | `instance.provision.plan`, `instance.provision.execute`, `instance.provision.run.read`, `instance.reconcile`             |
 | Konfiguration und Module | `studio_instances_create`, `studio_instance_update`, `studio_instance_module_assign`, `studio_instance_iam_baseline_seed`, `studio_instance_admin_bootstrap` | `instance.create`, `instance.update`, `instance.module.assign`, `instance.iam.baseline.seed`, `instance.admin.bootstrap` |

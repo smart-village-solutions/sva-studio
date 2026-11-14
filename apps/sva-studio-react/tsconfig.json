@@ -72,6 +72,7 @@
       ],
       "@sva/plugin-app-translations": ["../../packages/plugin-app-translations/src/index.ts"],
       "@sva/plugin-sdk/app-translations": ["../../packages/plugin-sdk/src/app-translations.ts"],
+      "@sva/plugin-sdk/temporal": ["../../packages/plugin-sdk/src/temporal.ts"],
       "@sva/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
       "@sva/plugin-sdk/route-documentation": [
         "../../packages/plugin-sdk/src/route-documentation.ts"

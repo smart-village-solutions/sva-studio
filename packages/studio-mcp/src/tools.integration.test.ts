@@ -32,6 +32,116 @@ const completeTenantCreateFields = {
 const confirmedPlanFingerprint = 'a'.repeat(64);
 
 describe('Studio MCP tools', () => {
+  it('creates an editorial role through the registered personal tool and verifies its stored response', async () => {
+    const context = {
+      id: 'tenant-a',
+      name: 'Tenant A',
+      kind: 'tenant' as const,
+      tenantId: 'tenant-a',
+      baseUrl: 'https://tenant-a.example',
+      issuer: 'https://id.example/realms/tenant-a',
+      clientId: 'personal-client',
+    };
+    const keys = [
+      'read',
+      'create',
+      'updateMetadata',
+      'updatePayload',
+      'changeStatus',
+      'publish',
+      'archive',
+      'restore',
+      'delete',
+    ].map((action) => `content.${action}`);
+    const permissions = keys.map((permissionKey, index) => ({
+      id: `permission-${index}`,
+      instanceId: 'tenant-a',
+      permissionKey,
+      isScopeAssignable: permissionKey !== 'content.create',
+      supportedAccessScopes: ['all', 'own', 'organization'],
+      runtimeScope: permissionKey === 'content.create' ? 'instance' : 'record',
+    }));
+    const roles: Record<string, unknown>[] = [
+      {
+        id: 'admin',
+        roleKey: 'system_admin',
+        managedBy: 'studio',
+        syncState: 'synced',
+        permissions: [],
+      },
+    ];
+    const serviceRequest = vi.fn();
+    const personalFetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(url)).pathname;
+      if (init?.method === 'POST') {
+        const body = JSON.parse(String(init.body)) as {
+          description: string;
+          permissionAssignments: { permissionId: string; accessScope: string }[];
+        };
+        roles.push({
+          id: 'editor-id',
+          roleKey: 'editor',
+          managedBy: 'studio',
+          syncState: 'synced',
+          description: body.description,
+          permissions: body.permissionAssignments.map((assignment) => ({
+            permissionKey: permissions.find((p) => p.id === assignment.permissionId)!.permissionKey,
+            accessScope: assignment.accessScope,
+          })),
+        });
+        return Response.json({ data: { id: 'editor-id' } }, { status: 201 });
+      }
+      return Response.json({ data: path.endsWith('permissions') ? permissions : roles });
+    });
+    const manager = {
+      list: () => [],
+      getContext: (id: string) => {
+        if (id !== context.id) throw new Error('unknown context');
+        return context;
+      },
+      getAccessToken: vi.fn().mockResolvedValue('personal-editor-token'),
+    } as unknown as PersonalMcpContextManager;
+    const server = createStudioMcpServer(
+      { request: serviceRequest },
+      { ...config, personalContexts: [context] },
+      personalFetch,
+      manager
+    );
+    const client = new Client({ name: 'editor-test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const response = await client.callTool({
+        name: 'studio_personal_editor_roles_ensure',
+        arguments: { contextIds: [context.id] },
+      });
+      expect(response.structuredContent).toMatchObject({
+        ok: true,
+        data: [{ contextId: 'tenant-a', status: 'created', roleId: 'editor-id' }],
+      });
+      expect(
+        personalFetch.mock.calls.map(
+          ([url, init]) => `${init?.method}:${new URL(String(url)).pathname}`
+        )
+      ).toEqual([
+        'GET:/api/v1/iam/roles',
+        'GET:/api/v1/iam/permissions',
+        'POST:/api/v1/iam/roles',
+        'GET:/api/v1/iam/roles',
+      ]);
+      for (const [url, init] of personalFetch.mock.calls) {
+        expect(new URL(String(url)).origin).toBe(context.baseUrl);
+        expect(init?.headers).toMatchObject({ authorization: 'Bearer personal-editor-token' });
+        expect(init?.redirect).toBe('manual');
+      }
+      expect(serviceRequest).not.toHaveBeenCalled();
+      expect(JSON.stringify(response)).not.toContain('personal-editor-token');
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it('routes personal user API calls through only the selected context and keeps credentials out of MCP output', async () => {
     const serviceRequest = vi.fn().mockResolvedValue({ data: { service: true } });
     const personalFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [{ id: 'user-1' }] }), {

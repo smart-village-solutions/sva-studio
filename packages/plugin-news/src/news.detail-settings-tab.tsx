@@ -1,20 +1,20 @@
-import { translateNewsFieldError } from './news.detail-page.helpers.js';
 import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
-import { type NewsWasteMasterDataOverview } from './news.waste-targeting.js';
-import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 import {
-  Radio,
   Checkbox,
-  Input,
+  LocalDateTimeInput,
+  Radio,
+  StudioDetailCard,
   StudioField,
   StudioFormSummaryErrors,
   getStudioFormFieldProps,
 } from '@sva/studio-ui-react';
 import { useEffect, type ReactNode } from 'react';
-import { StudioDetailCard } from '@sva/studio-ui-react';
+import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
+import { translateNewsFieldError } from './news.detail-page.helpers.js';
 import { NewsDetailTargetingSection } from './news.detail-targeting-tab.js';
 import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
 import type { WasteTargetingAvailability } from './news.waste-payload.js';
+import { type NewsWasteMasterDataOverview } from './news.waste-targeting.js';
 const missingDateValue = '--.--.-- --:--';
 type ScheduledPublicationFieldState = Readonly<{
   value: string;
@@ -217,14 +217,12 @@ function NewsPublicationCard({
             control={control}
             name="scheduledPublicationAt"
             render={({ field }) => (
-              <Input
+              <LocalDateTimeInput
+                label={pt('fields.scheduledPublicationAt')}
                 {...scheduledPublicationBindings.controlProps}
-                type="datetime-local"
                 required
                 value={scheduledPublicationField.value}
-                onChange={(event) =>
-                  field.onChange(scheduledPublicationField.onChange(event.target.value))
-                }
+                onValueChange={(value) => field.onChange(scheduledPublicationField.onChange(value))}
               />
             )}
           />

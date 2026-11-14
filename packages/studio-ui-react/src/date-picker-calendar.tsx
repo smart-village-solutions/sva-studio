@@ -4,8 +4,12 @@ import { enGB } from 'react-day-picker/locale/en-GB';
 import { enUS } from 'react-day-picker/locale/en-US';
 
 import { Calendar } from './calendar.js';
+import {
+  initialDatePickerMonth,
+  parseDatePickerValue,
+  toDatePickerValue,
+} from './date-picker-value.js';
 import type { DatePickerProps } from './date-picker.js';
-import { parseDatePickerValue, toDatePickerValue } from './date-picker-value.js';
 
 const locales = { 'de-DE': de, 'en-GB': enGB, 'en-US': enUS } as const;
 
@@ -25,8 +29,15 @@ export function DatePickerCalendar({
     onMonthChange: (month: Date) => void;
     onSelect: (value: string) => void;
   }>) {
-  const dateLabel = new Intl.DateTimeFormat(locale, { dateStyle: 'full' });
-  const monthLabel = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' });
+  const dateLabel = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'full',
+    timeZone: 'UTC',
+  });
+  const monthLabel = new Intl.DateTimeFormat(locale, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
   const minimum = min ? parseDatePickerValue(min) : undefined;
   const maximum = max ? parseDatePickerValue(max) : undefined;
   return (
@@ -39,6 +50,7 @@ export function DatePickerCalendar({
         className="z-50 w-auto max-w-[calc(100vw-1rem)] rounded-md border border-border bg-popover text-popover-foreground shadow-md"
       >
         <Calendar
+          today={initialDatePickerMonth(undefined)}
           mode="single"
           required
           autoFocus

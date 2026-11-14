@@ -113,6 +113,7 @@
       ],
       "@sva/instance-registry/service-types": ["packages/instance-registry/src/service-types.ts"],
       "@sva/instance-registry": ["packages/instance-registry/src/index.ts"],
+      "@sva/plugin-sdk/temporal": ["packages/plugin-sdk/src/temporal.ts"],
       "@sva/plugin-sdk": ["packages/plugin-sdk/src/index.ts"],
       "@sva/plugin-sdk/route-documentation": [
         "packages/plugin-sdk/src/route-documentation.ts"

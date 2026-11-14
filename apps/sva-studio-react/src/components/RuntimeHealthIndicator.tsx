@@ -1,10 +1,11 @@
 import type { RuntimeDependencyKey, RuntimeDependencyStatus } from '@sva/iam-core';
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 
 import { Button } from '@sva/studio-ui-react';
-import { Badge } from './ui/badge';
 import { useRuntimeHealth } from '../hooks/use-runtime-health';
 import { getActiveLocale, t } from '../i18n';
 import { cn } from '../lib/utils';
+import { Badge } from './ui/badge';
 
 const serviceOrder: readonly RuntimeDependencyKey[] = [
   'database',
@@ -49,12 +50,7 @@ const formatTimestamp = (timestamp: string, locale: string): string => {
     return t('shell.runtimeHealth.notAvailable');
   }
 
-  return new Intl.DateTimeFormat(locale, {
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: '2-digit',
-  }).format(date);
+  return formatDateTimeInEditorTimeZone(timestamp, locale) ?? timestamp;
 };
 
 const reasonLabels: Readonly<Record<string, string>> = {

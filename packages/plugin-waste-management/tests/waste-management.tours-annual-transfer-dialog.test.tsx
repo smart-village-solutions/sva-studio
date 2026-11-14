@@ -1,5 +1,5 @@
-import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({
@@ -42,8 +42,8 @@ vi.mock('@sva/studio-ui-react', async () => ({
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
 }));
 
-import { WasteToursAnnualTransferDialog } from '../src/waste-management.tours-annual-transfer-dialog.js';
 import { WasteManagementApiError } from '../src/waste-management.api.js';
+import { WasteToursAnnualTransferDialog } from '../src/waste-management.tours-annual-transfer-dialog.js';
 import { showWasteAnnualTransferResult } from '../src/waste-management.tours-annual-transfer.js';
 
 const preview = {
@@ -134,6 +134,33 @@ describe('WasteToursAnnualTransferDialog', () => {
     );
   });
 
+  it.each(['first', 'replacement'] as const)(
+    'keeps invalid %s date drafts out of refresh-preview API requests',
+    async (kind) => {
+      api.preview.mockResolvedValue({
+        ...preview,
+        tours: [{ ...preview.tours[0], replacementResourceIds: ['date-1'], replacementTargetYears: { 'date-1': 2027 } }],
+      });
+      render(<WasteToursAnnualTransferDialog open onOpenChange={vi.fn()} onCreated={vi.fn(async () => undefined)} onShowResult={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
+      const input = await screen.findByLabelText(kind === 'first'
+        ? 'tours.annualTransfer.overrideFirstTargetDate:Bio Nord'
+        : 'tours.annualTransfer.replacementDate:Bio Nord 1|2027');
+      for (const draft of ['31.02.2027', '01.01.2026', '15.0']) {
+        fireEvent.change(input, { target: { value: draft } });
+        fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.refreshPreview' }));
+        expect(api.preview).toHaveBeenCalledTimes(1);
+        expect((input as HTMLInputElement).value).toBe(draft);
+      }
+      fireEvent.change(input, { target: { value: '01.02.2027' } });
+      fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.refreshPreview' }));
+      await waitFor(() => expect(api.preview).toHaveBeenCalledTimes(2));
+      expect(api.preview).toHaveBeenLastCalledWith(expect.objectContaining(kind === 'first'
+        ? { firstTargetDates: [{ sourceTourId: 'tour-1', firstDate: '2027-02-01' }] }
+        : { replacementDates: [{ sourceResourceId: 'date-1', targetDate: '2027-02-01' }] }));
+    }
+  );
+
   it('shows the fixed following year and creates the confirmed selection as a draft', async () => {
     const onCreated = vi.fn(async () => undefined);
     render(
@@ -151,7 +178,7 @@ describe('WasteToursAnnualTransferDialog', () => {
     expect(screen.getByText(/tours\.annualTransfer\.summaryDetailed/)).toBeTruthy();
     expect(screen.getByText(/tours\.annualTransfer\.tourCounts/)).toBeTruthy();
     expect(screen.getByText(/tours\.annualTransfer\.period/)).toBeTruthy();
-    expect(screen.getByText(/tours\.annualTransfer\.firstTargetDate.*2027-01-04/)).toBeTruthy();
+    expect(screen.getByText(/tours\.annualTransfer\.firstTargetDate.*04.01.2027/)).toBeTruthy();
     expect(screen.getByText(/tours\.annualTransfer\.dateExample.*weekdays/)).toBeTruthy();
     expect(
       (
@@ -212,11 +239,16 @@ describe('WasteToursAnnualTransferDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
     await screen.findByText('Bio Nord');
-    fireEvent.change(screen.getByLabelText(/tours\.annualTransfer\.overrideFirstTargetDate/), {
-      target: { value: '2027-01-21' },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/tours\.annualTransfer\.overrideFirstTargetDate/, {
+        selector: 'input',
+      }),
+      {
+        target: { value: '2027-01-21' },
+      }
+    );
     fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.review' }));
-    await screen.findByText(/tours\.annualTransfer\.firstTargetDate.*2027-01-21/);
+    await screen.findByText(/tours\.annualTransfer\.firstTargetDate.*21.01.2027/);
     expect(api.preview).toHaveBeenLastCalledWith(
       expect.objectContaining({
         firstTargetDates: [{ sourceTourId: 'tour-1', firstDate: '2027-01-21' }],
@@ -313,7 +345,7 @@ describe('WasteToursAnnualTransferDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
 
     expect(await screen.findByText(/tours\.customRecurrenceLabel:Alle neun Tage\|9/)).toBeTruthy();
-    expect(screen.getByText(/2026-06-15.*2027-06-14/)).toBeTruthy();
+    expect(screen.getByText(/15.06.2026.*14.06.2027/)).toBeTruthy();
   });
 
   it('shows and enforces the resource-specific year for cross-year replacements', async () => {
@@ -344,8 +376,12 @@ describe('WasteToursAnnualTransferDialog', () => {
       'tours.annualTransfer.replacementDate:Bio Nord 1|2029'
     );
 
-    expect((replacementInput as HTMLInputElement).min).toBe('2029-01-01');
-    expect((replacementInput as HTMLInputElement).max).toBe('2029-12-31');
+    fireEvent.change(replacementInput, { target: { value: '31.12.2028' } });
+    expect((replacementInput as HTMLInputElement).checkValidity()).toBe(false);
+    fireEvent.change(replacementInput, { target: { value: '01.01.2030' } });
+    expect((replacementInput as HTMLInputElement).checkValidity()).toBe(false);
+    fireEvent.change(replacementInput, { target: { value: '01.01.2029' } });
+    expect((replacementInput as HTMLInputElement).checkValidity()).toBe(true);
   });
 
   it('keeps conflicted tours unselected until the user selects and acknowledges them', async () => {

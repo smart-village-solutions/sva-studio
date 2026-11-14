@@ -1,5 +1,6 @@
-import type { WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
+import type { WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
 import { Link } from '@tanstack/react-router';
 
 type PluginTranslation = (
@@ -18,7 +19,7 @@ const readProgressCount = (
 const formatFinishedAt = (value: string | undefined): string | null => {
   if (!value) return null;
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? null : (formatDateTimeInEditorTimeZone(value) ?? null);
 };
 
 const formatPlannedCounts = (

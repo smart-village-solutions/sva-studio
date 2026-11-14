@@ -28,6 +28,10 @@ describe('personal MCP API request boundary', () => {
   });
 
   it('allows bounded admin resource routes and methods', () => {
+    expect(validatePersonalRequest({ ...valid, path: 'api/v1/iam/permissions' })).toBeUndefined();
+    for (const method of ['POST', 'PATCH', 'DELETE'] as const) {
+      expect(validatePersonalRequest({ ...valid, method, path: 'api/v1/iam/permissions', body: {} })).toBe('personal_route_not_allowed');
+    }
     expect(validatePersonalRequest(valid)).toBeUndefined();
     expect(validatePersonalRequest({ ...valid, method: 'POST', body: { email: 'provider@example.org' } })).toBeUndefined();
     expect(validatePersonalRequest({ ...valid, path: 'api/v1/iam/users/user-1' })).toBeUndefined();

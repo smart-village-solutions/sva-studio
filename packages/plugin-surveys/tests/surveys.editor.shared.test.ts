@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { createSurveyEditorTabs } from '../src/surveys.editor-tabs.js';
 import {
   getSurveyEditorErrorMessage,
   mapSurveyItemToFormValues,
@@ -7,7 +8,6 @@ import {
   mapSurveyResultsTabData,
   toSurveyMutationInput,
 } from '../src/surveys.editor.shared.js';
-import { createSurveyEditorTabs } from '../src/surveys.editor-tabs.js';
 import { reorderEntries } from '../src/surveys.question-editor.shared.js';
 import type { SurveyContentItem } from '../src/surveys.types.js';
 
@@ -555,5 +555,24 @@ describe('survey editor shared mappings', () => {
         },
       ],
     });
+  });
+});
+
+describe('survey timestamp API contract', () => {
+  it('preserves the later winter-time instant and subsecond precision on an unchanged save', () => {
+    const loaded = {
+      ...surveyItem,
+      startAt: '2026-10-25T01:30:45.123456Z',
+      endAt: '2026-10-25T03:00:12.123Z',
+    };
+    const form = mapSurveyItemToFormValues(loaded);
+    const payload = toSurveyMutationInput(form, loaded);
+    expect(payload.startAt).toBe(loaded.startAt);
+    expect(payload.endAt).toBe(loaded.endAt);
+  });
+  it('rejects a nonexistent editorial local time before sending an API payload', () => {
+    const form = mapSurveyItemToFormValues(surveyItem);
+    form.basis.startAt = '2026-03-29T02:30';
+    expect(() => toSurveyMutationInput(form, surveyItem)).toThrow();
   });
 });

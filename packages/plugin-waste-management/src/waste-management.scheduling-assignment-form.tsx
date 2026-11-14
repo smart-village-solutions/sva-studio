@@ -1,6 +1,6 @@
 import {
   Checkbox,
-  Input,
+  DateInput,
   Select,
   StudioField,
   StudioFieldGroup,
@@ -92,12 +92,12 @@ export const WasteTourExplicitAssignmentForm = ({
       id="waste-tour-assignment-pickup-date"
       label={pt('scheduling.assignments.fields.pickupDate')}
     >
-      <Input
+      <DateInput
+        label={pt('scheduling.assignments.fields.pickupDate')}
         id="waste-tour-assignment-pickup-date"
-        type="date"
         required
         value={form.pickupDate}
-        onChange={(event) => onChange({ pickupDate: event.target.value })}
+        onValueChange={(value) => onChange({ pickupDate: value })}
       />
     </StudioField>
     <WasteTourAssignmentLocationsField

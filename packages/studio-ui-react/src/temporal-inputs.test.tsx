@@ -157,3 +157,64 @@ it('composes a localized date and a clock value without changing the local API c
     new FormData((screen.getByLabelText('Local') as HTMLInputElement).form!).get('local')
   ).toBe('2026-07-02T13:45:12.123');
 });
+
+it('keeps a nonexistent instant invalid when correcting its calendar draft', () => {
+  const save = vi.fn();
+  function Form() {
+    const [value, setValue] = useState('2026-03-29T00:30:00.000Z');
+    return (
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          save(value);
+        }}
+      >
+        <InstantInput id="instant" aria-label="Instant" value={value} onValueChange={setValue} />
+      </form>
+    );
+  }
+  render(<Form />);
+  const day = screen.getByLabelText('Instant') as HTMLInputElement;
+  fireEvent.change(day, { target: { value: '31.02.2026' } });
+  fireEvent.change(document.getElementById('instant-time')!, { target: { value: '02:30' } });
+  fireEvent.change(day, { target: { value: '29.03.2026' } });
+  fireEvent.submit(day.form!);
+  expect(save).not.toHaveBeenCalled();
+  expect(document.activeElement).toBe(document.getElementById('instant-time'));
+  fireEvent.change(document.getElementById('instant-time')!, { target: { value: '03:30' } });
+  fireEvent.submit(day.form!);
+  expect(save).toHaveBeenCalledWith('2026-03-29T01:30:00.000Z');
+});
+
+it('retains calendar bounds when an instant edit is otherwise valid', () => {
+  const save = vi.fn();
+  function Form() {
+    const [value, setValue] = useState('2026-07-01T10:30:00.000Z');
+    return (
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          save(value);
+        }}
+      >
+        <InstantInput
+          id="instant"
+          aria-label="Instant"
+          min="2026-07-01T00:00"
+          value={value}
+          onValueChange={setValue}
+        />
+      </form>
+    );
+  }
+  render(<Form />);
+  const day = screen.getByLabelText('Instant') as HTMLInputElement;
+  fireEvent.change(day, { target: { value: '2026-06-30' } });
+  fireEvent.submit(day.form!);
+  expect(save).not.toHaveBeenCalled();
+  fireEvent.change(day, { target: { value: '01.07.2026' } });
+  fireEvent.submit(day.form!);
+  expect(save).toHaveBeenCalledWith('2026-07-01T10:30:00.000Z');
+});

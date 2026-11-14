@@ -149,26 +149,8 @@ export const TimeInput = React.forwardRef<HTMLInputElement, LocalInputProps>(
     return <Input {...props} ref={inputRef} type="time" step={props.step ?? 'any'} />;
   }
 );
-type LocalDateTimeProps = Pick<
-  LocalInputProps,
-  | 'id'
-  | 'name'
-  | 'disabled'
-  | 'readOnly'
-  | 'required'
-  | 'step'
-  | 'aria-label'
-  | 'aria-describedby'
-  | 'aria-invalid'
-  | 'className'
-> & {
-  value: string;
-  onValueChange: (value: string) => void;
-  onBlur?: () => void;
-  label?: string;
-  min?: string;
-  max?: string;
-};
+type LocalDateTimeProps = Omit<DateInputProps, 'id' | 'aria-invalid'> &
+  Pick<LocalInputProps, 'id' | 'aria-invalid' | 'step'>;
 /** Local components: every date part uses the same localized calendar-day control. */
 export const LocalDateTimeInput = React.forwardRef<HTMLInputElement, LocalDateTimeProps>(
   function LocalDateTimeInput(
@@ -238,7 +220,11 @@ export const InstantInput = React.forwardRef<HTMLInputElement, LocalDateTimeProp
     const local = isInstant(value) ? toDatetimeLocalValue(value) : value;
     const invalid = Boolean(value) && !isInstant(value);
     React.useEffect(() => {
-      inputRef.current?.setCustomValidity(invalid ? t('datePicker.errors.invalidInstant') : '');
+      // Calendar bounds remain owned by DateInput; instant errors belong to the clock.
+      const input = inputRef.current;
+      const clock = input?.ownerDocument.getElementById(`${input.id}-time`);
+      if (clock instanceof HTMLInputElement)
+        clock.setCustomValidity(invalid ? t('datePicker.errors.invalidInstant') : '');
     }, [invalid, t]);
     return (
       <LocalDateTimeInput

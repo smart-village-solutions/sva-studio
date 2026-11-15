@@ -1,3 +1,4 @@
+import { IconLink, IconPhoto, IconUpload } from '@tabler/icons-react';
 import { Button } from './button.js';
 import type {
   StudioMediaPickerMode,
@@ -8,58 +9,51 @@ export const StudioMediaPickerModeActions = ({
   labels,
   mode,
   onChangeMode,
-  onAddManual,
-  onClose,
+  onOpenManual,
   canUpload,
   disabled,
 }: Readonly<{
   labels: StudioMediaPickerOverlayLabels['modes'];
-  mode: StudioMediaPickerMode;
+  mode: StudioMediaPickerMode | 'manual';
   onChangeMode: (mode: 'library' | 'upload') => void;
-  onAddManual: () => string | void;
-  onClose: () => void;
+  onOpenManual?: () => void;
   canUpload: boolean;
   disabled: boolean;
 }>) => (
-  <div className="flex flex-wrap gap-2 border-b border-border/60 pb-4">
+  <div className="flex flex-col gap-2 shrink-0 border-b border-border/60 pb-4 sm:flex-row">
     <Button
+      className="min-w-0 flex-1 whitespace-normal text-center"
       type="button"
       disabled={disabled || !canUpload}
       variant={mode === 'upload' ? 'primary' : 'secondary'}
       aria-pressed={mode === 'upload'}
       onClick={() => onChangeMode('upload')}
     >
+      <IconUpload aria-hidden="true" className="h-5 w-5 shrink-0" />
       {labels.upload}
     </Button>
     <Button
+      className="min-w-0 flex-1 whitespace-normal text-center"
       type="button"
       disabled={disabled}
       variant={mode === 'library' ? 'primary' : 'secondary'}
       aria-pressed={mode === 'library'}
       onClick={() => onChangeMode('library')}
     >
+      <IconPhoto aria-hidden="true" className="h-5 w-5 shrink-0" />
       {labels.library}
     </Button>
-    <button
-      type="button"
-      disabled={disabled}
-      className="rounded-sm px-1 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-      onClick={() => {
-        const uiId = onAddManual();
-        onClose();
-        if (uiId) {
-          globalThis.setTimeout(
-            () => globalThis.document?.getElementById(`content-media-${uiId}-url`)?.focus(),
-            0
-          );
-        }
-      }}
-    >
-      {labels.manual}
-    </button>
-    {mode === 'review' ? (
-      <Button type="button" variant="secondary" disabled>
-        {labels.review}
+    {onOpenManual ? (
+      <Button
+        className="min-w-0 flex-1 whitespace-normal text-center"
+        type="button"
+        disabled={disabled}
+        variant={mode === 'manual' ? 'primary' : 'secondary'}
+        aria-pressed={mode === 'manual'}
+        onClick={onOpenManual}
+      >
+        <IconLink aria-hidden="true" className="h-5 w-5 shrink-0" />
+        {labels.manual}
       </Button>
     ) : null}
   </div>

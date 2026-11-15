@@ -3,7 +3,7 @@ export const newsTranslationsENEditor = {
     saveUnavailable:
       'Saving is currently unavailable. Please ask your administrator to check your connection to content management.',
     responsible: 'Responsible:',
-    introOptional: 'Add introduction',
+    introOptional: 'Introduction',
     categoryUnavailable:
       'Categories cannot be loaded right now. Please contact your administrator.',
     noPushHint: 'Drafts and scheduled publications do not send push notifications.',
@@ -13,7 +13,7 @@ export const newsTranslationsENEditor = {
     intro:
       'Create a news item. Start with the title and text; media, categories and source are optional.',
     introHelp: 'Optional short introduction to the news item.',
-    sourceOptional: 'Add source (optional)',
+    sourceOptional: 'Source (optional)',
     sourcePresent: 'Source entered',
     sourceEmpty: 'No source entered',
     pushResetHint:
@@ -111,6 +111,9 @@ export const newsTranslationsENEditor = {
     reloadCurrentContext: 'Reload context and keep draft',
     save: 'Save',
     saving: 'Saving…',
+    savedDraft: 'Saved as draft',
+    savedPublished: 'Published',
+    savedScheduled: 'Publication scheduled',
     saved: 'Saved',
     retry: 'Try again',
     openCreatedDetail: 'Open created news',

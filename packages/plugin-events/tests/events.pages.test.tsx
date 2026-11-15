@@ -107,6 +107,15 @@ const paramsMock = vi.fn(() => ({ id: 'event-1' }));
 
 describe('EventsListPage', () => {
   beforeEach(() => {
+    // jsdom has no layout observer; focused icon tooltips use the browser API.
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
     vi.clearAllMocks();
     publishSessionAccessSnapshot({
       isResolved: true,
@@ -465,7 +474,7 @@ describe('EventsListPage', () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue('Header')).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Medium entfernen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.removeFromContent' }));
     fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {

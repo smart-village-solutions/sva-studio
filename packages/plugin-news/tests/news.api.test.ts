@@ -16,7 +16,7 @@ import {
   updateNews,
   updateNewsPartial,
 } from '../src/news.api.js';
-import { createDefaultNewsDetailFormValues } from '../src/news.detail-form.js';
+import { createDefaultNewsDetailFormValues, mapNewsItemToDetailFormValues } from '../src/news.detail-form.js';
 import type { NewsFormInput } from '../src/index.js';
 import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
@@ -387,6 +387,21 @@ describe('news api', () => {
       charactersToBeShown: 180,
       newsType: 'meldung',
     });
+  });
+
+  it.each([
+    ['immediate', false, '2026-01-01T12:00:00.000Z', 'draft'],
+    ['draft', true, '2026-01-01T12:00:00.000Z', 'immediate'],
+    ['immediate', true, '2099-01-01T12:00:00.000Z', 'scheduled'],
+  ] as const)('preserves the confirmed publication state for %s requests', async (publicationMode, visible, publishedAt, expectedMode) => {
+    const publicationDate = '2026-02-01T12:00:00.000Z';
+    const updateNewsMock = vi.fn().mockResolvedValue({ ...sampleResponse, visible, publishedAt, publicationDate });
+    const saved = await saveNewsEditorItem(
+      { contentId: 'news-1', values: { ...editorValuesFixture, publicationMode } },
+      { updateNews: updateNewsMock }
+    );
+    expect(saved).toMatchObject({ visible, publishedAt, publicationDate });
+    expect(mapNewsItemToDetailFormValues(saved).publicationMode).toBe(expectedMode);
   });
 
   it('routes editor saves through the injected update operation for existing news items', async () => {

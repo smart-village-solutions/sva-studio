@@ -107,7 +107,6 @@ export const BrandingMediaPickerControls = ({
         labels={labels}
         metadataDraft={mediaPicker.metadataDraft}
         mode={mediaPicker.mode}
-        onAddManual={() => 'branding'}
         onBackFromReview={mediaPicker.goBackFromReview}
         onChangeMode={(mode) =>
           mode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()

@@ -29,7 +29,7 @@ type TabInput = Readonly<{
   canSelectMedia: boolean;
   canUploadMedia: boolean;
   mediaEditingDisabled: boolean;
-  onAddManualMedia: () => string;
+  onAddManualMedia: (persistentUrl?: string) => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
 }>;
 

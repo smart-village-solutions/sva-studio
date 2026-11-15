@@ -17,6 +17,13 @@ ist auch am oberen Aktionsbutton erkennbar, ob ein Entwurf angelegt, eine Veröf
 oder sofort veröffentlicht wird und ob Push vorgesehen ist. Gespeicherte Inhalte verwenden
 weiterhin die bisherigen Bearbeitungs-Tabs.
 
+Bei Veranstaltungen und Orten werden externe Kennungen ausschließlich in der Bearbeitungsansicht
+unter den administrativen Angaben („Externe Zuordnung“) gepflegt; die Neuanlage zeigt sie nicht.
+Nach erfolgreichem Speichern bestätigt die Nachricht „Als Entwurf gespeichert“, „Veröffentlicht“
+oder „Veröffentlichung geplant“. Veranstaltungen und Orte bestätigen „Sichtbar gespeichert“
+beziehungsweise „Verborgen gespeichert“. Fehler oder Teilerfolge bei Medienreferenzen werden
+weiterhin gesondert angezeigt.
+
 Ein Entwurf kann nur bei Inhaltstypen mit bereits vorhandenem Entwurfsmodus gespeichert und später
 über die Inhaltsliste weiterbearbeitet werden. Ohne erfolgreiches Speichern gibt es keine
 Autosave- oder Wiederherstellungsgarantie beim Verlassen beziehungsweise Neuladen. Beim Anlegen

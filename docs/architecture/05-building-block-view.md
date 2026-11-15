@@ -129,6 +129,7 @@ Modulen der jeweiligen Bausteine.
 - kapselt Featured Projects als Mainserver-`GenericItem` mit `genericType: "FeaturedProject"`; Mainserver-ID, Lifecycle, Veröffentlichung und Autorenschaft bleiben fachlich führend, während ein lokaler `iam.contents`-Core und `iam.external_content_references` ausschließlich optionale Studio-History- und Reconciliation-Begleitzustände bilden
 - trennt die interne Featured-Project-Erstellung in Create-Orchestrierung, Idempotenz-/Replay-Handling, reine Payload-/Response-Abbildung sowie gemeinsame Autorisierungs- und Transportbausteine; `projects-route.ts` bleibt die HTTP-Fassade und exportiert keine neuen Create-Interna
 - kapselt zusätzlich den getypten Schreibpfad für Mainserver-Static-Content wie `wasteTypes` über `createOrUpdateStaticContent`, ohne Browser- oder Plugin-Code direkt an GraphQL zu koppeln
+- Zielentscheidung für #2180, Gesamtabgleich noch nicht implementiert: Der bestehende Static-Content-Pfad wird zum gemeinsamen, hostgeführten JSON-Abgleich für alle App-Konfigurationsplugins erweitert. Fachplugins liefern fachlich validierte Änderungen ihrer zugeordneten Felder; Host und Mainserver-Package übernehmen Rechte-/Pfadprüfung sowie den gemeinsamen Lese-, Konflikt-, Schreib- und Readback-Ablauf. Zuständigkeiten und Grenzen stehen unter [Gemeinsamer Abgleich der App-Konfiguration](08-cross-cutting-concepts.md#gemeinsamer-abgleich-der-app-konfiguration).
 - liest seine instanzbezogene Endpunktkonfiguration nicht mehr aus einer Mainserver-Spezialtabelle, sondern aus der zentralen External-Interface-Registry
 - bietet Root-Administratoren Bestand, Detail und gezieltes Speichern der Mainserver-Schnittstelle über `root-interface-contract.ts` an; der bestehende `settings.ts`-Persistenzpfad bleibt führend. `auth-runtime` prüft Root-Host, Registry-Rolle, Service-Action und Browser-CSRF vor dem instanzgebundenen Zugriff.
 - hält `src/server/service.ts` bewusst als schlanke Fassade; Credentials, Token, GraphQL-Transport, Sichtbarkeits-Pagination, Mapper und ressourcenspezifische Operationen liegen in getrennten internen Modulen unter `src/server/service-internals/`
@@ -1336,3 +1337,7 @@ Der app-lokale Handler `studio-release-notes.server.ts` liest über den bestehen
 reguläre Studio-Releases aus dem festgelegten GitHub-Repository. Er liefert nur Version, Titel,
 Veröffentlichungsdatum und Notes an die UI. Release-Erzeugung und Deployment-Prozesse bleiben
 unverändert; die Anzeige wird nicht mit dem laufenden Image abgeglichen.
+
+### Standard Redakteur
+
+Der Core-Permission-Katalog besitzt die redaktionelle Action-Auswahl und deren Scopes. `data-repositories` erzeugt die löschbare Rolle atomar mit dem Mandanten und ergänzt ihre Core-/Modulgrants ausschließlich bei noch vorhandener Rolle. Migration 0116 übernimmt den einmaligen Bestand. `iam-admin` klassifiziert alle gescopten redaktionellen Actions als Datensatzrechte; die Mainserver-Mutations- und Resource-Access-Pfade erzwingen die vorhandene exakte Ownership-Prüfung. Es entstehen keine neuen Packages, Services oder Verwaltungsendpunkte.

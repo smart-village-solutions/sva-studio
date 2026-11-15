@@ -263,6 +263,7 @@ test.describe('waste management plugin', () => {
     page,
   }) => {
     test.setTimeout(180_000);
+    await page.clock.setFixedTime(new Date('2026-05-12T12:00:00.000Z'));
     await mockSharedShellRequests(context, {
       instanceId: 'de-tour-shift-context',
       permissionActions: [
@@ -318,10 +319,9 @@ test.describe('waste management plugin', () => {
     await expect(popup.locator('#waste-tour-shift-tour')).toHaveValue('tour-1', {
       timeout: 30_000,
     });
-    const originalDate = await popup.locator('#waste-tour-shift-original-date').inputValue();
-    expect(originalDate).toMatch(/^2026-\d{2}-\d{2}$/u);
+    await expect(popup.locator('#waste-tour-shift-original-date')).toHaveValue('12.05.2026');
     await expect(popup).toHaveURL(/schedulingTourId=tour-1/u);
-    await expect(popup).toHaveURL(new RegExp(`schedulingOriginalDate=${originalDate}`, 'u'));
+    await expect(popup).toHaveURL(/schedulingOriginalDate=2026-05-12/u);
     await expect(page).toHaveURL(sourceUrl);
     await expect(page.getByRole('heading', { name: 'Jahreskalender' })).toBeVisible();
   });
@@ -864,7 +864,9 @@ test.describe('waste management plugin', () => {
     await captureStudioDesignState(page, 'waste-tours-selected');
     await page.getByRole('button', { name: 'Gültigkeitszeitraum ändern' }).click();
     await page.getByLabel('Gültig ab').selectOption('set');
-    await page.getByLabel('Neuer Gültigkeitsbeginn').fill('2026-03-01');
+    await page
+      .getByRole('textbox', { name: 'Neuer Gültigkeitsbeginn', exact: true })
+      .fill('01.03.2026');
     await page.getByLabel('Gültig bis').selectOption('clear');
     await page.getByRole('button', { name: 'Zeitraum ändern' }).click();
 
@@ -989,7 +991,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Tourensatz ins Folgejahr übernehmen' }).click();
     await expect(page.getByText('Unveränderliches Folgejahr: 2027')).toBeVisible();
     await page.getByRole('button', { name: 'Vorschau erstellen' }).click();
-    await expect(page.getByText('2026-01-05 (Montag) → 2027-01-04 (Montag)')).toBeVisible();
+    await expect(page.getByText('05.01.2026 (Montag) → 04.01.2027 (Montag)')).toBeVisible();
     await page.getByRole('button', { name: 'Auswahl prüfen' }).click();
     await page.getByRole('button', { name: 'Als Entwurf übernehmen' }).click();
 

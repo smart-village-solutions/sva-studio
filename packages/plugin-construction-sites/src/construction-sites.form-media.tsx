@@ -114,10 +114,10 @@ export function ConstructionSiteMediaFields({
     access.permissionActions.includes('media.read') &&
     access.permissionActions.includes('media.reference.manage');
   const usages = constructionSiteMediaUsages(draft, ids.current);
-  const addManual = () => {
+  const addManual = (persistentUrl = '') => {
     const media = {
       contentType: 'image' as const,
-      sourceUrl: { url: '', description: '' },
+      sourceUrl: { url: persistentUrl, description: '' },
       captionText: '',
       copyright: '',
     };

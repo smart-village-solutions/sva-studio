@@ -11,11 +11,13 @@ import {
   type SvaMainserverCreateOrUpdateStaticContentMutation,
 } from '../../generated/static-content.js';
 
-import { toSvaMainserverError, type GraphqlExecutor } from './shared.js';
+import { normalizeUnexpectedError, toSvaMainserverError, type GraphqlExecutor } from './shared.js';
 
 export const createStaticContentOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
   writeStaticContentWithConfig: async (
-    input: SvaMainserverConnectionInput & { readonly staticContent: SvaMainserverStaticContentInput },
+    input: SvaMainserverConnectionInput & {
+      readonly staticContent: SvaMainserverStaticContentInput;
+    },
     config: SvaMainserverInstanceConfig
   ): Promise<{ readonly id: string }> => {
     const normalizedName = input.staticContent.name.trim().toLowerCase();
@@ -47,31 +49,41 @@ export const createStaticContentOperations = (executeGraphqlWithConfig: GraphqlE
             version: '',
           };
 
-    const response = await executeGraphqlWithConfig<SvaMainserverCreateOrUpdateStaticContentMutation>(
-      {
-        ...input,
-        document:
-          existingId === null || existingId === undefined
-            ? svaMainserverCreateOrUpdateStaticContentDocument
-            : svaMainserverCreateOrUpdateStaticContentWithIdDocument,
-        operationName:
-          existingId === null || existingId === undefined
-            ? 'SvaMainserverCreateOrUpdateStaticContent'
-            : 'SvaMainserverCreateOrUpdateStaticContentWithId',
-        variables,
-      },
-      config
-    );
+    try {
+      const response =
+        await executeGraphqlWithConfig<SvaMainserverCreateOrUpdateStaticContentMutation>(
+          {
+            ...input,
+            // A transport failure can follow a committed write; the mutation is not idempotent.
+            allowRetry: false,
+            document:
+              existingId === null || existingId === undefined
+                ? svaMainserverCreateOrUpdateStaticContentDocument
+                : svaMainserverCreateOrUpdateStaticContentWithIdDocument,
+            operationName:
+              existingId === null || existingId === undefined
+                ? 'SvaMainserverCreateOrUpdateStaticContent'
+                : 'SvaMainserverCreateOrUpdateStaticContentWithId',
+            variables,
+          },
+          config
+        );
 
-    const id = response.createOrUpdateStaticContent?.id;
-    if (id === null || id === undefined) {
-      throw toSvaMainserverError({
-        code: 'invalid_response',
-        message: 'SVA-Mainserver konnte den Static-Content-Eintrag nicht schreiben.',
-        statusCode: 502,
+      const id = response.createOrUpdateStaticContent?.id;
+      if (id === null || id === undefined) {
+        throw toSvaMainserverError({
+          code: 'invalid_response',
+          message: 'SVA-Mainserver konnte den Static-Content-Eintrag nicht schreiben.',
+          statusCode: 502,
+        });
+      }
+
+      return { id: String(id) };
+    } catch (error) {
+      // Reuse the job lifecycle contract so a failed response cannot repeat this write.
+      throw Object.assign(normalizeUnexpectedError(error), {
+        cause: { retry: { kind: 'terminal' } },
       });
     }
-
-    return { id: String(id) };
   },
 });

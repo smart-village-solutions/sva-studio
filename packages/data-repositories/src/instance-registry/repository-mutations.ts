@@ -4,6 +4,7 @@ import type { InstanceRegistryRepository } from './repository-contract.js';
 import * as invitationTemplates from './repository-account-invitation-template.js';
 import {
   buildInstanceSelectColumns,
+  createInstanceSql,
   demotePreviousPrimaryHostnameSql,
   instanceExistsSql,
   upsertPrimaryHostnameSql,
@@ -78,18 +79,7 @@ const createInstance = async (
 ) => {
   const rows = await runMutationStep('registry_insert', () =>
     queryRows<InstanceListRow>(executor, {
-      text: `
-INSERT INTO iam.instances (
-  id, display_name, status, parent_domain, primary_hostname, realm_mode, auth_realm, auth_client_id,
-  auth_issuer_url, auth_client_secret_ciphertext, tenant_admin_client_id, tenant_admin_client_secret_ciphertext,
-  tenant_admin_username, tenant_admin_email, tenant_admin_first_name, tenant_admin_last_name, tenant_admin_adopt_existing, theme_key,
-  feature_flags, mainserver_config_ref, created_by, updated_by
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19::jsonb, $20, $21, $21)
-ON CONFLICT (id) DO NOTHING
-RETURNING
-${buildInstanceSelectColumns()};
-`,
+      text: createInstanceSql,
       values: createInstanceValues(input),
     })
   );
@@ -241,10 +231,17 @@ ${buildInstanceSelectColumns()};
 
 export const createMutationRepository = (executor: SqlExecutor): MutationRepository => ({
   deleteInstance: async (input) =>
-    (await queryRows<{ deleted: boolean }>(executor, statement(
-      'SELECT iam.delete_studio_instance($1, $2::timestamptz, $3, $4) AS deleted;',
-      [input.instanceId, input.expectedUpdatedAt, input.actorId, input.requestId ?? null]
-    )))[0]?.deleted === true,
+    (
+      await queryRows<{ deleted: boolean }>(
+        executor,
+        statement('SELECT iam.delete_studio_instance($1, $2::timestamptz, $3, $4) AS deleted;', [
+          input.instanceId,
+          input.expectedUpdatedAt,
+          input.actorId,
+          input.requestId ?? null,
+        ])
+      )
+    )[0]?.deleted === true,
   createInstance: (input) => createInstance(executor, input),
   updateInstance: (input) => updateInstance(executor, input),
   updateAccountInvitationTemplate: (input) =>

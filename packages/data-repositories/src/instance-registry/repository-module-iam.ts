@@ -12,6 +12,7 @@ import {
   insertProtectedRolePermission,
   upsertPermission,
   upsertProtectedRole,
+  syncStandardEditorPermissions,
 } from './repository-module-iam-shared.js';
 import { compareAlphabetically, queryRows, statement } from './repository-shared.js';
 
@@ -233,6 +234,12 @@ const createSyncProtectedSystemRolePermissions =
         await insertProtectedRolePermission(executor, instanceId, role.roleKey, permissionKey)
       );
     }
+    const insertedGrants = await syncStandardEditorPermissions(
+      executor,
+      instanceId,
+      permissions.map((permission) => permission.key)
+    );
+    result = { ...result, grantsInserted: result.grantsInserted + insertedGrants };
     return result;
   };
 

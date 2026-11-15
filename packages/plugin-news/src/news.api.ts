@@ -199,9 +199,9 @@ export const saveNewsEditorItem = async (
     categories: mutation.categories ?? saved.categories,
     sourceUrl: mutation.sourceUrl ?? saved.sourceUrl,
     contentBlocks: mutation.contentBlocks ?? saved.contentBlocks,
-    publishedAt: mutation.publishedAt,
-    publicationDate: mutation.publicationDate,
-    visible,
+    publishedAt: saved.publishedAt ?? mutation.publishedAt,
+    publicationDate: saved.publicationDate ?? mutation.publicationDate,
+    visible: saved.visible ?? visible,
   };
 };
 

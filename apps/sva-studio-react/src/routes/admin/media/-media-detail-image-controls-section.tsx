@@ -170,7 +170,6 @@ export const MediaDetailImageControlsSection = ({
         onSearchValueChange={picker.setSearchValue}
         onClose={picker.close}
         onChangeMode={() => undefined}
-        onAddManual={() => undefined}
         onSelectAsset={() => undefined}
         uploadPhase={picker.uploadPhase}
         onUploadFile={() => undefined}

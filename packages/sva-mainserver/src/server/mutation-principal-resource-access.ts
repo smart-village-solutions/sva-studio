@@ -1,3 +1,4 @@
+import { resolveStandardEditorPermissionScope } from '@sva/core';
 import {
   authorizeMainserverDataProviderAccess,
   resolveEffectivePermissions,
@@ -64,7 +65,10 @@ export const resolveMainserverResourceAccess = async (input: {
         contentId: input.contentId ?? input.item?.id,
         permissions: actionPermissions,
         dataProviderId,
-        ...(forceExactScopeActions.has(action) ? { forceExactScopeAuthorization: true } : {}),
+        ...(forceExactScopeActions.has(action) ||
+        resolveStandardEditorPermissionScope(action) === 'organization'
+          ? { forceExactScopeAuthorization: true }
+          : {}),
       });
       return [action, decision.allowed] as const;
     })

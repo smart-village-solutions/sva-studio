@@ -1706,12 +1706,6 @@
       "status": "open",
       "summary": "Plugin-Events-Exports in kleinere Re-Export-Segmente und API-Kanten aufteilen (packages/plugin-events/src/index.ts)"
     },
-    "packages-default:packages/plugin-events/src/events.category-multiselect.tsx:functionLines": {
-      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-005",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Events-Kategorieauswahl in kleinere Query-, Badge- und Auswahlbausteine aufteilen (packages/plugin-events/src/events.category-multiselect.tsx)"
-    },
     "packages-default:packages/plugin-events/src/events.detail-basis-tab.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-006",
       "ticketSystem": "backlog",
@@ -1789,12 +1783,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "POI-Plugin-Exports in kleinere API-Kanten und Re-Export-Segmente aufteilen (packages/plugin-poi/src/index.ts)"
-    },
-    "packages-default:packages/plugin-poi/src/poi.category-multiselect.tsx:functionLines": {
-      "ticketId": "QUAL-PLUGIN-POI-DETAIL-009",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "POI-Kategorieauswahl in kleinere Query-, Badge- und Auswahlbausteine aufteilen (packages/plugin-poi/src/poi.category-multiselect.tsx)"
     },
     "packages-default:packages/plugin-poi/src/poi.detail-basis-tab.tsx:functionLines": {
       "ticketId": "QUAL-PLUGIN-POI-DETAIL-010",

@@ -1,0 +1,125 @@
+{
+  "roleKey": "editor",
+  "permissions": [
+    {
+      "permissionKey": "categories.create",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "categories.delete",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "categories.read",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "categories.update",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "content.archive",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "content.changeStatus",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "content.create",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "content.delete",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "content.publish",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "content.read",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "content.restore",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "content.updateMetadata",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "content.updatePayload",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "events.create",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "events.delete",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "events.read",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "events.update",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "media.create",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "media.delete",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "media.read",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "media.reference.manage",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "media.update",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "news.create",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "news.delete",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "news.read",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "news.update",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "poi.create",
+      "accessScope": "all"
+    },
+    {
+      "permissionKey": "poi.delete",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "poi.read",
+      "accessScope": "organization"
+    },
+    {
+      "permissionKey": "poi.update",
+      "accessScope": "organization"
+    }
+  ]
+}

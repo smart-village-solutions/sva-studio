@@ -13,7 +13,11 @@ Ressourcenprincipal ab.
 - **Nutzerziel:** Inhalte finden, ihren Zustand beurteilen und eine zulässige Aktion starten.
 - **Produktfakten:** Suche erfasst Überschrift, Autor und Inhaltstyp. Zusätzlich bestehen Typ-,
   Sprach- und Statusfilter. Die Liste unterstützt Sortierung nach Titel sowie Veröffentlichungs-,
-  Erstellungs- und Änderungsdatum, Pagination und Statusdarstellung. Archivieren und Löschen
+  Erstellungs- und Änderungsdatum, Pagination und Statusdarstellung. Die Titelsortierung folgt dem
+  deutschen Alphabet: Umlaute werden wie ihr Grundbuchstabe einsortiert (ä wie a, ö wie o, ü wie
+  u), Groß- und Kleinschreibung spielt keine Rolle, und führende Sonderzeichen wie
+  Anführungszeichen, Symbole oder Emoji werden übergangen.
+  Importierte und im Studio angelegte Inhalte werden gleich einsortiert. Archivieren und Löschen
   wirken in der aktuellen Oberfläche ausschließlich auf die explizit ausgewählten Inhalte;
   Aktionen für die gesamte aktuelle Seite oder alle Filtertreffer werden nicht angeboten.
 - **Kontextabhängig:** Einträge können bearbeitbar, nur lesbar, gesperrt oder serverseitig

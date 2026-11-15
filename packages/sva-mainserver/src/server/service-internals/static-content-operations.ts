@@ -1,3 +1,8 @@
+import {
+  appConfigurationSelectionSchema,
+  type AppConfigurationSelection,
+} from '../../app-configuration-preview.js';
+import { projectAppConfigurationPreview } from '../static-content-preview.js';
 import type {
   SvaMainserverConnectionInput,
   SvaMainserverInstanceConfig,
@@ -5,6 +10,7 @@ import type {
 } from '../../types.js';
 import {
   svaMainserverPublicJsonFileDocument,
+  svaMainserverAppConfigurationPreviewDocument,
   type SvaMainserverPublicJsonFileQuery,
   svaMainserverCreateOrUpdateStaticContentDocument,
   svaMainserverCreateOrUpdateStaticContentWithIdDocument,
@@ -14,6 +20,33 @@ import {
 import { normalizeUnexpectedError, toSvaMainserverError, type GraphqlExecutor } from './shared.js';
 
 export const createStaticContentOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
+  readAppConfigurationPreviewWithConfig: async (
+    input: SvaMainserverConnectionInput & { readonly selection: AppConfigurationSelection },
+    config: SvaMainserverInstanceConfig
+  ) => {
+    const selection = appConfigurationSelectionSchema.safeParse(input.selection);
+    if (!selection.success)
+      throw toSvaMainserverError({
+        code: 'invalid_config',
+        message: 'app_configuration_selection_invalid',
+        statusCode: 400,
+      });
+    const response = await executeGraphqlWithConfig<{ readonly publicJsonFile?: unknown }>(
+      {
+        ...input,
+        document: svaMainserverAppConfigurationPreviewDocument,
+        operationName: 'SvaMainserverAppConfigurationPreview',
+        variables: { name: 'globalSettings', version: selection.data.version },
+      },
+      config
+    );
+    return projectAppConfigurationPreview(
+      response.publicJsonFile,
+      input.instanceId,
+      selection.data
+    );
+  },
+
   writeStaticContentWithConfig: async (
     input: SvaMainserverConnectionInput & {
       readonly staticContent: SvaMainserverStaticContentInput;

@@ -37,3 +37,10 @@
 - [ ] 4.3 Gezielte Waste-Regression und erforderliche Unit-/Type-/Auth-/Server-Runtime-Gates für den tatsächlich geänderten Scope ausführen; keine Mainserver-/App- oder Live-Abnahme behaupten.
 - [ ] 4.4 Autorisierten Test-Roundtrip und tatsächliche App-Wirkung getrennt dokumentieren, offene Umgebungsevidenz offen lassen.
 - [ ] 4.5 arc42-Abschnitte 05/08, Static-JSON-Referenz und tatsächlich betroffene Sicherheits-/Laufzeitdokumentation vom Zielbild auf belegten Implementierungsstand fortschreiben; `pnpm check:file-placement` und OpenSpec-Validierung ausführen.
+
+## 5. Bestätigter Vorschau-Editor ohne Mainserver-Write
+
+- [x] 5.1 Begrenzten Lese-/Projektionsvertrag im bestehenden Mainserver-Pfad samt Unit-/Transportnachweis anbinden.
+- [x] 5.2 Authentifizierten Host-Aufruf mit bestehendem `integration.manage` und Session-/Instanz-/Principal-Bindung anschließen.
+- [x] 5.3 Editor auf „Schnittstellen“ mit Versionsanfrage, tatsächlicher Variante, Allgemein/Design, lokaler Validierung, Vorschau, Verwerfen und sicherem Neu-Laden umsetzen.
+- [x] 5.4 Deutsche/englische Texte, gezielte UI-/Auth-/Runtime-Nachweise und aktuelle Dokumentation abschließen.

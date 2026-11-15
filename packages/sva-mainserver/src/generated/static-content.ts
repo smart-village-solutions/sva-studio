@@ -62,3 +62,10 @@ mutation SvaMainserverCreateOrUpdateStaticContentWithId(
   }
 }
 `;
+
+// Read-only editor projection. This query still has the Mainserver's version fallback semantics.
+export const svaMainserverAppConfigurationPreviewDocument = `
+query SvaMainserverAppConfigurationPreview($name: String!, $version: String) {
+  publicJsonFile(name: $name, version: $version) { id name dataType version content }
+}
+`;

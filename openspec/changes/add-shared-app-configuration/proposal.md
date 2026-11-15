@@ -6,7 +6,7 @@ Die App-Konfigurationseditoren benötigen einen gemeinsamen, verlustfreien Mains
 
 ## Freigabe und Status
 
-Der Gesamtentwurf ist freigegeben. Dieser PR sichert ausschließlich den bestehenden Static-Content-Writer gegen automatische Mutationswiederholungen und dokumentiert die weitere Umsetzung. Leseadapter, Abgleich, Versionskopie und Readback werden gemeinsam mit ihrem ersten tatsächlichen autorisierten Host-Verbraucher eingeführt; isolierte öffentliche APIs ohne Verbraucher sind nicht Teil dieses PRs. Der technische Zugriff für vollständige Variantenverwaltung und identitätserhaltende Writes bleibt offen, siehe [Design](design.md#technischer-zugriff-mit-unverändertem-mainserver).
+Der Gesamtentwurf bleibt freigegeben. Als gesonderter, vom Nutzer bestätigter Lieferabschnitt entsteht jetzt eine Vorschau auf der bestehenden Host-Seite „Schnittstellen“: vorhandene Konfiguration laden, die beiden vereinbarten Felder lokal bearbeiten und Änderungen vergleichen. Es gibt keinen Mainserver-Write, keine persistierten Entwürfe und keine Variantenanlage oder Löschung. Der vorhandene Zugriff `integration.manage` schützt diesen gemeinsamen Host-Verbraucher; fachliche Plugin-Konfigurationsrechte und vollständige Variantenverwaltung bleiben im späteren Gesamtumfang offen.
 
 ## What Changes
 
@@ -24,7 +24,7 @@ Der Gesamtentwurf ist freigegeben. Dieser PR sichert ausschließlich den bestehe
 - Das Risiko externer Änderungen zwischen Fresh Read und Write ist ausdrücklich akzeptiert. Studio verspricht keinen atomaren Überschreibeschutz.
 - Keine automatische Neuanlage aufgrund einer leeren Fallback-Antwort, keine stillen Namensänderungen, kein DB-Direktzugriff und keine automatische Rechteerhöhung.
 - Keine weiteren Modulformulare, automatische Altlastenbereinigung, zweite Konfigurationspersistenz oder neuer Sync-Dienst. Parser-/Duplikatfälle werden nicht als eigener Bereinigungsauftrag aufgenommen.
-- Dieser PR liefert den Retry-Schutz im bestehenden Writer. Host-/Plugin-Anbindung und vollständige Variantenverwaltung bleiben offen. Merge, Deployment und produktive Konfigurationswrites sind nicht beauftragt.
+- Der Vorschau-Lieferabschnitt ergänzt den bereits gelieferten Retry-Schutz um Laden und lokale Bearbeitung ohne Mainserver-Write. Schreibende Host-/Plugin-Anbindung und vollständige Variantenverwaltung bleiben offen. Merge, Deployment und produktive Konfigurationswrites sind nicht beauftragt.
 
 ## Impact
 

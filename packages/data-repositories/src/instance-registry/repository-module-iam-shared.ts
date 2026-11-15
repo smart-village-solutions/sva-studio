@@ -1,3 +1,4 @@
+import { resolveStandardEditorPermissionScope, standardEditorRoleKey } from '@sva/core';
 import type { SqlExecutor } from '../iam/repositories/types.js';
 
 import type {
@@ -197,4 +198,43 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
     )
   );
   return result.rowCount > 0;
+};
+
+/** Only adds grants to a role that still exists; never restores a deleted default. */
+export const syncStandardEditorPermissions = async (
+  executor: SqlExecutor,
+  instanceId: string,
+  permissionKeys: readonly string[],
+  moduleId?: string
+): Promise<number> => {
+  const grants = permissionKeys.flatMap((key) => {
+    const scope = resolveStandardEditorPermissionScope(key);
+    return scope ? [{ key, scope }] : [];
+  });
+  if (grants.length === 0) return 0;
+  const result = await executor.execute(
+    statement(
+      `
+INSERT INTO iam.role_permissions (
+  instance_id, role_id, permission_id, access_scope, grant_origin_kind, grant_origin_module_id
+)
+SELECT role.instance_id, role.id, permission.id, grant_spec.scope, $4, $5
+FROM iam.roles role
+JOIN iam.permissions permission ON permission.instance_id = role.instance_id
+JOIN jsonb_to_recordset($3::jsonb) AS grant_spec(key text, scope text)
+  ON grant_spec.key = permission.permission_key
+WHERE role.instance_id = $1 AND role.role_key = $2
+  AND role.managed_by = 'studio' AND NOT role.is_system_role
+ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
+`,
+      [
+        instanceId,
+        standardEditorRoleKey,
+        JSON.stringify(grants),
+        moduleId ? 'module_sync' : 'bootstrap',
+        moduleId ?? null,
+      ]
+    )
+  );
+  return result.rowCount;
 };

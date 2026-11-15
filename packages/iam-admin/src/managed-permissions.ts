@@ -2,7 +2,11 @@ import {
   iamRolePermissionAssignmentScopes,
   type IamRolePermissionAssignmentScope,
 } from '@sva/iam-core';
-import type { IamPermissionRuntimeScope } from '@sva/core';
+import {
+  standardEditorPermissionKeys,
+  resolveStandardEditorPermissionScope,
+  type IamPermissionRuntimeScope,
+} from '@sva/core';
 import { studioModuleIamContracts } from '@sva/studio-module-iam';
 
 export type ManagedPermissionMetadata = Readonly<{
@@ -18,25 +22,9 @@ const RECORD_ACCESS_SCOPES = iamRolePermissionAssignmentScopes;
 const ROOT_ONLY_PERMISSION_KEYS = ['instance.registry.manage'] as const satisfies readonly string[];
 const ROOT_ONLY_PERMISSION_KEY_SET: ReadonlySet<string> = new Set(ROOT_ONLY_PERMISSION_KEYS);
 const INSTANCE_REGISTRY_PERMISSION_DESCRIPTION = 'Manage instance registry and provisioning';
-const RECORD_SCOPED_PERMISSION_KEYS = [
-  'content.read',
-  'content.updateMetadata',
-  'content.updatePayload',
-  'content.changeStatus',
-  'content.publish',
-  'content.archive',
-  'content.restore',
-  'content.delete',
-  'news.read',
-  'news.update',
-  'news.delete',
-  'events.read',
-  'events.update',
-  'events.delete',
-  'poi.read',
-  'poi.update',
-  'poi.delete',
-] as const satisfies readonly string[];
+const RECORD_SCOPED_PERMISSION_KEYS = standardEditorPermissionKeys.filter(
+  (key) => resolveStandardEditorPermissionScope(key) === 'organization'
+);
 const RECORD_SCOPED_PERMISSION_KEY_SET: ReadonlySet<string> = new Set(
   RECORD_SCOPED_PERMISSION_KEYS
 );

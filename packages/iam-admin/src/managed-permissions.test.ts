@@ -1,3 +1,4 @@
+import { standardEditorPermissionKeys, resolveStandardEditorPermissionScope } from '@sva/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -88,4 +89,19 @@ describe('managed-permissions', () => {
 
     expect(newsReadPermissions).toHaveLength(1);
   });
+});
+
+it.each(
+  standardEditorPermissionKeys.filter(
+    (key) => resolveStandardEditorPermissionScope(key) === 'organization'
+  )
+)('retains the record scope of %s in IAM assignment and permission snapshots', (permissionKey) => {
+  expect(getManagedPermissionMetadata(permissionKey)).toMatchObject({
+    runtimeScope: 'record',
+    isScopeAssignable: true,
+    supportedAccessScopes: ['all', 'own', 'organization'],
+  });
+  expect(
+    listManagedPermissionMetadata().filter((entry) => entry.permissionKey === permissionKey)
+  ).toHaveLength(1);
 });

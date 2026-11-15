@@ -1,3 +1,4 @@
+import { standardEditorPermissionKeys, resolveStandardEditorPermissionScope } from '@sva/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EffectivePermission } from '@sva/iam-core';
@@ -545,4 +546,64 @@ describe('Mainserver content authorization', () => {
     }
     expect(state.readCredentials).not.toHaveBeenCalled();
   });
+  it.each(
+    standardEditorPermissionKeys.filter(
+      (key) => resolveStandardEditorPermissionScope(key) === 'organization'
+    )
+  )(
+    'enforces organisation OR personal ownership for %s even with broad credentials',
+    async (action) => {
+      process.env.SVA_MAINSERVER_SCOPE_RESOLVER_MODE = 'compatibility';
+      state.loadBinding.mockImplementation(async (input: { principalType: string }) => ({
+        dataProviderId: input.principalType === 'user' ? 'personal-provider' : 'org-provider',
+      }));
+      const scopedInput = {
+        ...context,
+        action,
+        permissions: [
+          {
+            action,
+            resourceType: action.split('.')[0]!,
+            accessScope: 'organization',
+          } as EffectivePermission,
+        ],
+        forceExactScopeAuthorization: true,
+      };
+      for (const dataProviderId of ['personal-provider', 'org-provider']) {
+        expect(
+          (await authorizeMainserverDataProviderAccess({ ...scopedInput, dataProviderId })).allowed
+        ).toBe(true);
+      }
+      expect(
+        (
+          await authorizeMainserverDataProviderAccess({
+            ...scopedInput,
+            dataProviderId: 'foreign-provider',
+          })
+        ).allowed
+      ).toBe(false);
+      expect(
+        (await authorizeMainserverDataProviderAccess({ ...scopedInput, dataProviderId: '' }))
+          .allowed
+      ).toBe(false);
+      expect(
+        (
+          await authorizeMainserverDataProviderAccess({
+            ...scopedInput,
+            activeOrganizationId: undefined,
+            dataProviderId: 'personal-provider',
+          })
+        ).allowed
+      ).toBe(true);
+      expect(
+        (
+          await authorizeMainserverDataProviderAccess({
+            ...scopedInput,
+            activeOrganizationId: undefined,
+            dataProviderId: 'org-provider',
+          })
+        ).allowed
+      ).toBe(false);
+    }
+  );
 });

@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dbWriteFailedErrorBody } from '../test-support/handler-test-helpers.js';
-import { createDeleteRoleHandlerInternal, type DeleteRoleHandlerDeps } from './role-delete-handler.js';
+import {
+  createDeleteRoleHandlerInternal,
+  type DeleteRoleHandlerDeps,
+} from './role-delete-handler.js';
 
 const actor = {
   instanceId: 'de-musterhausen',
@@ -51,7 +54,11 @@ const identityProvider = {
 const createJsonResponse = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
-const buildAttributes = (input: { readonly instanceId: string; readonly roleKey: string; readonly displayName: string }) => ({
+const buildAttributes = (input: {
+  readonly instanceId: string;
+  readonly roleKey: string;
+  readonly displayName: string;
+}) => ({
   managedBy: 'studio' as const,
   ...input,
 });
@@ -67,7 +74,10 @@ const createDeps = (
     asApiItem: vi.fn((data, requestId) => ({ data, ...(requestId ? { requestId } : {}) })),
     buildRoleAttributes: vi.fn(buildAttributes),
     createApiError: vi.fn((status, code, message, requestId, details) =>
-      createJsonResponse(status, { error: { code, message, ...(details ? { details } : {}) }, requestId })
+      createJsonResponse(status, {
+        error: { code, message, ...(details ? { details } : {}) },
+        requestId,
+      })
     ),
     deleteRoleFromDatabase: vi.fn(async () => undefined),
     iamRoleSyncCounter: {
@@ -85,7 +95,9 @@ const createDeps = (
     requireRoleIdentityProvider: vi.fn(async () => identityProvider),
     resolveDeletableRole: vi.fn(async () => existingRole),
     resolveRoleMutationActor: vi.fn(async () => ({ actor })),
-    sanitizeRoleErrorMessage: vi.fn((error) => (error instanceof Error ? error.message : String(error))),
+    sanitizeRoleErrorMessage: vi.fn((error) =>
+      error instanceof Error ? error.message : String(error)
+    ),
     trackKeycloakCall: vi.fn(async (_operation, work) => work()),
     ...overrides,
   }) satisfies DeleteRoleHandlerDeps<ReturnType<typeof buildAttributes>, typeof identityProvider, typeof existingRole>;
@@ -129,6 +141,24 @@ describe('createDeleteRoleHandlerInternal', () => {
       roleKey: 'editor',
       externalRoleName: 'editor',
     });
+  });
+
+  it('deletes the standard editor through the regular local role path', async () => {
+    const role = {
+      ...existingRole,
+      role_key: 'standard_editor',
+      role_name: 'standard_editor',
+      display_name: 'Standard Redakteur',
+      external_role_name: 'standard_editor',
+      description: 'studio:standard-editor:v1',
+    };
+    const deps = createDeps({ resolveDeletableRole: vi.fn(async () => role) });
+    const response = await runDeleteRoleRequest(deps);
+    expect(response.status).toBe(200);
+    expect(deps.deleteRoleFromDatabase).toHaveBeenCalledWith(
+      expect.objectContaining({ roleKey: 'standard_editor' })
+    );
+    expect(deps.requireRoleIdentityProvider).not.toHaveBeenCalled();
   });
 
   it('does not require Keycloak for local role deletion', async () => {
@@ -281,8 +311,12 @@ describe('createDeleteRoleHandlerInternal', () => {
     expect(response.status).toBe(500);
     expect(identityProvider.provider.createRole).toHaveBeenCalledOnce();
     expect(identityProvider.provider.assignRealmRoles).toHaveBeenCalledTimes(2);
-    expect(identityProvider.provider.assignRealmRoles).toHaveBeenNthCalledWith(1, 'kc-user-1', ['system_admin']);
-    expect(identityProvider.provider.assignRealmRoles).toHaveBeenNthCalledWith(2, 'kc-user-2', ['system_admin']);
+    expect(identityProvider.provider.assignRealmRoles).toHaveBeenNthCalledWith(1, 'kc-user-1', [
+      'system_admin',
+    ]);
+    expect(identityProvider.provider.assignRealmRoles).toHaveBeenNthCalledWith(2, 'kc-user-2', [
+      'system_admin',
+    ]);
   });
 
   it('preserves the provider method context when replaying direct role assignments during compensation', async () => {

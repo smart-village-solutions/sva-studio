@@ -1697,3 +1697,7 @@ Marked editor routes reuse Save/Discard/Stay navigation protection. Voluntary
 organisation changes are confirmed before their API mutation; forced auth/context
 changes suspend drafts. Root recovery checks platform identity without tenant
 organisation reads. See [SSF administration](../development/ssf-v2-inhaltsverwaltung-ui.md).
+
+### Standard Redakteur
+
+Bei erfolgreicher erstmaliger Mandantenanlage schreibt dasselbe SQL-Statement die Rolle `standard_editor`; spätere Core-/Modulabgleiche vergeben ihre redaktionellen Rechte ohne Benutzerzuweisung. Löscht eine autorisierte Person die Rolle, finden spätere Abgleiche keine Zielrolle und erzeugen sie nicht erneut. Der einmalige Bestandsbackfill sperrt konkurrierende Mandanten-/Rollenanlagen, prüft Kollisionen, schreibt atomar Rolle und Grants und invalidiert betroffene Permission-Snapshots. Ein Fehler rollt die Migration zurück. Spätere redaktionelle Mainserver-Actions prüfen den Ressourceninhaber vor Mutation; Push ist dabei eine zusätzliche Action am selben Objekt.

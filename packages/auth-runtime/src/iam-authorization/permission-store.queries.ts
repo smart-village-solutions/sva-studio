@@ -133,30 +133,60 @@ ORDER BY a.keycloak_subject, r.role_name, p.permission_key
     ]
   );
 
-  const resolveUserDisplayName = input.includeProfile ? (await import('@sva/iam-admin')).resolveUserDisplayName : undefined;
+  const resolveUserDisplayName = input.includeProfile
+    ? (await import('@sva/iam-admin')).resolveUserDisplayName
+    : undefined;
   const projectionBySubject = new Map<
     string,
-    { roleNames: Set<string>; permissionIds: Set<string>; languages?: readonly string[]; displayName?: string }
+    {
+      roleNames: Set<string>;
+      permissionIds: Set<string>;
+      languages?: readonly string[];
+      displayName?: string;
+    }
   >();
   for (const row of result.rows) {
     // Flat claims/directories have no record or organization context. Restricted
     // grants must never be widened into a tenant-wide capability.
-    const effective = filterTenantEffectivePermissions(toEffectivePermissions([{ ...row, organization_id: null }]));
-    if (!effective.some(permission =>
-      permission.action === row.permission_key &&
-      (!permission.accessScope || permission.accessScope === 'all') &&
-      !permission.resourceId && !permission.organizationId &&
-      (!permission.scope || Object.keys(permission.scope).length === 0))) continue;
+    const effective = filterTenantEffectivePermissions(
+      toEffectivePermissions([{ ...row, organization_id: null }])
+    );
+    if (
+      !effective.some(
+        (permission) =>
+          permission.action === row.permission_key &&
+          (!permission.accessScope || permission.accessScope === 'all') &&
+          !permission.resourceId &&
+          !permission.organizationId &&
+          (!permission.scope || Object.keys(permission.scope).length === 0)
+      )
+    )
+      continue;
     const projection = projectionBySubject.get(row.keycloak_subject) ?? {
       roleNames: new Set<string>(),
       permissionIds: new Set<string>(),
-      ...(row.competence_languages ? { languages: normalizeCompetenceLanguages(row.competence_languages) } : {}),
-      ...(resolveUserDisplayName ? { displayName: resolveUserDisplayName({
-        keycloakSubject: row.keycloak_subject,
-        decryptedDisplayName: revealField(row.display_name_ciphertext, `iam.accounts.display_name:${row.keycloak_subject}`),
-        firstName: revealField(row.first_name_ciphertext, `iam.accounts.first_name:${row.keycloak_subject}`),
-        lastName: revealField(row.last_name_ciphertext, `iam.accounts.last_name:${row.keycloak_subject}`),
-      }) } : {}),
+      ...(row.competence_languages
+        ? { languages: normalizeCompetenceLanguages(row.competence_languages) }
+        : {}),
+      ...(resolveUserDisplayName
+        ? {
+            displayName: resolveUserDisplayName({
+              keycloakSubject: row.keycloak_subject,
+              decryptedDisplayName: revealField(
+                row.display_name_ciphertext,
+                `iam.accounts.display_name:${row.keycloak_subject}`
+              ),
+              firstName: revealField(
+                row.first_name_ciphertext,
+                `iam.accounts.first_name:${row.keycloak_subject}`
+              ),
+              lastName: revealField(
+                row.last_name_ciphertext,
+                `iam.accounts.last_name:${row.keycloak_subject}`
+              ),
+            }),
+          }
+        : {}),
     };
     projection.roleNames.add(row.role_name);
     projection.permissionIds.add(row.permission_key);
@@ -307,7 +337,15 @@ export const loadPermissionsWithClient = async (
   const rows = input.organizationId
     ? await listScopedPermissionRows(client, { ...input, organizationId: input.organizationId })
     : await listUnscopedPermissionRows(client, input);
-  return toEffectivePermissions(rows);
+  // A personal context must not inherit an organisation constraint from memberships.
+  // Explicit record scopes reduce to own; legacy organisation grants keep their contract.
+  return toEffectivePermissions(
+    rows.map((row) =>
+      !input.organizationId && (row.access_scope === 'organization' || row.access_scope === 'own')
+        ? { ...row, organization_id: null, access_scope: 'own' as const }
+        : row
+    )
+  );
 };
 
 export const loadPermissionsFromDb = async (

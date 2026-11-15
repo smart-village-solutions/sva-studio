@@ -1,3 +1,4 @@
+import { resolveStandardEditorPermissionScope, standardEditorRoleKey } from '@sva/core';
 import type { SqlExecutor } from '../iam/repositories/types.js';
 import type {
   InstanceRegistryRepository,
@@ -12,6 +13,7 @@ import {
   insertProtectedRolePermission,
   upsertPermission,
   upsertProtectedRole,
+  syncStandardEditorPermissions,
 } from './repository-module-iam-shared.js';
 import { compareAlphabetically, queryRows, statement } from './repository-shared.js';
 
@@ -178,7 +180,18 @@ const createSyncAssignedModuleIam =
   async (input) => {
     const { instanceId, managedModuleIds, managedContracts = [], contracts } = input;
     const permissions = buildManagedPermissions(contracts);
-    const rolePermissionPairs = buildRolePermissionPairs(contracts);
+    const rolePermissionPairs = [
+      ...buildRolePermissionPairs(contracts),
+      ...contracts.flatMap((contract) =>
+        contract.permissions
+          .filter((permission) => resolveStandardEditorPermissionScope(permission.key))
+          .map((permission) => ({
+            moduleId: contract.moduleId,
+            roleName: standardEditorRoleKey,
+            permissionId: permission.key,
+          }))
+      ),
+    ];
     const allManagedModuleIds = [
       ...new Set([...managedModuleIds, ...managedContracts.map((contract) => contract.moduleId)]),
     ].sort(compareAlphabetically);
@@ -196,11 +209,22 @@ const createSyncAssignedModuleIam =
         await upsertPermission(executor, instanceId, permission)
       );
     }
-    for (const pair of rolePermissionPairs) {
+    for (const pair of rolePermissionPairs.filter(
+      (pair) => pair.roleName !== standardEditorRoleKey
+    )) {
       result = recordGrantOutcome(
         result,
         await insertModuleRolePermission(executor, instanceId, pair)
       );
+    }
+    for (const contract of contracts) {
+      const insertedGrants = await syncStandardEditorPermissions(
+        executor,
+        instanceId,
+        contract.permissions.map((permission) => permission.key),
+        contract.moduleId
+      );
+      result = { ...result, grantsInserted: result.grantsInserted + insertedGrants };
     }
     await cleanupModuleRolePermissions(
       executor,
@@ -233,6 +257,12 @@ const createSyncProtectedSystemRolePermissions =
         await insertProtectedRolePermission(executor, instanceId, role.roleKey, permissionKey)
       );
     }
+    const insertedGrants = await syncStandardEditorPermissions(
+      executor,
+      instanceId,
+      permissions.map((permission) => permission.key)
+    );
+    result = { ...result, grantsInserted: result.grantsInserted + insertedGrants };
     return result;
   };
 

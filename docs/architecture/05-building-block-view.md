@@ -1336,3 +1336,7 @@ Der app-lokale Handler `studio-release-notes.server.ts` liest über den bestehen
 reguläre Studio-Releases aus dem festgelegten GitHub-Repository. Er liefert nur Version, Titel,
 Veröffentlichungsdatum und Notes an die UI. Release-Erzeugung und Deployment-Prozesse bleiben
 unverändert; die Anzeige wird nicht mit dem laufenden Image abgeglichen.
+
+### Standard Redakteur
+
+Der Core-Permission-Katalog besitzt die redaktionelle Action-Auswahl und deren Scopes. `data-repositories` erzeugt die löschbare Rolle atomar mit dem Mandanten und ergänzt ihre Core-/Modulgrants ausschließlich bei noch vorhandener Rolle. Migration 0116 übernimmt den einmaligen Bestand. `iam-admin` klassifiziert alle gescopten redaktionellen Actions als Datensatzrechte; die Mainserver-Mutations- und Resource-Access-Pfade erzwingen die vorhandene exakte Ownership-Prüfung. Es entstehen keine neuen Packages, Services oder Verwaltungsendpunkte.

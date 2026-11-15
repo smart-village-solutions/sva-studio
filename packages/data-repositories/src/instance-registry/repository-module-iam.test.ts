@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
 import { createInstanceRegistryRepository } from './index.js';
 import { createQueuedExecutor } from './test-support.js';
+import { syncStandardEditorPermissions } from './repository-module-iam-shared.js';
 
 describe('instance registry repository module iam', () => {
   it('persists active lifecycle reconcile intents and their Graphile wake-up together', async () => {
@@ -526,6 +527,7 @@ describe('instance registry repository module iam', () => {
       'tenant-a',
       JSON.stringify([
         { module_id: 'news', role_name: 'system_admin', permission_id: 'news.read' },
+        { module_id: 'news', role_name: 'standard_editor', permission_id: 'news.read' },
       ]),
     ]);
   });
@@ -672,5 +674,57 @@ describe('instance registry repository module iam', () => {
 
     expect(statements).toHaveLength(1);
     expect(statements[0]?.text).toContain('INSERT INTO iam.permissions');
+  });
+});
+
+describe('standard editor grant reconciliation', () => {
+  it.each([undefined, 'news'])(
+    'persists approved scopes and origins without overwriting grants (%s)',
+    async (moduleId) => {
+      const { executor, statements } = createQueuedExecutor([[{}, {}]]);
+      const inserted = await syncStandardEditorPermissions(
+        executor,
+        'tenant-a',
+        ['news.create', 'news.update', 'news.pushNotification', 'media.delete', 'iam.user.write'],
+        moduleId
+      );
+      expect(inserted).toBe(2);
+      expect(statements).toHaveLength(1);
+      expect(statements[0]?.values).toEqual([
+        'tenant-a',
+        'standard_editor',
+        JSON.stringify([
+          { key: 'news.create', scope: 'all' },
+          { key: 'news.update', scope: 'organization' },
+          { key: 'news.pushNotification', scope: 'organization' },
+          { key: 'media.delete', scope: 'all' },
+        ]),
+        moduleId ? 'module_sync' : 'bootstrap',
+        moduleId ?? null,
+      ]);
+      expect(statements[0]?.text).toContain(
+        'ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING'
+      );
+      expect(statements[0]?.text).not.toContain('INSERT INTO iam.roles');
+    }
+  );
+
+  it('does no work for administrative actions and propagates storage failures', async () => {
+    const { executor, statements } = createQueuedExecutor([]);
+    expect(
+      await syncStandardEditorPermissions(executor, 'tenant-a', [
+        'iam.role.write',
+        'surveys.export',
+      ])
+    ).toBe(0);
+    expect(statements).toEqual([]);
+    const failing: SqlExecutor = {
+      execute: async () => {
+        throw new Error('grant_write_failed');
+      },
+    };
+    await expect(
+      syncStandardEditorPermissions(failing, 'tenant-a', ['content.readHistory'])
+    ).rejects.toThrow('grant_write_failed');
   });
 });

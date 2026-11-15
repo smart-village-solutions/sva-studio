@@ -252,6 +252,33 @@ describe.skipIf(!enabled)('standard editor lifecycle on PostgreSQL', () => {
     }
   );
 
+  it.each([
+    ['role_name', 'custom_name'],
+    ['external_role_name', 'external_editor'],
+    ['role_level', 90],
+    ['description', 'individually customized role'],
+  ] as const)(
+    'preserves an existing profile with noncanonical %s and stops the migration',
+    async (field, value) => {
+      await migrate();
+      await pool.query(
+        `UPDATE iam.roles SET ${field}=$1 WHERE instance_id='tenant-a' AND role_key='standard_editor'`,
+        [value]
+      );
+      const before = await pool.query(
+        "SELECT * FROM iam.roles WHERE instance_id='tenant-a' AND role_key='standard_editor'"
+      );
+      await expect(migrate()).rejects.toThrow('standard_editor_profile_conflict');
+      expect(
+        (
+          await pool.query(
+            "SELECT * FROM iam.roles WHERE instance_id='tenant-a' AND role_key='standard_editor'"
+          )
+        ).rows
+      ).toEqual(before.rows);
+    }
+  );
+
   it('rejects drifted permission definitions without modifying existing privileges', async () => {
     await pool.query(`INSERT INTO iam.permissions(instance_id,permission_key,action,resource_type)
       VALUES ('tenant-a','news.read','iam.user.write','iam')`);

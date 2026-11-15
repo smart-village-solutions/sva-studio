@@ -93,6 +93,8 @@ DO $$ BEGIN
     AND (display_name = 'Standard Redakteur' OR role_name = 'Standard Redakteur'))
   OR EXISTS (SELECT 1 FROM iam.roles role WHERE role_key = 'standard_editor' AND (
     is_system_role OR managed_by <> 'studio' OR display_name <> 'Standard Redakteur'
+    OR role_name <> 'standard_editor' OR external_role_name <> 'standard_editor' OR role_level <> 0
+    OR description IS DISTINCT FROM 'studio:standard-editor:v1'
     OR EXISTS (SELECT expected.permission_key, expected.access_scope
       FROM standard_editor_expected expected WHERE expected.instance_id = role.instance_id
       EXCEPT SELECT permission.permission_key, grant_row.access_scope

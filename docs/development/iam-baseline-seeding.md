@@ -74,3 +74,5 @@ Migration `0116_iam_standard_editor_role.sql` ergänzt fehlende Rollen einmalig 
 Der frühere, begrenzte MCP-Auftrag für `editor` bleibt separat und unverändert. Er richtet weder automatisch neue Mandanten ein noch ersetzt er den einmaligen Bestandsabgleich.
 
 Generische Core-Inhaltsaktionen prüfen für bekannte redaktionelle Inhaltstypen zusätzlich die bestehende Modulaktivierung; Core-Grants erlauben keinen Zugriff auf deaktivierte Module. Bei Berechtigungsauflösung ohne aktive Organisation werden explizite `own`-/`organization`-Datensatzgrants auf persönliches Eigentum reduziert, ohne Organisationsbedingungen aus bloßen Mitgliedschaften zu übernehmen. Legacy-Grants ohne expliziten Datensatzscope bleiben unverändert.
+
+Modulvertragliche Ausnahmen: Gutscheine benötigen für Veröffentlichung und Zurückziehen zusätzlich `vouchers.publish` im Scope `organization`. Das Baustellenmodul unterstützt derzeit kein Löschen; `construction-sites.delete` wird daher weder bei Neuanlage noch in der Bestandsmigration gewährt. Es werden ausschließlich bereits vom jeweiligen Modul unterstützte redaktionelle Fähigkeiten vergeben.

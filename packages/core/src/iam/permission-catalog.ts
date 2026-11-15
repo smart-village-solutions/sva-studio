@@ -193,9 +193,12 @@ export const standardEditorCorePermissionKeys = [
 export const standardEditorPermissionKeys: readonly string[] = [
   ...standardEditorCorePermissionKeys,
   ...standardEditorContentModules.flatMap((moduleId) =>
-    ['read', 'create', 'update', 'delete'].map((action) => `${moduleId}.${action}`)
+    ['read', 'create', 'update', 'delete']
+      .filter((action) => moduleId !== 'construction-sites' || action !== 'delete')
+      .map((action) => `${moduleId}.${action}`)
   ),
   'news.pushNotification',
+  'vouchers.publish',
   'media.read',
   'media.create',
   'media.update',

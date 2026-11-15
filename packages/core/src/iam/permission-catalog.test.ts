@@ -91,12 +91,12 @@ describe('permission catalog', () => {
       availability: { kind: 'tenant' as const },
     };
 
-    expect(() =>
-      validatePermissionCatalog([{ ...tenantDefinition, description: ' ' }])
-    ).toThrow('invalid_permission_catalog_description:iam.example.read');
-    expect(() =>
-      validatePermissionCatalog([{ ...tenantDefinition, resourceType: '' }])
-    ).toThrow('invalid_permission_catalog_resource_type:iam.example.read');
+    expect(() => validatePermissionCatalog([{ ...tenantDefinition, description: ' ' }])).toThrow(
+      'invalid_permission_catalog_description:iam.example.read'
+    );
+    expect(() => validatePermissionCatalog([{ ...tenantDefinition, resourceType: '' }])).toThrow(
+      'invalid_permission_catalog_resource_type:iam.example.read'
+    );
     expect(() =>
       validatePermissionCatalog([
         {
@@ -106,13 +106,16 @@ describe('permission catalog', () => {
       ])
     ).toThrow('invalid_permission_catalog_module_id:iam.example.read');
     expect(() =>
-      composePermissionCatalog([], [
-        {
-          moduleId: 'news',
-          permissionIds: ['news.read'],
-          systemAdminPermissionExclusions: ['news.delete'],
-        },
-      ])
+      composePermissionCatalog(
+        [],
+        [
+          {
+            moduleId: 'news',
+            permissionIds: ['news.read'],
+            systemAdminPermissionExclusions: ['news.delete'],
+          },
+        ]
+      )
     ).toThrow('unknown_system_admin_permission_exclusion:news:news.delete');
   });
 });
@@ -122,7 +125,9 @@ describe('standard editor grants', () => {
     'scopes %s records without granting administration',
     (moduleId) => {
       for (const action of ['read', 'update', 'delete']) {
-        expect(resolveStandardEditorPermissionScope(`${moduleId}.${action}`)).toBe('organization');
+        expect(resolveStandardEditorPermissionScope(`${moduleId}.${action}`)).toBe(
+          moduleId === 'construction-sites' && action === 'delete' ? undefined : 'organization'
+        );
       }
       expect(resolveStandardEditorPermissionScope(`${moduleId}.create`)).toBe('all');
       expect(resolveStandardEditorPermissionScope(`${moduleId}.manage`)).toBeUndefined();
@@ -130,7 +135,12 @@ describe('standard editor grants', () => {
     }
   );
   it('includes history, publish and push, and keeps shared resources tenant wide', () => {
-    for (const key of ['content.readHistory', 'content.publish', 'news.pushNotification'])
+    for (const key of [
+      'content.readHistory',
+      'content.publish',
+      'news.pushNotification',
+      'vouchers.publish',
+    ])
       expect(resolveStandardEditorPermissionScope(key)).toBe('organization');
     for (const key of ['media.read', 'media.reference.manage', 'categories.delete', 'modules.read'])
       expect(resolveStandardEditorPermissionScope(key)).toBe('all');

@@ -213,12 +213,6 @@ export const eventsDEEditor = {
     title: 'Noch keine Veranstaltungen vorhanden',
     description: 'Legen Sie die erste Veranstaltung an.',
   },
-  pagination: {
-    ariaLabel: 'Seitennavigation der Veranstaltungen',
-    previous: 'Zurück',
-    next: 'Weiter',
-    pageLabel: 'Seite {{page}}',
-  },
   media: {
     moveUp: 'Nach oben',
     moveDown: 'Nach unten',

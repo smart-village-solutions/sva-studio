@@ -1,4 +1,10 @@
 export const eventsDELabels = {
+  pagination: {
+    ariaLabel: 'Seitennavigation der Veranstaltungen',
+    previous: 'Zurück',
+    next: 'Weiter',
+    pageLabel: 'Seite {{page}}',
+  },
   datePicker: {
     openCalendar: 'Kalender öffnen',
     calendar: 'Datum auswählen',

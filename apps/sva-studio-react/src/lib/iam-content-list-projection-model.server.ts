@@ -272,7 +272,7 @@ const projectionTitleCollator = new Intl.Collator('de', {
   numeric: true,
   sensitivity: 'accent',
 });
-const LEADING_TITLE_SPECIAL_CHARACTERS = /^[\p{P}\p{S}\p{M}\p{Cf}\s]+/u;
+const LEADING_TITLE_SPECIAL_CHARACTERS = /^(?:[0-9]\uFE0F?\u20E3|[\p{P}\p{S}\p{M}\p{Cf}\s])+/u;
 
 const compareProjectionTitles = (left: string, right: string): number =>
   projectionTitleCollator.compare(

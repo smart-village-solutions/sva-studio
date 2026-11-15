@@ -129,6 +129,30 @@ describe('content list projection model', () => {
       ]);
     });
 
+    it('ignores leading digit keycap emoji while preserving ordinary numeric prefixes', () => {
+      const titles = [
+        'Zoo',
+        '1️⃣ Advent',
+        'Apfel',
+        '2\u20e3 Birne',
+        '„3️⃣ 4️⃣ Kirsche“',
+        '10 Jahre',
+        '2 Jahre',
+      ];
+      const ascending = [
+        '2 Jahre',
+        '10 Jahre',
+        '1️⃣ Advent',
+        'Apfel',
+        '2\u20e3 Birne',
+        '„3️⃣ 4️⃣ Kirsche“',
+        'Zoo',
+      ];
+
+      expect(sortTitles(titles)).toEqual(ascending);
+      expect(sortTitles(titles, 'desc')).toEqual([...ascending].reverse());
+    });
+
     it('ignores case and breaks the tie by id in both directions', () => {
       const ordered = (direction: 'asc' | 'desc') =>
         [titled('b', 'apfelfest'), titled('a', 'Apfelfest'), titled('c', 'Birne')]

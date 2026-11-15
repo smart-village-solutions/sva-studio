@@ -1,4 +1,5 @@
 import type { InstanceBusKey } from '@sva/core';
+import { formatCalendarDate, formatTechnicalDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
 import { Badge } from '../../../components/ui/badge';
 import { t } from '../../../i18n';
@@ -57,19 +58,23 @@ export const BusKeysTable = ({ model }: { model: BusKeysModel }) => {
                       <td className="p-2">{key.contact ?? t(`${prefix}missing`)}</td>
                       <td className="p-2">{key.createdBy ?? t(`${prefix}missing`)}</td>
                       <td className="p-2">
-                        <time dateTime={key.createdAt}>{key.createdAt}</time>
+                        <time dateTime={key.createdAt}>
+                          {formatTechnicalDateTimeInEditorTimeZone(key.createdAt)}
+                        </time>
                       </td>
                       <td className="p-2">
                         {key.expiresAt ? (
                           <>
                             {inclusiveDate(key.expiresAt) ? (
-                              <span className="block">{inclusiveDate(key.expiresAt)}</span>
+                              <span className="block">
+                                {formatCalendarDate(inclusiveDate(key.expiresAt))}
+                              </span>
                             ) : null}
                             <time
                               dateTime={key.expiresAt}
                               className="text-xs text-muted-foreground"
                             >
-                              {key.expiresAt}
+                              {formatTechnicalDateTimeInEditorTimeZone(key.expiresAt)}
                             </time>
                           </>
                         ) : (

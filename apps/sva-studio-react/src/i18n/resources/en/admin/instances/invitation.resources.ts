@@ -42,7 +42,8 @@ export const invitationInstancesAdminENResources = {
   destinationSaved: 'The default destination was saved.',
   destinationSaveFailed: 'The default destination could not be saved.',
   tenantPageTitle: 'Email templates',
-  tenantPageDescription: 'Manage account invitation and email verification texts for your instance.',
+  tenantPageDescription:
+    'Manage account invitation and email verification texts for your instance.',
   loading: 'Loading template.',
   loadFailed: 'The template could not be loaded.',
   sampleTenantName: 'Example tenant',

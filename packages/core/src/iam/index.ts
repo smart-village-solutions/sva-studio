@@ -132,3 +132,5 @@ export {
   iamTenantIamEvidenceClassifications,
 } from './account-management-contract.js';
 export { normalizeCompetenceLanguages } from './competence-languages.js';
+
+export { standardEditorRoleKey, standardEditorContentModules, standardEditorPermissionKeys, resolveStandardEditorPermissionScope } from './permission-catalog.js';

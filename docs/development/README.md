@@ -42,7 +42,7 @@ Neue implementierungsnahe Dokumentation wird hier abgelegt. Betriebsanleitungen 
 
 - [Briefing zur Vervollständigung des Figma-Designsystems](./designsystem-figma-briefing.md)
 - [Entwicklungsbriefing: Statushinweise im Abfallkalender (L19)](./abfallkalender-status-entwicklungsbriefing.md)
-- [SSF-V2-Inhaltsverwaltung: UI-Entwurf](./ssf-v2-inhaltsverwaltung-ui.md)
+- [SSF-Administration: Navigation, Seiten und Speicherung](./ssf-v2-inhaltsverwaltung-ui.md)
 - [Action Feedback](./action-feedback.md)
 - [Builder.io lokal bearbeiten](./builder-io-local-editing.md)
 - [Studio-Form-Migrationsinventur](./studio-form-migrationsinventur.md)

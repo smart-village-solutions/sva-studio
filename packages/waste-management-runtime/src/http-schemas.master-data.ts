@@ -165,7 +165,8 @@ const wasteAddressMutationPreviewSchema = z.object({
 });
 
 const wasteAddressDeleteSchema = z.object({
-  targetEntityId: z.string().uuid().optional(),  confirmationToken: z.string().trim().min(1),
+  targetEntityId: z.string().uuid().optional(),
+  confirmationToken: z.string().trim().min(1),
 });
 
 const createWasteCollectionLocationSchema = z.object({
@@ -179,7 +180,37 @@ const createWasteCollectionLocationSchema = z.object({
 
 const updateWasteCollectionLocationSchema = createWasteCollectionLocationSchema.omit({ id: true });
 
+const wasteFractionDeleteSchema = z
+  .object({
+    mode: z.enum(['detach', 'delete-tours', 'replace']),
+    targetFractionId: z.string().uuid().optional(),
+    confirmationToken: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.mode !== 'replace' && value.targetFractionId !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['targetFractionId'],
+        message: 'targetFractionId ist nur bei Ersetzung zulässig.',
+      });
+    }
+    if (value.mode === 'replace' && !value.targetFractionId) {
+      ctx.addIssue({ code: 'custom', path: ['targetFractionId'], message: 'Zielfraktion fehlt.' });
+    }
+  });
+const wasteFractionDeletePreviewSchema = z
+  .object({
+    fractionId: z.string().uuid(),
+    mode: z.enum(['detach', 'delete-tours', 'replace']),
+    targetFractionId: z.string().uuid().optional(),
+  })
+  .strict()
+  .refine((value) => value.mode === 'replace' || value.targetFractionId === undefined);
+
 export const wasteManagementMasterDataSchemas = {
+  wasteFractionDeleteSchema,
+  wasteFractionDeletePreviewSchema,
   createWasteFractionSchema,
   updateWasteFractionSchema,
   createWasteRegionSchema,

@@ -8,6 +8,7 @@ Die Host-Übersetzungen unter `src/i18n/resources` sind nach zwei Achsen organis
 ## Strukturregeln
 
 - Jede konkrete Übersetzungsdatei liegt unter `resources/<locale>/...` und endet auf `.resources.ts`.
+- Teilressourcen, die ausschließlich innerhalb einer anderen Ressource eingebunden werden, enden auf `.partial.resources.ts`. Sie werden mitformatiert, aber nicht als eigener Namespace in Aggregatoren aufgenommen; der besitzende Namespace importiert sie ausdrücklich.
 - Aggregator-Dateien wie `resources/de.ts`, `resources/de/account.resources.ts` oder `resources/de/admin/instances.resources.ts` fassen die Unterdateien zusammen.
 - Neue Übersetzungen sollen in die fachlich passendste Datei einsortiert werden statt bestehende Sammeldateien wieder aufzublähen.
 
@@ -19,7 +20,7 @@ Die Host-Übersetzungen unter `src/i18n/resources` sind nach zwei Achsen organis
 
 ## Formatierung
 
-- Aggregator-Dateien werden nicht manuell sortiert oder umgebaut.
+- Aggregator-Dateien werden nicht manuell sortiert oder umgebaut. Eigene Textobjekte gehören in die jeweiligen Blattressourcen; direkt eingetragene Texte würden beim Regenerieren überschrieben.
 - Dafür gibt es das Script:
 
 ```sh

@@ -21,6 +21,7 @@ const routeDefinitionAllowedKeys = new Set([
   'path',
   'documentation',
   'layout',
+  'editorLeaveGuard',
   'guard',
   'actionId',
   'serverHandlerId',
@@ -29,6 +30,7 @@ const routeDefinitionAllowedKeys = new Set([
   'component',
 ] as const);
 const navigationItemAllowedKeys = new Set([
+  'group',
   'id',
   'to',
   'href',
@@ -51,6 +53,9 @@ export const assertPluginRegistryRoutes = ({
       pluginNamespace,
       normalizePluginIdentifier(route.id)
     );
+    if (route.editorLeaveGuard !== undefined && route.editorLeaveGuard !== true) {
+      throw new Error(`plugin_route_editor_guard_invalid:${pluginNamespace}:${route.id}`);
+    }
     if (route.layout !== undefined && route.layout !== 'content-only') {
       throw new Error(`plugin_route_layout_invalid:${pluginNamespace}:${route.id}`);
     }
@@ -160,6 +165,7 @@ export const assertPluginRegistryNavigation = ({
   pluginNamespace,
   extensionTier,
 }: PluginRegistryValidationContext): void => {
+  const groups = new Map<string, string>();
   for (const navigationItem of plugin.navigation ?? []) {
     assertPluginContributionAllowedKeys(
       navigationItem,
@@ -174,6 +180,8 @@ export const assertPluginRegistryNavigation = ({
       throw new Error(`plugin_navigation_target_invalid:${pluginNamespace}:${navigationItem.id}`);
     }
     assertNavigationPresentation({ plugin, pluginNamespace }, navigationItem);
+    assertNavigationGroup({ plugin, pluginNamespace }, navigationItem, groups);
+
     assertPluginPermissionReference(
       plugin,
       pluginNamespace,
@@ -229,6 +237,60 @@ export const assertPluginRegistryNavigation = ({
     }
   }
 };
+
+function hasInvalidNavigationGroup(
+  navigationItem: PluginNavigationItem,
+  pluginNamespace: string
+): boolean {
+  const group = navigationItem.group;
+  return (
+    !group ||
+    typeof group.id !== 'string' ||
+    !group.id.startsWith(`${pluginNamespace}.`) ||
+    !/^[a-z][a-z0-9.-]*$/u.test(group.id) ||
+    typeof group.titleKey !== 'string' ||
+    !group.titleKey.trim() ||
+    Object.keys(group).some((key) => key !== 'id' && key !== 'titleKey') ||
+    navigationItem.section !== 'applications' ||
+    !navigationItem.to ||
+    !navigationItem.accessRequirement ||
+    !['tenant', 'platform'].includes(navigationItem.accessRequirement.kind)
+  );
+}
+
+function assertNavigationGroup(
+  { plugin, pluginNamespace }: Pick<PluginRegistryValidationContext, 'plugin' | 'pluginNamespace'>,
+  navigationItem: PluginNavigationItem,
+  groups: Map<string, string>
+): void {
+  const group = navigationItem.group;
+  if (group === undefined) return;
+  if (hasInvalidNavigationGroup(navigationItem, pluginNamespace)) {
+    throw new Error(`plugin_navigation_group_invalid:${pluginNamespace}:${navigationItem.id}`);
+  }
+  const route = plugin.routes.find((candidate) => candidate.path === navigationItem.to);
+  if (
+    !route ||
+    !hasMatchingPluginAccessRequirement(
+      route.accessRequirement,
+      navigationItem.accessRequirement
+    ) ||
+    plugin.navigation?.some((candidate) => candidate.id === group.id)
+  ) {
+    throw new Error(
+      `plugin_navigation_group_target_invalid:${pluginNamespace}:${navigationItem.id}`
+    );
+  }
+  const identity = JSON.stringify([
+    group.titleKey,
+    navigationItem.section,
+    navigationItem.accessRequirement?.kind,
+  ]);
+  if (groups.has(group.id) && groups.get(group.id) !== identity) {
+    throw new Error(`plugin_navigation_group_conflict:${pluginNamespace}:${group.id}`);
+  }
+  groups.set(group.id, identity);
+}
 
 function assertNavigationPresentation(
   { plugin, pluginNamespace }: Pick<PluginRegistryValidationContext, 'plugin' | 'pluginNamespace'>,

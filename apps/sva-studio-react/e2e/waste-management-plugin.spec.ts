@@ -5,6 +5,8 @@ import { mockWasteFacade, type WasteTourState } from './waste-management-plugin.
 
 import {
   establishServerReadableAuthSession,
+  gotoHomeAsAuthenticatedUser,
+  navigateClientSide,
   registerSharedIamRoutes,
 } from './studio-shell.helpers';
 
@@ -23,6 +25,7 @@ const mockSharedShellRequests = async (
         user: {
           id: `kc-${input.instanceId}`,
           name: 'Waste Operator',
+          displayName: 'Waste Operator',
           email: 'waste@example.com',
           instanceId: input.instanceId,
           assignedModules: ['waste-management'],
@@ -64,6 +67,94 @@ const openWastePlugin = async (page: Page) => {
 };
 
 test.describe('waste management plugin', () => {
+  for (const width of [1280, 390]) {
+    test(`renders readable email monitoring at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      await mockSharedShellRequests(page, {
+        instanceId: 'de-musterhausen',
+        permissionActions: ['waste-management.email-reminder-monitoring.read'],
+      });
+      const subscription = {
+        id: '11111111-1111-4111-8111-111111111111',
+        maskedEmail: 'a****************z@e****************e',
+        status: 'active',
+        city: 'Bad Wilsnack und Umgebung',
+        createdAt: '2026-11-01T10:00:00Z',
+        activatedAt: '2026-11-01T10:05:00Z',
+        unsubscribedAt: null,
+        lastSentEmail: { kind: 'doi', sentAt: '2026-11-01T10:05:00Z' },
+        nextEmail: { kind: 'reminder', status: 'pending', scheduledAt: '2026-11-12T06:00:00Z' },
+        items: [
+          { fraction: 'Leichtverpackungen gelber Sack', slotId: 'yellow:email:first' },
+          { fraction: 'Leichtverpackungen gelber Sack', slotId: 'yellow:email:second' },
+          { fraction: 'Papier, Pappe, Kartonagen', slotId: 'paper:email:first' },
+          { fraction: 'Hausmüll', slotId: 'legacy-slot' },
+        ],
+      };
+      await page.route('**/api/v1/waste-management/email-monitoring?**', async (route) => {
+        const selected = new URL(route.request().url()).searchParams.has('subscriptionId');
+        await route.fulfill({
+          json: {
+            data: {
+              subscriptions: [subscription],
+              total: 1,
+              deliveryTotal: selected ? 1 : 0,
+              deliveries: selected
+                ? [
+                    {
+                      id: 'delivery-1',
+                      kind: 'reminder',
+                      status: 'failed',
+                      createdAt: '2026-11-11T07:00:00Z',
+                      scheduledAt: '2026-11-12T07:00:00Z',
+                      sentAt: null,
+                      attempts: 2,
+                      fraction: 'Papier, Pappe, Kartonagen',
+                      pickupDate: '2026-11-13',
+                      error: 'dispatch_failed',
+                    },
+                  ]
+                : [],
+            },
+          },
+        });
+      });
+      await page.goto('/health/live');
+      await establishServerReadableAuthSession(page.context(), page);
+      await gotoHomeAsAuthenticatedUser(page, 'Waste Operator');
+      await navigateClientSide(page, '/plugins/waste-management/email-monitoring');
+      await expect(page.getByRole('heading', { name: 'E-Mail-Abos und Versand' })).toBeVisible();
+      await expect(
+        page.getByText('Abo bestätigt', { exact: true }).filter({ visible: true })
+      ).toBeVisible();
+      await expect(page.getByText('legacy-slot')).toHaveCount(0);
+      await expect(page.getByText('Zuletzt versendet', { exact: true }).filter({ visible: true })).toBeVisible();
+      await expect(page.getByText('Als Nächstes vorgemerkt', { exact: true }).filter({ visible: true })).toBeVisible();
+      await page.screenshot({
+        path: testInfo.outputPath(`monitoring-list-${width}.png`),
+        fullPage: true,
+      });
+      await page.getByRole('button', { name: 'Versand ansehen' }).filter({ visible: true }).click();
+      await expect(
+        page
+          .getByText(
+            'Beim Versand ist ein Problem aufgetreten. Bitte an die technische Betreuung wenden.'
+          )
+          .filter({ visible: true })
+      ).toBeVisible();
+      await expect(page.getByText(subscription.id, { exact: true })).toBeHidden();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({
+        path: testInfo.outputPath(`monitoring-deliveries-${width}.png`),
+        fullPage: true,
+      });
+      await page.getByText('Weitere Angaben für Rückfragen', { exact: true }).click();
+      await expect(page.getByText(subscription.id, { exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Versand schließen' }).click();
+      await expect(page.getByRole('heading', { name: 'Abonnements', exact: true })).toBeFocused();
+    });
+  }
+
   test.describe.configure({ timeout: 120_000 });
   test('keeps partial annual-calendar dates visible and explains missing recurring data', async ({
     page,
@@ -172,6 +263,7 @@ test.describe('waste management plugin', () => {
     page,
   }) => {
     test.setTimeout(180_000);
+    await page.clock.setFixedTime(new Date('2026-05-12T12:00:00.000Z'));
     await mockSharedShellRequests(context, {
       instanceId: 'de-tour-shift-context',
       permissionActions: [
@@ -227,10 +319,9 @@ test.describe('waste management plugin', () => {
     await expect(popup.locator('#waste-tour-shift-tour')).toHaveValue('tour-1', {
       timeout: 30_000,
     });
-    const originalDate = await popup.locator('#waste-tour-shift-original-date').inputValue();
-    expect(originalDate).toMatch(/^2026-\d{2}-\d{2}$/u);
+    await expect(popup.locator('#waste-tour-shift-original-date')).toHaveValue('12.05.2026');
     await expect(popup).toHaveURL(/schedulingTourId=tour-1/u);
-    await expect(popup).toHaveURL(new RegExp(`schedulingOriginalDate=${originalDate}`, 'u'));
+    await expect(popup).toHaveURL(/schedulingOriginalDate=2026-05-12/u);
     await expect(page).toHaveURL(sourceUrl);
     await expect(page.getByRole('heading', { name: 'Jahreskalender' })).toBeVisible();
   });
@@ -773,7 +864,9 @@ test.describe('waste management plugin', () => {
     await captureStudioDesignState(page, 'waste-tours-selected');
     await page.getByRole('button', { name: 'Gültigkeitszeitraum ändern' }).click();
     await page.getByLabel('Gültig ab').selectOption('set');
-    await page.getByLabel('Neuer Gültigkeitsbeginn').fill('2026-03-01');
+    await page
+      .getByRole('textbox', { name: 'Neuer Gültigkeitsbeginn', exact: true })
+      .fill('01.03.2026');
     await page.getByLabel('Gültig bis').selectOption('clear');
     await page.getByRole('button', { name: 'Zeitraum ändern' }).click();
 
@@ -898,7 +991,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Tourensatz ins Folgejahr übernehmen' }).click();
     await expect(page.getByText('Unveränderliches Folgejahr: 2027')).toBeVisible();
     await page.getByRole('button', { name: 'Vorschau erstellen' }).click();
-    await expect(page.getByText('2026-01-05 (Montag) → 2027-01-04 (Montag)')).toBeVisible();
+    await expect(page.getByText('05.01.2026 (Montag) → 04.01.2027 (Montag)')).toBeVisible();
     await page.getByRole('button', { name: 'Auswahl prüfen' }).click();
     await page.getByRole('button', { name: 'Als Entwurf übernehmen' }).click();
 

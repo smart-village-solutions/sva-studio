@@ -21,7 +21,7 @@ import {
 } from '@sva/studio-ui-react';
 import { createDefaultPoiDetailFormValues, type PoiDetailFormValues } from './poi.detail-form.js';
 import { usePoiDetailSave } from './poi.detail-page.save.js';
-import { createPoiDeviationFieldLabels } from './poi.detail-page.labels.js';
+import { createPoiDeviationFieldLabels, poiSaveSuccessStatus } from './poi.detail-page.labels.js';
 import { usePoiDetailDelete } from './poi.detail-page.delete.js';
 import { usePoiDetailLoad } from './poi.detail-page.load.js';
 import { usePoiDetailMedia } from './poi.detail-page.media.js';
@@ -90,6 +90,7 @@ export function PoiDetailPage({
     }
 
     initialSaveFeedbackShownRef.current = true;
+    setStatus((current) => poiSaveSuccessStatus(pt, methods.getValues('basis.active'), current));
     saveFeedback.showSaved();
     void navigate({
       to: '/admin/poi/$id',
@@ -97,7 +98,7 @@ export function PoiDetailPage({
       replace: true,
       state: (previous) => removeStudioSaveFeedback(previous),
     });
-  }, [contentId, loading, location.state, navigate, saveFeedback]);
+  }, [contentId, loading, location.state, navigate, saveFeedback, methods, pt]);
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,

@@ -1,10 +1,18 @@
+import {
+  DateInput,
+  Input,
+  Select,
+  StudioField,
+  StudioFieldGroup,
+  Textarea,
+} from '@sva/studio-ui-react';
 import type {
   WasteCustomRecurrencePresetRecord,
   WasteFractionRecord,
 } from '@sva/waste-management-contracts';
-import { Input, Select, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
 import type { ReactNode } from 'react';
 
+import { WasteToursCustomDatesField } from './waste-management.tours-custom-dates.js';
 import {
   createCustomRecurrenceOptions,
   createTourRecurrencePatch,
@@ -12,7 +20,6 @@ import {
   shouldShowTourCustomDates,
   shouldShowTourDateRangeFields,
 } from './waste-management.tours-form.support.js';
-import { WasteToursCustomDatesField } from './waste-management.tours-custom-dates.js';
 import { WasteToursFractionSelection } from './waste-management.tours.fractions.js';
 import type { TourFormState } from './waste-management.tours.types.js';
 
@@ -142,19 +149,19 @@ export const WasteToursTourFields = ({
           {showsDateRange ? (
             <>
               <StudioField id="waste-tour-first-date" label={pt('tours.fields.firstDate')}>
-                <Input
+                <DateInput
+                  label={pt('tours.fields.firstDate')}
                   id="waste-tour-first-date"
-                  type="date"
                   value={form.firstDate}
-                  onChange={(event) => onChange({ firstDate: event.target.value })}
+                  onValueChange={(value) => onChange({ firstDate: value })}
                 />
               </StudioField>
               <StudioField id="waste-tour-end-date" label={pt('tours.fields.endDate')}>
-                <Input
+                <DateInput
+                  label={pt('tours.fields.endDate')}
                   id="waste-tour-end-date"
-                  type="date"
                   value={form.endDate}
-                  onChange={(event) => onChange({ endDate: event.target.value })}
+                  onValueChange={(value) => onChange({ endDate: value })}
                 />
               </StudioField>
             </>

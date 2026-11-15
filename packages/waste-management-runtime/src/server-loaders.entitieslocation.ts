@@ -1,3 +1,8 @@
+import { processWasteFractionDeletion } from './repositories/fraction-deletion.js';
+import type {
+  WasteFractionDeleteInput,
+  WasteFractionDeleteConfirmation,
+} from '@sva/waste-management-contracts';
 import type {
   WasteRegionRecord,
   WasteStreetRecord,
@@ -10,6 +15,19 @@ import type { WasteLoaderContext } from './server-loaders.context.js';
 export class WasteEntitiesLocationLoaders {
   constructor(private readonly context: WasteLoaderContext) {}
 
+  get previewWasteFractionDeletion() {
+    return (instanceId: string, input: WasteFractionDeleteInput) =>
+      this.context.withWasteClient(instanceId, 'preview_waste_fraction_deletion', (client) =>
+        processWasteFractionDeletion(client, input)
+      );
+  }
+  get executeWasteFractionDeletion() {
+    return (instanceId: string, input: WasteFractionDeleteConfirmation) =>
+      this.context.withWasteClient(instanceId, 'execute_waste_fraction_deletion', (client) => {
+        const { confirmationToken, ...selection } = input;
+        return processWasteFractionDeletion(client, selection, confirmationToken);
+      });
+  }
   get loadWasteFractionById() {
     return this.context.createLoader(
       'load_waste_fraction_by_id',

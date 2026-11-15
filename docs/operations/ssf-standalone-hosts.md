@@ -250,6 +250,11 @@ vor Ablösung inventarisiert werden; Studio erhält weder Catch-all noch Wildcar
 
 ### Folge-Releases auf der SSF-Distribution
 
+Die SSF-Distribution stellt ausschließlich das SSF-Modul bereit. Die allgemeine
+Medienverwaltung des Studio-Hosts ist dort nicht verfügbar; vorhandene Mediendaten
+werden durch die Modulauswahl nicht gelöscht. Die reguläre Studio-Distribution
+behält ihre Medienverwaltung.
+
 Die Cutover-Schritte oben betreffen den Wechsel vom Standard-Studio zur
 SSF-Distribution. Für einen SSF-zu-SSF-Patch ohne Schema-, Queue- oder
 Host-/Issuer-Änderung werden stattdessen der aktuelle Live-Digest, die

@@ -67,7 +67,7 @@ Mindesterwartung vor Merge:
 
 Automatisierte Prüfpfade:
 
-- `pnpm test:a11y` führt komponentennahe `axe-core`-Prüfungen für `apps/sva-studio-react` aus.
+- `pnpm test:a11y` führt komponentennahe `axe-core`-Prüfungen für `apps/sva-studio-react` aus. Gemeinsame Primitive aus `@sva/studio-ui-react` werden dort über `src/test/studio-ui-react-primitives.a11y.test.tsx` mit demselben Helper geprüft, weil das Paket bewusst keinen eigenen Axe-Pfad mitbringt. Rolle, Name, Zustand sowie Tastatur- und Fokusverhalten werden dagegen direkt neben der besitzenden Komponente im Paket getestet; reine Re-Exporte im Host erhalten keine eigenen Tests.
 - `pnpm nx run sva-studio-react:test:e2e` deckt zusätzlich zentrale UI-Flows mit `@axe-core/playwright` im Browser ab.
 - Komponenten-A11y-Tests dürfen isolierte Landmark-Regeln und visuelle Kontrastregeln im Test-Runner gezielt ausnehmen, wenn die Umgebung diese Aspekte nicht belastbar simulieren kann. Solche Ausnahmen sind knapp zu dokumentieren und dürfen keine Laufzeitprobleme kaschieren.
 

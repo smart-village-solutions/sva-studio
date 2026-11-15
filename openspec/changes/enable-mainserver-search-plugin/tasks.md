@@ -7,7 +7,7 @@
 
 ## 2. Implementierung nach Entwurfsprüfung
 
-- [x] 2.1 Unterstützte Index-/Modell-/Fachtyp-/Detailrouten-Zuordnungen und konkrete serverseitige Ziel-/Schlüsselzuführung festlegen; bestehenden XERJ-Referenzpfad und Indexstand vor nichttrivialen Codeänderungen prüfen, soweit verfügbar und autorisiert.
+- [x] 2.1 Unterstützte Index-/Modell-/Fachtyp-/Detailrouten-Zuordnungen und konkrete serverseitige Ziel-/Schlüsselzuführung festlegen.
 - [x] 2.2 Bestehendes Suchplugin um serverseitige Kandidatensuche, vorhandene Leseprüfung, Filter und vollständigkeitsabhängige Zählung erweitern; unmittelbar das kleinste Unit-/Type-Gate ausführen.
 - [x] 2.3 Header-Einstieg und hostmaterialisierte Ergebnisseite mit URL-Zustand, drei Filtern, sicheren Vorschauen und getrennten Statusanzeigen anbinden; vorhandene Vorschau ersetzen.
 - [x] 2.4 Plugin-Metadaten, eigene Permission, Modulaktivierung und Host-Wiring im bestehenden Pfad integrieren; keine automatischen externen Schlüssel- oder Aktivierungsänderungen.

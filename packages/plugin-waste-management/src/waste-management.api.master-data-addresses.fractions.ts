@@ -1,11 +1,19 @@
 import type { StudioJobResponse } from '@sva/plugin-sdk';
-import type { WasteFractionRecord } from '@sva/waste-management-contracts';
+import type {
+  WasteFractionRecord,
+  WasteFractionDeleteInput,
+  WasteFractionDeleteConfirmation,
+  WasteFractionDeletePreview,
+} from '@sva/waste-management-contracts';
 
 import type {
   CreateWasteManagementFractionInput,
   UpdateWasteManagementFractionInput,
 } from './waste-management.api.types.js';
-import { requestWasteManagementMutationResponse } from './waste-management.api.shared.js';
+import {
+  requestWasteManagementMutation,
+  requestWasteManagementMutationResponse,
+} from './waste-management.api.shared.js';
 
 type WasteFractionSyncStatus = 'queued' | 'failed';
 
@@ -32,11 +40,12 @@ const updateWasteManagementFraction = async (
   );
 
 const deleteWasteManagementFraction = async (
-  fractionId: string
+  fractionId: string,
+  confirmation?: Omit<WasteFractionDeleteConfirmation, 'fractionId'>
 ): Promise<WasteFractionMutationResponse<{ readonly id: string }>> =>
   requestWasteManagementMutationResponse(
     `/api/v1/waste-management/fractions/${encodeURIComponent(fractionId)}`,
-    undefined,
+    confirmation,
     'DELETE'
   );
 
@@ -46,3 +55,8 @@ export {
   updateWasteManagementFraction,
 };
 export type { WasteFractionMutationResponse, WasteFractionSyncStatus };
+
+export const previewWasteManagementFractionDeletion = (
+  input: WasteFractionDeleteInput
+): Promise<WasteFractionDeletePreview> =>
+  requestWasteManagementMutation('/api/v1/waste-management/fractions/impact-preview', input);

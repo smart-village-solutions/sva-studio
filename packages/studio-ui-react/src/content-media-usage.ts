@@ -70,11 +70,12 @@ export const createContentMediaUiId = (): string => {
 };
 
 export const createManualContentMediaUsage = (input?: {
+  readonly persistentUrl?: string;
   readonly role?: string;
   readonly sortOrder?: number;
 }): ContentMediaUsage => ({
   uiId: createContentMediaUiId(),
-  persistentUrl: '',
+  persistentUrl: input?.persistentUrl ?? '',
   altText: '',
   caption: '',
   credit: '',

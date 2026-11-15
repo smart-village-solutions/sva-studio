@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AuthenticatedRequestContext } from './types.js';
+import {
+  createWasteAuthDeps,
+  createWasteMutationRequest,
+  createWasteTestActor,
+  grantWastePermissions,
+  wasteResolvedActorInfo,
+} from '../../tests/test-utils/handler-fixtures.js';
+
 
 vi.mock('@sva/waste-management-contracts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sva/waste-management-contracts')>();
@@ -16,30 +23,12 @@ import { wasteManagementOperationHandlers } from './operations.js';
 
 const mockedGetWasteManagementImportCatalogEntry = vi.mocked(getWasteManagementImportCatalogEntry);
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  activeOrganizationId: 'org-1',
-  user: {
-    id: 'user-1',
-    instanceId: 'tenant-a',
-    roles: ['system_admin'],
-  },
-};
+const actor = createWasteTestActor({ activeOrganizationId: 'org-1' });
 
 const createDeps = () => ({
-  getRequestId: () => 'req-test',
-  getSessionById: vi.fn(async () => ({
-    activeOrganizationId: 'org-1',
-  })),
+  ...createWasteAuthDeps(['waste-management.import.execute', 'waste-management.seed.execute']),
   emitAuditEvent: vi.fn(async () => undefined),
-  resolveActorInfo: vi.fn(async () => ({
-    actor: {
-      instanceId: 'tenant-a',
-      actorAccountId: 'account-1',
-      requestId: 'req-test',
-      traceId: 'trace-test',
-    },
-  })),
+  resolveActorInfo: vi.fn(async () => wasteResolvedActorInfo),
   loadDefaultInterfaceRecord: vi.fn(async () => ({
     id: 'supabase-1',
     instanceId: 'tenant-a',
@@ -58,58 +47,18 @@ const createDeps = () => ({
     },
     secretConfigCiphertext: 'cipher-secret',
   })),
-  resolvePermissions: vi.fn(async () => ({
-    ok: true as const,
-    permissions: [
-      {
-        action: 'waste-management.import.execute',
-        resourceType: 'waste-management',
-      },
-      {
-        action: 'waste-management.seed.execute',
-        resourceType: 'waste-management',
-      },
-    ],
-  })),
 });
-
-const createImportRequest = (body: Record<string, unknown>) =>
-  new Request('https://studio.test/api/v1/waste-management/tools/imports', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Idempotency-Key': 'idem-1',
-      Origin: 'https://studio.test',
-      'X-Requested-With': 'XMLHttpRequest',
-    },
-    body: JSON.stringify(body),
-  });
 
 const createToolRequest = (
   url: string,
   body: Record<string, unknown>,
   headers?: Record<string, string>
-) =>
-  new Request(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Idempotency-Key': 'idem-1',
-      Origin: 'https://studio.test',
-      'X-Requested-With': 'XMLHttpRequest',
-      ...headers,
-    },
-    body: JSON.stringify(body),
-  });
+) => createWasteMutationRequest('POST', url, body, { 'Idempotency-Key': 'idem-1', ...headers });
 
-const actorWithoutInstance: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: {
-    id: 'user-1',
-    instanceId: '',
-    roles: ['system_admin'],
-  },
-};
+const createImportRequest = (body: Record<string, unknown>) =>
+  createToolRequest('https://studio.test/api/v1/waste-management/tools/imports', body);
+
+const actorWithoutInstance = createWasteTestActor({ user: { instanceId: '' } });
 
 describe('waste-management operation handlers', () => {
   it('stores import uploads before queuing and returns only an opaque reference', async () => {
@@ -193,10 +142,7 @@ describe('waste-management operation handlers', () => {
         }),
       deps: () => ({
         ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [],
-        })),
+        ...grantWastePermissions(),
       }),
       actor,
       expectedStatus: 403,
@@ -211,10 +157,7 @@ describe('waste-management operation handlers', () => {
         }),
       deps: () => ({
         ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [],
-        })),
+        ...grantWastePermissions(),
       }),
       actor,
       expectedStatus: 403,
@@ -227,10 +170,7 @@ describe('waste-management operation handlers', () => {
         createToolRequest('https://studio.test/api/v1/waste-management/tools/mainserver-sync', {}),
       deps: () => ({
         ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [],
-        })),
+        ...grantWastePermissions(),
       }),
       actor,
       expectedStatus: 403,
@@ -243,10 +183,7 @@ describe('waste-management operation handlers', () => {
         createToolRequest('https://studio.test/api/v1/waste-management/tools/sync-waste-types', {}),
       deps: () => ({
         ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [],
-        })),
+        ...grantWastePermissions(),
       }),
       actor,
       expectedStatus: 403,
@@ -262,10 +199,7 @@ describe('waste-management operation handlers', () => {
         ),
       deps: () => ({
         ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [],
-        })),
+        ...grantWastePermissions(),
       }),
       actor,
       expectedStatus: 403,
@@ -280,15 +214,7 @@ describe('waste-management operation handlers', () => {
         }),
       deps: () => ({
         ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.reset.execute',
-              resourceType: 'waste-management',
-            },
-          ],
-        })),
+        ...grantWastePermissions('waste-management.reset.execute'),
       }),
       actor: actorWithoutInstance,
       expectedStatus: 400,
@@ -309,15 +235,7 @@ describe('waste-management operation handlers', () => {
         ),
       deps: () => ({
         ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.seed.execute',
-              resourceType: 'waste-management',
-            },
-          ],
-        })),
+        ...grantWastePermissions('waste-management.seed.execute'),
         startPluginOperationJob: vi.fn(),
       }),
       actor,
@@ -413,15 +331,7 @@ describe('waste-management operation handlers', () => {
       actor,
       {
         ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.export.execute',
-              resourceType: 'waste-management',
-            },
-          ],
-        })),
+        ...grantWastePermissions('waste-management.export.execute'),
         startPluginOperationJob,
       }
     );
@@ -445,15 +355,7 @@ describe('waste-management operation handlers', () => {
       actor,
       {
         ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.settings.manage',
-              resourceType: 'waste-management',
-            },
-          ],
-        })),
+        ...grantWastePermissions('waste-management.settings.manage'),
         startPluginOperationJob,
       }
     );
@@ -478,15 +380,7 @@ describe('waste-management operation handlers', () => {
         actor,
         {
           ...createDeps(),
-          resolvePermissions: vi.fn(async () => ({
-            ok: true as const,
-            permissions: [
-              {
-                action: 'waste-management.master-data.manage',
-                resourceType: 'waste-management',
-              },
-            ],
-          })),
+          ...grantWastePermissions('waste-management.master-data.manage'),
           startPluginOperationJob,
         }
       );
@@ -521,15 +415,7 @@ describe('waste-management operation handlers', () => {
         actor,
         {
           ...createDeps(),
-          resolvePermissions: vi.fn(async () => ({
-            ok: true as const,
-            permissions: [
-              {
-                action: 'waste-management.master-data.manage',
-                resourceType: 'waste-management',
-              },
-            ],
-          })),
+          ...grantWastePermissions('waste-management.master-data.manage'),
           startPluginOperationJob,
         }
       );
@@ -561,15 +447,7 @@ describe('waste-management operation handlers', () => {
         actor,
         {
           ...createDeps(),
-          resolvePermissions: vi.fn(async () => ({
-            ok: true as const,
-            permissions: [
-              {
-                action: 'waste-management.scheduling.manage',
-                resourceType: 'waste-management',
-              },
-            ],
-          })),
+          ...grantWastePermissions('waste-management.scheduling.manage'),
           startPluginOperationJob,
         }
       );
@@ -606,15 +484,7 @@ describe('waste-management operation handlers', () => {
             requestId: 'req-test',
           },
         })),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.settings.manage',
-              resourceType: 'waste-management',
-            },
-          ],
-        })),
+        ...grantWastePermissions('waste-management.settings.manage'),
         startPluginOperationJob,
       }
     );
@@ -724,15 +594,7 @@ describe('waste-management operation handlers', () => {
       {
         ...createDeps(),
         emitAuditEvent,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.reset.execute',
-              resourceType: 'waste-management',
-            },
-          ],
-        })),
+        ...grantWastePermissions('waste-management.reset.execute'),
         startPluginOperationJob: vi.fn(
           async () =>
             new Response(JSON.stringify({ error: 'conflict', data: { id: 'job-7' } }), {
@@ -812,15 +674,7 @@ describe('waste-management operation handlers', () => {
         ...createDeps(),
         emitAuditEvent,
         startPluginOperationJob: facadeSpy,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.settings.manage',
-              resourceType: 'waste-management',
-            },
-          ],
-        })),
+        ...grantWastePermissions('waste-management.settings.manage'),
       }
     );
 
@@ -869,15 +723,7 @@ describe('waste-management operation handlers', () => {
       {
         ...createDeps(),
         emitAuditEvent,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.settings.manage',
-              resourceType: 'waste-management',
-            },
-          ],
-        })),
+        ...grantWastePermissions('waste-management.settings.manage'),
         startPluginOperationJob,
       }
     );
@@ -917,15 +763,7 @@ describe('waste-management operation handlers', () => {
       actor,
       {
         ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.settings.manage',
-              resourceType: 'waste-management',
-            },
-          ],
-        })),
+        ...grantWastePermissions('waste-management.settings.manage'),
         startPluginOperationJob,
       }
     );
@@ -956,15 +794,7 @@ describe('waste-management operation handlers', () => {
       actor,
       {
         ...createDeps(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.settings.manage',
-              resourceType: 'waste-management',
-            },
-          ],
-        })),
+        ...grantWastePermissions('waste-management.settings.manage'),
         startPluginOperationJob,
       }
     );

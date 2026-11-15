@@ -93,7 +93,7 @@ Modulen der jeweiligen Bausteine.
 - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
 - verwendet die framework-agnostische Rich-Text-Allowlist aus `@sva/core/rich-text-html-policy` und wendet sie im Browser mit DOMPurify an, ohne den Node-basierten Server-Sanitizer in das Client-Bundle zu übernehmen
 - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
-- besitzt die gemeinsame [Datumseingabe](../development/datumseingabe.md) mit lokalisiertem Eingabetext, Kalendernavigation und einem Kalenderdatum-Vertrag ohne Zeitzone; der Veranstaltungseditor bindet sie feldweise an React Hook Form an
+- besitzt die gemeinsame [Datumseingabe](../development/datumseingabe.md) mit lokalisiertem Eingabetext, Kalendernavigation und einem Kalenderdatum-Vertrag ohne Zeitzone; Studio-App und Fachplugins nutzen sie über `DatePicker`, `DateInput` beziehungsweise `FormDateInput`; `TimeInput`, `LocalDateTimeInput` und `InstantInput` unterscheiden Uhrzeiten, lokale Werte und absolute Zeitpunkte, während API-Konvertierungen beim zuständigen Adapter bleiben
 - ist alleiniger Owner des Studio-Buttons mit der fachlichen Varianten-API `primary`, `secondary`, `tertiary` und `destructive`; App und Plugins besitzen keine parallele Button-Basis
 - stellt für Buttons zentrale Theme-Zustände, 44 × 44 Pixel Mindestzielgröße, sichtbaren Fokus, Disabled-/Loading-Semantik und fokusfähige Icon-Tooltips bereit
 - ist der kanonische UI-Owner für die Formular-Foundation rund um `react-hook-form`-, Resolver- und Form-Bridge-Muster; Host und Plugins sollen keine parallelen Basis-Formularsysteme etablieren
@@ -129,6 +129,7 @@ Modulen der jeweiligen Bausteine.
 - kapselt Featured Projects als Mainserver-`GenericItem` mit `genericType: "FeaturedProject"`; Mainserver-ID, Lifecycle, Veröffentlichung und Autorenschaft bleiben fachlich führend, während ein lokaler `iam.contents`-Core und `iam.external_content_references` ausschließlich optionale Studio-History- und Reconciliation-Begleitzustände bilden
 - trennt die interne Featured-Project-Erstellung in Create-Orchestrierung, Idempotenz-/Replay-Handling, reine Payload-/Response-Abbildung sowie gemeinsame Autorisierungs- und Transportbausteine; `projects-route.ts` bleibt die HTTP-Fassade und exportiert keine neuen Create-Interna
 - kapselt zusätzlich den getypten Schreibpfad für Mainserver-Static-Content wie `wasteTypes` über `createOrUpdateStaticContent`, ohne Browser- oder Plugin-Code direkt an GraphQL zu koppeln
+- Zielentscheidung für #2180, Gesamtabgleich noch nicht implementiert: Der bestehende Static-Content-Pfad wird zum gemeinsamen, hostgeführten JSON-Abgleich für alle App-Konfigurationsplugins erweitert. Fachplugins liefern fachlich validierte Änderungen ihrer zugeordneten Felder; Host und Mainserver-Package übernehmen Rechte-/Pfadprüfung sowie den gemeinsamen Lese-, Konflikt-, Schreib- und Readback-Ablauf. Zuständigkeiten und Grenzen stehen unter [Gemeinsamer Abgleich der App-Konfiguration](08-cross-cutting-concepts.md#gemeinsamer-abgleich-der-app-konfiguration).
 - liest seine instanzbezogene Endpunktkonfiguration nicht mehr aus einer Mainserver-Spezialtabelle, sondern aus der zentralen External-Interface-Registry
 - bietet Root-Administratoren Bestand, Detail und gezieltes Speichern der Mainserver-Schnittstelle über `root-interface-contract.ts` an; der bestehende `settings.ts`-Persistenzpfad bleibt führend. `auth-runtime` prüft Root-Host, Registry-Rolle, Service-Action und Browser-CSRF vor dem instanzgebundenen Zugriff.
 - hält `src/server/service.ts` bewusst als schlanke Fassade; Credentials, Token, GraphQL-Transport, Sichtbarkeits-Pagination, Mapper und ressourcenspezifische Operationen liegen in getrennten internen Modulen unter `src/server/service-internals/`
@@ -214,6 +215,7 @@ Modulen der jeweiligen Bausteine.
 - Der öffentliche `provisioning-auth-state`-Subpath bündelt unverändert die Keycloak-Adapter; interne Module halten Client-Vertrag, Tenant-Admin-Bootstrap, Realm-Readback und Artifact-Reconcile samt Realm-Cleanup getrennt. Der injizierte Client bleibt an den jeweiligen Realm gebunden; das allgemeine Status-Readback liefert Secrets nur für Studio-eigene Clients.
 - `provisioning-auth-evaluation` bleibt der Exportpfad für Preflight, Status und Plan. Interne Module trennen Preflight-Checks, geordnete Ownership-Konflikte und Live-Status; `provisioning-auth-plan` hält Fingerprint und Step-Reihenfolge, während ein internes Modul die einzelnen Artefakt-Schritte erzeugt.
 - Die serverseitige New-Realm-Baseline besitzt ausschließlich nicht geheime, installationsweit einheitliche Realm-, Theme-, Locale-, Event-, SMTP-, Benutzerprofil- und Mapper-Werte. Der konfigurierte Keycloak-Endpunkt liefert den Issuer; das SMTP-Passwort bleibt außerhalb von Quellcode, Registry und Browservertrag eine sichtbare manuelle Nacharbeit.
+- Der bestätigte Keycloak-Abgleich prüft auch bei bestehenden Realms die Studio-Benutzerprofilfelder, ergänzt fehlende Definitionen und bestätigt den Zustand durch erneutes Lesen.
 - Root-Entry exportiert bewusst nur die stabile Capability-Fläche; interne Service-, HTTP- und Provisioning-Helfer bleiben auf Subpath- oder interne Module begrenzt
 - Keycloak-Reconcile- und Execute-Mutationen führen `Idempotency-Key`, API-Mutation und stabilen Payload-Fingerprint bis in `iam.instance_keycloak_provisioning_runs`, damit Retries denselben fachlichen Run wiederverwenden
 - aggregiert für `GET /api/v1/iam/instances/:instanceId` zusätzlich `tenantIamStatus` aus Registry-/Provisioning-, Access-Probe- und Reconcile-Evidenz
@@ -231,6 +233,7 @@ Modulen der jeweiligen Bausteine.
 - bezieht kurzlebige Keycloak-Tokens aus ausschließlich lokaler Secret-Konfiguration und besitzt weder Datenbank- noch Keycloak-Admin-Zugriff
 - trennt Read-, kontrollierte und kritische Tools; Autorisierung und Confirmation-Challenges bleiben serverseitige Studio-Verantwortung
 - bietet mit `studio_instance_process` einen modularen Ablauf für Anlage, Reparatur und Anpassung, der ausschließlich vorhandene HTTP-Verträge kombiniert und einen Abschluss nur nach aktuellem Doctor-Read meldet
+- richtet mit `studio_personal_editor_roles_ensure` fehlende Redaktionsprofile für explizite persönliche Tenant-Kontexte über vorhandene Rollen-APIs ein; Bestandsrollen bleiben unverändert und Anlageerfolg verlangt unabhängigen Readback. News/Events/POI verwenden Organisationsscope, Medien/Kategorien die ausdrücklich vereinbarte instanzweite Ausnahme. Nicht unterstützte Inhaltsaktionen werden ausgewiesen, nicht freigegeben.
 
 14. Studio-Job-Hostpfad (`packages/auth-runtime`, `packages/routing`, `packages/data-repositories`, `packages/iam-governance`)
 
@@ -971,7 +974,7 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
 
 ### Ergänzung 2026-08: gemeinsame Editor-Primitiven
 
-- `@sva/plugin-sdk` besitzt List-Search-Normalisierung, Map-/Geocoding-Client und den schmalen öffentlichen Subpath `content-media`.
+- `@sva/plugin-sdk` besitzt List-Search-Normalisierung, Map-/Geocoding-Client und die schmalen öffentlichen Subpaths `content-media` und `temporal`.
 - `@sva/studio-ui-react` besitzt den Map-Lifecycle, Media-Picker-Konfiguration sowie den Media-Reference-Sync-Controller und seine Retry-Aktion.
 - Plugins besitzen weiterhin Payload, Mutation, Navigation, Übersetzung und bundlelokales Laden der MapLibre-Runtime.
 
@@ -1193,7 +1196,7 @@ Die versionierte Formatdefinition erhält in Format 1 die bisherigen 22 Textfunk
 
 ### Begrenzter technischer Nachrichten-Übersetzungsdienst
 
-`auth-runtime/src/app-translations-service.ts` ergänzt den getrennten technischen POST-Handler für `news-v1`, `global-settings-v1` und `static-html-v1` (Deutsch in die pro Instanz freigegebenen Zielsprachen), ohne Session-Katalogrechte oder persistente dynamische Inhalte. Er nutzt JWT-Verifikation, die ausdrücklich erwarteten Identitätsmetadaten an der bestehenden Main-Server-Schnittstelle, die bestehende instanzgebundene Schnittstellenverbindung und den DeepL-Adapter. Der Main-Server behält Jobs, Retry und dynamische Ergebnisse. Aktueller Modul-/Sprach-/Konfigurationsstand wird vor Anbieterarbeit und Antwort geprüft. Der bestehende Modulabgleich übermittelt die Sprachauswahl an den Main-Server. Die App liest dort die verfügbaren Sprachen, und der erste Inhaltsabruf kann eine Übersetzung anstoßen. Bei statischen HTML-Seiten übersetzt Studio einen Rich-Text-Eintrag und prüft, dass dessen Tag- und Attributfolge erhalten bleibt. Der Main-Server setzt die übersetzten Texte wieder in das statische Dokument ein. Die reale Eignung/Audience des vorhandenen Dienstausweises ist keine durch diese Implementierung belegte Betriebsfreigabe. Details und Grenzen: [ADR-070](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md).
+`auth-runtime/src/app-translations-service.ts` ergänzt den getrennten technischen POST-Handler für `news-v1`, `global-settings-v1` und `static-html-v1` (Deutsch in die pro Instanz freigegebenen Zielsprachen), ohne Session-Katalogrechte oder persistente dynamische Inhalte. Er nutzt JWT-Verifikation, die ausdrücklich erwarteten Identitätsmetadaten an der bestehenden Main-Server-Schnittstelle, die bestehende instanzgebundene Schnittstellenverbindung und den DeepL-Adapter. Der Main-Server behält Jobs, Retry und dynamische Ergebnisse. Aktueller Modul-/Sprach-/Konfigurationsstand wird vor Anbieterarbeit und Antwort geprüft. Der bestehende Modulabgleich übermittelt die Sprachauswahl an den Main-Server. Die App liest dort die verfügbaren Sprachen, und der erste Inhaltsabruf kann eine Übersetzung anstoßen. Bei statischen HTML-Seiten sendet Studio die sichtbaren Textsegmente einzeln an DeepL und baut die Absatzstruktur aus der validierten Antwort wieder auf. Der Main-Server setzt die übersetzten Texte wieder in die ursprünglichen HTML-Knoten ein und behält deren Struktur und Attribute bei. Die reale Eignung/Audience des vorhandenen Dienstausweises ist keine durch diese Implementierung belegte Betriebsfreigabe. Details und Grenzen: [ADR-070](../adr/ADR-070-mainserver-uebersetzungsdienst-an-bestehender-verbindung.md).
 
 ## Baustein Gutscheine
 
@@ -1210,6 +1213,15 @@ Der App-Dispatcher in `apps/sva-studio-react/src/server.ts` finalisiert Antworte
 ### Relationale Waste-Tour-Fraktionen
 
 `@sva/waste-management-runtime` besitzt die Tabelle `waste_tour_fractions` und den atomaren DB-Upsert `upsert_waste_tour(...)`. Kalender und Erinnerungen lesen dieselbe relationale Zuordnung; der äußere Vertrag `wasteFractionIds` bleibt unverändert. Während der begrenzten Expand/Contract-Migration bindet ein DB-Trigger alte Array-Schreiber an die Beziehungstabelle an. Details zu Fremdschlüsseln, Reihenfolge und Entfernung der Brücke stehen in der [Schemaübersicht](../development/studio-db-schema.md). Es entstehen keine zusätzlichen Packages oder Services.
+
+Die Fraktions-Einzellöschung erweitert denselben Pfad um eine serverseitige Auswirkungsvorschau
+und drei ausdrückliche Varianten: Zuordnungen entfernen, betroffene Touren kaskadierend löschen
+oder Quelle durch eine aktive Zielfraktion ersetzen. `waste-management-contracts` besitzt die
+Vorschau- und Bestätigungsverträge, `plugin-waste-management` den vorhandenen Löschdialog und
+`waste-management-runtime` Snapshot, Konfliktprüfung und Transaktion. Die Konfliktprüfung nutzt die
+bestehende Terminmaterialisierung mit einem vollständigen begrenzten Jahresbereich. Neue
+Dienste, Tabellen und alternative Berechnungswege entstehen nicht. Bedienung und Grenzen:
+[Waste-Referenz](../reference/waste-management-tour-gueltigkeit.md#abfallfraktion-löschen-oder-ersetzen).
 
 ### Gemeinsame Studio-Mailvorlagen
 
@@ -1307,3 +1319,25 @@ Der Anwendungsarbeitsplatz wird als externes Paket `@sva/plugin-application-work
 ### E-Mail-Auswertung des Abfallkalender-Plugins
 
 `waste-management-contracts` definiert die datensparsame Leseprojektion für Abos und gespeicherte Versandstände. `waste-management-runtime` liest die bestehenden Tabellen innerhalb der authentifizierten Waste-Datenquelle in einer konsistenten, rein lesenden Transaktion und maskiert Empfänger vor der API-Antwort. `plugin-waste-management` besitzt Endpunkt, Action, Route und Ansicht; die Studio-Shell gruppiert den bereits autorisierten Navigationseintrag unter Monitoring. Es entstehen keine Tabellen, Versandpfade oder eigenen Logging-Dienste. Bedienung und Grenzen beschreibt die [Waste-Referenz](../reference/waste-management-tour-gueltigkeit.md#e-mail-abos-und-versand-auswerten).
+
+## SSF administration page composition
+
+`plugin-ssf` contributes five tenant and three root pages with the existing scope
+and action checks. Its current content repository remains the owner of the JSON
+aggregates. The SDK supports one optional application group level and an explicit
+editor-leave route marker; flat plugins remain unchanged. Both host distributions
+mount the existing editor boundary for marked routes. No new package or service
+is introduced. Field ownership and compatibility remainders are documented in
+[SSF administration](../development/ssf-v2-inhaltsverwaltung-ui.md).
+
+### Studio-Release-Changelog
+
+Die App-Seite `/changelog` ist über den Sidebar-Footer für alle angemeldeten Nutzer erreichbar.
+Der app-lokale Handler `studio-release-notes.server.ts` liest über den bestehenden Server-Dispatch
+reguläre Studio-Releases aus dem festgelegten GitHub-Repository. Er liefert nur Version, Titel,
+Veröffentlichungsdatum und Notes an die UI. Release-Erzeugung und Deployment-Prozesse bleiben
+unverändert; die Anzeige wird nicht mit dem laufenden Image abgeglichen.
+
+### Standard Redakteur
+
+Der Core-Permission-Katalog besitzt die redaktionelle Action-Auswahl und deren Scopes. `data-repositories` erzeugt die löschbare Rolle atomar mit dem Mandanten und ergänzt ihre Core-/Modulgrants ausschließlich bei noch vorhandener Rolle. Migration 0116 übernimmt den einmaligen Bestand. `iam-admin` klassifiziert alle gescopten redaktionellen Actions als Datensatzrechte; die Mainserver-Mutations- und Resource-Access-Pfade erzwingen die vorhandene exakte Ownership-Prüfung. Es entstehen keine neuen Packages, Services oder Verwaltungsendpunkte.

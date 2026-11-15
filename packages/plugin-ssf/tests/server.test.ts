@@ -1,20 +1,16 @@
+import { createSsfAdminV2Handlers } from '../src/server/content-v2-admin.js';
 import type {
   PluginServerHandlerExecutionContext,
   PluginTechnicalServiceTenantContext,
 } from '@sva/plugin-sdk';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SSF_RUNTIME_SERVER_HANDLER_ID, SSF_RUNTIME_V2_SERVER_HANDLER_ID } from '../src/constants.js';
+import {
+  SSF_RUNTIME_SERVER_HANDLER_ID,
+  SSF_RUNTIME_V2_SERVER_HANDLER_ID,
+} from '../src/constants.js';
 import type { SsfRuntimeConfiguration } from '../src/contracts.js';
-import {
-  SsfSystemLocaleInUseError,
-  SsfTenantDefaultLocaleUnavailableError,
-} from '../src/admin-repository.js';
-import {
-  createPluginServerHandlers,
-  createSsfAdminServerHandlers,
-  createSsfPluginServerHandlers,
-} from '../src/server/index.js';
+import { createPluginServerHandlers, createSsfPluginServerHandlers } from '../src/server/index.js';
 
 const revision = `sha256:${'a'.repeat(64)}` as const;
 const configurationRevision = `sha256:${'b'.repeat(64)}` as const;
@@ -63,21 +59,6 @@ const successfulConfiguration: SsfRuntimeConfiguration = {
   authorizationRevision: revision,
 };
 
-const emptyOverrides = {
-  tenantSettings: null,
-  tenantLocales: [],
-  serverSettings: null,
-  serverLocales: [],
-} as const;
-
-const systemConfigurationLocales = ['de-DE', 'en'].map((locale) => ({
-  locale,
-  available: true,
-  authenticatedHomeExplanationHtml: '<p>Home</p>',
-  guestExplanationHtml: '<p>Guest</p>',
-  conversationContentStorageQuestionHtml: '<p>Store?</p>',
-}));
-
 const adminContext = (
   scope: 'platform' | 'tenant',
   method: 'GET' | 'PUT',
@@ -87,6 +68,7 @@ const adminContext = (
     method,
     headers: {
       'X-Correlation-Id': 'admin-correlation-1',
+      'X-SSF-Expected-Content-Revision': `sha256:${'0'.repeat(64)}`,
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -143,14 +125,18 @@ describe('SSF plugin server handler', () => {
 
   it('binds the V2 runtime response to the verified tenant and keeps V1 unchanged', async () => {
     const runtimeHandler = vi.fn().mockResolvedValue(successfulConfiguration);
-    const runtimeV2Handler = vi.fn().mockResolvedValue({ contractVersion: '2.0', tenant: { id: 'tenant-a' } });
+    const runtimeV2Handler = vi
+      .fn()
+      .mockResolvedValue({ contractVersion: '2.0', tenant: { id: 'tenant-a' } });
     const handlers = createSsfPluginServerHandlers({ runtimeHandler, runtimeV2Handler });
     const context = { ...serviceContext(), handlerId: SSF_RUNTIME_V2_SERVER_HANDLER_ID };
 
     const response = await handlers[SSF_RUNTIME_V2_SERVER_HANDLER_ID]?.(context);
     expect(response?.status).toBe(200);
     expect(runtimeV2Handler).toHaveBeenCalledWith({
-      id: 'tenant-a', displayName: 'Tenant A', timeZone: 'Europe/Berlin',
+      id: 'tenant-a',
+      displayName: 'Tenant A',
+      timeZone: 'Europe/Berlin',
     });
     expect(runtimeHandler).not.toHaveBeenCalled();
     await expect(response?.json()).resolves.toMatchObject({ contractVersion: '2.0' });
@@ -196,33 +182,8 @@ describe('SSF plugin server handler', () => {
     });
   });
 
-  it('reads system defaults only in the platform scope', async () => {
-    const dependencies = {
-      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
-      writeSystem: vi.fn(),
-      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
-      writeTenant: vi.fn(),
-    };
-    const handlers = createSsfAdminServerHandlers(dependencies);
-
-    const allowed = await handlers['ssf.system-configuration.read']?.(
-      adminContext('platform', 'GET')
-    );
-    const denied = await handlers['ssf.system-configuration.read']?.(adminContext('tenant', 'GET'));
-
-    expect(allowed?.status).toBe(200);
-    expect(allowed?.headers.get('X-Correlation-Id')).toBe('admin-correlation-1');
-    await expect(allowed?.json()).resolves.toMatchObject({ defaultLocale: 'de-DE' });
-    expect(denied?.status).toBe(403);
-    expect(dependencies.readSystem).toHaveBeenCalledTimes(1);
-  });
-
   it('rejects a V2 system template that would invalidate tenant overrides', async () => {
-    const handlers = createSsfAdminServerHandlers({
-      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
-      writeSystem: vi.fn(),
-      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
-      writeTenant: vi.fn(),
+    const handlers = createSsfAdminV2Handlers({
       readSystemV2: vi.fn().mockResolvedValue({ installation: null, runtimeTemplate: null }),
       writeSystemV2: vi.fn().mockRejectedValue(new Error('ssf_v2_override_identity_unknown')),
     });
@@ -234,188 +195,46 @@ describe('SSF plugin server handler', () => {
   });
 
   it('binds V2 tenant writes to the verified actor scope', async () => {
-    const writeTenantV2 = vi.fn().mockResolvedValue({});
-    const handlers = createSsfAdminServerHandlers({
-      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
-      writeSystem: vi.fn(),
-      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
-      writeTenant: vi.fn(),
+    const writeTenantV2 = vi.fn().mockResolvedValue({ runtimeTemplate: null, overrides: {} });
+    const handlers = createSsfAdminV2Handlers({
       readTenantV2: vi.fn().mockResolvedValue({ runtimeTemplate: null, overrides: {} }),
       writeTenantV2,
     });
-    const denied = await handlers['ssf.tenant-content-v2.write']?.(adminContext('platform', 'PUT', {}));
-    const accepted = await handlers['ssf.tenant-content-v2.write']?.(adminContext('tenant', 'PUT', {}));
+    const denied = await handlers['ssf.tenant-content-v2.write']?.(
+      adminContext('platform', 'PUT', {})
+    );
+    const accepted = await handlers['ssf.tenant-content-v2.write']?.(
+      adminContext('tenant', 'PUT', {})
+    );
     expect(denied?.status).toBe(403);
     expect(accepted?.status).toBe(200);
     expect(writeTenantV2).toHaveBeenCalledOnce();
-    expect(writeTenantV2).toHaveBeenCalledWith('tenant-a', {});
+    expect(writeTenantV2).toHaveBeenCalledWith(
+      'tenant-a',
+      {},
+      expect.objectContaining({
+        expectedRevision: `sha256:${'0'.repeat(64)}`,
+        validate: expect.any(Function),
+      })
+    );
   });
 
   it('reports an unavailable V2 tenant store as a service error', async () => {
-    const handlers = createSsfAdminServerHandlers({
-      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
-      writeSystem: vi.fn(),
-      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
-      writeTenant: vi.fn(),
+    const handlers = createSsfAdminV2Handlers({
       readTenantV2: vi.fn().mockResolvedValue({ runtimeTemplate: null, overrides: {} }),
       writeTenantV2: vi.fn().mockRejectedValue(new Error('database unavailable')),
     });
-    const response = await handlers['ssf.tenant-content-v2.write']?.(adminContext('tenant', 'PUT', {}));
+    const response = await handlers['ssf.tenant-content-v2.write']?.(
+      adminContext('tenant', 'PUT', {})
+    );
     expect(response?.status).toBe(503);
     await expect(response?.json()).resolves.toEqual({ error: 'configuration_unavailable' });
   });
 
-  it('binds tenant writes to the verified actor tenant and rejects invalid input atomically', async () => {
-    const dependencies = {
-      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
-      writeSystem: vi.fn(),
-      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
-      writeTenant: vi.fn().mockResolvedValue(undefined),
-    };
-    const handlers = createSsfAdminServerHandlers(dependencies);
-    const validInput = {
-      defaultLocale: null,
-      conversationContentStorageMode: null,
-      locales: ['de-DE', 'en'].map((locale) => ({
-        locale,
-        enabled: null,
-        authenticatedHomeExplanationHtml: null,
-        guestExplanationHtml: null,
-        conversationContentStorageQuestionHtml: null,
-      })),
-    };
-
-    const accepted = await handlers['ssf.tenant-configuration.write']?.(
-      adminContext('tenant', 'PUT', validInput)
-    );
-    const rejected = await handlers['ssf.tenant-configuration.write']?.(
-      adminContext('tenant', 'PUT', { ...validInput, locales: [] })
-    );
-
-    expect(accepted?.status).toBe(200);
-    expect(dependencies.writeTenant).toHaveBeenCalledWith('tenant-a', validInput);
-    expect(rejected?.status).toBe(422);
-    expect(dependencies.writeTenant).toHaveBeenCalledTimes(1);
-  });
-
-  it('maps a transaction-local tenant default validation failure to 422', async () => {
-    const handlers = createSsfAdminServerHandlers({
-      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
-      writeSystem: vi.fn(),
-      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
-      writeTenant: vi.fn().mockRejectedValue(new SsfTenantDefaultLocaleUnavailableError()),
-    });
-    const response = await handlers['ssf.tenant-configuration.write']?.(
-      adminContext('tenant', 'PUT', {
-        defaultLocale: 'en',
-        conversationContentStorageMode: null,
-        locales: ['de-DE', 'en'].map((locale) => ({
-          locale,
-          enabled: null,
-          authenticatedHomeExplanationHtml: null,
-          guestExplanationHtml: null,
-          conversationContentStorageQuestionHtml: null,
-        })),
-      })
-    );
-
-    expect(response?.status).toBe(422);
-    expect(response?.headers.get('X-Correlation-Id')).toBe('admin-correlation-1');
-  });
-
-  it('rejects disabling a locale that is still a tenant default', async () => {
-    const handlers = createSsfAdminServerHandlers({
-      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
-      writeSystem: vi.fn().mockRejectedValue(new SsfSystemLocaleInUseError()),
-      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
-      writeTenant: vi.fn(),
-    });
-    const response = await handlers['ssf.system-configuration.write']?.(
-      adminContext('platform', 'PUT', {
-        defaultLocale: 'de-DE',
-        conversationContentStorageMode: 'ask',
-        locales: [
-          {
-            locale: 'de-DE',
-            available: true,
-            authenticatedHomeExplanationHtml: '<p>Start</p>',
-            guestExplanationHtml: '<p>Gast</p>',
-            conversationContentStorageQuestionHtml: '<p>Speichern?</p>',
-          },
-          {
-            locale: 'en',
-            available: false,
-            authenticatedHomeExplanationHtml: '<p>Home</p>',
-            guestExplanationHtml: '<p>Guest</p>',
-            conversationContentStorageQuestionHtml: '<p>Store?</p>',
-          },
-        ],
-      })
-    );
-
-    expect(response?.status).toBe(409);
-    expect(response?.headers.get('X-Correlation-Id')).toBe('admin-correlation-1');
-    await expect(response?.json()).resolves.toEqual({ error: 'locale_in_use' });
-  });
-
-  it('covers the remaining administration success and failure responses', async () => {
-    const dependencies = {
-      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
-      writeSystem: vi.fn().mockResolvedValue(undefined),
-      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
-      writeTenant: vi.fn().mockRejectedValue(new Error('database unavailable')),
-    };
-    const handlers = createSsfAdminServerHandlers(dependencies);
-    const systemInput = {
-      defaultLocale: 'de-DE',
-      conversationContentStorageMode: 'ask',
-      locales: systemConfigurationLocales,
-    };
-
+  it('does not expose retired browser configuration handler IDs', () => {
+    const handlers = createPluginServerHandlers();
     expect(
-      (await handlers['ssf.system-configuration.write']?.(
-        adminContext('platform', 'PUT', systemInput)
-      ))?.status
-    ).toBe(200);
-    expect(
-      (await handlers['ssf.system-configuration.write']?.(
-        adminContext('platform', 'PUT', { ...systemInput, locales: [] })
-      ))?.status
-    ).toBe(422);
-    expect(
-      (await handlers['ssf.system-configuration.write']?.(
-        adminContext('tenant', 'PUT', systemInput)
-      ))?.status
-    ).toBe(403);
-    expect(
-      (await handlers['ssf.tenant-configuration.read']?.(adminContext('tenant', 'GET')))?.status
-    ).toBe(200);
-    expect(
-      (await handlers['ssf.tenant-configuration.read']?.(adminContext('platform', 'GET')))?.status
-    ).toBe(403);
-
-    dependencies.readSystem.mockRejectedValueOnce(new Error('database unavailable'));
-    dependencies.readTenant.mockRejectedValueOnce(new Error('database unavailable'));
-    expect(
-      (await handlers['ssf.system-configuration.read']?.(adminContext('platform', 'GET')))?.status
-    ).toBe(503);
-    expect(
-      (await handlers['ssf.tenant-configuration.read']?.(adminContext('tenant', 'GET')))?.status
-    ).toBe(503);
-    expect(
-      (await handlers['ssf.tenant-configuration.write']?.(
-        adminContext('tenant', 'PUT', {
-          defaultLocale: null,
-          conversationContentStorageMode: null,
-          locales: systemConfigurationLocales.map(({ locale }) => ({
-            locale,
-            enabled: null,
-            authenticatedHomeExplanationHtml: null,
-            guestExplanationHtml: null,
-            conversationContentStorageQuestionHtml: null,
-          })),
-        })
-      ))?.status
-    ).toBe(503);
+      Object.keys(handlers).filter((id) => /ssf\.(system|tenant)-configuration\./u.test(id))
+    ).toEqual([]);
   });
 });

@@ -7,6 +7,9 @@ Fachbereich und verwalten über das Kopfmenü Profil, Datenschutzvorgänge und K
 Kontoseiten sind Self-Service-Sichten; administrative IAM-Fälle werden separat im
 Transparenz-Cockpit bearbeitet.
 
+In SSF Studio with the Kassel DIALOG profile, the `App` menu is hidden for both
+tenant and root administrators, including accounts with app-text permissions.
+
 ## `home.overview` – Studio-Übersicht
 
 - **Route / Typ / Owner:** `/`, Übersicht, Host.

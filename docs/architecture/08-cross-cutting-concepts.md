@@ -9,6 +9,41 @@ Der Auth-Runtime-Snapshot transportiert einen optionalen, typisierten Account-Cr
 Dieser Abschnitt sammelt übergreifende Konzepte, die mehrere Bausteine
 gleichzeitig beeinflussen.
 
+## Gemeinsamer Abgleich der App-Konfiguration
+
+Bestätigte Zielentscheidung vom 15. November 2026 zu [#2180](https://github.com/smart-village-solutions/sva-studio/issues/2180). Der Gesamtabgleich ist noch nicht vollständig implementiert; der vorhandene Waste-Writer erfüllt diesen Zielvertrag noch nicht vollständig.
+
+Im vorhandenen Static-Content-Writer sind automatische Transportwiederholungen für die Mutation deaktiviert: Ein Transportfehler schließt einen bereits erfolgten Write nicht aus. Fehler ab Beginn der Mutation einschließlich fehlender Antwort-ID tragen den bestehenden terminalen Job-Fehlergrund (`cause.retry.kind`), damit auch der aufrufende Waste-Job den Write nicht automatisch wiederholt. Der vorausgehende Lookup bleibt davon ausgenommen und behält seine Retry-Regel. Ein unabhängiger Readback und die Ergebnis-Reconciliation sind noch nicht implementiert.
+
+Der freigegebene Gesamtentwurf und die offenen Aufgaben stehen im [OpenSpec-Change](../../openspec/changes/add-shared-app-configuration/proposal.md). Neue Lese-/Abgleichverträge werden gemeinsam mit dem ersten tatsächlichen Host-Verbraucher eingeführt; dieser PR führt keine isolierten öffentlichen Vorleistungs-APIs ein. Die aktuelle GraphQL-API bietet weder eine vollständige Variantenliste noch einen exakten Rohtext-Read nach ID; außerdem normalisiert die Mutation Namen. Die fehlenden Abfragen sind unter [SVA-1788](https://tpwd.atlassian.net/browse/SVA-1788) und [SVA-1789](https://tpwd.atlassian.net/browse/SVA-1789) erfasst. Admin-REST und zusätzliche Admin-Sessions sind kein vorgesehener Integrationsweg.
+
+Präzisierung der Nutzerentscheidung: Der Mainserver darf für diesen Lieferumfang nicht geändert werden. Die Studio-Umsetzung arbeitet mit der vorhandenen API. Verbesserungen am Mainserver werden separat unter [SVA-1787](https://tpwd.atlassian.net/browse/SVA-1787) für Daniel Külpmann vorgeschlagen und sind keine Lieferabhängigkeit. Bestätigt ist folgender Ablauf: vor jedem Speichern frisch lesen, erkannte Konflikte anzeigen und vor dem Schreiben auflösen, ausschließlich eigene Feldänderungen auf den frisch gelesenen Bestand anwenden und anschließend unabhängig zurücklesen. Das verbleibende Risiko ist ausdrücklich akzeptiert: Externe Änderungen zwischen Lesen und Schreiben können überschrieben werden; ein atomarer Überschreibeschutz wird nicht zugesichert.
+
+Der serverseitige JSON-Abgleich gehört in das bestehende Package `@sva/sva-mainserver`. Dessen Static-Content-Pfad wird erweitert; es entsteht weder ein eigener Sync-Dienst noch ein paralleler Konfigurationsbestand. Veröffentlichte App-Konfiguration bleibt im Mainserver führend.
+
+| Verantwortlicher Baustein | Zuständigkeit |
+| --- | --- |
+| Fachplugin | Formular, fachliche Validierung und ausdrückliche Änderungen der ihm zugeordneten JSON-Pfade; Übergabe der gelesenen Bearbeitungsgrundlage |
+| Studio-Host | Session, Plugin-Aktivierung, namespaced Action, Tenant-/Principal-Bindung, CSRF-Schutz für Browsermutationen und serverseitige Prüfung der erlaubten Pfade |
+| `@sva/sva-mainserver` | Exaktes Lesen des Datensatzes und der Versionsvariante, verlustfreies Anwenden zulässiger Änderungen, Konfliktbehandlung, Schreiben, Ergebnisabgleich bei unklarem Ausgang und unabhängiger Readback |
+| Mainserver | Speicherung über die unveränderte bestehende API; atomare Schreibvorbedingungen sind eine separat vorgeschlagene Verbesserung und aktuell nicht verfügbar |
+
+Plugins nutzen ausschließlich den gemeinsamen Host-Vertrag. Sie erhalten weder einen generischen GraphQL-Executor noch Credentials und implementieren keine eigenen Retry-, Merge- oder Readback-Verfahren. Gemeinsame clientfähige Typen und Aufrufe werden über die bestehenden öffentlichen SDK-Verträge bereitgestellt; Fachvalidierungen bleiben beim zuständigen Plugin und werden auch serverseitig ausgeführt.
+
+Bestätigte Berechtigungstrennung: App-Konfiguration erhält eigene Lese- und Änderungsrechte je zuständigem Plugin, getrennt von dessen Inhaltsredaktion. Inhaltsrechte allein gewähren keinen Zugriff auf die App-Konfiguration. Konfigurationsrechte werden über die bestehende Rollenverwaltung zugewiesen, als namespaced Actions im eigenen Plugin-Namespace modelliert und zentral serverseitig geprüft. Für das Bearbeiten einzelner Feldgruppen gelten die Konfigurationsrechte des zuständigen Plugins. Das Anlegen und Löschen ganzer Dokumentvarianten erfordert zusätzlich ein übergreifendes Konfigurationsrecht, da eine Variante wie `globalSettings` Einstellungen mehrerer Plugins enthält. Ein Plugin-Feldrecht allein erlaubt diese dokumentweiten Vorgänge nicht. Die freie Versionswahl bleibt beim entsprechend berechtigten Redakteur. Die konkreten namespaced Action-Namen, die zuständige Ownership des übergreifenden Rechts und Standard-Rollenzuweisungen bleiben im bestehenden IAM-Vertrag festzulegen.
+
+Der Host prüft Änderungsrechte gegen serverseitig geprüfte Plugin-Verträge. Ein Browserrequest kann weder seine Pfadzuständigkeit noch einen fremden Zielendpunkt selbst festlegen. Überlappende Zuständigkeiten, insbesondere in `globalSettings`, müssen eindeutig aufgelöst sein. Ein Plugin übergibt keine aus einem unvollständigen Formular rekonstruierte Gesamtkonfiguration. Der gemeinsame Ablauf erhält unbekannte und fremde Schlüssel, die Unterschiede zwischen fehlend, `null` und `false` sowie Array-Reihenfolge und Eintragsidentitäten.
+
+Datensatzidentität, App-Kompatibilitätsversion und Bearbeitungsrevision sind getrennte Größen. Die Fallback-Auswahl von `publicJsonFile` ist kein exakter Editor-Lesevertrag. Namen und Varianten bleiben beim Schreiben erhalten. Der gemeinsame Studio-Pfad muss die tatsächlich gelesene Identität und Variante mit dem beabsichtigten Ziel vergleichen; nicht eindeutig adressierbare oder nicht identitätserhaltend schreibbare Fälle benötigen eine gezielte Einschränkung. Fehlende atomare Konflikterkennung führt nicht pauschal zu einer Sperre sämtlicher Schreibfälle. Ein Fresh Read oder eine Studio-interne Serialisierung darf jedoch nicht als Schutz gegen externe Änderungen zwischen Lesen und Schreiben ausgegeben werden. Der Redakteur entscheidet, welche Versionsvariante er bearbeitet, neu erstellt oder löscht; eine Beschränkung auf bestehende Varianten ist ausdrücklich nicht vorgesehen. Der gemeinsame Host-Vertrag muss diese Vorgänge einschließlich unversionierter Einträge unterstützen. Die gewählte Variante wird ausdrücklich adressiert; ein App-Fallback darf weder stillschweigend zum Bearbeitungsziel noch als Beleg für die Abwesenheit einer Variante verwendet werden. Änderungen und Löschungen dürfen keine andere Variante betreffen. Das beschriebene Risiko externer Zwischenänderungen ist für den bestätigten Ablauf akzeptiert. Wie vollständige Variantenauswahl, gezieltes Lesen sowie Anlage und Löschung über die vorhandenen Mainserver-Schnittstellen umgesetzt und nachgewiesen werden, bleibt technisch zu klären; der Produktumfang wird dadurch nicht auf bestehende Varianten reduziert.
+
+Bestätigte Neuanlage: Der Redakteur wählt eine vorhandene Variante als Vorlage und legt die Zielversion fest. Der gemeinsame Abgleich übernimmt das vollständige Dokument einschließlich unbekannter Felder und Einstellungen anderer Plugins. Zulässige eigene Feldänderungen werden auf diese Kopie angewendet; ein einzelnes Plugin-Formular darf keine unvollständige neue `globalSettings`-Variante erzeugen. Die Neuanlage verändert weder die Vorlage noch andere vorhandene Varianten. Die Ausgangsbasis ist die ausdrücklich gewählte Variante, kein stillschweigend ermittelter App-Fallback.
+
+Bestätigte Speichersemantik: Nach der Änderungsvorschau schreibt „Speichern“ unmittelbar in den Mainserver. Es gibt keinen dauerhaft gespeicherten Studio-Entwurf, keine separate Veröffentlichungsaktion und keinen App-Modus, in dem nur Entwurfsnutzer diese Einstellungen sehen. „Entwurf“ bezeichnet hier ausschließlich ungespeicherte Formularänderungen, die bei Konflikten erhalten bleiben. Die Sichtbarkeit gespeicherter Änderungen in der App folgt deren bestehendem Lade- und Cacheverhalten. Ungespeicherte Formularänderungen, erkannte Abweichung, bestätigtes Speichern und tatsächliche App-Wirkung sind getrennte Zustände. Konkurrenz führt zu einer bewussten feldbezogenen Konfliktauflösung unter Erhalt des Entwurfs. Bei unklarem Schreibausgang wird zuerst das Ergebnis abgeglichen, bevor eine Wiederholung zulässig ist. Erfolg setzt einen unabhängigen Fresh Read des konkreten Datensatzes mit übereinstimmendem Inhalt und Identitätsmetadaten voraus. Mehrere Dokumente bilden ohne bestätigten Mainserver-Vertrag keine gemeinsame Transaktion. Audit und Fehlerdiagnostik übernehmen keine vollständigen sensiblen Konfigurationsinhalte.
+
+Bestätigter erster Lieferabschnitt: je eine kleine Feldgruppe aus „Allgemein“ und „Design“ auf demselben `globalSettings`-Dokument. Beide Plugins verwenden denselben hostgeführten Ablauf; die Versionsauswahl, Neuanlage, Löschung und der unabhängige Readback gehören bereits zu diesem Abschnitt. Der Nachweis muss zeigen, dass die Änderung des einen Plugins die fremden Felder einschließlich der Änderungen des anderen Plugins erhält. Die konkreten Feldpfade werden gegen die vorhandenen Feldmatrizen und App-Verbraucher ausgewählt. Die übrigen Plugin-Editoren sind nicht Teil dieses ersten Abschnitts.
+
+Vor Implementierung werden die Anforderungen und Szenarien im bestehenden OpenSpec-Vertrag `sva-mainserver-integration` und die verpflichtende Nutzung samt Plugin-Grenzen in `plugin-platform` ergänzt. Der gemeinsame Nachweis umfasst insbesondere zwei Plugins auf getrennten Pfaden desselben Dokuments, Konflikte auf demselben Feld, externe Writes, Versionsvarianten, unbekannte Felder und Arrays, fehlende Rechte, unklaren Ausgang und unabhängigen Readback. Der bestehende Waste-Abgleich wird als Verbraucher berücksichtigt und regressionssicher in denselben zuständigen Pfad überführt; ein zweiter Writer wird nicht aufgebaut.
+
 ## Mindestinhalte
 
 - Security- und Privacy-Konzepte
@@ -251,7 +286,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Vor jedem Snapshot-Zugriff bestätigt ein PostgreSQL-Revisionsread die aktuelle Instanz- und Benutzerrevision. Berechtigungsrelevante Mutationen erhöhen die Revision transaktionsgebunden; Postgres `NOTIFY` unterstützt das Aufräumen, ist aber keine Korrektheitsvoraussetzung.
 - Die logische Snapshot-Gültigkeit beträgt höchstens 300 Sekunden ab Berechnungsbeginn, auch bei unveränderter Revision und zeitlich ablaufenden Grants. Redis bewahrt Einträge physisch 15 Minuten auf; L1 übernimmt den ursprünglichen signierten Zeitstempel und startet keine neue Gültigkeitsfrist. Schema 3 im privaten Redis-Keyspace `perm:v3` verhindert die Übernahme älterer Snapshots mit abweichender Zeitstempelsemantik. Überlange Berechnungen werden verworfen; bei erschöpfter Gültigkeit nach dem Redis-Write bleibt die Antwort fail-closed.
 - Permission-Snapshots sind reine Laufzeitoptimierung und keine fachliche Source of Truth
-- Für Mainserver-basierte Content Items autorisiert IAM ausschließlich Inhaltstyp und Action im effektiven Credential-Kontext. Fachliche Existenz, Identität, Lifecycle, Veröffentlichung, Autor und Ownership stammen aus dem typisierten Mainserver-Vertrag; lokale Content-Cores, References, History und Projektionen dürfen diese Inhalte nicht ausblenden und bleiben rekonstruierbare Begleitzustände.
+- Für Mainserver-basierte Content Items autorisiert IAM Inhaltstyp und Action im effektiven Credential-Kontext. Principalgebundene News-, Veranstaltungs- und POI-Detailreads sowie deren Änderungs-/Löschpfade erzwingen zusätzlich den vorhandenen exakten DataProvider-/Ownership-Vertrag; der globale Shadow-/Kompatibilitätsmodus wird dafür nicht geändert. `content.publish` unterstützt die bestehenden Record-Scopes und kann organisationsbezogen zugewiesen werden. Fachliche Existenz, Identität, Lifecycle, Veröffentlichung, Autor und Ownership stammen aus dem typisierten Mainserver-Vertrag; lokale Content-Cores, References, History und Projektionen dürfen diese Inhalte nicht ausblenden und bleiben rekonstruierbare Begleitzustände.
 - Die Featured-Project-Erstellung hält Autorisierung und Validierung, Idempotenz-Recovery, reine Vertragsabbildung und I/O-Orchestrierung in getrennten internen Modulen. Diese Trennung verändert weder Permission- und Fehlercodes noch die Provider-first-Datenintegrität: Ein bestätigter Mainserver-Create wird bei einem späteren lokalen Begleitfehler nicht kompensierend gelöscht.
 - Änderungen an direkten Nutzerrechten invalidieren dieselben Snapshot-Pfade wie Rollen- und Gruppenänderungen; Cache-Konsistenz ist damit für `me/permissions` und `authorize` identisch abgesichert
 - Audit-Logging für IAM-Ereignisse folgt Dual-Write:
@@ -436,6 +471,7 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Staging-Parität akzeptiert nur noch Evidence v2 mit kanonischer erfolgreicher Main-E2E-Evidenz für exakt `change_head`. Neue Promote-Evidenz leitet Recovery-Werte direkt aus Modus, Live-Digest und gebundener Config-Revision ab; ein separates Recovery-Contract-Objekt und Legacy-/Shadow-/Disabled-Auswertungen entfallen.
 - Der Live-Rollout-Render validiert vor dem intern gekapselten `quantum-cli stacks deploy`, dass `app` die Netzwerke `internal` und `public` sowie die benötigten Traefik-Labels weiterhin enthält; fehlende Einträge blockieren den Rollout fail-fast
 - Temp-Job-Stacks für `migrate` und `bootstrap` sind von Live-Rollouts strikt getrennt. Sie nutzen nur `<stack>_internal`, enthalten keinen `app`-Service und dürfen die Live-Spec von `studio_app` nicht mutieren
+- Der ebenfalls isolierte `candidate` verzichtet wegen der Nicht-Administrator-Richtlinie des SVA-Portainer-Endpoints mit ausdrücklich akzeptiertem Restrisiko auf `no-new-privileges` und `cap_drop: ALL`. Schreibgeschütztes Dateisystem, ausschließlich internes Netz, keine veröffentlichten Ports oder Host-Volumes und einmalige Ausführung bleiben bestehen. Die Ausnahme betrifft keine anderen Dienste; Diagnose, verbleibende Risiken und Wiederherstellungsbedingung stehen im [Swarm-Betriebsrunbook](../operations/swarm-deployment-runbook.md#akzeptierte-portainer-einschränkung-für-den-candidate).
 - Deploy-Reports unterscheiden explizit zwischen `migration`, `bootstrap`, `health`, `verify` und `ingress_consistency`; ein Zustand `app 1/1`, aber externer `502` wird als eigener Drift-/Ingress-Fehler ausgewiesen
 - Vor dem kanonischen Docker-Build prüft `verify:runtime-artifact` den finalen Node-Output `apps/sva-studio-react/.output/server/index.mjs` mit Artefakt-Assertions, temporären Migrationen und Health-Probes. `Promote` bindet das veröffentlichte Image anschließend an Digest und OCI-Revision.
 - `env:precheck:studio` dokumentiert im lokalen Incident-Recovery-Pfad ergänzend vorhandene Image-Verify-Evidenz; sie ist kein reguläres Promote-Gate
@@ -1476,4 +1512,75 @@ Das Referenz-Plugin erzeugt öffentliche SDK-/UI-Peers aus einem festen Studio-C
 
 `waste-management.email-reminder-monitoring.read` schützt Navigation, Route und `GET /api/v1/waste-management/email-monitoring` unabhängig von allgemeinen Monitoring-/Waste-Leserechten. Die geschützte tenantlokale Rolle `system_admin` erhält das Recht automatisch über den bestehenden Permission-Sync. Für andere Rollen ist die gesonderte Zuweisung erforderlich. Die Runtime verwendet ausschließlich die authentifizierte Instanz und ihre bestehende Datenquellenauflösung; ein fremder `instanceId`-Queryparameter kann den Mandanten nicht wechseln.
 
-Die serverseitige Projektion maskiert beide Adressteile und liefert weder Rohadressen, Tokens, Hashes, vollständige Payloads noch freie Provider-Fehlertexte. Ort, Fraktion, stabile Abo-ID und Zeitpunkte bleiben für die berechtigte Diagnose sichtbar; das Ergebnis bleibt personenbezogen und ist keine Anonymisierung. Filter und Pagination werden begrenzt validiert, Antworten erhalten `Cache-Control: no-store`, UI-Zustände werden beim Identitäts-/Instanzwechsel verworfen. Die vorhandene Outbox liefert den aktuellen gespeicherten Versandstand, kein lückenloses Versandjournal oder Empfangsnachweis.
+Die serverseitige Projektion maskiert beide Adressteile und liefert weder Rohadressen, Tokens, Hashes, vollständige Payloads noch freie Provider-Fehlertexte. Ort, Fraktion und Zeitpunkte bleiben für die berechtigte Diagnose sichtbar; die stabile Abo-ID steht im ausgewählten Abo unter den nativen, zunächst geschlossenen Zusatzangaben. Die kompakte Oberfläche erklärt Abo- und Versandzustände über den bestehenden `wasteManagement`-Übersetzungsnamensraum auf Deutsch und Englisch; das Ergebnis bleibt personenbezogen und ist keine Anonymisierung. Filter und Pagination werden begrenzt validiert, Antworten erhalten `Cache-Control: no-store`, UI-Zustände werden beim Identitäts-/Instanzwechsel verworfen. Die vorhandene Outbox liefert den aktuellen gespeicherten Versandstand, kein lückenloses Versandjournal oder Empfangsnachweis. Die paginierte Abo-Projektion ergänzt je sichtbarem Abo höchstens eine letzte gesendete und eine laufende beziehungsweise nächste vorgemerkte Nachricht; sie überträgt dafür nur Art, Status und UTC-Zeitpunkte und verändert weder Versandablauf noch Schema.
+
+## SSF editor integrity and compatibility
+
+Administrative revisions hash raw scope-bound configuration, including explicit
+overrides and the relevant template. They are distinct from runtime effective-content
+revisions and from representation ETags containing remote catalogue data. The
+existing common transaction lock makes the check and write atomic; a single-query
+tenant snapshot prevents mixed template/override reads.
+
+Page projections preserve unchanged explicit override leaves, including equal
+values inside edited feedback/legal objects. Language and tab switching preserve
+drafts; hidden invalid fields are exposed before focus. The enhanced host guard
+is opt-in for SSF editing routes. Unrelated authorised module navigation remains
+available, and existing flat plugin contracts retain their defaults.
+
+Legacy administration APIs and exclusive helpers are retired after explicit user
+confirmation that no existing consumers remain. Stored service data is preserved.
+No recording authority, installed translation models, schema or archive expiry
+changes are implied. See [SSF administration](../development/ssf-v2-inhaltsverwaltung-ui.md).
+
+## Bestätigte Fraktionslöschung und parallele Erinnerungsplanung
+
+Vor dem Ausführungssnapshot sperrt die Löschtransaktion zuerst `waste_tours` in `EXCLUSIVE MODE`.
+Das schließt auch reine Relationswriter mit `FOR UPDATE` aus, ohne danach Zeilensperren
+aufzuwerten. Gewöhnliche Lesezugriffe bleiben möglich.
+
+Vorschau und Ausführung der Fraktionslöschung erfordern den serverseitigen Tenant-Kontext,
+`waste-management.master-data.manage` und den bestehenden CSRF-Schutz. Ein SHA-256-Fingerprint
+bindet Variante, Quelle, Ziel und den relevanten Datenstand an die Bestätigung. Die Ausführung
+prüft die Vorschau unter tenantlokalen exklusiven Tabellensperren erneut. Sie sperren
+reguläre DML-Schreiber auch gegen neue Tour-, Termin- und Erinnerungsdatensätze. Nach der
+Tourtabelle werden die weiteren Sperren mit `NOWAIT` angefordert: Bei einer belegten Tabelle
+rollt nur die Löschung sofort zurück, ohne einen bestehenden Writer beim Sperrupgrade zu blockieren.
+Auch ein Lock-Timeout führt zum Rollback und zur erneuten Vorschau. Der vorhandene relationale Schreibvertrag und
+ON DELETE RESTRICT bleiben erhalten. Quelle, Touränderungen und Outbox-Stornierungen committen
+zusammen oder gar nicht. Konfliktfreiheit wird bei nicht vollständig prüfbaren Zeiträumen verweigert.
+
+Der bestehende Erinnerungsplaner hält vom Lesen der Fachdaten bis zum Eintragen beziehungsweise
+Abgleichen der Outbox eine Transaktion mit einer gemeinsamen tenantlokalen Advisory-Sperre
+gegenüber Fraktionslöschungen. Reguläre Tourbearbeitung wird dadurch nicht gesperrt. Dadurch kann
+eine Löschung nicht zwischen alter Planung und späterem Enqueue committen. Bereits beanspruchte
+externe Zustellungen blockieren die betroffene Löschung; ein Datenbankrollback kann eine E-Mail
+nicht zurückrufen. Vorschau und Audit enthalten keine Empfängeradressen oder Token. Der bestehende
+Mainserver-Sync folgt erst nach dem lokalen Commit und hat einen getrennten Erfolgsstatus.
+
+### Sicherheitsgrenze des Release-Changelogs
+
+`GET /api/studio/releases` verlangt pro Anfrage eine gültige Studio-Anmeldung, aber keine
+administrative Permission. Der Repository-Endpunkt ist fest vorgegeben, Redirects sind
+verboten. Timeout, begrenztes Lesen der Antwort, Schema-Prüfung sowie Cache und gemeinsame
+laufende Anfrage beschränken den externen Datenzugriff. Nur veröffentlichte stabile
+`studio-vX.Y.Z`-Releases werden ausgegeben. Fehlerdetails und personenbezogene Werte gelangen
+weder in die Antwort noch in das technische Warnereignis.
+
+Release Notes bleiben nicht vertrauenswürdiger Markdown-Inhalt: rohes HTML und Bilder werden
+nicht gerendert, Links werden auf HTTP(S) ohne Zugangsdaten beschränkt. Die Seite hat keine
+Schreibaktionen, keine Tenant-Konfiguration und keinen eigenen Release-Workflow.
+
+## Datums- und Zeitsemantik in Studio-Oberflächen
+
+Gemeinsame Eingaben im UI-Paket und frameworkfreie Formatter/Validatoren im Plugin-SDK unterscheiden Kalendertage, Uhrzeiten, lokale Datum-/Uhrzeitwerte und absolute Zeitpunkte. Lokalisierung ist eine Darstellungsfrage; Kalendertage und Uhrzeiten werden nicht in UTC umgerechnet. Absolute Zeitpunkte werden in der bestehenden Redaktionszeitzone `Europe/Berlin` bearbeitet. Unveränderte Referenzwerte erhalten Präzision und Winterzeit-Eindeutigkeit; nicht existente Sommerzeitwerte werden abgewiesen.
+
+Die API-Grenze bleibt beim bestehenden fachlichen Adapter: Er verantwortet Offset-/UTC-Format, optionale Werte und inklusive/exklusive Grenzen. Das betrifft insbesondere die exklusive Ablaufzeit eines Bus-API-Schlüssels und die polymorphen Stringfelder generischer Inhalte. Details, Verbraucher und Nachweise stehen in [Datumseingabe](../development/datumseingabe.md). Es entsteht kein zweites Datenmodell und keine neue Package-/Provider-Schicht.
+
+### Standard Redakteur
+
+`standard_editor` gewährt datensatzbezogene redaktionelle Rechte im Scope `organization`: aktive eigene Organisation oder persönlicher Eigentümer, stets innerhalb des aktuellen Mandanten. Ohne aktive Organisation gilt persönliches Eigentum. Alle verfügbaren Inhaltsmodule verwenden dieselbe Scope-Klassifikation; breite Provider-Credentials und Kompatibilitäts-/Shadow-Modi dürfen die exakte Prüfung nicht umgehen. Medien und Kategorien sind bewusst mandantenweit; bestehender Medien-Referenzschutz und Mainserver-Kategorienvertrag bleiben zuständig. Die Rolle ist löschbar, besitzt keine automatische Benutzerzuweisung und keine Administrationsrechte. Der einmalige Backfill verändert vorhandene Rollen/Mitgliedschaften nicht; abweichende Identitäten oder Profile stoppen die Migration. Details: [IAM-Baseline](../development/iam-baseline-seeding.md#standard-redakteur).
+
+Generische Core-Inhaltsaktionen prüfen für jeden konkreten Inhaltstyp zusätzlich die bestehende Modulaktivierung; Core-Grants erlauben keinen Zugriff auf deaktivierte Module. Bei Berechtigungsauflösung ohne aktive Organisation werden explizite `own`-/`organization`-Datensatzgrants auf persönliches Eigentum reduziert, ohne Organisationsbedingungen aus bloßen Mitgliedschaften zu übernehmen. Legacy-Grants ohne expliziten Datensatzscope bleiben unverändert.
+
+Der bereits registrierte Core-Inhaltstyp `GENERIC_CONTENT_TYPE` (`generic`) benötigt kein Plugin-Modul und bleibt von der Modulabfrage ausgenommen; seine normalen Core-Permissions und Ownership-Grenzen werden unverändert geprüft. Diese exakte Core-Ausnahme erlaubt keine beliebigen unbekannten Inhaltstypen.

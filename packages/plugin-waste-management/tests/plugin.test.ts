@@ -48,9 +48,13 @@ describe('pluginWasteManagement contract', () => {
 
   it('declares each existing Waste method and path once as a server handler', () => {
     const descriptors = pluginWasteManagement.serverHandlers ?? [];
-    expect(descriptors).toHaveLength(68);
-    expect(new Set(descriptors.map(({ path }) => path)).size).toBe(51);
-    expect(new Set(descriptors.map(({ method, path }) => `${method} ${path}`)).size).toBe(68);
+    expect(descriptors).toHaveLength(69);
+    expect(new Set(descriptors.map(({ path }) => path)).size).toBe(52);
+    expect(new Set(descriptors.map(({ method, path }) => `${method} ${path}`)).size).toBe(69);
+    expect(descriptors).toContainEqual(expect.objectContaining({
+      path: '/api/v1/waste-management/fractions/impact-preview', method: 'POST',
+      actionId: 'waste-management.master-data.manage',
+    }));
     expect(descriptors).toContainEqual(
       expect.objectContaining({
         path: '/api/v1/waste-management/tours/annual-transfer',

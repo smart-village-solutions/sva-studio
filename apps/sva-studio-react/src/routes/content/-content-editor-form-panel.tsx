@@ -1,5 +1,7 @@
+import { Controller } from 'react-hook-form';
 import {
   getStudioFormFieldProps,
+  LocalDateTimeInput,
   StudioField,
   StudioFieldGroup,
   StudioFormSummaryErrors,
@@ -92,11 +94,21 @@ export const ContentEditorFormPanel = ({
           label={t('content.fields.publishedAt')}
           className="md:col-span-2"
         >
-          <Input
-            {...register('publishedAt')}
-            type="datetime-local"
-            disabled={actionsDisabled}
-            required={statusValue === 'published'}
+          <Controller
+            control={form.control}
+            name={'publishedAt'}
+            render={({ field }) => (
+              <LocalDateTimeInput
+                {...publishedAtField.controlProps}
+                label={t('content.fields.publishedAt')}
+                value={field.value}
+                onValueChange={field.onChange}
+                onBlur={field.onBlur}
+                ref={field.ref}
+                disabled={actionsDisabled}
+                required={statusValue === 'published'}
+              />
+            )}
           />
         </StudioField>
         <StudioField

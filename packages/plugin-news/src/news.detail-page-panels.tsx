@@ -71,7 +71,7 @@ type NewsDetailPanelsOptions = Readonly<{
   mode: 'create' | 'edit';
   loadedItem: NewsContentItem | null;
   mediaUsages: readonly ContentMediaUsage[];
-  addManualMedia: () => string;
+  addManualMedia: (persistentUrl?: string) => string;
   setMediaUsages: React.Dispatch<React.SetStateAction<readonly ContentMediaUsage[]>>;
   setRequiresReferenceSync: React.Dispatch<React.SetStateAction<boolean>>;
   canSelectMedia: boolean;

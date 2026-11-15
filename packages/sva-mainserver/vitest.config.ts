@@ -96,6 +96,7 @@ export default defineConfig({
         __dirname,
         '../plugin-sdk/src/content-media-contracts-public-api.ts'
       ),
+      '@sva/plugin-sdk/temporal': resolve(__dirname, '../plugin-sdk/src/temporal.ts'),
       '@sva/plugin-sdk': resolve(__dirname, '../plugin-sdk/src/index.ts'),
       '@sva/studio-module-iam': resolve(__dirname, '../studio-module-iam/src/index.ts'),
       '@sva/media': resolve(__dirname, '../media/src/index.ts'),

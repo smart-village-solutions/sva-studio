@@ -5,7 +5,7 @@ Status: **A–C und E lokal implementiert; D bis zur kontrollierten Report-Only-
 ## 1. Gemeinsamer Einstieg je Lieferabschnitt
 
 - [x] 1.1 Ziel, Nicht-Ziele und maximale Bereiche des Abschnitts aus `proposal.md` vor dessen Codeänderung festhalten; aktuellen HEAD und Überschneidungen offener Changes prüfen.
-- [x] 1.2 Bestehende Mechanismen und gemeinsame Test-Fixtures lesen; vor nichttrivialen Codeänderungen verfügbaren XERJ-Index mit aktuellem Quellstand und Lizenz prüfen. Keine neue gemeinsame Schicht ohne belegte Lücke.
+- [x] 1.2 Bestehende Mechanismen und gemeinsame Test-Fixtures lesen. Keine neue gemeinsame Schicht ohne belegte Lücke.
 - [x] 1.3 Kleinsten echten Unit-/Type-Pfad und spezielle Security-/Auth-/Runtime-Gates aus `DEVELOPMENT_RULES.md` bestimmen. Nx-Projekte/Targets aktuell abfragen; Dateifilter ausschließlich als `--testFiles=...`.
 - [x] 1.4 Invarianten des Abschnitts gegenprüfen; vor dessen erstem risikobehafteten Block den erforderlichen Proposal-/Security-/Testreview gemäß vorhandener Trigger-Matrix abschließen. Keine Tests oder früheren Auditbelege als ausgeführte Fix-Evidenz markieren.
 

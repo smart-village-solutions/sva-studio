@@ -119,10 +119,10 @@ describe('location coverage edit navigation', () => {
     );
     expect(
       screen.getByLabelText('masterData.locationsWorkspace.coverage.startDate')
-    ).toHaveProperty('value', '2027-01-01');
+    ).toHaveProperty('value', '01.01.2027');
     expect(screen.getByLabelText('masterData.locationsWorkspace.coverage.endDate')).toHaveProperty(
       'value',
-      '2027-12-31'
+      '31.12.2027'
     );
     expect(
       screen.getByLabelText('masterData.locationsWorkspace.coverage.includeDrafts')

@@ -1,6 +1,23 @@
-import { mediaImageEditorResources, mediaEditorResources } from './media-editor.resources';
+import {
+  mediaImageEditorResources,
+  mediaEditorResources,
+} from './media-editor.partial.resources.js';
 
 export const mediaENResources = {
+  picker: {
+    linkHint:
+      'Paste the direct link to the image. You can add further image details in the content after confirming.',
+    url: 'Image URL',
+    urlUpgradedToHttps: 'The image URL was upgraded to HTTPS.',
+    urlInsecureHttp: 'This HTTP address is unencrypted. Your browser may block the image.',
+    urlHttpsUnavailable: 'No working HTTPS version was found. Please use a complete image link.',
+    urlInvalid: 'The image URL is invalid or not suitable for permanent storage.',
+    preview: 'Linked image preview',
+    previewUnavailable: 'Preview unavailable. A valid image link can still be used.',
+    cancel: 'Cancel',
+    useMedia: 'Use media',
+    removeFromContent: 'Remove media from this content',
+  },
   scan: {
     title: 'Virus scan',
     clean: 'Scanned – no malware detected',

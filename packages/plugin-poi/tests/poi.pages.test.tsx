@@ -180,6 +180,15 @@ describe('PoiListPage', () => {
       );
 
   beforeEach(() => {
+    // jsdom has no layout observer; focused icon tooltips use the browser API.
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
     vi.clearAllMocks();
     publishSessionAccessSnapshot({
       isResolved: true,
@@ -452,7 +461,7 @@ describe('PoiListPage', () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue('https://example.com/poi/library.jpg')).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.removeFromContent' }));
     switchSection('basis');
     await waitFor(() => {
       expect(getEditableNameInput()).toBeTruthy();

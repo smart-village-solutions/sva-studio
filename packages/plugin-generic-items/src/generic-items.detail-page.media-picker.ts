@@ -112,18 +112,20 @@ const acceptGenericItemsAsset = (
 };
 
 const addManualGenericItemsMedia = ({
+  persistentUrl,
   methods,
   mediaUsages,
   setMediaUsages,
   setRequiresReferenceSync,
 }: Readonly<{
+  persistentUrl: string;
   methods: UseFormReturn<GenericItemsDetailFormValues>;
   mediaUsages: readonly ContentMediaUsage[];
   setMediaUsages: React.Dispatch<React.SetStateAction<readonly ContentMediaUsage[]>>;
   setRequiresReferenceSync: React.Dispatch<React.SetStateAction<boolean>>;
 }>) => {
   const usage = {
-    ...createManualContentMediaUsage({ sortOrder: mediaUsages.length }),
+    ...createManualContentMediaUsage({ persistentUrl, sortOrder: mediaUsages.length }),
     additionalData: { contentType: '', width: '', height: '' },
   };
   const nextUsages = [...mediaUsages, usage];
@@ -229,8 +231,9 @@ export const useGenericItemsPageMedia = ({
     mediaAssetsRef.current = mediaAssets;
   }, [mediaAssets]);
   const addManualMedia = React.useCallback(
-    () =>
+    (persistentUrl = '') =>
       addManualGenericItemsMedia({
+        persistentUrl,
         methods,
         mediaUsages,
         setMediaUsages,

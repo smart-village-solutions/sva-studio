@@ -108,7 +108,7 @@ const expandRuleAcrossYearWindow = (
 const buildMaterializationRules = (
   input: WasteMaterializationContext
 ): readonly MaterializationRule[] => {
-  const yearWindow = getEffectiveYearWindow(input.currentYear, input.nextYear);
+  const yearWindow = input.years ?? getEffectiveYearWindow(input.currentYear, input.nextYear);
   const tourRules: MaterializationRule[] = [];
   const tourShiftYears = Array.from(new Set([yearWindow[0] - 1, ...yearWindow]));
   const effectiveTourDateShifts = tourShiftYears.flatMap((year) =>
@@ -331,7 +331,7 @@ const materializeAssignedPickupDates = (
 export const buildMaterializedLocationTourPickupDates = (
   input: WasteMaterializationContext
 ): readonly MaterializedLocationTourPickupDateRecord[] => {
-  const yearWindow = getEffectiveYearWindow(input.currentYear, input.nextYear);
+  const yearWindow = input.years ?? getEffectiveYearWindow(input.currentYear, input.nextYear);
   const collectionYearWindow = Array.from(new Set([yearWindow[0] - 1, ...yearWindow])).sort(
     (left, right) => left - right
   );

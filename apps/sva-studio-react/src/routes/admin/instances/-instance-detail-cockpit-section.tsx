@@ -2,6 +2,7 @@ import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import { WorkflowStatusBadge } from './-instance-status-badges';
+import { translateKeycloakStep } from './-instance-detail-shared';
 import { formatDateTime, type CockpitSectionProps } from './-instance-detail-view-shared';
 
 export const InstanceDetailCockpitSection = ({
@@ -59,11 +60,14 @@ export const InstanceDetailCockpitSection = ({
             <ul className="list-inside list-disc text-sm">
               {plan.steps
                 .filter((step) => step.action === 'create' || step.action === 'update')
-                .map((step) => (
-                  <li key={step.stepKey}>
-                    {step.title}: {step.summary}
-                  </li>
-                ))}
+                .map((step) => {
+                  const { title, summary } = translateKeycloakStep(step);
+                  return (
+                    <li key={step.stepKey}>
+                      {title}: {summary}
+                    </li>
+                  );
+                })}
             </ul>
           </div>
         ) : null}

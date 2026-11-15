@@ -6,6 +6,9 @@ export const createWasteFractionAndRegionHandlers = (deps: WasteServerHandlerDep
     createWasteManagementFractionInternal,
     createWasteManagementRegionInternal,
     deleteWasteFraction,
+    executeWasteFractionDeletion,
+    previewWasteFractionDeletion,
+    previewWasteManagementFractionDeletionInternal,
     deleteWasteManagementFractionInternal,
     loadMasterDataFractionsOverview,
     loadWasteFractionById,
@@ -17,6 +20,13 @@ export const createWasteFractionAndRegionHandlers = (deps: WasteServerHandlerDep
     withAuthenticatedWasteManagementHandler,
   } = deps;
   return {
+    previewFractionDeletion: (request: Request): Promise<Response> =>
+      withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+        previewWasteManagementFractionDeletionInternal(nextRequest, ctx, {
+          ...bindWasteAuditActor(ctx),
+          previewWasteFractionDeletion,
+        })
+      ),
     createFraction: (request: Request): Promise<Response> =>
       withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
         createWasteManagementFractionInternal(nextRequest, ctx, {
@@ -31,6 +41,7 @@ export const createWasteFractionAndRegionHandlers = (deps: WasteServerHandlerDep
         deleteWasteManagementFractionInternal(nextRequest, ctx, {
           ...bindWasteAuditActor(ctx),
           deleteWasteFraction,
+          executeWasteFractionDeletion,
           loadWasteFractionById,
         })
       ),

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { evaluateAuthorizeDecision } from '@sva/iam-core';
 
 const state = vi.hoisted(() => ({
   query: vi.fn(),
@@ -135,4 +136,43 @@ describe('permission-store queries', () => {
       'p.permission_key = ANY($4::text[]) OR permission_module.effective_active = true'
     );
   });
+  it.each(['organization', 'own'] as const)(
+    'reduces %s grants to personal access when an organisation member has no active organisation',
+    async (accessScope) => {
+      state.query.mockResolvedValueOnce({
+        rows: [
+          {
+            permission_key: 'content.readHistory',
+            organization_id: ORGANIZATION_ID,
+            access_scope: accessScope,
+          },
+        ],
+      });
+      const { loadPermissionsFromDb } = await import('./permission-store.queries.js');
+      const permissions = await loadPermissionsFromDb({
+        instanceId: INSTANCE_ID,
+        keycloakSubject: KEYCLOAK_SUBJECT,
+      });
+      expect(permissions).toEqual([
+        { action: 'content.readHistory', resourceType: 'content', accessScope: 'own' },
+      ]);
+      for (const [attributes, allowed] of [
+        [{ ownerUserId: 'account-1' }, true],
+        [{ ownerUserId: 'account-other' }, false],
+        [{ ownerOrganizationId: ORGANIZATION_ID }, false],
+      ] as const) {
+        expect(
+          evaluateAuthorizeDecision(
+            {
+              instanceId: INSTANCE_ID,
+              action: 'content.readHistory',
+              resource: { type: 'content', attributes },
+              context: { attributes: { actorAccountId: 'account-1' } },
+            },
+            permissions
+          ).allowed
+        ).toBe(allowed);
+      }
+    }
+  );
 });

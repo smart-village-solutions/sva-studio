@@ -1,91 +1,71 @@
-import { SsfV2FormSummary } from './admin.content-v2-field-control.js';
+/** Independently saved tenant pages over the existing SSF content aggregate. */
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
   StudioErrorState,
   StudioFormActionBar,
+  StudioFormSummary,
   StudioLoadingState,
+  StudioOverviewPageTemplate,
   StudioSection,
 } from '@sva/studio-ui-react';
-import { useCallback, useEffect, useState } from 'react';
-
-import { readSsfTenantContentV2, writeSsfTenantContentV2 } from './admin-api.js';
 import { SsfRuntimeV2Editor } from './admin.content-v2-runtime-fields.js';
+import { useSsfTenantEditor } from './admin.content-v2-tenant-state.js';
+import { TenantOverview } from './admin.content-v2-overview.js';
+import type { SsfTenantEditorPage } from './content-v2-editor-contracts.js';
 import {
-  ssfRuntimeContentV2FieldsSchema,
-  type SsfRuntimeContentV2Fields,
-} from './content-v2-contracts.js';
-import type { SsfTenantContentV2View } from './content-v2-admin-contracts.js';
-import { ssfRecordingSettingsSchema, resolveSsfRecordingPolicy } from './content-v2-recording.js';
-import { diffSsfContentV2, effectiveSsfRuntimeFieldsV2 } from './content-v2-overrides.js';
-
-type Status = 'loading' | 'ready' | 'saving' | 'error' | 'saved' | 'invalid';
-const fieldErrors = (
-  issues: readonly { path: PropertyKey[] }[],
-  message: string
-): Record<string, string> =>
-  Object.fromEntries(issues.map((issue) => [issue.path.join('.'), message]));
-
-const draftFromView = (view: SsfTenantContentV2View): SsfRuntimeContentV2Fields | null => {
-  if (!view.runtimeTemplate) return null;
-  const fields = effectiveSsfRuntimeFieldsV2(view.runtimeTemplate, view.overrides);
-  const overrides = ssfRecordingSettingsSchema.parse(view.overrides?.['recording'] ?? {});
-  if (view.runtimeTemplate.recording || view.overrides?.['recording']) return {
-    ...fields, recording: { ...view.runtimeTemplate.recording, ...overrides,
-      enabled: overrides.enabled ?? false, retentionHours: overrides.retentionHours ?? null },
-  };
-  return fields;
+  resolveRecordingRetentionHours,
+  ssfRecordingSettingsSchema,
+} from './content-v2-recording.js';
+import { effectiveSsfRuntimeFieldsV2 } from './content-v2-overrides.js';
+type Editor = ReturnType<typeof useSsfTenantEditor>;
+const TenantStatus = ({ editor }: { editor: Editor }) => {
+  const pt = usePluginTranslation('ssf');
+  const { status, load } = editor;
+  return (
+    <>
+      {' '}
+      {status === 'conflict' ? (
+        <div className="space-y-3">
+          <StudioFormSummary kind="error">{pt('administration.conflict')}</StudioFormSummary>
+          <Button type="button" variant="secondary" onClick={() => void load()}>
+            {pt('administration.reloadDiscard')}
+          </Button>
+        </div>
+      ) : status === 'error' || status === 'invalid' ? (
+        <StudioFormSummary kind="error">
+          {pt(status === 'invalid' ? 'v2.invalid' : 'status.saveError')}
+        </StudioFormSummary>
+      ) : status === 'saved' ? (
+        <StudioFormSummary kind="success">{pt('status.saved')}</StudioFormSummary>
+      ) : null}
+    </>
+  );
 };
-
-const validateTenantDraft = (draft: SsfRuntimeContentV2Fields, template: SsfRuntimeContentV2Fields):
-  | { valid: true; candidate: SsfRuntimeContentV2Fields }
-  | { valid: false; issues: { path: PropertyKey[] }[] } => {
-  const candidate = draft.recording ? {
-    ...draft, recording: { ...draft.recording, verificationRequired:
-      draft.recording.verificationRequired ?? template.recording?.verificationRequired ?? false },
-  } : draft;
-  const parsed = ssfRuntimeContentV2FieldsSchema.safeParse(candidate);
-  if (!parsed.success) return { valid: false, issues: parsed.error.issues };
-  try {
-    resolveSsfRecordingPolicy(template.recording, candidate.recording);
-    return { valid: true, candidate };
-  } catch (error) {
-    const issues = error instanceof Error && 'issues' in error
-      ? (error as { issues: { path: PropertyKey[] }[] }).issues : [];
-    return { valid: false, issues: issues.map((issue) => ({ path: ['recording', ...issue.path] })) };
-  }
-};
-
-const TenantEditor = ({
-  saved,
-  draft,
-  status,
-  errors,
+const TenantForm = ({
+  editor,
+  page,
   canManage,
-  onChange,
-  onSave,
-  onDiscard,
 }: {
-  saved: SsfTenantContentV2View & { runtimeTemplate: SsfRuntimeContentV2Fields };
-  draft: SsfRuntimeContentV2Fields;
-  status: Status;
-  errors: Record<string, string>;
+  editor: Editor;
+  page: SsfTenantEditorPage;
   canManage: boolean;
-  onChange: (value: SsfRuntimeContentV2Fields) => void;
-  onSave: () => void;
-  onDiscard: () => void;
 }) => {
   const pt = usePluginTranslation('ssf');
+  const { saved, draft, formRef, epoch, errors, suspended, status, save, discard } = editor;
+  if (!saved?.runtimeTemplate || !draft) return null;
   return (
-    <div className="space-y-5">
-      <SsfV2FormSummary status={status} />
+    <div ref={formRef} className="space-y-5">
+      <TenantStatus editor={editor} />
       <SsfRuntimeV2Editor
+        key={epoch}
+        page={page}
         value={draft}
         inherited={saved.runtimeTemplate}
-        onChange={onChange}
+        onChange={editor.change}
         errors={errors}
-        disabled={!canManage || status === 'saving'}
-        supportedLanguages={saved.supportedLanguages ?? null}
+        disabled={editor.disabled}
+        supportedLanguages={saved.supportedLanguages}
       />
       {canManage ? (
         <StudioFormActionBar>
@@ -93,11 +73,15 @@ const TenantEditor = ({
             type="button"
             variant="secondary"
             disabled={status === 'saving'}
-            onClick={onDiscard}
+            onClick={discard}
           >
             {pt('actions.discard')}
           </Button>
-          <Button type="button" disabled={status === 'saving'} onClick={onSave}>
+          <Button
+            type="button"
+            disabled={status === 'saving' || suspended}
+            onClick={() => void save()}
+          >
             {pt(status === 'saving' ? 'actions.saving' : 'actions.save')}
           </Button>
         </StudioFormActionBar>
@@ -105,53 +89,18 @@ const TenantEditor = ({
     </div>
   );
 };
-
-export const SsfTenantContentV2Page = ({ canManage }: { canManage: boolean }) => {
+export const SsfTenantContentV2Page = ({
+  canManage,
+  page = 'appearance',
+}: {
+  canManage: boolean;
+  page?: SsfTenantEditorPage | 'overview';
+}) => {
   const pt = usePluginTranslation('ssf');
-  const [saved, setSaved] = useState<SsfTenantContentV2View | null>(null);
-  const [draft, setDraft] = useState<SsfRuntimeContentV2Fields | null>(null);
-  const [editorEpoch, setEditorEpoch] = useState(0);
-  const [status, setStatus] = useState<Status>('loading');
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const load = useCallback(async () => {
-    try {
-      const next = await readSsfTenantContentV2();
-      setSaved(next);
-      setDraft(draftFromView(next));
-      setEditorEpoch((current) => current + 1);
-      setStatus('ready');
-    } catch {
-      setStatus('error');
-    }
-  }, []);
-  useEffect(() => void load(), [load]);
-  const save = async () => {
-    if (!saved?.runtimeTemplate || !draft) {
-      setStatus('invalid');
-      return;
-    }
-    const validation = validateTenantDraft(draft, saved.runtimeTemplate);
-    if (!validation.valid) {
-      setErrors(fieldErrors(validation.issues, pt('v2.invalid')));
-      setStatus('invalid');
-      return;
-    }
-    const { candidate } = validation;
-    setErrors({});
-    setStatus('saving');
-    try {
-      const overrides = diffSsfContentV2(saved.runtimeTemplate, candidate);
-      const next = await writeSsfTenantContentV2((overrides ?? {}) as Record<string, unknown>);
-      setSaved(next);
-      setDraft(draftFromView(next));
-      setEditorEpoch((current) => current + 1);
-      setStatus('saved');
-    } catch {
-      setStatus('error');
-    }
-  };
+  const editor = useSsfTenantEditor(page, canManage);
+  const { status, saved, draft, load } = editor;
   if (status === 'loading') return <StudioLoadingState>{pt('status.loading')}</StudioLoadingState>;
-  if (status === 'error' && !saved) {
+  if (!saved)
     return (
       <StudioErrorState>
         <Button type="button" onClick={() => void load()}>
@@ -159,30 +108,26 @@ export const SsfTenantContentV2Page = ({ canManage }: { canManage: boolean }) =>
         </Button>
       </StudioErrorState>
     );
-  }
-  if (!saved?.runtimeTemplate || !draft) {
-    return (
-      <StudioSection title={pt('v2.template')}>
-        <p>{pt('v2.notConfigured')}</p>
-      </StudioSection>
-    );
-  }
   return (
-    <TenantEditor
-      key={editorEpoch}
-      saved={{ ...saved, runtimeTemplate: saved.runtimeTemplate }}
-      draft={draft}
-      status={status}
-      errors={errors}
-      canManage={canManage}
-      onChange={setDraft}
-      onSave={() => void save()}
-      onDiscard={() => {
-        setDraft(draftFromView(saved));
-        setEditorEpoch((current) => current + 1);
-        setErrors({});
-        setStatus('ready');
-      }}
-    />
+    <StudioOverviewPageTemplate
+      title={pt(`administration.pages.${page}`)}
+      description={pt(`administration.descriptions.${page}`)}
+    >
+      {!saved.runtimeTemplate || !draft ? (
+        <StudioSection title={pt('v2.template')}>
+          <p>{pt('v2.notConfigured')}</p>
+        </StudioSection>
+      ) : page === 'overview' ? (
+        <TenantOverview
+          value={effectiveSsfRuntimeFieldsV2(saved.runtimeTemplate, saved.overrides)}
+          retentionHours={resolveRecordingRetentionHours(
+            saved.runtimeTemplate.recording?.retentionHours,
+            ssfRecordingSettingsSchema.parse(saved.overrides?.['recording'] ?? {}).retentionHours
+          )}
+        />
+      ) : (
+        <TenantForm editor={editor} page={page} canManage={canManage} />
+      )}
+    </StudioOverviewPageTemplate>
   );
 };

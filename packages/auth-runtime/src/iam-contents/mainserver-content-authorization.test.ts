@@ -1,3 +1,4 @@
+import { standardEditorPermissionKeys, resolveStandardEditorPermissionScope } from '@sva/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EffectivePermission } from '@sva/iam-core';
@@ -496,6 +497,43 @@ describe('Mainserver content authorization', () => {
     });
   });
 
+  it.each([
+    'news.update',
+    'news.delete',
+    'events.update',
+    'events.delete',
+    'poi.update',
+    'poi.delete',
+  ])('enforces explicit exact %s ownership even in shadow mode', async (action) => {
+    process.env.SVA_MAINSERVER_SCOPE_RESOLVER_MODE = 'shadow';
+    state.loadBinding.mockImplementation(async ({ principalType }: { principalType: string }) => ({
+      dataProviderId: principalType === 'organization' ? 'provider-organization' : 'provider-user',
+    }));
+    const input = {
+      ...context,
+      action,
+      forceExactScopeAuthorization: true,
+      permissions: [{ ...permission('organization'), action, resourceType: action.split('.')[0]! }],
+    };
+    await expect(
+      authorizeMainserverDataProviderAccess({ ...input, dataProviderId: 'provider-organization' })
+    ).resolves.toMatchObject({ allowed: true, authorizationMode: 'exact' });
+    await expect(
+      authorizeMainserverDataProviderAccess({ ...input, dataProviderId: 'provider-foreign' })
+    ).resolves.toMatchObject({
+      allowed: false,
+      reason: 'data_provider_mismatch',
+      authorizationMode: 'exact',
+    });
+    await expect(
+      authorizeMainserverDataProviderAccess({
+        ...input,
+        dataProviderId: 'provider-foreign',
+        permissions: [{ ...input.permissions[0]!, accessScope: 'all' }],
+      })
+    ).resolves.toMatchObject({ allowed: true, authorizationMode: 'exact' });
+  });
+
   it('allows unscoped and all permissions without a binding', async () => {
     for (const accessScope of [undefined, 'all'] as const) {
       await expect(
@@ -508,4 +546,64 @@ describe('Mainserver content authorization', () => {
     }
     expect(state.readCredentials).not.toHaveBeenCalled();
   });
+  it.each(
+    standardEditorPermissionKeys.filter(
+      (key) => resolveStandardEditorPermissionScope(key) === 'organization'
+    )
+  )(
+    'enforces organisation OR personal ownership for %s even with broad credentials',
+    async (action) => {
+      process.env.SVA_MAINSERVER_SCOPE_RESOLVER_MODE = 'compatibility';
+      state.loadBinding.mockImplementation(async (input: { principalType: string }) => ({
+        dataProviderId: input.principalType === 'user' ? 'personal-provider' : 'org-provider',
+      }));
+      const scopedInput = {
+        ...context,
+        action,
+        permissions: [
+          {
+            action,
+            resourceType: action.split('.')[0]!,
+            accessScope: 'organization',
+          } as EffectivePermission,
+        ],
+        forceExactScopeAuthorization: true,
+      };
+      for (const dataProviderId of ['personal-provider', 'org-provider']) {
+        expect(
+          (await authorizeMainserverDataProviderAccess({ ...scopedInput, dataProviderId })).allowed
+        ).toBe(true);
+      }
+      expect(
+        (
+          await authorizeMainserverDataProviderAccess({
+            ...scopedInput,
+            dataProviderId: 'foreign-provider',
+          })
+        ).allowed
+      ).toBe(false);
+      expect(
+        (await authorizeMainserverDataProviderAccess({ ...scopedInput, dataProviderId: '' }))
+          .allowed
+      ).toBe(false);
+      expect(
+        (
+          await authorizeMainserverDataProviderAccess({
+            ...scopedInput,
+            activeOrganizationId: undefined,
+            dataProviderId: 'personal-provider',
+          })
+        ).allowed
+      ).toBe(true);
+      expect(
+        (
+          await authorizeMainserverDataProviderAccess({
+            ...scopedInput,
+            activeOrganizationId: undefined,
+            dataProviderId: 'org-provider',
+          })
+        ).allowed
+      ).toBe(false);
+    }
+  );
 });

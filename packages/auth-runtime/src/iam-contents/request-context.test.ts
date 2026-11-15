@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
+  moduleQueryMock,
   evaluateAuthorizeDecisionMock,
   summarizeContentAccessMock,
   resolveEffectivePermissionsMock,
@@ -11,6 +12,7 @@ const {
   getSessionMock,
   toJsonErrorResponseMock,
 } = vi.hoisted(() => ({
+  moduleQueryMock: vi.fn(),
   evaluateAuthorizeDecisionMock: vi.fn(),
   summarizeContentAccessMock: vi.fn(),
   resolveEffectivePermissionsMock: vi.fn(),
@@ -77,6 +79,10 @@ vi.mock('../iam-account-management/shared.js', () => ({
   resolveActorInfo: resolveActorInfoMock,
 }));
 
+vi.mock('../plugin-tenant-lifecycle/access.js', () => ({
+  isConfiguredPluginTenantEffectivelyActive: moduleQueryMock,
+}));
+
 vi.mock('../middleware.js', () => ({
   withAuthenticatedUser: withAuthenticatedUserMock,
 }));
@@ -95,6 +101,7 @@ const {
 
 describe('content request authorization context', () => {
   beforeEach(() => {
+    moduleQueryMock.mockReset().mockResolvedValue(true);
     evaluateAuthorizeDecisionMock.mockReset();
     summarizeContentAccessMock.mockReset();
     resolveEffectivePermissionsMock.mockReset();
@@ -368,5 +375,116 @@ describe('content request authorization context', () => {
         activeOrganizationId: 'org-1',
       },
     });
+  });
+});
+
+describe('core content module boundary', () => {
+  const actor = { instanceId: 'tenant-a', keycloakSubject: 'subject-a', actorDisplayName: 'Actor' };
+  it.each([
+    'content.create',
+    'content.updatePayload',
+    'content.publish',
+    'content.readHistory',
+    'content.delete',
+  ] as const)('rejects %s for an unavailable module despite a core grant', async (action) => {
+    moduleQueryMock.mockResolvedValue(false);
+    evaluateAuthorizeDecisionMock.mockReturnValue({ allowed: true });
+    const response = await authorizeContentAction(
+      actor,
+      action,
+      { contentType: 'faq.faq' },
+      { permissions: [] }
+    );
+    expect(response?.status).toBe(403);
+    expect(moduleQueryMock).toHaveBeenCalledWith('tenant-a', 'faq');
+  });
+  it.each([
+    'content.create',
+    'content.read',
+    'content.updatePayload',
+    'content.publish',
+    'content.readHistory',
+    'content.delete',
+  ] as const)(
+    'preserves the registered core generic type for %s while still enforcing its permission',
+    async (action) => {
+      moduleQueryMock.mockClear().mockResolvedValue(false);
+      evaluateAuthorizeDecisionMock.mockReturnValue({ allowed: true });
+      await expect(
+        authorizeContentAction(actor, action, { contentType: 'generic' }, { permissions: [] })
+      ).resolves.toBeNull();
+      evaluateAuthorizeDecisionMock.mockReturnValue({
+        allowed: false,
+        reason: 'permission_missing',
+      });
+      expect(
+        (
+          await authorizeContentAction(
+            actor,
+            action,
+            { contentType: 'generic' },
+            { permissions: [] }
+          )
+        )?.status
+      ).toBe(403);
+      expect(moduleQueryMock).not.toHaveBeenCalled();
+    }
+  );
+  it.each(['custom.record', 'unregistered'])(
+    'fails closed for an unregistered content namespace %s',
+    async (contentType) => {
+      moduleQueryMock.mockResolvedValue(false);
+      evaluateAuthorizeDecisionMock.mockClear().mockReturnValue({ allowed: true });
+      for (const action of [
+        'content.create',
+        'content.read',
+        'content.updatePayload',
+        'content.readHistory',
+        'content.delete',
+      ] as const) {
+        expect(
+          (await authorizeContentAction(actor, action, { contentType }, { permissions: [] }))
+            ?.status
+        ).toBe(403);
+      }
+      expect(evaluateAuthorizeDecisionMock).not.toHaveBeenCalled();
+      expect(moduleQueryMock).toHaveBeenCalledWith('tenant-a', contentType.split('.')[0]);
+    }
+  );
+  it('allows a configured custom module through the same existing activation lookup', async () => {
+    moduleQueryMock.mockResolvedValue(true);
+    evaluateAuthorizeDecisionMock.mockReturnValue({ allowed: true });
+    await expect(
+      authorizeContentAction(
+        actor,
+        'content.create',
+        { contentType: 'custom.record' },
+        { permissions: [] }
+      )
+    ).resolves.toBeNull();
+    expect(moduleQueryMock).toHaveBeenCalledWith('tenant-a', 'custom');
+  });
+  it('allows active modules and fails closed on module storage errors', async () => {
+    moduleQueryMock.mockResolvedValue(true);
+    evaluateAuthorizeDecisionMock.mockReturnValue({ allowed: true });
+    await expect(
+      authorizeContentAction(
+        actor,
+        'content.create',
+        { contentType: 'faq.faq' },
+        { permissions: [] }
+      )
+    ).resolves.toBeNull();
+    moduleQueryMock.mockRejectedValue(new Error('module_lookup_failed'));
+    expect(
+      (
+        await authorizeContentAction(
+          actor,
+          'content.create',
+          { contentType: 'faq.faq' },
+          { permissions: [] }
+        )
+      )?.status
+    ).toBe(503);
   });
 });

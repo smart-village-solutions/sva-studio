@@ -168,6 +168,57 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     editTitle: 'Edit waste fraction',
     editDescription: 'Change name, color, visibility, and reminder offering of the fraction.',
   },
+  deleteOptions: {
+    mode: 'What should happen to the assigned tours?',
+    choose: 'Please choose',
+    detach: 'Keep tours and remove only this fraction',
+    'delete-tours': 'Also delete assigned tours and dates',
+    replace: 'Replace with another fraction',
+    target: 'Target fraction',
+    chooseTarget: 'Choose target fraction',
+    loading: 'Checking impact …',
+    impact: 'Impact of fraction deletion',
+    tourCount: 'Affected tours: {{count}}',
+    tour: '{{name}} ({{status}})',
+    shared: 'Other fractions of this tour: {{fractions}}',
+    removeDates:
+      'The listed tours, stored dates, assignments, shifts and location links will be deleted entirely, including for their other fractions.',
+    keepDates: 'Tours, dates, assignments and location links will be retained.',
+    reminders:
+      'Reminder selections for the deleted fraction will be removed. They will not transfer to a target fraction. Pending reminders that no longer apply will be cancelled.',
+    refresh: 'Refresh preview',
+    previewError: 'The preview could not be loaded. Please try again.',
+    executeError: 'The change could not be completed. Please refresh and review the preview again.',
+    conflict: '{{tours}}: same pickup date {{date}} at location {{location}}.',
+    counts: {
+      links: 'Location links',
+      pickupDates: 'Stored location dates',
+      assignments: 'Stored assignments',
+      shifts: 'Tour date shifts',
+      reminderItems: 'Removed reminder selections',
+      pendingReminders: 'Reminders to cancel',
+    },
+    confirm: {
+      detach: 'Remove fraction',
+      'delete-tours': 'Delete fraction, tours and dates',
+      replace: 'Replace and delete fraction',
+    },
+    summary: {
+      detach: '“{{source}}” will be removed. Other fractions remain assigned.',
+      'delete-tours': '“{{source}}” and all listed tours will be permanently deleted.',
+      replace: '“{{source}}” will be replaced with “{{target}}” and then deleted.',
+    },
+    blocked: {
+      'empty-tour': 'At least one tour would have no fraction left. Choose another option.',
+      'invalid-target': 'Please choose another active fraction.',
+      'date-conflict':
+        'Replacement would create duplicate pickups. Please resolve the listed conflicts first.',
+      'unbounded-schedule':
+        'The full period cannot be checked completely. Please bound or review the affected tours and shift rules before replacing the fraction.',
+      'reminder-dispatching':
+        'An affected reminder is currently being sent. Please try again after delivery has finished.',
+    },
+  },
   deleteDialog: {
     title: 'Delete waste fraction',
     description: 'The waste fraction {{value}} will be deleted permanently.',

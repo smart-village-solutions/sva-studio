@@ -8,6 +8,7 @@ import { openLoginUrl } from './open-browser.js';
 import { PersonalMcpAuthError, PersonalMcpContextManager } from './personal-auth.js';
 import { redact } from './redaction.js';
 import { result, type ToolResult } from './tools-support.js';
+import { registerPersonalEditorTool } from './tools-personal-editor.js';
 import { contextInput, requestInput, type PersonalRequest, resolvePersonalInterfaceRequestBody, validatePersonalRequest } from './tools-personal-request.js';
 
 const localInterfaceSecretFailure = (code: string, requestId: string, contextId: string): ToolResult =>
@@ -235,4 +236,5 @@ export const registerPersonalTools = (
     if (!parsed.success) return errorResult(new Error('personal_api_request_invalid'));
     return requestUsers(parsed.data, config, manager, fetchImpl);
   });
+  registerPersonalEditorTool(server, manager, (request) => requestUsers(request, config, manager, fetchImpl));
 };

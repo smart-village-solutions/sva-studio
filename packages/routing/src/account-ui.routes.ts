@@ -33,6 +33,7 @@ export const createAccountUiRouteGuard = (
 
 export const createAccountUiRouteGuards = (diagnostics?: RoutingDiagnosticsHook) =>
   ({
+    changelog: createAccountUiRouteGuard('changelog', diagnostics),
     account: createAccountUiRouteGuard('account', diagnostics),
     accountPrivacy: createAccountUiRouteGuard('accountPrivacy', diagnostics),
     accountPrivacyDetail: createAccountUiRouteGuard('accountPrivacyDetail', diagnostics),

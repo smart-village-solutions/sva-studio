@@ -301,6 +301,7 @@ describe('service-keycloak-execution-finalize', () => {
         systemAdminRoleExists: true,
         tenantAdminHasSystemAdmin: true,
         tenantAdminExists: true,
+        userProfileBaselineAligned: true,
       });
       state.buildProvisioningInput.mockReturnValue({
         instanceId: 'instance-1',

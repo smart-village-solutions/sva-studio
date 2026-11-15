@@ -223,7 +223,7 @@ describe('EventsDetailPage', () => {
         'events.cards.content.prices.title': 'Preise',
         'events.cards.content.accessibility.title': 'Barrierefreiheit',
         'events.cards.settings.publication.title': 'Sichtbarkeit',
-        'events.cards.settings.technical.title': 'Technische Zusatzdaten',
+        'events.cards.settings.technical.title': 'Externe Zuordnung',
         'events.fields.title': 'Titel',
         'events.fields.categories': 'Kategorien',
         'events.fields.categoriesHelp': 'Mehrfachauswahl',
@@ -234,7 +234,7 @@ describe('EventsDetailPage', () => {
         'events.fields.dateEnd': 'Enddatum',
         'events.fields.repeat': 'Wiederholung',
         'events.fields.visible': 'Sichtbar',
-        'events.fields.externalId': 'Externe ID',
+        'events.fields.externalId': 'Externe Kennung (optional)',
         'events.fields.pointOfInterestId': 'Zugehöriger POI',
         'events.fields.pointOfInterestSearch': 'POI suchen',
         'events.fields.pointOfInterestSearchPlaceholder': 'POI suchen oder auswählen',
@@ -386,6 +386,10 @@ describe('EventsDetailPage', () => {
     expect(hasUnsavedChanges()).toBe(false);
     fireEvent.click(document.getElementById('content-media-add')!);
     fireEvent.click(await screen.findByRole('button', { name: 'Medium per Link hinzufügen' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+      target: { value: 'https://example.test/image.jpg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
     await waitFor(() => expect(hasUnsavedChanges()).toBe(true));
     fireEvent.click(
       document.querySelector<HTMLButtonElement>('button[id^="content-media-"][id$="-remove"]')!
@@ -482,7 +486,7 @@ describe('EventsDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Sichtbarkeit')).toBeTruthy();
     });
-    expect(screen.getByText('Technische Zusatzdaten')).toBeTruthy();
+    expect(screen.getByText('Externe Zuordnung')).toBeTruthy();
     expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
     expect(screen.queryByLabelText('Tags')).toBeNull();
     expect(vi.mocked(listPoiForEventSelection)).not.toHaveBeenCalled();
@@ -554,10 +558,29 @@ describe('EventsDetailPage', () => {
     ).toBeTruthy();
   });
 
+  it.each([false, true])(
+    'confirms the saved visibility after creating content: %s',
+    async (visible) => {
+      vi.mocked(createEvent).mockResolvedValueOnce({
+        id: 'created-1',
+        title: 'New content',
+        visible: !visible,
+      } as never);
+      render(<EventsDetailPage mode="create" />);
+      fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'New content' } });
+      if (visible) fireEvent.click(screen.getByLabelText('Sichtbar'));
+      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+      expect(
+        await screen.findByText(`events.messages.${!visible ? 'savedVisible' : 'savedHidden'}`)
+      ).toBeTruthy();
+    }
+  );
+
   it('renders Create without tabs or history and keeps a single ordered form', async () => {
     render(<EventsDetailPage mode="create" />);
     await screen.findByLabelText('Titel');
     expect(hasUnsavedChanges()).toBe(false);
+    expect(screen.queryByLabelText('Externe Kennung (optional)')).toBeNull();
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Historie' })).toBeNull();
     expect(screen.getAllByRole('button', { name: /Speichern|anlegen/ })).toHaveLength(1);
@@ -578,7 +601,6 @@ describe('EventsDetailPage', () => {
         'links',
         'prices',
         'participation',
-        'technical',
         'publication',
       ].map((id) => `event-create-${id}`)
     );
@@ -1045,7 +1067,6 @@ describe('EventsDetailPage', () => {
       expect(screen.getByRole('button', { name: 'Kategorie Kultur entfernen' })).toBeTruthy();
     });
     openEventExtras();
-    fireEvent.change(screen.getByLabelText('Externe ID'), { target: { value: 'event-ext-1' } });
     fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
 
     await waitFor(() => {
@@ -1055,7 +1076,6 @@ describe('EventsDetailPage', () => {
           title: 'Neues Event',
           categoryName: 'Kultur',
           categories: [{ name: 'Kultur' }],
-          externalId: 'event-ext-1',
           visible: false,
         }),
         'user'

@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url';
 
 import { configureInstanceRegistryPluginRuntimeSnapshot } from '@sva/auth-runtime/server';
 import { pluginSdkVersion, resolvePluginCatalog } from '@sva/plugin-sdk';
-import { studioHostModuleIamContracts } from '@sva/studio-module-iam';
 
 export const runSsfProvisioningWorker = async (
   startWorker = async () => {
@@ -92,10 +91,7 @@ export const runSsfProvisioningWorker = async (
   const { snapshot } = resolved;
   configureInstanceRegistryPluginRuntimeSnapshot({
     activationPolicies: snapshot.tenantActivationPolicySnapshot,
-    moduleIamContracts: [
-      ...snapshot.registry.pluginModuleIamContracts,
-      ...studioHostModuleIamContracts,
-    ],
+    moduleIamContracts: snapshot.registry.pluginModuleIamContracts,
     tenantLifecycles: snapshot.registry.tenantLifecycles,
     pluginOidcClientRequirements: [
       SSF_TENANT_OIDC_CLIENT_REQUIREMENT,

@@ -17,6 +17,7 @@ const useInstancesMock = vi.fn();
 const useAuthMock = vi.fn();
 const settingsAccess = vi.hoisted(() => ({ allowed: false, contribution: false }));
 const readinessState = vi.hoisted(() => ({ items: [] as unknown[], error: null as unknown }));
+const startRepair = vi.fn();
 
 vi.mock('../../../lib/plugins', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../lib/plugins')>();
@@ -101,7 +102,7 @@ vi.mock('../../../hooks/use-plugin-tenant-readiness', () => ({
     activeAction: null,
     error: readinessState.error,
     refresh: vi.fn(),
-    startRepair: vi.fn(),
+    startRepair,
   }),
 }));
 
@@ -494,6 +495,36 @@ describe('ModulesPage', () => {
     expect(screen.getByText('News')).toBeTruthy();
     expect(screen.getByText(/Creates and publishes news with text, media/)).toBeTruthy();
     expect(screen.getByText('Media Library')).toBeTruthy();
+  });
+
+  it('offers translation repair to tenant integration admins even while module access is blocked', () => {
+    const user = { instanceId: 'demo', assignedModules: [] as string[] };
+    readinessState.items = [
+      {
+        pluginId: 'app-translations',
+        status: 'blocked',
+        activationPolicy: 'optional',
+        desiredGeneration: 1,
+        completedGeneration: 1,
+        checks: [
+          {
+            checkId: 'app-translations.service',
+            titleKey: 'appTranslations.readiness.service',
+            status: 'degraded',
+            repairOperation: 'reconcile',
+          },
+        ],
+      },
+    ];
+    useAuthMock.mockReturnValue({ user });
+    const { rerender } = render(<ModulesPage />);
+    expect(screen.queryByRole('region', { name: 'app-translations' })).toBeNull();
+
+    useAuthMock.mockReturnValue({ user: { ...user, permissionActions: ['integration.manage'] } });
+    rerender(<ModulesPage />);
+    const readiness = screen.getByRole('region', { name: 'app-translations' });
+    fireEvent.click(within(readiness).getByRole('button'));
+    expect(startRepair).toHaveBeenCalledWith('app-translations', 'reconcile');
   });
 
   it('keeps an assigned pending lifecycle separate from assignment and blocks duplicate actions', async () => {

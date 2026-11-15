@@ -1,5 +1,5 @@
+import { Button, Checkbox, DateInput, StudioField } from '@sva/studio-ui-react';
 import type { WasteAnnualTourTransferTourPreview } from '@sva/waste-management-contracts';
-import { Button, Checkbox, Input } from '@sva/studio-ui-react';
 
 import type { WasteAnnualTransferController } from './waste-management.tours-annual-transfer-controller.js';
 import {
@@ -31,31 +31,33 @@ const AnnualTourReplacementInputs = ({
         controller.preview?.targetYear ??
         controller.sourceYear + 1;
       return (
-        <label
+        <StudioField
           key={resourceId}
-          className="grid gap-1 text-sm font-medium"
-          htmlFor={`replacement-${resourceId}`}
-        >
-          {translate(`tours.annualTransfer.${replacementLabelKey(resourceId)}`, {
+          id={`replacement-${resourceId}`}
+          label={translate(`tours.annualTransfer.${replacementLabelKey(resourceId)}`, {
             name: `${tour.name} ${index + 1}`,
             year: replacementTargetYear,
           })}
-          <Input
+        >
+          <DateInput
+            label={translate(`tours.annualTransfer.${replacementLabelKey(resourceId)}`, {
+              name: `${tour.name} ${index + 1}`,
+              year: replacementTargetYear,
+            })}
             id={`replacement-${resourceId}`}
-            type="date"
             min={`${replacementTargetYear}-01-01`}
             max={`${replacementTargetYear}-12-31`}
             value={controller.replacementDates[resourceId] ?? ''}
             disabled={controller.step === 'confirm' || controller.loading}
-            onChange={(event) => {
-              const replacementDate = event.currentTarget.value;
+            onValueChange={(value) => {
+              const replacementDate = value;
               controller.setReplacementDates((current) => ({
                 ...current,
                 [resourceId]: replacementDate,
               }));
             }}
           />
-        </label>
+        </StudioField>
       );
     })}
   </>
@@ -194,7 +196,9 @@ export const AnnualTransferFooter = ({
         type="button"
         variant="secondary"
         disabled={controller.loading}
-        onClick={() => void controller.loadPreview()}
+        onClick={(event) => {
+          if (event.currentTarget.form?.reportValidity()) void controller.loadPreview();
+        }}
       >
         {translate('tours.annualTransfer.refreshPreview')}
       </Button>

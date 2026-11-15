@@ -154,6 +154,25 @@ const buildChecks = (
     },
   ];
 
+  const userProfileAligned = instance.keycloakStatus?.userProfileBaselineAligned;
+  if (
+    instance.realmMode === 'existing' &&
+    instance.keycloakStatus?.realmExists &&
+    userProfileAligned !== undefined
+  ) {
+    checks.push({
+      key: 'user-profile',
+      title: t('admin.instances.operations.keycloakSteps.userProfile.title'),
+      summary: t(
+        userProfileAligned
+          ? 'admin.instances.operations.keycloakSteps.userProfile.aligned'
+          : 'admin.instances.operations.keycloakSteps.userProfile.pending'
+      ),
+      status: userProfileAligned ? 'ready' : 'degraded',
+      sourceLabel: getCockpitSourceLabel('keycloak_status_snapshot'),
+    });
+  }
+
   if (requiredPluginReadiness) {
     checks.push({
       key: 'required-plugin-readiness',

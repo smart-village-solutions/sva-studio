@@ -150,7 +150,8 @@ export const usersAdminENResources = {
     rolesLabel: 'Choose roles',
     groupsLabel: 'Choose groups',
     competenceLanguages: 'Competence languages',
-    competenceLanguagesHint: 'Comma-separated language tags, e.g. de, en-GB. Maximum 40. Independent of the interface language.',
+    competenceLanguagesHint:
+      'Comma-separated language tags, e.g. de, en-GB. Maximum 40. Independent of the interface language.',
     notesLabel: 'Notes',
     notesCounter: '{{count}} / 2000 characters',
     validation: {

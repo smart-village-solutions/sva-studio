@@ -79,7 +79,9 @@ const WasteMasterDataFractionsListView = ({
       controller.setLastOutcome(null);
       void navigateToFractionsRoute(navigate, search, 'edit', fraction.id);
     }}
-    onOpenDeleteFraction={(fraction) => controller.deleteFraction(fraction.id)}
+    onOpenDeleteFraction={(fraction, confirmation) =>
+      controller.deleteFraction(fraction.id, confirmation)
+    }
     onDeleteFractions={controller.deleteFractions}
     onToggleFractionStatus={controller.setFractionActive}
     onFractionsSortChange={(sortBy, sortDirection) => {

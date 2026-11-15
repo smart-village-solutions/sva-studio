@@ -1,10 +1,12 @@
 import {
   Button,
   Checkbox,
+  DateInput,
   Input,
   Select,
   StudioField,
   StudioFieldGroup,
+  TimeInput,
 } from '@sva/studio-ui-react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { GENERIC_ITEMS_OPENING_HOUR_WEEKDAYS } from './generic-items.constants.js';
@@ -24,24 +26,24 @@ const OpeningDateTimeFields = ({
     <>
       <StudioFieldGroup columns={2}>
         <StudioField id={`generic-item-opening-date-from-${index}`} label={labels.dateFrom}>
-          <Input
+          <DateInput
+            label={labels.dateFrom}
             id={`generic-item-opening-date-from-${index}`}
-            type="date"
             value={openingHour.dateFrom}
-            onChange={(event) =>
-              setValue(`openingHours.${index}.dateFrom`, event.target.value, {
+            onValueChange={(value) =>
+              setValue(`openingHours.${index}.dateFrom`, value, {
                 shouldDirty: true,
               })
             }
           />
         </StudioField>
         <StudioField id={`generic-item-opening-date-to-${index}`} label={labels.dateTo}>
-          <Input
+          <DateInput
+            label={labels.dateTo}
             id={`generic-item-opening-date-to-${index}`}
-            type="date"
             value={openingHour.dateTo}
-            onChange={(event) =>
-              setValue(`openingHours.${index}.dateTo`, event.target.value, {
+            onValueChange={(value) =>
+              setValue(`openingHours.${index}.dateTo`, value, {
                 shouldDirty: true,
               })
             }
@@ -50,9 +52,8 @@ const OpeningDateTimeFields = ({
       </StudioFieldGroup>
       <StudioFieldGroup columns={2}>
         <StudioField id={`generic-item-opening-time-from-${index}`} label={labels.timeFrom}>
-          <Input
+          <TimeInput
             id={`generic-item-opening-time-from-${index}`}
-            type="time"
             value={openingHour.timeFrom}
             onChange={(event) =>
               setValue(`openingHours.${index}.timeFrom`, event.target.value, {
@@ -62,9 +63,8 @@ const OpeningDateTimeFields = ({
           />
         </StudioField>
         <StudioField id={`generic-item-opening-time-to-${index}`} label={labels.timeTo}>
-          <Input
+          <TimeInput
             id={`generic-item-opening-time-to-${index}`}
-            type="time"
             value={openingHour.timeTo}
             onChange={(event) =>
               setValue(`openingHours.${index}.timeTo`, event.target.value, {

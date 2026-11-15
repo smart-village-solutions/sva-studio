@@ -1,3 +1,4 @@
+import { toDatetimeLocalValue } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   IconFilter,
@@ -127,7 +128,7 @@ export const WasteLocationsYearControl = ({
 >) => {
   const pt = usePluginTranslation('wasteManagement');
   if (!onLocationYearChange) return null;
-  const currentYear = new Date().getFullYear();
+  const currentYear = Number(toDatetimeLocalValue(new Date().toISOString()).slice(0, 4));
   const years = availableTours.flatMap((tour) =>
     [tour.firstDate, tour.endDate, ...(tour.customDates ?? []).map((item) => item.date)].flatMap(
       (date) => (date ? [Number(date.slice(0, 4))] : [])

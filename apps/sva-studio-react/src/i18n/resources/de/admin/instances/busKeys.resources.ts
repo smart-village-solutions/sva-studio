@@ -19,8 +19,7 @@ export const busKeysInstancesAdminDEResources = {
   validThrough: 'Gültig bis einschließlich',
   status: 'Status',
   actions: 'Aktionen',
-  utcExplanation:
-    'Der Key läuft am Beginn des Folgetags in UTC ab. Exakter Ablauf:',
+  utcExplanation: 'Der Key läuft am Beginn des Folgetags in UTC ab. Exakter Ablauf:',
   noExpiry: 'Ohne Ablaufdatum',
   missing: 'Nicht hinterlegt',
   active: 'Aktiv',

@@ -186,7 +186,11 @@ export const buildExistingRealmOperationsModel = (
   );
   const preflight = instance.keycloakPreflight;
   const latestRun = readLatestKeycloakRun(instance);
-  const hasDrift = Boolean(instance.keycloakStatus && !isFinalKeycloakStateSatisfied(instance));
+  const hasDrift = Boolean(
+    instance.keycloakStatus &&
+    (!isFinalKeycloakStateSatisfied(instance) ||
+      instance.keycloakStatus.userProfileBaselineAligned === false)
+  );
   const steps = buildExistingRealmAssessmentSteps(
     instance,
     contractComplete,

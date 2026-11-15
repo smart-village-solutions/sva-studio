@@ -1,20 +1,31 @@
 import { describe, expect, it } from 'vitest';
+import {
+  formatCalendarDate,
+  formatLocalDateTime,
+  formatTimeOfDay,
+  isCalendarDate,
+  isInstant,
+  isLocalDateTime,
+  isTimeOfDay,
+} from './temporal.js';
 
 import {
   compactOptionalString,
   contentMediaUploadPhaseMessageKey,
-  formatDateTimeInEditorTimeZone,
-  formatTechnicalDateTimeInEditorTimeZone,
   findHostMediaReferenceAssetId,
-  fromDatetimeLocalValue,
   getHostMediaAssetPersistentUrl,
   isSupportedContentMediaUploadFile,
   readHostMediaAssetCopyright,
   readHostMediaAssetFileName,
   readHostMediaAssetTitle,
-  toDatetimeLocalValue,
   toHostMediaFieldOptions,
 } from './content-ui-utils.js';
+import {
+  formatDateTimeInEditorTimeZone,
+  formatTechnicalDateTimeInEditorTimeZone,
+  fromDatetimeLocalValue,
+  toDatetimeLocalValue,
+} from './temporal.js';
 
 describe('content-ui-utils', () => {
   it('compacts optional strings and converts editor timestamps in Europe/Berlin safely', () => {
@@ -26,7 +37,9 @@ describe('content-ui-utils', () => {
     expect(formatDateTimeInEditorTimeZone('invalid-date')).toBe('invalid-date');
     expect(formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z')).toBe('15.01.2026, 11:15');
     expect(formatDateTimeInEditorTimeZone('2026-07-15T10:15:00.000Z')).toBe('15.07.2026, 12:15');
-    expect(formatTechnicalDateTimeInEditorTimeZone('2026-01-15T10:15:23.456Z')).toBe('15.01.2026, 11:15:23,456');
+    expect(formatTechnicalDateTimeInEditorTimeZone('2026-01-15T10:15:23.456Z')).toBe(
+      '15.01.2026, 11:15:23,456'
+    );
 
     expect(toDatetimeLocalValue(undefined)).toBe('');
     expect(toDatetimeLocalValue('invalid-date')).toBe('');
@@ -48,7 +61,9 @@ describe('content-ui-utils', () => {
   });
 
   it('formats timestamps with an explicit locale without shared mutable state', () => {
-    expect(formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z', 'en-GB')).toBe('15/01/2026, 11:15');
+    expect(formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z', 'en-GB')).toBe(
+      '15/01/2026, 11:15'
+    );
     expect(formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z')).toBe('15.01.2026, 11:15');
     expect(formatTechnicalDateTimeInEditorTimeZone('2026-01-15T10:15:23.456Z', 'en-GB')).toBe(
       '15/01/2026, 11:15:23.456'
@@ -56,11 +71,15 @@ describe('content-ui-utils', () => {
   });
 
   it('falls back to the default locale when an invalid locale tag is provided', () => {
-    expect(() => formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z', 'invalid locale tag')).not.toThrow();
+    expect(() =>
+      formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z', 'invalid locale tag')
+    ).not.toThrow();
     expect(formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z', 'invalid locale tag')).toBe(
       '15.01.2026, 11:15'
     );
-    expect(formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z', 'zz-ZZ')).toBe('15.01.2026, 11:15');
+    expect(formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z', 'zz-ZZ')).toBe(
+      '15.01.2026, 11:15'
+    );
   });
 
   it('infers the editor locale from the document language when no explicit locale is provided', () => {
@@ -90,7 +109,9 @@ describe('content-ui-utils', () => {
     expect(fromDatetimeLocalValue('2026-01-32T11:15')).toBe('');
     expect(fromDatetimeLocalValue('2026-01-15T24:15')).toBe('');
     expect(fromDatetimeLocalValue('2026-01-15T11:60')).toBe('');
-    expect(fromDatetimeLocalValue('2026-01-15T11:15', 'not-a-date')).toBe('2026-01-15T10:15:00.000Z');
+    expect(fromDatetimeLocalValue('2026-01-15T11:15', 'not-a-date')).toBe(
+      '2026-01-15T10:15:00.000Z'
+    );
   });
 
   it('maps host media options and resolves references by role with fallback behavior', () => {
@@ -114,7 +135,9 @@ describe('content-ui-utils', () => {
         'gallery_item'
       )
     ).toBe('asset-2');
-    expect(findHostMediaReferenceAssetId([{ assetId: 'asset-1', role: 'teaser_image' }], 'hero')).toBeNull();
+    expect(
+      findHostMediaReferenceAssetId([{ assetId: 'asset-1', role: 'teaser_image' }], 'hero')
+    ).toBeNull();
   });
 
   it('shares image-upload and host-asset presentation semantics across content plugins', () => {
@@ -160,4 +183,64 @@ describe('content-ui-utils', () => {
     expect(getHostMediaAssetPersistentUrl({ ...asset, visibility: 'protected' })).toBeNull();
     expect(getHostMediaAssetPersistentUrl({ ...asset, previewUrl: '   ' })).toBeNull();
   });
+});
+
+describe('calendar dates and local times', () => {
+  it('formats calendar days independently of the host time zone', () => {
+    expect(formatCalendarDate('2026-01-01', 'de-DE')).toBe('01.01.2026');
+    expect(formatCalendarDate('2026-01-01', 'en-GB')).toBe('01/01/2026');
+    expect(formatCalendarDate('2026-02-30')).toBe('2026-02-30');
+    expect(isCalendarDate('2024-02-29')).toBe(true);
+    expect(isCalendarDate('2026-02-29')).toBe(false);
+    expect(isCalendarDate('01.01.2026')).toBe(false);
+  });
+  it('keeps wall-clock times independent of DST and preserves precision', () => {
+    expect(formatTimeOfDay('02:30', 'de-DE')).toBe('02:30');
+    expect(formatTimeOfDay('02:30:12.123', 'de-DE')).toBe('02:30:12,123');
+    expect(isTimeOfDay('24:00')).toBe(false);
+    expect(isTimeOfDay('12:60')).toBe(false);
+    expect(isTimeOfDay('12:30:45')).toBe(true);
+  });
+  it('does not apply an offset to a local date/time value', () => {
+    expect(formatLocalDateTime('2026-03-29T02:30', 'de-DE')).toBe('29.03.2026, 02:30');
+    expect(isLocalDateTime('2026-03-29T02:30Z')).toBe(false);
+    expect(isLocalDateTime('2026-02-30T12:00')).toBe(false);
+    expect(formatLocalDateTime(undefined)).toBeUndefined();
+  });
+});
+
+describe('instant precision at the API boundary', () => {
+  it('preserves imported seconds and the later occurrence of an ambiguous time', () => {
+    expect(fromDatetimeLocalValue('2026-10-25T02:30:45.123', '2026-10-25T01:30:45.123Z')).toBe(
+      '2026-10-25T01:30:45.123Z'
+    );
+    expect(fromDatetimeLocalValue('2026-07-01T12:30:45.123')).toBe('2026-07-01T10:30:45.123Z');
+    expect(fromDatetimeLocalValue('2026-07-01T12:30:45')).toBe('2026-07-01T10:30:45.000Z');
+    expect(fromDatetimeLocalValue('2026-07-01T12:30:60')).toBe('');
+    expect(fromDatetimeLocalValue('2026-03-29T02:30:45')).toBe('');
+  });
+});
+
+it('recognizes explicit instants and preserves source precision on unchanged serialization', () => {
+  expect(isInstant('2026-10-25T01:30:45.123456Z')).toBe(true);
+  expect(isInstant('2026-02-30T01:30:00Z')).toBe(false);
+  expect(isInstant('2026-10-25T01:30')).toBe(false);
+  expect(isInstant('2026-10-25T02:30:00+01:00')).toBe(true);
+  expect(toDatetimeLocalValue('2026-10-25T01:30:45.123456Z')).toBe('2026-10-25T02:30:45.123');
+  expect(fromDatetimeLocalValue('2026-10-25T02:30:45.123', '2026-10-25T01:30:45.123456Z')).toBe(
+    '2026-10-25T01:30:45.123456Z'
+  );
+});
+
+it('does not interpret an offset-free value using the host time zone', () => {
+  expect(formatDateTimeInEditorTimeZone('2026-07-01T12:30', 'de-DE')).toBe('2026-07-01T12:30');
+  expect(toDatetimeLocalValue('2026-07-01T12:30')).toBe('');
+});
+
+it.each([
+  ['2026-07-01T10:30:45.123Z', '2026-07-01T12:30', '2026-07-01T10:30:00.000Z'],
+  ['2026-07-01T10:30:45.123Z', '2026-07-01T12:30:45', '2026-07-01T10:30:45.000Z'],
+  ['2026-07-01T10:30:00.123Z', '2026-07-01T12:30', '2026-07-01T10:30:00.000Z'],
+])('honors clearing displayed seconds or fractions from %s', (reference, local, expected) => {
+  expect(fromDatetimeLocalValue(local, reference)).toBe(expected);
 });

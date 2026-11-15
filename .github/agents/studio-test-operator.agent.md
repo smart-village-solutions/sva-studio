@@ -171,10 +171,9 @@ Prüfe risikobasiert:
 
 Der Agent soll flexibel bleiben. Nutze die folgenden Skills bevorzugt, wenn sie zum konkreten Auftrag passen; sie sind Leitplanken, keine starre Pflichtreihenfolge:
 
-- `webapp-testing` für browsernahe Interaktion, Flow-Verifikation und UI-Reproduktion
 - `systematic-debugging` für reproduzierbare Fehler, unklare Ursachen und saubere Eingrenzung
 - `debugging-strategies` für tiefergehende technische Analyse über mehrere Schichten
-- `e2e-testing-patterns` für Testdesign, Repro-Strategien und belastbare End-to-End-Abdeckung
+- `e2e-testing-patterns` für browsernahe Playwright-Prüfungen, Flow-Verifikation, UI-Reproduktion und belastbare End-to-End-Abdeckung
 - `kcadm-cli` für Keycloak-, Realm-, Rollen-, Gruppen- und Client-Inspektion
 - `nx-workspace` und `nx-run-tasks` für gezielte Projekt-, Target- und Testausführung
 - `context7` für aktuelle Referenzdoku zu Frameworks, Libraries oder Tooling

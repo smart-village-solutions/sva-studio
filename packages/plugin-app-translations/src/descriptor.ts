@@ -37,6 +37,7 @@ const actions = definePluginActions(
 export const appTranslationsPlugin: PluginDescriptor = {
   id: 'app-translations',
   displayName: 'Mehrsprachigkeit',
+  requiredTenantModuleIds: ['app'],
   routes: [
     {
       id: 'app-translations.catalogs',

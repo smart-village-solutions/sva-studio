@@ -137,7 +137,7 @@ const createClient = (
 });
 
 describe('provisioning-auth-state', () => {
-  it('retains tenant-admin ownership through a managed-profile write and immediate readback without a password', async () => {
+  it.each(['new', 'existing'] as const)('prepares profile fields before creating the tenant admin in a %s realm', async (realmMode) => {
     const managedAttributes = new Set<string>();
     let user: Awaited<ReturnType<KeycloakProvisioningClient['findUserByUsername']>> = null;
     let roles: readonly string[] = [];
@@ -166,7 +166,7 @@ describe('provisioning-auth-state', () => {
     const input = {
       instanceId: 'demo',
       primaryHostname: 'demo.example.org',
-      realmMode: 'new' as const,
+      realmMode,
       authRealm: 'demo',
       authClientId: 'sva-studio',
       authClientSecretConfigured: false,
@@ -181,6 +181,14 @@ describe('provisioning-auth-state', () => {
     await createProvisionInstanceAuthArtifacts(factory)(input);
     const state = await createReadKeycloakState(factory)(input);
 
+    expect([...managedAttributes]).toEqual(expect.arrayContaining([
+      'mainserverUserApplicationId',
+      'mainserverUserApplicationSecret',
+    ]));
+    if (realmMode === 'existing') {
+      expect(client.ensureRealm).not.toHaveBeenCalled();
+      expect(client.ensureUserAttributeProtocolMapper).not.toHaveBeenCalled();
+    }
     expect(state.tenantAdminStatus).toEqual({
       tenantAdminExists: true,
       tenantAdminHasSystemAdmin: true,

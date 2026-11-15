@@ -187,7 +187,10 @@ const saveEventsDetail = async (context: SaveContext, values: EventsDetailFormVa
       context.saveFeedback.markFailed(operationId);
       return;
     }
-    context.setStatus(null);
+    context.setStatus({
+      kind: 'success',
+      text: context.pt((handledResult.saved.visible ?? values.settings.visible) ? 'messages.savedVisible' : 'messages.savedHidden'),
+    });
     context.saveFeedback.markSaved(operationId);
     if (context.mode === 'create') {
       context.leaveGuard.acknowledgeSaved(leaveRevision);

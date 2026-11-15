@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createWasteTestActor } from '../../tests/test-utils/handler-fixtures.js';
+
 import type { ExternalInterfaceRecord } from '@sva/core';
 import type { WasteManagementSettingsRecord } from '@sva/waste-management-contracts';
-
-import type { AuthenticatedRequestContext } from './types.js';
 
 const loadConfiguredWasteSettingsMock = vi.hoisted(() => vi.fn());
 const updateWasteVisibleStatusMock = vi.hoisted(() => vi.fn(async () => undefined));
@@ -67,14 +67,7 @@ const createEmailReminderConfig = () => ({
   materializationLookaheadDays: 7,
 });
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: {
-    id: 'user-1',
-    instanceId: 'tenant-a',
-    roles: ['system_admin'],
-  },
-};
+const actor = createWasteTestActor();
 
 const createInterfaceRecord = (
   overrides: Partial<ExternalInterfaceRecord> = {}

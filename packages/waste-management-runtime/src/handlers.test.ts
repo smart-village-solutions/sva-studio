@@ -16,8 +16,12 @@ import type {
   WasteTourDateShiftRecord,
   WasteTourRecord,
 } from '@sva/waste-management-contracts';
-import type { AuthenticatedRequestContext } from './handlers/types.js';
-
+import {
+  createWasteHandlerDeps,
+  createWasteMutationRequest,
+  createWasteTestActor,
+  wasteResolvedActorInfo,
+} from '../tests/test-utils/handler-fixtures.js';
 import { wasteManagementCoreHandlers } from './handlers.js';
 
 const {
@@ -58,21 +62,7 @@ const {
   updateWasteManagementTourInternal,
 } = wasteManagementCoreHandlers;
 
-const defaultHostDeps = {
-  emitAuditEvent: vi.fn(async () => undefined),
-  resolveActorInfo: vi.fn(async () => ({
-    actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
-  })),
-};
-
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: {
-    id: 'user-1',
-    instanceId: 'tenant-a',
-    roles: ['system_admin'],
-  },
-};
+const actor = createWasteTestActor();
 
 const baseInterfaceRecord = {
   id: 'supabase-1',
@@ -95,22 +85,6 @@ const baseInterfaceRecord = {
   secretConfigCiphertext: 'cipher-secret',
 };
 
-const resolvedActorInfo = {
-  actor: {
-    instanceId: 'tenant-a',
-    actorAccountId: 'account-1',
-    requestId: 'req-test',
-    traceId: 'trace-test',
-  },
-};
-
-const allowPermission = (action: string) => [
-  {
-    action,
-    resourceType: 'waste-management',
-  },
-];
-
 describe('waste-management auth runtime handlers', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -125,15 +99,9 @@ describe('waste-management auth runtime handlers', () => {
     const response = await getWasteManagementSettingsInternal(
       new Request('https://studio.test/api/v1/waste-management/settings'),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.settings.manage'], {
         loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.settings.manage'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(200);
@@ -206,15 +174,9 @@ describe('waste-management auth runtime handlers', () => {
     const response = await getWasteManagementMasterDataOverviewInternal(
       new Request('https://studio.test/api/v1/waste-management/master-data'),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.read'], {
         loadMasterDataOverview: vi.fn(async () => overview),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.read'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(200);
@@ -230,9 +192,7 @@ describe('waste-management auth runtime handlers', () => {
         'https://studio.test/api/v1/waste-management/history?page=2&pageSize=10&q=fraction'
       ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.read'], {
         loadWasteHistoryOverview: vi.fn(async () => ({
           audit: {
             items: [
@@ -262,11 +222,7 @@ describe('waste-management auth runtime handlers', () => {
             total: 1,
           },
         })),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.read'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(200);
@@ -319,17 +275,11 @@ describe('waste-management auth runtime handlers', () => {
     const response = await getWasteManagementMasterDataOverviewInternal(
       new Request('https://studio.test/api/v1/waste-management/master-data'),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.read'], {
         loadMasterDataOverview: vi.fn(async () => overview),
         loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
         saveExternalInterfaceConnectionCheck,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.read'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(200);
@@ -362,15 +312,9 @@ describe('waste-management auth runtime handlers', () => {
     const response = await getWasteManagementToursOverviewInternal(
       new Request('https://studio.test/api/v1/waste-management/tours'),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.read'], {
         loadToursOverview: vi.fn(async () => overview),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.read'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(200);
@@ -425,15 +369,9 @@ describe('waste-management auth runtime handlers', () => {
     const response = await getWasteManagementSchedulingOverviewInternal(
       new Request('https://studio.test/api/v1/waste-management/scheduling'),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.read'], {
         loadSchedulingOverview: vi.fn(async () => overview),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.read'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(200);
@@ -464,26 +402,16 @@ describe('waste-management auth runtime handlers', () => {
     const emitAuditEvent = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementSettingsInternal(
-      new Request('https://studio.test/api/v1/waste-management/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          provider: 'postgresql',
-          schemaName: 'public',
-          enabled: true,
-          holidayStateCode: 'NW',
-          customRecurrencePresets: [{ id: 'preset-10', name: '10 Tage', intervalDays: 10 }],
-          deletedPresetFallbacks: {},
-        }),
+      createWasteMutationRequest('PUT', 'https://studio.test/api/v1/waste-management/settings', {
+        provider: 'postgresql',
+        schemaName: 'public',
+        enabled: true,
+        holidayStateCode: 'NW',
+        customRecurrencePresets: [{ id: 'preset-10', name: '10 Tage', intervalDays: 10 }],
+        deletedPresetFallbacks: {},
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.settings.manage'], {
         saveExternalInterfaceConnectionCheck,
         saveExternalInterfaceRecord,
         loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
@@ -491,11 +419,7 @@ describe('waste-management auth runtime handlers', () => {
         saveWasteCustomRecurrencePresets,
         syncWasteHolidayRules,
         emitAuditEvent,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.settings.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteCustomRecurrencePresets).toHaveBeenCalledWith('tenant-a', {
@@ -520,29 +444,19 @@ describe('waste-management auth runtime handlers', () => {
     const syncWasteHolidayRules = vi.fn(async () => 'partial_success' as const);
 
     const response = await runWasteManagementHolidaySyncInternal(
-      new Request('https://studio.test/api/v1/waste-management/settings/holiday-sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({}),
-      }),
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/settings/holiday-sync',
+        {}
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.settings.manage'], {
         saveExternalInterfaceRecord,
         loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
         loadWasteCustomRecurrencePresets: vi.fn(async () => []),
         syncWasteHolidayRules,
         emitAuditEvent: vi.fn(async () => undefined),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.settings.manage'),
-        })),
-      }
+      })
     );
 
     expect(syncWasteHolidayRules).toHaveBeenCalledWith('tenant-a', 'NW');
@@ -622,59 +536,45 @@ describe('waste-management auth runtime handlers', () => {
     const emitAuditEvent = vi.fn(async () => undefined);
 
     const response = await createWasteManagementFractionInternal(
-      new Request('https://studio.test/api/v1/waste-management/fractions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          id: 'fraction-new',
-          name: 'Papier',
-          pdfShortLabel: 'pap',
-          translations: { de: 'Papier', en: 'Paper' },
-          containerSize: '120L',
-          color: '#123456',
-          description: 'Blaue Tonne',
-          active: true,
-          reminderConfig: {
-            reminderCount: 'twice',
-            channels: {
-              push: true,
-              email: false,
-              calendar: true,
-            },
-            push: {
-              slots: [
-                { id: 'fraction-new:push:first', maxLeadDays: 10, defaultLeadDays: 1 },
-                { id: 'fraction-new:push:second', maxLeadDays: 3, defaultLeadDays: 1 },
-              ],
-            },
-            calendar: {
-              slots: [
-                { id: 'fraction-new:calendar:first', maxLeadDays: 10, defaultLeadDays: 1 },
-                { id: 'fraction-new:calendar:second', maxLeadDays: 3, defaultLeadDays: 1 },
-              ],
-            },
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/fractions', {
+        id: 'fraction-new',
+        name: 'Papier',
+        pdfShortLabel: 'pap',
+        translations: { de: 'Papier', en: 'Paper' },
+        containerSize: '120L',
+        color: '#123456',
+        description: 'Blaue Tonne',
+        active: true,
+        reminderConfig: {
+          reminderCount: 'twice',
+          channels: {
+            push: true,
+            email: false,
+            calendar: true,
           },
-        }),
+          push: {
+            slots: [
+              { id: 'fraction-new:push:first', maxLeadDays: 10, defaultLeadDays: 1 },
+              { id: 'fraction-new:push:second', maxLeadDays: 3, defaultLeadDays: 1 },
+            ],
+          },
+          calendar: {
+            slots: [
+              { id: 'fraction-new:calendar:first', maxLeadDays: 10, defaultLeadDays: 1 },
+              { id: 'fraction-new:calendar:second', maxLeadDays: 3, defaultLeadDays: 1 },
+            ],
+          },
+        },
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         emitAuditEvent,
-        resolveActorInfo: vi.fn(async () => resolvedActorInfo),
+        resolveActorInfo: vi.fn(async () => wasteResolvedActorInfo),
         loadMasterDataFractionsOverview,
         saveWasteFraction,
         loadWasteFractionById,
         startPluginOperationJob,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteFraction).toHaveBeenCalledWith('tenant-a', {
@@ -807,14 +707,10 @@ describe('waste-management auth runtime handlers', () => {
     );
 
     const response = await updateWasteManagementFractionInternal(
-      new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/fractions/fraction-1',
+        {
           name: 'Restmüll Plus',
           pdfShortLabel: 'rpl',
           translations: { de: 'Restmüll Plus', en: 'Residual waste plus' },
@@ -837,22 +733,16 @@ describe('waste-management auth runtime handlers', () => {
               slots: [{ id: 'fraction-1:calendar:first', maxLeadDays: 8, defaultLeadDays: 1 }],
             },
           },
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
-        resolveActorInfo: vi.fn(async () => resolvedActorInfo),
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
+        resolveActorInfo: vi.fn(async () => wasteResolvedActorInfo),
         loadMasterDataFractionsOverview,
         saveWasteFraction,
         loadWasteFractionById,
         startPluginOperationJob,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteFraction).toHaveBeenCalledWith('tenant-a', {
@@ -909,29 +799,15 @@ describe('waste-management auth runtime handlers', () => {
     const loadWasteRegionById = vi.fn(async () => savedRegion);
 
     const response = await createWasteManagementRegionInternal(
-      new Request('https://studio.test/api/v1/waste-management/regions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          id: 'region-new',
-          name: 'Region West',
-        }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/regions', {
+        id: 'region-new',
+        name: 'Region West',
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         saveWasteRegion,
         loadWasteRegionById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteRegion).toHaveBeenCalledWith('tenant-a', {
@@ -966,28 +842,18 @@ describe('waste-management auth runtime handlers', () => {
     const saveWasteRegion = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementRegionInternal(
-      new Request('https://studio.test/api/v1/waste-management/regions/region-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/regions/region-1',
+        {
           name: 'Region Mitte Plus',
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         saveWasteRegion,
         loadWasteRegionById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteRegion).toHaveBeenCalledWith('tenant-a', {
@@ -1014,30 +880,16 @@ describe('waste-management auth runtime handlers', () => {
     const loadWasteCityById = vi.fn(async () => savedCity);
 
     const response = await createWasteManagementCityInternal(
-      new Request('https://studio.test/api/v1/waste-management/cities', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          id: 'city-new',
-          name: 'Musterstadt West',
-          regionId: 'region-1',
-        }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/cities', {
+        id: 'city-new',
+        name: 'Musterstadt West',
+        regionId: 'region-1',
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         saveWasteCity,
         loadWasteCityById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteCity).toHaveBeenCalledWith('tenant-a', {
@@ -1075,29 +927,19 @@ describe('waste-management auth runtime handlers', () => {
     const patchWasteCity = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementCityInternal(
-      new Request('https://studio.test/api/v1/waste-management/cities/city-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/cities/city-1',
+        {
           name: 'Musterstadt Nord',
           regionId: 'region-1',
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         patchWasteCity,
         loadWasteCityById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(patchWasteCity).toHaveBeenCalledWith('tenant-a', 'city-1', {
@@ -1133,26 +975,16 @@ describe('waste-management auth runtime handlers', () => {
     const patchWasteCity = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementCityInternal(
-      new Request('https://studio.test/api/v1/waste-management/cities/city-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({ name: 'Musterstadt Nord' }),
-      }),
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/cities/city-1',
+        { name: 'Musterstadt Nord' }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         patchWasteCity,
         loadWasteCityById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(patchWasteCity).toHaveBeenCalledWith('tenant-a', 'city-1', {
@@ -1183,26 +1015,16 @@ describe('waste-management auth runtime handlers', () => {
     const patchWasteCity = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementCityInternal(
-      new Request('https://studio.test/api/v1/waste-management/cities/city-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({ postalCode: null }),
-      }),
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/cities/city-1',
+        { postalCode: null }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         patchWasteCity,
         loadWasteCityById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(patchWasteCity).toHaveBeenCalledWith('tenant-a', 'city-1', {
@@ -1224,30 +1046,16 @@ describe('waste-management auth runtime handlers', () => {
     const loadWasteStreetById = vi.fn(async () => savedStreet);
 
     const response = await createWasteManagementStreetInternal(
-      new Request('https://studio.test/api/v1/waste-management/streets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          id: 'street-new',
-          name: 'Parkweg',
-          cityId: 'city-1',
-        }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/streets', {
+        id: 'street-new',
+        name: 'Parkweg',
+        cityId: 'city-1',
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         saveWasteStreet,
         loadWasteStreetById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteStreet).toHaveBeenCalledWith('tenant-a', {
@@ -1285,29 +1093,19 @@ describe('waste-management auth runtime handlers', () => {
     const saveWasteStreet = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementStreetInternal(
-      new Request('https://studio.test/api/v1/waste-management/streets/street-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/streets/street-1',
+        {
           name: 'Parkweg Nord',
           cityId: 'city-1',
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         saveWasteStreet,
         loadWasteStreetById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteStreet).toHaveBeenCalledWith('tenant-a', {
@@ -1335,30 +1133,20 @@ describe('waste-management auth runtime handlers', () => {
     const loadWasteHouseNumberById = vi.fn(async () => savedHouseNumber);
 
     const response = await createWasteManagementHouseNumberInternal(
-      new Request('https://studio.test/api/v1/waste-management/house-numbers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/house-numbers',
+        {
           id: 'house-new',
           number: '14',
           streetId: 'street-1',
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         saveWasteHouseNumber,
         loadWasteHouseNumberById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteHouseNumber).toHaveBeenCalledWith('tenant-a', {
@@ -1396,29 +1184,19 @@ describe('waste-management auth runtime handlers', () => {
     const saveWasteHouseNumber = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementHouseNumberInternal(
-      new Request('https://studio.test/api/v1/waste-management/house-numbers/house-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/house-numbers/house-1',
+        {
           number: '14a',
           streetId: 'street-1',
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         saveWasteHouseNumber,
         loadWasteHouseNumberById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteHouseNumber).toHaveBeenCalledWith('tenant-a', {
@@ -1449,33 +1227,23 @@ describe('waste-management auth runtime handlers', () => {
     const loadWasteCollectionLocationById = vi.fn(async () => savedLocation);
 
     const response = await createWasteManagementCollectionLocationInternal(
-      new Request('https://studio.test/api/v1/waste-management/collection-locations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/collection-locations',
+        {
           id: 'location-new',
           cityId: 'city-1',
           regionId: 'region-1',
           streetId: 'street-1',
           houseNumberId: 'house-1',
           active: true,
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         saveWasteCollectionLocation,
         loadWasteCollectionLocationById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteCollectionLocation).toHaveBeenCalledWith('tenant-a', {
@@ -1517,32 +1285,22 @@ describe('waste-management auth runtime handlers', () => {
     const saveWasteCollectionLocation = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementCollectionLocationInternal(
-      new Request('https://studio.test/api/v1/waste-management/collection-locations/location-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/collection-locations/location-1',
+        {
           cityId: 'city-1',
           regionId: 'region-1',
           streetId: 'street-1',
           houseNumberId: 'house-2',
           active: true,
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.master-data.manage'], {
         saveWasteCollectionLocation,
         loadWasteCollectionLocationById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.master-data.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteCollectionLocation).toHaveBeenCalledWith('tenant-a', {
@@ -1573,30 +1331,20 @@ describe('waste-management auth runtime handlers', () => {
     const loadWasteLocationTourLinkById = vi.fn(async () => savedLink);
 
     const response = await createWasteManagementLocationTourLinkInternal(
-      new Request('https://studio.test/api/v1/waste-management/location-tour-links', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/location-tour-links',
+        {
           id: 'link-new',
           locationId: 'location-1',
           tourId: 'tour-1',
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.tours.manage'], {
         saveWasteLocationTourLink,
         loadWasteLocationTourLinkById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.tours.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteLocationTourLink).toHaveBeenCalledWith('tenant-a', {
@@ -1635,30 +1383,20 @@ describe('waste-management auth runtime handlers', () => {
     const emitAuditEvent = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementLocationTourLinkInternal(
-      new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/location-tour-links/link-1',
+        {
           locationId: 'location-1',
           tourId: 'tour-1',
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.tours.manage'], {
         emitAuditEvent,
         saveWasteLocationTourLink,
         loadWasteLocationTourLinkById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.tours.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteLocationTourLink).toHaveBeenCalledWith('tenant-a', {
@@ -1699,25 +1437,16 @@ describe('waste-management auth runtime handlers', () => {
     const emitAuditEvent = vi.fn(async () => undefined);
 
     const response = await deleteWasteManagementLocationTourLinkInternal(
-      new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-1', {
-        method: 'DELETE',
-        headers: {
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      }),
+      createWasteMutationRequest(
+        'DELETE',
+        'https://studio.test/api/v1/waste-management/location-tour-links/link-1'
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.tours.manage'], {
         emitAuditEvent,
         deleteWasteLocationTourLink,
         loadWasteLocationTourLinkById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.tours.manage'),
-        })),
-      }
+      })
     );
 
     expect(deleteWasteLocationTourLink).toHaveBeenCalledWith('tenant-a', 'link-1');
@@ -1757,35 +1486,21 @@ describe('waste-management auth runtime handlers', () => {
     const loadWasteTourById = vi.fn(async () => savedTour);
 
     const response = await createWasteManagementTourInternal(
-      new Request('https://studio.test/api/v1/waste-management/tours', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          id: 'tour-new',
-          name: 'Papier Mitte',
-          description: 'Zweiwöchentliche Tour',
-          wasteFractionIds: ['fraction-2'],
-          recurrence: 'biweekly',
-          firstDate: '2026-05-19',
-          customDates: [{ date: '2026-06-02', description: 'Sonderabfuhr' }],
-          status: 'draft',
-        }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/tours', {
+        id: 'tour-new',
+        name: 'Papier Mitte',
+        description: 'Zweiwöchentliche Tour',
+        wasteFractionIds: ['fraction-2'],
+        recurrence: 'biweekly',
+        firstDate: '2026-05-19',
+        customDates: [{ date: '2026-06-02', description: 'Sonderabfuhr' }],
+        status: 'draft',
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.tours.manage'], {
         saveWasteTour,
         loadWasteTourById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.tours.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteTour).toHaveBeenCalledWith('tenant-a', {
@@ -1903,48 +1618,34 @@ describe('waste-management auth runtime handlers', () => {
     const deleteWasteTour = vi.fn(async () => undefined);
 
     const response = await createWasteManagementTourInternal(
-      new Request('https://studio.test/api/v1/waste-management/tours', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          id: 'tour-copy-1',
-          name: 'Papier Mitte (Kopie)',
-          description: 'Zweiwöchentliche Tour',
-          wasteFractionIds: ['fraction-2'],
-          recurrence: 'biweekly',
-          firstDate: '2026-05-19',
-          customDates: [{ date: '2026-06-02', description: 'Sonderabfuhr' }],
-          duplicateFromTourId: 'tour-source-1',
-          status: 'draft',
-        }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/tours', {
+        id: 'tour-copy-1',
+        name: 'Papier Mitte (Kopie)',
+        description: 'Zweiwöchentliche Tour',
+        wasteFractionIds: ['fraction-2'],
+        recurrence: 'biweekly',
+        firstDate: '2026-05-19',
+        customDates: [{ date: '2026-06-02', description: 'Sonderabfuhr' }],
+        duplicateFromTourId: 'tour-source-1',
+        status: 'draft',
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
-        saveWasteTour,
-        loadWasteTourById,
-        listWasteLocationTourLinksByTourId,
-        saveWasteLocationTourLink,
-        listWasteLocationTourPickupDates,
-        saveWasteLocationTourPickupDate,
-        listWasteTourAssignments,
-        saveWasteTourAssignment,
-        listWasteTourDateShiftsByTourId,
-        saveWasteTourDateShift,
-        deleteWasteTour,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            ...allowPermission('waste-management.tours.manage'),
-            ...allowPermission('waste-management.scheduling.manage'),
-          ],
-        })),
-      }
+      createWasteHandlerDeps(
+        ['waste-management.tours.manage', 'waste-management.scheduling.manage'],
+        {
+          saveWasteTour,
+          loadWasteTourById,
+          listWasteLocationTourLinksByTourId,
+          saveWasteLocationTourLink,
+          listWasteLocationTourPickupDates,
+          saveWasteLocationTourPickupDate,
+          listWasteTourAssignments,
+          saveWasteTourAssignment,
+          listWasteTourDateShiftsByTourId,
+          saveWasteTourDateShift,
+          deleteWasteTour,
+        }
+      )
     );
 
     expect(listWasteLocationTourLinksByTourId).toHaveBeenCalledWith('tenant-a', 'tour-source-1');
@@ -2056,53 +1757,39 @@ describe('waste-management auth runtime handlers', () => {
         throw new Error('TEST copy failed');
       });
       const response = await createWasteManagementTourInternal(
-        new Request('https://studio.test/api/v1/waste-management/tours', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Origin: 'https://studio.test',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
-          body: JSON.stringify({
-            id: targetId,
-            duplicateFromTourId: source.id,
-            name: 'TEST Kopie',
-            wasteFractionIds: source.wasteFractionIds,
-            recurrence: source.recurrence,
-            firstDate: source.firstDate,
-            status: 'draft',
-          }),
+        createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/tours', {
+          id: targetId,
+          duplicateFromTourId: source.id,
+          name: 'TEST Kopie',
+          wasteFractionIds: source.wasteFractionIds,
+          recurrence: source.recurrence,
+          firstDate: source.firstDate,
+          status: 'draft',
         }),
         actor,
-        {
-          ...defaultHostDeps,
-          getRequestId: () => 'req-test',
-          saveWasteTour,
-          deleteWasteTour,
-          loadWasteTourById: vi.fn(
-            async (_instanceId: string, id: string) => storedTours.get(id) ?? null
-          ),
-          listWasteLocationTourLinksByTourId: vi.fn(async () => [
-            {
-              id: 'link-source',
-              locationId: 'location-1',
-              tourId: source.id,
-              createdAt: source.createdAt,
-              updatedAt: source.updatedAt,
-            },
-          ]),
-          listWasteLocationTourPickupDates: vi.fn(async () => []),
-          listWasteTourAssignments: vi.fn(async () => []),
-          listWasteTourDateShiftsByTourId: vi.fn(async () => []),
-          saveWasteLocationTourLink,
-          resolvePermissions: vi.fn(async () => ({
-            ok: true as const,
-            permissions: [
-              ...allowPermission('waste-management.tours.manage'),
-              ...allowPermission('waste-management.scheduling.manage'),
-            ],
-          })),
-        }
+        createWasteHandlerDeps(
+          ['waste-management.tours.manage', 'waste-management.scheduling.manage'],
+          {
+            saveWasteTour,
+            deleteWasteTour,
+            loadWasteTourById: vi.fn(
+              async (_instanceId: string, id: string) => storedTours.get(id) ?? null
+            ),
+            listWasteLocationTourLinksByTourId: vi.fn(async () => [
+              {
+                id: 'link-source',
+                locationId: 'location-1',
+                tourId: source.id,
+                createdAt: source.createdAt,
+                updatedAt: source.updatedAt,
+              },
+            ]),
+            listWasteLocationTourPickupDates: vi.fn(async () => []),
+            listWasteTourAssignments: vi.fn(async () => []),
+            listWasteTourDateShiftsByTourId: vi.fn(async () => []),
+            saveWasteLocationTourLink,
+          }
+        )
       );
       expect.soft(response.status).toBe(expectedStatus);
       expect.soft(saveWasteTour).not.toHaveBeenCalled();
@@ -2116,31 +1803,17 @@ describe('waste-management auth runtime handlers', () => {
     const saveWasteTour = vi.fn(async () => undefined);
 
     const response = await createWasteManagementTourInternal(
-      new Request('https://studio.test/api/v1/waste-management/tours', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          id: 'tour-copy-2',
-          name: 'Papier Mitte (Kopie)',
-          wasteFractionIds: ['fraction-2'],
-          duplicateFromTourId: 'tour-source-1',
-          status: 'draft',
-        }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/tours', {
+        id: 'tour-copy-2',
+        name: 'Papier Mitte (Kopie)',
+        wasteFractionIds: ['fraction-2'],
+        duplicateFromTourId: 'tour-source-1',
+        status: 'draft',
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.tours.manage'], {
         saveWasteTour,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.tours.manage'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(403);
@@ -2171,41 +1844,27 @@ describe('waste-management auth runtime handlers', () => {
     const deleteWasteTour = vi.fn(async () => undefined);
 
     const response = await createWasteManagementTourInternal(
-      new Request('https://studio.test/api/v1/waste-management/tours', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          id: 'tour-copy-3',
-          name: 'Papier Mitte (Kopie)',
-          wasteFractionIds: ['fraction-2'],
-          duplicateFromTourId: 'tour-source-1',
-          status: 'draft',
-        }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/tours', {
+        id: 'tour-copy-3',
+        name: 'Papier Mitte (Kopie)',
+        wasteFractionIds: ['fraction-2'],
+        duplicateFromTourId: 'tour-source-1',
+        status: 'draft',
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
-        saveWasteTour,
-        loadWasteTourById,
-        listWasteLocationTourLinksByTourId,
-        saveWasteLocationTourLink,
-        listWasteLocationTourPickupDates,
-        listWasteTourAssignments,
-        listWasteTourDateShiftsByTourId,
-        deleteWasteTour,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            ...allowPermission('waste-management.tours.manage'),
-            ...allowPermission('waste-management.scheduling.manage'),
-          ],
-        })),
-      }
+      createWasteHandlerDeps(
+        ['waste-management.tours.manage', 'waste-management.scheduling.manage'],
+        {
+          saveWasteTour,
+          loadWasteTourById,
+          listWasteLocationTourLinksByTourId,
+          saveWasteLocationTourLink,
+          listWasteLocationTourPickupDates,
+          listWasteTourAssignments,
+          listWasteTourDateShiftsByTourId,
+          deleteWasteTour,
+        }
+      )
     );
 
     expect(deleteWasteTour).toHaveBeenCalledWith('tenant-a', 'tour-copy-3');
@@ -2238,33 +1897,23 @@ describe('waste-management auth runtime handlers', () => {
     const saveWasteTour = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementTourInternal(
-      new Request('https://studio.test/api/v1/waste-management/tours/tour-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/tours/tour-1',
+        {
           name: 'Restmüll Nord Plus',
           description: 'Angepasste Route',
           wasteFractionIds: ['fraction-1'],
           recurrence: 'weekly',
           firstDate: '2026-05-12',
           status: 'archived',
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.tours.manage'], {
         saveWasteTour,
         loadWasteTourById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.tours.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteTour).toHaveBeenCalledWith('tenant-a', {
@@ -2301,34 +1950,20 @@ describe('waste-management auth runtime handlers', () => {
     }));
 
     const response = await createWasteManagementTourInternal(
-      new Request('https://studio.test/api/v1/waste-management/tours', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          id: 'tour-custom',
-          name: 'Papier Intervall',
-          wasteFractionIds: ['fraction-2'],
-          recurrence: 'weekly',
-          customRecurrenceId: 'preset-10',
-          firstDate: '2026-05-19',
-          status: 'draft',
-        }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/tours', {
+        id: 'tour-custom',
+        name: 'Papier Intervall',
+        wasteFractionIds: ['fraction-2'],
+        recurrence: 'weekly',
+        customRecurrenceId: 'preset-10',
+        firstDate: '2026-05-19',
+        status: 'draft',
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.tours.manage'], {
         saveWasteTour,
         loadWasteTourById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.tours.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteTour).toHaveBeenCalledWith('tenant-a', {
@@ -2366,14 +2001,10 @@ describe('waste-management auth runtime handlers', () => {
     const loadWasteTourDateShiftById = vi.fn(async () => savedShift);
 
     const response = await createWasteManagementTourDateShiftInternal(
-      new Request('https://studio.test/api/v1/waste-management/tour-date-shifts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/tour-date-shifts',
+        {
           id: 'shift-new',
           tourId: 'tour-1',
           originalDate: '2026-12-24',
@@ -2383,19 +2014,13 @@ describe('waste-management auth runtime handlers', () => {
           reasonKey: 'xmas-pull-forward',
           followUpMode: 'propagate-series',
           description: 'Vorverlegt',
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.scheduling.manage'], {
         createWasteTourDateShift,
         loadWasteTourDateShiftById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.scheduling.manage'),
-        })),
-      }
+      })
     );
 
     expect(createWasteTourDateShift).toHaveBeenCalledWith('tenant-a', {
@@ -2443,14 +2068,10 @@ describe('waste-management auth runtime handlers', () => {
     const saveWasteTourDateShift = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementTourDateShiftInternal(
-      new Request('https://studio.test/api/v1/waste-management/tour-date-shifts/shift-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/tour-date-shifts/shift-1',
+        {
           tourId: 'tour-1',
           originalDate: '2026-12-24',
           actualDate: '2026-12-22',
@@ -2459,19 +2080,13 @@ describe('waste-management auth runtime handlers', () => {
           reasonKey: 'xmas-pull-forward',
           followUpMode: 'mark-follow-up-dates',
           description: 'Stärker vorverlegt',
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.scheduling.manage'], {
         saveWasteTourDateShift,
         loadWasteTourDateShiftById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.scheduling.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteTourDateShift).toHaveBeenCalledWith('tenant-a', {
@@ -2510,14 +2125,10 @@ describe('waste-management auth runtime handlers', () => {
     const loadWasteGlobalDateShiftById = vi.fn(async () => savedShift);
 
     const response = await createWasteManagementGlobalDateShiftInternal(
-      new Request('https://studio.test/api/v1/waste-management/global-date-shifts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/global-date-shifts',
+        {
           id: 'global-shift-new',
           originalDate: '2026-01-01',
           actualDate: '2026-01-02',
@@ -2526,19 +2137,13 @@ describe('waste-management auth runtime handlers', () => {
           reasonKey: 'new-year',
           description: 'Neujahr',
           tourIds: ['tour-1'],
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.scheduling.manage'], {
         saveWasteGlobalDateShift,
         loadWasteGlobalDateShiftById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.scheduling.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteGlobalDateShift).toHaveBeenCalledWith('tenant-a', {
@@ -2584,33 +2189,23 @@ describe('waste-management auth runtime handlers', () => {
     const saveWasteGlobalDateShift = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementGlobalDateShiftInternal(
-      new Request('https://studio.test/api/v1/waste-management/global-date-shifts/global-shift-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/global-date-shifts/global-shift-1',
+        {
           originalDate: '2026-01-01',
           actualDate: '2026-01-03',
           hasYear: true,
           reasonType: 'global-deviation',
           reasonKey: 'holiday-backlog',
           tourIds: ['tour-1', 'tour-2'],
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.scheduling.manage'], {
         saveWasteGlobalDateShift,
         loadWasteGlobalDateShiftById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.scheduling.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteGlobalDateShift).toHaveBeenCalledWith('tenant-a', {
@@ -2658,29 +2253,19 @@ describe('waste-management auth runtime handlers', () => {
     const saveWasteHolidayRule = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementHolidayRuleInternal(
-      new Request('https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'PUT',
+        'https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1',
+        {
           scope: 'holiday-only',
           strategy: 'advance',
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.scheduling.manage'], {
         saveWasteHolidayRule,
         loadWasteHolidayRuleById,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.scheduling.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteHolidayRule).toHaveBeenCalledWith('tenant-a', {
@@ -2807,25 +2392,12 @@ describe('waste-management auth runtime handlers', () => {
 
     for (const testCase of cases) {
       const response = await testCase.handler(
-        new Request(testCase.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Origin: 'https://studio.test',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
-          body: JSON.stringify(testCase.body),
-        }),
+        createWasteMutationRequest('POST', testCase.url, testCase.body),
         actor,
-        {
+        createWasteHandlerDeps([testCase.permission], {
           getRequestId: () => `req-${testCase.label}`,
-          ...defaultHostDeps,
-          resolvePermissions: vi.fn(async () => ({
-            ok: true as const,
-            permissions: allowPermission(testCase.permission),
-          })),
           ...testCase.deps,
-        }
+        })
       );
 
       expect(response.status, testCase.label).toBe(503);
@@ -2988,25 +2560,12 @@ describe('waste-management auth runtime handlers', () => {
 
     for (const testCase of cases) {
       const response = await testCase.handler(
-        new Request(testCase.url, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Origin: 'https://studio.test',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
-          body: JSON.stringify(testCase.body),
-        }),
+        createWasteMutationRequest('PUT', testCase.url, testCase.body),
         actor,
-        {
+        createWasteHandlerDeps([testCase.permission], {
           getRequestId: () => `req-${testCase.label}`,
-          ...defaultHostDeps,
-          resolvePermissions: vi.fn(async () => ({
-            ok: true as const,
-            permissions: allowPermission(testCase.permission),
-          })),
           ...testCase.deps,
-        }
+        })
       );
 
       expect(response.status, testCase.label).toBe(503);
@@ -3026,25 +2585,19 @@ describe('waste-management auth runtime handlers', () => {
     );
 
     const response = await startWasteManagementMigrationsInternal(
-      new Request('https://studio.test/api/v1/waste-management/tools/migrations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': 'idem-1',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/tools/migrations',
+        {
           targetSchema: 'wm',
           requestedByVersion: '2026.05.0',
-        }),
-      }),
+        },
+        { 'Idempotency-Key': 'idem-1' }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.settings.manage'], {
         startPluginOperationJob: startJob,
-        resolveActorInfo: vi.fn(async () => resolvedActorInfo),
+        resolveActorInfo: vi.fn(async () => wasteResolvedActorInfo),
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           ...baseInterfaceRecord,
           publicConfig: {
@@ -3052,11 +2605,7 @@ describe('waste-management auth runtime handlers', () => {
             schemaName: 'wm',
           },
         })),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.settings.manage'),
-        })),
-      }
+      })
     );
 
     expect(startJob).toHaveBeenCalledWith({
@@ -3085,24 +2634,18 @@ describe('waste-management auth runtime handlers', () => {
     );
 
     const response = await startWasteManagementInitializeInternal(
-      new Request('https://studio.test/api/v1/waste-management/tools/initialize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': 'idem-0',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/tools/initialize',
+        {
           targetSchema: 'wm',
-        }),
-      }),
+        },
+        { 'Idempotency-Key': 'idem-0' }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.settings.manage'], {
         startPluginOperationJob: startJob,
-        resolveActorInfo: vi.fn(async () => resolvedActorInfo),
+        resolveActorInfo: vi.fn(async () => wasteResolvedActorInfo),
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           ...baseInterfaceRecord,
           publicConfig: {
@@ -3110,11 +2653,7 @@ describe('waste-management auth runtime handlers', () => {
             schemaName: 'wm',
           },
         })),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.settings.manage'),
-        })),
-      }
+      })
     );
 
     expect(startJob).toHaveBeenCalledWith({
@@ -3140,24 +2679,18 @@ describe('waste-management auth runtime handlers', () => {
     const startJob = vi.fn();
 
     const response = await startWasteManagementMigrationsInternal(
-      new Request('https://studio.test/api/v1/waste-management/tools/migrations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': 'idem-2',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/tools/migrations',
+        {
           targetSchema: 'other_schema',
-        }),
-      }),
+        },
+        { 'Idempotency-Key': 'idem-2' }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.settings.manage'], {
         startPluginOperationJob: startJob,
-        resolveActorInfo: vi.fn(async () => resolvedActorInfo),
+        resolveActorInfo: vi.fn(async () => wasteResolvedActorInfo),
         loadDefaultInterfaceRecord: vi.fn(async () => ({
           ...baseInterfaceRecord,
           publicConfig: {
@@ -3165,11 +2698,7 @@ describe('waste-management auth runtime handlers', () => {
             schemaName: 'wm',
           },
         })),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.settings.manage'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(400);
@@ -3205,28 +2734,18 @@ describe('waste-management auth runtime handlers', () => {
     ]);
 
     const response = await createWasteManagementLocationTourLinksBulkInternal(
-      new Request('https://studio.test/api/v1/waste-management/location-tour-links/bulk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/location-tour-links/bulk',
+        {
           locationIds: ['location-1', 'location-2'],
           tourId: 'tour-1',
-        }),
-      }),
+        }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.tours.manage'], {
         saveWasteLocationTourLinksBulk,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.tours.manage'),
-        })),
-      }
+      })
     );
 
     expect(saveWasteLocationTourLinksBulk).toHaveBeenCalledWith('tenant-a', {
@@ -3252,32 +2771,22 @@ describe('waste-management auth runtime handlers', () => {
     );
 
     const response = await startWasteManagementImportInternal(
-      new Request('https://studio.test/api/v1/waste-management/tools/imports', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': 'idem-1',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/tools/imports',
+        {
           importProfileId: 'waste-management.geografie-abholorte',
           sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
           dryRun: true,
-        }),
-      }),
+        },
+        { 'Idempotency-Key': 'idem-1' }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.import.execute'], {
         startPluginOperationJob: startJob,
-        resolveActorInfo: vi.fn(async () => resolvedActorInfo),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.import.execute'),
-        })),
-      }
+        resolveActorInfo: vi.fn(async () => wasteResolvedActorInfo),
+      })
     );
 
     expect(startJob).toHaveBeenCalledWith({
@@ -3304,26 +2813,16 @@ describe('waste-management auth runtime handlers', () => {
 
   it('rejects malformed reset payloads before starting a job', async () => {
     const response = await startWasteManagementResetInternal(
-      new Request('https://studio.test/api/v1/waste-management/tools/reset', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': 'idem-1',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({}),
-      }),
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/tools/reset',
+        {},
+        { 'Idempotency-Key': 'idem-1' }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.reset.execute'], {
         startPluginOperationJob: vi.fn(),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.reset.execute'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(400);
@@ -3340,15 +2839,9 @@ describe('waste-management auth runtime handlers', () => {
     const response = await getWasteManagementSettingsInternal(
       new Request('https://studio.test/api/v1/waste-management/settings'),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.read'], {
         loadDefaultInterfaceRecord,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.read'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(403);
@@ -3356,29 +2849,25 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('resolves waste permissions without loading an active organization context first', async () => {
-    const resolvePermissions = vi.fn(async () => ({
-      ok: true as const,
-      permissions: allowPermission('waste-management.settings.manage'),
-    }));
     const getSessionById = vi.fn(async () => {
       throw new Error('redis_down');
     });
+    const deps = {
+      ...createWasteHandlerDeps(['waste-management.settings.manage'], {
+        loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
+      }),
+      getSessionById,
+    };
 
     const response = await getWasteManagementSettingsInternal(
       new Request('https://studio.test/api/v1/waste-management/settings'),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
-        getSessionById,
-        loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
-        resolvePermissions,
-      }
+      deps
     );
 
     expect(response.status).toBe(200);
     expect(getSessionById).not.toHaveBeenCalled();
-    expect(resolvePermissions).toHaveBeenCalledWith({
+    expect(deps.resolvePermissions).toHaveBeenCalledWith({
       instanceId: actor.user.instanceId,
       keycloakSubject: actor.user.id,
     });
@@ -3388,30 +2877,16 @@ describe('waste-management auth runtime handlers', () => {
     const saveWasteFraction = vi.fn();
 
     const response = await createWasteManagementFractionInternal(
-      new Request('https://studio.test/api/v1/waste-management/fractions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          id: 'fraction-new',
-          name: 'Papier',
-          color: '#123456',
-          active: true,
-        }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/fractions', {
+        id: 'fraction-new',
+        name: 'Papier',
+        color: '#123456',
+        active: true,
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.read'], {
         saveWasteFraction,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.read'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(403);
@@ -3422,28 +2897,14 @@ describe('waste-management auth runtime handlers', () => {
     const saveWasteRegion = vi.fn();
 
     const response = await createWasteManagementRegionInternal(
-      new Request('https://studio.test/api/v1/waste-management/regions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          id: 'region-new',
-          name: 'Region West',
-        }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/regions', {
+        id: 'region-new',
+        name: 'Region West',
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.read'], {
         saveWasteRegion,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.read'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(403);
@@ -3454,29 +2915,15 @@ describe('waste-management auth runtime handlers', () => {
     const saveWasteCity = vi.fn();
 
     const response = await createWasteManagementCityInternal(
-      new Request('https://studio.test/api/v1/waste-management/cities', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({
-          id: 'city-new',
-          name: 'Musterstadt West',
-          regionId: 'region-1',
-        }),
+      createWasteMutationRequest('POST', 'https://studio.test/api/v1/waste-management/cities', {
+        id: 'city-new',
+        name: 'Musterstadt West',
+        regionId: 'region-1',
       }),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.read'], {
         saveWasteCity,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.read'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(403);
@@ -3487,26 +2934,16 @@ describe('waste-management auth runtime handlers', () => {
     const startPluginOperationJob = vi.fn();
 
     const response = await startWasteManagementSeedInternal(
-      new Request('https://studio.test/api/v1/waste-management/tools/seed', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': 'idem-1',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({ seedKey: 'baseline' }),
-      }),
+      createWasteMutationRequest(
+        'POST',
+        'https://studio.test/api/v1/waste-management/tools/seed',
+        { seedKey: 'baseline' },
+        { 'Idempotency-Key': 'idem-1' }
+      ),
       actor,
-      {
-        getRequestId: () => 'req-test',
-        ...defaultHostDeps,
+      createWasteHandlerDeps(['waste-management.import.execute'], {
         startPluginOperationJob,
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: allowPermission('waste-management.import.execute'),
-        })),
-      }
+      })
     );
 
     expect(response.status).toBe(403);

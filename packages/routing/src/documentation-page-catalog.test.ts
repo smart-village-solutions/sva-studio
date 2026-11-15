@@ -7,6 +7,7 @@ import { collectDocumentationPageCatalog } from './documentation-page-catalog.js
 const component = () => null;
 const bindings = {
   home: component,
+  changelog: component,
   content: component,
   contentCreate: component,
   contentDetail: component,
@@ -56,6 +57,7 @@ describe('documentation page catalog', () => {
     const ids = catalog.pages.map((page) => page.id);
 
     expect(ids).toContain('home.overview');
+    expect(ids).toContain('changelog.overview');
     expect(ids).toContain('catalog.entries.list');
     expect(ids).toContain('catalog.entries.create');
     expect(ids).toContain('catalog.entries.detail');

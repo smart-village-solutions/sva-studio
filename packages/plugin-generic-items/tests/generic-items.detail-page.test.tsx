@@ -520,6 +520,29 @@ describe('GenericItemsDetailPage', () => {
     });
   });
 
+  it('creates a new generic date with local date and time components', async () => {
+    render(<GenericItemsDetailPage mode="create" />);
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Termin' } });
+    fireEvent.change(screen.getByLabelText('Generic-Type'), { target: { value: 'custom' } });
+    screen.getByText(/^Termine/, { selector: 'summary' }).closest('details')!.open = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Termin hinzufügen' }));
+    fireEvent.change(document.getElementById('generic-item-date-start-1')!, {
+      target: { value: '10.07.2026' },
+    });
+    fireEvent.change(document.getElementById('generic-item-date-start-1-time')!, {
+      target: { value: '09:00' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Generic Item anlegen' }));
+    await waitFor(() =>
+      expect(createGenericItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dates: [expect.objectContaining({ dateStart: '2026-07-10T09:00' })],
+        }),
+        'user'
+      )
+    );
+  });
+
   it('updates a generic item', async () => {
     render(<GenericItemsDetailPage mode="edit" contentId="generic-1" />);
 

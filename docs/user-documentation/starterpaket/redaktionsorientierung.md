@@ -46,6 +46,14 @@ Diese Begriffe sind nicht austauschbar. Je nach Inhaltstyp gibt es Entwurf, zeit
 sofortige Veröffentlichung, einen Aktiv- oder Sichtbarkeitsschalter oder einen eigenen Status.
 Die Redaktion sollte pro Seite nur den im Steckbrief belegten Lebenszyklus beschreiben.
 
+### Changelog
+
+Alle angemeldeten Personen können unten in der Seitenleiste „Changelog“ öffnen. Dort stehen
+veröffentlichte Studio-Versionen mit Datum und Release Notes, neueste zuerst. „Release auf
+GitHub“ öffnet die Quelle; „Alle Releases auf GitHub“ führt auch zu älteren Versionen.
+Die angezeigten Veröffentlichungen können vom Stand der gerade verwendeten Umgebung abweichen.
+Sind die Notes vorübergehend nicht erreichbar, lässt sich der Abruf erneut versuchen.
+
 ### Historie
 
 Bei mehreren Inhaltstypen zeigt die Historie ausschließlich erfolgreiche Änderungen, die über das

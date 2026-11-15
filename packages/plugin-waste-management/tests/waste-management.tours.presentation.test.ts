@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  calculateTourOccurrenceEntriesForYear,
   calculateTourCalendarForYear,
+  calculateTourOccurrenceEntriesForYear,
   calculateTourOccurrencesForYear,
   formatTourDateRange,
   formatTourRecurrence,
@@ -23,10 +23,10 @@ describe('waste-management.tours.presentation', () => {
       'tours.meta.customRecurrenceLabel'
     );
     expect(formatTourDateRange({ firstDate: '2026-04-01', endDate: '2026-04-08' } as never)).toBe(
-      '2026-04-01 – 2026-04-08'
+      '01.04.2026 – 08.04.2026'
     );
     expect(formatTourDateRange({ firstDate: '2026-04-01', endDate: undefined } as never)).toBe(
-      '2026-04-01'
+      '01.04.2026'
     );
     expect(formatTourDateRange({ firstDate: undefined, endDate: undefined } as never)).toBe('—');
   });

@@ -5,11 +5,7 @@ import {
   type PluginDescriptor,
 } from '@sva/plugin-sdk';
 
-import {
-  SSF_ADMIN_ACTIONS,
-  SSF_SYSTEM_CONFIGURATION_PATH,
-  SSF_TENANT_CONFIGURATION_PATH,
-} from './admin-contracts.js';
+import { SSF_ADMIN_ACTIONS } from './admin-contracts.js';
 import {
   SSF_SYSTEM_CONTENT_V2_ADMIN_PATH,
   SSF_TENANT_CONTENT_V2_ADMIN_PATH,
@@ -26,7 +22,8 @@ import {
 } from './constants.js';
 import { ssfPluginTranslations } from './plugin.translations.js';
 
-export const SSF_RECORDING_DIRECTORY_ENDPOINT_PATH = '/internal/plugins/ssf/v2/recording-directory' as const;
+export const SSF_RECORDING_DIRECTORY_ENDPOINT_PATH =
+  '/internal/plugins/ssf/v2/recording-directory' as const;
 export const SSF_RECORDING_DIRECTORY_SERVER_HANDLER_ID = 'ssf.recording-directory-v2' as const;
 
 const platformAccess = {
@@ -68,7 +65,10 @@ const actions = definePluginActions('ssf', [
 ]);
 
 const permissions = definePluginPermissions('ssf', [
-  ...SSF_RECORDING_PERMISSION_IDS.map(id => ({ id, titleKey: `ssf.permissions.${id.replace('ssf.recording.', 'recording_').replace(/\./gu, '_')}` })),
+  ...SSF_RECORDING_PERMISSION_IDS.map((id) => ({
+    id,
+    titleKey: `ssf.permissions.${id.replace('ssf.recording.', 'recording_').replace(/\./gu, '_')}`,
+  })),
   { id: SSF_ADMIN_ACTIONS.tenantRead, titleKey: 'ssf.permissions.tenantRead' },
   { id: SSF_ADMIN_ACTIONS.tenantManage, titleKey: 'ssf.permissions.tenantManage' },
 ]);
@@ -121,48 +121,52 @@ export const ssfPlugin = {
   },
   translations: ssfPluginTranslations,
   routes: [
-    {
-      id: 'ssf-system-configuration',
-      path: '/plugins/ssf/system-configuration',
+    ...(['overview', 'appearance', 'languages', 'recordings', 'feedback'] as const).map((page) => ({
+      id: `ssf-tenant-${page}` as const,
+      path: `/plugins/ssf/${page}`,
       documentation: {
-        kind: 'page',
-        id: 'ssf.system-configuration',
-        pageType: 'setup',
+        kind: 'page' as const,
+        id: `ssf.tenant-${page}`,
+        pageType: page === 'overview' ? ('overview' as const) : ('setup' as const),
       },
-      actionId: SSF_ADMIN_ACTIONS.systemRead,
-      serverHandlerId: 'ssf.system-configuration.read',
-      accessRequirement: platformAccess,
-    },
-    {
-      id: 'ssf-tenant-configuration',
-      path: '/plugins/ssf/configuration',
-      documentation: {
-        kind: 'page',
-        id: 'ssf.tenant-configuration',
-        pageType: 'setup',
-      },
+      ...(page === 'overview' ? {} : { editorLeaveGuard: true as const }),
       actionId: SSF_ADMIN_ACTIONS.tenantRead,
-      serverHandlerId: 'ssf.tenant-configuration.read',
+      serverHandlerId: 'ssf.tenant-content-v2.read',
       accessRequirement: tenantReadAccess,
-    },
+    })),
+    ...(['overview', 'default-configuration', 'default-content'] as const).map((page) => ({
+      id: `ssf-system-${page}` as const,
+      path: `/plugins/ssf/system/${page}`,
+      documentation: {
+        kind: 'page' as const,
+        id: `ssf.system-${page}`,
+        pageType: page === 'overview' ? ('overview' as const) : ('setup' as const),
+      },
+      ...(page === 'overview' ? {} : { editorLeaveGuard: true as const }),
+      actionId: SSF_ADMIN_ACTIONS.systemRead,
+      serverHandlerId: 'ssf.system-content-v2.read',
+      accessRequirement: platformAccess,
+    })),
   ],
   navigation: [
-    {
-      id: 'ssf.system-navigation',
-      to: '/plugins/ssf/system-configuration',
-      titleKey: 'ssf.navigation.system',
-      section: 'system',
-      actionId: SSF_ADMIN_ACTIONS.systemRead,
-      accessRequirement: platformAccess,
-    },
-    {
-      id: 'ssf.tenant-navigation',
-      to: '/plugins/ssf/configuration',
-      titleKey: 'ssf.navigation.tenant',
-      section: 'applications',
+    ...(['overview', 'appearance', 'languages', 'recordings', 'feedback'] as const).map((page) => ({
+      id: `ssf.tenant-navigation-${page}`,
+      to: `/plugins/ssf/${page}`,
+      titleKey: `ssf.administration.pages.${page}`,
+      section: 'applications' as const,
+      group: { id: 'ssf.application', titleKey: 'ssf.navigation.tenant' },
       actionId: SSF_ADMIN_ACTIONS.tenantRead,
       accessRequirement: tenantReadAccess,
-    },
+    })),
+    ...(['overview', 'default-configuration', 'default-content'] as const).map((page) => ({
+      id: `ssf.system-navigation-${page}`,
+      to: `/plugins/ssf/system/${page}`,
+      titleKey: `ssf.administration.pages.${page === 'overview' ? 'installation-overview' : page}`,
+      section: 'applications' as const,
+      group: { id: 'ssf.installation', titleKey: 'ssf.navigation.tenant' },
+      actionId: SSF_ADMIN_ACTIONS.systemRead,
+      accessRequirement: platformAccess,
+    })),
   ],
   serverHandlers: [
     {
@@ -170,8 +174,11 @@ export const ssfPlugin = {
       path: SSF_RECORDING_DIRECTORY_ENDPOINT_PATH,
       method: 'GET',
       actionId: SSF_RUNTIME_SERVICE_ACTION,
-      accessRequirement: { kind: 'service', serviceId: SSF_RUNTIME_SERVICE_ID,
-        tenantBinding: { kind: 'header', headerName: SSF_RUNTIME_TENANT_HEADER } },
+      accessRequirement: {
+        kind: 'service',
+        serviceId: SSF_RUNTIME_SERVICE_ID,
+        tenantBinding: { kind: 'header', headerName: SSF_RUNTIME_TENANT_HEADER },
+      },
     },
     {
       id: SSF_RUNTIME_SERVER_HANDLER_ID,
@@ -194,13 +201,6 @@ export const ssfPlugin = {
         serviceId: SSF_RUNTIME_SERVICE_ID,
         tenantBinding: { kind: 'header', headerName: SSF_RUNTIME_TENANT_HEADER },
       },
-    },
-    {
-      id: 'ssf.system-configuration.read',
-      path: SSF_SYSTEM_CONFIGURATION_PATH,
-      method: 'GET',
-      actionId: SSF_ADMIN_ACTIONS.systemRead,
-      accessRequirement: platformAccess,
     },
     {
       id: 'ssf.system-content-v2.read',
@@ -226,27 +226,6 @@ export const ssfPlugin = {
     {
       id: 'ssf.tenant-content-v2.write',
       path: SSF_TENANT_CONTENT_V2_ADMIN_PATH,
-      method: 'PUT',
-      actionId: SSF_ADMIN_ACTIONS.tenantManage,
-      accessRequirement: tenantManageAccess,
-    },
-    {
-      id: 'ssf.system-configuration.write',
-      path: SSF_SYSTEM_CONFIGURATION_PATH,
-      method: 'PUT',
-      actionId: SSF_ADMIN_ACTIONS.systemManage,
-      accessRequirement: platformAccess,
-    },
-    {
-      id: 'ssf.tenant-configuration.read',
-      path: SSF_TENANT_CONFIGURATION_PATH,
-      method: 'GET',
-      actionId: SSF_ADMIN_ACTIONS.tenantRead,
-      accessRequirement: tenantReadAccess,
-    },
-    {
-      id: 'ssf.tenant-configuration.write',
-      path: SSF_TENANT_CONFIGURATION_PATH,
       method: 'PUT',
       actionId: SSF_ADMIN_ACTIONS.tenantManage,
       accessRequirement: tenantManageAccess,

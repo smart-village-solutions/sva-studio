@@ -186,7 +186,7 @@ export function ConstructionSiteMediaOverlay({
   onAddManual,
 }: Readonly<{
   media: ReturnType<typeof useConstructionSiteMediaPicker>;
-  onAddManual: () => string;
+  onAddManual: (persistentUrl?: string) => string;
 }>) {
   const { assets, picker, capabilities } = media;
   const pt = usePluginTranslation('construction-sites');

@@ -1,6 +1,4 @@
-import { loadProjectAssetSnapshot } from './projects.images.js';
-import { ProjectHistoryTab } from './projects.history.js';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { formatDateTimeInEditorTimeZone, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   ContentOwnershipPanelSlot,
   Input,
@@ -14,7 +12,8 @@ import {
 } from '@sva/studio-ui-react';
 import { Controller, type UseFormReturn } from 'react-hook-form';
 import type { ProjectContentItem } from './projects.api-types.js';
-import { ProjectImages } from './projects.images.js';
+import { ProjectHistoryTab } from './projects.history.js';
+import { loadProjectAssetSnapshot, ProjectImages } from './projects.images.js';
 import type { ProjectFormValues } from './projects.validation.js';
 
 export type ProjectTab = 'basis' | 'content' | 'settings' | 'history';
@@ -30,7 +29,7 @@ type TabInput = Readonly<{
   canSelectMedia: boolean;
   canUploadMedia: boolean;
   mediaEditingDisabled: boolean;
-  onAddManualMedia: () => string;
+  onAddManualMedia: (persistentUrl?: string) => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
 }>;
 
@@ -191,11 +190,11 @@ function SettingsTab({ pt, form, item }: TabInput) {
             </div>
             <div>
               <dt className="font-medium">{pt('fields.createdAt')}</dt>
-              <dd>{item.createdAt}</dd>
+              <dd>{formatDateTimeInEditorTimeZone(item.createdAt)}</dd>
             </div>
             <div>
               <dt className="font-medium">{pt('fields.updatedAt')}</dt>
-              <dd>{item.updatedAt}</dd>
+              <dd>{formatDateTimeInEditorTimeZone(item.updatedAt)}</dd>
             </div>
           </dl>
         </StudioDetailCard>

@@ -36,9 +36,15 @@ vi.mock('@sva/plugin-sdk', async (load) => ({
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => state.navigate,
   useParams: () => ({}),
-  Link: ({ children, to, search }: { children: React.ReactNode; to: string; search?: Record<string, string> }) => (
-    <a href={`${to}${search ? `?${new URLSearchParams(search)}` : ''}`}>{children}</a>
-  ),
+  Link: ({
+    children,
+    to,
+    search,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    search?: Record<string, string>;
+  }) => <a href={`${to}${search ? `?${new URLSearchParams(search)}` : ''}`}>{children}</a>,
 }));
 vi.mock('../src/vouchers.api.js', () => ({
   getVoucher: state.get,
@@ -47,7 +53,10 @@ vi.mock('../src/vouchers.api.js', () => ({
   reconcileVoucher: state.reconcile,
   changeVoucherVisibility: state.visibility,
   listVoucherCategories: async () => ({
-    data: [{ id: 'cat', name: 'Kultur' }, { id: 'cat-2', name: 'Freizeit' }],
+    data: [
+      { id: 'cat', name: 'Kultur' },
+      { id: 'cat-2', name: 'Freizeit' },
+    ],
   }),
   listVoucherLocations: state.locations,
 }));
@@ -164,8 +173,9 @@ describe('voucher editor', () => {
   });
   it('links back to the canonical voucher content list', async () => {
     await edit();
-    expect(screen.getByRole('link', { name: labels.actions.back }).getAttribute('href'))
-      .toBe('/admin/content?type=vouchers.voucher');
+    expect(screen.getByRole('link', { name: labels.actions.back }).getAttribute('href')).toBe(
+      '/admin/content?type=vouchers.voucher'
+    );
   });
   it('shows actual usage and waits for explicit sibling reset confirmation', async () => {
     await edit();
@@ -496,8 +506,14 @@ describe('shared editorial controls', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: labels.messages.mediaPickerLinkAction })
     );
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+      target: { value: 'https://example.test/image.jpg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByLabelText(labels.media.url)).toBeDefined();
+    expect((screen.getByLabelText(labels.media.url) as HTMLInputElement).value).toBe(
+      'https://example.test/image.jpg'
+    );
   });
   it('reorders images with their metadata and host references intact', async () => {
     state.get.mockResolvedValue({
@@ -743,7 +759,7 @@ it('keeps rich text and category selection in the same content save and removes 
   fireEvent.click(screen.getByLabelText(labels.fields.categories));
   fireEvent.click(screen.getByRole('checkbox', { name: 'Kultur' }));
   fireEvent.click(screen.getByRole('button', { name: labels.media.add }));
-  fireEvent.click(screen.getByRole('button', { name: labels.media.remove }));
+  fireEvent.click(screen.getByRole('button', { name: 'media.picker.removeFromContent' }));
   fireEvent.click(screen.getByRole('button', { name: labels.actions.update }));
   await waitFor(() => expect(state.prepare).toHaveBeenCalledOnce());
   expect(state.prepare.mock.calls[0][0]).toMatchObject({
@@ -795,16 +811,19 @@ it('uses an exact resource grant to offer visibility to a scoped publisher', asy
   expect(screen.getByLabelText(labels.fields.title).closest('fieldset')?.disabled).toBe(true);
 });
 
-
 it('loads every location page automatically and offers alphabetical searchable choices', async () => {
   state.locations
     .mockResolvedValueOnce({ data: [], pagination: { hasNextPage: true } })
     .mockResolvedValueOnce({
-      data: [{ id: '3', name: 'Zoo' }, { id: '1', name: 'Ärztehaus' }],
+      data: [
+        { id: '3', name: 'Zoo' },
+        { id: '1', name: 'Ärztehaus' },
+      ],
       pagination: { hasNextPage: true },
     })
     .mockResolvedValueOnce({
-      data: [{ id: '2', name: 'Bürgerhaus' }], pagination: { hasNextPage: false },
+      data: [{ id: '2', name: 'Bürgerhaus' }],
+      pagination: { hasNextPage: false },
     });
   render(<VoucherEditor />);
   await waitFor(() => expect(state.locations).toHaveBeenCalledTimes(3));
@@ -812,14 +831,22 @@ it('loads every location page automatically and offers alphabetical searchable c
   expect(screen.queryByRole('button', { name: labels.actions.next })).toBeNull();
   expect(screen.queryByText(labels.confirmation.hint)).toBeNull();
   fireEvent.click(await screen.findByRole('button', { name: labels.fields.location }));
-  expect(within(await screen.findByRole('listbox', { name: labels.fields.location })).getAllByRole('option').map((option) => option.textContent)).toEqual([
-    'Ärztehaus', 'Bürgerhaus', 'Zoo',
-  ]);
+  expect(
+    within(await screen.findByRole('listbox', { name: labels.fields.location }))
+      .getAllByRole('option')
+      .map((option) => option.textContent)
+  ).toEqual(['Ärztehaus', 'Bürgerhaus', 'Zoo']);
   const search = screen.getByRole('combobox', { name: labels.fields.locationSearch });
   fireEvent.change(search, { target: { value: 'bürger' } });
-  expect(within(screen.getByRole('listbox', { name: labels.fields.location })).getAllByRole('option').map((option) => option.textContent)).toEqual(['Bürgerhaus']);
+  expect(
+    within(screen.getByRole('listbox', { name: labels.fields.location }))
+      .getAllByRole('option')
+      .map((option) => option.textContent)
+  ).toEqual(['Bürgerhaus']);
   fireEvent.click(screen.getByRole('option', { name: 'Bürgerhaus' }));
-  expect(screen.getByRole('button', { name: labels.fields.location }).textContent).toContain('Bürgerhaus');
+  expect(screen.getByRole('button', { name: labels.fields.location }).textContent).toContain(
+    'Bürgerhaus'
+  );
   fireEvent.click(screen.getByRole('button', { name: labels.fields.location }));
   fireEvent.change(screen.getByRole('combobox', { name: labels.fields.locationSearch }), {
     target: { value: 'unbekannt' },
@@ -829,11 +856,16 @@ it('loads every location page automatically and offers alphabetical searchable c
 
 it('keeps an existing location fixed and places the redemption hint in the save section', async () => {
   await edit();
-  expect((screen.getByRole('button', { name: labels.fields.location }) as HTMLButtonElement).disabled).toBe(true);
-  expect(document.getElementById('voucher-section-location')?.textContent).not.toContain(labels.confirmation.hint);
-  expect(document.getElementById('voucher-section-save')?.textContent).toContain(labels.confirmation.hint);
+  expect(
+    (screen.getByRole('button', { name: labels.fields.location }) as HTMLButtonElement).disabled
+  ).toBe(true);
+  expect(document.getElementById('voucher-section-location')?.textContent).not.toContain(
+    labels.confirmation.hint
+  );
+  expect(document.getElementById('voucher-section-save')?.textContent).toContain(
+    labels.confirmation.hint
+  );
 });
-
 
 it('reports a failed later location page without losing the draft or loaded choices', async () => {
   state.locations

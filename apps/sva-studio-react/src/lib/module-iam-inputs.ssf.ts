@@ -1,5 +1,8 @@
 import { studioHostModuleIamContracts } from '@sva/studio-module-iam';
 
-export const studioHostModuleContracts = studioHostModuleIamContracts.filter(
-  ({ moduleId }) => moduleId !== 'app'
+import { filterModuleContractsForDistribution } from './studio-distribution.js';
+
+export const studioHostModuleContracts = filterModuleContractsForDistribution(
+  studioHostModuleIamContracts,
+  'ssf'
 );

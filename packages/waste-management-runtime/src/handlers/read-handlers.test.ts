@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AuthenticatedRequestContext } from './types.js';
+import {
+  createWasteAuthDeps,
+  createWasteTestActor,
+  grantWastePermissions,
+} from '../../tests/test-utils/handler-fixtures.js';
 
 const updateWasteVisibleStatusMock = vi.hoisted(() => vi.fn(async () => undefined));
 const loggerState = vi.hoisted(() => ({
@@ -32,30 +36,9 @@ vi.mock('./settings-shared.js', async (importOriginal) => {
 
 import { wasteManagementReadHandlers } from './read-handlers.js';
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: {
-    id: 'user-1',
-    instanceId: 'tenant-a',
-    roles: ['system_admin'],
-  },
-};
+const actor = createWasteTestActor();
 
-const createDeps = (action = 'waste-management.read') => ({
-  getRequestId: () => 'req-test',
-  getSessionById: vi.fn(async () => ({
-    activeOrganizationId: 'org-1',
-  })),
-  resolvePermissions: vi.fn(async () => ({
-    ok: true as const,
-    permissions: [
-      {
-        action,
-        resourceType: 'waste-management',
-      },
-    ],
-  })),
-});
+const createDeps = (action = 'waste-management.read') => createWasteAuthDeps([action]);
 
 describe('waste-management read handlers', () => {
   beforeEach(() => {
@@ -187,16 +170,11 @@ describe('waste-management read handlers', () => {
           createdAt: Date.now(),
           activeOrganizationId: '11111111-1111-4111-8111-111111111111',
         })),
-        resolvePermissions: vi.fn(async () => ({
-          ok: true as const,
-          permissions: [
-            {
-              action: 'waste-management.read',
-              resourceType: 'waste-management',
-              organizationId: '11111111-1111-4111-8111-111111111111',
-            },
-          ],
-        })),
+        ...grantWastePermissions({
+          action: 'waste-management.read',
+          resourceType: 'waste-management',
+          organizationId: '11111111-1111-4111-8111-111111111111',
+        }),
         loadMasterDataOverview: vi.fn(async () => ({
           fractions: [],
           regions: [],
@@ -219,13 +197,7 @@ describe('waste-management read handlers', () => {
         actor,
         {
           getRequestId: () => 'req-test',
-          getSessionById: vi.fn(async () => ({
-            activeOrganizationId: 'org-1',
-          })),
-          resolvePermissions: vi.fn(async () => ({
-            ok: true as const,
-            permissions: [],
-          })),
+          ...grantWastePermissions(),
           loadMasterDataOverview: vi.fn(async () => ({ fractions: [] })),
         }
       );

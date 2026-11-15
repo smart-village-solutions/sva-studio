@@ -120,7 +120,7 @@ const WasteEmailMonitoringContent = ({ pt }: { pt: EmailMonitoringTranslate }) =
   const deliveries = result?.deliveryKey === deliveryKey ? result.data.deliveries : [];
   const deliveryTotal = result?.deliveryKey === deliveryKey ? result.data.deliveryTotal : 0;
   return (
-    <div className="space-y-6" aria-busy={loading}>
+    <div className="min-w-0 max-w-6xl space-y-6" aria-busy={loading}>
       <MonitoringControls pt={pt} selection={selection} onChange={setSelection} />
       <p className="text-sm text-muted-foreground">{pt('emailMonitoring.privacy')}</p>
       {error && <StudioErrorState>{pt('emailMonitoring.error')}</StudioErrorState>}
@@ -145,7 +145,7 @@ export const WasteEmailMonitoringPage = () => {
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
-  const pt = usePluginTranslation('waste-management');
+  const pt = usePluginTranslation('wasteManagement');
   const canRead =
     access.isResolved &&
     !access.hasError &&

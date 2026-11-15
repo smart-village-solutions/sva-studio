@@ -1,6 +1,26 @@
-import { mediaImageEditorResources, mediaEditorResources } from './media-editor.resources';
+import {
+  mediaImageEditorResources,
+  mediaEditorResources,
+} from './media-editor.partial.resources.js';
 
 export const mediaDEResources = {
+  picker: {
+    linkHint:
+      'Fügen Sie den direkten Link zum Bild ein. Weitere Bildangaben können Sie nach der Übernahme im Inhalt ergänzen.',
+    url: 'Bild-URL',
+    urlUpgradedToHttps: 'Die Bild-URL wurde auf HTTPS umgestellt.',
+    urlInsecureHttp:
+      'Diese HTTP-Adresse ist unverschlüsselt. Der Browser kann das Bild blockieren.',
+    urlHttpsUnavailable:
+      'Keine funktionierende HTTPS-Version gefunden. Bitte verwenden Sie einen vollständigen Bildlink.',
+    urlInvalid: 'Die Bild-URL ist ungültig oder nicht dauerhaft speicherbar.',
+    preview: 'Vorschau des verlinkten Bildes',
+    previewUnavailable:
+      'Keine Vorschau verfügbar. Ein gültiger Bildlink kann trotzdem übernommen werden.',
+    cancel: 'Abbrechen',
+    useMedia: 'Medium übernehmen',
+    removeFromContent: 'Medium aus diesem Inhalt entfernen',
+  },
   scan: {
     title: 'Virenprüfung',
     clean: 'Geprüft – kein Schadsoftware-Fund',

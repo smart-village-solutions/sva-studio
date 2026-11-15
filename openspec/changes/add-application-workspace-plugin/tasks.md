@@ -5,7 +5,7 @@ Die Umsetzung wurde am 8. November 2026 freigegeben. Erledigte Arbeiten und auss
 ## 1. Freigabe und Bestandsabgleich
 
 - [x] 1.1 Proposal, Design, Spezifikationen und kritische Invarianten schriftlich prüfen und freigeben lassen.
-- [x] 1.2 Aktuelle Plugin-, Access-, Routing-, Persistenz- und UI-Pfade sowie Überschneidungen mit Suchplugin und Design-System-Change prüfen; vor nichttrivialen Codeänderungen verfügbare XERJ-Referenzen einschließlich Indexstand und Lizenz prüfen.
+- [x] 1.2 Aktuelle Plugin-, Access-, Routing-, Persistenz- und UI-Pfade sowie Überschneidungen mit Suchplugin und Design-System-Change prüfen.
 - [x] 1.3 Vor DB-Entwurf die kanonischen Schemaquellen und DB-Skills prüfen; konkrete pluginbezogene Persistenz und Migration im bestehenden Studio-DB-Pfad festlegen, ohne generisches Settings-Framework.
 
 ## 2. Plugin- und Host-Vertrag

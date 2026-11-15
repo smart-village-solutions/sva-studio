@@ -331,3 +331,22 @@ describe('generic items validation', () => {
     expect(result.success).toBe(false);
   });
 });
+
+
+describe('temporal API formats', () => {
+  it('rejects localized dates and offset-free absolute timestamps', () => {
+    const form = createValidFormValues();
+    form.dates[0]!.dateStart = '01.07.2026';
+    expect(genericItemsDetailFormSchema.safeParse(form).success).toBe(false);
+    form.dates[0]!.dateStart = '2026-07-01';
+    form.publishedAt = '2026-07-01T12:00';
+    expect(genericItemsDetailFormSchema.safeParse(form).success).toBe(false);
+    form.publishedAt = '2026-07-01T10:00:00.000Z';
+    expect(genericItemsDetailFormSchema.safeParse(form).success).toBe(true);
+  });
+  it('retains the explicit legacy technical-string contract of publicationDate', () => {
+    const form = createValidFormValues();
+    form.publicationDate = 'technical-legacy-value';
+    expect(genericItemsDetailFormSchema.safeParse(form).success).toBe(true);
+  });
+});

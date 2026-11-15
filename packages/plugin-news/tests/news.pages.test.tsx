@@ -616,9 +616,8 @@ describe('News editor pages', () => {
     await openContentTab();
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: ' ' } });
     await openReleaseTab();
-    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
-      target: { value: '2026-04-14T09:30' },
-    });
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-04-14' } });
+    fireEvent.change(document.getElementById('news-scheduled-publication-at-time')!, { target: { value: '09:30' } });
     clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
@@ -653,9 +652,8 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p><br></p>' } });
     await openReleaseTab();
-    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
-      target: { value: '2026-04-14T09:30' },
-    });
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-04-14' } });
+    fireEvent.change(document.getElementById('news-scheduled-publication-at-time')!, { target: { value: '09:30' } });
     clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
@@ -709,9 +707,8 @@ describe('News editor pages', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     await openReleaseTab();
-    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
-      target: { value: '2026-03-29T02:30' },
-    });
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-03-29' } });
+    fireEvent.change(document.getElementById('news-scheduled-publication-at-time')!, { target: { value: '02:30' } });
     await openContentTab();
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
@@ -723,8 +720,10 @@ describe('News editor pages', () => {
       ).toBeGreaterThan(0);
     });
 
+    fireEvent.blur(screen.getByLabelText('Zeitpunkt der Veröffentlichung'));
+    expect((document.getElementById('news-scheduled-publication-at-time') as HTMLInputElement).value).toBe('02:30');
     expect(screen.getByLabelText('Zeitpunkt der Veröffentlichung').getAttribute('value')).toBe(
-      '2026-03-29T02:30'
+      '29.03.2026'
     );
     expect(
       screen.getByLabelText('Zeitpunkt der Veröffentlichung').getAttribute('aria-invalid')
@@ -739,9 +738,8 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     await openReleaseTab();
-    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
-      target: { value: '2026-04-14T09:30' },
-    });
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-04-14' } });
+    fireEvent.change(document.getElementById('news-scheduled-publication-at-time')!, { target: { value: '09:30' } });
     clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
@@ -809,9 +807,8 @@ describe('News editor pages', () => {
     });
     fireEvent.change(screen.getByLabelText('Bildunterschrift'), { target: { value: 'Bild' } });
     await openReleaseTab();
-    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
-      target: { value: '2026-04-14T09:30' },
-    });
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-04-14' } });
+    fireEvent.change(document.getElementById('news-scheduled-publication-at-time')!, { target: { value: '09:30' } });
     clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
@@ -852,9 +849,8 @@ describe('News editor pages', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
     await openReleaseTab();
     expect(screen.queryByRole('checkbox', { name: /Push-Benachrichtigung senden/ })).toBeNull();
-    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
-      target: { value: '2026-04-14T09:30' },
-    });
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-04-14' } });
+    fireEvent.change(document.getElementById('news-scheduled-publication-at-time')!, { target: { value: '09:30' } });
     await openContentTab();
     fireEvent.change(screen.getByLabelText('Quell-URL'), {
       target: { value: 'https://example.com/news' },
@@ -1035,9 +1031,8 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     await openReleaseTab();
-    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
-      target: { value: '2026-04-14T09:30' },
-    });
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-04-14' } });
+    fireEvent.change(document.getElementById('news-scheduled-publication-at-time')!, { target: { value: '09:30' } });
     clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
@@ -1062,9 +1057,8 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     await openReleaseTab();
-    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
-      target: { value: '2026-04-14T09:30' },
-    });
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-04-14' } });
+    fireEvent.change(document.getElementById('news-scheduled-publication-at-time')!, { target: { value: '09:30' } });
     clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
@@ -1094,9 +1088,8 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     await openReleaseTab();
-    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
-      target: { value: '2026-04-14T09:30' },
-    });
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-04-14' } });
+    fireEvent.change(document.getElementById('news-scheduled-publication-at-time')!, { target: { value: '09:30' } });
     clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
@@ -1120,9 +1113,8 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     await openReleaseTab();
-    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
-      target: { value: '2026-04-14T09:30' },
-    });
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-04-14' } });
+    fireEvent.change(document.getElementById('news-scheduled-publication-at-time')!, { target: { value: '09:30' } });
     clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
@@ -1372,7 +1364,7 @@ describe('News editor pages', () => {
     const settingsPanel = screen.getByRole('tabpanel', { name: /Einstellungen/ });
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('2099-08-14T11:30')).toBeTruthy();
+      expect(screen.getByDisplayValue('14.08.2099')).toBeTruthy();
       expect(within(settingsPanel).getByText('Veröffentlichung')).toBeTruthy();
       expect(within(settingsPanel).getByRole('radio', { name: /Zeitgesteuert/ })).toBeTruthy();
     });
@@ -1774,7 +1766,7 @@ describe('News editor pages', () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText('Zeitpunkt der Veröffentlichung').getAttribute('value')).toBe(
-        '2099-08-14T11:30'
+        '14.08.2099'
       );
     });
   });

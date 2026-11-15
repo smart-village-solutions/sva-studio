@@ -2,6 +2,7 @@ import type { ProtectedRouteOptions } from './protected.routes.js';
 import { uiRoutePaths } from './route-paths.js';
 
 export type AccountUiRouteGuardKey =
+  | 'changelog'
   | 'account'
   | 'accountPrivacy'
   | 'accountPrivacyDetail'
@@ -50,6 +51,7 @@ export const accountUiRouteGuardDefinitions: Record<
   AccountUiRouteGuardKey,
   AccountUiRouteGuardDefinition
 > = {
+  changelog: { kind: 'protected', route: uiRoutePaths.changelog },
   account: { kind: 'protected', route: uiRoutePaths.account },
   accountPrivacy: { kind: 'protected', route: uiRoutePaths.accountPrivacy },
   accountPrivacyDetail: { kind: 'protected', route: uiRoutePaths.accountPrivacyDetail },

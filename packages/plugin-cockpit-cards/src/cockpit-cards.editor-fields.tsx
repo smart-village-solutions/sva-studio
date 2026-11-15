@@ -2,6 +2,7 @@ import {
   Checkbox,
   ContentOwnershipPanelSlot,
   Input,
+  InstantInput,
   Select,
   StudioDetailCard,
   StudioField,
@@ -93,10 +94,20 @@ function PublicationField({ form, pt }: FieldProps) {
       label={pt('fields.publicationDate')}
       description={pt('create.dateHelp')}
     >
-      <Input
-        aria-describedby="cockpit-card-publication-description"
-        id="cockpit-card-publication"
-        {...form.register('publicationDate')}
+      <Controller
+        control={form.control}
+        name="publicationDate"
+        render={({ field }) => (
+          <InstantInput
+            label={pt('fields.publicationDate')}
+            id="cockpit-card-publication"
+            aria-describedby="cockpit-card-publication-description"
+            value={field.value ?? ''}
+            onValueChange={field.onChange}
+            onBlur={field.onBlur}
+            ref={field.ref}
+          />
+        )}
       />
     </StudioField>
   );

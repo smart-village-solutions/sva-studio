@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router';
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import {
   Button,
   Input,
@@ -11,8 +11,9 @@ import {
   StudioPagination,
   type MainserverPrincipalControlModel,
 } from '@sva/studio-ui-react';
-import { VoucherUsageView } from './vouchers.usage-view.js';
+import { Link } from '@tanstack/react-router';
 import { useVoucherList, type VoucherListState } from './vouchers.list-data.js';
+import { VoucherUsageView } from './vouchers.usage-view.js';
 function VoucherSearch({
   s,
 }: Readonly<{
@@ -183,7 +184,9 @@ function VoucherPaging({
         onPageChange={s.setPage}
       />
       <p className="text-xs text-muted-foreground">
-        {s.t('usage.fetched', { date: new Date(result.fetchedAt).toLocaleString() })}
+        {s.t('usage.fetched', {
+          date: formatDateTimeInEditorTimeZone(result.fetchedAt) ?? result.fetchedAt,
+        })}
       </p>
     </div>
   );

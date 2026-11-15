@@ -346,4 +346,36 @@ describe('useOrganizationContext', () => {
       expect(result.current.error).toBe(protectedError);
     }
   );
+  it.each([false, true])(
+    'defers the server mutation until the editor permits the switch (%s)',
+    async (allowed) => {
+      const context = { activeOrganizationId: 'org-1', organizations: [] };
+      getMyOrganizationContextMock.mockResolvedValue({ data: context });
+      updateMyOrganizationContextMock.mockResolvedValue({
+        data: { ...context, activeOrganizationId: 'org-2' },
+      });
+      const { result } = renderHook(() => useOrganizationContext(), { wrapper });
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      let resolve: ((allowed: boolean) => void) | undefined;
+      const guard = (event: Event) => {
+        event.preventDefault();
+        resolve = (event as CustomEvent<{ resolve: (allowed: boolean) => void }>).detail.resolve;
+      };
+      window.addEventListener('studio:before-organization-switch', guard);
+      try {
+        let switchPromise: Promise<boolean> | undefined;
+        act(() => {
+          switchPromise = result.current.switchOrganization('org-2');
+        });
+        expect(updateMyOrganizationContextMock).not.toHaveBeenCalled();
+        await act(async () => {
+          resolve?.(allowed);
+          await switchPromise;
+        });
+        expect(updateMyOrganizationContextMock).toHaveBeenCalledTimes(allowed ? 1 : 0);
+      } finally {
+        window.removeEventListener('studio:before-organization-switch', guard);
+      }
+    }
+  );
 });

@@ -162,12 +162,18 @@ const publicWasteApiPlugin = (): Plugin => {
 export default defineConfig({
   plugins: [react(), publicWasteApiPlugin()],
   build: {
+    cssCodeSplit: false,
     rolldownOptions: {
       input: {
         index: resolve(import.meta.dirname, 'index.html'),
         embed: resolve(import.meta.dirname, 'src/embed.tsx'),
       },
       output: {
+        // Server-rendered reminder pages share the calendar stylesheet without loading React.
+        assetFileNames: (asset) =>
+          asset.names.some((name) => name.endsWith('.css'))
+            ? 'assets/calendar.css'
+            : 'assets/[name]-[hash][extname]',
         entryFileNames: (chunk) =>
           chunk.name === 'embed' ? 'embed.js' : 'assets/[name]-[hash].js',
       },

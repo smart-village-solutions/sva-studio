@@ -1,2 +1,2 @@
-export { SsfSystemConfigurationPage } from './admin.system-page.js';
-export { SsfTenantConfigurationPage } from './admin.tenant-page.js';
+export * from './admin.system-page.js';
+export * from './admin.tenant-page.js';

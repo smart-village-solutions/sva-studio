@@ -13,6 +13,7 @@ vi.mock('../../../../packages/plugin-ssf/src/admin.page.js', () => {
   throw new Error('ssf_browser_page_evaluated_on_server');
 });
 
+import { studioHostModuleContracts } from '#studio-module-iam-inputs';
 import { studioServerPluginCatalogReport } from './plugin-catalog.server.js';
 import { resolveInstalledPluginSources } from '../../plugin-installed-inputs.vite.js';
 
@@ -33,6 +34,14 @@ describe('server plugin catalog', () => {
       '/api/v1/plugins/application-workspace'
     );
     expect(registry.pluginServerHandlerRegistry.get('application-workspace.settings.save')?.method).toBe('PUT');
+  });
+
+  it('registers the host App module as a tenant dependency of Mehrsprachigkeit', () => {
+    const { pluginModuleIamContracts } = studioServerPluginCatalogReport.snapshot.registry;
+    expect(
+      pluginModuleIamContracts.find(({ moduleId }) => moduleId === 'app-translations')
+    ).toMatchObject({ requiredTenantModuleIds: ['app'] });
+    expect(studioHostModuleContracts.some(({ moduleId }) => moduleId === 'app')).toBe(true);
   });
 
   it('loads the active descriptors without evaluating browser pages', () => {

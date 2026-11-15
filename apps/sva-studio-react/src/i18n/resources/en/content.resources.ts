@@ -1,7 +1,8 @@
-import { contentENErrors } from './content.errors.resources.js';
+import { contentENErrors } from './content.errors.partial.resources.js';
 
 export const contentENResources = {
   leaveGuard: {
+    save: 'Save and continue',
     sessionRecovery:
       'Your session must be checked again. Your input remains in this open editor. If needed, sign in in a new tab, then check your account and organization. Nothing will be saved automatically.',
     sessionRecoveryFailed:

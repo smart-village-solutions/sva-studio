@@ -176,7 +176,7 @@ export function VoucherMediaOverlay({
   onAddManual,
 }: Readonly<{
   media: ReturnType<typeof useVoucherMediaPicker>;
-  onAddManual: () => string;
+  onAddManual: (persistentUrl?: string) => string;
 }>) {
   const { assets, picker, capabilities } = media;
   const t = usePluginTranslation('vouchers');

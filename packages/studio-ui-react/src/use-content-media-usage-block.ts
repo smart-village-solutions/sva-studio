@@ -11,7 +11,7 @@ import { moveContentMediaUsage, revokeContentMediaUsageObjectUrls } from './cont
 type UsageListActionsInput = Readonly<{
   usages: readonly ContentMediaUsage[];
   onChange: (usages: readonly ContentMediaUsage[]) => void;
-  onAddManual: () => string | void;
+  onAddManual: (persistentUrl?: string) => string | void;
   onOpenLibrary?: () => void;
   onOpenUpload?: () => void;
   announcements: ContentMediaUsageBlockLabels['announcements'];

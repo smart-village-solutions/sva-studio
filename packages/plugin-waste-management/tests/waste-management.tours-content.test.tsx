@@ -83,7 +83,8 @@ vi.mock('../src/waste-management.page.support.js', () => ({
     message ? <div>{message.text}</div> : null,
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/studio-ui-react')>()),
   StudioDestructiveActionDialog: ({
     open,
     title,
@@ -720,15 +721,7 @@ describe('WasteToursContent', () => {
     expect(screen.getByText('scheduling.reasonTypes.weather')).toBeTruthy();
     expect(screen.getByText('tours.shiftDetails.reasonKey:snow')).toBeTruthy();
     expect(screen.getByText('Betriebsversammlung')).toBeTruthy();
-    const dateFormatter = new Intl.DateTimeFormat(undefined, {
-      dateStyle: 'short',
-      timeZone: 'UTC',
-    });
-    expect(
-      screen.getByText(
-        `tours.shiftDetails.dateChange:${dateFormatter.format(new Date('2026-01-01T00:00:00Z'))}|${dateFormatter.format(new Date('2026-01-02T00:00:00Z'))}`
-      )
-    ).toBeTruthy();
+    expect(screen.getByText('tours.shiftDetails.dateChange:01.01.2026|02.01.2026')).toBeTruthy();
     expect(screen.getAllByText('tours.shiftDetails.holidays:Neujahrstag')).toHaveLength(2);
     expect(screen.getByText('tours.actions.createAnotherShift')).toBeTruthy();
     expect(

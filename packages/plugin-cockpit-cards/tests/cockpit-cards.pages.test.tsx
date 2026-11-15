@@ -71,7 +71,8 @@ vi.mock('../src/cockpit-cards.api.js', () => ({
   listCockpitCardCategories: state.listCategories,
   updateCockpitCard: state.update,
 }));
-vi.mock('@sva/plugin-sdk', () => ({
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
   alignHostMediaReferencesByOrder: ({
     itemCount,
     references,
@@ -179,6 +180,10 @@ const fillRequiredFields = () => {
   fireEvent.change(screen.getByLabelText('fields.text'), { target: { value: 'Neuer Text' } });
   fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
   fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+    target: { value: 'https://example.test/image.jpg' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
   fireEvent.change(screen.getByLabelText('fields.imageUrl'), {
     target: { value: 'https://example.test/new.jpg' },
   });
@@ -186,6 +191,15 @@ const fillRequiredFields = () => {
 
 describe('cockpit cards pages', () => {
   beforeEach(() => {
+    // jsdom has no layout observer; focused icon tooltips use the browser API.
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
     vi.clearAllMocks();
     state.params = {};
     state.search = { page: 1, pageSize: 25 };
@@ -250,6 +264,7 @@ describe('cockpit cards pages', () => {
       'cockpit-card-language',
       'cockpit-card-weight',
       'cockpit-card-publication',
+      'cockpit-card-publication-time',
       'cockpit-card-visible',
     ]);
     expect(screen.getAllByRole('button', { name: 'actions.create' })).toHaveLength(1);
@@ -331,7 +346,7 @@ describe('cockpit cards pages', () => {
       expect(state.getAsset).not.toHaveBeenCalled();
       expect(guarded.hasUnsavedChanges()).toBe(true);
       if (changedAfterSubmit === 'removed') {
-        fireEvent.click(screen.getByRole('button', { name: 'actions.removeImage' }));
+        fireEvent.click(screen.getByRole('button', { name: 'media.picker.removeFromContent' }));
         await waitFor(() => expect(guarded.hasUnsavedChanges()).toBe(false));
         expect(state.create).not.toHaveBeenCalled();
         return;
@@ -669,8 +684,16 @@ describe('cockpit cards pages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+      target: { value: 'https://example.test/image.jpg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+      target: { value: 'https://example.test/image.jpg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
     const urls = screen.getAllByLabelText('fields.imageUrl');
     fireEvent.change(urls[0]!, { target: { value: 'https://example.test/one.jpg' } });
     fireEvent.change(urls[1]!, { target: { value: 'https://example.test/two.jpg' } });
@@ -679,7 +702,7 @@ describe('cockpit cards pages', () => {
     expect(
       screen.getAllByLabelText('fields.imageUrl').map((input) => (input as HTMLInputElement).value)
     ).toEqual(['https://example.test/two.jpg', 'https://example.test/one.jpg']);
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.removeImage' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'media.picker.removeFromContent' })[1]!);
     expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(1);
   });
 

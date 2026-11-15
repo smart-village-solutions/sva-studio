@@ -1,4 +1,4 @@
-import { Button, Input, StudioField } from '@sva/studio-ui-react';
+import { Button, Input, StudioField, TimeInput } from '@sva/studio-ui-react';
 
 export type EventsContentTranslator = (
   key: string,
@@ -20,7 +20,7 @@ export const ContentInput = ({
   id: string;
   label: string;
   value?: string | number;
-  type?: 'date' | 'number' | 'time';
+  type?: 'number' | 'time';
   inputMode?: 'numeric';
   ariaInvalid?: true;
   description?: string;
@@ -44,14 +44,27 @@ export const ContentInput = ({
         ...(describedBy ? { 'aria-describedby': describedBy } : {}),
       }}
     >
-      <Input
-        id={id}
-        type={type}
-        inputMode={inputMode}
-        aria-required={required ? true : undefined}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
+      {type === 'time' ? (
+        <TimeInput
+          id={id}
+          value={value}
+          aria-invalid={ariaInvalid}
+          aria-describedby={describedBy || undefined}
+          required={required}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      ) : (
+        <Input
+          id={id}
+          type={type}
+          inputMode={inputMode}
+          aria-required={required ? true : undefined}
+          aria-invalid={ariaInvalid}
+          aria-describedby={describedBy || undefined}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      )}
     </StudioField>
   );
 };

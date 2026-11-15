@@ -24,6 +24,12 @@ export const operationsInstancesAdminENResources = {
     fehlgeschlagen: 'Failed',
   },
   keycloakSteps: {
+    userProfile: {
+      title: 'Reconcile Studio user profile',
+      aligned: 'The Studio profile fields match the required configuration.',
+      pending: 'Studio adds missing profile fields and checks their administrator permissions.',
+      failed: 'The Studio profile fields could not be verified.',
+    },
     realmBaseline: {
       title: 'Apply realm baseline',
       existing: 'Existing realms are not migrated to the new-realm baseline automatically.',

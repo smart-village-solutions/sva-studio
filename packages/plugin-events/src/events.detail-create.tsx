@@ -41,7 +41,6 @@ function EventsCreateOptionalFields({
 }>) {
   const { control } = useFormContext<EventsDetailFormValues>();
   const content = useWatch({ control, name: 'content' });
-  const externalId = useWatch({ control, name: 'settings.externalId' });
   const summary = (value: unknown) => pt(hasText(value) ? 'create.filled' : 'create.empty');
   return (
     <>
@@ -77,12 +76,6 @@ function EventsCreateOptionalFields({
           {summary([content?.registrationRequired ? 'true' : '', content?.maximumAttendees])}
         </summary>
         <EventsParticipationSection pt={pt} />
-      </details>
-      <details>
-        <summary id="event-create-technical">
-          {pt('create.sections.technical')} · {pt('create.optional')} · {summary(externalId)}
-        </summary>
-        <EventsDetailSettingsTab pt={pt} section="technical" />
       </details>
     </>
   );

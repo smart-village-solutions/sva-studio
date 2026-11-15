@@ -1,39 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AuthenticatedRequestContext } from './types.js';
+import {
+  createWasteAuthDeps,
+  createWasteMutationRequest,
+  createWasteTestActor,
+} from '../../tests/test-utils/handler-fixtures.js';
+
 import { wasteManagementGlobalDateShiftHandlers } from './global-date-shifts.js';
 import { wasteManagementHolidayRuleHandlers } from './holiday-rules.js';
 import { wasteManagementTourDateShiftHandlers } from './tour-date-shifts.js';
 
-const actor: AuthenticatedRequestContext = {
-  sessionId: 'session-1',
-  user: {
-    id: 'user-1',
-    instanceId: 'tenant-a',
-    roles: ['system_admin'],
-  },
-};
-
-const createHeaders = () => ({
-  origin: 'https://studio.test',
-  'x-requested-with': 'XMLHttpRequest',
-});
+const actor = createWasteTestActor();
 
 const createDeps = () => ({
-  getRequestId: () => 'req-test',
-  getSessionById: vi.fn(async () => ({
-    activeOrganizationId: 'org-1',
-  })),
+  ...createWasteAuthDeps(['waste-management.scheduling.manage']),
   emitAuditEvent: vi.fn(async () => undefined),
-  resolvePermissions: vi.fn(async () => ({
-    ok: true as const,
-    permissions: [
-      {
-        action: 'waste-management.scheduling.manage',
-        resourceType: 'waste-management',
-      },
-    ],
-  })),
 });
 
 describe('waste-management date shift delete handlers', () => {
@@ -43,10 +24,10 @@ describe('waste-management date shift delete handlers', () => {
     const deleteWasteTourDateShift = vi.fn(async () => undefined);
     const holidayResponse =
       await wasteManagementHolidayRuleHandlers.deleteWasteManagementHolidayRuleInternal(
-        new Request('https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1', {
-          method: 'DELETE',
-          headers: createHeaders(),
-        }),
+        createWasteMutationRequest(
+          'DELETE',
+          'https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1'
+        ),
         actor,
         {
           ...createDeps(),
@@ -64,10 +45,10 @@ describe('waste-management date shift delete handlers', () => {
 
     const globalResponse =
       await wasteManagementGlobalDateShiftHandlers.deleteWasteManagementGlobalDateShiftInternal(
-        new Request('https://studio.test/api/v1/waste-management/global-date-shifts/global-1', {
-          method: 'DELETE',
-          headers: createHeaders(),
-        }),
+        createWasteMutationRequest(
+          'DELETE',
+          'https://studio.test/api/v1/waste-management/global-date-shifts/global-1'
+        ),
         actor,
         {
           ...createDeps(),
@@ -85,10 +66,10 @@ describe('waste-management date shift delete handlers', () => {
 
     const tourResponse =
       await wasteManagementTourDateShiftHandlers.deleteWasteManagementTourDateShiftInternal(
-        new Request('https://studio.test/api/v1/waste-management/tour-date-shifts/tour-1', {
-          method: 'DELETE',
-          headers: createHeaders(),
-        }),
+        createWasteMutationRequest(
+          'DELETE',
+          'https://studio.test/api/v1/waste-management/tour-date-shifts/tour-1'
+        ),
         actor,
         {
           ...createDeps(),
@@ -108,10 +89,10 @@ describe('waste-management date shift delete handlers', () => {
   it('returns not-found responses when the holiday rule or shift cannot be loaded before deletion', async () => {
     const holidayResponse =
       await wasteManagementHolidayRuleHandlers.deleteWasteManagementHolidayRuleInternal(
-        new Request('https://studio.test/api/v1/waste-management/holiday-rules/missing', {
-          method: 'DELETE',
-          headers: createHeaders(),
-        }),
+        createWasteMutationRequest(
+          'DELETE',
+          'https://studio.test/api/v1/waste-management/holiday-rules/missing'
+        ),
         actor,
         {
           ...createDeps(),
@@ -123,10 +104,10 @@ describe('waste-management date shift delete handlers', () => {
 
     const globalResponse =
       await wasteManagementGlobalDateShiftHandlers.deleteWasteManagementGlobalDateShiftInternal(
-        new Request('https://studio.test/api/v1/waste-management/global-date-shifts/missing', {
-          method: 'DELETE',
-          headers: createHeaders(),
-        }),
+        createWasteMutationRequest(
+          'DELETE',
+          'https://studio.test/api/v1/waste-management/global-date-shifts/missing'
+        ),
         actor,
         {
           ...createDeps(),
@@ -138,10 +119,10 @@ describe('waste-management date shift delete handlers', () => {
 
     const tourResponse =
       await wasteManagementTourDateShiftHandlers.deleteWasteManagementTourDateShiftInternal(
-        new Request('https://studio.test/api/v1/waste-management/tour-date-shifts/missing', {
-          method: 'DELETE',
-          headers: createHeaders(),
-        }),
+        createWasteMutationRequest(
+          'DELETE',
+          'https://studio.test/api/v1/waste-management/tour-date-shifts/missing'
+        ),
         actor,
         {
           ...createDeps(),

@@ -28,6 +28,7 @@ export default mergeConfig(
           currentDir,
           '../plugin-sdk/src/content-media-contracts-public-api.ts'
         ),
+        '@sva/plugin-sdk/temporal': resolve(currentDir, '../plugin-sdk/src/temporal.ts'),
         '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
         '@sva/waste-management-contracts/job-definitions': resolve(
           currentDir,

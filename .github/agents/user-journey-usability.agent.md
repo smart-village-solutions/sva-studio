@@ -45,7 +45,7 @@ Du nimmst die explizite Nutzersicht auf einen Flow, eine Seite oder einen UI-Abl
 
 ### Skill-Allowlist (verbindlich)
 
-- Erlaubte Skills: `nx-workspace`, `nx-run-tasks`, `context7`, `webapp-testing`, `web-design-guidelines`, `frontend-design`
+- Erlaubte Skills: `nx-workspace`, `nx-run-tasks`, `context7`, `e2e-testing-patterns`, `web-design-guidelines`, `frontend-design`
 - Nicht erlaubte Skills nur nach Delegation an den Main-Agent nutzen
 - Bei fehlendem Skill: Eskalieren statt improvisieren
 

@@ -6,6 +6,7 @@ export type PluginTenantLifecycleMessageKey =
   | 'invalidRequest'
   | 'lifecycleJobStartForbidden'
   | 'lifecycleStartFailed'
+  | 'tenantAccessDenied'
   | 'pluginAccessBlocked';
 
 const messages = {
@@ -16,6 +17,7 @@ const messages = {
     lifecycleJobStartForbidden:
       'Lifecycle-Jobs dürfen nur über den Host-Orchestrator gestartet werden.',
     lifecycleStartFailed: 'Der Plugin-Lifecycle konnte nicht gestartet werden.',
+    tenantAccessDenied: 'Diese Modulaktion ist für die Instanz nicht erlaubt.',
     pluginAccessBlocked: 'Der Plugin-Fachzugriff ist noch nicht betriebsbereit.',
   },
   en: {
@@ -24,6 +26,7 @@ const messages = {
     invalidRequest: 'The request body is invalid.',
     lifecycleJobStartForbidden: 'Lifecycle jobs can only be started by the host orchestrator.',
     lifecycleStartFailed: 'The plugin lifecycle operation could not be started.',
+    tenantAccessDenied: 'This module action is not allowed for the instance.',
     pluginAccessBlocked: 'The plugin is not ready for tenant operations yet.',
   },
 } as const satisfies Record<

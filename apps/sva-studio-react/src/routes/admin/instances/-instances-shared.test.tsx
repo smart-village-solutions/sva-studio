@@ -1447,6 +1447,21 @@ describe('instances shared helpers', () => {
     });
   });
 
+  it('offers Realm anwenden when the user profile is the only drift', () => {
+    const model = buildExistingRealmOperationsModel(
+      createDetailFixture({
+        realmMode: 'existing',
+        authClientSecretConfigured: true,
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin', secretConfigured: true },
+        keycloakStatus: { ...completeKeycloakStatus, userProfileBaselineAligned: false },
+      }),
+      null
+    );
+
+    expect(model.signals.hasDrift).toBe(true);
+    expect(buildOperationsPrimaryAction(model)?.action).toBe('reconcileKeycloak');
+  });
+
   it('does not suggest reconcile for an existing realm without drift', () => {
     const model = buildExistingRealmOperationsModel(
       createDetailFixture({

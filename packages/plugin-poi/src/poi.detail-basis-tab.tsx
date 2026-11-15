@@ -1,6 +1,7 @@
 import type React from 'react';
 import { formatDateTimeInEditorTimeZone, readFieldError } from '@sva/plugin-sdk';
 import {
+  SearchableMultiSelect,
   Checkbox,
   Input,
   StudioField,
@@ -9,7 +10,6 @@ import {
 } from '@sva/studio-ui-react';
 import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 
-import { PoiCategoryMultiselect } from './poi.category-multiselect.js';
 import type { PoiDetailFormValues } from './poi.detail-form.js';
 import type { PoiCategoryOption, PoiContentItem } from './poi.types.js';
 
@@ -125,20 +125,20 @@ export function PoiDetailBasisTab({
               name="basis.categories"
               control={control}
               render={({ field }) => (
-                <PoiCategoryMultiselect
-                  availableCategories={availableCategories}
+                <SearchableMultiSelect
+                  options={availableCategories.map(({ name }) => ({ label: name, value: name }))}
                   emptyText={pt('fields.categoriesEmpty')}
                   errorMessage={categoryOptionsError ? pt('create.categoryUnavailable') : undefined}
                   loading={categoryOptionsLoading}
                   helpText=""
-                  inputId="poi-category"
-                  inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
+                  id="poi-category"
+                  placeholder={pt('fields.categoriesSearchPlaceholder')}
                   loadingText={pt('messages.categoryOptionsLoading')}
                   searchLabel={pt('fields.categoriesSearch')}
                   unavailableText={pt('fields.categoryUnavailable')}
                   removeLabel={(name) => pt('actions.removeCategory').replace('{{name}}', name)}
                   value={field.value}
-                  onChange={field.onChange}
+                  onValueChange={field.onChange}
                 />
               )}
             />

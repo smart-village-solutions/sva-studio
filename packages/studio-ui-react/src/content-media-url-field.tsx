@@ -16,7 +16,10 @@ type ContentMediaUrlFieldProps = Readonly<{
   usageId: string;
   value: string;
   externalError?: string;
-  labels: ContentMediaUsageBlockLabels;
+  labels: Pick<ContentMediaUsageBlockLabels, 'urlFeedback'> & {
+    fields: Pick<ContentMediaUsageBlockLabels['fields'], 'url'>;
+  };
+  onValidityChange?: (valid: boolean) => void;
   onUpdate: (patch: ContentMediaUsagePatch) => void;
 }>;
 
@@ -26,6 +29,12 @@ const joinIds = (...ids: readonly (string | undefined)[]) =>
 const useContentMediaUrlField = ({ onUpdate }: ContentMediaUrlFieldProps) => {
   const [feedback, setFeedback] = React.useState<UrlFeedback>(null);
   const validationSequence = React.useRef(0);
+  React.useEffect(
+    () => () => {
+      validationSequence.current += 1;
+    },
+    []
+  );
 
   const onChange = (nextValue: string) => {
     validationSequence.current += 1;
@@ -66,7 +75,7 @@ const resolveUrlPresentation = (
   value: string,
   feedback: UrlFeedback,
   externalError: string | undefined,
-  labels: ContentMediaUsageBlockLabels
+  labels: ContentMediaUrlFieldProps['labels']
 ) => {
   const inspection = inspectManualContentMediaUrl(value);
   const isPersistable = isPersistableManualContentMediaUrl(value.trim());
@@ -99,6 +108,11 @@ export const ContentMediaUrlField = (props: ContentMediaUrlFieldProps) => {
     props.externalError,
     props.labels
   );
+  // Explicit HTTP stays persistable while its optional HTTPS upgrade is checked.
+  const valid = isPersistableManualContentMediaUrl(props.value.trim()) && !error;
+  React.useEffect(() => {
+    props.onValidityChange?.(valid);
+  }, [props.onValidityChange, valid]);
 
   return (
     <StudioField id={fieldId} label={props.labels.fields.url} error={error}>

@@ -59,6 +59,9 @@ const persistAtomicLifecycleStart: PersistPluginTenantLifecycleStart = async ({
         status: 'queued',
         progress: { completedSteps: 0, totalSteps: 1 },
         inputPayload: {
+          ...(request.usePersonalMainserverCredentials
+            ? { usePersonalMainserverCredentials: true }
+            : {}),
           [pluginTenantLifecycleJobInputKey]: {
             operation: request.operation,
             generation: lifecycle.desiredGeneration,

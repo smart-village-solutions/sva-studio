@@ -1,3 +1,4 @@
+import { toDatetimeLocalValue } from '@sva/plugin-sdk';
 import type { WasteFractionRecord, WasteTourRecord } from '@sva/waste-management-contracts';
 
 import type { WasteManagementSearchParams } from './search-params.js';
@@ -39,7 +40,7 @@ const matchesDateUpperBound = (
 export const filterTours = (
   tours: readonly WasteTourRecord[],
   search: WasteManagementSearchParams,
-  referenceYear = new Date().getFullYear()
+  referenceYear = Number(toDatetimeLocalValue(new Date().toISOString()).slice(0, 4))
 ): readonly WasteTourRecord[] =>
   tours.filter((tour) => {
     if (search.tourId && tour.id !== search.tourId) {

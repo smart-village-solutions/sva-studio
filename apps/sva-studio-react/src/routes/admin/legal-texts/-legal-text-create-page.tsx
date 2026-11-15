@@ -1,12 +1,13 @@
-import { Link, useNavigate } from '@tanstack/react-router';
 import {
   addStudioCreatedSaveFeedback,
   Button,
+  LocalDateTimeInput,
   StudioDetailPageTemplate,
   StudioPersistentFormError,
   StudioSaveButton,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
+import { Link, useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -240,13 +241,13 @@ export const LegalTextCreatePage = () => {
               <Label htmlFor="legal-text-create-published">
                 {t('admin.legalTexts.fields.publishedAt')}
               </Label>
-              <Input
+              <LocalDateTimeInput
+                label={t('admin.legalTexts.fields.publishedAt')}
                 id="legal-text-create-published"
-                type="datetime-local"
                 value={formValues.publishedAt}
                 required={formValues.status === 'valid'}
-                onChange={(event) =>
-                  setFormValues((current) => ({ ...current, publishedAt: event.target.value }))
+                onValueChange={(value) =>
+                  setFormValues((current) => ({ ...current, publishedAt: value }))
                 }
               />
             </div>

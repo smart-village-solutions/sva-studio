@@ -635,7 +635,7 @@ Referenzen:
 
 - Restrisiko: Die MapLibre-Runtime-Loader bleiben dreifach bundlelokal. Maßnahme: bewusst beibehalten, solange eine Konsolidierung die Map-Dependency in `studio-ui-react` ziehen würde; die eigentliche Lifecycle-Logik ist bereits gemeinsam.
 - Restrisiko: Der Media-Reference-Controller abstrahiert keine fachliche Navigation. Maßnahme: Navigation bleibt als expliziter Consumer-Callback und wird besonders für bereits angelegte News- und Project-Inhalte getestet.
-- Risiko: Ein breiter SDK-Import könnte eine zyklische Ownership erzeugen. Maßnahme: `workspace:*` nur für den Subpath `@sva/plugin-sdk/content-media`; ESLint verbietet Root- und Fremd-Subpath-Imports in `studio-ui-react`.
+- Risiko: Ein breiter SDK-Import könnte eine zyklische Ownership erzeugen. Maßnahme: `workspace:*` ausschließlich für die browserfähigen Subpaths `@sva/plugin-sdk/content-media` und `@sva/plugin-sdk/temporal`; ESLint verbietet Root- und alle übrigen SDK-Subpath-Imports in `studio-ui-react`.
 
 #### Abgebaut: monolithischer Events-Inhaltseditor
 
@@ -716,7 +716,6 @@ Ein versehentlich übernommener allgemeiner Plugin-Glob oder Seiten-Import kann 
 - FreshClam- oder Scanner-Ausfall kann neue Medienfreigaben verhindern. Nach 24 Stunden ohne bestätigte Aktualität wird gewarnt, nach 72 Stunden gesperrt; vorhandene Medien bleiben nutzbar. Containerupdates und Fehlalarme bleiben Betriebsaufgaben.
 - Neue Bucket-Registrierungen sind im Scanbetrieb zunächst gesperrt. Ein späterer gescannter Import und eine automatische Bestandsprüfung gehören zu einem gesondert begründeten Bedarf.
 - Direkte öffentliche Ausgaben entstehen erst nach Scan und Inhaltsvalidierung, die S3-Schreibvorgänge und Datenbankfinalisierung sind jedoch keine verteilte Transaktion. Claim-isolierte Keys und bestehende Bereinigung begrenzen Fehlerfolgen; nie gebuchte Bytes werden nicht von der Quote abgezogen.
-
 
 ## Gutscheine: destruktiver Provider-Vertrag
 

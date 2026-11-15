@@ -1,4 +1,16 @@
 export const shellDEResources = {
+  changelog: {
+    title: 'Changelog',
+    description:
+      'Veröffentlichte Studio-Versionen und ihre Release Notes. Die angezeigten Releases können vom Stand dieser Umgebung abweichen.',
+    archive: 'Alle Releases auf GitHub',
+    loading: 'Release Notes werden geladen.',
+    error: 'Die Release Notes konnten nicht geladen werden. Bitte versuchen Sie es erneut.',
+    retry: 'Erneut versuchen',
+    empty: 'Es sind noch keine regulären Studio-Releases verfügbar.',
+    source: 'Release auf GitHub',
+    noNotes: 'Für diese Version sind keine Release Notes hinterlegt.',
+  },
   languages: {
     locales: {
       de: 'Deutsch',
@@ -175,6 +187,7 @@ export const shellDEResources = {
     iamViewer: 'IAM-Viewer',
   },
   sidebar: {
+    changelog: 'Changelog',
     ariaLabel: 'Seitenleiste',
     sectionLabel: 'Navigation',
     navAriaLabel: 'Bereichsnavigation',
@@ -192,6 +205,7 @@ export const shellDEResources = {
     media: 'Medien',
     categories: 'Kategorien',
     app: 'App',
+    appTexts: 'App-Texte',
     cockpit: 'Cockpit',
     users: 'Benutzer',
     accounts: 'Accounts',

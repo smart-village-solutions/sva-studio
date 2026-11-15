@@ -1,4 +1,9 @@
-import { summarizeContentAccess, type IamContentAccessSummary } from '@sva/core';
+import { isConfiguredPluginTenantEffectivelyActive } from '../plugin-tenant-lifecycle/access.js';
+import {
+  GENERIC_CONTENT_TYPE,
+  summarizeContentAccess,
+  type IamContentAccessSummary,
+} from '@sva/core';
 import { createPermissionDenialDetailsForAction } from '@sva/core';
 import { evaluateAuthorizeDecision, type EffectivePermission } from '@sva/iam-core';
 import {
@@ -120,6 +125,22 @@ export const authorizeContentAction = async (
 
     if ('error' in resolvedPermissions) {
       return resolvedPermissions.error;
+    }
+
+    const moduleId = resource.contentType?.split('.')[0];
+    if (
+      action.startsWith('content.') &&
+      moduleId &&
+      resource.contentType !== GENERIC_CONTENT_TYPE
+    ) {
+      const active = await isConfiguredPluginTenantEffectivelyActive(actor.instanceId, moduleId);
+      if (!active)
+        return createApiError(
+          403,
+          'forbidden',
+          'Keine Berechtigung für diese Inhaltsoperation.',
+          actor.requestId
+        );
     }
 
     const request = buildContentAuthorizeRequest(actor, action, resource);

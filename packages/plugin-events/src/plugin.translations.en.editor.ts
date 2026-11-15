@@ -27,15 +27,16 @@ export const eventsENEditor = {
       description: 'Description',
       media: 'Media',
       categories: 'Categories',
-      organizer: 'Add organizer',
-      contacts: 'Add contacts',
-      links: 'Add links',
-      prices: 'Add admission prices',
-      technical: 'Technical details',
+      organizer: 'Organizer',
+      contacts: 'Contacts',
+      links: 'Links',
+      prices: 'Admission prices',
       publication: 'Visibility',
     },
   },
   messages: {
+    savedVisible: 'Saved as visible',
+    savedHidden: 'Saved hidden',
     requestReference: 'Error reference:',
     copyRequestReference: 'Copy reference',
     requestReferenceCopied: 'Copied',
@@ -143,7 +144,7 @@ export const eventsENEditor = {
   detailTabs: {
     basis: { title: 'Basics', description: 'Core metadata and editorial basics.' },
     content: { title: 'Content', description: 'Dates, venues, organizer and detailed event data.' },
-    settings: { title: 'Settings', description: 'Media, visibility and technical metadata.' },
+    settings: { title: 'Settings', description: 'Visibility and reference to another system.' },
     history: { title: 'History', description: 'Change and activity history.' },
   },
   cards: {
@@ -189,7 +190,7 @@ export const eventsENEditor = {
     },
     settings: {
       publication: { title: 'Visibility', description: 'Event exposure.' },
-      technical: { title: 'Technical metadata', description: 'Technical identifier of the event.' },
+      technical: { title: 'External reference', description: 'Optional external identifier.' },
     },
   },
   history: {

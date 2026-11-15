@@ -39,7 +39,7 @@ Du bist verantwortlich für Integrations- und Datenfähigkeit.
 - Bei Architektur-/Systemdoku immer arc42-konform arbeiten (Einstiegspunkt: `docs/architecture/README.md`)
 
 ### Skill-Allowlist (verbindlich)
-- Erlaubte Skills: `nx-workspace`, `nx-run-tasks`, `context7`, `mcp-builder`, `tanstack-integration-best-practices`
+- Erlaubte Skills: `nx-workspace`, `nx-run-tasks`, `context7`, `tanstack-integration-best-practices`
 - Nicht erlaubte Skills nur nach Delegation an den Main-Agent nutzen
 - Bei fehlendem Skill: Eskalieren statt improvisieren
 

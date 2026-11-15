@@ -165,6 +165,15 @@ const fillRequiredFields = () => {
 
 describe('projects pages', () => {
   beforeEach(() => {
+    // jsdom has no layout observer; focused icon tooltips use the browser API.
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
     vi.clearAllMocks();
     state.params = {};
     state.create.mockResolvedValue(project);
@@ -264,6 +273,10 @@ describe('projects pages', () => {
     fillRequiredFields();
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+      target: { value: 'https://example.test/image.jpg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
     fireEvent.change(screen.getByLabelText('fields.imageUrl'), {
       target: { value: 'https://example.test/project.jpg' },
     });
@@ -389,9 +402,13 @@ describe('projects pages', () => {
     expect(screen.getByRole('button', { name: 'media.upload' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'media.addFromLibrary' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'media.picker.url' }), {
+      target: { value: 'https://example.test/image.jpg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.useMedia' }));
     expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(1);
     fireEvent.click(
-      screen.getAllByRole('button', { name: 'actions.removeImage' })[0] as HTMLElement
+      screen.getAllByRole('button', { name: 'media.picker.removeFromContent' })[0] as HTMLElement
     );
     expect(screen.queryAllByLabelText('fields.imageUrl')).toHaveLength(0);
   });
@@ -470,7 +487,7 @@ describe('projects pages', () => {
     expect(state.upload).not.toHaveBeenCalled();
     expect(state.getAsset).not.toHaveBeenCalled();
     expect(guarded.hasUnsavedChanges()).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'actions.removeImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.picker.removeFromContent' }));
     await waitFor(() => expect(guarded.hasUnsavedChanges()).toBe(false));
     expect(state.create).not.toHaveBeenCalled();
   });

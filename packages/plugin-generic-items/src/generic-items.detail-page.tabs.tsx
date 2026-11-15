@@ -31,7 +31,7 @@ type GenericItemsDetailTabsProps = Readonly<{
   categoryOptionsLoading: boolean;
   contentId?: string;
   labels: Record<string, string>;
-  onAddManualMedia: () => string;
+  onAddManualMedia: (persistentUrl?: string) => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onTabChange: (tabId: GenericItemsDetailTabId) => void;
   pt: (key: string) => string;

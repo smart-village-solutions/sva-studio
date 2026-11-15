@@ -98,8 +98,8 @@ export function VoucherMediaFields({ draft, change, errors }: VoucherFormProps) 
       referenceStatus: media.hostMediaAssetId ? 'pending' : 'synced',
     };
   });
-  const addManual = () => {
-    const media = { contentType: 'image', sourceUrl: { url: '' } };
+  const addManual = (persistentUrl = '') => {
+    const media = { contentType: 'image', sourceUrl: { url: persistentUrl } };
     const uiId = createContentMediaUiId();
     ids.current.set(media, uiId);
     change('mediaContents', [...draft.mediaContents, media]);

@@ -7,6 +7,7 @@ import type {
 import {
   emailMonitoringSubscriptionColumns,
   emailMonitoringDeliveryColumns,
+  formatEmailMonitoringTimestamp,
   type EmailMonitoringTranslate,
 } from './waste-management.email-monitoring.columns.js';
 
@@ -23,7 +24,7 @@ type TableProps = {
 };
 const tableLabels = (pt: EmailMonitoringTranslate) => ({
   selectionColumn: pt('emailMonitoring.select'),
-  actionsColumn: pt('emailMonitoring.select'),
+  actionsColumn: pt('emailMonitoring.actions'),
   loading: pt('emailMonitoring.loading'),
   selectAllRows: () => pt('emailMonitoring.select'),
   selectRow: () => pt('emailMonitoring.select'),
@@ -88,25 +89,52 @@ const DeliveryTable = ({
   onDeliveryPage,
 }: TableProps & { selected: WasteEmailSubscriptionSummary }) => {
   const heading = useRef<HTMLHeadingElement>(null);
+  const currentSubscription = data.subscriptions.find((row) => row.id === selected.id);
   useLayoutEffect(() => {
     heading.current?.focus();
   }, [selected.id]);
   return (
     <section className="space-y-3" aria-label={pt('emailMonitoring.deliveries')}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 ref={heading} tabIndex={-1} className="text-lg font-semibold">
-          {pt('emailMonitoring.deliveries')} · {selected.maskedEmail}
+        <h2
+          ref={heading}
+          tabIndex={-1}
+          className="min-w-0 max-w-full text-lg font-semibold [overflow-wrap:anywhere]"
+        >
+          {pt('emailMonitoring.deliveries')} ·{' '}
+          {currentSubscription?.maskedEmail ?? selected.maskedEmail}
         </h2>
         <Button variant="secondary" onClick={() => onSelect(null)}>
           {pt('emailMonitoring.close')}
         </Button>
       </div>
+      {currentSubscription ? (
+        <dl className="grid gap-4 rounded-lg border border-border bg-card p-4 text-sm sm:grid-cols-3">
+          {(['createdAt', 'activatedAt', 'unsubscribedAt'] as const).map((key, i) => (
+            <div key={key}>
+              <dt className="text-muted-foreground">
+                {pt(`emailMonitoring.${['created', 'activated', 'unsubscribed'][i]}`)}
+              </dt>
+              <dd className="mt-1 font-medium">
+                {formatEmailMonitoringTimestamp(
+                  currentSubscription[key],
+                  pt('emailMonitoring.unavailable')
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {pt('emailMonitoring.subscriptionUnavailable')}
+        </p>
+      )}
       <p className="text-sm text-muted-foreground">{pt('emailMonitoring.deliveryNotice')}</p>
       <StudioDataTable
         selectionMode="none"
         sorting={{ mode: 'disabled' }}
         ariaLabel={pt('emailMonitoring.deliveries')}
-        caption={selected.id}
+        caption={pt('emailMonitoring.deliveries')}
         labels={tableLabels(pt)}
         data={data.deliveries}
         columns={emailMonitoringDeliveryColumns(pt)}
@@ -121,6 +149,14 @@ const DeliveryTable = ({
           />
         }
       />
+      <details className="text-sm text-muted-foreground">
+        <summary className="cursor-pointer font-medium">
+          {pt('emailMonitoring.technicalDetails')}
+        </summary>
+        <p className="mt-2 max-w-3xl">{pt('emailMonitoring.timingNotice')}</p>
+        <p className="mt-2">{pt('emailMonitoring.subscriptionId')}</p>
+        <code className="break-all">{selected.id}</code>
+      </details>
     </section>
   );
 };
@@ -136,6 +172,9 @@ export const EmailMonitoringTables = (props: TableProps) => {
         {props.pt('emailMonitoring.subscriptions')}
       </h2>
       <SubscriptionTable {...props} onSelect={onSelect} />
+      <p className="max-w-3xl text-sm text-muted-foreground">
+        {props.pt('emailMonitoring.deliverySummaryNotice')}
+      </p>
       {props.selected && <DeliveryTable {...props} selected={props.selected} onSelect={onSelect} />}
     </>
   );

@@ -1,4 +1,16 @@
 export const shellENResources = {
+  changelog: {
+    title: 'Changelog',
+    description:
+      'Published Studio versions and their release notes. The releases shown may differ from the version running in this environment.',
+    archive: 'All releases on GitHub',
+    loading: 'Loading release notes.',
+    error: 'Release notes could not be loaded. Please try again.',
+    retry: 'Try again',
+    empty: 'No stable Studio releases are available yet.',
+    source: 'Release on GitHub',
+    noNotes: 'No release notes are available for this version.',
+  },
   languages: {
     locales: {
       de: 'German',
@@ -170,6 +182,7 @@ export const shellENResources = {
     iamViewer: 'IAM Viewer',
   },
   sidebar: {
+    changelog: 'Changelog',
     ariaLabel: 'Sidebar',
     sectionLabel: 'Navigation',
     navAriaLabel: 'Section navigation',
@@ -187,6 +200,7 @@ export const shellENResources = {
     media: 'Media',
     categories: 'Categories',
     app: 'App',
+    appTexts: 'App texts',
     cockpit: 'Cockpit',
     users: 'Users',
     accounts: 'Accounts',

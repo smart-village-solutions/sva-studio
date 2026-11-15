@@ -18,6 +18,14 @@ Jeder Stack enthält mindestens App, PostgreSQL und Redis. Traefik routet den Ro
 
 Die langlebigen Services `app`, `provisioner`, `postgres` und `redis` verwenden `restart_policy.condition: any` ohne begrenzte `max_attempts`. Damit plant Swarm sie nach einem sauberen oder fehlerhaften Abbruch erneut ein, sobald der fest zugewiesene Node wieder verfügbar ist. Die einmaligen Services `candidate`, `migrate` und `bootstrap` behalten dagegen `condition: none`. Dieser Wiederanlaufvertrag ist keine Hochverfügbarkeit: Solange PostgreSQL und Redis an lokale Volumes und `node-005.sva` gebunden sind, kann ein dauerhaft verlorener Node nicht automatisch durch einen anderen ersetzt werden.
 
+### Akzeptierte Portainer-Einschränkung für den Candidate
+
+Der SVA-Endpoint lehnt beim vorhandenen Nicht-Administrator-Zugang auch einschränkende `security_opt`- und Capability-Angaben ab. Im Staging-Promote `43103061947` wurde der temporäre Stack mit `security-opt setting disabled for non administrator users` abgewiesen, bevor ein Docker-Service entstand; die anschließende Task-Abfrage endete nur mit einem Timeout. Ein erfolgreicher Quantum-Aufruf oder ein sichtbarer Stack-Eintrag allein belegt daher keinen gestarteten Candidate.
+
+Als am 11. November 2026 ausdrücklich freigegebener Workaround verzichtet ausschließlich `candidate` in `compose.yaml` auf `security_opt: no-new-privileges:true` und `cap_drop: ALL`. Das akzeptierte Restrisiko sind die vom Image und Docker vorgegebenen Capabilities sowie mögliche Rechteerweiterungen über entsprechend konfigurierte Programme; der Prüfprozess verarbeitet weiterhin sensible Datenbankzugänge und Schlüssel. Sein schreibgeschütztes Dateisystem, das isolierte interne Netz, fehlende veröffentlichte Ports und Host-Volumes sowie `restart_policy.condition: none` bleiben erhalten. Die Sicherheitskonfiguration der übrigen Services und die Backup-, Preflight- und Promote-Gates werden dafür nicht abgeschwächt.
+
+Sobald der Provider die beiden Optionen für den Deployment-Zugang erlaubt, werden sie direkt am bestehenden Candidate wiederhergestellt und die gerenderten Dev-, Staging- und Production-Compose-Verträge erneut geprüft. Die Freigabe ist kein Anlass, weitere Container-Schutzmaßnahmen zu entfernen oder globale Portainer-Richtlinien zu ändern. Reguläre Rollouts bleiben im kanonischen Promote-Pfad.
+
 ## Betriebsziele
 
 | Bereich                 | Zielwert     |

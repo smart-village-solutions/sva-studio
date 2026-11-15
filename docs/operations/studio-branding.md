@@ -19,6 +19,10 @@ vorhandenen Datentypen und Berechtigungen ausgeblendet. Der Bereich
 `Anwendungen` enthält damit nur Anwendungen, die für die aktive Instanz effektiv
 als Modul verfügbar sind.
 
+The `App` menu is also hidden for tenant administrators with app-text permissions
+and for root administrators with access to shared app-text defaults. These
+permissions do not override the profile's navigation setting.
+
 Der Produktname erscheint auf der Startseite vor und nach dem Login, in der Sidebar sowie im Browser-Titel. Die Texte liegen in den deutschen und englischen Übersetzungsressourcen. Die Profilauswahl und die zugehörigen Übersetzungsschlüssel sind zentral in `apps/sva-studio-react/src/lib/studio-branding.ts` definiert. Weitere bestätigte Branding-Eigenschaften können dort ergänzt werden.
 
 ## Konfiguration

@@ -26,7 +26,7 @@ export function PoiDetailContentTab({
   create = false,
   categories,
 }: Readonly<{
-  onAddManualMedia: () => string;
+  onAddManualMedia: (persistentUrl?: string) => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   canSelectMedia?: boolean;
   canUploadMedia?: boolean;

@@ -27,7 +27,9 @@ werden.
   Keycloak übertragen oder in Nachweisen persistiert. Eine von Keycloak
   gelieferte reine Sternmaske gilt nicht als Nachweis eines gesetzten Passworts.
 - Die Baseline gilt automatisch nur für von Studio neu angelegte Realms.
-  Importierte Bestands-Realms werden nicht stillschweigend migriert.
+  Beim bestätigten Setup oder Abgleich eines Bestands-Realms gilt die gemeinsame
+  Vorgabe für Studio-Benutzerprofilfelder. Die übrigen Baseline-Einstellungen
+  gehören zum Setup neuer Realms.
 - Schlägt die Provisionierung eines in diesem Lauf neu angelegten Realms fehl,
   entfernt der Worker genau diesen Realm als Compensation. Vor der Löschung
   prüft er den aktuellen Registry-Modus erneut; fremde oder inzwischen
@@ -52,9 +54,8 @@ Provisioning-Snapshots nachvollziehbar. Die einzige vorgesehene manuelle
 Nacharbeit ist das SMTP-Passwort direkt in Keycloak.
 
 Änderungen an der Baseline sind sicherheitsrelevant und benötigen eine neue
-Version sowie passende Soll-/Ist- und Provisioning-Tests. Bestehende Realms
-bleiben von solchen Änderungen unberührt, bis dafür eine eigene Migration
-entschieden wird.
+Version sowie passende Soll-/Ist- und Provisioning-Tests. Für bestehende Realms
+bindet der Plan den Zustand der Profilfelder an den bestätigten Abgleich.
 
 ## Verworfene Alternativen
 

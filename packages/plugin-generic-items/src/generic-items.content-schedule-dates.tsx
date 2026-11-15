@@ -1,6 +1,42 @@
-import { Button, Checkbox, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { isInstant, isLocalDateTime } from '@sva/plugin-sdk';
+import {
+  Button,
+  Checkbox,
+  DateInput,
+  Input,
+  InstantInput,
+  LocalDateTimeInput,
+  StudioField,
+  StudioFieldGroup,
+  TimeInput,
+} from '@sva/studio-ui-react';
+import { useState } from 'react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
+
+const GenericDateControl = ({
+  id,
+  label,
+  value,
+  onValueChange,
+}: {
+  readonly id: string;
+  readonly label: string;
+  readonly value: string;
+  readonly onValueChange: (value: string) => void;
+}) => {
+  // Rows are keyed by RHF field-array ids and remount on reset; clearing a value keeps its kind.
+  const [kind] = useState(() =>
+    isInstant(value) ? 'instant' : !value || isLocalDateTime(value) ? 'local' : 'date'
+  );
+  if (kind === 'instant')
+    return <InstantInput label={label} id={id} value={value} onValueChange={onValueChange} />;
+  if (kind === 'local')
+    return (
+      <LocalDateTimeInput id={id} value={value} onValueChange={(value) => onValueChange(value)} />
+    );
+  return <DateInput id={id} label={label} value={value} onValueChange={onValueChange} />;
+};
 
 const DateTimeFields = ({
   labels,
@@ -16,33 +52,32 @@ const DateTimeFields = ({
     <>
       <StudioFieldGroup columns={2}>
         <StudioField id={`generic-item-date-start-${index}`} label={labels.dateStart}>
-          <Input
+          <GenericDateControl
+            label={labels.dateStart}
             id={`generic-item-date-start-${index}`}
-            type="datetime-local"
             value={date.dateStart}
-            onChange={(event) =>
-              setValue(`dates.${index}.dateStart`, event.target.value, {
+            onValueChange={(value) =>
+              setValue(`dates.${index}.dateStart`, value, {
                 shouldDirty: true,
               })
             }
           />
         </StudioField>
         <StudioField id={`generic-item-date-end-${index}`} label={labels.dateEnd}>
-          <Input
+          <GenericDateControl
+            label={labels.dateEnd}
             id={`generic-item-date-end-${index}`}
-            type="datetime-local"
             value={date.dateEnd}
-            onChange={(event) =>
-              setValue(`dates.${index}.dateEnd`, event.target.value, { shouldDirty: true })
+            onValueChange={(value) =>
+              setValue(`dates.${index}.dateEnd`, value, { shouldDirty: true })
             }
           />
         </StudioField>
       </StudioFieldGroup>
       <StudioFieldGroup columns={2}>
         <StudioField id={`generic-item-time-start-${index}`} label={labels.timeStart}>
-          <Input
+          <TimeInput
             id={`generic-item-time-start-${index}`}
-            type="time"
             value={date.timeStart}
             onChange={(event) =>
               setValue(`dates.${index}.timeStart`, event.target.value, {
@@ -52,9 +87,8 @@ const DateTimeFields = ({
           />
         </StudioField>
         <StudioField id={`generic-item-time-end-${index}`} label={labels.timeEnd}>
-          <Input
+          <TimeInput
             id={`generic-item-time-end-${index}`}
-            type="time"
             value={date.timeEnd}
             onChange={(event) =>
               setValue(`dates.${index}.timeEnd`, event.target.value, { shouldDirty: true })

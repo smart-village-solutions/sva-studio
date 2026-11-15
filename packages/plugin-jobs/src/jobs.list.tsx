@@ -1,28 +1,29 @@
-import { useEffect, useState } from 'react';
-import { Link, useSearch, useNavigate } from '@tanstack/react-router';
 import {
-  normalizeListSearch,
-  type MainserverActingPrincipalType,
-  usePluginTranslation,
-  toDatetimeLocalValue,
+  formatCalendarDate,
   formatDateTimeInEditorTimeZone,
+  normalizeListSearch,
+  toDatetimeLocalValue,
+  usePluginTranslation,
+  type MainserverActingPrincipalType,
 } from '@sva/plugin-sdk';
 import {
   Button,
-  StudioOverviewPageTemplate,
-  StudioDataTable,
-  StudioPagination,
-  StudioLoadingState,
-  StudioErrorState,
-  StudioEmptyState,
   Select,
+  StudioDataTable,
+  StudioEmptyState,
+  StudioErrorState,
   StudioField,
+  StudioLoadingState,
+  StudioOverviewPageTemplate,
+  StudioPagination,
   type MainserverPrincipalControlModel,
   type StudioColumnDef,
 } from '@sva/studio-ui-react';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 import { jobTemporalState, type JobList } from './contract.js';
-import { listJobs, listJobCategories } from './jobs.api.js';
-import { useJobAccess, resolveJobPrincipal } from './jobs.access.js';
+import { resolveJobPrincipal, useJobAccess } from './jobs.access.js';
+import { listJobCategories, listJobs } from './jobs.api.js';
 import { ListFilters, listFilters } from './jobs.list-filters.js';
 
 function listColumns(
@@ -63,12 +64,12 @@ function listColumns(
     {
       id: 'publicationDate',
       header: pt('fields.publicationDate'),
-      cell: (item) => item.input.publicationDate,
+      cell: (item) => formatCalendarDate(item.input.publicationDate) ?? '',
     },
     {
       id: 'end',
       header: pt('fields.dateEnd'),
-      cell: (item) => item.input.dates[0]?.dateEnd ?? '',
+      cell: (item) => formatCalendarDate(item.input.dates[0]?.dateEnd) ?? '',
     },
     {
       id: 'state',

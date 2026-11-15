@@ -2383,6 +2383,121 @@ describe('createSvaMainserverService', () => {
     expect(thirdCallBody).not.toContain('"dataType":"JSON"');
   });
 
+  describe.each([
+    { label: 'create', existingId: null },
+    { label: 'update', existingId: '1707' },
+  ])('static content $label transport', ({ existingId }) => {
+    it.each(['http-503', 'network', 'timeout', 'invalid-response'] as const)(
+      'does not repeat an ambiguously completed mutation after %s',
+      async (failure) => {
+        const fetchImpl = vi
+          .fn()
+          .mockResolvedValueOnce(
+            createJsonResponse(200, { access_token: 'token-1', expires_in: 120 })
+          )
+          .mockResolvedValueOnce(
+            createJsonResponse(200, { data: { publicJsonFile: { id: existingId } } })
+          )
+          .mockImplementationOnce(async () => {
+            if (failure === 'invalid-response')
+              return createJsonResponse(200, { data: { createOrUpdateStaticContent: null } });
+            if (failure === 'http-503') return new Response('unavailable', { status: 503 });
+            if (failure === 'network') throw new TypeError('connection closed after write');
+            const error = new Error('request timed out after write');
+            error.name = 'TimeoutError';
+            throw error;
+          })
+          .mockResolvedValue(
+            createJsonResponse(200, {
+              data: { createOrUpdateStaticContent: { id: 'retried-write' } },
+            })
+          );
+        const service = createSvaMainserverService({
+          loadInstanceConfig: async () => baseConfig,
+          readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+          fetchImpl,
+          retryBaseDelayMs: 0,
+          randomIntImpl: () => 0,
+        });
+
+        await expect(
+          service.createOrUpdateStaticContent({
+            instanceId: baseConfig.instanceId,
+            keycloakSubject: 'subject-1',
+            staticContent: { name: 'wasteTypes', content: '{"bio":{"label":"Bio"}}' },
+          })
+        ).rejects.toMatchObject({
+          statusCode: failure === 'invalid-response' ? 502 : 503,
+          cause: { retry: { kind: 'terminal' } },
+        });
+        expect(fetchImpl).toHaveBeenCalledTimes(3);
+        const body = JSON.parse(String(fetchImpl.mock.calls[2]?.[1]?.body));
+        expect(body.operationName).toBe(
+          existingId
+            ? 'SvaMainserverCreateOrUpdateStaticContentWithId'
+            : 'SvaMainserverCreateOrUpdateStaticContent'
+        );
+      }
+    );
+  });
+
+  it('does not mark a failed lookup as an ambiguous write', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(new Response('forbidden', { status: 403 }));
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+    const error = await service
+      .createOrUpdateStaticContent({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        staticContent: { name: 'wasteTypes', content: '{}' },
+      })
+      .catch((failure: unknown) => failure);
+    expect(error).toMatchObject({ statusCode: 403 });
+    expect(error).not.toHaveProperty('cause');
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('still retries a transient static content read before a single mutation', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(new Response('unavailable', { status: 503 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { publicJsonFile: { id: '1707' } } }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { createOrUpdateStaticContent: { id: '1707' } } })
+      );
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+      retryBaseDelayMs: 0,
+      randomIntImpl: () => 0,
+    });
+    await expect(
+      service.createOrUpdateStaticContent({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        staticContent: { name: 'wasteTypes', content: '{"bio":{"label":"Bio"}}' },
+      })
+    ).resolves.toEqual({ id: '1707' });
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body)).operationName).toBe(
+      'SvaMainserverPublicJsonFile'
+    );
+    expect(JSON.parse(String(fetchImpl.mock.calls[2]?.[1]?.body)).operationName).toBe(
+      'SvaMainserverPublicJsonFile'
+    );
+    expect(JSON.parse(String(fetchImpl.mock.calls[3]?.[1]?.body)).operationName).toBe(
+      'SvaMainserverCreateOrUpdateStaticContentWithId'
+    );
+  });
+
   it('routes the default static content helper through the default service', async () => {
     state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
@@ -3012,12 +3127,22 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] } },
+          data: {
+            pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] },
+          },
         })
       )
       .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] } },
+          data: {
+            createPointOfInterest: {
+              id: 'poi-1',
+              name: 'POI',
+              payload: {},
+              visible: true,
+              lunches: [],
+            },
+          },
         })
       );
     vi.stubGlobal('fetch', fetchImpl);
@@ -3057,12 +3182,22 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] } },
+          data: {
+            pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] },
+          },
         })
       )
       .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] } },
+          data: {
+            createPointOfInterest: {
+              id: 'poi-1',
+              name: 'POI',
+              payload: {},
+              visible: true,
+              lunches: [],
+            },
+          },
         })
       );
     vi.stubGlobal('fetch', fetchImpl);
@@ -4487,7 +4622,13 @@ describe('createSvaMainserverService', () => {
             };
           case 'SvaMainserverPoiDetail':
             return {
-              pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] },
+              pointOfInterest: {
+                id: 'poi-1',
+                name: 'POI',
+                payload: {},
+                visible: true,
+                lunches: [],
+              },
             };
           case 'SvaMainserverWasteAddresses':
             return { wasteAddresses: [] };

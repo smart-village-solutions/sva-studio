@@ -52,6 +52,7 @@ const routeAllowed = (request: PersonalRequest): boolean => {
   if (allowedInterfacesRoute(request, parts)) return true;
   if (!isIamPath(parts)) return false;
   const resource = parts[3];
+  if (resource === 'permissions') return parts.length === 4 && request.method === 'GET';
   if (resource === 'users') return allowedUserRoute(request, parts);
   if (resource === 'roles') return allowedRoleRoute(request, parts);
   if (resource === 'groups') return allowedGroupRoute(request, parts);

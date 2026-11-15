@@ -133,6 +133,24 @@ describe('instance detail split module exports', () => {
     } as any;
 
     const configurationAssessment = evaluateInstanceConfiguration(instance, null);
+    const activeInstanceWithProfileDrift = {
+      ...instance,
+      status: 'active',
+      keycloakStatus: { ...instance.keycloakStatus, userProfileBaselineAligned: false },
+    };
+    expect(
+      buildInstanceDoctorModel({
+        instance: activeInstanceWithProfileDrift,
+        configurationAssessment,
+        mutationError: null,
+      })
+    ).toMatchObject({
+      recommendedAction: { action: 'reconcileKeycloak', label: 'Realm anwenden' },
+      checks: expect.arrayContaining([
+        expect.objectContaining({ key: 'user-profile', status: 'degraded' }),
+      ]),
+    });
+
     const doctorModel = buildInstanceDoctorModel({
       instance,
       configurationAssessment,

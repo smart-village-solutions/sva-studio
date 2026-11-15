@@ -122,7 +122,9 @@ Bei `realmMode = new` setzt der Provisioner zusätzlich:
 - den `instanceId`-Mapper am Login-Client
 - die freigegebenen nicht geheimen SMTP-Werte
 
-Das SMTP-Passwort wird bewusst weder in der Baseline noch in Registry, Snapshot, Status oder Browserantworten gespeichert. Detailstatus und Plan lesen bei Studio-erstellten Realms lediglich den Booleschen Nachweis live nach, ob ein nicht maskierter Passwortwert vorhanden ist; reine Sternmasken gelten nicht als Nachweis. Nach dem Provisioning muss nur dieses Passwort direkt in Keycloak gesetzt und die Verbindung dort getestet werden. Bestands-Realms werden durch diesen Ablauf nicht automatisch verändert.
+Das SMTP-Passwort wird bewusst weder in der Baseline noch in Registry, Snapshot, Status oder Browserantworten gespeichert. Detailstatus und Plan lesen bei Studio-erstellten Realms lediglich den Booleschen Nachweis live nach, ob ein nicht maskierter Passwortwert vorhanden ist; reine Sternmasken gelten nicht als Nachweis. Nach dem Provisioning muss nur dieses Passwort direkt in Keycloak gesetzt und die Verbindung dort getestet werden.
+
+Bei bestehenden Realms prüft der Setup-Plan die Studio-Benutzerprofilfelder ebenfalls. Beim Setup und über „Instanzen → Instanz auswählen → Doctor → Realm anwenden“ ergänzt Studio fehlende Felder für die Instanzzuordnung, Mainserver-Zugangsdaten und die Kennzeichnung des Tenant-Admins. Die Felder sind einwertig und nur für Administratoren les- und schreibbar. Studio liest die Konfiguration nach dem Schreiben erneut, bevor der Lauf erfolgreich abgeschlossen wird.
 
 ## Login-Theme
 

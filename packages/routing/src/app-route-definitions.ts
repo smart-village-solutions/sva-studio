@@ -82,6 +82,12 @@ export const standardUiRouteDefinitions: readonly UiRouteDefinition[] = [
     requiredPermissions: ['integration.manage'],
     documentation: page('interfaces.overview', 'overview'),
   },
+  {
+    binding: 'changelog',
+    path: uiRoutePaths.changelog,
+    guard: 'changelog',
+    documentation: page('changelog.overview', 'overview'),
+  },
   { binding: 'help', path: uiRoutePaths.help, documentation: excluded('help-page') },
   { binding: 'support', path: uiRoutePaths.support, documentation: excluded('help-page') },
   { binding: 'license', path: uiRoutePaths.license, documentation: excluded('help-page') },

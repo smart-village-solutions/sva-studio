@@ -2,6 +2,8 @@ import { eventsDECreate, eventsDEValidation } from './plugin.translations.de.lab
 export const eventsDEEditor = {
   create: eventsDECreate,
   messages: {
+    savedVisible: 'Sichtbar gespeichert',
+    savedHidden: 'Verborgen gespeichert',
     requestReference: 'Fehlerreferenz:',
     copyRequestReference: 'Referenz kopieren',
     requestReferenceCopied: 'Kopiert',
@@ -125,7 +127,7 @@ export const eventsDEEditor = {
     content: { title: 'Inhalt', description: 'Termine, Orte, Veranstalter und weitere Fachdaten.' },
     settings: {
       title: 'Einstellungen',
-      description: 'Medien, Sichtbarkeit und technische Zusatzdaten.',
+      description: 'Sichtbarkeit und Zuordnung zu einem anderen System.',
     },
     history: { title: 'Historie', description: 'Änderungs- und Aktivitätsverlauf.' },
   },
@@ -182,8 +184,8 @@ export const eventsDEEditor = {
     settings: {
       publication: { title: 'Sichtbarkeit', description: 'Ausspielung der Veranstaltung.' },
       technical: {
-        title: 'Technische Zusatzdaten',
-        description: 'Technische Kennung der Veranstaltung.',
+        title: 'Externe Zuordnung',
+        description: 'Optionale Zuordnung der Veranstaltung zu einem anderen System.',
       },
     },
   },

@@ -1,27 +1,18 @@
-import {
-  IconCalendarMonth,
-  IconCopy,
-  IconTrash,
-} from '@tabler/icons-react';
-import type { WasteTourRecord } from '@sva/waste-management-contracts';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { formatCalendarDate, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Checkbox,
   StudioStatusBadge,
   StudioTableActionButton,
   StudioTableValueAction,
 } from '@sva/studio-ui-react';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
+import { IconCalendarMonth, IconCopy, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 
 import type { WasteManagementSearchParams } from './search-params.js';
 import { toWasteFractionEditSearch } from './waste-management.cross-link.navigation.js';
 
-export const formatTourDisplayDate = (value: string) => {
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isNaN(parsed.getTime())
-    ? value
-    : new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeZone: 'UTC' }).format(parsed);
-};
+export const formatTourDisplayDate = (value: string) => formatCalendarDate(value) ?? value;
 
 export const WasteToursRowSelectionCell = ({
   tour,

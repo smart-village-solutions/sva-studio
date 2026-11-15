@@ -1,27 +1,25 @@
-import React from 'react';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { formatLocalDateTime, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   ContentOwnershipPanelSlot,
   StudioSection,
   type StudioDetailTabDefinition,
 } from '@sva/studio-ui-react';
 
+import { StudioDetailCard } from '@sva/studio-ui-react';
+import { useFormContext, useWatch } from 'react-hook-form';
 import {
+  SurveyDetailBasisTab,
   SurveyIdentityCard,
   SurveyScheduleCard,
-  SurveyTargetAreaCard,
   SurveyStatusField,
-  SurveyDetailBasisTab,
+  SurveyTargetAreaCard,
   type SurveyTargetAreaOption,
 } from './surveys.detail-basis-tab.js';
 import {
   SurveyDescriptionCard,
-  SurveyParticipationCard,
   SurveyDetailContentTab,
+  SurveyParticipationCard,
 } from './surveys.detail-content-tab.js';
-import { StudioDetailCard } from '@sva/studio-ui-react';
-import { SurveyQuestionListEditor } from './surveys.question-list-editor.js';
-import { useFormContext, useWatch } from 'react-hook-form';
 import type { SurveyDetailFormValues } from './surveys.detail-form.js';
 import { SurveyDetailHistoryTab } from './surveys.detail-history-tab.js';
 import { SurveyDetailModerationTab } from './surveys.detail-moderation-tab.js';
@@ -32,6 +30,7 @@ import {
   type SurveyEditorMode,
   type SurveyEditorTabId,
 } from './surveys.editor.shared.js';
+import { SurveyQuestionListEditor } from './surveys.question-list-editor.js';
 import type { SurveyContentItem } from './surveys.types.js';
 
 const deriveSurveyTargetAreaOptions = (
@@ -155,8 +154,8 @@ export function SurveyCreateFields({
         </StudioDetailCard>
         <p className="text-sm text-muted-foreground">
           {pt('create.effect.schedule', {
-            start: basis.startAt || pt('create.noLimit'),
-            end: basis.endAt || pt('create.noLimit'),
+            start: formatLocalDateTime(basis.startAt) || pt('create.noLimit'),
+            end: formatLocalDateTime(basis.endAt) || pt('create.noLimit'),
           })}
         </p>
       </section>

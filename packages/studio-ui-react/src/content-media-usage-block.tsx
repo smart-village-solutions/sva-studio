@@ -70,7 +70,7 @@ export type ContentMediaUsageSupportedFields = Readonly<{
 export type ContentMediaUsageBlockProps = Readonly<{
   usages: readonly ContentMediaUsage[];
   onChange: (usages: readonly ContentMediaUsage[]) => void;
-  onAddManual: () => string | void;
+  onAddManual: (persistentUrl?: string) => string | void;
   onOpenLibrary?: () => void;
   onOpenUpload?: () => void;
   onLoadAssetSnapshot?: (usage: ContentMediaUsage) => Promise<ContentMediaAssetSnapshot>;

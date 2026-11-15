@@ -25,7 +25,6 @@ vi.mock('./shared/rate-limit.js', () => ({ consumeRateLimit: state.rate }));
 vi.mock('./app-translations-deepl.js', () => ({
   getDeepLSetupStatus: state.ready,
   translateDeepLValues: state.translate,
-  assertDeepLRequestSize: vi.fn(),
 }));
 import { appTranslationServiceHandler } from './app-translations-service.js';
 const binding = {
@@ -154,7 +153,7 @@ describe('technical app translation', () => {
       );
       expect(home.status).toBe(200);
       expect(await home.json()).toMatchObject({ targetLocale });
-      state.translate.mockResolvedValue(['<p>Localized text</p>']);
+      state.translate.mockResolvedValue([['Localized text']]);
       const page = await appTranslationServiceHandler(
         request({
           ...payload(),
@@ -202,6 +201,7 @@ describe('technical app translation', () => {
       [{ ...content, key: 'title' }],
       [{ ...content, format: 'plain' }],
       [{ ...content, text: ' ' }],
+      [{ ...content, text: '<p><strong>Impressum</strong></p>' }],
       [{ ...content, text: '<p><img src="https://example.org/pixel">Impressum</p>' }],
       [{ ...content, text: `<p>${'ä'.repeat(45000)}</p>` }],
     ];
@@ -212,8 +212,49 @@ describe('technical app translation', () => {
     expect(state.translate).not.toHaveBeenCalled();
   });
 
-  it('rejects structurally changed static HTML from the provider', async () => {
-    state.translate.mockResolvedValue(['<p><strong>Legal notice</strong></p>']);
+  it('translates only static HTML text and restores escaped paragraphs in source order', async () => {
+    const segments = [
+      'Impressum &lt;A&gt; &amp; B',
+      ...Array<string>(136).fill('Absatz'),
+      'Kontakt',
+    ];
+    const translations = [
+      'Mentions légales <A> & B',
+      ...Array<string>(136).fill('Paragraphe'),
+      'Contact',
+    ];
+    state.translate.mockResolvedValue([translations]);
+    const response = await appTranslationServiceHandler(
+      request({
+        ...payload(),
+        profileId: 'static-html-v1',
+        entries: [
+          {
+            key: 'content',
+            format: 'html',
+            text: segments.map((text) => `<p>${text}</p>`).join(''),
+          },
+        ],
+      })
+    );
+    expect(state.translate.mock.calls[0]?.[2]).toEqual([
+      ['Impressum <A> & B', ...segments.slice(1)],
+    ]);
+    expect(response.status).toBe(200);
+    expect((await response.json()).entries[0].text).toBe(
+      '<p>Mentions légales &lt;A&gt; &amp; B</p>' +
+        '<p>Paragraphe</p>'.repeat(136) +
+        '<p>Contact</p>'
+    );
+  });
+
+  it.each([
+    { result: [[]] },
+    { result: [[' ']] },
+    { result: [['One', 'Extra']] },
+    { result: ['Legal notice'] },
+  ])('rejects a mismatched static HTML response ($result)', async ({ result }) => {
+    state.translate.mockResolvedValue(result);
     const response = await appTranslationServiceHandler(
       request({
         ...payload(),

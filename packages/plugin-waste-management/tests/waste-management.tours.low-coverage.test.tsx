@@ -74,20 +74,6 @@ vi.mock('@sva/studio-ui-react', async () => ({
       {actions}
     </div>
   ),
-  StudioField: ({
-    id,
-    label,
-    children,
-  }: {
-    readonly id: string;
-    readonly label: React.ReactNode;
-    readonly children: React.ReactNode;
-  }) => (
-    <label htmlFor={id}>
-      <span>{label}</span>
-      {children}
-    </label>
-  ),
   StudioFieldGroup: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   Textarea: (props: React.ComponentProps<'textarea'>) => <textarea {...props} />,
 }));
@@ -619,7 +605,8 @@ describe('waste-management tours low coverage views', () => {
     );
 
     fireEvent.change(screen.getByLabelText('tours.fields.name'), { target: { value: 'Bio Nord' } });
-    fireEvent.click(screen.getByRole('button', { name: 'tours.fields.wasteFractions' }));
+    expect(screen.getByText('tours.fields.wasteFractions')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'change-fractions' }));
     const longDescription = 'Ausführliche Tourbeschreibung '.repeat(20);
     const descriptionField = screen.getByLabelText('tours.fields.description');
     expect(descriptionField.getAttribute('maxlength')).toBeNull();
@@ -670,7 +657,8 @@ describe('waste-management tours low coverage views', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'tours.fields.customDates' }));
+    expect(screen.getByText('tours.fields.customDates')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'change-custom-dates' }));
 
     expect(customDatesSpy).toHaveBeenCalledWith(expect.objectContaining({ disabled: false }));
     expect(onChange).toHaveBeenCalledWith({ customDates: [{ date: '2026-08-22' }] });

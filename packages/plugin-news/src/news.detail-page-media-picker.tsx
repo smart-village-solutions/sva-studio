@@ -26,7 +26,7 @@ export const NewsDetailMediaPicker = ({
   isAssetSelectable: (asset: NewsMediaPickerAsset) => boolean;
   mediaPicker: ReturnType<typeof useNewsDetailMedia>['mediaPicker'];
   mediaPickerLabels: ReturnType<typeof createStudioMediaPickerLabels>;
-  addManualMedia: () => string;
+  addManualMedia: (persistentUrl?: string) => string;
   canUpdateMedia: boolean;
 }>) => {
   const navigate = useNavigate();

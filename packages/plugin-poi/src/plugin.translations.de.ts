@@ -195,7 +195,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
       references: { title: 'Medien', description: 'Dateireferenzen des Ortes.' },
     },
     advanced: {
-      payload: { title: 'Technische Metadaten', description: 'Technische Kennung des Ortes.' },
+      payload: { title: 'Externe Zuordnung', description: 'Optionale Kennung des Ortes in einem anderen System.' },
     },
     settings: {
       media: {

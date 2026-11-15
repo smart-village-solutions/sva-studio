@@ -94,3 +94,33 @@ Das System SHALL nach einer Änderungsvorschau direkt im Mainserver speichern, o
 - **WHEN** der Mainserver-Readback bestätigt ist und die App noch einen gecachten Stand verwendet
 - **THEN** bleibt die Speicherung bestätigt
 - **AND** wird keine sofortige Aktualisierung aller Clients behauptet
+
+### Requirement: Nicht persistierender Host-Vorschau-Editor
+
+Das System SHALL als bestätigten ersten Editor einen durch `integration.manage` geschützten Host-Verbraucher auf „Schnittstellen“ anbieten. Es MUST vorhandene Konfigurationen ausschließlich lesend über die bestehende GraphQL-Anbindung laden und nur die beiden freigegebenen Feldprojektionen samt Identitäts-/Versionsmetadaten an den Browser geben. Formularänderungen MUST lokal bleiben; dieser Lieferabschnitt MUST NOT Konfigurationsmutationen, persistierte Entwürfe, Versionsanlage oder Löschung anbieten.
+
+#### Scenario: Gewünschte Version wird per Fallback aufgelöst
+
+- **WHEN** eine bekannte App-Version angefragt wird und der Mainserver eine andere Variante liefert
+- **THEN** zeigt der Editor angefragte und tatsächliche Version sowie einen ausdrücklichen Fallback-Hinweis
+- **AND** wird dies weder als vollständiger Variantenbestand noch als exakter Read nach ID ausgegeben
+
+#### Scenario: Nutzer bearbeitet und verwirft die beiden Feldgruppen
+
+- **WHEN** der Nutzer geladene Allgemein-/Design-Felder lokal ändert
+- **THEN** zeigt der Editor validierte Unterschiede zu den geladenen Feldwerten
+- **AND** erzeugen Bearbeiten, Vorschau und Verwerfen keine Mainserver-Aufrufe oder Konfigurationswrites
+- **AND** werden ein fehlender Wert und ein ausdrücklich gesetztes `false` unterschieden
+
+#### Scenario: Lesezugriff bleibt an den authentifizierten Kontext gebunden
+
+- **WHEN** der Browser eine Konfiguration anfragt
+- **THEN** prüft der Host `integration.manage` und bindet Instanz, Benutzer und aktive Organisation aus der Session
+- **AND** akzeptiert er weder fremde Instanzen noch frei gewählte Endpunkte oder Principals aus dem Request
+- **AND** werden fremde JSON-Felder, Rohkonfiguration und Zugangsdaten nicht an den Browser weitergereicht
+
+#### Scenario: Neu-Laden schlägt nach lokalen Änderungen fehl
+
+- **WHEN** bestätigtes Neu-Laden fehlschlägt
+- **THEN** bleiben die lokalen Formularänderungen erhalten
+- **AND** stellt eine unaufgelöste Antwort keine leere neue Konfiguration dar

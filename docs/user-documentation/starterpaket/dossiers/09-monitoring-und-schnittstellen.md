@@ -8,6 +8,7 @@
   Mail-Transport sowie Karte und Geocoding. Die Tabelle zeigt Typ, Endpoint, Status und letzte
   Prüfung. Schnittstellen lassen sich anlegen, bearbeiten, aktivieren und löschen; der Typ einer
   bestehenden Schnittstelle kann nicht geändert werden. Gespeicherte Secrets bleiben verborgen.
+- **App-Konfiguration als Vorschau:** Über „App-Konfiguration öffnen“ lassen sich die beiden ersten Einstellungen aus „Allgemein“ und „Design“ laden und lokal bearbeiten. Die Versionsanfrage kann leer bleiben oder eine bekannte App-Version enthalten. Angefragte und tatsächlich geladene Version werden angezeigt; ein Fallback wird gekennzeichnet. Die Änderungsvorschau zeigt ausschließlich die bearbeiteten Felder. „Änderungen verwerfen“ stellt die geladenen Werte wieder her. „Neu laden“ fragt bei lokalen Änderungen vorher nach. Es gibt noch keine Speichermöglichkeit und keine vollständige Variantenliste; Mainserver und App bleiben durch Formularänderungen unverändert. Der Zugriff benötigt `integration.manage`.
 - **Kontextabhängig:** Supabase setzt das Abfallmodul voraus. Automatische Statusprüfungen sind nicht
   für jeden Typ vollständig implementiert. Kartenchecks unterstützen derzeit Geoapify.
 - **Leitfragen / Stichwörter:** Welche Anbindung ist führend? Was bedeutet eingerichtet statt

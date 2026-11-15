@@ -2,6 +2,9 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InterfacesPage } from './-interfaces-page';
+vi.mock('./-app-configuration-preview', () => ({
+  AppConfigurationPreview: () => <div data-testid="configuration-preview" />,
+}));
 
 const state = vi.hoisted(() => {
   const listToken = () => undefined;
@@ -1047,5 +1050,15 @@ describe('InterfacesPage', () => {
         screen.getByText('Die gewählte Schnittstelle wurde nicht gefunden oder bereits entfernt.')
       ).toBeTruthy();
     });
+  });
+
+  it('opens the read-only app configuration preview from the existing interfaces page', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([]));
+    render(<InterfacesPage />);
+    await screen.findByRole('button', { name: 'App-Konfiguration öffnen' });
+    fireEvent.click(screen.getByRole('button', { name: 'App-Konfiguration öffnen' }));
+    expect(await screen.findByTestId('configuration-preview')).toBeTruthy();
+    expect(state.saveMainserver).not.toHaveBeenCalled();
+    expect(state.upsertInterface).not.toHaveBeenCalled();
   });
 });

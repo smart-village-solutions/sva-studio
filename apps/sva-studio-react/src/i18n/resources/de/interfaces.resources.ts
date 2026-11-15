@@ -1,4 +1,51 @@
 export const interfacesDEResources = {
+  appConfiguration: {
+    title: 'App-Konfiguration',
+    open: 'App-Konfiguration öffnen',
+    intro: 'Vorhandene Einstellungen laden, lokal bearbeiten und Änderungen vergleichen.',
+    notice:
+      'Änderungen werden noch nicht gespeichert. Sie gelten nur in diesem geöffneten Formular und verändern weder Mainserver noch App.',
+    version: 'Gewünschte App-Version',
+    versionHelp:
+      'Leer lassen für den unversionierten Bestand. Eine vollständige Variantenliste steht noch nicht zur Verfügung.',
+    load: 'Konfiguration laden',
+    loading: 'Konfiguration wird geladen …',
+    reload: 'Neu laden',
+    discard: 'Änderungen verwerfen',
+    confirmReload: 'Lokale Änderungen verwerfen und die Konfiguration neu laden?',
+    loadError:
+      'Die Konfiguration konnte nicht geladen werden. Prüfe Berechtigung und Mainserver-Anbindung. Vorhandene Formularänderungen bleiben erhalten.',
+    notResolved:
+      'Die Anfrage hat keinen eindeutig aufgelösten Datensatz geliefert. Es wird keine leere Konfiguration erzeugt.',
+    invalidDocument:
+      'Der zurückgegebene Inhalt kann für diese Vorschau nicht als JSON-Objekt gelesen werden.',
+    versionError: 'Gib eine gültige App-Version ein, zum Beispiel 4.0.0, oder lasse das Feld leer.',
+    loaded: 'Geladener Stand',
+    record: 'Datensatz',
+    actualVersion: 'Tatsächliche Version',
+    requestedVersion: 'Angefragte Version',
+    unversioned: 'Unversioniert',
+    fallback:
+      'Der Mainserver hat eine andere Variante als angefragt geliefert. Die angezeigten Felder gehören zur tatsächlichen Version unten.',
+    general: 'Allgemein',
+    design: 'Design',
+    alternativeLocation: 'Alternative Standortwahl anzeigen',
+    lines: 'Zeilen für Service-Kacheltitel',
+    linesHelp: 'Positive ganze Zahl. Leer bedeutet „nicht gesetzt“.',
+    linesError: 'Gib eine positive ganze Zahl innerhalb des sicheren Zahlenbereichs ein.',
+    missing: 'Nicht gesetzt',
+    unsupported: 'Vorhandener Wert nicht unterstützt',
+    yes: 'Ja',
+    no: 'Nein',
+    preview: 'Lokale Änderungsvorschau',
+    field: 'Einstellung',
+    before: 'Geladen',
+    after: 'Lokal geändert',
+    noChanges: 'Noch keine lokalen Änderungen.',
+    invalidPreview: 'Korrigiere den ungültigen Wert, um die Änderungsvorschau zu sehen.',
+    unsupportedHelp:
+      'Ein vorhandener Wert oder sein übergeordnetes Objekt hat einen anderen Typ. Die Vorschau verändert diesen Bestand nicht.',
+  },
   deepl: {
     refreshFailed:
       'Prüfung beendet, aber der aktuelle Schnittstellenstand konnte nicht geladen werden. Bitte erneut versuchen.',

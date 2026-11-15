@@ -54,7 +54,6 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     changePoiVisibility,
     transferContentOwnership,
     createOrUpdateStaticContent,
-    readAppConfiguration,
   } = createPoiService(context);
   const {
     listSurveys,
@@ -80,7 +79,6 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     ...createConstructionSiteService(context),
     ...createVoucherService(context),
     createOrUpdateStaticContent,
-    readAppConfiguration,
     createEvent,
     createGenericItem,
     createNews,

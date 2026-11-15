@@ -11,7 +11,6 @@ import {
 import { mergePoiUpdateWithCurrent } from './editor-field-matrices.js';
 import type { ServiceContext } from './service-context.js';
 import { toSvaMainserverError, withUpdatedPayload } from './shared.js';
-import type { AppConfigurationSelection } from './static-content-operations.js';
 
 export const createPoiService = ({
   loadValidatedInstanceConfig,
@@ -98,21 +97,9 @@ export const createPoiService = ({
         { ...input, genericItemId: input.content.id },
         config
       );
-      if (current.genericType === 'Voucher')
-        throw toSvaMainserverError({
-          code: 'invalid_response',
-          message: 'voucher_ownership_unsupported',
-          statusCode: 409,
-        });
+      if (current.genericType === 'Voucher') throw toSvaMainserverError({code: 'invalid_response', message: 'voucher_ownership_unsupported', statusCode: 409});
     }
     return transferContentOwnershipWithConfig(input, config);
-  };
-
-  const readAppConfiguration = async (
-    input: SvaMainserverConnectionInput & { readonly selection: AppConfigurationSelection }
-  ) => {
-    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    return staticContentOperations.readAppConfigurationWithConfig(input, config);
   };
 
   const createOrUpdateStaticContent = async (
@@ -133,6 +120,5 @@ export const createPoiService = ({
     changePoiVisibility,
     transferContentOwnership,
     createOrUpdateStaticContent,
-    readAppConfiguration,
   };
 };

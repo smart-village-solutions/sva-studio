@@ -6,7 +6,7 @@ Die App-Konfigurationseditoren benötigen einen gemeinsamen, verlustfreien Mains
 
 ## Freigabe und Status
 
-Der Nutzer hat den dokumentierten Gesamtentwurf am 15. November 2026 geprüft und freigegeben und anschließend die weitere Umsetzung beauftragt. Der reine serverseitige Feldabgleich für die beiden ersten Feldgruppen, die Vorbereitung vollständiger Versionskopien und der Readback-Ergebnisvergleich sind implementiert und mit 39 gezielten Kern-Tests lokal geprüft. Der bestehende Service enthält zusätzlich den GraphQL-Leseadapter; Host-Autorisierung, tatsächliche Plugin-Verbraucher und der vollständige Schreib-/Readback-Ablauf sind noch nicht angeschlossen. Der technische Zugriff für vollständige Variantenverwaltung und identitätserhaltende Writes ist nach der Quellcodeprüfung noch offen, siehe [Design](design.md#technischer-zugriff-mit-unverändertem-mainserver).
+Der Gesamtentwurf ist freigegeben. Dieser PR sichert ausschließlich den bestehenden Static-Content-Writer gegen automatische Mutationswiederholungen und dokumentiert die weitere Umsetzung. Leseadapter, Abgleich, Versionskopie und Readback werden gemeinsam mit ihrem ersten tatsächlichen autorisierten Host-Verbraucher eingeführt; isolierte öffentliche APIs ohne Verbraucher sind nicht Teil dieses PRs. Der technische Zugriff für vollständige Variantenverwaltung und identitätserhaltende Writes bleibt offen, siehe [Design](design.md#technischer-zugriff-mit-unverändertem-mainserver).
 
 ## What Changes
 
@@ -24,7 +24,7 @@ Der Nutzer hat den dokumentierten Gesamtentwurf am 15. November 2026 geprüft un
 - Das Risiko externer Änderungen zwischen Fresh Read und Write ist ausdrücklich akzeptiert. Studio verspricht keinen atomaren Überschreibeschutz.
 - Keine automatische Neuanlage aufgrund einer leeren Fallback-Antwort, keine stillen Namensänderungen, kein DB-Direktzugriff und keine automatische Rechteerhöhung.
 - Keine weiteren Modulformulare, automatische Altlastenbereinigung, zweite Konfigurationspersistenz oder neuer Sync-Dienst. Parser-/Duplikatfälle werden nicht als eigener Bereinigungsauftrag aufgenommen.
-- Dieser PR liefert Vorbereitungskern, vorhandenen GraphQL-Lesezugriff und den Retry-Schutz im bestehenden Writer. Host-/Plugin-Anbindung und vollständige Variantenverwaltung bleiben offen. Merge, Deployment und produktive Konfigurationswrites sind nicht beauftragt.
+- Dieser PR liefert den Retry-Schutz im bestehenden Writer. Host-/Plugin-Anbindung und vollständige Variantenverwaltung bleiben offen. Merge, Deployment und produktive Konfigurationswrites sind nicht beauftragt.
 
 ## Impact
 

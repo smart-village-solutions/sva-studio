@@ -25,29 +25,6 @@ query SvaMainserverPublicJsonFile(
 }
 `;
 
-export type SvaMainserverAppConfigurationQuery = {
-  readonly publicJsonFile?: {
-    readonly id?: string | number | null;
-    readonly name?: string | null;
-    readonly dataType?: string | null;
-    readonly version?: string | null;
-    readonly content?: unknown;
-  } | null;
-};
-
-// This is the existing App selection query, not a read-by-ID or variant list.
-export const svaMainserverAppConfigurationDocument = `
-query SvaMainserverAppConfiguration($name: String!, $version: String) {
-  publicJsonFile(name: $name, version: $version) {
-    id
-    name
-    dataType
-    version
-    content
-  }
-}
-`;
-
 export const svaMainserverCreateOrUpdateStaticContentDocument = `
 mutation SvaMainserverCreateOrUpdateStaticContent(
   $name: String!

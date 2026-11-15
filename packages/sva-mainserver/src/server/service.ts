@@ -290,15 +290,6 @@ export const createOrUpdateSvaMainserverStaticContent = (
   input: SvaMainserverConnectionInput & { readonly staticContent: SvaMainserverStaticContentInput }
 ) => getDefaultService().createOrUpdateStaticContent(input);
 
-export const readSvaMainserverAppConfiguration = (
-  ...args: Parameters<DefaultService['readAppConfiguration']>
-) => getDefaultService().readAppConfiguration(...args);
-
-export type {
-  AppConfigurationSelection,
-  AppConfigurationReadResult,
-} from './service-internals/static-content-operations.js';
-
 export const listSvaMainserverWasteSyncSnapshot = (input: SvaMainserverConnectionInput) =>
   getDefaultService().listWasteSyncSnapshot(input);
 

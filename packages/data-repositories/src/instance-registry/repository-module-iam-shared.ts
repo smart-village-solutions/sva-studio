@@ -27,15 +27,13 @@ export const buildManagedPermissions = (
 export const buildRolePermissionPairs = (
   contracts: readonly InstanceModuleIamContractRecord[]
 ): readonly RolePermissionPair[] =>
-  contracts.flatMap((contract) =>
-    (contract.systemRoles ?? contract.tenantBootstrapRoles ?? []).flatMap((role) =>
-      role.permissionIds.map((permissionId) => ({
-        moduleId: contract.moduleId,
-        roleName: role.roleName,
-        permissionId,
-      }))
-    )
-  );
+  contracts.flatMap((contract) => [
+    ...(contract.systemRoles ?? contract.tenantBootstrapRoles ?? []).flatMap((role) =>
+      role.permissionIds.map((permissionId) => ({ moduleId: contract.moduleId, roleName: role.roleName, permissionId }))
+    ),
+    ...contract.permissions.filter((permission) => resolveStandardEditorPermissionScope(permission.key))
+      .map((permission) => ({ moduleId: contract.moduleId, roleName: standardEditorRoleKey, permissionId: permission.key })),
+  ]);
 
 export const upsertPermission = async (
   executor: SqlExecutor,
@@ -75,6 +73,9 @@ export const insertModuleRolePermission = async (
   instanceId: string,
   pair: RolePermissionPair
 ): Promise<boolean> => {
+  if (pair.roleName === standardEditorRoleKey) {
+    return (await syncStandardEditorPermissions(executor, instanceId, [pair.permissionId], pair.moduleId)) > 0;
+  }
   const result = await executor.execute(
     statement(
       `

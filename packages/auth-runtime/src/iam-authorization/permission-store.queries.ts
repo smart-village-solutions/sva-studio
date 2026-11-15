@@ -65,6 +65,18 @@ ${ROLE_ASSIGNMENT_SOURCE_SQL}
   AND EXISTS (SELECT 1 FROM iam.instance_memberships membership WHERE membership.instance_id = a.instance_id AND membership.account_id = a.id)
 `;
 
+const PERMISSION_GRANTS_JOIN_SQL = `
+JOIN iam.role_permissions rp
+  ON rp.instance_id = source.instance_id
+ AND rp.role_id = source.role_id
+JOIN iam.permissions p
+  ON p.instance_id = rp.instance_id
+ AND p.id = rp.permission_id
+LEFT JOIN iam.instance_modules permission_module
+  ON permission_module.instance_id = p.instance_id
+ AND permission_module.module_id = split_part(p.permission_key, '.', 1)
+`;
+
 export type TenantPermissionProjectionSubject = Readonly<{
   keycloakSubject: string;
   roleNames: readonly string[];
@@ -111,15 +123,7 @@ ${ROLE_PERMISSION_JOIN_SQL}
 JOIN iam.roles r
   ON r.instance_id = source.instance_id
  AND r.id = source.role_id
-JOIN iam.role_permissions rp
-  ON rp.instance_id = source.instance_id
- AND rp.role_id = source.role_id
-JOIN iam.permissions p
-  ON p.instance_id = rp.instance_id
- AND p.id = rp.permission_id
-LEFT JOIN iam.instance_modules permission_module
-  ON permission_module.instance_id = p.instance_id
- AND permission_module.module_id = split_part(p.permission_key, '.', 1)
+${PERMISSION_GRANTS_JOIN_SQL}
 WHERE a.instance_id = $1
   AND a.processing_restricted_at IS NULL
   AND p.permission_key = ANY($2::text[])
@@ -133,60 +137,30 @@ ORDER BY a.keycloak_subject, r.role_name, p.permission_key
     ]
   );
 
-  const resolveUserDisplayName = input.includeProfile
-    ? (await import('@sva/iam-admin')).resolveUserDisplayName
-    : undefined;
+  const resolveUserDisplayName = input.includeProfile ? (await import('@sva/iam-admin')).resolveUserDisplayName : undefined;
   const projectionBySubject = new Map<
     string,
-    {
-      roleNames: Set<string>;
-      permissionIds: Set<string>;
-      languages?: readonly string[];
-      displayName?: string;
-    }
+    { roleNames: Set<string>; permissionIds: Set<string>; languages?: readonly string[]; displayName?: string }
   >();
   for (const row of result.rows) {
     // Flat claims/directories have no record or organization context. Restricted
     // grants must never be widened into a tenant-wide capability.
-    const effective = filterTenantEffectivePermissions(
-      toEffectivePermissions([{ ...row, organization_id: null }])
-    );
-    if (
-      !effective.some(
-        (permission) =>
-          permission.action === row.permission_key &&
-          (!permission.accessScope || permission.accessScope === 'all') &&
-          !permission.resourceId &&
-          !permission.organizationId &&
-          (!permission.scope || Object.keys(permission.scope).length === 0)
-      )
-    )
-      continue;
+    const effective = filterTenantEffectivePermissions(toEffectivePermissions([{ ...row, organization_id: null }]));
+    if (!effective.some(permission =>
+      permission.action === row.permission_key &&
+      (!permission.accessScope || permission.accessScope === 'all') &&
+      !permission.resourceId && !permission.organizationId &&
+      (!permission.scope || Object.keys(permission.scope).length === 0))) continue;
     const projection = projectionBySubject.get(row.keycloak_subject) ?? {
       roleNames: new Set<string>(),
       permissionIds: new Set<string>(),
-      ...(row.competence_languages
-        ? { languages: normalizeCompetenceLanguages(row.competence_languages) }
-        : {}),
-      ...(resolveUserDisplayName
-        ? {
-            displayName: resolveUserDisplayName({
-              keycloakSubject: row.keycloak_subject,
-              decryptedDisplayName: revealField(
-                row.display_name_ciphertext,
-                `iam.accounts.display_name:${row.keycloak_subject}`
-              ),
-              firstName: revealField(
-                row.first_name_ciphertext,
-                `iam.accounts.first_name:${row.keycloak_subject}`
-              ),
-              lastName: revealField(
-                row.last_name_ciphertext,
-                `iam.accounts.last_name:${row.keycloak_subject}`
-              ),
-            }),
-          }
-        : {}),
+      ...(row.competence_languages ? { languages: normalizeCompetenceLanguages(row.competence_languages) } : {}),
+      ...(resolveUserDisplayName ? { displayName: resolveUserDisplayName({
+        keycloakSubject: row.keycloak_subject,
+        decryptedDisplayName: revealField(row.display_name_ciphertext, `iam.accounts.display_name:${row.keycloak_subject}`),
+        firstName: revealField(row.first_name_ciphertext, `iam.accounts.first_name:${row.keycloak_subject}`),
+        lastName: revealField(row.last_name_ciphertext, `iam.accounts.last_name:${row.keycloak_subject}`),
+      }) } : {}),
     };
     projection.roleNames.add(row.role_name);
     projection.permissionIds.add(row.permission_key);
@@ -229,15 +203,7 @@ LEFT JOIN iam.account_organizations ao
  AND ao.account_id = source.account_id
 LEFT JOIN target_organization target
   ON TRUE
-JOIN iam.role_permissions rp
-  ON rp.instance_id = source.instance_id
- AND rp.role_id = source.role_id
-JOIN iam.permissions p
- ON p.instance_id = rp.instance_id
- AND p.id = rp.permission_id
-LEFT JOIN iam.instance_modules permission_module
- ON permission_module.instance_id = p.instance_id
- AND permission_module.module_id = split_part(p.permission_key, '.', 1)
+${PERMISSION_GRANTS_JOIN_SQL}
 WHERE a.keycloak_subject = $2
   AND a.instance_id = $1
   AND (p.permission_key = ANY($5::text[]) OR permission_module.effective_active = true)
@@ -306,15 +272,7 @@ ${ROLE_PERMISSION_JOIN_SQL}
 LEFT JOIN iam.account_organizations ao
   ON ao.instance_id = source.instance_id
  AND ao.account_id = source.account_id
-JOIN iam.role_permissions rp
-  ON rp.instance_id = source.instance_id
- AND rp.role_id = source.role_id
-JOIN iam.permissions p
-  ON p.instance_id = rp.instance_id
- AND p.id = rp.permission_id
-LEFT JOIN iam.instance_modules permission_module
-  ON permission_module.instance_id = p.instance_id
- AND permission_module.module_id = split_part(p.permission_key, '.', 1)
+${PERMISSION_GRANTS_JOIN_SQL}
 WHERE a.keycloak_subject = $2
   AND a.instance_id = $1
   AND (p.permission_key = ANY($4::text[]) OR permission_module.effective_active = true)

@@ -4,6 +4,7 @@ import type { InstanceRegistryRepository } from './repository-contract.js';
 import * as invitationTemplates from './repository-account-invitation-template.js';
 import {
   buildInstanceSelectColumns,
+  createInstanceSql,
   demotePreviousPrimaryHostnameSql,
   instanceExistsSql,
   upsertPrimaryHostnameSql,
@@ -78,28 +79,7 @@ const createInstance = async (
 ) => {
   const rows = await runMutationStep('registry_insert', () =>
     queryRows<InstanceListRow>(executor, {
-      text: `
-WITH created_instance AS (
-INSERT INTO iam.instances (
-  id, display_name, status, parent_domain, primary_hostname, realm_mode, auth_realm, auth_client_id,
-  auth_issuer_url, auth_client_secret_ciphertext, tenant_admin_client_id, tenant_admin_client_secret_ciphertext,
-  tenant_admin_username, tenant_admin_email, tenant_admin_first_name, tenant_admin_last_name, tenant_admin_adopt_existing, theme_key,
-  feature_flags, mainserver_config_ref, created_by, updated_by
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19::jsonb, $20, $21, $21)
-ON CONFLICT (id) DO NOTHING
-RETURNING *
-), standard_editor AS (
-  INSERT INTO iam.roles (instance_id, role_key, role_name, display_name, external_role_name,
-    description, is_system_role, role_level, managed_by, sync_state, last_synced_at)
-  SELECT id, 'standard_editor', 'standard_editor', 'Standard Redakteur', 'standard_editor',
-    'studio:standard-editor:v1', FALSE, 0, 'studio', 'synced', NOW()
-  FROM created_instance
-  RETURNING id
-)
-SELECT ${buildInstanceSelectColumns('created_instance')}
-FROM created_instance;
-`,
+      text: createInstanceSql,
       values: createInstanceValues(input),
     })
   );

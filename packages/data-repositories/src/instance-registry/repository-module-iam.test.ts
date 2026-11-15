@@ -497,7 +497,7 @@ describe('instance registry repository module iam', () => {
           },
         ],
       })
-    ).resolves.toMatchObject({ permissionsUnchanged: 1, grantsUnchanged: 1 });
+    ).resolves.toMatchObject({ permissionsUnchanged: 1, grantsUnchanged: 2 });
 
     const rolePermissionInsert = statements.find((statement) =>
       statement.text.includes('grant_origin_kind')

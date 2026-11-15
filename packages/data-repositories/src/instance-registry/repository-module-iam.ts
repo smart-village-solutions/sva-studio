@@ -1,4 +1,3 @@
-import { resolveStandardEditorPermissionScope, standardEditorRoleKey } from '@sva/core';
 import type { SqlExecutor } from '../iam/repositories/types.js';
 import type {
   InstanceRegistryRepository,
@@ -180,18 +179,7 @@ const createSyncAssignedModuleIam =
   async (input) => {
     const { instanceId, managedModuleIds, managedContracts = [], contracts } = input;
     const permissions = buildManagedPermissions(contracts);
-    const rolePermissionPairs = [
-      ...buildRolePermissionPairs(contracts),
-      ...contracts.flatMap((contract) =>
-        contract.permissions
-          .filter((permission) => resolveStandardEditorPermissionScope(permission.key))
-          .map((permission) => ({
-            moduleId: contract.moduleId,
-            roleName: standardEditorRoleKey,
-            permissionId: permission.key,
-          }))
-      ),
-    ];
+    const rolePermissionPairs = buildRolePermissionPairs(contracts);
     const allManagedModuleIds = [
       ...new Set([...managedModuleIds, ...managedContracts.map((contract) => contract.moduleId)]),
     ].sort(compareAlphabetically);
@@ -209,22 +197,11 @@ const createSyncAssignedModuleIam =
         await upsertPermission(executor, instanceId, permission)
       );
     }
-    for (const pair of rolePermissionPairs.filter(
-      (pair) => pair.roleName !== standardEditorRoleKey
-    )) {
+    for (const pair of rolePermissionPairs) {
       result = recordGrantOutcome(
         result,
         await insertModuleRolePermission(executor, instanceId, pair)
       );
-    }
-    for (const contract of contracts) {
-      const insertedGrants = await syncStandardEditorPermissions(
-        executor,
-        instanceId,
-        contract.permissions.map((permission) => permission.key),
-        contract.moduleId
-      );
-      result = { ...result, grantsInserted: result.grantsInserted + insertedGrants };
     }
     await cleanupModuleRolePermissions(
       executor,

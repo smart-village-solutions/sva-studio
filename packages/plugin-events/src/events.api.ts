@@ -2,6 +2,7 @@ import {
   buildMainserverListUrl,
   createMainserverCrudClient,
   requestMainserverJson,
+  translatePluginKey,
 } from '@sva/plugin-sdk';
 import type { MainserverActingPrincipalType, MainserverMutationOptions } from '@sva/plugin-sdk';
 
@@ -14,12 +15,19 @@ import type {
   PoiSelectItem,
 } from './events.types.js';
 
+// The host refuses an update when a source relation the editor cannot show was not readable.
+const SOURCE_SNAPSHOT_INCOMPLETE = 'event_source_snapshot_incomplete';
+
 export class EventsApiError extends Error {
   public constructor(
     public readonly code: string,
     message = code
   ) {
-    super(message);
+    super(
+      code === 'invalid_response' && message === SOURCE_SNAPSHOT_INCOMPLETE
+        ? translatePluginKey('events', 'messages.sourceDataUnavailable')
+        : message
+    );
     this.name = 'EventsApiError';
   }
 }

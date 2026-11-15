@@ -558,14 +558,23 @@ describe('EventsDetailPage', () => {
     ).toBeTruthy();
   });
 
-  it.each([false, true])('confirms the saved visibility after creating content: %s', async (visible) => {
-    vi.mocked(createEvent).mockResolvedValueOnce({ id: 'created-1', title: 'New content', visible: !visible } as never);
-    render(<EventsDetailPage mode="create" />);
-    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'New content' } });
-    if (visible) fireEvent.click(screen.getByLabelText('Sichtbar'));
-    fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
-    expect(await screen.findByText(`events.messages.${!visible ? 'savedVisible' : 'savedHidden'}`)).toBeTruthy();
-  });
+  it.each([false, true])(
+    'confirms the saved visibility after creating content: %s',
+    async (visible) => {
+      vi.mocked(createEvent).mockResolvedValueOnce({
+        id: 'created-1',
+        title: 'New content',
+        visible: !visible,
+      } as never);
+      render(<EventsDetailPage mode="create" />);
+      fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'New content' } });
+      if (visible) fireEvent.click(screen.getByLabelText('Sichtbar'));
+      fireEvent.click(screen.getAllByRole('button', { name: /Speichern|anlegen/ })[0]!);
+      expect(
+        await screen.findByText(`events.messages.${!visible ? 'savedVisible' : 'savedHidden'}`)
+      ).toBeTruthy();
+    }
+  );
 
   it('renders Create without tabs or history and keeps a single ordered form', async () => {
     render(<EventsDetailPage mode="create" />);
@@ -591,6 +600,7 @@ describe('EventsDetailPage', () => {
         'contacts',
         'links',
         'prices',
+        'participation',
         'publication',
       ].map((id) => `event-create-${id}`)
     );

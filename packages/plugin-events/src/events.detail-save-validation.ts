@@ -10,6 +10,7 @@ import { hasEventOrganizerContent } from './events.detail-form-structured-serial
 import { hasInvalidFormGeoLocation, validateEventForm } from './events.validation.js';
 import type { EventsDetailTabId } from './events.detail-tabs.js';
 import type { EventsStatusMessage } from './events.detail-save.js';
+import { EVENT_MAXIMUM_ATTENDEES_FIELD_ID } from './events.detail-content-participation-section.js';
 
 export const validateEventsDetailSubmission = ({
   values,
@@ -132,6 +133,10 @@ const focusInvalidEventField = ({
   } else if (validationErrors.includes('urls')) {
     setPendingFocusId('event-url');
     setActiveTab('content');
+  } else if (validationErrors.includes('maximumAttendees')) {
+    methods.setError('content.maximumAttendees', { type: 'manual', message: 'maximumAttendees' });
+    setActiveTab('content');
+    setPendingFocusId(EVENT_MAXIMUM_ATTENDEES_FIELD_ID);
   }
 };
 
@@ -158,6 +163,8 @@ export const createEventsDeviationFieldLabels = (
   mediaContents: pt('fields.mediaContents'),
   organizer: pt('fields.organizerName'),
   priceInformations: pt('fields.priceAmount'),
+  registrationRequired: pt('fields.registrationRequired'),
+  maximumAttendees: pt('fields.maximumAttendees'),
   accessibilityInformation: pt('fields.accessibilityDescription'),
   externalId: pt('fields.externalId'),
   keywords: pt('fields.keywords'),

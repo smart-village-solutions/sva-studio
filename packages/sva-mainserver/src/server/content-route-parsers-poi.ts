@@ -1,7 +1,7 @@
 import type {
   SvaMainserverAccessibilityInformationInput,
   SvaMainserverCertificateInput,
-  SvaMainserverMediaContentInput,
+  SvaMainserverEventMediaContentInput,
   SvaMainserverOpeningHourInput,
   SvaMainserverOperatingCompanyInput,
   SvaMainserverPriceInput,
@@ -147,8 +147,9 @@ export const parseOperatingCompany = (
 };
 
 export const parseMediaContents = (
-  value: unknown
-): readonly SvaMainserverMediaContentInput[] | Response | undefined => {
+  value: unknown,
+  options: Readonly<{ includeStoredIds?: boolean }> = {}
+): readonly SvaMainserverEventMediaContentInput[] | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -156,7 +157,7 @@ export const parseMediaContents = (
     return errorJson(400, 'invalid_request', 'MediaContent muss als Liste gesendet werden.');
   }
 
-  const mediaContents: SvaMainserverMediaContentInput[] = [];
+  const mediaContents: SvaMainserverEventMediaContentInput[] = [];
   for (const media of value) {
     if (!isRecord(media)) {
       return errorJson(400, 'invalid_request', 'MediaContent-Einträge müssen Objekte sein.');
@@ -167,6 +168,7 @@ export const parseMediaContents = (
     }
     mediaContents.push(
       omitUndefined({
+        id: options.includeStoredIds ? readString(media.id) : undefined,
         captionText: readString(media.captionText),
         copyright: readString(media.copyright),
         contentType: readString(media.contentType),

@@ -1,4 +1,10 @@
 export const eventsDELabels = {
+  pagination: {
+    ariaLabel: 'Seitennavigation der Veranstaltungen',
+    previous: 'Zurück',
+    next: 'Weiter',
+    pageLabel: 'Seite {{page}}',
+  },
   datePicker: {
     openCalendar: 'Kalender öffnen',
     calendar: 'Datum auswählen',
@@ -44,6 +50,10 @@ export const eventsDELabels = {
     address: 'Adresse des Veranstalters',
     addressHelp:
       'Nur ausfüllen, wenn die Adresse des Veranstalters benötigt wird. Der Ort der Veranstaltung gehört in den Abschnitt „Veranstaltungsort“.',
+  },
+  participation: {
+    title: 'Anmeldung und Teilnahme',
+    description: 'Anmeldepflicht und Begrenzung der Teilnehmerzahl.',
   },
   fields: {
     title: 'Überschrift',
@@ -99,6 +109,13 @@ export const eventsDELabels = {
     priceCategory: 'Preiskategorie',
     priceAmount: 'Preis',
     priceDescription: 'Preisbeschreibung',
+    priceSourceValuesHint:
+      'Dieser Preis enthält weitere Angaben aus der Quelle, etwa Altersgrenzen oder einen Gruppenpreis. Sie bleiben beim Speichern erhalten; zum Löschen des Preises wählen Sie „Entfernen“.',
+    registrationRequired: 'Anmeldung erforderlich',
+    registrationRequiredHelp: 'Teilnehmende müssen sich vor der Veranstaltung anmelden.',
+    maximumAttendees: 'Maximale Teilnehmerzahl (optional)',
+    maximumAttendeesHelp:
+      'Ganze Zahl ab 0. Lassen Sie das Feld leer, wenn die Teilnehmerzahl nicht begrenzt ist.',
     mediaContents: 'Medien',
     mediaCaption: 'Bildunterschrift',
     mediaCopyright: 'Copyright',
@@ -226,4 +243,5 @@ export const eventsDEValidation = {
   geoLocation: 'Koordinaten müssen gültige Breiten- und Längengrade sein.',
   organizerName:
     'Geben Sie einen Namen für den Veranstalter ein oder entfernen Sie die übrigen Veranstalterangaben.',
+  maximumAttendees: 'Die maximale Teilnehmerzahl muss eine ganze Zahl ab 0 sein.',
 };

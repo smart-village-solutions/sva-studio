@@ -10,6 +10,7 @@ import {
   svaMainserverDestroyRecordDocument,
   svaMainserverEventDetailDocument,
   svaMainserverEventListDocument,
+  svaMainserverEventUpdateSnapshotDocument,
   type SvaMainserverCreateEventMutation,
   type SvaMainserverDestroyRecordMutation,
   type SvaMainserverEventDetailQuery,
@@ -37,6 +38,12 @@ const buildEventMutationVariables = (input: {
   title: input.event.title,
   ...(input.event.payload === undefined ? {} : { payload: input.event.payload }),
   ...(input.event.parentId === undefined ? {} : { parentId: input.event.parentId }),
+  ...(input.event.registrationRequired === undefined
+    ? {}
+    : { registrationRequired: input.event.registrationRequired }),
+  ...(input.event.maximumAttendees === undefined
+    ? {}
+    : { maximumAttendees: input.event.maximumAttendees }),
   ...(input.event.keywords ? { keywords: input.event.keywords } : {}),
   ...(input.event.description ? { description: input.event.description } : {}),
   ...(input.event.externalId ? { externalId: input.event.externalId } : {}),
@@ -49,7 +56,9 @@ const buildEventMutationVariables = (input: {
   ...(input.event.location ? { location: input.event.location } : {}),
   ...(input.event.contacts ? { contacts: input.event.contacts } : {}),
   ...(input.event.urls ? { urls: input.event.urls } : {}),
-  ...(input.event.mediaContents ? { mediaContents: input.event.mediaContents } : {}),
+  ...(input.event.mediaContents
+    ? { mediaContents: input.event.mediaContents.map(({ id: _id, ...media }) => media) }
+    : {}),
   ...(input.event.organizer ? { organizer: input.event.organizer } : {}),
   ...(input.event.priceInformations ? { priceInformations: input.event.priceInformations } : {}),
   ...(input.event.accessibilityInformation
@@ -62,6 +71,22 @@ const buildEventMutationVariables = (input: {
   ...(input.event.recurringInterval ? { recurringInterval: input.event.recurringInterval } : {}),
   ...(input.event.pointOfInterestId ? { pointOfInterestId: input.event.pointOfInterestId } : {}),
 });
+
+const readEventDetail = async (
+  executeGraphqlWithConfig: GraphqlExecutor,
+  input: SvaMainserverConnectionInput & { readonly eventId: string },
+  config: SvaMainserverInstanceConfig,
+  query: { readonly document: string; readonly operationName: string }
+) => {
+  const response = await executeGraphqlWithConfig<SvaMainserverEventDetailQuery>(
+    { ...input, ...query, variables: { id: input.eventId } },
+    config
+  );
+  if (!response.eventRecord) {
+    return { data: mapOptionalEventItem(response.eventRecord), deviations: [] };
+  }
+  return mapEventItemDetail(response.eventRecord);
+};
 
 export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
   listEventsWithConfig: async (
@@ -101,21 +126,21 @@ export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor)
   getEventDetailWithConfig: async (
     input: SvaMainserverConnectionInput & { readonly eventId: string },
     config: SvaMainserverInstanceConfig
-  ) => {
-    const response = await executeGraphqlWithConfig<SvaMainserverEventDetailQuery>(
-      {
-        ...input,
-        document: svaMainserverEventDetailDocument,
-        operationName: 'SvaMainserverEventDetail',
-        variables: { id: input.eventId },
-      },
-      config
-    );
-    if (!response.eventRecord) {
-      return { data: mapOptionalEventItem(response.eventRecord), deviations: [] };
-    }
-    return mapEventItemDetail(response.eventRecord);
-  },
+  ) =>
+    readEventDetail(executeGraphqlWithConfig, input, config, {
+      document: svaMainserverEventDetailDocument,
+      operationName: 'SvaMainserverEventDetail',
+    }),
+
+  // Server-only read before an update; it also selects media payloads for the merge.
+  getEventUpdateSnapshotWithConfig: async (
+    input: SvaMainserverConnectionInput & { readonly eventId: string },
+    config: SvaMainserverInstanceConfig
+  ) =>
+    readEventDetail(executeGraphqlWithConfig, input, config, {
+      document: svaMainserverEventUpdateSnapshotDocument,
+      operationName: 'SvaMainserverEventUpdateSnapshot',
+    }),
 
   writeEventWithConfig: async (
     input: SvaMainserverConnectionInput & {

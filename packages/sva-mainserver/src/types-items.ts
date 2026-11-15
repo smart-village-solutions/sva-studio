@@ -30,6 +30,11 @@ import type {
   SvaMainserverWebUrlInput,
 } from './types.js';
 
+/** Event media entry; `id` references a stored entry for the host merge and is never sent. */
+export type SvaMainserverEventMediaContentInput = SvaMainserverMediaContentInput & {
+  readonly id?: string;
+};
+
 export type SvaMainserverEventInput = {
   readonly payload?: unknown;
   readonly title: string;
@@ -37,6 +42,9 @@ export type SvaMainserverEventInput = {
   readonly externalId?: string;
   readonly keywords?: string;
   readonly parentId?: number;
+  readonly registrationRequired?: boolean;
+  /** `null` clears a stored limit; an omitted value keeps it. */
+  readonly maximumAttendees?: number | null;
   readonly dates?: readonly SvaMainserverDateInput[];
   readonly repeat?: boolean;
   readonly repeatDuration?: SvaMainserverRepeatDurationInput;
@@ -46,7 +54,7 @@ export type SvaMainserverEventInput = {
   readonly location?: SvaMainserverLocationInput;
   readonly contacts?: readonly SvaMainserverContactInput[];
   readonly urls?: readonly SvaMainserverWebUrlInput[];
-  readonly mediaContents?: readonly SvaMainserverMediaContentInput[];
+  readonly mediaContents?: readonly SvaMainserverEventMediaContentInput[];
   readonly organizer?: SvaMainserverOperatingCompanyInput;
   readonly priceInformations?: readonly SvaMainserverPriceInput[];
   readonly accessibilityInformation?: SvaMainserverAccessibilityInformationInput;
@@ -68,6 +76,8 @@ export type SvaMainserverEventItem = {
   readonly externalId?: string;
   readonly keywords?: string;
   readonly parentId?: number;
+  readonly registrationRequired?: boolean;
+  readonly maximumAttendees?: number;
   readonly dates: readonly SvaMainserverDate[];
   readonly listDate?: string;
   readonly sortDate?: string;

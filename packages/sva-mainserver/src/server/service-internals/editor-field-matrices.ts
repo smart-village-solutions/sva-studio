@@ -5,6 +5,10 @@ import type {
   SvaMainserverPoiItem,
   MainserverDataDeviation,
 } from '../../types.js';
+import {
+  assertDegradedRelationsSubmitted,
+  preserveEventSourceData,
+} from './event-source-preservation.js';
 import { toSvaMainserverError } from './shared.js';
 
 export type MainserverEditorFieldClassification =
@@ -22,11 +26,20 @@ export const eventEditorFieldMatrix = {
   externalId: 'passthrough',
   keywords: 'passthrough',
   parentId: 'passthrough',
+  registrationRequired: 'controlled',
+  maximumAttendees: 'controlled',
   dates: 'controlled',
   listDate: 'readonly',
   sortDate: 'readonly',
+  repeat: 'controlled',
+  repeatDuration: 'passthrough',
+  recurring: 'controlled',
+  recurringType: 'controlled',
+  recurringInterval: 'controlled',
+  recurringWeekdays: 'controlled',
   categories: 'controlled',
   addresses: 'controlled',
+  location: 'passthrough',
   contacts: 'controlled',
   urls: 'controlled',
   mediaContents: 'controlled',
@@ -34,9 +47,26 @@ export const eventEditorFieldMatrix = {
   priceInformations: 'controlled',
   accessibilityInformation: 'passthrough',
   tags: 'passthrough',
+  category: 'controlled',
+  visible: 'controlled',
+  dataProvider: 'readonly',
   createdAt: 'readonly',
   updatedAt: 'readonly',
 } as const satisfies MainserverEditorFieldMatrix;
+
+/**
+ * Mainserver `EventRecord` fields that are not part of the editor contract. Every other field
+ * of the checked-in schema snapshot must be classified in `eventEditorFieldMatrix`.
+ */
+export const eventFieldsOutsideEditorContract = {
+  announcements: 'Separate Shout relation; not created by the event mutation.',
+  date: 'Derived per request from a date-range query.',
+  likeCount: 'App interaction counter.',
+  likedByMe: 'App interaction state of the requesting user.',
+  region: 'belongs_to relation; the Mainserver keeps it when the update omits it.',
+  regionId: 'Foreign key of region; kept by the Mainserver when omitted.',
+  settings: 'Import settings of the data provider, not of the event.',
+} as const satisfies Readonly<Record<string, string>>;
 
 export const poiEditorFieldMatrix = {
   id: 'hard',
@@ -120,8 +150,22 @@ export const mergeEventUpdateWithCurrent = (
   deviations: readonly Pick<MainserverDataDeviation, 'fieldGroup'>[] = []
 ): SvaMainserverEventInput => {
   const degradedFields = new Set(deviations.map(({ fieldGroup }) => fieldGroup));
+  assertDegradedRelationsSubmitted(submitted, degradedFields);
   return {
     ...submitted,
+    registrationRequired: preserveDefinedUnlessDegraded(
+      'registrationRequired',
+      current.registrationRequired,
+      submitted.registrationRequired,
+      degradedFields
+    ),
+    maximumAttendees: preserveDefinedUnlessDegraded(
+      'maximumAttendees',
+      current.maximumAttendees,
+      submitted.maximumAttendees,
+      degradedFields
+    ),
+    ...preserveEventSourceData(current, submitted),
     payload: preserveDefinedUnlessDegraded(
       'payload',
       current.payload,

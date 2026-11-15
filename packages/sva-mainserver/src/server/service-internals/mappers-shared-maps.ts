@@ -150,6 +150,7 @@ export const mapMediaContent = (
     height: optionalNumber(value.height),
     width: optionalNumber(value.width),
     contentType: optionalString(value.contentType),
+    payload: value.payload ?? undefined,
     sourceUrl: mapWebUrl(value.sourceUrl),
   });
 

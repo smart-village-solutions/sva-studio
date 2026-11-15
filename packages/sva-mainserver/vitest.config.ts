@@ -89,6 +89,7 @@ export default defineConfig({
         __dirname,
         '../plugin-construction-sites/src/contract.ts'
       ),
+      '@sva/plugin-events': resolve(__dirname, '../plugin-events/src/events.contract.ts'),
       '@sva/plugin-jobs': resolve(__dirname, '../plugin-jobs/src/contract.ts'),
       '@sva/plugin-ssf/provisioning': resolve(__dirname, '../plugin-ssf/src/provisioning.ts'),
       '@sva/plugin-sdk/content-media': resolve(

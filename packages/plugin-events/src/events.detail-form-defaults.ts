@@ -88,6 +88,8 @@ export const createDefaultEventsDetailFormValues = (): EventsDetailFormValues =>
     organizer: createDefaultOrganizer(),
     priceInformations: [createDefaultPriceInformation()],
     accessibilityInformation: createDefaultAccessibilityInformation(),
+    registrationRequired: false,
+    maximumAttendees: '',
   },
   settings: {
     visible: false,

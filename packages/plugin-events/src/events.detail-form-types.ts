@@ -51,6 +51,8 @@ export type EventsDetailFormValues = Readonly<{
     organizer: EventOrganizerFormValue;
     priceInformations: readonly EventPriceInformation[];
     accessibilityInformation: EventAccessibilityInformation;
+    registrationRequired: boolean;
+    maximumAttendees: string;
   };
   settings: {
     visible: boolean;

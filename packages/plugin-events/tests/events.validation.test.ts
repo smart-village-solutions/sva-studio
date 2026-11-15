@@ -7,6 +7,22 @@ describe('validateEventForm', () => {
     expect(validateEventForm({ title: 'Stadtfest' })).toEqual([]);
   });
 
+  it.each([0, 1, 120, 2_147_483_647, null, undefined])(
+    'accepts the participant limit %s',
+    (maximumAttendees) => {
+      expect(validateEventForm({ title: 'Stadtfest', maximumAttendees })).toEqual([]);
+    }
+  );
+
+  it.each([-1, 2.5, Number.NaN, 2_147_483_648])(
+    'rejects the participant limit %s',
+    (maximumAttendees) => {
+      expect(validateEventForm({ title: 'Stadtfest', maximumAttendees })).toEqual([
+        'maximumAttendees',
+      ]);
+    }
+  );
+
   it('ignores empty optional URL placeholders', () => {
     expect(validateEventForm({ title: 'Stadtfest', urls: [{ url: '' }, { url: '   ' }] })).toEqual(
       []

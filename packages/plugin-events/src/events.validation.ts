@@ -1,7 +1,16 @@
 import { isPersistableManualContentMediaUrl } from '@sva/studio-ui-react';
 
+import { eventParticipationSchema } from './events.contract.js';
+
 import type { EventFormInput } from './events.types.js';
 import { isValidDateOnlyValue } from './events.date-only.js';
+
+const hasInvalidMaximumAttendees = (value: number | null | undefined): boolean =>
+  !eventParticipationSchema.shape.maximumAttendees.safeParse(value).success;
+
+/** Rule for the limit field's text value: empty clears the limit. */
+export const isValidMaximumAttendeesInput = (value: string): boolean =>
+  value.trim().length === 0 || !hasInvalidMaximumAttendees(Number(value.trim()));
 
 const isHttpsUrl = (value: string): boolean => {
   try {
@@ -118,6 +127,8 @@ export const validateEventForm = (input: EventFormInput): readonly string[] => {
   ) {
     errors.push('priceInformations');
   }
+
+  if (hasInvalidMaximumAttendees(input.maximumAttendees)) errors.push('maximumAttendees');
 
   if (
     (input.addresses ?? []).some((address) => hasInvalidGeoLocation(address.geoLocation)) ||

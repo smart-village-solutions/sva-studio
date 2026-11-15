@@ -1,3 +1,4 @@
+import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -147,5 +148,16 @@ describe('events api', () => {
     );
 
     await expect(listEvents({ page: 1, pageSize: 25 })).rejects.toBeInstanceOf(EventsApiError);
+  });
+
+  it('explains an update refused to protect unreadable source data', () => {
+    registerPluginTranslationResolver((key) =>
+      key === 'events.messages.sourceDataUnavailable' ? 'Quelldaten nicht lesbar' : key
+    );
+
+    expect(new EventsApiError('invalid_response', 'event_source_snapshot_incomplete').message).toBe(
+      'Quelldaten nicht lesbar'
+    );
+    expect(new EventsApiError('invalid_response', 'Andere Meldung').message).toBe('Andere Meldung');
   });
 });

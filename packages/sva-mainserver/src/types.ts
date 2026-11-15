@@ -79,6 +79,7 @@ export type {
 
 export type {
   SvaMainserverEventInput,
+  SvaMainserverEventMediaContentInput,
   SvaMainserverEventItem,
   SvaMainserverPoiInput,
   SvaMainserverPoiItem,

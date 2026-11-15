@@ -398,6 +398,38 @@ describe('core content module boundary', () => {
     expect(response?.status).toBe(403);
     expect(moduleQueryMock).toHaveBeenCalledWith('tenant-a', 'faq');
   });
+  it.each([
+    'content.create',
+    'content.read',
+    'content.updatePayload',
+    'content.publish',
+    'content.readHistory',
+    'content.delete',
+  ] as const)(
+    'preserves the registered core generic type for %s while still enforcing its permission',
+    async (action) => {
+      moduleQueryMock.mockClear().mockResolvedValue(false);
+      evaluateAuthorizeDecisionMock.mockReturnValue({ allowed: true });
+      await expect(
+        authorizeContentAction(actor, action, { contentType: 'generic' }, { permissions: [] })
+      ).resolves.toBeNull();
+      evaluateAuthorizeDecisionMock.mockReturnValue({
+        allowed: false,
+        reason: 'permission_missing',
+      });
+      expect(
+        (
+          await authorizeContentAction(
+            actor,
+            action,
+            { contentType: 'generic' },
+            { permissions: [] }
+          )
+        )?.status
+      ).toBe(403);
+      expect(moduleQueryMock).not.toHaveBeenCalled();
+    }
+  );
   it.each(['custom.record', 'unregistered'])(
     'fails closed for an unregistered content namespace %s',
     async (contentType) => {

@@ -1409,6 +1409,41 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.updateSvaMainserverNews.mock.calls[0]?.[0]?.news).not.toHaveProperty('author');
   });
 
+  it('checks scoped push on the resource even when updating the content is allowed', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.getSvaMainserverNews.mockResolvedValue({
+      id: 'news-1',
+      visible: true,
+      dataProvider: { id: 'foreign-provider' },
+    });
+    state.authorizeMainserverDataProviderAccess.mockImplementation(async (input) => ({
+      allowed: input.action !== 'news.pushNotification',
+      authorizationMode: 'exact',
+      reason: 'data_provider_mismatch',
+    }));
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ ...newsInput, visible: true }),
+      })
+    );
+    expect(response?.status).toBe(403);
+    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'news.pushNotification',
+        forceExactScopeAuthorization: true,
+        dataProviderId: 'foreign-provider',
+      })
+    );
+    expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
+  });
+
   it('rejects push on update before reading or writing Mainserver data when permission is missing', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);

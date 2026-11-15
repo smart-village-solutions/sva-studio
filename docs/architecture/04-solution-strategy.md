@@ -407,3 +407,7 @@ Persönliche Bearer-Zugriffe prüfen vor Rollenhydration und Handler den Redis-S
 ### Anwendungsarbeitsplatz
 
 Der Arbeitsplatz erweitert bestehende Plugin-, Host-, IAM- und Studio-UI-Verträge. Die vorhandene Access-Art `authenticated` wird für lesende Plugin-Handler mit einer serverseitigen Prüfung der Modulaktivierung verwendet; Mutationen behalten explizite Tenant-Rechte. Es entsteht kein neues Rollenmodell und kein zweiter Anmeldeweg. SSO-Anbindungen der Zielanwendungen bleiben separat.
+
+### Standard Redakteur
+
+Die redaktionelle Standardrolle erweitert die bestehenden IAM- und Mandantenpfade: `standard_editor` wird einmal bei Neuanlage beziehungsweise per einmaliger Datenmigration angelegt. Der laufende Reconcile erzwingt ihre Existenz nicht. Das Profil trennt redaktionelle Actions explizit von Administration und verwendet den vorhandenen Ownership-Scope `organization` als Vereinigungsmenge von aktiver eigener Organisation und persönlichem Eigentum.

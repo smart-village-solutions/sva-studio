@@ -65,6 +65,18 @@ ${ROLE_ASSIGNMENT_SOURCE_SQL}
   AND EXISTS (SELECT 1 FROM iam.instance_memberships membership WHERE membership.instance_id = a.instance_id AND membership.account_id = a.id)
 `;
 
+const PERMISSION_GRANTS_JOIN_SQL = `
+JOIN iam.role_permissions rp
+  ON rp.instance_id = source.instance_id
+ AND rp.role_id = source.role_id
+JOIN iam.permissions p
+  ON p.instance_id = rp.instance_id
+ AND p.id = rp.permission_id
+LEFT JOIN iam.instance_modules permission_module
+  ON permission_module.instance_id = p.instance_id
+ AND permission_module.module_id = split_part(p.permission_key, '.', 1)
+`;
+
 export type TenantPermissionProjectionSubject = Readonly<{
   keycloakSubject: string;
   roleNames: readonly string[];
@@ -111,15 +123,7 @@ ${ROLE_PERMISSION_JOIN_SQL}
 JOIN iam.roles r
   ON r.instance_id = source.instance_id
  AND r.id = source.role_id
-JOIN iam.role_permissions rp
-  ON rp.instance_id = source.instance_id
- AND rp.role_id = source.role_id
-JOIN iam.permissions p
-  ON p.instance_id = rp.instance_id
- AND p.id = rp.permission_id
-LEFT JOIN iam.instance_modules permission_module
-  ON permission_module.instance_id = p.instance_id
- AND permission_module.module_id = split_part(p.permission_key, '.', 1)
+${PERMISSION_GRANTS_JOIN_SQL}
 WHERE a.instance_id = $1
   AND a.processing_restricted_at IS NULL
   AND p.permission_key = ANY($2::text[])
@@ -199,15 +203,7 @@ LEFT JOIN iam.account_organizations ao
  AND ao.account_id = source.account_id
 LEFT JOIN target_organization target
   ON TRUE
-JOIN iam.role_permissions rp
-  ON rp.instance_id = source.instance_id
- AND rp.role_id = source.role_id
-JOIN iam.permissions p
- ON p.instance_id = rp.instance_id
- AND p.id = rp.permission_id
-LEFT JOIN iam.instance_modules permission_module
- ON permission_module.instance_id = p.instance_id
- AND permission_module.module_id = split_part(p.permission_key, '.', 1)
+${PERMISSION_GRANTS_JOIN_SQL}
 WHERE a.keycloak_subject = $2
   AND a.instance_id = $1
   AND (p.permission_key = ANY($5::text[]) OR permission_module.effective_active = true)
@@ -276,15 +272,7 @@ ${ROLE_PERMISSION_JOIN_SQL}
 LEFT JOIN iam.account_organizations ao
   ON ao.instance_id = source.instance_id
  AND ao.account_id = source.account_id
-JOIN iam.role_permissions rp
-  ON rp.instance_id = source.instance_id
- AND rp.role_id = source.role_id
-JOIN iam.permissions p
-  ON p.instance_id = rp.instance_id
- AND p.id = rp.permission_id
-LEFT JOIN iam.instance_modules permission_module
-  ON permission_module.instance_id = p.instance_id
- AND permission_module.module_id = split_part(p.permission_key, '.', 1)
+${PERMISSION_GRANTS_JOIN_SQL}
 WHERE a.keycloak_subject = $2
   AND a.instance_id = $1
   AND (p.permission_key = ANY($4::text[]) OR permission_module.effective_active = true)
@@ -307,7 +295,15 @@ export const loadPermissionsWithClient = async (
   const rows = input.organizationId
     ? await listScopedPermissionRows(client, { ...input, organizationId: input.organizationId })
     : await listUnscopedPermissionRows(client, input);
-  return toEffectivePermissions(rows);
+  // A personal context must not inherit an organisation constraint from memberships.
+  // Explicit record scopes reduce to own; legacy organisation grants keep their contract.
+  return toEffectivePermissions(
+    rows.map((row) =>
+      !input.organizationId && (row.access_scope === 'organization' || row.access_scope === 'own')
+        ? { ...row, organization_id: null, access_scope: 'own' as const }
+        : row
+    )
+  );
 };
 
 export const loadPermissionsFromDb = async (

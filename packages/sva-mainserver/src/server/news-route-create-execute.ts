@@ -76,6 +76,9 @@ const persistNewsCreate = async (input: CreateExecutionInput): Promise<Response>
     actor,
     action: 'news.create',
     contentType: NEWS_CONTENT_TYPE,
+    ...(parsed.news.pushNotification === true
+      ? { additionalActions: ['news.pushNotification'] }
+      : {}),
   });
   if (isResponse(principalAuthorization)) return principalAuthorization;
   input.providerWriteStarted = true;

@@ -161,3 +161,63 @@ export const tenantCoreSystemAdminPermissionKeys: readonly CorePermissionKey[] =
 export const rootPermissionCatalog = corePermissionCatalog.filter(
   (definition) => definition.availability.kind === 'root' && definition.lifecycle !== 'deprecated'
 );
+
+/** Default editorial grants; module availability is still enforced by the host. */
+export const standardEditorRoleKey = 'standard_editor';
+export const standardEditorContentModules = [
+  'news',
+  'events',
+  'poi',
+  'generic-items',
+  'faq',
+  'cockpit-cards',
+  'projects',
+  'surveys',
+  'construction-sites',
+  'jobs',
+  'vouchers',
+] as const;
+export const standardEditorCorePermissionKeys = [
+  'modules.read',
+  'content.read',
+  'content.create',
+  'content.updateMetadata',
+  'content.updatePayload',
+  'content.changeStatus',
+  'content.publish',
+  'content.archive',
+  'content.restore',
+  'content.readHistory',
+  'content.delete',
+] as const;
+export const standardEditorPermissionKeys: readonly string[] = [
+  ...standardEditorCorePermissionKeys,
+  ...standardEditorContentModules.flatMap((moduleId) =>
+    ['read', 'create', 'update', 'delete']
+      .filter((action) => moduleId !== 'construction-sites' || action !== 'delete')
+      .map((action) => `${moduleId}.${action}`)
+  ),
+  'news.pushNotification',
+  'vouchers.publish',
+  'media.read',
+  'media.create',
+  'media.update',
+  'media.reference.manage',
+  'media.delete',
+  'categories.read',
+  'categories.create',
+  'categories.update',
+  'categories.delete',
+];
+const standardEditorPermissionKeySet: ReadonlySet<string> = new Set(standardEditorPermissionKeys);
+export const resolveStandardEditorPermissionScope = (
+  key: string
+): 'all' | 'organization' | undefined => {
+  if (!standardEditorPermissionKeySet.has(key)) return undefined;
+  return key === 'modules.read' ||
+    key.endsWith('.create') ||
+    key.startsWith('media.') ||
+    key.startsWith('categories.')
+    ? 'all'
+    : 'organization';
+};

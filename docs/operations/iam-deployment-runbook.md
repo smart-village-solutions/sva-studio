@@ -110,3 +110,11 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
 - `docs/operations/iam-alerting-konzept.md`
 - `docs/operations/iam-retention-automation.md`
 - `docs/api/iam-v1.yaml`
+
+## Einmalige Standard-Redakteur-Anlage (Migration 0116)
+
+Der reguläre Rollout erfolgt weiterhin ausschließlich über den [kanonischen Studio-Rollout](../guides/studio-rollout-process.md). Migration 0116 ergänzt `standard_editor` einmalig in allen bestehenden Mandanten. Bei `standard_editor_profile_conflict` Rollout anhalten, den betroffenen technischen Schlüssel, Anzeigenamen und das Bestandsprofil lesen und die fachliche Entscheidung vor einem erneuten Lauf einholen. Keine bestehenden Rollen automatisch umbenennen, zusammenführen oder überschreiben. Ein Grant-Fehler rollt den vollständigen Backfill zurück; Goose verbucht dann keinen Erfolg.
+
+Nach erfolgreicher Migration in jedem Zielmandanten unabhängig zurücklesen: genau eine erwartete Rolle, `is_system_role=false`, `managed_by=studio`, korrekte Actions/Scopes entsprechend verfügbaren Inhaltsmodulen sowie keine durch die Migration neu erzeugten Benutzerzuweisungen. Vorherige Mitglieder vorhandener Rollen dürfen bestehen bleiben. Medien/Kategorien sind mandantenweit, Datensatzrechte organisationsbezogen inklusive persönlichem Eigentum. Vorhandene Rollen sind separat mit dem erwarteten Profil zu vergleichen. Migrationsstatus, Rückleseprüfung und fachliche Abnahme getrennt nachweisen.
+
+Eine später bewusst gelöschte Rolle bleibt gelöscht. Neustart, Modulabgleich und erneuter regulärer Rollout dürfen sie nicht wiederherstellen; die Goose-Historie nicht für eine vermeintliche Reparatur zurücksetzen. Der Down-Pfad entfernt keine zwischenzeitlich angepassten Rollen oder Zuweisungen.

@@ -54,9 +54,12 @@ export const handleItemUpdate = async (
           contentType: NEWS_CONTENT_TYPE,
           contentId: route.newsId,
           item: existing,
-          additionalActions: toMainserverAdditionalActions(
-            resolveMainserverVisibilityAction(existing.visible, parsed.visible)
-          ),
+          additionalActions: [
+            ...toMainserverAdditionalActions(
+              resolveMainserverVisibilityAction(existing.visible, parsed.visible)
+            ),
+            ...(parsed.news.pushNotification === true ? ['news.pushNotification'] : []),
+          ],
         });
         if (isResponse(providerAuthorization)) return providerAuthorization;
         response = await updateNewsForRoute(

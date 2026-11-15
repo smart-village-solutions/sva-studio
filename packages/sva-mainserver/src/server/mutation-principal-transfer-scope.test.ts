@@ -1,3 +1,4 @@
+import { standardEditorPermissionKeys, resolveStandardEditorPermissionScope } from '@sva/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
@@ -19,7 +20,10 @@ vi.mock('@sva/auth-runtime/server', () => ({
 }));
 
 import { authorizeMainserverActionPreflight } from './mutation-principal-action-preflight.js';
-import { authorizeMainserverExistingContent } from './mutation-principal-authorization.js';
+import {
+  authorizeMainserverCreateForPrincipal,
+  authorizeMainserverExistingContent,
+} from './mutation-principal-authorization.js';
 import { resolveMainserverResourceAccess } from './mutation-principal-resource-access.js';
 
 const actor = {
@@ -265,4 +269,86 @@ describe('Mainserver orphaned ownership transfer scope', () => {
       expect.objectContaining({ permissions: [constrainedAll] })
     );
   });
+});
+
+describe('standard editor exact checks', () => {
+  beforeEach(() => {
+    for (const mock of Object.values(state)) mock.mockReset();
+    state.readResolverMode.mockReturnValue('compatibility');
+    state.emitAudit.mockResolvedValue(undefined);
+    state.authorizeProvider.mockImplementation(async (input) => ({
+      allowed: input.forceExactScopeAuthorization !== true,
+      authorizationMode: 'exact',
+      resolverMode: 'compatibility',
+      reason: 'data_provider_mismatch',
+    }));
+  });
+  it.each([true, false])(
+    'requires push permission for the selected create principal (allowed=%s)',
+    async (allowed) => {
+      state.resolvePermissions.mockResolvedValue({ ok: true, permissions: [] });
+      state.authorizePrincipal.mockImplementation((input) => ({
+        allowed: input.action !== 'news.pushNotification' || allowed,
+        authorizationMode: 'exact',
+        resolverMode: 'automatic',
+        reason: allowed ? 'allowed' : 'forbidden',
+      }));
+      const result = await authorizeMainserverCreateForPrincipal({
+        actor,
+        action: 'news.create',
+        contentType: 'news.article',
+        additionalActions: ['news.pushNotification'],
+      });
+      expect(state.authorizePrincipal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'news.pushNotification',
+          actorAccountId: actor.actorAccountId,
+          actingPrincipalType: 'user',
+        })
+      );
+      if (allowed) {
+        expect(result).not.toBeInstanceOf(Response);
+        expect(state.beginJournal).toHaveBeenCalledOnce();
+      } else {
+        expect(result).toBeInstanceOf(Response);
+        expect((result as Response).status).toBe(403);
+        expect(state.beginJournal).not.toHaveBeenCalled();
+      }
+    }
+  );
+
+  it.each(
+    standardEditorPermissionKeys.filter(
+      (key) => resolveStandardEditorPermissionScope(key) === 'organization'
+    )
+  )(
+    'denies foreign %s resources in both direct mutations and action projections',
+    async (action) => {
+      state.resolvePermissions.mockResolvedValue({
+        ok: true,
+        permissions: [{ action, resourceType: action.split('.')[0], accessScope: 'organization' }],
+      });
+      const result = await authorizeMainserverExistingContent({
+        actor,
+        action,
+        contentType: 'news.article',
+        contentId: item.id,
+        item,
+      });
+      expect(result).toBeInstanceOf(Response);
+      expect((result as Response).status).toBe(403);
+      expect(state.beginJournal).not.toHaveBeenCalled();
+      await expect(
+        resolveMainserverResourceAccess({
+          actor,
+          actions: [action],
+          contentType: 'news.article',
+          item,
+        })
+      ).resolves.toEqual({ [action]: false });
+      expect(state.authorizeProvider).toHaveBeenCalledWith(
+        expect.objectContaining({ action, forceExactScopeAuthorization: true })
+      );
+    }
+  );
 });

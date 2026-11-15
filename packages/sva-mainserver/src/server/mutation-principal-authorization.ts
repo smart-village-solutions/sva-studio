@@ -1,3 +1,4 @@
+import { resolveStandardEditorPermissionScope } from '@sva/core';
 import {
   authorizeMainserverCreatePrincipal,
   authorizeMainserverDataProviderAccess,
@@ -34,39 +35,45 @@ export const authorizeMainserverCreateForPrincipal = async (input: {
   readonly actor: MainserverMutationActor;
   readonly action: string;
   readonly contentType: string;
+  readonly additionalActions?: readonly string[];
 }): Promise<MainserverMutationAuthorization | Response> => {
   const permissions = await loadMutationPermissions(input.actor);
   if (!permissions.ok) {
     return errorJson(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.');
   }
-  const decision = authorizeMainserverCreatePrincipal({
-    instanceId: input.actor.instanceId,
-    keycloakSubject: input.actor.keycloakSubject,
-    actorAccountId: input.actor.actorAccountId,
-    ...(input.actor.activeOrganizationId
-      ? { activeOrganizationId: input.actor.activeOrganizationId }
-      : {}),
-    action: input.action,
-    contentType: input.contentType,
-    permissions: permissions.permissions,
-    actingPrincipalType: input.actor.mutationPrincipalContext.actingPrincipalType,
-  });
-  await emitMainserverMutationAuthorizationAudit({
-    actor: input.actor,
-    action: input.action,
-    contentType: input.contentType,
-    authorizationMode: decision.authorizationMode,
-    resolverMode: decision.resolverMode,
-    candidateAuthorizationMode: decision.candidateAuthorizationMode,
-    candidateAllowed: decision.candidateAllowed,
-    shadowDifference: decision.shadowDifference,
-    allowed: decision.allowed,
-    ...(!decision.allowed ? { reasonCode: decision.reason } : {}),
-  });
-  if (!decision.allowed) {
-    return errorJson(403, 'forbidden', 'Keine Berechtigung für diesen Mutationsprincipal.');
+  const actions = [...new Set([input.action, ...(input.additionalActions ?? [])])];
+  const decisions = actions.map((action) =>
+    authorizeMainserverCreatePrincipal({
+      instanceId: input.actor.instanceId,
+      keycloakSubject: input.actor.keycloakSubject,
+      actorAccountId: input.actor.actorAccountId,
+      ...(input.actor.activeOrganizationId
+        ? { activeOrganizationId: input.actor.activeOrganizationId }
+        : {}),
+      action,
+      contentType: input.contentType,
+      permissions: permissions.permissions,
+      actingPrincipalType: input.actor.mutationPrincipalContext.actingPrincipalType,
+    })
+  );
+  for (const [index, decision] of decisions.entries()) {
+    await emitMainserverMutationAuthorizationAudit({
+      actor: input.actor,
+      action: actions[index]!,
+      contentType: input.contentType,
+      authorizationMode: decision.authorizationMode,
+      resolverMode: decision.resolverMode,
+      candidateAuthorizationMode: decision.candidateAuthorizationMode,
+      candidateAllowed: decision.candidateAllowed,
+      shadowDifference: decision.shadowDifference,
+      allowed: decision.allowed,
+      ...(!decision.allowed ? { reasonCode: decision.reason } : {}),
+    });
+    if (!decision.allowed) {
+      return errorJson(403, 'forbidden', 'Keine Berechtigung für diesen Mutationsprincipal.');
+    }
   }
-
+  const decision = decisions[0]!;
   await beginMainserverMutationJournal({
     instanceId: input.actor.instanceId,
     operationExternalId: input.actor.operationExternalId,
@@ -269,7 +276,9 @@ export const authorizeMainserverExistingContent = async (input: {
     contentId: input.contentId,
     dataProviderId,
     permissions,
-    forceExactScopeAuthorization: input.forceExactScopeAuthorization === true,
+    forceExactScopeAuthorization:
+      input.forceExactScopeAuthorization === true ||
+      actions.some((action) => resolveStandardEditorPermissionScope(action) === 'organization'),
     ...(input.requiredAccessScope === 'all' ? { requireAllScopeActions: [input.action] } : {}),
   });
   if (authorization instanceof Response) return authorization;

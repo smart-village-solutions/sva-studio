@@ -263,6 +263,7 @@ test.describe('waste management plugin', () => {
     page,
   }) => {
     test.setTimeout(180_000);
+    await page.clock.setFixedTime(new Date('2026-05-12T12:00:00.000Z'));
     await mockSharedShellRequests(context, {
       instanceId: 'de-tour-shift-context',
       permissionActions: [

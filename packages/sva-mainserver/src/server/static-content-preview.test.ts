@@ -35,6 +35,30 @@ describe('App configuration preview projection', () => {
       requestedVersion: '5.0.0',
     });
   });
+  it('accepts the existing empty-string marker for unversioned records', () => {
+    expect(project({ ...file, version: '' }, 'tenant-a', { version: null })).toMatchObject({
+      status: 'loaded',
+      record: { version: null },
+      fallback: false,
+      fields: { alternativeLocation: { state: 'value', value: false } },
+    });
+  });
+  it('loads a decoded object from an unversioned fallback to a versioned request', () => {
+    expect(
+      project({ ...file, content: JSON.parse(file.content) }, 'tenant-a', { version: '5.0.0' })
+    ).toMatchObject({
+      status: 'loaded',
+      record: { version: null },
+      fallback: true,
+      fields: { alternativeLocation: { state: 'value', value: false } },
+    });
+  });
+  it('does not reparse a decoded JSON string from an unversioned fallback', () => {
+    expect(project({ ...file, content: '{}' }, 'tenant-a', { version: '5.0.0' })).toEqual({
+      status: 'unavailable',
+      reason: 'invalid_document',
+    });
+  });
   it.each([{ content: {} }, { content: { settings: {} } }])(
     'distinguishes absent fields',
     ({ content }) => {

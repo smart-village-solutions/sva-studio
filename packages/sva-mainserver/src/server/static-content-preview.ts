@@ -20,6 +20,7 @@ const readField = (root: Record<string, unknown>, path: readonly string[]): unkn
 };
 
 const readRecord = (file: Record<string, unknown>): LoadedAppConfigurationPreview['record'] => {
+  const version = file.version === '' ? null : file.version;
   const validId =
     typeof file.id === 'string'
       ? file.id.length > 0
@@ -29,14 +30,14 @@ const readRecord = (file: Record<string, unknown>): LoadedAppConfigurationPrevie
     typeof file.name !== 'string' ||
     !/^globalsettings$/i.test(file.name) ||
     file.dataType !== 'json' ||
-    !(file.version === null || (typeof file.version === 'string' && file.version.length > 0))
+    !(version === null || typeof version === 'string')
   )
     throw toSvaMainserverError({
       code: 'invalid_response',
       message: 'app_configuration_metadata_invalid',
       statusCode: 502,
     });
-  return { id: String(file.id), name: file.name, version: file.version };
+  return { id: String(file.id), name: file.name, version };
 };
 
 /** Read-only projection. No foreign content or raw JSON crosses the host boundary. */
@@ -56,7 +57,8 @@ export const projectAppConfigurationPreview = (
     return { status: 'unavailable', reason: 'not_resolved' };
   const record = readRecord(file);
   let document: unknown = file.content;
-  // Versioned JSON strings may already be decoded upstream. Never guess a second parse.
+  // The resolver decodes every versioned request, including unversioned fallbacks.
+  // A returned string may be a decoded JSON scalar; never guess a second parse.
   if (typeof document === 'string' && parsed.data.version === null) {
     try {
       document = JSON.parse(document);

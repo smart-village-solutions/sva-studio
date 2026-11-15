@@ -2453,6 +2453,7 @@ describe('createSvaMainserverService', () => {
       { content: null },
       { content: 42 },
       { content: false },
+      { content: '{}' },
     ])('never reconstructs raw JSON from parsed GraphQL content: $content', async ({ content }) => {
       const { service } = setup([{ ...file, version: '5.0.0', content }]);
       await expect(

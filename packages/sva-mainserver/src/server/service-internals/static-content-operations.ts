@@ -88,7 +88,8 @@ export const createStaticContentOperations = (executeGraphqlWithConfig: GraphqlE
       (selection.data.expectedId !== undefined && metadata.data.id !== selection.data.expectedId)
     )
       return { status: 'unavailable', reason: 'variant_mismatch' };
-    if (typeof file.content !== 'string')
+    // Versioned responses pass through JSON.parse upstream, including JSON strings.
+    if (selection.data.version !== null || typeof file.content !== 'string')
       return { status: 'unavailable', reason: 'raw_content_unavailable' };
     return { status: 'read', snapshot: { ...metadata.data, content: file.content } };
   },

@@ -157,7 +157,9 @@ test('platform admin manages Bus keys with one-time display and deliberate revoc
   const form = page.getByRole('dialog');
   await form.getByLabel('Kontakt-E-Mail des Kunden').fill('customer@example.test');
   await form.getByLabel('Erstellerinitialen').fill('dk');
-  await form.getByLabel('Gültig bis einschließlich').fill('2028-12-31');
+  await form
+    .getByRole('textbox', { name: 'Gültig bis einschließlich', exact: true })
+    .fill('31.12.2028');
   await expect(form.getByText(/2029-01-01T00:00:00.000Z/u)).toBeVisible();
   await form.getByRole('button', { name: 'Key erstellen', exact: true }).click();
   await expect(page.getByText('sk_browser_fixture_only')).toBeVisible();

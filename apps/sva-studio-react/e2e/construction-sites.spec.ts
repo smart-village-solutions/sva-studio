@@ -127,7 +127,7 @@ test('draws and edits construction site geometry and roundtrips the existing rec
   await page.locator('#cs-title').fill('Brückenbau');
   await page.locator('#cs-dates-0-dateEnd').fill('2026-12-20');
   await page.locator('#cs-dates-0-dateStart').fill('2026-11-15');
-  await expect(page.locator('#cs-dates-0-dateEnd')).toHaveValue('2026-12-20');
+  await expect(page.locator('#cs-dates-0-dateEnd')).toHaveValue('20.12.2026');
   await expect(page.getByRole('button', { name: 'Strecke zeichnen', exact: true })).toBeEnabled({
     timeout: 15000,
   });

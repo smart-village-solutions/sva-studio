@@ -1,6 +1,10 @@
 // fallow-ignore-file code-duplication
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jobFixture } from './jobs-test-fixture.js';
+import { readFileSync } from 'node:fs';
+import { buildClientSchema, parse, validate, type IntrospectionQuery } from 'graphql';
+import { svaMainserverAppConfigurationDocument } from '../generated/static-content.js';
+import { reconcileAppConfigurationFields } from './static-content-reconciliation.js';
 
 const state = vi.hoisted(() => ({
   loadSvaMainserverInstanceConfig: vi.fn(),
@@ -87,6 +91,7 @@ import {
   changeSvaMainserverGenericItemVisibility,
   changeSvaMainserverNewsVisibility,
   createOrUpdateSvaMainserverStaticContent,
+  readSvaMainserverAppConfiguration,
   createSvaMainserverEvent,
   createSvaMainserverGenericItem,
   createSvaMainserverNews,
@@ -2333,6 +2338,205 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  describe('readAppConfiguration', () => {
+    const raw =
+      '{"settings":{"locationService":{"showAlternativeLocationButton":true}},"foreign":900719925474099312345}';
+    const file = {
+      id: '1707',
+      name: 'globalSettings',
+      dataType: 'json',
+      version: null,
+      content: raw,
+    };
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+    const setup = (files: readonly unknown[]) => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(
+          createJsonResponse(200, { access_token: 'token-1', expires_in: 120 })
+        );
+      for (const file of files)
+        fetchImpl.mockResolvedValueOnce(
+          createJsonResponse(200, { data: { publicJsonFile: file } })
+        );
+      const readCredentials = vi.fn(async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }));
+      const service = createSvaMainserverService({
+        loadInstanceConfig: async () => baseConfig,
+        readCredentials,
+        fetchImpl,
+      });
+      return { service, fetchImpl, readCredentials };
+    };
+
+    it('uses only fields and arguments from the checked-in GraphQL schema', () => {
+      const schema = JSON.parse(
+        readFileSync(new URL('../generated/schema.snapshot.json', import.meta.url), 'utf8')
+      ) as { data: IntrospectionQuery };
+      expect(
+        validate(buildClientSchema(schema.data), parse(svaMainserverAppConfigurationDocument))
+      ).toEqual([]);
+    });
+
+    it('reads exact raw text through the existing principal and performs a new query on each call', async () => {
+      const changed = raw.replace('312345', '312346');
+      const { service, fetchImpl, readCredentials } = setup([file, { ...file, content: changed }]);
+      const input = {
+        ...connection,
+        activeOrganizationId: 'org-1',
+        actingPrincipalType: 'organization' as const,
+        selection: { version: null, expectedId: '1707' },
+      };
+      await expect(service.readAppConfiguration(input)).resolves.toEqual({
+        status: 'read',
+        snapshot: { instanceId: connection.instanceId, ...file },
+      });
+      await expect(service.readAppConfiguration(input)).resolves.toMatchObject({
+        status: 'read',
+        snapshot: { content: changed },
+      });
+      expect(readCredentials).toHaveBeenCalledWith(
+        expect.objectContaining({
+          instanceId: connection.instanceId,
+          activeOrganizationId: 'org-1',
+          actingPrincipalType: 'organization',
+        })
+      );
+      expect(fetchImpl).toHaveBeenCalledTimes(3);
+      for (const call of fetchImpl.mock.calls.slice(1)) {
+        const body = JSON.parse(String(call[1]?.body));
+        expect(body.operationName).toBe('SvaMainserverAppConfiguration');
+        expect(body.variables).toEqual({ name: 'globalSettings', version: null });
+        expect(body.query).not.toContain('mutation');
+      }
+    });
+
+    it('preserves the actual stored name and normalizes only a numeric GraphQL ID', async () => {
+      const { service } = setup([{ ...file, id: 1707, name: 'globalsettings' }]);
+      await expect(
+        service.readAppConfiguration({ ...connection, selection: { version: null } })
+      ).resolves.toMatchObject({
+        status: 'read',
+        snapshot: { id: '1707', name: 'globalsettings', content: raw },
+      });
+    });
+
+    it.each([null, { id: null, name: 'not found', content: {} }])(
+      'does not treat an unresolved response as proof that a variant can be created: %s',
+      async (response) => {
+        const { service, fetchImpl } = setup([response]);
+        await expect(
+          service.readAppConfiguration({ ...connection, selection: { version: null } })
+        ).resolves.toEqual({ status: 'unavailable', reason: 'variant_not_resolved' });
+        expect(fetchImpl).toHaveBeenCalledTimes(2);
+      }
+    );
+
+    it.each([
+      { response: { ...file, version: '4.0.0' }, selection: { version: '5.0.0' } },
+      { response: file, selection: { version: '5.0.0' } },
+      { response: { ...file, version: '5.0.0' }, selection: { version: null } },
+      { response: file, selection: { version: null, expectedId: 'other' } },
+    ])(
+      'rejects a fallback or different ID rather than silently selecting it',
+      async ({ response, selection }) => {
+        const { service } = setup([response]);
+        await expect(service.readAppConfiguration({ ...connection, selection })).resolves.toEqual({
+          status: 'unavailable',
+          reason: 'variant_mismatch',
+        });
+      }
+    );
+
+    it.each([
+      { content: {} },
+      { content: [] },
+      { content: null },
+      { content: 42 },
+      { content: false },
+    ])('never reconstructs raw JSON from parsed GraphQL content: $content', async ({ content }) => {
+      const { service } = setup([{ ...file, version: '5.0.0', content }]);
+      await expect(
+        service.readAppConfiguration({ ...connection, selection: { version: '5.0.0' } })
+      ).resolves.toEqual({ status: 'unavailable', reason: 'raw_content_unavailable' });
+    });
+
+    it('feeds separately fetched raw snapshots into the shared reconciliation core', async () => {
+      const initial = raw.slice(0, -1) + ',"appDesignSystem":{"serviceTiles":{"numberOfLines":3}}}';
+      const current = initial.replace('"numberOfLines":3', '"numberOfLines":5');
+      const { service, fetchImpl } = setup([
+        { ...file, content: initial },
+        { ...file, content: current },
+      ]);
+      const input = { ...connection, selection: { version: null, expectedId: '1707' } };
+      const base = await service.readAppConfiguration(input);
+      const fresh = await service.readAppConfiguration(input);
+      if (base.status !== 'read' || fresh.status !== 'read')
+        throw new Error('raw_snapshots_unavailable');
+      const result = reconcileAppConfigurationFields({
+        scope: 'general',
+        base: base.snapshot,
+        current: fresh.snapshot,
+        changes: [
+          {
+            field: 'settings.locationService.showAlternativeLocationButton',
+            operation: 'set',
+            value: false,
+          },
+        ],
+      });
+      expect(result.status).toBe('ready');
+      if (result.status !== 'ready') throw new Error('preparation_failed');
+      expect(result.content).toContain('"showAlternativeLocationButton":false');
+      expect(result.content).toContain('"numberOfLines":5');
+      expect(result.content).toContain('"foreign":900719925474099312345');
+      expect(fetchImpl).toHaveBeenCalledTimes(3);
+    });
+
+    it.each([
+      { ...file, name: 'otherConfig' },
+      { ...file, dataType: 'html' },
+      { ...file, version: undefined },
+      { ...file, id: {} },
+      { ...file, id: 1.5 },
+    ])(
+      'rejects malformed identity metadata without exposing provider content',
+      async (response) => {
+        const { service } = setup([response]);
+        await expect(
+          service.readAppConfiguration({ ...connection, selection: { version: null } })
+        ).rejects.toMatchObject({
+          code: 'invalid_response',
+          message: 'app_configuration_metadata_invalid',
+        });
+      }
+    );
+
+    it('validates the explicit selection before acquiring credentials or sending GraphQL', async () => {
+      const { service, fetchImpl } = setup([]);
+      const selection = { version: null, name: 'foreign-config' };
+      for (const invalid of [selection, { version: '' }]) {
+        await expect(
+          service.readAppConfiguration({ ...connection, selection: invalid })
+        ).rejects.toMatchObject({ code: 'invalid_config', statusCode: 400 });
+      }
+      expect(fetchImpl).not.toHaveBeenCalled();
+    });
+
+    it('routes the public server helper through the existing default service', async () => {
+      state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
+      state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+        status: 'ok',
+        source: 'user',
+        credentials: { apiKey: 'key-1', apiSecret: 'secret-1' },
+      });
+      const { fetchImpl } = setup([file]);
+      vi.stubGlobal('fetch', fetchImpl);
+      await expect(
+        readSvaMainserverAppConfiguration({ ...connection, selection: { version: null } })
+      ).resolves.toMatchObject({ status: 'read', snapshot: { content: raw } });
+    });
+  });
+
   it('creates or updates static content with typed GraphQL variables', async () => {
     const fetchImpl = vi
       .fn()
@@ -2381,6 +2585,94 @@ describe('createSvaMainserverService', () => {
     expect(thirdCallBody).toContain('"dataType":"json"');
     expect(thirdCallBody).toContain('"version":""');
     expect(thirdCallBody).not.toContain('"dataType":"JSON"');
+  });
+
+  describe.each([
+    { label: 'create', existingId: null },
+    { label: 'update', existingId: '1707' },
+  ])('static content $label transport', ({ existingId }) => {
+    it.each(['http-503', 'network', 'timeout'] as const)(
+      'does not repeat an ambiguously completed mutation after %s',
+      async (failure) => {
+        const fetchImpl = vi
+          .fn()
+          .mockResolvedValueOnce(
+            createJsonResponse(200, { access_token: 'token-1', expires_in: 120 })
+          )
+          .mockResolvedValueOnce(
+            createJsonResponse(200, { data: { publicJsonFile: { id: existingId } } })
+          )
+          .mockImplementationOnce(async () => {
+            if (failure === 'http-503') return new Response('unavailable', { status: 503 });
+            if (failure === 'network') throw new TypeError('connection closed after write');
+            const error = new Error('request timed out after write');
+            error.name = 'TimeoutError';
+            throw error;
+          })
+          .mockResolvedValue(
+            createJsonResponse(200, {
+              data: { createOrUpdateStaticContent: { id: 'retried-write' } },
+            })
+          );
+        const service = createSvaMainserverService({
+          loadInstanceConfig: async () => baseConfig,
+          readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+          fetchImpl,
+          retryBaseDelayMs: 0,
+          randomIntImpl: () => 0,
+        });
+
+        await expect(
+          service.createOrUpdateStaticContent({
+            instanceId: baseConfig.instanceId,
+            keycloakSubject: 'subject-1',
+            staticContent: { name: 'wasteTypes', content: '{"bio":{"label":"Bio"}}' },
+          })
+        ).rejects.toMatchObject({ statusCode: 503 });
+        expect(fetchImpl).toHaveBeenCalledTimes(3);
+        const body = JSON.parse(String(fetchImpl.mock.calls[2]?.[1]?.body));
+        expect(body.operationName).toBe(
+          existingId
+            ? 'SvaMainserverCreateOrUpdateStaticContentWithId'
+            : 'SvaMainserverCreateOrUpdateStaticContent'
+        );
+      }
+    );
+  });
+
+  it('still retries a transient static content read before a single mutation', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(new Response('unavailable', { status: 503 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { publicJsonFile: { id: '1707' } } }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { createOrUpdateStaticContent: { id: '1707' } } })
+      );
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+      retryBaseDelayMs: 0,
+      randomIntImpl: () => 0,
+    });
+    await expect(
+      service.createOrUpdateStaticContent({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        staticContent: { name: 'wasteTypes', content: '{"bio":{"label":"Bio"}}' },
+      })
+    ).resolves.toEqual({ id: '1707' });
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body)).operationName).toBe(
+      'SvaMainserverPublicJsonFile'
+    );
+    expect(JSON.parse(String(fetchImpl.mock.calls[2]?.[1]?.body)).operationName).toBe(
+      'SvaMainserverPublicJsonFile'
+    );
+    expect(JSON.parse(String(fetchImpl.mock.calls[3]?.[1]?.body)).operationName).toBe(
+      'SvaMainserverCreateOrUpdateStaticContentWithId'
+    );
   });
 
   it('routes the default static content helper through the default service', async () => {
@@ -3012,12 +3304,22 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] } },
+          data: {
+            pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] },
+          },
         })
       )
       .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] } },
+          data: {
+            createPointOfInterest: {
+              id: 'poi-1',
+              name: 'POI',
+              payload: {},
+              visible: true,
+              lunches: [],
+            },
+          },
         })
       );
     vi.stubGlobal('fetch', fetchImpl);
@@ -3057,12 +3359,22 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] } },
+          data: {
+            pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] },
+          },
         })
       )
       .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] } },
+          data: {
+            createPointOfInterest: {
+              id: 'poi-1',
+              name: 'POI',
+              payload: {},
+              visible: true,
+              lunches: [],
+            },
+          },
         })
       );
     vi.stubGlobal('fetch', fetchImpl);
@@ -4486,7 +4798,13 @@ describe('createSvaMainserverService', () => {
             };
           case 'SvaMainserverPoiDetail':
             return {
-              pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true, lunches: [] },
+              pointOfInterest: {
+                id: 'poi-1',
+                name: 'POI',
+                payload: {},
+                visible: true,
+                lunches: [],
+              },
             };
           case 'SvaMainserverWasteAddresses':
             return { wasteAddresses: [] };

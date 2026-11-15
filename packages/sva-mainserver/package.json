@@ -23,6 +23,7 @@
     "@sva/data-repositories": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "@sva/waste-management-contracts": "workspace:*",
+    "jsonc-parser": "3.3.1",
     "terra-draw": "1.39.0",
     "zod": "^4.6.7"
   },

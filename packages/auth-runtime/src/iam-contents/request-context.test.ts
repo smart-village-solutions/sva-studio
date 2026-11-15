@@ -398,6 +398,40 @@ describe('core content module boundary', () => {
     expect(response?.status).toBe(403);
     expect(moduleQueryMock).toHaveBeenCalledWith('tenant-a', 'faq');
   });
+  it.each(['custom.record', 'unregistered'])(
+    'fails closed for an unregistered content namespace %s',
+    async (contentType) => {
+      moduleQueryMock.mockResolvedValue(false);
+      evaluateAuthorizeDecisionMock.mockClear().mockReturnValue({ allowed: true });
+      for (const action of [
+        'content.create',
+        'content.read',
+        'content.updatePayload',
+        'content.readHistory',
+        'content.delete',
+      ] as const) {
+        expect(
+          (await authorizeContentAction(actor, action, { contentType }, { permissions: [] }))
+            ?.status
+        ).toBe(403);
+      }
+      expect(evaluateAuthorizeDecisionMock).not.toHaveBeenCalled();
+      expect(moduleQueryMock).toHaveBeenCalledWith('tenant-a', contentType.split('.')[0]);
+    }
+  );
+  it('allows a configured custom module through the same existing activation lookup', async () => {
+    moduleQueryMock.mockResolvedValue(true);
+    evaluateAuthorizeDecisionMock.mockReturnValue({ allowed: true });
+    await expect(
+      authorizeContentAction(
+        actor,
+        'content.create',
+        { contentType: 'custom.record' },
+        { permissions: [] }
+      )
+    ).resolves.toBeNull();
+    expect(moduleQueryMock).toHaveBeenCalledWith('tenant-a', 'custom');
+  });
   it('allows active modules and fails closed on module storage errors', async () => {
     moduleQueryMock.mockResolvedValue(true);
     evaluateAuthorizeDecisionMock.mockReturnValue({ allowed: true });

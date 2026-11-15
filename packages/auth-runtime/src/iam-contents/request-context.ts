@@ -1,9 +1,5 @@
 import { isConfiguredPluginTenantEffectivelyActive } from '../plugin-tenant-lifecycle/access.js';
-import {
-  summarizeContentAccess,
-  standardEditorContentModules,
-  type IamContentAccessSummary,
-} from '@sva/core';
+import { summarizeContentAccess, type IamContentAccessSummary } from '@sva/core';
 import { createPermissionDenialDetailsForAction } from '@sva/core';
 import { evaluateAuthorizeDecision, type EffectivePermission } from '@sva/iam-core';
 import {
@@ -128,11 +124,7 @@ export const authorizeContentAction = async (
     }
 
     const moduleId = resource.contentType?.split('.')[0];
-    if (
-      action.startsWith('content.') &&
-      moduleId &&
-      standardEditorContentModules.some((knownModuleId) => knownModuleId === moduleId)
-    ) {
+    if (action.startsWith('content.') && moduleId) {
       const active = await isConfiguredPluginTenantEffectivelyActive(actor.instanceId, moduleId);
       if (!active)
         return createApiError(

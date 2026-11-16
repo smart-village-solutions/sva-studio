@@ -62,6 +62,15 @@ Directory-Rolle sowohl am Service-Account als auch in dessen Client-Scope.
 Ein anschließendes `verify` prüft beide Rollen. Die Änderung im Repository
 allein erteilt noch keine Berechtigung im laufenden Keycloak.
 
+Den Audience-Mapper `studio-ssf-runtime-audience` schreibt `reconcile` nur bei
+Abweichung: Ein bereits passender Mapper bleibt unverändert, ein fehlender wird
+genau einmal angelegt, und ein abweichender Mapper wird unter Beibehaltung
+seiner Keycloak-ID und zusätzlicher Server-Konfiguration korrigiert. Mehrere
+Mapper dieses Namens oder ein gleichnamiger Mapper eines anderen Typs führen
+zum Abbruch, ohne den Mapper zu verändern. `verify` prüft den vollständigen
+Mapper-Vertrag aus Audience sowie Access-, ID-Token-, Userinfo- und
+Introspection-Einstellungen und bleibt dabei rein lesend.
+
 ## Aktivierung und Smoke-Test
 
 Studio erhält mindestens:

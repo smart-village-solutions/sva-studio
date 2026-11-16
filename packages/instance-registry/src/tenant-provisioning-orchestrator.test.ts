@@ -1077,6 +1077,96 @@ describe('tenant provisioning parent orchestrator', () => {
     });
   });
 
+  it.each<{
+    readonly name: string;
+    readonly arrange: (harness: ReturnType<typeof createHarness>) => void;
+    readonly failurePhase: string;
+    readonly errorCode: string;
+    readonly sensitiveValues: readonly string[];
+  }>([
+    {
+      name: 'an exceeded deadline',
+      arrange: (harness) => {
+        Object.assign(harness.getRun(), { deadlineAt: now.toISOString() });
+      },
+      failurePhase: 'execution_guard',
+      errorCode: 'provisioning_deadline_exceeded',
+      sensitiveValues: [],
+    },
+    {
+      name: 'a failed instance lookup',
+      arrange: (harness) => {
+        vi.mocked(harness.repository.getInstanceById).mockRejectedValueOnce(
+          Object.assign(new Error('lookup failed guard-message-secret'), {
+            code: 'XX001',
+            detail: 'guard-detail-secret',
+            query: 'SELECT guard_query_secret FROM instances',
+            parameters: ['guard-parameter-secret'],
+          })
+        );
+      },
+      failurePhase: 'execution_guard',
+      errorCode: 'tenant_provisioning_step_failed',
+      sensitiveValues: [
+        'guard-message-secret',
+        'guard-detail-secret',
+        'guard_query_secret',
+        'guard-parameter-secret',
+      ],
+    },
+    {
+      name: 'a missing instance',
+      arrange: (harness) => {
+        vi.mocked(harness.repository.getInstanceById).mockResolvedValueOnce(null);
+      },
+      failurePhase: 'instance_validation',
+      errorCode: 'instance_not_found',
+      sensitiveValues: [],
+    },
+    {
+      name: 'registry configuration drift',
+      arrange: (harness) => {
+        harness.changeInstance({ displayName: 'snapshot-display-name-secret' });
+      },
+      failurePhase: 'snapshot_validation',
+      errorCode: 'provisioning_snapshot_drift',
+      sensitiveValues: ['snapshot-display-name-secret'],
+    },
+  ])(
+    'logs the $failurePhase failure phase for $name',
+    async ({ arrange, failurePhase, errorCode, sensitiveValues }) => {
+      const harness = createHarness();
+      arrange(harness);
+
+      await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+      expect(state.logger.warn).toHaveBeenCalledWith(
+        'tenant_provisioning_step_exception',
+        expect.objectContaining({
+          operation: 'create_instance',
+          result: 'failed',
+          instance_id: 'tenant-a',
+          run_id: '00000000-0000-4000-8000-000000000001',
+          failure_phase: failurePhase,
+          error_code: errorCode,
+          classification: errorCode,
+        })
+      );
+      expect(harness.getRun()).toMatchObject({
+        status: 'failed',
+        errorCode,
+        completedAt: now.toISOString(),
+      });
+      const logged = JSON.stringify([
+        ...state.logger.warn.mock.calls,
+        ...state.logger.error.mock.calls,
+      ]);
+      for (const sensitiveValue of sensitiveValues) {
+        expect(logged).not.toContain(sensitiveValue);
+      }
+    }
+  );
+
   it('accepts an explicitly empty plugin snapshot for a tenant without assigned modules', async () => {
     const harness = createHarness();
     const instanceWithoutModules = { ...harness.getInstance(), assignedModules: [] };

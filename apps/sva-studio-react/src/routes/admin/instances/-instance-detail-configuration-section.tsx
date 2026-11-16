@@ -30,6 +30,94 @@ const fields = [
   ['rolelessRedirectUrl', 'detail-roleless-redirect-url', 'rolelessRedirectUrl'],
 ] as const satisfies readonly (readonly [FieldPath<DetailFormValues>, string, string])[];
 
+const renderFields = (
+  start: number,
+  end: number,
+  {
+    selectedInstance,
+    detailFormValues,
+    tenantSecretUserInputRequired,
+    setDetailFormValues,
+    form,
+    saving,
+  }: Pick<
+    ConfigurationSectionProps,
+    | 'selectedInstance'
+    | 'detailFormValues'
+    | 'tenantSecretUserInputRequired'
+    | 'setDetailFormValues'
+    | 'form'
+    | 'saving'
+  >
+) =>
+  fields.slice(start, end).map(([name, id, label]) => {
+    const [key, nestedKey] = name.split('.') as [keyof DetailFormValues, string | undefined];
+    const section = detailFormValues[key];
+    const value =
+      typeof section === 'object' && nestedKey
+        ? (Reflect.get(section, nestedKey) as string)
+        : (section as string);
+    const isSecret = name === 'authClientSecret' || name === 'tenantAdminClient.secret';
+    const configured =
+      name === 'authClientSecret'
+        ? selectedInstance.authClientSecretConfigured
+        : selectedInstance.tenantAdminClient?.secretConfigured;
+    const binding = getStudioFormFieldProps({
+      id,
+      error: form?.getFieldState(name, form.formState).error,
+    });
+    return (
+      <StudioField
+        key={name}
+        {...binding}
+        label={t(`admin.instances.form.${label}`)}
+        description={
+          name === 'rolelessRedirectUrl'
+            ? t('admin.instances.form.rolelessRedirectHelp')
+            : undefined
+        }
+      >
+        <Input
+          value={value}
+          type={
+            isSecret
+              ? 'password'
+              : name === 'tenantAdminBootstrap.email'
+                ? 'email'
+                : name === 'rolelessRedirectUrl'
+                  ? 'url'
+                  : 'text'
+          }
+          disabled={saving || (isSecret && !tenantSecretUserInputRequired)}
+          placeholder={
+            isSecret
+              ? t(
+                  !tenantSecretUserInputRequired
+                    ? 'admin.instances.form.authClientSecretGeneratedDuringProvisioning'
+                    : configured
+                      ? 'admin.instances.form.authClientSecretConfigured'
+                      : 'admin.instances.form.authClientSecretMissing'
+                )
+              : undefined
+          }
+          onChange={(event) =>
+            setDetailFormValues((current) =>
+              current
+                ? {
+                    ...current,
+                    [key]:
+                      nestedKey && typeof current[key] === 'object'
+                        ? { ...current[key], [nestedKey]: event.target.value }
+                        : event.target.value,
+                  }
+                : current
+            )
+          }
+        />
+      </StudioField>
+    );
+  });
+
 export const InstanceDetailConfigurationSection = ({
   selectedInstance,
   detailFormValues,
@@ -46,74 +134,14 @@ export const InstanceDetailConfigurationSection = ({
     const message = form?.getFieldState(name, form.formState).error?.message;
     return message ? [{ field: id, message }] : [];
   });
-  const renderFields = (start: number, end: number) =>
-    fields.slice(start, end).map(([name, id, label]) => {
-      const [key, nestedKey] = name.split('.') as [keyof DetailFormValues, string | undefined];
-      const section = detailFormValues[key];
-      const value =
-        typeof section === 'object' && nestedKey
-          ? (Reflect.get(section, nestedKey) as string)
-          : (section as string);
-      const isSecret = name === 'authClientSecret' || name === 'tenantAdminClient.secret';
-      const configured =
-        name === 'authClientSecret'
-          ? selectedInstance.authClientSecretConfigured
-          : selectedInstance.tenantAdminClient?.secretConfigured;
-      const binding = getStudioFormFieldProps({
-        id,
-        error: form?.getFieldState(name, form.formState).error,
-      });
-      return (
-        <StudioField
-          key={name}
-          {...binding}
-          label={t(`admin.instances.form.${label}`)}
-          description={
-            name === 'rolelessRedirectUrl'
-              ? t('admin.instances.form.rolelessRedirectHelp')
-              : undefined
-          }
-        >
-          <Input
-            value={value}
-            type={
-              isSecret
-                ? 'password'
-                : name === 'tenantAdminBootstrap.email'
-                  ? 'email'
-                  : name === 'rolelessRedirectUrl'
-                    ? 'url'
-                    : 'text'
-            }
-            disabled={saving || (isSecret && !tenantSecretUserInputRequired)}
-            placeholder={
-              isSecret
-                ? t(
-                    !tenantSecretUserInputRequired
-                      ? 'admin.instances.form.authClientSecretGeneratedDuringProvisioning'
-                      : configured
-                        ? 'admin.instances.form.authClientSecretConfigured'
-                        : 'admin.instances.form.authClientSecretMissing'
-                  )
-                : undefined
-            }
-            onChange={(event) =>
-              setDetailFormValues((current) =>
-                current
-                  ? {
-                      ...current,
-                      [key]:
-                        nestedKey && typeof current[key] === 'object'
-                          ? { ...current[key], [nestedKey]: event.target.value }
-                          : event.target.value,
-                    }
-                  : current
-              )
-            }
-          />
-        </StudioField>
-      );
-    });
+  const fieldProps = {
+    selectedInstance,
+    detailFormValues,
+    tenantSecretUserInputRequired,
+    setDetailFormValues,
+    form,
+    saving,
+  };
   const openError = (field: string) => {
     const input = document.getElementById(field);
     const disclosure = input?.closest('details');
@@ -133,8 +161,8 @@ export const InstanceDetailConfigurationSection = ({
           <section className="space-y-3">
             <h2 className="font-medium">{t('admin.instances.form.general')}</h2>
             <div className="grid gap-3 md:grid-cols-2">
-              {renderFields(0, 2)}
-              {renderFields(12, 13)}
+              {renderFields(0, 2, fieldProps)}
+              {renderFields(12, 13, fieldProps)}
             </div>
           </section>
           <section className="space-y-3">
@@ -142,7 +170,7 @@ export const InstanceDetailConfigurationSection = ({
             <p className="text-sm text-muted-foreground">
               {t('admin.instances.form.tenantAdminSubtitle')}
             </p>
-            <div className="grid gap-3 md:grid-cols-2">{renderFields(2, 6)}</div>
+            <div className="grid gap-3 md:grid-cols-2">{renderFields(2, 6, fieldProps)}</div>
           </section>
 
           <AccountInvitationTemplateCard
@@ -181,7 +209,7 @@ export const InstanceDetailConfigurationSection = ({
                 </label>
               ))}
             </fieldset>
-            <div className="grid gap-3 md:grid-cols-2">{renderFields(6, 10)}</div>
+            <div className="grid gap-3 md:grid-cols-2">{renderFields(6, 10, fieldProps)}</div>
           </details>
           <div className="space-y-2">
             {tenantSecretUserInputRequired &&
@@ -202,7 +230,7 @@ export const InstanceDetailConfigurationSection = ({
                     : 'admin.instances.form.authClientSecretGeneratedHint'
                 )}
               </p>
-              <div className="grid gap-3 md:grid-cols-2">{renderFields(10, 12)}</div>
+              <div className="grid gap-3 md:grid-cols-2">{renderFields(10, 12, fieldProps)}</div>
             </details>
           </div>
           <StudioSaveButton

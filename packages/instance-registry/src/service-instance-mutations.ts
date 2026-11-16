@@ -286,9 +286,7 @@ export const createUpdateInstanceHandler =
       featureFlags: effectiveInput.featureFlags,
       mainserverConfigRef: effectiveInput.mainserverConfigRef,
     });
-    if (!updated) {
-      return null;
-    }
+    if (!updated) return null;
 
     const invitationUpdated = await applyAccountInvitationTemplateMutation({
       repository: deps.repository,

@@ -144,7 +144,7 @@ export default function AppShell({
     effectiveAccess.permissionActions.length === 0;
   const rolelessRedirectUrl = user?.rolelessRedirectUrl;
   React.useEffect(() => {
-    if (showRoleAssignmentPending && rolelessRedirectUrl) {
+    if (showRoleAssignmentPending) {
       redirectRolelessUser(rolelessRedirectUrl);
     }
   }, [showRoleAssignmentPending, rolelessRedirectUrl]);

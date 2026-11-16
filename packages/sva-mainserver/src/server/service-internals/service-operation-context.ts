@@ -1,4 +1,3 @@
-import { createContentOwnershipTransferOperation } from './content-ownership-transfer.js';
 import { createEventOperations } from './event-operations.js';
 import { createEventVisibilityOperations } from './event-visibility-operations.js';
 import { createGenericItemOperations } from './generic-item-operations.js';
@@ -22,12 +21,6 @@ export const createServiceOperationContext = (
   const eventVisibilityOperations = createEventVisibilityOperations(executeGraphqlWithConfig);
   const genericItemOperations = createGenericItemOperations(executeGraphqlWithConfig);
   const poiOperations = createPoiOperations(executeGraphqlWithConfig);
-  const transferContentOwnershipWithConfig = createContentOwnershipTransferOperation({
-    news: newsOperations,
-    event: eventOperations,
-    poi: poiOperations,
-    genericItem: genericItemOperations,
-  });
   const projectionListOperations = createProjectionListOperations(executeGraphqlWithConfig);
   const surveyOperations = createSurveyOperations(executeGraphqlWithConfig);
   const staticContentOperations = createStaticContentOperations(executeGraphqlWithConfig);
@@ -41,7 +34,6 @@ export const createServiceOperationContext = (
     eventVisibilityOperations,
     genericItemOperations,
     poiOperations,
-    transferContentOwnershipWithConfig,
     projectionListOperations,
     surveyOperations,
     staticContentOperations,

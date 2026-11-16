@@ -188,6 +188,7 @@ export const contentENResources = {
     verificationRequired:
       'The DataProvider assignment will be verified securely when the transfer is confirmed.',
     transferUnavailable: 'Ownership transfer is not yet available for this content type.',
+    temporarilyDisabled: 'Ownership transfers are temporarily disabled to protect content data.',
     transferForbidden: 'You can edit this content, but you cannot transfer it.',
     transferAction: 'Transfer content',
     dialogTitle: 'Transfer content',

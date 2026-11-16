@@ -189,6 +189,7 @@ export const contentDEResources = {
     verificationRequired:
       'Die DataProvider-Zuordnung wird beim bestätigten Transfer sicher geprüft.',
     transferUnavailable: 'Die Übertragung ist für diesen Inhaltstyp noch nicht verfügbar.',
+    temporarilyDisabled: 'Inhaberübertragungen sind zum Schutz der Inhaltsdaten vorübergehend gesperrt.',
     transferForbidden: 'Du kannst diesen Inhalt bearbeiten, aber nicht übertragen.',
     transferAction: 'Inhalt übertragen',
     dialogTitle: 'Inhalt übertragen',

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { MainserverApiError } from '@sva/plugin-sdk';
+import { t } from '../i18n';
+import { resolveOwnershipTransferError } from './mainserver-resource-principal';
+
 import { resolveMainserverPrincipalControl } from './mainserver-principal-control';
 
 describe('resolveMainserverPrincipalControl', () => {
@@ -40,4 +44,15 @@ describe('resolveMainserverPrincipalControl', () => {
     if (result.kind !== 'ready') return;
     expect(result.control.readinessByPrincipal?.user).toBe('unavailable');
   });
+});
+
+it('explains the temporary ownership transfer protection', () => {
+  expect(
+    resolveOwnershipTransferError(
+      new MainserverApiError(
+        'content_transfer_temporarily_disabled',
+        'content_transfer_temporarily_disabled'
+      )
+    )
+  ).toBe(t('content.ownership.temporarilyDisabled'));
 });

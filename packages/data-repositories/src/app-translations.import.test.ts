@@ -129,6 +129,7 @@ describe('transaction-bound catalog guards and edits', () => {
       municipal.instanceId,
       municipal.organizationId,
       'false',
+      'false',
     ]);
     expect(query).toHaveBeenNthCalledWith(
       2,

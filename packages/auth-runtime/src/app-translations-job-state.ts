@@ -13,6 +13,7 @@ import { createAppTranslationRepository } from '@sva/data-repositories/server';
 import { evaluateAuthorizeDecision } from '@sva/iam-core';
 import { z } from 'zod';
 import { withIamAppDb, type QueryClient } from './db.js';
+import { loadPersistedEffectiveRoleNames } from './effective-session-roles.js';
 import { getDeepLSetupStatus } from './app-translations-deepl.js';
 import { loadPermissionsWithClient } from './iam-authorization/permission-store.queries.js';
 import type { StudioJobExecutionHandlerContext } from './plugin-operations/types.js';
@@ -72,7 +73,7 @@ export const readCatalogTranslationJob = async (
   contractId: string
 ) => {
   const row = await client.query<{ id: string }>(
-    `SELECT id FROM iam.studio_jobs WHERE instance_id=$1 AND job_type_id=$2 AND input_payload->>'organizationId'=$3 AND input_payload->>'contractId'=$4 ORDER BY created_at DESC LIMIT 1`,
+    `SELECT id FROM iam.studio_jobs WHERE instance_id=$1 AND job_type_id=$2 AND (input_payload->>'organizationId') IS NOT DISTINCT FROM $3::text AND input_payload->>'contractId'=$4 ORDER BY created_at DESC LIMIT 1`,
     [scope.instanceId, jobType, scope.organizationId, contractId]
   );
   return row.rows[0] ? jobs(client).getJobById(scope.instanceId, row.rows[0].id) : null;
@@ -91,7 +92,7 @@ export const lockAppModuleRevision = async (client: QueryClient, instanceId: str
 export const configuration = async (client: QueryClient, scope: MunicipalScope) => {
   const appModuleRevision = await lockAppModuleRevision(client, scope.instanceId);
   const lifecycle = await client.query<{ generation: string }>(
-    `SELECT l.desired_generation::text AS generation FROM iam.instance_modules m JOIN iam.instance_plugin_lifecycle l ON l.instance_id=m.instance_id AND l.plugin_id=m.module_id JOIN iam.instances i ON i.id=m.instance_id JOIN iam.organizations o ON o.instance_id=i.id AND o.id=$2::uuid WHERE m.instance_id=$1 AND m.module_id='app-translations' AND m.effective_active AND l.access_state='active' AND i.status='active' AND o.is_active FOR SHARE OF m,l,i,o`,
+    `SELECT l.desired_generation::text AS generation FROM iam.instance_modules m JOIN iam.instance_plugin_lifecycle l ON l.instance_id=m.instance_id AND l.plugin_id=m.module_id JOIN iam.instances i ON i.id=m.instance_id WHERE m.instance_id=$1 AND m.module_id='app-translations' AND m.effective_active AND l.access_state='active' AND i.status='active' AND ($2::uuid IS NULL OR EXISTS (SELECT 1 FROM iam.organizations o WHERE o.instance_id=i.id AND o.id=$2::uuid AND o.is_active FOR SHARE)) FOR SHARE OF m,l,i`,
     [scope.instanceId, scope.organizationId]
   );
   catalogAssert(lifecycle.rows[0], 'catalog_forbidden');
@@ -118,7 +119,7 @@ export const configuration = async (client: QueryClient, scope: MunicipalScope) 
 };
 export const inputSchema = z
   .object({
-    organizationId: z.uuid(),
+    organizationId: z.uuid().nullable(),
     contractId: z.string(),
     draftId: z.uuid(),
     startRevision: z.string().regex(/^[1-9][0-9]{0,17}$/),
@@ -164,7 +165,7 @@ function assertJobLeaseAndDraft(
       draft.draftRevision === job.progress?.details?.draftRevision,
     'catalog_conflict'
   );
-};
+}
 
 const assertJobConfiguration = (
   config: Awaited<ReturnType<typeof configuration>>,
@@ -207,28 +208,40 @@ export const withGuardedTranslationJob = async <T>(
     catalogAssert(lockedJob.rows[0], 'catalog_conflict');
     const job = await jobs(client).getJobById(scope.instanceId, context.job.id);
     assertJobLeaseAndDraft(job, context, draft, input);
+    const organizationId = scope.organizationId ?? undefined;
     const permissions = await loadPermissionsWithClient(client, {
       instanceId: scope.instanceId,
       keycloakSubject: job.actorAccountId!,
-      organizationId: scope.organizationId,
+      organizationId,
     });
     catalogAssert(
       evaluateAuthorizeDecision(
         {
           instanceId: scope.instanceId,
           action: 'app-translations.catalog.write',
-          resource: { type: 'app-translations', organizationId: scope.organizationId },
-          context: { organizationId: scope.organizationId },
+          resource: { type: 'app-translations', organizationId },
+          context: { organizationId },
         },
         permissions
       ).allowed,
       'catalog_forbidden'
     );
     const actor = await client.query(
-      `SELECT a.id FROM iam.accounts a JOIN iam.account_organizations ao ON ao.instance_id=a.instance_id AND ao.account_id=a.id WHERE a.instance_id=$1 AND a.keycloak_subject=$2 AND a.status='active' AND NOT a.is_blocked AND a.soft_deleted_at IS NULL AND ao.organization_id=$3::uuid FOR SHARE OF a,ao`,
+      `SELECT a.id FROM iam.accounts a WHERE a.instance_id=$1 AND a.keycloak_subject=$2 AND a.status='active' AND NOT a.is_blocked AND a.soft_deleted_at IS NULL
+       AND ($3::uuid IS NULL OR EXISTS (
+         SELECT 1 FROM iam.account_organizations ao WHERE ao.instance_id=a.instance_id AND ao.account_id=a.id
+           AND ao.organization_id=$3::uuid FOR SHARE OF ao
+       )) FOR SHARE OF a`,
       [scope.instanceId, job.actorAccountId, scope.organizationId]
     );
     catalogAssert(actor.rows[0], 'catalog_forbidden');
+    if (scope.organizationId === null) {
+      const roles = await loadPersistedEffectiveRoleNames(client, {
+        instanceId: scope.instanceId,
+        keycloakSubject: job.actorAccountId!,
+      });
+      catalogAssert(roles.includes('system_admin'), 'catalog_forbidden');
+    }
     assertJobConfiguration(config, input, draft);
     return work(client, await repo.readEffective(input.contractId), config.record, job);
   });

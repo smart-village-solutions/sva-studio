@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
   },
   session: {
     userId: 'user',
-    activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    activeOrganizationId: '11111111-1111-4111-8111-111111111111' as string | undefined,
     auth: { kind: 'instance', instanceId: 'tenant' },
   },
   allowed: false,
@@ -68,6 +68,7 @@ vi.mock('./app-translations-deepl.js', () => ({
   }),
   readDeepLSetupStatus: async () => ({ ready: state.providerReady }),
 }));
+vi.mock('./effective-session-roles.js', () => ({ loadPersistedEffectiveRoleNames: vi.fn() }));
 vi.mock('./db.js', () => ({ withIamAppDb: (...args: unknown[]) => state.db(...args) }));
 import {
   executeAppTranslationOperation,
@@ -99,7 +100,7 @@ describe('internal catalog session facade', () => {
     state.repo.exportCatalogDelivery.mockResolvedValue(delivery);
     expect((await executeAppTranslationOperation(scoped, op)).status).toBe(200);
     expect(state.repo.exportCatalogDelivery).toHaveBeenCalledWith(op.releaseId);
-    expect(state.publish).toHaveBeenCalledWith(delivery);
+    expect(state.publish).toHaveBeenCalledWith(delivery, state.ctx.user.id);
     state.locales = ['de', 'hu'];
     expect((await executeAppTranslationOperation(scoped, op)).status).toBe(409);
     expect(state.publish).toHaveBeenCalledTimes(1);
@@ -173,6 +174,7 @@ describe('internal catalog session facade', () => {
     state.platformError = null;
     state.csrfError = null;
     state.ctx.user.instanceId = 'tenant';
+    state.ctx.user.roles = [];
     state.ctx.activeOrganizationId = '11111111-1111-4111-8111-111111111111';
     state.session = {
       userId: 'user',
@@ -625,6 +627,69 @@ describe('internal catalog session facade', () => {
         .status
     ).toBe(403);
     expect(state.db).not.toHaveBeenCalled();
+  });
+  it.each(['source', 'translations'])(
+    'requires system admin and the catalog permission for an instance catalog in %s mode',
+    async (mode) => {
+      const namespace = mode === 'source' ? 'app-texts' : 'app-translations';
+      state.ctx.activeOrganizationId = undefined;
+      state.session.activeOrganizationId = undefined;
+      const read = () =>
+        executeAppTranslationOperation(
+          new Request(request, { headers: { 'X-SVA-Catalog-Mode': mode } }),
+          { operation: 'read', contractId: 'ui' }
+        );
+      state.permissions.mockResolvedValue({
+        ok: true,
+        permissions: [{ action: `${namespace}.catalog.read`, resourceType: namespace }],
+      });
+      expect((await read()).status).toBe(403);
+      state.ctx.user.roles = ['system_admin'];
+      state.permissions.mockResolvedValueOnce({ ok: true, permissions: [] });
+      expect((await read()).status).toBe(403);
+      expect((await read()).status).toBe(200);
+      expect(state.createRepo.mock.calls[0]?.[1]).toEqual({
+        kind: 'municipal',
+        instanceId: 'tenant',
+        organizationId: null,
+      });
+      state.session.auth.instanceId = 'other';
+      expect((await read()).status).toBe(403);
+    }
+  );
+  it('binds writes in App-Texte to the instance catalog seen by the system admin', async () => {
+    state.ctx.activeOrganizationId = undefined;
+    state.session.activeOrganizationId = undefined;
+    state.ctx.user.roles = ['system_admin'];
+    state.permissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'app-texts.catalog.write', resourceType: 'app-texts' }],
+    });
+    const edit = (instanceId: string) =>
+      executeAppTranslationOperation(
+        new Request(request, {
+          headers: {
+            'X-SVA-Catalog-Mode': 'source',
+            'X-SVA-Catalog-Scope': JSON.stringify({
+              kind: 'municipal',
+              instanceId,
+              organizationId: null,
+            }),
+          },
+        }),
+        {
+          operation: 'edit',
+          contractId: 'ui',
+          expectedRevision: '1',
+          locale: 'de',
+          key: 'title',
+          value: 'Neu',
+        }
+      );
+    expect((await edit('other')).status).toBe(409);
+    expect(state.repo.editText).not.toHaveBeenCalled();
+    expect((await edit('tenant')).status).toBe(200);
+    expect(state.repo.editText).toHaveBeenCalledWith('ui', '1', 'de', 'title', 'Neu', undefined);
   });
   it('requires publish action and CSRF for local sealing, fails closed on permission outage', async () => {
     const op = { operation: 'seal', contractId: 'ui', expectedRevision: '1' };

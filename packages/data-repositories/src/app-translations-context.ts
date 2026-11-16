@@ -52,13 +52,18 @@ export const createCatalogRepositoryContext = async (
       typeof scope.instanceId === 'string' &&
         scope.instanceId.length > 0 &&
         scope.instanceId.length <= 128 &&
-        catalogUuid(scope.organizationId)
+        (scope.organizationId === null || catalogUuid(scope.organizationId))
     );
   const instanceId = scope.kind === 'municipal' ? scope.instanceId : null;
   const organizationId = scope.kind === 'municipal' ? scope.organizationId : null;
   await client.query(
-    "SELECT set_config('app.instance_id', $1, true), set_config('app.organization_id', $2, true), set_config('app.catalog_platform', $3, true)",
-    [instanceId ?? '', organizationId ?? '', scope.kind === 'global' ? 'true' : 'false']
+    "SELECT set_config('app.instance_id', $1, true), set_config('app.organization_id', $2, true), set_config('app.catalog_platform', $3, true), set_config('app.catalog_instance', $4, true)",
+    [
+      instanceId ?? '',
+      organizationId ?? '',
+      String(scope.kind === 'global'),
+      String(scope.kind === 'municipal' && organizationId === null),
+    ]
   );
   const params = [scope.kind, instanceId, organizationId];
   const scopeWhere =

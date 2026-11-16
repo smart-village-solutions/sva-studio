@@ -23,7 +23,7 @@ const defaultDeps: EffectiveSessionRoleDeps = {
 const normalizeRoleNames = (roles: readonly string[]): readonly string[] =>
   [...new Set(roles.map((role) => role.trim()).filter((role) => role.length > 0))];
 
-const loadPersistedEffectiveRoleNames = async (
+export const loadPersistedEffectiveRoleNames = async (
   client: QueryClient,
   input: {
     readonly instanceId: string;

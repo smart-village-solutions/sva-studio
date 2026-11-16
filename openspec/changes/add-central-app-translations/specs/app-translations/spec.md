@@ -43,6 +43,15 @@ Das System MUST vollständige globale und kommunale Katalogsätze intern prüfen
 
 Das System MUST globale Standardpflege im bestehenden Root-/Plattformpfad und deutsche kommunale Hostpflege ohne Modul sowie fremdsprachige Katalogpflege im optionalen Modul „Mehrsprachigkeit“ über dieselbe lokale Katalogbasis ermöglichen. Kommunale Fremdsprachenzugriffe, Änderungen und lokale Versiegelung MUST die getrennten Rechte `app-translations.catalog.read`, `app-translations.catalog.write` und `app-translations.catalog.publish` sowie den bestehenden Modul-/Organisationsscope prüfen. Globale Entwürfe und technischer JSON-Manifestimport MUST dem verifizierten Root-Kontext vorbehalten bleiben. Der Editor MUST Entwurf, sprachbezogene Vererbung/Overrides, Platzhalter, Korrekturstatus und Revisionskonflikte verständlich darstellen. „Textstand sichern“ MUST ausschließlich einen vollständigen unveränderlichen lokalen Satz erzeugen; die Vorschau MUST ihn von einer App-Veröffentlichung unterscheiden. Ein synthetischer Deutsch-/Englisch-Testkatalog MUST ausschließlich kontrollierter lokaler Erprobung dienen, ohne automatische Seeds realer Mandanten, Fake-Übersetzungen oder zweite produktive App-Textquelle.
 
+#### Scenario: Systemadmin pflegt feste App-Texte ohne Organisation
+
+- **GIVEN** eine gespeicherte Instanzsession eines Systemadmins ohne aktive Organisation
+- **WHEN** der Systemadmin mit dem nötigen Katalogrecht und Modulzugang App-Texte oder Mehrsprachigkeit öffnet oder bearbeitet
+- **THEN** gilt der Katalog seiner Instanz mit eigenen Entwürfen und Textständen
+- **AND** die Session kann keinen fremden Instanz- oder Organisationskatalog auswählen
+- **AND** Übersetzungsjobs prüfen den aktuellen Instanzzugang und die Berechtigung erneut
+- **AND** bei einer App-Freigabe übermittelt Studio die Instanz-ID und `organizationId: null` über den bestehenden persönlichen Mainserver-Zugang
+
 #### Scenario: Kommunalen Entwurf speichern und gezielt zurücksetzen
 
 - **GIVEN** ein berechtigter kommunaler Editor besitzt eine ausdrücklich gepinnte vollständige globale Basis
@@ -368,7 +377,7 @@ Diese Regel MUST für alle dynamischen Inhalte einschließlich Bus gelten. Ände
 
 ### Requirement: Mehrsprachigkeit als optionales Tenant-Plugin
 
-Das System MUST Mehrsprachigkeit unter Plugin-ID `app-translations` über die vorhandene Plugininstallation, optionale instanzweite Modulaktivierung, Modul-IAM und Tenant-Lifecycle bereitstellen. Installation oder ein IAM-Grant allein MUST keinen Fachzugriff erlauben. Katalogwerte MUST zusätzlich organisationsgebunden bleiben; die konfigurierten Zielsprachen MUST aus der instanzweiten Auswahl stammen; ein zweites Aktivierungsregister je Organisation MUST entfallen. Die interne Katalogbasis A MUST vor nutzbarer Fachfreigabe um die vorhandenen hostseitigen Pluginzugangsprüfungen ergänzt werden. Globale Standards/Manifestpflege und eng begrenzte Deutsch-/Cachewartung MUST mit eigenem berechtigtem Hostkontext möglich bleiben, ohne damit kommunale Übersetzungen freizuschalten.
+Das System MUST Mehrsprachigkeit unter Plugin-ID `app-translations` über die vorhandene Plugininstallation, optionale instanzweite Modulaktivierung, Modul-IAM und Tenant-Lifecycle bereitstellen. Installation oder ein IAM-Grant allein MUST keinen Fachzugriff erlauben. Katalogwerte MUST zusätzlich an die aktive Organisation oder an den autorisierten Instanzbereich für Systemadmins gebunden bleiben; die konfigurierten Zielsprachen MUST aus der instanzweiten Auswahl stammen; ein zweites Aktivierungsregister je Organisation MUST entfallen. Die interne Katalogbasis A MUST vor nutzbarer Fachfreigabe um die vorhandenen hostseitigen Pluginzugangsprüfungen ergänzt werden. Globale Standards/Manifestpflege und eng begrenzte Deutsch-/Cachewartung MUST mit eigenem berechtigtem Hostkontext möglich bleiben, ohne damit kommunale Übersetzungen freizuschalten.
 
 #### Scenario: Gleiche Instanz mit mehreren Organisationen
 

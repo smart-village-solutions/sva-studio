@@ -102,7 +102,7 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
   it('exports immutable multilingual App snapshots with RLS and no writes', async () => {
     const appManifest: CatalogManifest = JSON.parse(
       await readFile(
-        new URL('../../core/__tests__/fixtures/mobile-texts/manifest.json', import.meta.url),
+        new URL('../../core/__tests__/fixtures/mobile-texts/manifest-v2.json', import.meta.url),
         'utf8'
       )
     );
@@ -111,7 +111,7 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
       const english = Object.fromEntries(
         Object.entries(draft.valuesByLocale.de!).map(([key, text]) => [
           key,
-          { ...text, value: `en: ${text.value}` },
+          { ...text, value: Array.isArray(text.value) ? text.value.map((part) => `en: ${part}`) : `en: ${text.value}` },
         ])
       );
       await client.query(
@@ -119,6 +119,12 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
         [JSON.stringify(english), draft.id]
       );
       return repo.seal(appManifest.contractId, draft.draftRevision);
+    });
+    const instance: CatalogScope = { kind: 'municipal', instanceId: tenantA, organizationId: null };
+    await transaction(instance, async (repo) => {
+      const draft = await repo.createMunicipalDraft(base.id, ['de', 'en']);
+      const release = await repo.seal(appManifest.contractId, draft.draftRevision);
+      expect((await repo.exportCatalogDelivery(release.id)).organizationId).toBeNull();
     });
     const saved = await transaction(a, async (repo) => {
       const draft = await repo.createMunicipalDraft(base.id, ['de', 'en']);
@@ -479,6 +485,42 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
     } finally {
       client.release();
     }
+  });
+  it('isolates instance catalog drafts and releases', async () => {
+    const instance: CatalogScope = { kind: 'municipal', instanceId: tenantA, organizationId: null };
+    const release = await transaction(instance, async (repo) => {
+      let draft = await repo.createMunicipalDraft(globalRelease.id, ['de']);
+      draft = await repo.editText(contractId, draft.draftRevision, 'de', 'title', 'Instanztext');
+      return repo.seal(contractId, draft.draftRevision);
+    });
+    await transaction(a, async (_repo, client) => {
+      const result = await client.query(
+        'SELECT id FROM iam.app_translation_catalog_releases WHERE id = $1',
+        [release.id]
+      );
+      expect(result.rowCount).toBe(0);
+    });
+    await transaction({ ...instance, instanceId: tenantB }, async (_repo, client) => {
+      const result = await client.query(
+        'SELECT id FROM iam.app_translation_catalog_releases WHERE id = $1',
+        [release.id]
+      );
+      expect(result.rowCount).toBe(0);
+    });
+    await transaction(instance, async (repo, client) => {
+      expect((await repo.loadRelease(release.id)).scope).toEqual(instance);
+      const result = await client.query(
+        'SELECT id FROM iam.app_translation_catalog_releases WHERE id = $1',
+        [release.id]
+      );
+      expect(result.rowCount).toBe(1);
+      await client.query("SELECT set_config('app.catalog_instance', 'false', true)");
+      const hidden = await client.query(
+        'SELECT id FROM iam.app_translation_catalog_releases WHERE id = $1',
+        [release.id]
+      );
+      expect(hidden.rowCount).toBe(0);
+    });
   });
   it('keeps imports and incomplete seals fully atomic', async () => {
     const incomplete = { ...manifest, contractId: `missing-${suffix}` };

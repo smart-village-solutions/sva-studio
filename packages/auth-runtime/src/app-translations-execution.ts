@@ -37,8 +37,8 @@ const validMunicipalSession = (
   op.operation !== 'import' &&
   session.auth?.kind === 'instance' &&
   session.auth.instanceId === ctx.user.instanceId &&
-  !!ctx.activeOrganizationId &&
-  session.activeOrganizationId === ctx.activeOrganizationId;
+  (session.activeOrganizationId ?? null) === (ctx.activeOrganizationId ?? null) &&
+  (!!ctx.activeOrganizationId || ctx.user.roles.includes('system_admin'));
 
 export const authorizeCatalogOperation = async (
   request: Request,
@@ -59,29 +59,26 @@ export const authorizeCatalogOperation = async (
     if (!sourceOnly) throw new AppTranslationError('catalog_forbidden');
     scope = { kind: 'global' };
   } else {
-    if (
-      !validMunicipalSession(session, ctx, op) ||
-      session.auth?.kind !== 'instance' ||
-      !ctx.activeOrganizationId
-    )
+    if (!validMunicipalSession(session, ctx, op) || session.auth?.kind !== 'instance')
       throw new AppTranslationError('catalog_forbidden');
     scope = {
       kind: 'municipal',
       instanceId: session.auth.instanceId,
-      organizationId: ctx.activeOrganizationId,
+      organizationId: ctx.activeOrganizationId ?? null,
     };
+    const organizationId = scope.organizationId ?? undefined;
     const permissions = await resolveEffectivePermissions({
       instanceId: scope.instanceId,
       keycloakSubject: ctx.user.id,
-      organizationId: scope.organizationId,
+      organizationId,
     });
     if (!permissions.ok) throw new Error('catalog_unavailable');
     canManageInterfaces = evaluateAuthorizeDecision(
       {
         instanceId: scope.instanceId,
         action: 'integration.manage',
-        resource: { type: 'integration', organizationId: scope.organizationId },
-        context: { organizationId: scope.organizationId },
+        resource: { type: 'integration', organizationId },
+        context: { organizationId },
       },
       permissions.permissions
     ).allowed;
@@ -92,9 +89,9 @@ export const authorizeCatalogOperation = async (
           action,
           resource: {
             type: sourceOnly ? 'app-texts' : 'app-translations',
-            organizationId: scope.organizationId,
+            organizationId,
           },
-          context: { organizationId: scope.organizationId },
+          context: { organizationId },
         },
         permissions.permissions
       ).allowed
@@ -183,7 +180,7 @@ export const runCatalogOperation = async (
       await client.query("SELECT set_config('app.instance_id', $1, true)", [scope.instanceId]);
       await lockAppModuleRevision(client, scope.instanceId);
       const active = await client.query(
-        `SELECT o.id FROM iam.organizations o JOIN iam.instances i ON i.id = o.instance_id WHERE o.instance_id = $1 AND o.id = $2::uuid AND o.is_active AND i.status = 'active'`,
+        `SELECT i.id FROM iam.instances i WHERE i.id = $1 AND i.status = 'active' AND ($2::uuid IS NULL OR EXISTS (SELECT 1 FROM iam.organizations o WHERE o.instance_id = i.id AND o.id = $2::uuid AND o.is_active))`,
         [scope.instanceId, scope.organizationId]
       );
       if (!active.rows[0]) throw new AppTranslationError('catalog_forbidden');

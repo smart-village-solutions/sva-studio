@@ -45,7 +45,7 @@ export const CatalogScope = ({ model }: { model: CatalogPageViewModel }) => {
         {pt('scope')}:{' '}
         {overview.scope.kind === 'global'
           ? pt('global')
-          : `${overview.scope.instanceId} / ${overview.scope.organizationId}`}
+          : [overview.scope.instanceId, overview.scope.organizationId].filter(Boolean).join(' / ')}
       </p>
       {!sourceOnly && overview.setup && (
         <section

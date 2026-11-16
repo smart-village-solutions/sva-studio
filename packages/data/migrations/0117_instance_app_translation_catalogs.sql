@@ -1,0 +1,26 @@
+-- +goose Up
+ALTER TABLE iam.app_translation_catalog_drafts DROP CONSTRAINT app_translation_catalog_drafts_check, ADD CONSTRAINT app_translation_catalog_drafts_check CHECK ((scope = 'global' AND instance_id IS NULL AND organization_id IS NULL AND base_release_id IS NULL) OR (scope = 'municipal' AND instance_id IS NOT NULL AND base_release_id IS NOT NULL));
+ALTER TABLE iam.app_translation_catalog_releases DROP CONSTRAINT app_translation_catalog_releases_check, ADD CONSTRAINT app_translation_catalog_releases_check CHECK ((scope = 'global' AND instance_id IS NULL AND organization_id IS NULL AND base_release_id IS NULL) OR (scope = 'municipal' AND instance_id IS NOT NULL AND base_release_id IS NOT NULL));
+
+CREATE UNIQUE INDEX app_translation_drafts_instance_key ON iam.app_translation_catalog_drafts (instance_id, contract_id) WHERE scope = 'municipal' AND organization_id IS NULL;
+CREATE UNIQUE INDEX app_translation_releases_instance_key ON iam.app_translation_catalog_releases (instance_id, contract_id, catalog_set_revision) WHERE scope = 'municipal' AND organization_id IS NULL;
+
+CREATE POLICY app_translation_manifest_instance_read ON iam.app_translation_manifests FOR SELECT TO iam_app USING (iam.current_instance_id() IS NOT NULL AND current_setting('app.catalog_instance', true) = 'true' AND NULLIF(current_setting('app.organization_id', true), '') IS NULL);
+CREATE POLICY app_translation_draft_instance_read ON iam.app_translation_catalog_drafts FOR SELECT TO iam_app USING ((iam.current_instance_id() IS NOT NULL AND current_setting('app.catalog_instance', true) = 'true' AND NULLIF(current_setting('app.organization_id', true), '') IS NULL AND scope = 'municipal' AND instance_id = iam.current_instance_id() AND organization_id IS NULL));
+CREATE POLICY app_translation_draft_instance_insert ON iam.app_translation_catalog_drafts FOR INSERT TO iam_app WITH CHECK ((iam.current_instance_id() IS NOT NULL AND current_setting('app.catalog_instance', true) = 'true' AND NULLIF(current_setting('app.organization_id', true), '') IS NULL AND scope = 'municipal' AND instance_id = iam.current_instance_id() AND organization_id IS NULL));
+CREATE POLICY app_translation_draft_instance_update ON iam.app_translation_catalog_drafts FOR UPDATE TO iam_app USING ((iam.current_instance_id() IS NOT NULL AND current_setting('app.catalog_instance', true) = 'true' AND NULLIF(current_setting('app.organization_id', true), '') IS NULL AND scope = 'municipal' AND instance_id = iam.current_instance_id() AND organization_id IS NULL)) WITH CHECK ((iam.current_instance_id() IS NOT NULL AND current_setting('app.catalog_instance', true) = 'true' AND NULLIF(current_setting('app.organization_id', true), '') IS NULL AND scope = 'municipal' AND instance_id = iam.current_instance_id() AND organization_id IS NULL));
+CREATE POLICY app_translation_release_instance_read ON iam.app_translation_catalog_releases FOR SELECT TO iam_app USING ((iam.current_instance_id() IS NOT NULL AND current_setting('app.catalog_instance', true) = 'true' AND NULLIF(current_setting('app.organization_id', true), '') IS NULL AND scope = 'global') OR (iam.current_instance_id() IS NOT NULL AND current_setting('app.catalog_instance', true) = 'true' AND NULLIF(current_setting('app.organization_id', true), '') IS NULL AND scope = 'municipal' AND instance_id = iam.current_instance_id() AND organization_id IS NULL));
+CREATE POLICY app_translation_release_instance_insert ON iam.app_translation_catalog_releases FOR INSERT TO iam_app WITH CHECK ((iam.current_instance_id() IS NOT NULL AND current_setting('app.catalog_instance', true) = 'true' AND NULLIF(current_setting('app.organization_id', true), '') IS NULL AND scope = 'municipal' AND instance_id = iam.current_instance_id() AND organization_id IS NULL));
+
+-- +goose Down
+-- Reject rollback while instance catalogs exist rather than discard catalog data.
+ALTER TABLE iam.app_translation_catalog_drafts DROP CONSTRAINT app_translation_catalog_drafts_check, ADD CONSTRAINT app_translation_catalog_drafts_check CHECK ((scope = 'global' AND instance_id IS NULL AND organization_id IS NULL AND base_release_id IS NULL) OR (scope = 'municipal' AND instance_id IS NOT NULL AND organization_id IS NOT NULL AND base_release_id IS NOT NULL));
+ALTER TABLE iam.app_translation_catalog_releases DROP CONSTRAINT app_translation_catalog_releases_check, ADD CONSTRAINT app_translation_catalog_releases_check CHECK ((scope = 'global' AND instance_id IS NULL AND organization_id IS NULL AND base_release_id IS NULL) OR (scope = 'municipal' AND instance_id IS NOT NULL AND organization_id IS NOT NULL AND base_release_id IS NOT NULL));
+DROP POLICY app_translation_manifest_instance_read ON iam.app_translation_manifests;
+DROP POLICY app_translation_draft_instance_read ON iam.app_translation_catalog_drafts;
+DROP POLICY app_translation_draft_instance_insert ON iam.app_translation_catalog_drafts;
+DROP POLICY app_translation_draft_instance_update ON iam.app_translation_catalog_drafts;
+DROP POLICY app_translation_release_instance_read ON iam.app_translation_catalog_releases;
+DROP POLICY app_translation_release_instance_insert ON iam.app_translation_catalog_releases;
+DROP INDEX iam.app_translation_drafts_instance_key;
+DROP INDEX iam.app_translation_releases_instance_key;

@@ -3,7 +3,7 @@ import type { AppTranslationLocale } from './app-translations-validation.js';
 import type { DeepLSetupStatus } from './app-translations-deepl.js';
 export type CatalogValue = string | readonly string[];
 export type CatalogScope =
-  { kind: 'global' } | { kind: 'municipal'; instanceId: string; organizationId: string };
+  { kind: 'global' } | { kind: 'municipal'; instanceId: string; organizationId: string | null };
 export type CatalogManifest = {
   contractId: string;
   manifestVersion: string;

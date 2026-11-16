@@ -15,15 +15,10 @@ type EffectiveSessionRoleDeps = {
   readonly withResolvedInstanceDb: typeof withResolvedInstanceDb;
 };
 
-const defaultDeps: EffectiveSessionRoleDeps = {
-  resolvePool,
-  withResolvedInstanceDb,
-};
-
 const normalizeRoleNames = (roles: readonly string[]): readonly string[] =>
   [...new Set(roles.map((role) => role.trim()).filter((role) => role.length > 0))];
 
-const loadPersistedEffectiveRoleNames = async (
+export const loadPersistedEffectiveRoleNames = async (
   client: QueryClient,
   input: {
     readonly instanceId: string;
@@ -89,7 +84,7 @@ ORDER BY role_key ASC
 
 export const enrichSessionUserWithEffectiveRoles = async (
   user: SessionUser,
-  deps: EffectiveSessionRoleDeps = defaultDeps
+  deps: EffectiveSessionRoleDeps = { resolvePool, withResolvedInstanceDb }
 ): Promise<SessionUser> => {
   const instanceId = user.instanceId;
   if (!instanceId) {

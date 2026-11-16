@@ -69,7 +69,7 @@ export const executeAppTranslationOperation = (request: Request, raw: unknown): 
         canManageInterfaces
       );
       if (result && 'delivery' in result && result.delivery) {
-        await publishAppTextCatalog(result.delivery);
+        await publishAppTextCatalog(result.delivery, ctx.user.id);
         return response(200, { data: { revision: result.delivery.revision } });
       }
       if (result && 'download' in result)

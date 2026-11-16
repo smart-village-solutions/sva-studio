@@ -58,7 +58,7 @@ const verifiedReleaseSource = async (context: CatalogRepositoryContext, id: stri
   }>(
     `SELECT m.manifest, m.digest, r.manifest_id AS "manifestId", r.checksum, r.catalog_set_revision::text AS "catalogSetRevision", r.draft_revision::text AS "draftRevision", r.supported_locales AS "supportedLocales", CASE WHEN octet_length(r.payload::text) <= $5 THEN r.payload ELSE NULL END AS payload
          FROM iam.app_translation_catalog_releases r JOIN iam.app_translation_manifests m ON m.id = r.manifest_id
-         WHERE r.id = $1 AND r.scope = 'municipal' AND r.instance_id = $2 AND r.organization_id = $3::uuid AND r.contract_id = $4`,
+         WHERE r.id = $1 AND r.scope = 'municipal' AND r.instance_id = $2 AND r.organization_id IS NOT DISTINCT FROM $3::uuid AND r.contract_id = $4`,
     [id, instanceId, organizationId, 'sva-mobile-app-texts', CATALOG_TEXTS_EXPORT_MAX_BYTES]
   );
   const entry = row.rows[0];

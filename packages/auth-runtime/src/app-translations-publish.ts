@@ -6,7 +6,8 @@ import { readEffectiveSvaMainserverCredentialsWithStatus } from './mainserver-ef
 import { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
 
 export const publishAppTextCatalog = async (
-  catalog: Awaited<ReturnType<typeof createCatalogDelivery>>
+  catalog: Awaited<ReturnType<typeof createCatalogDelivery>>,
+  actorId: string
 ): Promise<void> => {
   const { instanceId, organizationId } = catalog;
   const connection = await loadDefaultExternalInterfaceRecord(instanceId, 'sva_mainserver');
@@ -21,11 +22,14 @@ export const publishAppTextCatalog = async (
 
   const access = await readEffectiveSvaMainserverCredentialsWithStatus({
     instanceId,
-    activeOrganizationId: organizationId,
-    keycloakSubject: '',
-    actingPrincipalType: 'organization',
+    activeOrganizationId: organizationId ?? undefined,
+    keycloakSubject: organizationId === null ? actorId : '',
+    actingPrincipalType: organizationId === null ? 'user' : 'organization',
   });
-  if (access.status !== 'ok' || access.source !== 'organization')
+  if (
+    access.status !== 'ok' ||
+    access.source !== (organizationId === null ? 'user' : 'organization')
+  )
     throw new Error('catalog_unavailable');
 
   const body = JSON.stringify({

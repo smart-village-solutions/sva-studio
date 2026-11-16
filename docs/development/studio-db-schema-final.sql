@@ -783,7 +783,7 @@ CREATE TABLE iam.app_translation_catalog_drafts (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     machine_standard_values_by_locale jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT app_translation_catalog_draf_machine_standard_values_by_l_check CHECK ((jsonb_typeof(machine_standard_values_by_locale) = 'object'::text)),
-    CONSTRAINT app_translation_catalog_drafts_check CHECK ((((scope = 'global'::text) AND (instance_id IS NULL) AND (organization_id IS NULL) AND (base_release_id IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id IS NOT NULL) AND (organization_id IS NOT NULL) AND (base_release_id IS NOT NULL)))),
+    CONSTRAINT app_translation_catalog_drafts_check CHECK ((((scope = 'global'::text) AND (instance_id IS NULL) AND (organization_id IS NULL) AND (base_release_id IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id IS NOT NULL) AND (base_release_id IS NOT NULL)))),
     CONSTRAINT app_translation_catalog_drafts_draft_revision_check CHECK ((draft_revision > 0)),
     CONSTRAINT app_translation_catalog_drafts_scope_check CHECK ((scope = ANY (ARRAY['global'::text, 'municipal'::text]))),
     CONSTRAINT app_translation_catalog_drafts_supported_locales_check CHECK (((jsonb_typeof(supported_locales) = 'array'::text) AND (supported_locales ? 'de'::text))),
@@ -813,7 +813,7 @@ CREATE TABLE iam.app_translation_catalog_releases (
     state text DEFAULT 'sealed'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT app_translation_catalog_releases_catalog_set_revision_check CHECK ((catalog_set_revision > 0)),
-    CONSTRAINT app_translation_catalog_releases_check CHECK ((((scope = 'global'::text) AND (instance_id IS NULL) AND (organization_id IS NULL) AND (base_release_id IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id IS NOT NULL) AND (organization_id IS NOT NULL) AND (base_release_id IS NOT NULL)))),
+    CONSTRAINT app_translation_catalog_releases_check CHECK ((((scope = 'global'::text) AND (instance_id IS NULL) AND (organization_id IS NULL) AND (base_release_id IS NULL)) OR ((scope = 'municipal'::text) AND (instance_id IS NOT NULL) AND (base_release_id IS NOT NULL)))),
     CONSTRAINT app_translation_catalog_releases_checksum_check CHECK ((checksum ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT app_translation_catalog_releases_draft_revision_check CHECK ((draft_revision > 0)),
     CONSTRAINT app_translation_catalog_releases_payload_check CHECK ((jsonb_typeof(payload) = 'object'::text)),
@@ -3167,6 +3167,13 @@ CREATE UNIQUE INDEX app_translation_drafts_global_key ON iam.app_translation_cat
 
 
 --
+-- Name: app_translation_drafts_instance_key; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX app_translation_drafts_instance_key ON iam.app_translation_catalog_drafts USING btree (instance_id, contract_id) WHERE ((scope = 'municipal'::text) AND (organization_id IS NULL));
+
+
+--
 -- Name: app_translation_drafts_municipal_key; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -3178,6 +3185,13 @@ CREATE UNIQUE INDEX app_translation_drafts_municipal_key ON iam.app_translation_
 --
 
 CREATE UNIQUE INDEX app_translation_releases_global_key ON iam.app_translation_catalog_releases USING btree (contract_id, catalog_set_revision) WHERE (scope = 'global'::text);
+
+
+--
+-- Name: app_translation_releases_instance_key; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX app_translation_releases_instance_key ON iam.app_translation_catalog_releases USING btree (instance_id, contract_id, catalog_set_revision) WHERE ((scope = 'municipal'::text) AND (organization_id IS NULL));
 
 
 --
@@ -5280,6 +5294,27 @@ CREATE POLICY app_translation_draft_instance_delete ON iam.app_translation_catal
 
 
 --
+-- Name: app_translation_catalog_drafts app_translation_draft_instance_insert; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_draft_instance_insert ON iam.app_translation_catalog_drafts FOR INSERT TO iam_app WITH CHECK (((iam.current_instance_id() IS NOT NULL) AND (current_setting('app.catalog_instance'::text, true) = 'true'::text) AND (NULLIF(current_setting('app.organization_id'::text, true), ''::text) IS NULL) AND (scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND (organization_id IS NULL)));
+
+
+--
+-- Name: app_translation_catalog_drafts app_translation_draft_instance_read; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_draft_instance_read ON iam.app_translation_catalog_drafts FOR SELECT TO iam_app USING (((iam.current_instance_id() IS NOT NULL) AND (current_setting('app.catalog_instance'::text, true) = 'true'::text) AND (NULLIF(current_setting('app.organization_id'::text, true), ''::text) IS NULL) AND (scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND (organization_id IS NULL)));
+
+
+--
+-- Name: app_translation_catalog_drafts app_translation_draft_instance_update; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_draft_instance_update ON iam.app_translation_catalog_drafts FOR UPDATE TO iam_app USING (((iam.current_instance_id() IS NOT NULL) AND (current_setting('app.catalog_instance'::text, true) = 'true'::text) AND (NULLIF(current_setting('app.organization_id'::text, true), ''::text) IS NULL) AND (scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND (organization_id IS NULL))) WITH CHECK (((iam.current_instance_id() IS NOT NULL) AND (current_setting('app.catalog_instance'::text, true) = 'true'::text) AND (NULLIF(current_setting('app.organization_id'::text, true), ''::text) IS NULL) AND (scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND (organization_id IS NULL)));
+
+
+--
 -- Name: app_translation_catalog_drafts app_translation_draft_read; Type: POLICY; Schema: iam; Owner: -
 --
 
@@ -5298,6 +5333,13 @@ CREATE POLICY app_translation_draft_update ON iam.app_translation_catalog_drafts
 --
 
 CREATE POLICY app_translation_manifest_import ON iam.app_translation_manifests FOR INSERT TO iam_app WITH CHECK (((NULLIF(current_setting('app.catalog_platform'::text, true), ''::text) = 'true'::text) AND (iam.current_instance_id() IS NULL)));
+
+
+--
+-- Name: app_translation_manifests app_translation_manifest_instance_read; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_manifest_instance_read ON iam.app_translation_manifests FOR SELECT TO iam_app USING (((iam.current_instance_id() IS NOT NULL) AND (current_setting('app.catalog_instance'::text, true) = 'true'::text) AND (NULLIF(current_setting('app.organization_id'::text, true), ''::text) IS NULL)));
 
 
 --
@@ -5327,6 +5369,20 @@ CREATE POLICY app_translation_release_insert ON iam.app_translation_catalog_rele
 CREATE POLICY app_translation_release_instance_delete ON iam.app_translation_catalog_releases TO iam_app USING (((instance_id = iam.current_instance_id()) AND (current_setting('app.deleting_instance'::text, true) = instance_id) AND (EXISTS ( SELECT 1
    FROM iam.instances
   WHERE ((instances.id = app_translation_catalog_releases.instance_id) AND (instances.status = 'archived'::text)))))) WITH CHECK (false);
+
+
+--
+-- Name: app_translation_catalog_releases app_translation_release_instance_insert; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_release_instance_insert ON iam.app_translation_catalog_releases FOR INSERT TO iam_app WITH CHECK (((iam.current_instance_id() IS NOT NULL) AND (current_setting('app.catalog_instance'::text, true) = 'true'::text) AND (NULLIF(current_setting('app.organization_id'::text, true), ''::text) IS NULL) AND (scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND (organization_id IS NULL)));
+
+
+--
+-- Name: app_translation_catalog_releases app_translation_release_instance_read; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY app_translation_release_instance_read ON iam.app_translation_catalog_releases FOR SELECT TO iam_app USING ((((iam.current_instance_id() IS NOT NULL) AND (current_setting('app.catalog_instance'::text, true) = 'true'::text) AND (NULLIF(current_setting('app.organization_id'::text, true), ''::text) IS NULL) AND (scope = 'global'::text)) OR ((iam.current_instance_id() IS NOT NULL) AND (current_setting('app.catalog_instance'::text, true) = 'true'::text) AND (NULLIF(current_setting('app.organization_id'::text, true), ''::text) IS NULL) AND (scope = 'municipal'::text) AND (instance_id = iam.current_instance_id()) AND (organization_id IS NULL))));
 
 
 --

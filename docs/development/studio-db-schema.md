@@ -102,6 +102,10 @@ Partielle Unique-Indizes unterscheiden globale und kommunale Scopes; kommunale Z
 
 Die interne Implementierung liegt in Core, Data-Repositories und Auth-Runtime; kein dynamischer Cache, neuer Serviceclient oder zusätzlicher Jobpfad. `executeAppTranslationOperation` nutzt die vorhandene Session-/CSRF-/Root-Prüfung beziehungsweise tenantseitige Actionprüfung samt aktiver Organisation. Vollständige Tests verwenden `APP_TRANSLATIONS_TEST_DATABASE_URL` ausschließlich mit einer disponiblen, auf `_test` endenden Datenbank. Die Migration wurde mit PostgreSQL 16 einschließlich vollständigem Up → Down → Up geprüft; das ist kein Nachweis einer Änderung der laufenden Studio-Datenbank.
 
+### Instanzgebundene App-Kataloge — Migration 0117
+
+Ein kommunaler Katalog kann direkt der Instanz zugeordnet sein. Diese Zeilen haben eine leere Organisationsreferenz und gemeinsame partielle Unique-Indizes je Instanz und Vertrag. Der Server setzt `app.catalog_instance` nur für den autorisierten Instanzkatalog. Die entsprechenden RLS-Regeln geben Zugriff auf diese Zeilen und die globalen Basissätze. Bestehende Organisationsentwürfe und versiegelte Stände behalten ihre bisherige Bindung. Ein Downgrade mit vorhandenen Instanzkatalogen scheitert, um deren Daten zu erhalten.
+
 ### Lokale Korrektur der Migrationskollision 0106 nach Rebase
 
 Die bereits in `main` veröffentlichte `0106_iam_media_editing_sources.sql` bleibt unverändert. Die vier unveröffentlichten App-Migrationen wurden ohne SQL-Änderung auf `0107_app_translation_catalog_basis.sql`, `0108_host_app_texts_and_languages.sql`, `0109_instance_deepl_interface.sql` und `0110_app_translation_machine_standards.sql` verschoben. Neue Datenbanken und Bestände mit dem regulären Medienstand 106 verwenden den normalen Goose-Up-Pfad.

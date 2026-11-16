@@ -1,7 +1,8 @@
 export const englishTranslations = {
   appTranslations: {
     ui: {
-      translateMissing: 'Create missing translations',
+      translateMissing: 'Create missing translations for all languages',
+      translateMissingLanguage: 'Create missing translations for {{language}}',
       nothingToTranslate: 'No missing or outdated translations. No job was started.',
       translationPlan: '{{count}} texts to translate. Target languages:',
       translationProgress:

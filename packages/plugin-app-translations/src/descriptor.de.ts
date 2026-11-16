@@ -1,7 +1,8 @@
 export const germanTranslations = {
   appTranslations: {
     ui: {
-      translateMissing: 'Fehlende Übersetzungen erstellen',
+      translateMissing: 'Fehlende Übersetzungen für alle Sprachen erstellen',
+      translateMissingLanguage: 'Fehlende Übersetzungen für {{language}} erstellen',
       nothingToTranslate:
         'Keine fehlenden oder veralteten Übersetzungen. Es wurde kein Auftrag gestartet.',
       translationPlan: '{{count}} zu übersetzende Texte. Zielsprachen:',

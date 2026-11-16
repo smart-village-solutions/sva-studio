@@ -4,8 +4,10 @@ import { type CatalogEditorViewModel } from './catalog.editor.state.js';
 
 export const CatalogLocale = ({ model }: { model: CatalogEditorViewModel }) => {
   const { busy, pt, languageName, locales, setLocale, locale, setPage, dirty } = model;
+  const { canWrite, translate, translationCounts } = model;
+  const missing = translationCounts?.[locale] ?? 0;
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid items-end gap-4 md:grid-cols-2">
       <label className="space-y-2">
         {pt('language')}
         <Select
@@ -23,6 +25,17 @@ export const CatalogLocale = ({ model }: { model: CatalogEditorViewModel }) => {
           ))}
         </Select>
       </label>
+      {locale !== 'de' && translationCounts && (
+        <Button
+          type="button"
+          variant="secondary"
+          className="justify-self-start"
+          disabled={!canWrite || !translate || busy || dirty || missing === 0}
+          onClick={() => void translate?.({ mode: 'missing', locales: [locale] })}
+        >
+          {pt('translateMissingLanguage', { language: languageName(locale) })}
+        </Button>
+      )}
     </div>
   );
 };

@@ -151,6 +151,7 @@ export type CatalogEditorProps = {
   busy: boolean;
   mutate: (operation: Record<string, unknown>) => Promise<boolean>;
   onDirtyChange: (dirty: boolean) => void;
+  translationCounts?: Readonly<Record<string, number>> | null;
   translate?: (options: Record<string, unknown>) => Promise<boolean>;
 };
 

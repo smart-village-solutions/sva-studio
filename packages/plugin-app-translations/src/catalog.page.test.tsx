@@ -764,6 +764,9 @@ describe('catalog overview', () => {
     if (missing) {
       fireEvent.click(screen.getByRole('button', { name: 'appTranslations.ui.translateMissing' }));
       await screen.findByText(/appTranslations.ui.jobStatus.succeeded/);
+      const operation = requestCatalog.mock.calls.find(([op]) => op.operation === 'translate')?.[0];
+      expect(operation).toMatchObject({ mode: 'missing' });
+      expect(operation).not.toHaveProperty('locales');
       expect(progressDetails()).toBeTruthy();
       await waitFor(() => {
         expect(translateButton).toHaveProperty('disabled', true);
@@ -786,7 +789,7 @@ describe('catalog overview', () => {
       );
     }
   });
-  it('starts only explicitly and keeps dirty text, search and selection while polling a persisted job', async () => {
+  it('starts a job for the selected language and keeps editor state while polling', async () => {
     publishSessionAccessSnapshot({
       isResolved: true,
       permissionActions: ['app-translations.catalog.write'],
@@ -819,7 +822,7 @@ describe('catalog overview', () => {
           },
         },
         draftRevision: '1',
-        supportedLocales: ['de', 'en'],
+        supportedLocales: ['de', 'en', 'fr'],
         valuesByLocale: {},
         baseReleaseId: 'basis',
       },
@@ -860,19 +863,24 @@ describe('catalog overview', () => {
       return job;
     });
     render(<CatalogsPage sourceOnly={false} />);
-    const button = await screen.findByRole('button', {
-      name: 'appTranslations.ui.translateMissing',
-    });
+    const language = await screen.findByLabelText('appTranslations.ui.language');
+    const selectedButton = { name: 'appTranslations.ui.translateMissingLanguage' };
+    expect(screen.queryByRole('button', selectedButton)).toBeNull();
+    fireEvent.change(language, { target: { value: 'en' } });
+    const button = await screen.findByRole('button', selectedButton);
     expect(requestCatalog.mock.calls.some(([op]) => op.operation === 'translate')).toBe(false);
     await waitFor(() => expect(button).toHaveProperty('disabled', false));
     fireEvent.click(button);
     await screen.findByText(/appTranslations.ui.jobStatus.running/);
     expect(
+      requestCatalog.mock.calls.find(([op]) => op.operation === 'translate')?.[0]
+    ).toMatchObject({
+      mode: 'missing',
+      locales: ['en'],
+    });
+    expect(
       screen.getByText(/appTranslations.ui.locales.en.*appTranslations.ui.translationProgress/)
     ).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('appTranslations.ui.language'), {
-      target: { value: 'en' },
-    });
     fireEvent.change(screen.getByLabelText('appTranslations.ui.search'), {
       target: { value: 'greeting' },
     });

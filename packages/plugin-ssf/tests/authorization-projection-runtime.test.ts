@@ -22,6 +22,7 @@ describe('SSF authorization projection runtime', () => {
       const source = { readSubjects: vi.fn() };
       const store = { withTenantLock: vi.fn() };
       const target = {
+        resolveProjection: vi.fn(),
         prepareLoginClients: vi.fn(),
         prepareRuntimeBaseline: vi.fn(),
         isReady: vi.fn(async () => targetReady),
@@ -88,6 +89,7 @@ describe('SSF authorization projection runtime', () => {
       withTenantLock: vi.fn(async (_instanceId, operation) => operation(lockedStore)),
     } satisfies SsfAuthorizationProjectionStore;
     const target = {
+      resolveProjection: vi.fn(async (desired) => desired),
       prepareLoginClients: vi.fn(async () => undefined),
       prepareRuntimeBaseline: vi.fn(async () => undefined),
       isReady: vi.fn(async () => true),

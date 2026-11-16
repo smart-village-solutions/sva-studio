@@ -12,6 +12,7 @@ import type {
 } from './keycloak-authorization-projection-contract.js';
 import {
   areAttributesEqual,
+  resolveKeycloakProjection,
   ensureClaimMappers,
   hasProjectionAttributes,
   listAllUsers,
@@ -23,7 +24,10 @@ import {
   verifyClaimMappers,
   verifyAdminOnlyUserProfileAttributes,
 } from './keycloak-authorization-projection-support.js';
-import type { SsfAuthorizationProjectionTarget } from './authorization-projection-reconciler.js';
+import {
+  SsfProjectionSubjectsChangedError,
+  type SsfAuthorizationProjectionTarget,
+} from './authorization-projection-reconciler.js';
 import {
   createConfiguredSsfSessionRevocationClient,
   readSsfControlPlaneClientConfig,
@@ -58,7 +62,7 @@ const reconcileProjection = async (
   const usersBySubject = new Map(users.map((user) => [user.externalId, user]));
   const desiredBySubject = new Map(desired.subjects.map((subject) => [subject.subject, subject]));
   if (desired.subjects.some((subject) => !usersBySubject.has(subject.subject))) {
-    throw new Error('ssf_keycloak_projection_subject_missing');
+    throw new SsfProjectionSubjectsChangedError();
   }
   await ensureClaimMappers(tenant);
 
@@ -74,7 +78,19 @@ const reconcileProjection = async (
       nextAttributes[SSF_TOKEN_CLAIMS.authorizationRevision] = [authorizationRevision];
     }
     if (!areAttributesEqual(currentAttributes, nextAttributes)) {
-      await tenant.client.updateUser(user.externalId, { attributes: nextAttributes });
+      try {
+        await tenant.client.updateUser(user.externalId, { attributes: nextAttributes });
+      } catch (error) {
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'statusCode' in error &&
+          error.statusCode === 404
+        ) {
+          throw new SsfProjectionSubjectsChangedError();
+        }
+        throw error;
+      }
     }
   }
 };
@@ -155,6 +171,7 @@ const resumeTokenIssuance = async (
 export const createSsfKeycloakAuthorizationProjectionTarget = (
   dependencies: SsfKeycloakProjectionTargetDependencies
 ): SsfAuthorizationProjectionTarget => ({
+  resolveProjection: (projection) => resolveKeycloakProjection(dependencies, projection),
   prepareLoginClients:
     dependencies.prepareLoginClients ??
     (async () => {
@@ -189,6 +206,7 @@ export const createSsfKeycloakAuthorizationProjectionTarget = (
 });
 
 export const createConfiguredSsfKeycloakAuthorizationProjectionTarget = (dependencies: {
+  readonly onMissingSubjects?: SsfKeycloakProjectionTargetDependencies['onMissingSubjects'];
   readonly prepareLoginClients?: SsfKeycloakProjectionTargetDependencies['prepareLoginClients'];
   readonly prepareRuntimeBaseline?: SsfKeycloakProjectionTargetDependencies['prepareRuntimeBaseline'];
   readonly readLoginReadiness?: SsfKeycloakProjectionTargetDependencies['readLoginReadiness'];
@@ -203,6 +221,7 @@ export const createConfiguredSsfKeycloakAuthorizationProjectionTarget = (depende
     : null;
 
   return createSsfKeycloakAuthorizationProjectionTarget({
+    onMissingSubjects: dependencies.onMissingSubjects,
     prepareLoginClients: dependencies.prepareLoginClients,
     prepareRuntimeBaseline: dependencies.prepareRuntimeBaseline,
     readLoginReadiness: dependencies.readLoginReadiness,

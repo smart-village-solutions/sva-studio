@@ -1,4 +1,8 @@
-import { SSF_TOKEN_CLAIMS } from './authorization-projection.js';
+import {
+  normalizeSsfAuthorizationProjection,
+  type SsfAuthorizationProjection,
+  SSF_TOKEN_CLAIMS,
+} from './authorization-projection.js';
 import type {
   KeycloakAttributes,
   KeycloakProjectionUser,
@@ -127,7 +131,9 @@ export const verifyClaimMappers = async (tenant: SsfKeycloakProjectionTenant): P
     const candidates = mappers.filter((mapper) => mapper.config?.['claim.name'] === claimName);
     const mapper = candidates[0];
     const multivalued =
-      claimName === SSF_TOKEN_CLAIMS.roles || claimName === SSF_TOKEN_CLAIMS.permissions || claimName === SSF_TOKEN_CLAIMS.languages;
+      claimName === SSF_TOKEN_CLAIMS.roles ||
+      claimName === SSF_TOKEN_CLAIMS.permissions ||
+      claimName === SSF_TOKEN_CLAIMS.languages;
     if (
       candidates.length !== 1 ||
       mapper?.protocol !== 'openid-connect' ||
@@ -151,4 +157,26 @@ export const requireTenant = async (
     throw new Error('ssf_keycloak_projection_tenant_unavailable');
   }
   return tenant;
+};
+
+export const resolveKeycloakProjection = async (
+  dependencies: SsfKeycloakProjectionTargetDependencies,
+  projection: SsfAuthorizationProjection
+): Promise<SsfAuthorizationProjection> => {
+  const desired = normalizeSsfAuthorizationProjection(projection);
+  const tenant = await requireTenant(dependencies.resolveTenant, desired.instanceId);
+  // A failed page must never become evidence that a subject was deleted.
+  const users = await listAllUsers(tenant.client);
+  const existing = new Set(users.map((user) => user.externalId));
+  const missing = [];
+  for (const { subject } of desired.subjects) {
+    if (existing.has(subject)) continue;
+    // Mutable offsets can skip a live user. Only a direct 404 proves deletion.
+    if ((await tenant.client.getUserStatus(subject)) === null) missing.push(subject);
+    else existing.add(subject);
+  }
+  if (missing.length > 0) {
+    await dependencies.onMissingSubjects?.(desired.instanceId, missing);
+  }
+  return { ...desired, subjects: desired.subjects.filter(({ subject }) => existing.has(subject)) };
 };

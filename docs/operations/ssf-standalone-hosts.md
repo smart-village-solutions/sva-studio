@@ -405,6 +405,32 @@ Directory und ein erfolgreicher Browser-Login gemeinsam nachzuweisen. Eine leere
 Projektion bleibt auch nach Migration `0006` unveröffentlicht. Historische Konten
 anderer Realms werden für diesen Nachweis nicht automatisch übernommen.
 
+Extern in Keycloak gelöschte Benutzer sperren den SSF-Zugang der übrigen
+Organisationsmitglieder nicht. Der Abgleich liest zunächst alle Benutzerseiten
+des gebundenen Tenant-Realms. In der Liste fehlende Soll-Subjekte werden zusätzlich
+einzeln abgefragt; ausschließlich ein bestätigter HTTP-404 gilt als Löschung.
+Dadurch entfernt eine durch parallele Löschungen verschobene Seitengrenze keinen
+weiterhin vorhandenen Benutzer aus der effektiven Soll-Projektion. Auch ein
+vorhandener, deaktivierter Keycloak-Benutzer gilt nicht als gelöscht.
+Der anschließende Read-back bestätigt genau diese
+bereinigte Projektion. Die IAM-Konten und deren Rollenzuordnungen bleiben
+unverändert; es erfolgt weder eine automatische Löschung noch eine Neuanlage in
+Keycloak. Die Warnung `ssf_authorization_projection_subjects_missing` meldet
+Instanz und Anzahl fehlender Subjekte ohne personenbezogene Profildaten.
+
+Ein Löschvorgang während des Schreibens oder vor dem Read-back löst innerhalb
+derselben Instanzsperre einen erneuten Abgleich mit einer frisch aufgelösten
+Soll-Projektion aus. Nach höchstens drei Versuchen greift wieder die reguläre
+Fehlerbehandlung. Fehlgeschlagene Benutzerseiten, verweigerte Schreibzugriffe,
+Profilfehler und sonstige Abweichungen beim Read-back bleiben Fehler; sie dürfen
+nicht als gelöschte Benutzer interpretiert werden. Scheitert bereits die Auflösung
+der Soll-Projektion, sperrt der Abgleich die Tokenausgabe des ursprünglichen
+Tenants und bricht ab; die bisherige Freigabe mit veralteten Claims bleibt nicht
+bestehen. Ein Fehler beim Sperren wird ausdrücklich als solcher gemeldet.
+Sind alle berechtigten
+Keycloak-Benutzer gelöscht, ist eine leere Projektion technisch konsistent,
+veröffentlicht die Organisation aber weiterhin nicht im Login-Verzeichnis.
+
 Bei einer neuen Kasseler Instanz führt der persistente Elternlauf vor der
 Aktivierung außerdem den tenantlokalen Rollenabgleich und die Rechteprobe aus.
 `active` ist deshalb erst zulässig, wenn `system_admin` synchronisiert ist und

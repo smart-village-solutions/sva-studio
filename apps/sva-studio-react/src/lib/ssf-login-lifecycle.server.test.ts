@@ -104,6 +104,7 @@ it('keeps two clean tenants unpublished through partial provisioning and recover
       }),
   };
   const target: SsfAuthorizationProjectionTarget = {
+    resolveProjection: async (desired) => desired,
     prepareLoginClients: async (id) => {
       clients.add(id);
       enabled.delete(id);

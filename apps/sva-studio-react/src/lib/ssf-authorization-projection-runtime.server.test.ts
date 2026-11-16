@@ -21,7 +21,9 @@ const mocks = vi.hoisted(() => ({
   store: vi.fn(),
   runtime: vi.fn(),
   instance: vi.fn(),
+  warn: vi.fn(),
 }));
+vi.mock('@sva/server-runtime', () => ({ createSdkLogger: () => ({ warn: mocks.warn }) }));
 vi.mock('@sva/auth-runtime/server', () => ({
   prepareInstanceSsfLoginClients: mocks.prepareClients,
   readInstanceSsfLoginClientsReady: mocks.clientsReady,
@@ -74,6 +76,15 @@ it('separates client preparation from the post-projection runtime baseline', asy
   expect(await target.readLoginReadiness!('tenant-a')).toBe(true);
   expect(await readStudioSsfLoginBaselineReadiness('tenant-a')).toBe(true);
   expect(mocks.tenant).toHaveBeenCalledWith(mocks.runtimePool, 'tenant-a');
+});
+it('reports orphaned accounts without logging their identities or changing IAM records', async () => {
+  await configuration().onMissingSubjects?.('tenant-a', ['deleted-account-subject']);
+
+  expect(mocks.warn).toHaveBeenCalledWith('ssf_authorization_projection_subjects_missing', {
+    operation: 'ssf_authorization_projection_resolve',
+    instance_id: 'tenant-a',
+    missing_subject_count: 1,
+  });
 });
 it('keeps database provisioning separate when client preparation fails', async () => {
   mocks.prepareClients.mockRejectedValue(new Error('missing realm'));

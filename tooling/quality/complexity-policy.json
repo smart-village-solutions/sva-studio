@@ -320,12 +320,6 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/auth-runtime/src/iam-account-management/core.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/iam-account-management/diagnostics.ts:functionLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-account-management-diagnostics-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-account-management/diagnostics.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/iam-account-management/platform-handlers.ts:cyclomaticComplexity": {
       "ticketId": "baseline-auth-runtime-src-iam-account-management-platform-handlers-ts",
       "ticketSystem": "policy-baseline",

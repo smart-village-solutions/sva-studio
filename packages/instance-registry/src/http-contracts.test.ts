@@ -320,6 +320,14 @@ describe('roleless redirect configuration', () => {
     authRealm: 'demo',
     authClientId: 'studio',
   };
+  it('rejects an oversized destination before persistence', () => {
+    expect(
+      updateInstanceSchema.safeParse({
+        ...payload,
+        rolelessRedirectUrl: 'https://portal.example.org/' + 'a'.repeat(2048),
+      }).success
+    ).toBe(false);
+  });
   it('accepts, normalizes and clears the optional destination', () => {
     expect(
       updateInstanceSchema.parse({

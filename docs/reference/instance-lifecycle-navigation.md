@@ -86,7 +86,7 @@ Entwürfe oder Secrets im Browser-Speicher.
 Unter **Mandant → Einstellungen → Allgemein** lässt sich ein optionales
 „Weiterleitungsziel für Personen ohne Rollen und Berechtigungen“ hinterlegen.
 Das Feld erwartet eine vollständige HTTPS-Adresse einer anderen Website ohne
-Benutzername oder Passwort. Feld leeren und speichern deaktiviert die Weiterleitung;
+Benutzername oder Passwort (maximal 2048 Zeichen einschließlich URL-Kodierung). Feld leeren und speichern deaktiviert die Weiterleitung;
 dann bleibt der bisherige Hinweis zur fehlenden Freischaltung sichtbar.
 
 Die Anwendung liest das Ziel für den aktuellen Mandanten über `/auth/me`.

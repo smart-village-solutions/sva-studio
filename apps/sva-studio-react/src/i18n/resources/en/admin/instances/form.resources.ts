@@ -3,7 +3,7 @@ export const formInstancesAdminENResources = {
   rolelessRedirectHelp:
     'Full HTTPS address of another website. Leave empty to keep showing the pending access notice. Destinations on this website will not be opened.',
   invalidRolelessRedirectUrl:
-    'Enter a full HTTPS address without credentials or leave the field empty.',
+    'Enter a full HTTPS address of at most 2048 characters without credentials or leave the field empty.',
   general: 'General',
   realmAndClients: 'User database and clients',
   credentials: 'Credentials',

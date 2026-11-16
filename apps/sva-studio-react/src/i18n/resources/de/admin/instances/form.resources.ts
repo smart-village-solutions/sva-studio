@@ -3,7 +3,7 @@ export const formInstancesAdminDEResources = {
   rolelessRedirectHelp:
     'Vollständige HTTPS-Adresse einer anderen Website. Leer lassen, um weiterhin den Hinweis zur fehlenden Freischaltung anzuzeigen. Ziele auf derselben Website werden nicht geöffnet.',
   invalidRolelessRedirectUrl:
-    'Bitte eine vollständige HTTPS-Adresse ohne Zugangsdaten angeben oder das Feld leer lassen.',
+    'Bitte eine vollständige HTTPS-Adresse mit maximal 2048 Zeichen ohne Zugangsdaten angeben oder das Feld leer lassen.',
   general: 'Allgemein',
   realmAndClients: 'Nutzer-Datenbank und Clients',
   credentials: 'Zugangsdaten',

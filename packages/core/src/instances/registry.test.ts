@@ -97,6 +97,19 @@ describe('instance registry core', () => {
 });
 
 describe('roleless redirect URL', () => {
+  it('accepts a URL at the length limit and rejects a longer URL', () => {
+    const prefix = 'https://portal.example.org/';
+    const target = prefix + 'a'.repeat(2048 - prefix.length);
+    expect(normalizeRolelessRedirectUrl(target)).toBe(target);
+    expect(normalizeRolelessRedirectUrl(target + 'a')).toBeUndefined();
+  });
+
+  it('bounds the encoded URL as well as the input', () => {
+    expect(
+      normalizeRolelessRedirectUrl('https://portal.example.org/' + 'ä'.repeat(400))
+    ).toBeUndefined();
+  });
+
   it('normalizes an explicitly configured HTTPS destination', () => {
     expect(normalizeRolelessRedirectUrl('  https://portal.example.org/welcome?q=1#start  ')).toBe(
       'https://portal.example.org/welcome?q=1#start'

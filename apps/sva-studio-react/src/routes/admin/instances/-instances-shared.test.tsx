@@ -2175,6 +2175,15 @@ describe('roleless redirect settings form', () => {
     authClientId: 'studio',
     rolelessRedirectUrl: 'https://portal.example.org/welcome',
   };
+  it('rejects an oversized destination before saving', () => {
+    const values = createDetailForm(instance as Parameters<typeof createDetailForm>[0]);
+    expect(
+      createInstanceSettingsSchema().safeParse({
+        ...values,
+        rolelessRedirectUrl: 'https://portal.example.org/' + 'a'.repeat(2048),
+      }).success
+    ).toBe(false);
+  });
   it('loads the destination and submits changes or an explicit clear', () => {
     const values = createDetailForm(instance as Parameters<typeof createDetailForm>[0]);
     expect(values.rolelessRedirectUrl).toBe('https://portal.example.org/welcome');

@@ -210,6 +210,7 @@ export const normalizeRolelessRedirectUrl = (
   if (!value) return undefined;
   const trimmed = value.trim();
   if (
+    trimmed.length > 2048 ||
     !/^https:\/\//iu.test(trimmed) ||
     Array.from(trimmed).some(
       (character) =>
@@ -219,7 +220,9 @@ export const normalizeRolelessRedirectUrl = (
     return undefined;
   try {
     const url = new URL(trimmed);
-    return url.protocol === 'https:' && !url.username && !url.password ? url.href : undefined;
+    return url.protocol === 'https:' && !url.username && !url.password && url.href.length <= 2048
+      ? url.href
+      : undefined;
   } catch {
     return undefined;
   }

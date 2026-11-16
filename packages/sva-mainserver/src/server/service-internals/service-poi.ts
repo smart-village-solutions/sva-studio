@@ -1,6 +1,5 @@
 import type {
   SvaMainserverConnectionInput,
-  SvaMainserverOwnershipTransferInput,
   SvaMainserverPoiInput,
   SvaMainserverStaticContentInput,
 } from '../../types.js';
@@ -8,6 +7,7 @@ import {
   svaMainserverChangeNewsVisibilityDocument,
   type SvaMainserverChangeNewsVisibilityMutation,
 } from '../../generated/news-visibility.js';
+import { transferContentOwnership } from './content-ownership-transfer.js';
 import { mergePoiUpdateWithCurrent } from './editor-field-matrices.js';
 import type { ServiceContext } from './service-context.js';
 import { toSvaMainserverError, withUpdatedPayload } from './shared.js';
@@ -16,8 +16,6 @@ export const createPoiService = ({
   loadValidatedInstanceConfig,
   executeGraphqlWithConfig,
   poiOperations,
-  genericItemOperations,
-  transferContentOwnershipWithConfig,
   staticContentOperations,
 }: ServiceContext) => {
   const getPoi = async (input: SvaMainserverConnectionInput & { readonly poiId: string }) => {
@@ -83,23 +81,6 @@ export const createPoiService = ({
   const deletePoi = async (input: SvaMainserverConnectionInput & { readonly poiId: string }) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return poiOperations.destroyPoiWithConfig(input, config);
-  };
-
-  const transferContentOwnership = async (input: SvaMainserverOwnershipTransferInput) => {
-    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    if (input.content.type === 'poi')
-      await poiOperations.assertPoiWithoutVouchersWithConfig(
-        { ...input, poiId: input.content.id },
-        config
-      );
-    if (input.content.type === 'generic-item') {
-      const current = await genericItemOperations.getGenericItemWithConfig(
-        { ...input, genericItemId: input.content.id },
-        config
-      );
-      if (current.genericType === 'Voucher') throw toSvaMainserverError({code: 'invalid_response', message: 'voucher_ownership_unsupported', statusCode: 409});
-    }
-    return transferContentOwnershipWithConfig(input, config);
   };
 
   const createOrUpdateStaticContent = async (

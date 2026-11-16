@@ -2,6 +2,7 @@ import { errorJson } from './content-route-core.js';
 import { SvaMainserverError } from './errors.js';
 
 const MAINSERVER_ERROR_STATUS_BY_CODE = {
+  content_transfer_temporarily_disabled: 409,
   missing_credentials: 400,
   organization_mainserver_credentials_missing: 409,
   acting_principal_not_allowed: 403,

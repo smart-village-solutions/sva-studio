@@ -2,6 +2,7 @@ export type SvaMainserverProviderKey = 'sva_mainserver';
 export type SvaMainserverVerificationStatus = 'ok' | 'error' | 'disabled';
 
 export type SvaMainserverErrorCode =
+  | 'content_transfer_temporarily_disabled'
   | 'config_not_found'
   | 'integration_disabled'
   | 'invalid_config'

@@ -55,6 +55,9 @@ export const resolveMainserverDetailUrl = (contentType: string, contentId: strin
 
 export const resolveOwnershipTransferError = (error: unknown): string => {
   if (!(error instanceof MainserverApiError)) return t('content.ownership.error');
+  if (error.code === 'content_transfer_temporarily_disabled') {
+    return t('content.errors.ownershipTransferTemporarilyDisabled');
+  }
   const key =
     error.code === 'content_transfer_permission_missing'
       ? 'permissionMissing'

@@ -61,12 +61,12 @@ export const authorizeCatalogOperation = async (
   } else {
     if (!validMunicipalSession(session, ctx, op) || session.auth?.kind !== 'instance')
       throw new AppTranslationError('catalog_forbidden');
+    const organizationId = ctx.activeOrganizationId;
     scope = {
       kind: 'municipal',
       instanceId: session.auth.instanceId,
-      organizationId: ctx.activeOrganizationId ?? null,
+      organizationId: organizationId ?? null,
     };
-    const organizationId = scope.organizationId ?? undefined;
     const permissions = await resolveEffectivePermissions({
       instanceId: scope.instanceId,
       keycloakSubject: ctx.user.id,

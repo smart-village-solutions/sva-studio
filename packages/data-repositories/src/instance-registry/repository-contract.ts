@@ -61,6 +61,7 @@ export type InstanceRegistryRepository = Readonly<LoginMfaRepository> & Instance
     mainserverConfigRef?: string;
   }) => Promise<InstanceRegistryRecord | null>;
   readonly updateInstance: (input: {
+    rolelessRedirectUrl?: string | null;
     instanceId: string;
     displayName: string;
     parentDomain: string;

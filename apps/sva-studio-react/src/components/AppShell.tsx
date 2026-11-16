@@ -10,6 +10,7 @@ import { AppBreadcrumbs } from './AppBreadcrumbs';
 import { ContextualHelpBoundary } from './ContextualHelpBoundary';
 import Header from './Header';
 import { t } from '../i18n';
+import { redirectRolelessUser } from '../lib/auth-navigation';
 import { studioPlugins } from '../lib/plugins';
 import { useAuth } from '../providers/auth-provider';
 import { useEffectiveAccess } from '../providers/effective-access-provider';
@@ -141,6 +142,12 @@ export default function AppShell({
     effectiveAccess.snapshot.scope.kind === 'tenant' &&
     effectiveAccess.snapshot.scope.instanceId === user.instanceId &&
     effectiveAccess.permissionActions.length === 0;
+  const rolelessRedirectUrl = user?.rolelessRedirectUrl;
+  React.useEffect(() => {
+    if (showRoleAssignmentPending) {
+      redirectRolelessUser(rolelessRedirectUrl);
+    }
+  }, [showRoleAssignmentPending, rolelessRedirectUrl]);
   const [isHydrated, setIsHydrated] = React.useState(false);
   const showSidebar =
     isAuthenticated &&

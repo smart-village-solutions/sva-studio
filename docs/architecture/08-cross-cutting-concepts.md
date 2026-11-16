@@ -179,6 +179,14 @@ Für den vollständigen Medieneditor akzeptiert [ADR-069](../adr/ADR-069-filerob
 - Die Sammelwerte `Alle Straßen` und `Alle Hausnummern` verwenden ausschließlich die bereits etablierte öffentliche `all`-Semantik und erzeugen keine neuen Waste-Fachdaten.
 - Rate Limiting und weitere Ingress-Regeln bleiben eine getrennte betriebliche Änderung und sind nicht Bestandteil dieses fachlichen Read-Vertrags.
 
+Die bestehende AppShell-Prüfung auf fehlende Rollen und Berechtigungen kann
+mandantenspezifisch eine HTTPS-Weiterleitung auslösen. Das optionale Ziel wird
+aus der Registry über `/auth/me` geladen; nur ein erfolgreich aufgelöster
+Tenant-Zugriff ohne Rollen und Berechtigungen löst die Navigation aus.
+Ohne Ziel oder bei einer Ziel-Origin gleich der aktuellen Origin bleibt der
+Freischaltungshinweis sichtbar. Details stehen in der
+[Instanzverwaltung](../reference/instance-lifecycle-navigation.md#weiterleitung-ohne-rollen-und-berechtigungen).
+
 ### Security und Privacy
 
 - Der Keycloak-Adapter ergänzt bei Benutzerattribut-Updates ohne explizite E-Mail die frisch aus demselben Benutzerprofil gelesene E-Mail unverändert. Fehlt sie oder scheitert der Profilabruf, erfolgt kein Write. Damit erfüllen auch Mainserver-Credential-Updates die E-Mail-Pflicht des Benutzerprofils, ohne sie abzuschwächen.

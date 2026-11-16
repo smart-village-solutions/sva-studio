@@ -311,3 +311,42 @@ describe('http-contracts', () => {
     );
   });
 });
+
+describe('roleless redirect configuration', () => {
+  const payload = {
+    displayName: 'Demo',
+    parentDomain: 'example.org',
+    realmMode: 'existing',
+    authRealm: 'demo',
+    authClientId: 'studio',
+  };
+  it('rejects an oversized destination before persistence', () => {
+    expect(
+      updateInstanceSchema.safeParse({
+        ...payload,
+        rolelessRedirectUrl: 'https://portal.example.org/' + 'a'.repeat(2048),
+      }).success
+    ).toBe(false);
+  });
+  it('accepts, normalizes and clears the optional destination', () => {
+    expect(
+      updateInstanceSchema.parse({
+        ...payload,
+        rolelessRedirectUrl: ' https://portal.example.org/ ',
+      })
+    ).toMatchObject({ rolelessRedirectUrl: 'https://portal.example.org/' });
+    expect(updateInstanceSchema.parse({ ...payload, rolelessRedirectUrl: null })).toHaveProperty(
+      'rolelessRedirectUrl',
+      null
+    );
+  });
+  it.each([
+    'javascript:alert(1)',
+    '/welcome',
+    'http://portal.example.org',
+    'https://u:p@portal.example.org',
+    '',
+  ])('rejects unsafe configured destination %s', (rolelessRedirectUrl) => {
+    expect(updateInstanceSchema.safeParse({ ...payload, rolelessRedirectUrl }).success).toBe(false);
+  });
+});

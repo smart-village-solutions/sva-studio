@@ -1,0 +1,4 @@
+{
+  "prNumber": 2216,
+  "body": "In den Mandanten-Einstellungen lässt sich eine HTTPS-Zieladresse für angemeldete Personen ohne Rollen und Berechtigungen hinterlegen. Diese Personen werden nach erfolgreicher Berechtigungsprüfung dorthin weitergeleitet. Ein leeres Feld behält den bisherigen Freischaltungshinweis bei."
+}

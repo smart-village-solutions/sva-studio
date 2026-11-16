@@ -1,4 +1,9 @@
-import { instanceStatuses, isReservedTenantHostname, isValidInstanceId } from '@sva/core';
+import {
+  normalizeRolelessRedirectUrl,
+  instanceStatuses,
+  isReservedTenantHostname,
+  isValidInstanceId,
+} from '@sva/core';
 import { z } from 'zod';
 import { isValidKeycloakRealmName, KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
 
@@ -173,6 +178,19 @@ export const resolveCreateInstanceDefaults = (value: z.output<typeof createInsta
       };
 
 export const updateInstanceSchema = z.object({
+  rolelessRedirectUrl: z
+    .string()
+    .trim()
+    .transform((value, ctx) => {
+      const destination = normalizeRolelessRedirectUrl(value);
+      if (!destination) {
+        ctx.addIssue({ code: 'custom', message: 'Ungültige HTTPS-URL' });
+        return z.NEVER;
+      }
+      return destination;
+    })
+    .nullable()
+    .optional(),
   ...sharedInstanceWriteSchemaFields,
   tenantAdminBootstrap: persistedTenantAdminBootstrapSchema,
   authRealm: authRealmSchema,

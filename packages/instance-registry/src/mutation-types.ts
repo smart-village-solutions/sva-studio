@@ -54,6 +54,7 @@ export type ChangeInstanceStatusInput = InstanceRegistryMutationActor & {
 };
 
 export type UpdateInstanceInput = InstanceRegistryMutationActor & {
+  readonly rolelessRedirectUrl?: string | null;
   readonly instanceId: string;
   readonly displayName: string;
   readonly parentDomain: string;

@@ -32,6 +32,7 @@ export const buildInstanceSelectColumns = (alias?: string): string => {
   ${qualify(alias, 'tenant_admin_last_name')},
   ${qualify(alias, 'tenant_admin_adopt_existing')},
   ${qualify(alias, 'theme_key')},
+  ${qualify(alias, 'roleless_redirect_url')},
   (SELECT template FROM iam.instance_mail_templates WHERE instance_id=${id} AND template_kind='invitation') AS account_invitation_template,
   (SELECT revision FROM iam.instance_mail_templates WHERE instance_id=${id} AND template_kind='invitation') AS account_invitation_template_revision,
   (

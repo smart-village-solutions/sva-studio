@@ -63,6 +63,7 @@ export type InstanceRegistryRecord = {
     readonly adoptExisting?: boolean;
   };
   readonly themeKey?: string;
+  readonly rolelessRedirectUrl?: string;
   readonly accountInvitationTemplateRevision?: number;
   readonly accountInvitationTemplate?: import('./account-invitation-template.js').AccountInvitationTemplate;
   readonly assignedModules: readonly string[];
@@ -201,3 +202,28 @@ const allowedTransitions: Readonly<Record<InstanceStatus, readonly InstanceStatu
 
 export const canTransitionInstanceStatus = (from: InstanceStatus, to: InstanceStatus): boolean =>
   from === to || allowedTransitions[from].includes(to);
+
+/** Accept only explicit HTTPS destinations without credentials or browser URL repair. */
+export const normalizeRolelessRedirectUrl = (
+  value: string | null | undefined
+): string | undefined => {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (
+    trimmed.length > 2048 ||
+    !/^https:\/\//iu.test(trimmed) ||
+    Array.from(trimmed).some(
+      (character) =>
+        character === '\\' || character.charCodeAt(0) < 0x20 || character.charCodeAt(0) === 0x7f
+    )
+  )
+    return undefined;
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'https:' && !url.username && !url.password && url.href.length <= 2048
+      ? url.href
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};

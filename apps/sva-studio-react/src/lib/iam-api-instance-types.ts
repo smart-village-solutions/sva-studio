@@ -32,6 +32,7 @@ export type CreateInstancePayload = {
 };
 
 export type UpdateInstancePayload = {
+  readonly rolelessRedirectUrl?: string | null;
   readonly displayName: string;
   readonly parentDomain: string;
   readonly realmMode: 'new' | 'existing';

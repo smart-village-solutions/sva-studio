@@ -124,4 +124,6 @@ export const updateInstanceValues = (input: UpdateInstanceInput): readonly SqlPr
   ...updateTenantAdminClientValues(input),
   ...tenantAdminBootstrapValues(input),
   ...instanceConfigurationValues(input),
+  input.rolelessRedirectUrl ?? null,
+  input.rolelessRedirectUrl === undefined,
 ];

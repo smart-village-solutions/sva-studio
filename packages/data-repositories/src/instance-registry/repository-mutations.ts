@@ -120,6 +120,7 @@ SET
   theme_key = $19,
   feature_flags = $20::jsonb,
   mainserver_config_ref = $21,
+  roleless_redirect_url = CASE WHEN $24::boolean THEN roleless_redirect_url ELSE $23::text END,
   updated_by = $22,
   updated_at = NOW()
 WHERE id = $1

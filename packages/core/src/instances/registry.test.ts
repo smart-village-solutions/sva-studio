@@ -9,6 +9,7 @@ import {
   isValidInstanceId,
   isValidParentDomain,
   normalizeHost,
+  normalizeRolelessRedirectUrl,
 } from './registry';
 
 describe('instance registry core', () => {
@@ -92,5 +93,40 @@ describe('instance registry core', () => {
     expect(canTransitionInstanceStatus('active', 'validated')).toBe(false);
     expect(isTrafficEnabledInstanceStatus('active')).toBe(true);
     expect(isTrafficEnabledInstanceStatus('suspended')).toBe(false);
+  });
+});
+
+describe('roleless redirect URL', () => {
+  it('accepts a URL at the length limit and rejects a longer URL', () => {
+    const prefix = 'https://portal.example.org/';
+    const target = prefix + 'a'.repeat(2048 - prefix.length);
+    expect(normalizeRolelessRedirectUrl(target)).toBe(target);
+    expect(normalizeRolelessRedirectUrl(target + 'a')).toBeUndefined();
+  });
+
+  it('bounds the encoded URL as well as the input', () => {
+    expect(
+      normalizeRolelessRedirectUrl('https://portal.example.org/' + 'ä'.repeat(400))
+    ).toBeUndefined();
+  });
+
+  it('normalizes an explicitly configured HTTPS destination', () => {
+    expect(normalizeRolelessRedirectUrl('  https://portal.example.org/welcome?q=1#start  ')).toBe(
+      'https://portal.example.org/welcome?q=1#start'
+    );
+  });
+
+  it.each([
+    '',
+    '/welcome',
+    '//evil.example',
+    'http://portal.example.org',
+    'javascript:alert(1)',
+    'data:text/html,test',
+    'https://user:pass@portal.example.org',
+    'https://portal.example.org/\nwelcome',
+    'https:\\evil.example',
+  ])('rejects unsafe target %s', (value) => {
+    expect(normalizeRolelessRedirectUrl(value)).toBeUndefined();
   });
 });

@@ -79,3 +79,23 @@ bleiben im Editor sichtbar. Tabwechsel, Refresh und fehlgeschlagene Saves
 bewahren den lokalen Entwurf. Neue Secret-Eingaben werden erst nach erfolgreichem
 Instanz-Save gelöscht. Eine vollständige Anmeldeweiterleitung persistiert keine
 Entwürfe oder Secrets im Browser-Speicher.
+
+
+## Weiterleitung ohne Rollen und Berechtigungen
+
+Unter **Mandant → Einstellungen → Allgemein** lässt sich ein optionales
+„Weiterleitungsziel für Personen ohne Rollen und Berechtigungen“ hinterlegen.
+Das Feld erwartet eine vollständige HTTPS-Adresse einer anderen Website ohne
+Benutzername oder Passwort (maximal 2048 Zeichen einschließlich URL-Kodierung). Feld leeren und speichern deaktiviert die Weiterleitung;
+dann bleibt der bisherige Hinweis zur fehlenden Freischaltung sichtbar.
+
+Die Anwendung liest das Ziel für den aktuellen Mandanten über `/auth/me`.
+Sie leitet erst weiter, wenn Anmeldung und Berechtigungsprüfung erfolgreich
+abgeschlossen sind und weder Rollen noch Berechtigungen vorliegen. Laufende,
+fehlgeschlagene oder mandantenfremde Berechtigungsprüfungen lösen keine
+Weiterleitung aus. Ziele auf derselben Origin werden zum Schutz vor Schleifen
+nicht geöffnet. Die Navigation ersetzt den aktuellen Verlaufseintrag.
+
+Die Einstellung verändert keine Rollen und keine Keycloak-Redirect-URIs.
+Migration `0118_iam_roleless_redirect.sql` ergänzt dafür die optionale Spalte
+`iam.instances.roleless_redirect_url`; bestehende Mandanten starten ohne Ziel.

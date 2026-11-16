@@ -1,3 +1,5 @@
+import { normalizeRolelessRedirectUrl } from '@sva/core';
+
 export const DEFAULT_POST_LOGIN_PATH = '/';
 const SESSION_EXPIRED_AUTH_STATE = 'session-expired';
 
@@ -9,7 +11,8 @@ export const sanitizeReturnTo = (value: string | null | undefined): string => {
   }
 
   const hasUnsafeCharacter = Array.from(value).some(
-    (character) => character === '\\' || character.charCodeAt(0) < 0x20 || character.charCodeAt(0) === 0x7f
+    (character) =>
+      character === '\\' || character.charCodeAt(0) < 0x20 || character.charCodeAt(0) === 0x7f
   );
   if (!value.startsWith('/') || value.startsWith('//') || hasUnsafeCharacter) {
     return DEFAULT_POST_LOGIN_PATH;
@@ -18,7 +21,11 @@ export const sanitizeReturnTo = (value: string | null | undefined): string => {
   // Validate the browser-normalized target, including dot segments and encoded path segments.
   const base = 'https://studio.invalid';
   const target = new URL(value, base);
-  if (target.origin !== base || target.pathname.startsWith('//') || target.pathname.startsWith('/auth/')) {
+  if (
+    target.origin !== base ||
+    target.pathname.startsWith('//') ||
+    target.pathname.startsWith('/auth/')
+  ) {
     return DEFAULT_POST_LOGIN_PATH;
   }
 
@@ -63,4 +70,14 @@ export const createSessionExpiredHref = (returnTo?: string): string => {
     returnTo: normalizedReturnTo,
   });
   return `/?${params.toString()}`;
+};
+
+/** Leave the Studio only for an administrator-configured external HTTPS destination. */
+export const redirectRolelessUser = (
+  target: string | undefined,
+  location: Pick<Location, 'href' | 'replace'> = window.location
+): void => {
+  const destination = normalizeRolelessRedirectUrl(target);
+  if (!destination || new URL(destination).origin === new URL(location.href).origin) return;
+  location.replace(destination);
 };

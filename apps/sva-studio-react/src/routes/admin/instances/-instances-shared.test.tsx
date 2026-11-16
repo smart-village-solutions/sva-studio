@@ -22,6 +22,9 @@ import {
 } from './-instances-shared';
 import {
   createEmptyCreateForm,
+  createDetailForm,
+  createInstanceSettingsSchema,
+  buildInstanceSettingsPayload,
   getCreateReadinessChecks,
   getCreateStepValidationMessages,
   getPostCreateGuidance,
@@ -2161,4 +2164,49 @@ describe('realm operations primary-action priority characterization', () => {
       buildOperationsPrimaryAction(createOperationsModelFixture('existing', steps, overrides))
     ).toMatchObject(expected);
   });
+});
+
+describe('roleless redirect settings form', () => {
+  const instance = {
+    displayName: 'Demo',
+    parentDomain: 'example.org',
+    realmMode: 'existing',
+    authRealm: 'demo',
+    authClientId: 'studio',
+    rolelessRedirectUrl: 'https://portal.example.org/welcome',
+  };
+  it('rejects an oversized destination before saving', () => {
+    const values = createDetailForm(instance as Parameters<typeof createDetailForm>[0]);
+    expect(
+      createInstanceSettingsSchema().safeParse({
+        ...values,
+        rolelessRedirectUrl: 'https://portal.example.org/' + 'a'.repeat(2048),
+      }).success
+    ).toBe(false);
+  });
+  it('loads the destination and submits changes or an explicit clear', () => {
+    const values = createDetailForm(instance as Parameters<typeof createDetailForm>[0]);
+    expect(values.rolelessRedirectUrl).toBe('https://portal.example.org/welcome');
+    expect(
+      buildInstanceSettingsPayload({
+        ...values,
+        rolelessRedirectUrl: ' https://portal.example.org/new ',
+      })
+    ).toHaveProperty('rolelessRedirectUrl', 'https://portal.example.org/new');
+    expect(buildInstanceSettingsPayload({ ...values, rolelessRedirectUrl: '' })).toHaveProperty(
+      'rolelessRedirectUrl',
+      null
+    );
+  });
+  it.each(['http://portal.example.org', 'javascript:alert(1)', '/welcome'])(
+    'rejects invalid target %s before saving',
+    (target) => {
+      const values = createDetailForm(instance as Parameters<typeof createDetailForm>[0]);
+      const result = createInstanceSettingsSchema().safeParse({
+        ...values,
+        rolelessRedirectUrl: target,
+      });
+      expect(result.success).toBe(false);
+    }
+  );
 });

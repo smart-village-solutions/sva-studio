@@ -9,6 +9,7 @@ export type SessionUser = {
   id: string;
   instanceId?: string;
   instanceDisplayName?: string;
+  rolelessRedirectUrl?: string;
   assignedModules?: string[];
   moduleAccessPending?: boolean;
   groups?: readonly IamUserGroupAssignment[];

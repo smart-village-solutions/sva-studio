@@ -5,7 +5,11 @@ import { withInstanceScopedDb } from './iam-authorization/shared.js';
 import { withRegistryRepository } from './iam-instance-registry/repository.js';
 import { resolveConfiguredPluginTenantModuleAccess } from './plugin-tenant-lifecycle/access.js';
 import { buildLogContext } from './log-context.js';
-import { logger, createAuthMeHeaders, collectEffectivePermissionActions } from './auth-route-responses.js';
+import {
+  logger,
+  createAuthMeHeaders,
+  collectEffectivePermissionActions,
+} from './auth-route-responses.js';
 import { type AuthMeResolution } from './auth-route-state.js';
 
 const loadAuthMePermissionState = async (user: {
@@ -84,11 +88,11 @@ const loadAssignedModulesForAuthMe = async (user: {
   }
 };
 
-const loadInstanceDisplayNameForAuthMe = async (user: {
+const loadInstancePresentationForAuthMe = async (user: {
   instanceId?: string;
-}): Promise<string | undefined> => {
+}): Promise<Pick<AuthMeResolution, 'instanceDisplayName' | 'rolelessRedirectUrl'>> => {
   if (!user.instanceId) {
-    return undefined;
+    return {};
   }
   const instanceId = user.instanceId;
 
@@ -97,7 +101,10 @@ const loadInstanceDisplayNameForAuthMe = async (user: {
       repository.getInstanceById(instanceId)
     );
     const displayName = instance?.displayName.trim();
-    return displayName || undefined;
+    return {
+      instanceDisplayName: displayName || undefined,
+      rolelessRedirectUrl: instance?.rolelessRedirectUrl,
+    };
   } catch (error) {
     logger.error('Auth me instance display name lookup failed', {
       endpoint: '/auth/me',
@@ -106,7 +113,7 @@ const loadInstanceDisplayNameForAuthMe = async (user: {
       reason_code: 'instance_display_name_lookup_failed',
       ...buildLogContext({ kind: 'instance', instanceId }),
     });
-    return undefined;
+    return {};
   }
 };
 
@@ -187,14 +194,14 @@ export const resolveAuthMeState = async (user: {
 }): Promise<AuthMeResolution> => {
   const permissionState = await loadAuthMePermissionState(user);
   const moduleAccess = await loadAssignedModulesForAuthMe(user);
-  const instanceDisplayName = await loadInstanceDisplayNameForAuthMe(user);
+  const instancePresentation = await loadInstancePresentationForAuthMe(user);
   const groups = await loadGroupsForAuthMe(user);
 
   return {
     ...permissionState,
     ...moduleAccess,
     groups,
-    instanceDisplayName,
+    ...instancePresentation,
   };
 };
 
@@ -219,6 +226,7 @@ export const createAuthMeResponse = (
         ...(resolution.instanceDisplayName
           ? { instanceDisplayName: resolution.instanceDisplayName }
           : {}),
+        rolelessRedirectUrl: resolution.rolelessRedirectUrl,
         permissionActions: resolution.permissionActions,
         permissionStatus,
       },

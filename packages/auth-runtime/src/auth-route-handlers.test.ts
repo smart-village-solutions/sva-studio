@@ -298,6 +298,22 @@ describe('meHandler', () => {
     expect('userId' in resolverInput).toBe(false);
   });
 
+  it('reads the configured destination from the current tenant registry', async () => {
+    mocks.withRegistryRepository.mockImplementation(async (handler) =>
+      handler({
+        getInstanceById: async () => ({
+          displayName: 'Tenant Test',
+          rolelessRedirectUrl: 'https://portal.example.org/welcome',
+        }),
+        listAssignedModules: async () => ['news'],
+      })
+    );
+    const response = await meHandler(new Request('https://studio.example.org/auth/me'));
+    expect((await response.json()).user.rolelessRedirectUrl).toBe(
+      'https://portal.example.org/welcome'
+    );
+  });
+
   it('returns no-store auth headers and sorted allow-only permissionActions', async () => {
     const response = await meHandler(createAuthMeRequest());
 

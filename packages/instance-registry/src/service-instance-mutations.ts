@@ -282,12 +282,11 @@ export const createUpdateInstanceHandler =
       actorId: effectiveInput.actorId,
       requestId: effectiveInput.requestId,
       themeKey: effectiveInput.themeKey,
+      rolelessRedirectUrl: effectiveInput.rolelessRedirectUrl,
       featureFlags: effectiveInput.featureFlags,
       mainserverConfigRef: effectiveInput.mainserverConfigRef,
     });
-    if (!updated) {
-      return null;
-    }
+    if (!updated) return null;
 
     const invitationUpdated = await applyAccountInvitationTemplateMutation({
       repository: deps.repository,

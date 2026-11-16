@@ -6,6 +6,8 @@ export type KeycloakProjectionUser = Readonly<{
 }>;
 
 export interface SsfKeycloakProjectionClient {
+  /** null is a confirmed 404; false is an existing, disabled user. */
+  getUserStatus(externalId: string): Promise<boolean | null>;
   getOidcClientByClientId(clientId: string): Promise<Readonly<{ enabled?: boolean }> | null>;
   listClientProtocolMappers(clientId: string): Promise<
     readonly Readonly<{

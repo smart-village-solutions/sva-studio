@@ -12,6 +12,7 @@ import type {
 } from './keycloak-authorization-projection-contract.js';
 import {
   areAttributesEqual,
+  resolveKeycloakProjection,
   ensureClaimMappers,
   hasProjectionAttributes,
   listAllUsers,
@@ -36,25 +37,6 @@ export type {
   SsfKeycloakProjectionClient,
   SsfKeycloakProjectionTenant,
 } from './keycloak-authorization-projection-contract.js';
-
-const resolveProjection = async (
-  dependencies: SsfKeycloakProjectionTargetDependencies,
-  projection: SsfAuthorizationProjection
-): Promise<SsfAuthorizationProjection> => {
-  const desired = normalizeSsfAuthorizationProjection(projection);
-  const tenant = await requireTenant(dependencies.resolveTenant, desired.instanceId);
-  // A failed page must never become evidence that a subject was deleted.
-  const users = await listAllUsers(tenant.client);
-  const existing = new Set(users.map((user) => user.externalId));
-  const missing = desired.subjects.filter(({ subject }) => !existing.has(subject));
-  if (missing.length > 0) {
-    await dependencies.onMissingSubjects?.(
-      desired.instanceId,
-      missing.map(({ subject }) => subject)
-    );
-  }
-  return { ...desired, subjects: desired.subjects.filter(({ subject }) => existing.has(subject)) };
-};
 
 const suspendTokenIssuance = async (
   dependencies: SsfKeycloakProjectionTargetDependencies,
@@ -189,7 +171,7 @@ const resumeTokenIssuance = async (
 export const createSsfKeycloakAuthorizationProjectionTarget = (
   dependencies: SsfKeycloakProjectionTargetDependencies
 ): SsfAuthorizationProjectionTarget => ({
-  resolveProjection: (projection) => resolveProjection(dependencies, projection),
+  resolveProjection: (projection) => resolveKeycloakProjection(dependencies, projection),
   prepareLoginClients:
     dependencies.prepareLoginClients ??
     (async () => {

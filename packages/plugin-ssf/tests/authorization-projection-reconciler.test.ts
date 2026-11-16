@@ -9,6 +9,7 @@ import {
   type SsfAuthorizationProjectionState,
   type SsfAuthorizationProjectionStore,
   type SsfAuthorizationProjectionTarget,
+  SsfProjectionSubjectsChangedError,
 } from '../src/runtime.js';
 
 const projection = (instanceId = 'tenant-a'): SsfAuthorizationProjection => ({
@@ -70,6 +71,67 @@ const fixtures = (desired = projection()) => {
 };
 
 describe('SSF authorization projection reconciler', () => {
+  it.each(['desired', 'snapshot'] as const)(
+    'records a blocked generation when %s loading fails after a concurrent deletion',
+    async (phase) => {
+      const desired = projection();
+      const { lockedStore, target, reconcile } = fixtures(desired);
+      target.reconcile.mockRejectedValueOnce(new SsfProjectionSubjectsChangedError());
+      const readDesired = vi.fn(async () => desired);
+      if (phase === 'desired')
+        readDesired
+          .mockResolvedValueOnce(desired)
+          .mockRejectedValueOnce(new Error('retry_unavailable'));
+      else
+        target.resolveProjection
+          .mockResolvedValueOnce(desired)
+          .mockRejectedValueOnce(new Error('retry_unavailable'));
+
+      await expect(reconcile({ instanceId: 'tenant-a', readDesired })).rejects.toThrow(
+        'retry_unavailable'
+      );
+
+      expect(lockedStore.markBlocked).toHaveBeenCalledWith({
+        instanceId: 'tenant-a',
+        generation: 1,
+        desiredRevision: createSsfAuthorizationRevision(desired),
+        errorCode: 'target_write_failed',
+      });
+      expect(target.resumeTokenIssuance).not.toHaveBeenCalled();
+    }
+  );
+  it.each(['foreign-tenant', 'invalid-subject'] as const)(
+    'disables only the trusted tenant after an invalid target snapshot: %s',
+    async (kind) => {
+      const { lockedStore, target, reconcile } = fixtures();
+      const invalid =
+        kind === 'foreign-tenant'
+          ? projection('tenant-b')
+          : {
+              ...projection(),
+              subjects: [{ subject: '', roles: [], permissions: [] }],
+            };
+      target.resolveProjection.mockResolvedValue(invalid);
+
+      await expect(reconcile(projection())).rejects.toThrow();
+
+      expect(target.suspendTokenIssuance).toHaveBeenCalledExactlyOnceWith('tenant-a');
+      expect(target.resumeTokenIssuance).not.toHaveBeenCalled();
+      expect(lockedStore.stage).not.toHaveBeenCalled();
+    }
+  );
+
+  it('surfaces failed suspension instead of claiming that unverified authorization is closed', async () => {
+    const { lockedStore, target, reconcile } = fixtures();
+    target.resolveProjection.mockRejectedValue(new Error('snapshot_unavailable'));
+    target.suspendTokenIssuance.mockRejectedValue(new Error('suspension_unavailable'));
+
+    await expect(reconcile(projection())).rejects.toThrow('token_issuance_suspend_failed');
+
+    expect(target.resumeTokenIssuance).not.toHaveBeenCalled();
+    expect(lockedStore.stage).not.toHaveBeenCalled();
+  });
+
   it('publishes readiness after write, read-back and client reactivation', async () => {
     const desired = projection();
     const { lockedStore, target, reconcile } = fixtures(desired);

@@ -44,6 +44,8 @@ const createClient = () => {
     { name: string; protocol: string; protocolMapper: string; config: Record<string, string> }
   >();
   const client = {
+    getUserStatus: vi.fn(async (externalId: string): Promise<boolean | null> =>
+      attributes.has(externalId) ? true : null),
     getOidcClientByClientId: vi.fn(async () => ({ enabled: true })),
     listClientProtocolMappers: vi.fn(async () => [...mappers.values()]),
     listEffectiveClientProtocolMappers: vi.fn(async () => [...mappers.values()]),
@@ -154,7 +156,7 @@ describe('SSF Keycloak authorization projection target', () => {
     expect(fixture.store.markBlocked).not.toHaveBeenCalled();
   });
 
-  it('does not treat a failed later Keycloak page as proof that accounts were deleted', async () => {
+  it('suspends stale token issuance when a later Keycloak page cannot verify an authorization update', async () => {
     const fixture = reconcileFixture();
     fixture.client.listUsers
       .mockResolvedValueOnce(
@@ -167,7 +169,43 @@ describe('SSF Keycloak authorization projection target', () => {
 
     await expect(fixture.reconcile(desiredProjection())).rejects.toThrow('keycloak_unavailable');
 
-    expect(fixture.enabled()).toBe(true);
+    expect(fixture.enabled()).toBe(false);
+    expect(fixture.store.stage).not.toHaveBeenCalled();
+    expect(fixture.onMissingSubjects).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])('retains an existing user skipped by shifting pagination offsets (enabled %s)', async (enabled) => {
+    const fixture = reconcileFixture();
+    fixture.attributes.clear();
+    for (let index = 0; index < 100; index++) fixture.attributes.set(`filler-${index}`, {});
+    fixture.attributes.set('user-1', { locale: ['de'] });
+    fixture.client.getUserStatus.mockImplementation(async (id) => id === 'user-1' ? enabled : null);
+    const originalList = fixture.client.listUsers.getMockImplementation();
+    if (!originalList) throw new Error('missing_list_fixture');
+    let firstPageRead = false;
+    fixture.client.listUsers.mockImplementation(async (query) => {
+      const page = await originalList(query);
+      if (!firstPageRead) {
+        firstPageRead = true;
+        fixture.attributes.delete('filler-0');
+      }
+      return page;
+    });
+
+    await expect(fixture.reconcile(desiredProjection())).resolves.toMatchObject({ status: 'ready' });
+
+    expect(fixture.confirmed()).toEqual(desiredProjection());
+    expect(fixture.onMissingSubjects).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when a missing listed subject cannot be verified directly', async () => {
+    const fixture = reconcileFixture();
+    fixture.client.listUsers.mockResolvedValueOnce([]);
+    fixture.client.getUserStatus.mockRejectedValue(new Error('user_status_unavailable'));
+
+    await expect(fixture.reconcile(desiredProjection())).rejects.toThrow('user_status_unavailable');
+
+    expect(fixture.enabled()).toBe(false);
     expect(fixture.store.stage).not.toHaveBeenCalled();
     expect(fixture.onMissingSubjects).not.toHaveBeenCalled();
   });
@@ -227,7 +265,6 @@ describe('SSF Keycloak authorization projection target', () => {
         },
       ]);
       expect(fixture.enabled()).toBe(true);
-      expect(fixture.store.markBlocked).not.toHaveBeenCalled();
     }
   );
 

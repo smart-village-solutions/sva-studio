@@ -1,8 +1,11 @@
 import {
-  areSsfAuthorizationProjectionsEqual,
   normalizeSsfAuthorizationProjection,
   type SsfAuthorizationProjection,
 } from './authorization-projection.js';
+import {
+  confirmProjectionReadBack,
+  resolveEffectiveProjection,
+} from './authorization-projection-verification.js';
 import type { SsfAuthorizationProjectionState } from './authorization-projection-repository.js';
 import {
   SsfProjectionPhaseError,
@@ -72,40 +75,6 @@ const requireTenantReadiness = async (
   throw new SsfProjectionPhaseError('tenant_readiness_failed');
 };
 
-const confirmProjectionReadBack = async (
-  target: SsfAuthorizationProjectionTarget,
-  store: SsfAuthorizationProjectionLockedStore,
-  staged: SsfAuthorizationProjectionState,
-  retrySubjectChanges: boolean
-): Promise<boolean> => {
-  let readBack: SsfAuthorizationProjection;
-  try {
-    readBack = await target.readBack(staged.instanceId);
-  } catch {
-    throw new SsfProjectionPhaseError('target_readback_failed');
-  }
-
-  if (
-    retrySubjectChanges &&
-    !areSsfAuthorizationProjectionsEqual(staged.desiredProjection, readBack)
-  ) {
-    const effectiveDesired = await target.resolveProjection(staged.desiredProjection);
-    // Retry only a deletion-only mismatch. Incorrect surviving claims remain an integrity failure.
-    if (
-      !areSsfAuthorizationProjectionsEqual(staged.desiredProjection, effectiveDesired) &&
-      areSsfAuthorizationProjectionsEqual(effectiveDesired, readBack)
-    ) {
-      throw new SsfProjectionSubjectsChangedError();
-    }
-  }
-
-  return store.confirmReadBack({
-    desired: staged.desiredProjection,
-    readBack,
-    generation: staged.generation,
-  });
-};
-
 const reconcileClaimedProjection = async (
   dependencies: SsfAuthorizationProjectionReconcilerDependencies,
   store: SsfAuthorizationProjectionLockedStore,
@@ -166,7 +135,6 @@ const reconcileClaimedProjection = async (
       changed: true,
     };
   } catch (error) {
-    if (retrySubjectChanges && error instanceof SsfProjectionSubjectsChangedError) throw error;
     // Re-close the browser client after failures during activation or read-back.
     // A failed compensation still leaves the persistent projection blocked.
     await dependencies.target.suspendTokenIssuance(staged.instanceId).catch(() => undefined);
@@ -177,6 +145,8 @@ const reconcileClaimedProjection = async (
       desiredRevision: staged.desiredRevision,
       errorCode: reason,
     });
+    // Preserve failure evidence if the next snapshot/desired-state read cannot start the retry.
+    if (retrySubjectChanges && error instanceof SsfProjectionSubjectsChangedError) throw error;
     return { status: 'blocked', generation: staged.generation, reason };
   }
 };
@@ -229,12 +199,10 @@ export const createSsfAuthorizationProjectionReconciler =
         if (normalizedDesired.instanceId !== instanceId) {
           throw new Error('ssf_authorization_projection_tenant_mismatch');
         }
-        const effectiveDesired = normalizeSsfAuthorizationProjection(
-          await dependencies.target.resolveProjection(normalizedDesired)
+        const effectiveDesired = await resolveEffectiveProjection(
+          dependencies.target,
+          normalizedDesired
         );
-        if (effectiveDesired.instanceId !== instanceId) {
-          throw new Error('ssf_authorization_projection_tenant_mismatch');
-        }
         try {
           return await reconcileLockedProjection(
             dependencies,

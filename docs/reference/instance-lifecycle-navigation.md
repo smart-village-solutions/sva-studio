@@ -97,5 +97,5 @@ Weiterleitung aus. Ziele auf derselben Origin werden zum Schutz vor Schleifen
 nicht geöffnet. Die Navigation ersetzt den aktuellen Verlaufseintrag.
 
 Die Einstellung verändert keine Rollen und keine Keycloak-Redirect-URIs.
-Migration `0117_iam_roleless_redirect.sql` ergänzt dafür die optionale Spalte
+Migration `0118_iam_roleless_redirect.sql` ergänzt dafür die optionale Spalte
 `iam.instances.roleless_redirect_url`; bestehende Mandanten starten ohne Ziel.

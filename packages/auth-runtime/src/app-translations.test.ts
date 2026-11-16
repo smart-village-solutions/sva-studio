@@ -68,7 +68,6 @@ vi.mock('./app-translations-deepl.js', () => ({
   }),
   readDeepLSetupStatus: async () => ({ ready: state.providerReady }),
 }));
-vi.mock('./effective-session-roles.js', () => ({ loadPersistedEffectiveRoleNames: vi.fn() }));
 vi.mock('./db.js', () => ({ withIamAppDb: (...args: unknown[]) => state.db(...args) }));
 import {
   executeAppTranslationOperation,

@@ -87,6 +87,7 @@ export const CatalogDraftContent = ({ model }: { model: CatalogPageViewModel }) 
     busy,
     requestedSelection,
     editorVersion,
+    translationCounts,
     sourceOnly,
     canWrite,
     jobActive,
@@ -107,6 +108,7 @@ export const CatalogDraftContent = ({ model }: { model: CatalogPageViewModel }) 
         sourceOnly={sourceOnly}
         mutate={mutate}
         onDirtyChange={setDirty}
+        translationCounts={translationCounts}
         translate={!sourceOnly && !jobActive ? translate : undefined}
       />
       <CatalogDraftStatus model={model} />

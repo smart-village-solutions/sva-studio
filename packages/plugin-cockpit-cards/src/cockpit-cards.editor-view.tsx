@@ -92,13 +92,13 @@ function EditorActions({ view }: { view: EditorViewProps }) {
 }
 
 function EditorPrimaryAction({ view }: { view: EditorViewProps }) {
-  const { canSave, pt, mode, deletePending, saveFeedback, mediaSavePhaseKey } = view;
+  const { pt, mode, deletePending, saveFeedback, mediaSavePhaseKey } = view;
   const disabled =
     deletePending ||
     (mode === 'create' &&
       !isMainserverPrincipalReady(view.principalControl, view.actingPrincipalType));
   const effectKey = view.form.watch('visible') ? 'create.visibleEffect' : 'create.hiddenEffect';
-  return canSave ? (
+  return (
     <div className="flex flex-col items-end gap-1">
       {mode === 'create' ? <p className="text-sm text-muted-foreground">{pt(effectKey)}</p> : null}
       <StudioSaveButton
@@ -113,7 +113,7 @@ function EditorPrimaryAction({ view }: { view: EditorViewProps }) {
         }}
       />
     </div>
-  ) : null;
+  );
 }
 
 function EditorPrincipal(view: EditorViewProps) {
@@ -230,7 +230,7 @@ export function CockpitCardEditorView(view: EditorViewProps) {
       title={pt(mode === 'create' ? 'editor.createTitle' : 'editor.editTitle')}
       description={mode === 'edit' ? pt('editor.editDescription') : undefined}
       actions={<EditorActions view={view} />}
-      primaryAction={<EditorPrimaryAction view={view} />}
+      primaryAction={view.canSave ? <EditorPrimaryAction view={view} /> : undefined}
     >
       <CockpitCardMediaOverlay
         media={media}

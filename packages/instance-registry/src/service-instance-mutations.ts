@@ -282,6 +282,7 @@ export const createUpdateInstanceHandler =
       actorId: effectiveInput.actorId,
       requestId: effectiveInput.requestId,
       themeKey: effectiveInput.themeKey,
+      rolelessRedirectUrl: effectiveInput.rolelessRedirectUrl,
       featureFlags: effectiveInput.featureFlags,
       mainserverConfigRef: effectiveInput.mainserverConfigRef,
     });

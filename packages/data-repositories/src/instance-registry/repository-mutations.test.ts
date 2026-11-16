@@ -43,11 +43,19 @@ describe('instance registry mutation SQL values', () => {
   it('deletes through the scoped atomic Studio-only function without interpolating identifiers', async () => {
     const { executor, statements } = createQueuedExecutor([[{ deleted: true }]]);
     const repository = createInstanceRegistryRepository(executor);
-    expect(await repository.deleteInstance({ instanceId: 'tenant-a', expectedUpdatedAt: '2026-11-08T00:00:00Z', actorId: 'admin' })).toBe(true);
-    expect(statements).toEqual([{
-      text: 'SELECT iam.delete_studio_instance($1, $2::timestamptz, $3, $4) AS deleted;',
-      values: ['tenant-a', '2026-11-08T00:00:00Z', 'admin', null],
-    }]);
+    expect(
+      await repository.deleteInstance({
+        instanceId: 'tenant-a',
+        expectedUpdatedAt: '2026-11-08T00:00:00Z',
+        actorId: 'admin',
+      })
+    ).toBe(true);
+    expect(statements).toEqual([
+      {
+        text: 'SELECT iam.delete_studio_instance($1, $2::timestamptz, $3, $4) AS deleted;',
+        values: ['tenant-a', '2026-11-08T00:00:00Z', 'admin', null],
+      },
+    ]);
   });
 
   it('maps a minimal create input to the exact 21-value contract and upserts the hostname second', async () => {
@@ -170,7 +178,7 @@ describe('instance registry mutation SQL values', () => {
     expect(statements[0]?.values).toHaveLength(21);
   });
 
-  it('maps a minimal update input to the exact 22-value contract and switches the primary hostname safely', async () => {
+  it('maps a minimal update input to the exact 24-value contract and switches the primary hostname safely', async () => {
     const { executor, statements } = createQueuedExecutor([
       [instanceRow],
       [],
@@ -186,7 +194,7 @@ describe('instance registry mutation SQL values', () => {
     expect(statements[0]?.text).toContain('UPDATE iam.instances');
     expect(statements[0]?.text).toContain('AND NOT EXISTS');
     expect(statements[0]?.text).toContain("overall_status IN ('planned', 'running')");
-    expectSqlValues(statements[0], 22, [
+    expectSqlValues(statements[0], 24, [
       'tenant-a',
       'Tenant A',
       'example.test',
@@ -209,6 +217,8 @@ describe('instance registry mutation SQL values', () => {
       '{}',
       null,
       'system',
+      null,
+      true,
     ]);
     expect(statements[1]?.text).toContain('UPDATE iam.instance_hostnames');
     expect(statements[1]?.text).toContain('is_primary = false');
@@ -218,7 +228,7 @@ describe('instance registry mutation SQL values', () => {
     expect(statements[2]?.values).toStrictEqual(['tenant-a.example.test', 'tenant-a', 'system']);
   });
 
-  it('maps a fully populated update input to the exact 22-value contract', async () => {
+  it('maps a fully populated update input to the exact 24-value contract', async () => {
     const { executor, statements } = createQueuedExecutor([
       [instanceRow],
       [],
@@ -245,7 +255,7 @@ describe('instance registry mutation SQL values', () => {
       actorId: 'actor-1',
     });
 
-    expectSqlValues(statements[0], 22, [
+    expectSqlValues(statements[0], 24, [
       'tenant-a',
       'Tenant A',
       'example.test',
@@ -268,6 +278,8 @@ describe('instance registry mutation SQL values', () => {
       '{"preview":true,"beta":false}',
       'mainserver-ref',
       'actor-1',
+      null,
+      true,
     ]);
   });
 
@@ -295,7 +307,7 @@ describe('instance registry mutation SQL values', () => {
       null,
       null,
     ]);
-    expect(statements[0]?.values).toHaveLength(22);
+    expect(statements[0]?.values).toHaveLength(24);
   });
 });
 
@@ -387,7 +399,7 @@ describe('instance registry update secret preservation matrix', () => {
 
       await expect(repository.updateInstance(input)).resolves.toBeNull();
 
-      expect(statements[0]?.values).toHaveLength(22);
+      expect(statements[0]?.values).toHaveLength(24);
       expect(statements[0]?.values.slice(8, 10)).toStrictEqual([expectedKeep, expectedCiphertext]);
     }
   );
@@ -405,7 +417,7 @@ describe('instance registry update secret preservation matrix', () => {
 
       await expect(repository.updateInstance(input)).resolves.toBeNull();
 
-      expect(statements[0]?.values).toHaveLength(22);
+      expect(statements[0]?.values).toHaveLength(24);
       expect(statements[0]?.values.slice(10, 13)).toStrictEqual([
         'tenant-admin',
         expectedKeep,
@@ -478,7 +490,17 @@ describe('instance registry mutation result and error contracts', () => {
       tenantHomepageLinkLabel: 'Zur Startseite',
     } as const;
     const { executor, statements } = createQueuedExecutor([
-      [{instance_id:'tenant-a',template_kind:'invitation',revision:3,template,sync_status:'pending',confirmed_realm:null,confirmed_texts:null}],
+      [
+        {
+          instance_id: 'tenant-a',
+          template_kind: 'invitation',
+          revision: 3,
+          template,
+          sync_status: 'pending',
+          confirmed_realm: null,
+          confirmed_texts: null,
+        },
+      ],
       [{ ...instanceRow, account_invitation_template: template }],
     ]);
 
@@ -491,7 +513,9 @@ describe('instance registry mutation result and error contracts', () => {
       })
     ).resolves.toMatchObject({ accountInvitationTemplate: template });
 
-    expect(statements[0]?.text).toContain('iam.save_instance_invitation_template($1,$2,$3::jsonb,$4)');
+    expect(statements[0]?.text).toContain(
+      'iam.save_instance_invitation_template($1,$2,$3::jsonb,$4)'
+    );
     expect(statements[0]?.values).toStrictEqual([
       'tenant-a',
       2,
@@ -660,4 +684,25 @@ describe('instance registry mutation result and error contracts', () => {
       (updateUpsertError as Error & { instanceRegistryStep?: string }).instanceRegistryStep
     ).toBe('primary_hostname_upsert');
   });
+});
+
+describe('roleless destination persistence', () => {
+  it.each(['https://portal.example.org/welcome', null])(
+    'stores and reads %s',
+    async (rolelessRedirectUrl) => {
+      const { executor, statements } = createQueuedExecutor([
+        [{ ...instanceRow, roleless_redirect_url: rolelessRedirectUrl }],
+        [],
+        [{ hostname: 'tenant-a.example.test' }],
+      ]);
+      const repository = createInstanceRegistryRepository(executor);
+      const result = await repository.updateInstance({
+        ...minimalUpdateInput,
+        rolelessRedirectUrl,
+      });
+      expect(result?.rolelessRedirectUrl).toBe(rolelessRedirectUrl ?? undefined);
+      expect(statements[0]?.text).toContain('roleless_redirect_url = CASE');
+      expect(statements[0]?.values?.slice(-2)).toEqual([rolelessRedirectUrl, false]);
+    }
+  );
 });

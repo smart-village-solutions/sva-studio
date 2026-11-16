@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { IamInstanceDetail } from '@sva/core';
+import { normalizeRolelessRedirectUrl, type IamInstanceDetail } from '@sva/core';
 
 import { t } from '../../../i18n';
 import { readDocumentStudioParentDomain } from '../../../lib/studio-runtime-config';
@@ -55,6 +55,7 @@ export const createEmptyCreateForm = (parentDomain = ''): CreateFormValues => ({
 });
 
 export const createDetailForm = (instance: SelectedInstance): DetailFormValues => ({
+  rolelessRedirectUrl: instance.rolelessRedirectUrl ?? '',
   displayName: instance.displayName,
   parentDomain: instance.parentDomain,
   realmMode: instance.realmMode,
@@ -313,6 +314,13 @@ export const getPostCreateGuidance = (instance: {
 
 export const createInstanceSettingsSchema = () =>
   z.object({
+    rolelessRedirectUrl: z
+      .string()
+      .trim()
+      .refine(
+        (value) => !value || Boolean(normalizeRolelessRedirectUrl(value)),
+        t('admin.instances.form.invalidRolelessRedirectUrl')
+      ),
     displayName: z.string().trim().min(1, t('admin.instances.wizard.validation.displayName')),
     parentDomain: z.string().trim().min(1, t('admin.instances.wizard.validation.parentDomain')),
     realmMode: z.enum(['new', 'existing']),
@@ -352,6 +360,7 @@ export const createInstanceSettingsSchema = () =>
   });
 
 export const buildInstanceSettingsPayload = (values: DetailFormValues) => ({
+  rolelessRedirectUrl: values.rolelessRedirectUrl?.trim() || null,
   displayName: values.displayName.trim(),
   parentDomain: values.parentDomain.trim(),
   realmMode: values.realmMode,

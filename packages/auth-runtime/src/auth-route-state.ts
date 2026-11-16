@@ -171,6 +171,7 @@ export type CallbackDependencies = {
 
 export type AuthMeResolution = {
   readonly instanceDisplayName?: string;
+  readonly rolelessRedirectUrl?: string;
   readonly permissionActions: string[];
   readonly permissionStatus: 'ok' | 'degraded';
   readonly assignedModules: string[];

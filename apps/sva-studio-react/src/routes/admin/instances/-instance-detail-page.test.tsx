@@ -429,11 +429,15 @@ describe('InstanceDetailPage', () => {
         target: { value: ' updated-admin ' },
       }
     );
+    fireEvent.change(screen.getByLabelText('Weiterleitungsziel für Personen ohne Rollen und Berechtigungen'), {
+      target: { value: 'https://portal.example.org/welcome' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Instanz speichern' }));
 
     await waitFor(() => {
       expect(updateInstance).toHaveBeenCalledWith('demo', {
         displayName: 'Demo Updated',
+        rolelessRedirectUrl: 'https://portal.example.org/welcome',
         parentDomain: 'studio.example.org',
         realmMode: 'existing',
         authRealm: 'demo-updated',

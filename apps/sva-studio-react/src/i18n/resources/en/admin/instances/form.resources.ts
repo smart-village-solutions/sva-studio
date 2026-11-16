@@ -1,4 +1,9 @@
 export const formInstancesAdminENResources = {
+  rolelessRedirectUrl: 'Redirect destination for people without roles and permissions',
+  rolelessRedirectHelp:
+    'Full HTTPS address of another website. Leave empty to keep showing the pending access notice. Destinations on this website will not be opened.',
+  invalidRolelessRedirectUrl:
+    'Enter a full HTTPS address without credentials or leave the field empty.',
   general: 'General',
   realmAndClients: 'User database and clients',
   credentials: 'Credentials',

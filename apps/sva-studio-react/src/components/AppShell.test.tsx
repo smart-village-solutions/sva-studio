@@ -6,6 +6,7 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AppShell from './AppShell';
+import * as authNavigation from '../lib/auth-navigation';
 import { setActiveLocale } from '../i18n';
 
 const useAuthMock = vi.fn();
@@ -217,6 +218,47 @@ describe('AppShell', () => {
     useAuthMock.mockReturnValue(auth);
     return auth;
   };
+
+  it('redirects only once after roleless access is confirmed', () => {
+    const auth = setRolelessSession();
+    useAuthMock.mockReturnValue({
+      ...auth,
+      user: { ...auth.user, rolelessRedirectUrl: 'https://portal.example.org/welcome' },
+    });
+    const redirect = vi
+      .spyOn(authNavigation, 'redirectRolelessUser')
+      .mockImplementation(() => undefined);
+    const view = render(<AppShell>Inhalt</AppShell>);
+    view.rerender(<AppShell>Inhalt</AppShell>);
+    expect(redirect).toHaveBeenCalledExactlyOnceWith('https://portal.example.org/welcome');
+    redirect.mockRestore();
+  });
+
+  it.each(['loading', 'degraded', 'permissions', 'roles', 'foreignTenant', 'platform'])(
+    'does not redirect for %s access',
+    (state) => {
+      const auth = setRolelessSession();
+      useAuthMock.mockReturnValue({
+        ...auth,
+        isLoading: state === 'loading',
+        user: {
+          ...auth.user,
+          rolelessRedirectUrl: 'https://portal.example.org/welcome',
+          ...(state === 'degraded' ? { permissionStatus: 'degraded' } : {}),
+          ...(state === 'roles' ? { roles: ['editor'] } : {}),
+        },
+      });
+      if (state === 'permissions') effectiveAccessMock.permissionActions = ['news.read'];
+      if (state === 'foreignTenant') effectiveAccessMock.snapshot.scope.instanceId = 'tenant-b';
+      if (state === 'platform') effectiveAccessMock.snapshot.scope.kind = 'platform';
+      const redirect = vi
+        .spyOn(authNavigation, 'redirectRolelessUser')
+        .mockImplementation(() => undefined);
+      render(<AppShell>Inhalt</AppShell>);
+      expect(redirect).not.toHaveBeenCalled();
+      redirect.mockRestore();
+    }
+  );
 
   it('explains successful registration and pending role assignment on any Studio page', () => {
     setRolelessSession();

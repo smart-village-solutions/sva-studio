@@ -27,6 +27,7 @@ const fields = [
   ['tenantAdminClient.clientId', 'detail-tenant-admin-client-id', 'tenantAdminClientId'],
   ['authClientSecret', 'detail-auth-client-secret', 'authClientSecret'],
   ['tenantAdminClient.secret', 'detail-tenant-admin-client-secret', 'tenantAdminClientSecret'],
+  ['rolelessRedirectUrl', 'detail-roleless-redirect-url', 'rolelessRedirectUrl'],
 ] as const satisfies readonly (readonly [FieldPath<DetailFormValues>, string, string])[];
 
 export const InstanceDetailConfigurationSection = ({
@@ -63,10 +64,27 @@ export const InstanceDetailConfigurationSection = ({
         error: form?.getFieldState(name, form.formState).error,
       });
       return (
-        <StudioField key={name} {...binding} label={t(`admin.instances.form.${label}`)}>
+        <StudioField
+          key={name}
+          {...binding}
+          label={t(`admin.instances.form.${label}`)}
+          description={
+            name === 'rolelessRedirectUrl'
+              ? t('admin.instances.form.rolelessRedirectHelp')
+              : undefined
+          }
+        >
           <Input
             value={value}
-            type={isSecret ? 'password' : name === 'tenantAdminBootstrap.email' ? 'email' : 'text'}
+            type={
+              isSecret
+                ? 'password'
+                : name === 'tenantAdminBootstrap.email'
+                  ? 'email'
+                  : name === 'rolelessRedirectUrl'
+                    ? 'url'
+                    : 'text'
+            }
             disabled={saving || (isSecret && !tenantSecretUserInputRequired)}
             placeholder={
               isSecret
@@ -114,7 +132,10 @@ export const InstanceDetailConfigurationSection = ({
           </div>
           <section className="space-y-3">
             <h2 className="font-medium">{t('admin.instances.form.general')}</h2>
-            <div className="grid gap-3 md:grid-cols-2">{renderFields(0, 2)}</div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {renderFields(0, 2)}
+              {renderFields(12, 13)}
+            </div>
           </section>
           <section className="space-y-3">
             <h2 className="font-medium">{t('admin.instances.wizard.steps.tenantAdmin.title')}</h2>

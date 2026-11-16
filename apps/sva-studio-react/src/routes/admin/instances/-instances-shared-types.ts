@@ -154,6 +154,7 @@ export type CreateFormValues = {
 };
 
 export type DetailFormValues = {
+  rolelessRedirectUrl: string;
   displayName: string;
   parentDomain: string;
   realmMode: IamInstanceDetail['realmMode'];

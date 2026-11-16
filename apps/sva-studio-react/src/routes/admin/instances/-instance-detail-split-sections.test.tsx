@@ -198,6 +198,7 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
   }) as any;
 
 const createDetailFormValues = () => ({
+  rolelessRedirectUrl: '',
   displayName: 'Demo',
   parentDomain: 'studio.example.org',
   realmMode: 'new' as const,
@@ -391,6 +392,10 @@ describe('instance detail split sections', () => {
     fireEvent.change(screen.getByLabelText('Admin-E-Mail', { selector: '#detail-admin-email' }), {
       target: { value: 'updated@example.org' },
     });
+    fireEvent.change(screen.getByLabelText('Weiterleitungsziel für Personen ohne Rollen und Berechtigungen'), {
+      target: { value: 'https://portal.example.org/welcome' },
+    });
+    expect(latestValues.rolelessRedirectUrl).toBe('https://portal.example.org/welcome');
     fireEvent.submit(
       screen.getByRole('button', { name: 'Instanz speichern' }).closest('form') as HTMLFormElement
     );

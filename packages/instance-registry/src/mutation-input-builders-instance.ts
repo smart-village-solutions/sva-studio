@@ -11,6 +11,7 @@ export type CreateInstancePayload = CreateInstancePayloadFields & {
 };
 
 export type UpdateInstancePayload = CreateInstancePayloadFields & {
+  readonly rolelessRedirectUrl?: string | null;
   readonly accountInvitationTemplate?: Omit<AccountInvitationTemplate, 'revision'> | null;
   readonly accountInvitationTemplateRevision?: number;
 };
@@ -56,6 +57,7 @@ export const buildUpdateInstanceInput = (
   actorId: context.actorId,
   requestId: context.requestId,
   themeKey: payload.themeKey,
+  rolelessRedirectUrl: payload.rolelessRedirectUrl,
   featureFlags: payload.featureFlags,
   mainserverConfigRef: payload.mainserverConfigRef,
   accountInvitationTemplate: payload.accountInvitationTemplate,

@@ -1,14 +1,26 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createAccountActionHref, createLoginHref, createSessionExpiredHref, resolveCurrentReturnTo, sanitizeReturnTo } from './auth-navigation';
+import {
+  redirectRolelessUser,
+  createAccountActionHref,
+  createLoginHref,
+  createSessionExpiredHref,
+  resolveCurrentReturnTo,
+  sanitizeReturnTo,
+} from './auth-navigation';
 
 describe('auth-navigation', () => {
-  it.each(['/\\evil.example/path', '/\t/evil.example/path', '/\n/evil.example/path', '/a/../auth/logout', '/a/..//evil.example/path', '/.//evil.example/path', '/%2e//evil.example/path'])(
-    'rejects parser-normalized unsafe return target %j',
-    (value) => {
-      expect(sanitizeReturnTo(value)).toBe('/');
-    }
-  );
+  it.each([
+    '/\\evil.example/path',
+    '/\t/evil.example/path',
+    '/\n/evil.example/path',
+    '/a/../auth/logout',
+    '/a/..//evil.example/path',
+    '/.//evil.example/path',
+    '/%2e//evil.example/path',
+  ])('rejects parser-normalized unsafe return target %j', (value) => {
+    expect(sanitizeReturnTo(value)).toBe('/');
+  });
 
   it('preserves internal paths, encoded values, query strings and fragments', () => {
     expect(sanitizeReturnTo('/admin/users?q=%2F%5C#details')).toBe('/admin/users?q=%2F%5C#details');
@@ -72,7 +84,9 @@ describe('auth-navigation', () => {
     expect(createSessionExpiredHref('/admin/users?page=2')).toBe(
       '/?auth=session-expired&returnTo=%2Fadmin%2Fusers%3Fpage%3D2'
     );
-    expect(createSessionExpiredHref('https://evil.example')).toBe('/?auth=session-expired&returnTo=%2F');
+    expect(createSessionExpiredHref('https://evil.example')).toBe(
+      '/?auth=session-expired&returnTo=%2F'
+    );
   });
 
   it('creates account-action hrefs with a canonical account return target', () => {
@@ -82,5 +96,27 @@ describe('auth-navigation', () => {
     expect(createAccountActionHref('update-email', '/auth/logout')).toBe(
       '/auth/account-action?action=update-email&returnTo=%2F'
     );
+  });
+});
+
+describe('roleless redirect navigation', () => {
+  it('replaces history with the configured external destination', () => {
+    const replace = vi.fn();
+    redirectRolelessUser('https://portal.example.org/welcome', {
+      href: 'https://tenant.example.org/',
+      replace,
+    });
+    expect(replace).toHaveBeenCalledExactlyOnceWith('https://portal.example.org/welcome');
+  });
+  it.each([
+    undefined,
+    '',
+    'javascript:alert(1)',
+    'https://tenant.example.org/',
+    'https://tenant.example.org/another-page',
+  ])('keeps the notice without a safe external target %s', (target) => {
+    const replace = vi.fn();
+    redirectRolelessUser(target, { href: 'https://tenant.example.org/', replace });
+    expect(replace).not.toHaveBeenCalled();
   });
 });

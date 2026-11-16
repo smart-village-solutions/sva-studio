@@ -1628,6 +1628,7 @@ CREATE TABLE iam.instances (
     parent_domain text DEFAULT 'studio.smart-village.app'::text NOT NULL,
     primary_hostname text NOT NULL,
     theme_key text,
+    roleless_redirect_url text,
     feature_flags jsonb DEFAULT '{}'::jsonb NOT NULL,
     mainserver_config_ref text,
     created_by text,

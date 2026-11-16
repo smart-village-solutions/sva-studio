@@ -208,10 +208,12 @@ export const withGuardedTranslationJob = async <T>(
     catalogAssert(lockedJob.rows[0], 'catalog_conflict');
     const job = await jobs(client).getJobById(scope.instanceId, context.job.id);
     assertJobLeaseAndDraft(job, context, draft, input);
+    const { actorAccountId } = job;
+    catalogAssert(actorAccountId, 'catalog_forbidden');
     const organizationId = scope.organizationId ?? undefined;
     const permissions = await loadPermissionsWithClient(client, {
       instanceId: scope.instanceId,
-      keycloakSubject: job.actorAccountId!,
+      keycloakSubject: actorAccountId,
       organizationId,
     });
     catalogAssert(
@@ -232,13 +234,13 @@ export const withGuardedTranslationJob = async <T>(
          SELECT 1 FROM iam.account_organizations ao WHERE ao.instance_id=a.instance_id AND ao.account_id=a.id
            AND ao.organization_id=$3::uuid FOR SHARE OF ao
        )) FOR SHARE OF a`,
-      [scope.instanceId, job.actorAccountId, scope.organizationId]
+      [scope.instanceId, actorAccountId, scope.organizationId]
     );
     catalogAssert(actor.rows[0], 'catalog_forbidden');
     if (scope.organizationId === null) {
       const roles = await loadPersistedEffectiveRoleNames(client, {
         instanceId: scope.instanceId,
-        keycloakSubject: job.actorAccountId!,
+        keycloakSubject: actorAccountId,
       });
       catalogAssert(roles.includes('system_admin'), 'catalog_forbidden');
     }

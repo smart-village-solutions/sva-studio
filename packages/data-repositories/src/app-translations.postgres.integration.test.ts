@@ -111,7 +111,12 @@ describe.skipIf(!url)('fixed catalog PostgreSQL transactions and RLS', () => {
       const english = Object.fromEntries(
         Object.entries(draft.valuesByLocale.de!).map(([key, text]) => [
           key,
-          { ...text, value: Array.isArray(text.value) ? text.value.map((part) => `en: ${part}`) : `en: ${text.value}` },
+          {
+            ...text,
+            value: Array.isArray(text.value)
+              ? text.value.map((part) => `en: ${part}`)
+              : `en: ${text.value}`,
+          },
         ])
       );
       await client.query(

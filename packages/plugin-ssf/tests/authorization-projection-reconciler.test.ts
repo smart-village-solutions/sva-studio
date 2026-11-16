@@ -51,6 +51,7 @@ const fixtures = (desired = projection()) => {
     withTenantLock: vi.fn(async (_instanceId, operation) => operation(lockedStore)),
   } satisfies SsfAuthorizationProjectionStore;
   const target = {
+    resolveProjection: vi.fn(async (desired: SsfAuthorizationProjection) => desired),
     prepareLoginClients: vi.fn(async () => undefined),
     prepareRuntimeBaseline: vi.fn(async () => undefined),
     isReady: vi.fn(async () => true),

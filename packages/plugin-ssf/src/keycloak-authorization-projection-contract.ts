@@ -62,6 +62,7 @@ export type SsfKeycloakProjectionTenant = Readonly<{
 }>;
 
 export type SsfKeycloakProjectionTargetDependencies = Readonly<{
+  onMissingSubjects?: (instanceId: string, subjects: readonly string[]) => void | Promise<void>;
   prepareLoginClients?: (instanceId: string) => Promise<void>;
   prepareRuntimeBaseline?: (instanceId: string) => Promise<void>;
   readLoginReadiness?: (instanceId: string) => Promise<boolean>;

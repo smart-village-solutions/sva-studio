@@ -43,6 +43,17 @@ const readStudioSsfProvisioningLoginBaselineReadiness = async (
 
 export const createStudioSsfAuthorizationProjectionTarget = (authRealm?: string) =>
   createConfiguredSsfKeycloakAuthorizationProjectionTarget({
+    onMissingSubjects: async (instanceId, subjects) => {
+      const { createSdkLogger } = await import('@sva/server-runtime');
+      createSdkLogger({ component: 'ssf-authorization-projection', level: 'info' }).warn(
+        'ssf_authorization_projection_subjects_missing',
+        {
+          operation: 'ssf_authorization_projection_resolve',
+          instance_id: instanceId,
+          missing_subject_count: subjects.length,
+        }
+      );
+    },
     resolveTenant: (instanceId) =>
       resolveInstanceKeycloakProjectionTenant(instanceId, SSF_LOGIN_CLIENT_ID, authRealm),
     prepareLoginClients: async (instanceId) => {

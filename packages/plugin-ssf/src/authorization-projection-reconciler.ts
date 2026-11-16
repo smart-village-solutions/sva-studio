@@ -1,4 +1,5 @@
 import {
+  areSsfAuthorizationProjectionsEqual,
   normalizeSsfAuthorizationProjection,
   type SsfAuthorizationProjection,
 } from './authorization-projection.js';
@@ -40,6 +41,8 @@ export type SsfAuthorizationProjectionInput =
       readDesired: () => Promise<SsfAuthorizationProjection>;
     }>;
 export interface SsfAuthorizationProjectionTarget {
+  /** Resolve a complete target snapshot before staging the effective subject set. */
+  resolveProjection(projection: SsfAuthorizationProjection): Promise<SsfAuthorizationProjection>;
   prepareLoginClients(instanceId: string): Promise<void>;
   prepareRuntimeBaseline(instanceId: string): Promise<void>;
   isReady(instanceId: string, authorizationRevision: string): Promise<boolean>;
@@ -48,6 +51,14 @@ export interface SsfAuthorizationProjectionTarget {
   readBack(instanceId: string): Promise<SsfAuthorizationProjection>;
   revokeTenantSessions(instanceId: string, authorizationRevision: string): Promise<void>;
   resumeTokenIssuance(instanceId: string): Promise<void>;
+}
+
+/** A concurrent account deletion requires a fresh effective projection, not a tenant failure. */
+export class SsfProjectionSubjectsChangedError extends Error {
+  constructor() {
+    super('ssf_keycloak_projection_subject_missing');
+    this.name = 'SsfProjectionSubjectsChangedError';
+  }
 }
 type SsfProjectionFailureReason =
   | 'login_client_preparation_failed'
@@ -134,7 +145,8 @@ const requireTenantReadiness = async (
 const reconcileClaimedProjection = async (
   dependencies: SsfAuthorizationProjectionReconcilerDependencies,
   store: SsfAuthorizationProjectionLockedStore,
-  staged: SsfAuthorizationProjectionState
+  staged: SsfAuthorizationProjectionState,
+  retrySubjectChanges: boolean
 ): Promise<SsfAuthorizationProjectionReconcileResult> => {
   let readBack: SsfAuthorizationProjection;
   try {
@@ -147,6 +159,7 @@ const reconcileClaimedProjection = async (
     try {
       await dependencies.target.reconcile(staged.desiredProjection, staged.desiredRevision);
     } catch (error) {
+      if (retrySubjectChanges && error instanceof SsfProjectionSubjectsChangedError) throw error;
       throw new SsfProjectionPhaseError(
         isTargetIntegrityFailure(error) ? 'target_integrity_failed' : 'target_write_failed'
       );
@@ -155,6 +168,22 @@ const reconcileClaimedProjection = async (
       readBack = await dependencies.target.readBack(staged.instanceId);
     } catch {
       throw new SsfProjectionPhaseError('target_readback_failed');
+    }
+
+    if (
+      retrySubjectChanges &&
+      !areSsfAuthorizationProjectionsEqual(staged.desiredProjection, readBack)
+    ) {
+      const effectiveDesired = await dependencies.target.resolveProjection(
+        staged.desiredProjection
+      );
+      // Retry only a deletion-only mismatch. Incorrect surviving claims remain an integrity failure.
+      if (
+        !areSsfAuthorizationProjectionsEqual(staged.desiredProjection, effectiveDesired) &&
+        areSsfAuthorizationProjectionsEqual(effectiveDesired, readBack)
+      ) {
+        throw new SsfProjectionSubjectsChangedError();
+      }
     }
 
     const confirmed = await store.confirmReadBack({
@@ -195,6 +224,7 @@ const reconcileClaimedProjection = async (
       changed: true,
     };
   } catch (error) {
+    if (retrySubjectChanges && error instanceof SsfProjectionSubjectsChangedError) throw error;
     // Re-close the browser client after failures during activation or read-back.
     // A failed compensation still leaves the persistent projection blocked.
     await dependencies.target.suspendTokenIssuance(staged.instanceId).catch(() => undefined);
@@ -212,7 +242,8 @@ const reconcileClaimedProjection = async (
 const reconcileLockedProjection = async (
   dependencies: SsfAuthorizationProjectionReconcilerDependencies,
   store: SsfAuthorizationProjectionLockedStore,
-  desired: SsfAuthorizationProjection
+  desired: SsfAuthorizationProjection,
+  retrySubjectChanges: boolean
 ): Promise<SsfAuthorizationProjectionReconcileResult> => {
   const staged = await store.stage(desired);
   if (
@@ -236,7 +267,7 @@ const reconcileLockedProjection = async (
     desiredRevision: staged.desiredRevision,
   });
   return claimed
-    ? reconcileClaimedProjection(dependencies, store, staged)
+    ? reconcileClaimedProjection(dependencies, store, staged, retrySubjectChanges)
     : { status: 'busy', generation: staged.generation };
 };
 
@@ -249,11 +280,29 @@ export const createSsfAuthorizationProjectionReconciler =
       'readDesired' in input ? undefined : normalizeSsfAuthorizationProjection(input);
     const instanceId = directDesired?.instanceId ?? input.instanceId;
     return dependencies.store.withTenantLock(instanceId, async (store) => {
-      const desired = 'readDesired' in input ? await input.readDesired() : directDesired!;
-      const normalizedDesired = normalizeSsfAuthorizationProjection(desired);
-      if (normalizedDesired.instanceId !== instanceId) {
-        throw new Error('ssf_authorization_projection_tenant_mismatch');
+      // Bound retries when external deletions race with listing, writes or read-back.
+      for (let attempt = 0; ; attempt++) {
+        const desired = 'readDesired' in input ? await input.readDesired() : directDesired!;
+        const normalizedDesired = normalizeSsfAuthorizationProjection(desired);
+        if (normalizedDesired.instanceId !== instanceId) {
+          throw new Error('ssf_authorization_projection_tenant_mismatch');
+        }
+        const effectiveDesired = normalizeSsfAuthorizationProjection(
+          await dependencies.target.resolveProjection(normalizedDesired)
+        );
+        if (effectiveDesired.instanceId !== instanceId) {
+          throw new Error('ssf_authorization_projection_tenant_mismatch');
+        }
+        try {
+          return await reconcileLockedProjection(
+            dependencies,
+            store,
+            effectiveDesired,
+            attempt < 2
+          );
+        } catch (error) {
+          if (!(error instanceof SsfProjectionSubjectsChangedError)) throw error;
+        }
       }
-      return reconcileLockedProjection(dependencies, store, normalizedDesired);
     });
   };

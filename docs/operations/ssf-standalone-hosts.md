@@ -405,6 +405,24 @@ Directory und ein erfolgreicher Browser-Login gemeinsam nachzuweisen. Eine leere
 Projektion bleibt auch nach Migration `0006` unveröffentlicht. Historische Konten
 anderer Realms werden für diesen Nachweis nicht automatisch übernommen.
 
+Extern in Keycloak gelöschte Benutzer sperren den SSF-Zugang der übrigen
+Organisationsmitglieder nicht. Der Abgleich liest zunächst alle Benutzerseiten
+des gebundenen Tenant-Realms und speichert nur die dort vorhandenen Subjekte als
+effektive Soll-Projektion. Der anschließende Read-back bestätigt genau diese
+bereinigte Projektion. Die IAM-Konten und deren Rollenzuordnungen bleiben
+unverändert; es erfolgt weder eine automatische Löschung noch eine Neuanlage in
+Keycloak. Die Warnung `ssf_authorization_projection_subjects_missing` meldet
+Instanz und Anzahl fehlender Subjekte ohne personenbezogene Profildaten.
+
+Ein Löschvorgang während des Schreibens oder vor dem Read-back löst innerhalb
+derselben Instanzsperre einen erneuten Abgleich mit einer frisch aufgelösten
+Soll-Projektion aus. Nach höchstens drei Versuchen greift wieder die reguläre
+Fehlerbehandlung. Fehlgeschlagene Benutzerseiten, verweigerte Schreibzugriffe,
+Profilfehler und sonstige Abweichungen beim Read-back bleiben Fehler; sie dürfen
+nicht als gelöschte Benutzer interpretiert werden. Sind alle berechtigten
+Keycloak-Benutzer gelöscht, ist eine leere Projektion technisch konsistent,
+veröffentlicht die Organisation aber weiterhin nicht im Login-Verzeichnis.
+
 Bei einer neuen Kasseler Instanz führt der persistente Elternlauf vor der
 Aktivierung außerdem den tenantlokalen Rollenabgleich und die Rechteprobe aus.
 `active` ist deshalb erst zulässig, wenn `system_admin` synchronisiert ist und

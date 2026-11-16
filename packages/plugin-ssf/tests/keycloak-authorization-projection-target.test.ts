@@ -2,12 +2,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createConfiguredSsfKeycloakAuthorizationProjectionTarget,
+  createSsfAuthorizationProjectionReconciler,
   createSsfAuthorizationRevision,
   createSsfKeycloakAuthorizationProjectionTarget,
+  areSsfAuthorizationProjectionsEqual,
   SSF_AUTHORIZATION_PROJECTION_VERSION,
   SSF_TOKEN_CLAIMS,
   type SsfAuthorizationProjection,
   type SsfKeycloakProjectionClient,
+  type SsfAuthorizationProjectionLockedStore,
 } from '../src/runtime.js';
 
 const desiredProjection = (instanceId = 'tenant-a'): SsfAuthorizationProjection => ({
@@ -71,12 +74,253 @@ const createClient = () => {
         },
       });
     }),
-    setOidcClientEnabled: vi.fn(async () => undefined),
+    setOidcClientEnabled: vi.fn<(clientId: string, enabled: boolean) => Promise<void>>(
+      async () => undefined
+    ),
   } satisfies SsfKeycloakProjectionClient;
   return { attributes, client };
 };
 
 describe('SSF Keycloak authorization projection target', () => {
+  const reconcileFixture = () => {
+    const { attributes, client } = createClient();
+    let enabled = true;
+    client.setOidcClientEnabled.mockImplementation(async (_clientId, value) => {
+      enabled = value;
+    });
+    const onMissingSubjects = vi.fn();
+    const target = createSsfKeycloakAuthorizationProjectionTarget({
+      resolveTenant: async (instanceId) => ({ instanceId, clientId: 'ssf', client }),
+      prepareLoginClients: async () => undefined,
+      prepareRuntimeBaseline: async () => undefined,
+      readLoginReadiness: async () => enabled,
+      revokeSsfTenantSessions: async () => undefined,
+      onMissingSubjects,
+    });
+    let confirmed: SsfAuthorizationProjection | undefined;
+    const store = {
+      stage: vi.fn(async (desired: SsfAuthorizationProjection) => ({
+        instanceId: desired.instanceId,
+        generation: 1,
+        status: 'pending' as const,
+        desiredRevision: createSsfAuthorizationRevision(desired),
+        desiredProjection: desired,
+        confirmedRevision: null,
+        confirmedProjection: null,
+        sessionsRevokedRevision: null,
+        lastErrorCode: null,
+      })),
+      claim: async () => true,
+      confirmReadBack: async ({ desired, readBack }) => {
+        if (!areSsfAuthorizationProjectionsEqual(desired, readBack)) return false;
+        confirmed = readBack;
+        return true;
+      },
+      markReady: async () => true,
+      markBlocked: vi.fn(async () => true),
+    } satisfies SsfAuthorizationProjectionLockedStore;
+    const reconcile = createSsfAuthorizationProjectionReconciler({
+      target,
+      store: { withTenantLock: async (_instanceId, work) => work(store) },
+    });
+    return {
+      attributes,
+      client,
+      target,
+      store,
+      reconcile,
+      onMissingSubjects,
+      enabled: () => enabled,
+      confirmed: () => confirmed,
+    };
+  };
+
+  it('keeps the tenant ready when IAM still grants permissions to a deleted Keycloak administrator', async () => {
+    const fixture = reconcileFixture();
+    const desired = desiredProjection();
+    desired.subjects.push({
+      subject: 'deleted-admin',
+      roles: ['tenant_admin'],
+      permissions: ['ssf.configuration.tenant.manage'],
+    });
+
+    await expect(fixture.reconcile(desired)).resolves.toMatchObject({ status: 'ready' });
+
+    expect(fixture.confirmed()).toEqual(desiredProjection());
+    expect(fixture.enabled()).toBe(true);
+    expect(fixture.attributes.has('deleted-admin')).toBe(false);
+    expect(desired.subjects).toHaveLength(2);
+    expect(fixture.onMissingSubjects).toHaveBeenCalledWith('tenant-a', ['deleted-admin']);
+    expect(fixture.store.markBlocked).not.toHaveBeenCalled();
+  });
+
+  it('does not treat a failed later Keycloak page as proof that accounts were deleted', async () => {
+    const fixture = reconcileFixture();
+    fixture.client.listUsers
+      .mockResolvedValueOnce(
+        Array.from({ length: 100 }, (_, index) => ({
+          externalId: `page-user-${index}`,
+          attributes: {},
+        }))
+      )
+      .mockRejectedValueOnce(new Error('keycloak_unavailable'));
+
+    await expect(fixture.reconcile(desiredProjection())).rejects.toThrow('keycloak_unavailable');
+
+    expect(fixture.enabled()).toBe(true);
+    expect(fixture.store.stage).not.toHaveBeenCalled();
+    expect(fixture.onMissingSubjects).not.toHaveBeenCalled();
+  });
+
+  it('publishes an empty verified projection when every entitled account was deleted', async () => {
+    const fixture = reconcileFixture();
+    fixture.attributes.delete('user-1');
+
+    await expect(fixture.reconcile(desiredProjection())).resolves.toMatchObject({
+      status: 'ready',
+    });
+
+    expect(fixture.confirmed()).toEqual({ ...desiredProjection(), subjects: [] });
+    expect(fixture.enabled()).toBe(true);
+  });
+
+  it.each(['before-write', 'during-write', 'before-readback'] as const)(
+    'reconciles the remaining accounts after a concurrent deletion %s',
+    async (phase) => {
+      const fixture = reconcileFixture();
+      fixture.attributes.set('user-2', { locale: ['de'] });
+      const desired = desiredProjection();
+      desired.subjects.push({
+        subject: 'user-2',
+        roles: ['user'],
+        permissions: ['ssf.configuration.tenant.read'],
+      });
+      const originalList = fixture.client.listUsers.getMockImplementation();
+      if (!originalList) throw new Error('missing_list_fixture');
+      let reads = 0;
+      fixture.client.listUsers.mockImplementation(async (query) => {
+        reads++;
+        if (
+          (phase === 'before-write' && reads === 2) ||
+          (phase === 'before-readback' && reads === 3)
+        )
+          fixture.attributes.delete('user-1');
+        return originalList(query);
+      });
+      const originalUpdate = fixture.client.updateUser.getMockImplementation();
+      if (!originalUpdate) throw new Error('missing_update_fixture');
+      fixture.client.updateUser.mockImplementation(async (id, input) => {
+        if (phase === 'during-write' && id === 'user-1') {
+          fixture.attributes.delete(id);
+          throw Object.assign(new Error('not_found'), { statusCode: 404 });
+        }
+        return originalUpdate(id, input);
+      });
+
+      await expect(fixture.reconcile(desired)).resolves.toMatchObject({ status: 'ready' });
+
+      expect(fixture.confirmed()?.subjects).toEqual([
+        {
+          subject: 'user-2',
+          roles: ['user'],
+          permissions: ['ssf.configuration.tenant.read'],
+        },
+      ]);
+      expect(fixture.enabled()).toBe(true);
+      expect(fixture.store.markBlocked).not.toHaveBeenCalled();
+    }
+  );
+
+  it('keeps a genuine Keycloak write denial blocked instead of treating it as a deletion', async () => {
+    const fixture = reconcileFixture();
+    fixture.client.updateUser.mockRejectedValue(
+      Object.assign(new Error('forbidden'), { statusCode: 403 })
+    );
+
+    await expect(fixture.reconcile(desiredProjection())).resolves.toMatchObject({
+      status: 'blocked',
+      reason: 'target_write_failed',
+    });
+
+    expect(fixture.enabled()).toBe(false);
+    expect(fixture.confirmed()).toBeUndefined();
+    expect(fixture.onMissingSubjects).not.toHaveBeenCalled();
+  });
+
+  it('keeps a corrupted read-back blocked even when an unrelated account was deleted', async () => {
+    const fixture = reconcileFixture();
+    const originalUpdate = fixture.client.updateUser.getMockImplementation();
+    if (!originalUpdate) throw new Error('missing_update_fixture');
+    fixture.client.updateUser.mockImplementation(async (id, input) =>
+      originalUpdate(id, {
+        attributes:
+          id === 'user-1'
+            ? { ...input.attributes, [SSF_TOKEN_CLAIMS.permissions]: [] }
+            : input.attributes,
+      })
+    );
+    const desired = desiredProjection();
+    desired.subjects.push({
+      subject: 'deleted-admin',
+      roles: ['tenant_admin'],
+      permissions: ['ssf.configuration.tenant.manage'],
+    });
+
+    await expect(fixture.reconcile(desired)).resolves.toMatchObject({
+      status: 'blocked',
+      reason: 'target_readback_mismatch',
+    });
+
+    expect(fixture.enabled()).toBe(false);
+    expect(fixture.confirmed()).toBeUndefined();
+  });
+
+  it('bounds retries when Keycloak keeps reporting not-found writes for a listed user', async () => {
+    const fixture = reconcileFixture();
+    fixture.client.updateUser.mockRejectedValue(
+      Object.assign(new Error('not_found'), { statusCode: 404 })
+    );
+
+    await expect(fixture.reconcile(desiredProjection())).resolves.toMatchObject({
+      status: 'blocked',
+      reason: 'target_write_failed',
+    });
+
+    expect(fixture.store.stage).toHaveBeenCalledTimes(3);
+    expect(fixture.enabled()).toBe(false);
+  });
+
+  it('does not conceal corrupted surviving claims behind a simultaneous account deletion', async () => {
+    const fixture = reconcileFixture();
+    fixture.attributes.set('user-2', { locale: ['de'] });
+    const desired = desiredProjection();
+    desired.subjects.push({
+      subject: 'user-2',
+      roles: ['user'],
+      permissions: ['ssf.configuration.tenant.read'],
+    });
+    const originalList = fixture.client.listUsers.getMockImplementation();
+    if (!originalList) throw new Error('missing_list_fixture');
+    let reads = 0;
+    fixture.client.listUsers.mockImplementation(async (query) => {
+      if (++reads === 3) {
+        fixture.attributes.delete('user-1');
+        const survivor = fixture.attributes.get('user-2');
+        if (!survivor) throw new Error('missing_survivor_fixture');
+        survivor[SSF_TOKEN_CLAIMS.permissions] = [];
+      }
+      return originalList(query);
+    });
+
+    await expect(fixture.reconcile(desired)).resolves.toMatchObject({
+      status: 'blocked',
+      reason: 'target_readback_mismatch',
+    });
+
+    expect(fixture.enabled()).toBe(false);
+    expect(fixture.confirmed()).toBeUndefined();
+  });
+
   it('allows projection without SSF control-plane configuration', async () => {
     const { client } = createClient();
     const target = createConfiguredSsfKeycloakAuthorizationProjectionTarget({

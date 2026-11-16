@@ -54,5 +54,5 @@ it('explains the temporary ownership transfer protection', () => {
         'content_transfer_temporarily_disabled'
       )
     )
-  ).toBe(t('content.ownership.temporarilyDisabled'));
+  ).toBe(t('content.errors.ownershipTransferTemporarilyDisabled'));
 });

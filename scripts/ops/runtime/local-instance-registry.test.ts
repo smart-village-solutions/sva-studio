@@ -19,8 +19,8 @@ describe('buildLocalInstanceRegistryReconciliationInput', () => {
     ['Studio', 'reserved_tenant_hostname'],
     ['AUTH', 'reserved_tenant_hostname'],
     ['admin', 'root_host_collision'],
-    ['Admin', 'invalid_instance_id'],
-  ])('rejects reserved reconciliation host %s', (id, reason) => {
+    ['Admin', 'root_host_collision'],
+  ])('rejects reserved or root-colliding host %s', (id, reason) => {
     expect(() => buildLocalInstanceRegistryReconciliationInput({
       SVA_PARENT_DOMAIN: 'example.org', SVA_STUDIO_ROOT_HOST: 'admin.example.org', SVA_ALLOWED_INSTANCE_IDS: id,
     })).toThrow(`${id} (${reason})`);

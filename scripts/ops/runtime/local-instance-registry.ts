@@ -44,17 +44,17 @@ const normalizeAllowedInstanceIds = (value: readonly string[]) =>
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
 
-// Mirrors the app's allowlist contract (server-runtime instance config). The raw ID is validated
+// Same checks in the same order as the app's allowlist validation (server-runtime instance config):
+// reserved name, root host collision, then the canonical DNS-label rule. The raw ID is validated
 // verbatim because it is carried unchanged into the generated SQL; nothing is renamed.
 const findAllowedInstanceIdViolation = (id: string, parentDomain: string, rootHost: string): string | null => {
   if (isReservedTenantHostname(id)) {
     return 'reserved_tenant_hostname';
   }
-  if (!isValidInstanceId(id)) {
-    return 'invalid_instance_id';
+  if (classifyHost(`${id}.${parentDomain}`, parentDomain, rootHost).kind === 'root') {
+    return 'root_host_collision';
   }
-  // For a valid parent domain and a canonical ID, the only remaining non-tenant outcome is the root host.
-  return classifyHost(`${id}.${parentDomain}`, parentDomain, rootHost).kind === 'tenant' ? null : 'root_host_collision';
+  return isValidInstanceId(id) ? null : 'invalid_instance_id';
 };
 
 const assertValidAllowlistConfiguration = (ids: readonly string[], parentDomain: string, rootHost: string) => {

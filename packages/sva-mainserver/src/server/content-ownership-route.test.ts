@@ -796,6 +796,39 @@ describe('Mainserver content ownership route', () => {
     );
   });
 
+  it('records an explicit provider rejection without treating a target read as success', async () => {
+    state.transfer.mockRejectedValueOnce(
+      new SvaMainserverError({
+        code: 'content_transfer_provider_rejected',
+        message: 'Der Mainserver hat die Übertragung abgelehnt.',
+        statusCode: 409,
+      })
+    );
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(409);
+    expect(state.getNews).not.toHaveBeenCalledWith(
+      expect.objectContaining({ activeOrganizationId: target.connection.activeOrganizationId })
+    );
+    expect(state.finalize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerOutcome: 'failed',
+        reconciliationStatus: 'complete',
+        completedSteps: ['provider_write_rejected'],
+      })
+    );
+  });
+
   it('distinguishes failed source enrichment in the transfer audit', async () => {
     state.resolveSource.mockRejectedValueOnce(new Error('database unavailable'));
 

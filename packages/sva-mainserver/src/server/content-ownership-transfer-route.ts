@@ -62,7 +62,11 @@ const finalizeUnclearTransfer = async (input: {
   ownershipTransfer: OwnershipTransferAudit;
   error: unknown;
 }): Promise<Response | null> => {
-  const evidence = await verifyTransferResult(input);
+  const providerRejected =
+    input.error instanceof SvaMainserverError &&
+    (input.error.code === 'content_transfer_provider_rejected' ||
+      input.error.code === 'content_transfer_temporarily_disabled');
+  const evidence = providerRejected ? 'rejected' : await verifyTransferResult(input);
   if (evidence === 'target') {
     try {
       await finalizeMainserverMutation({
@@ -89,14 +93,15 @@ const finalizeUnclearTransfer = async (input: {
     input.error instanceof SvaMainserverError
       ? input.error.code
       : 'content_transfer_provider_rejected';
-  if (evidence === 'source') {
+  if (evidence === 'source' || evidence === 'rejected') {
     await finalizeMainserverMutation({
       actor: input.actor,
       providerOutcome: 'failed',
       reconciliationStatus: 'complete',
-      completedSteps: ['actor_reread_confirmed'],
+      completedSteps:
+        evidence === 'source' ? ['actor_reread_confirmed'] : ['provider_write_rejected'],
       contentId: input.route.contentId,
-      observedDataProviderId: input.sourceDataProviderId,
+      ...(evidence === 'source' ? { observedDataProviderId: input.sourceDataProviderId } : {}),
       lastErrorCode: errorCode,
       ownershipTransfer: input.ownershipTransfer,
     });

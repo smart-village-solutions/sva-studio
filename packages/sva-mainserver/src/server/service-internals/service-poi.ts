@@ -7,7 +7,7 @@ import {
   svaMainserverChangeNewsVisibilityDocument,
   type SvaMainserverChangeNewsVisibilityMutation,
 } from '../../generated/news-visibility.js';
-import { transferContentOwnership } from './content-ownership-transfer.js';
+import { createContentOwnershipTransfer } from './content-ownership-transfer.js';
 import { mergePoiUpdateWithCurrent } from './editor-field-matrices.js';
 import type { ServiceContext } from './service-context.js';
 import { toSvaMainserverError, withUpdatedPayload } from './shared.js';
@@ -99,7 +99,10 @@ export const createPoiService = ({
     updatePoi,
     deletePoi,
     changePoiVisibility,
-    transferContentOwnership,
+    transferContentOwnership: createContentOwnershipTransfer({
+      loadValidatedInstanceConfig,
+      executeGraphqlWithConfig,
+    }),
     createOrUpdateStaticContent,
   };
 };

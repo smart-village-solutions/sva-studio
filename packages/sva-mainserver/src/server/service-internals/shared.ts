@@ -14,6 +14,7 @@ type GraphqlResponse<TResult> = {
   readonly data?: TResult;
   readonly errors?: readonly {
     readonly message?: string;
+    readonly extensions?: { readonly code?: string };
   }[];
 };
 
@@ -40,6 +41,7 @@ export type GraphqlOperationInput = SvaMainserverConnectionInput & {
   readonly document: string;
   readonly operationName: string;
   readonly variables?: Record<string, unknown>;
+  readonly mapErrorCode?: (code: string) => SvaMainserverError | undefined;
   readonly allowRetry?: boolean;
 };
 
@@ -62,7 +64,14 @@ export const MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS = 10_000;
 
 const graphqlResponseSchema = z.object({
   data: z.unknown().optional(),
-  errors: z.array(z.object({ message: z.string().optional() })).optional(),
+  errors: z
+    .array(
+      z.object({
+        message: z.string().optional(),
+        extensions: z.object({ code: z.string().optional() }).optional().catch(undefined),
+      })
+    )
+    .optional(),
 });
 
 export const toSvaMainserverError = (input: {
@@ -166,7 +175,10 @@ export const normalizeVisibleListQuery = (
   };
 };
 
-export const parseGraphqlPayload = <TResult>(payload: unknown): TResult => {
+export const parseGraphqlPayload = <TResult>(
+  payload: unknown,
+  mapErrorCode?: GraphqlOperationInput['mapErrorCode']
+): TResult => {
   const payloadResult = graphqlResponseSchema.safeParse(payload);
   if (!payloadResult.success) {
     throw toSvaMainserverError({
@@ -178,6 +190,9 @@ export const parseGraphqlPayload = <TResult>(payload: unknown): TResult => {
 
   const result = payloadResult.data as GraphqlResponse<TResult>;
   if (result.errors && result.errors.length > 0) {
+    const code = result.errors.length === 1 ? result.errors[0]?.extensions?.code : undefined;
+    const mappedError = code ? mapErrorCode?.(code) : undefined;
+    if (mappedError) throw mappedError;
     const errorMessages = result.errors
       .map((error) => error.message?.trim())
       .filter((message): message is string => Boolean(message));

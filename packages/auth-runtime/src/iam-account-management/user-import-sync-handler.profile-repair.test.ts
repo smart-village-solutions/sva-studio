@@ -524,6 +524,46 @@ describe('user-import-sync-handler profile repair characterization', () => {
     expect(state.upsertIdentityUser).not.toHaveBeenCalled();
   });
 
+  it('keeps a read-only name rejection mixed with an incomplete Keycloak error fail-closed', async () => {
+    const { KeycloakAdminRequestError } = await import('../keycloak-admin-client.js');
+    const { buildErrorDetails } = await import('../keycloak-admin-client/transport-error.js');
+    const details = await buildErrorDetails(
+      new Response(
+        JSON.stringify({
+          errors: [
+            { field: 'firstName', errorMessage: 'error-user-attribute-read-only' },
+            { field: 'email' },
+          ],
+        }),
+        { status: 400 }
+      ),
+      'update_user',
+      1_000
+    );
+    const incompleteError = new KeycloakAdminRequestError({
+      ...details,
+      statusCode: 400,
+      code: 'http_400',
+      retryable: false,
+    });
+
+    await expect(
+      runSync({
+        user: createUser({ firstName: undefined }),
+        seed: { firstName: 'Seed' },
+        updateUser: async () => {
+          throw incompleteError;
+        },
+      })
+    ).rejects.toBe(incompleteError);
+
+    expect(state.upsertIdentityUser).not.toHaveBeenCalled();
+    expect(state.logger.warn).not.toHaveBeenCalledWith(
+      'Optional Keycloak user name repair skipped during IAM sync',
+      expect.anything()
+    );
+  });
+
   it('keeps a required email repair failure blocking', async () => {
     const user = createUser({ email: undefined });
 

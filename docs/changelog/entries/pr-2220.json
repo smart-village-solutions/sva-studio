@@ -1,0 +1,4 @@
+{
+  "prNumber": 2220,
+  "body": "Der Keycloak-Benutzerimport übernimmt einen Benutzer ohne Namensreparatur nur noch dann, wenn Keycloak ausschließlich schreibgeschützte Vor- oder Nachnamen ablehnt und jeder gemeldete Fehler eindeutig ist. Unvollständige Fehlereinträge in der Keycloak-Antwort gehen nicht mehr verloren, sondern stoppen den Import. Die Diagnosemeldung nennt alle betroffenen Felder und Fehlercodes, ohne Eingabewerte wiederzugeben."
+}

@@ -524,19 +524,40 @@ describe('user-import-sync-handler profile repair characterization', () => {
     expect(state.upsertIdentityUser).not.toHaveBeenCalled();
   });
 
-  it('keeps a read-only name rejection mixed with an incomplete Keycloak error fail-closed', async () => {
+  it.each([
+    {
+      name: 'an incomplete error entry',
+      body: {
+        errors: [
+          { field: 'firstName', errorMessage: 'error-user-attribute-read-only' },
+          { field: 'email' },
+        ],
+      },
+    },
+    {
+      name: 'an error nested inside the name entry',
+      body: {
+        errors: [
+          {
+            field: 'firstName',
+            errorMessage: 'error-user-attribute-read-only',
+            errors: [{ field: 'email', errorMessage: 'error-invalid-email' }],
+          },
+        ],
+      },
+    },
+    {
+      name: 'a request-level OAuth error',
+      body: {
+        error: 'invalid_request',
+        errors: [{ field: 'firstName', errorMessage: 'error-user-attribute-read-only' }],
+      },
+    },
+  ])('keeps a read-only name rejection mixed with $name fail-closed', async ({ body }) => {
     const { KeycloakAdminRequestError } = await import('../keycloak-admin-client.js');
     const { buildErrorDetails } = await import('../keycloak-admin-client/transport-error.js');
     const details = await buildErrorDetails(
-      new Response(
-        JSON.stringify({
-          errors: [
-            { field: 'firstName', errorMessage: 'error-user-attribute-read-only' },
-            { field: 'email' },
-          ],
-        }),
-        { status: 400 }
-      ),
+      new Response(JSON.stringify(body), { status: 400 }),
       'update_user',
       1_000
     );

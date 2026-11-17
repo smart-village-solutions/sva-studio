@@ -40,6 +40,11 @@ describe('buildErrorDetails', () => {
       entry: { field: 'email', errorMessage: '' },
       expected: { field: 'email' },
     },
+    {
+      name: 'with a whitespace-only errorMessage',
+      entry: { field: 'email', errorMessage: '   ' },
+      expected: { field: 'email' },
+    },
     { name: 'with a non-string errorMessage', entry: { errorMessage: 42 }, expected: {} },
     { name: 'as an empty object', entry: {}, expected: {} },
     { name: 'as null', entry: null, expected: {} },
@@ -59,6 +64,32 @@ describe('buildErrorDetails', () => {
     const details = await parseJson({ errors: 'boom' });
 
     expect(details.fieldErrors).toEqual([{ code: KEYCLOAK_UNCLASSIFIED_ERROR_CODE }]);
+  });
+
+  it('keeps errors nested inside a nested entry', async () => {
+    const details = await parseJson({
+      errors: [
+        {
+          field: 'firstName',
+          errorMessage: READ_ONLY,
+          errors: [{ field: 'email', errorMessage: 'error-invalid-email' }, { field: 'username' }],
+        },
+      ],
+    });
+
+    expect(details.fieldErrors).toEqual([
+      { field: 'firstName', code: READ_ONLY },
+      { field: 'email', code: 'error-invalid-email' },
+      { field: 'username', code: KEYCLOAK_UNCLASSIFIED_ERROR_CODE },
+    ]);
+  });
+
+  it('flattens a nested pure container without inventing an extra entry', async () => {
+    const details = await parseJson({
+      errors: [{ errors: [{ field: 'lastName', errorMessage: READ_ONLY }] }],
+    });
+
+    expect(details.fieldErrors).toEqual([{ field: 'lastName', code: READ_ONLY }]);
   });
 
   it('parses a single nested error object instead of dropping it', async () => {
@@ -119,38 +150,65 @@ describe('buildErrorDetails', () => {
     });
 
     expect(details).toEqual({
-      message: `Keycloak update_user failed: Invalid profile; lastName: ${READ_ONLY}`,
-      fieldErrors: [{ field: 'lastName', code: READ_ONLY }],
+      message: `Keycloak update_user failed: Invalid profile; invalid_request; lastName: ${READ_ONLY}`,
+      fieldErrors: [{ code: 'invalid_request' }, { field: 'lastName', code: READ_ONLY }],
     });
+  });
+
+  it('keeps an OAuth description without error code as an unclassified request-level error', async () => {
+    const details = await parseJson({
+      error_description: 'Invalid profile',
+      errors: [{ field: 'firstName', errorMessage: READ_ONLY }],
+    });
+
+    expect(details.fieldErrors).toEqual([
+      { code: KEYCLOAK_UNCLASSIFIED_ERROR_CODE },
+      { field: 'firstName', code: READ_ONLY },
+    ]);
   });
 
   it.each([
     [{ error: 'invalid_grant' }, 'Keycloak update_user failed: invalid_grant'],
     [
       { error: 'invalid_grant', error_description: 'Token expired' },
-      'Keycloak update_user failed: Token expired',
+      'Keycloak update_user failed: Token expired; invalid_grant',
     ],
     [
       { errorMessage: 'error-user-attribute-required', params: ['email'] },
-      'Keycloak update_user failed: error-user-attribute-required ([REDACTED])',
+      'Keycloak update_user failed: error-user-attribute-required (email)',
     ],
   ])('builds a readable message for %j', async (payload, message) => {
     await expect(parseJson(payload)).resolves.toMatchObject({ message });
   });
 
-  it('keeps field-name and numeric parameters but redacts every other value', async () => {
+  it('keeps attribute names, message references and numbers but redacts every other value', async () => {
     const details = await parseJson({
       field: 'email',
       errorMessage: 'error-invalid-email',
-      params: ['email', 'person@example.test', 255, '0151234567', null],
+      params: ['email', 'person@example.test', 255, '0151234567', null, '${lastName}', 'Sensitive'],
     });
 
     expect(details.message).toBe(
-      'Keycloak update_user failed: email: error-invalid-email (email, [REDACTED], 255, [REDACTED], [REDACTED])'
+      'Keycloak update_user failed: email: error-invalid-email (email, [REDACTED], 255, [REDACTED], [REDACTED], ${lastName}, [REDACTED])'
     );
     expect(details.message).not.toContain('person@example.test');
     expect(details.message).not.toContain('0151234567');
+    expect(details.message).not.toContain('Sensitive');
     expect(details.fieldErrors).toEqual([{ field: 'email', code: 'error-invalid-email' }]);
+  });
+
+  it('keeps a container entry that matches only one of several nested errors', async () => {
+    const readOnlyFirstName = { field: 'firstName', errorMessage: READ_ONLY };
+    const details = await parseJson({
+      ...readOnlyFirstName,
+      errors: [readOnlyFirstName, { field: 'lastName', errorMessage: READ_ONLY }],
+    });
+
+    expect(details.fieldErrors).toEqual([
+      { field: 'firstName', code: READ_ONLY },
+      { field: 'firstName', code: READ_ONLY },
+      { field: 'lastName', code: READ_ONLY },
+    ]);
   });
 
   it('does not duplicate a single nested error that Keycloak mirrors on the container', async () => {
@@ -165,7 +223,18 @@ describe('buildErrorDetails', () => {
   it('does not invent an unclassified error from an empty field or empty params', async () => {
     await expect(
       parseJson({ error: 'invalid_request', error_description: 'Bad', field: '', params: [] })
-    ).resolves.toEqual({ message: 'Keycloak update_user failed: Bad', fieldErrors: [] });
+    ).resolves.toEqual({
+      message: 'Keycloak update_user failed: Bad; invalid_request',
+      fieldErrors: [{ code: 'invalid_request' }],
+    });
+  });
+
+  it('caps the length of the diagnostic message', async () => {
+    const details = await parseJson({ errorMessage: `error-${'x'.repeat(5_000)}` });
+
+    expect(details.message.length).toBeLessThanOrEqual(1_100);
+    expect(details.message.endsWith('…')).toBe(true);
+    expect(details.fieldErrors).toEqual([{ code: `error-${'x'.repeat(5_000)}` }]);
   });
 
   it('caps the diagnostic message while keeping every structured field error', async () => {

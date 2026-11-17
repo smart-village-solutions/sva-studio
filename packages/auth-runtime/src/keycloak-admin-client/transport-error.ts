@@ -1,90 +1,116 @@
+import { readNumber, readObject, readString } from '../shared/input-readers.js';
 import { withTimeout } from './helpers.js';
-import { KEYCLOAK_UNCLASSIFIED_ERROR_CODE, type KeycloakAdminFieldError } from './errors.js';
+import {
+  KEYCLOAK_UNCLASSIFIED_ERROR_CODE,
+  type KeycloakAdminFieldError,
+  type KeycloakAdminRequestError,
+} from './errors.js';
 
-type KeycloakErrorDetails = {
-  readonly message: string;
-  readonly fieldErrors: readonly KeycloakAdminFieldError[];
-};
+type KeycloakErrorDetails = Pick<KeycloakAdminRequestError, 'message' | 'fieldErrors'>;
 
+type JsonRecord = Readonly<Record<string, unknown>>;
+
+// Params only feed the diagnostic message; they are stripped from `fieldErrors`.
 type ParsedErrorEntry = KeycloakAdminFieldError & {
   readonly params: readonly string[];
 };
 
-type JsonRecord = Readonly<Record<string, unknown>>;
-
-const isJsonRecord = (value: unknown): value is JsonRecord =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
 const REDACTED_PARAM = '[REDACTED]';
 const MAX_MESSAGE_ENTRIES = 10;
-
-const readText = (value: unknown): string | undefined =>
-  typeof value === 'string' && value.length > 0 ? value : undefined;
+const MAX_MESSAGE_DETAIL_LENGTH = 1_000;
+// Standard user-profile attribute names are schema identifiers, never user input.
+const PROFILE_ATTRIBUTE_PARAMS: ReadonlySet<string> = new Set([
+  'username',
+  'email',
+  'firstName',
+  'lastName',
+]);
+// Keycloak message references such as `${firstName}` name a display-name key.
+const MESSAGE_REFERENCE_PARAM = /^\$\{[\w.-]{1,64}\}$/;
 
 const isPresent = (value: unknown): boolean => value !== undefined && value !== null;
 
-// Keycloak echoes the attribute name and numeric validator limits; strings may be user input.
+const isSafeTextParam = (param: string, field: string | undefined): boolean =>
+  param === field || PROFILE_ATTRIBUTE_PARAMS.has(param) || MESSAGE_REFERENCE_PARAM.test(param);
+
+// Any other string may carry user input and is redacted.
 const toSafeParam = (param: unknown, field: string | undefined): string => {
-  if (field !== undefined && param === field) {
-    return field;
+  const numeric = readNumber(param);
+  if (numeric !== undefined) {
+    return String(numeric);
   }
-  return typeof param === 'number' && Number.isFinite(param) ? String(param) : REDACTED_PARAM;
+  return typeof param === 'string' && isSafeTextParam(param, field) ? param : REDACTED_PARAM;
 };
 
-const toSafeParams = (params: unknown, field: string | undefined): readonly string[] =>
-  Array.isArray(params) ? params.map((param: unknown) => toSafeParam(param, field)) : [];
-
-// A Keycloak ErrorRepresentation without a usable errorMessage stays visible as unclassified.
-const parseEntry = (node: unknown): ParsedErrorEntry => {
-  if (!isJsonRecord(node)) {
-    return { code: KEYCLOAK_UNCLASSIFIED_ERROR_CODE, params: [] };
-  }
-  const field = readText(node.field);
+const toEntry = (node: JsonRecord): ParsedErrorEntry => {
+  const field = readString(node.field);
+  const params: readonly unknown[] = Array.isArray(node.params) ? node.params : [];
   return {
     ...(field ? { field } : {}),
-    code: readText(node.errorMessage) ?? KEYCLOAK_UNCLASSIFIED_ERROR_CODE,
-    params: toSafeParams(node.params, field),
+    // A Keycloak ErrorRepresentation without a usable errorMessage stays visible as unclassified.
+    code: readString(node.errorMessage) ?? KEYCLOAK_UNCLASSIFIED_ERROR_CODE,
+    params: params.map((param) => toSafeParam(param, field)),
   };
 };
 
-const hasOwnError = (root: JsonRecord): boolean =>
-  readText(root.field) !== undefined ||
-  isPresent(root.errorMessage) ||
-  (Array.isArray(root.params) ? root.params.length > 0 : isPresent(root.params));
+const UNCLASSIFIED_ENTRY: ParsedErrorEntry = { code: KEYCLOAK_UNCLASSIFIED_ERROR_CODE, params: [] };
+
+const hasOwnError = (node: JsonRecord): boolean =>
+  readString(node.field) !== undefined ||
+  isPresent(node.errorMessage) ||
+  (Array.isArray(node.params) ? node.params.length > 0 : isPresent(node.params));
 
 const isSameEntry = (left: ParsedErrorEntry, right: ParsedErrorEntry): boolean =>
   left.field === right.field && left.code === right.code;
 
-const parseNestedEntries = (nested: unknown): readonly ParsedErrorEntry[] => {
-  if (!isPresent(nested)) {
-    return [];
+/**
+ * Flattens one Keycloak ErrorRepresentation, which may carry its own error, nested `errors`, or
+ * both. A nested node without any content is unclassified; an empty root is not an error.
+ */
+const parseNode = (value: unknown, isRoot: boolean): readonly ParsedErrorEntry[] => {
+  const node = readObject(value);
+  if (!node) {
+    return isRoot ? [] : [UNCLASSIFIED_ENTRY];
   }
-  return Array.isArray(nested)
-    ? nested.map((entry: unknown) => parseEntry(entry))
-    : [parseEntry(nested)];
+  const rawNested: unknown = node.errors;
+  const nestedNodes: readonly unknown[] = Array.isArray(rawNested) ? rawNested : [rawNested];
+  const nested = isPresent(rawNested)
+    ? nestedNodes.flatMap((entry) => parseNode(entry, false))
+    : [];
+  if (!hasOwnError(node)) {
+    return isRoot || nested.length > 0 ? nested : [toEntry(node)];
+  }
+  const own = toEntry(node);
+  // Keycloak mirrors a single nested error on its container; count it once.
+  return nested.length === 1 && nested.every((entry) => isSameEntry(entry, own))
+    ? nested
+    : [own, ...nested];
 };
 
-// Keycloak returns either one top-level ErrorRepresentation or a container with `errors`;
-// a container may also mirror its single nested error, which must not be counted twice.
-const parseEntries = (root: JsonRecord): readonly ParsedErrorEntry[] => {
-  const nestedEntries = parseNestedEntries(root.errors);
-  if (!hasOwnError(root)) {
-    return nestedEntries;
-  }
-  const rootEntry = parseEntry(root);
-  return nestedEntries.some((entry) => isSameEntry(entry, rootEntry))
-    ? nestedEntries
-    : [rootEntry, ...nestedEntries];
-};
+// OAuth-style `error`/`error_description` is a request-level error the decision logic must see.
+const parseRequestError = (root: JsonRecord): readonly ParsedErrorEntry[] =>
+  isPresent(root.error) || isPresent(root.error_description)
+    ? [{ code: readString(root.error) ?? KEYCLOAK_UNCLASSIFIED_ERROR_CODE, params: [] }]
+    : [];
 
 const formatEntry = ({ field, code, params }: ParsedErrorEntry): string =>
   `${field ? `${field}: ` : ''}${code}${params.length > 0 ? ` (${params.join(', ')})` : ''}`;
 
 // Bounds the logged message; `fieldErrors` keeps every entry for the decision logic.
-const formatEntries = (entries: readonly ParsedErrorEntry[]): readonly string[] => {
+const formatDetail = (
+  summary: string | undefined,
+  entries: readonly ParsedErrorEntry[]
+): string => {
   const shown = entries.slice(0, MAX_MESSAGE_ENTRIES).map(formatEntry);
   const hiddenCount = entries.length - shown.length;
-  return hiddenCount > 0 ? [...shown, `+${hiddenCount} more`] : shown;
+  const detail = [
+    ...(summary ? [summary] : []),
+    ...shown,
+    ...(hiddenCount > 0 ? [`+${hiddenCount} more`] : []),
+  ].join('; ');
+  return detail.length > MAX_MESSAGE_DETAIL_LENGTH
+    ? `${detail.slice(0, MAX_MESSAGE_DETAIL_LENGTH - 1)}…`
+    : detail;
 };
 
 const toDetails = (
@@ -92,14 +118,12 @@ const toDetails = (
   operation: string,
   fallback: KeycloakErrorDetails
 ): KeycloakErrorDetails => {
-  const entries = parseEntries(root);
-  const summary = readText(root.error_description) ?? readText(root.error);
-  const parts = [...(summary ? [summary] : []), ...formatEntries(entries)];
-  if (parts.length === 0) {
+  const entries = [...parseRequestError(root), ...parseNode(root, true)];
+  if (entries.length === 0) {
     return fallback;
   }
   return {
-    message: `Keycloak ${operation} failed: ${parts.join('; ')}`,
+    message: `Keycloak ${operation} failed: ${formatDetail(readString(root.error_description), entries)}`,
     fieldErrors: entries.map(({ field, code }) => (field ? { field, code } : { code })),
   };
 };
@@ -115,9 +139,10 @@ export const buildErrorDetails = async (
   };
   try {
     const text = await withTimeout(response.text(), readTimeoutMs, 'read');
-    const parsed: unknown = text ? JSON.parse(text) : undefined;
-    return isJsonRecord(parsed) ? toDetails(parsed, operation, fallback) : fallback;
+    const parsed = readObject(text ? JSON.parse(text) : undefined);
+    return parsed ? toDetails(parsed, operation, fallback) : fallback;
   } catch {
+    // Includes a RangeError from pathologically deep `errors` nesting: no field errors, fail closed.
     return fallback;
   }
 };

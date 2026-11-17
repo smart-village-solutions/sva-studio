@@ -30,6 +30,7 @@ import {
 } from './mutation-principal.js';
 import { projectSourceReferenceInput } from './projects-route-transport.js';
 import { getSvaMainserverSurvey } from './service.js';
+import { isContentOwnershipTransferEnabled } from './service-internals/content-ownership-transfer.js';
 
 const routePrefix = '/api/v1/mainserver/content-ownership/';
 const MAX_OWNERSHIP_TARGET_SEARCH_LENGTH = 200;
@@ -69,12 +70,26 @@ const matchRoute = (request: Request): ContentOwnershipRouteMatch | null => {
     : null;
 };
 
+const transferDisabledResponse = () =>
+  errorJson(
+    409,
+    'content_transfer_temporarily_disabled',
+    'Die Inhaberübertragung ist vorübergehend gesperrt.'
+  );
+
 const resolveActor = async (
   request: Request,
-  ctx: AuthenticatedRequestContext
+  ctx: AuthenticatedRequestContext,
+  operation: ContentOwnershipRouteMatch['operation']
 ): Promise<MainserverMutationActor | Response> => {
+  if (operation === 'transfer' && !isContentOwnershipTransferEnabled(ctx.user.instanceId)) {
+    return transferDisabledResponse();
+  }
   const resolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in resolution) return resolution.error;
+  if (operation === 'transfer' && !isContentOwnershipTransferEnabled(resolution.actor.instanceId)) {
+    return transferDisabledResponse();
+  }
   return resolveMainserverMutationActor({
     request,
     ctx,
@@ -239,7 +254,7 @@ const dispatchAuthenticated = async (
       'Dieser Inhaltstyp unterstützt noch keinen Transfer.'
     );
   }
-  const actor = await resolveActor(request, ctx);
+  const actor = await resolveActor(request, ctx, route.operation);
   if (isResponse(actor)) return actor;
   if (route.contentType === 'surveys.survey') {
     try {

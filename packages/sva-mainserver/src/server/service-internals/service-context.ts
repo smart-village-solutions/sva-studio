@@ -6,6 +6,7 @@ import { loadSvaMainserverInstanceConfig } from '../config-store.js';
 import { createAccessTokenProvider } from './access-token-provider.js';
 import { createDataProviderIdentityOperation } from './data-provider-identity.js';
 import { createCredentialProvider, createDefaultCredentialReader } from './credentials.js';
+import { ownershipTransferWriteUnavailable } from './content-ownership-transfer.js';
 import { createFetchWithRetry, createGraphqlExecutor } from './graphql-client.js';
 import { withObservedHop } from './observability.js';
 import {
@@ -98,6 +99,13 @@ export const createServiceContext = (options: SvaMainserverServiceOptions = {}) 
     fetchWithRetry,
     loadAccessToken,
   });
+  const executeOwnershipTransferGraphql = createGraphqlExecutor({
+    fetchWithRetry,
+    loadAccessToken: (connection, config) =>
+      loadAccessToken(connection, config).catch(() => {
+        throw ownershipTransferWriteUnavailable();
+      }),
+  });
   const executeCategoryManagementGraphql = async <TResult>(
     operation: GraphqlOperationInput,
     config: SvaMainserverInstanceConfig
@@ -138,6 +146,7 @@ export const createServiceContext = (options: SvaMainserverServiceOptions = {}) 
     loadValidatedInstanceConfig,
     loadListCredentialMetadata,
     executeGraphqlWithConfig,
+    executeOwnershipTransferGraphql,
     loadDataProviderIdentity,
     ...operations,
     ...diagnostics,

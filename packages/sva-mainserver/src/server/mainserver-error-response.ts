@@ -4,6 +4,7 @@ import { SvaMainserverError } from './errors.js';
 const MAINSERVER_ERROR_STATUS_BY_CODE = {
   content_transfer_temporarily_disabled: 409,
   content_transfer_provider_rejected: 409,
+  content_transfer_write_unavailable: 503,
   missing_credentials: 400,
   organization_mainserver_credentials_missing: 409,
   acting_principal_not_allowed: 403,

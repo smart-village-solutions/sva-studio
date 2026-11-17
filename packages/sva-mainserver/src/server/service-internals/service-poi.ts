@@ -15,6 +15,7 @@ import { toSvaMainserverError, withUpdatedPayload } from './shared.js';
 export const createPoiService = ({
   loadValidatedInstanceConfig,
   executeGraphqlWithConfig,
+  executeOwnershipTransferGraphql,
   poiOperations,
   staticContentOperations,
 }: ServiceContext) => {
@@ -101,7 +102,7 @@ export const createPoiService = ({
     changePoiVisibility,
     transferContentOwnership: createContentOwnershipTransfer({
       loadValidatedInstanceConfig,
-      executeGraphqlWithConfig,
+      executeOwnershipTransferGraphql,
     }),
     createOrUpdateStaticContent,
   };

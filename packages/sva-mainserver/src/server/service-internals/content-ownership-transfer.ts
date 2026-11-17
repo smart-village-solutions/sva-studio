@@ -1,3 +1,6 @@
+import { resolveMainserverOwnershipTarget } from '@sva/auth-runtime/server';
+import { z } from 'zod';
+
 import type {
   SvaMainserverOwnershipTransferInput,
   SvaMainserverOwnershipTransferResult,
@@ -6,6 +9,16 @@ import type { ServiceContext } from './service-context.js';
 import { toSvaMainserverError } from './shared.js';
 
 const stagingMainserverOrigin = 'https://de-studio-sandbox.staging-server.smart-village.app';
+
+export const isContentOwnershipTransferEnabled = (instanceId: string | undefined): boolean =>
+  process.env.SVA_DEPLOYMENT_ENVIRONMENT === 'staging' && instanceId === 'de-studio-sandbox';
+
+export const ownershipTransferWriteUnavailable = () =>
+  toSvaMainserverError({
+    code: 'content_transfer_write_unavailable',
+    message: 'Der technische Mainserver-Zugang für die Inhaberübertragung ist nicht verfügbar.',
+    statusCode: 503,
+  });
 
 const resourceTypes = {
   news: 'NEWS_ITEM',
@@ -60,16 +73,18 @@ const disabledTransfer = () =>
 export const createContentOwnershipTransfer =
   ({
     loadValidatedInstanceConfig,
-    executeGraphqlWithConfig,
-  }: Pick<ServiceContext, 'loadValidatedInstanceConfig' | 'executeGraphqlWithConfig'>) =>
+    executeOwnershipTransferGraphql,
+  }: Pick<ServiceContext, 'loadValidatedInstanceConfig' | 'executeOwnershipTransferGraphql'>) =>
   async (
     input: SvaMainserverOwnershipTransferInput
   ): Promise<SvaMainserverOwnershipTransferResult> => {
-    if (process.env.SVA_DEPLOYMENT_ENVIRONMENT !== 'staging') {
+    if (!isContentOwnershipTransferEnabled(input.instanceId)) {
       throw disabledTransfer();
     }
 
-    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config').catch(() => {
+      throw ownershipTransferWriteUnavailable();
+    });
     if (
       config.graphqlBaseUrl !== `${stagingMainserverOrigin}/graphql` ||
       config.oauthTokenUrl !== `${stagingMainserverOrigin}/oauth/token`
@@ -77,10 +92,25 @@ export const createContentOwnershipTransfer =
       throw disabledTransfer();
     }
 
+    const organizationId = z
+      .string()
+      .uuid()
+      .safeParse(process.env.SVA_MAINSERVER_OWNERSHIP_TRANSFER_ORGANIZATION_ID?.trim());
+    if (!organizationId.success) throw ownershipTransferWriteUnavailable();
+
+    const writer = await resolveMainserverOwnershipTarget({
+      instanceId: input.instanceId,
+      actorKeycloakSubject: input.keycloakSubject,
+      principal: { type: 'organization', id: organizationId.data },
+    }).catch(() => {
+      throw ownershipTransferWriteUnavailable();
+    });
+    if (!writer.ok) throw ownershipTransferWriteUnavailable();
+
     const resourceType = resourceTypes[input.content.type];
-    const response = await executeGraphqlWithConfig<TransferResponse>(
+    const response = await executeOwnershipTransferGraphql<TransferResponse>(
       {
-        ...input,
+        ...writer.target.connection,
         document: mutation,
         operationName: 'SvaMainserverTransferContentOwnership',
         allowRetry: false,

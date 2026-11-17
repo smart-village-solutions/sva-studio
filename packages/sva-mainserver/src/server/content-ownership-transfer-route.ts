@@ -32,42 +32,32 @@ import { finalizeMainserverMutation, type MainserverMutationActor } from './muta
 import { transferSvaMainserverContentOwnership } from './service.js';
 
 export type { MainserverOwnershipTransferReconciler } from './content-ownership-transfer-reconciliation.js';
-const verifyTransferResult = async (input: {
-  actor: MainserverMutationActor;
+const targetConfirmsTransfer = async (input: {
   content: SvaMainserverOwnershipTransferContent;
-  sourceDataProviderId: string;
   target: ResolvedMainserverOwnershipTarget;
-}): Promise<'source' | 'target' | 'unclear'> => {
+}): Promise<boolean> => {
   try {
     const targetItem = await loadOwnershipItem(input.target.connection, input.content);
-    if (targetItem.dataProvider?.id === input.target.dataProviderId) return 'target';
+    return targetItem.dataProvider?.id === input.target.dataProviderId;
   } catch {
-    // The source read below provides the second independent observation.
+    return false;
   }
-  try {
-    const actorItem = await loadOwnershipItem(input.actor, input.content);
-    if (actorItem.dataProvider?.id === input.sourceDataProviderId) return 'source';
-  } catch {
-    // Neither credential context produced conclusive evidence.
-  }
-  return 'unclear';
 };
 
 const finalizeUnclearTransfer = async (input: {
   actor: MainserverMutationActor;
   route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
-  sourceDataProviderId: string;
   target: ResolvedMainserverOwnershipTarget;
   ownershipTransfer: OwnershipTransferAudit;
   error: unknown;
 }): Promise<Response | null> => {
-  const providerRejected =
-    input.error instanceof SvaMainserverError &&
-    (input.error.code === 'content_transfer_provider_rejected' ||
-      input.error.code === 'content_transfer_temporarily_disabled');
-  const evidence = providerRejected ? 'rejected' : await verifyTransferResult(input);
-  if (evidence === 'target') {
+  const errorCode = input.error instanceof SvaMainserverError ? input.error.code : undefined;
+  const providerRejected = errorCode === 'content_transfer_provider_rejected';
+  const writeNotSent =
+    errorCode === 'content_transfer_temporarily_disabled' ||
+    errorCode === 'content_transfer_write_unavailable';
+  if (!providerRejected && !writeNotSent && (await targetConfirmsTransfer(input))) {
     try {
       await finalizeMainserverMutation({
         actor: input.actor,
@@ -89,19 +79,13 @@ const finalizeUnclearTransfer = async (input: {
     });
     return null;
   }
-  const errorCode =
-    input.error instanceof SvaMainserverError
-      ? input.error.code
-      : 'content_transfer_provider_rejected';
-  if (evidence === 'source' || evidence === 'rejected') {
+  if (providerRejected || writeNotSent) {
     await finalizeMainserverMutation({
       actor: input.actor,
       providerOutcome: 'failed',
       reconciliationStatus: 'complete',
-      completedSteps:
-        evidence === 'source' ? ['actor_reread_confirmed'] : ['provider_write_rejected'],
+      completedSteps: [providerRejected ? 'provider_write_rejected' : 'provider_write_not_sent'],
       contentId: input.route.contentId,
-      ...(evidence === 'source' ? { observedDataProviderId: input.sourceDataProviderId } : {}),
       lastErrorCode: errorCode,
       ownershipTransfer: input.ownershipTransfer,
     });
@@ -120,7 +104,7 @@ const finalizeUnclearTransfer = async (input: {
     actor: input.actor,
     providerOutcome: 'unknown',
     reconciliationStatus: 'reconciliation_required',
-    completedSteps: ['target_reread', 'actor_reread'],
+    completedSteps: ['target_reread'],
     contentId: input.route.contentId,
     lastErrorCode: 'content_transfer_reconciliation_required',
     ownershipTransfer: input.ownershipTransfer,

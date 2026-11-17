@@ -4,6 +4,7 @@ export type SvaMainserverVerificationStatus = 'ok' | 'error' | 'disabled';
 export type SvaMainserverErrorCode =
   | 'content_transfer_temporarily_disabled'
   | 'content_transfer_provider_rejected'
+  | 'content_transfer_write_unavailable'
   | 'config_not_found'
   | 'integration_disabled'
   | 'invalid_config'

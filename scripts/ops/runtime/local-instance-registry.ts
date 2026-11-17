@@ -1,4 +1,9 @@
-import { classifyHost } from '../../../packages/core/src/instances/registry.ts';
+import {
+  classifyHost,
+  isReservedTenantHostname,
+  isValidInstanceId,
+  isValidParentDomain,
+} from '../../../packages/core/src/instances/registry.ts';
 
 export type LocalInstanceRegistryReconciliationInput = Readonly<{
   allowedInstanceIds: readonly string[];
@@ -39,6 +44,38 @@ const normalizeAllowedInstanceIds = (value: readonly string[]) =>
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
 
+// Same checks in the same order as the app's allowlist validation (server-runtime instance config):
+// reserved name, root host collision, then the canonical DNS-label rule. The raw ID is validated
+// verbatim because it is carried unchanged into the generated SQL; nothing is renamed.
+const findAllowedInstanceIdViolation = (id: string, parentDomain: string, rootHost: string): string | null => {
+  if (isReservedTenantHostname(id)) {
+    return 'reserved_tenant_hostname';
+  }
+  if (classifyHost(`${id}.${parentDomain}`, parentDomain, rootHost).kind === 'root') {
+    return 'root_host_collision';
+  }
+  return isValidInstanceId(id) ? null : 'invalid_instance_id';
+};
+
+const assertValidAllowlistConfiguration = (ids: readonly string[], parentDomain: string, rootHost: string) => {
+  if (!isValidParentDomain(parentDomain)) {
+    throw new Error(`SVA_PARENT_DOMAIN ist ungültig: ${parentDomain}.`);
+  }
+
+  const violations = ids.flatMap((id) => {
+    const reason = findAllowedInstanceIdViolation(id, parentDomain, rootHost);
+    return reason ? [`${id} (${reason})`] : [];
+  });
+
+  if (violations.length > 0) {
+    throw new Error(
+      `SVA_ALLOWED_INSTANCE_IDS enthält ungültige oder reservierte Instanz-IDs: ${violations.join(', ')}. ` +
+        'Instanz-IDs müssen kleingeschriebene DNS-Labels sein und dürfen weder reserviert sein noch dem Root-Host ' +
+        'entsprechen; sie werden nicht automatisch angepasst.'
+    );
+  }
+};
+
 const normalizeMode = <T extends string>(value: string | undefined, allowed: readonly T[], fallback: T): T => {
   const normalized = value?.trim().toLowerCase();
   return normalized && allowed.includes(normalized as T) ? (normalized as T) : fallback;
@@ -55,9 +92,7 @@ export const buildLocalInstanceRegistryReconciliationInput = (
   }
 
   const rootHost = env.SVA_STUDIO_ROOT_HOST?.trim() || parentDomain;
-  if (allowedInstanceIds.some((id) => classifyHost(`${id}.${parentDomain}`, parentDomain, rootHost).kind !== 'tenant')) {
-    throw new Error('Lokaler Tenant-Hostname ist ungültig oder reserviert.');
-  }
+  assertValidAllowlistConfiguration(allowedInstanceIds, parentDomain, rootHost);
 
   const tenantAuthRealmMode = normalizeMode(env.SVA_LOCAL_TENANT_AUTH_REALM_MODE, ['instance-id', 'keep'], 'keep');
 

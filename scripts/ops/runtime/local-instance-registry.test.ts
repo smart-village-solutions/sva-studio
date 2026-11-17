@@ -13,10 +13,66 @@ describe('buildLocalInstanceRegistryReconciliationInput', () => {
     expect(buildLocalInstanceRegistryReconciliationInput({ SVA_PARENT_DOMAIN: 'studio.localhost' })).toBeNull();
   });
 
-  it.each(['studio', 'auth', 'admin'])('rejects reserved reconciliation host %s', (id) => {
+  it.each([
+    ['studio', 'reserved_tenant_hostname'],
+    ['auth', 'reserved_tenant_hostname'],
+    ['Studio', 'reserved_tenant_hostname'],
+    ['AUTH', 'reserved_tenant_hostname'],
+    ['admin', 'root_host_collision'],
+    ['Admin', 'root_host_collision'],
+  ])('rejects reserved or root-colliding host %s', (id, reason) => {
     expect(() => buildLocalInstanceRegistryReconciliationInput({
       SVA_PARENT_DOMAIN: 'example.org', SVA_STUDIO_ROOT_HOST: 'admin.example.org', SVA_ALLOWED_INSTANCE_IDS: id,
-    })).toThrow('reserviert');
+    })).toThrow(`${id} (${reason})`);
+  });
+
+  it('detects root host collisions regardless of the root host casing', () => {
+    expect(() => buildLocalInstanceRegistryReconciliationInput({
+      SVA_PARENT_DOMAIN: 'example.org', SVA_STUDIO_ROOT_HOST: 'Admin.Example.org', SVA_ALLOWED_INSTANCE_IDS: 'admin',
+    })).toThrow('admin (root_host_collision)');
+  });
+
+  it('blames an invalid parent domain instead of the allowlisted ids', () => {
+    expect(() => buildLocalInstanceRegistryReconciliationInput({
+      SVA_PARENT_DOMAIN: 'localhost', SVA_ALLOWED_INSTANCE_IDS: 'bb-guben',
+    })).toThrow('SVA_PARENT_DOMAIN ist ungültig: localhost.');
+  });
+
+  it.each([
+    ['De-Musterhausen', 'invalid_instance_id'],
+    ['DE-MUSTERHAUSEN', 'invalid_instance_id'],
+    ['-musterhausen', 'invalid_instance_id'],
+    ['muster_hausen', 'invalid_instance_id'],
+    ['xn--mnchen-3ya', 'invalid_instance_id'],
+    ["de'musterhausen", 'invalid_instance_id'],
+    ['de.musterhausen', 'invalid_instance_id'],
+    ['bb-guben:3000', 'invalid_instance_id'],
+  ])('rejects non-canonical instance id %s before any SQL is built', (id, reason) => {
+    expect(() => buildLocalInstanceRegistryReconciliationInput({
+      SVA_PARENT_DOMAIN: 'studio.localhost', SVA_ALLOWED_INSTANCE_IDS: `de-musterhausen,${id}`,
+    })).toThrow(`SVA_ALLOWED_INSTANCE_IDS enthält ungültige oder reservierte Instanz-IDs: ${id} (${reason})`);
+  });
+
+  it('reports every rejected id instead of renaming any of them', () => {
+    expect(() => buildLocalInstanceRegistryReconciliationInput({
+      SVA_PARENT_DOMAIN: 'studio.localhost', SVA_ALLOWED_INSTANCE_IDS: 'De-Musterhausen, studio ,hb-meinquartier',
+    })).toThrow(
+      'SVA_ALLOWED_INSTANCE_IDS enthält ungültige oder reservierte Instanz-IDs: ' +
+        'De-Musterhausen (invalid_instance_id), studio (reserved_tenant_hostname).'
+    );
+  });
+
+  it('carries trimmed valid ids verbatim into the generated SQL', () => {
+    const input = buildLocalInstanceRegistryReconciliationInput({
+      SVA_PARENT_DOMAIN: 'studio.localhost', SVA_ALLOWED_INSTANCE_IDS: ' bb-guben ,, 0815 ',
+    });
+
+    if (!input) {
+      throw new Error('expected reconciliation input');
+    }
+    expect(input.allowedInstanceIds).toEqual(['bb-guben', '0815']);
+    expect(buildLocalInstanceRegistryIdentitySelectSql(input)).toContain("ARRAY['bb-guben', '0815']::text[]");
+    expect(buildLocalInstanceRegistryReconciliationSql(input)).toContain("WHERE id = 'bb-guben';");
   });
 
   it('normalizes local tenant reconciliation input from env', () => {

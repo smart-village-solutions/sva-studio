@@ -1,0 +1,4 @@
+{
+  "prNumber": 2219,
+  "body": "Der lokale Abgleich der Instanz-Registry prüft die Einträge in `SVA_ALLOWED_INSTANCE_IDS` jetzt vor jeder SQL-Erzeugung gegen den kanonischen Instanz-ID-Vertrag. Ungültige, reservierte oder mit dem Root-Host kollidierende IDs werden mit Grund abgelehnt statt stillschweigend angepasst; gültige IDs und bestehende Datensätze bleiben unverändert. `pnpm env:doctor:local-keycloak` meldet eine abgelehnte Konfiguration als Fehler-Check, statt abzubrechen."
+}

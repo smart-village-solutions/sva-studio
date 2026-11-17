@@ -75,6 +75,7 @@ export default defineConfig({
       '../../scripts/ops/runtime/acceptance-deploy.test.ts',
       '../../scripts/ops/runtime/acceptance-runtime-checks.test.ts',
       '../../scripts/ops/runtime/acceptance-runtime-checks.live-spec.test.ts',
+      '../../scripts/ops/runtime/doctor-db-tenant-checks.test.ts',
       '../../scripts/ops/runtime/doctor.test.ts',
       '../../scripts/ops/runtime/goose.behavior.test.ts',
       '../../scripts/ops/runtime/local-command.test.ts',

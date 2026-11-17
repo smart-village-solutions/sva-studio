@@ -148,7 +148,7 @@ export const createGraphqlExecutor = (input: {
 
         try {
           const payload = await parseJsonBody(response);
-          const result = parseGraphqlPayload<TResult>(payload);
+          const result = parseGraphqlPayload<TResult>(payload, operation.mapErrorCode);
           logger.debug('SVA Mainserver GraphQL operation succeeded', {
             ...buildLogContext(operation, {
               operation: operation.operationName,

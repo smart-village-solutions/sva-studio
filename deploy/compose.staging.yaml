@@ -1,6 +1,8 @@
 services:
   app:
     image: ${IMAGE_REF}
+    environment:
+      SVA_MAINSERVER_OWNERSHIP_TRANSFER_ORGANIZATION_ID: '${SVA_MAINSERVER_OWNERSHIP_TRANSFER_ORGANIZATION_ID:-}'
     networks:
       - network-node-005
       - default

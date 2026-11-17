@@ -2,7 +2,6 @@ import {
   ContentOwnershipAccountSearchError,
   listMainserverOwnershipTargets,
   loadExternalContentReferenceByContentId,
-  resolveActorInfo,
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
   type ResolvedMainserverOwnershipSource,
@@ -12,6 +11,7 @@ import { errorJson, isResponse, json } from './content-route-core.js';
 import {
   loadOwnershipItem,
   matchesOwnershipContentType,
+  resolveOwnershipRouteActor,
   toOwnershipTransferContent,
   type ContentOwnershipRouteMatch,
   type SupportedContentOwnershipRouteMatch,
@@ -24,7 +24,6 @@ import { ownershipRouteFailureResponse } from './content-ownership-route-failure
 import { SvaMainserverError } from './errors.js';
 import { resolveOwnershipSourceEnrichment } from './content-ownership-transfer-source.js';
 import {
-  resolveMainserverMutationActor,
   resolveMainserverResourceAccess,
   type MainserverMutationActor,
 } from './mutation-principal.js';
@@ -69,22 +68,6 @@ const matchRoute = (request: Request): ContentOwnershipRouteMatch | null => {
     : null;
 };
 
-const resolveActor = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<MainserverMutationActor | Response> => {
-  const resolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
-  if ('error' in resolution) return resolution.error;
-  return resolveMainserverMutationActor({
-    request,
-    ctx,
-    authorizedActor: {
-      instanceId: resolution.actor.instanceId,
-      keycloakSubject: ctx.user.id,
-      ...(ctx.activeOrganizationId ? { activeOrganizationId: ctx.activeOrganizationId } : {}),
-    },
-  });
-};
 const handleTargets = async (
   request: Request,
   route: ContentOwnershipRouteMatch,
@@ -239,7 +222,7 @@ const dispatchAuthenticated = async (
       'Dieser Inhaltstyp unterstützt noch keinen Transfer.'
     );
   }
-  const actor = await resolveActor(request, ctx);
+  const actor = await resolveOwnershipRouteActor(request, ctx, route.operation);
   if (isResponse(actor)) return actor;
   if (route.contentType === 'surveys.survey') {
     try {

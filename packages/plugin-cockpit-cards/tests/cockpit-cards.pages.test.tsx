@@ -1,5 +1,5 @@
 import { StudioEditorLeaveGuardProvider } from '@sva/studio-ui-react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CockpitCardsCreatePage } from '../src/cockpit-cards.pages.js';
@@ -467,6 +467,65 @@ describe('cockpit cards pages', () => {
     expect(state.navigate).toHaveBeenCalledWith(
       expect.objectContaining({ to: '/admin/content', state: expect.any(Function) })
     );
+  });
+
+  describe('editor action bar', () => {
+    const findEditorPage = (container: HTMLElement) => {
+      const page = container.querySelector('form#cockpit-card-edit-form')?.closest('section');
+      if (!page) throw new Error('Editor page section not rendered');
+      return page;
+    };
+    const findEmptyPageRegions = (container: HTMLElement) =>
+      Array.from(findEditorPage(container).children).filter(
+        (region) => region.textContent?.trim() === '' && region.childElementCount === 0
+      );
+
+    it('omits the save action and its empty action bar without update permission', async () => {
+      state.sessionAccess = {
+        ...state.sessionAccess,
+        permissionActions: ['cockpit-cards.read', 'cockpit-cards.delete'],
+      };
+      state.params = { id: 'card-1' };
+      state.get.mockResolvedValue(record);
+      state.delete.mockResolvedValue(undefined);
+      const { CockpitCardsEditPage } = await import('../src/cockpit-cards.pages.js');
+      const { container } = render(<CockpitCardsEditPage />);
+      await screen.findByDisplayValue('Bestehende Karte');
+
+      expect(screen.queryByRole('button', { name: 'actions.update' })).toBeNull();
+      expect(findEmptyPageRegions(container)).toEqual([]);
+
+      expect(screen.getByText('actions.back')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
+      fireEvent.click(screen.getByRole('button', { name: 'deleteDialog.confirm' }));
+      await waitFor(() => expect(state.delete).toHaveBeenCalledWith('card-1', 'user'));
+      expect(state.update).not.toHaveBeenCalled();
+    });
+
+    it('keeps the trailing save action with its pending and saved feedback', async () => {
+      state.params = { id: 'card-1' };
+      state.get.mockResolvedValue(record);
+      let resolveUpdate: (value: typeof record) => void = () => undefined;
+      state.update.mockReturnValue(
+        new Promise<typeof record>((resolve) => {
+          resolveUpdate = resolve;
+        })
+      );
+      const { CockpitCardsEditPage } = await import('../src/cockpit-cards.pages.js');
+      const { container } = render(<CockpitCardsEditPage />);
+      await screen.findByDisplayValue('Bestehende Karte');
+
+      expect(findEmptyPageRegions(container)).toEqual([]);
+      const trailingRegion = findEditorPage(container).lastElementChild as HTMLElement;
+      const trailingSave = within(trailingRegion).getByRole('button', { name: 'actions.update' });
+      expect(screen.getByText('actions.back')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'actions.delete' })).toBeTruthy();
+
+      fireEvent.click(trailingSave);
+      expect((await screen.findAllByRole('button', { name: 'actions.saving' })).length).toBe(2);
+      resolveUpdate(record);
+      expect((await screen.findAllByRole('button', { name: 'actions.saved' })).length).toBe(2);
+    });
   });
 
   it('keeps library and upload actions unavailable without media permissions', async () => {

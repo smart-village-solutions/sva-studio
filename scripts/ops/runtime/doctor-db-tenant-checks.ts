@@ -64,7 +64,12 @@ const buildInstanceHostnameMappingCheck = async (
 
 const buildLocalInstanceIdentityDoctorCheck = (deps: RuntimeDoctorDbCheckDeps, runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): DoctorCheck => {
   if (runtimeProfile !== 'local-keycloak') return deps.toDoctorCheck('instance-identity', 'skipped', 'local_instance_identity_not_applicable', 'Lokale Instanz-Identitaetspruefung ist fuer dieses Runtime-Profil nicht anwendbar.');
-  const input = deps.buildLocalInstanceRegistryReconciliationInput(env);
+  let input: ReturnType<RuntimeDoctorDbCheckDeps['buildLocalInstanceRegistryReconciliationInput']>;
+  try {
+    input = deps.buildLocalInstanceRegistryReconciliationInput(env);
+  } catch (error) {
+    return deps.toDoctorCheck('instance-identity', 'error', 'local_instance_identity_config_invalid', error instanceof Error ? error.message : String(error));
+  }
   if (!input) return deps.toDoctorCheck('instance-identity', 'skipped', 'local_instance_identity_scope_missing', 'Lokale Instanz-Identitaetspruefung erfordert SVA_PARENT_DOMAIN und SVA_ALLOWED_INSTANCE_IDS.');
 
   try {

@@ -190,7 +190,46 @@ describe('iam account management shared runtime logging', () => {
       executionMode: 'tenant_admin',
     });
     expect(state.resolveTenantAdminClientSecret).not.toHaveBeenCalled();
+    expect(state.getKeycloakTenantAdminClientConfigFromEnv).toHaveBeenCalledWith(
+      expect.objectContaining({ clientSecret: 'fresh-tenant-secret' })
+    );
   });
+
+  it.each([
+    { label: 'an empty', override: '' },
+    { label: 'a whitespace-only', override: ' \t\n ' },
+  ])(
+    'falls back to the repository tenant admin secret for $label override',
+    async ({ override }) => {
+      state.loadInstanceById.mockResolvedValueOnce({
+        authRealm: 'tenant-realm',
+        tenantAdminClient: { clientId: 'tenant-admin' },
+      });
+      state.resolveTenantAdminClientSecret.mockResolvedValueOnce({
+        secret: 'synthetic-repository-secret',
+      });
+
+      const { resolveIdentityProviderForInstance } = await import('./shared-runtime.js');
+      const resolution = await resolveIdentityProviderForInstance('instance-1', {
+        executionMode: 'tenant_admin',
+        tenantAdminClientSecret: override,
+      });
+
+      expect(state.resolveTenantAdminClientSecret).toHaveBeenCalledTimes(1);
+      expect(state.resolveTenantAdminClientSecret).toHaveBeenCalledWith('instance-1');
+      expect(state.getKeycloakTenantAdminClientConfigFromEnv).toHaveBeenCalledWith({
+        realm: 'tenant-realm',
+        clientId: 'tenant-admin',
+        clientSecret: 'synthetic-repository-secret',
+      });
+      expect(resolution).toMatchObject({
+        realm: 'tenant-realm',
+        source: 'instance',
+        clientId: 'tenant-admin',
+        executionMode: 'tenant_admin',
+      });
+    }
+  );
 
   it('uses the provisioner base URL as fallback for tenant admin resolution', async () => {
     delete process.env.KEYCLOAK_ADMIN_BASE_URL;

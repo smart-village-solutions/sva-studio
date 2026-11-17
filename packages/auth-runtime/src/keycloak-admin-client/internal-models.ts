@@ -27,17 +27,6 @@ export type TokenResponse = {
   readonly expires_in: number;
 };
 
-export type KeycloakErrorResponse = {
-  readonly error?: string;
-  readonly error_description?: string;
-  readonly errorMessage?: string;
-  readonly field?: string;
-  readonly params?: readonly string[];
-  readonly errors?: readonly {
-    readonly field?: string;
-    readonly errorMessage?: string;
-  }[];
-};
 export type KeycloakRoleMapping = {
   readonly id: string;
   readonly name: string;

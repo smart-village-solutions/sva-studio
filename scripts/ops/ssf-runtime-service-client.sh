@@ -4,6 +4,7 @@ set -euo pipefail
 
 readonly CLIENT_ID='ssf-runtime'
 readonly AUDIENCE='sva-studio-ssf-runtime'
+readonly AUDIENCE_MAPPER_NAME='studio-ssf-runtime-audience'
 readonly ACTION='ssf.runtime-configuration.read'
 readonly DIRECTORY_ACTION='ssf.admin-login-directory.read'
 
@@ -106,20 +107,50 @@ ensure_action_role() {
     jq -e '.composite == false' >/dev/null || fail 'action role must not be composite'
 }
 
+desired_audience_mapper() {
+  jq -nc \
+    --arg name "$AUDIENCE_MAPPER_NAME" \
+    --arg audience "$AUDIENCE" \
+    '{name:$name,protocol:"openid-connect",protocolMapper:"oidc-audience-mapper",consentRequired:false,config:{"included.client.audience":"","included.custom.audience":$audience,"id.token.claim":"false","access.token.claim":"true","userinfo.token.claim":"false","introspection.token.claim":"true"}}'
+}
+
+# Prints the operator-owned audience mapper, or null when it is absent. Fails on an empty
+# response or when the name is duplicated or held by another mapper type; jq diagnostics
+# stay suppressed so response content never reaches the output.
+read_audience_mapper() {
+  local client_uuid="$1"
+  kcadm get "clients/$client_uuid/protocol-mappers/models" -r "$realm" |
+    jq -nc --argjson desired "$(desired_audience_mapper)" '
+      input |
+      map(select(.name == $desired.name)) |
+      if length == 0 then null
+      elif length == 1 and .[0].protocolMapper == $desired.protocolMapper then .[0]
+      else error("ambiguous audience mapper") end
+    ' 2>/dev/null
+}
+
+# Succeeds when the mapper JSON in $1 matches the desired contract; extra server-side keys are ignored.
+audience_mapper_aligned() {
+  jq -e --argjson desired "$(desired_audience_mapper)" '
+    (.config // {}) as $config |
+    .protocol == $desired.protocol and
+    .protocolMapper == $desired.protocolMapper and
+    all($desired.config | to_entries[]; ($config[.key] // "") == .value)
+  ' <<<"$1" >/dev/null
+}
+
 ensure_audience_mapper() {
   local client_uuid="$1"
-  local mapper_id
-  mapper_id="$(kcadm get "clients/$client_uuid/protocol-mappers/models" -r "$realm" |
-    jq -er 'map(select(.name == "studio-ssf-runtime-audience")) | if length == 0 then "" elif length == 1 then .[0].id else error("duplicate audience mapper") end')" ||
-    fail 'failed to resolve the audience mapper uniquely'
+  local current
   local payload="$temp_directory/audience-mapper.json"
-  write_json "$payload" "$(jq -n \
-    --arg audience "$AUDIENCE" \
-    '{name:"studio-ssf-runtime-audience",protocol:"openid-connect",protocolMapper:"oidc-audience-mapper",consentRequired:false,config:{"included.client.audience":"","included.custom.audience":$audience,"id.token.claim":"false","access.token.claim":"true","userinfo.token.claim":"false","introspection.token.claim":"true"}}')"
-  if [[ -n "$mapper_id" ]]; then
-    kcadm update "clients/$client_uuid/protocol-mappers/models/$mapper_id" -r "$realm" -f "$payload" >/dev/null
-  else
+  current="$(read_audience_mapper "$client_uuid")" || fail 'failed to resolve the audience mapper uniquely'
+  if [[ "$current" == 'null' ]]; then
+    write_json "$payload" "$(desired_audience_mapper)"
     kcadm create "clients/$client_uuid/protocol-mappers/models" -r "$realm" -f "$payload" >/dev/null
+  elif ! audience_mapper_aligned "$current"; then
+    # Keycloak resolves the stored mapper from the body id, so the update keeps it and unrelated server keys.
+    write_json "$payload" "$(jq -c --argjson desired "$(desired_audience_mapper)" '. * $desired' <<<"$current")"
+    kcadm update "clients/$client_uuid/protocol-mappers/models/$(jq -r '.id' <<<"$current")" -r "$realm" -f "$payload" >/dev/null
   fi
 }
 
@@ -190,16 +221,9 @@ verify_contract() {
       .directAccessGrantsEnabled == false and
       .fullScopeAllowed == false
     ' >/dev/null || fail 'client contract is not aligned'
-  kcadm get "clients/$client_uuid/protocol-mappers/models" -r "$realm" |
-    jq -e --arg audience "$AUDIENCE" '
-      any(
-        .name == "studio-ssf-runtime-audience" and
-        .protocolMapper == "oidc-audience-mapper" and
-        .config["included.custom.audience"] == $audience and
-        .config["access.token.claim"] == "true"
-      )
-    ' >/dev/null || fail 'audience mapper is not aligned'
-  local service_account_user_id expected_role_ids
+  local audience_mapper service_account_user_id expected_role_ids
+  audience_mapper="$(read_audience_mapper "$client_uuid")" || fail 'failed to resolve the audience mapper uniquely'
+  audience_mapper_aligned "$audience_mapper" || fail 'audience mapper is not aligned'
   service_account_user_id="$(kcadm get "clients/$client_uuid/service-account-user" -r "$realm" | jq -er '.id')"
   expected_role_ids="$(read_action_roles "$client_uuid" | jq -c '[.[].id] | sort')"
   kcadm get "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" |

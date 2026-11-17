@@ -1,0 +1,4 @@
+{
+  "prNumber": 2213,
+  "body": "Der Betriebsabgleich der SSF-Runtime-Service-Identität lässt einen bereits passenden Audience-Mapper unverändert und bricht nicht mehr mit einem Keycloak-Fehler ab."
+}

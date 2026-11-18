@@ -130,20 +130,20 @@ LIMIT 1;
 `,
   values: [instanceId, typeKey],
 });
-const clearOtherDefaultsStatement = (input: ExternalInterfaceRecord): SqlStatement => ({
-  text: `
-UPDATE iam.instance_external_interfaces
-SET is_default = false, updated_at = NOW()
-WHERE instance_id = $1
-  AND type_key = $2
-  AND id <> $3
-  AND is_default = true;
-`,
-  values: [input.instanceId, input.typeKey, input.id],
-});
 
+// The INSERT consumes the UPDATE result first. The default index permits at most one row.
 const upsertStatement = (input: ExternalInterfaceRecord): SqlStatement => ({
   text: `
+WITH clear_defaults AS (
+  UPDATE iam.instance_external_interfaces
+  SET is_default = false,
+      updated_at = NOW()
+  WHERE instance_id = $1
+    AND type_key = $3
+    AND id <> $2
+    AND is_default = true AND $8 = true
+  RETURNING true AS cleared
+)
 INSERT INTO iam.instance_external_interfaces (
   id,
   instance_id,
@@ -166,7 +166,8 @@ INSERT INTO iam.instance_external_interfaces (
   last_check_error_code,
   last_check_error_message
 )
-VALUES ($2, $1, $3, $4, $5, $6, $7, $9, $8, $10, $11, $12, $13::jsonb, $14, $15, $16, $17, $18, $19, $20)
+SELECT $2, $1, $3, $4, $5, $6, $7, $9, COALESCE((SELECT cleared FROM clear_defaults), $8),
+       $10, $11, $12, $13::jsonb, $14, $15, $16, $17, $18, $19, $20
 ON CONFLICT (id) DO UPDATE
 SET type_key = EXCLUDED.type_key,
     owner_kind = EXCLUDED.owner_kind,
@@ -252,7 +253,6 @@ export const externalInterfaceStatements = {
   getById: getByIdStatement,
   getByAlias: getByAliasStatement,
   getDefault: getDefaultStatement,
-  clearOtherDefaults: clearOtherDefaultsStatement,
   upsert: upsertStatement,
   deleteById: deleteStatement,
   updateConnectionCheck: updateConnectionCheckStatement,

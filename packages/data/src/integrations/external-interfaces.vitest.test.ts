@@ -314,11 +314,10 @@ describe('external interface repository (data package coverage)', () => {
     await writerRepository.upsert(record);
     await writerRepository.updateConnectionCheck(connectionCheck);
 
-    expect(writer.statements).toHaveLength(4);
+    expect(writer.statements).toHaveLength(3);
     expect(writer.statements[0]?.text).toContain('INSERT INTO iam.external_interface_types');
-    expect(writer.statements[1]?.text).toContain('SET is_default = false');
-    expect(writer.statements[2]?.text).toContain('INSERT INTO iam.instance_external_interfaces');
-    expect(writer.statements[3]?.values).toEqual([
+    expect(writer.statements[1]?.text).toContain('INSERT INTO iam.instance_external_interfaces');
+    expect(writer.statements[2]?.values).toEqual([
       'tenant-a',
       'interface-1',
       'error',

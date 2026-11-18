@@ -54,8 +54,6 @@ export const createExternalInterfaceRepository = (executor: SqlExecutor): Extern
     return result.rows[0] ? mapInterfaceRow(result.rows[0]) : null;
   },
   async upsert(input) {
-    // Callers supply a transaction. Clear the old default before the unique index checks the new one.
-    if (input.isDefault) await executor.execute(externalInterfaceStatements.clearOtherDefaults(input));
     await executor.execute(externalInterfaceStatements.upsert(input));
   },
   async deleteById(instanceId, id) {

@@ -937,7 +937,7 @@ Der zentrale Migrationsprincipal darf nur das Registry-Inventar lesen; in der Fa
 
 - Permission-Keys bleiben vollständig qualifiziert und global eindeutig.
 - Root-, Tenant- und Modul-Availability werden vor Deployment validiert; Modul-Keys müssen im Namespace ihres Moduls liegen.
-- `system_admin` erhält sämtliche aktiven Tenant-Permissions und Rechte aktivierter, zugewiesener Module. Historische Angaben `systemAdminGrant: false` oder `systemAdminPermissionExclusions` schränken diese tenantlokalen Grants nicht ein; Root-Permissions bleiben immer ausgeschlossen.
+- `system_admin` erhält die aktiven Tenant-Grundrechte und die Standardrechte aktivierter, zugewiesener Module. Der Modulabgleich berücksichtigt `systemAdminPermissionExclusions`. So bleibt etwa `ssf.recording.access.transfer` im Berechtigungskatalog und erfordert eine ausdrückliche Vergabe. Der Abgleich entfernt frühere automatische Modul-Grants für ausgeschlossene Rechte und erhält manuelle Zuweisungen. Root-Permissions bleiben ausgeschlossen.
 - Deprecation ist rein deklarativ und niemals ein Löschsignal. Destruktive Datenpflege benötigt eine eigene Migration und Freigabe.
 - Auditdaten enthalten nur IDs, Request-Korrelation und Zählwerte, keine freien Permission- oder Account-Payloads.
 

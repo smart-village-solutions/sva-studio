@@ -4189,7 +4189,7 @@ describe('instance registry service facade', () => {
     );
   });
 
-  it('bootstraps all tenant SSF permissions for system_admin despite legacy exclusions', async () => {
+  it('catalogs the SSF transfer permission while excluding it from automatic administrator grants', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => ({ ...baseInstance, assignedModules: ['ssf'] })),
       listAssignedModules: vi.fn(async () => ['ssf']),
@@ -4205,13 +4205,10 @@ describe('instance registry service facade', () => {
         moduleId: 'ssf',
         permissionIds: [
           'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
-          'ssf.recording.supervise', 'ssf.recording.recovery.custodian',
+          'ssf.recording.access.transfer', 'ssf.recording.supervise', 'ssf.recording.recovery.custodian',
           'ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage',
         ],
-        systemAdminPermissionExclusions: [
-          'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
-          'ssf.recording.supervise', 'ssf.recording.recovery.custodian',
-        ],
+        systemAdminPermissionExclusions: ['ssf.recording.access.transfer'],
         systemRoles: [{ roleName: 'system_admin', permissionIds: [
           'ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage',
         ] }],
@@ -4259,6 +4256,7 @@ describe('instance registry service facade', () => {
             permissions: expect.arrayContaining([
               'ssf.recording.request', 'ssf.recording.review', 'ssf.recording.review.sworn',
               'ssf.recording.supervise', 'ssf.recording.recovery.custodian',
+              'ssf.recording.access.transfer',
             ].map((key) => expect.objectContaining({ key }))),
             systemRoles: [
               {
@@ -4327,7 +4325,7 @@ describe('instance registry service facade', () => {
         contracts: [
           expect.objectContaining({
             moduleId: 'media',
-            systemRoles: [{ roleName: 'system_admin', permissionIds: ['media.read', 'media.create'] }],
+            systemRoles: [{ roleName: 'system_admin', permissionIds: ['media.read'] }],
           }),
         ],
       })

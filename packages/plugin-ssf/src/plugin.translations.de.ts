@@ -55,6 +55,8 @@ export const de = {
     },
     navigation: { system: 'SSF-Standards', tenant: 'Smart Speech Flow' },
     keys: {
+      confirmedStatus: 'Bestätigten Auftrag prüfen',
+      retryConfirmed: 'Ergebnis erneut abrufen',
       policyNotice:
         'Zusätzlich zur Richtlinie benötigt jede neue Aufzeichnung einen aktiven Organisationsschlüssel und einen persönlichen Schlüssel der aufzeichnenden Person.',
       replaceNotice:
@@ -95,6 +97,8 @@ export const de = {
         INVALID_PROOF:
           'Der Besitznachweis ist fehlgeschlagen. Prüfen Sie die Version und beginnen Sie erneut.',
         TRANSFER_SCOPE_TOO_LARGE: 'Wählen Sie weniger Aufzeichnungen aus.',
+        RECORDING_PROTOCOL_UPGRADE_REQUIRED:
+          'Dieser Mandant verwendet noch das frühere Aufzeichnungsprotokoll. Bitten Sie den Betrieb, die Umstellung auf die neue Version zu prüfen und freizugeben.',
         RECORDING_UNAVAILABLE:
           'Der Aufzeichnungsdienst ist nicht erreichbar. Bei ungewissem Übermittlungsergebnis wiederholen Sie denselben bestätigten Vorgang.',
       },

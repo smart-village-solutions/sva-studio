@@ -30,6 +30,13 @@ interface Preview {
   id: KeyIdentity;
   members: ScopeMember[];
 }
+interface TransferSubmission {
+  transferId: string;
+  scopeDigest: string;
+  targetUserSub: string;
+  targetKeyVersion: number;
+  body: Awaited<ReturnType<typeof rewrapTransfer>>;
+}
 export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
   const pt = usePluginTranslation('ssf'),
     task = useRecordingTask();
@@ -42,22 +49,26 @@ export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
     [cursor, setCursor] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]),
     [preview, setPreview] = useState<Preview | null>(null),
-    [localKey, setLocalKey] = useState<CryptoKey | null>(null),
+    [submission, setSubmission] = useState<TransferSubmission | null>(null),
+    [hasLocalKey, setHasLocalKey] = useState(false),
     [confirmed, setConfirmed] = useState(false);
   const [receipts, setReceipts] = useState<
     Awaited<ReturnType<typeof requestOperation<'commit'>>>[]
   >([]);
+  const localKey = useRef<CryptoKey | null>(null);
+  const deadline = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const fileInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (preview) fileInput.current?.focus();
   }, [preview]);
-  const retry = useRef<Awaited<ReturnType<typeof rewrapTransfer>> | null>(null),
-    [fileEpoch, setFileEpoch] = useState(0);
+  const [fileEpoch, setFileEpoch] = useState(0);
   const discard = useCallback(() => {
+    clearTimeout(deadline.current);
     setPreview(null);
-    setLocalKey(null);
+    localKey.current = null;
+    setHasLocalKey(false);
     setConfirmed(false);
-    retry.current = null;
+
     setFileEpoch((n) => n + 1);
   }, []);
   const reset = () => {
@@ -70,8 +81,10 @@ export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
   };
   useStudioEditorLeaveGuard({
     enabled: true,
-    hasUnsavedChanges: !!preview || selected.length > 0,
-    onDiscard: reset,
+    hasUnsavedChanges: !!submission || !!preview || selected.length > 0,
+    onDiscard: () => {
+      if (!submission) reset();
+    },
   });
   const load = useCallback(async (signal: AbortSignal) => {
     const [people, orgs] = await Promise.all([
@@ -95,7 +108,7 @@ export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
   }, [task.cancel, discard]);
   useEffect(() => {
     if (!preview) return;
-    const timer = setTimeout(
+    deadline.current = setTimeout(
       () => {
         task.cancel();
         discard();
@@ -105,7 +118,7 @@ export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
       },
       Math.max(0, Date.parse(preview.transfer.expiresAt) - Date.now())
     );
-    return () => clearTimeout(timer);
+    return () => clearTimeout(deadline.current);
   }, [preview, task.run, task.cancel, discard]);
   const find = (next: string | null) =>
     task.run(async (signal) => {
@@ -178,54 +191,67 @@ export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
       setPreview({ transfer, id, members });
     });
   const fileChanged = (file: File | undefined) => {
-    setLocalKey(null);
+    localKey.current = null;
+    setHasLocalKey(false);
     setConfirmed(false);
-    retry.current = null;
+
     if (file && preview)
       void task.run(async (signal) => {
         const key = await importOrganisationKey(file, preview.id);
         signal.throwIfAborted();
-        setLocalKey(key);
+        localKey.current = key;
+        setHasLocalKey(true);
       });
   };
   const commit = () =>
     task.run(async (signal) => {
-      if (!preview || !localKey || !confirmed) return;
+      let command = submission;
       try {
-        const body =
-          retry.current ??
-          (await rewrapTransfer(
-            localKey,
+        if (!command) {
+          if (!preview || !localKey.current || !confirmed) return;
+          const body = await rewrapTransfer(
+            localKey.current,
             preview.id,
             actor,
             preview.transfer,
             reason,
             preview.members,
             signal
-          ));
-        signal.throwIfAborted();
-        retry.current = body;
+          );
+          signal.throwIfAborted();
+          if (Date.now() >= Date.parse(preview.transfer.expiresAt))
+            throw new Error('PREPARATION_EXPIRED');
+          command = {
+            transferId: preview.transfer.transferId,
+            targetUserSub: preview.transfer.targetKey.userSub,
+            targetKeyVersion: preview.transfer.targetKey.version,
+            scopeDigest: preview.transfer.scopeDigest,
+            body,
+          };
+          setSubmission(command);
+          discard();
+        }
         const receipt = await requestOperation('commit', {
-          id: preview.transfer.transferId,
-          body,
+          id: command.transferId,
+          body: command.body,
           signal,
         });
         signal.throwIfAborted();
         if (
-          receipt.transferId !== preview.transfer.transferId ||
-          receipt.scopeDigest !== preview.transfer.scopeDigest ||
-          receipt.targetUserSub !== target ||
-          receipt.targetKeyVersion !== preview.transfer.targetKey.version ||
+          receipt.transferId !== command.transferId ||
+          receipt.scopeDigest !== command.scopeDigest ||
+          receipt.targetUserSub !== command.targetUserSub ||
+          receipt.targetKeyVersion !== command.targetKeyVersion ||
           JSON.stringify([...receipt.grantedKeyIds].sort()) !==
-            JSON.stringify(preview.members.map((m) => m.keyId).sort())
+            JSON.stringify(command.body.wraps.map((w) => w.keyId).sort())
         )
-          throw new Error('SCOPE_CHANGED');
+          throw new Error('RECORDING_UNAVAILABLE');
         setReceipts((prev) => [...prev, receipt]);
-        discard();
-      } catch (e) {
+        setSubmission(null);
+      } catch (error) {
         signal.throwIfAborted();
         if (
-          e instanceof Error &&
+          error instanceof Error &&
           [
             'KEY_VERSION_CHANGED',
             'SCOPE_CHANGED',
@@ -235,10 +261,12 @@ export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
             'PERMISSION_REQUIRED',
             'AUTHENTICATION_REQUIRED',
             'INVALID_PROOF',
-          ].includes(e.message)
-        )
+          ].includes(error.message)
+        ) {
+          setSubmission(null);
           discard();
-        throw e;
+        }
+        throw error;
       }
     });
   const label = (s: string) => people.find((p) => p.sub === s)?.displayName ?? s;
@@ -249,7 +277,7 @@ export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
     >
       <RecordingError code={task.error} />
       <StudioSection title={pt('transfer.selection')}>
-        <fieldset disabled={task.busy} className="space-y-3">
+        <fieldset disabled={task.busy || !!submission} className="space-y-3">
           <label>
             {pt('transfer.source')}{' '}
             <input
@@ -333,16 +361,7 @@ export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
                 {pt('transfer.keyCount')} {members.length}
               </p>
               <Button
-                disabled={
-                  !target ||
-                  !reason.trim() ||
-                  members.length > 1000 ||
-                  receipts.some(
-                    (r) =>
-                      r.targetUserSub === target &&
-                      members.every((m) => r.grantedKeyIds.includes(m.keyId))
-                  )
-                }
+                disabled={!target || !reason.trim() || members.length > 1000}
                 onClick={() => void prepare(id, members)}
               >
                 {pt('transfer.preview')}
@@ -351,6 +370,17 @@ export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
           ))}
         </fieldset>
       </StudioSection>
+      {submission && (
+        <StudioSection title={pt('keys.confirmedStatus')}>
+          <p>
+            {submission.transferId} · {label(submission.targetUserSub)} · {pt('transfer.targetKey')}{' '}
+            {submission.targetKeyVersion}
+          </p>
+          <Button disabled={task.busy} onClick={() => void commit()}>
+            {pt('keys.retryConfirmed')}
+          </Button>
+        </StudioSection>
+      )}
       {preview && (
         <StudioSection title={pt('transfer.confirmTitle')}>
           <dl>
@@ -398,14 +428,17 @@ export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
           <label>
             <input
               type="checkbox"
-              disabled={task.busy || !localKey}
+              disabled={task.busy || !hasLocalKey}
               checked={confirmed}
               onChange={(e) => setConfirmed(e.target.checked)}
             />{' '}
             {pt('transfer.confirm')}
           </label>
           <div className="flex gap-3">
-            <Button disabled={task.busy || !localKey || !confirmed} onClick={() => void commit()}>
+            <Button
+              disabled={task.busy || !hasLocalKey || !confirmed}
+              onClick={() => void commit()}
+            >
               {pt('transfer.commit')}
             </Button>
             <Button variant="secondary" disabled={task.busy} onClick={discard}>
@@ -417,7 +450,8 @@ export const AccessTransferForm = ({ tenantId, actor }: RecordingActor) => {
       {receipts.map((r) => (
         <StudioFormSummary key={r.transferId} kind="success">
           {pt('transfer.receipt')} {r.transferId} · {r.committedAt} · {label(r.targetUserSub)} ·{' '}
-          {pt('transfer.keyCount')} {r.grantedKeyIds.length}
+          {pt('transfer.targetKey')} {r.targetKeyVersion} · {pt('transfer.keyCount')}{' '}
+          {r.grantedKeyIds.length}
         </StudioFormSummary>
       ))}
       {task.error && !people.length && (

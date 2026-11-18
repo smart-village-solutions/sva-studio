@@ -26,9 +26,12 @@ import {
 interface Pending {
   prep: Activation;
   id: KeyIdentity;
-  key: CryptoKey;
-  file: string;
   previous: string | null;
+}
+interface ActivationSubmission {
+  preparationId: string;
+  keyId: string;
+  body: { proof: string; savedConfirmation: true };
 }
 export const OrganisationKeyForm = ({ tenantId, actor }: RecordingActor) => {
   const pt = usePluginTranslation('ssf'),
@@ -37,9 +40,12 @@ export const OrganisationKeyForm = ({ tenantId, actor }: RecordingActor) => {
       null
     ),
     [pending, setPending] = useState<Pending | null>(null),
+    [submission, setSubmission] = useState<ActivationSubmission | null>(null),
     [saved, setSaved] = useState(false),
     [exported, setExported] = useState(false),
     [done, setDone] = useState(false);
+  const custody = useRef<{ key: CryptoKey; file: string } | null>(null);
+  const deadline = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const exportButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (pending) exportButton.current?.focus();
@@ -55,27 +61,40 @@ export const OrganisationKeyForm = ({ tenantId, actor }: RecordingActor) => {
     }
   }, []);
   const clear = useCallback(() => {
+    clearTimeout(deadline.current);
+    custody.current = null;
     release();
     setPending(null);
     setSaved(false);
     setExported(false);
   }, [release]);
   const cancel = () => {
+    if (submission) return;
     task.cancel();
     clear();
     if (pending)
       void requestOperation('abandon', { id: pending.prep.preparationId }).catch(() => undefined);
   };
-  useStudioEditorLeaveGuard({ enabled: true, hasUnsavedChanges: !!pending, onDiscard: cancel });
+  useStudioEditorLeaveGuard({
+    enabled: true,
+    hasUnsavedChanges: !!pending || !!submission,
+    onDiscard: cancel,
+  });
   const load = useCallback(async (signal: AbortSignal) => {
     setList(null);
     const result = await requestOperation('list', { signal });
     signal.throwIfAborted();
     setList(result);
+    return result;
   }, []);
   useEffect(() => {
-    void task.run(load);
-    return release;
+    void task.run(async (signal) => {
+      await load(signal);
+    });
+    return () => {
+      custody.current = null;
+      release();
+    };
   }, [task.run, load, release]);
   useEffect(() => {
     const hide = () => {
@@ -87,18 +106,19 @@ export const OrganisationKeyForm = ({ tenantId, actor }: RecordingActor) => {
   }, [task.cancel, clear]);
   useEffect(() => {
     if (!pending) return;
-    const timer = setTimeout(
+    deadline.current = setTimeout(
       () => {
         task.cancel();
         clear();
-        void task.run(async () => {
+        void task.run(async (signal) => {
+          await load(signal);
           throw new Error('PREPARATION_EXPIRED');
         });
       },
       Math.max(0, Date.parse(pending.prep.expiresAt) - Date.now())
     );
-    return () => clearTimeout(timer);
-  }, [pending, clear, task.cancel, task.run]);
+    return () => clearTimeout(deadline.current);
+  }, [pending, clear, load, task.cancel, task.run]);
   const create = () =>
     task.run(async (signal) => {
       if (!list) return;
@@ -125,51 +145,80 @@ export const OrganisationKeyForm = ({ tenantId, actor }: RecordingActor) => {
       const file = await createOrganisationKeyFile(generated, id),
         key = await importOrganisationKey(new Blob([file]), id);
       signal.throwIfAborted();
-      setPending({ prep, id, key, file, previous: list.activeKeyId });
+      custody.current = { key, file };
+      setPending({ prep, id, previous: list.activeKeyId });
     });
   const activate = () =>
     task.run(async (signal) => {
-      if (!exported || !saved || !pending) return;
-      const proof = await activationProof(
-        pending.key,
-        pending.id,
-        pending.prep,
-        actor,
-        pending.previous
-      );
-      signal.throwIfAborted();
-      try {
-        await requestOperation('activate', {
-          id: pending.prep.preparationId,
+      let command = submission;
+      if (!command) {
+        if (!pending || !saved || !exported || !custody.current) return;
+        const proof = await activationProof(
+          custody.current.key,
+          pending.id,
+          pending.prep,
+          actor,
+          pending.previous
+        );
+        signal.throwIfAborted();
+        if (Date.now() >= Date.parse(pending.prep.expiresAt)) {
+          clear();
+          throw new Error('PREPARATION_EXPIRED');
+        }
+        command = {
+          preparationId: pending.prep.preparationId,
+          keyId: pending.id.keyId,
           body: { proof, savedConfirmation: true },
+        };
+        setSubmission(command);
+        clear();
+      }
+      try {
+        const receipt = await requestOperation('activate', {
+          id: command.preparationId,
+          body: command.body,
           signal,
         });
-      } catch (e) {
+        if (receipt.keyId !== command.keyId || receipt.state === 'prepared')
+          throw new Error('RECORDING_UNAVAILABLE');
+      } catch (error) {
         signal.throwIfAborted();
-        if (
-          e instanceof Error &&
+        const terminal =
+          error instanceof Error &&
           [
             'KEY_VERSION_CHANGED',
             'PREPARATION_EXPIRED',
+            'PREPARATION_NOT_FOUND',
             'PREPARATION_USED',
             'PERMISSION_REQUIRED',
             'AUTHENTICATION_REQUIRED',
             'INVALID_PROOF',
-          ].includes(e.message)
-        )
-          clear();
-        await load(signal);
-        throw e;
+          ].includes(error.message);
+        if (terminal) setSubmission(null);
+        const history = await load(signal);
+        if (
+          history.keys.some(
+            (key) =>
+              key.keyId === command.keyId && (key.state === 'active' || key.state === 'superseded')
+          )
+        ) {
+          setSubmission(null);
+          setDone(true);
+          return;
+        }
+        throw error;
       }
       signal.throwIfAborted();
-      clear();
+      setSubmission(null);
       setDone(true);
       await load(signal);
     });
   const download = () => {
-    if (!pending) return;
+    if (!pending || !custody.current) return;
     release();
-    link.current = URL.createObjectURL(new Blob([pending.file], { type: 'application/json' }));
+    link.current = URL.createObjectURL(
+      new Blob([custody.current.file], { type: 'application/json' })
+    );
     const a = document.createElement('a');
     a.href = link.current;
     a.download = 'ssf-organisation-key-' + pending.id.keyId + '.json';
@@ -177,7 +226,7 @@ export const OrganisationKeyForm = ({ tenantId, actor }: RecordingActor) => {
     setExported(true);
   };
   const print = () => {
-    if (!pending) return;
+    if (!pending || !custody.current) return;
     release();
     const sheet = document.createElement('iframe');
     sheet.title = pt('keys.print');
@@ -195,7 +244,7 @@ export const OrganisationKeyForm = ({ tenantId, actor }: RecordingActor) => {
     notice.textContent = pt('keys.printNotice');
     const data = doc.createElement('p');
     data.style.overflowWrap = 'anywhere';
-    data.textContent = b64(new TextEncoder().encode(pending.file));
+    data.textContent = b64(new TextEncoder().encode(custody.current.file));
     doc.body.replaceChildren(notice, data);
     win.addEventListener('afterprint', release, { once: true });
     win.focus();
@@ -221,18 +270,33 @@ export const OrganisationKeyForm = ({ tenantId, actor }: RecordingActor) => {
                 </li>
               ))}
             </ul>
-            {!pending && (
+            {!pending && !submission && (
               <Button disabled={task.busy} onClick={() => void create()}>
                 {pt(list.activeKeyId ? 'keys.replace' : 'keys.create')}
               </Button>
             )}
           </>
         ) : (
-          <Button disabled={task.busy} onClick={() => void task.run(load)}>
+          <Button
+            disabled={task.busy}
+            onClick={() =>
+              void task.run(async (signal) => {
+                await load(signal);
+              })
+            }
+          >
             {pt(task.busy ? 'status.loading' : 'keys.reload')}
           </Button>
         )}
       </StudioSection>
+      {submission && (
+        <StudioSection title={pt('keys.confirmedStatus')}>
+          <p>{submission.preparationId}</p>
+          <Button disabled={task.busy} onClick={() => void activate()}>
+            {pt('keys.retryConfirmed')}
+          </Button>
+        </StudioSection>
+      )}
       {pending && (
         <StudioSection title={pt('keys.custody')}>
           <p>{pt('keys.custodyNotice')}</p>

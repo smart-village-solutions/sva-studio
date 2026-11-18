@@ -2,6 +2,8 @@
 export const en = {
   ssf: {
     keys: {
+      confirmedStatus: 'Confirmed operation',
+      retryConfirmed: 'Check result again',
       policyNotice:
         'Each new recording also requires an active organisation key and a personal key for the recording employee.',
       replaceNotice:
@@ -39,6 +41,8 @@ export const en = {
         INVALID_KEY: 'The key file or signed key data does not match this operation.',
         INVALID_PROOF: 'Key possession could not be verified. Check the version and prepare again.',
         TRANSFER_SCOPE_TOO_LARGE: 'Select fewer recordings for this transfer.',
+        RECORDING_PROTOCOL_UPGRADE_REQUIRED:
+          'This tenant still uses the previous recording protocol. Ask the operator to review and authorize the switch to the new version.',
         RECORDING_UNAVAILABLE:
           'The recording service is unavailable. If a submission may have reached it, retry the same confirmed operation.',
       },

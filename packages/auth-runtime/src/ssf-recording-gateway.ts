@@ -86,11 +86,11 @@ export const forwardSsfRecordingRequest = async (
       origin.hash
     )
       return fail(503, 'RECORDING_UNAVAILABLE');
-    const verify = async (token: string) =>
+    const verify = async (token: string, expectedAudience?: string) =>
       (
         await jwtVerify(token, getRemoteServiceJwks(config.issuer), {
           issuer: config.issuer,
-          audience,
+          ...(expectedAudience ? { audience: expectedAudience } : {}),
           algorithms: ['RS256'],
           requiredClaims: ['exp', 'sub', 'azp', 'sid'],
         })
@@ -99,11 +99,15 @@ export const forwardSsfRecordingRequest = async (
     if (
       original.sub !== ctx.actor.id ||
       original.azp !== config.clientId ||
-      original.studio_tenant_id !== instanceId ||
       original.client_id ||
-      String(original.preferred_username ?? '').startsWith('service-account-') ||
-      !allowed(original, route[2])
+      String(original.preferred_username ?? '').startsWith('service-account-')
     )
+      return fail(403, 'PERMISSION_REQUIRED');
+    // The source token belongs to the verified Studio session. Gateway audience
+    // inclusion is an additional provisioning requirement for this delegation.
+    const audiences = Array.isArray(original.aud) ? original.aud : [original.aud];
+    if (!audiences.includes(audience)) return fail(503, 'RECORDING_UNAVAILABLE');
+    if (original.studio_tenant_id !== instanceId || !allowed(original, route[2]))
       return fail(403, 'PERMISSION_REQUIRED');
     const signal = AbortSignal.any([ctx.request.signal, AbortSignal.timeout(15_000)]);
     const exchange = await fetch(config.issuer + '/protocol/openid-connect/token', {
@@ -139,15 +143,16 @@ export const forwardSsfRecordingRequest = async (
       typeof token.access_token !== 'string'
     )
       return fail(503, 'RECORDING_UNAVAILABLE');
-    const exchanged = await verify(token.access_token);
+    const exchanged = await verify(token.access_token, audience).catch(() => null);
+    if (!exchanged) return fail(503, 'RECORDING_UNAVAILABLE');
     if (
       exchanged.sub !== original.sub ||
       exchanged.sid !== original.sid ||
       exchanged.studio_tenant_id !== instanceId ||
-      exchanged.azp !== config.clientId ||
-      !allowed(exchanged, route[2])
+      exchanged.azp !== config.clientId
     )
-      return fail(403, 'PERMISSION_REQUIRED');
+      return fail(503, 'RECORDING_UNAVAILABLE');
+    if (!allowed(exchanged, route[2])) return fail(403, 'PERMISSION_REQUIRED');
     if (exchanged.acr !== original.acr || exchanged.auth_time !== original.auth_time)
       return fail(503, 'RECORDING_UNAVAILABLE');
     return await fetch(origin.origin + '/api/admin/recording/v2' + operation.path, {

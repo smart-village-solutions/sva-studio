@@ -46,7 +46,7 @@ it('gates activation on custody and sends only proof, then reconciles authoritat
             preparationId: v.preparationId,
             challengeEnvelope: v.activationChallenge,
           }
-        : {}
+        : { keyId: v.organisationKeyId, state: 'active' }
   );
   expect(forms.OrganisationKeyForm).toBeTypeOf('function');
   render(<forms.OrganisationKeyForm tenantId={v.tenantId} actor={v.actorSub} />);
@@ -173,3 +173,73 @@ it('clears the preparation on tenant switch and blocks the workflow after logout
     act(() => publishSessionAccessSnapshot(original));
   }
 });
+
+it.each(['late-success', 'lost-response'])(
+  'recovers the confirmed activation across its local deadline: %s',
+  async (scenario) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const originalList = { activeKeyId: null, keys: [] },
+      active = {
+        keyId: v.organisationKeyId,
+        state: 'active',
+        version: 2,
+        fingerprint: v.organisationFingerprint,
+      };
+    const response = Promise.withResolvers<unknown>();
+    let sends = 0;
+    api.mockImplementation(async (op: string) => {
+      if (op === 'list')
+        return sends > 1 || (scenario === 'late-success' && sends > 0)
+          ? { activeKeyId: active.keyId, keys: [active] }
+          : originalList;
+      if (op === 'prepareKey')
+        return {
+          preparationId: v.preparationId,
+          keyId: active.keyId,
+          version: 2,
+          fingerprint: active.fingerprint,
+          expiresAt: new Date(Date.now() + 300000).toISOString(),
+        };
+      if (op === 'activate') return ++sends === 1 ? response.promise : active;
+    });
+    try {
+      render(<forms.OrganisationKeyForm tenantId={v.tenantId} actor={v.actorSub} />);
+      fireEvent.click(await screen.findByRole('button', { name: 'keys.create' }));
+      URL.createObjectURL = vi.fn(() => 'blob:fixture');
+      URL.revokeObjectURL = vi.fn();
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+      fireEvent.click(await screen.findByRole('button', { name: 'keys.download' }));
+      fireEvent.click(screen.getByRole('checkbox', { name: 'keys.saved' }));
+      fireEvent.click(screen.getByRole('button', { name: 'keys.activate' }));
+      await waitFor(() => expect(sends).toBe(1));
+      if (scenario === 'lost-response')
+        await act(async () => {
+          response.reject(new Error('RECORDING_UNAVAILABLE'));
+        });
+      await act(async () => {
+        vi.advanceTimersByTime(300005);
+      });
+      expect(screen.queryByText('keys.errors.PREPARATION_EXPIRED')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'keys.download' })).toBeNull();
+      if (scenario === 'late-success')
+        await act(async () => {
+          response.resolve(active);
+        });
+      else {
+        act(() => {
+          window.dispatchEvent(new Event('pagehide'));
+        });
+        fireEvent.click(await screen.findByRole('button', { name: 'keys.retryConfirmed' }));
+        await waitFor(() => expect(sends).toBe(2));
+        const calls = api.mock.calls.filter(([op]) => op === 'activate');
+        expect(calls[1]?.[1].body).toEqual(calls[0]?.[1].body);
+        expect(calls[1]?.[1].id).toBe(calls[0]?.[1].id);
+      }
+      await screen.findByText('keys.activated');
+      expect(api.mock.calls.filter(([op]) => op === 'prepareKey')).toHaveLength(1);
+      expect(api.mock.calls.some(([op]) => op === 'abandon')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+);

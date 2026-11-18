@@ -58,3 +58,46 @@ it('retains an upstream authentication failure without disclosing provider detai
   expect(response.status).toBe(401);
   expect(await response.json()).toEqual({ error: { code: 'AUTHENTICATION_REQUIRED' } });
 });
+
+it.each(['ssf.organisation-keys.prepare', 'ssf.access-transfer.prepare'])(
+  'preserves the explicit operator cutover requirement for %s',
+  async (handlerId) => {
+    const id = '122db777-aeaa-488f-b099-92af0709bc8d';
+    const body =
+      handlerId === 'ssf.organisation-keys.prepare'
+        ? { publicKey: 'A'.repeat(87), expectedActiveKeyId: null }
+        : {
+            conversationIds: [id],
+            organisationKeyId: id,
+            targetUserSub: 'target',
+            expectedTargetKeyVersion: 1,
+            expectedTargetFingerprint: 'A'.repeat(43),
+            reason: 'restore',
+          };
+    const forwardSsfRecordingRequest = vi
+      .fn()
+      .mockResolvedValue(
+        Response.json(
+          {
+            detail: {
+              error_code: 'RECORDING_PROTOCOL_UPGRADE_REQUIRED',
+              message: 'sensitive upstream details',
+            },
+          },
+          { status: 409 }
+        )
+      );
+    const result = await createPluginServerHandlers()[handlerId]!({
+      ...ctx,
+      handlerId,
+      request: new Request('https://studio.test/api', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+      forwardSsfRecordingRequest,
+    });
+    expect(result.status).toBe(409);
+    expect(await result.json()).toEqual({ error: { code: 'RECORDING_PROTOCOL_UPGRADE_REQUIRED' } });
+    expect(forwardSsfRecordingRequest).toHaveBeenCalledTimes(1);
+  }
+);

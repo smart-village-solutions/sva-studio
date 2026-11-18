@@ -27,11 +27,14 @@ const claims = {
 };
 const pair = await generateKeyPair('RS256');
 const sign = (overrides: Record<string, unknown> = {}) =>
-  new SignJWT({ ...claims, ...overrides })
+  new SignJWT({
+    ...claims,
+    aud: 'ssf-frontend',
+    exp: Math.floor(Date.now() / 1000) + 120,
+    ...overrides,
+  })
     .setProtectedHeader({ alg: 'RS256' })
     .setIssuer(issuer)
-    .setAudience('ssf-frontend')
-    .setExpirationTime('2m')
     .sign(pair.privateKey);
 const request = vi.fn();
 beforeEach(async () => {
@@ -153,4 +156,50 @@ it('requires normal login when the authenticated session no longer exists', asyn
   expect(res.status).toBe(401);
   expect(await res.json()).toEqual({ error: { code: 'AUTHENTICATION_REQUIRED' } });
   expect(request).not.toHaveBeenCalled();
+});
+
+it.each([
+  {},
+  { aud: 'another-client' },
+  { studio_tenant_id: undefined, ssf_permissions: undefined },
+])(
+  'reports missing source audience provisioning without reauthenticating a valid session',
+  async (change) => {
+    const original = await sign({ aud: undefined, ...change });
+    mocks.session.mockResolvedValue({ ...(await mocks.session()), accessToken: original });
+    const res = await gateway.forwardSsfRecordingRequest(ctx, {
+      method: 'GET',
+      path: '/organisation-keys',
+    });
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: { code: 'RECORDING_UNAVAILABLE' } });
+    expect(request).not.toHaveBeenCalled();
+  }
+);
+it('denies an expired source even when its audience is also missing', async () => {
+  mocks.session.mockResolvedValue({
+    ...(await mocks.session()),
+    accessToken: await sign({ aud: undefined, exp: 1 }),
+  });
+  const res = await gateway.forwardSsfRecordingRequest(ctx, {
+    method: 'GET',
+    path: '/organisation-keys',
+  });
+  expect(res.status).toBe(401);
+  expect(request).not.toHaveBeenCalled();
+});
+it('reports a wrongly issued downstream token as an exchange failure', async () => {
+  request.mockResolvedValueOnce(
+    Response.json({
+      access_token: await sign({ aud: 'other' }),
+      token_type: 'Bearer',
+      issued_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+    })
+  );
+  const res = await gateway.forwardSsfRecordingRequest(ctx, {
+    method: 'GET',
+    path: '/organisation-keys',
+  });
+  expect(res.status).toBe(503);
+  expect(request).toHaveBeenCalledTimes(1);
 });

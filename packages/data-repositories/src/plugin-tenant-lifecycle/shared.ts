@@ -20,7 +20,7 @@ type PluginTenantLifecycleRow = {
   readonly readiness_revision: string | null;
   readonly readiness_checks: readonly Readonly<Record<string, unknown>>[];
   readonly error_code: string | null;
-  readonly error_message_key?: string | null;
+  readonly error_message_key: string | null;
   readonly retry_kind: PluginTenantLifecycleRetryKind | null;
   readonly retry_after: Date | string | null;
   readonly next_recheck_at: Date | string | null;

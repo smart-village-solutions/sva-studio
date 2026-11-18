@@ -414,6 +414,8 @@ describe('plugin tenant lifecycle job correlation', () => {
     );
     expect(loggerMock.warn).toHaveBeenCalledWith('plugin_tenant_lifecycle_message_key_rejected', {
       operation: 'plugin_tenant_lifecycle_fail',
+      instance_id: 'tenant-a',
+      job_id: job.id,
       plugin_id: 'speech',
       error_code: 'speech.databaseUnavailable',
     });

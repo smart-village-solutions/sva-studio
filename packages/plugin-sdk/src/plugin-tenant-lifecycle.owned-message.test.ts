@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isPluginOwnedMessageKey } from './plugin-owned-message';
+import { isPluginOwnedMessageKey } from './index.js';
 
 const wasteTranslations = {
   de: {
@@ -20,11 +20,14 @@ const multiNamespaceTranslations = {
 } as const;
 
 describe('isPluginOwnedMessageKey', () => {
-  it('accepts a key for which the plugin ships text in any locale', () => {
+  it('accepts a key for which the plugin ships text in every locale', () => {
     expect(
       isPluginOwnedMessageKey('wasteManagement.readiness.unavailable', wasteTranslations)
     ).toBe(true);
-    expect(isPluginOwnedMessageKey('wasteManagement.deOnly.leaf', wasteTranslations)).toBe(true);
+  });
+
+  it('rejects a key that is missing in one locale, so the UI never shows the raw key', () => {
+    expect(isPluginOwnedMessageKey('wasteManagement.deOnly.leaf', wasteTranslations)).toBe(false);
   });
 
   it('keeps owned keys of plugins with several top-level translation namespaces', () => {
@@ -61,5 +64,6 @@ describe('isPluginOwnedMessageKey', () => {
 
   it('rejects every key when the plugin ships no translations', () => {
     expect(isPluginOwnedMessageKey('unknown.errors.failed', undefined)).toBe(false);
+    expect(isPluginOwnedMessageKey('unknown.errors.failed', {})).toBe(false);
   });
 });

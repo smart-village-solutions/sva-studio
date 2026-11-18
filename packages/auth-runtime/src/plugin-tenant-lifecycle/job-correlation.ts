@@ -139,6 +139,7 @@ const resolveLifecycleFailureContext = (
 const resolveLifecycleFailure = (
   dependencies: Pick<CorrelationDependencies, 'now'>,
   pluginId: string,
+  job: Pick<StudioJobRecord, 'id' | 'instanceId'>,
   error: StudioJobError,
   reason: 'failed' | 'missing_handler' | 'cancelled'
 ): {
@@ -172,6 +173,8 @@ const resolveLifecycleFailure = (
       // The rejected value may be free text, so only its owner and error code are logged.
       logger.warn('plugin_tenant_lifecycle_message_key_rejected', {
         operation: 'plugin_tenant_lifecycle_fail',
+        instance_id: job.instanceId,
+        job_id: job.id,
         plugin_id: pluginId,
         error_code: lifecycleError.code,
       });
@@ -265,7 +268,13 @@ export const createPluginTenantLifecycleJobCorrelation = (
       return;
     }
     const failure = context.contractMatches
-      ? resolveLifecycleFailure(dependencies, context.pluginId, input.error, input.reason)
+      ? resolveLifecycleFailure(
+          dependencies,
+          context.pluginId,
+          input.job,
+          input.error,
+          input.reason
+        )
       : {
           readinessStatus: 'blocked' as const,
           errorCode: 'plugin_tenant_lifecycle_job_contract_mismatch',

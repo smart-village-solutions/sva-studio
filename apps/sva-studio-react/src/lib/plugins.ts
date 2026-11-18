@@ -1,4 +1,5 @@
 import {
+  isPluginOwnedMessageKey,
   registerPluginTranslationResolver,
   registerPluginLocaleResolver,
   type PluginCatalogEntry,
@@ -10,7 +11,6 @@ import {
   type StudioModuleCatalogEntry,
 } from './plugin-module-iam.js';
 import { appAdminResources } from '../routing/admin-resources';
-import { isPluginOwnedMessageKey } from './plugin-owned-message.js';
 
 import {
   i18nResources,

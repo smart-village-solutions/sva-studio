@@ -1,10 +1,9 @@
-import type { PluginTenantReadinessReadModel } from '@sva/plugin-sdk';
+import { isPluginOwnedMessageKey, type PluginTenantReadinessReadModel } from '@sva/plugin-sdk';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { getActiveLocale, setActiveLocale } from '../../../i18n';
 import { IamHttpError } from '../../../lib/iam-api';
-import { isPluginOwnedMessageKey } from '../../../lib/plugin-owned-message';
 import { PluginReadinessCard } from './-instance-plugin-readiness-card';
 
 const pluginTranslations = {

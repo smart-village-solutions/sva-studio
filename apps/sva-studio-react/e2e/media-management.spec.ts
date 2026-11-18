@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 
 import {
+  establishServerReadableAuthSession,
   expectAppShellReady,
   gotoHomeAsAuthenticatedUser,
   captureStudioDesignState,
@@ -427,6 +428,7 @@ test.describe('media management', () => {
       await routeMediaRequests(route, state);
     });
     await gotoHomeAsAuthenticatedUser(page);
+    await establishServerReadableAuthSession(page.context(), page);
     await navigateClientSide(page, '/admin/media');
     const entry = page.getByRole('link').filter({ hasText: 'legacy-image.jpg' });
     await expect(entry).toBeVisible();
